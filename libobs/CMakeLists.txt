@@ -95,7 +95,7 @@ target_sources(
     util/base.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/bitstream.c>
     util/bitstream.h
-    util/bmem.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/bmem.c>
     util/bmem.h
     util/buffered-file-serializer.c
     util/buffered-file-serializer.h
@@ -112,12 +112,12 @@ target_sources(
     util/curl/curl-helper.h
     util/darray.h
     util/deque.h
-    util/dstr.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/dstr.c>
     util/dstr-libc.c
     util/dstr.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/file-serializer.c>
     util/file-serializer.h
-    util/lexer.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/lexer.c>
     util/lexer.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/path-extension.c>
     util/pipe.c
@@ -133,10 +133,10 @@ target_sources(
     util/sse-intrin.h
     util/task.c
     util/task.h
-    util/text-lookup.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/text-lookup.c>
     util/text-lookup.h
     util/threading.h
-    util/utf8.c
+    $<$<NOT:$<AND:$<BOOL:${ENABLE_RUST_LIBOBS}>,$<NOT:$<PLATFORM_ID:Windows>>>>:util/utf8.c>
     util/utf8.h
     util/uthash.h
     util/util.hpp

@@ -6,6 +6,9 @@ _rust_eh_personality
 _base_begin_crash
 _base_default_log_handler
 _base_log_literal
+# utf8.c is not exported by the C libobs, so its Rust shims are hidden too.
+_utf8_to_wchar
+_wchar_to_utf8
 # compiler-rt @available helpers (__isOSVersionAtLeast,
 # __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
 # build does not export them. Wildcards: no error if absent.

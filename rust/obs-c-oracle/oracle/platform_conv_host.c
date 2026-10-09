@@ -1,6 +1,7 @@
 /* Test-only: the string conversions libobs/util/dstr.c calls, copied
  * verbatim from libobs/util/platform.c, on top of the real util/utf8.c that
- * build.rs compiles next to it. They used to be stubs that returned 0 for
+ * oracle/utf8.c compiles under oracle_* names (the Rust port owns the plain
+ * utf8_to_wchar/wchar_to_utf8 names in test binaries). They used to be stubs that returned 0 for
  * every input (#84), so dstr_to_wcs, dstr_from_mbs and dstr_from_wcs in the
  * oracle disagreed with libobs.
  *
@@ -13,6 +14,9 @@
 
 void *bmalloc(size_t size);
 void bfree(void *ptr);
+#define utf8_to_wchar oracle_utf8_to_wchar
+#define wchar_to_utf8 oracle_wchar_to_utf8
+
 size_t utf8_to_wchar(const char *in, size_t insize, wchar_t *out, size_t outsize, int flags);
 size_t wchar_to_utf8(const wchar_t *in, size_t insize, char *out, size_t outsize, int flags);
 

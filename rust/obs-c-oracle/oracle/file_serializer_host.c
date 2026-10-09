@@ -14,15 +14,7 @@
 #include <string.h>
 #include <wchar.h>
 
-void *bmalloc(size_t size);
-
-void *bmemdup(const void *ptr, size_t size)
-{
-	void *out = bmalloc(size);
-	if (size)
-		memcpy(out, ptr, size);
-	return out;
-}
+/* bmemdup comes from the Rust bmem port (obs-util). */
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

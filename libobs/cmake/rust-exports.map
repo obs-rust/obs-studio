@@ -11,4 +11,8 @@
     base_begin_crash;
     base_default_log_handler;
     base_log_literal;
+    /* utf8.c is not exported by the C libobs, so its Rust shims are hidden
+     * too (listed in rust-hidden.txt). */
+    utf8_to_wchar;
+    wchar_to_utf8;
 };

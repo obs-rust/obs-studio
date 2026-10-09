@@ -2,17 +2,15 @@
 //!
 //! `darray.h` is header-inline, so nothing here is exported: these are plain
 //! Rust functions that reproduce the header byte for byte (including the
-//! `bmalloc`/`bfree` allocations) for the array-serializer shim.
+//! `bmalloc`/`bfree` allocations) for the array-serializer shim. The
+//! allocator is the Rust port in [`crate::ffi::bmem`], re-exported here.
 
 use core::ffi::c_void;
 use core::ptr;
 
 use crate::darray::grow_capacity;
 
-unsafe extern "C" {
-    pub fn bmalloc(size: usize) -> *mut c_void;
-    pub fn bfree(ptr: *mut c_void);
-}
+pub use crate::ffi::bmem::{bfree, bmalloc, brealloc};
 
 /// Mirrors `struct darray` in `libobs/util/darray.h`.
 #[repr(C)]

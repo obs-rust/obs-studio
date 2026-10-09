@@ -1,0 +1,3 @@
+# Vendored upstream uthash 2.3.0: keep it byte-identical, do not reformat.
+DisableFormat: true
+SortIncludes: Never

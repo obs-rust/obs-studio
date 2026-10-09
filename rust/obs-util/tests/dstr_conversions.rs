@@ -1,6 +1,6 @@
-//! The oracle's `util/dstr.c` converts strings the way libobs does.
+//! The oracle's `util/dstr-libc.c` converts strings the way libobs does.
 //!
-//! dstr.c's conversions call `os_utf8_to_wcs_ptr`, `os_mbs_to_utf8_ptr` and
+//! dstr-libc.c's conversions call `os_utf8_to_wcs_ptr`, `os_mbs_to_utf8_ptr` and
 //! `wchar_to_utf8`. The oracle used to stub all three to return 0, so every
 //! conversion "failed" there while libobs performs it (#84). A port checked
 //! against those stubs would have copied the failure. These tests pin known
@@ -9,8 +9,10 @@
 use core::ffi::c_char;
 use core::ptr;
 
-// Links the oracle's C libraries, which define the symbols declared below.
+// Links the oracle's C libraries, which define the oracle_* symbols declared
+// below, and the Rust bmem port that provides bmalloc/bfree.
 use obs_c_oracle as _;
+use obs_util as _;
 
 #[cfg(windows)]
 type WChar = u16;
@@ -26,12 +28,12 @@ struct Dstr {
 }
 
 unsafe extern "C" {
-    // util/dstr.c, compiled into the oracle under its own names.
-    fn dstr_to_wcs(str: *const Dstr) -> *mut WChar;
-    fn dstr_from_wcs(dst: *mut Dstr, wstr: *const WChar);
-    fn dstr_from_mbs(dst: *mut Dstr, mbstr: *const c_char);
-    fn dstr_to_mbs(str: *const Dstr) -> *mut c_char;
-    // oracle/test_bmem.c
+    // util/dstr-libc.c, compiled into the oracle under oracle_* names.
+    fn oracle_dstr_to_wcs(str: *const Dstr) -> *mut WChar;
+    fn oracle_dstr_from_wcs(dst: *mut Dstr, wstr: *const WChar);
+    fn oracle_dstr_from_mbs(dst: *mut Dstr, mbstr: *const c_char);
+    fn oracle_dstr_to_mbs(str: *const Dstr) -> *mut c_char;
+    // the Rust bmem port (obs-util)
     fn bfree(ptr: *mut core::ffi::c_void);
 }
 
@@ -105,7 +107,7 @@ fn borrowed(s: &[u8]) -> (Vec<u8>, Dstr) {
 fn dstr_to_wcs_converts_utf8() {
     let (_buf, d) = borrowed(TEXT.as_bytes());
     // SAFETY: `d` points into `_buf`, which outlives the call.
-    let got = unsafe { take_wide(dstr_to_wcs(&d)) };
+    let got = unsafe { take_wide(oracle_dstr_to_wcs(&d)) };
     assert_eq!(got, Some(wide(TEXT)));
 }
 
@@ -117,7 +119,7 @@ fn dstr_to_wcs_of_empty_dstr_is_null() {
         capacity: 0,
     };
     // SAFETY: an empty dstr is valid input; platform.c returns NULL for it.
-    assert_eq!(unsafe { take_wide(dstr_to_wcs(&d)) }, None);
+    assert_eq!(unsafe { take_wide(oracle_dstr_to_wcs(&d)) }, None);
 }
 
 #[test]
@@ -129,7 +131,7 @@ fn dstr_from_wcs_converts_to_utf8() {
         capacity: 0,
     };
     // SAFETY: `w` is NUL-terminated and `d` starts empty.
-    unsafe { dstr_from_wcs(&mut d, w.as_ptr()) };
+    unsafe { oracle_dstr_from_wcs(&mut d, w.as_ptr()) };
     assert_eq!(d.len, TEXT.len());
     // SAFETY: dstr_from_wcs filled `d` from bmalloc.
     assert_eq!(unsafe { take_dstr(d) }, TEXT.as_bytes());
@@ -145,11 +147,11 @@ fn dstr_from_mbs_and_to_mbs_keep_ascii() {
         capacity: 0,
     };
     // SAFETY: the literal is NUL-terminated and `d` starts empty.
-    unsafe { dstr_from_mbs(&mut d, c"plain ascii".as_ptr()) };
+    unsafe { oracle_dstr_from_mbs(&mut d, c"plain ascii".as_ptr()) };
     assert_eq!(d.len, 11);
 
     // SAFETY: `d` was filled by dstr_from_mbs.
-    let back = unsafe { dstr_to_mbs(&d) };
+    let back = unsafe { oracle_dstr_to_mbs(&d) };
     assert!(!back.is_null());
     // SAFETY: dstr_to_mbs returns a NUL-terminated bmalloc'ed string.
     let text = unsafe { core::ffi::CStr::from_ptr(back) }

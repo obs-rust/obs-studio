@@ -44,11 +44,21 @@ fn main() {
         .file(libobs.join("util/base-variadic.c"))
         .file("oracle/file_serializer.c")
         .file("oracle/file_serializer_host.c")
-        .file(libobs.join("util/dstr.c"))
-        // dstr.c's conversions: platform.c's verbatim, over the real utf8.c.
+        .file("oracle/utf8.c")
+        .file("oracle/lexer.c")
+        .file("oracle/text_lookup.c")
+        .file("oracle/dstr.c")
+        .file("oracle/dstr_libc.c")
+        // dstr-libc.c's conversions: platform.c's verbatim, over oracle/utf8.c.
         .file("oracle/platform_conv_host.c")
-        .file(libobs.join("util/utf8.c"))
+        .file("oracle/bmem.c")
+        .file("oracle/test_stubs.c")
         .include(&libobs)
+        // libobs/util/uthash.h includes <uthash.h>, a system header CMake
+        // finds for the real build. The Rust test runners have no uthash
+        // package, so the text-lookup oracle uses a vendored copy of the
+        // same release (2.3.0, BSD-1-Clause, see vendor/uthash/LICENSE).
+        .include(manifest.join("vendor/uthash"))
         .std("c11");
     // base.c includes util/threading.h, which includes <pthread.h>. MSVC has
     // none; libobs builds against the pthreads-win32 headers in
@@ -58,16 +68,8 @@ fn main() {
     }
     oracle.compile("obs_c_oracle");
 
-    // Test allocator, whole-archive so bmalloc/bfree resolve regardless of
-    // link order relative to obs-util.
-    cc::Build::new()
-        .file("oracle/test_bmem.c")
-        .include(&libobs)
-        .std("c11")
-        .link_lib_modifier("+whole-archive")
-        .compile("obs_c_oracle_bmem");
-
     println!("cargo:rerun-if-changed=oracle");
+    println!("cargo:rerun-if-changed=vendor");
     for header in [
         "util/bitstream.c",
         "util/bitstream.h",
@@ -76,7 +78,19 @@ fn main() {
         "util/array-serializer.h",
         "util/darray.h",
         "util/serializer.h",
+        "util/bmem.c",
         "util/bmem.h",
+        "util/utf8.c",
+        "util/utf8.h",
+        "util/lexer.c",
+        "util/lexer.h",
+        "util/text-lookup.c",
+        "util/text-lookup.h",
+        "util/dstr.c",
+        "util/dstr-libc.c",
+        "util/dstr.h",
+        "util/platform.h",
+        "util/base.h",
         "util/crc32.c",
         "util/crc32.h",
         "graphics/vec2.c",

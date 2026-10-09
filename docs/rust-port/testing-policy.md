@@ -65,11 +65,19 @@ cannot prove both, so every ported unit carries the four tiers below.
 - Memory that C code later frees or resizes (e.g. darray buffers) MUST be
   allocated with libobs `bmalloc`/`bfree`, declared once in
   `rust/obs-util/src/ffi/darray.rs`.
-- Under `cargo test`, those symbols come from the test-only allocator
-  `rust/obs-c-oracle/oracle/test_bmem.c`. Every obs-util test target therefore
-  links `obs_c_oracle`: a test file that does not otherwise use it contains
-  `use obs_c_oracle as _;`.
-- Delete `test_bmem.c` in the change that ports `util/bmem.c`.
+- `bmalloc`/`bfree` are now the Rust bmem port
+  (`rust/obs-util/src/ffi/bmem.rs`, re-exported from `ffi/darray.rs`). Under
+  `cargo test`, the base/platform symbols they and the oracles need come from
+  the oracle crate (`oracle/test_stubs.c`, `oracle/file_serializer_host.c`,
+  `oracle/platform_conv_host.c` and the real `util/base-variadic.c`), linked
+  by every obs-util test via `use obs_c_oracle as _;`. Oracle copies of C
+  that is now ported (e.g. `util/utf8.c`) are compiled under `oracle_*` names
+  so they never clash with the Rust shims.
+- C ABI shims for symbols libobs does not export (base.c internals, utf8) are
+  listed in `libobs/cmake/rust-hidden.txt` and hidden via `local:` in
+  `rust-exports.map` and `rust-unexports-macos.txt` instead of being listed in
+  `rust-exports.txt`; `export_list.rs` checks that every shim is exported or
+  hidden.
 - Windows: Rust `#[no_mangle]` symbols are not dllexport, so every C ABI shim
   symbol is listed in `libobs/cmake/rust-exports.txt`, which
   `libobs/cmake/rust.cmake` turns into `/EXPORT:` linker options.
@@ -171,7 +179,9 @@ CURRENT C behavior, including odd or buggy behavior. Comment such cases as
 3. `lexer.c` / `cf-lexer.c` / `cf-parser.c`
 4. `text-lookup.c`
 5. `dstr.c`
-6. `base.c`
+6. `base.c` (done: the variadic `blog`/`blogva`/`bcrash` stay in
+   `util/base-variadic.c`). `cf-lexer.c` / `cf-parser.c` from step 3 are
+   deferred to a follow-up.
 7. `bmem.c` last: a wrong allocator breaks every other Tier 2 run.
 
 - The `utf8` and `dstr` Tier 3 parity tests MUST generate arbitrary byte
@@ -270,7 +280,7 @@ rust/
   tools/tier2-validate/       # macOS/Windows Tier 2 (validate.sh, validate.ps1)
   obs-util/                   # ports of libobs/util/*
     src/bitstream.rs          # safe core (Tier 1 target)
-    src/{path_extension,darray,array_serializer,crc32}.rs # more safe cores
+    src/{path_extension,darray,array_serializer,crc32,utf8,lexer,text_lookup,dstr,bmem}.rs # more safe cores
     src/ffi/bitstream.rs      # extern "C" shim, #[repr(C)] types (Tier 2)
     src/ffi/*.rs              # matching shims for the cores above
     tests/bitstream.rs        # Tier 1: 1:1 port of test/cmocka/test_bitstream.c
@@ -280,7 +290,7 @@ rust/
   obs-c-oracle/               # dev-only: original C compiled with oracle_ prefix
     build.rs
     oracle/bitstream.c        # #define renames + #include of libobs/util/bitstream.c
-    oracle/{path_extension,array_serializer,darray,crc32,test_bmem}.c
+    oracle/{path_extension,array_serializer,darray,crc32,utf8,lexer,text_lookup,dstr,dstr_libc,bmem,test_stubs,platform_conv_host}.c
 ```
 
 Port crates are plain `rlib`s. Only `libobs-rust` is a `staticlib`: each
