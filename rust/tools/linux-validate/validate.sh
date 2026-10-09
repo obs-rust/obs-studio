@@ -38,7 +38,7 @@ for mode in OFF ON; do
     -DENABLE_NVENC=OFF -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=OFF \
     ${OBS_VERSION_OVERRIDE:+"-DOBS_VERSION_OVERRIDE=$OBS_VERSION_OVERRIDE"} \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
-  cmake --build "$build" --target libobs test_bitstream test_darray test_serializer test_os_path test_avc test_formatted_filename decklink \
+  cmake --build "$build" --target libobs test_bitstream test_darray test_serializer test_os_path test_svt_av1 test_avc test_formatted_filename decklink \
     >"$build.build.log" 2>&1 || { grep -E "error|Error" "$build.build.log" | head -40; exit 1; }
 
   echo "== [$mode] ctest"

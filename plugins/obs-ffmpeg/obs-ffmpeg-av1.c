@@ -117,19 +117,42 @@ static bool av1_update(struct av1_encoder *enc, obs_data_t *settings)
 		if (enc->type == AV1_ENCODER_TYPE_SVT) {
 			av_dict_set_int(&svtav1_opts, "rc", 2, 0);
 			av_dict_set_int(&svtav1_opts, "pred-struct", 1, 0);
-			av_dict_set_int(&svtav1_opts, "bias-pct", 0, 0);
-			av_dict_set_int(&svtav1_opts, "tbr", rate, 0);
 		} else {
 			enc->ffve.context->rc_max_rate = rate;
 		}
 	}
 
-	if (enc->type == AV1_ENCODER_TYPE_SVT) {
-		av_opt_set_dict_val(enc->ffve.context->priv_data, "svtav1_opts", svtav1_opts, 0);
-	}
-
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	ffmpeg_video_encoder_update(&enc->ffve, bitrate, keyint_sec, voi, &info, ffmpeg_opts);
+
+	char *svt_params = NULL;
+	if (enc->type == AV1_ENCODER_TYPE_SVT) {
+		/* Custom dictionary options replace the entire dictionary. Fill in any
+		 * missing OBS defaults while preserving explicit user values. */
+		AVDictionary *merged_opts = NULL;
+		int ret = av_opt_get_dict_val(enc->ffve.context->priv_data, "svtav1-params", 0, &merged_opts);
+		if (ret >= 0)
+			ret = av_dict_copy(&merged_opts, svtav1_opts, AV_DICT_DONT_OVERWRITE);
+		if (ret >= 0)
+			ret = av_opt_set_dict_val(enc->ffve.context->priv_data, "svtav1-params", merged_opts, 0);
+		/* Logging only; a serialization failure is not fatal. */
+		if (ret >= 0 && av_dict_get_string(merged_opts, &svt_params, '=', ':') < 0)
+			av_freep(&svt_params);
+		av_dict_free(&merged_opts);
+		if (ret < 0) {
+			av_dict_free(&svtav1_opts);
+			error("Failed to configure SVT-AV1 parameters: %s", av_err2str(ret));
+
+			struct dstr error_message = {0};
+			dstr_copy(&error_message, obs_module_text("Encoder.Error"));
+			dstr_replace(&error_message, "%1", enc->ffve.enc_name);
+			dstr_replace(&error_message, "%2", av_err2str(ret));
+			obs_encoder_set_last_error(enc->ffve.encoder, error_message.array);
+			dstr_free(&error_message);
+			return false;
+		}
+	}
+
 	av_dict_free(&svtav1_opts);
 
 	info("settings:\n"
@@ -144,6 +167,10 @@ static bool av1_update(struct av1_encoder *enc, obs_data_t *settings)
 	     "\tffmpeg opts:  %s\n",
 	     enc->ffve.enc_name, rc, bitrate, cqp, enc->ffve.context->gop_size, preset, enc->ffve.context->width,
 	     enc->ffve.height, ffmpeg_opts);
+
+	if (enc->type == AV1_ENCODER_TYPE_SVT)
+		info("svtav1-params: %s", svt_params ? svt_params : "");
+	av_freep(&svt_params);
 
 	enc->ffve.context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	return ffmpeg_video_encoder_init_codec(&enc->ffve);
