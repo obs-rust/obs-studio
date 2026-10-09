@@ -379,13 +379,14 @@ int config_save(config_t *config)
 	if (fwrite("\xEF\xBB\xBF", 3, 1, f) != 1)
 		goto cleanup;
 #endif
-	if (fwrite(str.array, str.len, 1, f) != 1)
+	if (str.len && fwrite(str.array, str.len, 1, f) != 1)
 		goto cleanup;
 
 	ret = CONFIG_SUCCESS;
 
 cleanup:
-	fclose(f);
+	if (fclose(f) != 0)
+		ret = CONFIG_ERROR;
 
 	pthread_mutex_unlock(&config->mutex);
 
