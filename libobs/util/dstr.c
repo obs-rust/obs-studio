@@ -33,7 +33,6 @@
 #include "platform.h"
 
 static const char *astrblank = "";
-static const wchar_t *wstrblank = L"";
 
 int astrcmpi(const char *str1, const char *str2)
 {
@@ -45,26 +44,6 @@ int astrcmpi(const char *str1, const char *str2)
 	do {
 		char ch1 = (char)toupper(*str1);
 		char ch2 = (char)toupper(*str2);
-
-		if (ch1 < ch2)
-			return -1;
-		else if (ch1 > ch2)
-			return 1;
-	} while (*str1++ && *str2++);
-
-	return 0;
-}
-
-int wstrcmpi(const wchar_t *str1, const wchar_t *str2)
-{
-	if (!str1)
-		str1 = wstrblank;
-	if (!str2)
-		str2 = wstrblank;
-
-	do {
-		wchar_t ch1 = (wchar_t)towupper(*str1);
-		wchar_t ch2 = (wchar_t)towupper(*str2);
 
 		if (ch1 < ch2)
 			return -1;
@@ -97,28 +76,6 @@ int astrcmp_n(const char *str1, const char *str2, size_t n)
 	return 0;
 }
 
-int wstrcmp_n(const wchar_t *str1, const wchar_t *str2, size_t n)
-{
-	if (!n)
-		return 0;
-	if (!str1)
-		str1 = wstrblank;
-	if (!str2)
-		str2 = wstrblank;
-
-	do {
-		wchar_t ch1 = *str1;
-		wchar_t ch2 = *str2;
-
-		if (ch1 < ch2)
-			return -1;
-		else if (ch1 > ch2)
-			return 1;
-	} while (*str1++ && *str2++ && --n);
-
-	return 0;
-}
-
 int astrcmpi_n(const char *str1, const char *str2, size_t n)
 {
 	if (!n)
@@ -141,28 +98,6 @@ int astrcmpi_n(const char *str1, const char *str2, size_t n)
 	return 0;
 }
 
-int wstrcmpi_n(const wchar_t *str1, const wchar_t *str2, size_t n)
-{
-	if (!n)
-		return 0;
-	if (!str1)
-		str1 = wstrblank;
-	if (!str2)
-		str2 = wstrblank;
-
-	do {
-		wchar_t ch1 = (wchar_t)towupper(*str1);
-		wchar_t ch2 = (wchar_t)towupper(*str2);
-
-		if (ch1 < ch2)
-			return -1;
-		else if (ch1 > ch2)
-			return 1;
-	} while (*str1++ && *str2++ && --n);
-
-	return 0;
-}
-
 char *astrstri(const char *str, const char *find)
 {
 	size_t len;
@@ -175,23 +110,6 @@ char *astrstri(const char *str, const char *find)
 	do {
 		if (astrcmpi_n(str, find, len) == 0)
 			return (char *)str;
-	} while (*str++);
-
-	return NULL;
-}
-
-wchar_t *wstrstri(const wchar_t *str, const wchar_t *find)
-{
-	size_t len;
-
-	if (!str || !find)
-		return NULL;
-
-	len = wcslen(find);
-
-	do {
-		if (wstrcmpi_n(str, find, len) == 0)
-			return (wchar_t *)str;
 	} while (*str++);
 
 	return NULL;
@@ -221,35 +139,6 @@ char *strdepad(char *str)
 	len = strlen(temp);
 	if (temp != str)
 		memmove(str, temp, len + 1);
-
-	if (len) {
-		temp = str + (len - 1);
-		while (is_padding(*temp))
-			*(temp--) = 0;
-	}
-
-	return str;
-}
-
-wchar_t *wcsdepad(wchar_t *str)
-{
-	wchar_t *temp;
-	size_t len;
-
-	if (!str)
-		return str;
-	if (!*str)
-		return str;
-
-	temp = str;
-
-	/* remove preceding spaces/tabs */
-	while (is_padding(*temp))
-		++temp;
-
-	len = wcslen(temp);
-	if (temp != str)
-		memmove(str, temp, (len + 1) * sizeof(wchar_t));
 
 	if (len) {
 		temp = str + (len - 1);
@@ -525,66 +414,6 @@ void dstr_remove(struct dstr *dst, const size_t idx, const size_t count)
 	dst->len -= count;
 }
 
-void dstr_printf(struct dstr *dst, const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	dstr_vprintf(dst, format, args);
-	va_end(args);
-}
-
-void dstr_catf(struct dstr *dst, const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	dstr_vcatf(dst, format, args);
-	va_end(args);
-}
-
-void dstr_vprintf(struct dstr *dst, const char *format, va_list args)
-{
-	va_list args_cp;
-	va_copy(args_cp, args);
-
-	int len = vsnprintf(NULL, 0, format, args_cp);
-	va_end(args_cp);
-
-	if (len < 0)
-		len = 4095;
-
-	dstr_ensure_capacity(dst, ((size_t)len) + 1);
-	len = vsnprintf(dst->array, ((size_t)len) + 1, format, args);
-
-	if (!*dst->array) {
-		dstr_free(dst);
-		return;
-	}
-
-	dst->len = len < 0 ? strlen(dst->array) : (size_t)len;
-}
-
-void dstr_vcatf(struct dstr *dst, const char *format, va_list args)
-{
-	va_list args_cp;
-	va_copy(args_cp, args);
-
-	int len = vsnprintf(NULL, 0, format, args_cp);
-	va_end(args_cp);
-
-	if (len < 0)
-		len = 4095;
-
-	dstr_ensure_capacity(dst, dst->len + ((size_t)len) + 1);
-	len = vsnprintf(dst->array + dst->len, ((size_t)len) + 1, format, args);
-
-	if (!*dst->array) {
-		dstr_free(dst);
-		return;
-	}
-
-	dst->len += len < 0 ? strlen(dst->array + dst->len) : (size_t)len;
-}
-
 void dstr_safe_printf(struct dstr *dst, const char *format, const char *val1, const char *val2, const char *val3,
 		      const char *val4)
 {
@@ -710,82 +539,4 @@ void dstr_right(struct dstr *dst, const struct dstr *str, const size_t pos)
 	dstr_ncopy(&temp, str->array + pos, str->len - pos);
 	dstr_copy_dstr(dst, &temp);
 	dstr_free(&temp);
-}
-
-void dstr_from_mbs(struct dstr *dst, const char *mbstr)
-{
-	dstr_free(dst);
-	dst->len = os_mbs_to_utf8_ptr(mbstr, 0, &dst->array);
-}
-
-char *dstr_to_mbs(const struct dstr *str)
-{
-	char *dst;
-	os_mbs_to_utf8_ptr(str->array, str->len, &dst);
-	return dst;
-}
-
-wchar_t *dstr_to_wcs(const struct dstr *str)
-{
-	wchar_t *dst;
-	os_utf8_to_wcs_ptr(str->array, str->len, &dst);
-	return dst;
-}
-
-void dstr_from_wcs(struct dstr *dst, const wchar_t *wstr)
-{
-	size_t len = wchar_to_utf8(wstr, 0, NULL, 0, 0);
-
-	if (len) {
-		dstr_resize(dst, len);
-		wchar_to_utf8(wstr, 0, dst->array, len + 1, 0);
-	} else {
-		dstr_free(dst);
-	}
-}
-
-void dstr_to_upper(struct dstr *str)
-{
-	wchar_t *wstr;
-	wchar_t *temp;
-
-	if (dstr_is_empty(str))
-		return;
-
-	wstr = dstr_to_wcs(str);
-	temp = wstr;
-
-	if (!wstr)
-		return;
-
-	while (*temp) {
-		*temp = (wchar_t)towupper(*temp);
-		temp++;
-	}
-
-	dstr_from_wcs(str, wstr);
-	bfree(wstr);
-}
-
-void dstr_to_lower(struct dstr *str)
-{
-	wchar_t *wstr;
-	wchar_t *temp;
-
-	if (dstr_is_empty(str))
-		return;
-
-	wstr = dstr_to_wcs(str);
-	temp = wstr;
-
-	if (!wstr)
-		return;
-
-	while (*temp) {
-		*temp = (wchar_t)towlower(*temp);
-		temp++;
-	}
-
-	dstr_from_wcs(str, wstr);
-	bfree(wstr);
 }

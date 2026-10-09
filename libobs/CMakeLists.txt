@@ -113,6 +113,7 @@ target_sources(
     util/darray.h
     util/deque.h
     util/dstr.c
+    util/dstr-libc.c
     util/dstr.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/file-serializer.c>
     util/file-serializer.h
