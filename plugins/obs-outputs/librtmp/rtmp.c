@@ -3288,6 +3288,14 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
                 AMFProp_GetString(AMF_GetProp(&obj2, &av_code, -1), &code);
                 AMFProp_GetString(AMF_GetProp(&obj2, &av_level, -1), &level);
                 AMFProp_GetString(AMF_GetProp(&obj2, &av_description, -1), &description);
+                if (!description.av_len)
+                {
+                    RTMP_Log(RTMP_LOGERROR, "%s, connect error without a description", __FUNCTION__);
+                    r->Link.pFlags |= RTMP_PUB_CLEAN;
+                    RTMP_Close(r);
+                    free(methodInvoked.av_val);
+                    goto leave;
+                }
                 RTMP_Log(RTMP_LOGDEBUG, "%s, error description: %s", __FUNCTION__, description.av_val);
                 /* if PublisherAuth returns 1, then reconnect */
                 if (PublisherAuth(r, &description) == 1)
