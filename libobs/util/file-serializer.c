@@ -169,11 +169,13 @@ void file_output_serializer_free(struct serializer *s)
 	struct file_output_data *out = s->data;
 
 	if (out) {
-		fclose(out->file);
+		bool success = !ferror(out->file);
+		if (fclose(out->file) != 0)
+			success = false;
 
 		if (out->temp_name) {
-			os_unlink(out->file_name);
-			os_rename(out->temp_name, out->file_name);
+			if (!success || os_safe_replace(out->file_name, out->temp_name, NULL) != 0)
+				blog(LOG_WARNING, "file_output_serializer_free: failed to save '%s'", out->file_name);
 		}
 
 		bfree(out->file_name);
