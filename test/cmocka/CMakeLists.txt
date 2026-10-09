@@ -29,6 +29,20 @@ target_link_libraries(test_os_path PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
 
 add_test(test_os_path ${CMAKE_CURRENT_BINARY_DIR}/test_os_path)
 
+# Filename formatting test. Compile the production source with a video-info
+# fixture so the test does not require a running graphics session.
+add_executable(
+  test_format_filename
+  test_format_filename.c
+  "${CMAKE_SOURCE_DIR}/libobs/util/platform.c"
+  "${CMAKE_SOURCE_DIR}/libobs/util/utf8.c"
+)
+target_compile_definitions(test_format_filename PRIVATE obs_get_video_info=filename_test_get_video_info)
+target_include_directories(test_format_filename PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_format_filename PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+
+add_test(test_format_filename ${CMAKE_CURRENT_BINARY_DIR}/test_format_filename)
+
 # AVC header test. Where the toolchain supports it, obs-avc.c is compiled into
 # the test with UBSan (no recovery) so undefined behavior fails the test
 # (obs-rust/obs-studio#11); its definitions take precedence over libobs's.

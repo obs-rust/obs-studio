@@ -680,6 +680,22 @@ static void erase_ch(struct dstr *str, size_t pos)
 	*str = new_str;
 }
 
+static void truncate_filename(struct dstr *filename, size_t max_len)
+{
+	if (filename->len <= max_len)
+		return;
+
+	size_t len = max_len;
+	const size_t min_len = max_len > 3 ? max_len - 3 : 0;
+	/* For UTF-8 input, avoid splitting a code point at the byte limit. */
+	while (len > min_len && ((unsigned char)filename->array[len] & 0xc0) == 0x80)
+		len--;
+	/* A longer continuation-byte run is not UTF-8; retain the byte cut. */
+	if (((unsigned char)filename->array[len] & 0xc0) == 0x80)
+		len = max_len;
+	dstr_resize(filename, len);
+}
+
 char *os_generate_formatted_filename(const char *extension, bool space, const char *format)
 {
 	time_t now = time(0);
@@ -763,15 +779,19 @@ char *os_generate_formatted_filename(const char *extension, bool space, const ch
 	if (!space)
 		dstr_replace(&sf, " ", "_");
 
-	if (extension && *extension) {
+	const size_t extension_len = extension ? strlen(extension) : 0;
+	if (extension_len) {
+		/* Reserve the dot and extension when they fit within the byte limit. */
+		if (extension_len < 255)
+			truncate_filename(&sf, 255 - extension_len - 1);
 		dstr_cat_ch(&sf, '.');
 		dstr_cat(&sf, extension);
 	}
 
 	dstr_free(&c);
 
-	if (sf.len > 255)
-		dstr_mid(&sf, &sf, 0, 255);
+	/* Also cap filenames without an extension, or with an oversized one. */
+	truncate_filename(&sf, 255);
 
 	return sf.array;
 }

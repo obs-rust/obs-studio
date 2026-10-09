@@ -43,7 +43,7 @@ foreach ($mode in 'OFF', 'ON') {
   if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 
   cmake --build $build --config RelWithDebInfo `
-    --target libobs test_bitstream test_darray test_serializer test_os_path test_avc
+    --target libobs test_bitstream test_darray test_serializer test_os_path test_format_filename test_avc
   if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)" }
 
   $dll = Get-ChildItem -Path $build -Recurse -Filter obs.dll |

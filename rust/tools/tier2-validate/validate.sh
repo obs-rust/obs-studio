@@ -28,7 +28,7 @@ for mode in OFF ON; do
     -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   cmake --build "$build" --config RelWithDebInfo \
-    --target libobs test_bitstream test_darray test_serializer test_os_path test_avc \
+    --target libobs test_bitstream test_darray test_serializer test_os_path test_format_filename test_avc \
     >"$build.build.log" 2>&1 || { grep -E "error|Error" "$build.build.log" | head -40; exit 1; }
 
   lib=$(find "$build" -path '*libobs.framework*' -name libobs -type f | head -1)
