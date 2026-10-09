@@ -249,13 +249,12 @@ bool os_quick_write_mbs_file(const char *path, const char *str, size_t len)
 		return false;
 
 	mbs_len = os_utf8_to_mbs_ptr(str, len, &mbs);
-	if (mbs_len)
-		fwrite(mbs, 1, mbs_len, f);
+	bool success = !mbs_len || fwrite(mbs, 1, mbs_len, f) == mbs_len;
 	bfree(mbs);
-	fflush(f);
-	fclose(f);
+	if (fclose(f) != 0)
+		success = false;
 
-	return true;
+	return success;
 }
 
 bool os_quick_write_utf8_file(const char *path, const char *str, size_t len, bool marker)
@@ -277,10 +276,7 @@ bool os_quick_write_utf8_file(const char *path, const char *str, size_t len, boo
 			return false;
 		}
 	}
-	fflush(f);
-	fclose(f);
-
-	return true;
+	return fclose(f) == 0;
 }
 
 bool os_quick_write_utf8_file_safe(const char *path, const char *str, size_t len, bool marker, const char *temp_ext,

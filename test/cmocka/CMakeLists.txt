@@ -38,6 +38,15 @@ target_link_libraries(test_os_path PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
 add_dependencies(cmocka-tests test_os_path)
 add_test(test_os_path ${CMAKE_CURRENT_BINARY_DIR}/test_os_path)
 
+# /dev/full reproduces delayed disk-write errors without fault injection.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(test_quick_write test_quick_write.c)
+  target_include_directories(test_quick_write PRIVATE ${CMOCKA_INCLUDE_DIR})
+  target_link_libraries(test_quick_write PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+  add_dependencies(cmocka-tests test_quick_write)
+  add_test(test_quick_write ${CMAKE_CURRENT_BINARY_DIR}/test_quick_write)
+endif()
+
 # AVC header test. Where the toolchain supports it, obs-avc.c is compiled into
 # the test with UBSan (no recovery) so undefined behavior fails the test
 # (obs-rust/obs-studio#11); its definitions take precedence over libobs's.
