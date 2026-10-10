@@ -399,8 +399,12 @@ void flv_packet_audio_ex(struct encoder_packet *packet, enum audio_id_t codec_id
 
 	bool is_multitrack = idx > 0;
 
-	if (!packet->data || !packet->size)
+	/* An empty packet has no tag; callers still bfree(*output). */
+	if (!packet->data || !packet->size) {
+		*output = NULL;
+		*size = 0;
 		return;
+	}
 
 	int header_metadata_size = 5; // w8+wa4cc
 	if (is_multitrack)

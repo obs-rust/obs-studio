@@ -462,7 +462,7 @@ static int send_packet_ex(struct rtmp_stream *stream, struct encoder_packet *pac
 
 static int send_audio_packet_ex(struct rtmp_stream *stream, struct encoder_packet *packet, bool is_header, size_t idx)
 {
-	uint8_t *data;
+	uint8_t *data = NULL;
 	size_t size = 0;
 	int ret = 0;
 

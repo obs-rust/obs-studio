@@ -222,7 +222,7 @@ static int write_packet_ex(struct flv_output *stream, struct encoder_packet *pac
 
 static int write_audio_packet_ex(struct flv_output *stream, struct encoder_packet *packet, bool is_header, size_t idx)
 {
-	uint8_t *data;
+	uint8_t *data = NULL;
 	size_t size = 0;
 	int ret = 0;
 
