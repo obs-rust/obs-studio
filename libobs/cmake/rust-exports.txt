@@ -60,10 +60,16 @@ lexer_getstroffset
 metadata_obu
 metadata_obu_itu_t35
 obs_av1_keyframe
+obs_avc_find_startcode
+obs_avc_keyframe
 obs_extract_av1_headers
+obs_extract_avc_headers
 obs_extract_hevc_headers
 obs_hevc_keyframe
 obs_nal_find_startcode
+obs_parse_avc_header
+obs_parse_avc_packet
+obs_parse_avc_packet_priority
 obs_parse_hevc_packet
 obs_parse_hevc_packet_priority
 os_get_path_extension

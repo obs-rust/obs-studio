@@ -31,6 +31,7 @@ fn main() {
         .file("oracle/crc32.c")
         .file("oracle/vec2.c")
         .file("oracle/nal.c")
+        .file("oracle/avc.c")
         .file("oracle/encoder_packet.c")
         .file("oracle/hevc.c")
         .file("oracle/av1.c")
@@ -123,6 +124,8 @@ fn main() {
         "graphics/vec2.h",
         "obs-nal.c",
         "obs-nal.h",
+        "obs-avc.c",
+        "obs-avc.h",
         "obs-hevc.c",
         "obs-hevc.h",
         "obs-av1.c",

@@ -101,6 +101,15 @@ endif()
 add_dependencies(cmocka-tests test_avc)
 add_test(test_avc ${CMAKE_CURRENT_BINARY_DIR}/test_avc)
 
+# AVC helpers through libobs only, so ENABLE_RUST_LIBOBS=ON tests the port
+# (test_avc above compiles its own obs-avc.c where UBSan is available).
+add_executable(test_avc_parse test_avc_parse.c)
+target_include_directories(test_avc_parse PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_avc_parse PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+
+add_dependencies(cmocka-tests test_avc_parse)
+add_test(test_avc_parse ${CMAKE_CURRENT_BINARY_DIR}/test_avc_parse)
+
 # HEVC helpers (obs-hevc.c, built only with ENABLE_HEVC)
 if(ENABLE_HEVC)
   add_executable(test_hevc test_hevc.c)
