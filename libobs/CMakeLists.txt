@@ -105,7 +105,7 @@ target_sources(
     util/cf-parser.c
     util/cf-parser.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/cf-tokenizer.c>
-    util/config-file.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/config-file.c>
     util/config-file.h
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:util/crc32.c>
     util/crc32.h

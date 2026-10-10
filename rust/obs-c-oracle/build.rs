@@ -54,6 +54,8 @@ fn main() {
         .file("oracle/dstr.c")
         .file("oracle/dstr_libc.c")
         // dstr-libc.c's conversions: platform.c's verbatim, over oracle/utf8.c.
+        .file("oracle/config_file.c")
+        .file("oracle/config_file_host.c")
         .file("oracle/platform_conv_host.c")
         .file("oracle/video_fourcc.c")
         .file("oracle/task.c")
@@ -184,6 +186,9 @@ fn main() {
         "util/threading-windows.h",
         "util/cf-tokenizer.c",
         "util/cf-lexer.h",
+        "util/config-file.c",
+        "util/config-file.h",
+        "util/uthash.h",
     ] {
         println!("cargo:rerun-if-changed={}", libobs.join(header).display());
     }
