@@ -37,7 +37,7 @@ target_sources(
     obs-audio.c
     $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:obs-av1.c>
     obs-av1.h
-    obs-avc.c
+    $<$<NOT:$<BOOL:${ENABLE_RUST_LIBOBS}>>:obs-avc.c>
     obs-avc.h
     obs-canvas.c
     obs-config.h

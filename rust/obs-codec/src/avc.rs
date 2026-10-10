@@ -23,12 +23,13 @@ fn kind(header: u8) -> u8 {
 /// Units before it (SPS, PPS, SEI, ...) are skipped; no slice is `false`.
 #[must_use]
 pub fn keyframe(data: &[u8]) -> bool {
-    let _ = (data, kind(0), rate(0), nal_units(data), Bucket::Header);
-    let _ = (
-        has_start_code as fn(&[u8]) -> bool,
-        nal::packet_priority(data, 0, rate),
-    );
-    todo!()
+    for nal in nal_units(data) {
+        let kind = kind(nal.header(data));
+        if kind == NAL_SLICE_IDR || kind == NAL_SLICE {
+            return kind == NAL_SLICE_IDR;
+        }
+    }
+    false
 }
 
 /// `compute_avc_keyframe_priority`: an IDR unit makes a keyframe, and the
@@ -45,16 +46,14 @@ fn rate(header: u8) -> UnitRating {
 /// `header >> 5` of any unit in `data`.
 #[must_use]
 pub fn packet_priority(data: &[u8], priority: i32) -> i32 {
-    let _ = (data, priority);
-    todo!()
+    nal::packet_priority(data, priority, rate)
 }
 
 /// `serialize_avc_data`: converts Annex B `data` to AVCC, starting from the
 /// source packet's `keyframe` and `priority`.
 #[must_use]
 pub fn to_avcc(data: &[u8], keyframe: bool, priority: i32) -> LengthPrefixed {
-    let _ = (data, keyframe, priority);
-    todo!()
+    nal::to_length_prefixed(data, keyframe, priority, rate)
 }
 
 /// `has_start_code`: whether `data` opens with `00 00 01` or `00 00 00 01`.
@@ -93,8 +92,35 @@ pub struct SpsHighParams {
 /// Emulation-prevention bytes (`00 00 03`) are dropped first.
 #[must_use]
 pub fn sps_high_params(sps: &[u8]) -> SpsHighParams {
-    let _ = (sps, ue_golomb as fn(&mut BitstreamReader<'_>) -> u8);
-    todo!()
+    let size = sps.len();
+    let mut rbsp = Vec::with_capacity(size);
+    let mut i = 0;
+    while i + 2 < size {
+        if sps[i] == 0 && sps[i + 1] == 0 && sps[i + 2] == 3 {
+            rbsp.extend_from_slice(&sps[i..i + 2]);
+            // skip emulation_prevention_three_byte
+            i += 3;
+        } else {
+            rbsp.push(sps[i]);
+            i += 1;
+        }
+    }
+    rbsp.extend_from_slice(&sps[i.min(size)..]);
+
+    let mut gb = BitstreamReader::new(&rbsp);
+    gb.read_bits(24); // profile, constraint flags, level
+    ue_golomb(&mut gb); // seq_parameter_set_id
+    let chroma_format_idc = ue_golomb(&mut gb);
+    if chroma_format_idc == 3 {
+        gb.read_bits(1); // separate_colour_plane_flag
+    }
+    let bit_depth_luma = ue_golomb(&mut gb);
+    let bit_depth_chroma = ue_golomb(&mut gb);
+    SpsHighParams {
+        chroma_format_idc,
+        bit_depth_luma,
+        bit_depth_chroma,
+    }
 }
 
 /// What `obs_parse_avc_header` returns for `data`.
@@ -114,14 +140,62 @@ pub enum AvcHeader {
 /// `obs_parse_avc_header`.
 #[must_use]
 pub fn parse_header(data: &[u8]) -> AvcHeader {
-    let _ = data;
-    todo!()
+    if data.len() <= 6 {
+        return AvcHeader::None;
+    }
+    if !has_start_code(data) {
+        return AvcHeader::Copy;
+    }
+
+    // get_sps_pps: the last of each wins.
+    let mut sps: Option<&[u8]> = None;
+    let mut pps: Option<&[u8]> = None;
+    for nal in nal_units(data) {
+        match kind(nal.header(data)) {
+            NAL_SPS => sps = Some(&data[nal.start..nal.end]),
+            NAL_PPS => pps = Some(&data[nal.start..nal.end]),
+            _ => {}
+        }
+    }
+    let (Some(sps), Some(pps)) = (sps, pps) else {
+        return AvcHeader::None;
+    };
+    if sps.len() < 4 {
+        return AvcHeader::None;
+    }
+
+    let mut out = Vec::with_capacity(sps.len() + pps.len() + 15);
+    out.push(0x01);
+    out.extend_from_slice(&sps[1..4]);
+    out.push(0xff);
+    out.push(0xe1);
+    // C: s_wb16(&s, (uint16_t)sps_size)
+    out.extend_from_slice(&(sps.len() as u16).to_be_bytes());
+    out.extend_from_slice(sps);
+    out.push(0x01);
+    out.extend_from_slice(&(pps.len() as u16).to_be_bytes());
+    out.extend_from_slice(pps);
+
+    // High, High 10, High 4:2:2 and High 4:4:4 need the chroma format and
+    // bit depths too (ISO/IEC 14496-15, 5.3.3.1.2).
+    let profile_idc = sps[1];
+    if matches!(profile_idc, 100 | 110 | 122 | 244) {
+        let p = sps_high_params(&sps[1..]);
+        out.push(0xfc | p.chroma_format_idc);
+        out.push(0xf8 | p.bit_depth_luma);
+        out.push(0xf8 | p.bit_depth_chroma);
+        out.push(0); // numOfSequenceParameterSetExt
+    }
+    AvcHeader::Record(out)
 }
 
 /// `obs_extract_avc_headers`: SPS and PPS units go to `header`, SEI to
 /// `sei`, everything else to `packet`, each with its start code.
 #[must_use]
 pub fn extract_headers(data: &[u8]) -> SplitHeaders {
-    let _ = data;
-    todo!()
+    nal::split_headers(data, |header| match kind(header) {
+        NAL_SPS | NAL_PPS => Bucket::Header,
+        NAL_SEI => Bucket::Sei,
+        _ => Bucket::Packet,
+    })
 }
