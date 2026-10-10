@@ -41,8 +41,16 @@ struct obs_pipewire_connect_stream_info {
 	} video;
 };
 
+/* Called once, on the PipeWire thread, when the connection to the daemon is
+ * lost or one of its streams fails. The connection and its streams are
+ * unusable afterwards and must be destroyed. */
+typedef void (*obs_pipewire_disconnected_cb)(void *user_data);
+
 obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
 				      void *user_data);
+void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_disconnected_cb callback,
+					    void *user_data);
+bool obs_pipewire_is_disconnected(obs_pipewire *obs_pw);
 struct pw_registry *obs_pipewire_get_registry(obs_pipewire *obs_pw);
 void obs_pipewire_roundtrip(obs_pipewire *obs_pw);
 void obs_pipewire_destroy(obs_pipewire *obs_pw);
@@ -50,6 +58,7 @@ void obs_pipewire_destroy(obs_pipewire *obs_pw);
 obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,
 						 const struct obs_pipewire_connect_stream_info *connect_info);
 
+bool obs_pipewire_stream_has_frame(obs_pipewire_stream *obs_pw_stream);
 void obs_pipewire_stream_show(obs_pipewire_stream *obs_pw_stream);
 void obs_pipewire_stream_hide(obs_pipewire_stream *obs_pw_stream);
 uint32_t obs_pipewire_stream_get_width(obs_pipewire_stream *obs_pw_stream);

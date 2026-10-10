@@ -34,6 +34,28 @@ int_fast32_t pulse_init();
 void pulse_unref();
 
 /**
+ * Called on the pulse mainloop thread, with the mainloop locked, after the
+ * connection to the server was lost and has been re-established. Streams
+ * created on the old connection are dead and must be recreated.
+ */
+typedef void (*pulse_reconnected_cb)(void *userdata);
+
+/**
+ * Register or remove a reconnection callback. Must be called with the
+ * mainloop locked (pulse_lock).
+ */
+void pulse_add_reconnected_callback(pulse_reconnected_cb cb, void *userdata);
+void pulse_remove_reconnected_callback(pulse_reconnected_cb cb, void *userdata);
+
+/**
+ * Call cb on the pulse mainloop thread after delay_usec. If the mainloop is
+ * freed first, free_userdata (if set) is called instead. Must be called with
+ * the mainloop locked (pulse_lock).
+ */
+void pulse_call_later(pulse_reconnected_cb cb, void *userdata, void (*free_userdata)(void *userdata),
+		      uint64_t delay_usec);
+
+/**
  * Lock the mainloop
  *
  * In order to allow for multiple threads to use the same mainloop pulseaudio

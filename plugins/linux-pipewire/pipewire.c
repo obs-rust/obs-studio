@@ -92,6 +92,10 @@ struct _obs_pipewire {
 	struct pw_registry *registry;
 	struct spa_hook registry_listener;
 
+	obs_pipewire_disconnected_cb disconnected_cb;
+	void *disconnected_data;
+	bool disconnected;
+
 	GPtrArray *streams;
 };
 
@@ -126,6 +130,7 @@ struct _obs_pipewire_stream {
 
 	struct obs_video_info video_info;
 	bool negotiated;
+	bool streamed;
 
 	DARRAY(struct format_info) format_info;
 
@@ -1068,9 +1073,24 @@ static void on_state_changed_cb(void *user_data, enum pw_stream_state old, enum 
 	UNUSED_PARAMETER(old);
 
 	obs_pipewire_stream *obs_pw_stream = user_data;
+	obs_pipewire *obs_pw = obs_pw_stream->obs_pw;
 
 	blog(LOG_INFO, "[pipewire] Stream %p state: \"%s\" (error: %s)", obs_pw_stream->stream,
 	     pw_stream_state_as_string(state), error ? error : "none");
+
+	if (state == PW_STREAM_STATE_STREAMING)
+		obs_pw_stream->streamed = true;
+
+	/* A stream that failed after streaming does not recover by itself
+	 * either (e.g. the producer renegotiated to formats we no longer
+	 * accept). Report it like a lost connection so the owner can set
+	 * everything up again. Errors before that (no matching format, no
+	 * target node) would fail the same way again, so leave those alone. */
+	if (state == PW_STREAM_STATE_ERROR && obs_pw_stream->streamed && !obs_pw->disconnected) {
+		obs_pw->disconnected = true;
+		if (obs_pw->disconnected_cb)
+			obs_pw->disconnected_cb(obs_pw->disconnected_data);
+	}
 }
 
 static const struct pw_stream_events stream_events = {
@@ -1092,6 +1112,14 @@ static void on_core_error_cb(void *user_data, uint32_t id, int seq, int res, con
 	obs_pipewire *obs_pw = user_data;
 
 	blog(LOG_ERROR, "[pipewire] Error id:%u seq:%d res:%d (%s): %s", id, seq, res, spa_strerror(res), message);
+
+	/* -EPIPE on the core means the connection to the PipeWire daemon is
+	 * gone (e.g. the daemon restarted). It never comes back by itself. */
+	if (id == PW_ID_CORE && res == -EPIPE && !obs_pw->disconnected) {
+		obs_pw->disconnected = true;
+		if (obs_pw->disconnected_cb)
+			obs_pw->disconnected_cb(obs_pw->disconnected_data);
+	}
 
 	pw_thread_loop_signal(obs_pw->thread_loop, FALSE);
 }
@@ -1158,6 +1186,20 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 	obs_pw->streams = g_ptr_array_new();
 
 	return obs_pw;
+}
+
+void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_disconnected_cb callback,
+					    void *user_data)
+{
+	pw_thread_loop_lock(obs_pw->thread_loop);
+	obs_pw->disconnected_cb = callback;
+	obs_pw->disconnected_data = user_data;
+	pw_thread_loop_unlock(obs_pw->thread_loop);
+}
+
+bool obs_pipewire_is_disconnected(obs_pipewire *obs_pw)
+{
+	return obs_pw && obs_pw->disconnected;
 }
 
 struct pw_registry *obs_pipewire_get_registry(obs_pipewire *obs_pw)
@@ -1251,6 +1293,11 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 	g_ptr_array_add(obs_pw->streams, obs_pw_stream);
 
 	return obs_pw_stream;
+}
+
+bool obs_pipewire_stream_has_frame(obs_pipewire_stream *obs_pw_stream)
+{
+	return obs_pw_stream && obs_pw_stream->texture;
 }
 
 void obs_pipewire_stream_show(obs_pipewire_stream *obs_pw_stream)
