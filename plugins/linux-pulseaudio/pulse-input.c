@@ -233,7 +233,10 @@ static void pulse_server_info(pa_context *c, const pa_server_info *i, void *user
 
 	blog(LOG_INFO, "Server name: '%s %s'", i->server_name, i->server_version);
 
-	if (data->is_default) {
+	/* The server may have no default device, e.g. right after it restarted. */
+	if (data->is_default && !(data->input ? i->default_source_name : i->default_sink_name)) {
+		blog(LOG_DEBUG, "No default device yet");
+	} else if (data->is_default) {
 		bfree(data->device);
 		if (data->input) {
 			data->device = bstrdup(i->default_source_name);
