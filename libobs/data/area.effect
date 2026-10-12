@@ -34,14 +34,20 @@ VertInOut VSDefault(VertData vert_in)
 	return vert_out;
 }
 
+// Size of one output pixel in the texture along each texture axis. The item
+// may be rotated or flipped, so each texture coordinate can change along both
+// screen axes, in either direction.
+float2 footprint(float2 uv)
+{
+	float2 uv_ddx = ddx(uv);
+	float2 uv_ddy = ddy(uv);
+	return float2(length(float2(uv_ddx.x, uv_ddy.x)), length(float2(uv_ddx.y, uv_ddy.y)));
+}
+
 float4 DrawArea(FragData frag_in)
 {
 	float2 uv = frag_in.uv;
-	float2 uv_delta = float2(ddx(uv.x), ddy(uv.y));
-
-	// Handle potential OpenGL flip.
-	if (obs_glsl_compile)
-		uv_delta.y = abs(uv_delta.y);
+	float2 uv_delta = footprint(uv);
 
 	float2 uv_min = uv - 0.5 * uv_delta;
 	float2 uv_max = uv_min + uv_delta;
@@ -120,11 +126,7 @@ float4 PSDrawAreaRGBAMultiplyTonemap(FragData frag_in) : TARGET
 float4 DrawAreaUpscale(FragData frag_in)
 {
 	float2 uv = frag_in.uv;
-	float2 uv_delta = float2(ddx(uv.x), ddy(uv.y));
-
-	// Handle potential OpenGL flip.
-	if (obs_glsl_compile)
-		uv_delta.y = abs(uv_delta.y);
+	float2 uv_delta = footprint(uv);
 
 	float2 uv_min = uv - 0.5 * uv_delta;
 	float2 uv_max = uv_min + uv_delta;

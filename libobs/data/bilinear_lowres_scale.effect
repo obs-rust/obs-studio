@@ -36,7 +36,21 @@ float4 pixel(float2 uv)
 float4 DrawLowresBilinear(VertData f_in)
 {
 	float2 uv = f_in.uv;
-	float2 stepxy  = float2(ddx(uv.x), ddy(uv.y));
+	float2 uv_ddx = ddx(uv);
+	float2 uv_ddy = ddy(uv);
+
+	// Size of one output pixel in the texture along each texture axis. The
+	// item may be rotated, so each texture coordinate can change along both
+	// screen axes.
+	float2 stepxy = float2(length(float2(uv_ddx.x, uv_ddy.x)), length(float2(uv_ddx.y, uv_ddy.y)));
+
+	// Keep the sample pattern mirrored as before when the item is flipped
+	// or upside down, or the target is flipped (OpenGL).
+	if (uv_ddx.x < 0.0)
+		stepxy.x = -stepxy.x;
+	if (uv_ddy.y < 0.0)
+		stepxy.y = -stepxy.y;
+
 	float2 stepxy1 = stepxy * 0.0625;
 	float2 stepxy3 = stepxy * 0.1875;
 	float2 stepxy5 = stepxy * 0.3125;
