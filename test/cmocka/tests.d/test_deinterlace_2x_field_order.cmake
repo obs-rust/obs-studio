@@ -1,5 +1,7 @@
 # Double-rate deinterlacing must show the fields of an interlaced source in
-# capture order for both field orders (upstream obsproject/obs-studio#6061).
+# capture order for both field orders (upstream obsproject/obs-studio#6061),
+# also when the field rate differs from the canvas rate
+# (upstream obsproject/obs-studio#3402).
 # Needs core video, so it runs (under xvfb-run) on Linux and skips without a
 # display.
 if(OS_LINUX AND TARGET OBS::libobs-opengl)
@@ -18,5 +20,5 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl)
     COMMAND test_deinterlace_2x_field_order
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
-  set_tests_properties(test_deinterlace_2x_field_order PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_deinterlace_2x_field_order PROPERTIES TIMEOUT 300)
 endif()
