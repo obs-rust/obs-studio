@@ -35,10 +35,20 @@ bool obs_pipewire_core_error_is_lost(bool *disconnected, uint32_t id, int res);
  * counts, since earlier errors would only repeat. */
 bool obs_pipewire_stream_state_is_lost(bool *disconnected, bool *streamed, enum pw_stream_state state);
 
-#define OBS_PIPEWIRE_RECONNECT_MAX_ATTEMPTS 10
-#define OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS 10000
+/* Whether the removal of a PipeWire global means the connection is lost: the
+ * node the stream was connected to went away (e.g. the compositor ended the
+ * screencast because its monitor was switched off or unplugged). The stream
+ * only pauses when that happens and never recovers by itself. */
+bool obs_pipewire_node_removed_is_lost(bool *disconnected, uint32_t node, uint32_t removed_id);
 
-/* Count a failed screencast reconnection attempt. Returns false once the
- * attempts are used up; otherwise sets *delay_ms to the wait before the next
- * one. */
-bool obs_pipewire_reconnect_next_delay(uint32_t *attempts, uint32_t *delay_ms);
+/* The first attempts back off quickly, up to OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS.
+ * After OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS failed attempts, retries continue
+ * every OBS_PIPEWIRE_RECONNECT_SLOW_DELAY_MS for as long as the source exists:
+ * a monitor can stay off for hours. */
+#define OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS 10
+#define OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS 10000
+#define OBS_PIPEWIRE_RECONNECT_SLOW_DELAY_MS 30000
+
+/* Count a failed screencast reconnection attempt and return the wait before
+ * the next one, in milliseconds. */
+uint32_t obs_pipewire_reconnect_next_delay(uint32_t *attempts);

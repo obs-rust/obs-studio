@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include <pipewire/core.h>
+#include <util/c99defs.h>
 
 bool obs_pipewire_core_error_is_lost(bool *disconnected, uint32_t id, int res)
 {
@@ -50,16 +51,27 @@ bool obs_pipewire_stream_state_is_lost(bool *disconnected, bool *streamed, enum 
 	return true;
 }
 
-bool obs_pipewire_reconnect_next_delay(uint32_t *attempts, uint32_t *delay_ms)
+bool obs_pipewire_node_removed_is_lost(bool *disconnected, uint32_t node, uint32_t removed_id)
+{
+	/* Not implemented yet: the node going away is not noticed. */
+	UNUSED_PARAMETER(disconnected);
+	UNUSED_PARAMETER(node);
+	UNUSED_PARAMETER(removed_id);
+	return false;
+}
+
+uint32_t obs_pipewire_reconnect_next_delay(uint32_t *attempts)
 {
 	uint32_t shift;
+	uint32_t delay_ms;
 
-	if (++*attempts >= OBS_PIPEWIRE_RECONNECT_MAX_ATTEMPTS)
-		return false;
+	/* Not implemented yet: gives up (returns 0) after the fast attempts. */
+	if (++*attempts >= OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS)
+		return 0;
 
 	shift = *attempts < 6 ? *attempts : 6;
-	*delay_ms = 250u << shift;
-	if (*delay_ms > OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS)
-		*delay_ms = OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS;
-	return true;
+	delay_ms = 250u << shift;
+	if (delay_ms > OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS)
+		delay_ms = OBS_PIPEWIRE_RECONNECT_MAX_DELAY_MS;
+	return delay_ms;
 }

@@ -739,7 +739,8 @@ static void schedule_reconnect_retry(struct screencast_portal_capture *capture)
 	if (capture->reconnect.retry_id)
 		return;
 
-	if (!obs_pipewire_reconnect_next_delay(&capture->reconnect.attempts, &delay_ms)) {
+	delay_ms = obs_pipewire_reconnect_next_delay(&capture->reconnect.attempts);
+	if (!delay_ms) {
 		blog(LOG_WARNING,
 		     "[pipewire] Giving up on reconnecting the screencast after %u attempts; "
 		     "select the source again to resume capture",
