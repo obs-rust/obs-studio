@@ -239,8 +239,7 @@ static void ft2_source_destroy(void *data)
 		bfree(srcdata->text);
 	if (srcdata->texbuf != NULL)
 		bfree(srcdata->texbuf);
-	if (srcdata->text_file != NULL)
-		bfree(srcdata->text_file);
+	ft2_text_file_watch_free(&srcdata->text_file);
 
 	obs_enter_graphics();
 
@@ -289,27 +288,16 @@ static void ft2_video_tick(void *data, float seconds)
 	struct ft2_source *srcdata = data;
 	if (srcdata == NULL)
 		return;
-	if (!srcdata->from_file || !srcdata->text_file)
+	if (!srcdata->from_file)
 		return;
 
-	if (os_gettime_ns() - srcdata->last_checked >= 1000000000) {
-		time_t t = get_modified_timestamp(srcdata->text_file);
-		srcdata->last_checked = os_gettime_ns();
-
-		if (srcdata->update_file) {
-			if (srcdata->log_mode)
-				read_from_end(srcdata, srcdata->text_file);
-			else
-				load_text_from_file(srcdata, srcdata->text_file);
-			cache_glyphs(srcdata, srcdata->text);
-			set_up_vertex_buffer(srcdata);
-			srcdata->update_file = false;
-		}
-
-		if (srcdata->m_timestamp != t) {
-			srcdata->m_timestamp = t;
-			srcdata->update_file = true;
-		}
+	if (ft2_text_file_watch_tick(&srcdata->text_file, os_gettime_ns())) {
+		if (srcdata->log_mode)
+			read_from_end(srcdata, srcdata->text_file.path);
+		else
+			load_text_from_file(srcdata, srcdata->text_file.path);
+		cache_glyphs(srcdata, srcdata->text);
+		set_up_vertex_buffer(srcdata);
 	}
 
 	UNUSED_PARAMETER(seconds);
@@ -475,8 +463,10 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 skip_font_load:
 	if (from_file) {
 		const char *tmp = obs_data_get_string(settings, "text_file");
+		const enum ft2_text_file_action action =
+			ft2_text_file_watch_set(&srcdata->text_file, tmp, vbuf_needs_update, os_gettime_ns());
 
-		if (!tmp || !*tmp || !os_file_exists(tmp)) {
+		if (action == FT2_TEXT_FILE_MISSING) {
 			const char *emptystr = " ";
 
 			bfree(srcdata->text);
@@ -488,17 +478,13 @@ skip_font_load:
 			     "reading",
 			     tmp);
 		} else {
-			if (srcdata->text_file != NULL && strcmp(srcdata->text_file, tmp) == 0 && !vbuf_needs_update)
+			if (action == FT2_TEXT_FILE_UNCHANGED)
 				goto error;
 
-			bfree(srcdata->text_file);
-
-			srcdata->text_file = bstrdup(tmp);
 			if (chat_log_mode)
 				read_from_end(srcdata, tmp);
 			else
 				load_text_from_file(srcdata, tmp);
-			srcdata->last_checked = os_gettime_ns();
 		}
 	} else {
 		const char *tmp = obs_data_get_string(settings, "text");

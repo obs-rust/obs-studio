@@ -24,7 +24,14 @@
  * with NUL padding, such as a device's descriptor dump, showed only the text
  * before the first NUL, because the UTF-8 reader took the length with
  * strlen(). NULs cannot be shown, so they are dropped and the rest of the
- * file is read. */
+ * file is read.
+ *
+ * A file that does not exist yet (obsproject/obs-studio#3196, reported by
+ * JPLeBreton): with "Read from file" set to a path that another program
+ * writes later, such as a now-playing or level-info file, the text never
+ * appeared until OBS restarted, because the path was only kept when the
+ * file existed and the source polled nothing. The source now keeps polling
+ * the path and reads the file once it appears. */
 
 #define TEXT_PATH "test_text_file.txt"
 
@@ -203,6 +210,110 @@ static void test_utf16_nul_units(void **state)
 	expect_text(ft2_read_text_file_end(TEXT_PATH, 1), "b\nc");
 }
 
+#define SECOND 1000000000ULL
+
+/* Tick the watch once per simulated second, for up to `seconds`; true as
+ * soon as it asks for the file to be reread. */
+static bool reload_within(struct ft2_text_file_watch *watch, uint64_t *now, int seconds)
+{
+	for (int i = 0; i < seconds; i++) {
+		*now += SECOND;
+		if (ft2_text_file_watch_tick(watch, *now))
+			return true;
+	}
+	return false;
+}
+
+/* The source rereads the file it watches, as its tick does. */
+static void expect_reload(struct ft2_text_file_watch *watch, uint64_t *now, const char *want)
+{
+	if (!reload_within(watch, now, 3)) {
+		fprintf(stderr, "the text file %s was not reread within 3 s of %s\n", TEXT_PATH,
+			watch->path ? "changing" : "appearing (the source polls no path)");
+		fail();
+	}
+	assert_non_null(watch->path);
+	assert_string_equal(watch->path, TEXT_PATH);
+	expect_text(ft2_read_text_file(watch->path), want);
+}
+
+/* Control: the file exists when the source is set up, then changes. */
+static void test_watch_existing_file(void **state)
+{
+	(void)state;
+	struct ft2_text_file_watch watch = {0};
+	uint64_t now = 100 * SECOND;
+
+	write_utf8("now playing: one");
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, false, now), FT2_TEXT_FILE_LOAD);
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, false, now), FT2_TEXT_FILE_UNCHANGED);
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, true, now), FT2_TEXT_FILE_LOAD);
+	expect_reload(&watch, &now, "now playing: one");
+
+	ft2_text_file_watch_free(&watch);
+	assert_null(watch.path);
+}
+
+/* The report: the file is written after the source is set up. */
+static void test_watch_file_created_later(void **state)
+{
+	(void)state;
+	struct ft2_text_file_watch watch = {0};
+	uint64_t now = 100 * SECOND;
+
+	remove(TEXT_PATH);
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, false, now), FT2_TEXT_FILE_MISSING);
+	assert_false(reload_within(&watch, &now, 3));
+
+	write_utf8("now playing: two");
+	expect_reload(&watch, &now, "now playing: two");
+
+	ft2_text_file_watch_free(&watch);
+}
+
+/* A file that disappears for a moment, as the reporter's did, comes back. */
+static void test_watch_file_deleted_and_recreated(void **state)
+{
+	(void)state;
+	struct ft2_text_file_watch watch = {0};
+	uint64_t now = 100 * SECOND;
+
+	write_utf8("level 1");
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, false, now), FT2_TEXT_FILE_LOAD);
+	expect_reload(&watch, &now, "level 1");
+
+	remove(TEXT_PATH);
+	reload_within(&watch, &now, 3);
+
+	write_utf8("level 2");
+	expect_reload(&watch, &now, "level 2");
+
+	ft2_text_file_watch_free(&watch);
+}
+
+/* Pointing the source at a file that does not exist yet stops it from
+ * reading the previous one. */
+static void test_watch_switch_to_missing_file(void **state)
+{
+	(void)state;
+	struct ft2_text_file_watch watch = {0};
+	uint64_t now = 100 * SECOND;
+
+	write_utf8("old");
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH, false, now), FT2_TEXT_FILE_LOAD);
+
+	assert_int_equal(ft2_text_file_watch_set(&watch, TEXT_PATH ".new", false, now), FT2_TEXT_FILE_MISSING);
+	if (!watch.path || strcmp(watch.path, TEXT_PATH ".new") != 0) {
+		fprintf(stderr, "the source still polls %s\n", watch.path ? watch.path : "nothing");
+		fail();
+	}
+
+	assert_int_equal(ft2_text_file_watch_set(&watch, "", false, now), FT2_TEXT_FILE_MISSING);
+	assert_null(watch.path);
+
+	ft2_text_file_watch_free(&watch);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -213,6 +324,10 @@ int main(void)
 		cmocka_unit_test_teardown(test_utf16_end_matches_utf8, teardown),
 		cmocka_unit_test_teardown(test_utf8_nul_bytes, teardown),
 		cmocka_unit_test_teardown(test_utf16_nul_units, teardown),
+		cmocka_unit_test_teardown(test_watch_existing_file, teardown),
+		cmocka_unit_test_teardown(test_watch_file_created_later, teardown),
+		cmocka_unit_test_teardown(test_watch_file_deleted_and_recreated, teardown),
+		cmocka_unit_test_teardown(test_watch_switch_to_missing_file, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

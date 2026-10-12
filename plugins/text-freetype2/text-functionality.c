@@ -375,18 +375,6 @@ void cache_glyphs(struct ft2_source *srcdata, wchar_t *cache_glyphs)
 	}
 }
 
-time_t get_modified_timestamp(char *filename)
-{
-	struct stat stats;
-
-	// stat is apparently terrifying and horrible, but we only call it once
-	// every second at most.
-	if (os_stat(filename, &stats) != 0)
-		return -1;
-
-	return stats.st_mtime;
-}
-
 static void set_text_from_file(struct ft2_source *srcdata, const char *filename, wchar_t *text)
 {
 	if (text == NULL) {
