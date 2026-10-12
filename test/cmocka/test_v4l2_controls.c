@@ -400,6 +400,8 @@ extern struct obs_source_info v4l2_input;
 static obs_data_t *camera_settings(void)
 {
 	obs_data_t *settings = obs_data_create();
+	/* The source's settings carry its defaults, as in OBS */
+	v4l2_input.get_defaults(settings);
 	obs_data_set_string(settings, "device_id", camera_path);
 	obs_data_set_int(settings, "input", 0);
 	obs_data_set_int(settings, "pixelformat", V4L2_PIX_FMT_YUYV);
@@ -675,6 +677,211 @@ static void opening_properties_does_not_write_defaults(void **state)
 	check_no_writes(FOCUS_AUTO, "after opening the properties");
 }
 
+/* ------------------------------------------------------------------------ */
+/* "Restore camera controls when the camera connects" (follow-up of #363,
+ * raised by alerque): with an external PTZ controller, OBS must not put the
+ * saved pan, tilt or zoom back on every start, replug or settings update.
+ * Unchecked, a control is written only when the user changes it in the
+ * Properties window. */
+
+#define RESTORE_CONTROLS "restore_controls"
+
+static obs_data_t *camera_settings_without_restore(void)
+{
+	obs_data_t *settings = camera_settings();
+	obs_data_set_bool(settings, RESTORE_CONTROLS, false);
+	return settings;
+}
+
+/* The checkbox, next to the camera controls */
+static obs_property_t *restore_property(obs_properties_t *props)
+{
+	obs_property_t *group = obs_properties_get(props, "controls");
+	obs_properties_t *ctrl_props = group ? obs_property_group_content(group) : NULL;
+	obs_property_t *prop = ctrl_props ? obs_properties_get(ctrl_props, RESTORE_CONTROLS) : NULL;
+
+	if (!prop || obs_property_get_type(prop) != OBS_PROPERTY_BOOL) {
+		fprintf(stderr, "no '%s' checkbox in the Camera Controls group\n", RESTORE_CONTROLS);
+		fail();
+	}
+	return prop;
+}
+
+static void check_no_control_writes(const char *when)
+{
+	for (int i = 0; i < CONTROL_COUNT; i++)
+		check_no_writes(i, when);
+	if (fake.failed_writes || fake.ext_writes) {
+		fprintf(stderr, "%s: %d refused and %d extended control writes, expected none\n", when,
+			fake.failed_writes, fake.ext_writes);
+		fail();
+	}
+}
+
+/* The default keeps #364's behaviour, and the checkbox is in the
+ * properties, also after the controls are rebuilt for the device. */
+static void restoring_controls_is_on_by_default(void **state)
+{
+	(void)state;
+	obs_data_t *defaults = obs_data_create();
+	v4l2_input.get_defaults(defaults);
+	bool on = obs_data_get_bool(defaults, RESTORE_CONTROLS);
+	bool has_default = obs_data_has_default_value(defaults, RESTORE_CONTROLS);
+	obs_data_release(defaults);
+
+	if (!has_default || !on) {
+		fprintf(stderr, "'%s' defaults to %s, expected on\n", RESTORE_CONTROLS,
+			has_default ? "off" : "nothing");
+		fail();
+	}
+
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	restore_property(props);
+	/* device_selected() rebuilds the controls for the device */
+	obs_properties_apply_settings(props, settings);
+	const char *tooltip = obs_property_long_description(restore_property(props));
+	bool has_tooltip = tooltip && *tooltip;
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	if (!has_tooltip) {
+		fprintf(stderr, "the '%s' checkbox has no tooltip\n", RESTORE_CONTROLS);
+		fail();
+	}
+}
+
+/* Unchecked: OBS starts and loads the scene collection, the camera keeps
+ * what the external controller set. */
+static void unchecked_saved_controls_are_not_written_on_create(void **state)
+{
+	(void)state;
+	fake.value[ZOOM] = 250;
+
+	obs_data_t *settings = camera_settings_without_restore();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	obs_data_set_int(settings, "Brightness", 200);
+	void *source = create_camera(settings);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_no_control_writes("unchecked, after loading");
+	check_camera_value(ZOOM, 250, "unchecked, after loading");
+}
+
+/* Unchecked: the camera is replugged while OBS runs */
+static void unchecked_saved_controls_are_not_written_on_replug(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings_without_restore();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	obs_data_set_int(settings, "Brightness", 200);
+	void *source = create_camera(settings);
+	clear_writes();
+
+	int opens = fake.opens;
+	replug_camera();
+	int reopened = fake.opens - opens;
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	if (reopened != 1) {
+		fprintf(stderr, "the replug opened the camera %d times, expected once\n", reopened);
+		fail();
+	}
+	check_no_control_writes("unchecked, after the replug");
+}
+
+/* Unchecked: the external controller moves the zoom, then a script or
+ * obs-websocket updates another setting of the source. */
+static void unchecked_saved_controls_are_not_written_on_update(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings_without_restore();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	void *source = create_camera(settings);
+	clear_writes();
+
+	fake.value[ZOOM] = 250;
+	obs_data_set_bool(settings, "buffering", false);
+	v4l2_input.update(source, settings);
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_no_control_writes("unchecked, after obs_source_update");
+	check_camera_value(ZOOM, 250, "unchecked, after obs_source_update");
+}
+
+/* Unchecked: a control the user changes in the Properties window is still
+ * written, and only that one. */
+static void unchecked_a_control_changed_in_properties_is_written(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings_without_restore();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	void *source = create_camera(settings);
+	fake.value[ZOOM] = 250;
+	clear_writes();
+
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_properties_apply_settings(props, settings);
+	obs_properties_t *ctrl_props = obs_property_group_content(obs_properties_get(props, "controls"));
+	obs_property_t *brightness = obs_properties_get(ctrl_props, "Brightness");
+	assert_non_null(brightness);
+
+	obs_data_set_int(settings, "Brightness", 50);
+	obs_property_modified(brightness, settings);
+	v4l2_input.update(source, settings);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_value(BRIGHTNESS, 50, "unchecked, after changing Brightness");
+	check_no_writes(ZOOM, "unchecked, after changing Brightness");
+	check_camera_value(ZOOM, 250, "unchecked, after changing Brightness");
+}
+
+/* Ticking or unticking the checkbox in the Properties window writes no
+ * control: the external controller's zoom stays. */
+static void toggling_the_checkbox_writes_nothing(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings_without_restore();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	void *source = create_camera(settings);
+	fake.value[ZOOM] = 250;
+	clear_writes();
+
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_properties_apply_settings(props, settings);
+	obs_property_t *restore = restore_property(props);
+
+	obs_data_set_bool(settings, RESTORE_CONTROLS, true);
+	obs_property_modified(restore, settings);
+	v4l2_input.update(source, settings);
+	int on_writes = fake.log_count + fake.failed_writes + fake.ext_writes;
+
+	obs_data_set_bool(settings, RESTORE_CONTROLS, false);
+	obs_property_modified(restore, settings);
+	v4l2_input.update(source, settings);
+	int writes = fake.log_count + fake.failed_writes + fake.ext_writes;
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	if (writes) {
+		fprintf(stderr, "toggling the checkbox wrote %d controls (%d when ticking it)\n", writes, on_writes);
+		fail();
+	}
+	check_camera_value(ZOOM, 250, "after toggling the checkbox");
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -687,6 +894,12 @@ int main(void)
 		cmocka_unit_test_setup_teardown(unchanged_controls_are_not_written, setup, teardown),
 		cmocka_unit_test_setup_teardown(relative_controls_are_not_replayed, setup, teardown),
 		cmocka_unit_test_setup_teardown(opening_properties_does_not_write_defaults, setup, teardown),
+		cmocka_unit_test_setup_teardown(restoring_controls_is_on_by_default, setup, teardown),
+		cmocka_unit_test_setup_teardown(unchecked_saved_controls_are_not_written_on_create, setup, teardown),
+		cmocka_unit_test_setup_teardown(unchecked_saved_controls_are_not_written_on_replug, setup, teardown),
+		cmocka_unit_test_setup_teardown(unchecked_saved_controls_are_not_written_on_update, setup, teardown),
+		cmocka_unit_test_setup_teardown(unchecked_a_control_changed_in_properties_is_written, setup, teardown),
+		cmocka_unit_test_setup_teardown(toggling_the_checkbox_writes_nothing, setup, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
