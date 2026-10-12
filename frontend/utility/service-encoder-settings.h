@@ -11,8 +11,11 @@ extern "C" {
  * video encoder settings of Advanced output mode.
  *
  * ignore_recommended is "Ignore streaming service setting recommendations"
- * (Stream1/IgnoreRecommended). A keyframe interval the user set shorter than
- * the service's is always kept.
+ * (Stream1/IgnoreRecommended). With it, the user's encoder settings are kept
+ * and only the service's keyframe interval is applied. It applies to the
+ * streaming services list (rtmp_common) only: the settings a custom server
+ * or WHIP need for their protocol are always applied. Either way, a keyframe
+ * interval the user set shorter than the service's is kept.
  *
  * service_encoder_settings_apply_video() takes the recommendations from
  * service (obs_service_apply_encoder_settings()).

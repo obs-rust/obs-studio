@@ -1,6 +1,7 @@
 #include "AdvancedOutput.hpp"
 
 #include <utility/audio-encoders.hpp>
+#include <utility/service-encoder-settings.h>
 #include <utility/StartMultiTrackVideoStreamingGuard.hpp>
 #include <widgets/OBSBasic.hpp>
 
@@ -217,9 +218,7 @@ void AdvancedOutput::UpdateStreamSettings()
 	ApplyEncoderDefaults(settings, videoStreaming);
 
 	if (applyServiceSettings) {
-		int bitrate = (int)obs_data_get_int(settings, "bitrate");
-		int keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
-		obs_service_apply_encoder_settings(main->GetService(), settings, nullptr);
+		service_encoder_settings_apply_video(main->GetService(), settings, !enforceBitrate);
 		if (!enforceBitrate) {
 			int maxVideoBitrate;
 			int maxAudioBitrate;
@@ -231,18 +230,11 @@ void AdvancedOutput::UpdateStreamSettings()
 										: "None";
 
 			blog(LOG_INFO,
-			     "User is ignoring service bitrate limits.\n"
+			     "User is ignoring service encoder recommendations.\n"
 			     "Service Recommendations:\n"
 			     "\tvideo bitrate: %s\n"
 			     "\taudio bitrate: %s",
 			     videoBitRateLogString.c_str(), audioBitRateLogString.c_str());
-
-			obs_data_set_int(settings, "bitrate", bitrate);
-		}
-
-		int enforced_keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
-		if (keyint_sec != 0 && keyint_sec < enforced_keyint_sec) {
-			obs_data_set_int(settings, "keyint_sec", keyint_sec);
 		}
 	} else {
 		blog(LOG_WARNING, "User is ignoring service settings.");
