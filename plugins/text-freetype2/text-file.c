@@ -196,8 +196,23 @@ static time_t get_modified_timestamp(const char *filename)
 enum ft2_text_file_action ft2_text_file_watch_set(struct ft2_text_file_watch *watch, const char *path, bool force,
 						  uint64_t now)
 {
-	if (!path || !*path || !os_file_exists(path))
+	if (!path || !*path) {
+		ft2_text_file_watch_free(watch);
 		return FT2_TEXT_FILE_MISSING;
+	}
+
+	/* Keep polling a file that does not exist yet (another program may
+	 * write it later), and stop polling the previous one. */
+	if (!os_file_exists(path)) {
+		if (!watch->path || strcmp(watch->path, path) != 0) {
+			bfree(watch->path);
+			watch->path = bstrdup(path);
+		}
+		watch->timestamp = -1;
+		watch->changed = false;
+		watch->last_checked = now;
+		return FT2_TEXT_FILE_MISSING;
+	}
 
 	if (watch->path != NULL && strcmp(watch->path, path) == 0 && !force)
 		return FT2_TEXT_FILE_UNCHANGED;
