@@ -102,6 +102,49 @@ static void restart_is_retried_then_given_up(void **state)
 	assert_int_equal(attempts, 0);
 }
 
+/* obsproject/obs-studio#10072: a source's own stream can die while the
+ * connection stays up (stream killed, device gone and back). */
+
+#define DEVICE 7
+#define OTHER_DEVICE 9
+
+static const struct pulse_stream_status running = {.has_stream = true, .device_index = DEVICE};
+static const struct pulse_stream_status failed = {.has_stream = true, .failed = true, .device_index = PA_INVALID_INDEX};
+static const struct pulse_stream_status stopped = {.device_index = PA_INVALID_INDEX};
+
+static void failed_stream_is_restarted_once(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_int_equal(pulse_stream_on_event(&failed, PULSE_STREAM_FAILED, PA_INVALID_INDEX), PULSE_STREAM_RESTART);
+	/* Already replaced or stopped by the time the event is handled. */
+	assert_int_equal(pulse_stream_on_event(&running, PULSE_STREAM_FAILED, PA_INVALID_INDEX), PULSE_STREAM_KEEP);
+	assert_int_equal(pulse_stream_on_event(&stopped, PULSE_STREAM_FAILED, PA_INVALID_INDEX), PULSE_STREAM_KEEP);
+}
+
+static void removed_device_stops_its_stream_only(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct pulse_stream_status follows_default = running;
+	follows_default.follows_default = true;
+
+	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_STOP);
+	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_REMOVED, OTHER_DEVICE), PULSE_STREAM_KEEP);
+	/* The server moves a stream on the default device elsewhere. */
+	assert_int_equal(pulse_stream_on_event(&follows_default, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
+	assert_int_equal(pulse_stream_on_event(&stopped, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
+	assert_int_equal(pulse_stream_on_event(&failed, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
+}
+
+static void new_device_restarts_only_a_dead_stream(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_int_equal(pulse_stream_on_event(&stopped, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_RESTART);
+	assert_int_equal(pulse_stream_on_event(&failed, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_RESTART);
+	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_KEEP);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -112,6 +155,9 @@ int main(void)
 		cmocka_unit_test(default_devices),
 		cmocka_unit_test(no_default_device),
 		cmocka_unit_test(restart_is_retried_then_given_up),
+		cmocka_unit_test(failed_stream_is_restarted_once),
+		cmocka_unit_test(removed_device_stops_its_stream_only),
+		cmocka_unit_test(new_device_restarts_only_a_dead_stream),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

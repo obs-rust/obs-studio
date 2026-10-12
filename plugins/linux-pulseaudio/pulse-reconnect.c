@@ -73,3 +73,30 @@ bool pulse_restart_should_retry(uint32_t *attempts)
 	*attempts = 0;
 	return false;
 }
+
+enum pulse_stream_action pulse_stream_on_event(const struct pulse_stream_status *status, enum pulse_stream_event event,
+					       uint32_t index)
+{
+	bool running = status->has_stream && !status->failed;
+
+	switch (event) {
+	case PULSE_STREAM_FAILED:
+		/* If the device is gone too, the start fails and the source
+		 * waits for PULSE_SOURCE_NEW. */
+		return status->has_stream && status->failed ? PULSE_STREAM_RESTART : PULSE_STREAM_KEEP;
+
+	case PULSE_SOURCE_REMOVED:
+		/* A stream on the default device is moved by the server. */
+		if (running && !status->follows_default && status->device_index != PA_INVALID_INDEX &&
+		    index == status->device_index)
+			return PULSE_STREAM_STOP;
+		return PULSE_STREAM_KEEP;
+
+	case PULSE_SOURCE_NEW:
+		/* Device names are unique, so a running stream cannot be
+		 * waiting for this one. */
+		return running ? PULSE_STREAM_KEEP : PULSE_STREAM_RESTART;
+	}
+
+	return PULSE_STREAM_KEEP;
+}

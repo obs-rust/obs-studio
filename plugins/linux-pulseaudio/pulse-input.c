@@ -55,6 +55,7 @@ struct pulse_data {
 };
 
 static void pulse_stop_recording(struct pulse_data *data);
+static void pulse_stream_state_changed(pa_stream *s, void *userdata);
 
 /**
  * get obs from pulse audio format
@@ -345,6 +346,7 @@ static int_fast32_t pulse_start_recording(struct pulse_data *data)
 
 	pulse_lock();
 	pa_stream_set_read_callback(data->stream, pulse_stream_read, (void *)data);
+	pa_stream_set_state_callback(data->stream, pulse_stream_state_changed, (void *)data);
 	pulse_unlock();
 
 	pa_buffer_attr attr;
@@ -382,6 +384,7 @@ static void pulse_stop_recording(struct pulse_data *data)
 {
 	if (data->stream) {
 		pulse_lock();
+		pa_stream_set_state_callback(data->stream, NULL, NULL);
 		pa_stream_disconnect(data->stream);
 		pa_stream_unref(data->stream);
 		data->stream = NULL;
@@ -455,6 +458,113 @@ static void pulse_reconnected(void *userdata)
 
 	obs_weak_source_addref(weak_source);
 	obs_queue_task(OBS_TASK_UI, pulse_restart_recording_task, weak_source, false);
+}
+
+struct pulse_stream_task {
+	obs_weak_source_t *weak_source;
+	enum pulse_stream_event event;
+	uint32_t index;
+	/* PULSE_STREAM_FAILED: the stream that failed */
+	pa_stream *stream;
+};
+
+/**
+ * The source's own stream died or a device came or went while the server
+ * connection stayed up. Runs on the UI thread: starting a stream blocks on
+ * the pulse mainloop.
+ */
+static void pulse_stream_event_task(void *param)
+{
+	struct pulse_stream_task *task = param;
+	obs_source_t *source = obs_weak_source_get_source(task->weak_source);
+
+	obs_weak_source_release(task->weak_source);
+	if (!source)
+		goto out;
+
+	struct pulse_data *data = obs_obj_get_data(source);
+	if (!data)
+		goto release;
+
+	/* A failure of a stream that was already replaced is old news. */
+	if (task->event == PULSE_STREAM_FAILED && task->stream != data->stream)
+		goto release;
+
+	struct pulse_stream_status status = {
+		.has_stream = data->stream != NULL,
+		.follows_default = data->is_default,
+		.device_index = PA_INVALID_INDEX,
+	};
+	if (data->stream) {
+		pulse_lock();
+		pa_stream_state_t state = pa_stream_get_state(data->stream);
+		status.failed = !PA_STREAM_IS_GOOD(state);
+		if (state == PA_STREAM_READY)
+			status.device_index = pa_stream_get_device_index(data->stream);
+		pulse_unlock();
+	}
+
+	switch (pulse_stream_on_event(&status, task->event, task->index)) {
+	case PULSE_STREAM_STOP:
+		blog(LOG_WARNING, "Device '%s' went away, waiting for it to return", data->device);
+		pulse_stop_recording(data);
+		break;
+	case PULSE_STREAM_RESTART:
+		if (task->event == PULSE_STREAM_FAILED)
+			blog(LOG_WARNING, "Stream from '%s' failed, restarting it", data->device);
+		if (data->stream)
+			pulse_stop_recording(data);
+		/* After a failure the audio was running: skip the startup
+		 * period as after a reconnect. */
+		data->reconnected = task->event == PULSE_STREAM_FAILED;
+		pulse_start_recording(data);
+		break;
+	case PULSE_STREAM_KEEP:
+		break;
+	}
+
+release:
+	obs_source_release(source);
+out:
+	bfree(task);
+}
+
+static void pulse_queue_stream_task(obs_weak_source_t *weak_source, enum pulse_stream_event event, uint32_t index,
+				    pa_stream *stream)
+{
+	struct pulse_stream_task *task = bzalloc(sizeof(*task));
+
+	obs_weak_source_addref(weak_source);
+	task->weak_source = weak_source;
+	task->event = event;
+	task->index = index;
+	task->stream = stream;
+	obs_queue_task(OBS_TASK_UI, pulse_stream_event_task, task, false);
+}
+
+/**
+ * Stream state callback; called on the pulse mainloop thread
+ */
+static void pulse_stream_state_changed(pa_stream *s, void *userdata)
+{
+	PULSE_DATA(userdata);
+
+	if (PA_STREAM_IS_GOOD(pa_stream_get_state(s)))
+		return;
+	/* With the whole connection lost, pulse_reconnected restarts it. */
+	if (pa_context_get_state(pa_stream_get_context(s)) != PA_CONTEXT_READY)
+		return;
+
+	pulse_queue_stream_task(data->weak_source, PULSE_STREAM_FAILED, PA_INVALID_INDEX, s);
+}
+
+/**
+ * A device appeared or went away; called on the pulse mainloop thread
+ */
+static void pulse_source_event(void *userdata, pa_subscription_event_type_t type, uint32_t index)
+{
+	pulse_queue_stream_task(userdata, type == PA_SUBSCRIPTION_EVENT_NEW ? PULSE_SOURCE_NEW : PULSE_SOURCE_REMOVED,
+				index, NULL);
 }
 
 /**
@@ -560,6 +670,7 @@ static void pulse_destroy(void *vptr)
 
 	pulse_lock();
 	pulse_remove_reconnected_callback(pulse_reconnected, data->weak_source);
+	pulse_remove_source_event_callback(pulse_source_event, data->weak_source);
 	pulse_unlock();
 
 	if (data->stream)
@@ -624,6 +735,7 @@ static void *pulse_create(obs_data_t *settings, obs_source_t *source, bool input
 
 	pulse_lock();
 	pulse_add_reconnected_callback(pulse_reconnected, data->weak_source);
+	pulse_add_source_event_callback(pulse_source_event, data->weak_source);
 	pulse_unlock();
 	pulse_update(data, settings);
 

@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <pulse/stream.h>
 #include <pulse/context.h>
 #include <pulse/introspect.h>
+#include <pulse/subscribe.h>
 
 #pragma once
 
@@ -46,6 +47,20 @@ typedef void (*pulse_reconnected_cb)(void *userdata);
  */
 void pulse_add_reconnected_callback(pulse_reconnected_cb cb, void *userdata);
 void pulse_remove_reconnected_callback(pulse_reconnected_cb cb, void *userdata);
+
+/**
+ * Called on the pulse mainloop thread, with the mainloop locked, when a
+ * source (a device or a sink monitor) appears (PA_SUBSCRIPTION_EVENT_NEW) or
+ * goes away (PA_SUBSCRIPTION_EVENT_REMOVE) while the connection is up.
+ */
+typedef void (*pulse_source_event_cb)(void *userdata, pa_subscription_event_type_t type, uint32_t index);
+
+/**
+ * Register or remove a source event callback. Must be called with the
+ * mainloop locked (pulse_lock).
+ */
+void pulse_add_source_event_callback(pulse_source_event_cb cb, void *userdata);
+void pulse_remove_source_event_callback(pulse_source_event_cb cb, void *userdata);
 
 /**
  * Call cb on the pulse mainloop thread after delay_usec. If the mainloop is

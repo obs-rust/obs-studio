@@ -41,6 +41,12 @@ struct pulse_reconnected_callback {
 };
 static DARRAY(struct pulse_reconnected_callback) pulse_reconnected_callbacks;
 
+struct pulse_source_event_callback {
+	pulse_source_event_cb cb;
+	void *userdata;
+};
+static DARRAY(struct pulse_source_event_callback) pulse_source_event_callbacks;
+
 static void pulse_connect_context(pa_context_flags_t flags);
 
 /* Replace the failed context. Runs from a timer, outside the failed context's
@@ -59,6 +65,32 @@ static void pulse_reconnect(pa_mainloop_api *api, pa_time_event *e, const struct
 	pa_context_unref(pulse_context);
 	/* NOFAIL: wait for the server to come back instead of failing. */
 	pulse_connect_context(PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL);
+}
+
+/* Tell the sources when a device appears or goes away, so one whose stream
+ * died with its device can record again once it is back. */
+static void pulse_subscribed_event(pa_context *c, pa_subscription_event_type_t t, uint32_t index, void *userdata)
+{
+	UNUSED_PARAMETER(userdata);
+
+	if (c != pulse_context || (t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK) != PA_SUBSCRIPTION_EVENT_SOURCE)
+		return;
+
+	pa_subscription_event_type_t type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
+	if (type != PA_SUBSCRIPTION_EVENT_NEW && type != PA_SUBSCRIPTION_EVENT_REMOVE)
+		return;
+
+	for (size_t i = 0; i < pulse_source_event_callbacks.num; i++)
+		pulse_source_event_callbacks.array[i].cb(pulse_source_event_callbacks.array[i].userdata, type, index);
+}
+
+static void pulse_subscribe_sources(pa_context *c)
+{
+	pa_context_set_subscribe_callback(c, pulse_subscribed_event, NULL);
+
+	pa_operation *op = pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SOURCE, NULL, NULL);
+	if (op)
+		pa_operation_unref(op);
 }
 
 /**
@@ -90,6 +122,7 @@ static void pulse_context_state_changed(pa_context *c, void *userdata)
 		break;
 	}
 	case PA_CONTEXT_READY:
+		pulse_subscribe_sources(c);
 		if (!pulse_reconnect_on_ready(&pulse_reconnection))
 			break;
 		blog(LOG_INFO, "pulse-input: Reconnected to the server");
@@ -118,6 +151,25 @@ void pulse_remove_reconnected_callback(pulse_reconnected_cb cb, void *userdata)
 
 		if (callback->cb == cb && callback->userdata == userdata) {
 			da_erase(pulse_reconnected_callbacks, i);
+			return;
+		}
+	}
+}
+
+void pulse_add_source_event_callback(pulse_source_event_cb cb, void *userdata)
+{
+	struct pulse_source_event_callback callback = {cb, userdata};
+
+	da_push_back(pulse_source_event_callbacks, &callback);
+}
+
+void pulse_remove_source_event_callback(pulse_source_event_cb cb, void *userdata)
+{
+	for (size_t i = 0; i < pulse_source_event_callbacks.num; i++) {
+		struct pulse_source_event_callback *callback = &pulse_source_event_callbacks.array[i];
+
+		if (callback->cb == cb && callback->userdata == userdata) {
+			da_erase(pulse_source_event_callbacks, i);
 			return;
 		}
 	}
@@ -257,12 +309,14 @@ void pulse_unref()
 		pulse_lock();
 		if (pulse_context != NULL) {
 			pa_context_set_state_callback(pulse_context, NULL, NULL);
+			pa_context_set_subscribe_callback(pulse_context, NULL, NULL);
 			pa_context_disconnect(pulse_context);
 			pa_context_unref(pulse_context);
 			pulse_context = NULL;
 		}
 		pulse_reconnection = (struct pulse_reconnect_state){0};
 		da_free(pulse_reconnected_callbacks);
+		da_free(pulse_source_event_callbacks);
 		pulse_unlock();
 
 		if (pulse_mainloop != NULL) {

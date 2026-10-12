@@ -61,3 +61,41 @@ char *pulse_default_device(const pa_server_info *info, bool input);
  * PULSE_RESTART_RETRY_USEC.
  */
 bool pulse_restart_should_retry(uint32_t *attempts);
+
+/* A source's own record stream can die while the connection to the server
+ * stays up: the server kills it, or its device goes away and comes back
+ * (console switch, USB replug; PulseAudio kills the stream, pipewire-pulse
+ * leaves a stream that may not move unlinked). These decide what the source
+ * does about it. Each event leads to at most one start attempt, so a device
+ * that is gone for good is not polled. */
+
+enum pulse_stream_event {
+	/* The stream failed or was terminated, the context is still up. */
+	PULSE_STREAM_FAILED,
+	/* A source (device) appeared on the server. */
+	PULSE_SOURCE_NEW,
+	/* The source with the given index went away. */
+	PULSE_SOURCE_REMOVED,
+};
+
+enum pulse_stream_action {
+	PULSE_STREAM_KEEP,
+	/* Drop the stream and wait for the device to return. */
+	PULSE_STREAM_STOP,
+	/* Create the stream again, once. */
+	PULSE_STREAM_RESTART,
+};
+
+struct pulse_stream_status {
+	/* The source has a stream ... */
+	bool has_stream;
+	/* ... that failed or was terminated. */
+	bool failed;
+	/* The stream follows the default device: the server moves it. */
+	bool follows_default;
+	/* Index of the device the stream records from, or PA_INVALID_INDEX. */
+	uint32_t device_index;
+};
+
+enum pulse_stream_action pulse_stream_on_event(const struct pulse_stream_status *status, enum pulse_stream_event event,
+					       uint32_t index);
