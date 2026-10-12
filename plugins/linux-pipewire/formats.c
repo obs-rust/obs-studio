@@ -79,6 +79,26 @@ static const struct obs_pw_video_format supported_formats[] = {
 		2,
 		"NV12",
 	},
+	{
+		SPA_VIDEO_FORMAT_I420,
+		DRM_FORMAT_YUV420,
+		GS_UNKNOWN,
+		VIDEO_FORMAT_I420,
+		false,
+		1,
+		"I420",
+	},
+	{
+		/* I420 with the chroma planes swapped; frame-layout.c swaps
+		 * them back. */
+		SPA_VIDEO_FORMAT_YV12,
+		DRM_FORMAT_YVU420,
+		GS_UNKNOWN,
+		VIDEO_FORMAT_I420,
+		false,
+		1,
+		"YV12",
+	},
 #if PW_CHECK_VERSION(0, 3, 41)
 	{
 		SPA_VIDEO_FORMAT_ABGR_210LE,
