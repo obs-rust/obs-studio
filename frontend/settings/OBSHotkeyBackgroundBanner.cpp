@@ -155,12 +155,15 @@ OBSHotkeyBackgroundBanner::OBSHotkeyBackgroundBanner(QWidget *parent,
 	testButton->setToolTip(QTStr("Basic.Settings.Hotkeys.Background.TestKey.ToolTip"));
 	askButton = button("hotkeyBackgroundAsk", "Basic.Settings.Hotkeys.Background.AskAgain",
 			   &OBSHotkeyBackgroundBanner::AskAgain);
+	configureButton = button("hotkeyBackgroundConfigure", "Basic.Settings.Hotkeys.Background.Configure",
+				 &OBSHotkeyBackgroundBanner::Configure);
+	configureButton->setToolTip(QTStr("Basic.Settings.Hotkeys.Background.Configure.ToolTip"));
 	cancelButton = button("hotkeyBackgroundCancel", "Cancel", &OBSHotkeyBackgroundBanner::StopTest);
 
 	auto buttons = new QHBoxLayout;
 	buttons->addStretch();
-	for (QPushButton *b :
-	     {copyButton.data(), checkButton.data(), testButton.data(), askButton.data(), cancelButton.data()}) {
+	for (QPushButton *b : {copyButton.data(), checkButton.data(), configureButton.data(), testButton.data(),
+			       askButton.data(), cancelButton.data()}) {
 		buttons->addWidget(b);
 	}
 
@@ -177,7 +180,8 @@ OBSHotkeyBackgroundBanner::OBSHotkeyBackgroundBanner(QWidget *parent,
 	testTimer->setSingleShot(true);
 	connect(testTimer, &QTimer::timeout, this, [this]() {
 		/* Still in the desktop's dialog: keep listening. */
-		if (asking && obs_hotkeys_get_background_state(nullptr) == OBS_HOTKEYS_BACKGROUND_WAITING) {
+		if ((asking && obs_hotkeys_get_background_state(nullptr) == OBS_HOTKEYS_BACKGROUND_WAITING) ||
+		    configuring) {
 			testTimer->start(TEST_TIMEOUT_MS);
 			return;
 		}
@@ -298,6 +302,13 @@ void OBSHotkeyBackgroundBanner::Refresh(bool readConfig)
 	}
 
 	view = Compute(input);
+	if (configuring && view.configureFailed) {
+		/* No editor opened: say so and how to change the keys instead,
+		 * rather than waiting for Done. */
+		testResult = QTStr("Basic.Settings.Hotkeys.Background.ConfigureFailed");
+		testLevel = Level::Warning;
+		QMetaObject::invokeMethod(this, &OBSHotkeyBackgroundBanner::StopTest, Qt::QueuedConnection);
+	}
 	if (!configRead && view.banner != Banner::Hidden) {
 		/* Until OBS knows whether the desktop needs config lines. */
 		view = View();
@@ -398,12 +409,18 @@ void OBSHotkeyBackgroundBanner::Refresh(bool readConfig)
 	checkButton->setVisible(view.checkAgain && !testing);
 	testButton->setVisible(view.testKey && !testing);
 	askButton->setVisible(view.askAgain && !testing);
+	configureButton->setVisible(view.configure && !testing);
 	cancelButton->setVisible(testing);
+	cancelButton->setText(QTStr(configuring ? "Basic.Settings.Hotkeys.Background.Done" : "Cancel"));
 
 	if (testing) {
-		ShowText(QTStr(asking ? "Basic.Settings.Hotkeys.Background.Asking"
-				      : "Basic.Settings.Hotkeys.Background.Testing"),
-			 Level::Info);
+		QString prompt = QTStr(configuring ? "Basic.Settings.Hotkeys.Background.Configuring"
+				       : asking    ? "Basic.Settings.Hotkeys.Background.Asking"
+						   : "Basic.Settings.Hotkeys.Background.Testing");
+		if (!testResult.isEmpty()) {
+			prompt = testResult + "\n" + prompt;
+		}
+		ShowText(prompt, testResult.isEmpty() ? Level::Info : testLevel);
 	} else if (!testResult.isEmpty()) {
 		ShowText(testResult + "\n" + message, testLevel);
 	} else {
@@ -466,6 +483,19 @@ void OBSHotkeyBackgroundBanner::AskAgain()
 	StartTest(true);
 }
 
+/* The desktop's editor needs bound shortcuts; Settings keeps background
+ * presses off, so the probe binds them while the editor is open. Keys the
+ * user changes there arrive as ShortcutsChanged and show in the row
+ * tooltips; Done ends it. */
+void OBSHotkeyBackgroundBanner::Configure()
+{
+	/* The request first: it clears a failure left by an earlier one, and
+	 * waits for the bind the probe makes. */
+	obs_hotkeys_configure_background();
+	configuring = true;
+	StartTest(false);
+}
+
 void OBSHotkeyBackgroundBanner::StopTest()
 {
 	if (!testing) {
@@ -473,6 +503,7 @@ void OBSHotkeyBackgroundBanner::StopTest()
 	}
 	testing = false;
 	asking = false;
+	configuring = false;
 	testTimer->stop();
 	obs_hotkeys_set_background_probe(false);
 	Refresh(true);
@@ -497,6 +528,11 @@ void OBSHotkeyBackgroundBanner::ProbeReceived(QString id)
 	confirmedIds.insert(input.appId + ":" + id.toStdString());
 	testResult = QTStr("Basic.Settings.Hotkeys.Background.TestOk").arg(key);
 	testLevel = Level::Ok;
+	if (configuring) {
+		/* Keep the editor's session until Done. */
+		Refresh();
+		return;
+	}
 	StopTest();
 }
 

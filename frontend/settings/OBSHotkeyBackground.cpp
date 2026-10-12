@@ -172,6 +172,7 @@ View Compute(const Input &input)
 		return view;
 	}
 	view.paused = (input.flags & OBS_HOTKEYS_BACKGROUND_PAUSED) != 0;
+	view.configureFailed = (input.flags & OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED) != 0;
 
 	for (auto &combo : input.combos) {
 		if (combo.id.empty()) {
@@ -281,6 +282,7 @@ View Compute(const Input &input)
 		return view;
 	}
 
+	view.configure = (input.flags & OBS_HOTKEYS_BACKGROUND_CONFIGURABLE) != 0;
 	if (view.working == 0 && view.pending) {
 		view.banner = Banner::Pending;
 		return view;

@@ -62,6 +62,7 @@ private slots:
 	void CheckAgain();
 	void TestKey();
 	void AskAgain();
+	void Configure();
 	void StopTest();
 	void ProbeReceived(QString id);
 
@@ -87,11 +88,14 @@ private:
 	QPointer<QPushButton> checkButton;
 	QPointer<QPushButton> testButton;
 	QPointer<QPushButton> askButton;
+	QPointer<QPushButton> configureButton;
 	QPointer<QPushButton> cancelButton;
 	QPointer<QTimer> testTimer;
 	bool testing = false;
 	/* "Ask again": the desktop may show its dialog first. */
 	bool asking = false;
+	/* "Change keys in desktop settings": the desktop's editor is open. */
+	bool configuring = false;
 	bool readingConfig = false;
 	bool configRead = false;
 	/* Keys "Test a key" received this session. */
