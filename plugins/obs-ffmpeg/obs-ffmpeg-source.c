@@ -319,6 +319,7 @@ static void ffmpeg_source_open(struct ffmpeg_source *s)
 			.reconnecting = s->reconnecting,
 			.request_preload = s->is_stinger,
 			.full_decode = s->full_decode,
+			.measure_duration = s->is_stinger,
 		};
 
 		os_atomic_set_bool(&s->first_frame_preloaded, false);

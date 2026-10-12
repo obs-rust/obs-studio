@@ -86,6 +86,9 @@ struct mp_media {
 	int64_t v_output_interval;
 	bool last_frame_held;
 	bool full_decode;
+	bool measure_duration;
+	int64_t measured_duration;
+	int64_t measured_frames;
 
 	uint64_t interrupt_poll_ts;
 

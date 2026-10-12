@@ -789,11 +789,74 @@ static void reset_ts(mp_media_t *m)
 	m->next_ns = 0;
 }
 
+/* A file can hold more than its header says: the duration in the header
+ * can be too short (some editors write AVI files like that) or missing
+ * (Matroska or WebM written to a pipe or by a live recorder). A Stinger
+ * times its transition with the duration, so for it, measure the duration
+ * up to the end of the file's last audio or video packet, and count the
+ * video packets. This only demuxes (it does not decode), and stops after
+ * MAX_MEASURE_BYTES. */
+#define MAX_MEASURE_BYTES (1024LL * 1024LL * 1024LL)
+
+static void mp_media_measure_duration(mp_media_t *m)
+{
+	int v_idx = m->has_video ? m->v.stream->index : -1;
+	int a_idx = m->has_audio ? m->a.stream->index : -1;
+	AVRational v_rate = m->has_video ? m->v.stream->avg_frame_rate : (AVRational){0, 1};
+	int64_t end = AV_NOPTS_VALUE;
+	int64_t frames = 0;
+
+	AVFormatContext *fmt = avformat_alloc_context();
+	if (!fmt)
+		return;
+	fmt->interrupt_callback.callback = interrupt_callback;
+	fmt->interrupt_callback.opaque = m;
+
+	if (avformat_open_input(&fmt, m->path, m->fmt->iformat, NULL) < 0)
+		return;
+
+	AVPacket *pkt = av_packet_alloc();
+	while (pkt && av_read_frame(fmt, pkt) >= 0) {
+		int idx = pkt->stream_index;
+		int64_t ts = pkt->pts != AV_NOPTS_VALUE ? pkt->pts : pkt->dts;
+
+		if ((idx == v_idx || idx == a_idx) && idx < (int)fmt->nb_streams && ts != AV_NOPTS_VALUE) {
+			AVStream *st = fmt->streams[idx];
+			int64_t duration = pkt->duration;
+
+			if (idx == v_idx) {
+				frames++;
+				if (duration <= 0 && v_rate.num > 0 && v_rate.den > 0)
+					duration = av_rescale_q(1, av_inv_q(v_rate), st->time_base);
+			}
+			if (duration < 0)
+				duration = 0;
+
+			int64_t pkt_end = av_rescale_q(ts + duration, st->time_base, AV_TIME_BASE_Q);
+			if (end == AV_NOPTS_VALUE || pkt_end > end)
+				end = pkt_end;
+		}
+
+		av_packet_unref(pkt);
+		if (avio_tell(fmt->pb) > MAX_MEASURE_BYTES)
+			break;
+	}
+	av_packet_free(&pkt);
+	avformat_close_input(&fmt);
+
+	int64_t start = m->fmt->start_time != AV_NOPTS_VALUE ? m->fmt->start_time : 0;
+	if (end != AV_NOPTS_VALUE && end > start)
+		m->measured_duration = end - start;
+	m->measured_frames = frames;
+}
+
 bool mp_media_init2(mp_media_t *m)
 {
 	if (!init_avformat(m)) {
 		return false;
 	}
+	if (m->measure_duration)
+		mp_media_measure_duration(m);
 	return true;
 }
 
@@ -951,6 +1014,8 @@ bool mp_media_init(mp_media_t *media, const struct mp_media_info *info)
 	media->speed = info->speed;
 	media->request_preload = info->request_preload;
 	media->is_local_file = info->is_local_file;
+	/* the cache measures what it decodes */
+	media->measure_duration = info->measure_duration && info->is_local_file && !info->full_decode;
 	da_init(media->packet_pool);
 
 	if (!info->is_local_file || media->speed < 1 || media->speed > 200)
@@ -1089,16 +1154,22 @@ int64_t mp_media_get_frames(mp_media_t *m)
 		blog(LOG_DEBUG, "MP: nb_frames not set, estimating using frame "
 				"rate and duration");
 		AVRational avg_frame_rate = stream->avg_frame_rate;
-		frames = (int64_t)ceil((double)m->fmt->duration / (double)AV_TIME_BASE * (double)avg_frame_rate.num /
-				       (double)avg_frame_rate.den);
+		frames = (int64_t)ceil((double)mp_media_get_duration(m) / (double)AV_TIME_BASE *
+				       (double)avg_frame_rate.num / (double)avg_frame_rate.den);
 	}
 
-	return frames;
+	return frames > m->measured_frames ? frames : m->measured_frames;
 }
 
+/* The header's duration, or the measured one where that is longer. A file
+ * without a duration in its header (AV_NOPTS_VALUE) reports 0. */
 int64_t mp_media_get_duration(mp_media_t *m)
 {
-	return m->fmt ? m->fmt->duration : 0;
+	if (!m->fmt)
+		return 0;
+
+	int64_t duration = m->fmt->duration != AV_NOPTS_VALUE ? m->fmt->duration : 0;
+	return m->measured_duration > duration ? m->measured_duration : duration;
 }
 
 void mp_media_seek(mp_media_t *m, int64_t pos)

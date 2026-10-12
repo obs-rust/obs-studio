@@ -63,6 +63,7 @@ struct mp_cache {
 
 	int64_t final_v_duration;
 	int64_t final_a_duration;
+	bool last_frame_held;
 
 	int64_t play_sys_ts;
 	int64_t next_pts_ns;

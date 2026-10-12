@@ -135,6 +135,27 @@ bool mp_cache_decode(mp_cache_t *c)
 	if (c->start_time == AV_NOPTS_VALUE)
 		c->start_time = 0;
 
+	/* The header's duration can be shorter than the file or missing; a
+	 * Stinger times its transition with it, so use what was decoded where
+	 * that is longer. */
+	int64_t end_ns = 0;
+	if (c->video_frames.num) {
+		struct obs_source_frame *last = &c->video_frames.array[c->video_frames.num - 1];
+		end_ns = (int64_t)last->timestamp + c->final_v_duration;
+	}
+	if (c->audio_segments.num) {
+		struct obs_source_audio *last = &c->audio_segments.array[c->audio_segments.num - 1];
+		int64_t a_end_ns = (int64_t)last->timestamp + c->final_a_duration;
+		if (a_end_ns > end_ns)
+			end_ns = a_end_ns;
+	}
+	int64_t decoded = end_ns / 1000 - c->start_time;
+
+	pthread_mutex_lock(&c->mutex);
+	if (decoded > c->media_duration)
+		c->media_duration = decoded;
+	pthread_mutex_unlock(&c->mutex);
+
 fail:
 	mp_media_free(m);
 	return success;
@@ -194,6 +215,10 @@ static void seek_to(mp_cache_t *c, int64_t pos)
 
 /* maximum timestamp variance in nanoseconds */
 #define MAX_TS_VAR 2000000000LL
+
+/* longest the last frame is held when playback ends, in nanoseconds (as in
+ * media.c) */
+#define MAX_HOLD_NS 3000000000LL
 
 static inline bool mp_media_can_play_video(mp_cache_t *c)
 {
@@ -288,6 +313,40 @@ static void mp_cache_next_audio(mp_cache_t *c)
 		++c->cur_a_idx;
 	++c->next_a_idx;
 	calc_next_a_ts(c, audio);
+}
+
+/* As in media.c: playback that ends without looping keeps its last frame up
+ * until libobs has shown it. The cache has already waited for that frame's
+ * own duration when it gets here, but stopping clears the source (with
+ * "Show nothing when playback ends"), which drops the frames libobs has not
+ * shown yet. libobs shows a buffered async frame up to one frame interval
+ * plus one output frame after it is output, so wait for that, and one more
+ * output frame for jitter. */
+static bool mp_cache_hold_last_frame(mp_cache_t *c)
+{
+	bool v_ended = !c->has_video || v_eof(c);
+	bool a_ended = !c->has_audio || a_eof(c);
+
+	if (!v_ended || !a_ended) {
+		c->last_frame_held = false;
+		return false;
+	}
+	if (c->last_frame_held)
+		return false;
+	c->last_frame_held = true;
+
+	pthread_mutex_lock(&c->mutex);
+	bool looping = c->looping;
+	pthread_mutex_unlock(&c->mutex);
+	if (looping || !c->has_video)
+		return false;
+
+	int64_t interval = c->final_v_duration;
+	if (interval < 0 || interval > MAX_HOLD_NS)
+		interval = 0;
+
+	c->next_ns += (uint64_t)(interval + 2 * (int64_t)obs_get_frame_interval_ns());
+	return true;
 }
 
 static bool mp_cache_reset(mp_cache_t *c)
@@ -442,6 +501,8 @@ static inline bool mp_cache_thread(mp_cache_t *c)
 			if (c->has_audio)
 				mp_cache_next_audio(c);
 
+			if (mp_cache_hold_last_frame(c))
+				continue;
 			if (mp_cache_eof(c))
 				continue;
 
@@ -566,7 +627,7 @@ bool mp_cache_init(mp_cache_t *c, const struct mp_media_info *info)
 	c->v_preload_cb = info->v_preload_cb;
 	c->request_preload = info->request_preload;
 	c->speed = info->speed;
-	c->media_duration = m->fmt->duration;
+	c->media_duration = m->fmt->duration != AV_NOPTS_VALUE ? m->fmt->duration : 0;
 
 	c->has_video = m->has_video;
 	c->has_audio = m->has_audio;
@@ -697,5 +758,8 @@ int64_t mp_cache_get_frames(mp_cache_t *c)
 
 int64_t mp_cache_get_duration(mp_cache_t *c)
 {
-	return c->media_duration;
+	pthread_mutex_lock(&c->mutex);
+	int64_t duration = c->media_duration;
+	pthread_mutex_unlock(&c->mutex);
+	return duration;
 }

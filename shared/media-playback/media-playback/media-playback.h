@@ -46,6 +46,9 @@ struct mp_media_info {
 	bool reconnecting;
 	bool request_preload;
 	bool full_decode;
+	/* measure a local file's duration from its packets instead of trusting
+	 * its header (a Stinger times its transition with it) */
+	bool measure_duration;
 };
 
 extern media_playback_t *media_playback_create(const struct mp_media_info *info);
