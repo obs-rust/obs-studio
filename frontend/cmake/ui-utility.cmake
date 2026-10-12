@@ -13,6 +13,8 @@ target_sources(
     utility/FFmpegFormat.cpp
     utility/FFmpegFormat.hpp
     utility/FFmpegShared.hpp
+    utility/filter-clipboard.c
+    utility/filter-clipboard.h
     utility/GoLiveAPI_CensoredJson.cpp
     utility/GoLiveAPI_CensoredJson.hpp
     utility/GoLiveAPI_Network.cpp

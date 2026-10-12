@@ -19,6 +19,7 @@
 
 #include "OBSBasic.hpp"
 
+#include <utility/filter-clipboard.h>
 #include <components/VolumeControl.hpp>
 #include <dialogs/OBSBasicFilters.hpp>
 #include <dialogs/OBSBasicSourceSelect.hpp>
@@ -253,11 +254,42 @@ void OBSBasic::CreateFilterPasteUndoRedoAction(const QString &text, obs_source_t
 void OBSBasic::on_actionPasteFilters_triggered()
 {
 	OBSSourceAutoRelease source = obs_weak_source_get_source(copyFiltersSource());
+	if (!source) {
+		return;
+	}
 
-	OBSSceneItem sceneItem = GetCurrentSceneItem();
-	OBSSource dstSource = obs_sceneitem_get_source(sceneItem);
+	/* Paste into every selected source, once per source, with one undo
+	 * action for all of them. */
+	OBSDataAutoRelease undo_data = obs_data_create();
+	OBSDataAutoRelease redo_data = obs_data_create();
+	size_t count = filter_clipboard_paste(GetCurrentScene(), source, undo_data, redo_data);
+	if (!count) {
+		return;
+	}
 
-	SourcePasteFilters(source.Get(), dstSource);
+	auto undo_redo = [this](const std::string &json) {
+		OBSDataAutoRelease data = obs_data_create_from_json(json.c_str());
+		auto restored = [](obs_source_t *source, void *param) {
+			OBSBasic *main = static_cast<OBSBasic *>(param);
+			if (main->filters) {
+				main->filters->UpdateSource(source);
+			}
+		};
+		filter_clipboard_restore(data, restored, this);
+	};
+
+	const char *srcName = obs_source_get_name(source);
+	QString text;
+	if (count == 1) {
+		OBSDataArrayAutoRelease sources = obs_data_get_array(redo_data, "sources");
+		OBSDataAutoRelease entry = obs_data_array_item(sources, 0);
+		OBSSourceAutoRelease dstSource = obs_get_source_by_uuid(obs_data_get_string(entry, "uuid"));
+		text = QTStr("Undo.Filters.Paste.Multiple").arg(srcName, obs_source_get_name(dstSource));
+	} else {
+		text = QTStr("Undo.Filters.Paste.MultipleDestinations").arg(srcName, QString::number(count));
+	}
+
+	undo_s.add_action(text, undo_redo, undo_redo, obs_data_get_json(undo_data), obs_data_get_json(redo_data));
 }
 
 OBS::ItemPasteType OBSBasic::getItemPasteType()
