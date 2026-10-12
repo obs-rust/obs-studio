@@ -991,6 +991,8 @@ cleanup:
 	GS_DEBUG_MARKER_END();
 }
 
+static void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate);
+
 static void scene_video_tick(void *data, float seconds)
 {
 	struct obs_scene *scene = data;
@@ -1004,6 +1006,19 @@ static void scene_video_tick(void *data, float seconds)
 		item = item->next;
 	}
 	video_unlock(scene);
+
+	/* Showing or hiding an item whose source has audio is queued as an
+	 * audio action, which the audio thread applies on a sample boundary.
+	 * The audio thread only renders the active tree of the output
+	 * channels, so a scene that is only showing (the Studio Mode preview,
+	 * a projector, the multiview) would keep its items visible forever.
+	 * It mixes no audio, so apply its actions now. */
+	if (!obs_source_active(scene->source)) {
+		audio_lock(scene);
+		for (item = scene->first_item; item; item = item->next)
+			apply_scene_item_audio_actions(item, NULL, 0, 0);
+		audio_unlock(scene);
+	}
 
 	UNUSED_PARAMETER(seconds);
 }
