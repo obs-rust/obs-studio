@@ -120,6 +120,16 @@ static struct fake_portal {
 	/* Last BindShortcuts call: a(sa{sv}) */
 	GVariant *last_shortcuts;
 	char *last_bind_session;
+	/* Like xdg-desktop-portal-hyprland: no trigger_description, the keys
+	 * come from the compositor's config. */
+	bool no_triggers;
+	/* CreateSession fails with this D-Bus error message. */
+	const char *create_error;
+	/* GlobalShortcuts version property (default 1). */
+	uint32_t version;
+	/* Like KDE when the user leaves a new shortcut without a key in its
+	 * dialog: this id comes back with an empty trigger. */
+	const char *untriggered_id;
 } fake;
 
 static char *request_path(const char *sender, const char *token)
@@ -171,6 +181,12 @@ static void portal_method(GDBusConnection *conn, const char *sender, const char 
 
 	if (fake.num_registers == 0 && fake.num_sessions == 0)
 		fake.register_too_late = true;
+
+	if (strcmp(method, "CreateSession") == 0 && fake.create_error) {
+		g_dbus_method_invocation_return_dbus_error(invocation, "org.freedesktop.portal.Error.Failed",
+							   fake.create_error);
+		return;
+	}
 
 	if (strcmp(method, "CreateSession") == 0) {
 		g_autoptr(GVariant) options = NULL;
@@ -245,7 +261,12 @@ static void portal_method(GDBusConnection *conn, const char *sender, const char 
 			GVariantBuilder out;
 			g_variant_builder_init(&out, G_VARIANT_TYPE_VARDICT);
 			g_variant_builder_add(&out, "{sv}", "description", g_variant_new_string(description));
-			g_variant_builder_add(&out, "{sv}", "trigger_description", g_variant_new_string(trigger));
+			g_variant_builder_add(
+				&out, "{sv}", "trigger_description",
+				g_variant_new_string(fake.no_triggers || (fake.untriggered_id &&
+									  strcmp(id, fake.untriggered_id) == 0)
+							     ? ""
+							     : trigger));
 			g_variant_builder_add(&list, "(s@a{sv})", id, g_variant_builder_end(&out));
 			g_variant_unref(props);
 		}
@@ -291,7 +312,7 @@ static GVariant *portal_property(GDBusConnection *conn, const char *sender, cons
 	if (fake.num_registers == 0)
 		fake.register_too_late = true;
 	if (strcmp(property, "version") == 0)
-		return g_variant_new_uint32(1);
+		return g_variant_new_uint32(fake.version ? fake.version : 1);
 	return NULL;
 }
 
@@ -476,9 +497,13 @@ static int setup(void **state)
 	assert_int_equal(os_event_init(&hotkey_test_obs->hotkeys.stop_event, OS_EVENT_TYPE_MANUAL), 0);
 	hotkey_test_obs->hotkeys.strict_modifiers = true;
 	hotkey_test_obs->hotkeys.signals = signal_handler_create();
-	static const char *signals[] = {"void hotkey_register(ptr key)", "void hotkey_unregister(ptr key)",
+	static const char *signals[] = {"void hotkey_register(ptr key)",
+					"void hotkey_unregister(ptr key)",
 					"void hotkey_bindings_changed(ptr key)",
-					"void hotkey_background_press_changed(bool enabled)", NULL};
+					"void hotkey_background_press_changed(bool enabled)",
+					"void hotkey_background_status_changed()",
+					"void hotkey_background_probe(string id)",
+					NULL};
 	assert_true(signal_handler_add_array(hotkey_test_obs->hotkeys.signals, signals));
 	assert_int_equal(pthread_create(&hotkey_thread, NULL, obs_hotkey_thread, NULL), 0);
 	return 0;
@@ -1025,6 +1050,481 @@ static void declined_set_stays_declined_across_disable(void **state)
 	fake_portal_stop();
 }
 
+/* ------------------------------------------------------------------------ */
+/* Status for Settings -> Hotkeys (obs_hotkeys_get_background_state)        */
+
+static enum obs_hotkeys_background_state want_state;
+
+static bool state_is(void *data)
+{
+	UNUSED_PARAMETER(data);
+	return obs_hotkeys_get_background_state(NULL) == want_state;
+}
+
+static const char *state_name(enum obs_hotkeys_background_state state)
+{
+	switch (state) {
+	case OBS_HOTKEYS_BACKGROUND_NATIVE:
+		return "native";
+	case OBS_HOTKEYS_BACKGROUND_STARTING:
+		return "starting";
+	case OBS_HOTKEYS_BACKGROUND_UNAVAILABLE:
+		return "unavailable";
+	case OBS_HOTKEYS_BACKGROUND_IDLE:
+		return "idle";
+	case OBS_HOTKEYS_BACKGROUND_WAITING:
+		return "waiting";
+	case OBS_HOTKEYS_BACKGROUND_ACTIVE:
+		return "active";
+	case OBS_HOTKEYS_BACKGROUND_DECLINED:
+		return "declined";
+	case OBS_HOTKEYS_BACKGROUND_CLOSED:
+		return "closed";
+	case OBS_HOTKEYS_BACKGROUND_FAILED:
+		return "failed";
+	}
+	return "?";
+}
+
+static void expect_state(enum obs_hotkeys_background_state state, const char *why)
+{
+	want_state = state;
+	if (!wait_until(state_is, NULL)) {
+		fprintf(stderr, "%s: background hotkeys are '%s', expected '%s'\n", why,
+			state_name(obs_hotkeys_get_background_state(NULL)), state_name(state));
+		fail();
+	}
+}
+
+static uint32_t background_flags(void)
+{
+	uint32_t flags = 0;
+	obs_hotkeys_get_background_state(&flags);
+	return flags;
+}
+
+struct shortcut_info {
+	obs_key_combination_t combo;
+	bool found;
+	bool bound;
+	char trigger[64];
+	size_t count;
+};
+
+static bool find_shortcut(void *data, obs_key_combination_t combo, const char *trigger, bool bound)
+{
+	struct shortcut_info *info = data;
+	info->count++;
+	if (combo.key == info->combo.key && combo.modifiers == info->combo.modifiers) {
+		info->found = true;
+		info->bound = bound;
+		snprintf(info->trigger, sizeof(info->trigger), "%s", trigger ? trigger : "(none)");
+	}
+	return true;
+}
+
+static struct shortcut_info shortcut_info(obs_key_combination_t combo)
+{
+	struct shortcut_info info = {.combo = combo};
+	obs_hotkeys_enum_background_shortcuts(find_shortcut, &info);
+	return info;
+}
+
+static bool trigger_is(void *data)
+{
+	struct shortcut_info info = shortcut_info(f13);
+	return info.found && strcmp(info.trigger, (const char *)data) == 0;
+}
+
+static volatile long status_signals;
+
+static void count_status(void *data, calldata_t *params)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(params);
+	os_atomic_inc_long(&status_signals);
+}
+
+static char probed_id[64];
+static volatile long probes;
+
+static void record_probe(void *data, calldata_t *params)
+{
+	UNUSED_PARAMETER(data);
+	snprintf(probed_id, sizeof(probed_id), "%s", calldata_string(params, "id"));
+	os_atomic_inc_long(&probes);
+}
+
+static bool probed(void *data)
+{
+	return os_atomic_load_long(&probes) >= (long)(uintptr_t)data;
+}
+
+/* Without a platform client (X11, Windows, macOS) OBS sees background
+ * presses itself: every combination works in the background. */
+static void native_without_portal_client(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+
+	uint32_t flags = 1234;
+	assert_int_equal(obs_hotkeys_get_background_state(&flags), OBS_HOTKEYS_BACKGROUND_NATIVE);
+	assert_int_equal(flags, 0);
+	assert_null(obs_hotkeys_get_background_app_id());
+	assert_null(obs_hotkeys_get_background_error());
+	assert_true(obs_hotkey_combination_is_background(f13));
+	assert_true(obs_hotkey_combination_is_background((obs_key_combination_t){0, OBS_KEY_MOUSE4}));
+	assert_null(obs_hotkey_combination_get_background_id(f13));
+	assert_null(obs_hotkey_combination_get_background_trigger(f13));
+}
+
+/* KDE/GNOME-like desktop: it reports the trigger it assigned, so Settings
+ * can show it per row; a trigger changed in the desktop shows up too. */
+static void status_reports_bound_shortcuts(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	signal_handler_connect(hotkey_test_obs->hotkeys.signals, "hotkey_background_status_changed", count_status,
+			       NULL);
+	os_atomic_set_long(&status_signals, 0);
+
+	struct hotkey_log talk = {0}, record = {0}, mouse = {0};
+	register_bound("push-to-talk", &talk, f13);
+	register_bound("record", &record, ctrl_shift_a);
+	register_bound("mouse", &mouse, (obs_key_combination_t){0, OBS_KEY_MOUSE4});
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "after BindShortcuts");
+	assert_true(os_atomic_load_long(&status_signals) > 0);
+
+	uint32_t flags = background_flags();
+	assert_true(flags & OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS);
+	assert_false(flags & OBS_HOTKEYS_BACKGROUND_PAUSED);
+	assert_false(flags & OBS_HOTKEYS_BACKGROUND_CONFIGURABLE);
+	assert_string_equal(obs_hotkeys_get_background_app_id(), "com.obsproject.Studio");
+
+	struct shortcut_info info = shortcut_info(f13);
+	assert_true(info.found);
+	assert_true(info.bound);
+	assert_string_equal(info.trigger, "F13");
+	assert_int_equal(info.count, 2);
+	info = shortcut_info(ctrl_shift_a);
+	assert_true(info.bound);
+	assert_string_equal(info.trigger, "CTRL+SHIFT+a");
+	assert_false(shortcut_info((obs_key_combination_t){0, OBS_KEY_MOUSE4}).found);
+
+	/* Per-row markers: mouse buttons and modifier-only stay focus-only. */
+	assert_true(obs_hotkey_combination_is_background(f13));
+	assert_false(obs_hotkey_combination_is_background((obs_key_combination_t){0, OBS_KEY_MOUSE4}));
+	assert_false(obs_hotkey_combination_is_background((obs_key_combination_t){INTERACT_CONTROL_KEY, OBS_KEY_NONE}));
+	char *id = obs_hotkey_combination_get_background_id(ctrl_shift_a);
+	assert_non_null(id);
+	assert_string_equal(id, "ctrl+shift+OBS_KEY_A");
+	bfree(id);
+	assert_null(obs_hotkey_combination_get_background_id((obs_key_combination_t){0, OBS_KEY_MOUSE4}));
+	char *trigger = obs_hotkey_combination_get_background_trigger(ctrl_shift_a);
+	assert_non_null(trigger);
+	assert_string_equal(trigger, "CTRL+SHIFT+a");
+	bfree(trigger);
+
+	emit_shortcuts_changed(fake.last_bind_session, "OBS_KEY_F13", "Pause");
+	if (!wait_until(trigger_is, "Pause")) {
+		fprintf(stderr, "trigger changed in the desktop not reported: '%s'\n", shortcut_info(f13).trigger);
+		fail();
+	}
+
+	obs_nix_portal_shortcuts_stop(portal);
+	signal_handler_disconnect(hotkey_test_obs->hotkeys.signals, "hotkey_background_status_changed", count_status,
+				  NULL);
+	fake_portal_stop();
+}
+
+/* Hyprland-like desktop: shortcuts are bound but no trigger comes back; the
+ * keys must be bound in the compositor's config. */
+static void status_without_desktop_triggers(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	fake.no_triggers = true;
+	fake.version = 2;
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "after BindShortcuts");
+
+	uint32_t flags = background_flags();
+	assert_false(flags & OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS);
+	assert_true(flags & OBS_HOTKEYS_BACKGROUND_CONFIGURABLE);
+	struct shortcut_info info = shortcut_info(f13);
+	assert_true(info.bound);
+	assert_string_equal(info.trigger, "(none)");
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* The user dismissed the desktop's dialog: Settings shows it, and "Ask
+ * again" binds the same set again without a new combination. */
+static void declined_then_asked_again(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	fake.bind_response = 1;
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_DECLINED, "cancelled dialog");
+	struct shortcut_info info = shortcut_info(f13);
+	assert_true(info.found);
+	assert_false(info.bound);
+	expect_no_bind_after(1, 700, "declined set");
+
+	fake.bind_response = 0;
+	obs_hotkeys_retry_background();
+	expect_bind(2);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "asked again");
+	assert_true(shortcut_info(f13).bound);
+
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", true);
+	assert_true(wait_until(log_pressed, &talk));
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", false);
+	assert_true(wait_until(log_released, &talk));
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* The desktop revoked the shortcuts: Settings shows it; asking again binds. */
+static void closed_then_asked_again(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "bound");
+
+	emit_session_closed(find_session(fake.last_bind_session));
+	expect_state(OBS_HOTKEYS_BACKGROUND_CLOSED, "session closed by the desktop");
+	assert_false(shortcut_info(f13).bound);
+
+	obs_hotkeys_retry_background();
+	expect_bind(2);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "asked again");
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* Settings disables background presses while it is open, which releases
+ * the keys; the status keeps the last binding with the paused flag. "Test a
+ * key" (the probe) binds them meanwhile and reports a press without running
+ * any hotkey; ending the probe releases them again. */
+static void paused_status_and_probe(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	signal_handler_connect(hotkey_test_obs->hotkeys.signals, "hotkey_background_probe", record_probe, NULL);
+	os_atomic_set_long(&probes, 0);
+	probed_id[0] = 0;
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "bound");
+	struct fake_session *first = find_session(fake.last_bind_session);
+
+	obs_hotkey_enable_background_press(false);
+	assert_true(wait_until(session_is_closed, first));
+	serve_for(100);
+	assert_int_equal(obs_hotkeys_get_background_state(NULL), OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_PAUSED);
+	assert_true(shortcut_info(f13).found);
+
+	obs_hotkeys_set_background_probe(true);
+	expect_bind(2);
+	serve_for(100);
+	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_PAUSED);
+	struct fake_session *probe_session = find_session(fake.last_bind_session);
+
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", true);
+	if (!wait_until(probed, (void *)(uintptr_t)1)) {
+		fprintf(stderr, "a probed key press sent no hotkey_background_probe\n");
+		fail();
+	}
+	assert_string_equal(probed_id, "OBS_KEY_F13");
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", false);
+	serve_for(150);
+	assert_int_equal(os_atomic_load_long(&talk.presses), 0);
+	assert_false(obs_nix_hotkey_state_is_pressed(&key_state, OBS_KEY_F13));
+
+	obs_hotkeys_set_background_probe(false);
+	if (!wait_until(session_is_closed, probe_session)) {
+		fprintf(stderr, "probe ended but the desktop still holds the keys\n");
+		fail();
+	}
+	serve_for(100);
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_PAUSED);
+
+	obs_hotkey_enable_background_press(true);
+	expect_bind(3);
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", true);
+	assert_true(wait_until(log_pressed, &talk));
+	emit_shortcut(fake.last_bind_session, "OBS_KEY_F13", false);
+	assert_true(wait_until(log_released, &talk));
+	assert_int_equal(os_atomic_load_long(&probes), 1);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	signal_handler_disconnect(hotkey_test_obs->hotkeys.signals, "hotkey_background_probe", record_probe, NULL);
+	fake_portal_stop();
+}
+
+/* KDE: the user accepted the dialog but left one shortcut without a key;
+ * that one is not bound, so Settings must not call it working. */
+static void untriggered_shortcut_is_not_bound(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	fake.untriggered_id = "ctrl+shift+OBS_KEY_A";
+
+	struct hotkey_log talk = {0}, record = {0};
+	register_bound("push-to-talk", &talk, f13);
+	register_bound("record", &record, ctrl_shift_a);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "partly approved");
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS);
+	assert_true(shortcut_info(f13).bound);
+	if (shortcut_info(ctrl_shift_a).bound) {
+		fprintf(stderr, "a shortcut the desktop gave no key is reported as bound\n");
+		fail();
+	}
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* The portal restarts while Settings is open (background presses off):
+ * Settings shows that it went away, then that the keys are not bound yet;
+ * closing Settings binds them. */
+static void status_follows_portal_restart(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "bound");
+	obs_hotkey_enable_background_press(false);
+
+	fake_portal_own_name(false);
+	expect_state(OBS_HOTKEYS_BACKGROUND_FAILED, "portal gone");
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_RESTARTING);
+	assert_false(shortcut_info(f13).bound);
+
+	fake_portal_own_name(true);
+	expect_state(OBS_HOTKEYS_BACKGROUND_IDLE, "portal back, presses off");
+	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_RESTARTING);
+	expect_no_bind_after(1, 500, "presses off after the restart");
+
+	obs_hotkey_enable_background_press(true);
+	expect_bind(2);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "presses on again");
+	assert_true(shortcut_info(f13).bound);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* No GlobalShortcuts portal: Settings says hotkeys only work while focused,
+ * and every combination is focus-only. */
+static void status_without_portal(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(false);
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_state(OBS_HOTKEYS_BACKGROUND_UNAVAILABLE, "no portal");
+	char *error = obs_hotkeys_get_background_error();
+	assert_non_null(error);
+	bfree(error);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* The portal refuses the session (no app id: OBS run from a build directory
+ * without its desktop file): Settings shows the portal's reason. */
+static void status_reports_portal_error(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+	fake.create_error = "An app id is required";
+
+	struct hotkey_log talk = {0};
+	register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_state(OBS_HOTKEYS_BACKGROUND_FAILED, "CreateSession refused");
+	char *error = obs_hotkeys_get_background_error();
+	assert_non_null(error);
+	if (!strstr(error, "An app id is required")) {
+		fprintf(stderr, "error '%s' does not carry the portal's reason\n", error);
+		fail();
+	}
+	bfree(error);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* Only a mouse button is bound: nothing to hand to the desktop. */
+static void status_idle_with_mouse_only(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log mouse = {0};
+	register_bound("mouse", &mouse, (obs_key_combination_t){0, OBS_KEY_MOUSE4});
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_state(OBS_HOTKEYS_BACKGROUND_IDLE, "mouse binding only");
+	expect_no_bind_after(0, 700, "mouse binding only");
+	assert_int_equal(shortcut_info(f13).count, 0);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1038,6 +1538,17 @@ int main(void)
 		cmocka_unit_test_setup_teardown(disabled_background_press_closes_session, setup, teardown),
 		cmocka_unit_test_setup_teardown(disabled_at_start_binds_once_enabled, setup, teardown),
 		cmocka_unit_test_setup_teardown(declined_set_stays_declined_across_disable, setup, teardown),
+		cmocka_unit_test_setup_teardown(native_without_portal_client, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_reports_bound_shortcuts, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_without_desktop_triggers, setup, teardown),
+		cmocka_unit_test_setup_teardown(declined_then_asked_again, setup, teardown),
+		cmocka_unit_test_setup_teardown(closed_then_asked_again, setup, teardown),
+		cmocka_unit_test_setup_teardown(paused_status_and_probe, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_without_portal, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_reports_portal_error, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_idle_with_mouse_only, setup, teardown),
+		cmocka_unit_test_setup_teardown(untriggered_shortcut_is_not_bound, setup, teardown),
+		cmocka_unit_test_setup_teardown(status_follows_portal_restart, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

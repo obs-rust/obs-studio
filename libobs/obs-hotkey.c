@@ -1133,6 +1133,55 @@ void obs_hotkey_enable_background_press(bool enable)
 	signal_handler_signal(obs->hotkeys.signals, "hotkey_background_press_changed", &data);
 }
 
+/* Stubs: no platform reports background hotkey status yet. */
+enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags)
+{
+	if (flags)
+		*flags = 0;
+	return OBS_HOTKEYS_BACKGROUND_NATIVE;
+}
+
+char *obs_hotkeys_get_background_error(void)
+{
+	return NULL;
+}
+
+const char *obs_hotkeys_get_background_app_id(void)
+{
+	return NULL;
+}
+
+bool obs_hotkey_combination_is_background(obs_key_combination_t combo)
+{
+	UNUSED_PARAMETER(combo);
+	return true;
+}
+
+char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
+{
+	UNUSED_PARAMETER(combo);
+	return NULL;
+}
+
+char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
+{
+	UNUSED_PARAMETER(combo);
+	return NULL;
+}
+
+void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data)
+{
+	UNUSED_PARAMETER(func);
+	UNUSED_PARAMETER(data);
+}
+
+void obs_hotkeys_retry_background(void) {}
+
+void obs_hotkeys_set_background_probe(bool enable)
+{
+	UNUSED_PARAMETER(enable);
+}
+
 struct obs_query_hotkeys_helper {
 	uint32_t modifiers;
 	bool no_press;

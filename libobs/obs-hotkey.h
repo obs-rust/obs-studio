@@ -235,6 +235,93 @@ EXPORT void obs_hotkey_inject_event(obs_key_combination_t hotkey, bool pressed);
 
 EXPORT void obs_hotkey_enable_background_press(bool enable);
 
+/* background hotkeys provided by the desktop
+ *
+ * On Wayland, hotkeys work while OBS is not focused only through the
+ * desktop's GlobalShortcuts portal, which binds one shortcut per key
+ * combination. Everywhere else OBS reads the keyboard itself and the state
+ * is OBS_HOTKEYS_BACKGROUND_NATIVE. The hotkey_background_status_changed
+ * signal is sent (on any thread) whenever the state, the flags or the
+ * shortcuts change. */
+
+enum obs_hotkeys_background_state {
+	/* OBS sees background key presses itself (X11, Windows, macOS). */
+	OBS_HOTKEYS_BACKGROUND_NATIVE,
+	/* Connecting to the desktop. */
+	OBS_HOTKEYS_BACKGROUND_STARTING,
+	/* The desktop offers no background shortcuts: hotkeys only work
+	 * while OBS is focused. */
+	OBS_HOTKEYS_BACKGROUND_UNAVAILABLE,
+	/* No binding can be a background shortcut (none, or only mouse
+	 * buttons and modifier-only keys). */
+	OBS_HOTKEYS_BACKGROUND_IDLE,
+	/* The shortcuts were handed to the desktop, which may be asking the
+	 * user to approve them. */
+	OBS_HOTKEYS_BACKGROUND_WAITING,
+	/* The desktop bound the shortcuts. */
+	OBS_HOTKEYS_BACKGROUND_ACTIVE,
+	/* The user cancelled the desktop's dialog or the desktop refused;
+	 * see obs_hotkeys_retry_background(). */
+	OBS_HOTKEYS_BACKGROUND_DECLINED,
+	/* The desktop ended the shortcuts (revoked in its settings). */
+	OBS_HOTKEYS_BACKGROUND_CLOSED,
+	/* Talking to the desktop failed; see obs_hotkeys_get_background_error(). */
+	OBS_HOTKEYS_BACKGROUND_FAILED,
+};
+
+/* Background presses are disabled (obs_hotkey_enable_background_press), so
+ * the desktop holds no keys for OBS right now; the state is that of the last
+ * binding, which comes back when presses are enabled. */
+#define OBS_HOTKEYS_BACKGROUND_PAUSED (1 << 0)
+/* The desktop reported the trigger it assigned to each shortcut (it lets the
+ * user pick keys, as KDE and GNOME do). Unset once shortcuts are bound: the
+ * desktop takes the keys from its own configuration instead (Hyprland). */
+#define OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS (1 << 1)
+/* The desktop can open its own editor for OBS's shortcuts. */
+#define OBS_HOTKEYS_BACKGROUND_CONFIGURABLE (1 << 2)
+/* With OBS_HOTKEYS_BACKGROUND_FAILED: the desktop portal went away; OBS
+ * binds again by itself when it comes back. */
+#define OBS_HOTKEYS_BACKGROUND_RESTARTING (1 << 3)
+
+EXPORT enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags);
+
+/* Why the state is OBS_HOTKEYS_BACKGROUND_UNAVAILABLE or _FAILED, as the
+ * desktop said it, or NULL. Free with bfree(). */
+EXPORT char *obs_hotkeys_get_background_error(void);
+
+/* The application id the desktop files OBS's shortcuts under, or NULL when
+ * the state is OBS_HOTKEYS_BACKGROUND_NATIVE. */
+EXPORT const char *obs_hotkeys_get_background_app_id(void);
+
+/* Whether combo works while OBS is not focused. Always true when native;
+ * mouse buttons and modifier-only combinations are not background shortcuts
+ * on Wayland. */
+EXPORT bool obs_hotkey_combination_is_background(obs_key_combination_t combo);
+
+/* The desktop shortcut id for combo ("ctrl+shift+OBS_KEY_F13"), or NULL when
+ * native or when combo is not a background shortcut. Free with bfree(). */
+EXPORT char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo);
+
+/* The key OBS suggests to the desktop for combo, in the XDG shortcuts format
+ * with XKB key names ("CTRL+SHIFT+F13", "LOGO+a"), or NULL. Free with
+ * bfree(). */
+EXPORT char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo);
+
+/* The shortcuts of the last binding: bound is false for combinations the
+ * desktop has not bound (declined or closed). trigger is the key the desktop
+ * reports for the shortcut, or NULL when it reports none. */
+typedef bool (*obs_hotkey_background_enum_func)(void *data, obs_key_combination_t combo, const char *trigger,
+						bool bound);
+EXPORT void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data);
+
+/* Ask the desktop again for shortcuts it declined or closed. */
+EXPORT void obs_hotkeys_retry_background(void);
+
+/* While enabled, the shortcuts stay bound even while background presses are
+ * disabled, and an activated shortcut sends hotkey_background_probe (string
+ * id) instead of pressing hotkeys: lets the user test a key from Settings. */
+EXPORT void obs_hotkeys_set_background_probe(bool enable);
+
 /* hotkey callback routing (trigger callbacks through e.g. a UI thread) */
 
 typedef void (*obs_hotkey_callback_router_func)(void *data, obs_hotkey_id id, bool pressed);
