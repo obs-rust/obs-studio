@@ -2,52 +2,64 @@
 
 #include <stdio.h>
 
-/* Stub: the arithmetic MediaControls uses today. The elapsed label is always
- * derived from the slider position, in float. */
+static int64_t clamp_time(int64_t time_ms, int64_t duration_ms)
+{
+	if (time_ms < 0 || duration_ms <= 0)
+		return 0;
+	return time_ms > duration_ms ? duration_ms : time_ms;
+}
 
 int media_time_to_slider(int64_t time_ms, int64_t duration_ms, int slider_max)
 {
-	float time = (float)time_ms;
-	float duration = (float)duration_ms;
-
-	if (!duration)
+	if (duration_ms <= 0 || slider_max <= 0)
 		return 0;
-	return (int)((time / duration) * (float)slider_max);
+
+	time_ms = clamp_time(time_ms, duration_ms);
+	return (int)(time_ms * slider_max / duration_ms);
 }
 
 int64_t media_time_from_slider(int slider_value, int slider_max, int64_t duration_ms)
 {
-	float percent = (float)slider_value / (float)slider_max;
+	if (duration_ms <= 0 || slider_max <= 0 || slider_value <= 0)
+		return 0;
+	if (slider_value >= slider_max)
+		return duration_ms;
 
-	return (int64_t)(percent * (float)duration_ms);
-}
-
-static void format_seconds(char *buf, size_t size, const char *prefix, int total_seconds)
-{
-	int seconds = total_seconds % 60;
-	int total_minutes = total_seconds / 60;
-	int minutes = total_minutes % 60;
-	int hours = total_minutes / 60;
-
-	snprintf(buf, size, "%s%02d:%02d:%02d", prefix, hours, minutes, seconds);
+	return duration_ms * slider_value / slider_max;
 }
 
 void media_time_format(char *buf, size_t size, int64_t time_ms)
 {
-	format_seconds(buf, size, "", (int)(time_ms / 1000));
+	long long total_seconds = time_ms > 0 ? (long long)(time_ms / 1000) : 0;
+	long long hours = total_seconds / 3600;
+	int minutes = (int)(total_seconds / 60 % 60);
+	int seconds = (int)(total_seconds % 60);
+
+	snprintf(buf, size, "%02lld:%02d:%02d", hours, minutes, seconds);
 }
 
 void media_time_get_labels(struct media_time_labels *labels, int64_t time_ms, int64_t duration_ms, bool seeking,
 			   int slider_value, int slider_max, bool countdown)
 {
-	int val = seeking ? slider_value : media_time_to_slider(time_ms, duration_ms, slider_max);
-	float duration = (float)duration_ms;
-	float percent = (float)val / (float)slider_max;
-	float time = percent * duration;
+	int64_t elapsed;
 
-	format_seconds(labels->elapsed, sizeof(labels->elapsed), "", (int)(time / 1000.0f));
-	if (!countdown)
-		format_seconds(labels->duration, sizeof(labels->duration), "", (int)(duration / 1000.0f));
+	if (duration_ms < 0)
+		duration_ms = 0;
+
+	/* The slider has only slider_max steps, so it is used for the label
+	 * only while the user drags it. Otherwise the label shows the media's
+	 * own time, which moves every second whatever the duration. */
+	if (seeking)
+		elapsed = media_time_from_slider(slider_value, slider_max, duration_ms);
 	else
-		format_seconds(labels->duration, sizeof(labels->duration), "-", (int)((duration - time) / 1000.0f));
+		elapsed = clamp_time(time_ms, duration_ms);
+
+	media_time_format(labels->elapsed, sizeof(labels->elapsed), elapsed);
+
+	if (!countdown) {
+		media_time_format(labels->duration, sizeof(labels->duration), duration_ms);
+	} else {
+		labels->duration[0] = '-';
+		media_time_format(labels->duration + 1, sizeof(labels->duration) - 1, duration_ms - elapsed);
+	}
 }

@@ -21,12 +21,12 @@ private:
 	bool countDownTimer = false;
 	bool isSlideshow = false;
 
-	QString FormatSeconds(int totalSeconds);
 	void StartMediaTimer();
 	void StopMediaTimer();
 	void RefreshControls();
 	void SetScene(OBSScene scene);
 	int64_t GetSliderTime(int val);
+	void SetTimeLabels(int64_t time, int64_t duration, bool seeking, int val);
 
 	static void OBSMediaStopped(void *data, calldata_t *calldata);
 	static void OBSMediaPlay(void *data, calldata_t *calldata);
@@ -63,7 +63,7 @@ private slots:
 	void MoveSliderBackwards(int seconds = 5);
 
 	void UpdateSlideCounter();
-	void UpdateLabels(int val);
+	void UpdateLabels(int val, bool seeking);
 
 public slots:
 	void PlayMedia();
