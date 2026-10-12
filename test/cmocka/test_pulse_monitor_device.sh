@@ -1,5 +1,6 @@
 #!/bin/sh
-# Runs test_pulse_monitor_device against a private PipeWire sound server:
+# Runs a PulseAudio end-to-end test (test_pulse_monitor_device,
+# test_pulse_stream_restart) against a private PipeWire sound server:
 # its own runtime dir, config and D-Bus, no hardware devices. Exits 77 (skip)
 # when PipeWire, WirePlumber, pipewire-pulse, pactl or dbus-run-session are
 # missing.
