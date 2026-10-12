@@ -480,10 +480,32 @@ static unsigned vlcs_video_format(void **p_data, char *chroma, unsigned *width, 
 	return 1;
 }
 
+/* libVLC decodes up to two seconds ahead, and with some demuxers (Ogg, MP4)
+ * it hands that over in bursts: about a second of audio at once, then
+ * nothing for most of a second. libobs places the audio by its timestamps,
+ * but volume meters and other audio capture callbacks see it when it is
+ * handed over, so they would jump and then reset. Hand the audio over as it
+ * plays instead, as an audio device takes it: hold each block until it is
+ * due to play in this much time. */
+#define AUDIO_LEAD_US 100000
+/* longest a hand-over or a drain waits */
+#define MAX_DRAIN_MS 3000
+
 static void vlcs_audio_play(void *data, const void *samples, unsigned count, int64_t pts)
 {
 	struct vlc_source *c = data;
 	size_t size = get_audio_size(c->audio.format, c->audio.speakers, count);
+
+	/* libVLC's audio thread; a stop or the next playlist item cuts the
+	 * wait short, as it does a drain */
+	int64_t wait_us = pts - AUDIO_LEAD_US - libvlc_clock_();
+	if (wait_us > 0) {
+		unsigned long wait_ms = (unsigned long)(wait_us / 1000);
+		if (wait_ms > MAX_DRAIN_MS)
+			wait_ms = MAX_DRAIN_MS;
+		if (wait_ms)
+			os_event_timedwait(c->drain_abort, wait_ms);
+	}
 
 	if (c->audio_capacity < count) {
 		c->audio.data[0] = brealloc((void *)c->audio.data[0], size);
@@ -503,12 +525,10 @@ static void vlcs_audio_play(void *data, const void *samples, unsigned count, int
 
 /* Without a drain callback libVLC considers a track finished as soon as its
  * last samples have been handed to vlcs_audio_play. Those samples are
- * timestamped about a second ahead of the libVLC clock, so the next playlist
- * item would start, and be timestamped, while libobs still has that second of
- * the previous track to play, and its audio would replace it. Wait until the
+ * timestamped ahead of the libVLC clock (by AUDIO_LEAD_US), so the next
+ * playlist item would start, and be timestamped, while libobs still has the
+ * end of the previous track to play, and its audio would replace it. Wait until the
  * audio handed over so far is due, as an audio device drains its buffer. */
-#define MAX_DRAIN_MS 3000
-
 static void vlcs_audio_drain(void *data)
 {
 	struct vlc_source *c = data;
