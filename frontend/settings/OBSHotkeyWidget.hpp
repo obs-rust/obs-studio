@@ -19,10 +19,13 @@
 
 #include "OBSHotkeyEdit.hpp"
 
+#include <QLabel>
 #include <QPointer>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include <functional>
 
 class OBSBasicSettings;
 class OBSHotkeyLabel;
@@ -73,6 +76,10 @@ public:
 	void Save();
 	void Save(std::vector<obs_key_combination_t> &combinations);
 
+	/* Background hotkey marker after each key field (Wayland); update
+	 * fills in or hides the label for that field's combination. */
+	void SetBackgroundMarkers(const std::function<void(obs_key_combination_t, QLabel *)> &update);
+
 	void enterEvent(QEnterEvent *event) override;
 	void leaveEvent(QEvent *event) override;
 
@@ -84,6 +91,8 @@ private:
 
 	std::vector<QPointer<QPushButton>> removeButtons;
 	std::vector<QPointer<QPushButton>> revertButtons;
+	std::vector<QPointer<QLabel>> markers;
+	std::function<void(obs_key_combination_t, QLabel *)> updateMarker;
 	OBSSignal bindingsChanged;
 	bool ignoreChangedBindings = false;
 	OBSBasicSettings *settings;

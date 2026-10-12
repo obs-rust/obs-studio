@@ -30,6 +30,7 @@
 
 class Auth;
 class OBSBasic;
+class OBSHotkeyBackgroundBanner;
 class OBSHotkeyWidget;
 class OBSPropertiesView;
 struct FFmpegFormat;
@@ -75,6 +76,7 @@ private:
 	int channelIndex = 0;
 	bool llBufferingEnabled = false;
 	bool hotkeysLoaded = false;
+	QPointer<OBSHotkeyBackgroundBanner> hotkeyBackgroundBanner;
 
 	int lastSimpleRecQualityIdx = 0;
 	int lastServiceIdx = -1;
@@ -191,6 +193,8 @@ private:
 	void LoadAudioSettings();
 	void LoadVideoSettings();
 	void LoadHotkeySettings(obs_hotkey_id ignoreKey = OBS_INVALID_HOTKEY_ID);
+	void LoadHotkeyBackgroundBanner();
+	void UpdateHotkeyBackgroundMarkers();
 	void LoadA11ySettings(bool presetChange = false);
 	void LoadAppearanceSettings(bool reload = false);
 	void LoadAdvancedSettings();

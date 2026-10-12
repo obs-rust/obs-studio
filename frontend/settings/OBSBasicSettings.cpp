@@ -17,6 +17,7 @@
  ******************************************************************************/
 
 #include "OBSBasicSettings.hpp"
+#include "OBSHotkeyBackgroundBanner.hpp"
 #include "OBSHotkeyLabel.hpp"
 #include "OBSHotkeyWidget.hpp"
 
@@ -42,6 +43,7 @@
 #include <qt-wrappers.hpp>
 
 #include <QCompleter>
+#include <QFontMetrics>
 #include <QStandardItemModel>
 
 #include <sstream>
@@ -2776,6 +2778,80 @@ static inline void AddHotkeys(QFormLayout &layout, Func &&getName,
 	}
 }
 
+/* Background hotkeys through the desktop (Wayland): a status banner above
+ * the hotkeys and a marker after each key field. */
+void OBSBasicSettings::LoadHotkeyBackgroundBanner()
+{
+	if (hotkeyBackgroundBanner) {
+		hotkeyBackgroundBanner->Refresh();
+		return;
+	}
+	if (obs_hotkeys_get_background_state(nullptr) == OBS_HOTKEYS_BACKGROUND_NATIVE) {
+		return;
+	}
+
+	auto combos = [this]() {
+		std::vector<obs_key_combination_t> combos;
+		for (auto &hotkey : hotkeys) {
+			if (!hotkey.second) {
+				continue;
+			}
+			for (auto &edit : hotkey.second->edits) {
+				if (edit) {
+					combos.push_back(edit->key);
+				}
+			}
+		}
+		return combos;
+	};
+	auto offBySetting = [this]() {
+		return GetComboData(ui->hotkeyFocusType) == "DisableHotkeysOutOfFocus";
+	};
+
+	hotkeyBackgroundBanner = new OBSHotkeyBackgroundBanner(ui->hotkeyPage, combos, offBySetting);
+	connect(hotkeyBackgroundBanner, &OBSHotkeyBackgroundBanner::Refreshed, this,
+		&OBSBasicSettings::UpdateHotkeyBackgroundMarkers);
+	connect(ui->hotkeyFocusType, &QComboBox::currentIndexChanged, hotkeyBackgroundBanner,
+		[this]() { hotkeyBackgroundBanner->Refresh(); });
+	static_cast<QBoxLayout *>(ui->hotkeyPage->layout())->insertWidget(0, hotkeyBackgroundBanner);
+	hotkeyBackgroundBanner->Refresh();
+}
+
+void OBSBasicSettings::UpdateHotkeyBackgroundMarkers()
+{
+	if (!hotkeyBackgroundBanner) {
+		return;
+	}
+
+	const HotkeyBackground::Input &input = hotkeyBackgroundBanner->CurrentInput();
+	bool shown = hotkeyBackgroundBanner->isVisibleTo(ui->hotkeyPage);
+
+	/* One column wide enough for any marker, on every row, so the key
+	 * fields keep their width and stay aligned. */
+	int width = 0;
+	QFontMetrics metrics(hotkeyBackgroundBanner->font());
+	for (auto marker : {HotkeyBackground::Marker::Background, HotkeyBackground::Marker::FocusOnly,
+			    HotkeyBackground::Marker::NotInConfig, HotkeyBackground::Marker::Pending,
+			    HotkeyBackground::Marker::NotBound}) {
+		width = std::max(width, metrics.horizontalAdvance(OBSHotkeyBackgroundBanner::MarkerText(marker)));
+	}
+	width += metrics.averageCharWidth() * 2;
+
+	auto update = [input, shown, width](obs_key_combination_t combo, QLabel *label) {
+		HotkeyBackground::Marker marker = HotkeyBackground::MarkerFor(input, combo);
+		label->setVisible(shown && input.state != OBS_HOTKEYS_BACKGROUND_NATIVE);
+		label->setFixedWidth(width);
+		label->setText(OBSHotkeyBackgroundBanner::MarkerText(marker));
+		label->setToolTip(OBSHotkeyBackgroundBanner::MarkerToolTip(
+			marker, input, HotkeyBackground::DesktopTrigger(input, combo)));
+	};
+	for (auto &hotkey : hotkeys) {
+		if (hotkey.second) {
+			hotkey.second->SetBackgroundMarkers(update);
+		}
+	}
+}
+
 void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 {
 	hotkeys.clear();
@@ -2927,6 +3003,9 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 		connect(hw, &OBSHotkeyWidget::KeyChanged, this, [this, hotkeysLayout]() {
 			HotkeysChanged();
 			ScanDuplicateHotkeys(hotkeysLayout);
+			if (hotkeyBackgroundBanner) {
+				hotkeyBackgroundBanner->Refresh();
+			}
 		});
 		connect(hw, &OBSHotkeyWidget::SearchKey, this, [this](obs_key_combination_t combo) {
 			ui->hotkeyFilterSearch->setText("");
@@ -2995,6 +3074,7 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 	AddHotkeys(*hotkeysLayout, obs_service_get_name, services);
 
 	ScanDuplicateHotkeys(hotkeysLayout);
+	LoadHotkeyBackgroundBanner();
 
 	/* After this function returns the UI can still be unresponsive for a bit.
 	 * So by deferring the call to unsetCursor() to the Qt event loop it will

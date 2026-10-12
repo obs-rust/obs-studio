@@ -103,6 +103,13 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 	clear->setToolTip(QTStr("Clear"));
 	clear->setEnabled(!obs_key_combination_is_empty(combo));
 
+	auto marker = new QLabel;
+	marker->setProperty("class", "text-muted");
+	marker->setVisible(false);
+	if (updateMarker) {
+		updateMarker(combo, marker);
+	}
+
 	QObject::connect(edit, &OBSHotkeyEdit::KeyChanged, this, [=](obs_key_combination_t new_combo) {
 		clear->setEnabled(!obs_key_combination_is_empty(new_combo));
 		revert->setEnabled(edit->original != new_combo);
@@ -134,6 +141,7 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 	subLayout->addWidget(clear);
 	subLayout->addWidget(add);
 	subLayout->addWidget(remove);
+	subLayout->addWidget(marker);
 
 	if (removeButtons.size() == 1) {
 		removeButtons.front()->setEnabled(true);
@@ -143,10 +151,12 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 		revertButtons.insert(begin(revertButtons) + idx, revert);
 		removeButtons.insert(begin(removeButtons) + idx, remove);
 		edits.insert(begin(edits) + idx, edit);
+		markers.insert(begin(markers) + idx, marker);
 	} else {
 		revertButtons.emplace_back(revert);
 		removeButtons.emplace_back(remove);
 		edits.emplace_back(edit);
+		markers.emplace_back(marker);
 	}
 
 	layout()->insertLayout(idx, subLayout);
@@ -169,6 +179,7 @@ void OBSHotkeyWidget::RemoveEdit(size_t idx, bool signal)
 	revertButtons.erase(begin(revertButtons) + idx);
 	removeButtons.erase(begin(removeButtons) + idx);
 	edits.erase(begin(edits) + idx);
+	markers.erase(begin(markers) + idx);
 
 	auto item = layout()->takeAt(static_cast<int>(idx));
 	QLayoutItem *child = nullptr;
@@ -223,6 +234,16 @@ void OBSHotkeyWidget::HandleChangedBindings(obs_hotkey_id id_)
 	}
 
 	SetKeyCombinations(bindings);
+}
+
+void OBSHotkeyWidget::SetBackgroundMarkers(const std::function<void(obs_key_combination_t, QLabel *)> &update)
+{
+	updateMarker = update;
+	for (size_t i = 0; i < edits.size() && i < markers.size(); i++) {
+		if (edits[i] && markers[i]) {
+			update(edits[i]->key, markers[i]);
+		}
+	}
 }
 
 void OBSHotkeyWidget::enterEvent(QEnterEvent *event)
