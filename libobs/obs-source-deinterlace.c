@@ -17,6 +17,9 @@
 
 #include "obs-internal.h"
 
+/* A frame is due once the source clock is this far past its timestamp. */
+#define FRAME_TOLERANCE 2000000ULL
+
 static bool ready_deinterlace_frames(obs_source_t *source, uint64_t sys_time)
 {
 	struct obs_source_frame *next_frame = source->async_frames.array[0];
@@ -49,7 +52,6 @@ static bool ready_deinterlace_frames(obs_source_t *source, uint64_t sys_time)
 			}
 			source->async_frames.array[0]->prev_frame = prev_frame;
 		}
-		source->deinterlace_offset = 0;
 		source->last_frame_ts = next_frame->timestamp;
 		return true;
 	}
@@ -70,7 +72,7 @@ static bool ready_deinterlace_frames(obs_source_t *source, uint64_t sys_time)
 		 * helps smooth out async rendering to frame boundaries.  In
 		 * other words, tries to keep the framerate as smooth as
 		 * possible */
-		if ((source->last_frame_ts - next_frame->timestamp) < 2000000)
+		if ((source->last_frame_ts - next_frame->timestamp) < FRAME_TOLERANCE)
 			break;
 
 		if (prev_frame) {
@@ -129,18 +131,11 @@ static inline bool first_frame(obs_source_t *s)
 	return true;
 }
 
-static inline uint64_t uint64_diff(uint64_t ts1, uint64_t ts2)
-{
-	return (ts1 < ts2) ? (ts2 - ts1) : (ts1 - ts2);
-}
-
 #define TWOX_TOLERANCE 1000000
 #define TS_JUMP_THRESHOLD 70000000ULL
 
 static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_time)
 {
-	uint64_t half_interval;
-
 	if (s->async_unbuffered && s->deinterlace_offset) {
 		// Want to keep frame if it has not elapsed.
 		const uint64_t frame_end = s->deinterlace_frame_ts + s->deinterlace_offset +
@@ -156,8 +151,6 @@ static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_
 
 	if (!s->async_frames.num)
 		return;
-
-	half_interval = obs->video.video_half_frame_interval_ns;
 
 	if (first_frame(s) || ready_deinterlace_frames(s, sys_time)) {
 		uint64_t offset;
@@ -185,15 +178,36 @@ static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_
 
 		s->deinterlace_frame_ts = s->cur_async_frame->timestamp;
 
-		offset = obs->video.video_time - s->deinterlace_frame_ts;
-
-		if (!s->deinterlace_offset) {
-			s->deinterlace_offset = offset;
-		} else {
-			uint64_t offset_diff = uint64_diff(s->deinterlace_offset, offset);
-			if (offset_diff > half_interval)
-				s->deinterlace_offset = offset;
+		if (!s->async_unbuffered) {
+			/* Show the second field by the rule that picks frames:
+			 * once the source clock (last_frame_ts) is
+			 * FRAME_TOLERANCE past the field's time, so the offset
+			 * maps source time to video time. Anchoring it at the
+			 * tick that picked the frame put the second field up
+			 * to a canvas interval late, after the next frame when
+			 * the field rate does not match the canvas (50i into
+			 * 60 fps skipped a field in four). */
+			s->deinterlace_offset =
+				obs->video.video_time - s->last_frame_ts + FRAME_TOLERANCE + TWOX_TOLERANCE;
+			return;
 		}
+
+		/* Unbuffered frames are picked at the first tick after they
+		 * arrive and the previous frame ends, so the tick lags the
+		 * frame by anything up to a canvas interval. Re-anchoring the
+		 * offset at every pick held each frame for its duration
+		 * rounded up to whole ticks, so a 50i source fell behind a
+		 * 60 fps canvas and had frames dropped. Keep the offset unless
+		 * the frame comes earlier than it, or missed its tick and its
+		 * first field (a late delivery, a new clock). */
+		const uint64_t field_or_tick = s->deinterlace_half_duration > obs->video.video_frame_interval_ns
+						       ? s->deinterlace_half_duration
+						       : obs->video.video_frame_interval_ns;
+		offset = obs->video.video_time - s->deinterlace_frame_ts;
+		const int64_t late = (int64_t)(offset - s->deinterlace_offset);
+
+		if (!s->deinterlace_offset || late < 0 || (uint64_t)late + TWOX_TOLERANCE >= field_or_tick)
+			s->deinterlace_offset = offset;
 	}
 }
 
