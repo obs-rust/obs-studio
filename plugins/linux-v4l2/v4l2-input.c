@@ -99,6 +99,8 @@ struct v4l2_data {
 
 	/* the settings of the last update, for the saved camera controls */
 	obs_data_t *controls;
+	/* write the saved camera controls when the device opens */
+	bool restore_controls;
 };
 
 /* forward declarations */
@@ -319,6 +321,20 @@ static void v4l2_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "buffering", true);
 	obs_data_set_default_bool(settings, "auto_reset", false);
 	obs_data_set_default_int(settings, "timeout_frames", 5);
+	obs_data_set_default_bool(settings, "restore_controls", true);
+}
+
+/*
+ * The camera controls group: the option to restore them, then the device's
+ * controls.
+ */
+static obs_properties_t *v4l2_controls_properties(void)
+{
+	obs_properties_t *ctrl_props = obs_properties_create();
+	obs_property_t *restore =
+		obs_properties_add_bool(ctrl_props, "restore_controls", obs_module_text("RestoreCameraCtrls"));
+	obs_property_set_long_description(restore, obs_module_text("RestoreCameraCtrls.ToolTip"));
+	return ctrl_props;
 }
 
 /**
@@ -638,7 +654,7 @@ static bool device_selected(obs_properties_t *props, obs_property_t *p, obs_data
 		return false;
 
 	obs_property_t *prop = obs_properties_get(props, "input");
-	obs_properties_t *ctrl_props_new = obs_properties_create();
+	obs_properties_t *ctrl_props_new = v4l2_controls_properties();
 
 	obs_properties_remove_by_name(props, "controls");
 
@@ -845,7 +861,7 @@ static obs_properties_t *v4l2_properties(void *vptr)
 	obs_properties_add_int(props, "timeout_frames", obs_module_text("FramesUntilTimeout"), 2, 120, 1);
 
 	// a group to contain the camera control
-	obs_properties_t *ctrl_props = obs_properties_create();
+	obs_properties_t *ctrl_props = v4l2_controls_properties();
 	obs_properties_add_group(props, "controls", obs_module_text("CameraCtrls"), OBS_GROUP_NORMAL, ctrl_props);
 
 	obs_data_t *settings = obs_source_get_settings(data->source);
@@ -987,8 +1003,10 @@ static void v4l2_init(struct v4l2_data *data)
 	blog(LOG_INFO, "Framerate: %.2f fps", (float)fps_denom / fps_num);
 
 	/* The camera starts on the driver's values when it is plugged in, and
-	 * other programs can change them: write the saved controls. */
-	v4l2_apply_controls(data->dev, data->controls);
+	 * other programs can change them: write the saved controls, unless the
+	 * user leaves them to another program (an external PTZ controller). */
+	if (data->restore_controls)
+		v4l2_apply_controls(data->dev, data->controls);
 
 	/* map buffers */
 	if (v4l2_create_mmap(data->dev, &data->buffers) < 0) {
@@ -1088,6 +1106,11 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 	data->auto_reset = obs_data_get_bool(settings, "auto_reset");
 	data->timeout_frames = obs_data_get_int(settings, "timeout_frames");
 
+	/* Ticking the option writes nothing: it takes effect the next time
+	 * the device opens or the settings change. */
+	bool restore_was_on = data->restore_controls;
+	data->restore_controls = obs_data_get_bool(settings, "restore_controls");
+
 	/* A copy, as a replug reopens the device from the udev thread */
 	obs_data_release(data->controls);
 	data->controls = obs_data_create();
@@ -1097,7 +1120,7 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 
 	if (needs_restart)
 		v4l2_init(data);
-	else if (data->dev != -1)
+	else if (data->dev != -1 && data->restore_controls && restore_was_on)
 		v4l2_apply_controls(data->dev, data->controls);
 }
 
