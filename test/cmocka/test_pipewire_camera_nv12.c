@@ -44,6 +44,15 @@
  * rows of the frame width (UVC cameras through the V4L2 SPA plugin), the same
  * with padded rows, and one block per plane.
  *
+ * obsproject/obs-studio#13744 (reported by Owlock): a camera that offers only
+ * I420 (DroidCam's v4l2loopback device) stayed black, the stream failing
+ * with "no more input formats". The camera source lists a camera's formats
+ * through the format table (formats.c), which had no I420, so no format
+ * could be selected and the stream offered none the camera has. The I420
+ * cases offer only I420 (and YV12, its chroma planes swapped), select the
+ * format the way camera-portal.c does (none when the table lacks it), and
+ * send three planes in one block or one block each.
+ *
  * Needs an X display for obs_startup() (xvfb-run is enough); the wrapper
  * skips (77) without PipeWire, and the cases skip when obs_startup() or the
  * private PipeWire is not available. */
@@ -98,10 +107,21 @@ static void rgb_to_yuv709(struct rgb c, uint8_t *y, uint8_t *u, uint8_t *v)
 
 struct layout {
 	const char *name;
-	uint32_t blocks; /* 1: both planes in one block, 2: one per plane */
-	uint32_t stride; /* bytes per row, both planes */
-	uint32_t uv_pad; /* bytes before the chroma plane in a 2-block buffer */
+	uint32_t spa_format; /* NV12, I420 or YV12 */
+	uint32_t blocks;     /* 1: all planes in one block, else one per plane */
+	uint32_t stride;     /* bytes per luma row (NV12: both planes) */
+	uint32_t uv_pad;     /* bytes before a chroma plane in its own block */
 };
+
+static bool is_nv12(const struct layout *l)
+{
+	return l->spa_format == SPA_VIDEO_FORMAT_NV12;
+}
+
+static uint32_t n_planes(const struct layout *l)
+{
+	return is_nv12(l) ? 2 : 3;
+}
 
 struct producer {
 	struct pw_thread_loop *loop;
@@ -132,22 +152,44 @@ static uint32_t y_size(const struct layout *l)
 	return l->stride * HEIGHT;
 }
 
-static uint32_t uv_size(const struct layout *l)
+/* Bytes per chroma row: planar chroma rows are half the luma stride, as
+ * V4L2 lays out YU12. */
+static uint32_t c_stride(const struct layout *l)
 {
-	return l->stride * (HEIGHT / 2);
+	return is_nv12(l) ? l->stride : l->stride / 2;
 }
 
-static void fill_planes(uint8_t *y_plane, uint8_t *uv_plane, uint32_t stride)
+static uint32_t c_size(const struct layout *l)
 {
+	return c_stride(l) * (HEIGHT / 2);
+}
+
+static uint32_t frame_size(const struct layout *l)
+{
+	return y_size(l) + (n_planes(l) - 1) * c_size(l);
+}
+
+/* planes[]: the planes in memory order (YV12: Y, V, U). */
+static void fill_planes(const struct layout *l, uint8_t *planes[3])
+{
+	const bool yv12 = l->spa_format == SPA_VIDEO_FORMAT_YV12;
+	uint8_t *u_plane = planes[yv12 ? 2 : 1];
+	uint8_t *v_plane = planes[yv12 ? 1 : 2];
+
 	for (uint32_t row = 0; row < HEIGHT; row++) {
 		for (uint32_t x = 0; x < WIDTH; x++) {
 			uint8_t y, u, v;
 
 			rgb_to_yuv709(quadrant_colors[quadrant_at(x, row)], &y, &u, &v);
-			y_plane[row * stride + x] = y;
-			if ((row & 1) == 0 && (x & 1) == 0) {
-				uv_plane[(row / 2) * stride + x] = u;
-				uv_plane[(row / 2) * stride + x + 1] = v;
+			planes[0][row * l->stride + x] = y;
+			if ((row & 1) || (x & 1))
+				continue;
+			if (is_nv12(l)) {
+				planes[1][(row / 2) * l->stride + x] = u;
+				planes[1][(row / 2) * l->stride + x + 1] = v;
+			} else {
+				u_plane[(row / 2) * c_stride(l) + x / 2] = u;
+				v_plane[(row / 2) * c_stride(l) + x / 2] = v;
 			}
 		}
 	}
@@ -166,25 +208,34 @@ static void on_producer_process(void *data)
 		return;
 
 	buf = b->buffer;
-	if (l->blocks == 1 && buf->n_datas >= 1 && buf->datas[0].data &&
-	    buf->datas[0].maxsize >= y_size(l) + uv_size(l)) {
+	if (l->blocks == 1 && buf->n_datas >= 1 && buf->datas[0].data && buf->datas[0].maxsize >= frame_size(l)) {
 		struct spa_data *d = &buf->datas[0];
+		uint8_t *planes[3] = {d->data, (uint8_t *)d->data + y_size(l),
+				      (uint8_t *)d->data + y_size(l) + c_size(l)};
 
 		memset(d->data, 0, d->maxsize);
-		fill_planes(d->data, (uint8_t *)d->data + y_size(l), l->stride);
-		*d->chunk =
-			(struct spa_chunk){.offset = 0, .size = y_size(l) + uv_size(l), .stride = (int32_t)l->stride};
-	} else if (l->blocks == 2 && buf->n_datas >= 2 && buf->datas[0].data && buf->datas[1].data &&
-		   buf->datas[0].maxsize >= y_size(l) && buf->datas[1].maxsize >= l->uv_pad + uv_size(l)) {
-		struct spa_data *dy = &buf->datas[0], *duv = &buf->datas[1];
+		fill_planes(l, planes);
+		*d->chunk = (struct spa_chunk){.offset = 0, .size = frame_size(l), .stride = (int32_t)l->stride};
+	} else if (l->blocks == n_planes(l) && buf->n_datas >= l->blocks) {
+		uint8_t *planes[3] = {NULL};
 
-		memset(dy->data, 0, dy->maxsize);
-		memset(duv->data, 0, duv->maxsize);
-		fill_planes(dy->data, (uint8_t *)duv->data + l->uv_pad, l->stride);
-		*dy->chunk = (struct spa_chunk){.offset = 0, .size = y_size(l), .stride = (int32_t)l->stride};
-		*duv->chunk = (struct spa_chunk){.offset = l->uv_pad, .size = uv_size(l), .stride = (int32_t)l->stride};
+		for (uint32_t p = 0; p < l->blocks; p++) {
+			struct spa_data *d = &buf->datas[p];
+			uint32_t pad = p ? l->uv_pad : 0;
+			uint32_t size = p ? c_size(l) : y_size(l);
+
+			if (!d->data || d->maxsize < pad + size)
+				goto queue;
+			memset(d->data, 0, d->maxsize);
+			planes[p] = (uint8_t *)d->data + pad;
+			*d->chunk = (struct spa_chunk){.offset = pad,
+						       .size = size,
+						       .stride = (int32_t)(p ? c_stride(l) : l->stride)};
+		}
+		fill_planes(l, planes);
 	}
 
+queue:
 	pw_stream_queue_buffer(producer.stream, b);
 }
 
@@ -194,7 +245,7 @@ static void on_producer_param_changed(void *data, uint32_t id, const struct spa_
 	uint8_t buffer[1024];
 	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 	const struct spa_pod *params[1];
-	uint32_t size = l->blocks == 1 ? y_size(l) + uv_size(l) : y_size(l);
+	uint32_t size = l->blocks == 1 ? frame_size(l) : y_size(l) + l->uv_pad;
 
 	UNUSED_PARAMETER(data);
 
@@ -303,7 +354,7 @@ static bool producer_start(const struct layout *l)
 	params[0] = spa_pod_builder_add_object(&b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType,
 					       SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype,
 					       SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
-					       SPA_POD_Id(SPA_VIDEO_FORMAT_NV12), SPA_FORMAT_VIDEO_size,
+					       SPA_POD_Id(l->spa_format), SPA_FORMAT_VIDEO_size,
 					       SPA_POD_Rectangle(&SPA_RECTANGLE(WIDTH, HEIGHT)),
 					       SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&SPA_FRACTION(30, 1)),
 					       SPA_FORMAT_VIDEO_colorMatrix, SPA_POD_Id(SPA_VIDEO_COLOR_MATRIX_BT709),
@@ -614,8 +665,15 @@ static void check_camera(const struct layout *l)
 	assert_non_null(camera);
 	obs_set_output_source(0, camera);
 
-	/* What camera-portal.c's stream_camera() does for a selected device. */
-	assert_true(obs_pw_video_format_from_spa_format(SPA_VIDEO_FORMAT_NV12, &format));
+	/* What camera-portal.c does for a selected device: its format list
+	 * (camera_format_list) offers the camera's formats found in the format
+	 * table, and stream_camera() connects with the selected one, or with
+	 * none (all zero) when nothing could be selected. */
+	if (!obs_pw_video_format_from_spa_format(l->spa_format, &format)) {
+		fprintf(stderr, "%s: the camera's only format is not in the format table: none can be selected\n",
+			l->name);
+		memset(&format, 0, sizeof(format));
+	}
 	connect_info = (struct obs_pipewire_connect_stream_info){
 		.stream_name = "OBS PipeWire Camera",
 		.stream_properties = pw_properties_new(PW_KEY_MEDIA_TYPE, "Video", PW_KEY_MEDIA_CATEGORY, "Capture",
@@ -668,7 +726,7 @@ static void check_camera(const struct layout *l)
 
 static void nv12_one_block(void **state)
 {
-	static const struct layout l = {"NV12, one block", 1, WIDTH, 0};
+	static const struct layout l = {"NV12, one block", SPA_VIDEO_FORMAT_NV12, 1, WIDTH, 0};
 
 	UNUSED_PARAMETER(state);
 	check_camera(&l);
@@ -676,7 +734,7 @@ static void nv12_one_block(void **state)
 
 static void nv12_one_block_padded_rows(void **state)
 {
-	static const struct layout l = {"NV12, one block, padded rows", 1, WIDTH + 32, 0};
+	static const struct layout l = {"NV12, one block, padded rows", SPA_VIDEO_FORMAT_NV12, 1, WIDTH + 32, 0};
 
 	UNUSED_PARAMETER(state);
 	check_camera(&l);
@@ -684,7 +742,39 @@ static void nv12_one_block_padded_rows(void **state)
 
 static void nv12_two_blocks(void **state)
 {
-	static const struct layout l = {"NV12, two blocks", 2, WIDTH, 64};
+	static const struct layout l = {"NV12, two blocks", SPA_VIDEO_FORMAT_NV12, 2, WIDTH, 64};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
+static void i420_one_block(void **state)
+{
+	static const struct layout l = {"I420, one block", SPA_VIDEO_FORMAT_I420, 1, WIDTH, 0};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
+static void i420_one_block_padded_rows(void **state)
+{
+	static const struct layout l = {"I420, one block, padded rows", SPA_VIDEO_FORMAT_I420, 1, WIDTH + 64, 0};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
+static void i420_three_blocks(void **state)
+{
+	static const struct layout l = {"I420, three blocks", SPA_VIDEO_FORMAT_I420, 3, WIDTH, 32};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
+static void yv12_one_block(void **state)
+{
+	static const struct layout l = {"YV12, one block", SPA_VIDEO_FORMAT_YV12, 1, WIDTH, 0};
 
 	UNUSED_PARAMETER(state);
 	check_camera(&l);
@@ -696,6 +786,10 @@ int main(void)
 		cmocka_unit_test(nv12_one_block),
 		cmocka_unit_test(nv12_one_block_padded_rows),
 		cmocka_unit_test(nv12_two_blocks),
+		cmocka_unit_test(i420_one_block),
+		cmocka_unit_test(i420_one_block_padded_rows),
+		cmocka_unit_test(i420_three_blocks),
+		cmocka_unit_test(yv12_one_block),
 	};
 
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {

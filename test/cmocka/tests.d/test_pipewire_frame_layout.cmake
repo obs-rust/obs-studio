@@ -1,6 +1,7 @@
 # Where the PipeWire camera source points an async frame's planes in a
-# PipeWire buffer (obsproject/obs-studio#13823, NV12 green or crashing). Fake
-# spa_buffers only: no PipeWire daemon, portal or display, so it runs in CI.
+# PipeWire buffer (obsproject/obs-studio#13823, NV12 green or crashing;
+# obsproject/obs-studio#13744, I420 and YV12 cameras). Fake spa_buffers only:
+# no PipeWire daemon, portal or display, so it runs in CI.
 if(OS_LINUX AND TARGET OBS::pipewire)
   get_target_property(_frame_layout_drm_includes Libdrm::Libdrm INTERFACE_INCLUDE_DIRECTORIES)
   add_executable(

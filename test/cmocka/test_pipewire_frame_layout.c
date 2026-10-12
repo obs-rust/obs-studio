@@ -9,6 +9,8 @@
 
 #include <spa/buffer/buffer.h>
 #include <spa/param/video/raw.h>
+#include <spa/param/video/type-info.h>
+#include <spa/debug/types.h>
 
 #include "formats.h"
 #include "frame-layout.h"
@@ -30,9 +32,16 @@
  * and check the planes the frame gets: every plane starts where the producer
  * put it, has the producer's stride, and lies inside the buffer. Buffers
  * that cannot hold a whole frame must be dropped. No PipeWire daemon or
- * display is needed. */
+ * display is needed.
+ *
+ * obsproject/obs-studio#13744 (reported by Owlock): a camera that offers only
+ * I420 (DroidCam's v4l2loopback device, YU12) could not be used: I420 was not
+ * in the format table, so the camera source listed no format for it and never
+ * offered I420 to the camera. I420 has three planes, luma and two chroma
+ * planes of half the width and half the rows, in one block or one block each.
+ * YV12 is the same with the chroma planes swapped. */
 
-#define MAX_BLOCKS 2
+#define MAX_BLOCKS 3
 
 struct test_buffer {
 	struct spa_buffer buffer;
@@ -67,7 +76,11 @@ static struct obs_pw_video_format format_of(uint32_t spa_format)
 {
 	struct obs_pw_video_format format = {0};
 
-	assert_true(obs_pw_video_format_from_spa_format(spa_format, &format));
+	if (!obs_pw_video_format_from_spa_format(spa_format, &format)) {
+		fprintf(stderr, "%s is not a format the PipeWire camera source supports\n",
+			spa_debug_type_find_short_name(spa_type_video_format, spa_format));
+		fail();
+	}
 	return format;
 }
 
@@ -262,6 +275,128 @@ static void packed_formats_unchanged(void **state)
 	free_blocks(&rgba);
 }
 
+/* I420 in one block, as v4l2loopback and UVC cameras send it (#13744): luma,
+ * then the U and V planes, each half the luma stride and half the rows. */
+static void i420_one_block(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 64, h = 48, size = w * h * 3 / 2;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, size, 0, size, w);
+
+	expect_used("I420, one block", layout(&frame, &tb, SPA_VIDEO_FORMAT_I420, w, h));
+	if (frame.format != VIDEO_FORMAT_I420) {
+		fprintf(stderr, "I420, one block: the frame is %s, expected I420\n",
+			get_video_format_name(frame.format));
+		fail();
+	}
+	expect_plane("I420, one block", &frame, &tb, 0, 0, 0, w, h);
+	expect_plane("I420, one block", &frame, &tb, 1, 0, (size_t)w * h, w / 2, h / 2);
+	expect_plane("I420, one block", &frame, &tb, 2, 0, (size_t)w * h + (w / 2) * (h / 2), w / 2, h / 2);
+	free_blocks(&tb);
+}
+
+/* Rows padded to 128 bytes (chroma rows to 64), odd width and height: the
+ * chroma planes have (w + 1) / 2 bytes in (h + 1) / 2 rows. */
+static void i420_one_block_padded_rows(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 99, h = 45, stride = 128, c_stride = 64, c_rows = (h + 1) / 2;
+	const uint32_t size = stride * h + 2 * c_stride * c_rows;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, size, 0, size, stride);
+
+	expect_used("I420, padded rows", layout(&frame, &tb, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, padded rows", &frame, &tb, 0, 0, 0, stride, h);
+	expect_plane("I420, padded rows", &frame, &tb, 1, 0, (size_t)stride * h, c_stride, c_rows);
+	expect_plane("I420, padded rows", &frame, &tb, 2, 0, (size_t)stride * h + c_stride * c_rows, c_stride, c_rows);
+	free_blocks(&tb);
+}
+
+/* No chunk stride: luma rows are the width rounded up to 4 bytes, chroma
+ * rows half that. */
+static void i420_one_block_without_stride(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 62, h = 48, stride = 64, size = stride * h * 3 / 2;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, size, 0, size, 0);
+
+	expect_used("I420, no chunk stride", layout(&frame, &tb, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, no chunk stride", &frame, &tb, 0, 0, 0, stride, h);
+	expect_plane("I420, no chunk stride", &frame, &tb, 1, 0, (size_t)stride * h, stride / 2, h / 2);
+	expect_plane("I420, no chunk stride", &frame, &tb, 2, 0, (size_t)stride * h + (stride / 2) * (h / 2),
+		     stride / 2, h / 2);
+	free_blocks(&tb);
+}
+
+/* One block per plane, each with its own chunk offset and stride. */
+static void i420_three_blocks(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 64, h = 48, y_stride = 64, u_offset = 16, u_stride = 48, v_offset = 32, v_stride = 40;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, y_stride * h, 0, y_stride * h, y_stride);
+	add_block(&tb, u_offset + u_stride * h / 2, u_offset, u_stride * h / 2, u_stride);
+	add_block(&tb, v_offset + v_stride * h / 2, v_offset, v_stride * h / 2, v_stride);
+
+	expect_used("I420, three blocks", layout(&frame, &tb, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, three blocks", &frame, &tb, 0, 0, 0, y_stride, h);
+	expect_plane("I420, three blocks", &frame, &tb, 1, 1, u_offset, u_stride, h / 2);
+	expect_plane("I420, three blocks", &frame, &tb, 2, 2, v_offset, v_stride, h / 2);
+	free_blocks(&tb);
+}
+
+/* A chunk one chroma row short of a whole frame, or a buffer with two of the
+ * three planes, must be dropped. */
+static void i420_chunk_too_small_is_dropped(void **state)
+{
+	struct test_buffer short_chunk = {0}, two_blocks = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 64, h = 48, size = w * h * 3 / 2;
+
+	UNUSED_PARAMETER(state);
+	add_block(&short_chunk, size, 0, size - w / 2, w);
+	expect_dropped("I420, chunk a row short", layout(&frame, &short_chunk, SPA_VIDEO_FORMAT_I420, w, h));
+
+	add_block(&two_blocks, w * h, 0, w * h, w);
+	add_block(&two_blocks, w * h / 2, 0, w * h / 2, w / 2);
+	expect_dropped("I420, two of three planes", layout(&frame, &two_blocks, SPA_VIDEO_FORMAT_I420, w, h));
+	free_blocks(&short_chunk);
+	free_blocks(&two_blocks);
+}
+
+/* YV12 is I420 with V before U: the frame's U plane is the third plane in
+ * memory. */
+static void yv12_chroma_planes_swapped(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 64, h = 48, size = w * h * 3 / 2;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, size, 0, size, w);
+
+	expect_used("YV12, one block", layout(&frame, &tb, SPA_VIDEO_FORMAT_YV12, w, h));
+	if (frame.format != VIDEO_FORMAT_I420) {
+		fprintf(stderr, "YV12, one block: the frame is %s, expected I420\n",
+			get_video_format_name(frame.format));
+		fail();
+	}
+	expect_plane("YV12, one block", &frame, &tb, 0, 0, 0, w, h);
+	expect_plane("YV12, one block", &frame, &tb, 1, 0, (size_t)w * h + (w / 2) * (h / 2), w / 2, h / 2);
+	expect_plane("YV12, one block", &frame, &tb, 2, 0, (size_t)w * h, w / 2, h / 2);
+	free_blocks(&tb);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -273,6 +408,12 @@ int main(void)
 		cmocka_unit_test(chunk_outside_the_block_is_dropped),
 		cmocka_unit_test(yuy2_chunk_stride_and_offset),
 		cmocka_unit_test(packed_formats_unchanged),
+		cmocka_unit_test(i420_one_block),
+		cmocka_unit_test(i420_one_block_padded_rows),
+		cmocka_unit_test(i420_one_block_without_stride),
+		cmocka_unit_test(i420_three_blocks),
+		cmocka_unit_test(i420_chunk_too_small_is_dropped),
+		cmocka_unit_test(yv12_chroma_planes_swapped),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
