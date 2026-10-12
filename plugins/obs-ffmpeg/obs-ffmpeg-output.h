@@ -105,6 +105,10 @@ struct ffmpeg_output {
 
 	bool write_thread_active;
 	pthread_mutex_t write_mutex;
+	/* Held while the raw video and audio callbacks encode and while
+	 * ffmpeg_deactivate() frees the encoders: libobs disconnects the
+	 * callbacks on another thread, after stop() has returned. */
+	pthread_mutex_t encode_mutex;
 	pthread_t write_thread;
 	os_sem_t *write_sem;
 	os_event_t *stop_event;

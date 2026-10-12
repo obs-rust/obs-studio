@@ -650,9 +650,12 @@ static void *ffmpeg_output_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct ffmpeg_output *data = bzalloc(sizeof(struct ffmpeg_output));
 	pthread_mutex_init_value(&data->write_mutex);
+	pthread_mutex_init_value(&data->encode_mutex);
 	data->output = output;
 
 	if (pthread_mutex_init(&data->write_mutex, NULL) != 0)
+		goto fail;
+	if (pthread_mutex_init(&data->encode_mutex, NULL) != 0)
 		goto fail;
 	if (os_event_init(&data->stop_event, OS_EVENT_TYPE_AUTO) != 0)
 		goto fail;
@@ -666,6 +669,7 @@ static void *ffmpeg_output_create(obs_data_t *settings, obs_output_t *output)
 
 fail:
 	pthread_mutex_destroy(&data->write_mutex);
+	pthread_mutex_destroy(&data->encode_mutex);
 	os_event_destroy(data->stop_event);
 	bfree(data);
 	return NULL;
@@ -685,6 +689,7 @@ static void ffmpeg_output_destroy(void *data)
 		ffmpeg_output_full_stop(output);
 
 		pthread_mutex_destroy(&output->write_mutex);
+		pthread_mutex_destroy(&output->encode_mutex);
 		os_sem_destroy(output->write_sem);
 		os_event_destroy(output->stop_event);
 		bfree(data);
@@ -713,9 +718,8 @@ static inline void copy_data(AVFrame *pic, const struct video_data *frame, int h
 	}
 }
 
-static void receive_video(void *param, struct video_data *frame)
+static void encode_video(struct ffmpeg_output *output, struct video_data *frame)
 {
-	struct ffmpeg_output *output = param;
 	struct ffmpeg_data *data = &output->ff_data;
 
 	// codec doesn't support video or none configured
@@ -792,6 +796,15 @@ fail:
 	av_packet_free(&packet);
 }
 
+static void receive_video(void *param, struct video_data *frame)
+{
+	struct ffmpeg_output *output = param;
+
+	pthread_mutex_lock(&output->encode_mutex);
+	encode_video(output, frame);
+	pthread_mutex_unlock(&output->encode_mutex);
+}
+
 static void encode_audio(struct ffmpeg_output *output, int idx, struct AVCodecContext *context, size_t block_size)
 {
 	struct ffmpeg_data *data = &output->ff_data;
@@ -866,9 +879,8 @@ static int get_track_order(int track_config, size_t mix_index)
 	return position;
 }
 
-static void receive_audio(void *param, size_t mix_idx, struct audio_data *frame)
+static void buffer_audio(struct ffmpeg_output *output, size_t mix_idx, struct audio_data *frame)
 {
-	struct ffmpeg_output *output = param;
 	struct ffmpeg_data *data = &output->ff_data;
 	size_t frame_size_bytes;
 	struct audio_data in = *frame;
@@ -905,6 +917,15 @@ static void receive_audio(void *param, size_t mix_idx, struct audio_data *frame)
 
 		encode_audio(output, track_order, context, data->audio_size);
 	}
+}
+
+static void receive_audio(void *param, size_t mix_idx, struct audio_data *frame)
+{
+	struct ffmpeg_output *output = param;
+
+	pthread_mutex_lock(&output->encode_mutex);
+	buffer_audio(output, mix_idx, frame);
+	pthread_mutex_unlock(&output->encode_mutex);
 }
 
 static uint64_t get_packet_sys_dts(struct ffmpeg_output *output, AVPacket *packet)
@@ -1204,6 +1225,11 @@ static void ffmpeg_deactivate(struct ffmpeg_output *output)
 		output->write_thread_active = false;
 	}
 
+	/* The raw callbacks may still be connected (libobs disconnects them
+	 * on its end_data_capture thread), so wait for a frame being encoded
+	 * before freeing the encoders. Afterwards the callbacks find no
+	 * streams and return. */
+	pthread_mutex_lock(&output->encode_mutex);
 	pthread_mutex_lock(&output->write_mutex);
 
 	for (size_t i = 0; i < output->packets.num; i++)
@@ -1213,6 +1239,7 @@ static void ffmpeg_deactivate(struct ffmpeg_output *output)
 	pthread_mutex_unlock(&output->write_mutex);
 
 	ffmpeg_data_free(&output->ff_data);
+	pthread_mutex_unlock(&output->encode_mutex);
 }
 
 static uint64_t ffmpeg_output_total_bytes(void *data)
