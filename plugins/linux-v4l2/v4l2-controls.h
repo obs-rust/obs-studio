@@ -34,6 +34,18 @@ extern "C" {
  */
 int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs_data_t *settings);
 
+/**
+ * Apply the saved camera controls to a device.
+ *
+ * Writes the controls that have a user value in the settings and differ from
+ * the device's current value. Controls without a user value and write-only
+ * controls are never written.
+ *
+ * @param dev handle to the v4l2 device
+ * @param settings the settings of the source
+ */
+void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings);
+
 #ifdef __cplusplus
 }
 #endif

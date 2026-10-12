@@ -96,6 +96,9 @@ struct v4l2_data {
 
 	bool auto_reset;
 	int timeout_frames;
+
+	/* the settings of the last update, for the saved camera controls */
+	obs_data_t *controls;
 };
 
 /* forward declarations */
@@ -888,6 +891,7 @@ static void v4l2_destroy(void *vptr)
 
 	if (data->device_id)
 		bfree(data->device_id);
+	obs_data_release(data->controls);
 
 #if HAVE_UDEV
 	signal_handler_t *sh = v4l2_get_udev_signalhandler();
@@ -981,6 +985,10 @@ static void v4l2_init(struct v4l2_data *data)
 	}
 	v4l2_unpack_tuple(&fps_num, &fps_denom, data->framerate);
 	blog(LOG_INFO, "Framerate: %.2f fps", (float)fps_denom / fps_num);
+
+	/* The camera starts on the driver's values when it is plugged in, and
+	 * other programs can change them: write the saved controls. */
+	v4l2_apply_controls(data->dev, data->controls);
 
 	/* map buffers */
 	if (v4l2_create_mmap(data->dev, &data->buffers) < 0) {
@@ -1080,10 +1088,17 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 	data->auto_reset = obs_data_get_bool(settings, "auto_reset");
 	data->timeout_frames = obs_data_get_int(settings, "timeout_frames");
 
+	/* A copy, as a replug reopens the device from the udev thread */
+	obs_data_release(data->controls);
+	data->controls = obs_data_create();
+	obs_data_apply(data->controls, settings);
+
 	v4l2_update_source_flags(data, settings);
 
 	if (needs_restart)
 		v4l2_init(data);
+	else if (data->dev != -1)
+		v4l2_apply_controls(data->dev, data->controls);
 }
 
 static void *v4l2_create(obs_data_t *settings, obs_source_t *source)

@@ -15,7 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include <linux/videodev2.h>
 #include <libv4l2.h>
@@ -148,4 +150,84 @@ int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs
 	}
 
 	return 0;
+}
+
+/* The value the user saved for a control, if any */
+static bool v4l2_saved_control_value(obs_data_t *settings, const struct v4l2_queryctrl *qctrl, int32_t *value)
+{
+	const char *name = (const char *)qctrl->name;
+
+	if (!obs_data_has_user_value(settings, name))
+		return false;
+
+	switch (qctrl->type) {
+	case V4L2_CTRL_TYPE_BOOLEAN:
+		*value = obs_data_get_bool(settings, name);
+		return true;
+	case V4L2_CTRL_TYPE_INTEGER:
+	case V4L2_CTRL_TYPE_MENU:
+	case V4L2_CTRL_TYPE_INTEGER_MENU:
+		*value = (int32_t)obs_data_get_int(settings, name);
+		return true;
+	default:
+		return false;
+	}
+}
+
+/*
+ * Write the saved controls that differ from the device's values. Returns how
+ * many were left for a later pass: inactive ones, and on the first pass the
+ * ones the device refused.
+ */
+static int v4l2_apply_controls_pass(int_fast32_t dev, obs_data_t *settings, bool last_pass)
+{
+	struct v4l2_queryctrl qctrl;
+	int left = 0;
+
+	memset(&qctrl, 0, sizeof(qctrl));
+	qctrl.id = V4L2_CTRL_FLAG_NEXT_CTRL;
+	while (0 == v4l2_ioctl(dev, VIDIOC_QUERYCTRL, &qctrl)) {
+		struct v4l2_control control = {.id = qctrl.id};
+		int32_t value;
+
+		/* A write-only control (Pan, Relative...) acts each time it is
+		 * written, and its value cannot be read back: never replay it. */
+		if (!valid_control(&qctrl) || (qctrl.flags & V4L2_CTRL_FLAG_WRITE_ONLY) ||
+		    !v4l2_saved_control_value(settings, &qctrl, &value))
+			goto next;
+
+		if (0 == v4l2_ioctl(dev, VIDIOC_G_CTRL, &control) && control.value == value)
+			goto next;
+
+		/* A manual control is inactive while its automatic mode is on,
+		 * and drivers can list it first (Focus (absolute) comes before
+		 * Focus, Automatic Continuous): retry it after the others. */
+		if (qctrl.flags & V4L2_CTRL_FLAG_INACTIVE) {
+			left++;
+			goto next;
+		}
+
+		control.value = value;
+		if (0 != v4l2_ioctl(dev, VIDIOC_S_CTRL, &control)) {
+			if (!last_pass)
+				left++;
+			else
+				blog(LOG_WARNING, "unable to set %s to %d: %s", (char *)qctrl.name, value,
+				     strerror(errno));
+		}
+
+	next:
+		qctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+	}
+
+	return left;
+}
+
+void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings)
+{
+	if (dev < 0 || !settings)
+		return;
+
+	if (v4l2_apply_controls_pass(dev, settings, false) > 0)
+		v4l2_apply_controls_pass(dev, settings, true);
 }
