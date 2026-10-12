@@ -70,9 +70,10 @@ struct screencast_portal_capture {
 	 * thread. Taken last: never take another lock while holding it. */
 	pthread_mutex_t streams_mutex;
 
-	/* Reconnection after the PipeWire daemon goes away. The dead stream is
-	 * kept so its last frame stays on screen until the new stream delivers
-	 * one. */
+	/* Reconnection after the PipeWire daemon goes away or the compositor
+	 * ends the screencast (e.g. its monitor was switched off). The dead
+	 * stream is kept so its last frame stays on screen until the new
+	 * stream delivers one. */
 	struct {
 		bool active;
 		uint32_t attempts;
@@ -705,7 +706,8 @@ static void start_reconnect_attempt(struct screencast_portal_capture *capture)
 	close_session(capture);
 	destroy_live_stream(capture);
 
-	blog(LOG_INFO, "[pipewire] Reconnecting screencast (attempt %u)", capture->reconnect.attempts + 1);
+	blog(capture->reconnect.attempts < OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS ? LOG_INFO : LOG_DEBUG,
+	     "[pipewire] Reconnecting screencast (attempt %u)", capture->reconnect.attempts + 1);
 
 	/* Covers creating the session; select_source() disarms it because the
 	 * portal may wait for the user from there on. */
@@ -740,17 +742,20 @@ static void schedule_reconnect_retry(struct screencast_portal_capture *capture)
 		return;
 
 	delay_ms = obs_pipewire_reconnect_next_delay(&capture->reconnect.attempts);
-	if (!delay_ms) {
-		blog(LOG_WARNING,
-		     "[pipewire] Giving up on reconnecting the screencast after %u attempts; "
-		     "select the source again to resume capture",
-		     capture->reconnect.attempts);
-		stop_reconnect(capture);
-		return;
-	}
 
-	blog(LOG_WARNING, "[pipewire] Screencast reconnection attempt %u failed, retrying in %u ms",
-	     capture->reconnect.attempts, delay_ms);
+	/* Retries go on for as long as the source exists (a monitor can be
+	 * off for hours); say so once instead of logging every one. */
+	if (capture->reconnect.attempts < OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS)
+		blog(LOG_WARNING, "[pipewire] Screencast reconnection attempt %u failed, retrying in %u ms",
+		     capture->reconnect.attempts, delay_ms);
+	else if (capture->reconnect.attempts == OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS)
+		blog(LOG_WARNING,
+		     "[pipewire] Screencast reconnection attempt %u failed; retrying every %u s until "
+		     "it comes back, or select the source again",
+		     capture->reconnect.attempts, delay_ms / 1000);
+	else
+		blog(LOG_DEBUG, "[pipewire] Screencast reconnection attempt %u failed, retrying in %u ms",
+		     capture->reconnect.attempts, delay_ms);
 
 	capture->reconnect.retry_id = schedule_reconnect_timer(capture, delay_ms, on_reconnect_retry);
 }
@@ -800,12 +805,12 @@ static gboolean on_pipewire_disconnected_idle(void *user_data)
 	}
 
 	if (!capture->restore_token || !*capture->restore_token) {
-		blog(LOG_WARNING, "[pipewire] Lost the PipeWire connection and have no restore token; "
+		blog(LOG_WARNING, "[pipewire] Lost the screencast and have no restore token; "
 				  "select the source again to resume capture");
 		goto out;
 	}
 
-	blog(LOG_INFO, "[pipewire] Lost the PipeWire connection, keeping the last frame and reconnecting");
+	blog(LOG_INFO, "[pipewire] Lost the screencast, keeping the last frame and reconnecting");
 
 	/* Keep the dead stream around so the last frame keeps rendering. */
 	release_held_stream(capture);

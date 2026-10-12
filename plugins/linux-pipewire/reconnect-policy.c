@@ -21,7 +21,6 @@
 #include <errno.h>
 
 #include <pipewire/core.h>
-#include <util/c99defs.h>
 
 bool obs_pipewire_core_error_is_lost(bool *disconnected, uint32_t id, int res)
 {
@@ -53,11 +52,16 @@ bool obs_pipewire_stream_state_is_lost(bool *disconnected, bool *streamed, enum 
 
 bool obs_pipewire_node_removed_is_lost(bool *disconnected, uint32_t node, uint32_t removed_id)
 {
-	/* Not implemented yet: the node going away is not noticed. */
-	UNUSED_PARAMETER(disconnected);
-	UNUSED_PARAMETER(node);
-	UNUSED_PARAMETER(removed_id);
-	return false;
+	/* The compositor removes a screencast's node when it ends the
+	 * screencast, e.g. because its monitor was switched off or unplugged.
+	 * The stream connected to it only pauses and never gets another
+	 * frame: a new screencast is a new node, handed out by a new portal
+	 * session. */
+	if (node == PW_ID_ANY || removed_id != node || *disconnected)
+		return false;
+
+	*disconnected = true;
+	return true;
 }
 
 uint32_t obs_pipewire_reconnect_next_delay(uint32_t *attempts)
@@ -65,9 +69,14 @@ uint32_t obs_pipewire_reconnect_next_delay(uint32_t *attempts)
 	uint32_t shift;
 	uint32_t delay_ms;
 
-	/* Not implemented yet: gives up (returns 0) after the fast attempts. */
-	if (++*attempts >= OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS)
-		return 0;
+	if (*attempts < UINT32_MAX)
+		++*attempts;
+
+	/* Never give up: whatever ended the screencast (a monitor that is
+	 * off, a portal or PipeWire that is restarting) can come back at any
+	 * time. A user who cancels the portal's dialog ends the retries. */
+	if (*attempts >= OBS_PIPEWIRE_RECONNECT_FAST_ATTEMPTS)
+		return OBS_PIPEWIRE_RECONNECT_SLOW_DELAY_MS;
 
 	shift = *attempts < 6 ? *attempts : 6;
 	delay_ms = 250u << shift;

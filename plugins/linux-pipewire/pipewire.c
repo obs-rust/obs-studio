@@ -98,6 +98,12 @@ struct _obs_pipewire {
 	void *disconnected_data;
 	bool disconnected;
 
+	/* Watches for the removal of the node the last stream was connected
+	 * to, for owners that set a disconnected callback. */
+	struct pw_registry *node_registry;
+	struct spa_hook node_registry_listener;
+	uint32_t watched_node;
+
 	GPtrArray *streams;
 };
 
@@ -194,6 +200,11 @@ static void teardown_pipewire(obs_pipewire *obs_pw)
 	if (obs_pw->registry) {
 		pw_proxy_destroy((struct pw_proxy *)obs_pw->registry);
 		obs_pw->registry = NULL;
+	}
+
+	if (obs_pw->node_registry) {
+		pw_proxy_destroy((struct pw_proxy *)obs_pw->node_registry);
+		obs_pw->node_registry = NULL;
 	}
 
 	g_clear_pointer(&obs_pw->context, pw_context_destroy);
@@ -1112,6 +1123,22 @@ static void on_core_error_cb(void *user_data, uint32_t id, int seq, int res, con
 	pw_thread_loop_signal(obs_pw->thread_loop, FALSE);
 }
 
+static void on_node_registry_global_remove_cb(void *user_data, uint32_t id)
+{
+	obs_pipewire *obs_pw = user_data;
+
+	if (obs_pipewire_node_removed_is_lost(&obs_pw->disconnected, obs_pw->watched_node, id)) {
+		blog(LOG_INFO, "[pipewire] Node %u was removed", id);
+		if (obs_pw->disconnected_cb)
+			obs_pw->disconnected_cb(obs_pw->disconnected_data);
+	}
+}
+
+static const struct pw_registry_events node_registry_events = {
+	PW_VERSION_REGISTRY_EVENTS,
+	.global_remove = on_node_registry_global_remove_cb,
+};
+
 static void on_core_done_cb(void *user_data, uint32_t id, int seq)
 {
 	obs_pipewire *obs_pw = user_data;
@@ -1136,6 +1163,7 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 
 	obs_pw = bzalloc(sizeof(obs_pipewire));
 	obs_pw->pipewire_fd = pipewire_fd;
+	obs_pw->watched_node = PW_ID_ANY;
 	obs_pw->thread_loop = pw_thread_loop_new("PipeWire thread loop", NULL);
 	obs_pw->context = pw_context_new(pw_thread_loop_get_loop(obs_pw->thread_loop), NULL, 0);
 
@@ -1182,6 +1210,14 @@ void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_d
 	pw_thread_loop_lock(obs_pw->thread_loop);
 	obs_pw->disconnected_cb = callback;
 	obs_pw->disconnected_data = user_data;
+
+	/* A stream whose node goes away only pauses (obsproject/obs-studio#12063):
+	 * watch the registry to notice. */
+	if (callback && !obs_pw->node_registry) {
+		obs_pw->node_registry = pw_core_get_registry(obs_pw->core, PW_VERSION_REGISTRY, 0);
+		pw_registry_add_listener(obs_pw->node_registry, &obs_pw->node_registry_listener, &node_registry_events,
+					 obs_pw);
+	}
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 }
 
@@ -1282,6 +1318,7 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 
 	pw_stream_connect(obs_pw_stream->stream, PW_DIRECTION_INPUT, pipewire_node,
 			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS, params, n_params);
+	obs_pw->watched_node = (uint32_t)pipewire_node;
 
 	blog(LOG_INFO, "[pipewire] Playing stream %p", obs_pw_stream->stream);
 
