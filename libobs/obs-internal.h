@@ -283,6 +283,8 @@ struct obs_hotkeys_background {
 	void (*wake)(void *data);
 	void *wake_data;
 	bool retry;
+	/* obs_hotkeys_configure_background() is pending. */
+	bool configure;
 };
 
 /* Platform clients, with the hotkey mutex held; send

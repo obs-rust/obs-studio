@@ -43,6 +43,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define FLUSH_INTERVAL_MS 25
 
 typedef DARRAY(obs_key_combination_t) combo_array_t;
+/* Shortcut descriptions, parallel to a combo_array_t. */
+typedef DARRAY(char *) description_array_t;
+
+/* At most this many actions are named in a shortcut's description. */
+#define MAX_DESCRIBED_ACTIONS 3
 
 struct obs_nix_portal_shortcuts {
 	struct obs_nix_hotkey_state *state;
@@ -69,12 +74,17 @@ struct obs_nix_portal_shortcuts {
 	bool portal_gone;
 	GSource *flush_source;
 
-	/* With a session: the combinations bound in it. */
+	/* With a session: the combinations bound in it, and the description
+	 * each was bound with. */
 	combo_array_t bound;
+	description_array_t bound_descriptions;
 	/* Without one: combinations the user cancelled, the portal refused or
 	 * the desktop closed. They are not bound again (no repeated prompt)
 	 * until the bindings gain a combination or the portal restarts. */
 	combo_array_t declined;
+	/* GlobalShortcuts interface version; 2 adds ConfigureShortcuts. */
+	uint32_t version;
+
 	/* Background presses are disabled (obs_hotkey_enable_background_press):
 	 * no session is held, so the desktop gives the keys back. */
 	bool paused;
@@ -205,15 +215,182 @@ static bool covered_by(const combo_array_t *a, const combo_array_t *b)
 	return true;
 }
 
+static void free_descriptions(description_array_t *descriptions)
+{
+	for (size_t i = 0; i < descriptions->num; i++)
+		bfree(descriptions->array[i]);
+	da_free(*descriptions);
+}
+
+static void copy_descriptions(description_array_t *dst, const description_array_t *src)
+{
+	free_descriptions(dst);
+	for (size_t i = 0; i < src->num; i++) {
+		char *copy = bstrdup(src->array[i]);
+		da_push_back(*dst, &copy);
+	}
+}
+
+static const char *description_of(const combo_array_t *combos, const description_array_t *descriptions,
+				  obs_key_combination_t combo)
+{
+	for (size_t i = 0; i < combos->num && i < descriptions->num; i++) {
+		if (same_combo(combos->array[i], combo))
+			return descriptions->array[i];
+	}
+	return NULL;
+}
+
+/* The same combinations, each with the same description. */
+static bool same_set(const combo_array_t *a, const description_array_t *a_descriptions, const combo_array_t *b,
+		     const description_array_t *b_descriptions)
+{
+	if (!covered_by(a, b) || !covered_by(b, a))
+		return false;
+	for (size_t i = 0; i < a->num; i++) {
+		const char *other = description_of(b, b_descriptions, a->array[i]);
+		const char *mine = i < a_descriptions->num ? a_descriptions->array[i] : NULL;
+		if (!mine || !other || strcmp(mine, other) != 0)
+			return false;
+	}
+	return true;
+}
+
+/* Objects referenced while naming actions; released once the hotkey mutex
+ * is no longer held (releasing a source may unregister its hotkeys). */
+struct named_object {
+	obs_hotkey_registerer_t type;
+	void *object;
+};
+
+struct collected {
+	combo_array_t combos;
+	description_array_t descriptions;
+	DARRAY(size_t) actions;
+	DARRAY(struct named_object) objects;
+};
+
+/* "Push-to-talk (Mic)", "Start Recording". */
+static void action_label(struct collected *collected, obs_hotkey_t *hotkey, struct dstr *label)
+{
+	const char *description = obs_hotkey_get_description(hotkey);
+	if (!description || !*description)
+		description = obs_hotkey_get_name(hotkey);
+	dstr_copy(label, description);
+
+	void *registerer = obs_hotkey_get_registerer(hotkey);
+	struct named_object named = {obs_hotkey_get_registerer_type(hotkey), NULL};
+	const char *owner = NULL;
+	switch (named.type) {
+	case OBS_HOTKEY_REGISTERER_FRONTEND:
+		return;
+	case OBS_HOTKEY_REGISTERER_SOURCE:
+		named.object = obs_weak_source_get_source(registerer);
+		owner = named.object ? obs_source_get_name(named.object) : NULL;
+		break;
+	case OBS_HOTKEY_REGISTERER_OUTPUT:
+		named.object = obs_weak_output_get_output(registerer);
+		owner = named.object ? obs_output_get_name(named.object) : NULL;
+		break;
+	case OBS_HOTKEY_REGISTERER_ENCODER:
+		named.object = obs_weak_encoder_get_encoder(registerer);
+		owner = named.object ? obs_encoder_get_name(named.object) : NULL;
+		break;
+	case OBS_HOTKEY_REGISTERER_SERVICE:
+		named.object = obs_weak_service_get_service(registerer);
+		owner = named.object ? obs_service_get_name(named.object) : NULL;
+		break;
+	}
+	if (named.object)
+		da_push_back(collected->objects, &named);
+	if (owner && *owner)
+		dstr_catf(label, " (%s)", owner);
+}
+
+static void release_named_objects(struct collected *collected)
+{
+	for (size_t i = 0; i < collected->objects.num; i++) {
+		struct named_object *named = &collected->objects.array[i];
+		switch (named->type) {
+		case OBS_HOTKEY_REGISTERER_FRONTEND:
+			break;
+		case OBS_HOTKEY_REGISTERER_SOURCE:
+			obs_source_release(named->object);
+			break;
+		case OBS_HOTKEY_REGISTERER_OUTPUT:
+			obs_output_release(named->object);
+			break;
+		case OBS_HOTKEY_REGISTERER_ENCODER:
+			obs_encoder_release(named->object);
+			break;
+		case OBS_HOTKEY_REGISTERER_SERVICE:
+			obs_service_release(named->object);
+			break;
+		}
+	}
+	da_free(collected->objects);
+}
+
+/* One entry per bindable combination, described by the actions it runs:
+ * "OBS: Push-to-talk (Mic), Start Recording". */
 static bool collect_binding(void *data, size_t idx, obs_hotkey_binding_t *binding)
 {
 	UNUSED_PARAMETER(idx);
-	combo_array_t *combos = data;
+	struct collected *collected = data;
 	obs_key_combination_t combo = obs_hotkey_binding_get_key_combination(binding);
+	if (!bindable(combo))
+		return true;
 
-	if (bindable(combo) && !has_combo(combos, combo))
-		da_push_back(*combos, &combo);
+	size_t i = 0;
+	while (i < collected->combos.num && !same_combo(collected->combos.array[i], combo))
+		i++;
+	if (i == collected->combos.num) {
+		char *description = bstrdup("OBS:");
+		size_t none = 0;
+		da_push_back(collected->combos, &combo);
+		da_push_back(collected->descriptions, &description);
+		da_push_back(collected->actions, &none);
+	}
+
+	size_t *actions = &collected->actions.array[i];
+	if (++*actions > MAX_DESCRIBED_ACTIONS)
+		return true;
+
+	struct dstr description = {0}, label = {0};
+	action_label(collected, obs_hotkey_binding_get_hotkey(binding), &label);
+	dstr_copy(&description, collected->descriptions.array[i]);
+	dstr_cat(&description, *actions == 1 ? " " : ", ");
+	dstr_cat_dstr(&description, &label);
+	bfree(collected->descriptions.array[i]);
+	collected->descriptions.array[i] = description.array;
+	dstr_free(&label);
 	return true;
+}
+
+static void collect_bindings(struct collected *collected)
+{
+	memset(collected, 0, sizeof(*collected));
+	obs_enum_hotkey_bindings(collect_binding, collected);
+	release_named_objects(collected);
+
+	for (size_t i = 0; i < collected->combos.num; i++) {
+		size_t more = collected->actions.array[i] > MAX_DESCRIBED_ACTIONS
+				      ? collected->actions.array[i] - MAX_DESCRIBED_ACTIONS
+				      : 0;
+		if (!more)
+			continue;
+		struct dstr description = {0};
+		dstr_printf(&description, "%s and %zu more", collected->descriptions.array[i], more);
+		bfree(collected->descriptions.array[i]);
+		collected->descriptions.array[i] = description.array;
+	}
+	da_free(collected->actions);
+}
+
+static void free_collected(struct collected *collected)
+{
+	da_free(collected->combos);
+	free_descriptions(&collected->descriptions);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -550,6 +727,7 @@ static void forget_session(struct obs_nix_portal_shortcuts *portal)
 	g_clear_pointer(&portal->session_path, g_free);
 	release_bound(portal);
 	da_resize(portal->bound, 0);
+	free_descriptions(&portal->bound_descriptions);
 }
 
 static void close_session(struct obs_nix_portal_shortcuts *portal)
@@ -625,10 +803,11 @@ static bool create_session(struct obs_nix_portal_shortcuts *portal)
 	return true;
 }
 
-static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_array_t *combos)
+static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_array_t *combos,
+			   const description_array_t *descriptions)
 {
 	GVariantBuilder shortcuts;
-	struct dstr id = {0}, trigger = {0}, description = {0};
+	struct dstr id = {0}, trigger = {0};
 
 	g_variant_builder_init(&shortcuts, G_VARIANT_TYPE("a(sa{sv})"));
 	for (size_t i = 0; i < combos->num; i++) {
@@ -638,16 +817,16 @@ static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_
 		GVariantBuilder props;
 		g_variant_builder_init(&props, G_VARIANT_TYPE_VARDICT);
 		bool has_trigger = obs_nix_portal_shortcut_trigger(combos->array[i], portal->key_name, &trigger);
-		/* Keep the description stable: some portals cannot update it. */
-		dstr_printf(&description, "OBS Studio hotkey %s", has_trigger ? trigger.array : id.array);
-		g_variant_builder_add(&props, "{sv}", "description", g_variant_new_string(description.array));
+		/* The actions the key runs, so the desktop's list says what each
+		 * shortcut does. */
+		const char *description = i < descriptions->num ? descriptions->array[i] : "OBS";
+		g_variant_builder_add(&props, "{sv}", "description", g_variant_new_string(description));
 		if (has_trigger)
 			g_variant_builder_add(&props, "{sv}", "preferred_trigger", g_variant_new_string(trigger.array));
 		g_variant_builder_add(&shortcuts, "(sa{sv})", id.array, &props);
 	}
 	dstr_free(&id);
 	dstr_free(&trigger);
-	dstr_free(&description);
 
 	char *token = new_token(portal, "request");
 	GVariantBuilder options;
@@ -703,6 +882,7 @@ static bool take_retry(void)
  * A probe (testing a key from Settings) keeps the set bound meanwhile. */
 static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 {
+	struct collected collected = {0};
 	combo_array_t current;
 	da_init(current);
 
@@ -717,8 +897,10 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	}
 	bool wanted = !paused || probing();
 	set_flag(OBS_HOTKEYS_BACKGROUND_PAUSED, !wanted);
-	if (wanted)
-		obs_enum_hotkey_bindings(collect_binding, &current);
+	if (wanted) {
+		collect_bindings(&collected);
+		da_move(current, collected.combos);
+	}
 
 	if (wanted && current.num == 0) {
 		struct obs_hotkeys_background *background = background_lock();
@@ -727,17 +909,22 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 		background_unlock();
 	}
 
-	bool unchanged = portal->session_path
-				 ? covered_by(&current, &portal->bound) && covered_by(&portal->bound, &current)
-				 : current.num == 0 || covered_by(&current, &portal->declined);
+	/* A changed description (an action moved to or from a key) binds
+	 * again, so the desktop's list stays right; a declined set is not
+	 * asked for again because of one. */
+	bool unchanged = portal->session_path ? same_set(&current, &collected.descriptions, &portal->bound,
+							 &portal->bound_descriptions)
+					      : current.num == 0 || covered_by(&current, &portal->declined);
 	if (unchanged) {
 		da_free(current);
+		free_collected(&collected);
 		return;
 	}
 
 	close_session(portal);
 	if (current.num == 0) {
 		da_free(current);
+		free_collected(&collected);
 		return;
 	}
 
@@ -751,7 +938,10 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	/* Set before binding: Activated may be dispatched right after the
 	 * BindShortcuts response, while bind_shortcuts() is still waiting. */
 	da_copy(portal->bound, current);
-	if (!create_session(portal) || !bind_shortcuts(portal, &current)) {
+	copy_descriptions(&portal->bound_descriptions, &collected.descriptions);
+	bool bound = create_session(portal) && bind_shortcuts(portal, &current, &collected.descriptions);
+	free_collected(&collected);
+	if (!bound) {
 		close_session(portal);
 		da_move(portal->declined, current);
 		if (portal->request_declined)
@@ -763,6 +953,51 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	da_resize(portal->declined, 0);
 	da_free(current);
 	set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
+}
+
+/* Takes a pending obs_hotkeys_configure_background(). Without a session it
+ * stays pending for the bind a probe is about to make (the probe ending
+ * drops it), unless the portal cannot do it at all. */
+static bool take_configure(struct obs_nix_portal_shortcuts *portal)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+	bool configure = obs->hotkeys.background.configure;
+	if (configure && (portal->session_path || portal->version < 2))
+		obs->hotkeys.background.configure = false;
+	else
+		configure = false;
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	return configure;
+}
+
+/* Opens the desktop's editor for the shortcuts of the current session
+ * (after sync_shortcuts(), so a probe has bound them). */
+static void configure_shortcuts(struct obs_nix_portal_shortcuts *portal)
+{
+	if (!take_configure(portal))
+		return;
+	if (portal->version < 2) {
+		blog(LOG_WARNING, "[portal] Cannot open the desktop's shortcut settings: portal version %u",
+		     portal->version);
+		set_flag(OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED, true);
+		return;
+	}
+
+	GError *error = NULL;
+	GVariantBuilder options;
+	g_variant_builder_init(&options, G_VARIANT_TYPE_VARDICT);
+	GVariant *reply = g_dbus_connection_call_sync(portal->conn, PORTAL_NAME, PORTAL_PATH, SHORTCUTS_IFACE,
+						      "ConfigureShortcuts",
+						      g_variant_new("(osa{sv})", portal->session_path, "", &options),
+						      NULL, G_DBUS_CALL_FLAGS_NONE, 5000, NULL, &error);
+	if (!reply) {
+		blog(LOG_WARNING, "[portal] GlobalShortcuts.ConfigureShortcuts failed: %s", error->message);
+		g_error_free(error);
+		set_flag(OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED, true);
+		return;
+	}
+	g_variant_unref(reply);
+	blog(LOG_INFO, "[portal] Opened the desktop's shortcut settings");
 }
 
 /* ------------------------------------------------------------------------ */
@@ -894,6 +1129,7 @@ static bool connect_portal(struct obs_nix_portal_shortcuts *portal)
 	g_variant_unref(reply);
 
 	/* Version 2 adds ConfigureShortcuts (the desktop's own editor). */
+	portal->version = version_num;
 	set_flag(OBS_HOTKEYS_BACKGROUND_CONFIGURABLE, version_num >= 2);
 	set_state(OBS_HOTKEYS_BACKGROUND_IDLE, NULL);
 
@@ -946,6 +1182,7 @@ static void *portal_thread(void *data)
 			if (portal->sync_due && !portal->portal_gone) {
 				portal->sync_due = false;
 				sync_shortcuts(portal);
+				configure_shortcuts(portal);
 			} else {
 				g_main_context_iteration(portal->context, true);
 			}
@@ -1012,6 +1249,8 @@ static const struct {
 	{"hotkey_bindings_changed", bindings_changed},
 	{"hotkey_unregister", bindings_changed},
 	{"hotkey_background_press_changed", background_press_changed},
+	/* A source's name is part of its hotkeys' descriptions. */
+	{"source_rename", bindings_changed},
 };
 
 static void connect_binding_signals(struct obs_nix_portal_shortcuts *portal, bool connect)
@@ -1060,6 +1299,7 @@ static void free_portal(struct obs_nix_portal_shortcuts *portal)
 	g_free(portal->session_path);
 	g_free(portal->request_error);
 	da_free(portal->bound);
+	free_descriptions(&portal->bound_descriptions);
 	da_free(portal->declined);
 	bfree(portal);
 }
