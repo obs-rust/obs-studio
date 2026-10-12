@@ -22,6 +22,7 @@
 #include <components/VolumeControl.hpp>
 #include <dialogs/OBSBasicFilters.hpp>
 #include <dialogs/OBSBasicSourceSelect.hpp>
+#include <utility/transform-clipboard.h>
 
 extern void undo_redo(const std::string &data);
 
@@ -29,8 +30,7 @@ void OBSBasic::on_actionCopyTransform_triggered()
 {
 	OBSSceneItem item = GetCurrentSceneItem();
 
-	obs_sceneitem_get_info2(item, &copiedTransformInfo);
-	obs_sceneitem_get_crop(item, &copiedCropInfo);
+	transform_clipboard_copy(GetCurrentScene(), item, &copiedTransformInfo, &copiedCropInfo);
 
 	ui->actionPasteTransform->setEnabled(true);
 	hasCopiedTransform = true;
@@ -39,25 +39,7 @@ void OBSBasic::on_actionCopyTransform_triggered()
 void OBSBasic::on_actionPasteTransform_triggered()
 {
 	OBSDataAutoRelease wrapper = obs_scene_save_transform_states(GetCurrentScene(), false);
-	auto func = [](obs_scene_t *, obs_sceneitem_t *item, void *) {
-		if (!obs_sceneitem_selected(item)) {
-			return true;
-		}
-		if (obs_sceneitem_locked(item)) {
-			return true;
-		}
-
-		OBSBasic *main = OBSBasic::Get();
-
-		obs_sceneitem_defer_update_begin(item);
-		obs_sceneitem_set_info2(item, &main->copiedTransformInfo);
-		obs_sceneitem_set_crop(item, &main->copiedCropInfo);
-		obs_sceneitem_defer_update_end(item);
-
-		return true;
-	};
-
-	obs_scene_enum_items(GetCurrentScene(), func, nullptr);
+	transform_clipboard_paste(GetCurrentScene(), &copiedTransformInfo, &copiedCropInfo);
 
 	OBSDataAutoRelease rwrapper = obs_scene_save_transform_states(GetCurrentScene(), false);
 

@@ -38,6 +38,8 @@ target_sources(
     utility/multitrack-ladder.h
     utility/product-name.c
     utility/product-name.h
+    utility/transform-clipboard.c
+    utility/transform-clipboard.h
     utility/OBSCanvas.cpp
     utility/OBSCanvas.hpp
     utility/OBSEventFilter.hpp
