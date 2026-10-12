@@ -29,6 +29,9 @@
 struct media_remux_job {
 	int64_t in_size;
 	AVFormatContext *ifmt_ctx, *ofmt_ctx;
+	/* Per input stream: where the next audio frame starts, in samples
+	 * (see process_audio_packet) */
+	int64_t *next_audio_ts;
 };
 
 static inline void init_size(media_remux_job_t job, const char *in_filename)
@@ -73,6 +76,13 @@ static inline bool init_output(media_remux_job_t job, const char *out_filename)
 		blog(LOG_ERROR, "media_remux: Could not create output context");
 		return false;
 	}
+
+	/* bmalloc() treats 0 bytes as a bug; a file without streams fails in
+	 * avformat_write_header() later. */
+	if (job->ifmt_ctx->nb_streams)
+		job->next_audio_ts = bmalloc(sizeof(int64_t) * job->ifmt_ctx->nb_streams);
+	for (unsigned i = 0; i < job->ifmt_ctx->nb_streams; i++)
+		job->next_audio_ts[i] = AV_NOPTS_VALUE;
 
 	for (unsigned i = 0; i < job->ifmt_ctx->nb_streams; i++) {
 		AVStream *in_stream = job->ifmt_ctx->streams[i];
@@ -164,8 +174,55 @@ fail:
 	return false;
 }
 
-static inline void process_packet(AVPacket *pkt, AVStream *in_stream, AVStream *out_stream)
+/* Audio frames have a fixed number of samples, but a container with a coarse
+ * time base (Matroska stores milliseconds) cannot place them exactly: AAC at
+ * 48 kHz lands on 0, 21, 43, 64, ... ms. Rescaled one by one, those turn into
+ * frames of 1008 and 1056 samples in MP4/MOV, which take each frame's length
+ * from the timestamps, and players then stretch or overlap the audio at every
+ * frame boundary (crackling). Like `ffmpeg -c copy`, place each audio frame
+ * right after the previous one as long as that is within the input's
+ * rounding of its timestamp, and only follow the input timestamp when it
+ * really jumps (a gap in the recording). */
+static inline bool process_audio_packet(media_remux_job_t job, AVPacket *pkt, AVStream *in_stream, AVStream *out_stream)
 {
+	AVCodecParameters *par = in_stream->codecpar;
+	if (!job->next_audio_ts || par->codec_type != AVMEDIA_TYPE_AUDIO || par->sample_rate <= 0 ||
+	    pkt->dts == AV_NOPTS_VALUE)
+		return false;
+
+	int samples = av_get_audio_frame_duration2(par, pkt->size);
+	if (samples <= 0)
+		samples = par->frame_size;
+	if (samples <= 0)
+		return false;
+
+	const AVRational sample_tb = {1, par->sample_rate};
+	int64_t dts = av_rescale_delta(in_stream->time_base, pkt->dts, sample_tb, samples,
+				       &job->next_audio_ts[in_stream->index], out_stream->time_base);
+
+	if (pkt->pts != AV_NOPTS_VALUE)
+		pkt->pts = dts + av_rescale_q(pkt->pts - pkt->dts, in_stream->time_base, out_stream->time_base);
+	pkt->dts = dts;
+
+	/* Keep a shorter last frame (trimmed padding) but drop the input's
+	 * rounding from full frames. */
+	int64_t duration = samples;
+	if (pkt->duration > 0) {
+		int64_t in_duration = av_rescale_q(pkt->duration, in_stream->time_base, sample_tb);
+		int64_t in_tick = av_rescale_q_rnd(1, in_stream->time_base, sample_tb, AV_ROUND_UP);
+		if (in_duration < samples - in_tick)
+			duration = in_duration;
+	}
+	pkt->duration = av_rescale_q(duration, sample_tb, out_stream->time_base);
+	pkt->pos = -1;
+	return true;
+}
+
+static inline void process_packet(media_remux_job_t job, AVPacket *pkt, AVStream *in_stream, AVStream *out_stream)
+{
+	if (process_audio_packet(job, pkt, in_stream, out_stream))
+		return;
+
 	pkt->pts = av_rescale_q_rnd(pkt->pts, in_stream->time_base, out_stream->time_base,
 				    AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX);
 	pkt->dts = av_rescale_q_rnd(pkt->dts, in_stream->time_base, out_stream->time_base,
@@ -197,7 +254,7 @@ static inline int process_packets(media_remux_job_t job, media_remux_progress_ca
 			throttle = 0;
 		}
 
-		process_packet(&pkt, job->ifmt_ctx->streams[pkt.stream_index],
+		process_packet(job, &pkt, job->ifmt_ctx->streams[pkt.stream_index],
 			       job->ofmt_ctx->streams[pkt.stream_index]);
 
 		ret = av_interleaved_write_frame(job->ofmt_ctx, &pkt);
@@ -262,5 +319,6 @@ void media_remux_job_destroy(media_remux_job_t job)
 
 	avformat_free_context(job->ofmt_ctx);
 
+	bfree(job->next_audio_ts);
 	bfree(job);
 }
