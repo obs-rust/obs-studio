@@ -1240,18 +1240,23 @@ static obs_key_t obs_nix_x11_key_from_virtual_key(int sym)
 	obs_hotkeys_platform_t *context = obs->hotkeys.platform_context;
 	const xcb_keysym_t *keysyms = context->keysyms;
 	int syms_per_code = context->syms_per_code;
-	int num_keysyms = context->num_keysyms;
 
-	if (sym == 0)
+	if (sym == 0 || syms_per_code <= 0)
 		return OBS_KEY_NONE;
 
-	for (int i = 0; i < num_keysyms; i++) {
-		if (keysyms[i] == (xcb_keysym_t)sym) {
-			xcb_keycode_t code = (xcb_keycode_t)(i / syms_per_code);
-			code += context->min_keycode;
-			obs_key_t key = key_from_keycode(context, code);
+	int num_codes = context->num_keysyms / syms_per_code;
 
-			return key;
+	/* Search one column (group and shift level) at a time across all
+	 * keycodes, like XKeysymToKeycode(), so the key that produces the
+	 * symbol unshifted in the first group wins over a key that only has it
+	 * at another group or level (e.g. "[" on AltGr+8 in a second layout).
+	 * Symbols that only exist on a shifted level still map to their key. */
+	for (int col = 0; col < syms_per_code; col++) {
+		for (int i = 0; i < num_codes; i++) {
+			if (keysyms[i * syms_per_code + col] == (xcb_keysym_t)sym) {
+				xcb_keycode_t code = (xcb_keycode_t)(i + context->min_keycode);
+				return key_from_keycode(context, code);
+			}
 		}
 	}
 
