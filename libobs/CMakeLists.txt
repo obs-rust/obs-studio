@@ -69,6 +69,8 @@ target_sources(
     obs-output.h
     obs-properties.c
     obs-properties.h
+    obs-scene-bounds.c
+    obs-scene-bounds.h
     obs-scene.c
     obs-scene.h
     obs-service.c

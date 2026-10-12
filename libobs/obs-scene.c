@@ -20,6 +20,7 @@
 #include "util/util_uint64.h"
 #include "graphics/math-defs.h"
 #include "obs-scene.h"
+#include "obs-scene-bounds.h"
 #include "obs-internal.h"
 
 const struct obs_source_info group_info;
@@ -456,41 +457,11 @@ static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *orig
 	else
 		size_to_absolute(&bounds, &item->bounds, item);
 
-	float width = (float)(*cx) * fabsf(scale->x);
-	float height = (float)(*cy) * fabsf(scale->y);
-	float item_aspect = width / height;
-	float bounds_aspect = bounds.x / bounds.y;
-	uint32_t bounds_type = item->bounds_type;
+	obs_bounds_fit_scale(item->bounds_type, &bounds, *cx, *cy, scale);
+
+	float width = (float)(*cx) * scale->x;
+	float height = (float)(*cy) * scale->y;
 	float width_diff, height_diff;
-
-	if (item->bounds_type == OBS_BOUNDS_MAX_ONLY)
-		if (width > bounds.x || height > bounds.y)
-			bounds_type = OBS_BOUNDS_SCALE_INNER;
-
-	if (bounds_type == OBS_BOUNDS_SCALE_INNER || bounds_type == OBS_BOUNDS_SCALE_OUTER) {
-		bool use_width = (bounds_aspect < item_aspect);
-		float mul;
-
-		if (item->bounds_type == OBS_BOUNDS_SCALE_OUTER)
-			use_width = !use_width;
-
-		mul = use_width ? bounds.x / width : bounds.y / height;
-
-		vec2_mulf(scale, scale, mul);
-
-	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_WIDTH) {
-		vec2_mulf(scale, scale, bounds.x / width);
-
-	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_HEIGHT) {
-		vec2_mulf(scale, scale, bounds.y / height);
-
-	} else if (bounds_type == OBS_BOUNDS_STRETCH) {
-		scale->x = copysignf(bounds.x / (float)(*cx), scale->x);
-		scale->y = copysignf(bounds.y / (float)(*cy), scale->y);
-	}
-
-	width = (float)(*cx) * scale->x;
-	height = (float)(*cy) * scale->y;
 
 	/* Disregards flip when calculating size diff */
 	width_diff = bounds.x - fabsf(width);

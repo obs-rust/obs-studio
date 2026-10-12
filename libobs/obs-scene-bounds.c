@@ -26,29 +26,38 @@ void obs_bounds_fit_scale(enum obs_bounds_type type, const struct vec2 *bounds, 
 	float bounds_aspect = bounds->x / bounds->y;
 	enum obs_bounds_type bounds_type = type;
 
+	/* Each fit below divides the box by the source's size. A source with
+	 * no size on that axis (an empty group, a source that has not loaded
+	 * yet, a scale of 0) has nothing to fit and keeps its scale: dividing
+	 * gave an infinite or NaN scale, and through an empty group's
+	 * transform NaN for every item added to it
+	 * (obsproject/obs-studio#4245). */
 	if (type == OBS_BOUNDS_MAX_ONLY)
 		if (width > bounds->x || height > bounds->y)
 			bounds_type = OBS_BOUNDS_SCALE_INNER;
 
 	if (bounds_type == OBS_BOUNDS_SCALE_INNER || bounds_type == OBS_BOUNDS_SCALE_OUTER) {
 		bool use_width = (bounds_aspect < item_aspect);
-		float mul;
 
 		if (type == OBS_BOUNDS_SCALE_OUTER)
 			use_width = !use_width;
 
-		mul = use_width ? bounds->x / width : bounds->y / height;
-
-		vec2_mulf(scale, scale, mul);
+		float size = use_width ? width : height;
+		if (size > 0.0f)
+			vec2_mulf(scale, scale, (use_width ? bounds->x : bounds->y) / size);
 
 	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_WIDTH) {
-		vec2_mulf(scale, scale, bounds->x / width);
+		if (width > 0.0f)
+			vec2_mulf(scale, scale, bounds->x / width);
 
 	} else if (bounds_type == OBS_BOUNDS_SCALE_TO_HEIGHT) {
-		vec2_mulf(scale, scale, bounds->y / height);
+		if (height > 0.0f)
+			vec2_mulf(scale, scale, bounds->y / height);
 
 	} else if (bounds_type == OBS_BOUNDS_STRETCH) {
-		scale->x = copysignf(bounds->x / (float)cx, scale->x);
-		scale->y = copysignf(bounds->y / (float)cy, scale->y);
+		if (cx)
+			scale->x = copysignf(bounds->x / (float)cx, scale->x);
+		if (cy)
+			scale->y = copysignf(bounds->y / (float)cy, scale->y);
 	}
 }
