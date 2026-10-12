@@ -27,6 +27,8 @@ target_sources(
     $<$<BOOL:${_HAS_PIPEWIRE_CAMERA}>:camera-portal.h>
     formats.c
     formats.h
+    frame-layout.c
+    frame-layout.h
     linux-pipewire.c
     pipewire.c
     pipewire.h

@@ -21,6 +21,7 @@
 #include "pipewire.h"
 
 #include "formats.h"
+#include "frame-layout.h"
 #include "reconnect-policy.h"
 
 #include <util/darray.h>
@@ -644,10 +645,9 @@ static enum video_range_type video_color_range_from_spa_color_range(enum spa_vid
 	}
 }
 
-static bool prepare_obs_frame(obs_pipewire_stream *obs_pw_stream, struct obs_source_frame *frame)
+static bool prepare_obs_frame(obs_pipewire_stream *obs_pw_stream, struct obs_source_frame *frame,
+			      struct obs_pw_video_format *obs_pw_video_format)
 {
-	struct obs_pw_video_format obs_pw_video_format;
-
 	frame->width = obs_pw_stream->format.info.raw.size.width;
 	frame->height = obs_pw_stream->format.info.raw.size.height;
 
@@ -655,12 +655,11 @@ static bool prepare_obs_frame(obs_pipewire_stream *obs_pw_stream, struct obs_sou
 				    video_color_range_from_spa_color_range(obs_pw_stream->format.info.raw.color_range),
 				    frame->color_matrix, frame->color_range_min, frame->color_range_max);
 
-	if (!obs_pw_video_format_from_spa_format(obs_pw_stream->format.info.raw.format, &obs_pw_video_format) ||
-	    obs_pw_video_format.video_format == VIDEO_FORMAT_NONE)
+	if (!obs_pw_video_format_from_spa_format(obs_pw_stream->format.info.raw.format, obs_pw_video_format) ||
+	    obs_pw_video_format->video_format == VIDEO_FORMAT_NONE)
 		return false;
 
-	frame->format = obs_pw_video_format.video_format;
-	frame->linesize[0] = SPA_ROUND_UP_N(frame->width * obs_pw_video_format.bpp, 4);
+	frame->format = obs_pw_video_format->video_format;
 	return true;
 }
 
@@ -687,17 +686,15 @@ static void process_video_async(obs_pipewire_stream *obs_pw_stream)
 #endif
 
 	struct obs_source_frame out = {0};
-	if (!prepare_obs_frame(obs_pw_stream, &out)) {
+	struct obs_pw_video_format obs_pw_video_format;
+	if (!prepare_obs_frame(obs_pw_stream, &out, &obs_pw_video_format)) {
 		blog(LOG_ERROR, "[pipewire] Couldn't prepare frame");
 		goto done;
 	}
 
-	for (uint32_t i = 0; i < buffer->n_datas && i < MAX_AV_PLANES; i++) {
-		out.data[i] = buffer->datas[i].data;
-		if (out.data[i] == NULL) {
-			blog(LOG_ERROR, "[pipewire] Failed to access data");
-			goto done;
-		}
+	if (!obs_pw_frame_layout(&out, buffer, &obs_pw_video_format)) {
+		blog(LOG_ERROR, "[pipewire] Failed to access data");
+		goto done;
 	}
 
 #ifdef DEBUG_PIPEWIRE

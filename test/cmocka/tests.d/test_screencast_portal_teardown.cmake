@@ -12,6 +12,7 @@ if(TARGET OBS::pipewire)
     test_screencast_portal_teardown
     test_screencast_portal_teardown.c
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/formats.c"
+    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-layout.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/pipewire.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/portal.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/reconnect-policy.c"
