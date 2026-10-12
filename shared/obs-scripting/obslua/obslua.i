@@ -97,6 +97,8 @@ static inline void wrap_blog(int log_level, const char *message)
 %include "obs-properties.h"
 %include "obs-interaction.h"
 %include "obs-hotkey.h"
+/* obs.h includes obs-defs.h, but SWIG does not follow #include */
+%include "obs-defs.h"
 %include "obs.h"
 %include "callback/calldata.h"
 %include "callback/proc.h"
