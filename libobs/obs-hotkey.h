@@ -282,6 +282,9 @@ enum obs_hotkeys_background_state {
 /* With OBS_HOTKEYS_BACKGROUND_FAILED: the desktop portal went away; OBS
  * binds again by itself when it comes back. */
 #define OBS_HOTKEYS_BACKGROUND_RESTARTING (1 << 3)
+/* The last obs_hotkeys_configure_background() could not open the desktop's
+ * editor; cleared by the next request. */
+#define OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED (1 << 4)
 
 EXPORT enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags);
 
@@ -321,6 +324,13 @@ EXPORT void obs_hotkeys_retry_background(void);
  * disabled, and an activated shortcut sends hotkey_background_probe (string
  * id) instead of pressing hotkeys: lets the user test a key from Settings. */
 EXPORT void obs_hotkeys_set_background_probe(bool enable);
+
+/* Opens the desktop's own editor for OBS's shortcuts, where the user can
+ * change their keys (OBS_HOTKEYS_BACKGROUND_CONFIGURABLE; GlobalShortcuts
+ * portal version 2). It needs the shortcuts bound: while background presses
+ * are off (Settings is open), enable the probe first. Changes arrive as
+ * hotkey_background_status_changed with the new triggers. */
+EXPORT void obs_hotkeys_configure_background(void);
 
 /* hotkey callback routing (trigger callbacks through e.g. a UI thread) */
 

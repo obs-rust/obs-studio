@@ -1257,6 +1257,9 @@ void obs_hotkeys_retry_background(void)
 	wake_background_client();
 }
 
+/* Stub: no platform opens the desktop's shortcut editor yet. */
+void obs_hotkeys_configure_background(void) {}
+
 void obs_hotkeys_set_background_probe(bool enable)
 {
 	if (!lock())

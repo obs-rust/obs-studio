@@ -84,6 +84,27 @@ static void desktop_with_triggers_working(void **)
 	/* The user moved F13's shortcut to Pause in the desktop settings: the
 	 * tooltip shows it (trigger texts are localized, so not compared). */
 	assert_string_equal(DesktopTrigger(input, f13).c_str(), "Pause");
+	/* Portal version 1: no desktop editor to open. */
+	assert_false(view.configure);
+
+	input.flags |= OBS_HOTKEYS_BACKGROUND_CONFIGURABLE;
+	assert_true(Compute(input).configure);
+	assert_false(Compute(input).configureFailed);
+
+	/* The desktop's editor could not be opened: the banner says so. */
+	input.flags |= OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED;
+	assert_true(Compute(input).configureFailed);
+}
+
+/* Hyprland takes its keys from its config, even if the portal reports
+ * version 2: the config lines are the way to change keys there. */
+static void configure_not_on_manual_desktops(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_CONFIGURABLE;
+	bind_all(input, "", "");
+	input.desktop = hyprland({std::string(app) + ":OBS_KEY_F13", std::string(app) + ":ctrl+shift+OBS_KEY_A"});
+	assert_false(Compute(input).configure);
 }
 
 /* A key set in Settings is handed to the desktop only when Settings closes
@@ -349,14 +370,23 @@ static void hyprctl_version(void **)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(native_shows_nothing),   cmocka_unit_test(desktop_with_triggers_working),
-		cmocka_unit_test(new_key_is_pending),     cmocka_unit_test(nothing_bound_yet),
-		cmocka_unit_test(hyprland_needs_config),  cmocka_unit_test(hyprland_hand_written_lua),
-		cmocka_unit_test(hyprland_other_key),     cmocka_unit_test(hyprland_no_keys),
-		cmocka_unit_test(unknown_manual_desktop), cmocka_unit_test(failures_offer_next_step),
-		cmocka_unit_test(waiting_for_dialog),     cmocka_unit_test(off_by_setting),
-		cmocka_unit_test(only_focus_only_keys),   cmocka_unit_test(hyprland_lines),
-		cmocka_unit_test(hyprctl_binds),          cmocka_unit_test(hyprctl_version),
+		cmocka_unit_test(native_shows_nothing),
+		cmocka_unit_test(desktop_with_triggers_working),
+		cmocka_unit_test(new_key_is_pending),
+		cmocka_unit_test(nothing_bound_yet),
+		cmocka_unit_test(hyprland_needs_config),
+		cmocka_unit_test(hyprland_hand_written_lua),
+		cmocka_unit_test(hyprland_other_key),
+		cmocka_unit_test(hyprland_no_keys),
+		cmocka_unit_test(configure_not_on_manual_desktops),
+		cmocka_unit_test(unknown_manual_desktop),
+		cmocka_unit_test(failures_offer_next_step),
+		cmocka_unit_test(waiting_for_dialog),
+		cmocka_unit_test(off_by_setting),
+		cmocka_unit_test(only_focus_only_keys),
+		cmocka_unit_test(hyprland_lines),
+		cmocka_unit_test(hyprctl_binds),
+		cmocka_unit_test(hyprctl_version),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

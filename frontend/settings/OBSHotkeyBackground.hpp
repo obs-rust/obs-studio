@@ -164,6 +164,10 @@ struct View {
 	bool checkAgain = false;
 	bool testKey = false;
 	bool askAgain = false;
+	/* The desktop can open its own editor for OBS's shortcuts. */
+	bool configure = false;
+	/* The last attempt to open that editor failed. */
+	bool configureFailed = false;
 };
 
 View Compute(const Input &input);
