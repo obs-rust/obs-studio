@@ -257,6 +257,39 @@ void obs_hotkeys_context_release(struct obs_context_data *context);
 
 void obs_hotkeys_free(void);
 
+/* Background hotkeys provided by the desktop (obs-hotkey.h); all zero, so
+ * OBS_HOTKEYS_BACKGROUND_NATIVE, unless a platform client fills it in. */
+struct obs_hotkey_background_shortcut {
+	obs_key_combination_t combo;
+	char *trigger;
+	bool bound;
+};
+
+struct obs_hotkeys_background {
+	enum obs_hotkeys_background_state state;
+	uint32_t flags;
+	char *error;
+	const char *app_id;
+	/* Shortcut id of a combination; false if it is not a background
+	 * shortcut. */
+	bool (*shortcut_id)(obs_key_combination_t combo, struct dstr *id);
+	/* Preferred trigger of a combination; called with the mutex held and
+	 * wake_data. */
+	bool (*shortcut_trigger)(void *data, obs_key_combination_t combo, struct dstr *trigger);
+	DARRAY(struct obs_hotkey_background_shortcut) shortcuts;
+	bool probe;
+	/* Called with the hotkey mutex held after a retry or a probe change,
+	 * to bring the client in line; must not block. */
+	void (*wake)(void *data);
+	void *wake_data;
+	bool retry;
+};
+
+/* Platform clients, with the hotkey mutex held; send
+ * hotkey_background_status_changed after unlocking. */
+void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *background);
+void obs_hotkeys_background_status_changed(void);
+
 struct obs_hotkey_binding {
 	obs_key_combination_t key;
 	bool pressed;
@@ -532,6 +565,8 @@ struct obs_core_hotkeys {
 	struct obs_hotkey_name_map_item *name_map;
 
 	signal_handler_t *signals;
+
+	struct obs_hotkeys_background background;
 
 	char *translations[OBS_KEY_LAST_VALUE];
 	char *mute;

@@ -1133,53 +1133,141 @@ void obs_hotkey_enable_background_press(bool enable)
 	signal_handler_signal(obs->hotkeys.signals, "hotkey_background_press_changed", &data);
 }
 
-/* Stubs: no platform reports background hotkey status yet. */
+void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *background)
+{
+	for (size_t i = 0; i < background->shortcuts.num; i++)
+		bfree(background->shortcuts.array[i].trigger);
+	da_resize(background->shortcuts, 0);
+}
+
+void obs_hotkeys_background_status_changed(void)
+{
+	if (obs && obs->hotkeys.signals)
+		signal_handler_signal(obs->hotkeys.signals, "hotkey_background_status_changed", NULL);
+}
+
 enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags)
 {
 	if (flags)
 		*flags = 0;
-	return OBS_HOTKEYS_BACKGROUND_NATIVE;
+	if (!lock())
+		return OBS_HOTKEYS_BACKGROUND_NATIVE;
+
+	enum obs_hotkeys_background_state state = obs->hotkeys.background.state;
+	if (flags)
+		*flags = obs->hotkeys.background.flags;
+	unlock();
+	return state;
 }
 
 char *obs_hotkeys_get_background_error(void)
 {
-	return NULL;
+	if (!lock())
+		return NULL;
+
+	char *error = obs->hotkeys.background.error ? bstrdup(obs->hotkeys.background.error) : NULL;
+	unlock();
+	return error;
 }
 
 const char *obs_hotkeys_get_background_app_id(void)
 {
-	return NULL;
-}
+	if (!lock())
+		return NULL;
 
-bool obs_hotkey_combination_is_background(obs_key_combination_t combo)
-{
-	UNUSED_PARAMETER(combo);
-	return true;
+	const char *app_id = obs->hotkeys.background.app_id;
+	unlock();
+	return app_id;
 }
 
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
-	UNUSED_PARAMETER(combo);
-	return NULL;
+	if (!lock())
+		return NULL;
+
+	struct dstr id = {0};
+	bool (*shortcut_id)(obs_key_combination_t, struct dstr *) = obs->hotkeys.background.shortcut_id;
+	unlock();
+
+	if (!shortcut_id || !shortcut_id(combo, &id)) {
+		dstr_free(&id);
+		return NULL;
+	}
+	return id.array;
 }
 
 char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
 {
-	UNUSED_PARAMETER(combo);
-	return NULL;
+	if (!lock())
+		return NULL;
+
+	struct dstr trigger = {0};
+	struct obs_hotkeys_background *background = &obs->hotkeys.background;
+	bool found = background->shortcut_trigger &&
+		     background->shortcut_trigger(background->wake_data, combo, &trigger);
+	unlock();
+
+	if (!found) {
+		dstr_free(&trigger);
+		return NULL;
+	}
+	return trigger.array;
+}
+
+bool obs_hotkey_combination_is_background(obs_key_combination_t combo)
+{
+	if (obs_hotkeys_get_background_state(NULL) == OBS_HOTKEYS_BACKGROUND_NATIVE)
+		return true;
+
+	char *id = obs_hotkey_combination_get_background_id(combo);
+	bool background = id != NULL;
+	bfree(id);
+	return background;
 }
 
 void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data)
 {
-	UNUSED_PARAMETER(func);
-	UNUSED_PARAMETER(data);
+	if (!func || !lock())
+		return;
+
+	struct obs_hotkeys_background *background = &obs->hotkeys.background;
+	for (size_t i = 0; i < background->shortcuts.num; i++) {
+		struct obs_hotkey_background_shortcut *shortcut = &background->shortcuts.array[i];
+		if (!func(data, shortcut->combo, shortcut->trigger, shortcut->bound))
+			break;
+	}
+	unlock();
 }
 
-void obs_hotkeys_retry_background(void) {}
+/* Lets the platform client act on a retry or probe change, then unlocks.
+ * Called under the mutex, so the client cannot be stopped meanwhile. */
+static void wake_background_client(void)
+{
+	if (obs->hotkeys.background.wake)
+		obs->hotkeys.background.wake(obs->hotkeys.background.wake_data);
+	unlock();
+}
+
+void obs_hotkeys_retry_background(void)
+{
+	if (!lock())
+		return;
+
+	obs->hotkeys.background.retry = true;
+	wake_background_client();
+}
 
 void obs_hotkeys_set_background_probe(bool enable)
 {
-	UNUSED_PARAMETER(enable);
+	if (!lock())
+		return;
+
+	if (obs->hotkeys.background.probe == enable) {
+		unlock();
+		return;
+	}
+	obs->hotkeys.background.probe = enable;
+	wake_background_client();
 }
 
 struct obs_query_hotkeys_helper {

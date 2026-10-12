@@ -776,6 +776,18 @@ Core OBS Signals
    Called when :c:func:`obs_hotkey_enable_background_press()` changes
    whether the hotkey thread presses hotkeys.
 
+**hotkey_background_status_changed** ()
+
+   Called (on any thread) when the state of background hotkeys provided by
+   the desktop changes (the GlobalShortcuts portal on Wayland); see
+   ``obs_hotkeys_get_background_state()`` in obs-hotkey.h.
+
+**hotkey_background_probe** (string id)
+
+   Called when the desktop activates the shortcut *id* while
+   ``obs_hotkeys_set_background_probe(true)`` is in effect; no hotkey is
+   pressed meanwhile.
+
 **canvas_create** (ptr canvas)
 
    Called when a new public canvas has been created.

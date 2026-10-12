@@ -1110,6 +1110,8 @@ static const char *obs_signals[] = {
 	"void hotkey_unregister(ptr hotkey)",
 	"void hotkey_bindings_changed(ptr hotkey)",
 	"void hotkey_background_press_changed(bool enabled)",
+	"void hotkey_background_status_changed()",
+	"void hotkey_background_probe(string id)",
 
 	"void canvas_create(ptr canvas)",
 	"void canvas_remove(ptr canvas)",
@@ -1208,6 +1210,9 @@ static inline void obs_free_hotkeys(void)
 	obs_hotkey_name_map_free();
 
 	obs_hotkeys_platform_free(hotkeys);
+	obs_hotkeys_background_clear_shortcuts(&hotkeys->background);
+	da_free(hotkeys->background.shortcuts);
+	bfree(hotkeys->background.error);
 	pthread_mutex_destroy(&hotkeys->mutex);
 }
 

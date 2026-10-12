@@ -78,6 +78,11 @@ struct obs_nix_portal_shortcuts {
 	/* Background presses are disabled (obs_hotkey_enable_background_press):
 	 * no session is held, so the desktop gives the keys back. */
 	bool paused;
+
+	/* Why the last portal request returned nothing: the user or the
+	 * desktop said no (declined), or the call failed (error). */
+	bool request_declined;
+	char *request_error;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -212,6 +217,121 @@ static bool collect_binding(void *data, size_t idx, obs_hotkey_binding_t *bindin
 }
 
 /* ------------------------------------------------------------------------ */
+/* Status for the frontend (obs_hotkeys_get_background_state)               */
+
+static inline struct obs_hotkeys_background *background_lock(void)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+	return &obs->hotkeys.background;
+}
+
+static inline void background_unlock(void)
+{
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	obs_hotkeys_background_status_changed();
+}
+
+static void set_state(enum obs_hotkeys_background_state state, const char *error)
+{
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = state;
+	bfree(background->error);
+	background->error = error ? bstrdup(error) : NULL;
+	background_unlock();
+}
+
+static void set_flag(uint32_t flag, bool set)
+{
+	struct obs_hotkeys_background *background = background_lock();
+	uint32_t flags = set ? background->flags | flag : background->flags & ~flag;
+	bool changed = flags != background->flags;
+	background->flags = flags;
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	if (changed)
+		obs_hotkeys_background_status_changed();
+}
+
+/* The combinations handed to the desktop, none bound yet. */
+static void set_shortcuts(struct obs_hotkeys_background *background, const combo_array_t *combos)
+{
+	obs_hotkeys_background_clear_shortcuts(background);
+	for (size_t i = 0; i < combos->num; i++) {
+		struct obs_hotkey_background_shortcut *shortcut = da_push_back_new(background->shortcuts);
+		shortcut->combo = combos->array[i];
+	}
+}
+
+static void set_shortcuts_bound(struct obs_hotkeys_background *background, bool bound)
+{
+	for (size_t i = 0; i < background->shortcuts.num; i++)
+		background->shortcuts.array[i].bound = bound;
+}
+
+static bool has_trigger(GVariant *props)
+{
+	const char *trigger = NULL;
+	g_variant_lookup(props, "trigger_description", "&s", &trigger);
+	return trigger && *trigger;
+}
+
+/* Records the triggers the desktop reports (BindShortcuts, ShortcutsChanged);
+ * a desktop that reports any lets the user pick the keys. On such a desktop
+ * a shortcut without a trigger is not bound (the user left it without a key
+ * in the dialog); on one that reports none (Hyprland) every returned
+ * shortcut is bound and the keys come from its config. */
+static void set_triggers(GVariant *shortcuts, bool bound)
+{
+	struct obs_hotkeys_background *background = background_lock();
+	bool any_trigger = false;
+	GVariantIter iter;
+	const char *id;
+	GVariant *props;
+	g_variant_iter_init(&iter, shortcuts);
+	while (g_variant_iter_next(&iter, "(&s@a{sv})", &id, &props)) {
+		any_trigger = any_trigger || has_trigger(props);
+		g_variant_unref(props);
+	}
+
+	g_variant_iter_init(&iter, shortcuts);
+	while (g_variant_iter_next(&iter, "(&s@a{sv})", &id, &props)) {
+		const char *trigger = NULL;
+		obs_key_combination_t combo;
+		g_variant_lookup(props, "trigger_description", "&s", &trigger);
+		bool triggered = trigger && *trigger;
+		char *copy = triggered ? bstrdup(trigger) : NULL;
+		g_variant_unref(props);
+		if (!obs_nix_portal_shortcut_combo(id, &combo)) {
+			bfree(copy);
+			continue;
+		}
+
+		for (size_t i = 0; i < background->shortcuts.num; i++) {
+			struct obs_hotkey_background_shortcut *shortcut = &background->shortcuts.array[i];
+			if (!same_combo(shortcut->combo, combo))
+				continue;
+			bfree(shortcut->trigger);
+			shortcut->trigger = copy ? bstrdup(copy) : NULL;
+			if (bound || any_trigger)
+				shortcut->bound = !any_trigger || triggered;
+		}
+		bfree(copy);
+	}
+	if (any_trigger)
+		background->flags |= OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+	else if (bound)
+		background->flags &= ~OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+	background_unlock();
+}
+
+static bool probing(void)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+	bool probe = obs->hotkeys.background.probe;
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	return probe;
+}
+
+/* ------------------------------------------------------------------------ */
 /* Portal requests                                                           */
 
 struct request_result {
@@ -258,6 +378,9 @@ static GVariant *portal_request(struct obs_nix_portal_shortcuts *portal, const c
 	struct request_result result = {0};
 	char *path = g_strdup_printf(PORTAL_PATH "/request/%s/%s", portal->sender, token);
 
+	portal->request_declined = false;
+	g_clear_pointer(&portal->request_error, g_free);
+
 	/* Subscribed before the call, so a fast Response is not missed. */
 	guint signal_id = g_dbus_connection_signal_subscribe(portal->conn, PORTAL_NAME, REQUEST_IFACE, "Response", path,
 							     NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, request_response,
@@ -269,6 +392,8 @@ static GVariant *portal_request(struct obs_nix_portal_shortcuts *portal, const c
 						      &error);
 	if (!reply) {
 		blog(LOG_WARNING, "[portal] GlobalShortcuts.%s failed: %s", method, error->message);
+		g_dbus_error_strip_remote_error(error);
+		portal->request_error = g_strdup(error->message);
 		g_error_free(error);
 		g_dbus_connection_signal_unsubscribe(portal->conn, signal_id);
 		g_free(path);
@@ -299,6 +424,7 @@ static GVariant *portal_request(struct obs_nix_portal_shortcuts *portal, const c
 	if (result.response != 0) {
 		blog(LOG_INFO, "[portal] GlobalShortcuts.%s was %s", method,
 		     result.response == 1 ? "cancelled" : "refused");
+		portal->request_declined = true;
 		g_clear_pointer(&result.results, g_variant_unref);
 		return NULL;
 	}
@@ -358,7 +484,19 @@ static void shortcut_signal(GDBusConnection *conn, const char *sender_name, cons
 	if (!obs_nix_portal_shortcut_combo(id, &combo) || !has_combo(&portal->bound, combo))
 		return;
 
-	set_shortcut(portal, combo, strcmp(signal_name, "Activated") == 0);
+	bool active = strcmp(signal_name, "Activated") == 0;
+	if (probing()) {
+		/* Testing a key from Settings: report it, press nothing. */
+		if (active) {
+			calldata_t data;
+			uint8_t stack[256];
+			calldata_init_fixed(&data, stack, sizeof(stack));
+			calldata_set_string(&data, "id", id);
+			signal_handler_signal(obs->hotkeys.signals, "hotkey_background_probe", &data);
+		}
+		return;
+	}
+	set_shortcut(portal, combo, active);
 }
 
 static void log_shortcuts(GVariant *shortcuts, const char *what)
@@ -378,7 +516,7 @@ static void log_shortcuts(GVariant *shortcuts, const char *what)
 
 /* The user changed a trigger in the desktop settings. The shortcut id names
  * the OBS combination, so the new trigger already drives the same hotkeys;
- * only log it. */
+ * only log it and show it. */
 static void shortcuts_changed(GDBusConnection *conn, const char *sender_name, const char *object_path,
 			      const char *interface_name, const char *signal_name, GVariant *parameters,
 			      gpointer user_data)
@@ -395,8 +533,10 @@ static void shortcuts_changed(GDBusConnection *conn, const char *sender_name, co
 	if (!g_variant_is_of_type(parameters, G_VARIANT_TYPE("(oa(sa{sv}))")))
 		return;
 	g_variant_get(parameters, "(&o@a(sa{sv}))", &session_path, &shortcuts);
-	if (portal->session_path && strcmp(session_path, portal->session_path) == 0)
+	if (portal->session_path && strcmp(session_path, portal->session_path) == 0) {
 		log_shortcuts(shortcuts, "changed");
+		set_triggers(shortcuts, false);
+	}
 	g_variant_unref(shortcuts);
 }
 
@@ -448,6 +588,11 @@ static void session_closed(GDBusConnection *conn, const char *sender_name, const
 		       "global hotkeys are bound again when a new key combination is assigned");
 	da_copy(portal->declined, portal->bound);
 	forget_session(portal);
+
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = OBS_HOTKEYS_BACKGROUND_CLOSED;
+	set_shortcuts_bound(background, false);
+	background_unlock();
 }
 
 static bool create_session(struct obs_nix_portal_shortcuts *portal)
@@ -519,6 +664,7 @@ static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_
 	GVariant *bound = g_variant_lookup_value(results, "shortcuts", G_VARIANT_TYPE("a(sa{sv})"));
 	if (bound) {
 		log_shortcuts(bound, "bound");
+		set_triggers(bound, true);
 		g_variant_unref(bound);
 	}
 	g_variant_unref(results);
@@ -535,6 +681,16 @@ static bool background_press_disabled(void)
 	return disabled;
 }
 
+/* Takes a pending obs_hotkeys_retry_background(). */
+static bool take_retry(void)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+	bool retry = obs->hotkeys.background.retry;
+	obs->hotkeys.background.retry = false;
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	return retry;
+}
+
 /* Brings the portal session in line with the current bindings. The portal
  * accepts one BindShortcuts call per session, so a change closes the
  * session and binds the new set in a fresh one; the ids of combinations
@@ -543,11 +699,15 @@ static bool background_press_disabled(void)
  * While background presses are disabled the wanted set is empty: OBS would
  * drop every activation, so the desktop must not hold the keys for it.
  * Nothing is marked declined by that, so enabling presses binds the same
- * set again without a new prompt. */
+ * set again without a new prompt, and the status keeps the last binding.
+ * A probe (testing a key from Settings) keeps the set bound meanwhile. */
 static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 {
 	combo_array_t current;
 	da_init(current);
+
+	if (take_retry())
+		da_resize(portal->declined, 0);
 
 	bool paused = background_press_disabled();
 	if (paused != portal->paused) {
@@ -555,8 +715,17 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 		     paused ? "released until they are enabled" : "bound again");
 		portal->paused = paused;
 	}
-	if (!paused)
+	bool wanted = !paused || probing();
+	set_flag(OBS_HOTKEYS_BACKGROUND_PAUSED, !wanted);
+	if (wanted)
 		obs_enum_hotkey_bindings(collect_binding, &current);
+
+	if (wanted && current.num == 0) {
+		struct obs_hotkeys_background *background = background_lock();
+		background->state = OBS_HOTKEYS_BACKGROUND_IDLE;
+		obs_hotkeys_background_clear_shortcuts(background);
+		background_unlock();
+	}
 
 	bool unchanged = portal->session_path
 				 ? covered_by(&current, &portal->bound) && covered_by(&portal->bound, &current)
@@ -572,16 +741,28 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 		return;
 	}
 
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = OBS_HOTKEYS_BACKGROUND_WAITING;
+	bfree(background->error);
+	background->error = NULL;
+	set_shortcuts(background, &current);
+	background_unlock();
+
 	/* Set before binding: Activated may be dispatched right after the
 	 * BindShortcuts response, while bind_shortcuts() is still waiting. */
 	da_copy(portal->bound, current);
 	if (!create_session(portal) || !bind_shortcuts(portal, &current)) {
 		close_session(portal);
 		da_move(portal->declined, current);
+		if (portal->request_declined)
+			set_state(OBS_HOTKEYS_BACKGROUND_DECLINED, NULL);
+		else if (!portal->portal_gone && !os_atomic_load_bool(&portal->stopping))
+			set_state(OBS_HOTKEYS_BACKGROUND_FAILED, portal->request_error);
 		return;
 	}
 	da_resize(portal->declined, 0);
 	da_free(current);
+	set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -593,11 +774,23 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
  * it, which is fine. */
 static void register_app_id(struct obs_nix_portal_shortcuts *portal)
 {
+	GError *error = NULL;
 	GVariant *reply = g_dbus_connection_call_sync(portal->conn, PORTAL_NAME, PORTAL_PATH, REGISTRY_IFACE,
 						      "Register", g_variant_new("(sa{sv})", APP_ID, NULL), NULL,
-						      G_DBUS_CALL_FLAGS_NONE, 5000, NULL, NULL);
-	if (reply)
+						      G_DBUS_CALL_FLAGS_NONE, 5000, NULL, &error);
+	if (reply) {
 		g_variant_unref(reply);
+		return;
+	}
+	/* Without the id the portal may refuse the session ("An app id is
+	 * required"); the desktop file must be installed for it. No portal, or
+	 * one older than 1.18 (no Registry), is reported elsewhere. */
+	if (!g_error_matches(error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN) &&
+	    !g_error_matches(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD) &&
+	    !g_error_matches(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_INTERFACE))
+		blog(LOG_WARNING, "[portal] Registering the app id %s failed (%s); is %s.desktop installed?", APP_ID,
+		     error->message, APP_ID);
+	g_error_free(error);
 }
 
 static void portal_vanished(GDBusConnection *conn, const char *name, gpointer user_data)
@@ -608,9 +801,17 @@ static void portal_vanished(GDBusConnection *conn, const char *name, gpointer us
 
 	if (portal->portal_gone)
 		return;
-	blog(LOG_INFO, "[portal] The portal left the session bus; global hotkeys are paused");
+	blog(LOG_WARNING, "[portal] The portal left the session bus; global hotkeys are paused");
 	portal->portal_gone = true;
 	forget_session(portal);
+
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = OBS_HOTKEYS_BACKGROUND_FAILED;
+	background->flags |= OBS_HOTKEYS_BACKGROUND_RESTARTING;
+	bfree(background->error);
+	background->error = bstrdup("The desktop portal stopped");
+	set_shortcuts_bound(background, false);
+	background_unlock();
 }
 
 /* A restarted portal knows nothing of us: register again and bind. */
@@ -628,6 +829,15 @@ static void portal_appeared(GDBusConnection *conn, const char *name, const char 
 	register_app_id(portal);
 	da_resize(portal->declined, 0);
 	portal->sync_due = true;
+
+	/* Nothing is bound until the next sync, which may wait for Settings
+	 * to close. */
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = OBS_HOTKEYS_BACKGROUND_IDLE;
+	background->flags &= ~OBS_HOTKEYS_BACKGROUND_RESTARTING;
+	bfree(background->error);
+	background->error = NULL;
+	background_unlock();
 }
 
 static bool connect_portal(struct obs_nix_portal_shortcuts *portal)
@@ -635,7 +845,8 @@ static bool connect_portal(struct obs_nix_portal_shortcuts *portal)
 	GError *error = NULL;
 	char *address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SESSION, NULL, &error);
 	if (!address) {
-		blog(LOG_INFO, "[portal] No D-Bus session bus (%s); global hotkeys are disabled", error->message);
+		blog(LOG_WARNING, "[portal] No D-Bus session bus (%s); global hotkeys are disabled", error->message);
+		set_state(OBS_HOTKEYS_BACKGROUND_UNAVAILABLE, error->message);
 		g_error_free(error);
 		return false;
 	}
@@ -647,8 +858,9 @@ static bool connect_portal(struct obs_nix_portal_shortcuts *portal)
 		NULL, NULL, &error);
 	g_free(address);
 	if (!portal->conn) {
-		blog(LOG_INFO, "[portal] Cannot connect to the session bus (%s); global hotkeys are disabled",
+		blog(LOG_WARNING, "[portal] Cannot connect to the session bus (%s); global hotkeys are disabled",
 		     error->message);
+		set_state(OBS_HOTKEYS_BACKGROUND_UNAVAILABLE, error->message);
 		g_error_free(error);
 		return false;
 	}
@@ -664,20 +876,26 @@ static bool connect_portal(struct obs_nix_portal_shortcuts *portal)
 					    "Get", g_variant_new("(ss)", SHORTCUTS_IFACE, "version"),
 					    G_VARIANT_TYPE("(v)"), G_DBUS_CALL_FLAGS_NONE, 5000, NULL, &error);
 	if (!reply) {
-		blog(LOG_INFO,
+		blog(LOG_WARNING,
 		     "[portal] GlobalShortcuts portal not available (%s); "
 		     "hotkeys only work while OBS is focused",
 		     error->message);
+		g_dbus_error_strip_remote_error(error);
+		set_state(OBS_HOTKEYS_BACKGROUND_UNAVAILABLE, error->message);
 		g_error_free(error);
 		return false;
 	}
 
 	GVariant *version = NULL;
 	g_variant_get(reply, "(v)", &version);
-	blog(LOG_INFO, "[portal] GlobalShortcuts portal version %u; global hotkeys enabled",
-	     g_variant_is_of_type(version, G_VARIANT_TYPE_UINT32) ? g_variant_get_uint32(version) : 0);
+	uint32_t version_num = g_variant_is_of_type(version, G_VARIANT_TYPE_UINT32) ? g_variant_get_uint32(version) : 0;
+	blog(LOG_INFO, "[portal] GlobalShortcuts portal version %u; global hotkeys enabled", version_num);
 	g_variant_unref(version);
 	g_variant_unref(reply);
+
+	/* Version 2 adds ConfigureShortcuts (the desktop's own editor). */
+	set_flag(OBS_HOTKEYS_BACKGROUND_CONFIGURABLE, version_num >= 2);
+	set_state(OBS_HOTKEYS_BACKGROUND_IDLE, NULL);
 
 	portal->activated_id =
 		g_dbus_connection_signal_subscribe(portal->conn, PORTAL_NAME, SHORTCUTS_IFACE, "Activated", PORTAL_PATH,
@@ -809,6 +1027,30 @@ static void connect_binding_signals(struct obs_nix_portal_shortcuts *portal, boo
 	}
 }
 
+static bool published_trigger(void *data, obs_key_combination_t combo, struct dstr *trigger)
+{
+	struct obs_nix_portal_shortcuts *portal = data;
+	return obs_nix_portal_shortcut_trigger(combo, portal->key_name, trigger);
+}
+
+/* obs_hotkeys_retry_background / obs_hotkeys_set_background_probe. */
+static void wake_portal(void *data)
+{
+	struct obs_nix_portal_shortcuts *portal = data;
+	g_source_set_ready_time(portal->sync_source, 0);
+}
+
+static void unpublish(struct obs_nix_portal_shortcuts *portal)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+	if (obs->hotkeys.background.wake_data == portal) {
+		obs->hotkeys.background.wake = NULL;
+		obs->hotkeys.background.shortcut_trigger = NULL;
+		obs->hotkeys.background.wake_data = NULL;
+	}
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+}
+
 static void free_portal(struct obs_nix_portal_shortcuts *portal)
 {
 	g_source_destroy(portal->sync_source);
@@ -816,6 +1058,7 @@ static void free_portal(struct obs_nix_portal_shortcuts *portal)
 	g_main_context_unref(portal->context);
 	g_free(portal->sender);
 	g_free(portal->session_path);
+	g_free(portal->request_error);
 	da_free(portal->bound);
 	da_free(portal->declined);
 	bfree(portal);
@@ -833,10 +1076,21 @@ struct obs_nix_portal_shortcuts *obs_nix_portal_shortcuts_start(struct obs_nix_h
 	((struct sync_source *)portal->sync_source)->portal = portal;
 	g_source_attach(portal->sync_source, portal->context);
 
+	struct obs_hotkeys_background *background = background_lock();
+	background->state = OBS_HOTKEYS_BACKGROUND_STARTING;
+	background->app_id = APP_ID;
+	background->shortcut_id = obs_nix_portal_shortcut_id;
+	background->shortcut_trigger = published_trigger;
+	background->wake = wake_portal;
+	background->wake_data = portal;
+	background_unlock();
+
 	connect_binding_signals(portal, true);
 	if (pthread_create(&portal->thread, NULL, portal_thread, portal) != 0) {
 		blog(LOG_WARNING, "[portal] Failed to start the portal shortcuts thread");
 		connect_binding_signals(portal, false);
+		unpublish(portal);
+		set_state(OBS_HOTKEYS_BACKGROUND_UNAVAILABLE, NULL);
 		free_portal(portal);
 		return NULL;
 	}
@@ -848,8 +1102,9 @@ void obs_nix_portal_shortcuts_stop(struct obs_nix_portal_shortcuts *portal)
 	if (!portal)
 		return;
 
-	/* No signal handler runs after this returns. */
+	/* No signal handler or wake runs after this returns. */
 	connect_binding_signals(portal, false);
+	unpublish(portal);
 
 	os_atomic_set_bool(&portal->stopping, true);
 	g_main_context_wakeup(portal->context);
