@@ -169,8 +169,12 @@ jobs:
     uses: ./.github/workflows/appimage.yaml
     with:
       ref: ${{ needs.check.outputs.sha }}
+    # A called workflow may not ask for more than its caller grants, and
+    # appimage.yaml's release job asks for contents: write (it only runs on a
+    # push, never from here). Granting less made GitHub refuse to start this
+    # whole workflow (startup_failure), so no daily beta was published.
     permissions:
-      contents: read
+      contents: write
 
   release:
     name: Publish pre-release 🚀
