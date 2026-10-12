@@ -133,6 +133,7 @@ struct _obs_pipewire_stream {
 	struct obs_video_info video_info;
 	bool negotiated;
 	bool streamed;
+	bool bad_frame_layout_logged;
 
 	DARRAY(struct format_info) format_info;
 
@@ -693,7 +694,11 @@ static void process_video_async(obs_pipewire_stream *obs_pw_stream)
 	}
 
 	if (!obs_pw_frame_layout(&out, buffer, &obs_pw_video_format)) {
-		blog(LOG_ERROR, "[pipewire] Failed to access data");
+		if (!obs_pw_stream->bad_frame_layout_logged) {
+			blog(LOG_WARNING, "[pipewire] Dropping frames: a buffer does not hold a %ux%u %s frame",
+			     out.width, out.height, obs_pw_video_format.pretty_name);
+			obs_pw_stream->bad_frame_layout_logged = true;
+		}
 		goto done;
 	}
 
