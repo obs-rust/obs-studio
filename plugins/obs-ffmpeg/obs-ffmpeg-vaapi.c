@@ -21,6 +21,7 @@
 #include <util/dstr.h>
 #include <util/base.h>
 #include <util/platform.h>
+#include <util/threading.h>
 #include <media-io/video-io.h>
 #include <obs-module.h>
 #include <obs-avc.h>
@@ -94,6 +95,9 @@ struct vaapi_encoder {
 	int height;
 	bool first_packet;
 	bool initialized;
+
+	/* set by vaapi_request_keyframe, taken by the next encode */
+	volatile bool keyframe_requested;
 };
 
 static const char *h264_vaapi_getname(void *unused)
@@ -663,6 +667,12 @@ static bool vaapi_encode_internal(struct vaapi_encoder *enc, AVFrame *frame, str
 	int got_packet;
 	int ret;
 
+	/* An output joined (request_keyframe): FFmpeg's VA-API encoders make an
+	 * I frame an IDR frame instead of waiting for the next scheduled one. */
+	if (frame)
+		frame->pict_type = os_atomic_exchange_bool(&enc->keyframe_requested, false) ? AV_PICTURE_TYPE_I
+											    : AV_PICTURE_TYPE_NONE;
+
 	ret = avcodec_send_frame(enc->context, frame);
 	if (ret == 0 || ret == AVERROR(EAGAIN))
 		ret = avcodec_receive_packet(enc->context, enc->packet);
@@ -1220,6 +1230,12 @@ static obs_properties_t *hevc_vaapi_properties(void *unused)
 }
 #endif
 
+static void vaapi_request_keyframe(void *data)
+{
+	struct vaapi_encoder *enc = data;
+	os_atomic_set_bool(&enc->keyframe_requested, true);
+}
+
 static bool vaapi_extra_data(void *data, uint8_t **extra_data, size_t *size)
 {
 	struct vaapi_encoder *enc = data;
@@ -1252,6 +1268,7 @@ struct obs_encoder_info h264_vaapi_encoder_info = {
 	.get_sei_data = vaapi_sei_data,
 	.get_video_info = vaapi_video_info,
 	.caps = OBS_ENCODER_CAP_INTERNAL,
+	.request_keyframe = vaapi_request_keyframe,
 };
 
 struct obs_encoder_info h264_vaapi_encoder_tex_info = {
@@ -1268,6 +1285,7 @@ struct obs_encoder_info h264_vaapi_encoder_tex_info = {
 	.get_sei_data = vaapi_sei_data,
 	.get_video_info = vaapi_video_info,
 	.caps = OBS_ENCODER_CAP_PASS_TEXTURE,
+	.request_keyframe = vaapi_request_keyframe,
 };
 
 struct obs_encoder_info av1_vaapi_encoder_info = {
@@ -1317,6 +1335,7 @@ struct obs_encoder_info hevc_vaapi_encoder_info = {
 	.get_sei_data = vaapi_sei_data,
 	.get_video_info = vaapi_video_info,
 	.caps = OBS_ENCODER_CAP_INTERNAL,
+	.request_keyframe = vaapi_request_keyframe,
 };
 
 struct obs_encoder_info hevc_vaapi_encoder_tex_info = {
@@ -1333,5 +1352,6 @@ struct obs_encoder_info hevc_vaapi_encoder_tex_info = {
 	.get_sei_data = vaapi_sei_data,
 	.get_video_info = vaapi_video_info,
 	.caps = OBS_ENCODER_CAP_PASS_TEXTURE,
+	.request_keyframe = vaapi_request_keyframe,
 };
 #endif

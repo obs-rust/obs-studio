@@ -335,6 +335,12 @@ obs_properties_t *svt_av1_properties(void *unused)
 	return av1_properties(AV1_ENCODER_TYPE_SVT);
 }
 
+static void av1_request_keyframe(void *data)
+{
+	struct av1_encoder *enc = data;
+	ffmpeg_video_encoder_request_keyframe(&enc->ffve);
+}
+
 static bool av1_extra_data(void *data, uint8_t **extra_data, size_t *size)
 {
 	struct av1_encoder *enc = data;
@@ -356,6 +362,7 @@ struct obs_encoder_info svt_av1_encoder_info = {
 	.get_properties = svt_av1_properties,
 	.get_extra_data = av1_extra_data,
 	.get_video_info = av1_video_info,
+	.request_keyframe = av1_request_keyframe,
 };
 
 struct obs_encoder_info aom_av1_encoder_info = {
@@ -370,4 +377,5 @@ struct obs_encoder_info aom_av1_encoder_info = {
 	.get_properties = aom_av1_properties,
 	.get_extra_data = av1_extra_data,
 	.get_video_info = av1_video_info,
+	.request_keyframe = av1_request_keyframe,
 };

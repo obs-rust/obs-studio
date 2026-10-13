@@ -33,6 +33,9 @@ struct ffmpeg_video_encoder {
 	int height;
 	bool initialized;
 
+	/* set by ffmpeg_video_encoder_request_keyframe, taken by the next encode */
+	volatile bool keyframe_requested;
+
 	void *parent;
 	init_error_cb on_init_error;
 	first_packet_cb on_first_packet;
@@ -48,3 +51,4 @@ extern void ffmpeg_video_encoder_update(struct ffmpeg_video_encoder *enc, int bi
 					const char *ffmpeg_opts);
 extern bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame *frame,
 				struct encoder_packet *packet, bool *received_packet);
+extern void ffmpeg_video_encoder_request_keyframe(struct ffmpeg_video_encoder *enc);

@@ -1,4 +1,5 @@
 #include "obs-ffmpeg-video-encoders.h"
+#include <util/threading.h>
 
 #define do_log(level, format, ...) \
 	blog(level, "[%s encoder: '%s'] " format, enc->enc_name, obs_encoder_get_name(enc->encoder), ##__VA_ARGS__)
@@ -217,6 +218,10 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame 
 	copy_data(enc->vframe, frame, enc->height, enc->context->pix_fmt);
 
 	enc->vframe->pts = frame->pts;
+	/* An output joined (request_keyframe): the encoder library makes this
+	 * frame a keyframe instead of waiting for its next scheduled one. */
+	enc->vframe->pict_type = os_atomic_exchange_bool(&enc->keyframe_requested, false) ? AV_PICTURE_TYPE_I
+											  : AV_PICTURE_TYPE_NONE;
 	ret = avcodec_send_frame(enc->context, enc->vframe);
 	if (ret == 0)
 		ret = avcodec_receive_packet(enc->context, &av_pkt);
@@ -276,4 +281,9 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame 
 
 	av_packet_unref(&av_pkt);
 	return !timeout;
+}
+
+void ffmpeg_video_encoder_request_keyframe(struct ffmpeg_video_encoder *enc)
+{
+	os_atomic_set_bool(&enc->keyframe_requested, true);
 }
