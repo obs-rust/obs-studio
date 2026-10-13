@@ -45,8 +45,9 @@ static uint32_t get_plane_shapes(const struct obs_source_frame *frame, const str
 		return 2;
 	case VIDEO_FORMAT_I420: {
 		/* Luma, then U and V: half the rows, half as wide, with
-		 * half the luma stride (V4L2's YU12 layout). YV12 has V
-		 * first. */
+		 * half the luma stride rounded up (V4L2's YU12 layout: at
+		 * an odd width a chroma row has (width + 1) / 2 bytes).
+		 * YV12 has V first. */
 		const bool yv12 = format->spa_format == SPA_VIDEO_FORMAT_YV12;
 
 		planes[0] = (struct plane_shape){frame->width, frame->height, 1, 0};
@@ -68,6 +69,14 @@ static uint32_t get_plane_shapes(const struct obs_source_frame *frame, const str
 static uint64_t chunk_stride(const struct spa_data *d, uint64_t fallback)
 {
 	return d->chunk->stride > 0 ? (uint64_t)d->chunk->stride : fallback;
+}
+
+/* The stride of a plane without one of its own: the first plane's, divided
+ * and rounded up for planar chroma. A tightly packed luma row of an odd
+ * width w has stride w, and its chroma rows (w + 1) / 2 bytes. */
+static uint64_t derived_stride(uint64_t stride, const struct plane_shape *shape)
+{
+	return (stride + shape->stride_div - 1) / shape->stride_div;
 }
 
 /* Points the frame plane of `shape` at `pos` bytes into the valid data of
@@ -106,10 +115,11 @@ bool obs_pw_frame_layout(struct obs_source_frame *frame, const struct spa_buffer
 
 	if (buffer->n_datas >= n_planes) {
 		/* One block per plane. A plane without a stride of its own
-		 * has the first plane's, divided for planar chroma. */
+		 * has the first plane's, halved (rounded up) for planar
+		 * chroma. */
 		for (uint32_t p = 0; p < n_planes; p++) {
 			const struct spa_data *d = &buffer->datas[p];
-			const uint64_t plane_stride = stride / planes[p].stride_div;
+			const uint64_t plane_stride = derived_stride(stride, &planes[p]);
 
 			if (!d->chunk ||
 			    !place_plane(frame, d, 0, p == 0 ? stride : chunk_stride(d, plane_stride), &planes[p]))
@@ -121,11 +131,11 @@ bool obs_pw_frame_layout(struct obs_source_frame *frame, const struct spa_buffer
 	if (buffer->n_datas == 1) {
 		/* All planes in one block, one after the other. The chunk
 		 * stride is the first plane's; NV12's chroma rows have the
-		 * same, planar chroma rows half of it. */
+		 * same, planar chroma rows half of it, rounded up. */
 		uint64_t pos = 0;
 
 		for (uint32_t p = 0; p < n_planes; p++) {
-			const uint64_t plane_stride = stride / planes[p].stride_div;
+			const uint64_t plane_stride = derived_stride(stride, &planes[p]);
 
 			if (!place_plane(frame, &buffer->datas[0], pos, plane_stride, &planes[p]))
 				return false;
