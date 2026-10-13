@@ -841,6 +841,11 @@ int OBSBasic::GetTbarPosition()
 
 void OBSBasic::SetTbarPosition(int position)
 {
+	/* The T-Bar only exists in Studio Mode. */
+	if (!previewProgramMode) {
+		return;
+	}
+
 	struct tbar_position_ops ops = {};
 	ops.param = this;
 	ops.set_slider_value = [](void *param, int value) {

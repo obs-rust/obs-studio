@@ -33,7 +33,7 @@ struct tbar_position_ops {
 	void (*position_changed)(void *param, int value);
 };
 
-/* obs_frontend_set_tbar_position(). */
+/* obs_frontend_set_tbar_position(): moves the slider to position. */
 void tbar_api_set_position(const struct tbar_position_ops *ops, int position);
 
 #ifdef __cplusplus
