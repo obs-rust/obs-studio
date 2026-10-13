@@ -58,6 +58,8 @@ target_sources(
     utility/service-encoder-settings.h
     utility/studio-mode-exit.c
     utility/studio-mode-exit.h
+    utility/studio-mode-swap.c
+    utility/studio-mode-swap.h
     utility/tbar-position.c
     utility/tbar-position.h
     utility/transform-clipboard.c

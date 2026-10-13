@@ -22,6 +22,7 @@
 #include <components/MenuButton.hpp>
 #include <dialogs/NameDialog.hpp>
 #include <utility/display-helpers.hpp>
+#include <utility/studio-mode-swap.h>
 #include <utility/QuickTransition.hpp>
 #include <utility/tbar-position.h>
 
@@ -258,8 +259,13 @@ void OBSBasic::TransitionStopped()
 {
 	if (swapScenesMode) {
 		OBSSource scene = OBSGetStrongRef(swapScene);
-		if (scene) {
-			SetCurrentScene(scene);
+		OBSSource previewAtStart = OBSGetStrongRef(swapPreviewScene);
+		OBSSource preview = GetCurrentSceneSource();
+
+		obs_source_t *swapTo = static_cast<obs_source_t *>(
+			studio_mode_swap_scene(scene.Get(), previewAtStart.Get(), preview.Get()));
+		if (swapTo) {
+			SetCurrentScene(OBSSource(swapTo));
 		}
 	}
 
@@ -270,6 +276,7 @@ void OBSBasic::TransitionStopped()
 	OnEvent(OBS_FRONTEND_EVENT_SCENE_CHANGED);
 
 	swapScene = nullptr;
+	swapPreviewScene = nullptr;
 }
 
 void OBSBasic::OverrideTransition(OBSSource transition)
@@ -317,6 +324,7 @@ void OBSBasic::TransitionToScene(OBSSource source, bool force, bool quickTransit
 
 			if (swapScenesMode && lastScene && lastScene != GetCurrentSceneSource()) {
 				swapScene = lastProgramScene;
+				swapPreviewScene = OBSGetWeakRef(GetCurrentSceneSource());
 			}
 		}
 	}

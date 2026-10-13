@@ -288,6 +288,7 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 
 		programScene = nullptr;
 		swapScene = nullptr;
+		swapPreviewScene = nullptr;
 		prevFTBSource = nullptr;
 
 		for (QuickTransition &qt : quickTransitions) {

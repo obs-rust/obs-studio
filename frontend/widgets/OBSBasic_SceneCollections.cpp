@@ -1569,6 +1569,7 @@ void OBSBasic::ClearSceneData()
 	collectionModuleData = nullptr;
 	lastScene = nullptr;
 	swapScene = nullptr;
+	swapPreviewScene = nullptr;
 	programScene = nullptr;
 	prevFTBSource = nullptr;
 

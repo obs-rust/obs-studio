@@ -1273,6 +1273,7 @@ private:
 	std::atomic<obs_scene_t *> currentScene = nullptr;
 	OBSWeakSource lastScene;
 	OBSWeakSource swapScene;
+	OBSWeakSource swapPreviewScene;
 
 	void LoadSceneListOrder(obs_data_array_t *array);
 	obs_data_array_t *SaveSceneListOrder();
