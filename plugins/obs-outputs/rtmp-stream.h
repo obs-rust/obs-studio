@@ -118,6 +118,10 @@ struct rtmp_stream {
 	long dbr_inc_bitrate;
 	bool dbr_enabled;
 	DARRAY(struct dbr_interpolation_point) dbr_interpolation_table;
+	bool dbr_default_table;
+	/* The video encoders' bitrates as dynamic bitrate last left them, to
+	 * notice a bitrate the user changed while live. */
+	long dbr_enc_bitrates[MAX_OUTPUT_VIDEO_ENCODERS];
 
 	enum audio_id_t audio_codec[MAX_OUTPUT_AUDIO_ENCODERS];
 	enum video_id_t video_codec[MAX_OUTPUT_VIDEO_ENCODERS];

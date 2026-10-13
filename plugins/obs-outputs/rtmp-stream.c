@@ -614,6 +614,7 @@ static void dbr_add_frame(struct rtmp_stream *stream, struct dbr_frame *back)
 }
 
 static void dbr_set_bitrate(struct rtmp_stream *stream);
+static void dbr_check_user_bitrate(struct rtmp_stream *stream);
 
 #ifdef _WIN32
 #define socklen_t int
@@ -724,6 +725,7 @@ static void *send_thread(void *data)
 
 	/* reset bitrate on stop */
 	if (stream->dbr_enabled) {
+		dbr_check_user_bitrate(stream);
 		if (stream->dbr_cur_bitrate != stream->dbr_orig_bitrate) {
 			stream->dbr_cur_bitrate = stream->dbr_orig_bitrate;
 			dbr_set_bitrate(stream);
@@ -1389,6 +1391,7 @@ static bool init_connect(struct rtmp_stream *stream)
 		}
 	}
 
+	memset(stream->dbr_enc_bitrates, 0, sizeof(stream->dbr_enc_bitrates));
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; ++i) {
 		obs_encoder_t *enc = obs_output_get_video_encoder2(stream->output, i);
 		if (!enc)
@@ -1422,6 +1425,7 @@ static bool init_connect(struct rtmp_stream *stream)
 		long long bitrate = obs_data_get_int(settings, "bitrate");
 		overall_video_bitrate += bitrate;
 		dbr_point->bitrates[i] = (long)bitrate;
+		stream->dbr_enc_bitrates[i] = (long)bitrate;
 		obs_data_release(settings);
 	}
 
@@ -1440,6 +1444,7 @@ static bool init_connect(struct rtmp_stream *stream)
 		stream->dbr_enabled = false;
 	}
 
+	stream->dbr_default_table = !obs_data_has_user_value(settings, OPT_DYN_BITRATE_INTERPOLATION_TABLE_DATA);
 	if (stream->dbr_enabled && !obs_data_has_user_value(settings, OPT_DYN_BITRATE_INTERPOLATION_TABLE_DATA)) {
 		info("Dynamic bitrate using default interpolation");
 	} else if (obs_data_has_user_value(settings, OPT_DYN_BITRATE_INTERPOLATION_TABLE_DATA)) {
@@ -1725,6 +1730,7 @@ static void dbr_set_bitrate(struct rtmp_stream *stream)
 			continue;
 
 		long bitrate = dbr_base_point->bitrates[i] + (long)(deltas[i] * delta_scale);
+		stream->dbr_enc_bitrates[i] = bitrate;
 
 		obs_data_t *settings = obs_encoder_get_settings(enc);
 		if (obs_data_get_int(settings, "bitrate") != bitrate) {
@@ -1749,6 +1755,46 @@ static void dbr_inc_bitrate(struct rtmp_stream *stream)
 	}
 }
 
+/* A video bitrate changed while live (Settings > Output) becomes the bitrate
+ * dynamic bitrate lowers from and climbs back to. */
+static void dbr_check_user_bitrate(struct rtmp_stream *stream)
+{
+	long bitrates[MAX_OUTPUT_VIDEO_ENCODERS] = {0};
+	long total = 0;
+	bool changed = false;
+
+	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; ++i) {
+		obs_encoder_t *enc = obs_output_get_video_encoder2(stream->output, i);
+		if (!enc)
+			continue;
+
+		obs_data_t *settings = obs_encoder_get_settings(enc);
+		bitrates[i] = (long)obs_data_get_int(settings, "bitrate");
+		obs_data_release(settings);
+
+		if (bitrates[i] != stream->dbr_enc_bitrates[i])
+			changed = true;
+		total += bitrates[i];
+	}
+
+	if (!changed)
+		return;
+
+	memcpy(stream->dbr_enc_bitrates, bitrates, sizeof(bitrates));
+	if (stream->dbr_default_table && stream->dbr_interpolation_table.num) {
+		struct dbr_interpolation_point *top =
+			&stream->dbr_interpolation_table.array[stream->dbr_interpolation_table.num - 1];
+		memcpy(top->bitrates, bitrates, sizeof(bitrates));
+	}
+
+	stream->dbr_orig_bitrate = total;
+	stream->dbr_cur_bitrate = total;
+	stream->dbr_prev_bitrate = 0;
+	stream->dbr_inc_bitrate = total / 10;
+	stream->dbr_inc_timeout = 0;
+	info("bitrate changed to: %ld", total);
+}
+
 static void check_to_drop_frames(struct rtmp_stream *stream, bool pframes)
 {
 	struct encoder_packet first;
@@ -1759,6 +1805,7 @@ static void check_to_drop_frames(struct rtmp_stream *stream, bool pframes)
 	int64_t drop_threshold = pframes ? stream->pframe_drop_threshold_usec : stream->drop_threshold_usec;
 
 	if (!pframes && stream->dbr_enabled) {
+		dbr_check_user_bitrate(stream);
 		if (stream->dbr_inc_timeout) {
 			uint64_t t = os_gettime_ns();
 
