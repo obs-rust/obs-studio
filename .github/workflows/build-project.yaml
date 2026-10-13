@@ -718,11 +718,32 @@ jobs:
           key: tier2-ccache-linux-${{ github.sha }}
           restore-keys: tier2-ccache-linux-
 
+      # The Tier 2 image (about 80 apt packages and a Rust toolchain) took
+      # over 2 minutes to rebuild on every run. Build it here with its layers
+      # cached; only master runs write the cache, like the compiler caches.
+      - name: Set Up Docker Buildx 🐳
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Read Rust Toolchain 🦀
+        id: toolchain
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Tier 2 Image 🐳
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: rust/tools/linux-validate
+          build-args: RUST_TOOLCHAIN=${{ steps.toolchain.outputs.channel }}
+          tags: obs-rust-linux-validate
+          load: true
+          cache-from: type=gha,scope=tier2-linux-image
+          cache-to: ${{ (github.event_name != 'pull_request' && github.ref == 'refs/heads/master') && 'type=gha,scope=tier2-linux-image,mode=max' || '' }}
+
       # GATE-001 mirror (local-gate.toml): the local gate's tier2-linux lane,
       # which runs rust/tools/linux-validate/run.sh.
       - name: Validate Tier 2 (ENABLE_RUST_LIBOBS OFF vs ON) ✅
         env:
           OBS_CCACHE_DIR: ${{ github.workspace }}/.tier2-ccache
+          OBS_TIER2_IMAGE_PREBUILT: '1'
         run: python3 ci/local_gate.py --lane tier2-linux
 
       - name: Save Tier 2 ccache 💾

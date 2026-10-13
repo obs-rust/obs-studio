@@ -48,7 +48,10 @@ else
 fi
 # Bake the toolchain pinned in rust-toolchain.toml into the image.
 rust_toolchain=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$repo/rust-toolchain.toml")
-docker build -q --build-arg "RUST_TOOLCHAIN=$rust_toolchain" -t obs-rust-linux-validate "$here" >/dev/null
+# CI builds the image itself with a layer cache and sets OBS_TIER2_IMAGE_PREBUILT.
+if [ -z "${OBS_TIER2_IMAGE_PREBUILT:-}" ]; then
+  docker build -q --build-arg "RUST_TOOLCHAIN=$rust_toolchain" -t obs-rust-linux-validate "$here" >/dev/null
+fi
 # bash 3.2 (macOS /bin/bash) errors on "${env[@]}" when the array is empty
 # and set -u is on. Ubuntu bash does not. A normal checkout leaves it empty.
 run=(docker run --rm -v "$repo:/ro:ro")
