@@ -1111,6 +1111,9 @@ void mp_media_play(mp_media_t *m, bool loop, bool reconnecting)
 	if (m->active)
 		m->reset = true;
 
+	/* A stop the thread has not handled yet still resets the media, but
+	 * playback starts again, so it must not report that it stopped. */
+	m->stopping = false;
 	m->looping = loop;
 	m->active = true;
 	m->reconnecting = reconnecting;

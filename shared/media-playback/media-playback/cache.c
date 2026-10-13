@@ -695,6 +695,9 @@ void mp_cache_play(mp_cache_t *c, bool loop)
 	if (c->active)
 		c->reset = true;
 
+	/* A stop the thread has not handled yet still resets the cache, but
+	 * playback starts again, so it must not report that it stopped. */
+	c->stopping = false;
 	c->looping = loop;
 	c->active = true;
 
