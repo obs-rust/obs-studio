@@ -9,19 +9,12 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl)
     test_async_delay_audio.c
     "${CMAKE_SOURCE_DIR}/plugins/obs-filters/async-delay-filter.c"
   )
-  target_compile_definitions(
-    test_async_delay_audio
-    PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>"
-  )
+  target_compile_definitions(test_async_delay_audio PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>")
   target_include_directories(test_async_delay_audio PRIVATE ${CMOCKA_INCLUDE_DIR})
   target_link_libraries(test_async_delay_audio PRIVATE OBS::libobs ${CMOCKA_LIBRARIES} m)
   add_dependencies(test_async_delay_audio libobs-opengl)
   add_dependencies(cmocka-tests test_async_delay_audio)
   # libobs finds its effect files relative to the working directory.
-  add_test(
-    NAME test_async_delay_audio
-    COMMAND test_async_delay_audio
-    WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
-  )
+  add_test(NAME test_async_delay_audio COMMAND test_async_delay_audio WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>")
   set_tests_properties(test_async_delay_audio PROPERTIES TIMEOUT 180)
 endif()
