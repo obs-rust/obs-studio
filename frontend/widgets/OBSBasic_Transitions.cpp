@@ -704,6 +704,11 @@ void OBSBasic::SetCurrentScene(OBSSource scene, bool force)
 		}
 	}
 
+	SelectCurrentScene(scene, force);
+}
+
+void OBSBasic::SelectCurrentScene(OBSSource scene, bool force)
+{
 	if (obs_scene_get_source(GetCurrentScene()) != scene) {
 		for (int i = 0; i < ui->scenes->count(); i++) {
 			QListWidgetItem *item = ui->scenes->item(i);

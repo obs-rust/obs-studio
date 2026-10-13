@@ -22,6 +22,7 @@
 
 #include <utility/display-helpers.hpp>
 #include <utility/QuickTransition.hpp>
+#include <utility/studio-mode-exit.h>
 
 #include <qt-wrappers.hpp>
 #include <slider-ignorewheel.hpp>
@@ -249,12 +250,27 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 			       "-------------------");
 	} else {
 		OBSSource actualProgramScene = OBSGetStrongRef(programScene);
-		if (!actualProgramScene) {
-			actualProgramScene = GetCurrentSceneSource();
-		} else {
-			SetCurrentScene(actualProgramScene, true);
-		}
-		TransitionToScene(actualProgramScene, true);
+		OBSSource currentScene = GetCurrentSceneSource();
+		struct studio_mode_exit_ops ops = {};
+		ops.param = this;
+		ops.select_scene = [](void *param, void *scene) {
+			static_cast<OBSBasic *>(param)->SelectCurrentScene(static_cast<obs_source_t *>(scene), true);
+		};
+		ops.show_on_program = [](void *, void *scene) {
+			/* What TransitionToScene(scene, true) does outside Studio
+			 * Mode, without the scene changed event. */
+			if (!obs_scene_from_source(static_cast<obs_source_t *>(scene))) {
+				return;
+			}
+			OBSSourceAutoRelease transition = obs_get_output_source(0);
+			if (transition) {
+				obs_transition_set(transition, static_cast<obs_source_t *>(scene));
+			}
+		};
+		ops.scene_changed = [](void *param) {
+			static_cast<OBSBasic *>(param)->OnEvent(OBS_FRONTEND_EVENT_SCENE_CHANGED);
+		};
+		studio_mode_exit_switch(&ops, actualProgramScene.Get(), currentScene.Get());
 
 		delete programOptions;
 		delete program;

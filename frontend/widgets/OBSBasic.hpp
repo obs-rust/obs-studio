@@ -1556,6 +1556,9 @@ private:
 	QMenu *CreatePerSceneTransitionMenu();
 
 	void SetCurrentScene(obs_scene_t *scene, bool force = false);
+	/* The part of SetCurrentScene() that selects the scene in the scene list,
+	 * without switching the program. */
+	void SelectCurrentScene(OBSSource scene, bool force);
 
 	void PasteShowHideTransition(obs_sceneitem_t *item, bool show, obs_source_t *tr, int duration);
 

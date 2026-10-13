@@ -48,6 +48,8 @@ target_sources(
     utility/scene-collection-migration.hpp
     utility/service-encoder-settings.c
     utility/service-encoder-settings.h
+    utility/studio-mode-exit.c
+    utility/studio-mode-exit.h
     utility/transform-clipboard.c
     utility/transform-clipboard.h
     utility/OBSCanvas.cpp
