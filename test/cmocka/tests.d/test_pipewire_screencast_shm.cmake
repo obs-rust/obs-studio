@@ -36,7 +36,10 @@ if(OS_LINUX AND TARGET OBS::pipewire)
       ${CMOCKA_LIBRARIES}
   )
   # A build tree has no libobs-opengl on the loader path, so load it by path.
-  target_compile_definitions(test_pipewire_screencast_shm PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>")
+  target_compile_definitions(
+    test_pipewire_screencast_shm
+    PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>"
+  )
   add_dependencies(test_pipewire_screencast_shm libobs-opengl)
   add_dependencies(cmocka-tests test_pipewire_screencast_shm)
   add_test(
