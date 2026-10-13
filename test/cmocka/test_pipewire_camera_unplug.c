@@ -137,55 +137,6 @@ static void release_quarantine(void)
 	pthread_mutex_unlock(&keys_mutex);
 }
 
-/* Not this bug: on_registry_global_cb() reads connection->obs_pw, which
- * on_pipewire_remote_opened_cb() assigns only after obs_pipewire_connect_fd()
- * has started the PipeWire thread (obsproject/obs-studio#13971). The registry
- * events are held until the camera portal's first roundtrip, by which time
- * the connection is assigned, so the test does not crash on that race. */
-
-extern obs_pipewire *__real_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-						    void *user_data);
-extern void __real_obs_pipewire_roundtrip(obs_pipewire *obs_pw);
-
-EXPORT obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-						    void *user_data);
-EXPORT void __wrap_obs_pipewire_roundtrip(obs_pipewire *obs_pw);
-
-static const struct pw_registry_events *portal_registry_events;
-static os_event_t *registry_gate;
-
-static void gated_global(void *data, uint32_t id, uint32_t permissions, const char *type, uint32_t version,
-			 const struct spa_dict *props)
-{
-	os_event_wait(registry_gate);
-	portal_registry_events->global(data, id, permissions, type, version, props);
-}
-
-static void gated_global_remove(void *data, uint32_t id)
-{
-	os_event_wait(registry_gate);
-	portal_registry_events->global_remove(data, id);
-}
-
-static const struct pw_registry_events gated_registry_events = {
-	PW_VERSION_REGISTRY_EVENTS,
-	.global = gated_global,
-	.global_remove = gated_global_remove,
-};
-
-obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-					     void *user_data)
-{
-	portal_registry_events = registry_events;
-	return __real_obs_pipewire_connect_fd(pipewire_fd, registry_events ? &gated_registry_events : NULL, user_data);
-}
-
-void __wrap_obs_pipewire_roundtrip(obs_pipewire *obs_pw)
-{
-	os_event_signal(registry_gate);
-	__real_obs_pipewire_roundtrip(obs_pw);
-}
-
 /* ------------------------------------------------------------------ */
 /* Fake org.freedesktop.portal.Camera, served from its own thread      */
 
@@ -496,8 +447,6 @@ static int setup(void **state)
 	bus = g_test_dbus_new(G_TEST_DBUS_NONE);
 	g_test_dbus_up(bus);
 	g_setenv("DISPLAY", display_name, TRUE);
-
-	os_event_init(&registry_gate, OS_EVENT_TYPE_MANUAL);
 
 	if (!camera_start() || !camera_plug()) {
 		fprintf(stderr, "the private PipeWire daemon is not reachable: cases skip\n");

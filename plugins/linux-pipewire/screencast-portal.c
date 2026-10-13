@@ -261,7 +261,7 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 		goto out;
 	}
 
-	capture->obs_pw = obs_pipewire_connect_fd(pipewire_fd, NULL, NULL);
+	capture->obs_pw = obs_pipewire_connect_fd(pipewire_fd);
 
 	if (!capture->obs_pw) {
 		reconnect_attempt_failed(capture, false);

@@ -1290,8 +1290,7 @@ static const struct pw_core_events core_events = {
 
 /* obs_source_info methods */
 
-obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-				      void *user_data)
+obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 {
 	obs_pipewire *obs_pw;
 
@@ -1335,13 +1334,6 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 	obs_pw->sync_id = pw_core_sync(obs_pw->core, PW_ID_CORE, obs_pw->sync_id);
 	pw_thread_loop_wait(obs_pw->thread_loop);
 
-	/* Registry */
-	if (registry_events) {
-		obs_pw->registry = pw_core_get_registry(obs_pw->core, PW_VERSION_REGISTRY, 0);
-		pw_registry_add_listener(obs_pw->registry, &obs_pw->registry_listener, registry_events, user_data);
-		blog(LOG_INFO, "[pipewire] Created registry %p", obs_pw->registry);
-	}
-
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 
 	obs_pw->streams = g_ptr_array_new();
@@ -1358,6 +1350,16 @@ fail:
 	close(pipewire_fd);
 	bfree(obs_pw);
 	return NULL;
+}
+
+void obs_pipewire_add_registry_listener(obs_pipewire *obs_pw, const struct pw_registry_events *registry_events,
+					void *user_data)
+{
+	pw_thread_loop_lock(obs_pw->thread_loop);
+	obs_pw->registry = pw_core_get_registry(obs_pw->core, PW_VERSION_REGISTRY, 0);
+	pw_registry_add_listener(obs_pw->registry, &obs_pw->registry_listener, registry_events, user_data);
+	blog(LOG_INFO, "[pipewire] Created registry %p", obs_pw->registry);
+	pw_thread_loop_unlock(obs_pw->thread_loop);
 }
 
 void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_disconnected_cb callback,

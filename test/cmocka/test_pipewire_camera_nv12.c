@@ -696,7 +696,7 @@ static void check_camera(const struct layout *l)
 				.framerate = &framerate,
 			},
 	};
-	obs_pw = obs_pipewire_connect_fd(fd, NULL, NULL);
+	obs_pw = obs_pipewire_connect_fd(fd);
 	assert_non_null(obs_pw);
 	stream = obs_pipewire_connect_stream(obs_pw, camera, (int)producer.node, &connect_info);
 	assert_non_null(stream);

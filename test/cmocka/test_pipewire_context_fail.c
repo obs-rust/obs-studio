@@ -103,7 +103,7 @@ static void connects_with_its_configuration(void **state)
 	if (fd < 0)
 		skip();
 
-	obs_pw = obs_pipewire_connect_fd(fd, NULL, NULL);
+	obs_pw = obs_pipewire_connect_fd(fd);
 	assert_non_null(obs_pw);
 
 	obs_pipewire_destroy(obs_pw);
@@ -124,7 +124,7 @@ static void missing_configuration_fails_cleanly(void **state)
 	/* Like the AppImage: the configuration directory does not exist. */
 	setenv("PIPEWIRE_CONFIG_DIR", "/nonexistent/obs-test-pipewire-config", 1);
 
-	obs_pw = obs_pipewire_connect_fd(fd, NULL, NULL);
+	obs_pw = obs_pipewire_connect_fd(fd);
 	assert_null(obs_pw);
 	assert_false(fd_is_open(fd));
 	assert_non_null(strstr(log_text.array ? log_text.array : "", "Error creating PipeWire context"));
@@ -142,7 +142,7 @@ static void unusable_fd_fails_cleanly(void **state)
 	assert_int_equal(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds), 0);
 	close(fds[1]);
 
-	obs_pw = obs_pipewire_connect_fd(fds[0], NULL, NULL);
+	obs_pw = obs_pipewire_connect_fd(fds[0]);
 	if (obs_pw) {
 		/* PipeWire may accept the fd and only notice the dead peer later;
 		 * that is reported through the core error path, not here. */

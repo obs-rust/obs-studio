@@ -1078,10 +1078,13 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 		return;
 	}
 
-	connection->obs_pw = obs_pipewire_connect_fd(pipewire_fd, &registry_events, connection);
+	connection->obs_pw = obs_pipewire_connect_fd(pipewire_fd);
 	if (!connection->obs_pw)
 		return;
 
+	/* The registry callbacks use connection->obs_pw, so listen only once
+	 * it is set (obsproject/obs-studio#13971). */
+	obs_pipewire_add_registry_listener(connection->obs_pw, &registry_events, connection);
 	obs_pipewire_roundtrip(connection->obs_pw);
 }
 

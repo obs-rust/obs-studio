@@ -77,26 +77,23 @@ static int null_registry_reads;
 static int null_stream_connects;
 static int streams_connected;
 
-extern obs_pipewire *__real_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-						    void *user_data);
+extern obs_pipewire *__real_obs_pipewire_connect_fd(int pipewire_fd);
 extern struct pw_registry *__real_obs_pipewire_get_registry(obs_pipewire *obs_pw);
 extern obs_pipewire_stream *
 __real_obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,
 				   const struct obs_pipewire_connect_stream_info *connect_info);
 
 /* Visible: the link checks them against the libraries that use these names. */
-EXPORT obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-						    void *user_data);
+EXPORT obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd);
 EXPORT struct pw_registry *__wrap_obs_pipewire_get_registry(obs_pipewire *obs_pw);
 EXPORT obs_pipewire_stream *
 __wrap_obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,
 				   const struct obs_pipewire_connect_stream_info *connect_info);
 
 /* camera-portal.c is the only caller in this binary. */
-obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_events *registry_events,
-					     void *user_data)
+obs_pipewire *__wrap_obs_pipewire_connect_fd(int pipewire_fd)
 {
-	obs_pipewire *obs_pw = __real_obs_pipewire_connect_fd(pipewire_fd, registry_events, user_data);
+	obs_pipewire *obs_pw = __real_obs_pipewire_connect_fd(pipewire_fd);
 
 	if (!obs_pw)
 		return NULL;

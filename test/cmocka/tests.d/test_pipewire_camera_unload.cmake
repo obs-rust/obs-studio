@@ -46,8 +46,6 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
       "LINKER:--wrap=pw_thread_loop_unlock"
       "LINKER:--wrap=pw_thread_loop_stop"
       "LINKER:--wrap=pw_proxy_destroy"
-      "LINKER:--wrap=obs_pipewire_connect_fd"
-      "LINKER:--wrap=obs_pipewire_roundtrip"
   )
   add_dependencies(cmocka-tests test_pipewire_camera_unload)
   add_test(
