@@ -1073,6 +1073,8 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 	}
 
 	connection->obs_pw = obs_pipewire_connect_fd(pipewire_fd, &registry_events, connection);
+	if (!connection->obs_pw)
+		return;
 
 	obs_pipewire_roundtrip(connection->obs_pw);
 }

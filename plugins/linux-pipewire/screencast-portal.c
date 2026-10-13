@@ -261,8 +261,10 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 
 	capture->obs_pw = obs_pipewire_connect_fd(pipewire_fd, NULL, NULL);
 
-	if (!capture->obs_pw)
+	if (!capture->obs_pw) {
+		reconnect_attempt_failed(capture, false);
 		goto out;
+	}
 
 	obs_pipewire_set_disconnected_callback(capture->obs_pw, on_pipewire_disconnected, capture->weak_source);
 	if (obs_pipewire_is_disconnected(capture->obs_pw)) {

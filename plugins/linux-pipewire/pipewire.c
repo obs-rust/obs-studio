@@ -1165,12 +1165,24 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 	obs_pw->pipewire_fd = pipewire_fd;
 	obs_pw->watched_node = PW_ID_ANY;
 	obs_pw->thread_loop = pw_thread_loop_new("PipeWire thread loop", NULL);
+	if (!obs_pw->thread_loop) {
+		blog(LOG_WARNING, "[pipewire] Error creating PipeWire thread loop: %m");
+		goto fail;
+	}
+
+	/* Fails when PipeWire cannot load its client configuration
+	 * (client.conf), for example when PIPEWIRE_CONFIG_DIR points at a
+	 * directory without it. */
 	obs_pw->context = pw_context_new(pw_thread_loop_get_loop(obs_pw->thread_loop), NULL, 0);
+	if (!obs_pw->context) {
+		blog(LOG_WARNING,
+		     "[pipewire] Error creating PipeWire context: %m (is the PipeWire client configuration missing?)");
+		goto fail;
+	}
 
 	if (pw_thread_loop_start(obs_pw->thread_loop) < 0) {
-		blog(LOG_WARNING, "Error starting threaded mainloop");
-		bfree(obs_pw);
-		return NULL;
+		blog(LOG_WARNING, "[pipewire] Error starting threaded mainloop");
+		goto fail;
 	}
 
 	pw_thread_loop_lock(obs_pw->thread_loop);
@@ -1178,10 +1190,9 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 	/* Core */
 	obs_pw->core = pw_context_connect_fd(obs_pw->context, fcntl(obs_pw->pipewire_fd, F_DUPFD_CLOEXEC, 5), NULL, 0);
 	if (!obs_pw->core) {
-		blog(LOG_WARNING, "Error creating PipeWire core: %m");
+		blog(LOG_WARNING, "[pipewire] Error creating PipeWire core: %m");
 		pw_thread_loop_unlock(obs_pw->thread_loop);
-		bfree(obs_pw);
-		return NULL;
+		goto fail;
 	}
 
 	pw_core_add_listener(obs_pw->core, &obs_pw->core_listener, &core_events, obs_pw);
@@ -1202,6 +1213,17 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 	obs_pw->streams = g_ptr_array_new();
 
 	return obs_pw;
+
+fail:
+	/* Stopping a loop that never started is a no-op. */
+	if (obs_pw->thread_loop)
+		pw_thread_loop_stop(obs_pw->thread_loop);
+	g_clear_pointer(&obs_pw->context, pw_context_destroy);
+	g_clear_pointer(&obs_pw->thread_loop, pw_thread_loop_destroy);
+	/* The fd is ours from here on; callers do not close it on failure. */
+	close(pipewire_fd);
+	bfree(obs_pw);
+	return NULL;
 }
 
 void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_disconnected_cb callback,
