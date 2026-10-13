@@ -171,13 +171,17 @@ static void seek_to(mp_cache_t *c, int64_t pos)
 		return;
 	}
 
+	/* pos is in microseconds; the cached frames' timestamps are decoded
+	 * pts, in nanoseconds and scaled by the speed */
+	int64_t pos_ns = c->speed > 0 ? pos * 1000 * 100 / c->speed : pos * 1000;
+
 	if (c->has_video) {
 		struct obs_source_frame *v;
 
 		for (size_t i = 0; i < c->video_frames.num; i++) {
 			v = &c->video_frames.array[i];
 			new_v_idx = i;
-			if ((int64_t)v->timestamp >= pos) {
+			if ((int64_t)v->timestamp >= pos_ns) {
 				break;
 			}
 		}
@@ -195,7 +199,7 @@ static void seek_to(mp_cache_t *c, int64_t pos)
 		for (size_t i = 0; i < c->audio_segments.num; i++) {
 			a = &c->audio_segments.array[i];
 			new_a_idx = i;
-			if ((int64_t)a->timestamp >= pos) {
+			if ((int64_t)a->timestamp >= pos_ns) {
 				break;
 			}
 		}

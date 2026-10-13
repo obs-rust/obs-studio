@@ -109,6 +109,12 @@ struct mp_media {
 	bool seek;
 	bool seek_next_ts;
 	int64_t seek_pos;
+
+	/* after a seek, frames that end at or before this time (in decoded
+	 * pts, nanoseconds) are dropped, so playback starts at the seek
+	 * position, not at the keyframe before it */
+	bool seek_exact;
+	int64_t seek_target_ns;
 };
 
 typedef struct mp_media mp_media_t;

@@ -265,6 +265,15 @@ static bool mp_media_init_scaling(mp_media_t *m)
 	return true;
 }
 
+/* A seek starts decoding at the keyframe before the seek position; the
+ * frames before the position are decoded (later frames need them) but not
+ * shown or played. */
+static inline void mp_media_drop_before_seek_target(mp_media_t *m, struct mp_decode *d)
+{
+	if (d->frame_ready && d->next_pts <= m->seek_target_ns)
+		d->frame_ready = false;
+}
+
 bool mp_media_prepare_frames(mp_media_t *m)
 {
 	bool actively_seeking = m->seek_next_ts && m->pause;
@@ -295,7 +304,17 @@ bool mp_media_prepare_frames(mp_media_t *m)
 			return false;
 		if (m->has_audio && !mp_decode_frame(&m->a))
 			return false;
+
+		if (m->seek_exact) {
+			if (m->has_video)
+				mp_media_drop_before_seek_target(m, &m->v);
+			if (m->has_audio)
+				mp_media_drop_before_seek_target(m, &m->a);
+		}
 	}
+
+	if (mp_media_ready_to_start(m))
+		m->seek_exact = false;
 
 	if (m->has_video && m->v.frame_ready && !m->swscale) {
 		m->scale_format = closest_format(m->v.frame->format);
@@ -527,7 +546,9 @@ static void mp_media_calc_next_ns(mp_media_t *m)
 	m->next_pts_ns = min_next_ns;
 }
 
-static void seek_to(mp_media_t *m, int64_t pos)
+/* pos is in microseconds. exact: play from pos itself, not from the keyframe
+ * before it (a seek the user asked for, not a restart). */
+static void seek_to(mp_media_t *m, int64_t pos, bool exact)
 {
 	AVStream *stream = m->fmt->streams[0];
 	int64_t seek_pos = pos;
@@ -556,6 +577,12 @@ static void seek_to(mp_media_t *m, int64_t pos)
 		 * the end of the file at once. Without this, playback ended
 		 * right after a seek and started over. */
 		m->eof = false;
+
+		/* A backward seek lands on the keyframe at or before pos:
+		 * decode from there and drop the frames before pos. Decoded
+		 * pts are in nanoseconds and scaled by the speed. */
+		m->seek_exact = exact && seek_flags == AVSEEK_FLAG_BACKWARD && ret >= 0;
+		m->seek_target_ns = av_rescale_q(pos * 1000, (AVRational){1, m->speed}, (AVRational){1, 100});
 	}
 
 	if (m->has_video && m->is_local_file) {
@@ -582,7 +609,7 @@ bool mp_media_reset(mp_media_t *m)
 	m->base_ts += next_ts;
 	m->seek_next_ts = false;
 
-	seek_to(m, start_time);
+	seek_to(m, start_time, false);
 
 	pthread_mutex_lock(&m->mutex);
 	stopping = m->stopping;
@@ -921,7 +948,7 @@ static inline bool mp_media_thread(mp_media_t *m)
 
 		if (seek) {
 			m->seek_next_ts = true;
-			seek_to(m, seek_pos);
+			seek_to(m, seek_pos, true);
 			continue;
 		}
 
