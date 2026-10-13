@@ -5,6 +5,9 @@
  * what `hyprctl -j binds` prints; the hyprctl samples are real 0.56.2
  * output. */
 
+/* Before cmocka.h, whose fail() macro would hit std::basic_ios::fail(). */
+#include <fstream>
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -367,6 +370,39 @@ static void hyprctl_version(void **)
 	assert_false(ParseHyprlandVersion("").has_value());
 }
 
+/* The value of key in the shipped en-US.ini, without quotes. */
+static std::string locale_text(const char *key)
+{
+	std::ifstream file(HOTKEY_LOCALE_EN_US);
+	std::string line, prefix = std::string(key) + "=";
+	while (std::getline(file, line)) {
+		if (line.compare(0, prefix.size(), prefix) == 0) {
+			std::string value = line.substr(prefix.size());
+			if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+				value = value.substr(1, value.size() - 2);
+			}
+			return value;
+		}
+	}
+	return {};
+}
+
+/* Desktops without GlobalShortcuts (Sway, niri, ...): running OBS through
+ * XWayland is no workaround there. On Sway 1.12, OBS with
+ * QT_QPA_PLATFORM=xcb ran its hotkey while focused and not at all while
+ * another window was focused, since the compositor does not show X11 apps
+ * keys pressed in other windows. The banner must not promise it. */
+static void unsupported_desktop_text(void **)
+{
+	std::string text = locale_text("Basic.Settings.Hotkeys.Background.Unavailable");
+	assert_false(text.empty());
+	if (text.find("QT_QPA_PLATFORM=xcb") != std::string::npos || text.find("Workaround") != std::string::npos) {
+		fprintf(stderr, "unsupported-desktop text recommends XWayland: %s\n", text.c_str());
+		fail();
+	}
+	assert_true(text.find("only work while OBS is focused") != std::string::npos);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -387,6 +423,7 @@ int main(void)
 		cmocka_unit_test(hyprland_lines),
 		cmocka_unit_test(hyprctl_binds),
 		cmocka_unit_test(hyprctl_version),
+		cmocka_unit_test(unsupported_desktop_text),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
