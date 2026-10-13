@@ -48,6 +48,8 @@ target_sources(
     utility/product-name.h
     utility/scene-collection-migration.cpp
     utility/scene-collection-migration.hpp
+    utility/scene-list-remove.c
+    utility/scene-list-remove.h
     utility/service-encoder-settings.c
     utility/service-encoder-settings.h
     utility/studio-mode-exit.c

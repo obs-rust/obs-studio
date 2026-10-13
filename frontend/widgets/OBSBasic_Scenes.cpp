@@ -21,6 +21,7 @@
 #include "OBSProjector.hpp"
 
 #include <dialogs/NameDialog.hpp>
+#include <utility/scene-list-remove.h>
 
 #include <qt-wrappers.hpp>
 
@@ -167,42 +168,50 @@ void OBSBasic::AddScene(OBSSource source)
 
 void OBSBasic::RemoveScene(OBSSource source)
 {
-	obs_scene_t *scene = obs_scene_from_source(source);
+	struct scene_list_remove_ops ops = {};
+	ops.param = this;
+	ops.take_from_list = [](void *param, void *scene_source) {
+		OBSBasic *main = static_cast<OBSBasic *>(param);
+		obs_source_t *removed = static_cast<obs_source_t *>(scene_source);
+		obs_scene_t *scene = obs_scene_from_source(removed);
 
-	bool foundItem = false;
-	QListWidgetItem *sel = nullptr;
-	int count = ui->scenes->count();
+		bool foundItem = false;
+		QListWidgetItem *sel = nullptr;
+		int count = main->ui->scenes->count();
 
-	for (int i = 0; i < count; i++) {
-		auto item = ui->scenes->item(i);
-		auto cur_scene = GetOBSRef<OBSScene>(item);
-		if (cur_scene != scene) {
-			continue;
+		for (int i = 0; i < count; i++) {
+			auto item = main->ui->scenes->item(i);
+			auto cur_scene = GetOBSRef<OBSScene>(item);
+			if (cur_scene != scene) {
+				continue;
+			}
+
+			foundItem = true;
+			sel = item;
+			break;
 		}
 
-		foundItem = true;
-		sel = item;
-		break;
-	}
-
-	if (sel != nullptr) {
-		if (sel == ui->scenes->currentItem()) {
-			ui->sources->Clear();
+		if (sel != nullptr) {
+			if (sel == main->ui->scenes->currentItem()) {
+				main->ui->sources->Clear();
+			}
+			delete sel;
 		}
-		delete sel;
-	}
 
-	SaveProject();
+		main->SaveProject();
 
-	if (!disableSaving) {
-		blog(LOG_INFO, "User Removed scene '%s'", obs_source_get_name(source));
+		if (!main->disableSaving) {
+			blog(LOG_INFO, "User Removed scene '%s'", obs_source_get_name(removed));
 
-		OBSProjector::UpdateMultiviewProjectors();
-	}
+			OBSProjector::UpdateMultiviewProjectors();
+		}
 
-	if (foundItem) {
-		OnEvent(OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED);
-	}
+		return foundItem;
+	};
+	ops.scene_list_changed = [](void *param) {
+		static_cast<OBSBasic *>(param)->OnEvent(OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED);
+	};
+	scene_list_on_scene_removed(&ops, source.Get());
 }
 
 static bool select_one(obs_scene_t * /* scene */, obs_sceneitem_t *item, void *param)
@@ -473,9 +482,15 @@ void OBSBasic::RemoveSelectedScene()
 	/* --------------------------- */
 	/* remove                      */
 
-	RemoveSceneAndReleaseNested(source);
-
-	OnEvent(OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED);
+	struct scene_list_remove_ops ops = {};
+	ops.param = this;
+	ops.remove_source = [](void *, void *scene) {
+		RemoveSceneAndReleaseNested(static_cast<obs_source_t *>(scene));
+	};
+	ops.scene_list_changed = [](void *param) {
+		static_cast<OBSBasic *>(param)->OnEvent(OBS_FRONTEND_EVENT_SCENE_LIST_CHANGED);
+	};
+	scene_list_remove_selected(&ops, source);
 }
 
 void OBSBasic::SceneReordered(void *data, calldata_t *params)
