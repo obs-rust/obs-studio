@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <utility>
 
 std::vector<obs_weak_source_t *> SourceSelectExistingList(const std::vector<OBSWeakSource> &sources,
 							  const QString &typeId, bool recent)
@@ -39,6 +40,26 @@ std::vector<obs_weak_source_t *> SourceSelectExistingList(const std::vector<OBSW
 
 			     return false;
 		     });
+
+	// The Recently Added list keeps creation order.
+	if (recent) {
+		return matchingSources;
+	}
+
+	std::vector<std::pair<QString, obs_weak_source_t *>> named;
+	named.reserve(matchingSources.size());
+	for (obs_weak_source_t *weak : matchingSources) {
+		OBSSource source = OBSGetStrongRef(weak);
+		named.emplace_back(QString(source ? obs_source_get_name(source) : ""), weak);
+	}
+
+	std::stable_sort(named.begin(), named.end(), [](const auto &a, const auto &b) {
+		return a.first.compare(b.first, Qt::CaseInsensitive) < 0;
+	});
+
+	for (size_t i = 0; i < named.size(); i++) {
+		matchingSources[i] = named[i].second;
+	}
 
 	return matchingSources;
 }
