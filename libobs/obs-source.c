@@ -1625,6 +1625,7 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 	uint64_t os_time = os_gettime_ns();
 	int64_t sync_offset;
 	bool using_direct_ts = false;
+	bool continuous = false;
 	bool push_back = false;
 	int64_t drift_error = 0;
 
@@ -1651,6 +1652,7 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 			/* how far the samples run ahead of the timestamps */
 			drift_error = (int64_t)(source->next_audio_ts_min - in.timestamp);
 			in.timestamp = source->next_audio_ts_min;
+			continuous = true;
 		} else {
 			blog(LOG_DEBUG,
 			     "Audio timestamp for '%s' exceeded TS_SMOOTHING_THRESHOLD, diff=%" PRIu64
@@ -1680,13 +1682,18 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 		if (diff < TS_SMOOTHING_THRESHOLD) {
 			push_back = true;
 
-		} else if (diff > MAX_TS_VAR) {
+		} else if (diff > MAX_TS_VAR && !continuous) {
 			/* This typically only happens if used with async video when
 			 * audio/video start transitioning in to a timestamp jump.
 			 * Audio will typically have a timestamp jump, and then video
 			 * will have a timestamp jump.  If that case is encountered,
 			 * just clear the audio data in that small window and force a
-			 * resync.  This handles all cases rather than just looping. */
+			 * resync.  This handles all cases rather than just looping.
+			 *
+			 * If the audio itself did not jump, the timing of the
+			 * source's video moved (a Video Delay (Async) filter), and
+			 * the audio follows it as it does for smaller moves:
+			 * resetting would only be undone by the next frame. */
 			reset_audio_timing(source, data->timestamp, os_time);
 			in.timestamp = data->timestamp + source->timing_adjust;
 		}
