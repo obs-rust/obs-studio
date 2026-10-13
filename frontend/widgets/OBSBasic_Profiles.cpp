@@ -20,6 +20,7 @@
 #ifdef YOUTUBE_ENABLED
 #include <docks/YouTubeAppDock.hpp>
 #endif
+#include <utility/menu-text.h>
 #include <utility/profile-activate.h>
 #include <utility/profile-remove.h>
 #include <wizards/AutoConfig.hpp>
@@ -381,7 +382,8 @@ void OBSBasic::RefreshProfiles(bool refreshCache)
 			const OBSProfile &profile = profiles.at(profileName);
 			const QString qProfileName = QString().fromStdString(profileName);
 
-			QAction *action = new QAction(qProfileName, this);
+			const QString menuText = QString::fromStdString(menu_text_from_name(profileName));
+			QAction *action = new QAction(menuText, this);
 			action->setProperty("profile_name", qProfileName);
 			action->setProperty("file_name", QString().fromStdString(profile.directoryName));
 			connect(action, &QAction::triggered, this, &OBSBasic::ChangeProfile);

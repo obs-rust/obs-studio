@@ -21,6 +21,7 @@
 #include <importer/OBSImporter.hpp>
 #include <models/SceneCollection.hpp>
 #include <utility/item-widget-helpers.hpp>
+#include <utility/menu-text.h>
 #include <utility/missing-files-list.h>
 
 #include <qt-wrappers.hpp>
@@ -399,7 +400,8 @@ void OBSBasic::RefreshSceneCollections(bool refreshCache)
 			const SceneCollection &collection = collections.at(collectionName);
 			const QString qCollectionName = QString().fromStdString(collectionName);
 
-			QAction *action = new QAction(qCollectionName, this);
+			const QString menuText = QString::fromStdString(menu_text_from_name(collectionName));
+			QAction *action = new QAction(menuText, this);
 			action->setProperty("collection_name", qCollectionName);
 			action->setProperty("file_name", QString().fromStdString(collection.getFileName()));
 			connect(action, &QAction::triggered, this, &OBSBasic::ChangeSceneCollection);

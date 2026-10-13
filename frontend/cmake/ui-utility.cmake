@@ -46,6 +46,8 @@ target_sources(
     utility/output-filename-reserve.h
     utility/output-rescale.c
     utility/output-rescale.h
+    utility/menu-text.c
+    utility/menu-text.h
     utility/multitrack-ladder.c
     utility/multitrack-ladder.h
     utility/product-name.c
