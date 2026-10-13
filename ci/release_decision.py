@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Decisions for release-rust.yaml, kept out of the YAML so they can be tested.
 
     release_decision.py check   --event E --ref R --repair true|false \

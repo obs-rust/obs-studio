@@ -74,7 +74,7 @@ function Package {
     Move-Item -Path $Package -Destination "${OutputName}-windows-${Target}.zip"
 
     # PDBs are ~200 MB of the zip; ship them as a separate symbols zip (#627).
-    python "${ProjectRoot}/ci/windows_zip_check.py" split-symbols "${OutputName}-windows-${Target}.zip"
+    uv run "${ProjectRoot}/ci/windows_zip_check.py" split-symbols "${OutputName}-windows-${Target}.zip"
     if ( $LASTEXITCODE -ne 0 ) { throw 'splitting symbols failed' }
 
     Pop-Location -Stack PackageTemp

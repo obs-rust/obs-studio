@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Check the packaged Windows zip the way a user meets it (#626, #627).
 
-    python3 ci/windows_zip_check.py check  <zip> [--run]
-    python3 ci/windows_zip_check.py split-symbols <zip>
+    uv run ci/windows_zip_check.py check  <zip> [--run]
+    uv run ci/windows_zip_check.py split-symbols <zip>
 
 check: reads the DLL imports of every .exe/.dll in the zip (pure-Python PE
 parser, so it needs no dumpbin and works on any host) and fails when one is a

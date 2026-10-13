@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """release-rust.yaml publishes only complete, gated betas (#622-#624).
 
-    python3 -m unittest ci/test_release_decision.py
+    uv run python -m unittest ci/test_release_decision.py
 """
 
 from __future__ import annotations

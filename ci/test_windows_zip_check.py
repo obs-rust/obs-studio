@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """windows_zip_check.py catches a Windows zip without the VC runtime (#626).
 
-    python3 -m unittest ci/test_windows_zip_check.py
+    uv run python -m unittest ci/test_windows_zip_check.py
 """
 
 import io

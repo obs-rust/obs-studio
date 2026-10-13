@@ -91,6 +91,12 @@ runs:
 
         ${{ inputs.workingDirectory }}/.github/scripts/package-ubuntu ${package_args}
 
+    # Package-windows.ps1 and the check below run ci/windows_zip_check.py
+    # through uv run (#637); the Windows build job has no uv of its own.
+    - name: Set Up uv 🐍
+      if: runner.os == 'Windows'
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
     - name: Run Windows packaging
       if: runner.os == 'Windows'
       shell: pwsh
@@ -124,5 +130,5 @@ runs:
       run: |
         $Zip = Get-ChildItem "build_${{ inputs.target }}/obs-studio-*-windows-${{ inputs.target }}.zip" | Select-Object -First 1
         $Run = if ( '${{ inputs.target }}' -eq 'x64' ) { @('--run') } else { @() }
-        python ci/windows_zip_check.py check $Zip.FullName @Run
+        uv run ci/windows_zip_check.py check $Zip.FullName @Run
         if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
