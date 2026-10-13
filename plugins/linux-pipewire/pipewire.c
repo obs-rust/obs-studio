@@ -1306,6 +1306,18 @@ void obs_pipewire_roundtrip(obs_pipewire *obs_pw)
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 }
 
+void obs_pipewire_lock(obs_pipewire *obs_pw)
+{
+	if (obs_pw->thread_loop)
+		pw_thread_loop_lock(obs_pw->thread_loop);
+}
+
+void obs_pipewire_unlock(obs_pipewire *obs_pw)
+{
+	if (obs_pw->thread_loop)
+		pw_thread_loop_unlock(obs_pw->thread_loop);
+}
+
 void obs_pipewire_destroy(obs_pipewire *obs_pw)
 {
 	if (!obs_pw)

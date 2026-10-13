@@ -56,6 +56,8 @@ bool obs_pipewire_is_disconnected(obs_pipewire *obs_pw);
 void obs_pipewire_set_reconnecting(obs_pipewire *obs_pw, bool reconnecting);
 struct pw_registry *obs_pipewire_get_registry(obs_pipewire *obs_pw);
 void obs_pipewire_roundtrip(obs_pipewire *obs_pw);
+void obs_pipewire_lock(obs_pipewire *obs_pw);
+void obs_pipewire_unlock(obs_pipewire *obs_pw);
 void obs_pipewire_destroy(obs_pipewire *obs_pw);
 
 obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,

@@ -79,7 +79,13 @@ static void pw_portal_connection_free(struct pw_portal_connection *connection)
 
 	g_cancellable_cancel(connection->cancellable);
 
+	/* The device proxies live on the PipeWire thread, which still runs
+	 * here: destroy them with its loop locked. */
+	if (connection->obs_pw)
+		obs_pipewire_lock(connection->obs_pw);
 	g_clear_pointer(&connection->devices, g_hash_table_destroy);
+	if (connection->obs_pw)
+		obs_pipewire_unlock(connection->obs_pw);
 	g_clear_pointer(&connection->obs_pw, obs_pipewire_destroy);
 	g_clear_pointer(&connection->sources, g_ptr_array_unref);
 	g_clear_object(&connection->cancellable);
