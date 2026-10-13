@@ -1480,7 +1480,7 @@ retryScene:
 
 	LogScenes();
 
-	if (!App()->IsMissingFilesCheckDisabled()) {
+	if (files) {
 		ShowMissingFilesDialog(files);
 	}
 

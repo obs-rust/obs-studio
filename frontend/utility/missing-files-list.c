@@ -2,8 +2,7 @@
 
 obs_missing_files_t *missing_files_list_create(bool check_disabled)
 {
-	(void)check_disabled;
-	return obs_missing_files_create();
+	return check_disabled ? NULL : obs_missing_files_create();
 }
 
 static void add_filter_files(obs_source_t *parent, obs_source_t *filter, void *data)
