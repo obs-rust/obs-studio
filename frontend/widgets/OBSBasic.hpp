@@ -28,6 +28,7 @@
 #include <utility/PreviewProgramSizeObserver.hpp>
 #include <utility/VCamConfig.hpp>
 #include <utility/platform.hpp>
+#include <utility/record-disk-space.h>
 #include <utility/undo_stack.hpp>
 
 #include <obs-frontend-internal.hpp>
@@ -1010,7 +1011,7 @@ private:
 	void AutoRemux(QString input, bool no_show = false);
 	void UpdateIsRecordingPausable();
 
-	bool LowDiskSpace();
+	bool LowDiskSpace(enum record_disk_check when);
 	void DiskSpaceMessage();
 
 private slots:

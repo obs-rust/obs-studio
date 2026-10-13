@@ -43,6 +43,8 @@ target_sources(
     utility/multitrack-ladder.c
     utility/multitrack-ladder.h
     utility/product-name.c
+    utility/record-disk-space.c
+    utility/record-disk-space.h
     utility/product-name.h
     utility/scene-collection-migration.cpp
     utility/scene-collection-migration.hpp

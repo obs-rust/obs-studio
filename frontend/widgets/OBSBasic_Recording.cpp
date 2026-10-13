@@ -124,7 +124,7 @@ void OBSBasic::StartRecording()
 		return;
 	}
 
-	if (!IsFFmpegOutputToURL() && LowDiskSpace()) {
+	if (LowDiskSpace(RECORD_DISK_CHECK_START)) {
 		DiskSpaceMessage();
 		return;
 	}
@@ -398,10 +398,6 @@ void OBSBasic::UpdateIsRecordingPausable()
 	isRecordingPausable = !shared;
 }
 
-#define MBYTE (1024ULL * 1024ULL)
-#define MBYTES_LEFT_STOP_REC 50ULL
-#define MAX_BYTES_LEFT (MBYTES_LEFT_STOP_REC * MBYTE)
-
 void OBSBasic::DiskSpaceMessage()
 {
 	blog(LOG_ERROR, "Recording stopped because of low disk space");
@@ -409,27 +405,14 @@ void OBSBasic::DiskSpaceMessage()
 	OBSMessageBox::critical(this, QTStr("Output.RecordNoSpace.Title"), QTStr("Output.RecordNoSpace.Msg"));
 }
 
-bool OBSBasic::LowDiskSpace()
+bool OBSBasic::LowDiskSpace(enum record_disk_check when)
 {
-	const char *path;
-
-	path = GetCurrentOutputPath();
-	if (!path) {
-		return false;
-	}
-
-	uint64_t num_bytes = os_get_free_disk_space(path);
-
-	if (num_bytes < (MAX_BYTES_LEFT)) {
-		return true;
-	} else {
-		return false;
-	}
+	return record_disk_space_low(when, IsFFmpegOutputToURL(), GetCurrentOutputPath(), os_get_free_disk_space);
 }
 
 void OBSBasic::CheckDiskSpaceRemaining()
 {
-	if (LowDiskSpace()) {
+	if (LowDiskSpace(RECORD_DISK_CHECK_RUNNING)) {
 		StopRecording();
 		StopReplayBuffer();
 

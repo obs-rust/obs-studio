@@ -86,7 +86,7 @@ void OBSBasic::StartReplayBuffer()
 		return;
 	}
 
-	if (LowDiskSpace()) {
+	if (LowDiskSpace(RECORD_DISK_CHECK_START)) {
 		DiskSpaceMessage();
 		return;
 	}
