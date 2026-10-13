@@ -231,3 +231,92 @@ void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings)
 	if (v4l2_apply_controls_pass(dev, settings, false) > 0)
 		v4l2_apply_controls_pass(dev, settings, true);
 }
+
+void v4l2_device_identity(int_fast32_t dev, struct dstr *identity)
+{
+	struct v4l2_capability cap;
+
+	dstr_free(identity);
+	memset(&cap, 0, sizeof(cap));
+	if (dev < 0 || 0 != v4l2_ioctl(dev, VIDIOC_QUERYCAP, &cap))
+		return;
+
+	/* Bounded: the kernel's strings fill their arrays at most */
+	dstr_printf(identity, "%.*s (%.*s)", (int)sizeof(cap.card), (char *)cap.card, (int)sizeof(cap.bus_info),
+		    (char *)cap.bus_info);
+}
+
+/* Move a control's user value, if it has one, from one settings to another */
+static void v4l2_move_control_value(obs_data_t *from, obs_data_t *to, const char *name)
+{
+	obs_data_item_t *item = obs_data_item_byname(from, name);
+
+	if (!item)
+		return;
+
+	if (obs_data_item_has_user_value(item)) {
+		switch (obs_data_item_gettype(item)) {
+		case OBS_DATA_BOOLEAN:
+			obs_data_set_bool(to, name, obs_data_item_get_bool(item));
+			break;
+		case OBS_DATA_NUMBER:
+			obs_data_set_int(to, name, obs_data_item_get_int(item));
+			break;
+		default:
+			break;
+		}
+		obs_data_item_unset_user_value(item);
+	}
+	obs_data_item_release(&item);
+}
+
+bool v4l2_controls_use_device(int_fast32_t dev, obs_data_t *settings, const char *saved_for, const char *identity)
+{
+	if (!settings || !identity || !*identity)
+		return false;
+	if (saved_for && strcmp(saved_for, identity) == 0) {
+		/* Settings that only had it in memory record it */
+		if (strcmp(obs_data_get_string(settings, V4L2_CONTROLS_DEVICE), identity) == 0)
+			return false;
+		obs_data_set_string(settings, V4L2_CONTROLS_DEVICE, identity);
+		return true;
+	}
+
+	if (saved_for && *saved_for) {
+		obs_data_t *others = obs_data_get_obj(settings, V4L2_CONTROLS_OTHER_DEVICES);
+		obs_data_t *theirs = obs_data_create();
+		struct v4l2_queryctrl qctrl;
+
+		if (!others)
+			others = obs_data_create();
+
+		/* The controls of this device's names are the other device's:
+		 * put them aside for it. */
+		memset(&qctrl, 0, sizeof(qctrl));
+		qctrl.id = V4L2_CTRL_FLAG_NEXT_CTRL;
+		while (0 == v4l2_ioctl(dev, VIDIOC_QUERYCTRL, &qctrl)) {
+			v4l2_move_control_value(settings, theirs, (const char *)qctrl.name);
+			qctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+		}
+		obs_data_item_t *first = obs_data_first(theirs);
+		if (first) {
+			obs_data_item_release(&first);
+			obs_data_set_obj(others, saved_for, theirs);
+		}
+		obs_data_release(theirs);
+
+		/* Bring back the ones put aside for this device */
+		obs_data_t *mine = obs_data_get_obj(others, identity);
+		if (mine) {
+			obs_data_apply(settings, mine);
+			obs_data_erase(others, identity);
+			obs_data_release(mine);
+		}
+
+		obs_data_set_obj(settings, V4L2_CONTROLS_OTHER_DEVICES, others);
+		obs_data_release(others);
+	}
+
+	obs_data_set_string(settings, V4L2_CONTROLS_DEVICE, identity);
+	return true;
+}
