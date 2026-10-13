@@ -458,6 +458,22 @@ static void test_portal_inhibit_and_release(void **state)
 	fake_own_name(PORTAL_NAME, false);
 }
 
+/* Destroy before the portal answers Inhibit. Its cancelled async callback
+ * still runs when the main context is pumped. */
+static void test_portal_destroy_while_inhibit_pending(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(PORTAL_NAME, true);
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_true(os_inhibit_sleep_set_active(inhibit, true));
+	os_inhibit_sleep_destroy(inhibit);
+	pump_for(300);
+	fake_own_name(PORTAL_NAME, false);
+}
+
 /* No portal, but a session screensaver service (KDE, older GNOME, Xfce):
  * libobs falls back to org.freedesktop.ScreenSaver.Inhibit and releases
  * the same cookie. */
@@ -512,6 +528,7 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_portal_inhibit_and_release),
+		cmocka_unit_test(test_portal_destroy_while_inhibit_pending),
 		cmocka_unit_test(test_screensaver_inhibit_and_release),
 	};
 

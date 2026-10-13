@@ -25,6 +25,9 @@
 #define INHIBIT_PORTAL_IFACE "org.freedesktop.portal.Inhibit"
 
 struct portal_inhibit_info {
+	/* The owner, signal subscription, and each async reply hold a reference. */
+	gatomicrefcount refs;
+	gint destroying;
 	GDBusConnection *c;
 	GCancellable *cancellable;
 	unsigned int signal_id;
@@ -32,6 +35,19 @@ struct portal_inhibit_info {
 	char *request_path;
 	bool active;
 };
+
+static struct portal_inhibit_info *inhibit_info_ref(struct portal_inhibit_info *info)
+{
+	g_atomic_ref_count_inc(&info->refs);
+	return info;
+}
+
+static void inhibit_info_unref(gpointer data)
+{
+	struct portal_inhibit_info *info = data;
+	if (g_atomic_ref_count_dec(&info->refs))
+		bfree(info);
+}
 
 static void new_request(struct portal_inhibit_info *info, char **out_token, char **out_path)
 {
@@ -74,6 +90,8 @@ static void response_received(GDBusConnection *bus, const char *sender_name, con
 	UNUSED_PARAMETER(signal_name);
 
 	struct portal_inhibit_info *info = data;
+	if (g_atomic_int_get(&info->destroying))
+		return;
 	g_autoptr(GVariant) ret = NULL;
 	uint32_t response;
 
@@ -91,22 +109,22 @@ static void response_received(GDBusConnection *bus, const char *sender_name, con
 
 static void inhibited_cb(GObject *source_object, GAsyncResult *result, gpointer user_data)
 {
-	UNUSED_PARAMETER(source_object);
-
 	struct portal_inhibit_info *info = user_data;
 	g_autoptr(GVariant) reply = NULL;
 	g_autoptr(GError) error = NULL;
 
-	reply = g_dbus_connection_call_finish(info->c, result, &error);
+	reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source_object), result, &error);
 
-	if (error != NULL) {
+	if (!g_atomic_int_get(&info->destroying) && error != NULL) {
 		if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
 			blog(LOG_ERROR, "Failed to inhibit: %s", error->message);
 		unsubscribe_from_request(info);
 		remove_inhibit_data(info);
 	}
 
-	g_clear_object(&info->cancellable);
+	if (!g_atomic_int_get(&info->destroying))
+		g_clear_object(&info->cancellable);
+	inhibit_info_unref(info);
 }
 
 static void do_inhibit(struct portal_inhibit_info *info, const char *reason)
@@ -121,8 +139,8 @@ static void do_inhibit(struct portal_inhibit_info *info, const char *reason)
 
 	info->signal_id = g_dbus_connection_signal_subscribe(info->c, PORTAL_NAME, "org.freedesktop.portal.Request",
 							     "Response", info->request_path, NULL,
-							     G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, response_received, info,
-							     NULL);
+							     G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, response_received,
+							     inhibit_info_ref(info), inhibit_info_unref);
 
 	g_variant_builder_init(&options, G_VARIANT_TYPE_VARDICT);
 	g_variant_builder_add(&options, "{sv}", "handle_token", g_variant_new_string(token));
@@ -133,21 +151,20 @@ static void do_inhibit(struct portal_inhibit_info *info, const char *reason)
 	info->cancellable = g_cancellable_new();
 	g_dbus_connection_call(info->c, PORTAL_NAME, PORTAL_PATH, INHIBIT_PORTAL_IFACE, "Inhibit",
 			       g_variant_new("(sua{sv})", "", flags, &options), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
-			       info->cancellable, inhibited_cb, info);
+			       info->cancellable, inhibited_cb, inhibit_info_ref(info));
 }
 
 static void uninhibited_cb(GObject *source_object, GAsyncResult *result, gpointer user_data)
 {
-	UNUSED_PARAMETER(source_object);
-
 	struct portal_inhibit_info *info = user_data;
 	g_autoptr(GVariant) reply = NULL;
 	g_autoptr(GError) error = NULL;
 
-	reply = g_dbus_connection_call_finish(info->c, result, &error);
+	reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source_object), result, &error);
 
-	if (error)
+	if (error && !g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
 		blog(LOG_WARNING, "Error uninhibiting: %s", error->message);
+	inhibit_info_unref(info);
 }
 
 static void do_uninhibit(struct portal_inhibit_info *info)
@@ -161,7 +178,7 @@ static void do_uninhibit(struct portal_inhibit_info *info)
 	} else {
 		g_dbus_connection_call(info->c, PORTAL_NAME, info->request_path, "org.freedesktop.portal.Request",
 				       "Close", g_variant_new("()"), G_VARIANT_TYPE_UNIT, G_DBUS_CALL_FLAGS_NONE, -1,
-				       NULL, uninhibited_cb, info);
+				       NULL, uninhibited_cb, inhibit_info_ref(info));
 	}
 
 	remove_inhibit_data(info);
@@ -170,19 +187,22 @@ static void do_uninhibit(struct portal_inhibit_info *info)
 void portal_inhibit_info_destroy(struct portal_inhibit_info *info)
 {
 	if (info) {
-		g_cancellable_cancel(info->cancellable);
+		g_atomic_int_set(&info->destroying, TRUE);
+		if (info->cancellable)
+			g_cancellable_cancel(info->cancellable);
 		unsubscribe_from_request(info);
 		remove_inhibit_data(info);
 		g_clear_pointer(&info->sender_name, bfree);
 		g_clear_object(&info->cancellable);
 		g_clear_object(&info->c);
-		bfree(info);
+		inhibit_info_unref(info);
 	}
 }
 
 struct portal_inhibit_info *portal_inhibit_info_create(void)
 {
 	struct portal_inhibit_info *info = bzalloc(sizeof(*info));
+	g_atomic_ref_count_init(&info->refs);
 	g_autoptr(GVariant) reply = NULL;
 	g_autoptr(GError) error = NULL;
 	char *aux;
@@ -190,7 +210,7 @@ struct portal_inhibit_info *portal_inhibit_info_create(void)
 	info->c = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
 	if (!info->c) {
 		blog(LOG_ERROR, "Could not create dbus connection: %s", error->message);
-		bfree(info);
+		inhibit_info_unref(info);
 		return NULL;
 	}
 

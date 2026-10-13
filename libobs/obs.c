@@ -1410,7 +1410,12 @@ void obs_shutdown(void)
 {
 	struct obs_module *module;
 
-	obs_wait_for_destroy_queue();
+	/* Destroying a scene queues the destruction of its items' sources
+	 * behind the wait marker, so a single wait returns while nested scenes,
+	 * groups and sources are still being destroyed. Wait until a pass
+	 * processes nothing (the frontend does the same). */
+	while (obs_wait_for_destroy_queue())
+		;
 
 	for (size_t i = 0; i < obs->source_types.num; i++) {
 		struct obs_source_info *item = &obs->source_types.array[i];
@@ -3517,16 +3522,17 @@ bool obs_wait_for_destroy_queue(void)
 {
 	struct task_wait_info info = {0};
 
-	if (!obs->video.thread_initialized || !obs->audio.audio)
-		return false;
-
-	/* allow video and audio threads time to release objects */
-	os_event_init(&info.event, OS_EVENT_TYPE_AUTO);
-	obs_queue_task(OBS_TASK_GRAPHICS, task_wait_callback, &info, false);
-	os_event_wait(info.event);
-	obs_queue_task(OBS_TASK_AUDIO, task_wait_callback, &info, false);
-	os_event_wait(info.event);
-	os_event_destroy(info.event);
+	/* allow video and audio threads time to release objects. Without them
+	 * (no video reset) sources are still destroyed by the destruction
+	 * thread, so that queue is waited for regardless. */
+	if (obs->video.thread_initialized && obs->audio.audio) {
+		os_event_init(&info.event, OS_EVENT_TYPE_AUTO);
+		obs_queue_task(OBS_TASK_GRAPHICS, task_wait_callback, &info, false);
+		os_event_wait(info.event);
+		obs_queue_task(OBS_TASK_AUDIO, task_wait_callback, &info, false);
+		os_event_wait(info.event);
+		os_event_destroy(info.event);
+	}
 
 	/* wait for destroy task queue */
 	return os_task_queue_wait(obs->destruction_task_thread);
