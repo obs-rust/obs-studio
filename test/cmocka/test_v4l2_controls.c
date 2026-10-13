@@ -40,7 +40,13 @@
  * libv4l2 (below): a camera whose controls behave like those of a UVC
  * webcam, and which records every write. Hotplug goes through the plugin's
  * own udev signal handlers, which the test raises. No camera, kernel module
- * or display is needed. */
+ * or display is needed.
+ *
+ * The saved controls must also stay with the camera they were saved for
+ * (follow-up of #363 / #364): a source switched to another camera, or two
+ * cameras that swap /dev/videoN nodes after a reboot or a replug, must not
+ * get the first camera's exposure, focus or zoom written to them. The fake
+ * has a second camera of the same model on another USB port. */
 
 #define WIDTH 64
 #define HEIGHT 48
@@ -50,7 +56,9 @@
 #define MAX_WRITES 256
 
 static char dir_path[64];
+/* /dev/video0 and /dev/video1 */
 static char camera_path[128];
+static char second_path[128];
 
 /* ------------------------------------------------------------------------ */
 /* Fake camera controls, in the order the driver enumerates them (by id) */
@@ -91,15 +99,37 @@ static const struct fake_control controls[CONTROL_COUNT] = {
 
 static const char *power_line_menu[] = {"Disabled", "50 Hz", "60 Hz"};
 
+/* Two cameras of the same model on two USB ports: only bus_info (from
+ * VIDIOC_QUERYCAP) tells them apart. Camera A is the test's camera. */
+enum { CAMERA_A, CAMERA_B, CAMERA_COUNT };
+
+static const struct {
+	const char *card;
+	const char *bus_info;
+} cameras[CAMERA_COUNT] = {
+	[CAMERA_A] = {"Fake UVC Webcam", "usb-0000:00:14.0-1"},
+	[CAMERA_B] = {"Fake UVC Webcam", "usb-0000:00:14.0-2"},
+};
+
+#define NO_CAMERA -1
+
 /* ------------------------------------------------------------------------ */
 /* Fake libv4l2: a YUYV camera with one input and the controls above, which
  * never delivers a frame (select() on the FIFO times out). */
 
 static struct {
 	bool open[MAX_FDS];
+	/* the camera behind each descriptor */
+	int camera_of[MAX_FDS];
+	/* the camera at camera_path and at second_path */
+	int at_path[2];
 	int opens;
+	/* camera A */
 	int32_t value[CONTROL_COUNT];
 	int writes[CONTROL_COUNT];
+	/* camera B */
+	int32_t b_value[CONTROL_COUNT];
+	int b_writes[CONTROL_COUNT];
 	/* every write that changed or moved something, in order */
 	int log[MAX_WRITES];
 	int log_count;
@@ -110,11 +140,26 @@ static struct {
 	uint8_t memory[FAKE_BUFFERS][FAKE_BUFFER_SIZE];
 } fake;
 
-/* The camera powers up with the driver's values, as after a replug */
-static void power_up_camera(void)
+static int32_t *camera_values(int camera)
+{
+	return camera == CAMERA_B ? fake.b_value : fake.value;
+}
+
+static int *camera_writes(int camera)
+{
+	return camera == CAMERA_B ? fake.b_writes : fake.writes;
+}
+
+/* A camera powers up with the driver's values, as after a replug */
+static void power_up(int camera)
 {
 	for (int i = 0; i < CONTROL_COUNT; i++)
-		fake.value[i] = controls[i].default_value;
+		camera_values(camera)[i] = controls[i].default_value;
+}
+
+static void power_up_camera(void)
+{
+	power_up(CAMERA_A);
 }
 
 static int find_control(uint32_t id)
@@ -126,15 +171,15 @@ static int find_control(uint32_t id)
 	return -1;
 }
 
-static uint32_t control_flags(int i)
+static uint32_t control_flags(int camera, int i)
 {
 	uint32_t flags = controls[i].flags;
-	if (i == FOCUS_ABSOLUTE && fake.value[FOCUS_AUTO] && !fake.no_inactive_flag)
+	if (i == FOCUS_ABSOLUTE && camera_values(camera)[FOCUS_AUTO] && !fake.no_inactive_flag)
 		flags |= V4L2_CTRL_FLAG_INACTIVE;
 	return flags;
 }
 
-static int query_control(struct v4l2_queryctrl *qctrl)
+static int query_control(int camera, struct v4l2_queryctrl *qctrl)
 {
 	uint32_t next = V4L2_CTRL_FLAG_NEXT_CTRL | V4L2_CTRL_FLAG_NEXT_COMPOUND;
 	uint32_t id = qctrl->id & ~next;
@@ -165,22 +210,23 @@ static int query_control(struct v4l2_queryctrl *qctrl)
 	qctrl->maximum = c->maximum;
 	qctrl->step = c->step;
 	qctrl->default_value = c->default_value;
-	qctrl->flags = control_flags(found);
+	qctrl->flags = control_flags(camera, found);
 	return 0;
 }
 
-static int set_control(struct v4l2_control *control)
+static int set_control(int camera, struct v4l2_control *control)
 {
+	int32_t *value = camera_values(camera);
 	int i = find_control(control->id);
 	if (i < 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	fake.writes[i]++;
+	camera_writes(camera)[i]++;
 
 	/* Many UVC cameras refuse a manual focus while autofocus is on */
-	if (i == FOCUS_ABSOLUTE && fake.value[FOCUS_AUTO]) {
+	if (i == FOCUS_ABSOLUTE && value[FOCUS_AUTO]) {
 		fake.failed_writes++;
 		errno = EBUSY;
 		return -1;
@@ -191,13 +237,13 @@ static int set_control(struct v4l2_control *control)
 		return -1;
 	}
 
-	fake.value[i] = control->value;
+	value[i] = control->value;
 	if (fake.log_count < MAX_WRITES)
 		fake.log[fake.log_count++] = i;
 	return 0;
 }
 
-static int get_control(struct v4l2_control *control)
+static int get_control(int camera, struct v4l2_control *control)
 {
 	int i = find_control(control->id);
 	if (i < 0) {
@@ -208,14 +254,19 @@ static int get_control(struct v4l2_control *control)
 		errno = EACCES;
 		return -1;
 	}
-	control->value = fake.value[i];
+	control->value = camera_values(camera)[i];
 	return 0;
 }
 
 int v4l2_open(const char *file, int oflag, ...)
 {
-	/* Only the test's camera exists; real devices are never touched. */
-	if (strcmp(file, camera_path) != 0) {
+	/* Only the test's cameras exist; real devices are never touched. */
+	int camera = NO_CAMERA;
+	if (strcmp(file, camera_path) == 0)
+		camera = fake.at_path[0];
+	else if (strcmp(file, second_path) == 0)
+		camera = fake.at_path[1];
+	if (camera == NO_CAMERA) {
 		errno = ENOENT;
 		return -1;
 	}
@@ -228,6 +279,7 @@ int v4l2_open(const char *file, int oflag, ...)
 	}
 
 	fake.open[fd] = true;
+	fake.camera_of[fd] = camera;
 	fake.opens++;
 	return fd;
 }
@@ -272,8 +324,19 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 		errno = EBADF;
 		return -1;
 	}
+	int camera = fake.camera_of[fd];
 
 	switch ((unsigned long)request) {
+	case VIDIOC_QUERYCAP: {
+		struct v4l2_capability *cap = arg;
+		memset(cap, 0, sizeof(*cap));
+		snprintf((char *)cap->driver, sizeof(cap->driver), "uvcvideo");
+		snprintf((char *)cap->card, sizeof(cap->card), "%s", cameras[camera].card);
+		snprintf((char *)cap->bus_info, sizeof(cap->bus_info), "%s", cameras[camera].bus_info);
+		cap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
+		cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
+		return 0;
+	}
 	case VIDIOC_G_INPUT:
 		*(int *)arg = 0;
 		return 0;
@@ -309,7 +372,7 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 		return 0;
 	}
 	case VIDIOC_QUERYCTRL:
-		return query_control(arg);
+		return query_control(camera, arg);
 	case VIDIOC_QUERYMENU: {
 		struct v4l2_querymenu *qmenu = arg;
 		if (qmenu->id != V4L2_CID_POWER_LINE_FREQUENCY || qmenu->index > 2)
@@ -318,9 +381,9 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 		return 0;
 	}
 	case VIDIOC_G_CTRL:
-		return get_control(arg);
+		return get_control(camera, arg);
 	case VIDIOC_S_CTRL:
-		return set_control(arg);
+		return set_control(camera, arg);
 	case VIDIOC_S_EXT_CTRLS: {
 		/* Not used by the plugin today; counted so a switch to the
 		 * extended API cannot hide writes from the checks below. */
@@ -328,7 +391,7 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 		for (uint32_t n = 0; n < ext->count; n++) {
 			struct v4l2_control control = {.id = ext->controls[n].id, .value = ext->controls[n].value};
 			fake.ext_writes++;
-			if (set_control(&control) != 0)
+			if (set_control(camera, &control) != 0)
 				return -1;
 		}
 		return 0;
@@ -365,12 +428,17 @@ signal_handler_t *v4l2_get_udev_signalhandler(void)
 	return udev_signals;
 }
 
-static void udev_signal(const char *signal)
+static void udev_signal_at(const char *signal, const char *path)
 {
 	calldata_t cd = {0};
-	calldata_set_string(&cd, "device", camera_path);
+	calldata_set_string(&cd, "device", path);
 	signal_handler_signal(udev_signals, signal, &cd);
 	calldata_free(&cd);
+}
+
+static void udev_signal(const char *signal)
+{
+	udev_signal_at(signal, camera_path);
 }
 
 /* The camera is unplugged and plugged in again (or the machine resumes and
@@ -449,6 +517,7 @@ static void check_no_writes(int i, const char *when)
 static void clear_writes(void)
 {
 	memset(fake.writes, 0, sizeof(fake.writes));
+	memset(fake.b_writes, 0, sizeof(fake.b_writes));
 	fake.log_count = 0;
 	fake.failed_writes = 0;
 	fake.ext_writes = 0;
@@ -460,7 +529,10 @@ static int setup(void **state)
 {
 	(void)state;
 	memset(&fake, 0, sizeof(fake));
-	power_up_camera();
+	power_up(CAMERA_A);
+	power_up(CAMERA_B);
+	fake.at_path[0] = CAMERA_A;
+	fake.at_path[1] = CAMERA_B;
 
 	udev_signals = signal_handler_create();
 	signal_handler_add(udev_signals, "void device_added(string device)");
@@ -470,7 +542,10 @@ static int setup(void **state)
 	if (!mkdtemp(dir_path))
 		return -1;
 	snprintf(camera_path, sizeof(camera_path), "%s/video0", dir_path);
-	return mkfifo(camera_path, 0600);
+	snprintf(second_path, sizeof(second_path), "%s/video1", dir_path);
+	if (mkfifo(camera_path, 0600) != 0)
+		return -1;
+	return mkfifo(second_path, 0600);
 }
 
 static int teardown(void **state)
@@ -479,6 +554,7 @@ static int teardown(void **state)
 	signal_handler_destroy(udev_signals);
 	udev_signals = NULL;
 	unlink(camera_path);
+	unlink(second_path);
 	rmdir(dir_path);
 	return 0;
 }
@@ -882,6 +958,326 @@ static void toggling_the_checkbox_writes_nothing(void **state)
 	check_camera_value(ZOOM, 250, "after toggling the checkbox");
 }
 
+/* ------------------------------------------------------------------------ */
+/* The saved controls stay with their camera (follow-up of #363 / #364). A
+ * source can be switched to another camera, and two cameras can swap their
+ * /dev/videoN nodes after a reboot or a replug: the controls saved for
+ * camera A must never be written to camera B. */
+
+#define CONTROLS_DEVICE "controls_device"
+
+/* The user changes a control in the Properties window: the widget sets the
+ * value, runs the property's modified callback, then updates the source. */
+static void set_in_properties(void *source, obs_data_t *settings, const char *name, long long value)
+{
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_properties_apply_settings(props, settings);
+	obs_properties_t *ctrl_props = obs_property_group_content(obs_properties_get(props, "controls"));
+	obs_property_t *prop = obs_properties_get(ctrl_props, name);
+	assert_non_null(prop);
+
+	if (obs_property_get_type(prop) == OBS_PROPERTY_BOOL)
+		obs_data_set_bool(settings, name, value != 0);
+	else
+		obs_data_set_int(settings, name, value);
+	obs_property_modified(prop, settings);
+	v4l2_input.update(source, settings);
+
+	obs_properties_destroy(props);
+}
+
+/* The user sets zoom, brightness and the power line frequency on camera A */
+static void *create_camera_with_controls_set(obs_data_t *settings)
+{
+	void *source = create_camera(settings);
+	set_in_properties(source, settings, "Zoom, Absolute", 300);
+	set_in_properties(source, settings, "Brightness", 200);
+	set_in_properties(source, settings, "Power Line Frequency", 2);
+	check_camera_value(ZOOM, 300, "after setting it in the properties");
+	clear_writes();
+	return source;
+}
+
+/* OBS saves the scene collection: the source's save callback, if it has
+ * one, fills its settings. */
+static void save_source(void *source, obs_data_t *settings)
+{
+	if (v4l2_input.save)
+		v4l2_input.save(source, settings);
+}
+
+/* Camera B was opened (when expected) and is on its own values, unwritten */
+static void check_camera_b_untouched(int opens_before, const char *when)
+{
+	if (opens_before >= 0 && fake.opens == opens_before) {
+		fprintf(stderr, "%s: no camera was opened\n", when);
+		fail();
+	}
+	for (int i = 0; i < CONTROL_COUNT; i++) {
+		if (fake.b_writes[i] || fake.b_value[i] != controls[i].default_value) {
+			fprintf(stderr, "%s: camera B's '%s' is %d after %d writes, expected its own %d, unwritten\n",
+				when, controls[i].name, fake.b_value[i], fake.b_writes[i], controls[i].default_value);
+			fail();
+		}
+	}
+}
+
+/* Camera A has the values the user set on it */
+static void check_camera_a_restored(const char *when)
+{
+	check_camera_value(ZOOM, 300, when);
+	check_camera_value(BRIGHTNESS, 200, when);
+	check_camera_value(POWER_LINE, 2, when);
+}
+
+/* The two cameras swap their nodes: OBS sees camera_path go away and come
+ * back with camera B behind it. */
+static void swap_camera_nodes(void)
+{
+	udev_signal_at("device_removed", camera_path);
+	udev_signal_at("device_removed", second_path);
+	fake.at_path[0] = CAMERA_B;
+	fake.at_path[1] = CAMERA_A;
+	power_up(CAMERA_A);
+	power_up(CAMERA_B);
+	udev_signal_at("device_added", second_path);
+	udev_signal_at("device_added", camera_path);
+}
+
+/* A script or obs-websocket SetInputSettings switches the source from
+ * camera A to camera B: camera A's controls are not written to B. */
+static void switching_the_source_to_another_camera_writes_nothing_to_it(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+
+	int opens = fake.opens;
+	obs_data_set_string(settings, "device_id", second_path);
+	v4l2_input.update(source, settings);
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "after switching the source to camera B");
+}
+
+/* A -> B -> A: camera A gets its values back when the source returns to
+ * it (here after another program reset it), and B is never written. */
+static void switching_back_restores_the_first_cameras_controls(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+
+	int opens = fake.opens;
+	obs_data_set_string(settings, "device_id", second_path);
+	v4l2_input.update(source, settings);
+	power_up(CAMERA_A);
+	obs_data_set_string(settings, "device_id", camera_path);
+	v4l2_input.update(source, settings);
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "after switching to camera B and back");
+	check_camera_a_restored("after switching to camera B and back");
+}
+
+/* The same switch in the Properties window, where picking the device runs
+ * device_selected() before the update: nothing is written to B, the
+ * sliders stop showing A's values, and switching back brings A's values
+ * back, in the settings and on camera A. */
+static void switching_camera_in_properties_keeps_each_cameras_controls(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_properties_apply_settings(props, settings);
+	obs_property_t *device = obs_properties_get(props, "device_id");
+
+	int opens = fake.opens;
+	obs_data_set_string(settings, "device_id", second_path);
+	obs_property_modified(device, settings);
+	v4l2_input.update(source, settings);
+	bool shows_a_on_b = obs_data_has_user_value(settings, "Zoom, Absolute");
+	long long zoom_on_b = obs_data_get_int(settings, "Zoom, Absolute");
+
+	power_up(CAMERA_A);
+	obs_data_set_string(settings, "device_id", camera_path);
+	obs_property_modified(device, settings);
+	v4l2_input.update(source, settings);
+	long long zoom_on_a = obs_data_get_int(settings, "Zoom, Absolute");
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "after picking camera B in the properties");
+	if (shows_a_on_b) {
+		fprintf(stderr, "with camera B picked, the zoom slider shows camera A's %lld\n", zoom_on_b);
+		fail();
+	}
+	check_camera_a_restored("after picking camera A again");
+	if (zoom_on_a != 300) {
+		fprintf(stderr, "with camera A picked again, the zoom slider shows %lld, expected A's 300\n",
+			zoom_on_a);
+		fail();
+	}
+}
+
+/* After the source is switched to camera B, the user changes Brightness on
+ * B: only that control is written, and later only it is restored on B. */
+static void a_control_changed_on_the_new_camera_is_the_only_one_restored(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+
+	obs_data_set_string(settings, "device_id", second_path);
+	v4l2_input.update(source, settings);
+	set_in_properties(source, settings, "Brightness", 50);
+	int brightness_written = fake.b_writes[BRIGHTNESS];
+	udev_signal_at("device_removed", second_path);
+	power_up(CAMERA_B);
+	udev_signal_at("device_added", second_path);
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	if (!brightness_written || fake.b_value[BRIGHTNESS] != 50) {
+		fprintf(stderr, "camera B's Brightness is %d after %d writes, expected the 50 set on it\n",
+			fake.b_value[BRIGHTNESS], fake.b_writes[BRIGHTNESS]);
+		fail();
+	}
+	if (fake.b_writes[ZOOM] || fake.b_writes[POWER_LINE]) {
+		fprintf(stderr, "camera A's zoom and power line frequency were written to camera B (%d, %d writes)\n",
+			fake.b_writes[ZOOM], fake.b_writes[POWER_LINE]);
+		fail();
+	}
+}
+
+/* The two cameras swap nodes while OBS runs (replug into other ports, or
+ * a USB hub that resets): the source reopens its node, now camera B. */
+static void a_camera_that_takes_the_node_on_replug_is_not_written(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+
+	int opens = fake.opens;
+	swap_camera_nodes();
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "after camera B took the source's node");
+}
+
+/* The two cameras swap nodes across a reboot: OBS loads the scene
+ * collection and the source opens its node, now camera B. */
+static void a_camera_that_takes_the_node_at_startup_is_not_written(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+	save_source(source, settings);
+	v4l2_input.destroy(source);
+
+	fake.at_path[0] = CAMERA_B;
+	fake.at_path[1] = CAMERA_A;
+	power_up(CAMERA_A);
+	power_up(CAMERA_B);
+	clear_writes();
+
+	int opens = fake.opens;
+	source = create_camera(settings);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "after starting with camera B on the source's node");
+}
+
+/* Control: the same camera replugged into the same port is still
+ * restored, once the controls are tied to it. */
+static void the_same_camera_is_still_restored_after_a_replug(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera_with_controls_set(settings);
+	save_source(source, settings);
+
+	replug_camera();
+
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_a_restored("after replugging camera A");
+}
+
+/* Settings saved before the controls were tied to a camera: they are
+ * applied to the first camera opened, as before, and tied to it, so they
+ * are not written to the other camera when the nodes swap. */
+static void old_settings_are_tied_to_the_first_camera_opened(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	obs_data_set_int(settings, "Brightness", 200);
+	obs_data_set_int(settings, "Power Line Frequency", 2);
+
+	void *source = create_camera(settings);
+	check_camera_a_restored("after loading old settings");
+	save_source(source, settings);
+	bool tied = *obs_data_get_string(settings, CONTROLS_DEVICE) != 0;
+
+	clear_writes();
+	int opens = fake.opens;
+	swap_camera_nodes();
+	v4l2_input.destroy(source);
+	check_camera_b_untouched(opens, "old settings, after camera B took the node on replug");
+
+	/* and at the next start, from the saved settings */
+	clear_writes();
+	opens = fake.opens;
+	source = create_camera(settings);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+	check_camera_b_untouched(opens, "old settings, at the next start with camera B on the node");
+
+	if (!tied) {
+		fprintf(stderr, "saving the source did not record the camera of its old settings\n");
+		fail();
+	}
+}
+
+/* Old settings, then the user picks camera B in the Properties window
+ * before the scene collection is saved: the controls stay camera A's. */
+static void old_settings_stay_with_the_first_camera_when_switching_in_properties(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	obs_data_set_int(settings, "Zoom, Absolute", 300);
+	obs_data_set_int(settings, "Brightness", 200);
+	obs_data_set_int(settings, "Power Line Frequency", 2);
+	void *source = create_camera(settings);
+	clear_writes();
+
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_data_set_string(settings, "device_id", second_path);
+	obs_properties_apply_settings(props, settings);
+	int opens = fake.opens;
+	v4l2_input.update(source, settings);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_b_untouched(opens, "old settings, after picking camera B in the properties");
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -900,6 +1296,20 @@ int main(void)
 		cmocka_unit_test_setup_teardown(unchecked_saved_controls_are_not_written_on_update, setup, teardown),
 		cmocka_unit_test_setup_teardown(unchecked_a_control_changed_in_properties_is_written, setup, teardown),
 		cmocka_unit_test_setup_teardown(toggling_the_checkbox_writes_nothing, setup, teardown),
+		cmocka_unit_test_setup_teardown(switching_the_source_to_another_camera_writes_nothing_to_it, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(switching_back_restores_the_first_cameras_controls, setup, teardown),
+		cmocka_unit_test_setup_teardown(switching_camera_in_properties_keeps_each_cameras_controls, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(a_control_changed_on_the_new_camera_is_the_only_one_restored, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(a_camera_that_takes_the_node_on_replug_is_not_written, setup, teardown),
+		cmocka_unit_test_setup_teardown(a_camera_that_takes_the_node_at_startup_is_not_written, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(the_same_camera_is_still_restored_after_a_replug, setup, teardown),
+		cmocka_unit_test_setup_teardown(old_settings_are_tied_to_the_first_camera_opened, setup, teardown),
+		cmocka_unit_test_setup_teardown(old_settings_stay_with_the_first_camera_when_switching_in_properties,
+						setup, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
