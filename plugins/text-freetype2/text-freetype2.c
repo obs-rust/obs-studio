@@ -416,6 +416,7 @@ static void ft2_source_update(void *data, obs_data_t *settings)
 	const bool aa_changed = srcdata->antialiasing != new_aa_setting;
 	if (aa_changed) {
 		srcdata->antialiasing = new_aa_setting;
+		vbuf_needs_update = true;
 		if (srcdata->texbuf != NULL) {
 			memset(srcdata->texbuf, 0, texbuf_size);
 		}
