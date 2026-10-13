@@ -41,7 +41,7 @@ void profile_remove_current(const struct profile_remove_ops *ops, bool ask);
 
 /* obs_frontend_delete_profile() (obs-websocket's RemoveProfile, scripts,
  * plugins) removes a profile by name (OBSBasic::DeleteProfile). is_current:
- * it is the profile in use. */
+ * it is the profile in use, which is removed without asking. */
 void profile_remove_by_api(const struct profile_remove_ops *ops, bool is_current);
 
 #ifdef __cplusplus

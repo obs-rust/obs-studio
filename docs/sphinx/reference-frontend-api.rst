@@ -442,6 +442,9 @@ Functions
 
 .. function:: void obs_frontend_delete_profile(const char *profile)
 
+   Deleting the current profile switches to another profile first, without
+   asking the user for confirmation.
+
    :param profile: Name of the profile to delete
 
 ---------------------------------------
