@@ -10,6 +10,12 @@ target_include_directories(
   test_image_file_version_filetime
   PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/plugins/image-source"
 )
+if(OS_WINDOWS)
+  target_sources(
+    test_image_file_version_filetime
+    PRIVATE "${CMAKE_SOURCE_DIR}/plugins/image-source/image-file-version-win32.c"
+  )
+endif()
 target_link_libraries(test_image_file_version_filetime PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
 add_dependencies(cmocka-tests test_image_file_version_filetime)
 add_test(test_image_file_version_filetime ${CMAKE_CURRENT_BINARY_DIR}/test_image_file_version_filetime)

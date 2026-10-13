@@ -12,7 +12,7 @@ target_link_libraries(image-source PRIVATE OBS::libobs $<$<PLATFORM_ID:Windows>:
 
 if(OS_WINDOWS)
   configure_file(cmake/windows/obs-module.rc.in image-source.rc)
-  target_sources(image-source PRIVATE image-source.rc)
+  target_sources(image-source PRIVATE image-file-version-win32.c image-source.rc)
 endif()
 
 set_target_properties_obs(image-source PROPERTIES FOLDER plugins PREFIX "")
