@@ -5,6 +5,8 @@
 #include <util/dstr.h>
 #include <sys/stat.h>
 
+#include "image-file-version.h"
+
 #define blog(log_level, format, ...) \
 	blog(log_level, "[image_source: '%s'] " format, obs_source_get_name(context->source), ##__VA_ARGS__)
 
@@ -19,7 +21,7 @@ struct image_source {
 	bool persistent;
 	bool is_slide;
 	bool linear_alpha;
-	time_t file_timestamp;
+	struct image_file_version file_version;
 	float update_time_elapsed;
 	uint64_t last_time;
 	bool active;
@@ -29,15 +31,6 @@ struct image_source {
 
 	gs_image_file_ex_t image;
 };
-
-static time_t get_modified_timestamp(const char *filename)
-{
-	struct stat stats;
-	if (os_stat(filename, &stats) != 0)
-		return -1;
-
-	return stats.st_mtime;
-}
 
 static const char *image_source_get_name(void *unused)
 {
@@ -51,7 +44,7 @@ void image_source_preload_image(void *data)
 	if (os_atomic_load_bool(&context->file_decoded))
 		return;
 
-	context->file_timestamp = get_modified_timestamp(context->file);
+	image_file_version_get(context->file, &context->file_version);
 	gs_image_file_ex_init(&context->image, context->file,
 			      context->linear_alpha ? GS_IMAGE_ALPHA_PREMULTIPLY_SRGB : GS_IMAGE_ALPHA_PREMULTIPLY);
 	os_atomic_set_bool(&context->file_decoded, true);
@@ -244,10 +237,11 @@ static void image_source_tick(void *data, float seconds)
 
 	if (obs_source_showing(context->source)) {
 		if (context->update_time_elapsed >= 1.0f) {
-			time_t t = get_modified_timestamp(context->file);
+			struct image_file_version version;
+			image_file_version_get(context->file, &version);
 			context->update_time_elapsed = 0.0f;
 
-			if (context->file_timestamp != t) {
+			if (!image_file_version_equal(&context->file_version, &version)) {
 				image_source_load(context);
 			}
 		}
