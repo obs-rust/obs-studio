@@ -98,12 +98,18 @@ static int librist_close(URLContext *h)
 {
 	RISTContext *s = h->priv_data;
 	int ret = 0;
-	if (s->secret)
+	if (s->secret) {
 		bfree(s->secret);
-	if (s->username)
+		s->secret = NULL;
+	}
+	if (s->username) {
 		bfree(s->username);
-	if (s->password)
+		s->username = NULL;
+	}
+	if (s->password) {
 		bfree(s->password);
+		s->password = NULL;
+	}
 	s->peer = NULL;
 
 	if (s->ctx)
