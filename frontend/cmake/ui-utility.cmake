@@ -25,6 +25,8 @@ target_sources(
     utility/GoLiveAPI_PostData.hpp
     utility/media-time.c
     utility/media-time.h
+    utility/missing-files-list.c
+    utility/missing-files-list.h
     utility/MissingFilesModel.cpp
     utility/MissingFilesModel.hpp
     utility/MissingFilesPathItemDelegate.cpp
