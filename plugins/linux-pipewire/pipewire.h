@@ -51,6 +51,9 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd, const struct pw_registry_
 void obs_pipewire_set_disconnected_callback(obs_pipewire *obs_pw, obs_pipewire_disconnected_cb callback,
 					    void *user_data);
 bool obs_pipewire_is_disconnected(obs_pipewire *obs_pw);
+/* The connection replaces one that was lost: a stream that fails before it
+ * ever streamed is reported to the disconnected callback too. */
+void obs_pipewire_set_reconnecting(obs_pipewire *obs_pw, bool reconnecting);
 struct pw_registry *obs_pipewire_get_registry(obs_pipewire *obs_pw);
 void obs_pipewire_roundtrip(obs_pipewire *obs_pw);
 void obs_pipewire_destroy(obs_pipewire *obs_pw);
@@ -59,6 +62,7 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 						 const struct obs_pipewire_connect_stream_info *connect_info);
 
 bool obs_pipewire_stream_has_frame(obs_pipewire_stream *obs_pw_stream);
+bool obs_pipewire_stream_has_streamed(obs_pipewire_stream *obs_pw_stream);
 void obs_pipewire_stream_show(obs_pipewire_stream *obs_pw_stream);
 void obs_pipewire_stream_hide(obs_pipewire_stream *obs_pw_stream);
 uint32_t obs_pipewire_stream_get_width(obs_pipewire_stream *obs_pw_stream);

@@ -97,6 +97,7 @@ struct _obs_pipewire {
 	obs_pipewire_disconnected_cb disconnected_cb;
 	void *disconnected_data;
 	bool disconnected;
+	bool reconnecting;
 
 	/* Watches for the removal of the node the last stream was connected
 	 * to, for owners that set a disconnected callback. */
@@ -1092,7 +1093,8 @@ static void on_state_changed_cb(void *user_data, enum pw_stream_state old, enum 
 	blog(LOG_INFO, "[pipewire] Stream %p state: \"%s\" (error: %s)", obs_pw_stream->stream,
 	     pw_stream_state_as_string(state), error ? error : "none");
 
-	if (obs_pipewire_stream_state_is_lost(&obs_pw->disconnected, &obs_pw_stream->streamed, false, state) &&
+	if (obs_pipewire_stream_state_is_lost(&obs_pw->disconnected, &obs_pw_stream->streamed, obs_pw->reconnecting,
+					      state) &&
 	    obs_pw->disconnected_cb)
 		obs_pw->disconnected_cb(obs_pw->disconnected_data);
 }
@@ -1258,6 +1260,13 @@ bool obs_pipewire_is_disconnected(obs_pipewire *obs_pw)
 	return disconnected;
 }
 
+void obs_pipewire_set_reconnecting(obs_pipewire *obs_pw, bool reconnecting)
+{
+	pw_thread_loop_lock(obs_pw->thread_loop);
+	obs_pw->reconnecting = reconnecting;
+	pw_thread_loop_unlock(obs_pw->thread_loop);
+}
+
 struct pw_registry *obs_pipewire_get_registry(obs_pipewire *obs_pw)
 {
 	return obs_pw->registry;
@@ -1355,6 +1364,21 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 bool obs_pipewire_stream_has_frame(obs_pipewire_stream *obs_pw_stream)
 {
 	return obs_pw_stream && obs_pw_stream->texture;
+}
+
+bool obs_pipewire_stream_has_streamed(obs_pipewire_stream *obs_pw_stream)
+{
+	bool streamed;
+
+	if (!obs_pw_stream)
+		return false;
+
+	/* Set on the PipeWire thread, under the thread loop lock. */
+	pw_thread_loop_lock(obs_pw_stream->obs_pw->thread_loop);
+	streamed = obs_pw_stream->streamed;
+	pw_thread_loop_unlock(obs_pw_stream->obs_pw->thread_loop);
+
+	return streamed;
 }
 
 void obs_pipewire_stream_show(obs_pipewire_stream *obs_pw_stream)

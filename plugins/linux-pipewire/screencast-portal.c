@@ -91,6 +91,7 @@ struct screencast_portal_capture {
 
 static void on_pipewire_disconnected(void *user_data);
 static void reconnect_attempt_failed(struct screencast_portal_capture *capture, bool cancelled_by_user);
+static void arm_reconnect_stream_check(struct screencast_portal_capture *capture);
 static void clear_reconnect_timer(guint *id);
 
 /* Portal replies are handled on the main loop, but libobs destroys sources on
@@ -256,6 +257,7 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 	pipewire_fd = g_unix_fd_list_get(fd_list, fd_index, &error);
 	if (error) {
 		blog(LOG_ERROR, "[pipewire] Error retrieving pipewire fd: %s", error->message);
+		reconnect_attempt_failed(capture, false);
 		goto out;
 	}
 
@@ -267,6 +269,10 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 	}
 
 	obs_pipewire_set_disconnected_callback(capture->obs_pw, on_pipewire_disconnected, capture->weak_source);
+	/* What broke the old stream may not have passed yet, so a new stream
+	 * that fails at once is a failed attempt, retried with the backoff. */
+	if (capture->reconnect.active)
+		obs_pipewire_set_reconnecting(capture->obs_pw, true);
 	if (obs_pipewire_is_disconnected(capture->obs_pw)) {
 		on_pipewire_disconnected(capture->weak_source);
 		goto out;
@@ -288,6 +294,13 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 	/* show/hide calls made while reconnecting had no stream to act on. */
 	if (capture->reconnect.active && capture->obs_pw_stream && !obs_source_showing(capture->source))
 		obs_pipewire_stream_hide(capture->obs_pw_stream);
+
+	if (capture->reconnect.active) {
+		if (capture->obs_pw_stream)
+			arm_reconnect_stream_check(capture);
+		else
+			reconnect_attempt_failed(capture, false);
+	}
 
 out:
 	obs_source_release(held_source);
@@ -712,7 +725,8 @@ static void start_reconnect_attempt(struct screencast_portal_capture *capture)
 	     "[pipewire] Reconnecting screencast (attempt %u)", capture->reconnect.attempts + 1);
 
 	/* Covers creating the session; select_source() disarms it because the
-	 * portal may wait for the user from there on. */
+	 * portal may wait for the user from there on, and the stream's own
+	 * check takes over once the portal has handed out the screencast. */
 	clear_reconnect_timer(&capture->reconnect.attempt_timeout_id);
 	capture->reconnect.attempt_timeout_id =
 		schedule_reconnect_timer(capture, RECONNECT_ATTEMPT_TIMEOUT_MS, on_reconnect_attempt_timeout);
@@ -764,16 +778,59 @@ static void schedule_reconnect_retry(struct screencast_portal_capture *capture)
 
 static void reconnect_attempt_failed(struct screencast_portal_capture *capture, bool cancelled_by_user)
 {
-	if (!capture->reconnect.active)
-		return;
-
-	if (cancelled_by_user) {
+	switch (obs_pipewire_reconnect_attempt_failed(capture->reconnect.active, cancelled_by_user)) {
+	case OBS_PIPEWIRE_RECONNECT_IGNORE:
+		break;
+	case OBS_PIPEWIRE_RECONNECT_STOP:
 		blog(LOG_INFO, "[pipewire] Screencast reconnection cancelled");
 		stop_reconnect(capture);
-		return;
+		break;
+	case OBS_PIPEWIRE_RECONNECT_RETRY:
+		schedule_reconnect_retry(capture);
+		break;
+	}
+}
+
+static gboolean on_reconnect_stream_check(void *user_data)
+{
+	struct screencast_portal_capture *capture;
+	obs_source_t *source;
+
+	capture = capture_from_weak(user_data, &source);
+	if (!capture)
+		goto out;
+
+	capture->reconnect.attempt_timeout_id = 0;
+	if (!capture->reconnect.active)
+		goto out;
+
+	switch (obs_pipewire_reconnect_check_stream(obs_pipewire_stream_has_streamed(capture->obs_pw_stream),
+						    obs_source_showing(capture->source))) {
+	case OBS_PIPEWIRE_RECONNECT_STREAM_STARTED:
+		break;
+	case OBS_PIPEWIRE_RECONNECT_STREAM_WAIT:
+		arm_reconnect_stream_check(capture);
+		break;
+	case OBS_PIPEWIRE_RECONNECT_STREAM_FAILED:
+		blog(LOG_WARNING, "[pipewire] The new screencast stream did not start within %u ms",
+		     OBS_PIPEWIRE_RECONNECT_STREAM_TIMEOUT_MS);
+		schedule_reconnect_retry(capture);
+		break;
 	}
 
-	schedule_reconnect_retry(capture);
+out:
+	obs_source_release(source);
+	return G_SOURCE_REMOVE;
+}
+
+/* The portal handed out the screencast and its stream is connected: the user
+ * has nothing more to answer, so give the stream a while to start streaming
+ * (errors are reported as they happen; see obs_pipewire_set_reconnecting()). */
+static void arm_reconnect_stream_check(struct screencast_portal_capture *capture)
+{
+	clear_reconnect_timer(&capture->reconnect.attempt_timeout_id);
+	capture->reconnect.attempt_timeout_id =
+		schedule_reconnect_timer(capture, OBS_PIPEWIRE_RECONNECT_STREAM_TIMEOUT_MS, on_reconnect_stream_check);
 }
 
 static gboolean on_reconnect_attempt_timeout(void *user_data)
