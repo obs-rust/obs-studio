@@ -8,7 +8,7 @@ pre-release, a tag push attaches it to that tag's release.
 
 | File | Purpose |
 | --- | --- |
-| `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including glibc and its loader), then calls `set-runpaths.sh`. |
+| `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set-runpaths.sh`. |
 | `set-runpaths.sh` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
 | `AppRun` | Entry point. Installs the bundled loader, sets up the environment, runs OBS and writes a crash report if it crashes. |
 | `check-appdir.sh` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled. Run by `assemble-appdir.sh` (fails the build) and again by the test. |
@@ -21,6 +21,12 @@ pre-release, a tag push attaches it to that tag's release.
 - **Everything is bundled** except the GPU and hardware video drivers (Mesa,
   NVIDIA, VA-API), which have to come from the host. That includes glibc, so the
   AppImage also runs on distributions older than the build host.
+- **All of glibc, not just what OBS links.** The host's drivers run on the
+  bundled loader and libc and link more of glibc (the NVIDIA driver's `libcuda`
+  needs `librt`, `libpthread` and `libdl`). The host's copies of those need
+  private symbols of the host's glibc, so on a host with a newer glibc
+  `libcuda` failed to load and NVENC was missing. `assemble-appdir.sh` bundles
+  every library of the package that owns the bundled `libc.so.6`.
 - **No `LD_LIBRARY_PATH`.** It would leak into every process OBS starts
   (`/bin/sh`, `xdg-open`, ...), and those host programs crash when they load the
   bundled, newer glibc. The bundled ELF files use relative RPATHs instead, which

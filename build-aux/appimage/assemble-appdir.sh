@@ -108,6 +108,29 @@ while [ -n "$queue" ]; do
     queue="$(echo "$next" | sed '/^$/d')"
 done
 
+# --- the rest of glibc ------------------------------------------------------
+# The closure holds only the parts of glibc that OBS links. The host's GPU drivers
+# run on the bundled loader and libc too and link more of it (the NVIDIA driver's
+# libcuda and libEGL_nvidia: librt, libpthread, libdl). Taken from the host, those
+# belong to its glibc and need private symbols of its version: on a host with a
+# newer glibc libcuda did not load and NVENC was missing. So bundle every library
+# of the package the bundled libc.so.6 comes from.
+if [ -e "$LIBDIR/libc.so.6" ]; then
+    glibc_pkg="$(dpkg-query -S "$SYSLIB/libc.so.6" 2>/dev/null | head -1 | cut -d: -f1-2)" || true
+    if [ -z "$glibc_pkg" ]; then
+        echo "::error::no package owns $SYSLIB/libc.so.6; cannot bundle the rest of glibc" >&2
+        exit 1
+    fi
+    dpkg-query -L "$glibc_pkg" | grep -E "^$SYSLIB/[^/]+\.so(\.[0-9]+)*\$" | while read -r lib; do
+        name="$(basename "$lib")"
+        case "$name" in
+        ld-linux*) continue ;;     # bundled below, in lib64
+        libthread_db*) continue ;; # a plugin of the debugger, which provides its ps_* symbols
+        esac
+        [ -e "$LIBDIR/$name" ] || { cp -aL "$lib" "$LIBDIR/$name"; echo "glibc ($glibc_pkg): $name"; }
+    done
+fi
+
 # --- the dynamic loader (see AppRun) ---------------------------------------
 cp -aL "$SYSLIB/ld-linux-x86-64.so.2" "$APPDIR/lib64/ld-linux-x86-64.so.2"
 rm -f "$LIBDIR/ld-linux-x86-64.so.2"
