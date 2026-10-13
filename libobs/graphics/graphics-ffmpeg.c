@@ -334,23 +334,74 @@ static void *ffmpeg_image_orient(struct ffmpeg_image *info, void *in_data, int o
 	return data;
 }
 
+/* FFmpeg 8.1 (libavcodec 62.13.100) parses the EXIF block of JPEG, PNG and
+ * WebP images itself (the av_exif_* API). It exports the orientation only as
+ * display matrix side data and removes the "Orientation" tag from the frame
+ * metadata, where FFmpeg 8.0 and earlier put it (JPEG and WebP only).
+ * Once the minimum FFmpeg is 8.1, the metadata tag and the sign table below
+ * can go. */
+#define FFMPEG_HAS_EXIF_API (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(62, 13, 100))
+
+#if FFMPEG_HAS_EXIF_API
+#include <libavcodec/exif.h>
+#else
+static inline int matrix_sign(int32_t v)
+{
+	return (v > 0) - (v < 0);
+}
+
+/* The EXIF orientation (1-8) of a display matrix, for FFmpeg without
+ * av_exif_matrix_to_orientation(). */
+static int display_matrix_to_orientation(const int32_t *matrix)
+{
+	/* The display matrix FFmpeg derives from each EXIF orientation, as
+	 * the signs of its 2x2 part: {a, b, c, d} = {m[0], m[1], m[3], m[4]}. */
+	static const int8_t orientations[8][4] = {
+		{1, 0, 0, 1}, {-1, 0, 0, 1}, {-1, 0, 0, -1}, {1, 0, 0, -1},
+		{0, 1, 1, 0}, {0, 1, -1, 0}, {0, -1, -1, 0}, {0, -1, 1, 0},
+	};
+	const int sign[4] = {matrix_sign(matrix[0]), matrix_sign(matrix[1]), matrix_sign(matrix[3]),
+			     matrix_sign(matrix[4])};
+
+	for (int i = 0; i < 8; i++) {
+		if (sign[0] == orientations[i][0] && sign[1] == orientations[i][1] && sign[2] == orientations[i][2] &&
+		    sign[3] == orientations[i][3])
+			return i + 1;
+	}
+
+	return 0;
+}
+#endif
+
+/* EXIF orientation (1-8) of a decoded image, 0 if it has none. */
+static int ffmpeg_image_get_orientation(const AVFrame *frame)
+{
+#if !FFMPEG_HAS_EXIF_API
+	AVDictionaryEntry *entry = av_dict_get(frame->metadata, "Orientation", NULL, AV_DICT_MATCH_CASE);
+	if (entry && entry->value)
+		return atoi(entry->value);
+#endif
+
+	const AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_DISPLAYMATRIX);
+	if (!sd || sd->size < 9 * sizeof(int32_t))
+		return 0;
+
+	int32_t matrix[9];
+	memcpy(matrix, sd->data, sizeof(matrix));
+#if FFMPEG_HAS_EXIF_API
+	return av_exif_matrix_to_orientation(matrix);
+#else
+	return display_matrix_to_orientation(matrix);
+#endif
+}
+
 static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
 {
 	struct SwsContext *sws_ctx = NULL;
 	void *data = NULL;
 	int ret = 0;
 
-	AVDictionary *dict = frame->metadata;
-	AVDictionaryEntry *entry = NULL;
-
-	int orient = 0;
-
-	if (dict) {
-		entry = av_dict_get(dict, "Orientation", NULL, AV_DICT_MATCH_CASE);
-		if (entry && entry->value) {
-			orient = atoi(entry->value);
-		}
-	}
+	const int orient = ffmpeg_image_get_orientation(frame);
 
 	if (info->format == AV_PIX_FMT_BGR0) {
 		data = ffmpeg_image_copy_data_straight(info, frame);
