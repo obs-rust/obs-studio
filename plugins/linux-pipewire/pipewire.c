@@ -869,11 +869,35 @@ static void process_video_sync(obs_pipewire_stream *obs_pw_stream)
 			goto read_metadata;
 		}
 
+		/* Where the frame is in the buffer and its row pitch, from the
+		 * producer's chunk, checked against the mapped buffer. */
+		struct obs_source_frame layout = {
+			.width = obs_pw_stream->format.info.raw.size.width,
+			.height = obs_pw_stream->format.info.raw.size.height,
+			.format = obs_pw_video_format.video_format,
+		};
+
+		if (!obs_pw_frame_layout(&layout, buffer, &obs_pw_video_format)) {
+			if (!obs_pw_stream->bad_frame_layout_logged) {
+				blog(LOG_WARNING, "[pipewire] Dropping frames: a buffer does not hold a %ux%u %s frame",
+				     layout.width, layout.height, obs_pw_video_format.pretty_name);
+				obs_pw_stream->bad_frame_layout_logged = true;
+			}
+			goto read_metadata;
+		}
+
 		g_clear_pointer(&obs_pw_stream->texture, gs_texture_destroy);
-		obs_pw_stream->texture = gs_texture_create(obs_pw_stream->format.info.raw.size.width,
-							   obs_pw_stream->format.info.raw.size.height,
-							   obs_pw_video_format.gs_format, 1,
-							   (const uint8_t **)&buffer->datas[0].data, GS_DYNAMIC);
+		if (layout.linesize[0] == layout.width * obs_pw_video_format.bpp) {
+			obs_pw_stream->texture = gs_texture_create(layout.width, layout.height,
+								   obs_pw_video_format.gs_format, 1,
+								   (const uint8_t **)&layout.data[0], GS_DYNAMIC);
+		} else {
+			/* Padded rows: copied one by one. */
+			obs_pw_stream->texture = gs_texture_create(layout.width, layout.height,
+								   obs_pw_video_format.gs_format, 1, NULL, GS_DYNAMIC);
+			if (obs_pw_stream->texture)
+				gs_texture_set_image(obs_pw_stream->texture, layout.data[0], layout.linesize[0], false);
+		}
 	}
 
 	if (obs_pw_video_format.swap_red_blue)
