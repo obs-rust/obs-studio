@@ -117,6 +117,69 @@ def paused(master):
     return icon
 
 
+def active(master):
+    """The Windows/Linux tray icon while live or recording: a red dot."""
+    icon = sized(master, 256)
+    draw = ImageDraw.Draw(icon)
+    draw.ellipse([0, 148, 108, 256], fill=(0, 0, 0, 255))
+    draw.ellipse([6, 154, 102, 250], fill=(255, 0, 0, 255))
+    return icon
+
+
+def mask(master):
+    """The macOS menu bar icon: Qt draws it as a template (mask) image, so
+    only alpha matters. Keep the light ring, swooshes and gear; drop the
+    dark disc."""
+    icon = sized(master, 256)
+    alpha = icon.convert("L").point(lambda v: max(0, min(255, (v - 60) * 4)))
+    alpha = Image.composite(alpha, Image.new("L", icon.size, 0), icon.getchannel("A"))
+    white = Image.new("RGBA", icon.size, (255, 255, 255, 0))
+    white.putalpha(alpha)
+    return white
+
+
+def mask_badge(icon, badge):
+    """Cut a gap round a bottom-left badge on a mask icon, then draw it."""
+    a = icon.getchannel("A")
+    draw = ImageDraw.Draw(a)
+    if badge == "dot":
+        draw.ellipse([0, 148, 108, 256], fill=0)
+        draw.ellipse([10, 158, 98, 246], fill=255)
+    else:
+        draw.rectangle([0, 103, 140, 256], fill=0)
+        for x0, x1 in ((13, 53), (87, 127)):
+            draw.rectangle([x0, 111, x1, 255], fill=255)
+    icon.putalpha(a)
+    return icon
+
+
+def write_png_svg(image, rel):
+    """A 256 px PNG embedded in an SVG, for resources Qt loads as .svg."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'xmlns:xlink="http://www.w3.org/1999/xlink" width="256" height="256" '
+        'viewBox="0 0 256 256">\n'
+        f'  <image width="256" height="256" xlink:href="{png_data_uri(image)}"/>\n'
+        "</svg>\n"
+    )
+    (ROOT / rel).write_text(svg)
+    print("wrote", rel)
+
+
+def write_tray_icons(master):
+    images = "frontend/forms/images"
+    active(master).save(ROOT / f"{images}/tray_active.png", optimize=True)
+    print(f"wrote {images}/tray_active.png")
+    for name, icon in (
+        ("obs_macos", mask(master)),
+        ("obs_paused_macos", mask_badge(mask(master), "pause")),
+        ("tray_active_macos", mask_badge(mask(master), "dot")),
+    ):
+        icon.save(ROOT / f"{images}/{name}.png", optimize=True)
+        print(f"wrote {images}/{name}.png")
+        write_png_svg(icon, f"{images}/{name}.svg")
+
+
 def png_data_uri(image):
     buf = io.BytesIO()
     image.save(buf, format="PNG", optimize=True)
@@ -161,6 +224,7 @@ def main():
     save_png(master, 256, "frontend/forms/images/obs.png")
     paused(master).save(ROOT / "frontend/forms/images/obs_paused.png", optimize=True)
     print("wrote frontend/forms/images/obs_paused.png")
+    write_tray_icons(master)
 
     for size in (128, 256, 512):
         save_png(master, size, f"frontend/cmake/linux/icons/obs-logo-{size}.png")
