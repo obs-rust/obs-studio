@@ -13,6 +13,7 @@ if(OS_LINUX AND TARGET OBS::pipewire)
     test_pipewire_context_fail.c
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/formats.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-layout.c"
+    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-pacing.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/pipewire.c"
     "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/reconnect-policy.c"
   )

@@ -25,11 +25,10 @@
  * on each OBS video tick, kept free of PipeWire and graphics calls so it can
  * be tested on its own.
  *
- * Frames are opaque ids chosen by the caller (for example the pw_buffer, or
- * the texture imported from it). Every frame passed to
- * obs_pw_frame_pacer_push() is handed back exactly once as a released frame,
- * from push, tick or flush; only then may the caller return its buffer to
- * PipeWire. */
+ * Frames are opaque ids chosen by the caller (pipewire.c uses the index of
+ * the frame's texture). Every frame passed to obs_pw_frame_pacer_push() is
+ * handed back exactly once as a released frame, from push, tick or flush;
+ * only then may the caller free or reuse it. */
 
 #define OBS_PW_FRAME_NONE UINT64_MAX
 
