@@ -419,6 +419,14 @@ bool obs_output_start(obs_output_t *output)
 	if (!output->context.data)
 		return false;
 
+	/* A start is still in progress (a stream still connecting): starting
+	 * again would run start() on the output data the first start is still
+	 * using. A delayed output handles its own restarts. */
+	if (os_atomic_load_bool(&output->starting) && !delay_active(output)) {
+		blog(LOG_WARNING, "Output '%s' is already starting", output->context.name);
+		return false;
+	}
+
 	if (flag_service(output) &&
 	    !(obs_service_can_try_to_connect(output->service) && obs_service_initialize(output->service, output)))
 		return false;

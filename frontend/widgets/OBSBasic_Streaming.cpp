@@ -47,7 +47,10 @@ void OBSBasic::DisplayStreamStartError()
 
 void OBSBasic::StartStreaming()
 {
-	if (outputHandler->StreamingActive()) {
+	/* Also ignore a start while one is still being prepared or connecting
+	 * (two quick obs-websocket StartStream requests): the stream output
+	 * only becomes active once it has connected. */
+	if (outputHandler->StreamingActive() || streamingStarting) {
 		return;
 	}
 	if (disableOutputsRef) {

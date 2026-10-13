@@ -142,6 +142,9 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	/* Set up streaming connections */
 	connect(
+		this, &OBSBasic::StreamingPreparing, this, [this] { this->streamingStarting = true; },
+		Qt::DirectConnection);
+	connect(
 		this, &OBSBasic::StreamingStarting, this, [this] { this->streamingStarting = true; },
 		Qt::DirectConnection);
 	connect(
