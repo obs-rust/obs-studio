@@ -53,6 +53,10 @@
  * format the way camera-portal.c does (none when the table lacks it), and
  * send three planes in one block or one block each.
  *
+ * At an odd width (63) with rows not padded, I420 and YV12 chroma rows are
+ * (63 + 1) / 2 = 32 bytes; the camera source used to take them to be
+ * 63 / 2 = 31 and dropped every frame, so the source stayed black.
+ *
  * Needs an X display for obs_startup() (xvfb-run is enough); the wrapper
  * skips (77) without PipeWire, and the cases skip when obs_startup() or the
  * private PipeWire is not available. */
@@ -111,7 +115,13 @@ struct layout {
 	uint32_t blocks;     /* 1: all planes in one block, else one per plane */
 	uint32_t stride;     /* bytes per luma row (NV12: both planes) */
 	uint32_t uv_pad;     /* bytes before a chroma plane in its own block */
+	uint32_t width;      /* frame width; 0 for WIDTH */
 };
+
+static uint32_t frame_width(const struct layout *l)
+{
+	return l->width ? l->width : WIDTH;
+}
 
 static bool is_nv12(const struct layout *l)
 {
@@ -152,11 +162,11 @@ static uint32_t y_size(const struct layout *l)
 	return l->stride * HEIGHT;
 }
 
-/* Bytes per chroma row: planar chroma rows are half the luma stride, as
- * V4L2 lays out YU12. */
+/* Bytes per chroma row: planar chroma rows are half the luma stride,
+ * rounded up, as V4L2 lays out YU12. */
 static uint32_t c_stride(const struct layout *l)
 {
-	return is_nv12(l) ? l->stride : l->stride / 2;
+	return is_nv12(l) ? l->stride : (l->stride + 1) / 2;
 }
 
 static uint32_t c_size(const struct layout *l)
@@ -177,7 +187,7 @@ static void fill_planes(const struct layout *l, uint8_t *planes[3])
 	uint8_t *v_plane = planes[yv12 ? 1 : 2];
 
 	for (uint32_t row = 0; row < HEIGHT; row++) {
-		for (uint32_t x = 0; x < WIDTH; x++) {
+		for (uint32_t x = 0; x < frame_width(l); x++) {
 			uint8_t y, u, v;
 
 			rgb_to_yuv709(quadrant_colors[quadrant_at(x, row)], &y, &u, &v);
@@ -355,7 +365,7 @@ static bool producer_start(const struct layout *l)
 					       SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype,
 					       SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
 					       SPA_POD_Id(l->spa_format), SPA_FORMAT_VIDEO_size,
-					       SPA_POD_Rectangle(&SPA_RECTANGLE(WIDTH, HEIGHT)),
+					       SPA_POD_Rectangle(&SPA_RECTANGLE(frame_width(l), HEIGHT)),
 					       SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&SPA_FRACTION(30, 1)),
 					       SPA_FORMAT_VIDEO_colorMatrix, SPA_POD_Id(SPA_VIDEO_COLOR_MATRIX_BT709),
 					       SPA_FORMAT_VIDEO_colorRange, SPA_POD_Id(SPA_VIDEO_COLOR_RANGE_16_235));
@@ -638,7 +648,7 @@ static void check_camera(const struct layout *l)
 {
 	struct obs_pipewire_connect_stream_info connect_info;
 	struct obs_pw_video_format format;
-	const struct spa_rectangle resolution = SPA_RECTANGLE(WIDTH, HEIGHT);
+	const struct spa_rectangle resolution = SPA_RECTANGLE(frame_width(l), HEIGHT);
 	const struct spa_fraction framerate = SPA_FRACTION(30, 1);
 	const enum spa_media_subtype subtype = SPA_MEDIA_SUBTYPE_raw;
 	obs_pipewire_stream *stream = NULL;
@@ -780,6 +790,23 @@ static void yv12_one_block(void **state)
 	check_camera(&l);
 }
 
+/* Odd width, rows not padded: chroma rows of (63 + 1) / 2 bytes. */
+static void i420_odd_width(void **state)
+{
+	static const struct layout l = {"I420, odd width", SPA_VIDEO_FORMAT_I420, 1, WIDTH - 1, 0, WIDTH - 1};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
+static void yv12_odd_width(void **state)
+{
+	static const struct layout l = {"YV12, odd width", SPA_VIDEO_FORMAT_YV12, 1, WIDTH - 1, 0, WIDTH - 1};
+
+	UNUSED_PARAMETER(state);
+	check_camera(&l);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -790,6 +817,8 @@ int main(void)
 		cmocka_unit_test(i420_one_block_padded_rows),
 		cmocka_unit_test(i420_three_blocks),
 		cmocka_unit_test(yv12_one_block),
+		cmocka_unit_test(i420_odd_width),
+		cmocka_unit_test(yv12_odd_width),
 	};
 
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {

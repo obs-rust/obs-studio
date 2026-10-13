@@ -39,7 +39,13 @@
  * in the format table, so the camera source listed no format for it and never
  * offered I420 to the camera. I420 has three planes, luma and two chroma
  * planes of half the width and half the rows, in one block or one block each.
- * YV12 is the same with the chroma planes swapped. */
+ * YV12 is the same with the chroma planes swapped.
+ *
+ * A follow-up found in review of that change: at an odd width a chroma row
+ * holds (w + 1) / 2 bytes, but the chroma stride taken from an odd luma
+ * stride was rounded down (5 / 2 = 2 for a 5 pixel wide frame, whose chroma
+ * rows need 3), so every tightly packed odd-width I420 or YV12 frame was
+ * dropped and the source stayed black. */
 
 #define MAX_BLOCKS 3
 
@@ -397,6 +403,138 @@ static void yv12_chroma_planes_swapped(void **state)
 	free_blocks(&tb);
 }
 
+/* Odd width, rows not padded: luma rows of w bytes, chroma rows of
+ * (w + 1) / 2 bytes in (h + 1) / 2 rows, all in one block, as V4L2 lays
+ * out YU12 and YV12 (DIV_ROUND_UP of the width for the chroma planes). */
+static void expect_odd_width_tight(uint32_t spa_format, uint32_t w, uint32_t h)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const bool yv12 = spa_format == SPA_VIDEO_FORMAT_YV12;
+	const uint32_t c_stride = (w + 1) / 2, c_rows = (h + 1) / 2;
+	const uint32_t first = w * h, second = first + c_stride * c_rows, size = second + c_stride * c_rows;
+	char name[64];
+
+	snprintf(name, sizeof(name), "%s, %ux%u, tightly packed", yv12 ? "YV12" : "I420", w, h);
+	add_block(&tb, size, 0, size, (int32_t)w);
+
+	expect_used(name, layout(&frame, &tb, spa_format, w, h));
+	expect_plane(name, &frame, &tb, 0, 0, 0, w, h);
+	expect_plane(name, &frame, &tb, 1, 0, yv12 ? second : first, c_stride, c_rows);
+	expect_plane(name, &frame, &tb, 2, 0, yv12 ? first : second, c_stride, c_rows);
+	free_blocks(&tb);
+}
+
+static void i420_odd_width_tightly_packed(void **state)
+{
+	UNUSED_PARAMETER(state);
+	expect_odd_width_tight(SPA_VIDEO_FORMAT_I420, 5, 3);
+	expect_odd_width_tight(SPA_VIDEO_FORMAT_I420, 641, 481);
+}
+
+static void yv12_odd_width_tightly_packed(void **state)
+{
+	UNUSED_PARAMETER(state);
+	expect_odd_width_tight(SPA_VIDEO_FORMAT_YV12, 5, 3);
+	expect_odd_width_tight(SPA_VIDEO_FORMAT_YV12, 641, 481);
+}
+
+/* Odd width, luma rows padded by an even number of bytes: the chroma rows
+ * have half as many pad bytes (V4L2's rule for YU12), so a chroma row is
+ * half the luma stride rounded up: 7 -> 4 for a width of 5. */
+static void i420_odd_width_odd_stride(void **state)
+{
+	struct test_buffer tb = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 5, h = 3, stride = 7, c_stride = 4, c_rows = 2;
+	const uint32_t size = stride * h + 2 * c_stride * c_rows;
+
+	UNUSED_PARAMETER(state);
+	add_block(&tb, size, 0, size, stride);
+
+	expect_used("I420, odd width, luma stride 7", layout(&frame, &tb, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, odd width, luma stride 7", &frame, &tb, 0, 0, 0, stride, h);
+	expect_plane("I420, odd width, luma stride 7", &frame, &tb, 1, 0, (size_t)stride * h, c_stride, c_rows);
+	expect_plane("I420, odd width, luma stride 7", &frame, &tb, 2, 0, (size_t)stride * h + c_stride * c_rows,
+		     c_stride, c_rows);
+	free_blocks(&tb);
+}
+
+/* Odd width, one block per plane: a chroma block without a stride of its
+ * own gets half the luma stride rounded up; one with a stride keeps it. */
+static void i420_odd_width_three_blocks(void **state)
+{
+	struct test_buffer no_stride = {0}, own_stride = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 5, h = 3, c_stride = 3, c_rows = 2;
+
+	UNUSED_PARAMETER(state);
+	add_block(&no_stride, w * h, 0, w * h, w);
+	add_block(&no_stride, c_stride * c_rows, 0, c_stride * c_rows, 0);
+	add_block(&no_stride, c_stride * c_rows, 0, c_stride * c_rows, 0);
+	expect_used("I420, odd width, three blocks, no chroma stride",
+		    layout(&frame, &no_stride, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, odd width, three blocks, no chroma stride", &frame, &no_stride, 0, 0, 0, w, h);
+	expect_plane("I420, odd width, three blocks, no chroma stride", &frame, &no_stride, 1, 1, 0, c_stride, c_rows);
+	expect_plane("I420, odd width, three blocks, no chroma stride", &frame, &no_stride, 2, 2, 0, c_stride, c_rows);
+
+	add_block(&own_stride, w * h, 0, w * h, w);
+	add_block(&own_stride, c_stride * c_rows, 0, c_stride * c_rows, c_stride);
+	add_block(&own_stride, c_stride * c_rows, 0, c_stride * c_rows, c_stride);
+	expect_used("I420, odd width, three blocks, chroma stride 3",
+		    layout(&frame, &own_stride, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, odd width, three blocks, chroma stride 3", &frame, &own_stride, 1, 1, 0, c_stride, c_rows);
+	expect_plane("I420, odd width, three blocks, chroma stride 3", &frame, &own_stride, 2, 2, 0, c_stride, c_rows);
+
+	free_blocks(&no_stride);
+	free_blocks(&own_stride);
+}
+
+/* Guards for the rounding: padded even strides keep their halves, and a
+ * buffer too small for the rounded-up chroma rows is still dropped, as is a
+ * luma stride shorter than a row. Nothing may be read past the chunk. */
+static void i420_odd_width_guards(void **state)
+{
+	struct test_buffer padded = {0}, one_byte_short = {0}, floor_sized = {0}, narrow = {0},
+			   short_chroma_block = {0};
+	struct obs_source_frame frame;
+	const uint32_t w = 5, h = 3, tight = 15 + 2 * 3 * 2;
+
+	UNUSED_PARAMETER(state);
+
+	/* GStreamer-style padding: luma rows of 8, chroma rows of 4. */
+	add_block(&padded, 8 * h + 2 * 4 * 2, 0, 8 * h + 2 * 4 * 2, 8);
+	expect_used("I420, odd width, padded to 8", layout(&frame, &padded, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_plane("I420, odd width, padded to 8", &frame, &padded, 0, 0, 0, 8, h);
+	expect_plane("I420, odd width, padded to 8", &frame, &padded, 1, 0, 8 * h, 4, 2);
+	expect_plane("I420, odd width, padded to 8", &frame, &padded, 2, 0, 8 * h + 4 * 2, 4, 2);
+
+	add_block(&one_byte_short, tight, 0, tight - 1, w);
+	expect_dropped("I420, odd width, chunk one byte short",
+		       layout(&frame, &one_byte_short, SPA_VIDEO_FORMAT_I420, w, h));
+	expect_dropped("YV12, odd width, chunk one byte short",
+		       layout(&frame, &one_byte_short, SPA_VIDEO_FORMAT_YV12, w, h));
+
+	/* Only big enough for chroma rows of 2 bytes (the old rounding). */
+	add_block(&floor_sized, 15 + 2 * 2 * 2, 0, 15 + 2 * 2 * 2, w);
+	expect_dropped("I420, odd width, chroma rows of 2", layout(&frame, &floor_sized, SPA_VIDEO_FORMAT_I420, w, h));
+
+	add_block(&narrow, tight, 0, tight, w - 1);
+	expect_dropped("I420, luma stride shorter than a row", layout(&frame, &narrow, SPA_VIDEO_FORMAT_I420, w, h));
+
+	add_block(&short_chroma_block, w * h, 0, w * h, w);
+	add_block(&short_chroma_block, 3 * 2, 0, 3 * 2, 0);
+	add_block(&short_chroma_block, 3 * 2 - 1, 0, 3 * 2 - 1, 0);
+	expect_dropped("I420, odd width, third block one byte short",
+		       layout(&frame, &short_chroma_block, SPA_VIDEO_FORMAT_I420, w, h));
+
+	free_blocks(&padded);
+	free_blocks(&one_byte_short);
+	free_blocks(&floor_sized);
+	free_blocks(&narrow);
+	free_blocks(&short_chroma_block);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -414,6 +552,11 @@ int main(void)
 		cmocka_unit_test(i420_three_blocks),
 		cmocka_unit_test(i420_chunk_too_small_is_dropped),
 		cmocka_unit_test(yv12_chroma_planes_swapped),
+		cmocka_unit_test(i420_odd_width_tightly_packed),
+		cmocka_unit_test(yv12_odd_width_tightly_packed),
+		cmocka_unit_test(i420_odd_width_odd_stride),
+		cmocka_unit_test(i420_odd_width_three_blocks),
+		cmocka_unit_test(i420_odd_width_guards),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
