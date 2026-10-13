@@ -2,10 +2,13 @@
 
 void stream_service_selected(const struct stream_service_select_ops *ops)
 {
-	if (ops->is_show_all(ops->param))
+	/* "Show all..." only expands the list and keeps the service: there is
+	 * nothing to apply until a service is picked from the full list. */
+	if (ops->is_show_all(ops->param)) {
 		ops->show_all(ops->param);
-	else
-		ops->service_changed(ops->param);
+		return;
+	}
 
+	ops->service_changed(ops->param);
 	ops->mark_changed(ops->param);
 }
