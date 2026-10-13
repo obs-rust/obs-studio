@@ -20,6 +20,7 @@
 #include "OBSBasicSourceSelect.hpp"
 
 #include <utility/ResizeSignaler.hpp>
+#include <utility/source-select-list.hpp>
 #include <utility/ThumbnailManager.hpp>
 #include <utility/ThumbnailView.hpp>
 
@@ -399,37 +400,8 @@ void OBSBasicSourceSelect::updateExistingSources(int limit)
 	sourceButtons = new QButtonGroup(this);
 	sourceButtons->setExclusive(false);
 
-	std::vector<obs_weak_source_t *> matchingSources{};
-	std::copy_if(weakSources.begin(), weakSources.end(), std::back_inserter(matchingSources),
-		     [this](obs_weak_source_t *weak) {
-			     OBSSource source = OBSGetStrongRef(weak);
-
-			     if (!source || obs_source_removed(source)) {
-				     return false;
-			     }
-
-			     const char *id = obs_source_get_unversioned_id(source);
-			     QString sourceTypeId = QString(id);
-
-			     if (sourceTypeId.compare("group") == 0) {
-				     return false;
-			     }
-
-			     if (selectedTypeId.compare(kRecentTypeId) == 0) {
-				     // Skip listing scenes in recent sources list
-				     if (sourceTypeId.compare("scene") == 0) {
-					     return false;
-				     }
-
-				     return true;
-			     }
-
-			     if (selectedTypeId.compare(sourceTypeId) == 0) {
-				     return true;
-			     }
-
-			     return false;
-		     });
+	std::vector<obs_weak_source_t *> matchingSources =
+		SourceSelectExistingList(weakSources, selectedTypeId, selectedTypeId.compare(kRecentTypeId) == 0);
 
 	QWidget *prevTabWidget = ui->sourceTypeList;
 

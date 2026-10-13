@@ -68,6 +68,8 @@ target_sources(
     utility/scene-list-remove.h
     utility/service-encoder-settings.c
     utility/service-encoder-settings.h
+    utility/source-select-list.cpp
+    utility/source-select-list.hpp
     utility/studio-mode-exit.c
     utility/studio-mode-exit.h
     utility/studio-mode-swap.c
