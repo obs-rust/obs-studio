@@ -177,10 +177,19 @@ int_fast32_t pulse_get_source_info(pa_source_info_cb_t cb, const char *name, voi
 int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void *userdata);
 
 /**
- * Create a new stream with the default properties
+ * Create a new stream with the default properties, on a connection to the
+ * server of its own. Free it with pulse_stream_free().
  *
  * @note The function will block until the server context is ready.
  *
  * @warning call without active locks
  */
 pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa_channel_map *map);
+
+/**
+ * Disconnect and free a stream from pulse_stream_new(), and the connection
+ * to the server it has to itself
+ *
+ * @warning call with the mainloop locked
+ */
+void pulse_stream_free(pa_stream *s);

@@ -385,8 +385,7 @@ static void pulse_stop_recording(struct pulse_data *data)
 	if (data->stream) {
 		pulse_lock();
 		pa_stream_set_state_callback(data->stream, NULL, NULL);
-		pa_stream_disconnect(data->stream);
-		pa_stream_unref(data->stream);
+		pulse_stream_free(data->stream);
 		data->stream = NULL;
 		pulse_unlock();
 	}

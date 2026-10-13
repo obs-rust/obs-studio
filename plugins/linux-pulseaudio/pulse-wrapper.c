@@ -47,6 +47,15 @@ struct pulse_source_event_callback {
 };
 static DARRAY(struct pulse_source_event_callback) pulse_source_event_callbacks;
 
+/* The connection of each stream from pulse_stream_new(). A stream that
+ * failed no longer knows its context, so keep track of it here. Accessed with
+ * the mainloop locked. */
+struct pulse_stream_connection {
+	pa_stream *stream;
+	pa_context *context;
+};
+static DARRAY(struct pulse_stream_connection) pulse_stream_connections;
+
 static void pulse_connect_context(pa_context_flags_t flags);
 
 /* Replace the failed context. Runs from a timer, outside the failed context's
@@ -317,6 +326,7 @@ void pulse_unref()
 		pulse_reconnection = (struct pulse_reconnect_state){0};
 		da_free(pulse_reconnected_callbacks);
 		da_free(pulse_source_event_callbacks);
+		da_free(pulse_stream_connections);
 		pulse_unlock();
 
 		if (pulse_mainloop != NULL) {
@@ -437,6 +447,14 @@ int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void *userdata)
 	return 0;
 }
 
+static void pulse_stream_context_state_changed(pa_context *c, void *userdata)
+{
+	UNUSED_PARAMETER(c);
+	UNUSED_PARAMETER(userdata);
+
+	pulse_signal(0);
+}
+
 pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa_channel_map *map)
 {
 	if (pulse_context_ready() < 0)
@@ -444,10 +462,56 @@ pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa
 
 	pulse_lock();
 
+	/* Each stream gets a connection of its own. pipewire-pulse delivers
+	 * the record streams of one connection unevenly: at a graph quantum
+	 * of 2048 or more, a second stream on the same source gets nothing for
+	 * seconds at a time and then everything at once, far more than OBS can
+	 * buffer, so that source is mostly silent. pulse_stream_free() ends the
+	 * connection with the stream. */
 	pa_proplist *p = pulse_properties();
-	pa_stream *s = pa_stream_new_with_proplist(pulse_context, name, ss, map, p);
+	pa_context *c = pa_context_new_with_proplist(pa_threaded_mainloop_get_api(pulse_mainloop), "OBS", p);
+	pa_stream *s = NULL;
+
+	pa_context_set_state_callback(c, pulse_stream_context_state_changed, NULL);
+	if (pa_context_connect(c, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) >= 0) {
+		while (PA_CONTEXT_IS_GOOD(pa_context_get_state(c)) && pa_context_get_state(c) != PA_CONTEXT_READY)
+			pulse_wait();
+		if (pa_context_get_state(c) == PA_CONTEXT_READY)
+			s = pa_stream_new_with_proplist(c, name, ss, map, p);
+	}
 	pa_proplist_free(p);
+
+	if (s) {
+		struct pulse_stream_connection conn = {s, c};
+		da_push_back(pulse_stream_connections, &conn);
+	} else {
+		pa_context_set_state_callback(c, NULL, NULL);
+		pa_context_disconnect(c);
+		pa_context_unref(c);
+	}
 
 	pulse_unlock();
 	return s;
+}
+
+void pulse_stream_free(pa_stream *s)
+{
+	pa_context *c = NULL;
+
+	for (size_t i = 0; i < pulse_stream_connections.num; i++) {
+		if (pulse_stream_connections.array[i].stream == s) {
+			c = pulse_stream_connections.array[i].context;
+			da_erase(pulse_stream_connections, i);
+			break;
+		}
+	}
+
+	pa_stream_disconnect(s);
+	pa_stream_unref(s);
+
+	if (c) {
+		pa_context_set_state_callback(c, NULL, NULL);
+		pa_context_disconnect(c);
+		pa_context_unref(c);
+	}
 }
