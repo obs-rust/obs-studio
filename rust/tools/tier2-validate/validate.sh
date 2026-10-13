@@ -62,7 +62,7 @@ for mode in OFF ON; do
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   cmake --build "$build" --config RelWithDebInfo \
     --target libobs cmocka-tests \
-    >"$build.build.log" 2>&1 || { grep -E "error|Error" "$build.build.log" | head -40; exit 1; }
+    >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
 
   lib=$(find "$build" -path '*libobs.framework*' -name libobs -type f | head -1)
   if [ -z "$lib" ]; then

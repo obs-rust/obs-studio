@@ -6,6 +6,13 @@
  * Qt GUI. obs_startup() needs a display on Linux (run under xvfb-run); the
  * cases skip when it cannot start. */
 
+#include <obs.hpp>
+
+#include "preview-audio-sources.hpp"
+
+#include <unordered_set>
+
+/* cmocka.h last: its fail() and inline macros break C++ standard headers. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -13,12 +20,6 @@
 extern "C" {
 #include <cmocka.h>
 }
-
-#include <obs.hpp>
-
-#include "preview-audio-sources.hpp"
-
-#include <unordered_set>
 
 static bool obs_up;
 

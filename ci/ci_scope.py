@@ -36,6 +36,9 @@ CORE_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml"}
 SHARED_PREFIXES = (".github/", "cmake/common/", "cmake/finders/", "libobs/cmake/")
 SHARED_FILES = {"CMakeLists.txt", "CMakePresets.json", "buildspec.json"}
 SHARED_PATTERN = re.compile(r"^rust/[^/]+/src/platform/mod\.rs$")
+# Every platform's Tier 2 compiles these with its own compiler and C++
+# library; plain C tests stay Linux-only (#610).
+SHARED_TEST = re.compile(r"^test/cmocka/(CMakeLists\.txt|tests\.d/[^/]+\.cmake|[^/]+\.(cpp|hpp))$")
 
 
 @dataclass(frozen=True)
@@ -50,7 +53,7 @@ def scope(files: list[str]) -> Scope:
     for path in files:
         if path.startswith(CORE_PREFIXES) or path in CORE_FILES:
             core = True
-        if path.startswith(SHARED_PREFIXES) or path in SHARED_FILES or SHARED_PATTERN.match(path):
+        if path.startswith(SHARED_PREFIXES) or path in SHARED_FILES or SHARED_PATTERN.match(path) or SHARED_TEST.match(path):
             macos = windows = True
             continue
         if path.startswith("cmake/macos/") or path.endswith(MACOS_SUFFIXES) or MACOS.search(path):

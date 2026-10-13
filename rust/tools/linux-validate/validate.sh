@@ -87,7 +87,7 @@ for mode in OFF ON; do
     ${OBS_VERSION_OVERRIDE:+"-DOBS_VERSION_OVERRIDE=$OBS_VERSION_OVERRIDE"} \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   cmake --build "$build" --target libobs cmocka-tests decklink \
-    >"$build.build.log" 2>&1 || { grep -E "error|Error" "$build.build.log" | head -40; exit 1; }
+    >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|FAILED:" "$build.build.log" | sort -u | head -40; exit 1; }
 
   echo "== [$mode] ctest"
   ctest --test-dir "$build" --output-on-failure
