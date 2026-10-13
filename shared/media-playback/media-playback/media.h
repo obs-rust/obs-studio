@@ -58,6 +58,11 @@ struct mp_media {
 	struct SwsContext *swscale;
 	int scale_linesizes[4];
 	uint8_t *scale_pic[4];
+	enum AVPixelFormat scale_src_format;
+	int scale_src_width;
+	int scale_src_height;
+	int scale_space;
+	int scale_range;
 
 	DARRAY(AVPacket *) packet_pool;
 	struct mp_decode v;

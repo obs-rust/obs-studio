@@ -239,15 +239,21 @@ static inline int get_sws_range(enum AVColorRange r)
 
 #define FIXED_1_0 (1 << 16)
 
-static bool mp_media_init_scaling(mp_media_t *m)
+static void mp_media_free_scaling(mp_media_t *m)
 {
-	int space = get_sws_colorspace(m->v.frame->colorspace);
-	int range = get_sws_range(m->v.frame->color_range);
+	sws_freeContext(m->swscale);
+	m->swscale = NULL;
+	av_freep(&m->scale_pic[0]);
+}
+
+static bool mp_media_init_scaling(mp_media_t *m, const AVFrame *f)
+{
+	int space = get_sws_colorspace(f->colorspace);
+	int range = get_sws_range(f->color_range);
 	const int *coeff = sws_getCoefficients(space);
 
-	m->swscale = sws_getCachedContext(NULL, m->v.frame->width, m->v.frame->height, m->v.frame->format,
-					  m->v.frame->width, m->v.frame->height, m->scale_format, SWS_POINT, NULL, NULL,
-					  NULL);
+	m->swscale = sws_getCachedContext(NULL, f->width, f->height, f->format, f->width, f->height, m->scale_format,
+					  SWS_POINT, NULL, NULL, NULL);
 	if (!m->swscale) {
 		blog(LOG_WARNING, "MP: Failed to initialize scaler");
 		return false;
@@ -255,13 +261,18 @@ static bool mp_media_init_scaling(mp_media_t *m)
 
 	sws_setColorspaceDetails(m->swscale, coeff, range, coeff, range, 0, FIXED_1_0, FIXED_1_0);
 
-	int ret = av_image_alloc(m->scale_pic, m->scale_linesizes, m->v.frame->width, m->v.frame->height,
-				 m->scale_format, 32);
+	int ret = av_image_alloc(m->scale_pic, m->scale_linesizes, f->width, f->height, m->scale_format, 32);
 	if (ret < 0) {
 		blog(LOG_WARNING, "MP: Failed to create scale pic data");
+		mp_media_free_scaling(m);
 		return false;
 	}
 
+	m->scale_src_format = f->format;
+	m->scale_src_width = f->width;
+	m->scale_src_height = f->height;
+	m->scale_space = space;
+	m->scale_range = range;
 	return true;
 }
 
@@ -272,6 +283,38 @@ static inline void mp_media_drop_before_seek_target(mp_media_t *m, struct mp_dec
 {
 	if (d->frame_ready && d->next_pts <= m->seek_target_ns)
 		d->frame_ready = false;
+}
+
+/* The size, pixel format and colour details of a stream can change from
+ * one frame to the next (adaptive streams, files assembled from parts), so
+ * check every frame against the scaler and rebuild it, or drop it once the
+ * frames no longer need conversion. */
+static bool mp_media_check_scaling(mp_media_t *m)
+{
+	const AVFrame *f = m->v.frame;
+
+	m->scale_format = closest_format(f->format);
+	if (m->scale_format == f->format) {
+		if (m->swscale)
+			mp_media_free_scaling(m);
+		return true;
+	}
+
+	if (m->swscale && f->format == m->scale_src_format && f->width == m->scale_src_width &&
+	    f->height == m->scale_src_height) {
+		int space = get_sws_colorspace(f->colorspace);
+		int range = get_sws_range(f->color_range);
+		if (space != m->scale_space || range != m->scale_range) {
+			const int *coeff = sws_getCoefficients(space);
+			sws_setColorspaceDetails(m->swscale, coeff, range, coeff, range, 0, FIXED_1_0, FIXED_1_0);
+			m->scale_space = space;
+			m->scale_range = range;
+		}
+		return true;
+	}
+
+	mp_media_free_scaling(m);
+	return mp_media_init_scaling(m, f);
 }
 
 bool mp_media_prepare_frames(mp_media_t *m)
@@ -316,14 +359,8 @@ bool mp_media_prepare_frames(mp_media_t *m)
 	if (mp_media_ready_to_start(m))
 		m->seek_exact = false;
 
-	if (m->has_video && m->v.frame_ready && !m->swscale) {
-		m->scale_format = closest_format(m->v.frame->format);
-		if (m->scale_format != m->v.frame->format) {
-			if (!mp_media_init_scaling(m)) {
-				return false;
-			}
-		}
-	}
+	if (m->has_video && m->v.frame_ready && !mp_media_check_scaling(m))
+		return false;
 
 	return true;
 }
