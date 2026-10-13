@@ -13,7 +13,9 @@
 # Scenarios:
 #   1. bundle: every path AppRun points OBS at exists (check-appdir.sh), and
 #      every bundled ELF file resolves all of its libraries and symbols with
-#      the bundled loader and its own RPATH.
+#      the bundled loader and its own RPATH. With glibc bundled, the glibc
+#      libraries host GPU drivers link (librt, libpthread, libdl, ...) must
+#      come from the bundle too.
 #   2. first-start: a new user's OBS opens a window that renders.
 #   3. probes: the AppImage's own PipeWire, PulseAudio, gconv and D-Bus
 #      libraries, in AppRun's environment, work against a private session.
@@ -283,6 +285,28 @@ if [ "$SCENARIO" = bundle ]; then
     done < <(find "$APPDIR/usr" -type f \( -name '*.so' -o -name '*.so.*' -o -perm -u+x \) -print0)
     echo "$checked ELF files checked, $unresolved resolve libraries or symbols wrongly"
     [ "$unresolved" -eq 0 ] || fail "$unresolved bundled ELF files do not load from the bundle (see above)"
+    # The host's GPU drivers are loaded into OBS with the bundled loader and libc,
+    # and they link more of glibc than OBS does (the NVIDIA driver's libcuda and
+    # libEGL_nvidia need librt, libpthread and libdl). Such a library resolves
+    # through obs's RPATH, so it must be in the bundle: the host's copy belongs to
+    # the host's glibc and needs private symbols of that version, which the
+    # bundled loader lacks wherever the host's glibc is newer (libcuda failed to
+    # load, so NVENC was missing). LD_PRELOAD by name resolves each one the way a
+    # host driver's DT_NEEDED entry does.
+    if [ -e "$APPDIR/usr/lib/libc.so.6" ]; then
+        for lib in libm.so.6 libmvec.so.1 librt.so.1 libpthread.so.0 libdl.so.2 libutil.so.1 \
+            libanl.so.1 libresolv.so.2 libnss_files.so.2 libnss_dns.so.2; do
+            out="$(LD_TRACE_LOADED_OBJECTS=1 LD_WARN=yes LD_BIND_NOW=yes LD_PRELOAD="$lib" \
+                "$LOADER" "$APPDIR/usr/bin/obs" 2>&1 || true)"
+            where="$(awk -v l="$lib" '$1 == l && $2 == "=>" {print $3}' <<<"$out")"
+            [ "$where" = not ] && where="nothing (not found)"
+            if [[ "$where" != "$APPDIR"/* ]]; then
+                fail "glibc's $lib is not bundled with libc.so.6: a host driver that links it gets ${where:-nothing}"
+            elif grep -E 'undefined symbol|error while loading' <<<"$out"; then
+                fail "the bundled $lib does not load with the bundled loader (see above)"
+            fi
+        done
+    fi
     # The modules the build installed are all there.
     while read -r m; do
         [ -n "$(find "$APPDIR/usr/lib/obs-modules" -name "$m" -print -quit)" ] || fail "module $m from the build is not in the AppImage"

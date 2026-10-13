@@ -49,7 +49,9 @@ pre-release, a tag push attaches it to that tag's release.
 with none of OBS's dependencies installed, and fails unless all of these pass:
 
 1. **Bundle:** `check-appdir.sh`, and every bundled ELF file resolves all of its
-   libraries and symbols with the bundled loader (`LD_BIND_NOW`).
+   libraries and symbols with the bundled loader (`LD_BIND_NOW`), and the
+   glibc libraries that host GPU drivers link (`librt`, `libpthread`, `libdl`,
+   ...) resolve to the bundled copies.
 2. **First start:** a new user's OBS opens a window that renders, with Qt, the
    core libraries and the Qt SVG plugins loaded from the AppImage.
 3. **Runtime probes:** in `AppRun`'s environment, with the bundled loader and
