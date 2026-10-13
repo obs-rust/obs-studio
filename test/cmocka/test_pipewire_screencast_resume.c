@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -275,13 +276,17 @@ struct producer {
 	uint32_t node;
 	uint8_t value;
 	uint32_t capture_node;
+	uint32_t capture_client;
 	struct {
 		uint32_t id, node;
 		bool out;
 	} ports[32];
 	size_t n_ports;
 	struct pw_proxy *link;
+	struct spa_hook link_listener;
 	uint32_t link_in_node;
+	uint32_t link_in_client;
+	struct pw_proxy *error_client;
 };
 
 static struct producer producer;
@@ -365,8 +370,10 @@ static void on_registry_global(void *data, uint32_t id, uint32_t permissions, co
 	UNUSED_PARAMETER(version);
 
 	if (strcmp(type, PW_TYPE_INTERFACE_Node) == 0) {
-		if (strcmp(dict_str(props, PW_KEY_MEDIA_CLASS), "Stream/Input/Video") == 0)
+		if (strcmp(dict_str(props, PW_KEY_MEDIA_CLASS), "Stream/Input/Video") == 0) {
 			producer.capture_node = id;
+			producer.capture_client = dict_uint(props, PW_KEY_CLIENT_ID);
+		}
 	} else if (strcmp(type, PW_TYPE_INTERFACE_Port) == 0 && producer.n_ports < SPA_N_ELEMENTS(producer.ports)) {
 		producer.ports[producer.n_ports].id = id;
 		producer.ports[producer.n_ports].node = dict_uint(props, PW_KEY_NODE_ID);
@@ -381,6 +388,10 @@ static void on_registry_global_remove(void *data, uint32_t id)
 
 	if (id == producer.capture_node)
 		producer.capture_node = SPA_ID_INVALID;
+	/* Node ids are reused: a new capture stream can get the id of the one
+	 * linked last. */
+	if (id == producer.link_in_node)
+		producer.link_in_node = SPA_ID_INVALID;
 	for (size_t i = 0; i < producer.n_ports; i++) {
 		if (producer.ports[i].id == id) {
 			producer.ports[i] = producer.ports[--producer.n_ports];
@@ -403,6 +414,31 @@ static uint32_t find_port(uint32_t node, bool out)
 	}
 	return SPA_ID_INVALID;
 }
+
+/* A link that fails (e.g. no format both ends accept) is reported to the
+ * capture stream's client, as WirePlumber does (linking/link-target.lua): the
+ * stream goes to the error state with the link's message. */
+static void on_link_info(void *data, const struct pw_link_info *info)
+{
+	UNUSED_PARAMETER(data);
+
+	if (!(info->change_mask & PW_LINK_CHANGE_MASK_STATE) || info->state != PW_LINK_STATE_ERROR ||
+	    producer.link_in_client == SPA_ID_INVALID)
+		return;
+
+	if (producer.error_client)
+		pw_proxy_destroy(producer.error_client);
+	producer.error_client = pw_registry_bind(producer.registry, producer.link_in_client, PW_TYPE_INTERFACE_Client,
+						 PW_VERSION_CLIENT, 0);
+	if (producer.error_client)
+		pw_client_error((struct pw_client *)producer.error_client, producer.link_in_node, -EPIPE,
+				info->error ? info->error : "link failed");
+}
+
+static const struct pw_link_events link_events = {
+	PW_VERSION_LINK_EVENTS,
+	.info = on_link_info,
+};
 
 /* The portal's stream is meant for a session manager to link; this
  * PipeWire has none, so link each new capture stream to the monitor directly,
@@ -430,7 +466,10 @@ static void link_capture_locked(void)
 	pw_properties_setf(props, PW_KEY_LINK_INPUT_PORT, "%u", in_port);
 	producer.link = pw_core_create_object(producer.core, "link-factory", PW_TYPE_INTERFACE_Link, PW_VERSION_LINK,
 					      &props->dict, 0);
+	spa_zero(producer.link_listener);
+	pw_link_add_listener((struct pw_link *)producer.link, &producer.link_listener, &link_events, NULL);
 	producer.link_in_node = producer.capture_node;
+	producer.link_in_client = producer.capture_client;
 	pw_properties_free(props);
 }
 
@@ -439,7 +478,9 @@ static bool producer_connect(void)
 	pw_init(NULL, NULL);
 	producer.node = SPA_ID_INVALID;
 	producer.capture_node = SPA_ID_INVALID;
+	producer.capture_client = SPA_ID_INVALID;
 	producer.link_in_node = SPA_ID_INVALID;
+	producer.link_in_client = SPA_ID_INVALID;
 
 	producer.loop = pw_thread_loop_new("screencast-resume-producer", NULL);
 	producer.context = pw_context_new(pw_thread_loop_get_loop(producer.loop), NULL, 0);
@@ -483,7 +524,18 @@ static void set_portal_node(uint32_t node)
 	pthread_mutex_unlock(&portal_mutex);
 }
 
-static bool monitor_on(uint8_t value)
+/* The one format the monitor offers: BGRx of the given size. */
+static const struct spa_pod *build_monitor_format(struct spa_pod_builder *b, uint32_t width, uint32_t height)
+{
+	return spa_pod_builder_add_object(b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType,
+					  SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype,
+					  SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
+					  SPA_POD_Id(SPA_VIDEO_FORMAT_BGRx), SPA_FORMAT_VIDEO_size,
+					  SPA_POD_Rectangle(&SPA_RECTANGLE(width, height)), SPA_FORMAT_VIDEO_framerate,
+					  SPA_POD_Fraction(&SPA_FRACTION(30, 1)));
+}
+
+static bool monitor_on_sized(uint8_t value, uint32_t width, uint32_t height)
 {
 	uint8_t buffer[1024];
 	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
@@ -496,12 +548,7 @@ static bool monitor_on(uint8_t value)
 		pw_stream_new(producer.core, "screencast-resume-monitor",
 			      pw_properties_new(PW_KEY_MEDIA_CLASS, "Video/Source", PW_KEY_MEDIA_TYPE, "Video", NULL));
 	pw_stream_add_listener(producer.stream, &producer.stream_listener, &producer_events, NULL);
-	params[0] = spa_pod_builder_add_object(&b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType,
-					       SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype,
-					       SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
-					       SPA_POD_Id(SPA_VIDEO_FORMAT_BGRx), SPA_FORMAT_VIDEO_size,
-					       SPA_POD_Rectangle(&SPA_RECTANGLE(FRAME_SIZE, FRAME_SIZE)),
-					       SPA_FORMAT_VIDEO_framerate, SPA_POD_Fraction(&SPA_FRACTION(30, 1)));
+	params[0] = build_monitor_format(&b, width, height);
 	pw_stream_connect(producer.stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
 			  PW_STREAM_FLAG_DRIVER | PW_STREAM_FLAG_MAP_BUFFERS, params, 1);
 	pw_thread_loop_unlock(producer.loop);
@@ -516,6 +563,11 @@ static bool monitor_on(uint8_t value)
 	}
 	set_portal_node(node);
 	return node != SPA_ID_INVALID;
+}
+
+static bool monitor_on(uint8_t value)
+{
+	return monitor_on_sized(value, FRAME_SIZE, FRAME_SIZE);
 }
 
 /* The compositor ends the screencast of an output that went away: its
@@ -536,6 +588,20 @@ static void monitor_off(void)
 	pw_thread_loop_unlock(producer.loop);
 }
 
+/* Changes the size the monitor offers, keeping its stream and node. */
+static void monitor_set_size(uint32_t width, uint32_t height)
+{
+	uint8_t buffer[1024];
+	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+	const struct spa_pod *params[1];
+
+	pw_thread_loop_lock(producer.loop);
+	params[0] = build_monitor_format(&b, width, height);
+	if (producer.stream)
+		pw_stream_update_params(producer.stream, params, 1);
+	pw_thread_loop_unlock(producer.loop);
+}
+
 static void producer_set_value(uint8_t value)
 {
 	pw_thread_loop_lock(producer.loop);
@@ -551,6 +617,8 @@ static void producer_disconnect(void)
 	pw_thread_loop_lock(producer.loop);
 	if (producer.timer)
 		pw_loop_destroy_source(pw_thread_loop_get_loop(producer.loop), producer.timer);
+	if (producer.error_client)
+		pw_proxy_destroy(producer.error_client);
 	if (producer.registry)
 		pw_proxy_destroy((struct pw_proxy *)producer.registry);
 	if (producer.core)
@@ -844,12 +912,61 @@ static void frames_resume_after_monitor_returns(void **state)
 	check_no_picker();
 }
 
+/* obs-rust/obs-studio#257: while a captured window animates, it can be 0
+ * pixels wide for a moment, and the compositor's screencast follows it. The
+ * capture stream is lost and reconnects at once, while the size is still 0,
+ * so the new stream fails during negotiation ("no more input formats"). That
+ * attempt must be retried once the window is back to a normal size, without
+ * asking the user.
+ *
+ * Here the compositor replaces its stream with a 0-sized one (ending the old
+ * screencast), then grows it back in place, so only a new attempt picks the
+ * normal size up. */
+static void frames_resume_after_failed_reconnect_stream(void **state)
+{
+	uint32_t sessions;
+	uint32_t new_sessions;
+
+	UNUSED_PARAMETER(state);
+	require_capture();
+	sessions = get_portal_sessions();
+
+	/* The window shrinks to 0 pixels wide; the first reconnection attempt
+	 * starts and fails while it is. */
+	monitor_off();
+	if (!monitor_on_sized(DARK, FRAME_SIZE, 0)) {
+		fprintf(stderr, "the 0-sized screencast did not start\n");
+		fail();
+	}
+	for (uint32_t waited = 0; waited < 5000 && get_portal_sessions() == sessions; waited += 50)
+		pump(50);
+	if (get_portal_sessions() == sessions) {
+		fprintf(stderr, "the lost screencast did not start a reconnection\n");
+		fail();
+	}
+	pump(1000);
+
+	/* The animation ends. */
+	monitor_set_size(FRAME_SIZE, FRAME_SIZE);
+
+	if (!wait_for_value(DARK, 15000)) {
+		new_sessions = get_portal_sessions() - sessions;
+		fprintf(stderr,
+			"the capture stayed frozen after the window came back (luma %u, want %u; %u new portal "
+			"sessions after the first)\n",
+			get_sample_luma(), expected_luma(DARK), new_sessions ? new_sessions - 1 : 0);
+		fail();
+	}
+	check_no_picker();
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(no_frames_is_not_lost),
 		cmocka_unit_test(hidden_source_is_not_lost),
 		cmocka_unit_test(frames_resume_after_monitor_returns),
+		cmocka_unit_test(frames_resume_after_failed_reconnect_stream),
 	};
 
 	g_autofree char *dbus_daemon = g_find_program_in_path("dbus-daemon");

@@ -1092,7 +1092,7 @@ static void on_state_changed_cb(void *user_data, enum pw_stream_state old, enum 
 	blog(LOG_INFO, "[pipewire] Stream %p state: \"%s\" (error: %s)", obs_pw_stream->stream,
 	     pw_stream_state_as_string(state), error ? error : "none");
 
-	if (obs_pipewire_stream_state_is_lost(&obs_pw->disconnected, &obs_pw_stream->streamed, state) &&
+	if (obs_pipewire_stream_state_is_lost(&obs_pw->disconnected, &obs_pw_stream->streamed, false, state) &&
 	    obs_pw->disconnected_cb)
 		obs_pw->disconnected_cb(obs_pw->disconnected_data);
 }
