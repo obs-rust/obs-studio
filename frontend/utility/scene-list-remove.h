@@ -33,7 +33,8 @@ struct scene_list_remove_ops {
 void scene_list_on_scene_removed(const struct scene_list_remove_ops *ops, void *scene);
 
 /* The user removed the scene selected in the scene list
- * (OBSBasic::RemoveSelectedScene, after the confirmation). */
+ * (OBSBasic::RemoveSelectedScene, after the confirmation). Announced once,
+ * by scene_list_on_scene_removed(). */
 void scene_list_remove_selected(const struct scene_list_remove_ops *ops, void *scene);
 
 #ifdef __cplusplus
