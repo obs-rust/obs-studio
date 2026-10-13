@@ -48,6 +48,8 @@ target_sources(
     utility/record-disk-space.c
     utility/record-disk-space.h
     utility/product-name.h
+    utility/profile-activate.c
+    utility/profile-activate.h
     utility/scene-collection-migration.cpp
     utility/scene-collection-migration.hpp
     utility/scene-list-remove.c

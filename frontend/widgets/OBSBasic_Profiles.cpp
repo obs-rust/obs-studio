@@ -20,6 +20,7 @@
 #ifdef YOUTUBE_ENABLED
 #include <docks/YouTubeAppDock.hpp>
 #endif
+#include <utility/profile-activate.h>
 #include <wizards/AutoConfig.hpp>
 
 #include <qt-wrappers.hpp>
@@ -701,12 +702,24 @@ void OBSBasic::ActivateProfile(const OBSProfile &profile, bool reset)
 
 	config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
 
-	InitBasicConfigDefaults();
+	struct profile_activate_ops ops = {};
+	ops.param = this;
+	ops.init_defaults = [](void *param) {
+		static_cast<OBSBasic *>(param)->InitBasicConfigDefaults();
+	};
+	ops.init_encoder_defaults = [](void *param) {
+		static_cast<OBSBasic *>(param)->InitBasicConfigDefaults2();
+	};
+	ops.check_encoders = [](void *param) {
+		OBSBasic *main = static_cast<OBSBasic *>(param);
+		main->CheckForMissingEncoders();
+		main->CheckForSimpleModeX264Fallback();
+	};
+	ops.reset_data = [](void *param) {
+		static_cast<OBSBasic *>(param)->ResetProfileData();
+	};
 
-	if (reset) {
-		UpdateProfileEncoders();
-		ResetProfileData();
-	}
+	profile_activate_config(&ops, reset);
 
 	// Ensure defaults and updates are saved to disk
 	activeConfiguration.SaveSafe("tmp");
