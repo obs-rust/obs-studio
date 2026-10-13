@@ -29,6 +29,8 @@ target_sources(
     formats.h
     frame-layout.c
     frame-layout.h
+    frame-pacing.c
+    frame-pacing.h
     linux-pipewire.c
     pipewire.c
     pipewire.h
