@@ -736,7 +736,7 @@ jobs:
           tags: obs-rust-linux-validate
           load: true
           cache-from: type=gha,scope=tier2-linux-image
-          cache-to: ${{ (github.event_name != 'pull_request' && github.ref == 'refs/heads/master') && 'type=gha,scope=tier2-linux-image,mode=max' || '' }}
+          cache-to: type=gha,scope=tier2-linux-image,mode=max  # DO NOT MERGE: let this PR warm the cache
 
       # GATE-001 mirror (local-gate.toml): the local gate's tier2-linux lane,
       # which runs rust/tools/linux-validate/run.sh.
