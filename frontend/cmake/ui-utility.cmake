@@ -56,6 +56,8 @@ target_sources(
     utility/service-encoder-settings.h
     utility/studio-mode-exit.c
     utility/studio-mode-exit.h
+    utility/tbar-position.c
+    utility/tbar-position.h
     utility/transform-clipboard.c
     utility/transform-clipboard.h
     utility/OBSCanvas.cpp

@@ -1616,6 +1616,7 @@ signals:
 public:
 	int GetTransitionDuration();
 	int GetTbarPosition();
+	void SetTbarPosition(int position);
 
 	/* -------------------------------------
 	 * MARK: - OBSBasic_Updater

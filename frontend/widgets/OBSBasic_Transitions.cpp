@@ -23,6 +23,7 @@
 #include <dialogs/NameDialog.hpp>
 #include <utility/display-helpers.hpp>
 #include <utility/QuickTransition.hpp>
+#include <utility/tbar-position.h>
 
 #include <qt-wrappers.hpp>
 #include <slider-ignorewheel.hpp>
@@ -758,7 +759,9 @@ void OBSBasic::TBarReleased()
 
 	OBSSourceAutoRelease transition = obs_get_output_source(0);
 
-	if ((tBar->maximum() - val) <= T_BAR_CLAMP) {
+	enum tbar_release_action action = tbar_release_action(val, tBar->maximum(), T_BAR_CLAMP);
+
+	if (action == TBAR_RELEASE_FINISH) {
 		obs_transition_set_manual_time(transition, 1.0f);
 		tBar->blockSignals(true);
 		tBar->setValue(0);
@@ -769,7 +772,7 @@ void OBSBasic::TBarReleased()
 		OBSSourceAutoRelease target = obs_transition_get_active_source(transition);
 		const char *sceneName = obs_source_get_name(target);
 		blog(LOG_INFO, "Manual transition to scene '%s' finished", sceneName);
-	} else if (val <= T_BAR_CLAMP) {
+	} else if (action == TBAR_RELEASE_CANCEL) {
 		obs_transition_set_manual_time(transition, 0.0f);
 		TransitionFullyStopped();
 		tBar->blockSignals(true);
@@ -834,6 +837,20 @@ void OBSBasic::TBarChanged(int value)
 int OBSBasic::GetTbarPosition()
 {
 	return tBar->value();
+}
+
+void OBSBasic::SetTbarPosition(int position)
+{
+	struct tbar_position_ops ops = {};
+	ops.param = this;
+	ops.set_slider_value = [](void *param, int value) {
+		static_cast<OBSBasic *>(param)->tBar->setValue(value);
+	};
+	ops.position_changed = [](void *param, int value) {
+		static_cast<OBSBasic *>(param)->TBarChanged(value);
+	};
+
+	tbar_api_set_position(&ops, position);
 }
 
 static inline void ResetQuickTransitionText(QuickTransition *qt)
