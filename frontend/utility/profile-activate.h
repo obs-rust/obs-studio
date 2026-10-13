@@ -35,7 +35,8 @@ struct profile_activate_ops {
 /* OBSBasic::ActivateProfile() after the profile's basic.ini has been loaded
  * as the active configuration. reset: the profile is a different one, so
  * its settings are applied (switching profiles, a new profile); false when
- * the current profile is renamed or duplicated. */
+ * the current profile is renamed or duplicated. The configuration and
+ * encoder defaults are set either way. */
 void profile_activate_config(const struct profile_activate_ops *ops, bool reset);
 
 /* The encoder defaults of a profile configuration
