@@ -212,6 +212,7 @@ private:
 	bool IsCustomService() const;
 	inline bool IsWHIP() const;
 	void LoadServices(bool showAll);
+	void UpdateServiceFields(int idx);
 	void OnOAuthStreamKeyConnected();
 	void OnAuthConnected();
 	QString lastService;

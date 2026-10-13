@@ -431,7 +431,8 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	HookWidget(ui->appearanceDensity2,   CHECK_CHANGED,  APPEAR_CHANGED);
 	HookWidget(ui->appearanceDensity3,   CHECK_CHANGED,  APPEAR_CHANGED);
 	HookWidget(ui->appearanceDensity4,   CHECK_CHANGED,  APPEAR_CHANGED);
-	HookWidget(ui->service,              COMBO_CHANGED,  STREAM1_CHANGED);
+	/* ui->service marks Stream changes in on_service_currentIndexChanged. */
+	ui->service->setProperty("changed", QVariant(false));
 	HookWidget(ui->server,               COMBO_CHANGED,  STREAM1_CHANGED);
 	HookWidget(ui->customServer,         EDIT_CHANGED,   STREAM1_CHANGED);
 	HookWidget(ui->serviceCustomServer,  EDIT_CHANGED,   STREAM1_CHANGED);

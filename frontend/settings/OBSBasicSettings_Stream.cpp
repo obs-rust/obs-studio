@@ -11,6 +11,7 @@
 #include <utility/GoLiveAPI_PostData.hpp>
 #include <utility/MultitrackVideoError.hpp>
 #include <utility/multitrack-ladder.h>
+#include <utility/stream-service-select.h>
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
@@ -654,12 +655,39 @@ void OBSBasicSettings::UseStreamKeyAdvClicked()
 
 void OBSBasicSettings::on_service_currentIndexChanged(int idx)
 {
-	if (ui->service->currentData().toInt() == (int)ListOpt::ShowAll) {
-		LoadServices(true);
-		ui->service->showPopup();
-		return;
-	}
+	struct Selection {
+		OBSBasicSettings *settings;
+		int idx;
+	} selection{this, idx};
 
+	stream_service_select_ops ops = {};
+	ops.param = &selection;
+	ops.is_show_all = [](void *param) {
+		auto *s = static_cast<Selection *>(param)->settings;
+		return s->ui->service->currentData().toInt() == (int)ListOpt::ShowAll;
+	};
+	ops.show_all = [](void *param) {
+		auto *s = static_cast<Selection *>(param)->settings;
+		s->LoadServices(true);
+		s->ui->service->showPopup();
+	};
+	ops.service_changed = [](void *param) {
+		auto *sel = static_cast<Selection *>(param);
+		sel->settings->UpdateServiceFields(sel->idx);
+	};
+	ops.mark_changed = [](void *param) {
+		auto *s = static_cast<Selection *>(param)->settings;
+		if (!s->loading) {
+			s->stream1Changed = true;
+			s->ui->service->setProperty("changed", QVariant(true));
+			s->EnableApplyButton(true);
+		}
+	};
+	stream_service_selected(&ops);
+}
+
+void OBSBasicSettings::UpdateServiceFields(int idx)
+{
 	ServiceChanged();
 
 	UpdateMoreInfoLink();

@@ -70,6 +70,8 @@ target_sources(
     utility/service-encoder-settings.h
     utility/source-select-list.cpp
     utility/source-select-list.hpp
+    utility/stream-service-select.c
+    utility/stream-service-select.h
     utility/studio-mode-exit.c
     utility/studio-mode-exit.h
     utility/studio-mode-swap.c
