@@ -34,9 +34,9 @@ fn spawn(argv0: &CString, rest: &[&CString], read_mode: bool) -> Option<Pipe> {
     // Rust sets CLOEXEC on every new fd and closes non-stdio fds in the
     // child, matching the C `fcntl` + `posix_spawn` file actions.
     if read_mode {
-        cmd.stdin(Stdio::null()).stdout(Stdio::piped());
+        cmd.stdout(Stdio::piped());
     } else {
-        cmd.stdin(Stdio::piped()).stdout(Stdio::null());
+        cmd.stdin(Stdio::piped());
     }
     // The C always captures stderr, in both modes.
     cmd.stderr(Stdio::piped());
