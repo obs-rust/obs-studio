@@ -869,6 +869,27 @@ static bool are_texcoords_centered(struct matrix4 *m)
 	return memcmp(m, &copy, sizeof(*m)) == 0;
 }
 
+/* An item's show/hide transition only runs out, and releases the item's
+ * source, when it is rendered. An item drawn through a texture is skipped
+ * while its source has no size (a Media Source that cleared its frame at the
+ * end), so render the running transition anyway: with no size it draws
+ * nothing, as for an item drawn directly. */
+static void render_empty_item_transition(struct obs_scene_item *item)
+{
+	obs_source_t *transition = NULL;
+
+	if (item->user_visible && transition_active(item->show_transition))
+		transition = item->show_transition;
+	else if (!item->user_visible && transition_active(item->hide_transition))
+		transition = item->hide_transition;
+
+	if (!transition)
+		return;
+
+	obs_transition_set_size(transition, 0, 0);
+	obs_source_video_render(transition);
+}
+
 static inline void render_item(struct obs_scene_item *item)
 {
 	GS_DEBUG_MARKER_BEGIN_FORMAT(GS_DEBUG_COLOR_ITEM, "Item: %s", obs_source_get_name(item->source));
@@ -894,6 +915,7 @@ static inline void render_item(struct obs_scene_item *item)
 		uint32_t height = obs_source_get_height(item->source);
 
 		if (!width || !height) {
+			render_empty_item_transition(item);
 			goto cleanup;
 		}
 
