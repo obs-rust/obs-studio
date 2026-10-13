@@ -1119,6 +1119,7 @@ static const char *obs_signals[] = {
 	"void canvas_video_reset(ptr canvas)",
 	"void canvas_rename(ptr canvas, string new_name, string prev_name)",
 
+	"void core_video_release()",
 	"void video_reset()",
 
 	NULL,
@@ -1547,6 +1548,84 @@ static inline bool size_valid(uint32_t width, uint32_t height)
 	return (width >= OBS_SIZE_MIN && height >= OBS_SIZE_MIN && width <= OBS_SIZE_MAX && height <= OBS_SIZE_MAX);
 }
 
+/* A video mix freed by obs_reset_video(), and the canvas that owned it. */
+struct freed_video {
+	video_t *video;
+	obs_canvas_t *canvas;
+};
+
+/* Remembers every mix's video_t (and its canvas) before obs_reset_video()
+ * frees them, so outputs holding one can be moved to the new mixes. */
+static void collect_mix_videos(struct freed_video **out, size_t *out_num)
+{
+	DARRAY(struct freed_video) freed;
+	da_init(freed);
+
+	pthread_mutex_lock(&obs->video.mixes_mutex);
+	for (size_t i = 0; i < obs->video.mixes.num; i++) {
+		struct obs_core_video_mix *mix = obs->video.mixes.array[i];
+		if (mix && mix->video) {
+			struct freed_video entry = {mix->video, NULL};
+			da_push_back(freed, &entry);
+		}
+	}
+	pthread_mutex_unlock(&obs->video.mixes_mutex);
+
+	/* Walk the canvases the way obs_free_canvas_mixes() and
+	 * restore_canvases() do: those are the canvases that get a new mix. */
+	pthread_mutex_lock(&obs->data.canvases_mutex);
+	struct obs_context_data *ctx, *tmp;
+	HASH_ITER (hh, (struct obs_context_data *)obs->data.canvases, ctx, tmp) {
+		obs_canvas_t *canvas = (obs_canvas_t *)ctx;
+		if (!canvas->mix)
+			continue;
+		for (size_t i = 0; i < freed.num; i++) {
+			if (freed.array[i].video == canvas->mix->video) {
+				freed.array[i].canvas = obs_canvas_get_ref(canvas);
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&obs->data.canvases_mutex);
+
+	*out = freed.array;
+	*out_num = freed.num;
+}
+
+/* Raw outputs store obs_get_video() (or a canvas's video) when they are
+ * created or set up. Point every output that held a freed video_t at the new
+ * mix of the same canvas, or at nothing when that mix is gone (a view), so
+ * they never use the freed one. Active outputs block the reset, so only
+ * inactive outputs are affected. */
+static void repoint_outputs(struct freed_video *freed, size_t num)
+{
+	if (!num)
+		return;
+
+	pthread_mutex_lock(&obs->data.outputs_mutex);
+	for (struct obs_output *output = obs->data.first_output; output;
+	     output = (struct obs_output *)output->context.next) {
+		if (!output->video)
+			continue;
+		for (size_t i = 0; i < num; i++) {
+			if (output->video == freed[i].video) {
+				output->video = freed[i].canvas ? obs_canvas_get_video(freed[i].canvas) : NULL;
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&obs->data.outputs_mutex);
+}
+
+static void release_freed_videos(struct freed_video *freed, size_t num)
+{
+	for (size_t i = 0; i < num; i++)
+		obs_canvas_release(freed[i].canvas);
+	bfree(freed);
+}
+
+static int obs_reset_video_internal(struct obs_video_info *ovi);
+
 int obs_reset_video(struct obs_video_info *ovi)
 {
 	if (!obs)
@@ -1559,10 +1638,28 @@ int obs_reset_video(struct obs_video_info *ovi)
 	if (!size_valid(ovi->output_width, ovi->output_height) || !size_valid(ovi->base_width, ovi->base_height))
 		return OBS_VIDEO_INVALID_PARAM;
 
+	struct freed_video *freed;
+	size_t num_freed;
+	collect_mix_videos(&freed, &num_freed);
+
+	/* Lets plugins drop video_t pointers they hold (obs_get_video(),
+	 * obs_view_add()) before the mixes are freed. */
+	calldata_t release_params = {0};
+	signal_handler_signal(obs->signals, "core_video_release", &release_params);
+
 	stop_video();
 	obs_free_canvas_mixes();
 	obs_free_video();
 
+	int ret = obs_reset_video_internal(ovi);
+
+	repoint_outputs(freed, num_freed);
+	release_freed_videos(freed, num_freed);
+	return ret;
+}
+
+static int obs_reset_video_internal(struct obs_video_info *ovi)
+{
 	/* align to multiple-of-two and SSE alignment sizes */
 	ovi->output_width &= 0xFFFFFFFC;
 	ovi->output_height &= 0xFFFFFFFE;

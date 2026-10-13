@@ -809,6 +809,14 @@ Core OBS Signals
 
    Called when a public canvas has been renamed.
 
+**core_video_release** ()
+
+   Called by :c:func:`obs_reset_video()` before it frees the video mixes.
+   Every video_t from :c:func:`obs_get_video()`, :c:func:`obs_view_add()` or
+   a canvas is freed after this signal; drop or stop using them here. Outputs
+   that use the main video or a public canvas are moved to the new mixes by
+   libobs.
+
 **video_reset** ()
 
    Called when a the main OBS video has been reset.
