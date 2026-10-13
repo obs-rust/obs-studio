@@ -74,9 +74,6 @@ unsafe extern "C" {
     pub fn oracle_os_get_free_space(path: *const c_char) -> i64;
     pub fn oracle_os_request_high_performance(reason: *const c_char) -> *mut c_void;
     pub fn oracle_os_end_high_performance(token: *mut c_void);
-    pub fn oracle_os_inhibit_sleep_create(reason: *const c_char) -> *mut c_void;
-    pub fn oracle_os_inhibit_sleep_set_active(info: *mut c_void, active: bool) -> bool;
-    pub fn oracle_os_inhibit_sleep_destroy(info: *mut c_void);
     pub fn oracle_os_get_physical_cores() -> c_int;
     pub fn oracle_os_get_logical_cores() -> c_int;
     pub fn oracle_os_get_sys_free_size() -> u64;

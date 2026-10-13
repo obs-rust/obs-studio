@@ -32,9 +32,6 @@ os_getcwd unix
 os_gettime_ns unix
 os_glob unix
 os_globfree unix
-os_inhibit_sleep_create unix
-os_inhibit_sleep_destroy unix
-os_inhibit_sleep_set_active unix
 os_is_obs_plugin unix
 os_mkdir unix
 os_oom unix

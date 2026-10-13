@@ -669,12 +669,13 @@ pub fn program_data_path(name: Option<&[u8]>) -> Vec<u8> {
 
 // The rest of platform-nix.c is under `#if !defined(__APPLE__)`. macOS
 // implements those symbols in platform-cocoa.m, so defining them here would
-// collide when both are linked.
+// collide when both are linked. `os_inhibit_sleep_*` is not ported: it stays
+// C in util/platform-nix-inhibit.c on Linux and FreeBSD, because it needs GIO
+// for the portal and session D-Bus inhibitors.
 #[cfg(not(target_os = "macos"))]
 mod host {
     use super::*;
-    use crate::base::LOG_WARNING;
-    use std::sync::{Arc, Mutex};
+    use std::sync::Mutex;
 
     /// `os_cpu_usage_info`.
     pub struct CpuUsage {
@@ -1114,140 +1115,11 @@ mod host {
     pub fn sys_total() -> u64 {
         0
     }
-
-    struct InhibitShared {
-        stop: crate::platform::unix::Event,
-        attr: libc::posix_spawnattr_t,
-    }
-
-    // SAFETY: `attr` is initialized before the worker starts, only read by
-    // that worker, and destroyed after `join`. FreeBSD stores the attribute
-    // as `*mut c_void`, which is not auto-`Send`.
-    unsafe impl Send for InhibitShared {}
-    unsafe impl Sync for InhibitShared {}
-
-    /// `os_inhibit_sleep_*`. The screensaver thread is a Rust thread. A failed
-    /// spawn still reports success, because C checks `pthread_create < 0`
-    /// and that value is never negative; deactivate then does not join a
-    /// thread that was never started. The `reason` string is unused on this
-    /// path. C only reads it for the GIO portal, which stays in the C files.
-    pub struct Inhibit {
-        shared: Arc<InhibitShared>,
-        active: bool,
-        thread: Option<std::thread::JoinHandle<()>>,
-    }
-
-    impl Inhibit {
-        /// `os_inhibit_sleep_create`.
-        pub fn create(_reason: &[u8]) -> Self {
-            let stop = crate::platform::unix::Event::new(crate::platform::EventType::Auto);
-            let mut attr = MaybeUninit::<libc::posix_spawnattr_t>::zeroed();
-            // SAFETY: `attr` is a spawnattr buffer.
-            unsafe { libc::posix_spawnattr_init(attr.as_mut_ptr()) };
-            // SAFETY: `init` wrote `attr`.
-            let mut attr = unsafe { attr.assume_init() };
-            let mut set = MaybeUninit::<libc::sigset_t>::zeroed();
-            // SAFETY: `set` is a sigset buffer.
-            unsafe {
-                libc::sigemptyset(set.as_mut_ptr());
-                libc::posix_spawnattr_setsigmask(&mut attr, set.as_mut_ptr());
-                libc::sigaddset(set.as_mut_ptr(), libc::SIGPIPE);
-                libc::posix_spawnattr_setsigdefault(&mut attr, set.as_mut_ptr());
-                // The libc constants are `c_int`. `setflags` takes `c_short`.
-                libc::posix_spawnattr_setflags(
-                    &mut attr,
-                    (libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK) as libc::c_short,
-                );
-            }
-            Self {
-                shared: Arc::new(InhibitShared { stop, attr }),
-                active: false,
-                thread: None,
-            }
-        }
-
-        /// `os_inhibit_sleep_set_active`.
-        pub fn set_active(&mut self, active: bool) -> bool {
-            if self.active == active {
-                return false;
-            }
-            if active {
-                let shared = Arc::clone(&self.shared);
-                self.thread = std::thread::Builder::new()
-                    .name("xdg-screensaver".to_string())
-                    .spawn(move || screensaver_thread(shared))
-                    .ok();
-            } else if let Some(handle) = self.thread.take() {
-                self.shared.stop.signal();
-                let _ = handle.join();
-            }
-            self.active = active;
-            true
-        }
-    }
-
-    impl Drop for Inhibit {
-        fn drop(&mut self) {
-            self.set_active(false);
-            if let Some(shared) = Arc::get_mut(&mut self.shared) {
-                // SAFETY: `attr` came from `posix_spawnattr_init`, and the
-                // worker has been joined so nothing else reads it.
-                unsafe { libc::posix_spawnattr_destroy(&mut shared.attr) };
-            }
-        }
-    }
-
-    fn screensaver_thread(shared: Arc<InhibitShared>) {
-        while !shared.stop.timed_wait(30_000) {
-            reset_screensaver(&shared.attr);
-        }
-    }
-
-    fn reset_screensaver(attr: &libc::posix_spawnattr_t) {
-        let mut argv = [
-            c"xdg-screensaver".as_ptr().cast_mut(),
-            c"reset".as_ptr().cast_mut(),
-            std::ptr::null_mut(),
-        ];
-        let mut pid: libc::pid_t = 0;
-        // `environ` is a libc symbol on every POSIX host. The libc crate
-        // only exports it for Linux glibc, so the shim declares it itself.
-        unsafe extern "C" {
-            static mut environ: *mut *mut c_char;
-        }
-        // SAFETY: argv is NUL-terminated, `attr` was initialized, and
-        // `environ` is the process environment. `addr_of!` reads the
-        // pointer without borrowing the static.
-        let err = unsafe {
-            libc::posix_spawnp(
-                &mut pid,
-                c"xdg-screensaver".as_ptr(),
-                std::ptr::null(),
-                attr,
-                argv.as_mut_ptr(),
-                std::ptr::addr_of!(environ).read(),
-            )
-        };
-        if err == 0 {
-            let mut status: c_int = 0;
-            // SAFETY: `pid` is a child we just spawned.
-            while unsafe { libc::waitpid(pid, &mut status, 0) } == -1 {}
-        } else {
-            // SAFETY: format matches the C log.
-            unsafe {
-                blog(
-                    LOG_WARNING,
-                    c"Failed to create xdg-screensaver: %d".as_ptr(),
-                    err,
-                );
-            }
-        }
-    }
 }
 
 #[cfg(not(target_os = "macos"))]
 pub use host::{
-    CpuUsage, Inhibit, MissingHome, ProcMem, config_path, config_path_ptr, cpu_start,
-    emulation_status, executable_path, free_disk_space, free_space, logical, physical, proc_memory,
-    sys_free, sys_total,
+    CpuUsage, MissingHome, ProcMem, config_path, config_path_ptr, cpu_start, emulation_status,
+    executable_path, free_disk_space, free_space, logical, physical, proc_memory, sys_free,
+    sys_total,
 };

@@ -8,7 +8,9 @@
 //!   results are freed with `os_globfree`.
 //! - `os_generate_uuid` is random on both sides and is not compared.
 //! - `os_breakpoint` and `os_oom` raise `SIGTRAP` and are not called.
-//! - Sleep inhibit is not compared. The worker is a Rust thread.
+//! - Sleep inhibit is not ported. `os_inhibit_sleep_*` stays C
+//!   (`util/platform-nix-inhibit.c`), checked by test/cmocka's
+//!   test_inhibit_sleep_dbus in both lanes.
 //! - CPU percent and process memory change between the two calls.
 //! - A missing `$HOME` still crashes in the shim. These tests keep `HOME`.
 //!

@@ -2,6 +2,10 @@
 //!
 //! macOS keeps config paths, the clock, CPU, memory, and sleep inhibit in
 //! `platform-cocoa.m`. Those shims are compiled out here.
+//!
+//! `os_inhibit_sleep_*` has no shim on any platform. Linux and FreeBSD keep
+//! it in C (`util/platform-nix-inhibit.c`, built in both lanes) because it
+//! talks to the xdg-desktop-portal and session D-Bus inhibitors through GIO.
 
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::ptr;
@@ -573,39 +577,6 @@ mod shims {
         /// `token` is unused.
         #[unsafe(no_mangle)]
         pub unsafe extern "C" fn os_end_high_performance(_token: *mut c_void) {}
-
-        /// # Safety
-        /// `reason` is a C string or null. The handle is opaque.
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn os_inhibit_sleep_create(reason: *const c_char) -> *mut c_void {
-            let reason = cstr(reason).unwrap_or(b"");
-            Box::into_raw(Box::new(nix::Inhibit::create(reason))).cast()
-        }
-
-        /// # Safety
-        /// `info` came from `os_inhibit_sleep_create` or is null.
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn os_inhibit_sleep_set_active(
-            info: *mut c_void,
-            active: bool,
-        ) -> bool {
-            if info.is_null() {
-                return false;
-            }
-            // SAFETY: `info` is a live `Inhibit`.
-            unsafe { &mut *info.cast::<nix::Inhibit>() }.set_active(active)
-        }
-
-        /// # Safety
-        /// `info` came from `os_inhibit_sleep_create` or is null.
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn os_inhibit_sleep_destroy(info: *mut c_void) {
-            if info.is_null() {
-                return;
-            }
-            // SAFETY: `info` is a live `Inhibit` from `Box::into_raw`.
-            drop(unsafe { Box::from_raw(info.cast::<nix::Inhibit>()) });
-        }
 
         /// # Safety
         /// No pointer arguments.
