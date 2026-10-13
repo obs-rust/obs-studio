@@ -931,6 +931,12 @@ static inline void mp4_write_audio_sample_entry(struct mp4_mux *mux, struct mp4_
 	}
 }
 
+/* More than two channels: the layout gets a chnl box. */
+static inline bool track_needs_chnl(struct mp4_track *track)
+{
+	return audio_output_get_channels(obs_encoder_audio(track->encoder)) > 2;
+}
+
 /// 12.2.4 Channel layout
 static size_t mp4_write_chnl(struct mp4_mux *mux, struct mp4_track *track)
 {
@@ -979,8 +985,8 @@ static size_t mp4_write_mp4a(struct mp4_mux *mux, struct mp4_track *track, uint8
 	// esds
 	mp4_write_esds(mux, track);
 
-	/* Write channel layout for version 1 sample entries */
-	if (version == 1)
+	/* Channel layout for more than two channels */
+	if (track_needs_chnl(track))
 		mp4_write_chnl(mux, track);
 
 	return write_box_size(s, start);
@@ -1025,7 +1031,7 @@ static size_t mp4_write_fLaC(struct mp4_mux *mux, struct mp4_track *track, uint8
 	// dfLa
 	mp4_write_dfLa(mux, track);
 
-	if (version == 1)
+	if (track_needs_chnl(track))
 		mp4_write_chnl(mux, track);
 
 	return write_box_size(s, start);
@@ -1050,7 +1056,7 @@ static size_t mp4_write_alac(struct mp4_mux *mux, struct mp4_track *track, uint8
 	/* Apple Lossless Magic Cookie */
 	s_write(s, extradata, extradata_size);
 
-	if (version == 1)
+	if (track_needs_chnl(track))
 		mp4_write_chnl(mux, track);
 
 	return write_box_size(s, start);
@@ -1167,7 +1173,7 @@ static size_t mp4_write_Opus(struct mp4_mux *mux, struct mp4_track *track, uint8
 	// dOps
 	mp4_write_dOps(mux, track);
 
-	if (version == 1)
+	if (track_needs_chnl(track))
 		mp4_write_chnl(mux, track);
 
 	return write_box_size(s, start);
@@ -1276,13 +1282,20 @@ static size_t mp4_write_stsd(struct mp4_mux *mux, struct mp4_track *track)
 	struct serializer *s = mux->serializer;
 	int64_t start = serializer_get_pos(s);
 
-	/* Anything but mono or stereo technically requires v1,
-	 * but in practice that doesn't appear to matter. */
+	/* ISO/IEC 14496-12:2022 uses version 1 sample entries for more than two
+	 * channels, but readers that predate it (VLC 3 among them) take a
+	 * version 1 sound sample entry for a QuickTime SoundDescriptionV1 and
+	 * miss the codec configuration box after it, so 5.1 AAC played silent.
+	 * AAC, Opus, FLAC and ALAC carry their channel configuration in that box
+	 * and get version 0 entries, as FFmpeg writes them; their chnl box is
+	 * kept. Only PCM, which has no configuration of its own, uses version 1. */
 	uint8_t version = 0;
 
 	if (track->type == TRACK_AUDIO && mux->flavor != FLAVOR_MOV) {
-		audio_t *audio = obs_encoder_audio(track->encoder);
-		version = audio_output_get_channels(audio) > 2 ? 1 : 0;
+		bool is_pcm = track->codec == CODEC_PCM_I16 || track->codec == CODEC_PCM_I24 ||
+			      track->codec == CODEC_PCM_F32;
+		if (is_pcm && track_needs_chnl(track))
+			version = 1;
 	}
 
 	write_fullbox(s, 0, "stsd", version, 0);
