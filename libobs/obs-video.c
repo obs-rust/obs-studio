@@ -162,10 +162,16 @@ static inline void draw_mix_texture(const size_t mix_idx)
 	gs_eparam_t *param = gs_effect_get_param_by_name(effect, "image");
 	gs_effect_set_texture_srgb(param, tex);
 
+	/* A copy of the other mix's canvas, alpha included: blending would
+	 * multiply the colour by an alpha that the canvas can have at 0 where
+	 * colour shows (Subtract blending), and those areas would turn black. */
+	gs_blend_state_push();
+	gs_enable_blending(false);
 	gs_enable_framebuffer_srgb(true);
 	while (gs_effect_loop(effect, "Draw"))
 		gs_draw_sprite(tex, 0, 0, 0);
 	gs_enable_framebuffer_srgb(false);
+	gs_blend_state_pop();
 }
 
 static const char *render_main_texture_name = "render_main_texture";
