@@ -50,6 +50,8 @@ target_sources(
     utility/product-name.h
     utility/profile-activate.c
     utility/profile-activate.h
+    utility/profile-remove.c
+    utility/profile-remove.h
     utility/scene-collection-migration.cpp
     utility/scene-collection-migration.hpp
     utility/scene-list-remove.c

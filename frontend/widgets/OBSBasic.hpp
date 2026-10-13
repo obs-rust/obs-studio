@@ -67,6 +67,7 @@ class YouTubeAppDock;
 class QMessageBox;
 class QWidgetAction;
 struct QuickTransition;
+struct profile_remove_ops;
 
 namespace OBS {
 class SceneCollection;
@@ -917,6 +918,12 @@ private:
 
 	const OBSProfile &CreateProfile(const std::string &profileName);
 	void RemoveProfile(OBSProfile profile);
+
+	struct ProfileRemoval {
+		OBSBasic *main;
+		OBSProfile profile;
+	};
+	static void InitProfileRemoveOps(struct profile_remove_ops &ops, ProfileRemoval &removal);
 
 	void ChangeProfile();
 
