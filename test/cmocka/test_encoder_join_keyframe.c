@@ -23,6 +23,15 @@
  *     request_keyframe still works, its joining output waiting for its next
  *     keyframe.
  *
+ * The real_ cases run the same scenario with the encoders OBS ships on Linux,
+ * loaded from the built obs-x264 and obs-ffmpeg modules, each set to a 10 s
+ * keyframe interval: the joining output's first packet must be a keyframe
+ * made from the frame the encoder got when the output joined (give or take a
+ * few frames), not the next scheduled keyframe. obs-x264 implements
+ * request_keyframe already; the obs-ffmpeg ones are VA-API H.264 and HEVC,
+ * AOM AV1 and SVT-AV1. Each real_ case skips when its encoder is not
+ * available (no VA-API device, FFmpeg built without the library).
+ *
  * Core video needs a graphics module and libobs needs an X display on Linux,
  * so the cases skip without one (run under xvfb-run). */
 #include <stdarg.h>
@@ -31,6 +40,7 @@
 #include <cmocka.h>
 
 #include <stdio.h>
+#include <string.h>
 
 #include <obs.h>
 #include <util/platform.h>
@@ -44,6 +54,13 @@
 #define SHORT_KEYINT 15 /* the encoder without request_keyframe */
 /* A joining output must get its first packet this fast. */
 #define JOIN_MS 1000
+/* The real encoders: the recording's first packet must be the frame the
+ * encoder was given when the recording started, or one of the next few; a
+ * scheduled keyframe is 300 frames away. The frame is reckoned from the time
+ * since the encoder started (its pts counts frames at 30 fps), so it allows
+ * a little slack either way; it leaves out the encoder's own delay, which
+ * the wall clock would count (x264's lookahead holds ~20 frames). */
+#define JOIN_FRAMES 3
 
 static bool obs_up;
 
@@ -137,6 +154,8 @@ struct out {
 	volatile long first_is_keyframe;
 	uint64_t started_ns;
 	volatile long long first_packet_ns;
+	volatile long long first_pts;
+	volatile long long last_pts;
 };
 
 static const char *out_name(void *type_data)
@@ -181,8 +200,11 @@ static void out_packet(void *data, struct encoder_packet *packet)
 	struct out *o = data;
 	if (!packet)
 		return;
+	if (packet->pts > o->last_pts || !o->packets)
+		o->last_pts = packet->pts;
 	if (os_atomic_inc_long(&o->packets) == 1) {
 		o->first_packet_ns = (long long)os_gettime_ns();
+		o->first_pts = packet->pts;
 		os_atomic_set_long(&o->first_is_keyframe, packet->keyframe);
 	}
 }
@@ -339,6 +361,116 @@ static void encoder_without_request_still_works(void **state)
 	assert_true(keyframe);
 }
 
+/* ------------------------------------------------------------------------- */
+/* the encoders OBS ships on Linux */
+
+static bool encoder_available(const char *id)
+{
+	const char *type;
+	for (size_t i = 0; obs_enum_encoder_types(i, &type); i++) {
+		if (strcmp(type, id) == 0)
+			return true;
+	}
+	return false;
+}
+
+/* Replay buffer on a real encoder with a 10 s keyframe interval, then a
+ * recording joins it. */
+static void join_real_encoder(const char *id)
+{
+	if (!obs_up)
+		skip();
+	if (!encoder_available(id)) {
+		fprintf(stderr, "%s: skipped, encoder not available here\n", id);
+		skip();
+	}
+
+	struct fixture fx = {0};
+	obs_data_t *settings = obs_data_create();
+	obs_data_set_int(settings, "keyint_sec", KEYINT / FPS);
+	obs_data_set_int(settings, "bitrate", 500);
+	if (strcmp(id, "ffmpeg_svt_av1") == 0)
+		obs_data_set_int(settings, "preset", 12);
+	else if (strcmp(id, "ffmpeg_aom_av1") == 0)
+		obs_data_set_int(settings, "preset", 10);
+	fx.venc = obs_video_encoder_create(id, "venc", settings, NULL);
+	obs_data_release(settings);
+	assert_non_null(fx.venc);
+	obs_encoder_set_video(fx.venc, obs_get_video());
+	fx.replay = obs_output_create(OUTPUT_ID, "replay buffer", NULL, NULL);
+	fx.recording = obs_output_create(OUTPUT_ID, "recording", NULL, NULL);
+	obs_output_set_video_encoder(fx.replay, fx.venc);
+	obs_output_set_video_encoder(fx.recording, fx.venc);
+
+	if (!obs_output_start(fx.replay)) {
+		fprintf(stderr, "%s: skipped, the encoder did not start: %s\n", id,
+			obs_output_get_last_error(fx.replay) ? obs_output_get_last_error(fx.replay) : "");
+		teardown_fixture(&fx);
+		skip();
+	}
+	bool replay_ok = wait_packets(fx.replay, 10, 10000);
+	os_sleep_ms(500);
+
+	struct out *replay = obs_obj_get_data(fx.replay);
+	struct out *rec = obs_obj_get_data(fx.recording);
+	long long joined_after = replay->last_pts;
+	/* the encoder started when the replay buffer did */
+	long long joined_at = (long long)((os_gettime_ns() - replay->started_ns) * FPS / 1000000000ULL);
+	bool started = replay_ok && obs_output_start(fx.recording);
+	bool got = started && wait_packets(fx.recording, 1, JOIN_MS * 3);
+	double ms = first_packet_ms(fx.recording);
+	long keyframe = os_atomic_load_long(&rec->first_is_keyframe);
+	long long frames = got ? rec->first_pts - joined_at : -1000;
+	fprintf(stderr,
+		"%s, joining at frame %lld (keyframe every %d s): first packet after %.0f ms, pts %lld (%+lld frames;"
+		" replay buffer's latest was %lld), keyframe %ld\n",
+		id, joined_at, KEYINT / FPS, ms, got ? rec->first_pts : -1, frames, joined_after, keyframe);
+
+	teardown_fixture(&fx);
+	assert_true(replay_ok);
+	assert_true(started);
+	assert_true(got);
+	assert_true(keyframe);
+	assert_true(frames >= -JOIN_FRAMES && frames <= JOIN_FRAMES);
+}
+
+static void real_x264(void **state)
+{
+	(void)state;
+	join_real_encoder("obs_x264");
+}
+
+static void real_vaapi_h264(void **state)
+{
+	(void)state;
+	join_real_encoder("ffmpeg_vaapi");
+}
+
+static void real_vaapi_hevc(void **state)
+{
+	(void)state;
+	join_real_encoder("hevc_ffmpeg_vaapi");
+}
+
+static void real_aom_av1(void **state)
+{
+	(void)state;
+	join_real_encoder("ffmpeg_aom_av1");
+}
+
+static void real_svt_av1(void **state)
+{
+	(void)state;
+	join_real_encoder("ffmpeg_svt_av1");
+}
+
+static void load_module(const char *path, const char *data_path)
+{
+	obs_module_t *module = NULL;
+	if (obs_open_module(&module, path, data_path) != MODULE_SUCCESS || !obs_init_module(module))
+		fprintf(stderr, "could not load %s: its real_ cases skip\n", path);
+}
+
 static int group_setup(void **state)
 {
 	(void)state;
@@ -352,10 +484,11 @@ static int group_setup(void **state)
 		.graphics_module = GRAPHICS_MODULE_PATH,
 		.fps_num = FPS,
 		.fps_den = 1,
-		.base_width = 64,
-		.base_height = 64,
-		.output_width = 64,
-		.output_height = 64,
+		/* large enough for the hardware encoders' minimum size */
+		.base_width = 320,
+		.base_height = 240,
+		.output_width = 320,
+		.output_height = 240,
 		.output_format = VIDEO_FORMAT_NV12,
 		.colorspace = VIDEO_CS_709,
 		.range = VIDEO_RANGE_PARTIAL,
@@ -371,6 +504,12 @@ static int group_setup(void **state)
 
 	register_encoders();
 	register_outputs();
+#ifdef OBS_X264_MODULE_PATH
+	load_module(OBS_X264_MODULE_PATH, OBS_X264_DATA_PATH);
+#endif
+#ifdef OBS_FFMPEG_MODULE_PATH
+	load_module(OBS_FFMPEG_MODULE_PATH, OBS_FFMPEG_DATA_PATH);
+#endif
 	return 0;
 }
 
@@ -388,6 +527,11 @@ int main(void)
 		cmocka_unit_test(joining_output_gets_a_keyframe_soon),
 		cmocka_unit_test(first_output_makes_no_request),
 		cmocka_unit_test(encoder_without_request_still_works),
+		cmocka_unit_test(real_x264),
+		cmocka_unit_test(real_vaapi_h264),
+		cmocka_unit_test(real_vaapi_hevc),
+		cmocka_unit_test(real_aom_av1),
+		cmocka_unit_test(real_svt_av1),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
