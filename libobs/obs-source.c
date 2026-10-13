@@ -4073,10 +4073,21 @@ static void process_audio(obs_source_t *source, const struct obs_source_audio *a
 	uint32_t frames = audio->frames;
 	bool mono_output;
 
+	/* The resampler holds back the last samples of every packet for its
+	 * filter. A packet that does not continue the previous one (a media
+	 * file started again after it ended) begins a new stream: drop what is
+	 * held back instead of playing it in front of the new audio. */
+	bool discontinuous = source->resampler && source->next_resample_in_ts &&
+			     uint64_diff(audio->timestamp, source->next_resample_in_ts) >= TS_SMOOTHING_THRESHOLD;
+
 	if (source->sample_info.samples_per_sec != audio->samples_per_sec ||
 	    source->sample_info.format != audio->format || source->sample_info.speakers != audio->speakers ||
-	    source->last_async_compensation != os_atomic_load_bool(&source->async_compensation))
+	    source->last_async_compensation != os_atomic_load_bool(&source->async_compensation) || discontinuous)
 		reset_resampler(source, audio);
+
+	if (audio->samples_per_sec)
+		source->next_resample_in_ts =
+			audio->timestamp + util_mul_div64(audio->frames, 1000000000ULL, audio->samples_per_sec);
 
 	if (source->audio_failed)
 		return;
