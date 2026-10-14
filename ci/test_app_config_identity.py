@@ -208,6 +208,30 @@ class ConfigMigrationTest(unittest.TestCase):
 
 
 class InstalledAppIdentityTest(unittest.TestCase):
+    def test_appimage_identity_keeps_the_ubuntu_pipewire_exception(self):
+        source = (ROOT / "build-aux/appimage/test-appimage.sh").read_text()
+        block = source.split('PACKAGE_DATA="$APPDIR/usr/share/obs"', 1)[1]
+        block = 'PACKAGE_DATA="$APPDIR/usr/share/obs"' + block.split("# The C and C++ runtime", 1)[0]
+        predicate = next(line.strip() for line in source.splitlines() if 'if [ "$ID" = ubuntu ]' in line)
+        with tempfile.TemporaryDirectory(prefix="obs-appimage-distro-") as scratch:
+            directory = Path(scratch)
+            (directory / "usr/bin").mkdir(parents=True)
+            (directory / "usr/bin/obs-studio-rust-gui").touch()
+            (directory / "usr/share/metainfo").mkdir(parents=True)
+            (directory / "usr/share/metainfo/io.github.obs_rust.OBSStudioRust.metainfo.xml").touch()
+            (directory / "io.github.obs_rust.OBSStudioRust.desktop").write_text(
+                "Exec=obs-studio-rust-gui\nIcon=io.github.obs_rust.OBSStudioRust\nStartupWMClass=obs-studio-rust-gui\n"
+            )
+            script = ('APPDIR="$1"\nID="$2"\nVERSION_ID="$3"\nVERSION_OUT="OBS-Studio-Rust 0.1.0"\n'
+                      'FAILED=()\nfail() { FAILED+=("$*"); }\nfinish() { exit 7; }\n' + block +
+                      '\nprintf "%s\\n" "$ID"\n' + predicate +
+                      '\nprintf "allowed\\n"\nelse\nprintf "denied\\n"\nfi\n')
+            for distro, version, result in (("ubuntu", "22.04", "allowed"), ("ubuntu", "24.04", "denied"),
+                                            ("debian", "13", "denied"), ("arch", "rolling", "denied")):
+                with self.subTest(distro=distro, version=version):
+                    output = subprocess.check_output(["bash", "-c", script, "test", str(directory), distro, version], text=True)
+                    self.assertEqual(output.splitlines(), [distro, result])
+
     def configure(self, rust):
         with tempfile.TemporaryDirectory(prefix="obs-installed-identity-") as scratch:
             directory = Path(scratch)
