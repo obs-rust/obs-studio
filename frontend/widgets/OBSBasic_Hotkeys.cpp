@@ -76,6 +76,22 @@ void OBSBasic::InitHotkeys()
 	obs_hotkey_set_callback_routing_func(OBSBasic::HotkeyTriggered, this);
 }
 
+/* The desktop declined or turned off OBS's global shortcuts (often its
+ * dialog at the first start, cancelled or closed): nothing else says so
+ * until Settings -> Hotkeys is opened, so the status bar tells once. */
+void OBSBasic::NotifyHotkeyBackgroundStatus()
+{
+	obs_hotkeys_background_state state = obs_hotkeys_get_background_state(nullptr);
+	bool failed = state == OBS_HOTKEYS_BACKGROUND_DECLINED || state == OBS_HOTKEYS_BACKGROUND_CLOSED;
+	if (failed && state != notifiedHotkeyBackgroundState) {
+		ShowStatusBarMessage(QTStr(state == OBS_HOTKEYS_BACKGROUND_DECLINED ? "Basic.StatusBar.HotkeysDeclined"
+										    : "Basic.StatusBar.HotkeysClosed"));
+	}
+	if (failed || state == OBS_HOTKEYS_BACKGROUND_ACTIVE) {
+		notifiedHotkeyBackgroundState = state;
+	}
+}
+
 void OBSBasic::ProcessHotkey(obs_hotkey_id id, bool pressed)
 {
 	obs_hotkey_trigger_routed_callback(id, pressed);

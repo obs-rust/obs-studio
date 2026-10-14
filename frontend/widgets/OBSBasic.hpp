@@ -506,6 +506,9 @@ private:
 		      addChapterHotkey = OBS_INVALID_HOTKEY_ID, saveReplayBufferHotkey = OBS_INVALID_HOTKEY_ID;
 
 	void InitHotkeys();
+	/* The last background hotkey failure the status bar reported. */
+	obs_hotkeys_background_state notifiedHotkeyBackgroundState = OBS_HOTKEYS_BACKGROUND_NATIVE;
+	void NotifyHotkeyBackgroundStatus();
 	void CreateHotkeys();
 	void ClearHotkeys();
 
