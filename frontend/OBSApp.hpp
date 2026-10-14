@@ -106,6 +106,7 @@ private:
 
 	bool MigrateGlobalSettings();
 	bool MigrateRustConfiguration();
+	void InitCrashHandler();
 	void MigrateLegacySettings(uint32_t lastVersion);
 
 	bool InitUserConfig(std::filesystem::path &userConfigLocation, uint32_t lastVersion);

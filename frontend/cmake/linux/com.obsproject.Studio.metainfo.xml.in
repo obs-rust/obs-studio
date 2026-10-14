@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop">
-  <id>com.obsproject.Studio</id>
-  <launchable type="desktop-id">com.obsproject.Studio.desktop</launchable>
+  <id>@OBS_DESKTOP_ID@</id>
+  <launchable type="desktop-id">@OBS_DESKTOP_ID@.desktop</launchable>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-2.0-or-later</project_license>
-  <name>OBS Studio</name>
+  <name>@OBS_APP_DISPLAY_NAME@</name>
   <developer id="com.obsproject">
     <name>OBS Project</name>
   </developer>

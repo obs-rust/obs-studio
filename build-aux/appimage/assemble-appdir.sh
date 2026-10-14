@@ -7,6 +7,22 @@ set -euo pipefail
 APPDIR="$(realpath "$1")"
 HERE="$(dirname "$(realpath "$0")")"
 LIBDIR="$APPDIR/usr/lib"
+GUI_NAME=obs
+APP_ID=com.obsproject.Studio
+DATA_ROOT="$APPDIR/usr/share/obs"
+MODULE_ROOT="$LIBDIR/obs-modules"
+if [ -f "$APPDIR/usr/bin/obs-studio-rust-gui" ]; then
+    GUI_NAME=obs-studio-rust-gui
+    APP_ID=io.github.obs_rust.OBSStudioRust
+    DATA_ROOT="$APPDIR/usr/share/obs-studio-rust"
+    MODULE_ROOT="$LIBDIR/obs-studio-rust/obs-modules"
+    # AppDir aliases serve bundled dependency discovery and its test probes.
+    # The installed Debian package retains only the private library locations.
+    for library in "$LIBDIR/obs-studio-rust"/lib*.so*; do
+        [ -e "$library" ] || continue
+        ln -s "obs-studio-rust/$(basename "$library")" "$LIBDIR/$(basename "$library")"
+    done
+fi
 MULTIARCH="$(gcc -print-multiarch)"
 SYSLIB="/usr/lib/$MULTIARCH"
 
@@ -77,8 +93,8 @@ mkdir -p "$APPDIR/usr/share/pipewire"
 cp -a /usr/share/pipewire/. "$APPDIR/usr/share/pipewire/"
 
 # --- the modules the build installed, for test-appimage.sh -------------------
-mkdir -p "$APPDIR/usr/share/obs"
-find "$APPDIR/usr/lib/obs-modules" -name '*.so' -printf '%f\n' | sort >"$APPDIR/usr/share/obs/appimage-modules.txt"
+mkdir -p "$DATA_ROOT"
+find "$MODULE_ROOT" -name '*.so' -printf '%f\n' | sort >"$DATA_ROOT/appimage-modules.txt"
 
 # --- bundle the shared-library closure of every ELF in the AppDir ------------
 export LD_LIBRARY_PATH="$LIBDIR"
@@ -183,11 +199,11 @@ unset LD_LIBRARY_PATH # patchelf and friends are host programs
 "$HERE/set-runpaths.sh" "$APPDIR" "$LOADER_DIR/lib"
 
 # --- desktop integration -----------------------------------------------------
-sed "s|@LOADER@|$LOADER|" "$HERE/AppRun" >"$APPDIR/AppRun"
+sed -e "s|@LOADER@|$LOADER|" -e "s|@OBS_GUI_NAME@|$GUI_NAME|" "$HERE/AppRun" >"$APPDIR/AppRun"
 chmod +x "$APPDIR/AppRun"
-cp "$APPDIR/usr/share/applications/com.obsproject.Studio.desktop" "$APPDIR/"
-cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/com.obsproject.Studio.png" "$APPDIR/"
-ln -sf com.obsproject.Studio.png "$APPDIR/.DirIcon"
+cp "$APPDIR/usr/share/applications/$APP_ID.desktop" "$APPDIR/"
+cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/"
+ln -sf "$APP_ID.png" "$APPDIR/.DirIcon"
 
 # --- everything AppRun points OBS at at runtime must be in the AppDir --------
 "$HERE/check-appdir.sh" "$APPDIR"
@@ -195,7 +211,7 @@ ln -sf com.obsproject.Studio.png "$APPDIR/.DirIcon"
 # --- sanity: nothing may resolve outside the AppDir except the excluded host libs
 echo "::group::Libraries still resolved from the host"
 # (the binary's interpreter now points at the not-yet-installed loader, so ask the bundled one)
-"$APPDIR/lib64/ld-linux-x86-64.so.2" --library-path "$GLIBC_DIR:$LIBDIR" --list "$APPDIR/usr/bin/obs" |
+"$APPDIR/lib64/ld-linux-x86-64.so.2" --library-path "$GLIBC_DIR:$LIBDIR" --list "$APPDIR/usr/bin/$GUI_NAME" |
     grep -v "$APPDIR" | grep '=> /' || true
 echo "::endgroup::"
 du -sh "$APPDIR"

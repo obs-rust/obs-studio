@@ -28,6 +28,7 @@
 #include <utility/OBSEventFilter.hpp>
 #include <utility/OBSProxyStyle.hpp>
 #include <utility/product-name.h>
+#include <utility/platform.hpp>
 #include <utility/scene-collection-migration.hpp>
 #if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
 #include <utility/models/branches.hpp>
@@ -604,28 +605,26 @@ bool OBSApp::MigrateRustConfiguration()
 			if (!IsPortableMode() && fs::exists(global)) {
 				const char *value = config_get_string(upstream, "Locations", key);
 				if (value && *value && fs::is_directory(fs::u8path(value))) {
-					return fs::u8path(value) / "obs-studio";
+					return fs::u8path(value);
 				}
 			}
-			return source;
+			return base;
 		};
-		std::vector<std::pair<fs::path, fs::path>> overrides;
-		const auto configuration = location("Configuration");
-		for (const char *relative : {"user.ini", "themes", "plugin_config"}) {
-			overrides.emplace_back(configuration / relative, relative);
+		std::vector<std::pair<const char *, fs::path>> locations;
+		std::vector<fs::path> roots;
+		for (const char *key : {"Configuration", "Profiles", "SceneCollections", "PluginManagerSettings"}) {
+			auto selected = location(key);
+			roots.push_back(selected);
+			locations.emplace_back(key, std::move(selected));
 		}
-		overrides.emplace_back(location("Profiles") / "basic/profiles", "basic/profiles");
-		overrides.emplace_back(location("SceneCollections") / "basic/scenes", "basic/scenes");
-		overrides.emplace_back(location("PluginManagerSettings") / "plugin_manager", "plugin_manager");
-		MigrateAppConfig(source, destination, overrides, [&](const fs::path &copy) {
+		MigrateAppConfigLocations(base, roots, [&](const fs::path &copy) {
 			ConfigFile isolated;
 			if (isolated.Open((copy / "global.ini").u8string().c_str(), CONFIG_OPEN_ALWAYS) !=
 			    CONFIG_SUCCESS) {
 				throw std::runtime_error("Unable to open the copied global settings");
 			}
-			for (const char *key :
-			     {"Configuration", "Profiles", "SceneCollections", "PluginManagerSettings"}) {
-				config_set_string(isolated, "Locations", key, base.u8string().c_str());
+			for (const auto &[key, root] : locations) {
+				config_set_string(isolated, "Locations", key, root.u8string().c_str());
 			}
 			config_set_string(isolated, "General", "RustConfigImportedFrom", source.u8string().c_str());
 			if (isolated.SaveSafe("tmp") != CONFIG_SUCCESS) {
@@ -1074,11 +1073,9 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 #endif
 	connect(qApp, &QGuiApplication::commitDataRequest, this, &OBSApp::commitData, Qt::DirectConnection);
 
-	if (multi) {
-		crashHandler_ = std::make_unique<OBS::CrashHandler>();
-	} else {
-		crashHandler_ = std::make_unique<OBS::CrashHandler>(appLaunchUUID_);
-	}
+#ifndef OBS_RUST_VERSION
+	InitCrashHandler();
+#endif
 
 	sleepInhibitor = os_inhibit_sleep_create("OBS Video/audio");
 
@@ -1089,6 +1086,15 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	setDesktopFileName(OBS_DESKTOP_ID);
 
 	pluginManager_ = std::make_unique<OBS::PluginManager>();
+}
+
+void OBSApp::InitCrashHandler()
+{
+	if (multi) {
+		crashHandler_ = std::make_unique<OBS::CrashHandler>();
+	} else {
+		crashHandler_ = std::make_unique<OBS::CrashHandler>(appLaunchUUID_);
+	}
 }
 
 OBSApp::~OBSApp()
@@ -1184,9 +1190,17 @@ void OBSApp::AppInit()
 
 	QAccessible::installFactory(alignmentSelectorFactory);
 
+#ifdef _WIN32
+	if (!InitializeAppIdentity()) {
+		throw "Failed to initialize application identity";
+	}
+#endif
 	if (!MigrateRustConfiguration()) {
 		throw "Failed to import settings into the independent Rust configuration";
 	}
+#ifdef OBS_RUST_VERSION
+	InitCrashHandler();
+#endif
 	if (!MakeUserDirs()) {
 		throw "Failed to create required user directories";
 	}
@@ -1772,8 +1786,10 @@ vector<pair<string, string>> GetLocaleNames()
 
 int GetAppConfigPath(char *path, size_t size, const char *name)
 {
+#ifdef OBS_RUST_VERSION
 	const std::string relativePath = AppConfigRelativePath(name);
 	name = relativePath.c_str();
+#endif
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		if (name && *name) {
@@ -1791,8 +1807,10 @@ int GetAppConfigPath(char *path, size_t size, const char *name)
 
 char *GetAppConfigPathPtr(const char *name)
 {
+#ifdef OBS_RUST_VERSION
 	const std::string relativePath = AppConfigRelativePath(name);
 	name = relativePath.c_str();
+#endif
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		char path[512];

@@ -115,6 +115,13 @@ build() {
 
   if (( debug )) cmake_args+=(--debug-output)
 
+  if [[ -n "${ENABLE_RUST_LIBOBS:-}" ]] {
+    case ${ENABLE_RUST_LIBOBS} {
+      ON|OFF) cmake_args+=(-DENABLE_RUST_LIBOBS:BOOL=${ENABLE_RUST_LIBOBS}) ;;
+      *) log_error "ENABLE_RUST_LIBOBS must be ON or OFF"; return 2 ;;
+    }
+  }
+
   case ${target} {
     macos-*)
       cmake_args+=(
@@ -200,9 +207,13 @@ build() {
         } else {
           run_xcodebuild ${build_args}
 
-          rm -rf OBS.app
-          mkdir OBS.app
-          ditto frontend/${config}/OBS.app OBS.app
+          local bundle_name=OBS
+          if grep -q '^ENABLE_RUST_LIBOBS:BOOL=ON$' CMakeCache.txt; then
+            bundle_name=OBS-Studio-Rust
+          fi
+          rm -rf "${bundle_name}.app"
+          mkdir "${bundle_name}.app"
+          ditto "frontend/${config}/${bundle_name}.app" "${bundle_name}.app"
         }
       }
       popd
@@ -216,7 +227,7 @@ build() {
       )
       # The Rust build of libobs (obs-rust/obs-studio#140): CI sets
       # ENABLE_RUST_LIBOBS=ON for the Rust variant of the Ubuntu job.
-      if [[ ${ENABLE_RUST_LIBOBS:-OFF} == ON ]] cmake_args+=(-DENABLE_RUST_LIBOBS:BOOL=ON)
+      if [[ ${ENABLE_RUST_LIBOBS:-OFF} == ON ]] cmake_args+=(-DCMAKE_INSTALL_PREFIX:PATH=/usr)
 
       cmake_build_args+=(build_${target%%-*} --config ${config} --parallel)
       cmake_install_args+=(build_${target%%-*} --prefix ${project_root}/build_${target%%-*}/install/${config})

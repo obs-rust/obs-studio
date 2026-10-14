@@ -124,7 +124,11 @@ package() {
   }
 
   if [[ ${host_os} == macos ]] {
-    if [[ ! -d build_macos/OBS.app ]] {
+    local bundle_name=OBS
+    if grep -q '^ENABLE_RUST_LIBOBS:BOOL=ON$' build_macos/CMakeCache.txt; then
+      bundle_name=OBS-Studio-Rust
+    fi
+    if [[ ! -d build_macos/${bundle_name}.app ]] {
       log_error 'No application bundle found. Run the build script to create a valid application bundle.'
       return 0
     }
@@ -149,8 +153,8 @@ package() {
       cp ${project_root}/cmake/macos/resources/AppIcon.icns obs-studio/.VolumeIcon.icns
       ln -s /Applications obs-studio/Applications
 
-      mkdir -p obs-studio/OBS.app
-      ditto OBS.app obs-studio/OBS.app
+      mkdir -p "obs-studio/${bundle_name}.app"
+      ditto "${bundle_name}.app" "obs-studio/${bundle_name}.app"
 
       local -i _status=0
 
@@ -190,7 +194,7 @@ package() {
     } else {
       log_group "Archiving obs-studio..."
       pushd build_macos
-      XZ_OPT=-T0 tar -cvJf ${output_name}.tar.xz OBS.app
+      XZ_OPT=-T0 tar -cvJf ${output_name}.tar.xz "${bundle_name}.app"
       popd
     }
 

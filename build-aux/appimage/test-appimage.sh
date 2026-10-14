@@ -42,11 +42,11 @@ unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS PIPEWIRE_REMOTE PIPEWIRE_
 
 APPIMAGE="$(realpath "$1")"
 OUT="$(realpath -m "${2:-.}")"
-USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile>"
+USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile|saved-profile-custom|saved-profile-existing>"
 TESTKIT="$(realpath "${3:?$USAGE}")"
 SCENARIO="${4:?$USAGE}"
 case "$SCENARIO" in
-bundle | first-start | probes | saved-profile) ;;
+bundle | first-start | probes | saved-profile | saved-profile-custom | saved-profile-existing) ;;
 *)
     echo "::error::unknown scenario $SCENARIO; $USAGE"
     exit 1
@@ -56,6 +56,9 @@ HERE_DIR="$(dirname "$(realpath "$0")")"
 mkdir -p "$OUT"
 cd "$(mktemp -d)"
 FAILED=()
+GUI_NAME=obs
+CONFIG_NAME=obs-studio
+INSTANCE_PREFIX=@/com/obsproject
 fail() {
     echo "::error::$*"
     FAILED+=("$*")
@@ -103,7 +106,7 @@ finish() {
     for _ in $(seq 1 20); do
         left=""
         for p in "${OWN_PIDS[@]}"; do alive "$p" && left="$left $p"; done
-        for p in $(ps -eo pid=,comm= | awk '$2 == "obs" { print $1 }'); do alive "$p" && left="$left $p"; done
+        for p in $(obs_processes); do alive "$p" && left="$left $p"; done
         [ -z "$left" ] && break
         sleep 0.5
     done
@@ -112,7 +115,7 @@ finish() {
         ps -o pid,stat,comm,args -p "$(echo $left | tr ' ' ,)" || true
         fail "processes of the $SCENARIO scenario were still running 10 s after SIGTERM"
     fi
-    if grep '@/com/obsproject' /proc/net/unix 2>/dev/null; then
+    if grep -F "$INSTANCE_PREFIX" /proc/net/unix 2>/dev/null; then
         fail "an OBS instance socket was still open after the $SCENARIO scenario"
     fi
     if [ "${#FAILED[@]}" -ne 0 ]; then
@@ -161,17 +164,24 @@ require_no_crash_report() {
 # An OBS already running here would make the next one stop at its "already
 # running" dialog (it counts the "@/com/obsproject" sockets in /proc/net/unix).
 require_no_obs_running() {
-    if grep '@/com/obsproject' /proc/net/unix 2>/dev/null; then
+    if grep -F "$INSTANCE_PREFIX" /proc/net/unix 2>/dev/null; then
         ps -eo pid,ppid,stat,comm,args 2>&1 | head -40
         fail "an OBS is already running in this container, so the $SCENARIO scenario cannot start one"
         finish
     fi
 }
+obs_processes() {
+    local p
+    for p in $(ps -eo pid=); do
+        [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$APPDIR/usr/bin/$GUI_NAME" ] && echo "$p"
+    done
+    return 0
+}
 # The obs process among the descendants of $1 (AppRun runs it as a child).
 obs_pid_of() {
     local p
     for p in $(descendants "$1"); do
-        [ "$(cat "/proc/$p/comm" 2>/dev/null)" = obs ] && { echo "$p"; return; }
+        [ "$(readlink "/proc/$p/exe" 2>/dev/null)" = "$APPDIR/usr/bin/$GUI_NAME" ] && { echo "$p"; return; }
     done
     return 0
 }
@@ -270,6 +280,22 @@ fi
 "$APPIMAGE" --appimage-extract >/dev/null
 APPDIR="$PWD/squashfs-root"
 LOADER="$APPDIR/lib64/ld-linux-x86-64.so.2"
+PACKAGE_DATA="$APPDIR/usr/share/obs"
+PACKAGE_MODULES="$APPDIR/usr/lib/obs-modules"
+if [[ "$VERSION_OUT" == OBS-Studio-Rust* ]]; then
+    GUI_NAME=obs-studio-rust-gui
+    CONFIG_NAME=obs-studio-rust
+    INSTANCE_PREFIX=@/io/github/obs_rust/OBSStudioRust
+    PACKAGE_DATA="$APPDIR/usr/share/obs-studio-rust"
+    PACKAGE_MODULES="$APPDIR/usr/lib/obs-studio-rust/obs-modules"
+    ID=io.github.obs_rust.OBSStudioRust
+    [ -f "$APPDIR/$ID.desktop" ] || fail "Rust desktop identity is missing"
+    [ -f "$APPDIR/usr/bin/$GUI_NAME" ] || fail "Rust GUI executable is missing"
+    grep -Fxq "Exec=$GUI_NAME" "$APPDIR/$ID.desktop" || fail "Rust desktop starts the wrong executable"
+    grep -Fxq "Icon=$ID" "$APPDIR/$ID.desktop" || fail "Rust desktop shares its icon identity"
+    [ -f "$APPDIR/usr/share/metainfo/$ID.metainfo.xml" ] || fail "Rust metainfo identity is missing"
+    [ "${#FAILED[@]}" -eq 0 ] || finish
+fi
 # The C and C++ runtime is bundled in glibc/, outside usr/lib, so that AppRun can
 # use the host's newer one instead (obs-rust/obs-studio#621). Probes that run a
 # bundled ELF file with the bundled loader directly are given it explicitly.
@@ -292,10 +318,10 @@ host_glibc_is_newer() {
 install -m755 "$TESTKIT" "$APPDIR/usr/bin/obs-appimage-testkit"
 
 # The modules the build installed (assemble-appdir.sh records them).
-INVENTORY="$APPDIR/usr/share/obs/appimage-modules.txt"
+INVENTORY="$PACKAGE_DATA/appimage-modules.txt"
 if [ ! -f "$INVENTORY" ]; then
     echo "::warning::no module inventory (built before obs-rust/obs-studio#426); using the modules present"
-    find "$APPDIR/usr/lib/obs-modules" -name '*.so' -printf '%f\n' | sort >"$PWD/modules.txt"
+    find "$PACKAGE_MODULES" -name '*.so' -printf '%f\n' | sort >"$PWD/modules.txt"
     INVENTORY="$PWD/modules.txt"
 fi
 
@@ -352,7 +378,7 @@ if [ "$SCENARIO" = bundle ]; then
         for lib in libm.so.6 libmvec.so.1 librt.so.1 libpthread.so.0 libdl.so.2 libutil.so.1 \
             libanl.so.1 libresolv.so.2 libnss_files.so.2 libnss_dns.so.2; do
             out="$(LD_TRACE_LOADED_OBJECTS=1 LD_WARN=yes LD_BIND_NOW=yes LD_PRELOAD="$lib" \
-                "$LOADER" "${LOADER_ARGS[@]}" "$APPDIR/usr/bin/obs" 2>&1 || true)"
+                "$LOADER" "${LOADER_ARGS[@]}" "$APPDIR/usr/bin/$GUI_NAME" 2>&1 || true)"
             where="$(awk -v l="$lib" '$1 == l && $2 == "=>" {print $3}' <<<"$out")"
             [ "$where" = not ] && where="nothing (not found)"
             if [[ "$where" != "$APPDIR"/* && "$where" != /tmp/.obs-rust-appimage-*/lib/* ]]; then
@@ -364,7 +390,7 @@ if [ "$SCENARIO" = bundle ]; then
     fi
     # The modules the build installed are all there.
     while read -r m; do
-        [ -n "$(find "$APPDIR/usr/lib/obs-modules" -name "$m" -print -quit)" ] || fail "module $m from the build is not in the AppImage"
+        [ -n "$(find "$PACKAGE_MODULES" -name "$m" -print -quit)" ] || fail "module $m from the build is not in the AppImage"
     done <"$INVENTORY"
     echo "$(wc -l <"$INVENTORY") modules in the build inventory"
     echo "::endgroup::"
@@ -412,7 +438,7 @@ if [ "$SCENARIO" = first-start ]; then
     require_no_obs_running
     echo "::group::2. First start with a new profile"
     export HOME="$PWD/home-new"
-    mkdir -p "$HOME/.config/obs-studio" # OBS only creates one directory level at a time
+    mkdir -p "$HOME/.config/$CONFIG_NAME" # OBS only creates one directory level at a time
     LD_LIBRARY_PATH="$HOSTILE_LD" dbus-run-session -- "$APPDIR/AppRun" --disable-shutdown-check --verbose >"$OUT/obs-stdout.log" 2>&1 &
     APP_PID=$!
     OWN_PIDS+=("$APP_PID")
@@ -425,7 +451,7 @@ if [ "$SCENARIO" = first-start ]; then
         # A real window owned by OBS (not just the window manager's own chrome).
         # (capture first: `grep -q` closing the pipe early fails the pipeline under pipefail)
         WINDOWS="$(xwininfo -tree -root 2>/dev/null || true)"
-        if grep -qE '"OBS [0-9]|"obs"' <<<"$WINDOWS"; then
+        if grep -qE '"OBS-Studio-Rust|\"OBS [0-9]|"obs"' <<<"$WINDOWS"; then
             WINDOW_FOUND=1
             import -window root "$OUT/screenshot.png"
             STDDEV="$(identify -format '%[fx:standard_deviation]' "$OUT/screenshot.png")"
@@ -484,7 +510,7 @@ if [ "$SCENARIO" = first-start ]; then
     if alive "$APP_PID"; then
         quit_obs "$APP_PID" "OBS on its first start" "$OUT/obs-stdout.log"
     fi
-    LOG="$(find "$HOME/.config/obs-studio/logs" -type f 2>/dev/null | sort | tail -1)"
+    LOG="$(find "$HOME/.config/$CONFIG_NAME/logs" -type f 2>/dev/null | sort | tail -1)"
     [ -n "$LOG" ] && cp "$LOG" "$OUT/obs.log"
     echo "::endgroup::"
     if [ -n "$LOG" ]; then
@@ -726,6 +752,49 @@ cat >"$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json" <<'EOF'
 }
 EOF
 
+# Rust starts from an owned upstream fixture, exercising migration before
+# recording. The other two saved-profile scenarios cover independently selected
+# Locations roots and an existing Rust config that must win over upstream.
+LEGACY_CONFIG="$XDG_CONFIG_HOME/obs-studio"
+CUSTOM_SOURCE_ROOTS=()
+if [ "$CONFIG_NAME" = obs-studio-rust ]; then
+    cat >"$LEGACY_CONFIG/global.ini" <<EOF
+[General]
+LastVersion=4294967295
+EOF
+    mkdir -p "$LEGACY_CONFIG/plugin_manager"
+    printf 'preserved plugin settings\n' >"$LEGACY_CONFIG/plugin_manager/migration-proof.txt"
+    if [ "$SCENARIO" = saved-profile-custom ]; then
+        for area in configuration profiles scenes plugins; do
+            mkdir -p "$PWD/locations/$area/obs-studio"
+            CUSTOM_SOURCE_ROOTS+=("$PWD/locations/$area/obs-studio")
+        done
+        mkdir -p "$PWD/locations/profiles/obs-studio/basic" "$PWD/locations/scenes/obs-studio/basic"
+        mv "$LEGACY_CONFIG/user.ini" "$PWD/locations/configuration/obs-studio/user.ini"
+        mv "$LEGACY_CONFIG/basic/profiles" "$PWD/locations/profiles/obs-studio/basic/profiles"
+        mv "$LEGACY_CONFIG/basic/scenes" "$PWD/locations/scenes/obs-studio/basic/scenes"
+        mv "$LEGACY_CONFIG/plugin_manager" "$PWD/locations/plugins/obs-studio/plugin_manager"
+        cat >>"$LEGACY_CONFIG/global.ini" <<EOF
+[Locations]
+Configuration=$PWD/locations/configuration
+Profiles=$PWD/locations/profiles
+SceneCollections=$PWD/locations/scenes
+PluginManagerSettings=$PWD/locations/plugins
+EOF
+    elif [ "$SCENARIO" = saved-profile-existing ]; then
+        cp -a "$LEGACY_CONFIG" "$XDG_CONFIG_HOME/obs-studio-rust"
+        printf '{"name":"Upstream empty","sources":[]}\n' >"$LEGACY_CONFIG/basic/scenes/Test.json"
+    fi
+fi
+source_snapshot() {
+    local root file
+    for root in "$LEGACY_CONFIG" "${CUSTOM_SOURCE_ROOTS[@]}"; do
+        find "$root" -printf '%y %p\n' | sort
+        while IFS= read -r -d '' file; do sha256sum "$file"; done < <(find "$root" -type f -print0 | sort -z)
+    done
+}
+source_snapshot >"$OUT/upstream-before.txt"
+
 require_no_obs_running
 LD_LIBRARY_PATH="$HOSTILE_LD" "$APPDIR/AppRun" --disable-shutdown-check --verbose \
     --profile Test --collection Test --startrecording >"$OUT/obs-profile-stdout.log" 2>&1 &
@@ -760,7 +829,42 @@ else
 fi
 echo "::endgroup::"
 
-LOG="$(find "$XDG_CONFIG_HOME/obs-studio/logs" -type f 2>/dev/null | sort | tail -1)"
+if [ "$CONFIG_NAME" = obs-studio-rust ]; then
+    source_snapshot >"$OUT/upstream-after.txt"
+    cmp "$OUT/upstream-before.txt" "$OUT/upstream-after.txt" || fail "the Rust frontend changed original settings"
+    RUST_CONFIG="$XDG_CONFIG_HOME/obs-studio-rust"
+    PROFILE_CONFIG="$RUST_CONFIG"
+    SCENE_CONFIG="$RUST_CONFIG"
+    PLUGIN_CONFIG="$RUST_CONFIG"
+    if [ "$SCENARIO" = saved-profile-custom ]; then
+        PROFILE_CONFIG="$PWD/locations/profiles/obs-studio-rust"
+        SCENE_CONFIG="$PWD/locations/scenes/obs-studio-rust"
+        PLUGIN_CONFIG="$PWD/locations/plugins/obs-studio-rust"
+    fi
+    [ -f "$PROFILE_CONFIG/basic/profiles/Test/basic.ini" ] || fail "the selected profile was not imported"
+    [ -f "$SCENE_CONFIG/basic/scenes/Test.json" ] || fail "the selected scenes were not imported"
+    grep -Fxq 'preserved plugin settings' "$PLUGIN_CONFIG/plugin_manager/migration-proof.txt" || fail "plugin-manager settings were not imported"
+    if [ "$SCENARIO" != saved-profile-existing ]; then
+        grep -Fxq "RustConfigImportedFrom=$LEGACY_CONFIG" "$RUST_CONFIG/global.ini" || fail "first-run migration was not recorded"
+        for key in Configuration Profiles SceneCollections PluginManagerSettings; do
+            expected="$XDG_CONFIG_HOME"
+            if [ "$SCENARIO" = saved-profile-custom ]; then
+                case "$key" in
+                    Configuration) expected="$PWD/locations/configuration" ;;
+                    Profiles) expected="$PWD/locations/profiles" ;;
+                    SceneCollections) expected="$PWD/locations/scenes" ;;
+                    PluginManagerSettings) expected="$PWD/locations/plugins" ;;
+                esac
+            fi
+            grep -Fxq "$key=$expected" "$RUST_CONFIG/global.ini" || fail "the copied $key location lost its storage root"
+        done
+    else
+        grep -q '^RustConfigImportedFrom=' "$RUST_CONFIG/global.ini" && fail "existing Rust settings were imported over"
+    fi
+    echo "Rust config isolation verified: $SCENARIO; original settings unchanged"
+fi
+
+LOG="$(find "$XDG_CONFIG_HOME/$CONFIG_NAME/logs" -type f 2>/dev/null | sort | tail -1)"
 if [ -n "$LOG" ]; then
     cp "$LOG" "$OUT/obs-profile.log"
     echo "::group::OBS log (saved profile)"

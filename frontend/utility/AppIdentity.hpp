@@ -7,10 +7,17 @@
 #define OBS_CONFIG_DIRECTORY "obs-studio-rust"
 #define OBS_DESKTOP_ID "io.github.obs_rust.OBSStudioRust"
 #define OBS_RUN_ONCE_NAME "OBSStudioRustCore"
+#define OBS_PORTABLE_RUN_ONCE_NAME "OBSStudioRustPortable"
+#define OBS_INSTANCE_SOCKET_PREFIX "/io/github/obs_rust/OBSStudioRust"
+#define OBS_WINDOWS_APP_ID L"io.github.obs_rust.OBSStudioRust"
+#define OBS_BSD_THREAD_NAME "OBS Rust runonce"
 #else
 #define OBS_CONFIG_DIRECTORY "obs-studio"
 #define OBS_DESKTOP_ID "com.obsproject.Studio"
 #define OBS_RUN_ONCE_NAME "OBSStudioCore"
+#define OBS_PORTABLE_RUN_ONCE_NAME "OBSStudioPortable"
+#define OBS_INSTANCE_SOCKET_PREFIX "/com/obsproject"
+#define OBS_BSD_THREAD_NAME "OBS runonce"
 #endif
 
 // Callers use the historical relative names; the frontend owns their identity.

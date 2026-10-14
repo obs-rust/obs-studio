@@ -55,6 +55,7 @@ void
 CheckIfAlreadyRunning(bool &already_running);
 
 #ifdef _WIN32
+bool InitializeAppIdentity();
 uint32_t GetWindowsVersion();
 uint32_t GetWindowsBuild();
 void SetProcessPriority(const char *priority);

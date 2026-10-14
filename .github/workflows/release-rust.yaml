@@ -119,18 +119,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # The build scripts leave ENABLE_RUST_LIBOBS at its default (OFF), and
-      # Build-Windows.ps1 does not read it from the environment. Flip the
-      # default, as obs-rust/obs-smoke does for all three platforms.
-      - name: Enable Rust libobs 🦀
-        shell: bash
-        run: |
-          set -euo pipefail
-          sed -i.bak 's/option(ENABLE_RUST_LIBOBS \(".*"\) OFF)/option(ENABLE_RUST_LIBOBS \1 ON)/' libobs/CMakeLists.txt
-          rm libobs/CMakeLists.txt.bak
-          grep -n 'option(ENABLE_RUST_LIBOBS' libobs/CMakeLists.txt | grep -q ' ON)'
-          git update-index --assume-unchanged libobs/CMakeLists.txt
-
       - name: Select Xcode 🍏
         if: matrix.os == 'macos'
         run: |
@@ -176,6 +164,7 @@ jobs:
       - name: Build OBS-Studio-Rust 🧱
         uses: ./.github/actions/build-obs
         with:
+          rustLibobs: 'ON'
           target: ${{ matrix.target }}
           config: RelWithDebInfo
           codesign: ${{ matrix.os == 'macos' && steps.codesign.outputs.haveCodesignIdent == 'true' }}
@@ -223,8 +212,9 @@ jobs:
           # The build must name itself OBS-Studio-Rust <full release version> (#112, #631).
           want="OBS-Studio-Rust $VERSION (based on OBS "
           if [ "$OS" = linux ]; then
+            uv run --no-project ci/app_identity_check.py deb "$src"
             prefix=build_ubuntu/install/RelWithDebInfo
-            v=$(LD_LIBRARY_PATH="$prefix/lib:$prefix/lib/x86_64-linux-gnu" "$prefix/bin/obs" --version)
+            v=$(LD_LIBRARY_PATH="$prefix/lib:$prefix/lib/x86_64-linux-gnu" "$prefix/bin/obs-studio-rust-gui" --version)
             echo "$v"
             [[ "$v" == "$want"* ]] || { echo "::error::unexpected --version: $v (want $want...)"; exit 1; }
           fi
@@ -236,7 +226,8 @@ jobs:
             mnt=$(mktemp -d)
             hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$src"
             trap 'hdiutil detach "$mnt" -force >/dev/null 2>&1 || true' EXIT
-            app="$mnt/OBS.app"
+            app="$mnt/OBS-Studio-Rust.app"
+            uv run --no-project ci/app_identity_check.py bundle "$app"
             for key in CFBundleShortVersionString CFBundleVersion; do
               got=$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/Contents/Info.plist")
               echo "$key=$got"
@@ -252,7 +243,7 @@ jobs:
             echo "volume: $vol"
             [[ "$vol" == "OBS-Studio-Rust $VERSION "* ]] || { echo "::error::DMG volume is '$vol'"; exit 1; }
             if [ "$TARGET" = arm64 ]; then
-              v=$("$app/Contents/MacOS/OBS" --version)
+              v=$("$app/Contents/MacOS/OBS-Studio-Rust" --version)
               echo "$v"
               [[ "$v" == "$want"* ]] || { echo "::error::unexpected --version: $v (want $want...)"; exit 1; }
             fi
@@ -286,10 +277,18 @@ jobs:
       contents: write
 
   windows_arm64_smoke:
-    name: Launch packaged Windows arm64 🧪
+    name: Launch packaged Windows ${{ matrix.target }} 🧪
     needs: [check, build]
     if: always() && needs.check.result == 'success' && needs.check.outputs.skip != 'true'
-    runs-on: windows-11-vs2026-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: arm64
+            runner: windows-11-vs2026-arm
+          - target: x64
+            runner: windows-2025-vs2026
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -298,30 +297,33 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: obs-studio-rust-windows-arm64
-          path: arm64-package
+          name: obs-studio-rust-windows-${{ matrix.target }}
+          path: windows-package
       - name: Reload saved capture profile and reject a missing camera plugin
         shell: pwsh
         env:
           VERSION: ${{ needs.check.outputs.version }}
+          TARGET: ${{ matrix.target }}
         run: |
-          $Zip = Get-ChildItem 'arm64-package/*-windows-arm64.zip' | Select-Object -First 1
-          if ( -not $Zip ) { throw 'Windows arm64 release package is missing' }
+          $Zip = Get-ChildItem "windows-package/*-windows-$env:TARGET.zip" | Select-Object -First 1
+          if ( -not $Zip ) { throw 'Windows release package is missing' }
           uv run --no-project ci/windows_zip_check.py check $Zip.FullName --run --expect-version $env:VERSION
           if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
-          $PackageRoot = Join-Path $env:RUNNER_TEMP 'obs-arm64-package'
+          $PackageRoot = Join-Path $env:RUNNER_TEMP "obs-$env:TARGET-package"
           Expand-Archive -LiteralPath $Zip.FullName -DestinationPath $PackageRoot
           $App = Join-Path $PackageRoot 'bin/64bit/obs64.exe'
-          $Config = Join-Path $env:APPDATA 'obs-studio'
-          uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch arm64
-          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          $Config = Join-Path $env:APPDATA 'obs-studio-rust'
+          foreach ( $Mode in @('fresh', 'migrate-default', 'migrate-custom', 'existing') ) {
+            uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET --config-mode $Mode
+            if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          }
 
           # Prove this check detects a capture module removed from the real
           # package, not merely that an empty frontend can start.
           $CameraDll = Get-ChildItem (Join-Path $PackageRoot 'core') -Recurse -Filter 'win-dshow.dll'
           if ( @($CameraDll).Count -ne 1 ) { throw 'Expected one packaged DirectShow camera module' }
           Move-Item -LiteralPath $CameraDll.FullName -Destination "$($CameraDll.FullName).removed-for-test"
-          $Failure = uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch arm64 2>&1
+          $Failure = uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET 2>&1
           $FailedExit = $LASTEXITCODE
           $Failure | Write-Output
           if ( $FailedExit -eq 0 -or "$Failure" -notmatch 'capture plugins are missing.*dshow_input' ) {
@@ -367,12 +369,13 @@ jobs:
           mkdir "$Root" "$Mount"
           hdiutil attach -nobrowse -readonly -mountpoint "$Mount" "$Dmg"
           trap 'hdiutil detach "$Mount" -force >/dev/null 2>&1 || true' EXIT
-          App="$Root/OBS.app"
-          ditto "$Mount/OBS.app" "$App"
-          lipo "$App/Contents/MacOS/OBS" -verify_arch "$TARGET"
+          App="$Root/OBS-Studio-Rust.app"
+          ditto "$Mount/OBS-Studio-Rust.app" "$App"
+          lipo "$App/Contents/MacOS/OBS-Studio-Rust" -verify_arch "$TARGET"
           codesign --verify --deep --strict "$App"
           codesign -dvv "$App" 2>&1
           Plist="$App/Contents/Info.plist"
+          uv run --no-project ci/app_identity_check.py bundle "$App"
           [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$Plist")" = "${VERSION%%-*}" ]
           Stamp="${VERSION##*.}"
           Build="${Stamp:0:4}.$((10#${Stamp:4:2})).$((10#${Stamp:6:2}))"
@@ -388,8 +391,10 @@ jobs:
           if xattr -p com.apple.quarantine "$App" >/dev/null 2>&1; then
             echo '::error::documented quarantine removal did not clear the app attribute'; exit 1
           fi
-          uv run --no-project test/packaged-startup.py --app "$App" \
-            --config-dir "$HOME/Library/Application Support/obs-studio" --platform macos
+          for mode in fresh migrate-default migrate-custom existing; do
+            uv run --no-project test/packaged-startup.py --app "$App" \
+              --config-dir "$HOME/Library/Application Support/obs-studio-rust" --platform macos --config-mode "$mode"
+          done
 
   # The release gate: every job the dev cycle skips (#436), at this commit.
   gate:
@@ -468,7 +473,7 @@ jobs:
           cat >notes.md <<EOF
           Daily beta of OBS-Studio-Rust $VERSION: OBS Studio built with \`ENABLE_RUST_LIBOBS=ON\`, so the ported libobs internals run from Rust. Built from [\`${SHA:0:9}\`](https://github.com/$GITHUB_REPOSITORY/commit/$SHA).
 
-          **Daily beta.** macOS packages are signed and notarized when the project's release credentials are configured. For an unnotarized download, copy OBS.app to Applications and try opening it, then choose **System Settings → Privacy & Security → Open Anyway**. For a download you trust, the Terminal alternative is \`xattr -dr com.apple.quarantine /Applications/OBS.app\`; it removes quarantine from that app only. See [Apple's guidance](https://support.apple.com/102445).
+          **Daily beta.** macOS packages are signed and notarized when the project's release credentials are configured. For an unnotarized download, copy OBS-Studio-Rust.app to Applications and try opening it, then choose **System Settings → Privacy & Security → Open Anyway**. For a download you trust, the Terminal alternative is \`xattr -dr com.apple.quarantine /Applications/OBS-Studio-Rust.app\`; it removes quarantine from that app only. See [Apple's guidance](https://support.apple.com/102445).
 
           Windows: SmartScreen will warn. Linux: \`sudo apt install ./OBS-Studio-Rust-$VERSION-linux-x86_64.deb\` (Ubuntu 26.04), or the AppImage for any distribution: \`chmod +x OBS-Studio-Rust-$VERSION-linux-x86_64.AppImage\` and run it.
 

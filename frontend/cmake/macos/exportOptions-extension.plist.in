@@ -6,7 +6,7 @@
 	<string>developer-id</string>
 	<key>provisioningProfiles</key>
 	<dict>
-		<key>com.obsproject.obs-studio</key>
+		<key>${OBS_MACOS_BUNDLE_ID}</key>
 		<string>${OBS_PROVISIONING_PROFILE}</string>
 	</dict>
 	<key>signingStyle</key>

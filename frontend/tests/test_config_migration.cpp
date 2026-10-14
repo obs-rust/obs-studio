@@ -48,33 +48,41 @@ int main(int argc, char **argv)
 	const auto source = root / "obs-studio";
 	const auto destination = root / "obs-studio-rust";
 	try {
-        if (mode == "locations" || mode == "locations-existing" || mode == "locations-failure") {
-            const auto selected = root / "selected";
-            write(source / "global.ini", "original global");
-            write(selected / "obs-studio/user.ini", "selected configuration");
-            if (mode == "locations-existing")
-                write(selected / "obs-studio-rust/user.ini", "existing selected Rust");
-            bool failed = false;
-            try {
-                MigrateAppConfigLocations(root, {root, selected}, [&](const fs::path &copy) {
-                    if (mode == "locations-failure")
-                        throw std::runtime_error("injected failure after other roots were copied");
-                    write(copy / "global.ini", selected.u8string());
-                });
-            } catch (const std::runtime_error &) { failed = true; }
-            if (mode == "locations-failure") {
-                require(failed && !fs::exists(destination) && !fs::exists(selected / "obs-studio-rust"),
-                        "failed multi-root import left a published config");
-            } else {
-                const auto expected = mode == "locations-existing" ? "existing selected Rust" : "selected configuration";
-                require(!failed && read(selected / "obs-studio-rust/user.ini") == expected,
-                        "selected storage root was lost or existing Rust settings overwritten");
-                require(read(destination / "global.ini") == selected.u8string(), "storage choice was not preserved");
-            }
-            require(read(source / "global.ini") == "original global", "original global modified");
-            require(read(selected / "obs-studio/user.ini") == "selected configuration", "original selected config modified");
-            return 0;
-        }
+		if (mode == "locations" || mode == "locations-existing" || mode == "locations-failure") {
+			const auto selected = root / "selected";
+			write(source / "global.ini", "original global");
+			write(selected / "obs-studio/user.ini", "selected configuration");
+			if (mode == "locations-existing") {
+				write(selected / "obs-studio-rust/user.ini", "existing selected Rust");
+			}
+			bool failed = false;
+			try {
+				MigrateAppConfigLocations(root, {root, selected}, [&](const fs::path &copy) {
+					if (mode == "locations-failure") {
+						throw std::runtime_error(
+							"injected failure after other roots were copied");
+					}
+					write(copy / "global.ini", selected.u8string());
+				});
+			} catch (const std::runtime_error &) {
+				failed = true;
+			}
+			if (mode == "locations-failure") {
+				require(failed && !fs::exists(destination) && !fs::exists(selected / "obs-studio-rust"),
+					"failed multi-root import left a published config");
+			} else {
+				const auto expected = mode == "locations-existing" ? "existing selected Rust"
+										   : "selected configuration";
+				require(!failed && read(selected / "obs-studio-rust/user.ini") == expected,
+					"selected storage root was lost or existing Rust settings overwritten");
+				require(read(destination / "global.ini") == selected.u8string(),
+					"storage choice was not preserved");
+			}
+			require(read(source / "global.ini") == "original global", "original global modified");
+			require(read(selected / "obs-studio/user.ini") == "selected configuration",
+				"original selected config modified");
+			return 0;
+		}
 		if (mode != "absent") {
 			write(source / "global.ini", "upstream global");
 			write(source / "user.ini", "upstream user");

@@ -82,7 +82,7 @@ void CheckIfAlreadyRunning(bool &already_running)
 	memset(&bindInfo, 0, sizeof(sockaddr_un));
 	bindInfo.sun_family = AF_LOCAL;
 	auto bindInfoStrlen = snprintf(bindInfo.sun_path + 1, sizeof(bindInfo.sun_path) - 1, "%s %d %s",
-				       "/com/obsproject", getpid(), App()->GetVersionString().c_str());
+				       OBS_INSTANCE_SOCKET_PREFIX, getpid(), App()->GetVersionString().c_str());
 
 	int bindErr = bind(uniq, (struct sockaddr *)&bindInfo, sizeof(sa_family_t) + 1 + bindInfoStrlen);
 	already_running = bindErr == 0 ? 0 : 1;
@@ -103,7 +103,7 @@ void CheckIfAlreadyRunning(bool &already_running)
 	while (getdelim(&line, &n, ' ', fp) != EOF) {
 		line[strcspn(line, "\n")] = '\0';
 		if (*line == '@') {
-			if (strstr(line, "@/com/obsproject") != NULL) {
+			if (strstr(line, "@" OBS_INSTANCE_SOCKET_PREFIX) != NULL) {
 				++obsCnt;
 			}
 		}
@@ -143,11 +143,11 @@ struct RunOnce {
 		}
 	}
 } RO;
-const char *RunOnce::thr_name = "OBS runonce";
+const char *RunOnce::thr_name = OBS_BSD_THREAD_NAME;
 
 void CheckIfAlreadyRunning(bool &already_running)
 {
-	std::string tmpfile_name = "/tmp/obs-studio.lock." + std::to_string(geteuid());
+	std::string tmpfile_name = "/tmp/" OBS_CONFIG_DIRECTORY ".lock." + std::to_string(geteuid());
 	int fd = open(tmpfile_name.c_str(), O_RDWR | O_CREAT | O_EXLOCK, 0600);
 	if (fd == -1) {
 		already_running = true;

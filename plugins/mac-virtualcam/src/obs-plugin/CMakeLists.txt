@@ -20,3 +20,5 @@ set_target_properties_obs(
              XCODE_ATTRIBUTE_CLANG_ENABLE_MODULES YES
              XCODE_ATTRIBUTE_CLANG_MODULES_AUTOLINK YES
 )
+
+target_compile_definitions(mac-virtualcam PRIVATE OBS_CAMERA_EXTENSION_ID="${OBS_CAMERA_EXTENSION_ID}")

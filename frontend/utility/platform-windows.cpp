@@ -28,11 +28,30 @@
 #include <mmdeviceapi.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <shobjidl.h>
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 using namespace std;
+
+bool InitializeAppIdentity()
+{
+#ifdef OBS_RUST_VERSION
+	if (FAILED(SetCurrentProcessExplicitAppUserModelID(OBS_WINDOWS_APP_ID))) {
+		return false;
+	}
+	PWSTR actual = nullptr;
+	HRESULT result = GetCurrentProcessExplicitAppUserModelID(&actual);
+	bool matches = SUCCEEDED(result) && actual && wcscmp(actual, OBS_WINDOWS_APP_ID) == 0;
+	CoTaskMemFree(actual);
+	if (!matches) {
+		return false;
+	}
+	blog(LOG_INFO, "Windows AppUserModelID verified: %s", OBS_DESKTOP_ID);
+#endif
+	return true;
+}
 
 extern bool portable_mode;
 extern int GetConfigPath(char *path, size_t size, const char *name);
@@ -313,7 +332,7 @@ RunOnceMutex CheckIfAlreadyRunning(bool &already_running)
 		*absPath = 0;
 		GetAppConfigPath(path, sizeof(path), "");
 		os_get_abs_path(path, absPath, sizeof(absPath));
-		name = "OBSStudioPortable";
+		name = OBS_PORTABLE_RUN_ONCE_NAME;
 		name += absPath;
 	}
 

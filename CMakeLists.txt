@@ -11,7 +11,10 @@ if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
   endif()
 endif()
 
+option(ENABLE_RUST_LIBOBS "Replace ported libobs internals with their Rust implementations" OFF)
+
 include(compilerconfig)
+include(app-identity)
 include(defaults)
 include(helpers)
 

@@ -320,7 +320,7 @@ jobs:
         run: |
           mkdir -p results pkgcache/apt pkgcache/lists pkgcache/dnf pkgcache/pacman
           status=0
-          for scenario in bundle first-start probes saved-profile; do
+          for scenario in bundle first-start probes saved-profile saved-profile-custom saved-profile-existing; do
             echo "::group::Scenario: $scenario"
             docker run --rm --cap-add SYS_PTRACE \
               ${{ matrix.image == 'debian:trixie-slim' && '-e HOSTILE_QT=1' || '' }} \
@@ -346,11 +346,13 @@ jobs:
           build-aux/appimage/verify-recording.sh --self-test
           # (test-appimage.sh allows a run without the test producers only on
           # Ubuntu 22.04, and fails anywhere else)
-          if [ -f results/saved-profile/recording-skipped.txt ]; then
-            echo "::notice::no recording on ${{ matrix.image }}: $(cat results/saved-profile/recording-skipped.txt)"
-          else
-            build-aux/appimage/verify-recording.sh results/saved-profile/recording.mkv
-          fi
+          for scenario in saved-profile saved-profile-custom saved-profile-existing; do
+            if [ -f "results/$scenario/recording-skipped.txt" ]; then
+              echo "::notice::no recording on ${{ matrix.image }} ($scenario): $(cat "results/$scenario/recording-skipped.txt")"
+            else
+              build-aux/appimage/verify-recording.sh "results/$scenario/recording.mkv"
+            fi
+          done
 
       - name: Fix cache ownership
         if: always()

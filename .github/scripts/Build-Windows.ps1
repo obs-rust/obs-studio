@@ -50,6 +50,13 @@ function Build {
     Ensure-Location $ProjectRoot
 
     $CmakeArgs = @('--preset', "windows-ci-${Target}")
+    if ( $env:ENABLE_RUST_LIBOBS ) {
+        if ( $env:ENABLE_RUST_LIBOBS -cnotin @('ON', 'OFF') ) {
+            throw 'ENABLE_RUST_LIBOBS must be ON or OFF'
+        }
+        $CmakeArgs += "-DENABLE_RUST_LIBOBS:BOOL=$env:ENABLE_RUST_LIBOBS"
+    }
+
 
     $CmakeBuildArgs = @('--build')
     $CmakeInstallArgs = @()

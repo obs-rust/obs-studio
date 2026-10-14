@@ -88,9 +88,35 @@ MigrateAppConfig(const std::filesystem::path &source, const std::filesystem::pat
 
 // Import each selected storage root into its own Rust namespace. The primary
 // global config is published last, after its Locations are finalized.
-inline ConfigMigrationResult MigrateAppConfigLocations(
-    const std::filesystem::path &base, const std::vector<std::filesystem::path> &,
-    const std::function<void(const std::filesystem::path &)> &finalize)
+inline ConfigMigrationResult
+MigrateAppConfigLocations(const std::filesystem::path &base, const std::vector<std::filesystem::path> &selected,
+			  const std::function<void(const std::filesystem::path &)> &finalize)
 {
-    return MigrateAppConfig(base / "obs-studio", base / "obs-studio-rust", {}, finalize);
+	namespace fs = std::filesystem;
+	const auto primary = fs::canonical(base);
+	std::vector<fs::path> created;
+	try {
+		return MigrateAppConfig(base / "obs-studio", base / "obs-studio-rust", {}, [&](const fs::path &copy) {
+			for (const auto &root : selected) {
+				if (fs::canonical(root) == primary) {
+					continue;
+				}
+				const auto destination = root / "obs-studio-rust";
+				auto result =
+					MigrateAppConfig(root / "obs-studio", destination, {}, [](const fs::path &) {});
+				if (result == ConfigMigrationResult::Imported) {
+					created.push_back(destination);
+				}
+			}
+			finalize(copy);
+		});
+	} catch (...) {
+		// Only directories created by this transaction are rolled back.
+		// Existing Rust roots and all original settings are untouched.
+		for (auto it = created.rbegin(); it != created.rend(); ++it) {
+			std::error_code error;
+			fs::remove_all(*it, error);
+		}
+		throw;
+	}
 }

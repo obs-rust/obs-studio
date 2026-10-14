@@ -25,7 +25,11 @@ install(
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo"
 )
 
-install(FILES cmake/linux/com.obsproject.Studio.desktop DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
+configure_file(cmake/linux/com.obsproject.Studio.desktop "${OBS_DESKTOP_ID}.desktop" @ONLY)
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${OBS_DESKTOP_ID}.desktop"
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
 
 install(
   FILES cmake/linux/icons/obs-logo-128.png

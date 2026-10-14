@@ -28,7 +28,7 @@ on run (volumeName)
                 set arrangement to not arranged
             end tell
             set background picture of opts to file ".background:background.tiff"
-            set position of item "OBS.app" to {124, 180}
+            set position of item "@OBS_MACOS_BUNDLE_NAME@.app" to {124, 180}
             set position of item "Applications" to {416, 180}
             close
             open

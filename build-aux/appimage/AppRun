@@ -141,7 +141,7 @@ if [ -n "$OBS_APPIMAGE_DEBUG" ]; then
     if command -v gdb >/dev/null 2>&1; then
         exec gdb -q -batch -ex 'set pagination off' -ex 'handle SIGPIPE nostop noprint' -ex run \
             -ex 'echo \n== backtrace ==\n' -ex bt -ex 'thread apply all bt 30' \
-            --args "$HERE/usr/bin/obs" "$@"
+            --args "$HERE/usr/bin/@OBS_GUI_NAME@" "$@"
     fi
     echo "gdb not found; install it to get a backtrace" >&2
 fi
@@ -149,7 +149,7 @@ fi
 # Run OBS as a child (not exec) so that a crash can be reported instead of
 # vanishing as a bare "exited with status 11" from the desktop's launcher.
 started="$(date +%s)"
-"$HERE/usr/bin/obs" "$@" &
+"$HERE/usr/bin/@OBS_GUI_NAME@" "$@" &
 child=$!
 trap 'kill -TERM "$child" 2>/dev/null' TERM INT HUP
 wait "$child"
@@ -190,7 +190,7 @@ case "$rc" in
         echo "Restarting OBS under gdb to capture a backtrace..." >&2
         gdb -q -batch -ex 'set pagination off' -ex 'handle SIGPIPE nostop noprint' -ex run \
             -ex 'echo \n== backtrace ==\n' -ex bt -ex 'thread apply all bt 30' -ex 'info sharedlibrary' \
-            --args "$HERE/usr/bin/obs" "$@" >>"$report" 2>&1 </dev/null
+            --args "$HERE/usr/bin/@OBS_GUI_NAME@" "$@" >>"$report" 2>&1 </dev/null
         rc=$?
         echo "A backtrace (if it crashed again) was added to: $report" >&2
     else

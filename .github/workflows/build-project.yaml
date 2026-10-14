@@ -308,7 +308,7 @@ jobs:
         run: |
           : Smoke Test Rust libobs 🦀
           prefix="${GITHUB_WORKSPACE}/build_ubuntu/install/${{ needs.check-event.outputs.config }}"
-          version=$(LD_LIBRARY_PATH="${prefix}/lib:${prefix}/lib/x86_64-linux-gnu" "${prefix}/bin/obs" --version)
+          version=$(LD_LIBRARY_PATH="${prefix}/lib:${prefix}/lib/x86_64-linux-gnu" "${prefix}/bin/obs-studio-rust-gui" --version)
           echo "${version}"
           # Only an ENABLE_RUST_LIBOBS build names itself OBS-Studio-Rust (#112).
           [[ "${version}" == OBS-Studio-Rust* ]]

@@ -41,10 +41,10 @@ set(_obs_metainfo_version "${OBS_VERSION}")
 if(ENABLE_RUST_LIBOBS)
   set(OBS_VERSION "${OBS_RUST_VERSION}")
 endif()
-configure_file(cmake/linux/com.obsproject.Studio.metainfo.xml.in com.obsproject.Studio.metainfo.xml @ONLY)
+configure_file(cmake/linux/com.obsproject.Studio.metainfo.xml.in ${OBS_DESKTOP_ID}.metainfo.xml @ONLY)
 set(OBS_VERSION "${_obs_metainfo_version}")
 if(ENABLE_RUST_LIBOBS)
-  file(READ "${CMAKE_CURRENT_BINARY_DIR}/com.obsproject.Studio.metainfo.xml" _obs_metainfo)
+  file(READ "${CMAKE_CURRENT_BINARY_DIR}/${OBS_DESKTOP_ID}.metainfo.xml" _obs_metainfo)
   string(
     REPLACE
     "https://github.com/obsproject/obs-studio/releases/tag/${OBS_RUST_VERSION}"
@@ -52,36 +52,40 @@ if(ENABLE_RUST_LIBOBS)
     _obs_metainfo
     "${_obs_metainfo}"
   )
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/com.obsproject.Studio.metainfo.xml" "${_obs_metainfo}")
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${OBS_DESKTOP_ID}.metainfo.xml" "${_obs_metainfo}")
 endif()
 
 install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/com.obsproject.Studio.metainfo.xml"
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${OBS_DESKTOP_ID}.metainfo.xml"
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo"
 )
 
-install(FILES cmake/linux/com.obsproject.Studio.desktop DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
+configure_file(cmake/linux/com.obsproject.Studio.desktop "${OBS_DESKTOP_ID}.desktop" @ONLY)
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${OBS_DESKTOP_ID}.desktop"
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
 
 install(
   FILES cmake/linux/icons/obs-logo-128.png
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps"
-  RENAME com.obsproject.Studio.png
+  RENAME "${OBS_DESKTOP_ID}.png"
 )
 
 install(
   FILES cmake/linux/icons/obs-logo-256.png
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps"
-  RENAME com.obsproject.Studio.png
+  RENAME "${OBS_DESKTOP_ID}.png"
 )
 
 install(
   FILES cmake/linux/icons/obs-logo-512.png
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps"
-  RENAME com.obsproject.Studio.png
+  RENAME "${OBS_DESKTOP_ID}.png"
 )
 
 install(
   FILES cmake/linux/icons/obs-logo-scalable.svg
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
-  RENAME com.obsproject.Studio.svg
+  RENAME "${OBS_DESKTOP_ID}.svg"
 )

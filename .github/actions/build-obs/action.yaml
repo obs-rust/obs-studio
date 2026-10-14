@@ -8,6 +8,10 @@ inputs:
     description: Build configuration
     required: false
     default: RelWithDebInfo
+  rustLibobs:
+    description: Select Rust libobs explicitly (ON or OFF); empty inherits the caller environment
+    required: false
+    default: ''
   codesign:
     description: Enable codesigning (macOS only)
     required: false
@@ -36,6 +40,7 @@ runs:
       shell: zsh --no-rcs --errexit --pipefail {0}
       working-directory: ${{ inputs.workingDirectory }}
       env:
+        ENABLE_RUST_LIBOBS: ${{ inputs.rustLibobs || env.ENABLE_RUST_LIBOBS }}
         CODESIGN_IDENT: ${{ inputs.codesignIdent }}
         CODESIGN_TEAM: ${{ inputs.codesignTeam }}
         PROVISIONING_PROFILE: ${{ inputs.provisioningProfileUUID }}
@@ -69,6 +74,8 @@ runs:
       if: runner.os == 'Linux'
       shell: zsh --no-rcs --errexit --pipefail {0}
       working-directory: ${{ inputs.workingDirectory }}
+      env:
+        ENABLE_RUST_LIBOBS: ${{ inputs.rustLibobs || env.ENABLE_RUST_LIBOBS }}
       run: |
         : Run Ubuntu Build
 
@@ -85,6 +92,8 @@ runs:
       if: runner.os == 'Windows'
       shell: pwsh
       working-directory: ${{ inputs.workingDirectory }}
+      env:
+        ENABLE_RUST_LIBOBS: ${{ inputs.rustLibobs || env.ENABLE_RUST_LIBOBS }}
       run: |
         # Run Windows Build
         $BuildArgs = @{
