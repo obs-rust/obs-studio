@@ -40,5 +40,13 @@ class ReleaseStepPitfallsTest(unittest.TestCase):
         self.assertEqual(bad, [], "PlistBuddy cannot read a pipe; use plutil -extract ... -o - -")
 
 
+    def test_release_step_keeps_the_appimage_for_continuous(self):
+        # Run 38500530155 published the beta, then "Move the continuous build"
+        # found no OBS_Studio-*-x86_64.AppImage: the release step had mv'd it
+        # into dist/ under the release name.
+        text = (ROOT / ".github" / "workflows" / "release-rust.yaml").read_text()
+        self.assertIsNone(re.search(r"^\s*mv appimage/OBS_Studio-", text, re.M), "copy it (cp); continuous uploads it later")
+
+
 if __name__ == "__main__":
     unittest.main()
