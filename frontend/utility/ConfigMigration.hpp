@@ -9,6 +9,17 @@
 
 enum class ConfigMigrationResult { NoSource, Existing, Imported };
 
+// The platform pointer API may append a separator to the config base. Keep
+// default Locations values stable without changing independently chosen roots.
+inline std::filesystem::path ConfigBaseDirectory(const char *root)
+{
+	auto base = std::filesystem::u8path(root);
+	if (base.has_relative_path() && base.filename().empty()) {
+		base = base.parent_path();
+	}
+	return base;
+}
+
 inline void CopyConfigSnapshot(const std::filesystem::path &source, const std::filesystem::path &destination,
 			       std::set<std::filesystem::path> &active)
 {

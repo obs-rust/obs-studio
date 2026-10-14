@@ -584,7 +584,7 @@ bool OBSApp::MigrateRustConfiguration()
 		if (!configRoot) {
 			throw std::runtime_error("Unable to locate the configuration root");
 		}
-		const auto base = fs::u8path(configRoot.Get());
+		const auto base = ConfigBaseDirectory(configRoot.Get());
 		const auto source = base / "obs-studio";
 		const auto destination = base / OBS_CONFIG_DIRECTORY;
 		if (fs::exists(destination) || !fs::exists(source)) {
