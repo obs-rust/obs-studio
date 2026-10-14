@@ -451,21 +451,24 @@ static bool has_trigger(GVariant *props)
 	return trigger && *trigger;
 }
 
-/* Records the triggers the desktop reports (BindShortcuts, ShortcutsChanged);
- * a desktop that reports any lets the user pick the keys. On such a desktop
- * a shortcut without a trigger is not bound (the user left it without a key
- * in the dialog); on one that reports none (Hyprland) every returned
- * shortcut is bound and the keys come from its config. */
+/* Records the triggers the desktop reports (BindShortcuts, ShortcutsChanged).
+ * A desktop that reports any, or that has its own shortcut editor (portal
+ * version 2: KDE), lets the user pick the keys. On such a desktop a shortcut
+ * without a trigger is not bound (left without a key in the dialog, or the
+ * dialog was cancelled before: KDE then returns every shortcut without a key
+ * and does not ask again). On one that reports none and has no editor
+ * (Hyprland) every returned shortcut is bound and the keys come from its
+ * config. */
 static void set_triggers(GVariant *shortcuts, bool bound)
 {
 	struct obs_hotkeys_background *background = background_lock();
-	bool any_trigger = false;
+	bool desktop_keys = (background->flags & OBS_HOTKEYS_BACKGROUND_CONFIGURABLE) != 0;
 	GVariantIter iter;
 	const char *id;
 	GVariant *props;
 	g_variant_iter_init(&iter, shortcuts);
 	while (g_variant_iter_next(&iter, "(&s@a{sv})", &id, &props)) {
-		any_trigger = any_trigger || has_trigger(props);
+		desktop_keys = desktop_keys || has_trigger(props);
 		g_variant_unref(props);
 	}
 
@@ -488,12 +491,12 @@ static void set_triggers(GVariant *shortcuts, bool bound)
 				continue;
 			bfree(shortcut->trigger);
 			shortcut->trigger = copy ? bstrdup(copy) : NULL;
-			if (bound || any_trigger)
-				shortcut->bound = !any_trigger || triggered;
+			if (bound || desktop_keys)
+				shortcut->bound = !desktop_keys || triggered;
 		}
 		bfree(copy);
 	}
-	if (any_trigger)
+	if (desktop_keys)
 		background->flags |= OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
 	else if (bound)
 		background->flags &= ~OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
