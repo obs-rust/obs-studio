@@ -100,15 +100,53 @@ def wait_for_port(port, timeout=60.0):
     return False
 
 
+def wait_for_port_closed(port, timeout=30.0):
+    """Wait until the previous OBS has let go of the port."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            socket.create_connection(("127.0.0.1", port), 0.25).close()
+            time.sleep(0.5)
+        except OSError:
+            return True
+    return False
+
+
 class ObsServer:
     """Launches obs headless under xvfb with an isolated profile/config."""
 
-    def __init__(self, obs_bin, port, password=None, keep_home=None):
+    def __init__(self, obs_bin, port, password=None, keep_home=None,
+                 profile=None):
         self.obs_bin = obs_bin
         self.port = port
         self.password = password
+        self.profile = profile
         self.home = keep_home or tempfile.mkdtemp(prefix="obs-tier4-")
         self.proc = None
+
+    def _write_profile(self):
+        """Start OBS on a profile named Tier4 with the given basic.ini
+        sections ({section: {key: value}}) instead of a first-run one."""
+        cfg = os.path.join(self.home, ".config", "obs-studio")
+        prof = os.path.join(cfg, "basic", "profiles", "Tier4")
+        os.makedirs(prof, exist_ok=True)
+        os.makedirs(os.path.join(cfg, "basic", "scenes"), exist_ok=True)
+        with open(os.path.join(cfg, "global.ini"), "w") as f:
+            f.write("[General]\nFirstRun=true\n")
+        with open(os.path.join(cfg, "user.ini"), "w") as f:
+            f.write("[General]\nFirstRun=true\nConfirmOnExit=false\n"
+                    "WarnBeforeStoppingRecord=false\n"
+                    "[Basic]\nProfile=Tier4\nProfileDir=Tier4\n"
+                    "SceneCollection=Tier4\nSceneCollectionFile=Tier4\n")
+        ini = {"General": {"Name": "Tier4"}}
+        for section, values in self.profile.items():
+            ini.setdefault(section, {}).update(values)
+        with open(os.path.join(prof, "basic.ini"), "w") as f:
+            for section, values in ini.items():
+                f.write(f"[{section}]\n")
+                for key, value in values.items():
+                    f.write(f"{key}={value}\n")
+                f.write("\n")
 
     def _write_config(self):
         cfg_dir = os.path.join(
@@ -129,6 +167,8 @@ class ObsServer:
 
     def start(self):
         self._write_config()
+        if self.profile is not None:
+            self._write_profile()
         env = dict(os.environ)
         env["HOME"] = self.home
         # Stay headless: never attach to the developer's Wayland session
@@ -142,7 +182,10 @@ class ObsServer:
             cmd = [xvfb, "-a", self.obs_bin]
         else:
             cmd = [self.obs_bin]
-        cmd += ["--disable-shutdown-check", "--disable-updater",
+        # --multi: another OBS on the same machine (a developer's, or a
+        # parallel run) must not make this one wait at the single-instance
+        # dialog.
+        cmd += ["--multi", "--disable-shutdown-check", "--disable-updater",
                 "--disable-missing-files-check"]
         self.log = os.path.join(self.home, "obs.log")
         self.logf = open(self.log, "w")
@@ -1110,6 +1153,63 @@ def documented_request_types():
         return []
 
 
+async def test_stats_rescale_output():
+    """GetStats must count the frames of a recording encoder that rescales
+    the output (Settings > Output > Recording > Rescale Output). Such an
+    encoder renders from a mix of its own, so the main video_t counts
+    nothing while it records; OBS's Stats dock uses
+    obs_get_video_frame_counts(), which includes those mixes."""
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    # The server accepts connections before the frontend finishes loading
+    # and answers 207 (NotReady) until then; wait that out.
+    for _ in range(120):
+        r = await c.request("StartRecord")
+        if resp_status(r).get("code") != 207:
+            break
+        await asyncio.sleep(0.5)
+    check("stats:rescaled recording starts",
+          resp_status(r).get("code") == STATUS_SUCCESS, json.dumps(r)[:300])
+    active = False
+    deadline = time.time() + 15
+    while time.time() < deadline and not active:
+        r = await c.request("GetRecordStatus")
+        active = r.get("d", {}).get("responseData", {}).get("outputActive")
+        await asyncio.sleep(0.25)
+    await asyncio.sleep(3)
+    r = await c.request("GetStats")
+    data = r.get("d", {}).get("responseData", {})
+    total = data.get("outputTotalFrames")
+    skipped = data.get("outputSkippedFrames")
+    # 30 fps for about 3 s: a recording that counts gives ~90 frames.
+    check("stats:outputTotalFrames counts a rescaled recording",
+          active and isinstance(total, int) and total >= 30,
+          f"recording active={active} outputSkippedFrames={skipped} "
+          f"outputTotalFrames={total}")
+    check("stats:outputSkippedFrames <= outputTotalFrames",
+          isinstance(skipped, int) and isinstance(total, int)
+          and skipped <= total,
+          f"{skipped} / {total}")
+    await c.request("StopRecord", timeout=60.0)
+    deadline = time.time() + 30
+    while time.time() < deadline and active:
+        r = await c.request("GetRecordStatus")
+        active = r.get("d", {}).get("responseData", {}).get("outputActive")
+        await asyncio.sleep(0.25)
+    await c.close_conn()
+
+
+# Advanced output, recording at 640x360 from a 1280x720 canvas, rescaled on
+# the GPU (RecRescaleFilter 2 = bilinear), x264.
+RESCALE_PROFILE = {
+    "Video": {"BaseCX": "1280", "BaseCY": "720", "OutputCX": "1280",
+              "OutputCY": "720", "FPSType": "0", "FPSCommon": "30"},
+    "Output": {"Mode": "Advanced"},
+    "AdvOut": {"RecType": "Standard", "RecEncoder": "obs_x264",
+               "RecFormat2": "mkv", "RecTracks": "1",
+               "RecRescaleFilter": "2", "RecRescaleRes": "640x360"},
+}
+
+
 async def run_all(obs_bin, skip_obs, skip_auth_phase):
     server_a = server_b = None
     if not skip_obs:
@@ -1144,13 +1244,7 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
 
     if not (skip_obs and skip_auth_phase):
         if not skip_obs:
-            deadline = time.time() + 30
-            while time.time() < deadline:
-                try:
-                    socket.create_connection(("127.0.0.1", PORT), 0.25).close()
-                    time.sleep(0.5)
-                except OSError:
-                    break
+            wait_for_port_closed(PORT)
             server_b = ObsServer(obs_bin, PORT, password=PASSWORD)
             server_b.start()
         try:
@@ -1159,6 +1253,22 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
         finally:
             if server_b is not None:
                 server_b.stop()
+
+    if not skip_obs:
+        wait_for_port_closed(PORT)
+        home_c = tempfile.mkdtemp(prefix="obs-tier4-")
+        rec_dir = os.path.join(home_c, "recordings")
+        os.makedirs(rec_dir)
+        profile = dict(RESCALE_PROFILE)
+        profile["AdvOut"] = dict(profile["AdvOut"], RecFilePath=rec_dir)
+        server_c = ObsServer(obs_bin, PORT, password=None, keep_home=home_c,
+                             profile=profile)
+        server_c.start()
+        try:
+            print("== stats with Rescale Output ==", flush=True)
+            await test_stats_rescale_output()
+        finally:
+            server_c.stop()
 
     total = len(RESULTS)
     passed = sum(1 for _, ok, _ in RESULTS if ok)
