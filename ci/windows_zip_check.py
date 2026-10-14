@@ -30,7 +30,9 @@ import zipfile
 from pathlib import PurePosixPath
 
 # DLLs a Windows machine does not necessarily have: the Visual C++ runtime.
-VC_RUNTIME = re.compile(r"^(vcruntime|msvcp|concrt|vcomp|vccorlib|mfc|vcamp)\d+(_\d+)?(d)?\.dll$")
+VC_RUNTIME = re.compile(
+    r"^(vcruntime|msvcp|concrt|vcomp|vccorlib|mfc|vcamp)\d+(_\d+)?(d)?\.dll$"
+)
 EXPECTED_EXE = "bin/64bit/obs64.exe"
 
 
@@ -85,7 +87,7 @@ def imports(data: bytes) -> list[str]:
 
 def problems(zf: zipfile.ZipFile) -> list[str]:
     names = [n for n in zf.namelist() if not n.endswith("/")]
-    lower = {PurePosixPath(n).name.lower() for n in names}
+    lower = {n.lower() for n in names}
     out: list[str] = []
     if EXPECTED_EXE not in names:
         out.append(f"{EXPECTED_EXE} is not in the zip")
@@ -93,13 +95,26 @@ def problems(zf: zipfile.ZipFile) -> list[str]:
         out.append("no plugin DLLs under core/")
     pdbs = [n for n in names if n.lower().endswith(".pdb")]
     if pdbs:
-        out.append(f"{len(pdbs)} PDBs in the zip (first: {pdbs[0]}); ship them in the symbols zip")
+        out.append(
+            f"{len(pdbs)} PDBs in the zip (first: {pdbs[0]}); ship them in the symbols zip"
+        )
     for n in names:
         if not n.lower().endswith((".exe", ".dll")):
             continue
+        # Windows searches the application directory and, for OBS modules,
+        # the loaded DLL's directory; unrelated plugin directories do not
+        # supply dependencies to the executable.
+        directories = {
+            PurePosixPath(EXPECTED_EXE).parent,
+            PurePosixPath(n.lower()).parent,
+        }
         for dep in sorted(set(imports(zf.read(n)))):
-            if VC_RUNTIME.match(dep) and dep not in lower:
-                out.append(f"{n} imports {dep}, which the zip does not contain")
+            if VC_RUNTIME.match(dep) and not any(
+                str(directory / dep) in lower for directory in directories
+            ):
+                out.append(
+                    f"{n} imports {dep}, which the zip does not contain in a loader search directory"
+                )
     return out
 
 
@@ -125,7 +140,9 @@ def check(zip_path: str, run: bool, expect_version: str | None = None) -> int:
                 zf.extractall(clean)
                 bindir = os.path.join(clean, "bin", "64bit")
                 env = dict(os.environ)
-                env["PATH"] = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
+                env["PATH"] = os.path.join(
+                    os.environ.get("SystemRoot", r"C:\Windows"), "System32"
+                )
                 r = subprocess.run(
                     [os.path.join(bindir, "obs64.exe"), "--version"],
                     cwd=bindir,
@@ -136,7 +153,9 @@ def check(zip_path: str, run: bool, expect_version: str | None = None) -> int:
                 )
                 print(r.stdout, r.stderr)
                 if r.returncode != 0 or "OBS" not in r.stdout:
-                    print(f"::error::obs64.exe --version exited {r.returncode}: {r.stdout!r}")
+                    print(
+                        f"::error::obs64.exe --version exited {r.returncode}: {r.stdout!r}"
+                    )
                     return 1
                 why = version_problem(r.stdout, expect_version)
                 if why:
@@ -167,11 +186,18 @@ def main() -> int:
     ap.add_argument("command", choices=["check", "split-symbols"])
     ap.add_argument("zip")
     ap.add_argument("--run", action="store_true")
-    ap.add_argument("--expect-version", help="full OBS-Studio-Rust release string --version must report (needs --run)")
+    ap.add_argument(
+        "--expect-version",
+        help="full OBS-Studio-Rust release string --version must report (needs --run)",
+    )
     a = ap.parse_args()
     if a.expect_version and not a.run:
         ap.error("--expect-version needs --run")
-    return check(a.zip, a.run, a.expect_version) if a.command == "check" else split_symbols(a.zip)
+    return (
+        check(a.zip, a.run, a.expect_version)
+        if a.command == "check"
+        else split_symbols(a.zip)
+    )
 
 
 if __name__ == "__main__":

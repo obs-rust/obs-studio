@@ -79,11 +79,17 @@ class PackagedReadinessTest(unittest.IsolatedAsyncioTestCase):
 
 
 class PackagedStartupTest(unittest.TestCase):
-    def test_windows_loaded_modules_are_reported_and_required_capture_modules_verified(self):
-        log = "info:   Loaded Modules:\n" + "".join(
-            f"info:     {name}.dll\n"
-            for name in ("win-capture", "win-dshow", "win-wasapi", "obs-websocket")
-        ) + "info: ---------------------------------\n"
+    def test_windows_loaded_modules_are_reported_and_required_capture_modules_verified(
+        self,
+    ):
+        log = (
+            "info:   Loaded Modules:\n"
+            + "".join(
+                f"info:     {name}.dll\n"
+                for name in ("win-capture", "win-dshow", "win-wasapi", "obs-websocket")
+            )
+            + "info: ---------------------------------\n"
+        )
         with patch("builtins.print") as report:
             smoke.require_windows_modules(log)
         self.assertIn("win-dshow.dll", str(report.call_args_list))

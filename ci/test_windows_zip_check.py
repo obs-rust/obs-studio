@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 """windows_zip_check.py catches a Windows zip without the VC runtime (#626).
 
-    uv run python -m unittest ci/test_windows_zip_check.py
+uv run python -m unittest ci/test_windows_zip_check.py
 """
 
 import io
@@ -31,7 +31,9 @@ def pe(dlls: list[str]) -> bytes:
     struct.pack_into("<I", opt, 108, 16)
     struct.pack_into("<II", opt, 112 + 8, va, len(table))
     coff = struct.pack("<HHIIIHH", 0x8664, 1, 0, 0, 0, len(opt), 0)
-    sec = struct.pack("<8sIIIIIIHHI", b".idata", len(sect), va, len(sect), raw, 0, 0, 0, 0, 0)
+    sec = struct.pack(
+        "<8sIIIIIIHHI", b".idata", len(sect), va, len(sect), raw, 0, 0, 0, 0, 0
+    )
     head = bytearray(0x40) + b"PE\0\0" + coff + bytes(opt) + sec
     head[:2] = b"MZ"
     struct.pack_into("<I", head, 0x3C, 0x40)
@@ -56,7 +58,10 @@ class T(unittest.TestCase):
         }
 
     def test_imports(self):
-        self.assertEqual(w.imports(pe(["VCRUNTIME140.dll", "kernel32.dll"])), ["vcruntime140.dll", "kernel32.dll"])
+        self.assertEqual(
+            w.imports(pe(["VCRUNTIME140.dll", "kernel32.dll"])),
+            ["vcruntime140.dll", "kernel32.dll"],
+        )
 
     def test_ok(self):
         self.assertEqual(w.problems(make(self.good())), [])
@@ -69,7 +74,9 @@ class T(unittest.TestCase):
     def test_runtime_in_unrelated_plugin_directory_does_not_satisfy_executable(self):
         f = self.good()
         f["core/unrelated/vcruntime140.dll"] = f.pop("bin/64bit/vcruntime140.dll")
-        self.assertTrue(any("obs64.exe imports vcruntime140.dll" in p for p in w.problems(make(f))))
+        self.assertTrue(
+            any("obs64.exe imports vcruntime140.dll" in p for p in w.problems(make(f)))
+        )
 
     def test_pdb_and_layout(self):
         self.assertEqual(len(w.problems(make({"bin/64bit/obs64.pdb": b""}))), 3)
@@ -82,10 +89,14 @@ class T(unittest.TestCase):
 
     def test_version_banner_wrong(self):
         v = "0.1.0-beta.20261013"
-        self.assertIsNotNone(w.version_problem("OBS-Studio-Rust 0.1.0 (based on OBS 33.0.0)\n", v))
+        self.assertIsNotNone(
+            w.version_problem("OBS-Studio-Rust 0.1.0 (based on OBS 33.0.0)\n", v)
+        )
         self.assertIsNotNone(w.version_problem("OBS 33.0.0\n", v))
         # A longer version that merely starts with the expected one is not a match.
-        self.assertIsNotNone(w.version_problem(f"OBS-Studio-Rust {v}3 (based on OBS 33.0.0)\n", v))
+        self.assertIsNotNone(
+            w.version_problem(f"OBS-Studio-Rust {v}3 (based on OBS 33.0.0)\n", v)
+        )
 
 
 if __name__ == "__main__":

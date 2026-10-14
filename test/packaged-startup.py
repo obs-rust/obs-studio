@@ -327,6 +327,31 @@ def require_windows_arch(app: Path, arch: str) -> None:
         )
 
 
+def require_windows_modules(log: str) -> None:
+    marker = "Loaded Modules:"
+    if marker not in log:
+        raise RuntimeError("packaged frontend log has no Loaded Modules checkpoint")
+    modules = set()
+    for line in log.split(marker, 1)[1].splitlines():
+        content = line.rsplit(": ", 1)[-1].strip()
+        if content.startswith("-----"):
+            break
+        if content.lower().endswith(".dll") and " " not in content:
+            modules.add(content.lower())
+    print("Packaged Windows loaded modules:", ", ".join(sorted(modules)), flush=True)
+    required = {
+        "win-capture.dll",
+        "win-dshow.dll",
+        "win-wasapi.dll",
+        "obs-websocket.dll",
+    }
+    missing = required - modules
+    if missing:
+        raise RuntimeError(
+            f"packaged frontend loaded module list is missing: {sorted(missing)}"
+        )
+
+
 def validate_profile(
     platform: str, kinds: list[str], inputs: list[dict], scene: dict, profile: dict
 ) -> None:
@@ -577,14 +602,20 @@ def main() -> None:
         fixture.verify()
         if args.platform == "windows":
             logs = list((config / "logs").glob("*.txt"))
-            if not any(
-                "Windows AppUserModelID verified: io.github.obs_rust.OBSStudioRust"
-                in log.read_text(encoding="utf-8-sig", errors="replace")
-                for log in logs
-            ):
+            current_logs = [
+                log.read_text(encoding="utf-8-sig", errors="replace") for log in logs
+            ]
+            identity_logs = [
+                log
+                for log in current_logs
+                if "Windows AppUserModelID verified: io.github.obs_rust.OBSStudioRust"
+                in log
+            ]
+            if not identity_logs:
                 raise RuntimeError(
                     "packaged frontend did not verify its Windows application identity"
                 )
+            require_windows_modules(identity_logs[-1])
         print(
             "packaged startup: capture plugins registered, saved profile loaded, clean shutdown"
         )
