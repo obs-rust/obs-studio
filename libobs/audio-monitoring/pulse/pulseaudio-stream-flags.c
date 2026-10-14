@@ -50,11 +50,27 @@ bool pulseaudio_monitor_reset_on_sink_event(pa_subscription_event_type_t event, 
 uint64_t pulseaudio_monitor_backlog_excess(struct pulseaudio_monitor_backlog *backlog, uint64_t now_ns,
 					   uint64_t queued_usec, uint64_t target_usec)
 {
-	(void)backlog;
-	(void)now_ns;
-	(void)queued_usec;
-	(void)target_usec;
+	if (!backlog->window_start) {
+		backlog->window_start = now_ns;
+		backlog->window_min = queued_usec;
+		return 0;
+	}
 
-	/* The monitor never drops audio. */
-	return 0;
+	if (queued_usec < backlog->window_min)
+		backlog->window_min = queued_usec;
+	if (now_ns - backlog->window_start < PULSEAUDIO_MONITOR_BACKLOG_WINDOW)
+		return 0;
+
+	/* The window is over: the queue never got below window_min in it.
+	 * The next sample starts a new window. */
+	uint64_t min = backlog->window_min;
+	backlog->window_start = 0;
+
+	uint64_t slack = target_usec > PULSEAUDIO_MONITOR_BACKLOG_SLACK ? target_usec
+									: PULSEAUDIO_MONITOR_BACKLOG_SLACK;
+	if (min <= target_usec + slack)
+		return 0;
+
+	/* queued_usec is at least min, so the target is left. */
+	return min - target_usec;
 }

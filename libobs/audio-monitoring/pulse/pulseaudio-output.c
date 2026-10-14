@@ -1,6 +1,9 @@
 #include "obs-internal.h"
+#include "util/util_uint64.h"
 #include "pulseaudio-wrapper.h"
 #include "pulseaudio-stream-flags.h"
+
+#include <pulse/timeval.h>
 
 #define PULSE_DATA(voidptr) struct audio_monitor *data = voidptr;
 #define blog(level, msg, ...) blog(level, "pulse-am: " msg, ##__VA_ARGS__)
@@ -21,6 +24,11 @@ struct audio_monitor {
 
 	struct deque new_data;
 	audio_resampler_t *resampler;
+
+	/* What a stall left queued is dropped: from new_data, and the rest
+	 * by writing the next data that much earlier in the server's buffer. */
+	struct pulseaudio_monitor_backlog backlog;
+	size_t rewind;
 
 	bool ignore;
 	pthread_mutex_t playback_mutex;
@@ -196,6 +204,50 @@ void process_volume(const struct audio_monitor *monitor, float vol, uint8_t *con
 	}
 }
 
+static uint64_t bytes_per_sec(const struct audio_monitor *data)
+{
+	return (uint64_t)data->bytes_per_frame * data->samples_per_sec;
+}
+
+/* Drops what a stall left queued (see pulseaudio_monitor_backlog_excess()),
+ * so monitoring catches up instead of staying behind for good. */
+static void drop_backlog(struct audio_monitor *data)
+{
+	const pa_timing_info *timing = pa_stream_get_timing_info(data->stream);
+	if (!timing || timing->write_index_corrupt || timing->read_index_corrupt)
+		return;
+
+	/* What the server holds: its read index is from the last timing
+	 * update, so take off what it has played since. (The interpolated
+	 * pa_stream_get_latency() runs ahead between updates with
+	 * pipewire-pulse at large quanta.) */
+	int64_t held = timing->write_index - timing->read_index;
+	if (timing->playing)
+		held -= (int64_t)util_mul_div64(pa_timeval_age(&timing->timestamp), bytes_per_sec(data), 1000000ULL);
+	uint64_t queued = (held > 0 ? (uint64_t)held : 0) + data->new_data.size;
+
+	/* The server may have raised the buffer we asked for (a large
+	 * quantum). */
+	const pa_buffer_attr *attr = pa_stream_get_buffer_attr(data->stream);
+	uint32_t tlength = attr && attr->tlength > data->attr.tlength ? attr->tlength : data->attr.tlength;
+
+	uint64_t excess = pulseaudio_monitor_backlog_excess(&data->backlog, os_gettime_ns(),
+							    util_mul_div64(queued, 1000000ULL, bytes_per_sec(data)),
+							    util_mul_div64(tlength, 1000000ULL, bytes_per_sec(data)));
+	if (!excess)
+		return;
+
+	size_t bytes = (size_t)util_mul_div64(excess, bytes_per_sec(data), 1000000ULL);
+	bytes -= bytes % data->bytes_per_frame;
+
+	size_t unwritten = bytes < data->new_data.size ? bytes : data->new_data.size;
+	deque_pop_front(&data->new_data, NULL, unwritten);
+	data->rewind += bytes - unwritten;
+
+	blog(LOG_INFO, "Monitoring in '%s' was %" PRIu64 " ms behind; dropped %" PRIu64 " ms to catch up", data->device,
+	     util_mul_div64(queued, 1000ULL, bytes_per_sec(data)), excess / 1000);
+}
+
 static void do_stream_write(void *param)
 {
 	PULSE_DATA(param);
@@ -223,6 +275,8 @@ static void do_stream_write(void *param)
 		}
 	}
 
+	drop_backlog(data);
+
 	while (data->new_data.size > 0) {
 		size_t bytesToFill = data->new_data.size;
 		if (pa_stream_begin_write(data->stream, (void **)&buffer, &bytesToFill))
@@ -237,7 +291,8 @@ static void do_stream_write(void *param)
 
 		deque_pop_front(&data->new_data, buffer, bytesToFill);
 
-		pa_stream_write(data->stream, buffer, bytesToFill, NULL, 0LL, PA_SEEK_RELATIVE);
+		pa_stream_write(data->stream, buffer, bytesToFill, NULL, -(int64_t)data->rewind, PA_SEEK_RELATIVE);
+		data->rewind = 0;
 	}
 
 finish:
