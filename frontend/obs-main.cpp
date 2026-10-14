@@ -621,6 +621,12 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			create_log_file(logFile);
 		}
 
+#if defined(_WIN32) && defined(OBS_RUST_VERSION)
+		// Read back the process identity after the persistent logger is ready.
+		if (!VerifyAppIdentity()) {
+			throw "Windows application identity changed during startup";
+		}
+#endif
 		program.checkForUncleanShutdown();
 
 		qInstallMessageHandler([](QtMsgType type, const QMessageLogContext &, const QString &message) {

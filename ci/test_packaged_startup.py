@@ -83,7 +83,9 @@ class PackagedStartupTest(unittest.TestCase):
         proc = Mock(pid=123, poll=Mock(return_value=None))
         proc.wait.side_effect = smoke.subprocess.TimeoutExpired(["owned-app"], 30)
         with patch.object(smoke.subprocess, "run") as sample:
-            sample.return_value = Mock(stdout="owned shutdown stack", stderr="", returncode=0)
+            sample.return_value = Mock(
+                stdout="owned shutdown stack", stderr="", returncode=0
+            )
             with self.assertRaises(smoke.subprocess.TimeoutExpired):
                 smoke.close_frontend(proc, "macos")
             sample.assert_called_once()

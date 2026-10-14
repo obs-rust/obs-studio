@@ -35,17 +35,30 @@
 
 using namespace std;
 
-bool InitializeAppIdentity()
-{
 #ifdef OBS_RUST_VERSION
-	if (FAILED(SetCurrentProcessExplicitAppUserModelID(OBS_WINDOWS_APP_ID))) {
-		return false;
-	}
+static bool AppIdentityMatches()
+{
 	PWSTR actual = nullptr;
 	HRESULT result = GetCurrentProcessExplicitAppUserModelID(&actual);
 	bool matches = SUCCEEDED(result) && actual && wcscmp(actual, OBS_WINDOWS_APP_ID) == 0;
 	CoTaskMemFree(actual);
-	if (!matches) {
+	return matches;
+}
+#endif
+
+bool InitializeAppIdentity()
+{
+#ifdef OBS_RUST_VERSION
+	return SUCCEEDED(SetCurrentProcessExplicitAppUserModelID(OBS_WINDOWS_APP_ID)) && AppIdentityMatches();
+#else
+	return true;
+#endif
+}
+
+bool VerifyAppIdentity()
+{
+#ifdef OBS_RUST_VERSION
+	if (!AppIdentityMatches()) {
 		return false;
 	}
 	blog(LOG_INFO, "Windows AppUserModelID verified: %s", OBS_DESKTOP_ID);

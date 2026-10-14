@@ -17,35 +17,75 @@ class AppConfigIdentityTest(unittest.TestCase):
         platform = (ROOT / "frontend/utility/platform-windows.cpp").read_text()
         start = platform.index("bool InitializeAppIdentity()")
         if "static bool AppIdentityMatches()" in platform:
-            start = platform.index("static bool AppIdentityMatches()")
-        functions = platform[start:platform.index("extern bool portable_mode;", start)]
+            start = platform.rfind(
+                "#ifdef OBS_RUST_VERSION",
+                0,
+                platform.index("static bool AppIdentityMatches()"),
+            )
+        functions = platform[
+            start : platform.index("extern bool portable_mode;", start)
+        ]
         app = (ROOT / "frontend/OBSApp.cpp").read_text()
         initialization = app.split("void OBSApp::AppInit()", 1)[1]
-        initialization = initialization[initialization.index("#ifdef _WIN32"):initialization.index("\n\tif (!MigrateRustConfiguration")]
+        initialization = initialization[
+            initialization.index("#ifdef _WIN32") : initialization.index(
+                "\n\tif (!MigrateRustConfiguration"
+            )
+        ]
         main = (ROOT / "frontend/obs-main.cpp").read_text()
-        logging = main[main.rindex("\t\tif (!created_log) {"):main.index("\t\tprogram.checkForUncleanShutdown();")]
+        logging = main[
+            main.rindex("\t\tif (!created_log) {") : main.index(
+                "\t\tprogram.checkForUncleanShutdown();"
+            )
+        ]
         with tempfile.TemporaryDirectory(prefix="obs-windows-identity-log-") as scratch:
             directory = Path(scratch)
             source = directory / "identity.cpp"
             source.write_text(
                 '#include <cstdio>\n#include <cstdlib>\n#include <cwchar>\n#include "utility/AppIdentity.hpp"\n'
-                '#define SUCCEEDED(x) ((x)>=0)\n#define FAILED(x) ((x)<0)\n'
-                'using PWSTR=wchar_t*; using HRESULT=int; constexpr int LOG_INFO=1;\n'
-                'int logged=0, sets=0, gets=0; bool logging_open=false;\n'
-                'int SetCurrentProcessExplicitAppUserModelID(const wchar_t*) { ++sets; return 0; }\n'
-                'int GetCurrentProcessExplicitAppUserModelID(PWSTR *s) { ++gets; *s=wcsdup(OBS_WINDOWS_APP_ID); return 0; }\n'
-                'void CoTaskMemFree(void *p) { free(p); }\n'
-                'void blog(int,const char*,...) { if(logging_open) ++logged; }\n'
-                'void create_log_file(int&) { logging_open=true; }\n' + functions +
-                'int main() { bool created_log=false; int logFile=0;\n' + initialization + '\n' + logging +
-                '\nprintf("%d %d %d\\n",logged,sets,gets); }\n'
+                "#define SUCCEEDED(x) ((x)>=0)\n#define FAILED(x) ((x)<0)\n"
+                "using PWSTR=wchar_t*; using HRESULT=int; constexpr int LOG_INFO=1;\n"
+                "int logged=0, sets=0, gets=0; bool logging_open=false;\n"
+                "int SetCurrentProcessExplicitAppUserModelID(const wchar_t*) { ++sets; return 0; }\n"
+                "int GetCurrentProcessExplicitAppUserModelID(PWSTR *s) { ++gets; *s=wcsdup(OBS_WINDOWS_APP_ID); return 0; }\n"
+                "void CoTaskMemFree(void *p) { free(p); }\n"
+                "void blog(int,const char*,...) { if(logging_open) ++logged; }\n"
+                "void create_log_file(int&) { logging_open=true; }\n"
+                + functions
+                + "int main() { bool created_log=false; int logFile=0;\n"
+                + initialization
+                + "\n"
+                + logging
+                + '\nprintf("%d %d %d\\n",logged,sets,gets); }\n'
             )
             executable = directory / "identity"
-            compiled = subprocess.run(["c++", "-std=c++17", "-D_WIN32", "-DOBS_RUST_VERSION=1", "-I", str(ROOT / "frontend"), str(source), "-o", str(executable)], capture_output=True, text=True)
+            compiled = subprocess.run(
+                [
+                    "c++",
+                    "-std=c++17",
+                    "-D_WIN32",
+                    "-DOBS_RUST_VERSION=1",
+                    "-I",
+                    str(ROOT / "frontend"),
+                    str(source),
+                    "-o",
+                    str(executable),
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(compiled.returncode, 0, compiled.stderr)
             output = subprocess.check_output([str(executable)], text=True).split()
-            self.assertEqual(output[:2], ["1", "1"], "exactly one verified identity log after logger opens")
-            self.assertGreaterEqual(int(output[2]), 2, "read actual process identity again after logger opens")
+            self.assertEqual(
+                output[:2],
+                ["1", "1"],
+                "exactly one verified identity log after logger opens",
+            )
+            self.assertGreaterEqual(
+                int(output[2]),
+                2,
+                "read actual process identity again after logger opens",
+            )
 
     @classmethod
     def setUpClass(cls):

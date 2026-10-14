@@ -504,11 +504,17 @@ def close_frontend(proc: subprocess.Popen, platform: str) -> None:
         if platform == "macos" and proc.poll() is None:
             # Capture the owned live process before cleanup terminates it. Keep
             # the timeout fatal; a stack is evidence, not a successful shutdown.
-            print(f"sampling owned frontend PID {proc.pid} after shutdown timeout", flush=True)
+            print(
+                f"sampling owned frontend PID {proc.pid} after shutdown timeout",
+                flush=True,
+            )
             try:
                 sample = subprocess.run(
                     ["sample", str(proc.pid), "5", "-file", "/dev/stdout"],
-                    capture_output=True, text=True, timeout=15, check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    check=False,
                 )
                 print(sample.stdout, flush=True)
                 print(sample.stderr, flush=True)
