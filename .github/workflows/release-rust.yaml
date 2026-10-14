@@ -206,6 +206,14 @@ jobs:
           ext=${src##*.}
           cp "$src" "pkg/OBS-Studio-Rust-$VERSION-$OS-${{ matrix.target }}.$ext"
 
+          # Package-Windows separates PDBs from the application ZIP. Publish
+          # the matching archive too, rather than leaving it in build_*.
+          if [ "$OS" = windows ]; then
+            symbols="${src%.zip}-symbols.zip"
+            [ -f "$symbols" ] || { echo '::error::Windows symbols package is missing'; exit 1; }
+            cp "$symbols" "pkg/OBS-Studio-Rust-$VERSION-windows-$TARGET-symbols.zip"
+          fi
+
           # Rust must actually be linked into libobs.
           lib=$(find build_* \( -name obs.dll -o -name 'libobs.so*' -o -path '*libobs.framework/Versions/A/libobs' \) -type f | head -1)
           echo "libobs: $lib"
