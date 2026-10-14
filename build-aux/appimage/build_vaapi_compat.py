@@ -39,12 +39,17 @@ def exported_abi(library: Path) -> dict[str, tuple[str, int | None]]:
     symbols = {}
     for line in output.splitlines():
         fields = line.split()
-        if len(fields) < 8 or fields[4] not in ("GLOBAL", "WEAK") or fields[6] in ("UND", "ABS"):
+        if (
+            len(fields) < 8
+            or fields[4] not in ("GLOBAL", "WEAK")
+            or fields[6] in ("UND", "ABS")
+        ):
             continue
         if fields[3] in ("FUNC", "OBJECT", "TLS"):
             # Function bodies change; exported data layouts must not.
             symbols[fields[7]] = (
-                fields[3], int(fields[2], 0) if fields[3] != "FUNC" else None
+                fields[3],
+                int(fields[2], 0) if fields[3] != "FUNC" else None,
             )
     return symbols
 
@@ -61,10 +66,15 @@ def audit_library(original: Path, rebuilt: Path, features: Path) -> None:
     after = subprocess.check_output([str(features), str(rebuilt)], text=True)
     if before != after:
         raise RuntimeError(f"libavutil version/backends changed:\n{before}\n{after}")
-    undefined = subprocess.check_output(["readelf", "--dyn-syms", "--wide", str(rebuilt)], text=True)
+    undefined = subprocess.check_output(
+        ["readelf", "--dyn-syms", "--wide", str(rebuilt)], text=True
+    )
     if any("UND" in line and "vaMapBuffer2" in line for line in undefined.splitlines()):
         raise RuntimeError("libavutil still requires the newer host VA mapping API")
-    print(f"Preserved {len(old)} exported ABI symbols and actual registered backends:\n{after}", flush=True)
+    print(
+        f"Preserved {len(old)} exported ABI symbols and actual registered backends:\n{after}",
+        flush=True,
+    )
 
 
 def build(work: Path, original: Path, archives: Path | None = None) -> Path:
@@ -72,7 +82,9 @@ def build(work: Path, original: Path, archives: Path | None = None) -> Path:
         ["dpkg-query", "-W", "-f=${Version}", "libavutil60"], text=True
     ).strip()
     if installed != VERSION:
-        raise RuntimeError(f"update the source pin for installed libavutil {installed!r}; expected {VERSION}")
+        raise RuntimeError(
+            f"update the source pin for installed libavutil {installed!r}; expected {VERSION}"
+        )
     work.mkdir(parents=True, exist_ok=False)
     if archives is None:
         archives = work / "archives"
@@ -84,17 +96,30 @@ def build(work: Path, original: Path, archives: Path | None = None) -> Path:
             raise RuntimeError(f"source checksum mismatch: {filename}")
     source = work / "ffmpeg"
     run(["dpkg-source", "-x", str(archives / "ffmpeg_8.0.1-3ubuntu2.dsc"), str(source)])
-    shutil.copyfile(HERE / "vaapi-runtime-compat.h", source / "libavutil/vaapi-runtime-compat.h")
+    shutil.copyfile(
+        HERE / "vaapi-runtime-compat.h", source / "libavutil/vaapi-runtime-compat.h"
+    )
     with (HERE / "ffmpeg-vaapi-runtime-compat.patch").open("rb") as patch:
         run(["patch", "-p1", "--fuzz=0"], cwd=source, stdin=patch)
     run(
         ["make", "-f", "debian/rules", "configure_standard"],
-        cwd=source, env={**os.environ, "DEB_BUILD_PROFILES": "pkg.ffmpeg.noextra"},
+        cwd=source,
+        env={**os.environ, "DEB_BUILD_PROFILES": "pkg.ffmpeg.noextra"},
     )
-    run(["make", "-C", str(source / "debian/standard"), "-j2", "libavutil/libavutil.so.60"])
+    run(
+        [
+            "make",
+            "-C",
+            str(source / "debian/standard"),
+            "-j2",
+            "libavutil/libavutil.so.60",
+        ]
+    )
     rebuilt = work / "libavutil.so.60"
     shutil.copyfile(source / "debian/standard/libavutil/libavutil.so.60", rebuilt)
-    includes = subprocess.check_output(["pkg-config", "--cflags", "libavutil"], text=True).split()
+    includes = subprocess.check_output(
+        ["pkg-config", "--cflags", "libavutil"], text=True
+    ).split()
     features = work / "avutil-features"
     run(["cc", *includes, str(HERE / "avutil-features.c"), "-ldl", "-o", str(features)])
     audit_library(original, rebuilt, features)
@@ -104,14 +129,22 @@ def build(work: Path, original: Path, archives: Path | None = None) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("work", type=Path)
-    parser.add_argument("--archives", type=Path, help="already downloaded pinned source archives")
+    parser.add_argument(
+        "--archives", type=Path, help="already downloaded pinned source archives"
+    )
     parser.add_argument("--original", type=Path)
     args = parser.parse_args()
     original = args.original
     if original is None:
-        directory = subprocess.check_output(["pkg-config", "--variable=libdir", "libavutil"], text=True).strip()
+        directory = subprocess.check_output(
+            ["pkg-config", "--variable=libdir", "libavutil"], text=True
+        ).strip()
         original = Path(directory) / "libavutil.so.60"
-    result = build(args.work.resolve(), original.resolve(), args.archives.resolve() if args.archives else None)
+    result = build(
+        args.work.resolve(),
+        original.resolve(),
+        args.archives.resolve() if args.archives else None,
+    )
     print(f"Validated compatible libavutil: {result}")
 
 

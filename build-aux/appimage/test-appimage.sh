@@ -42,11 +42,11 @@ unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS PIPEWIRE_REMOTE PIPEWIRE_
 
 APPIMAGE="$(realpath "$1")"
 OUT="$(realpath -m "${2:-.}")"
-USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile|saved-profile-custom|saved-profile-existing>"
+USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile|saved-profile-custom|saved-profile-existing|gpu>"
 TESTKIT="$(realpath "${3:?$USAGE}")"
 SCENARIO="${4:?$USAGE}"
 case "$SCENARIO" in
-bundle | first-start | probes | saved-profile | saved-profile-custom | saved-profile-existing) ;;
+bundle | first-start | probes | saved-profile | saved-profile-custom | saved-profile-existing | gpu) ;;
 *)
     echo "::error::unknown scenario $SCENARIO; $USAGE"
     exit 1
@@ -201,7 +201,7 @@ case "${ID_LIKE:-} ${ID}" in
         >/etc/apt/apt.conf.d/99keep
     apt-get update -qq
     apt-get install -y -qq --no-install-recommends \
-        ca-certificates xvfb icewm x11-utils imagemagick fonts-dejavu-core gdb procps dbus \
+        ca-certificates xvfb icewm x11-utils imagemagick fonts-dejavu-core gdb procps dbus diffutils \
         libgl1-mesa-dri libglx-mesa0 libegl-mesa0 libgl1 libegl1 libgbm1 libdrm2 libva2 libva-drm2 libva-x11-2 libopengl0 \
         libwayland-client0 libwayland-egl1 libvulkan1 >/dev/null
     # HOSTILE_QT=1: a host that has its own, different Qt plugins - the usual desktop - which
@@ -395,6 +395,48 @@ if [ "$SCENARIO" = bundle ]; then
     done <"$INVENTORY"
     echo "$(wc -l <"$INVENTORY") modules in the build inventory"
     echo "::endgroup::"
+    finish
+fi
+
+# Use the driver's actual production setup, including user-selected overrides.
+APPRUN_DRIVER_ENV="$(sed -n '/^# Host driver search paths/,/^# gconv modules/p' "$APPDIR/AppRun" | sed '$d')"
+
+# This scenario requires a real render node supplied by the caller. Stock CI
+# runners without GPUs do not count as physical validation.
+if [ "$SCENARIO" = gpu ]; then
+    GPU_TEST="$(realpath "${GPU_TEST:?gpu requires the compiled gpu-test helper}")"
+    GPU_INPUT="$(realpath "${GPU_INPUT:?gpu requires a 12-frame 128x72 H264 fixture}")"
+    GPU_REFERENCE="$(realpath "${GPU_REFERENCE:?gpu requires its software-decoded YUV420P reference}")"
+    GPU_RENDER_NODE="${GPU_RENDER_NODE:?gpu requires a physical render node}"
+    [ -c "$GPU_RENDER_NODE" ] || { echo "::error::no physical render node: $GPU_RENDER_NODE"; exit 1; }
+    [ -n "$APPRUN_DRIVER_ENV" ] || { echo "::error::package lacks host driver setup"; exit 1; }
+    install -m755 "$GPU_TEST" "$APPDIR/usr/bin/obs-appimage-gpu-test"
+    GPU_LOADER="$(sed -n 's/^LOADER="\([^"]*\)"$/\1/p' "$APPDIR/AppRun")"
+    GPU_LOADER_DIR="$(dirname "$GPU_LOADER")"
+    [ -x "$GPU_LOADER" ] && [ -r "$GPU_LOADER_DIR/mode" ] ||
+        { echo "::error::AppRun did not initialize its selected interpreter"; exit 1; }
+    eval "$APPRUN_DRIVER_ENV"
+    echo "GPU runtime mode: $(cat "$GPU_LOADER_DIR/mode")"
+    # Select the same C runtime as AppRun. In host mode this private lib
+    # directory is empty; in bundled mode it holds the chosen C runtime.
+    for mode in gbm vaapi; do
+        args=("$GPU_RENDER_NODE")
+        [ "$mode" != vaapi ] || args+=("$GPU_INPUT" "$OUT/vaapi.yuv")
+        if ! timeout --kill-after=5s 120s "$GPU_LOADER" --library-path "$GPU_LOADER_DIR/lib:$APPDIR/usr/lib" \
+            "$APPDIR/usr/bin/obs-appimage-gpu-test" "$mode" "${args[@]}" >"$OUT/gpu-$mode.log" 2>&1; then
+            fail "physical $mode frames failed"
+        fi
+        cat "$OUT/gpu-$mode.log"
+        if grep -E "/($DRIVER_STACK_RE)" "$OUT/gpu-$mode.log" | grep -F "$APPDIR/"; then
+            fail "$mode loaded a driver library from the AppImage"
+        fi
+    done
+    if ! cmp "$GPU_REFERENCE" "$OUT/vaapi.yuv"; then
+        fail "hardware-decoded VAAPI pixels differ from the software oracle"
+    fi
+    grep -F "$APPDIR/usr/lib/libavcodec.so" "$OUT/gpu-vaapi.log" >/dev/null || fail "VAAPI did not use packaged libavcodec"
+    grep -F "$APPDIR/usr/lib/libavutil.so" "$OUT/gpu-vaapi.log" >/dev/null || fail "VAAPI did not use packaged libavutil"
+    [ ! -f "$OUT/vaapi.yuv" ] || sha256sum "$OUT/vaapi.yuv"
     finish
 fi
 
@@ -601,6 +643,7 @@ in_appimage() {
         # shellcheck disable=SC2034 # used by $APPRUN_ENV
         HERE="$APPDIR"
         eval "$APPRUN_ENV"
+        eval "$APPRUN_DRIVER_ENV"
         exec "$LOADER" "${LOADER_ARGS[@]}" "$APPDIR/usr/bin/obs-appimage-testkit" "$@"
     )
 }

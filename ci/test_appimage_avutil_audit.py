@@ -25,17 +25,26 @@ class AvutilAuditTest(unittest.TestCase):
             )
             features = directory / "features"
             subprocess.run(
-                ["cc", "-I", str(directory), str(ROOT / "build-aux/appimage/avutil-features.c"),
-                 "-ldl", "-o", str(features)], check=True, capture_output=True,
+                [
+                    "cc",
+                    "-I",
+                    str(directory),
+                    str(ROOT / "build-aux/appimage/avutil-features.c"),
+                    "-ldl",
+                    "-o",
+                    str(features),
+                ],
+                check=True,
+                capture_output=True,
             )
             source = directory / "library.c"
             source.write_text(
                 '#include "libavutil/hwcontext.h"\n'
-                'int exported_layout[SIZE];\n'
-                'unsigned avutil_version(void) { return 123; }\n'
-                'enum AVHWDeviceType av_hwdevice_iterate_types(enum AVHWDeviceType t) { return t ? 0 : BACKEND; }\n'
+                "int exported_layout[SIZE];\n"
+                "unsigned avutil_version(void) { return 123; }\n"
+                "enum AVHWDeviceType av_hwdevice_iterate_types(enum AVHWDeviceType t) { return t ? 0 : BACKEND; }\n"
                 'const char *av_hwdevice_get_type_name(enum AVHWDeviceType t) { return t==VAAPI ? "vaapi" : "cuda"; }\n'
-                'int unchanged_api(void) { return VALUE; }\n'
+                "int unchanged_api(void) { return VALUE; }\n"
             )
             libraries = {}
             for name, size, backend, value in (
@@ -46,13 +55,31 @@ class AvutilAuditTest(unittest.TestCase):
             ):
                 library = directory / f"{name}.so"
                 subprocess.run(
-                    ["cc", "-fPIC", "-shared", "-I", str(directory), f"-DSIZE={size}",
-                     f"-DBACKEND={backend}", f"-DVALUE={value}", str(source), "-o", str(library)],
-                    check=True, capture_output=True,
+                    [
+                        "cc",
+                        "-fPIC",
+                        "-shared",
+                        "-I",
+                        str(directory),
+                        f"-DSIZE={size}",
+                        f"-DBACKEND={backend}",
+                        f"-DVALUE={value}",
+                        str(source),
+                        "-o",
+                        str(library),
+                    ],
+                    check=True,
+                    capture_output=True,
                 )
                 libraries[name] = library
-            BUILD.audit_library(libraries["original"], libraries["compatible"], features)
+            BUILD.audit_library(
+                libraries["original"], libraries["compatible"], features
+            )
             with self.assertRaisesRegex(RuntimeError, "layouts=.*exported_layout"):
-                BUILD.audit_library(libraries["original"], libraries["layout"], features)
+                BUILD.audit_library(
+                    libraries["original"], libraries["layout"], features
+                )
             with self.assertRaisesRegex(RuntimeError, "version/backends changed"):
-                BUILD.audit_library(libraries["original"], libraries["backend"], features)
+                BUILD.audit_library(
+                    libraries["original"], libraries["backend"], features
+                )

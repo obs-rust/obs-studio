@@ -15,6 +15,7 @@ pre-release, a tag push attaches it to that tag's release.
 | `check-appdir.sh` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled. Run by `assemble-appdir.sh` (fails the build) and again by the test. |
 | `test-appimage.sh` | The distribution test, run inside a stock container (see below). |
 | `testkit.c` | Test helper built next to the AppImage: runtime probes, a fake ScreenCast/Camera portal, the test tone. The test runs it with the AppImage's own loader and libraries. |
+| `gpu-test.c` | Physical render-node checks: GBM buffer export and EGL DMA-BUF import with pixel readback, and VAAPI decoding with downloaded frame data. Built as a separate test artifact. |
 | `verify-recording.sh` | Checks the recording the test made (outside the container, which must not have ffmpeg). |
 
 ## How it works
@@ -31,6 +32,9 @@ pre-release, a tag push attaches it to that tag's release.
   otherwise uses `vaMapBuffer`. Assembly requires this audited libavutil;
   the original library cannot start against Ubuntu 22.04's host libva.
   `AppRun` points `LIBVA_DRIVERS_PATH` at the host's `dri` directories.
+  It also sets host GBM backend, EGL vendor/external-platform and Vulkan ICD
+  search paths, including `/run/opengl-driver` where present. Existing user
+  overrides are preserved. The tests execute this same launcher block.
 - **glibc, libstdc++ and libgcc_s are bundled but the host's are used when they
   are at least as new** (#621). The host's Mesa loads LLVM, which needs the
   host's glibc and libstdc++ (Arch: glibc 2.44, GLIBCXX_3.4.36); on the
@@ -97,6 +101,34 @@ with none of OBS's dependencies installed, and fails unless all of these pass:
    both pictures to keep moving and the tone to be present throughout.
 
 The release job publishes only after the tests pass on every distribution.
+
+### Physical GPU validation
+
+The `gpu` scenario requires a real render node; it fails when the node is
+absent and refuses a software renderer or software decoder fallback. Run it
+in an Arch or Fedora container with the render node and its matching host
+driver devices, libraries and configuration exposed. The ordinary hosted
+CI jobs without GPU devices do not count as physical validation.
+
+Download the `obs-appimage-gpu-test` artifact from the same AppImage build.
+It contains a helper compiled against the packaged FFmpeg version, a
+12-frame 128x72 H264 fixture, and its software-decoded YUV420P reference.
+Inside the container, alongside the AppImage and usual test helper:
+
+```bash
+GPU_TEST="$PWD/obs-appimage-gpu-test" \
+GPU_INPUT="$PWD/gpu-h264.mp4" GPU_REFERENCE="$PWD/gpu-reference.yuv" \
+GPU_RENDER_NODE=/dev/dri/renderD128 \
+build-aux/appimage/test-appimage.sh candidate.AppImage results/gpu obs-appimage-testkit gpu
+```
+
+The helper uses AppRun's selected interpreter and C runtime, imports an
+exported GBM DMA-BUF with its modifier, and verifies every pixel in twelve
+rendered frames. VAAPI must decode twelve hardware surfaces, download them,
+and match the reference bytes exactly. Loaded-library maps must show the
+host driver stack and packaged libavcodec/libavutil. Configure the vendor's
+device selection when needed; for NVIDIA, the CUDA-visible GPU must match
+the supplied render node. Each probe has a bounded timeout.
 
 ## Limitations
 

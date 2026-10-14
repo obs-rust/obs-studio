@@ -122,7 +122,7 @@ jobs:
             libswresample-dev libswscale-dev libjansson-dev libx11-xcb-dev libgles2-mesa-dev \
             libwayland-dev libpipewire-0.3-dev libpulse-dev libx264-dev libmbedtls-dev \
             libpipewire-0.3-modules pipewire-bin \
-            libgl1-mesa-dev uthash-dev libsimde-dev libluajit-5.1-dev swig libxss-dev libglvnd-dev \
+            libgl1-mesa-dev libgbm-dev ffmpeg uthash-dev libsimde-dev libluajit-5.1-dev swig libxss-dev libglvnd-dev \
             libx11-dev libxcb-randr0-dev libxcb-shm0-dev libxcb-xinerama0-dev libxcb-composite0-dev \
             libxinerama-dev libxcb1-dev libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev \
             libatk1.0-dev libatk-bridge2.0-dev libxcomposite-dev libxdamage-dev \
@@ -247,6 +247,21 @@ jobs:
           gcc -O2 -Wall -Wextra -Werror -o obs-appimage-testkit build-aux/appimage/testkit.c \
             $(pkg-config --cflags --libs gio-unix-2.0 libpipewire-0.3 libpulse) -lm \
             -Wl,--disable-new-dtags -Wl,-rpath,'$ORIGIN/../lib'
+          gcc -O2 -Wall -Wextra -Werror -o obs-appimage-gpu-test build-aux/appimage/gpu-test.c \
+            $(pkg-config --cflags --libs gbm egl glesv2 libavcodec libavformat libavutil) \
+            -Wl,--disable-new-dtags -Wl,-rpath,'$ORIGIN/../lib'
+          ffmpeg -v error -f lavfi -i testsrc2=size=128x72:rate=12 -frames:v 12 \
+            -c:v libx264 -pix_fmt yuv420p -bf 0 -crf 18 gpu-h264.mp4
+          ffmpeg -v error -i gpu-h264.mp4 -pix_fmt yuv420p -f rawvideo gpu-reference.yuv
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: obs-appimage-gpu-test
+          path: |
+            obs-appimage-gpu-test
+            gpu-h264.mp4
+            gpu-reference.yuv
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

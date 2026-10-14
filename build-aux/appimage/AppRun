@@ -132,6 +132,11 @@ if [ -z "${__EGL_VENDOR_LIBRARY_DIRS:-}" ] && [ -z "${__EGL_VENDOR_LIBRARY_FILEN
         /etc/glvnd/egl_vendor.d /usr/share/glvnd/egl_vendor.d)"
     if [ -n "$__EGL_VENDOR_LIBRARY_DIRS" ]; then export __EGL_VENDOR_LIBRARY_DIRS; fi
 fi
+if [ -z "${__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS:-}" ] && [ -z "${__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES:-}" ]; then
+    __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS="$(host_driver_dirs /run/opengl-driver/share/egl/egl_external_platform.d \
+        /etc/egl/egl_external_platform.d /usr/share/egl/egl_external_platform.d)"
+    if [ -n "$__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS" ]; then export __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS; fi
+fi
 # VK_DRIVER_FILES also accepts directories. Honour the older override too.
 if [ -z "${VK_DRIVER_FILES:-}" ] && [ -z "${VK_ICD_FILENAMES:-}" ]; then
     VK_DRIVER_FILES="$(host_driver_dirs /run/opengl-driver/share/vulkan/icd.d \
