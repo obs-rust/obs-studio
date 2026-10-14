@@ -288,13 +288,13 @@ if [[ "$VERSION_OUT" == OBS-Studio-Rust* ]]; then
     INSTANCE_PREFIX=@/io/github/obs_rust/OBSStudioRust
     PACKAGE_DATA="$APPDIR/usr/share/obs-studio-rust"
     PACKAGE_MODULES="$APPDIR/usr/lib/obs-studio-rust/obs-modules"
-    ID=io.github.obs_rust.OBSStudioRust
-    [ -f "$APPDIR/$ID.desktop" ] || fail "Rust desktop identity is missing"
+    APP_ID=io.github.obs_rust.OBSStudioRust
+    [ -f "$APPDIR/$APP_ID.desktop" ] || fail "Rust desktop identity is missing"
     [ -f "$APPDIR/usr/bin/$GUI_NAME" ] || fail "Rust GUI executable is missing"
-    grep -Fxq "Exec=$GUI_NAME" "$APPDIR/$ID.desktop" || fail "Rust desktop starts the wrong executable"
-    grep -Fxq "Icon=$ID" "$APPDIR/$ID.desktop" || fail "Rust desktop shares its icon identity"
-    grep -Fxq "StartupWMClass=$GUI_NAME" "$APPDIR/$ID.desktop" || fail "Rust desktop shares its window class"
-    [ -f "$APPDIR/usr/share/metainfo/$ID.metainfo.xml" ] || fail "Rust metainfo identity is missing"
+    grep -Fxq "Exec=$GUI_NAME" "$APPDIR/$APP_ID.desktop" || fail "Rust desktop starts the wrong executable"
+    grep -Fxq "Icon=$APP_ID" "$APPDIR/$APP_ID.desktop" || fail "Rust desktop shares its icon identity"
+    grep -Fxq "StartupWMClass=$GUI_NAME" "$APPDIR/$APP_ID.desktop" || fail "Rust desktop shares its window class"
+    [ -f "$APPDIR/usr/share/metainfo/$APP_ID.metainfo.xml" ] || fail "Rust metainfo identity is missing"
     [ "${#FAILED[@]}" -eq 0 ] || finish
 fi
 # The C and C++ runtime is bundled in glibc/, outside usr/lib, so that AppRun can
