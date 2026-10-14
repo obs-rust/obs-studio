@@ -4,12 +4,26 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 class HostDriverStackTest(unittest.TestCase):
+    def test_metadata_check_installs_every_unbundled_va_library(self):
+        workflow = (ROOT / ".github/workflows/appimage.yaml").read_text()
+        block = workflow.split("      - name: Install host GPU runtime for metadata check", 1)[1].split("\n      - name:", 1)[0]
+        source = textwrap.dedent(block.split("        run: |\n", 1)[1])
+        # Capture the arguments of the actual install commands; do not alter
+        # the host package manager or replace the workflow's dependency list.
+        capture = 'sudo() { [ "$1" != -E ] || shift; "$@"; }; apt-get() { printf "%s\\n" "$@"; };\n'
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(["bash", "-c", capture + source], cwd=directory, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for package in ("libva2", "libva-drm2", "libva-x11-2"):
+            self.assertIn(package, result.stdout.splitlines())
+
     def test_ffmpeg_build_dependencies_do_not_remove_obs_srt_support(self):
         workflow = (ROOT / ".github/workflows/appimage.yaml").read_text()
         bootstrap = workflow.index("build_vaapi_compat.py avutil-compat")
