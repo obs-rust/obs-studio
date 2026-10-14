@@ -135,6 +135,18 @@ jobs:
             libxcb-shape0 libxcb-xkb1 libxcb-sync1 libxcb-xinerama0
           sudo chown -R "$(id -u):$(id -g)" .apt-cache # apt ran as root; the cache action must read it
 
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
+      - name: Build libavutil with host VA compatibility
+        run: |
+          # Keep Ubuntu's complete feature configuration. Only the optional
+          # newer VA mapping API is adapted; exports/backends are audited.
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update -qq
+          sudo -E apt-get -y -qq -o DPkg::Lock::Timeout=120 -o Dir::Cache::archives="$PWD/.apt-cache" build-dep --arch-only ffmpeg=7:8.0.1-3ubuntu2
+          sudo chown -R "$(id -u):$(id -g)" .apt-cache
+          uv run --no-project build-aux/appimage/build_vaapi_compat.py avutil-compat
+
       - name: Determine version 🏷️
         run: |
           # Same tag filter as cmake/common/versionconfig.cmake: this repository also carries
@@ -201,9 +213,7 @@ jobs:
       - name: Assemble AppDir 📁
         run: |
           DESTDIR="$PWD/AppDir" cmake --install build_ubuntu
-          build-aux/appimage/assemble-appdir.sh AppDir
-
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+          build-aux/appimage/assemble-appdir.sh AppDir avutil-compat/libavutil.so.60
 
       - name: Create AppImage 📀
         env:

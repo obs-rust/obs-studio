@@ -1,9 +1,25 @@
 #!/usr/bin/env bash
 # Turn a `cmake --install` tree (prefix /usr) into a self-contained AppDir that
 # also bundles glibc, so it runs on distributions older and newer than the one
-# that built it. Usage: assemble-appdir.sh <AppDir>   (AppDir already holds usr/)
+# that built it. Usage: assemble-appdir.sh <AppDir> <validated-libavutil.so.60>   (AppDir already holds usr/)
 set -euo pipefail
 
+# Do not build an image that will fail on older host VA libraries. The second
+# input is built and audited by build_vaapi_compat.py before assembly.
+COMPAT_LIB="${2:-}"
+if [ -z "$COMPAT_LIB" ] || [ ! -f "$COMPAT_LIB" ]; then
+    echo "::error::provide a validated VA-compatible libavutil from build_vaapi_compat.py" >&2
+    exit 2
+fi
+COMPAT_DYNAMIC="$(readelf -d "$COMPAT_LIB")"
+grep -Fq '[libavutil.so.60]' <<<"$COMPAT_DYNAMIC" || {
+    echo "::error::compatibility library has the wrong libavutil SONAME" >&2; exit 2;
+}
+COMPAT_SYMBOLS="$(readelf --dyn-syms --wide "$COMPAT_LIB")"
+if grep -Eq '[[:space:]]UND[[:space:]].*vaMapBuffer2' <<<"$COMPAT_SYMBOLS"; then
+    echo "::error::compatibility library still requires vaMapBuffer2" >&2
+    exit 2
+fi
 APPDIR="$(realpath "$1")"
 HERE="$(dirname "$(realpath "$0")")"
 LIBDIR="$APPDIR/usr/lib"
@@ -31,7 +47,7 @@ SYSLIB="/usr/lib/$MULTIARCH"
 # against the host's copies of these and look for their backends in the host's
 # directories, so a bundled copy would shadow them through the relative RPATH
 # (obs-rust/obs-studio#625). Everything else is bundled.
-EXCLUDE='^(linux-vdso|libcuda|libnvidia|libnvcuvid|libGL\.so|libGLX|libEGL|libOpenGL|libGLdispatch|libGLESv|libglapi|libgbm|libdrm|libvulkan|libwayland-(client|egl|server)|libgallium|libLLVM)'
+EXCLUDE='^(linux-vdso|libcuda|libnvidia|libnvcuvid|libGL\.so|libGLX|libEGL|libOpenGL|libGLdispatch|libGLESv|libglapi|libgbm|libdrm|libvulkan|libva(\.so|-)|libwayland-(client|egl|server)|libgallium|libLLVM)'
 
 mkdir -p "$LIBDIR" "$APPDIR/lib64"
 
@@ -97,6 +113,9 @@ mkdir -p "$DATA_ROOT"
 find "$MODULE_ROOT" -name '*.so' -printf '%f\n' | sort >"$DATA_ROOT/appimage-modules.txt"
 
 # --- bundle the shared-library closure of every ELF in the AppDir ------------
+# Install the source-built version first, so closure discovery uses it and
+# cannot replace it with the build host's library requiring a newer VA API.
+install -m 644 "$COMPAT_LIB" "$LIBDIR/libavutil.so.60"
 export LD_LIBRARY_PATH="$LIBDIR"
 
 is_elf() { [ "$(head -c4 "$1" 2>/dev/null | od -An -c | tr -d ' ')" = '177ELF' ]; }

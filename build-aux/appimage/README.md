@@ -10,6 +10,7 @@ pre-release, a tag push attaches it to that tag's release.
 | --- | --- |
 | `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set-runpaths.sh`. |
 | `set-runpaths.sh` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
+| `build_vaapi_compat.py` | Builds the pinned Ubuntu libavutil source with optional newer VA mapping support, then checks exported ABI and registered hardware backends against the original library. |
 | `AppRun` | Entry point. Installs the bundled loader, sets up the environment, runs OBS and writes a crash report if it crashes. |
 | `check-appdir.sh` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled. Run by `assemble-appdir.sh` (fails the build) and again by the test. |
 | `test-appimage.sh` | The distribution test, run inside a stock container (see below). |
@@ -20,14 +21,16 @@ pre-release, a tag push attaches it to that tag's release.
 
 - **Everything is bundled** except the GPU driver stack, which has to come from
   the host: `libGL`, `libGLX`, `libEGL`, `libOpenGL`, `libGLdispatch`, `libgbm`,
-  `libdrm`, `libvulkan`, `libwayland-client`/`-egl`, Mesa, LLVM and
+  `libdrm`, `libva`/`libva-drm`/`libva-x11`, `libvulkan`, `libwayland-client`/`-egl`, Mesa, LLVM and
   the NVIDIA libraries (the AppImage excludelist). The host's drivers are built
   against the host's copies of these and look for their backends in the
   host's directories; a bundled copy would win over them through the relative
-  RPATH (#625). The test fails if any of them is bundled. `libva` is the one
-  exception: the bundled FFmpeg needs a newer one than old hosts have (Ubuntu
-  22.04 failed to start without it), so it is bundled and `AppRun` points
-  `LIBVA_DRIVERS_PATH` at the host's `dri` directories.
+  RPATH (#625). The test fails if any of them is bundled. The pinned Ubuntu
+  FFmpeg source is rebuilt with its original configuration and hardware
+  backends: VA mapping uses `vaMapBuffer2` when the host provides it and
+  otherwise uses `vaMapBuffer`. Assembly requires this audited libavutil;
+  the original library cannot start against Ubuntu 22.04's host libva.
+  `AppRun` points `LIBVA_DRIVERS_PATH` at the host's `dri` directories.
 - **glibc, libstdc++ and libgcc_s are bundled but the host's are used when they
   are at least as new** (#621). The host's Mesa loads LLVM, which needs the
   host's glibc and libstdc++ (Arch: glibc 2.44, GLIBCXX_3.4.36); on the
