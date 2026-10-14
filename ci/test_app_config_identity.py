@@ -92,3 +92,38 @@ class AppConfigIdentityTest(unittest.TestCase):
             self.assertEqual(
                 self.paths(True, False, name), ["/user/config/" + name] * 2
             )
+
+
+class ConfigMigrationTest(unittest.TestCase):
+    def test_first_run_migration_contract(self):
+        with tempfile.TemporaryDirectory(prefix="obs-config-migration-") as scratch:
+            directory = Path(scratch)
+            executable = directory / "migration"
+            subprocess.run(
+                [
+                    "c++",
+                    "-std=c++17",
+                    "-I",
+                    str(ROOT / "frontend"),
+                    str(ROOT / "frontend/tests/test_config_migration.cpp"),
+                    "-o",
+                    str(executable),
+                ],
+                check=True,
+                capture_output=True,
+            )
+            for mode in (
+                "first",
+                "existing",
+                "absent",
+                "custom",
+                "empty-custom",
+                "failure",
+            ):
+                with self.subTest(mode=mode):
+                    completed = subprocess.run(
+                        [str(executable), str(directory / mode), mode],
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
