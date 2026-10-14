@@ -106,14 +106,37 @@ export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/sha
 export SPA_PLUGIN_DIR="$HERE/usr/lib/spa-0.2"
 export PIPEWIRE_MODULE_DIR="$HERE/usr/lib/pipewire-0.3"
 export PIPEWIRE_CONFIG_DIR="$HERE/usr/share/pipewire"
-# libva is bundled (the bundled FFmpeg needs a newer libva than old hosts have),
-# but the VA-API drivers are the host's: libva looks for them in the directory
-# it was configured with, which is a Debian one, so name the host's.
-if [ -z "$LIBVA_DRIVERS_PATH" ]; then
-    for d in /usr/lib/x86_64-linux-gnu/dri /usr/lib64/dri /usr/lib/dri; do
-        [ -d "$d" ] && LIBVA_DRIVERS_PATH="${LIBVA_DRIVERS_PATH:+$LIBVA_DRIVERS_PATH:}$d"
+# Host driver search paths. Never point the host stack at bundled drivers or
+# replace a user's selection. Nix exposes its driver closure under /run.
+host_driver_dirs() {
+    driver_dirs=""
+    for driver_dir in "$@"; do
+        if [ -d "$driver_dir" ]; then
+            driver_dirs="${driver_dirs:+$driver_dirs:}$driver_dir"
+        fi
     done
-    [ -n "$LIBVA_DRIVERS_PATH" ] && export LIBVA_DRIVERS_PATH
+    printf '%s' "$driver_dirs"
+}
+if [ -z "${GBM_BACKENDS_PATH:-}" ]; then
+    GBM_BACKENDS_PATH="$(host_driver_dirs /run/opengl-driver/lib/gbm \
+        /usr/lib/x86_64-linux-gnu/gbm /usr/lib64/gbm /usr/lib/gbm)"
+    if [ -n "$GBM_BACKENDS_PATH" ]; then export GBM_BACKENDS_PATH; fi
+fi
+if [ -z "${LIBVA_DRIVERS_PATH:-}" ]; then
+    LIBVA_DRIVERS_PATH="$(host_driver_dirs /run/opengl-driver/lib/dri \
+        /usr/lib/x86_64-linux-gnu/dri /usr/lib64/dri /usr/lib/dri)"
+    if [ -n "$LIBVA_DRIVERS_PATH" ]; then export LIBVA_DRIVERS_PATH; fi
+fi
+if [ -z "${__EGL_VENDOR_LIBRARY_DIRS:-}" ] && [ -z "${__EGL_VENDOR_LIBRARY_FILENAMES:-}" ]; then
+    __EGL_VENDOR_LIBRARY_DIRS="$(host_driver_dirs /run/opengl-driver/share/glvnd/egl_vendor.d \
+        /etc/glvnd/egl_vendor.d /usr/share/glvnd/egl_vendor.d)"
+    if [ -n "$__EGL_VENDOR_LIBRARY_DIRS" ]; then export __EGL_VENDOR_LIBRARY_DIRS; fi
+fi
+# VK_DRIVER_FILES also accepts directories. Honour the older override too.
+if [ -z "${VK_DRIVER_FILES:-}" ] && [ -z "${VK_ICD_FILENAMES:-}" ]; then
+    VK_DRIVER_FILES="$(host_driver_dirs /run/opengl-driver/share/vulkan/icd.d \
+        /etc/vulkan/icd.d /usr/share/vulkan/icd.d)"
+    if [ -n "$VK_DRIVER_FILES" ]; then export VK_DRIVER_FILES; fi
 fi
 # gconv modules belong to the glibc that runs them
 [ "$MODE" = host ] && unset GCONV_PATH
@@ -136,7 +159,7 @@ if [ -n "$OBS_APPIMAGE_DEBUG" ]; then
     # Troubleshooting: OBS_APPIMAGE_DEBUG=1 ./OBS-Studio-*-linux-x86_64.AppImage
     # prints the environment and, when gdb is installed, a backtrace of a crash.
     echo "== AppImage environment ==" >&2
-    env | sort | grep -E '^(APPDIR|LD_|QT_|GIO_|GSETTINGS_|XDG_|WAYLAND|DISPLAY|DBUS|LANG|LC_)' >&2
+    env | sort | grep -E '^(APPDIR|GBM_|LIBVA|VK_|__EGL|LD_|QT_|GIO_|GSETTINGS_|XDG_|WAYLAND|DISPLAY|DBUS|LANG|LC_)' >&2
     export QT_DEBUG_PLUGINS=1 LIBGL_DEBUG=verbose EGL_LOG_LEVEL=debug
     if command -v gdb >/dev/null 2>&1; then
         exec gdb -q -batch -ex 'set pagination off' -ex 'handle SIGPIPE nostop noprint' -ex run \
