@@ -15,6 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
+#include <utility/AppIdentity.hpp>
 #include "OBSBasic.hpp"
 
 #ifdef YOUTUBE_ENABLED
@@ -35,7 +36,7 @@
 
 // MARK: Constant Expressions
 
-constexpr std::string_view OBSProfilePath = "/obs-studio/basic/profiles/";
+constexpr std::string_view OBSProfilePath = "/" OBS_CONFIG_DIRECTORY "/basic/profiles/";
 constexpr std::string_view OBSProfileSettingsFile = "basic.ini";
 
 // MARK: Forward Declarations

@@ -15,6 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
+#include <utility/AppIdentity.hpp>
 #include "OBSImporter.hpp"
 #include "ImporterEntryPathItemDelegate.hpp"
 #include "ImporterModel.hpp"
@@ -164,7 +165,7 @@ bool GetUnusedName(std::string &name)
 	return true;
 }
 
-constexpr std::string_view OBSSceneCollectionPath = "obs-studio/basic/scenes/";
+constexpr std::string_view OBSSceneCollectionPath = OBS_CONFIG_DIRECTORY "/basic/scenes/";
 
 void OBSImporter::importCollections()
 {

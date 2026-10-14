@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <utility/AppIdentity.hpp>
 #include <utility/NativeEventFilter.hpp>
 #include <utility/OBSTheme.hpp>
 #include <utility/ThumbnailManager.hpp>
@@ -104,6 +105,7 @@ private:
 	bool InitGlobalLocationDefaults();
 
 	bool MigrateGlobalSettings();
+	bool MigrateRustConfiguration();
 	void MigrateLegacySettings(uint32_t lastVersion);
 
 	bool InitUserConfig(std::filesystem::path &userConfigLocation, uint32_t lastVersion);

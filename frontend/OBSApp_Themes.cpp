@@ -477,7 +477,7 @@ void OBSApp::FindThemes()
 	}
 
 	{
-		const std::string themeDir = App()->userConfigLocation.u8string() + "/obs-studio/themes";
+		const std::string themeDir = App()->userConfigLocation.u8string() + "/" OBS_CONFIG_DIRECTORY "/themes";
 
 		QDirIterator it(QString::fromStdString(themeDir), filters, QDir::Files);
 
@@ -995,7 +995,7 @@ bool OBSApp::SetTheme(const QString &name)
 
 #ifdef _DEBUG
 	/* Write resulting QSS to file in config dir "themes" folder. */
-	string filename("obs-studio/themes/");
+	string filename(OBS_CONFIG_DIRECTORY "/themes/");
 	filename += theme->id.toStdString();
 	filename += ".out";
 
@@ -1064,7 +1064,7 @@ bool OBSApp::InitTheme()
 	}
 
 	char userDir[512];
-	if (GetAppConfigPath(userDir, sizeof(userDir), "obs-studio/themes")) {
+	if (GetAppConfigPath(userDir, sizeof(userDir), OBS_CONFIG_DIRECTORY "/themes")) {
 		auto configSearchDir = filesystem::u8path(userDir);
 		QDir::addSearchPath("theme", absolute(configSearchDir));
 	}

@@ -305,7 +305,7 @@ RunOnceMutex CheckIfAlreadyRunning(bool &already_running)
 	string name;
 
 	if (!portable_mode) {
-		name = "OBSStudioCore";
+		name = OBS_RUN_ONCE_NAME;
 	} else {
 		char path[500];
 		char absPath[512];

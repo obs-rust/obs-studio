@@ -24,6 +24,7 @@
 #include <dialogs/LogUploadDialog.hpp>
 #include <plugin-manager/PluginManager.hpp>
 #include <utility/CrashHandler.hpp>
+#include <utility/ConfigMigration.hpp>
 #include <utility/OBSEventFilter.hpp>
 #include <utility/OBSProxyStyle.hpp>
 #include <utility/product-name.h>
@@ -40,6 +41,7 @@
 
 #include <QCheckBox>
 #include <QDesktopServices>
+#include <QLockFile>
 #if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
 #include <QFile>
 #endif
@@ -493,9 +495,9 @@ static bool MakeUserDirs()
 	return true;
 }
 
-constexpr std::string_view OBSProfileSubDirectory = "obs-studio/basic/profiles";
-constexpr std::string_view OBSScenesSubDirectory = "obs-studio/basic/scenes";
-constexpr std::string_view OBSPluginManagerSubDirectory = "obs-studio/plugin_manager";
+constexpr std::string_view OBSProfileSubDirectory = OBS_CONFIG_DIRECTORY "/basic/profiles";
+constexpr std::string_view OBSScenesSubDirectory = OBS_CONFIG_DIRECTORY "/basic/scenes";
+constexpr std::string_view OBSPluginManagerSubDirectory = OBS_CONFIG_DIRECTORY "/plugin_manager";
 
 static bool MakeUserProfileDirs()
 {
@@ -572,11 +574,78 @@ bool OBSApp::UpdatePre22MultiviewLayout(const char *layout)
 	return false;
 }
 
+bool OBSApp::MigrateRustConfiguration()
+{
+#ifdef OBS_RUST_VERSION
+	namespace fs = std::filesystem;
+	try {
+		BPtr<char> configRoot = GetAppConfigPathPtr(nullptr);
+		if (!configRoot) {
+			throw std::runtime_error("Unable to locate the configuration root");
+		}
+		const auto base = fs::u8path(configRoot.Get());
+		const auto source = base / "obs-studio";
+		const auto destination = base / OBS_CONFIG_DIRECTORY;
+		if (fs::exists(destination) || !fs::exists(source)) {
+			return true;
+		}
+		fs::create_directories(base);
+		QLockFile lock(QString::fromStdString((base / "obs-studio-rust.migration.lock").u8string()));
+		if (!lock.tryLock(0)) {
+			throw std::runtime_error("Another Rust frontend is migrating its configuration");
+		}
+		ConfigFile upstream;
+		const auto global = source / "global.ini";
+		if (fs::exists(global) &&
+		    upstream.Open(global.u8string().c_str(), CONFIG_OPEN_EXISTING) != CONFIG_SUCCESS) {
+			throw std::runtime_error("Unable to read the original global settings");
+		}
+		auto location = [&](const char *key) {
+			if (!IsPortableMode() && fs::exists(global)) {
+				const char *value = config_get_string(upstream, "Locations", key);
+				if (value && *value && fs::is_directory(fs::u8path(value))) {
+					return fs::u8path(value) / "obs-studio";
+				}
+			}
+			return source;
+		};
+		std::vector<std::pair<fs::path, fs::path>> overrides;
+		const auto configuration = location("Configuration");
+		for (const char *relative : {"user.ini", "themes", "plugin_config"}) {
+			overrides.emplace_back(configuration / relative, relative);
+		}
+		overrides.emplace_back(location("Profiles") / "basic/profiles", "basic/profiles");
+		overrides.emplace_back(location("SceneCollections") / "basic/scenes", "basic/scenes");
+		overrides.emplace_back(location("PluginManagerSettings") / "plugin_manager", "plugin_manager");
+		MigrateAppConfig(source, destination, overrides, [&](const fs::path &copy) {
+			ConfigFile isolated;
+			if (isolated.Open((copy / "global.ini").u8string().c_str(), CONFIG_OPEN_ALWAYS) !=
+			    CONFIG_SUCCESS) {
+				throw std::runtime_error("Unable to open the copied global settings");
+			}
+			for (const char *key :
+			     {"Configuration", "Profiles", "SceneCollections", "PluginManagerSettings"}) {
+				config_set_string(isolated, "Locations", key, base.u8string().c_str());
+			}
+			config_set_string(isolated, "General", "RustConfigImportedFrom", source.u8string().c_str());
+			if (isolated.SaveSafe("tmp") != CONFIG_SUCCESS) {
+				throw std::runtime_error("Unable to save the independent settings locations");
+			}
+		});
+	} catch (const std::exception &error) {
+		OBSErrorBox(nullptr, "Rust configuration migration failed: %s. Original settings were preserved.",
+			    error.what());
+		return false;
+	}
+#endif
+	return true;
+}
+
 bool OBSApp::InitGlobalConfig()
 {
 	char path[512];
 
-	int len = GetAppConfigPath(path, sizeof(path), "obs-studio/global.ini");
+	int len = GetAppConfigPath(path, sizeof(path), OBS_CONFIG_DIRECTORY "/global.ini");
 	if (len <= 0) {
 		return false;
 	}
@@ -648,7 +717,7 @@ bool OBSApp::InitGlobalConfig()
 
 bool OBSApp::InitUserConfig(std::filesystem::path &userConfigLocation, uint32_t lastVersion)
 {
-	const std::string userConfigFile = userConfigLocation.u8string() + "/obs-studio/user.ini";
+	const std::string userConfigFile = userConfigLocation.u8string() + "/" OBS_CONFIG_DIRECTORY "/user.ini";
 
 	int errorCode = userConfig.Open(userConfigFile.c_str(), CONFIG_OPEN_ALWAYS);
 
@@ -731,8 +800,8 @@ void OBSApp::MigrateLegacySettings(const uint32_t lastVersion)
 	}
 }
 
-static constexpr string_view OBSGlobalIniPath = "/obs-studio/global.ini";
-static constexpr string_view OBSUserIniPath = "/obs-studio/user.ini";
+static constexpr string_view OBSGlobalIniPath = "/" OBS_CONFIG_DIRECTORY "/global.ini";
+static constexpr string_view OBSUserIniPath = "/" OBS_CONFIG_DIRECTORY "/user.ini";
 
 bool OBSApp::MigrateGlobalSettings()
 {
@@ -1017,7 +1086,7 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	setWindowIcon(QIcon::fromTheme("obs", QIcon(":/res/images/obs.png")));
 #endif
 
-	setDesktopFileName("com.obsproject.Studio");
+	setDesktopFileName(OBS_DESKTOP_ID);
 
 	pluginManager_ = std::make_unique<OBS::PluginManager>();
 }
@@ -1046,7 +1115,7 @@ static void move_basic_to_profiles(void)
 	}
 
 	const std::filesystem::path profilesPath =
-		App()->userProfilesLocation / std::filesystem::u8path("obs-studio/basic/profiles");
+		App()->userProfilesLocation / std::filesystem::u8path(OBS_CONFIG_DIRECTORY "/basic/profiles");
 
 	if (std::filesystem::exists(profilesPath)) {
 		return;
@@ -1104,7 +1173,8 @@ static void move_basic_to_scene_collections(void)
 	}
 
 	migrate_basic_scene_collection(std::filesystem::u8path(path),
-				       App()->userScenesLocation / std::filesystem::u8path("obs-studio/basic/scenes"),
+				       App()->userScenesLocation /
+					       std::filesystem::u8path(OBS_CONFIG_DIRECTORY "/basic/scenes"),
 				       Str("Untitled"));
 }
 
@@ -1114,6 +1184,9 @@ void OBSApp::AppInit()
 
 	QAccessible::installFactory(alignmentSelectorFactory);
 
+	if (!MigrateRustConfiguration()) {
+		throw "Failed to import settings into the independent Rust configuration";
+	}
 	if (!MakeUserDirs()) {
 		throw "Failed to create required user directories";
 	}
@@ -1699,6 +1772,8 @@ vector<pair<string, string>> GetLocaleNames()
 
 int GetAppConfigPath(char *path, size_t size, const char *name)
 {
+	const std::string relativePath = AppConfigRelativePath(name);
+	name = relativePath.c_str();
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		if (name && *name) {
@@ -1716,6 +1791,8 @@ int GetAppConfigPath(char *path, size_t size, const char *name)
 
 char *GetAppConfigPathPtr(const char *name)
 {
+	const std::string relativePath = AppConfigRelativePath(name);
+	name = relativePath.c_str();
 #if ALLOW_PORTABLE_MODE
 	if (portable_mode) {
 		char path[512];
