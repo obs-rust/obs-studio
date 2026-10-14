@@ -208,6 +208,20 @@ class ConfigMigrationTest(unittest.TestCase):
 
 
 class InstalledAppIdentityTest(unittest.TestCase):
+    def test_non_debian_installs_the_snapshot_comparison_tool(self):
+        source = (ROOT / "build-aux/appimage/test-appimage.sh").read_text()
+        block = source.split('case "${ID_LIKE:-} ${ID}" in', 1)[1]
+        block = 'case "${ID_LIKE:-} ${ID}" in' + block.split("\nesac", 1)[0] + "\nesac\n"
+        with tempfile.TemporaryDirectory(prefix="obs-package-tools-") as scratch:
+            for distro in ("fedora", "arch"):
+                requested = Path(scratch) / distro
+                script = ('ID="$1"\nID_LIKE=""\nREQUESTS="$2"\n'
+                          'dnf() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n'
+                          'pacman() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n' + block)
+                subprocess.run(["bash", "-c", script, "test", distro, str(requested)], check=True)
+                with self.subTest(distro=distro):
+                    self.assertIn("diffutils", requested.read_text().splitlines())
+
     def test_appimage_identity_keeps_the_ubuntu_pipewire_exception(self):
         source = (ROOT / "build-aux/appimage/test-appimage.sh").read_text()
         block = source.split('PACKAGE_DATA="$APPDIR/usr/share/obs"', 1)[1]
