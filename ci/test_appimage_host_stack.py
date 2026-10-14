@@ -10,6 +10,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class HostDriverStackTest(unittest.TestCase):
+    def test_ffmpeg_build_dependencies_do_not_remove_obs_srt_support(self):
+        workflow = (ROOT / ".github/workflows/appimage.yaml").read_text()
+        bootstrap = workflow.index("build_vaapi_compat.py avutil-compat")
+        configure = workflow.index("- name: Configure", bootstrap)
+        self.assertIn("install", workflow[bootstrap:configure])
+        self.assertIn("libsrt-openssl-dev", workflow[bootstrap:configure])
+        self.assertNotIn("-DENABLE_NEW_MPEGTS_OUTPUT=OFF", workflow)
+
     def test_assembly_requires_the_source_built_compatibility_library(self):
         with tempfile.TemporaryDirectory(prefix="obs-appdir-compat-") as scratch:
             root = Path(scratch)
