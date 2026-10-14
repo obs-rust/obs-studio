@@ -1,7 +1,15 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["fonttools==4.60.1"]
+# ///
 """Regenerate text-aa.ttf with FontTools; all outlines are synthetic geometry.
 
 The checked-in font keeps test_text_aa_file independent of installed fonts.
-FontTools is needed only to regenerate it, not to build or run the test.
+FontTools is needed only to regenerate it, not to build or run the test:
+`uv run test/cmocka/data/text-aa.py` rewrites the file byte for byte. The
+outlines are plain rectangles written here, so the font carries no third-party
+glyph data and is under this repository's licence.
 """
 
 from pathlib import Path
