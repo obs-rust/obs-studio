@@ -146,6 +146,11 @@ jobs:
           sudo -E apt-get -y -qq -o DPkg::Lock::Timeout=120 -o Dir::Cache::archives="$PWD/.apt-cache" build-dep --arch-only ffmpeg=7:8.0.1-3ubuntu2
           sudo chown -R "$(id -u):$(id -g)" .apt-cache
           uv run --no-project build-aux/appimage/build_vaapi_compat.py avutil-compat
+          # FFmpeg's recipe replaces this with libsrt-gnutls-dev, which lacks
+          # the library name OBS's finder expects. Restore OBS's build input
+          # after the audited avutil build; keep MPEG-TS/SRT enabled.
+          sudo -E apt-get -y -qq -o DPkg::Lock::Timeout=120 -o Dir::Cache::archives="$PWD/.apt-cache" install libsrt-openssl-dev
+          sudo chown -R "$(id -u):$(id -g)" .apt-cache
 
       - name: Determine version 🏷️
         run: |
