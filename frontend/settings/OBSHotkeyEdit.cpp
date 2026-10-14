@@ -17,6 +17,7 @@
 
 #include "OBSHotkeyEdit.hpp"
 #include "OBSBasicSettings.hpp"
+#include "OBSHotkeyCapture.hpp"
 
 #include <OBSApp.hpp>
 
@@ -26,6 +27,14 @@
 #include <QKeyEvent>
 
 #include "moc_OBSHotkeyEdit.cpp"
+
+bool OBSHotkeyEdit::event(QEvent *event)
+{
+	if (HotkeyCaptureEvent(event)) {
+		return true;
+	}
+	return QLineEdit::event(event);
+}
 
 void OBSHotkeyEdit::keyPressEvent(QKeyEvent *event)
 {

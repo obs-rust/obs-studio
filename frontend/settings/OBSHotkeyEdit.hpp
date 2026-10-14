@@ -76,6 +76,7 @@ protected:
 	void InitSignalHandler();
 	void CreateDupeIcon();
 
+	bool event(QEvent *event) override;
 	void keyPressEvent(QKeyEvent *event) override;
 #ifdef __APPLE__
 	void keyReleaseEvent(QKeyEvent *event) override;

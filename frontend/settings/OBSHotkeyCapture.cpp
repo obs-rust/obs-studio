@@ -19,7 +19,16 @@
 
 bool HotkeyCaptureEvent(QEvent *event)
 {
-	/* Current behaviour: nothing is handled here. */
-	(void)event;
+	/* Qt offers every key press to the focus widget as a ShortcutOverride
+	 * first. Accepting it delivers the key as a plain KeyPress and skips
+	 * the shortcut map, so a chord that is also a shortcut of the dialog
+	 * (the "&OK" / "&Cancel" mnemonics of the GNOME and KDE themes, a
+	 * window action) is recorded instead of triggering it, as
+	 * QKeySequenceEdit does. Tab still moves the focus: QWidget handles it
+	 * on the KeyPress. */
+	if (event->type() == QEvent::ShortcutOverride) {
+		event->accept();
+		return true;
+	}
 	return false;
 }

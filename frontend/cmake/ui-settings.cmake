@@ -10,6 +10,8 @@ target_sources(
     settings/OBSHotkeyBackground.hpp
     settings/OBSHotkeyBackgroundBanner.cpp
     settings/OBSHotkeyBackgroundBanner.hpp
+    settings/OBSHotkeyCapture.cpp
+    settings/OBSHotkeyCapture.hpp
     settings/OBSHotkeyEdit.cpp
     settings/OBSHotkeyEdit.hpp
     settings/OBSHotkeyLabel.cpp
