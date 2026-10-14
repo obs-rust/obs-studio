@@ -197,3 +197,54 @@ class InstalledAppIdentityTest(unittest.TestCase):
         )
         self.assertIn("Exec=obs\n", desktop)
         self.assertIn("Icon=com.obsproject.Studio\n", desktop)
+
+
+class InstanceIdentityTest(unittest.TestCase):
+    def test_linux_instance_check_ignores_the_other_application(self):
+        with tempfile.TemporaryDirectory(prefix="obs-instance-identity-") as scratch:
+            directory = Path(scratch)
+            source = (ROOT / "frontend/utility/platform-x11.cpp").read_text()
+            start = source.index("void CheckIfAlreadyRunning(bool &already_running)")
+            functions = source[start : source.index("\n#endif", start)]
+            harness = directory / "instance.cpp"
+            harness.write_text(
+                "#include <cstdio>\n#include <cstdlib>\n#include <cstring>\n#include <string>\n"
+                "#include <iostream>\n#include <sys/socket.h>\n#include <sys/un.h>\n#include <unistd.h>\n"
+                '#include "utility/AppIdentity.hpp"\n'
+                "std::string observed; std::string fixture;\n"
+                "int socket(int,int,int) {return 42;}\n"
+                "int bind(int,const sockaddr *address,socklen_t) {"
+                "observed=reinterpret_cast<const sockaddr_un *>(address)->sun_path+1; return 0;}\n"
+                'FILE *fopen(const char *,const char *) {return fmemopen(fixture.data(),fixture.size(),"r");}\n'
+                "constexpr int LOG_ERROR=1; void blog(int,const char *,...) {}\n"
+                'struct FakeApp { std::string GetVersionString() {return "test";} };\n'
+                "FakeApp *App() { static FakeApp app; return &app; }\n"
+                + functions
+                + "\nint main(int argc,char **argv) {fixture=argv[1]; bool running=true; "
+                'CheckIfAlreadyRunning(running); std::cout<<observed<<"\\n"<<running<<"\\n"; }\n'
+            )
+            for rust in (False, True):
+                executable = directory / ("rust" if rust else "upstream")
+                command = ["c++", "-std=c++17", "-I", str(ROOT / "frontend")]
+                if rust:
+                    command.append("-DOBS_RUST_VERSION=1")
+                subprocess.run(
+                    command + [str(harness), "-o", str(executable)],
+                    check=True,
+                    capture_output=True,
+                )
+                own = "/io/github/obs_rust/OBSStudioRust" if rust else "/com/obsproject"
+                other = (
+                    "/com/obsproject" if rust else "/io/github/obs_rust/OBSStudioRust"
+                )
+                fixture = f"entry @{own} 10 test\nentry @{other} 20 test\nentry @{other} 21 test\n"
+                lines = subprocess.check_output(
+                    [str(executable), fixture], text=True
+                ).splitlines()
+                with self.subTest(rust=rust):
+                    self.assertTrue(lines[0].startswith(own + " "), lines[0])
+                    self.assertEqual(
+                        lines[1],
+                        "0",
+                        "other application's processes counted as our instances",
+                    )
