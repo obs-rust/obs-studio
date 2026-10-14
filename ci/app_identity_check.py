@@ -21,7 +21,12 @@ def check_appdir(root: Path, *, deb: bool = False) -> None:
         if "=" in line:
             key, value = line.split("=", 1)
             fields[key] = value
-    expected = {"Name": "OBS-Studio-Rust", "Exec": GUI, "Icon": APP_ID}
+    expected = {
+        "Name": "OBS-Studio-Rust",
+        "Exec": GUI,
+        "Icon": APP_ID,
+        "StartupWMClass": GUI,
+    }
     for key, value in expected.items():
         if fields.get(key) != value:
             raise RuntimeError(

@@ -293,6 +293,7 @@ if [[ "$VERSION_OUT" == OBS-Studio-Rust* ]]; then
     [ -f "$APPDIR/usr/bin/$GUI_NAME" ] || fail "Rust GUI executable is missing"
     grep -Fxq "Exec=$GUI_NAME" "$APPDIR/$ID.desktop" || fail "Rust desktop starts the wrong executable"
     grep -Fxq "Icon=$ID" "$APPDIR/$ID.desktop" || fail "Rust desktop shares its icon identity"
+    grep -Fxq "StartupWMClass=$GUI_NAME" "$APPDIR/$ID.desktop" || fail "Rust desktop shares its window class"
     [ -f "$APPDIR/usr/share/metainfo/$ID.metainfo.xml" ] || fail "Rust metainfo identity is missing"
     [ "${#FAILED[@]}" -eq 0 ] || finish
 fi
@@ -452,6 +453,20 @@ if [ "$SCENARIO" = first-start ]; then
         # (capture first: `grep -q` closing the pipe early fails the pipeline under pipefail)
         WINDOWS="$(xwininfo -tree -root 2>/dev/null || true)"
         if grep -qE '"OBS-Studio-Rust|\"OBS [0-9]|"obs"' <<<"$WINDOWS"; then
+            # Qt derives WM_CLASS from the real GUI executable name. Verify
+            # the owned native window rather than accepting a matching title.
+            CLASS_FOUND=0
+            while read -r window_id; do
+                PROPERTIES="$(xprop -id "$window_id" _NET_WM_PID WM_CLASS 2>/dev/null || true)"
+                WINDOW_PID="$(sed -n 's/^_NET_WM_PID(CARDINAL) = //p' <<<"$PROPERTIES")"
+                [[ "$WINDOW_PID" =~ ^[0-9]+$ ]] || continue
+                [ "$(readlink "/proc/$WINDOW_PID/exe" 2>/dev/null || true)" = "$APPDIR/usr/bin/$GUI_NAME" ] || continue
+                if grep -Fq "WM_CLASS(STRING) = \"$GUI_NAME\", " <<<"$PROPERTIES"; then
+                    CLASS_FOUND=1
+                    break
+                fi
+            done < <(awk '$1 ~ /^0x[0-9a-fA-F]+$/ {print $1}' <<<"$WINDOWS")
+            [ "$CLASS_FOUND" -eq 1 ] || continue
             WINDOW_FOUND=1
             import -window root "$OUT/screenshot.png"
             STDDEV="$(identify -format '%[fx:standard_deviation]' "$OUT/screenshot.png")"

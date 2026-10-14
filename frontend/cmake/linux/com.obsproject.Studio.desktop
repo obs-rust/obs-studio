@@ -9,7 +9,7 @@ Terminal=false
 Type=Application
 Categories=AudioVideo;Recorder;
 StartupNotify=true
-StartupWMClass=obs
+StartupWMClass=@OBS_UNIX_GUI_NAME@
 
 GenericName[af_ZA]=Stroom-/Opnameprogrammatuur
 Comment[af_ZA]=Gratis en oopbron stroom-/opnameprogrammatuur
