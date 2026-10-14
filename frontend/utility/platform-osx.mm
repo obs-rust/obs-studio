@@ -51,7 +51,7 @@ bool InitializeMacApplicationIcon()
         auto *receiver = dynamic_cast<QObject *>(QGuiApplicationPrivate::platformIntegration());
         if (!receiver)
             return false;
-        if (!QObject::disconnect(qApp, SIGNAL(focusWindowChanged(QWindow*)), receiver, nullptr))
+        if (!QObject::disconnect(qApp, SIGNAL(focusWindowChanged(QWindow *)), receiver, nullptr))
             return false;
     }
 #endif
@@ -63,7 +63,8 @@ bool InitializeMacApplicationIcon()
 bool VerifyMacApplicationIcon()
 {
     const bool ready = macApplicationIconReady && !qApp->windowIcon().isNull();
-    blog(ready ? LOG_INFO : LOG_ERROR, "macOS application icon %s", ready ? "verified: explicit" : "verification failed");
+    blog(ready ? LOG_INFO : LOG_ERROR, "macOS application icon %s",
+         ready ? "verified: explicit" : "verification failed");
     return ready;
 }
 

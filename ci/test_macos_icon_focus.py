@@ -9,6 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 
 MODEL = r"""
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -44,7 +45,9 @@ struct QGuiApplication : QObject {
 };
 QGuiApplication *qApp=nullptr;
 bool QObject::disconnect(QGuiApplication *sender,const char *signal,QObject *receiver,const char*) {
-    if(signal && std::string(signal)!="focusWindowChanged(QWindow*)") return false;
+    std::string normalized=signal ? signal : "focusWindowChanged(QWindow*)";
+    normalized.erase(std::remove(normalized.begin(),normalized.end(),' '),normalized.end());
+    if(normalized!="focusWindowChanged(QWindow*)") return false;
     bool removed=false;
     for(auto &entry:sender->focus) if(entry && (!receiver || entry==receiver)) {entry=nullptr; removed=true;}
     return removed;
