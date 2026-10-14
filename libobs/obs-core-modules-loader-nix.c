@@ -51,10 +51,10 @@ void load_core_modules(obs_find_module_callback2_t callback, void *data)
 		dstr_free(&bin_path);
 		dstr_free(&data_path);
 
-		if (!found) {
+		/* A core module that is not installed (left out by a package,
+		 * for one) must not keep the ones after it from loading. */
+		if (!found)
 			blog(LOG_ERROR, "Failed to load core module %s", name);
-			break;
-		}
 	}
 
 	bfree(core_bin_path);

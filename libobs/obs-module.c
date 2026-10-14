@@ -534,6 +534,15 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 		blog(LOG_DEBUG, "Failed to load module file '%s', module failed to open", info->bin_path);
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
 					   OBS_MODULE_FAILED_TO_OPEN);
+		if (info->type == OBS_MODULE_TYPE_CORE) {
+			/* Most often a library the module needs is not
+			 * installed (libcef.so for obs-browser). Carry on
+			 * without it, as for a plugin, instead of failing
+			 * the core module load and with it OBS startup. */
+			disabled_module->module_type = info->type;
+			blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
+			return;
+		}
 		goto load_failure;
 	case MODULE_ERROR:
 		blog(LOG_DEBUG, "Failed to load module file '%s' (unknown error)", info->bin_path);
