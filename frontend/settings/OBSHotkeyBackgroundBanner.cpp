@@ -185,7 +185,8 @@ OBSHotkeyBackgroundBanner::OBSHotkeyBackgroundBanner(QWidget *parent,
 			testTimer->start(TEST_TIMEOUT_MS);
 			return;
 		}
-		testResult = QTStr("Basic.Settings.Hotkeys.Background.TestTimeout");
+		testResult = QTStr(asking ? "Basic.Settings.Hotkeys.Background.TestTimeoutAsk"
+					  : "Basic.Settings.Hotkeys.Background.TestTimeout");
 		testLevel = Level::Warning;
 		StopTest();
 	});
@@ -302,6 +303,13 @@ void OBSHotkeyBackgroundBanner::Refresh(bool readConfig)
 	}
 
 	view = Compute(input);
+	if (asking && input.state == OBS_HOTKEYS_BACKGROUND_ACTIVE && view.working == 0 && !view.pending) {
+		/* Asked from a declined, closed or failed bind: the desktop
+		 * answered and gave no key (KDE answers at once, without a
+		 * dialog, for shortcuts declined before). No press can arrive,
+		 * so stop and show that state. */
+		QMetaObject::invokeMethod(this, &OBSHotkeyBackgroundBanner::StopTest, Qt::QueuedConnection);
+	}
 	if (configuring && view.configureFailed) {
 		/* No editor opened: say so and how to change the keys instead,
 		 * rather than waiting for Done. */
