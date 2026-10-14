@@ -498,7 +498,24 @@ def close_frontend(proc: subprocess.Popen, platform: str) -> None:
             user32.PostMessageW(
                 hwnd, 0x0010, 0, 0
             )  # WM_CLOSE, like the window's close button.
-    if proc.wait(timeout=30) != 0:
+    try:
+        result = proc.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        if platform == "macos" and proc.poll() is None:
+            # Capture the owned live process before cleanup terminates it. Keep
+            # the timeout fatal; a stack is evidence, not a successful shutdown.
+            print(f"sampling owned frontend PID {proc.pid} after shutdown timeout", flush=True)
+            try:
+                sample = subprocess.run(
+                    ["sample", str(proc.pid), "5", "-file", "/dev/stdout"],
+                    capture_output=True, text=True, timeout=15, check=False,
+                )
+                print(sample.stdout, flush=True)
+                print(sample.stderr, flush=True)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                print(f"shutdown sample unavailable: {error}", flush=True)
+        raise
+    if result != 0:
         raise RuntimeError(
             f"packaged frontend failed during shutdown: {proc.returncode}"
         )
