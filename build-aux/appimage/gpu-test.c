@@ -21,8 +21,11 @@ static void loaded_libraries(void)
 	if (!maps)
 		return;
 	while (fgets(line, sizeof line, maps)) {
-		if (strstr(line, "/libgbm") || strstr(line, "/libEGL") || strstr(line, "/libdrm") ||
-		    strstr(line, "/libva") || strstr(line, "/libnvidia") || strstr(line, "/libav"))
+		if (strstr(line, "/libgbm") || strstr(line, "/libEGL") || strstr(line, "/libGL") ||
+		    strstr(line, "/libOpenGL") || strstr(line, "/libdrm") || strstr(line, "/libva") ||
+		    strstr(line, "/libvulkan") || strstr(line, "/libwayland") || strstr(line, "/libgallium") ||
+		    strstr(line, "/libLLVM") || strstr(line, "/libcuda") || strstr(line, "/libnvidia") ||
+		    strstr(line, "_drv_video.so") || strstr(line, "/libav"))
 			fputs(line, stdout);
 	}
 	fclose(maps);
