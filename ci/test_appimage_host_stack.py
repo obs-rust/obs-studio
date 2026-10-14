@@ -3,12 +3,30 @@
 
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 class HostDriverStackTest(unittest.TestCase):
+    def test_assembly_requires_the_source_built_compatibility_library(self):
+        with tempfile.TemporaryDirectory(prefix="obs-appdir-compat-") as scratch:
+            root = Path(scratch)
+            result = subprocess.run(
+                ["bash", str(ROOT / "build-aux/appimage/assemble-appdir.sh"), str(root)],
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("validated VA-compatible libavutil", result.stderr)
+            self.assertEqual(list(root.iterdir()), [], "invalid input must fail before assembly")
+
+    def test_workflow_builds_and_passes_the_compatible_library(self):
+        workflow = (ROOT / ".github/workflows/appimage.yaml").read_text()
+        self.assertIn("build_vaapi_compat.py avutil-compat", workflow)
+        self.assertIn("assemble-appdir.sh AppDir avutil-compat/libavutil.so.60", workflow)
+        self.assertIn("build-dep --arch-only", workflow)
+
     def test_driver_libraries_are_excluded_without_excluding_app_dependencies(self):
         source = (ROOT / "build-aux/appimage/assemble-appdir.sh").read_text()
         selector = next(
