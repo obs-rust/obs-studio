@@ -2034,12 +2034,46 @@ void WidgetInfo::TogglePasswordText(bool show)
 	reinterpret_cast<QLineEdit *>(widget)->setEchoMode(show ? QLineEdit::Normal : QLineEdit::Password);
 }
 
+void WidgetInfo::CommitUpdate()
+{
+	if (!recently_updated) {
+		return;
+	}
+
+	recently_updated = false;
+	if (update_timer) {
+		update_timer->stop();
+		update_timer->deleteLater();
+		update_timer.clear();
+	}
+
+	OBSObject strongObj = view->GetObject();
+	void *obj = strongObj ? strongObj.Get() : view->rawObj;
+	if (obj && view->callback && !view->deferUpdate) {
+		view->callback(obj, old_settings_cache, view->settings);
+	}
+}
+
+void OBSPropertiesView::CommitPendingUpdates(WidgetInfo *except)
+{
+	for (auto &child : children) {
+		if (child.get() != except) {
+			child->CommitUpdate();
+		}
+	}
+}
+
 void WidgetInfo::ControlChanged()
 {
 	const char *setting = obs_property_name(property);
 	obs_property_type type = obs_property_get_type(property);
 
 	if (!recently_updated) {
+		/* Another field's change may still be waiting for its timer:
+		 * report it now, so that its new settings don't include this
+		 * change and this change's old settings include it. */
+		view->CommitPendingUpdates(this);
+
 		old_settings_cache = obs_data_create();
 		obs_data_apply(old_settings_cache, view->settings);
 		obs_data_release(old_settings_cache);
@@ -2101,16 +2135,7 @@ void WidgetInfo::ControlChanged()
 	if (!recently_updated) {
 		recently_updated = true;
 		update_timer = new QTimer;
-		connect(update_timer, &QTimer::timeout, this, [this, &ru = recently_updated]() {
-			OBSObject strongObj = view->GetObject();
-			void *obj = strongObj ? strongObj.Get() : view->rawObj;
-			if (obj && view->callback && !view->deferUpdate) {
-				view->callback(obj, old_settings_cache, view->settings);
-			}
-
-			ru = false;
-		});
-		connect(update_timer, &QTimer::timeout, update_timer, &QTimer::deleteLater);
+		connect(update_timer, &QTimer::timeout, this, &WidgetInfo::CommitUpdate);
 		update_timer->setSingleShot(true);
 	}
 

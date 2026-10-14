@@ -47,6 +47,8 @@ private:
 
 	void TogglePasswordText(bool checked);
 
+	void CommitUpdate();
+
 public:
 	inline WidgetInfo(OBSPropertiesView *view_, obs_property_t *prop, QWidget *widget_)
 		: view(view_),
@@ -126,6 +128,8 @@ private:
 	void AddProperty(obs_property_t *property, QFormLayout *layout);
 
 	void resizeEvent(QResizeEvent *event) override;
+
+	void CommitPendingUpdates(WidgetInfo *except);
 
 	void GetScrollPos(int &h, int &v, int &hend, int &vend);
 	void SetScrollPos(int h, int v, int old_hend, int old_vend);
