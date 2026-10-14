@@ -627,6 +627,11 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			throw "Windows application identity changed during startup";
 		}
 #endif
+#ifdef __APPLE__
+		if (!VerifyMacApplicationIcon()) {
+			throw "Failed to initialize the macOS application icon";
+		}
+#endif
 		program.checkForUncleanShutdown();
 
 		qInstallMessageHandler([](QtMsgType type, const QMessageLogContext &, const QString &message) {

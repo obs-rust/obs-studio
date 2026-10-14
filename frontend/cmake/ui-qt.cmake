@@ -1,5 +1,12 @@
 find_package(Qt6 REQUIRED Widgets Network Svg Xml)
 
+# Qt 6.11 Cocoa's default-icon focus callback requires a scoped platform
+# adapter. Keep the private dependency confined to its affected version/OS.
+if(OS_MACOS AND Qt6_VERSION VERSION_GREATER_EQUAL 6.11 AND Qt6_VERSION VERSION_LESS 6.12)
+  find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+  target_link_libraries(obs-studio PRIVATE Qt6::GuiPrivate)
+endif()
+
 if(OS_LINUX OR OS_FREEBSD OR OS_OPENBSD)
   find_package(Qt6 REQUIRED Gui DBus)
 endif()

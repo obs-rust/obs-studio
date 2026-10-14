@@ -25,7 +25,47 @@
 #import <AppKit/AppKit.h>
 #import <dlfcn.h>
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && QT_VERSION < QT_VERSION_CHECK(6, 12, 0)
+#include <QtGui/private/qguiapplication_p.h>
+#include <qpa/qplatformintegration.h>
+#endif
+
 using namespace std;
+
+// Application icon policy (#725).
+static bool macApplicationIconReady = false;
+
+bool InitializeMacApplicationIcon()
+{
+    const QIcon icon(":/res/images/obs.png");
+    if (icon.isNull())
+        return false;
+    qApp->setWindowIcon(icon);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && QT_VERSION < QT_VERSION_CHECK(6, 12, 0)
+    if (QGuiApplication::platformName() == "cocoa") {
+        // Qt 6.11 compares the generic application icon synchronously through
+        // IconServices before noticing our explicit icon. Its integration's
+        // focus receiver only supplies a default Dock icon; native menus use
+        // a different receiver. Keep all other focus connections intact.
+        auto *receiver = dynamic_cast<QObject *>(QGuiApplicationPrivate::platformIntegration());
+        if (!receiver)
+            return false;
+        if (!QObject::disconnect(qApp, SIGNAL(focusWindowChanged(QWindow*)), receiver, nullptr))
+            return false;
+    }
+#endif
+
+    macApplicationIconReady = true;
+    return true;
+}
+
+bool VerifyMacApplicationIcon()
+{
+    const bool ready = macApplicationIconReady && !qApp->windowIcon().isNull();
+    blog(ready ? LOG_INFO : LOG_ERROR, "macOS application icon %s", ready ? "verified: explicit" : "verification failed");
+    return ready;
+}
 
 bool isInBundle()
 {

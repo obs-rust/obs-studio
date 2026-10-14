@@ -24,6 +24,11 @@
 
 class QWidget;
 
+#ifdef __APPLE__
+bool InitializeMacApplicationIcon();
+bool VerifyMacApplicationIcon();
+#endif
+
 /* Gets the path of obs-studio specific data files (such as locale) */
 bool GetDataFilePath(const char *data, std::string &path);
 
