@@ -82,6 +82,11 @@ struct obs_nix_portal_shortcuts {
 	 * the desktop closed. They are not bound again (no repeated prompt)
 	 * until the bindings gain a combination or the portal restarts. */
 	combo_array_t declined;
+	/* The combinations the desktop last approved in full. When its dialog
+	 * for a set with new ones is declined, these are bound again. */
+	combo_array_t approved;
+	/* The session binds only the approved part of its set. */
+	bool partly_declined;
 	/* GlobalShortcuts interface version; 2 adds ConfigureShortcuts. */
 	uint32_t version;
 
@@ -768,10 +773,13 @@ static void session_closed(GDBusConnection *conn, const char *sender_name, const
 	blog(LOG_INFO, "[portal] The desktop closed the GlobalShortcuts session; "
 		       "global hotkeys are bound again when a new key combination is assigned");
 	da_copy(portal->declined, portal->bound);
+	da_resize(portal->approved, 0);
+	portal->partly_declined = false;
 	forget_session(portal);
 
 	struct obs_hotkeys_background *background = background_lock();
 	background->state = OBS_HOTKEYS_BACKGROUND_CLOSED;
+	background->flags &= ~OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED;
 	set_shortcuts_bound(background, false);
 	background_unlock();
 }
@@ -853,6 +861,69 @@ static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_
 	return true;
 }
 
+/* The combinations of combos that are (in) or are not (!in) in filter, with
+ * their descriptions; all of them without a filter. */
+static void select_combos(const combo_array_t *combos, const description_array_t *descriptions,
+			  const combo_array_t *filter, bool in, combo_array_t *out,
+			  description_array_t *out_descriptions)
+{
+	for (size_t i = 0; i < combos->num; i++) {
+		if (filter && has_combo(filter, combos->array[i]) != in)
+			continue;
+		char *description = bstrdup(i < descriptions->num ? descriptions->array[i] : "OBS");
+		da_push_back(*out, &combos->array[i]);
+		da_push_back(*out_descriptions, &description);
+	}
+}
+
+/* The desktop's dialog for a request with new combinations was declined
+ * (GNOME lists every shortcut again in it): bind the ones it approved
+ * before again, which needs no dialog, so they keep working. The rest of
+ * the bindings stay unbound, and are left out of later binds, until
+ * obs_hotkeys_retry_background(). The session's set is the full one, so
+ * the next sync does not bind again by itself. */
+static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_array_t *current,
+			  const description_array_t *descriptions, const combo_array_t *request)
+{
+	combo_array_t part;
+	description_array_t part_descriptions;
+	da_init(part);
+	da_init(part_descriptions);
+	select_combos(current, descriptions, &portal->approved, true, &part, &part_descriptions);
+	for (size_t i = part.num; i > 0; i--) {
+		if (!has_combo(request, part.array[i - 1])) {
+			bfree(part_descriptions.array[i - 1]);
+			da_erase(part, i - 1);
+			da_erase(part_descriptions, i - 1);
+		}
+	}
+
+	bool bound = part.num > 0 && part.num < request->num;
+	if (bound) {
+		blog(LOG_INFO,
+		     "[portal] The desktop declined the new shortcuts; binding the %zu it approved before again",
+		     part.num);
+		da_copy(portal->bound, *current);
+		copy_descriptions(&portal->bound_descriptions, descriptions);
+		bound = create_session(portal) && bind_shortcuts(portal, &part, &part_descriptions);
+		if (!bound)
+			close_session(portal);
+	}
+	if (bound) {
+		da_resize(portal->declined, 0);
+		for (size_t i = 0; i < current->num; i++) {
+			if (!has_combo(&part, current->array[i]))
+				da_push_back(portal->declined, &current->array[i]);
+		}
+		portal->partly_declined = true;
+		set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, true);
+		set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
+	}
+	da_free(part);
+	free_descriptions(&part_descriptions);
+	return bound;
+}
+
 /* The hotkey thread drops every press while this is set (the hotkey focus
  * setting, or a dialog that disables hotkeys). */
 static bool background_press_disabled(void)
@@ -889,7 +960,8 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	combo_array_t current;
 	da_init(current);
 
-	if (take_retry())
+	bool retry = take_retry();
+	if (retry)
 		da_resize(portal->declined, 0);
 
 	bool paused = background_press_disabled();
@@ -918,6 +990,10 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	bool unchanged = portal->session_path ? same_set(&current, &collected.descriptions, &portal->bound,
 							 &portal->bound_descriptions)
 					      : current.num == 0 || covered_by(&current, &portal->declined);
+	/* Asking again for keys declined in a dialog while others stay bound
+	 * (OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED) binds the full set anew. */
+	if (retry && portal->session_path && portal->partly_declined)
+		unchanged = false;
 	if (unchanged) {
 		da_free(current);
 		free_collected(&collected);
@@ -938,23 +1014,52 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	set_shortcuts(background, &current);
 	background_unlock();
 
+	/* Keys declined while others stayed bound are left out until Ask
+	 * again, so the desktop doesn't ask for them on every bind. */
+	combo_array_t request;
+	description_array_t request_descriptions;
+	da_init(request);
+	da_init(request_descriptions);
+	select_combos(&current, &collected.descriptions, portal->partly_declined ? &portal->declined : NULL, false,
+		      &request, &request_descriptions);
+
 	/* Set before binding: Activated may be dispatched right after the
 	 * BindShortcuts response, while bind_shortcuts() is still waiting. */
 	da_copy(portal->bound, current);
 	copy_descriptions(&portal->bound_descriptions, &collected.descriptions);
-	bool bound = create_session(portal) && bind_shortcuts(portal, &current, &collected.descriptions);
-	free_collected(&collected);
+	bool bound = request.num > 0 && create_session(portal) &&
+		     bind_shortcuts(portal, &request, &request_descriptions);
 	if (!bound) {
 		close_session(portal);
+		bool nothing = request.num == 0;
+		bool kept = portal->request_declined && !nothing &&
+			    bind_approved(portal, &current, &collected.descriptions, &request);
+		free_collected(&collected);
+		da_free(request);
+		free_descriptions(&request_descriptions);
+		if (kept) {
+			da_free(current);
+			return;
+		}
 		da_move(portal->declined, current);
-		if (portal->request_declined)
+		portal->partly_declined = false;
+		set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, false);
+		if (portal->request_declined || nothing)
 			set_state(OBS_HOTKEYS_BACKGROUND_DECLINED, NULL);
 		else if (!portal->portal_gone && !os_atomic_load_bool(&portal->stopping))
 			set_state(OBS_HOTKEYS_BACKGROUND_FAILED, portal->request_error);
 		return;
 	}
-	da_resize(portal->declined, 0);
+	bool partly = request.num < current.num;
+	if (!partly)
+		da_resize(portal->declined, 0);
+	da_copy(portal->approved, request);
+	free_collected(&collected);
+	da_free(request);
+	free_descriptions(&request_descriptions);
 	da_free(current);
+	portal->partly_declined = partly;
+	set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, partly);
 	set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
 }
 
@@ -1066,13 +1171,14 @@ static void portal_appeared(GDBusConnection *conn, const char *name, const char 
 	portal->portal_gone = false;
 	register_app_id(portal);
 	da_resize(portal->declined, 0);
+	portal->partly_declined = false;
 	portal->sync_due = true;
 
 	/* Nothing is bound until the next sync, which may wait for Settings
 	 * to close. */
 	struct obs_hotkeys_background *background = background_lock();
 	background->state = OBS_HOTKEYS_BACKGROUND_IDLE;
-	background->flags &= ~OBS_HOTKEYS_BACKGROUND_RESTARTING;
+	background->flags &= ~(OBS_HOTKEYS_BACKGROUND_RESTARTING | OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
 	bfree(background->error);
 	background->error = NULL;
 	background_unlock();
@@ -1304,6 +1410,7 @@ static void free_portal(struct obs_nix_portal_shortcuts *portal)
 	da_free(portal->bound);
 	free_descriptions(&portal->bound_descriptions);
 	da_free(portal->declined);
+	da_free(portal->approved);
 	bfree(portal);
 }
 
