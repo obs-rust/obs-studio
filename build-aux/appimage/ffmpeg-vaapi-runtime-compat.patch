@@ -1,0 +1,19 @@
+--- a/libavutil/hwcontext_vaapi.c
++++ b/libavutil/hwcontext_vaapi.c
+@@ -56,6 +56,7 @@
+ #include "hwcontext_drm.h"
+ #include "hwcontext_internal.h"
+ #include "hwcontext_vaapi.h"
++#include "vaapi-runtime-compat.h"
+ #include "mem.h"
+ #include "pixdesc.h"
+ #include "pixfmt.h"
+@@ -909,7 +910,7 @@
+     if (flags & AV_HWFRAME_MAP_WRITE)
+         vaflags |= VA_MAPBUFFER_FLAG_WRITE;
+     // On drivers not implementing vaMapBuffer2 libva calls vaMapBuffer instead.
+-    vas = vaMapBuffer2(hwctx->display, map->image.buf, &address, vaflags);
++    vas = obs_va_map_buffer(hwctx->display, map->image.buf, &address, vaflags);
+ #else
+     vas = vaMapBuffer(hwctx->display, map->image.buf, &address);
+ #endif
