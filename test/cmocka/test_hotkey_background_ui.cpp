@@ -57,6 +57,23 @@ static DesktopConfig hyprland(std::set<std::string> bound)
 	return desktop;
 }
 
+/* The value of key in the shipped en-US.ini, without quotes. */
+static std::string locale_text(const char *key)
+{
+	std::ifstream file(HOTKEY_LOCALE_EN_US);
+	std::string line, prefix = std::string(key) + "=";
+	while (std::getline(file, line)) {
+		if (line.compare(0, prefix.size(), prefix) == 0) {
+			std::string value = line.substr(prefix.size());
+			if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+				value = value.substr(1, value.size() - 2);
+			}
+			return value;
+		}
+	}
+	return {};
+}
+
 /* X11, Windows, macOS: nothing changes in Settings. */
 static void native_shows_nothing(void **)
 {
@@ -72,7 +89,9 @@ static void desktop_with_triggers_working(void **)
 {
 	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
 	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_PAUSED;
-	bind_all(input, "Pause");
+	/* A desktop trigger text OBS can't read (here: not a key name): the
+	 * tooltip shows it, nothing is claimed. */
+	bind_all(input, "Pause / Break key");
 
 	View view = Compute(input);
 	assert_int_equal((int)view.banner, (int)Banner::Working);
@@ -84,9 +103,7 @@ static void desktop_with_triggers_working(void **)
 	assert_int_equal((int)view.level, (int)Level::Ok);
 	assert_int_equal((int)MarkerFor(input, f13), (int)Marker::Background);
 	assert_int_equal((int)MarkerFor(input, mouse4), (int)Marker::FocusOnly);
-	/* The user moved F13's shortcut to Pause in the desktop settings: the
-	 * tooltip shows it (trigger texts are localized, so not compared). */
-	assert_string_equal(DesktopTrigger(input, f13).c_str(), "Pause");
+	assert_string_equal(DesktopTrigger(input, f13).c_str(), "Pause / Break key");
 	/* Portal version 1: no desktop editor to open. */
 	assert_false(view.configure);
 
@@ -97,6 +114,164 @@ static void desktop_with_triggers_working(void **)
 	/* The desktop's editor could not be opened: the banner says so. */
 	input.flags |= OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED;
 	assert_true(Compute(input).configureFailed);
+}
+
+/* The user gave a shortcut another key in the desktop's own settings (KDE
+ * System Settings, GNOME Settings): the row must not show OBS's key as
+ * working in the background. KDE reports Qt key sequences ("Ctrl+Shift+A",
+ * "F11"), GNOME a GTK accelerator after a word ("Press <Shift><Control>a").
+ * A trigger OBS can't read (localized: "Strg+Umschalt+A") claims nothing. */
+static void desktop_changed_key(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_CONFIGURABLE;
+
+	bind_all(input, "F13", "Ctrl+Shift+A");
+	View view = Compute(input);
+	assert_int_equal(view.otherKey, 0);
+	assert_int_equal((int)view.level, (int)Level::Ok);
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::Background);
+
+	bind_all(input, "F11", "Ctrl+Shift+A");
+	view = Compute(input);
+	assert_int_equal((int)MarkerFor(input, f13), (int)Marker::OtherKey);
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::Background);
+	assert_int_equal(view.otherKey, 1);
+	assert_int_equal((int)view.level, (int)Level::Warning);
+	assert_true(view.configure);
+
+	/* GNOME */
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+	bind_all(input, "Press F13", "Press <Shift><Control>a");
+	assert_int_equal(Compute(input).otherKey, 0);
+	assert_int_equal((int)MarkerFor(input, f13), (int)Marker::Background);
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::Background);
+	bind_all(input, "Press F13", "Press <Control>b");
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::OtherKey);
+
+	/* Localized or unknown: no claim. */
+	bind_all(input, "F13", "Strg+Umschalt+A");
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::Background);
+	assert_int_equal(Compute(input).otherKey, 0);
+}
+
+/* The tooltip names the desktop's key readably, not GNOME's raw text. */
+static void desktop_trigger_display(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+	bind_all(input, "Press F13", "Press <Shift><Control>a");
+	assert_string_equal(DesktopTrigger(input, f13).c_str(), "F13");
+	assert_string_equal(DesktopTrigger(input, ctrl_shift_a).c_str(), "Shift+Ctrl+A");
+	bind_all(input, "F13", "Ctrl+Shift+A");
+	assert_string_equal(DesktopTrigger(input, ctrl_shift_a).c_str(), "Ctrl+Shift+A");
+	bind_all(input, "F13", "Strg+Umschalt+A");
+	assert_string_equal(DesktopTrigger(input, ctrl_shift_a).c_str(), "Strg+Umschalt+A");
+}
+
+/* KDE after its dialog was cancelled once: it keeps OBS's shortcuts without
+ * keys and does not ask again, so nothing is bound. The way out is the
+ * desktop's own editor, not "working (0 of 2)" or Hyprland's config lines. */
+static void desktop_assigned_no_keys(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_CONFIGURABLE |
+		      OBS_HOTKEYS_BACKGROUND_PAUSED;
+	input.shortcuts = {{f13, "", false}, {ctrl_shift_a, "", false}};
+
+	View view = Compute(input);
+	assert_int_equal((int)view.banner, (int)Banner::NoDesktopKeys);
+	assert_int_equal((int)view.level, (int)Level::Warning);
+	assert_int_equal(view.working, 0);
+	assert_true(view.configure);
+	assert_false(view.copyLines);
+	assert_int_equal((int)MarkerFor(input, f13), (int)Marker::NotBound);
+
+	/* Declined on such a desktop: Ask again may get no dialog, so the
+	 * editor is offered too. */
+	input.state = OBS_HOTKEYS_BACKGROUND_DECLINED;
+	view = Compute(input);
+	assert_int_equal((int)view.banner, (int)Banner::Declined);
+	assert_true(view.askAgain);
+	assert_true(view.configure);
+}
+
+/* Partly approved, with another key still pending: not "working" in green;
+ * the banner counts the keys without a key in the desktop. */
+static void partly_bound_is_a_warning(void **)
+{
+	static const obs_key_combination_t f14 = {0, OBS_KEY_F14};
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_PAUSED;
+	input.combos.push_back({f14, "OBS_KEY_F14", "F14"});
+	input.shortcuts = {{f13, "F13", true}, {ctrl_shift_a, "", false}};
+
+	View view = Compute(input);
+	assert_int_equal((int)view.banner, (int)Banner::Working);
+	assert_true(view.pending);
+	assert_int_equal(view.notBound, 1);
+	assert_int_equal((int)view.level, (int)Level::Warning);
+
+	input.shortcuts = {{f13, "F13", true}, {ctrl_shift_a, "Ctrl+Shift+A", true}};
+	view = Compute(input);
+	assert_int_equal(view.notBound, 0);
+	assert_int_equal((int)view.level, (int)Level::Ok);
+}
+
+/* KDE and GNOME take the key: the focused app (a game) doesn't receive it,
+ * unlike X11 and Hyprland's non-consuming binds. The banner says so. */
+static void desktop_takes_keys(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+	bind_all(input);
+	assert_true(Compute(input).desktopTakesKeys);
+
+	input.flags = 0;
+	bind_all(input, "", "");
+	input.desktop = hyprland({std::string(app) + ":OBS_KEY_F13", std::string(app) + ":ctrl+shift+OBS_KEY_A"});
+	assert_false(Compute(input).desktopTakesKeys);
+}
+
+/* Strings the KDE/GNOME journeys rely on. */
+static void desktop_key_texts(void **)
+{
+	assert_false(locale_text("Basic.Settings.Hotkeys.Background.NoDesktopKeys").empty());
+	assert_false(locale_text("Basic.Settings.Hotkeys.Background.DesktopTakesKeys").empty());
+	assert_false(locale_text("Basic.Settings.Hotkeys.Background.NotBoundHint").empty());
+	/* GNOME keeps an app's shortcuts on the app's page, not under
+	 * Keyboard; the text must not send users to the wrong place. */
+	std::string failed = locale_text("Basic.Settings.Hotkeys.Background.ConfigureFailed");
+	assert_true(failed.find("Settings > Keyboard on GNOME") == std::string::npos);
+	assert_true(failed.find("Settings > Apps") != std::string::npos);
+	/* "not accepted" blamed the desktop for a key the user left empty. */
+	std::string tip = locale_text("Basic.Settings.Hotkeys.Background.Marker.NotBound.ToolTip");
+	assert_true(tip.find("did not accept") == std::string::npos);
+}
+
+/* OBS's locale parser ends a value at its first inner '"': a quoted word
+ * inside a banner text cut the rest of it off ("Global hotkeys are off: "). */
+static void texts_have_no_inner_quotes(void **)
+{
+	std::ifstream file(HOTKEY_LOCALE_EN_US);
+	std::string line, prefix = "Basic.Settings.Hotkeys.Background.";
+	size_t checked = 0;
+	while (std::getline(file, line)) {
+		if (line.compare(0, prefix.size(), prefix) != 0) {
+			continue;
+		}
+		size_t open = line.find("=\"");
+		assert_true(open != std::string::npos);
+		std::string value = line.substr(open + 2);
+		assert_false(value.empty());
+		value.pop_back();
+		if (value.find('"') != std::string::npos) {
+			fprintf(stderr, "inner quote cuts the text short: %s\n", line.c_str());
+			fail();
+		}
+		checked++;
+	}
+	assert_true(checked > 40);
 }
 
 /* Hyprland takes its keys from its config, even if the portal reports
@@ -370,23 +545,6 @@ static void hyprctl_version(void **)
 	assert_false(ParseHyprlandVersion("").has_value());
 }
 
-/* The value of key in the shipped en-US.ini, without quotes. */
-static std::string locale_text(const char *key)
-{
-	std::ifstream file(HOTKEY_LOCALE_EN_US);
-	std::string line, prefix = std::string(key) + "=";
-	while (std::getline(file, line)) {
-		if (line.compare(0, prefix.size(), prefix) == 0) {
-			std::string value = line.substr(prefix.size());
-			if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-				value = value.substr(1, value.size() - 2);
-			}
-			return value;
-		}
-	}
-	return {};
-}
-
 /* Desktops without GlobalShortcuts (Sway, niri, ...): running OBS through
  * XWayland is no workaround there. On Sway 1.12, OBS with
  * QT_QPA_PLATFORM=xcb ran its hotkey while focused and not at all while
@@ -408,6 +566,13 @@ int main(void)
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(native_shows_nothing),
 		cmocka_unit_test(desktop_with_triggers_working),
+		cmocka_unit_test(desktop_changed_key),
+		cmocka_unit_test(desktop_trigger_display),
+		cmocka_unit_test(desktop_assigned_no_keys),
+		cmocka_unit_test(partly_bound_is_a_warning),
+		cmocka_unit_test(desktop_takes_keys),
+		cmocka_unit_test(desktop_key_texts),
+		cmocka_unit_test(texts_have_no_inner_quotes),
 		cmocka_unit_test(new_key_is_pending),
 		cmocka_unit_test(nothing_bound_yet),
 		cmocka_unit_test(hyprland_needs_config),

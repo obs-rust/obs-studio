@@ -120,6 +120,9 @@ enum class Banner {
 	/* Nothing bound yet; the keys set are handed to the desktop when
 	 * Settings closes. */
 	Pending,
+	/* The desktop assigns the keys itself (it has its own editor) and gave
+	 * none of OBS's shortcuts a key. */
+	NoDesktopKeys,
 };
 
 enum class Level { Ok, Warning, Info };
@@ -153,6 +156,11 @@ struct View {
 	size_t unverified = 0;
 	/* Combinations the desktop runs on another key. */
 	size_t otherKey = 0;
+	/* Combinations the desktop has no key for. */
+	size_t notBound = 0;
+	/* The desktop takes the keys it runs: the focused app doesn't get
+	 * them (KDE, GNOME). */
+	bool desktopTakesKeys = false;
 	/* Some keys are set but not handed to the desktop until Settings
 	 * closes. */
 	bool pending = false;
