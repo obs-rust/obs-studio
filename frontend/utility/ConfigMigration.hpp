@@ -65,6 +65,8 @@ MigrateAppConfig(const std::filesystem::path &source, const std::filesystem::pat
 	} cleanup{staging};
 	std::set<fs::path> active;
 	CopyConfigSnapshot(source, staging, active);
+	// Session markers describe the other app, not transferable user settings.
+	fs::remove_all(staging / ".sentinel");
 	for (const auto &[original, relative] : overrides) {
 		if (relative.empty() || relative.is_absolute()) {
 			throw std::runtime_error("Configuration override must be a relative settings path");
@@ -82,4 +84,13 @@ MigrateAppConfig(const std::filesystem::path &source, const std::filesystem::pat
 	finalize(staging);
 	fs::rename(staging, destination);
 	return ConfigMigrationResult::Imported;
+}
+
+// Import each selected storage root into its own Rust namespace. The primary
+// global config is published last, after its Locations are finalized.
+inline ConfigMigrationResult MigrateAppConfigLocations(
+    const std::filesystem::path &base, const std::vector<std::filesystem::path> &,
+    const std::function<void(const std::filesystem::path &)> &finalize)
+{
+    return MigrateAppConfig(base / "obs-studio", base / "obs-studio-rust", {}, finalize);
 }

@@ -119,6 +119,9 @@ class ConfigMigrationTest(unittest.TestCase):
                 "custom",
                 "empty-custom",
                 "failure",
+                "locations",
+                "locations-existing",
+                "locations-failure",
             ):
                 with self.subTest(mode=mode):
                     completed = subprocess.run(
@@ -282,13 +285,28 @@ class IdentityBuildSelectionTest(unittest.TestCase):
 class StartupOrderTest(unittest.TestCase):
     def test_rust_import_precedes_crash_handler_directory_creation(self):
         source = (ROOT / "frontend/OBSApp.cpp").read_text()
-        constructor = source.split("OBSApp::OBSApp(", 1)[1].split("OBSApp::~OBSApp()", 1)[0]
+        constructor = source.split("OBSApp::OBSApp(", 1)[1].split(
+            "OBSApp::~OBSApp()", 1
+        )[0]
+        constructor = constructor.split("void OBSApp::InitCrashHandler()", 1)[0]
         with tempfile.TemporaryDirectory(prefix="obs-startup-order-") as scratch:
             fragment = Path(scratch) / "constructor.cpp"
             fragment.write_text(constructor)
-            rust = subprocess.check_output(["c++", "-E", "-P", "-DOBS_RUST_VERSION=1", str(fragment)], text=True)
-            upstream = subprocess.check_output(["c++", "-E", "-P", str(fragment)], text=True)
-        self.assertNotIn("CrashHandler", rust, "crash handler would create the Rust directory before first-run import")
+            rust = subprocess.check_output(
+                ["c++", "-E", "-P", "-DOBS_RUST_VERSION=1", str(fragment)], text=True
+            )
+            upstream = subprocess.check_output(
+                ["c++", "-E", "-P", str(fragment)], text=True
+            )
+        self.assertNotIn(
+            "CrashHandler",
+            rust,
+            "crash handler would create the Rust directory before first-run import",
+        )
         self.assertIn("CrashHandler", upstream, "C-only constructor behavior changed")
-        startup = source.split("void OBSApp::AppInit()", 1)[1].split("void OBSApp::", 1)[0]
-        self.assertLess(startup.index("MigrateRustConfiguration"), startup.index("InitCrashHandler"))
+        startup = source.split("void OBSApp::AppInit()", 1)[1].split(
+            "void OBSApp::", 1
+        )[0]
+        self.assertLess(
+            startup.index("MigrateRustConfiguration"), startup.index("InitCrashHandler")
+        )
