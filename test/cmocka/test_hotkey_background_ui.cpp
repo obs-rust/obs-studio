@@ -155,6 +155,25 @@ static void desktop_changed_key(void **)
 	assert_int_equal(Compute(input).otherKey, 0);
 }
 
+/* KDE localizes modifier names (German: "Strg+Umschalt+A"). Without reading
+ * them, a different key or a different number of modifiers still shows the
+ * desktop runs the shortcut on another key; the same key and count claims
+ * nothing. */
+static void localized_desktop_key(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_CONFIGURABLE;
+	bind_all(input, "F13", "Strg+Umschalt+A");
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::Background);
+	bind_all(input, "F13", "Strg+Umschalt+B");
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::OtherKey);
+	bind_all(input, "F13", "Strg+A");
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::OtherKey);
+	bind_all(input, "Umschalt+F13", "Strg+Umschalt+A");
+	assert_int_equal((int)MarkerFor(input, f13), (int)Marker::OtherKey);
+	assert_int_equal(Compute(input).otherKey, 1);
+}
+
 /* The tooltip names the desktop's key readably, not GNOME's raw text. */
 static void desktop_trigger_display(void **)
 {
@@ -588,6 +607,7 @@ int main(void)
 		cmocka_unit_test(desktop_with_triggers_working),
 		cmocka_unit_test(desktop_changed_key),
 		cmocka_unit_test(desktop_trigger_display),
+		cmocka_unit_test(localized_desktop_key),
 		cmocka_unit_test(desktop_assigned_no_keys),
 		cmocka_unit_test(partly_bound_is_a_warning),
 		cmocka_unit_test(desktop_takes_keys),
