@@ -639,6 +639,14 @@ static void ss_next_slide(void *data)
 	if (!ssd->files.num || obs_transition_get_time(ss->transition) < 1.0f)
 		return;
 
+	/* "Once" ends on the last slide, as in Automatic mode (ss_video_tick()):
+	 * keep the last slide, or fade out with "Hide when slideshow is done". */
+	if (!ssd->randomize && !ssd->loop && slides->cur.slide_idx == ssd->files.num - 1) {
+		if (ssd->hide && ssd->state != OBS_MEDIA_STATE_ENDED)
+			do_transition(ss, true);
+		return;
+	}
+
 	struct source_data *last = deque_data(&slides->next, (SLIDE_BUFFER_COUNT - 1) * sizeof(sd));
 
 	size_t slide_idx = last->slide_idx;

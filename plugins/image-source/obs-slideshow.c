@@ -583,6 +583,15 @@ static void ss_next_slide(void *data)
 	if (!ss->files.num || obs_transition_get_time(ss->transition) < 1.0f)
 		return;
 
+	/* Without Loop the slideshow ends on its last slide, as in Automatic
+	 * mode (ss_video_tick()): keep the last slide, or fade out with "Hide
+	 * when slideshow is done". */
+	if (!ss->randomize && !ss->loop && ss->cur_item == ss->files.num - 1) {
+		if (ss->hide && ss->state != OBS_MEDIA_STATE_ENDED)
+			do_transition(ss, true);
+		return;
+	}
+
 	if (ss->randomize)
 		ss->cur_item = random_file(ss);
 	else if (++ss->cur_item >= ss->files.num)
