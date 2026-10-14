@@ -53,6 +53,11 @@ this document covers *who does what, and when*.
   (AGENTS.md) is recommended, not required: a stamped head lets CI skip the
   Linux unit-test jobs, and without a stamp PR CI runs the full suite. Do not
   build fork or self-hosted CI to pre-validate PRs.
+- **Merge queue:** master merges go through GitHub's merge queue. Queue a
+  green PR with `gh pr merge <N>` (or the "Merge when ready" button); the
+  queue reruns PR CI on the merge result with current master, and the
+  required `CI Gate ✅` check decides. You do not need to rebase by hand for
+  unrelated master changes; rebase only when GitHub reports a conflict.
 - **Fork PRs:** Actions asks a maintainer to approve workflow runs only for a
   first-time contributor's first PR (repository setting "Require approval for
   first-time contributors"). Once a PR of yours has merged, later fork PRs

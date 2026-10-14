@@ -1,13 +1,14 @@
 name: Pull
-run-name: ${{ github.event.pull_request.title }} pull request run 🚀
+run-name: ${{ github.event.pull_request.title || github.ref_name }} pull request run 🚀
+# Every PR runs (no paths-ignore): `CI Gate ✅` is a required check, and the
+# master merge queue (merge_group) reruns it on the merge result (#692).
 on:
   workflow_dispatch:
   pull_request:
-    paths-ignore:
-      - '**.md'
     # grind/** : goal PRs land on a grind feature branch before master.
     branches: [master, 'grind/**']
     types: [ opened, synchronize, reopened ]
+  merge_group:
 permissions:
   contents: read
 concurrency:
@@ -93,3 +94,17 @@ jobs:
 
       - uses: ./.github/actions/generate-docs
         if: fromJSON(steps.checks.outputs.hasChangedFiles)
+
+  # The one required check (master ruleset, #692): fails when any job above
+  # failed or was cancelled; skipped jobs (out of scope, or attested by the
+  # local gate on a PR) pass.
+  ci-gate:
+    name: CI Gate ✅
+    if: always()
+    needs: [check-format, build-project, compatibility-validation, services-validation, update-documentation]
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Check Job Results ✅
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: echo 'All required jobs passed or were skipped.'

@@ -104,6 +104,8 @@ jobs:
           else
             if [[ "${GITHUB_EVENT_NAME}" == pull_request ]]; then
               base="origin/${GITHUB_BASE_REF}"
+            elif [[ "${GITHUB_EVENT_NAME}" == merge_group ]]; then
+              base="${{ github.event.merge_group.base_sha }}"
             else
               base="HEAD^1"
             fi
@@ -654,7 +656,8 @@ jobs:
 
   # zackees/ci.yml GATE-008/010: an attested, in-policy PR head (local-gate.toml,
   # ci-attestations.yml) skips the Linux unit-test jobs the local gate already
-  # ran. Pushes never skip.
+  # ran. Pushes and merge-queue runs never skip: the queue commit is the merge
+  # result, not the stamped head (#692).
   ci-mode:
     name: CI Mode 🛂
     runs-on: ubuntu-26.04
@@ -682,6 +685,7 @@ jobs:
 
       - name: Local Gate Attestation 🛂
         id: gate
+        if: github.event_name != 'merge_group'
         run: PYTHONPATH=.ci-lint uv run python -m ci_lint local-gate verify --repo . --trust --github-output
 
   rust-tests-linux:
