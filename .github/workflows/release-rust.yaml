@@ -319,6 +319,25 @@ jobs:
           if ( -not $Zip ) { throw 'Windows release package is missing' }
           uv run --no-project ci/windows_zip_check.py check $Zip.FullName --run --expect-version $env:VERSION
           if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+
+          # Hosted Windows has the redistributable installed. Remove the
+          # packaged runtime from an actual ZIP and require the package gate
+          # to reject it even when the runner could supply a system copy.
+          $BrokenZip = Join-Path $env:RUNNER_TEMP "obs-$env:TARGET-missing-runtime.zip"
+          Copy-Item -LiteralPath $Zip.FullName -Destination $BrokenZip
+          $Archive = [System.IO.Compression.ZipFile]::Open($BrokenZip, 'Update')
+          try {
+            $RuntimeEntries = @($Archive.Entries | Where-Object { $_.Name -ieq 'vcruntime140.dll' })
+            if ( $RuntimeEntries.Count -eq 0 ) { throw 'Expected packaged vcruntime140.dll for mutation' }
+            foreach ( $Entry in $RuntimeEntries ) { $Entry.Delete() }
+          } finally { $Archive.Dispose() }
+          $RuntimeFailure = uv run --no-project ci/windows_zip_check.py check $BrokenZip --run --expect-version $env:VERSION 2>&1
+          $RuntimeExit = $LASTEXITCODE
+          $RuntimeFailure | Write-Output
+          if ( $RuntimeExit -eq 0 -or "$RuntimeFailure" -notmatch 'imports vcruntime140.dll' ) {
+            throw 'Windows package check did not reject the missing runtime DLL'
+          }
+          $global:LASTEXITCODE = 0
           $PackageRoot = Join-Path $env:RUNNER_TEMP "obs-$env:TARGET-package"
           Expand-Archive -LiteralPath $Zip.FullName -DestinationPath $PackageRoot
           $App = Join-Path $PackageRoot 'bin/64bit/obs64.exe'
