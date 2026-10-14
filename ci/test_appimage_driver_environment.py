@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 VARIABLES = (
     "GBM_BACKENDS_PATH", "LIBVA_DRIVERS_PATH", "__EGL_VENDOR_LIBRARY_DIRS",
     "__EGL_VENDOR_LIBRARY_FILENAMES", "VK_DRIVER_FILES", "VK_ICD_FILENAMES",
+    "__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS", "__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES",
 )
 
 
@@ -39,6 +40,7 @@ class DriverEnvironmentTest(unittest.TestCase):
             "LIBVA_DRIVERS_PATH": "/usr/lib/dri:/usr/lib64/dri",
             "__EGL_VENDOR_LIBRARY_DIRS": "/etc/glvnd/egl_vendor.d:/usr/share/glvnd/egl_vendor.d",
             "VK_DRIVER_FILES": "/etc/vulkan/icd.d:/usr/share/vulkan/icd.d",
+            "__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS": "/etc/egl/egl_external_platform.d:/usr/share/egl/egl_external_platform.d",
         }
         actual = self.setup_environment([p for value in cases.values() for p in value.split(":")])
         for key, value in cases.items():
@@ -51,6 +53,7 @@ class DriverEnvironmentTest(unittest.TestCase):
             "LIBVA_DRIVERS_PATH": "/run/opengl-driver/lib/dri",
             "__EGL_VENDOR_LIBRARY_DIRS": "/run/opengl-driver/share/glvnd/egl_vendor.d",
             "VK_DRIVER_FILES": "/run/opengl-driver/share/vulkan/icd.d",
+            "__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS": "/run/opengl-driver/share/egl/egl_external_platform.d",
         }
         actual = self.setup_environment(cases.values())
         for key, value in cases.items():
