@@ -36,6 +36,8 @@ build-aux/flatpak-github-action-modified-*
 *.swp
 *~
 
-# Local agent state
-/.claude/
-/.clud/
+# Local agent state; the shared project settings are tracked (#691)
+/.claude/*
+!/.claude/settings.json
+/.clud/*
+!/.clud/settings.json

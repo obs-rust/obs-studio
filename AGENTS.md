@@ -41,7 +41,7 @@ unit-test jobs. Without a stamp, PR CI runs the full suite.
 
 ## Quick rules
 
-- Use `soldr cargo ...`, never bare `cargo`.
+- Use `soldr cargo ...`, never bare `cargo`. `.claude/settings.json` wires `ci/hooks/tool_guard.py`, a PreToolUse hook that denies bare Rust tools and bare python/pip (clud sessions get the same rule from clud; `.clud/settings.json` turns on its soldr shims). Codex has no repo hook: follow the rule by hand. `ci/test_tool_guard.py` (part of `./lint`) also fails on bare Rust tools in `ci/` and `rust/tools/` shell scripts.
 - Run Python through `uv run` (or `uvx`), never bare `python`/`python3`; standalone scripts use `#!/usr/bin/env -S uv run --script`. `ci/test_uv_run.py` (part of `./lint`) enforces it; see the testing policy's "Python runs through uv" rule.
 - Pin `rust-toolchain.toml` to the latest Rust the CI soldr version supports natively, never beyond; bump it only after a soldr bump (see the testing policy).
 - Never edit existing C tests or public C headers to make a port pass.

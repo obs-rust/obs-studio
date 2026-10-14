@@ -29,6 +29,7 @@ ALLOWLIST = {
     "deps/": "vendored third-party trees",
     "plugins/": "upstream plugins and git submodules (obs-websocket, ...)",
     "ci/test_uv_run.py": "this file spells out the patterns it forbids",
+    "ci/test_tool_guard.py": "spells out the bare commands the tool guard denies",
 }
 
 SCANNED_SUFFIXES = {

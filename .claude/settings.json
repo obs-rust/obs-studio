@@ -1,0 +1,17 @@
+{
+  "_comment": "Shared project settings. tool_guard.py denies bare Rust tools and bare python/pip (use soldr / uv, AGENTS.md); it stays silent under clud, which enforces the same rule. The command anchors on $CLAUDE_PROJECT_DIR and guards on [ -f ] so a checkout without the script cannot wedge the shell.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Shell|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\" && { [ -f ci/hooks/tool_guard.py ] && uv run --no-project --script ci/hooks/tool_guard.py || exit 0; }",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
