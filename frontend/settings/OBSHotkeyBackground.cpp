@@ -412,6 +412,10 @@ View Compute(const Input &input)
 	}
 
 	view.configure = (input.flags & OBS_HOTKEYS_BACKGROUND_CONFIGURABLE) != 0;
+	/* Only the new keys' dialog was declined: they were never added to the
+	 * desktop's settings, so asking again is the way back. */
+	view.newKeysDeclined = (input.flags & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED) && view.notBound;
+	view.askAgain = view.newKeysDeclined;
 	if (view.working == 0 && view.pending) {
 		view.banner = Banner::Pending;
 		return view;

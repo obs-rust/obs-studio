@@ -404,7 +404,9 @@ void OBSHotkeyBackgroundBanner::Refresh(bool readConfig)
 		message = QTStr("Basic.Settings.Hotkeys.Background.NoDesktopKeys");
 		break;
 	}
-	if (view.banner == Banner::Working && view.notBound) {
+	if (view.banner == Banner::Working && view.newKeysDeclined) {
+		message += " " + QTStr("Basic.Settings.Hotkeys.Background.NewKeysDeclined");
+	} else if (view.banner == Banner::Working && view.notBound) {
 		message += " " + QTStr(view.configure ? "Basic.Settings.Hotkeys.Background.NotBoundHint.Configure"
 						      : "Basic.Settings.Hotkeys.Background.NotBoundHint");
 	}
