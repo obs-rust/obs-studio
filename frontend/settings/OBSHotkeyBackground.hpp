@@ -161,6 +161,9 @@ struct View {
 	/* The desktop takes the keys it runs: the focused app doesn't get
 	 * them (KDE, GNOME). */
 	bool desktopTakesKeys = false;
+	/* The desktop's dialog for newly added keys was declined; the others
+	 * stay bound. */
+	bool newKeysDeclined = false;
 	/* Some keys are set but not handed to the desktop until Settings
 	 * closes. */
 	bool pending = false;

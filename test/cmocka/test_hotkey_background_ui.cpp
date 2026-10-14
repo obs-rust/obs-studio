@@ -274,6 +274,26 @@ static void texts_have_no_inner_quotes(void **)
 	assert_true(checked > 40);
 }
 
+/* The dialog for a new key was declined, the others stay bound: the new
+ * key isn't in the desktop's settings (it was never added there), so the
+ * way back is Ask again, not the desktop's settings. */
+static void new_key_declined(void **)
+{
+	Input input = base_input(OBS_HOTKEYS_BACKGROUND_ACTIVE);
+	input.flags = OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS | OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED;
+	input.shortcuts = {{f13, "Press F13", true}, {ctrl_shift_a, "", false}};
+
+	View view = Compute(input);
+	assert_int_equal((int)view.banner, (int)Banner::Working);
+	assert_int_equal((int)view.level, (int)Level::Warning);
+	assert_int_equal(view.notBound, 1);
+	assert_true(view.newKeysDeclined);
+	assert_true(view.askAgain);
+	assert_true(view.testKey);
+	assert_int_equal((int)MarkerFor(input, ctrl_shift_a), (int)Marker::NotBound);
+	assert_false(locale_text("Basic.Settings.Hotkeys.Background.NewKeysDeclined").empty());
+}
+
 /* Hyprland takes its keys from its config, even if the portal reports
  * version 2: the config lines are the way to change keys there. */
 static void configure_not_on_manual_desktops(void **)
@@ -571,6 +591,7 @@ int main(void)
 		cmocka_unit_test(desktop_assigned_no_keys),
 		cmocka_unit_test(partly_bound_is_a_warning),
 		cmocka_unit_test(desktop_takes_keys),
+		cmocka_unit_test(new_key_declined),
 		cmocka_unit_test(desktop_key_texts),
 		cmocka_unit_test(texts_have_no_inner_quotes),
 		cmocka_unit_test(new_key_is_pending),
