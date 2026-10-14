@@ -215,7 +215,7 @@ case "${ID_LIKE:-} ${ID}" in
 *fedora* | *rhel*)
     FAMILY=fedora
     dnf install -y -q --setopt=install_weak_deps=False --setopt=keepcache=1 \
-        xorg-x11-server-Xvfb icewm xwininfo ImageMagick dbus-daemon \
+        xorg-x11-server-Xvfb icewm xwininfo xprop ImageMagick dbus-daemon \
         dejavu-sans-fonts gdb procps-ng mesa-dri-drivers mesa-libGL mesa-libEGL mesa-libgbm libdrm libva \
         libglvnd-glx libglvnd-egl libglvnd-opengl libwayland-client libwayland-egl vulkan-loader >/dev/null
     ;;
@@ -225,7 +225,7 @@ case "${ID_LIKE:-} ${ID}" in
     # built with, and its Mesa (libgallium -> libLLVM) needs that newer glibc
     # and libstdc++ (obs-rust/obs-studio#621).
     pacman -Syu --noconfirm --needed \
-        xorg-server-xvfb icewm xorg-xwininfo imagemagick ttf-dejavu gdb procps-ng dbus \
+        xorg-server-xvfb icewm xorg-xwininfo xorg-xprop imagemagick ttf-dejavu gdb procps-ng dbus \
         mesa libglvnd libdrm libva wayland vulkan-icd-loader >/dev/null
     ;;
 *)
