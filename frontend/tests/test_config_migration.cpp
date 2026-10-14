@@ -51,6 +51,7 @@ int main(int argc, char **argv)
 		if (mode != "absent") {
 			write(source / "global.ini", "upstream global");
 			write(source / "user.ini", "upstream user");
+			write(source / ".sentinel/run_old", "upstream active session");
 			write(source / "basic/scenes/original.json", "upstream scene");
 		}
 		if (mode == "existing") {
@@ -90,6 +91,7 @@ int main(int argc, char **argv)
 			require(read(destination / "global.ini") == "existing Rust", "existing Rust overwritten");
 		} else {
 			require(result == ConfigMigrationResult::Imported && finalized, "first run did not import");
+			require(!fs::exists(destination / ".sentinel"), "upstream crash sentinel was imported");
 			require(read(destination / "user.ini") == "upstream user", "user settings missing");
 			if (mode == "custom") {
 				require(read(destination / "basic/scenes/chosen.json") == "custom scene",
