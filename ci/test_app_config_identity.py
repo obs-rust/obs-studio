@@ -248,3 +248,32 @@ class InstanceIdentityTest(unittest.TestCase):
                         "0",
                         "other application's processes counted as our instances",
                     )
+
+
+class IdentityBuildSelectionTest(unittest.TestCase):
+    def test_build_switch_precedes_installed_identity_defaults(self):
+        root = (ROOT / "CMakeLists.txt").read_text()
+        option = root.find("option(ENABLE_RUST_LIBOBS")
+        self.assertGreaterEqual(
+            option, 0, "Rust switch must be declared at the top level"
+        )
+        self.assertLess(option, root.index("include(app-identity)"))
+        self.assertLess(option, root.index("include(defaults)"))
+
+    def test_release_uses_explicit_rust_build_selection(self):
+        workflow = (ROOT / ".github/workflows/release-rust.yaml").read_text()
+        build = workflow.split("- name: Build OBS-Studio-Rust", 1)[1].split(
+            "- name:", 1
+        )[0]
+        self.assertIn("rustLibobs: 'ON'", build)
+        self.assertNotIn("sed -i.bak", workflow)
+        self.assertNotIn("update-index --assume-unchanged", workflow)
+
+    def test_each_build_script_forwards_the_explicit_switch(self):
+        posix = (ROOT / ".github/scripts/build-macos").read_text()
+        before_platform = posix.split("case ${target}", 1)[0]
+        self.assertIn(
+            "-DENABLE_RUST_LIBOBS:BOOL=${ENABLE_RUST_LIBOBS}", before_platform
+        )
+        windows = (ROOT / ".github/scripts/Build-Windows.ps1").read_text()
+        self.assertIn("-DENABLE_RUST_LIBOBS:BOOL=$env:ENABLE_RUST_LIBOBS", windows)
