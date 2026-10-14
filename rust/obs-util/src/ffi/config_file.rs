@@ -13,6 +13,24 @@ use core::ffi::{CStr, c_char, c_int};
 
 use crate::config_file::{CONFIG_ERROR, CONFIG_SUCCESS, Config, open_type_from_c};
 
+unsafe extern "C" {
+    fn blog(log_level: c_int, format: *const c_char, ...);
+}
+
+pub(crate) fn log_save_error(file: &[u8]) {
+    let mut file = file.to_vec();
+    file.push(0);
+    // SAFETY: the format matches the NUL-terminated byte path, which stays
+    // live for the call. The config mutex has been released before logging.
+    unsafe {
+        blog(
+            crate::base::LOG_ERROR,
+            c"config_save_safe: failed to write to %s".as_ptr(),
+            file.as_ptr().cast::<c_char>(),
+        );
+    }
+}
+
 /// `struct config_data` is opaque to C.
 #[repr(C)]
 pub struct config_data {
