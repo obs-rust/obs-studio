@@ -1,5 +1,6 @@
 #include "visibility-transition.h"
 
+#include <util/darray.h>
 #include <util/dstr.h>
 
 #include <string.h>
@@ -17,6 +18,7 @@ static void add_entry(obs_data_array_t *entries, obs_sceneitem_t *item, obs_data
 	obs_data_t *entry = obs_data_create();
 	obs_data_set_string(entry, "scene", obs_source_get_uuid(scene_source));
 	obs_data_set_int(entry, "id", obs_sceneitem_get_id(item));
+	obs_data_set_string(entry, "name", obs_source_get_name(obs_sceneitem_get_source(item)));
 	obs_data_set_obj(entry, "transition", transition);
 	obs_data_array_push_back(entries, entry);
 	obs_data_release(entry);
@@ -60,15 +62,46 @@ static void set_item_transition(obs_sceneitem_t *item, void *param)
 	obs_data_release(after);
 }
 
-/* Stub with the current logic of OBSBasic::CreateVisibilityTransitionMenu():
- * only the item the menu is for (the current item) is changed. */
+struct targets {
+	obs_sceneitem_t *item;
+	DARRAY(obs_sceneitem_t *) items;
+};
+
+static bool collect_selected(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
+{
+	struct targets *t = param;
+	UNUSED_PARAMETER(scene);
+
+	if (item != t->item && obs_sceneitem_selected(item)) {
+		obs_sceneitem_addref(item);
+		da_push_back(t->items, &item);
+	}
+
+	if (obs_sceneitem_is_group(item))
+		obs_sceneitem_group_enum_items(item, collect_selected, t);
+
+	return true;
+}
+
+/* Calls apply for item, then for every other selected item of scene and of
+ * its groups. The items are collected first: apply creates sources, which
+ * must not happen while the scene is locked for the enumeration. */
 static void for_each_target(obs_scene_t *scene, obs_sceneitem_t *item, void (*apply)(obs_sceneitem_t *, void *),
 			    void *param)
 {
-	UNUSED_PARAMETER(scene);
+	struct targets t = {.item = item};
+
+	da_init(t.items);
+	if (scene)
+		obs_scene_enum_items(scene, collect_selected, &t);
 
 	if (item)
 		apply(item, param);
+	for (size_t i = 0; i < t.items.num; i++) {
+		apply(t.items.array[i], param);
+		obs_sceneitem_release(t.items.array[i]);
+	}
+	da_free(t.items);
 }
 
 static void set_entries(obs_data_t *data, obs_data_array_t *entries, bool show)

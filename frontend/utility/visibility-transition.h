@@ -17,9 +17,10 @@ extern "C" {
  * or NULL `id` removes the transition and its duration.
  *
  * For undo, undo and redo (when not NULL) receive an "items" array with one
- * entry per changed item: the UUID of its scene or group ("scene"), its "id"
- * and its transition ("transition", as from obs_sceneitem_transition_save())
- * before and after the change. Returns the number of items changed.
+ * entry per changed item: the UUID of its scene or group ("scene"), its "id",
+ * its source's "name" and its transition ("transition", as from
+ * obs_sceneitem_transition_save()) before and after the change. Returns the
+ * number of items changed.
  *
  * visibility_transition_restore() puts back the transitions saved in undo or
  * redo. visibility_transition_set_duration() sets the transition duration of

@@ -80,6 +80,8 @@ target_sources(
     utility/tbar-position.h
     utility/transform-clipboard.c
     utility/transform-clipboard.h
+    utility/visibility-transition.c
+    utility/visibility-transition.h
     utility/OBSCanvas.cpp
     utility/OBSCanvas.hpp
     utility/OBSEventFilter.hpp
