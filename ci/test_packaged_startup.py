@@ -51,11 +51,11 @@ class PackagedReadinessTest(unittest.IsolatedAsyncioTestCase):
 class PackagedStartupTest(unittest.TestCase):
     def test_fixture_must_target_the_frontends_actual_config_directory(self):
         with tempfile.TemporaryDirectory() as root, patch.dict("os.environ", {"APPDATA": root}):
-            smoke.require_config_directory(Path(root) / "obs-studio", "windows")
+            smoke.require_config_directory(Path(root) / "obs-studio-rust", "windows")
             with self.assertRaisesRegex(RuntimeError, "frontend configuration"):
                 smoke.require_config_directory(Path(root) / "unrelated", "windows")
         with patch.object(Path, "home", return_value=Path("/example")):
-            smoke.require_config_directory(Path("/example/Library/Application Support/obs-studio"), "macos")
+            smoke.require_config_directory(Path("/example/Library/Application Support/obs-studio-rust"), "macos")
             with self.assertRaisesRegex(RuntimeError, "frontend configuration"):
                 smoke.require_config_directory(Path("/example/unrelated"), "macos")
 
@@ -132,3 +132,51 @@ class PackagedStartupTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MigrationFixtureTest(unittest.TestCase):
+    def test_custom_locations_prepare_real_saved_capture_inputs(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = Path(root) / "obs-studio-rust"
+            fixture = smoke.ConfigFixture(config, "windows", "migrate-custom", 4455, "test secret")
+            try:
+                self.assertFalse(config.exists(), "precreating Rust config would bypass migration")
+                original = Path(root) / "obs-studio"
+                import configparser
+                parser = configparser.ConfigParser(interpolation=None)
+                parser.read(original / "global.ini")
+                locations = {key: Path(value) for key, value in parser["Locations"].items()}
+                self.assertEqual(len(set(locations.values())), 4)
+                scenes = locations["scenecollections"] / f"obs-studio/basic/scenes/{smoke.PROFILE}.json"
+                collection = json.loads(scenes.read_text())
+                self.assertEqual({source["id"] for source in collection["sources"]}, {*smoke.KINDS["windows"], "scene"})
+                websocket = locations["configuration"] / "obs-studio/plugin_config/obs-websocket/config.json"
+                settings = json.loads(websocket.read_text())
+                self.assertEqual((settings["server_port"], settings["server_password"]), (4455, "test secret"))
+                with self.assertRaisesRegex(RuntimeError, "Rust configuration"):
+                    fixture.verify()
+            finally:
+                fixture.cleanup()
+            self.assertFalse(original.exists())
+            self.assertFalse(config.exists())
+
+    def test_existing_user_settings_are_not_fixture_owned(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = Path(root) / "obs-studio-rust"
+            config.mkdir()
+            marker = config / "user.ini"
+            marker.write_text("existing settings")
+            with self.assertRaisesRegex(RuntimeError, "existing"):
+                smoke.ConfigFixture(config, "windows", "existing", 4455, "test secret")
+            self.assertEqual(marker.read_text(), "existing settings")
+
+    def test_validator_rejects_original_settings_changes(self):
+        with tempfile.TemporaryDirectory() as root:
+            fixture = smoke.ConfigFixture(Path(root) / "obs-studio-rust", "macos", "migrate-default", 4455, "test secret")
+            try:
+                original = Path(root) / "obs-studio/global.ini"
+                original.write_text("changed by the application")
+                with self.assertRaisesRegex(RuntimeError, "original settings"):
+                    fixture.verify()
+            finally:
+                fixture.cleanup()
