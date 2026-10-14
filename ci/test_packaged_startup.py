@@ -79,6 +79,23 @@ class PackagedReadinessTest(unittest.IsolatedAsyncioTestCase):
 
 
 class PackagedStartupTest(unittest.TestCase):
+    def test_macos_shutdown_timeout_captures_the_owned_live_process(self):
+        proc = Mock(pid=123, poll=Mock(return_value=None))
+        proc.wait.side_effect = smoke.subprocess.TimeoutExpired(["owned-app"], 30)
+        with patch.object(smoke.subprocess, "run") as sample:
+            sample.return_value = Mock(stdout="owned shutdown stack", stderr="", returncode=0)
+            with self.assertRaises(smoke.subprocess.TimeoutExpired):
+                smoke.close_frontend(proc, "macos")
+            sample.assert_called_once()
+            self.assertEqual(sample.call_args.args[0][:3], ["sample", "123", "5"])
+            self.assertLessEqual(sample.call_args.kwargs["timeout"], 15)
+
+    def test_successful_macos_shutdown_does_not_collect_a_stack(self):
+        proc = Mock(wait=Mock(return_value=0))
+        with patch.object(smoke.subprocess, "run") as sample:
+            smoke.close_frontend(proc, "macos")
+            sample.assert_not_called()
+
     def test_fixture_must_target_the_frontends_actual_config_directory(self):
         with (
             tempfile.TemporaryDirectory() as root,
