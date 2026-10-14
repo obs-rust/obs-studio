@@ -22,13 +22,19 @@ int rist_sender_create(struct rist_ctx **ctx, enum rist_profile profile, uint32_
 	return 0;
 }
 
+/* Plain statics rather than cmocka's will_return/expect queues: those crashed
+ * inside cmocka's _mock on the MSVC build. */
+static const char *parse_expected_url;
+static int parse_ret_value;
+static unsigned parse_calls;
+
 static int parse_address(const char *url, struct rist_peer_config *config)
 {
-	check_expected_ptr(url);
-	int ret = mock_type(int);
-	if (ret == 0)
-		config->key_size = mock_type(int);
-	return ret;
+	parse_calls++;
+	assert_string_equal(url, parse_expected_url);
+	if (parse_ret_value == 0)
+		config->key_size = 128;
+	return parse_ret_value;
 }
 
 #if FF_LIBRIST_VERSION < FF_LIBRIST_VERSION_41
@@ -62,11 +68,11 @@ static void open_failure_cleanup(const char *url, int parse_ret, int expected_re
 	destroy_calls = 0;
 	assert_int_equal(bnum_allocs(), allocations + 3);
 
-	expect_string(parse_address, url, url);
-	will_return(parse_address, parse_ret);
-	if (parse_ret == 0)
-		will_return(parse_address, 128);
+	parse_expected_url = url;
+	parse_ret_value = parse_ret;
+	parse_calls = 0;
 	assert_int_equal(librist_open(&h, url), expected_ret);
+	assert_int_equal(parse_calls, 1);
 	assert_int_equal(destroy_calls, 1);
 	assert_int_equal(bnum_allocs(), allocations);
 
