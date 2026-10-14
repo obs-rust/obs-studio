@@ -392,6 +392,16 @@ void OBSHotkeyBackgroundBanner::Refresh(bool readConfig)
 	case Banner::Pending:
 		message = QTStr("Basic.Settings.Hotkeys.Background.PendingOnly");
 		break;
+	case Banner::NoDesktopKeys:
+		message = QTStr("Basic.Settings.Hotkeys.Background.NoDesktopKeys");
+		break;
+	}
+	if (view.banner == Banner::Working && view.notBound) {
+		message += " " + QTStr(view.configure ? "Basic.Settings.Hotkeys.Background.NotBoundHint.Configure"
+						      : "Basic.Settings.Hotkeys.Background.NotBoundHint");
+	}
+	if (view.banner == Banner::Working && view.desktopTakesKeys) {
+		message += " " + QTStr("Basic.Settings.Hotkeys.Background.DesktopTakesKeys");
 	}
 	if (view.paused && (view.banner == Banner::Working || view.banner == Banner::NeedsConfig ||
 			    view.banner == Banner::Unverified)) {
