@@ -116,12 +116,17 @@ static bool Failing(obs_hotkeys_background_state state)
 /* A desktop's own trigger text as a key combination, for the desktops that
  * report one (KDE, GNOME). KDE sends Qt key sequences ("Ctrl+Shift+A",
  * "F11"); GNOME a GTK accelerator after a word ("Press <Shift><Control>a").
- * Text that doesn't read as a key (localized modifier names, several keys)
- * gives nullopt: then nothing is claimed about it. */
+ * KDE localizes modifier names ("Strg+Umschalt+A"); those are counted, not
+ * read. Text that doesn't read as a key (several keys, no key name) gives
+ * nullopt: then nothing is claimed about it. */
 struct DesktopKey {
 	obs_key_combination_t combo;
 	/* "Shift+Ctrl+A", for the tooltip. */
 	std::string text;
+	/* Localized modifier names ("Strg") aren't read: then only the key
+	 * and the number of modifiers are known. */
+	bool modifiersKnown = true;
+	size_t modifierCount = 0;
 };
 
 static std::string Lower(std::string text)
@@ -174,6 +179,17 @@ static obs_key_t KeyFrom(const std::string &name)
 	return obs_key_from_name(("OBS_KEY_" + upper).c_str());
 }
 
+static size_t ModifierCount(const obs_key_combination_t &combo)
+{
+	size_t count = 0;
+	for (uint32_t modifier : {INTERACT_CONTROL_KEY, INTERACT_SHIFT_KEY, INTERACT_ALT_KEY, INTERACT_COMMAND_KEY}) {
+		if (combo.modifiers & modifier) {
+			count++;
+		}
+	}
+	return count;
+}
+
 static std::optional<DesktopKey> ParseDesktopTrigger(const std::string &trigger)
 {
 	std::vector<std::string> mods;
@@ -210,15 +226,21 @@ static std::optional<DesktopKey> ParseDesktopTrigger(const std::string &trigger)
 		return std::nullopt;
 	}
 
-	DesktopKey parsed = {{0, KeyFrom(key)}, ""};
+	DesktopKey parsed;
+	parsed.combo = {0, KeyFrom(key)};
 	if (parsed.combo.key == OBS_KEY_NONE) {
 		return std::nullopt;
 	}
+	parsed.modifierCount = mods.size();
 	for (auto &mod : mods) {
 		uint32_t modifier;
 		const char *text;
-		if (!ModifierFrom(mod, modifier, text)) {
+		if (mod.empty()) {
 			return std::nullopt;
+		}
+		if (!ModifierFrom(mod, modifier, text)) {
+			parsed.modifiersKnown = false;
+			continue;
 		}
 		parsed.combo.modifiers |= modifier;
 		parsed.text += std::string(text) + "+";
@@ -264,7 +286,11 @@ Marker MarkerFor(const Input &input, const obs_key_combination_t &combo)
 	/* The desktop runs it on another key, given in its own settings. */
 	if (!input.desktop) {
 		auto desktopKey = ParseDesktopTrigger(shortcut->trigger);
-		if (desktopKey && !SameCombo(desktopKey->combo, combo)) {
+		if (desktopKey && desktopKey->modifiersKnown && !SameCombo(desktopKey->combo, combo)) {
+			return Marker::OtherKey;
+		}
+		if (desktopKey && !desktopKey->modifiersKnown &&
+		    (desktopKey->combo.key != combo.key || desktopKey->modifierCount != ModifierCount(combo))) {
 			return Marker::OtherKey;
 		}
 	}
@@ -285,7 +311,7 @@ std::string DesktopTrigger(const Input &input, const obs_key_combination_t &comb
 		return std::string();
 	}
 	auto desktopKey = ParseDesktopTrigger(shortcut->trigger);
-	return desktopKey ? desktopKey->text : shortcut->trigger;
+	return desktopKey && desktopKey->modifiersKnown ? desktopKey->text : shortcut->trigger;
 }
 
 View Compute(const Input &input)
