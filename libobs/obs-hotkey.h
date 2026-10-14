@@ -285,6 +285,10 @@ enum obs_hotkeys_background_state {
 /* The last obs_hotkeys_configure_background() could not open the desktop's
  * editor; cleared by the next request. */
 #define OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED (1 << 4)
+/* With OBS_HOTKEYS_BACKGROUND_ACTIVE: the desktop's dialog for new keys was
+ * declined; the keys it approved before stay bound, the new ones are not.
+ * obs_hotkeys_retry_background() asks for them again. */
+#define OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED (1 << 5)
 
 EXPORT enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags);
 
