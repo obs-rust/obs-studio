@@ -116,6 +116,25 @@ class AppConfigIdentityTest(unittest.TestCase):
                 self.assertEqual(subprocess.check_output([str(executable)], text=True),
                                  "/chosen/storage/" + ("obs-studio-rust" if rust else "obs-studio"))
 
+    def test_default_migration_root_has_no_redundant_separator(self):
+        source = (ROOT / "frontend/OBSApp.cpp").read_text()
+        migration = source.split("bool OBSApp::MigrateRustConfiguration()", 1)[1].split("namespace OBS", 1)[0]
+        expression = migration.split("const auto base = ", 1)[1].split(";", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="obs-default-migration-root-") as scratch:
+            directory=Path(scratch)
+            harness=directory / "root.cpp"
+            harness.write_text(
+                '#include <filesystem>\n#include <iostream>\n#include "utility/ConfigMigration.hpp"\n'
+                'struct Root { const char *value; const char *Get() { return value; } };\n'
+                'int main(int argc,char **argv) { namespace fs=std::filesystem; Root configRoot{argv[1]}; '
+                'const auto base=' + expression + '; std::cout << base.u8string(); }\n'
+            )
+            executable=directory / "root"
+            subprocess.run(["c++","-std=c++17","-I",str(ROOT / "frontend"),str(harness),"-o",str(executable)],check=True,capture_output=True)
+            for value,expected in (("/chosen/config/","/chosen/config"),("/chosen/config","/chosen/config"),("/","/")):
+                with self.subTest(value=value):
+                    self.assertEqual(subprocess.check_output([str(executable),value],text=True),expected)
+
 
 class ConfigMigrationTest(unittest.TestCase):
     def test_first_run_migration_contract(self):
@@ -226,6 +245,28 @@ class InstalledAppIdentityTest(unittest.TestCase):
         self.assertIn("Icon=com.obsproject.Studio\n", desktop)
         self.assertIn("StartupWMClass=obs\n", desktop)
 
+    def test_debian_dependency_scan_knows_the_private_library_directory(self):
+        for rust in (False,True):
+            with self.subTest(rust=rust), tempfile.TemporaryDirectory(prefix="obs-private-deps-") as scratch:
+                directory=Path(scratch)
+                defaults=(ROOT / "cmake/linux/defaults.cmake").read_text().split("include(cpackconfig)",1)[0]
+                packaging=(ROOT / "cmake/linux/cpackconfig.cmake").read_text().split("include(CPack)",1)[0].replace("include_guard(GLOBAL)", "")
+                (directory / "CMakeLists.txt").write_text(
+                    'cmake_minimum_required(VERSION 3.28)\nproject(private_deps LANGUAGES C)\n'
+                    'set(OS_LINUX TRUE)\nset(CMAKE_INSTALL_PREFIX "/usr")\nset(CMAKE_INSTALL_LIBDIR "lib")\n'
+                    'set(OBS_VERSION 33.0.0)\nset(OBS_VERSION_MAJOR 33)\nset(OBS_VERSION_MINOR 0)\nset(OBS_VERSION_PATCH 0)\n'
+                    + f"set(ENABLE_RUST_LIBOBS {'ON' if rust else 'OFF'})\n"
+                    + f'list(APPEND CMAKE_MODULE_PATH "{ROOT}/cmake/common")\n'
+                    + f'include("{ROOT}/cmake/common/app-identity.cmake")\n'
+                    + defaults + '\n' + packaging
+                    + '\nfile(WRITE "${CMAKE_BINARY_DIR}/deps.txt" "${CPACK_DEBIAN_PACKAGE_SHLIBDEPS}\\n${CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS}\\n")\n'
+                )
+                build=directory / "build"
+                subprocess.run(["cmake","-S",str(directory),"-B",str(build)],check=True,capture_output=True)
+                enabled,paths=(build / "deps.txt").read_text().splitlines()
+                self.assertEqual(enabled,"TRUE","dependency checking must stay enabled")
+                self.assertEqual(paths,"./usr/lib/obs-studio-rust" if rust else "")
+
 
 class InstanceIdentityTest(unittest.TestCase):
     def test_linux_instance_check_ignores_the_other_application(self):
@@ -296,6 +337,12 @@ class IdentityBuildSelectionTest(unittest.TestCase):
         self.assertIn("rustLibobs: 'ON'", build)
         self.assertNotIn("sed -i.bak", workflow)
         self.assertNotIn("update-index --assume-unchanged", workflow)
+
+    def test_release_installs_uv_before_package_identity_checks(self):
+        workflow=(ROOT / ".github/workflows/release-rust.yaml").read_text()
+        build=workflow.split("\n  build:",1)[1].split("\n  appimage:",1)[0]
+        self.assertIn("astral-sh/setup-uv@",build)
+        self.assertLess(build.index("astral-sh/setup-uv@"),build.index("- name: Collect and verify"))
 
     def test_each_build_script_forwards_the_explicit_switch(self):
         posix = (ROOT / ".github/scripts/build-macos").read_text()
