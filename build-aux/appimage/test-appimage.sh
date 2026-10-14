@@ -215,7 +215,7 @@ case "${ID_LIKE:-} ${ID}" in
 *fedora* | *rhel*)
     FAMILY=fedora
     dnf install -y -q --setopt=install_weak_deps=False --setopt=keepcache=1 \
-        xorg-x11-server-Xvfb icewm xwininfo xprop ImageMagick dbus-daemon \
+        xorg-x11-server-Xvfb icewm xwininfo xprop ImageMagick dbus-daemon diffutils \
         dejavu-sans-fonts gdb procps-ng mesa-dri-drivers mesa-libGL mesa-libEGL mesa-libgbm libdrm libva \
         libglvnd-glx libglvnd-egl libglvnd-opengl libwayland-client libwayland-egl vulkan-loader >/dev/null
     ;;
@@ -225,7 +225,7 @@ case "${ID_LIKE:-} ${ID}" in
     # built with, and its Mesa (libgallium -> libLLVM) needs that newer glibc
     # and libstdc++ (obs-rust/obs-studio#621).
     pacman -Syu --noconfirm --needed \
-        xorg-server-xvfb icewm xorg-xwininfo xorg-xprop imagemagick ttf-dejavu gdb procps-ng dbus \
+        xorg-server-xvfb icewm xorg-xwininfo xorg-xprop imagemagick ttf-dejavu gdb procps-ng dbus diffutils \
         mesa libglvnd libdrm libva wayland vulkan-icd-loader >/dev/null
     ;;
 *)
@@ -876,7 +876,9 @@ if [ "$CONFIG_NAME" = obs-studio-rust ]; then
     else
         grep -q '^RustConfigImportedFrom=' "$RUST_CONFIG/global.ini" && fail "existing Rust settings were imported over"
     fi
-    echo "Rust config isolation verified: $SCENARIO; original settings unchanged"
+    if [ "${#FAILED[@]}" -eq 0 ]; then
+        echo "Rust config isolation verified: $SCENARIO; original settings unchanged"
+    fi
 fi
 
 LOG="$(find "$XDG_CONFIG_HOME/$CONFIG_NAME/logs" -type f 2>/dev/null | sort | tail -1)"

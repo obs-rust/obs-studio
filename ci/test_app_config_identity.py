@@ -210,8 +210,10 @@ class ConfigMigrationTest(unittest.TestCase):
 class InstalledAppIdentityTest(unittest.TestCase):
     def test_failed_snapshot_comparison_does_not_report_verified_isolation(self):
         source = (ROOT / "build-aux/appimage/test-appimage.sh").read_text()
-        start = source.index('if [ "$CONFIG_NAME" = obs-studio-rust ]; then\n    source_snapshot')
-        block = source[start:source.index('\nLOG="', start)]
+        start = source.index(
+            'if [ "$CONFIG_NAME" = obs-studio-rust ]; then\n    source_snapshot'
+        )
+        block = source[start : source.index('\nLOG="', start)]
         with tempfile.TemporaryDirectory(prefix="obs-snapshot-report-") as scratch:
             directory = Path(scratch)
             root = directory / "obs-studio-rust"
@@ -220,27 +222,40 @@ class InstalledAppIdentityTest(unittest.TestCase):
             (root / "basic/scenes").mkdir(parents=True)
             (root / "basic/scenes/Test.json").touch()
             (root / "plugin_manager").mkdir()
-            (root / "plugin_manager/migration-proof.txt").write_text("preserved plugin settings\n")
+            (root / "plugin_manager/migration-proof.txt").write_text(
+                "preserved plugin settings\n"
+            )
             (root / "global.ini").touch()
             (directory / "upstream-before.txt").write_text("original\n")
-            script = ('XDG_CONFIG_HOME="$1"\nOUT="$1"\nCONFIG_NAME=obs-studio-rust\nSCENARIO=saved-profile-existing\n'
-                      'FAILED=()\nfail() { FAILED+=("$*"); }\nsource_snapshot() { printf "changed\\n"; }\n' + block +
-                      '\nprintf "failure_count=%s\\n" "${#FAILED[@]}"\n')
-            output = subprocess.check_output(["bash", "-c", script, "test", str(directory)], text=True)
+            script = (
+                'XDG_CONFIG_HOME="$1"\nOUT="$1"\nCONFIG_NAME=obs-studio-rust\nSCENARIO=saved-profile-existing\n'
+                'FAILED=()\nfail() { FAILED+=("$*"); }\nsource_snapshot() { printf "changed\\n"; }\n'
+                + block
+                + '\nprintf "failure_count=%s\\n" "${#FAILED[@]}"\n'
+            )
+            output = subprocess.check_output(
+                ["bash", "-c", script, "test", str(directory)], text=True
+            )
             self.assertIn("failure_count=1", output)
             self.assertNotIn("Rust config isolation verified", output)
 
     def test_non_debian_installs_the_snapshot_comparison_tool(self):
         source = (ROOT / "build-aux/appimage/test-appimage.sh").read_text()
         block = source.split('case "${ID_LIKE:-} ${ID}" in', 1)[1]
-        block = 'case "${ID_LIKE:-} ${ID}" in' + block.split("\nesac", 1)[0] + "\nesac\n"
+        block = (
+            'case "${ID_LIKE:-} ${ID}" in' + block.split("\nesac", 1)[0] + "\nesac\n"
+        )
         with tempfile.TemporaryDirectory(prefix="obs-package-tools-") as scratch:
             for distro in ("fedora", "arch"):
                 requested = Path(scratch) / distro
-                script = ('ID="$1"\nID_LIKE=""\nREQUESTS="$2"\n'
-                          'dnf() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n'
-                          'pacman() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n' + block)
-                subprocess.run(["bash", "-c", script, "test", distro, str(requested)], check=True)
+                script = (
+                    'ID="$1"\nID_LIKE=""\nREQUESTS="$2"\n'
+                    'dnf() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n'
+                    'pacman() { printf "%s\\n" "$@" >>"$REQUESTS"; }\n' + block
+                )
+                subprocess.run(
+                    ["bash", "-c", script, "test", distro, str(requested)], check=True
+                )
                 with self.subTest(distro=distro):
                     self.assertIn("diffutils", requested.read_text().splitlines())
 
