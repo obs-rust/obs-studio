@@ -66,6 +66,11 @@ class T(unittest.TestCase):
         del f["bin/64bit/msvcp140.dll"]
         self.assertTrue(any("msvcp140.dll" in p for p in w.problems(make(f))))
 
+    def test_runtime_in_unrelated_plugin_directory_does_not_satisfy_executable(self):
+        f = self.good()
+        f["core/unrelated/vcruntime140.dll"] = f.pop("bin/64bit/vcruntime140.dll")
+        self.assertTrue(any("obs64.exe imports vcruntime140.dll" in p for p in w.problems(make(f))))
+
     def test_pdb_and_layout(self):
         self.assertEqual(len(w.problems(make({"bin/64bit/obs64.pdb": b""}))), 3)
 
