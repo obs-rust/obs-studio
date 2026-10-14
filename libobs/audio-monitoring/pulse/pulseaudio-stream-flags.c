@@ -46,3 +46,15 @@ bool pulseaudio_monitor_reset_on_sink_event(pa_subscription_event_type_t event, 
 		return false;
 	}
 }
+
+uint64_t pulseaudio_monitor_backlog_excess(struct pulseaudio_monitor_backlog *backlog, uint64_t now_ns,
+					   uint64_t queued_usec, uint64_t target_usec)
+{
+	(void)backlog;
+	(void)now_ns;
+	(void)queued_usec;
+	(void)target_usec;
+
+	/* The monitor never drops audio. */
+	return 0;
+}

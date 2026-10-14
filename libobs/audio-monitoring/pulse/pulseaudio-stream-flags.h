@@ -39,3 +39,31 @@ pa_stream_flags_t pulseaudio_monitor_stream_flags(const char *device_id);
  * (PA_INVALID_INDEX if none). */
 bool pulseaudio_monitor_reset_on_sink_event(pa_subscription_event_type_t event, uint32_t event_idx, uint32_t sink_idx,
 					    bool fallback);
+
+/* Catching up after a stall.
+ *
+ * Monitored audio is written to the server as soon as OBS outputs it. When
+ * playback stalls (the server or the device hiccups, an xrun, a suspend, a
+ * CPU spike) while OBS keeps producing, everything produced meanwhile is
+ * queued and then played in order, so the monitor stays that far behind for
+ * good: the queue drains only as fast as it fills.
+ *
+ * Feed one sample per write: queued_usec is how long audio handed over now
+ * takes to reach the sink (what the server holds plus what is not written
+ * yet; the sink's own latency excluded), target_usec the buffer the stream
+ * asks the server for (tlength). Returns how much queued audio to drop, in
+ * microseconds: when the queue stayed more than target_usec (and
+ * at least PULSEAUDIO_MONITOR_BACKLOG_SLACK) above the target for a whole
+ * window, down to the target; 0 otherwise. A source that delivers its audio
+ * in bursts drains the queue between bursts, and a short spike drains within
+ * the window, so neither is cut. */
+#define PULSEAUDIO_MONITOR_BACKLOG_WINDOW 2000000000ULL /* ns */
+#define PULSEAUDIO_MONITOR_BACKLOG_SLACK 200000ULL      /* usec */
+
+struct pulseaudio_monitor_backlog {
+	uint64_t window_start; /* ns; 0 until the first sample of a window */
+	uint64_t window_min;   /* usec; lowest queued_usec in the window */
+};
+
+uint64_t pulseaudio_monitor_backlog_excess(struct pulseaudio_monitor_backlog *backlog, uint64_t now_ns,
+					   uint64_t queued_usec, uint64_t target_usec);
