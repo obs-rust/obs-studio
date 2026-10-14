@@ -40,6 +40,8 @@ target_sources(
     utility/NativeEventFilter.hpp
     utility/output-filename-format.c
     utility/output-filename-format.h
+    utility/replay-buffer-estimate.cpp
+    utility/replay-buffer-estimate.hpp
     utility/replay-buffer-naming.c
     utility/replay-buffer-naming.h
     utility/output-filename-reserve.c

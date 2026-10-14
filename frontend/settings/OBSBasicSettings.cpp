@@ -33,6 +33,7 @@
 #include <utility/FFmpegCodec.hpp>
 #include <utility/FFmpegFormat.hpp>
 #include <utility/output-rescale.h>
+#include <utility/replay-buffer-estimate.hpp>
 #include <utility/SettingsEventFilter.hpp>
 #ifdef YOUTUBE_ENABLED
 #include <utility/YoutubeApiWrappers.hpp>
@@ -5296,22 +5297,21 @@ void OBSBasicSettings::SimpleReplayBufferChanged()
 		memMB = 1;
 	}
 
-	ui->simpleRBEstimate->setObjectName("");
 	if (streamQuality) {
 		if (memMB <= memMaxMB) {
-			ui->simpleRBEstimate->setText(QTStr(ESTIMATE_STR).arg(QString::number(int(memMB))));
+			SetReplayBufferEstimate(ui->simpleRBEstimate,
+						QTStr(ESTIMATE_STR).arg(QString::number(int(memMB))), false);
 		} else {
-			ui->simpleRBEstimate->setText(
-				QTStr(ESTIMATE_TOO_LARGE_STR)
-					.arg(QString::number(int(memMB)), QString::number(int(memMaxMB))));
-			ui->simpleRBEstimate->setProperty("class", "text-warning");
+			SetReplayBufferEstimate(ui->simpleRBEstimate,
+						QTStr(ESTIMATE_TOO_LARGE_STR)
+							.arg(QString::number(int(memMB)),
+							     QString::number(int(memMaxMB))),
+						true);
 		}
 	} else {
-		ui->simpleRBEstimate->setText(QTStr(ESTIMATE_UNKNOWN_STR));
+		SetReplayBufferEstimate(ui->simpleRBEstimate, QTStr(ESTIMATE_UNKNOWN_STR), false);
 		ui->simpleRBMegsMax->setMaximum(memMaxMB);
 	}
-
-	ui->simpleRBEstimate->style()->polish(ui->simpleRBEstimate);
 
 	UpdateAutomaticReplayBufferCheckboxes();
 }
@@ -5397,28 +5397,28 @@ void OBSBasicSettings::AdvReplayBufferChanged()
 		varRateControl = false;
 	}
 
-	ui->advRBEstimate->setObjectName("");
 	if (varRateControl) {
 		ui->advRBMegsMax->setVisible(false);
 		ui->advRBMegsMaxLabel->setVisible(false);
 
 		if (memMB <= memMaxMB) {
-			ui->advRBEstimate->setText(QTStr(ESTIMATE_STR).arg(QString::number(int(memMB))));
+			SetReplayBufferEstimate(ui->advRBEstimate, QTStr(ESTIMATE_STR).arg(QString::number(int(memMB))),
+						false);
 		} else {
-			ui->advRBEstimate->setText(
-				QTStr(ESTIMATE_TOO_LARGE_STR)
-					.arg(QString::number(int(memMB)), QString::number(int(memMaxMB))));
-			ui->advRBEstimate->setProperty("class", "text-warning");
+			SetReplayBufferEstimate(ui->advRBEstimate,
+						QTStr(ESTIMATE_TOO_LARGE_STR)
+							.arg(QString::number(int(memMB)),
+							     QString::number(int(memMaxMB))),
+						true);
 		}
 	} else {
 		ui->advRBMegsMax->setVisible(true);
 		ui->advRBMegsMaxLabel->setVisible(true);
 		ui->advRBMegsMax->setMaximum(memMaxMB);
-		ui->advRBEstimate->setText(QTStr(ESTIMATE_UNKNOWN_STR));
+		SetReplayBufferEstimate(ui->advRBEstimate, QTStr(ESTIMATE_UNKNOWN_STR), false);
 	}
 
 	ui->advReplayBufferFrame->setEnabled(!lossless && replayBufferEnabled);
-	ui->advRBEstimate->style()->polish(ui->advRBEstimate);
 	ui->advReplayBuf->setEnabled(!lossless);
 
 	UpdateAutomaticReplayBufferCheckboxes();
