@@ -93,6 +93,29 @@ class AppConfigIdentityTest(unittest.TestCase):
                 self.paths(True, False, name), ["/user/config/" + name] * 2
             )
 
+    def test_settings_folder_uses_selected_application_identity(self):
+        source = (ROOT / "frontend/widgets/OBSBasic_MainControls.cpp").read_text()
+        body = source.split("void OBSBasic::on_actionShowSettingsFolder_triggered()", 1)[1].split("\n}", 1)[0]
+        expression = body.split("const std::string userConfigPath = ", 1)[1].split(";", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="obs-settings-folder-") as scratch:
+            directory = Path(scratch)
+            harness = directory / "settings.cpp"
+            harness.write_text(
+                '#include <filesystem>\n#include <iostream>\n#include <string>\n'
+                '#include "utility/AppIdentity.hpp"\n'
+                'struct FakeApp { std::filesystem::path userConfigLocation; };\n'
+                'FakeApp *App() { static FakeApp app{"/chosen/storage"}; return &app; }\n'
+                'int main() { std::cout << (' + expression + '); }\n'
+            )
+            for rust in (False, True):
+                executable = directory / ("rust" if rust else "upstream")
+                command = ["c++", "-std=c++17", "-I", str(ROOT / "frontend")]
+                if rust:
+                    command.append("-DOBS_RUST_VERSION=1")
+                subprocess.run(command + [str(harness), "-o", str(executable)], check=True, capture_output=True)
+                self.assertEqual(subprocess.check_output([str(executable)], text=True),
+                                 "/chosen/storage/" + ("obs-studio-rust" if rust else "obs-studio"))
+
 
 class ConfigMigrationTest(unittest.TestCase):
     def test_first_run_migration_contract(self):
@@ -182,6 +205,7 @@ class InstalledAppIdentityTest(unittest.TestCase):
         self.assertIn("Name=OBS-Studio-Rust\n", desktop)
         self.assertIn("Exec=obs-studio-rust-gui\n", desktop)
         self.assertIn("Icon=io.github.obs_rust.OBSStudioRust\n", desktop)
+        self.assertIn("StartupWMClass=obs-studio-rust-gui\n", desktop)
 
     def test_upstream_installed_identity_stays_compatible(self):
         identity, desktop = self.configure(False)
@@ -200,6 +224,7 @@ class InstalledAppIdentityTest(unittest.TestCase):
         )
         self.assertIn("Exec=obs\n", desktop)
         self.assertIn("Icon=com.obsproject.Studio\n", desktop)
+        self.assertIn("StartupWMClass=obs\n", desktop)
 
 
 class InstanceIdentityTest(unittest.TestCase):
