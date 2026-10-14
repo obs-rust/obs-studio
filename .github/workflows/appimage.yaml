@@ -333,7 +333,7 @@ jobs:
           sudo apt-get update -qq
           sudo -E apt-get install -y --no-install-recommends -o DPkg::Lock::Timeout=120 \
             libgl1-mesa-dri libglx-mesa0 libegl-mesa0 libgl1 libegl1 libgbm1 libdrm2 \
-            libva2 libva-drm2 libopengl0 libwayland-client0 libwayland-egl1 libvulkan1
+            libva2 libva-drm2 libva-x11-2 libopengl0 libwayland-client0 libwayland-egl1 libvulkan1
 
       - name: Verify AppImage identity and updater metadata
         env:
