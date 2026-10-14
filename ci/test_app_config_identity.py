@@ -127,3 +127,73 @@ class ConfigMigrationTest(unittest.TestCase):
                         text=True,
                     )
                     self.assertEqual(completed.returncode, 0, completed.stderr)
+
+
+class InstalledAppIdentityTest(unittest.TestCase):
+    def configure(self, rust):
+        with tempfile.TemporaryDirectory(prefix="obs-installed-identity-") as scratch:
+            directory = Path(scratch)
+            # Execute the production defaults before CPack/dependency discovery;
+            # this tests their actual install/RPATH decisions without a full build.
+            defaults = (ROOT / "cmake/linux/defaults.cmake").read_text()
+            defaults = defaults.split("include(cpackconfig)", 1)[0]
+            (directory / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.28)\nproject(identity LANGUAGES C)\n"
+                'set(CMAKE_INSTALL_PREFIX "/usr")\nset(CMAKE_INSTALL_LIBDIR "lib")\n'
+                + f"set(ENABLE_RUST_LIBOBS {'ON' if rust else 'OFF'})\n"
+                + "set(ENABLE_RELOCATABLE ON)\n"
+                + f'include("{ROOT}/cmake/common/app-identity.cmake")\n'
+                + defaults
+                + '\nfile(WRITE "${CMAKE_BINARY_DIR}/identity.txt" '
+                '"${OBS_DESKTOP_ID}\\n${OBS_MACOS_BUNDLE_ID}\\n${OBS_MACOS_BUNDLE_NAME}\\n'
+                "${OBS_UNIX_GUI_NAME}\\n${OBS_LIBRARY_DESTINATION}\\n"
+                '${OBS_PLUGIN_DESTINATION}\\n${OBS_DATA_DESTINATION}\\n${OBS_EXECUTABLE_RPATH}\\n")\n'
+                + f'configure_file("{ROOT}/frontend/cmake/linux/com.obsproject.Studio.desktop" '
+                '"${CMAKE_BINARY_DIR}/app.desktop" @ONLY)\n'
+            )
+            build = directory / "build"
+            subprocess.run(
+                ["cmake", "-S", str(directory), "-B", str(build)],
+                check=True,
+                capture_output=True,
+            )
+            return (build / "identity.txt").read_text().splitlines(), (
+                build / "app.desktop"
+            ).read_text()
+
+    def test_rust_installed_identity_and_private_libraries(self):
+        identity, desktop = self.configure(True)
+        self.assertEqual(
+            identity,
+            [
+                "io.github.obs_rust.OBSStudioRust",
+                "io.github.obs_rust.OBSStudioRust",
+                "OBS-Studio-Rust",
+                "obs-studio-rust-gui",
+                "lib/obs-studio-rust",
+                "lib/obs-studio-rust/obs-modules",
+                "share/obs-studio-rust",
+                "$ORIGIN/;$ORIGIN/../lib/obs-studio-rust",
+            ],
+        )
+        self.assertIn("Name=OBS-Studio-Rust\n", desktop)
+        self.assertIn("Exec=obs-studio-rust-gui\n", desktop)
+        self.assertIn("Icon=io.github.obs_rust.OBSStudioRust\n", desktop)
+
+    def test_upstream_installed_identity_stays_compatible(self):
+        identity, desktop = self.configure(False)
+        self.assertEqual(
+            identity,
+            [
+                "com.obsproject.Studio",
+                "com.obsproject.obs-studio",
+                "OBS",
+                "obs",
+                "lib",
+                "lib/obs-modules",
+                "share/obs",
+                "$ORIGIN/;$ORIGIN/../lib",
+            ],
+        )
+        self.assertIn("Exec=obs\n", desktop)
+        self.assertIn("Icon=com.obsproject.Studio\n", desktop)
