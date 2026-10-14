@@ -93,6 +93,39 @@ target_link_libraries(test_hotkey_load PRIVATE OBS::libobs OBS::caption ${CMOCKA
 add_dependencies(cmocka-tests test_hotkey_load)
 add_test(test_hotkey_load ${CMAKE_CURRENT_BINARY_DIR}/test_hotkey_load)
 
+# A core module that cannot be loaded (its file is missing, or a library it
+# needs, like libcef.so for obs-browser, is not installed) must not stop OBS
+# from loading the others or from starting (obs-rust/obs-studio#404). The test
+# lays out stub modules under every core module name next to a copy of itself.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET OBS::libobs-core-modules)
+  add_library(core_module_stub_dep SHARED core_module_stub_dep.c)
+  set_target_properties(core_module_stub_dep PROPERTIES OUTPUT_NAME obs-test-missing-dep)
+
+  add_library(core_module_stub MODULE core_module_stub.c)
+  target_link_libraries(core_module_stub PRIVATE OBS::libobs)
+  set_target_properties(core_module_stub PROPERTIES PREFIX "")
+
+  # No RPATH: the dependency is out of reach at run time, as libcef.so was.
+  add_library(core_module_stub_needs_dep MODULE core_module_stub.c)
+  target_compile_definitions(core_module_stub_needs_dep PRIVATE CORE_STUB_NEEDS_DEP)
+  target_link_libraries(core_module_stub_needs_dep PRIVATE OBS::libobs core_module_stub_dep)
+  set_target_properties(core_module_stub_needs_dep PROPERTIES PREFIX "" SKIP_BUILD_RPATH TRUE)
+
+  add_executable(test_core_module_load test_core_module_load.c)
+  target_include_directories(test_core_module_load PRIVATE ${CMOCKA_INCLUDE_DIR})
+  target_compile_definitions(
+    test_core_module_load
+    PRIVATE
+      CORE_STUB_PATH="$<TARGET_FILE:core_module_stub>"
+      CORE_STUB_NEEDS_DEP_PATH="$<TARGET_FILE:core_module_stub_needs_dep>"
+  )
+  target_link_libraries(test_core_module_load PRIVATE OBS::libobs OBS::libobs-core-modules ${CMOCKA_LIBRARIES})
+  add_dependencies(test_core_module_load core_module_stub core_module_stub_needs_dep)
+  add_dependencies(cmocka-tests test_core_module_load)
+  add_test(test_core_module_load ${CMAKE_CURRENT_BINARY_DIR}/test_core_module_load)
+  set_tests_properties(test_core_module_load PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
+endif()
+
 # /dev/full reproduces delayed disk-write errors without fault injection.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(test_config_save test_config_save.c)
