@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "OBSBasic.hpp"
+#include "RecordingShutdown.hpp"
 #include "VirtualCamShutdown.hpp"
 #include "ui-config.h"
 
@@ -1859,6 +1860,18 @@ void OBSBasic::closeWindow()
 	}
 
 	StopVirtualCamForShutdown(outputHandler.get());
+
+	if (outputHandler && outputHandler->RecordingActive()) {
+		/* The window is going away: as before, the UI does not react to
+		 * this stop (status bar, error dialogs, Automatic Remux). */
+		outputHandler->recordStopping.Disconnect();
+		outputHandler->stopRecording.Disconnect();
+
+		if (!StopRecordingForShutdown(outputHandler.get(), RecordingShutdownTimeoutMs)) {
+			blog(LOG_WARNING, "The recording did not stop within %llu ms, forced it to stop",
+			     (unsigned long long)RecordingShutdownTimeoutMs);
+		}
+	}
 
 	if (introCheckThread) {
 		introCheckThread->wait();
