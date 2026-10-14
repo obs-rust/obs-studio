@@ -160,6 +160,10 @@ void alsa_destroy(void *vptr)
 
 	os_atomic_set_bool(&data->shutdown, true);
 
+	/* A device that could not be opened leaves a reopen thread waiting on
+	 * abort_event: end it before the event and data are freed. */
+	_alsa_stop_reopen(data);
+
 	if (data->handle)
 		_alsa_close(data);
 
@@ -535,10 +539,11 @@ void _alsa_start_reopen(struct alsa_data *data)
 
 void _alsa_stop_reopen(struct alsa_data *data)
 {
-	if (os_atomic_load_bool(&data->reopen))
-		os_event_signal(data->abort_event);
-
 	if (data->reopen_thread) {
+		/* Also when the thread has not set data->reopen yet: the event
+		 * stays signalled until the reset below, so its first wait
+		 * returns at once. */
+		os_event_signal(data->abort_event);
 		pthread_join(data->reopen_thread, NULL);
 		data->reopen_thread = 0;
 	}
