@@ -2871,7 +2871,7 @@ void OBSBasicSettings::UpdateHotkeyBackgroundMarkers()
 	QFontMetrics metrics(hotkeyBackgroundBanner->font());
 	for (auto marker : {HotkeyBackground::Marker::Background, HotkeyBackground::Marker::FocusOnly,
 			    HotkeyBackground::Marker::NotInConfig, HotkeyBackground::Marker::Pending,
-			    HotkeyBackground::Marker::NotBound}) {
+			    HotkeyBackground::Marker::NotBound, HotkeyBackground::Marker::OtherKey}) {
 		width = std::max(width, metrics.horizontalAdvance(OBSHotkeyBackgroundBanner::MarkerText(marker)));
 	}
 	width += metrics.averageCharWidth() * 2;
@@ -2881,6 +2881,13 @@ void OBSBasicSettings::UpdateHotkeyBackgroundMarkers()
 		label->setVisible(shown && input.state != OBS_HOTKEYS_BACKGROUND_NATIVE);
 		label->setFixedWidth(width);
 		label->setText(OBSHotkeyBackgroundBanner::MarkerText(marker));
+		/* ▲ markers need the user: the theme's warning color. */
+		const char *cls = OBSHotkeyBackgroundBanner::MarkerNeedsUser(marker) ? "text-warning" : "text-muted";
+		if (label->property("class").toString() != cls) {
+			label->setProperty("class", cls);
+			label->style()->unpolish(label);
+			label->style()->polish(label);
+		}
 		label->setToolTip(OBSHotkeyBackgroundBanner::MarkerToolTip(
 			marker, input, HotkeyBackground::DesktopTrigger(input, combo)));
 	};

@@ -651,6 +651,11 @@ QString OBSHotkeyBackgroundBanner::MarkerText(Marker marker)
 	return {};
 }
 
+bool OBSHotkeyBackgroundBanner::MarkerNeedsUser(Marker marker)
+{
+	return marker == Marker::NotInConfig || marker == Marker::OtherKey || marker == Marker::NotBound;
+}
+
 QString OBSHotkeyBackgroundBanner::MarkerToolTip(Marker marker, const Input &input, const std::string &desktopTrigger)
 {
 	QString desktopName = input.desktop ? QString::fromStdString(input.desktop->name) : QString();

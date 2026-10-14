@@ -46,6 +46,7 @@ public:
 
 	/* Text and tooltip of a row marker. */
 	static QString MarkerText(HotkeyBackground::Marker marker);
+	static bool MarkerNeedsUser(HotkeyBackground::Marker marker);
 	static QString MarkerToolTip(HotkeyBackground::Marker marker, const HotkeyBackground::Input &input,
 				     const std::string &desktopTrigger);
 
