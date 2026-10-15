@@ -1734,13 +1734,27 @@ void obs_pipewire_stream_set_framerate(obs_pipewire_stream *obs_pw_stream, const
 	     obs_pw_stream->framerate.fraction.denom == framerate->denom))
 		return;
 
+	/* A stream that already runs at this framerate keeps running: the
+	 * camera portal asks again for the selected framerate whenever its
+	 * properties are shown, and cameras behind libcamera cannot be
+	 * reconfigured while they stream (obsproject/obs-studio#10399). */
+	bool running_at_it = false;
+
+	pw_thread_loop_lock(obs_pw->thread_loop);
 	if (framerate) {
+		running_at_it = obs_pw_stream->negotiated &&
+				obs_pw_stream->format.info.raw.framerate.num == framerate->num &&
+				obs_pw_stream->format.info.raw.framerate.denom == framerate->denom;
 		obs_pw_stream->framerate.fraction = *framerate;
 		obs_pw_stream->framerate.set = true;
 	} else {
 		obs_pw_stream->framerate.fraction = SPA_FRACTION(0, 0);
 		obs_pw_stream->framerate.set = false;
 	}
+	pw_thread_loop_unlock(obs_pw->thread_loop);
+
+	if (running_at_it)
+		return;
 
 	/* Signal to renegotiate */
 	pw_loop_signal_event(pw_thread_loop_get_loop(obs_pw->thread_loop), obs_pw_stream->reneg);
@@ -1755,13 +1769,25 @@ void obs_pipewire_stream_set_resolution(obs_pipewire_stream *obs_pw_stream, cons
 	     obs_pw_stream->resolution.rect.height == resolution->height))
 		return;
 
+	/* As for the framerate: a stream that already runs at this size keeps
+	 * running. */
+	bool running_at_it = false;
+
+	pw_thread_loop_lock(obs_pw->thread_loop);
 	if (resolution) {
+		running_at_it = obs_pw_stream->negotiated &&
+				obs_pw_stream->format.info.raw.size.width == resolution->width &&
+				obs_pw_stream->format.info.raw.size.height == resolution->height;
 		obs_pw_stream->resolution.rect = *resolution;
 		obs_pw_stream->resolution.set = true;
 	} else {
 		obs_pw_stream->resolution.rect = SPA_RECTANGLE(0, 0);
 		obs_pw_stream->resolution.set = false;
 	}
+	pw_thread_loop_unlock(obs_pw->thread_loop);
+
+	if (running_at_it)
+		return;
 
 	/* Signal to renegotiate */
 	pw_loop_signal_event(pw_thread_loop_get_loop(obs_pw->thread_loop), obs_pw_stream->reneg);

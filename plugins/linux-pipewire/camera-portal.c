@@ -783,6 +783,12 @@ static bool framerate_selected(void *data, obs_properties_t *properties, obs_pro
 	if (!parse_framerate(&framerate, obs_data_get_string(settings, "framerate")))
 		return false;
 
+	/* Kept for the next stream (stream_camera()), e.g. after the camera
+	 * comes back, so that it starts at this framerate instead of being
+	 * renegotiated to it while it streams. */
+	camera_source->framerate.fraction = framerate;
+	camera_source->framerate.set = true;
+
 	if (camera_source->obs_pw_stream)
 		obs_pipewire_stream_set_framerate(camera_source->obs_pw_stream, &framerate);
 
@@ -861,8 +867,10 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	if (has_framerates) {
 		obs_property_set_modified_callback2(property, framerate_selected, camera_source);
 		obs_property_modified(property, settings);
-	} else if (camera_source->obs_pw_stream) {
-		obs_pipewire_stream_set_framerate(camera_source->obs_pw_stream, NULL);
+	} else {
+		camera_source->framerate.set = false;
+		if (camera_source->obs_pw_stream)
+			obs_pipewire_stream_set_framerate(camera_source->obs_pw_stream, NULL);
 	}
 
 	return true;
