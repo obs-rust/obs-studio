@@ -239,6 +239,216 @@ static int scenario_copy(void)
 	return ret;
 }
 
+static bool vec2_eq(const struct vec2 *a, const struct vec2 *b)
+{
+	return a->x == b->x && a->y == b->y;
+}
+
+static bool collect_items(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
+{
+	(void)scene;
+	obs_sceneitem_t **out = param;
+	for (size_t i = 0; i < 3; i++) {
+		if (!out[i]) {
+			out[i] = item;
+			break;
+		}
+	}
+	return true;
+}
+
+/* The group's own transform and bounds, and its items' order, visibility,
+ * crop and show/hide transitions, carry over to the private copy. */
+static int scenario_private_copy_keeps_group_state(void)
+{
+	struct layout l;
+	build_layout(&l);
+	int ret = 0;
+
+	obs_sceneitem_t *group = obs_scene_get_group(l.scene, "G");
+	obs_source_t *second = make_box("second");
+	obs_sceneitem_t *second_item = obs_scene_add(l.scene, second);
+	obs_sceneitem_group_add_item(group, second_item);
+	obs_source_t *third = make_box("third");
+	obs_sceneitem_t *third_item = obs_scene_add(l.scene, third);
+	obs_sceneitem_group_add_item(group, third_item);
+
+	obs_scene_t *gscene = obs_sceneitem_group_get_scene(group);
+	obs_sceneitem_t *first_item = obs_scene_find_source(gscene, "in group");
+	struct vec2 pos = {40.0f, 30.0f};
+	struct vec2 scale = {2.0f, 0.5f};
+	struct vec2 bounds = {300.0f, 200.0f};
+	struct vec2 child_pos = {100.0f, 10.0f};
+	obs_sceneitem_set_pos(first_item, &child_pos);
+	obs_sceneitem_set_pos(group, &pos);
+	obs_sceneitem_set_scale(group, &scale);
+	obs_sceneitem_set_bounds_type(group, OBS_BOUNDS_SCALE_INNER);
+	obs_sceneitem_set_bounds(group, &bounds);
+	obs_sceneitem_set_visible(second_item, false);
+	struct obs_sceneitem_crop crop = {1, 2, 3, 4};
+	obs_sceneitem_set_crop(third_item, &crop);
+	obs_source_t *show_tr = make_box("show");
+	obs_source_t *hide_tr = make_box("hide");
+	obs_sceneitem_set_transition(first_item, true, show_tr);
+	obs_sceneitem_set_transition(first_item, false, hide_tr);
+	obs_sceneitem_set_transition_duration(first_item, true, 250);
+	obs_sceneitem_set_transition_duration(first_item, false, 750);
+
+	obs_scene_t *dup = obs_scene_duplicate(l.scene, "S", OBS_SCENE_DUP_PRIVATE_COPY);
+	struct found f = {0};
+	obs_scene_enum_items(dup, find_items, &f);
+	obs_sceneitem_t *items[3] = {0};
+	obs_scene_t *dgscene = f.group ? obs_sceneitem_group_get_scene(f.group) : NULL;
+	if (dgscene)
+		obs_scene_enum_items(dgscene, collect_items, items);
+	if (!items[0] || !items[1] || !items[2]) {
+		fprintf(stderr, "keeps state: the copied group lacks items\n");
+		ret = 1;
+		goto done;
+	}
+
+	struct obs_transform_info a, b;
+	obs_sceneitem_get_info2(group, &a);
+	obs_sceneitem_get_info2(f.group, &b);
+	if (!vec2_eq(&a.pos, &b.pos) || !vec2_eq(&a.scale, &b.scale) || a.rot != b.rot ||
+	    a.bounds_type != b.bounds_type || !vec2_eq(&a.bounds, &b.bounds) || a.alignment != b.alignment) {
+		fprintf(stderr, "keeps state: the group's transform or bounds changed\n");
+		ret = 1;
+	}
+	if (obs_source_get_width(obs_sceneitem_get_source(group)) !=
+		    obs_source_get_width(obs_sceneitem_get_source(f.group)) ||
+	    obs_source_get_height(obs_sceneitem_get_source(group)) !=
+		    obs_source_get_height(obs_sceneitem_get_source(f.group))) {
+		fprintf(stderr, "keeps state: the group's size changed\n");
+		ret = 1;
+	}
+
+	obs_sceneitem_t *orig[3] = {0};
+	obs_scene_enum_items(gscene, collect_items, orig);
+	for (size_t i = 0; i < 3; i++) {
+		obs_data_t *want = obs_source_get_settings(obs_sceneitem_get_source(orig[i]));
+		obs_data_t *got = obs_source_get_settings(obs_sceneitem_get_source(items[i]));
+		if (strcmp(obs_data_get_string(got, "text"), obs_data_get_string(want, "text")) != 0) {
+			fprintf(stderr, "keeps state: item %zu is '%s', expected '%s'\n", i,
+				obs_data_get_string(got, "text"), obs_data_get_string(want, "text"));
+			ret = 1;
+		}
+		obs_data_release(want);
+		obs_data_release(got);
+	}
+
+	/* Locate the copies of the three boxes by name, wherever they sit. */
+	obs_sceneitem_t *by_name[3] = {0};
+	const char *names[3] = {"in group", "second", "third"};
+	for (size_t i = 0; i < 3; i++) {
+		for (size_t j = 0; j < 3; j++) {
+			if (strcmp(obs_source_get_name(obs_sceneitem_get_source(items[j])), names[i]) == 0)
+				by_name[i] = items[j];
+		}
+	}
+	if (!by_name[0] || !by_name[1] || !by_name[2]) {
+		fprintf(stderr, "keeps state: a copied box lost its name\n");
+		ret = 1;
+		goto done;
+	}
+	items[0] = by_name[0];
+	items[1] = by_name[1];
+	items[2] = by_name[2];
+
+	struct vec2 got_pos;
+	obs_sceneitem_get_pos(items[0], &got_pos);
+	if (!vec2_eq(&got_pos, &child_pos)) {
+		fprintf(stderr, "keeps state: the grouped item moved\n");
+		ret = 1;
+	}
+	if (!obs_sceneitem_visible(items[0]) || obs_sceneitem_visible(items[1]) || !obs_sceneitem_visible(items[2])) {
+		fprintf(stderr, "keeps state: item visibility changed\n");
+		ret = 1;
+	}
+	struct obs_sceneitem_crop got_crop;
+	obs_sceneitem_get_crop(items[2], &got_crop);
+	if (got_crop.left != 1 || got_crop.top != 2 || got_crop.right != 3 || got_crop.bottom != 4) {
+		fprintf(stderr, "keeps state: the crop changed\n");
+		ret = 1;
+	}
+	obs_source_t *got_show = obs_sceneitem_get_transition(items[0], true);
+	obs_source_t *got_hide = obs_sceneitem_get_transition(items[0], false);
+	if (!got_show || !got_hide || obs_sceneitem_get_transition_duration(items[0], true) != 250 ||
+	    obs_sceneitem_get_transition_duration(items[0], false) != 750) {
+		fprintf(stderr, "keeps state: the show/hide transitions were lost\n");
+		ret = 1;
+	}
+
+done:
+	obs_scene_release(dup);
+	obs_source_release(show_tr);
+	obs_source_release(hide_tr);
+	obs_source_release(second);
+	obs_source_release(third);
+	free_layout(&l);
+	return ret;
+}
+
+static bool gone(obs_weak_source_t *weak)
+{
+	obs_source_t *source = obs_weak_source_get_source(weak);
+	obs_source_release(source);
+	return source == NULL;
+}
+
+/* Releasing the private copy (end of the transition, Studio Mode off) frees
+ * the copied group and the copies of its sources, and leaves the originals. */
+static int scenario_private_copy_release(void)
+{
+	struct layout l;
+	build_layout(&l);
+	int ret = 0;
+
+	obs_scene_t *dup = obs_scene_duplicate(l.scene, "S", OBS_SCENE_DUP_PRIVATE_COPY);
+	struct found f = {0};
+	obs_scene_enum_items(dup, find_items, &f);
+	obs_source_t *child = f.group ? group_child(f.group) : NULL;
+	if (!child || child == l.in_group) {
+		fprintf(stderr, "release: the box in the group was not copied\n");
+		obs_scene_release(dup);
+		free_layout(&l);
+		return 1;
+	}
+	obs_weak_source_t *weak_child = obs_source_get_weak_source(child);
+	obs_weak_source_t *weak_group = obs_source_get_weak_source(obs_sceneitem_get_source(f.group));
+
+	/* A scene is destroyed on libobs's destroy queue, and its group (then
+	 * the group's sources) only when the scene's items go, so wait for
+	 * each step. */
+	obs_scene_release(dup);
+	for (int i = 0; i < 10 && !(gone(weak_child) && gone(weak_group)); i++)
+		obs_wait_for_destroy_queue();
+
+	obs_source_t *still = obs_weak_source_get_source(weak_child);
+	if (still) {
+		fprintf(stderr, "release: the copied box outlived the copy\n");
+		obs_source_release(still);
+		ret = 1;
+	}
+	still = obs_weak_source_get_source(weak_group);
+	if (still) {
+		fprintf(stderr, "release: the copied group outlived the copy\n");
+		obs_source_release(still);
+		ret = 1;
+	}
+	obs_weak_source_release(weak_child);
+	obs_weak_source_release(weak_group);
+
+	obs_sceneitem_t *orig_group = obs_scene_get_group(l.scene, "G");
+	if (!orig_group || group_child(orig_group) != l.in_group || obs_source_removed(l.in_group)) {
+		fprintf(stderr, "release: the original group lost its box\n");
+		ret = 1;
+	}
+
+	free_layout(&l);
+	return ret;
+}
+
 /* Child exit codes: 0 ok, 1 failed (message on stderr), CHILD_SKIP. */
 typedef int (*scenario_fn)(void);
 
@@ -277,6 +487,18 @@ static void private_copy_copies_group_children(void **state)
 	run_in_child(scenario_private_copy, "private copy");
 }
 
+static void private_copy_keeps_group_state(void **state)
+{
+	(void)state;
+	run_in_child(scenario_private_copy_keeps_group_state, "private copy keeps group state");
+}
+
+static void private_copy_release_frees_copies(void **state)
+{
+	(void)state;
+	run_in_child(scenario_private_copy_release, "private copy release");
+}
+
 static void private_refs_shares_group_children(void **state)
 {
 	(void)state;
@@ -299,6 +521,8 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(private_copy_copies_group_children),
+		cmocka_unit_test(private_copy_keeps_group_state),
+		cmocka_unit_test(private_copy_release_frees_copies),
 		cmocka_unit_test(private_refs_shares_group_children),
 		cmocka_unit_test(refs_shares_group_children),
 		cmocka_unit_test(copy_shares_group_children),
