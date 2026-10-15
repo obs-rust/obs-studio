@@ -373,6 +373,7 @@ static bool obs_init_textures(struct obs_core_video_mix *video)
 
 	for (size_t i = 0; i < NUM_TEXTURES; i++) {
 #ifdef _WIN32
+		/* probe */
 		if (video->using_nv12_tex) {
 			video->copy_surfaces_encode[i] = gs_stagesurface_create_nv12(info->width, info->height);
 			if (!video->copy_surfaces_encode[i]) {
