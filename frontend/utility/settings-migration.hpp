@@ -32,5 +32,8 @@ inline bool ShouldMigratePre31Settings(const LegacySettingsState &state)
 		return state.lastVersion < MAKE_SEMANTIC_VERSION(31, 0, 0);
 	}
 
-	return false;
+	/* No LastVersion: OBS never exited cleanly. A FirstRun in global.ini
+	 * still shows that OBS before 31.0 wrote it. Without user.ini, migrate;
+	 * with user.ini, MigrateGlobalSettings() would fail with an error box. */
+	return state.globalHasFirstRun && !state.userConfigExists;
 }
