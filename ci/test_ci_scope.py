@@ -149,6 +149,19 @@ class CiScopeTest(unittest.TestCase):
         diff = diff_for(path, "@@ -5,0 +6 @@", "+int added;")
         self.check([path], diff=diff, text=text)
 
+    def test_hunk_adding_a_linux_else_reaches_macos_and_windows(self):
+        # The block opens inside the hunk, so no context line names it.
+        path = "libobs/obs.c"
+        added = ["#ifdef __linux__", "int l;", "#else", "int o;", "#endif"]
+        text = "int a;\n" + "\n".join(added) + "\n"
+        diff = diff_for(path, "@@ -1,0 +2,5 @@", *["+" + line for line in added])
+        self.check([path], core=True, macos=True, windows=True, diff=diff, text=text)
+        # The same hunk with only a Linux branch stays Linux only.
+        added = ["#ifdef __linux__", "int l;", "#endif"]
+        text = "int a;\n" + "\n".join(added) + "\n"
+        diff = diff_for(path, "@@ -1,0 +2,3 @@", *["+" + line for line in added])
+        self.check([path], core=True, diff=diff, text=text)
+
     def test_cmake_else_of_linux_reaches_macos_and_windows(self):
         path = "plugins/obs-ffmpeg/CMakeLists.txt"
         text = "if(OS_LINUX)\n  a()\nelse()\n  b()\nendif()\n"
