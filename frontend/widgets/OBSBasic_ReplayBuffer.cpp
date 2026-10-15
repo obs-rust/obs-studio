@@ -20,6 +20,7 @@
 #include "OBSBasic.hpp"
 
 #include <components/UIValidation.hpp>
+#include <utility/output-start-log.hpp>
 
 #include <qt-wrappers.hpp>
 
@@ -74,6 +75,7 @@ void OBSBasic::StartReplayBuffer()
 		return;
 	}
 	if (disableOutputsRef) {
+		LogOutputStartRefused("Replay buffer");
 		return;
 	}
 

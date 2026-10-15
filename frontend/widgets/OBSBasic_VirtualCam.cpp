@@ -20,6 +20,7 @@
 #include "OBSBasic.hpp"
 
 #include <components/UIValidation.hpp>
+#include <utility/output-start-log.hpp>
 #include <dialogs/OBSBasicVCamConfig.hpp>
 
 #define VIRTUAL_CAM_START "==== Virtual Camera Start =========================================="
@@ -34,6 +35,7 @@ void OBSBasic::StartVirtualCam()
 		return;
 	}
 	if (disableOutputsRef) {
+		LogOutputStartRefused("Virtual camera");
 		return;
 	}
 

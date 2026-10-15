@@ -20,6 +20,7 @@
 #include "OBSBasic.hpp"
 
 #include <components/UIValidation.hpp>
+#include <utility/output-start-log.hpp>
 #ifdef YOUTUBE_ENABLED
 #include <docks/YouTubeAppDock.hpp>
 #include <utility/YoutubeApiWrappers.hpp>
@@ -54,6 +55,7 @@ void OBSBasic::StartStreaming()
 		return;
 	}
 	if (disableOutputsRef) {
+		LogOutputStartRefused("Streaming");
 		return;
 	}
 

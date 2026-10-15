@@ -20,6 +20,7 @@
 #include "OBSBasic.hpp"
 
 #include <components/UIValidation.hpp>
+#include <utility/output-start-log.hpp>
 #include <dialogs/OBSRemux.hpp>
 
 #include <qt-wrappers.hpp>
@@ -116,6 +117,7 @@ void OBSBasic::StartRecording()
 		return;
 	}
 	if (disableOutputsRef) {
+		LogOutputStartRefused("Recording");
 		return;
 	}
 
