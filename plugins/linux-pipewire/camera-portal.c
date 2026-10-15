@@ -461,13 +461,6 @@ static bool control_changed(void *data, obs_properties_t *props, obs_property_t 
 	struct spa_pod *param;
 
 	device_id = obs_data_get_string(settings, "device_id");
-
-	dev = g_hash_table_lookup(connection->devices, device_id);
-	if (dev == NULL) {
-		blog(LOG_ERROR, "unknown device %s", device_id);
-		return false;
-	}
-
 	id = SPA_PTR_TO_UINT32(data);
 
 	spa_pod_builder_push_object(&b, &f[0], SPA_TYPE_OBJECT_Props, SPA_PARAM_Props);
@@ -495,9 +488,24 @@ static bool control_changed(void *data, obs_properties_t *props, obs_property_t 
 	}
 	param = spa_pod_builder_pop(&b, &f[0]);
 
-	pw_node_set_param((struct pw_node *)dev->proxy, SPA_PARAM_Props, 0, param);
+	if (!connection || !connection->obs_pw)
+		return false;
 
-	return true;
+	/* The device table and the node proxies belong to the PipeWire
+	 * thread: use them with its loop locked. */
+	obs_pipewire_lock(connection->obs_pw);
+	dev = g_hash_table_lookup(connection->devices, device_id);
+	if (dev && dev->proxy)
+		pw_node_set_param((struct pw_node *)dev->proxy, SPA_PARAM_Props, 0, param);
+	obs_pipewire_unlock(connection->obs_pw);
+
+	if (dev == NULL)
+		blog(LOG_ERROR, "unknown device %s", device_id);
+
+	/* A new value changes nothing in the properties: returning true
+	 * would make the Properties window rebuild every widget, dropping
+	 * the slider that is being dragged. */
+	return false;
 }
 
 static inline void add_control_property(obs_properties_t *props, obs_data_t *settings, struct camera_device *dev,
