@@ -79,29 +79,42 @@ class _Block:
     current: set[str] = field(default_factory=set)
 
 
-def enclosing(lines: list[str], kind: str) -> set[str]:
-    """Platforms selected by the blocks still open after `lines`."""
-    stack: list[_Block] = []
-    directive = C_DIRECTIVE if kind == "c" else CMAKE_DIRECTIVE
-    for line in lines:
-        m = directive.match(line)
-        if not m:
-            continue
-        word, rest = m.group(1).lower(), m.group(2)
-        if word in ("if", "ifdef", "ifndef"):
-            stack.append(_Block(current=selected(rest, kind, word == "ifndef")))
-        elif word in ("else", "elif", "elseif") and stack:
-            block = stack[-1]
-            block.prior |= block.current
-            block.current = _complement(block.prior)
-            if word != "else":
-                block.current |= selected(rest, kind)
-        elif word == "endif" and stack:
-            stack.pop()
+def _open(stack: list[_Block]) -> set[str]:
     out: set[str] = set()
     for block in stack:
         out |= block.current
-    return out - {NIX}
+    return out
+
+
+def per_line(lines: list[str], kind: str) -> list[set[str]]:
+    """For each line, the platforms of the blocks it sits in. A directive
+    line counts for the branch it closes and the one it opens."""
+    stack: list[_Block] = []
+    directive = C_DIRECTIVE if kind == "c" else CMAKE_DIRECTIVE
+    result: list[set[str]] = []
+    for line in lines:
+        before = _open(stack)
+        m = directive.match(line)
+        if m:
+            word, rest = m.group(1).lower(), m.group(2)
+            if word in ("if", "ifdef", "ifndef"):
+                stack.append(_Block(current=selected(rest, kind, word == "ifndef")))
+            elif word in ("else", "elif", "elseif") and stack:
+                block = stack[-1]
+                block.prior |= block.current
+                block.current = _complement(block.prior)
+                if word != "else":
+                    block.current |= selected(rest, kind)
+            elif word == "endif" and stack:
+                stack.pop()
+        result.append((before | _open(stack)) - {NIX})
+    return result
+
+
+def enclosing(lines: list[str], kind: str) -> set[str]:
+    """Platforms selected by the blocks still open after `lines`."""
+    stack_state = per_line([*lines, ""], kind)
+    return stack_state[-1]
 
 
 @dataclass
@@ -139,11 +152,17 @@ def touched(path: str, hunks: list[Hunk], new_text: str | None) -> set[str]:
     if kind is None:
         return set()
     out: set[str] = set()
-    lines = new_text.splitlines() if new_text is not None else None
+    states = per_line(new_text.splitlines(), kind) if new_text is not None else None
     for hunk in hunks:
         out |= mentions("\n".join(hunk.changed), kind)
-        if lines is not None and out != {MAC, WIN}:
-            # -U0: new_len 0 means the change sits after line new_start.
-            before = hunk.new_start if hunk.new_len == 0 else hunk.new_start - 1
-            out |= enclosing(lines[:before], kind)
+        if states is not None and out != {MAC, WIN}:
+            # -U0: new_len 0 means the change sits after line new_start,
+            # i.e. in the blocks open at the start of line new_start + 1.
+            if hunk.new_len == 0:
+                rows = range(hunk.new_start, hunk.new_start + 1)
+            else:
+                rows = range(hunk.new_start - 1, hunk.new_start - 1 + hunk.new_len)
+            for row in rows:
+                if 0 <= row < len(states):
+                    out |= states[row]
     return out
