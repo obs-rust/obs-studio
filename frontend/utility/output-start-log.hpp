@@ -10,5 +10,8 @@
  * so it can be unit tested. */
 inline void LogOutputStartRefused(const char *output)
 {
-	UNUSED_PARAMETER(output);
+	blog(LOG_WARNING,
+	     "%s not started: outputs are disabled while the Settings dialog or the "
+	     "Auto-Configuration Wizard is open",
+	     output);
 }
