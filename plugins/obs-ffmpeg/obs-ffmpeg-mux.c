@@ -311,7 +311,7 @@ void start_pipe(struct ffmpeg_muxer *stream, const char *path)
 	os_process_args_destroy(args);
 }
 
-static void set_file_not_readable_error(struct ffmpeg_muxer *stream, obs_data_t *settings, const char *path)
+static void set_file_not_readable_error(struct ffmpeg_muxer *stream, const char *path)
 {
 	struct dstr error_message;
 	dstr_init_copy(&error_message, obs_module_text("UnableToWritePath"));
@@ -327,7 +327,6 @@ static void set_file_not_readable_error(struct ffmpeg_muxer *stream, obs_data_t 
 	dstr_replace(&error_message, "%1", path);
 	obs_output_set_last_error(stream->output, error_message.array);
 	dstr_free(&error_message);
-	obs_data_release(settings);
 }
 
 inline static void ts_offset_clear(struct ffmpeg_muxer *stream)
@@ -423,7 +422,7 @@ static inline bool ffmpeg_mux_start_internal(struct ffmpeg_muxer *stream, obs_da
 		bool existed = os_file_exists(path);
 		FILE *test_file = os_fopen(path, existed ? "ab" : "wb");
 		if (!test_file) {
-			set_file_not_readable_error(stream, settings, path);
+			set_file_not_readable_error(stream, path);
 			return false;
 		}
 
