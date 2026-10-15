@@ -34,17 +34,55 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define POINTER_TO_UINT(p) ((unsigned int)(unsigned int)(p))
 #endif
 
+#define INVALID_CONTROL_FLAGS (V4L2_CTRL_FLAG_DISABLED | V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE)
+
+static inline bool valid_control(struct v4l2_queryctrl *qctrl)
+{
+	return (qctrl->flags & INVALID_CONTROL_FLAGS) == 0;
+}
+
+/*
+ * A control is inactive while its automatic mode is on (Exposure Time,
+ * Absolute with Auto Exposure in Aperture Priority Mode, White Balance
+ * Temperature with White Balance, Automatic): the driver ignores or refuses
+ * it (uvcvideo with EACCES). Show it disabled. Returns whether a property's
+ * state changed, so the Properties window has to be rebuilt.
+ */
+static bool v4l2_update_controls_active(int_fast32_t dev, obs_properties_t *props)
+{
+	struct v4l2_queryctrl qctrl;
+	bool changed = false;
+
+	memset(&qctrl, 0, sizeof(qctrl));
+	qctrl.id = V4L2_CTRL_FLAG_NEXT_CTRL;
+	while (0 == v4l2_ioctl(dev, VIDIOC_QUERYCTRL, &qctrl)) {
+		obs_property_t *prop = valid_control(&qctrl) ? obs_properties_get(props, (char *)qctrl.name) : NULL;
+		bool active = (qctrl.flags & V4L2_CTRL_FLAG_INACTIVE) == 0;
+
+		if (prop && obs_property_enabled(prop) != active) {
+			obs_property_set_enabled(prop, active);
+			changed = true;
+		}
+		qctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+	}
+
+	return changed;
+}
+
+/*
+ * A control changed in the Properties window. Rebuilding the window only
+ * when the change turned another control on or off: a rebuild destroys the
+ * slider being dragged (obs-rust/obs-studio#827).
+ */
 static bool v4l2_control_changed(void *data, obs_properties_t *props, obs_property_t *prop, obs_data_t *settings)
 {
 	int dev = v4l2_open(obs_data_get_string(settings, "device_id"), O_RDWR | O_NONBLOCK | O_CLOEXEC);
-	bool ret = false;
-
-	(void)props;
+	struct v4l2_queryctrl qctrl;
+	struct v4l2_control control;
 
 	if (dev == -1)
 		return false;
 
-	struct v4l2_control control;
 	control.id = POINTER_TO_UINT(data);
 
 	switch (obs_property_get_type(prop)) {
@@ -58,16 +96,24 @@ static bool v4l2_control_changed(void *data, obs_properties_t *props, obs_proper
 	default:
 		blog(LOG_ERROR, "unknown property type for %s", obs_property_name(prop));
 		v4l2_close(dev);
-		return ret;
+		return false;
 	}
 
-	if (0 != v4l2_ioctl(dev, VIDIOC_S_CTRL, &control)) {
-		ret = true;
-	}
+	/* An inactive control is not written: the driver would refuse it,
+	 * and its value is kept for when its automatic mode is turned off. */
+	memset(&qctrl, 0, sizeof(qctrl));
+	qctrl.id = control.id;
+	bool inactive = 0 == v4l2_ioctl(dev, VIDIOC_QUERYCTRL, &qctrl) && (qctrl.flags & V4L2_CTRL_FLAG_INACTIVE);
+
+	if (!inactive && 0 != v4l2_ioctl(dev, VIDIOC_S_CTRL, &control))
+		blog(LOG_WARNING, "unable to set %s to %d: %s", obs_property_name(prop), control.value,
+		     strerror(errno));
+
+	bool changed = v4l2_update_controls_active(dev, props);
 
 	v4l2_close(dev);
 
-	return ret;
+	return changed;
 }
 
 static bool v4l2_update_controls_menu(int_fast32_t dev, obs_properties_t *props, struct v4l2_queryctrl *qctrl)
@@ -97,13 +143,6 @@ static bool v4l2_update_controls_menu(int_fast32_t dev, obs_properties_t *props,
 	return true;
 }
 
-#define INVALID_CONTROL_FLAGS (V4L2_CTRL_FLAG_DISABLED | V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE)
-
-static inline bool valid_control(struct v4l2_queryctrl *qctrl)
-{
-	return (qctrl->flags & INVALID_CONTROL_FLAGS) == 0;
-}
-
 static inline void add_control_property(obs_properties_t *props, obs_data_t *settings, int_fast32_t dev,
 					struct v4l2_queryctrl *qctrl)
 {
@@ -128,11 +167,15 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 	case V4L2_CTRL_TYPE_MENU:
 	case V4L2_CTRL_TYPE_INTEGER_MENU:
 		if (v4l2_update_controls_menu(dev, props, qctrl)) {
+			prop = obs_properties_get(props, (char *)qctrl->name);
 			obs_data_set_default_int(settings, (char *)qctrl->name, qctrl->default_value);
 			blog(LOG_INFO, "setting default for %s to %d", (char *)qctrl->name, qctrl->default_value);
 		}
 		break;
 	}
+
+	if (prop)
+		obs_property_set_enabled(prop, (qctrl->flags & V4L2_CTRL_FLAG_INACTIVE) == 0);
 }
 
 int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs_data_t *settings)
