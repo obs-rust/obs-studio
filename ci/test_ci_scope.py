@@ -132,6 +132,29 @@ class CiScopeTest(unittest.TestCase):
         other = diff_for(path, "@@ -15,0 +16 @@", "+\tint added = 0;")
         self.check([path], core=True, windows=True, diff=other, text=SHARED_C)
 
+    def test_branches_excluding_linux_reach_macos_and_windows(self):
+        # `#else` of `#ifdef __linux__` and `#ifndef __linux__` are the code
+        # macOS and Windows compile (#897).
+        path = "frontend/components/ColorSourceToolbar.cpp"
+        text = "int a;\n#ifdef __linux__\nint l;\n#else\nint o;\n#endif\n#ifndef __linux__\nint n;\n#endif\n"
+        diff = diff_for(path, "@@ -4,0 +5 @@", "+int added;")
+        self.check([path], macos=True, windows=True, diff=diff, text=text)
+        diff = diff_for(path, "@@ -7,0 +8 @@", "+int added;")
+        self.check([path], macos=True, windows=True, diff=diff, text=text)
+        # Inside the Linux branch itself: Linux only.
+        diff = diff_for(path, "@@ -2,0 +3 @@", "+int added;")
+        self.check([path], diff=diff, text=text)
+        # `#else` after both macOS and Windows branches: Linux only.
+        text = "#ifdef _WIN32\nint w;\n#elif defined(__APPLE__)\nint m;\n#else\nint o;\n#endif\n"
+        diff = diff_for(path, "@@ -5,0 +6 @@", "+int added;")
+        self.check([path], diff=diff, text=text)
+
+    def test_cmake_else_of_linux_reaches_macos_and_windows(self):
+        path = "plugins/obs-ffmpeg/CMakeLists.txt"
+        text = "if(OS_LINUX)\n  a()\nelse()\n  b()\nendif()\n"
+        diff = diff_for(path, "@@ -3,0 +4 @@", "+  c()")
+        self.check([path], macos=True, windows=True, diff=diff, text=text)
+
     def test_hunk_naming_a_platform_macro(self):
         path = "libobs/obs.c"
         diff = diff_for(path, "@@ -3,0 +4,3 @@ static int plain(void)", "+#ifdef _WIN32", "+\tx();", "+#endif")
