@@ -193,6 +193,10 @@ General Scene Functions
                  | OBS_SCENE_DUP_PRIVATE_REFS - Duplicates with references, but the scene is a private source
                  | OBS_SCENE_DUP_PRIVATE_COPY - Fully duplicates scene items when possible, but the scene and duplicates sources are private sources
 
+                 Sources inside groups are duplicated only with
+                 OBS_SCENE_DUP_PRIVATE_COPY; with the other types the copied
+                 groups keep referencing them.
+
    :return:     A reference to a new scene
 
 ---------------------

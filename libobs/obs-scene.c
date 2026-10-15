@@ -1843,6 +1843,16 @@ static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, siz
 	return obs_source_duplicate(source, private ? obs_source_get_name(source) : NULL, private);
 }
 
+/* A group is copied with the duplicate type asked for, so that a private copy
+ * of a scene (Studio Mode with "Duplicate Sources") also gets private copies of
+ * the sources inside its groups. */
+static inline obs_source_t *dup_group(obs_source_t *group, enum obs_scene_duplicate_type type, bool private)
+{
+	obs_scene_t *new_group =
+		obs_scene_duplicate(obs_group_from_source(group), private ? obs_source_get_name(group) : NULL, type);
+	return obs_scene_get_source(new_group);
+}
+
 static inline obs_source_t *new_ref(obs_source_t *source)
 {
 	return obs_source_get_ref(source);
@@ -1969,14 +1979,20 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 
 	obs_data_apply(new_scene->source->private_settings, scene->source->private_settings);
 
-	/* never duplicate sub-items for groups */
-	if (scene->is_group)
+	/* A group's sub-items are copied only for a private copy (Studio Mode
+	 * with "Duplicate Sources"), which must not share sources with the
+	 * scene being edited. A public copy of a group keeps its sources. */
+	if (scene->is_group && type != OBS_SCENE_DUP_PRIVATE_COPY)
 		make_unique = false;
 
 	for (size_t i = 0; i < items.num; i++) {
 		item = items.array[i];
-		source = (make_unique || item->is_group) ? dup_child(&items, i, new_scene, make_private)
-							 : new_ref(item->source);
+		if (item->is_group)
+			source = dup_group(item->source, type, make_private);
+		else if (make_unique)
+			source = dup_child(&items, i, new_scene, make_private);
+		else
+			source = new_ref(item->source);
 
 		if (source) {
 			struct obs_scene_item *new_item = obs_scene_add(new_scene, source);
