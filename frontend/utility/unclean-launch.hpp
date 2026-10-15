@@ -13,6 +13,9 @@ struct UncleanLaunchDecision {
 
 inline UncleanLaunchDecision decideUncleanLaunch(bool hasUncleanShutdown, bool disableShutdownCheck)
 {
-	(void)disableShutdownCheck;
-	return {hasUncleanShutdown, false};
+	if (!hasUncleanShutdown) {
+		return {false, false};
+	}
+
+	return {!disableShutdownCheck, disableShutdownCheck};
 }
