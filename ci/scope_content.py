@@ -23,6 +23,12 @@ C_MAC = re.compile(r"\b(?:__APPLE__|TARGET_OS_\w+|OS_MACOS)\b")
 C_WIN = re.compile(r"\b(?:_WIN32|_WIN64|WIN32|_MSC_VER|OS_WINDOWS)\b")
 CMAKE_MAC = re.compile(r"\b(?:OS_MACOS|APPLE)\b|PLATFORM_ID:[^>]*\bDarwin\b")
 CMAKE_WIN = re.compile(r"\b(?:OS_WINDOWS|WIN32|MSVC)\b|PLATFORM_ID:[^>]*\bWindows\b")
+# Neither macOS nor Windows: only matters for the branches that exclude it
+# (`#else` of `#ifdef __linux__`, `#ifndef __linux__`), which are theirs.
+NIX = "nix"
+C_NIX = re.compile(r"\b(?:__linux__|__linux|__unix__|__FreeBSD__|__DragonFly__|__OpenBSD__|__NetBSD__|OS_LINUX|OS_FREEBSD|OS_POSIX)\b")
+CMAKE_NIX = re.compile(r"\b(?:OS_LINUX|OS_FREEBSD|OS_OPENBSD|OS_POSIX)\b|PLATFORM_ID:[^>]*\b(?:Linux|FreeBSD)\b")
+ALL = frozenset((MAC, WIN, NIX))
 
 C_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".hh", ".m", ".mm")
 C_DIRECTIVE = re.compile(r"^\s*#\s*(ifdef|ifndef|if|elif|else|endif)\b(.*)")
@@ -39,11 +45,11 @@ def kind_of(path: str) -> str | None:
 
 
 def _patterns(kind: str):
-    return (C_MAC, C_WIN) if kind == "c" else (CMAKE_MAC, CMAKE_WIN)
+    return (C_MAC, C_WIN, C_NIX) if kind == "c" else (CMAKE_MAC, CMAKE_WIN, CMAKE_NIX)
 
 
 def mentions(text: str, kind: str) -> set[str]:
-    mac, win = _patterns(kind)
+    mac, win, _ = _patterns(kind)
     found = set()
     if mac.search(text):
         found.add(MAC)
@@ -55,20 +61,16 @@ def mentions(text: str, kind: str) -> set[str]:
 def selected(cond: str, kind: str, negated: bool = False) -> set[str]:
     """Platforms a branch with this condition can select."""
     out: set[str] = set()
-    for platform, pattern in zip((MAC, WIN), _patterns(kind)):
-        other = WIN if platform == MAC else MAC
+    for platform, pattern in zip((MAC, WIN, NIX), _patterns(kind)):
         for m in pattern.finditer(cond):
             neg = negated or bool(NEG_BEFORE.search(cond[: m.start()]))
-            out.add(other if neg else platform)
+            out |= ALL - {platform} if neg else {platform}
     return out
 
 
 def _complement(platforms: set[str]) -> set[str]:
-    if platforms == {MAC}:
-        return {WIN}
-    if platforms == {WIN}:
-        return {MAC}
-    return set()
+    """What an `#else` selects after branches that named `platforms`."""
+    return set(ALL - platforms) if platforms else set()
 
 
 @dataclass
@@ -99,7 +101,7 @@ def enclosing(lines: list[str], kind: str) -> set[str]:
     out: set[str] = set()
     for block in stack:
         out |= block.current
-    return out
+    return out - {NIX}
 
 
 @dataclass
