@@ -39,6 +39,7 @@
 #include <obs-nix-platform.h>
 #endif
 #include <qt-wrappers.hpp>
+#include <utility/settings-migration.hpp>
 
 #include <QCheckBox>
 #include <QDesktopServices>
@@ -657,15 +658,23 @@ bool OBSApp::InitGlobalConfig()
 
 	uint32_t lastVersion = config_get_int(appConfig, "General", "LastVersion");
 
-	if (lastVersion && lastVersion < MAKE_SEMANTIC_VERSION(31, 0, 0)) {
-		bool migratedUserSettings = config_get_bool(appConfig, "General", "Pre31Migrated");
+	LegacySettingsState legacySettings{};
+	legacySettings.lastVersion = lastVersion;
+	legacySettings.alreadyMigrated = config_get_bool(appConfig, "General", "Pre31Migrated");
+	legacySettings.globalHasFirstRun = config_has_user_value(appConfig, "General", "FirstRun");
 
-		if (!migratedUserSettings) {
-			bool migrated = MigrateGlobalSettings();
+	char configRoot[512];
+	if (GetAppConfigPath(configRoot, sizeof(configRoot), nullptr) > 0) {
+		std::string userConfigFile{configRoot};
+		userConfigFile.append("/" OBS_CONFIG_DIRECTORY "/user.ini");
+		legacySettings.userConfigExists = std::filesystem::exists(std::filesystem::u8path(userConfigFile));
+	}
 
-			config_set_bool(appConfig, "General", "Pre31Migrated", migrated);
-			config_save_safe(appConfig, "tmp", nullptr);
-		}
+	if (ShouldMigratePre31Settings(legacySettings)) {
+		bool migrated = MigrateGlobalSettings();
+
+		config_set_bool(appConfig, "General", "Pre31Migrated", migrated);
+		config_save_safe(appConfig, "tmp", nullptr);
 	}
 
 	InitGlobalConfigDefaults();

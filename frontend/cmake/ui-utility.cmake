@@ -10,6 +10,7 @@ target_sources(
     utility/CrashHandler.hpp
     utility/crash-sentinel-dir.cpp
     utility/crash-sentinel-dir.hpp
+    utility/settings-migration.hpp
     utility/FFmpegCodec.cpp
     utility/FFmpegCodec.hpp
     utility/FFmpegFormat.cpp
