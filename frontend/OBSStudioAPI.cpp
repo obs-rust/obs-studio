@@ -5,6 +5,7 @@
 #include <widgets/OBSProjector.hpp>
 
 #include <qt-wrappers.hpp>
+#include <utility/frontend-api-call.hpp>
 
 extern volatile bool streaming_active;
 extern volatile bool recording_active;
@@ -208,19 +209,32 @@ void OBSStudioAPI::obs_frontend_set_current_profile(const char *profile)
 	}
 }
 
+/* Activating a profile can reset video and audio, which wait for libobs's
+ * graphics and audio threads. */
+static bool InLibobsThread()
+{
+	return obs_in_task_thread(OBS_TASK_GRAPHICS) || obs_in_task_thread(OBS_TASK_AUDIO) ||
+	       obs_in_task_thread(OBS_TASK_DESTROY);
+}
+
 void OBSStudioAPI::obs_frontend_create_profile(const char *name)
 {
-	QMetaObject::invokeMethod(main, &OBSBasic::CreateNewProfile, QString::fromUtf8(name));
+	RunFrontendApiCall(
+		main, [this, name = QString::fromUtf8(name)]() { main->CreateNewProfile(name); }, InLibobsThread());
 }
 
 void OBSStudioAPI::obs_frontend_duplicate_profile(const char *name)
 {
-	QMetaObject::invokeMethod(main, &OBSBasic::CreateDuplicateProfile, QString::fromUtf8(name));
+	RunFrontendApiCall(
+		main, [this, name = QString::fromUtf8(name)]() { main->CreateDuplicateProfile(name); },
+		InLibobsThread());
 }
 
 void OBSStudioAPI::obs_frontend_delete_profile(const char *profile)
 {
-	QMetaObject::invokeMethod(main, &OBSBasic::DeleteProfile, QString::fromUtf8(profile));
+	RunFrontendApiCall(
+		main, [this, profile = QString::fromUtf8(profile)]() { main->DeleteProfile(profile); },
+		InLibobsThread());
 }
 
 void OBSStudioAPI::obs_frontend_streaming_start()
