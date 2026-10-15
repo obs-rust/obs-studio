@@ -1,5 +1,12 @@
 #include <obs-module.h>
 #include <graphics/vec2.h>
+#include <graphics/vec4.h>
+#include <math.h>
+
+/* The largest texture Direct3D 11 and Metal can create, and that most OpenGL
+ * drivers allow. A source wider or taller than this cannot be drawn into one
+ * texture, so only the visible window of it is drawn (render_window). */
+#define MAX_TEXTURE_SIZE 16384
 
 struct scroll_filter_data {
 	obs_source_t *context;
@@ -19,6 +26,8 @@ struct scroll_filter_data {
 
 	struct vec2 size_i;
 	struct vec2 offset;
+
+	gs_texrender_t *window;
 
 	bool loop;
 };
@@ -63,6 +72,7 @@ static void scroll_filter_destroy(void *data)
 	obs_enter_graphics();
 	gs_effect_destroy(filter->effect);
 	gs_samplerstate_destroy(filter->sampler);
+	gs_texrender_destroy(filter->window);
 	obs_leave_graphics();
 
 	bfree(filter);
@@ -214,6 +224,105 @@ static const char *get_tech_name_and_multiplier(enum gs_color_space current_spac
 	return tech_name;
 }
 
+/* Offset of the window into the source, in pixels, for one axis. With Loop
+ * the offset wraps into [0, size). */
+static float window_start(float offset, uint32_t size, bool loop)
+{
+	float start = offset * (float)size;
+	if (loop) {
+		start = fmodf(start, (float)size);
+		if (start < 0.0f)
+			start += (float)size;
+	}
+	return start;
+}
+
+/* Draws the cx x cy window of a source too large for one texture into the
+ * filter's own texture: the source is drawn with a projection that shows
+ * only the window, once more past its end (or start) where a looping window
+ * wraps around. Mirrors obs_source_process_filter_begin(). */
+static gs_texture_t *render_window(struct scroll_filter_data *filter, uint32_t base_cx, uint32_t base_cy, uint32_t cx,
+				   uint32_t cy, enum gs_color_format format, enum gs_color_space space)
+{
+	obs_source_t *target = obs_filter_get_target(filter->context);
+	obs_source_t *parent = obs_filter_get_parent(filter->context);
+	if (!target || !parent)
+		return NULL;
+
+	if (filter->window && gs_texrender_get_format(filter->window) != format) {
+		gs_texrender_destroy(filter->window);
+		filter->window = NULL;
+	}
+	if (!filter->window)
+		filter->window = gs_texrender_create(format, GS_ZS_NONE);
+
+	gs_texrender_reset(filter->window);
+	if (!gs_texrender_begin_with_color_space(filter->window, cx, cy, space))
+		return NULL;
+
+	const uint32_t parent_flags = obs_source_get_output_flags(parent);
+	const bool custom_draw = (parent_flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
+	const bool async = (parent_flags & OBS_SOURCE_ASYNC) != 0;
+
+	const float x0 = window_start(filter->offset.x, base_cx, filter->loop);
+	const float y0 = window_start(filter->offset.y, base_cy, filter->loop);
+	const int copies_x = filter->loop && x0 + (float)cx > (float)base_cx ? 2 : 1;
+	const int copies_y = filter->loop && y0 + (float)cy > (float)base_cy ? 2 : 1;
+
+	gs_blend_state_push();
+	gs_blend_function_separate(GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+
+	struct vec4 clear_color;
+	vec4_zero(&clear_color);
+	gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
+
+	for (int j = 0; j < copies_y; j++) {
+		for (int i = 0; i < copies_x; i++) {
+			const float left = x0 - (float)i * (float)base_cx;
+			const float top = y0 - (float)j * (float)base_cy;
+			gs_ortho(left, left + (float)cx, top, top + (float)cy, -100.0f, 100.0f);
+
+			if (target == parent && !custom_draw && !async)
+				obs_source_default_render(target);
+			else
+				obs_source_video_render(target);
+		}
+	}
+
+	gs_blend_state_pop();
+	gs_texrender_end(filter->window);
+
+	return gs_texrender_get_texture(filter->window);
+}
+
+/* Draws the window texture from render_window() as the filter's output, as
+ * obs_source_process_filter_tech_end() draws a filter's texture. */
+static void draw_window(struct scroll_filter_data *filter, gs_texture_t *tex, uint32_t cx, uint32_t cy,
+			const char *technique, float multiplier)
+{
+	struct vec2 add_val, mul_val;
+	vec2_zero(&add_val);
+	vec2_set(&mul_val, 1.0f, 1.0f);
+
+	const bool previous_linear = gs_set_linear_srgb(true);
+	const bool previous_fb = gs_framebuffer_srgb_enabled();
+	gs_enable_framebuffer_srgb(true);
+
+	gs_effect_set_vec2(filter->param_add, &add_val);
+	gs_effect_set_vec2(filter->param_mul, &mul_val);
+	gs_effect_set_float(filter->param_multiplier, multiplier);
+	gs_effect_set_texture_srgb(filter->param_image, tex);
+
+	gs_blend_state_push();
+	gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+	while (gs_effect_loop(filter->effect, technique))
+		gs_draw_sprite(tex, 0, cx, cy);
+	gs_blend_state_pop();
+
+	gs_enable_framebuffer_srgb(previous_fb);
+	gs_set_linear_srgb(previous_linear);
+}
+
 static void scroll_filter_render(void *data, gs_effect_t *effect)
 {
 	UNUSED_PARAMETER(effect);
@@ -253,6 +362,18 @@ static void scroll_filter_render(void *data, gs_effect_t *effect)
 	float multiplier;
 	const char *technique = get_tech_name_and_multiplier(gs_get_color_space(), source_space, &multiplier);
 	const enum gs_color_format format = gs_get_format_from_space(source_space);
+
+	/* A source too large for one texture: draw only the visible window.
+	 * (obs_source_process_filter_begin_with_color_space() below would need
+	 * a texture of the source's full size, and the filter showed nothing.) */
+	if ((base_cx > MAX_TEXTURE_SIZE || base_cy > MAX_TEXTURE_SIZE) && cx <= MAX_TEXTURE_SIZE &&
+	    cy <= MAX_TEXTURE_SIZE) {
+		gs_texture_t *tex = render_window(filter, base_cx, base_cy, cx, cy, format, source_space);
+		if (tex)
+			draw_window(filter, tex, cx, cy, technique, multiplier);
+		return;
+	}
+
 	if (obs_source_process_filter_begin_with_color_space(filter->context, format, source_space,
 							     OBS_NO_DIRECT_RENDERING)) {
 		gs_effect_set_vec2(filter->param_add, &filter->offset);
