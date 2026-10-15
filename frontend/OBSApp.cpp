@@ -268,6 +268,7 @@ QObject *CreateShortcutFilter(QObject *parent)
 				break;
 
 #ifdef __APPLE__
+			// probe
 			case Qt::Key_CapsLock:
 				// kVK_CapsLock == 57
 				hotkey.key = obs_key_from_virtual_key(57);
