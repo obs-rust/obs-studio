@@ -66,6 +66,8 @@ static char second_path[128];
 enum {
 	BRIGHTNESS,
 	POWER_LINE,
+	EXPOSURE_AUTO,
+	EXPOSURE_ABSOLUTE,
 	PAN_RELATIVE,
 	FOCUS_ABSOLUTE,
 	FOCUS_AUTO,
@@ -85,11 +87,16 @@ struct fake_control {
 };
 
 /* Like uvcvideo: the manual focus comes before its automatic switch and is
- * inactive while autofocus is on; a relative control is write-only and
- * moves the camera each time it is written. */
+ * inactive while autofocus is on; the exposure time is inactive unless Auto
+ * Exposure is in Manual Mode (1), and the camera starts in Aperture Priority
+ * Mode (3); a relative control is write-only and moves the camera each time
+ * it is written. */
 static const struct fake_control controls[CONTROL_COUNT] = {
 	[BRIGHTNESS] = {V4L2_CID_BRIGHTNESS, V4L2_CTRL_TYPE_INTEGER, "Brightness", 0, 255, 1, 128, 0},
 	[POWER_LINE] = {V4L2_CID_POWER_LINE_FREQUENCY, V4L2_CTRL_TYPE_MENU, "Power Line Frequency", 0, 2, 1, 1, 0},
+	[EXPOSURE_AUTO] = {V4L2_CID_EXPOSURE_AUTO, V4L2_CTRL_TYPE_MENU, "Auto Exposure", 0, 3, 1, 3, 0},
+	[EXPOSURE_ABSOLUTE] = {V4L2_CID_EXPOSURE_ABSOLUTE, V4L2_CTRL_TYPE_INTEGER, "Exposure Time, Absolute", 3, 2047,
+			       1, 250, 0},
 	[PAN_RELATIVE] = {V4L2_CID_PAN_RELATIVE, V4L2_CTRL_TYPE_INTEGER, "Pan, Relative", -128, 128, 1, 0,
 			  V4L2_CTRL_FLAG_WRITE_ONLY},
 	[FOCUS_ABSOLUTE] = {V4L2_CID_FOCUS_ABSOLUTE, V4L2_CTRL_TYPE_INTEGER, "Focus (absolute)", 0, 250, 5, 0, 0},
@@ -98,6 +105,8 @@ static const struct fake_control controls[CONTROL_COUNT] = {
 };
 
 static const char *power_line_menu[] = {"Disabled", "50 Hz", "60 Hz"};
+/* uvcvideo lists only the modes the camera has */
+static const char *exposure_menu[] = {NULL, "Manual Mode", NULL, "Aperture Priority Mode"};
 
 /* Two cameras of the same model on two USB ports: only bus_info (from
  * VIDIOC_QUERYCAP) tells them apart. Camera A is the test's camera. */
@@ -176,6 +185,8 @@ static uint32_t control_flags(int camera, int i)
 	uint32_t flags = controls[i].flags;
 	if (i == FOCUS_ABSOLUTE && camera_values(camera)[FOCUS_AUTO] && !fake.no_inactive_flag)
 		flags |= V4L2_CTRL_FLAG_INACTIVE;
+	if (i == EXPOSURE_ABSOLUTE && camera_values(camera)[EXPOSURE_AUTO] != V4L2_EXPOSURE_MANUAL)
+		flags |= V4L2_CTRL_FLAG_INACTIVE;
 	return flags;
 }
 
@@ -225,10 +236,12 @@ static int set_control(int camera, struct v4l2_control *control)
 
 	camera_writes(camera)[i]++;
 
-	/* Many UVC cameras refuse a manual focus while autofocus is on */
-	if (i == FOCUS_ABSOLUTE && value[FOCUS_AUTO]) {
+	/* uvcvideo refuses a manual control while its automatic mode is on,
+	 * with EACCES (uvc_ctrl_is_accessible() in uvc_ctrl.c) */
+	if ((i == FOCUS_ABSOLUTE && value[FOCUS_AUTO]) ||
+	    (i == EXPOSURE_ABSOLUTE && value[EXPOSURE_AUTO] != V4L2_EXPOSURE_MANUAL)) {
 		fake.failed_writes++;
-		errno = EBUSY;
+		errno = EACCES;
 		return -1;
 	}
 	if (control->value < controls[i].minimum || control->value > controls[i].maximum) {
@@ -375,10 +388,15 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 		return query_control(camera, arg);
 	case VIDIOC_QUERYMENU: {
 		struct v4l2_querymenu *qmenu = arg;
-		if (qmenu->id != V4L2_CID_POWER_LINE_FREQUENCY || qmenu->index > 2)
-			break;
-		snprintf((char *)qmenu->name, sizeof(qmenu->name), "%s", power_line_menu[qmenu->index]);
-		return 0;
+		if (qmenu->id == V4L2_CID_POWER_LINE_FREQUENCY && qmenu->index <= 2) {
+			snprintf((char *)qmenu->name, sizeof(qmenu->name), "%s", power_line_menu[qmenu->index]);
+			return 0;
+		}
+		if (qmenu->id == V4L2_CID_EXPOSURE_AUTO && qmenu->index <= 3 && exposure_menu[qmenu->index]) {
+			snprintf((char *)qmenu->name, sizeof(qmenu->name), "%s", exposure_menu[qmenu->index]);
+			return 0;
+		}
+		break;
 	}
 	case VIDIOC_G_CTRL:
 		return get_control(camera, arg);
@@ -1278,6 +1296,329 @@ static void old_settings_stay_with_the_first_camera_when_switching_in_properties
 	check_camera_b_untouched(opens, "old settings, after picking camera B in the properties");
 }
 
+/* ------------------------------------------------------------------------ */
+/* Camera control sliders in the Properties window (obs-rust/obs-studio#827,
+ * reported by alerque with "Exposure Time, Absolute" of a UVC webcam in
+ * Aperture Priority Mode). v4l2_control_changed() returned true whenever
+ * VIDIOC_S_CTRL failed, which rebuilds every widget of the window: each step
+ * of a drag on a control the camera refuses (an inactive one: its automatic
+ * mode is on, so uvcvideo refuses it with EACCES) destroyed the slider being
+ * dragged. The V4L2 spec says an inactive control (V4L2_CTRL_FLAG_INACTIVE)
+ * "should be displayed accordingly in a user interface": it is shown
+ * disabled, and the window is rebuilt only when a change turns a control on
+ * or off. */
+
+#define FOCUS_ABSOLUTE_NAME "Focus (absolute)"
+#define FOCUS_AUTO_NAME "Focus, Automatic Continuous"
+#define EXPOSURE_AUTO_NAME "Auto Exposure"
+#define EXPOSURE_NAME "Exposure Time, Absolute"
+
+/* The Properties window's properties, built for the camera */
+static obs_properties_t *open_properties(void *source, obs_data_t *settings)
+{
+	obs_properties_t *props = v4l2_input.get_properties(source);
+	obs_properties_apply_settings(props, settings);
+	return props;
+}
+
+static obs_property_t *control_property(obs_properties_t *props, const char *name)
+{
+	obs_property_t *group = obs_properties_get(props, "controls");
+	obs_properties_t *ctrl_props = group ? obs_property_group_content(group) : NULL;
+	obs_property_t *prop = ctrl_props ? obs_properties_get(ctrl_props, name) : NULL;
+
+	if (!prop) {
+		fprintf(stderr, "no '%s' in the Camera Controls group\n", name);
+		fail();
+	}
+	return prop;
+}
+
+static bool control_enabled(obs_properties_t *props, const char *name)
+{
+	return obs_property_enabled(control_property(props, name));
+}
+
+/* What the Properties window does for one step of a drag, or a click: set
+ * the value and run the modified callback. True means "rebuild the window". */
+static bool change_in_properties(obs_properties_t *props, obs_data_t *settings, const char *name, long long value)
+{
+	obs_property_t *prop = control_property(props, name);
+
+	if (obs_property_get_type(prop) == OBS_PROPERTY_BOOL)
+		obs_data_set_bool(settings, name, value != 0);
+	else
+		obs_data_set_int(settings, name, value);
+	return obs_property_modified(prop, settings);
+}
+
+/* A drag: 8 steps from `from`, `by` apart. Returns how many asked for a
+ * rebuild. */
+static int drag_in_properties(obs_properties_t *props, obs_data_t *settings, const char *name, int from, int by)
+{
+	int rebuilds = 0;
+
+	for (int step = 0; step < 8; step++)
+		rebuilds += change_in_properties(props, settings, name, from + step * by);
+	return rebuilds;
+}
+
+/* --- Regular use --- */
+
+/* Guard: dragging an active slider writes each value, never asks for a
+ * rebuild and never disables anything. */
+static void moving_an_active_control_keeps_the_properties(void **state)
+{
+	(void)state;
+	fake.value[EXPOSURE_AUTO] = V4L2_EXPOSURE_MANUAL;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+	clear_writes();
+
+	int rebuilds = drag_in_properties(props, settings, "Brightness", 127, -1);
+	rebuilds += drag_in_properties(props, settings, EXPOSURE_NAME, 300, 10);
+	bool brightness_enabled = control_enabled(props, "Brightness");
+	bool exposure_enabled = control_enabled(props, EXPOSURE_NAME);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_value(BRIGHTNESS, 120, "after dragging Brightness");
+	check_camera_value(EXPOSURE_ABSOLUTE, 370, "after dragging the exposure in Manual Mode");
+	assert_int_equal(rebuilds, 0);
+	assert_true(brightness_enabled);
+	assert_true(exposure_enabled);
+}
+
+/* Inactive controls are disabled when the window opens */
+static void inactive_controls_are_disabled_on_load(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+
+	bool exposure_enabled = control_enabled(props, EXPOSURE_NAME);
+	bool focus_enabled = control_enabled(props, FOCUS_ABSOLUTE_NAME);
+	bool brightness_enabled = control_enabled(props, "Brightness");
+	bool auto_exposure_enabled = control_enabled(props, EXPOSURE_AUTO_NAME);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	assert_true(brightness_enabled);
+	assert_true(auto_exposure_enabled);
+	if (exposure_enabled || focus_enabled) {
+		fprintf(stderr, "enabled while inactive: '%s' %d (Aperture Priority Mode), '%s' %d (autofocus on)\n",
+			EXPOSURE_NAME, exposure_enabled, FOCUS_ABSOLUTE_NAME, focus_enabled);
+		fail();
+	}
+}
+
+/* Guard: with autofocus off and Auto Exposure in Manual Mode when the
+ * window opens, the manual focus and the exposure time are enabled. */
+static void active_manual_controls_are_enabled_on_load(void **state)
+{
+	(void)state;
+	fake.value[FOCUS_AUTO] = 0;
+	fake.value[EXPOSURE_AUTO] = V4L2_EXPOSURE_MANUAL;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+
+	bool exposure_enabled = control_enabled(props, EXPOSURE_NAME);
+	bool focus_enabled = control_enabled(props, FOCUS_ABSOLUTE_NAME);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	assert_true(exposure_enabled);
+	assert_true(focus_enabled);
+}
+
+/* Switching Auto Exposure (a menu) to Manual Mode enables the exposure time
+ * and rebuilds the window once; back to Aperture Priority disables it. */
+static void switching_auto_exposure_enables_and_disables_the_exposure(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+
+	bool rebuild_manual = change_in_properties(props, settings, EXPOSURE_AUTO_NAME, V4L2_EXPOSURE_MANUAL);
+	bool enabled_manual = control_enabled(props, EXPOSURE_NAME);
+	bool rebuild_auto = change_in_properties(props, settings, EXPOSURE_AUTO_NAME, V4L2_EXPOSURE_APERTURE_PRIORITY);
+	bool enabled_auto = control_enabled(props, EXPOSURE_NAME);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_value(EXPOSURE_AUTO, V4L2_EXPOSURE_APERTURE_PRIORITY, "after switching Auto Exposure");
+	if (!rebuild_manual || !enabled_manual) {
+		fprintf(stderr, "Manual Mode: rebuild %d, '%s' enabled %d; expected both\n", rebuild_manual,
+			EXPOSURE_NAME, enabled_manual);
+		fail();
+	}
+	if (!rebuild_auto || enabled_auto) {
+		fprintf(stderr, "Aperture Priority Mode: rebuild %d, '%s' enabled %d; expected a rebuild, disabled\n",
+			rebuild_auto, EXPOSURE_NAME, enabled_auto);
+		fail();
+	}
+}
+
+/* The same with a checkbox: turning autofocus off enables the manual focus
+ * and rebuilds once; turning it on again disables it. */
+static void turning_autofocus_off_enables_the_manual_focus(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+
+	bool rebuild_off = change_in_properties(props, settings, FOCUS_AUTO_NAME, 0);
+	bool enabled_off = control_enabled(props, FOCUS_ABSOLUTE_NAME);
+	bool rebuild_on = change_in_properties(props, settings, FOCUS_AUTO_NAME, 1);
+	bool enabled_on = control_enabled(props, FOCUS_ABSOLUTE_NAME);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	check_camera_value(FOCUS_AUTO, 1, "after turning autofocus off and on");
+	if (!rebuild_off || !enabled_off) {
+		fprintf(stderr, "autofocus off: rebuild %d, '%s' enabled %d; expected both\n", rebuild_off,
+			FOCUS_ABSOLUTE_NAME, enabled_off);
+		fail();
+	}
+	if (!rebuild_on || enabled_on) {
+		fprintf(stderr, "autofocus on again: rebuild %d, '%s' enabled %d; expected a rebuild, disabled\n",
+			rebuild_on, FOCUS_ABSOLUTE_NAME, enabled_on);
+		fail();
+	}
+}
+
+/* A move of a disabled control (from a script, or a widget that ignored
+ * the disabled state) writes nothing and keeps the window. */
+static void moving_an_inactive_control_keeps_the_properties(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+	clear_writes();
+
+	int rebuilds = drag_in_properties(props, settings, EXPOSURE_NAME, 300, 10);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	if (rebuilds) {
+		fprintf(stderr, "%d of 8 changes of the inactive '%s' asked to rebuild the Properties window\n",
+			rebuilds, EXPOSURE_NAME);
+		fail();
+	}
+	check_no_writes(EXPOSURE_ABSOLUTE, "moving the inactive exposure");
+}
+
+/* A driver that refuses the manual focus without flagging it inactive: the
+ * refusals keep the window. */
+static void a_refused_control_keeps_the_properties(void **state)
+{
+	(void)state;
+	fake.no_inactive_flag = true;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+	clear_writes();
+
+	int rebuilds = drag_in_properties(props, settings, FOCUS_ABSOLUTE_NAME, 5, 5);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	assert_int_equal(fake.failed_writes, 8);
+	if (rebuilds) {
+		fprintf(stderr, "%d of 8 refused '%s' changes asked to rebuild the Properties window\n", rebuilds,
+			FOCUS_ABSOLUTE_NAME);
+		fail();
+	}
+}
+
+/* --- Another program changes the automatic mode while the window is open:
+ * OBS gets no callback, so the window shows the old state until the user
+ * touches a control. Only then may a slider grey out under the mouse, once. */
+
+/* Another program sets Aperture Priority Mode: the exposure slider is still
+ * enabled. Moving it writes nothing, disables it and rebuilds once. */
+static void another_program_turning_auto_exposure_on_disables_the_exposure(void **state)
+{
+	(void)state;
+	fake.value[EXPOSURE_AUTO] = V4L2_EXPOSURE_MANUAL;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+	bool enabled_on_open = control_enabled(props, EXPOSURE_NAME);
+
+	fake.value[EXPOSURE_AUTO] = V4L2_EXPOSURE_APERTURE_PRIORITY;
+	clear_writes();
+
+	bool first = change_in_properties(props, settings, EXPOSURE_NAME, 300);
+	bool enabled_after = control_enabled(props, EXPOSURE_NAME);
+	int later = drag_in_properties(props, settings, EXPOSURE_NAME, 310, 10);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	assert_true(enabled_on_open);
+	check_no_writes(EXPOSURE_ABSOLUTE, "moving the exposure after another program set Aperture Priority");
+	if (!first || enabled_after || later) {
+		fprintf(stderr,
+			"after another program set Aperture Priority: first move rebuild %d, '%s' enabled %d, %d "
+			"later rebuilds; expected one rebuild, disabled, none later\n",
+			first, EXPOSURE_NAME, enabled_after, later);
+		fail();
+	}
+}
+
+/* Another program sets Manual Mode: the exposure slider is still disabled.
+ * Moving any control enables it and rebuilds once. */
+static void another_program_setting_manual_mode_enables_the_exposure(void **state)
+{
+	(void)state;
+	obs_data_t *settings = camera_settings();
+	void *source = create_camera(settings);
+	obs_properties_t *props = open_properties(source, settings);
+	bool enabled_on_open = control_enabled(props, EXPOSURE_NAME);
+
+	fake.value[EXPOSURE_AUTO] = V4L2_EXPOSURE_MANUAL;
+
+	bool first = change_in_properties(props, settings, "Brightness", 100);
+	bool enabled_after = control_enabled(props, EXPOSURE_NAME);
+	bool second = change_in_properties(props, settings, "Brightness", 101);
+
+	obs_properties_destroy(props);
+	v4l2_input.destroy(source);
+	obs_data_release(settings);
+
+	assert_false(enabled_on_open);
+	check_camera_value(BRIGHTNESS, 101, "after moving Brightness");
+	if (!first || !enabled_after || second) {
+		fprintf(stderr,
+			"after another program set Manual Mode: first move rebuild %d, '%s' enabled %d, second "
+			"move rebuild %d; expected one rebuild, enabled, none after\n",
+			first, EXPOSURE_NAME, enabled_after, second);
+		fail();
+	}
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1310,6 +1651,18 @@ int main(void)
 		cmocka_unit_test_setup_teardown(old_settings_are_tied_to_the_first_camera_opened, setup, teardown),
 		cmocka_unit_test_setup_teardown(old_settings_stay_with_the_first_camera_when_switching_in_properties,
 						setup, teardown),
+		cmocka_unit_test_setup_teardown(moving_an_active_control_keeps_the_properties, setup, teardown),
+		cmocka_unit_test_setup_teardown(inactive_controls_are_disabled_on_load, setup, teardown),
+		cmocka_unit_test_setup_teardown(active_manual_controls_are_enabled_on_load, setup, teardown),
+		cmocka_unit_test_setup_teardown(switching_auto_exposure_enables_and_disables_the_exposure, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(turning_autofocus_off_enables_the_manual_focus, setup, teardown),
+		cmocka_unit_test_setup_teardown(moving_an_inactive_control_keeps_the_properties, setup, teardown),
+		cmocka_unit_test_setup_teardown(a_refused_control_keeps_the_properties, setup, teardown),
+		cmocka_unit_test_setup_teardown(another_program_turning_auto_exposure_on_disables_the_exposure, setup,
+						teardown),
+		cmocka_unit_test_setup_teardown(another_program_setting_manual_mode_enables_the_exposure, setup,
+						teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
