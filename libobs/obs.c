@@ -29,6 +29,11 @@ static THREAD_LOCAL bool is_ui_thread = false;
 
 extern char *find_libobs_data_file(const char *file);
 
+#ifdef __linux__
+#define OBS_PROBE 1
+#else
+#define OBS_PROBE 2
+#endif
 static void obs_free_render_textures(struct obs_core_video_mix *video);
 
 static inline void make_video_info(struct video_output_info *vi, struct obs_video_info *ovi)
