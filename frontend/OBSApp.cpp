@@ -40,6 +40,7 @@
 #endif
 #include <qt-wrappers.hpp>
 #include <utility/settings-migration.hpp>
+#include <utility/unclean-launch.hpp>
 
 #include <QCheckBox>
 #include <QDesktopServices>
@@ -1273,7 +1274,9 @@ void OBSApp::checkForUncleanShutdown()
 	bool hasUncleanShutdown = crashHandler_->hasUncleanShutdown();
 	bool hasNewCrashLog = crashHandler_->hasNewCrashLog();
 
-	if (hasUncleanShutdown) {
+	const UncleanLaunchDecision decision = decideUncleanLaunch(hasUncleanShutdown, false);
+
+	if (decision.showPrompt) {
 		UncleanLaunchAction launchAction = handleUncleanShutdown(hasNewCrashLog);
 
 		safe_mode = launchAction.useSafeMode;
