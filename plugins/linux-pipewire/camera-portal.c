@@ -846,7 +846,9 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	struct camera_device *device;
 	enum spa_media_subtype last_subtype = camera_source->subtype;
 	enum spa_video_format last_format = camera_source->format.spa_format;
+	struct spa_rectangle last_resolution = camera_source->resolution.rect;
 	bool has_framerates;
+	bool restart;
 
 	blog(LOG_INFO, "[camera-portal] Selected format for '%s'", camera_source->device_id);
 
@@ -857,14 +859,6 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	if (!parse_format(camera_source, obs_data_get_string(settings, "format")))
 		return false;
 
-	if (!camera_source->obs_pw_stream || camera_source->restart_stream || last_subtype != camera_source->subtype ||
-	    last_format != camera_source->format.spa_format) {
-		camera_source->restart_stream = false;
-		stream_camera(camera_source);
-	} else if (camera_source->obs_pw_stream) {
-		obs_pipewire_stream_set_resolution(camera_source->obs_pw_stream, &camera_source->resolution.rect);
-	}
-
 	property = obs_properties_get(properties, "framerate");
 	obs_property_set_modified_callback2(property, NULL, NULL);
 
@@ -872,13 +866,31 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 		framerate_list(device, camera_source->format.spa_format, &camera_source->resolution.rect, property);
 	obs_property_set_enabled(property, has_framerates);
 
+	/* A new format or size is not negotiated on a running stream: a
+	 * libcamera camera cannot be reconfigured while it delivers, and
+	 * PipeWire's libcamera plugin before 1.4.9 does not stop it first
+	 * (obsproject/obs-studio#10399; with PipeWire 1.0.5 the daemon
+	 * crashes). The stream is destroyed and created again instead. */
+	restart = !camera_source->obs_pw_stream || camera_source->restart_stream ||
+		  last_subtype != camera_source->subtype || last_format != camera_source->format.spa_format ||
+		  last_resolution.width != camera_source->resolution.rect.width ||
+		  last_resolution.height != camera_source->resolution.rect.height;
+
+	/* A camera without framerates for this format: drop a framerate kept
+	 * from before, as part of the restart. */
+	if (!has_framerates && camera_source->framerate.set) {
+		camera_source->framerate.set = false;
+		restart = true;
+	}
+
+	if (restart) {
+		camera_source->restart_stream = false;
+		stream_camera(camera_source);
+	}
+
 	if (has_framerates) {
 		obs_property_set_modified_callback2(property, framerate_selected, camera_source);
 		obs_property_modified(property, settings);
-	} else {
-		camera_source->framerate.set = false;
-		if (camera_source->obs_pw_stream)
-			obs_pipewire_stream_set_framerate(camera_source->obs_pw_stream, NULL);
 	}
 
 	return true;
