@@ -60,6 +60,10 @@ errors (soldr permissions, disk, Docker, host FFmpeg): see
   `cfg_select!` in `platform/mod.rs`) or `src/ffi/`. A pre-expansion Dylint
   (`dylints/ban_platform_cfg_outside_boundary`) fails `./lint` otherwise; see
   the testing policy's "Platform boundary" rule.
+- Start every task by fetching and rebasing onto `origin/master`
+  (`git fetch origin && git rebase --autostash origin/master`), so you build,
+  test and diff against current master. See
+  [coordination.md](docs/rust-port/coordination.md).
 - Every port starts RED (failing test against stubs) and ends GREEN.
 - Do not add new GitHub Actions workflow files without explicit sign-off.
 - Packaging changes (`build-aux/appimage/`, the Flatpak manifest, anything that

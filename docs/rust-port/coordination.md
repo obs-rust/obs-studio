@@ -48,6 +48,10 @@ this document covers *who does what, and when*.
 - **Bug fixes need a failing test first.** If the bug needs live services
   (PipeWire, ScreenCaptureKit, a server), factor the decision into a small
   plain-C or Rust function and test that (as #109 did).
+- **Rebase on origin/master when you start.** Before claiming, coding or
+  reviewing, run `git fetch origin && git rebase --autostash origin/master`
+  so the work starts from current master. Later master changes are handled
+  by the merge queue (below).
 - **PR CI is the merge gate.** Open the PR (a draft is fine) as soon as the
   RED test exists; a red CI run on a PR is expected. The local gate
   (AGENTS.md) is recommended, not required: a stamped head lets CI skip the
