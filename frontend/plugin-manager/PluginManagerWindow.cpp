@@ -37,6 +37,7 @@
 #include "moc_PluginManagerWindow.cpp"
 
 extern bool safe_mode;
+extern bool disable_3p_plugins;
 
 namespace {
 using Category = OBS::PluginManagerWindow::Category;
@@ -121,15 +122,16 @@ void PluginManagerWindow::setupInstalledPage(std::vector<std::string> failedModu
 						   QTStr("PluginManager.Section.Missing.Description"));
 	missingPluginList->addHeader(missingHeader);
 
-	bool isSafeMode = obs_frontend_is_safe_mode_enabled();
-	if (isSafeMode) {
+	bool pluginsSkipped = thirdPartyPluginsSkipped();
+	if (pluginsSkipped) {
 		auto *safeModeFrame = new QFrame{};
 		safeModeFrame->setLayout(new QVBoxLayout);
 		safeModeFrame->layout()->setContentsMargins(0, 0, 0, 0);
 		safeModeFrame->setProperty("class", "frame-notice");
 
 		auto *safeModeLabel = new QLabel(ui->modulesList);
-		safeModeLabel->setText(QTStr("PluginManager.SafeMode"));
+		safeModeLabel->setText(QTStr(obs_frontend_is_safe_mode_enabled() ? "PluginManager.SafeMode"
+										 : "PluginManager.OnlyBundledPlugins"));
 		safeModeLabel->setAlignment(Qt::AlignCenter);
 		safeModeLabel->setIndent(0);
 
@@ -202,7 +204,7 @@ void PluginManagerWindow::setupInstalledPage(std::vector<std::string> failedModu
 
 	QWidget *previousRow{nullptr};
 	for (Entry &entry : installedPluginEntries) {
-		if (isSafeMode) {
+		if (pluginsSkipped) {
 			entry.category = Category::Installed;
 		}
 		auto newRow = new InstalledPluginRow(ui->modulesList, entry);
@@ -284,9 +286,16 @@ void PluginManagerWindow::setSection(int sidebarRow)
 	}
 }
 
+bool PluginManagerWindow::thirdPartyPluginsSkipped()
+{
+	// Safe Mode and --only-bundled-plugins load only the bundled modules, so the
+	// cached third-party plugins were skipped on purpose, not lost.
+	return obs_frontend_is_safe_mode_enabled() || disable_3p_plugins;
+}
+
 bool PluginManagerWindow::isEnabledPluginsChanged()
 {
-	if (obs_frontend_is_safe_mode_enabled()) {
+	if (thirdPartyPluginsSkipped()) {
 		return false;
 	}
 

@@ -47,6 +47,7 @@ public:
 
 	std::vector<ModuleInfo> const getModules() { return modules_; }
 	bool isEnabledPluginsChanged();
+	static bool thirdPartyPluginsSkipped();
 
 	void setPage(Page page);
 

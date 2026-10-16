@@ -72,7 +72,7 @@ InstalledPluginRow::InstalledPluginRow(QWidget *parent, const PluginManagerWindo
 	this->addWidget(moduleText);
 
 	InfoChip *statusChip{nullptr};
-	if (obs_frontend_is_safe_mode_enabled()) {
+	if (PluginManagerWindow::thirdPartyPluginsSkipped()) {
 		idian::Utils::addClass(nameLabel, "text-muted");
 
 		statusChip = new InfoChip{QTStr("PluginManager.Status.Disabled"), moduleText};
