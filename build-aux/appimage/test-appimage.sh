@@ -11,22 +11,24 @@
 # OBS needs must come out of the AppImage.
 #
 # Scenarios:
-#   1. bundle: every path AppRun points OBS at exists (check-appdir.sh), and
+#   1. bundle: every path AppRun points OBS at exists and exactly one libsrt,
+#      at least 1.5.7, is bundled (check-appdir.sh), and
 #      every bundled ELF file resolves all of its libraries and symbols with
 #      the bundled loader and its own RPATH. With glibc bundled, the glibc
 #      libraries host GPU drivers link (librt, libpthread, libdl, ...) must
 #      come from the bundle too.
-#   2. first-start: a new user's OBS opens a window that renders.
+#   2. first-start: a new user's OBS opens a window that renders, with one
+#      libsrt mapped, the AppImage's.
 #   3. probes: the AppImage's own PipeWire, PulseAudio, gconv and D-Bus
 #      libraries, in AppRun's environment, work against a private session.
 #   4. saved-profile: OBS starts with a returning user's scene that holds a
 #      PipeWire screen capture (through a fake ScreenCast portal), a PipeWire
 #      camera (through a fake Camera portal) and a PulseAudio microphone, all
 #      fed by test producers, and records them. It must stay up, map PipeWire,
-#      PulseAudio and GLib from the AppImage, load every module it ships, and
-#      start every source. It must load no plugin from the host's system
-#      plugin directories, where a distribution's OBS keeps its own, and must
-#      load the plugins in the user's folders. The recording is left in
+#      PulseAudio, GLib and one libsrt from the AppImage, load every module it
+#      ships, and start every source. It must load no plugin from the host's
+#      system plugin directories, where a distribution's OBS keeps its own, and
+#      must load the plugins in the user's folders. The recording is left in
 #      <output-dir> for verify-recording.sh. (Every continuous build before
 #      obs-rust/obs-studio#426 crashed here on start.) Only on Ubuntu 22.04,
 #      whose PipeWire 0.3.x cannot run the test producers, it runs without
@@ -533,6 +535,21 @@ require_mapped_from_appimage() {
     done
 }
 
+# Process $1 must map exactly one libsrt, the AppImage's: obs-ffmpeg.so (the SRT
+# output) and libavformat (srt:// in FFmpeg) share it. Two copies in one process
+# aborted OBS on quit after any SRT use (obs-rust/obs-studio#1082).
+require_one_libsrt_mapped() {
+    local maps n
+    maps="$(grep -o '/[^ ]*/libsrt[^/ ]*\.so[^/ ]*' "/proc/$1/maps" | sort -u || true)"
+    n="$(grep -c . <<<"$maps" || true)"
+    echo "libsrt mapped into OBS: $(tr '\n' ' ' <<<"${maps:-none}")"
+    if [ "$n" -ne 1 ]; then
+        fail "OBS maps $n copies of libsrt; exactly one, the AppImage's, is expected"
+    elif [[ "$maps" != "$APPDIR"/* ]]; then
+        fail "libsrt was not loaded from inside the AppImage ($maps)"
+    fi
+}
+
 # ============================================================================
 if [ "$SCENARIO" = first-start ]; then
     require_no_obs_running
@@ -611,6 +628,7 @@ if [ "$SCENARIO" = first-start ]; then
         done
         require_mapped_from_appimage "$OBS_PID" libqsvgicon.so libqsvg.so \
             libQt6Core.so libQt6Widgets.so libavcodec.so libobs.so libX11.so libxcb.so
+        require_one_libsrt_mapped "$OBS_PID"
         # The C and C++ runtime: the bundled one on a host with an older glibc, but the
         # host's own on a host with a newer one - the host's Mesa/LLVM cannot load
         # against an older glibc (obs-rust/obs-studio#621).
@@ -1031,6 +1049,7 @@ for i in $(seq 1 $((RECORD_SECONDS + 5))); do
     if [ "$i" -ge 5 ] && [ "$MAPS_CHECKED" -eq 0 ] && [ -n "$OBS_PID" ]; then
         # Once the captures run: their client libraries come from the AppImage.
         require_mapped_from_appimage "$OBS_PID" libpipewire-0.3.so libpulse.so libglib-2.0.so libgio-2.0.so
+        require_one_libsrt_mapped "$OBS_PID"
         MAPS_CHECKED=1
     fi
 done

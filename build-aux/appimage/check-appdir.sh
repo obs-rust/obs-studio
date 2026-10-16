@@ -87,8 +87,50 @@ for plugin in platforms/libqxcb.so platforms/libqwayland.so wayland-shell-integr
     [ -e "$QT_PLUGINS/$plugin" ] || error "the Qt plugin $plugin is not bundled"
 done
 
+# --- libsrt: one copy, at least 1.5.7 ---------------------------------------
+# The SRT output (obs-ffmpeg.so) and FFmpeg's srt:// protocol (libavformat)
+# must share one libsrt. With two copies in one process (the Ubuntu-built
+# AppImages bundled libsrt.so.1.5 and libsrt-gnutls.so.1.5) both ran the
+# destructors of the same interposed C++ globals, and OBS aborted on quit
+# after any SRT use (obs-rust/obs-studio#1082). Releases before 1.5.7 have
+# public advisories (GHSA-6xg9-784j-24rm, GHSA-4mc6-qmpp-g7gw,
+# GHSA-m96h-3rc9-xx6h).
+SRT_MIN=1.5.7
+# Symlinks count too: the AppDir holds only the soname file today, so a kept
+# libsrt.so.1.5 -> libsrt.so.1.5.7 chain would need this count adjusted.
+srt_libs="$(find "$APPDIR" \( -type f -o -type l \) -name 'libsrt*.so*' -printf '%P\n' | sort)"
+srt_count="$(grep -c . <<<"$srt_libs" || true)"
+if [ "$srt_count" -ne 1 ]; then
+    error "expected exactly one libsrt in the AppImage, found $srt_count: $(tr '\n' ' ' <<<"$srt_libs")"
+else
+    SRT_LIB="$APPDIR/$srt_libs"
+    SRT_NAME="$(basename "$SRT_LIB")"
+    # libsrt keeps its version string (SRT_VERSION, which it parses into
+    # SRT_DEF_VERSION at load time) in .rodata; read it without binutils,
+    # which the test containers do not have. This assumes SRT_VERSION is the
+    # only bare x.y.z string in the library, which holds while mbedTLS is a
+    # shared library. A statically linked TLS library could add its own; then
+    # the check fails with "cannot read the version" (more than one match), it
+    # never passes a wrong version.
+    srt_version="$(tr '\0' '\n' <"$SRT_LIB" | grep -xE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+    if [ "$(grep -c . <<<"$srt_version" || true)" -ne 1 ]; then
+        error "cannot read the version of $srt_libs (version strings found: $(tr '\n' ' ' <<<"$srt_version"))"
+    elif [ "$(printf '%s\n%s\n' "$srt_version" "$SRT_MIN" | sort -V | head -1)" != "$SRT_MIN" ]; then
+        error "the bundled $srt_libs is libsrt $srt_version; at least $SRT_MIN is required"
+    fi
+    # No bundled ELF file may ask for another libsrt (libsrt-gnutls.so.1.5,
+    # libsrt-openssl.so.1.5, ...): the loader would map a second copy, from the
+    # host if not from the AppImage. DT_NEEDED names are plain strings in .dynstr.
+    while IFS= read -r -d '' f; do
+        while read -r soname; do
+            [ "$soname" = "$SRT_NAME" ] ||
+                error "${f#"$APPDIR"/} needs $soname, a second libsrt next to the bundled $SRT_NAME"
+        done < <(grep -aoE 'libsrt[A-Za-z0-9_-]*\.so(\.[0-9]+)*' "$f" | sort -u)
+    done < <(grep -rlaZ 'libsrt[A-Za-z0-9_-]*\.so' "$APPDIR/usr" || true)
+fi
+
 if [ "$fail" -ne 0 ]; then
     echo "check-appdir: FAILED" >&2
     exit 1
 fi
-echo "check-appdir: all $count AppDir paths that AppRun exports exist; PipeWire, gconv and Qt X11/Wayland runtime files are bundled"
+echo "check-appdir: all $count AppDir paths that AppRun exports exist; PipeWire, gconv and Qt X11/Wayland runtime files are bundled; one libsrt ($srt_version)"
