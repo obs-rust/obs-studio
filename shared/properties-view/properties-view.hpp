@@ -47,6 +47,8 @@ private:
 
 	void TogglePasswordText(bool checked);
 
+	template<typename Dialog> bool RunDialog(Dialog &&dialog);
+
 	void CommitUpdate();
 
 public:
@@ -106,6 +108,12 @@ private:
 	bool enableDefer = true;
 	bool disableScrolling = false;
 
+	/* While a field's dialog is open, a reload or refresh waits for it to
+	 * close (WidgetInfo::RunDialog). */
+	int openDialogs = 0;
+	bool reloadAfterDialog = false;
+	bool refreshAfterDialog = false;
+
 	template<typename Sender, typename SenderParent, typename... Args>
 	QWidget *NewWidget(obs_property_t *prop, Sender *widget, void (SenderParent::*signal)(Args...));
 
@@ -130,6 +138,9 @@ private:
 	void resizeEvent(QResizeEvent *event) override;
 
 	void CommitPendingUpdates(WidgetInfo *except);
+
+	void DialogOpened();
+	void DialogClosed();
 
 	void GetScrollPos(int &h, int &v, int &hend, int &vend);
 	void SetScrollPos(int h, int v, int old_hend, int old_vend);

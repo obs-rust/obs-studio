@@ -93,6 +93,11 @@ Q_DECLARE_METATYPE(media_frames_per_second);
 
 void OBSPropertiesView::ReloadProperties()
 {
+	if (openDialogs > 0) {
+		reloadAfterDialog = true;
+		return;
+	}
+
 	if (weakObj || rawObj) {
 		OBSObject strongObj = GetObject();
 		void *obj = strongObj ? strongObj.Get() : rawObj;
@@ -114,6 +119,11 @@ void OBSPropertiesView::ReloadProperties()
 
 void OBSPropertiesView::RefreshProperties()
 {
+	if (openDialogs > 0) {
+		refreshAfterDialog = true;
+		return;
+	}
+
 	int h, v, hend, vend;
 	GetScrollPos(h, v, hend, vend);
 
@@ -1787,6 +1797,48 @@ void WidgetInfo::TextChanged(const char *setting)
 	obs_data_set_string(view->settings, setting, QT_TO_UTF8(edit->text()));
 }
 
+void OBSPropertiesView::DialogOpened()
+{
+	openDialogs++;
+}
+
+void OBSPropertiesView::DialogClosed()
+{
+	if (--openDialogs > 0) {
+		return;
+	}
+
+	/* Queued: the field that opened the dialog applies its result first. */
+	if (reloadAfterDialog) {
+		QMetaObject::invokeMethod(this, &OBSPropertiesView::ReloadProperties, Qt::QueuedConnection);
+	} else if (refreshAfterDialog) {
+		QMetaObject::invokeMethod(this, &OBSPropertiesView::RefreshProperties, Qt::QueuedConnection);
+	}
+	reloadAfterDialog = false;
+	refreshAfterDialog = false;
+}
+
+/* Runs one of this field's modal dialogs (file, font, color, list entry).
+ * The dialog's event loop also delivers properties refreshes, e.g. from a
+ * source that calls obs_source_update_properties on a timer; rebuilding the
+ * fields then would delete this field's widgets and this WidgetInfo under
+ * the dialog. The view holds those refreshes until the dialog has closed.
+ * Returns false when this field is gone anyway (the view was destroyed while
+ * the dialog was open): the caller must then drop the result and return
+ * without touching any member. */
+template<typename Dialog> bool WidgetInfo::RunDialog(Dialog &&dialog)
+{
+	QPointer<WidgetInfo> self(this);
+	QPointer<OBSPropertiesView> owner(view);
+
+	owner->DialogOpened();
+	dialog();
+	if (owner) {
+		owner->DialogClosed();
+	}
+	return !self.isNull();
+}
+
 bool WidgetInfo::PathChanged(const char *setting)
 {
 	const char *desc = obs_property_description(property);
@@ -1803,12 +1855,17 @@ bool WidgetInfo::PathChanged(const char *setting)
 
 	QString path;
 
-	if (type == OBS_PATH_DIRECTORY) {
-		path = SelectDirectory(view, QT_UTF8(desc), startDir);
-	} else if (type == OBS_PATH_FILE) {
-		path = OpenFile(view, QT_UTF8(desc), startDir, QT_UTF8(filter));
-	} else if (type == OBS_PATH_FILE_SAVE) {
-		path = SaveFile(view, QT_UTF8(desc), startDir, QT_UTF8(filter));
+	bool alive = RunDialog([&]() {
+		if (type == OBS_PATH_DIRECTORY) {
+			path = SelectDirectory(view, QT_UTF8(desc), startDir);
+		} else if (type == OBS_PATH_FILE) {
+			path = OpenFile(view, QT_UTF8(desc), startDir, QT_UTF8(filter));
+		} else if (type == OBS_PATH_FILE_SAVE) {
+			path = SaveFile(view, QT_UTF8(desc), startDir, QT_UTF8(filter));
+		}
+	});
+	if (!alive) {
+		return false;
 	}
 
 #ifdef __APPLE__
@@ -1883,7 +1940,9 @@ bool WidgetInfo::ColorChangedInternal(const char *setting, bool supportAlpha)
 	options |= QColorDialog::DontUseNativeDialog;
 #endif
 
-	color = QColorDialog::getColor(color, view, QT_UTF8(desc), options);
+	if (!RunDialog([&]() { color = QColorDialog::getColor(color, view, QT_UTF8(desc), options); })) {
+		return false;
+	}
 
 #ifdef __APPLE__
 	// TODO: Revisit when QTBUG-42661 is fixed
@@ -1937,17 +1996,19 @@ bool WidgetInfo::FontChanged(const char *setting)
 	options = QFontDialog::DontUseNativeDialog;
 #endif
 
-	if (!font_obj) {
-		QFont initial;
-		font = QFontDialog::getFont(&success, initial, view,
-					    tr("Basic.PropertiesWindow.SelectFont.WindowTitle"), options);
-	} else {
-		MakeQFont(font_obj, font);
-		font = QFontDialog::getFont(&success, font, view, tr("Basic.PropertiesWindow.SelectFont.WindowTitle"),
-					    options);
-	}
+	bool alive = RunDialog([&]() {
+		if (!font_obj) {
+			QFont initial;
+			font = QFontDialog::getFont(&success, initial, view,
+						    tr("Basic.PropertiesWindow.SelectFont.WindowTitle"), options);
+		} else {
+			MakeQFont(font_obj, font);
+			font = QFontDialog::getFont(&success, font, view,
+						    tr("Basic.PropertiesWindow.SelectFont.WindowTitle"), options);
+		}
+	});
 
-	if (!success) {
+	if (!alive || !success) {
 		return false;
 	}
 
@@ -2263,7 +2324,8 @@ void WidgetInfo::EditListAddText()
 	EditableItemDialog dialog(widget->window(), QString(), false);
 	auto title = tr("Basic.PropertiesWindow.AddEditableListEntry").arg(QT_UTF8(desc));
 	dialog.setWindowTitle(title);
-	if (dialog.exec() == QDialog::Rejected) {
+	int result = QDialog::Rejected;
+	if (!RunDialog([&]() { result = dialog.exec(); }) || result == QDialog::Rejected) {
 		return;
 	}
 
@@ -2288,7 +2350,10 @@ void WidgetInfo::EditListAddFiles()
 
 	QString title = tr("Basic.PropertiesWindow.AddEditableListFiles").arg(QT_UTF8(desc));
 
-	QStringList files = OpenFiles(list, title, QT_UTF8(default_path), QT_UTF8(filter));
+	QStringList files;
+	if (!RunDialog([&]() { files = OpenFiles(list, title, QT_UTF8(default_path), QT_UTF8(filter)); })) {
+		return;
+	}
 #ifdef __APPLE__
 	// TODO: Revisit when QTBUG-42661 is fixed
 	widget->window()->raise();
@@ -2315,7 +2380,10 @@ void WidgetInfo::EditListAddDir()
 
 	QString title = tr("Basic.PropertiesWindow.AddEditableListDir").arg(QT_UTF8(desc));
 
-	QString dir = SelectDirectory(list, title, QT_UTF8(default_path));
+	QString dir;
+	if (!RunDialog([&]() { dir = SelectDirectory(list, title, QT_UTF8(default_path)); })) {
+		return;
+	}
 #ifdef __APPLE__
 	// TODO: Revisit when QTBUG-42661 is fixed
 	widget->window()->raise();
@@ -2361,13 +2429,15 @@ void WidgetInfo::EditListEdit()
 		QDir pathDir(item->text());
 		QString path;
 
-		if (pathDir.exists()) {
-			path = SelectDirectory(list, tr("Browse"), item->text());
-		} else {
-			path = OpenFile(list, tr("Browse"), item->text(), QT_UTF8(filter));
-		}
+		bool alive = RunDialog([&]() {
+			if (pathDir.exists()) {
+				path = SelectDirectory(list, tr("Browse"), item->text());
+			} else {
+				path = OpenFile(list, tr("Browse"), item->text(), QT_UTF8(filter));
+			}
+		});
 
-		if (path.isEmpty()) {
+		if (!alive || path.isEmpty()) {
 			return;
 		}
 
@@ -2379,7 +2449,8 @@ void WidgetInfo::EditListEdit()
 	EditableItemDialog dialog(widget->window(), item->text(), type != OBS_EDITABLE_LIST_TYPE_STRINGS, filter);
 	auto title = tr("Basic.PropertiesWindow.EditEditableListEntry").arg(QT_UTF8(desc));
 	dialog.setWindowTitle(title);
-	if (dialog.exec() == QDialog::Rejected) {
+	int result = QDialog::Rejected;
+	if (!RunDialog([&]() { result = dialog.exec(); }) || result == QDialog::Rejected) {
 		return;
 	}
 
