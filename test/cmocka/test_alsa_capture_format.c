@@ -10,7 +10,9 @@
  * PCM, which needs no sound card. snd_pcm_hw_params_test_format is wrapped to
  * offer only S24_3LE and S16_LE, snd_pcm_readi is wrapped to deliver known
  * samples in the format that was set, and obs_source_output_audio is wrapped
- * to keep what OBS receives. */
+ * to keep what OBS receives. The log is captured with base_set_log_handler:
+ * it must name the format that was set, the only place where a user can see
+ * the bit depth. */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -19,9 +21,11 @@
 #include <cmocka.h>
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <alsa/asoundlib.h>
 #include <obs-module.h>
+#include <util/base.h>
 #include <util/platform.h>
 #include <util/threading.h>
 
@@ -44,6 +48,21 @@ void __wrap_obs_source_set_async_compensation(obs_source_t *source, bool enable)
 #define VALUE_COUNT 6
 static const uint32_t values24[VALUE_COUNT] = {0x7FFFFF, 0x800000, 0x000001, 0xFFFFFF, 0x123456, 0x000000};
 static const int32_t expected32[VALUE_COUNT] = {INT32_MAX - 0xFF, INT32_MIN, 0x100, -0x100, 0x12345600, 0};
+
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool log_has_format_line;
+
+static void capture_log(int level, const char *format, va_list args, void *param)
+{
+	char line[512];
+	(void)level;
+	(void)param;
+	vsnprintf(line, sizeof(line), format, args);
+	pthread_mutex_lock(&log_mutex);
+	if (strcmp(line, "alsa-input: PCM 'null' format set to S24_3LE") == 0)
+		log_has_format_line = true;
+	pthread_mutex_unlock(&log_mutex);
+}
 
 static pthread_mutex_t got_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile bool got_audio;
@@ -108,6 +127,7 @@ snd_pcm_sframes_t __wrap_snd_pcm_readi(snd_pcm_t *pcm, void *buffer, snd_pcm_ufr
 static void s24_3le_device_is_captured_at_24_bits(void **state)
 {
 	(void)state;
+	base_set_log_handler(capture_log, NULL);
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_string(settings, "device_id", "null");
 	obs_data_set_int(settings, "rate", 48000);
@@ -118,6 +138,7 @@ static void s24_3le_device_is_captured_at_24_bits(void **state)
 	for (int i = 0; i < 300 && !os_atomic_load_bool(&got_audio); i++)
 		os_sleep_ms(10);
 	alsa_input_capture.destroy(data);
+	base_set_log_handler(NULL, NULL);
 
 	if (!os_atomic_load_bool(&got_audio))
 		fail_msg("no audio reached OBS within 3 s");
@@ -125,6 +146,8 @@ static void s24_3le_device_is_captured_at_24_bits(void **state)
 		fail_msg("OBS got audio format %d, expected AUDIO_FORMAT_32BIT (%d): the S24_3LE device ran at "
 			 "a lower bit depth",
 			 got_format, AUDIO_FORMAT_32BIT);
+	if (!log_has_format_line)
+		fail_msg("the log does not name the format: no line \"alsa-input: PCM 'null' format set to S24_3LE\"");
 	assert_true(got_frames >= VALUE_COUNT);
 	for (int i = 0; i < 2 * VALUE_COUNT; i++) {
 		if (got_samples[i] != expected32[i / 2])
