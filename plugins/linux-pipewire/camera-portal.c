@@ -448,10 +448,153 @@ static void camera_format_list(struct camera_device *dev, obs_property_t *prop)
 	dstr_free(&str);
 }
 
+/*
+ * A V4L2 driver ignores or refuses a manual control while its automatic mode
+ * is on, and flags it inactive (V4L2_CTRL_FLAG_INACTIVE) so that a user
+ * interface shows it disabled: with "Focus, Automatic Continuous" ticked,
+ * "Focus, Absolute" does nothing (obs-rust/obs-studio#827). PipeWire's V4L2
+ * node does not pass the flag on, so the automatic/manual pairs come from the
+ * V4L2 spec, as uvcvideo implements them. PipeWire gives a V4L2 control the
+ * prop id SPA_PROP_START_CUSTOM + its V4L2 id, except for a few standard ones
+ * (spa/plugins/v4l2/v4l2-utils.c).
+ */
+/* V4L2 control ids and values (linux/videodev2.h) */
+enum {
+	CID_HUE = 0x00980903,
+	CID_AUTO_WHITE_BALANCE = 0x0098090c,
+	CID_RED_BALANCE = 0x0098090e,
+	CID_BLUE_BALANCE = 0x0098090f,
+	CID_HUE_AUTO = 0x00980919,
+	CID_WHITE_BALANCE_TEMPERATURE = 0x0098091a,
+	CID_EXPOSURE_AUTO = 0x009a0901,
+	CID_EXPOSURE_ABSOLUTE = 0x009a0902,
+	CID_FOCUS_ABSOLUTE = 0x009a090a,
+	CID_FOCUS_AUTO = 0x009a090c,
+	EXPOSURE_MANUAL = 1,
+};
+
+static const struct {
+	uint32_t manual;
+	uint32_t automatic;
+	/* the automatic control's value that leaves the manual one to the user */
+	int32_t manual_mode;
+} v4l2_auto_controls[] = {
+	{CID_HUE, CID_HUE_AUTO, 0},
+	{CID_EXPOSURE_ABSOLUTE, CID_EXPOSURE_AUTO, EXPOSURE_MANUAL},
+	{CID_WHITE_BALANCE_TEMPERATURE, CID_AUTO_WHITE_BALANCE, 0},
+	{CID_RED_BALANCE, CID_AUTO_WHITE_BALANCE, 0},
+	{CID_BLUE_BALANCE, CID_AUTO_WHITE_BALANCE, 0},
+	{CID_FOCUS_ABSOLUTE, CID_FOCUS_AUTO, 0},
+};
+
+static uint32_t v4l2_control_id(uint32_t prop_id)
+{
+	switch (prop_id) {
+	case SPA_PROP_hue:
+		return CID_HUE;
+	case SPA_PROP_exposure:
+		return CID_EXPOSURE_ABSOLUTE;
+	default:
+		return prop_id >= SPA_PROP_START_CUSTOM ? prop_id - SPA_PROP_START_CUSTOM : 0;
+	}
+}
+
+static bool dict_is_v4l2(const struct spa_dict *props)
+{
+	const char *api = props ? spa_dict_lookup(props, PW_KEY_DEVICE_API) : NULL;
+	const char *path = props ? spa_dict_lookup(props, PW_KEY_OBJECT_PATH) : NULL;
+
+	return (api && strcmp(api, "v4l2") == 0) || (path && strncmp(path, "v4l2:", 5) == 0);
+}
+
+static bool camera_is_v4l2(struct camera_device *dev)
+{
+	return (dev->info && dict_is_v4l2(dev->info->props)) ||
+	       (dev->properties && dict_is_v4l2(&dev->properties->dict));
+}
+
+/* The name (property name) of the camera's control with this V4L2 id */
+static const char *v4l2_control_name(struct camera_device *dev, uint32_t cid)
+{
+	struct param *p;
+
+	spa_list_for_each(p, &dev->param_list, link)
+	{
+		const char *name = NULL;
+		uint32_t id;
+
+		if (p->id != SPA_PARAM_PropInfo || p->param == NULL ||
+		    spa_pod_parse_object(p->param, SPA_TYPE_OBJECT_PropInfo, NULL, SPA_PROP_INFO_id, SPA_POD_Id(&id),
+					 SPA_PROP_INFO_description, SPA_POD_OPT_String(&name)) < 0)
+			continue;
+		if (name && v4l2_control_id(id) == cid)
+			return name;
+	}
+	return NULL;
+}
+
+/* Whether the automatic control of this manual one is on, as the Properties
+ * window shows it: what the source has set on the camera */
+static bool control_overridden(struct camera_device *dev, obs_properties_t *props, obs_data_t *settings,
+			       uint32_t prop_id)
+{
+	uint32_t cid = v4l2_control_id(prop_id);
+
+	if (!camera_is_v4l2(dev))
+		return false;
+
+	for (size_t i = 0; i < SPA_N_ELEMENTS(v4l2_auto_controls); i++) {
+		if (v4l2_auto_controls[i].manual != cid)
+			continue;
+
+		const char *name = v4l2_control_name(dev, v4l2_auto_controls[i].automatic);
+		obs_property_t *automatic = name ? obs_properties_get(props, name) : NULL;
+		long long mode;
+
+		if (!automatic)
+			return false;
+		if (obs_property_get_type(automatic) == OBS_PROPERTY_BOOL)
+			mode = obs_data_get_bool(settings, name);
+		else
+			mode = obs_data_get_int(settings, name);
+		return mode != v4l2_auto_controls[i].manual_mode;
+	}
+	return false;
+}
+
+/* Show the manual controls disabled while their automatic mode is on.
+ * Returns whether one was enabled or disabled. */
+static bool update_controls_enabled(struct camera_device *dev, obs_properties_t *props, obs_data_t *settings)
+{
+	bool changed = false;
+	struct param *p;
+
+	spa_list_for_each(p, &dev->param_list, link)
+	{
+		const char *name = NULL;
+		obs_property_t *prop;
+		uint32_t id;
+
+		if (p->id != SPA_PARAM_PropInfo || p->param == NULL ||
+		    spa_pod_parse_object(p->param, SPA_TYPE_OBJECT_PropInfo, NULL, SPA_PROP_INFO_id, SPA_POD_Id(&id),
+					 SPA_PROP_INFO_description, SPA_POD_OPT_String(&name)) < 0)
+			continue;
+
+		prop = name ? obs_properties_get(props, name) : NULL;
+		if (!prop)
+			continue;
+
+		bool enabled = !control_overridden(dev, props, settings, id);
+		if (obs_property_enabled(prop) != enabled) {
+			obs_property_set_enabled(prop, enabled);
+			changed = true;
+		}
+	}
+	return changed;
+}
+
 static bool control_changed(void *data, obs_properties_t *props, obs_property_t *prop, obs_data_t *settings)
 {
-	UNUSED_PARAMETER(props);
-
 	struct camera_device *dev;
 	const char *device_id;
 	uint32_t id;
@@ -491,21 +634,24 @@ static bool control_changed(void *data, obs_properties_t *props, obs_property_t 
 	if (!connection || !connection->obs_pw)
 		return false;
 
-	/* The device table and the node proxies belong to the PipeWire
-	 * thread: use them with its loop locked. */
+	/* The device table, the node proxies and their params belong to the
+	 * PipeWire thread: use them with its loop locked. */
 	obs_pipewire_lock(connection->obs_pw);
 	dev = g_hash_table_lookup(connection->devices, device_id);
-	if (dev && dev->proxy)
+	/* A manual control whose automatic mode is on is ignored or refused
+	 * by the camera: it keeps its value for when that mode is off. */
+	if (dev && dev->proxy && !control_overridden(dev, props, settings, id))
 		pw_node_set_param((struct pw_node *)dev->proxy, SPA_PARAM_Props, 0, param);
+	/* An automatic control turned on or off enables or disables its
+	 * manual ones: only then is the Properties window rebuilt. A
+	 * rebuild drops the slider that is being dragged. */
+	bool changed = dev && update_controls_enabled(dev, props, settings);
 	obs_pipewire_unlock(connection->obs_pw);
 
 	if (dev == NULL)
 		blog(LOG_ERROR, "unknown device %s", device_id);
 
-	/* A new value changes nothing in the properties: returning true
-	 * would make the Properties window rebuild every widget, dropping
-	 * the slider that is being dragged. */
-	return false;
+	return changed;
 }
 
 static inline void add_control_property(obs_properties_t *props, obs_data_t *settings, struct camera_device *dev,
@@ -514,17 +660,29 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 	UNUSED_PARAMETER(dev);
 
 	const struct spa_pod *type, *pod, *labels = NULL;
+	const struct spa_pod_prop *type_prop;
 	uint32_t id, n_vals, choice, container = SPA_ID_INVALID;
 	obs_property_t *prop = NULL;
 	const char *name;
 
 	if (spa_pod_parse_object(p->param, SPA_TYPE_OBJECT_PropInfo, NULL, SPA_PROP_INFO_id, SPA_POD_Id(&id),
-				 SPA_PROP_INFO_description, SPA_POD_OPT_String(&name), SPA_PROP_INFO_type,
-				 SPA_POD_PodChoice(&type), SPA_PROP_INFO_container, SPA_POD_OPT_Id(&container),
-				 SPA_PROP_INFO_labels, SPA_POD_OPT_PodStruct(&labels)) < 0)
+				 SPA_PROP_INFO_description, SPA_POD_OPT_String(&name), SPA_PROP_INFO_container,
+				 SPA_POD_OPT_Id(&container), SPA_PROP_INFO_labels, SPA_POD_OPT_PodStruct(&labels)) < 0)
 		return;
 
+	/* The type is a choice (a range, or values), except that PipeWire's
+	 * V4L2 node publishes a menu control (Auto Exposure, Power Line
+	 * Frequency) as a plain Int with labels. The node's other plain
+	 * values (the device's path, name and fd) are no controls. */
+	type_prop = spa_pod_find_prop(p->param, NULL, SPA_PROP_INFO_type);
+	if (type_prop == NULL)
+		return;
+	type = &type_prop->value;
 	pod = spa_pod_get_values(type, &n_vals, &choice);
+
+	bool menu = !spa_pod_is_choice(type);
+	if (menu && (labels == NULL || SPA_POD_TYPE(pod) != SPA_TYPE_Int))
+		return;
 
 	container = container != SPA_ID_INVALID ? container : SPA_POD_TYPE(pod);
 
@@ -535,7 +693,7 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 		if (n_vals < 1)
 			return;
 		def = vals[0];
-		if (choice == SPA_CHOICE_Enum) {
+		if (choice == SPA_CHOICE_Enum || menu) {
 			struct spa_pod_parser prs;
 			struct spa_pod_frame f;
 
@@ -632,6 +790,7 @@ static bool device_selected(void *data, obs_properties_t *props, obs_property_t 
 
 	camera_format_list(device, property);
 	camera_update_controls(device, new_control_properties, settings);
+	update_controls_enabled(device, new_control_properties, settings);
 
 	obs_properties_add_group(props, "controls", obs_module_text("CameraControls"), OBS_GROUP_NORMAL,
 				 new_control_properties);
