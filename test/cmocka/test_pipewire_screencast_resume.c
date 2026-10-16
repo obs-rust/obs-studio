@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -34,7 +35,11 @@
  * PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Turning the monitor
  * off destroys the producer stream; while it is off, the portal fails to start
  * a screencast. Needs an X display (xvfb-run) for obs_startup(), dbus-daemon
- * and pipewire; skips (77, or cmocka skips) without them. */
+ * and pipewire; skips (77, or cmocka skips) without them.
+ *
+ * obsproject/obs-studio#13836: the streams of screen captures that are not
+ * showing (in a scene that is not live, or disabled) must stay paused, so the
+ * compositor does not copy frames for them, and start when they are shown. */
 
 #define SKIP_EXIT 77
 #define FRAME_SIZE 64
@@ -275,17 +280,21 @@ struct producer {
 	/* Written on the PipeWire thread, read under the loop lock. */
 	uint32_t node;
 	uint8_t value;
-	uint32_t capture_node;
-	uint32_t capture_client;
+	struct capture_node {
+		uint32_t node, client;
+		uint32_t seq;
+		/* Linked once, to the monitor that was on when it appeared. */
+		bool linked;
+		struct pw_proxy *link;
+		struct spa_hook link_listener;
+	} captures[128];
+	size_t n_captures;
+	uint32_t captures_seen;
 	struct {
 		uint32_t id, node;
 		bool out;
-	} ports[32];
+	} ports[64];
 	size_t n_ports;
-	struct pw_proxy *link;
-	struct spa_hook link_listener;
-	uint32_t link_in_node;
-	uint32_t link_in_client;
 	struct pw_proxy *error_client;
 };
 
@@ -370,9 +379,14 @@ static void on_registry_global(void *data, uint32_t id, uint32_t permissions, co
 	UNUSED_PARAMETER(version);
 
 	if (strcmp(type, PW_TYPE_INTERFACE_Node) == 0) {
-		if (strcmp(dict_str(props, PW_KEY_MEDIA_CLASS), "Stream/Input/Video") == 0) {
-			producer.capture_node = id;
-			producer.capture_client = dict_uint(props, PW_KEY_CLIENT_ID);
+		if (strcmp(dict_str(props, PW_KEY_MEDIA_CLASS), "Stream/Input/Video") == 0 &&
+		    producer.n_captures < SPA_N_ELEMENTS(producer.captures)) {
+			struct capture_node *capture_node = &producer.captures[producer.n_captures++];
+
+			memset(capture_node, 0, sizeof(*capture_node));
+			capture_node->node = id;
+			capture_node->client = dict_uint(props, PW_KEY_CLIENT_ID);
+			capture_node->seq = ++producer.captures_seen;
 		}
 	} else if (strcmp(type, PW_TYPE_INTERFACE_Port) == 0 && producer.n_ports < SPA_N_ELEMENTS(producer.ports)) {
 		producer.ports[producer.n_ports].id = id;
@@ -382,16 +396,28 @@ static void on_registry_global(void *data, uint32_t id, uint32_t permissions, co
 	}
 }
 
+static void capture_node_clear(struct capture_node *capture_node)
+{
+	if (capture_node->link) {
+		spa_hook_remove(&capture_node->link_listener);
+		pw_proxy_destroy(capture_node->link);
+	}
+	capture_node->link = NULL;
+}
+
 static void on_registry_global_remove(void *data, uint32_t id)
 {
 	UNUSED_PARAMETER(data);
 
-	if (id == producer.capture_node)
-		producer.capture_node = SPA_ID_INVALID;
-	/* Node ids are reused: a new capture stream can get the id of the one
-	 * linked last. */
-	if (id == producer.link_in_node)
-		producer.link_in_node = SPA_ID_INVALID;
+	/* Node ids are reused: a new capture stream can get the id of one
+	 * linked before. It gets a new entry; the old one stays, gone. */
+	for (size_t i = 0; i < producer.n_captures; i++) {
+		if (producer.captures[i].node == id) {
+			capture_node_clear(&producer.captures[i]);
+			producer.captures[i].node = SPA_ID_INVALID;
+			producer.captures[i].linked = true;
+		}
+	}
 	for (size_t i = 0; i < producer.n_ports; i++) {
 		if (producer.ports[i].id == id) {
 			producer.ports[i] = producer.ports[--producer.n_ports];
@@ -420,18 +446,18 @@ static uint32_t find_port(uint32_t node, bool out)
  * stream goes to the error state with the link's message. */
 static void on_link_info(void *data, const struct pw_link_info *info)
 {
-	UNUSED_PARAMETER(data);
+	struct capture_node *capture_node = data;
 
 	if (!(info->change_mask & PW_LINK_CHANGE_MASK_STATE) || info->state != PW_LINK_STATE_ERROR ||
-	    producer.link_in_client == SPA_ID_INVALID)
+	    capture_node->client == SPA_ID_INVALID)
 		return;
 
 	if (producer.error_client)
 		pw_proxy_destroy(producer.error_client);
-	producer.error_client = pw_registry_bind(producer.registry, producer.link_in_client, PW_TYPE_INTERFACE_Client,
+	producer.error_client = pw_registry_bind(producer.registry, capture_node->client, PW_TYPE_INTERFACE_Client,
 						 PW_VERSION_CLIENT, 0);
 	if (producer.error_client)
-		pw_client_error((struct pw_client *)producer.error_client, producer.link_in_node, -EPIPE,
+		pw_client_error((struct pw_client *)producer.error_client, capture_node->node, -EPIPE,
 				info->error ? info->error : "link failed");
 }
 
@@ -440,7 +466,7 @@ static const struct pw_link_events link_events = {
 	.info = on_link_info,
 };
 
-/* The portal's stream is meant for a session manager to link; this
+/* The portal's streams are meant for a session manager to link; this
  * PipeWire has none, so link each new capture stream to the monitor directly,
  * once. A capture stream whose monitor went away stays unlinked, as it would
  * in a desktop session: the compositor's next screencast is a new node, which
@@ -448,39 +474,38 @@ static const struct pw_link_events link_events = {
 static void link_capture_locked(void)
 {
 	uint32_t out_port = find_port(producer.node, true);
-	uint32_t in_port = find_port(producer.capture_node, false);
-	struct pw_properties *props;
 
-	if (producer.capture_node == producer.link_in_node)
-		return;
-	if (producer.node == SPA_ID_INVALID || producer.capture_node == SPA_ID_INVALID || out_port == SPA_ID_INVALID ||
-	    in_port == SPA_ID_INVALID)
+	if (producer.node == SPA_ID_INVALID || out_port == SPA_ID_INVALID)
 		return;
 
-	if (producer.link)
-		pw_proxy_destroy(producer.link);
-	props = pw_properties_new(NULL, NULL);
-	pw_properties_setf(props, PW_KEY_LINK_OUTPUT_NODE, "%u", producer.node);
-	pw_properties_setf(props, PW_KEY_LINK_OUTPUT_PORT, "%u", out_port);
-	pw_properties_setf(props, PW_KEY_LINK_INPUT_NODE, "%u", producer.capture_node);
-	pw_properties_setf(props, PW_KEY_LINK_INPUT_PORT, "%u", in_port);
-	producer.link = pw_core_create_object(producer.core, "link-factory", PW_TYPE_INTERFACE_Link, PW_VERSION_LINK,
-					      &props->dict, 0);
-	spa_zero(producer.link_listener);
-	pw_link_add_listener((struct pw_link *)producer.link, &producer.link_listener, &link_events, NULL);
-	producer.link_in_node = producer.capture_node;
-	producer.link_in_client = producer.capture_client;
-	pw_properties_free(props);
+	for (size_t i = 0; i < producer.n_captures; i++) {
+		struct capture_node *capture_node = &producer.captures[i];
+		uint32_t in_port = find_port(capture_node->node, false);
+		struct pw_properties *props;
+
+		if (capture_node->linked || in_port == SPA_ID_INVALID)
+			continue;
+
+		props = pw_properties_new(NULL, NULL);
+		pw_properties_setf(props, PW_KEY_LINK_OUTPUT_NODE, "%u", producer.node);
+		pw_properties_setf(props, PW_KEY_LINK_OUTPUT_PORT, "%u", out_port);
+		pw_properties_setf(props, PW_KEY_LINK_INPUT_NODE, "%u", capture_node->node);
+		pw_properties_setf(props, PW_KEY_LINK_INPUT_PORT, "%u", in_port);
+		capture_node->link = pw_core_create_object(producer.core, "link-factory", PW_TYPE_INTERFACE_Link,
+							   PW_VERSION_LINK, &props->dict, 0);
+		spa_zero(capture_node->link_listener);
+		if (capture_node->link)
+			pw_link_add_listener((struct pw_link *)capture_node->link, &capture_node->link_listener,
+					     &link_events, capture_node);
+		capture_node->linked = true;
+		pw_properties_free(props);
+	}
 }
 
 static bool producer_connect(void)
 {
 	pw_init(NULL, NULL);
 	producer.node = SPA_ID_INVALID;
-	producer.capture_node = SPA_ID_INVALID;
-	producer.capture_client = SPA_ID_INVALID;
-	producer.link_in_node = SPA_ID_INVALID;
-	producer.link_in_client = SPA_ID_INVALID;
 
 	producer.loop = pw_thread_loop_new("screencast-resume-producer", NULL);
 	producer.context = pw_context_new(pw_thread_loop_get_loop(producer.loop), NULL, 0);
@@ -576,9 +601,12 @@ static void monitor_off(void)
 {
 	set_portal_node(SPA_ID_INVALID);
 	pw_thread_loop_lock(producer.loop);
-	if (producer.link) {
-		pw_proxy_destroy(producer.link);
-		producer.link = NULL;
+	for (size_t i = 0; i < producer.n_captures; i++) {
+		if (producer.captures[i].link) {
+			spa_hook_remove(&producer.captures[i].link_listener);
+			pw_proxy_destroy(producer.captures[i].link);
+			producer.captures[i].link = NULL;
+		}
 	}
 	if (producer.stream) {
 		pw_stream_destroy(producer.stream);
@@ -617,6 +645,9 @@ static void producer_disconnect(void)
 	pw_thread_loop_lock(producer.loop);
 	if (producer.timer)
 		pw_loop_destroy_source(pw_thread_loop_get_loop(producer.loop), producer.timer);
+	for (size_t i = 0; i < producer.n_captures; i++)
+		capture_node_clear(&producer.captures[i]);
+	producer.n_captures = 0;
 	if (producer.error_client)
 		pw_proxy_destroy(producer.error_client);
 	if (producer.registry)
@@ -628,6 +659,56 @@ static void producer_disconnect(void)
 	pw_context_destroy(producer.context);
 	pw_thread_loop_destroy(producer.loop);
 	memset(&producer, 0, sizeof(producer));
+}
+
+/* ------------------------------------------------------------------ */
+/* Frames each capture stream takes                                   */
+
+/* Linked with -Wl,--wrap=pw_stream_dequeue_buffer: every buffer a stream
+ * dequeues is a frame it got. Counted per node; called on the PipeWire
+ * threads. */
+struct pw_buffer *__real_pw_stream_dequeue_buffer(struct pw_stream *stream);
+struct pw_buffer *__wrap_pw_stream_dequeue_buffer(struct pw_stream *stream);
+
+static pthread_mutex_t frames_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct {
+	uint32_t node;
+	uint64_t frames;
+} frame_counts[256];
+static size_t n_frame_counts;
+
+struct pw_buffer *__wrap_pw_stream_dequeue_buffer(struct pw_stream *stream)
+{
+	struct pw_buffer *buffer = __real_pw_stream_dequeue_buffer(stream);
+	uint32_t node;
+	size_t i;
+
+	if (!buffer)
+		return NULL;
+
+	node = pw_stream_get_node_id(stream);
+	pthread_mutex_lock(&frames_mutex);
+	for (i = 0; i < n_frame_counts && frame_counts[i].node != node; i++)
+		;
+	if (i == n_frame_counts && n_frame_counts < SPA_N_ELEMENTS(frame_counts))
+		frame_counts[n_frame_counts++].node = node;
+	if (i < n_frame_counts)
+		frame_counts[i].frames++;
+	pthread_mutex_unlock(&frames_mutex);
+	return buffer;
+}
+
+static uint64_t frames_of(uint32_t node)
+{
+	uint64_t frames = 0;
+
+	pthread_mutex_lock(&frames_mutex);
+	for (size_t i = 0; i < n_frame_counts; i++) {
+		if (frame_counts[i].node == node)
+			frames = frame_counts[i].frames;
+	}
+	pthread_mutex_unlock(&frames_mutex);
+	return frames;
 }
 
 /* ------------------------------------------------------------------ */
@@ -660,6 +741,12 @@ static uint32_t get_sample_luma(void)
 
 static bool obs_up;
 static obs_source_t *capture;
+/* Sources that are not showing: one in a scene that is not live, one
+ * disabled in a live scene (obsproject/obs-studio#13836). */
+static obs_scene_t *other_scene;
+static obs_scene_t *live_scene;
+static obs_source_t *other_capture;
+static obs_source_t *disabled_capture;
 static GTestDBus *bus;
 static struct portal portal;
 static Display *display;
@@ -707,6 +794,19 @@ static bool wait_for_value(uint8_t value, uint32_t timeout_ms)
 	return false;
 }
 
+/* A source the user set up before: it has a restore token, so the portal
+ * starts it again without asking. */
+static obs_source_t *create_capture(const char *name)
+{
+	obs_data_t *settings = obs_data_create();
+	obs_source_t *source;
+
+	obs_data_set_string(settings, "RestoreToken", RESTORE_TOKEN);
+	source = obs_source_create("pipewire-screen-capture-source", name, settings, NULL);
+	obs_data_release(settings);
+	return source;
+}
+
 static int setup(void **state)
 {
 	g_autofree char *display_name = g_strdup(getenv("DISPLAY"));
@@ -725,7 +825,6 @@ static int setup(void **state)
 		.gpu_conversion = true,
 		.scale_type = OBS_SCALE_POINT,
 	};
-	obs_data_t *settings;
 
 	UNUSED_PARAMETER(state);
 
@@ -772,13 +871,8 @@ static int setup(void **state)
 	}
 	obs_up = true;
 
-	/* A source the user set up before: it has a restore token, so the
-	 * portal starts it again without asking. */
 	screencast_portal_load();
-	settings = obs_data_create();
-	obs_data_set_string(settings, "RestoreToken", RESTORE_TOKEN);
-	capture = obs_source_create("pipewire-screen-capture-source", "capture", settings, NULL);
-	obs_data_release(settings);
+	capture = create_capture("capture");
 	if (capture)
 		obs_set_output_source(0, capture);
 	obs_add_raw_video_callback(NULL, on_raw_video, NULL);
@@ -793,6 +887,16 @@ static int teardown(void **state)
 	if (obs_up) {
 		obs_remove_raw_video_callback(on_raw_video, NULL);
 		obs_set_output_source(0, NULL);
+		obs_set_output_source(1, NULL);
+		/* The scenes release their items when they are destroyed, on
+		 * the destruction thread. */
+		obs_scene_release(other_scene);
+		obs_scene_release(live_scene);
+		obs_wait_for_destroy_queue();
+		obs_source_release(other_capture);
+		obs_source_release(disabled_capture);
+		other_scene = live_scene = NULL;
+		other_capture = disabled_capture = NULL;
 		obs_source_release(capture);
 		capture = NULL;
 		obs_wait_for_destroy_queue();
@@ -960,6 +1064,285 @@ static void frames_resume_after_failed_reconnect_stream(void **state)
 	check_no_picker();
 }
 
+/* ------------------------------------------------------------------ */
+/* Sources that are not showing (obsproject/obs-studio#13836)          */
+
+/* With several screen captures, the ones in other scenes or disabled made
+ * the compositor copy every frame for them too: their streams started active
+ * and only a hide after a show paused them. */
+
+static uint32_t captures_seen(void)
+{
+	uint32_t seen;
+
+	pw_thread_loop_lock(producer.loop);
+	seen = producer.captures_seen;
+	pw_thread_loop_unlock(producer.loop);
+	return seen;
+}
+
+/* The node of the newest capture stream that appeared after seq and is
+ * linked to the monitor, or SPA_ID_INVALID. */
+static uint32_t linked_capture_after(uint32_t seq)
+{
+	uint32_t node = SPA_ID_INVALID;
+	uint32_t newest = seq;
+
+	pw_thread_loop_lock(producer.loop);
+	for (size_t i = 0; i < producer.n_captures; i++) {
+		const struct capture_node *capture_node = &producer.captures[i];
+
+		if (capture_node->seq > newest && capture_node->node != SPA_ID_INVALID && capture_node->link) {
+			newest = capture_node->seq;
+			node = capture_node->node;
+		}
+	}
+	pw_thread_loop_unlock(producer.loop);
+	return node;
+}
+
+static uint32_t wait_linked_capture_after(uint32_t seq, uint32_t timeout_ms)
+{
+	uint32_t node = SPA_ID_INVALID;
+
+	for (uint32_t waited = 0; waited < timeout_ms && node == SPA_ID_INVALID; waited += 50) {
+		pump(50);
+		node = linked_capture_after(seq);
+	}
+	return node;
+}
+
+/* Frames the capture stream on node gets in ms (the monitor sends 30 a
+ * second). */
+static uint64_t frames_in(uint32_t node, uint32_t ms)
+{
+	uint64_t before = frames_of(node);
+
+	pump(ms);
+	return frames_of(node) - before;
+}
+
+/* Waits up to timeout_ms for the stream on node to stop getting frames:
+ * none in 300 ms. */
+static bool wait_no_frames(uint32_t node, uint32_t timeout_ms)
+{
+	for (uint32_t waited = 0; waited < timeout_ms; waited += 300) {
+		if (frames_in(node, 300) == 0)
+			return true;
+	}
+	return false;
+}
+
+/* Milliseconds until the output shows the gray level value, or UINT32_MAX. */
+static uint32_t ms_until_value(uint8_t value, uint32_t timeout_ms)
+{
+	const uint32_t want = expected_luma(value);
+	const uint64_t start = os_gettime_ns();
+
+	while (os_gettime_ns() - start < timeout_ms * 1000000ULL) {
+		uint32_t luma = get_sample_luma();
+
+		if (luma + 3 >= want && luma <= want + 3)
+			return (uint32_t)((os_gettime_ns() - start) / 1000000);
+		pump(5);
+	}
+	return UINT32_MAX;
+}
+
+static uint32_t other_node = SPA_ID_INVALID;
+static uint32_t disabled_node = SPA_ID_INVALID;
+
+/* As a scene collection loads them: one source in a scene that is not live,
+ * and one whose item is disabled in a scene that is. */
+static void add_sources_not_showing(void)
+{
+	obs_sceneitem_t *item;
+	uint32_t seq;
+
+	if (other_capture)
+		return;
+
+	seq = captures_seen();
+	other_scene = obs_scene_create_private("other scene");
+	other_capture = create_capture("capture in another scene");
+	obs_scene_add(other_scene, other_capture);
+	other_node = wait_linked_capture_after(seq, 10000);
+
+	seq = captures_seen();
+	live_scene = obs_scene_create_private("live scene");
+	disabled_capture = create_capture("disabled capture");
+	item = obs_scene_add(live_scene, disabled_capture);
+	obs_sceneitem_set_visible(item, false);
+	obs_set_output_source(1, obs_scene_get_source(live_scene));
+	disabled_node = wait_linked_capture_after(seq, 10000);
+
+	if (other_node == SPA_ID_INVALID || disabled_node == SPA_ID_INVALID) {
+		fprintf(stderr, "the streams of the sources that are not showing were not set up\n");
+		fail();
+	}
+}
+
+static void sources_not_showing_keep_their_streams_inactive(void **state)
+{
+	uint64_t main_frames, other_frames, disabled_frames;
+	uint32_t main_node;
+
+	UNUSED_PARAMETER(state);
+	require_capture();
+	main_node = linked_capture_after(0);
+
+	add_sources_not_showing();
+	/* Plenty of time for a stream to start, as a showing one does. */
+	pump(1000);
+
+	other_frames = frames_of(other_node);
+	disabled_frames = frames_of(disabled_node);
+	main_frames = frames_of(main_node);
+	pump(2000);
+	main_frames = frames_of(main_node) - main_frames;
+	other_frames = frames_of(other_node) - other_frames;
+	disabled_frames = frames_of(disabled_node) - disabled_frames;
+	fprintf(stderr,
+		"frames in 2 s: showing capture %" PRIu64 ", in another scene %" PRIu64 ", disabled %" PRIu64 "\n",
+		main_frames, other_frames, disabled_frames);
+	/* Control: the showing capture gets the monitor's frames. */
+	assert_true(main_frames >= 20);
+	if (other_frames || disabled_frames) {
+		fprintf(stderr, "a source that is not showing has a stream that gets frames\n");
+		fail();
+	}
+	check_no_picker();
+}
+
+/* Showing such a source starts its stream at once, every time, and hiding it
+ * pauses it again. */
+static void showing_a_source_starts_its_stream(void **state)
+{
+	const uint32_t rounds = 20;
+	uint8_t value = DARK;
+	uint32_t slowest = 0;
+	uint64_t total = 0;
+
+	UNUSED_PARAMETER(state);
+	require_capture();
+	add_sources_not_showing();
+
+	/* Nothing showing: the output is black. */
+	obs_set_output_source(0, NULL);
+	pump(500);
+
+	for (uint32_t i = 0; i < rounds; i++) {
+		uint32_t ms;
+
+		/* A new picture while the source is hidden: only frames
+		 * streamed after the show have it. */
+		value = i % 2 ? GRAY : DARK;
+		producer_set_value(value);
+		pump(100);
+		obs_set_output_source(0, other_capture);
+		ms = ms_until_value(value, 3000);
+		if (ms == UINT32_MAX) {
+			fprintf(stderr, "round %u: the shown source did not stream (luma %u, want %u)\n", i,
+				get_sample_luma(), expected_luma(value));
+			fail();
+		}
+		slowest = ms > slowest ? ms : slowest;
+		total += ms;
+
+		obs_set_output_source(0, NULL);
+		if (!wait_no_frames(other_node, 3000)) {
+			fprintf(stderr, "round %u: the hidden source's stream kept getting frames\n", i);
+			fail();
+		}
+	}
+	fprintf(stderr, "first new frame after show: %.1f ms on average, %u ms at most (%u rounds)\n",
+		(double)total / rounds, slowest, rounds);
+	/* The output and the monitor both run at 30 fps: a few frames. */
+	assert_true(slowest < 1000);
+
+	obs_set_output_source(0, capture);
+	assert_true(wait_for_value(value, 5000));
+	check_no_picker();
+}
+
+/* obs-rust/obs-studio#109: streams that replace lost ones while their
+ * sources are not showing stay paused too, and start when shown. */
+static void sources_not_showing_stay_inactive_after_reconnect(void **state)
+{
+	uint32_t seq;
+	uint32_t running = 0;
+	uint32_t paused = 0;
+
+	UNUSED_PARAMETER(state);
+	require_capture();
+	add_sources_not_showing();
+
+	seq = captures_seen();
+	monitor_off();
+	pump(2500);
+	if (!monitor_on(WHITE)) {
+		fprintf(stderr, "the monitor did not come back\n");
+		fail();
+	}
+	if (!wait_for_value(WHITE, 15000)) {
+		fprintf(stderr, "the showing capture did not come back (luma %u)\n", get_sample_luma());
+		fail();
+	}
+	/* All three reconnect. */
+	for (uint32_t waited = 0; waited < 15000; waited += 50) {
+		uint32_t linked = 0;
+
+		pw_thread_loop_lock(producer.loop);
+		for (size_t i = 0; i < producer.n_captures; i++) {
+			if (producer.captures[i].seq > seq && producer.captures[i].node != SPA_ID_INVALID &&
+			    producer.captures[i].link)
+				linked++;
+		}
+		pw_thread_loop_unlock(producer.loop);
+		if (linked >= 3)
+			break;
+		pump(50);
+	}
+	pump(1000);
+
+	{
+		uint32_t nodes[SPA_N_ELEMENTS(producer.captures)];
+		uint64_t before[SPA_N_ELEMENTS(producer.captures)];
+		size_t n = 0;
+
+		pw_thread_loop_lock(producer.loop);
+		for (size_t i = 0; i < producer.n_captures; i++) {
+			if (producer.captures[i].seq > seq && producer.captures[i].node != SPA_ID_INVALID &&
+			    producer.captures[i].link)
+				nodes[n++] = producer.captures[i].node;
+		}
+		pw_thread_loop_unlock(producer.loop);
+		for (size_t i = 0; i < n; i++)
+			before[i] = frames_of(nodes[i]);
+		pump(2000);
+		for (size_t i = 0; i < n; i++) {
+			if (frames_of(nodes[i]) > before[i])
+				running++;
+			else
+				paused++;
+		}
+	}
+	fprintf(stderr, "after reconnecting: %u streaming, %u paused streams\n", running, paused);
+	assert_int_equal(running, 1);
+	assert_int_equal(paused, 2);
+
+	producer_set_value(GRAY);
+	pump(100);
+	obs_set_output_source(0, disabled_capture);
+	if (ms_until_value(GRAY, 3000) == UINT32_MAX) {
+		fprintf(stderr, "the reconnected source did not stream when shown (luma %u)\n", get_sample_luma());
+		fail();
+	}
+	obs_set_output_source(0, capture);
+	assert_true(wait_for_value(GRAY, 5000));
+	check_no_picker();
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -967,6 +1350,9 @@ int main(void)
 		cmocka_unit_test(hidden_source_is_not_lost),
 		cmocka_unit_test(frames_resume_after_monitor_returns),
 		cmocka_unit_test(frames_resume_after_failed_reconnect_stream),
+		cmocka_unit_test(sources_not_showing_keep_their_streams_inactive),
+		cmocka_unit_test(showing_a_source_starts_its_stream),
+		cmocka_unit_test(sources_not_showing_stay_inactive_after_reconnect),
 	};
 
 	g_autofree char *dbus_daemon = g_find_program_in_path("dbus-daemon");

@@ -3,7 +3,8 @@
 # portal on a private D-Bus bus and a producer stream (the monitor) on a
 # private PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Needs an X
 # display (xvfb-run) for obs_startup(), dbus-daemon and pipewire; skips (77,
-# or cmocka skips) without them.
+# or cmocka skips) without them. Also: screen captures that are not showing
+# keep their streams paused (obsproject/obs-studio#13836).
 if(OS_LINUX AND TARGET OBS::pipewire)
   find_package(X11 REQUIRED)
   find_package(PkgConfig REQUIRED)
@@ -35,6 +36,8 @@ if(OS_LINUX AND TARGET OBS::pipewire)
       X11::X11
       ${CMOCKA_LIBRARIES}
   )
+  # Counts the frames each capture stream takes (obsproject/obs-studio#13836).
+  target_link_options(test_pipewire_screencast_resume PRIVATE "-Wl,--wrap=pw_stream_dequeue_buffer")
   # A build tree has no libobs-opengl on the loader path, so load it by path.
   target_compile_definitions(
     test_pipewire_screencast_resume
