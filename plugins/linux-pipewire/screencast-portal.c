@@ -70,6 +70,15 @@ struct screencast_portal_capture {
 	 * thread. Taken last: never take another lock while holding it. */
 	pthread_mutex_t streams_mutex;
 
+	/* Whether libobs last showed or hid the source, and the lock that
+	 * keeps it and obs_pw_stream's active state in step: show() and
+	 * hide() run on the video thread, a new stream is connected on the
+	 * main loop. A stream connects paused unless the source is showing
+	 * (obsproject/obs-studio#13836). Taken before the graphics lock and
+	 * streams_mutex. */
+	pthread_mutex_t show_mutex;
+	bool showing;
+
 	/* Reconnection after the PipeWire daemon goes away or the compositor
 	 * ends the screencast (e.g. its monitor was switched off). The dead
 	 * stream is kept so its last frame stays on screen until the new
@@ -288,12 +297,14 @@ static void on_pipewire_remote_opened_cb(GObject *source, GAsyncResult *res, voi
 			},
 	};
 
+	/* A source that is not showing (disabled, or in a scene that is not
+	 * live) gets a paused stream, so the compositor does not copy frames
+	 * for it; show() starts it. */
+	pthread_mutex_lock(&capture->show_mutex);
+	connect_info.inactive = !capture->showing;
 	capture->obs_pw_stream =
 		obs_pipewire_connect_stream(capture->obs_pw, capture->source, capture->pipewire_node, &connect_info);
-
-	/* show/hide calls made while reconnecting had no stream to act on. */
-	if (capture->reconnect.active && capture->obs_pw_stream && !obs_source_showing(capture->source))
-		obs_pipewire_stream_hide(capture->obs_pw_stream);
+	pthread_mutex_unlock(&capture->show_mutex);
 
 	if (capture->reconnect.active) {
 		if (capture->obs_pw_stream)
@@ -674,10 +685,12 @@ static void destroy_live_stream(struct screencast_portal_capture *capture)
 	obs_pipewire_stream *obs_pw_stream;
 	obs_pipewire *obs_pw;
 
+	pthread_mutex_lock(&capture->show_mutex);
 	lock_streams(capture);
 	obs_pw_stream = g_steal_pointer(&capture->obs_pw_stream);
 	obs_pw = g_steal_pointer(&capture->obs_pw);
 	unlock_streams(capture);
+	pthread_mutex_unlock(&capture->show_mutex);
 
 	obs_pipewire_stream_destroy(obs_pw_stream);
 	obs_pipewire_destroy(obs_pw);
@@ -873,10 +886,12 @@ static gboolean on_pipewire_disconnected_idle(void *user_data)
 
 	/* Keep the dead stream around so the last frame keeps rendering. */
 	release_held_stream(capture);
+	pthread_mutex_lock(&capture->show_mutex);
 	lock_streams(capture);
 	capture->reconnect.held_obs_pw_stream = g_steal_pointer(&capture->obs_pw_stream);
 	capture->reconnect.held_obs_pw = g_steal_pointer(&capture->obs_pw);
 	unlock_streams(capture);
+	pthread_mutex_unlock(&capture->show_mutex);
 
 	capture->reconnect.active = true;
 	capture->reconnect.attempts = 0;
@@ -976,6 +991,7 @@ static void *screencast_portal_desktop_capture_create(obs_data_t *settings, obs_
 	capture->source = source;
 	capture->weak_source = obs_source_get_weak_source(source);
 	pthread_mutex_init(&capture->streams_mutex, NULL);
+	pthread_mutex_init(&capture->show_mutex, NULL);
 
 	init_screencast_capture(capture);
 
@@ -992,6 +1008,7 @@ static void *screencast_portal_window_capture_create(obs_data_t *settings, obs_s
 	capture->source = source;
 	capture->weak_source = obs_source_get_weak_source(source);
 	pthread_mutex_init(&capture->streams_mutex, NULL);
+	pthread_mutex_init(&capture->show_mutex, NULL);
 
 	init_screencast_capture(capture);
 
@@ -1009,6 +1026,7 @@ static void *screencast_portal_capture_create(obs_data_t *settings, obs_source_t
 	capture->source = source;
 	capture->weak_source = obs_source_get_weak_source(source);
 	pthread_mutex_init(&capture->streams_mutex, NULL);
+	pthread_mutex_init(&capture->show_mutex, NULL);
 
 	init_screencast_capture(capture);
 
@@ -1027,6 +1045,7 @@ static void free_capture(struct screencast_portal_capture *capture)
 	g_clear_pointer(&capture->finish_destroy_source, g_source_unref);
 	obs_weak_source_release(capture->weak_source);
 	pthread_mutex_destroy(&capture->streams_mutex);
+	pthread_mutex_destroy(&capture->show_mutex);
 	bfree(capture);
 }
 
@@ -1128,16 +1147,22 @@ static void screencast_portal_capture_show(void *data)
 {
 	struct screencast_portal_capture *capture = data;
 
+	pthread_mutex_lock(&capture->show_mutex);
+	capture->showing = true;
 	if (capture->obs_pw_stream)
 		obs_pipewire_stream_show(capture->obs_pw_stream);
+	pthread_mutex_unlock(&capture->show_mutex);
 }
 
 static void screencast_portal_capture_hide(void *data)
 {
 	struct screencast_portal_capture *capture = data;
 
+	pthread_mutex_lock(&capture->show_mutex);
+	capture->showing = false;
 	if (capture->obs_pw_stream)
 		obs_pipewire_stream_hide(capture->obs_pw_stream);
+	pthread_mutex_unlock(&capture->show_mutex);
 }
 
 static uint32_t screencast_portal_capture_get_width(void *data)

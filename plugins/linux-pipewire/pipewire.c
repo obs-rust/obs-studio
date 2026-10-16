@@ -1493,10 +1493,12 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 	}
 
 	pw_stream_connect(obs_pw_stream->stream, PW_DIRECTION_INPUT, pipewire_node,
-			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS, params, n_params);
+			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS |
+				  (connect_info->inactive ? PW_STREAM_FLAG_INACTIVE : 0),
+			  params, n_params);
 	obs_pw->watched_node = (uint32_t)pipewire_node;
 
-	blog(LOG_INFO, "[pipewire] Playing stream %p", obs_pw_stream->stream);
+	blog(LOG_INFO, "[pipewire] %s stream %p", connect_info->inactive ? "Paused" : "Playing", obs_pw_stream->stream);
 
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 	bfree(params);

@@ -30,6 +30,9 @@ typedef struct _obs_pipewire_stream obs_pipewire_stream;
 struct obs_pipewire_connect_stream_info {
 	const char *stream_name;
 	struct pw_properties *stream_properties;
+	/* Connect the stream paused, for a source that is not showing:
+	 * obs_pipewire_stream_show() starts it. */
+	bool inactive;
 	struct {
 		bool cursor_visible;
 	} screencast;
