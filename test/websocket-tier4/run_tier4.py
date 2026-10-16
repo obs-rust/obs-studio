@@ -1216,6 +1216,47 @@ async def test_gpu_acceleration_software(log_path):
           "no 'GPU acceleration: YELLOW/RED' line in the OBS log")
 
 
+def obs_pids(server):
+    """PIDs of the OBS binary in the server's process group (xvfb-run's child)."""
+    want = os.path.realpath(shutil.which(server.obs_bin) or server.obs_bin)
+    pids = []
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            if os.getpgid(int(d)) != server.proc.pid:
+                continue
+            if os.path.realpath(f"/proc/{d}/exe") == want:
+                pids.append(int(d))
+        except OSError:
+            continue
+    return pids
+
+
+def test_one_libsrt_mapped(server):
+    """One libsrt in the OBS process. obs-ffmpeg's SRT output links libsrt,
+    and FFmpeg's libavformat (srt:// Media Sources) links it too. If they
+    are two builds (Ubuntu's libsrt.so.1.5, OpenSSL, and
+    libsrt-gnutls.so.1.5, which Ubuntu's FFmpeg uses), both copies are
+    loaded: their C++ globals resolve to one copy, both copies' destructors
+    free them, and OBS aborts on quit after any SRT use."""
+    if not os.path.exists("/proc/self/maps"):
+        print("  (no /proc: libsrt check skipped)", flush=True)
+        return
+    pids = obs_pids(server)
+    check("libs:OBS process found", bool(pids), f"no {server.obs_bin} process")
+    libs = set()
+    for pid in pids:
+        with open(f"/proc/{pid}/maps") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 6 and os.path.basename(parts[5]).startswith("libsrt"):
+                    libs.add(os.path.realpath(parts[5]))
+    print(f"  libsrt mapped into OBS: {' '.join(sorted(libs)) or 'none'}", flush=True)
+    check("libs:exactly one libsrt mapped into OBS", len(libs) == 1,
+          f"{len(libs)} mapped: {' '.join(sorted(libs)) or 'none'}")
+
+
 async def test_stats_rescale_output():
     """GetStats must count the frames of a recording encoder that rescales
     the output (Settings > Output > Recording > Rescale Output). Such an
@@ -1275,11 +1316,14 @@ RESCALE_PROFILE = {
 
 async def run_gpu_phase(obs_bin):
     """OBS forced onto llvmpipe: GetStats.gpuAcceleration and the startup
-    warning (obs-rust/obs-studio#846, #940)."""
+    warning (obs-rust/obs-studio#846, #940); and one libsrt in the
+    process."""
     server = ObsServer(obs_bin, PORT, password=None, extra_env={
         "LIBGL_ALWAYS_SOFTWARE": "1", "GALLIUM_DRIVER": "llvmpipe"})
     server.start()
     try:
+        print("== packaged libraries ==", flush=True)
+        test_one_libsrt_mapped(server)
         print("== GPU acceleration on llvmpipe ==", flush=True)
         await test_gpu_acceleration_software(server.log)
     finally:
