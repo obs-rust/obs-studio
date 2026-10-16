@@ -62,7 +62,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_test_jobs_are_a_mode_by_shard_matrix(self):
         t = job("rust-linux-tier2")
-        self.assertIn("needs: [check-event, ci-mode, lane-proofs, rust-linux-tier2-build]", t)
+        self.assertIn("needs: [check-event, ci-mode, rust-linux-tier2-build]", t)
         self.assertRegex(t, r"mode:\s*\[\s*OFF,\s*ON\s*\]")
         self.assertRegex(t, r"shard:\s*\[\s*1,\s*2,\s*3\s*\]")
         self.assertIn("OBS_TIER2_STAGE: test", t)
