@@ -25,6 +25,13 @@ void v4l2_framerate_list_add_discrete(obs_property_t *prop, struct dstr *buffer,
 	obs_property_list_add_int(prop, buffer->array, pack);
 }
 
+int64_t v4l2_framerate_saved(int64_t setting, const struct v4l2_fract *intervals, size_t count)
+{
+	(void)intervals;
+	(void)count;
+	return setting;
+}
+
 bool v4l2_framerate_changed(int64_t current, int64_t requested, bool *unchanged)
 {
 	if (requested == -1 && !*unchanged) {

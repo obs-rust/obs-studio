@@ -89,6 +89,9 @@ struct v4l2_data {
 
 	bool framerate_unchanged;
 	bool resolution_unchanged;
+	/* the framerate setting v4l2_init() mapped a saved value to, for
+	 * v4l2_update() to store; 0 if none */
+	int64_t framerate_setting;
 	int_fast32_t dev;
 	int width;
 	int height;
@@ -1203,6 +1206,29 @@ static void v4l2_restore_controls(struct v4l2_data *data)
 	pthread_mutex_unlock(&data->controls_mutex);
 }
 
+/*
+ * The framerate a saved setting asks for at the device's format and size
+ */
+static int64_t v4l2_saved_framerate(int_fast32_t dev, uint32_t pixelformat, int width, int height, int64_t setting)
+{
+	struct v4l2_fract intervals[64];
+	size_t count = 0;
+	struct v4l2_frmivalenum frmival = {
+		.pixel_format = pixelformat,
+		.width = width,
+		.height = height,
+	};
+
+	while (count < sizeof(intervals) / sizeof(intervals[0]) &&
+	       v4l2_ioctl(dev, VIDIOC_ENUM_FRAMEINTERVALS, &frmival) == 0 &&
+	       frmival.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+		intervals[count++] = frmival.discrete;
+		frmival.index++;
+	}
+
+	return v4l2_framerate_saved(setting, intervals, count);
+}
+
 /**
  * Initialize the v4l2 device
  *
@@ -1217,6 +1243,7 @@ static void v4l2_init(struct v4l2_data *data)
 {
 	uint32_t input_caps;
 	int fps_num, fps_denom;
+	int64_t saved;
 
 	blog(LOG_INFO, "Start capture from %s", data->device_id);
 	/* Close-on-exec, so processes OBS starts (obs-ffmpeg-mux while recording)
@@ -1276,6 +1303,13 @@ static void v4l2_init(struct v4l2_data *data)
 	blog(LOG_INFO, "Linesize: %d Bytes", data->linesize);
 
 	/* set framerate */
+	saved = v4l2_saved_framerate(data->dev, data->pixfmt, data->width, data->height, data->framerate);
+	if (saved != data->framerate) {
+		blog(LOG_INFO, "Framerate setting %" PRId64 " was saved by an older version, using %" PRId64,
+		     data->framerate, saved);
+		data->framerate = saved;
+		data->framerate_setting = saved;
+	}
 	if (v4l2_set_framerate(data->dev, &data->framerate) < 0) {
 		blog(LOG_ERROR, "Unable to set framerate");
 		goto fail;
@@ -1412,9 +1446,16 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 
 	v4l2_update_source_flags(data, settings);
 
-	if (needs_restart)
+	if (needs_restart) {
 		v4l2_init(data);
-	else if (data->dev != -1 && restore_was_on)
+		/* Store a framerate setting saved by an older version as the
+		 * interval it stands for, so it matches the list and the
+		 * running device from now on. */
+		if (data->framerate_setting) {
+			obs_data_set_int(settings, "framerate", data->framerate_setting);
+			data->framerate_setting = 0;
+		}
+	} else if (data->dev != -1 && restore_was_on)
 		v4l2_restore_controls(data);
 }
 
