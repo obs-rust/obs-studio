@@ -31,6 +31,9 @@
  * request_keyframe already; the obs-ffmpeg ones are VA-API H.264 and HEVC,
  * AOM AV1 and SVT-AV1. Each real_ case skips when its encoder is not
  * available (no VA-API device, FFmpeg built without the library).
+ * real_x264_video_thread_behind runs the x264 case while the video thread
+ * that feeds the encoders is slow (a slow encoder or a busy machine): it
+ * then hands the encoder its frames late, behind the wall clock.
  *
  * Core video needs a graphics module and libobs needs an X display on Linux,
  * so the cases skip without one (run under xvfb-run). */
@@ -374,9 +377,24 @@ static bool encoder_available(const char *id)
 	return false;
 }
 
+/* A raw video callback that keeps the video thread busy for lag_ms per
+ * frame, as a slow encoder does. */
+static volatile long video_lag_ms;
+
+static void slow_video(void *param, struct video_data *frame)
+{
+	(void)param;
+	(void)frame;
+	long ms = os_atomic_load_long(&video_lag_ms);
+	if (ms > 0)
+		os_sleep_ms((uint32_t)ms);
+}
+
 /* Replay buffer on a real encoder with a 10 s keyframe interval, then a
- * recording joins it. */
-static void join_real_encoder(const char *id)
+ * recording joins it. With lag_ms, the video thread spends that long on
+ * every frame from just before the recording joins until it has its first
+ * packet. */
+static void join_real_encoder(const char *id, long lag_ms)
 {
 	if (!obs_up)
 		skip();
@@ -409,6 +427,10 @@ static void join_real_encoder(const char *id)
 		skip();
 	}
 	bool replay_ok = wait_packets(fx.replay, 10, 10000);
+	if (lag_ms) {
+		os_atomic_set_long(&video_lag_ms, lag_ms);
+		obs_add_raw_video_callback(NULL, slow_video, NULL);
+	}
 	os_sleep_ms(500);
 
 	struct out *replay = obs_obj_get_data(fx.replay);
@@ -426,6 +448,12 @@ static void join_real_encoder(const char *id)
 		" replay buffer's latest was %lld), keyframe %ld\n",
 		id, joined_at, KEYINT / FPS, ms, got ? rec->first_pts : -1, frames, joined_after, keyframe);
 
+	if (lag_ms) {
+		/* let the video thread catch up first: it holds the input mutex
+		 * that removing the callback waits for */
+		os_atomic_set_long(&video_lag_ms, 0);
+		obs_remove_raw_video_callback(slow_video, NULL);
+	}
 	teardown_fixture(&fx);
 	assert_true(replay_ok);
 	assert_true(started);
@@ -437,31 +465,40 @@ static void join_real_encoder(const char *id)
 static void real_x264(void **state)
 {
 	(void)state;
-	join_real_encoder("obs_x264");
+	join_real_encoder("obs_x264", 0);
+}
+
+/* The video thread takes two frame intervals per frame for the 500 ms
+ * before the recording joins, so the encoder is given about seven frames
+ * fewer than the wall clock counts. */
+static void real_x264_video_thread_behind(void **state)
+{
+	(void)state;
+	join_real_encoder("obs_x264", 2000 / FPS);
 }
 
 static void real_vaapi_h264(void **state)
 {
 	(void)state;
-	join_real_encoder("ffmpeg_vaapi");
+	join_real_encoder("ffmpeg_vaapi", 0);
 }
 
 static void real_vaapi_hevc(void **state)
 {
 	(void)state;
-	join_real_encoder("hevc_ffmpeg_vaapi");
+	join_real_encoder("hevc_ffmpeg_vaapi", 0);
 }
 
 static void real_aom_av1(void **state)
 {
 	(void)state;
-	join_real_encoder("ffmpeg_aom_av1");
+	join_real_encoder("ffmpeg_aom_av1", 0);
 }
 
 static void real_svt_av1(void **state)
 {
 	(void)state;
-	join_real_encoder("ffmpeg_svt_av1");
+	join_real_encoder("ffmpeg_svt_av1", 0);
 }
 
 static void load_module(const char *path, const char *data_path)
@@ -528,6 +565,7 @@ int main(void)
 		cmocka_unit_test(first_output_makes_no_request),
 		cmocka_unit_test(encoder_without_request_still_works),
 		cmocka_unit_test(real_x264),
+		cmocka_unit_test(real_x264_video_thread_behind),
 		cmocka_unit_test(real_vaapi_h264),
 		cmocka_unit_test(real_vaapi_hevc),
 		cmocka_unit_test(real_aom_av1),

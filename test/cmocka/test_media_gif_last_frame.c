@@ -9,7 +9,8 @@
  * ffmpeg_source and record which colour every program output frame shows.
  * Every frame must appear, in order, and the last one must not only flash.
  * A looping GIF and the same frames as a
- * video file are checked the same way. They need core video, so they run
+ * video file are checked the same way, and the video once more right after a
+ * run that ended on its last frame. They need core video, so they run
  * under xvfb-run and skip without a display.
  */
 
@@ -323,15 +324,16 @@ static void raw_video(void *param, struct video_data *frame)
 }
 
 /* Plays the clip in a scene for play_ms (or until it ends, and then a bit
- * more), recording every output frame. */
-static void play(const char *path, bool looping, uint32_t play_ms, struct watch *w)
+ * more), recording every output frame. clear_on_end is "Show nothing when
+ * playback ends". */
+static void play(const char *path, bool looping, bool clear_on_end, uint32_t play_ms, struct watch *w)
 {
 	obs_data_t *settings = obs_data_create();
 	obs_data_set_bool(settings, "is_local_file", true);
 	obs_data_set_string(settings, "local_file", path);
 	obs_data_set_bool(settings, "looping", looping);
 	obs_data_set_bool(settings, "restart_on_activate", true);
-	obs_data_set_bool(settings, "clear_on_media_end", true);
+	obs_data_set_bool(settings, "clear_on_media_end", clear_on_end);
 	obs_data_set_bool(settings, "close_when_inactive", false);
 	obs_data_set_bool(settings, "hw_decode", false);
 	obs_source_t *media = obs_source_create("ffmpeg_source", "media", settings, NULL);
@@ -467,7 +469,7 @@ static void gif_once_shows_every_frame(void **state)
 
 	static struct watch w;
 	static struct run runs[MAX_SEEN];
-	play(gif_once_path, false, 5000, &w);
+	play(gif_once_path, false, true, 5000, &w);
 	size_t n = collapse(&w, runs, MAX_SEEN);
 	log_runs("one-shot GIF", runs, n);
 	check_order(runs, n, 1);
@@ -483,7 +485,7 @@ static void gif_loop_shows_every_frame(void **state)
 
 	static struct watch w;
 	static struct run runs[MAX_SEEN];
-	play(gif_loop_path, true, 2600, &w);
+	play(gif_loop_path, true, true, 2600, &w);
 	size_t n = collapse(&w, runs, MAX_SEEN);
 	log_runs("looping GIF", runs, n);
 	check_order(runs, n, 2);
@@ -498,9 +500,41 @@ static void video_once_shows_every_frame(void **state)
 
 	static struct watch w;
 	static struct run runs[MAX_SEEN];
-	play(video_path, false, 5000, &w);
+	play(video_path, false, true, 5000, &w);
 	size_t n = collapse(&w, runs, MAX_SEEN);
 	log_runs("one-shot video", runs, n);
+	check_order(runs, n, 1);
+	check_last_frame_held(runs, n);
+}
+
+/* The video once more, right after a run that ended on its last frame
+ * ("Show nothing when playback ends" off). The first output frame recorded
+ * can still be the last picture of the run before (libobs hands a new raw
+ * video callback a frame it rendered before the callback was added), so
+ * the recording starts with the clip's last frame for one output frame.
+ * That is not the clip playing: the checks are about the frames from its
+ * first frame on. Which picture the run before ends on depends on timing
+ * (the looping case before this one ends anywhere in the clip), so this
+ * makes the case that the timing hits now and then deterministic. */
+static void video_once_after_last_frame_held(void **state)
+{
+	UNUSED_PARAMETER(state);
+	if (!obs_up)
+		skip();
+
+	static struct watch w;
+	static struct run runs[MAX_SEEN];
+	play(video_path, false, false, 5000, &w);
+	size_t n = collapse(&w, runs, MAX_SEEN);
+	log_runs("one-shot video, last frame held", runs, n);
+	if (!n || runs[n - 1].what != FRAMES - 1) {
+		fprintf(stderr, "the run before did not end on the last frame\n");
+		fail();
+	}
+
+	play(video_path, false, true, 5000, &w);
+	n = collapse(&w, runs, MAX_SEEN);
+	log_runs("one-shot video again", runs, n);
 	check_order(runs, n, 1);
 	check_last_frame_held(runs, n);
 }
@@ -511,6 +545,7 @@ int main(void)
 		cmocka_unit_test(gif_once_shows_every_frame),
 		cmocka_unit_test(gif_loop_shows_every_frame),
 		cmocka_unit_test(video_once_shows_every_frame),
+		cmocka_unit_test(video_once_after_last_frame_held),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
