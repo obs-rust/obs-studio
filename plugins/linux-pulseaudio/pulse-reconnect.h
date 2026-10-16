@@ -62,12 +62,47 @@ char *pulse_default_device(const pa_server_info *info, bool input);
  */
 bool pulse_restart_should_retry(uint32_t *attempts);
 
+/* How an attempt to start a source's stream ended. */
+enum pulse_start_result {
+	PULSE_START_OK,
+	/* No connection to the server: the reconnection restarts the source. */
+	PULSE_START_NO_SERVER,
+	/* The device is not there: the source waits for one to appear. */
+	PULSE_START_NO_DEVICE,
+	/* Anything else, e.g. the stream could not be created or connected,
+	 * while the device is there. */
+	PULSE_START_FAILED,
+};
+
+/**
+ * A restart of the source's stream ended with result. Returns true if it
+ * should be retried after PULSE_RESTART_RETRY_USEC; failures count towards
+ * PULSE_RESTART_MAX_ATTEMPTS in *attempts. after_reconnect: the server just
+ * came back and its devices reappear over the next moments, so a missing
+ * device is retried too. Otherwise only PULSE_START_FAILED is retried: a
+ * missing device is waited for (PULSE_SOURCE_NEW), so a device that is gone
+ * for good is not polled.
+ */
+bool pulse_start_should_retry(enum pulse_start_result result, bool after_reconnect, uint32_t *attempts);
+
+/**
+ * The source's stream failed while the server stayed up. Returns true if it
+ * should be restarted after *delay_usec: at once the first time, then after
+ * PULSE_RESTART_RETRY_USEC, so a server that keeps failing the stream is not
+ * hammered. Returns false after PULSE_RESTART_MAX_ATTEMPTS failures; the
+ * source then waits for a device to appear. *attempts is shared with
+ * pulse_start_should_retry() and reset once the stream delivers audio.
+ */
+bool pulse_stream_failed_should_restart(uint32_t *attempts, uint64_t *delay_usec);
+
 /* A source's own record stream can die while the connection to the server
  * stays up: the server kills it, or its device goes away and comes back
  * (console switch, USB replug; PulseAudio kills the stream, pipewire-pulse
  * leaves a stream that may not move unlinked). These decide what the source
  * does about it. Each event leads to at most one start attempt, so a device
- * that is gone for good is not polled. */
+ * that is gone for good is not polled. A failure while the device is there is
+ * retried with pulse_start_should_retry() and
+ * pulse_stream_failed_should_restart(). */
 
 enum pulse_stream_event {
 	/* The stream failed or was terminated, the context is still up. */
@@ -82,7 +117,7 @@ enum pulse_stream_action {
 	PULSE_STREAM_KEEP,
 	/* Drop the stream and wait for the device to return. */
 	PULSE_STREAM_STOP,
-	/* Create the stream again, once. */
+	/* Create the stream again. */
 	PULSE_STREAM_RESTART,
 };
 

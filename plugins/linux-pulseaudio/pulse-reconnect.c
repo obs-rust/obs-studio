@@ -74,6 +74,29 @@ bool pulse_restart_should_retry(uint32_t *attempts)
 	return false;
 }
 
+bool pulse_start_should_retry(enum pulse_start_result result, bool after_reconnect, uint32_t *attempts)
+{
+	switch (result) {
+	case PULSE_START_OK:
+		return false;
+	case PULSE_START_NO_SERVER:
+	case PULSE_START_NO_DEVICE:
+		if (!after_reconnect)
+			return false;
+		break;
+	case PULSE_START_FAILED:
+		break;
+	}
+
+	return pulse_restart_should_retry(attempts);
+}
+
+bool pulse_stream_failed_should_restart(uint32_t *attempts, uint64_t *delay_usec)
+{
+	*delay_usec = *attempts > 0 ? PULSE_RESTART_RETRY_USEC : 0;
+	return pulse_restart_should_retry(attempts);
+}
+
 enum pulse_stream_action pulse_stream_on_event(const struct pulse_stream_status *status, enum pulse_stream_event event,
 					       uint32_t index)
 {

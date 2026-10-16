@@ -145,6 +145,82 @@ static void new_device_restarts_only_a_dead_stream(void **state)
 	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_KEEP);
 }
 
+/* Follow-up of #378: a restart that fails while the device is there is
+ * retried, and a stream the server keeps failing is restarted with a pause
+ * and given up, sharing one counter. */
+
+static void failed_start_is_retried_while_the_device_is_there(void **state)
+{
+	UNUSED_PARAMETER(state);
+	uint32_t attempts = 0;
+
+	assert_true(pulse_start_should_retry(PULSE_START_FAILED, false, &attempts));
+	assert_int_equal(attempts, 1);
+	assert_true(pulse_start_should_retry(PULSE_START_FAILED, true, &attempts));
+	assert_int_equal(attempts, 2);
+
+	/* Started: nothing to retry, the counter is left to the audio. */
+	assert_false(pulse_start_should_retry(PULSE_START_OK, false, &attempts));
+	assert_false(pulse_start_should_retry(PULSE_START_OK, true, &attempts));
+	assert_int_equal(attempts, 2);
+}
+
+static void missing_device_is_waited_for_unless_the_server_came_back(void **state)
+{
+	UNUSED_PARAMETER(state);
+	uint32_t attempts = 0;
+
+	/* A device that is gone for good is not polled ... */
+	assert_false(pulse_start_should_retry(PULSE_START_NO_DEVICE, false, &attempts));
+	/* ... and a lost server is left to the reconnection. */
+	assert_false(pulse_start_should_retry(PULSE_START_NO_SERVER, false, &attempts));
+	assert_int_equal(attempts, 0);
+
+	/* After a reconnect the devices come back over the next moments. */
+	assert_true(pulse_start_should_retry(PULSE_START_NO_DEVICE, true, &attempts));
+	assert_true(pulse_start_should_retry(PULSE_START_NO_SERVER, true, &attempts));
+	assert_int_equal(attempts, 2);
+}
+
+static void failing_stream_is_restarted_at_once_then_paced(void **state)
+{
+	UNUSED_PARAMETER(state);
+	uint32_t attempts = 0;
+	uint64_t delay = 1;
+
+	assert_true(pulse_stream_failed_should_restart(&attempts, &delay));
+	assert_int_equal(delay, 0);
+	for (int i = 2; i < PULSE_RESTART_MAX_ATTEMPTS; i++) {
+		assert_true(pulse_stream_failed_should_restart(&attempts, &delay));
+		assert_int_equal(delay, PULSE_RESTART_RETRY_USEC);
+	}
+	assert_false(pulse_stream_failed_should_restart(&attempts, &delay));
+
+	/* Given up: the next failure (after a device appeared) starts over. */
+	assert_true(pulse_stream_failed_should_restart(&attempts, &delay));
+	assert_int_equal(delay, 0);
+}
+
+static void stream_and_start_failures_share_the_limit(void **state)
+{
+	UNUSED_PARAMETER(state);
+	uint32_t attempts = 0;
+	uint64_t delay;
+	int restarts = 0;
+
+	/* The server fails the stream, then creating it fails, in turn. */
+	for (;;) {
+		if (!pulse_stream_failed_should_restart(&attempts, &delay))
+			break;
+		restarts++;
+		if (!pulse_start_should_retry(PULSE_START_FAILED, false, &attempts))
+			break;
+		restarts++;
+		assert_true(restarts < 2 * PULSE_RESTART_MAX_ATTEMPTS);
+	}
+	assert_int_equal(restarts, PULSE_RESTART_MAX_ATTEMPTS - 1);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -158,6 +234,10 @@ int main(void)
 		cmocka_unit_test(failed_stream_is_restarted_once),
 		cmocka_unit_test(removed_device_stops_its_stream_only),
 		cmocka_unit_test(new_device_restarts_only_a_dead_stream),
+		cmocka_unit_test(failed_start_is_retried_while_the_device_is_there),
+		cmocka_unit_test(missing_device_is_waited_for_unless_the_server_came_back),
+		cmocka_unit_test(failing_stream_is_restarted_at_once_then_paced),
+		cmocka_unit_test(stream_and_start_failures_share_the_limit),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

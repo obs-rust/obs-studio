@@ -47,6 +47,8 @@ struct pulse_data {
 	uint64_t first_ts;
 	struct pulse_timing timing;
 	bool reconnected;
+	/* Failed restarts in a row; reset by the read callback, so access it
+	 * with the mainloop locked. */
 	uint32_t restart_attempts;
 
 	/* statistics */
@@ -196,6 +198,9 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
 		goto exit;
 	}
 
+	/* The stream works: later failures start counting again. */
+	data->restart_attempts = 0;
+
 	struct obs_source_audio out;
 	out.speakers = data->speakers;
 	out.samples_per_sec = data->samples_per_sec;
@@ -307,20 +312,20 @@ skip:
  * this setting for monitor streams. For "real" input streams this should work
  * fine though.
  */
-static int_fast32_t pulse_start_recording(struct pulse_data *data)
+static enum pulse_start_result pulse_start_recording(struct pulse_data *data)
 {
 	if (pulse_get_server_info(pulse_server_info, (void *)data) < 0) {
 		blog(LOG_ERROR, "Unable to get server info !");
-		return -1;
+		return PULSE_START_NO_SERVER;
 	}
 
 	if (pulse_get_source_info(pulse_source_info, data->device, (void *)data) < 0) {
 		blog(LOG_ERROR, "Unable to get source info !");
-		return -1;
+		return PULSE_START_NO_SERVER;
 	}
 	if (data->format == PA_SAMPLE_INVALID) {
 		blog(LOG_ERROR, "An error occurred while getting the source info!");
-		return -1;
+		return PULSE_START_NO_DEVICE;
 	}
 
 	pa_sample_spec spec;
@@ -330,7 +335,7 @@ static int_fast32_t pulse_start_recording(struct pulse_data *data)
 
 	if (!pa_sample_spec_valid(&spec)) {
 		blog(LOG_ERROR, "Sample spec is not valid");
-		return -1;
+		return PULSE_START_FAILED;
 	}
 
 	data->speakers = pulse_channels_to_obs_speakers(spec.channels);
@@ -341,7 +346,7 @@ static int_fast32_t pulse_start_recording(struct pulse_data *data)
 	data->stream = pulse_stream_new(obs_source_get_name(data->source), &spec, &channel_map);
 	if (!data->stream) {
 		blog(LOG_ERROR, "Unable to create stream");
-		return -1;
+		return PULSE_START_FAILED;
 	}
 
 	pulse_lock();
@@ -366,7 +371,7 @@ static int_fast32_t pulse_start_recording(struct pulse_data *data)
 	if (ret < 0) {
 		pulse_stop_recording(data);
 		blog(LOG_ERROR, "Unable to connect to stream");
-		return -1;
+		return PULSE_START_FAILED;
 	}
 
 	if (data->is_default)
@@ -374,7 +379,7 @@ static int_fast32_t pulse_start_recording(struct pulse_data *data)
 	else
 		blog(LOG_INFO, "Started recording from '%s'", data->device);
 
-	return 0;
+	return PULSE_START_OK;
 }
 
 /**
@@ -399,17 +404,50 @@ static void pulse_stop_recording(struct pulse_data *data)
 	data->frames = 0;
 }
 
-/**
- * Restart recording on the new connection after the server came back.
- * Runs on the UI thread: starting a stream blocks on the pulse mainloop.
- */
-static void pulse_retry_restart(void *userdata);
-
 static void pulse_release_weak_source(void *userdata)
 {
 	obs_weak_source_release(userdata);
 }
 
+/* Runs cb on the pulse mainloop thread after delay_usec, with a weak ref. */
+static void pulse_call_restart_later(struct pulse_data *data, pulse_reconnected_cb cb, uint64_t delay_usec)
+{
+	obs_weak_source_addref(data->weak_source);
+	pulse_lock();
+	pulse_call_later(cb, data->weak_source, pulse_release_weak_source, delay_usec);
+	pulse_unlock();
+}
+
+static void pulse_retry_restart(void *userdata);
+static void pulse_retry_stream(void *userdata);
+
+/**
+ * Start the stream again; if that fails, retry after PULSE_RESTART_RETRY_USEC
+ * as pulse_start_should_retry() decides. Runs on the UI thread: starting a
+ * stream blocks on the pulse mainloop.
+ */
+static void pulse_restart_recording(struct pulse_data *data, bool after_reconnect)
+{
+	if (data->stream)
+		pulse_stop_recording(data);
+
+	enum pulse_start_result result = pulse_start_recording(data);
+
+	pulse_lock();
+	bool retry = pulse_start_should_retry(result, after_reconnect, &data->restart_attempts);
+	pulse_unlock();
+
+	if (retry)
+		pulse_call_restart_later(data, after_reconnect ? pulse_retry_restart : pulse_retry_stream,
+					 PULSE_RESTART_RETRY_USEC);
+	else if (result == PULSE_START_FAILED || (after_reconnect && result != PULSE_START_OK))
+		blog(LOG_WARNING, "Giving up restarting '%s', waiting for a device to appear", data->device);
+}
+
+/**
+ * Restart recording on the new connection after the server came back.
+ * Runs on the UI thread.
+ */
 static void pulse_restart_recording_task(void *param)
 {
 	obs_weak_source_t *weak_source = param;
@@ -421,20 +459,8 @@ static void pulse_restart_recording_task(void *param)
 
 	struct pulse_data *data = obs_obj_get_data(source);
 	if (data) {
-		if (data->stream)
-			pulse_stop_recording(data);
 		data->reconnected = true;
-		if (pulse_start_recording(data) == 0) {
-			data->restart_attempts = 0;
-		} else if (pulse_restart_should_retry(&data->restart_attempts)) {
-			obs_weak_source_addref(data->weak_source);
-			pulse_lock();
-			pulse_call_later(pulse_retry_restart, data->weak_source, pulse_release_weak_source,
-					 PULSE_RESTART_RETRY_USEC);
-			pulse_unlock();
-		} else {
-			blog(LOG_WARNING, "Giving up restarting '%s' after the server reconnected", data->device);
-		}
+		pulse_restart_recording(data, true);
 	}
 
 	obs_source_release(source);
@@ -446,6 +472,43 @@ static void pulse_restart_recording_task(void *param)
 static void pulse_retry_restart(void *userdata)
 {
 	obs_queue_task(OBS_TASK_UI, pulse_restart_recording_task, userdata, false);
+}
+
+/**
+ * Retry a stream that failed or could not be started while the server
+ * stayed up. Runs on the UI thread.
+ */
+static void pulse_retry_stream_task(void *param)
+{
+	obs_weak_source_t *weak_source = param;
+	obs_source_t *source = obs_weak_source_get_source(weak_source);
+
+	obs_weak_source_release(weak_source);
+	if (!source)
+		return;
+
+	struct pulse_data *data = obs_obj_get_data(source);
+	if (data) {
+		/* A device that appeared meanwhile may have started it. */
+		bool running = false;
+		if (data->stream) {
+			pulse_lock();
+			running = PA_STREAM_IS_GOOD(pa_stream_get_state(data->stream));
+			pulse_unlock();
+		}
+		if (!running)
+			pulse_restart_recording(data, false);
+	}
+
+	obs_source_release(source);
+}
+
+/**
+ * Retry timer fired; called on the pulse mainloop thread, owns a weak ref
+ */
+static void pulse_retry_stream(void *userdata)
+{
+	obs_queue_task(OBS_TASK_UI, pulse_retry_stream_task, userdata, false);
 }
 
 /**
@@ -509,14 +572,28 @@ static void pulse_stream_event_task(void *param)
 		pulse_stop_recording(data);
 		break;
 	case PULSE_STREAM_RESTART:
-		if (task->event == PULSE_STREAM_FAILED)
-			blog(LOG_WARNING, "Stream from '%s' failed, restarting it", data->device);
-		if (data->stream)
-			pulse_stop_recording(data);
 		/* After a failure the audio was running: skip the startup
 		 * period as after a reconnect. */
 		data->reconnected = task->event == PULSE_STREAM_FAILED;
-		pulse_start_recording(data);
+		if (task->event == PULSE_STREAM_FAILED) {
+			uint64_t delay_usec;
+			pulse_lock();
+			bool restart = pulse_stream_failed_should_restart(&data->restart_attempts, &delay_usec);
+			pulse_unlock();
+
+			pulse_stop_recording(data);
+			if (!restart) {
+				blog(LOG_WARNING, "Giving up restarting '%s', waiting for a device to appear",
+				     data->device);
+				break;
+			}
+			blog(LOG_WARNING, "Stream from '%s' failed, restarting it", data->device);
+			if (delay_usec) {
+				pulse_call_restart_later(data, pulse_retry_stream, delay_usec);
+				break;
+			}
+		}
+		pulse_restart_recording(data, false);
 		break;
 	case PULSE_STREAM_KEEP:
 		break;
