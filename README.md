@@ -89,6 +89,8 @@ version) - see the accompanying COPYING file for more details.
 
 - Build Instructions: https://github.com/obsproject/obs-studio/wiki/Install-Instructions
 
+- Packaging for a distribution (which version goes where): [build-aux/README.md](build-aux/README.md#packaging-version-numbers)
+
 - Developer/API Documentation: https://obsproject.com/docs
 
 - Donating/backing/sponsoring: https://obsproject.com/contribute

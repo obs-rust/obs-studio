@@ -96,10 +96,13 @@ VERSION = r"""
 # non-OBS tags (obs-studio-rust-v...), which must not become the OBS version.
 # In a fork or shallow clone without OBS release tags `git describe` yields a bare
 # commit hash, which CMake rejects as a project VERSION, so use a dev version then.
+# It keeps the libobs API version: plugins compare the OBS version against the one
+# they need, and CMake rejects an override older than the libobs API major (#1087).
 if desc="$(git describe --tags --match '[0-9]*.[0-9]*.[0-9]*' 2>/dev/null)" && [[ "$desc" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
   echo "OBS_VERSION=$desc" >> "$GITHUB_ENV"
 else
-  echo "OBS_VERSION=0.0.0-g${GITHUB_SHA::9}" >> "$GITHUB_ENV"
+  api="$(sed -n 's/^#define LIBOBS_API_\(MAJOR\|MINOR\|PATCH\)_VER \([0-9]*\)$/\2/p' libobs/obs-config.h | paste -sd.)"
+  echo "OBS_VERSION=${api}-g${GITHUB_SHA::9}" >> "$GITHUB_ENV"
 fi
 """
 

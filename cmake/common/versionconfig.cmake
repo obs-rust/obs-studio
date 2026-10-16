@@ -37,6 +37,35 @@ elseif(DEFINED OBS_VERSION_OVERRIDE)
       ${OBS_VERSION_OVERRIDE}
     )
     set(_obs_version ${OBS_VERSION_OVERRIDE})
+
+    # The override is the OBS version libobs reports to plugins
+    # (obs_get_version_string()), which they compare against the OBS version
+    # they need. An override older than the libobs API this tree builds is
+    # almost always the fork's own version passed in the wrong variable (#1087).
+    file(
+      STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../libobs/obs-config.h"
+      _obs_api_major
+      REGEX "^#define LIBOBS_API_MAJOR_VER [0-9]+$"
+    )
+    string(REGEX REPLACE "^#define LIBOBS_API_MAJOR_VER ([0-9]+)$" "\\1" _obs_api_major "${_obs_api_major}")
+    if(NOT _obs_api_major MATCHES "^[0-9]+$")
+      message(FATAL_ERROR "Could not read LIBOBS_API_MAJOR_VER from libobs/obs-config.h.")
+    endif()
+    list(GET _obs_version_canonical 0 _obs_override_major)
+    if(_obs_override_major LESS _obs_api_major)
+      message(
+        FATAL_ERROR
+        "OBS_VERSION_OVERRIDE '${OBS_VERSION_OVERRIDE}' is older than the libobs API this tree builds "
+        "(LIBOBS_API_MAJOR_VER ${_obs_api_major} in libobs/obs-config.h).\n"
+        "OBS_VERSION_OVERRIDE sets the OBS version that libobs reports to plugins "
+        "(obs_get_version_string()); plugins refuse to load when it is older than the OBS they need.\n"
+        "Pass the OBS-Studio-Rust version (e.g. 0.1.0-beta.20261014) as -DOBS_RUST_VERSION=... instead "
+        "and leave OBS_VERSION_OVERRIDE unset: CMake then takes the OBS version from the upstream tags "
+        "(git describe --match '[0-9]*.[0-9]*.[0-9]*')."
+      )
+    endif()
+    unset(_obs_api_major)
+    unset(_obs_override_major)
   else()
     message(FATAL_ERROR "Invalid version supplied - must be <MAJOR>.<MINOR>.<PATCH>[-(rc|beta)<NUMBER>].")
   endif()
