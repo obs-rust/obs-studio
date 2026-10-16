@@ -27,29 +27,64 @@ bool HotkeyCaptureEvent(QEvent *event);
  * Shift press to the field first, and the field records it as a bare "Shift"
  * binding, before the Tab moves the focus away. The key field keeps one of
  * these: KeyPress() is called from keyPressEvent() before a key is recorded,
- * and Event() from event() before anything else. */
+ * and Event() from event() before anything else.
+ *
+ * When a lone modifier key is pressed, the binding from before it is kept.
+ * A Tab or Backtab that moves the focus while that modifier is still held
+ * puts it back; releasing the modifier, any other key, or leaving the field
+ * keeps the new binding. So a modifier pressed and released on its own is
+ * still recorded, and a chord with a modifier (Shift+A, Ctrl+Tab) too. */
+enum class HotkeyUndoStep { None, MoveFocus, Keep };
+
+bool HotkeyIsModifierKey(const QKeyEvent *event);
+HotkeyUndoStep HotkeyUndoStepFor(QEvent *event);
+
 template<typename Key> class HotkeyModifierUndo {
 public:
 	/* A key press the field is about to record. current/changed are the
 	 * field's binding and changed flag before it. */
 	void KeyPress(const QKeyEvent *event, const Key &current, bool changed)
 	{
-		(void)event;
-		(void)current;
-		(void)changed;
+		if (!HotkeyIsModifierKey(event)) {
+			pending = false;
+			return;
+		}
+		if (pending) {
+			return;
+		}
+		pending = true;
+		before = current;
+		beforeChanged = changed;
 	}
 
 	/* Returns true when key/changed must be put back before the event goes
 	 * on to QLineEdit::event(). */
 	bool Event(QEvent *event, Key &key, bool &changed)
 	{
-		(void)event;
-		(void)key;
-		(void)changed;
+		if (!pending) {
+			return false;
+		}
+		switch (HotkeyUndoStepFor(event)) {
+		case HotkeyUndoStep::MoveFocus:
+			pending = false;
+			key = before;
+			changed = beforeChanged;
+			return true;
+		case HotkeyUndoStep::Keep:
+			pending = false;
+			return false;
+		case HotkeyUndoStep::None:
+			break;
+		}
 		return false;
 	}
 
 	/* Something other than a key press changed the binding (a mouse
 	 * button, the Clear or Revert buttons). */
-	void Reset() {}
+	void Reset() { pending = false; }
+
+private:
+	bool pending = false;
+	Key before{};
+	bool beforeChanged = false;
 };

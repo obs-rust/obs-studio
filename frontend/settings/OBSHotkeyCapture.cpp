@@ -16,6 +16,7 @@
 #include "OBSHotkeyCapture.hpp"
 
 #include <QEvent>
+#include <QKeyEvent>
 
 bool HotkeyCaptureEvent(QEvent *event)
 {
@@ -31,4 +32,45 @@ bool HotkeyCaptureEvent(QEvent *event)
 		return true;
 	}
 	return false;
+}
+
+bool HotkeyIsModifierKey(const QKeyEvent *event)
+{
+	switch (event->key()) {
+	case Qt::Key_Shift:
+	case Qt::Key_Control:
+	case Qt::Key_Alt:
+	case Qt::Key_Meta:
+		return true;
+	default:
+		return false;
+	}
+}
+
+HotkeyUndoStep HotkeyUndoStepFor(QEvent *event)
+{
+	switch (event->type()) {
+	case QEvent::KeyPress: {
+		/* The keys QWidget::event() moves the focus with. */
+		auto *key = static_cast<QKeyEvent *>(event);
+		if (key->modifiers() & (Qt::ControlModifier | Qt::AltModifier)) {
+			return HotkeyUndoStep::None;
+		}
+		if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) {
+			return HotkeyUndoStep::MoveFocus;
+		}
+		return HotkeyUndoStep::None;
+	}
+	case QEvent::KeyRelease: {
+		auto *key = static_cast<QKeyEvent *>(event);
+		if (!key->isAutoRepeat() && HotkeyIsModifierKey(key)) {
+			return HotkeyUndoStep::Keep;
+		}
+		return HotkeyUndoStep::None;
+	}
+	case QEvent::FocusOut:
+		return HotkeyUndoStep::Keep;
+	default:
+		return HotkeyUndoStep::None;
+	}
 }
