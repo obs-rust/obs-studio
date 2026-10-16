@@ -2,20 +2,11 @@ name: Check Code Formatting 🛠️
 on:
   workflow_call:
 jobs:
-  clang-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # The local gate's pinned uvx tool and file set (#427): brew update,
-      # brew install zsh and the formatter took about 75 s to format in 0.3 s.
-      - name: Set Up uv 🐍
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      - name: clang-format Check 🐉
-        run: uv run ci/local_gate.py --only clang-format
-
-  # swift-format needs a macOS runner, one of the 5 the plan allows; take it
-  # only when a Swift file changed (#427).
-  swift-changes:
+  # One runner for every cheap check (#992): each separate job queued for its
+  # own runner on the Free plan, 5-10 minutes each. On a PR the clang-format
+  # and gersemi checks run in the Fast Gate's lint lane (same pinned tools,
+  # same files), so they run here only on pushes.
+  checks:
     runs-on: ubuntu-latest
     outputs:
       swift: ${{ steps.diff.outputs.swift }}
@@ -23,6 +14,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+      # The local gate's pinned uvx tool and file set (#427): brew update,
+      # brew install zsh and the formatter took about 75 s to format in 0.3 s.
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      # swift-format needs a macOS runner, one of the 5 the plan allows; take it
+      # only when a Swift file changed (#427).
       - name: Check for Swift Changes 🔎
         id: diff
         env:
@@ -37,11 +34,30 @@ jobs:
           fi
           echo "swift=$swift" >> "$GITHUB_OUTPUT"
           echo "Swift files changed: $swift"
+      - name: clang-format Check 🐉
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        run: uv run ci/local_gate.py --only clang-format
+      - name: gersemi Check 🎛️
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        run: uv run ci/local_gate.py --only gersemi
+      - name: Flatpak Manifest Check 📦
+        id: flatpak-check
+        uses: ./.github/actions/flatpak-manifest-validator
+        with:
+          failCondition: error
+      - name: Qt XML Check 🖼️
+        id: qt-xml-check
+        uses: ./.github/actions/qt-xml-validator
+        with:
+          failCondition: error
+      # The 373 plain-Python ci/ tests need nothing from the 26.04 runner (#427).
+      - name: ci/ Self-Tests 🧪
+        run: uv run python -m unittest discover -s ci -p "test_*.py"
 
   swift-format:
     runs-on: macos-26
-    needs: swift-changes
-    if: needs.swift-changes.outputs.swift == 'true'
+    needs: checks
+    if: needs.checks.outputs.swift == 'true'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -49,40 +65,5 @@ jobs:
       - name: swift-format Check 🔥
         id: swift-format
         uses: ./.github/actions/run-swift-format
-        with:
-          failCondition: error
-
-  gersemi:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # The local gate's pinned uvx tool and file set (#427): brew update,
-      # brew install zsh and the formatter took about 75 s to format in 0.3 s.
-      - name: Set Up uv 🐍
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      - name: gersemi Check 🎛️
-        run: uv run ci/local_gate.py --only gersemi
-
-  flatpak-validator:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Flatpak Manifest Check 📦
-        id: flatpak-check
-        uses: ./.github/actions/flatpak-manifest-validator
-        with:
-          failCondition: error
-
-  qt-xml-validator:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Qt XML Check 🖼️
-        id: qt-xml-check
-        uses: ./.github/actions/qt-xml-validator
         with:
           failCondition: error

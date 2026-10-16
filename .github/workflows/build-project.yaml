@@ -7,7 +7,7 @@ on:
         # dev cycle) skip Flatpak, the macOS/Windows OBS builds, Ubuntu with
         # Rust libobs and Tier 2 macOS/Windows; release-rust.yaml runs them all
         # with full: true and won't publish unless they pass. Tags, schedule,
-        # workflow_dispatch and the ci-full label are full too.
+        # workflow_dispatch are full too; so is a PR whose paths need it (ci/ci_scope.py).
         description: Run every build, including the release-gating ones
         type: boolean
         required: false
@@ -32,6 +32,8 @@ jobs:
       platform_os: ${{ steps.native.outputs.platform_os }}
       deferred: ${{ steps.native.outputs.deferred }}
       qt: ${{ steps.native.outputs.qt }}
+      tier2: ${{ steps.native.outputs.tier2 }}
+      linux_targets: ${{ steps.native.outputs.linux_targets }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -93,35 +95,23 @@ jobs:
       # config, adds that platform's Rust tests and Tier 2. Every OBS app
       # build (Ubuntu, macOS, Windows, Flatpak) is release-gating: `full`
       # (the release gate in release-rust.yaml, tags, release branches,
-      # schedule, workflow_dispatch, the ci-full label).
+      # schedule, workflow_dispatch, or paths that need them: build-aux/, plugin submodule moves).
       - name: Check Change Scope 🧭
         id: native
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           : Check Change Scope 🧭
-          full=false
+          # No label changes what runs (#992). Master push, schedule,
+          # workflow_dispatch, tags, release branches and the release gate
+          # (inputs.full) run everything; a PR or merge-queue run runs the
+          # lanes its changed paths select (ci/ci_scope.py's LANES table).
+          event_full=false
           if [[ "${{ inputs.full }}" == true ]] \
             || [[ "${GITHUB_EVENT_NAME}" == schedule || "${GITHUB_EVENT_NAME}" == workflow_dispatch ]] \
             || [[ "${GITHUB_REF_TYPE}" == tag || "${GITHUB_REF_NAME}" == release/* ]]; then
-            full=true
-          elif [[ "${GITHUB_EVENT_NAME}" == pull_request ]] \
-            && gh pr view ${{ github.event.number }} --json labels | jq -e '.labels[] | select(.name == "ci-full")' > /dev/null; then
-            full=true
+            event_full=true
           fi
-          echo "full=${full}" >> "${GITHUB_OUTPUT}"
-          # Fast PR path (#992): a PR or merge-queue run (without ci-full)
-          # runs lint, the cross lint and the path-scoped platform jobs; the
-          # Linux Rust tests and Tier 2 run after the merge, on master.
-          deferred=false
-          if [[ "${full}" != true ]] \
-            && [[ "${GITHUB_EVENT_NAME}" == pull_request || "${GITHUB_EVENT_NAME}" == merge_group ]]; then
-            deferred=true
-          fi
-          echo "deferred=${deferred}" >> "${GITHUB_OUTPUT}"
-
-          if [[ "${full}" == true ]]; then
-            core=true macos=true windows=true
+          if [[ "${event_full}" == true ]]; then
+            full=true core=true macos=true windows=true qt=true tier2=true linux_targets=
           else
             if [[ "${GITHUB_EVENT_NAME}" == pull_request ]]; then
               base="origin/${GITHUB_BASE_REF}"
@@ -132,30 +122,40 @@ jobs:
             fi
             eval "$(uv run ci/ci_scope.py "${base}")"
           fi
-          # The Linux Qt frontend job (#992) runs on master, schedule and
-          # ci-full, and on a PR only when frontend/Qt code or a Qt-linked
-          # test changed (ci/ci_scope.py).
-          if [[ "${full}" == true || "${deferred}" != true ]]; then
-            qt=true
+          # Fast PR path (#992): a PR or merge-queue run that no path escalates
+          # to the full builds runs only the lanes its paths select; the
+          # workspace tests and the unselected lanes run on master.
+          deferred=false
+          if [[ "${full}" != true ]] \
+            && [[ "${GITHUB_EVENT_NAME}" == pull_request || "${GITHUB_EVENT_NAME}" == merge_group ]]; then
+            deferred=true
+          fi
+          # master pushes run every lane the scope would skip on a PR.
+          if [[ "${deferred}" != true ]]; then
+            qt=true tier2=true
           fi
           os=()
           [[ "${macos}" == true ]] && os+=('"macos-26"')
           [[ "${windows}" == true ]] && os+=('"windows-2025-vs2026"')
           {
+            echo "full=${full}"
+            echo "deferred=${deferred}"
             echo "core=${core}"
             echo "macos=${macos}"
             echo "windows=${windows}"
             echo "qt=${qt:-false}"
+            echo "tier2=${tier2:-false}"
+            echo "linux_targets=${linux_targets:-}"
             echo "platform_os=[$(IFS=,; echo "${os[*]}")]"
           } >> "${GITHUB_OUTPUT}"
-          echo "full=${full} core=${core} macos=${macos} windows=${windows}"
+          echo "full=${full} core=${core} macos=${macos} windows=${windows} qt=${qt} tier2=${tier2}"
 
   macos-build:
     name: macOS 🍏
     runs-on: macos-26
     needs: check-event
     # OBS app builds are release-gating (#436): release gate, tags, schedule,
-    # dispatch and ci-full only.
+    # dispatch and path-triggered full PRs only.
     if: fromJSON(needs.check-event.outputs.full)
     strategy:
       fail-fast: false
@@ -291,7 +291,7 @@ jobs:
     needs: check-event
     # The full OBS app build is release-gating, not dev-cycle CI: it runs in
     # the release gate (release-rust.yaml), tags, schedule, dispatch and
-    # ci-full. PRs and pushes build and test the Rust workspace and Tier 2
+    # path-triggered full runs. PRs and pushes build and test the Rust workspace and Tier 2
     # (libobs + cmocka) on Linux instead.
     if: fromJSON(needs.check-event.outputs.full)
     defaults:
@@ -504,7 +504,7 @@ jobs:
       # save. Restore a commit-keyed copy of just that directory first; the
       # action's restore then extracts its snapshot on top (ccache entries are
       # content-addressed, so the union is safe). Every full run saves, so a
-      # ci-full PR is warm from its second push on (a PR restores its own
+      # full PR is warm from its second push on (a PR restores its own
       # newest entry before master's); only master prunes.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -528,7 +528,7 @@ jobs:
           manifest-path: ${{ github.workspace }}/build-aux/com.obsproject.Studio.json
           # Always on: the action passes `--ccache` to flatpak-builder only
           # when `cache` is true. It used to be off for a PR whose manifest
-          # hash had no master cache, so a ci-full PR compiled all ~700 files
+          # hash had no master cache, so a full PR compiled all ~700 files
           # without ccache (~9 min instead of ~1.5 min, #651). The restore
           # falls back to the newest flatpak-builder-x86_64 cache, and
           # flatpak-builder only reuses a module whose own manifest entry and
@@ -603,7 +603,7 @@ jobs:
     runs-on: windows-2025-vs2026
     needs: check-event
     # OBS app builds are release-gating (#436): release gate, tags, schedule,
-    # dispatch and ci-full only.
+    # dispatch and path-triggered full PRs only.
     if: fromJSON(needs.check-event.outputs.full)
     defaults:
       run:
@@ -713,6 +713,21 @@ jobs:
       skip_rust-tests-linux: ${{ steps.gate.outputs.skip_rust-tests-linux }}
       skip_rust-linux-tier2: ${{ steps.gate.outputs.skip_rust-linux-tier2 }}
       skip_rust-cross-lint: ${{ steps.gate.outputs.skip_rust-cross-lint }}
+      rust-test_hit: ${{ steps.rust-test.outputs.hit }}
+      rust-test_name: ${{ steps.rust-test.outputs.name }}
+      cross_hit: ${{ steps.cross.outputs.hit }}
+      cross_name: ${{ steps.cross.outputs.name }}
+      tier2-linux_hit: ${{ steps.tier2-linux.outputs.hit }}
+      tier2-linux_name: ${{ steps.tier2-linux.outputs.name }}
+    permissions:
+      actions: read
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+      # Lane proofs (#699) are for PRs and the merge queue only, never a
+      # push, schedule, dispatch or full run (#992 folded that job in here).
+      PROOFS: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !inputs.full }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -734,78 +749,44 @@ jobs:
         if: github.event_name != 'merge_group'
         run: PYTHONPATH=.ci-lint uv run python -m ci_lint local-gate verify --repo . --trust --github-output
 
-  # Lane proofs (#699): a lane whose exact inputs already passed in a trusted
-  # run of this workflow is skipped (ci/lane_proof.py). Keys come from the
-  # lane's exclude/keep inputs in local-gate.toml as committed on the BASE,
-  # so a merge-queue rebuild after an unrelated master change reuses the
-  # pass instead of rerunning it. PRs and the merge queue only; never a
-  # push, schedule, dispatch or full run. Fails open: no output, no skip.
-  lane-proofs:
-    name: Lane Proofs 🧾
-    runs-on: ubuntu-26.04
-    needs: check-event
-    timeout-minutes: 5
-    permissions:
-      actions: read
-      contents: read
-    outputs:
-      rust-test_hit: ${{ steps.rust-test.outputs.hit }}
-      rust-test_name: ${{ steps.rust-test.outputs.name }}
-      cross_hit: ${{ steps.cross.outputs.hit }}
-      cross_name: ${{ steps.cross.outputs.name }}
-      tier2-linux_hit: ${{ steps.tier2-linux.outputs.hit }}
-      tier2-linux_name: ${{ steps.tier2-linux.outputs.name }}
-    env:
-      GH_TOKEN: ${{ github.token }}
-      BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-    steps:
+      # Lane proofs (#699): a lane whose exact inputs already passed in a
+      # trusted run of this workflow is skipped (ci/lane_proof.py). Keys come
+      # from local-gate.toml as committed on the BASE, so a merge-queue
+      # rebuild after an unrelated master change reuses the pass. Fails open:
+      # no output, no skip. Runs on the merge ref, not the PR head.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
+        if: env.PROOFS == 'true'
         with:
+          path: merge
           persist-credentials: false
-      - name: Set Up uv 🐍
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - name: Fetch Base
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
+        if: env.PROOFS == 'true'
+        working-directory: merge
         continue-on-error: true
         run: git fetch -q --depth=1 origin "${BASE}"
       - name: rust-test
         id: rust-test
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
+        if: env.PROOFS == 'true'
+        working-directory: merge
         continue-on-error: true
         run: uv run ci/lane_proof.py check --lane rust-test --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
       - name: cross
         id: cross
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
+        if: env.PROOFS == 'true'
+        working-directory: merge
         continue-on-error: true
         run: uv run ci/lane_proof.py check --lane cross --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
       - name: tier2-linux
         id: tier2-linux
-        if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !fromJSON(needs.check-event.outputs.full)
+        if: env.PROOFS == 'true'
+        working-directory: merge
         continue-on-error: true
         run: uv run ci/lane_proof.py check --lane tier2-linux --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
 
-  # The 373 plain-Python ci/ tests took 27 s of the lint step on a scarce
-  # ubuntu-26.04 runner; they need nothing from it (#427).
-  ci-self-test:
-    name: CI Self-Tests 🐍
-    runs-on: ubuntu-latest
-    needs: check-event
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Set Up uv 🐍
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      - name: ci/ Self-Tests 🧪
-        run: uv run python -m unittest discover -s ci -p "test_*.py"
-
   rust-tests-linux:
-    name: Rust Tests 🦀 (ubuntu-26.04)
+    name: Fast Gate ⚡
     runs-on: ubuntu-26.04
-    needs: [check-event, ci-mode, lane-proofs]
+    needs: [check-event, ci-mode]
     if: needs.ci-mode.outputs.skip_rust-tests-linux != 'true'
     defaults:
       run:
@@ -813,6 +794,10 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      # Fast gate (#992): one runner for the PR path: format checks, rustfmt,
+      # clippy, Dylint, then the unit tests of the crates the diff touches
+      # (ci/rust_scope.py). No Qt: cargo test never needs it; the Qt job owns
+      # Qt. The full workspace tests and the windows-gnu link run on master.
       # platform-nix.c includes uuid/uuid.h. This runner does not ship it.
       # The oracle compile and the Rust libuuid link both need the package.
       - name: Install libuuid
@@ -839,27 +824,68 @@ jobs:
       # GATE-001 mirror (local-gate.toml): exactly the local gate's lint and
       # rust-test lanes (./lint, ./unittest), i.e. rustfmt, clippy -D warnings,
       # clang-format, gersemi and soldr cargo test --workspace --locked.
-      # The ci/ self-tests run in ci-self-test on the standard pool (#427).
+      # The ci/ self-tests run in the Checks job on the standard pool (#427).
       - name: Local Gate (lint) 🧪
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
         run: uv run ci/local_gate.py --lane lint
 
+      - name: Unit Tests (changed crates) 🧪
+        if: needs.check-event.outputs.deferred == 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          git fetch -q --depth=1 origin "${BASE}"
+          uv run ci/local_gate.py --test-diff "${BASE}"
+
+      # Step 3 (#992): only the plugin/shared modules the diff touches, on
+      # Linux, one configure with ENABLE_FRONTEND=OFF (no Qt). Master and full
+      # runs build everything in the Ubuntu app builds instead.
+      - name: Restore ccache 💾
+        if: needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.linux_targets != ''
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.targets-ccache
+          key: targets-ccache-linux-${{ github.sha }}
+          restore-keys: targets-ccache-linux-
+      - name: Build Touched Linux Targets 🧱
+        if: needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.linux_targets != ''
+        env:
+          TARGETS: ${{ needs.check-event.outputs.linux_targets }}
+          CCACHE_DIR: ${{ github.workspace }}/.targets-ccache
+        run: |
+          git submodule update --init --recursive -q
+          sudo apt-get update -qq
+          # No Qt here: drop the qt6 packages and the Qt-requiring decklink plugins.
+          grep -v '^#\|^qt6' rust/tools/linux-validate/apt-packages.txt |
+            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -y --no-install-recommends
+          cmake -S . -B "${RUNNER_TEMP}/targets" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF \
+            -DENABLE_AJA=OFF -DENABLE_WEBRTC=OFF -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=OFF \
+            -DENABLE_DECKLINK=OFF
+          avail=$(cmake --build "${RUNNER_TEMP}/targets" -- -t targets all | cut -d: -f1)
+          build=()
+          for t in ${TARGETS//,/ }; do
+            if grep -qx "$t" <<<"$avail"; then build+=("$t"); else echo "no Linux target $t: skipped"; fi
+          done
+          [ "${#build[@]}" -eq 0 ] || cmake --build "${RUNNER_TEMP}/targets" --target "${build[@]}"
+
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
-        if: needs.check-event.outputs.deferred != 'true' && needs.lane-proofs.outputs.rust-test_hit != 'true'
+        if: needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
         run: uv run ci/local_gate.py --lane rust-test
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
       - name: Mark Lane Proof 🧾
-        if: success() && needs.check-event.outputs.deferred != 'true' && needs.lane-proofs.outputs.rust-test_name != '' && needs.lane-proofs.outputs.rust-test_hit != 'true'
+        if: success() && needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_name != '' && needs.ci-mode.outputs.rust-test_hit != 'true'
         run: touch "${{ runner.temp }}/lane-proof"
       - name: Upload Lane Proof 🧾
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: success() && needs.check-event.outputs.deferred != 'true' && needs.lane-proofs.outputs.rust-test_name != '' && needs.lane-proofs.outputs.rust-test_hit != 'true'
+        if: success() && needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_name != '' && needs.ci-mode.outputs.rust-test_hit != 'true'
         with:
-          name: ${{ needs.lane-proofs.outputs.rust-test_name }}
+          name: ${{ needs.ci-mode.outputs.rust-test_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
           if-no-files-found: error
@@ -870,8 +896,8 @@ jobs:
   rust-cross-lint:
     name: Rust Cross Lint 🦀 (Windows, macOS)
     runs-on: ubuntu-26.04
-    needs: [check-event, ci-mode, lane-proofs]
-    if: needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.lane-proofs.outputs.cross_hit != 'true'
+    needs: [check-event, ci-mode, rust-tests-linux]
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
       run:
         shell: bash
@@ -894,13 +920,13 @@ jobs:
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
       - name: Mark Lane Proof 🧾
-        if: success() && needs.lane-proofs.outputs.cross_name != '' && needs.lane-proofs.outputs.cross_hit != 'true'
+        if: success() && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true'
         run: touch "${{ runner.temp }}/lane-proof"
       - name: Upload Lane Proof 🧾
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: success() && needs.lane-proofs.outputs.cross_name != '' && needs.lane-proofs.outputs.cross_hit != 'true'
+        if: success() && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true'
         with:
-          name: ${{ needs.lane-proofs.outputs.cross_name }}
+          name: ${{ needs.ci-mode.outputs.cross_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
           if-no-files-found: error
@@ -908,13 +934,13 @@ jobs:
   rust-tests:
     name: Rust Tests 🦀
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: needs.check-event.outputs.platform_os != '[]'
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.platform_os != '[]') }}
     strategy:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(needs.check-event.outputs.platform_os) }}
     runs-on: ${{ matrix.os }}
-    needs: check-event
+    needs: [check-event, rust-tests-linux]
     defaults:
       run:
         shell: bash
@@ -932,7 +958,22 @@ jobs:
           # soldr 0.9.33 embeds zccache 1.15.4 (has zackees/zccache#1937).
           version: 0.9.33
 
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
+      # The OS lane runs the tests of the crates the diff touches on a PR
+      # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
+      # workspace on master (#992).
+      - name: Run Rust Tests (changed crates) 🧪
+        if: needs.check-event.outputs.deferred == 'true'
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          git fetch -q --depth=1 origin "${BASE}"
+          uv run ci/local_gate.py --test-diff "${BASE}"
+
       - name: Run Rust Tests 🧪
+        if: needs.check-event.outputs.deferred != 'true'
         run: soldr cargo test --workspace --locked
 
       - name: Run Clippy 📎
@@ -959,8 +1000,8 @@ jobs:
       image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
     # A hung test held a runner for 4.5 h without a timeout (#983).
     timeout-minutes: 30
-    needs: [check-event, ci-mode, lane-proofs]
-    if: needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.lane-proofs.outputs.tier2-linux_hit != 'true'
+    needs: [check-event, ci-mode, rust-tests-linux]
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.tier2 == 'true' && needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true') }}
     defaults:
       run:
         shell: bash
@@ -1048,7 +1089,7 @@ jobs:
     container:
       image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
     timeout-minutes: 30
-    needs: [check-event, ci-mode, lane-proofs, rust-linux-tier2-build]
+    needs: [check-event, ci-mode, rust-linux-tier2-build]
     strategy:
       fail-fast: false
       matrix:
@@ -1103,20 +1144,20 @@ jobs:
   rust-linux-tier2-done:
     name: Rust Tier 2 Linux 🐧
     runs-on: ubuntu-latest
-    needs: [lane-proofs, rust-linux-tier2]
+    needs: [ci-mode, rust-linux-tier2]
     if: needs.rust-linux-tier2.result == 'success'
     timeout-minutes: 5
     steps:
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
       - name: Mark Lane Proof 🧾
-        if: success() && needs.lane-proofs.outputs.tier2-linux_name != '' && needs.lane-proofs.outputs.tier2-linux_hit != 'true'
+        if: success() && needs.ci-mode.outputs.tier2-linux_name != '' && needs.ci-mode.outputs.tier2-linux_hit != 'true'
         run: touch "${{ runner.temp }}/lane-proof"
       - name: Upload Lane Proof 🧾
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: success() && needs.lane-proofs.outputs.tier2-linux_name != '' && needs.lane-proofs.outputs.tier2-linux_hit != 'true'
+        if: success() && needs.ci-mode.outputs.tier2-linux_name != '' && needs.ci-mode.outputs.tier2-linux_hit != 'true'
         with:
-          name: ${{ needs.lane-proofs.outputs.tier2-linux_name }}
+          name: ${{ needs.ci-mode.outputs.tier2-linux_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
           if-no-files-found: error
@@ -1125,13 +1166,13 @@ jobs:
   # obs-studio app against PREBUILT Qt and FFmpeg (obs-rust/obs-studio-libs,
   # pinned by tag and sha256, never compiled here), then run the Qt-linked
   # cmocka tests. Runs when frontend/Qt code or a Qt-linked test changed
-  # (ci/ci_scope.py), on master and in ci-full; skipped, and passing CI Gate,
+  # (ci/ci_scope.py), on master and full runs; skipped, and passing CI Gate,
   # otherwise.
   linux-qt-frontend:
     name: Qt Frontend Linux 🐧
     runs-on: ubuntu-26.04
-    needs: check-event
-    if: fromJSON(needs.check-event.outputs.qt)
+    needs: [check-event, rust-tests-linux]
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (fromJSON(needs.check-event.outputs.qt)) }}
     timeout-minutes: 30
     env:
       QT_TAG: qt6-6.11.1
@@ -1212,10 +1253,10 @@ jobs:
       matrix:
         os: ${{ fromJSON(needs.check-event.outputs.platform_os) }}
     runs-on: ${{ matrix.os }}
-    needs: check-event
+    needs: [check-event, rust-tests-linux]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: needs.check-event.outputs.platform_os != '[]'
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.platform_os != '[]') }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

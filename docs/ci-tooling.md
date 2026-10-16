@@ -46,8 +46,8 @@ win.
 2. **Prove changes locally, once, with the local gate**, then push the stamped
    commit unchanged. A valid stamp lets PR CI skip the Linux test jobs.
 3. **Don't use GitHub as your test runner.** Don't push to "see if CI passes",
-   don't re-run whole workflows to debug, and don't add the `ci-full` label
-   unless a platform build is genuinely needed.
+   don't re-run whole workflows to debug, and don't look for a label to
+   force more CI: no label changes what runs, only the changed paths do.
 4. **Don't hit Docker directly for long or parallel work.** Docker on the shared
    machines is meant to be managed by `bosn`; never `docker system prune`.
 5. **The gate lock is shared per clone.** If the gate says another gate is
@@ -216,9 +216,31 @@ the paths that select them, so a change only triggers the tests it can affect.
   `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`, the root
   CMake files, `platform/mod.rs`, `test/cmocka/CMakeLists.txt` and the C++
   cmocka tests with their `tests.d` registrations (#610). Pushes and the
-  merge queue are scoped the same way; every platform runs with the
-  `ci-full` label, on schedule, workflow_dispatch, tags, release branches and
-  in the release gate.
+  merge queue are scoped the same way; every platform runs on master pushes, schedule, workflow_dispatch, tags,
+  release branches and in the release gate; no PR path selects the full builds.
+  Packaging and submodule moves are still compiled on Linux (touched targets)
+  on the PR. `.github/` edits start no platform job.
+
+### Path to lane table (fast gate)
+
+A PR needs about 5 runners: Event Data, CI Mode (attestation and lane proofs),
+Checks (swift detection, flatpak and Qt XML validators, ci/ self-tests; plus
+clang-format and gersemi on pushes), the Fast Gate and CI Gate. The Fast Gate
+runs formatters, rustfmt, clippy, Dylint and the unit tests of the crates the
+diff touches and their dependents (`ci/rust_scope.py`; libobs, dylints and
+Cargo files test the workspace), on every PR. No Qt is installed there.
+`LANES` in `ci/ci_scope.py` selects the rest by path:
+
+| Paths | Lane |
+|---|---|
+| everything | Fast Gate: 1) fmt, clippy, Dylint; 2) unit tests of the touched crates; 3) Linux build of touched `plugins/<x>`/`shared/<x>` targets (ENABLE_FRONTEND=OFF, no Qt) |
+| `libobs/` (not platform-only files), crates linked into libobs, `test/cmocka/`, `deps/`, `rust/tools/linux-validate/`, Cargo files | Tier 2 Linux (after the Fast Gate) |
+| `frontend/`, Qt-linked tests, `shared/qt`, the Qt job's own files | Qt Frontend Linux (the only Qt). Frontend platform files start no Windows/macOS Rust or Tier 2 job; Windows/macOS Qt lanes are a follow-up |
+| files matching `/platform[/-](windows, macos, linux, posix)[/.]` (posix = linux+macos), legacy OS names, shared build files (`cmake/common`, `cmake/finders`, `libobs/cmake`, root CMake, `platform/mod.rs`, C++ cmocka tests) | macOS / Windows Rust tests, Tier 2, cross lint |
+| `build-aux/`, `.gitmodules`, submodules | compiled on Linux only; no full build from a PR |
+| `docs/`, `.github/`, `ci/` | lint and the ci/ self-tests |
+
+The macOS, Windows, Qt, Tier 2 and cross jobs `needs:` the Fast Gate, so a lint or unit-test failure spends none of those runners.
 
 Unchanged lanes are cached by the gate, so a re-run after a small fix is fast.
 
@@ -267,7 +289,6 @@ Flatpak app builds, and the platform Rust test and Tier 2 jobs that
 `ci_scope.py` selects.
 
 **The stamp is ignored (CI runs everything it would anyway) when:**
-- the PR has the `ci-full` label;
 - the PR comes from a fork or from a non-writer;
 - the head isn't attested for its exact tree;
 - a lane is missing from the stamp;
@@ -295,8 +316,8 @@ that CI will run the Linux jobs itself.
    running for this clone, wait and retry.
 6. Push the stamped commit as-is: no amend, no rebase, no "Update branch"
    afterwards. Rebase before stamping, not after.
-7. Add `ci-full` only when the change affects a platform build that the quick
-   gate doesn't cover, and say why in the PR.
+7. There is no label to force CI: a `build-aux/` or submodule change selects
+   the full builds by path.
 
 ## When CI fails
 

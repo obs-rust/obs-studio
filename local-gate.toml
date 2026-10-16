@@ -19,7 +19,7 @@ verify = "build-project.yaml:ci-mode"
 # waiting on ci-mode: event data, the full OBS builds (themselves skipped for
 # non-native PRs by check-event's quick gate), and the macOS/Windows Rust and
 # Tier 2 legs. pr-pull.yaml's format/validation jobs are seconds long.
-verify-exempt = ["check-event", "lane-proofs", "macos-build", "ubuntu-build", "flatpak-build", "windows-build", "rust-tests", "rust-tier2", "pr-pull.yaml"]
+verify-exempt = ["check-event", "macos-build", "ubuntu-build", "flatpak-build", "windows-build", "rust-tests", "rust-tier2", "pr-pull.yaml"]
 mode = "shadow"
 # GATE-001: these remote jobs run the gate command itself (`--lane` args
 # only), so a green local gate predicts them. setup-steps lists steps that

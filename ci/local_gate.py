@@ -143,12 +143,12 @@ SOLDR_SELF_TESTS = "test_local_gate_probe.py"
 def self_test() -> None:
     """The gate's and the repo layout's unit tests: every ci/test_*.py.
 
-    CI runs them in their own ubuntu-latest job (ci-self-test) and sets
+    CI runs them in the Checks job (check-format.yaml) and sets
     OBS_GATE_SKIP_SELF_TEST=1 for the lint step on the scarce ubuntu-26.04
     runner (#427); locally they always run."""
     if os.environ.get("OBS_GATE_SKIP_SELF_TEST") == "1":
         # Only the tests that need this runner's soldr; the rest run in ci-self-test.
-        print("+ ci/ self-tests: soldr-dependent only (OBS_GATE_SKIP_SELF_TEST=1; ci-self-test runs the rest)", flush=True)
+        print("+ ci/ self-tests: soldr-dependent only (OBS_GATE_SKIP_SELF_TEST=1; the Checks job runs the rest)", flush=True)
         run([sys.executable, "-m", "unittest", "discover", "-s", "ci", "-p", SOLDR_SELF_TESTS])
         return
     run([sys.executable, "-m", "unittest", "discover", "-s", "ci", "-p", "test_*.py"])
@@ -275,6 +275,29 @@ def lane_rust_test(fix: bool) -> None:
     )
 
 
+def test_diff(base: str) -> None:
+    """Unit tests for the crates a PR touches (ci/rust_scope.py), the fast
+    gate's PR-path test step (#992). The full lane runs on master."""
+    import json
+
+    from rust_scope import affected
+
+    files = subprocess.run(["git", "diff", "--name-only", base, "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
+    meta = json.loads(
+        subprocess.run(["soldr", "cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    )
+    crates = {
+        p["name"]: (str(Path(p["manifest_path"]).parent.relative_to(ROOT)), {d["name"] for d in p["dependencies"]})
+        for p in meta["packages"]
+    }
+    mode, names = affected(files, crates)
+    print(f"== test scope: {mode} {names}", flush=True)
+    if mode == "skip":
+        return
+    pkgs = ["--workspace"] if mode == "workspace" else [a for n in names for a in ("-p", n)]
+    soldr_cargo(["test", *pkgs, "--locked"])
+
+
 def lane_tier2_linux(fix: bool) -> None:
     run(["bash", "rust/tools/linux-validate/run.sh"])
 
@@ -290,8 +313,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lane", choices=sorted(LANES), action="append", help="run only this lane (repeatable)")
     parser.add_argument("--fix", action="store_true", help="lint: rewrite files instead of checking")
+    parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this formatter check (CI format jobs)")
     args = parser.parse_args()
+    if args.test_diff:
+        try:
+            test_diff(args.test_diff)
+        except subprocess.CalledProcessError as e:
+            print(f"== test-diff: FAILED ({e.returncode})", flush=True)
+            return 1
+        return 0
     if args.only:
         CHECKS[args.only](tracked_files(), args.fix)
         print(f"== {args.only}: ok", flush=True)
