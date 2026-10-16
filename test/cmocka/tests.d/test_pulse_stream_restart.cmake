@@ -3,7 +3,9 @@
 # against a private PipeWire sound server started by
 # test_pulse_monitor_device.sh. libobs's source calls are stubbed (--wrap), so
 # no display is needed; pa_stream_new_with_proplist and
-# pa_stream_connect_record are wrapped to make restarts fail on demand.
+# pa_stream_connect_record are wrapped to make restarts fail on demand. Also
+# drops a stream's own server connection, the shared one, or restarts
+# pipewire-pulse (follow-up of #532).
 # Skipped (exit 77) when PipeWire, WirePlumber or pipewire-pulse are not
 # installed.
 if(TARGET OBS::pulseaudio)
