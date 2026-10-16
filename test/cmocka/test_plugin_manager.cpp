@@ -10,7 +10,8 @@
  * Removing a Missing entry with its trash button must remove that entry and
  * leave every other row acting on its own plugin: the next trash button
  * removes its own entry, and a toggle changes its own plugin
- * (obsproject/obs-studio#14005).
+ * (obsproject/obs-studio#14005). Turning a plugin off still asks for a
+ * restart.
  *
  * The real PluginManager, PluginManagerWindow and InstalledPluginRow are built
  * against stand-ins for the frontend app (plugin-manager-stubs/) and for the
@@ -497,6 +498,63 @@ static void normal_start_lists_gone_plugins_as_missing(void **)
 	assert_false(has_label(window, "PluginManager.SafeMode"));
 }
 
+/* ---- #14005: removing Missing entries ----------------------------------- */
+
+/* Three cached plugins that are gone (Missing) before two that loaded. */
+static std::vector<ModuleInfo> cache_with_missing_entries()
+{
+	add_fake("plugin-x", true);
+	add_fake("plugin-y", true);
+	return {cached("ghost-a"), cached("ghost-b"), cached("ghost-c"), cached("plugin-x"), cached("plugin-y")};
+}
+
+static void removing_missing_entries_removes_the_clicked_ones(void **)
+{
+	PluginManagerWindow &window = open_window(cache_with_missing_entries());
+	row_named(window, "ghost-a").trash->click();
+	row_named(window, "ghost-c").trash->click();
+
+	std::string kept = names(window.getModules());
+	if (kept != "ghost-b, plugin-x, plugin-y") {
+		fail_msg(
+			"removed ghost-a, then ghost-c: the window would save '%s', expected 'ghost-b, plugin-x, plugin-y'",
+			kept.c_str());
+	}
+}
+
+static void toggle_after_a_removal_changes_its_own_plugin(void **)
+{
+	PluginManagerWindow &window = open_window(cache_with_missing_entries());
+	row_named(window, "ghost-a").trash->click();
+	row_named(window, "plugin-x").toggle->click();
+
+	std::vector<ModuleInfo> modules = window.getModules();
+	const ModuleInfo *x = module_named(modules, "plugin-x");
+	const ModuleInfo *y = module_named(modules, "plugin-y");
+	assert_non_null(x);
+	assert_non_null(y);
+	if (x->enabled || !y->enabled) {
+		fail_msg("removed ghost-a, then turned plugin-x off: the window would save '%s', expected plugin-x off",
+			 names(modules).c_str());
+	}
+}
+
+/* Guard: turning a loaded plugin off asks for a restart, turning it back on
+ * does not. */
+static void toggle_asks_for_a_restart(void **)
+{
+	PluginManagerWindow &window = open_window(cache_with_missing_entries());
+	assert_false(window.isEnabledPluginsChanged());
+
+	row_named(window, "plugin-x").toggle->click();
+	assert_false(module_named(window.getModules(), "plugin-x")->enabled);
+	assert_true(window.isEnabledPluginsChanged());
+
+	row_named(window, "plugin-x").toggle->click();
+	assert_true(module_named(window.getModules(), "plugin-x")->enabled);
+	assert_false(window.isEnabledPluginsChanged());
+}
+
 int main(int argc, char **argv)
 {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -509,6 +567,9 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(only_bundled_plugins_lists_skipped_plugins_as_installed, setup,
 						teardown),
 		cmocka_unit_test_setup_teardown(normal_start_lists_gone_plugins_as_missing, setup, teardown),
+		cmocka_unit_test_setup_teardown(removing_missing_entries_removes_the_clicked_ones, setup, teardown),
+		cmocka_unit_test_setup_teardown(toggle_after_a_removal_changes_its_own_plugin, setup, teardown),
+		cmocka_unit_test_setup_teardown(toggle_asks_for_a_restart, setup, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
