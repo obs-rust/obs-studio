@@ -81,6 +81,9 @@ struct mp_media {
 	bool full_decode;
 	bool measure_duration;
 	int64_t measured_duration;
+	/* the first timestamp of the file (AVFormatContext::start_time, in
+	 * microseconds), 0 if unknown: the media time and seeks count from it */
+	int64_t start_time;
 	int64_t measured_frames;
 
 	uint64_t interrupt_poll_ts;

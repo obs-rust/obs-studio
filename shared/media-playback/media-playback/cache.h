@@ -77,7 +77,6 @@ struct mp_cache {
 	bool seek_next_ts;
 	bool eof;
 	int64_t seek_pos;
-	int64_t start_time;
 	int64_t media_duration;
 
 	mp_media_t m;

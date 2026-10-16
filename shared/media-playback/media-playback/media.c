@@ -638,10 +638,6 @@ bool mp_media_reset(mp_media_t *m)
 
 	int64_t next_ts = mp_media_get_base_pts(m);
 	int64_t offset = next_ts - m->next_pts_ns;
-	int64_t start_time = m->fmt->start_time;
-	if (start_time == AV_NOPTS_VALUE)
-		start_time = 0;
-
 	/* The time stamps sent so far are counted from start_ts, so they end
 	 * at base_ts + next_ts - start_ts: go on from there. Adding next_ts
 	 * alone started every loop late by the start time of the file (the
@@ -653,7 +649,7 @@ bool mp_media_reset(mp_media_t *m)
 	m->base_ts += next_ts - played_from;
 	m->seek_next_ts = false;
 
-	seek_to(m, start_time, false);
+	seek_to(m, m->start_time, false);
 
 	pthread_mutex_lock(&m->mutex);
 	stopping = m->stopping;
@@ -840,6 +836,8 @@ static bool init_avformat(mp_media_t *m)
 		return false;
 	}
 
+	m->start_time = m->fmt->start_time != AV_NOPTS_VALUE ? m->fmt->start_time : 0;
+
 	m->reconnecting = false;
 	m->has_video = mp_decode_init(m, AVMEDIA_TYPE_VIDEO, m->hw);
 	m->has_audio = mp_decode_init(m, AVMEDIA_TYPE_AUDIO, m->hw);
@@ -918,7 +916,7 @@ static void mp_media_measure_duration(mp_media_t *m)
 	av_packet_free(&pkt);
 	avformat_close_input(&fmt);
 
-	int64_t start = m->fmt->start_time != AV_NOPTS_VALUE ? m->fmt->start_time : 0;
+	int64_t start = m->start_time;
 	if (end != AV_NOPTS_VALUE && end > start)
 		m->measured_duration = end - start;
 	m->measured_frames = frames;
@@ -992,7 +990,9 @@ static inline bool mp_media_thread(mp_media_t *m)
 
 		if (seek) {
 			m->seek_next_ts = true;
-			seek_to(m, seek_pos, true);
+			/* seek_pos is a time of the media; the demuxer's
+			 * timestamps count from the file's start time */
+			seek_to(m, m->start_time + seek_pos, true);
 			continue;
 		}
 
@@ -1203,9 +1203,13 @@ void mp_media_stop(mp_media_t *m)
 	os_sem_post(m->sem);
 }
 
+/* In milliseconds of the media, counted from the file's start time like the
+ * duration and seeks: the decoded timestamps of an MPEG-TS file can start
+ * anywhere. */
 int64_t mp_media_get_current_time(mp_media_t *m)
 {
-	return mp_media_get_base_pts(m) * (int64_t)m->speed / 100000000LL;
+	int64_t t = mp_media_get_base_pts(m) * (int64_t)m->speed / 100000000LL - m->start_time / 1000;
+	return t > 0 ? t : 0;
 }
 
 int64_t mp_media_get_frames(mp_media_t *m)

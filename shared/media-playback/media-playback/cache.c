@@ -131,10 +131,6 @@ bool mp_cache_decode(mp_cache_t *c)
 
 	success = true;
 
-	c->start_time = c->m.fmt->start_time;
-	if (c->start_time == AV_NOPTS_VALUE)
-		c->start_time = 0;
-
 	/* The header's duration can be shorter than the file or missing; a
 	 * Stinger times its transition with it, so use what was decoded where
 	 * that is longer. */
@@ -149,7 +145,7 @@ bool mp_cache_decode(mp_cache_t *c)
 		if (a_end_ns > end_ns)
 			end_ns = a_end_ns;
 	}
-	int64_t decoded = end_ns / 1000 - c->start_time;
+	int64_t decoded = end_ns / 1000;
 
 	pthread_mutex_lock(&c->mutex);
 	if (decoded > c->media_duration)
@@ -360,13 +356,12 @@ static bool mp_cache_reset(mp_cache_t *c)
 
 	int64_t next_ts = mp_cache_get_base_pts(c);
 	int64_t offset = next_ts - c->next_pts_ns;
-	int64_t start_time = c->start_time;
 
 	c->eof = false;
 	c->base_ts += next_ts;
 	c->seek_next_ts = false;
 
-	seek_to(c, start_time);
+	seek_to(c, 0);
 
 	pthread_mutex_lock(&c->mutex);
 	stopping = c->stopping;
@@ -533,6 +528,15 @@ static void *mp_cache_thread_start(void *opaque)
 	return NULL;
 }
 
+/* The decoded timestamps count from the file's start time, which can be
+ * anywhere (MPEG-TS); the cached frames count from 0 like the media time and
+ * seek positions. Decoded pts are in nanoseconds and scaled by the speed. */
+static inline uint64_t cache_timestamp(mp_cache_t *c, uint64_t decoded)
+{
+	int64_t start_ns = av_rescale_q(c->m.start_time * 1000, (AVRational){1, c->m.speed}, (AVRational){1, 100});
+	return (int64_t)decoded > start_ns ? decoded - (uint64_t)start_ns : 0;
+}
+
 static void fill_video(void *data, struct obs_source_frame *frame)
 {
 	mp_cache_t *c = data;
@@ -541,7 +545,7 @@ static void fill_video(void *data, struct obs_source_frame *frame)
 	obs_source_frame_init(&dup, frame->format, frame->width, frame->height);
 	obs_source_frame_copy(&dup, frame);
 
-	dup.timestamp = frame->timestamp;
+	dup.timestamp = cache_timestamp(c, frame->timestamp);
 
 	c->final_v_duration = c->m.v.last_duration;
 
@@ -552,6 +556,7 @@ static void fill_audio(void *data, struct obs_source_audio *audio)
 {
 	mp_cache_t *c = data;
 	struct obs_source_audio dup = *audio;
+	dup.timestamp = cache_timestamp(c, audio->timestamp);
 
 	size_t size = get_total_audio_size(dup.format, dup.speakers, dup.frames);
 	dup.data[0] = bmalloc(size);
