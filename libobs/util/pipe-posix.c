@@ -14,6 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -33,6 +37,16 @@ struct os_process_pipe {
 	FILE *err_file;
 };
 
+static int create_pipe(int fds[2])
+{
+#ifdef __linux__
+	/* An unrelated thread may spawn a child before a later fcntl call. */
+	return pipe2(fds, O_CLOEXEC);
+#else
+	return pipe(fds);
+#endif
+}
+
 static os_process_pipe_t *os_process_pipe_create_internal(const char *bin, char **argv, const char *type)
 {
 	struct os_process_pipe process_pipe = {0};
@@ -48,11 +62,11 @@ static os_process_pipe_t *os_process_pipe_create_internal(const char *bin, char 
 	int mainfds[2] = {0};
 	int errfds[2] = {0};
 
-	if (pipe(mainfds) != 0) {
+	if (create_pipe(mainfds) != 0) {
 		return NULL;
 	}
 
-	if (pipe(errfds) != 0) {
+	if (create_pipe(errfds) != 0) {
 		close(mainfds[0]);
 		close(mainfds[1]);
 
@@ -68,10 +82,12 @@ static os_process_pipe_t *os_process_pipe_create_internal(const char *bin, char 
 		return NULL;
 	}
 
+#ifndef __linux__
 	fcntl(mainfds[0], F_SETFD, FD_CLOEXEC);
 	fcntl(mainfds[1], F_SETFD, FD_CLOEXEC);
 	fcntl(errfds[0], F_SETFD, FD_CLOEXEC);
 	fcntl(errfds[1], F_SETFD, FD_CLOEXEC);
+#endif
 
 	if (process_pipe.read_pipe) {
 		posix_spawn_file_actions_addclose(&file_actions, mainfds[0]);
