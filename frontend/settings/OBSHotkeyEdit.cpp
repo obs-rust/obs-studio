@@ -33,6 +33,14 @@ bool OBSHotkeyEdit::event(QEvent *event)
 	if (HotkeyCaptureEvent(event)) {
 		return true;
 	}
+	obs_key_combination_t previous = key;
+	bool previousChanged = changed;
+	if (modifierUndo.Event(event, previous, previousChanged)) {
+		key = previous;
+		changed = previousChanged;
+		emit KeyChanged(key);
+		RenderKey();
+	}
 	return QLineEdit::event(event);
 }
 
@@ -65,6 +73,7 @@ void OBSHotkeyEdit::keyPressEvent(QKeyEvent *event)
 
 	new_key.modifiers = TranslateQtKeyboardEventModifiers(event->modifiers());
 
+	modifierUndo.KeyPress(event, key, changed);
 	HandleNewKey(new_key);
 }
 
@@ -147,6 +156,7 @@ void OBSHotkeyEdit::mousePressEvent(QMouseEvent *event)
 
 	new_key.modifiers = TranslateQtKeyboardEventModifiers(event->modifiers());
 
+	modifierUndo.Reset();
 	HandleNewKey(new_key);
 }
 
@@ -174,6 +184,7 @@ void OBSHotkeyEdit::RenderKey()
 
 void OBSHotkeyEdit::ResetKey()
 {
+	modifierUndo.Reset();
 	key = original;
 
 	changed = false;
@@ -184,6 +195,7 @@ void OBSHotkeyEdit::ResetKey()
 
 void OBSHotkeyEdit::ClearKey()
 {
+	modifierUndo.Reset();
 	key = {0, OBS_KEY_NONE};
 
 	changed = true;

@@ -16,8 +16,40 @@
 #pragma once
 
 class QEvent;
+class QKeyEvent;
 
 /* Called first from the event() handler of a Settings > Hotkeys key field
  * (OBSHotkeyEdit). Returns true when the event has been handled and must not
  * reach QLineEdit::event(). */
 bool HotkeyCaptureEvent(QEvent *event);
+
+/* Shift+Tab out of a key field (obsproject/obs-studio#12475). Qt delivers the
+ * Shift press to the field first, and the field records it as a bare "Shift"
+ * binding, before the Tab moves the focus away. The key field keeps one of
+ * these: KeyPress() is called from keyPressEvent() before a key is recorded,
+ * and Event() from event() before anything else. */
+template<typename Key> class HotkeyModifierUndo {
+public:
+	/* A key press the field is about to record. current/changed are the
+	 * field's binding and changed flag before it. */
+	void KeyPress(const QKeyEvent *event, const Key &current, bool changed)
+	{
+		(void)event;
+		(void)current;
+		(void)changed;
+	}
+
+	/* Returns true when key/changed must be put back before the event goes
+	 * on to QLineEdit::event(). */
+	bool Event(QEvent *event, Key &key, bool &changed)
+	{
+		(void)event;
+		(void)key;
+		(void)changed;
+		return false;
+	}
+
+	/* Something other than a key press changed the binding (a mouse
+	 * button, the Clear or Revert buttons). */
+	void Reset() {}
+};

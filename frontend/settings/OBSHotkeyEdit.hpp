@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "OBSHotkeyCapture.hpp"
+
 #include <obs.hpp>
 
 #include <OBSApp.hpp>
@@ -72,6 +74,7 @@ public:
 protected:
 	OBSSignal layoutChanged;
 	QAction *dupeIcon = nullptr;
+	HotkeyModifierUndo<obs_key_combination_t> modifierUndo;
 
 	void InitSignalHandler();
 	void CreateDupeIcon();
