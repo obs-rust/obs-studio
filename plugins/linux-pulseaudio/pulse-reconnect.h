@@ -105,7 +105,8 @@ bool pulse_stream_failed_should_restart(uint32_t *attempts, uint64_t *delay_usec
  * pulse_stream_failed_should_restart(). */
 
 enum pulse_stream_event {
-	/* The stream failed or was terminated, the context is still up. */
+	/* The stream failed or was terminated while the shared connection
+	 * stayed up; the stream's own connection may be gone with it. */
 	PULSE_STREAM_FAILED,
 	/* A source (device) appeared on the server. */
 	PULSE_SOURCE_NEW,

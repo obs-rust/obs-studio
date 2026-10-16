@@ -627,8 +627,10 @@ static void pulse_stream_state_changed(pa_stream *s, void *userdata)
 
 	if (PA_STREAM_IS_GOOD(pa_stream_get_state(s)))
 		return;
-	/* With the whole connection lost, pulse_reconnected restarts it. */
-	if (pa_context_get_state(pa_stream_get_context(s)) != PA_CONTEXT_READY)
+	/* With the shared connection lost, pulse_reconnected restarts it. The
+	 * stream's own connection may have been dropped alone (#532): restart
+	 * it then like a stream that failed. */
+	if (!pulse_connected())
 		return;
 
 	pulse_queue_stream_task(data->weak_source, PULSE_STREAM_FAILED, PA_INVALID_INDEX, s);

@@ -494,6 +494,12 @@ pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa
 	return s;
 }
 
+bool pulse_connected(void)
+{
+	return pulse_context && !pulse_reconnection.reconnecting &&
+	       pa_context_get_state(pulse_context) == PA_CONTEXT_READY;
+}
+
 void pulse_stream_free(pa_stream *s)
 {
 	pa_context *c = NULL;

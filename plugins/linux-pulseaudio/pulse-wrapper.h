@@ -16,6 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <pulse/stream.h>
 #include <pulse/context.h>
 #include <pulse/introspect.h>
@@ -185,6 +186,14 @@ int_fast32_t pulse_get_server_info(pa_server_info_cb_t cb, void *userdata);
  * @warning call without active locks
  */
 pa_stream *pulse_stream_new(const char *name, const pa_sample_spec *ss, const pa_channel_map *map);
+
+/**
+ * Whether the shared connection (not a stream's own one) is up. When it is
+ * not, the reconnection recreates every stream once it is back.
+ *
+ * @warning call with the mainloop locked
+ */
+bool pulse_connected(void);
 
 /**
  * Disconnect and free a stream from pulse_stream_new(), and the connection
