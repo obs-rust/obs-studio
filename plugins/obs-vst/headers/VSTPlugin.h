@@ -45,6 +45,7 @@ class VSTPlugin : public QObject {
 	std::recursive_mutex lockEffect;
 	AEffect *effect = nullptr;
 	obs_source_t *sourceContext;
+	obs_weak_source_t *weakSource = nullptr;
 	std::string pluginPath;
 
 	float **inputs = nullptr;
@@ -83,6 +84,7 @@ class VSTPlugin : public QObject {
 					    float opt);
 	VstTimeInfo *GetTimeInfo();
 	float GetSampleRate();
+	void refreshProperties();
 
 public:
 	VSTPlugin(obs_source_t *sourceContext);

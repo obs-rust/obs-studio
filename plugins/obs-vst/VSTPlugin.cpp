@@ -79,13 +79,19 @@ float VSTPlugin::GetSampleRate()
 	return mTimeInfo.sampleRate;
 }
 
-VSTPlugin::VSTPlugin(obs_source_t *sourceContext) : sourceContext{sourceContext} {}
+VSTPlugin::VSTPlugin(obs_source_t *sourceContext)
+	: sourceContext{sourceContext},
+	  weakSource{obs_source_get_weak_source(sourceContext)}
+{
+}
 
 VSTPlugin::~VSTPlugin()
 {
 	unloadEffect();
 
 	cleanupChannelBuffers();
+
+	obs_weak_source_release(weakSource);
 }
 
 void VSTPlugin::createChannelBuffers(size_t count)
@@ -305,6 +311,22 @@ void VSTPlugin::onEditorClosed()
 	if (effect && editorOpened) {
 		editorOpened = false;
 		effect->dispatcher(effect, effEditClose, 0, 0, nullptr, 0);
+	}
+
+	/* The editor can also be closed with its window's own close button,
+	 * which the properties view does not see. Ask it to rebuild once this
+	 * close is done: the "Close Plug-in Interface" callback may still be
+	 * using the current properties. */
+	QMetaObject::invokeMethod(this, &VSTPlugin::refreshProperties, Qt::QueuedConnection);
+}
+
+void VSTPlugin::refreshProperties()
+{
+	/* The filter may be gone by now (removed with the editor open). */
+	obs_source_t *source = obs_weak_source_get_source(weakSource);
+	if (source) {
+		obs_source_update_properties(source);
+		obs_source_release(source);
 	}
 }
 
