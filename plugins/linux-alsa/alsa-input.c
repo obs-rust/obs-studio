@@ -486,6 +486,7 @@ bool _alsa_configure(struct alsa_data *data)
 		blog(LOG_ERROR, "snd_pcm_hw_params_set_format failed: %s", snd_strerror(err));
 		return false;
 	}
+	blog(LOG_INFO, "PCM '%s' format set to %s", data->device, snd_pcm_format_name(data->format));
 
 	err = snd_pcm_hw_params_set_rate_near(data->handle, hwparams, &data->rate, 0);
 	if (err < 0) {
