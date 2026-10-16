@@ -789,10 +789,18 @@ static void failed_restart_is_retried(void **state)
 	unload_module(&mic_a);
 }
 
+/* How long one failed restart may take on top of PULSE_RESTART_RETRY_USEC
+ * (stream creation, the server's reply, the UI task) on a busy host, and how
+ * long the source may go without a restart before it counts as having
+ * stopped without giving up. */
+#define RESTART_SLACK_MS 300
+#define RESTART_STALL_MS 5000
+
 /* The server keeps failing the restarted stream while the device is there.
  * The source must not restart it in a tight loop, must give up after
  * PULSE_RESTART_MAX_ATTEMPTS, and must then start again once a device
- * appears. */
+ * appears. Judged by the restarts themselves, not by how long they took: a
+ * busy host spreads them out, which is fine. */
 static void failing_stream_is_paced_then_given_up(void **state)
 {
 	(void)state;
@@ -808,13 +816,52 @@ static void failing_stream_is_paced_then_given_up(void **state)
 	__atomic_store_n(&fail_connected, true, __ATOMIC_SEQ_CST);
 	kill_stream(a);
 
-	/* About one attempt per PULSE_RESTART_RETRY_USEC */
-	usleep(1000000);
-	int first_second = calls(&connect_calls) - before;
-	if (first_second < 2) {
-		fprintf(stderr, "the failing stream was restarted %d times in 1 s, expected about 10\n", first_second);
+	/* The killed stream is the first failure; each restart fails again,
+	 * and the failure that reaches PULSE_RESTART_MAX_ATTEMPTS gives up. */
+	const int expected = PULSE_RESTART_MAX_ATTEMPTS - 1;
+	const uint64_t bound_ns =
+		(uint64_t)PULSE_RESTART_MAX_ATTEMPTS * (PULSE_RESTART_RETRY_USEC / 1000 + RESTART_SLACK_MS) * 1000000;
+	uint64_t start = os_gettime_ns(), last_change = start;
+	int seen = 0;
+	while (count(&gave_up) == gave_up_before) {
+		int n = calls(&connect_calls) - before;
+		uint64_t now = os_gettime_ns();
+		if (n > expected) {
+			fprintf(stderr, "the failing stream was restarted %d times without giving up, expected %d\n", n,
+				expected);
+			fail();
+		}
+		if (n != seen) {
+			seen = n;
+			last_change = now;
+		} else if (now - last_change > (uint64_t)RESTART_STALL_MS * 1000000) {
+			fprintf(stderr, "the failing stream stopped being restarted after %d times without giving up\n",
+				n);
+			fail();
+		}
+		if (now - start > bound_ns) {
+			fprintf(stderr, "still restarting the failing stream after %.1f s (%d attempts, expected %d)\n",
+				(now - start) / 1e9, n, expected);
+			fail();
+		}
+		usleep(20000);
+	}
+	uint64_t took = os_gettime_ns() - start;
+
+	usleep(500000);
+	drain_ui_tasks();
+	int total = calls(&connect_calls) - before;
+	usleep(500000);
+	drain_ui_tasks();
+	if (calls(&connect_calls) - before != total) {
+		fprintf(stderr, "the stream was restarted again after giving up\n");
 		fail();
 	}
+	if (total != expected) {
+		fprintf(stderr, "%d restarts before giving up, expected %d\n", total, expected);
+		fail();
+	}
+
 	/* Each restart after a failure waits PULSE_RESTART_RETRY_USEC; only
 	 * the first one is at once, and it comes before the first gap. */
 	int n = __atomic_load_n(&connect_times_num, __ATOMIC_SEQ_CST);
@@ -825,32 +872,12 @@ static void failing_stream_is_paced_then_given_up(void **state)
 	}
 	if (n < 2 || min_gap < PULSE_RESTART_RETRY_USEC * 1000 * 9 / 10) {
 		fprintf(stderr,
-			"the failing stream was restarted %d times in 1 s, %.0f ms apart at the least, expected %d ms\n",
-			first_second, n < 2 ? 0.0 : min_gap / 1e6, PULSE_RESTART_RETRY_USEC / 1000);
+			"the failing stream was restarted %d times, %.0f ms apart at the least, expected %d ms\n", n,
+			n < 2 ? 0.0 : min_gap / 1e6, PULSE_RESTART_RETRY_USEC / 1000);
 		fail();
 	}
-
-	for (int t = 0; t < 15000 && count(&gave_up) == gave_up_before; t += 50)
-		usleep(50000);
-	if (count(&gave_up) == gave_up_before) {
-		fprintf(stderr, "still restarting the failing stream after 16 s (%d attempts)\n",
-			calls(&connect_calls) - before);
-		fail();
-	}
-	usleep(500000);
-	drain_ui_tasks();
-	int total = calls(&connect_calls) - before;
-	usleep(500000);
-	drain_ui_tasks();
-	if (calls(&connect_calls) - before != total) {
-		fprintf(stderr, "the stream was restarted again after giving up\n");
-		fail();
-	}
-	if (total > PULSE_RESTART_MAX_ATTEMPTS + 1) {
-		fprintf(stderr, "%d restarts before giving up, expected at most %d\n", total,
-			PULSE_RESTART_MAX_ATTEMPTS + 1);
-		fail();
-	}
+	fprintf(stderr, "gave up after %d restarts in %.1f s, %.0f ms apart at the least\n", total, took / 1e9,
+		min_gap / 1e6);
 
 	/* Given up, the source looks again when a device appears. */
 	__atomic_store_n(&fail_connected, false, __ATOMIC_SEQ_CST);
