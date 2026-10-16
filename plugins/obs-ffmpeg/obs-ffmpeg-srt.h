@@ -83,6 +83,9 @@ typedef struct SRTContext {
 	int tsbpd;
 	double time; // time in s in order to post logs at definite intervals
 	struct srt_err last_error;
+	/* Holds a reference from srt_startup(). libsrt counts these process-wide and breaks every SRT socket in
+	 * the process (other outputs, media sources) when the count drops to zero, so release it exactly once. */
+	bool srt_started;
 } SRTContext;
 
 #define OBS_OUTPUT_TIMEDOUT -10
@@ -667,6 +670,9 @@ static int libsrt_open(URLContext *h, const char *uri)
 	} else {
 		blog(LOG_INFO, "[obs-ffmpeg mpegts muxer / libsrt]: libsrt version %s loaded", SRT_VERSION_STRING);
 	}
+	s->srt_started = true;
+	s->fd = SRT_INVALID_SOCK;
+	s->eid = -1;
 	libsrt_set_defaults(s);
 
 	s->last_error.obs_output_error_number = OBS_OUTPUT_SUCCESS;
@@ -839,6 +845,7 @@ static int libsrt_open(URLContext *h, const char *uri)
 err:
 	av_freep(&s->smoother);
 	av_freep(&s->streamid);
+	s->srt_started = false;
 	srt_cleanup();
 	return ret;
 }
@@ -890,6 +897,14 @@ static int libsrt_close(URLContext *h)
 		av_freep(&s->streamid);
 	if (s->passphrase)
 		av_freep(&s->passphrase);
+	/* libsrt_open() failed or this context is already closed: no socket, no libsrt reference. */
+	if (!s->srt_started)
+		return 0;
+	s->srt_started = false;
+	if (s->fd == SRT_INVALID_SOCK) {
+		srt_cleanup();
+		return 0;
+	}
 	/* Log stream stats. */
 	SRT_TRACEBSTATS perf = {0};
 	srt_bstats(s->fd, &perf, 1);
@@ -905,10 +920,14 @@ static int libsrt_close(URLContext *h)
 	     perf.byteSentTotal ? perf.byteRetransTotal / perf.byteSentTotal * 100.0 : 0,
 	     perf.byteSentTotal ? perf.byteSndDropTotal / perf.byteSentTotal * 100.0 : 0);
 
-	srt_epoll_release(s->eid);
+	if (s->eid >= 0)
+		srt_epoll_release(s->eid);
 	int err = srt_close(s->fd);
+	s->fd = SRT_INVALID_SOCK;
+	s->eid = -1;
 	if (err < 0) {
 		blog(LOG_ERROR, "[obs-ffmpeg mpegts muxer / libsrt]: %s", srt_getlasterror_str());
+		srt_cleanup();
 		return -1;
 	}
 
