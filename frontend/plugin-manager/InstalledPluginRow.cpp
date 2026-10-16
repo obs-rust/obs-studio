@@ -100,7 +100,9 @@ InstalledPluginRow::InstalledPluginRow(QWidget *parent, const PluginManagerWindo
 			warningIcon->setPixmap(getWarningIcon().pixmap(16, 16));
 
 			auto legacyInfo =
-				new QLabel{QTStr("PluginManager.Status.Legacy.Description").arg(kLegacyPluginInfoLink),
+				new QLabel{QTStr("PluginManager.Status.Legacy.Description")
+						   .arg(QString::fromUtf8(kLegacyPluginInfoLink.data(),
+									  qsizetype(kLegacyPluginInfoLink.size()))),
 					   moduleText};
 			legacyInfo->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
 			legacyInfo->setOpenExternalLinks(true);
