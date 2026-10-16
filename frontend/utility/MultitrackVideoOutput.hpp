@@ -29,7 +29,8 @@ public:
 			      std::optional<QString> extra_canvas, bool disable_b_frames, bool disable_lookahead,
 			      const char *preset, const char *tune);
 	signal_handler_t *StreamingSignalHandler();
-	void StartedStreaming();
+	/* Starts the stream dump, if there is one; true if it started. */
+	bool StartedStreaming();
 	void StopStreaming();
 
 	OBSOutputAutoRelease StreamingOutput()

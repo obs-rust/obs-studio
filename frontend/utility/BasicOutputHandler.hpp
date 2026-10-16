@@ -2,6 +2,7 @@
 
 #include <utility/MultitrackVideoOutput.hpp>
 #include <utility/WHIPSimulcastEncoders.hpp>
+#include <utility/output-filename-reserve.h>
 
 #include <obs.hpp>
 #include <util/dstr.hpp>
@@ -53,6 +54,10 @@ struct BasicOutputHandler {
 	/* The empty file GetOutputFilename() created for the recording, until
 	 * the recording stops; see ReleaseRecordingReservation(). */
 	std::string reservedRecordingPath;
+	/* The empty file GenerateMultitrackVideoStreamDumpConfig() created
+	 * for the Enhanced Broadcasting stream dump, until the dump output
+	 * starts or the go-live fails; see SettleStreamDumpReservation(). */
+	output_filename_reservation streamDumpReservation = {};
 
 	OBSSignal startRecording;
 	OBSSignal stopRecording;
@@ -72,7 +77,7 @@ struct BasicOutputHandler {
 
 	BasicOutputHandler(OBSBasic *main_);
 
-	virtual ~BasicOutputHandler() {};
+	virtual ~BasicOutputHandler() { output_filename_reservation_cancel(&streamDumpReservation); };
 
 	virtual std::shared_future<void> SetupStreaming(obs_service_t *service,
 							SetupStreamingContinuation_t continuation) = 0;
@@ -119,6 +124,10 @@ protected:
 						      size_t main_audio_mixer, std::optional<size_t> vod_track_mixer,
 						      std::function<void(std::optional<bool>)> continuation);
 	OBSDataAutoRelease GenerateMultitrackVideoStreamDumpConfig();
+	/* The stream dump's file is the dump output's once it has started;
+	 * otherwise (the go-live or the stream output failed) the empty
+	 * reservation is removed. */
+	void SettleStreamDumpReservation(bool dumpStarted);
 };
 
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main);

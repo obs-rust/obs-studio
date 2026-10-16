@@ -723,7 +723,7 @@ signal_handler_t *MultitrackVideoOutput::StreamingSignalHandler()
 	return current.has_value() ? obs_output_get_signal_handler(current->output_) : nullptr;
 }
 
-void MultitrackVideoOutput::StartedStreaming()
+bool MultitrackVideoOutput::StartedStreaming()
 {
 	OBSOutputAutoRelease dump_output;
 	{
@@ -734,11 +734,12 @@ void MultitrackVideoOutput::StartedStreaming()
 	}
 
 	if (!dump_output) {
-		return;
+		return false;
 	}
 
 	auto result = obs_output_start(dump_output);
 	blog(LOG_INFO, "MultitrackVideoOutput: starting recording%s", result ? "" : " failed");
+	return result;
 }
 
 void MultitrackVideoOutput::StopStreaming()

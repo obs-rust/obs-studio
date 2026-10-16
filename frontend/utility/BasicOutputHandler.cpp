@@ -553,6 +553,7 @@ std::shared_future<void> BasicOutputHandler::SetupMultitrackVideo(obs_service_t 
 			}
 
 			multitrackVideoActive = false;
+			SettleStreamDumpReservation(false);
 			if (!error->ShowDialog(main, multitrack_video_name)) {
 				return continuation(false);
 			}
@@ -611,9 +612,11 @@ OBSDataAutoRelease BasicOutputHandler::GenerateMultitrackVideoStreamDumpConfig()
 
 	OBSDataAutoRelease settings = obs_data_create();
 	f = GetFormatString(filenameFormat, nullptr, nullptr);
+	string reservedPath;
 	string strPath = GetRecordingFilename(path, useMP4 ? "mp4" : "flv", noSpace, overwriteIfExists, f.c_str(),
 					      // never remux stream dump
-					      false);
+					      false, &reservedPath);
+	output_filename_reservation_hold(&streamDumpReservation, reservedPath.c_str());
 	obs_data_set_string(settings, "path", strPath.c_str());
 
 	if (useMP4) {
@@ -622,6 +625,15 @@ OBSDataAutoRelease BasicOutputHandler::GenerateMultitrackVideoStreamDumpConfig()
 	}
 
 	return settings;
+}
+
+void BasicOutputHandler::SettleStreamDumpReservation(bool dumpStarted)
+{
+	if (dumpStarted) {
+		output_filename_reservation_hand_over(&streamDumpReservation);
+	} else {
+		output_filename_reservation_cancel(&streamDumpReservation);
+	}
 }
 
 BasicOutputHandler *CreateSimpleOutputHandler(OBSBasic *main)

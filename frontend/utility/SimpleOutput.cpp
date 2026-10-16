@@ -756,12 +756,15 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	}
 
 	if (obs_output_start(streamOutput)) {
+		bool dumpStarted = false;
 		if (multitrackVideo && multitrackVideoActive) {
-			multitrackVideo->StartedStreaming();
+			dumpStarted = multitrackVideo->StartedStreaming();
 		}
+		SettleStreamDumpReservation(dumpStarted);
 		return true;
 	}
 
+	SettleStreamDumpReservation(false);
 	if (multitrackVideo && multitrackVideoActive) {
 		multitrackVideoActive = false;
 	}

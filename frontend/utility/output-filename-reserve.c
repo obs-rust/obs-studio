@@ -89,17 +89,20 @@ void output_filename_release(const char *path)
 
 void output_filename_reservation_hold(struct output_filename_reservation *reservation, const char *path)
 {
-	/* not implemented yet: the stream dump keeps no owner for its file */
-	(void)reservation;
-	(void)path;
+	output_filename_reservation_cancel(reservation);
+	if (path && *path)
+		reservation->path = bstrdup(path);
 }
 
 void output_filename_reservation_hand_over(struct output_filename_reservation *reservation)
 {
-	(void)reservation;
+	bfree(reservation->path);
+	reservation->path = NULL;
 }
 
 void output_filename_reservation_cancel(struct output_filename_reservation *reservation)
 {
-	(void)reservation;
+	output_filename_release(reservation->path);
+	bfree(reservation->path);
+	reservation->path = NULL;
 }
