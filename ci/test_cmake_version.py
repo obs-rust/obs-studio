@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +14,13 @@ GIT_ISOLATION = ("-c", "tag.gpgSign=false", "-c", "commit.gpgSign=false", "-c", 
 
 
 VERSIONCONFIG = Path(__file__).resolve().parents[1] / "cmake/common/versionconfig.cmake"
+OBS_CONFIG_H = Path(__file__).resolve().parents[1] / "libobs/obs-config.h"
+
+
+def libobs_api_major() -> int:
+    match = re.search(r"(?m)^#define LIBOBS_API_MAJOR_VER (\d+)$", OBS_CONFIG_H.read_text(encoding="utf-8"))
+    assert match, "LIBOBS_API_MAJOR_VER not found in libobs/obs-config.h"
+    return int(match.group(1))
 
 
 class VersionConfigTests(unittest.TestCase):
@@ -80,6 +88,38 @@ class VersionConfigTests(unittest.TestCase):
         result = self.probe("not-a-version")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Invalid version supplied", result.stdout + result.stderr)
+
+
+    # OBS_VERSION_OVERRIDE is the OBS version libobs reports to plugins
+    # (obs_get_version_string()); plugins such as DistroAV refuse to load when it
+    # is older than the OBS they need. The fork's own version goes in
+    # OBS_RUST_VERSION (#1087).
+    def assert_fork_version_rejected(self, override: str) -> None:
+        result = self.probe(override)
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, f"OBS_VERSION_OVERRIDE={override} was accepted:\n{output}")
+        self.assertIn("OBS_RUST_VERSION", output)
+        self.assertIn(f"LIBOBS_API_MAJOR_VER {libobs_api_major()}", output)
+
+    def test_fork_release_version_override_is_rejected(self) -> None:
+        self.assert_fork_version_rejected("0.1.0-beta.20261014")
+
+    def test_fork_git_package_version_override_is_rejected(self) -> None:
+        self.assert_fork_version_rejected("0.0.0.r1240.g2f39af945")
+
+    def test_override_older_than_libobs_api_major_is_rejected(self) -> None:
+        self.assert_fork_version_rejected(f"{libobs_api_major() - 1}.2.2")
+
+    def test_override_matching_libobs_api_major_is_accepted(self) -> None:
+        major = libobs_api_major()
+        self.assert_versions(self.probe(f"{major}.0.0"), version=f"{major}.0.0", canonical=f"{major}.0.0")
+        self.assert_versions(
+            self.probe(f"{major}.0.0-beta6"), version=f"{major}.0.0-beta6", canonical=f"{major}.0.0"
+        )
+
+    def test_override_newer_than_libobs_api_major_is_accepted(self) -> None:
+        major = libobs_api_major() + 1
+        self.assert_versions(self.probe(f"{major}.1.0"), version=f"{major}.1.0", canonical=f"{major}.1.0")
 
 
 if __name__ == "__main__":
