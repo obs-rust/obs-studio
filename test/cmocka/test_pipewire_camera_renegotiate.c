@@ -42,9 +42,16 @@
  * PipeWire connection on a private PipeWire daemon that
  * test_pipewire_cursor_hdr.sh starts (own runtime dir, no session manager, no
  * devices). A stream node in this test plays the camera: YUY2 64x48 at 30
- * (its default) or 15 FPS. There is no session manager, so the test links
- * the camera to the source's capture stream itself. The source's log tells
- * what happens: "Renegotiating stream" and the negotiated framerate.
+ * (its default) or 15 FPS, and 32x24 at 60 FPS only. There is no session
+ * manager, so the test links the camera to the source's capture stream
+ * itself, once per stream, as WirePlumber does. The source's log tells what
+ * happens: "Renegotiating stream" and the negotiated size and framerate.
+ *
+ * Picking a format the camera has no picked framerate for (32x24, after
+ * 15 FPS at 64x48) froze the picture (obsproject/obs-studio#13783, by
+ * rexendevar): the new stream still asked for exactly 15 FPS, no format of
+ * the camera matched, the link failed ("no more input formats") and the
+ * camera and OBS stayed unconnected.
  *
  * Needs dbus-daemon and an X display for obs_startup() (xvfb-run is enough);
  * the wrapper skips (77) without PipeWire, and the cases skip when
@@ -55,6 +62,8 @@
 #define CAMERA_NAME "obs-test-camera"
 #define WIDTH 64
 #define HEIGHT 48
+#define SMALL_WIDTH 32
+#define SMALL_HEIGHT 24
 
 const char *obs_module_text(const char *val)
 {
@@ -226,6 +235,9 @@ static struct {
 	size_t n_ports;
 	struct pw_proxy *link;
 	uint32_t linked_out, linked_in;
+
+	/* The negotiated size, set on the camera's PipeWire thread */
+	uint32_t width, height;
 } camera;
 
 static void on_camera_param_changed(void *data, uint32_t id, const struct spa_pod *param)
@@ -236,14 +248,20 @@ static void on_camera_param_changed(void *data, uint32_t id, const struct spa_po
 
 	UNUSED_PARAMETER(data);
 
+	struct spa_video_info_raw info = {0};
+
 	if (!param || id != SPA_PARAM_Format)
 		return;
+	if (spa_format_video_raw_parse(param, &info) < 0 || !info.size.width || !info.size.height)
+		return;
+	camera.width = info.size.width;
+	camera.height = info.size.height;
 
 	params[0] = spa_pod_builder_add_object(&b, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
 					       SPA_PARAM_BUFFERS_buffers, SPA_POD_CHOICE_RANGE_Int(4, 2, 8),
 					       SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(1), SPA_PARAM_BUFFERS_size,
-					       SPA_POD_Int(WIDTH * HEIGHT * 2), SPA_PARAM_BUFFERS_stride,
-					       SPA_POD_Int(WIDTH * 2), SPA_PARAM_BUFFERS_dataType,
+					       SPA_POD_Int(camera.width * camera.height * 2), SPA_PARAM_BUFFERS_stride,
+					       SPA_POD_Int(camera.width * 2), SPA_PARAM_BUFFERS_dataType,
 					       SPA_POD_CHOICE_FLAGS_Int(1 << SPA_DATA_MemPtr));
 	pw_stream_update_params(camera.stream, params, 1);
 }
@@ -260,9 +278,10 @@ static void on_camera_process(void *data)
 		return;
 
 	d = &b->buffer->datas[0];
-	if (d->data && d->maxsize >= WIDTH * HEIGHT * 2) {
-		memset(d->data, 0x80, WIDTH * HEIGHT * 2);
-		*d->chunk = (struct spa_chunk){.offset = 0, .size = WIDTH * HEIGHT * 2, .stride = WIDTH * 2};
+	uint32_t size = camera.width * camera.height * 2;
+	if (d->data && size && d->maxsize >= size) {
+		memset(d->data, 0x80, size);
+		*d->chunk = (struct spa_chunk){.offset = 0, .size = size, .stride = camera.width * 2};
 	}
 	pw_stream_queue_buffer(camera.stream, b);
 }
@@ -373,12 +392,16 @@ static bool camera_start(void)
 	return camera.core != NULL;
 }
 
-/* YUY2 64x48; 30 FPS (the default, first in the choice) or 15 FPS. */
+/* The second framerate of 64x48 */
+static struct spa_fraction camera_fps_at_full_size = {15, 1};
+
+/* YUY2 64x48 at 30 FPS (the default, first in the choice) or 15 FPS
+ * (camera_fps_at_full_size), and 32x24 at 60 FPS only. */
 static bool camera_plug(void)
 {
-	uint8_t buffer[1024];
+	uint8_t buffer[2048];
 	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
-	const struct spa_pod *params[1];
+	const struct spa_pod *params[2];
 	uint32_t node_id = SPA_ID_INVALID;
 
 	params[0] = spa_pod_builder_add_object(
@@ -386,7 +409,13 @@ static bool camera_plug(void)
 		SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
 		SPA_FORMAT_VIDEO_format, SPA_POD_Id(SPA_VIDEO_FORMAT_YUY2), SPA_FORMAT_VIDEO_size,
 		SPA_POD_Rectangle(&SPA_RECTANGLE(WIDTH, HEIGHT)), SPA_FORMAT_VIDEO_framerate,
-		SPA_POD_CHOICE_ENUM_Fraction(3, &SPA_FRACTION(30, 1), &SPA_FRACTION(30, 1), &SPA_FRACTION(15, 1)));
+		SPA_POD_CHOICE_ENUM_Fraction(3, &SPA_FRACTION(30, 1), &SPA_FRACTION(30, 1), &camera_fps_at_full_size));
+	params[1] = spa_pod_builder_add_object(
+		&b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType,
+		SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+		SPA_FORMAT_VIDEO_format, SPA_POD_Id(SPA_VIDEO_FORMAT_YUY2), SPA_FORMAT_VIDEO_size,
+		SPA_POD_Rectangle(&SPA_RECTANGLE(SMALL_WIDTH, SMALL_HEIGHT)), SPA_FORMAT_VIDEO_framerate,
+		SPA_POD_CHOICE_ENUM_Fraction(2, &SPA_FRACTION(60, 1), &SPA_FRACTION(60, 1)));
 
 	pw_thread_loop_lock(camera.loop);
 	camera.stream =
@@ -395,7 +424,7 @@ static bool camera_plug(void)
 						PW_KEY_MEDIA_CLASS, "Video/Source", PW_KEY_MEDIA_ROLE, "Camera", NULL));
 	pw_stream_add_listener(camera.stream, &camera.stream_listener, &camera_events, NULL);
 	pw_stream_connect(camera.stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
-			  PW_STREAM_FLAG_DRIVER | PW_STREAM_FLAG_MAP_BUFFERS, params, 1);
+			  PW_STREAM_FLAG_DRIVER | PW_STREAM_FLAG_MAP_BUFFERS, params, 2);
 	pw_thread_loop_unlock(camera.loop);
 
 	for (int i = 0; i < 200 && node_id == SPA_ID_INVALID; i++) {
@@ -477,12 +506,14 @@ static struct {
 	int renegotiated;  /* "Renegotiating stream" lines */
 	int framerate_num; /* the last negotiated framerate */
 	int framerate_den;
+	int width; /* the last negotiated size */
+	int height;
 } seen;
 
 static void log_handler(int level, const char *format, va_list args, void *param)
 {
 	char line[256];
-	int num, den;
+	int num, den, width, height;
 
 	UNUSED_PARAMETER(param);
 
@@ -495,6 +526,10 @@ static void log_handler(int level, const char *format, va_list args, void *param
 		seen.negotiated++;
 	if (strcmp(line, "[pipewire] Renegotiating stream") == 0)
 		seen.renegotiated++;
+	if (sscanf(line, "[pipewire]     Size: %dx%d", &width, &height) == 2) {
+		seen.width = width;
+		seen.height = height;
+	}
 	if (sscanf(line, "[pipewire]     Framerate: %d/%d", &num, &den) == 2) {
 		seen.framerate_num = num;
 		seen.framerate_den = den;
@@ -581,18 +616,30 @@ static bool negotiated_framerate_is(int num, int den)
 	return is;
 }
 
+static bool negotiated_size_is(int width, int height)
+{
+	bool is;
+
+	pthread_mutex_lock(&log_mutex);
+	is = seen.width == width && seen.height == height;
+	if (!is)
+		fprintf(stderr, "negotiated size %dx%d, expected %dx%d\n", seen.width, seen.height, width, height);
+	pthread_mutex_unlock(&log_mutex);
+	return is;
+}
+
 /* ------------------------------------------------------------------ */
 /* The camera source                                                  */
 
-static char *format_json(void)
+static char *format_json(int width, int height)
 {
 	obs_data_t *data = obs_data_create();
 	char *json;
 
 	obs_data_set_bool(data, "encoded", false);
 	obs_data_set_int(data, "video_format", SPA_VIDEO_FORMAT_YUY2);
-	obs_data_set_int(data, "width", WIDTH);
-	obs_data_set_int(data, "height", HEIGHT);
+	obs_data_set_int(data, "width", width);
+	obs_data_set_int(data, "height", height);
 	json = bstrdup(obs_data_get_json(data));
 	obs_data_release(data);
 	return json;
@@ -616,7 +663,7 @@ static char *framerate_json(uint32_t num)
 static obs_source_t *create_camera_source(void)
 {
 	obs_data_t *settings = obs_data_create();
-	char *format = format_json();
+	char *format = format_json(WIDTH, HEIGHT);
 	obs_source_t *source;
 
 	obs_data_set_string(settings, "device_id", CAMERA_NAME);
@@ -644,6 +691,24 @@ static void pick_framerate(obs_source_t *source, uint32_t num)
 
 	obs_data_set_string(settings, "framerate", json);
 	obs_property_modified(obs_properties_get(props, "framerate"), settings);
+	obs_source_update(source, settings);
+
+	bfree(json);
+	obs_data_release(settings);
+	obs_properties_destroy(props);
+}
+
+/* The user picks another format in the Properties window. The framerate
+ * in the settings stays what was picked for the previous one, as with the
+ * Properties window, which keeps a value its refilled list no longer has. */
+static void pick_format(obs_source_t *source, int width, int height)
+{
+	obs_properties_t *props = obs_source_properties(source);
+	obs_data_t *settings = obs_source_get_settings(source);
+	char *json = format_json(width, height);
+
+	obs_data_set_string(settings, "format", json);
+	obs_property_modified(obs_properties_get(props, "format"), settings);
 	obs_source_update(source, settings);
 
 	bfree(json);
@@ -862,12 +927,114 @@ static void replugged_camera_keeps_the_picked_framerate(void **state)
 	}
 }
 
+/* The steps of obsproject/obs-studio#13783: the camera streams at the 15 FPS
+ * picked above, and the user picks the 32x24 format, which the camera has at
+ * 60 FPS only. The camera must stream at 32x24 again, at a framerate it has,
+ * and opening Properties (the settings still say 15 FPS) must not ask for
+ * 15 FPS again. */
+static void format_without_the_picked_framerate_streams(void **state)
+{
+	int before;
+
+	UNUSED_PARAMETER(state);
+
+	if (!obs_up)
+		skip();
+	assert_non_null(camera_source);
+	assert_true(wait_for_negotiated(0));
+	assert_true(negotiated_framerate_is(15, 1));
+
+	before = negotiated();
+	pick_format(camera_source, SMALL_WIDTH, SMALL_HEIGHT);
+	if (!wait_for_negotiated(before)) {
+		fprintf(stderr, "after picking 32x24 (60 FPS only) the camera never streamed again: "
+				"the stream still asked for the 15 FPS picked for 64x48\n");
+		fail();
+	}
+	iterate_main_loop(300);
+	assert_true(negotiated_size_is(SMALL_WIDTH, SMALL_HEIGHT));
+	assert_true(negotiated_framerate_is(60, 1));
+
+	before = renegotiated();
+	open_properties(camera_source);
+	iterate_main_loop(500);
+	if (renegotiated() != before) {
+		fprintf(stderr, "opening Properties asked the 32x24 stream for another format's framerate\n");
+		fail();
+	}
+	assert_true(negotiated_framerate_is(60, 1));
+}
+
+/* Guard: back at 64x48, a framerate this format has can be picked and is
+ * used. */
+static void framerate_of_the_format_is_used(void **state)
+{
+	int before;
+
+	UNUSED_PARAMETER(state);
+
+	if (!obs_up)
+		skip();
+	assert_non_null(camera_source);
+
+	before = negotiated();
+	pick_format(camera_source, WIDTH, HEIGHT);
+	if (!wait_for_negotiated(before)) {
+		fprintf(stderr, "back at 64x48 the camera never streamed again\n");
+		fail();
+	}
+	iterate_main_loop(300);
+	assert_true(negotiated_size_is(WIDTH, HEIGHT));
+
+	pick_framerate(camera_source, 15);
+	iterate_main_loop(500);
+	if (!negotiated_framerate_is(15, 1)) {
+		fprintf(stderr, "picking 15 FPS at 64x48 was not used\n");
+		fail();
+	}
+}
+
+/* The camera comes back without the framerate the source keeps: the source
+ * streams at 64x48 and 15 FPS, and the camera now has 64x48 at 30 or
+ * 60 FPS only (another camera on the same name, or a scene collection
+ * loaded at startup with a framerate the camera lacks). When the camera
+ * appears, the stream starts before the camera's formats are known. Once
+ * they are, the camera must stream at a framerate it has, without the
+ * Properties window being opened. */
+static void returning_camera_without_the_kept_framerate_streams(void **state)
+{
+	int before;
+
+	UNUSED_PARAMETER(state);
+
+	if (!obs_up)
+		skip();
+	assert_non_null(camera_source);
+	assert_true(negotiated_framerate_is(15, 1));
+
+	camera_unplug();
+	iterate_main_loop(300);
+	before = negotiated();
+	camera_fps_at_full_size = (struct spa_fraction){60, 1};
+	assert_true(camera_plug());
+	if (!wait_for_negotiated(before)) {
+		fprintf(stderr, "the camera came back without 15 FPS and never streamed again\n");
+		fail();
+	}
+	iterate_main_loop(300);
+	assert_true(negotiated_size_is(WIDTH, HEIGHT));
+	assert_true(negotiated_framerate_is(30, 1));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(camera_streams),
 		cmocka_unit_test(properties_keep_a_streaming_camera),
 		cmocka_unit_test(replugged_camera_keeps_the_picked_framerate),
+		cmocka_unit_test(format_without_the_picked_framerate_streams),
+		cmocka_unit_test(framerate_of_the_format_is_used),
+		cmocka_unit_test(returning_camera_without_the_kept_framerate_streams),
 	};
 	g_autofree char *dbus_daemon = g_find_program_in_path("dbus-daemon");
 

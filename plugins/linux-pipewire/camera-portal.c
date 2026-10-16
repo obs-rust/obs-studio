@@ -810,14 +810,12 @@ static int compare_framerates(gconstpointer a, gconstpointer b)
 	return da - db;
 }
 
-static bool framerate_list(struct camera_device *dev, uint32_t pixelformat, const struct spa_rectangle *resolution,
-			   obs_property_t *prop)
+/* The framerates the camera lists for a format and size, slowest first */
+static GArray *camera_framerates(struct camera_device *dev, uint32_t pixelformat,
+				 const struct spa_rectangle *resolution)
 {
-	g_autoptr(GArray) framerates = NULL;
+	GArray *framerates = g_array_new(FALSE, FALSE, sizeof(struct spa_fraction));
 	struct param *p;
-	obs_data_t *data;
-
-	framerates = g_array_new(FALSE, FALSE, sizeof(struct spa_fraction));
 
 	spa_list_for_each(p, &dev->param_list, link)
 	{
@@ -889,6 +887,14 @@ static bool framerate_list(struct camera_device *dev, uint32_t pixelformat, cons
 	}
 
 	g_array_sort(framerates, compare_framerates);
+	return framerates;
+}
+
+static bool framerate_list(struct camera_device *dev, uint32_t pixelformat, const struct spa_rectangle *resolution,
+			   obs_property_t *prop)
+{
+	g_autoptr(GArray) framerates = camera_framerates(dev, pixelformat, resolution);
+	obs_data_t *data;
 
 	obs_property_list_clear(prop);
 
