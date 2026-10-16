@@ -2,8 +2,10 @@
 # stays up (obsproject/obs-studio#10072): the linux-pulseaudio capture code
 # against a private PipeWire sound server started by
 # test_pulse_monitor_device.sh. libobs's source calls are stubbed (--wrap), so
-# no display is needed. Skipped (exit 77) when PipeWire, WirePlumber or
-# pipewire-pulse are not installed.
+# no display is needed; pa_stream_new_with_proplist and
+# pa_stream_connect_record are wrapped to make restarts fail on demand.
+# Skipped (exit 77) when PipeWire, WirePlumber or pipewire-pulse are not
+# installed.
 if(TARGET OBS::pulseaudio)
   find_package(PulseAudio REQUIRED)
 
@@ -25,6 +27,7 @@ if(TARGET OBS::pulseaudio)
       "LINKER:--wrap=obs_source_audio_output_capture_device_changed,--wrap=obs_source_get_weak_source"
       "LINKER:--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source"
       "LINKER:--wrap=obs_source_release,--wrap=obs_obj_get_data,--wrap=obs_queue_task"
+      "LINKER:--wrap=pa_stream_new_with_proplist,--wrap=pa_stream_connect_record"
   )
   add_dependencies(cmocka-tests test_pulse_stream_restart)
   add_test(

@@ -15,6 +15,11 @@
 #include <util/base.h>
 #include <util/platform.h>
 
+#include <pulse/stream.h>
+
+#include "pulse-reconnect.h"
+#include "pulse-wrapper.h"
+
 /* End to end for obsproject/obs-studio#10072 (reported by foresto): an Audio
  * Input Capture stays silent for good once its own stream dies while the
  * connection to the sound server stays up. The reporter switched to another
@@ -116,6 +121,76 @@ void *__wrap_obs_obj_get_data(void *obj)
 	return ((struct test_source *)obj)->data;
 }
 
+/* Stream restarts that fail on demand (follow-up of #378): the next
+ * fail_stream_new streams cannot be created (pa_stream_new returning NULL, a
+ * synchronous failure while the device is there), and while fail_connected
+ * is set every record stream is ended on the pulse mainloop right after it
+ * was connected, as by a server that keeps failing it. */
+static volatile int fail_stream_new;
+static volatile bool fail_connected;
+static volatile int stream_new_calls, connect_calls;
+
+/* When each record stream was connected while fail_connected was set (the
+ * mainloop is locked then, so one writer at a time). */
+#define MAX_CONNECT_TIMES 256
+static uint64_t connect_times[MAX_CONNECT_TIMES];
+static volatile int connect_times_num;
+
+pa_stream *__real_pa_stream_new_with_proplist(pa_context *c, const char *name, const pa_sample_spec *ss,
+					      const pa_channel_map *map, pa_proplist *p);
+int __real_pa_stream_connect_record(pa_stream *s, const char *dev, const pa_buffer_attr *attr, pa_stream_flags_t flags);
+
+pa_stream *__wrap_pa_stream_new_with_proplist(pa_context *c, const char *name, const pa_sample_spec *ss,
+					      const pa_channel_map *map, pa_proplist *p)
+{
+	__atomic_add_fetch(&stream_new_calls, 1, __ATOMIC_SEQ_CST);
+	int left = __atomic_load_n(&fail_stream_new, __ATOMIC_SEQ_CST);
+	while (left > 0) {
+		if (__atomic_compare_exchange_n(&fail_stream_new, &left, left - 1, false, __ATOMIC_SEQ_CST,
+						__ATOMIC_SEQ_CST))
+			return NULL;
+	}
+	return __real_pa_stream_new_with_proplist(c, name, ss, map, p);
+}
+
+static void unref_stream(void *userdata)
+{
+	pa_stream_unref(userdata);
+}
+
+/* On the pulse mainloop: end the stream once it is ready, unless OBS
+ * already did. */
+static void end_stream(void *userdata)
+{
+	pa_stream *s = userdata;
+	pa_stream_state_t state = pa_stream_get_state(s);
+	if (state == PA_STREAM_CREATING)
+		pulse_call_later(end_stream, pa_stream_ref(s), unref_stream, 2000);
+	else if (state == PA_STREAM_READY)
+		pa_stream_disconnect(s);
+}
+
+/* Called with the mainloop locked. */
+int __wrap_pa_stream_connect_record(pa_stream *s, const char *dev, const pa_buffer_attr *attr, pa_stream_flags_t flags)
+{
+	__atomic_add_fetch(&connect_calls, 1, __ATOMIC_SEQ_CST);
+	int ret = __real_pa_stream_connect_record(s, dev, attr, flags);
+	if (ret == 0 && __atomic_load_n(&fail_connected, __ATOMIC_SEQ_CST)) {
+		int n = __atomic_load_n(&connect_times_num, __ATOMIC_SEQ_CST);
+		if (n < MAX_CONNECT_TIMES) {
+			connect_times[n] = os_gettime_ns();
+			__atomic_store_n(&connect_times_num, n + 1, __ATOMIC_SEQ_CST);
+		}
+		pulse_call_later(end_stream, pa_stream_ref(s), unref_stream, 2000);
+	}
+	return ret;
+}
+
+static int calls(volatile int *counter)
+{
+	return __atomic_load_n(counter, __ATOMIC_SEQ_CST);
+}
+
 /* UI tasks run in order on one thread, as on the frontend's UI thread. */
 struct ui_task {
 	obs_task_t task;
@@ -186,7 +261,7 @@ static void drain_ui_tasks(void)
 /* Log: count stream starts per device                                      */
 
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int starts_a, starts_b, attempts_gone;
+static int starts_a, starts_b, attempts_gone, gave_up;
 
 static void test_log(int lvl, const char *fmt, va_list args, void *p)
 {
@@ -201,6 +276,8 @@ static void test_log(int lvl, const char *fmt, va_list args, void *p)
 		starts_b++;
 	if (strstr(msg, "Unable to get source info") || strstr(msg, "error occurred while getting the source info"))
 		attempts_gone++;
+	if (strstr(msg, "Giving up restarting"))
+		gave_up++;
 	pthread_mutex_unlock(&log_mutex);
 
 	if (lvl <= LOG_WARNING || getenv("TEST_VERBOSE"))
@@ -481,12 +558,155 @@ static void deleted_source_stays_quiet(void **state)
 	destroy_capture(gone);
 }
 
+/* Kills the record stream of source; the device stays. */
+static void kill_stream(struct test_source *source)
+{
+	int node = stream_node_id(source->name);
+	if (node < 0) {
+		fprintf(stderr, "could not find the stream of '%s'\n", source->name);
+		fail();
+	}
+	char cmd[64];
+	snprintf(cmd, sizeof(cmd), "pw-cli destroy %d >/dev/null 2>&1", node);
+	assert_true(run(cmd, NULL, 0));
+}
+
+/* The stream is killed and creating it again fails a few times while the
+ * device is there and the server is connected. No device comes or goes, so
+ * only a retry brings the audio back. */
+static void failed_restart_is_retried(void **state)
+{
+	(void)state;
+	if (!run("command -v pw-cli", NULL, 0))
+		skip();
+	int mic_a = load_source(MIC_A);
+	struct test_source *a = create_capture("capture A", MIC_A);
+	expect_audio(a, 3000, "after start");
+
+	int before = calls(&stream_new_calls);
+	__atomic_store_n(&fail_stream_new, 3, __ATOMIC_SEQ_CST);
+	kill_stream(a);
+
+	expect_audio(a, 3000, "after its stream was killed and could not be created 3 times");
+	int tries = calls(&stream_new_calls) - before;
+	if (tries != 4) {
+		fprintf(stderr, "the stream was created %d times, expected 3 failures and 1 success\n", tries);
+		fail();
+	}
+
+	destroy_capture(a);
+	unload_module(&mic_a);
+}
+
+/* The server keeps failing the restarted stream while the device is there.
+ * The source must not restart it in a tight loop, must give up after
+ * PULSE_RESTART_MAX_ATTEMPTS, and must then start again once a device
+ * appears. */
+static void failing_stream_is_paced_then_given_up(void **state)
+{
+	(void)state;
+	if (!run("command -v pw-cli", NULL, 0))
+		skip();
+	int mic_a = load_source(MIC_A);
+	struct test_source *a = create_capture("capture A", MIC_A);
+	expect_audio(a, 3000, "after start");
+
+	int before = calls(&connect_calls);
+	int gave_up_before = count(&gave_up);
+	__atomic_store_n(&connect_times_num, 0, __ATOMIC_SEQ_CST);
+	__atomic_store_n(&fail_connected, true, __ATOMIC_SEQ_CST);
+	kill_stream(a);
+
+	/* About one attempt per PULSE_RESTART_RETRY_USEC */
+	usleep(1000000);
+	int first_second = calls(&connect_calls) - before;
+	if (first_second < 2) {
+		fprintf(stderr, "the failing stream was restarted %d times in 1 s, expected about 10\n", first_second);
+		fail();
+	}
+	/* Each restart after a failure waits PULSE_RESTART_RETRY_USEC; only
+	 * the first one is at once, and it comes before the first gap. */
+	int n = __atomic_load_n(&connect_times_num, __ATOMIC_SEQ_CST);
+	uint64_t min_gap = UINT64_MAX;
+	for (int i = 1; i < n; i++) {
+		if (connect_times[i] - connect_times[i - 1] < min_gap)
+			min_gap = connect_times[i] - connect_times[i - 1];
+	}
+	if (n < 2 || min_gap < PULSE_RESTART_RETRY_USEC * 1000 * 9 / 10) {
+		fprintf(stderr,
+			"the failing stream was restarted %d times in 1 s, %.0f ms apart at the least, expected %d ms\n",
+			first_second, n < 2 ? 0.0 : min_gap / 1e6, PULSE_RESTART_RETRY_USEC / 1000);
+		fail();
+	}
+
+	for (int t = 0; t < 15000 && count(&gave_up) == gave_up_before; t += 50)
+		usleep(50000);
+	if (count(&gave_up) == gave_up_before) {
+		fprintf(stderr, "still restarting the failing stream after 16 s (%d attempts)\n",
+			calls(&connect_calls) - before);
+		fail();
+	}
+	usleep(500000);
+	drain_ui_tasks();
+	int total = calls(&connect_calls) - before;
+	usleep(500000);
+	drain_ui_tasks();
+	if (calls(&connect_calls) - before != total) {
+		fprintf(stderr, "the stream was restarted again after giving up\n");
+		fail();
+	}
+	if (total > PULSE_RESTART_MAX_ATTEMPTS + 1) {
+		fprintf(stderr, "%d restarts before giving up, expected at most %d\n", total,
+			PULSE_RESTART_MAX_ATTEMPTS + 1);
+		fail();
+	}
+
+	/* Given up, the source looks again when a device appears. */
+	__atomic_store_n(&fail_connected, false, __ATOMIC_SEQ_CST);
+	int other = load_source(OTHER);
+	expect_audio(a, 3000, "after giving up and a device appearing");
+
+	destroy_capture(a);
+	unload_module(&other);
+	unload_module(&mic_a);
+}
+
+/* Destroying a source while its restart is pending leaks nothing (the
+ * group teardown checks the weak references). */
+static void source_destroyed_while_retrying(void **state)
+{
+	(void)state;
+	if (!run("command -v pw-cli", NULL, 0))
+		skip();
+	int mic_a = load_source(MIC_A);
+	int mic_b = load_source(MIC_B);
+	struct test_source *a = create_capture("capture A", MIC_A);
+	/* Keeps the server connection up while A is destroyed. */
+	struct test_source *b = create_capture("capture B", MIC_B);
+	expect_audio(a, 3000, "after start");
+
+	__atomic_store_n(&fail_stream_new, 1000, __ATOMIC_SEQ_CST);
+	kill_stream(a);
+	usleep(250000);
+	destroy_capture(a);
+	__atomic_store_n(&fail_stream_new, 0, __ATOMIC_SEQ_CST);
+	usleep(300000);
+	drain_ui_tasks();
+
+	expect_audio(b, 1000, "after the other source was destroyed");
+	destroy_capture(b);
+	unload_module(&mic_a);
+	unload_module(&mic_b);
+}
+
 /* ------------------------------------------------------------------------ */
 
 /* Also runs after a failed case: destroy what it left behind. */
 static int case_teardown(void **state)
 {
 	(void)state;
+	__atomic_store_n(&fail_stream_new, 0, __ATOMIC_SEQ_CST);
+	__atomic_store_n(&fail_connected, false, __ATOMIC_SEQ_CST);
 	for (size_t i = 0; i < MAX_TRACKED; i++) {
 		if (live_sources[i])
 			destroy_capture(live_sources[i]);
@@ -537,6 +757,9 @@ int main(void)
 		cmocka_unit_test_teardown(killed_stream_restarts, case_teardown),
 		cmocka_unit_test_teardown(late_source_starts, case_teardown),
 		cmocka_unit_test_teardown(deleted_source_stays_quiet, case_teardown),
+		cmocka_unit_test_teardown(failed_restart_is_retried, case_teardown),
+		cmocka_unit_test_teardown(failing_stream_is_paced_then_given_up, case_teardown),
+		cmocka_unit_test_teardown(source_destroyed_while_retrying, case_teardown),
 	};
 
 	return cmocka_run_group_tests(tests, setup, teardown);
