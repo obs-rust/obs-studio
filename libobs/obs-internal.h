@@ -637,6 +637,19 @@ struct obs_graphics_context {
 };
 
 extern void *obs_graphics_thread(void *param);
+
+/* Host-specific parts of obs.c, one implementation per host in obs-windows.c,
+ * obs-cocoa.m and obs-nix.c (#868). */
+/* Windows NV12/P010 encode staging surface for texture slot i: true on
+ * success or when the host has none. */
+extern bool obs_video_host_init_encode_surface(struct obs_core_video_mix *video, const struct video_output_info *info,
+					       size_t i);
+extern void obs_video_host_free_encode_surface(struct obs_core_video_mix *video, size_t i);
+/* Starts the graphics thread (macOS: user-interactive QoS, autoreleased). */
+extern int obs_host_start_graphics_thread(pthread_t *thread, void *param);
+/* COM on Windows; obs_host_shutdown() undoes obs_host_startup(), once. */
+extern void obs_host_startup(void);
+extern void obs_host_shutdown(void);
 extern bool obs_graphics_thread_loop(struct obs_graphics_context *context);
 #ifdef __APPLE__
 extern void *obs_graphics_thread_autorelease(void *param);

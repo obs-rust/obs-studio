@@ -833,3 +833,32 @@ void obs_key_to_str(obs_key_t key, struct dstr *str)
     CFRelease(string);
     return;
 }
+
+/* Host parts of obs.c (#868) */
+
+bool obs_video_host_init_encode_surface(struct obs_core_video_mix *video, const struct video_output_info *info,
+                                        size_t i)
+{
+    UNUSED_PARAMETER(video);
+    UNUSED_PARAMETER(info);
+    UNUSED_PARAMETER(i);
+    return true;
+}
+
+void obs_video_host_free_encode_surface(struct obs_core_video_mix *video, size_t i)
+{
+    UNUSED_PARAMETER(video);
+    UNUSED_PARAMETER(i);
+}
+
+int obs_host_start_graphics_thread(pthread_t *thread, void *param)
+{
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_set_qos_class_np(&attr, QOS_CLASS_USER_INTERACTIVE, 0);
+    return pthread_create(thread, &attr, obs_graphics_thread_autorelease, param);
+}
+
+void obs_host_startup(void) {}
+
+void obs_host_shutdown(void) {}

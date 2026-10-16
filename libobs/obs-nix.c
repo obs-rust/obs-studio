@@ -435,3 +435,29 @@ void obs_key_combination_to_str(obs_key_combination_t combination, struct dstr *
 		add_combo_key(combination.key, str);
 	}
 }
+
+/* Host parts of obs.c (#868) */
+
+bool obs_video_host_init_encode_surface(struct obs_core_video_mix *video, const struct video_output_info *info,
+					size_t i)
+{
+	UNUSED_PARAMETER(video);
+	UNUSED_PARAMETER(info);
+	UNUSED_PARAMETER(i);
+	return true;
+}
+
+void obs_video_host_free_encode_surface(struct obs_core_video_mix *video, size_t i)
+{
+	UNUSED_PARAMETER(video);
+	UNUSED_PARAMETER(i);
+}
+
+int obs_host_start_graphics_thread(pthread_t *thread, void *param)
+{
+	return pthread_create(thread, NULL, obs_graphics_thread, param);
+}
+
+void obs_host_startup(void) {}
+
+void obs_host_shutdown(void) {}

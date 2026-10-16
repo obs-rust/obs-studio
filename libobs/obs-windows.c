@@ -1231,3 +1231,48 @@ void uninitialize_com(void)
 {
 	CoUninitialize();
 }
+
+/* Host parts of obs.c (#868) */
+
+bool obs_video_host_init_encode_surface(struct obs_core_video_mix *video, const struct video_output_info *info,
+					size_t i)
+{
+	if (video->using_nv12_tex) {
+		video->copy_surfaces_encode[i] = gs_stagesurface_create_nv12(info->width, info->height);
+		if (!video->copy_surfaces_encode[i])
+			return false;
+	} else if (video->using_p010_tex) {
+		video->copy_surfaces_encode[i] = gs_stagesurface_create_p010(info->width, info->height);
+		if (!video->copy_surfaces_encode[i])
+			return false;
+	}
+	return true;
+}
+
+void obs_video_host_free_encode_surface(struct obs_core_video_mix *video, size_t i)
+{
+	if (video->copy_surfaces_encode[i]) {
+		gs_stagesurface_destroy(video->copy_surfaces_encode[i]);
+		video->copy_surfaces_encode[i] = NULL;
+	}
+}
+
+int obs_host_start_graphics_thread(pthread_t *thread, void *param)
+{
+	return pthread_create(thread, NULL, obs_graphics_thread, param);
+}
+
+static bool com_initialized = false;
+
+void obs_host_startup(void)
+{
+	com_initialized = initialize_com();
+}
+
+void obs_host_shutdown(void)
+{
+	if (com_initialized) {
+		uninitialize_com();
+		com_initialized = false;
+	}
+}

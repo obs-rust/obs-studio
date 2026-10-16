@@ -76,7 +76,6 @@
   "libobs/obs-source.c": 1,
   "libobs/obs-video-gpu-encode.c": 1,
   "libobs/obs-video.c": 11,
-  "libobs/obs.c": 8,
   "libobs/util/base-variadic.c": 2,
   "libobs/util/base.c": 1,
   "libobs/util/base.h": 1,
