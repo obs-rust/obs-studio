@@ -1,4 +1,4 @@
-//! Rust ports of `libobs/util`.
+//! Rust ports of `libobs/util` (fast gate timing probe, #992).
 //!
 //! Safe cores live at the crate root; the C ABI shims that replace the
 //! original `EXPORT` symbols live in [`ffi`]. See
