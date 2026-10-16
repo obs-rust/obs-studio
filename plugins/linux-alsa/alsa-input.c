@@ -62,6 +62,8 @@ struct alsa_data {
 	unsigned int rate;
 	unsigned int sample_size;
 	uint8_t *buffer;
+	/* S24_3LE only: the samples of buffer widened to S32, what OBS gets */
+	int32_t *buffer32;
 	uint64_t first_ts;
 };
 
@@ -104,6 +106,7 @@ static void *_alsa_listen(void *);
 static void *_alsa_reopen(void *);
 
 static enum audio_format _alsa_to_obs_audio_format(snd_pcm_format_t);
+static void _alsa_s24_3le_to_s32(const uint8_t *src, int32_t *dst, size_t samples);
 static enum speaker_layout _alsa_channels_to_obs_speakers(unsigned int);
 
 /*****************************************************************************/
@@ -431,6 +434,11 @@ void _alsa_close(struct alsa_data *data)
 		bfree(data->buffer);
 		data->buffer = NULL;
 	}
+
+	if (data->buffer32) {
+		bfree(data->buffer32);
+		data->buffer32 = NULL;
+	}
 }
 
 bool _alsa_configure(struct alsa_data *data)
@@ -453,9 +461,12 @@ bool _alsa_configure(struct alsa_data *data)
 		return false;
 	}
 
-#define FORMAT_SIZE 4
-	snd_pcm_format_t formats[FORMAT_SIZE] = {SND_PCM_FORMAT_S16_LE, SND_PCM_FORMAT_S32_LE, SND_PCM_FORMAT_FLOAT_LE,
-						 SND_PCM_FORMAT_U8};
+	/* Highest resolution first. Devices with no plug layer (hw:, and front:
+	 * on USB audio) often offer only S24_3LE and S16_LE; S24_3LE is
+	 * widened to S32 for OBS, which has no packed 24-bit format. */
+#define FORMAT_SIZE 5
+	snd_pcm_format_t formats[FORMAT_SIZE] = {SND_PCM_FORMAT_S32_LE, SND_PCM_FORMAT_FLOAT_LE, SND_PCM_FORMAT_S24_3LE,
+						 SND_PCM_FORMAT_S16_LE, SND_PCM_FORMAT_U8};
 	bool format_found = false;
 	for (int i = 0; i < FORMAT_SIZE; ++i) {
 		data->format = formats[i];
@@ -470,7 +481,7 @@ bool _alsa_configure(struct alsa_data *data)
 		blog(LOG_ERROR, "device doesnt support any OBS formats");
 		return false;
 	}
-	snd_pcm_hw_params_set_format(data->handle, hwparams, data->format);
+	err = snd_pcm_hw_params_set_format(data->handle, hwparams, data->format);
 	if (err < 0) {
 		blog(LOG_ERROR, "snd_pcm_hw_params_set_format failed: %s", snd_strerror(err));
 		return false;
@@ -511,6 +522,12 @@ bool _alsa_configure(struct alsa_data *data)
 	if (data->buffer)
 		bfree(data->buffer);
 	data->buffer = bzalloc(data->period_size * data->sample_size);
+
+	if (data->buffer32)
+		bfree(data->buffer32);
+	data->buffer32 = NULL;
+	if (data->format == SND_PCM_FORMAT_S24_3LE)
+		data->buffer32 = bzalloc(data->period_size * data->channels * sizeof(int32_t));
 
 	return true;
 }
@@ -558,7 +575,7 @@ void *_alsa_listen(void *attr)
 
 	blog(LOG_DEBUG, "Capture thread started.");
 
-	out.data[0] = data->buffer;
+	out.data[0] = data->buffer32 ? (uint8_t *)data->buffer32 : data->buffer;
 	out.format = _alsa_to_obs_audio_format(data->format);
 	out.speakers = _alsa_channels_to_obs_speakers(data->channels);
 	out.samples_per_sec = data->rate;
@@ -578,6 +595,9 @@ void *_alsa_listen(void *attr)
 				continue;
 			}
 		}
+
+		if (data->buffer32)
+			_alsa_s24_3le_to_s32(data->buffer, data->buffer32, (size_t)frames * data->channels);
 
 		out.frames = frames;
 		out.timestamp = os_gettime_ns() - util_mul_div64(frames, NSEC_PER_SEC, data->rate);
@@ -620,6 +640,14 @@ void *_alsa_reopen(void *attr)
 	return NULL;
 }
 
+/* Widens packed little-endian 24-bit samples to S32: the 24 bits go into the
+ * high bytes, so full scale stays full scale and the sign is kept. */
+void _alsa_s24_3le_to_s32(const uint8_t *src, int32_t *dst, size_t samples)
+{
+	for (size_t i = 0; i < samples; i++, src += 3)
+		dst[i] = (int32_t)(((uint32_t)src[0] << 8) | ((uint32_t)src[1] << 16) | ((uint32_t)src[2] << 24));
+}
+
 enum audio_format _alsa_to_obs_audio_format(snd_pcm_format_t format)
 {
 	switch (format) {
@@ -628,6 +656,7 @@ enum audio_format _alsa_to_obs_audio_format(snd_pcm_format_t format)
 	case SND_PCM_FORMAT_S16_LE:
 		return AUDIO_FORMAT_16BIT;
 	case SND_PCM_FORMAT_S32_LE:
+	case SND_PCM_FORMAT_S24_3LE:
 		return AUDIO_FORMAT_32BIT;
 	case SND_PCM_FORMAT_FLOAT_LE:
 		return AUDIO_FORMAT_FLOAT;
