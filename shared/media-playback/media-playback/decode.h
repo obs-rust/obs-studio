@@ -45,6 +45,7 @@ struct mp_decode {
 	AVFrame *frame;
 	enum AVPixelFormat hw_format;
 	bool got_first_keyframe;
+	bool key_from_packet;
 	bool frame_ready;
 	bool eof;
 	bool hw;
@@ -63,6 +64,7 @@ extern void mp_decode_clear_packets(struct mp_decode *decode);
 
 extern void mp_decode_push_packet(struct mp_decode *decode, AVPacket *pkt);
 extern bool mp_decode_next(struct mp_decode *decode);
+extern bool mp_decode_is_keyframe(const struct mp_decode *decode, const AVFrame *frame);
 extern void mp_decode_flush(struct mp_decode *decode);
 
 #ifdef __cplusplus

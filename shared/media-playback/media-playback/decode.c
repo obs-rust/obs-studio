@@ -20,6 +20,10 @@
 #include "media.h"
 #include <libavutil/mastering_display_metadata.h>
 
+/* AVPacket.opaque of a keyframe packet, for decoders with key_from_packet */
+static char key_packet_tag;
+#define KEY_PACKET ((void *)&key_packet_tag)
+
 enum AVHWDeviceType hw_priority[] = {
 	AV_HWDEVICE_TYPE_CUDA,  AV_HWDEVICE_TYPE_D3D11VA, AV_HWDEVICE_TYPE_DXVA2,        AV_HWDEVICE_TYPE_VAAPI,
 	AV_HWDEVICE_TYPE_VDPAU, AV_HWDEVICE_TYPE_QSV,     AV_HWDEVICE_TYPE_VIDEOTOOLBOX, AV_HWDEVICE_TYPE_NONE,
@@ -86,6 +90,11 @@ static int mp_open_codec(struct mp_decode *d, bool hw)
 	c->pkt_timebase = d->stream->time_base;
 
 	d->hw = false;
+
+	/* FFmpeg hands each packet's opaque value to the frame decoded
+	 * from it (see mp_decode_is_keyframe()). */
+	if (d->key_from_packet)
+		c->flags |= AV_CODEC_FLAG_COPY_OPAQUE;
 
 	if (hw)
 		init_hw_decoder(d, c);
@@ -173,6 +182,11 @@ bool mp_decode_init(mp_media_t *m, enum AVMediaType type, bool hw)
 		blog(LOG_WARNING, "MP: Failed to find %s codec", av_get_media_type_string(type));
 		return false;
 	}
+
+	/* FFmpeg's libvpx decoders (picked above for VP8/VP9 with alpha)
+	 * never set AV_FRAME_FLAG_KEY on their frames, so their keyframes are
+	 * told by the packet the frame was decoded from. */
+	d->key_from_packet = d->codec->wrapper_name && strcmp(d->codec->wrapper_name, "libvpx") == 0;
 
 	ret = mp_open_codec(d, hw);
 	if (ret < 0) {
@@ -349,6 +363,8 @@ bool mp_decode_next(struct mp_decode *d)
 				mp_media_free_packet(d->m, d->orig_pkt);
 				deque_pop_front(&d->packets, &d->orig_pkt, sizeof(d->orig_pkt));
 				av_packet_ref(d->pkt, d->orig_pkt);
+				if (d->key_from_packet)
+					d->pkt->opaque = (d->pkt->flags & AV_PKT_FLAG_KEY) ? KEY_PACKET : NULL;
 				d->packet_pending = true;
 			}
 		}
@@ -413,6 +429,15 @@ bool mp_decode_next(struct mp_decode *d)
 	}
 
 	return true;
+}
+
+/* Whether a decoded frame is a keyframe: flagged by the decoder, or, for a
+ * decoder that does not flag them, decoded from a keyframe packet. */
+bool mp_decode_is_keyframe(const struct mp_decode *d, const AVFrame *f)
+{
+	if (f->flags & AV_FRAME_FLAG_KEY)
+		return true;
+	return d->key_from_packet && f->opaque == KEY_PACKET;
 }
 
 void mp_decode_flush(struct mp_decode *d)
