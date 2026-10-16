@@ -251,6 +251,10 @@ static bool update_device_id(struct camera_portal_source *camera_source, const c
 	return true;
 }
 
+static GArray *camera_framerates(struct camera_device *dev, uint32_t pixelformat,
+				 const struct spa_rectangle *resolution);
+static bool framerates_contain(const GArray *framerates, const struct spa_fraction *framerate);
+
 static void stream_camera(struct camera_portal_source *camera_source)
 {
 	struct obs_pipewire_connect_stream_info connect_info;
@@ -269,6 +273,23 @@ static void stream_camera(struct camera_portal_source *camera_source)
 
 	if (camera_source->resolution.set)
 		resolution = &camera_source->resolution.rect;
+
+	/* A framerate the camera does not have for this format, while it
+	 * lists others: kept from another format, or saved with one. The
+	 * stream would ask for exactly that framerate, match no format of the
+	 * camera, and never be linked (obsproject/obs-studio#13783). The
+	 * camera picks one instead. A camera that lists none for it (or not
+	 * yet: its formats arrive after it appears) is asked as before. */
+	if (camera_source->framerate.set && resolution) {
+		g_autoptr(GArray) framerates = camera_framerates(device, camera_source->format.spa_format, resolution);
+
+		if (framerates->len && !framerates_contain(framerates, &camera_source->framerate.fraction)) {
+			blog(LOG_INFO, "[camera-portal] '%s' has no %u/%u framerate at this format, not asking for it",
+			     camera_source->device_id, camera_source->framerate.fraction.num,
+			     camera_source->framerate.fraction.denom);
+			camera_source->framerate.set = false;
+		}
+	}
 	if (camera_source->framerate.set)
 		framerate = &camera_source->framerate.fraction;
 
@@ -890,6 +911,26 @@ static GArray *camera_framerates(struct camera_device *dev, uint32_t pixelformat
 	return framerates;
 }
 
+static bool framerates_contain(const GArray *framerates, const struct spa_fraction *framerate)
+{
+	for (size_t i = 0; i < framerates->len; i++) {
+		const struct spa_fraction *f = &g_array_index(framerates, struct spa_fraction, i);
+
+		if ((uint64_t)f->num * framerate->denom == (uint64_t)framerate->num * f->denom)
+			return true;
+	}
+	return false;
+}
+
+/* Whether the camera lists this framerate for the format and size */
+static bool camera_has_framerate(struct camera_device *dev, uint32_t pixelformat,
+				 const struct spa_rectangle *resolution, const struct spa_fraction *framerate)
+{
+	g_autoptr(GArray) framerates = camera_framerates(dev, pixelformat, resolution);
+
+	return framerates_contain(framerates, framerate);
+}
+
 static bool framerate_list(struct camera_device *dev, uint32_t pixelformat, const struct spa_rectangle *resolution,
 			   obs_property_t *prop)
 {
@@ -954,6 +995,12 @@ static bool framerate_selected(void *data, obs_properties_t *properties, obs_pro
 		return false;
 
 	if (!parse_framerate(&framerate, obs_data_get_string(settings, "framerate")))
+		return false;
+
+	/* Still the framerate picked for another format: the list was filled
+	 * for this one, and the camera cannot deliver it here. */
+	if (camera_source->resolution.set && !camera_has_framerate(device, camera_source->format.spa_format,
+								   &camera_source->resolution.rect, &framerate))
 		return false;
 
 	/* Kept for the next stream (stream_camera()), e.g. after the camera
@@ -1041,9 +1088,13 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 		  last_resolution.width != camera_source->resolution.rect.width ||
 		  last_resolution.height != camera_source->resolution.rect.height;
 
-	/* A camera without framerates for this format: drop a framerate kept
-	 * from before, as part of the restart. */
-	if (!has_framerates && camera_source->framerate.set) {
+	/* A framerate kept from before that this format does not have (it has
+	 * none, or other ones): drop it, as part of the restart. A stream that
+	 * asks for it matches no format of the camera and is never linked
+	 * (obsproject/obs-studio#13783). */
+	if (camera_source->framerate.set &&
+	    !camera_has_framerate(device, camera_source->format.spa_format, &camera_source->resolution.rect,
+				  &camera_source->framerate.fraction)) {
 		camera_source->framerate.set = false;
 		restart = true;
 	}
@@ -1160,12 +1211,37 @@ static void on_destroy_proxy_cb(void *data)
 
 	device->proxy = NULL;
 }
+/* The camera's formats arrive after it appears, so stream_camera() could not
+ * check a kept framerate when it started the stream for the new camera. A
+ * stream that asks for a framerate this format does not list is never
+ * linked: start it again without (stream_camera() drops it now). */
+static void restart_streams_on_unlisted_framerate(struct camera_device *device)
+{
+	if (!connection->sources)
+		return;
+
+	for (size_t i = 0; i < connection->sources->len; i++) {
+		struct camera_portal_source *camera_source = g_ptr_array_index(connection->sources, i);
+
+		if (!camera_source->obs_pw_stream || !camera_source->framerate.set || !camera_source->resolution.set ||
+		    !camera_source->device_id ||
+		    g_hash_table_lookup(connection->devices, camera_source->device_id) != device)
+			continue;
+
+		g_autoptr(GArray) framerates =
+			camera_framerates(device, camera_source->format.spa_format, &camera_source->resolution.rect);
+		if (framerates->len && !framerates_contain(framerates, &camera_source->framerate.fraction))
+			stream_camera(camera_source);
+	}
+}
+
 static void on_done_proxy_cb(void *data, int seq)
 {
 	struct camera_device *device = data;
 	if (device->info != NULL && device->pending_sync == seq) {
 		object_update_params(&device->param_list, &device->pending_list, device->info->n_params,
 				     device->info->params);
+		restart_streams_on_unlisted_framerate(device);
 	}
 }
 
