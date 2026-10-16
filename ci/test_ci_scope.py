@@ -142,5 +142,100 @@ class PlatformPathsTest(unittest.TestCase):
         self.assertEqual(platforms("plugins/linux-v4l2/v4l2-input.c"), {LINUX})
 
 
+LIBOBS_RUST = """[package]
+name = "libobs-rust"
+[dependencies]
+obs-util = { path = "../obs-util" }
+obs-data = { path = "../obs-data" }
+[dev-dependencies]
+obs-c-oracle = { path = "../obs-c-oracle" }
+"""
+CARGO = {
+    "rust/libobs-rust/Cargo.toml": LIBOBS_RUST,
+    "rust/obs-data/Cargo.toml": '[dependencies]\nobs-util = { path = "../obs-util" }\n',
+    "rust/obs-util/Cargo.toml": "[dependencies]\n",
+}
+SUBS = frozenset({"plugins/obs-websocket", "plugins/obs-browser", "deps/libdshowcapture/src"})
+
+
+class OsLaneTest(unittest.TestCase):
+    """The one platform rule and the OS lanes it starts (#992)."""
+
+    def os(self, path):
+        from ci_scope import os_lanes
+
+        return set(os_lanes(path))
+
+    def test_platform_rule_per_os(self):
+        self.assertEqual(self.os("rust/obs-util/src/platform/windows/mod.rs"), {"windows"})
+        self.assertEqual(self.os("rust/obs-util/src/platform/macos/mod.rs"), {"macos"})
+        self.assertEqual(self.os("rust/obs-util/src/platform/linux/mod.rs"), {"linux"})
+        self.assertEqual(self.os("rust/obs-util/src/platform/posix/mod.rs"), {"linux", "macos"})
+        self.assertEqual(self.os("plugins/text-freetype2/text-freetype2-platform-windows.c"), {"windows"})
+        self.assertEqual(self.os("shared/ipc-util/platform/posix/pipe.c"), {"linux", "macos"})
+
+    def test_core_is_linux_only(self):
+        for f in ("libobs/obs-source.c", "rust/obs-util/src/dstr.rs", "frontend/OBSApp.cpp", "shared/x/platform.c"):
+            self.assertEqual(self.os(f), {"linux"}, f)
+
+    def test_legacy_names_still_fall_back(self):
+        self.assertEqual(self.os("plugins/win-capture/a.c"), {"windows"})
+        self.assertEqual(self.os("libobs/obs-cocoa.m"), {"macos"})
+
+    def test_outside_every_area_starts_no_os(self):
+        self.assertEqual(self.os("docs/platform-windows.md"), set())
+
+
+class LaneTableTest(unittest.TestCase):
+    """One test per LANES row: adding a module is adding a row (#992)."""
+
+    def sc(self, *files):
+        return scope(list(files), read=lambda p: CARGO.get(p, ""), submodules=SUBS)
+
+    def test_linked_crates_follow_non_dev_dependencies(self):
+        from ci_scope import linked_crates
+
+        self.assertEqual(linked_crates(lambda p: CARGO.get(p, "")), {"libobs-rust", "obs-util", "obs-data"})
+
+    def test_tier2_rows(self):
+        for f in (
+            "libobs/obs-source.c",
+            "test/cmocka/test_x.c",
+            "deps/jansson/x.c",
+            "rust/tools/linux-validate/validate.sh",
+            "Cargo.lock",
+            "rust/obs-data/src/lib.rs",  # linked into libobs
+            "rust/libobs-rust/src/lib.rs",
+        ):
+            self.assertTrue(self.sc(f).tier2, f)
+
+    def test_tier2_skips_unrelated_paths(self):
+        for f in (
+            "docs/ci-tooling.md",
+            "frontend/OBSApp.cpp",
+            "plugins/obs-filters/expander-filter.c",
+            "ci/ci_scope.py",
+            ".github/workflows/build-project.yaml",
+            "rust/obs-gpu-status/src/lib.rs",  # not linked into libobs
+            "rust/obs-c-oracle/src/lib.rs",  # dev-dependency only
+        ):
+            self.assertFalse(self.sc(f).tier2, f)
+
+    def test_full_rows(self):
+        for f in ("build-aux/appimage/build.sh", ".gitmodules", "plugins/obs-websocket", "plugins/obs-browser/x.cpp"):
+            self.assertTrue(self.sc(f).full, f)
+        for f in ("plugins/obs-filters/a.c", "docs/a.md", "libobs/a.c", "rust/obs-util/src/a.rs"):
+            self.assertFalse(self.sc(f).full, f)
+
+    def test_qt_row_is_frontend_only(self):
+        self.assertTrue(self.sc("frontend/OBSApp.cpp").qt)
+        self.assertFalse(self.sc("libobs/obs-source.c").qt)
+        self.assertFalse(self.sc("rust/obs-util/src/a.rs").qt)
+
+    def test_docs_start_nothing(self):
+        got = self.sc("docs/rust-port/naming.md")
+        self.assertEqual(vars(got), vars(scope([])))
+
+
 if __name__ == "__main__":
     unittest.main()

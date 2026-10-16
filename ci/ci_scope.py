@@ -3,7 +3,19 @@
 
     uv run ci/ci_scope.py <base-ref>        # writes core/macos/windows to $GITHUB_OUTPUT
 
-The Linux Rust tests and Tier 2 always run. On top of them:
+One table (LANES) maps path globs to lanes; a lane runs only when a changed
+file matches its row, otherwise its job is skipped and passes CI Gate. No
+label changes what runs (#992): master push, schedule, workflow_dispatch and
+releases run everything. Lanes:
+- lint:    always (fmt, clippy, Dylint, formatters, unit tests of the crates
+           the diff touches, ci/rust_scope.py): the Fast Gate job;
+- tier2:   libobs, the crates linked into libobs (derived from
+           rust/libobs-rust/Cargo.toml), test/cmocka, deps, the validate
+           tooling -> Tier 2 Linux (cmocka, ENABLE_RUST_LIBOBS OFF/ON);
+- full:    packaging (build-aux/), plugin submodule moves, .gitmodules -> every
+           OBS app build, as the release gate runs them;
+- docs/, ci/, .github/ and unported plugins start nothing but lint.
+Platform and Qt lanes:
 - macos:   macOS code (or shared build/CI config) changed -> macOS Rust
            tests and Tier 2;
 - windows: Windows code (or shared build/CI config) changed -> Windows Rust
@@ -33,7 +45,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from platform_paths import MACOS, WINDOWS, platforms
+from platform_paths import LINUX, MACOS, WINDOWS, platforms as legacy_platforms
 
 CORE_PREFIXES = ("libobs/", "rust/")
 CORE_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml"}
@@ -54,6 +66,100 @@ class Scope:
     macos: bool
     windows: bool
     qt: bool = False
+    tier2: bool = False
+    full: bool = False
+
+
+# The path -> lane table (#992). Adding a module is adding a row. Globs use
+# `**` for any depth and `*` within one path segment. Rust crates linked into
+# libobs are added to tier2 at run time (linked_crates).
+LANES: dict[str, tuple[str, ...]] = {
+    "tier2": (
+        "libobs/**",
+        "test/cmocka/**",
+        "deps/**",
+        "rust/tools/linux-validate/**",
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+    ),
+    "full": ("build-aux/**", ".gitmodules"),
+}
+
+
+def _glob(pattern: str) -> re.Pattern[str]:
+    out = ""
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            out += ".*"
+            i += 2
+        elif pattern[i] == "*":
+            out += "[^/]*"
+            i += 1
+        else:
+            out += re.escape(pattern[i])
+            i += 1
+    return re.compile(out + r"\Z")
+
+
+def lane_hit(lane: str, path: str, extra: tuple[str, ...] = ()) -> bool:
+    return any(_glob(g).match(path) for g in LANES.get(lane, ()) + extra)
+
+
+def linked_crates(read: Callable[[str], str], root: str = "libobs-rust") -> set[str]:
+    """Crates libobs links: rust/<root> and its [dependencies] (not dev
+    dependencies), transitively, read from the Cargo.toml files."""
+    seen: set[str] = set()
+    todo = [root]
+    while todo:
+        name = todo.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        section = ""
+        for line in read(f"rust/{name}/Cargo.toml").splitlines():
+            line = line.strip()
+            if line.startswith("["):
+                section = line
+            elif section in ("[dependencies]", "[build-dependencies]"):
+                m = re.search(r'path\s*=\s*"\.\./([^"/]+)"', line)
+                if m:
+                    todo.append(m.group(1))
+    return seen
+
+
+# The OS lanes (#992), transposed: each lists the areas that can start it. A
+# changed file starts an OS lane only inside one of its areas, so a
+# docs/.../platform-windows.md starts nothing. Core files start Linux only.
+_ALL_AREAS = ("libobs", "rust/", "frontend/", "plugins/", "shared/", "deps/", "cmake/", "test/", "build-aux/")
+OS_LANES: dict[str, tuple[str, ...]] = {
+    LINUX: _ALL_AREAS,
+    WINDOWS: _ALL_AREAS,
+    MACOS: _ALL_AREAS,
+}
+
+# ONE platform trigger rule, matching the Rust layout: rust/<crate>/src/platform/
+# {windows,macos,linux,posix}/..., shared/<x>/platform/..., foo-platform-windows.c.
+# posix builds on Linux and macOS. Anything else is core: Linux lane only.
+PLATFORM_RULE = re.compile(r"/platform[/-](windows|macos|linux|posix)[/.]")
+
+
+def path_platforms(path: str) -> frozenset[str] | None:
+    """The OS lanes a platform file starts, or None for core (Linux only)."""
+    m = PLATFORM_RULE.search("/" + path)
+    if m:
+        return {"windows": frozenset({WINDOWS}), "macos": frozenset({MACOS}), "linux": frozenset({LINUX}), "posix": frozenset({LINUX, MACOS})}[m.group(1)]
+    # TODO(obs-rust/obs-studio platform-rename issue): legacy tokens (win-capture/,
+    # mac-*, unix/nix/cocoa/osx names) until those paths follow the
+    # platform[/-]<os> layout; then delete this fallback.
+    return legacy_platforms(path)
+
+
+def os_lanes(path: str) -> frozenset[str]:
+    if not path.startswith(OS_LANES[LINUX]):
+        return frozenset()
+    return path_platforms(path) or frozenset({LINUX})
 
 
 def is_shared(path: str, exists: Callable[[str], bool]) -> bool:
@@ -64,7 +170,7 @@ def is_shared(path: str, exists: Callable[[str], bool]) -> bool:
 
 
 # The Linux Qt frontend job (#992) runs only when the change can break the Qt
-# frontend build or a Qt-linked unit test; master, schedule and ci-full always
+# frontend build or a Qt-linked unit test; master, schedule and release runs always
 # run it (build-project.yaml).
 QT_PREFIXES = ("frontend/", "shared/qt/", "shared/properties-view/", "plugins/frontend-tools/", "ci/linux_qt_frontend")
 QT_FILES = {
@@ -90,21 +196,25 @@ def scope(
     files: list[str],
     exists: Callable[[str], bool] = lambda path: False,
     read: Callable[[str], str] = lambda path: "",
+    submodules: frozenset[str] = frozenset(),
 ) -> Scope:
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing)."""
-    core = macos = windows = qt = False
+    core = macos = windows = qt = tier2 = full = False
+    linked = tuple(f"rust/{c}/**" for c in sorted(linked_crates(read)))
     for path in files:
         qt |= is_qt(path, read)
+        tier2 |= lane_hit("tier2", path, linked)
+        full |= lane_hit("full", path) or any(path == m or path.startswith(m + "/") for m in submodules)
         if path.startswith(CORE_PREFIXES) or path in CORE_FILES:
             core = True
         if is_shared(path, exists):
             macos = windows = True
             continue
-        found = platforms(path) or frozenset()
+        found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    return Scope(core, macos, windows, qt)
+    return Scope(core, macos, windows, qt, tier2, full)
 
 
 def changed_files(base: str) -> list[str]:
@@ -112,6 +222,11 @@ def changed_files(base: str) -> list[str]:
         ["git", "diff", "--name-only", f"{base}...HEAD"], check=True, capture_output=True, text=True
     ).stdout
     return [line for line in out.splitlines() if line]
+
+
+def submodule_paths() -> frozenset[str]:
+    out = subprocess.run(["git", "ls-files", "-s"], check=True, capture_output=True, text=True).stdout
+    return frozenset(line.split("\t", 1)[1] for line in out.splitlines() if line.startswith("160000"))
 
 
 def read_text(path: str) -> str:
@@ -123,7 +238,7 @@ def read_text(path: str) -> str:
 
 def main() -> int:
     files = changed_files(sys.argv[1])
-    result = scope(files, lambda path: Path(path).is_file(), read_text)
+    result = scope(files, lambda path: Path(path).is_file(), read_text, submodule_paths())
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))
     if out := os.environ.get("GITHUB_OUTPUT"):

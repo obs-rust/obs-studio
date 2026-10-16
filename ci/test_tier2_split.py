@@ -46,7 +46,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("name: tier2-exports-${{ matrix.mode }}", self.tier2)
 
     def test_exports_job_compares_both_lists(self):
-        self.assertIn("needs: [check-event, lane-proofs, rust-linux-tier2]", self.exports)
+        self.assertIn("needs: [check-event, ci-mode, rust-linux-tier2]", self.exports)
         self.assertIn("pattern: tier2-exports-*", self.exports)
         self.assertRegex(self.exports, r"diff\s+\S*exports-OFF\.txt\s+\S*exports-ON\.txt")
 

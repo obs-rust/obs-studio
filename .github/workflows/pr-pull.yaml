@@ -50,10 +50,12 @@ jobs:
       actions: read
       contents: read
 
-  compatibility-validation:
-    name: Validate Compatibility 🕵️
+  # One runner for both data validators (#992); each step skips itself when
+  # its files did not change.
+  validate-data:
+    name: Validate Data 🕵️
     if: github.base_ref == 'master'
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       checks: write
     steps:
@@ -61,37 +63,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for Changed Files ✅
+      - name: Check for Changed Compatibility Files ✅
         uses: ./.github/actions/check-changes
-        id: checks
+        id: compat
         with:
           baseRef: origin/${{ github.base_ref }}
           checkGlob: plugins/win-capture/data/*.json
 
       - name: Check for Invalid Compatibility Data 📉
-        if: fromJSON(steps.checks.outputs.hasChangedFiles)
+        if: fromJSON(steps.compat.outputs.hasChangedFiles)
         uses: ./.github/actions/compatibility-validator
 
-  services-validation:
-    name: Validate Services 🕵️
-    if: github.base_ref == 'master'
-    runs-on: ubuntu-26.04
-    permissions:
-      checks: write
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Check for Changed Files ✅
+      - name: Check for Changed Services Files ✅
         uses: ./.github/actions/check-changes
-        id: checks
+        id: services
         with:
           baseRef: origin/${{ github.base_ref }}
           checkGlob: plugins/rtmp-services/data/*.json
 
       - name: Check Services JSON Schema 📉
-        if: fromJSON(steps.checks.outputs.hasChangedFiles)
+        if: fromJSON(steps.services.outputs.hasChangedFiles)
         uses: ./.github/actions/services-validator
         with:
           repositorySecret: ${{ secrets.GITHUB_TOKEN }}
@@ -123,7 +114,7 @@ jobs:
   ci-gate:
     name: CI Gate ✅
     if: always()
-    needs: [cancel-superseded, check-format, build-project, compatibility-validation, services-validation, update-documentation]
+    needs: [cancel-superseded, check-format, build-project, validate-data, update-documentation]
     runs-on: ubuntu-26.04
     steps:
       - name: Check Job Results ✅

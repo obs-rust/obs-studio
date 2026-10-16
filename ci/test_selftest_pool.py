@@ -33,7 +33,8 @@ def job(name: str) -> str:
 
 class WorkflowTest(unittest.TestCase):
     def test_self_tests_have_their_own_standard_pool_job(self):
-        j = job("ci-self-test")
+        fmt = (ROOT / ".github" / "workflows" / "check-format.yaml").read_text(encoding="utf-8")
+        j = fmt[fmt.index("  checks:"):fmt.index("  swift-format:")]
         self.assertIn("runs-on: ubuntu-latest", j)
         self.assertIn('unittest discover -s ci -p "test_*.py"', j)
 

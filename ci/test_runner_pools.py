@@ -31,8 +31,7 @@ def job(path: Path, name: str) -> str:
 
 class PoolTest(unittest.TestCase):
     def test_cheap_jobs_use_the_standard_pool(self):
-        for name in ("clang-format", "gersemi", "flatpak-validator", "qt-xml-validator", "swift-changes"):
-            self.assertIn("runs-on: ubuntu-latest", job(FORMAT, name), name)
+        self.assertIn("runs-on: ubuntu-latest", job(FORMAT, "checks"))
         self.assertIn("runs-on: ubuntu-latest", job(PULL, "cancel-superseded"))
 
 
@@ -40,11 +39,11 @@ class SwiftGateTest(unittest.TestCase):
     def test_swift_format_runs_only_for_swift_changes(self):
         j = job(FORMAT, "swift-format")
         self.assertIn("runs-on: macos-26", j)
-        self.assertIn("needs: swift-changes", j)
-        self.assertIn("if: needs.swift-changes.outputs.swift == 'true'", j)
+        self.assertIn("needs: checks", j)
+        self.assertIn("if: needs.checks.outputs.swift == 'true'", j)
 
     def test_change_check_compares_against_the_base(self):
-        j = job(FORMAT, "swift-changes")
+        j = job(FORMAT, "checks")
         self.assertIn("github.event.pull_request.base.sha", j)
         self.assertIn("github.event.merge_group.base_sha", j)
         self.assertIn("'*.swift'", j)
