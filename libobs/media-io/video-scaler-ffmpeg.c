@@ -17,6 +17,7 @@
 
 #include "../util/bmem.h"
 #include "video-scaler.h"
+#include "video-scaler-overlap.h"
 
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
@@ -25,9 +26,15 @@
 struct video_scaler {
 	struct SwsContext *swscale;
 	int src_height;
+	uint32_t src_plane_heights[4];
+	uint32_t src_planes;
 	int dst_heights[4];
 	uint8_t *dst_pointers[4];
 	int dst_linesizes[4];
+	/* direct-output guard state (see video_scaler_scale) */
+	uint32_t direct_planes;
+	int direct_linesizes[4];
+	bool direct_height_ok;
 };
 
 static inline enum AVPixelFormat get_ffmpeg_video_format(enum video_format format)
@@ -162,6 +169,17 @@ int video_scaler_create(video_scaler_t **scaler_out, const struct video_scale_in
 	scaler = bzalloc(sizeof(struct video_scaler));
 	scaler->src_height = src->height;
 
+	/* Input chroma heights round up. Cache every active plane, including
+	 * alpha, so cross-plane aliases also retain scratch-copy semantics. */
+	const AVPixFmtDescriptor *src_desc = av_pix_fmt_desc_get(format_src);
+	for (size_t i = 0; i < src_desc->nb_components; ++i) {
+		const unsigned plane = src_desc->comp[i].plane;
+		const unsigned shift = (plane == 1 || plane == 2) ? src_desc->log2_chroma_h : 0;
+		const uint32_t mask = (1u << shift) - 1;
+		scaler->src_planes |= 1u << plane;
+		scaler->src_plane_heights[plane] = (src->height >> shift) + ((src->height & mask) != 0);
+	}
+
 	const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(format_dst);
 	bool has_plane[4] = {0};
 	for (size_t i = 0; i < 4; i++)
@@ -174,6 +192,17 @@ int video_scaler_create(video_scaler_t **scaler_out, const struct video_scale_in
 			scaler->dst_heights[i] = dst->height >> s;
 		}
 	}
+
+	for (size_t i = 0; i < 4; ++i) {
+		if (has_plane[i])
+			scaler->direct_planes |= 1u << i;
+	}
+	av_image_fill_linesizes(scaler->direct_linesizes, format_dst, dst->width);
+	/* sws writes ceil(h >> log2_chroma_h) rows per plane; the copy path
+	 * (and a foreign caller's floor-sized planes) only covers
+	 * floor(h/2), so odd heights on vertically subsampled formats are
+	 * excluded from the direct path. */
+	scaler->direct_height_ok = !desc->log2_chroma_h || (dst->height & ((1u << desc->log2_chroma_h) - 1)) == 0;
 
 	ret = av_image_alloc(scaler->dst_pointers, scaler->dst_linesizes, dst->width, dst->height, format_dst, 32);
 	if (ret < 0) {
@@ -229,18 +258,55 @@ void video_scaler_destroy(video_scaler_t *scaler)
 	}
 }
 
+static bool can_scale_direct(const struct video_scaler *scaler, uint8_t *output[], const uint32_t out_linesize[],
+			     const uint8_t *const input[], const uint32_t in_linesize[])
+{
+	struct scaler_plane_span src[4] = {0};
+	struct scaler_plane_span dst[4] = {0};
+	for (size_t plane = 0; plane < 4; ++plane) {
+		if (!(scaler->direct_planes & (1u << plane)))
+			continue;
+		if (!output[plane] || out_linesize[plane] != (uint32_t)scaler->direct_linesizes[plane] ||
+		    (uintptr_t)output[plane] % base_get_alignment())
+			return false;
+		if (!scaler_plane_span_init(&dst[plane], (uintptr_t)output[plane], out_linesize[plane],
+					    (uint32_t)scaler->dst_heights[plane]))
+			return false;
+	}
+	for (size_t plane = 0; plane < 4; ++plane) {
+		if (!(scaler->src_planes & (1u << plane)))
+			continue;
+		if (!scaler_plane_span_init(&src[plane], (uintptr_t)input[plane], in_linesize[plane],
+					    scaler->src_plane_heights[plane]))
+			return false;
+	}
+	return scaler_plane_sets_disjoint(src, scaler->src_planes, dst, scaler->direct_planes);
+}
+
 bool video_scaler_scale(video_scaler_t *scaler, uint8_t *output[], const uint32_t out_linesize[],
 			const uint8_t *const input[], const uint32_t in_linesize[])
 {
 	if (!scaler)
 		return false;
 
-	int ret = sws_scale(scaler->swscale, input, (const int *)in_linesize, 0, scaler->src_height,
-			    scaler->dst_pointers, scaler->dst_linesizes);
+	/* Write into the caller's planes directly, skipping the scratch
+	 * copy, only when their layout is one sws can safely write: every
+	 * used plane present, base_get_alignment()-aligned, and at FFmpeg's
+	 * packed linesize. All input/output spans must also be disjoint. */
+	const bool direct = scaler->direct_height_ok &&
+			    can_scale_direct(scaler, output, out_linesize, input, in_linesize);
+	uint8_t *const *scale_dst = direct ? output : scaler->dst_pointers;
+	const int *scale_linesize = direct ? (const int *)out_linesize : scaler->dst_linesizes;
+
+	int ret = sws_scale(scaler->swscale, input, (const int *)in_linesize, 0, scaler->src_height, scale_dst,
+			    scale_linesize);
 	if (ret <= 0) {
 		blog(LOG_ERROR, "video_scaler_scale: sws_scale failed: %d", ret);
 		return false;
 	}
+
+	if (direct)
+		return true;
 
 	for (size_t plane = 0; plane < 4; ++plane) {
 		if (!scaler->dst_pointers[plane])
