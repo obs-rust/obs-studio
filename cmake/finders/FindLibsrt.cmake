@@ -92,9 +92,11 @@ else()
   set(Libsrt_VERSION 0.0.0)
 endif()
 
+# srt-gnutls: Debian and Ubuntu's GnuTLS build (libsrt-gnutls-dev), the one
+# their FFmpeg links. OBS must link the same libsrt as FFmpeg.
 find_library(
   Libsrt_LIBRARY
-  NAMES srt libsrt
+  NAMES srt libsrt srt-gnutls
   HINTS ${PC_Libsrt_LIBRARY_DIRS}
   PATHS /usr/lib /usr/local/lib
   DOC "Libsrt location"
