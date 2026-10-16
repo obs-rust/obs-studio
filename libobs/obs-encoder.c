@@ -844,6 +844,50 @@ void obs_encoder_shutdown_unstarted(obs_encoder_t *encoder)
 	pthread_mutex_unlock(&encoder->outputs_mutex);
 }
 
+/* For obs_reset_video(), before it frees the video mixes: unbinds an inactive
+ * video encoder from the mix video_t it holds (one of videos), so it never
+ * uses the freed one. An encoder that is still initialized (an output
+ * initialized it and then failed or stopped before starting it, for example a
+ * recording into a folder it cannot write, see obsproject/obs-studio#12213)
+ * is shut down first, while its video_t is still valid; the next start
+ * initializes it again for the new video. Returns the video_t it was bound to
+ * (its main video when it was rescaled on the GPU), or NULL if it was left
+ * alone. */
+video_t *obs_encoder_unbind_video(obs_encoder_t *encoder, video_t *const *videos, size_t num)
+{
+	video_t *video = NULL;
+	bool bound = false;
+
+	if (encoder->info.type != OBS_ENCODER_VIDEO)
+		return NULL;
+
+	pthread_mutex_lock(&encoder->init_mutex);
+	for (size_t i = 0; encoder->media && i < num && !bound; i++)
+		bound = encoder->media == videos[i];
+
+	if (bound && !encoder_active(encoder)) {
+		if (encoder->initialized) {
+			obs_encoder_shutdown(encoder);
+			encoder->initialized = false;
+		}
+		video = encoder->media;
+		encoder_set_video(encoder, NULL);
+		encoder->original_video = NULL;
+	}
+	pthread_mutex_unlock(&encoder->init_mutex);
+	return video;
+}
+
+/* For obs_reset_video(), after it created the new mixes: binds an encoder
+ * that obs_encoder_unbind_video() unbound to the new video_t. */
+void obs_encoder_rebind_video(obs_encoder_t *encoder, video_t *video)
+{
+	pthread_mutex_lock(&encoder->init_mutex);
+	if (!encoder->media && !encoder->initialized && !encoder_active(encoder))
+		encoder_set_video(encoder, video);
+	pthread_mutex_unlock(&encoder->init_mutex);
+}
+
 static inline size_t get_callback_idx(const struct obs_encoder *encoder, encoded_callback_t new_packet, void *param)
 {
 	for (size_t i = 0; i < encoder->callbacks.num; i++) {

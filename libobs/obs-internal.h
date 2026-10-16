@@ -1519,6 +1519,8 @@ extern struct obs_encoder_info *find_encoder(const char *id);
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);
 extern void obs_encoder_shutdown(obs_encoder_t *encoder);
 extern void obs_encoder_shutdown_unstarted(obs_encoder_t *encoder);
+extern video_t *obs_encoder_unbind_video(obs_encoder_t *encoder, video_t *const *videos, size_t num);
+extern void obs_encoder_rebind_video(obs_encoder_t *encoder, video_t *video);
 
 extern void obs_encoder_start(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
 extern void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
@@ -1564,6 +1566,7 @@ void obs_service_destroy(obs_service_t *service);
 
 void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_encoder *encoder);
 bool obs_output_needs_encoders(const struct obs_output *output);
+bool obs_output_starting(const struct obs_output *output);
 
 /** Internal Source Profiler functions **/
 

@@ -2926,6 +2926,13 @@ bool obs_output_needs_encoders(const struct obs_output *output)
 	return active(output) || os_atomic_load_bool(&output->starting) || reconnecting(output) || delay_active(output);
 }
 
+/* Whether the output is about to use its encoders: it is starting (a stream
+ * still connecting), reconnecting or delaying. */
+bool obs_output_starting(const struct obs_output *output)
+{
+	return os_atomic_load_bool(&output->starting) || reconnecting(output) || delay_active(output);
+}
+
 static void shutdown_unstarted_encoders(obs_output_t *output)
 {
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {

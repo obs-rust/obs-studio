@@ -1640,6 +1640,93 @@ static void repoint_outputs(struct freed_video *freed, size_t num)
 	pthread_mutex_unlock(&obs->data.outputs_mutex);
 }
 
+/* Video encoders keep the video_t they were given with obs_encoder_set_video()
+ * (or obs_canvas_get_video()). Before the mixes are freed, unbind every
+ * inactive encoder that holds one of them, shutting down one that an output
+ * initialized and never started (obsproject/obs-studio#12213); after the reset,
+ * bind it to the new mix of the same canvas, as repoint_outputs() does for raw
+ * outputs, or to nothing when that mix is gone (a view). */
+struct unbound_encoder {
+	obs_encoder_t *encoder;
+	obs_canvas_t *canvas;
+};
+
+static void unbind_encoders(const struct freed_video *freed, size_t num, struct unbound_encoder **out, size_t *out_num)
+{
+	DARRAY(obs_encoder_t *) encoders;
+	DARRAY(struct unbound_encoder) unbound;
+	DARRAY(video_t *) videos;
+	da_init(encoders);
+	da_init(unbound);
+	da_init(videos);
+
+	for (size_t i = 0; i < num; i++)
+		da_push_back(videos, &freed[i].video);
+
+	/* Shut encoders down outside the list lock: an encoder's destroy can
+	 * take other locks. */
+	pthread_mutex_lock(&obs->data.encoders_mutex);
+	for (struct obs_encoder *encoder = obs->data.first_encoder; encoder;
+	     encoder = (struct obs_encoder *)encoder->context.next) {
+		if (encoder->info.type != OBS_ENCODER_VIDEO)
+			continue;
+		obs_encoder_t *ref = obs_encoder_get_ref(encoder);
+		if (ref)
+			da_push_back(encoders, &ref);
+	}
+	pthread_mutex_unlock(&obs->data.encoders_mutex);
+
+	for (size_t i = 0; i < encoders.num; i++) {
+		obs_encoder_t *encoder = encoders.array[i];
+		video_t *video = num ? obs_encoder_unbind_video(encoder, videos.array, videos.num) : NULL;
+		if (!video) {
+			obs_encoder_release(encoder);
+			continue;
+		}
+		struct unbound_encoder entry = {encoder, NULL};
+		for (size_t j = 0; j < num; j++) {
+			if (freed[j].video == video) {
+				entry.canvas = freed[j].canvas;
+				break;
+			}
+		}
+		da_push_back(unbound, &entry);
+	}
+
+	da_free(encoders);
+	da_free(videos);
+	*out = unbound.array;
+	*out_num = unbound.num;
+}
+
+/* The canvas references belong to the freed list, which is released after
+ * this. */
+static void rebind_encoders(struct unbound_encoder *unbound, size_t num)
+{
+	for (size_t i = 0; i < num; i++) {
+		obs_canvas_t *canvas = unbound[i].canvas;
+		obs_encoder_rebind_video(unbound[i].encoder, canvas ? obs_canvas_get_video(canvas) : NULL);
+		obs_encoder_release(unbound[i].encoder);
+	}
+	bfree(unbound);
+}
+
+/* An output that is starting (a stream still connecting), reconnecting or
+ * delaying has its encoders initialized for the current video and uses it as
+ * soon as it connects, although no encoder is active yet. */
+static bool outputs_starting(void)
+{
+	bool starting = false;
+
+	pthread_mutex_lock(&obs->data.outputs_mutex);
+	for (struct obs_output *output = obs->data.first_output; output && !starting;
+	     output = (struct obs_output *)output->context.next)
+		starting = obs_output_starting(output);
+	pthread_mutex_unlock(&obs->data.outputs_mutex);
+
+	return starting;
+}
+
 static void release_freed_videos(struct freed_video *freed, size_t num)
 {
 	for (size_t i = 0; i < num; i++)
@@ -1654,8 +1741,8 @@ int obs_reset_video(struct obs_video_info *ovi)
 	if (!obs)
 		return OBS_VIDEO_FAIL;
 
-	/* don't allow changing of video settings if active. */
-	if (obs_video_active())
+	/* don't allow changing of video settings if active, or about to be. */
+	if (obs_video_active() || outputs_starting())
 		return OBS_VIDEO_CURRENTLY_ACTIVE;
 
 	if (!size_valid(ovi->output_width, ovi->output_height) || !size_valid(ovi->base_width, ovi->base_height))
@@ -1670,6 +1757,10 @@ int obs_reset_video(struct obs_video_info *ovi)
 	calldata_t release_params = {0};
 	signal_handler_signal(obs->signals, "core_video_release", &release_params);
 
+	struct unbound_encoder *unbound;
+	size_t num_unbound;
+	unbind_encoders(freed, num_freed, &unbound, &num_unbound);
+
 	stop_video();
 	obs_free_canvas_mixes();
 	obs_free_video();
@@ -1677,6 +1768,7 @@ int obs_reset_video(struct obs_video_info *ovi)
 	int ret = obs_reset_video_internal(ovi);
 
 	repoint_outputs(freed, num_freed);
+	rebind_encoders(unbound, num_unbound);
 	release_freed_videos(freed, num_freed);
 	return ret;
 }
