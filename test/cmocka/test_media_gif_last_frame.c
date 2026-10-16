@@ -410,12 +410,16 @@ static void log_runs(const char *what, const struct run *runs, size_t n)
 
 /* The pictures from the first frame of the clip on, without blanks or
  * blends (an output frame drawn while the picture changes), must be the
- * frames of the clip in order, repeated `loops` times. */
-static void check_order(const struct run *runs, size_t n, int loops)
+ * frames of the clip in order, repeated `loops` times. Pictures before the
+ * first frame are left out: the first output frame recorded can still be
+ * the last picture of the case before. Returns the run that showed the
+ * clip's last frame the first time through. */
+static size_t check_order(const struct run *runs, size_t n, int loops)
 {
 	int expected = 0;
 	int done = 0;
 	bool started = false;
+	size_t last = n;
 
 	for (size_t i = 0; i < n && done < loops; i++) {
 		if (runs[i].what < 0)
@@ -430,6 +434,8 @@ static void check_order(const struct run *runs, size_t n, int loops)
 			fail();
 		}
 		if (++expected == FRAMES) {
+			if (!done)
+				last = i;
 			expected = 0;
 			done++;
 		}
@@ -443,20 +449,16 @@ static void check_order(const struct run *runs, size_t n, int loops)
 		fprintf(stderr, "only %d of %d frames were shown before playback ended\n", expected, FRAMES);
 		fail();
 	}
+	return last;
 }
 
-/* The last frame must stay up about as long as the others (three output
- * frames at 30 fps), not only flash. */
-static void check_last_frame_held(const struct run *runs, size_t n)
+/* The clip's last frame (the run check_order found) must stay up about as
+ * long as the others (three output frames at 30 fps), not only flash. */
+static void check_last_frame_held(const struct run *runs, size_t last)
 {
-	for (size_t i = 0; i < n; i++) {
-		if (runs[i].what != FRAMES - 1)
-			continue;
-		if (runs[i].frames < 2) {
-			fprintf(stderr, "the last frame was shown for only %zu output frame(s)\n", runs[i].frames);
-			fail();
-		}
-		return;
+	if (runs[last].frames < 2) {
+		fprintf(stderr, "the last frame was shown for only %zu output frame(s)\n", runs[last].frames);
+		fail();
 	}
 }
 
@@ -472,8 +474,7 @@ static void gif_once_shows_every_frame(void **state)
 	play(gif_once_path, false, true, 5000, &w);
 	size_t n = collapse(&w, runs, MAX_SEEN);
 	log_runs("one-shot GIF", runs, n);
-	check_order(runs, n, 1);
-	check_last_frame_held(runs, n);
+	check_last_frame_held(runs, check_order(runs, n, 1));
 }
 
 /* Guard: a looping GIF shows all of its frames on every loop. */
@@ -503,8 +504,7 @@ static void video_once_shows_every_frame(void **state)
 	play(video_path, false, true, 5000, &w);
 	size_t n = collapse(&w, runs, MAX_SEEN);
 	log_runs("one-shot video", runs, n);
-	check_order(runs, n, 1);
-	check_last_frame_held(runs, n);
+	check_last_frame_held(runs, check_order(runs, n, 1));
 }
 
 /* The video once more, right after a run that ended on its last frame
@@ -514,8 +514,9 @@ static void video_once_shows_every_frame(void **state)
  * the recording starts with the clip's last frame for one output frame.
  * That is not the clip playing: the checks are about the frames from its
  * first frame on. Which picture the run before ends on depends on timing
- * (the looping case before this one ends anywhere in the clip), so this
- * makes the case that the timing hits now and then deterministic. */
+ * (the looping case before video_once_shows_every_frame ends anywhere in
+ * the clip), so this makes the case that timing hits now and then happen
+ * every time. */
 static void video_once_after_last_frame_held(void **state)
 {
 	UNUSED_PARAMETER(state);
@@ -535,8 +536,7 @@ static void video_once_after_last_frame_held(void **state)
 	play(video_path, false, true, 5000, &w);
 	n = collapse(&w, runs, MAX_SEEN);
 	log_runs("one-shot video again", runs, n);
-	check_order(runs, n, 1);
-	check_last_frame_held(runs, n);
+	check_last_frame_held(runs, check_order(runs, n, 1));
 }
 
 int main(void)

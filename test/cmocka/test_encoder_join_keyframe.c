@@ -46,6 +46,7 @@
 #include <string.h>
 
 #include <obs.h>
+#include <media-io/video-io.h>
 #include <util/platform.h>
 #include <util/threading.h>
 
@@ -59,10 +60,14 @@
 #define JOIN_MS 1000
 /* The real encoders: the recording's first packet must be the frame the
  * encoder was given when the recording started, or one of the next few; a
- * scheduled keyframe is 300 frames away. The frame is reckoned from the time
- * since the encoder started (its pts counts frames at 30 fps), so it allows
- * a little slack either way; it leaves out the encoder's own delay, which
- * the wall clock would count (x264's lookahead holds ~20 frames). */
+ * scheduled keyframe is 300 frames away. The frame is reckoned from the
+ * frames the video thread has handed out since the encoder started (its pts
+ * counts the frames it was given), just before and just after the recording
+ * starts, with a little slack either way for the frame in flight. Not from
+ * the wall clock: it leaves out the encoder's own delay (x264's lookahead
+ * holds ~20 frames), and an encoder the video thread feeds late (a slow
+ * encoder or a busy machine) is given fewer frames than the time since it
+ * started. */
 #define JOIN_FRAMES 3
 
 static bool obs_up;
@@ -426,6 +431,8 @@ static void join_real_encoder(const char *id, long lag_ms)
 		teardown_fixture(&fx);
 		skip();
 	}
+	/* the encoder's first frame is the next one the video thread hands out */
+	uint32_t first_frame = video_output_get_total_frames(obs_get_video());
 	bool replay_ok = wait_packets(fx.replay, 10, 10000);
 	if (lag_ms) {
 		os_atomic_set_long(&video_lag_ms, lag_ms);
@@ -436,17 +443,22 @@ static void join_real_encoder(const char *id, long lag_ms)
 	struct out *replay = obs_obj_get_data(fx.replay);
 	struct out *rec = obs_obj_get_data(fx.recording);
 	long long joined_after = replay->last_pts;
-	/* the encoder started when the replay buffer did */
-	long long joined_at = (long long)((os_gettime_ns() - replay->started_ns) * FPS / 1000000000ULL);
+	long long joined_at = (uint32_t)(video_output_get_total_frames(obs_get_video()) - first_frame);
 	bool started = replay_ok && obs_output_start(fx.recording);
+	long long joined_by = (uint32_t)(video_output_get_total_frames(obs_get_video()) - first_frame);
 	bool got = started && wait_packets(fx.recording, 1, JOIN_MS * 3);
 	double ms = first_packet_ms(fx.recording);
 	long keyframe = os_atomic_load_long(&rec->first_is_keyframe);
-	long long frames = got ? rec->first_pts - joined_at : -1000;
+	/* how far the first packet is from the frames given while it joined */
+	long long frames = -1000;
+	if (got)
+		frames = rec->first_pts < joined_at   ? rec->first_pts - joined_at
+			 : rec->first_pts > joined_by ? rec->first_pts - joined_by
+						      : 0;
 	fprintf(stderr,
-		"%s, joining at frame %lld (keyframe every %d s): first packet after %.0f ms, pts %lld (%+lld frames;"
+		"%s, joining at frame %lld-%lld (keyframe every %d s): first packet after %.0f ms, pts %lld (%+lld frames;"
 		" replay buffer's latest was %lld), keyframe %ld\n",
-		id, joined_at, KEYINT / FPS, ms, got ? rec->first_pts : -1, frames, joined_after, keyframe);
+		id, joined_at, joined_by, KEYINT / FPS, ms, got ? rec->first_pts : -1, frames, joined_after, keyframe);
 
 	if (lag_ms) {
 		/* let the video thread catch up first: it holds the input mutex
