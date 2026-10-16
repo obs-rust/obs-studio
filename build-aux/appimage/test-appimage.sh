@@ -250,6 +250,12 @@ done
 
 chmod +x "$APPIMAGE"
 
+# The first line of `obs --version` output (stdout and stderr) that names
+# OBS, so loader warnings printed before it don't count as the version.
+app_version_line() {
+    printf '%s\n' "$1" | grep -m1 -E '^OBS' || true
+}
+
 echo "::group::AppImage runs through its own runtime (no FUSE in containers)"
 VERSION_OUT="$(APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGE" --version 2>&1)" || {
     echo "$VERSION_OUT"
@@ -258,14 +264,17 @@ VERSION_OUT="$(APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGE" --version 2>&1)" || {
 }
 echo "$VERSION_OUT"
 echo "::endgroup::"
+# The output carries stderr too, and the loader may warn before the version
+# line ("libobs-va.so.2: no version information available").
+VERSION_LINE="$(app_version_line "$VERSION_OUT")"
 # A build with the Rust libobs ports names itself OBS-Studio-Rust (obs-rust/obs-studio#112).
-if [ -n "${EXPECT_RUST:-}" ] && [[ "$VERSION_OUT" != OBS-Studio-Rust* ]]; then
+if [ -n "${EXPECT_RUST:-}" ] && [[ "$VERSION_LINE" != OBS-Studio-Rust* ]]; then
     echo "::error::this AppImage was built with ENABLE_RUST_LIBOBS but does not report OBS-Studio-Rust"
     exit 1
 fi
 # The daily beta carries its full release string, so betas can be told apart (#631).
-if [ -n "${EXPECT_RUST_VERSION:-}" ] && [[ "$VERSION_OUT" != "OBS-Studio-Rust $EXPECT_RUST_VERSION (based on OBS "* ]]; then
-    echo "::error::expected 'OBS-Studio-Rust $EXPECT_RUST_VERSION (based on OBS ...)' from --version, got: $VERSION_OUT"
+if [ -n "${EXPECT_RUST_VERSION:-}" ] && [[ "$VERSION_LINE" != "OBS-Studio-Rust $EXPECT_RUST_VERSION (based on OBS "* ]]; then
+    echo "::error::expected 'OBS-Studio-Rust $EXPECT_RUST_VERSION (based on OBS ...)' from --version, got: $VERSION_LINE"
     exit 1
 fi
 
@@ -288,7 +297,7 @@ if [ ! -e "$LOADER" ]; then
 fi
 PACKAGE_DATA="$APPDIR/usr/share/obs"
 PACKAGE_MODULES="$APPDIR/usr/lib/obs-modules"
-if [[ "$VERSION_OUT" == OBS-Studio-Rust* ]]; then
+if [[ "$VERSION_LINE" == OBS-Studio-Rust* ]]; then
     GUI_NAME=obs-studio-rust-gui
     CONFIG_NAME=obs-studio-rust
     INSTANCE_PREFIX=@/io/github/obs_rust/OBSStudioRust
