@@ -86,3 +86,20 @@ void output_filename_release(const char *path)
 	if (path && *path && os_get_file_size(path) == 0)
 		os_unlink(path);
 }
+
+void output_filename_reservation_hold(struct output_filename_reservation *reservation, const char *path)
+{
+	/* not implemented yet: the stream dump keeps no owner for its file */
+	(void)reservation;
+	(void)path;
+}
+
+void output_filename_reservation_hand_over(struct output_filename_reservation *reservation)
+{
+	(void)reservation;
+}
+
+void output_filename_reservation_cancel(struct output_filename_reservation *reservation)
+{
+	(void)reservation;
+}

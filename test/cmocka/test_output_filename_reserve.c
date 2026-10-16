@@ -24,6 +24,17 @@
  * built into the test) and checks that starting it keeps a reserved file.
  * It needs core video, so it runs on Linux under xvfb-run and skips without
  * a display.
+ *
+ * The stream dump cases are the follow-up: with Enhanced Broadcasting and
+ * "Enable stream dump to FLV" on, GenerateMultitrackVideoStreamDumpConfig()
+ * (frontend/utility/BasicOutputHandler.cpp) reserves the dump's file when
+ * the go-live starts, but the dump output opens it only once the stream
+ * output has started. When the go-live fails before that (the config
+ * cannot be fetched or parsed, or the stream output does not start), the
+ * frontend kept no owner for the file, and every failed attempt left an
+ * empty .flv in the recording folder. output_filename_reservation_*() is
+ * that owner; the frontend holds the dump's reservation in it, hands it
+ * over when the dump output starts and cancels it on every failure.
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -507,6 +518,175 @@ static void test_release_removes_only_unwritten_reservations(void **state)
 }
 
 /* ------------------------------------------------------------------------- */
+/* the stream dump of a failed go-live leaves no empty file */
+
+/* A file name the stream dump's default format gives. */
+#define DUMP_NAME "2026-10-16 06-07-13"
+
+static int count_files(const char *dir)
+{
+	int n = 0;
+	os_dir_t *d = os_opendir(dir);
+	struct os_dirent *ent;
+	while (d && (ent = os_readdir(d)) != NULL) {
+		if (!ent->directory)
+			n++;
+	}
+	if (d)
+		os_closedir(d);
+	return n;
+}
+
+/* What GenerateMultitrackVideoStreamDumpConfig() does at each go-live: the
+ * name is reserved and handed to the reservation. */
+static char *reserve_dump(struct output_filename_reservation *reservation, const char *candidate)
+{
+	bool reserved = false;
+	char *path = output_filename_reserve(candidate, false, false, &reserved);
+	if (!reserved) {
+		fprintf(stderr, "could not reserve %s\n", candidate);
+		fail();
+	}
+	output_filename_reservation_hold(reservation, path);
+	return path;
+}
+
+/* The go-live fails before the stream output starts (config download or
+ * parse error): the dump's file goes away. */
+static void test_failed_go_live_removes_dump_file(void **state)
+{
+	(void)state;
+	char *dir = make_temp_dir();
+	char *candidate = join(dir, DUMP_NAME ".flv");
+	struct output_filename_reservation reservation = {0};
+
+	char *path = reserve_dump(&reservation, candidate);
+	output_filename_reservation_cancel(&reservation);
+	if (os_file_exists(path)) {
+		fprintf(stderr, "a failed go-live left the empty stream dump %s\n", path);
+		fail();
+	}
+	if (reservation.path) {
+		fprintf(stderr, "the reservation still holds %s after cancel\n", reservation.path);
+		fail();
+	}
+	bfree(path);
+
+	bfree(candidate);
+	remove_dir(dir);
+}
+
+/* Three failed attempts, as a user retrying Start Streaming does: nothing
+ * is left in the recording folder. */
+static void test_repeated_failed_go_lives_leave_no_files(void **state)
+{
+	(void)state;
+	char *dir = make_temp_dir();
+	char *candidate = join(dir, DUMP_NAME ".flv");
+	struct output_filename_reservation reservation = {0};
+
+	for (int i = 0; i < 3; i++) {
+		char *path = reserve_dump(&reservation, candidate);
+		output_filename_reservation_cancel(&reservation);
+		bfree(path);
+	}
+	int left = count_files(dir);
+	if (left != 0) {
+		fprintf(stderr, "3 failed go-lives left %d empty file(s) in the recording folder\n", left);
+		fail();
+	}
+
+	bfree(candidate);
+	remove_dir(dir);
+}
+
+/* A new go-live while an earlier reservation is still held (no failure or
+ * start reported for it) does not leak the earlier file. */
+static void test_new_go_live_replaces_an_unsettled_reservation(void **state)
+{
+	(void)state;
+	char *dir = make_temp_dir();
+	char *candidate = join(dir, DUMP_NAME ".flv");
+	struct output_filename_reservation reservation = {0};
+
+	char *first = reserve_dump(&reservation, candidate);
+	char *second = reserve_dump(&reservation, candidate);
+	if (os_file_exists(first)) {
+		fprintf(stderr, "the earlier empty reservation %s was left behind\n", first);
+		fail();
+	}
+	if (!os_file_exists(second)) {
+		fprintf(stderr, "the new reservation %s is missing\n", second);
+		fail();
+	}
+	output_filename_reservation_cancel(&reservation);
+	bfree(first);
+	bfree(second);
+
+	bfree(candidate);
+	remove_dir(dir);
+}
+
+/* The stream starts and the dump output with it: the file is the dump's
+ * now, even while it is still empty, and stays. */
+static void test_started_dump_keeps_its_file(void **state)
+{
+	(void)state;
+	char *dir = make_temp_dir();
+	char *candidate = join(dir, DUMP_NAME ".flv");
+	struct output_filename_reservation reservation = {0};
+
+	char *path = reserve_dump(&reservation, candidate);
+	output_filename_reservation_hand_over(&reservation);
+	/* the frontend cancels on every later failure; nothing is held now */
+	output_filename_reservation_cancel(&reservation);
+	if (!os_file_exists(path)) {
+		fprintf(stderr, "the started stream dump's file %s was removed\n", path);
+		fail();
+	}
+
+	/* a file the dump has written to survives a cancel, too */
+	char *written = reserve_dump(&reservation, candidate);
+	write_file(written, "FLV");
+	output_filename_reservation_cancel(&reservation);
+	if (!file_exists_with_size(written, 3)) {
+		fprintf(stderr, "cancel removed the written stream dump %s\n", written);
+		fail();
+	}
+	bfree(written);
+	bfree(path);
+
+	bfree(candidate);
+	remove_dir(dir);
+}
+
+/* "Overwrite if file exists" reserves nothing: an existing file of that
+ * name, even an empty one, is not the reservation's to remove. */
+static void test_unreserved_dump_path_is_left_alone(void **state)
+{
+	(void)state;
+	char *dir = make_temp_dir();
+	char *candidate = join(dir, DUMP_NAME ".flv");
+	struct output_filename_reservation reservation = {0};
+	bool reserved = true;
+
+	write_file(candidate, "");
+	char *path = output_filename_reserve(candidate, false, true, &reserved);
+	output_filename_reservation_hold(&reservation, reserved ? path : NULL);
+	output_filename_reservation_cancel(&reservation);
+	output_filename_reservation_hold(&reservation, "");
+	output_filename_reservation_cancel(&reservation);
+	if (!os_file_exists(candidate)) {
+		fprintf(stderr, "cancel removed %s, which it did not reserve\n", candidate);
+		fail();
+	}
+	bfree(path);
+
+	bfree(candidate);
+	remove_dir(dir);
+}
+
+/* ------------------------------------------------------------------------- */
 /* the ffmpeg_muxer output keeps a reserved file */
 
 #ifdef TEST_FFMPEG_MUX
@@ -715,6 +895,11 @@ int main(void)
 		cmocka_unit_test_teardown(test_overwrite_keeps_name_and_file, cleanup_dir),
 		cmocka_unit_test_teardown(test_unwritable_path_keeps_its_name, cleanup_dir),
 		cmocka_unit_test_teardown(test_release_removes_only_unwritten_reservations, cleanup_dir),
+		cmocka_unit_test_teardown(test_failed_go_live_removes_dump_file, cleanup_dir),
+		cmocka_unit_test_teardown(test_repeated_failed_go_lives_leave_no_files, cleanup_dir),
+		cmocka_unit_test_teardown(test_new_go_live_replaces_an_unsettled_reservation, cleanup_dir),
+		cmocka_unit_test_teardown(test_started_dump_keeps_its_file, cleanup_dir),
+		cmocka_unit_test_teardown(test_unreserved_dump_path_is_left_alone, cleanup_dir),
 	};
 	const struct CMUnitTest mux_tests[] = {
 		cmocka_unit_test_teardown(test_ffmpeg_muxer_start_keeps_reservation, cleanup_dir),
