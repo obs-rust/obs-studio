@@ -679,7 +679,7 @@ fail:
 }
 
 static void ffmpeg_output_full_stop(void *data);
-static void ffmpeg_deactivate(struct ffmpeg_output *output);
+static void ffmpeg_deactivate(struct ffmpeg_output *output, bool drain);
 
 static void ffmpeg_output_destroy(void *data)
 {
@@ -950,25 +950,11 @@ static uint64_t get_packet_sys_dts(struct ffmpeg_output *output, AVPacket *packe
 	return start_ts + pause_offset + (uint64_t)av_rescale_q(packet->dts, time_base, (AVRational){1, 1000000000});
 }
 
-static int process_packet(struct ffmpeg_output *output)
+/* Writes an encoded packet, unless it is from after the stop time, and frees
+ * it. */
+static int write_packet(struct ffmpeg_output *output, AVPacket *packet)
 {
-	AVPacket *packet = NULL;
 	int ret = 0;
-
-	pthread_mutex_lock(&output->write_mutex);
-	if (output->packets.num) {
-		packet = output->packets.array[0];
-		da_erase(output->packets, 0);
-	}
-	pthread_mutex_unlock(&output->write_mutex);
-
-	if (!packet)
-		return 0;
-
-	/*blog(LOG_DEBUG, "size = %d, flags = %lX, stream = %d, "
-			"packets queued: %lu",
-			packet.size, packet.flags,
-			packet.stream_index, output->packets.num);*/
 
 	if (stopping(output)) {
 		uint64_t sys_ts = get_packet_sys_dts(output, packet);
@@ -991,6 +977,57 @@ end:
 	return ret;
 }
 
+static int process_packet(struct ffmpeg_output *output)
+{
+	AVPacket *packet = NULL;
+
+	pthread_mutex_lock(&output->write_mutex);
+	if (output->packets.num) {
+		packet = output->packets.array[0];
+		da_erase(output->packets, 0);
+	}
+	pthread_mutex_unlock(&output->write_mutex);
+
+	return packet ? write_packet(output, packet) : 0;
+}
+
+/* Encoders hold frames back (B-frames, lookahead: libx264, libvpx, SVT-AV1,
+ * and AAC's one frame of delay) and hand them out once the end of the input
+ * is signalled: write them before the file is finished. */
+static void drain_encoder(struct ffmpeg_output *output, AVCodecContext *context, AVStream *stream)
+{
+	if (!context || !stream || avcodec_send_frame(context, NULL) < 0)
+		return;
+
+	for (;;) {
+		AVPacket *packet = av_packet_alloc();
+		if (!packet)
+			return;
+		if (avcodec_receive_packet(context, packet) < 0) {
+			av_packet_free(&packet);
+			return;
+		}
+
+		packet->pts = rescale_ts(packet->pts, context, stream->time_base);
+		packet->dts = rescale_ts(packet->dts, context, stream->time_base);
+		packet->duration = (int)av_rescale_q(packet->duration, context->time_base, stream->time_base);
+		packet->stream_index = stream->index;
+		write_packet(output, packet);
+	}
+}
+
+static void drain_encoders(struct ffmpeg_output *output)
+{
+	struct ffmpeg_data *data = &output->ff_data;
+
+	if (!data->initialized)
+		return;
+
+	drain_encoder(output, data->video_ctx, data->video);
+	for (int idx = 0; idx < data->num_audio_streams && data->audio_infos; idx++)
+		drain_encoder(output, data->audio_infos[idx].ctx, data->audio_infos[idx].stream);
+}
+
 static void *write_thread(void *data)
 {
 	struct ffmpeg_output *output = data;
@@ -1011,7 +1048,7 @@ static void *write_thread(void *data)
 				code = OBS_OUTPUT_NO_SPACE;
 
 			obs_output_signal_stop(output->output, code);
-			ffmpeg_deactivate(output);
+			ffmpeg_deactivate(output, false);
 			break;
 		}
 	}
@@ -1201,7 +1238,7 @@ static void ffmpeg_output_full_stop(void *data)
 
 	if (output->active) {
 		obs_output_end_data_capture(output->output);
-		ffmpeg_deactivate(output);
+		ffmpeg_deactivate(output, true);
 	}
 }
 
@@ -1219,7 +1256,9 @@ static void ffmpeg_output_stop(void *data, uint64_t ts)
 	}
 }
 
-static void ffmpeg_deactivate(struct ffmpeg_output *output)
+/* drain: a stop, not a failure: write the packets still queued and what the
+ * encoders hold back before the file is finished. */
+static void ffmpeg_deactivate(struct ffmpeg_output *output, bool drain)
 {
 	if (output->write_thread_active) {
 		os_event_signal(output->stop_event);
@@ -1235,12 +1274,19 @@ static void ffmpeg_deactivate(struct ffmpeg_output *output)
 	pthread_mutex_lock(&output->encode_mutex);
 	pthread_mutex_lock(&output->write_mutex);
 
-	for (size_t i = 0; i < output->packets.num; i++)
-		av_packet_free(output->packets.array + i);
+	/* the write thread has ended: the packets it had not written yet */
+	for (size_t i = 0; i < output->packets.num; i++) {
+		if (drain)
+			write_packet(output, output->packets.array[i]);
+		else
+			av_packet_free(output->packets.array + i);
+	}
 	da_free(output->packets);
 
 	pthread_mutex_unlock(&output->write_mutex);
 
+	if (drain)
+		drain_encoders(output);
 	ffmpeg_data_free(&output->ff_data);
 	pthread_mutex_unlock(&output->encode_mutex);
 }
