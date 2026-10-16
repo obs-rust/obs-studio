@@ -637,6 +637,17 @@ bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_da
 	return false;
 }
 
+bool obs_encoder_get_codec_metadata(const obs_encoder_t *encoder, uint8_t **metadata, size_t *size)
+{
+	if (!obs_encoder_valid(encoder, "obs_encoder_get_codec_metadata"))
+		return false;
+
+	if (encoder->info.get_codec_metadata && encoder->context.data)
+		return encoder->info.get_codec_metadata(encoder->context.data, metadata, size);
+
+	return false;
+}
+
 obs_data_t *obs_encoder_get_settings(const obs_encoder_t *encoder)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_get_settings"))

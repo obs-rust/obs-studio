@@ -257,6 +257,8 @@ static void parse_custom_options(struct mp4_output *out, const char *opts_str)
 			apply_flag(&flags, opt.value, MP4_USE_MDTA_KEY_VALUE);
 		} else if (strcmp(opt.name, "use_negative_cts") == 0) {
 			apply_flag(&flags, opt.value, MP4_USE_NEGATIVE_CTS);
+		} else if (strcmp(opt.name, "write_hlg_compatible_hdr_config") == 0) {
+			apply_flag(&flags, opt.value, MP4_WRITE_HLG_COMPATIBLE_HDR_CONFIG);
 		} else if (strcmp(opt.name, "buffer_size") == 0) {
 			out->buffer_size = strtoull(opt.value, 0, 10) * 1048576ULL;
 		} else if (strcmp(opt.name, "chunk_size") == 0) {

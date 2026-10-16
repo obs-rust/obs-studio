@@ -2457,6 +2457,14 @@ EXPORT void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings);
 /** Gets extra data (headers) associated with this context */
 EXPORT bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_data, size_t *size);
 
+/**
+ * Gets codec configuration metadata for the container muxer, if any (for
+ * example the native dvvC record for HLG-compatible HEVC 8.4 recordings).
+ * The returned buffer is owned by the encoder and must not be freed by the
+ * caller.
+ */
+EXPORT bool obs_encoder_get_codec_metadata(const obs_encoder_t *encoder, uint8_t **metadata, size_t *size);
+
 /** Returns the current settings for this encoder */
 EXPORT obs_data_t *obs_encoder_get_settings(const obs_encoder_t *encoder);
 

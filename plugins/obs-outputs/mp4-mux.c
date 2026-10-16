@@ -489,6 +489,34 @@ static size_t mp4_write_hvcC(struct mp4_mux *mux, obs_encoder_t *enc)
 	return box_size;
 }
 
+/// HLG-compatible HDR signaling in the ISO base media file format: the
+/// configuration box ('dvvC'). A plain Box (no FullBox version/flags): the
+/// payload is the opaque native configuration record supplied by the encoder
+/// and is written verbatim. box header (8) + payload.
+size_t mp4_write_dvvC_box(struct serializer *s, const uint8_t *metadata, size_t size)
+{
+	size_t box_size = size + 8;
+	write_box(s, box_size, "dvvC");
+	s_write(s, metadata, size);
+
+	return box_size;
+}
+
+/// Writes the dvvC configuration box beside hvcC. Returns 0 (and writes
+/// nothing) when the encoder supplied no DV configuration record, so a
+/// plain HEVC recording is unaffected.
+static size_t mp4_write_dvvC(struct mp4_mux *mux, obs_encoder_t *enc)
+{
+	struct serializer *s = mux->serializer;
+
+	uint8_t *metadata;
+	size_t size;
+	if (!obs_encoder_get_codec_metadata(enc, &metadata, &size))
+		return 0;
+
+	return mp4_write_dvvC_box(s, metadata, size);
+}
+
 /// AV1 ISOBMFF 2.3. AV1 Codec Configuration Box
 static size_t mp4_write_av1C(struct mp4_mux *mux, obs_encoder_t *enc)
 {
@@ -696,6 +724,11 @@ static size_t mp4_write_hvc1(struct mp4_mux *mux, obs_encoder_t *enc)
 
 	// avcC
 	mp4_write_hvcC(mux, enc);
+
+	// dvvC (HLG-compatible HDR signaling, experimental). Only written when the muxer was
+	// asked to and the encoder supplied a native configuration record.
+	if (mux->flags & MP4_WRITE_HLG_COMPATIBLE_HDR_CONFIG)
+		mp4_write_dvvC(mux, enc);
 
 	// colr
 	mp4_write_colr(mux, enc);

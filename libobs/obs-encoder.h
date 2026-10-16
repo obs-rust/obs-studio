@@ -364,6 +364,23 @@ struct obs_encoder_info {
 	 * @param  data  Data returned from create
 	 */
 	void (*request_keyframe)(void *data);
+
+	/**
+	 * Returns codec configuration metadata for the container muxer, if any.
+	 *
+	 * For HLG-compatible HDR (HEVC profile 8.4) this is the native dvvC
+	 * configuration record produced by the platform encoder. The muxer
+	 * writes it verbatim; the payload is opaque to libobs and must not be
+	 * confused with the Annex-B parameter sets returned by get_extra_data.
+	 * The returned buffer is owned by the encoder and must not be freed by
+	 * the caller.
+	 *
+	 * @param       data      Data associated with this encoder context
+	 * @param[out]  metadata  Pointer to receive the metadata
+	 * @param[out]  size      Pointer to receive the size of the metadata
+	 * @return                true if metadata is available, false otherwise
+	 */
+	bool (*get_codec_metadata)(void *data, uint8_t **metadata, size_t *size);
 };
 
 EXPORT void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size);

@@ -38,6 +38,8 @@ enum mp4_mux_flags {
 	MP4_SKIP_FINALISATION = 1 << 2,
 	/* Use negative CTS instead of edit lists */
 	MP4_USE_NEGATIVE_CTS = 1 << 3,
+	/* Write dvvC configuration for HLG-compatible HDR recordings (experimental) */
+	MP4_WRITE_HLG_COMPATIBLE_HDR_CONFIG = 1 << 4,
 };
 
 struct mp4_mux *mp4_mux_create(obs_output_t *output, struct serializer *serializer, enum mp4_mux_flags flags,
@@ -46,3 +48,7 @@ void mp4_mux_destroy(struct mp4_mux *mux);
 bool mp4_mux_submit_packet(struct mp4_mux *mux, struct encoder_packet *pkt);
 bool mp4_mux_add_chapter(struct mp4_mux *mux, int64_t dts_usec, const char *name);
 bool mp4_mux_finalise(struct mp4_mux *mux);
+
+/* Writes a dvvC configuration box (header + opaque payload)
+ * and returns the total number of bytes written. Exposed for unit tests. */
+size_t mp4_write_dvvC_box(struct serializer *s, const uint8_t *metadata, size_t size);
