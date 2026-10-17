@@ -1,7 +1,27 @@
 //! The platform boundary (obs-rust/obs-studio#323): the only place in this
 //! crate that selects on the host.
 
-use crate::GpuDevice;
+use crate::nvml::Nvml;
+use crate::{GpuDevice, Utilization};
+
+#[allow(unsafe_code)] // libloading; see the module docs
+mod nvml_lib;
+
+/// NVML, loaded once per process (obs-rust/obs-studio#1021); `None` without
+/// an NVIDIA driver.
+pub fn nvml() -> Option<&'static Nvml> {
+    static NVML: std::sync::OnceLock<Option<Nvml>> = std::sync::OnceLock::new();
+    NVML.get_or_init(|| nvml_lib::load(nvml_candidates()))
+        .as_ref()
+}
+
+/// Utilization of the GPU OBS renders on, through NVML only: other GPUs
+/// are [`Utilization::Unavailable`] here. The other sources (amdgpu #1024,
+/// fdinfo #1023, PDH #1022) are not wired in; the frontend consumer
+/// (#1025) picks the source per adapter.
+pub fn gpu_utilization(hint: crate::RenderHint<'_>) -> Utilization {
+    crate::nvml::utilization(nvml(), &render_adapter(hint))
+}
 
 cfg_select! {
     target_os = "linux" => {
@@ -16,6 +36,10 @@ cfg_select! {
         /// display (obs-rust/obs-studio#1020).
         pub fn render_adapter(hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
             crate::render_adapter(std::path::Path::new("/"), hint.render_node)
+        }
+
+        fn nvml_candidates() -> &'static [&'static str] {
+            crate::nvml::LINUX_CANDIDATES
         }
 
         /// PDH `GPU Engine` counters exist only on Windows.
@@ -39,6 +63,10 @@ cfg_select! {
         /// (obs-rust/obs-studio#1020).
         pub fn render_adapter(hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
             crate::dxgi::render_adapter_from_dxgi(hint.adapter_index, &windows::dxgi_adapters())
+        }
+
+        fn nvml_candidates() -> &'static [&'static str] {
+            crate::nvml::WINDOWS_CANDIDATES
         }
 
         /// One sample of the PDH `GPU Engine` utilization counters
@@ -68,6 +96,11 @@ cfg_select! {
             )
         }
 
+        /// Macs have no NVIDIA driver.
+        fn nvml_candidates() -> &'static [&'static str] {
+            &[]
+        }
+
         /// PDH `GPU Engine` counters exist only on Windows.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             Vec::new()
@@ -82,6 +115,10 @@ cfg_select! {
         /// The render adapter is not known on this platform.
         pub fn render_adapter(_hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
             crate::RenderAdapter::Unknown
+        }
+
+        fn nvml_candidates() -> &'static [&'static str] {
+            &[]
         }
 
         /// PDH `GPU Engine` counters exist only on Windows.

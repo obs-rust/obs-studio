@@ -24,4 +24,13 @@ fn main() {
         }
         _ => println!("render adapter for {hint:?}: {adapter:?}"),
     }
+    let start = std::time::Instant::now();
+    let utilization = obs_gpu_status::platform::gpu_utilization(hint);
+    let first = start.elapsed();
+    let start = std::time::Instant::now();
+    let again = obs_gpu_status::platform::gpu_utilization(hint);
+    println!(
+        "GPU utilization: {utilization:?} (first call {first:.2?}, with NVML load), {again:?} ({:.2?})",
+        start.elapsed()
+    );
 }
