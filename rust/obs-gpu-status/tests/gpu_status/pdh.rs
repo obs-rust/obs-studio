@@ -179,9 +179,12 @@ impl obs_gpu_status::pdh::EngineCounters for FakeCounters {
     }
 }
 
+/// What one fake query returns from its calls to `collect`, in order.
+type Collections = Vec<Option<Vec<(String, f64)>>>;
+
 /// A ticker whose `n`-th open gives `queries[n]` (`None`: the open fails).
 fn ticker(
-    queries: Vec<Option<Vec<Option<Vec<(String, f64)>>>>>,
+    queries: Vec<Option<Collections>>,
 ) -> (
     obs_gpu_status::pdh::PdhTicker,
     std::sync::Arc<std::sync::atomic::AtomicUsize>,
