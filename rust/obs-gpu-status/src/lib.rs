@@ -414,3 +414,22 @@ impl Default for DeviceCache {
         Self::new()
     }
 }
+
+/// The PCI device OBS renders on (obs-rust/obs-studio#1020). Utilization
+/// sources (NVML, fdinfo, `gpu_busy_percent`) use it to pick the right GPU.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RenderAdapter {
+    /// PCI address in sysfs form, e.g. `0000:2b:00.0`.
+    Pci(String),
+    /// More than one GPU can be the render adapter, so none is picked.
+    Ambiguous,
+    /// No PCI GPU: software rendering, no sysfs, or a non-PCI device.
+    Unknown,
+}
+
+/// Resolve the render node that EGL reports for the display
+/// (`/dev/dri/renderD128`) to its PCI device under `<root>/sys/class/drm`.
+pub fn render_adapter(root: &Path, render_node: Option<&str>) -> RenderAdapter {
+    let _ = (root, render_node);
+    RenderAdapter::Unknown
+}

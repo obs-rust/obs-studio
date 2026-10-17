@@ -8,4 +8,5 @@ mod frame_window;
 mod frames;
 mod locale;
 mod log_lines;
+mod render_adapter;
 mod report;
