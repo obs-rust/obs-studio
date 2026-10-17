@@ -7,6 +7,16 @@ set(OBS_PLATFORM_CORE_MODULE_PATH "${CMAKE_INSTALL_PREFIX}/${OBS_PLUGIN_DESTINAT
 set(OBS_PLATFORM_CORE_DATA_PATH "${CMAKE_INSTALL_PREFIX}/${OBS_DATA_DESTINATION}/obs-modules/core")
 set(OBS_PLATFORM_PLUGIN_MODULE_PATH "${CMAKE_INSTALL_PREFIX}/${OBS_PLUGIN_DESTINATION}/plugins")
 set(OBS_PLATFORM_PLUGIN_DATA_PATH "${CMAKE_INSTALL_PREFIX}/${OBS_DATA_DESTINATION}/obs-modules/plugins")
+# A relocatable build (the AppImage) runs from wherever it was unpacked, so the
+# install prefix belongs to whatever else is installed there: a distribution's
+# OBS keeps plugins for its own libobs in <prefix>/lib/obs-plugins. Its system
+# plugin locations are its own tree, relative to the executable like its core
+# modules (PluginModuleLoader_Linux.cpp resolves them).
+if(ENABLE_RELOCATABLE AND OS_LINUX AND NOT OS_FLATPAK)
+  set(OBS_PLATFORM_INSTALL_PATH "../")
+  set(OBS_PLATFORM_PLUGIN_MODULE_PATH "../${OBS_PLUGIN_DESTINATION}/plugins")
+  set(OBS_PLATFORM_PLUGIN_DATA_PATH "../${OBS_DATA_DESTINATION}/obs-modules/plugins")
+endif()
 
 target_sources(
   obs-studio

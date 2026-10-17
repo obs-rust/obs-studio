@@ -72,6 +72,20 @@ State pluginLoadHelper(const ModuleLoadInfo &info, ModuleList &failedModules)
 
 	return result;
 }
+
+// A relocatable build (the AppImage) keeps its system plugin locations relative
+// to the executable (feature-plugin-manager.cmake); an installed one, absolute.
+std::string systemPath(std::string_view path)
+{
+	if (path.empty() || path.front() == '/') {
+		return std::string{path};
+	}
+
+	char *resolved = os_get_executable_path_ptr(std::string{path}.c_str());
+	std::string result{resolved ? resolved : ""};
+	bfree(resolved);
+	return result;
+}
 } // namespace
 
 namespace OBS {
@@ -98,8 +112,8 @@ State PluginManager::loadPlugins(bool usePortableMode)
 	State systemPluginState = State::Failure;
 
 	if constexpr (hasSystemPluginPath) {
-		std::string binaryPath{Constants::kPlatformPluginModulePath};
-		std::string dataPath{Constants::kPlatformPluginDataPath};
+		std::string binaryPath = systemPath(Constants::kPlatformPluginModulePath);
+		std::string dataPath = systemPath(Constants::kPlatformPluginDataPath);
 
 		dataPath.append(kModulePathSuffix);
 
@@ -167,8 +181,8 @@ State PluginManager::loadLegacyPlugins(bool usePortableMode)
 	State systemPluginState = State::Failure;
 
 	{
-		std::string binaryPath{Constants::kPlatformInstallPath};
-		std::string dataPath{Constants::kPlatformInstallPath};
+		std::string binaryPath = systemPath(Constants::kPlatformInstallPath);
+		std::string dataPath{binaryPath};
 		binaryPath.append(Constants::kPlatformLibraryPath);
 		binaryPath.append("obs-plugins/");
 		dataPath.append(Constants::kPlatformDataPath);
