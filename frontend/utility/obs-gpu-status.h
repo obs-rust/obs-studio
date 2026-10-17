@@ -27,6 +27,13 @@ char *obs_gpu_status_report(const char *adapter, uint64_t interval_ns, int *stat
 
 void obs_gpu_status_free(char *json);
 
+/* Start sampling the render adapter's utilization once a second on a thread
+ * (#1025); the report's "usage" and "readout" use the last sample. Call after
+ * each video reset; later calls change the adapter. `render_node` is the
+ * Linux EGL render node (adapter 0 in gs_enum_adapters) or NULL;
+ * `adapter_index` is the Windows obs_video_info.adapter, or -1. */
+void obs_gpu_status_usage_start(const char *render_node, int adapter_index);
+
 /* Offer one OBS log line; the ones about graphics (adapter, DRM render node,
  * EGL/GLX, video init) are quoted in the dialog. NULL is ignored. */
 void obs_gpu_status_log_line(const char *line);

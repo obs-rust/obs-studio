@@ -4,6 +4,7 @@ use std::ffi::{CStr, c_int};
 
 use obs_gpu_status::ffi::{
     obs_gpu_status_free, obs_gpu_status_log_line, obs_gpu_status_report, obs_gpu_status_sample,
+    obs_gpu_status_usage_start,
 };
 
 const BUDGET: u64 = 33_333_333;
@@ -71,6 +72,21 @@ fn logged_graphics_lines_reach_the_report() {
     let (_, text) = report(Some(c"Mesa llvmpipe"), 0);
     assert!(
         text.contains("\"logLines\":[\"Unable to open DRM render node.\"]"),
+        "{text}"
+    );
+}
+
+#[test]
+fn usage_start_accepts_no_hint_and_the_report_carries_the_readout() {
+    // SAFETY: null is allowed; a second call only changes the hint.
+    unsafe {
+        obs_gpu_status_usage_start(std::ptr::null(), -1);
+        obs_gpu_status_usage_start(c"/dev/dri/renderD128".as_ptr(), 0);
+    }
+    let (_, text) = report(Some(c"Mesa llvmpipe (LLVM 21.1.8, 256 bits)"), 0);
+    assert!(text.contains("\"usage\":"), "{text}");
+    assert!(
+        text.contains("\"readout\":{\"text\":\"CPU rendering\""),
         "{text}"
     );
 }

@@ -4,10 +4,12 @@
 //! does not change.
 
 use std::ffi::{CStr, CString, c_char, c_int};
-use std::sync::Mutex;
+use std::sync::{Mutex, Once};
+use std::time::Duration;
 
 use crate::report::Report;
-use crate::{FrameWindow, LogCapture};
+use crate::usage::{Sampler, UsageSample};
+use crate::{FrameWindow, LogCapture, RenderAdapter, RenderHint};
 
 /// The graphics log lines [`obs_gpu_status_log_line`] kept.
 static LOG: Mutex<LogCapture> = Mutex::new(LogCapture::new());
@@ -59,7 +61,8 @@ pub extern "C" fn obs_gpu_status_prefetch() {
 /// Build the report for `adapter` (null when graphics init failed), the
 /// system's GPUs, probed once per process (`nvidia-smi` is too slow to run
 /// on every refresh), and the median of the sampled frame times
-/// ([`FrameWindow::stats`]) against `interval_ns`. Writes
+/// ([`FrameWindow::stats`]) against `interval_ns`, with the last
+/// utilization sample ([`obs_gpu_status_usage_start`]). Writes
 /// 0 (green), 1 (yellow) or 2 (red) to `state` when it is not null, and
 /// returns the `gpuAcceleration` JSON, freed with [`obs_gpu_status_free`].
 ///
@@ -88,7 +91,10 @@ pub unsafe extern "C" fn obs_gpu_status_report(
         .stats(interval_ns);
     let devices = DEVICES.get(crate::platform::system_devices);
     let log_lines = LOG.lock().unwrap_or_else(|e| e.into_inner()).lines();
-    let report = Report::new(adapter.as_deref(), devices, frames).with_log_lines(log_lines);
+    let usage = *USAGE.lock().unwrap_or_else(|e| e.into_inner());
+    let report = Report::new(adapter.as_deref(), devices, frames)
+        .with_log_lines(log_lines)
+        .with_usage(usage);
     if !state.is_null() {
         // SAFETY: the caller passes a writable int.
         unsafe { *state = report.state as c_int };
@@ -107,5 +113,91 @@ pub unsafe extern "C" fn obs_gpu_status_free(json: *mut c_char) {
     if !json.is_null() {
         // SAFETY: allocated by CString::into_raw in obs_gpu_status_report.
         drop(unsafe { CString::from_raw(json) });
+    }
+}
+
+/// What [`obs_gpu_status_usage_start`] last said about the render adapter,
+/// and a generation that tells the sampling thread it changed.
+struct UsageHint {
+    render_node: Option<String>,
+    adapter_index: Option<u32>,
+    generation: u64,
+}
+
+static USAGE_HINT: Mutex<UsageHint> = Mutex::new(UsageHint {
+    render_node: None,
+    adapter_index: None,
+    generation: 0,
+});
+
+/// The sampling thread's last reading, `None` without a source.
+static USAGE: Mutex<Option<UsageSample>> = Mutex::new(None);
+
+static USAGE_THREAD: Once = Once::new();
+
+/// How often the thread samples: the status bar refreshes once a second.
+const USAGE_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Start sampling the render adapter's utilization on a thread, once a
+/// second (#1025), so the report never waits for a source. Call after each
+/// video reset: a later call changes the adapter; it does not start a
+/// second thread. `render_node` is the Linux EGL render node (adapter 0's
+/// name in `gs_enum_adapters`), `adapter_index` the Windows
+/// `obs_video_info.adapter`, negative when not known.
+///
+/// # Safety
+/// `render_node` is null or a NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_gpu_status_usage_start(
+    render_node: *const c_char,
+    adapter_index: c_int,
+) {
+    let render_node = if render_node.is_null() {
+        None
+    } else {
+        // SAFETY: the caller passes a NUL-terminated string.
+        Some(
+            unsafe { CStr::from_ptr(render_node) }
+                .to_string_lossy()
+                .into_owned(),
+        )
+    };
+    {
+        let mut hint = USAGE_HINT.lock().unwrap_or_else(|e| e.into_inner());
+        hint.render_node = render_node;
+        hint.adapter_index = u32::try_from(adapter_index).ok();
+        hint.generation += 1;
+    }
+    USAGE_THREAD.call_once(|| {
+        // Without the thread the label shows "GPU: n/a".
+        let _ = std::thread::Builder::new()
+            .name("obs-gpu-usage".to_owned())
+            .spawn(sample_usage);
+    });
+}
+
+/// The sampling thread: resolve the render adapter when the hint changes,
+/// then sample every [`USAGE_INTERVAL`].
+fn sample_usage() {
+    let mut sampler = Sampler::new(crate::platform::usage_sources());
+    let mut generation = 0;
+    let mut adapter = RenderAdapter::Unknown;
+    loop {
+        let changed = {
+            let hint = USAGE_HINT.lock().unwrap_or_else(|e| e.into_inner());
+            (hint.generation != generation).then(|| {
+                generation = hint.generation;
+                (hint.render_node.clone(), hint.adapter_index)
+            })
+        };
+        if let Some((render_node, adapter_index)) = changed {
+            adapter = crate::platform::render_adapter(RenderHint {
+                render_node: render_node.as_deref(),
+                adapter_index,
+            });
+        }
+        let sample = sampler.sample(&adapter);
+        *USAGE.lock().unwrap_or_else(|e| e.into_inner()) = sample;
+        std::thread::sleep(USAGE_INTERVAL);
     }
 }

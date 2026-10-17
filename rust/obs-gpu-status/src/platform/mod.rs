@@ -29,6 +29,48 @@ pub fn obs_gpu_share(hint: crate::RenderHint<'_>) -> Option<u32> {
     nvml()?.process_utilization(&render_adapter(hint), std::process::id())
 }
 
+/// The utilization sources for the `GPU: x%` label (#1025), in the order
+/// [`crate::usage::Sampler`] asks them: NVML, then amdgpu's
+/// `gpu_busy_percent` on Linux.
+pub fn usage_sources() -> Vec<Box<dyn crate::usage::UsageSource>> {
+    let mut sources: Vec<Box<dyn crate::usage::UsageSource>> = vec![Box::new(NvmlSource)];
+    if cfg!(target_os = "linux") {
+        sources.push(Box::new(AmdgpuSource));
+    }
+    sources
+}
+
+/// NVML: whole GPU.
+struct NvmlSource;
+
+impl crate::usage::UsageSource for NvmlSource {
+    fn source(&self) -> crate::usage::Source {
+        crate::usage::Source::Nvml
+    }
+
+    fn whole(&mut self, adapter: &crate::RenderAdapter) -> Utilization {
+        crate::nvml::utilization(nvml(), adapter)
+    }
+}
+
+/// amdgpu's `gpu_busy_percent` under `/sys`: whole GPU only.
+struct AmdgpuSource;
+
+impl crate::usage::UsageSource for AmdgpuSource {
+    fn source(&self) -> crate::usage::Source {
+        crate::usage::Source::Amdgpu
+    }
+
+    fn whole(&mut self, adapter: &crate::RenderAdapter) -> Utilization {
+        match adapter {
+            crate::RenderAdapter::Pci(pci) => {
+                crate::amdgpu_busy_percent(std::path::Path::new("/"), pci)
+            }
+            _ => Utilization::Unavailable,
+        }
+    }
+}
+
 cfg_select! {
     target_os = "linux" => {
         /// GPUs on this machine: the sysfs/`/dev/dri` tree, then `nvidia-smi`.
