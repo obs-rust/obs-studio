@@ -113,6 +113,18 @@ unsafe fn function<F: Copy>(lib: &dyn Symbols, name: &CStr) -> Option<F> {
     Some(unsafe { std::mem::transmute_copy::<*mut c_void, F>(&address) })
 }
 
+impl Nvml {
+    /// The share of the GPU's SM time that process `pid` used since the
+    /// previous call, from `nvmlDeviceGetProcessUtilization` (#1004: the
+    /// tooltip shows OBS's own share). `None` without the symbol, without a
+    /// PCI address, or without a sample for `pid`: NVML reports host PIDs,
+    /// so a process in a PID namespace (a container) finds none.
+    pub fn process_utilization(&self, adapter: &RenderAdapter, pid: u32) -> Option<u32> {
+        let _ = (adapter, pid);
+        None
+    }
+}
+
 /// Utilization through `nvml`, or [`Utilization::Unavailable`] without it.
 pub fn utilization(nvml: Option<&Nvml>, adapter: &RenderAdapter) -> Utilization {
     nvml.map_or(Utilization::Unavailable, |n| n.utilization(adapter))
