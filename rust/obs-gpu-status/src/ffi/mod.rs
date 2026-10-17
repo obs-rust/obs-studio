@@ -5,7 +5,7 @@
 
 use std::ffi::{CStr, CString, c_char, c_int};
 use std::sync::{Mutex, Once};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::report::Report;
 use crate::usage::{Sampler, UsageSample};
@@ -91,10 +91,15 @@ pub unsafe extern "C" fn obs_gpu_status_report(
         .stats(interval_ns);
     let devices = DEVICES.get(crate::platform::system_devices);
     let log_lines = LOG.lock().unwrap_or_else(|e| e.into_inner()).lines();
-    let usage = *USAGE.lock().unwrap_or_else(|e| e.into_inner());
+    let published = *USAGE.lock().unwrap_or_else(|e| e.into_inner());
+    let (usage, stale) = published.map_or((None, false), |p| {
+        let usage = crate::usage::current(p.sample, p.taken, p.interval, Instant::now());
+        (usage, p.sample.is_some() && usage.is_none())
+    });
     let report = Report::new(adapter.as_deref(), devices, frames)
         .with_log_lines(log_lines)
-        .with_usage(usage);
+        .with_usage(usage)
+        .with_usage_stale(stale);
     if !state.is_null() {
         // SAFETY: the caller passes a writable int.
         unsafe { *state = report.state as c_int };
@@ -130,16 +135,27 @@ static USAGE_HINT: Mutex<UsageHint> = Mutex::new(UsageHint {
     generation: 0,
 });
 
-/// The sampling thread's last reading, `None` without a source.
-static USAGE: Mutex<Option<UsageSample>> = Mutex::new(None);
+/// The sampling thread's last reading (`None` without a source), when it
+/// was taken, and the pause before the next one (#1022).
+#[derive(Clone, Copy)]
+struct Published {
+    sample: Option<UsageSample>,
+    taken: Instant,
+    interval: Duration,
+}
+
+/// The last [`Published`] reading; `None` before the first sample.
+static USAGE: Mutex<Option<Published>> = Mutex::new(None);
+
+/// Lines for the OBS log from the sampling thread, until the frontend takes
+/// them ([`obs_gpu_status_take_log`]).
+static USAGE_LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 static USAGE_THREAD: Once = Once::new();
 
-/// How often the thread samples: the status bar refreshes once a second.
-const USAGE_INTERVAL: Duration = Duration::from_secs(1);
-
 /// Start sampling the render adapter's utilization on a thread, once a
-/// second (#1025), so the report never waits for a source. Call after each
+/// second or less often after slow samples (#1025, #1022), so the report
+/// never waits for a source. Call after each
 /// video reset: a later call changes the adapter; it does not start a
 /// second thread. `render_node` is the Linux EGL render node (adapter 0's
 /// name in `gs_enum_adapters`), `adapter_index` the Windows
@@ -177,7 +193,7 @@ pub unsafe extern "C" fn obs_gpu_status_usage_start(
 }
 
 /// The sampling thread: resolve the render adapter when the hint changes,
-/// then sample every [`USAGE_INTERVAL`].
+/// then sample, pausing [`crate::usage::next_interval`] after each sample.
 fn sample_usage() {
     let mut sampler = Sampler::new(crate::platform::usage_sources());
     let mut generation = 0;
@@ -196,8 +212,46 @@ fn sample_usage() {
                 adapter_index,
             });
         }
+        let start = Instant::now();
         let sample = sampler.sample(&adapter);
-        *USAGE.lock().unwrap_or_else(|e| e.into_inner()) = sample;
-        std::thread::sleep(USAGE_INTERVAL);
+        let interval = crate::usage::next_interval(start.elapsed());
+        let demotions = sampler.take_demotions();
+        if !demotions.is_empty() {
+            let mut log = USAGE_LOG.lock().unwrap_or_else(|e| e.into_inner());
+            log.extend(demotions.iter().map(demotion_line));
+        }
+        *USAGE.lock().unwrap_or_else(|e| e.into_inner()) = Some(Published {
+            sample,
+            taken: Instant::now(),
+            interval,
+        });
+        std::thread::sleep(interval);
     }
+}
+
+/// The OBS log line for a source that is no longer asked.
+fn demotion_line(d: &crate::usage::Demotion) -> String {
+    let times: Vec<String> = d
+        .times
+        .iter()
+        .map(|t| format!("{} ms", t.as_millis()))
+        .collect();
+    format!(
+        "GPU usage: {} is too slow ({}); not asked again in this session",
+        d.source.as_str(),
+        times.join(", ")
+    )
+}
+
+/// The OBS log lines from the sampling thread since the last call, one per
+/// line, or null when there are none. Free the string with
+/// [`obs_gpu_status_free`].
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_gpu_status_take_log() -> *mut c_char {
+    let lines = std::mem::take(&mut *USAGE_LOG.lock().unwrap_or_else(|e| e.into_inner()));
+    if lines.is_empty() {
+        return std::ptr::null_mut();
+    }
+    // Source names and times only: no interior NUL.
+    CString::new(lines.join("\n")).map_or(std::ptr::null_mut(), CString::into_raw)
 }

@@ -4,7 +4,7 @@ use std::ffi::{CStr, c_int};
 
 use obs_gpu_status::ffi::{
     obs_gpu_status_free, obs_gpu_status_log_line, obs_gpu_status_report, obs_gpu_status_sample,
-    obs_gpu_status_usage_start,
+    obs_gpu_status_take_log, obs_gpu_status_usage_start,
 };
 
 const BUDGET: u64 = 33_333_333;
@@ -89,4 +89,13 @@ fn usage_start_accepts_no_hint_and_the_report_carries_the_readout() {
         text.contains("\"readout\":{\"text\":\"CPU rendering\""),
         "{text}"
     );
+}
+
+#[test]
+fn take_log_is_null_without_lines() {
+    // No source in this test process is slow, so nothing is queued.
+    assert!(obs_gpu_status_take_log().is_null());
+    // A null result is safe to free.
+    // SAFETY: null is ignored by obs_gpu_status_free.
+    unsafe { obs_gpu_status_free(obs_gpu_status_take_log()) };
 }

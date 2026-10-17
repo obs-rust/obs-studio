@@ -37,8 +37,9 @@ pub const STALE_INTERVALS: u32 = 3;
 /// The pause after a sample that took `elapsed`: [`BASE_INTERVAL`], or
 /// [`DUTY_FACTOR`] times `elapsed`, at most [`MAX_INTERVAL`].
 pub fn next_interval(elapsed: Duration) -> Duration {
-    let _ = elapsed;
-    BASE_INTERVAL
+    elapsed
+        .saturating_mul(DUTY_FACTOR)
+        .clamp(BASE_INTERVAL, MAX_INTERVAL)
 }
 
 /// `sample` if it is still current at `now`: taken at `taken`, while the
@@ -50,8 +51,8 @@ pub fn current(
     interval: Duration,
     now: Instant,
 ) -> Option<UsageSample> {
-    let _ = (taken, interval, now);
-    sample
+    let limit = interval.saturating_mul(STALE_INTERVALS);
+    sample.filter(|_| now.saturating_duration_since(taken) <= limit)
 }
 
 /// Where a sample came from (`usage.source` in the JSON).
@@ -139,17 +140,30 @@ impl Sampler {
 
     /// The reading of the first source with one for `adapter`, or `None`.
     pub fn sample(&mut self, adapter: &RenderAdapter) -> Option<UsageSample> {
-        let _ = &self.clock;
-        self.sources
-            .iter_mut()
-            .filter(|entry| !entry.demoted)
-            .find_map(|entry| match entry.source.whole(adapter) {
-                Utilization::Percent(percent) => Some(UsageSample {
+        for entry in self.sources.iter_mut().filter(|entry| !entry.demoted) {
+            let start = (self.clock)();
+            let reading = entry.source.whole(adapter);
+            let took = (self.clock)().saturating_duration_since(start);
+            if took > SLOW_SAMPLE {
+                entry.slow.push(took);
+                if entry.slow.len() >= DEMOTE_AFTER as usize {
+                    entry.demoted = true;
+                    self.demotions.push(Demotion {
+                        source: entry.source.source(),
+                        times: std::mem::take(&mut entry.slow),
+                    });
+                }
+            } else {
+                entry.slow.clear();
+            }
+            if let Utilization::Percent(percent) = reading {
+                return Some(UsageSample {
                     percent,
                     source: entry.source.source(),
-                }),
-                Utilization::Unavailable => None,
-            })
+                });
+            }
+        }
+        None
     }
 
     /// The sources demoted since the last call, each once.

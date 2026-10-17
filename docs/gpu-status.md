@@ -50,6 +50,14 @@ reads the source once a second, so the UI thread never waits for one.
 `GetStats.gpuAcceleration` has the same reading as `usage` (`percent`,
 `source`, or `null`) and the label as `readout`.
 
+**Slow sources (#1022).** After a slow sample the thread pauses 9 times
+as long as the sample took (at least 1 s, at most 30 s), so sampling takes
+at most about a tenth of its time; the next fast sample gives 1 s again. A
+reading older than 3 pauses is not shown: the label is `GPU: n/a` and the
+tooltip says the reading is late. A source that takes more than 2 s three
+times in a row is not asked again in that session, and the OBS log says so
+once with its times; the next source answers instead.
+
 **No share of OBS.** #1004 put OBS's own share in the tooltip. NVML's
 per-process samples do not give one: on the RTX 3060 above, an OBS that
 rendered 4K at 25 fps the whole time had no sample in 4 of 7 two-second

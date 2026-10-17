@@ -211,6 +211,14 @@ Info Query()
 	char *json = obs_gpu_status_report(rendering ? adapter.c_str() : nullptr, obs_get_frame_interval_ns(), &state);
 	Info info = Parse(state, json);
 	obs_gpu_status_free(json);
+
+	// The sampling thread's log lines (#1022), logged once by whoever asks first.
+	if (char *log = obs_gpu_status_take_log()) {
+		for (const QString &line : QString::fromUtf8(log).split('\n', Qt::SkipEmptyParts)) {
+			blog(LOG_WARNING, "%s", line.toUtf8().constData());
+		}
+		obs_gpu_status_free(log);
+	}
 	return info;
 #else
 	return Info();

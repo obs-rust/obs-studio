@@ -145,8 +145,10 @@ impl Report {
     /// Mark the reading as too old: the label is "n/a" and the tooltip
     /// says that the reading is late, not that there is no source.
     pub fn with_usage_stale(self, usage_stale: bool) -> Self {
-        let _ = usage_stale;
-        self
+        Self {
+            usage_stale,
+            ..self
+        }
     }
 
     /// The status bar label for this state and [`Self::usage`] (#1025).
@@ -176,13 +178,22 @@ impl Report {
             };
         }
         let Some(usage) = self.usage else {
-            return Readout {
-                label: n_a,
-                details: vec![Text {
+            let detail = if self.usage_stale {
+                Text {
+                    key: "Basic.StatusBar.Gpu.Stale",
+                    args: vec![],
+                    english: "The GPU reading is late.".to_owned(),
+                }
+            } else {
+                Text {
                     key: "Basic.StatusBar.Gpu.NoSource",
                     args: vec![],
                     english: "No utilization source for this GPU.".to_owned(),
-                }],
+                }
+            };
+            return Readout {
+                label: n_a,
+                details: vec![detail],
             };
         };
         Readout {
