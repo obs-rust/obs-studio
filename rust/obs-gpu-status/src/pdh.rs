@@ -108,7 +108,18 @@ impl PdhTicker {
     /// on the first call after the query opens, and when PDH fails; a failed
     /// query is opened again on the next call.
     pub fn utilization(&mut self, luid: u64) -> Utilization {
-        let _ = (&mut self.open, &mut self.query, luid);
-        Utilization::Unavailable
+        if self.query.is_none() {
+            self.query = (self.open)();
+        }
+        let Some(query) = self.query.as_mut() else {
+            return Utilization::Unavailable;
+        };
+        match query.collect() {
+            Some(samples) => pdh_utilization(&samples, luid, None),
+            None => {
+                self.query = None;
+                Utilization::Unavailable
+            }
+        }
     }
 }

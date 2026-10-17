@@ -43,7 +43,7 @@ pub fn usage_sources() -> Vec<Box<dyn crate::usage::UsageSource>> {
         sources.push(Box::new(IokitSource));
     }
     if cfg!(windows) {
-        sources.push(Box::new(PdhSource));
+        sources.push(Box::new(PdhSource::new()));
     }
     sources
 }
@@ -98,9 +98,16 @@ impl crate::usage::UsageSource for IokitSource {
     }
 }
 
-/// The PDH `GPU Engine` counters (#1022): whole GPU only. One sample
-/// blocks for the sampler's interval (100 ms) on the `obs-gpu-usage` thread.
-struct PdhSource;
+/// The PDH `GPU Engine` counters (#1022): whole GPU only. The query stays
+/// open between ticks, so a tick is one collection, averaged since the
+/// previous tick.
+struct PdhSource(crate::pdh::PdhTicker);
+
+impl PdhSource {
+    fn new() -> Self {
+        Self(crate::pdh::PdhTicker::new(Box::new(open_engine_counters)))
+    }
+}
 
 impl crate::usage::UsageSource for PdhSource {
     fn source(&self) -> crate::usage::Source {
@@ -109,9 +116,7 @@ impl crate::usage::UsageSource for PdhSource {
 
     fn whole(&mut self, adapter: &crate::RenderAdapter) -> Utilization {
         match adapter {
-            crate::RenderAdapter::Luid(luid) => {
-                crate::pdh::pdh_utilization(&gpu_engine_samples(), *luid, None)
-            }
+            crate::RenderAdapter::Luid(luid) => self.0.utilization(*luid),
             _ => Utilization::Unavailable,
         }
     }
@@ -139,6 +144,11 @@ cfg_select! {
         /// PDH `GPU Engine` counters exist only on Windows.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             Vec::new()
+        }
+
+        /// PDH `GPU Engine` counters exist only on Windows.
+        fn open_engine_counters() -> Option<Box<dyn crate::pdh::EngineCounters>> {
+            None
         }
 
         /// `IOAccelerator` statistics exist only on macOS.
@@ -173,6 +183,12 @@ cfg_select! {
         /// Blocks about 100 ms.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             windows::gpu_engine_samples()
+        }
+
+        /// An open PDH query for the label (#1022).
+        fn open_engine_counters() -> Option<Box<dyn crate::pdh::EngineCounters>> {
+            windows::EngineQuery::open()
+                .map(|q| Box::new(q) as Box<dyn crate::pdh::EngineCounters>)
         }
 
         /// `IOAccelerator` statistics exist only on macOS.
@@ -210,6 +226,11 @@ cfg_select! {
             Vec::new()
         }
 
+        /// PDH `GPU Engine` counters exist only on Windows.
+        fn open_engine_counters() -> Option<Box<dyn crate::pdh::EngineCounters>> {
+            None
+        }
+
         /// The render GPU's `PerformanceStatistics` numbers (#1026).
         fn accelerator_statistics(registry_id: u64) -> Vec<(String, i64)> {
             macos::accelerator_statistics(registry_id)
@@ -233,6 +254,11 @@ cfg_select! {
         /// PDH `GPU Engine` counters exist only on Windows.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             Vec::new()
+        }
+
+        /// PDH `GPU Engine` counters exist only on Windows.
+        fn open_engine_counters() -> Option<Box<dyn crate::pdh::EngineCounters>> {
+            None
         }
 
         /// `IOAccelerator` statistics exist only on macOS.

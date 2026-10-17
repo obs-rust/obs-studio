@@ -182,33 +182,73 @@ impl Drop for Query {
     }
 }
 
+/// An open `\GPU Engine(*)\Utilization Percentage` query (#1022): opened
+/// and given its counter once, then one collection per tick, with the
+/// previous tick as the rate counter's baseline.
+pub struct EngineQuery {
+    query: Query,
+    counter: isize,
+    primed: bool,
+}
+
+impl EngineQuery {
+    /// `None` when PDH fails (no GPU, counters disabled).
+    pub fn open() -> Option<Self> {
+        let mut handle: isize = 0;
+        // SAFETY: a null data source (live data) and a valid out-pointer.
+        if unsafe { PdhOpenQueryW(std::ptr::null(), 0, &mut handle) } != 0 {
+            return None;
+        }
+        let query = Query(handle);
+        let path: Vec<u16> = "\\GPU Engine(*)\\Utilization Percentage\0"
+            .encode_utf16()
+            .collect();
+        let mut counter: isize = 0;
+        // SAFETY: a live query, a NUL-terminated wide path and a valid out-pointer.
+        if unsafe { PdhAddEnglishCounterW(query.0, path.as_ptr(), 0, &mut counter) } != 0 {
+            return None;
+        }
+        Some(Self {
+            query,
+            counter,
+            primed: false,
+        })
+    }
+}
+
+impl crate::pdh::EngineCounters for EngineQuery {
+    fn collect(&mut self) -> Option<Vec<(String, f64)>> {
+        // SAFETY: a live query with one counter.
+        if unsafe { PdhCollectQueryData(self.query.0) } != 0 {
+            return None;
+        }
+        if !self.primed {
+            self.primed = true;
+            return Some(Vec::new());
+        }
+        Some(read_counter(self.counter))
+    }
+}
+
 /// One sample of `\GPU Engine(*)\Utilization Percentage`: every instance
 /// name with its value. Empty when PDH fails (no GPU, counters disabled).
-/// Blocks for [`PDH_SAMPLE_INTERVAL`].
+/// Blocks for [`PDH_SAMPLE_INTERVAL`]; the label keeps an [`EngineQuery`]
+/// open instead.
 pub fn gpu_engine_samples() -> Vec<(String, f64)> {
-    let mut handle: isize = 0;
-    // SAFETY: a null data source (live data) and a valid out-pointer.
-    if unsafe { PdhOpenQueryW(std::ptr::null(), 0, &mut handle) } != 0 {
+    use crate::pdh::EngineCounters;
+    let Some(mut query) = EngineQuery::open() else {
         return Vec::new();
-    }
-    let query = Query(handle);
-    let path: Vec<u16> = "\\GPU Engine(*)\\Utilization Percentage\0"
-        .encode_utf16()
-        .collect();
-    let mut counter: isize = 0;
-    // SAFETY: a live query, a NUL-terminated wide path and a valid out-pointer.
-    if unsafe { PdhAddEnglishCounterW(query.0, path.as_ptr(), 0, &mut counter) } != 0 {
-        return Vec::new();
-    }
-    // SAFETY: a live query with one counter.
-    if unsafe { PdhCollectQueryData(query.0) } != 0 {
+    };
+    if query.collect().is_none() {
         return Vec::new();
     }
     std::thread::sleep(PDH_SAMPLE_INTERVAL);
-    // SAFETY: as above.
-    if unsafe { PdhCollectQueryData(query.0) } != 0 {
-        return Vec::new();
-    }
+    query.collect().unwrap_or_default()
+}
+
+/// The values of a collected wildcard counter, by instance name. Empty when
+/// PDH has none (for example no GPU process yet).
+fn read_counter(counter: isize) -> Vec<(String, f64)> {
     let format = PDH_FMT_DOUBLE | PDH_FMT_NOCAP100;
     // Instances come and go between the sizing call and the read, so retry.
     for _ in 0..3 {

@@ -33,12 +33,19 @@ fn main() {
         "GPU utilization: {utilization:?} (first call {first:.2?}, with NVML load), {again:?} ({:.2?})",
         start.elapsed()
     );
-    // The `GPU: x%` label's reading (#1025): the first source with one.
+    // The `GPU: x%` label's readings (#1025): the first source with one,
+    // three ticks one second apart, as the frontend's sampler thread takes
+    // them (PDH primes its query on the first tick, #1022).
     let mut sampler =
         obs_gpu_status::usage::Sampler::new(obs_gpu_status::platform::usage_sources());
-    let start = std::time::Instant::now();
-    let sample = sampler.sample(&adapter);
-    println!("label sample: {sample:?} ({:.2?})", start.elapsed());
+    for tick in 0..3 {
+        if tick > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        let start = std::time::Instant::now();
+        let sample = sampler.sample(&adapter);
+        println!("label sample: {sample:?} ({:.2?})", start.elapsed());
+    }
     // PIDs to read the share of (comma-separated, after the hint; default:
     // this process, which uses no GPU), and how many readings to take two
     // seconds apart in one NVML session, as a frontend polls (default 1).
