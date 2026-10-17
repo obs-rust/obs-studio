@@ -17,7 +17,7 @@
 ******************************************************************************/
 
 #include "ScreenshotObj.hpp"
-#include "display-helpers.hpp"
+#include "screenshot-render.hpp"
 
 #include <utility/output-filename-reserve.h>
 
@@ -104,46 +104,7 @@ void ScreenshotObj::renderScreenshot()
 	texrender = gs_texrender_create(format, GS_ZS_NONE);
 	stagesurf = gs_stagesurface_create(outputWidth, outputHeight, format);
 
-	if (gs_texrender_begin_with_color_space(texrender, outputWidth, outputHeight, space)) {
-		vec4 zero;
-		vec4_zero(&zero);
-
-		int x{0};
-		int y{0};
-		int scaledWidth{0};
-		int scaledHeight{0};
-		float scale{0.0};
-
-		GetScaleAndCenterPos(sourceWidth, sourceHeight, outputWidth, outputHeight, x, y, scale);
-
-		scaledWidth = int(scale * float(sourceWidth));
-		scaledHeight = int(scale * float(sourceHeight));
-
-		gs_clear(GS_CLEAR_COLOR, &zero, 0.0f, 0);
-
-		gs_viewport_push();
-		gs_projection_push();
-
-		gs_ortho(0.0f, (float)sourceWidth, 0.0f, (float)sourceHeight, -100.0f, 100.0f);
-		gs_set_viewport(x, y, scaledWidth, scaledHeight);
-
-		gs_blend_state_push();
-		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
-
-		if (source) {
-			obs_source_inc_showing(source);
-			obs_source_video_render(source);
-			obs_source_dec_showing(source);
-		} else {
-			obs_render_main_texture();
-		}
-
-		gs_projection_pop();
-		gs_viewport_pop();
-
-		gs_blend_state_pop();
-		gs_texrender_end(texrender);
-	}
+	RenderScreenshot(texrender, source, sourceWidth, sourceHeight, outputWidth, outputHeight, space);
 }
 
 void ScreenshotObj::processStage()

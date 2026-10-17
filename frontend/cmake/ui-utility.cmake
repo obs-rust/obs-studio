@@ -135,6 +135,8 @@ target_sources(
     utility/obf.c
     utility/obf.h
     utility/platform.hpp
+    utility/screenshot-render.cpp
+    utility/screenshot-render.hpp
     utility/system-info.hpp
     utility/undo_stack.cpp
     utility/undo_stack.hpp
