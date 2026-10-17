@@ -49,9 +49,25 @@ void RenderScreenshot(gs_texrender_t *texrender, obs_source_t *source, uint32_t 
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_ZERO);
 
 		if (source) {
+			/* libobs keeps high-bit-depth sources (P010, I010, I210, I412:
+			 * HEVC Main10, ProRes, 10-bit capture cards) as linear float.
+			 * Scenes and the previews draw with linear sRGB on, which
+			 * encodes them to sRGB in an 8-bit target; without it the
+			 * screenshot is stored linear and comes out too dark. 8-bit
+			 * sRGB sources keep the direct path, so their pixels and
+			 * straight alpha stay as they were, and float targets (JXR)
+			 * are left as they were. */
+			const enum gs_color_space preferredSpaces[] = {GS_CS_SRGB, GS_CS_SRGB_16F, GS_CS_709_EXTENDED};
+			const enum gs_color_space sourceSpace =
+				obs_source_get_color_space(source, OBS_COUNTOF(preferredSpaces), preferredSpaces);
+			const bool previousLinearSrgb =
+				gs_set_linear_srgb(space == GS_CS_SRGB && sourceSpace != GS_CS_SRGB);
+
 			obs_source_inc_showing(source);
 			obs_source_video_render(source);
 			obs_source_dec_showing(source);
+
+			gs_set_linear_srgb(previousLinearSrgb);
 		} else {
 			obs_render_main_texture();
 		}
