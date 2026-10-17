@@ -1158,7 +1158,8 @@ area.
   recording finishes: OBS waits for the recording's stop signal with the
   event loop running (still up to 5 s, then a forced stop) instead of
   sleeping on the UI thread. *All*, 2026-10-17. Issue
-  [#1283](https://github.com/obs-rust/obs-studio/issues/1283).
+  [#1283](https://github.com/obs-rust/obs-studio/issues/1283), PR
+  [#1342](https://github.com/obs-rust/obs-studio/pull/1342).
 
 ### Scripting
 
