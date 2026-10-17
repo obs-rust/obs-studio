@@ -14,3 +14,4 @@ mod nvml;
 mod pdh;
 mod render_adapter;
 mod report;
+mod usage;

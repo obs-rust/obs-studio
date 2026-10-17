@@ -20,6 +20,7 @@ pub mod nvml;
 pub mod pdh;
 pub mod platform;
 pub mod report;
+pub mod usage;
 
 /// The light's color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

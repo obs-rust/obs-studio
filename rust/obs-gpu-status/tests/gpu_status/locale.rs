@@ -79,6 +79,35 @@ fn every_summary_and_cause_has_an_en_us_string_matching_the_english_text() {
 }
 
 #[test]
+fn every_readout_text_has_an_en_us_string_matching_the_english_text() {
+    let strings = en_us();
+    let sample = Some(usage::UsageSample {
+        percent: 37,
+        source: usage::Source::Nvml,
+    });
+    let mut readouts = Vec::new();
+    for r in reports() {
+        readouts.push(r.clone().readout());
+        readouts.push(r.with_usage(sample).readout());
+    }
+    // The labels: percent, n/a, CPU rendering; the detail: no source.
+    let keys: std::collections::BTreeSet<_> = readouts
+        .iter()
+        .flat_map(|o| std::iter::once(&o.label).chain(&o.details))
+        .map(|t| t.key)
+        .collect();
+    assert_eq!(keys.len(), 4, "{keys:?}");
+    for o in &readouts {
+        for t in std::iter::once(&o.label).chain(&o.details) {
+            let template = strings
+                .get(t.key)
+                .unwrap_or_else(|| panic!("missing {}", t.key));
+            assert_eq!(render(template, &t.args), t.english, "{}", t.key);
+        }
+    }
+}
+
+#[test]
 fn json_carries_the_keys_and_args() {
     let r = Report::new(Some("Mesa llvmpipe"), vec![], None);
     let j = r.to_json();

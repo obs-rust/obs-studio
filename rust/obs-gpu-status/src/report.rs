@@ -3,6 +3,7 @@
 
 use std::fmt::Write as _;
 
+use crate::usage::{Readout, Text, UsageSample};
 use crate::{FrameStats, GpuDevice, State, Vendor, classify};
 
 /// The classified state plus the plain-words text the dialog shows.
@@ -24,6 +25,8 @@ pub struct Report {
     pub summary_args: Vec<String>,
     /// Locale keys of `causes`, in order.
     pub cause_keys: Vec<&'static str>,
+    /// The render adapter's utilization (#1025), `None` without a source.
+    pub usage: Option<UsageSample>,
 }
 
 /// Locale keys of [`SOFTWARE_CAUSES`], in the same order (#945).
@@ -127,6 +130,24 @@ impl Report {
             summary_key,
             summary_args,
             cause_keys,
+            usage: None,
+        }
+    }
+
+    /// Attach the render adapter's utilization ([`crate::usage::Sampler`]).
+    pub fn with_usage(self, usage: Option<UsageSample>) -> Self {
+        Self { usage, ..self }
+    }
+
+    /// The status bar label for this state and [`Self::usage`] (#1025).
+    pub fn readout(&self) -> Readout {
+        Readout {
+            label: Text {
+                key: "Basic.StatusBar.GpuStatus",
+                args: vec![],
+                english: "GPU".to_owned(),
+            },
+            details: vec![],
         }
     }
 
