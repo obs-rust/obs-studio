@@ -34,6 +34,8 @@ jobs:
 
   cache-cleanup:
     name: Cache Cleanup 🧹
+    # Not in forks: a fork's schedule fails there and mails its owner (#1258).
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-26.04
     permissions:
       actions: write

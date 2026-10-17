@@ -41,6 +41,8 @@ concurrency:
 jobs:
   matrix:
     name: Select passes 🎯
+    # Not in forks: a fork's schedule fails there and mails its owner (#1258).
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-26.04
     outputs:
       tools: ${{ steps.pick.outputs.tools }}

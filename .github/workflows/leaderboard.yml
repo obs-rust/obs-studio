@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   update:
+    # Not in forks: a fork's schedule fails there and mails its owner (#1258).
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
