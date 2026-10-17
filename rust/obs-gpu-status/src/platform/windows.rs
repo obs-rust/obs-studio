@@ -109,6 +109,7 @@ pub fn dxgi_adapters() -> Vec<AdapterDesc> {
                     vendor_id: desc.vendor_id,
                     device_id: desc.device_id,
                     flags: desc.flags,
+                    luid: 0,
                 });
             }
             release(adapter);

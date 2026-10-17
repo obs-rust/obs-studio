@@ -2,7 +2,7 @@
 //! (obs-rust/obs-studio#942). The mapping is pure so it is tested on every
 //! host; `platform::windows` fills [`AdapterDesc`] from `EnumAdapters1`.
 
-use crate::{GpuDevice, Vendor};
+use crate::{GpuDevice, RenderAdapter, Vendor};
 
 /// `DXGI_ADAPTER_FLAG_SOFTWARE`: WARP and other software adapters.
 pub const DXGI_ADAPTER_FLAG_SOFTWARE: u32 = 2;
@@ -18,6 +18,15 @@ pub struct AdapterDesc {
     pub vendor_id: u32,
     pub device_id: u32,
     pub flags: u32,
+    /// `AdapterLuid` as one number: `HighPart` in the upper 32 bits.
+    pub luid: u64,
+}
+
+/// The adapter libobs-d3d11 renders on: `EnumAdapters1(index)`, where
+/// `index` is `obs_video_info.adapter` (obs-rust/obs-studio#1020).
+pub fn render_adapter_from_dxgi(index: Option<u32>, adapters: &[AdapterDesc]) -> RenderAdapter {
+    let _ = (index, adapters);
+    RenderAdapter::Unknown
 }
 
 /// Hardware GPUs among `adapters`: software adapters and Microsoft's own

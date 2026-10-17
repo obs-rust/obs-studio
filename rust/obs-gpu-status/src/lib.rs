@@ -424,6 +424,8 @@ pub enum RenderAdapter {
     /// macOS: IORegistry entry ID of the GPU's `IOAccelerator`, which is
     /// also `MTLDevice.registryID` (e.g. `0x100000b5b`).
     RegistryId(u64),
+    /// Windows: the DXGI adapter LUID (`HighPart` in the upper 32 bits).
+    Luid(u64),
     /// More than one GPU can be the render adapter, so none is picked.
     Ambiguous,
     /// No GPU found: software rendering, no sysfs, or a non-PCI device.

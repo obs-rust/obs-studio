@@ -1,15 +1,134 @@
 //! Windows GPU detection from DXGI adapters (obs-rust/obs-studio#942).
 
-use obs_gpu_status::dxgi::{AdapterDesc, DXGI_ADAPTER_FLAG_SOFTWARE, devices_from_dxgi};
-use obs_gpu_status::{GpuDevice, State, Vendor, classify};
+use obs_gpu_status::dxgi::{
+    AdapterDesc, DXGI_ADAPTER_FLAG_SOFTWARE, devices_from_dxgi, render_adapter_from_dxgi,
+};
+use obs_gpu_status::{GpuDevice, RenderAdapter, State, Vendor, classify};
 
 fn adapter(description: &str, vendor_id: u32, device_id: u32, flags: u32) -> AdapterDesc {
+    adapter_luid(description, vendor_id, device_id, flags, 0)
+}
+
+fn adapter_luid(
+    description: &str,
+    vendor_id: u32,
+    device_id: u32,
+    flags: u32,
+    luid: u64,
+) -> AdapterDesc {
     AdapterDesc {
         description: description.into(),
         vendor_id,
         device_id,
         flags,
+        luid,
     }
+}
+
+// LUIDs as Windows assigns them at boot: HighPart 0, LowPart a small number.
+const LUID_A: u64 = 0x0000_0000_0000_d2a1;
+const LUID_B: u64 = 0x0000_0000_0000_e5f3;
+const LUID_WARP: u64 = 0x0000_0000_0000_e4c1;
+
+fn warp() -> AdapterDesc {
+    adapter_luid(
+        "Microsoft Basic Render Driver",
+        0x1414,
+        0x8c,
+        DXGI_ADAPTER_FLAG_SOFTWARE,
+        LUID_WARP,
+    )
+}
+
+#[test]
+fn adapter_index_picks_its_own_gpu_among_identical_gpus() {
+    // obs_video_info.adapter is the EnumAdapters1 index libobs-d3d11 uses.
+    let adapters = [
+        adapter_luid("NVIDIA GeForce RTX 3060", 0x10de, 0x2504, 0, LUID_A),
+        adapter_luid("NVIDIA GeForce RTX 3060", 0x10de, 0x2504, 0, LUID_B),
+        warp(),
+    ];
+    assert_eq!(
+        render_adapter_from_dxgi(Some(1), &adapters),
+        RenderAdapter::Luid(LUID_B)
+    );
+    assert_eq!(
+        render_adapter_from_dxgi(Some(0), &adapters),
+        RenderAdapter::Luid(LUID_A)
+    );
+}
+
+#[test]
+fn software_or_missing_adapter_index_is_unknown() {
+    let adapters = [
+        adapter_luid("Intel(R) UHD Graphics 770", 0x8086, 0x4680, 0, LUID_A),
+        warp(),
+    ];
+    assert_eq!(
+        render_adapter_from_dxgi(Some(1), &adapters),
+        RenderAdapter::Unknown
+    );
+    assert_eq!(
+        render_adapter_from_dxgi(Some(7), &adapters),
+        RenderAdapter::Unknown
+    );
+}
+
+#[test]
+fn no_index_with_one_gpu_is_that_gpu() {
+    let adapters = [
+        adapter_luid("AMD Radeon RX 6600", 0x1002, 0x73ff, 0, LUID_A),
+        warp(),
+    ];
+    assert_eq!(
+        render_adapter_from_dxgi(None, &adapters),
+        RenderAdapter::Luid(LUID_A)
+    );
+}
+
+#[test]
+fn no_index_with_two_gpus_is_ambiguous() {
+    let adapters = [
+        adapter_luid("Intel(R) UHD Graphics 770", 0x8086, 0x4680, 0, LUID_A),
+        adapter_luid("NVIDIA GeForce RTX 3060", 0x10de, 0x2504, 0, LUID_B),
+    ];
+    assert_eq!(
+        render_adapter_from_dxgi(None, &adapters),
+        RenderAdapter::Ambiguous
+    );
+}
+
+#[test]
+fn no_index_on_a_vm_without_gpu_is_unknown() {
+    // A VM: Hyper-V video (or QEMU's basic display) and WARP only.
+    let adapters = [
+        adapter_luid("Microsoft Hyper-V Video", 0x1414, 0x5353, 0, LUID_A),
+        warp(),
+    ];
+    assert_eq!(
+        render_adapter_from_dxgi(None, &adapters),
+        RenderAdapter::Unknown
+    );
+    assert_eq!(
+        render_adapter_from_dxgi(Some(0), &adapters),
+        RenderAdapter::Unknown
+    );
+}
+
+#[test]
+fn unknown_vendor_is_not_a_render_gpu() {
+    // As in devices_from_dxgi (#942): a virtio display adapter is not a GPU,
+    // so it neither is the answer nor makes a single GPU ambiguous.
+    let virtio = adapter_luid("Virtio GPU", 0x1af4, 0x1050, 0, LUID_A);
+    let nvidia = adapter_luid("NVIDIA GeForce RTX 3060", 0x10de, 0x2504, 0, LUID_B);
+    assert_eq!(
+        render_adapter_from_dxgi(Some(0), &[virtio.clone(), warp()]),
+        RenderAdapter::Unknown
+    );
+    assert_eq!(
+        render_adapter_from_dxgi(None, &[virtio, nvidia]),
+        RenderAdapter::Luid(LUID_B)
+    );
 }
 
 #[test]
