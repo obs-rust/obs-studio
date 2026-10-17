@@ -21,6 +21,8 @@ pub enum Source {
     Amdgpu,
     /// IOKit's `Device Utilization %` on macOS (#1026).
     Iokit,
+    /// Windows PDH `GPU Engine` counters (#1022).
+    Pdh,
 }
 
 impl Source {
@@ -29,6 +31,7 @@ impl Source {
             Self::Nvml => "nvml",
             Self::Amdgpu => "amdgpu",
             Self::Iokit => "iokit",
+            Self::Pdh => "",
         }
     }
 }

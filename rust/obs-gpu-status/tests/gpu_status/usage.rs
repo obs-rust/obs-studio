@@ -206,4 +206,16 @@ fn source_names() {
     assert_eq!(Source::Nvml.as_str(), "nvml");
     assert_eq!(Source::Amdgpu.as_str(), "amdgpu");
     assert_eq!(Source::Iokit.as_str(), "iokit");
+    assert_eq!(Source::Pdh.as_str(), "pdh");
+}
+
+/// Windows asks NVML, then PDH, which reads every vendor by LUID (#1022).
+#[cfg(windows)]
+#[test]
+fn windows_asks_nvml_then_pdh() {
+    let sources: Vec<Source> = obs_gpu_status::platform::usage_sources()
+        .iter()
+        .map(|s| s.source())
+        .collect();
+    assert_eq!(sources, [Source::Nvml, Source::Pdh]);
 }
