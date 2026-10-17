@@ -23,7 +23,10 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+// cmocka.h 1.1 (Debian 13) and the Windows cmocka.h have no extern "C" guard.
+extern "C" {
 #include <cmocka.h>
+}
 
 #include <cstdio>
 #include <deque>
