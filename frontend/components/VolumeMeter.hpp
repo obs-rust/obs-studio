@@ -8,6 +8,8 @@
 
 #define FADER_PRECISION 4096.0
 
+class VolumeMeterTicker;
+
 class VolumeMeter : public QWidget {
 	Q_OBJECT
 
@@ -47,7 +49,10 @@ private:
 	OBSWeakSource weakSource;
 	OBSVolMeter obsVolumeMeter;
 
-	static QPointer<QTimer> updateTimer;
+	/* The meters' shared repaint timer (#1281). */
+	static VolumeMeterTicker *ticker;
+	int tickerId{-1};
+	bool wantsRepaint();
 
 	static void obsVolMeterChanged(void *data, const float magnitude[MAX_AUDIO_CHANNELS],
 				       const float peak[MAX_AUDIO_CHANNELS], const float inputPeak[MAX_AUDIO_CHANNELS]);
@@ -201,6 +206,7 @@ public:
 
 protected:
 	void paintEvent(QPaintEvent *event) override;
+	void showEvent(QShowEvent *event) override;
 
 private slots:
 	void onSourceDestroyed() { deleteLater(); }

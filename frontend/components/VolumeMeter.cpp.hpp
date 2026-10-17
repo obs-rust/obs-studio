@@ -1,6 +1,6 @@
 #include "frontend/build/frontend-components.pch.hpp"
 
-QPointer<QTimer> VolumeMeter::updateTimer = nullptr;
+VolumeMeterTicker *VolumeMeter::ticker = nullptr;
 
 namespace {
 constexpr int INDICATOR_THICKNESS = 3;
@@ -320,20 +320,20 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_source_t *source)
 	destroyedSignal =
 		OBSSignal(obs_source_get_signal_handler(source), "destroy", &VolumeMeter::obsSourceDestroyed, this);
 
-	if (!updateTimer) {
-		updateTimer = new QTimer(qApp);
-		updateTimer->setTimerType(Qt::PreciseTimer);
-		updateTimer->start(16);
+	// One timer for all meters; it runs only while a visible meter still
+	// has something new to draw (#1281). The ticker lives as long as the app.
+	if (!ticker) {
+		ticker = new VolumeMeterTicker(qApp);
 	}
-
-	connect(updateTimer, &QTimer::timeout, this, [this]() {
-		if (needLayoutChange()) {
-			doLayout();
-			update();
-		} else {
-			update(getBarRect());
-		}
-	});
+	tickerId = ticker->add({[this]() { return wantsRepaint(); },
+				[this]() {
+					if (needLayoutChange()) {
+						doLayout();
+						update();
+					} else {
+						update(getBarRect());
+					}
+				}});
 
 	connect(App(), &OBSApp::StyleChanged, this, [this]() {
 		updateTickLabelTokenSize();
@@ -348,6 +348,7 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_source_t *source)
 
 VolumeMeter::~VolumeMeter()
 {
+	ticker->remove(tickerId);
 	obs_volmeter_remove_callback(obsVolumeMeter, obsVolMeterChanged, this);
 	obs_volmeter_detach_source(obsVolumeMeter);
 }
@@ -364,8 +365,13 @@ void VolumeMeter::setLevels(const float magnitude[MAX_AUDIO_CHANNELS], const flo
 	uint64_t ts = os_gettime_ns();
 	QMutexLocker locker(&dataMutex);
 
+	// A silent source sends the same -inf levels again: no change, no wake.
+	bool changed = false;
 	currentLastUpdateTime = ts;
 	for (int channelNr = 0; channelNr < MAX_AUDIO_CHANNELS; channelNr++) {
+		changed = changed || currentMagnitude[channelNr] != magnitude[channelNr] ||
+			  currentPeak[channelNr] != peak[channelNr] ||
+			  currentInputPeak[channelNr] != inputPeak[channelNr];
 		currentMagnitude[channelNr] = magnitude[channelNr];
 		currentPeak[channelNr] = peak[channelNr];
 		currentInputPeak[channelNr] = inputPeak[channelNr];
@@ -375,6 +381,9 @@ void VolumeMeter::setLevels(const float magnitude[MAX_AUDIO_CHANNELS], const flo
 	// that the ballistics of peak and hold are recalculated.
 	locker.unlock();
 	calculateBallistics(ts);
+	if (changed) {
+		ticker->wake();
+	}
 }
 
 void VolumeMeter::obsVolMeterChanged(void *data, const float magnitude[MAX_AUDIO_CHANNELS],
@@ -725,6 +734,25 @@ inline int VolumeMeter::convertToInt(float number)
 	} else {
 		return int(number);
 	}
+}
+
+/* Visible (not hidden, not in a minimized window) and not settled: the
+ * shared timer asks this before each repaint (#1281). */
+bool VolumeMeter::wantsRepaint()
+{
+	if (!isVisible() || window()->isMinimized()) {
+		return false;
+	}
+	QMutexLocker locker(&dataMutex);
+	return !volumeMeterSettled(currentMagnitude, currentPeak, currentInputPeak, displayMagnitude, displayPeak,
+				   displayPeakHold, displayInputPeakHold, float(minimumLevel));
+}
+
+/* Shown again (a dock, a restored window): draw the current levels. */
+void VolumeMeter::showEvent(QShowEvent *event)
+{
+	QWidget::showEvent(event);
+	ticker->wake();
 }
 
 void VolumeMeter::paintEvent(QPaintEvent *)

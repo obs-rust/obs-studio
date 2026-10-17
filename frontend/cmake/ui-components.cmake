@@ -64,6 +64,7 @@ target_sources(
     components/VolumeControl.hpp
     components/VolumeMeter.hpp
     components/VolumeMeterSnapshot.hpp
+    components/VolumeMeterTicker.hpp
     components/VolumeName.hpp
     components/VolumeSlider.hpp
     build/frontend.components-5+.hpp.cpp

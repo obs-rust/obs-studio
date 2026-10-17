@@ -26,15 +26,24 @@ bool volumeMeterSettled(const float (&currentMagnitude)[N], const float (&curren
 			const float (&displayPeak)[N], const float (&displayPeakHold)[N],
 			const float (&displayInputPeakHold)[N], float minimum)
 {
-	(void)currentMagnitude;
-	(void)currentPeak;
-	(void)currentInputPeak;
-	(void)displayMagnitude;
-	(void)displayPeak;
-	(void)displayPeakHold;
-	(void)displayInputPeakHold;
-	(void)minimum;
-	return false;
+	// Within a tenth of a dB the meter draws the same pixels.
+	const float epsilon = 0.1f;
+	auto same = [&](float display, float current) {
+		if (std::isnan(display) || std::isnan(current)) {
+			return false;
+		}
+		if (display <= minimum && current <= minimum) {
+			return true;
+		}
+		return std::fabs(display - std::max(current, minimum)) < epsilon;
+	};
+	for (std::size_t i = 0; i < N; i++) {
+		if (!same(displayMagnitude[i], currentMagnitude[i]) || !same(displayPeak[i], currentPeak[i]) ||
+		    !same(displayPeakHold[i], currentPeak[i]) || !same(displayInputPeakHold[i], currentInputPeak[i])) {
+			return false;
+		}
+	}
+	return true;
 }
 
 class VolumeMeterTicker {
@@ -69,16 +78,43 @@ public:
 
 	void remove(int id) { clients.erase(id); }
 
-	/* Start the timer if it stopped. Safe from any thread. */
-	void wake() {}
+	/* Start the timer if it stopped. Safe from any thread: the start is
+	 * queued to the timer's thread, and only when the timer was stopped. */
+	void wake()
+	{
+		if (running.exchange(true)) {
+			return;
+		}
+		QMetaObject::invokeMethod(
+			timer,
+			[t = timer]() {
+				if (t && !t->isActive()) {
+					t->start();
+				}
+			},
+			Qt::QueuedConnection);
+	}
 
 	bool active() const { return timer->isActive(); }
 
 private:
 	void tick()
 	{
+		// Clear the flag before asking the meters: a wake() that comes
+		// while they are asked either sees false and queues a start, or
+		// set its new level before the meter is asked and is seen here.
+		running = false;
+		bool any = false;
 		for (auto &[id, client] : clients) {
-			client.repaint();
+			if (client.wantsRepaint()) {
+				client.repaint();
+				any = true;
+			}
+		}
+		if (any) {
+			running = true;
+		} else {
+			timer->stop();
 		}
 	}
 

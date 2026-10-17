@@ -192,6 +192,7 @@
 /* components/VolumeMeter.cpp */
 #include "frontend/components/VolumeMeter.hpp"
 #include "frontend/components/VolumeMeterSnapshot.hpp"
+#include "frontend/components/VolumeMeterTicker.hpp"
 
 #include <QEvent>
 #include <QStyleOption>
