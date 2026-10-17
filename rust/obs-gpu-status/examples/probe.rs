@@ -33,4 +33,33 @@ fn main() {
         "GPU utilization: {utilization:?} (first call {first:.2?}, with NVML load), {again:?} ({:.2?})",
         start.elapsed()
     );
+    // PIDs to read the share of (comma-separated, after the hint; default:
+    // this process, which uses no GPU), and how many readings to take two
+    // seconds apart in one NVML session, as a frontend polls (default 1).
+    let pids: Vec<u32> = std::env::args()
+        .nth(2)
+        .map(|a| a.split(',').filter_map(|p| p.parse().ok()).collect())
+        .unwrap_or_else(|| vec![std::process::id()]);
+    let readings: u32 = std::env::args()
+        .nth(3)
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(1);
+    let adapter = obs_gpu_status::platform::render_adapter(hint);
+    let Some(nvml) = obs_gpu_status::platform::nvml() else {
+        return;
+    };
+    for i in 0..readings {
+        if i > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+        let shares: Vec<String> = pids
+            .iter()
+            .map(|&pid| format!("{pid}={:?}", nvml.process_utilization(&adapter, pid)))
+            .collect();
+        println!(
+            "{:?} shares: {}",
+            nvml.utilization(&adapter),
+            shares.join(" ")
+        );
+    }
 }

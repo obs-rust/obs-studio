@@ -23,6 +23,12 @@ pub fn gpu_utilization(hint: crate::RenderHint<'_>) -> Utilization {
     crate::nvml::utilization(nvml(), &render_adapter(hint))
 }
 
+/// OBS's own share of the render GPU since the previous call (the
+/// tooltip). NVIDIA only so far, like [`gpu_utilization`].
+pub fn obs_gpu_share(hint: crate::RenderHint<'_>) -> Option<u32> {
+    nvml()?.process_utilization(&render_adapter(hint), std::process::id())
+}
+
 cfg_select! {
     target_os = "linux" => {
         /// GPUs on this machine: the sysfs/`/dev/dri` tree, then `nvidia-smi`.
