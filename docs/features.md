@@ -105,12 +105,15 @@ not get a line.
   [#1226](https://github.com/obs-rust/obs-studio/pull/1226).
 - **`GPU: x%` label.** The light shows the render GPU's utilization next to
   the CPU usage, or `CPU rendering` in software; obs-websocket gets the same
-  reading. Sources: NVML for NVIDIA, `gpu_busy_percent` for AMD. *Linux*,
-  2026-10-17. Issues
+  reading. Sources: NVML for NVIDIA and `gpu_busy_percent` for AMD on
+  Linux, IOKit on macOS, the PDH `GPU Engine` counters on Windows (every
+  vendor). *All*, 2026-10-17. Issues
   [#1020](https://github.com/obs-rust/obs-studio/issues/1020),
   [#1021](https://github.com/obs-rust/obs-studio/issues/1021),
+  [#1022](https://github.com/obs-rust/obs-studio/issues/1022),
   [#1024](https://github.com/obs-rust/obs-studio/issues/1024),
-  [#1025](https://github.com/obs-rust/obs-studio/issues/1025), PRs
+  [#1025](https://github.com/obs-rust/obs-studio/issues/1025),
+  [#1026](https://github.com/obs-rust/obs-studio/issues/1026), PRs
   [#1194](https://github.com/obs-rust/obs-studio/pull/1194),
   [#1195](https://github.com/obs-rust/obs-studio/pull/1195),
   [#1198](https://github.com/obs-rust/obs-studio/pull/1198),
@@ -119,7 +122,9 @@ not get a line.
   [#1228](https://github.com/obs-rust/obs-studio/pull/1228),
   [#1233](https://github.com/obs-rust/obs-studio/pull/1233),
   [#1236](https://github.com/obs-rust/obs-studio/pull/1236),
-  [#1238](https://github.com/obs-rust/obs-studio/pull/1238).
+  [#1238](https://github.com/obs-rust/obs-studio/pull/1238),
+  [#1262](https://github.com/obs-rust/obs-studio/pull/1262),
+  [#1264](https://github.com/obs-rust/obs-studio/pull/1264).
 
 ### Video capture
 
