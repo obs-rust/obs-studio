@@ -79,3 +79,36 @@ pub fn pdh_utilization(samples: &[(String, f64)], luid: u64, pid: Option<u32>) -
         None => Utilization::Unavailable,
     }
 }
+
+/// An open `GPU Engine` query that collects once per call (#1022). The real
+/// one is in `platform/windows.rs`; tests give fakes.
+pub trait EngineCounters: Send {
+    /// The counter values since the previous call. `Some` with no values on
+    /// the first call, which only sets the baseline; `None` when the query
+    /// failed and has to be opened again.
+    fn collect(&mut self) -> Option<Vec<(String, f64)>>;
+}
+
+/// Opens a query; `None` when PDH cannot (no GPU, counters disabled).
+pub type OpenCounters = Box<dyn FnMut() -> Option<Box<dyn EngineCounters>> + Send>;
+
+/// Keeps one query open between the label's ticks (#1022), so a tick costs
+/// one collection and no wait: the previous tick is the baseline.
+pub struct PdhTicker {
+    open: OpenCounters,
+    query: Option<Box<dyn EngineCounters>>,
+}
+
+impl PdhTicker {
+    pub fn new(open: OpenCounters) -> Self {
+        Self { open, query: None }
+    }
+
+    /// Utilization of adapter `luid` since the previous call. `Unavailable`
+    /// on the first call after the query opens, and when PDH fails; a failed
+    /// query is opened again on the next call.
+    pub fn utilization(&mut self, luid: u64) -> Utilization {
+        let _ = (&mut self.open, &mut self.query, luid);
+        Utilization::Unavailable
+    }
+}

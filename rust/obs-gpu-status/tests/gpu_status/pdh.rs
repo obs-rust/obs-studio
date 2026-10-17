@@ -169,3 +169,82 @@ fn unavailable_without_match() {
     );
     assert_eq!(pdh_utilization(&[], DGPU, None), Utilization::Unavailable);
 }
+
+/// A query that returns `results` in order, then `None`; counts its opens.
+struct FakeCounters(std::collections::VecDeque<Option<Vec<(String, f64)>>>);
+
+impl obs_gpu_status::pdh::EngineCounters for FakeCounters {
+    fn collect(&mut self) -> Option<Vec<(String, f64)>> {
+        self.0.pop_front().flatten()
+    }
+}
+
+/// A ticker whose `n`-th open gives `queries[n]` (`None`: the open fails).
+fn ticker(
+    queries: Vec<Option<Vec<Option<Vec<(String, f64)>>>>>,
+) -> (
+    obs_gpu_status::pdh::PdhTicker,
+    std::sync::Arc<std::sync::atomic::AtomicUsize>,
+) {
+    use std::sync::atomic::Ordering;
+    let opens = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let count = opens.clone();
+    let mut queries = std::collections::VecDeque::from(queries);
+    let open: obs_gpu_status::pdh::OpenCounters = Box::new(move || {
+        count.fetch_add(1, Ordering::SeqCst);
+        queries.pop_front().flatten().map(|results| {
+            Box::new(FakeCounters(results.into())) as Box<dyn obs_gpu_status::pdh::EngineCounters>
+        })
+    });
+    (obs_gpu_status::pdh::PdhTicker::new(open), opens)
+}
+
+fn busy(percent: f64) -> Vec<(String, f64)> {
+    s(&[(
+        "pid_1234_luid_0x00000000_0x0000C6E1_phys_0_eng_0_engtype_3D",
+        percent,
+    )])
+}
+
+#[test]
+fn ticker_first_tick_sets_the_baseline() {
+    let (mut t, opens) = ticker(vec![Some(vec![
+        Some(vec![]),
+        Some(busy(37.0)),
+        Some(busy(40.0)),
+    ])]);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Percent(37));
+    assert_eq!(t.utilization(DGPU), Utilization::Percent(40));
+    // One query for all ticks: no open and no wait per tick.
+    assert_eq!(opens.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+fn ticker_reopens_a_failed_query() {
+    let (mut t, opens) = ticker(vec![
+        Some(vec![Some(vec![]), None]),
+        Some(vec![Some(vec![]), Some(busy(25.0))]),
+    ]);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Percent(25));
+    assert_eq!(opens.load(std::sync::atomic::Ordering::SeqCst), 2);
+}
+
+#[test]
+fn ticker_retries_a_failed_open() {
+    let (mut t, opens) = ticker(vec![None, Some(vec![Some(vec![]), Some(busy(9.0))])]);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(DGPU), Utilization::Percent(9));
+    assert_eq!(opens.load(std::sync::atomic::Ordering::SeqCst), 2);
+}
+
+#[test]
+fn ticker_reads_only_the_render_adapter() {
+    let (mut t, _) = ticker(vec![Some(vec![Some(vec![]), Some(busy(37.0))])]);
+    assert_eq!(t.utilization(IGPU), Utilization::Unavailable);
+    assert_eq!(t.utilization(IGPU), Utilization::Unavailable);
+}
