@@ -437,9 +437,22 @@ pub enum RenderAdapter {
 /// libobs-metal renders on `MTLCreateSystemDefaultDevice()`, and the Cocoa
 /// OpenGL context does not allow offline renderers, so on a Mac with two
 /// GPUs both renderers use the GPU that Metal names as the default.
+///
+/// A Metal ID that the `IOAccelerator` list does not contain is
+/// [`RenderAdapter::Unknown`]: the sources disagree, so nothing is picked.
+/// Without a Metal device, one GPU is the answer and two or more are
+/// [`RenderAdapter::Ambiguous`].
 pub fn render_adapter_from_registry(render: Option<u64>, gpus: &[u64]) -> RenderAdapter {
-    let _ = (render, gpus);
-    RenderAdapter::Unknown
+    let mut ids = gpus.to_vec();
+    ids.sort_unstable();
+    ids.dedup();
+    match (render, ids.as_slice()) {
+        (Some(id), []) => RenderAdapter::RegistryId(id),
+        (Some(id), ids) if ids.contains(&id) => RenderAdapter::RegistryId(id),
+        (Some(_), _) | (None, []) => RenderAdapter::Unknown,
+        (None, [id]) => RenderAdapter::RegistryId(*id),
+        (None, _) => RenderAdapter::Ambiguous,
+    }
 }
 
 /// Resolve the render node that EGL reports for the display

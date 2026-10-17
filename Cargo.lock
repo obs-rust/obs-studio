@@ -444,6 +444,9 @@ dependencies = [
 [[package]]
 name = "obs-gpu-status"
 version = "0.1.0"
+dependencies = [
+ "libloading",
+]
 
 [[package]]
 name = "obs-gpu-status-frontend"

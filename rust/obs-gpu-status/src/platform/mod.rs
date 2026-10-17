@@ -36,15 +36,33 @@ cfg_select! {
             crate::RenderAdapter::Unknown
         }
     }
-    _ => {
+    target_os = "macos" => {
+        #[allow(unsafe_code)] // Metal, IOKit and objc calls; see the module docs
+        mod macos;
+
         /// GPUs on this machine. macOS has no sysfs or DXGI, so only
         /// `nvidia-smi` is consulted.
         pub fn system_devices() -> Vec<GpuDevice> {
             crate::query_nvidia_smi()
         }
 
-        /// The render adapter. The Metal `registryID` part of
-        /// obs-rust/obs-studio#1020 is open, so this is always unknown.
+        /// The GPU that OBS renders on, by registry ID
+        /// (obs-rust/obs-studio#1020). macOS has no render node; both
+        /// renderers use Metal's default GPU.
+        pub fn render_adapter(_render_node: Option<&str>) -> crate::RenderAdapter {
+            crate::render_adapter_from_registry(
+                macos::default_metal_registry_id(),
+                &macos::accelerator_registry_ids(),
+            )
+        }
+    }
+    _ => {
+        /// GPUs on this machine: only `nvidia-smi` is consulted.
+        pub fn system_devices() -> Vec<GpuDevice> {
+            crate::query_nvidia_smi()
+        }
+
+        /// The render adapter is not known on this platform.
         pub fn render_adapter(_render_node: Option<&str>) -> crate::RenderAdapter {
             crate::RenderAdapter::Unknown
         }
