@@ -422,6 +422,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-captions"
+version = "0.1.0"
+
+[[package]]
 name = "obs-codec"
 version = "0.1.0"
 dependencies = [
