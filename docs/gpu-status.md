@@ -42,10 +42,13 @@ On an M1 Max (IOKit) under a Metal compute load:
 ![Status bar label GPU: 99% with a green dot on macOS](images/gpu-usage-label-macos.png)
 
 The sources, in order: NVML for NVIDIA (#1021), then amdgpu's
-`gpu_busy_percent` on Linux (#1024), and on macOS IOKit's
+`gpu_busy_percent` on Linux (#1024), on macOS IOKit's
 `Device Utilization %` of the render GPU's `IOAccelerator` (#1026; the
-key is not documented, and an M1 Max has it). On Windows, NVML cannot find
-the GPU yet: it needs the DXGI LUID as a PCI address. The thread `obs-gpu-usage`
+key is not documented, and an M1 Max has it), and on Windows the PDH
+`GPU Engine` counters of the render GPU's DXGI LUID (#1022), as Task
+Manager reads them, for every vendor. NVML cannot find the GPU on Windows
+yet (it needs the LUID as a PCI address), so PDH reads NVIDIA there too.
+The thread `obs-gpu-usage`
 reads the source once a second, so the UI thread never waits for one.
 `GetStats.gpuAcceleration` has the same reading as `usage` (`percent`,
 `source`, or `null`) and the label as `readout`.

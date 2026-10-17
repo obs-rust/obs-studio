@@ -31,7 +31,7 @@ impl Source {
             Self::Nvml => "nvml",
             Self::Amdgpu => "amdgpu",
             Self::Iokit => "iokit",
-            Self::Pdh => "",
+            Self::Pdh => "pdh",
         }
     }
 }

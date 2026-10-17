@@ -31,8 +31,9 @@ pub fn obs_gpu_share(hint: crate::RenderHint<'_>) -> Option<u32> {
 
 /// The utilization sources for the `GPU: x%` label (#1025), in the order
 /// [`crate::usage::Sampler`] asks them: NVML, then amdgpu's
-/// `gpu_busy_percent` on Linux and IOKit's `Device Utilization %` on macOS
-/// (#1026).
+/// `gpu_busy_percent` on Linux, IOKit's `Device Utilization %` on macOS
+/// (#1026) and the PDH `GPU Engine` counters on Windows (#1022), which read
+/// every vendor by LUID.
 pub fn usage_sources() -> Vec<Box<dyn crate::usage::UsageSource>> {
     let mut sources: Vec<Box<dyn crate::usage::UsageSource>> = vec![Box::new(NvmlSource)];
     if cfg!(target_os = "linux") {
@@ -40,6 +41,9 @@ pub fn usage_sources() -> Vec<Box<dyn crate::usage::UsageSource>> {
     }
     if cfg!(target_os = "macos") {
         sources.push(Box::new(IokitSource));
+    }
+    if cfg!(windows) {
+        sources.push(Box::new(PdhSource));
     }
     sources
 }
@@ -88,6 +92,25 @@ impl crate::usage::UsageSource for IokitSource {
         match adapter {
             crate::RenderAdapter::RegistryId(id) => {
                 crate::iokit::device_utilization(&accelerator_statistics(*id))
+            }
+            _ => Utilization::Unavailable,
+        }
+    }
+}
+
+/// The PDH `GPU Engine` counters (#1022): whole GPU only. One sample
+/// blocks for the sampler's interval (100 ms) on the `obs-gpu-usage` thread.
+struct PdhSource;
+
+impl crate::usage::UsageSource for PdhSource {
+    fn source(&self) -> crate::usage::Source {
+        crate::usage::Source::Pdh
+    }
+
+    fn whole(&mut self, adapter: &crate::RenderAdapter) -> Utilization {
+        match adapter {
+            crate::RenderAdapter::Luid(luid) => {
+                crate::pdh::pdh_utilization(&gpu_engine_samples(), *luid, None)
             }
             _ => Utilization::Unavailable,
         }
