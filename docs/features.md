@@ -1154,6 +1154,11 @@ area.
   [#1143](https://github.com/obs-rust/obs-studio/issues/1143), PR
   [#1144](https://github.com/obs-rust/obs-studio/pull/1144), upstream
   [obsproject/obs-studio#13209](https://github.com/obsproject/obs-studio/issues/13209).
+- Quitting OBS while recording no longer freezes the window while the
+  recording finishes: OBS waits for the recording's stop signal with the
+  event loop running (still up to 5 s, then a forced stop) instead of
+  sleeping on the UI thread. *All*, 2026-10-17. Issue
+  [#1283](https://github.com/obs-rust/obs-studio/issues/1283).
 
 ### Scripting
 

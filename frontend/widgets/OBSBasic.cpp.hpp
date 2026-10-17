@@ -1823,7 +1823,15 @@ void OBSBasic::closeWindow()
 		outputHandler->recordStopping.Disconnect();
 		outputHandler->stopRecording.Disconnect();
 
-		if (!StopRecordingForShutdown(outputHandler.get(), RecordingShutdownTimeoutMs)) {
+		/* Waits on the recording's stop signals in a nested event
+		 * loop, so the UI keeps running while the recording finishes
+		 * (#1283). */
+		BasicOutputHandler *handler = outputHandler.get();
+		auto wait = [handler](uint64_t timeout_ms) {
+			return WaitForOutputToStop(obs_output_get_signal_handler(handler->fileOutput), timeout_ms,
+						   [handler]() { return handler->RecordingActive(); });
+		};
+		if (!StopRecordingForShutdown(handler, RecordingShutdownTimeoutMs, wait)) {
 			blog(LOG_WARNING, "The recording did not stop within %llu ms, forced it to stop",
 			     (unsigned long long)RecordingShutdownTimeoutMs);
 		}
