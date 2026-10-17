@@ -1,0 +1,24 @@
+[package]
+name = "obs-build"
+version = "0.1.0"
+description = "Cargo-driven native OBS build graph and cc::Build execution"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+libobs-integration = []
+
+[dependencies]
+cc = { version = "=1.6.0", features = ["parallel"] }
+pkg-config = "=0.3.34"
+serde_json = "=1.0.151"
+
+[dev-dependencies]
+libloading.workspace = true
+tempfile = "=3.27.0"
+
+[[test]]
+name = "libobs"
+required-features = ["libobs-integration"]
