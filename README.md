@@ -17,6 +17,13 @@ Same obs studio, but without the bugs. AI generated issues and PRs welcome.
 
 Got an idea? [Start a conversation](https://github.com/obs-rust/obs-studio/discussions).
 
+# Features
+
+What OBS-Studio-Rust does differently from upstream OBS Studio, for a user:
+new features, changed behavior and fixed upstream bugs, by area, with links
+to the issues and pull requests. See the
+[features ledger](docs/features.md).
+
 # Fixing bugs with AI + Rust
 
 https://github.com/user-attachments/assets/4d9af616-bd76-468e-93ac-ef8ef44a0efb

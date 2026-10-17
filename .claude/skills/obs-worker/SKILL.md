@@ -99,7 +99,10 @@ gh pr create --repo obs-rust/obs-studio --base master --draft
 
 The description names the RED commit and how it fails, then the GREEN
 result. Use `Fixes #N` only when the PR completes the issue, `Refs #N`
-otherwise. Check `git diff origin/master --stat` for an accidental
+otherwise. A user-visible change (behavior, a setting, UI, log output, a
+protocol field, a platform, a fix a user can notice) adds or updates its
+line in [docs/features.md](../../../docs/features.md) in the same PR
+(coordination.md section 4). Check `git diff origin/master --stat` for an accidental
 `plugins/obs-websocket` pointer change.
 
 ## 5. Local checks (recommended, not required)

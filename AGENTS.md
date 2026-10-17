@@ -26,6 +26,8 @@ and black-box protocol tests) and the per-unit workflow.
 Before picking up or filing an issue, or opening a PR, read
 [docs/rust-port/coordination.md](docs/rust-port/coordination.md): claim
 before coding, search open PRs first, target master, RED then GREEN commits.
+A PR with a user-visible change adds its line to
+[docs/features.md](docs/features.md) (the features ledger).
 
 Before adding, renaming or building C/C++/Objective-C sources, or touching
 `cmake/common/`, `cmake/pch/` or a `build/` group, read [BUILD.md](BUILD.md).

@@ -102,6 +102,11 @@ this document covers *who does what, and when*.
   (its Tier 4 test, or by hand), and the PR shows the observed output. #846
   closed with every test green while the light it added called llvmpipe
   green (#929). Without such a run, use `Refs #N`.
+- **User-visible changes get a ledger line.** A PR that changes what a user
+  sees or can do (behavior, a setting, UI, log output, a protocol field, a
+  platform or package, or a fix for a bug a user can notice) adds or
+  updates its line in [docs/features.md](../features.md) in the same PR.
+  CI, tests, ports with no change in behavior and refactors do not (#1250).
 - `Fixes #N` only when the PR completes the issue; otherwise `Refs #N`, and
   tick the tracking-issue checkbox when it merges.
 - **Draft status:** mark the PR ready when it is ready. If you move a PR back
