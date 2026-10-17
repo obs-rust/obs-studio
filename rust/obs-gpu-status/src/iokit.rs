@@ -17,6 +17,10 @@ pub const DEVICE_UTILIZATION: &str = "Device Utilization %";
 /// `(key, value)`. `Unavailable` when the key is missing or its value is
 /// not 0 to 100.
 pub fn device_utilization(stats: &[(String, i64)]) -> Utilization {
-    let _ = stats;
-    Utilization::Unavailable
+    stats
+        .iter()
+        .find(|(key, _)| key == DEVICE_UTILIZATION)
+        .and_then(|&(_, value)| u8::try_from(value).ok())
+        .filter(|&p| p <= 100)
+        .map_or(Utilization::Unavailable, Utilization::Percent)
 }
