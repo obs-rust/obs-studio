@@ -4,8 +4,9 @@ Everything OBS-Studio-Rust does differently from upstream OBS Studio, for a
 user: new features, changed behavior, and fixed upstream bugs. A pull
 request announces a change once; this file keeps the list (#1250).
 
-The backfill of the pull requests merged before this file existed is in
-progress (#1250). Until it is done, this list is not complete.
+It covers every pull request merged up to 2026-10-17 (#1250): 698 merged
+pull requests were sorted, and CI, test, build, port and refactoring work
+was left out.
 
 ## How to add an entry
 
@@ -33,7 +34,11 @@ not get a line.
   merge date is the date of the first pull request that shipped the
   feature (`YYYY-MM-DD`, UTC).
 - A fixed upstream bug goes in [Fixed upstream bugs](#fixed-upstream-bugs),
-  with the upstream issue (obsproject/obs-studio#N) when there is one.
+  in its area and in merge order. It has no bold name: the line starts with
+  the symptom that is gone, and ends with the upstream issue
+  (obsproject/obs-studio#N, obsproject/obs-websocket#N) when there is one.
+- A fix for a bug that the fork itself added goes on the line of the
+  feature it fixes, not on a line of its own.
 
 ## Features
 
@@ -50,8 +55,8 @@ not get a line.
   display was hidden and disabled all outputs. *All*, 2026-10-15. Issue
   [#815](https://github.com/obs-rust/obs-studio/issues/815), PR
   [#816](https://github.com/obs-rust/obs-studio/pull/816).
-- **Refused output starts are logged.** A start of streaming, recording,
-  the replay buffer or the virtual camera that is refused while outputs are
+- **Refused output starts are logged.** A start of streaming, recording, the
+  replay buffer or the virtual camera that is refused while outputs are
   disabled writes a log line, where before obs-websocket replied "success"
   and nothing happened. *All*, 2026-10-15. Issue
   [#817](https://github.com/obs-rust/obs-studio/issues/817), PR
@@ -61,48 +66,132 @@ not get a line.
   so a crash or a hard stop no longer loses them. *All*, 2026-10-16. Issue
   [#811](https://github.com/obs-rust/obs-studio/issues/811), PR
   [#812](https://github.com/obs-rust/obs-studio/pull/812).
+- **`obs-stream-rust` command-line tool.** Starts, stops and toggles the
+  stream of a running OBS and shows its status through obs-websocket v5,
+  with password support, IPv6 hosts and a `--json` flag for scripts. *All*,
+  2026-10-10. Issue [#96](https://github.com/obs-rust/obs-studio/issues/96),
+  PRs [#30](https://github.com/obs-rust/obs-studio/pull/30),
+  [#276](https://github.com/obs-rust/obs-studio/pull/276),
+  [#277](https://github.com/obs-rust/obs-studio/pull/277).
 
 ### GPU status
 
 - **GPU acceleration light.** A light in the status bar shows whether OBS
   renders on a hardware GPU (green), in software on a machine without a GPU
   (yellow), or in software although a GPU is present, after a graphics
-  failure or over the frame budget (red). Clicking it explains the state.
-  The startup log and `GetStats.gpuAcceleration` in obs-websocket have the
-  same state ([gpu-status.md](gpu-status.md)). *All*, 2026-10-15. Issue
-  [#846](https://github.com/obs-rust/obs-studio/issues/846), PRs
+  failure or over the frame budget (red). Clicking it explains the state and
+  quotes the graphics log lines. The startup log and
+  `GetStats.gpuAcceleration` in obs-websocket have the same state
+  ([gpu-status.md](gpu-status.md)). *All*, 2026-10-15. Issues
+  [#846](https://github.com/obs-rust/obs-studio/issues/846),
+  [#942](https://github.com/obs-rust/obs-studio/issues/942),
+  [#943](https://github.com/obs-rust/obs-studio/issues/943),
+  [#944](https://github.com/obs-rust/obs-studio/issues/944),
+  [#946](https://github.com/obs-rust/obs-studio/issues/946),
+  [#1003](https://github.com/obs-rust/obs-studio/issues/1003),
+  [#1005](https://github.com/obs-rust/obs-studio/issues/1005),
+  [#1225](https://github.com/obs-rust/obs-studio/issues/1225), PRs
   [#890](https://github.com/obs-rust/obs-studio/pull/890),
   [#894](https://github.com/obs-rust/obs-studio/pull/894),
   [#929](https://github.com/obs-rust/obs-studio/pull/929),
+  [#958](https://github.com/obs-rust/obs-studio/pull/958),
+  [#960](https://github.com/obs-rust/obs-studio/pull/960),
+  [#963](https://github.com/obs-rust/obs-studio/pull/963),
   [#1006](https://github.com/obs-rust/obs-studio/pull/1006),
   [#1010](https://github.com/obs-rust/obs-studio/pull/1010),
-  [#1178](https://github.com/obs-rust/obs-studio/pull/1178).
+  [#1018](https://github.com/obs-rust/obs-studio/pull/1018),
+  [#1035](https://github.com/obs-rust/obs-studio/pull/1035),
+  [#1178](https://github.com/obs-rust/obs-studio/pull/1178),
+  [#1226](https://github.com/obs-rust/obs-studio/pull/1226).
 - **`GPU: x%` label.** The light shows the render GPU's utilization next to
   the CPU usage, or `CPU rendering` in software; obs-websocket gets the same
   reading. Sources: NVML for NVIDIA, `gpu_busy_percent` for AMD. *Linux*,
-  2026-10-17. Issue
+  2026-10-17. Issues
+  [#1020](https://github.com/obs-rust/obs-studio/issues/1020),
+  [#1021](https://github.com/obs-rust/obs-studio/issues/1021),
+  [#1024](https://github.com/obs-rust/obs-studio/issues/1024),
   [#1025](https://github.com/obs-rust/obs-studio/issues/1025), PRs
+  [#1194](https://github.com/obs-rust/obs-studio/pull/1194),
+  [#1195](https://github.com/obs-rust/obs-studio/pull/1195),
+  [#1198](https://github.com/obs-rust/obs-studio/pull/1198),
   [#1222](https://github.com/obs-rust/obs-studio/pull/1222),
+  [#1224](https://github.com/obs-rust/obs-studio/pull/1224),
+  [#1228](https://github.com/obs-rust/obs-studio/pull/1228),
   [#1233](https://github.com/obs-rust/obs-studio/pull/1233),
-  [#1236](https://github.com/obs-rust/obs-studio/pull/1236).
+  [#1236](https://github.com/obs-rust/obs-studio/pull/1236),
+  [#1238](https://github.com/obs-rust/obs-studio/pull/1238).
+
+### Video capture
+
+- **Busy V4L2 cameras are recovered.** When another process holds a V4L2
+  camera, OBS names that process, offers a Force Camera button and opens the
+  camera when it is free. *Linux*, 2026-10-15. Issue
+  [#799](https://github.com/obs-rust/obs-studio/issues/799), PR
+  [#800](https://github.com/obs-rust/obs-studio/pull/800).
+- **Option to not restore V4L2 camera controls.** A V4L2 camera source has
+  the option "Restore camera controls when the camera connects", so an
+  external PTZ controller can keep control of the camera. *Linux*,
+  2026-10-12. Issues
+  [#385](https://github.com/obs-rust/obs-studio/issues/385),
+  [#976](https://github.com/obs-rust/obs-studio/issues/976), PRs
+  [#386](https://github.com/obs-rust/obs-studio/pull/386),
+  [#977](https://github.com/obs-rust/obs-studio/pull/977).
 
 ### Audio
 
 - **ALSA captures 24-bit devices at 24 bits.** A USB audio interface that
-  offers `S24_3LE` and `S16_LE` is opened at 24 bits, where before OBS
-  tried 16 bits first. *Linux*, 2026-10-16. Issue
+  offers `S24_3LE` and `S16_LE` is opened at 24 bits, where before OBS tried
+  16 bits first. *Linux*, 2026-10-16. Issue
   [#1103](https://github.com/obs-rust/obs-studio/issues/1103), PR
   [#1104](https://github.com/obs-rust/obs-studio/pull/1104).
 
+### Encoding, streaming and recording
+
+- **Enhanced Broadcasting encoder controls.** Enhanced Broadcasting stream
+  settings can turn off B-frames and lookahead and set the preset and
+  tuning, for lower latency than the service settings give, and show a
+  read-only preview of the encoding ladder the service sends. *All*,
+  2026-10-11. Issue [#19](https://github.com/obs-rust/obs-studio/issues/19),
+  PRs [#162](https://github.com/obs-rust/obs-studio/pull/162),
+  [#181](https://github.com/obs-rust/obs-studio/pull/181).
+
+### Sources and filters
+
+- **Bundled default font for text.** The Text (FreeType 2) source uses the
+  bundled JetBrainsMono Nerd Font as its default on every OS. *All*,
+  2026-10-16. Issue
+  [#1012](https://github.com/obs-rust/obs-studio/issues/1012), PR
+  [#1016](https://github.com/obs-rust/obs-studio/pull/1016).
+
+### Scenes and UI
+
+- **Wayland global hotkeys.** On Wayland, hotkeys and push-to-talk work
+  while another window has focus, through the desktop's GlobalShortcuts
+  portal. Each shortcut is named by its actions in the desktop's shortcut
+  list, Settings > Hotkeys shows whether global hotkeys work (with a marker
+  on each key) and can open the desktop's shortcut editor. *Linux*,
+  2026-10-11. Issues
+  [#240](https://github.com/obs-rust/obs-studio/issues/240),
+  [#255](https://github.com/obs-rust/obs-studio/issues/255),
+  [#347](https://github.com/obs-rust/obs-studio/issues/347),
+  [#408](https://github.com/obs-rust/obs-studio/issues/408),
+  [#474](https://github.com/obs-rust/obs-studio/issues/474),
+  [#790](https://github.com/obs-rust/obs-studio/issues/790), PRs
+  [#245](https://github.com/obs-rust/obs-studio/pull/245),
+  [#256](https://github.com/obs-rust/obs-studio/pull/256),
+  [#348](https://github.com/obs-rust/obs-studio/pull/348),
+  [#409](https://github.com/obs-rust/obs-studio/pull/409),
+  [#475](https://github.com/obs-rust/obs-studio/pull/475),
+  [#791](https://github.com/obs-rust/obs-studio/pull/791).
+
 ### Performance
 
-- **Faster launch on NVIDIA machines.** 4.3 times faster to the main
-  window and 19 % less memory on an NVIDIA streaming machine (see the
-  README): the VAAPI probe skips decode-only drivers, the NVENC test result
-  is reused while the driver does not change, the AppImage loads only
-  NVIDIA's EGL vendor, and the GPU status probe runs on a thread. *Linux*,
-  2026-10-17. Issues
-  [#1168](https://github.com/obs-rust/obs-studio/issues/1168),
+- **Faster launch on NVIDIA machines.** 4.3 times faster to the main window
+  and 19 % less memory on an NVIDIA streaming machine (see the README): the
+  VAAPI probe skips decode-only drivers, the NVENC test result is reused
+  while the driver does not change, the AppImage loads only NVIDIA's EGL
+  vendor, and the GPU status probe runs on a thread. *Linux*, 2026-10-17.
+  Issues [#1168](https://github.com/obs-rust/obs-studio/issues/1168),
   [#1170](https://github.com/obs-rust/obs-studio/issues/1170),
   [#1171](https://github.com/obs-rust/obs-studio/issues/1171),
   [#1172](https://github.com/obs-rust/obs-studio/issues/1172), PRs
@@ -111,14 +200,1083 @@ not get a line.
   [#1177](https://github.com/obs-rust/obs-studio/pull/1177),
   [#1178](https://github.com/obs-rust/obs-studio/pull/1178).
 
+### Stability
+
+- **Diagnostics when video fails to start.** When video fails to start on
+  Wayland, the log shows the EGL error and the display variables, and OBS
+  cleans up without leaks. *Linux*, 2026-10-13. Issue
+  [#633](https://github.com/obs-rust/obs-studio/issues/633), PR
+  [#655](https://github.com/obs-rust/obs-studio/pull/655).
+
 ### Platforms and packages
 
+- **Own app identity.** The fork runs as OBS-Studio-Rust with its own logo,
+  settings folder (`obs-studio-rust`) and version, next to the upstream OBS
+  version it is based on, in the window title, log, About dialog,
+  `--version` and package metadata. On first run it copies the upstream OBS
+  settings without changing them. Plugins still see a valid OBS version.
+  *All*, 2026-10-10. Issues
+  [#111](https://github.com/obs-rust/obs-studio/issues/111),
+  [#631](https://github.com/obs-rust/obs-studio/issues/631),
+  [#632](https://github.com/obs-rust/obs-studio/issues/632),
+  [#1087](https://github.com/obs-rust/obs-studio/issues/1087), PRs
+  [#67](https://github.com/obs-rust/obs-studio/pull/67),
+  [#112](https://github.com/obs-rust/obs-studio/pull/112),
+  [#510](https://github.com/obs-rust/obs-studio/pull/510),
+  [#515](https://github.com/obs-rust/obs-studio/pull/515),
+  [#657](https://github.com/obs-rust/obs-studio/pull/657),
+  [#706](https://github.com/obs-rust/obs-studio/pull/706),
+  [#1088](https://github.com/obs-rust/obs-studio/pull/1088).
+- **Daily beta packages.** A beta is published every day as the latest
+  release: an AppImage for Linux, zips for Windows x64 (with the Visual C++
+  runtime) and ARM64, and DMGs for Apple silicon and Intel Macs. *All*,
+  2026-10-13. Issues
+  [#626](https://github.com/obs-rust/obs-studio/issues/626),
+  [#627](https://github.com/obs-rust/obs-studio/issues/627),
+  [#628](https://github.com/obs-rust/obs-studio/issues/628), PRs
+  [#639](https://github.com/obs-rust/obs-studio/pull/639),
+  [#642](https://github.com/obs-rust/obs-studio/pull/642),
+  [#664](https://github.com/obs-rust/obs-studio/pull/664),
+  [#679](https://github.com/obs-rust/obs-studio/pull/679).
+- **AppImage for most Linux distributions.** The AppImage is built on glibc
+  2.28 and uses the host's GPU and VA-API drivers, so it starts and encodes
+  in hardware on older and current distributions. It bundles PipeWire, finds
+  the host's CA certificates (HTTPS works on Debian, Ubuntu, Arch and
+  Fedora), and does not load the plugins of a distribution's OBS on the same
+  machine. *Linux*, 2026-10-13. Issues
+  [#426](https://github.com/obs-rust/obs-studio/issues/426),
+  [#498](https://github.com/obs-rust/obs-studio/issues/498),
+  [#621](https://github.com/obs-rust/obs-studio/issues/621),
+  [#625](https://github.com/obs-rust/obs-studio/issues/625),
+  [#926](https://github.com/obs-rust/obs-studio/issues/926),
+  [#1084](https://github.com/obs-rust/obs-studio/issues/1084),
+  [#1085](https://github.com/obs-rust/obs-studio/issues/1085), PRs
+  [#437](https://github.com/obs-rust/obs-studio/pull/437),
+  [#499](https://github.com/obs-rust/obs-studio/pull/499),
+  [#650](https://github.com/obs-rust/obs-studio/pull/650),
+  [#722](https://github.com/obs-rust/obs-studio/pull/722),
+  [#927](https://github.com/obs-rust/obs-studio/pull/927),
+  [#1227](https://github.com/obs-rust/obs-studio/pull/1227),
+  [#1234](https://github.com/obs-rust/obs-studio/pull/1234).
 - **Builds with Qt 6.8.** The frontend builds against distribution Qt 6.8,
   for example on Debian 13. *Linux*, 2026-10-16. Issue
   [#1015](https://github.com/obs-rust/obs-studio/issues/1015), PR
   [#1017](https://github.com/obs-rust/obs-studio/pull/1017).
+- **Rust libobs (opt-in).** Every build also makes `libobs-with-rust`, with
+  parts of libobs ported to Rust and the same exported symbols as the C
+  libobs. Packages still ship the C libobs until the [release
+  criteria](rust-port/release-criteria.md) are met; a build can load the
+  Rust one in its place. *All*, 2026-10-13. Issues
+  [#4](https://github.com/obs-rust/obs-studio/issues/4),
+  [#453](https://github.com/obs-rust/obs-studio/issues/453),
+  [#1065](https://github.com/obs-rust/obs-studio/issues/1065), PRs
+  [#454](https://github.com/obs-rust/obs-studio/pull/454),
+  [#1086](https://github.com/obs-rust/obs-studio/pull/1086).
 
 ## Fixed upstream bugs
 
-Bugs inherited from OBS Studio that are fixed here. The backfill (#1250)
-adds them.
+Bugs inherited from OBS Studio (and obs-websocket) that are fixed here, by
+area.
+
+### obs-websocket
+
+- Deleting a scene in the Scenes dock sends SceneListChanged once, not
+  twice. *All*, 2026-10-13. Issue
+  [#534](https://github.com/obs-rust/obs-studio/issues/534), PR
+  [#535](https://github.com/obs-rust/obs-studio/pull/535), upstream
+  [obsproject/obs-websocket#979](https://github.com/obsproject/obs-websocket/issues/979).
+- Setting the Studio Mode T-Bar through the frontend API (obs-websocket
+  SetTBarPosition) moves the T-Bar, and releasing it no longer cancels the
+  transition. *All*, 2026-10-13. Issue
+  [#549](https://github.com/obs-rust/obs-studio/issues/549), PR
+  [#550](https://github.com/obs-rust/obs-studio/pull/550), upstream
+  [obsproject/obs-studio#11372](https://github.com/obsproject/obs-studio/issues/11372).
+- Removing the current profile now sends ProfileListChanged, and
+  obs-websocket RemoveProfile removes the current profile without leaving a
+  confirmation dialog open on the OBS machine. *All*, 2026-10-13. Issue
+  [#568](https://github.com/obs-rust/obs-studio/issues/568), PR
+  [#569](https://github.com/obs-rust/obs-studio/pull/569), upstream
+  [obsproject/obs-websocket#1267](https://github.com/obsproject/obs-websocket/issues/1267).
+- obs-websocket SetSceneItemTransform accepts the transform that
+  GetSceneItemTransform returns, with 0 bounds and OBS_BOUNDS_NONE. *All*,
+  2026-10-13. Issue
+  [#540](https://github.com/obs-rust/obs-studio/issues/540), PR
+  [#589](https://github.com/obs-rust/obs-studio/pull/589), upstream
+  [obsproject/obs-websocket#1299](https://github.com/obsproject/obs-websocket/issues/1299),
+  [obsproject/obs-studio#13124](https://github.com/obsproject/obs-studio/issues/13124).
+- obs-websocket GetSourceScreenshot labels jpg and other screenshots with
+  the correct MIME type, for example image/jpeg. *All*, 2026-10-13. Issue
+  [#523](https://github.com/obs-rust/obs-studio/issues/523), PR
+  [#652](https://github.com/obs-rust/obs-studio/pull/652), upstream
+  [obsproject/obs-websocket#1298](https://github.com/obsproject/obs-websocket/issues/1298).
+- obs-websocket CreateProfile and RemoveProfile answer after the profile
+  list has changed, so the next request sees the new profiles. *All*,
+  2026-10-15. Issue
+  [#804](https://github.com/obs-rust/obs-studio/issues/804), PR
+  [#805](https://github.com/obs-rust/obs-studio/pull/805), upstream
+  [obsproject/obs-studio#1283](https://github.com/obsproject/obs-studio/issues/1283).
+- A Parallel request batch returns each result with its own requestType and
+  requestId, so clients get the correct data. *All*, 2026-10-16. Issue
+  [#813](https://github.com/obs-rust/obs-studio/issues/813), PR
+  [#1074](https://github.com/obs-rust/obs-studio/pull/1074), upstream
+  [obsproject/obs-studio#1317](https://github.com/obsproject/obs-studio/issues/1317).
+- The Session Duration column in WebSocket Server Settings keeps counting
+  after the first minute instead of going blank. *All*, 2026-10-17. Issue
+  [#1116](https://github.com/obs-rust/obs-studio/issues/1116), PR
+  [#1145](https://github.com/obs-rust/obs-studio/pull/1145), upstream
+  [obsproject/obs-studio#1208](https://github.com/obsproject/obs-studio/issues/1208).
+- GetSourceScreenshot and SaveSourceScreenshot of a 10-bit or 12-bit source
+  return the colors that OBS shows, not a much darker picture. *All*,
+  2026-10-17. Issue
+  [#1141](https://github.com/obs-rust/obs-studio/issues/1141), PR
+  [#1146](https://github.com/obs-rust/obs-studio/pull/1146), upstream
+  [obsproject/obs-websocket#1213](https://github.com/obsproject/obs-websocket/issues/1213),
+  [obsproject/obs-websocket#1257](https://github.com/obsproject/obs-websocket/issues/1257),
+  [obsproject/obs-websocket#1298](https://github.com/obsproject/obs-websocket/issues/1298).
+- GetCurrentProgramScene no longer aborts OBS when the program scene was
+  removed in Studio Mode; it returns null names and UUIDs. *All*,
+  2026-10-17. Issue
+  [#1254](https://github.com/obs-rust/obs-studio/issues/1254), PR
+  [#1256](https://github.com/obs-rust/obs-studio/pull/1256), upstream
+  [obsproject/obs-studio#1349](https://github.com/obsproject/obs-studio/issues/1349).
+
+### Video capture
+
+- After a PipeWire restart, PipeWire screen capture and PulseAudio audio
+  sources reconnect automatically; the screen shows its last frame until
+  capture returns. *Linux*, 2026-10-10. Issue
+  [#108](https://github.com/obs-rust/obs-studio/issues/108), PR
+  [#109](https://github.com/obs-rust/obs-studio/pull/109).
+- A capture device that reports more audio buffers than OBS supports no
+  longer corrupts the audio frame; the extra buffers are dropped with a log
+  warning. *macOS*, 2026-10-11. Issue
+  [#92](https://github.com/obs-rust/obs-studio/issues/92), PR
+  [#124](https://github.com/obs-rust/obs-studio/pull/124).
+- Removing or closing a macOS screen or audio capture (ScreenCaptureKit)
+  source no longer crashes OBS. *macOS*, 2026-10-11. Issue
+  [#93](https://github.com/obs-rust/obs-studio/issues/93), PR
+  [#125](https://github.com/obs-rust/obs-studio/pull/125).
+- A V4L2 Video Capture Device runs at the selected frame rate, and changing
+  camera controls such as zoom or focus no longer restarts the capture.
+  *Linux*, 2026-10-11. Issue
+  [#201](https://github.com/obs-rust/obs-studio/issues/201), PR
+  [#202](https://github.com/obs-rust/obs-studio/pull/202), upstream
+  [obsproject/obs-studio#13388](https://github.com/obsproject/obs-studio/issues/13388),
+  [obsproject/obs-studio#13896](https://github.com/obsproject/obs-studio/issues/13896).
+- V4L2 devices whose input capabilities cannot be read are closed again, so
+  cameras no longer stop opening with "more than 16 video devices". *Linux*,
+  2026-10-11. Issue
+  [#203](https://github.com/obs-rust/obs-studio/issues/203), PR
+  [#204](https://github.com/obs-rust/obs-studio/pull/204), upstream
+  [obsproject/obs-studio#5422](https://github.com/obsproject/obs-studio/issues/5422).
+- The Linux virtual camera sends a correct picture to a v4l2loopback device
+  with a fixed format of a different size. *Linux*, 2026-10-11. Issue
+  [#212](https://github.com/obs-rust/obs-studio/issues/212), PR
+  [#213](https://github.com/obs-rust/obs-studio/pull/213), upstream
+  [obsproject/obs-studio#12081](https://github.com/obsproject/obs-studio/issues/12081).
+- A PipeWire screen capture no longer crashes OBS when a portal reply
+  arrives while the source is removed. *Linux*, 2026-10-11. Issue
+  [#246](https://github.com/obs-rust/obs-studio/issues/246), PR
+  [#247](https://github.com/obs-rust/obs-studio/pull/247), upstream
+  [obsproject/obs-studio#13809](https://github.com/obsproject/obs-studio/issues/13809).
+- PipeWire screen capture no longer draws a black square around the cursor
+  with Rec. 2100 (HDR) output. *Linux*, 2026-10-12. Issue
+  [#328](https://github.com/obs-rust/obs-studio/issues/328), PR
+  [#329](https://github.com/obs-rust/obs-studio/pull/329), upstream
+  [obsproject/obs-studio#13350](https://github.com/obsproject/obs-studio/issues/13350).
+- A V4L2 camera keeps capturing after a corrupt MJPEG or H.264 frame instead
+  of stopping until OBS restarts. *Linux*, 2026-10-12. Issue
+  [#330](https://github.com/obs-rust/obs-studio/issues/330), PR
+  [#331](https://github.com/obs-rust/obs-studio/pull/331), upstream
+  [obsproject/obs-studio#12521](https://github.com/obsproject/obs-studio/issues/12521).
+- You can change a V4L2 camera's resolution, frame rate or format while
+  recording; the camera no longer stays busy. *Linux*, 2026-10-12. Issue
+  [#339](https://github.com/obs-rust/obs-studio/issues/339), PR
+  [#340](https://github.com/obs-rust/obs-studio/pull/340), upstream
+  [obsproject/obs-studio#12508](https://github.com/obsproject/obs-studio/issues/12508).
+- Saved V4L2 camera controls (zoom, focus, exposure) are applied when OBS
+  starts, when the camera reconnects and when a script changes them.
+  *Linux*, 2026-10-12. Issues
+  [#363](https://github.com/obs-rust/obs-studio/issues/363),
+  [#459](https://github.com/obs-rust/obs-studio/issues/459), PRs
+  [#364](https://github.com/obs-rust/obs-studio/pull/364),
+  [#460](https://github.com/obs-rust/obs-studio/pull/460), upstream
+  [obsproject/obs-studio#11633](https://github.com/obsproject/obs-studio/issues/11633),
+  [obsproject/obs-studio#3003](https://github.com/obsproject/obs-studio/issues/3003).
+- A PipeWire camera that sends NV12 shows its picture instead of green bands
+  or a crash. *Linux*, 2026-10-12. Issue
+  [#390](https://github.com/obs-rust/obs-studio/issues/390), PR
+  [#391](https://github.com/obs-rust/obs-studio/pull/391), upstream
+  [obsproject/obs-studio#13823](https://github.com/obsproject/obs-studio/issues/13823).
+- A Wayland screen capture or window capture starts again by itself after
+  the monitor sleeps, is unplugged, or the captured window animates, and
+  does not stay frozen on the last frame. *Linux*, 2026-10-12. Issues
+  [#257](https://github.com/obs-rust/obs-studio/issues/257),
+  [#398](https://github.com/obs-rust/obs-studio/issues/398), PRs
+  [#399](https://github.com/obs-rust/obs-studio/pull/399),
+  [#461](https://github.com/obs-rust/obs-studio/pull/461), upstream
+  [obsproject/obs-studio#12063](https://github.com/obsproject/obs-studio/issues/12063).
+- PipeWire cameras that send only I420 or YV12 show a picture, also at odd
+  widths, and the preview no longer stays black. *Linux*, 2026-10-12. Issues
+  [#406](https://github.com/obs-rust/obs-studio/issues/406),
+  [#467](https://github.com/obs-rust/obs-studio/issues/467), PRs
+  [#407](https://github.com/obs-rust/obs-studio/pull/407),
+  [#468](https://github.com/obs-rust/obs-studio/pull/468), upstream
+  [obsproject/obs-studio#13744](https://github.com/obsproject/obs-studio/issues/13744).
+- PipeWire screen capture from shared memory follows the buffer stride and
+  offset, so padded or offset frames are no longer skewed and a short buffer
+  no longer crashes OBS. *Linux*, 2026-10-13. Issue
+  [#508](https://github.com/obs-rust/obs-studio/issues/508), PR
+  [#509](https://github.com/obs-rust/obs-studio/pull/509), upstream
+  [obsproject/obs-studio#13318](https://github.com/obsproject/obs-studio/issues/13318).
+- PipeWire screen capture shows each frame once, without repeated and
+  skipped frames. *Linux*, 2026-10-13. Issue
+  [#191](https://github.com/obs-rust/obs-studio/issues/191), PR
+  [#612](https://github.com/obs-rust/obs-studio/pull/612), upstream
+  [obsproject/obs-studio#13292](https://github.com/obsproject/obs-studio/issues/13292).
+- OBS no longer can crash at startup when the scene collection has a
+  PipeWire Video Capture Device source. *Linux*, 2026-10-14. Issue
+  [#774](https://github.com/obs-rust/obs-studio/issues/774), PR
+  [#775](https://github.com/obs-rust/obs-studio/pull/775), upstream
+  [obsproject/obs-studio#13971](https://github.com/obsproject/obs-studio/issues/13971).
+- Opening the Properties of a PipeWire camera no longer renegotiates the
+  running stream, so libcamera cameras no longer drop or freeze. *Linux*,
+  2026-10-15. Issue
+  [#819](https://github.com/obs-rust/obs-studio/issues/819), PR
+  [#820](https://github.com/obs-rust/obs-studio/pull/820), upstream
+  [obsproject/obs-studio#10399](https://github.com/obsproject/obs-studio/issues/10399).
+- Camera control sliders of a PipeWire camera can be dragged and moved with
+  the mouse wheel again. *Linux*, 2026-10-15. Issue
+  [#827](https://github.com/obs-rust/obs-studio/issues/827), PR
+  [#829](https://github.com/obs-rust/obs-studio/pull/829).
+- V4L2 camera controls that the camera refuses (for example manual exposure
+  in an automatic mode) are disabled, so other sliders can be dragged again.
+  *Linux*, 2026-10-15. Issue
+  [#827](https://github.com/obs-rust/obs-studio/issues/827), PR
+  [#895](https://github.com/obs-rust/obs-studio/pull/895).
+- A new resolution for a running PipeWire camera restarts the stream, so
+  libcamera cameras no longer lose the stream. *Linux*, 2026-10-16. Issues
+  [#390](https://github.com/obs-rust/obs-studio/issues/390),
+  [#933](https://github.com/obs-rust/obs-studio/issues/933), PR
+  [#934](https://github.com/obs-rust/obs-studio/pull/934), upstream
+  [obsproject/obs-studio#10399](https://github.com/obsproject/obs-studio/issues/10399).
+- In the Video Capture Device (PipeWire) source, a manual camera control is
+  greyed out while its automatic mode is on, and menu controls such as Auto
+  Exposure and Power Line Frequency show again. *Linux*, 2026-10-16. Issue
+  [#827](https://github.com/obs-rust/obs-studio/issues/827), PR
+  [#1054](https://github.com/obs-rust/obs-studio/pull/1054).
+- A Screen Capture (PipeWire) source that is not showing keeps its stream
+  paused, so several captures no longer slow down the desktop and OBS.
+  *Linux*, 2026-10-16. Issue
+  [#1110](https://github.com/obs-rust/obs-studio/issues/1110), PR
+  [#1111](https://github.com/obs-rust/obs-studio/pull/1111), upstream
+  [obsproject/obs-studio#13836](https://github.com/obsproject/obs-studio/issues/13836).
+- A V4L2 camera from a scene collection saved by older OBS runs at the frame
+  rate you picked, not at the camera's fastest rate. *Linux*, 2026-10-16.
+  Issue [#1117](https://github.com/obs-rust/obs-studio/issues/1117), PR
+  [#1118](https://github.com/obs-rust/obs-studio/pull/1118), upstream
+  [obsproject/obs-studio#14036](https://github.com/obsproject/obs-studio/issues/14036),
+  [obsproject/obs-studio#201](https://github.com/obsproject/obs-studio/issues/201).
+- Picking a PipeWire camera format that does not have the picked frame rate
+  no longer freezes the picture. *Linux*, 2026-10-16. Issue
+  [#1119](https://github.com/obs-rust/obs-studio/issues/1119), PR
+  [#1120](https://github.com/obs-rust/obs-studio/pull/1120), upstream
+  [obsproject/obs-studio#13783](https://github.com/obsproject/obs-studio/issues/13783).
+- The format list of a PipeWire camera source shows each format and size
+  once. *Linux*, 2026-10-17. Issue
+  [#1068](https://github.com/obs-rust/obs-studio/issues/1068), PR
+  [#1217](https://github.com/obs-rust/obs-studio/pull/1217).
+
+### Audio
+
+- PulseAudio audio input on pipewire-pulse no longer cuts out or stutters
+  when audio packets arrive in bursts. *Linux*, 2026-10-11. Issue
+  [#190](https://github.com/obs-rust/obs-studio/issues/190), PR
+  [#194](https://github.com/obs-rust/obs-studio/pull/194), upstream
+  [obsproject/obs-studio#12835](https://github.com/obsproject/obs-studio/issues/12835),
+  [obsproject/obs-studio#10808](https://github.com/obsproject/obs-studio/issues/10808).
+- On Wayland, push-to-talk and other hold hotkeys stay pressed while the key
+  is held and an OBS window has focus. *Linux*, 2026-10-11. Issue
+  [#210](https://github.com/obs-rust/obs-studio/issues/210), PR
+  [#211](https://github.com/obs-rust/obs-studio/pull/211), upstream
+  [obsproject/obs-studio#10701](https://github.com/obsproject/obs-studio/issues/10701).
+- VLC Video Source plays 5.1 and 7.1 audio through the correct speakers.
+  *All*, 2026-10-11. Issue
+  [#251](https://github.com/obs-rust/obs-studio/issues/251), PR
+  [#252](https://github.com/obs-rust/obs-studio/pull/252), upstream
+  [obsproject/obs-studio#12579](https://github.com/obsproject/obs-studio/issues/12579).
+- Audio capture devices on ALSA, JACK and PulseAudio no longer drop out
+  every few minutes because their clock is slightly fast or slow. *Linux*,
+  2026-10-11. Issue
+  [#270](https://github.com/obs-rust/obs-studio/issues/270), PR
+  [#271](https://github.com/obs-rust/obs-studio/pull/271), upstream
+  [obsproject/obs-studio#4600](https://github.com/obsproject/obs-studio/issues/4600).
+- Scene transitions fade the audio again when an output uses Rescale Output.
+  *All*, 2026-10-11. Issue
+  [#272](https://github.com/obs-rust/obs-studio/issues/272), PR
+  [#273](https://github.com/obs-rust/obs-studio/pull/273), upstream
+  [obsproject/obs-studio#12912](https://github.com/obsproject/obs-studio/issues/12912).
+- The audio monitoring device you choose stays in use when the system
+  default output changes (PulseAudio and PipeWire). *Linux*, 2026-10-11.
+  Issue [#274](https://github.com/obs-rust/obs-studio/issues/274), PR
+  [#275](https://github.com/obs-rust/obs-studio/pull/275), upstream
+  [obsproject/obs-studio#10342](https://github.com/obsproject/obs-studio/issues/10342).
+- A Media Source keeps its audio sync offset when playback starts or
+  restarts. *All*, 2026-10-11. Issue
+  [#286](https://github.com/obs-rust/obs-studio/issues/286), PR
+  [#287](https://github.com/obs-rust/obs-studio/pull/287), upstream
+  [obsproject/obs-studio#11640](https://github.com/obsproject/obs-studio/issues/11640).
+- A VLC Video Source playlist no longer cuts the last second of each audio
+  track. *All*, 2026-10-12. Issue
+  [#301](https://github.com/obs-rust/obs-studio/issues/301), PR
+  [#302](https://github.com/obs-rust/obs-studio/pull/302), upstream
+  [obsproject/obs-studio#9345](https://github.com/obsproject/obs-studio/issues/9345).
+- An audio sync offset changed from 0 on a running source now takes effect,
+  and a saved offset applies when a scene collection loads. *All*,
+  2026-10-12. Issue
+  [#333](https://github.com/obs-rust/obs-studio/issues/333), PR
+  [#334](https://github.com/obs-rust/obs-studio/pull/334), upstream
+  [obsproject/obs-studio#7912](https://github.com/obsproject/obs-studio/issues/7912).
+- An audio input on PulseAudio or PipeWire records again after its stream
+  dies, without a settings change or restart. *Linux*, 2026-10-12. Issues
+  [#377](https://github.com/obs-rust/obs-studio/issues/377),
+  [#1029](https://github.com/obs-rust/obs-studio/issues/1029),
+  [#1056](https://github.com/obs-rust/obs-studio/issues/1056), PRs
+  [#378](https://github.com/obs-rust/obs-studio/pull/378),
+  [#1031](https://github.com/obs-rust/obs-studio/pull/1031),
+  [#1057](https://github.com/obs-rust/obs-studio/pull/1057), upstream
+  [obsproject/obs-studio#10072](https://github.com/obsproject/obs-studio/issues/10072).
+- The VLC Video Source sends its audio as it plays, so volume meters and
+  audio callbacks no longer run up to 2 s early or reset every second.
+  *All*, 2026-10-12. Issue
+  [#404](https://github.com/obs-rust/obs-studio/issues/404), PR
+  [#405](https://github.com/obs-rust/obs-studio/pull/405), upstream
+  [obsproject/obs-studio#2406](https://github.com/obsproject/obs-studio/issues/2406).
+- A Video Delay (Async) filter of more than 2 s no longer breaks up the
+  audio of the source into noise. *All*, 2026-10-13. Issue
+  [#521](https://github.com/obs-rust/obs-studio/issues/521), PR
+  [#522](https://github.com/obs-rust/obs-studio/pull/522), upstream
+  [obsproject/obs-studio#13830](https://github.com/obsproject/obs-studio/issues/13830).
+- Two Audio Input Capture sources on the same device both record cleanly
+  when PipeWire runs at a large quantum, and the second one is no longer
+  mostly silent. *Linux*, 2026-10-13. Issue
+  [#531](https://github.com/obs-rust/obs-studio/issues/531), PR
+  [#532](https://github.com/obs-rust/obs-studio/pull/532), upstream
+  [obsproject/obs-studio#10808](https://github.com/obsproject/obs-studio/issues/10808).
+- A restarted Media Source with a sample rate different from OBS no longer
+  starts with a click from the end of its previous playback. *All*,
+  2026-10-13. Issue
+  [#545](https://github.com/obs-rust/obs-studio/issues/545), PR
+  [#546](https://github.com/obs-rust/obs-studio/pull/546), upstream
+  [obsproject/obs-studio#7063](https://github.com/obsproject/obs-studio/issues/7063).
+- In Studio Mode, the Audio Mixer marks audio sources in groups and nested
+  scenes of the previewed scene as Preview. *All*, 2026-10-13. Issue
+  [#602](https://github.com/obs-rust/obs-studio/issues/602), PR
+  [#603](https://github.com/obs-rust/obs-studio/pull/603), upstream
+  [obsproject/obs-studio#13297](https://github.com/obsproject/obs-studio/issues/13297).
+- Fade to Color with a switch point of 0% or 100% no longer produces broken
+  (NaN) audio. *All*, 2026-10-14. Issue
+  [#488](https://github.com/obs-rust/obs-studio/issues/488), PR
+  [#687](https://github.com/obs-rust/obs-studio/pull/687).
+- When a PulseAudio monitor reset fails, OBS keeps the working monitor
+  instead of leaving freed state behind. *Linux*, 2026-10-14. Issues
+  [#486](https://github.com/obs-rust/obs-studio/issues/486),
+  [#686](https://github.com/obs-rust/obs-studio/issues/686), PR
+  [#713](https://github.com/obs-rust/obs-studio/pull/713).
+- Removing an ALSA Audio Capture Device source whose device is missing no
+  longer crashes or hangs OBS. *Linux*, 2026-10-14. Issue
+  [#770](https://github.com/obs-rust/obs-studio/issues/770), PR
+  [#771](https://github.com/obs-rust/obs-studio/pull/771), upstream
+  [obsproject/obs-studio#9322](https://github.com/obsproject/obs-studio/issues/9322).
+- Audio monitoring on PulseAudio and PipeWire catches up after a playback
+  stall or drift instead of staying seconds behind. *Linux*, 2026-10-15.
+  Issue [#778](https://github.com/obs-rust/obs-studio/issues/778), PR
+  [#779](https://github.com/obs-rust/obs-studio/pull/779), upstream
+  [obsproject/obs-studio#10548](https://github.com/obsproject/obs-studio/issues/10548),
+  [obsproject/obs-studio#3525](https://github.com/obsproject/obs-studio/issues/3525),
+  [obsproject/obs-studio#4531](https://github.com/obsproject/obs-studio/issues/4531).
+- The Expander filter at a 1:1 ratio no longer turns down the audio that
+  follows silence. *All*, 2026-10-16. PR
+  [#995](https://github.com/obs-rust/obs-studio/pull/995).
+
+### Encoding, streaming and recording
+
+- A recording no longer fails with "incomplete UTF-8 string" when a long
+  filename cuts a multibyte character at 255 bytes. *All*, 2026-10-09. Issue
+  [#21](https://github.com/obs-rust/obs-studio/issues/21), PRs
+  [#23](https://github.com/obs-rust/obs-studio/pull/23),
+  [#26](https://github.com/obs-rust/obs-studio/pull/26), upstream
+  [obsproject/obs-studio#11211](https://github.com/obsproject/obs-studio/issues/11211).
+- The SVT-AV1 encoder now uses CBR rate control when CBR is selected, and
+  invalid SVT-AV1 options stop the encoder with an error. *All*, 2026-10-09.
+  Issue [#24](https://github.com/obs-rust/obs-studio/issues/24), PR
+  [#63](https://github.com/obs-rust/obs-studio/pull/63), upstream
+  [obsproject/obs-studio#13849](https://github.com/obsproject/obs-studio/issues/13849).
+- OBS no longer crashes when an RTMP server returns a connect error without
+  a description. *All*, 2026-10-09. Issue
+  [#57](https://github.com/obs-rust/obs-studio/issues/57), PR
+  [#64](https://github.com/obs-rust/obs-studio/pull/64), upstream
+  [obsproject/obs-studio#13144](https://github.com/obsproject/obs-studio/issues/13144).
+- OBS no longer reads past the end of malformed or unusual AV1 packets, and
+  AV1 headers with an extension byte and no size field get the correct size.
+  *All*, 2026-10-10. PR
+  [#103](https://github.com/obs-rust/obs-studio/pull/103).
+- Streaming over RTMP or recording to FLV no longer crashes on an empty
+  packet on a secondary audio track. *All*, 2026-10-10. Issue
+  [#101](https://github.com/obs-rust/obs-studio/issues/101), PR
+  [#110](https://github.com/obs-rust/obs-studio/pull/110).
+- FFmpeg VAAPI encoders start on the default device, with a log message,
+  when the saved VAAPI device is not usable on this machine. *Linux*,
+  2026-10-11. Issue
+  [#197](https://github.com/obs-rust/obs-studio/issues/197), PR
+  [#198](https://github.com/obs-rust/obs-studio/pull/198), upstream
+  [obsproject/obs-studio#13773](https://github.com/obsproject/obs-studio/issues/13773).
+- In Advanced output mode, recording and split file names have characters
+  such as : replaced, the same as in Simple mode. *All*, 2026-10-11. Issue
+  [#199](https://github.com/obs-rust/obs-studio/issues/199), PR
+  [#200](https://github.com/obs-rust/obs-studio/pull/200), upstream
+  [obsproject/obs-studio#13786](https://github.com/obsproject/obs-studio/issues/13786).
+- Starting a recording or stream with a VAAPI texture encoder and a color
+  format other than NV12 or P010 no longer crashes OBS; it uses the CPU
+  VAAPI encoder instead. *Linux*, 2026-10-11. Issue
+  [#206](https://github.com/obs-rust/obs-studio/issues/206), PR
+  [#207](https://github.com/obs-rust/obs-studio/pull/207), upstream
+  [obsproject/obs-studio#12731](https://github.com/obsproject/obs-studio/issues/12731).
+- Recording with the FFmpeg VAAPI H.264 or HEVC encoder no longer crashes at
+  the start when the first packet holds only headers. *Linux*, 2026-10-11.
+  Issue [#216](https://github.com/obs-rust/obs-studio/issues/216), PR
+  [#218](https://github.com/obs-rust/obs-studio/pull/218), upstream
+  [obsproject/obs-studio#13316](https://github.com/obsproject/obs-studio/issues/13316).
+- The replay buffer stops while a shared recording is paused, and OBS no
+  longer hangs on exit in that case. *All*, 2026-10-11. Issue
+  [#223](https://github.com/obs-rust/obs-studio/issues/223), PR
+  [#224](https://github.com/obs-rust/obs-studio/pull/224), upstream
+  [obsproject/obs-studio#7249](https://github.com/obsproject/obs-studio/issues/7249).
+- WHIP streams at 23.976 or 59.94 fps no longer drift out of audio/video
+  sync over time. *All*, 2026-10-11. Issue
+  [#225](https://github.com/obs-rust/obs-studio/issues/225), PR
+  [#226](https://github.com/obs-rust/obs-studio/pull/226), upstream
+  [obsproject/obs-studio#13970](https://github.com/obsproject/obs-studio/issues/13970).
+- When a stream fails to start, OBS shuts down its encoders and releases
+  hardware encoder sessions such as NVENC. *All*, 2026-10-11. Issue
+  [#236](https://github.com/obs-rust/obs-studio/issues/236), PR
+  [#237](https://github.com/obs-rust/obs-studio/pull/237), upstream
+  [obsproject/obs-studio#10651](https://github.com/obsproject/obs-studio/issues/10651).
+- When the recording muxer process stops during a recording, OBS now sees
+  the write failure instead of discarding all later data in silence. *Linux,
+  macOS*, 2026-10-11. Issue
+  [#264](https://github.com/obs-rust/obs-studio/issues/264), PR
+  [#265](https://github.com/obs-rust/obs-studio/pull/265).
+- A mono Opus audio track set above 256 kbps now starts (at 256 kbps, with a
+  log warning) instead of failing. *All*, 2026-10-12. Issue
+  [#295](https://github.com/obs-rust/obs-studio/issues/295), PR
+  [#296](https://github.com/obs-rust/obs-studio/pull/296), upstream
+  [obsproject/obs-studio#12753](https://github.com/obsproject/obs-studio/issues/12753).
+- An encoder error during a recording no longer freezes OBS or leaves an
+  output that shares the encoder unable to start. *All*, 2026-10-12. Issue
+  [#298](https://github.com/obs-rust/obs-studio/issues/298), PR
+  [#299](https://github.com/obs-rust/obs-studio/pull/299), upstream
+  [obsproject/obs-studio#9946](https://github.com/obsproject/obs-studio/issues/9946).
+- Recordings that start in the same second no longer write to the same file
+  and overwrite each other. *All*, 2026-10-12. Issue
+  [#308](https://github.com/obs-rust/obs-studio/issues/308), PR
+  [#309](https://github.com/obs-rust/obs-studio/pull/309), upstream
+  [obsproject/obs-studio#10750](https://github.com/obsproject/obs-studio/issues/10750).
+- A custom FFmpeg recording to WebM/VP9 with the BGRA format now starts and
+  keeps its alpha channel. *All*, 2026-10-12. Issue
+  [#310](https://github.com/obs-rust/obs-studio/issues/310), PR
+  [#311](https://github.com/obs-rust/obs-studio/pull/311), upstream
+  [obsproject/obs-studio#13785](https://github.com/obsproject/obs-studio/issues/13785).
+- With Rescale Output on, Stats counts frames skipped due to encoding lag
+  and the status bar warns about encoder overload. *All*, 2026-10-12. Issue
+  [#336](https://github.com/obs-rust/obs-studio/issues/336), PR
+  [#337](https://github.com/obs-rust/obs-studio/pull/337), upstream
+  [obsproject/obs-studio#11078](https://github.com/obsproject/obs-studio/issues/11078).
+- Caption text longer than 128 bytes, also from obs-websocket
+  SendStreamCaption, is wrapped and paged instead of cut off. *All*,
+  2026-10-12. PR [#341](https://github.com/obs-rust/obs-studio/pull/341).
+- Stopping a Custom Output (FFmpeg) recording no longer crashes or freezes
+  OBS, for example with libvpx. *All*, 2026-10-12. Issue
+  [#354](https://github.com/obs-rust/obs-studio/issues/354), PR
+  [#355](https://github.com/obs-rust/obs-studio/pull/355), upstream
+  [obsproject/obs-studio#7536](https://github.com/obsproject/obs-studio/issues/7536).
+- Remuxing an MKV recording to MP4 or MOV keeps the audio sample-accurate,
+  so it no longer crackles in QuickTime and Final Cut Pro. *All*,
+  2026-10-12. Issue
+  [#359](https://github.com/obs-rust/obs-studio/issues/359), PR
+  [#360](https://github.com/obs-rust/obs-studio/pull/360), upstream
+  [obsproject/obs-studio#13249](https://github.com/obsproject/obs-studio/issues/13249).
+- In Advanced output mode, "Ignore streaming service setting
+  recommendations" keeps your encoder settings, such as CQP or CRF. *All*,
+  2026-10-12. Issue
+  [#368](https://github.com/obs-rust/obs-studio/issues/368), PR
+  [#369](https://github.com/obs-rust/obs-studio/pull/369), upstream
+  [obsproject/obs-studio#4125](https://github.com/obsproject/obs-studio/issues/4125).
+- FFmpeg output recordings that convert the pixel format no longer leak
+  memory for each recording. *All*, 2026-10-12. PR
+  [#375](https://github.com/obs-rust/obs-studio/pull/375).
+- A caption character that EIA-608 cannot encode (for example CJK or emoji)
+  becomes a gap, and the rest of the caption row is still sent. *All*,
+  2026-10-12. Issue
+  [#376](https://github.com/obs-rust/obs-studio/issues/376), PR
+  [#412](https://github.com/obs-rust/obs-studio/pull/412).
+- Hybrid MP4 recordings with 5.1 audio play with sound in VLC 3. *All*,
+  2026-10-13. Issue
+  [#494](https://github.com/obs-rust/obs-studio/issues/494), PR
+  [#495](https://github.com/obs-rust/obs-studio/pull/495).
+- A recording with Custom Output (FFmpeg) set to "Output to URL" is no
+  longer stopped for low disk space. *All*, 2026-10-13. Issue
+  [#526](https://github.com/obs-rust/obs-studio/issues/526), PR
+  [#527](https://github.com/obs-rust/obs-studio/pull/527), upstream
+  [obsproject/obs-studio#12952](https://github.com/obsproject/obs-studio/issues/12952).
+- With dynamic bitrate on, a video bitrate that you change while live stays
+  in effect after network congestion. *All*, 2026-10-13. Issue
+  [#574](https://github.com/obs-rust/obs-studio/issues/574), PR
+  [#575](https://github.com/obs-rust/obs-studio/pull/575), upstream
+  [obsproject/obs-studio#12235](https://github.com/obsproject/obs-studio/issues/12235).
+- A source with Subtract blending no longer shows black in a rescaled
+  recording or stream. *All*, 2026-10-13. Issue
+  [#580](https://github.com/obs-rust/obs-studio/issues/580), PR
+  [#581](https://github.com/obs-rust/obs-studio/pull/581), upstream
+  [obsproject/obs-studio#10746](https://github.com/obsproject/obs-studio/issues/10746).
+- A saved replay uses the current filename settings, not the settings from
+  when the replay buffer started. *All*, 2026-10-13. Issue
+  [#583](https://github.com/obs-rust/obs-studio/issues/583), PR
+  [#584](https://github.com/obs-rust/obs-studio/pull/584), upstream
+  [obsproject/obs-studio#10923](https://github.com/obsproject/obs-studio/issues/10923).
+- A recording started while the replay buffer runs starts at once, instead
+  of waiting for the next keyframe or leaving an empty file. *All*,
+  2026-10-13. Issues
+  [#593](https://github.com/obs-rust/obs-studio/issues/593),
+  [#597](https://github.com/obs-rust/obs-studio/issues/597), PRs
+  [#594](https://github.com/obs-rust/obs-studio/pull/594),
+  [#598](https://github.com/obs-rust/obs-studio/pull/598), upstream
+  [obsproject/obs-studio#12069](https://github.com/obsproject/obs-studio/issues/12069).
+- Tools > Output Timer shows Start again after its timer stopped the output
+  while the dialog was closed. *All*, 2026-10-13. Issue
+  [#600](https://github.com/obs-rust/obs-studio/issues/600), PR
+  [#601](https://github.com/obs-rust/obs-studio/pull/601), upstream
+  [obsproject/obs-studio#10900](https://github.com/obsproject/obs-studio/issues/10900).
+- Restarting the same output no longer makes its interleaving batch limit
+  grow each time. *All*, 2026-10-14. Issues
+  [#487](https://github.com/obs-rust/obs-studio/issues/487),
+  [#686](https://github.com/obs-rust/obs-studio/issues/686), PR
+  [#704](https://github.com/obs-rust/obs-studio/pull/704).
+- A RIST stream that fails to open no longer can crash OBS by freeing its
+  credentials twice. *All*, 2026-10-14. Issues
+  [#482](https://github.com/obs-rust/obs-studio/issues/482),
+  [#686](https://github.com/obs-rust/obs-studio/issues/686), PR
+  [#705](https://github.com/obs-rust/obs-studio/pull/705).
+- A GPU encoder that starts while the last one on the same video mix stops
+  keeps getting frames; before, it could stop receiving frames. *All*,
+  2026-10-14. PR [#736](https://github.com/obs-rust/obs-studio/pull/736).
+- Quitting OBS while it records stops the recording correctly, so the end of
+  the recording is not lost. *All*, 2026-10-15. Issue
+  [#780](https://github.com/obs-rust/obs-studio/issues/780), PR
+  [#781](https://github.com/obs-rust/obs-studio/pull/781).
+- Start Recording no longer crashes OBS after an earlier attempt failed with
+  "Unable to write to". *All*, 2026-10-15. Issue
+  [#802](https://github.com/obs-rust/obs-studio/issues/802), PR
+  [#803](https://github.com/obs-rust/obs-studio/pull/803), upstream
+  [obsproject/obs-studio#11940](https://github.com/obsproject/obs-studio/issues/11940).
+- When the stream server name cannot be resolved, the log shows the real
+  lookup error instead of "Success". *All*, 2026-10-15. Issue
+  [#903](https://github.com/obs-rust/obs-studio/issues/903), PR
+  [#918](https://github.com/obs-rust/obs-studio/pull/918).
+- With bitrate limiting on, the VideoToolbox encoder on macOS gets the
+  configured limit values; before, it got wrong values. *macOS*, 2026-10-16.
+  PR [#996](https://github.com/obs-rust/obs-studio/pull/996).
+- An SRT stream that fails to connect no longer disconnects the other SRT
+  streams and Media Sources in OBS. *All*, 2026-10-16. Issue
+  [#1101](https://github.com/obs-rust/obs-studio/issues/1101), PR
+  [#1102](https://github.com/obs-rust/obs-studio/pull/1102), upstream
+  [obsproject/obs-studio#12361](https://github.com/obsproject/obs-studio/issues/12361).
+- A recording or stream through the Custom FFmpeg Output keeps its last
+  second of video and audio when it stops. *All*, 2026-10-16. Issue
+  [#1124](https://github.com/obs-rust/obs-studio/issues/1124), PR
+  [#1125](https://github.com/obs-rust/obs-studio/pull/1125).
+- With the replay buffer on, a hotkey change in Settings no longer makes OBS
+  log "Failed reading json string" each time the replay buffer is created.
+  *All*, 2026-10-17. Issue
+  [#1137](https://github.com/obs-rust/obs-studio/issues/1137), PR
+  [#1138](https://github.com/obs-rust/obs-studio/pull/1138), upstream
+  [obsproject/obs-studio#14014](https://github.com/obsproject/obs-studio/issues/14014).
+
+### Sources and filters
+
+- The color grade filter loads 1D .cube LUTs correctly, and a .cube file
+  with a very large size no longer crashes OBS or writes out of bounds.
+  *All*, 2026-10-10. Issue
+  [#94](https://github.com/obs-rust/obs-studio/issues/94), PR
+  [#113](https://github.com/obs-rust/obs-studio/pull/113).
+- Text (FreeType 2) sources read UTF-16 text files correctly, without
+  garbage characters, crashes or a stray byte-order mark. *All*, 2026-10-11.
+  Issue [#95](https://github.com/obs-rust/obs-studio/issues/95), PR
+  [#121](https://github.com/obs-rust/obs-studio/pull/121).
+- A Media Source playing an RTSP camera that goes silent now times out after
+  about 10 seconds and reconnects when the camera comes back. *All*,
+  2026-10-11. Issue
+  [#189](https://github.com/obs-rust/obs-studio/issues/189), PR
+  [#193](https://github.com/obs-rust/obs-studio/pull/193), upstream
+  [obsproject/obs-studio#12958](https://github.com/obsproject/obs-studio/issues/12958).
+- A Text (FreeType 2) source whose text changes often no longer stops
+  drawing new letters after a while. *All*, 2026-10-11. Issue
+  [#195](https://github.com/obs-rust/obs-studio/issues/195), PR
+  [#196](https://github.com/obs-rust/obs-studio/pull/196), upstream
+  [obsproject/obs-studio#11819](https://github.com/obsproject/obs-studio/issues/11819).
+- A Media Source that restarts when it becomes active no longer flashes its
+  old last frame and shows its first frame at once. *All*, 2026-10-11.
+  Issues [#249](https://github.com/obs-rust/obs-studio/issues/249),
+  [#321](https://github.com/obs-rust/obs-studio/issues/321), PRs
+  [#250](https://github.com/obs-rust/obs-studio/pull/250),
+  [#322](https://github.com/obs-rust/obs-studio/pull/322), upstream
+  [obsproject/obs-studio#4667](https://github.com/obsproject/obs-studio/issues/4667),
+  [obsproject/obs-studio#10488](https://github.com/obsproject/obs-studio/issues/10488).
+- A Text (FreeType 2) source that reads from a file shows the whole file,
+  also when the file contains NUL bytes. *All*, 2026-10-12. Issue
+  [#292](https://github.com/obs-rust/obs-studio/issues/292), PR
+  [#293](https://github.com/obs-rust/obs-studio/pull/293), upstream
+  [obsproject/obs-studio#7595](https://github.com/obsproject/obs-studio/issues/7595).
+- A Media Source that plays once (Loop off), such as a GIF, now shows its
+  last frames. *All*, 2026-10-12. Issue
+  [#306](https://github.com/obs-rust/obs-studio/issues/306), PR
+  [#307](https://github.com/obs-rust/obs-studio/pull/307), upstream
+  [obsproject/obs-studio#10425](https://github.com/obsproject/obs-studio/issues/10425).
+- Seeking in an audio file with embedded cover art continues from the new
+  position instead of ending playback. *All*, 2026-10-12. Issue
+  [#312](https://github.com/obs-rust/obs-studio/issues/312), PR
+  [#313](https://github.com/obs-rust/obs-studio/pull/313), upstream
+  [obsproject/obs-studio#11195](https://github.com/obsproject/obs-studio/issues/11195).
+- Changing the audio track, subtitle track or network caching of a VLC Video
+  Source takes effect every time. *All*, 2026-10-12. Issue
+  [#314](https://github.com/obs-rust/obs-studio/issues/314), PR
+  [#315](https://github.com/obs-rust/obs-studio/pull/315), upstream
+  [obsproject/obs-studio#8346](https://github.com/obsproject/obs-studio/issues/8346).
+- Yadif 2x deinterlacing shows bottom-field-first video in the correct
+  order. *All*, 2026-10-12. Issue
+  [#316](https://github.com/obs-rust/obs-studio/issues/316), PR
+  [#317](https://github.com/obs-rust/obs-studio/pull/317), upstream
+  [obsproject/obs-studio#6061](https://github.com/obsproject/obs-studio/issues/6061).
+- Scale filtering works on rotated scene items instead of aliasing or making
+  them transparent. *All*, 2026-10-12. Issue
+  [#371](https://github.com/obs-rust/obs-studio/issues/371), PR
+  [#372](https://github.com/obs-rust/obs-studio/pull/372), upstream
+  [obsproject/obs-studio#12625](https://github.com/obsproject/obs-studio/issues/12625).
+- A Stinger transition plays its whole clip when the clip's header gives a
+  short or no duration. *All*, 2026-10-12. Issue
+  [#373](https://github.com/obs-rust/obs-studio/issues/373), PR
+  [#374](https://github.com/obs-rust/obs-studio/pull/374), upstream
+  [obsproject/obs-studio#9755](https://github.com/obsproject/obs-studio/issues/9755).
+- Double-rate deinterlacing (Yadif 2x, Linear 2x, Discard 2x) shows every
+  field when the source field rate is not the canvas rate, so 50i on a 60
+  fps canvas is no longer choppy. *All*, 2026-10-12. Issue
+  [#394](https://github.com/obs-rust/obs-studio/issues/394), PR
+  [#395](https://github.com/obs-rust/obs-studio/pull/395), upstream
+  [obsproject/obs-studio#3402](https://github.com/obsproject/obs-studio/issues/3402).
+- A FreeType 2 Text source set to "Read from file" shows a file that is
+  created after the source is loaded, without a restart. *All*, 2026-10-12.
+  Issue [#396](https://github.com/obs-rust/obs-studio/issues/396), PR
+  [#397](https://github.com/obs-rust/obs-studio/pull/397), upstream
+  [obsproject/obs-studio#3196](https://github.com/obsproject/obs-studio/issues/3196).
+- A Media Source no longer leaks memory each time a read fails, for example
+  on a network timeout or at the end of a file. *All*, 2026-10-13. Issue
+  [#463](https://github.com/obs-rust/obs-studio/issues/463), PR
+  [#466](https://github.com/obs-rust/obs-studio/pull/466).
+- A Media Source seek (seek bar or obs-websocket SetMediaInputCursor) goes
+  to the requested time, not to the keyframe before it. *All*, 2026-10-13.
+  Issue [#478](https://github.com/obs-rust/obs-studio/issues/478), PR
+  [#479](https://github.com/obs-rust/obs-studio/pull/479), upstream
+  [obsproject/obs-websocket#1190](https://github.com/obsproject/obs-websocket/issues/1190).
+- Play after Stop or after the end of the file starts a Media Source again
+  from the beginning, from the hotkey or obs-websocket
+  TriggerMediaInputAction. *All*, 2026-10-13. Issue
+  [#504](https://github.com/obs-rust/obs-studio/issues/504), PR
+  [#505](https://github.com/obs-rust/obs-studio/pull/505), upstream
+  [obsproject/obs-websocket#1046](https://github.com/obsproject/obs-websocket/issues/1046).
+- A Media Source follows a stream whose frame size or pixel format changes,
+  and the picture no longer freezes or becomes garbled. *All*, 2026-10-13.
+  Issue [#517](https://github.com/obs-rust/obs-studio/issues/517), PR
+  [#518](https://github.com/obs-rust/obs-studio/pull/518), upstream
+  [obsproject/obs-studio#5010](https://github.com/obsproject/obs-studio/issues/5010).
+- An Image source reloads an image file that is replaced within the same
+  second. *All*, 2026-10-13. Issues
+  [#547](https://github.com/obs-rust/obs-studio/issues/547),
+  [#564](https://github.com/obs-rust/obs-studio/issues/564), PRs
+  [#548](https://github.com/obs-rust/obs-studio/pull/548),
+  [#565](https://github.com/obs-rust/obs-studio/pull/565), upstream
+  [obsproject/obs-studio#10700](https://github.com/obsproject/obs-studio/issues/10700).
+- A cropped Media Source with show/hide transitions plays again when it is
+  shown after it played to its end. *All*, 2026-10-13. Issue
+  [#572](https://github.com/obs-rust/obs-studio/issues/572), PR
+  [#573](https://github.com/obs-rust/obs-studio/pull/573), upstream
+  [obsproject/obs-studio#10852](https://github.com/obsproject/obs-studio/issues/10852).
+- A looped Media Source plays an .mp3 or a file that does not start at 0
+  again without a gap of silence and a held picture. *All*, 2026-10-13.
+  Issue [#576](https://github.com/obs-rust/obs-studio/issues/576), PR
+  [#577](https://github.com/obs-rust/obs-studio/pull/577), upstream
+  [obsproject/obs-studio#12028](https://github.com/obsproject/obs-studio/issues/12028).
+- An Image Slide Show set to an aspect ratio such as 16:9 gets a real size
+  instead of 0x0. *All*, 2026-10-13. Issue
+  [#578](https://github.com/obs-rust/obs-studio/issues/578), PR
+  [#579](https://github.com/obs-rust/obs-studio/pull/579), upstream
+  [obsproject/obs-studio#11696](https://github.com/obsproject/obs-studio/issues/11696).
+- Changing Antialiasing on a Text (FreeType 2) source that reads from a file
+  no longer blanks its characters. *All*, 2026-10-14. Issues
+  [#484](https://github.com/obs-rust/obs-studio/issues/484),
+  [#686](https://github.com/obs-rust/obs-studio/issues/686), PR
+  [#711](https://github.com/obs-rust/obs-studio/pull/711).
+- A local Media Source that closes when inactive plays again when it is
+  restarted at its end, instead of showing nothing. *All*, 2026-10-14. PR
+  [#732](https://github.com/obs-rust/obs-studio/pull/732).
+- Changing the settings of a Media Source no longer can crash OBS while the
+  old file is still opening. *All*, 2026-10-14. PR
+  [#733](https://github.com/obs-rust/obs-studio/pull/733).
+- Undo and Redo in the Filters dialog step through each change correctly
+  when two settings change within half a second. *All*, 2026-10-14. Issue
+  [#765](https://github.com/obs-rust/obs-studio/issues/765), PR
+  [#766](https://github.com/obs-rust/obs-studio/pull/766), upstream
+  [obsproject/obs-studio#10628](https://github.com/obsproject/obs-studio/issues/10628).
+- Seeking a paused local Media Source shows the new frame at once, also when
+  it caches the file. *All*, 2026-10-15. PR
+  [#731](https://github.com/obs-rust/obs-studio/pull/731).
+- An emptied legacy slideshow clears and reports its end also in manual,
+  paused and deactivated modes, without a deadlock. *All*, 2026-10-15. PR
+  [#735](https://github.com/obs-rust/obs-studio/pull/735).
+- Next on the last slide of an Image Slide Show in "Once" mode ends the
+  slideshow instead of going back to the first slide. *All*, 2026-10-15.
+  Issue [#792](https://github.com/obs-rust/obs-studio/issues/792), PR
+  [#793](https://github.com/obs-rust/obs-studio/pull/793).
+- The Scroll filter shows sources wider or taller than 16384 pixels, such as
+  long text tickers; before, they disappeared. *All*, 2026-10-15. Issue
+  [#797](https://github.com/obs-rust/obs-studio/issues/797), PR
+  [#798](https://github.com/obs-rust/obs-studio/pull/798), upstream
+  [obsproject/obs-studio#10034](https://github.com/obsproject/obs-studio/issues/10034).
+- Image Source and Image Slide Show follow the EXIF orientation with FFmpeg
+  8.1 and later, so portrait photos are no longer sideways. *All*,
+  2026-10-15. Issue
+  [#821](https://github.com/obs-rust/obs-studio/issues/821), PR
+  [#822](https://github.com/obs-rust/obs-studio/pull/822), upstream
+  [obsproject/obs-studio#5223](https://github.com/obsproject/obs-studio/issues/5223).
+- When you close a VST plug-in window with its own close button, the filter
+  shows Open Plug-in Interface again and you can reopen the editor. *All*,
+  2026-10-16. Issue
+  [#1105](https://github.com/obs-rust/obs-studio/issues/1105), PR
+  [#1106](https://github.com/obs-rust/obs-studio/pull/1106), upstream
+  [obsproject/obs-studio#13580](https://github.com/obsproject/obs-studio/issues/13580).
+- OBS no longer crashes when you pick a file, font or color in Properties
+  after the source refreshed its properties while the dialog was open.
+  *All*, 2026-10-16. Issue
+  [#1112](https://github.com/obs-rust/obs-studio/issues/1112), PR
+  [#1113](https://github.com/obs-rust/obs-studio/pull/1113), upstream
+  [obsproject/obs-studio#10423](https://github.com/obsproject/obs-studio/issues/10423).
+- A Media Source playing a file whose timestamps do not start at 0, such as
+  MPEG-TS, shows the correct time and seeks to the correct position. *All*,
+  2026-10-16. Issue
+  [#1122](https://github.com/obs-rust/obs-studio/issues/1122), PR
+  [#1123](https://github.com/obs-rust/obs-studio/pull/1123).
+- A Media Source playing a WebM with alpha from a URL shows the video, not
+  only the audio. *All*, 2026-10-16. Issue
+  [#1131](https://github.com/obs-rust/obs-studio/issues/1131), PR
+  [#1132](https://github.com/obs-rust/obs-studio/pull/1132).
+
+### Scenes and UI
+
+- Theme metadata, theme string variables and effect annotation strings that
+  contain escape characters no longer end with a stray closing quote. *All*,
+  2026-10-09. Issue [#48](https://github.com/obs-rust/obs-studio/issues/48),
+  PR [#54](https://github.com/obs-rust/obs-studio/pull/54).
+- Hotkeys from saved files or plugins can no longer be bound to the left or
+  right mouse button, so a normal click does not trigger a hotkey. *All*,
+  2026-10-09. PR [#56](https://github.com/obs-rust/obs-studio/pull/56),
+  upstream
+  [obsproject/obs-studio#13403](https://github.com/obsproject/obs-studio/issues/13403).
+- A source moved into or out of a hidden group now becomes active or
+  inactive correctly, so it no longer plays audio while hidden or stays
+  silent while visible. *All*, 2026-10-11. Issue
+  [#241](https://github.com/obs-rust/obs-studio/issues/241), PR
+  [#242](https://github.com/obs-rust/obs-studio/pull/242), upstream
+  [obsproject/obs-studio#9961](https://github.com/obsproject/obs-studio/issues/9961).
+- Moving one child of a group no longer moves the other children of the
+  group across the canvas. *All*, 2026-10-11. Issue
+  [#279](https://github.com/obs-rust/obs-studio/issues/279), PR
+  [#280](https://github.com/obs-rust/obs-studio/pull/280), upstream
+  [obsproject/obs-studio#9298](https://github.com/obsproject/obs-studio/issues/9298).
+- Moving a scene into a group that the scene contains is refused instead of
+  crashing OBS. *All*, 2026-10-12. Issue
+  [#303](https://github.com/obs-rust/obs-studio/issues/303), PR
+  [#304](https://github.com/obs-rust/obs-studio/pull/304), upstream
+  [obsproject/obs-studio#10466](https://github.com/obsproject/obs-studio/issues/10466).
+- Hiding a group now stops children that have show/hide transitions, so a
+  hidden media source no longer plays. *All*, 2026-10-12. Issue
+  [#324](https://github.com/obs-rust/obs-studio/issues/324), PR
+  [#325](https://github.com/obs-rust/obs-studio/pull/325), upstream
+  [obsproject/obs-studio#5551](https://github.com/obsproject/obs-studio/issues/5551).
+- The Studio Mode Program view, a duplicated scene and an ungrouped item now
+  draw scene items at the correct size. *All*, 2026-10-12. Issue
+  [#345](https://github.com/obs-rust/obs-studio/issues/345), PR
+  [#346](https://github.com/obs-rust/obs-studio/pull/346), upstream
+  [obsproject/obs-studio#12171](https://github.com/obsproject/obs-studio/issues/12171).
+- On X11 with a second keyboard layout, hotkeys on keys like [ and ] use the
+  correct key instead of a number key. *Linux*, 2026-10-12. Issue
+  [#349](https://github.com/obs-rust/obs-studio/issues/349), PR
+  [#350](https://github.com/obs-rust/obs-studio/pull/350), upstream
+  [obsproject/obs-studio#12941](https://github.com/obsproject/obs-studio/issues/12941).
+- In Studio Mode, hiding a source that is only in the Preview now hides it,
+  so "Shutdown source when not visible" works. *All*, 2026-10-12. Issue
+  [#357](https://github.com/obs-rust/obs-studio/issues/357), PR
+  [#358](https://github.com/obs-rust/obs-studio/pull/358), upstream
+  [obsproject/obs-studio#4120](https://github.com/obsproject/obs-studio/issues/4120).
+- Copy Transform and Paste Transform work with items inside groups and use
+  canvas positions. *All*, 2026-10-12. Issue
+  [#361](https://github.com/obs-rust/obs-studio/issues/361), PR
+  [#362](https://github.com/obs-rust/obs-studio/pull/362), upstream
+  [obsproject/obs-studio#5478](https://github.com/obsproject/obs-studio/issues/5478).
+- Paste Filters pastes into every selected source, not only one. *All*,
+  2026-10-12. Issue
+  [#365](https://github.com/obs-rust/obs-studio/issues/365), PR
+  [#366](https://github.com/obs-rust/obs-studio/pull/366), upstream
+  [obsproject/obs-studio#4290](https://github.com/obsproject/obs-studio/issues/4290).
+- The time in the media controls follows the media time, also on long files.
+  *All*, 2026-10-12. Issue
+  [#381](https://github.com/obs-rust/obs-studio/issues/381), PR
+  [#382](https://github.com/obs-rust/obs-studio/pull/382), upstream
+  [obsproject/obs-studio#11183](https://github.com/obsproject/obs-studio/issues/11183).
+- A source added to an empty group with a bounding box keeps a valid
+  transform and is drawn in the group's box. *All*, 2026-10-12. Issue
+  [#387](https://github.com/obs-rust/obs-studio/issues/387), PR
+  [#388](https://github.com/obs-rust/obs-studio/pull/388), upstream
+  [obsproject/obs-studio#4245](https://github.com/obsproject/obs-studio/issues/4245).
+- A fresh profile no longer logs a false "Failed to rename basic scene
+  collection file" error. *All*, 2026-10-13. Issue
+  [#155](https://github.com/obs-rust/obs-studio/issues/155), PR
+  [#419](https://github.com/obs-rust/obs-studio/pull/419).
+- The Decklink Captions and Decklink Output tools show their real menu and
+  button text instead of raw text keys. *All*, 2026-10-13. Issue
+  [#157](https://github.com/obs-rust/obs-studio/issues/157), PR
+  [#421](https://github.com/obs-rust/obs-studio/pull/421).
+- A normal shutdown no longer logs the warning "Tried to call
+  obs_frontend_remove_event_callback with no callbacks!". *All*, 2026-10-13.
+  Issue [#156](https://github.com/obs-rust/obs-studio/issues/156), PR
+  [#425](https://github.com/obs-rust/obs-studio/pull/425).
+- Turning Studio Mode off no longer sends scene-changed events for scenes
+  that did not go live, so obs-websocket clients and Advanced Scene Switcher
+  see no false CurrentProgramSceneChanged. *All*, 2026-10-13. PR
+  [#481](https://github.com/obs-rust/obs-studio/pull/481), upstream
+  [obsproject/obs-websocket#1150](https://github.com/obsproject/obs-websocket/issues/1150).
+- Switching scenes quickly when a scene has a transition override no longer
+  locks the program output on one scene. *All*, 2026-10-13. Issue
+  [#555](https://github.com/obs-rust/obs-studio/issues/555), PR
+  [#556](https://github.com/obs-rust/obs-studio/pull/556), upstream
+  [obsproject/obs-studio#11914](https://github.com/obsproject/obs-studio/issues/11914).
+- In Studio Mode, a preview scene set while a transition runs stays in the
+  preview and is not replaced by the old program scene. *All*, 2026-10-13.
+  Issue [#560](https://github.com/obs-rust/obs-studio/issues/560), PR
+  [#561](https://github.com/obs-rust/obs-studio/pull/561), upstream
+  [obsproject/obs-websocket#1320](https://github.com/obsproject/obs-websocket/issues/1320).
+- On the Advanced Streaming tab, the Rescale Output resolution is greyed out
+  when Rescale Output is Disabled. *All*, 2026-10-13. Issue
+  [#585](https://github.com/obs-rust/obs-studio/issues/585), PR
+  [#586](https://github.com/obs-rust/obs-studio/pull/586), upstream
+  [obsproject/obs-studio#11908](https://github.com/obsproject/obs-studio/issues/11908).
+- Profile and scene collection names that contain '&' show correctly in the
+  menus. *All*, 2026-10-13. Issue
+  [#587](https://github.com/obs-rust/obs-studio/issues/587), PR
+  [#588](https://github.com/obs-rust/obs-studio/pull/588), upstream
+  [obsproject/obs-studio#12853](https://github.com/obsproject/obs-studio/issues/12853).
+- The selected built-in transition stays selected when you change the UI
+  language. *All*, 2026-10-13. Issue
+  [#590](https://github.com/obs-rust/obs-studio/issues/590), PR
+  [#591](https://github.com/obs-rust/obs-studio/pull/591), upstream
+  [obsproject/obs-studio#11844](https://github.com/obsproject/obs-studio/issues/11844).
+- The Add Source dialog lists existing sources of a type by name again.
+  *All*, 2026-10-13. Issue
+  [#604](https://github.com/obs-rust/obs-studio/issues/604), PR
+  [#605](https://github.com/obs-rust/obs-studio/pull/605), upstream
+  [obsproject/obs-studio#13947](https://github.com/obsproject/obs-studio/issues/13947).
+- In Settings > Stream, "Show all..." in the Service list no longer enables
+  Apply or causes a false unsaved-changes prompt. *All*, 2026-10-13. Issue
+  [#608](https://github.com/obs-rust/obs-studio/issues/608), PR
+  [#609](https://github.com/obs-rust/obs-studio/pull/609), upstream
+  [obsproject/obs-studio#9860](https://github.com/obsproject/obs-studio/issues/9860).
+- Show Transition and Hide Transition from the Sources context menu apply to
+  all selected sources, not only one. *All*, 2026-10-14. Issue
+  [#757](https://github.com/obs-rust/obs-studio/issues/757), PR
+  [#758](https://github.com/obs-rust/obs-studio/pull/758), upstream
+  [obsproject/obs-studio#10448](https://github.com/obsproject/obs-studio/issues/10448).
+- The Replay Buffer memory estimate in Settings > Output goes back to the
+  normal colour when it is under the limit again. *All*, 2026-10-14. Issue
+  [#759](https://github.com/obs-rust/obs-studio/issues/759), PR
+  [#760](https://github.com/obs-rust/obs-studio/pull/760), upstream
+  [obsproject/obs-studio#13171](https://github.com/obsproject/obs-studio/issues/13171).
+- A Settings > Hotkeys field records Alt+C and Alt+O; before, these keys
+  pressed Cancel or OK on KDE and GNOME. *Linux*, 2026-10-14. Issue
+  [#763](https://github.com/obs-rust/obs-studio/issues/763), PR
+  [#764](https://github.com/obs-rust/obs-studio/pull/764), upstream
+  [obsproject/obs-studio#13385](https://github.com/obsproject/obs-studio/issues/13385).
+- In Studio Mode with "Duplicate Sources", editing a source inside a group
+  in Preview no longer changes Program before the transition. *All*,
+  2026-10-15. Issue
+  [#823](https://github.com/obs-rust/obs-studio/issues/823), PR
+  [#824](https://github.com/obs-rust/obs-studio/pull/824), upstream
+  [obsproject/obs-studio#4309](https://github.com/obsproject/obs-studio/issues/4309),
+  [obsproject/obs-studio#6977](https://github.com/obsproject/obs-studio/issues/6977).
+- Safe Mode and --only-bundled-plugins no longer show the Plugin Errors
+  dialog, and removing a Missing plugin in the Plugin Manager removes the
+  correct plugin. *All*, 2026-10-16. Issue
+  [#1079](https://github.com/obs-rust/obs-studio/issues/1079), PR
+  [#1080](https://github.com/obs-rust/obs-studio/pull/1080), upstream
+  [obsproject/obs-studio#13948](https://github.com/obsproject/obs-studio/issues/13948),
+  [obsproject/obs-studio#14005](https://github.com/obsproject/obs-studio/issues/14005).
+- Shift+Tab out of a hotkey field in Settings > Hotkeys only moves the focus
+  and no longer binds Shift to that action. *All*, 2026-10-16. Issue
+  [#1114](https://github.com/obs-rust/obs-studio/issues/1114), PR
+  [#1115](https://github.com/obs-rust/obs-studio/pull/1115), upstream
+  [obsproject/obs-studio#12475](https://github.com/obsproject/obs-studio/issues/12475).
+- In a tall Settings window, the audio track buttons on the Output page stay
+  next to their Audio Track label. *All*, 2026-10-17. Issue
+  [#1135](https://github.com/obs-rust/obs-studio/issues/1135), PR
+  [#1136](https://github.com/obs-rust/obs-studio/pull/1136), upstream
+  [obsproject/obs-studio#13286](https://github.com/obsproject/obs-studio/issues/13286).
+- Screenshot (Source) of a 10-bit or 12-bit source saves the colors that OBS
+  shows, not a much darker picture. *Linux, macOS*, 2026-10-17. Issue
+  [#1143](https://github.com/obs-rust/obs-studio/issues/1143), PR
+  [#1144](https://github.com/obs-rust/obs-studio/pull/1144), upstream
+  [obsproject/obs-studio#13209](https://github.com/obsproject/obs-studio/issues/13209).
+
+### Scripting
+
+- quat_set, which Lua and Python scripts can call, now stores the x, y, z
+  and w values in the correct order. *All*, 2026-10-10. PR
+  [#86](https://github.com/obs-rust/obs-studio/pull/86).
+- In Python scripts, sys.stdout and sys.stderr behave like normal text
+  streams, so libraries that call isatty() and similar methods work. *All*,
+  2026-10-11. Issue
+  [#234](https://github.com/obs-rust/obs-studio/issues/234), PR
+  [#235](https://github.com/obs-rust/obs-studio/pull/235), upstream
+  [obsproject/obs-studio#4628](https://github.com/obsproject/obs-studio/issues/4628).
+- A Lua script that makes a video source and enters graphics no longer
+  freezes OBS; the source skips one frame instead. *All*, 2026-10-11. Issue
+  [#238](https://github.com/obs-rust/obs-studio/issues/238), PR
+  [#239](https://github.com/obs-rust/obs-studio/pull/239), upstream
+  [obsproject/obs-studio#6674](https://github.com/obsproject/obs-studio/issues/6674).
+- Python scripts can call obs_source_enum_filters to get a list of the
+  filters on a source. *All*, 2026-10-11. Issue
+  [#282](https://github.com/obs-rust/obs-studio/issues/282), PR
+  [#283](https://github.com/obs-rust/obs-studio/pull/283), upstream
+  [obsproject/obs-studio#12116](https://github.com/obsproject/obs-studio/issues/12116).
+- Lua and Python scripts can read the obs-defs.h constants, such as
+  OBS_ALIGN_*. *All*, 2026-10-12. Issue
+  [#383](https://github.com/obs-rust/obs-studio/issues/383), PR
+  [#384](https://github.com/obs-rust/obs-studio/pull/384), upstream
+  [obsproject/obs-studio#8936](https://github.com/obsproject/obs-studio/issues/8936).
+
+### Stability
+
+- OBS detects when writing a configuration file to disk fails, instead of
+  treating the save as successful. *All*, 2026-10-10. PRs
+  [#70](https://github.com/obs-rust/obs-studio/pull/70),
+  [#71](https://github.com/obs-rust/obs-studio/pull/71),
+  [#72](https://github.com/obs-rust/obs-studio/pull/72).
+- Settings no longer crashes when no output supports the stream protocol.
+  *All*, 2026-10-11. Issue
+  [#217](https://github.com/obs-rust/obs-studio/issues/217), PR
+  [#219](https://github.com/obs-rust/obs-studio/pull/219), upstream
+  [obsproject/obs-studio#12843](https://github.com/obsproject/obs-studio/issues/12843).
+- OBS on X11 no longer crashes in the hotkey thread when the X connection
+  closes, for example at shutdown. *Linux*, 2026-10-11. Issue
+  [#126](https://github.com/obs-rust/obs-studio/issues/126), PR
+  [#231](https://github.com/obs-rust/obs-studio/pull/231).
+- OBS no longer exits at startup on a Wayland desktop with more than one
+  seat. *Linux*, 2026-10-11. Issue
+  [#243](https://github.com/obs-rust/obs-studio/issues/243), PR
+  [#244](https://github.com/obs-rust/obs-studio/pull/244), upstream
+  [obsproject/obs-studio#12929](https://github.com/obsproject/obs-studio/issues/12929).
+- OBS no longer crashes on text that the current locale cannot convert, such
+  as a Latin-1 X11 window title in a UTF-8 locale. *Linux, Windows*,
+  2026-10-11. Issue
+  [#262](https://github.com/obs-rust/obs-studio/issues/262), PR
+  [#263](https://github.com/obs-rust/obs-studio/pull/263).
+- OBS also detects a crash or hang in the first session after installation
+  and offers recovery on the next launch. *All*, 2026-10-13. Issue
+  [#154](https://github.com/obs-rust/obs-studio/issues/154), PR
+  [#424](https://github.com/obs-rust/obs-studio/pull/424).
+- OBS no longer crashes when it quits after video initialization failed.
+  *All*, 2026-10-13. Issue
+  [#127](https://github.com/obs-rust/obs-studio/issues/127), PR
+  [#432](https://github.com/obs-rust/obs-studio/pull/432).
+- Changing the video resolution or profile no longer leaves raw outputs on
+  freed memory, so obs-websocket GetOutputList and plugin outputs such as
+  DistroAV no longer crash after it. *All*, 2026-10-13. Issue
+  [#469](https://github.com/obs-rust/obs-studio/issues/469), PR
+  [#470](https://github.com/obs-rust/obs-studio/pull/470), upstream
+  [obsproject/obs-studio#1344](https://github.com/obsproject/obs-studio/issues/1344).
+- Quitting OBS with a PipeWire camera source no longer prints thread
+  warnings or crashes with a double free. *Linux*, 2026-10-13. Issue
+  [#512](https://github.com/obs-rust/obs-studio/issues/512), PR
+  [#513](https://github.com/obs-rust/obs-studio/pull/513).
+- Two quick Start Streaming requests (obs-websocket StartStream or a deck
+  button) no longer crash OBS. *All*, 2026-10-13. Issue
+  [#538](https://github.com/obs-rust/obs-studio/issues/538), PR
+  [#539](https://github.com/obs-rust/obs-studio/pull/539), upstream
+  [obsproject/obs-studio#13283](https://github.com/obsproject/obs-studio/issues/13283).
+- Starting OBS with --disable-missing-files-check no longer leaks memory on
+  each scene collection load. *All*, 2026-10-13. Issue
+  [#542](https://github.com/obs-rust/obs-studio/issues/542), PR
+  [#543](https://github.com/obs-rust/obs-studio/pull/543), upstream
+  [obsproject/obs-studio#11074](https://github.com/obsproject/obs-studio/issues/11074).
+- Renaming or duplicating a fresh profile and then opening Settings no
+  longer crashes OBS. *All*, 2026-10-13. Issue
+  [#552](https://github.com/obs-rust/obs-studio/issues/552), PR
+  [#553](https://github.com/obs-rust/obs-studio/pull/553), upstream
+  [obsproject/obs-studio#12458](https://github.com/obsproject/obs-studio/issues/12458).
+- OBS no longer can crash when the portal sleep inhibitor is destroyed while
+  a reply is pending. *Linux*, 2026-10-13. Issue
+  [#471](https://github.com/obs-rust/obs-studio/issues/471), PR
+  [#656](https://github.com/obs-rust/obs-studio/pull/656).
+- A script or plugin that removes scene items while it walks a scene no
+  longer can make OBS use freed items. *All*, 2026-10-14. Issue
+  [#490](https://github.com/obs-rust/obs-studio/issues/490), PR
+  [#708](https://github.com/obs-rust/obs-studio/pull/708).
+- On macOS, OBS no longer hangs when a window gets focus while the system
+  looks up a generic app icon. *macOS*, 2026-10-14. Issues
+  [#635](https://github.com/obs-rust/obs-studio/issues/635),
+  [#725](https://github.com/obs-rust/obs-studio/issues/725), PR
+  [#727](https://github.com/obs-rust/obs-studio/pull/727).
+- A transition that is started towards a destination that already contains
+  it is refused; before, OBS hung. *All*, 2026-10-14. PR
+  [#737](https://github.com/obs-rust/obs-studio/pull/737).
+- OBS starts when one core module cannot be loaded (for example obs-browser
+  without CEF), logs a warning, and loads the other core modules. *Linux*,
+  2026-10-14. Issues
+  [#404](https://github.com/obs-rust/obs-studio/issues/404),
+  [#749](https://github.com/obs-rust/obs-studio/issues/749), PR
+  [#750](https://github.com/obs-rust/obs-studio/pull/750).
+- OBS no longer crashes when a stream or recording starts, or obs-websocket
+  lists outputs, after a resolution change. *All*, 2026-10-16. Issue
+  [#1108](https://github.com/obs-rust/obs-studio/issues/1108), PR
+  [#1109](https://github.com/obs-rust/obs-studio/pull/1109), upstream
+  [obsproject/obs-studio#12213](https://github.com/obsproject/obs-studio/issues/12213).
+
+### Security hardening
+
+- Malformed data from an RTMP server (a zero or negative chunk size, deep or
+  broken AMF data, oversized fields) can no longer hang the stream, crash
+  OBS or corrupt memory. *All*, 2026-10-11. Issues
+  [#100](https://github.com/obs-rust/obs-studio/issues/100),
+  [#102](https://github.com/obs-rust/obs-studio/issues/102),
+  [#173](https://github.com/obs-rust/obs-studio/issues/173),
+  [#209](https://github.com/obs-rust/obs-studio/issues/209), PRs
+  [#115](https://github.com/obs-rust/obs-studio/pull/115),
+  [#116](https://github.com/obs-rust/obs-studio/pull/116),
+  [#188](https://github.com/obs-rust/obs-studio/pull/188),
+  [#228](https://github.com/obs-rust/obs-studio/pull/228),
+  [#230](https://github.com/obs-rust/obs-studio/pull/230),
+  [#232](https://github.com/obs-rust/obs-studio/pull/232).
+- obs-websocket closes a connection that sends deeply nested JSON or
+  MessagePack before authentication, and OBS no longer crashes from it.
+  *All*, 2026-10-13. Issue
+  [#99](https://github.com/obs-rust/obs-studio/issues/99), PRs
+  [#477](https://github.com/obs-rust/obs-studio/pull/477),
+  [#497](https://github.com/obs-rust/obs-studio/pull/497),
+  [#502](https://github.com/obs-rust/obs-studio/pull/502),
+  [#503](https://github.com/obs-rust/obs-studio/pull/503).
