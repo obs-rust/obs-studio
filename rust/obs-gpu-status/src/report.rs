@@ -27,6 +27,8 @@ pub struct Report {
     pub cause_keys: Vec<&'static str>,
     /// The render adapter's utilization (#1025), `None` without a source.
     pub usage: Option<UsageSample>,
+    /// The last reading is too old to show ([`crate::usage::current`]).
+    pub usage_stale: bool,
 }
 
 /// Locale keys of [`SOFTWARE_CAUSES`], in the same order (#945).
@@ -131,12 +133,20 @@ impl Report {
             summary_args,
             cause_keys,
             usage: None,
+            usage_stale: false,
         }
     }
 
     /// Attach the render adapter's utilization ([`crate::usage::Sampler`]).
     pub fn with_usage(self, usage: Option<UsageSample>) -> Self {
         Self { usage, ..self }
+    }
+
+    /// Mark the reading as too old: the label is "n/a" and the tooltip
+    /// says that the reading is late, not that there is no source.
+    pub fn with_usage_stale(self, usage_stale: bool) -> Self {
+        let _ = usage_stale;
+        self
     }
 
     /// The status bar label for this state and [`Self::usage`] (#1025).

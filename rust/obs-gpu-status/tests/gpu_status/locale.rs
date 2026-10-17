@@ -88,15 +88,16 @@ fn every_readout_text_has_an_en_us_string_matching_the_english_text() {
     let mut readouts = Vec::new();
     for r in reports() {
         readouts.push(r.clone().readout());
+        readouts.push(r.clone().with_usage_stale(true).readout());
         readouts.push(r.with_usage(sample).readout());
     }
-    // The labels: percent, n/a, CPU rendering; the detail: no source.
+    // The labels: percent, n/a, CPU rendering; the details: no source, late.
     let keys: std::collections::BTreeSet<_> = readouts
         .iter()
         .flat_map(|o| std::iter::once(&o.label).chain(&o.details))
         .map(|t| t.key)
         .collect();
-    assert_eq!(keys.len(), 4, "{keys:?}");
+    assert_eq!(keys.len(), 5, "{keys:?}");
     for o in &readouts {
         for t in std::iter::once(&o.label).chain(&o.details) {
             let template = strings
