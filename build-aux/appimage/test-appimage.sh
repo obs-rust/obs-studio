@@ -24,8 +24,10 @@
 #      camera (through a fake Camera portal) and a PulseAudio microphone, all
 #      fed by test producers, and records them. It must stay up, map PipeWire,
 #      PulseAudio and GLib from the AppImage, load every module it ships, and
-#      start every source. The recording is left in <output-dir> for
-#      verify-recording.sh. (Every continuous build before
+#      start every source. It must load no plugin from the host's system
+#      plugin directories, where a distribution's OBS keeps its own, and must
+#      load the plugins in the user's folders. The recording is left in
+#      <output-dir> for verify-recording.sh. (Every continuous build before
 #      obs-rust/obs-studio#426 crashed here on start.) Only on Ubuntu 22.04,
 #      whose PipeWire 0.3.x cannot run the test producers, it runs without
 #      them: OBS must still get its PipeWire connection from the portal, stay
@@ -926,6 +928,31 @@ source_snapshot() {
         while IFS= read -r -d '' file; do sha256sum "$file"; done < <(find "$root" -type f -print0 | sort -z)
     done
 }
+
+# A distribution's OBS installed on the same host (obs-rust/obs-studio#1084):
+# its plugins are built against its own libobs, not the AppImage's. Every
+# system directory where a distribution OBS or an installed OBS-Studio-Rust
+# keeps plugins gets a file that no OBS can load, and the AppImage must never
+# try one. The user's plugin folders (current and legacy layout) still load:
+# each holds a copy of a module the AppImage ships, under a name of its own.
+HOST_PLUGIN_PROBE="host-plugin-probe"
+for lib in /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu; do
+    for dir in obs-plugins obs-modules/plugins obs-studio-rust/obs-modules/plugins; do
+        mkdir -p "$lib/$dir"
+        printf 'not an OBS module\n' >"$lib/$dir/$HOST_PLUGIN_PROBE.so"
+    done
+done
+USER_PLUGIN_SOURCE="$(find "$PACKAGE_MODULES" -name obs-transitions.so -print -quit)"
+USER_PLUGINS=(user-plugin-probe user-legacy-plugin-probe)
+if [ -n "$USER_PLUGIN_SOURCE" ]; then
+    mkdir -p "$XDG_DATA_HOME/obs-studio/plugins/user-plugin-probe" \
+        "$XDG_CONFIG_HOME/obs-studio/plugins/user-legacy-plugin-probe/bin/64bit"
+    cp "$USER_PLUGIN_SOURCE" "$XDG_DATA_HOME/obs-studio/plugins/user-plugin-probe/user-plugin-probe.so"
+    cp "$USER_PLUGIN_SOURCE" \
+        "$XDG_CONFIG_HOME/obs-studio/plugins/user-legacy-plugin-probe/bin/64bit/user-legacy-plugin-probe.so"
+else
+    fail "the AppImage has no obs-transitions.so to stand in for a user's plugin"
+fi
 source_snapshot >"$OUT/upstream-before.txt"
 
 require_no_obs_running
@@ -1014,6 +1041,15 @@ require_no_crash_report
 # The portal handed OBS its PipeWire connection: the point where every
 # continuous build before obs-rust/obs-studio#426 crashed.
 grep -q 'OpenPipeWireRemote' "$OUT/fake-portal.log" || fail "OBS never asked the portal for its PipeWire connection"
+if grep -F "$HOST_PLUGIN_PROBE" "$OUT/obs-profile-stdout.log" ${LOG:+"$LOG"}; then
+    fail "OBS tried to load plugins of the host's own OBS from its system directories (see above)"
+fi
+if [ -n "$LOG" ] && [ -n "$USER_PLUGIN_SOURCE" ]; then
+    loaded_plugins="$(sed -n '/Loaded Modules:/,/^[0-9:.]*: *-\{10\}/p' "$LOG")"
+    for m in "${USER_PLUGINS[@]}"; do
+        grep -q " $m.so\$" <<<"$loaded_plugins" || fail "OBS did not load the plugin $m from the user's plugin folder"
+    done
+fi
 if [ -z "$LOG" ]; then
     fail "OBS with a saved profile wrote no log"
 elif [ -n "$LAUNCH_ONLY" ]; then

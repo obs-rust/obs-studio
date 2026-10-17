@@ -130,7 +130,11 @@ with none of OBS's dependencies installed, and fails unless all of these pass:
    ScreenCast and Camera portal, and test producers play scrolling colour bars
    (screen), a bouncing ball (camera) and a 440 Hz tone (microphone). OBS must
    stay up, every source must start, and `verify-recording.sh` then requires
-   both pictures to keep moving and the tone to be present throughout.
+   both pictures to keep moving and the tone to be present throughout. A file
+   that no OBS can load sits in every system plugin directory a distribution
+   OBS (or an installed OBS-Studio-Rust) uses, and OBS must not try to load
+   it; copies of a bundled module in the user's plugin folders (current and
+   legacy layout) must load.
 
 The release job publishes only after the tests pass on every distribution.
 
