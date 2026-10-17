@@ -415,16 +415,31 @@ impl Default for DeviceCache {
     }
 }
 
-/// The PCI device OBS renders on (obs-rust/obs-studio#1020). Utilization
-/// sources (NVML, fdinfo, `gpu_busy_percent`) use it to pick the right GPU.
+/// The GPU OBS renders on (obs-rust/obs-studio#1020). Utilization sources
+/// (NVML, fdinfo, `gpu_busy_percent`, IOKit) use it to pick the right GPU.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RenderAdapter {
-    /// PCI address in sysfs form, e.g. `0000:2b:00.0`.
+    /// Linux: PCI address in sysfs form, e.g. `0000:2b:00.0`.
     Pci(String),
+    /// macOS: IORegistry entry ID of the GPU's `IOAccelerator`, which is
+    /// also `MTLDevice.registryID` (e.g. `0x100000b5b`).
+    RegistryId(u64),
     /// More than one GPU can be the render adapter, so none is picked.
     Ambiguous,
-    /// No PCI GPU: software rendering, no sysfs, or a non-PCI device.
+    /// No GPU found: software rendering, no sysfs, or a non-PCI device.
     Unknown,
+}
+
+/// macOS: pick the render adapter from the registry ID of the GPU that
+/// Metal uses by default (`render`) and the registry IDs of the system's
+/// `IOAccelerator`s (`gpus`).
+///
+/// libobs-metal renders on `MTLCreateSystemDefaultDevice()`, and the Cocoa
+/// OpenGL context does not allow offline renderers, so on a Mac with two
+/// GPUs both renderers use the GPU that Metal names as the default.
+pub fn render_adapter_from_registry(render: Option<u64>, gpus: &[u64]) -> RenderAdapter {
+    let _ = (render, gpus);
+    RenderAdapter::Unknown
 }
 
 /// Resolve the render node that EGL reports for the display

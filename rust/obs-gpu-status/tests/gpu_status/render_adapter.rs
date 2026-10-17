@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use obs_gpu_status::{RenderAdapter, render_adapter};
+use obs_gpu_status::{RenderAdapter, render_adapter, render_adapter_from_registry};
 
 struct Tree(PathBuf);
 
@@ -167,4 +167,65 @@ fn missing_sysfs_is_unknown() {
         RenderAdapter::Unknown
     );
     assert_eq!(render_adapter(&t.0, None), RenderAdapter::Unknown);
+}
+
+// macOS (obs-rust/obs-studio#1020): registry IDs. 0x100000b5b is the M1 Max
+// (`MTLDevice.registryID` and its AGXAccelerator entry); the pair below is a
+// MacBook Pro with an integrated and a discrete GPU.
+const APPLE_SILICON: u64 = 0x1_0000_0b5b;
+const INTEGRATED: u64 = 0x1_0000_0401;
+const DISCRETE: u64 = 0x1_0000_0502;
+
+#[test]
+fn metal_default_gpu_is_the_render_adapter() {
+    assert_eq!(
+        render_adapter_from_registry(Some(APPLE_SILICON), &[APPLE_SILICON]),
+        RenderAdapter::RegistryId(APPLE_SILICON)
+    );
+    assert_eq!(
+        render_adapter_from_registry(Some(DISCRETE), &[INTEGRATED, DISCRETE]),
+        RenderAdapter::RegistryId(DISCRETE)
+    );
+}
+
+#[test]
+fn metal_default_without_iokit_list_is_still_used() {
+    // IOKit enumeration failed, but Metal named its device.
+    assert_eq!(
+        render_adapter_from_registry(Some(APPLE_SILICON), &[]),
+        RenderAdapter::RegistryId(APPLE_SILICON)
+    );
+}
+
+#[test]
+fn metal_default_missing_from_iokit_is_unknown() {
+    // The two sources disagree: never guess.
+    assert_eq!(
+        render_adapter_from_registry(Some(DISCRETE), &[INTEGRATED]),
+        RenderAdapter::Unknown
+    );
+}
+
+#[test]
+fn no_metal_device_with_one_gpu_is_that_gpu() {
+    assert_eq!(
+        render_adapter_from_registry(None, &[APPLE_SILICON, APPLE_SILICON]),
+        RenderAdapter::RegistryId(APPLE_SILICON)
+    );
+}
+
+#[test]
+fn no_metal_device_with_two_gpus_is_ambiguous() {
+    assert_eq!(
+        render_adapter_from_registry(None, &[INTEGRATED, DISCRETE]),
+        RenderAdapter::Ambiguous
+    );
+}
+
+#[test]
+fn no_metal_device_and_no_gpu_is_unknown() {
+    assert_eq!(
+        render_adapter_from_registry(None, &[]),
+        RenderAdapter::Unknown
+    );
 }
