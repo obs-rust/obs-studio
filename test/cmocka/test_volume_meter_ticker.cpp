@@ -8,6 +8,10 @@
 #include <QCoreApplication>
 #include <QElapsedTimer>
 
+/* Before cmocka.h: cmocka 2.x defines a stop() macro, which turns the
+ * ticker's QTimer::stop() call into an undefined QTimer::_stop(). */
+#include "VolumeMeterTicker.hpp"
+
 #include <atomic>
 #include <cmath>
 #include <limits>
@@ -20,8 +24,6 @@
 extern "C" {
 #include <cmocka.h>
 }
-
-#include "VolumeMeterTicker.hpp"
 
 static const float inf = std::numeric_limits<float>::infinity();
 static const float floor_db = -60.0f;
