@@ -35,6 +35,7 @@
 /* widgets/OBSBasic.cpp */
 #include "frontend/widgets/OBSBasic.hpp"
 #include "frontend/widgets/RecordingShutdown.hpp"
+#include "frontend/widgets/RecordingShutdownWait.hpp"
 #include "frontend/widgets/VirtualCamShutdown.hpp"
 #include "ui-config.h"
 
