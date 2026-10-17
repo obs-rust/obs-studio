@@ -14,8 +14,8 @@ cfg_select! {
 
         /// The PCI device behind the render node that EGL reports for the
         /// display (obs-rust/obs-studio#1020).
-        pub fn render_adapter(render_node: Option<&str>) -> crate::RenderAdapter {
-            crate::render_adapter(std::path::Path::new("/"), render_node)
+        pub fn render_adapter(hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
+            crate::render_adapter(std::path::Path::new("/"), hint.render_node)
         }
     }
     windows => {
@@ -30,10 +30,10 @@ cfg_select! {
             devices
         }
 
-        /// The render adapter. The DXGI LUID part of
-        /// obs-rust/obs-studio#1020 is open, so this is always unknown.
-        pub fn render_adapter(_render_node: Option<&str>) -> crate::RenderAdapter {
-            crate::RenderAdapter::Unknown
+        /// The DXGI adapter that libobs-d3d11 renders on, by LUID
+        /// (obs-rust/obs-studio#1020).
+        pub fn render_adapter(hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
+            crate::dxgi::render_adapter_from_dxgi(hint.adapter_index, &windows::dxgi_adapters())
         }
     }
     target_os = "macos" => {
@@ -48,8 +48,8 @@ cfg_select! {
 
         /// The GPU that OBS renders on, by registry ID
         /// (obs-rust/obs-studio#1020). macOS has no render node; both
-        /// renderers use Metal's default GPU.
-        pub fn render_adapter(_render_node: Option<&str>) -> crate::RenderAdapter {
+        /// renderers use Metal's default GPU, so the hint is not needed.
+        pub fn render_adapter(_hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
             crate::render_adapter_from_registry(
                 macos::default_metal_registry_id(),
                 &macos::accelerator_registry_ids(),
@@ -63,7 +63,7 @@ cfg_select! {
         }
 
         /// The render adapter is not known on this platform.
-        pub fn render_adapter(_render_node: Option<&str>) -> crate::RenderAdapter {
+        pub fn render_adapter(_hint: crate::RenderHint<'_>) -> crate::RenderAdapter {
             crate::RenderAdapter::Unknown
         }
     }

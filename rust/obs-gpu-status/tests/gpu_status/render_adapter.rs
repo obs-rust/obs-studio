@@ -229,3 +229,14 @@ fn no_metal_device_and_no_gpu_is_unknown() {
         RenderAdapter::Unknown
     );
 }
+
+#[test]
+fn host_render_adapter_does_not_panic() {
+    // The real platform path: sysfs on Linux, Metal and IOKit on macOS,
+    // DXGI on Windows (CI's Windows runner has only Microsoft adapters).
+    let _ = obs_gpu_status::platform::render_adapter(obs_gpu_status::RenderHint::default());
+    let _ = obs_gpu_status::platform::render_adapter(obs_gpu_status::RenderHint {
+        adapter_index: Some(0),
+        render_node: Some("/dev/dri/renderD128"),
+    });
+}
