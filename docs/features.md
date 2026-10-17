@@ -191,6 +191,12 @@ not get a line.
 
 ### Performance
 
+- **Volume meters repaint only when they change.** The audio mixer's meters
+  no longer repaint 60 times a second while the mixer is hidden, OBS is
+  minimized or every source is silent; a meter stops about 20 s after its
+  last sound, when its peak hold falls back. *All*, 2026-10-17. Issue
+  [#1281](https://github.com/obs-rust/obs-studio/issues/1281), PR
+  [#1307](https://github.com/obs-rust/obs-studio/pull/1307).
 - **Faster launch on NVIDIA machines.** 4.3 times faster to the main window
   and 19 % less memory on an NVIDIA streaming machine (see the README): the
   VAAPI probe skips decode-only drivers, the NVENC test result is reused
