@@ -553,6 +553,30 @@ same-stamp rejection and dependency preservation. Without that flag the probe
 exits 1 when it reproduces stale unit-test success. Logs and the archive remain
 in the chosen directory. No global cache or daemon is purged.
 
+### Build-script inputs can defeat deep reuse
+
+The workspace-shaped delta experiment produced a 62,371,228-byte delta versus
+a 188,072,837-byte updated full snapshot. Both restores nevertheless rebuilt
+`obs-util`. Cargo's diagnostic identified the same source path changing from
+1792262706.251336821 to 1792262706.251000000 seconds after hydration. Its
+default build-script package scan treated the lost sub-millisecond precision
+as changed input. Restoring that one exact original timestamp eliminated the
+rebuild in a diagnostic control; no source bytes changed.
+
+The downstream mitigation declares the actual `obs-util/build.rs` inputs:
+itself and the applicable Windows C shims. Rust sources remain rustc inputs.
+After rebuilding and saving this configuration, an unchanged full restore
+kept test products fresh without timestamp edits: compile-only command
+0.816 s, versus 6.181 s before the mitigation in the earlier diagnostic run.
+These are individual local observations, excluding network and test execution;
+the new snapshot's save/restore still cost 12.620/16.628 s. No whole-CI gain is
+claimed. [Raw results](ci-evidence/2026-10-17-obs-util-build-inputs.json).
+
+The upstream replay-precision issue remains
+[soldr#3851](https://github.com/zackees/soldr/issues/3851). This mitigation
+does not address same-stat source edits or justify removing the correctness
+safeguards. Native Windows input tracking still requires CI validation.
+
 ## Post-job cook-profile comparison
 
 The pinned action saves its cook archive **after** the job's consumers, so
