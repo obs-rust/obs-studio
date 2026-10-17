@@ -140,12 +140,46 @@ impl Report {
     }
 
     /// The status bar label for this state and [`Self::usage`] (#1025).
+    /// Software rendering says so instead of a percent: a GPU OBS does not
+    /// use can sit at 0 % (#1004). Graphics init failure is "n/a"; its
+    /// summary already says why.
     pub fn readout(&self) -> Readout {
+        let n_a = Text {
+            key: "Basic.StatusBar.Gpu.Unavailable",
+            args: vec![],
+            english: "GPU: n/a".to_owned(),
+        };
+        let Some(adapter) = self.adapter.as_deref() else {
+            return Readout {
+                label: n_a,
+                details: vec![],
+            };
+        };
+        if crate::is_software_renderer(adapter) {
+            return Readout {
+                label: Text {
+                    key: "Basic.StatusBar.Gpu.Software",
+                    args: vec![],
+                    english: "CPU rendering".to_owned(),
+                },
+                details: vec![],
+            };
+        }
+        let Some(usage) = self.usage else {
+            return Readout {
+                label: n_a,
+                details: vec![Text {
+                    key: "Basic.StatusBar.Gpu.NoSource",
+                    args: vec![],
+                    english: "No utilization source for this GPU.".to_owned(),
+                }],
+            };
+        };
         Readout {
             label: Text {
-                key: "Basic.StatusBar.GpuStatus",
-                args: vec![],
-                english: "GPU".to_owned(),
+                key: "Basic.StatusBar.Gpu.Usage",
+                args: vec![usage.percent.to_string()],
+                english: format!("GPU: {}%", usage.percent),
             },
             details: vec![],
         }
@@ -157,7 +191,8 @@ impl Report {
     }
 
     /// The `gpuAcceleration` JSON object:
-    /// `{"state","adapter","detectedGpus":[{"vendor","deviceId","name","renderNode"}],"summary","causes"}`.
+    /// `{"state","adapter","detectedGpus":[{"vendor","deviceId","name","renderNode"}],"summary","causes",`
+    /// `"usage":{"percent","source"}|null,"readout":{"text","key","args","details":[…]},"logLines"}`.
     pub fn to_json(&self) -> String {
         let mut j = String::from("{\"state\":");
         string(&mut j, Some(self.state.as_str()));
@@ -208,7 +243,28 @@ impl Report {
             }
             string(&mut j, Some(k));
         }
-        j.push_str("],\"logLines\":[");
+        j.push_str("],\"usage\":");
+        match self.usage {
+            Some(u) => {
+                let _ = write!(j, "{{\"percent\":{},\"source\":", u.percent);
+                string(&mut j, Some(u.source.as_str()));
+                j.push('}');
+            }
+            None => j.push_str("null"),
+        }
+        let readout = self.readout();
+        j.push_str(",\"readout\":{");
+        text_fields(&mut j, &readout.label);
+        j.push_str(",\"details\":[");
+        for (i, t) in readout.details.iter().enumerate() {
+            if i > 0 {
+                j.push(',');
+            }
+            j.push('{');
+            text_fields(&mut j, t);
+            j.push('}');
+        }
+        j.push_str("]},\"logLines\":[");
         for (i, line) in self.log_lines.iter().enumerate() {
             if i > 0 {
                 j.push(',');
@@ -222,6 +278,22 @@ impl Report {
 
 fn ms(ns: u64) -> f64 {
     ns as f64 / 1_000_000.0
+}
+
+/// Append `"text":…,"key":…,"args":[…]` for a localized text.
+fn text_fields(out: &mut String, t: &Text) {
+    out.push_str("\"text\":");
+    string(out, Some(&t.english));
+    out.push_str(",\"key\":");
+    string(out, Some(t.key));
+    out.push_str(",\"args\":[");
+    for (i, a) in t.args.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        string(out, Some(a));
+    }
+    out.push(']');
 }
 
 /// Append `s` as a JSON string, or `null`.

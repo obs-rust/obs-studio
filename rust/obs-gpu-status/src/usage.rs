@@ -57,9 +57,16 @@ impl Sampler {
     }
 
     /// The reading of the first source with one for `adapter`, or `None`.
-    pub fn sample(&mut self, _adapter: &RenderAdapter) -> Option<UsageSample> {
-        let _ = &mut self.sources;
-        None
+    pub fn sample(&mut self, adapter: &RenderAdapter) -> Option<UsageSample> {
+        self.sources
+            .iter_mut()
+            .find_map(|source| match source.whole(adapter) {
+                Utilization::Percent(percent) => Some(UsageSample {
+                    percent,
+                    source: source.source(),
+                }),
+                Utilization::Unavailable => None,
+            })
     }
 }
 
