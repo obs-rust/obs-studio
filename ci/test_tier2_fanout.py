@@ -73,7 +73,7 @@ class WorkflowTest(unittest.TestCase):
     def test_modes_run_in_parallel_without_extra_shards(self):
         """Keep both complete suites while removing their serial wall time."""
         t = job("rust-linux-tier2")
-        self.assertIn("needs: [check-event, ci-mode, rust-linux-tier2-build]", t)
+        self.assertIn("needs: [check-event, ci-mode, rust-linux-tier2-build, rust-tests-linux]", t)
         self.assertIn("fail-fast: false", t)
         self.assertIn('mode: ["OFF", "ON"]', t)
         self.assertNotIn("OBS_CTEST_SHARD", t)

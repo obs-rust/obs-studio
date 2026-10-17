@@ -52,7 +52,9 @@ class FastGateWorkflowTest(unittest.TestCase):
         self.assertIn("-denable_frontend=off", j)
 
     def test_costly_lanes_wait_for_the_fast_gate(self):
-        for name in ("rust-tests", "rust-tier2", "linux-qt-frontend", "rust-linux-tier2-build", "rust-cross-lint"):
+        # Tier 2 compilation is the explicit overlap exception; test execution
+        # remains gated (ci/test_tier2_compile_overlap.py).
+        for name in ("rust-tests", "rust-tier2", "linux-qt-frontend", "rust-cross-lint"):
             j = self.job(name)
             self.assertIn("rust-tests-linux", j.split("steps:")[0], name)
             self.assertIn("needs.rust-tests-linux.result != 'failure'", j, name)

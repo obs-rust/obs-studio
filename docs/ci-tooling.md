@@ -283,13 +283,21 @@ Cargo files test the workspace), on every PR. No Qt is installed there.
 | Paths | Lane |
 |---|---|
 | everything | Fast Gate: 1) fmt, clippy, Dylint; 2) unit tests of the touched crates; 3) Linux build of touched `plugins/<x>`/`shared/<x>` targets (ENABLE_FRONTEND=OFF, no Qt) |
-| `libobs/` (not platform-only files), crates linked into libobs, `test/cmocka/`, `deps/`, `rust/tools/linux-validate/`, Cargo files | Tier 2 Linux (after the Fast Gate) |
+| `libobs/` (not platform-only files), crates linked into libobs, `test/cmocka/`, `deps/`, `rust/tools/linux-validate/`, Cargo files | Tier 2 Linux: compilation overlaps Fast Gate; OFF/ON tests wait for it |
 | `frontend/`, Qt-linked tests, `shared/qt`, the Qt job's own files | Qt Frontend Linux (the only Qt). Frontend platform files start no Windows/macOS Rust or Tier 2 job; Windows/macOS Qt lanes are a follow-up |
 | files matching `/platform[/-](windows, macos, linux, posix)[/.]` (posix = linux+macos), legacy OS names, shared build files (`cmake/common`, `cmake/finders`, `libobs/cmake`, root CMake, `platform/mod.rs`, C++ cmocka tests) | macOS / Windows Rust tests, Tier 2, cross lint |
 | `build-aux/`, `.gitmodules`, submodules | compiled on Linux only; no full build from a PR |
 | `docs/`, `.github/`, `ci/` | lint and the ci/ self-tests |
 
-The macOS, Windows, Qt, Tier 2 and cross jobs `needs:` the Fast Gate, so a lint or unit-test failure spends none of those runners.
+The macOS, Windows, Qt and cross jobs wait for Fast Gate. Tier 2 Linux
+compilation is the explicit exception: it can overlap on an independent runner
+after scope/proof checks. OFF/ON execution waits for both the build and a
+successful Fast Gate, or its valid attestation skip. Failed/canceled Fast Gates
+start neither test suite. The final required gate still includes every check.
+This trades possible wasted compilation on a red PR for a shorter successful
+queue path; a compile already running can finish after Fast Gate fails.
+Measure runner cost and actual gate time rather than treating the theoretical
+overlap as a proven speedup (#930, #1286).
 
 Unchanged lanes are cached by the gate, so a re-run after a small fix is fast.
 
