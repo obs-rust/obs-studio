@@ -38,8 +38,10 @@ On an RTX 3060 (NVML), and on the same machine forced onto llvmpipe
 ![Status bar label CPU rendering with a red dot](images/gpu-usage-label-sw.png)
 
 The sources, in order: NVML for NVIDIA (#1021), then amdgpu's
-`gpu_busy_percent` on Linux (#1024). On Windows, NVML cannot find the GPU
-yet: it needs the DXGI LUID as a PCI address. The thread `obs-gpu-usage`
+`gpu_busy_percent` on Linux (#1024), and on macOS IOKit's
+`Device Utilization %` of the render GPU's `IOAccelerator` (#1026; the
+key is not documented, and an M1 Max has it). On Windows, NVML cannot find
+the GPU yet: it needs the DXGI LUID as a PCI address. The thread `obs-gpu-usage`
 reads the source once a second, so the UI thread never waits for one.
 `GetStats.gpuAcceleration` has the same reading as `usage` (`percent`,
 `source`, or `null`) and the label as `readout`.
@@ -66,7 +68,9 @@ An earlier mockup of the dialog for a machine with no GPU (the styling is approx
   `platform-osx.mm`.
 - Label text and sources: `rust/obs-gpu-status/src/usage.rs`
   (`Sampler`, tested with injected sources), `Report::readout()`, and
-  `platform::usage_sources()`; the sampling thread is in `src/ffi`.
+  `platform::usage_sources()`; the sampling thread is in `src/ffi`. The
+  macOS parser is `src/iokit.rs`, its reader `accelerator_statistics()` in
+  `src/platform/macos.rs`.
 - Light and dialog: `frontend/utility/GpuStatus.cpp` and
   `frontend/widgets/OBSBasicStatusBar.cpp`. They are built whenever cargo
   is available, whatever `ENABLE_RUST_LIBOBS` (the app's name) says

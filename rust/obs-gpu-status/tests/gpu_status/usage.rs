@@ -205,4 +205,5 @@ fn json_without_usage_is_null() {
 fn source_names() {
     assert_eq!(Source::Nvml.as_str(), "nvml");
     assert_eq!(Source::Amdgpu.as_str(), "amdgpu");
+    assert_eq!(Source::Iokit.as_str(), "iokit");
 }

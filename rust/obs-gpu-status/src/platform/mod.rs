@@ -31,11 +31,15 @@ pub fn obs_gpu_share(hint: crate::RenderHint<'_>) -> Option<u32> {
 
 /// The utilization sources for the `GPU: x%` label (#1025), in the order
 /// [`crate::usage::Sampler`] asks them: NVML, then amdgpu's
-/// `gpu_busy_percent` on Linux.
+/// `gpu_busy_percent` on Linux and IOKit's `Device Utilization %` on macOS
+/// (#1026).
 pub fn usage_sources() -> Vec<Box<dyn crate::usage::UsageSource>> {
     let mut sources: Vec<Box<dyn crate::usage::UsageSource>> = vec![Box::new(NvmlSource)];
     if cfg!(target_os = "linux") {
         sources.push(Box::new(AmdgpuSource));
+    }
+    if cfg!(target_os = "macos") {
+        sources.push(Box::new(IokitSource));
     }
     sources
 }
@@ -71,6 +75,25 @@ impl crate::usage::UsageSource for AmdgpuSource {
     }
 }
 
+/// IOKit's `Device Utilization %` of the render GPU's `IOAccelerator`
+/// (#1026): whole GPU only.
+struct IokitSource;
+
+impl crate::usage::UsageSource for IokitSource {
+    fn source(&self) -> crate::usage::Source {
+        crate::usage::Source::Iokit
+    }
+
+    fn whole(&mut self, adapter: &crate::RenderAdapter) -> Utilization {
+        match adapter {
+            crate::RenderAdapter::RegistryId(id) => {
+                crate::iokit::device_utilization(&accelerator_statistics(*id))
+            }
+            _ => Utilization::Unavailable,
+        }
+    }
+}
+
 cfg_select! {
     target_os = "linux" => {
         /// GPUs on this machine: the sysfs/`/dev/dri` tree, then `nvidia-smi`.
@@ -92,6 +115,11 @@ cfg_select! {
 
         /// PDH `GPU Engine` counters exist only on Windows.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
+            Vec::new()
+        }
+
+        /// `IOAccelerator` statistics exist only on macOS.
+        fn accelerator_statistics(_registry_id: u64) -> Vec<(String, i64)> {
             Vec::new()
         }
     }
@@ -123,6 +151,11 @@ cfg_select! {
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             windows::gpu_engine_samples()
         }
+
+        /// `IOAccelerator` statistics exist only on macOS.
+        fn accelerator_statistics(_registry_id: u64) -> Vec<(String, i64)> {
+            Vec::new()
+        }
     }
     target_os = "macos" => {
         #[allow(unsafe_code)] // Metal, IOKit and objc calls; see the module docs
@@ -153,6 +186,11 @@ cfg_select! {
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
             Vec::new()
         }
+
+        /// The render GPU's `PerformanceStatistics` numbers (#1026).
+        fn accelerator_statistics(registry_id: u64) -> Vec<(String, i64)> {
+            macos::accelerator_statistics(registry_id)
+        }
     }
     _ => {
         /// GPUs on this machine: only `nvidia-smi` is consulted.
@@ -171,6 +209,11 @@ cfg_select! {
 
         /// PDH `GPU Engine` counters exist only on Windows.
         pub fn gpu_engine_samples() -> Vec<(String, f64)> {
+            Vec::new()
+        }
+
+        /// `IOAccelerator` statistics exist only on macOS.
+        fn accelerator_statistics(_registry_id: u64) -> Vec<(String, i64)> {
             Vec::new()
         }
     }

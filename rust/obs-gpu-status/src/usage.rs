@@ -19,6 +19,8 @@ pub enum Source {
     Nvml,
     /// amdgpu's `gpu_busy_percent` (#1024).
     Amdgpu,
+    /// IOKit's `Device Utilization %` on macOS (#1026).
+    Iokit,
 }
 
 impl Source {
@@ -26,6 +28,7 @@ impl Source {
         match self {
             Self::Nvml => "nvml",
             Self::Amdgpu => "amdgpu",
+            Self::Iokit => "iokit",
         }
     }
 }

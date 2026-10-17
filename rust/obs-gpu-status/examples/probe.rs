@@ -33,6 +33,12 @@ fn main() {
         "GPU utilization: {utilization:?} (first call {first:.2?}, with NVML load), {again:?} ({:.2?})",
         start.elapsed()
     );
+    // The `GPU: x%` label's reading (#1025): the first source with one.
+    let mut sampler =
+        obs_gpu_status::usage::Sampler::new(obs_gpu_status::platform::usage_sources());
+    let start = std::time::Instant::now();
+    let sample = sampler.sample(&adapter);
+    println!("label sample: {sample:?} ({:.2?})", start.elapsed());
     // PIDs to read the share of (comma-separated, after the hint; default:
     // this process, which uses no GPU), and how many readings to take two
     // seconds apart in one NVML session, as a frontend polls (default 1).
