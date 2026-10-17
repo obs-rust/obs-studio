@@ -15,6 +15,8 @@ pub mod dxgi;
 pub mod fdinfo;
 #[allow(unsafe_code)]
 pub mod ffi;
+#[allow(unsafe_code)] // calls NVML through resolved function pointers
+pub mod nvml;
 pub mod pdh;
 pub mod platform;
 pub mod report;
