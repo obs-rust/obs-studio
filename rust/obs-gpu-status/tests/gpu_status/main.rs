@@ -8,6 +8,7 @@ mod fdinfo;
 mod ffi;
 mod frame_window;
 mod frames;
+mod iokit;
 mod locale;
 mod log_lines;
 mod nvml;
