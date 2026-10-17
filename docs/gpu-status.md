@@ -21,6 +21,36 @@ example right after launch) does not turn it red (#929). Frames over budget are 
 `GL_RENDERER` on OpenGL, and the active DXGI adapter on Direct3D 11. It is
 not `gs_get_device_name()`, which only names the API (`OpenGL`).
 
+**Label (#1025).** The light has a text next to its dot, and the dot keeps
+the color above:
+
+| Label | When |
+|---|---|
+| `GPU: 37%` | OBS renders on a hardware GPU and a source reads it. The percent is the whole adapter, as Task Manager or nvtop show it. |
+| `GPU: n/a` | No source reads the render GPU (the tooltip says so), or graphics initialization failed. |
+| `CPU rendering` | OBS renders in software. A GPU that OBS does not use can show 0 %, so the label shows no percent. |
+
+On an RTX 3060 (NVML), and on the same machine forced onto llvmpipe
+(red, because a GPU is present):
+
+![Status bar label GPU: 21% with a green dot](images/gpu-usage-label-hw.png)
+
+![Status bar label CPU rendering with a red dot](images/gpu-usage-label-sw.png)
+
+The sources, in order: NVML for NVIDIA (#1021), then amdgpu's
+`gpu_busy_percent` on Linux (#1024). On Windows, NVML cannot find the GPU
+yet: it needs the DXGI LUID as a PCI address. The thread `obs-gpu-usage`
+reads the source once a second, so the UI thread never waits for one.
+`GetStats.gpuAcceleration` has the same reading as `usage` (`percent`,
+`source`, or `null`) and the label as `readout`.
+
+**No share of OBS.** #1004 put OBS's own share in the tooltip. NVML's
+per-process samples do not give one: on the RTX 3060 above, an OBS that
+rendered 4K at 25 fps the whole time had no sample in 4 of 7 two-second
+windows, and 45 % in one while the device average was 20 %
+(`nvidia-smi pmon` reads the same values). The label shows the whole GPU
+only until a source gives a share that adds up.
+
 An earlier mockup of the dialog for a machine with no GPU (the styling is approximate). Since #1005 that case is yellow, not red; a GPU OBS can't use is red:
 
 ![Status bar light, dialog and startup log in the red state](images/gpu-status-red.png)
@@ -34,6 +64,9 @@ An earlier mockup of the dialog for a machine with no GPU (the styling is approx
   `frontend/utility/GpuStatus.cpp`, with `GetGlGetStringProc()` in
   `frontend/utility/platform-x11.cpp`, `platform-windows.cpp` and
   `platform-osx.mm`.
+- Label text and sources: `rust/obs-gpu-status/src/usage.rs`
+  (`Sampler`, tested with injected sources), `Report::readout()`, and
+  `platform::usage_sources()`; the sampling thread is in `src/ffi`.
 - Light and dialog: `frontend/utility/GpuStatus.cpp` and
   `frontend/widgets/OBSBasicStatusBar.cpp`. They are built whenever cargo
   is available, whatever `ENABLE_RUST_LIBOBS` (the app's name) says

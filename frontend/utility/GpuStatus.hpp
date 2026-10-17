@@ -15,6 +15,10 @@ struct Info {
 	State state = State::Green;
 	QString adapter;
 	QString summary;
+	/* The status bar label ("GPU: 37%", "GPU: n/a", "CPU rendering") and the
+	 * tooltip lines below the summary (#1025). */
+	QString label;
+	QStringList details;
 	QStringList causes;
 	QStringList gpus;
 	/* OBS log lines that explain the state. */
@@ -35,9 +39,10 @@ void Sample();
 /* Classify the current adapter, detected GPUs and recent frame times. */
 Info Query();
 
-/* Call once after video is reset: logs a warning when the state is yellow
- * or red, and registers the "get_gpu_status" proc on the global proc
- * handler (out: string json) for obs-websocket. */
+/* Call once after video is reset: starts sampling the render GPU's
+ * utilization (#1025), logs a warning when the state is yellow or red, and
+ * registers the "get_gpu_status" proc on the global proc handler
+ * (out: string json) for obs-websocket. */
 void Init();
 
 /* Probe the system's GPUs on a thread now, so Init() does not wait for it

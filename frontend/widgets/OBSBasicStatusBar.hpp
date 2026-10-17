@@ -63,7 +63,6 @@ private:
 
 	QPointer<QPushButton> gpuStatusButton;
 	QPointer<QTimer> gpuStatusTimer;
-	int gpuStatusTicks = 0;
 
 	QPointer<QTimer> refreshTimer;
 	QPointer<QTimer> messageTimer;

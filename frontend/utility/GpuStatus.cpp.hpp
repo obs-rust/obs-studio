@@ -36,6 +36,12 @@ static Info Parse(int state, const char *json)
 	QJsonObject obj = QJsonDocument::fromJson(QByteArray(info.json.c_str())).object();
 	info.adapter = obj["adapter"].toString();
 	info.summary = Localized(obj["summaryKey"], obj["summaryArgs"].toArray(), obj["summary"].toString());
+	QJsonObject readout = obj["readout"].toObject();
+	info.label = Localized(readout["key"], readout["args"].toArray(), readout["text"].toString());
+	for (const QJsonValue value : readout["details"].toArray()) {
+		QJsonObject detail = value.toObject();
+		info.details << Localized(detail["key"], detail["args"].toArray(), detail["text"].toString());
+	}
 	QJsonArray causes = obj["causes"].toArray();
 	QJsonArray causeKeys = obj["causeKeys"].toArray();
 	for (qsizetype i = 0; i < causes.size(); i++) {
@@ -134,6 +140,50 @@ static std::string ActiveAdapterName()
 }
 #endif
 
+#ifdef OBS_GPU_STATUS
+/* The active adapter, read once: libobs keeps its graphics device across
+ * video resets, and the label refreshes every second, which must not enter
+ * graphics against the render thread each time (#1025). */
+static std::mutex adapterMutex;
+static bool adapterRead = false;
+static bool haveAdapter = false;
+static std::string adapterName;
+
+/* False when graphics init failed. */
+static bool CurrentAdapter(std::string &adapter)
+{
+	std::lock_guard<std::mutex> lock(adapterMutex);
+	if (!adapterRead) {
+		obs_enter_graphics();
+		haveAdapter = gs_get_device_name() != nullptr;
+		if (haveAdapter) {
+			adapterName = ActiveAdapterName();
+		}
+		obs_leave_graphics();
+		adapterRead = true;
+	}
+	adapter = adapterName;
+	return haveAdapter;
+}
+
+/* Tell the sampler which adapter OBS renders on (#1020): adapter 0 of
+ * gs_enum_adapters is the EGL display's render node on Linux, and
+ * obs_video_info.adapter the DXGI index on Windows. macOS needs neither. */
+static void StartUsageSampler()
+{
+	AdapterSearch search = {0, ""};
+	obs_enter_graphics();
+	if (gs_get_device_name() && gs_get_device_type() == GS_DEVICE_OPENGL) {
+		gs_enum_adapters(FindAdapter, &search);
+	}
+	obs_leave_graphics();
+
+	obs_video_info ovi = {};
+	int adapterIndex = obs_get_video_info(&ovi) ? (int)ovi.adapter : -1;
+	obs_gpu_status_usage_start(search.name.empty() ? nullptr : search.name.c_str(), adapterIndex);
+}
+#endif
+
 void OnLogLine(const char *line)
 {
 #ifdef OBS_GPU_STATUS
@@ -155,17 +205,10 @@ Info Query()
 {
 #ifdef OBS_GPU_STATUS
 	std::string adapter;
-	bool haveAdapter = false;
-	obs_enter_graphics();
-	if (gs_get_device_name()) {
-		adapter = ActiveAdapterName();
-		haveAdapter = true;
-	}
-	obs_leave_graphics();
+	bool rendering = CurrentAdapter(adapter);
 
 	int state = 2;
-	char *json =
-		obs_gpu_status_report(haveAdapter ? adapter.c_str() : nullptr, obs_get_frame_interval_ns(), &state);
+	char *json = obs_gpu_status_report(rendering ? adapter.c_str() : nullptr, obs_get_frame_interval_ns(), &state);
 	Info info = Parse(state, json);
 	obs_gpu_status_free(json);
 	return info;
@@ -198,6 +241,7 @@ void Init()
 				 nullptr);
 		registered = true;
 	}
+	StartUsageSampler();
 
 	Info info = Query();
 	if (info.state == State::Green) {

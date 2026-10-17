@@ -2,7 +2,6 @@
 
 static constexpr int bitrateUpdateSeconds = 2;
 static constexpr int congestionUpdateSeconds = 4;
-static constexpr int gpuStatusUpdateSeconds = 5;
 static constexpr int gpuStatusSampleMs = 1000;
 static constexpr float excellentThreshold = 0.0f;
 static constexpr float goodThreshold = 0.3333f;
@@ -37,8 +36,8 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 		gpuStatusButton = new QPushButton(statusWidget);
 		gpuStatusButton->setObjectName("gpuStatusButton");
 		gpuStatusButton->setFlat(true);
-		gpuStatusButton->setText(QTStr("Basic.StatusBar.GpuStatus"));
-		gpuStatusButton->setAccessibleName(QTStr("Basic.StatusBar.GpuStatus"));
+		gpuStatusButton->setText(QTStr("Basic.StatusBar.Gpu.Unavailable"));
+		gpuStatusButton->setAccessibleName(QTStr("Basic.StatusBar.Gpu.Unavailable"));
 		connect(gpuStatusButton, &QPushButton::clicked, this, &OBSBasicStatusBar::ShowGpuStatusDialog);
 		/* Next to the CPU usage, where people look for performance (#1003). */
 		auto *row = qobject_cast<QBoxLayout *>(statusWidget->layout());
@@ -664,10 +663,9 @@ void OBSBasicStatusBar::GpuStatusTick()
 		return;
 	}
 	GpuStatus::Sample();
-	/* Refresh the light on the first tick, then every few seconds. */
-	if (gpuStatusTicks++ % gpuStatusUpdateSeconds == 0) {
-		UpdateGpuStatus();
-	}
+	/* Every second, like the CPU label: the report only reads the last
+	 * utilization sample (#1025). */
+	UpdateGpuStatus();
 }
 
 void OBSBasicStatusBar::UpdateGpuStatus()
@@ -690,8 +688,15 @@ void OBSBasicStatusBar::UpdateGpuStatus()
 	const char *key = info.state == GpuStatus::State::Green    ? "Basic.StatusBar.GpuStatus.Green"
 			  : info.state == GpuStatus::State::Yellow ? "Basic.StatusBar.GpuStatus.Yellow"
 								   : "Basic.StatusBar.GpuStatus.Red";
+	QStringList tooltip = {QTStr(key), info.summary};
+	tooltip << info.details;
 	gpuStatusButton->setIcon(QIcon(dot));
-	gpuStatusButton->setToolTip(QTStr(key) + "\n" + info.summary);
+	gpuStatusButton->setText(info.label);
+	/* Grow only, so "GPU: 9%" -> "GPU: 10%" does not shift the bar. */
+	gpuStatusButton->setMinimumWidth(
+		std::max(gpuStatusButton->minimumWidth(), gpuStatusButton->sizeHint().width()));
+	gpuStatusButton->setToolTip(tooltip.join("\n"));
+	gpuStatusButton->setAccessibleName(info.label);
 	gpuStatusButton->setAccessibleDescription(QTStr(key));
 }
 
@@ -719,7 +724,7 @@ void OBSBasicStatusBar::ShowGpuStatusDialog()
 	}
 
 	QMessageBox box(info.state == GpuStatus::State::Green ? QMessageBox::Information : QMessageBox::Warning,
-			QTStr("Basic.StatusBar.GpuStatus.Title"), text, QMessageBox::Ok, this);
+			QTStr("Basic.StatusBar.Gpu.Title"), text, QMessageBox::Ok, this);
 	box.setTextFormat(Qt::RichText);
 	box.exec();
 }
