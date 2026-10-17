@@ -207,6 +207,13 @@ not get a line.
   cleans up without leaks. *Linux*, 2026-10-13. Issue
   [#633](https://github.com/obs-rust/obs-studio/issues/633), PR
   [#655](https://github.com/obs-rust/obs-studio/pull/655).
+- **Slow GPU usage sources do not stall the label.** After a slow reading
+  the `GPU: x%` label is updated less often (up to every 30 s), a reading
+  that is too old shows `GPU: n/a` with "The GPU reading is late.", and a
+  source that is slow three times in a row is not asked again in that
+  session, with one log line. *All*, 2026-10-17. Issue
+  [#1022](https://github.com/obs-rust/obs-studio/issues/1022), PR
+  [#1287](https://github.com/obs-rust/obs-studio/pull/1287).
 
 ### Platforms and packages
 
