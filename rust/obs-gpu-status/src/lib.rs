@@ -429,7 +429,70 @@ pub enum RenderAdapter {
 
 /// Resolve the render node that EGL reports for the display
 /// (`/dev/dri/renderD128`) to its PCI device under `<root>/sys/class/drm`.
+///
+/// Without a render node (GLX, or EGL without
+/// `EGL_EXT_device_drm_render_node`), a single PCI card is the render
+/// adapter; two or more are [`RenderAdapter::Ambiguous`]. A node that is not
+/// a `renderD<n>` name, such as `/Software`, is [`RenderAdapter::Unknown`].
 pub fn render_adapter(root: &Path, render_node: Option<&str>) -> RenderAdapter {
-    let _ = (root, render_node);
-    RenderAdapter::Unknown
+    let drm = root.join("sys/class/drm");
+    if let Some(node) = render_node {
+        let name = Path::new(node)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        if !is_drm_name(name, "renderD") {
+            return RenderAdapter::Unknown;
+        }
+        return pci_address_of(&drm.join(name)).map_or(RenderAdapter::Unknown, RenderAdapter::Pci);
+    }
+    let Ok(entries) = std::fs::read_dir(&drm) else {
+        return RenderAdapter::Unknown;
+    };
+    let mut found: Vec<String> = entries
+        .flatten()
+        .filter(|e| is_drm_name(&e.file_name().to_string_lossy(), "card"))
+        .filter_map(|e| pci_address_of(&e.path()))
+        .collect();
+    found.sort();
+    found.dedup();
+    match found.len() {
+        0 => RenderAdapter::Unknown,
+        1 => RenderAdapter::Pci(found.remove(0)),
+        _ => RenderAdapter::Ambiguous,
+    }
+}
+
+/// `card0` or `renderD128`, not a connector such as `card0-HDMI-A-1`.
+fn is_drm_name(name: &str, prefix: &str) -> bool {
+    name.strip_prefix(prefix)
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The PCI address of a `sys/class/drm` entry: the last component of its
+/// `device` link (`../../../0000:2b:00.0`), if that is a PCI address.
+fn pci_address_of(entry: &Path) -> Option<String> {
+    let target = std::fs::read_link(entry.join("device")).ok()?;
+    let name = target.file_name()?.to_str()?;
+    is_pci_address(name).then(|| name.to_owned())
+}
+
+/// `<domain>:<bus>:<device>.<function>`, e.g. `0000:2b:00.0`. The domain
+/// can be longer than four hex digits (Intel VMD uses `10000`).
+fn is_pci_address(s: &str) -> bool {
+    let hex = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_hexdigit());
+    let mut parts = s.splitn(3, ':');
+    let (Some(domain), Some(bus), Some(rest)) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    let Some((device, function)) = rest.split_once('.') else {
+        return false;
+    };
+    domain.len() >= 4
+        && hex(domain)
+        && bus.len() == 2
+        && hex(bus)
+        && device.len() == 2
+        && hex(device)
+        && matches!(function.as_bytes(), [b'0'..=b'7'])
 }
