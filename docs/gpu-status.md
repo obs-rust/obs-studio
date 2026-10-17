@@ -37,6 +37,10 @@ On an RTX 3060 (NVML), and on the same machine forced onto llvmpipe
 
 ![Status bar label CPU rendering with a red dot](images/gpu-usage-label-sw.png)
 
+On an M1 Max (IOKit) under a Metal compute load:
+
+![Status bar label GPU: 99% with a green dot on macOS](images/gpu-usage-label-macos.png)
+
 The sources, in order: NVML for NVIDIA (#1021), then amdgpu's
 `gpu_busy_percent` on Linux (#1024), and on macOS IOKit's
 `Device Utilization %` of the render GPU's `IOAccelerator` (#1026; the
