@@ -7,14 +7,17 @@
 from __future__ import annotations
 
 import copy
-import sys
+import importlib.util
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "rust/tools/benchmarks"))
-
-import recording as rb  # noqa: E402
+# Loaded by path: ci/ tests import only the standard library and ci/
+# modules (test_ci_tests_stdlib_only.py). recording.py needs websockets
+# only for a live run, not at import.
+spec = importlib.util.spec_from_file_location("recording", ROOT / "rust/tools/benchmarks/recording.py")
+rb = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(rb)
 
 
 def stats(t: float, rendered: int, render_skip: int = 0, output: int | None = None,
