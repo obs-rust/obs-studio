@@ -12,6 +12,9 @@
 //! input (the category suite checks all 2^32 bit patterns). NaNs follow
 //! the host C convention: the GCC-inlined x86 sequence preserves their bits;
 //! MSVC and macOS quiet signaling NaNs.
+//!
+//! Targets with a single-instruction round (`platform::NATIVE_ROUND`,
+//! aarch64) use `f32::ceil`/`f32::floor` directly, as C does there (#1428).
 
 /// 2^23: every `f32` with at least this magnitude is already an integer.
 const TWO_POW_23: f32 = 8_388_608.0;
@@ -32,6 +35,9 @@ fn round_small(x: f32) -> f32 {
 #[inline]
 #[must_use]
 pub(crate) fn ceil_f32(x: f32) -> f32 {
+    if crate::platform::NATIVE_ROUND {
+        return x.ceil();
+    }
     // False for NaN: the host boundary handles its signaling convention.
     if x.abs() < TWO_POW_23 {
         let t = round_small(x);
@@ -48,6 +54,9 @@ pub(crate) fn ceil_f32(x: f32) -> f32 {
 #[inline]
 #[must_use]
 pub(crate) fn floor_f32(x: f32) -> f32 {
+    if crate::platform::NATIVE_ROUND {
+        return x.floor();
+    }
     if x.abs() < TWO_POW_23 {
         let t = round_small(x);
         let down = if x < t { 1.0 } else { 0.0 };

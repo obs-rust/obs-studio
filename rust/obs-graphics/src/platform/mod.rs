@@ -23,3 +23,12 @@ pub(crate) fn round_large(x: f32) -> f32 {
         _ => { x }
     }
 }
+
+/// True where `f32::ceil`/`f32::floor` are one instruction, as C's
+/// `ceilf`/`floorf` are: aarch64 `frintp`/`frintm`, which also quiet
+/// signaling NaNs like [`round_large`] (#1428). Elsewhere, baseline x86_64
+/// lowers them to libm calls, so `round.rs` uses its inline sequence (#1298).
+pub(crate) const NATIVE_ROUND: bool = cfg_select! {
+    target_arch = "aarch64" => { true }
+    _ => { false }
+};
