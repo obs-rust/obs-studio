@@ -1,9 +1,11 @@
 //! C ABI shims for the exported functions in `libobs/obs-av1.h`.
 //!
 //! The shims convert to the safe core in [`crate::av1`] and copy its results
-//! into `bmalloc` memory, which the callers `bfree`.
+//! into `bmalloc` memory, which the callers `bfree`. As in `obs-av1.c`, the
+//! outputs are the only allocations: the core gives slices of the input and
+//! small stack buffers, which go straight into the `bmalloc` buffers (#1304).
 
-use super::packet::{bmalloc_concat, bytes};
+use super::packet::{bmalloc_concat, bmalloc_concat_iter, bytes};
 use crate::av1::{self, METADATA_TYPE_ITUT_T35};
 
 /// Returns true if the first frame (header) OBU in the packet is a shown
@@ -35,13 +37,15 @@ pub unsafe extern "C" fn obs_extract_av1_headers(
     header_size: *mut usize,
 ) {
     // SAFETY: the caller guarantees `size` readable bytes.
-    let split = av1::extract_headers(unsafe { bytes(packet, size) });
+    let data = unsafe { bytes(packet, size) };
+    let header_len = av1::header_obus(data).map(<[u8]>::len).sum();
     // SAFETY: the caller guarantees every output pointer is writable.
     unsafe {
-        *new_packet_data = bmalloc_concat(&[&split.packet]);
-        *new_packet_size = split.packet.len();
-        *header_data = bmalloc_concat(&[&split.header]);
-        *header_size = split.header.len();
+        // The OBUs cover every byte, so the packet is a copy of `data`.
+        *new_packet_data = bmalloc_concat(&[data]);
+        *new_packet_size = data.len();
+        *header_data = bmalloc_concat_iter(header_len, av1::header_obus(data));
+        *header_size = header_len;
     }
 }
 
@@ -60,14 +64,13 @@ pub unsafe extern "C" fn metadata_obu(
     metadata_type: u8,
 ) {
     // SAFETY: the caller guarantees `source_bufsize` readable bytes.
-    let obu = av1::metadata_obu(
-        unsafe { bytes(source_buffer, source_bufsize) },
-        metadata_type,
-    );
+    let payload = unsafe { bytes(source_buffer, source_bufsize) };
+    let (prefix, n) = av1::metadata_obu_prefix(payload.len(), metadata_type);
+    let parts: [&[u8]; 3] = [&prefix[..n], payload, &[av1::METADATA_TRAILING_BITS]];
     // SAFETY: the caller guarantees both outputs are writable.
     unsafe {
-        *outbuf_size = obu.len();
-        *out_buffer = bmalloc_concat(&[&obu]);
+        *outbuf_size = n + payload.len() + 1;
+        *out_buffer = bmalloc_concat(&parts);
     }
 }
 

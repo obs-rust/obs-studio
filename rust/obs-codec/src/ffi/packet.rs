@@ -51,17 +51,36 @@ pub(crate) unsafe fn bytes<'a>(data: *const u8, size: usize) -> &'a [u8] {
 /// as an untouched `DARRAY` is.
 pub(crate) fn bmalloc_concat(parts: &[&[u8]]) -> *mut u8 {
     let len: usize = parts.iter().map(|p| p.len()).sum();
+    bmalloc_concat_iter(len, parts.iter().copied())
+}
+
+/// As [`bmalloc_concat`], for parts from an iterator that yields `len`
+/// bytes in total: one `bmalloc`, no Rust heap allocation (#1304). Panics
+/// instead of writing past the buffer when the parts do not add up to `len`.
+pub(crate) fn bmalloc_concat_iter<'a>(
+    len: usize,
+    parts: impl IntoIterator<Item = &'a [u8]>,
+) -> *mut u8 {
     if len == 0 {
         return ptr::null_mut();
     }
-    // SAFETY: bmalloc returns `len` writable bytes, all written below.
+    // SAFETY: bmalloc returns `len` writable bytes; every copy below is
+    // checked to stay inside them, and all `len` are written.
     unsafe {
         let out = bmalloc(len).cast::<u8>();
         let mut at = 0;
         for part in parts {
+            assert!(
+                part.len() <= len - at,
+                "bmalloc_concat_iter: parts exceed {len} bytes"
+            );
             ptr::copy_nonoverlapping(part.as_ptr(), out.add(at), part.len());
             at += part.len();
         }
+        assert_eq!(
+            at, len,
+            "bmalloc_concat_iter: parts are shorter than {len} bytes"
+        );
         out
     }
 }

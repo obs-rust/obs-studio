@@ -129,44 +129,62 @@ pub struct Av1Headers {
     pub header: Vec<u8>,
 }
 
+/// The header output of `obs_extract_av1_headers`: the sequence header and
+/// metadata OBUs of `data`, in order, as slices of `data`.
+///
+/// The packet output is all of `data`: the walk starts at 0, every OBU is at
+/// least one byte and the last one is cut to the end of the buffer, so the
+/// OBUs cover every byte. The C ABI shim copies both outputs straight into
+/// their `bmalloc` buffers from these slices (#1304).
+pub fn header_obus(data: &[u8]) -> impl Iterator<Item = &[u8]> + '_ {
+    obus(data)
+        .filter(|(_, obu)| obu.kind == OBU_METADATA || obu.kind == OBU_SEQUENCE_HEADER)
+        .map(move |(at, obu)| &data[at..at + obu.len()])
+}
+
 /// `obs_extract_av1_headers`.
 #[must_use]
 pub fn extract_headers(data: &[u8]) -> Av1Headers {
-    let mut out = Av1Headers::default();
-    for (at, obu) in obus(data) {
-        let bytes = &data[at..at + obu.len()];
-        if obu.kind == OBU_METADATA || obu.kind == OBU_SEQUENCE_HEADER {
-            out.header.extend_from_slice(bytes);
-        }
-        out.packet.extend_from_slice(bytes);
+    Av1Headers {
+        packet: data.to_vec(),
+        header: header_obus(data).flatten().copied().collect(),
     }
-    out
 }
 
-/// `encode_uleb128`.
-fn encode_uleb128(mut val: u64, out: &mut Vec<u8>) {
-    let mut b = (val & 0x7f) as u8;
-    val >>= 7;
-    while val > 0 {
-        out.push(b | 0x80);
-        b = (val & 0x7f) as u8;
+/// `metadata_obu`'s trailing bits after the payload.
+pub const METADATA_TRAILING_BITS: u8 = 0x80;
+
+/// The bytes of `metadata_obu` in front of the payload: the header byte,
+/// the leb128 size field (`encode_uleb128`, at most 10 bytes) and
+/// `metadata_type`, as a buffer and its used length. A metadata OBU is
+/// these bytes, the payload and [`METADATA_TRAILING_BITS`].
+#[must_use]
+pub fn metadata_obu_prefix(payload_len: usize, metadata_type: u8) -> ([u8; 12], usize) {
+    let mut out = [0u8; 12];
+    // obu_type METADATA, obu_has_size_field set
+    out[0] = (OBU_METADATA << 3) | (1 << 1);
+    let mut n = 1;
+    // C: int64_t size_field = 1 + source_bufsize + 1;
+    let mut val = 1 + payload_len as u64 + 1;
+    loop {
+        let b = (val & 0x7f) as u8;
         val >>= 7;
+        if val == 0 {
+            out[n] = b;
+            n += 1;
+            break;
+        }
+        out[n] = b | 0x80;
+        n += 1;
     }
-    out.push(b);
+    out[n] = metadata_type;
+    (out, n + 1)
 }
 
 /// `metadata_obu`: a metadata OBU carrying `payload` as `metadata_type`:
 /// header byte, leb128 size, type, payload, and the `0x80` trailing bits.
 #[must_use]
 pub fn metadata_obu(payload: &[u8], metadata_type: u8) -> Vec<u8> {
-    // C: int64_t size_field = 1 + source_bufsize + 1;
-    let size_field = 1 + payload.len() as u64 + 1;
-    let mut out = Vec::with_capacity(payload.len() + 13);
-    // obu_type METADATA, obu_has_size_field set
-    out.push((OBU_METADATA << 3) | (1 << 1));
-    encode_uleb128(size_field, &mut out);
-    out.push(metadata_type);
-    out.extend_from_slice(payload);
-    out.push(0x80);
-    out
+    let (prefix, n) = metadata_obu_prefix(payload.len(), metadata_type);
+    [&prefix[..n], payload, &[METADATA_TRAILING_BITS]].concat()
 }
