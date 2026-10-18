@@ -202,6 +202,12 @@ class EncoderEvidenceTest(unittest.TestCase):
         with self.assertRaisesRegex(rb.RunError, "x264"):
             rb.encoder_lines(self.OLD + self.LOG, expect="x264")
 
+    def test_source_version_from_the_log_header(self):
+        header = "".join(f"07:34:33.{i:03d}: line {i}\n" for i in range(13))
+        header += "07:34:33.235: OBS-Studio-Rust 0.1.0 (based on OBS 33.0.0-beta6-1609-g9f573a9b3 (linux))\n"
+        self.assertEqual(rb.source_version(header), "33.0.0-beta6-1609-g9f573a9b3")
+        self.assertIsNone(rb.source_version("no header\n"))
+
     def test_no_recording_start(self):
         with self.assertRaisesRegex(rb.RunError, "Recording Start"):
             rb.encoder_lines("09:00:00.000: nothing\n", expect="obs-nvenc")
