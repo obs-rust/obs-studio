@@ -1438,6 +1438,132 @@ def test_sigterm_during_startup_dialog(server):
           ("OBS crashed" if crashed else "no clean shutdown in the log"))
 
 
+def srt_udp_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def ffmpeg_with_srt():
+    """The host ffmpeg, if it can call an SRT listener; else None."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+    out = subprocess.run([ffmpeg, "-hide_banner", "-protocols"],
+                         capture_output=True, text=True).stdout
+    return ffmpeg if any(l.strip() == "srt" for l in out.splitlines()) else None
+
+
+async def srt_stream_status(c):
+    r = await c.request("GetStreamStatus")
+    return r.get("d", {}).get("responseData", {})
+
+
+async def start_srt_listener(c, port):
+    """Settings > Stream: Custom, srt://127.0.0.1:port?mode=listener."""
+    for _ in range(120):
+        r = await c.request("SetStreamServiceSettings", {
+            "streamServiceType": "rtmp_custom",
+            "streamServiceSettings": {
+                "server": f"srt://127.0.0.1:{port}?mode=listener", "key": ""}})
+        if resp_status(r).get("code") != 207:
+            break
+        await asyncio.sleep(0.5)
+    r = await c.request("StartStream")
+    return resp_status(r).get("code") == STATUS_SUCCESS, r
+
+
+async def test_srt_listener_stop_while_reconnecting():
+    """An SRT listener whose caller went away waits for the next caller
+    (RECONNECTING). Stop Streaming there must stop the stream, and the UI
+    thread must keep running. The stop joined the start thread, which waited
+    for a caller with no way to be interrupted: the stream never stopped
+    (upstream obsproject/obs-studio#12250)."""
+    ffmpeg = ffmpeg_with_srt()
+    if not ffmpeg:
+        print("  (no ffmpeg with srt: SRT reconnect check skipped)", flush=True)
+        return
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    port = srt_udp_port()
+    ok, r = await start_srt_listener(c, port)
+    check("srt:StartStream on a listener", ok, json.dumps(r)[:300])
+    caller = subprocess.Popen(
+        [ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error",
+         "-i", f"srt://127.0.0.1:{port}?mode=caller", "-map", "0",
+         "-c", "copy", "-f", "mpegts", "-y", os.devnull],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True)
+    try:
+        active = False
+        deadline = time.time() + 20
+        while time.time() < deadline and not active:
+            active = (await srt_stream_status(c)).get("outputActive")
+            await asyncio.sleep(0.25)
+        check("srt:the stream starts when a caller connects", active,
+              "outputActive never became true")
+        await asyncio.sleep(2)
+    finally:
+        caller.kill()
+        caller.wait()
+    reconnecting = False
+    deadline = time.time() + 30
+    while time.time() < deadline and not reconnecting:
+        reconnecting = (await srt_stream_status(c)).get("outputReconnecting")
+        await asyncio.sleep(0.25)
+    check("srt:the listener reconnects after the caller left", reconnecting,
+          "outputReconnecting never became true")
+    # Let the reconnect start waiting for a caller again.
+    await asyncio.sleep(4)
+    r = await c.request("StopStream")
+    check("srt:StopStream while reconnecting",
+          resp_status(r).get("code") == STATUS_SUCCESS, json.dumps(r)[:300])
+    stopped = False
+    deadline = time.time() + 10
+    while time.time() < deadline and not stopped:
+        try:
+            st = await c.request("GetStreamStatus", timeout=2.0)
+        except TimeoutError:
+            continue
+        data = st.get("d", {}).get("responseData", {})
+        stopped = data.get("outputActive") is False and not data.get("outputReconnecting")
+        await asyncio.sleep(0.25)
+    check("srt:the stream stops within 10 s", stopped,
+          "still active or reconnecting 10 s after StopStream")
+    try:
+        r = await c.request("GetSceneList", timeout=5.0)
+        answers = resp_status(r).get("code") == STATUS_SUCCESS
+    except TimeoutError:
+        answers = False
+    check("srt:UI thread still answers after the stop", answers,
+          "GetSceneList timed out: the UI thread is stuck")
+    await c.close_conn()
+
+
+async def test_srt_listener_quit_while_waiting(server):
+    """OBS must quit on SIGTERM while an SRT listener waits for its first
+    caller. Destroying the output joined the start thread, which waited for
+    a caller forever: OBS never quit."""
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    ok, r = await start_srt_listener(c, srt_udp_port())
+    check("srt-quit:StartStream on a listener", ok, json.dumps(r)[:300])
+    await asyncio.sleep(2)
+    await c.close_conn()
+    pids = obs_pids(server)
+    check("srt-quit:OBS process found", bool(pids), f"no {server.obs_bin} process")
+    for pid in pids:
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.time() + 30
+    while time.time() < deadline and obs_pids(server):
+        time.sleep(0.2)
+    left = obs_pids(server)
+    time.sleep(1)
+    with open(server.log, errors="replace") as f:
+        log = f.read()
+    check("srt-quit:OBS quits on SIGTERM while the listener waits",
+          not left and "Number of memory leaks" in log,
+          "still running 30 s after SIGTERM" if left else "no clean shutdown in the log")
+
+
 async def run_shutdown_phase(obs_bin):
     """Simple output recording into a fresh folder, exit confirmation on."""
     home = tempfile.mkdtemp(prefix="obs-tier4-")
@@ -1606,6 +1732,48 @@ async def run_scripts_only(obs_bin):
     return 1 if failed else 0
 
 
+async def run_srt_phase(obs_bin):
+    """Simple output streaming to an SRT listener (srt:// Custom server)."""
+    profile = {
+        "Video": {"BaseCX": "640", "BaseCY": "360", "OutputCX": "640",
+                  "OutputCY": "360", "FPSType": "0", "FPSCommon": "30"},
+        "Output": {"Mode": "Simple"},
+        "SimpleOutput": {"StreamEncoder": "x264", "VBitrate": "800"},
+    }
+    server = ObsServer(obs_bin, PORT, password=None, profile=profile)
+    server.start()
+    try:
+        print("== SRT listener: stop while reconnecting ==", flush=True)
+        await test_srt_listener_stop_while_reconnecting()
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        server.stop()
+
+    wait_for_port_closed(PORT)
+    server = ObsServer(obs_bin, PORT, password=None, profile=profile)
+    server.start()
+    try:
+        print("== SRT listener: quit while waiting for a caller ==", flush=True)
+        await test_srt_listener_quit_while_waiting(server)
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        server.stop()
+
+
+async def run_srt_only(obs_bin):
+    await run_srt_phase(obs_bin)
+    failed = [n for n, ok, _ in RESULTS if not ok]
+    print("=" * 60)
+    print(f"checks: {len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
+    for n, _, detail in (r for r in RESULTS if not r[1]):
+        print(f"  - {n}: {detail}")
+    return 1 if failed else 0
+
+
 async def run_gpu_phase(obs_bin):
     """OBS forced onto llvmpipe: GetStats.gpuAcceleration and the startup
     warning (obs-rust/obs-studio#846, #940); and one libsrt in the
@@ -1713,6 +1881,10 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
         wait_for_port_closed(PORT)
         await run_shutdown_phase(obs_bin)
 
+    if not skip_obs:
+        wait_for_port_closed(PORT)
+        await run_srt_phase(obs_bin)
+
     total = len(RESULTS)
     passed = sum(1 for _, ok, _ in RESULTS if ok)
     failed = [n for n, ok, _ in RESULTS if not ok]
@@ -1743,12 +1915,13 @@ def main():
                          "mainly for debugging)")
     ap.add_argument("--skip-auth-phase", action="store_true",
                     help="with --no-spawn only: skip the auth-required phase")
-    ap.add_argument("--only", choices=["gpu", "shutdown", "scripts"],
+    ap.add_argument("--only", choices=["gpu", "shutdown", "scripts", "srt"],
                     help="run one group: gpu = GetStats.gpuAcceleration and the "
                          "startup warning with OpenGL forced onto llvmpipe; "
                          "shutdown = SIGTERM while recording and during a "
                          "startup dialog; scripts = a Lua script switching "
-                         "scenes from a timer")
+                         "scenes from a timer; srt = stopping an SRT listener "
+                         "and quitting while one waits")
     args = ap.parse_args()
     if args.only == "gpu":
         sys.exit(asyncio.run(run_gpu_only(args.obs)))
@@ -1756,6 +1929,8 @@ def main():
         sys.exit(asyncio.run(run_shutdown_only(args.obs)))
     if args.only == "scripts":
         sys.exit(asyncio.run(run_scripts_only(args.obs)))
+    if args.only == "srt":
+        sys.exit(asyncio.run(run_srt_only(args.obs)))
     sys.exit(asyncio.run(
         run_all(args.obs, args.no_spawn, args.skip_auth_phase)))
 
