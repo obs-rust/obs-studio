@@ -1,6 +1,7 @@
 //! obs-codec integration tests: codec (one module per former tests/*.rs file, #968).
 
 mod av1;
+mod av1_alloc;
 mod av1_parity;
 mod avc;
 mod avc_parity;
