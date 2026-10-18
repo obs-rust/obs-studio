@@ -858,6 +858,12 @@ area.
   fails. *All*, 2026-10-17. Issue
   [#1347](https://github.com/obs-rust/obs-studio/issues/1347), PR
   [#1353](https://github.com/obs-rust/obs-studio/pull/1353).
+- Stop Streaming stops an SRT listener stream that is waiting for its caller
+  to come back, and OBS quits while a listener waits; before, the stream
+  never stopped and OBS never finished quitting. *All*, 2026-10-18. Issue
+  [#1421](https://github.com/obs-rust/obs-studio/issues/1421), PR
+  [#1422](https://github.com/obs-rust/obs-studio/pull/1422), upstream
+  [obsproject/obs-studio#12250](https://github.com/obsproject/obs-studio/issues/12250).
 
 ### Sources and filters
 

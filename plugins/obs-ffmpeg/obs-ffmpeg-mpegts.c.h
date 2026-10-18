@@ -264,6 +264,12 @@ int ff_network_init(void)
 	return 1;
 }
 
+static int connect_interrupted(void *opaque)
+{
+	struct ffmpeg_output *stream = opaque;
+	return os_atomic_load_bool(&stream->abort_connect);
+}
+
 static inline int connect_mpegts_url(struct ffmpeg_output *stream, bool is_rist)
 {
 	int err = 0;
@@ -281,6 +287,11 @@ static inline int connect_mpegts_url(struct ffmpeg_output *stream, bool is_rist)
 	}
 
 	uc->url = (char *)(uintptr_t)url;
+	/* Without it, nothing can end the wait of an SRT listener for its
+	 * caller (no listen_timeout by default): every stop joins the start
+	 * thread and would wait as long. */
+	uc->interrupt_callback.callback = connect_interrupted;
+	uc->interrupt_callback.opaque = stream;
 	uc->max_packet_size = is_rist ? RIST_MAX_PAYLOAD_SIZE : SRT_LIVE_DEFAULT_PAYLOAD_SIZE;
 
 	if (stream->ff_data.config.srt_pkt_size)
@@ -1031,7 +1042,11 @@ static bool set_config(struct ffmpeg_output *stream)
 
 	return true;
 fail:
-	obs_output_signal_stop(stream->output, code);
+	/* A connect that a stop ended is no failure; the stop signals it. While
+	 * reconnecting, libobs would also take the failure as a reason to
+	 * reconnect again. */
+	if (!os_atomic_load_bool(&stream->abort_connect))
+		obs_output_signal_stop(stream->output, code);
 	stop(stream, false, 0);
 	return false;
 }
@@ -1113,6 +1128,8 @@ static void ffmpeg_mpegts_stop_internal(void *data, uint64_t ts, bool signal)
 	bool have_to_join = false;
 	pthread_t to_join;
 
+	os_atomic_set_bool(&stream->abort_connect, true);
+
 	/* macOS fix: handover of pthread; for some reason, maybe related to srt sockets, if the pthread joining is
 	 * done within the mutex, there can be a stall. So we just copy it and join out of the mutex. */
 	pthread_mutex_lock(&stream->start_stop_mutex);
@@ -1171,6 +1188,7 @@ static bool ffmpeg_mpegts_start(void *data)
 	stream->video_start_ts = 0;
 	stream->total_bytes = 0;
 	stream->got_headers = false;
+	os_atomic_set_bool(&stream->abort_connect, false);
 
 	pthread_create(&stream->start_stop_thread, NULL, start_stop_thread_fn, cmd);
 	os_atomic_set_bool(&stream->start_stop_thread_active, true);

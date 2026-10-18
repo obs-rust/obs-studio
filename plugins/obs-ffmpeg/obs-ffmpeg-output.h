@@ -126,6 +126,9 @@ struct ffmpeg_output {
 	pthread_mutex_t start_stop_mutex;
 	volatile bool start_stop_thread_active;
 	bool has_connected;
+	/* set by a stop: ends a connect that is still waiting (an SRT
+	 * listener waiting for its caller) */
+	volatile bool abort_connect;
 #endif
 };
 
