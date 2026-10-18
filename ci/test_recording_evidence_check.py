@@ -7,9 +7,12 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -173,15 +176,15 @@ class MainTest(unittest.TestCase):
             f = Fixture(Path(tmp))
             log = Path(tmp) / "obs.log"
             maps = Path(tmp) / "maps"
+            out = Path(tmp) / "identity.json"
             maps.write_text(f.maps(f.rust, f.opengl))
             log.write_text(NVIDIA_LOG)
-            self.assertEqual(
-                rec.main(["--log", str(log), "--maps", str(maps), "--libobs", "rust"]), 0
-            )
-            log.write_text(LLVMPIPE_LOG)
-            self.assertEqual(
-                rec.main(["--log", str(log), "--maps", str(maps), "--libobs", "rust"]), 1
-            )
+            args = ["--log", str(log), "--maps", str(maps), "--libobs", "rust"]
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                self.assertEqual(rec.main([*args, "--json", str(out)]), 0)
+                self.assertEqual(json.loads(out.read_text())["libobs"]["backend"], "rust")
+                log.write_text(LLVMPIPE_LOG)
+                self.assertEqual(rec.main(args), 1)
 
 
 if __name__ == "__main__":
