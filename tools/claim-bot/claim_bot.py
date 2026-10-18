@@ -16,6 +16,10 @@ phone notification, and one maintainer's agents make many claims.
 Commands, read from the first line of an issue comment:
   Claiming: <item>                  claim the issue
   Releasing <item>                  the claimant gives it up
+  Releasing <item> — handing it to @x, Handing <item> over to @x,
+  It's yours, @x, /handoff [item] [to] @x
+                                     the claimant hands the claim to @x instead
+                                     of dropping it (the label stands)
   Taking over stale claim from @x   take a stale claim
   /reassign @y                      maintainers (OWNER/MEMBER/COLLABORATOR) move any claim
 
@@ -58,6 +62,25 @@ CLAIM_RE = re.compile(r"^\s*claiming\b", re.I)
 RELEASE_RE = re.compile(r"^\s*releasing\b", re.I)
 TAKEOVER_RE = re.compile(r"^\s*taking over stale claim from @([A-Za-z0-9-]+)", re.I)
 REASSIGN_RE = re.compile(r"^\s*/reassign\s+@([A-Za-z0-9-]+)", re.I)
+# A handoff: the holder names who takes the claim, in one comment. This only
+# recognises the shape of the line so the event gate routes it here; the
+# target itself comes from handoff_target().
+HANDOFF_RE = re.compile(
+    r"^\s*(?:/?handoff\b|hand(?:ed|ing)\b|pass(?:ed|ing)\b|giv(?:e|ing)\b"
+    r"|transfer(?:red|ring)\b|mov(?:e|ing)\b|it'?s\s+yours\b|\byours\b)", re.I)
+# The verb pins the intent: `handing it (over) to @x`, `passed the work on to @x`.
+# A release that merely names someone (`thanks to @x`) has no verb, so it stays
+# a release rather than quietly keeping the claim on the wrong person.
+HANDOFF_TO_RE = re.compile(
+    r"\b(?:hand(?:ed|ing)|pass(?:ed|ing)|giv(?:e|ing)|transfer(?:red|ring)|mov(?:e|ing))"
+    r"(?:\s+\S+){0,3}\s+to\s*@([A-Za-z0-9-]+)", re.I)
+# `/handoff @x`, `/handoff <item> to @x`.
+HANDOFF_CMD_RE = re.compile(r"^\s*/?handoff\b(?:\s+\S+){0,3}?\s*(?:to\s+)?@([A-Za-z0-9-]+)", re.I)
+# `It's yours, @x`.
+YOURS_RE = re.compile(r"\bit'?s\s+yours[,;:! ]+@([A-Za-z0-9-]+)", re.I)
+# Everything that makes a comment a command, so the event gate and the
+# granted-reaction reader cannot drift apart.
+COMMANDS = (CLAIM_RE, RELEASE_RE, TAKEOVER_RE, REASSIGN_RE, HANDOFF_RE)
 # The bot's own records. Older ones wrote @login; current ones `login`.
 BOT_CLAIM_RE = re.compile(re.escape(BOT_PREFIX) + r" (?:claimed by|claim moved to) [@`]([A-Za-z0-9-]+)")
 BOT_CLEAR_RE = re.compile(re.escape(BOT_PREFIX) + r" claim (?:released|expired)")
@@ -102,12 +125,25 @@ def is_bot(login: str) -> bool:
     return login.endswith("[bot]")
 
 
+def handoff_target(line: str) -> str | None:
+    """The `@user` a handoff line names, or None when it names nobody."""
+    if m := HANDOFF_CMD_RE.match(line):
+        return m.group(1)
+    if not (RELEASE_RE.match(line) or HANDOFF_RE.match(line)):
+        return None
+    for rx in (HANDOFF_TO_RE, YOURS_RE):
+        if m := rx.search(line):
+            return m.group(1)
+    return None
+
+
 def current_claim(issue: Issue) -> Claim | None:
     """The claimant. No `claimed` label means no claim (release and expiry
     only remove it). Otherwise the latest granted command decides: a granted
-    `Claiming:` or takeover gives it to its author, `/reassign @x` to x, and
-    a granted release clears it. Older bot comments (@login records) count
-    too; before the bot, the latest `Claiming:` comment."""
+    `Claiming:` or takeover gives it to its author, `/reassign @x` to x, a
+    granted handoff to the `@x` it names, a plain granted release clears it.
+    Older bot comments (@login records) count too; before the bot, the latest
+    `Claiming:` comment."""
     if CLAIMED not in issue.labels:
         return None
     claim: Claim | None = None
@@ -118,8 +154,12 @@ def current_claim(issue: Issue) -> Claim | None:
             seen_record = True
             if m := REASSIGN_RE.match(line):
                 claim = Claim(m.group(1), c.created)
-            elif RELEASE_RE.match(line):
-                claim = None
+            elif RELEASE_RE.match(line) or HANDOFF_RE.match(line):
+                target = handoff_target(line)
+                if target and (claim is None or target.lower() != claim.user.lower()):
+                    claim = Claim(target, c.created)      # a handoff moves it
+                elif RELEASE_RE.match(line):
+                    claim = None                          # a plain release clears it
             else:
                 claim = Claim(c.author, c.created)
         elif c.author == BOT and (m := BOT_CLAIM_RE.match(c.body)):
@@ -190,8 +230,14 @@ def decide_comment(issue: Issue, comment: Comment, now: datetime) -> list[tuple]
                           f"`Taking over stale claim from @{claim.user}`.")
         return accept(comment)
 
-    if RELEASE_RE.match(line) and claim and claim.user.lower() == who.lower():
-        return [("label_remove", CLAIMED), ("react", comment.id)]
+    if (RELEASE_RE.match(line) or HANDOFF_RE.match(line)) and claim \
+            and claim.user.lower() == who.lower():
+        target = handoff_target(line)
+        if target and target.lower() != claim.user.lower():
+            return accept(comment)      # the label stands; current_claim moves it
+        if RELEASE_RE.match(line):
+            return [("label_remove", CLAIMED), ("react", comment.id)]
+        return []
     return []
 
 
@@ -264,7 +310,7 @@ def load_issue(number: int) -> Issue:
     for c in gh_json(f"repos/{REPO}/issues/{number}/comments?per_page=100"):
         com = Comment(c["user"]["login"], c["author_association"], c["body"] or "", ts(c["created_at"]), c["id"])
         line = com.first_line()
-        command = any(r.match(line) for r in (CLAIM_RE, RELEASE_RE, TAKEOVER_RE, REASSIGN_RE))
+        command = any(r.match(line) for r in COMMANDS)
         if not is_bot(com.author) and command and c.get("reactions", {}).get(REACTION):
             reactions = gh_json(f"repos/{REPO}/issues/comments/{c['id']}/reactions?content={REACTION}&per_page=100")
             com.granted = any(r["user"]["login"] == BOT for r in reactions)
@@ -314,7 +360,7 @@ def main() -> int:
         c = event["comment"]
         comment = Comment(c["user"]["login"], c["author_association"], c["body"] or "", ts(c["created_at"]), c["id"])
         line = comment.first_line()
-        if is_bot(comment.author) or not any(r.match(line) for r in (CLAIM_RE, RELEASE_RE, TAKEOVER_RE, REASSIGN_RE)):
+        if is_bot(comment.author) or not any(r.match(line) for r in COMMANDS):
             return 0
         number = event["issue"]["number"]
         issue = load_issue(number)

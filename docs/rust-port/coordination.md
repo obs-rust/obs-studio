@@ -56,7 +56,11 @@ this document covers *who does what, and when*.
 - Maintainers (owner, member, collaborator) can move any claim with
   `/reassign @user`. The bot leaves issues labeled `claim-locked` alone.
 - To stop, comment `Releasing <item>` and link any partial branch; the bot
-  removes the label (🚀).
+  removes the label (🚀). To hand the claim to someone instead of dropping
+  it, name them in the same comment — `Releasing <item> — handing it to
+  @user`, `Handing <item> over to @user`, `It's yours, @user` or
+  `/handoff @user` — and the label stays, moved to `@user` (🚀), so nobody
+  else can take the item in between.
 
 ## 4. Pull requests
 
