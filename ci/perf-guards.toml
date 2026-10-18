@@ -2,10 +2,11 @@
 # on. ci/perf_guard_lint.py (lint lane) fails when a guarded function loses
 # one, and prints the reason and the bench below.
 #
-# Add a guard when a fix is fast because of how the compiler translates a
-# shape of code, not because the algorithm changed, so that an obvious
-# "simplification" brings the regression back without a failing test. Each
-# guarded function also carries a `// PERF GUARD #<issue>` comment.
+# Add a guard when an obvious "simplification" would bring a measured
+# regression back without a failing test: a fix that is fast because of how
+# the compiler translates a shape of code (#1303), or a shortcut that gives
+# the same result as a simpler path (#1301). Each guarded function also
+# carries a `// PERF GUARD #<issue>` comment.
 #
 # To change guarded code: run the bench, and if the new shape is as fast,
 # change the guard here in the same PR with the numbers.
@@ -48,3 +49,28 @@ require = ["shift += 7"]
 forbid = ["i * 7"]
 reason = "a running shift is one add per byte; `i * 7` adds a multiply to every byte and was 1.22x instead of 1.07x. A fully unrolled leb128 was worse (1.7-2.0x): it stops the inlining of parse_obu_header"
 bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- av1/keyframe (x86_64 Linux, against GCC)"
+
+[[guard]]
+issue = 1301
+file = "rust/obs-codec/src/nal.rs"
+function = "nal_headers"
+require = ["find_startcode_internal(", "pos + 3"]
+forbid = ["find_startcode(", "unit_start("]
+reason = "the header walk starts each unit 3 bytes after the internal search's `00 00 01`; the fold in find_startcode is a select on a loaded byte (cmov), and the zero skip and the next search wait for it. Without it (NEAR and the prefilter only): 1.21x / 1.14x the C code on x86_64 instead of 0.78x / 0.75x. The result is the same as nal_units, so a shared walk fails no test"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- '(avc|hevc)/keyframe' (x86_64 Linux, alignment pinned as in #1301)"
+
+[[guard]]
+issue = 1301
+file = "rust/obs-codec/src/nal.rs"
+function = "find_startcode_internal"
+require = ["while i < NEAR"]
+reason = "the first NEAR positions are tested a word at a time before the 64-byte block skip; without it, a scan for the next code 20 bytes away runs the block test whenever the rest of the buffer is 64 bytes or more. With the header walk alone: 1.43x / 1.41x instead of 0.78x / 0.75x on x86_64"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- '(avc|hevc)/keyframe' (x86_64 Linux, alignment pinned as in #1301)"
+
+[[guard]]
+issue = 1301
+file = "rust/obs-codec/src/nal.rs"
+function = "word_startcode"
+require = ["first.wrapping_sub(ONES) & !first & HIGH == 0"]
+reason = "a word without a zero byte holds no start code: one load instead of three. Smaller than the other #1301 guards (about 0.5 ns on x86_64, 1 ns on arm64), but free"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- '(avc|hevc)/(keyframe|extract)'"

@@ -52,6 +52,7 @@ fn block_has_startcode(window: &[u8; BLOCK + 2]) -> bool {
 
 /// The first of the first [`WORD`] positions of `window` where `00 00 01`
 /// begins.
+// PERF GUARD #1301 (ci/perf-guards.toml): keep the zero-byte prefilter.
 fn word_startcode(window: &[u8; WORD + 2]) -> Option<usize> {
     const ONES: u64 = u64::from_ne_bytes([0x01; WORD]);
     const HIGH: u64 = u64::from_ne_bytes([0x80; WORD]);
@@ -72,6 +73,8 @@ fn word_startcode(window: &[u8; WORD + 2]) -> Option<usize> {
 /// `ff_avc_find_startcode_internal`: the first `i` with
 /// `data[i..i + 3] == [0, 0, 1]` and `i + 3 < data.len()`, else
 /// `data.len()`.
+// PERF GUARD #1301 (ci/perf-guards.toml): keep the NEAR word steps before
+// the block skip. Measure {avc,hevc}/keyframe before you change the steps.
 fn find_startcode_internal(data: &[u8]) -> usize {
     let searchable = data.len().saturating_sub(3);
     let mut i = 0;
@@ -194,6 +197,8 @@ fn unit_start(data: &[u8], pos: usize) -> Option<usize> {
 /// [`nal_units`] also lands after it folds in a leading zero and skips the
 /// zeros. Without the fold, no loaded byte decides where the next search
 /// starts (#1301: the fold's select made each unit wait for a load).
+// PERF GUARD #1301 (ci/perf-guards.toml): do not share the walk with
+// nal_units. The result is the same, so no test fails, but it is 1.6x slower.
 pub fn nal_headers(data: &[u8]) -> impl Iterator<Item = u8> + '_ {
     let mut pos = find_startcode_internal(data);
     let mut unit = None;
