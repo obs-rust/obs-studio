@@ -115,3 +115,38 @@ fn lone_header_with_missing_extension_byte() {
     assert_eq!(extract_headers(&data).packet, data);
     assert!(!keyframe(&[obu(OBU_FRAME, true, true)]));
 }
+
+#[test]
+fn size_field_after_the_extension_byte() {
+    // Header, extension byte 0xff, two-byte size field 2: the payload
+    // starts at 4. Read from byte 1, 0xff would continue the size field.
+    let key = [obu(OBU_FRAME, true, true), 0xff, 0x82, 0x00, 0x10, 0x11];
+    let all: Vec<_> = obus(&key)
+        .map(|(at, o)| (at, o.header_len, o.size))
+        .collect();
+    assert_eq!(all, [(0, 4, 2)]);
+    assert!(keyframe(&key));
+    let inter = [obu(OBU_FRAME, true, true), 0x00, 0x81, 0x00, 0x30];
+    assert!(!keyframe(&inter));
+}
+
+#[test]
+fn walk_alternates_obus_with_and_without_extension() {
+    let data = [
+        obu(OBU_TEMPORAL_DELIMITER, true, true),
+        0x05,
+        0,
+        obu(OBU_SEQUENCE_HEADER, false, true),
+        1,
+        0xaa,
+        obu(OBU_FRAME, true, true),
+        0x08,
+        1,
+        0x10,
+    ];
+    let all: Vec<_> = obus(&data)
+        .map(|(at, o)| (at, o.header_len, o.size))
+        .collect();
+    assert_eq!(all, [(0, 3, 0), (3, 2, 1), (6, 3, 1)]);
+    assert!(keyframe(&data));
+}
