@@ -1247,6 +1247,12 @@ area.
   [#383](https://github.com/obs-rust/obs-studio/issues/383), PR
   [#384](https://github.com/obs-rust/obs-studio/pull/384), upstream
   [obsproject/obs-studio#8936](https://github.com/obsproject/obs-studio/issues/8936).
+- A Lua or Python script that switches scenes from a timer no longer hangs
+  OBS when it also has a frontend event callback; the scene changes right
+  after the timer returns. *All*, 2026-10-18. Issue
+  [#1416](https://github.com/obs-rust/obs-studio/issues/1416), PR
+  [#1417](https://github.com/obs-rust/obs-studio/pull/1417), upstream
+  [obsproject/obs-studio#3385](https://github.com/obsproject/obs-studio/issues/3385).
 
 ### Stability
 

@@ -58,14 +58,27 @@ obs_source_t *OBSStudioAPI::obs_frontend_get_current_scene()
 	}
 }
 
+/* libobs's graphics, audio and destroy threads must not wait for the UI
+ * thread: the UI thread can wait for them. Activating a profile resets video
+ * and audio, which waits for the graphics and audio threads. Script timers
+ * run on the graphics thread holding the scripting callback lock, and a scene
+ * change sends events to the scripts' callbacks, which take that lock
+ * (obsproject/obs-studio#3385). */
+static bool InLibobsThread()
+{
+	return obs_in_task_thread(OBS_TASK_GRAPHICS) || obs_in_task_thread(OBS_TASK_AUDIO) ||
+	       obs_in_task_thread(OBS_TASK_DESTROY);
+}
+
 void OBSStudioAPI::obs_frontend_set_current_scene(obs_source_t *scene)
 {
 	if (main->IsPreviewProgramMode()) {
-		QMetaObject::invokeMethod(
-			main, [this, scene = OBSSource(scene)]() { main->TransitionToScene(scene); }, WaitConnection());
+		RunFrontendApiCall(
+			main, [this, scene = OBSSource(scene)]() { main->TransitionToScene(scene); }, InLibobsThread());
 	} else {
-		QMetaObject::invokeMethod(main, qOverload<OBSSource, bool>(&OBSBasic::SetCurrentScene),
-					  WaitConnection(), OBSSource(scene), false);
+		RunFrontendApiCall(
+			main, [this, scene = OBSSource(scene)]() { main->SetCurrentScene(scene, false); },
+			InLibobsThread());
 	}
 }
 
@@ -200,14 +213,6 @@ void OBSStudioAPI::obs_frontend_set_current_profile(const char *profile)
 			}
 		}
 	}
-}
-
-/* Activating a profile can reset video and audio, which wait for libobs's
- * graphics and audio threads. */
-static bool InLibobsThread()
-{
-	return obs_in_task_thread(OBS_TASK_GRAPHICS) || obs_in_task_thread(OBS_TASK_AUDIO) ||
-	       obs_in_task_thread(OBS_TASK_DESTROY);
 }
 
 void OBSStudioAPI::obs_frontend_create_profile(const char *name)
