@@ -1220,6 +1220,11 @@ area.
   happened. *Linux (Wayland)*, 2026-10-18. Issue
   [#1400](https://github.com/obs-rust/obs-studio/issues/1400), upstream
   [obsproject/obs-studio#13494](https://github.com/obsproject/obs-studio/issues/13494).
+- A source set to Darken blending leaves the background where it is
+  transparent; before, it drew black there and cut a hole in the scene's
+  alpha. *All*, 2026-10-18. Issue
+  [#1404](https://github.com/obs-rust/obs-studio/issues/1404), upstream
+  [obsproject/obs-studio#6591](https://github.com/obsproject/obs-studio/issues/6591).
 
 ### Scripting
 
