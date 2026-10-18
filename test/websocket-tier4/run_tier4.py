@@ -1482,8 +1482,122 @@ async def run_shutdown_phase(obs_bin):
         server.stop()
 
 
+# A Lua script that switches scenes from a timer while it also has a frontend
+# event callback (obsproject/obs-studio#3385, obs-rust/obs-studio#1416).
+# Script timers run on libobs's graphics thread, holding the scripting
+# callback lock. obs_frontend_set_current_scene() waited there for the UI
+# thread, and the UI thread, sending the scene change to the script's event
+# callback, waited for that lock: OBS hung.
+LUA_SCENE_SWITCH = """obs = obslua
+local fired = false
+
+function on_event(event)
+	if event == obs.OBS_FRONTEND_EVENT_SCENE_CHANGED then
+		print("tier4-lua: scene changed")
+	end
+end
+
+function tick()
+	if fired then
+		return
+	end
+	fired = true
+	obs.timer_remove(tick)
+	local scenes = obs.obs_frontend_get_scenes()
+	for _, scene in ipairs(scenes) do
+		if obs.obs_source_get_name(scene) == "B" then
+			print("tier4-lua: switching to B")
+			obs.obs_frontend_set_current_scene(scene)
+			print("tier4-lua: switch returned")
+		end
+	end
+	obs.source_list_release(scenes)
+end
+
+function script_load(settings)
+	obs.obs_frontend_add_event_callback(on_event)
+	obs.timer_add(tick, 2000)
+end
+"""
+
+
+def write_lua_scene_switch_collection(home):
+    """Scene collection Tier4: scenes A (current) and B, with the script
+    above loaded by the Scripts tool."""
+    script = os.path.join(home, "scene-switch.lua")
+    with open(script, "w") as f:
+        f.write(LUA_SCENE_SWITCH)
+    scenes = os.path.join(home, ".config", "obs-studio", "basic", "scenes")
+    os.makedirs(scenes, exist_ok=True)
+    collection = {
+        "name": "Tier4", "current_scene": "A", "current_program_scene": "A",
+        "scene_order": [{"name": "A"}, {"name": "B"}],
+        "sources": [{"id": "scene", "versioned_id": "scene", "name": name,
+                     "settings": {"items": []}} for name in ("A", "B")],
+        "modules": {"scripts-tool": [{"path": script, "settings": {}}]},
+    }
+    with open(os.path.join(scenes, "Tier4.json"), "w") as f:
+        json.dump(collection, f)
+
+
+async def test_lua_timer_scene_switch(server):
+    log = ""
+    deadline = time.time() + 30
+    while time.time() < deadline and "tier4-lua: switching to B" not in log:
+        await asyncio.sleep(0.25)
+        with open(server.log, errors="replace") as f:
+            log = f.read()
+    check("scripts:Lua timer reached obs_frontend_set_current_scene",
+          "tier4-lua: switching to B" in log,
+          "the script never ran: is Lua scripting in this build?")
+    await asyncio.sleep(3)
+    with open(server.log, errors="replace") as f:
+        log = f.read()
+    check("scripts:obs_frontend_set_current_scene from a Lua timer returns",
+          "tier4-lua: switch returned" in log,
+          "the script's timer is still inside obs_frontend_set_current_scene")
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    try:
+        r = await c.request("GetCurrentProgramScene", timeout=10.0)
+        name = r.get("d", {}).get("responseData", {}).get("sceneName")
+        check("scripts:the scene the Lua timer picked is on program",
+              name == "B", f"program scene {name!r}")
+        r = await c.request("SetCurrentProgramScene", {"sceneName": "A"},
+                            timeout=10.0)
+        check("scripts:UI thread still answers after the switch",
+              resp_status(r).get("code") == STATUS_SUCCESS, json.dumps(r)[:300])
+    except TimeoutError as e:
+        check("scripts:UI thread still answers after the switch", False,
+              f"{e}: OBS hangs")
+    finally:
+        await c.close_conn()
+
+
+async def run_scripts_phase(obs_bin):
+    home = tempfile.mkdtemp(prefix="obs-tier4-")
+    write_lua_scene_switch_collection(home)
+    server = ObsServer(obs_bin, PORT, password=None, keep_home=home,
+                       profile={})
+    server.start()
+    try:
+        print("== Lua timer scene switch ==", flush=True)
+        await test_lua_timer_scene_switch(server)
+    finally:
+        server.stop()
+
+
 async def run_shutdown_only(obs_bin):
     await run_shutdown_phase(obs_bin)
+    failed = [n for n, ok, _ in RESULTS if not ok]
+    print("=" * 60)
+    print(f"checks: {len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
+    for n, _, detail in (r for r in RESULTS if not r[1]):
+        print(f"  - {n}: {detail}")
+    return 1 if failed else 0
+
+
+async def run_scripts_only(obs_bin):
+    await run_scripts_phase(obs_bin)
     failed = [n for n, ok, _ in RESULTS if not ok]
     print("=" * 60)
     print(f"checks: {len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
@@ -1589,6 +1703,10 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
 
     if not skip_obs:
         wait_for_port_closed(PORT)
+        await run_scripts_phase(obs_bin)
+
+    if not skip_obs:
+        wait_for_port_closed(PORT)
         await run_gpu_phase(obs_bin)
 
     if not skip_obs:
@@ -1625,16 +1743,19 @@ def main():
                          "mainly for debugging)")
     ap.add_argument("--skip-auth-phase", action="store_true",
                     help="with --no-spawn only: skip the auth-required phase")
-    ap.add_argument("--only", choices=["gpu", "shutdown"],
+    ap.add_argument("--only", choices=["gpu", "shutdown", "scripts"],
                     help="run one group: gpu = GetStats.gpuAcceleration and the "
                          "startup warning with OpenGL forced onto llvmpipe; "
                          "shutdown = SIGTERM while recording and during a "
-                         "startup dialog")
+                         "startup dialog; scripts = a Lua script switching "
+                         "scenes from a timer")
     args = ap.parse_args()
     if args.only == "gpu":
         sys.exit(asyncio.run(run_gpu_only(args.obs)))
     if args.only == "shutdown":
         sys.exit(asyncio.run(run_shutdown_only(args.obs)))
+    if args.only == "scripts":
+        sys.exit(asyncio.run(run_scripts_only(args.obs)))
     sys.exit(asyncio.run(
         run_all(args.obs, args.no_spawn, args.skip_auth_phase)))
 
