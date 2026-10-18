@@ -2,4 +2,5 @@
 
 #include "libobs/build/libobs-platform.pch.h"
 
+#include "libobs/util/platform-file.c.h"
 #include "libobs/util/platform.c.h"

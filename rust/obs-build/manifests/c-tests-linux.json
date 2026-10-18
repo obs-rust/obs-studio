@@ -200,6 +200,12 @@
     ]
   },
   {
+    "name": "test_platform_file",
+    "sources": [
+      "test/cmocka/test_platform_file.c"
+    ]
+  },
+  {
     "name": "test_dtostr_exponent",
     "sources": [
       "test/cmocka/test_dtostr_exponent.c"

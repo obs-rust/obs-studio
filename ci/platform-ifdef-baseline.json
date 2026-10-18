@@ -91,7 +91,7 @@
   "libobs/util/curl/curl-helper.h": 1,
   "libobs/util/dstr.h": 1,
   "libobs/util/pipe.h": 1,
-  "libobs/util/platform.c.h": 5,
+  "libobs/util/platform-file.c.h": 5,
   "libobs/util/profiler-io.c.h": 2,
   "libobs/util/profiler.h": 1,
   "libobs/util/utf8.c.h": 1,

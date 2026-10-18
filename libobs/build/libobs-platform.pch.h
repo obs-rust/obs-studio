@@ -4,7 +4,7 @@
 
 #pragma once
 
-/* util/platform.c */
+/* util/platform-file.c, util/platform.c */
 #define _FILE_OFFSET_BITS 64
 
 #include <time.h>
