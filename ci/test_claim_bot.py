@@ -162,6 +162,79 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
 
 
+class HandoffTest(unittest.TestCase):
+    """Handoff language in the claimant's own comment moves the claim in one
+    step instead of needing a separate `/reassign`."""
+
+    def hands(self, body):
+        i = claimed_by_alice()
+        c = human("alice", body, h(2))
+        acts = cb.decide_comment(i, c, h(2))
+        return i, c, acts
+
+    def test_release_naming_a_handoff_target_moves_the_claim(self):
+        """The real wording: `Releasing #1301 — handing it to @vpacher, ...`."""
+        i, c, acts = self.hands("Releasing x — handing it to @bob, who has the bench driver")
+        self.assertTrue(accepted(acts, c), acts)
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
+
+    def test_bare_handoff_line_moves_the_claim(self):
+        i, c, acts = self.hands("Handing x over to @bob")
+        self.assertTrue(accepted(acts, c), acts)
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
+
+    def test_handoff_command_moves_the_claim(self):
+        i, c, acts = self.hands("/handoff @bob")
+        self.assertTrue(accepted(acts, c), acts)
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
+
+    def test_informal_yours_moves_the_claim(self):
+        i, c, acts = self.hands("It's yours, @bob 🫡")
+        self.assertTrue(accepted(acts, c), acts)
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
+
+    def test_gratitude_is_not_a_handoff(self):
+        """`thanks to @bob` in a release keeps the release a release."""
+        i, c, acts = self.hands("Releasing x — thanks to @bob for the review")
+        self.assertEqual(acts, [("label_remove", cb.CLAIMED), ("react", c.id)], acts)
+        self.assertIsNone(cb.current_claim(applied(i, c, acts)))
+
+    def test_handoff_to_self_still_releases(self):
+        i, c, acts = self.hands("Releasing x — handing it to @alice")
+        self.assertEqual(acts, [("label_remove", cb.CLAIMED), ("react", c.id)], acts)
+        self.assertIsNone(cb.current_claim(applied(i, c, acts)))
+
+    def test_handoff_without_a_target_still_releases(self):
+        i, c, acts = self.hands("Releasing x, handing it over to nobody in particular")
+        self.assertEqual(acts, [("label_remove", cb.CLAIMED), ("react", c.id)], acts)
+
+    def test_only_the_holder_can_hand_off(self):
+        i = claimed_by_alice()
+        c = human("mallory", "Handing x over to @mallory", h(2))
+        self.assertEqual(cb.decide_comment(i, c, h(2)), [])
+
+    def test_handoff_starts_the_new_holders_clock(self):
+        i, c, acts = self.hands("Handing x over to @bob")
+        i = applied(i, c, acts)
+        claim = cb.current_claim(i)
+        self.assertFalse(cb.is_stale(i, claim, h(49.9)))
+        self.assertTrue(cb.is_stale(i, claim, h(50)))
+
+    def test_handoff_blocks_another_claimant(self):
+        i, c, acts = self.hands("Handing x over to @bob")
+        i = applied(i, c, acts)
+        other = human("carol", "Claiming: x", h(3))
+        acts = cb.decide_comment(i, other, h(3))
+        self.assertTrue(rejected(acts, "carol"), acts)
+        self.assertIn("already claimed by `bob`", acts[0][1])
+
+    def test_handoff_lines_are_recognized_commands(self):
+        """The event gate must route handoff comments to the bot at all."""
+        for line in ("Handing x over to @bob", "/handoff @bob", "It's yours, @bob",
+                     "Releasing x — handing it to @bob"):
+            self.assertTrue(any(r.match(line) for r in cb.COMMANDS), line)
+
+
 class TakeoverTest(unittest.TestCase):
     def test_takeover_of_fresh_claim_is_rejected(self):
         acts = cb.decide_comment(claimed_by_alice(),
@@ -245,6 +318,7 @@ class QuietTest(unittest.TestCase):
         yield True, cb.decide_comment(alice(), human("bob", "Claiming: x", h(1)), h(1))
         yield False, cb.decide_comment(alice(), human("bob", "Claiming: x", h(49)), h(49))
         yield False, cb.decide_comment(alice(), human("alice", "Releasing x", h(2)), h(2))
+        yield False, cb.decide_comment(alice(), human("alice", "Releasing x — handing it to @bob", h(2)), h(2))
         yield True, cb.decide_comment(alice(), human("bob", "Taking over stale claim from @alice", h(10)), h(10))
         yield False, cb.decide_comment(alice(), human("bob", "Taking over stale claim from @alice", h(48)), h(48))
         yield True, cb.decide_comment(alice(), human("bob", "/reassign @bob", h(1)), h(1))
