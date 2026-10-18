@@ -116,6 +116,7 @@
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-util+.h.c",
     "build/libobs.ported-util-io+.h.c",
+    "build/libobs.ported-platform+.h.c",
     "build/libobs.ported-media+.h.c",
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-graphics+.h.c"

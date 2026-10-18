@@ -2,6 +2,7 @@
 //! [`utf8`] call Win32 directly, declared against kernel32.lib.
 
 pub mod crt;
+pub mod file;
 pub mod host;
 pub mod pipe;
 pub mod sync;

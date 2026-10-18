@@ -36,7 +36,11 @@
 #define os_quick_write_utf8_file_safe oracle_os_quick_write_utf8_file_safe
 #define os_get_file_size oracle_os_get_file_size
 /* os_stat is `#define os_stat stat` in platform.h on non-Windows: the
- * definition keeps that, so it is not renamed here. */
+ * definition keeps that, so it is renamed only on Windows, where obs-util
+ * defines the plain os_stat. */
+#ifdef _WIN32
+#define os_stat oracle_os_stat
+#endif
 #define os_fgetsize oracle_os_fgetsize
 #define os_mbs_to_wcs oracle_os_mbs_to_wcs
 #define os_utf8_to_wcs oracle_os_utf8_to_wcs

@@ -18,6 +18,7 @@ pub mod path_extension;
 pub mod pipe;
 #[cfg(target_os = "macos")]
 pub mod platform_cocoa;
+pub mod platform_file;
 #[cfg(unix)]
 pub mod platform_nix;
 pub mod platform_number;

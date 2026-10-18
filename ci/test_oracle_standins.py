@@ -38,12 +38,6 @@ DIFFERENT = {
     "os_utf8_to_wcs_ptr": WINDOWS_FORWARDER,
     "os_wcs_to_utf8_ptr": WINDOWS_FORWARDER,
     "os_mbs_to_utf8_ptr": WINDOWS_FORWARDER,
-    "os_fopen": WINDOWS_FORWARDER,
-    "os_fseeki64": WINDOWS_FORWARDER,
-    "os_ftelli64": WINDOWS_FORWARDER,
-    "os_quick_read_utf8_file": WINDOWS_FORWARDER,
-    "os_quick_write_utf8_file": WINDOWS_FORWARDER,
-    "os_quick_write_utf8_file_safe": WINDOWS_FORWARDER,
 }
 
 

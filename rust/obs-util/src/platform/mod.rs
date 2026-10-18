@@ -18,11 +18,19 @@ cfg_select! {
     unix => {
         pub mod unix;
         pub use unix::{Event, Pipe, Sem, close_file, crt, path_from_bytes};
+        pub use unix::file::{
+            CFile, SEEK_CUR, SEEK_END, SEEK_SET, WChar, errno, mbs_to_utf8, set_errno, utf8_to_mbs,
+        };
+        pub use unix::nix::safe_replace;
     }
     windows => {
         #[allow(unsafe_code)] // Win32 handle and string calls; see the module docs
         pub mod windows;
         pub use windows::{Event, Pipe, Sem, close_file, crt, path_from_bytes};
+        pub use windows::file::{
+            CFile, SEEK_CUR, SEEK_END, SEEK_SET, WChar, errno, mbs_to_utf8, set_errno, utf8_to_mbs,
+        };
+        pub use windows::host::safe_replace;
     }
 }
 

@@ -4,6 +4,7 @@
 pub mod cocoa;
 pub mod crt;
 pub mod event;
+pub mod file;
 pub mod nix;
 pub mod pipe;
 

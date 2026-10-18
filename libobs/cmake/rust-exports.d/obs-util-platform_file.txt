@@ -1,0 +1,14 @@
+os_fgetsize
+os_fopen
+os_fread_mbs
+os_fread_utf8
+os_fseeki64
+os_ftelli64
+os_get_file_size
+os_quick_read_mbs_file
+os_quick_read_utf8_file
+os_quick_write_mbs_file
+os_quick_write_utf8_file
+os_quick_write_utf8_file_safe
+os_stat
+os_wfopen
