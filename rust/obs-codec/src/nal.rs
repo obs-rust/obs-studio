@@ -9,11 +9,11 @@
 //! found at `i` when `i + 3 < len`, so one in the last three bytes, with
 //! nothing after it, is not reported.
 //!
-//! The scan here tests 64 positions at a time to skip data with no start
-//! code, then 8 at a time to locate one, then single bytes at the end. A
-//! block is only skipped when the exact three-byte pattern is absent, and
-//! the later steps test that pattern too, so the result is that of a byte
-//! scan.
+//! The scan here first tests the [`NEAR`] positions at the start 8 at a
+//! time, then 64 at a time to skip data with no start code, then 8 at a
+//! time to locate one, then single bytes at the end. A block is only
+//! skipped when the exact three-byte pattern is absent, and the other steps
+//! test that pattern too, so the result is that of a byte scan.
 
 /// The positions [`block_has_zero_pair`] and [`block_has_startcode`] test in
 /// one step.
@@ -21,6 +21,11 @@ const BLOCK: usize = 64;
 
 /// The positions [`word_startcode`] tests in one step.
 const WORD: usize = 8;
+
+/// The positions tested a word at a time before the block skip. Parameter
+/// sets and SEI units are short, so the next start code is often this
+/// close, and a block test there costs more than it skips (#1301).
+const NEAR: usize = 4 * WORD;
 
 /// Whether `00 00` begins at any of the first [`BLOCK`] positions of
 /// `window`.
@@ -51,8 +56,14 @@ fn word_startcode(window: &[u8; WORD + 2]) -> Option<usize> {
     const ONES: u64 = u64::from_ne_bytes([0x01; WORD]);
     const HIGH: u64 = u64::from_ne_bytes([0x80; WORD]);
     let word = |at: usize| u64::from_le_bytes(window[at..at + WORD].try_into().unwrap());
+    // A start code begins with a zero byte. Without one in the first word,
+    // none begins at these positions: one load instead of three (#1301).
+    let first = word(0);
+    if first.wrapping_sub(ONES) & !first & HIGH == 0 {
+        return None;
+    }
     // A byte of `x` is zero exactly where a start code begins.
-    let x = word(0) | word(1) | (word(2) ^ ONES);
+    let x = first | word(1) | (word(2) ^ ONES);
     // The lowest flagged byte is the first zero byte. Borrows can flag bytes above it.
     let zero = x.wrapping_sub(ONES) & !x & HIGH;
     (zero != 0).then(|| (zero.trailing_zeros() / 8) as usize)
@@ -64,6 +75,12 @@ fn word_startcode(window: &[u8; WORD + 2]) -> Option<usize> {
 fn find_startcode_internal(data: &[u8]) -> usize {
     let searchable = data.len().saturating_sub(3);
     let mut i = 0;
+    while i < NEAR && i + WORD <= searchable {
+        if let Some(at) = word_startcode(data[i..i + WORD + 2].try_into().unwrap()) {
+            return i + at;
+        }
+        i += WORD;
+    }
     // Skip whole blocks that hold no start code. Most have no zero pair
     // either, which takes two loads per vector to see where the full pattern
     // takes three.
@@ -171,14 +188,23 @@ fn unit_start(data: &[u8], pos: usize) -> Option<usize> {
 /// until the next unit is asked for. `obs_avc_keyframe` and
 /// `obs_hevc_keyframe` read the header before that search and return at the
 /// first slice, so they never scan it.
+///
+/// The walk also uses the internal search directly. It finds `00 00 01`
+/// with at least one byte after it, so the unit starts 3 bytes on: where
+/// [`nal_units`] also lands after it folds in a leading zero and skips the
+/// zeros. Without the fold, no loaded byte decides where the next search
+/// starts (#1301: the fold's select made each unit wait for a load).
 pub fn nal_headers(data: &[u8]) -> impl Iterator<Item = u8> + '_ {
-    let mut pos = find_startcode(data);
+    let mut pos = find_startcode_internal(data);
     let mut unit = None;
     core::iter::from_fn(move || {
         if let Some(start) = unit.take() {
-            pos = start + find_startcode(&data[start..]);
+            pos = start + find_startcode_internal(&data[start..]);
         }
-        let start = unit_start(data, pos)?;
+        if pos >= data.len() {
+            return None;
+        }
+        let start = pos + 3;
         unit = Some(start);
         Some(data[start])
     })
