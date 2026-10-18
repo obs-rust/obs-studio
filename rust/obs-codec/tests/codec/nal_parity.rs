@@ -181,6 +181,35 @@ fn every_position_in_long_buffers_matches_c() {
     }
 }
 
+/// Zeros that start no code (`00 02`, `00 00 02`, `00 00 00 02`) at every
+/// position before a real code, in short buffers and around the first
+/// 64-position step. A word that holds a zero but no code must not stop
+/// the search, and the header walk must still find every unit (#1301).
+#[test]
+fn zeros_without_a_code_at_every_position_match_c() {
+    for len in (1usize..=48).chain(60..=76) {
+        for pos in 0..len {
+            for decoy in [&[0u8, 2][..], &[0, 0, 2], &[0, 0, 0, 2]] {
+                for code_at in [None, Some(len.saturating_sub(6))] {
+                    let mut data = vec![0x11u8; len];
+                    if let Some(at) = code_at {
+                        data[at..].iter_mut().zip([0u8, 0, 1, 0x65]).for_each(|(b, c)| *b = c);
+                    }
+                    for (k, &b) in decoy.iter().enumerate() {
+                        if pos + k < len {
+                            data[pos + k] = b;
+                        }
+                    }
+                    check(&data).unwrap();
+                    let headers: Vec<u8> = nal_headers(&data).collect();
+                    let units: Vec<u8> = nal_units(&data).map(|nal| nal.header(&data)).collect();
+                    assert_eq!(headers, units, "{data:02x?}");
+                }
+            }
+        }
+    }
+}
+
 /// An empty or reversed range returns `end` on both sides.
 #[test]
 fn empty_and_reversed_ranges_match_c() {
