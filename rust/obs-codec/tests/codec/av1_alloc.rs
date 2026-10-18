@@ -4,50 +4,17 @@
 //! their `bmalloc` buffers. The shims must do the same: no Rust heap
 //! allocation on the way (an intermediate `Vec` that grows and is then
 //! copied into `bmalloc` made `av1/extract` and `av1/metadata` 1.26x to
-//! 1.51x slower than C). `bmalloc` uses the C allocator, so this counter,
-//! which counts Rust heap allocations on the calling thread, does not see
-//! the outputs themselves; counting is deterministic, unlike a time bound.
+//! 1.51x slower than C). The counter (`alloc_count.rs`) does not see the
+//! `bmalloc` outputs themselves; counting is deterministic, unlike a time
+//! bound.
 
 use core::ptr;
-use std::alloc::{GlobalAlloc, Layout, System};
-use std::cell::Cell;
 
 use obs_codec::av1::{OBU_FRAME, OBU_METADATA, OBU_SEQUENCE_HEADER, OBU_TEMPORAL_DELIMITER};
 use obs_codec::ffi::av1 as rs;
 use obs_util::ffi::darray::bfree;
 
-struct Counting;
-
-thread_local! {
-    static ALLOCS: Cell<usize> = const { Cell::new(0) };
-}
-
-// SAFETY: forwards every call to the system allocator unchanged.
-unsafe impl GlobalAlloc for Counting {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let _ = ALLOCS.try_with(|n| n.set(n.get() + 1));
-        // SAFETY: same contract as the caller's.
-        unsafe { System.alloc(layout) }
-    }
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: same contract as the caller's.
-        unsafe { System.dealloc(ptr, layout) }
-    }
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        let _ = ALLOCS.try_with(|n| n.set(n.get() + 1));
-        // SAFETY: same contract as the caller's.
-        unsafe { System.realloc(ptr, layout, new_size) }
-    }
-}
-
-#[global_allocator]
-static GLOBAL: Counting = Counting;
-
-fn allocs_during(f: impl FnOnce()) -> usize {
-    let before = ALLOCS.with(Cell::get);
-    f();
-    ALLOCS.with(Cell::get) - before
-}
+use super::alloc_count::allocs_during;
 
 fn obu(kind: u8, payload: &[u8]) -> Vec<u8> {
     let mut v = vec![(kind << 3) | (1 << 1), payload.len() as u8];
