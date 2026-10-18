@@ -673,6 +673,9 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 
 		prof.Stop();
 
+		if (program.quitRequested()) {
+			QTimer::singleShot(0, &program, &OBSApp::quit);
+		}
 		ret = program.exec();
 
 	} catch (const char *error) {

@@ -252,6 +252,7 @@ private:
 	bool loaded = false;
 	bool isClosing_ = false;
 	bool isClosePromptOpen_ = false;
+	bool closeWithoutPrompt_ = false;
 	bool handledShutdown = false;
 
 	// TODO: Remove, orphaned variable
@@ -321,6 +322,9 @@ public:
 
 	void saveAll();
 	bool shouldPromptForClose();
+	/* A quit that nobody can answer a dialog for (SIGTERM): the next close
+	 * goes ahead without the exit confirmation. */
+	inline void closeWithoutPrompt() { closeWithoutPrompt_ = true; }
 	inline bool isClosing() { return isClosing_; }
 	inline bool isClosePromptOpen() { return isClosePromptOpen_; }
 	void closeWindow();

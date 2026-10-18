@@ -1770,7 +1770,7 @@ bool OBSBasic::isReadyToClose()
 bool OBSBasic::shouldPromptForClose()
 {
 	bool confirmOnExit = config_get_bool(App()->GetUserConfig(), "General", "ConfirmOnExit");
-	if (confirmOnExit && outputHandler && outputHandler->Active() && !clearingFailed) {
+	if (confirmOnExit && !closeWithoutPrompt_ && outputHandler && outputHandler->Active() && !clearingFailed) {
 		return true;
 	}
 

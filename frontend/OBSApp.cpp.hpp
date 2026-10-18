@@ -1794,11 +1794,40 @@ void OBSApp::processSigTerm()
 
 	sigTermNotifier->setEnabled(true);
 
-	if (PlatformSavesBeforeSignalQuit()) {
-		OBSBasic *main = OBSBasic::Get();
-		if (main) {
+	OBSBasic *main = OBSBasic::Get();
+	if (main) {
+		if (PlatformSavesBeforeSignalQuit()) {
 			main->saveAll();
 		}
+		/* systemctl stop, logind and kill send SIGTERM; nobody is there to
+		 * answer "outputs are active, exit anyway?", and while that dialog
+		 * waits the recording is cut off when the sender gives up. Quit as
+		 * if it had been answered: closeWindow() stops the outputs and
+		 * waits for the recording to finish. */
+		main->closeWithoutPrompt();
+	}
+
+	/* A modal dialog that is waiting (for example one the main window opens
+	 * during its startup) runs its own event loop, and quit() does not end
+	 * it; before the main event loop has started, quit() does nothing at
+	 * all. Dismiss the dialogs, then quit once their loops have returned to
+	 * the code that opened them; main() quits after a startup that SIGTERM
+	 * interrupted. */
+	if (activeModalWidget()) {
+		quitRequested_ = true;
+		for (int i = 0; i < 16; i++) {
+			QWidget *modal = activeModalWidget();
+			if (!modal) {
+				break;
+			}
+			if (QDialog *dialog = qobject_cast<QDialog *>(modal)) {
+				dialog->reject();
+			} else {
+				modal->close();
+			}
+		}
+		QTimer::singleShot(0, this, &OBSApp::quit);
+		return;
 	}
 	quit();
 }

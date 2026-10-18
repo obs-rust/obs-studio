@@ -1334,6 +1334,13 @@ area.
   closing OBS while its browser engine starts no longer hangs. *Linux*,
   2026-10-17. PR [#1333](https://github.com/obs-rust/obs-studio/pull/1333),
   dependency [obs-browser#1](https://github.com/obs-rust/obs-browser/pull/1).
+- SIGTERM while recording or streaming quits OBS and finishes the
+  recording, even with "Show confirmation on exit while outputs are
+  active" on, and SIGTERM while a dialog is open (also during startup)
+  quits too; before, OBS waited until the sender killed it and the
+  recording was cut off. *Linux, macOS*, 2026-10-18. Issue
+  [#1402](https://github.com/obs-rust/obs-studio/issues/1402), upstream
+  [obsproject/obs-studio#10011](https://github.com/obsproject/obs-studio/issues/10011).
 
 ### Security hardening
 

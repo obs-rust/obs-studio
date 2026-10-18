@@ -85,6 +85,7 @@ private:
 	bool branches_loaded = false;
 
 	bool libobs_initialized = false;
+	bool quitRequested_ = false;
 
 	os_inhibit_t *sleepInhibitor = nullptr;
 	int sleepInhibitRefs = 0;
@@ -239,6 +240,9 @@ public:
 	static void sigAbrtSignalHandler(int);
 	static void sigQuitSignalHandler(int);
 #endif
+	/* SIGTERM arrived while a dialog was waiting, possibly before the main
+	 * event loop started: main() quits as soon as that loop runs. */
+	inline bool quitRequested() const { return quitRequested_; }
 
 	void loadAppModules();
 
