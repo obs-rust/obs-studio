@@ -1215,6 +1215,11 @@ area.
   longer permits premature shutdown. The UI keeps processing events within
   the existing timeout. *All*, 2026-10-18. Issue
   [#1391](https://github.com/obs-rust/obs-studio/issues/1391).
+- Exit in the tray menu quits OBS when it was started with
+  `--minimize-to-tray` and its window was never shown; before, nothing
+  happened. *Linux (Wayland)*, 2026-10-18. Issue
+  [#1400](https://github.com/obs-rust/obs-studio/issues/1400), upstream
+  [obsproject/obs-studio#13494](https://github.com/obsproject/obs-studio/issues/13494).
 
 ### Scripting
 
