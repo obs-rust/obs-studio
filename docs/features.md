@@ -558,6 +558,12 @@ area.
 - A RequestBatch with the Parallel execution type no longer crashes OBS
   when its last request finishes. *All*, 2026-10-23. PR
   [#1996](https://github.com/obs-rust/obs-studio/pull/1996).
+- obs-websocket GetStats reports each client's CPU usage since that client's
+  own previous GetStats, not since the last one from any client, and clients
+  polling at the same time no longer race on one shared state. *All*,
+  2026-10-23. Issue
+  [#1346](https://github.com/obs-rust/obs-studio/issues/1346), PR
+  [#1996](https://github.com/obs-rust/obs-studio/pull/1996).
 - obs-websocket RemoveInput removes the scene items of the input at once,
   also in scenes that are not on program or preview, so GetSceneItemList
   and GetInputList no longer show the removed input. *All*, 2026-10-24.
