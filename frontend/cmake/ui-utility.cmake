@@ -4,6 +4,7 @@ target_sources(
     build/frontend.utility+.hpp.cpp
     utility/AdvancedOutput.hpp
     utility/BaseLexer.hpp
+    utility/close-top-level.hpp
     build/frontend.utility-basicoutputhandler+.hpp.cpp
     utility/BasicOutputHandler.hpp
     utility/CrashHandler.hpp

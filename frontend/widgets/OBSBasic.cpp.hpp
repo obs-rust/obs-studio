@@ -1534,7 +1534,7 @@ void OBSBasic::close()
 		return;
 	}
 
-	OBSMainWindow::close();
+	CloseTopLevel(this);
 }
 
 void OBSBasic::closeEvent(QCloseEvent *event)

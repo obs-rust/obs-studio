@@ -24,6 +24,7 @@
 #include <components/AccessibleAlignmentSelector.hpp>
 #include <oauth/Auth.hpp>
 #include <utility/BasicOutputHandler.hpp>
+#include <utility/close-top-level.hpp>
 #include <utility/OBSCanvas.hpp>
 #include <utility/PreviewProgramSizeObserver.hpp>
 #include <utility/VCamConfig.hpp>
