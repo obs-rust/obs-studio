@@ -193,7 +193,10 @@ fn zeros_without_a_code_at_every_position_match_c() {
                 for code_at in [None, Some(len.saturating_sub(6))] {
                     let mut data = vec![0x11u8; len];
                     if let Some(at) = code_at {
-                        data[at..].iter_mut().zip([0u8, 0, 1, 0x65]).for_each(|(b, c)| *b = c);
+                        data[at..]
+                            .iter_mut()
+                            .zip([0u8, 0, 1, 0x65])
+                            .for_each(|(b, c)| *b = c);
                     }
                     for (k, &b) in decoy.iter().enumerate() {
                         if pos + k < len {
