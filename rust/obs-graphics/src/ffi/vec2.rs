@@ -37,11 +37,21 @@ impl From<Vec2> for vec2 {
 /// branchy inline ceil/floor) cannot forward to a following 8-byte load of
 /// `*dst`, which stalls a caller that reads the whole struct back (#1298).
 ///
+/// With the native round (`platform::NATIVE_ROUND`, aarch64) a plain
+/// struct write lets LLVM keep both lanes in one vector register
+/// (`frintm.2s` and one 8-byte store, as C does), so this is skipped there
+/// (#1428).
+///
 /// # Safety
 ///
 /// `dst` must be valid for writes of a `vec2` (align 4 suffices).
 #[inline]
 unsafe fn write_packed(dst: *mut vec2, v: Vec2) {
+    if crate::platform::NATIVE_ROUND {
+        // SAFETY: the caller guarantees `dst` is writable.
+        unsafe { ptr::write(dst, v.into()) };
+        return;
+    }
     let mut bytes = [0u8; 8];
     bytes[..4].copy_from_slice(&v.x.to_ne_bytes());
     bytes[4..].copy_from_slice(&v.y.to_ne_bytes());
