@@ -27,6 +27,10 @@ obs-websocket port (Phase 5 item 3).
 - Linux, in the same run: exactly one libsrt mapped into the OBS process.
   With two builds of libsrt in one process (the SRT output's and FFmpeg's)
   OBS aborts on quit after any SRT use.
+- SIGTERM while recording, with the exit confirmation left on: OBS quits
+  and finishes the recording instead of waiting at the "exit anyway?"
+  dialog. SIGTERM while a startup dialog ("encoder missing") is open: OBS
+  quits cleanly (`--only shutdown` runs just these).
 - Request batches: serial, `haltOnFailure`, no-halt error propagation, and
   parallel execution acceptance.
 - Error codes for malformed JSON (close 4002), unknown opcode (4006),

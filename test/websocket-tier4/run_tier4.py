@@ -116,8 +116,9 @@ class ObsServer:
     """Launches obs headless under xvfb with an isolated profile/config."""
 
     def __init__(self, obs_bin, port, password=None, keep_home=None,
-                 profile=None, extra_env=None):
+                 profile=None, extra_env=None, confirm_on_exit=False):
         self.obs_bin = obs_bin
+        self.confirm_on_exit = confirm_on_exit
         self.extra_env = extra_env or {}
         self.port = port
         self.password = password
@@ -135,8 +136,9 @@ class ObsServer:
         with open(os.path.join(cfg, "global.ini"), "w") as f:
             f.write("[General]\nFirstRun=true\n")
         with open(os.path.join(cfg, "user.ini"), "w") as f:
-            f.write("[General]\nFirstRun=true\nConfirmOnExit=false\n"
-                    "WarnBeforeStoppingRecord=false\n"
+            f.write("[General]\nFirstRun=true\n"
+                    + ("" if self.confirm_on_exit else "ConfirmOnExit=false\n")
+                    + "WarnBeforeStoppingRecord=false\n"
                     "[Basic]\nProfile=Tier4\nProfileDir=Tier4\n"
                     "SceneCollection=Tier4\nSceneCollectionFile=Tier4\n")
         ini = {"General": {"Name": "Tier4"}}
@@ -1362,6 +1364,134 @@ RESCALE_PROFILE = {
 }
 
 
+async def test_sigterm_while_recording(server, rec_dir):
+    """SIGTERM while recording must quit OBS and finish the recording, with
+    "Show confirmation on exit while outputs are active" left on (the
+    default). systemd, logind at shutdown and kill send SIGTERM, and nobody
+    can answer the "exit anyway?" dialog for them: OBS stayed up recording
+    until it was killed, which cut the file off and made the next start an
+    unclean one (obs-rust/obs-studio#1402)."""
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    for _ in range(120):
+        r = await c.request("StartRecord")
+        if resp_status(r).get("code") != 207:
+            break
+        await asyncio.sleep(0.5)
+    check("sigterm:recording starts",
+          resp_status(r).get("code") == STATUS_SUCCESS, json.dumps(r)[:300])
+    active = False
+    deadline = time.time() + 15
+    while time.time() < deadline and not active:
+        r = await c.request("GetRecordStatus")
+        active = r.get("d", {}).get("responseData", {}).get("outputActive")
+        await asyncio.sleep(0.25)
+    await asyncio.sleep(3)
+    await c.close_conn()
+    pids = obs_pids(server)
+    check("sigterm:OBS process found", bool(pids), f"no {server.obs_bin} process")
+    for pid in pids:
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.time() + 30
+    while time.time() < deadline and obs_pids(server):
+        time.sleep(0.2)
+    left = obs_pids(server)
+    check("sigterm:OBS quits on SIGTERM while recording", active and not left,
+          f"recording active={active}; still running 30 s after SIGTERM "
+          f"(the exit confirmation dialog is open)" if left else "")
+    files = [os.path.join(rec_dir, f) for f in os.listdir(rec_dir)]
+    sizes = {os.path.basename(f): os.path.getsize(f) for f in files}
+    duration = None
+    probe = shutil.which("ffprobe")
+    if probe and len(files) == 1 and not left:
+        out = subprocess.run([probe, "-v", "error", "-show_entries", "format=duration",
+                              "-of", "csv=p=0", files[0]], capture_output=True, text=True)
+        try:
+            duration = float(out.stdout.strip())
+        except ValueError:
+            duration = None
+    check("sigterm:the recording is finished", len(files) == 1 and not left
+          and (duration is None and probe is None or (duration or 0) >= 2.0),
+          f"files={sizes} duration={duration}")
+
+
+def test_sigterm_during_startup_dialog(server):
+    """SIGTERM while a dialog that the main window opened during its startup
+    is waiting (here "encoder missing": the profile names an encoder this
+    build does not have) must quit OBS cleanly. SIGTERM was ignored there: the
+    quit it requested ended nothing while the dialog's own event loop ran, and
+    nothing at all before the main event loop had started."""
+    pids = obs_pids(server)
+    check("sigterm-startup:OBS process found", bool(pids), f"no {server.obs_bin} process")
+    for pid in pids:
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.time() + 30
+    while time.time() < deadline and obs_pids(server):
+        time.sleep(0.2)
+    left = obs_pids(server)
+    time.sleep(1)
+    with open(server.log, errors="replace") as f:
+        log = f.read()
+    crashed = "Segmentation fault" in log or "Aborted" in log
+    check("sigterm-startup:OBS quits on SIGTERM during the startup dialog",
+          not left and not crashed and "Number of memory leaks" in log,
+          "still running 30 s after SIGTERM" if left else
+          ("OBS crashed" if crashed else "no clean shutdown in the log"))
+
+
+async def run_shutdown_phase(obs_bin):
+    """Simple output recording into a fresh folder, exit confirmation on."""
+    home = tempfile.mkdtemp(prefix="obs-tier4-")
+    rec_dir = os.path.join(home, "recordings")
+    os.makedirs(rec_dir)
+    profile = {
+        "Video": {"BaseCX": "640", "BaseCY": "360", "OutputCX": "640",
+                  "OutputCY": "360", "FPSType": "0", "FPSCommon": "30"},
+        "Output": {"Mode": "Simple"},
+        "SimpleOutput": {"FilePath": rec_dir, "RecFormat2": "mkv",
+                         "RecQuality": "Small", "RecEncoder": "x264"},
+    }
+    server = ObsServer(obs_bin, PORT, password=None, keep_home=home,
+                       profile=profile, confirm_on_exit=True)
+    server.start()
+    try:
+        print("== SIGTERM while recording ==", flush=True)
+        await test_sigterm_while_recording(server, rec_dir)
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        server.stop()
+
+    wait_for_port_closed(PORT)
+    server = ObsServer(obs_bin, PORT, password=None, profile={
+        "Output": {"Mode": "Advanced"},
+        "AdvOut": {"Encoder": "tier4_missing_encoder", "RecEncoder": "obs_x264",
+                   "RecType": "Standard", "RecFilePath": rec_dir},
+    })
+    server.start()
+    try:
+        print("== SIGTERM during a startup dialog ==", flush=True)
+        # The server listens before the main window finishes loading; the
+        # "encoder missing" dialog opens a moment later.
+        time.sleep(5)
+        test_sigterm_during_startup_dialog(server)
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        server.stop()
+
+
+async def run_shutdown_only(obs_bin):
+    await run_shutdown_phase(obs_bin)
+    failed = [n for n, ok, _ in RESULTS if not ok]
+    print("=" * 60)
+    print(f"checks: {len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
+    for n, _, detail in (r for r in RESULTS if not r[1]):
+        print(f"  - {n}: {detail}")
+    return 1 if failed else 0
+
+
 async def run_gpu_phase(obs_bin):
     """OBS forced onto llvmpipe: GetStats.gpuAcceleration and the startup
     warning (obs-rust/obs-studio#846, #940); and one libsrt in the
@@ -1461,6 +1591,10 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
         wait_for_port_closed(PORT)
         await run_gpu_phase(obs_bin)
 
+    if not skip_obs:
+        wait_for_port_closed(PORT)
+        await run_shutdown_phase(obs_bin)
+
     total = len(RESULTS)
     passed = sum(1 for _, ok, _ in RESULTS if ok)
     failed = [n for n, ok, _ in RESULTS if not ok]
@@ -1491,12 +1625,16 @@ def main():
                          "mainly for debugging)")
     ap.add_argument("--skip-auth-phase", action="store_true",
                     help="with --no-spawn only: skip the auth-required phase")
-    ap.add_argument("--only", choices=["gpu"],
+    ap.add_argument("--only", choices=["gpu", "shutdown"],
                     help="run one group: gpu = GetStats.gpuAcceleration and the "
-                         "startup warning with OpenGL forced onto llvmpipe")
+                         "startup warning with OpenGL forced onto llvmpipe; "
+                         "shutdown = SIGTERM while recording and during a "
+                         "startup dialog")
     args = ap.parse_args()
     if args.only == "gpu":
         sys.exit(asyncio.run(run_gpu_only(args.obs)))
+    if args.only == "shutdown":
+        sys.exit(asyncio.run(run_shutdown_only(args.obs)))
     sys.exit(asyncio.run(
         run_all(args.obs, args.no_spawn, args.skip_auth_phase)))
 
