@@ -1,0 +1,50 @@
+# Perf guards (#1303): code shapes that a measured performance fix depends
+# on. ci/perf_guard_lint.py (lint lane) fails when a guarded function loses
+# one, and prints the reason and the bench below.
+#
+# Add a guard when a fix is fast because of how the compiler translates a
+# shape of code, not because the algorithm changed, so that an obvious
+# "simplification" brings the regression back without a failing test. Each
+# guarded function also carries a `// PERF GUARD #<issue>` comment.
+#
+# To change guarded code: run the bench, and if the new shape is as fast,
+# change the guard here in the same PR with the numbers.
+#
+# Keys: issue, file, function, reason, bench (required); attributes (must be
+# right above the fn), require (must be in the body), forbid (must not be in
+# the body). Comments do not count, whitespace does not matter.
+
+[[guard]]
+issue = 1303
+file = "rust/obs-codec/src/av1.rs"
+function = "parse_obu_header"
+attributes = ["#[inline(always)]"]
+require = ["obu_after(buf, 1)", "obu_after(buf, 2)"]
+forbid = ["1 + usize::from("]
+reason = "two calls with a constant start make LLVM keep a branch; a computed start (1 + extension_flag) becomes a select, and the size field load waits for the first byte: 1.6x the C code on x86_64 Linux"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- av1/keyframe (x86_64 Linux, against GCC)"
+
+[[guard]]
+issue = 1303
+file = "rust/obs-codec/src/av1.rs"
+function = "obu_after"
+attributes = ["#[inline(always)]"]
+reason = "both arms of parse_obu_header must inline into the walk. Measured in #1303: a leb128 rewrite that made LLVM outline parse_obu_header was 1.7-2.0x, and the decode-both variant without #[inline(always)] was 2.0x"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- av1/keyframe (x86_64 Linux, against GCC)"
+
+[[guard]]
+issue = 1303
+file = "rust/obs-codec/src/av1.rs"
+function = "keyframe"
+attributes = ["#[inline]"]
+reason = "without the hint, keyframe stays behind a call in the obs_av1_keyframe shim: 1.09x / 1.13x instead of 1.07x / 1.04x"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- av1/keyframe (x86_64 Linux, against GCC)"
+
+[[guard]]
+issue = 1303
+file = "rust/obs-codec/src/av1.rs"
+function = "leb128"
+require = ["shift += 7"]
+forbid = ["i * 7"]
+reason = "a running shift is one add per byte; `i * 7` adds a multiply to every byte and was 1.22x instead of 1.07x. A fully unrolled leb128 was worse (1.7-2.0x): it stops the inlining of parse_obu_header"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- av1/keyframe (x86_64 Linux, against GCC)"

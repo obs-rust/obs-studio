@@ -13,7 +13,8 @@ Lanes:
   lint         clang-format 22.1.3 and gersemi 0.25.0 over the same files as
                build-aux/run-clang-format and run-gersemi, plus rustfmt,
                clippy -D warnings and the repo Dylints (dylints/*). Formatters are pinned through uvx, so no
-               brew/zsh install is needed. Also ci/platform_ifdef_ratchet.py (#847).
+               brew/zsh install is needed. Also ci/platform_ifdef_ratchet.py (#847)
+               and ci/perf_guard_lint.py (#1303).
   rust-test    soldr cargo test --workspace --locked (Tiers 1-3), plus a
                --no-run build of the tests for x86_64-pc-windows-gnu.
 
@@ -210,6 +211,11 @@ def platform_ifdef_ratchet() -> None:
     run([sys.executable, "ci/platform_ifdef_ratchet.py"])
 
 
+def perf_guard_lint() -> None:
+    """Measured perf fixes keep their code shapes (#1303); see ci/perf-guards.toml."""
+    run([sys.executable, "ci/perf_guard_lint.py"])
+
+
 def tracked_files() -> list[str]:
     out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True).stdout
     return [p for p in out.decode().split("\0") if p and (ROOT / p).is_file()]
@@ -352,6 +358,7 @@ def lane_lint(fix: bool) -> None:
     self_test()
     check_test_binary_inventory()
     platform_ifdef_ratchet()
+    perf_guard_lint()
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
     soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
     # Pre-expansion Dylints (dylints/*), so host-cfg'd code is checked on

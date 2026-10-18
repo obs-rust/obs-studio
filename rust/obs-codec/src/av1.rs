@@ -19,9 +19,10 @@ pub const METADATA_TYPE_ITUT_T35: u8 = 4;
 /// `leb128`: reads at most 8 bytes, stopping after the first byte without
 /// the continuation bit or at the end of `buf`. Returns the value and the
 /// number of bytes read.
+// PERF GUARD #1303 (ci/perf-guards.toml): a running shift, not `i * 7`.
+// Measure av1/keyframe before you change the shape of this loop.
 fn leb128(buf: &[u8]) -> (u64, usize) {
     let mut value = 0u64;
-    // A running shift, not `i * 7`: one add per byte (#1303).
     let mut shift = 0;
     let mut len = 0;
     for &byte in buf.iter().take(8) {
@@ -74,6 +75,9 @@ impl Obu {
 /// 1.6x the C code on x86_64 Linux, where GCC branches). This depends on
 /// what the compiler does with the two arms: check `av1/keyframe` in
 /// `port_comparison` after a toolchain update.
+// PERF GUARD #1303 (ci/perf-guards.toml): keep the two calls with a
+// constant start and #[inline(always)]. Measure av1/keyframe before you
+// change them.
 #[inline(always)]
 fn parse_obu_header(buf: &[u8]) -> Obu {
     if get_bits(buf[0], 5, 1) != 0 {
@@ -84,6 +88,8 @@ fn parse_obu_header(buf: &[u8]) -> Obu {
 }
 
 /// The OBU at the start of `buf`, with its size field (if any) at `start`.
+// PERF GUARD #1303 (ci/perf-guards.toml): both arms of parse_obu_header
+// must inline into the walk.
 #[inline(always)]
 fn obu_after(buf: &[u8], start: usize) -> Obu {
     let size = buf.len();
@@ -127,6 +133,8 @@ pub fn obus(data: &[u8]) -> impl Iterator<Item = (usize, Obu)> + '_ {
 /// `obs_av1_keyframe`: decided by the first frame or frame header OBU with
 /// a payload. A shown existing frame is never a key frame; otherwise
 /// `frame_type` 0 (`KEY_FRAME`) is.
+// PERF GUARD #1303 (ci/perf-guards.toml): #[inline], or the walk stays
+// behind a call in the obs_av1_keyframe shim.
 #[must_use]
 #[inline]
 pub fn keyframe(data: &[u8]) -> bool {
