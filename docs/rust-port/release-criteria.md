@@ -146,6 +146,41 @@ The warning downgrades were confined to the probe. A future LTO change
 must resolve the build failures and pass the normal compatibility gates
 before its performance can be compared with this baseline.
 
+## Record full-app recording evidence (#1305)
+
+The 5% recording bound needs runs of the real application on release
+hardware, not shim benchmarks. Use a hardware renderer (never llvmpipe or
+Xvfb), one saved scene and profile, the same build for both backends (the
+installed C `libobs` or the `libobs-with-rust` twin, selected by the
+library path), and no profiler in the timed runs.
+
+1. Before each run, OBS must be running with the backend under test. The
+   run checks the OBS log and the mapped libraries first
+   (`ci/recording_evidence_check.py`) and refuses a software renderer, the
+   other backend or libraries from outside `--prefix`.
+2. Record one run:
+
+   ```sh
+   uv run rust/tools/benchmarks/recording.py run --log <OBS log> --pid <OBS pid> \
+       --libobs rust --prefix <install prefix> --encoder obs-nvenc --seconds 120 \
+       --ws-config <obs-websocket config.json> --delete-recording --output rust-1.json
+   ```
+
+3. Restart OBS with the other backend and record again. Interleave the
+   backends (C, Rust, C, Rust, ...) until each has at least five runs.
+4. Compare:
+
+   ```sh
+   uv run rust/tools/benchmarks/recording.py report c-*.json rust-*.json --markdown report.md
+   ```
+
+The report refuses runs with different conditions (video settings,
+recording profile, scene, source version, renderer, graphics module) or
+two builds of one backend. It gives the median and range of the frame
+render time, CPU, and the render, output and encoder skip rates per
+backend, and the Rust/C ratio. Exit code 2 means the gate failed. Each run
+JSON also keeps the raw per-second samples and the encoder log lines.
+
 ## Retire the C implementation of a unit
 
 Keep the original C file while the global OFF configuration still needs it.
