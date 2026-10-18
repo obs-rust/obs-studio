@@ -272,6 +272,79 @@ pub enum Bucket {
     Packet,
 }
 
+impl Bucket {
+    /// The position of this bucket's output in [`SplitUnits::sizes`].
+    #[must_use]
+    pub const fn index(self) -> usize {
+        match self {
+            Bucket::Packet => 0,
+            Bucket::Header => 1,
+            Bucket::Sei => 2,
+        }
+    }
+}
+
+/// Up to this many units, [`SplitUnits`] keeps their ranges on the stack.
+/// Encoders write a few units per packet (parameter sets, SEI, slices).
+const INLINE_UNITS: usize = 32;
+
+/// The units of `obs_extract_*_headers` from one start-code scan, without
+/// heap allocation (#1302): the output sizes, and the unit ranges of the
+/// first [`INLINE_UNITS`] units. [`SplitUnits::for_each`] gives the units
+/// again from those ranges, or for a packet with more units, from one more
+/// scan.
+pub struct SplitUnits<'a, F: Fn(u8) -> Bucket> {
+    data: &'a [u8],
+    bucket: F,
+    units: [(Bucket, usize, usize); INLINE_UNITS],
+    count: usize,
+    sizes: [usize; 3],
+}
+
+impl<'a, F: Fn(u8) -> Bucket> SplitUnits<'a, F> {
+    /// Scans `data` once, with `bucket` choosing from the first header byte.
+    pub fn new(data: &'a [u8], bucket: F) -> Self {
+        let mut out = Self {
+            data,
+            bucket,
+            units: [(Bucket::Packet, 0, 0); INLINE_UNITS],
+            count: 0,
+            sizes: [0; 3],
+        };
+        for nal in nal_units(data) {
+            let b = (out.bucket)(nal.header(data));
+            out.sizes[b.index()] += nal.end - nal.code_start;
+            if out.count < INLINE_UNITS {
+                out.units[out.count] = (b, nal.code_start, nal.end);
+            }
+            out.count += 1;
+        }
+        out
+    }
+
+    /// The output sizes, indexed by [`Bucket::index`]: packet, header, SEI.
+    #[must_use]
+    pub fn sizes(&self) -> [usize; 3] {
+        self.sizes
+    }
+
+    /// Every unit with its start code, in order, with its bucket.
+    pub fn for_each(&self, mut f: impl FnMut(Bucket, &[u8])) {
+        if self.count <= INLINE_UNITS {
+            for &(b, start, end) in &self.units[..self.count] {
+                f(b, &self.data[start..end]);
+            }
+        } else {
+            for nal in nal_units(self.data) {
+                f(
+                    (self.bucket)(nal.header(self.data)),
+                    &self.data[nal.code_start..nal.end],
+                );
+            }
+        }
+    }
+}
+
 /// `obs_extract_*_headers`: `data` split by unit, each unit with its start
 /// code.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -282,17 +355,21 @@ pub struct SplitHeaders {
 }
 
 /// `obs_extract_*_headers`, with `bucket` choosing from the first header
-/// byte.
+/// byte. The C ABI shims use [`SplitUnits`] directly; this owned form is
+/// for the tests.
 #[must_use]
 pub fn split_headers(data: &[u8], bucket: impl Fn(u8) -> Bucket) -> SplitHeaders {
-    let mut out = SplitHeaders::default();
-    for nal in nal_units(data) {
-        let unit = &data[nal.code_start..nal.end];
-        match bucket(nal.header(data)) {
-            Bucket::Header => out.header.extend_from_slice(unit),
-            Bucket::Sei => out.sei.extend_from_slice(unit),
-            Bucket::Packet => out.packet.extend_from_slice(unit),
-        }
-    }
+    let units = SplitUnits::new(data, bucket);
+    let [packet, header, sei] = units.sizes();
+    let mut out = SplitHeaders {
+        packet: Vec::with_capacity(packet),
+        header: Vec::with_capacity(header),
+        sei: Vec::with_capacity(sei),
+    };
+    units.for_each(|b, unit| match b {
+        Bucket::Header => out.header.extend_from_slice(unit),
+        Bucket::Sei => out.sei.extend_from_slice(unit),
+        Bucket::Packet => out.packet.extend_from_slice(unit),
+    });
     out
 }

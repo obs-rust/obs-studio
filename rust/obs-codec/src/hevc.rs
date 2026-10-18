@@ -89,9 +89,15 @@ pub fn write_hvcc(
 /// its start code.
 #[must_use]
 pub fn extract_headers(data: &[u8]) -> SplitHeaders {
-    nal::split_headers(data, |header| match kind(header) {
+    nal::split_headers(data, bucket)
+}
+
+/// The `obs_extract_*_headers` bucket of a unit, from its first header byte.
+#[must_use]
+pub fn bucket(header: u8) -> Bucket {
+    match kind(header) {
         NAL_VPS | NAL_SPS | NAL_PPS => Bucket::Header,
         NAL_SEI_PREFIX | NAL_SEI_SUFFIX => Bucket::Sei,
         _ => Bucket::Packet,
-    })
+    }
 }

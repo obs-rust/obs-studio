@@ -6,8 +6,9 @@
 use core::ffi::c_int;
 
 use super::nal::obs_nal_find_startcode;
-use super::packet::{bmalloc_concat, bytes, encoder_packet, parse_packet, write_split};
+use super::packet::{bmalloc_concat, bytes, encoder_packet, parse_packet, write_split_units};
 use crate::avc::{self, AvcHeader};
+use crate::nal::SplitUnits;
 
 /// Returns true if the first slice in the packet is an IDR slice.
 ///
@@ -109,11 +110,11 @@ pub unsafe extern "C" fn obs_extract_avc_headers(
     sei_size: *mut usize,
 ) {
     // SAFETY: the caller guarantees `size` readable bytes.
-    let split = avc::extract_headers(unsafe { bytes(packet, size) });
+    let units = SplitUnits::new(unsafe { bytes(packet, size) }, avc::bucket);
     // SAFETY: the caller guarantees every output pointer is writable.
     unsafe {
-        write_split(
-            &split,
+        write_split_units(
+            &units,
             new_packet_data,
             new_packet_size,
             header_data,

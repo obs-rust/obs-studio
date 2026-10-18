@@ -5,8 +5,9 @@
 
 use core::ffi::c_int;
 
-use super::packet::{bytes, encoder_packet, parse_packet, write_split};
+use super::packet::{bytes, encoder_packet, parse_packet, write_split_units};
 use crate::hevc;
+use crate::nal::SplitUnits;
 
 /// Returns true if the first picture unit in the packet is an IRAP picture.
 ///
@@ -70,11 +71,11 @@ pub unsafe extern "C" fn obs_extract_hevc_headers(
     sei_size: *mut usize,
 ) {
     // SAFETY: the caller guarantees `size` readable bytes.
-    let split = hevc::extract_headers(unsafe { bytes(packet, size) });
+    let units = SplitUnits::new(unsafe { bytes(packet, size) }, hevc::bucket);
     // SAFETY: the caller guarantees every output pointer is writable.
     unsafe {
-        write_split(
-            &split,
+        write_split_units(
+            &units,
             new_packet_data,
             new_packet_size,
             header_data,

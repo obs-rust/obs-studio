@@ -111,15 +111,55 @@ fn extract_without_start_code_allocates_nothing() {
 }
 
 #[test]
-fn extract_with_very_many_units_allocates_at_most_once() {
-    // More units than any encoder writes in one packet: the shim may fall
-    // back to one heap buffer for the unit list, never one per unit.
+fn extract_with_very_many_units_allocates_nothing() {
+    // More units than any encoder writes in one packet: past the units kept
+    // on the stack the shim scans a second time instead of allocating.
     let data = avc_packet(64 * 1024, 8);
     let (allocs, n) = extract(avc::obs_extract_avc_headers, &data);
     assert_eq!(n.iter().sum::<usize>(), data.len());
-    assert!(
-        allocs <= 1,
-        "{allocs} Rust heap allocations for {} units",
+    assert_eq!(
+        allocs,
+        0,
+        "Rust heap allocations for {} units",
         data.len() / 13
     );
+}
+
+/// The three outputs of `extract` as owned bytes (`None` for NULL).
+fn outputs(f: Extract, data: &[u8]) -> [Option<Vec<u8>>; 3] {
+    let mut p = [ptr::null_mut(); 3];
+    let mut n = [0usize; 3];
+    let [p0, p1, p2] = &mut p;
+    let [n0, n1, n2] = &mut n;
+    // SAFETY: `data` is readable for its length; the outputs are locals.
+    unsafe { f(data.as_ptr(), data.len(), p0, n0, p1, n1, p2, n2) };
+    core::array::from_fn(|i| {
+        if p[i].is_null() {
+            return None;
+        }
+        // SAFETY: `p[i]` holds `n[i]` bytes from bmalloc and is freed once.
+        unsafe {
+            let v = core::slice::from_raw_parts(p[i], n[i]).to_vec();
+            bfree(p[i].cast());
+            Some(v)
+        }
+    })
+}
+
+#[test]
+fn many_units_match_the_c_oracle() {
+    // Past the units kept on the stack, the shim scans a second time; the
+    // outputs must still be the C ones, byte for byte.
+    for data in [avc_packet(256, 160), avc_packet(64 * 1024, 8)] {
+        assert_eq!(
+            outputs(avc::obs_extract_avc_headers, &data),
+            outputs(obs_c_oracle::avc::oracle_obs_extract_avc_headers, &data)
+        );
+    }
+    for data in [hevc_packet(256, 160), hevc_packet(64 * 1024, 8)] {
+        assert_eq!(
+            outputs(hevc::obs_extract_hevc_headers, &data),
+            outputs(obs_c_oracle::hevc::oracle_obs_extract_hevc_headers, &data)
+        );
+    }
 }

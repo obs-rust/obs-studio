@@ -8,7 +8,7 @@ use core::{ptr, slice};
 
 use obs_util::ffi::darray::{bmalloc, darray, darray_push_back_array, darray_reserve};
 
-use crate::nal::{LENGTH_PREFIX_SLACK, SplitHeaders, UnitRating};
+use crate::nal::{Bucket, LENGTH_PREFIX_SLACK, SplitUnits, UnitRating};
 
 /// `struct encoder_packet` from `obs-encoder.h`.
 #[repr(C)]
@@ -135,15 +135,18 @@ pub(crate) unsafe fn parse_packet(
     unsafe { ptr::write(out, packet) };
 }
 
-/// Writes the three `obs_extract_*_headers` outputs, each `bmalloc`ed (or
-/// NULL with size 0 when empty).
+/// Writes the three `obs_extract_*_headers` outputs, each `bmalloc`ed at
+/// its final size (or NULL with size 0 when empty), and copies every unit
+/// straight into its output: no Rust heap allocation (#1302). Panics
+/// instead of writing past an output when the units do not add up to the
+/// sizes.
 ///
 /// # Safety
 ///
 /// Every output pointer is writable.
 #[allow(clippy::too_many_arguments)]
-pub(crate) unsafe fn write_split(
-    split: &SplitHeaders,
+pub(crate) unsafe fn write_split_units<F: Fn(u8) -> Bucket>(
+    units: &SplitUnits<'_, F>,
     new_packet_data: *mut *mut u8,
     new_packet_size: *mut usize,
     header_data: *mut *mut u8,
@@ -151,13 +154,42 @@ pub(crate) unsafe fn write_split(
     sei_data: *mut *mut u8,
     sei_size: *mut usize,
 ) {
+    let sizes = units.sizes();
+    // SAFETY: bmalloc returns `size` writable bytes for each nonzero size.
+    let bufs = sizes.map(|size| {
+        if size == 0 {
+            ptr::null_mut()
+        } else {
+            unsafe { bmalloc(size).cast::<u8>() }
+        }
+    });
+    let mut at = [0usize; 3];
+    units.for_each(|bucket, unit| {
+        let i = bucket.index();
+        assert!(
+            unit.len() <= sizes[i] - at[i],
+            "write_split_units: units exceed the output size"
+        );
+        if unit.is_empty() {
+            // An empty output has a NULL buffer; copy nothing to it.
+            return;
+        }
+        // SAFETY: checked above to stay inside the `sizes[i]` bytes of
+        // `bufs[i]`, which is not NULL because `sizes[i] > 0`.
+        unsafe { ptr::copy_nonoverlapping(unit.as_ptr(), bufs[i].add(at[i]), unit.len()) };
+        at[i] += unit.len();
+    });
+    assert_eq!(
+        at, sizes,
+        "write_split_units: units are shorter than the output sizes"
+    );
     // SAFETY: the caller guarantees every output pointer is writable.
     unsafe {
-        *new_packet_data = bmalloc_concat(&[&split.packet]);
-        *new_packet_size = split.packet.len();
-        *header_data = bmalloc_concat(&[&split.header]);
-        *header_size = split.header.len();
-        *sei_data = bmalloc_concat(&[&split.sei]);
-        *sei_size = split.sei.len();
+        *new_packet_data = bufs[Bucket::Packet.index()];
+        *new_packet_size = sizes[Bucket::Packet.index()];
+        *header_data = bufs[Bucket::Header.index()];
+        *header_size = sizes[Bucket::Header.index()];
+        *sei_data = bufs[Bucket::Sei.index()];
+        *sei_size = sizes[Bucket::Sei.index()];
     }
 }
