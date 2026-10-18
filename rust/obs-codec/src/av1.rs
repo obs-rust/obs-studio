@@ -21,10 +21,13 @@ pub const METADATA_TYPE_ITUT_T35: u8 = 4;
 /// number of bytes read.
 fn leb128(buf: &[u8]) -> (u64, usize) {
     let mut value = 0u64;
+    // A running shift, not `i * 7`: one add per byte (#1303).
+    let mut shift = 0;
     let mut len = 0;
-    for (i, &byte) in buf.iter().take(8).enumerate() {
+    for &byte in buf.iter().take(8) {
         len += 1;
-        value |= u64::from(byte & 0x7f) << (i * 7);
+        value |= u64::from(byte & 0x7f) << shift;
+        shift += 7;
         if byte & 0x80 == 0 {
             break;
         }
@@ -63,14 +66,32 @@ impl Obu {
 }
 
 /// `parse_obu_header` for a non-empty `buf`.
+///
+/// Two calls with a constant start instead of `1 + extension_flag`: LLVM
+/// then keeps a branch, so the size field load starts at a fixed offset
+/// and does not wait for the first byte. With the computed start it makes
+/// a select, and each OBU waits for two loads in a row (#1303, about
+/// 1.6x the C code on x86_64 Linux, where GCC branches). This depends on
+/// what the compiler does with the two arms: check `av1/keyframe` in
+/// `port_comparison` after a toolchain update.
+#[inline(always)]
 fn parse_obu_header(buf: &[u8]) -> Obu {
+    if get_bits(buf[0], 5, 1) != 0 {
+        obu_after(buf, 2)
+    } else {
+        obu_after(buf, 1)
+    }
+}
+
+/// The OBU at the start of `buf`, with its size field (if any) at `start`.
+#[inline(always)]
+fn obu_after(buf: &[u8], start: usize) -> Obu {
     let size = buf.len();
     let kind = get_bits(buf[0], 1, 4) as u8;
-    let extension_flag = get_bits(buf[0], 5, 1) != 0;
     let has_size_field = get_bits(buf[0], 6, 1) != 0;
 
     // An extension byte that is not there: the OBU is what is left.
-    let mut header_len = (1 + usize::from(extension_flag)).min(size);
+    let mut header_len = start.min(size);
     let obu_size = if has_size_field {
         let (value, len) = leb128(&buf[header_len..]);
         header_len += len;
@@ -107,6 +128,7 @@ pub fn obus(data: &[u8]) -> impl Iterator<Item = (usize, Obu)> + '_ {
 /// a payload. A shown existing frame is never a key frame; otherwise
 /// `frame_type` 0 (`KEY_FRAME`) is.
 #[must_use]
+#[inline]
 pub fn keyframe(data: &[u8]) -> bool {
     for (at, obu) in obus(data) {
         if obu.size != 0 && (obu.kind == OBU_FRAME || obu.kind == OBU_FRAME_HEADER) {
