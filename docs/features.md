@@ -1225,6 +1225,12 @@ area.
   alpha. *All*, 2026-10-18. Issue
   [#1404](https://github.com/obs-rust/obs-studio/issues/1404), upstream
   [obsproject/obs-studio#6591](https://github.com/obsproject/obs-studio/issues/6591).
+- The Text (FreeType 2) source uses the font face that was picked when it
+  is not the first face of its file: Bold and other styles of variable
+  fonts, and the language faces of font collections such as Noto Sans CJK.
+  Before, these rendered as the file's first face. *Linux*, 2026-10-18.
+  Issue [#1409](https://github.com/obs-rust/obs-studio/issues/1409),
+  upstream [obsproject/obs-studio#11819](https://github.com/obsproject/obs-studio/issues/11819).
 
 ### Scripting
 
