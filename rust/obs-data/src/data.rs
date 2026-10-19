@@ -9,6 +9,7 @@
 //! A user value left behind when `set_autoselect` changes the item type is
 //! not reinterpreted. Getters for the new type return the empty value.
 
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
@@ -636,14 +637,14 @@ impl Item {
 
     /// Drops the object's reference. This handle stays usable.
     pub fn remove(&self) {
-        let parent = self.inner.borrow().parent.clone();
+        let (name, parent) = {
+            let inner = self.inner.borrow();
+            (inner.name.clone(), inner.parent.clone())
+        };
         let Some(parent) = parent.and_then(|weak| weak.upgrade()) else {
             return;
         };
-        parent
-            .borrow_mut()
-            .items
-            .retain(|item| !Arc::ptr_eq(item, &self.inner));
+        parent.borrow_mut().remove(&name, &self.inner);
         self.inner.borrow_mut().parent = None;
     }
 
@@ -673,8 +674,36 @@ impl Item {
 }
 
 pub(crate) struct DataInner {
+    /// The items in insertion order, which is the JSON order.
     items: Vec<Arc<RwLock<ItemInner>>>,
+    /// The same items by name, so a lookup does not walk and lock every
+    /// item (#1450). Names are unique: a set of an existing name updates
+    /// its item.
+    index: HashMap<String, Arc<RwLock<ItemInner>>>,
     json: Option<CString>,
+}
+
+impl DataInner {
+    fn find(&self, name: &str) -> Option<&Arc<RwLock<ItemInner>>> {
+        self.index.get(name)
+    }
+
+    fn push(&mut self, name: &str, item: Arc<RwLock<ItemInner>>) {
+        self.index.insert(name.to_owned(), Arc::clone(&item));
+        self.items.push(item);
+    }
+
+    /// Removes `item` if it is the item of `name`.
+    fn remove(&mut self, name: &str, item: &Arc<RwLock<ItemInner>>) {
+        if self
+            .index
+            .get(name)
+            .is_some_and(|found| Arc::ptr_eq(found, item))
+        {
+            self.index.remove(name);
+        }
+        self.items.retain(|i| !Arc::ptr_eq(i, item));
+    }
 }
 
 /// A JSON object of settings. Cloning addrefs; dropping releases.
@@ -688,6 +717,7 @@ impl Data {
         Self {
             inner: Arc::new(RwLock::new(DataInner {
                 items: Vec::new(),
+                index: HashMap::new(),
                 json: None,
             })),
         }
@@ -1052,14 +1082,10 @@ impl Data {
 
     pub fn erase(&self, name: &str) {
         let mut inner = self.inner.borrow_mut();
-        let Some(idx) = inner
-            .items
-            .iter()
-            .position(|item| item.borrow().name == name)
-        else {
+        let Some(item) = inner.find(name).cloned() else {
             return;
         };
-        let item = inner.items.remove(idx);
+        inner.remove(name, &item);
         drop(inner);
         item.borrow_mut().parent = None;
     }
@@ -1084,9 +1110,7 @@ impl Data {
     pub fn item(&self, name: &str) -> Option<Item> {
         self.inner
             .borrow()
-            .items
-            .iter()
-            .find(|item| item.borrow().name == name)
+            .find(name)
             .map(|item| Item::from_rc(Arc::clone(item)))
     }
 
@@ -1419,14 +1443,14 @@ impl Data {
         // threads that set the same new name make one item (#1451). The
         // item lock comes second, in the usual order.
         let mut inner = self.inner.borrow_mut();
-        if let Some(item) = inner.items.iter().find(|item| item.borrow().name == name) {
+        if let Some(item) = inner.find(name) {
             item.borrow_mut().write(slot, value);
             return;
         }
         // A fresh default still has to record the type. `write` on an empty
         // item does that. Autoselect and user do too.
         let item = ItemInner::create(name, slot, value, Arc::downgrade(&self.inner));
-        inner.items.push(Arc::new(RwLock::new(item)));
+        inner.push(name, Arc::new(RwLock::new(item)));
     }
 
     fn set_vec(&self, name: &str, slot: Slot, pairs: &[(&str, f64)]) {
