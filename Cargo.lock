@@ -455,6 +455,9 @@ dependencies = [
 [[package]]
 name = "obs-callback"
 version = "0.1.0"
+dependencies = [
+ "obs-util",
+]
 
 [[package]]
 name = "obs-codec"

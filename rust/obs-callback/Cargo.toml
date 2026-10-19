@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-callback"
 version = "0.1.0"
-description = "Rust port of libobs/callback/calldata.c.h"
+description = "Rust port of libobs/callback/calldata.c.h and decl.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -10,3 +10,7 @@ publish.workspace = true
 
 [lib]
 test = false
+
+[dependencies]
+# The tokenizer and the error text of decl.c.h.
+obs-util = { path = "../obs-util" }
