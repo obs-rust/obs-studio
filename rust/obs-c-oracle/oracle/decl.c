@@ -77,6 +77,7 @@ bool cf_preprocess_get_def_value(struct cf_preprocessor *pp, const struct strref
 #include "callback/decl.c.h"
 #include "util/cf-lexer.c.h"
 #include "util/cf-parser.c.h"
+#include "util/threading.h"
 
 /* The declarations are part of the macros: the exports have no header. */
 #define LAYOUT(type)                          \
@@ -109,8 +110,11 @@ OFFSET(decl_info, params)
 
 /* Test-only exports called from Rust over FFI: the warning that
  * parse_decl_string logs, captured through the log handler so the Tier 3
- * test can compare the C and Rust text. Only messages that start with the
- * decl prefix are kept; other tests in the same binary may log meanwhile. */
+ * test can compare the C and Rust text. The handler is process-wide, and
+ * other tests in the same binary log on their own threads meanwhile: only
+ * lines from the thread that called oracle_decl_log_begin, and only lines
+ * that start with the decl prefix, are kept. Lines from other threads go
+ * on to the previous handler. */
 size_t oracle_call_param_type_size(void);
 void oracle_decl_log_begin(void);
 size_t oracle_decl_log_end(char *out, size_t capacity, int *level);
@@ -127,12 +131,19 @@ static size_t decl_log_len;
 static int decl_log_level;
 static log_handler_t decl_log_prev;
 static void *decl_log_prev_param;
+static THREAD_LOCAL bool decl_log_owner;
 
 static void decl_log_capture(int level, const char *format, va_list args, void *param)
 {
 	char text[sizeof(decl_log)];
 	int len;
 	(void)param;
+
+	if (!decl_log_owner) {
+		if (decl_log_prev)
+			decl_log_prev(level, format, args, decl_log_prev_param);
+		return;
+	}
 
 #if defined(__clang__) || defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -160,6 +171,7 @@ void oracle_decl_log_begin(void)
 	base_get_log_handler(&decl_log_prev, &decl_log_prev_param);
 	decl_log_len = 0;
 	decl_log_level = 0;
+	decl_log_owner = true;
 	base_set_log_handler(decl_log_capture, NULL);
 }
 
@@ -168,6 +180,7 @@ size_t oracle_decl_log_end(char *out, size_t capacity, int *level)
 	size_t len = decl_log_len < capacity ? decl_log_len : capacity;
 
 	base_set_log_handler(decl_log_prev, decl_log_prev_param);
+	decl_log_owner = false;
 	memcpy(out, decl_log, len);
 	*level = decl_log_level;
 	return decl_log_len;

@@ -14,16 +14,12 @@
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::ptr;
-use std::sync::Mutex;
 
 use obs_c_oracle::decl as oracle;
 use obs_callback::ffi::decl::{decl_info, decl_param, parse_decl_string};
 use obs_util::cf_tokenizer::{CfTokenType, cf_lex};
 use obs_util::ffi::darray::darray;
 use proptest::prelude::*;
-
-/// The log capture is one global handler.
-static LOG: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, PartialEq, Eq)]
 struct Outcome {
@@ -74,7 +70,7 @@ fn free(info: &mut decl_info) {
 }
 
 fn run(parse: unsafe extern "C" fn(*mut c_void, *const c_char) -> bool, text: &CStr) -> Outcome {
-    let _guard = LOG.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = super::LOG_HANDLER.lock().unwrap_or_else(|e| e.into_inner());
     let mut info = zeroed();
     let mut log = vec![0u8; 16384];
     let mut level = 0;
@@ -219,6 +215,46 @@ fn decl_cases_match_oracle() {
     for case in CASES {
         assert_parity(case.as_bytes());
     }
+}
+
+unsafe extern "C" {
+    fn blog(level: c_int, fmt: *const c_char, ...);
+}
+
+#[test]
+fn decl_log_capture_keeps_only_its_own_thread() {
+    // Other tests log on their own threads while a capture is open, even
+    // with the decl prefix. Only the capturing thread's lines may land in it.
+    let _guard = super::LOG_HANDLER.lock().unwrap_or_else(|e| e.into_inner());
+    let mut info = zeroed();
+    let mut log = vec![0u8; 4096];
+    let mut level = 0;
+    // SAFETY: `info` is a zeroed decl_info, the strings are NUL-terminated,
+    // and the capture buffer is `log.len()` bytes.
+    let len = unsafe {
+        oracle::oracle_decl_log_begin();
+        std::thread::spawn(|| {
+            // SAFETY: "%s" with one NUL-terminated string.
+            unsafe {
+                blog(
+                    200,
+                    c"%s".as_ptr(),
+                    c"Errors/warnings for 'other thread':\n\n".as_ptr(),
+                )
+            };
+        })
+        .join()
+        .expect("logging thread");
+        oracle::oracle_parse_decl_string((&raw mut info).cast(), c"void f(foo a)".as_ptr());
+        oracle::oracle_decl_log_end(log.as_mut_ptr().cast(), log.len(), &mut level)
+    };
+    free(&mut info);
+    log.truncate(len);
+    assert_eq!(
+        String::from_utf8_lossy(&log),
+        "Errors/warnings for 'void f(foo a)':\n\ndeclaration (1, 8): Expected 'type'\n"
+    );
+    assert_eq!(level, 200);
 }
 
 #[test]
