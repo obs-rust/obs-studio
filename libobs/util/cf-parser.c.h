@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "build/libobs.pch.h"
+#include "build/libobs-util.pch.h"
 
 void cf_adderror(struct cf_parser *p, const char *error, int level, const char *val1, const char *val2,
 		 const char *val3)

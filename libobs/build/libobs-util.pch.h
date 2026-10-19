@@ -1,4 +1,4 @@
-/* Precompiled header (BUILD.md) for the libobs unity groups libobs.ported-util, libobs.ported-util-io, libobs.rust-variadic, libobs.util-libc:
+/* Precompiled header (BUILD.md) for the libobs unity groups libobs.ported-util, libobs.ported-util-io, libobs.rust-variadic, libobs.util-cf, libobs.util-libc:
  * util/ alone, without the core, so the C oracle and C tests can compile them. C.
  * Every implementation file in them includes this header and nothing else: the includes and macro setup below are
  * theirs, in group and file order. */
@@ -89,6 +89,12 @@
 #include <windows.h>
 #include "util/c99defs.h"
 #endif
+
+/* util/cf-lexer.c */
+#include <stdio.h>
+
+/* util/cf-parser.c */
+#include "util/cf-parser.h"
 
 /* util/dstr-libc.c */
 #include <stddef.h>
