@@ -564,6 +564,21 @@ pub unsafe extern "C" fn obs_data_create_from_json_file_safe(
     load_file(json_file)
 }
 
+/// The reference count of a live `obs_data_t`, for tests (#1451). Not a C
+/// export.
+///
+/// # Safety
+///
+/// `data` is a live pointer from this module.
+#[doc(hidden)]
+pub unsafe fn ref_count_for_tests(data: *mut c_void) -> usize {
+    let Some(data) = borrow_data(data) else {
+        return 0;
+    };
+    // The borrow above holds one count of its own.
+    Rc::strong_count(&data.inner) - 1
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_data_addref(data: *mut c_void) {
     if !data.is_null() {
