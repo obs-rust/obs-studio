@@ -673,13 +673,18 @@ impl Item {
     }
 }
 
+/// The name index hasher. foldhash is fast on short settings keys and
+/// seeded per process, so it keeps some DoS resistance; SipHash, the
+/// `HashMap` default, was most of a lookup's cost (#1453).
+type NameMap<V> = HashMap<String, V, foldhash::fast::RandomState>;
+
 pub(crate) struct DataInner {
     /// The items in insertion order, which is the JSON order.
     items: Vec<Arc<RwLock<ItemInner>>>,
     /// The same items by name, so a lookup does not walk and lock every
     /// item (#1450). Names are unique: a set of an existing name updates
     /// its item.
-    index: HashMap<String, Arc<RwLock<ItemInner>>>,
+    index: NameMap<Arc<RwLock<ItemInner>>>,
     json: Option<CString>,
 }
 
@@ -717,7 +722,7 @@ impl Data {
         Self {
             inner: Arc::new(RwLock::new(DataInner {
                 items: Vec::new(),
-                index: HashMap::new(),
+                index: NameMap::default(),
                 json: None,
             })),
         }

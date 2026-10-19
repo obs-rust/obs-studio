@@ -9,6 +9,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The hasher of the item name index (#1450).
+foldhash = "=0.2.0"
 libc = "0.2"
 
 [build-dependencies]
