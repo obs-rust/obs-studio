@@ -21,6 +21,7 @@ obs-callback = { path = "../obs-callback" }
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
 proptest = "1"
+criterion = { version = "=0.8.2", default-features = false, features = ["cargo_bench_support"] }
 
 [lib]
 test = false
@@ -28,3 +29,7 @@ test = false
 [[test]]
 name = "obs-tests-core"
 path = "tests/core.rs"
+
+[[bench]]
+name = "data_comparison"
+harness = false

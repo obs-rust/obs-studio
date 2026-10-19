@@ -473,6 +473,7 @@ name = "obs-data"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "criterion",
  "libc",
  "obs-c-oracle",
  "obs-callback",
