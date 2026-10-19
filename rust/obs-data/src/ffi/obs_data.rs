@@ -11,6 +11,7 @@
 //! and that the caller has not released.
 #![allow(clippy::missing_safety_doc)]
 
+use std::borrow::Cow;
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::ptr;
 use std::sync::{Arc, RwLock};
@@ -89,16 +90,15 @@ unsafe extern "C" {
     ) -> bool;
 }
 
-fn c_str(ptr: *const c_char) -> Option<String> {
+/// The text of a C string. Borrowed when it is valid UTF-8 (every real
+/// key), so a get or set does not allocate for the name (#1453).
+fn c_str<'a>(ptr: *const c_char) -> Option<Cow<'a, str>> {
     if ptr.is_null() {
         None
     } else {
-        // SAFETY: `ptr` is a C string, or null (handled above).
-        Some(
-            unsafe { CStr::from_ptr(ptr) }
-                .to_string_lossy()
-                .into_owned(),
-        )
+        // SAFETY: `ptr` is a C string that outlives the call, or null
+        // (handled above).
+        Some(unsafe { CStr::from_ptr(ptr) }.to_string_lossy())
     }
 }
 
@@ -349,7 +349,7 @@ fn set_quat(data: *mut c_void, name: *const c_char, val: *const quat, slot: u8) 
     }
 }
 
-fn named_pair(data: *mut c_void, name: *const c_char) -> Option<(Data, String)> {
+fn named_pair<'a>(data: *mut c_void, name: *const c_char) -> Option<(Data, Cow<'a, str>)> {
     Some((borrow_data(data)?, c_str(name)?))
 }
 
