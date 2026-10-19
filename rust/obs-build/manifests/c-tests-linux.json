@@ -206,6 +206,12 @@
     ]
   },
   {
+    "name": "test_platform_mkdirs",
+    "sources": [
+      "test/cmocka/test_platform_mkdirs.c"
+    ]
+  },
+  {
     "name": "test_dtostr_exponent",
     "sources": [
       "test/cmocka/test_dtostr_exponent.c"

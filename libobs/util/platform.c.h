@@ -210,42 +210,6 @@ size_t os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr)
 	return out_len;
 }
 
-static int recursive_mkdir(char *path)
-{
-	char *last_slash;
-	int ret;
-
-	ret = os_mkdir(path);
-	if (ret != MKDIR_ERROR)
-		return ret;
-
-	last_slash = strrchr(path, '/');
-	if (!last_slash)
-		return MKDIR_ERROR;
-
-	*last_slash = 0;
-	ret = recursive_mkdir(path);
-	*last_slash = '/';
-
-	if (ret == MKDIR_ERROR)
-		return MKDIR_ERROR;
-
-	ret = os_mkdir(path);
-	return ret;
-}
-
-int os_mkdirs(const char *dir)
-{
-	struct dstr dir_str;
-	int ret;
-
-	dstr_init_copy(&dir_str, dir);
-	dstr_replace(&dir_str, "\\", "/");
-	ret = recursive_mkdir(dir_str.array);
-	dstr_free(&dir_str);
-	return ret;
-}
-
 static inline bool valid_string(const char *str)
 {
 	while (str && *str) {

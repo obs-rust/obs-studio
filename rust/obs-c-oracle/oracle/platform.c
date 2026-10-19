@@ -106,6 +106,7 @@
 #pragma clang diagnostic ignored "-Wunguarded-availability-new"
 #endif
 #include "util/platform-file.c.h"
+#include "util/platform-mkdirs.c.h"
 #include "util/platform.c.h"
 #if defined(__APPLE__) && defined(__clang__)
 #pragma clang diagnostic pop
