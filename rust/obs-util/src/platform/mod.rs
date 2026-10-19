@@ -21,7 +21,7 @@ cfg_select! {
         pub use unix::file::{
             CFile, SEEK_CUR, SEEK_END, SEEK_SET, WChar, errno, mbs_to_utf8, set_errno, utf8_to_mbs,
         };
-        pub use unix::nix::safe_replace;
+        pub use unix::nix::{mkdir, safe_replace};
     }
     windows => {
         #[allow(unsafe_code)] // Win32 handle and string calls; see the module docs
@@ -30,7 +30,7 @@ cfg_select! {
         pub use windows::file::{
             CFile, SEEK_CUR, SEEK_END, SEEK_SET, WChar, errno, mbs_to_utf8, set_errno, utf8_to_mbs,
         };
-        pub use windows::host::safe_replace;
+        pub use windows::host::{mkdir, safe_replace};
     }
 }
 

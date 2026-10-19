@@ -35,6 +35,7 @@ pub mod path_extension;
 pub mod pipe;
 pub mod platform;
 pub mod platform_file;
+pub mod platform_mkdirs;
 pub mod platform_number;
 pub mod profiler;
 pub mod profiler_snapshot;

@@ -2,5 +2,4 @@
 
 #include "libobs/build/libobs-platform.pch.h"
 
-#include "libobs/util/platform-mkdirs.c.h"
 #include "libobs/util/platform.c.h"

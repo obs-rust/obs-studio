@@ -11,6 +11,8 @@ mod platform_cocoa;
 mod platform_cocoa_parity;
 mod platform_file;
 mod platform_file_parity;
+mod platform_mkdirs;
+mod platform_mkdirs_parity;
 mod platform_nix;
 mod platform_nix_layout;
 mod platform_nix_parity;
