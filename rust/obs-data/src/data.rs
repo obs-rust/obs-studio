@@ -9,12 +9,35 @@
 //! A user value left behind when `set_autoselect` changes the item type is
 //! not reinterpreted. Getters for the new type return the empty value.
 
-use std::cell::RefCell;
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
-use std::rc::{Rc, Weak};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
 use crate::ffi::json::{self, J};
+
+/// The `RefCell`-style accessors on the per-object lock (#1451).
+///
+/// libobs shares `obs_data_t`, its items and arrays between threads and
+/// makes only the reference count atomic. Each object here is an
+/// `Arc<RwLock<_>>`: readers on several threads at once, one writer.
+/// Locks are taken in one order, an object before its items, and are never
+/// held across a callback or a call into another object's lock of the same
+/// kind. A poisoned lock still holds consistent data, because no step here
+/// panics with the data half-changed.
+trait Lock<T> {
+    fn borrow(&self) -> RwLockReadGuard<'_, T>;
+    fn borrow_mut(&self) -> RwLockWriteGuard<'_, T>;
+}
+
+impl<T> Lock<T> for RwLock<T> {
+    fn borrow(&self) -> RwLockReadGuard<'_, T> {
+        self.read().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn borrow_mut(&self) -> RwLockWriteGuard<'_, T> {
+        self.write().unwrap_or_else(|e| e.into_inner())
+    }
+}
 
 #[repr(i32)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -162,11 +185,11 @@ pub(crate) struct ItemInner {
     user_c: Option<CString>,
     default_c: Option<CString>,
     auto_c: Option<CString>,
-    parent: Option<Weak<RefCell<DataInner>>>,
+    parent: Option<Weak<RwLock<DataInner>>>,
 }
 
 impl ItemInner {
-    fn create(name: &str, slot: Slot, value: Value, parent: Weak<RefCell<DataInner>>) -> Self {
+    fn create(name: &str, slot: Slot, value: Value, parent: Weak<RwLock<DataInner>>) -> Self {
         let mut item = Self {
             name: name.to_string(),
             name_c: CString::new(name).unwrap_or_else(|_| CString::new("").unwrap()),
@@ -395,11 +418,11 @@ impl ItemInner {
 /// One setting. The pointer stays stable for the life of the item.
 #[derive(Clone)]
 pub struct Item {
-    pub(crate) inner: Rc<RefCell<ItemInner>>,
+    pub(crate) inner: Arc<RwLock<ItemInner>>,
 }
 
 impl Item {
-    fn from_rc(inner: Rc<RefCell<ItemInner>>) -> Self {
+    fn from_rc(inner: Arc<RwLock<ItemInner>>) -> Self {
         Self { inner }
     }
 
@@ -600,14 +623,14 @@ impl Item {
         next.map(Item::from_rc)
     }
 
-    fn peek_next(&self) -> Option<Rc<RefCell<ItemInner>>> {
+    fn peek_next(&self) -> Option<Arc<RwLock<ItemInner>>> {
         let parent = self.inner.borrow().parent.clone();
         let parent = parent.and_then(|weak| weak.upgrade())?;
         let data = parent.borrow();
         let idx = data
             .items
             .iter()
-            .position(|item| Rc::ptr_eq(item, &self.inner))?;
+            .position(|item| Arc::ptr_eq(item, &self.inner))?;
         data.items.get(idx + 1).cloned()
     }
 
@@ -620,7 +643,7 @@ impl Item {
         parent
             .borrow_mut()
             .items
-            .retain(|item| !Rc::ptr_eq(item, &self.inner));
+            .retain(|item| !Arc::ptr_eq(item, &self.inner));
         self.inner.borrow_mut().parent = None;
     }
 
@@ -650,20 +673,20 @@ impl Item {
 }
 
 pub(crate) struct DataInner {
-    items: Vec<Rc<RefCell<ItemInner>>>,
+    items: Vec<Arc<RwLock<ItemInner>>>,
     json: Option<CString>,
 }
 
 /// A JSON object of settings. Cloning addrefs; dropping releases.
 #[derive(Clone)]
 pub struct Data {
-    pub(crate) inner: Rc<RefCell<DataInner>>,
+    pub(crate) inner: Arc<RwLock<DataInner>>,
 }
 
 impl Data {
     pub fn new() -> Self {
         Self {
-            inner: Rc::new(RefCell::new(DataInner {
+            inner: Arc::new(RwLock::new(DataInner {
                 items: Vec::new(),
                 json: None,
             })),
@@ -1008,7 +1031,7 @@ impl Data {
     }
 
     pub fn apply(&self, src: &Data) {
-        if Rc::ptr_eq(&self.inner, &src.inner) {
+        if Arc::ptr_eq(&self.inner, &src.inner) {
             return;
         }
         let copies: Vec<(String, Value)> = src
@@ -1055,7 +1078,7 @@ impl Data {
             .borrow()
             .items
             .first()
-            .map(|item| Item::from_rc(Rc::clone(item)))
+            .map(|item| Item::from_rc(Arc::clone(item)))
     }
 
     pub fn item(&self, name: &str) -> Option<Item> {
@@ -1064,7 +1087,7 @@ impl Data {
             .items
             .iter()
             .find(|item| item.borrow().name == name)
-            .map(|item| Item::from_rc(Rc::clone(item)))
+            .map(|item| Item::from_rc(Arc::clone(item)))
     }
 
     pub fn set_vec2(&self, name: &str, val: Vec2) {
@@ -1392,25 +1415,18 @@ impl Data {
     }
 
     fn set_slot(&self, name: &str, slot: Slot, value: Value) {
-        let existing = {
-            let inner = self.inner.borrow();
-            inner
-                .items
-                .iter()
-                .find(|item| item.borrow().name == name)
-                .cloned()
-        };
-        if let Some(item) = existing {
+        // The lookup and the push are one step under the write lock, so two
+        // threads that set the same new name make one item (#1451). The
+        // item lock comes second, in the usual order.
+        let mut inner = self.inner.borrow_mut();
+        if let Some(item) = inner.items.iter().find(|item| item.borrow().name == name) {
             item.borrow_mut().write(slot, value);
             return;
         }
         // A fresh default still has to record the type. `write` on an empty
         // item does that. Autoselect and user do too.
-        let item = ItemInner::create(name, slot, value, Rc::downgrade(&self.inner));
-        self.inner
-            .borrow_mut()
-            .items
-            .push(Rc::new(RefCell::new(item)));
+        let item = ItemInner::create(name, slot, value, Arc::downgrade(&self.inner));
+        inner.items.push(Arc::new(RwLock::new(item)));
     }
 
     fn set_vec(&self, name: &str, slot: Slot, pairs: &[(&str, f64)]) {
@@ -1633,13 +1649,13 @@ pub(crate) struct ArrayInner {
 /// A list of objects. Cloning addrefs; dropping releases.
 #[derive(Clone)]
 pub struct Array {
-    pub(crate) inner: Rc<RefCell<ArrayInner>>,
+    pub(crate) inner: Arc<RwLock<ArrayInner>>,
 }
 
 impl Array {
     pub fn new() -> Self {
         Self {
-            inner: Rc::new(RefCell::new(ArrayInner { items: Vec::new() })),
+            inner: Arc::new(RwLock::new(ArrayInner { items: Vec::new() })),
         }
     }
 
@@ -1720,3 +1736,11 @@ impl Default for Array {
         Self::new()
     }
 }
+
+// libobs uses settings objects on several threads (#1451).
+const _: () = {
+    const fn shareable<T: Send + Sync>() {}
+    shareable::<Data>();
+    shareable::<Item>();
+    shareable::<Array>();
+};

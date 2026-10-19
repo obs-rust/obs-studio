@@ -11,10 +11,9 @@
 //! and that the caller has not released.
 #![allow(clippy::missing_safety_doc)]
 
-use std::cell::RefCell;
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::ptr;
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 use crate::data::{
     Array, ArrayInner, Data, DataInner, Item, ItemInner, Quat, Type, Vec2, Vec3, Vec4,
@@ -107,12 +106,12 @@ fn borrow_data(ptr: *mut c_void) -> Option<Data> {
     if ptr.is_null() {
         return None;
     }
-    let raw = ptr as *const RefCell<DataInner>;
+    let raw = ptr as *const RwLock<DataInner>;
     // SAFETY: `ptr` is a live data object. The extra count drops with the
     // returned value and leaves the caller's reference.
-    unsafe { Rc::increment_strong_count(raw) };
+    unsafe { Arc::increment_strong_count(raw) };
     Some(Data {
-        inner: unsafe { Rc::from_raw(raw) },
+        inner: unsafe { Arc::from_raw(raw) },
     })
 }
 
@@ -122,23 +121,23 @@ fn take_data(ptr: *mut c_void) -> Option<Data> {
     }
     // SAFETY: consumes the caller's reference.
     Some(Data {
-        inner: unsafe { Rc::from_raw(ptr as *const RefCell<DataInner>) },
+        inner: unsafe { Arc::from_raw(ptr as *const RwLock<DataInner>) },
     })
 }
 
 fn leak_data(data: Data) -> *mut c_void {
-    Rc::into_raw(data.inner) as *mut c_void
+    Arc::into_raw(data.inner) as *mut c_void
 }
 
 fn borrow_item(ptr: *mut c_void) -> Option<Item> {
     if ptr.is_null() {
         return None;
     }
-    let raw = ptr as *const RefCell<ItemInner>;
+    let raw = ptr as *const RwLock<ItemInner>;
     // SAFETY: same extra-count borrow as `borrow_data`.
-    unsafe { Rc::increment_strong_count(raw) };
+    unsafe { Arc::increment_strong_count(raw) };
     Some(Item {
-        inner: unsafe { Rc::from_raw(raw) },
+        inner: unsafe { Arc::from_raw(raw) },
     })
 }
 
@@ -148,12 +147,12 @@ fn take_item(ptr: *mut c_void) -> Option<Item> {
     }
     // SAFETY: consumes the caller's reference.
     Some(Item {
-        inner: unsafe { Rc::from_raw(ptr as *const RefCell<ItemInner>) },
+        inner: unsafe { Arc::from_raw(ptr as *const RwLock<ItemInner>) },
     })
 }
 
 fn leak_item(item: Item) -> *mut c_void {
-    Rc::into_raw(item.inner) as *mut c_void
+    Arc::into_raw(item.inner) as *mut c_void
 }
 
 fn item_slot(item: *mut *mut c_void) -> Option<Item> {
@@ -168,11 +167,11 @@ fn borrow_array(ptr: *mut c_void) -> Option<Array> {
     if ptr.is_null() {
         return None;
     }
-    let raw = ptr as *const RefCell<ArrayInner>;
+    let raw = ptr as *const RwLock<ArrayInner>;
     // SAFETY: same extra-count borrow as `borrow_data`.
-    unsafe { Rc::increment_strong_count(raw) };
+    unsafe { Arc::increment_strong_count(raw) };
     Some(Array {
-        inner: unsafe { Rc::from_raw(raw) },
+        inner: unsafe { Arc::from_raw(raw) },
     })
 }
 
@@ -182,12 +181,12 @@ fn take_array(ptr: *mut c_void) -> Option<Array> {
     }
     // SAFETY: consumes the caller's reference.
     Some(Array {
-        inner: unsafe { Rc::from_raw(ptr as *const RefCell<ArrayInner>) },
+        inner: unsafe { Arc::from_raw(ptr as *const RwLock<ArrayInner>) },
     })
 }
 
 fn leak_array(array: Array) -> *mut c_void {
-    Rc::into_raw(array.inner) as *mut c_void
+    Arc::into_raw(array.inner) as *mut c_void
 }
 
 fn named<R>(data: *mut c_void, name: *const c_char, f: impl FnOnce(&Data, &str) -> R) -> Option<R> {
@@ -576,14 +575,14 @@ pub unsafe fn ref_count_for_tests(data: *mut c_void) -> usize {
         return 0;
     };
     // The borrow above holds one count of its own.
-    Rc::strong_count(&data.inner) - 1
+    Arc::strong_count(&data.inner) - 1
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_data_addref(data: *mut c_void) {
     if !data.is_null() {
         // SAFETY: `data` is a live object, or we returned above.
-        unsafe { Rc::increment_strong_count(data as *const RefCell<DataInner>) };
+        unsafe { Arc::increment_strong_count(data as *const RwLock<DataInner>) };
     }
 }
 
@@ -732,7 +731,7 @@ pub unsafe extern "C" fn obs_data_array_create() -> *mut c_void {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_data_array_addref(array: *mut c_void) {
     if !array.is_null() {
-        unsafe { Rc::increment_strong_count(array as *const RefCell<ArrayInner>) };
+        unsafe { Arc::increment_strong_count(array as *const RwLock<ArrayInner>) };
     }
 }
 
@@ -795,7 +794,7 @@ pub unsafe extern "C" fn obs_data_array_enum(
         return;
     };
     array.enum_with(|data| {
-        let ptr = Rc::as_ptr(&data.inner) as *mut c_void;
+        let ptr = Arc::as_ptr(&data.inner) as *mut c_void;
         unsafe { cb(ptr, param) };
     });
 }
@@ -849,7 +848,7 @@ pub unsafe extern "C" fn obs_data_item_release(item: *mut *mut c_void) {
     let Some(current) = take_item(ptr) else {
         return;
     };
-    if Rc::strong_count(&current.inner) == 1 {
+    if Arc::strong_count(&current.inner) == 1 {
         unsafe { *item = ptr::null_mut() };
     }
 }
