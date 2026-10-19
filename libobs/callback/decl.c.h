@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "build/libobs.pch.h"
+#include "build/libobs-ported-callback.pch.h"
 
 static inline void err_specifier_exists(struct cf_parser *cfp, const char *storage)
 {

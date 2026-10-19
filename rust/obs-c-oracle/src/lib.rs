@@ -43,6 +43,7 @@ pub mod cf_tokenizer;
 pub mod config_file;
 pub mod crc32;
 pub mod darray;
+pub mod decl;
 pub mod dstr;
 pub mod encoder_packet;
 pub mod file_serializer;

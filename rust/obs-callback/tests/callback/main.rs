@@ -2,5 +2,6 @@
 
 mod calldata;
 mod decl;
+mod decl_parity;
 mod layout;
 mod parity;

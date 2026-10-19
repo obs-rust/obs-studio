@@ -18,7 +18,7 @@ are in [docs/rust-port/naming.md](../docs/rust-port/naming.md#repository-layout-
 | `obs-data/` | Port of `libobs/obs-data.c` |
 | `obs-properties/` | Port of `libobs/obs-properties.c` |
 | `obs-hotkey/` | Port of `libobs/obs-hotkey-name-map.c` |
-| `obs-callback/` | Port of `libobs/callback/calldata.c.h` |
+| `obs-callback/` | Port of `libobs/callback/calldata.c.h` and `libobs/callback/decl.c.h` |
 | `obs-nvenc/`, `obs-nvenc-plugin/` | Port of the `plugins/obs-nvenc` CUDA/NVENC loader, and the staticlib that plugin links |
 | `obs-gpu-status/`, `obs-gpu-status-frontend/` | GPU acceleration status (#846), and the staticlib the frontend links |
 | `obs-c-oracle/` | Test-only: original C sources compiled with `oracle_` symbols for layout and differential tests |
@@ -112,6 +112,7 @@ against the Rust ports, put that directory first on `LD_LIBRARY_PATH`
 | `libobs/util/platform-cocoa.m` | `obs-util::platform::unix::cocoa` | Swapped on macOS in `libobs-with-rust`. `os_cpu_usage_info` and `os_inhibit_t` are `Box` values. Core-count and total-memory caches take a mutex. A null `os_get_proc_memory_usage` returns false. A null `cfstr_copy_dstr` dstr pointer returns false. The `cfstr_copy_dstr` slow path zeros the gap past the first NUL, and the `cfstr_copy_cstr` slow path is sized to the C string. An empty inhibit reason is `CFStringCreateWithCString("")`. A null `UTF8String` becomes an empty base path. |
 | `libobs/obs-data.c` | `obs-data` | Swapped in `libobs-with-rust`. JSON text comes from jansson 2.14, same flags as the C file. Item pointers stay stable across set; C may realloc the item. A user value left in place when `set_autoselect` changes the type is not read back as the new type; those getters return the empty value. The safe core replaces a file by removing the destination and renaming, and it does not log; the C shim calls `os_quick_write_utf8_file` and `os_quick_write_utf8_file_safe`. A null name, or a null vec out-pointer, does nothing. `obs_data_newref` stays inline in the header. |
 | `libobs/callback/calldata.c.h` | `obs-callback` | Swapped in `libobs-with-rust`. Only `calldata_get_data`, `calldata_set_data`, and `calldata_get_string` move. The header inlines stay, including create, destroy, clear, and free. A non-fixed stack is still `bmalloc` / `brealloc` / `bfree`. A null `out`, a null string out-pointer, or a null stack with a non-zero size returns false; C would read or write through the null. A walk past the used size is not found. Well-formed stacks match, including the exact-fit grow. |
+| `libobs/callback/decl.c.h` | `obs-callback::decl` | Swapped in `libobs-with-rust`. `parse_decl_string` moves; `decl_param_free` and `decl_info_free` stay inline in the header. Names are `bmalloc` copies and the parameters a `bmalloc` darray. Tokens come from `obs-util::cf_tokenizer`; the parse steps are the `cf-parser.h` inlines decl.c calls, so errors, positions, and the logged warning match. `cf-lexer.c` and `cf-parser.c` stay C (group `libobs.util-cf`). A `#` first on a line is an error (C runs the preprocessor; `#include` reads a file). A first token that is not a name, or a function name that is not a name, fails with the C errors; C reads an uninitialized return type or calls `strcmp` on null there. A null `decl` returns false. |
 
 ## obs-studio-rust
 
