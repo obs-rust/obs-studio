@@ -1081,6 +1081,13 @@ area.
   [#1473](https://github.com/obs-rust/obs-studio/issues/1473), PR
   [#1474](https://github.com/obs-rust/obs-studio/pull/1474), upstream
   [obsproject/obs-studio#3427](https://github.com/obsproject/obs-studio/issues/3427).
+- HDR Tone Mapping (and any filter that reads the colour space of what is
+  below it) works whatever the filter order: an audio filter such as Gain
+  or Noise Suppression below it no longer makes an HDR source look SDR.
+  *All*, 2026-10-19. Issue
+  [#1492](https://github.com/obs-rust/obs-studio/issues/1492), PR
+  [#1493](https://github.com/obs-rust/obs-studio/pull/1493), port of
+  [obsproject/obs-studio#13761](https://github.com/obsproject/obs-studio/pull/13761).
 
 ### Scenes and UI
 
