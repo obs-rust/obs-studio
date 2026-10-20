@@ -3,7 +3,9 @@ use obs_c_oracle as _;
 use std::collections::BTreeSet;
 use std::fs;
 
-/// Names of fns following a `#[unsafe(no_mangle)]` / `#[no_mangle]` attribute.
+/// Names of fns and statics following a `#[unsafe(no_mangle)]` /
+/// `#[no_mangle]` attribute (a static is C data, such as
+/// `obs_blend_mode_params`).
 fn no_mangle_fns(src: &str) -> Vec<String> {
     let lines: Vec<&str> = src.lines().collect();
     let mut out = Vec::new();
@@ -13,8 +15,12 @@ fn no_mangle_fns(src: &str) -> Vec<String> {
             continue;
         }
         for next in &lines[i + 1..] {
-            if let Some(pos) = next.find("fn ") {
-                let name: String = next[pos + 3..]
+            let item = ["fn ", "static "]
+                .iter()
+                .filter_map(|kw| next.find(kw).map(|pos| pos + kw.len()))
+                .min();
+            if let Some(pos) = item {
+                let name: String = next[pos..]
                     .trim_start()
                     .chars()
                     .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')

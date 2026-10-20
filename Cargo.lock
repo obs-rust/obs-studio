@@ -407,6 +407,7 @@ dependencies = [
  "obs-media-io",
  "obs-missing-files",
  "obs-properties",
+ "obs-scene-blend",
  "obs-scene-bounds",
  "obs-util",
 ]

@@ -28,6 +28,7 @@
     "obs-nal.h",
     "obs-output.h",
     "obs-properties.h",
+    "obs-scene-blend.h",
     "obs-scene-bounds.h",
     "obs-scene.h",
     "obs-service.h",
@@ -123,6 +124,7 @@
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-graphics+.h.c",
     "build/libobs.ported-missing-files+.h.c",
+    "build/libobs.ported-scene-blend+.h.c",
     "build/libobs.ported-scene-bounds+.h.c"
   ],
   "LIBOBS_RUST_SOURCES": [

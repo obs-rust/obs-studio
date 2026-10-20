@@ -76,6 +76,7 @@
 
 /* obs-scene.c */
 #include "graphics/math-defs.h"
+#include "obs-scene-blend.h"
 
 /* obs-source.c */
 

@@ -37,6 +37,9 @@
     obs_data_json_decref;
     /* obs-scene-bounds.c. obs-scene.c calls it inside libobs. Not EXPORT. */
     obs_bounds_fit_scale;
+    /* obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it
+     * inside libobs. Not EXPORT. */
+    obs_blend_mode_params;
     /* pulseaudio-stream-flags.c. pulseaudio-output.c calls them inside
      * libobs. Not EXPORT. */
     pulseaudio_monitor_stream_flags;

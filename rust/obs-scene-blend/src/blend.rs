@@ -70,15 +70,50 @@ pub struct BlendParams {
     pub op: BlendOp,
 }
 
+const fn row(
+    src_color: BlendType,
+    src_alpha: BlendType,
+    dst_color: BlendType,
+    dst_alpha: BlendType,
+    op: BlendOp,
+) -> BlendParams {
+    BlendParams {
+        src_color,
+        src_alpha,
+        dst_color,
+        dst_alpha,
+        op,
+    }
+}
+
+const TABLE: [BlendParams; MODE_COUNT] = {
+    use BlendType::{DstAlpha, DstColor, InvSrcAlpha, InvSrcColor, One};
+    [
+        // Normal: premultiplied-alpha "over".
+        row(One, One, InvSrcAlpha, InvSrcAlpha, BlendOp::Add),
+        // Additive
+        row(One, One, One, One, BlendOp::Add),
+        // Subtract: dst - src, alpha too.
+        row(One, One, One, One, BlendOp::ReverseSubtract),
+        // Screen
+        row(One, One, InvSrcColor, InvSrcAlpha, BlendOp::Add),
+        // Multiply: the alpha comes out as dst_a.
+        row(DstColor, DstAlpha, InvSrcAlpha, InvSrcAlpha, BlendOp::Add),
+        // Lighten: max ignores the factors.
+        row(One, One, One, One, BlendOp::Max),
+        // Darken: min ignores the factors.
+        row(One, One, One, One, BlendOp::Min),
+    ]
+};
+
 /// The whole table, indexed by [`BlendMode`] as `usize`.
 #[must_use]
 pub const fn blend_mode_params() -> [BlendParams; MODE_COUNT] {
-    todo!()
+    TABLE
 }
 
 /// The row for `mode`.
 #[must_use]
 pub const fn blend_params(mode: BlendMode) -> BlendParams {
-    let _ = mode;
-    todo!()
+    TABLE[mode as usize]
 }

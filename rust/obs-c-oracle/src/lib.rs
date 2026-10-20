@@ -79,6 +79,7 @@ pub mod proc;
 pub mod profiler;
 pub mod profiler_snapshot;
 pub mod pulse_stream_flags;
+pub mod scene_blend;
 pub mod scene_bounds;
 pub mod shader_param_names;
 pub mod task;

@@ -28,6 +28,9 @@ _video_output_free_frame_rate_divisor
 _obs_data_json_decref
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. Not EXPORT.
 _obs_bounds_fit_scale
+# obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it inside
+# libobs. Not EXPORT.
+_obs_blend_mode_params
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs
 # on Linux and FreeBSD. Built on every host; not EXPORT.
 _pulseaudio_monitor_stream_flags

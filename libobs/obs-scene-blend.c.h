@@ -16,15 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-blend.pch.h"
 
-static const struct {
-	enum gs_blend_type src_color;
-	enum gs_blend_type src_alpha;
-	enum gs_blend_type dst_color;
-	enum gs_blend_type dst_alpha;
-	enum gs_blend_op_type op;
-} obs_blend_mode_params[] = {
+const struct obs_blend_mode_param obs_blend_mode_params[] = {
 	/* clang-format off */
 	// OBS_BLEND_NORMAL
 	{

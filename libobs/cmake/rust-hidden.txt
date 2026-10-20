@@ -26,6 +26,10 @@ video_output_free_frame_rate_divisor
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. The C file has
 # no EXPORT, so the shim stays hidden the same way.
 obs_bounds_fit_scale
+# obs-scene-blend.c: the blend mode table (data, not a function).
+# obs-scene.c reads it inside libobs. The C file has no EXPORT, so the Rust
+# static stays hidden the same way.
+obs_blend_mode_params
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs.
 # The C file has no EXPORT, so the shims stay hidden the same way.
 pulseaudio_monitor_stream_flags

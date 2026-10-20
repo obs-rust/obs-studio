@@ -8,6 +8,8 @@ use obs_scene_blend::{
     BlendMode, BlendOp, BlendParams, BlendType, MODE_COUNT, blend_mode_params, blend_params,
 };
 
+mod parity;
+
 /// A row of `expected` in the C test: mode, name, the four factors
 /// (`src_color`, `src_alpha`, `dst_color`, `dst_alpha`) and the operation.
 type Expected = (

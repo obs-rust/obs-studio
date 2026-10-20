@@ -16,4 +16,5 @@ pub use obs_hotkey::ffi as hotkey_ffi;
 pub use obs_media_io::ffi as media_io_ffi;
 pub use obs_missing_files::ffi as missing_files_ffi;
 pub use obs_properties::ffi as properties_ffi;
+pub use obs_scene_blend::ffi as scene_blend_ffi;
 pub use obs_scene_bounds::ffi as scene_bounds_ffi;
