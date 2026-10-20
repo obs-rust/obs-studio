@@ -80,8 +80,38 @@ pub fn os_nstime_to_timespec(timestamp: u64) -> Timespec {
 /// Below the base the result is normalized. The C does this arithmetic in
 /// `uint64_t` above the base, which wraps; so does this.
 pub fn nstime_to_timespec(base: Base, timestamp: u64) -> Timespec {
-    let _ = (base, timestamp);
-    todo!("os_nstime_to_timespec port")
+    const NS: u64 = NSEC_PER_SEC as u64;
+
+    let Timespec {
+        sec: mut tv_sec,
+        nsec: mut tv_nsec,
+    } = base.wall;
+    let (mut secs, mut nsecs);
+    if timestamp >= base.timestamp {
+        let offset = timestamp - base.timestamp;
+        nsecs = tv_nsec.wrapping_add((offset % NS) as i64);
+        secs = tv_sec.wrapping_add((offset / NS) as i64);
+    } else {
+        let offset = base.timestamp - timestamp;
+        let nsec_offset = (offset % NS) as i64;
+        let sec_offset = (offset / NS) as i64;
+        if nsec_offset > tv_nsec {
+            tv_sec = tv_sec.wrapping_sub(1);
+            tv_nsec = tv_nsec.wrapping_add(NSEC_PER_SEC);
+        }
+        nsecs = tv_nsec.wrapping_sub(nsec_offset);
+        secs = tv_sec.wrapping_sub(sec_offset);
+    }
+
+    // Characterized, not endorsed: `>`, so exactly one second stays.
+    if nsecs > NSEC_PER_SEC {
+        nsecs -= NSEC_PER_SEC;
+        secs = secs.wrapping_add(1);
+    }
+    Timespec {
+        sec: secs,
+        nsec: nsecs,
+    }
 }
 
 /// `timespec_get(&ts, TIME_UTC)`: seconds and nanoseconds since the Unix
