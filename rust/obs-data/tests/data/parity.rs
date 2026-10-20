@@ -34,6 +34,11 @@ unsafe extern "C" {
         val: *const c_char,
     );
     fn oracle_obs_data_get_int(data: *mut c_void, name: *const c_char) -> i64;
+    fn oracle_obs_data_has_user_value(data: *mut c_void, name: *const c_char) -> bool;
+    fn oracle_obs_data_erase(data: *mut c_void, name: *const c_char);
+    fn oracle_obs_data_item_byname(data: *mut c_void, name: *const c_char) -> *mut c_void;
+    fn oracle_obs_data_item_remove(item: *mut *mut c_void);
+    fn oracle_obs_data_item_release(item: *mut *mut c_void);
 }
 
 fn c_name(text: &str) -> CString {
@@ -173,6 +178,69 @@ proptest! {
                     let c_text = c_name(text);
                     unsafe { oracle_obs_data_set_string(c, name_c.as_ptr(), c_text.as_ptr()) };
                 }
+            }
+        }
+        prop_assert_eq!(rust.json(), oracle_json(c));
+        release(c);
+    }
+}
+
+/// One step on an object with up to 40 names, so it grows past and shrinks
+/// below the size where the name index starts (#1453).
+#[derive(Clone, Debug)]
+enum Op {
+    Set(u8, i64),
+    Erase(u8),
+    RemoveItem(u8),
+}
+
+fn op() -> impl Strategy<Value = Op> {
+    prop_oneof![
+        3 => (0u8..40, any::<i64>()).prop_map(|(k, v)| Op::Set(k, v)),
+        1 => (0u8..40).prop_map(Op::Erase),
+        1 => (0u8..40).prop_map(Op::RemoveItem),
+    ]
+}
+
+proptest! {
+    #[test]
+    fn many_keys_set_erase_remove_match_oracle(ops in prop::collection::vec(op(), 0..120)) {
+        let rust = Data::new();
+        // SAFETY: an oracle object, released at the end; names outlive each call.
+        let c = unsafe { oracle_obs_data_create() };
+        for op in &ops {
+            let k = match op {
+                Op::Set(k, _) | Op::Erase(k) | Op::RemoveItem(k) => *k,
+            };
+            let name = format!("key_{k}");
+            let cn = c_name(&name);
+            match op {
+                Op::Set(_, v) => {
+                    rust.set_int(&name, *v);
+                    unsafe { oracle_obs_data_set_int(c, cn.as_ptr(), *v) };
+                }
+                Op::Erase(_) => {
+                    rust.erase(&name);
+                    unsafe { oracle_obs_data_erase(c, cn.as_ptr()) };
+                }
+                Op::RemoveItem(_) => {
+                    if let Some(item) = rust.item(&name) {
+                        item.remove();
+                    }
+                    unsafe {
+                        let mut item = oracle_obs_data_item_byname(c, cn.as_ptr());
+                        if !item.is_null() {
+                            oracle_obs_data_item_remove(&mut item);
+                            oracle_obs_data_item_release(&mut item);
+                        }
+                    }
+                }
+            }
+            for probe in 0u8..40 {
+                let name = format!("key_{probe}");
+                let cn = c_name(&name);
+                prop_assert_eq!(rust.get_int(&name), unsafe { oracle_obs_data_get_int(c, cn.as_ptr()) });
+                prop_assert_eq!(rust.has_user_value(&name), unsafe { oracle_obs_data_has_user_value(c, cn.as_ptr()) });
             }
         }
         prop_assert_eq!(rust.json(), oracle_json(c));
