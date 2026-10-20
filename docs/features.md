@@ -951,6 +951,12 @@ area.
   (names like `2880154539x2880154539`). *All*, 2026-10-20. Issue
   [#1509](https://github.com/obs-rust/obs-studio/issues/1509), PR
   [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
+- Streaming over RTMP no longer leaks memory each time the server drops the
+  connection before the first video frame is sent, or sends a message OBS
+  can't read before it drops the connection. *All*, 2026-10-20. Issue
+  [#1573](https://github.com/obs-rust/obs-studio/issues/1573), PR
+  [#1574](https://github.com/obs-rust/obs-studio/pull/1574), upstream
+  [obsproject/obs-studio#9972](https://github.com/obsproject/obs-studio/issues/9972).
 
 ### Sources and filters
 

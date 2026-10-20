@@ -388,14 +388,26 @@ static int handle_socket_read(struct rtmp_stream *stream)
 	return 0;
 }
 
+/* The send functions own the packet they are given: an encoder packet, or
+ * data the output built itself (headers, footers). */
+static inline void free_sent_packet(struct encoder_packet *packet, bool manually_created)
+{
+	if (manually_created)
+		bfree(packet->data);
+	else
+		obs_encoder_packet_release(packet);
+}
+
 static int send_packet(struct rtmp_stream *stream, struct encoder_packet *packet, bool is_header)
 {
 	uint8_t *data;
 	size_t size;
 	int ret = 0;
 
-	if (handle_socket_read(stream))
+	if (handle_socket_read(stream)) {
+		free_sent_packet(packet, is_header);
 		return -1;
+	}
 
 	flv_packet_mux(packet, is_header ? 0 : stream->start_dts_offset, &data, &size, is_header);
 
@@ -406,10 +418,7 @@ static int send_packet(struct rtmp_stream *stream, struct encoder_packet *packet
 	ret = RTMP_Write(&stream->rtmp, (char *)data, (int)size, 0);
 	bfree(data);
 
-	if (is_header)
-		bfree(packet->data);
-	else
-		obs_encoder_packet_release(packet);
+	free_sent_packet(packet, is_header);
 
 	stream->total_bytes_sent += size;
 	return ret;
@@ -422,8 +431,10 @@ static int send_packet_ex(struct rtmp_stream *stream, struct encoder_packet *pac
 	size_t size = 0;
 	int ret = 0;
 
-	if (handle_socket_read(stream))
+	if (handle_socket_read(stream)) {
+		free_sent_packet(packet, is_header || is_footer);
 		return -1;
+	}
 
 	if (is_header) {
 		flv_packet_start(packet, stream->video_codec[idx], &data, &size, idx);
@@ -440,10 +451,7 @@ static int send_packet_ex(struct rtmp_stream *stream, struct encoder_packet *pac
 	ret = RTMP_Write(&stream->rtmp, (char *)data, (int)size, 0);
 	bfree(data);
 
-	if (is_header || is_footer) // manually created packets
-		bfree(packet->data);
-	else
-		obs_encoder_packet_release(packet);
+	free_sent_packet(packet, is_header || is_footer);
 
 	stream->total_bytes_sent += size;
 	return ret;
@@ -455,8 +463,10 @@ static int send_audio_packet_ex(struct rtmp_stream *stream, struct encoder_packe
 	size_t size = 0;
 	int ret = 0;
 
-	if (handle_socket_read(stream))
+	if (handle_socket_read(stream)) {
+		free_sent_packet(packet, is_header);
 		return -1;
+	}
 
 	if (is_header) {
 		flv_packet_audio_start(packet, stream->audio_codec[idx], &data, &size, idx);
@@ -467,10 +477,7 @@ static int send_audio_packet_ex(struct rtmp_stream *stream, struct encoder_packe
 	ret = RTMP_Write(&stream->rtmp, (char *)data, (int)size, 0);
 	bfree(data);
 
-	if (is_header)
-		bfree(packet->data);
-	else
-		obs_encoder_packet_release(packet);
+	free_sent_packet(packet, is_header);
 
 	return ret;
 }
@@ -650,6 +657,7 @@ static void *send_thread(void *data)
 		if (!stream->sent_headers) {
 			if (!send_headers(stream)) {
 				os_atomic_set_bool(&stream->disconnected, true);
+				obs_encoder_packet_release(&packet);
 				break;
 			}
 		}
