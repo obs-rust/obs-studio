@@ -90,8 +90,7 @@
     "name": "test_formatted_filename",
     "sources": [
       "test/cmocka/test_formatted_filename.c",
-      "libobs/util/platform.c.h",
-      "libobs/util/utf8.c.h"
+      "libobs/util/platform-filename.c.h"
     ],
     "sanitizers": "address,undefined"
   },

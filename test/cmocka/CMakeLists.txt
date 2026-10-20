@@ -214,16 +214,15 @@ if(ENABLE_HEVC)
   add_test(test_hevc ${CMAKE_CURRENT_BINARY_DIR}/test_hevc)
 endif()
 
-# Formatted filename test (obs-rust/obs-studio#21). platform.c is compiled into
-# the test so the test's obs_get_video_info fixture replaces libobs's and no obs
-# core has to be started; its definitions take precedence over libobs's. utf8.c
-# is not exported by libobs, and platform.c needs it.
+# Formatted filename test (obs-rust/obs-studio#21). platform-filename.c is
+# compiled into the test so the test's obs_get_video_info and time fixtures
+# replace libobs's and libc's and no obs core has to be started; its definitions
+# take precedence over libobs's.
 if(NOT MSVC)
   add_executable(
     test_formatted_filename
     test_formatted_filename.c
-    "${CMAKE_SOURCE_DIR}/libobs/util/platform.c.h"
-    "${CMAKE_SOURCE_DIR}/libobs/util/utf8.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/util/platform-filename.c.h"
   )
   target_include_directories(test_formatted_filename PRIVATE ${CMOCKA_INCLUDE_DIR})
   target_link_libraries(test_formatted_filename PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})

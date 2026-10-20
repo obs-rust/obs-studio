@@ -209,7 +209,7 @@ __attribute__((weak)) uint64_t os_gettime_ns(void)
  * Intentionally different from the original: the real one is in libobs/obs.c
  * (obs_get_video_info, libobs/obs.c:1680), which pulls in the whole video
  * pipeline that the oracle does not build, and the only platform.c function
- * that calls it is os_generate_formatted_filename (libobs/util/platform.c:699),
+ * that calls it is os_generate_formatted_filename (libobs/util/platform-filename.c),
  * to fill in file-name specifiers. No oracle test calls that one, so this stub
  * only keeps the platform.c translation unit linkable; it reports "no video
  * info" rather than guessing at a struct the caller would have to size.

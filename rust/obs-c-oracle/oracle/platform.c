@@ -106,6 +106,7 @@
 #pragma clang diagnostic ignored "-Wunguarded-availability-new"
 #endif
 #include "util/platform-file.c.h"
+#include "util/platform-filename.c.h"
 #include "util/platform-mkdirs.c.h"
 #include "util/platform-time.c.h"
 #include "util/platform.c.h"
