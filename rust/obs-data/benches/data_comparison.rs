@@ -1,6 +1,7 @@
 //! obs-data through the C ABI against the C oracle (`libobs/obs-data.c`),
-//! for the measurements in #1449: key lookup cost by key count (#1450)
-//! and the JSON round trip (#1452).
+//! for the measurements in #1449: key lookup cost by key count (#1450),
+//! the JSON round trip (#1452), and a small object filled with defaults the
+//! way `obs_get_source_defaults` does it (#1453).
 //!
 //! `cargo bench -p obs-data --bench data_comparison`
 
@@ -21,6 +22,8 @@ unsafe extern "C" {
     fn oracle_obs_data_get_int(data: *mut c_void, name: *const c_char) -> i64;
     fn oracle_obs_data_set_string(data: *mut c_void, name: *const c_char, val: *const c_char);
     fn oracle_obs_data_set_obj(data: *mut c_void, name: *const c_char, obj: *mut c_void);
+    fn oracle_obs_data_set_default_int(data: *mut c_void, name: *const c_char, val: i64);
+    fn oracle_obs_data_set_default_bool(data: *mut c_void, name: *const c_char, val: bool);
 }
 
 struct Api {
@@ -30,6 +33,8 @@ struct Api {
     get_json: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     set_int: unsafe extern "C" fn(*mut c_void, *const c_char, i64),
     get_int: unsafe extern "C" fn(*mut c_void, *const c_char) -> i64,
+    set_default_int: unsafe extern "C" fn(*mut c_void, *const c_char, i64),
+    set_default_bool: unsafe extern "C" fn(*mut c_void, *const c_char, bool),
 }
 
 const RUST: Api = Api {
@@ -39,6 +44,8 @@ const RUST: Api = Api {
     get_json: rust::obs_data_get_json,
     set_int: rust::obs_data_set_int,
     get_int: rust::obs_data_get_int,
+    set_default_int: rust::obs_data_set_default_int,
+    set_default_bool: rust::obs_data_set_default_bool,
 };
 
 const C: Api = Api {
@@ -48,6 +55,8 @@ const C: Api = Api {
     get_json: oracle_obs_data_get_json,
     set_int: oracle_obs_data_set_int,
     get_int: oracle_obs_data_get_int,
+    set_default_int: oracle_obs_data_set_default_int,
+    set_default_bool: oracle_obs_data_set_default_bool,
 };
 
 fn names(n: usize) -> Vec<CString> {
@@ -81,6 +90,33 @@ fn set_get(c: &mut Criterion) {
             // SAFETY: the creator's reference.
             unsafe { (api.release)(data) };
         }
+    }
+    group.finish();
+}
+
+/// Create, nine defaults, release: what `obs_get_source_defaults` does for
+/// `ffmpeg_source` (#1453). Small objects must not pay for the name index.
+fn source_defaults(c: &mut Criterion) {
+    let mut group = c.benchmark_group("source_defaults");
+    for (side, api) in [("rust", &RUST), ("c", &C)] {
+        group.bench_function(side, |b| {
+            b.iter(|| {
+                // SAFETY: the API's own object, released here; literal names.
+                unsafe {
+                    let s = (api.create)();
+                    (api.set_default_bool)(s, c"is_local_file".as_ptr(), true);
+                    (api.set_default_bool)(s, c"looping".as_ptr(), false);
+                    (api.set_default_bool)(s, c"clear_on_media_end".as_ptr(), true);
+                    (api.set_default_bool)(s, c"restart_on_activate".as_ptr(), true);
+                    (api.set_default_bool)(s, c"linear_alpha".as_ptr(), false);
+                    (api.set_default_int)(s, c"reconnect_delay_sec".as_ptr(), 10);
+                    (api.set_default_int)(s, c"buffering_mb".as_ptr(), 2);
+                    (api.set_default_int)(s, c"speed_percent".as_ptr(), 100);
+                    (api.set_default_bool)(s, c"log_changes".as_ptr(), true);
+                    (api.release)(black_box(s));
+                }
+            })
+        });
     }
     group.finish();
 }
@@ -136,5 +172,5 @@ fn json(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, set_get, json);
+criterion_group!(benches, set_get, source_defaults, json);
 criterion_main!(benches);
