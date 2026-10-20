@@ -302,8 +302,9 @@ macros is compiled into every caller, so no symbol swap is possible.
   differential test. That test runs against oracle wrappers that instantiate
   the inline functions as non-inline `oracle_*` functions.
 - This currently covers `util/darray.h` (the `struct darray` layout is the
-  contract), `util/serializer.h` (`struct serializer`), and the `static inline`
-  helpers in `util/dstr.h` (the `struct dstr` layout is the contract).
+  contract), `util/deque.h` (`struct deque`), `util/serializer.h`
+  (`struct serializer`), and the `static inline` helpers in `util/dstr.h`
+  (the `struct dstr` layout is the contract).
   `util/dstr.c` itself is ported with the normal workflow.
 
 ## Python runs through uv

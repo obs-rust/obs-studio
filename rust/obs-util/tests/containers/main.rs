@@ -11,5 +11,7 @@ mod darray;
 mod darray_layout;
 mod darray_parity;
 mod deque;
+mod deque_layout;
+mod deque_parity;
 mod util_uint64;
 mod util_uint64_parity;
