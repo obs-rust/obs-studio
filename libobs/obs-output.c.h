@@ -361,6 +361,34 @@ const char *obs_output_get_name(const obs_output_t *output)
 	return obs_output_valid(output, "obs_output_get_name") ? output->context.name : NULL;
 }
 
+struct obs_output_delay_fields obs_output_delay_fields(const obs_output_t *output)
+{
+	struct obs_output *o = (struct obs_output *)(uintptr_t)output;
+	struct obs_output_delay_fields f = {
+		.delay_mutex = &o->delay_mutex,
+		.delay_data = &o->delay_data,
+		.active_delay_ns = &o->active_delay_ns,
+		.delay_sec = &o->delay_sec,
+		.delay_flags = &o->delay_flags,
+		.delay_cur_flags = &o->delay_cur_flags,
+		.delay_restart_refs = &o->delay_restart_refs,
+		.delay_active = &o->delay_active,
+		.delay_capturing = &o->delay_capturing,
+		.delay_callback = &o->delay_callback,
+		.starting = &o->starting,
+		.reconnecting = &o->reconnecting,
+		.flags = &o->info.flags,
+		.name = &o->context.name,
+	};
+
+	return f;
+}
+
+void obs_output_delay_signal(obs_output_t *output, const char *signal)
+{
+	do_output_signal(output, signal);
+}
+
 bool obs_output_actual_start(obs_output_t *output)
 {
 	bool success = false;

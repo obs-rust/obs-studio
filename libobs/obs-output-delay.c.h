@@ -17,32 +17,35 @@
 
 #include "libobs/build/libobs.pch.h"
 
-static inline bool od_delay_active(const struct obs_output *output)
+/* The delay fields are read through obs_output_delay_fields(), not the
+ * struct obs_output layout. */
+typedef struct obs_output_delay_fields od_fields_t;
+
+static inline bool od_delay_active(const od_fields_t *f)
 {
-	return os_atomic_load_bool(&output->delay_active);
+	return os_atomic_load_bool(f->delay_active);
 }
 
-static inline bool od_delay_capturing(const struct obs_output *output)
+static inline bool od_delay_capturing(const od_fields_t *f)
 {
-	return os_atomic_load_bool(&output->delay_capturing);
+	return os_atomic_load_bool(f->delay_capturing);
 }
 
-static inline bool od_flag_encoded(const struct obs_output *output)
+static inline bool od_flag_encoded(const od_fields_t *f)
 {
-	return (output->info.flags & OBS_OUTPUT_ENCODED) != 0;
+	return (*f->flags & OBS_OUTPUT_ENCODED) != 0;
 }
 
-static inline bool od_log_flag_encoded(const struct obs_output *output, const char *func_name, bool inverse_log)
+static inline bool od_log_flag_encoded(const od_fields_t *f, const char *func_name, bool inverse_log)
 {
 	const char *prefix = inverse_log ? "n encoded" : " raw";
-	bool ret = od_flag_encoded(output);
+	bool ret = od_flag_encoded(f);
 	if ((!inverse_log && !ret) || (inverse_log && ret))
-		blog(LOG_WARNING, "Output '%s': Tried to use %s on a%s output", output->context.name, func_name,
-		     prefix);
+		blog(LOG_WARNING, "Output '%s': Tried to use %s on a%s output", *f->name, func_name, prefix);
 	return ret;
 }
 
-static inline void push_packet(struct obs_output *output, struct encoder_packet *packet,
+static inline void push_packet(const od_fields_t *f, struct encoder_packet *packet,
 			       struct encoder_packet_time *packet_time, uint64_t t)
 {
 	struct delay_data dd;
@@ -54,19 +57,19 @@ static inline void push_packet(struct obs_output *output, struct encoder_packet 
 		dd.packet_time = *packet_time;
 	obs_encoder_packet_create_instance(&dd.packet, packet);
 
-	pthread_mutex_lock(&output->delay_mutex);
-	deque_push_back(&output->delay_data, &dd, sizeof(dd));
-	pthread_mutex_unlock(&output->delay_mutex);
+	pthread_mutex_lock(f->delay_mutex);
+	deque_push_back(f->delay_data, &dd, sizeof(dd));
+	pthread_mutex_unlock(f->delay_mutex);
 }
 
-static inline void process_delay_data(struct obs_output *output, struct delay_data *dd)
+static inline void process_delay_data(struct obs_output *output, const od_fields_t *f, struct delay_data *dd)
 {
 	switch (dd->msg) {
 	case DELAY_MSG_PACKET:
-		if (!od_delay_active(output) || !od_delay_capturing(output))
+		if (!od_delay_active(f) || !od_delay_capturing(f))
 			obs_encoder_packet_release(&dd->packet);
 		else
-			output->delay_callback(output, &dd->packet, dd->packet_time_valid ? &dd->packet_time : NULL);
+			(*f->delay_callback)(output, &dd->packet, dd->packet_time_valid ? &dd->packet_time : NULL);
 		break;
 	case DELAY_MSG_START:
 		obs_output_actual_start(output);
@@ -79,20 +82,21 @@ static inline void process_delay_data(struct obs_output *output, struct delay_da
 
 void obs_output_cleanup_delay(obs_output_t *output)
 {
+	od_fields_t f = obs_output_delay_fields(output);
 	struct delay_data dd;
 
-	while (output->delay_data.size) {
-		deque_pop_front(&output->delay_data, &dd, sizeof(dd));
+	while (f.delay_data->size) {
+		deque_pop_front(f.delay_data, &dd, sizeof(dd));
 		if (dd.msg == DELAY_MSG_PACKET) {
 			obs_encoder_packet_release(&dd.packet);
 		}
 	}
 
-	output->active_delay_ns = 0;
-	os_atomic_set_long(&output->delay_restart_refs, 0);
+	*f.active_delay_ns = 0;
+	os_atomic_set_long(f.delay_restart_refs, 0);
 }
 
-static inline bool pop_packet(struct obs_output *output, uint64_t t)
+static inline bool pop_packet(struct obs_output *output, const od_fields_t *f, uint64_t t)
 {
 	uint64_t elapsed_time;
 	struct delay_data dd;
@@ -101,29 +105,29 @@ static inline bool pop_packet(struct obs_output *output, uint64_t t)
 
 	/* ------------------------------------------------ */
 
-	preserve = (output->delay_cur_flags & OBS_OUTPUT_DELAY_PRESERVE) != 0;
+	preserve = (*f->delay_cur_flags & OBS_OUTPUT_DELAY_PRESERVE) != 0;
 
-	pthread_mutex_lock(&output->delay_mutex);
+	pthread_mutex_lock(f->delay_mutex);
 
-	if (output->delay_data.size) {
-		deque_peek_front(&output->delay_data, &dd, sizeof(dd));
+	if (f->delay_data->size) {
+		deque_peek_front(f->delay_data, &dd, sizeof(dd));
 		elapsed_time = (t - dd.ts);
 
-		if (preserve && output->reconnecting) {
-			output->active_delay_ns = elapsed_time;
+		if (preserve && *f->reconnecting) {
+			*f->active_delay_ns = elapsed_time;
 
-		} else if (elapsed_time > output->active_delay_ns) {
-			deque_pop_front(&output->delay_data, NULL, sizeof(dd));
+		} else if (elapsed_time > *f->active_delay_ns) {
+			deque_pop_front(f->delay_data, NULL, sizeof(dd));
 			popped = true;
 		}
 	}
 
-	pthread_mutex_unlock(&output->delay_mutex);
+	pthread_mutex_unlock(f->delay_mutex);
 
 	/* ------------------------------------------------ */
 
 	if (popped)
-		process_delay_data(output, &dd);
+		process_delay_data(output, f, &dd);
 
 	return popped;
 }
@@ -131,38 +135,40 @@ static inline bool pop_packet(struct obs_output *output, uint64_t t)
 void process_delay(void *data, struct encoder_packet *packet, struct encoder_packet_time *packet_time)
 {
 	struct obs_output *output = data;
+	od_fields_t f = obs_output_delay_fields(output);
 	uint64_t t = os_gettime_ns();
-	push_packet(output, packet, packet_time, t);
-	while (pop_packet(output, t))
+	push_packet(&f, packet, packet_time, t);
+	while (pop_packet(output, &f, t))
 		;
 }
 
 bool obs_output_delay_start(obs_output_t *output)
 {
+	od_fields_t f = obs_output_delay_fields(output);
 	struct delay_data dd = {
 		.msg = DELAY_MSG_START,
 		.ts = os_gettime_ns(),
 	};
 
-	if (!od_delay_active(output)) {
+	if (!od_delay_active(&f)) {
 		bool can_begin = obs_output_can_begin_data_capture(output, 0);
 		if (!can_begin)
 			return false;
-		os_atomic_set_bool(&output->starting, true);
+		os_atomic_set_bool(f.starting, true);
 		if (!obs_output_initialize_encoders(output, 0)) {
-			os_atomic_set_bool(&output->starting, false);
+			os_atomic_set_bool(f.starting, false);
 			return false;
 		}
 	}
 
-	pthread_mutex_lock(&output->delay_mutex);
-	deque_push_back(&output->delay_data, &dd, sizeof(dd));
-	pthread_mutex_unlock(&output->delay_mutex);
+	pthread_mutex_lock(f.delay_mutex);
+	deque_push_back(f.delay_data, &dd, sizeof(dd));
+	pthread_mutex_unlock(f.delay_mutex);
 
-	os_atomic_inc_long(&output->delay_restart_refs);
+	os_atomic_inc_long(f.delay_restart_refs);
 
-	if (od_delay_active(output)) {
-		do_output_signal(output, "starting");
+	if (od_delay_active(&f)) {
+		obs_output_delay_signal(output, "starting");
 		return true;
 	}
 
@@ -176,36 +182,40 @@ bool obs_output_delay_start(obs_output_t *output)
 
 void obs_output_delay_stop(obs_output_t *output)
 {
+	od_fields_t f = obs_output_delay_fields(output);
 	struct delay_data dd = {
 		.msg = DELAY_MSG_STOP,
 		.ts = os_gettime_ns(),
 	};
 
-	pthread_mutex_lock(&output->delay_mutex);
-	deque_push_back(&output->delay_data, &dd, sizeof(dd));
-	pthread_mutex_unlock(&output->delay_mutex);
+	pthread_mutex_lock(f.delay_mutex);
+	deque_push_back(f.delay_data, &dd, sizeof(dd));
+	pthread_mutex_unlock(f.delay_mutex);
 
-	do_output_signal(output, "stopping");
+	obs_output_delay_signal(output, "stopping");
 }
 
 void obs_output_set_delay(obs_output_t *output, uint32_t delay_sec, uint32_t flags)
 {
 	if (!obs_output_valid(output, "obs_output_set_delay"))
 		return;
-	if (!od_log_flag_encoded(output, __FUNCTION__, false))
+
+	od_fields_t f = obs_output_delay_fields(output);
+	if (!od_log_flag_encoded(&f, __FUNCTION__, false))
 		return;
 
-	output->delay_sec = delay_sec;
-	output->delay_flags = flags;
+	*f.delay_sec = delay_sec;
+	*f.delay_flags = flags;
 }
 
 uint32_t obs_output_get_delay(const obs_output_t *output)
 {
-	return obs_output_valid(output, "obs_output_set_delay") ? output->delay_sec : 0;
+	return obs_output_valid(output, "obs_output_set_delay") ? *obs_output_delay_fields(output).delay_sec : 0;
 }
 
 uint32_t obs_output_get_active_delay(const obs_output_t *output)
 {
-	return obs_output_valid(output, "obs_output_set_delay") ? (uint32_t)(output->active_delay_ns / 1000000000ULL)
-								: 0;
+	return obs_output_valid(output, "obs_output_set_delay")
+		       ? (uint32_t)(*obs_output_delay_fields(output).active_delay_ns / 1000000000ULL)
+		       : 0;
 }

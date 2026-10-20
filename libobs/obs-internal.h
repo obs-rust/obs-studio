@@ -1374,6 +1374,33 @@ static inline void do_output_signal(struct obs_output *output, const char *signa
 	calldata_free(&params);
 }
 
+/* The stream delay state of an output, as pointers into it, so
+ * obs-output-delay.c reads and writes it without the struct obs_output
+ * layout. flags and name point at info.flags and context.name. */
+struct obs_output_delay_fields {
+	pthread_mutex_t *delay_mutex;
+	struct deque *delay_data; /* struct delay_data */
+	uint64_t *active_delay_ns;
+	uint32_t *delay_sec;
+	uint32_t *delay_flags;
+	uint32_t *delay_cur_flags;
+	volatile long *delay_restart_refs;
+	volatile bool *delay_active;
+	volatile bool *delay_capturing;
+	encoded_callback_t *delay_callback;
+	volatile bool *starting;
+	volatile bool *reconnecting;
+	const uint32_t *flags;
+	char *const *name;
+};
+
+/* Not EXPORT. It takes a const output for the const getters of
+ * obs-output-delay.c; the pointers are not const, as the start and stop
+ * paths write through them. */
+extern struct obs_output_delay_fields obs_output_delay_fields(const obs_output_t *output);
+/* do_output_signal(), for obs-output-delay.c. Not EXPORT. */
+extern void obs_output_delay_signal(obs_output_t *output, const char *signal);
+
 extern void process_delay(void *data, struct encoder_packet *packet, struct encoder_packet_time *packet_time);
 extern void obs_output_cleanup_delay(obs_output_t *output);
 extern bool obs_output_delay_start(obs_output_t *output);
