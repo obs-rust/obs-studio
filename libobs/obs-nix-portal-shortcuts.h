@@ -61,3 +61,15 @@ bool obs_nix_portal_shortcut_combo(const char *id, obs_key_combination_t *combo)
 /* Preferred trigger in the XDG shortcuts format ("CTRL+SHIFT+F13"). */
 bool obs_nix_portal_shortcut_trigger(obs_key_combination_t combo, obs_nix_portal_key_name_func key_name,
 				     struct dstr *trigger);
+
+/* Whether combo can be a portal shortcut. Shared by the id codec
+ * (obs-nix-portal-shortcut-ids.c) and the binding collection
+ * (obs-nix-portal-shortcuts.c). */
+static inline bool bindable(obs_key_combination_t combo)
+{
+	/* Portal triggers are keyboard shortcuts; modifier-only and mouse
+	 * combinations keep working only while OBS is focused. */
+	if (combo.key <= OBS_KEY_NONE || combo.key >= OBS_KEY_LAST_VALUE)
+		return false;
+	return combo.key < OBS_KEY_MOUSE1 || combo.key > OBS_KEY_MOUSE29;
+}

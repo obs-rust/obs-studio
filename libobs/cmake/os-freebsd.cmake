@@ -85,7 +85,13 @@ if(ENABLE_WAYLAND)
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 
   if(TARGET gio::gio)
-    target_sources(libobs-objects PRIVATE build/libobs.nix-portal-shortcuts+.h.c obs-nix-portal-shortcuts.h)
+    target_sources(
+      libobs-objects
+      PRIVATE
+        build/libobs.nix-portal-shortcut-ids+.h.c
+        build/libobs.nix-portal-shortcuts+.h.c
+        obs-nix-portal-shortcuts.h
+    )
     target_compile_definitions(libobs-objects PUBLIC HAVE_GLOBAL_SHORTCUTS_PORTAL)
   endif()
   target_enable_feature(libobs "Wayland compositor support (FreeBSD)")

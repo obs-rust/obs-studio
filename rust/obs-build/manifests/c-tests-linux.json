@@ -485,5 +485,12 @@
     "archives": [
       "caption"
     ]
+  },
+  {
+    "name": "test_portal_shortcut_ids",
+    "sources": [
+      "test/cmocka/test_portal_shortcut_ids.c",
+      "libobs/obs-nix-portal-shortcut-ids.c.h"
+    ]
   }
 ]
