@@ -1,4 +1,9 @@
 //! C layout and adapters for cf-parser. The preprocessor remains C.
+
+// c_char is i8 on most targets and u8 on some (aarch64 Linux,
+// aarch64-pc-windows-msvc): the `as u8` conversions below are needed on the
+// first and no-ops on the second, where clippy calls them unnecessary.
+#![allow(clippy::unnecessary_cast)]
 use super::cf_tokenizer::{cf_lexer, cf_token};
 use super::darray::darray;
 use super::lexer::{error_data, error_data_add};

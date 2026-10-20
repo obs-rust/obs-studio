@@ -51,6 +51,9 @@ impl CFile {
 
     /// `os_wfopen` on Unix: converts `path` (no NUL) with `wchar_to_utf8`
     /// and opens the result. A path that does not convert opens `""`.
+    // wchar_t is i32 on x86-64 Linux and macOS and u32 on aarch64 Linux, so
+    // the `as u32` is needed on the first and a no-op on the second.
+    #[allow(clippy::unnecessary_cast)]
     pub fn open_wide(path: &[WChar], mode: &CStr) -> Option<Self> {
         let wide: Vec<u32> = path.iter().map(|&c| c as u32).collect();
         let mut bytes = wcs_to_utf8(&wide);
@@ -142,6 +145,9 @@ fn wcs_to_utf8(wide: &[u32]) -> Vec<u8> {
 /// `os_mbs_to_utf8_ptr(text, ..)`: `mbstowcs` in the current locale up to
 /// the first NUL, then `wchar_to_utf8`. Text the locale cannot convert
 /// gives an empty string.
+// wchar_t is i32 on x86-64 Linux and macOS and u32 on aarch64 Linux, so the
+// `as u32` below is needed on the first and a no-op on the second.
+#[allow(clippy::unnecessary_cast)]
 pub fn mbs_to_utf8(text: &CStr) -> Vec<u8> {
     // SAFETY: `text` is NUL-terminated; a null destination only counts.
     let count = unsafe { mbstowcs(ptr::null_mut(), text.as_ptr(), 0) };
