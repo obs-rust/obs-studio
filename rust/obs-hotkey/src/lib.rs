@@ -1,6 +1,8 @@
-//! Rust port of `libobs/obs-hotkey-name-map.c`.
+//! Rust ports of `libobs/obs-hotkey-name-map.c` and
+//! `libobs/obs-nix-hotkey-state.c.h`.
 //!
-//! The safe core is [`name_map`]. The C ABI shims live in [`ffi`].
+//! The safe cores are [`name_map`] and [`nix_hotkey_state`]. The C ABI shims
+//! live in [`ffi`].
 
 #![deny(unsafe_code)]
 
@@ -13,6 +15,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod name_map;
+pub mod nix_hotkey_state;
 
 #[allow(unsafe_code)]
 pub mod ffi;

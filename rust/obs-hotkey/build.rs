@@ -12,6 +12,9 @@ fn main() {
     let mut out = String::from(
         "/// `obs-hotkeys.h` in enum order.\npub(crate) static KEY_NAMES: &[&std::ffi::CStr] = &[\n",
     );
+    // The codes the Wayland key state needs by name (obs-nix-hotkey-state.c).
+    let mut consts = String::new();
+    let mut count = 0usize;
     for line in text.lines() {
         let line = line.trim();
         // OBS_MOUSE_BUTTON(x) expands to OBS_HOTKEY(x) unless the includer
@@ -22,9 +25,22 @@ fn main() {
         if let Some(rest) = rest {
             let name = rest.strip_suffix(')').expect("OBS_HOTKEY(x) on one line");
             writeln!(out, "    c\"{name}\",").unwrap();
+            if matches!(
+                name,
+                "OBS_KEY_SHIFT" | "OBS_KEY_CONTROL" | "OBS_KEY_ALT" | "OBS_KEY_META"
+            ) {
+                writeln!(consts, "/// `{name}`.\npub const {name}: i32 = {count};").unwrap();
+            }
+            count += 1;
         }
     }
     out.push_str("];\n");
+    writeln!(
+        out,
+        "/// `OBS_KEY_LAST_VALUE`: the number of keys.\npub const OBS_KEY_LAST_VALUE: usize = {count};"
+    )
+    .unwrap();
+    out.push_str(&consts);
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("keys.rs");
     std::fs::write(dest, out).expect("write keys.rs");
 }
