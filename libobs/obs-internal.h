@@ -293,6 +293,11 @@ struct obs_hotkeys_background {
 void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *background);
 void obs_hotkeys_background_status_changed(void);
 
+/* obs->hotkeys.mutex (recursive), the lock the hotkey thread holds for a
+ * whole poll cycle. Not exported. */
+void obs_hotkeys_mutex_lock(void);
+void obs_hotkeys_mutex_unlock(void);
+
 struct obs_hotkey_binding {
 	obs_key_combination_t key;
 	bool pressed;

@@ -19,12 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * the hotkey thread, which holds it for a whole cycle. */
 static inline void hotkey_state_lock(void)
 {
-	pthread_mutex_lock(&obs->hotkeys.mutex);
+	obs_hotkeys_mutex_lock();
 }
 
 static inline void hotkey_state_unlock(void)
 {
-	pthread_mutex_unlock(&obs->hotkeys.mutex);
+	obs_hotkeys_mutex_unlock();
 }
 
 void obs_nix_hotkey_state_free(struct obs_nix_hotkey_state *state)

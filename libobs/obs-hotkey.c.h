@@ -41,6 +41,16 @@ static inline void unlock(void)
 	pthread_mutex_unlock(&obs->hotkeys.mutex);
 }
 
+void obs_hotkeys_mutex_lock(void)
+{
+	pthread_mutex_lock(&obs->hotkeys.mutex);
+}
+
+void obs_hotkeys_mutex_unlock(void)
+{
+	pthread_mutex_unlock(&obs->hotkeys.mutex);
+}
+
 obs_hotkey_id obs_hotkey_get_id(const obs_hotkey_t *key)
 {
 	return key->id;

@@ -10,6 +10,7 @@ if((OS_LINUX OR OS_FREEBSD) AND ENABLE_WAYLAND)
       test_wayland_multiseat.c
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-wayland.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
+      hotkey_mutex_stub.c
     )
     target_compile_definitions(test_wayland_multiseat PRIVATE obs=wayland_test_obs)
     target_include_directories(test_wayland_multiseat PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/libobs")
