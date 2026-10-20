@@ -890,6 +890,16 @@ area.
   [obsproject/obs-studio#14051](https://github.com/obsproject/obs-studio/issues/14051),
   port of
   [obsproject/obs-studio#14052](https://github.com/obsproject/obs-studio/pull/14052).
+- Settings > Output (Advanced) with a profile that names a video encoder
+  OBS does not have (a profile copied from a machine with an AMD encoder,
+  for example) selects a fallback encoder, x264 for most, and shows its
+  settings. Before, the encoder settings read "No properties available",
+  the streaming list showed an encoder that was not in use, the recording
+  list was empty and OK only said "No Encoder Selected". The profile changes
+  only when the output settings are saved. *All*, 2026-10-20. Issue
+  [#1490](https://github.com/obs-rust/obs-studio/issues/1490), PR
+  [#1491](https://github.com/obs-rust/obs-studio/pull/1491), upstream
+  [obsproject/obs-studio#3531](https://github.com/obsproject/obs-studio/issues/3531).
 
 ### Sources and filters
 

@@ -1964,17 +1964,42 @@ OBSPropertiesView *OBSBasicSettings::CreateEncoderPropertyView(const char *encod
 	return view;
 }
 
+static bool settings_combo_has_encoder(const char *id, void *param)
+{
+	return static_cast<QComboBox *>(param)->findData(QT_UTF8(id)) != -1;
+}
+
+/* Selects the profile's encoder `type` in an Advanced output encoder list.
+ * A profile can name an encoder the list does not offer (made on another
+ * machine, or its plugin is gone; obsproject/obs-studio#3531). The list then
+ * showed whatever came first, over "No properties available", and OK only
+ * said "No Encoder Selected". Select the fallback Advanced output uses when
+ * the service does not take an encoder instead (x264 for most), marked
+ * changed so that saving the output settings writes what the list shows.
+ * The profile itself is not touched until then. Returns the encoder the list
+ * shows; with no fallback in the list, its first entry. */
+static QString settings_select_adv_encoder(QComboBox *combo, const char *type)
+{
+	const char *fallbacks[] = {adv_video_encoder_fallback(type), "obs_x264", nullptr};
+	const char *selected = encoder_list_select(type, fallbacks, settings_combo_has_encoder, combo);
+
+	if (selected && selected == type) {
+		SetComboByValue(combo, type);
+		return QT_UTF8(type);
+	}
+
+	combo->setCurrentIndex(selected ? combo->findData(QT_UTF8(selected)) : 0);
+	combo->setProperty("changed", QVariant(true));
+
+	QString shown = combo->currentData().toString();
+	blog(LOG_WARNING, "Settings: encoder '%s' is not available, showing '%s' instead", type ? type : "",
+	     QT_TO_UTF8(shown));
+	return shown;
+}
+
 void OBSBasicSettings::LoadAdvOutputStreamingEncoderProperties()
 {
 	const char *type = config_get_string(main->Config(), "AdvOut", "Encoder");
-
-	delete streamEncoderProps;
-	streamEncoderProps = CreateEncoderPropertyView(type, "streamEncoder.json");
-	streamEncoderProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-	ui->advOutEncoderLayout->addWidget(streamEncoderProps);
-
-	connect(streamEncoderProps, &OBSPropertiesView::Changed, this, &OBSBasicSettings::UpdateStreamDelayEstimate);
-	connect(streamEncoderProps, &OBSPropertiesView::Changed, this, &OBSBasicSettings::AdvReplayBufferChanged);
 
 	curAdvStreamEncoder = type;
 
@@ -1990,6 +2015,19 @@ void OBSBasicSettings::LoadAdvOutputStreamingEncoderProperties()
 			SetComboByValue(ui->advOutEncoder, type);
 		}
 	}
+
+	QString encoder = settings_select_adv_encoder(ui->advOutEncoder, type);
+	bool fellBack = encoder != QT_UTF8(type);
+
+	/* streamEncoder.json holds the profile encoder's settings. */
+	delete streamEncoderProps;
+	streamEncoderProps =
+		CreateEncoderPropertyView(QT_TO_UTF8(encoder), fellBack ? nullptr : "streamEncoder.json", fellBack);
+	streamEncoderProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+	ui->advOutEncoderLayout->addWidget(streamEncoderProps);
+
+	connect(streamEncoderProps, &OBSPropertiesView::Changed, this, &OBSBasicSettings::UpdateStreamDelayEstimate);
+	connect(streamEncoderProps, &OBSPropertiesView::Changed, this, &OBSBasicSettings::AdvReplayBufferChanged);
 
 	UpdateStreamDelayEstimate();
 }
@@ -2072,17 +2110,6 @@ void OBSBasicSettings::LoadAdvOutputRecordingEncoderProperties()
 {
 	const char *type = config_get_string(main->Config(), "AdvOut", "RecEncoder");
 
-	delete recordEncoderProps;
-	recordEncoderProps = nullptr;
-
-	if (astrcmpi(type, "none") != 0) {
-		recordEncoderProps = CreateEncoderPropertyView(type, "recordEncoder.json");
-		recordEncoderProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-		ui->advOutRecEncoderProps->layout()->addWidget(recordEncoderProps);
-		connect(recordEncoderProps, &OBSPropertiesView::Changed, this,
-			&OBSBasicSettings::AdvReplayBufferChanged);
-	}
-
 	curAdvRecordEncoder = type;
 
 	if (!SetComboByValue(ui->advOutRecEncoder, type)) {
@@ -2095,9 +2122,24 @@ void OBSBasicSettings::LoadAdvOutputRecordingEncoderProperties()
 
 			ui->advOutRecEncoder->insertItem(1, encName, QT_UTF8(type));
 			SetComboByValue(ui->advOutRecEncoder, type);
-		} else {
-			ui->advOutRecEncoder->setCurrentIndex(-1);
 		}
+	}
+
+	/* Without a fallback in the list: "(Use stream encoder)". */
+	QString encoder = settings_select_adv_encoder(ui->advOutRecEncoder, type);
+	bool fellBack = encoder != QT_UTF8(type);
+
+	delete recordEncoderProps;
+	recordEncoderProps = nullptr;
+
+	if (encoder != "none") {
+		/* recordEncoder.json holds the profile encoder's settings. */
+		recordEncoderProps = CreateEncoderPropertyView(QT_TO_UTF8(encoder),
+							       fellBack ? nullptr : "recordEncoder.json", fellBack);
+		recordEncoderProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+		ui->advOutRecEncoderProps->layout()->addWidget(recordEncoderProps);
+		connect(recordEncoderProps, &OBSPropertiesView::Changed, this,
+			&OBSBasicSettings::AdvReplayBufferChanged);
 	}
 }
 

@@ -24,8 +24,14 @@ const char *adv_video_encoder_fallback(const char *id)
 const char *encoder_list_select(const char *configured, const char *const *fallbacks, encoder_list_has_fn has,
 				void *param)
 {
-	(void)fallbacks;
-	(void)has;
-	(void)param;
-	return configured;
+	if (configured && has(configured, param)) {
+		return configured;
+	}
+
+	for (const char *const *fb = fallbacks; fb && *fb; fb++) {
+		if (has(*fb, param)) {
+			return *fb;
+		}
+	}
+	return NULL;
 }
