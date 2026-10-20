@@ -17,7 +17,7 @@ use std::ptr;
 use std::sync::{Arc, RwLock};
 
 use crate::data::{
-    Array, ArrayInner, Data, DataInner, Item, ItemInner, Quat, Type, Vec2, Vec3, Vec4,
+    Array, ArrayInner, Data, DataInner, Item, ItemNode, Quat, Type, Vec2, Vec3, Vec4,
 };
 
 const LOG_WARNING: c_int = 200;
@@ -133,7 +133,7 @@ fn borrow_item(ptr: *mut c_void) -> Option<Item> {
     if ptr.is_null() {
         return None;
     }
-    let raw = ptr as *const RwLock<ItemInner>;
+    let raw = ptr as *const ItemNode;
     // SAFETY: same extra-count borrow as `borrow_data`.
     unsafe { Arc::increment_strong_count(raw) };
     Some(Item {
@@ -147,7 +147,7 @@ fn take_item(ptr: *mut c_void) -> Option<Item> {
     }
     // SAFETY: consumes the caller's reference.
     Some(Item {
-        inner: unsafe { Arc::from_raw(ptr as *const RwLock<ItemInner>) },
+        inner: unsafe { Arc::from_raw(ptr as *const ItemNode) },
     })
 }
 

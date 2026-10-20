@@ -9,10 +9,11 @@
 //! A user value left behind when `set_autoselect` changes the item type is
 //! not reinterpreted. Getters for the new type return the empty value.
 
-use std::collections::HashMap;
-use std::ffi::CString;
+use std::collections::HashSet;
+use std::ffi::{CStr, CString};
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
+use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
 use crate::ffi::json;
 
@@ -176,9 +177,103 @@ fn c_ptr(slot: &Option<CString>) -> *const std::ffi::c_char {
         .unwrap_or(c"".as_ptr())
 }
 
+/// Names up to this many bytes are stored in the item's own allocation,
+/// as C stores the name in the item block (#1453).
+const NAME_INLINE: usize = 31;
+
+/// The hash of a name's bytes, the same for every object in the process.
+fn name_hash(bytes: &[u8]) -> u64 {
+    static STATE: OnceLock<foldhash::fast::RandomState> = OnceLock::new();
+    std::hash::BuildHasher::hash_one(STATE.get_or_init(Default::default), bytes)
+}
+
+/// An item name: its bytes, a NUL after them, and their hash. A name with
+/// a NUL inside is stored empty, as before.
+struct Name {
+    hash: u64,
+    text: NameText,
+}
+
+enum NameText {
+    Inline { len: u8, buf: [u8; NAME_INLINE + 1] },
+    Heap(Box<CStr>),
+}
+
+impl Name {
+    fn new(name: &str) -> Self {
+        let bytes = if name.as_bytes().contains(&0) {
+            &[][..]
+        } else {
+            name.as_bytes()
+        };
+        let text = if bytes.len() <= NAME_INLINE {
+            let mut buf = [0u8; NAME_INLINE + 1];
+            buf[..bytes.len()].copy_from_slice(bytes);
+            NameText::Inline {
+                len: bytes.len() as u8,
+                buf,
+            }
+        } else {
+            NameText::Heap(CString::new(bytes).unwrap_or_default().into_boxed_c_str())
+        };
+        Self {
+            hash: name_hash(bytes),
+            text,
+        }
+    }
+
+    fn bytes(&self) -> &[u8] {
+        match &self.text {
+            NameText::Inline { len, buf } => &buf[..*len as usize],
+            NameText::Heap(text) => text.to_bytes(),
+        }
+    }
+
+    fn is(&self, hash: u64, bytes: &[u8]) -> bool {
+        self.hash == hash && self.bytes() == bytes
+    }
+
+    fn as_c_str(&self) -> &CStr {
+        match &self.text {
+            // `buf` is zero after `len` bytes that hold no NUL.
+            NameText::Inline { len, buf } => {
+                CStr::from_bytes_with_nul(&buf[..=*len as usize]).unwrap_or(c"")
+            }
+            NameText::Heap(text) => text,
+        }
+    }
+
+    fn string(&self) -> String {
+        String::from_utf8_lossy(self.bytes()).into_owned()
+    }
+}
+
+/// An item and its name. The name never changes, so it is outside the
+/// lock: a lookup reads it without locking the item (#1450). One
+/// allocation per item (#1453).
+pub(crate) struct ItemNode {
+    name: Name,
+    lock: RwLock<ItemInner>,
+}
+
+impl ItemNode {
+    fn new(name: &str, inner: ItemInner) -> Self {
+        Self {
+            name: Name::new(name),
+            lock: RwLock::new(inner),
+        }
+    }
+}
+
+impl std::ops::Deref for ItemNode {
+    type Target = RwLock<ItemInner>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.lock
+    }
+}
+
 pub(crate) struct ItemInner {
-    name: String,
-    name_c: CString,
     ty: Type,
     user: Option<Value>,
     default: Option<Value>,
@@ -190,10 +285,8 @@ pub(crate) struct ItemInner {
 }
 
 impl ItemInner {
-    fn create(name: &str, slot: Slot, value: Value, parent: Weak<RwLock<DataInner>>) -> Self {
+    fn create(slot: Slot, value: Value, parent: Weak<RwLock<DataInner>>) -> Self {
         let mut item = Self {
-            name: name.to_string(),
-            name_c: CString::new(name).unwrap_or_else(|_| CString::new("").unwrap()),
             ty: value.ty(),
             user: None,
             default: None,
@@ -419,16 +512,16 @@ impl ItemInner {
 /// One setting. The pointer stays stable for the life of the item.
 #[derive(Clone)]
 pub struct Item {
-    pub(crate) inner: Arc<RwLock<ItemInner>>,
+    pub(crate) inner: Arc<ItemNode>,
 }
 
 impl Item {
-    fn from_rc(inner: Arc<RwLock<ItemInner>>) -> Self {
+    fn from_rc(inner: Arc<ItemNode>) -> Self {
         Self { inner }
     }
 
     pub fn name(&self) -> String {
-        self.inner.borrow().name.clone()
+        self.inner.name.string()
     }
 
     pub fn ty(&self) -> Type {
@@ -624,7 +717,7 @@ impl Item {
         next.map(Item::from_rc)
     }
 
-    fn peek_next(&self) -> Option<Arc<RwLock<ItemInner>>> {
+    fn peek_next(&self) -> Option<Arc<ItemNode>> {
         let parent = self.inner.borrow().parent.clone();
         let parent = parent.and_then(|weak| weak.upgrade())?;
         let data = parent.borrow();
@@ -637,14 +730,11 @@ impl Item {
 
     /// Drops the object's reference. This handle stays usable.
     pub fn remove(&self) {
-        let (name, parent) = {
-            let inner = self.inner.borrow();
-            (inner.name.clone(), inner.parent.clone())
-        };
+        let parent = self.inner.borrow().parent.clone();
         let Some(parent) = parent.and_then(|weak| weak.upgrade()) else {
             return;
         };
-        parent.borrow_mut().remove(&name, &self.inner);
+        parent.borrow_mut().remove(&self.inner);
         self.inner.borrow_mut().parent = None;
     }
 
@@ -657,7 +747,7 @@ impl Item {
     }
 
     pub(crate) fn name_ptr(&self) -> *const std::ffi::c_char {
-        self.inner.borrow().name_c.as_ptr()
+        self.inner.name.as_c_str().as_ptr()
     }
 
     pub(crate) fn string_ptr(&self) -> *const std::ffi::c_char {
@@ -673,41 +763,87 @@ impl Item {
     }
 }
 
-/// The name index hasher. foldhash is fast on short settings keys and
-/// seeded per process, so it keeps some DoS resistance; SipHash, the
-/// `HashMap` default, was most of a lookup's cost (#1453).
-type NameMap<V> = HashMap<String, V, foldhash::fast::RandomState>;
+/// The name index. foldhash is fast on short settings keys and seeded per
+/// process, so it keeps some DoS resistance; SipHash, the `HashMap`
+/// default, was most of a lookup's cost (#1453).
+type NameIndex = HashSet<NameKey, foldhash::fast::RandomState>;
+
+/// An item in the index, looked up by its name bytes.
+struct NameKey(Arc<ItemNode>);
+
+impl PartialEq for NameKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.name.bytes() == other.0.name.bytes()
+    }
+}
+
+impl Eq for NameKey {}
+
+impl Hash for NameKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.name.bytes().hash(state);
+    }
+}
+
+impl std::borrow::Borrow<[u8]> for NameKey {
+    fn borrow(&self) -> &[u8] {
+        self.0.name.bytes()
+    }
+}
+
+/// Up to this many items, a lookup compares the name hashes in order.
+/// Settings objects are mostly this small, and for them the index costs
+/// more to build than it saves (#1453).
+const INDEX_MIN: usize = 16;
 
 pub(crate) struct DataInner {
-    /// The items in insertion order, which is the JSON order.
-    items: Vec<Arc<RwLock<ItemInner>>>,
-    /// The same items by name, so a lookup does not walk and lock every
-    /// item (#1450). Names are unique: a set of an existing name updates
-    /// its item.
-    index: NameMap<Arc<RwLock<ItemInner>>>,
+    /// The items in insertion order, which is the JSON order. Names are
+    /// unique: a set of an existing name updates its item.
+    items: Vec<Arc<ItemNode>>,
+    /// The same items by name once there are more than `INDEX_MIN`, so a
+    /// lookup does not walk every item (#1450).
+    index: Option<NameIndex>,
     json: Option<CString>,
 }
 
 impl DataInner {
-    fn find(&self, name: &str) -> Option<&Arc<RwLock<ItemInner>>> {
-        self.index.get(name)
-    }
-
-    fn push(&mut self, name: &str, item: Arc<RwLock<ItemInner>>) {
-        self.index.insert(name.to_owned(), Arc::clone(&item));
-        self.items.push(item);
-    }
-
-    /// Removes `item` if it is the item of `name`.
-    fn remove(&mut self, name: &str, item: &Arc<RwLock<ItemInner>>) {
-        if self
-            .index
-            .get(name)
-            .is_some_and(|found| Arc::ptr_eq(found, item))
-        {
-            self.index.remove(name);
+    fn find(&self, name: &str) -> Option<&Arc<ItemNode>> {
+        let bytes = name.as_bytes();
+        match &self.index {
+            Some(index) => index.get(bytes).map(|key| &key.0),
+            None => {
+                let hash = name_hash(bytes);
+                self.items.iter().find(|item| item.name.is(hash, bytes))
+            }
         }
-        self.items.retain(|i| !Arc::ptr_eq(i, item));
+    }
+
+    fn push(&mut self, item: Arc<ItemNode>) {
+        if let Some(index) = &mut self.index {
+            index.insert(NameKey(Arc::clone(&item)));
+        }
+        self.items.push(item);
+        if self.index.is_none() && self.items.len() > INDEX_MIN {
+            // The key hashes and compares only the item's name, which never
+            // changes; the lock inside the item is not part of the key.
+            #[allow(clippy::mutable_key_type)]
+            let index: NameIndex = self
+                .items
+                .iter()
+                .map(|item| NameKey(Arc::clone(item)))
+                .collect();
+            self.index = Some(index);
+        }
+    }
+
+    fn remove(&mut self, item: &Arc<ItemNode>) {
+        let Some(at) = self.items.iter().position(|i| Arc::ptr_eq(i, item)) else {
+            return;
+        };
+        let item = self.items.remove(at);
+        if let Some(index) = &mut self.index {
+            index.remove(item.name.bytes());
+        }
     }
 }
 
@@ -722,7 +858,7 @@ impl Data {
         Self {
             inner: Arc::new(RwLock::new(DataInner {
                 items: Vec::new(),
-                index: NameMap::default(),
+                index: None,
                 json: None,
             })),
         }
@@ -763,9 +899,9 @@ impl Data {
             .borrow()
             .items
             .iter()
-            .map(|item| {
-                let item = item.borrow();
-                (item.name.clone(), item.ty)
+            .map(|node| {
+                let item = node.borrow();
+                (node.name.string(), item.ty)
             })
             .collect();
         for (name, ty) in plan {
@@ -1064,10 +1200,10 @@ impl Data {
             .borrow()
             .items
             .iter()
-            .filter_map(|item| {
-                let item = item.borrow();
+            .filter_map(|node| {
+                let item = node.borrow();
                 let user = item.user.as_ref()?;
-                Some((item.name.clone(), copy_user(user)?))
+                Some((node.name.string(), copy_user(user)?))
             })
             .collect();
         for (name, value) in copies {
@@ -1080,7 +1216,7 @@ impl Data {
         let Some(item) = inner.find(name).cloned() else {
             return;
         };
-        inner.remove(name, &item);
+        inner.remove(&item);
         drop(inner);
         item.borrow_mut().parent = None;
     }
@@ -1444,8 +1580,8 @@ impl Data {
         }
         // A fresh default still has to record the type. `write` on an empty
         // item does that. Autoselect and user do too.
-        let item = ItemInner::create(name, slot, value, Arc::downgrade(&self.inner));
-        inner.push(name, Arc::new(RwLock::new(item)));
+        let item = ItemInner::create(slot, value, Arc::downgrade(&self.inner));
+        inner.push(Arc::new(ItemNode::new(name, item)));
     }
 
     fn set_vec(&self, name: &str, slot: Slot, pairs: &[(&str, f64)]) {
@@ -1485,8 +1621,8 @@ impl Data {
             .borrow()
             .items
             .iter()
-            .filter_map(|item| {
-                let item = item.borrow();
+            .filter_map(|node| {
+                let item = node.borrow();
                 if !with_defaults && item.user.is_none() {
                     return None;
                 }
@@ -1501,7 +1637,7 @@ impl Data {
                     Type::Object => Rendered::Object(item.user_obj()),
                     Type::Array => Rendered::Array(item.user_array()),
                 };
-                Some((item.name.clone(), rendered))
+                Some((node.name.string(), rendered))
             })
             .collect()
     }
