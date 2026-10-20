@@ -27,6 +27,7 @@ pub mod cf_tokenizer;
 pub mod config_file;
 pub mod crc32;
 pub mod darray;
+pub mod deque;
 pub mod dstr;
 #[allow(unsafe_code)] // the C ABI shims
 pub mod ffi;

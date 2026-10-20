@@ -10,5 +10,6 @@ mod crc32_parity;
 mod darray;
 mod darray_layout;
 mod darray_parity;
+mod deque;
 mod util_uint64;
 mod util_uint64_parity;
