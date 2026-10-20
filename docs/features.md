@@ -881,6 +881,15 @@ area.
   2026-10-19. Issue
   [#1423](https://github.com/obs-rust/obs-studio/issues/1423), PR
   [#1475](https://github.com/obs-rust/obs-studio/pull/1475).
+- Automatic file splitting by time splits Hybrid MP4 recordings again: the
+  next file starts at the first keyframe after the split time, as for MKV
+  and MP4. Before, the recording stayed in one file unless a keyframe fell
+  within 1 ms of the split time. *All*, 2026-10-19. Issue
+  [#1476](https://github.com/obs-rust/obs-studio/issues/1476), PR
+  [#1477](https://github.com/obs-rust/obs-studio/pull/1477), upstream
+  [obsproject/obs-studio#14051](https://github.com/obsproject/obs-studio/issues/14051),
+  port of
+  [obsproject/obs-studio#14052](https://github.com/obsproject/obs-studio/pull/14052).
 
 ### Sources and filters
 
