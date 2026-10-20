@@ -212,6 +212,12 @@
     ]
   },
   {
+    "name": "test_platform_time",
+    "sources": [
+      "test/cmocka/test_platform_time.c"
+    ]
+  },
+  {
     "name": "test_dtostr_exponent",
     "sources": [
       "test/cmocka/test_dtostr_exponent.c"

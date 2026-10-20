@@ -107,6 +107,7 @@
 #endif
 #include "util/platform-file.c.h"
 #include "util/platform-mkdirs.c.h"
+#include "util/platform-time.c.h"
 #include "util/platform.c.h"
 #if defined(__APPLE__) && defined(__clang__)
 #pragma clang diagnostic pop

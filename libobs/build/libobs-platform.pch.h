@@ -4,7 +4,7 @@
 
 #pragma once
 
-/* util/platform-file.c, util/platform-mkdirs.c, util/platform.c */
+/* util/platform-file.c, util/platform-mkdirs.c, util/platform-time.c, util/platform.c */
 #define _FILE_OFFSET_BITS 64
 
 #include <time.h>
