@@ -1,7 +1,8 @@
 # Sleep inhibition on Linux and FreeBSD (os_inhibit_sleep_*) through the
 # org.freedesktop.portal.Inhibit portal and the org.freedesktop.ScreenSaver
 # fallback. Both are faked on a private bus (GTestDBus starts its own
-# dbus-daemon; the cases are skipped when there is none). No display is needed.
+# dbus-daemon; with none the test exits 77, which ctest reports as Skipped and
+# Tier 2 refuses, rust/tools/linux-validate/check-skips.sh). No display is needed.
 if(OS_LINUX OR OS_FREEBSD)
   find_package(Gio QUIET)
   find_package(PkgConfig QUIET)
@@ -17,6 +18,9 @@ if(OS_LINUX OR OS_FREEBSD)
     )
     add_dependencies(cmocka-tests test_inhibit_sleep_dbus)
     add_test(test_inhibit_sleep_dbus ${CMAKE_CURRENT_BINARY_DIR}/test_inhibit_sleep_dbus)
-    set_tests_properties(test_inhibit_sleep_dbus PROPERTIES RUN_SERIAL TRUE TIMEOUT 60)
+    set_tests_properties(
+      test_inhibit_sleep_dbus
+      PROPERTIES RUN_SERIAL TRUE TIMEOUT 60 SKIP_RETURN_CODE 77
+    )
   endif()
 endif()

@@ -6,7 +6,7 @@
 # pass. Tests matching MUST_RUN may not skip. Tested by ci/test_tier2_skips.py.
 set -euo pipefail
 [ $# -eq 1 ] || { echo "usage: check-skips.sh CTEST_LOG" >&2; exit 2; }
-MUST_RUN='^(test_pipewire_|test_vlc_|test_screencast_portal_)'
+MUST_RUN='^(test_pipewire_|test_vlc_|test_screencast_portal_|test_inhibit_sleep)'
 bad=$(sed -nE 's/^.*Test +#[0-9]+: +([^ ]+) +\.+ *(\*\*\*)?Skipped.*$/\1/p' "$1" | grep -E "$MUST_RUN" | sort -u || true)
 if [ -n "$bad" ]; then
   echo "FAIL: Tier 2 skipped tests that must run (obs-rust/obs-studio#776):"

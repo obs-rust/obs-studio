@@ -7,7 +7,8 @@
  * Both fakes run on a private D-Bus session bus (GTestDBus starts its own
  * dbus-daemon; the user's session bus is never touched), served from their
  * own thread so the synchronous calls libobs makes cannot deadlock. No
- * display is needed. Without dbus-daemon every case is skipped. */
+ * display is needed. Without dbus-daemon the test exits 77 (Skipped), which
+ * Tier 2 refuses. */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -524,13 +525,275 @@ static void test_screensaver_inhibit_and_release(void **state)
 	fake_own_name(SCREENSAVER_NAME, false);
 }
 
+static void snapshot_counts(int *portal_inhibits, int *request_closes, int *screensaver_inhibits,
+			    int *screensaver_uninhibits)
+{
+	g_mutex_lock(&fake.lock);
+	*portal_inhibits = fake.portal_inhibits;
+	*request_closes = fake.request_closes;
+	*screensaver_inhibits = fake.screensaver_inhibits;
+	*screensaver_uninhibits = fake.screensaver_uninhibits;
+	g_mutex_unlock(&fake.lock);
+}
+
+/* The cases below pin the rest of platform-nix-inhibit.c before its Rust
+ * port (#1500). Counters are cumulative across cases, so each one compares
+ * against the counts it started with. */
+
+/* With both a portal and a session screensaver, only the portal is used:
+ * create looks for the session D-Bus inhibitors only when there is no
+ * portal. */
+static void test_portal_preferred_over_screensaver(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(PORTAL_NAME, true);
+	fake_own_name(SCREENSAVER_NAME, true);
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_true(os_inhibit_sleep_set_active(inhibit, true));
+	assert_true(wait_for_count(&fake.portal_inhibits, p0 + 1, 3000));
+	pump_for(300);
+	assert_true(os_inhibit_sleep_set_active(inhibit, false));
+	assert_true(wait_for_count(&fake.request_closes, c0 + 1, 3000));
+	os_inhibit_sleep_destroy(inhibit);
+	pump_for(50);
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(p, p0 + 1);
+	assert_int_equal(c, c0 + 1);
+	assert_int_equal(s, s0);
+	assert_int_equal(u, u0);
+
+	fake_own_name(SCREENSAVER_NAME, false);
+	fake_own_name(PORTAL_NAME, false);
+}
+
+/* set_active returns true only on a change, and only a change reaches the
+ * portal. A second cycle makes a new request. */
+static void test_portal_repeated_set_active(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(PORTAL_NAME, true);
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_false(os_inhibit_sleep_set_active(inhibit, false));
+
+	for (int i = 1; i <= 2; i++) {
+		assert_true(os_inhibit_sleep_set_active(inhibit, true));
+		assert_false(os_inhibit_sleep_set_active(inhibit, true));
+		assert_true(wait_for_count(&fake.portal_inhibits, p0 + i, 3000));
+		pump_for(300);
+		assert_true(os_inhibit_sleep_set_active(inhibit, false));
+		assert_false(os_inhibit_sleep_set_active(inhibit, false));
+		assert_true(wait_for_count(&fake.request_closes, c0 + i, 3000));
+	}
+
+	os_inhibit_sleep_destroy(inhibit);
+	pump_for(50);
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(p, p0 + 2);
+	assert_int_equal(c, c0 + 2);
+	assert_int_equal(s, s0);
+
+	fake_own_name(PORTAL_NAME, false);
+}
+
+/* Destroy while the portal inhibit is in place closes the request. */
+static void test_portal_destroy_while_active(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(PORTAL_NAME, true);
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_true(os_inhibit_sleep_set_active(inhibit, true));
+	assert_true(wait_for_count(&fake.portal_inhibits, p0 + 1, 3000));
+	pump_for(300);
+
+	os_inhibit_sleep_destroy(inhibit);
+	assert_true(wait_for_count(&fake.request_closes, c0 + 1, 3000));
+	pump_for(50);
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(p, p0 + 1);
+	assert_int_equal(c, c0 + 1);
+
+	fake_own_name(PORTAL_NAME, false);
+}
+
+/* Only a change reaches org.freedesktop.ScreenSaver, and each cycle
+ * releases the cookie it got. */
+static void test_screensaver_repeated_set_active(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(SCREENSAVER_NAME, true);
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_false(os_inhibit_sleep_set_active(inhibit, false));
+
+	for (int i = 1; i <= 5; i++) {
+		assert_true(os_inhibit_sleep_set_active(inhibit, true));
+		assert_false(os_inhibit_sleep_set_active(inhibit, true));
+		assert_true(wait_for_count(&fake.screensaver_inhibits, s0 + i, 3000));
+		assert_true(os_inhibit_sleep_set_active(inhibit, false));
+		assert_false(os_inhibit_sleep_set_active(inhibit, false));
+		assert_true(wait_for_count(&fake.screensaver_uninhibits, u0 + i, 3000));
+	}
+
+	os_inhibit_sleep_destroy(inhibit);
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(s, s0 + 5);
+	assert_int_equal(u, u0 + 5);
+	assert_int_equal(p, p0);
+	g_mutex_lock(&fake.lock);
+	assert_int_equal(fake.uninhibit_cookie, SCREENSAVER_COOKIE);
+	g_mutex_unlock(&fake.lock);
+
+	fake_own_name(SCREENSAVER_NAME, false);
+}
+
+/* Destroy while active releases the screensaver inhibit once. */
+static void test_screensaver_destroy_while_active(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(SCREENSAVER_NAME, true);
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_true(os_inhibit_sleep_set_active(inhibit, true));
+	assert_true(wait_for_count(&fake.screensaver_inhibits, s0 + 1, 3000));
+
+	os_inhibit_sleep_destroy(inhibit);
+	assert_true(wait_for_count(&fake.screensaver_uninhibits, u0 + 1, 3000));
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(s, s0 + 1);
+	assert_int_equal(u, u0 + 1);
+
+	fake_own_name(SCREENSAVER_NAME, false);
+}
+
+/* The reason is copied at create; the service gets the text as it was
+ * then, byte for byte, including empty, non-ASCII and long reasons. */
+static void test_screensaver_reason_is_copied(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	fake_own_name(SCREENSAVER_NAME, true);
+
+	char long_reason[1025];
+	memset(long_reason, 'r', sizeof(long_reason) - 1);
+	long_reason[sizeof(long_reason) - 1] = '\0';
+	const char *reasons[] = {
+		REASON,
+		"",
+		"Aufnahme l\xC3\xA4uft \xE2\x80\x93 \xE2\x9C\x93",
+		long_reason,
+	};
+
+	for (size_t i = 0; i < sizeof(reasons) / sizeof(reasons[0]); i++) {
+		int p0, c0, s0, u0;
+		snapshot_counts(&p0, &c0, &s0, &u0);
+
+		char *copy = g_strdup(reasons[i]);
+		os_inhibit_t *inhibit = os_inhibit_sleep_create(copy);
+		memset(copy, 'x', strlen(copy));
+		g_free(copy);
+		assert_non_null(inhibit);
+
+		assert_true(os_inhibit_sleep_set_active(inhibit, true));
+		assert_true(wait_for_count(&fake.screensaver_inhibits, s0 + 1, 3000));
+		g_mutex_lock(&fake.lock);
+		assert_string_equal(fake.screensaver_reason, reasons[i]);
+		g_mutex_unlock(&fake.lock);
+
+		os_inhibit_sleep_destroy(inhibit);
+		assert_true(wait_for_count(&fake.screensaver_uninhibits, u0 + 1, 3000));
+	}
+
+	fake_own_name(SCREENSAVER_NAME, false);
+}
+
+/* A session bus with no portal and no session inhibitor: create falls back
+ * to xdg-screensaver (test_inhibit_sleep covers that path) and nothing is
+ * sent to either service. */
+static void test_empty_bus_falls_back(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_BUS();
+
+	int p0, c0, s0, u0;
+	snapshot_counts(&p0, &c0, &s0, &u0);
+
+	os_inhibit_t *inhibit = os_inhibit_sleep_create(REASON);
+	assert_non_null(inhibit);
+	assert_true(os_inhibit_sleep_set_active(inhibit, true));
+	assert_false(os_inhibit_sleep_set_active(inhibit, true));
+	assert_true(os_inhibit_sleep_set_active(inhibit, false));
+	os_inhibit_sleep_destroy(inhibit);
+	pump_for(50);
+
+	int p, c, s, u;
+	snapshot_counts(&p, &c, &s, &u);
+	assert_int_equal(p, p0);
+	assert_int_equal(c, c0);
+	assert_int_equal(s, s0);
+	assert_int_equal(u, u0);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_portal_inhibit_and_release),
 		cmocka_unit_test(test_portal_destroy_while_inhibit_pending),
 		cmocka_unit_test(test_screensaver_inhibit_and_release),
+		cmocka_unit_test(test_portal_preferred_over_screensaver),
+		cmocka_unit_test(test_portal_repeated_set_active),
+		cmocka_unit_test(test_portal_destroy_while_active),
+		cmocka_unit_test(test_screensaver_repeated_set_active),
+		cmocka_unit_test(test_screensaver_destroy_while_active),
+		cmocka_unit_test(test_screensaver_reason_is_copied),
+		cmocka_unit_test(test_empty_bus_falls_back),
 	};
+
+	/* Exit 77 (ctest: Skipped, SKIP_RETURN_CODE) rather than skip each
+	 * case, which cmocka reports as a pass: Tier 2 must see a skip
+	 * (rust/tools/linux-validate/check-skips.sh, #453). */
+	if (!dbus_daemon_available() || access("/.flatpak-info", F_OK) == 0) {
+		fprintf(stderr, "dbus-daemon not found (or in a Flatpak); skipping\n");
+		return 77;
+	}
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
