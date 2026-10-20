@@ -4,6 +4,7 @@ use crate::common;
 
 mod export_list;
 mod nix_inhibit;
+mod nix_inhibit_parity;
 mod path_extension;
 mod path_extension_parity;
 mod pipe;

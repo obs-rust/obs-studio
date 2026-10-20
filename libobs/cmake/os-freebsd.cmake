@@ -63,6 +63,16 @@ if(TARGET gio::gio)
   target_link_libraries(libobs-objects PUBLIC gio::gio)
 endif()
 
+# GIO_FOUND reaches the Rust os_inhibit_sleep_* as the libobs-rust feature
+# gio (#1500): the portal and session D-Bus inhibitors above with it, only
+# the xdg-screensaver fallback without, as in util/platform-nix-inhibit.c.
+if(TARGET libobs_rust)
+  corrosion_set_features(libobs_rust NO_DEFAULT_FEATURES)
+  if(TARGET gio::gio)
+    corrosion_set_features(libobs_rust FEATURES gio)
+  endif()
+endif()
+
 if(ENABLE_WAYLAND)
   find_package(Wayland REQUIRED Client)
   find_package(Xkbcommon REQUIRED)

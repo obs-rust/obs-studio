@@ -166,6 +166,7 @@
     "build/libobs.nix-main+.h.c"
   ],
   "LIBOBS_LINUX_PORTED_SOURCES": [
+    "build/libobs.ported-nix-inhibit+.h.c",
     "build/libobs.ported-posix+.h.c",
     "build/libobs.ported-posix-threading+.h.c"
   ],

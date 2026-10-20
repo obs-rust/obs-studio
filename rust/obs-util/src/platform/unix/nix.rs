@@ -677,9 +677,8 @@ pub fn program_data_path(name: Option<&[u8]>) -> Option<Vec<u8>> {
 
 // The rest of platform-nix.c is under `#if !defined(__APPLE__)`. macOS
 // implements those symbols in platform-cocoa.m, so defining them here would
-// collide when both are linked. `os_inhibit_sleep_*` is not ported: it stays
-// C in util/platform-nix-inhibit.c on Linux and FreeBSD, because it needs GIO
-// for the portal and session D-Bus inhibitors.
+// collide when both are linked. `os_inhibit_sleep_*` on Linux and FreeBSD is
+// util/platform-nix-inhibit.c, ported in `super::nix_inhibit`.
 #[cfg(not(target_os = "macos"))]
 mod host {
     use super::*;

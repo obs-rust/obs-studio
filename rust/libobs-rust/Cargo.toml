@@ -13,6 +13,14 @@ crate-type = ["staticlib"]
 test = false
 doctest = false
 
+[features]
+# GIO_FOUND (obsconfig.h): Linux and FreeBSD sleep inhibition uses the
+# portal and session D-Bus inhibitors (#1500). On by default, so a plain
+# Cargo build matches a libobs built with GIO; libobs/cmake/os-linux.cmake
+# and os-freebsd.cmake drop the default and set it from find_package(Gio).
+default = ["gio"]
+gio = ["obs-util/gio"]
+
 [dependencies]
 obs-util = { path = "../obs-util" }
 obs-callback = { path = "../obs-callback" }

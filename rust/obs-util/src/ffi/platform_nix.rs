@@ -3,9 +3,8 @@
 //! On macOS the clock, config paths, CPU, memory, and sleep inhibit live in
 //! the Cocoa platform module. Those shims are compiled out here.
 //!
-//! `os_inhibit_sleep_*` stays C on Linux and FreeBSD
-//! (`util/platform-nix-inhibit.c`, built in both lanes) because it talks to
-//! the xdg-desktop-portal and session D-Bus inhibitors through GIO.
+//! `os_inhibit_sleep_*` on Linux and FreeBSD is `util/platform-nix-inhibit.c`,
+//! ported separately in [`super::platform_nix_inhibit`].
 
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::ptr;

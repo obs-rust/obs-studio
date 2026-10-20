@@ -32,22 +32,6 @@
 #include <X11/XF86keysym.h>
 #include <X11/Sunkeysym.h>
 
-/* util/platform-nix-inhibit.c */
-#include <errno.h>
-#include <signal.h>
-#include <spawn.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#include "obsconfig.h"
-
-#include "util/base.h"
-#include "util/bmem.h"
-#include "util/platform.h"
-#include "util/threading.h"
-
 /* obs-nix.c */
 #include "obs-nix.h"
 
@@ -71,3 +55,6 @@
 #endif
 #include <sys/utsname.h>
 #include <inttypes.h>
+/* access() in log_system_info; came with util/platform-nix-inhibit.c,
+ * which is in its own group now. */
+#include <unistd.h>

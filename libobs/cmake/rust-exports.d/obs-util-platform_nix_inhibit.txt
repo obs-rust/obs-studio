@@ -1,0 +1,3 @@
+os_inhibit_sleep_create unix
+os_inhibit_sleep_destroy unix
+os_inhibit_sleep_set_active unix

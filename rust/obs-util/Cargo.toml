@@ -8,6 +8,12 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# GIO_FOUND: os_inhibit_sleep_* on Linux and FreeBSD calls the portal and
+# session D-Bus inhibitors in libobs's C (util/platform-nix-portal.c,
+# util/platform-nix-dbus.c). Set by libobs-rust, which CMake drives (#1500).
+gio = []
+
 [dependencies]
 # Unix errno values and pthread_setname_np in ffi/threading.rs.
 libc = "0.2"

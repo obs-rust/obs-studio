@@ -5,4 +5,3 @@
 #include "libobs/obs-core-modules-loader-nix.c.h"
 #include "libobs/obs-nix-platform.c.h"
 #include "libobs/obs-nix-x11.c.h"
-#include "libobs/util/platform-nix-inhibit.c.h"

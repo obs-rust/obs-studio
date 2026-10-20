@@ -1,5 +1,5 @@
 //! Sleep inhibition on Linux and FreeBSD: `libobs/util/platform-nix-inhibit.c`
-//! (obs-rust/obs-studio#1500). RED: the bodies are stubs. macOS is in [`super::cocoa`] and Windows in the
+//! (obs-rust/obs-studio#1500). macOS is in [`super::cocoa`] and Windows in the
 //! Windows host module.
 //!
 //! The desktop inhibitors stay C, because they need GIO: the
@@ -98,18 +98,31 @@ pub trait Host: Send + Sync + 'static {
 /// at its default, as the C's `posix_spawnattr_t` does, and `argv[0]` is
 /// `program`. Its wait is retried when interrupted.
 pub fn run_and_wait(program: &OsStr, args: &[&str]) -> Result<(), i32> {
-    todo!("run_and_wait")
+    let mut child = std::process::Command::new(program)
+        .args(args)
+        .spawn()
+        .map_err(|e| e.raw_os_error().unwrap_or(-1))?;
+    // The exit status is ignored, as in C.
+    let _ = child.wait();
+    Ok(())
 }
 
 /// `reset_screensaver`: one `xdg-screensaver reset`, logged when it cannot
 /// start.
 fn reset_screensaver<H: Host>(host: &H) {
-    todo!("reset_screensaver")
+    if let Err(err) = host.spawn(SCREENSAVER_PROGRAM, &SCREENSAVER_ARGS) {
+        host.log(
+            LOG_WARNING,
+            &format!("Failed to create xdg-screensaver: {err}"),
+        );
+    }
 }
 
 /// `screensaver_thread`: resets every [`RESET_INTERVAL_MS`] until stopped.
 fn screensaver_thread<H: Host>(host: &H, stop: &Event) {
-    todo!("screensaver_thread")
+    while !host.wait_for_stop(stop, RESET_INTERVAL_MS) {
+        reset_screensaver(host);
+    }
 }
 
 /// The xdg-screensaver fallback: `stop_event` and `screensaver_thread`.
@@ -133,7 +146,35 @@ impl<H: Host> Inhibit<H> {
     /// `os_inhibit_sleep_create`. `None` only inside a Flatpak with no
     /// portal, where nothing else may inhibit.
     pub fn create(host: Arc<H>, reason: Option<&CStr>) -> Option<Self> {
-        todo!("create")
+        let mut info = Self {
+            host,
+            portal: None,
+            dbus: None,
+            fallback: None,
+            reason: None,
+            active: false,
+        };
+
+        if H::GIO {
+            info.portal = info.host.portal_create();
+            if info.portal.is_none() {
+                if info.host.in_flatpak() {
+                    return None;
+                }
+                info.dbus = info.host.dbus_create();
+            }
+            if info.portal.is_some() || info.dbus.is_some() {
+                info.reason = reason.map(CStr::to_owned);
+                return Some(info);
+            }
+        }
+
+        info.fallback = Some(Fallback {
+            stop: Arc::new(Event::new(EventType::Auto)),
+            thread: None,
+        });
+        info.reason = reason.map(CStr::to_owned);
+        Some(info)
     }
 
     /// The reason given to [`Self::create`], copied.
@@ -148,13 +189,67 @@ impl<H: Host> Inhibit<H> {
 
     /// `os_inhibit_sleep_set_active`: true when the state changed.
     pub fn set_active(&mut self, active: bool) -> bool {
-        todo!("set_active")
+        if self.active == active {
+            return false;
+        }
+
+        if H::GIO {
+            let reason = self.reason.as_deref();
+            if let Some(portal) = self.portal.as_mut() {
+                self.host.portal_inhibit(portal, reason, active);
+            }
+            if let Some(dbus) = self.dbus.as_mut() {
+                self.host.dbus_inhibit(dbus, reason, active);
+            }
+            if self.portal.is_some() || self.dbus.is_some() {
+                self.active = active;
+                return true;
+            }
+        }
+
+        // C: `if (!info->stop_event) return true;`, which no inhibitor
+        // reaches: without a desktop inhibitor create always made one.
+        let Some(fallback) = self.fallback.as_mut() else {
+            return true;
+        };
+
+        if active {
+            let host = Arc::clone(&self.host);
+            let stop = Arc::clone(&fallback.stop);
+            match self
+                .host
+                .spawn_thread(Box::new(move || screensaver_thread(&*host, &stop)))
+            {
+                Ok(thread) => fallback.thread = Some(thread),
+                Err(_) => {
+                    self.host
+                        .log(LOG_ERROR, "Failed to create screensaver inhibitor thread");
+                    return false;
+                }
+            }
+        } else {
+            fallback.stop.signal();
+            if let Some(thread) = fallback.thread.take() {
+                // A panic in a test host's hook is not the inhibitor's.
+                let _ = thread.join();
+            }
+        }
+
+        self.active = active;
+        true
     }
 
     /// `os_inhibit_sleep_destroy`: deactivates, then releases the
     /// inhibitor it used.
-    pub fn destroy(self) {
-        todo!("destroy")
+    pub fn destroy(mut self) {
+        self.set_active(false);
+        if H::GIO {
+            if let Some(portal) = self.portal.take() {
+                self.host.portal_destroy(portal);
+            } else if let Some(dbus) = self.dbus.take() {
+                self.host.dbus_destroy(dbus);
+            }
+        }
     }
 }
 

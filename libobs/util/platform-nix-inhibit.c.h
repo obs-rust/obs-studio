@@ -14,13 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* os_inhibit_sleep_* for Linux and FreeBSD, moved out of platform-nix.c so
- * it is compiled in both builds: ENABLE_RUST_LIBOBS replaces platform-nix.c
- * with the Rust port, but sleep inhibition stays C because it needs GIO for
- * the portal (platform-nix-portal.c) and session D-Bus (platform-nix-dbus.c)
- * inhibitors. macOS uses platform-cocoa.m and Windows platform-windows.c. */
+/* os_inhibit_sleep_* for Linux and FreeBSD, moved out of platform-nix.c to
+ * keep the portal (platform-nix-portal.c) and session D-Bus
+ * (platform-nix-dbus.c) inhibitors, which need GIO and stay C.
+ * libobs-with-rust uses the port in obs-util::platform::unix::nix_inhibit,
+ * which calls the same C inhibitors. macOS uses platform-cocoa.m and Windows
+ * platform-windows.c. */
 
-#include "build/libobs-nix.pch.h"
+#include "build/libobs-ported-nix-inhibit.pch.h"
 
 #if defined(GIO_FOUND)
 struct dbus_sleep_info;

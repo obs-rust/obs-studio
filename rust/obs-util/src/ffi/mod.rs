@@ -23,6 +23,8 @@ pub mod platform_file;
 pub mod platform_mkdirs;
 #[cfg(unix)]
 pub mod platform_nix;
+#[cfg(all(unix, not(target_os = "macos")))]
+pub mod platform_nix_inhibit;
 pub mod platform_number;
 #[cfg(windows)]
 pub mod platform_windows;
