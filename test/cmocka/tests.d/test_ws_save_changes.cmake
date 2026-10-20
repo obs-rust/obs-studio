@@ -30,7 +30,10 @@ if(OS_LINUX AND ENABLE_FRONTEND AND EXISTS "${_ws}/src/requesthandler/RequestHan
       PRIVATE ${CMOCKA_INCLUDE_DIR} "${_ws}/src" "${_ws}/lib" "${CMAKE_CURRENT_BINARY_DIR}/ws_save_changes"
     )
     # The plugin still calls APIs libobs has deprecated.
-    target_compile_options(test_ws_save_changes PRIVATE -Wno-error=deprecated-declarations)
+    # UBSan's vptr check (the sanitizer asan pass) needs WebSocketServer's
+    # typeinfo, which lives with its destructor in WebSocketServer.cpp; the
+    # test stubs the server instead of compiling that file.
+    target_compile_options(test_ws_save_changes PRIVATE -Wno-error=deprecated-declarations -fno-sanitize=vptr)
     target_compile_features(test_ws_save_changes PRIVATE cxx_std_17)
     target_link_libraries(
       test_ws_save_changes
