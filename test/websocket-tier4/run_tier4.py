@@ -1539,6 +1539,120 @@ async def test_srt_listener_stop_while_reconnecting():
     await c.close_conn()
 
 
+async def test_srt_listener_reconnect_cycles(server, cycles=8):
+    """An SRT listener whose caller keeps leaving and calling again: OBS must
+    survive every reconnect. The write thread of the dropped connection left
+    its queued packets behind, and the next connection's write thread could
+    write them before the new muxer had its header: FFmpeg divided by zero
+    and OBS died with SIGFPE (obs-rust/obs-studio#1423)."""
+    ffmpeg = ffmpeg_with_srt()
+    if not ffmpeg:
+        print("  (no ffmpeg with srt: SRT reconnect cycles skipped)", flush=True)
+        return
+    # A moving test pattern with sound at 2500 kbps: an empty scene's stream
+    # is too small to leave packets queued when the connection drops.
+    clip = os.path.join(server.home, "srt-clip.mkv")
+    subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+                    "-f", "lavfi", "-i", "testsrc2=s=640x360:r=30:d=10",
+                    "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000:duration=10",
+                    "-c:v", "libx264", "-preset", "veryfast", "-g", "30", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "128k", clip], check=True)
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    for _ in range(120):
+        r = await c.request("GetCurrentProgramScene")
+        if resp_status(r).get("code") != 207:
+            break
+        await asyncio.sleep(0.5)
+    scene = r.get("d", {}).get("responseData", {}).get("currentProgramSceneName")
+    r = await c.request("CreateInput", {
+        "sceneName": scene, "inputName": "SRT clip", "inputKind": "ffmpeg_source",
+        "inputSettings": {"is_local_file": True, "local_file": clip, "looping": True}})
+    check("srt-cycles:test clip added", resp_status(r).get("code") == STATUS_SUCCESS,
+          json.dumps(r)[:300])
+    port = srt_udp_port()
+    # First a stream that is stopped by the user, as in a session where the
+    # stream was stopped before: that stop's time stays in stop_ts, and only
+    # packets older than it are dropped while the output is stopping.
+    ok, r = await start_srt_listener(c, port)
+    caller = subprocess.Popen(
+        [ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error",
+         "-i", f"srt://127.0.0.1:{port}?mode=caller", "-map", "0",
+         "-c", "copy", "-f", "mpegts", "-y", os.devnull],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True)
+    try:
+        active = False
+        deadline = time.time() + 20
+        while time.time() < deadline and not active:
+            active = (await srt_stream_status(c)).get("outputActive")
+            await asyncio.sleep(0.25)
+        await asyncio.sleep(2)
+        await c.request("StopStream")
+        deadline = time.time() + 10
+        while time.time() < deadline and active:
+            active = (await srt_stream_status(c)).get("outputActive")
+            await asyncio.sleep(0.25)
+    finally:
+        caller.kill()
+        caller.wait()
+    check("srt-cycles:a first stream starts and stops", not active, "still active")
+    await asyncio.sleep(1)
+    ok, r = await start_srt_listener(c, port)
+    check("srt-cycles:StartStream on a listener", ok, json.dumps(r)[:300])
+    done = 0
+    problem = ""
+    for i in range(cycles):
+        caller = subprocess.Popen(
+            [ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error",
+             "-i", f"srt://127.0.0.1:{port}?mode=caller", "-map", "0",
+             "-c", "copy", "-f", "mpegts", "-y", os.devnull],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        try:
+            streaming = False
+            deadline = time.time() + 20
+            while time.time() < deadline and not streaming and obs_pids(server):
+                try:
+                    st = await srt_stream_status(c)
+                except (TimeoutError, websockets.ConnectionClosed):
+                    break
+                streaming = st.get("outputActive") and not st.get("outputReconnecting")
+                await asyncio.sleep(0.25)
+            if streaming:
+                await asyncio.sleep(2)
+        finally:
+            caller.kill()
+            caller.wait()
+        if not streaming:
+            problem = f"cycle {i + 1}: " + ("OBS is gone" if not obs_pids(server)
+                                            else "the caller never got the stream")
+            break
+        reconnecting = False
+        deadline = time.time() + 30
+        while time.time() < deadline and not reconnecting and obs_pids(server):
+            try:
+                reconnecting = (await srt_stream_status(c)).get("outputReconnecting")
+            except (TimeoutError, websockets.ConnectionClosed):
+                break
+            await asyncio.sleep(0.25)
+        if not reconnecting:
+            problem = f"cycle {i + 1}: " + ("OBS is gone" if not obs_pids(server)
+                                            else "no reconnect after the caller left")
+            break
+        done += 1
+    with open(server.log, errors="replace") as f:
+        log = f.read()
+    crashed = not obs_pids(server) or "Floating point exception" in log
+    check(f"srt-cycles:OBS survives {cycles} listener reconnects",
+          done == cycles and not crashed,
+          f"{done} of {cycles} done; {problem or 'OBS crashed'}")
+    try:
+        await c.request("StopStream", timeout=5.0)
+        await c.close_conn()
+    except Exception:
+        pass
+
+
 async def test_srt_listener_quit_while_waiting(server):
     """OBS must quit on SIGTERM while an SRT listener waits for its first
     caller. Destroying the output joined the start thread, which waited for
@@ -1745,6 +1859,23 @@ async def run_srt_phase(obs_bin):
     try:
         print("== SRT listener: stop while reconnecting ==", flush=True)
         await test_srt_listener_stop_while_reconnecting()
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        server.stop()
+
+    wait_for_port_closed(PORT)
+    cycles_profile = dict(profile)
+    cycles_profile["Output"] = {"Mode": "Simple", "Reconnect": "true",
+                                "RetryDelay": "2", "MaxRetries": "20"}
+    cycles_profile["SimpleOutput"] = {"StreamEncoder": "x264", "VBitrate": "2500",
+                                      "ABitrate": "160", "Preset": "veryfast"}
+    server = ObsServer(obs_bin, PORT, password=None, profile=cycles_profile)
+    server.start()
+    try:
+        print("== SRT listener: reconnect cycles ==", flush=True)
+        await test_srt_listener_reconnect_cycles(server)
     except BaseException:
         server.report_failure()
         raise
