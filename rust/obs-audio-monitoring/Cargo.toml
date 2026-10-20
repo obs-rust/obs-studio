@@ -1,0 +1,12 @@
+[package]
+autotests = false
+name = "obs-audio-monitoring"
+version = "0.1.0"
+description = "Rust port of libobs/audio-monitoring/"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+test = false

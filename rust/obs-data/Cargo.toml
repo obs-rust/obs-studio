@@ -17,6 +17,7 @@ libc = "0.2"
 cc = "1"
 
 [dev-dependencies]
+obs-audio-monitoring = { path = "../obs-audio-monitoring" }
 obs-properties = { path = "../obs-properties" }
 obs-hotkey = { path = "../obs-hotkey" }
 obs-missing-files = { path = "../obs-missing-files" }

@@ -53,6 +53,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/callback/` | `rust/obs-callback` |
 | `libobs/obs-missing-files.c.h` | `rust/obs-missing-files` |
 | `libobs/obs-scene-bounds.c.h` | `rust/obs-scene-bounds` |
+| `libobs/audio-monitoring/` | `rust/obs-audio-monitoring` |
 | `plugins/obs-nvenc/` (CUDA/NVENC loader) | `rust/obs-nvenc`, linked through `rust/obs-nvenc-plugin` |
 | GPU acceleration status (frontend, #846) | `rust/obs-gpu-status`, linked through `rust/obs-gpu-status-frontend` |
 | all libobs ports, as one C ABI drop-in | `rust/libobs-rust` |

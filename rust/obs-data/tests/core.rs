@@ -1,5 +1,7 @@
 //! Shared category test executable.
 
+#[path = "../../obs-audio-monitoring/tests/audio_monitoring/main.rs"]
+mod audio_monitoring;
 #[path = "../../obs-callback/tests/callback/main.rs"]
 mod callback;
 #[path = "data/main.rs"]
