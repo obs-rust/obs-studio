@@ -15,8 +15,10 @@ pub enum EventType {
 }
 
 /// The fields of a `struct tm`, for [`crt::LocalTime::from_fields`].
-/// `gmtoff` and `zone` are `tm_gmtoff` and `tm_zone`, which `strftime`'s
-/// `%z` and `%Z` read; the Windows CRT's `struct tm` has neither.
+/// `gmtoff` and `zone` are `tm_gmtoff` and `tm_zone`. glibc's `strftime`
+/// reads `%z` and `%Z` from them; macOS reads `%Z` from `tm_zone` but `%z`
+/// from the C library's time zone, and the Windows CRT's `struct tm` has
+/// neither field (both come from its time zone).
 #[derive(Debug, Clone, Copy)]
 pub struct TmFields {
     /// `tm_sec`.

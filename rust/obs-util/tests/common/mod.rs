@@ -64,6 +64,13 @@ pub fn test_name(test: &str) -> &str {
 }
 
 pub fn isolated(test: &str) -> bool {
+    isolated_env(test, &[])
+}
+
+/// [`isolated`], with `env` set in the child's environment from its start,
+/// so the C library reads it at startup (no `setenv` in a running test
+/// process).
+pub fn isolated_env(test: &str, env: &[(&str, &str)]) -> bool {
     let test = test_name(test);
     const MARKER: &str = "OBS_UTIL_ISOLATED_TEST";
     if std::env::var(MARKER).as_deref() == Ok(test) {
@@ -73,6 +80,7 @@ pub fn isolated(test: &str) -> bool {
     let out = std::process::Command::new(exe)
         .args([test, "--exact", "--test-threads=1", "--nocapture"])
         .env(MARKER, test)
+        .envs(env.iter().copied())
         .output()
         .expect("start the isolated test process");
     let stdout = String::from_utf8_lossy(&out.stdout);

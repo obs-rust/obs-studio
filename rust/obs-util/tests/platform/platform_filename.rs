@@ -175,13 +175,37 @@ fn date_time_specifiers() {
     ]);
 }
 
-/// `date_time_specifiers_test`: `%z` and `%Z`. The Windows CRT reads these
-/// from its own time zone, not from the `struct tm` (the cmocka test is not
-/// built with MSVC either).
-#[cfg(not(windows))]
+/// `date_time_specifiers_test` with the cmocka test's `TZ=OBS-5:30`, in a
+/// child process that has it from its start, as the cmocka test's group
+/// setup does before any call. Hosts differ in where `strftime` reads `%z`
+/// and `%Z`: glibc from the `struct tm`, macOS's `%z` and the Windows CRT's
+/// both from the C library's own time zone. So this goes through the real
+/// path, `localtime` of `FIXED_NOW` ([`Now::at`], what the shim does), and
+/// checks every date specifier against the zone, on every host.
 #[test]
 fn zone_specifiers() {
-    expect_names(&[("%z", "+0530"), ("%Z", "OBS")]);
+    if !crate::common::isolated_env(
+        concat!(module_path!(), "::zone_specifiers"),
+        &[("TZ", "OBS-5:30")],
+    ) {
+        return;
+    }
+    let video = reset_video();
+    for (format, expected) in [
+        ("%z", "+0530"),
+        ("%Z", "OBS"),
+        ("%CCYY-%MM-%DD %hh-%mm-%ss", "2025-11-07 16-09-03"),
+        (
+            "%a %A %b %B %d %H %I %p",
+            "Fri Friday Nov November 07 16 04 PM",
+        ),
+        ("%y %Y %m %M %S", "25 2025 11 09 03"),
+        ("%s", "1762511943"),
+    ] {
+        let got =
+            generate_formatted_filename(b"", true, format.as_bytes(), &Now::at(FIXED_NOW), &video);
+        assert_eq!(got.as_deref(), Some(expected.as_bytes()), "{format}");
+    }
 }
 
 /// `unix_time_specifier_test`
