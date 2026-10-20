@@ -7,7 +7,10 @@ if(OS_LINUX OR OS_FREEBSD)
     test_portal_shortcut_ids.c
     "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcut-ids.c.h"
   )
-  target_include_directories(test_portal_shortcut_ids PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/libobs")
+  target_include_directories(
+    test_portal_shortcut_ids
+    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_SOURCE_DIR}/deps/libcaption"
+  )
   target_link_libraries(test_portal_shortcut_ids PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
 
   add_dependencies(cmocka-tests test_portal_shortcut_ids)
