@@ -16,13 +16,9 @@
 //! process's time zone and the C locale, so names and offsets are compared
 //! as the host makes them.
 //!
-//! Not compared, intentional differences:
-//! - the fields `obs_get_video_info` does not write: the C reads them from
-//!   its uninitialized `struct obs_video_info`, the Rust shim from a zeroed
-//!   one (#1509). The fixture always writes the whole struct, so it does not
-//!   arise here;
-//! - a time `localtime` fails for (the C passes NULL to `strftime`): times
-//!   stay within 1970 to 2999, where it does not fail on any host.
+//! Not compared, an intentional difference: a time `localtime` fails for
+//! (the C passes NULL to `strftime`): times stay within 1970 to 2999, where
+//! it does not fail on any host.
 //!
 //! The fixtures are statics shared by every test here, so each
 //! set-and-call holds [`ORACLE`].

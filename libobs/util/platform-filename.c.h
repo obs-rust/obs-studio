@@ -54,8 +54,10 @@ char *os_generate_formatted_filename(const char *extension, bool space, const ch
 	time_t now = time(0);
 	struct tm *cur_time;
 	cur_time = localtime(&now);
+	/* with no video, obs_get_video_info returns false without writing ovi */
 	struct obs_video_info ovi;
-	obs_get_video_info(&ovi);
+	if (!obs_get_video_info(&ovi))
+		memset(&ovi, 0, sizeof(ovi));
 
 	const size_t spec_count = 23;
 	static const char *spec[][2] = {

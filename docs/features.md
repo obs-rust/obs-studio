@@ -938,6 +938,12 @@ area.
   *All*, 2026-10-20. Issue
   [#1505](https://github.com/obs-rust/obs-studio/issues/1505), PR
   [#1508](https://github.com/obs-rust/obs-studio/pull/1508).
+- A plugin or libobs-based tool that builds a file name from a format with
+  `%FPS`, `%CRES`, `%ORES` or `%VF` before video is set up gets `0`, `0x0`
+  and `None` there. Before, those were formatted from uninitialized memory
+  (names like `2880154539x2880154539`). *All*, 2026-10-20. Issue
+  [#1509](https://github.com/obs-rust/obs-studio/issues/1509), PR
+  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
 
 ### Sources and filters
 

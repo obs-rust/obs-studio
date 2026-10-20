@@ -4,10 +4,9 @@
 //!
 //! As in C, the shim reads the time (`time`, then `localtime`) and then the
 //! video info from libobs's `obs_get_video_info`, once per call and before
-//! the format is looked at, without checking its result (characterized, not
-//! endorsed; #1509). The C reads fields the call did not write from its
-//! uninitialized `struct obs_video_info`; Rust cannot, so the struct starts
-//! zeroed. The name is `bmalloc`ed, or NULL when it is empty.
+//! the format is looked at. With no video the call returns false, and the
+//! fields are zero, whatever it left in the struct (#1509). The name is
+//! `bmalloc`ed, or NULL when it is empty.
 
 use core::ffi::{CStr, c_char, c_int};
 use core::ptr;
@@ -97,10 +96,12 @@ pub unsafe extern "C" fn os_generate_formatted_filename(
 ) -> *mut c_char {
     let now = Now::current();
     let mut ovi = obs_video_info::ZERO;
-    // SAFETY: `ovi` is a writable `struct obs_video_info`. The result is not
-    // checked, as in C (#1509).
-    let _ = unsafe { obs_get_video_info(&mut ovi) };
-    let video = VideoInfo::from(&ovi);
+    // SAFETY: `ovi` is a writable `struct obs_video_info`.
+    let video = if unsafe { obs_get_video_info(&mut ovi) } {
+        VideoInfo::from(&ovi)
+    } else {
+        VideoInfo::default()
+    };
 
     // SAFETY: the caller guarantees valid strings or NULL.
     let (extension, format) = unsafe { (bytes(extension), bytes(format)) };
