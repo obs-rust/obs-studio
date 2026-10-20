@@ -3,18 +3,29 @@
 #include <setjmp.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <locale.h>
 #include <wchar.h>
 #include <cmocka.h>
 
 #include <util/platform.h>
 #include <util/bmem.h>
+#include <obs.h>
+
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <unistd.h>
+#endif
 
 /*
  * Characterization tests for the file and string helpers in
  * libobs/util/platform.c (+ platform-nix.c / platform-windows.c).
  * Path helpers and os_generate_formatted_filename are covered by
- * test_os_path.c and test_formatted_filename.c.
+ * test_os_path.c and test_formatted_filename.c; the latter replaces
+ * obs_get_video_info with a fixture, so the call before obs_startup, with the
+ * real one, is here.
  *
  * Everything lives under a temp dir relative to cwd, with '/' separators.
  */
@@ -707,6 +718,52 @@ static void test_dtostr(void **state)
 	assert_int_equal(os_dtostr(0.0, buf, 3), -1);
 }
 
+/* Before obs_startup there is no core, so there is no video: the real
+ * obs_get_video_info returns false, and a file name with no video specifier
+ * formats normally (#1509). Exit codes: 0 ok, 1 video info, 2 name. */
+static int formatted_filename_before_startup(void)
+{
+	struct obs_video_info ovi;
+	if (obs_get_video_info(&ovi))
+		return 1;
+
+	char *name = os_generate_formatted_filename("mkv", true, "before startup");
+	int ret = name && strcmp(name, "before startup.mkv") == 0 ? 0 : 2;
+	if (ret)
+		fprintf(stderr, "got \"%s\"\n", name ? name : "(null)");
+	bfree(name);
+	return ret;
+}
+
+static void test_formatted_filename_before_startup(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_false(obs_initialized());
+#ifdef _WIN32
+	assert_int_equal(formatted_filename_before_startup(), 0);
+#else
+	/* in a child, so a crash fails this test only */
+	pid_t pid = fork();
+	assert_true(pid >= 0);
+	if (pid == 0) {
+		/* cmocka catches these; in the child, let a crash end it */
+		signal(SIGSEGV, SIG_DFL);
+		signal(SIGBUS, SIG_DFL);
+		signal(SIGILL, SIG_DFL);
+		signal(SIGFPE, SIG_DFL);
+		_exit(formatted_filename_before_startup());
+	}
+
+	int status = 0;
+	assert_int_equal(waitpid(pid, &status, 0), pid);
+	if (WIFSIGNALED(status))
+		fprintf(stderr, "child killed by signal %d\n", WTERMSIG(status));
+	assert_true(WIFEXITED(status));
+	assert_int_equal(WEXITSTATUS(status), 0);
+#endif
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -740,6 +797,7 @@ int main(void)
 		cmocka_unit_test(test_mbs_buffer_too_small_is_cut),
 		cmocka_unit_test(test_strtod),
 		cmocka_unit_test(test_dtostr),
+		cmocka_unit_test(test_formatted_filename_before_startup),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
