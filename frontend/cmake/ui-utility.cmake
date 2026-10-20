@@ -12,6 +12,8 @@ target_sources(
     utility/crash-sentinel-dir.hpp
     build/frontend.utility-disk-space-monitor+.hpp.cpp
     utility/disk-space-monitor.hpp
+    build/frontend.utility-encoder-fallback+.h.c
+    utility/encoder-fallback.h
     utility/settings-migration.hpp
     utility/unclean-launch.hpp
     utility/output-start-log.hpp

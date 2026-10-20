@@ -1597,20 +1597,7 @@ bool OBSBasicSettings::ServiceAndACodecCompatible()
 /* we really need a way to find fallbacks in a less hardcoded way. maybe. */
 static QString get_adv_fallback(const QString &enc)
 {
-	if (enc == "obs_nvenc_hevc_tex" || enc == "obs_nvenc_av1_tex" || enc == "jim_hevc_nvenc" ||
-	    enc == "jim_av1_nvenc") {
-		return "obs_nvenc_h264_tex";
-	}
-	if (enc == "h265_texture_amf" || enc == "av1_texture_amf") {
-		return "h264_texture_amf";
-	}
-	if (enc == "com.apple.videotoolbox.videoencoder.ave.hevc") {
-		return "com.apple.videotoolbox.videoencoder.ave.avc";
-	}
-	if (enc == "obs_qsv11_av1") {
-		return "obs_qsv11";
-	}
-	return "obs_x264";
+	return QT_UTF8(adv_video_encoder_fallback(QT_TO_UTF8(enc)));
 }
 
 static QString get_adv_audio_fallback(const QString &enc)

@@ -20,6 +20,7 @@
 #endif
 #include <utility/audio-encoders.hpp>
 #include <utility/BaseLexer.hpp>
+#include <utility/encoder-fallback.h>
 #include <utility/FFmpegCodec.hpp>
 #include <utility/FFmpegFormat.hpp>
 #include <utility/output-rescale.h>
