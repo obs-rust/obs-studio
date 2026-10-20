@@ -6,6 +6,7 @@
 
 /* graphics/graphics-ffmpeg.c */
 #include "graphics/graphics.h"
+#include "graphics/graphics-internal.h"
 
 #include "graphics/half.h"
 #include "graphics/srgb.h"

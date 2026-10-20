@@ -289,6 +289,11 @@ int device_create(gs_device_t **p_device, uint32_t adapter)
 	     "language %s",
 	     glVersion, glShadingLanguage);
 
+	GLint max_texture_size = 0;
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+	if (gl_success("glGetIntegerv(GL_MAX_TEXTURE_SIZE)") && max_texture_size > 0)
+		device->max_texture_size = (uint32_t)max_texture_size;
+
 	gl_enable(GL_CULL_FACE);
 	gl_gen_vertex_arrays(1, &device->empty_vao);
 
@@ -1510,6 +1515,11 @@ bool device_nv12_available(gs_device_t *device)
 #else
 	return true; // always a split R8,R8G8 texture.
 #endif
+}
+
+uint32_t device_get_max_texture_size(gs_device_t *device)
+{
+	return device->max_texture_size;
 }
 
 bool device_p010_available(gs_device_t *device)

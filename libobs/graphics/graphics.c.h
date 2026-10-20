@@ -189,6 +189,29 @@ static bool graphics_init(struct graphics_subsystem *graphics)
 	return true;
 }
 
+static volatile long max_texture_size;
+
+uint32_t gs_image_max_texture_size(void)
+{
+	return (uint32_t)os_atomic_load_long(&max_texture_size);
+}
+
+static uint32_t device_max_texture_size(graphics_t *graphics)
+{
+	if (graphics->exports.device_get_max_texture_size)
+		return graphics->exports.device_get_max_texture_size(graphics->device);
+
+	/* Upper bounds fixed by the API: Direct3D 11 at feature level 11 and
+	 * up (8192 below), and Metal on every Mac. */
+	switch (graphics->exports.device_get_type()) {
+	case GS_DEVICE_DIRECT3D_11:
+	case GS_DEVICE_METAL:
+		return 16384;
+	default:
+		return 0;
+	}
+}
+
 int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 {
 	int errcode = GS_ERROR_FAIL;
@@ -214,6 +237,8 @@ int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 		errcode = GS_ERROR_FAIL;
 		goto error;
 	}
+
+	os_atomic_set_long(&max_texture_size, (long)device_max_texture_size(graphics));
 
 	*pgraphics = graphics;
 	return errcode;
@@ -250,6 +275,7 @@ void gs_destroy(graphics_t *graphics)
 		graphics->exports.gs_vertexbuffer_destroy(graphics->sprite_buffer);
 		graphics->exports.gs_vertexbuffer_destroy(graphics->immediate_vertbuffer);
 		graphics->exports.device_destroy(graphics->device);
+		os_atomic_set_long(&max_texture_size, 0);
 
 		thread_graphics = NULL;
 	}

@@ -195,6 +195,7 @@ bool load_graphics_imports(struct gs_exports *exports, void *module, const char 
 
 	GRAPHICS_IMPORT_OPTIONAL(device_nv12_available);
 	GRAPHICS_IMPORT_OPTIONAL(device_p010_available);
+	GRAPHICS_IMPORT_OPTIONAL(device_get_max_texture_size);
 	GRAPHICS_IMPORT_OPTIONAL(device_texture_create_nv12);
 	GRAPHICS_IMPORT_OPTIONAL(device_texture_create_p010);
 

@@ -630,6 +630,7 @@ struct gs_device {
 
 	GLuint empty_vao;
 	gs_samplerstate_t *raw_load_sampler;
+	uint32_t max_texture_size;
 
 	gs_texture_t *cur_render_target;
 	gs_zstencil_t *cur_zstencil_buffer;

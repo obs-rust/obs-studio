@@ -1065,6 +1065,13 @@ area.
   [#1471](https://github.com/obs-rust/obs-studio/issues/1471), PR
   [#1472](https://github.com/obs-rust/obs-studio/pull/1472), upstream
   [obsproject/obs-studio#10403](https://github.com/obsproject/obs-studio/issues/10403).
+- An Image source given a picture larger than the GPU's texture size limit
+  fails at once, with a log line that gives the size and the limit, instead
+  of using gigabytes of memory and freezing OBS for seconds. *All*,
+  2026-10-19. Issue
+  [#1473](https://github.com/obs-rust/obs-studio/issues/1473), PR
+  [#1474](https://github.com/obs-rust/obs-studio/pull/1474), upstream
+  [obsproject/obs-studio#3427](https://github.com/obsproject/obs-studio/issues/3427).
 
 ### Scenes and UI
 

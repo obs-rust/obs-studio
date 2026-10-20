@@ -206,6 +206,7 @@ struct gs_exports {
 
 	bool (*device_nv12_available)(gs_device_t *device);
 	bool (*device_p010_available)(gs_device_t *device);
+	uint32_t (*device_get_max_texture_size)(gs_device_t *device);
 	bool (*device_texture_create_nv12)(gs_device_t *device, gs_texture_t **tex_y, gs_texture_t **tex_uv,
 					   uint32_t width, uint32_t height, uint32_t flags);
 	bool (*device_texture_create_p010)(gs_device_t *device, gs_texture_t **tex_y, gs_texture_t **tex_uv,
@@ -333,3 +334,9 @@ struct graphics_subsystem {
 
 	bool linear_srgb;
 };
+
+/* The largest width or height of a 2D texture the current graphics device
+ * creates, 0 while there is none or when it is not known. Any thread may call
+ * it: image loading rejects pictures too large for a texture before decoding
+ * them. */
+uint32_t gs_image_max_texture_size(void);
