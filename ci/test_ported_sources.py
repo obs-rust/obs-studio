@@ -18,6 +18,9 @@ class PortedSourceTest(unittest.TestCase):
         self.assertGreaterEqual(len(objects), 20)
         self.assertIn("obs-data.c.h.o", objects)
         self.assertIn("obs-hevc.c.h.o", objects)
+        self.assertIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o", objects)
+        self.assertNotIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", pulse=False))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_host_and_optional_groups_select_the_actual_members(self):
@@ -30,12 +33,15 @@ class PortedSourceTest(unittest.TestCase):
                 "LIBOBS_LINUX_PORTED_SOURCES": ["build/linux+.h.c"],
                 "LIBOBS_WINDOWS_PORTED_SOURCES": ["build/windows+.h.c"],
                 "LIBOBS_HEVC_PORTED_SOURCES": ["build/hevc+.h.c"],
+                "LIBOBS_PULSE_PORTED_SOURCES": ["build/pulse+.h.c"],
             }
             (build / "source-sets.json").write_text(json.dumps(groups))
             for group, member in [("common", "common"), ("linux", "linux"),
-                                  ("windows", "windows"), ("hevc", "hevc")]:
+                                  ("windows", "windows"), ("hevc", "hevc"), ("pulse", "pulse")]:
                 (build / f"{group}+.h.c").write_text(f'#include "libobs/util/{member}.c.h"\n')
             self.assertEqual(PORTED.ported_objects(root, "linux"),
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o"])
+            self.assertEqual(PORTED.ported_objects(root, "linux", pulse=False),
                              ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o"])
             self.assertEqual(PORTED.ported_objects(root, "windows", hevc=False),
                              ["util/common.c.h.o", "util/windows.c.h.o"])

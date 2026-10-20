@@ -30,5 +30,6 @@ obs-codec = { path = "../obs-codec" }
 obs-media-io = { path = "../obs-media-io" }
 obs-missing-files = { path = "../obs-missing-files" }
 obs-scene-bounds = { path = "../obs-scene-bounds" }
+obs-audio-monitoring = { path = "../obs-audio-monitoring" }
 obs-data = { path = "../obs-data" }
 obs-properties = { path = "../obs-properties" }

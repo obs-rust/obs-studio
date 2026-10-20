@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "build/libobs-pulse.pch.h"
+#include "libobs/build/libobs-ported-pulse.pch.h"
 
 pa_stream_flags_t pulseaudio_monitor_stream_flags(const char *device_id)
 {

@@ -106,6 +106,9 @@ pub fn configure_variant(
         library.link_options = options;
     } else {
         append_sources(sets, "LIBOBS_LINUX_PORTED_SOURCES", root, library)?;
+        if options.pulseaudio {
+            append_sources(sets, "LIBOBS_PULSE_PORTED_SOURCES", root, library)?;
+        }
     }
     Ok(())
 }

@@ -51,6 +51,8 @@ if(ENABLE_PULSEAUDIO)
       audio-monitoring/pulse/pulseaudio-wrapper.h
   )
 
+  # pulseaudio-stream-flags.c has a Rust port: libobs only (sources.cmake).
+  target_sources(libobs PRIVATE ${LIBOBS_PULSE_PORTED_SOURCES})
   target_link_libraries(libobs-objects PUBLIC PulseAudio::PulseAudio)
   target_enable_feature(libobs "PulseAudio audio monitoring (FreeBSD)")
 else()

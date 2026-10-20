@@ -46,16 +46,33 @@ pub const BACKLOG_SLACK_USEC: u64 = 200_000;
 /// which C treats like a chosen sink.
 #[must_use]
 pub fn stream_flags(device_id: Option<&[u8]>) -> u32 {
-    let _ = device_id;
-    todo!()
+    let flags = STREAM_INTERPOLATE_TIMING | STREAM_AUTO_TIMING_UPDATE | STREAM_START_CORKED;
+
+    // "default" is connected to the default sink's name, and must follow it
+    // when the default changes. A sink the user chose must not be swapped
+    // for the new default behind their back.
+    if device_id == Some(b"default") {
+        flags
+    } else {
+        flags | STREAM_DONT_MOVE
+    }
 }
 
 /// `pulseaudio_monitor_reset_on_sink_event`: whether a subscription event
 /// means the monitoring stream must be reopened.
 #[must_use]
 pub fn reset_on_sink_event(event: u32, event_idx: u32, sink_idx: u32, fallback: bool) -> bool {
-    let _ = (event, event_idx, sink_idx, fallback);
-    todo!()
+    if event & SUBSCRIPTION_EVENT_FACILITY_MASK != SUBSCRIPTION_EVENT_SINK {
+        return false;
+    }
+    match event & SUBSCRIPTION_EVENT_TYPE_MASK {
+        // The fallback stream is movable; the server moves it.
+        SUBSCRIPTION_EVENT_REMOVE => {
+            !fallback && sink_idx != INVALID_INDEX && event_idx == sink_idx
+        }
+        SUBSCRIPTION_EVENT_NEW => fallback,
+        _ => false,
+    }
 }
 
 /// `struct pulseaudio_monitor_backlog`: the stall detector's window.
@@ -70,8 +87,32 @@ pub struct Backlog {
 impl Backlog {
     /// `pulseaudio_monitor_backlog_excess`: feed one sample per write and
     /// get how much queued audio to drop, in usec (0: nothing).
+    ///
+    /// The arithmetic is C's unsigned `uint64_t`: it wraps, so a clock that
+    /// steps back closes the window, and a huge target wraps the threshold.
     pub fn excess(&mut self, now_ns: u64, queued_usec: u64, target_usec: u64) -> u64 {
-        let _ = (now_ns, queued_usec, target_usec);
-        todo!()
+        if self.window_start == 0 {
+            self.window_start = now_ns;
+            self.window_min = queued_usec;
+            return 0;
+        }
+
+        self.window_min = self.window_min.min(queued_usec);
+        if now_ns.wrapping_sub(self.window_start) < BACKLOG_WINDOW_NS {
+            return 0;
+        }
+
+        // The window is over: the queue never got below window_min in it.
+        // The next sample starts a new window.
+        let min = self.window_min;
+        self.window_start = 0;
+
+        let slack = target_usec.max(BACKLOG_SLACK_USEC);
+        if min <= target_usec.wrapping_add(slack) {
+            return 0;
+        }
+
+        // queued_usec is at least min, so the target is left.
+        min.wrapping_sub(target_usec)
     }
 }

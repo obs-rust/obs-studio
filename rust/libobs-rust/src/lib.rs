@@ -7,6 +7,7 @@
 
 pub use obs_util::ffi;
 // Each port crate's ffi is re-exported so its no_mangle shims land in the staticlib.
+pub use obs_audio_monitoring::ffi as audio_monitoring_ffi;
 pub use obs_callback::ffi as callback_ffi;
 pub use obs_codec::ffi as codec_ffi;
 pub use obs_data::ffi as data_ffi;

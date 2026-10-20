@@ -28,6 +28,11 @@ _video_output_free_frame_rate_divisor
 _obs_data_json_decref
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. Not EXPORT.
 _obs_bounds_fit_scale
+# pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs
+# on Linux and FreeBSD. Built on every host; not EXPORT.
+_pulseaudio_monitor_stream_flags
+_pulseaudio_monitor_reset_on_sink_event
+_pulseaudio_monitor_backlog_excess
 # compiler-rt @available helpers (__isOSVersionAtLeast,
 # __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
 # build does not export them. Wildcards: no error if absent.

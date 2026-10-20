@@ -15,9 +15,6 @@
 
 #include <pulse/timeval.h>
 
-/* audio-monitoring/pulse/pulseaudio-stream-flags.c */
-#include <string.h>
-
 /* audio-monitoring/pulse/pulseaudio-wrapper.c */
 #include <pthread.h>
 

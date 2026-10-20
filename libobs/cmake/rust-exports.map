@@ -37,4 +37,9 @@
     obs_data_json_decref;
     /* obs-scene-bounds.c. obs-scene.c calls it inside libobs. Not EXPORT. */
     obs_bounds_fit_scale;
+    /* pulseaudio-stream-flags.c. pulseaudio-output.c calls them inside
+     * libobs. Not EXPORT. */
+    pulseaudio_monitor_stream_flags;
+    pulseaudio_monitor_reset_on_sink_event;
+    pulseaudio_monitor_backlog_excess;
 };

@@ -172,5 +172,8 @@
   ],
   "LIBOBS_HEVC_PORTED_SOURCES": [
     "build/libobs.ported-hevc+.h.c"
+  ],
+  "LIBOBS_PULSE_PORTED_SOURCES": [
+    "build/libobs.ported-pulse+.h.c"
   ]
 }

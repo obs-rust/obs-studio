@@ -414,6 +414,10 @@ fn main() {
         // obs-properties.c includes obs-internal.h, which includes
         // <caption/caption.h> from deps/libcaption (headers only).
         .include(libobs.with_file_name("deps").join("libcaption"))
+        // pulseaudio-stream-flags.h includes <pulse/def.h>. The stand-in
+        // forwards to libpulse's header where one is installed and defines
+        // the values the oracle needs where not (oracle/pulse-shim/pulse/def.h).
+        .include(manifest.join("oracle/pulse-shim"))
         .std("c11");
     // The real build is gnu17, whose glibc headers see _DEFAULT_SOURCE (POSIX
     // 2008: PTHREAD_MUTEX_RECURSIVE for util/threading.h). Strict c11 hides
