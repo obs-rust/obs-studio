@@ -1248,6 +1248,14 @@ area.
   Before, these rendered as the file's first face. *Linux*, 2026-10-18.
   Issue [#1409](https://github.com/obs-rust/obs-studio/issues/1409),
   upstream [obsproject/obs-studio#11819](https://github.com/obsproject/obs-studio/issues/11819).
+- Help > Crash Reports > Upload Last Crash Report with no crash log to
+  upload shows "No file to upload found or file was empty." Before, the
+  dialog stayed at "Uploading..." for good. *Windows, macOS*, 2026-10-19.
+  Issue [#1482](https://github.com/obs-rust/obs-studio/issues/1482), PR
+  [#1483](https://github.com/obs-rust/obs-studio/pull/1483), upstream
+  [obsproject/obs-studio#13401](https://github.com/obsproject/obs-studio/issues/13401),
+  port of
+  [obsproject/obs-studio#13414](https://github.com/obsproject/obs-studio/pull/13414).
 
 ### Scripting
 

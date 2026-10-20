@@ -274,6 +274,7 @@ void CrashHandler::uploadCrashLogToServer()
 
 	if (crashLogFileContent.empty()) {
 		blog(LOG_WARNING, "Most recent crash log file was empty or unavailable for reading");
+		emit crashLogUploadFailed(QTStr("LogUploadDialog.Errors.NoLogFile"));
 		return;
 	}
 
