@@ -348,7 +348,7 @@ fn times_across_the_range() {
 }
 
 /// The shim, with the real clock, against the C at the second it read. The
-/// video info is read exactly once per call on both sides.
+/// video info is read exactly once per call on both sides. Returns the name.
 #[track_caller]
 fn shim_same(
     video: &VideoInfo,
@@ -356,7 +356,7 @@ fn shim_same(
     extension: Option<&[u8]>,
     space: bool,
     format: Option<&[u8]>,
-) {
+) -> Option<Vec<u8>> {
     let (ext, fmt) = (c_string(extension), c_string(format));
     let _guard = ORACLE.lock().unwrap_or_else(|e| e.into_inner());
     loop {
@@ -382,7 +382,7 @@ fn shim_same(
             "{video:?} result {result}, extension {extension:?}, space {space}, format {:?}",
             format.map(String::from_utf8_lossy)
         );
-        return;
+        return got;
     }
 }
 
@@ -412,16 +412,18 @@ fn shim_matches_c() {
             }
         }
     }
-    // characterized, not endorsed (#1509): with no video the result is not
-    // checked, and the fields are used as the call left them
-    let no_video = VideoInfo {
-        fps_num: 48,
-        base_width: 640,
-        base_height: 360,
-        ..VideoInfo::default()
-    };
-    shim_same(&no_video, false, None, true, Some(b"%FPS %CRES"));
-    shim_same(&no_video, false, None, true, Some(b"plain"));
+    // with no video the fields format as zero on both sides, whatever the
+    // call left in the struct (the fixture fills it)
+    for (space, zeroed) in [(true, b"0 0x0 0x0 None"), (false, b"0_0x0_0x0_None")] {
+        assert_eq!(
+            shim_same(&video, false, None, space, Some(b"%FPS %CRES %ORES %VF")).as_deref(),
+            Some(&zeroed[..])
+        );
+        assert_eq!(
+            shim_same(&video, false, Some(b"mkv"), space, Some(b"plain")).as_deref(),
+            Some(&b"plain.mkv"[..])
+        );
+    }
 }
 
 /// Pieces a format is made of: every specifier, near-misses, `%` before

@@ -348,8 +348,9 @@ static void video_format_names_test(void **state)
 	}
 }
 
-/* The video info is read once per call, before the format is looked at, and
- * the result of obs_get_video_info is not checked. */
+/* The video info is read once per call, before the format is looked at. With
+ * no video, obs_get_video_info returns false, and the fields format as zero
+ * whatever the call left in them. */
 static void video_info_read_test(void **state)
 {
 	UNUSED_PARAMETER(state);
@@ -360,14 +361,16 @@ static void video_info_read_test(void **state)
 	expect_name(NULL, true, "%FPS %CRES %FPS", "30 0x0 30");
 	assert_int_equal(video_info_calls, 2);
 
-	/* characterized, not endorsed: with no video, obs_get_video_info
-	 * returns false and the fields are used as the call left them (the
-	 * real one leaves them unset) */
+	/* with no video, obs_get_video_info returns false; the real one leaves
+	 * the struct unset, the fixture fills it with non-zero fields */
 	fixture_result = false;
 	fixture_ovi.fps_num = 48;
 	fixture_ovi.base_width = 640;
 	fixture_ovi.base_height = 360;
-	expect_name(NULL, true, "%FPS %CRES", "48 640x360");
+	fixture_ovi.output_width = 320;
+	fixture_ovi.output_height = 180;
+	fixture_ovi.output_format = VIDEO_FORMAT_NV12;
+	expect_name(NULL, true, "%FPS %CRES %ORES %VF", "0 0x0 0x0 None");
 	assert_int_equal(video_info_calls, 3);
 }
 

@@ -312,22 +312,17 @@ fn video_format_name_table() {
 }
 
 /// `video_info_read_test`: the core uses the fields it is given; with no
-/// video the shim passes them on as the call left them (parity file).
+/// video the shim gives it zeroed fields, whatever the call left in its
+/// struct (checked against the oracle in the parity file).
 #[test]
 fn video_info_read() {
     expect("", true, b"plain", Some(b"plain"));
     expect("", true, b"%FPS %CRES %FPS", Some(b"30 0x0 30"));
 
-    // characterized, not endorsed (#1509): the fields as the call left them
-    let video = VideoInfo {
-        fps_num: 48,
-        base_width: 640,
-        base_height: 360,
-        ..reset_video()
-    };
+    // no video: the zeroed fields
     assert_eq!(
-        name_with(&video, "", true, b"%FPS %CRES").as_deref(),
-        Some(&b"48 640x360"[..])
+        name_with(&VideoInfo::default(), "", true, b"%FPS %CRES %ORES %VF").as_deref(),
+        Some(&b"0 0x0 0x0 None"[..])
     );
 }
 
