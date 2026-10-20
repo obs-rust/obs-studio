@@ -960,6 +960,16 @@ area.
   [#1573](https://github.com/obs-rust/obs-studio/issues/1573), PR
   [#1574](https://github.com/obs-rust/obs-studio/pull/1574), upstream
   [obsproject/obs-studio#9972](https://github.com/obsproject/obs-studio/issues/9972).
+  [#1509](https://github.com/obs-rust/obs-studio/issues/1509), PRs
+  [#1562](https://github.com/obs-rust/obs-studio/pull/1562) and
+  [#1565](https://github.com/obs-rust/obs-studio/pull/1565).
+- With a stream delay, a stream started again after it stopped on its own
+  (the connection dropped with Automatically Reconnect off, or an encoder
+  error) shows as streaming again. Before, OBS and obs-websocket never
+  reported it as started, and the delayed output passed packets on before
+  it had connected. *All*, 2026-10-20. Issue
+  [#1571](https://github.com/obs-rust/obs-studio/issues/1571), PR
+  [#1572](https://github.com/obs-rust/obs-studio/pull/1572).
 
 ### Sources and filters
 
