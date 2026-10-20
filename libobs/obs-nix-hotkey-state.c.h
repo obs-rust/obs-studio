@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-wayland.pch.h"
+#include "libobs/build/libobs-ported-nix-hotkey-state.pch.h"
 
 /* Changes take obs->hotkeys.mutex so they land between two poll cycles of
  * the hotkey thread, which holds it for a whole cycle. */

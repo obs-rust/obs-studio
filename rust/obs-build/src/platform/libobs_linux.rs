@@ -109,6 +109,9 @@ pub fn configure_variant(
         if options.pulseaudio {
             append_sources(sets, "LIBOBS_PULSE_PORTED_SOURCES", root, library)?;
         }
+        if options.wayland {
+            append_sources(sets, "LIBOBS_WAYLAND_PORTED_SOURCES", root, library)?;
+        }
     }
     Ok(())
 }

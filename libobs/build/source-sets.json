@@ -175,5 +175,8 @@
   ],
   "LIBOBS_PULSE_PORTED_SOURCES": [
     "build/libobs.ported-pulse+.h.c"
+  ],
+  "LIBOBS_WAYLAND_PORTED_SOURCES": [
+    "build/libobs.ported-nix-hotkey-state+.h.c"
   ]
 }

@@ -143,31 +143,66 @@ impl Store for KeyState {
     }
 }
 
+/// Holds the lock until dropped, so a panic cannot leave it held.
+struct Held<'a, L: HotkeyLock>(&'a L);
+
+impl<'a, L: HotkeyLock> Held<'a, L> {
+    fn new(lock: &'a L) -> Self {
+        lock.lock();
+        Self(lock)
+    }
+}
+
+impl<L: HotkeyLock> Drop for Held<'_, L> {
+    fn drop(&mut self) {
+        self.0.unlock();
+    }
+}
+
+/// `key` as an index into `focused_keys`, for `OBS_KEY_NONE < key <
+/// OBS_KEY_LAST_VALUE`.
+fn key_index(key: i32) -> Option<usize> {
+    if key <= KEY_NONE {
+        return None;
+    }
+    usize::try_from(key)
+        .ok()
+        .filter(|&i| i < OBS_KEY_LAST_VALUE)
+}
+
 /// `obs_nix_hotkey_state_free`: drops every shortcut. Takes no lock, as in C.
 pub fn free(state: &mut impl Store) {
-    let _ = state;
-    todo!()
+    state.shortcuts().free();
 }
 
 /// `obs_nix_hotkey_state_set_key`: a `wl_keyboard` key event. Codes outside
 /// `OBS_KEY_NONE < key < OBS_KEY_LAST_VALUE` are ignored without locking.
 pub fn set_key(state: &mut impl Store, lock: &impl HotkeyLock, key: i32, pressed: bool) {
-    let _ = (state, lock, key, pressed);
-    todo!()
+    let Some(idx) = key_index(key) else {
+        return;
+    };
+    let _held = Held::new(lock);
+    state.focused_keys()[idx] = pressed;
 }
 
 /// `obs_nix_hotkey_state_set_modifiers`: the keyboard's `INTERACT_*_KEY`
 /// bits.
 pub fn set_modifiers(state: &mut impl Store, lock: &impl HotkeyLock, modifiers: u32) {
-    let _ = (state, lock, modifiers);
-    todo!()
+    let _held = Held::new(lock);
+    *state.focused_modifiers() = modifiers;
 }
 
 /// `obs_nix_hotkey_state_clear_keys`: keyboard focus lost; every key and
 /// modifier is released. Shortcuts stay.
 pub fn clear_keys(state: &mut impl Store, lock: &impl HotkeyLock) {
-    let _ = (state, lock);
-    todo!()
+    let _held = Held::new(lock);
+    state.focused_keys().fill(false);
+    *state.focused_modifiers() = 0;
+}
+
+/// `find_shortcut`: the first entry with the same key and modifiers.
+fn find_shortcut(shortcuts: &impl Shortcuts, combo: KeyCombination) -> Option<usize> {
+    (0..shortcuts.len()).find(|&i| shortcuts.get(i).combo == combo)
 }
 
 /// `obs_nix_hotkey_state_set_shortcut`: the portal's `Activated` (`active`)
@@ -178,33 +213,93 @@ pub fn set_shortcut(
     combo: KeyCombination,
     active: bool,
 ) {
-    let _ = (state, lock, combo, active);
-    todo!()
+    let _held = Held::new(lock);
+    let shortcuts = state.shortcuts();
+    let idx = find_shortcut(shortcuts, combo);
+    match (active, idx) {
+        (true, None) => shortcuts.push(Shortcut {
+            combo,
+            observed: false,
+            release_pending: false,
+        }),
+        (true, Some(i)) => {
+            let mut entry = shortcuts.get(i);
+            entry.release_pending = false;
+            shortcuts.set(i, entry);
+        }
+        // Released after a poll cycle saw it: gone now. Before: kept until
+        // one has, so a short tap still presses the hotkey.
+        (false, Some(i)) if shortcuts.get(i).observed => shortcuts.erase(i),
+        (false, Some(i)) => {
+            let mut entry = shortcuts.get(i);
+            entry.release_pending = true;
+            shortcuts.set(i, entry);
+        }
+        (false, None) => {}
+    }
 }
 
 /// `obs_nix_hotkey_state_flush`: drops released shortcuts that a poll cycle
 /// has seen. True while a released one still waits to be seen.
 pub fn flush(state: &mut impl Store, lock: &impl HotkeyLock) -> bool {
-    let _ = (state, lock);
-    todo!()
+    let _held = Held::new(lock);
+    let shortcuts = state.shortcuts();
+    let mut pending = false;
+    // Back to front, as C, so an erase does not move what is still to visit.
+    for i in (0..shortcuts.len()).rev() {
+        let entry = shortcuts.get(i);
+        if !entry.release_pending {
+            continue;
+        }
+        if entry.observed {
+            shortcuts.erase(i);
+        } else {
+            pending = true;
+        }
+    }
+    pending
 }
 
 /// `obs_nix_hotkey_state_is_pressed`: the answer for
 /// `obs_hotkeys_platform_is_pressed`. Marks every shortcut as observed.
+///
+/// The hotkey thread already holds the (recursive) lock for its whole
+/// cycle, so every shortcut present now is seen by all of that cycle.
 pub fn is_pressed(state: &mut impl Store, lock: &impl HotkeyLock, key: i32) -> bool {
-    let _ = (state, lock, key, KEY_NONE);
-    todo!()
+    let Some(idx) = key_index(key) else {
+        return false;
+    };
+    let modifier = modifier_for_key(key);
+
+    let _held = Held::new(lock);
+    let mut pressed = if modifier != 0 {
+        *state.focused_modifiers() & modifier != 0
+    } else {
+        state.focused_keys()[idx]
+    };
+
+    let shortcuts = state.shortcuts();
+    for i in 0..shortcuts.len() {
+        let mut entry = shortcuts.get(i);
+        entry.observed = true;
+        shortcuts.set(i, entry);
+        pressed |= if modifier != 0 {
+            entry.combo.modifiers & modifier != 0
+        } else {
+            entry.combo.key == key
+        };
+    }
+    pressed
 }
 
 /// The `INTERACT_*_KEY` bit a modifier key stands for, 0 for other keys.
 #[must_use]
 pub fn modifier_for_key(key: i32) -> u32 {
-    let _ = (
-        OBS_KEY_SHIFT,
-        OBS_KEY_CONTROL,
-        OBS_KEY_ALT,
-        OBS_KEY_META,
-        key,
-    );
-    todo!()
+    match key {
+        OBS_KEY_SHIFT => INTERACT_SHIFT_KEY,
+        OBS_KEY_CONTROL => INTERACT_CONTROL_KEY,
+        OBS_KEY_ALT => INTERACT_ALT_KEY,
+        OBS_KEY_META => INTERACT_COMMAND_KEY,
+        _ => 0,
+    }
 }

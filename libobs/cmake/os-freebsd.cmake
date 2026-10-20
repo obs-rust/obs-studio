@@ -80,6 +80,8 @@ if(ENABLE_WAYLAND)
   find_package(Xkbcommon REQUIRED)
 
   target_sources(libobs-objects PRIVATE build/libobs.nix-wayland+.h.c obs-nix-hotkey-state.h)
+  # obs-nix-hotkey-state.c has a Rust port: libobs only (sources.cmake).
+  target_sources(libobs PRIVATE ${LIBOBS_WAYLAND_PORTED_SOURCES})
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 
   if(TARGET gio::gio)

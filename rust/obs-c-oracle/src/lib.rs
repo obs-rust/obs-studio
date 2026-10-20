@@ -56,6 +56,7 @@ pub mod hotkey_name_map;
 pub mod lexer;
 pub mod missing_files;
 pub mod nal;
+pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub mod nix_inhibit;
 pub mod obs_nvenc;

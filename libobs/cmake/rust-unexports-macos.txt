@@ -33,6 +33,15 @@ _obs_bounds_fit_scale
 _pulseaudio_monitor_stream_flags
 _pulseaudio_monitor_reset_on_sink_event
 _pulseaudio_monitor_backlog_excess
+# obs-nix-hotkey-state.c: the Wayland hotkey code calls them inside libobs
+# on Linux and FreeBSD. Built on every host; not EXPORT.
+_obs_nix_hotkey_state_free
+_obs_nix_hotkey_state_set_key
+_obs_nix_hotkey_state_set_modifiers
+_obs_nix_hotkey_state_clear_keys
+_obs_nix_hotkey_state_set_shortcut
+_obs_nix_hotkey_state_flush
+_obs_nix_hotkey_state_is_pressed
 # compiler-rt @available helpers (__isOSVersionAtLeast,
 # __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
 # build does not export them. Wildcards: no error if absent.

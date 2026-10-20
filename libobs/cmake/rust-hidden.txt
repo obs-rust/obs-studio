@@ -31,3 +31,12 @@ obs_bounds_fit_scale
 pulseaudio_monitor_stream_flags
 pulseaudio_monitor_reset_on_sink_event
 pulseaudio_monitor_backlog_excess
+# obs-nix-hotkey-state.c: obs-nix-wayland.c and obs-nix-portal-shortcuts.c
+# call them inside libobs. The C file has no EXPORT, so the shims stay hidden.
+obs_nix_hotkey_state_free
+obs_nix_hotkey_state_set_key
+obs_nix_hotkey_state_set_modifiers
+obs_nix_hotkey_state_clear_keys
+obs_nix_hotkey_state_set_shortcut
+obs_nix_hotkey_state_flush
+obs_nix_hotkey_state_is_pressed

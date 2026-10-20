@@ -8,9 +8,12 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[dependencies]
+# The Wayland key state's shortcut list is a bmalloc darray (obs-util ffi).
+obs-util = { path = "../obs-util" }
+
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }
-obs-util = { path = "../obs-util" }
 proptest = "1"
 
 [lib]

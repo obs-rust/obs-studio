@@ -21,6 +21,10 @@ class PortedSourceTest(unittest.TestCase):
         self.assertIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o", objects)
         self.assertNotIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", pulse=False))
+        self.assertIn("obs-nix-hotkey-state.c.h.o", objects)
+        self.assertNotIn("obs-nix-hotkey-state.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", wayland=False))
+        self.assertNotIn("obs-nix-hotkey-state.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_host_and_optional_groups_select_the_actual_members(self):
@@ -34,15 +38,20 @@ class PortedSourceTest(unittest.TestCase):
                 "LIBOBS_WINDOWS_PORTED_SOURCES": ["build/windows+.h.c"],
                 "LIBOBS_HEVC_PORTED_SOURCES": ["build/hevc+.h.c"],
                 "LIBOBS_PULSE_PORTED_SOURCES": ["build/pulse+.h.c"],
+                "LIBOBS_WAYLAND_PORTED_SOURCES": ["build/wayland+.h.c"],
             }
             (build / "source-sets.json").write_text(json.dumps(groups))
             for group, member in [("common", "common"), ("linux", "linux"),
-                                  ("windows", "windows"), ("hevc", "hevc"), ("pulse", "pulse")]:
+                                  ("windows", "windows"), ("hevc", "hevc"), ("pulse", "pulse"),
+                                  ("wayland", "wayland")]:
                 (build / f"{group}+.h.c").write_text(f'#include "libobs/util/{member}.c.h"\n')
             self.assertEqual(PORTED.ported_objects(root, "linux"),
-                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o"])
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o",
+                              "util/wayland.c.h.o"])
             self.assertEqual(PORTED.ported_objects(root, "linux", pulse=False),
-                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o"])
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/wayland.c.h.o"])
+            self.assertEqual(PORTED.ported_objects(root, "linux", wayland=False),
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o"])
             self.assertEqual(PORTED.ported_objects(root, "windows", hevc=False),
                              ["util/common.c.h.o", "util/windows.c.h.o"])
 

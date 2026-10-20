@@ -2,5 +2,4 @@
 
 #include "libobs/build/libobs-wayland.pch.h"
 
-#include "libobs/obs-nix-hotkey-state.c.h"
 #include "libobs/obs-nix-wayland.c.h"
