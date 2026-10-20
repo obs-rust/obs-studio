@@ -496,6 +496,7 @@ dependencies = [
  "obs-hotkey",
  "obs-missing-files",
  "obs-properties",
+ "obs-scene-blend",
  "obs-scene-bounds",
  "obs-util",
  "proptest",
@@ -595,6 +596,10 @@ dependencies = [
  "obs-util",
  "proptest",
 ]
+
+[[package]]
+name = "obs-scene-blend"
+version = "0.1.0"
 
 [[package]]
 name = "obs-scene-bounds"

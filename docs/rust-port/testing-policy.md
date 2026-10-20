@@ -387,7 +387,7 @@ compilation of the entire build engine.
 | Category / selected binary | Existing suites and coverage to include |
 | --- | --- |
 | Utilities / `obs-util` library harness | All eight `obs-util` suites: config, containers, memory, platform, profiler, serializer, strings, threading; its inline platform tests; `obs-c-oracle/tests/oracle` oracle validation. |
-| Core state / `obs-tests-core` | `obs-data/tests/data`, `obs-properties/tests/properties`, `obs-hotkey/tests/hotkey`, `obs-callback/tests/callback`, `obs-missing-files/tests/missing_files`, `obs-scene-bounds/tests/scene_bounds`, and `obs-audio-monitoring/tests/audio_monitoring`. |
+| Core state / `obs-tests-core` | `obs-data/tests/data`, `obs-properties/tests/properties`, `obs-hotkey/tests/hotkey`, `obs-callback/tests/callback`, `obs-missing-files/tests/missing_files`, `obs-scene-blend/tests/scene_blend`, `obs-scene-bounds/tests/scene_bounds`, and `obs-audio-monitoring/tests/audio_monitoring`. |
 | Graphics / `obs-tests-graphics` | `obs-graphics/tests/linear`, `geometry`, and `shader`. |
 | Media I/O / `obs-media-io` library harness | `obs-media-io/tests/audio`, `video`, and inline `video_output` tests. |
 | Codecs and encoders / `obs-tests-codec` | `obs-codec/tests/codec` and `obs-nvenc/tests/nvenc`, including the NVENC plugin boundary coverage. |

@@ -20,6 +20,7 @@ are in [docs/rust-port/naming.md](../docs/rust-port/naming.md#repository-layout-
 | `obs-hotkey/` | Ports of `libobs/obs-hotkey-name-map.c`, `libobs/obs-nix-hotkey-state.c.h` and `libobs/obs-nix-portal-shortcut-ids.c.h` |
 | `obs-callback/` | Port of `libobs/callback/calldata.c.h`, `callback/decl.c.h` and `callback/proc.c.h` |
 | `obs-missing-files/` | Port of `libobs/obs-missing-files.c.h` |
+| `obs-scene-blend/` | Port of `libobs/obs-scene-blend.c.h` |
 | `obs-scene-bounds/` | Port of `libobs/obs-scene-bounds.c.h` |
 | `obs-audio-monitoring/` | Ports of `libobs/audio-monitoring/*` (so far `pulse/pulseaudio-stream-flags.c.h`) |
 | `obs-nvenc/`, `obs-nvenc-plugin/` | Port of the `plugins/obs-nvenc` CUDA/NVENC loader, and the staticlib that plugin links |

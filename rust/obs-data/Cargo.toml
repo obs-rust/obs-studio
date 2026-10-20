@@ -21,6 +21,7 @@ obs-audio-monitoring = { path = "../obs-audio-monitoring" }
 obs-properties = { path = "../obs-properties" }
 obs-hotkey = { path = "../obs-hotkey" }
 obs-missing-files = { path = "../obs-missing-files" }
+obs-scene-blend = { path = "../obs-scene-blend" }
 obs-scene-bounds = { path = "../obs-scene-bounds" }
 obs-graphics = { path = "../obs-graphics" }
 obs-callback = { path = "../obs-callback" }

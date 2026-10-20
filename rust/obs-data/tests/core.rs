@@ -12,5 +12,7 @@ mod hotkey;
 mod missing_files;
 #[path = "../../obs-properties/tests/properties/main.rs"]
 mod properties;
+#[path = "../../obs-scene-blend/tests/scene_blend/main.rs"]
+mod scene_blend;
 #[path = "../../obs-scene-bounds/tests/scene_bounds/main.rs"]
 mod scene_bounds;
