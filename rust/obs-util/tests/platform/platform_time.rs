@@ -5,7 +5,8 @@
 //! set up the way its `group_setup` does: the first conversion is of a
 //! timestamp read just before it, which is at or below the base, so the
 //! result gives `K = wall - base timestamp` exactly, and every check predicts
-//! its result from `K`.
+//! its result from `K`. Every result is normalized (`0 <= nsec <
+//! NSEC_PER_SEC`), above the base and below it (#1505).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -82,19 +83,13 @@ impl Fixture {
         out
     }
 
-    /// `check`: above the base, a whole second is the previous second plus
-    /// `NSEC_PER_SEC`; below it, the result is normalized.
-    fn check(&self, timestamp: u64, above: bool) {
-        let want = self.expected(timestamp);
-        let want = if above && want.nsec == 0 {
-            Timespec {
-                sec: want.sec - 1,
-                nsec: NSEC_PER_SEC,
-            }
-        } else {
-            want
-        };
-        assert_eq!(self.convert(timestamp), want, "timestamp {timestamp}");
+    /// `check`: the result is `K + timestamp`, normalized.
+    fn check(&self, timestamp: u64) {
+        assert_eq!(
+            self.convert(timestamp),
+            self.expected(timestamp),
+            "timestamp {timestamp}"
+        );
     }
 
     /// `with_nsec`: the smallest timestamp >= `from` whose result has `nsec`.
@@ -126,7 +121,7 @@ fn null_storage() {
     let f = Fixture::new();
     let once_base = f.once.get();
     assert_eq!(f.once.get(), once_base);
-    f.check(f.mono_before, false);
+    f.check(f.mono_before);
 }
 
 /// `test_storage_contents_are_ignored`: the safe core has no storage; the
@@ -153,13 +148,7 @@ fn around_the_base() {
     let f = Fixture::new();
     let end = f.mono_after.min(f.mono_before + 100_000);
     for t in f.mono_before..=end {
-        let want = f.expected(t);
-        let got = f.convert(t);
-        if want.nsec == 0 && got.nsec == NSEC_PER_SEC {
-            assert_eq!(got.sec, want.sec - 1, "timestamp {t}");
-        } else {
-            assert_eq!(got, want, "timestamp {t}");
-        }
+        f.check(t);
     }
 }
 
@@ -169,15 +158,15 @@ fn above_the_base() {
     let f = Fixture::new();
     let t = f.with_nsec(f.mono_after, 500_000_000);
 
-    f.check(t, true);
-    f.check(t + 1, true);
-    f.check(t + 499_999_999, true);
-    f.check(t + 600_000_000, true);
-    f.check(t + 999_999_999, true);
+    f.check(t);
+    f.check(t + 1);
+    f.check(t + 499_999_999);
+    f.check(t + 600_000_000);
+    f.check(t + 999_999_999);
 
-    f.check(t + NS, true);
-    f.check(t + 5 * NS, true);
-    f.check(t + 86_400 * NS, true);
+    f.check(t + NS);
+    f.check(t + 5 * NS);
+    f.check(t + 86_400 * NS);
 
     let a = f.convert(t);
     let b = f.convert(t + 3 * NS);
@@ -190,7 +179,7 @@ fn above_the_base() {
     );
 
     for i in 0..64u64 {
-        f.check(f.mono_after + i * 123_456_789, true);
+        f.check(f.mono_after + i * 123_456_789);
     }
 }
 
@@ -218,8 +207,8 @@ fn nanosecond_carry_above_the_base() {
     );
 }
 
-/// `test_whole_second_above_the_base`. Characterized, not endorsed: a sum
-/// of exactly one second is not carried.
+/// `test_whole_second_above_the_base`: a sum of exactly one second carries
+/// (#1505).
 #[test]
 fn whole_second_above_the_base() {
     let f = Fixture::new();
@@ -228,20 +217,32 @@ fn whole_second_above_the_base() {
     assert_eq!(
         f.convert(t),
         Timespec {
-            sec: f.expected(t).sec - 1,
-            nsec: NSEC_PER_SEC
+            sec: f.expected(t).sec,
+            nsec: 0
         }
     );
     assert_eq!(
         f.convert(t + 7 * NS),
         Timespec {
-            sec: f.expected(t).sec + 6,
-            nsec: NSEC_PER_SEC
+            sec: f.expected(t).sec + 7,
+            nsec: 0
         }
     );
 
-    f.check(t - 1, true);
-    f.check(t + 1, true);
+    assert_eq!(
+        f.convert(t - 1),
+        Timespec {
+            sec: f.expected(t).sec - 1,
+            nsec: 999_999_999
+        }
+    );
+    assert_eq!(
+        f.convert(t + 1),
+        Timespec {
+            sec: f.expected(t).sec,
+            nsec: 1
+        }
+    );
 }
 
 /// `test_below_the_base`
@@ -249,20 +250,20 @@ fn whole_second_above_the_base() {
 fn below_the_base() {
     let f = Fixture::new();
 
-    f.check(0, false);
-    f.check(1, false);
-    f.check(999_999_999, false);
-    f.check(NS, false);
-    f.check(f.mono_before - 1, false);
+    f.check(0);
+    f.check(1);
+    f.check(999_999_999);
+    f.check(NS);
+    f.check(f.mono_before - 1);
     if f.mono_before > 3 * NS {
-        f.check(f.mono_before - NS, false);
-        f.check(f.with_nsec(f.mono_before - 3 * NS, 0), false);
+        f.check(f.mono_before - NS);
+        f.check(f.with_nsec(f.mono_before - 3 * NS, 0));
     }
 
     for i in 1..=64u64 {
         let offset = i * 98_765_431;
         if offset <= f.mono_before {
-            f.check(f.mono_before - offset, false);
+            f.check(f.mono_before - offset);
         }
     }
 }
@@ -272,11 +273,11 @@ fn below_the_base() {
 fn large_timestamps() {
     let f = Fixture::new();
 
-    f.check(u64::MAX, true);
-    f.check(u64::MAX - 1, true);
-    f.check(u64::MAX - NS, true);
-    f.check(1 << 63, true);
-    f.check((1 << 63) - 1, true);
+    f.check(u64::MAX);
+    f.check(u64::MAX - 1);
+    f.check(u64::MAX - NS);
+    f.check(1 << 63);
+    f.check((1 << 63) - 1);
 
     assert!(f.convert(u64::MAX).sec > f.first.sec + 18_000_000_000);
 }
@@ -298,7 +299,7 @@ fn equal_to_the_base_is_the_wall_time() {
 }
 
 /// New edge case: with a base on a whole second (which the cmocka test
-/// cannot rule out), nothing above the base hits the uncarried second.
+/// cannot rule out), the nanosecond sum never reaches one second.
 #[test]
 fn whole_second_base_always_normalizes() {
     let b = at(100, 0, 10 * NS);
@@ -319,13 +320,17 @@ fn whole_second_base_always_normalizes() {
 #[test]
 fn carry_and_borrow_with_a_fixed_base() {
     let b = at(100, 600_000_000, 10 * NS);
-    // characterized, not endorsed
     assert_eq!(
-        nstime_to_timespec(b, 10 * NS + 400_000_000),
+        nstime_to_timespec(b, 10 * NS + 399_999_999),
         Timespec {
             sec: 100,
-            nsec: NSEC_PER_SEC
+            nsec: 999_999_999
         }
+    );
+    // exactly one second carries (#1505)
+    assert_eq!(
+        nstime_to_timespec(b, 10 * NS + 400_000_000),
+        Timespec { sec: 101, nsec: 0 }
     );
     assert_eq!(
         nstime_to_timespec(b, 10 * NS + 400_000_001),
@@ -365,10 +370,7 @@ fn negative_wall_seconds() {
     let b = at(-5, 250_000_000, NS);
     assert_eq!(
         nstime_to_timespec(b, NS + 750_000_000),
-        Timespec {
-            sec: -5,
-            nsec: NSEC_PER_SEC
-        }
+        Timespec { sec: -4, nsec: 0 }
     );
     assert_eq!(
         nstime_to_timespec(b, 0),

@@ -11,8 +11,8 @@
 /*
  * Characterization tests for os_nstime_to_timespec in
  * libobs/util/platform-time.c (#262 slice 6), which no other test calls. They
- * pin the current C behavior for the Rust port; cases marked "characterized,
- * not endorsed" are odd but real.
+ * pin the C behavior for the Rust port. Every result is a normalized timespec
+ * (0 <= tv_nsec < 1000000000), above the base and below it (#1505).
  *
  * The first call takes a base pair: the wall clock (timespec_get) and
  * os_gettime_ns(). Every later result is that wall time plus the distance of
@@ -85,22 +85,14 @@ static void assert_timespec(const struct timespec *ts, int64_t sec, int64_t nsec
 	assert_int_equal((int64_t)ts->tv_nsec, nsec);
 }
 
-/*
- * Converts `timestamp` and checks it against K. Above the base (`above`),
- * a result that lands on a whole second comes back as the previous second
- * plus 1000000000 ns: see test_whole_second_above_the_base. Below the base it
- * is normalized.
- */
-static void check(uint64_t timestamp, bool above)
+/* converts `timestamp` and checks it against K, normalized */
+static void check(uint64_t timestamp)
 {
 	struct timespec ts = {-1, -1};
 	struct split want = expected(timestamp);
 
 	assert_ptr_equal(os_nstime_to_timespec(timestamp, &ts), &ts);
-	if (above && want.nsec == 0)
-		assert_timespec(&ts, want.sec - 1, NS_PER_SEC);
-	else
-		assert_timespec(&ts, want.sec, want.nsec);
+	assert_timespec(&ts, want.sec, want.nsec);
 }
 
 /* the smallest timestamp >= `from` whose result has `nsec` nanoseconds */
@@ -142,7 +134,7 @@ static void test_null_storage(void **state)
 	assert_null(os_nstime_to_timespec(UINT64_MAX, NULL));
 
 	/* and the base is unchanged */
-	check(mono_before, false);
+	check(mono_before);
 }
 
 static void test_storage_contents_are_ignored(void **state)
@@ -164,22 +156,12 @@ static void test_around_the_base(void **state)
 	UNUSED_PARAMETER(state);
 
 	/* the base timestamp is in [mono_before, mono_after]: every timestamp
-	 * there, one of them equal to the base, follows K. Either form of a
-	 * whole second is accepted in this window, since which side of the base
-	 * a timestamp is on is not known here. */
+	 * there, one of them equal to the base, follows K */
 	uint64_t end = mono_after;
 	if (end - mono_before > 100000)
 		end = mono_before + 100000;
-	for (uint64_t t = mono_before; t <= end; t++) {
-		struct timespec ts;
-		struct split want = expected(t);
-
-		assert_ptr_equal(os_nstime_to_timespec(t, &ts), &ts);
-		if (want.nsec == 0 && ts.tv_nsec == NS_PER_SEC)
-			assert_timespec(&ts, want.sec - 1, NS_PER_SEC);
-		else
-			assert_timespec(&ts, want.sec, want.nsec);
-	}
+	for (uint64_t t = mono_before; t <= end; t++)
+		check(t);
 }
 
 static void test_above_the_base(void **state)
@@ -189,16 +171,16 @@ static void test_above_the_base(void **state)
 	uint64_t t = with_nsec(mono_after, 500000000);
 
 	/* sub-second steps */
-	check(t, true);
-	check(t + 1, true);
-	check(t + 499999999, true);
-	check(t + 600000000, true);
-	check(t + 999999999, true);
+	check(t);
+	check(t + 1);
+	check(t + 499999999);
+	check(t + 600000000);
+	check(t + 999999999);
 
 	/* exact seconds keep the nanoseconds */
-	check(t + 1000000000, true);
-	check(t + 5 * 1000000000ULL, true);
-	check(t + 86400 * 1000000000ULL, true);
+	check(t + 1000000000);
+	check(t + 5 * 1000000000ULL);
+	check(t + 86400 * 1000000000ULL);
 
 	struct timespec a, b;
 	os_nstime_to_timespec(t, &a);
@@ -207,7 +189,7 @@ static void test_above_the_base(void **state)
 
 	/* a spread of offsets, which crosses the nanosecond carry */
 	for (uint64_t i = 0; i < 64; i++)
-		check(mono_after + i * 123456789ULL, true);
+		check(mono_after + i * 123456789ULL);
 }
 
 static void test_nanosecond_carry_above_the_base(void **state)
@@ -230,26 +212,26 @@ static void test_whole_second_above_the_base(void **state)
 {
 	UNUSED_PARAMETER(state);
 
-	/* characterized, not endorsed: above the base, the nanoseconds are the
-	 * base's plus the offset's, and the carry only fires when that sum is
-	 * greater than 1000000000. A sum of exactly 1000000000 is returned as
-	 * tv_nsec == 1000000000 with tv_sec one short, which is not a normalized
-	 * timespec. Every result whose time is a whole second does this, unless
-	 * the base wall time itself was a whole second (tv_nsec 0), which this
-	 * test cannot rule out but which is a 1-in-10^7 chance even at Windows'
-	 * 100 ns resolution. */
+	/* above the base, the nanoseconds are the base's plus the offset's; a
+	 * sum of exactly 1000000000 carries into the seconds, so a result on a
+	 * whole second is {sec, 0}, not {sec - 1, 1000000000} (#1505). If the
+	 * base wall time itself was a whole second (tv_nsec 0), the sum never
+	 * reaches 1000000000 and this passes either way; that is a 1-in-10^7
+	 * chance even at Windows' 100 ns resolution. */
 	uint64_t t = with_nsec(mono_after, 0);
 	struct timespec ts;
 
 	assert_ptr_equal(os_nstime_to_timespec(t, &ts), &ts);
-	assert_timespec(&ts, expected(t).sec - 1, NS_PER_SEC);
+	assert_timespec(&ts, expected(t).sec, 0);
 
 	assert_ptr_equal(os_nstime_to_timespec(t + 7 * 1000000000ULL, &ts), &ts);
-	assert_timespec(&ts, expected(t).sec + 6, NS_PER_SEC);
+	assert_timespec(&ts, expected(t).sec + 7, 0);
 
-	/* one nanosecond either side is normalized */
-	check(t - 1, true);
-	check(t + 1, true);
+	/* one nanosecond either side */
+	assert_ptr_equal(os_nstime_to_timespec(t - 1, &ts), &ts);
+	assert_timespec(&ts, expected(t).sec - 1, 999999999);
+	assert_ptr_equal(os_nstime_to_timespec(t + 1, &ts), &ts);
+	assert_timespec(&ts, expected(t).sec, 1);
 }
 
 static void test_below_the_base(void **state)
@@ -259,21 +241,21 @@ static void test_below_the_base(void **state)
 	/* below the base, a borrow takes a second when the offset's nanoseconds
 	 * are more than the base's; the result is always normalized, including
 	 * on whole seconds */
-	check(0, false);
-	check(1, false);
-	check(999999999, false);
-	check(1000000000, false);
-	check(mono_before - 1, false);
+	check(0);
+	check(1);
+	check(999999999);
+	check(1000000000);
+	check(mono_before - 1);
 	if (mono_before > 3 * 1000000000ULL) {
-		check(mono_before - 1000000000, false);
-		check(with_nsec(mono_before - 3 * 1000000000ULL, 0), false);
+		check(mono_before - 1000000000);
+		check(with_nsec(mono_before - 3 * 1000000000ULL, 0));
 	}
 
 	/* a spread of offsets, so both the borrow and the no-borrow branch run */
 	for (uint64_t i = 1; i <= 64; i++) {
 		uint64_t offset = i * 98765431ULL;
 		if (offset <= mono_before)
-			check(mono_before - offset, false);
+			check(mono_before - offset);
 	}
 }
 
@@ -282,11 +264,11 @@ static void test_large_timestamps(void **state)
 	UNUSED_PARAMETER(state);
 
 	/* about 584 years past the base: tv_sec still fits a 64-bit time_t */
-	check(UINT64_MAX, true);
-	check(UINT64_MAX - 1, true);
-	check(UINT64_MAX - 1000000000, true);
-	check(1ULL << 63, true);
-	check((1ULL << 63) - 1, true);
+	check(UINT64_MAX);
+	check(UINT64_MAX - 1);
+	check(UINT64_MAX - 1000000000);
+	check(1ULL << 63);
+	check((1ULL << 63) - 1);
 
 	struct timespec ts;
 	assert_ptr_equal(os_nstime_to_timespec(UINT64_MAX, &ts), &ts);
