@@ -12,6 +12,8 @@ mod data;
 mod hotkey;
 #[path = "../../obs-missing-files/tests/missing_files/main.rs"]
 mod missing_files;
+#[path = "../../obs-output/tests/output/main.rs"]
+mod output;
 #[path = "../../obs-properties/tests/properties/main.rs"]
 mod properties;
 #[path = "../../obs-scene-blend/tests/scene_blend/main.rs"]
