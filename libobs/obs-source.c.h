@@ -271,6 +271,8 @@ static void obs_source_init_finalize(struct obs_source *source, obs_canvas_t *ca
 			obs_context_data_insert_name(&source->context, &obs->data.sources_mutex,
 						     &obs->data.public_sources);
 		}
+	} else if (requires_canvas(source)) {
+		source->canvas = obs_canvas_get_weak_canvas(canvas);
 	}
 	obs_context_data_insert_uuid(&source->context, &obs->data.sources_mutex, &obs->data.sources);
 }
@@ -549,6 +551,12 @@ obs_source_t *obs_source_create_canvas(obs_canvas_t *canvas, const char *id, con
 	return obs_source_create_internal(id, name, NULL, settings, hotkey_data, false, LIBOBS_API_VER, canvas);
 }
 
+obs_source_t *obs_source_create_private_with_canvas(obs_canvas_t *canvas, const char *id, const char *name,
+						    obs_data_t *settings)
+{
+	return obs_source_create_internal(id, name, NULL, settings, NULL, true, LIBOBS_API_VER, canvas);
+}
+
 obs_source_t *obs_source_create_set_last_ver(obs_canvas_t *canvas, const char *id, const char *name, const char *uuid,
 					     obs_data_t *settings, obs_data_t *hotkey_data, uint32_t last_obs_ver,
 					     bool is_private)
@@ -770,6 +778,9 @@ void obs_source_destroy(struct obs_source *source)
 			obs_context_data_remove_name(&source->context, &obs->data.sources_mutex,
 						     &obs->data.public_sources);
 		}
+	} else if (source->canvas) {
+		obs_weak_canvas_release(source->canvas);
+		source->canvas = NULL;
 	}
 
 	source_profiler_remove_source(source);
@@ -952,7 +963,7 @@ void obs_source_remove(obs_source_t *source)
 			s->removed = true;
 			obs_source_dosignal(s, "source_remove", "remove");
 			/* Remove from canvas if there is one. */
-			if (source->canvas)
+			if (source->canvas && !source->context.private)
 				obs_canvas_remove_source(s);
 
 			obs_source_release(s);
@@ -4322,7 +4333,8 @@ void obs_source_set_name(obs_source_t *source, const char *name)
 		return;
 
 	if (!name || !*name || !source->context.name || strcmp(name, source->context.name) != 0) {
-		if (requires_canvas(source)) {
+		/* A private scene knows its canvas but is not in its list. */
+		if (requires_canvas(source) && !source->context.private) {
 			obs_canvas_rename_source(source, name);
 		} else {
 			struct calldata data;

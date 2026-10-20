@@ -1291,6 +1291,13 @@ area.
   [#1478](https://github.com/obs-rust/obs-studio/issues/1478), PR
   [#1479](https://github.com/obs-rust/obs-studio/pull/1479), port of
   [obsproject/obs-studio#13128](https://github.com/obsproject/obs-studio/pull/13128).
+- Studio Mode with "Duplicate Scene" no longer logs "Attempted to add Scene
+  without specifying a canvas!" on every transition, and a plugin's private
+  copy of a scene on a second canvas (a vertical canvas, for example) is
+  sized for that canvas instead of the main one. *All*, 2026-10-19. Issue
+  [#1480](https://github.com/obs-rust/obs-studio/issues/1480), PR
+  [#1481](https://github.com/obs-rust/obs-studio/pull/1481), port of
+  [obsproject/obs-studio#12824](https://github.com/obsproject/obs-studio/pull/12824).
 
 ### Scripting
 
