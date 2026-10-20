@@ -1276,6 +1276,12 @@ area.
   [obsproject/obs-studio#13401](https://github.com/obsproject/obs-studio/issues/13401),
   port of
   [obsproject/obs-studio#13414](https://github.com/obsproject/obs-studio/pull/13414).
+- A plugin that reads or releases the Studio Mode T-Bar while Studio Mode is
+  off (at startup, for example) no longer crashes OBS: the T-Bar reads as 0
+  and a release does nothing. *All*, 2026-10-19. Issue
+  [#1478](https://github.com/obs-rust/obs-studio/issues/1478), PR
+  [#1479](https://github.com/obs-rust/obs-studio/pull/1479), port of
+  [obsproject/obs-studio#13128](https://github.com/obsproject/obs-studio/pull/13128).
 
 ### Scripting
 
