@@ -498,5 +498,11 @@
     "sources": [
       "test/cmocka/test_scene_blend.c"
     ]
+  },
+  {
+    "name": "test_output_delay",
+    "sources": [
+      "test/cmocka/test_output_delay.c"
+    ]
   }
 ]
