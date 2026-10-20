@@ -60,7 +60,7 @@ struct timespec *os_nstime_to_timespec(uint64_t timestamp, struct timespec *stor
 		secs = storage->tv_sec - sec_offset;
 	}
 
-	if (nsecs > nsecs_per_sec) {
+	if (nsecs >= nsecs_per_sec) {
 		nsecs -= nsecs_per_sec;
 		secs += 1;
 	}

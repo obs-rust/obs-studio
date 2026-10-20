@@ -74,11 +74,10 @@ pub fn os_nstime_to_timespec(timestamp: u64) -> Timespec {
 /// `os_nstime_to_timespec` for a given base: the base's wall time plus the
 /// distance of `timestamp` from the base's timestamp.
 ///
-/// As in C, a timestamp at or above the base adds the nanoseconds and carries
-/// only when their sum is greater than [`NSEC_PER_SEC`], so a sum of exactly
-/// one second comes back as `nsec == NSEC_PER_SEC` with `sec` one short.
-/// Below the base the result is normalized. The C does this arithmetic in
-/// `uint64_t` above the base, which wraps; so does this.
+/// A timestamp at or above the base adds the nanoseconds and carries when
+/// their sum reaches [`NSEC_PER_SEC`]; below the base it borrows. Either way
+/// the result is normalized (`0 <= nsec < NSEC_PER_SEC`, #1505). The C does
+/// this arithmetic in `uint64_t` above the base, which wraps; so does this.
 pub fn nstime_to_timespec(base: Base, timestamp: u64) -> Timespec {
     const NS: u64 = NSEC_PER_SEC as u64;
 
@@ -103,8 +102,7 @@ pub fn nstime_to_timespec(base: Base, timestamp: u64) -> Timespec {
         secs = tv_sec.wrapping_sub(sec_offset);
     }
 
-    // Characterized, not endorsed: `>`, so exactly one second stays.
-    if nsecs > NSEC_PER_SEC {
+    if nsecs >= NSEC_PER_SEC {
         nsecs -= NSEC_PER_SEC;
         secs = secs.wrapping_add(1);
     }

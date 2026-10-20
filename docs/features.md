@@ -906,6 +906,12 @@ area.
   [#1490](https://github.com/obs-rust/obs-studio/issues/1490), PR
   [#1491](https://github.com/obs-rust/obs-studio/pull/1491), upstream
   [obsproject/obs-studio#3531](https://github.com/obsproject/obs-studio/issues/3531).
+- With Enhanced Broadcasting (multitrack video), the Broadcast Performance
+  Metrics of a frame whose time falls on a whole second carry that time.
+  Before, the time read 900 ms early (`…:32.1000Z` for `…:33.000Z`).
+  *All*, 2026-10-20. Issue
+  [#1505](https://github.com/obs-rust/obs-studio/issues/1505), PR
+  [#1508](https://github.com/obs-rust/obs-studio/pull/1508).
 
 ### Sources and filters
 

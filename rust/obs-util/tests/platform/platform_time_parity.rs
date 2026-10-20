@@ -115,15 +115,23 @@ fn fixed_bases() {
 
 #[test]
 fn whole_second_edge() {
-    // characterized, not endorsed: both sides return tv_nsec == 1000000000
+    // both sides carry exactly one second (#1505)
     let b = at(100, 600_000_000, 10 * NS);
-    core_same(b, &[10 * NS + 400_000_000, 17 * NS + 400_000_000]);
+    core_same(
+        b,
+        &[
+            10 * NS + 399_999_999,
+            10 * NS + 400_000_000,
+            10 * NS + 400_000_001,
+            17 * NS + 400_000_000,
+        ],
+    );
     let c_ts = oracle(b, &[10 * NS + 400_000_000]);
     assert_eq!(
         c_ts,
         vec![Some(timespec {
-            tv_sec: 100,
-            tv_nsec: 1_000_000_000
+            tv_sec: 101,
+            tv_nsec: 0
         })]
     );
 }
