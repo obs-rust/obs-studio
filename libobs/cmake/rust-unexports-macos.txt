@@ -31,6 +31,11 @@ _obs_bounds_fit_scale
 # obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it inside
 # libobs. Not EXPORT.
 _obs_blend_mode_params
+# obs-output-delay.c: obs-output.c calls them inside libobs. Not EXPORT.
+_process_delay
+_obs_output_delay_start
+_obs_output_delay_stop
+_obs_output_cleanup_delay
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs
 # on Linux and FreeBSD. Built on every host; not EXPORT.
 _pulseaudio_monitor_stream_flags

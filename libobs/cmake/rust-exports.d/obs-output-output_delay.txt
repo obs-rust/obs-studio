@@ -1,0 +1,3 @@
+obs_output_get_active_delay
+obs_output_get_delay
+obs_output_set_delay

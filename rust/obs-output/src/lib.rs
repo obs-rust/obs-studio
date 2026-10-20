@@ -1,11 +1,15 @@
 //! Rust port of `libobs/obs-output-delay.c.h`, the output stream delay.
 //!
 //! [`delay`] is the safe core: when a held packet, start or stop leaves the
-//! queue, and what start, stop and cleanup do to the output.
+//! queue, and what start, stop and cleanup do to the output. The C ABI
+//! shims live in [`ffi`]. Later units of `obs-output.c` join this crate.
 
 #![deny(unsafe_code)]
 
 pub mod delay;
+
+#[allow(unsafe_code)]
+pub mod ffi;
 
 pub use delay::{
     Decision, DelayOutput, Entry, NS_PER_SEC, NullLog, OBS_OUTPUT_DELAY_PRESERVE,

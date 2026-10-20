@@ -66,16 +66,22 @@ pub fn pop_decision(
     preserve: bool,
     reconnecting: bool,
 ) -> Decision {
-    let _ = (front_ts, now, active_delay_ns, preserve, reconnecting);
-    todo!()
+    let elapsed = now.wrapping_sub(front_ts);
+    if preserve && reconnecting {
+        Decision::Extend(elapsed)
+    } else if elapsed > active_delay_ns {
+        Decision::Pop
+    } else {
+        Decision::Hold
+    }
 }
 
 /// `obs_output_get_active_delay`: the running delay in whole seconds,
 /// truncated, then cast to `u32` (which wraps past `u32::MAX` seconds).
 #[must_use]
 pub fn active_delay_secs(active_delay_ns: u64) -> u32 {
-    let _ = active_delay_ns;
-    todo!()
+    // The truncating cast is the C's (characterized, not endorsed).
+    (active_delay_ns / NS_PER_SEC) as u32
 }
 
 /// One queued entry (`struct delay_data`).
@@ -95,7 +101,9 @@ impl<P, T> Entry<P, T> {
     /// When the entry was queued.
     #[must_use]
     pub fn ts(&self) -> u64 {
-        todo!()
+        match *self {
+            Self::Packet { ts, .. } | Self::Start { ts } | Self::Stop { ts } => ts,
+        }
     }
 }
 
@@ -197,21 +205,39 @@ pub fn set_delay<O: DelayOutput>(
     delay_sec: u32,
     flags: u32,
 ) {
-    let _ = (output, log, delay_sec, flags);
-    todo!()
+    let Some(output) = output else {
+        log.null_output(SET_DELAY);
+        return;
+    };
+    if output.flags() & OBS_OUTPUT_ENCODED == 0 {
+        output.warn_raw_output(SET_DELAY);
+        return;
+    }
+    output.set_delay_sec(delay_sec);
+    output.set_delay_flags(flags);
 }
 
 /// `obs_output_get_delay`: the stored setting, 0 for a null output.
 pub fn get_delay<O: DelayOutput>(output: Option<&O>, log: &impl NullLog) -> u32 {
-    let _ = (output, log);
-    todo!()
+    match output {
+        Some(output) => output.delay_sec(),
+        None => {
+            log.null_output(SET_DELAY);
+            0
+        }
+    }
 }
 
 /// `obs_output_get_active_delay`: the running delay in whole seconds
 /// ([`active_delay_secs`]), 0 for a null output.
 pub fn get_active_delay<O: DelayOutput>(output: Option<&O>, log: &impl NullLog) -> u32 {
-    let _ = (output, log);
-    todo!()
+    match output {
+        Some(output) => active_delay_secs(output.active_delay_ns()),
+        None => {
+            log.null_output(SET_DELAY);
+            0
+        }
+    }
 }
 
 /// `process_delay`: queues a copy of `src` at `now`, then runs every entry
@@ -222,31 +248,81 @@ pub fn process_delay<O: DelayOutput>(
     time: Option<O::Time>,
     now: u64,
 ) {
-    let _ = (output, src, time, now);
-    todo!()
+    // push_packet: the copy is made before the lock is taken.
+    let packet = output.copy_packet(src);
+    output.lock();
+    output.push_back(Entry::Packet {
+        ts: now,
+        packet,
+        time,
+    });
+    output.unlock();
+    while pop_packet(output, now) {}
 }
 
 /// `pop_packet`: one pass over the front of the queue. True if an entry
 /// left the queue.
 pub fn pop_packet<O: DelayOutput>(output: &mut O, now: u64) -> bool {
-    let _ = (output, now);
-    todo!()
+    // Read before the lock, as the C reads it.
+    let preserve = output.delay_cur_flags() & OBS_OUTPUT_DELAY_PRESERVE != 0;
+    let mut popped = None;
+
+    output.lock();
+    if let Some(front_ts) = output.front_ts() {
+        match pop_decision(
+            front_ts,
+            now,
+            output.active_delay_ns(),
+            preserve,
+            output.reconnecting(),
+        ) {
+            Decision::Extend(age) => output.set_active_delay_ns(age),
+            Decision::Pop => popped = Some(output.pop_front()),
+            Decision::Hold => {}
+        }
+    }
+    output.unlock();
+
+    // The entry runs after the lock is released.
+    match popped {
+        Some(entry) => {
+            if let Some(entry) = entry {
+                dispatch(output, entry);
+            }
+            true
+        }
+        None => false,
+    }
 }
 
 /// `process_delay_data`: runs an entry that left the queue. A packet is
 /// delivered while the delay is active and capturing, and released
 /// otherwise; a start or stop runs whatever the delay state.
 pub fn dispatch<O: DelayOutput>(output: &mut O, entry: Entry<O::Packet, O::Time>) {
-    let _ = (output, entry);
-    todo!()
+    match entry {
+        Entry::Packet { packet, time, .. } => {
+            if !output.delay_active() || !output.delay_capturing() {
+                output.release(packet);
+            } else {
+                output.deliver(packet, time);
+            }
+        }
+        Entry::Start { .. } => output.actual_start(),
+        Entry::Stop { ts } => output.actual_stop(false, ts),
+    }
 }
 
 /// `obs_output_cleanup_delay`: empties the queue without running anything,
 /// releasing the held packets, and resets the running delay and the
 /// restart references. Takes no lock.
 pub fn cleanup<O: DelayOutput>(output: &mut O) {
-    let _ = output;
-    todo!()
+    while !output.is_empty() {
+        if let Some(Entry::Packet { packet, .. }) = output.pop_front() {
+            output.release(packet);
+        }
+    }
+    output.set_active_delay_ns(0);
+    output.clear_restart_refs();
 }
 
 /// `obs_output_delay_start`: queues the real start at `now`. A first start
@@ -254,13 +330,43 @@ pub fn cleanup<O: DelayOutput>(output: &mut O) {
 /// data capture; a restart while the delay is active only queues and
 /// signals `"starting"`.
 pub fn start<O: DelayOutput>(output: &mut O, now: u64) -> bool {
-    let _ = (output, now);
-    todo!()
+    if !output.delay_active() {
+        if !output.can_begin_data_capture() {
+            return false;
+        }
+        output.set_starting(true);
+        if !output.initialize_encoders() {
+            output.set_starting(false);
+            return false;
+        }
+    }
+
+    output.lock();
+    output.push_back(Entry::Start { ts: now });
+    output.unlock();
+
+    output.inc_restart_refs();
+
+    if output.delay_active() {
+        output.signal(Signal::Starting);
+        return true;
+    }
+
+    if !output.begin_data_capture() {
+        // Characterized, not endorsed: `starting` stays set.
+        cleanup(output);
+        return false;
+    }
+
+    true
 }
 
 /// `obs_output_delay_stop`: queues the real stop at `now` and signals
 /// `"stopping"`.
 pub fn stop<O: DelayOutput>(output: &mut O, now: u64) {
-    let _ = (output, now);
-    todo!()
+    output.lock();
+    output.push_back(Entry::Stop { ts: now });
+    output.unlock();
+
+    output.signal(Signal::Stopping);
 }

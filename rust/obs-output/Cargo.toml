@@ -10,3 +10,8 @@ publish.workspace = true
 
 [lib]
 test = false
+
+[dependencies]
+# delay_data is a C struct deque, pushed and popped in place (obs-util ffi);
+# obs-util also provides os_gettime_ns and the bmem allocator.
+obs-util = { path = "../obs-util" }

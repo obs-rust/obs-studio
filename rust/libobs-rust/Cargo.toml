@@ -30,6 +30,7 @@ obs-hotkey = { path = "../obs-hotkey" }
 obs-codec = { path = "../obs-codec" }
 obs-media-io = { path = "../obs-media-io" }
 obs-missing-files = { path = "../obs-missing-files" }
+obs-output = { path = "../obs-output" }
 obs-scene-blend = { path = "../obs-scene-blend" }
 obs-scene-bounds = { path = "../obs-scene-bounds" }
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }

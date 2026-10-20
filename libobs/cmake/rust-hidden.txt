@@ -30,6 +30,13 @@ obs_bounds_fit_scale
 # obs-scene.c reads it inside libobs. The C file has no EXPORT, so the Rust
 # static stays hidden the same way.
 obs_blend_mode_params
+# obs-output-delay.c: obs-output.c calls them inside libobs and installs
+# process_delay as the encoded packet callback. Declared in obs-internal.h
+# without EXPORT, so the shims stay hidden the same way.
+process_delay
+obs_output_delay_start
+obs_output_delay_stop
+obs_output_cleanup_delay
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs.
 # The C file has no EXPORT, so the shims stay hidden the same way.
 pulseaudio_monitor_stream_flags

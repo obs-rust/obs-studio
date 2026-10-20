@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-delay.pch.h"
 
 /* The delay fields are read through obs_output_delay_fields(), not the
  * struct obs_output layout. */
