@@ -86,8 +86,8 @@ unsafe fn bytes<'a>(ptr: *const c_char) -> &'a [u8] {
 }
 
 /// # Safety
-/// `extension` and `format` are NULL or valid NUL-terminated strings. As in
-/// C, libobs must be started (`obs_get_video_info` reads the core).
+/// `extension` and `format` are NULL or valid NUL-terminated strings. Before
+/// `obs_startup`, `obs_get_video_info` returns false (no video), as in C.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn os_generate_formatted_filename(
     extension: *const c_char,

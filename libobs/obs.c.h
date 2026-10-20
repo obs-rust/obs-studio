@@ -1892,7 +1892,8 @@ bool obs_reset_audio(const struct obs_audio_info *oai)
 
 bool obs_get_video_info(struct obs_video_info *ovi)
 {
-	if (!obs->video.graphics || !obs->data.main_canvas->mix)
+	/* no core (before obs_startup): no video (#1509) */
+	if (!obs || !obs->video.graphics || !obs->data.main_canvas->mix)
 		return false;
 
 	*ovi = obs->data.main_canvas->mix->ovi;
