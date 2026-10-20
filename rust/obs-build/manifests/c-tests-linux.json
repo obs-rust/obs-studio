@@ -504,5 +504,11 @@
     "sources": [
       "test/cmocka/test_output_delay.c"
     ]
+  },
+  {
+    "name": "test_deque",
+    "sources": [
+      "test/cmocka/test_deque.c"
+    ]
   }
 ]
