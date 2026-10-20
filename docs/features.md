@@ -875,6 +875,12 @@ area.
   [#1421](https://github.com/obs-rust/obs-studio/issues/1421), PR
   [#1422](https://github.com/obs-rust/obs-studio/pull/1422), upstream
   [obsproject/obs-studio#12250](https://github.com/obsproject/obs-studio/issues/12250).
+- OBS no longer crashes when an SRT or RIST stream reconnects after its
+  connection dropped; before, a packet left from the dropped connection could
+  reach the new connection before its header and kill OBS. *All*,
+  2026-10-19. Issue
+  [#1423](https://github.com/obs-rust/obs-studio/issues/1423), PR
+  [#1475](https://github.com/obs-rust/obs-studio/pull/1475).
 
 ### Sources and filters
 

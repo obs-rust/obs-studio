@@ -1181,8 +1181,20 @@ static bool ffmpeg_mpegts_start(void *data)
 	if (os_atomic_load_bool(&stream->start_stop_thread_active))
 		pthread_join(stream->start_stop_thread, NULL);
 
-	if (stream->write_thread_active)
+	/* A dropped connection's write thread ends on its failed write and
+	 * leaves what it had queued. The next connection's write thread would
+	 * write those packets before its muxer has a header, and FFmpeg divides
+	 * by zero (#1423). */
+	if (stream->write_thread_active) {
 		pthread_join(stream->write_thread, NULL);
+		stream->write_thread_active = false;
+	}
+
+	pthread_mutex_lock(&stream->write_mutex);
+	for (size_t i = 0; i < stream->packets.num; i++)
+		av_packet_free(stream->packets.array + i);
+	da_free(stream->packets);
+	pthread_mutex_unlock(&stream->write_mutex);
 
 	stream->audio_start_ts = 0;
 	stream->video_start_ts = 0;
