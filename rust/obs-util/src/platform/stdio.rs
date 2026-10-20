@@ -24,14 +24,18 @@ pub enum DoubleFormat {
     G17,
     /// `"%g"`, from `config_set_default_double` (`libobs/util/config-file.c`).
     G,
+    /// `"%.2f"`, from `os_generate_formatted_filename`'s `%FPS`
+    /// (`libobs/util/platform-filename.c`).
+    F2,
 }
 
 impl DoubleFormat {
-    /// The `%g` precision: significant digits.
+    /// The precision: significant digits for `%g`, decimals for `%.2f`.
     pub fn precision(self) -> usize {
         match self {
             Self::G17 => 17,
             Self::G => 6,
+            Self::F2 => 2,
         }
     }
 
@@ -39,6 +43,7 @@ impl DoubleFormat {
         match self {
             Self::G17 => c"%.17g",
             Self::G => c"%g",
+            Self::F2 => c"%.2f",
         }
     }
 }

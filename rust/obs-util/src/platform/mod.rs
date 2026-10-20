@@ -14,6 +14,35 @@ pub enum EventType {
     Manual,
 }
 
+/// The fields of a `struct tm`, for [`crt::LocalTime::from_fields`].
+/// `gmtoff` and `zone` are `tm_gmtoff` and `tm_zone`, which `strftime`'s
+/// `%z` and `%Z` read; the Windows CRT's `struct tm` has neither.
+#[derive(Debug, Clone, Copy)]
+pub struct TmFields {
+    /// `tm_sec`.
+    pub sec: i32,
+    /// `tm_min`.
+    pub min: i32,
+    /// `tm_hour`.
+    pub hour: i32,
+    /// `tm_mday`.
+    pub mday: i32,
+    /// `tm_mon`, from 0.
+    pub mon: i32,
+    /// `tm_year`, years since 1900.
+    pub year: i32,
+    /// `tm_wday`, 0 for Sunday.
+    pub wday: i32,
+    /// `tm_yday`, from 0.
+    pub yday: i32,
+    /// `tm_isdst`.
+    pub isdst: i32,
+    /// `tm_gmtoff`: seconds east of UTC.
+    pub gmtoff: CLong,
+    /// `tm_zone`: the zone abbreviation.
+    pub zone: &'static core::ffi::CStr,
+}
+
 cfg_select! {
     unix => {
         pub mod unix;

@@ -62,7 +62,7 @@ unsafe fn borrow(file: *mut c_void) -> Option<ManuallyDrop<CFile>> {
 }
 
 /// `bmalloc`ed, NUL-terminated copy of `bytes`.
-fn to_bmalloc(bytes: &[u8]) -> *mut c_char {
+pub(crate) fn to_bmalloc(bytes: &[u8]) -> *mut c_char {
     // SAFETY: allocates `len + 1` bytes, released by the caller's `bfree`.
     let out = unsafe { crate::ffi::bmem::bmalloc(bytes.len() + 1) }.cast::<u8>();
     // SAFETY: `out` holds `len + 1` bytes.

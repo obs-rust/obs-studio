@@ -203,28 +203,3 @@ __attribute__((weak)) uint64_t os_gettime_ns(void)
 }
 #endif
 #endif
-
-/* The video info the platform.c formatter calls.
- *
- * Intentionally different from the original: the real one is in libobs/obs.c
- * (obs_get_video_info, libobs/obs.c:1680), which pulls in the whole video
- * pipeline that the oracle does not build, and the only platform.c function
- * that calls it is os_generate_formatted_filename (libobs/util/platform-filename.c),
- * to fill in file-name specifiers. No oracle test calls that one, so this stub
- * only keeps the platform.c translation unit linkable; it reports "no video
- * info" rather than guessing at a struct the caller would have to size.
- *
- * The return type matches the declaration in libobs/obs.h:468, which the
- * platform.c translation unit sees through the rename macro; a void definition
- * for an external bool would be a cross-translation-unit type mismatch.
- */
-/* obs.c */
-struct obs_video_info;
-
-bool oracle_obs_get_video_info(struct obs_video_info *ovi);
-
-bool oracle_obs_get_video_info(struct obs_video_info *ovi)
-{
-	(void)ovi;
-	return false;
-}

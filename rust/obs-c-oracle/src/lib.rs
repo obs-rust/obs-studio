@@ -17,8 +17,9 @@
 //! `oracle/obs_data_host.c`).
 //! `oracle/platform_host.c` holds the few that cannot be compiled here: the
 //! breakpoint pair, which aborts loudly instead of raising the platform trap;
-//! Windows forwarders to the renamed `platform.c` helpers; a weak zero-clock
-//! fallback; and an `obs_get_video_info` stub that keeps `platform.c` linkable.
+//! Windows forwarders to the renamed `platform.c` helpers; and a weak
+//! zero-clock fallback. `oracle/platform.c` itself ends with the
+//! `obs_get_video_info` and clock fixtures of `platform-filename.c`.
 
 // Fingerprint of the native inputs build.rs feeds to `cc` (oracle/*.c, *.h,
 // the libobs/deps sources it compiles, the flag list). Reading it with
@@ -64,6 +65,7 @@ pub mod pipe;
 #[cfg(target_os = "macos")]
 pub mod platform_cocoa;
 pub mod platform_file;
+pub mod platform_filename;
 pub mod platform_mkdirs;
 #[cfg(unix)]
 pub mod platform_nix;

@@ -14,9 +14,10 @@
  * os_mkdir, os_safe_replace and os_gettime_ns are the renamed ones from
  * platform_nix_posix.c; the clock additionally needs a plain-named provider on
  * macOS and Windows, which platform_host.c supplies because the Rust shim only
- * defines it on non-Apple Unix. obs_get_video_info is a stub in
- * platform_host.c, and os_breakpoint / os_oom become loud aborts there instead
- * of libobs's SIGTRAP. */
+ * defines it on non-Apple Unix. obs_get_video_info and the clock of
+ * platform-filename.c are fixtures at the end of this file, and
+ * os_breakpoint / os_oom become loud aborts in platform_host.c instead of
+ * libobs's SIGTRAP. */
 #define _FILE_OFFSET_BITS 64
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -106,7 +107,19 @@
 #pragma clang diagnostic ignored "-Wunguarded-availability-new"
 #endif
 #include "util/platform-file.c.h"
+/* os_generate_formatted_filename's clock: time() becomes the settable one
+ * below, only for this file, so a test can give the C and Rust the same
+ * second. <time.h> was included above, under the plain name. */
+static time_t filename_now;
+static time_t oracle_platform_filename_time(time_t *t)
+{
+	if (t)
+		*t = filename_now;
+	return filename_now;
+}
+#define time oracle_platform_filename_time
 #include "util/platform-filename.c.h"
+#undef time
 #include "util/platform-mkdirs.c.h"
 #include "util/platform-time.c.h"
 #include "util/platform.c.h"
@@ -151,4 +164,84 @@ size_t oracle_timespec_offset_tv_sec(void)
 size_t oracle_timespec_offset_tv_nsec(void)
 {
 	return offsetof(struct timespec, tv_nsec);
+}
+
+/* Test-only fixtures and exports for os_generate_formatted_filename, called
+ * from Rust over FFI (src/platform_filename.rs).
+ *
+ * Intentionally different from the original: the real obs_get_video_info is
+ * in libobs/obs.c, which pulls in the whole video pipeline that the oracle
+ * does not build. Both the C (oracle_obs_get_video_info, through the rename
+ * above) and the Rust shim (the plain obs_get_video_info, which libobs
+ * provides in libobs-with-rust) read the same fixture: it copies the set
+ * struct and returns the set result, and counts its calls. The fixture and
+ * the clock are plain statics: callers must not set them from two threads at
+ * once. */
+static struct obs_video_info filename_ovi;
+static bool filename_ovi_result;
+static int filename_ovi_calls;
+
+bool obs_get_video_info(struct obs_video_info *ovi)
+{
+	filename_ovi_calls++;
+	*ovi = filename_ovi;
+	return filename_ovi_result;
+}
+
+#undef obs_get_video_info
+bool obs_get_video_info(struct obs_video_info *ovi);
+bool obs_get_video_info(struct obs_video_info *ovi)
+{
+	return oracle_obs_get_video_info(ovi);
+}
+
+void oracle_platform_filename_set_time(int64_t now);
+void oracle_platform_filename_set_video_info(const struct obs_video_info *ovi, bool result);
+int oracle_platform_filename_video_info_calls(void);
+size_t oracle_obs_video_info_size(void);
+size_t oracle_obs_video_info_align(void);
+void oracle_obs_video_info_offsets(size_t out[13]);
+
+void oracle_platform_filename_set_time(int64_t now)
+{
+	filename_now = (time_t)now;
+}
+
+void oracle_platform_filename_set_video_info(const struct obs_video_info *ovi, bool result)
+{
+	filename_ovi = *ovi;
+	filename_ovi_result = result;
+}
+
+int oracle_platform_filename_video_info_calls(void)
+{
+	return filename_ovi_calls;
+}
+
+size_t oracle_obs_video_info_size(void)
+{
+	return sizeof(struct obs_video_info);
+}
+
+size_t oracle_obs_video_info_align(void)
+{
+	return _Alignof(struct obs_video_info);
+}
+
+/* In declaration order: graphics_module through scale_type. */
+void oracle_obs_video_info_offsets(size_t out[13])
+{
+	out[0] = offsetof(struct obs_video_info, graphics_module);
+	out[1] = offsetof(struct obs_video_info, fps_num);
+	out[2] = offsetof(struct obs_video_info, fps_den);
+	out[3] = offsetof(struct obs_video_info, base_width);
+	out[4] = offsetof(struct obs_video_info, base_height);
+	out[5] = offsetof(struct obs_video_info, output_width);
+	out[6] = offsetof(struct obs_video_info, output_height);
+	out[7] = offsetof(struct obs_video_info, output_format);
+	out[8] = offsetof(struct obs_video_info, adapter);
+	out[9] = offsetof(struct obs_video_info, gpu_conversion);
+	out[10] = offsetof(struct obs_video_info, colorspace);
+	out[11] = offsetof(struct obs_video_info, range);
+	out[12] = offsetof(struct obs_video_info, scale_type);
 }
