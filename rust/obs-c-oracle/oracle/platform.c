@@ -112,3 +112,42 @@
 #if defined(__APPLE__) && defined(__clang__)
 #pragma clang diagnostic pop
 #endif
+
+/* Test-only exports called from Rust over FFI (src/platform_time.rs): the
+ * os_nstime_to_timespec base hook and the struct timespec layout. The hook
+ * makes a NULL-storage call so pthread_once has run, then replaces the base it
+ * recorded with the given one. */
+void oracle_platform_time_set_base(int64_t sec, long nsec, uint64_t timestamp);
+size_t oracle_timespec_size(void);
+size_t oracle_timespec_align(void);
+size_t oracle_timespec_offset_tv_sec(void);
+size_t oracle_timespec_offset_tv_nsec(void);
+
+void oracle_platform_time_set_base(int64_t sec, long nsec, uint64_t timestamp)
+{
+	os_nstime_to_timespec(0, NULL);
+	timespec_offset.ts.tv_sec = (time_t)sec;
+	timespec_offset.ts.tv_nsec = nsec;
+	timespec_offset.ts_valid = true;
+	timespec_offset.timestamp = timestamp;
+}
+
+size_t oracle_timespec_size(void)
+{
+	return sizeof(struct timespec);
+}
+
+size_t oracle_timespec_align(void)
+{
+	return _Alignof(struct timespec);
+}
+
+size_t oracle_timespec_offset_tv_sec(void)
+{
+	return offsetof(struct timespec, tv_sec);
+}
+
+size_t oracle_timespec_offset_tv_nsec(void)
+{
+	return offsetof(struct timespec, tv_nsec);
+}

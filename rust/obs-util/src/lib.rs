@@ -38,6 +38,7 @@ pub mod platform;
 pub mod platform_file;
 pub mod platform_mkdirs;
 pub mod platform_number;
+pub mod platform_time;
 pub mod profiler;
 pub mod profiler_snapshot;
 pub mod task;

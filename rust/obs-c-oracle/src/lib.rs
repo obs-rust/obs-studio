@@ -66,6 +66,7 @@ pub mod platform_mkdirs;
 #[cfg(unix)]
 pub mod platform_nix;
 pub mod platform_number;
+pub mod platform_time;
 #[cfg(all(windows, target_env = "msvc"))]
 pub mod platform_windows;
 pub mod proc;
