@@ -31,6 +31,10 @@ obs-websocket port (Phase 5 item 3).
   and finishes the recording instead of waiting at the "exit anyway?"
   dialog. SIGTERM while a startup dialog ("encoder missing") is open: OBS
   quits cleanly (`--only shutdown` runs just these).
+- With `--test-plugin-dir <build>/test/cmocka` (Linux): the frontend's
+  T-Bar API outside Studio Mode, through the `tier4-tbar` test plugin's
+  vendor requests (`--only tbar` runs just this; upstream
+  obsproject/obs-studio PR #13128).
 - Request batches: serial, `haltOnFailure`, no-halt error propagation, and
   parallel execution acceptance.
 - Error codes for malformed JSON (close 4002), unknown opcode (4006),

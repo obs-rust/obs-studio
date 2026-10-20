@@ -1846,6 +1846,148 @@ async def run_scripts_only(obs_bin):
     return 1 if failed else 0
 
 
+# The frontend's T-Bar API outside Studio Mode (upstream obsproject/obs-studio
+# PR #13128). obs_frontend_get_tbar_position() read OBSBasic::tBar, and
+# obs_frontend_release_tbar() ran OBSBasic::TBarReleased(), which reads it too.
+# The T-Bar only exists while Studio Mode is on: before Studio Mode was ever
+# on the pointer is unset, and after Studio Mode is turned off it points to
+# the deleted slider. A plugin calling either at startup (Studio Mode off)
+# crashed OBS. Plugins reach these functions only from C/C++ (they are not in
+# the Lua and Python bindings), so the phase loads a small test plugin,
+# tier4-tbar (test/cmocka/tier4_tbar_plugin.c), that calls them on
+# obs-websocket vendor requests.
+
+TBAR_PLUGIN = "tier4-tbar"
+
+
+def install_test_plugin(home, plugin_dir, name):
+    """Copy a test plugin into a fresh config's plugin folder."""
+    so = os.path.join(plugin_dir, name + ".so")
+    if not os.path.exists(so):
+        return False
+    dst = os.path.join(home, ".config", "obs-studio", "plugins", name,
+                       "bin", "64bit")
+    os.makedirs(dst, exist_ok=True)
+    shutil.copy(so, os.path.join(dst, name + ".so"))
+    return True
+
+
+async def tbar_vendor(c, request_type):
+    r = await c.request("CallVendorRequest", {
+        "vendorName": TBAR_PLUGIN, "requestType": request_type,
+        "requestData": {}}, timeout=10.0)
+    return (resp_status(r).get("code"),
+            r.get("d", {}).get("responseData", {}).get("responseData", {}))
+
+
+async def ui_round_trip(c, enabled):
+    """SetStudioModeEnabled runs on the UI thread and waits for it, so any
+    T-Bar release queued before it has run when it returns."""
+    r = await c.request("SetStudioModeEnabled",
+                        {"studioModeEnabled": enabled}, timeout=10.0)
+    return resp_status(r).get("code") == STATUS_SUCCESS
+
+
+async def test_tbar_api_outside_studio_mode(server):
+    c, _ = await new_identified_client(subscriptions=SUB_NONE)
+    try:
+        # Studio Mode has never been on.
+        code, data = await tbar_vendor(c, "get_position")
+        check("tbar:get position before Studio Mode was ever on",
+              code == STATUS_SUCCESS and data.get("position") == 0,
+              f"code={code} data={data}")
+        code, _ = await tbar_vendor(c, "release")
+        check("tbar:release before Studio Mode was ever on",
+              code == STATUS_SUCCESS, f"code={code}")
+        check("tbar:UI thread answers after the release",
+              await ui_round_trip(c, False) and server.proc.poll() is None,
+              "OBS died or the UI thread does not answer")
+
+        # Studio Mode on, the T-Bar moved, Studio Mode off again: the T-Bar
+        # is deleted.
+        check("tbar:Studio Mode on", await ui_round_trip(c, True))
+        r = await c.request("SetTBarPosition",
+                            {"position": 0.5, "release": False})
+        check("tbar:SetTBarPosition in Studio Mode",
+              resp_status(r).get("code") == STATUS_SUCCESS,
+              json.dumps(r)[:300])
+        # SetTBarPosition moves the slider on the UI thread, after it
+        # answers.
+        for _ in range(20):
+            code, data = await tbar_vendor(c, "get_position")
+            if data.get("position") == 512:
+                break
+            await asyncio.sleep(0.1)
+        check("tbar:get position in Studio Mode",
+              code == STATUS_SUCCESS and data.get("position") == 512,
+              f"code={code} data={data}")
+        r = await c.request("SetTBarPosition", {"position": 1.0})
+        check("tbar:SetTBarPosition to the end finishes the transition",
+              resp_status(r).get("code") == STATUS_SUCCESS,
+              json.dumps(r)[:300])
+        check("tbar:Studio Mode off", await ui_round_trip(c, False))
+
+        code, data = await tbar_vendor(c, "get_position")
+        check("tbar:get position after Studio Mode was turned off",
+              code == STATUS_SUCCESS and data.get("position") == 0,
+              f"code={code} data={data}")
+        code, _ = await tbar_vendor(c, "release")
+        check("tbar:release after Studio Mode was turned off",
+              code == STATUS_SUCCESS, f"code={code}")
+        check("tbar:UI thread answers after the second release",
+              await ui_round_trip(c, True) and server.proc.poll() is None,
+              "OBS died or the UI thread does not answer")
+    except (TimeoutError, ConnectionError, websockets.ConnectionClosed) as e:
+        check("tbar:OBS keeps answering", False,
+              f"{type(e).__name__}: {e} (OBS exit code {server.proc.poll()})")
+    finally:
+        await c.close_conn()
+
+
+async def run_tbar_phase(obs_bin, plugin_dir):
+    home = tempfile.mkdtemp(prefix="obs-tier4-")
+    if not install_test_plugin(home, plugin_dir, TBAR_PLUGIN):
+        check("tbar:test plugin built", False,
+              f"no {TBAR_PLUGIN}.so in {plugin_dir}")
+        return
+    server = ObsServer(obs_bin, PORT, password=None, keep_home=home,
+                       profile={})
+    server.start()
+    try:
+        print("== T-Bar API outside Studio Mode ==", flush=True)
+        deadline = time.time() + 30
+        log = ""
+        while time.time() < deadline and \
+                "[tier4-tbar] vendor requests registered" not in log:
+            await asyncio.sleep(0.25)
+            with open(server.log, errors="replace") as f:
+                log = f.read()
+        check("tbar:test plugin loaded",
+              "[tier4-tbar] vendor requests registered" in log,
+              "the plugin did not register its vendor requests")
+        await test_tbar_api_outside_studio_mode(server)
+        if server.proc.poll() is not None:
+            server.report_failure()
+    except BaseException:
+        server.report_failure()
+        raise
+    finally:
+        try:
+            server.stop()
+        except ProcessLookupError:
+            pass  # OBS (and xvfb-run with it) already exited
+
+
+async def run_tbar_only(obs_bin, plugin_dir):
+    await run_tbar_phase(obs_bin, plugin_dir)
+    failed = [n for n, ok, _ in RESULTS if not ok]
+    print("=" * 60)
+    print(f"checks: {len(RESULTS) - len(failed)}/{len(RESULTS)} passed")
+    for n, _, detail in (r for r in RESULTS if not r[1]):
+        print(f"  - {n}: {detail}")
+    return 1 if failed else 0
+
+
 async def run_srt_phase(obs_bin):
     """Simple output streaming to an SRT listener (srt:// Custom server)."""
     profile = {
@@ -1936,7 +2078,7 @@ async def run_gpu_only(obs_bin):
     return 1 if failed else 0
 
 
-async def run_all(obs_bin, skip_obs, skip_auth_phase):
+async def run_all(obs_bin, skip_obs, skip_auth_phase, test_plugin_dir=None):
     server_a = server_b = None
     if not skip_obs:
         server_a = ObsServer(obs_bin, PORT, password=None)
@@ -2016,6 +2158,10 @@ async def run_all(obs_bin, skip_obs, skip_auth_phase):
         wait_for_port_closed(PORT)
         await run_srt_phase(obs_bin)
 
+    if not skip_obs and test_plugin_dir:
+        wait_for_port_closed(PORT)
+        await run_tbar_phase(obs_bin, test_plugin_dir)
+
     total = len(RESULTS)
     passed = sum(1 for _, ok, _ in RESULTS if ok)
     failed = [n for n, ok, _ in RESULTS if not ok]
@@ -2046,14 +2192,26 @@ def main():
                          "mainly for debugging)")
     ap.add_argument("--skip-auth-phase", action="store_true",
                     help="with --no-spawn only: skip the auth-required phase")
-    ap.add_argument("--only", choices=["gpu", "shutdown", "scripts", "srt"],
+    ap.add_argument("--only",
+                    choices=["gpu", "shutdown", "scripts", "srt", "tbar"],
                     help="run one group: gpu = GetStats.gpuAcceleration and the "
                          "startup warning with OpenGL forced onto llvmpipe; "
                          "shutdown = SIGTERM while recording and during a "
                          "startup dialog; scripts = a Lua script switching "
                          "scenes from a timer; srt = stopping an SRT listener "
-                         "and quitting while one waits")
+                         "and quitting while one waits; tbar = the frontend's "
+                         "T-Bar API outside Studio Mode (needs "
+                         "--test-plugin-dir)")
+    ap.add_argument("--test-plugin-dir",
+                    default=os.environ.get("TIER4_TEST_PLUGIN_DIR"),
+                    help="directory with the test plugins built from "
+                         "test/cmocka (the build's test/cmocka directory); "
+                         "the phases that need one run only when it is given")
     args = ap.parse_args()
+    if args.only == "tbar":
+        if not args.test_plugin_dir:
+            ap.error("--only tbar needs --test-plugin-dir")
+        sys.exit(asyncio.run(run_tbar_only(args.obs, args.test_plugin_dir)))
     if args.only == "gpu":
         sys.exit(asyncio.run(run_gpu_only(args.obs)))
     if args.only == "shutdown":
@@ -2063,7 +2221,8 @@ def main():
     if args.only == "srt":
         sys.exit(asyncio.run(run_srt_only(args.obs)))
     sys.exit(asyncio.run(
-        run_all(args.obs, args.no_spawn, args.skip_auth_phase)))
+        run_all(args.obs, args.no_spawn, args.skip_auth_phase,
+                args.test_plugin_dir)))
 
 
 if __name__ == "__main__":
