@@ -49,8 +49,12 @@ float4 PSColorFilterRGBA(VertData vert_in) : TARGET
 	float4 currentPixel = image.Sample(textureSampler, vert_in.uv);
 	currentPixel.rgb *= (currentPixel.a > 0.) ? (1. / currentPixel.a) : 0.;
 
-	/* Always address the gamma first. */
-	currentPixel.rgb = pow(currentPixel.rgb, float3(gamma, gamma, gamma));
+	/* Always address the gamma first. High-precision (16-bit) sources
+	 * can have negative channels for colours outside the sRGB gamut, and
+	 * pow() is undefined for a negative base (NaN on the GPU), so apply
+	 * the curve to the magnitude and keep the sign, as extended sRGB
+	 * does. Unchanged for 0 and up. */
+	currentPixel.rgb = sign(currentPixel.rgb) * pow(abs(currentPixel.rgb), float3(gamma, gamma, gamma));
 
 	/* Much easier to manipulate pixels for these types of operations
 	 * when in a matrix such as the below. See

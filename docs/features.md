@@ -1052,6 +1052,13 @@ area.
   only the audio. *All*, 2026-10-16. Issue
   [#1131](https://github.com/obs-rust/obs-studio/issues/1131), PR
   [#1132](https://github.com/obs-rust/obs-studio/pull/1132).
+- A Color Correction filter at its default settings leaves a high-precision
+  (16-bit) source such as macOS Screen Capture as it is; before, it turned
+  saturated colours (reds, greens) black or transparent. 8-bit sources look
+  the same as before. *All*, 2026-10-19. Issue
+  [#1471](https://github.com/obs-rust/obs-studio/issues/1471), PR
+  [#1472](https://github.com/obs-rust/obs-studio/pull/1472), upstream
+  [obsproject/obs-studio#10403](https://github.com/obsproject/obs-studio/issues/10403).
 
 ### Scenes and UI
 
