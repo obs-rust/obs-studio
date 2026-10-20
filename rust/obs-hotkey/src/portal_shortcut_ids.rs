@@ -14,7 +14,9 @@
 
 use std::ffi::CStr;
 
-use crate::name_map::{KEY_NONE, OBS_KEY_LAST_VALUE, OBS_KEY_MOUSE1, OBS_KEY_MOUSE29};
+use crate::name_map::{
+    KEY_NONE, OBS_KEY_LAST_VALUE, OBS_KEY_MOUSE1, OBS_KEY_MOUSE29, key_from_name, key_name,
+};
 use crate::nix_hotkey_state::{
     INTERACT_ALT_KEY, INTERACT_COMMAND_KEY, INTERACT_CONTROL_KEY, INTERACT_SHIFT_KEY,
     KeyCombination,
@@ -71,38 +73,91 @@ pub trait Text {
 /// Plain bytes, without the terminator.
 impl Text for Vec<u8> {
     fn free(&mut self) {
-        todo!()
+        *self = Vec::new();
     }
-    fn cat(&mut self, _s: &CStr) {
-        todo!()
+    fn cat(&mut self, s: &CStr) {
+        self.extend_from_slice(s.to_bytes());
     }
-    fn cat_text(&mut self, _other: &Self) {
-        todo!()
+    fn cat_text(&mut self, other: &Self) {
+        self.extend_from_slice(other);
     }
     fn is_empty(&self) -> bool {
-        todo!()
+        self.first().is_none_or(|&b| b == 0)
     }
 }
 
 /// `bindable` (`obs-nix-portal-shortcuts.h`): whether `combo` can be a
 /// portal shortcut. It needs a keyboard key: not `OBS_KEY_NONE`, not out of
 /// range and not a mouse button. Modifiers do not matter.
-pub fn bindable(_combo: KeyCombination) -> bool {
-    todo!()
+pub fn bindable(combo: KeyCombination) -> bool {
+    let key = combo.key;
+    // Portal triggers are keyboard shortcuts; modifier-only and mouse
+    // combinations keep working only while OBS is focused.
+    if key <= KEY_NONE || usize::try_from(key).is_ok_and(|k| k >= OBS_KEY_LAST_VALUE) {
+        return false;
+    }
+    !(OBS_KEY_MOUSE1..=OBS_KEY_MOUSE29).contains(&key)
+}
+
+/// Appends each known modifier of `modifiers` as `name(m)` and `"+"`, one
+/// `dstr_cat` each, in [`MODIFIER_NAMES`] order.
+fn cat_modifiers(
+    modifiers: u32,
+    name: impl Fn(&ModifierName) -> &'static CStr,
+    out: &mut impl Text,
+) {
+    for m in MODIFIER_NAMES
+        .iter()
+        .filter(|m| modifiers & m.modifier != 0)
+    {
+        out.cat(name(m));
+        out.cat(c"+");
+    }
 }
 
 /// `obs_nix_portal_shortcut_id`: replaces `id` with the shortcut id of
 /// `combo` and returns true, or returns false and leaves `id` alone when
 /// `combo` is not [`bindable`].
-pub fn shortcut_id(_combo: KeyCombination, _id: &mut impl Text) -> bool {
-    todo!()
+pub fn shortcut_id(combo: KeyCombination, id: &mut impl Text) -> bool {
+    if !bindable(combo) {
+        return false;
+    }
+
+    id.free();
+    cat_modifiers(combo.modifiers, |m| m.id, id);
+    // A bindable key always has a name.
+    if let Some(name) = key_name(combo.key) {
+        id.cat(name);
+    }
+    true
 }
 
 /// `obs_nix_portal_shortcut_combo`: the key combination a shortcut id names,
 /// or `None` for anything else. Known modifiers may come in any order and
 /// repeat; the key is an `OBS_KEY_*` name of a [`bindable`] key.
-pub fn shortcut_combo(_id: &CStr) -> Option<KeyCombination> {
-    todo!()
+pub fn shortcut_combo(id: &CStr) -> Option<KeyCombination> {
+    let bytes = id.to_bytes_with_nul();
+    let mut modifiers = 0;
+    let mut part = 0;
+
+    // Every segment before a '+' is a known modifier id, matched exactly.
+    while let Some(len) = bytes[part..].iter().position(|&b| b == b'+') {
+        let segment = &bytes[part..part + len];
+        let known = MODIFIER_NAMES.iter().find(|m| m.id.to_bytes() == segment)?;
+        modifiers |= known.modifier;
+        part += len + 1;
+    }
+
+    // The rest is the key's name.
+    let rest = CStr::from_bytes_with_nul(&bytes[part..]).ok()?;
+    if !rest.to_bytes().starts_with(b"OBS_KEY_") {
+        return None;
+    }
+    let result = KeyCombination {
+        modifiers,
+        key: key_from_name(rest),
+    };
+    bindable(result).then_some(result)
 }
 
 /// `obs_nix_portal_shortcut_trigger`: replaces `trigger` with the preferred
@@ -111,22 +166,20 @@ pub fn shortcut_combo(_id: &CStr) -> Option<KeyCombination> {
 /// one. Returns false and leaves `trigger` alone when `combo` is not
 /// [`bindable`] (then `key_name` is not called), when there is no
 /// `key_name`, or when it has no name or an empty one.
-pub fn shortcut_trigger<T, F>(
-    _combo: KeyCombination,
-    _key_name: Option<F>,
-    _trigger: &mut T,
-) -> bool
+pub fn shortcut_trigger<T, F>(combo: KeyCombination, key_name: Option<F>, trigger: &mut T) -> bool
 where
     T: Text + Default,
     F: FnOnce(i32, &mut T) -> bool,
 {
-    todo!()
-}
+    let mut name = T::default();
+    if !bindable(combo) || !key_name.is_some_and(|f| f(combo.key, &mut name)) || name.is_empty() {
+        name.free();
+        return false;
+    }
 
-#[allow(dead_code)]
-const _USED: (i32, usize, i32, i32) = (
-    KEY_NONE,
-    OBS_KEY_LAST_VALUE,
-    OBS_KEY_MOUSE1,
-    OBS_KEY_MOUSE29,
-);
+    trigger.free();
+    cat_modifiers(combo.modifiers, |m| m.trigger, trigger);
+    trigger.cat_text(&name);
+    name.free();
+    true
+}

@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-nix-portal-shortcut-ids.pch.h"
+#include "libobs/build/libobs-ported-nix-portal-shortcut-ids.pch.h"
 
 /* ------------------------------------------------------------------------ */
 /* Shortcut ids and triggers                                                 */

@@ -25,6 +25,12 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-hotkey-state.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-hotkey-state.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertIn("obs-nix-portal-shortcut-ids.c.h.o", objects)
+        self.assertNotIn("obs-nix-portal-shortcut-ids.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", gio=False))
+        self.assertNotIn("obs-nix-portal-shortcut-ids.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", wayland=False))
+        self.assertNotIn("obs-nix-portal-shortcut-ids.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_host_and_optional_groups_select_the_actual_members(self):
@@ -39,17 +45,23 @@ class PortedSourceTest(unittest.TestCase):
                 "LIBOBS_HEVC_PORTED_SOURCES": ["build/hevc+.h.c"],
                 "LIBOBS_PULSE_PORTED_SOURCES": ["build/pulse+.h.c"],
                 "LIBOBS_WAYLAND_PORTED_SOURCES": ["build/wayland+.h.c"],
+                "LIBOBS_WAYLAND_GIO_PORTED_SOURCES": ["build/wayland-gio+.h.c"],
             }
             (build / "source-sets.json").write_text(json.dumps(groups))
             for group, member in [("common", "common"), ("linux", "linux"),
                                   ("windows", "windows"), ("hevc", "hevc"), ("pulse", "pulse"),
-                                  ("wayland", "wayland")]:
+                                  ("wayland", "wayland"), ("wayland-gio", "wayland-gio")]:
                 (build / f"{group}+.h.c").write_text(f'#include "libobs/util/{member}.c.h"\n')
             self.assertEqual(PORTED.ported_objects(root, "linux"),
                              ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o",
-                              "util/wayland.c.h.o"])
+                              "util/wayland-gio.c.h.o", "util/wayland.c.h.o"])
             self.assertEqual(PORTED.ported_objects(root, "linux", pulse=False),
-                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/wayland.c.h.o"])
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o",
+                              "util/wayland-gio.c.h.o", "util/wayland.c.h.o"])
+            self.assertEqual(PORTED.ported_objects(root, "linux", gio=False),
+                             ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o",
+                              "util/wayland.c.h.o"])
+            # The GIO group needs Wayland: no Wayland, neither group.
             self.assertEqual(PORTED.ported_objects(root, "linux", wayland=False),
                              ["util/common.c.h.o", "util/hevc.c.h.o", "util/linux.c.h.o", "util/pulse.c.h.o"])
             self.assertEqual(PORTED.ported_objects(root, "windows", hevc=False),

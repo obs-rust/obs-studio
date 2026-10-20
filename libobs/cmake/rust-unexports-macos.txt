@@ -42,6 +42,12 @@ _obs_nix_hotkey_state_clear_keys
 _obs_nix_hotkey_state_set_shortcut
 _obs_nix_hotkey_state_flush
 _obs_nix_hotkey_state_is_pressed
+# obs-nix-portal-shortcut-ids.c: the GlobalShortcuts portal client calls
+# them inside libobs on Linux and FreeBSD with GIO. Built on every host;
+# not EXPORT.
+_obs_nix_portal_shortcut_id
+_obs_nix_portal_shortcut_combo
+_obs_nix_portal_shortcut_trigger
 # compiler-rt @available helpers (__isOSVersionAtLeast,
 # __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
 # build does not export them. Wildcards: no error if absent.

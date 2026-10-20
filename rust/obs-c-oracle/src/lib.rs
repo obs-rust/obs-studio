@@ -74,6 +74,7 @@ pub mod platform_number;
 pub mod platform_time;
 #[cfg(all(windows, target_env = "msvc"))]
 pub mod platform_windows;
+pub mod portal_shortcut_ids;
 pub mod proc;
 pub mod profiler;
 pub mod profiler_snapshot;

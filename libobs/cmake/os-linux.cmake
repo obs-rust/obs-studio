@@ -90,13 +90,9 @@ if(ENABLE_WAYLAND)
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 
   if(TARGET gio::gio)
-    target_sources(
-      libobs-objects
-      PRIVATE
-        build/libobs.nix-portal-shortcut-ids+.h.c
-        build/libobs.nix-portal-shortcuts+.h.c
-        obs-nix-portal-shortcuts.h
-    )
+    target_sources(libobs-objects PRIVATE build/libobs.nix-portal-shortcuts+.h.c obs-nix-portal-shortcuts.h)
+    # obs-nix-portal-shortcut-ids.c has a Rust port: libobs only (sources.cmake).
+    target_sources(libobs PRIVATE ${LIBOBS_WAYLAND_GIO_PORTED_SOURCES})
     target_compile_definitions(libobs-objects PUBLIC HAVE_GLOBAL_SHORTCUTS_PORTAL)
   endif()
   target_enable_feature(libobs "Wayland compositor support (Linux)")

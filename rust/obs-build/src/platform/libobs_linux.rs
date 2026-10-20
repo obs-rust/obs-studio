@@ -60,9 +60,6 @@ pub fn configure(
         if options.gio {
             library
                 .sources
-                .push(root.join("libobs/build/libobs.nix-portal-shortcut-ids+.h.c"));
-            library
-                .sources
                 .push(root.join("libobs/build/libobs.nix-portal-shortcuts+.h.c"));
             library
                 .definitions
@@ -114,6 +111,9 @@ pub fn configure_variant(
         }
         if options.wayland {
             append_sources(sets, "LIBOBS_WAYLAND_PORTED_SOURCES", root, library)?;
+            if options.gio {
+                append_sources(sets, "LIBOBS_WAYLAND_GIO_PORTED_SOURCES", root, library)?;
+            }
         }
     }
     Ok(())

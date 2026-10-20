@@ -120,7 +120,8 @@ trap 'zccache stop >/dev/null 2>&1 || true' EXIT
 # Read the same canonical source sets as CMake and obs-build, then expand the
 # selected ported groups into implementation object names. Scraping sources.cmake
 # misses groups now that it imports the JSON manifest instead of listing them.
-# The build below configures ENABLE_WAYLAND=OFF, so the Wayland group is not built.
+# The build below configures ENABLE_WAYLAND=OFF, so neither Wayland group (with
+# or without GIO) is built.
 ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux --without-wayland)
 
 if [ "$(wc -w <<<"$ported_objs")" -lt 20 ]; then

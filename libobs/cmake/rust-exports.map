@@ -51,4 +51,9 @@
     obs_nix_hotkey_state_set_shortcut;
     obs_nix_hotkey_state_flush;
     obs_nix_hotkey_state_is_pressed;
+    /* obs-nix-portal-shortcut-ids.c. obs-nix-portal-shortcuts.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_nix_portal_shortcut_id;
+    obs_nix_portal_shortcut_combo;
+    obs_nix_portal_shortcut_trigger;
 };

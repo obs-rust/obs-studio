@@ -9,7 +9,7 @@ MEMBER = re.compile(r'^\s*#include\s+"libobs/([^"\n]+\.(?:c|m)\.h)"\s*$', re.MUL
 
 
 def ported_objects(root: Path, host: str, hevc: bool = True, pulse: bool = True,
-                   wayland: bool = True) -> list[str]:
+                   wayland: bool = True, gio: bool = True) -> list[str]:
     if host not in {"linux", "windows", "macos"}:
         raise ValueError(f"unknown native host: {host}")
     libobs = root / "libobs"
@@ -23,6 +23,9 @@ def ported_objects(root: Path, host: str, hevc: bool = True, pulse: bool = True,
     # ENABLE_WAYLAND, Linux (and FreeBSD) only.
     if wayland and host == "linux":
         names.append("LIBOBS_WAYLAND_PORTED_SOURCES")
+        # The GlobalShortcuts portal needs GIO too.
+        if gio:
+            names.append("LIBOBS_WAYLAND_GIO_PORTED_SOURCES")
     objects = set()
     for name in names:
         for group in sets[name]:
@@ -40,6 +43,8 @@ if __name__ == "__main__":
     parser.add_argument("--without-hevc", action="store_true")
     parser.add_argument("--without-pulse", action="store_true")
     parser.add_argument("--without-wayland", action="store_true")
+    parser.add_argument("--without-gio", action="store_true")
     arguments = parser.parse_args()
     print("\n".join(ported_objects(arguments.root, arguments.host, not arguments.without_hevc,
-                                    not arguments.without_pulse, not arguments.without_wayland)))
+                                    not arguments.without_pulse, not arguments.without_wayland,
+                                    not arguments.without_gio)))
