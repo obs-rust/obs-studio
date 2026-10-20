@@ -537,6 +537,12 @@ area.
   once. *Linux*, 2026-10-17. Issue
   [#1068](https://github.com/obs-rust/obs-studio/issues/1068), PR
   [#1217](https://github.com/obs-rust/obs-studio/pull/1217).
+- Screen Capture (XSHM) follows a change of the screen's resolution: the
+  capture is resized instead of freezing (screen made smaller) or staying
+  cropped to the old size (screen made larger). *Linux*, 2026-10-20. Issue
+  [#1494](https://github.com/obs-rust/obs-studio/issues/1494), PR
+  [#1495](https://github.com/obs-rust/obs-studio/pull/1495), port of
+  [obsproject/obs-studio#12937](https://github.com/obsproject/obs-studio/pull/12937).
 
 ### Audio
 
