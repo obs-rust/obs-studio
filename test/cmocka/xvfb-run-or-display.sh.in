@@ -8,6 +8,56 @@
 # display".
 #   xvfb-run-or-display [xvfb-run options] <command> [args...]
 if [ -z "${DISPLAY:-}" ]; then
+  # The private server always runs with -noreset. Without it Xvfb resets when
+  # its last client disconnects: a test that starts and shuts down libobs once
+  # per case closes the only X connection each time, and the next case's
+  # XOpenDisplay can lose the race with that reset (obs_startup fails, cmocka
+  # reports "Test setup failed"). validate.sh's shared display does the same.
+  noreset() {
+    case " $1 " in
+    *" -noreset "*) printf '%s' "$1" ;;
+    *) printf '%s' "$1 -noreset" ;;
+    esac
+  }
+  server_args=
+  command=
+  # Rebuild the arguments in place: each one is taken off the front and put
+  # back at the end, with -noreset added to the server arguments.
+  n=$#
+  while [ "$n" -gt 0 ]; do
+    arg=$1
+    shift
+    n=$((n - 1))
+    if [ -z "$command" ]; then
+      case "$arg" in
+      -s | --server-args)
+        set -- "$@" "$arg" "$(noreset "$1")"
+        shift
+        n=$((n - 1))
+        server_args=1
+        continue
+        ;;
+      --server-args=*)
+        set -- "$@" "--server-args=$(noreset "${arg#--server-args=}")"
+        server_args=1
+        continue
+        ;;
+      -e | -f | -n | -p | -w | --error-file | --auth-file | --server-num | --xauth-protocol | --wait)
+        set -- "$@" "$arg" "$1"
+        shift
+        n=$((n - 1))
+        continue
+        ;;
+      -a | --auto-servernum | -l | --listen-tcp | --*=*) ;;
+      *)
+        # "--" or the test command: xvfb-run's options end here.
+        command=1
+        [ -n "$server_args" ] || set -- "$@" -s "-screen 0 1280x1024x24 -noreset"
+        ;;
+      esac
+    fi
+    set -- "$@" "$arg"
+  done
   exec "@OBS_XVFB_RUN_REAL@" "$@"
 fi
 # xvfb-run's own options (they configure the server we don't start).

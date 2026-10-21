@@ -98,11 +98,19 @@ static int source_setup(void **state)
 	(void)state;
 	base_set_log_handler(log_handler, NULL);
 	obs_up = obs_startup("en-US", NULL, NULL);
-	if (!obs_up)
+	if (!obs_up) {
+		print_error("obs_startup failed\n");
 		return -1;
+	}
 	register_source();
-	if (!obs_reset_audio(&audio))
+	if (!obs_reset_audio(&audio)) {
+		/* cmocka skips the teardown of a failed setup: shut down here, or
+		 * every later case fails in obs_startup too. */
+		print_error("obs_reset_audio failed\n");
+		obs_shutdown();
+		obs_up = false;
 		return -1;
+	}
 	return 0;
 }
 
