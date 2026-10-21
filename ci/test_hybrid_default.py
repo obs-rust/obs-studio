@@ -1,6 +1,7 @@
 """Exercise production/reference selection and installation through real CMake."""
 
 import ctypes
+import json
 import shutil
 import subprocess
 import tempfile
@@ -81,3 +82,45 @@ class HybridDefaultTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(subprocess.CalledProcessError):
                 self.configure(directory, "-DOBS_LIBOBS_BACKEND=typo")
+
+    def test_default_gives_pinned_ported_files_an_include_owner(self):
+        # A test that compiles one ported implementation file itself (test_avc
+        # pins obs-avc.c.h) takes that file's include directories from the
+        # target that owns its group (cmake/common/groups.cmake). In the default
+        # hybrid no C target compiles the ported groups, which left the file
+        # without libobs's usage requirements (caption/caption.h not found).
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            # groups.cmake takes the repo root from its own location.
+            (source / "cmake" / "common").mkdir(parents=True)
+            shutil.copy(ROOT / "cmake" / "common" / "groups.cmake", source / "cmake" / "common")
+            (source / "libobs" / "build").mkdir(parents=True)
+            (source / "libobs" / "build" / "mini.ported+.h.c").write_text(
+                '#include "libobs/build/mini.pch.h"\n#include "libobs/mini.c.h"\n'
+            )
+            (source / "libobs" / "build" / "mini.pch.h").write_text("#pragma once\n#include <owner.h>\n")
+            (source / "libobs" / "mini.c.h").write_text(
+                '#include "libobs/build/mini.pch.h"\nint mini(void) { return OWNER_VALUE; }\n'
+            )
+            (source / "owner-include").mkdir()
+            (source / "owner-include" / "owner.h").write_text("#define OWNER_VALUE 3\n")
+            (source / "common.c").write_text("int common(void) { return 7; }\n")
+            (source / "main.c").write_text("int mini(void);\nint main(void) { return mini() == 3 ? 0 : 1; }\n")
+            (source / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.28)\nproject(Owner C)\n'
+                'include("${CMAKE_SOURCE_DIR}/cmake/common/groups.cmake")\n'
+                f'include("{ROOT}/libobs/cmake/implementation.cmake")\n'
+                'obs_libobs_create_targets()\n'
+                'target_sources(libobs-objects PRIVATE common.c)\n'
+                'target_include_directories(libobs-objects PUBLIC "${CMAKE_SOURCE_DIR}/owner-include")\n'
+                'obs_libobs_add_c_sources("${CMAKE_SOURCE_DIR}/libobs/build/mini.ported+.h.c")\n'
+                'target_link_libraries(libobs PRIVATE libobs-objects)\n'
+                'add_executable(pinned main.c libobs/mini.c.h)\n'
+                'target_link_libraries(pinned PRIVATE libobs)\n'
+                '_obs_groups_all("${CMAKE_SOURCE_DIR}")\n'
+                '_obs_target_impl_languages(pinned)\n'
+            )
+            build = source / "build"
+            subprocess.run(["cmake", "-S", str(source), "-B", str(build), "-G", "Ninja"], check=True, capture_output=True, text=True)
+            self.build(build, "--target", "pinned")
+            self.assertEqual(subprocess.run([str(build / "pinned")]).returncode, 0)
