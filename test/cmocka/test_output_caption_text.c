@@ -125,7 +125,13 @@ static void register_types(void)
 struct caption_harness {
 	obs_output_t *output;
 	obs_encoder_t *encoder;
+	struct caption_harness *next_live;
 };
+
+/* Harnesses not yet destroyed. A failed assertion leaves its case before
+ * harness_destroy(), and an output still marked active would block
+ * obs_shutdown(), so main() destroys these first. */
+static struct caption_harness *live_harnesses;
 
 static struct caption_harness *harness_create(void)
 {
@@ -141,12 +147,21 @@ static struct caption_harness *harness_create(void)
 	/* begin_data_capture would need a running core video; setting active
 	 * is enough for obs_output_output_caption_text2() */
 	os_atomic_set_bool(&h->output->active, true);
+	h->next_live = live_harnesses;
+	live_harnesses = h;
 	return h;
 }
 
 static void harness_destroy(struct caption_harness *h)
 {
 	struct caption_track_data *ctrack = h->output->caption_tracks[0];
+
+	for (struct caption_harness **link = &live_harnesses; *link; link = &(*link)->next_live) {
+		if (*link == h) {
+			*link = h->next_live;
+			break;
+		}
+	}
 
 	pthread_mutex_lock(&ctrack->caption_mutex);
 	struct caption_text *node = ctrack->caption_head;
@@ -497,6 +512,480 @@ static void caption_tab_becomes_space(void **state)
 	harness_destroy(h);
 }
 
+/* ------------------------------------------------------------------------- */
+/* Characterization of the wrap and pagination in obs-output-caption-text.c
+ * before its Rust port. These pin what the C does today. Cases marked
+ * "characterized, not endorsed" describe behaviour that is kept as-is but is
+ * not a design statement. */
+
+/* Queue one caption and expect exactly one page with this text. */
+static void assert_single_page(const char *input, const char *expected)
+{
+	struct caption_harness *h = harness_create();
+
+	obs_output_output_caption_text2(h->output, input, 2.0);
+
+	const char *texts[8];
+	double durs[8];
+	assert_int_equal(1, collect_pages(h, texts, durs, 8));
+	assert_string_equal(expected, texts[0]);
+
+	harness_destroy(h);
+}
+
+/* The bounds every queued page keeps whatever the input: at most
+ * CAPTION_PAGE_BYTES bytes, 1-15 rows joined by '\n', each row 1 to
+ * CAPTION_LINE_BYTES bytes and at most CAPTION_LINE_CHARS characters,
+ * starting with a non-whitespace character, with no CR or LF inside, and
+ * well-formed UTF-8. Only a sole page may be empty. Returns the page count. */
+static size_t assert_page_invariants(struct caption_harness *h)
+{
+	struct caption_track_data *ctrack = h->output->caption_tracks[0];
+	const char **texts = NULL;
+	size_t pages = 0;
+
+	/* Collect under the lock and check after it: a failed assertion must
+	 * not leave caption_mutex held for obs_shutdown(). The nodes live until
+	 * harness_destroy(). */
+	pthread_mutex_lock(&ctrack->caption_mutex);
+	for (struct caption_text *node = ctrack->caption_head; node; node = node->next) {
+		texts = brealloc(texts, (pages + 1) * sizeof(*texts));
+		texts[pages++] = node->text;
+	}
+	pthread_mutex_unlock(&ctrack->caption_mutex);
+
+	for (size_t p = 0; p < pages; p++) {
+		const char *page = texts[p];
+		size_t page_len = strlen(page);
+
+		assert_true(page_len <= CAPTION_PAGE_BYTES);
+		assert_valid_utf8(page);
+		if (!page_len) {
+			assert_int_equal(1, pages);
+			continue;
+		}
+
+		size_t rows = 0;
+		const char *row = page;
+		for (;;) {
+			const char *nl = strchr(row, '\n');
+			size_t row_len = nl ? (size_t)(nl - row) : strlen(row);
+			size_t chars = 0;
+
+			rows++;
+			assert_true(row_len >= 1);
+			assert_true(row_len <= CAPTION_LINE_BYTES);
+			assert_true((unsigned char)row[0] > ' ' && (unsigned char)row[0] != 0x7F);
+			assert_false(row_len >= 2 && (unsigned char)row[0] == 0xC2 && (unsigned char)row[1] == 0xA0);
+			for (size_t i = 0; i < row_len; i++) {
+				assert_true(row[i] != '\r');
+				if (((unsigned char)row[i] & 0xC0) != 0x80)
+					chars++;
+			}
+			assert_true(chars <= CAPTION_LINE_CHARS);
+			if (!nl)
+				break;
+			row = nl + 1;
+		}
+		assert_true(rows <= CAPTION_PAGE_ROWS);
+	}
+	bfree(texts);
+	return pages;
+}
+
+/* Each invalid UTF-8 form is dropped one byte at a time, and the bytes after
+ * the bad lead are judged on their own. Valid characters on either side are
+ * kept, and a dropped byte takes no column. */
+static void caption_invalid_utf8_dropped(void **state)
+{
+	(void)state;
+	/* a lone continuation byte */
+	assert_single_page("a\x80"
+			   "b",
+			   "ab");
+	/* C0 and C1 overlong leads */
+	assert_single_page("a\xC0\xAF"
+			   "b\xC1\xBF"
+			   "c",
+			   "abc");
+	/* E0 80-9F: overlong 3-byte forms */
+	assert_single_page("a\xE0\x80\xAF"
+			   "b\xE0\x9F\xBF"
+			   "c",
+			   "abc");
+	/* ED A0-BF: UTF-16 surrogates */
+	assert_single_page("a\xED\xA0\x80"
+			   "b\xED\xBF\xBF"
+			   "c",
+			   "abc");
+	/* F0 80-8F: overlong 4-byte forms */
+	assert_single_page("a\xF0\x8F\xBF\xBF"
+			   "b",
+			   "ab");
+	/* F4 90 and above: past U+10FFFF */
+	assert_single_page("a\xF4\x90\x80\x80"
+			   "b",
+			   "ab");
+	/* F5-FF never start a character */
+	assert_single_page("a\xF5\x80\x80\x80"
+			   "b\xF8\x80"
+			   "c\xFE\xFF"
+			   "d",
+			   "abcd");
+	/* sequences truncated by the end of the string */
+	assert_single_page("ab\xE4\xB8", "ab");
+	assert_single_page("ab\xF0\x9F\xA6", "ab");
+	assert_single_page("ab\xC3", "ab");
+	/* a sequence truncated by an ASCII byte */
+	assert_single_page("a\xE4\xB8"
+			   "b",
+			   "ab");
+	/* the valid edges of each range are kept: U+D7FF, U+10FFFF, U+0800,
+	 * U+10000, U+0080 */
+	assert_single_page("\xED\x9F\xBF|\xF4\x8F\xBF\xBF|\xE0\xA0\x80|\xF0\x90\x80\x80|\xC2\x80",
+			   "\xED\x9F\xBF|\xF4\x8F\xBF\xBF|\xE0\xA0\x80|\xF0\x90\x80\x80|\xC2\x80");
+}
+
+/* Characterized, not endorsed: an invalid byte is dropped, not replaced, so
+ * the words on either side of it join. */
+static void caption_invalid_byte_joins_words(void **state)
+{
+	(void)state;
+	assert_single_page("one\xFFtwo", "onetwo");
+}
+
+/* Invalid bytes take no column: 32 4-byte characters, each followed by a
+ * lone continuation byte, still fill one 128-byte row. */
+static void caption_invalid_bytes_take_no_column(void **state)
+{
+	(void)state;
+	char input[512] = {0};
+	char expected[256] = {0};
+	for (int i = 0; i < 32; i++) {
+		strcat(input, "\xF0\x9F\xA6\x84\x80");
+		strcat(expected, "\xF0\x9F\xA6\x84");
+	}
+	strcat(input, "z");
+	strcat(expected, "\nz");
+	assert_single_page(input, expected);
+}
+
+/* A string of only invalid bytes queues the single empty page, like "". */
+static void caption_only_invalid_bytes(void **state)
+{
+	(void)state;
+	assert_single_page("\xFF\xFE\x80\xC0", "");
+	assert_single_page("\xE4\xB8", "");
+}
+
+/* The empty string queues one empty page. */
+static void caption_empty_string(void **state)
+{
+	(void)state;
+	assert_single_page("", "");
+}
+
+/* Only spaces, short or longer than a row, queue the single empty page. */
+static void caption_all_spaces(void **state)
+{
+	(void)state;
+	char *spaces = repeat_char(100, ' ');
+
+	assert_single_page(" ", "");
+	assert_single_page("        ", "");
+	assert_single_page(spaces, "");
+
+	bfree(spaces);
+}
+
+/* CR, LF and CRLF each end a row. */
+static void caption_newlines_end_rows(void **state)
+{
+	(void)state;
+	assert_single_page("one\rtwo\nthree\r\nfour", "one\ntwo\nthree\nfour");
+}
+
+/* Characterized, not endorsed: a newline is skipped as leading whitespace, so
+ * blank lines (and leading and trailing newlines) give no empty rows. */
+static void caption_blank_lines_collapse(void **state)
+{
+	(void)state;
+	assert_single_page("four\n\n\nfive\r\n\r\nsix", "four\nfive\nsix");
+	assert_single_page("\r\n\nhello\n\r", "hello");
+}
+
+/* Characterized, not endorsed: whitespace before a newline or the end of the
+ * text stays in the row; only a wrap drops the whitespace it splits at. */
+static void caption_trailing_whitespace_kept(void **state)
+{
+	(void)state;
+	assert_single_page("hello world \nnext ", "hello world \nnext ");
+	assert_single_page("end\t", "end ");
+}
+
+/* NBSP (U+00A0) is a split point and is skipped as leading whitespace, but
+ * inside a row it is kept as its two bytes, not turned into a space. */
+static void caption_nbsp(void **state)
+{
+	(void)state;
+	char input[64] = {0};
+	char expected[64] = {0};
+
+	assert_single_page("aaaa\xC2\xA0"
+			   "bbbb",
+			   "aaaa\xC2\xA0"
+			   "bbbb");
+	assert_single_page("\xC2\xA0\xC2\xA0hi", "hi");
+
+	/* the wrap splits at the NBSP and drops it */
+	memset(input, 'a', 30);
+	strcat(input, "\xC2\xA0"
+		      "bbbbb");
+	memset(expected, 'a', 30);
+	strcat(expected, "\nbbbbb");
+	assert_single_page(input, expected);
+
+	/* an NBSP as character 33 ends a full row */
+	memset(input, 0, sizeof(input));
+	memset(expected, 0, sizeof(expected));
+	memset(input, 'a', 32);
+	strcat(input, "\xC2\xA0"
+		      "b");
+	memset(expected, 'a', 32);
+	strcat(expected, "\nb");
+	assert_single_page(input, expected);
+}
+
+/* Characterized, not endorsed: every C0 control byte and DEL counts as
+ * whitespace, so inside a row each one becomes a space. */
+static void caption_controls_become_spaces(void **state)
+{
+	(void)state;
+	assert_single_page("a\x7F"
+			   "b\x01"
+			   "c\x1F"
+			   "d\x0B"
+			   "e\x0C"
+			   "f",
+			   "a b c d e f");
+	assert_single_page("\x7F\x01lead", "lead");
+}
+
+/* A word of exactly 32 characters fills one row; with a space after it, the
+ * next word starts the next row. */
+static void caption_word_of_32(void **state)
+{
+	(void)state;
+	char *word = repeat_char(32, 'x');
+	char input[64];
+	char expected[64];
+
+	assert_single_page(word, word);
+
+	snprintf(input, sizeof(input), "%s next", word);
+	snprintf(expected, sizeof(expected), "%s\nnext", word);
+	assert_single_page(input, expected);
+
+	bfree(word);
+}
+
+/* A word of 33 characters is hard-wrapped after character 32. After a short
+ * word it moves to its own row first, then wraps. */
+static void caption_word_of_33(void **state)
+{
+	(void)state;
+	char *word32 = repeat_char(32, 'x');
+	char *word33 = repeat_char(33, 'x');
+	char input[64];
+	char expected[64];
+
+	snprintf(expected, sizeof(expected), "%s\nx", word32);
+	assert_single_page(word33, expected);
+
+	snprintf(input, sizeof(input), "ab %s", word33);
+	snprintf(expected, sizeof(expected), "ab\n%s\nx", word32);
+	assert_single_page(input, expected);
+
+	bfree(word33);
+	bfree(word32);
+}
+
+/* A space as character 32 is dropped by the wrap after it. */
+static void caption_space_at_column_32(void **state)
+{
+	(void)state;
+	char *word31 = repeat_char(31, 'a');
+	char input[64];
+	char expected[64];
+
+	snprintf(input, sizeof(input), "%s b", word31);
+	snprintf(expected, sizeof(expected), "%s\nb", word31);
+	assert_single_page(input, expected);
+
+	bfree(word31);
+}
+
+/* Characterized, not endorsed: with whitespace as characters 32 and 33, the
+ * wrap splits at the later one, so the row ends with a space. */
+static void caption_two_spaces_at_column_32(void **state)
+{
+	(void)state;
+	char *word31 = repeat_char(31, 'a');
+	char input[64];
+	char expected[64];
+
+	snprintf(input, sizeof(input), "%s  b", word31);
+	snprintf(expected, sizeof(expected), "%s \nb", word31);
+	assert_single_page(input, expected);
+
+	bfree(word31);
+}
+
+/* A 2-byte character as character 32 stays on the row, and one as character
+ * 33 starts the next row, whole. */
+static void caption_utf8_2byte_at_wrap(void **state)
+{
+	(void)state;
+	char input[64] = {0};
+	char expected[64] = {0};
+
+	memset(input, 'a', 31);
+	strcat(input, "\xC3\xA9\xC3\xA9");
+	memset(expected, 'a', 31);
+	strcat(expected, "\xC3\xA9\n\xC3\xA9");
+	assert_single_page(input, expected);
+}
+
+/* 32 4-byte characters make the largest row, CAPTION_LINE_BYTES bytes, and a
+ * page of 15 of them is CAPTION_PAGE_BYTES exactly. One more character
+ * starts a second page. */
+static void caption_row_and_page_byte_bound(void **state)
+{
+	(void)state;
+	struct caption_harness *h = harness_create();
+	size_t chars = CAPTION_PAGE_ROWS * CAPTION_LINE_CHARS;
+	char *input = bzalloc(chars * 4 + 2);
+
+	for (size_t i = 0; i < chars; i++)
+		memcpy(input + i * 4, "\xF0\x9F\xA6\x84", 4);
+	obs_output_output_caption_text2(h->output, input, 2.0);
+
+	const char *texts[8];
+	double durs[8];
+	assert_int_equal(1, collect_pages(h, texts, durs, 8));
+	assert_int_equal(CAPTION_PAGE_BYTES, strlen(texts[0]));
+	assert_int_equal(1, assert_page_invariants(h));
+	harness_destroy(h);
+
+	h = harness_create();
+	input[chars * 4] = 'z';
+	obs_output_output_caption_text2(h->output, input, 2.0);
+	assert_int_equal(2, collect_pages(h, texts, durs, 8));
+	assert_int_equal(CAPTION_PAGE_BYTES, strlen(texts[0]));
+	assert_string_equal("z", texts[1]);
+	assert_int_equal(2, assert_page_invariants(h));
+	harness_destroy(h);
+
+	bfree(input);
+}
+
+/* 16 short lines: 15 rows on the first page, the 16th on a second page. */
+static void caption_more_than_15_rows(void **state)
+{
+	(void)state;
+	struct caption_harness *h = harness_create();
+	char input[256] = {0};
+	char expected[256] = {0};
+
+	for (int i = 0; i < 16; i++) {
+		char line[8];
+		snprintf(line, sizeof(line), "%sl%02d", i ? "\n" : "", i);
+		strcat(input, line);
+		if (i < 15)
+			strcat(expected, line);
+	}
+	obs_output_output_caption_text2(h->output, input, 2.0);
+
+	const char *texts[8];
+	double durs[8];
+	assert_int_equal(2, collect_pages(h, texts, durs, 8));
+	assert_string_equal(expected, texts[0]);
+	assert_string_equal("l15", texts[1]);
+
+	harness_destroy(h);
+}
+
+/* Whitespace and invalid bytes after a full page queue no empty second page. */
+static void caption_full_page_then_whitespace(void **state)
+{
+	(void)state;
+	struct caption_harness *h = harness_create();
+	char *input = bzalloc(1024);
+
+	memset(input, 'a', CAPTION_PAGE_ROWS * CAPTION_LINE_CHARS);
+	strcat(input, "  \r\n\t\xC2\xA0\xFF\x80 ");
+	obs_output_output_caption_text2(h->output, input, 2.0);
+
+	const char *texts[8];
+	double durs[8];
+	assert_int_equal(1, collect_pages(h, texts, durs, 8));
+	assert_int_equal(CAPTION_PAGE_ROWS * CAPTION_LINE_CHARS + CAPTION_PAGE_ROWS - 1, strlen(texts[0]));
+
+	bfree(input);
+	harness_destroy(h);
+}
+
+/* Any input ends: the cursor always moves forward, so the queueing loop
+ * finishes, and every page keeps the bounds above. The inputs are every byte
+ * value, runs of each lead byte, and pseudo-random bytes weighted toward
+ * whitespace, newlines, multibyte leads and continuation bytes. */
+static void caption_any_input_ends(void **state)
+{
+	(void)state;
+	static const unsigned char pool[] = {' ',  '\t', '\r', '\n', 0x7F, 0x01, 'a',  'b',  0x80, 0xBF,
+					     0xA0, 0xC2, 0xC3, 0xC0, 0xC1, 0xE0, 0xE4, 0xED, 0xEF, 0xF0,
+					     0xF4, 0xF5, 0xFF, 0x9F, 0x90, 0x8F, 0xB8, 0xAD, 0xA6, 0x84};
+	size_t len = 4096;
+	char *input = bzalloc(len + 1);
+	uint32_t seed = 0x2545F491;
+
+	/* every byte value 1-255, in order */
+	for (size_t i = 0; i < 255; i++)
+		input[i] = (char)(i + 1);
+	input[255] = 0;
+	struct caption_harness *h = harness_create();
+	obs_output_output_caption_text2(h->output, input, 2.0);
+	assert_true(assert_page_invariants(h) >= 1);
+	harness_destroy(h);
+
+	/* a long run of each lead byte, with and without a continuation */
+	for (unsigned int lead = 0x80; lead <= 0xFF; lead++) {
+		for (size_t i = 0; i < len; i++)
+			input[i] = (char)((i & 1) ? 0x80 : lead);
+		input[len] = 0;
+		h = harness_create();
+		obs_output_output_caption_text2(h->output, input, 2.0);
+		assert_true(assert_page_invariants(h) >= 1);
+		harness_destroy(h);
+	}
+
+	/* pseudo-random strings of several lengths */
+	for (int round = 0; round < 64; round++) {
+		size_t n = 1 + (size_t)round * 61;
+		for (size_t i = 0; i < n; i++) {
+			seed = seed * 1103515245u + 12345u;
+			input[i] = (char)pool[(seed >> 16) % sizeof(pool)];
+		}
+		input[n] = 0;
+		h = harness_create();
+		obs_output_output_caption_text2(h->output, input, 2.0);
+		assert_true(assert_page_invariants(h) >= 1);
+		harness_destroy(h);
+	}
+
+	bfree(input);
+}
+
 int main(void)
 {
 	obs_up = obs_startup("en-US", NULL, NULL);
@@ -507,15 +996,43 @@ int main(void)
 	register_types();
 
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(caption_boundary_127),       cmocka_unit_test(caption_boundary_128),
-		cmocka_unit_test(caption_boundary_129),       cmocka_unit_test(caption_multibyte_at_128),
-		cmocka_unit_test(caption_multi_page),         cmocka_unit_test(caption_word_wrap),
-		cmocka_unit_test(caption_page_edge_480),      cmocka_unit_test(caption_page_edge_481),
-		cmocka_unit_test(caption_utf8_3byte_at_edge), cmocka_unit_test(caption_utf8_4byte_at_edge),
-		cmocka_unit_test(caption_whitespace_only),    cmocka_unit_test(caption_tab_becomes_space),
+		cmocka_unit_test(caption_boundary_127),
+		cmocka_unit_test(caption_boundary_128),
+		cmocka_unit_test(caption_boundary_129),
+		cmocka_unit_test(caption_multibyte_at_128),
+		cmocka_unit_test(caption_multi_page),
+		cmocka_unit_test(caption_word_wrap),
+		cmocka_unit_test(caption_page_edge_480),
+		cmocka_unit_test(caption_page_edge_481),
+		cmocka_unit_test(caption_utf8_3byte_at_edge),
+		cmocka_unit_test(caption_utf8_4byte_at_edge),
+		cmocka_unit_test(caption_whitespace_only),
+		cmocka_unit_test(caption_tab_becomes_space),
+		cmocka_unit_test(caption_invalid_utf8_dropped),
+		cmocka_unit_test(caption_invalid_byte_joins_words),
+		cmocka_unit_test(caption_invalid_bytes_take_no_column),
+		cmocka_unit_test(caption_only_invalid_bytes),
+		cmocka_unit_test(caption_empty_string),
+		cmocka_unit_test(caption_all_spaces),
+		cmocka_unit_test(caption_newlines_end_rows),
+		cmocka_unit_test(caption_blank_lines_collapse),
+		cmocka_unit_test(caption_trailing_whitespace_kept),
+		cmocka_unit_test(caption_nbsp),
+		cmocka_unit_test(caption_controls_become_spaces),
+		cmocka_unit_test(caption_word_of_32),
+		cmocka_unit_test(caption_word_of_33),
+		cmocka_unit_test(caption_space_at_column_32),
+		cmocka_unit_test(caption_two_spaces_at_column_32),
+		cmocka_unit_test(caption_utf8_2byte_at_wrap),
+		cmocka_unit_test(caption_row_and_page_byte_bound),
+		cmocka_unit_test(caption_more_than_15_rows),
+		cmocka_unit_test(caption_full_page_then_whitespace),
+		cmocka_unit_test(caption_any_input_ends),
 	};
 	int rc = cmocka_run_group_tests(tests, NULL, NULL);
 
+	while (live_harnesses)
+		harness_destroy(live_harnesses);
 	obs_shutdown();
 	return rc;
 }
