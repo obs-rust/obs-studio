@@ -8,6 +8,7 @@ mod nix_hotkey_state_parity;
 mod parity;
 mod portal_shortcut_ids;
 mod portal_shortcut_ids_parity;
+mod translations;
 
 /// Cargo-test stand-ins for libobs's hidden `obs_hotkeys_mutex_lock` and
 /// `obs_hotkeys_mutex_unlock` (obs-hotkey.c.h), which the Wayland key state
