@@ -516,5 +516,11 @@
     "sources": [
       "test/cmocka/test_output_interleave.c"
     ]
+  },
+  {
+    "name": "test_darray_ops",
+    "sources": [
+      "test/cmocka/test_darray_ops.c"
+    ]
   }
 ]
