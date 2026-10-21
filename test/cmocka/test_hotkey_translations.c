@@ -18,20 +18,25 @@
  *
  * The translations live in one store for the whole process and can't be
  * cleared through the API, so the cases run in order and each sets what it
- * checks first; the defaults case comes first.
+ * checks first; the defaults cases come first.
  *
- * Not covered here, on purpose: an empty or padding-only numpad or mouse
- * template ("" or " "). It leaves the template string NULL and the expansion
- * then calls strstr(NULL, "%1"), which crashes. That gets its own fix and
- * test.
+ * An empty or padding-only numpad or mouse template ("" or " ") is skipped
+ * like a NULL one, so the keys keep their names. It used to leave the
+ * template string NULL, and the expansion then called strstr(NULL, "%1"),
+ * which crashed; the cases that set one do it in a forked child first, so a
+ * crash fails that case instead of the whole binary.
  */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <obs.h>
 #include <util/dstr.h>
@@ -43,6 +48,35 @@ static int obs_up;
 static void set(struct obs_hotkeys_translations *t)
 {
 	obs_hotkeys_set_translations_s(t, sizeof(*t));
+}
+
+/* Set in a forked child first: if the set crashes there, fail this case
+ * instead of the whole binary, and leave the parent's store as it was. The
+ * child restores the default crash signal actions, so cmocka's handlers
+ * don't go on running the next cases in it. */
+static void set_checked(struct obs_hotkeys_translations *t)
+{
+	fflush(NULL);
+	pid_t pid = fork();
+	assert_true(pid >= 0);
+	if (pid == 0) {
+		const int crash_signals[] = {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT};
+		for (size_t i = 0; i < sizeof(crash_signals) / sizeof(crash_signals[0]); i++)
+			signal(crash_signals[i], SIG_DFL);
+		struct rlimit no_core = {0, 0};
+		setrlimit(RLIMIT_CORE, &no_core);
+		set(t);
+		_exit(0);
+	}
+
+	int status = 0;
+	assert_int_equal(waitpid(pid, &status, 0), pid);
+	if (WIFSIGNALED(status))
+		fprintf(stderr, "obs_hotkeys_set_translations_s crashed: signal %d\n", WTERMSIG(status));
+	assert_true(WIFEXITED(status));
+	assert_int_equal(WEXITSTATUS(status), 0);
+
+	set(t);
 }
 
 static void assert_key(obs_key_t key, const char *expected)
@@ -145,7 +179,7 @@ static void fill(struct filled *f, const char *prefix)
 }
 
 /* The named keys the frontend translates on Linux, with the member that sets
- * each. Left, right, up and down are not in it: see arrow_keys_not_applied. */
+ * each. Left, right, up and down have their own case: arrow_keys_translated. */
 static const struct {
 	obs_key_t key;
 	const char *member;
@@ -486,10 +520,9 @@ static void combination_string(void **state)
 	dstr_free(&str);
 }
 
-/* Characterized, not endorsed: the struct has left, right, up and down, and
- * the frontend sets them, but obs_hotkeys_set_translations_s() never stores
- * them, so the arrow keys always show the platform's English names. */
-static void arrow_keys_not_applied(void **state)
+/* The arrow keys take their names from left, right, up and down, like the
+ * other named keys. */
+static void arrow_keys_translated(void **state)
 {
 	(void)state;
 	struct obs_hotkeys_translations t = {0};
@@ -498,10 +531,70 @@ static void arrow_keys_not_applied(void **state)
 	t.up = "Hoch";
 	t.down = "Runter";
 	set(&t);
-	assert_key(OBS_KEY_LEFT, "Left");
-	assert_key(OBS_KEY_RIGHT, "Right");
-	assert_key(OBS_KEY_UP, "Up");
-	assert_key(OBS_KEY_DOWN, "Down");
+	assert_key(OBS_KEY_LEFT, "Links");
+	assert_key(OBS_KEY_RIGHT, "Rechts");
+	assert_key(OBS_KEY_UP, "Hoch");
+	assert_key(OBS_KEY_DOWN, "Runter");
+}
+
+/* An empty or padding-only template, before any other set: skipped like a
+ * NULL one, so NUM0-NUM9 and MOUSE1-MOUSE29 keep the English defaults. */
+static void empty_templates_keep_defaults(void **state)
+{
+	(void)state;
+	const char *empties[] = {"", " ", " \t\r\n "};
+	for (size_t i = 0; i < sizeof(empties) / sizeof(empties[0]); i++) {
+		struct obs_hotkeys_translations t = {0};
+		t.numpad_num = empties[i];
+		t.mouse_num = empties[i];
+		set_checked(&t);
+		assert_key(OBS_KEY_NUM0, "Numpad 0");
+		assert_key(OBS_KEY_NUM9, "Numpad 9");
+		assert_key(OBS_KEY_MOUSE1, "Mouse 1");
+		assert_key(OBS_KEY_MOUSE29, "Mouse 29");
+	}
+}
+
+/* An empty or padding-only template after a set keeps the names it set; the
+ * other template and the named keys in the same struct still apply. */
+static void empty_templates_keep_names(void **state)
+{
+	(void)state;
+	struct obs_hotkeys_translations t = {0};
+	t.numpad_num = "K num %1";
+	t.mouse_num = "K mouse %1";
+	set(&t);
+
+	const char *empties[] = {"", "  ", "\t", "\r\n"};
+	for (size_t i = 0; i < sizeof(empties) / sizeof(empties[0]); i++) {
+		char num[32], mouse[32], ins[32];
+		snprintf(num, sizeof(num), "K%zu num %%1", i);
+		snprintf(mouse, sizeof(mouse), "K%zu mouse %%1", i);
+		snprintf(ins, sizeof(ins), "K%zu insert", i);
+
+		struct obs_hotkeys_translations n = {0};
+		n.numpad_num = empties[i];
+		n.mouse_num = mouse;
+		n.insert = ins;
+		set_checked(&n);
+		snprintf(mouse, sizeof(mouse), "K%zu mouse 7", i);
+		assert_key(OBS_KEY_MOUSE7, mouse);
+		assert_key(OBS_KEY_INSERT, ins);
+		/* The numpad names of the previous round. */
+		char prev[32] = "K num 7";
+		if (i > 0)
+			snprintf(prev, sizeof(prev), "K%zu num 7", i - 1);
+		assert_key(OBS_KEY_NUM7, prev);
+
+		struct obs_hotkeys_translations m = {0};
+		m.numpad_num = num;
+		m.mouse_num = empties[i];
+		set_checked(&m);
+		snprintf(num, sizeof(num), "K%zu num 7", i);
+		assert_key(OBS_KEY_NUM7, num);
+		snprintf(mouse, sizeof(mouse), "K%zu mouse 7", i);
+		assert_key(OBS_KEY_MOUSE7, mouse);
+	}
 }
 
 /* ------------------------------------------------------------------------- */
@@ -514,9 +607,10 @@ int main(void)
 		return 0;
 	}
 
-	/* In this order: the defaults case must run before any set. */
+	/* In this order: the defaults cases must run before any set. */
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(defaults_before_any_set),
+		cmocka_unit_test(empty_templates_keep_defaults),
 		cmocka_unit_test(every_member),
 		cmocka_unit_test(set_twice_replaces),
 		cmocka_unit_test(null_member_keeps_name),
@@ -529,7 +623,8 @@ int main(void)
 		cmocka_unit_test(templates_independent),
 		cmocka_unit_test(apple_members_ignored),
 		cmocka_unit_test(combination_string),
-		cmocka_unit_test(arrow_keys_not_applied),
+		cmocka_unit_test(arrow_keys_translated),
+		cmocka_unit_test(empty_templates_keep_names),
 	};
 	int rc = cmocka_run_group_tests(tests, NULL, NULL);
 
