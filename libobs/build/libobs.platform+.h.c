@@ -2,4 +2,4 @@
 
 #include "libobs/build/libobs-platform.pch.h"
 
-#include "libobs/util/platform.c.h"
+#include "libobs/util/platform-conversions.c.h"

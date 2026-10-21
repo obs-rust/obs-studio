@@ -211,6 +211,12 @@
     ]
   },
   {
+    "name": "test_platform_conversions",
+    "sources": [
+      "test/cmocka/test_platform_conversions.c"
+    ]
+  },
+  {
     "name": "test_platform_time",
     "sources": [
       "test/cmocka/test_platform_time.c"

@@ -122,7 +122,7 @@ static time_t oracle_platform_filename_time(time_t *t)
 #undef time
 #include "util/platform-mkdirs.c.h"
 #include "util/platform-time.c.h"
-#include "util/platform.c.h"
+#include "util/platform-conversions.c.h"
 #if defined(__APPLE__) && defined(__clang__)
 #pragma clang diagnostic pop
 #endif

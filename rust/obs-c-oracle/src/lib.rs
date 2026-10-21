@@ -9,7 +9,7 @@
 //! purpose. It is a dev-dependency only and never links into libobs.
 //!
 //! Also compiles the original libobs sources itself: `oracle/platform.c` and
-//! `oracle/platform_nix_posix.c` include `util/platform.c.h` and
+//! `oracle/platform_nix_posix.c` include `util/platform-conversions.c.h` and
 //! `util/platform-nix.c.h` unmodified with their exports renamed, so the platform
 //! functions the oracle needs come from libobs rather than from hand copies
 //! (they used to live in `oracle/test_stubs.c`, `oracle/platform_conv_host.c`,
