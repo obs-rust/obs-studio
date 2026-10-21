@@ -327,6 +327,39 @@ static bool check_file(const struct capture *cap, unsigned i)
 }
 
 /* ------------------------------------------------------------------------ */
+/* Analysis checks (no display or libVLC needed)                            */
+
+/* Feeds the analysis a program mix made of the test files: file i after
+ * gap[i] frames of silence, its first keep[i] frames, in the 1024-frame
+ * blocks in which libobs hands the mix to raw audio callbacks. */
+static void feed_mix(struct capture *cap, unsigned num_files, const uint32_t *gap, const uint32_t *keep)
+{
+	size_t total = AUDIO_OUTPUT_FRAMES;
+	for (unsigned i = 0; i < num_files; i++)
+		total += gap[i] + keep[i];
+
+	float *mix = calloc(total, sizeof(float));
+	assert_non_null(mix);
+	size_t at = 0;
+	for (unsigned i = 0; i < num_files; i++) {
+		at += gap[i];
+		for (uint32_t f = 0; f < keep[i]; f++)
+			mix[at++] = (float)(level_at(i, f) * sin(2.0 * M_PI * TONE_HZ * f / RATE));
+	}
+
+	memset(cap, 0, sizeof(*cap));
+	pthread_mutex_init(&cap->mutex, NULL);
+	cap->num_files = num_files;
+	for (size_t pos = 0; pos + AUDIO_OUTPUT_FRAMES <= total; pos += AUDIO_OUTPUT_FRAMES) {
+		struct audio_data block = {.frames = AUDIO_OUTPUT_FRAMES};
+		block.data[0] = (uint8_t *)(mix + pos);
+		mix_cb(cap, 0, &block);
+	}
+	pthread_mutex_destroy(&cap->mutex);
+	free(mix);
+}
+
+/* ------------------------------------------------------------------------ */
 /* Cases                                                                    */
 
 /* The reported bug: two files, no gap in either file. */
@@ -495,9 +528,72 @@ static void single_file_plays_to_the_end(void **state)
 	}
 }
 
+/* When libVLC takes more than 70 ms to open the next item, libobs leaves the
+ * gap silent. The next file then starts at any point of a mix block, also
+ * a few frames before its end: there the tone has not yet reached its level,
+ * and the block's peak is that of another file or of an earlier point of the
+ * file. The analysis must not take such a block for audio of that file. Here
+ * file 3 starts 7 frames before the end of a block, after 123 ms of silence:
+ * the peak of that block, 0.42, is file 2's level at 1.1 s (CI run
+ * 39679055607 reported "file 2: the last 1.886 s are missing"). */
+static void partial_block_at_track_start_is_not_misread(void **state)
+{
+	UNUSED_PARAMETER(state);
+	/* 2 * FILE_FRAMES + 5881 frames before file 3: 7 short of a block end */
+	const uint32_t gap[3] = {0, 0, 5881};
+	const uint32_t keep[3] = {FILE_FRAMES, FILE_FRAMES, FILE_FRAMES};
+	struct capture cap;
+	feed_mix(&cap, 3, gap, keep);
+
+	bool ok = check_file(&cap, 0) & check_file(&cap, 1) & check_file(&cap, 2);
+	if (!ok) {
+		fprintf(stderr, "the analysis misread a block at a track start\n");
+		fail();
+	}
+}
+
+/* The same with two files: file 2 starts 7 frames before the end of a block
+ * after 115 ms of silence; that block's peak is file 1's level at 2.2 s. */
+static void partial_block_at_second_track_start_is_not_misread(void **state)
+{
+	UNUSED_PARAMETER(state);
+	const uint32_t gap[2] = {0, 5497};
+	const uint32_t keep[2] = {FILE_FRAMES, FILE_FRAMES};
+	struct capture cap;
+	feed_mix(&cap, 2, gap, keep);
+
+	bool ok = check_file(&cap, 0) & check_file(&cap, 1);
+	if (!ok) {
+		fprintf(stderr, "the analysis misread a block at a track start\n");
+		fail();
+	}
+}
+
+/* Guard: the analysis still reports a track whose last second is missing,
+ * with and without a silent gap before the next file. */
+static void cut_track_end_is_reported(void **state)
+{
+	UNUSED_PARAMETER(state);
+	const uint32_t keep[2] = {FILE_FRAMES - RATE, FILE_FRAMES};
+	struct capture cap;
+
+	const uint32_t no_gap[2] = {0, 0};
+	feed_mix(&cap, 2, no_gap, keep);
+	assert_false(check_file(&cap, 0));
+	assert_true(check_file(&cap, 1));
+
+	const uint32_t gap[2] = {0, 5497};
+	feed_mix(&cap, 2, gap, keep);
+	assert_false(check_file(&cap, 0));
+	assert_true(check_file(&cap, 1));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
+		cmocka_unit_test(partial_block_at_track_start_is_not_misread),
+		cmocka_unit_test(partial_block_at_second_track_start_is_not_misread),
+		cmocka_unit_test(cut_track_end_is_reported),
 		cmocka_unit_test(single_file_plays_to_the_end),
 		cmocka_unit_test(playlist_plays_every_file_to_the_end),
 		cmocka_unit_test(playlist_of_three_plays_every_file_to_the_end),
