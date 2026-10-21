@@ -252,6 +252,12 @@ not get a line.
   2026-10-19. Issue
   [#1452](https://github.com/obs-rust/obs-studio/issues/1452), PR
   [#1461](https://github.com/obs-rust/obs-studio/pull/1461).
+- **Formatted UI text builds faster.** Messages that substitute `$1`..`$4`
+  values no longer rescan and rebuild the string once per value: 27 % faster
+  for a short message and 5 % faster for a 4 KB one, both now ahead of the
+  original C code. *All*, 2026-10-21. Issue
+  [#1296](https://github.com/obs-rust/obs-studio/issues/1296), PR
+  [#1619](https://github.com/obs-rust/obs-studio/pull/1619).
 
 ### Stability
 
