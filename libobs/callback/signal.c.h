@@ -76,7 +76,6 @@ static inline size_t signal_get_callback_idx(struct signal_info *si, signal_call
 struct global_callback_info {
 	global_signal_callback_t callback;
 	void *data;
-	long signaling;
 	bool remove;
 };
 
@@ -87,6 +86,8 @@ struct signal_handler {
 
 	DARRAY(struct global_callback_info) global_callbacks;
 	pthread_mutex_t global_callbacks_mutex;
+	/* Depth of the running global callback passes. */
+	long global_signalling;
 };
 
 static struct signal_info *getsignal(signal_handler_t *handler, const char *name, struct signal_info **p_last)
@@ -277,15 +278,20 @@ struct signal_callback_context {
 	size_t index;
 };
 
+struct global_callback_context {
+	signal_handler_t *handler;
+	size_t index;
+};
+
 static THREAD_LOCAL struct signal_callback_context *current_signal_cb = NULL;
-static THREAD_LOCAL struct global_callback_info *current_global_cb = NULL;
+static THREAD_LOCAL struct global_callback_context *current_global_cb = NULL;
 
 void signal_handler_remove_current(void)
 {
 	if (current_signal_cb)
 		current_signal_cb->signal->callbacks.array[current_signal_cb->index].remove = true;
 	else if (current_global_cb)
-		current_global_cb->remove = true;
+		current_global_cb->handler->global_callbacks.array[current_global_cb->index].remove = true;
 }
 
 void signal_handler_signal(signal_handler_t *handler, const char *signal, calldata_t *params)
@@ -303,7 +309,7 @@ void signal_handler_signal(signal_handler_t *handler, const char *signal, callda
 		struct signal_callback cb = sig->callbacks.array[i];
 		if (!cb.remove) {
 			struct signal_callback_context *previous_signal_cb = current_signal_cb;
-			struct global_callback_info *previous_global_cb = current_global_cb;
+			struct global_callback_context *previous_global_cb = current_global_cb;
 			struct signal_callback_context context = {sig, i};
 			current_signal_cb = &context;
 			current_global_cb = NULL;
@@ -328,28 +334,29 @@ void signal_handler_signal(signal_handler_t *handler, const char *signal, callda
 	pthread_mutex_unlock(&sig->mutex);
 
 	pthread_mutex_lock(&handler->global_callbacks_mutex);
+	handler->global_signalling++;
 
-	if (handler->global_callbacks.num) {
-		for (size_t i = 0; i < handler->global_callbacks.num; i++) {
-			struct global_callback_info *cb = handler->global_callbacks.array + i;
+	/* A callback can connect (and reallocate the array) or start a nested
+	 * signal, so the running callback is tracked by index, and entries
+	 * are erased only when the outermost pass ends. */
+	for (size_t i = 0; i < handler->global_callbacks.num; i++) {
+		struct global_callback_info cb = handler->global_callbacks.array[i];
 
-			if (!cb->remove) {
-				cb->signaling++;
-				struct signal_callback_context *previous_signal_cb = current_signal_cb;
-				struct global_callback_info *previous_global_cb = current_global_cb;
-				current_signal_cb = NULL;
-				current_global_cb = cb;
-				cb->callback(cb->data, signal, params);
-				current_signal_cb = previous_signal_cb;
-				current_global_cb = previous_global_cb;
-				cb->signaling--;
-			}
+		if (!cb.remove) {
+			struct signal_callback_context *previous_signal_cb = current_signal_cb;
+			struct global_callback_context *previous_global_cb = current_global_cb;
+			struct global_callback_context context = {handler, i};
+			current_signal_cb = NULL;
+			current_global_cb = &context;
+			cb.callback(cb.data, signal, params);
+			current_signal_cb = previous_signal_cb;
+			current_global_cb = previous_global_cb;
 		}
+	}
 
+	if (--handler->global_signalling == 0) {
 		for (size_t i = handler->global_callbacks.num; i > 0; i--) {
-			struct global_callback_info *cb = handler->global_callbacks.array + (i - 1);
-
-			if (cb->remove && !cb->signaling)
+			if (handler->global_callbacks.array[i - 1].remove)
 				da_erase(handler->global_callbacks, i - 1);
 		}
 	}
@@ -376,7 +383,7 @@ static size_t signal_get_global_callback_idx(signal_handler_t *handler, global_s
 
 void signal_handler_connect_global(signal_handler_t *handler, global_signal_callback_t callback, void *data)
 {
-	struct global_callback_info cb_data = {callback, data, 0, false};
+	struct global_callback_info cb_data = {callback, data, false};
 	size_t idx;
 
 	if (!handler || !callback)
@@ -402,10 +409,8 @@ void signal_handler_disconnect_global(signal_handler_t *handler, global_signal_c
 
 	idx = signal_get_global_callback_idx(handler, callback, data);
 	if (idx != DARRAY_INVALID) {
-		struct global_callback_info *cb = handler->global_callbacks.array + idx;
-
-		if (cb->signaling)
-			cb->remove = true;
+		if (handler->global_signalling)
+			handler->global_callbacks.array[idx].remove = true;
 		else
 			da_erase(handler->global_callbacks, idx);
 	}

@@ -276,6 +276,8 @@ not get a line.
 - Callbacks that emit nested signals can still remove the currently executing callback. *All*.
 - Recursive emission of a signal no longer skips remaining subscribers after a callback removes itself. *All*.
 - Signal callbacks can register additional callbacks and then remove themselves safely. *All*.
+- Global signal callbacks can register additional global callbacks and then remove themselves safely. *All*.
+- Global signal callbacks that emit nested signals or disconnect other global callbacks no longer skip or remove the next global callback. *All*.
 
 - **Diagnostics when video fails to start.** When video fails to start on
   Wayland, the log shows the EGL error and the display variables, and OBS
