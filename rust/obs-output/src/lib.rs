@@ -10,6 +10,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod caption_text;
 pub mod delay;
 pub mod interleave;
 
