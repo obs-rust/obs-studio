@@ -123,6 +123,7 @@
     "build/libobs.ported-callback+.h.c",
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-graphics+.h.c",
+    "build/libobs.ported-hotkey-bindings+.h.c",
     "build/libobs.ported-missing-files+.h.c",
     "build/libobs.ported-output-caption-text+.h.c",
     "build/libobs.ported-output-delay+.h.c",

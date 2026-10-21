@@ -13,7 +13,8 @@ fn main() {
         "/// `obs-hotkeys.h` in enum order.\npub(crate) static KEY_NAMES: &[&std::ffi::CStr] = &[\n",
     );
     // The codes the Wayland key state (obs-nix-hotkey-state.c) and the portal
-    // shortcut ids (obs-nix-portal-shortcut-ids.c) need by name.
+    // shortcut ids (obs-nix-portal-shortcut-ids.c) and the binding codec
+    // (obs-hotkey-bindings.c) need by name.
     let mut consts = String::new();
     let mut count = 0usize;
     for line in text.lines() {
@@ -33,6 +34,7 @@ fn main() {
                     | "OBS_KEY_ALT"
                     | "OBS_KEY_META"
                     | "OBS_KEY_MOUSE1"
+                    | "OBS_KEY_MOUSE2"
                     | "OBS_KEY_MOUSE29"
             ) {
                 writeln!(consts, "/// `{name}`.\npub const {name}: i32 = {count};").unwrap();

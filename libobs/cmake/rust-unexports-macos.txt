@@ -12,6 +12,10 @@ _utf8_to_wchar
 _wchar_to_utf8
 # obs-hotkey-name-map.c: obs.c calls it on shutdown; not EXPORT.
 _obs_hotkey_name_map_free
+# obs-hotkey-bindings.c: obs-hotkey.c calls them inside libobs. Not EXPORT.
+_obs_hotkey_combination_from_data
+_obs_hotkey_combination_bindable
+_obs_hotkey_combination_to_data
 # platform-nix.c is not exported by the C libobs.
 _get_plugin_info
 # platform-windows.c is not exported for these two.

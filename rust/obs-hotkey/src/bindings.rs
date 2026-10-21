@@ -23,9 +23,30 @@
 //! key). The input comes from scene collections and profiles, which can
 //! come from others, so nothing here can panic, index out of bounds or
 //! overflow.
+//!
+//! Byte for byte the C, including what `test_hotkey_bindings_codec` marks
+//! "characterized, not endorsed": `load_binding()` means to drop an item
+//! with no modifiers and no known key, but its check tests the address of
+//! the modifiers, which is never NULL. So nothing is dropped:
+//! [`combo_from_fields`] always returns a combination, and `{}` or an
+//! unknown, empty or missing key loads as `OBS_KEY_NONE`. (The other one,
+//! that an empty array sends no `hotkey_bindings_changed`, is in
+//! `load_bindings()`, which stays C.)
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 use std::ffi::CStr;
 
+use crate::name_map::{OBS_KEY_MOUSE1, OBS_KEY_MOUSE2, key_from_name};
 use crate::nix_hotkey_state::{
     INTERACT_ALT_KEY, INTERACT_COMMAND_KEY, INTERACT_CONTROL_KEY, INTERACT_SHIFT_KEY,
     KeyCombination,
@@ -73,10 +94,13 @@ pub enum Field {
     Key(i32),
 }
 
-/// The fields of one saved binding, in the order they are written.
+/// The fields of one saved binding, in the order they are written: the
+/// set modifiers in [`MODIFIERS`] order, then the key. Fused.
 #[derive(Debug, Clone)]
 pub struct Fields {
     combo: KeyCombination,
+    /// The next entry of [`MODIFIERS`] to look at; `MODIFIERS.len()` for
+    /// the key, past it when done.
     next: usize,
 }
 
@@ -84,25 +108,50 @@ impl Iterator for Fields {
     type Item = Field;
 
     fn next(&mut self) -> Option<Field> {
-        let _ = (self.combo, self.next);
-        todo!()
+        while let Some(m) = MODIFIERS.get(self.next) {
+            self.next = self.next.saturating_add(1);
+            // save_modifier
+            if self.combo.modifiers & m.flag == m.flag {
+                return Some(Field::Modifier(m.name));
+            }
+        }
+        if self.next == MODIFIERS.len() {
+            self.next = self.next.saturating_add(1);
+            return Some(Field::Key(self.combo.key));
+        }
+        None
     }
 }
+
+impl std::iter::FusedIterator for Fields {}
 
 /// The parse of `load_binding()` (`obs_hotkey_combination_from_data`):
 /// `modifiers` holds what `obs_data_get_bool` read for each of
 /// [`MODIFIERS`], in that order, and `key_name` what `obs_data_get_string`
 /// read for [`KEY_FIELD`].
+///
+/// Never `None` (characterized, not endorsed: see the module docs). A
+/// modifier-only binding, or one of no key at all, has key `OBS_KEY_NONE`.
 pub fn combo_from_fields(modifiers: [bool; 4], key_name: &CStr) -> Option<KeyCombination> {
-    let _ = (modifiers, key_name);
-    todo!()
+    let mut combo = KeyCombination::default();
+    // load_modifier
+    for (m, set) in MODIFIERS.iter().zip(modifiers) {
+        if set {
+            combo.modifiers |= m.flag;
+        }
+    }
+    combo.key = key_from_name(key_name);
+    Some(combo)
 }
 
 /// The rule of `create_binding()` (`obs_hotkey_combination_bindable`), for
 /// JSON and API bindings alike.
+///
+/// Match the frontend: the primary mouse buttons are reserved for UI
+/// interaction. Any other key code, in range or not, and any modifiers are
+/// bindable.
 pub fn combo_bindable(combo: KeyCombination) -> bool {
-    let _ = combo;
-    todo!()
+    combo.key != OBS_KEY_MOUSE1 && combo.key != OBS_KEY_MOUSE2
 }
 
 /// The per-binding body of `save_bindings_helper()`

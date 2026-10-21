@@ -54,6 +54,7 @@ pub mod format_conversion;
 pub mod frame_rate;
 pub mod graphics_math;
 pub mod hevc;
+pub mod hotkey_bindings;
 pub mod hotkey_name_map;
 pub mod lexer;
 pub mod missing_files;

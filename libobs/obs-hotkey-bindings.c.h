@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-bindings.pch.h"
 
 /* The hotkey binding codec (moved verbatim from obs-hotkey.c.h): one item of
  * a hotkey's saved bindings array, as obs_hotkey_load(), obs_hotkey_save()
  * and the obs_hotkeys_load_* and obs_hotkeys_save_* functions read and write
  * it in every profile and scene collection. load_binding(), create_binding()
- * and save_bindings_helper() in obs-hotkey.c.h, later in the same unity
- * group, call it and keep the bindings array. Declared in obs-internal.h. */
+ * and save_bindings_helper() in obs-hotkey.c.h call it and keep the bindings
+ * array. Declared in obs-internal.h. Ported to rust/obs-hotkey (bindings):
+ * libobs-with-rust drops this file. */
 
 static inline void load_modifier(uint32_t *modifiers, obs_data_t *data, const char *name, uint32_t flag)
 {
