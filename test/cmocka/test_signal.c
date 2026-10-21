@@ -165,6 +165,56 @@ static void disconnect_own_global(void *data, const char *signal, calldata_t *pa
 	signal_handler_disconnect_global(ctx->handler, disconnect_own_global, ctx);
 }
 
+static void count_only_global(void *data, const char *signal, calldata_t *params)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(signal);
+	UNUSED_PARAMETER(params);
+	count_calls++;
+}
+
+/* Connects enough global callbacks to reallocate the global callback
+ * array, then removes itself: the removal must still reach its own
+ * entry. */
+static void connect_many_globals_then_remove(void *data, const char *signal, calldata_t *params)
+{
+	struct cb_ctx *ctx = data;
+
+	record(ctx, signal, params);
+	if (ctx->seen->count == 1) {
+		for (int i = 0; i < MANY_CONNECTS; i++)
+			signal_handler_connect_global(ctx->handler, count_only_global, &many_data[i]);
+	}
+	signal_handler_remove_current();
+}
+
+/* Signals "ev" again from inside a global callback once, then removes
+ * itself. */
+static void nested_once_then_remove_global(void *data, const char *signal, calldata_t *params)
+{
+	struct cb_ctx *ctx = data;
+	int *depth = ctx->other;
+
+	record(ctx, signal, params);
+	if (*depth == 0) {
+		(*depth)++;
+		signal_handler_signal(ctx->handler, "ev", params);
+		(*depth)--;
+	}
+	signal_handler_remove_current();
+}
+
+/* Disconnects the on_global callback with data ctx->other, then removes
+ * itself. */
+static void disconnect_other_global_then_remove(void *data, const char *signal, calldata_t *params)
+{
+	struct cb_ctx *ctx = data;
+
+	record(ctx, signal, params);
+	signal_handler_disconnect_global(ctx->handler, on_global, ctx->other);
+	signal_handler_remove_current();
+}
+
 static signal_handler_t *handler_with(const char *decl)
 {
 	signal_handler_t *handler = signal_handler_create();
@@ -639,6 +689,104 @@ static void global_remove_test(void **state)
 	assert_int_equal(bnum_allocs(), allocs);
 }
 
+static void global_connect_then_remove_current_test(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	long allocs = bnum_allocs();
+	struct seen seen = {0};
+	signal_handler_t *handler = handler_with("void ev()");
+	struct cb_ctx x = {1, &seen, handler, NULL};
+
+	count_calls = 0;
+	signal_handler_connect_global(handler, connect_many_globals_then_remove, &x);
+
+	/* x connects enough global callbacks to move the global callback
+	 * array, then removes itself. The removal must mark x's entry, not
+	 * the old array. The new global callbacks run in the same pass. */
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(seen.count, 1);
+	assert_int_equal(count_calls, MANY_CONNECTS);
+
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(seen.count, 1);
+	assert_int_equal(count_calls, MANY_CONNECTS * 2);
+
+	signal_handler_destroy(handler);
+	assert_int_equal(bnum_allocs(), allocs);
+}
+
+static void global_nested_pass_test(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	long allocs = bnum_allocs();
+	struct seen seen = {0};
+	int depth = 0;
+	signal_handler_t *handler = handler_with("void ev()");
+	struct cb_ctx a = {1, &seen, NULL, NULL};
+	struct cb_ctx b = {2, &seen, handler, &depth};
+	struct cb_ctx c = {3, &seen, NULL, NULL};
+
+	signal_handler_connect_global(handler, remove_self_global, &a);
+	signal_handler_connect_global(handler, nested_once_then_remove_global, &b);
+	signal_handler_connect_global(handler, on_global, &c);
+
+	/* a removes itself in the outer pass; the inner pass must not erase
+	 * it while the outer pass is still walking the list, or b's removal
+	 * marks c and the outer pass skips c. Outer a, outer b, inner b,
+	 * inner c, outer c. */
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(depth, 0);
+	assert_int_equal(seen.count, 5);
+	assert_int_equal(seen.ids[0], 1);
+	assert_int_equal(seen.ids[1], 2);
+	assert_int_equal(seen.ids[2], 2);
+	assert_int_equal(seen.ids[3], 3);
+	assert_int_equal(seen.ids[4], 3);
+
+	/* a and b are removed, c stays. */
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(seen.count, 6);
+	assert_int_equal(seen.ids[5], 3);
+
+	signal_handler_destroy(handler);
+	assert_int_equal(bnum_allocs(), allocs);
+}
+
+static void global_disconnect_during_signal_test(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	long allocs = bnum_allocs();
+	struct seen seen = {0};
+	signal_handler_t *handler = handler_with("void ev()");
+	struct cb_ctx y = {1, &seen, NULL, NULL};
+	struct cb_ctx x = {2, &seen, handler, &y};
+	struct cb_ctx z = {3, &seen, NULL, NULL};
+
+	signal_handler_connect_global(handler, on_global, &y);
+	signal_handler_connect_global(handler, disconnect_other_global_then_remove, &x);
+	signal_handler_connect_global(handler, on_global, &z);
+
+	/* x disconnects y, which already ran, then removes itself. y must
+	 * not be erased while the pass is still walking the list, or x's
+	 * removal marks z and the pass skips z. */
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(seen.count, 3);
+	assert_int_equal(seen.ids[0], 1);
+	assert_int_equal(seen.ids[1], 2);
+	assert_int_equal(seen.ids[2], 3);
+
+	/* y and x are removed, z stays. */
+	signal_handler_signal(handler, "ev", NULL);
+	assert_int_equal(seen.count, 4);
+	assert_int_equal(seen.ids[3], 3);
+
+	signal_handler_destroy(handler);
+	assert_int_equal(bnum_allocs(), allocs);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -658,6 +806,9 @@ int main(void)
 		cmocka_unit_test(connect_then_remove_current_test),
 		cmocka_unit_test(global_test),
 		cmocka_unit_test(global_remove_test),
+		cmocka_unit_test(global_connect_then_remove_current_test),
+		cmocka_unit_test(global_nested_pass_test),
+		cmocka_unit_test(global_disconnect_during_signal_test),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
