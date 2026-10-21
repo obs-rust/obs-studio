@@ -32,10 +32,13 @@ static void test_stop_survives_the_next_item_opening(void **state)
 	assert_true(vlc_drain_gate_init(&g));
 
 	vlc_drain_gate_play(&g);
-	vlc_drain_gate_opened(&g);
-	/* Stop, then libVLC's Opening event for the next item arrives late */
+	assert_true(vlc_drain_gate_opened(&g));
+	assert_false(vlc_drain_gate_stopping(&g));
+	/* Stop, then libVLC's Opening event for the next item arrives late:
+	 * that item is not to play */
 	vlc_drain_gate_stop(&g);
-	vlc_drain_gate_opened(&g);
+	assert_true(vlc_drain_gate_stopping(&g));
+	assert_false(vlc_drain_gate_opened(&g));
 	assert_true(timed_wait(&g) < PROMPT_NS);
 
 	vlc_drain_gate_free(&g);
@@ -49,7 +52,8 @@ static void test_waits_work_again_after_play(void **state)
 
 	vlc_drain_gate_stop(&g);
 	vlc_drain_gate_play(&g);
-	vlc_drain_gate_opened(&g);
+	assert_false(vlc_drain_gate_stopping(&g));
+	assert_true(vlc_drain_gate_opened(&g));
 	/* the new item's waits must not be cut short */
 	uint64_t t0 = os_gettime_ns();
 	vlc_drain_gate_wait(&g, 100);

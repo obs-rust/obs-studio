@@ -65,6 +65,10 @@ struct vlc_source {
 	/* set to cut a running drain short when playback is stopped or the
 	 * playlist moves on */
 	struct vlc_drain_gate drain_gate;
+	/* set while libVLC's list player moves on to the next item after the
+	 * end of a track; advance_idle is signaled when it is done */
+	volatile bool advancing;
+	os_event_t *advance_idle;
 
 	pthread_mutex_t mutex;
 	media_file_array_t files;
@@ -335,13 +339,52 @@ static const char *vlcs_get_name(void *unused)
 	return obs_module_text("VLCSource");
 }
 
+/* libVLC 3's list player moves on to the next playlist item on a thread of
+ * its own after the end of a track is reported, and that move detaches and
+ * re-attaches the list player's end-of-track listener without the lock its
+ * public calls (stop, next, previous) take. A call that meets the move
+ * loses: libVLC starts the next item after a Stop, or libvlc_event_detach()
+ * does not find the listener the other thread just removed and aborts the
+ * process. So before such a call, let a move that is under way finish. With
+ * stop_player, first stop the media player: that ends the track's input
+ * thread, and with it any further end-of-track report, and the list
+ * player's stop then stops the item that a move started. */
+#define ADVANCE_WAIT_MS 1000
+#define MAX_ADVANCE_ROUNDS 4
+
+static void wait_for_playlist_advance(struct vlc_source *c, bool stop_player)
+{
+	for (int i = 0; i < MAX_ADVANCE_ROUNDS; i++) {
+		if (stop_player)
+			libvlc_media_player_stop_(c->media_player);
+		if (!os_atomic_load_bool(&c->advancing))
+			return;
+		if (os_event_timedwait(c->advance_idle, ADVANCE_WAIT_MS) != 0) {
+			/* no move came */
+			os_atomic_set_bool(&c->advancing, false);
+			return;
+		}
+	}
+}
+
+/* Stops playback (stop, restart, update, deactivate, destroy). */
+static void stop_playback(struct vlc_source *c)
+{
+	vlc_drain_gate_stop(&c->drain_gate);
+	wait_for_playlist_advance(c, true);
+	libvlc_media_list_player_stop_(c->media_list_player);
+}
+
 static void vlcs_destroy(void *data)
 {
 	struct vlc_source *c = data;
 
 	vlc_drain_gate_stop(&c->drain_gate);
 	if (c->media_list_player) {
-		libvlc_media_list_player_stop_(c->media_list_player);
+		if (c->media_player && c->advance_idle)
+			stop_playback(c);
+		else
+			libvlc_media_list_player_stop_(c->media_list_player);
 		libvlc_media_list_player_release_(c->media_list_player);
 	}
 	if (c->media_player) {
@@ -354,6 +397,8 @@ static void vlcs_destroy(void *data)
 	free_files(&c->files);
 	pthread_mutex_destroy(&c->mutex);
 	vlc_drain_gate_free(&c->drain_gate);
+	if (c->advance_idle)
+		os_event_destroy(c->advance_idle);
 	bfree(c);
 }
 
@@ -481,6 +526,11 @@ static void vlcs_audio_play(void *data, const void *samples, unsigned count, int
 {
 	struct vlc_source *c = data;
 	size_t size = get_audio_size(c->audio.format, c->audio.speakers, count);
+
+	/* playback is being stopped; this may be an item libVLC started
+	 * after the Stop */
+	if (vlc_drain_gate_stopping(&c->drain_gate))
+		return;
 
 	/* libVLC's audio thread; a stop or the next playlist item cuts the
 	 * wait short, as it does a drain */
@@ -728,8 +778,7 @@ static void vlcs_update(void *data, obs_data_t *settings)
 	/* ------------------------------------- */
 	/* update settings data */
 
-	vlc_drain_gate_stop(&c->drain_gate);
-	libvlc_media_list_player_stop_(c->media_list_player);
+	stop_playback(c);
 
 	pthread_mutex_lock(&c->mutex);
 	old_files = c->files;
@@ -796,8 +845,19 @@ static void vlcs_update(void *data, obs_data_t *settings)
 static void vlcs_started(const struct libvlc_event_t *event, void *data)
 {
 	struct vlc_source *c = data;
-	vlc_drain_gate_opened(&c->drain_gate);
-	obs_source_media_started(c->source);
+	/* an item libVLC started after a Stop is stopped right away */
+	if (vlc_drain_gate_opened(&c->drain_gate))
+		obs_source_media_started(c->source);
+
+	UNUSED_PARAMETER(event);
+}
+
+/* libVLC's list player is done moving to another item, or stopped. */
+static void vlcs_list_moved(const struct libvlc_event_t *event, void *data)
+{
+	struct vlc_source *c = data;
+	os_atomic_set_bool(&c->advancing, false);
+	os_event_signal(c->advance_idle);
 
 	UNUSED_PARAMETER(event);
 }
@@ -805,6 +865,10 @@ static void vlcs_started(const struct libvlc_event_t *event, void *data)
 static void vlcs_stopped(const struct libvlc_event_t *event, void *data)
 {
 	struct vlc_source *c = data;
+	/* the list player now moves on to the next item (vlcs_list_moved) */
+	os_event_reset(c->advance_idle);
+	os_atomic_set_bool(&c->advancing, true);
+
 	if (!c->loop) {
 		obs_source_output_video(c->source, NULL);
 	}
@@ -860,8 +924,7 @@ static void vlcs_restart(void *data)
 {
 	struct vlc_source *c = data;
 
-	vlc_drain_gate_stop(&c->drain_gate);
-	libvlc_media_list_player_stop_(c->media_list_player);
+	stop_playback(c);
 	vlc_drain_gate_play(&c->drain_gate);
 	libvlc_media_list_player_play_(c->media_list_player);
 }
@@ -870,8 +933,7 @@ static void vlcs_stop(void *data)
 {
 	struct vlc_source *c = data;
 
-	vlc_drain_gate_stop(&c->drain_gate);
-	libvlc_media_list_player_stop_(c->media_list_player);
+	stop_playback(c);
 	obs_source_output_video(c->source, NULL);
 }
 
@@ -880,6 +942,7 @@ static void vlcs_playlist_next(void *data)
 	struct vlc_source *c = data;
 
 	vlc_drain_gate_abort(&c->drain_gate);
+	wait_for_playlist_advance(c, false);
 	libvlc_media_list_player_next_(c->media_list_player);
 }
 
@@ -888,6 +951,7 @@ static void vlcs_playlist_prev(void *data)
 	struct vlc_source *c = data;
 
 	vlc_drain_gate_abort(&c->drain_gate);
+	wait_for_playlist_advance(c, false);
 	libvlc_media_list_player_previous_(c->media_list_player);
 }
 
@@ -998,6 +1062,9 @@ static void *vlcs_create(obs_data_t *settings, obs_source_t *source)
 		goto error;
 	if (!vlc_drain_gate_init(&c->drain_gate))
 		goto error;
+	if (os_event_init(&c->advance_idle, OS_EVENT_TYPE_MANUAL) != 0)
+		goto error;
+	os_event_signal(c->advance_idle);
 
 	if (!load_libvlc())
 		goto error;
@@ -1022,6 +1089,11 @@ static void *vlcs_create(obs_data_t *settings, obs_source_t *source)
 	event_manager = libvlc_media_player_event_manager_(c->media_player);
 	libvlc_event_attach_(event_manager, libvlc_MediaPlayerEndReached, vlcs_stopped, c);
 	libvlc_event_attach_(event_manager, libvlc_MediaPlayerOpening, vlcs_started, c);
+
+	event_manager = libvlc_media_list_player_event_manager_(c->media_list_player);
+	libvlc_event_attach_(event_manager, libvlc_MediaListPlayerNextItemSet, vlcs_list_moved, c);
+	libvlc_event_attach_(event_manager, libvlc_MediaListPlayerPlayed, vlcs_list_moved, c);
+	libvlc_event_attach_(event_manager, libvlc_MediaListPlayerStopped, vlcs_list_moved, c);
 
 	proc_handler_t *ph = obs_source_get_proc_handler(source);
 	proc_handler_add(ph, "void get_metadata(in string tag_id out string tag_data)", vlcs_get_metadata, c);
@@ -1055,8 +1127,7 @@ static void vlcs_deactivate(void *data)
 	struct vlc_source *c = data;
 
 	if (c->behavior == BEHAVIOR_STOP_RESTART) {
-		vlc_drain_gate_stop(&c->drain_gate);
-		libvlc_media_list_player_stop_(c->media_list_player);
+		stop_playback(c);
 		obs_source_output_video(c->source, NULL);
 
 	} else if (c->behavior == BEHAVIOR_PAUSE_UNPAUSE) {
@@ -1266,3 +1337,5 @@ struct obs_source_info vlc_source_info = {
 #undef MAKEFORMAT
 #undef AUDIO_LEAD_US
 #undef MAX_DRAIN_MS
+#undef ADVANCE_WAIT_MS
+#undef MAX_ADVANCE_ROUNDS

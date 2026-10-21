@@ -54,11 +54,22 @@ static inline void vlc_drain_gate_play(struct vlc_drain_gate *g)
 }
 
 /* libVLC opened an item (its event thread, also at a playlist boundary).
- * Closes the gate for the item's waits, unless a Stop is pending. */
-static inline void vlc_drain_gate_opened(struct vlc_drain_gate *g)
+ * Closes the gate for the item's waits, unless a Stop is pending. Returns
+ * false when a Stop is pending: libVLC started the item after (or while) OBS
+ * stopped playback, and it is about to be stopped. */
+static inline bool vlc_drain_gate_opened(struct vlc_drain_gate *g)
 {
-	if (g->open && !os_atomic_load_bool(&g->stop_requested))
+	if (os_atomic_load_bool(&g->stop_requested))
+		return false;
+	if (g->open)
 		os_event_reset(g->open);
+	return true;
+}
+
+/* A Stop is pending: OBS stopped playback and has not started it again. */
+static inline bool vlc_drain_gate_stopping(struct vlc_drain_gate *g)
+{
+	return os_atomic_load_bool(&g->stop_requested);
 }
 
 /* Waits up to `ms`, less if the gate is opened. */

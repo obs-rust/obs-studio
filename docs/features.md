@@ -1196,6 +1196,11 @@ area.
   [#1492](https://github.com/obs-rust/obs-studio/issues/1492), PR
   [#1493](https://github.com/obs-rust/obs-studio/pull/1493), port of
   [obsproject/obs-studio#13761](https://github.com/obsproject/obs-studio/pull/13761).
+- Stopping a VLC Video Source playlist just as a track ends no longer crashes
+  OBS, and no longer lets the next item start playing after the Stop.
+  *All*, 2026-10-21. Issue
+  [#1677](https://github.com/obs-rust/obs-studio/issues/1677), PR
+  [#1678](https://github.com/obs-rust/obs-studio/pull/1678).
 
 ### Scenes and UI
 
