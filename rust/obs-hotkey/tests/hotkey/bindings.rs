@@ -2,7 +2,7 @@
 //!
 //! The first eighteen tests mirror `test/cmocka/test_hotkey_bindings_codec.c`
 //! one to one, with the same names, the same JSON and the same expected
-//! bytes, "characterized, not endorsed" cases included. The C test goes
+//! bytes. The C test goes
 //! through the public hotkey API of a real libobs: obs_data parses the
 //! JSON, `obs-hotkey.c.h` (still C) keeps the bindings and sends
 //! `hotkey_bindings_changed`, and the codec reads and writes each item. Here
@@ -416,9 +416,10 @@ fn all_modifier_sets() {
 // ---------------------------------------------------------------------------
 // Keys
 
-/// Every key name round-trips, MOUSE1 and MOUSE2 aside (rejected below).
-/// The array is built the way the codec writes it, so it must load and save
-/// to the same bytes.
+/// Every key name round-trips, MOUSE1 and MOUSE2 aside (rejected below),
+/// and OBS_KEY_NONE, which alone is no binding (dropped below). The array is
+/// built the way the codec writes it, so it must load and save to the same
+/// bytes.
 #[test]
 fn every_key_name() {
     let (mut m, h) = setup();
@@ -426,7 +427,7 @@ fn every_key_name() {
     let mut json = String::from("[");
     let mut count = 0;
     for k in KEY_NONE..LAST {
-        if k == OBS_KEY_MOUSE1 || k == mouse2 {
+        if k == KEY_NONE || k == OBS_KEY_MOUSE1 || k == mouse2 {
             continue;
         }
         let name = key_name(k).unwrap();
@@ -444,15 +445,14 @@ fn every_key_name() {
     m.assert_load_saves(h, &json, &json);
 }
 
-/// Characterized, not endorsed: load_binding() means to drop an item with
-/// no modifiers and no known key, but its check tests the address of the
-/// modifiers (never NULL), so it never drops anything. An unknown, empty,
-/// missing or non-string "key" loads as OBS_KEY_NONE and is saved back as
-/// "OBS_KEY_NONE", and {} is kept as a binding of nothing.
+/// An item with no modifiers and no known key is no binding: it could never
+/// fire, so load_binding() drops it. An unknown, empty, missing or
+/// non-string "key", {}, and the {"key":"OBS_KEY_NONE"} that older builds
+/// saved for these, load as nothing and are not saved back.
 #[test]
-fn unknown_or_missing_key_kept_as_none() {
+fn unknown_or_missing_key_dropped() {
     let (mut m, h) = setup();
-    let none = "[{\"key\":\"OBS_KEY_NONE\"}]";
+    let none = "[]";
     m.assert_load_saves(h, "[{\"key\":\"OBS_KEY_NOT_A_KEY\"}]", none);
     m.assert_load_saves(h, "[{\"key\":\"obs_key_a\"}]", none);
     m.assert_load_saves(h, "[{\"key\":\" OBS_KEY_A\"}]", none);
@@ -617,37 +617,41 @@ fn empty_save() {
     assert_eq!(m.save(usize::MAX), None);
 }
 
-/// Characterized, not endorsed: an empty (or missing) array clears the
-/// bindings but sends no hotkey_bindings_changed, because load_bindings()
-/// signals only when the array has items. obs_hotkey_load_bindings()
-/// signals when it removed bindings too. A non-empty array signals even
-/// when every item is rejected.
+/// An empty (or missing) array clears the bindings and sends
+/// hotkey_bindings_changed when it removed any, as
+/// obs_hotkey_load_bindings() does; clearing a hotkey with no bindings
+/// sends nothing. A non-empty array signals even when every item is
+/// rejected.
 #[test]
-fn empty_array_clears_without_signal() {
+fn empty_array_clears_with_signal() {
     let (mut m, h) = setup();
     m.load(h, "[{\"key\":\"OBS_KEY_A\"}]");
     assert_eq!(m.changed[h], 1);
 
     m.load(h, "[]");
     m.assert_saved(h, "[]");
-    assert_eq!(m.changed[h], 1);
+    assert_eq!(m.changed[h], 2);
+    m.load(h, "[]");
+    assert_eq!(m.changed[h], 2);
 
     m.load(h, "[{\"key\":\"OBS_KEY_A\"}]");
-    assert_eq!(m.changed[h], 2);
+    assert_eq!(m.changed[h], 3);
     m.load_array(h, None);
     m.assert_saved(h, "[]");
-    assert_eq!(m.changed[h], 2);
+    assert_eq!(m.changed[h], 4);
+    m.load_array(h, None);
+    assert_eq!(m.changed[h], 4);
 
     m.load(h, "[{\"key\":\"OBS_KEY_MOUSE1\"}]");
-    assert_eq!(m.changed[h], 3);
+    assert_eq!(m.changed[h], 5);
 
     m.load(h, "[{\"key\":\"OBS_KEY_A\"}]");
-    assert_eq!(m.changed[h], 4);
+    assert_eq!(m.changed[h], 6);
     m.load_api(h, &[]);
     m.assert_saved(h, "[]");
-    assert_eq!(m.changed[h], 5);
+    assert_eq!(m.changed[h], 7);
     m.load_api(h, &[]);
-    assert_eq!(m.changed[h], 5);
+    assert_eq!(m.changed[h], 7);
 }
 
 // ---------------------------------------------------------------------------
@@ -674,7 +678,7 @@ fn pair_round_trip() {
     );
     assert_eq!(
         m.save(off).unwrap(),
-        "[{\"command\":true,\"key\":\"OBS_KEY_2\"},{\"key\":\"OBS_KEY_NONE\"}]"
+        "[{\"command\":true,\"key\":\"OBS_KEY_2\"}]"
     );
 }
 
@@ -774,12 +778,13 @@ fn from_fields_every_modifier_set() {
 }
 
 fn from_fields_ok(modifiers: [bool; 4], name: &CStr) -> KeyCombination {
-    combo_from_fields(modifiers, name).expect("the C never drops a binding")
+    combo_from_fields(modifiers, name).expect("a binding with a key or a modifier")
 }
 
-/// Characterized, not endorsed: nothing is dropped, whatever the name.
+/// No known key: dropped without modifiers, a modifier-only binding (key
+/// OBS_KEY_NONE) with any, whatever the name.
 #[test]
-fn from_fields_never_drops() {
+fn from_fields_drops_only_empty() {
     let long = CString::new(vec![b'A'; 4096]).unwrap();
     let names: [&CStr; 7] = [
         c"",
@@ -791,7 +796,8 @@ fn from_fields_never_drops() {
         &long,
     ];
     for name in names {
-        for index in 0..16 {
+        assert_eq!(combo_from_fields([false; 4], name), None, "{name:?}");
+        for index in 1..16 {
             let c = from_fields_ok(set_of(index), name);
             assert_eq!(c.key, KEY_NONE, "{name:?}");
         }
@@ -803,7 +809,12 @@ fn from_fields_every_key_name() {
     for k in KEY_NONE..LAST {
         let name = key_name(k).unwrap();
         // The first key with a name wins, as in obs_key_from_name.
-        assert_eq!(from_fields_ok([false; 4], name).key, key_from_name(name));
+        // OBS_KEY_NONE alone is no binding.
+        if key_from_name(name) == KEY_NONE {
+            assert_eq!(combo_from_fields([false; 4], name), None);
+        } else {
+            assert_eq!(from_fields_ok([false; 4], name).key, key_from_name(name));
+        }
         assert_eq!(
             from_fields_ok([true; 4], name),
             combo(ALL, key_from_name(name))
@@ -863,7 +874,8 @@ fn to_fields_any_key_code() {
 }
 
 /// save -> load gives the binding back for every known key and modifier
-/// set; an unknown code comes back as OBS_KEY_NONE (its name is "").
+/// set; an unknown code comes back as OBS_KEY_NONE (its name is ""), and
+/// as nothing when no modifier is set either.
 #[test]
 fn to_fields_then_from_fields() {
     for k in [-1, LAST, i32::MAX].into_iter().chain(KEY_NONE..LAST) {
@@ -886,13 +898,15 @@ fn to_fields_then_from_fields() {
                     Field::Key(code) => name = key_name(code).unwrap_or(c""),
                 }
             }
-            let back = from_fields_ok(set, name);
+            let back = combo_from_fields(set, name);
             let expected_key = if key_name(k).is_some() {
                 key_from_name(key_name(k).unwrap())
             } else {
                 KEY_NONE
             };
-            assert_eq!(back, combo(modifiers, expected_key), "{k} {index}");
+            let expected = (modifiers != 0 || expected_key != KEY_NONE)
+                .then(|| combo(modifiers, expected_key));
+            assert_eq!(back, expected, "{k} {index}");
         }
     }
 }

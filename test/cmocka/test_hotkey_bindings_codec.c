@@ -201,9 +201,9 @@ static void all_modifier_sets(void **state)
 /* ------------------------------------------------------------------------- */
 /* Keys */
 
-/* Every key name round-trips, MOUSE1 and MOUSE2 aside (rejected below). The
- * array is built the way the codec writes it, so it must load and save to
- * the same bytes. */
+/* Every key name round-trips, MOUSE1 and MOUSE2 aside (rejected below), and
+ * OBS_KEY_NONE, which alone is no binding (dropped below). The array is built
+ * the way the codec writes it, so it must load and save to the same bytes. */
 static void every_key_name(void **state)
 {
 	(void)state;
@@ -211,7 +211,7 @@ static void every_key_name(void **state)
 	size_t count = 0;
 	dstr_copy(&json, "[");
 	for (int key = OBS_KEY_NONE; key < OBS_KEY_LAST_VALUE; key++) {
-		if (key == OBS_KEY_MOUSE1 || key == OBS_KEY_MOUSE2)
+		if (key == OBS_KEY_NONE || key == OBS_KEY_MOUSE1 || key == OBS_KEY_MOUSE2)
 			continue;
 		const char *name = obs_key_to_name((obs_key_t)key);
 		assert_non_null(name);
@@ -225,16 +225,15 @@ static void every_key_name(void **state)
 	dstr_free(&json);
 }
 
-/* Characterized, not endorsed: load_binding() means to drop an item with no
- * modifiers and no known key, but its check tests the address of the
- * modifiers (never NULL), so it never drops anything. An unknown, empty,
- * missing or non-string "key" loads as OBS_KEY_NONE and is saved back as
- * "OBS_KEY_NONE", and {} is kept as a binding of nothing. Such a binding
- * never fires (handle_binding() resets a modifier-less OBS_KEY_NONE). */
-static void unknown_or_missing_key_kept_as_none(void **state)
+/* An item with no modifiers and no known key is no binding: it could never
+ * fire (handle_binding() resets a modifier-less OBS_KEY_NONE), so
+ * load_binding() drops it. An unknown, empty, missing or non-string "key",
+ * {}, and the {"key":"OBS_KEY_NONE"} that older builds saved for these, load
+ * as nothing and are not saved back. */
+static void unknown_or_missing_key_dropped(void **state)
 {
 	(void)state;
-	const char *none = "[{\"key\":\"OBS_KEY_NONE\"}]";
+	const char *none = "[]";
 	assert_load_saves("[{\"key\":\"OBS_KEY_NOT_A_KEY\"}]", none);
 	assert_load_saves("[{\"key\":\"obs_key_a\"}]", none);
 	assert_load_saves("[{\"key\":\" OBS_KEY_A\"}]", none);
@@ -363,12 +362,11 @@ static void empty_save(void **state)
 	assert_null(obs_hotkey_save(OBS_INVALID_HOTKEY_ID));
 }
 
-/* Characterized, not endorsed: an empty (or missing) array clears the
- * bindings but sends no hotkey_bindings_changed, because load_bindings()
- * signals only when the array has items. obs_hotkey_load_bindings() signals
- * when it removed bindings too. A non-empty array signals even when every
- * item is rejected. */
-static void empty_array_clears_without_signal(void **state)
+/* An empty (or missing) array clears the bindings and sends
+ * hotkey_bindings_changed when it removed any, as obs_hotkey_load_bindings()
+ * does; clearing a hotkey with no bindings sends nothing. A non-empty array
+ * signals even when every item is rejected. */
+static void empty_array_clears_with_signal(void **state)
 {
 	(void)state;
 	load(hotkey, "[{\"key\":\"OBS_KEY_A\"}]");
@@ -376,24 +374,28 @@ static void empty_array_clears_without_signal(void **state)
 
 	load(hotkey, "[]");
 	assert_saved(hotkey, "[]");
-	assert_int_equal(changed, 1);
+	assert_int_equal(changed, 2);
+	load(hotkey, "[]");
+	assert_int_equal(changed, 2);
 
 	load(hotkey, "[{\"key\":\"OBS_KEY_A\"}]");
-	assert_int_equal(changed, 2);
+	assert_int_equal(changed, 3);
 	obs_hotkey_load(hotkey, NULL);
 	assert_saved(hotkey, "[]");
-	assert_int_equal(changed, 2);
+	assert_int_equal(changed, 4);
+	obs_hotkey_load(hotkey, NULL);
+	assert_int_equal(changed, 4);
 
 	load(hotkey, "[{\"key\":\"OBS_KEY_MOUSE1\"}]");
-	assert_int_equal(changed, 3);
+	assert_int_equal(changed, 5);
 
 	load(hotkey, "[{\"key\":\"OBS_KEY_A\"}]");
-	assert_int_equal(changed, 4);
+	assert_int_equal(changed, 6);
 	obs_hotkey_load_bindings(hotkey, NULL, 0);
 	assert_saved(hotkey, "[]");
-	assert_int_equal(changed, 5);
+	assert_int_equal(changed, 7);
 	obs_hotkey_load_bindings(hotkey, NULL, 0);
-	assert_int_equal(changed, 5);
+	assert_int_equal(changed, 7);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -417,7 +419,7 @@ static void pair_round_trip(void **state)
 	char *json0 = array_to_json(out0);
 	char *json1 = array_to_json(out1);
 	assert_string_equal(json0, "[{\"alt\":true,\"key\":\"OBS_KEY_1\"}]");
-	assert_string_equal(json1, "[{\"command\":true,\"key\":\"OBS_KEY_2\"},{\"key\":\"OBS_KEY_NONE\"}]");
+	assert_string_equal(json1, "[{\"command\":true,\"key\":\"OBS_KEY_2\"}]");
 	bfree(json0);
 	bfree(json1);
 	obs_data_array_release(out0);
@@ -533,7 +535,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(modifier_not_a_bool, setup, teardown),
 		cmocka_unit_test_setup_teardown(all_modifier_sets, setup, teardown),
 		cmocka_unit_test_setup_teardown(every_key_name, setup, teardown),
-		cmocka_unit_test_setup_teardown(unknown_or_missing_key_kept_as_none, setup, teardown),
+		cmocka_unit_test_setup_teardown(unknown_or_missing_key_dropped, setup, teardown),
 		cmocka_unit_test_setup_teardown(modifiers_only, setup, teardown),
 		cmocka_unit_test_setup_teardown(primary_mouse_buttons_rejected, setup, teardown),
 		cmocka_unit_test_setup_teardown(rejected_load_clears, setup, teardown),
@@ -543,7 +545,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(non_object_items, setup, teardown),
 		cmocka_unit_test_setup_teardown(load_replaces_only_its_hotkey, setup, teardown),
 		cmocka_unit_test_setup_teardown(empty_save, setup, teardown),
-		cmocka_unit_test_setup_teardown(empty_array_clears_without_signal, setup, teardown),
+		cmocka_unit_test_setup_teardown(empty_array_clears_with_signal, setup, teardown),
 		cmocka_unit_test_setup_teardown(pair_round_trip, setup, teardown),
 		cmocka_unit_test_setup_teardown(source_round_trip, setup, teardown),
 	};
