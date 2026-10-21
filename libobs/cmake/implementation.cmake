@@ -31,4 +31,20 @@ function(obs_libobs_add_c_sources)
   foreach(target IN LISTS OBS_LIBOBS_C_TARGETS)
     target_sources(${target} PRIVATE ${ARGN})
   endforeach()
+  # Without a C target (the default hybrid) nothing compiles these groups, so
+  # their implementation files have no owner. A test that compiles one of them
+  # itself (test_avc) gets its include directories from the owner
+  # (cmake/common/groups.cmake): give them libobs-objects, which carries
+  # libobs's usage requirements (libcaption, the libobs source dir).
+  if(NOT OBS_LIBOBS_C_TARGETS)
+    foreach(source IN LISTS ARGN)
+      if(_OBS_GROUP_REGEX AND source MATCHES "${_OBS_GROUP_REGEX}")
+        cmake_path(ABSOLUTE_PATH source BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" NORMALIZE OUTPUT_VARIABLE group)
+        _obs_group_read("${group}" _pch members)
+        foreach(member IN LISTS members)
+          set_property(GLOBAL PROPERTY "_OBS_IMPL_OWNER:${member}" libobs-objects)
+        endforeach()
+      endif()
+    endforeach()
+  endif()
 endfunction()
