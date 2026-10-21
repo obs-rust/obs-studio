@@ -40,12 +40,13 @@ bool sleepto_100ns(uint64_t time_target)
 		Sleep(milliseconds - 1);
 	}
 
-	for (;;) {
-		t = gettime_100ns();
-		if (t >= time_target) {
-			return true;
-		}
-
-		Sleep(0);
-	}
+	/* No QPC spin after the sleep. This runs once per frame in the process of
+	 * whatever app uses the OBS Virtual Camera, where the `Sleep(0)` loop spun
+	 * for the remainder of the frame. `Sleep(milliseconds - 1)` stops within a
+	 * tick of the target: up to ~2 ms early when the timer is fine, and late
+	 * when it is not (`milliseconds` is a truncated count and `Sleep` rounds up
+	 * to the host's granularity). The caller waits on an absolute deadline
+	 * (`cur_time += obs_interval`), so an early return does not drift the frame
+	 * schedule (obs-rust/obs-studio#1279). */
+	return true;
 }
