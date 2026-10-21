@@ -376,6 +376,19 @@ static void wait_event(os_event_t *event, const char *what)
 	}
 }
 
+/* libobs sends "deactivate" before it clears the active flag
+ * (end_data_capture_thread in obs-output.c.h), so wait for the flag too. */
+static void wait_inactive(void)
+{
+	for (int ms = 0; obs_output_active(output); ms++) {
+		if (ms == WAIT_MS) {
+			fprintf(stderr, "timed out waiting for the output to become inactive\n");
+			fail();
+		}
+		os_sleep_ms(1);
+	}
+}
+
 static void wait_delivered(size_t n)
 {
 	while (delivered_count() < n)
@@ -492,7 +505,7 @@ static void force_stop_skips_delay(void **state)
 	assert_int_equal(snap.stop_calls, 1);
 	assert_int_equal(snap.stop_ts, 0);
 	wait_event(ev.deactivated, "deactivate");
-	assert_false(obs_output_active(output));
+	wait_inactive();
 	assert_int_equal(obs_output_get_active_delay(output), 0);
 
 	/* The packets still queued (about a second of them) are dropped, not
