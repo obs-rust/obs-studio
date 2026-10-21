@@ -433,7 +433,7 @@ enum Ret {
 }
 
 /// Lines logged by the step, then the level and text of the last one.
-type LogLine = (c_int, c_int, String);
+pub(super) type LogLine = (c_int, c_int, String);
 
 #[derive(Debug, PartialEq, Eq)]
 struct Snapshot {
@@ -453,8 +453,14 @@ thread_local! {
     static LIVE: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }
 
-fn live() -> i64 {
+pub(super) fn live() -> i64 {
     LIVE.with(|l| i64::try_from(l.borrow().len()).unwrap())
+}
+
+/// Whether `data` is a held copy not yet released. The interleaver parity
+/// shares these stand-ins (one definition per test binary).
+pub(super) fn is_held(data: *const u8) -> bool {
+    LIVE.with(|l| l.borrow().contains(&(data as usize)))
 }
 
 /// The C file's `os_gettime_ns`.
@@ -673,13 +679,13 @@ unsafe extern "C" {
 }
 
 /// The process-wide log handler, pointed at a record while it lives.
-struct Capture {
+pub(super) struct Capture {
     rec: Box<Rec>,
     saved: (*mut c_void, *mut c_void),
 }
 
 impl Capture {
-    fn arm() -> Self {
+    pub(super) fn arm() -> Self {
         let mut saved = (ptr::null_mut(), ptr::null_mut());
         let mut rec = Box::new(Rec {
             calls: 0,
@@ -695,7 +701,7 @@ impl Capture {
         Self { rec, saved }
     }
 
-    fn take(&mut self) -> LogLine {
+    pub(super) fn take(&mut self) -> LogLine {
         let bytes: Vec<u8> = self.rec.message.iter().map(|&c| c as u8).collect();
         let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
         let line = (

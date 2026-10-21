@@ -125,6 +125,7 @@
     "build/libobs.ported-graphics+.h.c",
     "build/libobs.ported-missing-files+.h.c",
     "build/libobs.ported-output-delay+.h.c",
+    "build/libobs.ported-output-interleave+.h.c",
     "build/libobs.ported-scene-blend+.h.c",
     "build/libobs.ported-scene-bounds+.h.c",
     "build/libobs.ported-audio-controls+.h.c"

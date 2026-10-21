@@ -36,6 +36,10 @@ _process_delay
 _obs_output_delay_start
 _obs_output_delay_stop
 _obs_output_cleanup_delay
+# obs-output-interleave.c: obs-output.c calls them inside libobs. Not EXPORT.
+_interleave_packets
+_get_encoder_index
+_free_packets
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs
 # on Linux and FreeBSD. Built on every host; not EXPORT.
 _pulseaudio_monitor_stream_flags

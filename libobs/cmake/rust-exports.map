@@ -46,6 +46,11 @@
     obs_output_delay_start;
     obs_output_delay_stop;
     obs_output_cleanup_delay;
+    /* obs-output-interleave.c. obs-output.c calls them inside libobs. Not
+     * EXPORT. */
+    interleave_packets;
+    get_encoder_index;
+    free_packets;
     /* pulseaudio-stream-flags.c. pulseaudio-output.c calls them inside
      * libobs. Not EXPORT. */
     pulseaudio_monitor_stream_flags;

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-interleave.pch.h"
 
 /* The encoded packet interleaver (moved from obs-output.c.h). It reads and
  * writes the output only through obs_output_interleave_fields(), the caption

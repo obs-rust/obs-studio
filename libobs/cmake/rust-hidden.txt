@@ -37,6 +37,13 @@ process_delay
 obs_output_delay_start
 obs_output_delay_stop
 obs_output_cleanup_delay
+# obs-output-interleave.c: obs-output.c calls them inside libobs and passes
+# interleave_packets to the encoders as the encoded packet callback.
+# Declared in obs-internal.h without EXPORT, so the shims stay hidden the
+# same way.
+interleave_packets
+get_encoder_index
+free_packets
 # pulseaudio-stream-flags.c: pulseaudio-output.c calls them inside libobs.
 # The C file has no EXPORT, so the shims stay hidden the same way.
 pulseaudio_monitor_stream_flags

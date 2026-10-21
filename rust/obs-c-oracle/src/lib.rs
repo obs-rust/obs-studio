@@ -64,6 +64,7 @@ pub mod nix_inhibit;
 pub mod obs_nvenc;
 pub mod obs_properties;
 pub mod output_delay;
+pub mod output_interleave;
 pub mod path_extension;
 pub mod pipe;
 #[cfg(target_os = "macos")]
