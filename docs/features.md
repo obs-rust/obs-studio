@@ -585,6 +585,11 @@ area.
   [#1494](https://github.com/obs-rust/obs-studio/issues/1494), PR
   [#1495](https://github.com/obs-rust/obs-studio/pull/1495), port of
   [obsproject/obs-studio#12937](https://github.com/obsproject/obs-studio/pull/12937).
+- The OBS Virtual Camera no longer burns about a millisecond of CPU per frame
+  spinning inside the app that uses it (Zoom, Teams, a browser); it hands each
+  frame to that app slightly earlier instead. *Windows*, 2026-10-21. Issue
+  [#1279](https://github.com/obs-rust/obs-studio/issues/1279), PR
+  [#1638](https://github.com/obs-rust/obs-studio/pull/1638).
 
 ### Audio
 
