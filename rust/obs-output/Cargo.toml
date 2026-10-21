@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-output"
 version = "0.1.0"
-description = "Rust port of libobs/obs-output-delay.c.h"
+description = "Rust ports of libobs/obs-output-delay.c.h and obs-output-interleave.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

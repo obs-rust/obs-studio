@@ -3,6 +3,7 @@
 
 mod delay;
 mod delay_parity;
+mod interleave;
 
 use std::process::Command;
 
