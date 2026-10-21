@@ -4,6 +4,7 @@
 
 #include "libobs/obs-audio.c.h"
 #include "libobs/obs-encoder.c.h"
+#include "libobs/obs-output-interleave.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"

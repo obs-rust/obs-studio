@@ -510,5 +510,11 @@
     "sources": [
       "test/cmocka/test_deque.c"
     ]
+  },
+  {
+    "name": "test_output_interleave",
+    "sources": [
+      "test/cmocka/test_output_interleave.c"
+    ]
   }
 ]
