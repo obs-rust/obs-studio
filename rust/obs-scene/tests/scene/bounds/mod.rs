@@ -3,7 +3,8 @@
 //! The box is 800 by 600, as `fit` hardcodes it there. The live empty-group
 //! case stays in `test_group_empty_bounds`.
 
-use obs_scene_bounds::{BoundsType, Vec2, bounds_fit_scale};
+use obs_graphics::vec2::Vec2;
+use obs_scene::bounds::{BoundsType, bounds_fit_scale};
 
 mod parity;
 

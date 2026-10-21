@@ -8,7 +8,7 @@ use std::ffi::c_int;
 use obs_c_oracle::scene_bounds::oracle_obs_bounds_fit_scale;
 use obs_c_oracle::vec2::OracleVec2;
 use obs_graphics::ffi::vec2::vec2;
-use obs_scene_bounds::ffi::scene_bounds::obs_bounds_fit_scale;
+use obs_scene::ffi::scene_bounds::obs_bounds_fit_scale;
 use proptest::prelude::*;
 
 /// Bit-exact equality, except that any NaN equals any NaN.

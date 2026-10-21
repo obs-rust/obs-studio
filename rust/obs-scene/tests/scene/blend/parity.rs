@@ -15,8 +15,8 @@ use obs_c_oracle::scene_blend::{
     oracle_scene_blend_enum, oracle_scene_blend_layout, oracle_scene_blend_rows,
     oracle_scene_blend_table,
 };
-use obs_scene_blend::ffi::scene_blend::{obs_blend_mode_param, obs_blend_mode_params};
-use obs_scene_blend::{BlendMode, BlendOp, BlendType, MODE_COUNT, blend_params};
+use obs_scene::blend::{BlendMode, BlendOp, BlendType, MODE_COUNT, blend_params};
+use obs_scene::ffi::scene_blend::{obs_blend_mode_param, obs_blend_mode_params};
 
 const TYPES: [BlendType; 11] = [
     BlendType::Zero,

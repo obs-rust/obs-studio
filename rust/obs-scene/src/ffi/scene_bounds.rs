@@ -10,7 +10,7 @@ use std::ptr;
 use obs_graphics::ffi::vec2::vec2;
 use obs_graphics::vec2::Vec2;
 
-use crate::fit::{BoundsType, bounds_fit_scale};
+use crate::bounds::{BoundsType, bounds_fit_scale};
 
 /// Same contract as C `obs_bounds_fit_scale`.
 ///

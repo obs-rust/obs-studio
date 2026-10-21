@@ -53,8 +53,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/callback/` | `rust/obs-callback` |
 | `libobs/obs-missing-files.c.h` | `rust/obs-missing-files` |
 | `libobs/obs-output-delay.c.h`, `obs-output-interleave.c.h` | `rust/obs-output` |
-| `libobs/obs-scene-blend.c.h` | `rust/obs-scene-blend` |
-| `libobs/obs-scene-bounds.c.h` | `rust/obs-scene-bounds` |
+| `libobs/obs-scene*.c.h` | `rust/obs-scene` |
 | `libobs/audio-monitoring/` | `rust/obs-audio-monitoring` |
 | `libobs/obs-audio-controls.c.h` | `rust/obs-audio-controls` |
 | `plugins/obs-nvenc/` (CUDA/NVENC loader) | `rust/obs-nvenc`, linked through `rust/obs-nvenc-plugin` |

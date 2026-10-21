@@ -409,8 +409,7 @@ dependencies = [
  "obs-missing-files",
  "obs-output",
  "obs-properties",
- "obs-scene-blend",
- "obs-scene-bounds",
+ "obs-scene",
  "obs-util",
 ]
 
@@ -509,8 +508,7 @@ dependencies = [
  "obs-missing-files",
  "obs-output",
  "obs-properties",
- "obs-scene-blend",
- "obs-scene-bounds",
+ "obs-scene",
  "obs-util",
  "proptest",
 ]
@@ -618,11 +616,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "obs-scene-blend"
-version = "0.1.0"
-
-[[package]]
-name = "obs-scene-bounds"
+name = "obs-scene"
 version = "0.1.0"
 dependencies = [
  "obs-graphics",

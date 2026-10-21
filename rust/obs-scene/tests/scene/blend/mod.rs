@@ -4,7 +4,7 @@
 //! cases. The edge cases after them are new. `test_darken_transparent`
 //! still covers Darken drawn end to end.
 
-use obs_scene_blend::{
+use obs_scene::blend::{
     BlendMode, BlendOp, BlendParams, BlendType, MODE_COUNT, blend_mode_params, blend_params,
 };
 
