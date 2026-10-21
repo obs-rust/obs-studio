@@ -259,23 +259,24 @@ impl Model {
         }
     }
 
-    /// `load_bindings`: every item, then the signal if the array has any.
-    fn load_bindings(&mut self, id: usize, items: &[Json]) {
+    /// `load_bindings`: every item, then the signal if the array has any or
+    /// the caller removed bindings first.
+    fn load_bindings(&mut self, id: usize, items: &[Json], removed: bool) {
         for item in items {
             // load_binding
             if let Some(c) = from_item(item) {
                 self.create(id, c);
             }
         }
-        if !items.is_empty() {
+        if !items.is_empty() || removed {
             self.changed[id] += 1;
         }
     }
 
     /// `obs_hotkey_load(id, array)`; `None` is a NULL array.
     fn load_array(&mut self, id: usize, array: Option<&Json>) {
-        self.remove(id);
-        self.load_bindings(id, &array.map(Json::objects).unwrap_or_default());
+        let removed = self.remove(id);
+        self.load_bindings(id, &array.map(Json::objects).unwrap_or_default(), removed);
     }
 
     fn load(&mut self, id: usize, array_json: &str) {
@@ -693,7 +694,7 @@ fn source_saved(hotkeys_json: &str) -> String {
     for name in names {
         let id = m.register(name);
         if let Some(items) = data.get_array(name) {
-            m.load_bindings(id, &items);
+            m.load_bindings(id, &items, false);
         }
     }
     for (id, name) in names.iter().enumerate() {

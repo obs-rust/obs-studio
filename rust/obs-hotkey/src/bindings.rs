@@ -24,14 +24,10 @@
 //! come from others, so nothing here can panic, index out of bounds or
 //! overflow.
 //!
-//! Byte for byte the C, including what `test_hotkey_bindings_codec` marks
-//! "characterized, not endorsed": `load_binding()` means to drop an item
-//! with no modifiers and no known key, but its check tests the address of
-//! the modifiers, which is never NULL. So nothing is dropped:
-//! [`combo_from_fields`] always returns a combination, and `{}` or an
-//! unknown, empty or missing key loads as `OBS_KEY_NONE`. (The other one,
-//! that an empty array sends no `hotkey_bindings_changed`, is in
-//! `load_bindings()`, which stays C.)
+//! Byte for byte the C: [`combo_from_fields`] drops an item with no
+//! modifiers and no known key (`{}`, an unknown, empty or missing key, or
+//! `OBS_KEY_NONE`), which could never fire, and keeps a modifier-only
+//! binding (key `OBS_KEY_NONE` with modifiers), which can.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -46,7 +42,7 @@
 
 use std::ffi::CStr;
 
-use crate::name_map::{OBS_KEY_MOUSE1, OBS_KEY_MOUSE2, key_from_name};
+use crate::name_map::{self, KEY_NONE, OBS_KEY_MOUSE1, OBS_KEY_MOUSE2, key_from_name};
 use crate::nix_hotkey_state::{
     INTERACT_ALT_KEY, INTERACT_COMMAND_KEY, INTERACT_CONTROL_KEY, INTERACT_SHIFT_KEY,
     KeyCombination,
@@ -130,8 +126,9 @@ impl std::iter::FusedIterator for Fields {}
 /// [`MODIFIERS`], in that order, and `key_name` what `obs_data_get_string`
 /// read for [`KEY_FIELD`].
 ///
-/// Never `None` (characterized, not endorsed: see the module docs). A
-/// modifier-only binding, or one of no key at all, has key `OBS_KEY_NONE`.
+/// `None` for an item with no modifiers and no known key: it is no
+/// binding, as it could never fire. A modifier-only binding has key
+/// `OBS_KEY_NONE`.
 pub fn combo_from_fields(modifiers: [bool; 4], key_name: &CStr) -> Option<KeyCombination> {
     let mut combo = KeyCombination::default();
     // load_modifier
@@ -141,6 +138,10 @@ pub fn combo_from_fields(modifiers: [bool; 4], key_name: &CStr) -> Option<KeyCom
         }
     }
     combo.key = key_from_name(key_name);
+    // OBS_KEY_NONE, or not a key (>= OBS_KEY_LAST_VALUE), with no modifiers.
+    if combo.modifiers == 0 && (combo.key == KEY_NONE || name_map::key_name(combo.key).is_none()) {
+        return None;
+    }
     Some(combo)
 }
 

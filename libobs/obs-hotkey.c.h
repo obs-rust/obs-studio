@@ -153,7 +153,7 @@ static void hotkey_signal(const char *signal, obs_hotkey_t *hotkey)
 	calldata_free(&data);
 }
 
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data);
+static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed);
 
 static inline void context_add_hotkey(struct obs_context_data *context, obs_hotkey_id id)
 {
@@ -183,7 +183,7 @@ static inline obs_hotkey_id obs_hotkey_register_internal(obs_hotkey_registerer_t
 
 	if (context) {
 		obs_data_array_t *binding_data = obs_data_get_array(context->hotkey_data, name);
-		load_bindings(hotkey, binding_data);
+		load_bindings(hotkey, binding_data, false);
 		obs_data_array_release(binding_data);
 
 		context_add_hotkey(context, result);
@@ -483,7 +483,10 @@ static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data)
 	create_binding(hotkey, combo);
 }
 
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data)
+/* removed: the caller's remove_bindings() removed bindings of this hotkey
+ * first, so an empty or missing array still changed them (as in
+ * obs_hotkey_load_bindings()). */
+static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed)
 {
 	const size_t count = obs_data_array_count(data);
 	for (size_t i = 0; i < count; i++) {
@@ -492,7 +495,7 @@ static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data)
 		obs_data_release(item);
 	}
 
-	if (count)
+	if (count || removed)
 		hotkey_signal("hotkey_bindings_changed", hotkey);
 }
 
@@ -525,8 +528,8 @@ void obs_hotkey_load(obs_hotkey_id id, obs_data_array_t *data)
 	obs_hotkey_t *hotkey;
 	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
 	if (hotkey) {
-		remove_bindings(id);
-		load_bindings(hotkey, data);
+		bool removed = remove_bindings(id);
+		load_bindings(hotkey, data, removed);
 	}
 	unlock();
 }
@@ -537,7 +540,7 @@ static inline bool enum_load_bindings(void *data, obs_hotkey_t *hotkey)
 	if (!hotkey_data)
 		return true;
 
-	load_bindings(hotkey, hotkey_data);
+	load_bindings(hotkey, hotkey_data, false);
 	obs_data_array_release(hotkey_data);
 	return true;
 }
@@ -601,12 +604,12 @@ void obs_hotkey_pair_load(obs_hotkey_pair_id id, obs_data_array_t *data0, obs_da
 	HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[1], p2);
 
 	if (p1) {
-		remove_bindings(pair->id[0]);
-		load_bindings(p1, data0);
+		bool removed = remove_bindings(pair->id[0]);
+		load_bindings(p1, data0, removed);
 	}
 	if (p2) {
-		remove_bindings(pair->id[1]);
-		load_bindings(p2, data1);
+		bool removed = remove_bindings(pair->id[1]);
+		load_bindings(p2, data1, removed);
 	}
 
 unlock:

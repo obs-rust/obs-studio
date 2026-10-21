@@ -1413,6 +1413,13 @@ area.
   [#1480](https://github.com/obs-rust/obs-studio/issues/1480), PR
   [#1481](https://github.com/obs-rust/obs-studio/pull/1481), port of
   [obsproject/obs-studio#12824](https://github.com/obsproject/obs-studio/pull/12824).
+- Hotkey entries that bind nothing (no key and no modifier, saved as
+  `{"key":"OBS_KEY_NONE"}`) are dropped when a profile or scene collection
+  loads, so they are no longer saved back; such files still load as before.
+  A load that clears a hotkey's bindings now tells Settings > Hotkeys and
+  the Wayland global shortcuts. *All*, 2026-10-21. Issue
+  [#1648](https://github.com/obs-rust/obs-studio/issues/1648), PR
+  [#1649](https://github.com/obs-rust/obs-studio/pull/1649).
 
 ### Scripting
 

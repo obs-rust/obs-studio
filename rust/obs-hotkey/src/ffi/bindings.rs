@@ -37,8 +37,8 @@ fn to_core(c: obs_key_combination) -> KeyCombination {
     }
 }
 
-/// The parse of `load_binding()`: false where it returned without a
-/// binding (never, as in C).
+/// The parse of `load_binding()`: false where it returns without a
+/// binding (no modifiers and no known key), as in C.
 ///
 /// # Safety
 ///

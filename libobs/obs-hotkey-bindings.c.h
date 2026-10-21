@@ -31,7 +31,9 @@ static inline void load_modifier(uint32_t *modifiers, obs_data_t *data, const ch
 		*modifiers |= flag;
 }
 
-/* The parse of load_binding(): false where it returned without a binding. */
+/* The parse of load_binding(): false where it returned without a binding.
+ * An item with no modifiers and no known key is no binding: it could never
+ * fire. A modifier-only binding (OBS_KEY_NONE with modifiers) is one. */
 bool obs_hotkey_combination_from_data(obs_data_t *data, obs_key_combination_t *combo_out)
 {
 	obs_key_combination_t combo = {0};
@@ -42,7 +44,7 @@ bool obs_hotkey_combination_from_data(obs_data_t *data, obs_key_combination_t *c
 	load_modifier(modifiers, data, "command", INTERACT_COMMAND_KEY);
 
 	combo.key = obs_key_from_name(obs_data_get_string(data, "key"));
-	if (!modifiers && (combo.key == OBS_KEY_NONE || combo.key >= OBS_KEY_LAST_VALUE))
+	if (!combo.modifiers && (combo.key == OBS_KEY_NONE || combo.key >= OBS_KEY_LAST_VALUE))
 		return false;
 
 	*combo_out = combo;
