@@ -5,7 +5,9 @@
  * its encoded_packet callback receives: the start on a keyframe with every
  * track offset to 0, the dts order with video before audio at an equal dts,
  * the premature prune of a keyframe that audio starts more than one frame
- * after, and a stop and a restart of the same output.
+ * after, and a stop and a restart of the same output. The same cases run
+ * again with the video encoder in slot 1 and slot 0 empty, which the public
+ * API allows for a multitrack video output.
  *
  * The media is fed by hand, as in test_output_interleave_restart: each step
  * submits one audio block (one packet from each audio encoder, with a dts the
@@ -62,7 +64,8 @@ static struct {
 	int64_t audio_dts;
 	bool audio_pending[AUDIO_TRACKS];
 	uint32_t video_index;
-	uint64_t clock; /* next media timestamp, ns; never goes back */
+	uint64_t clock;    /* next media timestamp, ns; never goes back */
+	size_t video_slot; /* the output's video encoder slot */
 
 	pthread_mutex_t records_mutex;
 	struct record records[MAX_RECORDS];
@@ -205,7 +208,7 @@ static void create_output(void)
 {
 	harness.output = obs_output_create("test_interleave_e2e_output", "output", NULL, NULL);
 	assert_non_null(harness.output);
-	obs_output_set_video_encoder(harness.output, harness.video_encoder);
+	obs_output_set_video_encoder2(harness.output, harness.video_encoder, harness.video_slot);
 	for (size_t i = 0; i < AUDIO_TRACKS; i++)
 		obs_output_set_audio_encoder(harness.output, harness.audio_encoders[i], i);
 	signal_handler_connect(obs_output_get_signal_handler(harness.output), "deactivate", on_deactivate, NULL);
@@ -247,7 +250,7 @@ static int setup(void **state)
 	obs_register_encoder(&encoder);
 	struct obs_output_info output = {
 		.id = "test_interleave_e2e_output",
-		.flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED | OBS_OUTPUT_MULTI_TRACK,
+		.flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED | OBS_OUTPUT_MULTI_TRACK_AV,
 		.get_name = test_name,
 		.create = output_create,
 		.destroy = test_destroy,
@@ -298,9 +301,8 @@ static int setup(void **state)
 	return 0;
 }
 
-static int new_output(void **state)
+static void reset_output(size_t video_slot)
 {
-	UNUSED_PARAMETER(state);
 	/* A failed test leaves its capture running. */
 	video_output_disconnect(harness.video, video_done, NULL);
 	if (harness.output) {
@@ -308,7 +310,25 @@ static int new_output(void **state)
 			obs_output_force_stop(harness.output);
 		obs_output_release(harness.output);
 	}
+	harness.video_slot = video_slot;
 	create_output();
+}
+
+static int new_output(void **state)
+{
+	UNUSED_PARAMETER(state);
+	reset_output(0);
+	return 0;
+}
+
+/* The video encoder in slot 1 only, slot 0 empty, as
+ * obs_output_set_video_encoder2() allows on a multitrack video output. */
+static int new_output_video_slot_1(void **state)
+{
+	UNUSED_PARAMETER(state);
+	reset_output(1);
+	assert_null(obs_output_get_video_encoder2(harness.output, 0));
+	assert_ptr_equal(obs_output_get_video_encoder2(harness.output, 1), harness.video_encoder);
 	return 0;
 }
 
@@ -429,7 +449,7 @@ static void check_delivery(uint32_t first_index)
 	for (size_t i = 0; i < num; i++) {
 		const struct record *r = &harness.records[i];
 		if (r->type == OBS_ENCODER_VIDEO) {
-			assert_int_equal(r->track, 0);
+			assert_int_equal(r->track, harness.video_slot);
 			assert_true(r->index >= first_index);
 			video++;
 		} else {
@@ -507,6 +527,10 @@ static void stop_and_restart(void **state)
 	stop_capture();
 }
 
+/* The same case with the video encoder in slot 1: the start rules follow the
+ * output's first video encoder, not slot 0. */
+#define VIDEO_SLOT_1(f) {.name = "video_slot_1_" #f, .test_func = f, .setup_func = new_output_video_slot_1}
+
 int main(void)
 {
 	if (!getenv("DISPLAY"))
@@ -516,6 +540,10 @@ int main(void)
 		cmocka_unit_test_setup(audio_one_frame_late_keeps_keyframe, new_output),
 		cmocka_unit_test_setup(late_audio_starts_at_next_keyframe, new_output),
 		cmocka_unit_test_setup(stop_and_restart, new_output),
+		VIDEO_SLOT_1(starts_on_keyframe_and_interleaves),
+		VIDEO_SLOT_1(audio_one_frame_late_keeps_keyframe),
+		VIDEO_SLOT_1(late_audio_starts_at_next_keyframe),
+		VIDEO_SLOT_1(stop_and_restart),
 	};
 	return cmocka_run_group_tests(tests, setup, teardown);
 }
