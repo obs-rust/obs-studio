@@ -209,12 +209,22 @@ static inline struct encoder_packet *find_first_packet_type(struct obs_output *o
 							    size_t audio_idx);
 static int find_first_packet_type_idx(struct obs_output *output, enum obs_encoder_type type, size_t audio_idx);
 
+/* the track of the first video encoder: slot 0 may be empty on a multitrack
+ * video output */
+static size_t first_video_track(struct obs_output *output)
+{
+	size_t idx = 0;
+	obs_output_interleave_first_video_encoder_index(output, &idx);
+	return idx;
+}
+
 /* gets the point where audio and video are closest together */
 static size_t get_interleaved_start_idx(struct obs_output *output)
 {
 	struct obs_output_interleave_fields f = obs_output_interleave_fields(output);
 	int64_t closest_diff = 0x7FFFFFFFFFFFFFFFLL;
-	struct encoder_packet *first_video = find_first_packet_type(output, OBS_ENCODER_VIDEO, 0);
+	struct encoder_packet *first_video =
+		find_first_packet_type(output, OBS_ENCODER_VIDEO, first_video_track(output));
 	size_t video_idx = DARRAY_INVALID;
 	size_t idx = 0;
 
@@ -272,7 +282,7 @@ static int prune_premature_packets(struct obs_output *output)
 	int64_t diff = 0;
 	int audio_encoders = 0;
 
-	video_idx = find_first_packet_type_idx(output, OBS_ENCODER_VIDEO, 0);
+	video_idx = find_first_packet_type_idx(output, OBS_ENCODER_VIDEO, first_video_track(output));
 	if (video_idx == -1)
 		return -1;
 

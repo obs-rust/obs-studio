@@ -28,8 +28,8 @@
 //!   checked, not the largest one;
 //! - [`get_encoder_duration`] truncates the per-sample time before it
 //!   multiplies by the frame size;
-//! - the start index follows video track 0 only, and can drop another audio
-//!   track's only packet;
+//! - the start index follows the first video track only, and can drop
+//!   another audio track's only packet;
 //! - a premature prune with more video queued starts a track on a frame that
 //!   is not a keyframe;
 //! - a video track waiting for its keyframe discards every queued packet
@@ -291,20 +291,21 @@ pub fn find_last_packet_type_idx<P: PacketView>(
 /// `get_interleaved_start_idx()`: where audio and video are closest.
 ///
 /// The audio packet closest in `dts_usec` to the first video packet of
-/// track 0 (the earlier one on a tie), or that video packet if it comes
-/// first. If the first audio packet at or after that index is a priming
-/// packet (`pts <= 0`), the start moves back to the first packet of every
-/// audio track that is earlier.
+/// `video_track` (the output's first video encoder, see
+/// [`first_video_track`]; the earlier one on a tie), or that video packet
+/// if it comes first. If the first audio packet at or after that index is a
+/// priming packet (`pts <= 0`), the start moves back to the first packet of
+/// every audio track that is earlier.
 ///
 /// # Panics
 ///
-/// Without a video packet of track 0 and an audio packet at or after the
-/// start, where the C reads through a null or past the end. The
+/// Without a video packet of `video_track` and an audio packet at or after
+/// the start, where the C reads through a null or past the end. The
 /// interleaver calls it only after the premature prune found both.
 #[must_use]
-pub fn interleaved_start_idx<P: PacketView>(packets: &[P]) -> usize {
-    let first_video = find_first_packet_type_idx(packets, Kind::Video, 0)
-        .expect("a video packet of track 0 is queued");
+pub fn interleaved_start_idx<P: PacketView>(packets: &[P], video_track: usize) -> usize {
+    let first_video = find_first_packet_type_idx(packets, Kind::Video, video_track)
+        .expect("a video packet of the first video track is queued");
     let first_video_usec = packets[first_video].dts_usec();
     let mut closest_diff = i64::MAX;
     let mut idx = 0;
@@ -356,7 +357,7 @@ pub fn get_encoder_duration(info: EncoderInfo) -> i64 {
 /// What `prune_premature_packets()` decides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Prune {
-    /// No video packet of track 0 yet (-1).
+    /// No video packet of the first video track yet (-1).
     NoVideo,
     /// An audio track with an encoder has no packet yet (-1); the caller
     /// clears `received_audio`.
@@ -385,16 +386,17 @@ impl Prune {
 /// `audio_encoder(slot)` is the encoder of an audio slot, and
 /// `audio_duration(encoder)` its frame duration ([`get_encoder_duration`]);
 /// both are asked in slot order, up to the first audio track with no packet.
-/// The limit is one frame of the first video packet of track 0, widened to
-/// the longest audio frame when more than one audio track runs. It is
-/// compared with the difference of the last audio track checked
+/// The limit is one frame of the first video packet of `video_track`,
+/// widened to the longest audio frame when more than one audio track runs.
+/// It is compared with the difference of the last audio track checked
 /// (characterized, not endorsed), strictly.
 pub fn premature_prune<P: PacketView>(
     packets: &[P],
+    video_track: usize,
     audio_encoder: impl Fn(usize) -> Option<usize>,
     audio_duration: impl Fn(usize) -> i64,
 ) -> Prune {
-    let Some(video_idx) = find_first_packet_type_idx(packets, Kind::Video, 0) else {
+    let Some(video_idx) = find_first_packet_type_idx(packets, Kind::Video, video_track) else {
         return Prune::NoVideo;
     };
     let video = &packets[video_idx];
@@ -721,9 +723,16 @@ pub fn send_interleaved<O: InterleaveOutput>(o: &mut O) {
     o.release(&mut out);
 }
 
+/// `first_video_track()`: the slot of the output's first video encoder,
+/// which the start rules follow (slot 0 may be empty on a multitrack video
+/// output); 0 without one.
+pub fn first_video_track<O: InterleaveOutput>(o: &O) -> usize {
+    o.first_video_encoder_index().unwrap_or(0)
+}
+
 /// `get_interleaved_start_idx()` on the output's queue.
 pub fn get_interleaved_start_idx<O: InterleaveOutput>(o: &O) -> usize {
-    interleaved_start_idx(o.packets())
+    interleaved_start_idx(o.packets(), first_video_track(o))
 }
 
 /// `prune_premature_packets()`: [`premature_prune`] on the output's queue
@@ -732,6 +741,7 @@ pub fn get_interleaved_start_idx<O: InterleaveOutput>(o: &O) -> usize {
 pub fn prune_premature_packets<O: InterleaveOutput>(o: &mut O) -> Prune {
     let prune = premature_prune(
         o.packets(),
+        first_video_track(o),
         |slot| o.audio_encoder(slot),
         |encoder| get_encoder_duration(o.encoder_info(encoder)),
     );

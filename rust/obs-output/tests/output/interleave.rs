@@ -1946,19 +1946,19 @@ fn start_index_without_audio_is_the_video() {
     let mut a = audio_packet(0, 0, T + 5, 2);
     a.track = 0;
     // a single closest audio after the video: the video comes first
-    assert_eq!(interleaved_start_idx(&[v.clone(), a.clone()]), 0);
+    assert_eq!(interleaved_start_idx(&[v.clone(), a.clone()], 0), 0);
     // audio first, closer than nothing: the audio
     let mut early = a.clone();
     early.dts_usec = T - 5;
     early.pts = 10;
-    assert_eq!(interleaved_start_idx(&[early, v, a]), 0);
+    assert_eq!(interleaved_start_idx(&[early, v, a], 0), 0);
 }
 
 #[test]
 fn premature_prune_without_audio_encoders_keeps() {
     let mut v = video_packet(0, 0, 0, T, true, 1);
     v.track = 0;
-    assert_eq!(premature_prune(&[v], |_| None, |_| 0), Prune::Keep);
+    assert_eq!(premature_prune(&[v], 0, |_| None, |_| 0), Prune::Keep);
     assert_eq!(Prune::Keep.c_value(), 0);
     assert_eq!(Prune::NoVideo.c_value(), -1);
     assert_eq!(Prune::MissingAudio.c_value(), -1);
@@ -1975,6 +1975,7 @@ fn premature_prune_asks_durations_up_to_the_missing_track() {
     let slots = [Some(AENC[0]), None, Some(AENC[1]), None, None, None];
     let prune = premature_prune(
         &[v, a0],
+        0,
         |slot| slots[slot],
         |encoder| {
             asked.borrow_mut().push(encoder);
