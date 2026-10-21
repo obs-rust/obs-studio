@@ -1,7 +1,7 @@
-//! Rust port of `libobs/callback/calldata.c.h`, `callback/decl.c.h`
-//! and `callback/proc.c.h`.
+//! Rust port of `libobs/callback/calldata.c.h`, `callback/decl.c.h`,
+//! `callback/proc.c.h` and `callback/signal.c.h`.
 //!
-//! [`calldata`], [`decl`] and [`proc`] are the safe cores. The C ABI shims live in
+//! [`calldata`], [`decl`], [`proc`] and [`signal`] are the safe cores. The C ABI shims live in
 //! [`ffi`].
 
 #![deny(unsafe_code)]
@@ -9,6 +9,7 @@
 pub mod calldata;
 pub mod decl;
 pub mod proc;
+pub mod signal;
 
 #[allow(unsafe_code)]
 pub mod ffi;
