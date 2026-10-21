@@ -571,6 +571,108 @@ static void stop_at_track_end_is_prompt(void **state)
 	}
 }
 
+struct end_stop {
+	obs_source_t *src;
+	volatile bool stop_sent;
+	volatile long started_after_stop;
+};
+
+/* "media_ended", on libVLC's thread that reports the end of a track. libVLC's
+ * playlist moves on to the next item from another thread once this report
+ * is done. Stop now, and hold the report until that Stop is under way, so the
+ * Stop and the move to the next item meet, as a Stop pressed just as a track
+ * ends does. */
+static void end_stop_ended(void *param, calldata_t *cd)
+{
+	struct end_stop *es = param;
+	UNUSED_PARAMETER(cd);
+	if (os_atomic_set_bool(&es->stop_sent, true))
+		return;
+	obs_source_media_stop(es->src);
+	/* the Stop runs on the next video tick (30 fps) */
+	os_sleep_ms(150);
+}
+
+static void end_stop_started(void *param, calldata_t *cd)
+{
+	struct end_stop *es = param;
+	UNUSED_PARAMETER(cd);
+	if (os_atomic_load_bool(&es->stop_sent))
+		os_atomic_inc_long(&es->started_after_stop);
+}
+
+/* Guard: a Stop that meets the move to the next playlist item stays in
+ * force; libVLC must not start an item after it. */
+static void stop_as_track_ends_stays_stopped(void **state)
+{
+	UNUSED_PARAMETER(state);
+	if (!obs_up)
+		skip();
+	if (!vlc_ready)
+		skip();
+
+	char path[512];
+	snprintf(path, sizeof(path), "%s/obs-vlc-gap-%llu-endstop.wav", getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp",
+		 (unsigned long long)os_gettime_ns());
+	if (!write_wav(path, 0)) {
+		fprintf(stderr, "could not write %s\n", path);
+		fail();
+	}
+
+	obs_data_t *settings = obs_data_create();
+	obs_data_array_t *list = obs_data_array_create();
+	for (int i = 0; i < 2; i++) {
+		obs_data_t *item = obs_data_create();
+		obs_data_set_string(item, "value", path);
+		obs_data_array_push_back(list, item);
+		obs_data_release(item);
+	}
+	obs_data_set_array(settings, "playlist", list);
+	obs_data_set_string(settings, "playback_behavior", "always_play");
+	obs_data_set_bool(settings, "loop", false);
+	obs_data_array_release(list);
+
+	struct end_stop es = {0};
+	obs_source_t *src = obs_source_create("vlc_source", "vlc", settings, NULL);
+	obs_data_release(settings);
+	if (!src) {
+		os_unlink(path);
+		fprintf(stderr, "could not create vlc_source\n");
+		fail();
+	}
+	es.src = src;
+	signal_handler_t *sh = obs_source_get_signal_handler(src);
+	signal_handler_connect(sh, "media_ended", end_stop_ended, &es);
+	signal_handler_connect(sh, "media_started", end_stop_started, &es);
+	obs_set_output_source(0, src);
+
+	/* the first item plays for 3 s */
+	for (int i = 0; i < 2000 && !os_atomic_load_bool(&es.stop_sent); i++)
+		os_sleep_ms(5);
+	bool ended = os_atomic_load_bool(&es.stop_sent);
+	/* the Stop has been handled, and the next item would be playing */
+	os_sleep_ms(1000);
+	enum obs_media_state st = obs_source_media_get_state(src);
+	long started = os_atomic_load_long(&es.started_after_stop);
+
+	obs_set_output_source(0, NULL);
+	signal_handler_disconnect(sh, "media_ended", end_stop_ended, &es);
+	signal_handler_disconnect(sh, "media_started", end_stop_started, &es);
+	obs_source_release(src);
+	os_unlink(path);
+
+	fprintf(stderr, "stop as a track ends: state %d after 1 s, %ld item(s) started after the stop\n", (int)st,
+		started);
+	if (!ended) {
+		fprintf(stderr, "the first item never ended\n");
+		fail();
+	}
+	if (st != OBS_MEDIA_STATE_STOPPED || started) {
+		fprintf(stderr, "a Stop as a track ended did not stay in force\n");
+		fail();
+	}
+}
+
 /* Guard: a single file plays completely. */
 static void single_file_plays_to_the_end(void **state)
 {
@@ -659,6 +761,7 @@ int main(void)
 		cmocka_unit_test(playlist_plays_every_file_to_the_end),
 		cmocka_unit_test(playlist_of_three_plays_every_file_to_the_end),
 		cmocka_unit_test(stop_at_track_end_is_prompt),
+		cmocka_unit_test(stop_as_track_ends_stays_stopped),
 	};
 
 	int failed = cmocka_run_group_tests(tests, start_obs, stop_obs);
