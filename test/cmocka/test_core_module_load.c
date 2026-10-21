@@ -215,6 +215,12 @@ static void run_scenario(enum scenario scenario, struct child_result *res)
 		dstr_free(&dst);
 	}
 
+	/* The directory of the libobs this process runs on: Tier 2 mode ON
+	 * selects libobs-with-rust through LD_LIBRARY_PATH. */
+	char libobs_dir[4096];
+	assert_true(mapped_libobs(libobs_dir, sizeof(libobs_dir)));
+	*strrchr(libobs_dir, '/') = '\0';
+
 	int fds[2];
 	assert_int_equal(pipe(fds), 0);
 	pid_t pid = fork();
@@ -223,8 +229,10 @@ static void run_scenario(enum scenario scenario, struct child_result *res)
 		dup2(fds[1], STDOUT_FILENO);
 		close(fds[0]);
 		close(fds[1]);
-		/* The dependency must stay out of reach, as libcef.so was. */
-		unsetenv("LD_LIBRARY_PATH");
+		/* The dependency must stay out of reach, as libcef.so was, and
+		 * the child must run on the same libobs: LD_LIBRARY_PATH names
+		 * that libobs's directory and nothing else. */
+		setenv("LD_LIBRARY_PATH", libobs_dir, 1);
 		char *argv[] = {exe.array, "--child", NULL};
 		execv(exe.array, argv);
 		_exit(127);
