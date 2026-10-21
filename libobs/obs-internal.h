@@ -1268,6 +1268,12 @@ struct keyframe_group_data {
 	enum keyframe_group_track_status seen_on_track[MAX_OUTPUT_VIDEO_ENCODERS];
 };
 
+/* Named so that struct obs_output_interleave_fields can point at them. */
+typedef DARRAY(struct encoder_packet) obs_encoder_packet_array_t;
+typedef DARRAY(struct encoder_packet_time) obs_encoder_packet_time_array_t;
+typedef DARRAY(struct keyframe_group_data) obs_keyframe_group_array_t;
+typedef DARRAY(struct packet_callback) obs_packet_callback_array_t;
+
 struct obs_output {
 	struct obs_context_data context;
 	struct obs_output_info info;
@@ -1276,7 +1282,7 @@ struct obs_output {
 	bool owns_info_id;
 
 	bool received_video[MAX_OUTPUT_VIDEO_ENCODERS];
-	DARRAY(struct keyframe_group_data) keyframe_group_tracking;
+	obs_keyframe_group_array_t keyframe_group_tracking;
 	bool received_audio;
 	volatile bool data_active;
 	volatile bool end_data_capture_thread_active;
@@ -1287,7 +1293,7 @@ struct obs_output {
 	pthread_t end_data_capture_thread;
 	os_event_t *stopping_event;
 	pthread_mutex_t interleaved_mutex;
-	DARRAY(struct encoder_packet) interleaved_packets;
+	obs_encoder_packet_array_t interleaved_packets;
 	size_t interleaver_max_batch_size;
 	int stop_code;
 
@@ -1339,12 +1345,11 @@ struct obs_output {
 	// captions are output per track
 	struct caption_track_data *caption_tracks[MAX_OUTPUT_VIDEO_ENCODERS];
 
-	DARRAY(struct encoder_packet_time)
-	encoder_packet_times[MAX_OUTPUT_VIDEO_ENCODERS];
+	obs_encoder_packet_time_array_t encoder_packet_times[MAX_OUTPUT_VIDEO_ENCODERS];
 
 	/* Packet callbacks */
 	pthread_mutex_t pkt_callbacks_mutex;
-	DARRAY(struct packet_callback) pkt_callbacks;
+	obs_packet_callback_array_t pkt_callbacks;
 
 	struct reconnect_callback reconnect_callback;
 
@@ -1402,6 +1407,64 @@ extern struct obs_output_delay_fields obs_output_delay_fields(const obs_output_t
 extern void obs_output_delay_signal(obs_output_t *output, const char *signal);
 
 extern void process_delay(void *data, struct encoder_packet *packet, struct encoder_packet_time *packet_time);
+
+/* The fields of an output the encoded packet interleaver reads and writes,
+ * as pointers into it, so obs-output-interleave.c does not need the struct
+ * obs_output layout. The arrays point at their first element:
+ * received_video, video_offsets, highest_video_ts, video_encoders and
+ * encoder_packet_times have MAX_OUTPUT_VIDEO_ENCODERS entries,
+ * audio_offsets and audio_encoders MAX_OUTPUT_AUDIO_ENCODERS.
+ * encoded_packet, data and name point at info.encoded_packet, context.data
+ * and context.name. */
+struct obs_output_interleave_fields {
+	pthread_mutex_t *interleaved_mutex;
+	obs_encoder_packet_array_t *interleaved_packets;
+	bool *received_video;
+	bool *received_audio;
+	int64_t *video_offsets;
+	int64_t *audio_offsets;
+	int64_t *highest_audio_ts;
+	int64_t *highest_video_ts;
+	obs_encoder_t *const *video_encoders;
+	obs_encoder_t *const *audio_encoders;
+	obs_encoder_packet_time_array_t *encoder_packet_times;
+	obs_keyframe_group_array_t *keyframe_group_tracking;
+	pthread_mutex_t *pkt_callbacks_mutex;
+	obs_packet_callback_array_t *pkt_callbacks;
+	int *total_frames;
+	const size_t *interleaver_max_batch_size;
+	const uint64_t *active_delay_ns;
+	void (*const *encoded_packet)(void *data, struct encoder_packet *packet);
+	void *const *data;
+	char *const *name;
+};
+
+/* The caption state of one video track of an output, as pointers into its
+ * struct caption_track_data. caption_data_size is caption_data.size. */
+struct obs_output_caption_track_fields {
+	pthread_mutex_t *caption_mutex;
+	struct caption_text *const *caption_head;
+	double *caption_timestamp;
+	double *last_caption_timestamp;
+	const size_t *caption_data_size;
+};
+
+/* None of these is EXPORT. The fields take a const output for
+ * get_encoder_index(); the pointers are not const where the interleaver
+ * writes through them. */
+extern struct obs_output_interleave_fields obs_output_interleave_fields(const obs_output_t *output);
+extern struct obs_output_caption_track_fields obs_output_caption_track_fields(obs_output_t *output, size_t track_idx);
+/* active(), get_first_audio_encoder_index(), get_first_video_encoder_index()
+ * and add_caption() of obs-output.c, for obs-output-interleave.c. */
+extern bool obs_output_interleave_active(const obs_output_t *output);
+extern bool obs_output_interleave_first_audio_encoder_index(const obs_output_t *output, size_t *index);
+extern bool obs_output_interleave_first_video_encoder_index(const obs_output_t *output, size_t *index);
+extern bool obs_output_interleave_add_caption(obs_output_t *output, struct encoder_packet *out);
+
+/* The encoded packet interleaver, in obs-output-interleave.c. Not EXPORT. */
+extern void interleave_packets(void *data, struct encoder_packet *packet, struct encoder_packet_time *packet_time);
+extern size_t get_encoder_index(const obs_output_t *output, struct encoder_packet *pkt);
+extern void free_packets(obs_output_t *output);
 extern void obs_output_cleanup_delay(obs_output_t *output);
 extern bool obs_output_delay_start(obs_output_t *output);
 extern void obs_output_delay_stop(obs_output_t *output);
@@ -1557,6 +1620,20 @@ extern video_t *obs_encoder_unbind_video(obs_encoder_t *encoder, video_t *const 
 extern void obs_encoder_rebind_video(obs_encoder_t *encoder, video_t *video);
 
 extern void obs_encoder_start(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
+
+/* What the encoded packet interleaver reads from an encoder, as values: the
+ * time base, the frame size and the encoder group (NULL without one). Not
+ * EXPORT. */
+struct obs_encoder_interleave_info {
+	uint32_t timebase_num;
+	uint32_t timebase_den;
+	size_t framesize;
+	struct obs_encoder_group *group;
+};
+
+extern struct obs_encoder_interleave_info obs_encoder_interleave_info(const obs_encoder_t *encoder);
+/* The group's num_encoders_started, read under its mutex. Not EXPORT. */
+extern uint32_t obs_encoder_group_num_started(struct obs_encoder_group *group);
 extern void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
 
 extern void obs_encoder_add_output(struct obs_encoder *encoder, struct obs_output *output);

@@ -15,10 +15,13 @@
  * check, and free_packets(). They pin the current C behavior for the Rust
  * port; cases marked "characterized, not endorsed" are odd but real.
  *
- * All of these are static, so the file is compiled into this test, which
- * therefore characterizes the C source only. The output is a zeroed struct
- * obs_output with only the fields the file reads set up; no libobs core is
- * started. The four obs-output.c functions the file calls are defined below:
+ * Most of these are static and the rest are not exported, so the file is
+ * compiled into this test, which therefore characterizes the C source only.
+ * The output is a zeroed struct obs_output with only the fields the file
+ * reads set up; no libobs core is started. The file reaches the output and
+ * its encoders through accessors, which output_interleave_fields_stub.c
+ * provides over the test's structs. The four obs-output.c functions the file
+ * calls (through their obs_output_interleave_ wrappers) are defined below:
  * active() and add_caption() are recording stubs, the two "first encoder
  * index" helpers are copies. The output's encoded_packet() and one packet
  * callback record what is sent. obs_encoder_packet_create_instance() is not
@@ -95,14 +98,14 @@ static bool mutex_held(pthread_mutex_t *mutex)
 /* ------------------------------------------------------------------------- */
 /* obs-output.c functions the file calls */
 
-static inline bool active(const struct obs_output *output)
+bool obs_output_interleave_active(const obs_output_t *output)
 {
 	assert_ptr_equal(output, out);
 	return output_active;
 }
 
 /* Copies of obs-output.c's helpers: the first slot with an encoder. */
-static bool get_first_audio_encoder_index(const struct obs_output *output, size_t *index)
+bool obs_output_interleave_first_audio_encoder_index(const obs_output_t *output, size_t *index)
 {
 	if (!index)
 		return false;
@@ -117,7 +120,7 @@ static bool get_first_audio_encoder_index(const struct obs_output *output, size_
 	return false;
 }
 
-static bool get_first_video_encoder_index(const struct obs_output *output, size_t *index)
+bool obs_output_interleave_first_video_encoder_index(const obs_output_t *output, size_t *index)
 {
 	if (!index)
 		return false;
@@ -134,7 +137,7 @@ static bool get_first_video_encoder_index(const struct obs_output *output, size_
 
 /* The caption path stays in obs-output.c; send_interleaved() only decides
  * when to call it. */
-static bool add_caption(struct obs_output *output, struct encoder_packet *pkt)
+bool obs_output_interleave_add_caption(obs_output_t *output, struct encoder_packet *pkt)
 {
 	assert_ptr_equal(output, out);
 	assert_true(num_caption_calls < MAX_RECORDS);

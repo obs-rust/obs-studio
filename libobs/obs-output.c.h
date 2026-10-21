@@ -382,6 +382,54 @@ void obs_output_delay_signal(obs_output_t *output, const char *signal)
 	do_output_signal(output, signal);
 }
 
+struct obs_output_interleave_fields obs_output_interleave_fields(const obs_output_t *output)
+{
+	struct obs_output *o = (struct obs_output *)(uintptr_t)output;
+	struct obs_output_interleave_fields f = {
+		.interleaved_mutex = &o->interleaved_mutex,
+		.interleaved_packets = &o->interleaved_packets,
+		.received_video = o->received_video,
+		.received_audio = &o->received_audio,
+		.video_offsets = o->video_offsets,
+		.audio_offsets = o->audio_offsets,
+		.highest_audio_ts = &o->highest_audio_ts,
+		.highest_video_ts = o->highest_video_ts,
+		.video_encoders = o->video_encoders,
+		.audio_encoders = o->audio_encoders,
+		.encoder_packet_times = o->encoder_packet_times,
+		.keyframe_group_tracking = &o->keyframe_group_tracking,
+		.pkt_callbacks_mutex = &o->pkt_callbacks_mutex,
+		.pkt_callbacks = &o->pkt_callbacks,
+		.total_frames = &o->total_frames,
+		.interleaver_max_batch_size = &o->interleaver_max_batch_size,
+		.active_delay_ns = &o->active_delay_ns,
+		.encoded_packet = &o->info.encoded_packet,
+		.data = &o->context.data,
+		.name = &o->context.name,
+	};
+
+	return f;
+}
+
+struct obs_output_caption_track_fields obs_output_caption_track_fields(obs_output_t *output, size_t track_idx)
+{
+	struct caption_track_data *ctrack = output->caption_tracks[track_idx];
+	struct obs_output_caption_track_fields f = {
+		.caption_mutex = &ctrack->caption_mutex,
+		.caption_head = &ctrack->caption_head,
+		.caption_timestamp = &ctrack->caption_timestamp,
+		.last_caption_timestamp = &ctrack->last_caption_timestamp,
+		.caption_data_size = &ctrack->caption_data.size,
+	};
+
+	return f;
+}
+
+bool obs_output_interleave_active(const obs_output_t *output)
+{
+	return active(output);
+}
+
 bool obs_output_actual_start(obs_output_t *output)
 {
 	bool success = false;
@@ -1648,6 +1696,21 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	}
 	sei_free(&sei);
 	return avc || hevc || av1;
+}
+
+bool obs_output_interleave_first_audio_encoder_index(const obs_output_t *output, size_t *index)
+{
+	return get_first_audio_encoder_index(output, index);
+}
+
+bool obs_output_interleave_first_video_encoder_index(const obs_output_t *output, size_t *index)
+{
+	return get_first_video_encoder_index(output, index);
+}
+
+bool obs_output_interleave_add_caption(obs_output_t *output, struct encoder_packet *out)
+{
+	return add_caption(output, out);
 }
 
 static void default_encoded_callback(void *param, struct encoder_packet *packet,

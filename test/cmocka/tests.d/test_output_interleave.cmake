@@ -5,7 +5,9 @@
 # and no display, so it runs on every platform. The file's precompiled header
 # is libobs.pch.h, which needs the private libobs, libcaption, uthash and zlib
 # headers.
-add_executable(test_output_interleave test_output_interleave.c)
+# output_interleave_fields_stub.c provides the output, caption track and
+# encoder accessors of obs-output.c and obs-encoder.c over the test's structs.
+add_executable(test_output_interleave test_output_interleave.c output_interleave_fields_stub.c)
 target_include_directories(
   test_output_interleave
   PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_SOURCE_DIR}/deps/libcaption"
