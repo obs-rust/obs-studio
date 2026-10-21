@@ -298,6 +298,13 @@ void obs_hotkeys_background_status_changed(void);
 void obs_hotkeys_mutex_lock(void);
 void obs_hotkeys_mutex_unlock(void);
 
+/* The hotkey binding codec (obs-hotkey-bindings.c): one item of a hotkey's
+ * saved bindings array, the "shift", "control", "alt" and "command" bools and
+ * the "key" name, to and from an obs_key_combination_t. Not exported. */
+bool obs_hotkey_combination_from_data(obs_data_t *data, obs_key_combination_t *combo);
+bool obs_hotkey_combination_bindable(obs_key_combination_t combo);
+void obs_hotkey_combination_to_data(obs_key_combination_t combo, obs_data_t *hotkey);
+
 struct obs_hotkey_binding {
 	obs_key_combination_t key;
 	bool pressed;

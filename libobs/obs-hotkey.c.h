@@ -457,16 +457,9 @@ static inline void enum_context_hotkeys(struct obs_context_data *context, obs_ho
 	}
 }
 
-static inline void load_modifier(uint32_t *modifiers, obs_data_t *data, const char *name, uint32_t flag)
-{
-	if (obs_data_get_bool(data, name))
-		*modifiers |= flag;
-}
-
 static inline void create_binding(obs_hotkey_t *hotkey, obs_key_combination_t combo)
 {
-	/* Match the frontend: primary mouse buttons are reserved for UI interaction. */
-	if (combo.key == OBS_KEY_MOUSE1 || combo.key == OBS_KEY_MOUSE2)
+	if (!obs_hotkey_combination_bindable(combo))
 		return;
 
 	obs_hotkey_binding_t *binding = da_push_back_new(obs->hotkeys.bindings);
@@ -483,15 +476,8 @@ static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data)
 	if (!hotkey || !data)
 		return;
 
-	obs_key_combination_t combo = {0};
-	uint32_t *modifiers = &combo.modifiers;
-	load_modifier(modifiers, data, "shift", INTERACT_SHIFT_KEY);
-	load_modifier(modifiers, data, "control", INTERACT_CONTROL_KEY);
-	load_modifier(modifiers, data, "alt", INTERACT_ALT_KEY);
-	load_modifier(modifiers, data, "command", INTERACT_COMMAND_KEY);
-
-	combo.key = obs_key_from_name(obs_data_get_string(data, "key"));
-	if (!modifiers && (combo.key == OBS_KEY_NONE || combo.key >= OBS_KEY_LAST_VALUE))
+	obs_key_combination_t combo;
+	if (!obs_hotkey_combination_from_data(data, &combo))
 		return;
 
 	create_binding(hotkey, combo);
@@ -627,12 +613,6 @@ unlock:
 	unlock();
 }
 
-static inline void save_modifier(uint32_t modifiers, obs_data_t *data, const char *name, uint32_t flag)
-{
-	if ((modifiers & flag) == flag)
-		obs_data_set_bool(data, name, true);
-}
-
 struct save_bindings_helper_t {
 	obs_data_array_t *array;
 	obs_hotkey_t *hotkey;
@@ -648,13 +628,7 @@ static inline bool save_bindings_helper(void *data, size_t idx, obs_hotkey_bindi
 
 	obs_data_t *hotkey = obs_data_create();
 
-	uint32_t modifiers = binding->key.modifiers;
-	save_modifier(modifiers, hotkey, "shift", INTERACT_SHIFT_KEY);
-	save_modifier(modifiers, hotkey, "control", INTERACT_CONTROL_KEY);
-	save_modifier(modifiers, hotkey, "alt", INTERACT_ALT_KEY);
-	save_modifier(modifiers, hotkey, "command", INTERACT_COMMAND_KEY);
-
-	obs_data_set_string(hotkey, "key", obs_key_to_name(binding->key.key));
+	obs_hotkey_combination_to_data(binding->key, hotkey);
 
 	obs_data_array_push_back(h->array, hotkey);
 

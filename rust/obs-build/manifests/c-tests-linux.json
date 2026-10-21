@@ -27,7 +27,8 @@
     "name": "test_hotkey_load",
     "sources": [
       "test/cmocka/test_hotkey_load.c",
-      "libobs/obs-hotkey.c.h"
+      "libobs/obs-hotkey.c.h",
+      "libobs/obs-hotkey-bindings.c.h"
     ],
     "definitions": [
       "obs=hotkey_test_obs"

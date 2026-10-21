@@ -104,7 +104,12 @@ add_dependencies(cmocka-tests test_product_name)
 add_test(test_product_name ${CMAKE_CURRENT_BINARY_DIR}/test_product_name)
 
 # Exercise hotkey loading with an isolated core and no platform input thread.
-add_executable(test_hotkey_load test_hotkey_load.c "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h")
+add_executable(
+  test_hotkey_load
+  test_hotkey_load.c
+  "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
+  "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
+)
 target_compile_definitions(test_hotkey_load PRIVATE obs=hotkey_test_obs)
 target_include_directories(test_hotkey_load PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(test_hotkey_load PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES})
