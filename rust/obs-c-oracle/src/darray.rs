@@ -24,6 +24,14 @@ unsafe extern "C" {
     ) -> usize;
     pub fn oracle_darray_erase(es: usize, da: *mut OracleDarray, idx: usize);
     pub fn oracle_darray_pop_back(es: usize, da: *mut OracleDarray);
+    pub fn oracle_darray_push_back(es: usize, da: *mut OracleDarray, item: *const c_void) -> usize;
+    pub fn oracle_darray_push_back_new(es: usize, da: *mut OracleDarray) -> *mut c_void;
+    /// The `da_push_back_new` macro, for `es` of 1, 4, 12 or 16; null for
+    /// any other size.
+    pub fn oracle_da_push_back_new(es: usize, da: *mut OracleDarray) -> *mut c_void;
+    pub fn oracle_darray_insert(es: usize, da: *mut OracleDarray, idx: usize, item: *const c_void);
+    pub fn oracle_darray_erase_range(es: usize, da: *mut OracleDarray, start: usize, end: usize);
+    pub fn oracle_darray_pop_front(es: usize, da: *mut OracleDarray);
 
     pub fn oracle_darray_size() -> usize;
     pub fn oracle_darray_align() -> usize;

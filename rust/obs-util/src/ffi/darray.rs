@@ -2,8 +2,11 @@
 //!
 //! `darray.h` is header-inline, so nothing here is exported: these are plain
 //! Rust functions that reproduce the header byte for byte (including the
-//! `bmalloc`/`bfree` allocations) for the array-serializer shim. The
-//! allocator is the Rust port in [`crate::ffi::bmem`], re-exported here.
+//! `bmalloc`/`bfree` allocations) for the shims that use C darrays in place:
+//! the array serializer, and the output interleaver (#1594) with insert,
+//! erase range, pop front and push back new. C and Rust can hand one array
+//! back and forth, since both allocate through bmem. The allocator is the
+//! Rust port in [`crate::ffi::bmem`], re-exported here.
 
 use core::ffi::c_void;
 use core::ptr;
@@ -200,6 +203,16 @@ pub unsafe fn darray_pop_back(element_size: usize, dst: *mut darray) {
     }
 }
 
+/// `darray_item`: the address of item `idx`.
+///
+/// # Safety
+///
+/// `d.array` must hold at least `idx` items (one past the end is allowed).
+unsafe fn item(element_size: usize, d: &darray, idx: usize) -> *mut u8 {
+    // SAFETY: the caller keeps the offset within (or one past) the buffer.
+    unsafe { (d.array as *mut u8).add(element_size * idx) }
+}
+
 /// # Safety
 ///
 /// `dst` must point to a valid `darray` of `element_size`-byte items, and
@@ -209,8 +222,21 @@ pub unsafe fn darray_push_back(
     dst: *mut darray,
     item: *const c_void,
 ) -> usize {
-    let _ = (element_size, dst, item);
-    todo!()
+    // SAFETY: the caller guarantees `dst` is valid. As in C, `num` grows
+    // before the capacity check; darray_ensure_capacity does not read it.
+    unsafe {
+        (*dst).num += 1;
+        darray_ensure_capacity(element_size, dst, (*dst).num);
+        let d = &*dst;
+        // SAFETY: the buffer now holds `num` items; `item` is readable. A
+        // move, not a copy, so an `item` inside the buffer is no UB here.
+        ptr::copy(
+            item as *const u8,
+            self::item(element_size, d, d.num - 1),
+            element_size,
+        );
+        d.num - 1
+    }
 }
 
 /// `darray_push_back_new`, and the GCC/Clang `da_push_back_new` macro, which
@@ -220,8 +246,15 @@ pub unsafe fn darray_push_back(
 ///
 /// `dst` must point to a valid `darray` of `element_size`-byte items.
 pub unsafe fn darray_push_back_new(element_size: usize, dst: *mut darray) -> *mut c_void {
-    let _ = (element_size, dst);
-    todo!()
+    // SAFETY: the caller guarantees `dst` is valid; the buffer then holds
+    // `num` items, so the last one is in bounds.
+    unsafe {
+        (*dst).num += 1;
+        darray_ensure_capacity(element_size, dst, (*dst).num);
+        let last = item(element_size, &*dst, (*dst).num - 1);
+        ptr::write_bytes(last, 0, element_size);
+        last.cast()
+    }
 }
 
 /// # Safety
@@ -238,8 +271,29 @@ pub unsafe fn darray_insert(
     idx: usize,
     item: *const c_void,
 ) {
-    let _ = (element_size, dst, idx, item);
-    todo!()
+    // SAFETY: the caller guarantees `dst` is valid.
+    let num = unsafe { (*dst).num };
+    assert!(idx <= num, "darray_insert: idx > num");
+    if idx == num {
+        // SAFETY: as above, and `item` is readable.
+        unsafe { darray_push_back(element_size, dst, item) };
+        return;
+    }
+    let move_count = num - idx;
+    // SAFETY: after the growth the buffer holds `num + 1` items, so items
+    // `idx..num` move up by one within it; then `item` fills `idx`.
+    unsafe {
+        (*dst).num = num + 1;
+        darray_ensure_capacity(element_size, dst, num + 1);
+        let d = &*dst;
+        let new_item = self::item(element_size, d, idx);
+        ptr::copy(
+            new_item,
+            self::item(element_size, d, idx + 1),
+            move_count * element_size,
+        );
+        ptr::copy(item as *const u8, new_item, element_size);
+    }
 }
 
 /// # Safety
@@ -250,14 +304,50 @@ pub unsafe fn darray_insert(
 ///
 /// Unless `start < end <= num`, where C asserts.
 pub unsafe fn darray_erase_range(element_size: usize, dst: *mut darray, start: usize, end: usize) {
-    let _ = (element_size, dst, start, end);
-    todo!()
+    // SAFETY: the caller guarantees `dst` is valid.
+    let num = unsafe { (*dst).num };
+    assert!(start <= num, "darray_erase_range: start > num");
+    assert!(end <= num, "darray_erase_range: end > num");
+    assert!(end > start, "darray_erase_range: end <= start");
+
+    let count = end - start;
+    if count == 1 {
+        // SAFETY: `start < num`.
+        unsafe { darray_erase(element_size, dst, start) };
+        return;
+    } else if count == num {
+        // SAFETY: as above.
+        unsafe { (*dst).num = 0 };
+        return;
+    }
+
+    let move_count = num - end;
+    // SAFETY: items `end..num` are in the buffer and move down to `start`.
+    // The slots past the new `num` keep their old bytes, as in C.
+    unsafe {
+        if move_count != 0 {
+            let d = &*dst;
+            ptr::copy(
+                item(element_size, d, end),
+                item(element_size, d, start),
+                move_count * element_size,
+            );
+        }
+        (*dst).num -= count;
+    }
 }
 
+/// `darray_pop_front`. C asserts `num != 0` and then checks it, so an empty
+/// array is a no-op, as `darray_pop_back` is.
+///
 /// # Safety
 ///
 /// `dst` must point to a valid `darray` of `element_size`-byte items.
 pub unsafe fn darray_pop_front(element_size: usize, dst: *mut darray) {
-    let _ = (element_size, dst);
-    todo!()
+    // SAFETY: the caller guarantees `dst` is valid; `0 < num`.
+    unsafe {
+        if (*dst).num != 0 {
+            darray_erase(element_size, dst, 0);
+        }
+    }
 }

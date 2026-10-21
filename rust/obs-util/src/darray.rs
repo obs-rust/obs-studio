@@ -129,7 +129,10 @@ impl<T: Copy + Default> DArray<T> {
     /// which does the same): appends a zeroed item (`T::default()`) and
     /// returns it.
     pub fn push_back_new(&mut self) -> &mut T {
-        todo!()
+        let idx = self.items.len();
+        self.ensure_capacity(idx + 1);
+        self.items.push(T::default());
+        &mut self.items[idx]
     }
 
     /// `darray_insert`: `idx == len` appends.
@@ -138,8 +141,13 @@ impl<T: Copy + Default> DArray<T> {
     ///
     /// When `idx > len`, where C asserts.
     pub fn insert(&mut self, idx: usize, item: T) {
-        let _ = (idx, item);
-        todo!()
+        assert!(idx <= self.items.len(), "darray_insert: idx > num");
+        if idx == self.items.len() {
+            self.push_back(item);
+            return;
+        }
+        self.ensure_capacity(self.items.len() + 1);
+        self.items.insert(idx, item);
     }
 
     /// `darray_erase_range`: removes `start..end`. Never shrinks the
@@ -149,14 +157,19 @@ impl<T: Copy + Default> DArray<T> {
     ///
     /// Unless `start < end <= len`, where C asserts.
     pub fn erase_range(&mut self, start: usize, end: usize) {
-        let _ = (start, end);
-        todo!()
+        let len = self.items.len();
+        assert!(start <= len, "darray_erase_range: start > num");
+        assert!(end <= len, "darray_erase_range: end > num");
+        assert!(end > start, "darray_erase_range: end <= start");
+        self.items.drain(start..end);
     }
 
     /// `darray_pop_front`; no-op when empty (the C body checks `num` after
     /// its assert).
     pub fn pop_front(&mut self) {
-        todo!()
+        if !self.items.is_empty() {
+            self.items.remove(0);
+        }
     }
 }
 
