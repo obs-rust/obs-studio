@@ -1424,6 +1424,13 @@ area.
   the Wayland global shortcuts. *All*, 2026-10-21. Issue
   [#1648](https://github.com/obs-rust/obs-studio/issues/1648), PR
   [#1649](https://github.com/obs-rust/obs-studio/pull/1649).
+- On Linux, Settings > Hotkeys shows the arrow keys (Left, Right, Up, Down)
+  in the chosen language; before, they were always in English. On every
+  platform, a locale file or plugin with an empty numpad or mouse button
+  name template no longer crashes OBS at startup; those keys keep their
+  English names. *All*, 2026-10-21. Issue
+  [#1656](https://github.com/obs-rust/obs-studio/issues/1656), PR
+  [#1673](https://github.com/obs-rust/obs-studio/pull/1673).
 
 ### Scripting
 

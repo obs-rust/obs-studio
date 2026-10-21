@@ -17,12 +17,13 @@
 
 #include "libobs/build/libobs.pch.h"
 
-/* The hotkey key-name translations (moved verbatim from obs-hotkey.c.h):
+/* The hotkey key-name translations (moved from obs-hotkey.c.h):
  * obs_hotkeys_set_translations_s() copies the frontend's translated names of
  * the named keys into the key name store, and expands its numpad and mouse
  * templates ("Numpad %1", "Mouse %1") into the names of NUM0-NUM9 and
- * MOUSE1-MOUSE29. The store, obs_hotkeys_store_key_translation(), and its
- * readers (obs_get_hotkey_translation() and the platform key_to_str
+ * MOUSE1-MOUSE29. A NULL, empty or padding-only template is skipped, so those
+ * keys keep their names. The store, obs_hotkeys_store_key_translation(), and
+ * its readers (obs_get_hotkey_translation() and the platform key_to_str
  * functions) stay in obs-hotkey.c.h and the platform files. */
 
 void obs_hotkeys_set_translations_s(struct obs_hotkeys_translations *translations, size_t size)
@@ -55,6 +56,10 @@ void obs_hotkeys_set_translations_s(struct obs_hotkeys_translations *translation
 	ADD_TRANSLATION(OBS_KEY_TAB, tab);
 	ADD_TRANSLATION(OBS_KEY_PRINT, print);
 	ADD_TRANSLATION(OBS_KEY_PAUSE, pause);
+	ADD_TRANSLATION(OBS_KEY_LEFT, left);
+	ADD_TRANSLATION(OBS_KEY_RIGHT, right);
+	ADD_TRANSLATION(OBS_KEY_UP, up);
+	ADD_TRANSLATION(OBS_KEY_DOWN, down);
 	ADD_TRANSLATION(OBS_KEY_SHIFT, shift);
 	ADD_TRANSLATION(OBS_KEY_ALT, alt);
 	ADD_TRANSLATION(OBS_KEY_CONTROL, control);
@@ -79,10 +84,14 @@ void obs_hotkeys_set_translations_s(struct obs_hotkeys_translations *translation
 	ADD_TRANSLATION(OBS_KEY_NUMPERIOD, numpad_decimal);
 #endif
 
+	/* dstr_copy() of "" leaves the array NULL, and dstr_depad() of a
+	 * padding-only string frees it: skip those like a NULL template. */
 	if (numpad_str) {
 		dstr_copy(&numpad, numpad_str);
 		dstr_depad(&numpad);
+	}
 
+	if (!dstr_is_empty(&numpad)) {
 		if (dstr_find(&numpad, "%1") == NULL) {
 			dstr_cat(&numpad, " %1");
 		}
@@ -107,7 +116,9 @@ void obs_hotkeys_set_translations_s(struct obs_hotkeys_translations *translation
 	if (t.mouse_num) {
 		dstr_copy(&mouse, t.mouse_num);
 		dstr_depad(&mouse);
+	}
 
+	if (!dstr_is_empty(&mouse)) {
 		if (dstr_find(&mouse, "%1") == NULL) {
 			dstr_cat(&mouse, " %1");
 		}
