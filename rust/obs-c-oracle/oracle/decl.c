@@ -117,6 +117,7 @@ OFFSET(decl_info, params)
  * on to the previous handler. */
 size_t oracle_call_param_type_size(void);
 void oracle_decl_log_begin(void);
+void oracle_decl_log_begin_all(void);
 size_t oracle_decl_log_end(char *out, size_t capacity, int *level);
 
 size_t oracle_call_param_type_size(void)
@@ -132,6 +133,7 @@ static int decl_log_level;
 static log_handler_t decl_log_prev;
 static void *decl_log_prev_param;
 static THREAD_LOCAL bool decl_log_owner;
+static bool decl_log_all;
 
 static void decl_log_capture(int level, const char *format, va_list args, void *param)
 {
@@ -154,7 +156,7 @@ static void decl_log_capture(int level, const char *format, va_list args, void *
 #pragma GCC diagnostic pop
 #endif
 
-	if (len < 0 || strncmp(text, DECL_LOG_PREFIX, strlen(DECL_LOG_PREFIX)) != 0)
+	if (len < 0 || (!decl_log_all && strncmp(text, DECL_LOG_PREFIX, strlen(DECL_LOG_PREFIX)) != 0))
 		return;
 	if ((size_t)len >= sizeof(text))
 		len = (int)(sizeof(text) - 1);
@@ -163,6 +165,8 @@ static void decl_log_capture(int level, const char *format, va_list args, void *
 
 	memcpy(decl_log + decl_log_len, text, (size_t)len);
 	decl_log_len += (size_t)len;
+	if (decl_log_all && decl_log_len + 1 < sizeof(decl_log))
+		decl_log[decl_log_len++] = '\n';
 	decl_log_level = level;
 }
 
@@ -172,7 +176,16 @@ void oracle_decl_log_begin(void)
 	decl_log_len = 0;
 	decl_log_level = 0;
 	decl_log_owner = true;
+	decl_log_all = false;
 	base_set_log_handler(decl_log_capture, NULL);
+}
+
+/* As oracle_decl_log_begin, but keeps every line of this thread, each
+ * followed by a newline. */
+void oracle_decl_log_begin_all(void)
+{
+	oracle_decl_log_begin();
+	decl_log_all = true;
 }
 
 size_t oracle_decl_log_end(char *out, size_t capacity, int *level)

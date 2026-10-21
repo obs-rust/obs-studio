@@ -8,6 +8,7 @@ mod parity;
 mod proc;
 mod proc_parity;
 mod signal;
+mod signal_parity;
 
 use std::sync::Mutex;
 

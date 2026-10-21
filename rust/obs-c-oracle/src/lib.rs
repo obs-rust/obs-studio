@@ -88,6 +88,7 @@ pub mod pulse_stream_flags;
 pub mod scene_blend;
 pub mod scene_bounds;
 pub mod shader_param_names;
+pub mod signal;
 pub mod task;
 pub mod text_lookup;
 pub mod threading;

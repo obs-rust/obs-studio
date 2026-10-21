@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a81c1f235aaaca8c1eda56ae2ef9e981e5faa3870d384ff6149d331663a704b0 # shrinks to actions = [None, None, None, None, None, None, NestedThenRemove(0), None], globals = [None, None, None], global_on = [false, true, false], ops = [Connect(2, 6, false), Signal(2), Signal(2)]
+cc 60e5ee4e4e2b2eca7208a7d5980d6f7229039e4d5055a1fed24b1fc0923e2690 # shrinks to actions = [None, None, None, None, None, None, None, None], globals = [None, DisconnectSelf, None], global_on = [false, true, false], ops = [Signal(0), Signal(0)]
+cc 388d5937698720de4e3d56b955fa7f0cf5c231bf8c0f179cc422e6b22baa09b1 # shrinks to actions = [None, None, NestedThenRemove(0), None, None, None, None, DisconnectOther(0, 0)], globals = [None, None, None], global_on = [false, false, false], ops = [Connect(0, 2, false), Connect(0, 0, false), Signal(0)]

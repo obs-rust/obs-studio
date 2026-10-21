@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "build/libobs.pch.h"
+#include "build/libobs-ported-callback.pch.h"
 
 struct signal_callback {
 	signal_callback_t callback;

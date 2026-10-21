@@ -11,6 +11,9 @@ unsafe extern "C" {
     /// the calling thread. Hold the test binary's log-handler lock until
     /// [`oracle_decl_log_end`]: the handler is process-wide.
     pub fn oracle_decl_log_begin();
+    /// As [`oracle_decl_log_begin`], but keeps every line of the calling
+    /// thread, each followed by a newline.
+    pub fn oracle_decl_log_begin_all();
     /// Stops capturing. Copies up to `capacity` bytes of the captured text
     /// to `out`, and returns the full length.
     pub fn oracle_decl_log_end(out: *mut c_char, capacity: usize, level: *mut c_int) -> usize;

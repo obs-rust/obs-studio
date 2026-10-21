@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-callback"
 version = "0.1.0"
-description = "Rust port of libobs/callback/calldata.c.h, decl.c.h and proc.c.h"
+description = "Rust port of libobs/callback/calldata.c.h, decl.c.h, proc.c.h and signal.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

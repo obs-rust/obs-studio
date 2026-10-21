@@ -1,8 +1,11 @@
 /* Test-only oracle: the original libobs/obs-audio-controls.c.h, unmodified,
  * with its exports renamed to oracle_* so it can link next to the Rust
  * implementation. bmalloc, bfree, blog, and calldata_get_data stay the real
- * symbols. The source and signal calls are not linked into cargo tests, so
- * this file stubs them. libobs supplies them when this file is not linked. */
+ * symbols. The source calls are not linked into cargo tests, so this file
+ * stubs them. libobs supplies them when this file is not linked. The signal
+ * calls are stubbed under oracle_* names: obs-callback exports the real
+ * signal_handler_* symbols, and a test that links both would define them
+ * twice. */
 
 #include <stddef.h>
 
@@ -29,6 +32,8 @@
 #define obs_mul_to_db oracle_obs_mul_to_db
 #define obs_db_to_mul oracle_obs_db_to_mul
 #define obs_fader_db_to_def oracle_obs_fader_db_to_def
+#define signal_handler_connect oracle_audio_controls_signal_handler_connect
+#define signal_handler_disconnect oracle_audio_controls_signal_handler_disconnect
 
 size_t oracle_obs_audio_info_size(void);
 size_t oracle_obs_audio_info_align(void);
