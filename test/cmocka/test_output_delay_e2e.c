@@ -198,6 +198,16 @@ static void on_event(void *data, calldata_t *cd)
 	os_event_signal(*(os_event_t **)data);
 }
 
+/* A "deactivate" listener that takes a while, as a plugin's can. It runs
+ * after on_event, so the test wakes up while libobs is still sending
+ * "deactivate". */
+static void slow_deactivate(void *data, calldata_t *cd)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(cd);
+	os_sleep_ms(100);
+}
+
 /* Keep warnings and errors only. */
 static void log_handler(int lvl, const char *msg, va_list args, void *p)
 {
@@ -305,6 +315,7 @@ static int setup(void **state)
 	signal_handler_connect(sh, "stopping", on_stopping, NULL);
 	signal_handler_connect(sh, "stop", on_event, &ev.stopped);
 	signal_handler_connect(sh, "deactivate", on_event, &ev.deactivated);
+	signal_handler_connect(sh, "deactivate", slow_deactivate, NULL);
 	signal_handler_connect(sh, "reconnect", on_reconnect, NULL);
 	signal_handler_connect(sh, "reconnect_success", on_event, &ev.reconnected);
 	return 0;
