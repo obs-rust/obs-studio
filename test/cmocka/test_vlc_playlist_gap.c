@@ -12,9 +12,10 @@
  * it is. The test checks how much of each file reaches the mix and which part
  * of a file is the last (first) one heard.
  *
- * The cases need core video (run under xvfb-run) and skip without a display
- * or when libVLC is not installed; the test then exits with 77 so ctest
- * reports it as skipped.
+ * The playback cases need core video (run under xvfb-run) and skip without a
+ * display or when libVLC is not installed; the test then exits with 77 so
+ * ctest reports it as skipped. The analysis cases feed the analysis a
+ * generated mix and always run.
  */
 
 #include <stdarg.h>
@@ -105,11 +106,23 @@ struct file_stats {
 	bool seen;
 };
 
+/* Mix blocks kept for the analysis: the longest playlist waits 6 s per file
+ * plus 4 s (play_playlist), and the mix runs on while it is torn down. */
+#define MAX_BLOCKS ((MAX_FILES * 6 + 4) * RATE / AUDIO_OUTPUT_FRAMES + 64)
+
+struct mix_block {
+	uint64_t start; /* index of the block's first mix frame */
+	uint32_t frames;
+	float peak;
+};
+
 struct capture {
 	pthread_mutex_t mutex;
 	uint64_t mix_frames;
 	uint64_t frames_since_sound;
 	bool heard;
+	struct mix_block blocks[MAX_BLOCKS];
+	unsigned num_blocks;
 	struct file_stats files[MAX_FILES];
 	unsigned num_files;
 };
@@ -143,27 +156,73 @@ static void mix_cb(void *param, size_t mix_idx, struct audio_data *data)
 	}
 
 	pthread_mutex_lock(&cap->mutex);
-	unsigned file;
-	double pos;
 	if (peak > 0.05) {
 		cap->heard = true;
 		cap->frames_since_sound = 0;
 	} else {
 		cap->frames_since_sound += data->frames;
 	}
-	if (peak > 0.05 && classify(cap, peak, &file, &pos)) {
-		struct file_stats *fs = &cap->files[file];
-		if (!fs->seen) {
-			fs->seen = true;
-			fs->first_pos = pos;
-			fs->first_at = cap->mix_frames;
-		}
-		fs->last_pos = pos;
-		fs->last_at = cap->mix_frames + data->frames;
-		fs->frames += data->frames;
+	if (cap->num_blocks < MAX_BLOCKS) {
+		struct mix_block *b = &cap->blocks[cap->num_blocks++];
+		b->start = cap->mix_frames;
+		b->frames = data->frames;
+		b->peak = (float)peak;
 	}
 	cap->mix_frames += data->frames;
 	pthread_mutex_unlock(&cap->mutex);
+}
+
+/* A block's peak is its file's level only when the block holds enough of
+ * the tone: one that holds just the first (last) few frames of a file, at a
+ * track boundary with silence on the other side, peaks lower, at the level of
+ * another file or of an earlier point of the file. Count a block as audio of
+ * a file only when a block next to it is from the same point of that file
+ * too: a block lasts 21 ms, so allow 0.1 s between the two positions. */
+#define NEIGHBOUR_POS_TOLERANCE 0.1
+
+/* Mix blocks -> per-file stats. */
+static void analyze(struct capture *cap)
+{
+	unsigned file[MAX_BLOCKS];
+	double pos[MAX_BLOCKS];
+	bool classified[MAX_BLOCKS];
+	unsigned n = cap->num_blocks;
+
+	memset(cap->files, 0, sizeof(cap->files));
+	for (unsigned b = 0; b < n; b++)
+		classified[b] = cap->blocks[b].peak > 0.05 && classify(cap, cap->blocks[b].peak, &file[b], &pos[b]);
+
+	for (unsigned b = 0; b < n; b++) {
+		if (!classified[b])
+			continue;
+
+		bool agrees = false;
+		if (b > 0 && classified[b - 1] && file[b - 1] == file[b] &&
+		    fabs(pos[b - 1] - pos[b]) <= NEIGHBOUR_POS_TOLERANCE)
+			agrees = true;
+		if (b + 1 < n && classified[b + 1] && file[b + 1] == file[b] &&
+		    fabs(pos[b + 1] - pos[b]) <= NEIGHBOUR_POS_TOLERANCE)
+			agrees = true;
+
+		const struct mix_block *blk = &cap->blocks[b];
+		if (!agrees) {
+			fprintf(stderr,
+				"mix %.3f s: a block peaks at %.3f, file %u at %.3f s, but no block next to it "
+				"does; not counted\n",
+				(double)blk->start / RATE, blk->peak, file[b] + 1, pos[b]);
+			continue;
+		}
+
+		struct file_stats *fs = &cap->files[file[b]];
+		if (!fs->seen) {
+			fs->seen = true;
+			fs->first_pos = pos[b];
+			fs->first_at = blk->start;
+		}
+		fs->last_pos = pos[b];
+		fs->last_at = blk->start + blk->frames;
+		fs->frames += blk->frames;
+	}
 }
 
 /* ------------------------------------------------------------------------ */
@@ -282,6 +341,7 @@ static void play_playlist(unsigned num_files, struct capture *cap)
 	for (unsigned i = 0; i < num_files; i++)
 		os_unlink(paths[i]);
 	pthread_mutex_destroy(&cap->mutex);
+	analyze(cap);
 
 	for (unsigned i = 0; i < num_files; i++) {
 		const struct file_stats *fs = &cap->files[i];
@@ -357,6 +417,7 @@ static void feed_mix(struct capture *cap, unsigned num_files, const uint32_t *ga
 	}
 	pthread_mutex_destroy(&cap->mutex);
 	free(mix);
+	analyze(cap);
 }
 
 /* ------------------------------------------------------------------------ */
