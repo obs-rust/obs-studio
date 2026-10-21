@@ -9,6 +9,7 @@ mod crc32;
 mod crc32_parity;
 mod darray;
 mod darray_layout;
+mod darray_ops;
 mod darray_parity;
 mod deque;
 mod deque_layout;

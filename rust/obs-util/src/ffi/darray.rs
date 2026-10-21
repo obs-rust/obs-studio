@@ -199,3 +199,65 @@ pub unsafe fn darray_pop_back(element_size: usize, dst: *mut darray) {
         unsafe { darray_erase(element_size, dst, num - 1) };
     }
 }
+
+/// # Safety
+///
+/// `dst` must point to a valid `darray` of `element_size`-byte items, and
+/// `item` must be valid for reads of one item.
+pub unsafe fn darray_push_back(
+    element_size: usize,
+    dst: *mut darray,
+    item: *const c_void,
+) -> usize {
+    let _ = (element_size, dst, item);
+    todo!()
+}
+
+/// `darray_push_back_new`, and the GCC/Clang `da_push_back_new` macro, which
+/// does the same steps: one more item, zeroed, after any growth. Returns it.
+///
+/// # Safety
+///
+/// `dst` must point to a valid `darray` of `element_size`-byte items.
+pub unsafe fn darray_push_back_new(element_size: usize, dst: *mut darray) -> *mut c_void {
+    let _ = (element_size, dst);
+    todo!()
+}
+
+/// # Safety
+///
+/// `dst` must point to a valid `darray` of `element_size`-byte items, and
+/// `item` must be valid for reads of one item.
+///
+/// # Panics
+///
+/// When `idx > num`, where C asserts.
+pub unsafe fn darray_insert(
+    element_size: usize,
+    dst: *mut darray,
+    idx: usize,
+    item: *const c_void,
+) {
+    let _ = (element_size, dst, idx, item);
+    todo!()
+}
+
+/// # Safety
+///
+/// `dst` must point to a valid `darray` of `element_size`-byte items.
+///
+/// # Panics
+///
+/// Unless `start < end <= num`, where C asserts.
+pub unsafe fn darray_erase_range(element_size: usize, dst: *mut darray, start: usize, end: usize) {
+    let _ = (element_size, dst, start, end);
+    todo!()
+}
+
+/// # Safety
+///
+/// `dst` must point to a valid `darray` of `element_size`-byte items.
+pub unsafe fn darray_pop_front(element_size: usize, dst: *mut darray) {
+    let _ = (element_size, dst);
+    todo!()
+}

@@ -124,6 +124,40 @@ impl<T: Copy + Default> DArray<T> {
     pub fn pop_back(&mut self) {
         self.items.pop();
     }
+
+    /// `darray_push_back_new` (and the GCC/Clang `da_push_back_new` macro,
+    /// which does the same): appends a zeroed item (`T::default()`) and
+    /// returns it.
+    pub fn push_back_new(&mut self) -> &mut T {
+        todo!()
+    }
+
+    /// `darray_insert`: `idx == len` appends.
+    ///
+    /// # Panics
+    ///
+    /// When `idx > len`, where C asserts.
+    pub fn insert(&mut self, idx: usize, item: T) {
+        let _ = (idx, item);
+        todo!()
+    }
+
+    /// `darray_erase_range`: removes `start..end`. Never shrinks the
+    /// capacity.
+    ///
+    /// # Panics
+    ///
+    /// Unless `start < end <= len`, where C asserts.
+    pub fn erase_range(&mut self, start: usize, end: usize) {
+        let _ = (start, end);
+        todo!()
+    }
+
+    /// `darray_pop_front`; no-op when empty (the C body checks `num` after
+    /// its assert).
+    pub fn pop_front(&mut self) {
+        todo!()
+    }
 }
 
 impl<T: Copy + Default + PartialEq> DArray<T> {
