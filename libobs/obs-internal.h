@@ -252,6 +252,10 @@ void obs_hotkeys_platform_free(struct obs_core_hotkeys *hotkeys);
 bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t key);
 
 const char *obs_get_hotkey_translation(obs_key_t key, const char *def);
+/* The key name store (obs-hotkey.c): sets or, with NULL, clears the name of one
+ * key in obs->hotkeys.translations[]. obs_hotkeys_set_translations_s()
+ * (obs-hotkey-translations.c) calls it. Not exported. */
+void obs_hotkeys_store_key_translation(obs_key_t key, const char *translation);
 
 struct obs_context_data;
 void obs_hotkeys_context_release(struct obs_context_data *context);

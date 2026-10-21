@@ -40,7 +40,7 @@
   "libobs/media-io/audio-math.h": 2,
   "libobs/media-io/media-remux.c.h": 1,
   "libobs/obs-audio-controls.c.h": 1,
-  "libobs/obs-hotkey.c.h": 1,
+  "libobs/obs-hotkey-translations.c.h": 1,
   "libobs/util/base-variadic.c.h": 2,
   "libobs/util/base.c.h": 1,
   "libobs/util/base.h": 1,

@@ -109,6 +109,7 @@ add_executable(
   test_hotkey_load.c
   "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
   "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
+  "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
 )
 target_compile_definitions(test_hotkey_load PRIVATE obs=hotkey_test_obs)
 target_include_directories(test_hotkey_load PRIVATE ${CMOCKA_INCLUDE_DIR})
