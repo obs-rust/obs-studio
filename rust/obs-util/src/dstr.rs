@@ -268,6 +268,28 @@ pub struct Dstr {
     capacity: usize,
 }
 
+/// The value that replaces the placeholder starting at `format[at]`, or `None`
+/// when there is no `$1`..`$4` there or the caller passed no value for it.
+///
+/// The C ABI resolves placeholders in `$1`..`$4` order, so a caller that has to
+/// reproduce its passes can step a format with this and know which bytes came
+/// from a value.
+#[inline]
+pub(crate) fn placeholder_at<'a>(
+    format: &[u8],
+    at: usize,
+    vals: [Option<&'a [u8]>; 4],
+) -> Option<&'a [u8]> {
+    if format.get(at) != Some(&b'$') {
+        return None;
+    }
+    let digit = *format.get(at + 1)?;
+    if !(b'1'..=b'4').contains(&digit) {
+        return None;
+    }
+    vals[usize::from(digit - b'1')]
+}
+
 impl Dstr {
     /// `dstr_init`.
     pub fn new() -> Self {
@@ -498,13 +520,54 @@ impl Dstr {
     }
 
     /// `dstr_safe_printf`: `$1`..`$4` are replaced by the non-NULL values.
+    ///
+    /// C runs one `dstr_replace` per value, in order, so a value that itself
+    /// contains a later placeholder (a `$2` inside the value for `$1`) is
+    /// substituted by that later pass. That can only happen when a value
+    /// contains a `$`; otherwise one pass over the format is equivalent and
+    /// avoids rescanning and rebuilding the growing buffer once per
+    /// placeholder (#1296).
     pub fn safe_printf(&mut self, format: Option<&[u8]>, vals: [Option<&[u8]>; 4]) {
-        self.copy(format.unwrap_or(&[]));
-        for (placeholder, val) in [b"$1", b"$2", b"$3", b"$4"].into_iter().zip(vals) {
-            if let Some(val) = val {
-                self.replace(placeholder, val);
+        let format = cstr(format.unwrap_or(&[]));
+        // `memchr` is SIMD; `slice::contains` is a byte-at-a-time scan of the
+        // whole value, which at 4 KB cost more than the rebuild it avoids.
+        if vals
+            .iter()
+            .flatten()
+            .any(|val| memchr::memchr(b'$', val).is_some())
+        {
+            self.copy(format);
+            for (placeholder, val) in [b"$1", b"$2", b"$3", b"$4"].into_iter().zip(vals) {
+                if let Some(val) = val {
+                    self.replace(placeholder, val);
+                }
+            }
+            return;
+        }
+
+        if format.is_empty() {
+            // `dstr_copy` of an empty format frees, and the replaces no-op.
+            self.free();
+            return;
+        }
+
+        let mut out = Vec::with_capacity(format.len());
+        let mut i = 0;
+        while i < format.len() {
+            if let Some(val) = placeholder_at(format, i, vals) {
+                out.extend_from_slice(val);
+                i += 2;
+            } else {
+                out.push(format[i]);
+                i += 1;
             }
         }
+
+        // `dstr_copy` sizes the buffer for the format and a growing replace
+        // grows it further, so an empty result from a non-empty format keeps a
+        // non-NULL buffer (`Some([])`, not `None` in `nullable_diagnostic`).
+        self.ensure_capacity(format.len().max(out.len()) + 1);
+        self.bytes = out;
     }
 
     /// `dstr_depad`: contents are read as a C string; all padding frees.

@@ -285,6 +285,86 @@ unsafe fn copy_in_place(d: *mut dstr, array: *const c_char) {
     }
 }
 
+/// Whether `p` points into the buffer owned by `d`.
+///
+/// # Safety
+///
+/// `d` must be a valid `dstr`.
+unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
+    // SAFETY: the caller guarantees `d`.
+    let (array, capacity) = unsafe { ((*d).array as *const u8, (*d).capacity) };
+    if p.is_null() || array.is_null() || capacity == 0 {
+        return false;
+    }
+    (p as *const u8 as usize).wrapping_sub(array as usize) < capacity
+}
+
+/// `dstr_safe_printf` in one pass: grow once, write once.
+///
+/// `dstr_copy` followed by one `dstr_replace` per value rescans and rebuilds
+/// the growing buffer for every placeholder, so a 4096-byte value is copied
+/// once per pass (#1296). With no `$` in the values nothing can introduce a
+/// later placeholder, so the result is the format with `$1`..`$4` substituted
+/// left to right.
+///
+/// # Safety
+///
+/// `d` must be a valid `dstr`. No argument may point into `d`'s buffer: the
+/// buffer is grown before anything is written.
+unsafe fn write_safe_printf(d: *mut dstr, format: &[u8], vals: [Option<&[u8]>; 4]) {
+    if format.is_empty() {
+        // `dstr_copy` of an empty format frees, and the replaces then no-op.
+        // SAFETY: forwarded to the caller.
+        unsafe { free(d) };
+        return;
+    }
+
+    let mut new_len = 0usize;
+    let mut i = 0;
+    while i < format.len() {
+        match crate::dstr::placeholder_at(format, i, vals) {
+            Some(val) => {
+                new_len += val.len();
+                i += 2;
+            }
+            None => {
+                new_len += 1;
+                i += 1;
+            }
+        }
+    }
+
+    // `dstr_copy` sizes the buffer for the format and a growing replace grows
+    // it further, so an empty result from a non-empty format keeps a non-NULL
+    // buffer. SAFETY: forwarded to the caller; the arguments do not alias, so a
+    // moved buffer cannot invalidate them.
+    unsafe { ensure_capacity(d, format.len().max(new_len) + 1) };
+    // SAFETY: the buffer now holds `new_len + 1` bytes and `format`/`vals` are
+    // readable and outside it.
+    unsafe {
+        let buf = (*d).array as *mut u8;
+        let mut w = 0usize;
+        let mut i = 0;
+        while i < format.len() {
+            match crate::dstr::placeholder_at(format, i, vals) {
+                Some(val) => {
+                    ptr::copy_nonoverlapping(val.as_ptr(), buf.add(w), val.len());
+                    w += val.len();
+                    i += 2;
+                }
+                None => {
+                    *buf.add(w) = format[i];
+                    w += 1;
+                    i += 1;
+                }
+            }
+        }
+        debug_assert_eq!(w, new_len);
+        *buf.add(new_len) = 0;
+        (*d).len = new_len;
+    }
+}
+
 /// # Safety
 ///
 /// `p` must be null or a NUL-terminated string.
@@ -620,18 +700,37 @@ pub unsafe extern "C" fn dstr_safe_printf(
     val3: *const c_char,
     val4: *const c_char,
 ) {
-    // SAFETY: forwarded to the caller. Each step edits the C buffer in
-    // place, as C does: copy the format, then replace `$1`..`$4`.
+    // SAFETY: forwarded to the caller.
     unsafe {
-        copy_in_place(dst, format);
-        for (find, val) in [c"$1", c"$2", c"$3", c"$4"]
-            .into_iter()
-            .zip([val1, val2, val3, val4])
+        // SAFETY: every argument is null or NUL-terminated per the contract.
+        let vals = [val1, val2, val3, val4].map(|p| opt_cstr(p));
+        let fmt = opt_cstr(format).unwrap_or(b"");
+        // C replaces `$1`..`$4` in four passes, so a value that itself holds a
+        // later placeholder is substituted by that later pass. Keep those
+        // passes when a value holds a `$` (#1296), and also when an argument
+        // points into `d`'s own buffer: the one-pass writer grows the buffer
+        // first and would have to re-derive such a pointer afterwards.
+        let aliased = points_into(dst, format)
+            || [val1, val2, val3, val4]
+                .into_iter()
+                .any(|p| points_into(dst, p));
+        // `memchr` is SIMD; `slice::contains` is a byte-at-a-time scan of the
+        // whole value, which at 4 KB cost more than the rebuild it avoids.
+        if aliased
+            || vals
+                .iter()
+                .flatten()
+                .any(|v| memchr::memchr(b'$', v).is_some())
         {
-            if let Some(val) = opt_cstr(val) {
-                replace_in_place(dst, find.to_bytes(), val);
+            copy_in_place(dst, format);
+            for (find, val) in [c"$1", c"$2", c"$3", c"$4"].into_iter().zip(vals) {
+                if let Some(val) = val {
+                    replace_in_place(dst, find.to_bytes(), val);
+                }
             }
+            return;
         }
+        write_safe_printf(dst, fmt, vals);
     }
 }
 

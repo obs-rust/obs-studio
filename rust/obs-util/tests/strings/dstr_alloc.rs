@@ -175,3 +175,63 @@ mod ffi_in_place {
         assert!(d.bytes().ends_with(b"obs : 42\0"));
     }
 }
+
+// ---------------------------------------------------------------------------
+// #1296: a format with placeholders is substituted in one pass, so the result
+// costs one allocation instead of a copy plus one rebuild per placeholder.
+
+mod safe_printf_one_pass {
+    use core::ptr;
+
+    use obs_util::dstr::Dstr;
+    use obs_util::ffi::darray::bfree;
+    use obs_util::ffi::dstr::{self as r, dstr};
+
+    use super::allocs_during;
+
+    #[test]
+    fn safe_printf_with_placeholders_allocates_once() {
+        let mut d = Dstr::new();
+        let fmt = b"$1: $2".to_vec();
+        assert_eq!(
+            allocs_during(|| d.safe_printf(Some(&fmt), [Some(b"x"), Some(b"y"), None, None])),
+            1
+        );
+        assert_eq!(d.as_bytes(), b"x: y");
+    }
+
+    #[test]
+    fn ffi_safe_printf_matches_the_sequential_passes() {
+        for value in [&b"obs obs"[..], &b""[..], &b"$1"[..]] {
+            let v1 = std::ffi::CString::new(value).unwrap();
+            let mut d = dstr {
+                array: ptr::null_mut(),
+                len: 0,
+                capacity: 0,
+            };
+            // SAFETY: a valid empty dstr, and NUL-terminated arguments that do
+            // not point into its buffer.
+            unsafe {
+                r::dstr_safe_printf(
+                    &mut d,
+                    c"[$1|$2]".as_ptr(),
+                    v1.as_ptr(),
+                    c"42".as_ptr(),
+                    ptr::null(),
+                    ptr::null(),
+                )
+            };
+            // SAFETY: a non-null array holds `len` bytes plus a NUL.
+            let got = unsafe { core::slice::from_raw_parts(d.array as *const u8, d.len) }.to_vec();
+            // The value holds a `$`, so C's four passes run: `$1` -> `$1` is a
+            // no-op and the later pass still substitutes `$2`.
+            let expect = match value {
+                b"$1" => b"[$1|42]".to_vec(),
+                other => [b"[".as_slice(), other, b"|42]"].concat(),
+            };
+            assert_eq!(got, expect, "value {:?}", String::from_utf8_lossy(value));
+            // SAFETY: the array came from bmalloc/brealloc.
+            unsafe { bfree(d.array as *mut _) };
+        }
+    }
+}
