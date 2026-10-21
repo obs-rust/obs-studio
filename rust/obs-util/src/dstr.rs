@@ -290,6 +290,74 @@ pub(crate) fn placeholder_at<'a>(
     vals[usize::from(digit - b'1')]
 }
 
+/// The length and capacity that C's `dstr_safe_printf` leaves, worked out
+/// without running its passes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SafePrintfPlan {
+    pub(crate) len: usize,
+    pub(crate) capacity: usize,
+}
+
+/// Plans a one-pass `dstr_safe_printf` of a non-empty `format` into a dstr
+/// whose capacity is `capacity`, for values that hold no `$` (`format` and the
+/// values already cut at their first NUL).
+///
+/// C runs `dstr_copy(format)` and then one `dstr_replace` per non-NULL value,
+/// in `$1`..`$4` order. The copy grows the buffer to fit the format, every
+/// growing replace grows it to fit its result (doubling, as
+/// `dstr_ensure_capacity` does), and a shrinking replace keeps it. So the
+/// final capacity depends on the order and size of those steps, not only on
+/// the result (#1623). This replays the steps on the count of each
+/// placeholder in the format, which is what each pass finds as long as no
+/// earlier pass created a new placeholder.
+///
+/// Returns `None` when an earlier pass can create one: a `$` in the format
+/// right before a substituted placeholder joins the start of its value
+/// (`"$$1"` with `$1` = `"2"` makes a `"$2"` that the second pass replaces).
+/// The caller then runs C's passes instead.
+pub(crate) fn safe_printf_plan(
+    format: &[u8],
+    vals: [Option<&[u8]>; 4],
+    capacity: usize,
+) -> Option<SafePrintfPlan> {
+    let mut counts = [0usize; 4];
+    let mut i = 0;
+    while i < format.len() {
+        if placeholder_at(format, i, vals).is_some() {
+            if i > 0 && format[i - 1] == b'$' {
+                return None;
+            }
+            counts[usize::from(format[i + 1] - b'1')] += 1;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+
+    let ensure = |capacity: usize, size: usize| {
+        if size <= capacity {
+            capacity
+        } else {
+            grow_capacity(capacity, size)
+        }
+    };
+    let mut len = format.len();
+    let mut capacity = ensure(capacity, len + 1);
+    for (val, count) in vals.into_iter().zip(counts) {
+        let Some(val) = val else { continue };
+        if count == 0 {
+            continue;
+        }
+        if val.len() > 2 {
+            len += (val.len() - 2) * count;
+            capacity = ensure(capacity, len + 1);
+        } else {
+            len -= (2 - val.len()) * count;
+        }
+    }
+    Some(SafePrintfPlan { len, capacity })
+}
+
 impl Dstr {
     /// `dstr_init`.
     pub fn new() -> Self {
@@ -521,21 +589,35 @@ impl Dstr {
 
     /// `dstr_safe_printf`: `$1`..`$4` are replaced by the non-NULL values.
     ///
-    /// C runs one `dstr_replace` per value, in order, so a value that itself
-    /// contains a later placeholder (a `$2` inside the value for `$1`) is
-    /// substituted by that later pass. That can only happen when a value
-    /// contains a `$`; otherwise one pass over the format is equivalent and
-    /// avoids rescanning and rebuilding the growing buffer once per
-    /// placeholder (#1296).
+    /// C copies the format and runs one `dstr_replace` per value, in order, so
+    /// a later pass also substitutes a placeholder that an earlier one created:
+    /// a `$2` inside the value for `$1`, or a format `$` followed by a value
+    /// that starts with a digit (`"$$1"`). When neither can happen, one pass
+    /// over the format gives the same bytes and avoids rescanning and
+    /// rebuilding the growing buffer once per placeholder (#1296), and
+    /// [`safe_printf_plan`] gives the capacity C's passes end with (#1623).
     pub fn safe_printf(&mut self, format: Option<&[u8]>, vals: [Option<&[u8]>; 4]) {
         let format = cstr(format.unwrap_or(&[]));
+        // `dstr_replace` reads each value as a C string.
+        let vals = vals.map(|val| val.map(cstr));
+        if format.is_empty() {
+            // `dstr_copy` of an empty format frees, and the replaces no-op.
+            self.free();
+            return;
+        }
+
         // `memchr` is SIMD; `slice::contains` is a byte-at-a-time scan of the
         // whole value, which at 4 KB cost more than the rebuild it avoids.
-        if vals
+        let plan = if vals
             .iter()
             .flatten()
             .any(|val| memchr::memchr(b'$', val).is_some())
         {
+            None
+        } else {
+            safe_printf_plan(format, vals, self.capacity)
+        };
+        let Some(plan) = plan else {
             self.copy(format);
             for (placeholder, val) in [b"$1", b"$2", b"$3", b"$4"].into_iter().zip(vals) {
                 if let Some(val) = val {
@@ -543,15 +625,9 @@ impl Dstr {
                 }
             }
             return;
-        }
+        };
 
-        if format.is_empty() {
-            // `dstr_copy` of an empty format frees, and the replaces no-op.
-            self.free();
-            return;
-        }
-
-        let mut out = Vec::with_capacity(format.len());
+        let mut out = Vec::with_capacity(plan.len);
         let mut i = 0;
         while i < format.len() {
             if let Some(val) = placeholder_at(format, i, vals) {
@@ -562,11 +638,13 @@ impl Dstr {
                 i += 1;
             }
         }
+        debug_assert_eq!(out.len(), plan.len);
 
-        // `dstr_copy` sizes the buffer for the format and a growing replace
-        // grows it further, so an empty result from a non-empty format keeps a
-        // non-NULL buffer (`Some([])`, not `None` in `nullable_diagnostic`).
-        self.ensure_capacity(format.len().max(out.len()) + 1);
+        // The plan's capacity is at least the format's, so an empty result
+        // from a non-empty format keeps a non-NULL buffer, as `dstr_copy` plus
+        // a shrinking `dstr_replace` does (`Some([])`, not `None` in
+        // `nullable_diagnostic`).
+        self.capacity = plan.capacity;
         self.bytes = out;
     }
 

@@ -303,50 +303,40 @@ unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
 ///
 /// `dstr_copy` followed by one `dstr_replace` per value rescans and rebuilds
 /// the growing buffer for every placeholder, so a 4096-byte value is copied
-/// once per pass (#1296). With no `$` in the values nothing can introduce a
-/// later placeholder, so the result is the format with `$1`..`$4` substituted
-/// left to right.
+/// once per pass (#1296). `plan` comes from [`core_dstr::safe_printf_plan`],
+/// which only plans when no pass can create a later placeholder, so the result
+/// is the format with `$1`..`$4` substituted left to right, in a buffer with
+/// the capacity C's passes end with (#1623).
 ///
 /// # Safety
 ///
-/// `d` must be a valid `dstr`. No argument may point into `d`'s buffer: the
-/// buffer is grown before anything is written.
-unsafe fn write_safe_printf(d: *mut dstr, format: &[u8], vals: [Option<&[u8]>; 4]) {
-    if format.is_empty() {
-        // `dstr_copy` of an empty format frees, and the replaces then no-op.
-        // SAFETY: forwarded to the caller.
-        unsafe { free(d) };
-        return;
-    }
-
-    let mut new_len = 0usize;
-    let mut i = 0;
-    while i < format.len() {
-        match crate::dstr::placeholder_at(format, i, vals) {
-            Some(val) => {
-                new_len += val.len();
-                i += 2;
-            }
-            None => {
-                new_len += 1;
-                i += 1;
-            }
+/// `d` must be a valid `dstr` whose capacity `plan` was made for, and `format`
+/// must be non-empty. No argument may point into `d`'s buffer: the buffer is
+/// grown before anything is written.
+unsafe fn write_safe_printf(
+    d: *mut dstr,
+    format: &[u8],
+    vals: [Option<&[u8]>; 4],
+    plan: core_dstr::SafePrintfPlan,
+) {
+    // SAFETY: forwarded to the caller; the arguments do not alias, so a moved
+    // buffer cannot invalidate them.
+    unsafe {
+        if plan.capacity > (*d).capacity {
+            (*d).array = brealloc((*d).array as *mut c_void, plan.capacity) as *mut c_char;
+            (*d).capacity = plan.capacity;
         }
     }
-
-    // `dstr_copy` sizes the buffer for the format and a growing replace grows
-    // it further, so an empty result from a non-empty format keeps a non-NULL
-    // buffer. SAFETY: forwarded to the caller; the arguments do not alias, so a
-    // moved buffer cannot invalidate them.
-    unsafe { ensure_capacity(d, format.len().max(new_len) + 1) };
-    // SAFETY: the buffer now holds `new_len + 1` bytes and `format`/`vals` are
-    // readable and outside it.
+    let new_len = plan.len;
+    // SAFETY: the plan's capacity covers its length and the NUL (and the
+    // format, so an empty result from a non-empty format keeps a non-NULL
+    // buffer), and `format`/`vals` are readable and outside the buffer.
     unsafe {
         let buf = (*d).array as *mut u8;
         let mut w = 0usize;
         let mut i = 0;
         while i < format.len() {
-            match crate::dstr::placeholder_at(format, i, vals) {
+            match core_dstr::placeholder_at(format, i, vals) {
                 Some(val) => {
                     ptr::copy_nonoverlapping(val.as_ptr(), buf.add(w), val.len());
                     w += val.len();
@@ -705,32 +695,42 @@ pub unsafe extern "C" fn dstr_safe_printf(
         // SAFETY: every argument is null or NUL-terminated per the contract.
         let vals = [val1, val2, val3, val4].map(|p| opt_cstr(p));
         let fmt = opt_cstr(format).unwrap_or(b"");
-        // C replaces `$1`..`$4` in four passes, so a value that itself holds a
-        // later placeholder is substituted by that later pass. Keep those
-        // passes when a value holds a `$` (#1296), and also when an argument
-        // points into `d`'s own buffer: the one-pass writer grows the buffer
-        // first and would have to re-derive such a pointer afterwards.
+        // C replaces `$1`..`$4` in four passes, so a later pass also
+        // substitutes a placeholder an earlier one created. Keep those passes
+        // when a value holds a `$` (#1296) or the plan sees a format `$` right
+        // before a placeholder (#1623), and also when an argument points into
+        // `d`'s own buffer: the one-pass writer grows the buffer first and
+        // would have to re-derive such a pointer afterwards.
         let aliased = points_into(dst, format)
             || [val1, val2, val3, val4]
                 .into_iter()
                 .any(|p| points_into(dst, p));
         // `memchr` is SIMD; `slice::contains` is a byte-at-a-time scan of the
         // whole value, which at 4 KB cost more than the rebuild it avoids.
-        if aliased
+        let plan = if aliased
+            || fmt.is_empty()
             || vals
                 .iter()
                 .flatten()
                 .any(|v| memchr::memchr(b'$', v).is_some())
         {
-            copy_in_place(dst, format);
-            for (find, val) in [c"$1", c"$2", c"$3", c"$4"].into_iter().zip(vals) {
-                if let Some(val) = val {
-                    replace_in_place(dst, find.to_bytes(), val);
+            None
+        } else {
+            core_dstr::safe_printf_plan(fmt, vals, (*dst).capacity)
+        };
+        match plan {
+            Some(plan) => write_safe_printf(dst, fmt, vals, plan),
+            None => {
+                // An empty format takes this path too: `dstr_copy` frees and
+                // the replaces then no-op.
+                copy_in_place(dst, format);
+                for (find, val) in [c"$1", c"$2", c"$3", c"$4"].into_iter().zip(vals) {
+                    if let Some(val) = val {
+                        replace_in_place(dst, find.to_bytes(), val);
+                    }
                 }
             }
-            return;
         }
-        write_safe_printf(dst, fmt, vals);
     }
 }
 
