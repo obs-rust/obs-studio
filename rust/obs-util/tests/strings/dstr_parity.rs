@@ -55,7 +55,7 @@ use proptest::strategy::Union;
 // Strategies
 
 /// Bytes that make matches likely, plus arbitrary bytes (including >= 0x80).
-const ALPHA: &[u8] = b"abAB _$1\t\n\r,";
+const ALPHA: &[u8] = b"abAB _$12\t\n\r,";
 
 fn byte() -> impl Strategy<Value = u8> {
     prop_oneof![1 => any::<u8>(), 6 => prop::sample::select(ALPHA.to_vec())]
@@ -694,5 +694,144 @@ proptest! {
         d.check()?;
         apply(&Op::Replace(find, rep), &mut d, &mut s);
         d.check()?;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fixed regressions: `dstr_safe_printf` capacity and pass order (#1623)
+//
+// C copies the format and then runs one `dstr_replace` per non-NULL value, so
+// the final capacity is what those growth steps leave. The one-pass writer
+// must end with the same capacity and the same bytes. Each case runs on a
+// fresh dstr and on one that already holds `prior`, whose capacity the C steps
+// start from. The safe `Dstr` is checked against the same oracle result.
+
+type Vals<'a> = [Option<&'a [u8]>; 4];
+
+const SAFE_PRINTF_CASES: &[(Option<&[u8]>, Vals)] = &[
+    // The shrunk proptest case from #1623: C ends with 6, one pass with 4.
+    (Some(b"$1"), [Some(b"\x01\x01\x01"), None, None, None]),
+    // Values longer than their placeholder.
+    (Some(b"a$1b"), [Some(b"hello world"), None, None, None]),
+    (Some(b"$1$1$1"), [Some(b"abcd"), None, None, None]),
+    (
+        Some(b"$1"),
+        [Some(b"abcdefghijklmnopqrstuvwxyz"), None, None, None],
+    ),
+    // Shorter than, and as long as, their placeholder.
+    (Some(b"[$1]"), [Some(b"x"), None, None, None]),
+    (Some(b"$1$1"), [Some(b""), None, None, None]),
+    (Some(b"$1"), [Some(b""), None, None, None]),
+    (Some(b"<$1>"), [Some(b"ab"), None, None, None]),
+    // Several placeholders, growing and shrinking in different passes.
+    (
+        Some(b"$1: $2 ($3) $4"),
+        [Some(b"long value"), Some(b""), Some(b"xyz"), Some(b"q")],
+    ),
+    (Some(b"$2$1$2"), [Some(b"abc"), Some(b"defgh"), None, None]),
+    (
+        Some(b"$4$3$2$1"),
+        [Some(b"a"), Some(b"bbb"), Some(b""), Some(b"ddddd")],
+    ),
+    (Some(b"$1$2"), [Some(b"x"), Some(b"0123456789"), None, None]),
+    // A `$` inside a value: a later pass rewrites what an earlier one inserted.
+    (Some(b"$1-$2"), [Some(b"$2"), Some(b"XYZW"), None, None]),
+    (
+        Some(b"$1"),
+        [Some(b"$2$3"), Some(b"long two"), Some(b""), None],
+    ),
+    (Some(b"$1$1"), [Some(b"$1"), None, None, None]),
+    // A `$` in the format right before a placeholder: the inserted value
+    // completes a later placeholder that only a later pass substitutes.
+    (Some(b"$$1"), [Some(b"2"), Some(b"X"), None, None]),
+    (Some(b"$$12"), [Some(b""), Some(b"long"), None, None]),
+    (Some(b"$$1$13"), [Some(b""), None, Some(b"Y"), None]),
+    (Some(b"$$1"), [Some(b"1"), None, None, None]),
+    // NULL values and formats.
+    (
+        Some(b"$1 $2 $3"),
+        [None, Some(b"long"), None, Some(b"unused")],
+    ),
+    (Some(b"$1"), [None, None, None, None]),
+    (
+        Some(b"no placeholders"),
+        [Some(b"a"), Some(b"b"), None, None],
+    ),
+    (None, [Some(b"a"), Some(b"b"), Some(b"c"), Some(b"d")]),
+    (Some(b""), [Some(b"a"), None, None, None]),
+];
+
+/// Contents that leave the destination with a capacity before the call.
+const PRIORS: &[Option<&[u8]>] = &[None, Some(b"ab"), Some(b"0123456789abcdef")];
+
+fn owned(vals: &Vals) -> [Option<Vec<u8>>; 4] {
+    vals.map(|v| v.map(<[u8]>::to_vec))
+}
+
+#[test]
+fn safe_printf_capacity_matches_c() {
+    let mut failures = Vec::new();
+    for &(format, vals) in SAFE_PRINTF_CASES {
+        for &prior in PRIORS {
+            let mut d = Pair::new();
+            let mut s = Pair::new();
+            if let Some(prior) = prior {
+                apply(&Op::Copy(Some(prior.to_vec())), &mut d, &mut s);
+            }
+            let op = Op::SafePrintf(format.map(<[u8]>::to_vec), owned(&vals));
+            apply(&op, &mut d, &mut s);
+            let (rust, c) = d.snaps();
+            if rust != c {
+                failures.push(format!(
+                    "ffi {format:?} {vals:?} prior {prior:?}: rust {rust:?} c {c:?}"
+                ));
+            }
+
+            // The safe `Dstr` follows the same C model.
+            let mut safe = obs_util::dstr::Dstr::new();
+            if let Some(prior) = prior {
+                safe.copy(prior);
+            }
+            safe.safe_printf(format, vals);
+            if (safe.as_bytes(), safe.capacity()) != (&c.bytes[..], c.capacity) {
+                failures.push(format!(
+                    "Dstr {format:?} {vals:?} prior {prior:?}: rust ({:?}, {}) c {c:?}",
+                    safe.as_bytes(),
+                    safe.capacity()
+                ));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Formats and values over `$`, the four digits and a filler, so placeholders,
+/// `$$` runs and values that start with a digit are common.
+fn printf_bytes(max: usize) -> impl Strategy<Value = Vec<u8>> {
+    vec(prop::sample::select(b"$$1234a".to_vec()), 0..max)
+}
+
+proptest! {
+    #[test]
+    fn safe_printf_matches_c(
+        prior in opt(vec(byte(), 0..20)),
+        format in opt(printf_bytes(12)),
+        vals in uniform4(opt(printf_bytes(6))),
+    ) {
+        let mut d = Pair::new();
+        let mut s = Pair::new();
+        if let Some(prior) = &prior {
+            apply(&Op::Copy(Some(prior.clone())), &mut d, &mut s);
+        }
+        apply(&Op::SafePrintf(format.clone(), vals.clone()), &mut d, &mut s);
+        d.check()?;
+
+        let (_, c) = d.snaps();
+        let mut safe = obs_util::dstr::Dstr::new();
+        if let Some(prior) = &prior {
+            safe.copy(prior);
+        }
+        safe.safe_printf(format.as_deref(), [0, 1, 2, 3].map(|i| vals[i].as_deref()));
+        prop_assert_eq!((safe.as_bytes(), safe.capacity()), (&c.bytes[..], c.capacity));
     }
 }
