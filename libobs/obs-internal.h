@@ -1228,6 +1228,12 @@ struct obs_weak_output {
 #define CAPTION_PAGE_ROWS (15)
 #define CAPTION_LINE_BYTES (4 * CAPTION_LINE_CHARS)
 #define CAPTION_PAGE_BYTES (CAPTION_PAGE_ROWS * CAPTION_LINE_BYTES + CAPTION_PAGE_ROWS - 1)
+/* The next caption page of *text, in obs-output-caption-text.c: up to
+ * CAPTION_PAGE_ROWS rows of up to CAPTION_LINE_CHARS characters, joined by
+ * '\n' and NUL-terminated in page. Moves *text past what it used and
+ * returns the page length. Not EXPORT. */
+extern size_t obs_output_caption_text_page(const char **text, char page[CAPTION_PAGE_BYTES + 1]);
+
 struct caption_text {
 	double display_duration;
 	struct caption_text *next;

@@ -15,11 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-caption-text.pch.h"
 
 /* Caption text wrap and pagination (moved verbatim from obs-output.c.h).
- * obs_output_output_caption_text2() in obs-output.c.h, later in the same
- * unity group, calls caption_text_page(). */
+ * obs_output_output_caption_text2() in obs-output.c.h calls
+ * obs_output_caption_text_page(), declared in obs-internal.h without
+ * EXPORT. In libobs-with-rust the Rust port (rust/obs-output) replaces this
+ * file. */
 
 static bool caption_utf8_continuation(unsigned char c)
 {
@@ -145,7 +147,7 @@ static size_t caption_text_row(const char **text, char row[CAPTION_LINE_BYTES + 
 	return bytes;
 }
 
-static size_t caption_text_page(const char **text, char page[CAPTION_PAGE_BYTES + 1])
+size_t obs_output_caption_text_page(const char **text, char page[CAPTION_PAGE_BYTES + 1])
 {
 	size_t page_bytes = 0;
 

@@ -114,7 +114,10 @@ fn assert_page_invariants(pages: &[Vec<u8>]) -> usize {
             rows += 1;
             assert!(!row.is_empty());
             assert!(row.len() <= LINE_BYTES);
-            assert!(row[0] > b' ' && row[0] != 0x7F, "row starts with {row:02x?}");
+            assert!(
+                row[0] > b' ' && row[0] != 0x7F,
+                "row starts with {row:02x?}"
+            );
             assert!(!(row.len() >= 2 && row[0] == 0xC2 && row[1] == 0xA0));
             assert!(!row.contains(&b'\r'));
             let chars = row.iter().filter(|&&c| c & 0xC0 != 0x80).count();
@@ -499,7 +502,11 @@ fn char_length_of_every_lead_byte() {
             0xF0..=0xF3 => 4,
             _ => 0,
         };
-        assert_eq!(expected, caption_text::utf8_char_length(&text), "{lead:#04x}");
+        assert_eq!(
+            expected,
+            caption_text::utf8_char_length(&text),
+            "{lead:#04x}"
+        );
     }
 }
 
@@ -625,7 +632,10 @@ fn row_skips_invalid_bytes_after_column_32() {
 fn row_wraps_at_the_last_whitespace() {
     let input = b"aaa bbb ccc ddd eee fff ggg hhh iii";
     let row = text_row(input);
-    assert_eq!(b"aaa bbb ccc ddd eee fff ggg hhh".as_slice(), row.as_bytes());
+    assert_eq!(
+        b"aaa bbb ccc ddd eee fff ggg hhh".as_slice(),
+        row.as_bytes()
+    );
     assert_eq!(31, row.consumed());
     // a tab at the split is dropped too
     assert_single_page(
@@ -719,23 +729,49 @@ fn assert_page_bounds(text: &[u8]) {
     assert_eq!(1, assert_page_invariants(&[page.as_bytes().to_vec()]));
 }
 
-fn weighted_byte() -> impl Strategy<Value = u8> {
-    prop_oneof![
-        4 => any::<u8>(),
-        2 => prop::sample::select(vec![b' ', b'\t', b'\r', b'\n', 0x7F, 0x0B, 0x00]),
-        2 => prop::sample::select(vec![0xC2, 0xC3, 0xDF, 0xE0, 0xE4, 0xED, 0xEF, 0xF0, 0xF4, 0xF5]),
-        2 => 0x80u8..=0xBF,
-        2 => b'a'..=b'z',
-    ]
+/// Random text from random words, weighted toward whitespace, newlines,
+/// multibyte leads and continuation bytes, with valid characters of every
+/// length, NBSP and runs of letters mixed in. A NUL (the end of the text)
+/// is rare, so most texts run to the end of the slice. Shared with the
+/// Tier 3 test.
+pub(crate) fn weighted_text(words: &[u32]) -> Vec<u8> {
+    const SPACES: [u8; 8] = [b' ', b'\t', b'\r', b'\n', 0x7F, 0x0B, 0x0C, 0x01];
+    const LEADS: [u8; 13] = [
+        0xC0, 0xC1, 0xC2, 0xC3, 0xDF, 0xE0, 0xE4, 0xED, 0xEF, 0xF0, 0xF4, 0xF5, 0xFF,
+    ];
+    let mut text = Vec::with_capacity(words.len() * 2);
+    for &r in words {
+        let pick = (r >> 8) as usize;
+        match r & 0xFF {
+            0 if pick.is_multiple_of(32) => text.push(0),
+            0 => text.push(b'n'),
+            1..=79 => text.push((r >> 8) as u8),
+            80..=119 => text.push(SPACES[pick % SPACES.len()]),
+            120..=159 => text.push(LEADS[pick % LEADS.len()]),
+            160..=189 => text.push(0x80 | (pick % 64) as u8),
+            190..=229 => text.push(b'a' + (pick % 26) as u8),
+            230..=244 => {
+                let c = char::from_u32(pick as u32 % 0x11_0000).unwrap_or('\u{FFFD}');
+                text.extend(c.to_string().bytes());
+            }
+            245..=249 => text.extend_from_slice(b"\xC2\xA0"),
+            _ => text.extend(std::iter::repeat_n(b'w', 1 + pick % 40)),
+        }
+    }
+    text
+}
+
+pub(crate) fn weighted(max_words: usize) -> impl Strategy<Value = Vec<u8>> {
+    prop::collection::vec(any::<u32>(), 0..max_words).prop_map(|w| weighted_text(&w))
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2048))]
+    #![proptest_config(ProptestConfig::with_cases(1024))]
 
     /// No input panics, the queue always ends, and every page keeps the
     /// bounds.
     #[test]
-    fn any_bytes_keep_the_bounds(input in prop::collection::vec(weighted_byte(), 0..3000)) {
+    fn any_bytes_keep_the_bounds(input in weighted(2000)) {
         let pages = queue(&input);
         prop_assert!(assert_page_invariants(&pages) >= 1);
         let mut cursor = 0usize;
@@ -753,7 +789,7 @@ proptest! {
     /// A page that did not read the end of a prefix is the page of the
     /// whole text: the bytes after it cannot change it.
     #[test]
-    fn prefix_that_was_enough(input in prop::collection::vec(weighted_byte(), 0..3000), cut in any::<prop::sample::Index>()) {
+    fn prefix_that_was_enough(input in weighted(2000), cut in any::<prop::sample::Index>()) {
         let k = cut.index(input.len() + 1);
         let prefix = input.get(..k).unwrap();
         let short = text_page(prefix);

@@ -2,6 +2,7 @@
 //! (`obs-tests-core`, rust/obs-data/tests/core.rs), not a binary of its own.
 
 mod caption_text;
+mod caption_text_parity;
 mod delay;
 mod delay_parity;
 mod interleave;

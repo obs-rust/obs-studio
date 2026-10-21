@@ -52,7 +52,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/obs-hotkey-name-map.c`, `obs-nix-hotkey-state.c.h`, `obs-nix-portal-shortcut-ids.c.h` | `rust/obs-hotkey` |
 | `libobs/callback/` | `rust/obs-callback` |
 | `libobs/obs-missing-files.c.h` | `rust/obs-missing-files` |
-| `libobs/obs-output-delay.c.h`, `obs-output-interleave.c.h` | `rust/obs-output` |
+| `libobs/obs-output-delay.c.h`, `obs-output-interleave.c.h`, `obs-output-caption-text.c.h` | `rust/obs-output` |
 | `libobs/obs-scene*.c.h` | `rust/obs-scene` |
 | `libobs/audio-monitoring/` | `rust/obs-audio-monitoring` |
 | `libobs/obs-audio-controls.c.h` | `rust/obs-audio-controls` |

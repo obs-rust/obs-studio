@@ -2648,7 +2648,7 @@ void obs_output_output_caption_text2(obs_output_t *output, const char *text, dou
 
 		do {
 			char page[CAPTION_PAGE_BYTES + 1];
-			size_t bytes = caption_text_page(&cursor, page);
+			size_t bytes = obs_output_caption_text_page(&cursor, page);
 
 			/* Preserve the old empty-string behavior, but do not append an
 			 * empty page for trailing whitespace or invalid bytes. */
