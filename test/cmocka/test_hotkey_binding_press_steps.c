@@ -21,6 +21,10 @@
  *   or its hotkey from inside its call;
  * - that remove_bindings() (rebinding, unregistering) releases each pressed
  *   binding it removes, and only those.
+ * - that obs_hotkey_binding_count_fields() points at the binding's own
+ *   pressed flag and its hotkey's own pressed count, the fields the press
+ *   and release write through it, and that obs_hotkey_dispatch() calls the
+ *   func, the router or nothing, and touches neither.
  *
  * Cases marked "characterized, not endorsed" pin behaviour that looks odd;
  * the port keeps it, and a fix is a separate change. */
@@ -406,6 +410,49 @@ static void remove_releases_pressed(void **state)
 	assert_int_equal(hotkey_test_obs->hotkeys.bindings.num, 0);
 }
 
+/* The accessor points at the binding's own flag and its hotkey's own count,
+ * and gives the binding's hotkey; the dispatch calls that hotkey in each
+ * routing state, and touches neither. */
+static void count_fields_and_dispatch(void **state)
+{
+	UNUSED_PARAMETER(state);
+	bind_keys(2);
+	obs_hotkey_binding_t *binding = binding_at(1);
+	obs_hotkey_t *hotkey = binding->hotkey;
+
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding);
+	assert_ptr_equal(fields.pressed, &binding->pressed);
+	assert_ptr_equal(fields.count, &hotkey->pressed);
+	assert_ptr_equal(fields.hotkey, hotkey);
+
+	/* A flag and a count set through it are the ones the press reads and
+	 * writes; the press shows through it. */
+	*fields.count = 1;
+	obs_hotkey_binding_press(binding);
+	assert_int_equal(num_calls, 0);
+	assert_true(*fields.pressed);
+	assert_int_equal(*fields.count, 2);
+	*fields.count = 1;
+	obs_hotkey_binding_release(binding);
+	assert_int_equal(num_calls, 1);
+	assert_false(*fields.pressed);
+	assert_int_equal(*fields.count, 0);
+
+	for (int r = DIRECT; r <= ROUTED_NO_ROUTER; r++) {
+		enum routing routing = (enum routing)r;
+		set_routing(routing);
+		for (int p = 0; p < 2; p++) {
+			binding->pressed = p == 0;
+			hotkey->pressed = 5;
+			num_calls = 0;
+			obs_hotkey_dispatch(hotkey, p != 0);
+			expect_call(routing, hotkey, p != 0);
+			assert_int_equal(binding->pressed, p == 0);
+			assert_int_equal(hotkey->pressed, 5);
+		}
+	}
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -414,6 +461,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(nothing_after_call, setup, teardown),
 		cmocka_unit_test_setup_teardown(two_bindings, setup, teardown),
 		cmocka_unit_test_setup_teardown(remove_releases_pressed, setup, teardown),
+		cmocka_unit_test_setup_teardown(count_fields_and_dispatch, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
