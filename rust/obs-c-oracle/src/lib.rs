@@ -59,6 +59,7 @@ pub mod graphics_math;
 pub mod hevc;
 pub mod hotkey_bindings;
 pub mod hotkey_name_map;
+pub mod hotkey_press;
 pub mod hotkey_translations;
 pub mod lexer;
 pub mod missing_files;
