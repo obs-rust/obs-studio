@@ -50,6 +50,18 @@ class FlatpakCompilerDiagnosticsTest(unittest.TestCase):
         log = "\n".join(f"[2026-10-22T10:00:0{i}.000000 10 ] === CCACHE 4.14.1 STARTED ===" for i in [0, 2])
         self.assertEqual(summarize(log)["calls"], 2)
 
+    def test_actual_ccache_unsupported_message_before_source_detection(self):
+        log = "\n".join([
+            "[2026-10-22T10:00:00.000000 10 ] === CCACHE 4.14.1 STARTED ===",
+            "[2026-10-22T10:00:00.010000 10 ] Command line: ccache c++ '-DPRIVATE=do-not-publish' -c /run/build/obs/plugins/obs-browser/browser-app.cpp",
+            "[2026-10-22T10:00:00.020000 10 ] Compiler option -Wp,-P is unsupported",
+            "[2026-10-22T10:00:00.030000 10 ] Result: unsupported_compiler_option",
+        ])
+        result = summarize(log)
+        self.assertEqual(result["unsupported_options"], {"-Wp,-P": 1})
+        self.assertEqual(result["uncacheable_calls"][0]["source"], "plugins/obs-browser/browser-app.cpp")
+        self.assertNotIn("do-not-publish", str(result))
+
     def test_oversized_log_rejected(self):
         with self.assertRaises(ValueError):
             summarize("x" * (16 * 1024 * 1024 + 1))
