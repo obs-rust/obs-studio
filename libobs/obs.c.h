@@ -38,110 +38,21 @@ static inline void make_video_info(struct video_output_info *vi, struct obs_vide
 	vi->cache_size = 6;
 }
 
-static inline void calc_gpu_conversion_sizes(struct obs_core_video_mix *video)
+static inline struct obs_video_output_plan video_mix_plan(const struct video_output_info *info)
 {
-	const struct video_output_info *info = video_output_get_info(video->video);
-
-	video->conversion_needed = false;
-	video->conversion_techs[0] = NULL;
-	video->conversion_techs[1] = NULL;
-	video->conversion_techs[2] = NULL;
-	video->conversion_width_i = 0.f;
-	video->conversion_height_i = 0.f;
-
-	switch (info->format) {
-	case VIDEO_FORMAT_I420:
-		video->conversion_needed = true;
-		video->conversion_techs[0] = "Planar_Y";
-		video->conversion_techs[1] = "Planar_U_Left";
-		video->conversion_techs[2] = "Planar_V_Left";
-		video->conversion_width_i = 1.f / (float)info->width;
-		break;
-	case VIDEO_FORMAT_NV12:
-		video->conversion_needed = true;
-		video->conversion_techs[0] = "NV12_Y";
-		video->conversion_techs[1] = "NV12_UV";
-		video->conversion_width_i = 1.f / (float)info->width;
-		break;
-	case VIDEO_FORMAT_I444:
-		video->conversion_needed = true;
-		video->conversion_techs[0] = "Planar_Y";
-		video->conversion_techs[1] = "Planar_U";
-		video->conversion_techs[2] = "Planar_V";
-		break;
-	case VIDEO_FORMAT_I010:
-		video->conversion_needed = true;
-		video->conversion_width_i = 1.f / (float)info->width;
-		video->conversion_height_i = 1.f / (float)info->height;
-		if (info->colorspace == VIDEO_CS_2100_PQ) {
-			video->conversion_techs[0] = "I010_PQ_Y";
-			video->conversion_techs[1] = "I010_PQ_U";
-			video->conversion_techs[2] = "I010_PQ_V";
-		} else if (info->colorspace == VIDEO_CS_2100_HLG) {
-			video->conversion_techs[0] = "I010_HLG_Y";
-			video->conversion_techs[1] = "I010_HLG_U";
-			video->conversion_techs[2] = "I010_HLG_V";
-		} else {
-			video->conversion_techs[0] = "I010_SRGB_Y";
-			video->conversion_techs[1] = "I010_SRGB_U";
-			video->conversion_techs[2] = "I010_SRGB_V";
-		}
-		break;
-	case VIDEO_FORMAT_P010:
-		video->conversion_needed = true;
-		video->conversion_width_i = 1.f / (float)info->width;
-		video->conversion_height_i = 1.f / (float)info->height;
-		if (info->colorspace == VIDEO_CS_2100_PQ) {
-			video->conversion_techs[0] = "P010_PQ_Y";
-			video->conversion_techs[1] = "P010_PQ_UV";
-		} else if (info->colorspace == VIDEO_CS_2100_HLG) {
-			video->conversion_techs[0] = "P010_HLG_Y";
-			video->conversion_techs[1] = "P010_HLG_UV";
-		} else {
-			video->conversion_techs[0] = "P010_SRGB_Y";
-			video->conversion_techs[1] = "P010_SRGB_UV";
-		}
-		break;
-	case VIDEO_FORMAT_P216:
-		video->conversion_needed = true;
-		video->conversion_width_i = 1.f / (float)info->width;
-		video->conversion_height_i = 1.f / (float)info->height;
-		if (info->colorspace == VIDEO_CS_2100_PQ) {
-			video->conversion_techs[0] = "P216_PQ_Y";
-			video->conversion_techs[1] = "P216_PQ_UV";
-		} else if (info->colorspace == VIDEO_CS_2100_HLG) {
-			video->conversion_techs[0] = "P216_HLG_Y";
-			video->conversion_techs[1] = "P216_HLG_UV";
-		} else {
-			video->conversion_techs[0] = "P216_SRGB_Y";
-			video->conversion_techs[1] = "P216_SRGB_UV";
-		}
-		break;
-	case VIDEO_FORMAT_P416:
-		video->conversion_needed = true;
-		video->conversion_width_i = 1.f / (float)info->width;
-		video->conversion_height_i = 1.f / (float)info->height;
-		if (info->colorspace == VIDEO_CS_2100_PQ) {
-			video->conversion_techs[0] = "P416_PQ_Y";
-			video->conversion_techs[1] = "P416_PQ_UV";
-		} else if (info->colorspace == VIDEO_CS_2100_HLG) {
-			video->conversion_techs[0] = "P416_HLG_Y";
-			video->conversion_techs[1] = "P416_HLG_UV";
-		} else {
-			video->conversion_techs[0] = "P416_SRGB_Y";
-			video->conversion_techs[1] = "P416_SRGB_UV";
-		}
-		break;
-	default:
-		break;
-	}
+	return obs_video_output_plan(info->format, info->colorspace, info->width, info->height);
 }
 
 static bool obs_init_gpu_conversion(struct obs_core_video_mix *video)
 {
 	const struct video_output_info *info = video_output_get_info(video->video);
+	const struct obs_video_output_plan plan = video_mix_plan(info);
 
-	calc_gpu_conversion_sizes(video);
+	video->conversion_needed = plan.conversion_needed;
+	for (size_t c = 0; c < NUM_CHANNELS; c++)
+		video->conversion_techs[c] = plan.conversion_techs[c];
+	video->conversion_width_i = plan.conversion_width_i;
+	video->conversion_height_i = plan.conversion_height_i;
 
 	video->using_nv12_tex = info->format == VIDEO_FORMAT_NV12 ? gs_nv12_available() : false;
 	video->using_p010_tex = info->format == VIDEO_FORMAT_P010 ? gs_p010_available() : false;
@@ -185,71 +96,14 @@ static bool obs_init_gpu_conversion(struct obs_core_video_mix *video)
 
 	bool success = true;
 
-	switch (info->format) {
-	case VIDEO_FORMAT_I420:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[2] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1] || !video->convert_textures[2])
+	for (size_t c = 0; c < NUM_CHANNELS; c++) {
+		const struct obs_video_plane *plane = &plan.planes[c];
+		if (plane->format == GS_UNKNOWN)
+			continue;
+		video->convert_textures[c] =
+			gs_texture_create(plane->width, plane->height, plane->format, 1, NULL, GS_RENDER_TARGET);
+		if (!video->convert_textures[c])
 			success = false;
-		break;
-	case VIDEO_FORMAT_NV12:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_R8G8, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1])
-			success = false;
-		break;
-	case VIDEO_FORMAT_I444:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width, info->height, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[2] =
-			gs_texture_create(info->width, info->height, GS_R8, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1] || !video->convert_textures[2])
-			success = false;
-		break;
-	case VIDEO_FORMAT_I010:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[2] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1] || !video->convert_textures[2])
-			success = false;
-		break;
-	case VIDEO_FORMAT_P010:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width / 2, info->height / 2, GS_RG16, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1])
-			success = false;
-		break;
-	case VIDEO_FORMAT_P216:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width / 2, info->height, GS_RG16, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1])
-			success = false;
-		break;
-	case VIDEO_FORMAT_P416:
-		video->convert_textures[0] =
-			gs_texture_create(info->width, info->height, GS_R16, 1, NULL, GS_RENDER_TARGET);
-		video->convert_textures[1] =
-			gs_texture_create(info->width, info->height, GS_RG16, 1, NULL, GS_RENDER_TARGET);
-		if (!video->convert_textures[0] || !video->convert_textures[1])
-			success = false;
-		break;
-	default:
-		break;
 	}
 
 	if (!success) {
@@ -271,74 +125,15 @@ static bool obs_init_gpu_conversion(struct obs_core_video_mix *video)
 static bool obs_init_gpu_copy_surfaces(struct obs_core_video_mix *video, size_t i)
 {
 	const struct video_output_info *info = video_output_get_info(video->video);
-	switch (info->format) {
-	case VIDEO_FORMAT_I420:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R8);
-		if (!video->copy_surfaces[i][0])
+	const struct obs_video_output_plan plan = video_mix_plan(info);
+
+	for (size_t c = 0; c < NUM_CHANNELS; c++) {
+		const struct obs_video_plane *plane = &plan.planes[c];
+		if (plane->format == GS_UNKNOWN)
+			continue;
+		video->copy_surfaces[i][c] = gs_stagesurface_create(plane->width, plane->height, plane->format);
+		if (!video->copy_surfaces[i][c])
 			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_R8);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		video->copy_surfaces[i][2] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_R8);
-		if (!video->copy_surfaces[i][2])
-			return false;
-		break;
-	case VIDEO_FORMAT_NV12:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R8);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_R8G8);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		break;
-	case VIDEO_FORMAT_I444:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R8);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width, info->height, GS_R8);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		video->copy_surfaces[i][2] = gs_stagesurface_create(info->width, info->height, GS_R8);
-		if (!video->copy_surfaces[i][2])
-			return false;
-		break;
-	case VIDEO_FORMAT_I010:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R16);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_R16);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		video->copy_surfaces[i][2] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_R16);
-		if (!video->copy_surfaces[i][2])
-			return false;
-		break;
-	case VIDEO_FORMAT_P010:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R16);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width / 2, info->height / 2, GS_RG16);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		break;
-	case VIDEO_FORMAT_P216:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R16);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width / 2, info->height, GS_RG16);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		break;
-	case VIDEO_FORMAT_P416:
-		video->copy_surfaces[i][0] = gs_stagesurface_create(info->width, info->height, GS_R16);
-		if (!video->copy_surfaces[i][0])
-			return false;
-		video->copy_surfaces[i][1] = gs_stagesurface_create(info->width, info->height, GS_RG16);
-		if (!video->copy_surfaces[i][1])
-			return false;
-		break;
-	default:
-		break;
 	}
 
 	return true;
@@ -350,20 +145,8 @@ static bool obs_init_textures(struct obs_core_video_mix *video)
 
 	bool success = true;
 
-	enum gs_color_format format = GS_BGRA;
-	switch (info->format) {
-	case VIDEO_FORMAT_I010:
-	case VIDEO_FORMAT_P010:
-	case VIDEO_FORMAT_I210:
-	case VIDEO_FORMAT_I412:
-	case VIDEO_FORMAT_YA2L:
-	case VIDEO_FORMAT_P216:
-	case VIDEO_FORMAT_P416:
-		format = GS_RGBA16F;
-		break;
-	default:
-		break;
-	}
+	const struct obs_video_output_plan plan = video_mix_plan(info);
+	const enum gs_color_format format = plan.texture_format;
 
 	for (size_t i = 0; i < NUM_TEXTURES; i++) {
 		if (!obs_host_init_encode_copy_surface(video, info->width, info->height, i)) {
@@ -385,27 +168,6 @@ static bool obs_init_textures(struct obs_core_video_mix *video)
 		}
 	}
 
-	enum gs_color_space space = GS_CS_SRGB;
-	switch (info->colorspace) {
-	case VIDEO_CS_2100_PQ:
-	case VIDEO_CS_2100_HLG:
-		space = GS_CS_709_EXTENDED;
-		break;
-	default:
-		switch (info->format) {
-		case VIDEO_FORMAT_I010:
-		case VIDEO_FORMAT_P010:
-		case VIDEO_FORMAT_P216:
-		case VIDEO_FORMAT_P416:
-			space = GS_CS_SRGB_16F;
-			break;
-		default:
-			space = GS_CS_SRGB;
-			break;
-		}
-		break;
-	}
-
 	video->render_texture =
 		gs_texture_create(video->ovi.base_width, video->ovi.base_height, format, 1, NULL, GS_RENDER_TARGET);
 	if (!video->render_texture)
@@ -416,7 +178,7 @@ static bool obs_init_textures(struct obs_core_video_mix *video)
 		success = false;
 
 	if (success) {
-		video->render_space = space;
+		video->render_space = plan.render_space;
 	} else {
 		for (size_t i = 0; i < NUM_TEXTURES; i++) {
 			for (size_t c = 0; c < NUM_CHANNELS; c++) {
@@ -1564,14 +1326,6 @@ const char *obs_get_locale(void)
 	return obs->locale;
 }
 
-#define OBS_SIZE_MIN 2
-#define OBS_SIZE_MAX (32 * 1024)
-
-static inline bool size_valid(uint32_t width, uint32_t height)
-{
-	return (width >= OBS_SIZE_MIN && height >= OBS_SIZE_MIN && width <= OBS_SIZE_MAX && height <= OBS_SIZE_MAX);
-}
-
 /* A video mix freed by obs_reset_video(), and the canvas that owned it. */
 struct freed_video {
 	video_t *video;
@@ -1746,7 +1500,8 @@ int obs_reset_video(struct obs_video_info *ovi)
 	if (obs_video_active() || outputs_starting())
 		return OBS_VIDEO_CURRENTLY_ACTIVE;
 
-	if (!size_valid(ovi->output_width, ovi->output_height) || !size_valid(ovi->base_width, ovi->base_height))
+	if (!obs_video_size_valid(ovi->output_width, ovi->output_height) ||
+	    !obs_video_size_valid(ovi->base_width, ovi->base_height))
 		return OBS_VIDEO_INVALID_PARAM;
 
 	struct freed_video *freed;
@@ -1776,9 +1531,7 @@ int obs_reset_video(struct obs_video_info *ovi)
 
 static int obs_reset_video_internal(struct obs_video_info *ovi)
 {
-	/* align to multiple-of-two and SSE alignment sizes */
-	ovi->output_width &= 0xFFFFFFFC;
-	ovi->output_height &= 0xFFFFFFFE;
+	obs_video_align_output_size(&ovi->output_width, &ovi->output_height);
 
 	if (!obs->video.graphics) {
 		int errorcode = obs_init_graphics(ovi);
@@ -1788,27 +1541,7 @@ static int obs_reset_video_internal(struct obs_video_info *ovi)
 		}
 	}
 
-	const char *scale_type_name = "";
-	switch (ovi->scale_type) {
-	case OBS_SCALE_DISABLE:
-		scale_type_name = "Disabled";
-		break;
-	case OBS_SCALE_POINT:
-		scale_type_name = "Point";
-		break;
-	case OBS_SCALE_BICUBIC:
-		scale_type_name = "Bicubic";
-		break;
-	case OBS_SCALE_BILINEAR:
-		scale_type_name = "Bilinear";
-		break;
-	case OBS_SCALE_LANCZOS:
-		scale_type_name = "Lanczos";
-		break;
-	case OBS_SCALE_AREA:
-		scale_type_name = "Area";
-		break;
-	}
+	const char *scale_type_name = obs_video_scale_type_name(ovi->scale_type);
 
 	bool yuv = format_is_yuv(ovi->output_format);
 	const char *yuv_format = get_video_colorspace_name(ovi->colorspace);

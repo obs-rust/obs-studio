@@ -532,5 +532,11 @@
     "sources": [
       "test/cmocka/test_darray_ops.c"
     ]
+  },
+  {
+    "name": "test_video_output_plan",
+    "sources": [
+      "test/cmocka/test_video_output_plan.c"
+    ]
   }
 ]

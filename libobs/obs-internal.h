@@ -443,6 +443,35 @@ struct obs_core_video_mix {
 };
 
 extern struct obs_core_video_mix *obs_create_video_mix(struct obs_video_info *ovi);
+
+/* The video output plan (obs-video-plan.c): pure, no graphics device. obs.c
+ * creates the conversion textures and copy surfaces from planes[] and copies
+ * the rest into the video mix. Not exported. */
+struct obs_video_plane {
+	uint32_t width;
+	uint32_t height;
+	enum gs_color_format format; /* GS_UNKNOWN: no plane */
+};
+
+struct obs_video_output_plan {
+	/* GPU conversion: the techniques of format_conversion.effect for each
+	 * plane, and the texel sizes they get */
+	bool conversion_needed;
+	const char *conversion_techs[NUM_CHANNELS];
+	float conversion_width_i;
+	float conversion_height_i;
+	struct obs_video_plane planes[NUM_CHANNELS];
+	/* the render and output textures, and the copy surface without GPU
+	 * conversion */
+	enum gs_color_format texture_format;
+	enum gs_color_space render_space;
+};
+
+bool obs_video_size_valid(uint32_t width, uint32_t height);
+void obs_video_align_output_size(uint32_t *width, uint32_t *height);
+const char *obs_video_scale_type_name(enum obs_scale_type scale_type);
+struct obs_video_output_plan obs_video_output_plan(enum video_format format, enum video_colorspace colorspace,
+						   uint32_t width, uint32_t height);
 extern void obs_free_video_mix(struct obs_core_video_mix *video);
 
 struct obs_core_video {

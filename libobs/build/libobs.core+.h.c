@@ -4,4 +4,5 @@
 
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-module.c.h"
+#include "libobs/obs-video-plan.c.h"
 #include "libobs/obs.c.h"
