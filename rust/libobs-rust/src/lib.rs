@@ -11,6 +11,7 @@ pub use obs_audio_controls::ffi as audio_controls_ffi;
 pub use obs_audio_monitoring::ffi as audio_monitoring_ffi;
 pub use obs_callback::ffi as callback_ffi;
 pub use obs_codec::ffi as codec_ffi;
+pub use obs_core::ffi as core_ffi;
 pub use obs_data::ffi as data_ffi;
 pub use obs_graphics::ffi as graphics_ffi;
 pub use obs_hotkey::ffi as hotkey_ffi;

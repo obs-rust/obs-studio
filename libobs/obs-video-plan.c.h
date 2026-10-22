@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-plan.pch.h"
 
 /* The video output plan, moved from obs.c: what obs_reset_video() accepts,
  * how it aligns the output size, and, for each output format, the GPU
  * conversion (shader techniques and texel sizes), the size and format of
  * each conversion plane, and the format and color space of the render
  * textures. Pure: no graphics device and no libobs state. obs.c creates the
- * textures and surfaces from it and copies the rest into the video mix. */
+ * textures and surfaces from it and copies the rest into the video mix.
+ * Ported to rust/obs-core (video_plan): the hybrid libobs drops this file. */
 
 #define OBS_SIZE_MIN 2
 #define OBS_SIZE_MAX (32 * 1024)

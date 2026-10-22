@@ -21,6 +21,17 @@
 //! A format or color space outside its enum is `None`, the C's `default:`
 //! branch: no conversion, and the SDR texture format and space.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 use core::ffi::{CStr, c_int};
 
 use obs_media_io::video_io::{VideoColorspace, VideoFormat};
@@ -179,7 +190,6 @@ impl VideoPlane {
         format: GsColorFormat::Unknown,
     };
 
-    #[allow(dead_code)] // used by the plan
     const fn new(width: u32, height: u32, format: GsColorFormat) -> Self {
         Self {
             width,
@@ -225,26 +235,189 @@ impl OutputPlan {
 }
 
 /// `obs_video_size_valid`: both sizes within [`SIZE_MIN`]..=[`SIZE_MAX`].
-pub fn size_valid(_width: u32, _height: u32) -> bool {
-    todo!()
+pub fn size_valid(width: u32, height: u32) -> bool {
+    (SIZE_MIN..=SIZE_MAX).contains(&width) && (SIZE_MIN..=SIZE_MAX).contains(&height)
 }
 
 /// `obs_video_align_output_size`: the width down to a multiple of 4 and
 /// the height down to a multiple of 2 (multiple-of-two and SSE alignment).
-pub fn align_output_size(_width: u32, _height: u32) -> (u32, u32) {
-    todo!()
+pub fn align_output_size(width: u32, height: u32) -> (u32, u32) {
+    (width & 0xFFFF_FFFC, height & 0xFFFF_FFFE)
 }
 
 /// `obs_video_output_size_valid`: valid as given, and still valid once
 /// aligned. The alignment makes an output width of 2 or 3 into 0.
-pub fn output_size_valid(_width: u32, _height: u32) -> bool {
-    todo!()
+pub fn output_size_valid(width: u32, height: u32) -> bool {
+    if !size_valid(width, height) {
+        return false;
+    }
+    let (width, height) = align_output_size(width, height);
+    size_valid(width, height)
 }
 
 /// `obs_video_scale_type_name`: the name `obs_reset_video()` logs; `""`
 /// for a value outside the enum (`None`).
-pub fn scale_type_name(_scale_type: Option<ObsScaleType>) -> &'static CStr {
-    todo!()
+pub fn scale_type_name(scale_type: Option<ObsScaleType>) -> &'static CStr {
+    match scale_type {
+        Some(ObsScaleType::Disable) => c"Disabled",
+        Some(ObsScaleType::Point) => c"Point",
+        Some(ObsScaleType::Bicubic) => c"Bicubic",
+        Some(ObsScaleType::Bilinear) => c"Bilinear",
+        Some(ObsScaleType::Lanczos) => c"Lanczos",
+        Some(ObsScaleType::Area) => c"Area",
+        None => c"",
+    }
+}
+
+/// The technique set of a high-precision format for the color space: PQ,
+/// HLG, or the SDR set for every other space (and for `None`).
+fn by_transfer<T: Copy>(colorspace: Option<VideoColorspace>, pq: T, hlg: T, sdr: T) -> T {
+    match colorspace {
+        Some(VideoColorspace::Cs2100Pq) => pq,
+        Some(VideoColorspace::Cs2100Hlg) => hlg,
+        _ => sdr,
+    }
+}
+
+/// `1.f / (float)size`, the C's texel size: the size rounded to the nearest
+/// `f32`, then the IEEE quotient (infinite for 0).
+fn texel(size: u32) -> f32 {
+    // `as` rounds to nearest, as the C conversion does.
+    1.0 / size as f32
+}
+
+/// `calc_gpu_conversion_sizes`: the techniques and texel sizes.
+fn conversion_sizes(
+    plan: &mut OutputPlan,
+    format: Option<VideoFormat>,
+    colorspace: Option<VideoColorspace>,
+    width: u32,
+    height: u32,
+) {
+    use VideoFormat as F;
+    let Some(format) = format else {
+        return;
+    };
+    let (techs, width_i, height_i): ([Option<&'static CStr>; NUM_CHANNELS], bool, bool) =
+        match format {
+            F::I420 => (
+                [
+                    Some(c"Planar_Y"),
+                    Some(c"Planar_U_Left"),
+                    Some(c"Planar_V_Left"),
+                ],
+                true,
+                false,
+            ),
+            F::Nv12 => ([Some(c"NV12_Y"), Some(c"NV12_UV"), None], true, false),
+            F::I444 => (
+                [Some(c"Planar_Y"), Some(c"Planar_U"), Some(c"Planar_V")],
+                false,
+                false,
+            ),
+            F::I010 => (
+                by_transfer(
+                    colorspace,
+                    [Some(c"I010_PQ_Y"), Some(c"I010_PQ_U"), Some(c"I010_PQ_V")],
+                    [
+                        Some(c"I010_HLG_Y"),
+                        Some(c"I010_HLG_U"),
+                        Some(c"I010_HLG_V"),
+                    ],
+                    [
+                        Some(c"I010_SRGB_Y"),
+                        Some(c"I010_SRGB_U"),
+                        Some(c"I010_SRGB_V"),
+                    ],
+                ),
+                true,
+                true,
+            ),
+            F::P010 => (
+                by_transfer(
+                    colorspace,
+                    [Some(c"P010_PQ_Y"), Some(c"P010_PQ_UV"), None],
+                    [Some(c"P010_HLG_Y"), Some(c"P010_HLG_UV"), None],
+                    [Some(c"P010_SRGB_Y"), Some(c"P010_SRGB_UV"), None],
+                ),
+                true,
+                true,
+            ),
+            F::P216 => (
+                by_transfer(
+                    colorspace,
+                    [Some(c"P216_PQ_Y"), Some(c"P216_PQ_UV"), None],
+                    [Some(c"P216_HLG_Y"), Some(c"P216_HLG_UV"), None],
+                    [Some(c"P216_SRGB_Y"), Some(c"P216_SRGB_UV"), None],
+                ),
+                true,
+                true,
+            ),
+            F::P416 => (
+                by_transfer(
+                    colorspace,
+                    [Some(c"P416_PQ_Y"), Some(c"P416_PQ_UV"), None],
+                    [Some(c"P416_HLG_Y"), Some(c"P416_HLG_UV"), None],
+                    [Some(c"P416_SRGB_Y"), Some(c"P416_SRGB_UV"), None],
+                ),
+                true,
+                true,
+            ),
+            _ => return,
+        };
+    plan.conversion_needed = true;
+    plan.conversion_techs = techs;
+    if width_i {
+        plan.conversion_width_i = texel(width);
+    }
+    if height_i {
+        plan.conversion_height_i = texel(height);
+    }
+}
+
+/// `calc_gpu_conversion_planes`: the conversion textures and copy surfaces.
+fn conversion_planes(plan: &mut OutputPlan, format: Option<VideoFormat>, width: u32, height: u32) {
+    use GsColorFormat as G;
+    use VideoFormat as F;
+    let none = VideoPlane::NONE;
+    let full = |format| VideoPlane::new(width, height, format);
+    let half = |format| VideoPlane::new(width / 2, height / 2, format);
+    plan.planes = match format {
+        Some(F::I420) => [full(G::R8), half(G::R8), half(G::R8)],
+        Some(F::Nv12) => [full(G::R8), half(G::R8g8), none],
+        Some(F::I444) => [full(G::R8), full(G::R8), full(G::R8)],
+        Some(F::I010) => [full(G::R16), half(G::R16), half(G::R16)],
+        Some(F::P010) => [full(G::R16), half(G::Rg16), none],
+        Some(F::P216) => [
+            full(G::R16),
+            VideoPlane::new(width / 2, height, G::Rg16),
+            none,
+        ],
+        Some(F::P416) => [full(G::R16), full(G::Rg16), none],
+        _ => return,
+    };
+}
+
+/// `calc_render_textures`: the render texture format and color space.
+fn render_textures(
+    plan: &mut OutputPlan,
+    format: Option<VideoFormat>,
+    colorspace: Option<VideoColorspace>,
+) {
+    use VideoFormat as F;
+    plan.texture_format = match format {
+        Some(F::I010 | F::P010 | F::I210 | F::I412 | F::Ya2l | F::P216 | F::P416) => {
+            GsColorFormat::Rgba16f
+        }
+        _ => GsColorFormat::Bgra,
+    };
+    plan.render_space = match colorspace {
+        Some(VideoColorspace::Cs2100Pq | VideoColorspace::Cs2100Hlg) => GsColorSpace::Cs709Extended,
+        _ => match format {
+            Some(F::I010 | F::P010 | F::P216 | F::P416) => GsColorSpace::Srgb16f,
+            _ => GsColorSpace::Srgb,
+        },
+    };
 }
 
 /// `obs_video_output_plan`: the plan for `format` in `colorspace` at
@@ -252,10 +425,14 @@ pub fn scale_type_name(_scale_type: Option<ObsScaleType>) -> &'static CStr {
 /// and no planes, only the render texture format and space. Odd sizes round
 /// the chroma planes down.
 pub fn output_plan(
-    _format: Option<VideoFormat>,
-    _colorspace: Option<VideoColorspace>,
-    _width: u32,
-    _height: u32,
+    format: Option<VideoFormat>,
+    colorspace: Option<VideoColorspace>,
+    width: u32,
+    height: u32,
 ) -> OutputPlan {
-    todo!()
+    let mut plan = OutputPlan::ZERO;
+    conversion_sizes(&mut plan, format, colorspace, width, height);
+    conversion_planes(&mut plan, format, width, height);
+    render_textures(&mut plan, format, colorspace);
+    plan
 }

@@ -402,6 +402,7 @@ dependencies = [
  "obs-audio-monitoring",
  "obs-callback",
  "obs-codec",
+ "obs-core",
  "obs-data",
  "obs-graphics",
  "obs-hotkey",

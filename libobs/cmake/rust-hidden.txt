@@ -102,6 +102,13 @@ obs_nix_hotkey_state_is_pressed
 obs_nix_portal_shortcut_id
 obs_nix_portal_shortcut_combo
 obs_nix_portal_shortcut_trigger
+# obs-video-plan.c: obs.c calls them inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shims stay hidden the same way.
+obs_video_size_valid
+obs_video_align_output_size
+obs_video_output_size_valid
+obs_video_scale_type_name
+obs_video_output_plan
 # effect-parser lifecycle: internal entry point, not EXPORT.
 ep_free
 

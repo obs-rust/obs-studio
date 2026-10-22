@@ -28,6 +28,7 @@ obs-callback = { path = "../obs-callback" }
 obs-graphics = { path = "../obs-graphics" }
 obs-hotkey = { path = "../obs-hotkey" }
 obs-codec = { path = "../obs-codec" }
+obs-core = { path = "../obs-core" }
 obs-media-io = { path = "../obs-media-io" }
 obs-missing-files = { path = "../obs-missing-files" }
 obs-output = { path = "../obs-output" }

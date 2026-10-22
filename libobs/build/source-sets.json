@@ -137,6 +137,7 @@
     "build/libobs.ported-scene-bounds+.h.c",
     "build/libobs.ported-scene-bounds-place+.h.c",
     "build/libobs.ported-scene-coords+.h.c",
+    "build/libobs.ported-video-plan+.h.c",
     "build/libobs.ported-audio-controls+.h.c"
   ],
   "LIBOBS_RUST_SOURCES": [

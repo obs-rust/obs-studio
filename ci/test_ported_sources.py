@@ -18,6 +18,7 @@ class PortedSourceTest(unittest.TestCase):
         self.assertGreaterEqual(len(objects), 20)
         self.assertIn("obs-data.c.h.o", objects)
         self.assertIn("obs-hevc.c.h.o", objects)
+        self.assertIn("obs-video-plan.c.h.o", objects)
         self.assertIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o", objects)
         self.assertIn("audio-monitoring/pulse/pulseaudio-monitor-format.c.h.o", objects)
         self.assertIn("util/platform-nix-dbus.c.h.o", objects)

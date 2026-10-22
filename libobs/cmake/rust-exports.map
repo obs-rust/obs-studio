@@ -111,4 +111,10 @@
     obs_nix_portal_shortcut_id;
     obs_nix_portal_shortcut_combo;
     obs_nix_portal_shortcut_trigger;
+    /* obs-video-plan.c. obs.c calls them inside libobs. Not EXPORT. */
+    obs_video_size_valid;
+    obs_video_align_output_size;
+    obs_video_output_size_valid;
+    obs_video_scale_type_name;
+    obs_video_output_plan;
 };
