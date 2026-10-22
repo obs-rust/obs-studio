@@ -758,3 +758,39 @@ class FlatpakDependencyTransferTest(unittest.TestCase):
                 member.linkname = '/outside'
                 with self.assertRaisesRegex(ValueError, 'unsafe|structural|link'):
                     module.validate_member(member)
+
+    def test_nonportable_repository_metadata_is_rejected_and_failed_fsck_cleans_staging(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'config').write_text('[core]\nmode=bare-user\n')
+            with patch.object(module, 'fsck'), self.assertRaisesRegex(ValueError, 'mode'):
+                module.pack(source, root / 'unsupported', {})
+            self.assertFalse((root / 'unsupported').exists())
+            (source / 'config').write_text('[core]\nmode=bare-user-only\n')
+            artifact = root / 'artifact'
+            with patch.object(module, 'fsck'):
+                module.pack(source, artifact, {})
+            with patch.object(module, 'fsck', side_effect=ValueError('fsck failed')):
+                with self.assertRaisesRegex(ValueError, 'fsck'):
+                    module.restore(artifact, root / 'destination', {})
+            self.assertFalse((root / 'destination').exists())
+            self.assertFalse(list(root.glob('flatpak-dependency-*')))
+            with patch.object(module, 'MAX_BYTES', 1), self.assertRaisesRegex(ValueError, 'limit'):
+                module.pack(source, root / 'oversized', {})
+
+    def test_dependency_probe_is_manual_and_restores_before_compiler(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        caller = (ROOT / '.github/workflows/ci.yml').read_text()
+        for text in [workflow, caller]:
+            block = text.split('      flatpak-dependency-transfer-probe:', 1)[1].split('      flatpak-', 1)[0]
+            self.assertIn('default: false', block)
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.flatpak-dependency-transfer-probe", caller)
+        consumer = workflow.split('  flatpak-compiler-consumer:', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        self.assertIn('!inputs.flatpak-dependency-transfer-probe', consumer)
+        self.assertLess(consumer.index('Restore Experimental Dependency Artifact'),
+                        consumer.index('Verify and Restore Compiler Artifact Last'))
+        self.assertIn('Verify All Dependency Modules Were Reused', consumer)
+        self.assertIn('ci/flatpak_dependency_cache.py verify', consumer)
