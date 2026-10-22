@@ -24,12 +24,12 @@
  * where it cannot; the server converts. The resampler hands it interleaved
  * samples, and it applies the source's volume itself, in the sink format.
  *
- * Characterized, not endorsed: the volume of an integer format converts the
- * scaled sample back to the integer type without a clamp. With a volume
- * above 1 (Advanced Audio Properties allows +26 dB, obs-websocket 20x, a
- * scene file anything), a loud sample leaves the type's range, and that
- * conversion is undefined behaviour; in practice it wraps. Only results
- * inside the range are pinned below. */
+ * With a volume above 1 (Advanced Audio Properties allows +26 dB,
+ * obs-websocket 20x, a scene file anything), a loud sample of an integer
+ * format leaves the type's range. It saturates to the range (u8 0..255,
+ * s16, s32), as the server clips a float sample; converting it unclamped
+ * was undefined behaviour and wrapped (bug 3). Results inside the range
+ * are the same as without the clamp. */
 
 static const pa_sample_format_t all_formats[] = {
 	PA_SAMPLE_U8,        PA_SAMPLE_ALAW,      PA_SAMPLE_ULAW,     PA_SAMPLE_S16LE,   PA_SAMPLE_S16BE,
@@ -251,13 +251,17 @@ static void volume_u8(void **state)
 		}
 	}
 
-	/* Above 1, only samples that stay in range (bug 3). */
+	/* Above 1, samples that stay in range, and samples that leave it
+	 * saturate to 0 or 255 (bug 3). */
 	const struct {
 		float vol;
 		uint8_t in, out;
 	} above[] = {
-		{2.0f, 127, 126}, {2.0f, 128, 128}, {2.0f, 129, 130},       {2.0f, 100, 72},
-		{2.0f, 64, 0},    {2.0f, 191, 254}, {19.952623f, 130, 167}, {19.952623f, 126, 88},
+		{2.0f, 127, 126},       {2.0f, 128, 128},     {2.0f, 129, 130},       {2.0f, 100, 72},
+		{2.0f, 64, 0},          {2.0f, 191, 254},     {19.952623f, 130, 167}, {19.952623f, 126, 88},
+		{2.0f, 192, 255},       {2.0f, 255, 255},     {2.0f, 63, 0},          {2.0f, 0, 0},
+		{4.0f, 200, 255},       {4.0f, 50, 0},        {19.952623f, 255, 255}, {19.952623f, 0, 0},
+		{19.952623f, 135, 255}, {19.952623f, 121, 0},
 	};
 	for (size_t i = 0; i < N(above); i++) {
 		uint8_t got = above[i].in;
@@ -301,8 +305,9 @@ static void volume_s16(void **state)
 		}
 	}
 
-	/* Above 1, only samples that stay in range (bug 3). 19.952623 is
-	 * +26 dB, the most Advanced Audio Properties sets. */
+	/* Above 1, samples that stay in range, and samples that leave it
+	 * saturate to INT16_MAX or INT16_MIN (bug 3). 19.952623 is +26 dB,
+	 * the most Advanced Audio Properties sets. */
 	const struct {
 		float vol;
 		int16_t in, out;
@@ -316,6 +321,18 @@ static void volume_s16(void **state)
 		{19.952623f, 100, 1995},
 		{19.952623f, -100, -1995},
 		{19.952623f, 1642, 32762},
+		{2.0f, 20000, 32767},
+		{2.0f, -20000, -32768},
+		{2.0f, 16384, 32767},
+		{2.0f, -16385, -32768},
+		{2.0f, 32767, 32767},
+		{2.0f, -32768, -32768},
+		{4.0f, 10000, 32767},
+		{4.0f, -10000, -32768},
+		{19.952623f, 1643, 32767},
+		{19.952623f, -1643, -32768},
+		{19.952623f, 32767, 32767},
+		{19.952623f, -32768, -32768},
 	};
 	for (size_t i = 0; i < N(above); i++) {
 		int16_t got = above[i].in;
@@ -361,15 +378,18 @@ static void volume_s32(void **state)
 	apply(PA_SAMPLE_S32LE, 1, 1.0f, one, sizeof(int32_t), N(one));
 	assert_memory_equal(one, one_out, sizeof(one));
 
-	/* Above 1, only samples that stay in range (bug 3). */
+	/* Above 1, samples that stay in range, and samples that leave it
+	 * saturate to INT32_MAX or INT32_MIN (bug 3). 2^30 * 2 is 2^31, one
+	 * past INT32_MAX; -2^30 * 2 is INT32_MIN itself, in range. */
 	const struct {
 		float vol;
 		int32_t in, out;
 	} above[] = {
-		{2.0f, 1 << 20, 1 << 21},
-		{2.0f, -(1 << 29), -(1 << 30)},
-		{19.952623f, 1000, 19952},
-		{19.952623f, -1000, -19952},
+		{2.0f, 1 << 20, 1 << 21},           {2.0f, -(1 << 29), -(1 << 30)},      {19.952623f, 1000, 19952},
+		{19.952623f, -1000, -19952},        {2.0f, 1 << 30, INT32_MAX},          {2.0f, -(1 << 30), INT32_MIN},
+		{2.0f, (1 << 30) + 128, INT32_MAX}, {2.0f, -(1 << 30) - 128, INT32_MIN}, {2.0f, INT32_MAX, INT32_MAX},
+		{2.0f, INT32_MIN, INT32_MIN},       {4.0f, 1000000000, INT32_MAX},       {4.0f, -1000000000, INT32_MIN},
+		{19.952623f, 123456789, INT32_MAX}, {19.952623f, -123456789, INT32_MIN},
 	};
 	for (size_t i = 0; i < N(above); i++) {
 		int32_t got = above[i].in;
