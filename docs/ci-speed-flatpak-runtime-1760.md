@@ -87,3 +87,18 @@ executing the same packaged `/app/bin/obs`. It grants only the existing fixture
 directory, and neither changes HOME nor modifies the packaged executable.
 See [Flatpak XDG conventions](https://docs.flatpak.org/en/latest/conventions.html).
 These failures are retained; no saved capture/browser runtime pass is claimed yet.
+
+Run `39759412764` confirms the saved-profile launch correction: the unchanged
+WebSocket plugin loads its saved authenticated configuration, and OBS creates
+all four saved sources. The initial GetVersion request arrived before scene
+loading completed and received the plugin's explicit `207 NotReady` status.
+The harness now waits up to 60 seconds for that read-only readiness check;
+other errors and all recording commands fail immediately. Existing failed-run
+capture warnings occurred during cleanup and do not prove capture failure.
+
+That package also includes AJA modules. The hosted runner has no AJA hardware,
+and the real log explicitly reports both the absent devices and module
+initialization failures. The harness records these as unavailable hardware only
+when both exact diagnostics are present; a missing library or unexplained
+plugin failure still fails. Browser and unchanged WebSocket loading remain
+mandatory. This does not claim physical AJA, camera or microphone coverage.

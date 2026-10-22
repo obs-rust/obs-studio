@@ -32,10 +32,11 @@ def check_browser_pixels(pixels: bytes) -> None:
         raise ValueError('browser HTML did not render its green test rectangle throughout the recording')
 
 
-def check_capture_log(log: str, modules: list[str]) -> None:
+def check_capture_log(log: str, modules: list[str]) -> list[str]:
     required = ['[pipewire] Screencast session created', '[camera-portal] Found device obs-test-camera',
                 "Started recording from 'obs-test-mic'", 'Recording Start']
     missing = [message for message in required if message not in log]
+    unavailable_hardware = []
     if log.count('state: "streaming"') < 2:
         missing.append('both PipeWire sources streaming')
     loaded = re.search(r'Loaded Modules:(.*?)-{10}', log, re.S)
@@ -43,10 +44,16 @@ def check_capture_log(log: str, modules: list[str]) -> None:
         missing.append('loaded-module inventory')
     else:
         for module in modules:
+            aja_diagnostic = {'aja.so': 'AJA plugin', 'aja-output-ui.so': 'AJA UI plugin'}.get(module)
+            if (aja_diagnostic and f'No AJA devices found, skipping loading {aja_diagnostic}' in log
+                    and f"Failed to initialize module '{module}'" in log):
+                unavailable_hardware.append(module)
+                continue
             if module not in ('decklink.so', 'obs-nvenc.so') and not re.search(r'\b' + re.escape(module) + r'\s*$', loaded[1], re.M):
                 missing.append(module)
     if missing:
         raise ValueError('missing packaged runtime evidence: ' + ', '.join(missing))
+    return unavailable_hardware
 
 
 def select_refs(refs: list[str]) -> tuple[str, str]:
@@ -224,13 +231,25 @@ def connect_obs(port: int, password: str):
     return ws
 
 
-def request(ws, name: str) -> dict:
-    identity = secrets.token_hex(8)
-    ws.send(json.dumps(dict(op=6, d=dict(requestType=name, requestId=identity))))
-    message = json.loads(ws.recv(timeout=30))
-    if message['op'] != 7 or message['d']['requestId'] != identity or not message['d']['requestStatus']['result']:
+def request(ws, name: str, ready_timeout: int = 0) -> dict:
+    if ready_timeout and name != 'GetVersion':
+        raise ValueError('only the read-only GetVersion readiness check may retry')
+    deadline = time.monotonic() + ready_timeout
+    while True:
+        identity = secrets.token_hex(8)
+        ws.send(json.dumps(dict(op=6, d=dict(requestType=name, requestId=identity))))
+        message = json.loads(ws.recv(timeout=30))
+        if message['op'] != 7 or message['d']['requestId'] != identity:
+            raise RuntimeError(f'obs-websocket {name} invalid response: {message}')
+        status = message['d']['requestStatus']
+        if status['result']:
+            return message['d'].get('responseData', {})
+        # The unchanged plugin accepts clients before scene loading completes.
+        # Retry only its explicit NotReady status, bounded by a deadline.
+        if ready_timeout and status['code'] == 207 and time.monotonic() < deadline:
+            time.sleep(0.2)
+            continue
         raise RuntimeError(f'obs-websocket {name} failed: {message}')
-    return message['d'].get('responseData', {})
 
 
 def qualification(args) -> dict:
@@ -308,7 +327,7 @@ def qualification(args) -> dict:
         app = session.start('obs', app_command(output, app_ref))
         ws = connect_obs(port, password)
         try:
-            result['websocket_version'] = request(ws, 'GetVersion')
+            result['websocket_version'] = request(ws, 'GetVersion', ready_timeout=60)
             inputs = request(ws, 'GetInputList')['inputs']
             expected = dict(Screen='pipewire-screen-capture-source', Camera='pipewire-camera-source',
                             Mic='pulse_input_capture', Browser='browser_source')
@@ -347,7 +366,7 @@ def qualification(args) -> dict:
         modules = sorted(set(modules))
         if not {'obs-browser.so', 'obs-websocket.so'}.issubset(modules):
             raise RuntimeError('package module inventory omits browser or unchanged WebSocket plugin')
-        check_capture_log(logs[0].read_text(), modules)
+        result['unavailable_hardware_modules'] = check_capture_log(logs[0].read_text(), modules)
         if 'OpenPipeWireRemote' not in (output / 'portal.log').read_text():
             raise RuntimeError('packaged app never requested its portal PipeWire connection')
         session.run(['bash', str(ROOT / 'build-aux/appimage/verify-recording.sh'), str(recording)])
