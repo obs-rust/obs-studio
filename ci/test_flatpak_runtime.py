@@ -93,6 +93,18 @@ class FlatpakRuntimeTest(unittest.TestCase):
             self.assertEqual(server['server_port'], 4456)
             self.assertTrue((root / 'browser.html').is_file())
 
+    def test_runtime_only_consumer_reuses_artifact_and_preserves_source_identity(self):
+        text = (ROOT / '.github/workflows/ci.yml').read_text()
+        self.assertIn('flatpak-runtime-reuse-run:', text)
+        block = text.split('\n  flatpak-runtime-reuse:\n', 1)[1].split('\n  ', 1)[0]
+        self.assertIn('inputs.flatpak-runtime-reuse-run', block)
+        self.assertIn('github-token: ${{ github.token }}', block)
+        self.assertIn('FLATPAK_ARTIFACT_SOURCE', block)
+        self.assertIn('flatpak-runtime-reuse]', text)
+        script = (ROOT / 'ci/flatpak_runtime.py').read_text()
+        self.assertIn("harness_source=os.environ.get('GITHUB_SHA')", script)
+        self.assertIn("os.environ.get('FLATPAK_ARTIFACT_SOURCE'", script)
+
     def test_qualification_is_manual_and_preserves_existing_validators(self):
         for name in ('ci.yml', 'build-project.yaml'):
             text = (ROOT / '.github/workflows' / name).read_text()
