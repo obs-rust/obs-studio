@@ -1501,6 +1501,15 @@ area.
   English names. *All*, 2026-10-21. Issue
   [#1656](https://github.com/obs-rust/obs-studio/issues/1656), PR
   [#1673](https://github.com/obs-rust/obs-studio/pull/1673).
+- A scene collection with a negative scene item crop (edited by hand or
+  written by another tool) loads with that crop at 0, as the Edit
+  Transform dialog and obs-websocket set it; before, the item was drawn
+  2 pixels wide or high. A crop past the integer range, the crop of a
+  nested scene that grows far, and the size of a group whose sources are
+  very far apart now get the nearest value in range instead of a wrong
+  one. *All*, 2026-10-22. Issue
+  [#1839](https://github.com/obs-rust/obs-studio/issues/1839), PR
+  [#1840](https://github.com/obs-rust/obs-studio/pull/1840).
 
 ### Scripting
 

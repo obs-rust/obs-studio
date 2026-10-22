@@ -132,24 +132,41 @@ static inline int obs_scene_crop_from_int64(int64_t crop)
  * item's crop and its bounds crop), or 2 when they crop more than all of it. */
 static inline uint32_t obs_scene_cropped_size(uint32_t size, int crop1, int crop2, int bounds_crop1, int bounds_crop2)
 {
-	uint32_t crop = crop1 + crop2 + bounds_crop1 + bounds_crop2;
-	return (crop > size) ? 2 : (size - crop);
+	/* In 64 bits: four ints can be past the int range. Crops are 0 and up
+	 * (obs_sceneitem_set_crop() clamps them); a negative sum crops all of
+	 * it, as the sum read as unsigned did. */
+	int64_t crop = (int64_t)crop1 + crop2 + bounds_crop1 + bounds_crop2;
+	return (crop < 0 || crop > (int64_t)size) ? 2 : (size - (uint32_t)crop);
 }
 
-/* A nested scene's crop, scaled by the factor the scene's size changed by. */
+/* A nested scene's crop, scaled by the factor the scene's size changed by,
+ * truncated: the nearest int when it is past the range, 0 for NaN. */
 static inline int obs_scene_scale_crop(int crop, float factor)
 {
-	return (int)((float)crop * factor);
+	float scaled = (float)crop * factor;
+	if (isnan(scaled))
+		return 0;
+	if (scaled >= 2147483648.0f)
+		return INT_MAX;
+	if (scaled <= -2147483648.0f)
+		return INT_MIN;
+	return (int)scaled;
 }
 
 /* How far the crops move the source when it is drawn. */
 static inline float obs_scene_crop_offset(int crop, int bounds_crop)
 {
-	return (float)(crop + bounds_crop);
+	return (float)((int64_t)crop + bounds_crop);
 }
 
-/* A group's size from the extent of its content, rounded up. */
+/* A group's size from the extent of its content, rounded up: UINT32_MAX
+ * when it is past the range, 0 for none, a negative one or NaN. */
 static inline uint32_t obs_scene_size_from_extent(float extent)
 {
-	return (uint32_t)ceilf(extent);
+	float size = ceilf(extent);
+	if (!(size > 0.0f))
+		return 0;
+	if (size >= 4294967296.0f)
+		return UINT32_MAX;
+	return (uint32_t)size;
 }
