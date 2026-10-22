@@ -99,28 +99,24 @@ struct obs_nix_portal_shortcuts {
 /* ------------------------------------------------------------------------ */
 /* Collecting the combinations to bind                                       */
 
-static inline bool same_combo(obs_key_combination_t a, obs_key_combination_t b)
+/* The arrays as the combination sets (obs-nix-portal-shortcut-sets.c) read
+ * them. */
+static struct obs_nix_portal_combos combos_of(const combo_array_t *combos)
 {
-	return a.key == b.key && a.modifiers == b.modifiers;
+	struct obs_nix_portal_combos view = {combos->array, combos->num};
+	return view;
+}
+
+static struct obs_nix_portal_descriptions descriptions_of(const description_array_t *descriptions)
+{
+	struct obs_nix_portal_descriptions view = {(const char *const *)descriptions->array, descriptions->num};
+	return view;
 }
 
 static bool has_combo(const combo_array_t *combos, obs_key_combination_t combo)
 {
-	for (size_t i = 0; i < combos->num; i++) {
-		if (same_combo(combos->array[i], combo))
-			return true;
-	}
-	return false;
-}
-
-/* Every combination in a is also in b. */
-static bool covered_by(const combo_array_t *a, const combo_array_t *b)
-{
-	for (size_t i = 0; i < a->num; i++) {
-		if (!has_combo(b, a->array[i]))
-			return false;
-	}
-	return true;
+	struct obs_nix_portal_combos view = combos_of(combos);
+	return obs_nix_portal_sets_has(&view, combo);
 }
 
 static void free_descriptions(description_array_t *descriptions)
@@ -137,31 +133,6 @@ static void copy_descriptions(description_array_t *dst, const description_array_
 		char *copy = bstrdup(src->array[i]);
 		da_push_back(*dst, &copy);
 	}
-}
-
-static const char *description_of(const combo_array_t *combos, const description_array_t *descriptions,
-				  obs_key_combination_t combo)
-{
-	for (size_t i = 0; i < combos->num && i < descriptions->num; i++) {
-		if (same_combo(combos->array[i], combo))
-			return descriptions->array[i];
-	}
-	return NULL;
-}
-
-/* The same combinations, each with the same description. */
-static bool same_set(const combo_array_t *a, const description_array_t *a_descriptions, const combo_array_t *b,
-		     const description_array_t *b_descriptions)
-{
-	if (!covered_by(a, b) || !covered_by(b, a))
-		return false;
-	for (size_t i = 0; i < a->num; i++) {
-		const char *other = description_of(b, b_descriptions, a->array[i]);
-		const char *mine = i < a_descriptions->num ? a_descriptions->array[i] : NULL;
-		if (!mine || !other || strcmp(mine, other) != 0)
-			return false;
-	}
-	return true;
 }
 
 /* Objects referenced while naming actions; released once the hotkey mutex
@@ -764,15 +735,13 @@ static bool bind_shortcuts(struct obs_nix_portal_shortcuts *portal, const combo_
 	return true;
 }
 
-/* The combinations of combos that are (in) or are not (!in) in filter, with
- * their descriptions; all of them without a filter. */
-static void select_combos(const combo_array_t *combos, const description_array_t *descriptions,
-			  const combo_array_t *filter, bool in, combo_array_t *out,
-			  description_array_t *out_descriptions)
+/* The combinations of combos at the positions selected (from
+ * obs-nix-portal-shortcut-sets.c), with their descriptions. */
+static void take_combos(const combo_array_t *combos, const description_array_t *descriptions, const size_t *selected,
+			size_t num_selected, combo_array_t *out, description_array_t *out_descriptions)
 {
-	for (size_t i = 0; i < combos->num; i++) {
-		if (filter && has_combo(filter, combos->array[i]) != in)
-			continue;
+	for (size_t j = 0; j < num_selected; j++) {
+		size_t i = selected[j];
 		char *description = bstrdup(i < descriptions->num ? descriptions->array[i] : "OBS");
 		da_push_back(*out, &combos->array[i]);
 		da_push_back(*out_descriptions, &description);
@@ -788,20 +757,24 @@ static void select_combos(const combo_array_t *combos, const description_array_t
 static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_array_t *current,
 			  const description_array_t *descriptions, const combo_array_t *request)
 {
+	struct obs_nix_portal_combos current_combos = combos_of(current);
+	struct obs_nix_portal_combos approved = combos_of(&portal->approved);
+	struct obs_nix_portal_combos requested = combos_of(request);
+	DARRAY(size_t) part_selected;
+	DARRAY(size_t) declined_selected;
+	da_init(part_selected);
+	da_init(declined_selected);
+	da_resize(part_selected, current->num);
+	da_resize(declined_selected, current->num);
+	size_t num_part, num_declined;
+	bool bound = obs_nix_portal_sets_partition(&current_combos, &approved, &requested, part_selected.array,
+						   &num_part, declined_selected.array, &num_declined);
+
 	combo_array_t part;
 	description_array_t part_descriptions;
 	da_init(part);
 	da_init(part_descriptions);
-	select_combos(current, descriptions, &portal->approved, true, &part, &part_descriptions);
-	for (size_t i = part.num; i > 0; i--) {
-		if (!has_combo(request, part.array[i - 1])) {
-			bfree(part_descriptions.array[i - 1]);
-			da_erase(part, i - 1);
-			da_erase(part_descriptions, i - 1);
-		}
-	}
-
-	bool bound = part.num > 0 && part.num < request->num;
+	take_combos(current, descriptions, part_selected.array, num_part, &part, &part_descriptions);
 	if (bound) {
 		blog(LOG_INFO,
 		     "[portal] The desktop declined the new shortcuts; binding the %zu it approved before again",
@@ -814,14 +787,14 @@ static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_a
 	}
 	if (bound) {
 		da_resize(portal->declined, 0);
-		for (size_t i = 0; i < current->num; i++) {
-			if (!has_combo(&part, current->array[i]))
-				da_push_back(portal->declined, &current->array[i]);
-		}
+		for (size_t i = 0; i < num_declined; i++)
+			da_push_back(portal->declined, &current->array[declined_selected.array[i]]);
 		portal->partly_declined = true;
 		set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, true);
 		set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
 	}
+	da_free(part_selected);
+	da_free(declined_selected);
 	da_free(part);
 	free_descriptions(&part_descriptions);
 	return bound;
@@ -887,16 +860,14 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 		background_unlock();
 	}
 
-	/* A changed description (an action moved to or from a key) binds
-	 * again, so the desktop's list stays right; a declined set is not
-	 * asked for again because of one. */
-	bool unchanged = portal->session_path ? same_set(&current, &collected.descriptions, &portal->bound,
-							 &portal->bound_descriptions)
-					      : current.num == 0 || covered_by(&current, &portal->declined);
-	/* Asking again for keys declined in a dialog while others stay bound
-	 * (OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED) binds the full set anew. */
-	if (retry && portal->session_path && portal->partly_declined)
-		unchanged = false;
+	struct obs_nix_portal_combos current_combos = combos_of(&current);
+	struct obs_nix_portal_descriptions current_descriptions = descriptions_of(&collected.descriptions);
+	struct obs_nix_portal_combos bound_combos = combos_of(&portal->bound);
+	struct obs_nix_portal_descriptions bound_descriptions = descriptions_of(&portal->bound_descriptions);
+	struct obs_nix_portal_combos declined = combos_of(&portal->declined);
+	bool unchanged = obs_nix_portal_sets_unchanged(portal->session_path != NULL, retry, portal->partly_declined,
+						       &current_combos, &current_descriptions, &bound_combos,
+						       &bound_descriptions, &declined);
 	if (unchanged) {
 		da_free(current);
 		free_collected(&collected);
@@ -917,14 +888,21 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	set_shortcuts(background, &current);
 	background_unlock();
 
-	/* Keys declined while others stayed bound are left out until Ask
-	 * again, so the desktop doesn't ask for them on every bind. */
 	combo_array_t request;
 	description_array_t request_descriptions;
+	DARRAY(size_t) request_selected;
 	da_init(request);
 	da_init(request_descriptions);
-	select_combos(&current, &collected.descriptions, portal->partly_declined ? &portal->declined : NULL, false,
-		      &request, &request_descriptions);
+	da_init(request_selected);
+	da_resize(request_selected, current.num);
+	size_t num_request;
+	current_combos = combos_of(&current);
+	declined = combos_of(&portal->declined);
+	bool partly = obs_nix_portal_sets_request(&current_combos, portal->partly_declined, &declined,
+						  request_selected.array, &num_request);
+	take_combos(&current, &collected.descriptions, request_selected.array, num_request, &request,
+		    &request_descriptions);
+	da_free(request_selected);
 
 	/* Set before binding: Activated may be dispatched right after the
 	 * BindShortcuts response, while bind_shortcuts() is still waiting. */
@@ -953,7 +931,6 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 			set_state(OBS_HOTKEYS_BACKGROUND_FAILED, portal->request_error);
 		return;
 	}
-	bool partly = request.num < current.num;
 	if (!partly)
 		da_resize(portal->declined, 0);
 	da_copy(portal->approved, request);

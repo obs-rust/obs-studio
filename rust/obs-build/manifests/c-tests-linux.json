@@ -504,6 +504,13 @@
     ]
   },
   {
+    "name": "test_portal_shortcut_sets",
+    "sources": [
+      "test/cmocka/test_portal_shortcut_sets.c",
+      "libobs/obs-nix-portal-shortcut-sets.c.h"
+    ]
+  },
+  {
     "name": "test_scene_blend",
     "sources": [
       "test/cmocka/test_scene_blend.c"

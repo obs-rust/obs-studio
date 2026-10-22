@@ -95,7 +95,13 @@ if(ENABLE_WAYLAND)
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 
   if(TARGET gio::gio)
-    target_sources(libobs-objects PRIVATE build/libobs.nix-portal-shortcuts+.h.c obs-nix-portal-shortcuts.h)
+    target_sources(
+      libobs-objects
+      PRIVATE
+        build/libobs.nix-portal-shortcut-sets+.h.c
+        build/libobs.nix-portal-shortcuts+.h.c
+        obs-nix-portal-shortcuts.h
+    )
     # obs-nix-portal-shortcut-ids.c has a Rust port: C reference/rollback only (sources.cmake).
     obs_libobs_add_c_sources(${LIBOBS_WAYLAND_GIO_PORTED_SOURCES})
     target_compile_definitions(libobs-objects PUBLIC HAVE_GLOBAL_SHORTCUTS_PORTAL)

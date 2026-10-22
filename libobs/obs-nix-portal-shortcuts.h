@@ -73,3 +73,59 @@ static inline bool bindable(obs_key_combination_t combo)
 		return false;
 	return combo.key < OBS_KEY_MOUSE1 || combo.key > OBS_KEY_MOUSE29;
 }
+
+/* Whether a and b are the same key combination. Shared by the combination
+ * sets (obs-nix-portal-shortcut-sets.c) and the binding collection
+ * (obs-nix-portal-shortcuts.c). */
+static inline bool same_combo(obs_key_combination_t a, obs_key_combination_t b)
+{
+	return a.key == b.key && a.modifiers == b.modifiers;
+}
+
+/* The combination set logic of the portal client
+ * (obs-nix-portal-shortcut-sets.c): which bindings to ask the desktop for,
+ * and when to ask again. It only reads the arrays, which the portal client
+ * owns, and returns positions in them. */
+struct obs_nix_portal_combos {
+	const obs_key_combination_t *array;
+	size_t num;
+};
+
+/* The description of each combination, parallel to an
+ * obs_nix_portal_combos. There may be fewer descriptions than combinations,
+ * and a description may be NULL. */
+struct obs_nix_portal_descriptions {
+	const char *const *array;
+	size_t num;
+};
+
+/* Whether combos holds combo. */
+bool obs_nix_portal_sets_has(const struct obs_nix_portal_combos *combos, obs_key_combination_t combo);
+
+/* Whether a sync leaves the portal session as it is. With a session:
+ * current holds the combinations of bound, each with the same description,
+ * unless retry asks again for a partly declined set. Without one: current
+ * is empty, or every combination of it was declined. */
+bool obs_nix_portal_sets_unchanged(bool session, bool retry, bool partly_declined,
+				   const struct obs_nix_portal_combos *current,
+				   const struct obs_nix_portal_descriptions *current_descriptions,
+				   const struct obs_nix_portal_combos *bound,
+				   const struct obs_nix_portal_descriptions *bound_descriptions,
+				   const struct obs_nix_portal_combos *declined);
+
+/* The combinations of current to ask the desktop for, as positions in
+ * current, in its order (request has room for current->num): all of them,
+ * or while partly_declined, those not in declined. Returns whether that is
+ * only part of current. */
+bool obs_nix_portal_sets_request(const struct obs_nix_portal_combos *current, bool partly_declined,
+				 const struct obs_nix_portal_combos *declined, size_t *request, size_t *num_request);
+
+/* The desktop declined request: the combinations of current that it
+ * approved before and that are in request (part), and the other ones of
+ * current (declined), as positions in current, in its order (each has room
+ * for current->num). Returns whether part is bound again: it is neither
+ * empty nor as large as request. */
+bool obs_nix_portal_sets_partition(const struct obs_nix_portal_combos *current,
+				   const struct obs_nix_portal_combos *approved,
+				   const struct obs_nix_portal_combos *request, size_t *part, size_t *num_part,
+				   size_t *declined, size_t *num_declined);
