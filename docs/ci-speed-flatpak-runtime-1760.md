@@ -42,7 +42,13 @@ qualification does not establish #1760's warm/cold full-job performance target.
 ## Local feedback
 
 `uv run --no-project python -m unittest ci.test_flatpak_runtime` checks negative
-capture/plugin evidence, absent/frozen/wrong browser frames, matching Debug refs,
+capture/plugin evidence, absent/insufficient/wrong browser frames, matching Debug refs,
 and saved-profile construction. It does not replace the live packaged run.
 The local gate cannot attest this hosted opt-in job; ordinary PR CI remains the
 merge gate. Keep performance PRs draft until a real qualification run succeeds.
+
+A local FFV1/YUV420p video round trip confirms the browser pixel check accepts
+180 green-patch frames and rejects 180 frames without the browser patch. The
+first local encoder fixture could not run because the SDK's FFmpeg lacks
+libx264; that failure is retained. The FFV1 fixture validates decoding/crop/color
+checks, not CEF rendering or the actual packaged H.264 recording.

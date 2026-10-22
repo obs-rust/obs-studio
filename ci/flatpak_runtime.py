@@ -228,7 +228,7 @@ def qualification(args) -> dict:
         flatpak = ['flatpak', '--user']
         session.run([*flatpak, 'remote-add', '--if-not-exists', 'flathub', 'https://flathub.org/repo/flathub.flatpakrepo'])
         session.run([*flatpak, 'remote-add', '--no-gpg-verify', 'qualification', str(args.repo.resolve())])
-        refs = session.run([*flatpak, 'remote-ls', 'qualification', '--columns=ref']).splitlines()
+        refs = session.run([*flatpak, 'remote-ls', '--all', 'qualification', '--columns=ref']).splitlines()
         app_ref, debug_ref = select_refs(refs)
         session.run([*flatpak, 'install', '-y', '--noninteractive', 'qualification', app_ref, debug_ref], timeout=900)
         installed = Path(session.run([*flatpak, 'info', '--show-location', app_ref]).strip())
