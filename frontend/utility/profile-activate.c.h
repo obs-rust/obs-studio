@@ -24,3 +24,14 @@ void profile_set_encoder_defaults(config_t *config, const char *simple_encoder, 
 	config_set_default_string(config, "AdvOut", "AudioEncoder", aac_encoder);
 	config_set_default_string(config, "AdvOut", "RecAudioEncoder", aac_encoder);
 }
+
+enum profile_missing_encoder
+profile_missing_encoder_reason(const char *encoder_id, bool (*module_loaded)(const char *name), const char **module)
+{
+	(void)encoder_id;
+	(void)module_loaded;
+	if (module) {
+		*module = NULL;
+	}
+	return PROFILE_MISSING_ENCODER_UNKNOWN;
+}

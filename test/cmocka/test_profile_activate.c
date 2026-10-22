@@ -174,6 +174,100 @@ static void test_saved_encoders_win(void **state)
 	model_free(&m);
 }
 
+/* obs-rust/obs-studio#1720: a profile imported into the AppImage used
+ * ffmpeg_vaapi_tex and obs_qsv11_v2, and the Missing Encoders dialog said
+ * "Unknown (code: unknown)" for both. The AppImage does not ship obs-qsv11,
+ * and obs-ffmpeg registers the VA-API encoders only when it finds a VA-API
+ * device that encodes the format, so each has a reason the dialog can name. */
+
+/* The modules the AppImage loads: obs-ffmpeg, no obs-qsv11. */
+static bool appimage_module_loaded(const char *name)
+{
+	return strcmp(name, "obs-ffmpeg") == 0;
+}
+
+/* A build that has both modules loaded. */
+static bool all_modules_loaded(const char *name)
+{
+	(void)name;
+	return true;
+}
+
+static bool no_modules_loaded(const char *name)
+{
+	(void)name;
+	return false;
+}
+
+static void test_missing_qsv_names_the_module(void **state)
+{
+	(void)state;
+	static const char *const qsv_ids[] = {
+		"obs_qsv11",      "obs_qsv11_v2",        "obs_qsv11_soft", "obs_qsv11_soft_v2",
+		"obs_qsv11_hevc", "obs_qsv11_hevc_soft", "obs_qsv11_av1",  "obs_qsv11_av1_soft",
+	};
+	for (size_t i = 0; i < sizeof(qsv_ids) / sizeof(qsv_ids[0]); i++) {
+		const char *module = "unset";
+		printf("%s without obs-qsv11: reason %d\n", qsv_ids[i],
+		       profile_missing_encoder_reason(qsv_ids[i], appimage_module_loaded, &module));
+		assert_int_equal(profile_missing_encoder_reason(qsv_ids[i], appimage_module_loaded, &module),
+				 PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED);
+		assert_non_null(module);
+		assert_string_equal(module, "obs-qsv11");
+
+		assert_int_equal(profile_missing_encoder_reason(qsv_ids[i], all_modules_loaded, &module),
+				 PROFILE_MISSING_ENCODER_NO_QSV_DEVICE);
+		assert_string_equal(module, "obs-qsv11");
+	}
+}
+
+static void test_missing_vaapi_names_the_device(void **state)
+{
+	(void)state;
+	static const char *const vaapi_ids[] = {
+		"ffmpeg_vaapi",          "ffmpeg_vaapi_tex", "hevc_ffmpeg_vaapi",
+		"hevc_ffmpeg_vaapi_tex", "av1_ffmpeg_vaapi", "av1_ffmpeg_vaapi_tex",
+	};
+	for (size_t i = 0; i < sizeof(vaapi_ids) / sizeof(vaapi_ids[0]); i++) {
+		const char *module = "unset";
+		printf("%s with obs-ffmpeg loaded: reason %d\n", vaapi_ids[i],
+		       profile_missing_encoder_reason(vaapi_ids[i], appimage_module_loaded, &module));
+		assert_int_equal(profile_missing_encoder_reason(vaapi_ids[i], appimage_module_loaded, &module),
+				 PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE);
+		assert_non_null(module);
+		assert_string_equal(module, "obs-ffmpeg");
+
+		assert_int_equal(profile_missing_encoder_reason(vaapi_ids[i], no_modules_loaded, &module),
+				 PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED);
+		assert_string_equal(module, "obs-ffmpeg");
+	}
+}
+
+/* Guard: other encoders keep the generic "Unknown" (x264 and NVENC have
+ * their own checks), and a near miss of an id is not taken for one. */
+static void test_other_encoders_stay_unknown(void **state)
+{
+	(void)state;
+	static const char *const other_ids[] = {
+		"obs_x264",
+		"obs_nvenc_h264_tex",
+		"h264_texture_amf",
+		"ffmpeg_svt_av1",
+		"obs_qsv11_v3",
+		"ffmpeg_vaapi_texture",
+		"vaapi",
+		"",
+	};
+	for (size_t i = 0; i < sizeof(other_ids) / sizeof(other_ids[0]); i++) {
+		const char *module = "unset";
+		assert_int_equal(profile_missing_encoder_reason(other_ids[i], all_modules_loaded, &module),
+				 PROFILE_MISSING_ENCODER_UNKNOWN);
+		assert_null(module);
+	}
+	assert_int_equal(profile_missing_encoder_reason(NULL, all_modules_loaded, NULL),
+			 PROFILE_MISSING_ENCODER_UNKNOWN);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -181,6 +275,9 @@ int main(void)
 		cmocka_unit_test(test_switch_sets_up_everything),
 		cmocka_unit_test(test_rename_does_not_reset),
 		cmocka_unit_test(test_saved_encoders_win),
+		cmocka_unit_test(test_missing_qsv_names_the_module),
+		cmocka_unit_test(test_missing_vaapi_names_the_device),
+		cmocka_unit_test(test_other_encoders_stay_unknown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

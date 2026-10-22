@@ -44,6 +44,31 @@ void profile_activate_config(const struct profile_activate_ops *ops, bool reset)
  * mode encoder; aac_encoder: the AAC encoder id for Advanced output mode. */
 void profile_set_encoder_defaults(config_t *config, const char *simple_encoder, const char *aac_encoder);
 
+/* Why an encoder the profile uses is not registered, for the Missing
+ * Encoders dialog (OBSBasic::CheckForMissingEncoders(),
+ * obs-rust/obs-studio#1720). Covers the hardware encoders whose module
+ * registers them only when it finds a device that can encode with them:
+ * VA-API (obs-ffmpeg) and Intel QSV (obs-qsv11). x264 and NVENC have their
+ * own checks in the frontend; any other encoder is UNKNOWN. */
+enum profile_missing_encoder {
+	PROFILE_MISSING_ENCODER_UNKNOWN,
+	/* The module that provides the encoder is not loaded, or not part of
+	 * this build. */
+	PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED,
+	/* obs-ffmpeg is loaded but found no VA-API device that encodes this
+	 * format. */
+	PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE,
+	/* obs-qsv11 is loaded but found no Intel GPU that encodes this
+	 * format. */
+	PROFILE_MISSING_ENCODER_NO_QSV_DEVICE,
+};
+
+/* module_loaded(name) reports whether the module of that name (for example
+ * "obs-qsv11") is loaded. module, when not NULL, receives the module that
+ * provides encoder_id, or NULL when the result is UNKNOWN. */
+enum profile_missing_encoder
+profile_missing_encoder_reason(const char *encoder_id, bool (*module_loaded)(const char *name), const char **module);
+
 #ifdef __cplusplus
 }
 #endif
