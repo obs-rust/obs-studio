@@ -632,6 +632,36 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
                     result = json.loads((root / 'consumer-result.json').read_text())
                     self.assertEqual(result['status'], 'success' if accepted else 'failed')
 
+    def test_consumer_prepares_sdk_before_checking_transferred_profile(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        consumer = workflow.split('  flatpak-compiler-consumer:\n', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        prepare = consumer.index('      - name: Prepare Compiler Consumer SDK\n')
+        verify = consumer.index('      - name: Verify and Restore Compiler Artifact Last\n')
+        self.assertLess(prepare, verify)
+        block = consumer[prepare:verify]
+        self.assertIn('--install-deps-only', block)
+        self.assertIn('--install-deps-from=flathub', block)
+        self.assertIn('timeout 300s flatpak-builder', block)
+
+    def test_sdk_mismatch_reports_both_profiles_without_restoring_cache(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'result').write_bytes(b'cached output')
+            artifact = root / 'artifact'
+            producer = {'sdk': 'updated-sdk', 'compiler': 'updated-compiler'}
+            consumer = {'sdk': 'image-sdk', 'compiler': 'image-compiler'}
+            module.pack(source, artifact, producer)
+            with self.assertRaisesRegex(ValueError, 'profile'):
+                module.restore(artifact, root / 'destination', consumer)
+            self.assertFalse((root / 'destination').exists())
+            report = json.loads((artifact / 'profile-mismatch.json').read_text())
+            self.assertEqual(report['producer'], producer)
+            self.assertEqual(report['consumer'], consumer)
+            self.assertEqual(report['different_fields'], ['compiler', 'sdk'])
+
     def test_consumer_bootstrap_path_is_applied_before_vendor_step(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
         consumer = workflow.split('  flatpak-compiler-consumer:\n', 1)[1].split('  flatpak-runtime-test:', 1)[0]
