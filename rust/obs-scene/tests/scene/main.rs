@@ -1,5 +1,6 @@
 //! obs-scene integration tests, one module per extracted C file.
 
+mod audio_actions;
 mod blend;
 mod bounds;
 mod coords;
