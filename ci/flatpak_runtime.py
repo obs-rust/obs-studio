@@ -252,6 +252,12 @@ def request(ws, name: str, ready_timeout: int = 0) -> dict:
         raise RuntimeError(f'obs-websocket {name} failed: {message}')
 
 
+def start_recording(session: Session, ws) -> None:
+    request(ws, 'StartRecord')
+    session.wait_for(lambda: request(ws, 'GetRecordStatus')['outputActive'],
+                     'packaged recording to become active', seconds=20)
+
+
 def qualification(args) -> dict:
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -333,9 +339,7 @@ def qualification(args) -> dict:
                             Mic='pulse_input_capture', Browser='browser_source')
             if {item['inputName']: item['inputKind'] for item in inputs} != expected:
                 raise RuntimeError(f'saved sources did not load: {inputs}')
-            request(ws, 'StartRecord')
-            if not request(ws, 'GetRecordStatus')['outputActive']:
-                raise RuntimeError('packaged recording did not become active')
+            start_recording(session, ws)
             time.sleep(12)
             recording = Path(request(ws, 'StopRecord')['outputPath'])
         finally:

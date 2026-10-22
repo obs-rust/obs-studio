@@ -102,3 +102,11 @@ initialization failures. The harness records these as unavailable hardware only
 when both exact diagnostics are present; a missing library or unexplained
 plugin failure still fails. Browser and unchanged WebSocket loading remain
 mandatory. This does not claim physical AJA, camera or microphone coverage.
+
+Run `39760870691` passed readiness, authenticated GetVersion and the exact saved
+input inventory; microphone capture opened `obs-test-mic`. The harness then
+queried recording status immediately after successful StartRecord, observed
+inactive and shut down before the queued recording transition completed.
+It now sends StartRecord once and polls only GetRecordStatus for up to 20 seconds.
+A never-active recording still fails; no mutation is retried. Full recording,
+screen/camera streaming and browser-pixel verification remain outstanding.
