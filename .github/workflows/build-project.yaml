@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
       flatpak-pruned-build-probe:
-        description: Validate isolated application rebuild without cached downloads or compiler state
+        description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
         default: false
       full:
@@ -837,7 +837,7 @@ jobs:
         if: inputs.flatpak-pruned-build-probe
         timeout-minutes: 40
         run: |
-          uv run ci/flatpak_pruned_build_probe.py \
+          uv run ci/flatpak_pruned_build_probe.py --compiler-reuse \
             --manifest build-aux/flatpak-github-action-modified-com.obsproject.Studio.json \
             --temp-root "${RUNNER_TEMP}" --output "${RUNNER_TEMP}/flatpak-pruned-build.json"
 

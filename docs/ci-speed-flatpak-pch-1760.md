@@ -113,3 +113,22 @@ or preinstalled SDK is cold: the pinned build image already contains the SDK,
 and uv/tool input caches retain their existing policy. Other full-dispatch
 lanes still run and their runner cost must be reported separately. No cold run
 has yet executed this new control; it supplies the planned measurement route.
+
+## Full application compiler reuse probe
+
+The existing default-off `flatpak-pruned-build-probe` now also requests
+`--compiler-reuse`. The first isolated rebuild still copies only dependency
+OSTree state; original downloads, compiler results and transient state are not
+retained. After that rebuild creates its own compiler results, the probe resets
+only its isolated counters and changes a post-install marker to force another
+application build with identical source, SDK and configuration. All dependency
+modules must hit, while the application module must actually rebuild.
+
+The second build must report at least 100 compiler hits and an 80% cacheable
+hit fraction; a few CMake checks or a cached application module cannot pass.
+Both output sets run the existing AppStream/build-directory/repository checks.
+The source state stays read-only, and temporary state is removed on failure.
+The report keeps cold/warm build phases and SDK counter data separate. These
+extra manual rebuilds are diagnostic cost, not routine full-job savings or a
+substitute for cross-runner transport/retention and invalidation evidence.
+No hosted observation has yet executed this new compiler probe.

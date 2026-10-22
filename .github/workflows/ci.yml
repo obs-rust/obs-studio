@@ -18,7 +18,7 @@ on:
         type: boolean
         default: false
       flatpak-pruned-build-probe:
-        description: Validate isolated application rebuild without cached downloads or compiler state
+        description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
         default: false
       tier2-setup-probe:
