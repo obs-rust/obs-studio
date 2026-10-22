@@ -441,3 +441,21 @@ Portable evidence: `docs/ci-evidence/2026-10-22-flatpak-compiler-reasons.json`.
 The first report's missing attribution is retained as a limitation and was
 fixed with RED92c06356d/GREEN9cbb3247e. Fallback log spans exclude actual
 compiler execution; they are not the duration of the rejected compile.
+
+
+### C++20 browser cache rejection
+
+Corrected hosted diagnostic39820372855 attributes all16 uncacheable compiler
+calls to obs-browser sources rejected for `-fmodules-ts`. CMake automatically
+scans C++20 targets under CMP0155; the repository declares no named-module file
+sets. The Flatpak OBS config disables automatic module scanning while keeping
+C++20, PCH and normal header dependency tracking. This is a recipe-only setting.
+
+The real Freedesktop26.08 SDK fixture reproduces the rejection before the change:
+cold output42, then warm output42 with1 direct hit and1 unsupported option,
+failing the required2-hit assertion. With scanning disabled, all10 trials pass:
+source/header/compiler changes with preserved size and mtime, configuration
+change, and the subsequent2-hit warm build after each. No unsupported options
+remain. See [portable SDK evidence](ci-evidence/2026-10-22-flatpak-cpp20-cache.json).
+These isolated fixture timings are not whole-job savings. Full application cache
+consumer and installed saved-profile qualification remain required before adoption.

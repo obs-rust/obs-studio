@@ -155,6 +155,7 @@
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
                 "-DENABLE_CCACHE=ON",
+                "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF",
                 "-DCMAKE_C_COMPILER=/usr/bin/cc",
                 "-DCMAKE_CXX_COMPILER=/usr/bin/c++",
                 "-DCMAKE_INCLUDE_PATH=/app/include;/usr/include",
