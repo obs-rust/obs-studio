@@ -24,16 +24,27 @@
  * C. The waits only bound how long the test waits for the audio thread;
  * they are not part of any check.
  *
- * That holds only if every tone of the scene has its audio in each captured
- * tick. On a loaded machine a tone's thread can wake too late for a tick:
- * libobs then marks the tone's audio pending and leaves it out of that tick.
- * When that is the item's only audible source, the scene has no audio in
- * the tick, and libobs applies every queued action at once, so a hide shows
+ * That holds only if every tone of the scene has its audio in each tick
+ * the audio thread renders while the action waits. On a loaded machine a
+ * tone's thread can wake too late for a tick: libobs then marks the tone's
+ * audio pending and leaves it out of that tick. When no visible item of the
+ * scene has audio in a tick, the scene has none either (its own audio is
+ * pending), and libobs applies every queued action at once, so a hide shows
  * up on sample 0 (characterized, not endorsed: process_all_audio_actions()).
  * Neither says where the action would have landed, so the capture also
- * records, from libobs, which tones were left out of each tick, and a toggle
- * whose capture has such a tick is undone and tried again. The tone's
- * pending flag comes from its own buffer, not from the code under test.
+ * records, from libobs, which tones and whether the scene were left out of
+ * each tick, and a toggle whose capture has such a tick is undone and tried
+ * again. The pending flags come from the sources' buffers and the scene's
+ * render, not from the code under test.
+ *
+ * The audio thread renders a tick some time after the tick's time: one tick
+ * plus the audio buffering, which libobs adds when a source's audio comes
+ * late and which can reach most of a second. So the capture takes every
+ * tick rendered after it starts, however old its time, or a tick that
+ * applied the action at once could fall before the captured ones. And
+ * libobs renders without delivering the ticks it adds as buffering, which
+ * the raw callback can't see, so the test sets fixed buffering: libobs adds
+ * all of it on the first tick, before any case, and never again.
  *
  * Public API, plus the item's active_refs and the source's activate_refs
  * (obs-scene.h, obs-internal.h), as test_group_hide_transition_audio reads
@@ -139,7 +150,6 @@ static obs_source_t *create_tone(const char *name, float level)
 struct capture {
 	pthread_mutex_t mutex;
 	bool on;
-	uint64_t from_ts;
 	size_t num;
 	uint64_t ts[MAX_TICKS];
 	float data[MAX_TICKS][FRAMES];
@@ -147,6 +157,15 @@ struct capture {
 	 * tick because their audio was not there yet (pending) */
 	obs_source_t *tones[2];
 	bool left_out[MAX_TICKS][2];
+	/* the scene, and whether it had no audio in each tick (pending) */
+	obs_source_t *scene;
+	bool scene_left_out[MAX_TICKS];
+	/* the item being toggled, whether obs_sceneitem_set_visible() has
+	 * returned, and whether its action had been applied by the end of
+	 * each tick (its queue empty after the call) */
+	obs_sceneitem_t *item;
+	bool called;
+	bool applied[MAX_TICKS];
 };
 
 static void raw_audio(void *param, size_t mix_idx, struct audio_data *data)
@@ -155,24 +174,41 @@ static void raw_audio(void *param, size_t mix_idx, struct audio_data *data)
 	(void)mix_idx;
 
 	pthread_mutex_lock(&c->mutex);
-	if (c->on && data->timestamp >= c->from_ts && c->num < MAX_TICKS && data->frames == FRAMES) {
+	if (c->on && c->num < MAX_TICKS && data->frames == FRAMES) {
 		c->ts[c->num] = data->timestamp;
 		memcpy(c->data[c->num], data->data[0], sizeof(float) * FRAMES);
 		/* raw audio callbacks run on the audio thread right after it
 		 * rendered this tick, so audio_pending is this tick's */
 		for (size_t i = 0; i < 2; i++)
 			c->left_out[c->num][i] = c->tones[i] && c->tones[i]->audio_pending;
+		c->scene_left_out[c->num] = c->scene && c->scene->audio_pending;
+		bool applied = false;
+		if (c->item && c->called) {
+			pthread_mutex_lock(&c->item->actions_mutex);
+			applied = c->item->audio_actions.num == 0;
+			pthread_mutex_unlock(&c->item->actions_mutex);
+		}
+		c->applied[c->num] = applied;
 		c->num++;
 	}
 	pthread_mutex_unlock(&c->mutex);
 }
 
-static void capture_start(struct capture *c, uint64_t from_ts)
+/* Capture every tick the audio thread renders from now on. */
+static void capture_start(struct capture *c, obs_sceneitem_t *item)
 {
 	pthread_mutex_lock(&c->mutex);
 	c->on = true;
-	c->from_ts = from_ts;
 	c->num = 0;
+	c->item = item;
+	c->called = false;
+	pthread_mutex_unlock(&c->mutex);
+}
+
+static void capture_called(struct capture *c)
+{
+	pthread_mutex_lock(&c->mutex);
+	c->called = true;
 	pthread_mutex_unlock(&c->mutex);
 }
 
@@ -206,7 +242,7 @@ static void wait_level(struct capture *c, float level, const char *when)
 {
 	uint64_t deadline = os_gettime_ns() + DEADLINE_NS;
 	for (;;) {
-		capture_start(c, 0);
+		capture_start(c, NULL);
 		os_sleep_ms(50);
 		pthread_mutex_lock(&c->mutex);
 		c->on = false;
@@ -227,8 +263,11 @@ static void wait_level(struct capture *c, float level, const char *when)
 	}
 }
 
-/* True when libobs left a tone of the scene out of a captured tick. */
-static bool tone_left_out(struct capture *c, const char *what)
+/* True when libobs left a tone of the scene, or the scene, out of a
+ * captured tick. A scene whose items are all hidden has no audio either,
+ * so after the action is applied that counts only if `after` is not
+ * silence. */
+static bool audio_left_out(struct capture *c, float after, const char *what)
 {
 	for (size_t t = 0; t < c->num; t++) {
 		for (size_t i = 0; i < 2; i++) {
@@ -236,6 +275,11 @@ static bool tone_left_out(struct capture *c, const char *what)
 				continue;
 			fprintf(stderr, "%s: tick %zu (ts %llu) has no audio from %s (it came late), trying again\n",
 				what, t, (unsigned long long)c->ts[t], obs_source_get_name(c->tones[i]));
+			return true;
+		}
+		if (c->scene_left_out[t] && (after != 0.0f || !t || !c->applied[t - 1])) {
+			fprintf(stderr, "%s: tick %zu (ts %llu) has no audio from the scene, trying again\n", what, t,
+				(unsigned long long)c->ts[t]);
 			return true;
 		}
 	}
@@ -404,6 +448,7 @@ static void play(struct fixture *fx, bool with_b)
 	pthread_mutex_lock(&fx->capture->mutex);
 	fx->capture->tones[0] = fx->a;
 	fx->capture->tones[1] = with_b ? fx->b : NULL;
+	fx->capture->scene = obs_scene_get_source(fx->program);
 	pthread_mutex_unlock(&fx->capture->mutex);
 	obs_set_output_source(0, obs_scene_get_source(fx->program));
 	wait_applied(fx->item_a, "adding tone a");
@@ -412,29 +457,31 @@ static void play(struct fixture *fx, bool with_b)
 	wait_level(fx->capture, with_b ? LEVEL_A + LEVEL_B : LEVEL_A, "playing");
 }
 
-/* Toggle the item and capture the mix from a little before the call until
- * three ticks after the action was applied. A show of a hidden item takes
+/* Toggle the item and capture the mix of every tick rendered from just
+ * before the call until three ticks after it. A show of a hidden item takes
  * its active reference at once, in obs_sceneitem_set_visible(), not when the
- * action is applied. When libobs left a tone out of a captured tick, the
- * capture can't show where the action landed: toggle the item back, wait
- * until the mix is back at `before`, and toggle it again. */
-static void toggle(struct fixture *fx, obs_sceneitem_t *item, bool visible, float before, uint64_t *t0, uint64_t *t1)
+ * action is applied. When libobs left a tone or the scene out of a captured
+ * tick, the capture can't show where the action landed: toggle the item
+ * back, wait until the mix is back at `before`, and toggle it again. */
+static void toggle(struct fixture *fx, obs_sceneitem_t *item, bool visible, float before, float after, uint64_t *t0,
+		   uint64_t *t1)
 {
 	const char *what = visible ? "showing" : "hiding";
 	uint64_t deadline = os_gettime_ns() + DEADLINE_NS;
 	for (;;) {
-		capture_start(fx->capture, os_gettime_ns() - 4 * tick_ns());
+		capture_start(fx->capture, item);
 		*t0 = os_gettime_ns();
 		obs_sceneitem_set_visible(item, visible);
 		*t1 = os_gettime_ns();
+		capture_called(fx->capture);
 		if (visible)
 			check_refs(item, 1, item->source, 1, "right after showing");
 		wait_applied(item, what);
 		capture_until(fx->capture, *t1 + 3 * tick_ns());
-		if (!tone_left_out(fx->capture, what))
+		if (!audio_left_out(fx->capture, after, what))
 			return;
 		if (os_gettime_ns() > deadline) {
-			fprintf(stderr, "%s: a tone's audio came late in every try\n", what);
+			fprintf(stderr, "%s: a tone's or the scene's audio was left out in every try\n", what);
 			fail();
 		}
 		obs_sceneitem_set_visible(item, !visible);
@@ -459,7 +506,7 @@ static void hide_only_item(void **state)
 	play(fx, false);
 	check_refs(fx->item_a, 1, fx->a, 1, "playing");
 
-	toggle(fx, fx->item_a, false, LEVEL_A, &t0, &t1);
+	toggle(fx, fx->item_a, false, LEVEL_A, 0.0f, &t0, &t1);
 	check_change(fx->capture, t0, t1, LEVEL_A, 0.0f, "hiding the only item");
 	check_refs(fx->item_a, 0, fx->a, 0, "after hiding the only item");
 
@@ -476,7 +523,7 @@ static void hide_over_other_item(void **state)
 		skip();
 	play(fx, true);
 
-	toggle(fx, fx->item_a, false, LEVEL_A + LEVEL_B, &t0, &t1);
+	toggle(fx, fx->item_a, false, LEVEL_A + LEVEL_B, LEVEL_B, &t0, &t1);
 	check_change(fx->capture, t0, t1, LEVEL_A + LEVEL_B, LEVEL_B, "hiding one of two items");
 	check_refs(fx->item_a, 0, fx->a, 0, "after hiding one of two items");
 	check_refs(fx->item_b, 1, fx->b, 1, "the other item after hiding one of two");
@@ -498,7 +545,7 @@ static void show_over_other_item(void **state)
 	wait_applied(fx->item_a, "hiding tone a");
 	wait_level(fx->capture, LEVEL_B, "after hiding tone a");
 
-	toggle(fx, fx->item_a, true, LEVEL_B, &t0, &t1);
+	toggle(fx, fx->item_a, true, LEVEL_B, LEVEL_A + LEVEL_B, &t0, &t1);
 	check_change(fx->capture, t0, t1, LEVEL_B, LEVEL_A + LEVEL_B, "showing over another item");
 	check_refs(fx->item_a, 1, fx->a, 1, "after showing");
 
@@ -563,9 +610,17 @@ static int group_setup(void **state)
 		return 0;
 	}
 
-	struct obs_audio_info oai = {.samples_per_sec = RATE, .speakers = SPEAKERS_STEREO};
-	if (!obs_reset_audio(&oai)) {
-		fprintf(stderr, "skipped: obs_reset_audio failed\n");
+	/* Fixed buffering: libobs adds it all on the first tick (see the top).
+	 * About 200 ms leaves a tone's thread that much time to be late before its
+	 * audio is left out, and keeps the waits short. */
+	struct obs_audio_info2 oai = {
+		.samples_per_sec = RATE,
+		.speakers = SPEAKERS_STEREO,
+		.max_buffering_ms = 200,
+		.fixed_buffering = true,
+	};
+	if (!obs_reset_audio2(&oai)) {
+		fprintf(stderr, "skipped: obs_reset_audio2 failed\n");
 		obs_shutdown();
 		obs_up = false;
 		return 0;
