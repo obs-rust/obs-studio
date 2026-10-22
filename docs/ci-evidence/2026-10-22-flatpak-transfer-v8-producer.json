@@ -1,0 +1,97 @@
+{
+  "run": 39792586176,
+  "source": "d5a4bc4c8747821e50616be1a7a7dd675a29611f",
+  "producer_job": 119872197788,
+  "producer_status": "success",
+  "dependency_pack": {
+    "format": 1,
+    "profile": {
+      "source": "d5a4bc4c8747821e50616be1a7a7dd675a29611f",
+      "manifest": "30aa08457920c6be451d2e5395a6d2f93a34c79c245c2b8b32ca77107d12b62f",
+      "sdk": "3311c13c67b602315c39cf5310de129dd3460d04b6c8cf5be1b2cbc42c51abd7",
+      "compiler": "fb381c4d74722d4e1897919c4aca5b8cd0bd3f395cdc714053e58fa629517b8e  /usr/bin/cc\n2c997e55797c475dd5d0cf4063ae5052bec259c32a44eaa7333a0f8c02605293  /usr/bin/c++\nccache version 4.14.1\nFeatures: avx2 crsh-storage file-storage http-storage remote-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.",
+      "architecture": "x86_64"
+    },
+    "sha256": "4922520bdc46ccee92d45807fc51640a4dbdcdc1f0c959d6281cd4510740d0a8",
+    "archive_bytes": 1626857574,
+    "payload_bytes": 3375738776,
+    "members": 19367,
+    "symbolic_objects": 70,
+    "pack_seconds": 29.00825316199996,
+    "projection": "cache only; may include application stage objects"
+  },
+  "compiler_pack": {
+    "format": 1,
+    "profile": {
+      "source": "d5a4bc4c8747821e50616be1a7a7dd675a29611f",
+      "manifest": "30aa08457920c6be451d2e5395a6d2f93a34c79c245c2b8b32ca77107d12b62f",
+      "sdk": "3311c13c67b602315c39cf5310de129dd3460d04b6c8cf5be1b2cbc42c51abd7",
+      "compiler": "fb381c4d74722d4e1897919c4aca5b8cd0bd3f395cdc714053e58fa629517b8e  /usr/bin/cc\n2c997e55797c475dd5d0cf4063ae5052bec259c32a44eaa7333a0f8c02605293  /usr/bin/c++\nccache version 4.14.1\nFeatures: avx2 crsh-storage file-storage http-storage remote-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.",
+      "architecture": "x86_64"
+    },
+    "sha256": "3ad92a016a04d072ded0eeb297ee869a93808754beaf8155a34207cde3f461d8",
+    "archive_bytes": 700098560,
+    "payload_bytes": 699045248,
+    "files": 1341,
+    "omitted_builder_wrappers": [
+      "bin/c++",
+      "bin/cc",
+      "bin/g++",
+      "bin/gcc"
+    ],
+    "pack_seconds": 3.0453396139999995
+  },
+  "artifacts": [
+    {
+      "id": 12432457636,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQzMjQ1NzYzNg==",
+      "name": "flatpak-dependency-transfer-39792586176",
+      "size_in_bytes": 1626859156,
+      "url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12432457636",
+      "archive_download_url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12432457636/zip",
+      "expired": false,
+      "digest": "sha256:d010082b537daab16647d99b7aea2f2f0016f2f6e59ae797289dcf2279d2814c",
+      "created_at": "2026-10-22T14:19:40Z",
+      "updated_at": "2026-10-22T14:19:40Z",
+      "expires_at": "2026-10-23T14:19:29Z",
+      "workflow_run": {
+        "id": 39792586176,
+        "repository_id": 1409760713,
+        "head_repository_id": 1409760713,
+        "head_branch": "infra/1760-flatpak-qualification-v8",
+        "head_sha": "d5a4bc4c8747821e50616be1a7a7dd675a29611f"
+      }
+    },
+    {
+      "id": 12431609975,
+      "node_id": "MDg6QXJ0aWZhY3QxMjQzMTYwOTk3NQ==",
+      "name": "flatpak-compiler-transfer-39792586176",
+      "size_in_bytes": 700100104,
+      "url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12431609975",
+      "archive_download_url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12431609975/zip",
+      "expired": false,
+      "digest": "sha256:14f81e839acddf96944e28631442b004d73db4f96b39726d0530566a6831b112",
+      "created_at": "2026-10-22T14:19:49Z",
+      "updated_at": "2026-10-22T14:19:49Z",
+      "expires_at": "2026-10-23T14:19:44Z",
+      "workflow_run": {
+        "id": 39792586176,
+        "repository_id": 1409760713,
+        "head_repository_id": 1409760713,
+        "head_branch": "infra/1760-flatpak-qualification-v8",
+        "head_sha": "d5a4bc4c8747821e50616be1a7a7dd675a29611f"
+      }
+    }
+  ],
+  "consumer_job": 119879152813,
+  "consumer_result": "queued",
+  "runtime_result": "will depend on successful consumer export",
+  "fsck": "10commits/19089objects passed;70opaque symbolicobjects retained",
+  "limits": [
+    "Actual producer packing/upload only; freshconsumerfsck/restoration/reuse not yet proven.",
+    "Cache-onlyprojection mayincludeapplicationstageobjects, notminimaldependencygraph.",
+    "Experimental overhead counted separately; no routinecohort orproductionallocationadoptionclaim."
+  ],
+  "producer_whole_seconds": 899.0,
+  "capture_scope": "Evidence snapshot; inspect referenced terminal/live state before completion or adoption claims."
+}

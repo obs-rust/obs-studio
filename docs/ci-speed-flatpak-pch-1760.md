@@ -322,3 +322,43 @@ continues to use the producer export; an unselected compiler consumer must not
 skip that job. Runtime reuse of the same run ID also selects this unique artifact.
 This wiring closes the planned consumer-output coverage gap; actual hosted
 saved-profile execution of that output remains unproven until the combined trial.
+
+
+### V7: actual compiler reuse, package-setup timeouts retained
+
+[Compiler consumer119865322923](https://github.com/obs-rust/obs-studio/actions/runs/39788434414/job/119865322923)
+passed327hits/3misses, all6dependencyhits, a full application rebuild and all3
+validators. Whole consumer418s; builder214s; compiler download11s; helper restore
+1.158s; normal builder seed2,715,273,348B restored in42s. This establishes one
+same-run artifact fresh-runner compiler reuse result, not retained production
+cache transport or the routine warm cohort. Production cache publication and
+runtime-export packaging were not part of that consumer clock.
+
+The workflow ended cancelled: Qt exceeded30minutes and runtime infrastructure
+installation exceeded25minutes, both during Ubuntu package downloads. The runtime
+application/profile test never ran. All selected active jobs total194.6833
+runner-minutes:21success,1failure,2automatic timeout cancellations; skipped jobs
+excluded and no billing multipliers. No manual cancellation or unchanged retry.
+See[portable v7 evidence](ci-evidence/2026-10-22-flatpak-transfer-v7.json).
+
+### Actual OSTree preservation and v8 producer evidence
+
+The local bounded container fixture passed real OSTree2025.7 commit/fsck before
+and after archive restoration, same commit/ref, checkout data, symlink payload
+and executable mode. This is a small real repository, not the hosted SDK/cache.
+The first setup was rejected for a nested-manifest Dockerfile context before the
+fixture ran; corrected setup501 and fixture502 passed. Raw identities and exact
+fixture source are in[local evidence](ci-evidence/2026-10-22-flatpak-ostree-local.json).
+
+Live[v8](https://github.com/obs-rust/obs-studio/actions/runs/39792586176) producer
+119872197788 succeeded in899s, including optional experimental work. Actual
+producer fsck passed10commits/19,089objects. Its cache-only archive retained70
+opaque object links,19,367members and3,375,738,776 logical bytes; tar/zstd size
+1,626,857,574B, published artifact1,626,859,156B. Packing including fsck took29.008s.
+Compiler tar700,098,560B/published700,100,104B took3.045s to pack. Combined published
+input artifacts total2,326,959,260B. These actual archives are not a minimal
+dependency graph, production Actions-cache size measurement or retention proof.
+Consumer119879152813 was queued at capture; restoration/reuse, consumer runtime
+and full trial cost remain pending. See[producer snapshot](ci-evidence/2026-10-22-flatpak-transfer-v8-producer.json).
+The prior section's statement that local fixtures mock fsck describes the unit
+fixtures; the separate native fixture here now supplies additional real evidence.
