@@ -14,7 +14,9 @@
 
 use std::ffi::{CStr, c_char, c_int, c_void};
 
-use crate::calldata::{Calldata, FIXED_OVERFLOW_MESSAGE, StringGet};
+use crate::calldata::{
+    Calldata, FIXED_OVERFLOW_MESSAGE, StringGet, first_param, get_in, string_in, write_first,
+};
 
 const LOG_ERROR: c_int = 100;
 
@@ -59,8 +61,8 @@ pub unsafe extern "C" fn calldata_get_data(
     }
     // SAFETY: `stack` addresses `capacity` bytes from bmalloc or the caller.
     let bytes = unsafe { std::slice::from_raw_parts(data.stack, data.capacity) };
-    let copied = Calldata::from_copy(bytes, data.size, true);
-    let Some(got) = copied.get_bytes(name, size) else {
+    // PERF GUARD #1749: read the C buffer in place, no copy.
+    let Some(got) = get_in(bytes, data.size, name, size) else {
         return false;
     };
     if size == 0 {
@@ -102,21 +104,74 @@ pub unsafe extern "C" fn calldata_set_data(
         unsafe { std::slice::from_raw_parts(input.cast::<u8>(), size) }
     };
 
-    let mut cd = if data.stack.is_null() {
-        Calldata::new()
-    } else {
+    if data.stack.is_null() {
+        // The first parameter: a `bmalloc` stack, as cd_set_first_param.
+        let (used, cap) = first_param(name, input);
+        // SAFETY: a fresh allocation of `cap` bytes, zeroed before use.
+        unsafe {
+            let stack = bmalloc(cap).cast::<u8>();
+            std::ptr::write_bytes(stack, 0, cap);
+            write_first(std::slice::from_raw_parts_mut(stack, cap), name, input);
+            data.stack = stack;
+            data.capacity = cap;
+            data.size = used;
+        }
+        return;
+    }
+
+    if overlaps(data, name) || overlaps(data, input) {
+        // Moving the parameters could move the input: work on a copy.
         // SAFETY: `stack` addresses `capacity` bytes.
         let bytes = unsafe { std::slice::from_raw_parts(data.stack, data.capacity) };
-        Calldata::from_copy(bytes, data.size, data.fixed)
+        let mut cd = Calldata::from_copy(bytes, data.size, data.fixed);
+        let before = cd.overflow_count();
+        cd.set_bytes(name, input);
+        if cd.overflow_count() != before {
+            // SAFETY: the format is a literal with no conversions.
+            unsafe { blog(LOG_ERROR, FIXED_OVERFLOW.as_ptr()) };
+            return;
+        }
+        commit(data, &cd);
+        return;
+    }
+
+    // PERF GUARD #1749: edit the C buffer in place. The view does not
+    // grow: a write that does not fit leaves the bytes as they were.
+    let wanted = {
+        // SAFETY: `stack` addresses `capacity` bytes, and neither `name`
+        // nor `input` points into them.
+        let bytes = unsafe { std::slice::from_raw_parts_mut(data.stack, data.capacity) };
+        let mut cd = Calldata::in_place(bytes, data.size);
+        cd.set_bytes(name, input);
+        if cd.overflow_count() == 0 {
+            data.size = cd.size();
+            return;
+        }
+        cd.wanted()
     };
-    let before = cd.overflow_count();
-    cd.set_bytes(name, input);
-    if cd.overflow_count() != before {
+    if data.fixed {
         // SAFETY: the format is a literal with no conversions.
         unsafe { blog(LOG_ERROR, FIXED_OVERFLOW.as_ptr()) };
         return;
     }
-    commit(data, &cd);
+
+    // A heap stack grows as cd_ensure_capacity: to double the capacity, or
+    // to what the write needs when that is more. Then the write fits.
+    let old_cap = data.capacity;
+    let new_cap = old_cap.saturating_mul(2).max(wanted);
+    // SAFETY: `stack` is the `bmalloc` pointer of a heap stack; the new
+    // tail is zeroed before use.
+    unsafe {
+        let stack = brealloc(data.stack.cast(), new_cap).cast::<u8>();
+        std::ptr::write_bytes(stack.add(old_cap), 0, new_cap - old_cap);
+        data.stack = stack;
+        data.capacity = new_cap;
+        let bytes = std::slice::from_raw_parts_mut(stack, new_cap);
+        let mut cd = Calldata::in_place(bytes, data.size);
+        cd.set_bytes(name, input);
+        debug_assert_eq!(cd.overflow_count(), 0, "a grown stack holds the write");
+        data.size = cd.size();
+    }
 }
 
 /// # Safety
@@ -144,8 +199,8 @@ pub unsafe extern "C" fn calldata_get_string(
     }
     // SAFETY: `stack` addresses `capacity` bytes.
     let bytes = unsafe { std::slice::from_raw_parts(data.stack, data.capacity) };
-    let copied = Calldata::from_copy(bytes, data.size, true);
-    match copied.string_at(name) {
+    // PERF GUARD #1749: read the C buffer in place, no copy.
+    match string_in(bytes, data.size, name) {
         StringGet::Missing => false,
         StringGet::Null => {
             // SAFETY: `out` is writable.
@@ -153,11 +208,8 @@ pub unsafe extern "C" fn calldata_get_string(
             true
         }
         StringGet::Data(found) => {
-            let base = copied.stack().expect("copy has the stack").as_ptr() as usize;
-            let offset = found.as_ptr() as usize - base;
-            // SAFETY: `offset` is inside the original stack, which has the
-            // same bytes as the copy. `out` is writable.
-            unsafe { *out = data.stack.add(offset).cast() };
+            // SAFETY: `out` is writable; `found` is inside the stack.
+            unsafe { *out = found.as_ptr().cast() };
             true
         }
     }
@@ -174,6 +226,17 @@ unsafe fn name_bytes<'a>(name: *const c_char) -> Option<&'a [u8]> {
     // SAFETY: the caller guarantees a NUL-terminated string.
     let bytes = unsafe { CStr::from_ptr(name) }.to_bytes();
     if bytes.is_empty() { None } else { Some(bytes) }
+}
+
+/// Whether `bytes` lies (partly) in the allocation of `data`.
+fn overlaps(data: &calldata, bytes: &[u8]) -> bool {
+    let start = data.stack as usize;
+    let end = start + data.capacity;
+    let (b_start, b_end) = (
+        bytes.as_ptr() as usize,
+        bytes.as_ptr() as usize + bytes.len(),
+    );
+    !bytes.is_empty() && b_start < end && start < b_end
 }
 
 fn commit(data: &mut calldata, cd: &Calldata<'_>) {

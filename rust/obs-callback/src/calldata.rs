@@ -55,6 +55,8 @@ pub struct Calldata<'a> {
     capacity: usize,
     fixed: bool,
     overflows: u32,
+    /// The size the last refused write needed.
+    wanted: usize,
 }
 
 impl Default for Calldata<'static> {
@@ -72,6 +74,7 @@ impl Calldata<'static> {
             capacity: 0,
             fixed: false,
             overflows: 0,
+            wanted: 0,
         }
     }
 
@@ -86,11 +89,28 @@ impl Calldata<'static> {
             capacity,
             fixed,
             overflows: 0,
+            wanted: 0,
         }
     }
 }
 
 impl<'a> Calldata<'a> {
+    /// An existing stack, edited in place (#1749): `bytes` is the whole
+    /// allocation and `size` the used part. It never grows. A write that
+    /// does not fit counts as an overflow and leaves the bytes as they were,
+    /// so the caller can retry it on a copy that grows.
+    pub(crate) fn in_place(bytes: &'a mut [u8], size: usize) -> Self {
+        let capacity = bytes.len();
+        Self {
+            storage: Storage::Fixed(bytes),
+            size,
+            capacity,
+            fixed: true,
+            overflows: 0,
+            wanted: 0,
+        }
+    }
+
     /// Borrow `buf` as a fixed stack. The first `size_t` is cleared.
     pub fn fixed(buf: &'a mut [u8]) -> Self {
         let capacity = buf.len();
@@ -100,6 +120,7 @@ impl<'a> Calldata<'a> {
             capacity,
             fixed: true,
             overflows: 0,
+            wanted: 0,
         };
         cd.clear();
         cd
@@ -150,6 +171,13 @@ impl<'a> Calldata<'a> {
         self.overflows
     }
 
+    /// The size the last refused write needed: a heap stack edited
+    /// [`Self::in_place`] grows to it (or to double the capacity) and
+    /// retries, as `cd_ensure_capacity` does.
+    pub(crate) fn wanted(&self) -> usize {
+        self.wanted
+    }
+
     pub fn set_data(&mut self, name: &str, data: &[u8]) {
         self.set_bytes(c_name(name), data);
     }
@@ -178,24 +206,7 @@ impl<'a> Calldata<'a> {
     }
 
     pub(crate) fn get_bytes(&self, name: &[u8], size: usize) -> Option<&[u8]> {
-        let name = c_name_bytes(name);
-        if name.is_empty() {
-            return None;
-        }
-        let bytes = self.bytes();
-        let Find::Found(pos) = find_param(bytes, self.size, name) else {
-            return None;
-        };
-        let data_size = read_usize_within(bytes, pos, self.size)?;
-        if data_size != size {
-            return None;
-        }
-        let start = pos + USZ;
-        let end = start.checked_add(data_size)?;
-        if end > self.size {
-            return None;
-        }
-        bytes.get(start..end)
+        get_in(self.bytes(), self.size, name, size)
     }
 
     pub fn get_string(&self, name: &str) -> StringGet<'_> {
@@ -203,31 +214,7 @@ impl<'a> Calldata<'a> {
     }
 
     pub(crate) fn string_at(&self, name: &[u8]) -> StringGet<'_> {
-        let name = c_name_bytes(name);
-        if name.is_empty() {
-            return StringGet::Missing;
-        }
-        let bytes = self.bytes();
-        let Find::Found(pos) = find_param(bytes, self.size, name) else {
-            return StringGet::Missing;
-        };
-        let Some(data_size) = read_usize_within(bytes, pos, self.size) else {
-            return StringGet::Missing;
-        };
-        if data_size == 0 {
-            return StringGet::Null;
-        }
-        let start = pos + USZ;
-        let Some(end) = start.checked_add(data_size) else {
-            return StringGet::Missing;
-        };
-        if end > self.size {
-            return StringGet::Missing;
-        }
-        match bytes.get(start..end) {
-            Some(data) => StringGet::Data(data),
-            None => StringGet::Missing,
-        }
+        string_in(self.bytes(), self.size, name)
     }
 
     /// `None` for a missing name and for a null string. `Some("")` for an
@@ -311,13 +298,7 @@ impl<'a> Calldata<'a> {
     }
 
     fn set_first(&mut self, name: &[u8], data: &[u8]) {
-        let name_len = name.len() + 1;
-        let used = USZ * 3 + name_len + data.len();
-        let cap = if used < FIRST_ALLOC {
-            FIRST_ALLOC
-        } else {
-            used
-        };
+        let (used, cap) = first_param(name, data);
         let mut buf = vec![0u8; cap];
         write_param(&mut buf, 0, name, data);
         self.size = used;
@@ -408,6 +389,7 @@ impl<'a> Calldata<'a> {
         }
         if self.fixed {
             self.overflows += 1;
+            self.wanted = new_size;
             return false;
         }
         let mut new_cap = self.capacity.saturating_mul(2);
@@ -440,6 +422,77 @@ impl<'a> Calldata<'a> {
     }
 }
 
+/// The used size and the capacity of a new stack whose first parameter is
+/// `name` (already cut at its NUL, not empty) with `data`.
+pub(crate) fn first_param(name: &[u8], data: &[u8]) -> (usize, usize) {
+    let used = USZ * 3 + name.len() + 1 + data.len();
+    (used, used.max(FIRST_ALLOC))
+}
+
+/// Writes the first parameter of a new stack into `buf`, which has the
+/// capacity [`first_param`] gave. `name` is not empty and has no NUL, as
+/// the shim's names are.
+pub(crate) fn write_first(buf: &mut [u8], name: &[u8], data: &[u8]) {
+    debug_assert!(!name.is_empty() && !name.contains(&0));
+    write_param(buf, 0, name, data);
+}
+
+/// `calldata_get_data` on a stack's bytes (the whole allocation) and its
+/// used size. The shim reads the C buffer with it in place (#1749).
+pub(crate) fn get_in<'b>(
+    bytes: &'b [u8],
+    size: usize,
+    name: &[u8],
+    data_size: usize,
+) -> Option<&'b [u8]> {
+    let name = c_name_bytes(name);
+    if name.is_empty() {
+        return None;
+    }
+    let Find::Found(pos) = find_param(bytes, size, name) else {
+        return None;
+    };
+    let stored = read_usize_within(bytes, pos, size)?;
+    if stored != data_size {
+        return None;
+    }
+    let start = pos + USZ;
+    let end = start.checked_add(stored)?;
+    if end > size {
+        return None;
+    }
+    bytes.get(start..end)
+}
+
+/// `calldata_get_string` on a stack's bytes and its used size, as
+/// [`get_in`].
+pub(crate) fn string_in<'b>(bytes: &'b [u8], size: usize, name: &[u8]) -> StringGet<'b> {
+    let name = c_name_bytes(name);
+    if name.is_empty() {
+        return StringGet::Missing;
+    }
+    let Find::Found(pos) = find_param(bytes, size, name) else {
+        return StringGet::Missing;
+    };
+    let Some(data_size) = read_usize_within(bytes, pos, size) else {
+        return StringGet::Missing;
+    };
+    if data_size == 0 {
+        return StringGet::Null;
+    }
+    let start = pos + USZ;
+    let Some(end) = start.checked_add(data_size) else {
+        return StringGet::Missing;
+    };
+    if end > size {
+        return StringGet::Missing;
+    }
+    match bytes.get(start..end) {
+        Some(data) => StringGet::Data(data),
+        None => StringGet::Missing,
+    }
+}
+
 /// Bytes of `name` up to the first NUL. C measures the name with `strlen`.
 fn c_name(name: &str) -> &[u8] {
     c_name_bytes(name.as_bytes())
@@ -452,11 +505,11 @@ fn c_name_bytes(name: &[u8]) -> &[u8] {
     }
 }
 
+/// `strcmp` of a stored name with `name` (which has no NUL): the stored
+/// bytes start with `name` and a NUL follows. This is the same as cutting
+/// the stored name at its first NUL, without the scan.
 fn name_eq(stored: &[u8], name: &[u8]) -> bool {
-    let Some(end) = stored.iter().position(|b| *b == 0) else {
-        return false;
-    };
-    &stored[..end] == name
+    stored.get(name.len()) == Some(&0) && stored.starts_with(name)
 }
 
 fn find_param(bytes: &[u8], size: usize, name: &[u8]) -> Find {

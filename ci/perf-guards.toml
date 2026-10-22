@@ -82,3 +82,29 @@ function = "drop"
 require = ["if state.waiting > 0", "notify_one()"]
 reason = "each signal releases two ReentrantLocks; notify_one with no waiter is a FUTEX_WAKE syscall on Linux (about 335 ns in an LXC container), and notifying on every release made signal_handler_signal 12.9x the C code on x86_64"
 bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- signal/ (x86_64 Linux, needs the callback benches of #1746)"
+
+[[guard]]
+issue = 1749
+file = "rust/obs-callback/src/ffi/calldata.rs"
+function = "calldata_get_data"
+require = ["get_in("]
+forbid = ["from_copy("]
+reason = "a copy of the whole stack (Calldata::from_copy, one allocation and a memcpy of the capacity) on every get made four sets and gets 2.2-3.1x the C code"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- calldata/ (needs the callback benches of #1746)"
+
+[[guard]]
+issue = 1749
+file = "rust/obs-callback/src/ffi/calldata.rs"
+function = "calldata_get_string"
+require = ["string_in("]
+forbid = ["from_copy("]
+reason = "as calldata_get_data: read the C buffer in place, no copy of the stack"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- calldata/ (needs the callback benches of #1746)"
+
+[[guard]]
+issue = 1749
+file = "rust/obs-callback/src/ffi/calldata.rs"
+function = "calldata_set_data"
+require = ["Calldata::in_place("]
+reason = "a set that fits edits the C buffer in place; the copy (from_copy and commit, two copies of the capacity) is only for a new stack, a heap stack that grows, or an input inside the stack"
+bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- calldata/ (needs the callback benches of #1746)"

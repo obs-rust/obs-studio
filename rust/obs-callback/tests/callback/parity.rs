@@ -8,7 +8,7 @@
 //! Reminder: the mutation check (break the core, see this file fail) is done
 //! once per port, not on every change.
 
-use std::ffi::{CString, c_char, c_void};
+use std::ffi::{CStr, CString, c_char, c_void};
 use std::mem::size_of;
 use std::ptr;
 
@@ -311,5 +311,59 @@ proptest! {
             apply(op, &mut c_side.0, &mut rust_side.0);
             assert_same(&c_side.0, &rust_side.0);
         }
+    }
+}
+
+/// `calldata_set_data` with an input inside the same stack, in the cases
+/// C defines (the input does not move): a new parameter from an earlier
+/// one's data, and a later parameter replaced, larger, with an earlier
+/// one's data. The shim edits the stack in place (#1749) only when the
+/// input is outside it.
+#[test]
+fn input_inside_the_stack_matches_oracle() {
+    fn run(
+        cd: &mut calldata,
+        set: &dyn Fn(*mut calldata, &CStr, *const c_void, usize),
+        get_string: &dyn Fn(*const calldata, &CStr) -> *const c_char,
+    ) {
+        set(cd, c"a", c"hello".as_ptr().cast(), 6);
+        set(cd, c"b", 7_i64.to_ne_bytes().as_ptr().cast(), 8);
+        set(cd, c"c", c"xy".as_ptr().cast(), 3);
+        let a = get_string(cd, c"a");
+        set(cd, c"d", a.cast(), 6);
+        let a = get_string(cd, c"a");
+        set(cd, c"c", a.cast(), 6);
+    }
+    let rust_set = |cd: *mut calldata, name: &CStr, input: *const c_void, size: usize| unsafe {
+        calldata_set_data(cd, name.as_ptr(), input, size)
+    };
+    let c_set = |cd: *mut calldata, name: &CStr, input: *const c_void, size: usize| unsafe {
+        oracle::oracle_calldata_set_data(cd.cast(), name.as_ptr(), input, size)
+    };
+    let rust_get = |cd: *const calldata, name: &CStr| {
+        let mut out: *const c_char = ptr::null();
+        assert!(unsafe { calldata_get_string(cd, name.as_ptr(), &mut out) });
+        out
+    };
+    let c_get = |cd: *const calldata, name: &CStr| {
+        let mut out: *const c_char = ptr::null();
+        assert!(unsafe { oracle::oracle_calldata_get_string(cd.cast(), name.as_ptr(), &mut out) });
+        out
+    };
+
+    let (mut c_buf, mut r_buf) = ([0u8; 256], [0u8; 256]);
+    let (mut c_side, mut rust_side) = (fresh(), fresh());
+    init_fixed(&mut c_side, &mut c_buf);
+    init_fixed(&mut rust_side, &mut r_buf);
+    run(&mut c_side, &c_set, &c_get);
+    run(&mut rust_side, &rust_set, &rust_get);
+    assert_same(&c_side, &rust_side);
+
+    let (mut c_side, mut rust_side) = (Heap(fresh()), Heap(fresh()));
+    run(&mut c_side.0, &c_set, &c_get);
+    run(&mut rust_side.0, &rust_set, &rust_get);
+    assert_same(&c_side.0, &rust_side.0);
+    for name in ["a", "b", "c", "d"] {
+        assert_gets(&c_side.0, &rust_side.0, name, 6);
     }
 }
