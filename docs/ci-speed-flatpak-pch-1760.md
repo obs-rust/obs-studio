@@ -459,3 +459,26 @@ change, and the subsequent2-hit warm build after each. No unsupported options
 remain. See [portable SDK evidence](ci-evidence/2026-10-22-flatpak-cpp20-cache.json).
 These isolated fixture timings are not whole-job savings. Full application cache
 consumer and installed saved-profile qualification remain required before adoption.
+
+
+### Full C++20 cache and installed-package qualification
+
+Run39824614077 at frozen d511b0a84 passed the full producer, fresh compiler/
+dependency consumer and installed saved-profile runtime jobs. Consumer119988550402
+verified10OSTree commits/19,088objects, all6dependency hits, a genuine OBS rebuild,
+343direct compiler hits/3misses and0unsupported options. All3validators passed.
+The producer's first browser rebuild had327hits/19misses; the subsequent consumer
+therefore demonstrates the16newly cacheable browser calls rather than only a
+fixture assertion. These experimental transport jobs are not routine timing samples.
+
+Runtime119993180570 passed the actual consumer App/Debug refs, saved screen,
+camera, microphone and browser recording (303verifiedbrowserframes), CEF debugger
+checks and unchanged C++WebSocket v5. Synthetic/software coverage limits remain.
+The rebased recipe/fixture/tests are byte-identical to the qualified source;
+only adjacent documentation needed conflict resolution with merged diagnostics.
+See [full qualification](ci-evidence/2026-10-22-flatpak-cpp20-qualified.json).
+
+The enclosing workflow also had the known Windows callback declaration parity
+failure tracked in #1549/#1541 (664pass/1fail). Its seed/log and cost are retained;
+no unchanged rerun or test exclusion was used. Normal PR CI passed separately.
+The parent50%/450s median target still needs a new production cohort after merge.
