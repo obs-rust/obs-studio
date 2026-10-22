@@ -2,11 +2,14 @@
 
 use crate::common;
 
+#[path = "../../build/gio.rs"]
+mod build_gio;
 #[cfg(all(unix, not(target_os = "macos")))]
 mod dbus_inhibit;
 #[cfg(all(feature = "gio", any(target_os = "linux", target_os = "freebsd")))]
 mod dbus_inhibit_parity;
 mod export_list;
+mod gio_probe;
 mod nix_inhibit;
 mod nix_inhibit_parity;
 mod path_extension;

@@ -1,14 +1,28 @@
+#[path = "build/gio.rs"]
+mod gio;
+
+use gio::{GioProbe, gio_probe};
+
 fn main() {
     // Avoid Cargo's default package-wide mtime scan after cache hydration.
     // Rust sources are tracked by rustc; this script only builds the C shims.
     println!("cargo:rerun-if-changed=build.rs");
-    if std::env::var_os("CARGO_FEATURE_GIO").is_some()
-        && std::env::var_os("CARGO_CFG_UNIX").is_some()
-        && std::env::var("CARGO_CFG_TARGET_OS").ok().as_deref() != Some("macos")
-    {
-        pkg_config::Config::new()
-            .probe("gio-2.0")
-            .expect("GIO feature needs gio-2.0");
+    println!("cargo:rerun-if-changed=build/gio.rs");
+    let env = |name: &str| std::env::var(name).unwrap_or_default();
+    let probe = gio_probe(
+        std::env::var_os("CARGO_FEATURE_GIO").is_some(),
+        std::env::var_os("CARGO_CFG_UNIX").is_some(),
+        &env("CARGO_CFG_TARGET_OS"),
+        &env("HOST"),
+        &env("TARGET"),
+    );
+    match probe {
+        GioProbe::Skip => {}
+        GioProbe::Require => {
+            pkg_config::Config::new()
+                .probe("gio-2.0")
+                .expect("GIO feature needs gio-2.0");
+        }
     }
     let windows = std::env::var_os("CARGO_CFG_WINDOWS").is_some();
     let msvc = std::env::var("CARGO_CFG_TARGET_ENV").ok().as_deref() == Some("msvc");
