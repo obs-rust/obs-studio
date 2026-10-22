@@ -228,3 +228,29 @@ unexpected source/destination links. This prevents a regular archive entry from
 being copied through an existing compiler wrapper. Profile/digest checks,
 substantial-hit requirements and production adoption holds remain intact.
 A changed-source trial is required; no unchanged rerun was requested.
+
+
+### Second transfer trial: packed cache omitted from upload
+
+[Run 39779603900](https://github.com/obs-rust/obs-studio/actions/runs/39779603900)
+uses source `030daf8b0e2e218109a55eb32e5fcff7b3bf3a16`. The producer built and
+validated the app, and the wrapper fix packed 1,300 ordinary files into a
+699,105,280-byte tar (698,094,555 payload bytes; 2.014 seconds). However, the
+published artifact was only 1,488 bytes: it contained metadata at
+`__w/_temp/flatpak-compiler-transfer/manifest.json` and no compiler tar. The
+upload log reports a least common root of `/` and one file. Packing success
+therefore did not establish transport success.
+
+The fresh consumer separately failed before artifact download: its combined
+bootstrap/vendor step could not find `soldr`. The bootstrap writes `GITHUB_PATH`,
+which Actions applies to subsequent steps. The established producer already
+separates those commands. The installed saved-profile runtime job passed, but
+neither cache download nor cross-runner compiler reuse was proven.
+
+The next revision uploads a single controlled producer directory. Consumer JSON
+reports are staged into a separate single directory, avoiding another upload of
+the large compiler archive. Bootstrap and vendoring are separate steps. Focused
+RED regressions reproduce the missing upload/step boundaries; the corrected
+configuration still requires a changed-source hosted trial. Production transport,
+budgets and adoption holds remain unchanged. See
+[the second transfer evidence](ci-evidence/2026-10-22-flatpak-transfer-v5.json).

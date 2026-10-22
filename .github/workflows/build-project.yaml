@@ -865,9 +865,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flatpak-compiler-transfer-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/flatpak-compiler-transfer/manifest.json
-            ${{ runner.temp }}/flatpak-compiler-transfer/compiler-cache.tar
+          path: ${{ runner.temp }}/flatpak-compiler-transfer
           compression-level: 0
           retention-days: 1
           if-no-files-found: error
@@ -968,7 +966,8 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cmake -P cmake/common/prepare-flatpak-soldr.cmake
-          build-aux/prepare-flatpak-rust.sh
+      - name: Vendor Flatpak Compiler Consumer Sources
+        run: build-aux/prepare-flatpak-rust.sh
       - name: Restore Dependency State Before Compiler Artifact
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -1019,14 +1018,20 @@ jobs:
         with:
           artifact: repo
           path: repo
+      - name: Stage Compiler Consumer Measurements
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/flatpak-compiler-result"
+          shopt -s nullglob
+          for report in "$RUNNER_TEMP/flatpak-compiler-transfer/"*.json; do
+            cp -- "$report" "$RUNNER_TEMP/flatpak-compiler-result/"
+          done
       - name: Upload Compiler Consumer Measurements
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flatpak-compiler-consumer-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/flatpak-compiler-transfer/manifest.json
-            ${{ runner.temp }}/flatpak-compiler-transfer/consumer-*.json
+          path: ${{ runner.temp }}/flatpak-compiler-result
           if-no-files-found: error
           retention-days: 7
 

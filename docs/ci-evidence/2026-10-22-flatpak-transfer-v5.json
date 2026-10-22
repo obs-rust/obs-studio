@@ -1,0 +1,65 @@
+{
+  "run": 39779603900,
+  "source": "030daf8b0e2e218109a55eb32e5fcff7b3bf3a16",
+  "producer": {
+    "job": 119827292848,
+    "conclusion": "success",
+    "whole_seconds": 913.0,
+    "builder_seconds": 788.0
+  },
+  "packed_cache_manifest": {
+    "format": 1,
+    "profile": {
+      "source": "030daf8b0e2e218109a55eb32e5fcff7b3bf3a16",
+      "manifest": "30aa08457920c6be451d2e5395a6d2f93a34c79c245c2b8b32ca77107d12b62f",
+      "sdk": "3311c13c67b602315c39cf5310de129dd3460d04b6c8cf5be1b2cbc42c51abd7",
+      "compiler": "fb381c4d74722d4e1897919c4aca5b8cd0bd3f395cdc714053e58fa629517b8e  /usr/bin/cc\n2c997e55797c475dd5d0cf4063ae5052bec259c32a44eaa7333a0f8c02605293  /usr/bin/c++\nccache version 4.14.1\nFeatures: avx2 crsh-storage file-storage http-storage remote-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.",
+      "architecture": "x86_64"
+    },
+    "sha256": "cf08cc66dd094082df63ebc76d3516ed5378643834a2fd54b325cf4407c52137",
+    "archive_bytes": 699105280,
+    "payload_bytes": 698094555,
+    "files": 1300,
+    "omitted_builder_wrappers": [
+      "bin/c++",
+      "bin/cc",
+      "bin/g++",
+      "bin/gcc"
+    ],
+    "pack_seconds": 2.0140110060000325
+  },
+  "uploaded_artifact": {
+    "id": 12427221503,
+    "bytes": 1488,
+    "digest": "sha256:688a01660e1f4977b18828ab9329e03ac3919602493e5370a7b8ecc604423380",
+    "files": [
+      "__w/_temp/flatpak-compiler-transfer/manifest.json"
+    ],
+    "compiler_tar_present": false
+  },
+  "consumer": {
+    "job": 119834551174,
+    "conclusion": "failure",
+    "whole_seconds": 63.0,
+    "failure": "soldr command not found before artifact download; bootstrap GITHUB_PATH and vendor combined in one step"
+  },
+  "runtime": {
+    "job": 119834551183,
+    "status": "success",
+    "source": "030daf8b0e2e218109a55eb32e5fcff7b3bf3a16",
+    "harness_source": "030daf8b0e2e218109a55eb32e5fcff7b3bf3a16",
+    "app_commit": "2718b4668414b170650ab7c5bd43b2bcde7e8545dc3875dc9145cef8fc69322e",
+    "debug_commit": "0a2c3a0d66f486a488b758bf4c1c3da3034dfcc9d9356582484c6de9254cb378",
+    "cef_build_id": "1057eb4fa0ac432b4deda44fcd2bc20a4d9182c3",
+    "browser_frames": 306,
+    "seconds": 63.79662971399998,
+    "coverage": "synthetic screen/camera/microphone producers; software browser rendering; no physical devices or hardware GPU",
+    "limits": "One runtime qualification, not routine full-job performance evidence"
+  },
+  "limits": [
+    "Successful pack/build/validators/runtime are not cache transfer/reuse proof.",
+    "Producer upload resolved multiline paths to root / and found one file; tar not published.",
+    "Consumer failed before download/profile/cache checks.",
+    "Remaining selected workflow jobs were still live at evidence capture; final total costs remain to collect."
+  ]
+}
