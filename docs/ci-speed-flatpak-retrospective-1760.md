@@ -2,6 +2,14 @@
 
 ## Measured performance result
 
+| Metric | Historical baseline | Final configuration |
+| --- | ---: | ---: |
+| Warm whole-job samples | 702s, 905s, 911s | 437s, 434s, 447s |
+| Median | 905s (15m05s) | **437s (7m17s), 51.71% lower** |
+| Nearest-rank sample p95 | 911s | 447s |
+| Sample size | 3 | 3 |
+| Matched current cold | — | 846s |
+
 The final three warm full-job observations are **437s, 434s and447s**.
 Their median is **437s (7m17s),51.71% lower** than the historical905s
 (15m05s) baseline median. This meets the >=50% and <=450s performance target.
@@ -114,10 +122,10 @@ and production warm 2, run39816841905/job119958260969:
 | Stage commits/cleanup/export through counter report |121s|77.89s |
 | Stats/validators/publication/final cleanup |33s|41.41s |
 
-For the final configuration, [two completed warm phase observations](ci-evidence/2026-10-22-flatpak-final-phases.json)
+For the final configuration, [three completed warm phase observations](ci-evidence/2026-10-22-flatpak-final-phases.json)
 show167–192s setup/restores,81–89s configure/compile/install, about14s debug
 processing,117–120s commits/export and28–50s counters/validators/publication/cleanup.
-These sum to the complete437s/434s jobs; setup and export dominate remaining
+These sum to the complete437s/434s/447s jobs; setup and export dominate remaining
 wall time. First stripping messages mark the observed debug phase.
 
 These are buffered-log wall intervals, not CPU profiles. In the interim table above, the final phase

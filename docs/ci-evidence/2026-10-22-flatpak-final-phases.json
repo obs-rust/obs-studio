@@ -71,7 +71,43 @@
         }
       ],
       "whole_seconds": 434.0
+    },
+    {
+      "run": 39840480759,
+      "job": 120040204247,
+      "log": "final-warm3-39840480759-flatpak.log",
+      "boundaries_utc": [
+        "2026-10-22T19:30:56+00:00",
+        "2026-10-22T19:33:53.630195+00:00",
+        "2026-10-22T19:35:20.887421+00:00",
+        "2026-10-22T19:35:34.994991+00:00",
+        "2026-10-22T19:37:33.388695+00:00",
+        "2026-10-22T19:38:23+00:00"
+      ],
+      "phases": [
+        {
+          "phase": "Setup/restores/dependencies through OBS module start",
+          "seconds": 177.63
+        },
+        {
+          "phase": "OBS configure/compile/install through first strip message",
+          "seconds": 87.257
+        },
+        {
+          "phase": "Debug processing through build-stage commit",
+          "seconds": 14.108
+        },
+        {
+          "phase": "Stage commits/cleanup/export through counter report",
+          "seconds": 118.394
+        },
+        {
+          "phase": "Counters/validators/publication/cleanup",
+          "seconds": 49.611
+        }
+      ],
+      "whole_seconds": 447.0
     }
   ],
-  "limits": "Nonoverlapping buffered log wall intervals, not CPU profiles. First stripping message marks the observed debug phase; absence of compression log does not mean no work. Publication present on warm1, exact-key skip warm2."
+  "limits": "Nonoverlapping buffered log wall intervals, not CPU profiles. First stripping message marks the observed debug phase; absence of compression log does not mean no work. Publication present on warm1 and warm3, exact-key skip warm2."
 }

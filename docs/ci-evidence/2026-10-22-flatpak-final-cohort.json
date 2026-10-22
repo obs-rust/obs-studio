@@ -44,7 +44,8 @@
       ],
       "restored_archive_id": 9358763488,
       "published_archive_id": 9360891151,
-      "published_archive_bytes": 2274822651
+      "published_archive_bytes": 2274822651,
+      "workflow_cost_complete": true
     },
     {
       "run": 39839045982,
@@ -63,7 +64,8 @@
       "workflow_cost_complete": true,
       "workflow_conclusion": "failure",
       "workflow_runner_minutes": 17.45,
-      "workflow_failure_issue": 1816
+      "workflow_failure_issue": 1816,
+      "application_rebuilt": true
     },
     {
       "run": 39840480759,
@@ -107,35 +109,28 @@
     "misses": 345,
     "restore_and_publication_steps": [
       {
-        "name": "Validate Flatpak manifest",
-        "conclusion": "success"
+        "number": 11,
+        "name": "Run actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+        "conclusion": "skipped"
       },
       {
+        "number": 12,
+        "name": "Run actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 13,
         "name": "Restore legacy Flatpak builder seed",
         "conclusion": "skipped"
       },
       {
-        "name": "Validate AppStream",
-        "conclusion": "success"
+        "number": 14,
+        "name": "Run actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+        "conclusion": "skipped"
       },
       {
-        "name": "Validate build directory",
-        "conclusion": "success"
-      },
-      {
-        "name": "Validate repository",
-        "conclusion": "success"
-      },
-      {
+        "number": 26,
         "name": "Publish Flatpak Projected State",
-        "conclusion": "skipped"
-      },
-      {
-        "name": "Probe Pruned Flatpak Rebuild",
-        "conclusion": "skipped"
-      },
-      {
-        "name": "Upload Pruned Flatpak Evidence",
         "conclusion": "skipped"
       }
     ],
@@ -165,5 +160,50 @@
     "selected_warm_workflow_runner_minutes": 49.43333333333333,
     "warm_workflow_failures": 3,
     "warm_workflow_cancellations": 0
-  }
+  },
+  "toolchain_observations": [
+    {
+      "log": "final-warm1-39837821816-flatpak.log",
+      "container_digests": [
+        "sha256:6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039"
+      ],
+      "compiler_versions": [
+        "GNU 16.2.0"
+      ]
+    },
+    {
+      "log": "final-warm2-39839045982-flatpak.log",
+      "container_digests": [
+        "sha256:6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039"
+      ],
+      "compiler_versions": [
+        "GNU 16.2.0"
+      ]
+    },
+    {
+      "log": "final-cold-39837854756-flatpak.log",
+      "container_digests": [
+        "sha256:6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039"
+      ],
+      "compiler_versions": [
+        "GNU 16.2.0"
+      ]
+    },
+    {
+      "log": "final-warm3-39840480759-flatpak.log",
+      "container_digests": [
+        "sha256:6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039"
+      ],
+      "compiler_versions": [
+        "GNU 16.2.0"
+      ]
+    }
+  ],
+  "baseline_runs": [
+    39716240224,
+    39718597929,
+    39721238636
+  ],
+  "historical_baseline_evidence": "2026-10-22-flatpak-interim-cohort.json",
+  "manifest_cache_identity": "f9d1e759d61258a613adaa00a4f8b5c5429420927ae2046ce24b523efd93e423"
 }
