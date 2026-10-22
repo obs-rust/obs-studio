@@ -31,7 +31,8 @@
       "libobs/obs-hotkey-bindings.c.h",
       "libobs/obs-hotkey-translations.c.h",
       "libobs/obs-hotkey-press.c.h",
-      "libobs/obs-hotkey-pair.c.h"
+      "libobs/obs-hotkey-pair.c.h",
+      "libobs/obs-hotkey-binding-press.c.h"
     ],
     "definitions": [
       "obs=hotkey_test_obs"
