@@ -510,3 +510,84 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
                 probe.measure(state, manifest, root, execute=forbidden)
             self.assertEqual((state / 'cache/original').read_text(), 'cache')
             self.assertEqual(sorted(p.name for p in root.iterdir()), ['manifest.json', 'state'])
+
+
+class FlatpakCompilerTransferTest(unittest.TestCase):
+    def load_transfer(self):
+        spec = importlib.util.spec_from_file_location('flatpak_compiler_cache', ROOT / 'ci/flatpak_compiler_cache.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_roundtrip_and_reject_tampered_or_wrong_profile_before_overlay(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            (source / 'a').mkdir(parents=True)
+            (source / 'a/result').write_bytes(b'actual compiler bytes')
+            profile = {'source': 'a' * 40, 'sdk': 'sdk-commit', 'compiler': 'compiler-sha', 'manifest': 'manifest-sha'}
+            artifact = root / 'artifact'
+            report = module.pack(source, artifact, profile)
+            self.assertEqual(report['payload_bytes'], 21)
+            target = root / 'target'
+            module.restore(artifact, target, profile)
+            self.assertEqual((target / 'a/result').read_bytes(), b'actual compiler bytes')
+            with self.assertRaisesRegex(ValueError, 'profile'):
+                module.restore(artifact, root / 'wrong', dict(profile, compiler='changed'))
+            self.assertFalse((root / 'wrong').exists())
+            archive = artifact / 'compiler-cache.tar'
+            archive.write_bytes(archive.read_bytes() + b'changed')
+            with self.assertRaisesRegex(ValueError, 'digest|size'):
+                module.restore(artifact, root / 'tampered', profile)
+            self.assertFalse((root / 'tampered').exists())
+
+    def test_archive_paths_links_and_limits_fail_before_destination_mutation(self):
+        module = self.load_transfer()
+        import hashlib
+        import io
+        import tarfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, kind in [('../escape', tarfile.REGTYPE), ('/absolute', tarfile.REGTYPE),
+                               ('link', tarfile.SYMTYPE), ('hardlink', tarfile.LNKTYPE)]:
+                artifact = root / ('artifact-' + str(len(list(root.iterdir()))))
+                artifact.mkdir()
+                archive = artifact / 'compiler-cache.tar'
+                with tarfile.open(archive, 'w') as output:
+                    entry = tarfile.TarInfo(name)
+                    entry.type = kind
+                    entry.linkname = '../escape' if kind != tarfile.REGTYPE else ''
+                    entry.size = 1 if kind == tarfile.REGTYPE else 0
+                    output.addfile(entry, io.BytesIO(b'x') if entry.size else None)
+                metadata = {'format': 1, 'profile': {}, 'archive_bytes': archive.stat().st_size,
+                            'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'payload_bytes': 1, 'files': 1}
+                (artifact / 'manifest.json').write_text(json.dumps(metadata))
+                with self.assertRaises(ValueError):
+                    module.restore(artifact, root / 'destination', {})
+                self.assertFalse((root / 'destination').exists())
+            source = root / 'source'
+            source.mkdir()
+            (source / 'link').symlink_to('/etc/passwd')
+            with self.assertRaisesRegex(ValueError, 'link|regular'):
+                module.pack(source, root / 'linked', {})
+            (source / 'link').rename(source / 'rejected-link')
+            source = root / 'bounded-source'
+            source.mkdir()
+            (source / 'large').write_bytes(b'ab')
+            with patch.object(module, 'MAX_PAYLOAD_BYTES', 1), self.assertRaisesRegex(ValueError, 'limit|size'):
+                module.pack(source, root / 'oversize', {})
+
+    def test_transfer_is_explicit_manual_default_off_and_fresh_consumer(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        caller = (ROOT / '.github/workflows/ci.yml').read_text()
+        for text in [workflow, caller]:
+            declaration = text.split('      flatpak-compiler-transfer-probe:', 1)[1].split('      flatpak-', 1)[0]
+            self.assertIn('default: false', declaration)
+        self.assertIn("github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-transfer-probe", caller)
+        consumer = workflow.split('  flatpak-compiler-consumer:', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        self.assertIn('needs: flatpak-build', consumer)
+        self.assertIn('if: inputs.flatpak-compiler-transfer-probe', consumer)
+        self.assertIn('save-cache: false', consumer)
+        self.assertIn('restore-cache: false', consumer)
+        self.assertIn('compiler-cache.tar', workflow)
