@@ -1,6 +1,6 @@
 {
-  "captured_at": "2026-10-22T19:07:17.779414+00:00",
-  "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Includes final C++20 seed and routing qualification; final production warm/cold cohort pending, not the final total.",
+  "captured_at": "2026-10-22T19:30:54.236600+00:00",
+  "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Includes final C++20 seed and routing qualification; includes final warm1/warm2 and matched cold; third warm pending, not the final total.",
   "rows": [
     {
       "cohort": "baseline",
@@ -599,9 +599,69 @@
           "seconds": 392.0
         }
       ]
+    },
+    {
+      "cohort": "final-production-warm1",
+      "run": 39837821816,
+      "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_minutes_completed_jobs": 14.966666666666667,
+      "cost_complete": true,
+      "failed_jobs": 2,
+      "cancelled_jobs": 0,
+      "flatpak_jobs": [
+        {
+          "job": 120030810312,
+          "name": "Build \ud83e\uddf1 / Flatpak \ud83d\udce6",
+          "conclusion": "success",
+          "seconds": 437.0
+        }
+      ]
+    },
+    {
+      "cohort": "final-production-cold",
+      "run": 39837854756,
+      "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_minutes_completed_jobs": 20.566666666666666,
+      "cost_complete": true,
+      "failed_jobs": 2,
+      "cancelled_jobs": 0,
+      "flatpak_jobs": [
+        {
+          "job": 120030913741,
+          "name": "Build \ud83e\uddf1 / Flatpak \ud83d\udce6",
+          "conclusion": "success",
+          "seconds": 846.0
+        }
+      ]
+    },
+    {
+      "cohort": "final-production-warm2",
+      "run": 39839045982,
+      "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_minutes_completed_jobs": 17.45,
+      "cost_complete": true,
+      "failed_jobs": 2,
+      "cancelled_jobs": 0,
+      "flatpak_jobs": [
+        {
+          "job": 120035033452,
+          "name": "Build \ud83e\uddf1 / Flatpak \ud83d\udce6",
+          "conclusion": "success",
+          "seconds": 434.0
+        }
+      ]
     }
   ],
-  "nonbaseline_completed_runner_minutes": 2129.016666666667,
+  "nonbaseline_completed_runner_minutes": 2182.0,
   "known_metadata_anomalies": [
     {
       "run": 39810319992,
@@ -610,5 +670,11 @@
       "treatment": "Negative interval omitted and cost_complete remains false;112.1167 known runner-minutes retained; no perfect total claim"
     }
   ],
-  "pending_runs": []
+  "pending_runs": [
+    {
+      "run": 39840480759,
+      "purpose": "Third final warm observation",
+      "status": "live at capture"
+    }
+  ]
 }

@@ -77,7 +77,13 @@ passed. Restored archive9358763488 was2,274,967,809B; new archive9360891151
 is2,274,822,651B. The complete workflow failed on known #1816 and consumed
 14.967runner-minutes. No cancellation or retry was used.
 
-Warm2 and exact-source cold observations remain live. No final median or
+Warm2 passed434s with343directhits/2misses, all six dependency hits and all
+three artifact validators. It restored archive9360891151 and skipped immutable
+exact-key publication. Its whole workflow failed on #1816,17.45runner-minutes.
+Exact-source cold passed846s with0hits/345misses, all artifact validators,
+and all four builder/compiler restore steps skipped. Publication was disabled;
+the SDK image remained preinstalled. The cold workflow failed on #1816 and
+consumed20.567runner-minutes. Third warm39840480759 remains live. No final median or
 50% target claim is made from one successful Flatpak sample.
 [Portable cohort evidence](ci-evidence/2026-10-22-flatpak-final-cohort.json)
 will retain all three observations and their whole-workflow outcomes.
@@ -94,6 +100,12 @@ and production warm 2, run39816841905/job119958260969:
 | Debug processing through build-stage commit |210s|10.39s |
 | Stage commits/cleanup/export through counter report |121s|77.89s |
 | Stats/validators/publication/final cleanup |33s|41.41s |
+
+For the final configuration, [two completed warm phase observations](ci-evidence/2026-10-22-flatpak-final-phases.json)
+show167–192s setup/restores,81–89s configure/compile/install, about14s debug
+processing,117–120s commits/export and28–50s counters/validators/publication/cleanup.
+These sum to the complete437s/434s jobs; setup and export dominate remaining
+wall time. First stripping messages mark the observed debug phase.
 
 These are buffered-log wall intervals, not CPU profiles. The final phase
 includes required new-generation publication on warm2; warm1 had an exact
@@ -163,7 +175,7 @@ All measurement workflow job intervals (all attempts) are retained in
 cost-ledger/summary.json, with raw responses per run. The three baseline
 selected workflows cost374.033runner-minutes; their Flatpak jobs alone
 cost41.967runner-minutes. Completed nonbaseline workflows currently account
-for2129.017runner-minutes, excluding a cancelled seed workflow whose
+for2182.000runner-minutes, excluding a cancelled seed workflow whose
 112.117known runner-minutes have one inconsistent cancelled placeholder. This is runner-interval
 accounting, not an invoice. PR/merge-group CI and local bosn work are explicitly
 outside this ledger scope.

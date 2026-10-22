@@ -45,10 +45,28 @@
       "restored_archive_id": 9358763488,
       "published_archive_id": 9360891151,
       "published_archive_bytes": 2274822651
+    },
+    {
+      "run": 39839045982,
+      "job": 120035033452,
+      "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+      "whole_seconds": 434,
+      "flatpak_conclusion": "success",
+      "direct_hits": 343,
+      "misses": 2,
+      "dependency_hits": 6,
+      "restored_archive_id": 9360891151,
+      "restored_archive_bytes": 2274822651,
+      "publication": "exact immutable key, publication skipped",
+      "artifact_validators": "all three passed",
+      "workflow_status": "completed",
+      "workflow_cost_complete": true,
+      "workflow_conclusion": "failure #1816",
+      "workflow_runner_minutes": 17.45
     }
   ],
   "pending_warm_runs": [
-    39839045982
+    39840480759
   ],
   "matched_cold_run": 39837854756,
   "matched_cold_source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
@@ -58,5 +76,55 @@
     "Workflow failure retained; successful Flatpak does not imply successful workflow",
     "Payload sizes are not NIC/TLS wire totals",
     "Prior interim missed-target cohort retained"
-  ]
+  ],
+  "matched_cold": {
+    "run": 39837854756,
+    "job": 120030913741,
+    "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+    "whole_seconds": 846,
+    "flatpak_conclusion": "success",
+    "direct_hits": 0,
+    "misses": 345,
+    "restore_and_publication_steps": [
+      {
+        "name": "Validate Flatpak manifest",
+        "conclusion": "success"
+      },
+      {
+        "name": "Restore legacy Flatpak builder seed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Validate AppStream",
+        "conclusion": "success"
+      },
+      {
+        "name": "Validate build directory",
+        "conclusion": "success"
+      },
+      {
+        "name": "Validate repository",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish Flatpak Projected State",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Probe Pruned Flatpak Rebuild",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Upload Pruned Flatpak Evidence",
+        "conclusion": "skipped"
+      }
+    ],
+    "sdk_limit": "Runner/container SDK content preinstalled; only builder/compiler cache reuse disabled",
+    "workflow_status": "completed",
+    "workflow_conclusion": "failure #1816",
+    "workflow_runner_minutes": 20.566666666666666,
+    "cost_complete": true
+  },
+  "warm3_source": "4509ca5beffc73688d5f24faefe5b8f1bedac055",
+  "warm3_source_difference": "#1815 behavior-neutral C scene audio extraction; manifest/browser/CEF profile unchanged, inspect compiler counters; source difference disclosed"
 }
