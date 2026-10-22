@@ -526,12 +526,20 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
             source = root / 'source'
             (source / 'a').mkdir(parents=True)
             (source / 'a/result').write_bytes(b'actual compiler bytes')
+            (source / 'bin').mkdir()
+            for compiler in ('cc', 'c++', 'gcc', 'g++'):
+                (source / 'bin' / compiler).symlink_to('/usr/bin/ccache')
             profile = {'source': 'a' * 40, 'sdk': 'sdk-commit', 'compiler': 'compiler-sha', 'manifest': 'manifest-sha'}
             artifact = root / 'artifact'
             report = module.pack(source, artifact, profile)
             self.assertEqual(report['payload_bytes'], 21)
             target = root / 'target'
+            (target / 'bin').mkdir(parents=True)
+            for compiler in ('cc', 'c++', 'gcc', 'g++'):
+                (target / 'bin' / compiler).symlink_to('/usr/bin/ccache')
             module.restore(artifact, target, profile)
+            self.assertTrue((target / 'bin/cc').is_symlink())
+            self.assertEqual(report['omitted_builder_wrappers'], ['bin/c++', 'bin/cc', 'bin/g++', 'bin/gcc'])
             self.assertEqual((target / 'a/result').read_bytes(), b'actual compiler bytes')
             with self.assertRaisesRegex(ValueError, 'profile'):
                 module.restore(artifact, root / 'wrong', dict(profile, compiler='changed'))
@@ -549,7 +557,7 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         import tarfile
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name, kind in [('../escape', tarfile.REGTYPE), ('/absolute', tarfile.REGTYPE),
+            for name, kind in [('../escape', tarfile.REGTYPE), ('/absolute', tarfile.REGTYPE), ('bin/cc', tarfile.REGTYPE),
                                ('link', tarfile.SYMTYPE), ('hardlink', tarfile.LNKTYPE)]:
                 artifact = root / ('artifact-' + str(len(list(root.iterdir()))))
                 artifact.mkdir()
