@@ -198,6 +198,7 @@
                 }
             ],
             "build-options": {
+                "no-debuginfo-compression": true,
                 "append-path": "/app/rust/bin",
                 "env": {
                     "CARGO_HOME": "/run/build/obs/.flatpak-rust/cargo",
