@@ -76,9 +76,15 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         # v6.8 adds a save switch independent of cache/restore. v6.7
         # ignores this input, so the pin is part of the writer contract.
         self.assertIn("flatpak-builder@79327416609af08178ad73b352877e51450790b3", block)
-        self.assertIn("save-cache: ${{ github.ref == 'refs/heads/master' }}", block)
+        self.assertIn("save-cache: ${{ github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}", block)
         self.assertRegex(block, r"(?m)^          cache: true$")
-        self.assertRegex(block, r"(?m)^          restore-cache: true$")
+        # The dependency snapshot must be extracted before the newer compiler
+        # snapshot. A second restore here overwrites mutable ccache manifests.
+        self.assertRegex(block, r"(?m)^          restore-cache: false$")
+        dependency = workflow.split("id: flatpak-builder-cache-lookup", 1)[1].split("\n      - ", 1)[0]
+        self.assertNotIn("lookup-only: true", dependency)
+        self.assertIn("path: .flatpak-builder", dependency)
+        self.assertLess(workflow.index("id: flatpak-builder-cache-lookup"), workflow.index("id: flatpak-compiler-cache"))
 
     def test_separate_compiler_snapshot_saves_only_on_master(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
