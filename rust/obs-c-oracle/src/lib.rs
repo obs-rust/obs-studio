@@ -88,6 +88,7 @@ pub mod portal_shortcut_ids;
 pub mod proc;
 pub mod profiler;
 pub mod profiler_snapshot;
+pub mod pulse_format;
 pub mod pulse_stream_flags;
 pub mod scene_blend;
 pub mod scene_bounds;

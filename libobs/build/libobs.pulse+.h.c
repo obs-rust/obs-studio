@@ -3,7 +3,6 @@
 #include "libobs/build/libobs-pulse.pch.h"
 
 #include "libobs/audio-monitoring/pulse/pulseaudio-enum-devices.c.h"
-#include "libobs/audio-monitoring/pulse/pulseaudio-monitor-format.c.h"
 #include "libobs/audio-monitoring/pulse/pulseaudio-monitoring-available.c.h"
 #include "libobs/audio-monitoring/pulse/pulseaudio-output.c.h"
 #include "libobs/audio-monitoring/pulse/pulseaudio-wrapper.c.h"

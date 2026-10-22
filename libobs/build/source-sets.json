@@ -189,7 +189,8 @@
     "build/libobs.ported-hevc+.h.c"
   ],
   "LIBOBS_PULSE_PORTED_SOURCES": [
-    "build/libobs.ported-pulse+.h.c"
+    "build/libobs.ported-pulse+.h.c",
+    "build/libobs.ported-pulse-format+.h.c"
   ],
   "LIBOBS_NIX_GIO_PORTED_SOURCES": [
     "build/libobs.ported-nix-dbus+.h.c"

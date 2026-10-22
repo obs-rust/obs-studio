@@ -451,6 +451,9 @@ dependencies = [
 [[package]]
 name = "obs-audio-monitoring"
 version = "0.1.0"
+dependencies = [
+ "obs-util",
+]
 
 [[package]]
 name = "obs-build"

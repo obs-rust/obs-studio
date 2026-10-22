@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-pulse.pch.h"
+#include "libobs/build/libobs-ported-pulse-format.pch.h"
 
 enum speaker_layout pulseaudio_channels_to_obs_speakers(uint_fast32_t channels)
 {

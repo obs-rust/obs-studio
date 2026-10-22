@@ -66,6 +66,17 @@ _free_packets
 _pulseaudio_monitor_stream_flags
 _pulseaudio_monitor_reset_on_sink_event
 _pulseaudio_monitor_backlog_excess
+# pulseaudio-monitor-format.c: pulseaudio-output.c and pulseaudio-wrapper.c
+# call them inside libobs on Linux and FreeBSD. Built on every host; not EXPORT.
+_pulseaudio_channels_to_obs_speakers
+_pulseaudio_to_obs_audio_format
+_pulseaudio_channel_map
+_pulseaudio_monitor_sink_format
+_pulseaudio_monitor_sink_channels
+_pulseaudio_monitor_process_volume
+_pulseaudio_monitor_queued_bytes
+_pulseaudio_monitor_drop_split
+_pulseaudio_monitor_devices_match
 # obs-nix-hotkey-state.c: the Wayland hotkey code calls them inside libobs
 # on Linux and FreeBSD. Built on every host; not EXPORT.
 _obs_nix_hotkey_state_free

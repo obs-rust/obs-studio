@@ -82,6 +82,17 @@
     pulseaudio_monitor_stream_flags;
     pulseaudio_monitor_reset_on_sink_event;
     pulseaudio_monitor_backlog_excess;
+    /* pulseaudio-monitor-format.c. pulseaudio-output.c and
+     * pulseaudio-wrapper.c call them inside libobs. Not EXPORT. */
+    pulseaudio_channels_to_obs_speakers;
+    pulseaudio_to_obs_audio_format;
+    pulseaudio_channel_map;
+    pulseaudio_monitor_sink_format;
+    pulseaudio_monitor_sink_channels;
+    pulseaudio_monitor_process_volume;
+    pulseaudio_monitor_queued_bytes;
+    pulseaudio_monitor_drop_split;
+    pulseaudio_monitor_devices_match;
     /* obs-nix-hotkey-state.c. obs-nix-wayland.c and obs-nix-portal-shortcuts.c
      * call them inside libobs. Not EXPORT. */
     obs_nix_hotkey_state_free;
