@@ -625,10 +625,12 @@ if(TARGET OBS::pulseaudio)
   add_test(test_pulse_reconnect ${CMAKE_CURRENT_BINARY_DIR}/test_pulse_reconnect)
 
   # obs-rust/obs-studio#158: pulseaudio-wrapper.c against a fake libpulse
-  # defined in the test (headers only, no libpulse link).
+  # defined in the test (headers only, no libpulse link), with
+  # pulseaudio-monitor-format.c, whose device match devices_match() calls.
   add_executable(
     test_pulse_default_id
     test_pulse_default_id.c
+    "${CMAKE_SOURCE_DIR}/libobs/audio-monitoring/pulse/pulseaudio-monitor-format.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/audio-monitoring/pulse/pulseaudio-wrapper.c.h"
   )
   target_include_directories(

@@ -461,6 +461,7 @@
     "name": "test_pulse_default_id",
     "sources": [
       "test/cmocka/test_pulse_default_id.c",
+      "libobs/audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
       "libobs/audio-monitoring/pulse/pulseaudio-wrapper.c.h"
     ],
     "includes": [

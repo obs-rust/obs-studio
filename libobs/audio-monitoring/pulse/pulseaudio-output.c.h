@@ -46,159 +46,6 @@ struct sink_event {
 
 static void sink_events_start(void);
 
-static enum speaker_layout pulseaudio_channels_to_obs_speakers(uint_fast32_t channels)
-{
-	switch (channels) {
-	case 0:
-		return SPEAKERS_UNKNOWN;
-	case 1:
-		return SPEAKERS_MONO;
-	case 2:
-		return SPEAKERS_STEREO;
-	case 3:
-		return SPEAKERS_2POINT1;
-	case 4:
-		return SPEAKERS_4POINT0;
-	case 5:
-		return SPEAKERS_4POINT1;
-	case 6:
-		return SPEAKERS_5POINT1;
-	case 8:
-		return SPEAKERS_7POINT1;
-	default:
-		return SPEAKERS_UNKNOWN;
-	}
-}
-
-static enum audio_format pulseaudio_to_obs_audio_format(pa_sample_format_t format)
-{
-	switch (format) {
-	case PA_SAMPLE_U8:
-		return AUDIO_FORMAT_U8BIT;
-	case PA_SAMPLE_S16LE:
-		return AUDIO_FORMAT_16BIT;
-	case PA_SAMPLE_S32LE:
-		return AUDIO_FORMAT_32BIT;
-	case PA_SAMPLE_FLOAT32LE:
-		return AUDIO_FORMAT_FLOAT;
-	default:
-		return AUDIO_FORMAT_UNKNOWN;
-	}
-}
-
-static pa_channel_map pulseaudio_channel_map(enum speaker_layout layout)
-{
-	pa_channel_map ret;
-
-	ret.map[0] = PA_CHANNEL_POSITION_FRONT_LEFT;
-	ret.map[1] = PA_CHANNEL_POSITION_FRONT_RIGHT;
-	ret.map[2] = PA_CHANNEL_POSITION_FRONT_CENTER;
-	ret.map[3] = PA_CHANNEL_POSITION_LFE;
-	ret.map[4] = PA_CHANNEL_POSITION_REAR_LEFT;
-	ret.map[5] = PA_CHANNEL_POSITION_REAR_RIGHT;
-	ret.map[6] = PA_CHANNEL_POSITION_SIDE_LEFT;
-	ret.map[7] = PA_CHANNEL_POSITION_SIDE_RIGHT;
-
-	switch (layout) {
-	case SPEAKERS_MONO:
-		ret.channels = 1;
-		ret.map[0] = PA_CHANNEL_POSITION_MONO;
-		break;
-
-	case SPEAKERS_STEREO:
-		ret.channels = 2;
-		break;
-
-	case SPEAKERS_2POINT1:
-		ret.channels = 3;
-		ret.map[2] = PA_CHANNEL_POSITION_LFE;
-		break;
-
-	case SPEAKERS_4POINT0:
-		ret.channels = 4;
-		ret.map[3] = PA_CHANNEL_POSITION_REAR_CENTER;
-		break;
-
-	case SPEAKERS_4POINT1:
-		ret.channels = 5;
-		ret.map[4] = PA_CHANNEL_POSITION_REAR_CENTER;
-		break;
-
-	case SPEAKERS_5POINT1:
-		ret.channels = 6;
-		break;
-
-	case SPEAKERS_7POINT1:
-		ret.channels = 8;
-		break;
-
-	case SPEAKERS_UNKNOWN:
-	default:
-		ret.channels = 0;
-		break;
-	}
-
-	return ret;
-}
-
-static void process_byte(void *p, size_t frames, size_t channels, float vol)
-{
-	register uint8_t *cur = (uint8_t *)p;
-	register uint8_t *end = cur + frames * channels;
-
-	for (; cur < end; cur++)
-		*cur = ((int)*cur - 128) * vol + 128;
-}
-
-static void process_s16(void *p, size_t frames, size_t channels, float vol)
-{
-	register int16_t *cur = (int16_t *)p;
-	register int16_t *end = cur + frames * channels;
-
-	while (cur < end)
-		*(cur++) *= vol;
-}
-
-static void process_s32(void *p, size_t frames, size_t channels, float vol)
-{
-	register int32_t *cur = (int32_t *)p;
-	register int32_t *end = cur + frames * channels;
-
-	while (cur < end)
-		*(cur++) *= vol;
-}
-
-static void process_float(void *p, size_t frames, size_t channels, float vol)
-{
-	register float *cur = (float *)p;
-	register float *end = cur + frames * channels;
-
-	while (cur < end)
-		*(cur++) *= vol;
-}
-
-void process_volume(const struct audio_monitor *monitor, float vol, uint8_t *const *resample_data,
-		    uint32_t resample_frames)
-{
-	switch (monitor->format) {
-	case PA_SAMPLE_U8:
-		process_byte(resample_data[0], resample_frames, monitor->channels, vol);
-		break;
-	case PA_SAMPLE_S16LE:
-		process_s16(resample_data[0], resample_frames, monitor->channels, vol);
-		break;
-	case PA_SAMPLE_S32LE:
-		process_s32(resample_data[0], resample_frames, monitor->channels, vol);
-		break;
-	case PA_SAMPLE_FLOAT32LE:
-		process_float(resample_data[0], resample_frames, monitor->channels, vol);
-		break;
-	default:
-		// just ignore
-		break;
-	}
-}
-
 static uint64_t bytes_per_sec(const struct audio_monitor *data)
 {
 	return (uint64_t)data->bytes_per_frame * data->samples_per_sec;
@@ -216,10 +63,9 @@ static void drop_backlog(struct audio_monitor *data)
 	 * update, so take off what it has played since. (The interpolated
 	 * pa_stream_get_latency() runs ahead between updates with
 	 * pipewire-pulse at large quanta.) */
-	int64_t held = timing->write_index - timing->read_index;
-	if (timing->playing)
-		held -= (int64_t)util_mul_div64(pa_timeval_age(&timing->timestamp), bytes_per_sec(data), 1000000ULL);
-	uint64_t queued = (held > 0 ? (uint64_t)held : 0) + data->new_data.size;
+	uint64_t queued = pulseaudio_monitor_queued_bytes(timing->write_index, timing->read_index,
+							  timing->playing ? pa_timeval_age(&timing->timestamp) : 0,
+							  bytes_per_sec(data), data->new_data.size);
 
 	/* The server may have raised the buffer we asked for (a large
 	 * quantum). */
@@ -232,12 +78,10 @@ static void drop_backlog(struct audio_monitor *data)
 	if (!excess)
 		return;
 
-	size_t bytes = (size_t)util_mul_div64(excess, bytes_per_sec(data), 1000000ULL);
-	bytes -= bytes % data->bytes_per_frame;
-
-	size_t unwritten = bytes < data->new_data.size ? bytes : data->new_data.size;
-	deque_pop_front(&data->new_data, NULL, unwritten);
-	data->rewind += bytes - unwritten;
+	struct pulseaudio_monitor_drop drop =
+		pulseaudio_monitor_drop_split(excess, bytes_per_sec(data), data->bytes_per_frame, data->new_data.size);
+	deque_pop_front(&data->new_data, NULL, drop.unwritten);
+	data->rewind += drop.rewind;
 
 	blog(LOG_INFO, "Monitoring in '%s' was %" PRIu64 " ms behind; dropped %" PRIu64 " ms to catch up", data->device,
 	     util_mul_div64(queued, 1000ULL, bytes_per_sec(data)), excess / 1000);
@@ -323,7 +167,8 @@ static void on_audio_playback(void *param, obs_source_t *source, const struct au
 	bytes = monitor->bytes_per_frame * resample_frames;
 
 	if (!close_float(vol, 1.0f, EPSILON)) {
-		process_volume(monitor, vol, resample_data, resample_frames);
+		pulseaudio_monitor_process_volume(monitor->format, monitor->channels, vol, resample_data,
+						  resample_frames);
 	}
 
 	deque_push_back(&monitor->new_data, resample_data[0], bytes);
@@ -361,20 +206,16 @@ static void pulseaudio_sink_info(pa_context *c, const pa_sink_info *i, int eol, 
 	blog(LOG_INFO, "Audio format: %s, %" PRIu32 " Hz, %" PRIu8 " channels",
 	     pa_sample_format_to_string(i->sample_spec.format), i->sample_spec.rate, i->sample_spec.channels);
 
-	pa_sample_format_t format = i->sample_spec.format;
-	if (pulseaudio_to_obs_audio_format(format) == AUDIO_FORMAT_UNKNOWN) {
-		format = PA_SAMPLE_FLOAT32LE;
-
+	pa_sample_format_t format = pulseaudio_monitor_sink_format(i->sample_spec.format);
+	if (format != i->sample_spec.format) {
 		blog(LOG_INFO,
 		     "Sample format %s not supported by OBS,"
 		     "using %s instead for recording",
 		     pa_sample_format_to_string(i->sample_spec.format), pa_sample_format_to_string(format));
 	}
 
-	uint8_t channels = i->sample_spec.channels;
-	if (pulseaudio_channels_to_obs_speakers(channels) == SPEAKERS_UNKNOWN) {
-		channels = 2;
-
+	uint8_t channels = pulseaudio_monitor_sink_channels(i->sample_spec.channels);
+	if (channels != i->sample_spec.channels) {
 		blog(LOG_INFO,
 		     "%c channels not supported by OBS,"
 		     "using %c instead for recording",

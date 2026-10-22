@@ -52,6 +52,7 @@ if(ENABLE_PULSEAUDIO)
     libobs-objects
     PRIVATE
       build/libobs.pulse+.h.c
+      audio-monitoring/pulse/pulseaudio-monitor-format.h
       audio-monitoring/pulse/pulseaudio-stream-flags.h
       audio-monitoring/pulse/pulseaudio-wrapper.h
   )
