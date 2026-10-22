@@ -409,6 +409,63 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
             self.assertTrue(screenshots[-1].endswith('/build/files/share/app-info/media'))
             self.assertLess(calls.index(screenshots), next(i for i, command in enumerate(calls) if command[0] == 'flatpak-builder-lint'))
 
+    def test_compiler_probe_requires_substantial_reuse_after_forced_rebuild(self):
+        probe = self.load_probe()
+        for hits, misses, cached_app, succeeds in ((300, 2, False, True), (0, 330, False, False),
+                                                  (5, 0, False, False), (100, 230, False, False),
+                                                  (300, 2, True, False)):
+            with self.subTest(hits=hits, misses=misses, cached_app=cached_app), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                state, manifest = self.fixture(root)
+                recipe = json.loads(manifest.read_text())
+                recipe.update(sdk='org.freedesktop.Sdk', **{'runtime-version': '26.08'})
+                manifest.write_text(json.dumps(recipe))
+                original = manifest.read_bytes()
+                calls, builds = [], []
+                def execute(command, seconds):
+                    calls.append(command)
+                    if 'flatpak-builder' in command:
+                        isolated = Path(command[command.index('--state-dir') + 1])
+                        prepared = json.loads(Path(command[-1]).read_text())
+                        builds.append(prepared)
+                        if len(builds) == 1:
+                            self.assertFalse((isolated / 'ccache').exists())
+                            (isolated / 'ccache').mkdir()
+                            (isolated / 'ccache/fresh').write_text('new compiler results')
+                        else:
+                            self.assertTrue((isolated / 'ccache/fresh').exists())
+                            self.assertFalse((isolated / 'ccache/original').exists())
+                            self.assertNotEqual(prepared, builds[0], 'warm build must invalidate application module')
+                        build = Path(command[-2])
+                        for relative in ('bin/obs', 'share/app-info/icons/flatpak/128x128/com.obsproject.Studio.png',
+                                         'share/app-info/xmls/com.obsproject.Studio.xml.gz'):
+                            path = build / 'files' / relative
+                            path.parent.mkdir(parents=True, exist_ok=True)
+                            path.write_text('fixture')
+                        if len(builds) == 2 and cached_app:
+                            return 'Cache hit for obs, skipping build\n'
+                        return ('Cache hit for dependency, skipping build\nOBS_PRUNED_REBUILD_EXECUTED\n'
+                                + ('OBS_COMPILER_REUSE_EXECUTED\n' if len(builds) == 2 else ''))
+                    if '--print-stats' in command:
+                        return f'direct_cache_hit {hits}\npreprocessed_cache_hit 0\ncache_miss {misses}\n'
+                    return '{}'
+                if succeeds:
+                    result = probe.measure(state, manifest, root, execute=execute, compiler_reuse=True)
+                    self.assertEqual(result['compiler_reuse']['hits'], 300)
+                    self.assertEqual(result['compiler_reuse']['misses'], 2)
+                    self.assertEqual(len(builds), 2)
+                    reset = next(i for i, command in enumerate(calls) if '--zero-stats' in command)
+                    builder_calls = [i for i, command in enumerate(calls) if 'flatpak-builder' in command]
+                    self.assertLess(builder_calls[0], reset)
+                    self.assertLess(reset, builder_calls[1])
+                    self.assertEqual(sum(command[0] == 'flatpak-builder-lint' for command in calls), 6)
+                else:
+                    with self.assertRaises(ValueError):
+                        probe.measure(state, manifest, root, execute=execute, compiler_reuse=True)
+                self.assertEqual(manifest.read_bytes(), original)
+                self.assertEqual((state / 'ccache/original').read_text(), 'ccache')
+                self.assertEqual(sorted(path.name for path in root.iterdir()), ['manifest.json', 'state'])
+
     def test_pruned_rebuild_failure_cleans_temporary_state_and_manifest(self):
         probe = self.load_probe()
         with tempfile.TemporaryDirectory() as directory:
@@ -439,6 +496,7 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
         self.assertLess(workflow.index('- name: Validate repository'), workflow.index('- name: Probe Pruned Flatpak Rebuild'))
         self.assertIn('if: inputs.flatpak-pruned-build-probe', workflow)
         self.assertIn('uv run ci/flatpak_pruned_build_probe.py', workflow)
+        self.assertIn('--compiler-reuse', workflow)
 
     def test_pruned_rebuild_still_rejects_links_in_dependency_repository(self):
         probe = self.load_probe()
