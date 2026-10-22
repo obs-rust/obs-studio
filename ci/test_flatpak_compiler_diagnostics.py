@@ -1,11 +1,12 @@
 """Opt-in compiler observations must not expose commands or change defaults."""
 
 import copy
-import tempfile
+import sys
 import unittest
 from pathlib import Path
 
-from ci.flatpak_compiler_diagnostics import configure, summarize
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from flatpak_compiler_diagnostics import configure, summarize
 
 
 class FlatpakCompilerDiagnosticsTest(unittest.TestCase):
@@ -62,6 +63,7 @@ class FlatpakCompilerDiagnosticsTest(unittest.TestCase):
         self.assertIn("name: Configure Flatpak Compiler Diagnostics", builder)
         self.assertIn("name: Summarize Flatpak Compiler Diagnostics", builder)
         self.assertIn("name: flatpak-compiler-diagnostics-${{ github.run_id }}", builder)
+        self.assertIn("keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}", builder)
 
 
 if __name__ == "__main__":

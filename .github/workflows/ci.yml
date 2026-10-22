@@ -5,6 +5,10 @@ run-name: ${{ github.event.pull_request.title || github.ref_name }} pull request
 on:
   workflow_dispatch:
     inputs:
+      flatpak-compiler-diagnostics:
+        description: Record bounded compiler cache reasons and log spans (manual diagnostic, no raw command upload)
+        type: boolean
+        default: false
       flatpak-runtime-reuse-run:
         description: Recheck an existing Flatpak export with the current test harness only (same-repository run ID)
         type: string
@@ -104,6 +108,7 @@ jobs:
     if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '') }}
     uses: ./.github/workflows/build-project.yaml
     with:
+      flatpak-compiler-diagnostics: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-diagnostics }}
       flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
       flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}
       flatpak-dependency-transfer-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-dependency-transfer-probe }}

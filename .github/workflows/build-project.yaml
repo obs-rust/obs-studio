@@ -2,6 +2,10 @@ name: Build Project
 on:
   workflow_call:
     inputs:
+      flatpak-compiler-diagnostics:
+        description: Record bounded compiler cache reasons and log spans (manual diagnostic, no raw command upload)
+        type: boolean
+        default: false
       flatpak-runtime-test:
         description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
         type: boolean
@@ -753,6 +757,11 @@ jobs:
       - name: Vendor Flatpak Cargo sources
         run: build-aux/prepare-flatpak-rust.sh
 
+      - name: Configure Flatpak Compiler Diagnostics
+        id: flatpak-compiler-diagnostic-config
+        if: inputs.flatpak-compiler-diagnostics
+        run: uv run ci/flatpak_compiler_diagnostics.py configure --manifest build-aux/com.obsproject.Studio.json
+
       - name: Validate Flatpak manifest
         uses: ./.github/actions/flatpak-builder-lint
         with:
@@ -838,9 +847,25 @@ jobs:
           save-cache: false
           cache-key: ${{ steps.setup.outputs.cacheKey }}
           mirror-screenshots-url: https://dl.flathub.org/media
+          # Keep the module-local diagnostic log until its sanitized summary.
+          # Build directories are excluded from the projected cache publisher.
+          keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}
 
       # The pinned action snapshots this state immediately after building.
       # Measure its composition before considering any cache-content changes.
+      - name: Summarize Flatpak Compiler Diagnostics
+        if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
+        run: uv run ci/flatpak_compiler_diagnostics.py summarize --output "$RUNNER_TEMP/flatpak-compiler-diagnostics.json"
+
+      - name: Upload Flatpak Compiler Diagnostics
+        if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: flatpak-compiler-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/flatpak-compiler-diagnostics.json
+          retention-days: 2
+          if-no-files-found: error
+
       - name: Report Flatpak Cache Contents
         if: always()
         timeout-minutes: 2

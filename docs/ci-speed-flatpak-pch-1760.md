@@ -392,3 +392,36 @@ the exact future Actions archive size or retention. Inspect the first trusted
 production publication and retained consumers after normal merge, then collect
 the required routine warm before/after cohort. Neither the418s v7 consumer nor
 v8's diagnostic consumer proves the parent's50%median target by itself.
+
+
+## Production result and next compiler attribution (#1760)
+
+Merged #1767 published a trusted 2,266,246,245-byte projected Actions cache
+(id9351848007) after validators. The compiler-cold seed job119934657726 in
+run39810319992 succeeded in651s with six dependency hits and0/331compiler
+hits. Its enclosing workflow later cancelled the remaining macOS job under
+existing master-dispatch concurrency; all selected work cost112.1runner-min.
+
+Actual retained consumer119942032116 in run39812201578 restored that exact
+cache and genuinely rebuilt OBS with329directhits/2misses. All validators
+passed; the whole job took480s. This single observation is about47% below
+the historical905s median, but exceeds450s and is not the required three-job
+comparison. Exact-key publication was skipped; different source generations
+must include publication costs. The issue remains open.
+
+The default-off `flatpak-compiler-diagnostics` dispatch input attributes the
+remaining compiler work. It adds only `CCACHE_LOGFILE` to the generated OBS
+module environment and retains build directories for that diagnostic job.
+The pinned action supports `keep-build-dirs`; those directories are excluded
+from the existing projected publisher. Compiler flags, freshness settings,
+Rust wrapper bypass, shipped outputs and validators are preserved.
+
+The report artifact `flatpak-compiler-diagnostics-<run>` contains only bounded
+repository-relative source labels, result codes, unsupported option names
+(with option values omitted), and observed log spans. Raw commands and
+environment logs stay in the runner's transient build directory. At most
+16MiB across eight module logs are read; oversized or missing observations
+fail the requested diagnostic. Interleaved invocations and PID reuse are
+handled separately. Spans are wall intervals, not CPU time, and uncacheable
+calls can exec the compiler after logging ends. Concurrent spans must not be
+summed into job time. This diagnostic does not itself establish savings.
