@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-context-names.pch.h"
 
 /* Context names, moved from obs.c: the name a context gets for a NULL or
  * empty name, and the name that makes a duplicate unique. Pure: no libobs
  * state. obs.c keeps the unnamed counter (obs->data.unnamed_index) and the
  * name tables, which it looks up for obs_context_name_deduplicate() through
  * exists(). Both return a bmalloc'd string (or NULL) that the caller owns.
- * Declared in obs-internal.h. */
+ * Declared in obs-internal.h. Ported to rust/obs-core (context_names): the
+ * hybrid libobs drops this file. */
 
 /* ensures that names are never blank */
 char *obs_context_name_dup(const char *name, bool private, long long *unnamed_index)

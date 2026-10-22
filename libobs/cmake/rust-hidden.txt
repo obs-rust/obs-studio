@@ -119,6 +119,10 @@ obs_nix_portal_sets_has
 obs_nix_portal_sets_unchanged
 obs_nix_portal_sets_request
 obs_nix_portal_sets_partition
+# obs-context-names.c: obs.c calls them inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shims stay hidden the same way.
+obs_context_name_dup
+obs_context_name_deduplicate
 # obs-video-plan.c: obs.c calls them inside libobs. Declared in
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_video_size_valid

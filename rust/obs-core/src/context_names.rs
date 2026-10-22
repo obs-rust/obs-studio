@@ -54,34 +54,69 @@ pub enum Lookup<'a> {
 }
 
 /// `"__unnamed%04lld"`: the unnamed name for counter value `index`.
+/// `%04lld` pads with zeros to four characters, the sign included, as
+/// Rust's `{:04}` does.
 pub fn unnamed_name(index: i64) -> Vec<u8> {
-    let _ = index;
-    todo!()
+    let mut name = UNNAMED_PREFIX.to_vec();
+    name.extend_from_slice(format!("{index:04}").as_bytes());
+    name
 }
 
 /// `"%s %d"`: the candidate for `name` with suffix `suffix`. A NULL name is
 /// printed as [`NULL_STRING`], as the C's `"%s"` prints it.
 pub fn suffixed_name(name: Option<&[u8]>, suffix: i32) -> Vec<u8> {
-    let _ = (name, suffix);
-    todo!()
+    let mut candidate = name.unwrap_or(NULL_STRING).to_vec();
+    candidate.push(b' ');
+    candidate.extend_from_slice(suffix.to_string().as_bytes());
+    candidate
 }
 
 /// `obs_context_name_dup()`: the name a context gets. `None` for a private
 /// context without a name; [`unnamed_name`] of the counter, which then
 /// counts up, for a NULL or empty name; else a copy of the name.
+///
+/// The C's `(*unnamed_index)++` at `LLONG_MAX` is signed overflow; it wraps
+/// here, as in the C oracle (libobs counts from 0).
 pub fn name_dup(name: Option<&[u8]>, private: bool, unnamed_index: &mut i64) -> Option<Vec<u8>> {
-    let _ = (name, private, unnamed_index);
-    todo!()
+    if private && name.is_none() {
+        return None;
+    }
+
+    match name {
+        None | Some(b"") => {
+            let index = *unnamed_index;
+            *unnamed_index = index.wrapping_add(1);
+            Some(unnamed_name(index))
+        }
+        Some(name) => Some(name.to_vec()),
+    }
 }
 
 /// `obs_context_name_deduplicate()`: `None` when `exists` says the name is
 /// free, else the first [`suffixed_name`] from 2 up that `exists` says is
 /// free. `exists` is asked [`Lookup::Name`] first, then each candidate in
 /// order, once each, and nothing after the free one.
-pub fn deduplicate<F>(name: Option<&[u8]>, exists: F) -> Option<Vec<u8>>
+///
+/// The suffix is the C's `int suffix`, counted up with `suffix++`. Here it
+/// wraps rather than panic past `INT_MAX`, where the C's signed overflow is
+/// undefined; neither is reached.
+pub fn deduplicate<F>(name: Option<&[u8]>, mut exists: F) -> Option<Vec<u8>>
 where
     F: FnMut(Lookup<'_>) -> bool,
 {
-    let _ = (name, exists);
-    todo!()
+    let mut taken = exists(Lookup::Name(name));
+    if !taken {
+        return None;
+    }
+
+    let mut new_name = Vec::new();
+    let mut suffix: i32 = 2;
+
+    while taken {
+        new_name = suffixed_name(name, suffix);
+        suffix = suffix.wrapping_add(1);
+        taken = exists(Lookup::Candidate(&new_name));
+    }
+
+    Some(new_name)
 }

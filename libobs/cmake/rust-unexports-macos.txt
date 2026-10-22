@@ -109,6 +109,9 @@ _obs_nix_portal_sets_has
 _obs_nix_portal_sets_unchanged
 _obs_nix_portal_sets_request
 _obs_nix_portal_sets_partition
+# obs-context-names.c: obs.c calls them inside libobs. Not EXPORT.
+_obs_context_name_dup
+_obs_context_name_deduplicate
 # obs-video-plan.c: obs.c calls them inside libobs. Not EXPORT.
 _obs_video_size_valid
 _obs_video_align_output_size
