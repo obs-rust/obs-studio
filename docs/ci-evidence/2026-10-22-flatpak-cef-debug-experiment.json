@@ -1,0 +1,68 @@
+{
+  "scope": "Local exact pinned CEF post-processing experiment; not full Flatpak or packaged runtime qualification",
+  "archive_sha256": "8ffc64d06ea74da613eeda7f2aa5d4e98661af6fa3ed8c68724c9a6e4e89ea8e",
+  "archive_bytes": 291566236,
+  "original_bytes": 2031350672,
+  "upstream_builder_source": "https://github.com/flatpak/flatpak-builder/blob/bd35975d1b089960251809a5bec738ded3cd6f46/src/builder-post-process.c",
+  "bosn_jobs": [
+    334,
+    335
+  ],
+  "samples": [
+    {
+      "mode": "compressed",
+      "compression_seconds": 128.89423050708137,
+      "strip_seconds": 2.057247859891504,
+      "post_seconds": 130.9514865318779,
+      "binary_bytes": 279546528,
+      "debug_bytes": 420562136,
+      "build_id_verified": true,
+      "allocated_sections_identical": true,
+      "gdb_source_line": "Line 25 of \"../../cef/libcef_dll/libcef_dll2.cc\" starts at address 0x2cacc60 <cef_version_info> and ends at 0x2cacc66 <cef_version_info+6>.",
+      "gdb_missing_dwo_warnings": 41344,
+      "gdb_log_sha256": "db69cfb7b4f91391da233a6696d496fe8f35a4f965dbb22b0ff82a09e323efba"
+    },
+    {
+      "mode": "uncompressed",
+      "compression_seconds": 0,
+      "strip_seconds": 9.115129027981311,
+      "post_seconds": 9.11513250390999,
+      "binary_bytes": 279546528,
+      "debug_bytes": 1751810960,
+      "build_id_verified": true,
+      "allocated_sections_identical": true,
+      "gdb_source_line": "Line 25 of \"../../cef/libcef_dll/libcef_dll2.cc\" starts at address 0x2cacc60 <cef_version_info> and ends at 0x2cacc66 <cef_version_info+6>.",
+      "gdb_missing_dwo_warnings": 41344,
+      "gdb_log_sha256": "d5f7c694c9d2e898fd8799e4c41c03ce2fdef78ffe95ee6d3b7eac138cffc307"
+    },
+    {
+      "mode": "zstd",
+      "compression_seconds": 8.704655589070171,
+      "strip_seconds": 1.9613545159809291,
+      "post_seconds": 10.6660172380507,
+      "binary_bytes": 279546528,
+      "debug_bytes": 394021568,
+      "build_id_verified": true,
+      "allocated_sections_identical": true,
+      "gdb_source_line": "Line 25 of \"../../cef/libcef_dll/libcef_dll2.cc\" starts at address 0x2cacc60 <cef_version_info> and ends at 0x2cacc66 <cef_version_info+6>.",
+      "gdb_missing_dwo_warnings": 41344,
+      "gdb_log_sha256": "8e165e66bb58baff8611dafaf593f6d79c5db786b7748e9aac2cd846ce7df1d5"
+    }
+  ],
+  "tool_versions": {
+    "eu-strip": "eu-strip (elfutils) 0.194",
+    "eu-elfcompress": "eu-elfcompress (elfutils) 0.194",
+    "gdb": "GNU gdb (Ubuntu 17.1-2ubuntu1) 17.1",
+    "zstd": "*** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***"
+  },
+  "build_id": "1057eb4fa0ac432b4deda44fcd2bc20a4d9182c3",
+  "original_sha256": "3278395c888ab7e85af6494c949eda326d0b0a41dd422f098dfb9ba40ba962c5",
+  "limits": [
+    "One trial per variant on local Ubuntu26.04 with four bosn CPUs; no hosted whole-job gain established.",
+    "Input CEF already references unavailable DWO files:41344warnings in all three variants; no claim of complete upstream Chromium source-level debug coverage.",
+    "All allocated ELF sections and build IDs match; GDB resolves the same cef_version_info source line.",
+    "Uncompressed debug grows from420562136to1751810960bytes; not selected as the CEF payload.",
+    "Fast Zstandard compression produces394021568bytes; actual OSTree export/transfer and Flatpak SDK debugger validation remain pending.",
+    "Package runtime, saved profile, screen/camera/microphone/browser checks are required before adoption; no global speed target achieved yet."
+  ]
+}
