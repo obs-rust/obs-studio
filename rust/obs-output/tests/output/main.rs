@@ -7,6 +7,7 @@ mod delay;
 mod delay_parity;
 mod interleave;
 mod interleave_parity;
+mod protocols;
 
 use std::process::Command;
 
