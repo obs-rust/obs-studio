@@ -24,6 +24,10 @@ _obs_hotkey_name_map_free
 _obs_hotkey_combination_from_data
 _obs_hotkey_combination_bindable
 _obs_hotkey_combination_to_data
+# obs-hotkey-press.c: obs-hotkey.c calls them inside libobs. Not EXPORT.
+_obs_hotkey_binding_query
+_obs_hotkey_binding_inject
+_obs_hotkeys_query_modifiers
 # platform-nix.c is not exported by the C libobs.
 _get_plugin_info
 # platform-windows.c is not exported for these two.

@@ -47,6 +47,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -95,14 +96,22 @@ pub enum Action {
 /// `modifiers_match()`: strict, the binding's modifiers equal the held
 /// ones; not strict, they are a subset of them.
 pub fn modifiers_match(binding_modifiers: u32, modifiers: u32, strict: bool) -> bool {
-    let _ = (binding_modifiers, modifiers, strict);
-    todo!()
+    if strict {
+        binding_modifiers == modifiers
+    } else {
+        binding_modifiers & modifiers == binding_modifiers
+    }
 }
 
-/// `obs_hotkey_binding_query()`: one poll of one binding, with the held
-/// `modifiers` from [`query_modifiers`]. `no_press` (background presses
-/// off) blocks presses but not releases. `is_pressed` is the platform key
-/// state, called at most once, at the point the C calls it.
+/// `obs_hotkey_binding_query()` (`handle_binding()`): one poll of one
+/// binding, with the held `modifiers` from [`query_modifiers`]. `no_press`
+/// (background presses off) blocks presses but not releases. `is_pressed`
+/// is the platform key state, called at most once, at the point the C
+/// calls it.
+///
+/// The C's `bool *pressed` parameter is gone: every caller passed `NULL`,
+/// and it was only ever aliased to the modifier-only flag, so the key state
+/// is skipped for a modifier-only binding here, as there.
 pub fn query(
     binding: &mut Binding,
     modifiers: u32,
@@ -110,22 +119,69 @@ pub fn query(
     strict: bool,
     is_pressed: impl FnOnce(i32) -> bool,
 ) -> Action {
-    let _ = (binding, modifiers, no_press, strict, is_pressed);
-    todo!()
+    let key = binding.key;
+    let matches = modifiers_match(key.modifiers, modifiers, strict);
+    let modifiers_only = key.key == KEY_NONE;
+
+    if !strict && key.modifiers == 0 {
+        binding.modifiers_match = true;
+    }
+
+    let held = if key.modifiers == 0 && modifiers_only {
+        // An empty binding: never pressed by a poll.
+        false
+    } else if (!binding.modifiers_match && !modifiers_only) || !matches {
+        false
+    } else {
+        // Lazily, and only for a binding with a key.
+        modifiers_only || is_pressed(key.key)
+    };
+
+    if held {
+        if binding.pressed || no_press {
+            Action::None
+        } else {
+            Action::Press
+        }
+    } else {
+        binding.modifiers_match = matches;
+        if binding.pressed {
+            Action::Release
+        } else {
+            Action::None
+        }
+    }
 }
 
 /// `obs_hotkey_binding_inject()`: one injected key event for one binding.
 /// It presses when the modifiers match, and the key is the binding's (or
 /// the binding has no key), and the event is a press (or the binding has
-/// no key); then it also sets the latch. It never releases.
+/// no key); then it also sets the latch, pressed or not. It never releases
+/// and never needs the key state.
 pub fn inject(binding: &mut Binding, event: KeyCombination, pressed: bool, strict: bool) -> Action {
-    let _ = (binding, event, pressed, strict);
-    todo!()
+    if !modifiers_match(binding.key.modifiers, event.modifiers, strict) {
+        return Action::None;
+    }
+    let presses = binding.key.key == KEY_NONE || (binding.key.key == event.key && pressed);
+    if !presses {
+        return Action::None;
+    }
+    binding.modifiers_match = true;
+    if binding.pressed {
+        Action::None
+    } else {
+        Action::Press
+    }
 }
 
 /// `obs_hotkeys_query_modifiers()`: the held modifiers, querying Shift,
 /// Control, Alt and Meta once each, in that order ([`MODIFIER_KEYS`]).
 pub fn query_modifiers(mut is_pressed: impl FnMut(i32) -> bool) -> u32 {
-    let _ = (&mut is_pressed, KEY_NONE);
-    todo!()
+    let mut modifiers = 0;
+    for (key, bit) in MODIFIER_KEYS {
+        if is_pressed(key) {
+            modifiers |= bit;
+        }
+    }
+    modifiers
 }

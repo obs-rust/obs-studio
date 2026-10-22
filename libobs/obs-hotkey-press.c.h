@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-press.pch.h"
 
 /* The hotkey press state machine: when one binding is pressed or released.
  * The hotkey thread calls obs_hotkey_binding_query() for every binding on
@@ -27,7 +27,8 @@
  * array and its walk (enum_bindings()), the pressed count and callbacks
  * (obs_hotkey_binding_press() and obs_hotkey_binding_release()) and the
  * platform key state (obs_hotkey_key_is_pressed()) stay in obs-hotkey.c.h.
- * Declared in obs-internal.h. */
+ * Declared in obs-internal.h. Ported to rust/obs-hotkey (press): the hybrid
+ * libobs drops this file. */
 
 static inline bool modifiers_match(const struct obs_hotkey_binding_fields *fields, uint32_t modifiers_,
 				   bool strict_modifiers)
