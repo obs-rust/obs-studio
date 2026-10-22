@@ -6,6 +6,10 @@ on:
         description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
         type: boolean
         default: false
+      flatpak-dependency-transfer-probe:
+        description: Also transfer actual OSTree cache state (requires compiler transfer probe; extra storage/build cost)
+        type: boolean
+        default: false
       flatpak-compiler-transfer-probe:
         description: Transfer an experimental compiler artifact to one fresh Flatpak builder (extra storage/build cost)
         type: boolean
@@ -75,6 +79,10 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Check Experimental Flatpak Inputs
+        if: inputs.flatpak-dependency-transfer-probe
+        run: test '${{ inputs.flatpak-compiler-transfer-probe }}' = true
 
       - name: Check Event Data ☑️
         id: setup
@@ -855,6 +863,20 @@ jobs:
           retention-days: 7
 
 
+      - name: Pack Experimental Flatpak Dependency Artifact
+        if: inputs.flatpak-dependency-transfer-probe
+        run: |
+          timeout 600s uv run ci/flatpak_dependency_cache.py pack --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
+      - name: Upload Experimental Flatpak Dependency Artifact
+        if: inputs.flatpak-dependency-transfer-probe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-dependency-transfer-${{ github.run_id }}
+          path: ${{ runner.temp }}/flatpak-dependency-transfer
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
       - name: Pack Experimental Flatpak Compiler Artifact
         if: inputs.flatpak-compiler-transfer-probe
         run: |
@@ -969,6 +991,7 @@ jobs:
       - name: Vendor Flatpak Compiler Consumer Sources
         run: build-aux/prepare-flatpak-rust.sh
       - name: Restore Dependency State Before Compiler Artifact
+        if: ${{ !inputs.flatpak-dependency-transfer-probe }}
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .flatpak-builder
@@ -985,7 +1008,18 @@ jobs:
           # Use the same dependency preparation before comparing identities;
           # any remaining SDK/compiler drift must still reject the archive.
           timeout 300s flatpak-builder --install-deps-only --install-deps-from=flathub \
-            --arch=x86_64 --state-dir .flatpak-builder flatpak_app build-aux/com.obsproject.Studio.json
+            --arch=x86_64 --state-dir "$RUNNER_TEMP/flatpak-sdk-prep" flatpak_app build-aux/com.obsproject.Studio.json
+      - name: Download Experimental Dependency Artifact
+        if: inputs.flatpak-dependency-transfer-probe
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: flatpak-dependency-transfer-${{ github.run_id }}
+          path: ${{ runner.temp }}/flatpak-dependency-transfer
+      - name: Restore Experimental Dependency Artifact
+        if: inputs.flatpak-dependency-transfer-probe
+        run: |
+          timeout 600s uv run ci/flatpak_dependency_cache.py restore --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
       - name: Verify and Restore Compiler Artifact Last
         run: |
           uv run ci/flatpak_compiler_cache.py restore --manifest build-aux/com.obsproject.Studio.json \
@@ -997,6 +1031,11 @@ jobs:
         run: |
           uv run ci/flatpak_compiler_cache.py force --manifest build-aux/com.obsproject.Studio.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+      - name: Record Experimental Dependency Reuse
+        if: inputs.flatpak-dependency-transfer-probe
+        run: |
+          uv run ci/flatpak_dependency_cache.py instrument --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer" >> "$GITHUB_PATH"
       - name: Build Full Flatpak Compiler Consumer
         uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
         with:
@@ -1006,6 +1045,11 @@ jobs:
           restore-cache: false
           save-cache: false
           mirror-screenshots-url: https://dl.flathub.org/media
+      - name: Verify All Dependency Modules Were Reused
+        if: inputs.flatpak-dependency-transfer-probe
+        run: |
+          uv run ci/flatpak_dependency_cache.py verify --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
       - name: Verify Substantial Cross Runner Compiler Reuse
         run: |
           uv run ci/flatpak_compiler_cache.py verify --manifest build-aux/com.obsproject.Studio.json \
@@ -1030,9 +1074,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/flatpak-compiler-result"
           shopt -s nullglob
-          for report in "$RUNNER_TEMP/flatpak-compiler-transfer/"*.json; do
+          for report in "$RUNNER_TEMP/flatpak-compiler-transfer/"*.json "$RUNNER_TEMP/flatpak-dependency-transfer/"*.json; do
             cp -- "$report" "$RUNNER_TEMP/flatpak-compiler-result/"
           done
+          if [[ -f "$RUNNER_TEMP/flatpak-dependency-transfer/builder.log" ]]; then
+            cp -- "$RUNNER_TEMP/flatpak-dependency-transfer/builder.log" "$RUNNER_TEMP/flatpak-compiler-result/"
+          fi
       - name: Upload Compiler Consumer Measurements
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

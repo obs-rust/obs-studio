@@ -642,6 +642,7 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         self.assertIn('--install-deps-only', block)
         self.assertIn('--install-deps-from=flathub', block)
         self.assertIn('timeout 300s flatpak-builder', block)
+        self.assertIn('--state-dir "$RUNNER_TEMP/flatpak-sdk-prep"', block)
 
     def test_sdk_mismatch_reports_both_profiles_without_restoring_cache(self):
         module = self.load_transfer()
@@ -794,3 +795,42 @@ class FlatpakDependencyTransferTest(unittest.TestCase):
                         consumer.index('Verify and Restore Compiler Artifact Last'))
         self.assertIn('Verify All Dependency Modules Were Reused', consumer)
         self.assertIn('ci/flatpak_dependency_cache.py verify', consumer)
+
+    def test_builder_capture_preserves_arguments_failure_and_dependency_rebuild_guards(self):
+        module = self.load_transfer()
+        import contextlib
+        import io
+        import types
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            builder = root / 'real builder'
+            builder.write_text('#!/bin/bash\nprintf "%s\\n" "$@"\nexit 23\n')
+            builder.chmod(0o700)
+            artifact = root / 'artifact with spaces'
+            manifest = root / 'manifest.json'
+            dependencies = ['base', 'devel', 'tools', 'qt', 'cef', 'rust-toolchain']
+            manifest.write_text(json.dumps({'modules': [{'name': name} for name in dependencies + ['obs']]}))
+            argv = ['flatpak_dependency_cache.py', 'instrument', '--manifest', str(manifest),
+                    '--cache', str(root / 'cache'), '--artifact', str(artifact)]
+            with patch.dict(sys.modules, {'flatpak_compiler_cache': types.SimpleNamespace(context=lambda path: {})}):
+                with patch.object(sys, 'argv', argv), patch.object(module.shutil, 'which', return_value=str(builder)):
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        module.main()
+                result = subprocess.run([str(artifact / 'bin/flatpak-builder'), 'literal $(false)'],
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, 23)
+                self.assertEqual((artifact / 'builder.log').read_text().strip(), 'literal $(false)')
+                good = ''.join('Cache hit for ' + name + ', skipping build\n' for name in dependencies)
+                for output, accepted in [(good + 'OBS_COMPILER_CONSUMER_EXECUTED\n', True),
+                                         (good, False),
+                                         (good + 'OBS_COMPILER_CONSUMER_EXECUTED\nCache hit for obs, skipping build\n', False)]:
+                    (artifact / 'builder.log').write_text(output)
+                    argv[1] = 'verify'
+                    with patch.object(sys, 'argv', argv), contextlib.redirect_stdout(io.StringIO()):
+                        if accepted:
+                            module.main()
+                        else:
+                            with self.assertRaisesRegex(ValueError, 'reuse|rebuild'):
+                                module.main()
+                    report = json.loads((artifact / 'dependency-result.json').read_text())
+                    self.assertEqual(report['status'], 'success' if accepted else 'failed')

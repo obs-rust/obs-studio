@@ -282,3 +282,33 @@ no cancellations; skipped jobs excluded and no billing multipliers. See
 [portable evidence](ci-evidence/2026-10-22-flatpak-transfer-v6.json).
 Actual compiler reuse, retained capacity, and routine whole-job savings remain
 unproven. The runtime fixture uses synthetic devices/software rendering.
+
+
+### Optional actual OSTree cache transport qualification
+
+`flatpak-dependency-transfer-probe` defaults to false and requires the compiler
+transfer probe. It adds an actual tar/zstd archive of `.flatpak-builder/cache`
+to the same-run experiment, with one-day artifact retention. This is a cache-only
+projection; application stage objects can remain. It is not a minimal dependency
+graph or a production writer/allocation change.
+
+The helper accepts only the observed `bare-user-only` repository mode, preserves
+checksum-shaped symlink objects as opaque payloads, rejects structural links,
+and runs real OSTree fsck before packing and after staged restoration. Inventory,
+profile and digest checks precede destination publication. Bounds are8GiB logical
+payload,2GiB compressed archive,100,000members and bounded subprocesses; these are
+experimental limits, not approved cache allocations. Packing/fsck/archive bytes
+and restore time are recorded. Local roundtrip fixtures exercise real tar/zstd
+but mock fsck; actual hosted OSTree preservation is still unproven.
+
+The fresh consumer skips ordinary builder-cache restoration for this experiment.
+It prepares SDK state separately, restores the transferred cache first and compiler
+results last, and forces application work without changing compiler inputs. A
+PATH wrapper records the existing pinned builder action while preserving argument
+and failure status. Require all dependency module hits, an actual application
+rebuild, substantial compiler reuse and unchanged three validators. Measurement
+uploads retain JSON and builder log without reuploading either large input archive.
+The producer export's runtime test does not prove the separately rebuilt consumer
+artifact; installed-profile qualification of that artifact remains necessary before
+any shipping decision. Actual transport/reuse/retention and whole-job savings
+must be established before adoption.
