@@ -17,15 +17,16 @@
 
 #include "libobs/build/libobs.pch.h"
 
-/* The hotkey pair press latch (moved verbatim from obs-hotkey.c.h): the
- * callbacks libobs registers for the two halves of a hotkey pair. Each half
- * keeps a latch (pressed0, pressed1). While one half is latched, the other
+/* The hotkey pair press latch: the callbacks libobs registers for the two
+ * halves of a hotkey pair. Each half keeps a latch (pressed0, pressed1). While one half is latched, the other
  * half's events are dropped. A press whose func returns true latches its
  * half, and its release then clears the latch without calling the func; any
  * other event calls the func, and the latch takes the event's pressed value
  * if the func returns true. They run with the hotkey mutex held: on the
  * hotkey thread, in obs_hotkey_inject_event(), or in
- * obs_hotkey_trigger_routed_callback(). The pair itself (create_hotkey_pair(),
+ * obs_hotkey_trigger_routed_callback(). This file reaches a pair only through
+ * obs_hotkey_pair_fields() (the two latches) and calls a half's func through
+ * obs_hotkey_pair_call_func(). The pair itself (create_hotkey_pair(),
  * register_hotkey_pair_internal(), the pair hash) stays in obs-hotkey.c.h.
  * Declared in obs-internal.h. */
 
@@ -34,13 +35,14 @@ void obs_hotkey_pair_first_func(void *data, obs_hotkey_id id, obs_hotkey_t *hotk
 	UNUSED_PARAMETER(id);
 
 	obs_hotkey_pair_t *pair = data;
-	if (pair->pressed1)
+	struct obs_hotkey_pair_fields fields = obs_hotkey_pair_fields(pair);
+	if (*fields.pressed1)
 		return;
 
-	if (pair->pressed0 && !pressed)
-		pair->pressed0 = false;
-	else if (pair->func[0](pair->data[0], pair->pair_id, hotkey, pressed))
-		pair->pressed0 = pressed;
+	if (*fields.pressed0 && !pressed)
+		*fields.pressed0 = false;
+	else if (obs_hotkey_pair_call_func(pair, 0, hotkey, pressed))
+		*fields.pressed0 = pressed;
 }
 
 void obs_hotkey_pair_second_func(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
@@ -48,11 +50,12 @@ void obs_hotkey_pair_second_func(void *data, obs_hotkey_id id, obs_hotkey_t *hot
 	UNUSED_PARAMETER(id);
 
 	obs_hotkey_pair_t *pair = data;
-	if (pair->pressed0)
+	struct obs_hotkey_pair_fields fields = obs_hotkey_pair_fields(pair);
+	if (*fields.pressed0)
 		return;
 
-	if (pair->pressed1 && !pressed)
-		pair->pressed1 = false;
-	else if (pair->func[1](pair->data[1], pair->pair_id, hotkey, pressed))
-		pair->pressed1 = pressed;
+	if (*fields.pressed1 && !pressed)
+		*fields.pressed1 = false;
+	else if (obs_hotkey_pair_call_func(pair, 1, hotkey, pressed))
+		*fields.pressed1 = pressed;
 }

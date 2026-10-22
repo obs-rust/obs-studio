@@ -287,6 +287,18 @@ static obs_hotkey_pair_t *create_hotkey_pair(struct obs_context_data *context, o
 	return pair;
 }
 
+/* The pair press latch (obs-hotkey-pair.c.h) reaches the pair only through
+ * these two. Declared in obs-internal.h; not exported. */
+struct obs_hotkey_pair_fields obs_hotkey_pair_fields(obs_hotkey_pair_t *pair)
+{
+	return (struct obs_hotkey_pair_fields){&pair->pressed0, &pair->pressed1};
+}
+
+bool obs_hotkey_pair_call_func(obs_hotkey_pair_t *pair, size_t half, obs_hotkey_t *hotkey, bool pressed)
+{
+	return pair->func[half](pair->data[half], pair->pair_id, hotkey, pressed);
+}
+
 static obs_hotkey_pair_id register_hotkey_pair_internal(obs_hotkey_registerer_t type, void *registerer,
 							void *(*weak_ref)(void *), struct obs_context_data *context,
 							const char *name0, const char *description0, const char *name1,

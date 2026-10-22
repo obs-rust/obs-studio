@@ -242,12 +242,24 @@ struct obs_hotkey_pair {
 
 typedef struct obs_hotkey_pair obs_hotkey_pair_t;
 
+/* The fields of a hotkey pair that the pair press latch reads and writes, as
+ * pointers into the pair, so it needs no layout of struct obs_hotkey_pair: the
+ * latch of the first and of the second half. */
+struct obs_hotkey_pair_fields {
+	bool *pressed0;
+	bool *pressed1;
+};
+
 /* The hotkey pair press latch (obs-hotkey-pair.c): the callbacks
  * register_hotkey_pair_internal() in obs-hotkey.c registers for the first and
  * second half of a pair, with the pair as data. They run with the hotkey mutex
- * held. Not exported. */
+ * held. They reach the pair through obs_hotkey_pair_fields(), and call a
+ * half's func (half 0 or 1) through obs_hotkey_pair_call_func(), in
+ * obs-hotkey.c. Not exported. */
 void obs_hotkey_pair_first_func(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed);
 void obs_hotkey_pair_second_func(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed);
+struct obs_hotkey_pair_fields obs_hotkey_pair_fields(obs_hotkey_pair_t *pair);
+bool obs_hotkey_pair_call_func(obs_hotkey_pair_t *pair, size_t half, obs_hotkey_t *hotkey, bool pressed);
 
 typedef struct obs_hotkeys_platform obs_hotkeys_platform_t;
 
