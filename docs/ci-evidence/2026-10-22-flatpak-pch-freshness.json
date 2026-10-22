@@ -1,0 +1,109 @@
+{
+  "scope": "Exercise PCH cache freshness; isolated fixture, not full Flatpak evidence.",
+  "manifest_sha256": "5092840cce38cd6e1923afedf92e1b560cfd261e885fa5b3978350a071d65c0e",
+  "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "ccache": "ccache version 4.12.3\nFeatures: avx2 file-storage http-storage redis+unix-storage redis-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.\n",
+  "limits": "Local fixture only, not production SDK or full job. Probe executed by bosn job364; candidate manifest, unchanged OBS helper. Cache counters zeroed for each trial.",
+  "trials": [
+    {
+      "trial": "cold",
+      "expected": 42,
+      "actual": 42,
+      "seconds": 1.7719656890258193,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "warm",
+      "expected": 42,
+      "actual": 42,
+      "seconds": 0.3810643490869552,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "header-same-stat",
+      "expected": 43,
+      "actual": 43,
+      "seconds": 1.5714077181182802,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "header-warm",
+      "expected": 43,
+      "actual": 43,
+      "seconds": 0.3264211150817573,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "source-same-stat",
+      "expected": 44,
+      "actual": 44,
+      "seconds": 0.430718309013173,
+      "direct_hits": 1,
+      "preprocessed_hits": 0,
+      "misses": 1,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "source-warm",
+      "expected": 44,
+      "actual": 44,
+      "seconds": 0.3207931409124285,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "configuration",
+      "expected": 87,
+      "actual": 87,
+      "seconds": 1.4707452279981226,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "configuration-warm",
+      "expected": 87,
+      "actual": 87,
+      "seconds": 0.31119166500866413,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "compiler-same-stat",
+      "expected": 173,
+      "actual": 173,
+      "seconds": 1.6706881131976843,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "compiler-warm",
+      "expected": 173,
+      "actual": 173,
+      "seconds": 0.3197482649702579,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    }
+  ]
+}

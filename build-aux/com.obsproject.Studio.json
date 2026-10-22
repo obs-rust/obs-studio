@@ -154,6 +154,9 @@
             "builddir": true,
             "config-opts": [
                 "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+                "-DENABLE_CCACHE=ON",
+                "-DCMAKE_C_COMPILER=/usr/bin/cc",
+                "-DCMAKE_CXX_COMPILER=/usr/bin/c++",
                 "-DCMAKE_INCLUDE_PATH=/app/include;/usr/include",
                 "-DENABLE_FLATPAK=ON",
                 "-DENABLE_GPU_STATUS=OFF",
@@ -203,7 +206,9 @@
                 "append-path": "/app/rust/bin",
                 "env": {
                     "CARGO_HOME": "/run/build/obs/.flatpak-rust/cargo",
-                    "CARGO_NET_OFFLINE": "true"
+                    "CARGO_NET_OFFLINE": "true",
+                    "CCACHE_DEPEND": "true",
+                    "CCACHE_COMPILERCHECK": "content"
                 }
             }
         }
