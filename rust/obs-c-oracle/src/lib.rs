@@ -88,6 +88,7 @@ pub mod platform_windows;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub mod portal_inhibit;
 pub mod portal_shortcut_ids;
+pub mod portal_shortcut_sets;
 pub mod proc;
 pub mod profiler;
 pub mod profiler_snapshot;

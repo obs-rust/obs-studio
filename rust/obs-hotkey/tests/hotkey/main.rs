@@ -9,6 +9,7 @@ mod parity;
 mod portal_shortcut_ids;
 mod portal_shortcut_ids_parity;
 mod portal_shortcut_sets;
+mod portal_shortcut_sets_parity;
 mod press;
 mod press_parity;
 mod translations;
