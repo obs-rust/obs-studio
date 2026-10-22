@@ -2,3 +2,4 @@
 //! the core category binary (obs-tests-core), not a binary of its own.
 
 mod video_plan;
+mod video_plan_parity;
