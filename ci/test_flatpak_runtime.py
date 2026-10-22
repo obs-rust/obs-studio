@@ -141,6 +141,21 @@ class FlatpakRuntimeTest(unittest.TestCase):
             module.request(ws, 'GetVersion', ready_timeout=60)
         self.assertEqual(ws.send.call_count, 1)
 
+    def test_record_start_waits_for_active_state_without_repeating_command(self):
+        module = self.module()
+        session = module.Session.__new__(module.Session)
+        ws = Mock()
+        with patch.object(module, 'request', side_effect=[{}, {'outputActive': False}, {'outputActive': True}]) as request, \
+             patch.object(module.time, 'sleep'):
+            module.start_recording(session, ws)
+        self.assertEqual([call.args[1] for call in request.call_args_list],
+                         ['StartRecord', 'GetRecordStatus', 'GetRecordStatus'])
+        with patch.object(module, 'request', side_effect=[{}, {'outputActive': False}]) as request, \
+             patch.object(module.time, 'sleep'), patch.object(module.time, 'monotonic', side_effect=[0, 0, 21]), \
+             self.assertRaisesRegex(RuntimeError, 'recording to become active'):
+            module.start_recording(session, ws)
+        self.assertEqual([call.args[1] for call in request.call_args_list], ['StartRecord', 'GetRecordStatus'])
+
     def test_runtime_only_consumer_reuses_artifact_and_preserves_source_identity(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('flatpak-runtime-reuse-run:', text)
