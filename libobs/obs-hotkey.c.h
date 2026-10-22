@@ -979,6 +979,15 @@ void obs_enum_hotkey_bindings(obs_hotkey_binding_enum_func func, void *data)
 	unlock();
 }
 
+struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t *binding)
+{
+	return (struct obs_hotkey_binding_fields){
+		.key = &binding->key,
+		.pressed = &binding->pressed,
+		.modifiers_match = &binding->modifiers_match,
+	};
+}
+
 bool obs_hotkey_key_is_pressed(obs_key_t key)
 {
 	return obs_hotkeys_platform_is_pressed(obs->hotkeys.platform_context, key);
