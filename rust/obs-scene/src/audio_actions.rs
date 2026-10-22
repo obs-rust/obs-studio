@@ -34,7 +34,9 @@
 //!   writes past the [`AUDIO_OUTPUT_FRAMES`] gains. [`apply`] makes the same
 //!   writes inside the buffer and none past it;
 //! - [`action_due`] with a rate of 0: the C divides by 0. Here every action
-//!   is due, as [`apply`] puts every action on frame 0 at rate 0.
+//!   is due, as [`apply`] puts every action on frame 0 at rate 0;
+//! - on MSVC x64, a frame or duration whose 128-bit quotient does not fit in
+//!   64 bits (a rate above 1 GHz): the C faults, here it saturates.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -42,9 +44,36 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
+
+/// `util_mul_div64` (`util/util_uint64.h`), `num * mul / div` truncated,
+/// as the C computes it on each platform. Off MSVC x64 that is
+/// `(num / div) * mul + (num % div * mul) / div` in wrapping `uint64_t`,
+/// which differs from the exact result once `num % div * mul` overflows. On
+/// MSVC x64 it is exact 128-bit math (`_umul128`, `_udiv128`), which faults
+/// when the quotient does not fit in 64 bits; here that saturates. `div` is
+/// never 0: it is 1e9, or a rate checked first.
+///
+/// Written out here, not taken from `obs-util`, so `obs-scene` links on its
+/// own (`test_scene_bounds_place_rust` links the staticlib without
+/// `obs-util`'s system libraries).
+fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+    if crate::platform::MUL_DIV64_IS_UDIV128 {
+        let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
+            .checked_div(u128::from(div))
+            .unwrap_or(0);
+        u64::try_from(quotient).unwrap_or(u64::MAX)
+    } else {
+        let rem = num.checked_rem(div).unwrap_or(0);
+        num.checked_div(div)
+            .unwrap_or(0)
+            .wrapping_mul(mul)
+            .wrapping_add(rem.wrapping_mul(mul).checked_div(div).unwrap_or(0))
+    }
+}
 
 /// `AUDIO_OUTPUT_FRAMES` (`media-io/audio-io.h`): the frames of one audio
 /// tick, and the length of the gain buffer.
@@ -80,8 +109,8 @@ pub struct Applied {
 /// `floor((timestamp - ts) * sample_rate / 1e9)` through `util_mul_div64`,
 /// with a timestamp before the tick on frame 0. Not bounded by the tick.
 pub fn frame(timestamp: u64, ts: u64, sample_rate: u64) -> u64 {
-    let _ = (timestamp, ts, sample_rate, NS);
-    todo!()
+    let since = timestamp.max(ts).wrapping_sub(ts);
+    mul_div64(since, sample_rate, NS)
 }
 
 /// `obs_scene_audio_actions_apply()`: applies the actions of `actions`, in
@@ -103,16 +132,69 @@ pub fn apply<I>(
 where
     I: IntoIterator<Item = ItemAction>,
 {
-    let _ = (actions, visible, ts, sample_rate, buf, FRAMES);
-    todo!()
+    let mut buf = buf;
+    let mut cur_visible = visible;
+    let mut out = Applied {
+        consumed: 0,
+        visible,
+        hides: 0,
+    };
+    let mut frame_num: u64 = 0;
+
+    for action in actions {
+        let new_frame_num = frame(action.timestamp, ts, sample_rate);
+
+        if ts != 0 && new_frame_num >= FRAMES {
+            break;
+        }
+
+        out.consumed = out.consumed.wrapping_add(1);
+        out.visible = action.visible;
+        if !out.visible {
+            out.hides = out.hides.wrapping_add(1);
+        }
+
+        if let Some(gains) = buf.as_deref_mut()
+            && new_frame_num > frame_num
+        {
+            fill(gains, frame_num, new_frame_num, cur_visible);
+            frame_num = new_frame_num;
+        }
+
+        cur_visible = out.visible;
+    }
+
+    if let Some(gains) = buf {
+        fill(gains, frame_num, FRAMES, cur_visible);
+    }
+
+    out
+}
+
+/// Writes the gain of `visible` to the frames `from..to` that are in the
+/// buffer.
+fn fill(gains: &mut Gains, from: u64, to: u64, visible: bool) {
+    let end = to.min(FRAMES);
+    if from >= end {
+        return;
+    }
+    // Both are at most FRAMES, so they fit.
+    let (Ok(from), Ok(end)) = (usize::try_from(from), usize::try_from(end)) else {
+        return;
+    };
+    if let Some(span) = gains.get_mut(from..end) {
+        span.fill(if visible { 1.0 } else { 0.0 });
+    }
 }
 
 /// The duration of one tick, [`AUDIO_OUTPUT_FRAMES`] frames in ns rounded
 /// down (`util_mul_div64(AUDIO_OUTPUT_FRAMES, 1e9, sample_rate)`). `None`
 /// for a rate of 0, where the C divides by 0.
 pub fn tick_duration(sample_rate: u64) -> Option<u64> {
-    let _ = sample_rate;
-    todo!()
+    if sample_rate == 0 {
+        return None;
+    }
+    Some(mul_div64(FRAMES, NS, sample_rate))
 }
 
 /// `obs_scene_audio_action_due()`: whether an action at `timestamp` is due
@@ -122,6 +204,8 @@ pub fn tick_duration(sample_rate: u64) -> Option<u64> {
 /// Intentional difference: with a rate of 0, every action is due (the C
 /// divides by 0).
 pub fn action_due(timestamp: u64, ts: u64, sample_rate: u64) -> bool {
-    let _ = (timestamp, ts, sample_rate);
-    todo!()
+    match tick_duration(sample_rate) {
+        None => true,
+        Some(duration) => ts == 0 || timestamp < ts.wrapping_add(duration),
+    }
 }

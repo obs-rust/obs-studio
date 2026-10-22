@@ -4,7 +4,6 @@
 
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display.c.h"
-#include "libobs/obs-scene-audio-actions.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-deinterlace.c.h"

@@ -70,7 +70,7 @@
 #include "obs-host/display-clear-workaround.h"
 #include "obs-host/display-srgb-clear.h"
 
-/* obs-scene-audio-actions.c */
+/* obs-scene-item-audio-actions.c */
 
 #include "obs-scene-audio-actions.h"
 

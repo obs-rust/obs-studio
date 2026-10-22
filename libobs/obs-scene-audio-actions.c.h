@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-audio-actions.pch.h"
 
 /* The core of the scene item visibility audio ramp: the loop of
  * apply_scene_item_audio_actions() and the window of
@@ -24,7 +24,8 @@
  * scene item and no source: obs-scene-item-audio-actions.c passes the
  * item's queue and visibility with actions_mutex held, and drops one active
  * reference per hide that obs_scene_audio_actions_apply() returns.
- * Declared in obs-scene-audio-actions.h. */
+ * Declared in obs-scene-audio-actions.h. Ported to rust/obs-scene
+ * (audio_actions): the hybrid libobs drops this file. */
 
 size_t obs_scene_audio_actions_apply(obs_scene_item_action_array_t *actions, bool *visible, uint64_t ts,
 				     size_t sample_rate, float *buf)
