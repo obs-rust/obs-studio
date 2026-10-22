@@ -50,9 +50,10 @@
   "consumer_result": "SUCCESS",
   "runtime_result": "Automatic25minute jobtimeout duringAPT; noinstalledruntimechecks executed",
   "limits": [
-    "Experimental producer includes optionalpacking/upload/runtimeexport; not a routine warm sample.",
-    "Consumer profile/cachehits/build/validators pending; no actualreuse claim.",
-    "Wholeworkflowcostpendingallselectedjobs."
+    "One diagnostic same-run compiler artifact consumer proves reuse, not retained production transport or a routine warm cohort.",
+    "Consumer418s excludes production cache publication and runtime-export packaging; producer839s includes optional experimental work.",
+    "Workflow cancelled after Qt/runtime package-setup timeouts; no installed-profile checks executed in v7.",
+    "Full selected active-job wall times retained, skipped excluded and no billing multipliers."
   ],
   "consumer_completed_steps": [
     "Set up job",
