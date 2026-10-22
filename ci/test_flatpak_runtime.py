@@ -96,7 +96,7 @@ class FlatpakRuntimeTest(unittest.TestCase):
     def test_runtime_only_consumer_reuses_artifact_and_preserves_source_identity(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('flatpak-runtime-reuse-run:', text)
-        block = text.split('\n  flatpak-runtime-reuse:\n', 1)[1].split('\n  ', 1)[0]
+        block = text.split('\n  flatpak-runtime-reuse:\n', 1)[1].split('\n  # Opt-in', 1)[0]
         self.assertIn('inputs.flatpak-runtime-reuse-run', block)
         self.assertIn('github-token: ${{ github.token }}', block)
         self.assertIn('FLATPAK_ARTIFACT_SOURCE', block)

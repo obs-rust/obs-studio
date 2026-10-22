@@ -52,3 +52,23 @@ A local FFV1/YUV420p video round trip confirms the browser pixel check accepts
 first local encoder fixture could not run because the SDK's FFmpeg lacks
 libx264; that failure is retained. The FFV1 fixture validates decoding/crop/color
 checks, not CEF rendering or the actual packaged H.264 recording.
+
+## Recheck an existing export
+
+For harness-only fixes, `ci.yml` accepts `flatpak-runtime-reuse-run=<run-id>`.
+It skips the build-project invocation, downloads the same-repository run's
+immutable export, and runs the current harness against it. CI format/data checks
+and the final gate still run. The final gate includes this consumer's result.
+The read-only Actions token downloads the artifact; no cache is published.
+
+The result records the package source SHA from the producer run, the harness
+SHA and producer run ID separately. An old artifact cannot qualify a later
+packaging change: build a new export whenever shipped inputs change. The archive
+expires after one day; retain the downloaded evidence for the retrospective.
+This mode saves a repeated full build, not the fresh runtime session setup.
+
+The first hosted attempt built/exported successfully but stopped before install:
+`remote-ls` returned `app/` and `runtime/` kind prefixes, unlike the installed-ref
+listing used during local investigation. The exact hosted output now has a
+regression. Only valid app/Debug kinds are normalized; branch/architecture and
+Debug-extension matching remain strict. No live capture pass is claimed yet.

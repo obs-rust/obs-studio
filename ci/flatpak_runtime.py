@@ -50,7 +50,15 @@ def check_capture_log(log: str, modules: list[str]) -> None:
 
 
 def select_refs(refs: list[str]) -> tuple[str, str]:
-    refs = [ref.strip() for ref in refs]
+    normalized = []
+    for ref in refs:
+        ref = ref.strip()
+        if ref.startswith(f'app/{APP}/'):
+            ref = ref.removeprefix('app/')
+        elif ref.startswith(f'runtime/{APP}.Debug/'):
+            ref = ref.removeprefix('runtime/')
+        normalized.append(ref)
+    refs = normalized
     apps = [ref for ref in refs if re.fullmatch(re.escape(APP) + r'/[^/]+/[^/]+', ref)]
     if len(apps) != 1:
         raise ValueError(f'expected one exported application ref, found {apps}')
@@ -221,7 +229,9 @@ def qualification(args) -> dict:
     output.mkdir(parents=True, exist_ok=False)
     session = Session(output)
     start = time.monotonic()
-    result = dict(status='failed', source=os.environ.get('GITHUB_SHA'), app=APP,
+    result = dict(status='failed', source=os.environ.get('FLATPAK_ARTIFACT_SOURCE', os.environ.get('GITHUB_SHA')),
+                  harness_source=os.environ.get('GITHUB_SHA'),
+                  artifact_run=os.environ.get('FLATPAK_ARTIFACT_RUN', os.environ.get('GITHUB_RUN_ID')), app=APP,
                   coverage='synthetic screen/camera/microphone producers; no physical devices or hardware GPU',
                   limits='One runtime qualification, not routine full-job performance evidence')
     try:
