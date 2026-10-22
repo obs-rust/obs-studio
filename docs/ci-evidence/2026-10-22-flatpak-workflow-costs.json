@@ -1,6 +1,6 @@
 {
   "captured_at": "2026-10-22T19:30:54.236600+00:00",
-  "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Includes final C++20 seed and routing qualification; includes final warm1/warm2 and matched cold; third warm pending, not the final total.",
+  "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Includes final C++20 seed and routing qualification; Includes all declared final warm/cold measurement workflows; PR/merge-group CI and local work remain explicitly excluded.",
   "rows": [
     {
       "cohort": "baseline",
@@ -659,9 +659,29 @@
           "seconds": 434.0
         }
       ]
+    },
+    {
+      "cohort": "final-production-warm3",
+      "run": 39840480759,
+      "source": "4509ca5beffc73688d5f24faefe5b8f1bedac055",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_minutes_completed_jobs": 17.016666666666666,
+      "cost_complete": true,
+      "failed_jobs": 2,
+      "cancelled_jobs": 0,
+      "flatpak_jobs": [
+        {
+          "job": 120040204247,
+          "name": "Build \ud83e\uddf1 / Flatpak \ud83d\udce6",
+          "conclusion": "success",
+          "seconds": 447.0
+        }
+      ]
     }
   ],
-  "nonbaseline_completed_runner_minutes": 2182.0,
+  "nonbaseline_completed_runner_minutes": 2199.016666666667,
   "known_metadata_anomalies": [
     {
       "run": 39810319992,
@@ -670,11 +690,5 @@
       "treatment": "Negative interval omitted and cost_complete remains false;112.1167 known runner-minutes retained; no perfect total claim"
     }
   ],
-  "pending_runs": [
-    {
-      "run": 39840480759,
-      "purpose": "Third final warm observation",
-      "status": "live at capture"
-    }
-  ]
+  "pending_runs": []
 }

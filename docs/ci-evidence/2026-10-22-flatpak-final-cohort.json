@@ -1,7 +1,7 @@
 {
-  "captured_at": "2026-10-22T19:20:05.817788+00:00",
+  "captured_at": "2026-10-22T19:39:15.185476+00:00",
   "issue": 1760,
-  "complete": false,
+  "complete": true,
   "baseline_seconds": [
     702,
     905,
@@ -64,11 +64,30 @@
       "workflow_conclusion": "failure",
       "workflow_runner_minutes": 17.45,
       "workflow_failure_issue": 1816
+    },
+    {
+      "run": 39840480759,
+      "job": 120040204247,
+      "source": "4509ca5beffc73688d5f24faefe5b8f1bedac055",
+      "whole_seconds": 447,
+      "flatpak_conclusion": "success",
+      "direct_hits": 331,
+      "misses": 14,
+      "dependency_hits": 6,
+      "application_rebuilt": true,
+      "artifact_validators": "all three passed",
+      "restored_archive_id": 9360891151,
+      "published_archive_id": 9361847609,
+      "published_archive_bytes": 2275027686,
+      "publication": "newsourcegenerationpublished",
+      "workflow_status": "completed",
+      "workflow_conclusion": "failure",
+      "workflow_failure_issue": 1816,
+      "workflow_runner_minutes": 17.016666666666666,
+      "workflow_cost_complete": true
     }
   ],
-  "pending_warm_runs": [
-    39840480759
-  ],
+  "pending_warm_runs": [],
   "matched_cold_run": 39837854756,
   "matched_cold_source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
   "limits": [
@@ -128,5 +147,23 @@
     "workflow_failure_issue": 1816
   },
   "warm3_source": "4509ca5beffc73688d5f24faefe5b8f1bedac055",
-  "warm3_source_difference": "#1815 behavior-neutral C scene audio extraction; manifest/browser/CEF profile unchanged, inspect compiler counters; source difference disclosed"
+  "warm3_source_difference": "#1815 behavior-neutral C scene audio extraction; manifest/browser/CEF profile unchanged, inspect compiler counters; source difference disclosed",
+  "complete_scope": "Declared production performance cohort; parent issue still needs final retention/report/review/merge/cleanup audit",
+  "final_statistics": {
+    "n": 3,
+    "whole_seconds": [
+      437,
+      434,
+      447
+    ],
+    "median_seconds": 437,
+    "nearest_rank_sample_p95_seconds": 447,
+    "p95_limit": "n=3 maximum, not a stable population-tail estimate",
+    "baseline_median_seconds": 905,
+    "median_reduction_percent": 51.712707182320436,
+    "target_met": true,
+    "selected_warm_workflow_runner_minutes": 49.43333333333333,
+    "warm_workflow_failures": 3,
+    "warm_workflow_cancellations": 0
+  }
 }

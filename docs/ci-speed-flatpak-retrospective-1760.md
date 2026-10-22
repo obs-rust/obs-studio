@@ -1,6 +1,15 @@
-# Flatpak performance retrospective (#1760) — final measurements pending
+# Flatpak performance retrospective (#1760) — retention verification pending
 
-## Result so far
+## Measured performance result
+
+The final three warm full-job observations are **437s, 434s and447s**.
+Their median is **437s (7m17s),51.71% lower** than the historical905s
+(15m05s) baseline median. This meets the >=50% and <=450s performance target.
+Nearest-rank sample p95 is447s versus911s before; with n=3 these are sample
+maxima, not stable population-tail estimates. Matched cold is846s.
+All selected final workflows failed independently on #1816; successful Flatpak
+jobs do not establish healthy whole-workflow CI. Final retention, reporting,
+review/merge and owned cleanup still remain.
 
 Implementation PRs #1763 (CEF), #1771 (installed saved-profile validation),
 and #1767 (safe compiler reuse and projected cache) merged through the normal
@@ -175,7 +184,7 @@ All measurement workflow job intervals (all attempts) are retained in
 cost-ledger/summary.json, with raw responses per run. The three baseline
 selected workflows cost374.033runner-minutes; their Flatpak jobs alone
 cost41.967runner-minutes. Completed nonbaseline workflows currently account
-for2182.000runner-minutes, excluding a cancelled seed workflow whose
+for2199.017runner-minutes, excluding a cancelled seed workflow whose
 112.117known runner-minutes have one inconsistent cancelled placeholder. This is runner-interval
 accounting, not an invoice. PR/merge-group CI and local bosn work are explicitly
 outside this ledger scope.
