@@ -1630,6 +1630,12 @@ area.
   2026-10-22. Issue
   [#1713](https://github.com/obs-rust/obs-studio/issues/1713), PR
   [#1734](https://github.com/obs-rust/obs-studio/pull/1734).
+- A plugin or script that renames a source to no name (NULL) no longer
+  crashes OBS; the source gets an unnamed name, as with an empty name. A
+  rename to a name that is taken now logs the requested name as the
+  duplicate, not the source's old name. *All*, 2026-10-22. Issue
+  [#1787](https://github.com/obs-rust/obs-studio/issues/1787), PR
+  [#1804](https://github.com/obs-rust/obs-studio/pull/1804).
 
 ### Security hardening
 

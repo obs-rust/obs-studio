@@ -268,8 +268,8 @@ static void test_dedup_param(void **state)
 }
 
 /* Characterized, not endorsed: a NULL name goes to exists() as it is. The
- * exists() of obs.c (HASH_FIND_STR) does not take NULL; only a rename of a
- * public source to NULL reaches it. */
+ * exists() of obs.c (HASH_FIND_STR) does not take NULL, so obs.c never asks
+ * for one: a rename to NULL takes the unnamed name without asking. */
 static void test_dedup_null_name(void **state)
 {
 	(void)state;

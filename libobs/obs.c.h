@@ -2882,13 +2882,14 @@ void obs_context_data_setname_ht(struct obs_context_data *context, const char *n
 	if (context->name)
 		da_push_back(context->rename_cache, &context->name);
 
-	/* Ensure new name is not a duplicate. */
-	new_name = obs_context_deduplicate_name(*head, name);
+	/* Ensure new name is not a duplicate. A NULL name takes the unnamed
+	 * name, as an empty one does. */
+	new_name = name ? obs_context_deduplicate_name(*head, name) : NULL;
 	if (new_name) {
 		blog(LOG_WARNING,
 		     "Attempted to rename context to duplicate name \"%s\"!"
 		     " New name has been changed to \"%s\"",
-		     context->name, new_name);
+		     name, new_name);
 		context->name = new_name;
 	} else {
 		context->name = dup_name(name, context->private);
