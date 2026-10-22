@@ -1097,6 +1097,33 @@ CheckResult CheckX264()
 
 	return std::nullopt;
 }
+
+bool MissingEncoderModuleLoaded(const char *name)
+{
+	return obs_get_module(name) != nullptr;
+}
+
+/* VA-API and QSV register their encoders only when a device can encode
+ * with them, and a build may leave obs-qsv11 out (the AppImage does):
+ * obs-rust/obs-studio#1720. */
+CheckResult CheckHardwareEncoder(std::string_view encoder)
+{
+	const std::string id(encoder);
+	const char *module = nullptr;
+
+	switch (profile_missing_encoder_reason(id.c_str(), MissingEncoderModuleLoaded, &module)) {
+	case PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED:
+		return ErrorDetails{"plugin_not_loaded", QTStr("EncoderMissing.MissingModule").arg(module)};
+	case PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE:
+		return ErrorDetails{"vaapi_not_supported", QTStr("EncoderMissing.VAAPI.NotSupported")};
+	case PROFILE_MISSING_ENCODER_NO_QSV_DEVICE:
+		return ErrorDetails{"qsv_no_device", QTStr("EncoderMissing.QSV.NoDevice")};
+	case PROFILE_MISSING_ENCODER_UNKNOWN:
+		break;
+	}
+
+	return std::nullopt;
+}
 } // namespace
 
 void OBSBasic::CheckForMissingEncoders()
@@ -1143,6 +1170,8 @@ void OBSBasic::CheckForMissingEncoders()
 		} else if (encoder.find("nvenc") != std::string_view::npos) {
 			res = CheckNVENC(missing_encoders);
 #endif
+		} else {
+			res = CheckHardwareEncoder(encoder);
 		}
 
 		if (res) {
