@@ -613,17 +613,21 @@ static void playing_seek_between_keyframes(void **state)
 	wait_for_frame(&p, 9);
 
 	arm(&p);
+	const uint64_t seek_ns = os_gettime_ns();
 	media_playback_seek(p.mp, target_ms);
 	int shown = wait_first_frame(&p);
 	int64_t t = media_playback_get_current_time(p.mp);
+	const int64_t elapsed_ms = (int64_t)((os_gettime_ns() - seek_ns) / 1000000);
 
 	player_stop(&p);
 
-	fprintf(stderr, "playing seek to %lld ms: first frame %d, media time %lld ms\n", (long long)target_ms, shown,
-		(long long)t);
+	fprintf(stderr, "playing seek to %lld ms: first frame %d, media time %lld ms, %lld ms after the seek\n",
+		(long long)target_ms, shown, (long long)t, (long long)elapsed_ms);
 	expect_frame("playing seek", target_ms, shown);
-	/* it plays on from the target, so allow the time it took to see it */
-	if (t < target_ms - TIME_SLACK_MS || t > target_ms + 500) {
+	/* it plays on from the target, so allow the real time that passed
+	 * between the seek and reading the media time (a slow runner can take
+	 * longer than any fixed bound to show the first frame) */
+	if (t < target_ms - TIME_SLACK_MS || t > target_ms + elapsed_ms + TIME_SLACK_MS) {
 		fprintf(stderr, "playing seek: seek to %lld ms reports a media time of %lld ms\n", (long long)target_ms,
 			(long long)t);
 		fail();
