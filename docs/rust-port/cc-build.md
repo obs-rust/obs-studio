@@ -1145,7 +1145,7 @@ now exercises real CEF initialization failure: a second process shares the
 first process's locked profile, waits for the actual initialization-failure
 message, then unloads cleanly. Both the original and fixed modules pass this
 failure-path characterization; it does not distinguish the startup-race fix.
-The parent's production pin remains `0c3b700`. Browser-source rendering is
+The parent's production pin is now `7bab463` (obs-browser 2.27.3, which includes #1 and `4f26bda`). Browser-source rendering is
 verified in the disposable Linux test profile described below.
 
 ### Isolated browser credential store
