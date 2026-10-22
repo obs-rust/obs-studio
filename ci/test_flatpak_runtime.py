@@ -1,5 +1,6 @@
 """Flatpak packaged runtime evidence must fail closed (#1760)."""
 import importlib.util
+import configparser
 import json
 import tempfile
 import re
@@ -98,6 +99,9 @@ class FlatpakRuntimeTest(unittest.TestCase):
             root = Path(directory)
             module.write_profile(root, 4456, 'temporary-test-password')
             config = root / 'profile/obs-studio'
+            global_config = configparser.ConfigParser()
+            global_config.read(config / 'global.ini')
+            self.assertFalse(global_config.getboolean('General', 'BrowserHWAccel'))
             scene = json.loads((config / 'basic/scenes/Test.json').read_text())
             kinds = {source['id'] for source in scene['sources']}
             self.assertEqual(kinds, {'scene', 'pipewire-screen-capture-source', 'pipewire-camera-source',
