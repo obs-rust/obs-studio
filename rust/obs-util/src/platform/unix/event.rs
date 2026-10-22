@@ -83,6 +83,10 @@ pub struct Event {
     /// before signalling instead of relying on a settle window.
     #[cfg(debug_assertions)]
     waiting: std::sync::atomic::AtomicUsize,
+    /// Whether `signalled` was locked when the last wake was dispatched:
+    /// 0 none yet, 1 locked, 2 unlocked. Test builds only.
+    #[cfg(test)]
+    locked_at_notify: std::sync::atomic::AtomicU8,
 }
 
 impl Event {
@@ -93,6 +97,8 @@ impl Event {
             manual: event_type == EventType::Manual,
             #[cfg(debug_assertions)]
             waiting: std::sync::atomic::AtomicUsize::new(0),
+            #[cfg(test)]
+            locked_at_notify: std::sync::atomic::AtomicU8::new(0),
         }
     }
 
@@ -100,6 +106,14 @@ impl Event {
     /// matching `pthread_cond_signal`. The [`NotifyCondvar`] records
     /// the primitive actually invoked, inside the forwarding method.
     fn notify(&self, kind: Notify) {
+        #[cfg(test)]
+        self.locked_at_notify.store(
+            match self.signalled.try_lock() {
+                Err(std::sync::TryLockError::WouldBlock) => 1,
+                _ => 2,
+            },
+            std::sync::atomic::Ordering::SeqCst,
+        );
         match kind {
             Notify::One => self.cond.notify_one(),
             Notify::All => self.cond.notify_all(),
@@ -224,6 +238,24 @@ mod tests {
             let ev = Event::new(ty);
             ev.signal();
             assert_eq!(ev.last_notify_kind(), Some(Notify::One));
+        }
+    }
+
+    /// `os_event_signal` in C signals the condvar with the mutex held.
+    /// A waiter that sees the flag returns as soon as it takes the lock,
+    /// and `obs_queue_task` with `wait` then destroys the event. So the
+    /// wake must go out before the unlock, or it touches a freed event.
+    #[test]
+    fn signal_wakes_with_the_lock_held() {
+        for ty in [EventType::Auto, EventType::Manual] {
+            let ev = Event::new(ty);
+            ev.signal();
+            assert_eq!(
+                ev.locked_at_notify
+                    .load(std::sync::atomic::Ordering::SeqCst),
+                1,
+                "the wake went out after the unlock"
+            );
         }
     }
 }
