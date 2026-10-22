@@ -61,8 +61,9 @@
       "artifact_validators": "all three passed",
       "workflow_status": "completed",
       "workflow_cost_complete": true,
-      "workflow_conclusion": "failure #1816",
-      "workflow_runner_minutes": 17.45
+      "workflow_conclusion": "failure",
+      "workflow_runner_minutes": 17.45,
+      "workflow_failure_issue": 1816
     }
   ],
   "pending_warm_runs": [
@@ -121,9 +122,10 @@
     ],
     "sdk_limit": "Runner/container SDK content preinstalled; only builder/compiler cache reuse disabled",
     "workflow_status": "completed",
-    "workflow_conclusion": "failure #1816",
+    "workflow_conclusion": "failure",
     "workflow_runner_minutes": 20.566666666666666,
-    "cost_complete": true
+    "cost_complete": true,
+    "workflow_failure_issue": 1816
   },
   "warm3_source": "4509ca5beffc73688d5f24faefe5b8f1bedac055",
   "warm3_source_difference": "#1815 behavior-neutral C scene audio extraction; manifest/browser/CEF profile unchanged, inspect compiler counters; source difference disclosed"

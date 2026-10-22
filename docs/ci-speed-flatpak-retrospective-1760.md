@@ -84,7 +84,7 @@ Exact-source cold passed846s with0hits/345misses, all artifact validators,
 and all four builder/compiler restore steps skipped. Publication was disabled;
 the SDK image remained preinstalled. The cold workflow failed on #1816 and
 consumed20.567runner-minutes. Third warm39840480759 remains live. No final median or
-50% target claim is made from one successful Flatpak sample.
+50% target claim is made from two successful Flatpak samples.
 [Portable cohort evidence](ci-evidence/2026-10-22-flatpak-final-cohort.json)
 will retain all three observations and their whole-workflow outcomes.
 
@@ -107,7 +107,7 @@ processing,117–120s commits/export and28–50s counters/validators/publication
 These sum to the complete437s/434s jobs; setup and export dominate remaining
 wall time. First stripping messages mark the observed debug phase.
 
-These are buffered-log wall intervals, not CPU profiles. The final phase
+These are buffered-log wall intervals, not CPU profiles. In the interim table above, the final phase
 includes required new-generation publication on warm2; warm1 had an exact
 key hit and skipped immutable-key publication. Do not add independent
 fixture/probe percentage savings together.
@@ -196,8 +196,8 @@ runtime costs remain separate from routine Flatpak improvements.
 
 ## Remaining completion work
 
-1. Qualify and normally merge manual measurement routing #1817; the seed
-   results are recorded above.
+1. Complete third final warm39840480759 and verify all three observations;
+   #1817 is normally merged and seed/routing results are recorded above.
 2. Predeclare and collect at least three comparable final-configuration warm
    full jobs plus a matched current cold observation. Preserve the prior
    [480,421,475]s cohort that missed the target.
