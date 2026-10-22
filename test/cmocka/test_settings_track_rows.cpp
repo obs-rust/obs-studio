@@ -110,13 +110,18 @@ static int worst_drift(Fixture *f, const Row &row)
  * row is fine; the bug moved them hundreds of pixels apart. */
 static const int max_drift = 3;
 
+/* The tests below report with fprintf and a plain fail(), not fail_msg():
+ * the Windows cmocka library does not export the printer that fail_msg
+ * expands to (#1580). */
+
 static void advanced_streaming_track_stays_by_label(void **state)
 {
 	Row row{1, 0, &Ui::OBSBasicSettings::advStreamTrackWidgetLabel, &Ui::OBSBasicSettings::advStreamTrackWidget,
 		[](Ui::OBSBasicSettings &ui) -> QWidget * { return ui.advOutTrack1; }};
 	const int drift = worst_drift(static_cast<Fixture *>(*state), row);
 	if (drift < 0 || drift > max_drift) {
-		fail_msg("first button is %d px from its label (allowed: %d)", drift, max_drift);
+		fprintf(stderr, "first button is %d px from its label (allowed: %d)\n", drift, max_drift);
+		fail();
 	}
 }
 
@@ -126,7 +131,8 @@ static void advanced_recording_tracks_stay_by_label(void **state)
 		[](Ui::OBSBasicSettings &ui) -> QWidget * { return ui.advOutRecTrack1; }};
 	const int drift = worst_drift(static_cast<Fixture *>(*state), row);
 	if (drift < 0 || drift > max_drift) {
-		fail_msg("first button is %d px from its label (allowed: %d)", drift, max_drift);
+		fprintf(stderr, "first button is %d px from its label (allowed: %d)\n", drift, max_drift);
+		fail();
 	}
 }
 
@@ -136,7 +142,8 @@ static void simple_recording_tracks_stay_by_label(void **state)
 		[](Ui::OBSBasicSettings &ui) -> QWidget * { return ui.simpleOutRecTrack1; }};
 	const int drift = worst_drift(static_cast<Fixture *>(*state), row);
 	if (drift < 0 || drift > max_drift) {
-		fail_msg("first button is %d px from its label (allowed: %d)", drift, max_drift);
+		fprintf(stderr, "first button is %d px from its label (allowed: %d)\n", drift, max_drift);
+		fail();
 	}
 }
 
