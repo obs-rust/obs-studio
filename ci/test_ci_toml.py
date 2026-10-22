@@ -70,21 +70,37 @@ class UvCacheWriterTest(unittest.TestCase):
 
 
 class FlatpakCacheWriterTest(unittest.TestCase):
-    def test_dependency_saves_are_master_only_without_disabling_compiler_cache(self):
+    def test_projected_state_publishes_once_after_pruning_and_validators(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
-        block = workflow.split("      - name: Build Flatpak Manifest", 1)[1].split("      # The SDK", 1)[0]
-        # v6.8 adds a save switch independent of cache/restore. v6.7
-        # ignores this input, so the pin is part of the writer contract.
-        self.assertIn("flatpak-builder@79327416609af08178ad73b352877e51450790b3", block)
-        self.assertIn("save-cache: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}", block)
-        self.assertRegex(block, r"(?m)^          cache: true$")
-        # The dependency snapshot must be extracted before the newer compiler
-        # snapshot. A second restore here overwrites mutable ccache manifests.
-        self.assertRegex(block, r"(?m)^          restore-cache: false$")
-        dependency = workflow.split("id: flatpak-builder-cache-lookup", 1)[1].split("\n      - ", 1)[0]
-        self.assertNotIn("lookup-only: true", dependency)
-        self.assertIn("path: .flatpak-builder", dependency)
-        self.assertLess(workflow.index("id: flatpak-builder-cache-lookup"), workflow.index("id: flatpak-compiler-cache"))
+        job = workflow.split("  flatpak-build:\n", 1)[1].split("  flatpak-compiler-consumer:", 1)[0]
+        action = job.split("      - name: Build Flatpak Manifest", 1)[1].split("      - name: Report Flatpak", 1)[0]
+        self.assertIn("flatpak-builder@79327416609af08178ad73b352877e51450790b3", action)
+        self.assertRegex(action, r"(?m)^          cache: true$")
+        self.assertRegex(action, r"(?m)^          restore-cache: false$")
+        self.assertRegex(action, r"(?m)^          save-cache: false$")
+        publisher = job.split('      - name: Publish Flatpak Projected State', 1)[1].split('\n      - ', 1)[0]
+        for guard in ['!inputs.flatpak-cold-build', "github.ref == 'refs/heads/master'",
+                      "steps.ccache-stats.outcome == 'success'", "steps.flatpak-state-cache.outputs.cache-hit != 'true'"]:
+            self.assertIn(guard, publisher)
+        paths = publisher.split('          path: |\n', 1)[1].split('          key:', 1)[0]
+        self.assertEqual(paths.split(), ['.flatpak-builder/cache', '.flatpak-builder/ccache'])
+        for marker in ['name: Ccache Stats', 'name: Validate AppStream', 'name: Validate build directory', 'name: Validate repository']:
+            self.assertLess(job.index(marker), job.index('name: Publish Flatpak Projected State'))
+        self.assertEqual(job.count('uses: actions/cache/save@'), 1)
+
+    def test_new_projected_state_suppresses_legacy_compiler_overlay(self):
+        workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        job = workflow.split("  flatpak-build:\n", 1)[1].split("  flatpak-compiler-consumer:", 1)[0]
+        state = job.split('id: flatpak-state-cache', 1)[1].split('\n      - ', 1)[0]
+        key = "flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-${{ github.sha }}"
+        self.assertIn('key: ' + key, state)
+        self.assertIn('flatpak-builder-state-v1-x86_64-', state)
+        for marker in ['id: flatpak-builder-cache-lookup', 'name: Restore legacy Flatpak builder seed', 'id: flatpak-compiler-cache']:
+            block = job.split(marker, 1)[1].split('\n      - ', 1)[0]
+            self.assertIn("steps.flatpak-state-cache.outputs.cache-matched-key == ''", block)
+        self.assertLess(job.index('id: flatpak-state-cache'), job.index('id: flatpak-builder-cache-lookup'))
+        publisher = job.split('name: Publish Flatpak Projected State', 1)[1].split('\n      - ', 1)[0]
+        self.assertIn('key: ' + key, publisher)
 
     def test_flatpak_compiler_statistics_cover_only_this_build(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
@@ -107,26 +123,27 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         self.assertIn("flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}", caller)
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
         steps = job.split('\n      - ')
-        for marker in ('id: flatpak-builder-cache-lookup', 'name: Restore legacy Flatpak builder seed',
+        for marker in ('id: flatpak-state-cache', 'id: flatpak-builder-cache-lookup', 'name: Restore legacy Flatpak builder seed',
                        'id: flatpak-compiler-cache', 'key: flatpak-ccache-x86_64-${{ github.sha }}'):
             matches = [step for step in steps if marker in step]
             self.assertTrue(matches, marker)
             for step in matches:
                 self.assertIn('!inputs.flatpak-cold-build', step, marker)
-        self.assertIn('save-cache: ${{ !inputs.flatpak-cold-build', job)
+        self.assertIn('name: Publish Flatpak Projected State', job)
+        self.assertIn('save-cache: false', job)
         self.assertIn('cache: true', job)
         self.assertIn('restore-cache: false', job)
         for validator in ('Validate AppStream', 'Validate build directory', 'Validate repository'):
             self.assertIn(validator, job)
 
-    def test_separate_compiler_snapshot_saves_only_on_master(self):
+    def test_standalone_compiler_cache_is_migration_input_without_a_writer(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        job = workflow.split("  flatpak-build:\n", 1)[1].split("  flatpak-compiler-consumer:", 1)[0]
         marker = "key: flatpak-ccache-x86_64-${{ github.sha }}"
-        save = workflow[workflow.index(marker) + len(marker):].split(marker, 1)[0]
-        save = save[save.rfind("      - uses: actions/cache/save@"):]
-        self.assertIn("github.ref == 'refs/heads/master'", save)
-        self.assertIn("steps.ccache-stats.outcome == 'success'", save)
-        self.assertIn("steps.flatpak-compiler-cache.outputs.cache-hit != 'true'", save)
+        steps = [block for block in job.split('\n      - ') if marker in block]
+        self.assertEqual(len(steps), 1)
+        self.assertIn('uses: actions/cache/restore@', steps[0])
+        self.assertNotIn('uses: actions/cache/save@', steps[0])
 
 
 class RetiredCacheFamilyTest(unittest.TestCase):
