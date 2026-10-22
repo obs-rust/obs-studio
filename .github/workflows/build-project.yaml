@@ -679,37 +679,43 @@ jobs:
           artifact: manifest
           path: build-aux/com.obsproject.Studio.json
 
-      # v6.8 appends -x86_64 to our custom key and falls back to the
-      # architecture-first prefix. During migration preserve the measured
-      # legacy master seed only if no new-namespace seed is available.
-      # Extract the builder now, before the newer compiler snapshot. The
-      # builder action below must not restore it a second time.
+      # New snapshots keep OSTree and compiler state together, omitting
+      # downloaded inputs and transient build directories. Refresh by source
+      # generation so compiler direct manifests do not freeze at first save.
+      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: flatpak-state-cache
+        if: ${{ !inputs.flatpak-cold-build }}
+        with:
+          path: |
+            .flatpak-builder/cache
+            .flatpak-builder/ccache
+          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-${{ github.sha }}
+          restore-keys: |
+            flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-
+            flatpak-builder-state-v1-x86_64-
+
+      # Migration only: restore an old whole builder and then its newer
+      # standalone compiler snapshot. Never overlay either on a new-state hit.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-builder-cache-lookup
-        if: ${{ !inputs.flatpak-cold-build }}
+        if: ${{ !inputs.flatpak-cold-build && steps.flatpak-state-cache.outputs.cache-matched-key == '' }}
         with:
           path: .flatpak-builder
           key: flatpak-builder-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-x86_64
           restore-keys: flatpak-builder-x86_64
 
       - name: Restore legacy Flatpak builder seed
-        if: ${{ !inputs.flatpak-cold-build && steps.flatpak-builder-cache-lookup.outputs.cache-matched-key == '' }}
+        if: ${{ !inputs.flatpak-cold-build && steps.flatpak-state-cache.outputs.cache-matched-key == '' && steps.flatpak-builder-cache-lookup.outputs.cache-matched-key == '' }}
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .flatpak-builder
           key: flatpak-builder-7bb71f0a48a885ca4bfe218d34814d0c108cb0ee80df664119c10c6a24945d77-x86_64
 
-      # flatpak-builder --ccache keeps its compiler cache in
-      # .flatpak-builder/ccache, inside the dependency cache that the action
-      # saves under a manifest-hash key, so that ccache froze at its first
-      # save. Restore the commit-keyed compiler copy LAST: result objects are
-      # content-addressed, but direct-mode manifests are mutable. Extracting
-      # an older builder snapshot on top discards newer header/result mappings
-      # and forces recompilation (#1760). Non-master runs restore;
-      # only master publishes both snapshots and prunes the compiler cache.
+      # Preserve the measured legacy overlay order only during migration.
+      # A restored projected state already contains its current compiler data.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-compiler-cache
-        if: ${{ !inputs.flatpak-cold-build }}
+        if: ${{ !inputs.flatpak-cold-build && steps.flatpak-state-cache.outputs.cache-matched-key == '' }}
         with:
           path: .flatpak-builder/ccache
           key: flatpak-ccache-x86_64-${{ github.sha }}
@@ -742,15 +748,14 @@ jobs:
           # when `cache` is true. It used to be off for a PR whose manifest
           # hash had no master cache, so a full PR compiled all ~700 files
           # without ccache (~9 min instead of ~1.5 min, #651). The restore
-          # falls back to the newest flatpak-builder-x86_64 cache, and
+          # uses a projected snapshot or the explicit legacy bridge above.
           # flatpak-builder only reuses a module whose own manifest entry and
           # source checksums are unchanged.
           cache: true
           # Already restored above; avoid overwriting newer compiler manifests.
           restore-cache: false
-          # With internal restore disabled the action cannot detect an exact
-          # hit itself. Preserve immutable-key publication behavior explicitly.
-          save-cache: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}
+          # Publish the pruned projection explicitly after validators below.
+          save-cache: false
           cache-key: ${{ steps.setup.outputs.cacheKey }}
           mirror-screenshots-url: https://dl.flathub.org/media
 
@@ -797,12 +802,6 @@ jobs:
           } | tee -a "${GITHUB_STEP_SUMMARY}"
           du -sh "${ccache_dir}"
 
-      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        if: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-compiler-cache.outputs.cache-hit != 'true' }}
-        with:
-          path: .flatpak-builder/ccache
-          key: flatpak-ccache-x86_64-${{ github.sha }}
-
       - name: Validate AppStream
         uses: ./.github/actions/flatpak-builder-lint
         with:
@@ -827,6 +826,17 @@ jobs:
         with:
           artifact: repo
           path: repo
+
+      # The existing master-only ccache eviction keeps this to one useful build.
+      # The existing builder-family allocation/backend remain unchanged.
+      - name: Publish Flatpak Projected State
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        if: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-state-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            .flatpak-builder/cache
+            .flatpak-builder/ccache
+          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-${{ github.sha }}
 
       - name: Measure Flatpak Cache Capacity
         if: inputs.flatpak-cache-probe

@@ -362,3 +362,33 @@ Consumer119879152813 was queued at capture; restoration/reuse, consumer runtime
 and full trial cost remain pending. See[producer snapshot](ci-evidence/2026-10-22-flatpak-transfer-v8-producer.json).
 The prior section's statement that local fixtures mock fsck describes the unit
 fixtures; the separate native fixture here now supplies additional real evidence.
+
+
+### Qualified v8 consumer and projected production cache
+
+Completed consumer119879152813 logs and its measurement artifacts prove restored
+OSTree fsck, all6dependencyhits, real application rebuild,327compilerhits/3misses
+and all3validators. Dependency helper restore25.902s; compiler restore1.411s.
+Installed consumer runtime119883556478 passed saved screen/camera/microphone/browser
+recording with310verifiedbrowserframes, modules, unchanged C++WebSocket and debugger
+checks. App commit`dcec8109ee89db6fa5affbf9556d290ad39a2632e8fc879c1132bec1abaaa9a6`
+and Debug commit`1efed457995d1935bd3b52e79aa1dfd6b4e658a9b318fa6935c3aeb3ed871e9c`
+match the consumer export log. Synthetic/software coverage limits remain. Status
+API lagged completed logs/artifacts; full selected-job cost is still pending.
+See[qualified evidence](ci-evidence/2026-10-22-flatpak-transfer-v8-qualified.json).
+
+The production change uses one existing Actions builder-family archive containing
+only `.flatpak-builder/cache` and `.flatpak-builder/ccache`, with a versioned
+architecture/manifest/source-generation key. All legacy restores are suppressed
+on any new-state hit. A miss retains the old builder-then-compiler migration order.
+The pinned action keeps ccache enabled and disables its automatic restore/save;
+explicit master-only publication follows existing one-build ccache pruning and
+all validators. The standalone compiler family becomes a migration input without
+a new writer. Cold mode disables every production restore/publication.
+
+Backend, family/global allocations and janitor policy stay unchanged. The actual
+experimental pair2,326,959,260B supports this bounded projection; it does not prove
+the exact future Actions archive size or retention. Inspect the first trusted
+production publication and retained consumers after normal merge, then collect
+the required routine warm before/after cohort. Neither the418s v7 consumer nor
+v8's diagnostic consumer proves the parent's50%median target by itself.
