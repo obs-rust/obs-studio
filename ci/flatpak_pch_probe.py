@@ -34,6 +34,7 @@ set(_OBS_BUILD_SPEED_DEFERRED TRUE)
 include("@REPO@/cmake/common/ccache.cmake")
 include("@REPO@/cmake/common/pch.cmake")
 add_executable(probe main.cpp)
+target_compile_features(probe PRIVATE cxx_std_20)
 target_precompile_headers(probe PRIVATE pch.hpp)
 if(DEFINED MULTIPLIER)
  target_compile_definitions(probe PRIVATE MULTIPLIER=${MULTIPLIER})
@@ -59,6 +60,7 @@ def replace_preserving_times(path, before, after):
     path.write_text(text.replace(before, after))
     os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
 configure = ['cmake', '-S', str(source), '-B', str(build), '-G', 'Ninja', f'-DCMAKE_CXX_COMPILER={compiler}', next((option for option in obs['config-opts'] if option.startswith('-DENABLE_CCACHE=')), '-DENABLE_CCACHE=OFF')]
+configure += [option for option in obs['config-opts'] if option.startswith('-DCMAKE_CXX_SCAN_FOR_MODULES=')]
 (root / 'configure.log').write_text(run(configure))
 report = {'scope': __doc__, 'manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(), 'compiler': run(['/usr/bin/c++', '--version']), 'ccache': run(['ccache', '--version']), 'trials': []}
 trials = [('cold', 42), ('warm', 42), ('header-same-stat', 43), ('header-warm', 43), ('source-same-stat', 44), ('source-warm', 44), ('configuration', 87), ('configuration-warm', 87), ('compiler-same-stat', 173), ('compiler-warm', 173)]

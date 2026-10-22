@@ -191,6 +191,15 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         self.assertNotIn("CCACHE_SLOPPINESS", env,
                          "keep the existing PCH helper's bounded settings; do not weaken header freshness")
 
+    def test_flatpak_cpp20_browser_sources_remain_cacheable_without_named_modules(self):
+        manifest = json.loads((ROOT / 'build-aux/com.obsproject.Studio.json').read_text())
+        obs = next(module for module in manifest['modules'] if module['name'] == 'obs')
+        self.assertIn('-DCMAKE_CXX_SCAN_FOR_MODULES=OFF', obs['config-opts'],
+                      'Automatic C++20 module scanning adds -fmodules-ts and makes browser sources uncacheable')
+        probe = (ROOT / 'ci/flatpak_pch_probe.py').read_text()
+        self.assertIn('target_compile_features(probe PRIVATE cxx_std_20)', probe)
+        self.assertIn("option.startswith('-DCMAKE_CXX_SCAN_FOR_MODULES=')", probe)
+
     def test_flatpak_pch_probe_preserves_failed_tool_diagnostics(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "evidence"
