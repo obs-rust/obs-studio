@@ -18,7 +18,8 @@ class NativeCacheJournalTest(unittest.TestCase):
     def test_workflow_starts_after_restore_and_keeps_diagnostics_nonblocking(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         block = workflow.split("  ubuntu-build:\n", 1)[1].split("\n  flatpak-build:", 1)[0]
-        self.assertIn("if: fromJSON(needs.check-event.outputs.full)", block)
+        selector = re.search(r"(?m)^    if: (.+)$", block).group(1)
+        self.assertIn("fromJSON(needs.check-event.outputs.full)", selector)
         self.assertLess(block.index("id: ubuntu-compiler-cache"), block.index("id: native-cache-journal"))
         self.assertLess(block.index("- name: Set Up uv"), block.index("id: native-cache-journal"))
         self.assertLess(block.index("id: native-cache-journal"), block.index("- name: Build OBS Studio"))
