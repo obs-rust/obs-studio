@@ -23,6 +23,14 @@ fn main() {
                 .probe("gio-2.0")
                 .expect("GIO feature needs gio-2.0");
         }
+        GioProbe::Prefer => {
+            if pkg_config::Config::new().probe("gio-2.0").is_err() {
+                println!(
+                    "cargo:warning=gio-2.0 not found for {}; the final link must provide GIO",
+                    env("TARGET")
+                );
+            }
+        }
     }
     let windows = std::env::var_os("CARGO_CFG_WINDOWS").is_some();
     let msvc = std::env::var("CARGO_CFG_TARGET_ENV").ok().as_deref() == Some("msvc");

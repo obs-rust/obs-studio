@@ -7,21 +7,23 @@
 pub enum GioProbe {
     /// No GIO on this target: no `gio` feature, not Unix, or macOS.
     Skip,
-    /// Probe it and fail the build without it.
+    /// Probe it and fail the build without it. A native build links the test
+    /// binaries against GIO.
     Require,
+    /// Cross build: probe it, and only warn without it. The cross gates
+    /// lint and build the staticlib, which links nothing; CMake links
+    /// hybrid libobs with GIO itself (`gio::gio`). A target sysroot
+    /// without GIO (soldr's aarch64 Linux one) must not fail them.
+    Prefer,
 }
 
 /// `feature`: the `gio` feature is on. `host` and `target`: Cargo's triples.
-pub fn gio_probe(
-    feature: bool,
-    unix: bool,
-    target_os: &str,
-    _host: &str,
-    _target: &str,
-) -> GioProbe {
-    if feature && unix && target_os != "macos" {
+pub fn gio_probe(feature: bool, unix: bool, target_os: &str, host: &str, target: &str) -> GioProbe {
+    if !(feature && unix && target_os != "macos") {
+        GioProbe::Skip
+    } else if host == target {
         GioProbe::Require
     } else {
-        GioProbe::Skip
+        GioProbe::Prefer
     }
 }
