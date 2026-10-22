@@ -29,6 +29,11 @@
  * background presses are off, settle_injected() injects the sentinel press
  * instead.
  *
+ * The last cases pin the hotkey's pressed count (press_released_binding and
+ * release_pressed_binding in obs-hotkey.c), which both paths go through:
+ * one callback for a hotkey held through two bindings, unregistering while
+ * pressed, and the router chosen at each call.
+ *
  * Cases marked "characterized, not endorsed" pin behaviour that looks odd;
  * the port keeps it, and a fix is a separate change. */
 
@@ -954,6 +959,154 @@ static void inject_empty_binding(void **state)
 }
 
 /* ------------------------------------------------------------------------- */
+/* The hotkey's pressed count (press_released_binding and
+ * release_pressed_binding): each binding press or release sets the binding's
+ * pressed flag and counts presses per hotkey, and the callback (or, when
+ * rerouting, the router) runs only on the first press and the last
+ * release. */
+
+/* Two bindings of one hotkey pressed and released in the same poll: one
+ * callback each way, not two. */
+static void two_bindings_one_poll(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind2(a, (obs_key_combination_t){0, OBS_KEY_A}, (obs_key_combination_t){0, OBS_KEY_B});
+	settle();
+
+	key_down(XK_a);
+	key_down(XK_b);
+	settle();
+	EXPECT(P(1));
+	key_up(XK_a);
+	key_up(XK_b);
+	settle();
+	EXPECT(R(1));
+	obs_hotkey_unregister(a);
+}
+
+/* One injected event that presses both bindings of a hotkey (Ctrl+A and the
+ * modifier-only Ctrl) calls the callback once, and the poll that releases
+ * both calls it once. */
+static void inject_two_bindings(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind2(a, (obs_key_combination_t){CTRL, OBS_KEY_A}, (obs_key_combination_t){CTRL, OBS_KEY_NONE});
+	settle();
+
+	inject(CTRL, OBS_KEY_A, true);
+	settle();
+	EXPECT(P(1), R(1));
+	obs_hotkey_unregister(a);
+}
+
+/* Unregistering a hotkey held through two bindings releases both: one
+ * release callback. */
+static void unregister_two_bindings_pressed(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind2(a, (obs_key_combination_t){0, OBS_KEY_A}, (obs_key_combination_t){0, OBS_KEY_B});
+	settle();
+
+	key_down(XK_a);
+	key_down(XK_b);
+	settle();
+	EXPECT(P(1));
+	obs_hotkey_unregister(a);
+	EXPECT(R(1));
+	settle();
+	EXPECT_NONE();
+}
+
+/* With rerouting on, unregistering a pressed hotkey sends its release to
+ * the router. */
+static void unregister_pressed_rerouted(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind(a, 0, OBS_KEY_A);
+	obs_hotkey_set_callback_routing_func(router, NULL);
+	obs_hotkey_enable_callback_rerouting(true);
+	settle();
+
+	key_down(XK_a);
+	settle();
+	EXPECT(P(-(long)a));
+	obs_hotkey_unregister(a);
+	EXPECT(R(-(long)a));
+}
+
+/* Whether the callback or the router is called is decided at each call,
+ * not at the press: a press before rerouting is turned on is released
+ * through the router, and the other way round. */
+static void reroute_switched_while_pressed(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind(a, 0, OBS_KEY_A);
+	settle();
+
+	key_down(XK_a);
+	settle();
+	EXPECT(P(1));
+	obs_hotkey_set_callback_routing_func(router, NULL);
+	obs_hotkey_enable_callback_rerouting(true);
+	key_up(XK_a);
+	settle();
+	EXPECT(R(-(long)a));
+
+	key_down(XK_a);
+	settle();
+	EXPECT(P(-(long)a));
+	obs_hotkey_enable_callback_rerouting(false);
+	key_up(XK_a);
+	settle();
+	EXPECT(R(1));
+	obs_hotkey_unregister(a);
+}
+
+/* With rerouting on and the router removed while a hotkey is pressed, its
+ * release calls nothing but still counts: once a router is set again, the
+ * next press reaches it. The router got a press and never its release.
+ * Characterized, not endorsed. The release here comes from rebinding (no
+ * poll can be awaited without a router). */
+static void router_removed_while_pressed(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_OBS();
+	obs_hotkey_id a = register_tagged(1);
+	bind(a, 0, OBS_KEY_A);
+	obs_hotkey_set_callback_routing_func(router, NULL);
+	obs_hotkey_enable_callback_rerouting(true);
+	settle();
+
+	key_down(XK_a);
+	settle();
+	EXPECT(P(-(long)a));
+	obs_hotkey_set_callback_routing_func(NULL, NULL);
+	bind(a, 0, OBS_KEY_B);
+	EXPECT_NONE();
+	obs_hotkey_set_callback_routing_func(router, NULL);
+	settle();
+	EXPECT_NONE();
+
+	key_down(XK_b);
+	settle();
+	EXPECT(P(-(long)a));
+	key_up(XK_b);
+	settle();
+	EXPECT(R(-(long)a));
+	obs_hotkey_unregister(a);
+}
+
+/* ------------------------------------------------------------------------- */
 
 int main(void)
 {
@@ -976,6 +1129,12 @@ int main(void)
 		cmocka_unit_test_setup_teardown(inject_strict_and_background, setup, teardown),
 		cmocka_unit_test_setup_teardown(inject_modifier_only, setup, teardown),
 		cmocka_unit_test_setup_teardown(inject_empty_binding, setup, teardown),
+		cmocka_unit_test_setup_teardown(two_bindings_one_poll, setup, teardown),
+		cmocka_unit_test_setup_teardown(inject_two_bindings, setup, teardown),
+		cmocka_unit_test_setup_teardown(unregister_two_bindings_pressed, setup, teardown),
+		cmocka_unit_test_setup_teardown(unregister_pressed_rerouted, setup, teardown),
+		cmocka_unit_test_setup_teardown(reroute_switched_while_pressed, setup, teardown),
+		cmocka_unit_test_setup_teardown(router_removed_while_pressed, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
