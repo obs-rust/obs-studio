@@ -352,14 +352,14 @@ static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *orig
 
 static inline uint32_t calc_cx(const struct obs_scene_item *item, uint32_t width)
 {
-	uint32_t crop_cx = item->crop.left + item->crop.right + item->bounds_crop.left + item->bounds_crop.right;
-	return (crop_cx > width) ? 2 : (width - crop_cx);
+	return obs_scene_cropped_size(width, item->crop.left, item->crop.right, item->bounds_crop.left,
+				      item->bounds_crop.right);
 }
 
 static inline uint32_t calc_cy(const struct obs_scene_item *item, uint32_t height)
 {
-	uint32_t crop_cy = item->crop.top + item->crop.bottom + item->bounds_crop.top + item->bounds_crop.bottom;
-	return (crop_cy > height) ? 2 : (height - crop_cy);
+	return obs_scene_cropped_size(height, item->crop.top, item->crop.bottom, item->bounds_crop.top,
+				      item->bounds_crop.bottom);
 }
 
 #ifdef DEBUG_TRANSFORM
@@ -385,10 +385,10 @@ static inline void update_nested_scene_crop(struct obs_scene_item *item, uint32_
 	float scale_x = (float)width / (float)item->last_width;
 	float scale_y = (float)height / (float)item->last_height;
 
-	item->crop.left = (int)((float)item->crop.left * scale_x);
-	item->crop.right = (int)((float)item->crop.right * scale_x);
-	item->crop.top = (int)((float)item->crop.top * scale_y);
-	item->crop.bottom = (int)((float)item->crop.bottom * scale_y);
+	item->crop.left = obs_scene_scale_crop(item->crop.left, scale_x);
+	item->crop.right = obs_scene_scale_crop(item->crop.right, scale_x);
+	item->crop.top = obs_scene_scale_crop(item->crop.top, scale_y);
+	item->crop.bottom = obs_scene_scale_crop(item->crop.bottom, scale_y);
 }
 
 static void update_item_transform(struct obs_scene_item *item, bool update_tex)
@@ -759,8 +759,8 @@ static inline void render_item(struct obs_scene_item *item)
 			gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
 
 			gs_matrix_scale3f(cx_scale, cy_scale, 1.0f);
-			gs_matrix_translate3f(-(float)(item->crop.left + item->bounds_crop.left),
-					      -(float)(item->crop.top + item->bounds_crop.top), 0.0f);
+			gs_matrix_translate3f(-obs_scene_crop_offset(item->crop.left, item->bounds_crop.left),
+					      -obs_scene_crop_offset(item->crop.top, item->bounds_crop.top), 0.0f);
 
 			if (item->user_visible && scene_transition_active(item->show_transition)) {
 				const int show_cx = obs_source_get_width(item->source);
@@ -1043,10 +1043,10 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 			size_from_absolute(&item->bounds, &item->bounds, item);
 	}
 
-	item->crop.left = (uint32_t)obs_data_get_int(item_data, "crop_left");
-	item->crop.top = (uint32_t)obs_data_get_int(item_data, "crop_top");
-	item->crop.right = (uint32_t)obs_data_get_int(item_data, "crop_right");
-	item->crop.bottom = (uint32_t)obs_data_get_int(item_data, "crop_bottom");
+	item->crop.left = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_left"));
+	item->crop.top = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_top"));
+	item->crop.right = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_right"));
+	item->crop.bottom = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_bottom"));
 
 	scale_filter_str = obs_data_get_string(item_data, "scale_filter");
 	item->scale_filter = OBS_SCALE_DISABLE;
@@ -3281,8 +3281,8 @@ static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2
 	}
 
 	vec2_sub(scale, maxv, minv);
-	scene->cx = (uint32_t)ceilf(scale->x);
-	scene->cy = (uint32_t)ceilf(scale->y);
+	scene->cx = obs_scene_size_from_extent(scale->x);
+	scene->cy = obs_scene_size_from_extent(scale->y);
 	return true;
 }
 

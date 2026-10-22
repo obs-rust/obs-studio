@@ -21,6 +21,9 @@
 #include "graphics/matrix4.h"
 #include "obs-scene-audio-actions.h"
 
+#include <limits.h>
+#include <math.h>
+
 /* how obs scene! */
 
 struct obs_scene_item {
@@ -110,3 +113,38 @@ struct obs_scene {
 	pthread_mutex_t audio_mutex;
 	struct obs_scene_item *first_item;
 };
+
+/* Scene item crop and size arithmetic for obs-scene.c, here so that
+ * test_scene_crop_steps can build it on its own with UBSan. */
+
+/* A crop read from a scene collection, as an int. */
+static inline int obs_scene_crop_from_int64(int64_t crop)
+{
+	return (int)(uint32_t)crop;
+}
+
+/* The size of a source of `size` pixels after the crops on both sides (the
+ * item's crop and its bounds crop), or 2 when they crop more than all of it. */
+static inline uint32_t obs_scene_cropped_size(uint32_t size, int crop1, int crop2, int bounds_crop1, int bounds_crop2)
+{
+	uint32_t crop = crop1 + crop2 + bounds_crop1 + bounds_crop2;
+	return (crop > size) ? 2 : (size - crop);
+}
+
+/* A nested scene's crop, scaled by the factor the scene's size changed by. */
+static inline int obs_scene_scale_crop(int crop, float factor)
+{
+	return (int)((float)crop * factor);
+}
+
+/* How far the crops move the source when it is drawn. */
+static inline float obs_scene_crop_offset(int crop, int bounds_crop)
+{
+	return (float)(crop + bounds_crop);
+}
+
+/* A group's size from the extent of its content, rounded up. */
+static inline uint32_t obs_scene_size_from_extent(float extent)
+{
+	return (uint32_t)ceilf(extent);
+}
