@@ -1593,6 +1593,12 @@ extern void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts
 
 extern const struct obs_output_info *find_output(const char *id);
 
+/* Output protocol-list match (obs-output-protocols.c), called by
+ * obs_enum_output_types_with_protocol(): how many of the ';'-separated
+ * segments of protocols equal protocol, byte for byte (0 for a NULL list).
+ * protocol must not be NULL. Not exported. */
+extern size_t obs_output_protocol_list_count(const char *protocols, const char *protocol);
+
 extern void obs_output_remove_encoder(struct obs_output *output, struct obs_encoder *encoder);
 
 extern void obs_encoder_packet_create_instance(struct encoder_packet *dst, const struct encoder_packet *src);

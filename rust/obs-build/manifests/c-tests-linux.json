@@ -559,6 +559,13 @@
     ]
   },
   {
+    "name": "test_output_protocol_list_steps",
+    "sources": [
+      "test/cmocka/test_output_protocol_list_steps.c",
+      "libobs/obs-output-protocols.c.h"
+    ]
+  },
+  {
     "name": "test_video_output_plan",
     "sources": [
       "test/cmocka/test_video_output_plan.c"
