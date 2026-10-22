@@ -66,6 +66,22 @@ records the source and skipped native matrices. The branch retains existing
 trusted-master publication restrictions and is excluded from the production cohort. Routing
 savings cannot count toward the Flatpak job's performance target.
 
+## Final production cohort in progress
+
+Normal routing PR #1817 merged as `9b6f1f74835cfb852d70dd10abfb0c070058d8d5`.
+The [first final warm run](https://github.com/obs-rust/obs-studio/actions/runs/39837821816)
+passed its complete Flatpak job in **437s (7m17s)**, including required new
+cache publication. All six dependencies were reused, OBS genuinely rebuilt,
+and the compiler reported342directhits/3misses. All three artifact validators
+passed. Restored archive9358763488 was2,274,967,809B; new archive9360891151
+is2,274,822,651B. The complete workflow failed on known #1816 and consumed
+14.967runner-minutes. No cancellation or retry was used.
+
+Warm2 and exact-source cold observations remain live. No final median or
+50% target claim is made from one successful Flatpak sample.
+[Portable cohort evidence](ci-evidence/2026-10-22-flatpak-final-cohort.json)
+will retain all three observations and their whole-workflow outcomes.
+
 ## Where the time went
 
 Observed nonoverlapping log intervals for reference39721238636/job119635024523

@@ -1,0 +1,62 @@
+{
+  "captured_at": "2026-10-22T19:20:05.817788+00:00",
+  "issue": 1760,
+  "complete": false,
+  "baseline_seconds": [
+    702,
+    905,
+    911
+  ],
+  "baseline_median_seconds": 905,
+  "interim_seconds": [
+    480,
+    421,
+    475
+  ],
+  "final_warm_observations": [
+    {
+      "run": 39837821816,
+      "job": 120030810312,
+      "source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+      "whole_seconds": 437,
+      "flatpak_conclusion": "success",
+      "workflow_conclusion": "failure",
+      "workflow_failure_issue": 1816,
+      "workflow_runner_minutes": 14.966666666666667,
+      "cost_complete": true,
+      "direct_hits": 342,
+      "misses": 3,
+      "dependency_hits": 6,
+      "application_rebuilt": true,
+      "artifact_validators": "all three passed",
+      "publication": "new source generation published",
+      "cache_archives": [
+        {
+          "id": 9360891151,
+          "bytes": 2274822651,
+          "key": "flatpak-builder-state-v1-x86_64-f9d1e759d61258a613adaa00a4f8b5c5429420927ae2046ce24b523efd93e423-9b6f1f74835cfb852d70dd10abfb0c070058d8d5"
+        },
+        {
+          "id": 9358763488,
+          "bytes": 2274967809,
+          "key": "flatpak-builder-state-v1-x86_64-f9d1e759d61258a613adaa00a4f8b5c5429420927ae2046ce24b523efd93e423-e1b649910c0d082b482bd3adfe58c67436b3e82a"
+        }
+      ],
+      "restored_archive_id": 9358763488,
+      "published_archive_id": 9360891151,
+      "published_archive_bytes": 2274822651
+    }
+  ],
+  "pending_warm_runs": [
+    39839045982
+  ],
+  "matched_cold_run": 39837854756,
+  "matched_cold_source": "9b6f1f74835cfb852d70dd10abfb0c070058d8d5",
+  "limits": [
+    "Final three-sample median not yet established",
+    "All Flatpak job setup/build/debug/export/validators/publication/cleanup included",
+    "Workflow failure retained; successful Flatpak does not imply successful workflow",
+    "Payload sizes are not NIC/TLS wire totals",
+    "Prior interim missed-target cohort retained"
+  ]
+}
