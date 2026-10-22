@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-22T19:30:54.236600+00:00",
+  "captured_at": "2026-10-22T19:42:15.868078+00:00",
   "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Includes final C++20 seed and routing qualification; Includes all declared final warm/cold measurement workflows; PR/merge-group CI and local work remain explicitly excluded.",
   "rows": [
     {
