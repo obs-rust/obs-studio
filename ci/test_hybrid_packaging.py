@@ -153,6 +153,17 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         self.assertLess(workflow.index("run: build-aux/prepare-flatpak-rust.sh"), workflow.index("- name: Build Flatpak Manifest"))
 
+    def test_flatpak_keeps_debug_symbols_without_recompressing_elf(self):
+        manifest = json.loads((ROOT / "build-aux/com.obsproject.Studio.json").read_text())
+        obs = next(module for module in manifest["modules"] if module["name"] == "obs")
+        self.assertTrue(obs["build-options"].get("no-debuginfo-compression", False),
+                        "the OBS module must not repeat costly ELF debug compression before OSTree export (#1760)")
+        for options in (manifest.get("build-options", {}), obs["build-options"]):
+            self.assertFalse(options.get("no-debuginfo", False), "keep the separate Debug extension")
+            self.assertFalse(options.get("strip", False), "do not replace debug extraction with destructive stripping")
+        self.assertIn("-DCMAKE_BUILD_TYPE=RelWithDebInfo", obs["config-opts"])
+        self.assertIn("-DENABLE_BROWSER=ON", obs["config-opts"])
+
     def test_flatpak_custom_key_matches_pinned_action_architecture_fallback(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
