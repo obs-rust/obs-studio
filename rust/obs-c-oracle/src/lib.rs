@@ -74,6 +74,7 @@ pub mod obs_properties;
 pub mod output_caption_text;
 pub mod output_delay;
 pub mod output_interleave;
+pub mod output_protocols;
 pub mod path_extension;
 pub mod pipe;
 #[cfg(target_os = "macos")]
