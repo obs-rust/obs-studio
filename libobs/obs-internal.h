@@ -318,6 +318,21 @@ struct obs_hotkey_binding {
 	obs_hotkey_t *hotkey;
 };
 
+/* The hotkey press state machine (obs-hotkey-press.c): whether one binding is
+ * pressed or released. The hotkey thread calls obs_hotkey_binding_query() for
+ * every binding on each poll, and obs_hotkey_inject_event() calls
+ * obs_hotkey_binding_inject(), with the hotkey mutex held. It reads the key
+ * state through obs_hotkey_key_is_pressed() and presses or releases a binding
+ * (its hotkey's pressed count and callback) through obs_hotkey_binding_press()
+ * and obs_hotkey_binding_release(), in obs-hotkey.c. Not exported. */
+uint32_t obs_hotkeys_query_modifiers(void);
+void obs_hotkey_binding_query(obs_hotkey_binding_t *binding, uint32_t modifiers, bool no_press, bool strict_modifiers);
+void obs_hotkey_binding_inject(obs_hotkey_binding_t *binding, obs_key_combination_t hotkey, bool pressed,
+			       bool strict_modifiers);
+bool obs_hotkey_key_is_pressed(obs_key_t key);
+void obs_hotkey_binding_press(obs_hotkey_binding_t *binding);
+void obs_hotkey_binding_release(obs_hotkey_binding_t *binding);
+
 struct obs_hotkey_name_map_item;
 void obs_hotkey_name_map_free(void);
 

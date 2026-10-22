@@ -8,6 +8,7 @@ if(OS_LINUX OR OS_FREEBSD)
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-press.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
   )
   target_compile_definitions(test_wayland_hotkeys PRIVATE obs=hotkey_test_obs)
@@ -30,6 +31,7 @@ if(OS_LINUX OR OS_FREEBSD)
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-press.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcut-ids.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcuts.c.h"
