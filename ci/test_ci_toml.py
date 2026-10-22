@@ -294,5 +294,36 @@ class CiTomlTest(unittest.TestCase):
                 self.assertEqual(sorted(set(triggers(path))), sorted(set(t.split(":")[0] for t in allowed[name])))
 
 
+class NativeArchitectureRetentionTest(unittest.TestCase):
+    def test_current_architecture_seeds_have_independent_honest_allowances(self):
+        # Real observed producer archives; a newer other architecture cannot
+        # substitute for any of these seeds (#1269).
+        observed = {
+            'windows-ccache-x64-RelWithDebInfo-source': 1063380057,
+            'windows-ccache-arm64-RelWithDebInfo-source': 901055569,
+            'macOS-xcode-x86_64-RelWithDebInfo-source': 675951544,
+            'macOS-xcode-arm64-RelWithDebInfo-source': 659815401,
+        }
+        families = load()['cache']['family']
+        matched = []
+        for key, archive_bytes in observed.items():
+            family_id = next(name for name, value in families.items()
+                             if key.startswith(value.get('prefix', VIA_PREFIXES.get(value.get('via'), '\0'))))
+            matched.append(family_id)
+            family = families[family_id]
+            unit = re.fullmatch(r'([0-9.]+)(MB|GB)', family['max'])
+            allowance = int(float(unit[1]) * (1024 ** (2 if unit[2] == 'MB' else 3)))
+            self.assertGreaterEqual(allowance, archive_bytes, key)
+            self.assertEqual(family['evict'], 'lru')
+            self.assertNotIn('shapes', family)
+        self.assertEqual(len(set(matched)), 4, 'architectures must not share newest-entry protection')
+
+    def test_declared_workflow_architectures_are_resolved_before_family_checks(self):
+        keys = [key for _, key in cache_keys()]
+        for prefix in ('windows-ccache-x64-', 'windows-ccache-arm64-',
+                       'macOS-xcode-x86_64-', 'macOS-xcode-arm64-'):
+            self.assertTrue(any(key.startswith(prefix) for key in keys), prefix)
+
+
 if __name__ == "__main__":
     unittest.main()
