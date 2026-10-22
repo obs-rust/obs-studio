@@ -48,6 +48,16 @@ class FlatpakRuntimeTest(unittest.TestCase):
             with self.subTest(refs=refs), self.assertRaises(ValueError):
                 module.select_refs(refs)
 
+    def test_actual_exported_remote_refs_have_kind_prefixes(self):
+        module = self.module()
+        # Exact remote-ls output from hosted qualification 39754042722.
+        refs = ['app/com.obsproject.Studio/x86_64/master',
+                'runtime/com.obsproject.Studio.Debug/x86_64/master']
+        self.assertEqual(module.select_refs(refs), ('com.obsproject.Studio/x86_64/master',
+                                                   'com.obsproject.Studio.Debug/x86_64/master'))
+        with self.assertRaises(ValueError):
+            module.select_refs([refs[0], refs[1].replace('runtime/', 'app/')])
+
     def test_debug_inventory_includes_refs_hidden_by_flatpak_default(self):
         module = self.module()
         class ReachedInstall(Exception):
