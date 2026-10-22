@@ -4,11 +4,14 @@ import importlib.util
 import json
 import os
 import re
+import runpy
 import shutil
 import subprocess
+import sys
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -187,6 +190,21 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
                          "a compiler replacement with preserved size/mtime must invalidate cached objects")
         self.assertNotIn("CCACHE_SLOPPINESS", env,
                          "keep the existing PCH helper's bounded settings; do not weaken header freshness")
+
+    def test_flatpak_pch_probe_preserves_failed_tool_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "evidence"
+            script = ROOT / "ci/flatpak_pch_probe.py"
+            error = subprocess.CalledProcessError(17, ["ccache", "--version"],
+                                                  output="fixture SDK identity unavailable\n")
+            with patch.object(sys, "argv", [str(script), "--output", str(output)]), \
+                 patch("subprocess.check_output", side_effect=["configured", "fixture compiler", error]):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    runpy.run_path(str(script), run_name="__main__")
+            log = output / "failed-command.log"
+            self.assertTrue(log.exists(), "preserve SDK tool stderr instead of only an opaque CalledProcessError")
+            self.assertIn("fixture SDK identity unavailable", log.read_text())
+            self.assertIn('"ccache", "--version"', log.read_text())
 
     def test_flatpak_custom_key_matches_pinned_action_architecture_fallback(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
