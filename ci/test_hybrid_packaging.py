@@ -632,6 +632,20 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
                     result = json.loads((root / 'consumer-result.json').read_text())
                     self.assertEqual(result['status'], 'success' if accepted else 'failed')
 
+    def test_container_artifacts_use_one_directory_to_preserve_the_cache_payload(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        upload = workflow.split('      - name: Upload Experimental Flatpak Compiler Artifact\n', 1)[1].split('      - name:', 1)[0]
+        # The hosted multiline container input uploaded only metadata beneath /.
+        # One controlled directory resolves once and includes both required files.
+        self.assertIn('path: ${{ runner.temp }}/flatpak-compiler-transfer\n', upload)
+        self.assertNotIn('path: |', upload)
+        consumer = workflow.split('  flatpak-compiler-consumer:\n', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        self.assertIn('Stage Compiler Consumer Measurements', consumer)
+        self.assertIn('path: ${{ runner.temp }}/flatpak-compiler-result\n', consumer)
+        self.assertIn('*.json', consumer)
+        self.assertNotIn('path: ${{ runner.temp }}/flatpak-compiler-transfer\n',
+                         consumer.split('      - name: Upload Compiler Consumer Measurements', 1)[1])
+
     def test_transfer_is_explicit_manual_default_off_and_fresh_consumer(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
         caller = (ROOT / '.github/workflows/ci.yml').read_text()
