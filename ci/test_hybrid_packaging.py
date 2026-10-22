@@ -632,6 +632,13 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
                     result = json.loads((root / 'consumer-result.json').read_text())
                     self.assertEqual(result['status'], 'success' if accepted else 'failed')
 
+    def test_consumer_bootstrap_path_is_applied_before_vendor_step(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        consumer = workflow.split('  flatpak-compiler-consumer:\n', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        self.assertRegex(consumer, r'cmake -P cmake/common/prepare-flatpak-soldr\.cmake\n'
+                         r'      - name: Vendor Flatpak Compiler Consumer Sources\n'
+                         r'        run: build-aux/prepare-flatpak-rust\.sh')
+
     def test_container_artifacts_use_one_directory_to_preserve_the_cache_payload(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
         upload = workflow.split('      - name: Upload Experimental Flatpak Compiler Artifact\n', 1)[1].split('      - name:', 1)[0]
@@ -658,7 +665,7 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         self.assertIn('if: inputs.flatpak-compiler-transfer-probe', consumer)
         self.assertIn('save-cache: false', consumer)
         self.assertIn('restore-cache: false', consumer)
-        self.assertIn('compiler-cache.tar', workflow)
+        self.assertIn('ci/flatpak_compiler_cache.py pack', workflow)
         self.assertIn('mirror-screenshots-url: https://dl.flathub.org/media', consumer)
         self.assertIn('Prepare build space', consumer)
         self.assertIn('required_gib=40', consumer)
