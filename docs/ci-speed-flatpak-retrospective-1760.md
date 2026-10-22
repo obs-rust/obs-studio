@@ -17,11 +17,11 @@ queue. #1803 adds default-off compiler attribution and has merged normally.
 #1806 restores browser C++20 cacheability and merged normally after SDK, full
 consumer and installed saved-profile qualification passed.
 No new workflow files were introduced. The original three-sample cohort and
-matched cold measurement are complete. The issue remains open for the final
-C++20 configuration production cohort/cold/retention, reports and owned cleanup.
+matched cold measurement are complete, as is the final C++20 production cohort.
+The issue remains open for settled retention, reports, review/merge and owned cleanup.
 
 The completed table below describes the intermediate configuration before #1806.
-Final-configuration measurements are still pending.
+The final-configuration result is reported above and below.
 
 | Metric | Before | Interim measurement (before #1806) |
 | --- | --- | --- |
@@ -75,7 +75,7 @@ records the source and skipped native matrices. The branch retains existing
 trusted-master publication restrictions and is excluded from the production cohort. Routing
 savings cannot count toward the Flatpak job's performance target.
 
-## Final production cohort in progress
+## Final production cohort
 
 Normal routing PR #1817 merged as `9b6f1f74835cfb852d70dd10abfb0c070058d8d5`.
 The [first final warm run](https://github.com/obs-rust/obs-studio/actions/runs/39837821816)
@@ -92,10 +92,14 @@ exact-key publication. Its whole workflow failed on #1816,17.45runner-minutes.
 Exact-source cold passed846s with0hits/345misses, all artifact validators,
 and all four builder/compiler restore steps skipped. Publication was disabled;
 the SDK image remained preinstalled. The cold workflow failed on #1816 and
-consumed20.567runner-minutes. Third warm39840480759 remains live. No final median or
-50% target claim is made from two successful Flatpak samples.
+consumed20.567runner-minutes. Third warm39840480759 passed447s,331directhits/14misses,
+all six dependency hits and all validators, including new-generation publication.
+It includes #1815 scene-audio extraction relative to the first two samples;
+recipe/browser/CEF are unchanged. Its workflow failed #1816,17.017runner-minutes.
+The final median437s meets the target; selected warm workflows cost49.433runner-minutes
+with three failures, no cancellations or unchanged retries.
 [Portable cohort evidence](ci-evidence/2026-10-22-flatpak-final-cohort.json)
-will retain all three observations and their whole-workflow outcomes.
+retains all three observations and their whole-workflow outcomes.
 
 ## Where the time went
 
@@ -205,15 +209,14 @@ runtime costs remain separate from routine Flatpak improvements.
 
 ## Remaining completion work
 
-1. Complete third final warm39840480759 and verify all three observations;
-   #1817 is normally merged and seed/routing results are recorded above.
-2. Predeclare and collect at least three comparable final-configuration warm
-   full jobs plus a matched current cold observation. Preserve the prior
-   [480,421,475]s cohort that missed the target.
+1. Finish the final portable evidence review against raw records; all three
+   final warm observations and exact-source cold are complete.
+2. Preserve the historical and interim cohorts, source/toolchain differences
+   and the distinction between Flatpak success and failed whole workflows.
 3. Verify retained production consumer reuse and current family/global capacity;
    preserve all run costs, failures, cancellations, bytes and source differences.
 4. Commit portable final evidence and publish final1760/1667reports, including
-   the unmet target if further improvements are needed; audit all original criteria.
+   the measured target result and remaining CI failure; audit all original criteria.
 5. Finish only owned branch/worktree cleanup. The original checkout now holds
    another active release change; preserve that work and its branch.
 
@@ -247,14 +250,15 @@ and unchanged C++WebSocket checks. Synthetic/software limitations remain.
 The enclosing qualification39824614077 cost133.3667runner-minutes and failed
 only the known Windows callback parity test (664pass/1fail, #1549/#1541); its seed
 and log were preserved without rerunning or changing tests. Normal1806PRCI and
-merge-result CI passed independently. The PR has merged through the normal queue. Parent performance success is still
-unproven for the final configuration.
+merge-result CI passed independently. The PR has merged through the normal queue. The later production cohort establishes the final performance target, with
+whole-workflow failures and source differences retained.
 
 ## Process improvements for the next CI batch
 
 - Manual full-matrix experiments spend most runner time on unrelated native jobs.
-  A tested manual lane selector in the existing workflow could retain the full
-  Flatpak job while avoiding that extra matrix; preserve routine PR/release gates.
+  #1817 adopted a tested manual lane selector in the existing workflow, retaining
+  the full Flatpak job and Fast Gate while preserving routine PR/release gates.
+  These routing savings are separate from the measured Flatpak job speedup.
 - Freeze qualification source identity and fetch completed artifacts alongside
   lagging status APIs. A timeout observing a run is not a build failure or retry.
 - Record all compiler calls, including unsupported calls; reporting only cacheable
@@ -288,12 +292,12 @@ known issue. No C test was modified by the Flatpak performance units.
 
 #1806 merged normally as e1b649910c0d082b482bd3adfe58c67436b3e82a.
 The trusted manual master seed [39831165145](https://github.com/obs-rust/obs-studio/actions/runs/39831165145)
-is running with all optional inputs off. It is excluded from the warm cohort.
+passed455s with all optional inputs off. It is excluded from the warm cohort.
 Actual merged ci/ci_scope.py returns full=False for path-based master pushes,
 so no automatic full Flatpak seed is selected; earlier scheduling assumptions
-were corrected before observing any final warm timings. The following first
-three routine warm jobs and matched cold run remain pending. No final50% claim.
+were corrected before observing any final warm timings. The first three routine
+warm jobs and matched cold are now complete:437/434/447s and846s respectively.
 
 - [Workflow cost ledger](ci-evidence/2026-10-22-flatpak-workflow-costs.json):
-  all completed measurement runs and the cancelled seed metadata anomaly; final
-  seed/cohort observations are explicitly pending.
+  all completed measurement runs, including final seed/cohort observations,
+  and the cancelled seed metadata anomaly.
