@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-core"
 version = "0.1.0"
-description = "Rust ports of the units extracted from libobs/obs.c.h: libobs/obs-video-plan.c.h"
+description = "Rust ports of the units extracted from libobs/obs.c.h: libobs/obs-video-plan.c.h, libobs/obs-context-names.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
