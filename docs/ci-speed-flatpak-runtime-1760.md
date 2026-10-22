@@ -110,3 +110,17 @@ inactive and shut down before the queued recording transition completed.
 It now sends StartRecord once and polls only GetRecordStatus for up to 20 seconds.
 A never-active recording still fails; no mutation is retried. Full recording,
 screen/camera streaming and browser-pixel verification remain outstanding.
+
+Run `39762495293` completes a 12.166-second, 365-frame recording and clean app
+shutdown. Screen and camera motion, continuous 440 Hz microphone tone, portal
+streaming, plugin inventory and installed CEF debug checks pass. Browser pixels
+fail: the decoded frame contains the underlying screen bars where the green
+HTML should appear. This failure is retained; module loading is not treated as
+proof of browser rendering.
+
+That runner reports llvmpipe and no DRM render node, while the frontend's browser
+hardware setting defaults to true. The next fixture explicitly selects the
+user-visible `BrowserHWAccel=false` setting in its saved global configuration,
+matching the declared software-only environment. The green-pixel threshold
+remains unchanged. This is a hypothesis to validate, not a confirmed cause or a
+browser pass; hardware browser rendering is outside this synthetic coverage.

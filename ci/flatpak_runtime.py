@@ -84,6 +84,9 @@ def write_profile(output: Path, port: int, password: str) -> None:
     scenes.mkdir()
     (output / 'recordings').mkdir()
     (output / 'browser.html').write_text('<!doctype html><html style="background:#00ff00;width:100%;height:100%"></html>')
+    # This runner exposes llvmpipe and no DRM render node. Exercise the user's
+    # software browser setting explicitly rather than requesting shared GPU textures.
+    (config / 'global.ini').write_text('[General]\nLastVersion=4294967295\nBrowserHWAccel=false\n')
     (config / 'user.ini').write_text('[General]\nFirstRun=true\nConfirmOnExit=false\n\n[Basic]\nProfile=Test\nProfileDir=Test\nSceneCollection=Test\nSceneCollectionFile=Test\n')
     (profile / 'basic.ini').write_text(f'''[General]
 Name=Test
@@ -266,7 +269,7 @@ def qualification(args) -> dict:
     result = dict(status='failed', source=os.environ.get('FLATPAK_ARTIFACT_SOURCE', os.environ.get('GITHUB_SHA')),
                   harness_source=os.environ.get('GITHUB_SHA'),
                   artifact_run=os.environ.get('FLATPAK_ARTIFACT_RUN', os.environ.get('GITHUB_RUN_ID')), app=APP,
-                  coverage='synthetic screen/camera/microphone producers; no physical devices or hardware GPU',
+                  coverage='synthetic screen/camera/microphone producers; software browser rendering; no physical devices or hardware GPU',
                   limits='One runtime qualification, not routine full-job performance evidence')
     try:
         flatpak = ['flatpak', '--user']
