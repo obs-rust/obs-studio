@@ -1,4 +1,4 @@
-# Flatpak performance retrospective (#1760) — retention verification pending
+# Flatpak performance retrospective (#1760)
 
 ## Measured performance result
 
@@ -16,8 +16,9 @@ Their median is **437s (7m17s),51.71% lower** than the historical905s
 Nearest-rank sample p95 is447s versus911s before; with n=3 these are sample
 maxima, not stable population-tail estimates. Matched cold is846s.
 All selected final workflows failed independently on #1816; successful Flatpak
-jobs do not establish healthy whole-workflow CI. Final retention, reporting,
-review/merge and owned cleanup still remain.
+jobs do not establish healthy whole-workflow CI. At this report revision, final retention, reporting,
+review/merge and owned cleanup remain. The closing report on #1760 records
+those terminal verification results after normal queue maintenance.
 
 Implementation PRs #1763 (CEF), #1771 (installed saved-profile validation),
 and #1767 (safe compiler reuse and projected cache) merged through the normal
@@ -215,7 +216,19 @@ package setup timed out automatically. No unchanged workflow was retried to
 obtain a passing result. Changed-code trials and their extra native/transport/
 runtime costs remain separate from routine Flatpak improvements.
 
-## Remaining completion work
+## Post-cohort cache observation
+
+The [post-cohort inventory](ci-evidence/2026-10-22-flatpak-post-cohort-retention.json)
+contains39entries/11,139,864,070B, above the10GiB global budget. Its two projected
+archives total4,549,850,337B, above the2.5GiB family budget. This is a transitional
+snapshot, not settled capacity proof. The newest archive9361847609 is2,275,027,686B
+and fits individually; final warm2/3 actually consumed9360891151. No claim is made
+that the newest archive has a later consumer. Existing janitor maintenance at
+normal merge-group/master events must demonstrate settled retention; its terminal
+log/inventory and final reporting are recorded in #1760's closing report. Backend,
+budgets and age protection are unchanged; no cache was manually deleted.
+
+## Handoff checkpoints at this report revision
 
 1. Finish the final portable evidence review against raw records; all three
    final warm observations and exact-source cold are complete.
