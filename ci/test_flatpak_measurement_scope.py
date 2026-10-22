@@ -26,10 +26,20 @@ def selected(expression, measurement, full, targets=''):
         ('needs.check-event.outputs.full', 'full_text'),
         ('needs.check-event.outputs.linux_targets', 'targets'),
         ('inputs.flatpak-measurement-only', 'measurement'),
+        ('always()', 'always'),
+        ('cancelled()', 'cancelled'),
+        ('needs.rust-tests-linux.result', 'fast_result'),
+        ('needs.check-event.outputs.deferred', 'deferred'),
+        ('needs.check-event.outputs.macos', 'macos'),
+        ('needs.check-event.outputs.windows', 'windows'),
+        ('needs.ci-mode.outputs.skip_rust-cross-lint', 'skip_cross'),
+        ('needs.ci-mode.outputs.cross_hit', 'cross_hit'),
     ]:
         expression = expression.replace(before, after)
     expression = re.sub(r'!(?!=)', ' not ', expression.replace('&&', ' and ').replace('||', ' or '))
-    values = dict(measurement=measurement, full=full, full_text=str(full).lower(), targets=targets)
+    values = dict(measurement=measurement, full=full, full_text=str(full).lower(), targets=targets,
+                  always=True, cancelled=False, fast_result='success', deferred='false',
+                  macos='false', windows='false', skip_cross='false', cross_hit='false')
 
     def evaluate(node):
         if isinstance(node, ast.Expression):
@@ -100,6 +110,10 @@ class FlatpakMeasurementScopeTest(unittest.TestCase):
                 result, _ = self.scope(event, True, full_input=True)
                 self.assertNotEqual(result.returncode, 0, result.stdout)
 
+    def test_measurement_cannot_override_an_explicit_release_gate(self):
+        result, _ = self.scope('workflow_dispatch', True, full_input=True)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
     def test_native_app_and_release_cross_jobs_respect_manual_selector(self):
         for name in ['macos-build', 'ubuntu-build', 'windows-build', 'rust-cross-lint-release']:
             expression = re.search(r'^    if: (.*)$', job(name), re.MULTILINE).group(1)
@@ -117,6 +131,13 @@ class FlatpakMeasurementScopeTest(unittest.TestCase):
             self.assertIsNotNone(re.search(r'flatpak-measurement-only:\n\s+description: [^\n]+\n\s+type: boolean\n\s+default: false', workflow),
                                  'measurement input must be boolean and default off')
         self.assertIn("flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}", caller)
+
+    def test_regular_cross_lint_keeps_default_and_skips_measurement(self):
+        expression = re.search(r'^    if: (.*)$', job('rust-cross-lint'), re.MULTILINE).group(1)
+        for full in [False, True]:
+            with self.subTest(full=full):
+                self.assertTrue(selected(expression, False, full))
+                self.assertFalse(selected(expression, True, full))
 
 
 if __name__ == '__main__':
