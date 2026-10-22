@@ -816,6 +816,20 @@ typedef bool (*obs_context_name_exists_t)(void *param, const char *name);
 char *obs_context_name_dup(const char *name, bool private, long long *unnamed_index);
 char *obs_context_name_deduplicate(const char *name, obs_context_name_exists_t exists, void *param);
 
+/* Scene item visibility audio ramp (obs-scene-audio-actions.c), called by
+ * obs-scene.c. apply_scene_item_audio_actions() applies the item's queued
+ * show/hide actions that fall in the audio tick at ts (all of them when ts is
+ * 0), fills buf (AUDIO_OUTPUT_FRAMES gains of 0 or 1, if not NULL), and
+ * drops one active reference per hide. apply_scene_item_volume() does that
+ * when the first queued action falls in the tick, and returns whether it
+ * did. process_all_audio_actions() applies every queued action. Each takes
+ * the item's actions_mutex. Not exported. */
+struct obs_scene_item;
+
+void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate);
+bool apply_scene_item_volume(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate);
+void process_all_audio_actions(struct obs_scene_item *item, size_t sample_rate);
+
 /* ------------------------------------------------------------------------- */
 /* ref-counting  */
 

@@ -551,6 +551,13 @@
     ]
   },
   {
+    "name": "test_scene_audio_action_steps",
+    "sources": [
+      "test/cmocka/test_scene_audio_action_steps.c",
+      "libobs/obs-scene-audio-actions.c.h"
+    ]
+  },
+  {
     "name": "test_video_output_plan",
     "sources": [
       "test/cmocka/test_video_output_plan.c"
