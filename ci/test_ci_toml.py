@@ -76,7 +76,7 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         # v6.8 adds a save switch independent of cache/restore. v6.7
         # ignores this input, so the pin is part of the writer contract.
         self.assertIn("flatpak-builder@79327416609af08178ad73b352877e51450790b3", block)
-        self.assertIn("save-cache: ${{ github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}", block)
+        self.assertIn("save-cache: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}", block)
         self.assertRegex(block, r"(?m)^          cache: true$")
         # The dependency snapshot must be extracted before the newer compiler
         # snapshot. A second restore here overwrites mutable ccache manifests.
@@ -98,6 +98,26 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         self.assertLess(job.index('id: flatpak-compiler-cache'), job.index(marker))
         self.assertLess(job.index(marker), job.index('- name: Build Flatpak Manifest'))
         self.assertIn('Flatpak Ccache Stats (this build)', job)
+
+    def test_manual_cold_flatpak_neither_restores_nor_publishes_build_caches(self):
+        workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        caller = (WORKFLOWS / "ci.yml").read_text()
+        for text in (workflow, caller):
+            self.assertRegex(text, r'flatpak-cold-build:\n        description: [^\n]+\n        type: boolean\n        default: false')
+        self.assertIn("flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}", caller)
+        job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
+        steps = job.split('\n      - ')
+        for marker in ('id: flatpak-builder-cache-lookup', 'name: Restore legacy Flatpak builder seed',
+                       'id: flatpak-compiler-cache', 'key: flatpak-ccache-x86_64-${{ github.sha }}'):
+            matches = [step for step in steps if marker in step]
+            self.assertTrue(matches, marker)
+            for step in matches:
+                self.assertIn('!inputs.flatpak-cold-build', step, marker)
+        self.assertIn('save-cache: ${{ !inputs.flatpak-cold-build', job)
+        self.assertIn('cache: true', job)
+        self.assertIn('restore-cache: false', job)
+        for validator in ('Validate AppStream', 'Validate build directory', 'Validate repository'):
+            self.assertIn(validator, job)
 
     def test_separate_compiler_snapshot_saves_only_on_master(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
