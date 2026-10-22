@@ -9,6 +9,7 @@
 
 #include "obs-internal.h"
 #include "obs-scene.h"
+#include "obs-scene-audio-actions.h"
 
 /*
  * Characterization of the scene item visibility audio ramp in
@@ -520,6 +521,84 @@ static void process_all(void **state)
 	fake_free(f);
 }
 
+/* ------------------------------------------------------------------------ */
+/* The core: obs_scene_audio_actions_apply() and obs_scene_audio_action_due() */
+
+/* The core works on the fields alone: a queue and a visibility, with no
+ * item, no lock and no source. It consumes the same actions, writes the
+ * same buffer and visibility, and returns the hide count; it drops no
+ * reference and removes no child (that stays with the item's caller). */
+static void core_applies_the_fields(void **state)
+{
+	(void)state;
+	obs_scene_item_action_array_t actions = {0};
+	struct item_action a[] = {
+		{.visible = false, .timestamp = at_frame(TICK, 100, 48000)},
+		{.visible = true, .timestamp = at_frame(TICK, 300, 48000)},
+		{.visible = false, .timestamp = at_frame(TICK, 700, 48000)},
+		{.visible = true, .timestamp = at_frame(TICK, 1500, 48000)},
+	};
+	for (size_t i = 0; i < sizeof(a) / sizeof(a[0]); i++)
+		da_push_back(actions, &a[i]);
+
+	struct fake *f = fake_new(true, 0);
+	bool visible = true;
+	assert_int_equal(obs_scene_audio_actions_apply(&actions, &visible, TICK, 48000, f->buf), 2);
+	check_span(f, 0, 100, 1.0f);
+	check_span(f, 100, 300, 0.0f);
+	check_span(f, 300, 700, 1.0f);
+	check_span(f, 700, FRAMES, 0.0f);
+	assert_false(visible);
+	assert_int_equal(actions.num, 1);
+	assert_true(actions.array[0].visible);
+	assert_int_equal(actions.array[0].timestamp, at_frame(TICK, 1500, 48000));
+	assert_int_equal(removals, 0);
+	/* the fake item is not touched */
+	check_item(f, true, 0, 0, 0);
+
+	/* nothing due: 0 hides, the buffer the visibility, the queue kept */
+	assert_int_equal(obs_scene_audio_actions_apply(&actions, &visible, TICK, 48000, f->buf), 0);
+	check_span(f, 0, FRAMES, 0.0f);
+	assert_false(visible);
+	assert_int_equal(actions.num, 1);
+
+	/* ts 0 with no buffer: everything, whatever its time */
+	struct item_action hide = {.visible = false, .timestamp = UINT64_MAX};
+	da_push_back(actions, &hide);
+	assert_int_equal(obs_scene_audio_actions_apply(&actions, &visible, 0, 0, NULL), 1);
+	assert_false(visible);
+	assert_int_equal(actions.num, 0);
+
+	/* an empty queue */
+	visible = true;
+	assert_int_equal(obs_scene_audio_actions_apply(&actions, &visible, TICK, 48000, f->buf), 0);
+	check_span(f, 0, FRAMES, 1.0f);
+	assert_true(visible);
+
+	da_free(actions);
+	fake_free(f);
+}
+
+/* The volume window of apply_scene_item_volume(), on its own: an action is
+ * due before ts + 1024 frames in ns (rounded down), or whenever ts is 0. */
+static void core_action_due(void **state)
+{
+	(void)state;
+	static const uint64_t rates[] = {8000, 22050, 44100, 48000, 96000, 192000};
+
+	for (size_t r = 0; r < sizeof(rates) / sizeof(rates[0]); r++) {
+		uint64_t duration = FRAMES * NS / rates[r];
+		assert_true(obs_scene_audio_action_due(0, TICK, (size_t)rates[r]));
+		assert_true(obs_scene_audio_action_due(TICK + duration - 1, TICK, (size_t)rates[r]));
+		assert_false(obs_scene_audio_action_due(TICK + duration, TICK, (size_t)rates[r]));
+		assert_false(obs_scene_audio_action_due(UINT64_MAX, TICK, (size_t)rates[r]));
+	}
+
+	/* ts 0: due whatever the time */
+	assert_true(obs_scene_audio_action_due(UINT64_MAX, 0, 48000));
+	assert_true(obs_scene_audio_action_due(0, 0, 48000));
+}
+
 int main(void)
 {
 	base_set_log_handler(log_handler, NULL);
@@ -540,6 +619,8 @@ int main(void)
 		cmocka_unit_test(volume_first_action_only),
 		cmocka_unit_test(volume_ts_0),
 		cmocka_unit_test(process_all),
+		cmocka_unit_test(core_applies_the_fields),
+		cmocka_unit_test(core_action_due),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
