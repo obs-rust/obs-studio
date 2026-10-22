@@ -6,6 +6,10 @@ on:
         description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
         type: boolean
         default: false
+      flatpak-cold-build:
+        description: Measure a fresh Flatpak builder and compiler cache without restoring or publishing either cache
+        type: boolean
+        default: false
       flatpak-pruned-build-probe:
         description: Validate isolated application rebuild without cached downloads or compiler state
         type: boolean
@@ -670,13 +674,14 @@ jobs:
       # builder action below must not restore it a second time.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-builder-cache-lookup
+        if: ${{ !inputs.flatpak-cold-build }}
         with:
           path: .flatpak-builder
           key: flatpak-builder-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-x86_64
           restore-keys: flatpak-builder-x86_64
 
       - name: Restore legacy Flatpak builder seed
-        if: steps.flatpak-builder-cache-lookup.outputs.cache-matched-key == ''
+        if: ${{ !inputs.flatpak-cold-build && steps.flatpak-builder-cache-lookup.outputs.cache-matched-key == '' }}
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .flatpak-builder
@@ -692,6 +697,7 @@ jobs:
       # only master publishes both snapshots and prunes the compiler cache.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-compiler-cache
+        if: ${{ !inputs.flatpak-cold-build }}
         with:
           path: .flatpak-builder/ccache
           key: flatpak-ccache-x86_64-${{ github.sha }}
@@ -732,7 +738,7 @@ jobs:
           restore-cache: false
           # With internal restore disabled the action cannot detect an exact
           # hit itself. Preserve immutable-key publication behavior explicitly.
-          save-cache: ${{ github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}
+          save-cache: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}
           cache-key: ${{ steps.setup.outputs.cacheKey }}
           mirror-screenshots-url: https://dl.flathub.org/media
 
@@ -780,7 +786,7 @@ jobs:
           du -sh "${ccache_dir}"
 
       - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        if: github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-compiler-cache.outputs.cache-hit != 'true'
+        if: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-compiler-cache.outputs.cache-hit != 'true' }}
         with:
           path: .flatpak-builder/ccache
           key: flatpak-ccache-x86_64-${{ github.sha }}

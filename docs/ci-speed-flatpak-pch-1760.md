@@ -96,3 +96,20 @@ Real application freshness/reuse inside Flatpak, full-job warm/cold
 measurements and the packaged screen/camera/microphone/browser/debugger scenario
 are still required. Keep the PR draft until these are proven. This change alone
 does not complete #1760's 50% whole-job target.
+
+## Manual cold builder/compiler measurement
+
+The existing workflow accepts default-off `flatpak-cold-build=true` on an
+explicit dispatch. It skips both current/legacy builder archives and the
+standalone compiler restore, and suppresses both publications. A fresh hosted
+runner therefore starts with no Flatpak builder/compiler state. The full app,
+ccache enablement, counter reset, export and all validators still run. Ordinary
+PR/push/release selection and caching are unaffected; no cache is deleted.
+
+Use the same frozen source, manifest and container image for a corresponding
+warm observation. Include the whole job and disclose every restore outcome.
+This is cold **builder/compiler state**, not a claim that the internet, registry
+or preinstalled SDK is cold: the pinned build image already contains the SDK,
+and uv/tool input caches retain their existing policy. Other full-dispatch
+lanes still run and their runner cost must be reported separately. No cold run
+has yet executed this new control; it supplies the planned measurement route.
