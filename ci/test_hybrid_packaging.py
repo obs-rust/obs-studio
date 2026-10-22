@@ -702,3 +702,59 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         self.assertIn('/usr/local/lib/android:/to_clean/android', consumer)
         gate = tomllib.loads((ROOT / 'local-gate.toml').read_text())
         self.assertIn('flatpak-compiler-consumer', gate['gate']['verify-exempt'])
+
+
+class FlatpakDependencyTransferTest(unittest.TestCase):
+    def load_transfer(self):
+        spec = importlib.util.spec_from_file_location('flatpak_dependency_cache', ROOT / 'ci/flatpak_dependency_cache.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_real_archive_roundtrip_preserves_opaque_objects_and_checks_profile(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            object_path = source / 'objects/ab' / ('c' * 62 + '.file')
+            object_path.parent.mkdir(parents=True)
+            object_path.symlink_to('/opaque/payload/not/a/structural/path')
+            (source / 'config').write_text('[core]\nmode=bare-user-only\n')
+            profile = {'source': 'source-sha', 'sdk': 'sdk-sha'}
+            artifact = root / 'artifact'
+            with patch.object(module, 'fsck') as fsck:
+                report = module.pack(source, artifact, profile)
+                destination = root / 'destination'
+                module.restore(artifact, destination, profile)
+                self.assertEqual(fsck.call_count, 2)
+            self.assertEqual((destination / object_path.relative_to(source)).readlink(), object_path.readlink())
+            self.assertEqual((destination / 'config').read_bytes(), (source / 'config').read_bytes())
+            self.assertGreater(report['archive_bytes'], 0)
+            self.assertEqual(report['symbolic_objects'], 1)
+            with self.assertRaisesRegex(ValueError, 'profile'):
+                module.restore(artifact, root / 'wrong', {'source': 'source-sha', 'sdk': 'changed'})
+            self.assertFalse((root / 'wrong').exists())
+            archive = artifact / 'dependency-cache.tar.zst'
+            archive.write_bytes(archive.read_bytes() + b'corrupted')
+            with self.assertRaisesRegex(ValueError, 'digest|size'):
+                module.restore(artifact, root / 'corrupt', profile)
+            self.assertFalse((root / 'corrupt').exists())
+
+    def test_structural_links_and_unsafe_members_reject_before_destination_mutation(self):
+        module = self.load_transfer()
+        import tarfile
+        for name, kind in [('config', tarfile.SYMTYPE), ('../escape', tarfile.REGTYPE),
+                           ('/absolute', tarfile.REGTYPE), ('objects/a/file', tarfile.LNKTYPE),
+                           ('objects/ab/' + 'c' * 62 + '.file/child', tarfile.REGTYPE)]:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / 'source'
+                source.mkdir()
+                (source / 'config').symlink_to(root / 'outside')
+                with self.assertRaisesRegex(ValueError, 'structural|link'):
+                    module.pack(source, root / 'artifact', {})
+                member = tarfile.TarInfo(name)
+                member.type = kind
+                member.linkname = '/outside'
+                with self.assertRaisesRegex(ValueError, 'unsafe|structural|link'):
+                    module.validate_member(member)
