@@ -25,10 +25,12 @@
  * compared field by field. The range is not an input of the plan (it only
  * changes the color matrix).
  *
- * Characterized, not endorsed: obs_video_size_valid() accepts an output
- * width of 2 or 3, and obs_video_align_output_size() then masks it to 0,
- * which video_output_open() rejects after obs_reset_video() has already
- * freed the old video. test_video_output_formats shows what follows.
+ * The output size is checked after the alignment as well: an output width
+ * of 2 or 3 passes obs_video_size_valid(), but obs_video_align_output_size()
+ * masks it to 0, so obs_video_output_size_valid() refuses it, and
+ * obs_reset_video() returns OBS_VIDEO_INVALID_PARAM before it frees the old
+ * video (#1713). test_video_output_formats checks that through the real
+ * libobs.
  */
 
 #define N(a) (sizeof(a) / sizeof((a)[0]))
@@ -485,9 +487,10 @@ static void alignment_masks(void **state)
 	assert_int_equal(height, 766);
 }
 
-/* Characterized, not endorsed: a width of 2 or 3 passes the size check,
- * and the alignment then makes it 0. */
-static void width_2_and_3_align_to_0(void **state)
+/* A width of 2 or 3 passes the size check, and the alignment makes it 0,
+ * so the output size check refuses it. The height minimum, 2, survives the
+ * alignment, and 3 becomes 2, so those heights stay valid. */
+static void width_2_and_3_refused_after_alignment(void **state)
 {
 	(void)state;
 	for (uint32_t w = 2; w <= 3; w++) {
@@ -496,12 +499,33 @@ static void width_2_and_3_align_to_0(void **state)
 		obs_video_align_output_size(&width, &height);
 		assert_int_equal(width, 0);
 		assert_int_equal(height, 2);
+		for (uint32_t h = 2; h <= 3; h++)
+			assert_false(obs_video_output_size_valid(w, h));
 	}
-	/* the height minimum, 2, survives the alignment, and 3 becomes 2 */
 	uint32_t width = 4, height = 3;
 	obs_video_align_output_size(&width, &height);
 	assert_int_equal(width, 4);
 	assert_int_equal(height, 2);
+	assert_true(obs_video_output_size_valid(4, 2));
+	assert_true(obs_video_output_size_valid(4, 3));
+	assert_true(obs_video_output_size_valid(5, 3));
+}
+
+/* Every other size is accepted or refused as by obs_video_size_valid(): only
+ * the widths 2 and 3 change. The alignment only lowers a size, so a size
+ * above the maximum stays refused. */
+static void output_size_check_edges(void **state)
+{
+	(void)state;
+	const uint32_t sizes[] = {0,    1,     2,     3,     4,     5,     6,     7,         8,
+				  1366, 32767, 32768, 32769, 32771, 32772, 65536, UINT32_MAX};
+	for (size_t w = 0; w < N(sizes); w++) {
+		for (size_t h = 0; h < N(sizes); h++) {
+			bool want = obs_video_size_valid(sizes[w], sizes[h]) && sizes[w] != 2 && sizes[w] != 3;
+			if (obs_video_output_size_valid(sizes[w], sizes[h]) != want)
+				fail_msg("output_size_valid(%u, %u) is not %d", sizes[w], sizes[h], want);
+		}
+	}
 }
 
 /* ------------------------------------------------------------------------- */
@@ -530,7 +554,8 @@ int main(void)
 		cmocka_unit_test(techniques_exist_in_the_effect),
 		cmocka_unit_test(size_check_edges),
 		cmocka_unit_test(alignment_masks),
-		cmocka_unit_test(width_2_and_3_align_to_0),
+		cmocka_unit_test(width_2_and_3_refused_after_alignment),
+		cmocka_unit_test(output_size_check_edges),
 		cmocka_unit_test(scale_type_names),
 	};
 

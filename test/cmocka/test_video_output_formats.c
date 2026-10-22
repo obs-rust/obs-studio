@@ -17,12 +17,10 @@
  * It uses only the public API, so with the hybrid libobs it checks the Rust
  * port once there is one. test_video_output_plan checks the plan itself.
  *
- * Characterized, not endorsed: an output width of 2 or 3 passes the size
- * check and is then aligned to 0. obs_reset_video() frees the old video
- * before it aligns, so the reset fails and leaves no video, and the core
- * is then too damaged to reset again (it crashes), so this file does not
- * drive it; test_video_output_plan pins the size check and the alignment
- * that cause it.
+ * An output width of 2 or 3 would be aligned to 0. obs_reset_video()
+ * refuses it before it frees the old video, which keeps running, and a later
+ * reset works (#1713). Before, the reset freed the old video, then failed
+ * with no video left, and the next reset crashed.
  *
  * Core video needs a graphics module, and libobs needs an X display on
  * Linux, so the cases skip without one (run under xvfb-run). */
@@ -496,6 +494,53 @@ static void size_check_refuses_before_teardown(void **state)
 	free_frame(&p);
 }
 
+/* An output width of 2 or 3 passes the 2..32768 size check, but the
+ * alignment to a multiple of 4 makes it 0. It is refused before anything is
+ * freed: the old video keeps running, and a later reset works. */
+static void small_output_width_refused_before_teardown(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	struct obs_video_info ok =
+		make_ovi(VIDEO_FORMAT_NV12, VIDEO_CS_709, VIDEO_RANGE_PARTIAL, WIDTH, HEIGHT, WIDTH, HEIGHT);
+	assert_int_equal(obs_reset_video(&ok), OBS_VIDEO_SUCCESS);
+
+	const uint32_t bad[][2] = {{2, HEIGHT}, {3, HEIGHT}, {2, 2}, {3, 3}};
+	for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+		struct obs_video_info ovi = make_ovi(VIDEO_FORMAT_I420, VIDEO_CS_709, VIDEO_RANGE_PARTIAL, WIDTH,
+						     HEIGHT, bad[i][0], bad[i][1]);
+		assert_int_equal(obs_reset_video(&ovi), OBS_VIDEO_INVALID_PARAM);
+		/* refused as given, not aligned */
+		assert_int_equal(ovi.output_width, bad[i][0]);
+
+		/* the old video is still there and running */
+		assert_non_null(obs_get_video());
+		struct obs_video_info got;
+		assert_true(obs_get_video_info(&got));
+		assert_int_equal(got.output_format, VIDEO_FORMAT_NV12);
+		assert_int_equal(got.output_width, WIDTH);
+		assert_int_equal(got.output_height, HEIGHT);
+		struct probe p;
+		take_frame(&p, VIDEO_FORMAT_NV12, WIDTH, HEIGHT);
+		free_frame(&p);
+	}
+
+	/* a later reset to a valid size works */
+	struct obs_video_info later =
+		make_ovi(VIDEO_FORMAT_I420, VIDEO_CS_709, VIDEO_RANGE_PARTIAL, WIDTH, HEIGHT, WIDTH, HEIGHT);
+	assert_int_equal(obs_reset_video(&later), OBS_VIDEO_SUCCESS);
+	struct probe p;
+	take_frame(&p, VIDEO_FORMAT_I420, WIDTH, HEIGHT);
+	for (size_t c = 0; c < 3; c++)
+		assert_non_null(p.data[c]);
+	free_frame(&p);
+
+	/* back to the video the other cases expect */
+	assert_int_equal(obs_reset_video(&ok), OBS_VIDEO_SUCCESS);
+}
+
 /* ------------------------------------------------------------------------- */
 
 static obs_scene_t *scene;
@@ -548,6 +593,7 @@ int main(void)
 		cmocka_unit_test(every_format),
 		cmocka_unit_test(output_size_is_aligned),
 		cmocka_unit_test(size_check_refuses_before_teardown),
+		cmocka_unit_test(small_output_width_refused_before_teardown),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
