@@ -1860,6 +1860,178 @@ static void status_idle_with_mouse_only(void **state)
 	fake_portal_stop();
 }
 
+/* ------------------------------------------------------------------------ */
+/* When a sync binds again (the combination set logic)                       */
+
+/* Shortcut id of entry i of the last BindShortcuts call. */
+static char *bound_id_at(size_t i)
+{
+	if (i >= g_variant_n_children(fake.last_shortcuts))
+		return g_strdup("(none)");
+	char *id = NULL;
+	g_variant_get_child(fake.last_shortcuts, i, "(s@a{sv})", &id, NULL);
+	return id;
+}
+
+static void expect_bound_id_at(size_t i, const char *want)
+{
+	char *id = bound_id_at(i);
+	if (strcmp(id, want) != 0) {
+		fprintf(stderr, "shortcut %zu of the last bind is '%s', expected '%s'\n", i, id, want);
+		g_free(id);
+		fail();
+	}
+	g_free(id);
+}
+
+/* The same keys with the same descriptions in another order are the same
+ * set: nothing is bound again. */
+static void reordered_set_is_not_bound_again(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0}, record = {0}, shot = {0};
+	obs_hotkey_id talk_id = register_bound("Push-to-talk", &talk, f13);
+	register_bound("Start Recording", &record, ctrl_shift_a);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	assert_int_equal(g_variant_n_children(fake.last_shortcuts), 2);
+	expect_bound_id_at(0, "OBS_KEY_F13");
+	expect_bound_id_at(1, "ctrl+shift+OBS_KEY_A");
+
+	/* Push-to-talk again: its binding now comes after Start Recording. */
+	obs_hotkey_unregister(talk_id);
+	register_bound("Push-to-talk", &talk, f13);
+	expect_no_bind_after(1, 1000, "the same set in another order");
+
+	/* A new key binds the set in its new order. */
+	register_bound("Screenshot", &shot, f14);
+	expect_bind(2);
+	assert_int_equal(g_variant_n_children(fake.last_shortcuts), 3);
+	expect_bound_id_at(0, "ctrl+shift+OBS_KEY_A");
+	expect_bound_id_at(1, "OBS_KEY_F13");
+	expect_bound_id_at(2, "OBS_KEY_F14");
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "reordered set with a new key");
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* Descriptions are compared byte by byte: the same name in another Unicode
+ * normalization (U+00E9, then e and U+0301 combining acute) binds again; the
+ * same bytes do not. */
+static void descriptions_compared_as_bytes(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0};
+	obs_hotkey_id id = register_bound("Mic \xc3\xa9", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_description("OBS_KEY_F13", "OBS: Mic \xc3\xa9");
+
+	obs_hotkey_unregister(id);
+	id = register_bound("Mic e\xcc\x81", &talk, f13);
+	expect_bind(2);
+	expect_description("OBS_KEY_F13", "OBS: Mic e\xcc\x81");
+
+	obs_hotkey_unregister(id);
+	register_bound("Mic e\xcc\x81", &talk, f13);
+	expect_no_bind_after(2, 1000, "the same description bytes");
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* The dialog for a set with no new key (an action moved onto an approved
+ * key, so only its description changed) is cancelled. Characterized, not
+ * endorsed: the approved key is not bound again, because bind_approved()
+ * binds only a strict part of the request, so every key stops until Ask
+ * again. */
+static void declined_description_change_unbinds_approved_key(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0}, mute = {0};
+	register_bound("Push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "approved");
+
+	fake.bind_response = 1;
+	register_bound("Push-to-mute", &mute, f13);
+	expect_bind(2);
+	expect_description("OBS_KEY_F13", "OBS: Push-to-talk, Push-to-mute");
+	expect_state(OBS_HOTKEYS_BACKGROUND_DECLINED, "dialog for a new description cancelled");
+	expect_no_bind_after(2, 800, "declined description change");
+	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
+	assert_true(shortcut_info(f13).found);
+	assert_false(shortcut_info(f13).bound);
+
+	fake.bind_response = 0;
+	obs_hotkeys_retry_background();
+	expect_bind(3);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "asked again");
+	assert_true(shortcut_info(f13).bound);
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
+/* Partly declined (one key approved, a new one declined), then the approved
+ * key's binding goes away: only declined keys are left, so nothing is
+ * asked for and the state is declined. */
+static void only_declined_keys_left_binds_nothing(void **state)
+{
+	UNUSED_PARAMETER(state);
+	REQUIRE_DBUS_DAEMON();
+	fake_portal_start(true);
+
+	struct hotkey_log talk = {0}, record = {0};
+	obs_hotkey_id talk_id = register_bound("push-to-talk", &talk, f13);
+
+	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
+	expect_bind(1);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "approved");
+
+	fake.decline_with_id = "ctrl+shift+OBS_KEY_A";
+	register_bound("record", &record, ctrl_shift_a);
+	expect_bind(3);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "approved key bound again");
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
+
+	struct fake_session *session = find_session(fake.last_bind_session);
+	assert_non_null(session);
+	obs_hotkey_unregister(talk_id);
+	if (!wait_until(session_is_closed, session)) {
+		fprintf(stderr, "session not closed after the approved key's binding went away\n");
+		fail();
+	}
+	expect_state(OBS_HOTKEYS_BACKGROUND_DECLINED, "only declined keys left");
+	expect_no_bind_after(3, 800, "only declined keys left");
+	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
+	assert_false(shortcut_info(ctrl_shift_a).bound);
+
+	fake.decline_with_id = NULL;
+	obs_hotkeys_retry_background();
+	expect_bind(4);
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "asked again");
+	assert_int_equal(g_variant_n_children(fake.last_shortcuts), 1);
+	assert_true(bound_has("ctrl+shift+OBS_KEY_A"));
+
+	obs_nix_portal_shortcuts_stop(portal);
+	fake_portal_stop();
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1891,6 +2063,10 @@ int main(void)
 		cmocka_unit_test_setup_teardown(configure_opens_desktop_editor, setup, teardown),
 		cmocka_unit_test_setup_teardown(configure_needs_version_2, setup, teardown),
 		cmocka_unit_test_setup_teardown(configure_failure_is_reported, setup, teardown),
+		cmocka_unit_test_setup_teardown(reordered_set_is_not_bound_again, setup, teardown),
+		cmocka_unit_test_setup_teardown(descriptions_compared_as_bytes, setup, teardown),
+		cmocka_unit_test_setup_teardown(declined_description_change_unbinds_approved_key, setup, teardown),
+		cmocka_unit_test_setup_teardown(only_declined_keys_left_binds_nothing, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
