@@ -1043,10 +1043,15 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 			size_from_absolute(&item->bounds, &item->bounds, item);
 	}
 
-	item->crop.left = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_left"));
-	item->crop.top = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_top"));
-	item->crop.right = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_right"));
-	item->crop.bottom = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_bottom"));
+	/* Through the setter, which clamps a negative crop to 0: a scene
+	 * collection OBS did not write can hold any value. */
+	struct obs_sceneitem_crop crop = {
+		.left = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_left")),
+		.top = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_top")),
+		.right = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_right")),
+		.bottom = obs_scene_crop_from_int64(obs_data_get_int(item_data, "crop_bottom")),
+	};
+	obs_sceneitem_set_crop(item, &crop);
 
 	scale_filter_str = obs_data_get_string(item_data, "scale_filter");
 	item->scale_filter = OBS_SCALE_DISABLE;
