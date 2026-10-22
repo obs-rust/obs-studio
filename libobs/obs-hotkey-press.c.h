@@ -24,9 +24,10 @@
  * binding. Both run with the hotkey mutex held. This file reaches a binding
  * only through obs_hotkey_binding_fields() (its key combination, pressed flag
  * and modifiers_match latch) and the press and release wrappers. The bindings
- * array and its walk (enum_bindings()), the pressed count and callbacks
- * (obs_hotkey_binding_press() and obs_hotkey_binding_release()) and the
- * platform key state (obs_hotkey_key_is_pressed()) stay in obs-hotkey.c.h.
+ * array and its walk (enum_bindings()) and the platform key state
+ * (obs_hotkey_key_is_pressed()) stay in obs-hotkey.c.h; the pressed count and
+ * callbacks (obs_hotkey_binding_press() and obs_hotkey_binding_release()) are
+ * in obs-hotkey-binding-press.c.h.
  * Declared in obs-internal.h. Ported to rust/obs-hotkey (press): the hybrid
  * libobs drops this file. */
 
