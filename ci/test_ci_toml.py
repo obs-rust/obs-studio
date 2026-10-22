@@ -211,6 +211,30 @@ def runner_os(lines: list[str], index: int) -> str:
     return "Linux"
 
 
+def native_key_variants(value: str, lines: list[str], index: int) -> list[str]:
+    """Resolve actual native matrix axes, including release include rows."""
+    if not value.startswith(('windows-ccache-', 'macOS-xcode-')):
+        return [value]
+    axis = re.search(r'\$\{\{ matrix\.(architecture|target) \}\}', value)
+    if not axis:
+        return [value]
+    jobs = [i for i, line in enumerate(lines) if re.match(r'^  [a-zA-Z0-9_-]+:', line)]
+    start = max(i for i in jobs if i <= index)
+    end = next((i for i in jobs if i > index), len(lines))
+    job = '\n'.join(lines[start:end])
+    inline = re.search(r'(?m)^\s+' + axis[1] + r': \[([^\]]+)\]', job)
+    if inline:
+        variants = re.findall(r'[\w-]+', inline[1])
+    else:
+        platform = 'windows' if value.startswith('windows-ccache-') else 'macos'
+        rows = re.findall(r'(?ms)^          - os: ([^\n]+)\n(.*?)(?=^          - os:|\Z)', job)
+        variants = [re.search(r'(?m)^\s+target: ([\w-]+)$', row)[1]
+                    for os_name, row in rows if os_name.strip() == platform]
+    if not variants:
+        raise AssertionError('unresolved native matrix axis: ' + value)
+    return [value.replace(axis[0], variant) for variant in variants]
+
+
 def cache_keys() -> list[tuple[str, str]]:
     """(file, literal key prefix) of every actions/cache key and restore key,
     and of every flatpak-builder cache key the workflows build."""
@@ -237,7 +261,8 @@ def cache_keys() -> list[tuple[str, str]]:
             values += [m.group(1) for line in step for m in [re.search(r"cache_key='([^']*)'", line)] if m]
             for value in values:
                 value = value.replace("${{ runner.os }}", runner_os(lines, start))
-                out.append((path.relative_to(ROOT).as_posix(), value.split("${{")[0]))
+                for variant in native_key_variants(value, lines, start):
+                    out.append((path.relative_to(ROOT).as_posix(), variant.split("${{")[0]))
     return out
 
 
