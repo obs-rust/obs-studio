@@ -611,9 +611,8 @@ static void test_rename(void **state)
 	assert_found("A 2", b);
 	assert_null(obs_get_source_by_name("C"));
 	assert_int_equal(num_warnings, 1);
-	/* Characterized, not endorsed: the warning names the old name ("C"),
-	 * not the requested one ("A"). */
-	assert_string_equal(warnings[0], "Attempted to rename context to duplicate name \"C\"!"
+	/* The warning names the requested name ("A"), not the old one ("C"). */
+	assert_string_equal(warnings[0], "Attempted to rename context to duplicate name \"A\"!"
 					 " New name has been changed to \"A 2\"");
 
 	/* Characterized, not endorsed: "A 2" renamed to "A" ends up as "A 2"
@@ -626,7 +625,7 @@ static void test_rename(void **state)
 	assert_string_equal(r.prev_name, "A 2");
 	assert_string_equal(r.new_name, "A 2");
 	assert_int_equal(num_warnings, 1);
-	assert_string_equal(warnings[0], "Attempted to rename context to duplicate name \"A 2\"!"
+	assert_string_equal(warnings[0], "Attempted to rename context to duplicate name \"A\"!"
 					 " New name has been changed to \"A 2\"");
 	assert_found("A 2", b);
 
@@ -664,6 +663,57 @@ static void test_rename_unnamed(void **state)
 
 	obs_source_release(b);
 	obs_source_release(taken);
+	obs_source_release(a);
+}
+
+/* A rename of a public source to NULL is a rename to an empty name: the
+ * next unnamed name, as a NULL name on create. This holds for an input (the
+ * global table) and for a source that needs a canvas (the canvas table).
+ * Each table holds another source, so the rename looks the name up. */
+static void test_rename_null(void **state)
+{
+	(void)state;
+	REQUIRE_OBS();
+
+	obs_source_t *a = input("A");
+	obs_source_t *b = input("B");
+	obs_source_t *s = obs_source_create(SCENE_LIKE_ID, "S", NULL, NULL);
+	obs_source_t *t = obs_source_create(SCENE_LIKE_ID, "T", NULL, NULL);
+	assert_non_null(s);
+	assert_non_null(t);
+	/* Creating a source that needs a canvas without one logs a warning. */
+	clear_warnings();
+	struct renames r = {0};
+	signal_handler_connect(obs_source_get_signal_handler(a), "rename", on_rename, &r);
+
+	obs_source_set_name(a, NULL);
+	assert_string_equal(obs_source_get_name(a), "__unnamed0000");
+	assert_found("__unnamed0000", a);
+	assert_null(obs_get_source_by_name("A"));
+	assert_int_equal(r.count, 1);
+	assert_string_equal(r.prev_name, "A");
+	assert_string_equal(r.new_name, "__unnamed0000");
+
+	obs_source_set_name(s, NULL);
+	assert_string_equal(obs_source_get_name(s), "__unnamed0001");
+	assert_int_equal(num_warnings, 0);
+	assert_found("B", b);
+	assert_string_equal(obs_source_get_name(t), "T");
+
+	/* The old names are free again. */
+	obs_source_t *a2 = input("A");
+	assert_string_equal(obs_source_get_name(a2), "A");
+	obs_source_t *s2 = obs_source_create(SCENE_LIKE_ID, "S", NULL, NULL);
+	assert_non_null(s2);
+	assert_string_equal(obs_source_get_name(s2), "S");
+
+	signal_handler_disconnect(obs_source_get_signal_handler(a), "rename", on_rename, &r);
+
+	obs_source_release(s2);
+	obs_source_release(a2);
+	obs_source_release(t);
+	obs_source_release(s);
+	obs_source_release(b);
 	obs_source_release(a);
 }
 
@@ -764,6 +814,7 @@ int main(void)
 		CASE(test_private),
 		CASE(test_rename),
 		CASE(test_rename_unnamed),
+		CASE(test_rename_null),
 		CASE(test_canvas_sources),
 		CASE(test_canvases),
 	};
