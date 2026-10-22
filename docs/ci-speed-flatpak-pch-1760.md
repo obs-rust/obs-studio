@@ -52,6 +52,38 @@ passwd entry, as Flatpak normally supplies, fixes that setup failure. These
 failures are recorded; they are not compiler freshness failures or full-job
 observations. The diagnostic now retains failing command arguments and stderr.
 
+## Restore newer compiler metadata last
+
+The builder archive contains `.flatpak-builder/ccache`, including mutable
+ccache direct-mode manifests. Restoring a newer standalone compiler snapshot
+first, then extracting an older builder snapshot, discards newer manifest
+mappings even though the content-addressed result objects remain present.
+
+The production SDK fixture reproduced this using actual GNU tar archives:
+
+| Restore order after header 42 → 43 | Output | Direct hits / misses | Build |
+| --- | ---: | ---: | ---: |
+| New compiler snapshot only | 43 | 2 / 0 | 0.977 s |
+| New compiler, then old builder | 43 | 0 / 2 | 4.191 s |
+| Old builder, then new compiler | 43 | 2 / 0 | 0.899 s |
+
+Each trial uses a new cache directory, a clean build and zeroed statistics.
+The header replacement preserves size and modification time; dependency mode
+keeps every output correct. The snapshots are captured after the existing
+fixture's cold and header-warm stages. Extract each ordering with `tar -xf`,
+then rebuild that same fixture with `CCACHE_DIR` pointing at the extracted
+cache. See [portable counters and timings](ci-evidence/2026-10-22-flatpak-cache-overlay.json).
+An independent file-overlay experiment agrees. This demonstrates lost reuse,
+not stale executable output or a whole-job speedup.
+
+The workflow now extracts the builder archive before the standalone compiler
+snapshot and disables the builder action's second restore. `cache: true` still
+passes `--ccache`; master-only publication and architecture-specific fallbacks
+are preserved. The explicit builder restore's exact-hit output prevents an
+unnecessary save to an existing immutable key, since the action's internal
+restore no longer supplies that information. No cache family, storage backend,
+capacity allowance or pruning policy changes.
+
 ## Adoption hold
 
 Real application freshness/reuse inside Flatpak, full-job warm/cold

@@ -666,14 +666,14 @@ jobs:
       # v6.8 appends -x86_64 to our custom key and falls back to the
       # architecture-first prefix. During migration preserve the measured
       # legacy master seed only if no new-namespace seed is available.
-      # Lookup-only avoids downloading the same builder archive twice.
+      # Extract the builder now, before the newer compiler snapshot. The
+      # builder action below must not restore it a second time.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-builder-cache-lookup
         with:
           path: .flatpak-builder
           key: flatpak-builder-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-x86_64
           restore-keys: flatpak-builder-x86_64
-          lookup-only: true
 
       - name: Restore legacy Flatpak builder seed
         if: steps.flatpak-builder-cache-lookup.outputs.cache-matched-key == ''
@@ -685,9 +685,10 @@ jobs:
       # flatpak-builder --ccache keeps its compiler cache in
       # .flatpak-builder/ccache, inside the dependency cache that the action
       # saves under a manifest-hash key, so that ccache froze at its first
-      # save. Restore a commit-keyed copy of just that directory first; the
-      # action's restore then extracts its snapshot on top (ccache entries are
-      # content-addressed, so the union is safe). Non-master runs restore;
+      # save. Restore the commit-keyed compiler copy LAST: result objects are
+      # content-addressed, but direct-mode manifests are mutable. Extracting
+      # an older builder snapshot on top discards newer header/result mappings
+      # and forces recompilation (#1760). Non-master runs restore;
       # only master publishes both snapshots and prunes the compiler cache.
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: flatpak-compiler-cache
@@ -718,8 +719,11 @@ jobs:
           # flatpak-builder only reuses a module whose own manifest entry and
           # source checksums are unchanged.
           cache: true
-          restore-cache: true
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          # Already restored above; avoid overwriting newer compiler manifests.
+          restore-cache: false
+          # With internal restore disabled the action cannot detect an exact
+          # hit itself. Preserve immutable-key publication behavior explicitly.
+          save-cache: ${{ github.ref == 'refs/heads/master' && steps.flatpak-builder-cache-lookup.outputs.cache-hit != 'true' }}
           cache-key: ${{ steps.setup.outputs.cacheKey }}
           mirror-screenshots-url: https://dl.flathub.org/media
 
