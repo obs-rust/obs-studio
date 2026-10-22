@@ -12,18 +12,18 @@
 
 /*
  * Characterization of the two context name helpers in
- * libobs/obs-context-names.c, before their Rust port:
+ * libobs/obs-context-names.c, ported to rust/obs-core (context_names):
  * obs_context_name_dup() (the "__unnamed%04lld" name for a NULL or empty
  * name, from the counter obs.c passes in) and obs_context_name_deduplicate()
  * (the "%s %d" name from 2 up that makes a taken name unique, asking obs.c's
  * exists() which names are taken). They pin the current C behavior; cases
  * marked "characterized, not endorsed" are odd but real.
  *
- * The functions are hidden in libobs. This test calls only them, so the
- * same file can later be linked against the Rust port instead of the C (as
- * test_scene_bounds_place_rust does). Here it compiles the C source: no
- * libobs core and no name tables. test_context_names covers the callers
- * through the real libobs.
+ * The functions are hidden in libobs. This test compiles the C source: no
+ * libobs core and no name tables. The Rust shims do not link against it on
+ * their own (see tests.d/test_context_name_helpers.cmake); the Tier 3
+ * parity tests in rust/obs-core compare them with this C instead.
+ * test_context_names covers the callers through the real libobs.
  *
  * Names come from scene collections, obs-websocket and scripts, so they are
  * any bytes: '%' sequences, bytes that are not UTF-8, names that already end
