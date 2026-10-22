@@ -4,6 +4,8 @@ import json
 import tempfile
 import re
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,6 +47,25 @@ class FlatpakRuntimeTest(unittest.TestCase):
                      [app, debug.replace('master', 'stable')], [app, debug, app.replace('master', 'stable')]):
             with self.subTest(refs=refs), self.assertRaises(ValueError):
                 module.select_refs(refs)
+
+    def test_debug_inventory_includes_refs_hidden_by_flatpak_default(self):
+        module = self.module()
+        class ReachedInstall(Exception):
+            pass
+        def flatpak(args, **kwargs):
+            if 'remote-ls' in args:
+                # Real CLI semantics: locale/debug refs are hidden without --all.
+                return 'com.obsproject.Studio/x86_64/master\n' + (
+                    'com.obsproject.Studio.Debug/x86_64/master\n' if '--all' in args else '')
+            if 'install' in args:
+                raise ReachedInstall()
+            return ''
+        session = Mock()
+        session.run.side_effect = flatpak
+        with tempfile.TemporaryDirectory() as directory, patch.object(module, 'Session', return_value=session):
+            args = SimpleNamespace(output=Path(directory) / 'evidence', repo=Path(directory))
+            with self.assertRaises(ReachedInstall):
+                module.qualification(args)
 
     def test_saved_profile_contains_capture_and_browser_sources(self):
         module = self.module()
