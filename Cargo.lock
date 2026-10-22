@@ -497,6 +497,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-core"
+version = "0.1.0"
+dependencies = [
+ "obs-media-io",
+]
+
+[[package]]
 name = "obs-data"
 version = "0.1.0"
 dependencies = [
@@ -508,8 +515,10 @@ dependencies = [
  "obs-audio-monitoring",
  "obs-c-oracle",
  "obs-callback",
+ "obs-core",
  "obs-graphics",
  "obs-hotkey",
+ "obs-media-io",
  "obs-missing-files",
  "obs-output",
  "obs-properties",

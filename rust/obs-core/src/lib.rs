@@ -1,0 +1,8 @@
+//! Rust ports of the units extracted from `libobs/obs.c.h`, one module per
+//! file: so far `libobs/obs-video-plan.c.h`.
+//!
+//! The safe core is [`video_plan`].
+
+#![deny(unsafe_code)]
+
+pub mod video_plan;

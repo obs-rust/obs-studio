@@ -18,6 +18,7 @@ cc = "1"
 
 [dev-dependencies]
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }
+obs-core = { path = "../obs-core" }
 obs-properties = { path = "../obs-properties" }
 obs-hotkey = { path = "../obs-hotkey" }
 obs-missing-files = { path = "../obs-missing-files" }
@@ -25,6 +26,7 @@ obs-output = { path = "../obs-output" }
 obs-scene = { path = "../obs-scene" }
 obs-audio-controls = { path = "../obs-audio-controls" }
 obs-graphics = { path = "../obs-graphics" }
+obs-media-io = { path = "../obs-media-io" }
 obs-callback = { path = "../obs-callback" }
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
