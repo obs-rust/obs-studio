@@ -15,7 +15,7 @@ class NativeCacheExactHitTest(unittest.TestCase):
              "github.ref == 'refs/heads/master'"),
             ("windows-build", "windows-compiler-cache", "windows-ccache-",
              "github.ref == 'refs/heads/master'"),
-            ("flatpak-build", "flatpak-compiler-cache", "flatpak-ccache-",
+            ("flatpak-build", "flatpak-state-cache", "flatpak-builder-state-v1-x86_64-",
              "steps.ccache-stats.outcome == 'success'"),
         ):
             with self.subTest(job=job):
