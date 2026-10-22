@@ -1,0 +1,48 @@
+# Flatpak packaged runtime qualification (#1760)
+
+The existing `ci.yml` manual entry point accepts `flatpak-runtime-test=true`.
+It preserves the full build, AppStream/build-directory/repository validators
+and release bundle policy. After validation, the opt-in path transfers the
+exported OSTree repository to a fresh Ubuntu 26.04 job. Neither routine PRs nor
+routine full builds run this additional qualification by default.
+
+The test installs the actual application and matching Debug extension from that
+repository into an isolated XDG data directory. It verifies their commits and
+CEF build IDs, and resolves `cef_version_info` source lines through GDB using
+the installed Debug extension. It then runs `flatpak run` with a saved profile,
+not the builder's staging directory or an empty first launch.
+
+The profile includes PipeWire screen and camera capture, a PulseAudio microphone,
+and an actual CEF browser source. The unchanged AppImage testkit supplies a
+ScreenCast/Camera portal and microphone tone. Screen/camera producers supply
+moving images. The unchanged C++ WebSocket plugin must authenticate over v5,
+report the saved sources, start a recording and stop it successfully.
+
+The recording passes the existing AppImage verifier: moving screen and camera,
+continuous 440 Hz microphone audio, sufficient frames and clean decoding. An
+additional pixel check requires the browser's green HTML rectangle throughout
+the decoded recording. The app must load every packaged OBS module, except the
+existing hardware-only decklink/NVENC exceptions, and exit cleanly. These are
+synthetic devices with software rendering; physical hardware is not covered.
+
+## Cost and evidence
+
+This is additional qualification work. The build logs the uncompressed export
+archive size; Actions records upload/download, setup and runtime-test durations.
+The test retains installed app/debug commits, module inventory, logs, recording
+and elapsed time in the seven-day runtime evidence artifact. The temporary
+repository artifact expires after one day. There is no new cache family,
+registry publication or external storage.
+
+Count archive/upload and the separate job's setup, download, runtime and cleanup
+when reporting qualification runner cost. Keep the routine no-probe build table
+separate, and do not count removing this opt-in test as a routine speedup. Runtime
+qualification does not establish #1760's warm/cold full-job performance target.
+
+## Local feedback
+
+`uv run --no-project python -m unittest ci.test_flatpak_runtime` checks negative
+capture/plugin evidence, absent/frozen/wrong browser frames, matching Debug refs,
+and saved-profile construction. It does not replace the live packaged run.
+The local gate cannot attest this hosted opt-in job; ordinary PR CI remains the
+merge gate. Keep performance PRs draft until a real qualification run succeeds.

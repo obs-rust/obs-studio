@@ -2,6 +2,10 @@ name: Build Project
 on:
   workflow_call:
     inputs:
+      flatpak-runtime-test:
+        description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
+        type: boolean
+        default: false
       flatpak-pruned-build-probe:
         description: Validate isolated application rebuild without cached downloads or compiler state
         type: boolean
@@ -821,6 +825,66 @@ jobs:
         with:
           name: flatpak-pruned-build-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-pruned-build.json
+          if-no-files-found: error
+          retention-days: 7
+
+
+      - name: Archive Exported Flatpak for Runtime Qualification
+        if: inputs.flatpak-runtime-test
+        run: |
+          tar -cf "$RUNNER_TEMP/flatpak-runtime-repo.tar" repo
+          stat -c 'qualification-export-bytes=%s' "$RUNNER_TEMP/flatpak-runtime-repo.tar"
+
+      - name: Upload Exported Flatpak for Runtime Qualification
+        if: inputs.flatpak-runtime-test
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-runtime-repo
+          path: ${{ runner.temp }}/flatpak-runtime-repo.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
+  flatpak-runtime-test:
+    name: Flatpak Saved Profile 🧪
+    if: inputs.flatpak-runtime-test
+    needs: flatpak-build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: flatpak-runtime-repo
+          path: ${{ runner.temp }}/flatpak-runtime-input
+      - name: Install Runtime Test Infrastructure
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends flatpak xvfb dbus-daemon pipewire wireplumber \
+            pipewire-pulse pipewire-bin pulseaudio-utils gstreamer1.0-tools gstreamer1.0-plugins-base \
+            gstreamer1.0-pipewire libgl1-mesa-dri gcc pkg-config libglib2.0-dev libpipewire-0.3-dev \
+            libpulse-dev libcurl4-openssl-dev ffmpeg gdb binutils
+      - name: Run Installed Flatpak with Saved Capture Profile
+        run: |
+          tar -xf "$RUNNER_TEMP/flatpak-runtime-input/flatpak-runtime-repo.tar" -C "$RUNNER_TEMP/flatpak-runtime-input"
+          uv run ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
+            --output "$RUNNER_TEMP/flatpak-runtime-result"
+      - name: Upload Flatpak Runtime Evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-runtime-evidence
+          path: |
+            ${{ runner.temp }}/flatpak-runtime-result/result.json
+            ${{ runner.temp }}/flatpak-runtime-result/*.log
+            ${{ runner.temp }}/flatpak-runtime-result/profile/obs-studio/logs/*.txt
+            ${{ runner.temp }}/flatpak-runtime-result/recordings/*.mkv
           if-no-files-found: error
           retention-days: 7
 

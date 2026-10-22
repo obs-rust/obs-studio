@@ -5,6 +5,10 @@ run-name: ${{ github.event.pull_request.title || github.ref_name }} pull request
 on:
   workflow_dispatch:
     inputs:
+      flatpak-runtime-test:
+        description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
+        type: boolean
+        default: false
       flatpak-pruned-build-probe:
         description: Validate isolated application rebuild without cached downloads or compiler state
         type: boolean
@@ -80,6 +84,7 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/build-project.yaml
     with:
+      flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
       flatpak-cache-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cache-probe }}
       flatpak-pruned-build-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-pruned-build-probe }}
       native-cache-transport-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-transport-probe }}

@@ -1,5 +1,8 @@
 """Flatpak packaged runtime evidence must fail closed (#1760)."""
 import importlib.util
+import json
+import tempfile
+import re
 import unittest
 from pathlib import Path
 
@@ -33,17 +36,43 @@ class FlatpakRuntimeTest(unittest.TestCase):
             with self.subTest(index=index), self.assertRaises(ValueError):
                 module.check_capture_log('\n'.join(lines[:index] + lines[index + 1:]), modules)
 
+    def test_export_requires_matching_debug_architecture_and_branch(self):
+        module = self.module()
+        app = 'com.obsproject.Studio/x86_64/master'
+        debug = 'com.obsproject.Studio.Debug/x86_64/master'
+        self.assertEqual(module.select_refs([app, debug]), (app, debug))
+        for refs in ([app], [app, debug.replace('x86_64', 'aarch64')],
+                     [app, debug.replace('master', 'stable')], [app, debug, app.replace('master', 'stable')]):
+            with self.subTest(refs=refs), self.assertRaises(ValueError):
+                module.select_refs(refs)
+
+    def test_saved_profile_contains_capture_and_browser_sources(self):
+        module = self.module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module.write_profile(root, 4456, 'temporary-test-password')
+            config = root / 'profile/obs-studio'
+            scene = json.loads((config / 'basic/scenes/Test.json').read_text())
+            kinds = {source['id'] for source in scene['sources']}
+            self.assertEqual(kinds, {'scene', 'pipewire-screen-capture-source', 'pipewire-camera-source',
+                                     'pulse_input_capture', 'browser_source'})
+            server = json.loads((config / 'plugin_config/obs-websocket/config.json').read_text())
+            self.assertTrue(server['auth_required'])
+            self.assertTrue(server['server_enabled'])
+            self.assertEqual(server['server_port'], 4456)
+            self.assertTrue((root / 'browser.html').is_file())
+
     def test_qualification_is_manual_and_preserves_existing_validators(self):
         for name in ('ci.yml', 'build-project.yaml'):
             text = (ROOT / '.github/workflows' / name).read_text()
             self.assertIn('flatpak-runtime-test:', text)
-            block = text.split('      flatpak-runtime-test:\n', 1)[1].split('\n      ', 1)[0]
+            block = re.search(r'(?m)^      flatpak-runtime-test:\n((?:        .*\n)+)', text)[1]
             self.assertIn('default: false', block)
         build = (ROOT / '.github/workflows/build-project.yaml').read_text()
         self.assertIn('uv run ci/flatpak_runtime.py', build)
         self.assertIn('name: Validate repository', build)
         self.assertIn('name: Validate build directory', build)
         self.assertIn('name: Validate AppStream', build)
-        job = build.split('  flatpak-runtime-test:\n', 1)[1].split('\n  windows-build:', 1)[0]
+        job = build.split('\n  flatpak-runtime-test:\n', 1)[1].split('\n  windows-build:', 1)[0]
         self.assertIn('if: inputs.flatpak-runtime-test', job)
         self.assertNotIn('continue-on-error', job)
