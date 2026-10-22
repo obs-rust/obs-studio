@@ -36,6 +36,30 @@ Its source090c8ad includes the portal shortcut-set port #1800 relative to
 compile call counts and source differences remain disclosed. These are
 observed before/after cohorts, not a matched-source causal estimate.
 
+## Final configuration seed and measurement routing
+
+Trusted manual master seed [39831165145](https://github.com/obs-rust/obs-studio/actions/runs/39831165145)
+used source `e1b649910c0d082b482bd3adfe58c67436b3e82a`.
+The full Flatpak job passed in **455s**, with six dependency hits, a genuine
+application rebuild, 315 direct compiler hits, 30 misses and zero unsupported
+calls. It published archive `9358763488`, **2,274,967,809 bytes**, after the
+required validators. This producer seeds newly cacheable browser objects and
+is excluded from the final warm cohort.
+
+The complete workflow failed in Fast Gate on the shader sampler C oracle's
+strict sign-conversion compilation ([#1816](https://github.com/obs-rust/obs-studio/issues/1816)).
+All selected jobs consumed **81.47 runner-minutes**; the failure is retained,
+with no unchanged retry. A successful Flatpak job does not imply a successful
+whole workflow.
+
+Actual merged path scope did not select a full Flatpak job on master push;
+the manual seed corrects the original automatic-seed assumption. Before any
+final warm sample, the [amended sampling plan](https://github.com/obs-rust/obs-studio/issues/1760#issuecomment-6348807912)
+proposes the default-off manual routing mode in #1817. That mode keeps the
+complete Flatpak job and Fast Gate while omitting unrelated native matrices.
+Its branch qualification is excluded from the production cohort. Routing
+savings cannot count toward the Flatpak job's performance target.
+
 ## Where the time went
 
 Observed nonoverlapping log intervals for reference39721238636/job119635024523
@@ -117,7 +141,7 @@ All measurement workflow job intervals (all attempts) are retained in
 cost-ledger/summary.json, with raw responses per run. The three baseline
 selected workflows cost374.033runner-minutes; their Flatpak jobs alone
 cost41.967runner-minutes. Completed nonbaseline workflows currently account
-for2033.517runner-minutes, excluding a cancelled seed workflow whose
+for2114.983runner-minutes, excluding a cancelled seed workflow whose
 112.117known runner-minutes have one inconsistent cancelled placeholder. This is runner-interval
 accounting, not an invoice. PR/merge-group CI and local bosn work are explicitly
 outside this ledger scope.
@@ -138,8 +162,8 @@ runtime costs remain separate from routine Flatpak improvements.
 
 ## Remaining completion work
 
-1. Inspect necessary manual trusted producer39831165145 and its exact new archive,
-   publication, whole job and compiler results.
+1. Qualify and normally merge manual measurement routing #1817; the seed
+   results are recorded above.
 2. Predeclare and collect at least three comparable final-configuration warm
    full jobs plus a matched current cold observation. Preserve the prior
    [480,421,475]s cohort that missed the target.
@@ -147,8 +171,8 @@ runtime costs remain separate from routine Flatpak improvements.
    preserve all run costs, failures, cancellations, bytes and source differences.
 4. Commit portable final evidence and publish final1760/1667reports, including
    the unmet target if further improvements are needed; audit all original criteria.
-5. Finish only owned branch/worktree cleanup and leave the original checkout
-   clean on updated master.
+5. Finish only owned branch/worktree cleanup. The original checkout now holds
+   another active release change; preserve that work and its branch.
 
 
 ## Current browser compiler follow-up

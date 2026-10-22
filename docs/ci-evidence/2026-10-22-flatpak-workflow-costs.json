@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-22T18:02:38.230177+00:00",
+  "captured_at": "2026-10-22T19:01:14.458269+00:00",
   "scope": "Full selected workflow job intervals, all attempts; not billed invoice. Baselines kept separate. PR/merge-group CI and local bosn work excluded explicitly. Live jobs remain incomplete; raw records retained. Snapshot before final C++20 production seed/cohort; not the final total.",
   "rows": [
     {
@@ -559,9 +559,29 @@
           "seconds": 133.0
         }
       ]
+    },
+    {
+      "cohort": "final-production-seed",
+      "run": 39831165145,
+      "source": "e1b649910c0d082b482bd3adfe58c67436b3e82a",
+      "run_attempt": 1,
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_minutes_completed_jobs": 81.46666666666667,
+      "cost_complete": true,
+      "failed_jobs": 2,
+      "cancelled_jobs": 0,
+      "flatpak_jobs": [
+        {
+          "job": 120007510258,
+          "name": "Build \ud83e\uddf1 / Flatpak \ud83d\udce6",
+          "conclusion": "success",
+          "seconds": 455.0
+        }
+      ]
     }
   ],
-  "nonbaseline_completed_runner_minutes": 2033.5166666666667,
+  "nonbaseline_completed_runner_minutes": 2114.9833333333336,
   "known_metadata_anomalies": [
     {
       "run": 39810319992,
@@ -572,8 +592,8 @@
   ],
   "pending_runs": [
     {
-      "run": 39831165145,
-      "purpose": "Final C++20 production seed",
+      "run": 39835603193,
+      "purpose": "Manual routing branch qualification, excluded from final warm cohort",
       "status": "in_progress at capture"
     }
   ]
