@@ -578,6 +578,42 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
             with patch.object(module, 'MAX_PAYLOAD_BYTES', 1), self.assertRaisesRegex(ValueError, 'limit|size'):
                 module.pack(source, root / 'oversize', {})
 
+    def test_forced_consumer_changes_only_application_post_install(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / 'manifest.json'
+            recipe = {'sdk': 'sdk', 'modules': [{'name': 'dependency'}, {'name': 'obs',
+                      'config-opts': ['-DENABLE_CCACHE=ON'], 'post-install': ['original']}]}
+            manifest.write_text(json.dumps(recipe))
+            argv = ['flatpak_compiler_cache.py', 'force', '--manifest', str(manifest),
+                    '--cache', str(root / 'cache'), '--artifact', str(root)]
+            with patch.object(sys, 'argv', argv):
+                module.main()
+            actual = json.loads(manifest.read_text())
+            marker = actual['modules'][-1]['post-install'].pop()
+            self.assertIn('OBS_COMPILER_CONSUMER_EXECUTED', marker)
+            self.assertEqual(actual, recipe)
+
+    def test_consumer_counters_reject_trivial_or_low_reuse(self):
+        module = self.load_transfer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / 'manifest.json'
+            manifest.write_text(json.dumps({'sdk': 'org.freedesktop.Sdk', 'runtime-version': '26.08'}))
+            argv = ['flatpak_compiler_cache.py', 'verify', '--manifest', str(manifest),
+                    '--cache', str(root / 'cache'), '--artifact', str(root)]
+            for hits, misses, accepted in [(0, 330, False), (5, 0, False), (150, 100, False), (328, 2, True)]:
+                with self.subTest(hits=hits, misses=misses), patch.object(sys, 'argv', argv), \
+                     patch.object(module.subprocess, 'check_output', return_value=f'direct_cache_hit {hits}\ncache_miss {misses}\n'):
+                    if accepted:
+                        module.main()
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'insufficient'):
+                            module.main()
+                    result = json.loads((root / 'consumer-result.json').read_text())
+                    self.assertEqual(result['status'], 'success' if accepted else 'failed')
+
     def test_transfer_is_explicit_manual_default_off_and_fresh_consumer(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
         caller = (ROOT / '.github/workflows/ci.yml').read_text()
@@ -591,3 +627,9 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         self.assertIn('save-cache: false', consumer)
         self.assertIn('restore-cache: false', consumer)
         self.assertIn('compiler-cache.tar', workflow)
+        self.assertIn('mirror-screenshots-url: https://dl.flathub.org/media', consumer)
+        self.assertIn('Prepare build space', consumer)
+        self.assertIn('required_gib=40', consumer)
+        self.assertIn('/usr/local/lib/android:/to_clean/android', consumer)
+        gate = tomllib.loads((ROOT / 'local-gate.toml').read_text())
+        self.assertIn('flatpak-compiler-consumer', gate['gate']['verify-exempt'])

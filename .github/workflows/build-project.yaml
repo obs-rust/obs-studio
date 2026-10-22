@@ -6,6 +6,10 @@ on:
         description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
         type: boolean
         default: false
+      flatpak-compiler-transfer-probe:
+        description: Transfer an experimental compiler artifact to one fresh Flatpak builder (extra storage/build cost)
+        type: boolean
+        default: false
       flatpak-cold-build:
         description: Measure a fresh Flatpak builder and compiler cache without restoring or publishing either cache
         type: boolean
@@ -851,6 +855,23 @@ jobs:
           retention-days: 7
 
 
+      - name: Pack Experimental Flatpak Compiler Artifact
+        if: inputs.flatpak-compiler-transfer-probe
+        run: |
+          uv run ci/flatpak_compiler_cache.py pack --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+      - name: Upload Experimental Flatpak Compiler Artifact
+        if: inputs.flatpak-compiler-transfer-probe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-compiler-transfer-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/flatpak-compiler-transfer/manifest.json
+            ${{ runner.temp }}/flatpak-compiler-transfer/compiler-cache.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
       - name: Archive Exported Flatpak for Runtime Qualification
         if: inputs.flatpak-runtime-test
         run: |
@@ -866,6 +887,148 @@ jobs:
           compression-level: 0
           retention-days: 1
           if-no-files-found: error
+
+  flatpak-compiler-consumer:
+    name: Flatpak Compiler Consumer 🧪
+    if: inputs.flatpak-compiler-transfer-probe
+    needs: flatpak-build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 35
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      options: --privileged
+      volumes:
+        - /usr/local/lib/android:/to_clean/android
+        - /opt/hostedtoolcache/CodeQL:/to_clean/codeql
+        - /usr/local/.ghcup:/to_clean/ghcup
+        - /opt/hostedtoolcache/Python:/to_clean/python
+        - /usr/share/swift:/to_clean/swift
+        - /usr/share/dotnet:/to_clean/dotnet
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Prepare build space
+        shell: bash
+        run: |
+          : Prepare build space
+
+          echo ::group::Available storage
+          df -h
+          echo ::endgroup::
+
+          # The build peaks at about 16 GiB (measured in #428 on a runner with
+          # 84 GiB free). Deleting the runner's preinstalled tools takes 1-2
+          # minutes, so do it only when free space is short of that with a margin.
+          required_gib=40
+          avail_gib=$(df --output=avail -BG /__w | tail -1 | tr -dc 0-9)
+          if (( avail_gib >= required_gib )); then
+            echo "${avail_gib} GiB free, ${required_gib} GiB needed: skipping cleanup"
+            exit 0
+          fi
+
+          echo ::group::Remove Android stuff
+          rm -rf /to_clean/android/*
+          echo ::endgroup::
+
+          echo ::group::Remove CodeQL stuff
+          rm -rf /to_clean/codeql/*
+          echo ::endgroup::
+
+          echo ::group::Remove GHCup stuff
+          rm -rf /to_clean/ghcup/*
+          echo ::endgroup::
+
+          echo ::group::Remove Python stuff
+          rm -rf /to_clean/python/*
+          echo ::endgroup::
+
+          echo ::group::Remove Swift stuff
+          rm -rf /to_clean/swift/*
+          echo ::endgroup::
+
+          echo ::group::Remove .NET stuff
+          rm -rf /to_clean/dotnet/*
+          echo ::endgroup::
+
+          echo ::group::Available storage
+          df -h
+          echo ::endgroup::
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Prepare Compiler Consumer Sources
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cmake -P cmake/common/prepare-flatpak-soldr.cmake
+          build-aux/prepare-flatpak-rust.sh
+      - name: Restore Dependency State Before Compiler Artifact
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .flatpak-builder
+          key: flatpak-builder-x86_64-${{ hashFiles('build-aux/com.obsproject.Studio.json') }}-x86_64
+          restore-keys: flatpak-builder-x86_64
+      - name: Download Experimental Compiler Artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: flatpak-compiler-transfer-${{ github.run_id }}
+          path: ${{ runner.temp }}/flatpak-compiler-transfer
+      - name: Verify and Restore Compiler Artifact Last
+        run: |
+          uv run ci/flatpak_compiler_cache.py restore --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer" \
+            > "$RUNNER_TEMP/flatpak-compiler-transfer/consumer-restore.json"
+          uv run ci/flatpak_compiler_cache.py reset --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+      - name: Force Application Work Without Changing Compiler Inputs
+        run: |
+          uv run ci/flatpak_compiler_cache.py force --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+      - name: Build Full Flatpak Compiler Consumer
+        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
+        with:
+          manifest-path: ${{ github.workspace }}/build-aux/com.obsproject.Studio.json
+          build-bundle: false
+          cache: true
+          restore-cache: false
+          save-cache: false
+          mirror-screenshots-url: https://dl.flathub.org/media
+      - name: Verify Substantial Cross Runner Compiler Reuse
+        run: |
+          uv run ci/flatpak_compiler_cache.py verify --manifest build-aux/com.obsproject.Studio.json \
+            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+      - name: Validate Compiler Consumer AppStream
+        uses: ./.github/actions/flatpak-builder-lint
+        with:
+          artifact: appstream
+          path: flatpak_app/files/share/metainfo/com.obsproject.Studio.metainfo.xml
+      - name: Validate Compiler Consumer Build Directory
+        uses: ./.github/actions/flatpak-builder-lint
+        with:
+          artifact: builddir
+          path: flatpak_app
+      - name: Validate Compiler Consumer Repository
+        uses: ./.github/actions/flatpak-builder-lint
+        with:
+          artifact: repo
+          path: repo
+      - name: Upload Compiler Consumer Measurements
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-compiler-consumer-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/flatpak-compiler-transfer/manifest.json
+            ${{ runner.temp }}/flatpak-compiler-transfer/consumer-*.json
+          if-no-files-found: error
+          retention-days: 7
 
   flatpak-runtime-test:
     name: Flatpak Saved Profile 🧪

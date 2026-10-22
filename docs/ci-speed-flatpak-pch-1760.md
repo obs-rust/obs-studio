@@ -176,3 +176,30 @@ adoption hold: this proof does not establish a retained cross-runner compiler
 consumer, comparable warm whole-job measurements or the 50% whole-job target.
 Portable raw probe results and exact input/limit metadata are recorded in
 [the full-app compiler evidence](ci-evidence/2026-10-22-flatpak-full-app-compiler.json).
+
+
+## Explicit fresh-runner compiler transfer experiment
+
+Default-off `flatpak-compiler-transfer-probe` packages the completed producer's
+compiler cache as an explicit Actions artifact retained for one day. The cache
+results are already compressed, so the tar and artifact avoid another compression
+pass. It records actual archive bytes, digest, payload occupancy and pack time.
+The experimental bound is 2 GiB payload and 100,000 ordinary files; it is not a
+production-family allocation increase. The caller forwards this input only for
+an explicit manual dispatch.
+
+A separate fresh-runner job restores dependency state first, then downloads and
+overlays the compiler artifact. Before changing its cache, it checks the complete
+archive digest/inventory, rejects links and unsafe paths, and requires an exact
+source SHA, manifest digest, SDK commit, compiler hashes/cache version and
+architecture match. It resets statistics, builds the full application, requires
+at least 100 hits and 80% cacheable reuse, and runs all three output validators.
+The builder action cannot restore over the artifact or publish either cache.
+Consumer restoration/counters and producer metadata are retained separately.
+
+This uses a visible same-run Actions artifact, not a new production transport or
+cache family. Report artifact storage/transfer, both full job durations and all
+selected workflow costs. It does not establish production retention, changed-source
+freshness or representative medians. No hosted run has yet executed this route;
+the adoption hold remains. The independently qualified runtime scenario and SDK
+freshness trials remain required evidence alongside it.

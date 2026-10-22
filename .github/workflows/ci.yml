@@ -13,6 +13,10 @@ on:
         description: Run the exported Flatpak with saved capture/browser sources and Debug extension (extra qualification cost)
         type: boolean
         default: false
+      flatpak-compiler-transfer-probe:
+        description: Transfer an experimental compiler artifact to one fresh Flatpak builder (extra storage/build cost)
+        type: boolean
+        default: false
       flatpak-cold-build:
         description: Measure a fresh Flatpak builder and compiler cache without restoring or publishing either cache
         type: boolean
@@ -94,6 +98,7 @@ jobs:
     with:
       flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
       flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}
+      flatpak-compiler-transfer-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-transfer-probe }}
       flatpak-cache-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cache-probe }}
       flatpak-pruned-build-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-pruned-build-probe }}
       native-cache-transport-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-transport-probe }}
