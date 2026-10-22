@@ -215,27 +215,18 @@ def native_key_variants(value: str, lines: list[str], index: int) -> list[str]:
     """Resolve actual native matrix axes, including release include rows."""
     if not value.startswith(('windows-ccache-', 'macOS-xcode-')):
         return [value]
+    axis = re.search(r'\$\{\{ matrix\.(architecture|target) \}\}', value)
+    if not axis:
+        return [value]
     jobs = [i for i, line in enumerate(lines) if re.match(r'^  [a-zA-Z0-9_-]+:', line)]
     start = max(i for i in jobs if i <= index)
     end = next((i for i in jobs if i > index), len(lines))
     job = '\n'.join(lines[start:end])
-    platform = 'windows' if value.startswith('windows-ccache-') else 'macos'
-    seed = '${{ steps.native-seed.outputs.suffix }}'
-    if seed in value:
-        # native_cache_seed.py begins the suffix with the job's architecture.
-        inline = re.search(r'(?m)^\s+(?:architecture|target): \[([^\]]+)\]', job)
-        variants = (re.findall(r'[\w-]+', inline[1]) if inline else
-                    re.findall(r'\{platform: ' + platform + r', architecture: ([\w-]+)', job))
-        if not variants:
-            raise AssertionError('unresolved native seed architecture: ' + value)
-        return [value.replace(seed, variant + '-' + seed) for variant in variants]
-    axis = re.search(r'\$\{\{ matrix\.(architecture|target) \}\}', value)
-    if not axis:
-        return [value]
     inline = re.search(r'(?m)^\s+' + axis[1] + r': \[([^\]]+)\]', job)
     if inline:
         variants = re.findall(r'[\w-]+', inline[1])
     else:
+        platform = 'windows' if value.startswith('windows-ccache-') else 'macos'
         rows = re.findall(r'(?ms)^          - os: ([^\n]+)\n(.*?)(?=^          - os:|\Z)', job)
         variants = [re.search(r'(?m)^\s+target: ([\w-]+)$', row)[1]
                     for os_name, row in rows if os_name.strip() == platform]
@@ -310,7 +301,11 @@ class CiTomlTest(unittest.TestCase):
         for path, key in keys:
             with self.subTest(path=path, key=key):
                 self.assertTrue(key, "a cache key must start with a literal prefix")
-                self.assertTrue(any(key.startswith(p) for p in prefixes), f"no [cache.family] prefix matches {key!r}")
+                # A runtime-bound key (literal part then ${{ ... }}) binds to
+                # its family at runtime; any family under the literal part may
+                # claim it, as the janitor does with the actual key.
+                self.assertTrue(any(key.startswith(p) or p.startswith(key) for p in prefixes),
+                                f"no [cache.family] prefix matches {key!r}")
 
     def test_setup_soldr_and_uv_families_declared(self):
         vias = {fam.get("via") for fam in load()["cache"]["family"].values()}
