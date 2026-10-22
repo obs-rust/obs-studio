@@ -309,6 +309,117 @@ class SweepTest(unittest.TestCase):
         self.assertEqual(cb.decide_sweep(i, h(48)), [("label_remove", cb.CLAIMED)])
 
 
+def blocked_by_alice(at=1, labels=(cb.CLAIMED,), prs=()):
+    """Alice's claim, marked blocked by her at h(at), as the bot records it."""
+    i = claimed_by_alice(labels, prs)
+    c = human("alice", "Blocked: waiting on maintainer", h(at))
+    return applied(i, c, cb.decide_comment(i, c, h(at)))
+
+
+class BlockedTest(unittest.TestCase):
+    """A claimant marks a claim blocked; it then expires after 7 days, not 48 h."""
+
+    def test_claimant_marks_the_claim_blocked_silently(self):
+        i = claimed_by_alice()
+        c = human("alice", "Blocked: waiting on maintainer", h(1))
+        acts = cb.decide_comment(i, c, h(1))
+        self.assertEqual(acts, [("label_add", cb.BLOCKED), ("react", c.id)])
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "alice")
+
+    def test_slash_form_and_case(self):
+        for body in ("/blocked waiting on #1234", "blocked: waiting", "BLOCKED : waiting"):
+            c = human("alice", body, h(1))
+            self.assertEqual(cb.decide_comment(claimed_by_alice(), c, h(1)),
+                             [("label_add", cb.BLOCKED), ("react", c.id)], body)
+
+    def test_someone_else_cannot_block_the_claim(self):
+        acts = cb.decide_comment(claimed_by_alice(), human("bob", "Blocked: x", h(1)), h(1))
+        self.assertTrue(rejected(acts, "bob"), acts)
+        self.assertIn("`alice`", acts[0][1])
+
+    def test_blocked_needs_a_claim(self):
+        acts = cb.decide_comment(issue(), human("bob", "Blocked: x", h(1)), h(1))
+        self.assertTrue(rejected(acts, "bob"), acts)
+
+    def test_blocked_claim_does_not_go_stale_after_48h(self):
+        i = blocked_by_alice()
+        self.assertFalse(cb.is_stale(i, cb.current_claim(i), h(100)))
+        self.assertEqual(cb.decide_sweep(i, h(100)), [])
+
+    def test_takeover_of_blocked_claim_is_rejected_with_a_pointer(self):
+        acts = cb.decide_comment(blocked_by_alice(),
+                                 human("bob", "Taking over stale claim from @alice", h(60)), h(60))
+        self.assertTrue(rejected(acts, "bob"), acts)
+        self.assertIn("blocked", acts[0][1])
+        self.assertIn("maintainer", acts[0][1])
+
+    def test_blocked_claim_expires_7_days_after_the_blocked_comment(self):
+        i = blocked_by_alice(at=1)
+        self.assertEqual(cb.decide_sweep(i, h(168.9)), [])
+        self.assertEqual(cb.decide_sweep(i, h(169)),
+                         [("label_remove", cb.CLAIMED), ("label_remove", cb.BLOCKED)])
+
+    def test_takeover_after_7_days_moves_the_claim_and_clears_blocked(self):
+        i = blocked_by_alice(at=1)
+        c = human("bob", "Taking over stale claim from @alice", h(170))
+        self.assertTrue(rejected(cb.decide_comment(i, c, h(160)), "bob"))
+        acts = cb.decide_comment(i, c, h(170))
+        self.assertIn(("label_remove", cb.BLOCKED), acts)
+        self.assertEqual(cb.current_claim(applied(i, c, acts)).user, "bob")
+
+    def test_a_new_blocked_comment_renews_the_timer(self):
+        i = blocked_by_alice(at=1)
+        c = human("alice", "Blocked: still waiting on maintainer", h(160))
+        i = applied(i, c, cb.decide_comment(i, c, h(160)))
+        self.assertEqual(cb.decide_sweep(i, h(300)), [])
+        self.assertEqual(cb.decide_sweep(i, h(328)),
+                         [("label_remove", cb.CLAIMED), ("label_remove", cb.BLOCKED)])
+
+    def test_claimant_progress_clears_blocked_and_restarts_48h(self):
+        i = blocked_by_alice(at=1)
+        i.comments.append(human("alice", "progress: RED test pushed", h(10)))
+        self.assertEqual(cb.decide_sweep(i, h(11)), [("label_remove", cb.BLOCKED)])
+        i.labels.discard(cb.BLOCKED)
+        self.assertEqual(cb.decide_sweep(i, h(58)), [("label_remove", cb.CLAIMED)])
+
+    def test_pr_activity_clears_blocked(self):
+        i = blocked_by_alice(at=1, prs=[cb.LinkedPR(5, "alice", [h(5)])])
+        self.assertTrue(cb.is_stale(i, cb.current_claim(i), h(53)))
+
+    def test_release_clears_blocked(self):
+        i = blocked_by_alice()
+        acts = cb.decide_comment(i, human("alice", "Releasing x", h(2)), h(2))
+        self.assertIn(("label_remove", cb.CLAIMED), acts)
+        self.assertIn(("label_remove", cb.BLOCKED), acts)
+
+    def test_handoff_clears_blocked_and_the_new_holder_gets_48h(self):
+        i = blocked_by_alice()
+        c = human("alice", "Releasing x — handing it to @bob", h(2))
+        acts = cb.decide_comment(i, c, h(2))
+        self.assertIn(("label_remove", cb.BLOCKED), acts)
+        i = applied(i, c, acts)
+        self.assertEqual(cb.current_claim(i).user, "bob")
+        self.assertEqual(cb.decide_sweep(i, h(50)), [("label_remove", cb.CLAIMED)])
+
+    def test_reassign_clears_blocked(self):
+        acts = cb.decide_comment(blocked_by_alice(), human("zackees", "/reassign @bob", h(2), "MEMBER"), h(2))
+        self.assertIn(("label_remove", cb.BLOCKED), acts)
+
+    def test_blocked_comment_without_the_label_does_not_extend(self):
+        """A maintainer removed `claim-blocked` by hand: the normal timer applies."""
+        i = blocked_by_alice(at=1)
+        i.labels.discard(cb.BLOCKED)
+        self.assertEqual(cb.decide_sweep(i, h(49)), [("label_remove", cb.CLAIMED)])
+
+    def test_blocked_also_applies_on_critical_issues(self):
+        i = blocked_by_alice(at=1, labels=(cb.CLAIMED, cb.CRITICAL))
+        self.assertEqual(cb.decide_sweep(i, h(20)), [])
+
+    def test_locked_issue_ignores_blocked(self):
+        i = claimed_by_alice((cb.CLAIMED, cb.LOCKED))
+        self.assertEqual(cb.decide_comment(i, human("alice", "Blocked: x", h(1)), h(1)), [])
+
+
 class QuietTest(unittest.TestCase):
     """Only rejections comment; nothing assigns."""
 
@@ -325,6 +436,11 @@ class QuietTest(unittest.TestCase):
         yield False, cb.decide_comment(alice(), human("zackees", "/reassign @bob", h(1), "MEMBER"), h(1))
         yield False, cb.decide_sweep(alice(), h(46.5))
         yield False, cb.decide_sweep(alice(), h(48))
+        yield False, cb.decide_comment(alice(), human("alice", "Blocked: waiting", h(1)), h(1))
+        yield True, cb.decide_comment(alice(), human("bob", "Blocked: waiting", h(1)), h(1))
+        yield True, cb.decide_comment(blocked_by_alice(),
+                                      human("bob", "Taking over stale claim from @alice", h(60)), h(60))
+        yield False, cb.decide_sweep(blocked_by_alice(), h(169))
 
     def test_only_rejections_comment(self):
         for is_rejection, acts in self.scenarios():

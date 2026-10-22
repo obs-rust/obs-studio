@@ -53,8 +53,10 @@ BOT_PREFIX = "**Claim bot:**"
 CLAIMED = "claimed"
 CRITICAL = "critical"
 LOCKED = "claim-locked"
+BLOCKED = "claim-blocked"
 STALE_HOURS = 48
 CRITICAL_STALE_HOURS = 8
+BLOCKED_STALE_HOURS = 7 * 24
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 REACTION = "rocket"
 
@@ -62,6 +64,7 @@ CLAIM_RE = re.compile(r"^\s*claiming\b", re.I)
 RELEASE_RE = re.compile(r"^\s*releasing\b", re.I)
 TAKEOVER_RE = re.compile(r"^\s*taking over stale claim from @([A-Za-z0-9-]+)", re.I)
 REASSIGN_RE = re.compile(r"^\s*/reassign\s+@([A-Za-z0-9-]+)", re.I)
+BLOCKED_RE = re.compile(r"^\s*(?:blocked\s*:|/blocked\b)", re.I)
 # A handoff: the holder names who takes the claim, in one comment. This only
 # recognises the shape of the line so the event gate routes it here; the
 # target itself comes from handoff_target().
@@ -80,7 +83,7 @@ HANDOFF_CMD_RE = re.compile(r"^\s*/?handoff\b(?:\s+\S+){0,3}?\s*(?:to\s+)?@([A-Z
 YOURS_RE = re.compile(r"\bit'?s\s+yours[,;:! ]+@([A-Za-z0-9-]+)", re.I)
 # Everything that makes a comment a command, so the event gate and the
 # granted-reaction reader cannot drift apart.
-COMMANDS = (CLAIM_RE, RELEASE_RE, TAKEOVER_RE, REASSIGN_RE, HANDOFF_RE)
+COMMANDS = (CLAIM_RE, RELEASE_RE, TAKEOVER_RE, REASSIGN_RE, HANDOFF_RE, BLOCKED_RE)
 # The bot's own records. Older ones wrote @login; current ones `login`.
 BOT_CLAIM_RE = re.compile(re.escape(BOT_PREFIX) + r" (?:claimed by|claim moved to) [@`]([A-Za-z0-9-]+)")
 BOT_CLEAR_RE = re.compile(re.escape(BOT_PREFIX) + r" claim (?:released|expired)")
