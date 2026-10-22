@@ -90,7 +90,12 @@ def restore(artifact, destination, profile):
     artifact, destination = Path(artifact), Path(destination)
     report = json.loads((artifact / 'manifest.json').read_text())
     if report.get('format') != 1 or report.get('profile') != profile:
-        raise ValueError('compiler artifact profile mismatch')
+        producer = report.get('profile', {})
+        mismatch = {'producer': producer, 'consumer': profile,
+                    'different_fields': sorted(key for key in set(producer) | set(profile)
+                                               if producer.get(key) != profile.get(key))}
+        (artifact / 'profile-mismatch.json').write_text(json.dumps(mismatch, indent=2) + '\n')
+        raise ValueError('compiler artifact profile mismatch: ' + ', '.join(mismatch['different_fields']))
     archive = artifact / 'compiler-cache.tar'
     if archive.is_symlink() or not archive.is_file():
         raise ValueError('compiler artifact must be an ordinary archive')

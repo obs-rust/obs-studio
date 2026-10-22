@@ -254,3 +254,31 @@ RED regressions reproduce the missing upload/step boundaries; the corrected
 configuration still requires a changed-source hosted trial. Production transport,
 budgets and adoption holds remain unchanged. See
 [the second transfer evidence](ci-evidence/2026-10-22-flatpak-transfer-v5.json).
+
+
+### Cross-runner trial v6: download passes, profile guard rejects
+
+Run [39784005854](https://github.com/obs-rust/obs-studio/actions/runs/39784005854)
+at `c907b9ef1` is terminal failure. Producer119842391321 passed all validators
+and uploaded two files: the actual compiler artifact is698,963,464 bytes
+(tar698,961,920 bytes;697,941,503 payload bytes;1,300 files;2.378s packing).
+Whole producer975s includes optional transport/runtime export; both builder
+restores missed and isolated compiler counters were0hits/330misses. This is
+not a warm performance sample.
+
+Consumer119850594734 downloaded the artifact successfully and matched its
+published digest, then rejected the profile before overlay or application
+build. Both jobs pulled image digest`6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039`.
+The producer builder explicitly updated SDK/runtime before compiling, whereas
+consumer profile validation ran before equivalent dependency preparation.
+The correction uses bounded dependency-only builder preparation before
+profile validation; remaining drift still fails. A mismatch report now retains
+both identities and differing fields. Focused RED/GREEN checks cover the
+preparation order and rejection before destination mutation.
+
+Installed saved-profile runtime119850594274 passed separately. The full trial
+cost135.9333 runner-minutes across22successful and2failed active jobs, with
+no cancellations; skipped jobs excluded and no billing multipliers. See
+[portable evidence](ci-evidence/2026-10-22-flatpak-transfer-v6.json).
+Actual compiler reuse, retained capacity, and routine whole-job savings remain
+unproven. The runtime fixture uses synthetic devices/software rendering.

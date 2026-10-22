@@ -1,0 +1,314 @@
+{
+  "run": 39784005854,
+  "source": "c907b9ef1d73bc420178928818d9e64f2b58eecb",
+  "producer_job": 119842391321,
+  "producer_status": "success",
+  "producer_whole_seconds": 975.0,
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success",
+      "seconds": 2.0
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success",
+      "seconds": 59.0
+    },
+    {
+      "name": "Prepare build space",
+      "conclusion": "success",
+      "seconds": 1.0
+    },
+    {
+      "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+      "conclusion": "success",
+      "seconds": 24.0
+    },
+    {
+      "name": "Set Up Environment \ud83d\udd27",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+      "conclusion": "success",
+      "seconds": 3.0
+    },
+    {
+      "name": "Prepare offline Flatpak Rust dependencies",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Vendor Flatpak Cargo sources",
+      "conclusion": "success",
+      "seconds": 16.0
+    },
+    {
+      "name": "Validate Flatpak manifest",
+      "conclusion": "success",
+      "seconds": 8.0
+    },
+    {
+      "name": "Run actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+      "conclusion": "success",
+      "seconds": 1.0
+    },
+    {
+      "name": "Restore legacy Flatpak builder seed",
+      "conclusion": "success",
+      "seconds": 1.0
+    },
+    {
+      "name": "Run actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+      "conclusion": "success",
+      "seconds": 2.0
+    },
+    {
+      "name": "Record Start Time \u23f1\ufe0f",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Reset Flatpak Compiler Counters",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Build Flatpak Manifest \ud83e\uddfe",
+      "conclusion": "success",
+      "seconds": 800.0
+    },
+    {
+      "name": "Report Flatpak Cache Contents",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Ccache Stats \ud83d\udcca",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Run actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae",
+      "conclusion": "skipped",
+      "seconds": 0.0
+    },
+    {
+      "name": "Validate AppStream",
+      "conclusion": "success",
+      "seconds": 3.0
+    },
+    {
+      "name": "Verify Icon and Metadata in app-info",
+      "conclusion": "success",
+      "seconds": 1.0
+    },
+    {
+      "name": "Validate build directory",
+      "conclusion": "success",
+      "seconds": 8.0
+    },
+    {
+      "name": "Validate repository",
+      "conclusion": "success",
+      "seconds": 8.0
+    },
+    {
+      "name": "Measure Flatpak Cache Capacity",
+      "conclusion": "skipped",
+      "seconds": 0.0
+    },
+    {
+      "name": "Upload Flatpak Cache Measurement",
+      "conclusion": "skipped",
+      "seconds": 0.0
+    },
+    {
+      "name": "Probe Pruned Flatpak Rebuild",
+      "conclusion": "skipped",
+      "seconds": 0.0
+    },
+    {
+      "name": "Upload Pruned Flatpak Evidence",
+      "conclusion": "skipped",
+      "seconds": 0.0
+    },
+    {
+      "name": "Pack Experimental Flatpak Compiler Artifact",
+      "conclusion": "success",
+      "seconds": 3.0
+    },
+    {
+      "name": "Upload Experimental Flatpak Compiler Artifact",
+      "conclusion": "success",
+      "seconds": 9.0
+    },
+    {
+      "name": "Archive Exported Flatpak for Runtime Qualification",
+      "conclusion": "success",
+      "seconds": 2.0
+    },
+    {
+      "name": "Upload Exported Flatpak for Runtime Qualification",
+      "conclusion": "success",
+      "seconds": 12.0
+    },
+    {
+      "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+      "conclusion": "success",
+      "seconds": 1.0
+    },
+    {
+      "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+      "conclusion": "success",
+      "seconds": 0.0
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success",
+      "seconds": 7.0
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success",
+      "seconds": 0.0
+    }
+  ],
+  "compiler_artifact": {
+    "id": 12428468801,
+    "node_id": "MDg6QXJ0aWZhY3QxMjQyODQ2ODgwMQ==",
+    "name": "flatpak-compiler-transfer-39784005854",
+    "size_in_bytes": 698963464,
+    "url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12428468801",
+    "archive_download_url": "https://api.github.com/repos/obs-rust/obs-studio/actions/artifacts/12428468801/zip",
+    "expired": false,
+    "digest": "sha256:396644dce778acaf82c2da1e0287cf6781aef40131f2212fe1959617c0424a78",
+    "created_at": "2026-10-22T13:22:57Z",
+    "updated_at": "2026-10-22T13:22:57Z",
+    "expires_at": "2026-10-23T13:22:48Z",
+    "workflow_run": {
+      "id": 39784005854,
+      "repository_id": 1409760713,
+      "head_repository_id": 1409760713,
+      "head_branch": "infra/1760-flatpak-qualification-v6",
+      "head_sha": "c907b9ef1d73bc420178928818d9e64f2b58eecb"
+    }
+  },
+  "consumer_job": 119850594734,
+  "runtime_job": 119850594274,
+  "consumer_result": "FAILURE: artifact downloaded and digest matched; compiler profile mismatch before cache overlay/build",
+  "runtime_result": "SUCCESS; detailed runtime artifact pending download",
+  "limits": [
+    "Actual artifact upload now includes2files and698963464bytes; consumer digest/profile/build/hits not yet proven.",
+    "Experimental producer includes archive packing/upload and runtime export; not routine warm performance sample.",
+    "Fresh-runner profile mismatch means no compiler consumer build/hit/speedup proof.",
+    "All selected active jobs counted with no billing multipliers; skipped excluded."
+  ],
+  "pack": {
+    "format": 1,
+    "profile": {
+      "source": "c907b9ef1d73bc420178928818d9e64f2b58eecb",
+      "manifest": "30aa08457920c6be451d2e5395a6d2f93a34c79c245c2b8b32ca77107d12b62f",
+      "sdk": "3311c13c67b602315c39cf5310de129dd3460d04b6c8cf5be1b2cbc42c51abd7",
+      "compiler": "fb381c4d74722d4e1897919c4aca5b8cd0bd3f395cdc714053e58fa629517b8e  /usr/bin/cc\n2c997e55797c475dd5d0cf4063ae5052bec259c32a44eaa7333a0f8c02605293  /usr/bin/c++\nccache version 4.14.1\nFeatures: avx2 crsh-storage file-storage http-storage remote-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.",
+      "architecture": "x86_64"
+    },
+    "sha256": "3eaa1dc61f0c990f1fa4fca2a4b47c4774c3f1d34932996c97b35fd6363800dc",
+    "archive_bytes": 698961920,
+    "payload_bytes": 697941503,
+    "files": 1300,
+    "omitted_builder_wrappers": [
+      "bin/c++",
+      "bin/cc",
+      "bin/g++",
+      "bin/gcc"
+    ],
+    "pack_seconds": 2.3777325600000268
+  },
+  "builder_restore": "Current and legacy MISS",
+  "producer_compiler_hits": 0,
+  "producer_compiler_misses": 330,
+  "consumer_whole_seconds": 179.0,
+  "diagnosis": "Same image digest producer/consumer6ed6921...; producer builder updates SDK/runtime before compile; consumer context runs before that preparation. Current profile diagnostic omits actual expected/observed fields; require SDK preparation and bounded mismatch report, retain guard.",
+  "whole_workflow_runner_minutes": 135.93333333333334,
+  "workflow_conclusion": "failure",
+  "job_conclusions": {
+    "success": 22,
+    "failure": 2,
+    "cancelled": 0
+  },
+  "runtime": {
+    "status": "success",
+    "source": "c907b9ef1d73bc420178928818d9e64f2b58eecb",
+    "harness_source": "c907b9ef1d73bc420178928818d9e64f2b58eecb",
+    "artifact_run": "39784005854",
+    "app": "com.obsproject.Studio",
+    "coverage": "synthetic screen/camera/microphone producers; software browser rendering; no physical devices or hardware GPU",
+    "limits": "One runtime qualification, not routine full-job performance evidence",
+    "app_ref": "com.obsproject.Studio/x86_64/master",
+    "debug_ref": "com.obsproject.Studio.Debug/x86_64/master",
+    "app_commit": "20b00d798e49fb686977f951e5c8389187ddca9fb995397640c49d828776142b",
+    "debug_commit": "8bc2c13ea02e330a270f49f02436a19d5f78a879e5c2951d8075d6bab43ba459",
+    "cef_build_id": "1057eb4fa0ac432b4deda44fcd2bc20a4d9182c3",
+    "unavailable_hardware_modules": [
+      "aja-output-ui.so",
+      "aja.so"
+    ],
+    "recording": "/home/runner/work/_temp/flatpak-runtime-result/recordings/2026-10-22 13-26-23.mkv",
+    "browser_frames": 307,
+    "modules": [
+      "aja-output-ui.so",
+      "aja.so",
+      "frontend-tools.so",
+      "image-source.so",
+      "linux-capture.so",
+      "linux-jack.so",
+      "linux-pipewire.so",
+      "linux-pulseaudio.so",
+      "linux-v4l2.so",
+      "obs-browser.so",
+      "obs-ffmpeg.so",
+      "obs-filters.so",
+      "obs-libfdk.so",
+      "obs-nvenc.so",
+      "obs-outputs.so",
+      "obs-qsv11.so",
+      "obs-transitions.so",
+      "obs-vst.so",
+      "obs-webrtc.so",
+      "obs-websocket.so",
+      "obs-x264.so",
+      "rtmp-services.so",
+      "text-freetype2.so"
+    ],
+    "seconds": 55.147500820999994,
+    "websocket_version": {
+      "obsVersion": "33.0.0",
+      "obsWebSocketVersion": "5.7.5",
+      "platform": "org.freedesktop.platform",
+      "platformDescription": "Freedesktop SDK 26.08 (Flatpak runtime)",
+      "rpcVersion": 1,
+      "supportedImageFormats": [
+        "bmp",
+        "cur",
+        "icns",
+        "ico",
+        "jfif",
+        "jpeg",
+        "jpg",
+        "pbm",
+        "pgm",
+        "png",
+        "ppm",
+        "tif",
+        "tiff",
+        "wbmp",
+        "webp",
+        "xbm",
+        "xpm"
+      ]
+    }
+  }
+}

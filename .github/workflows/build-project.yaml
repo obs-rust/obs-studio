@@ -979,6 +979,13 @@ jobs:
         with:
           name: flatpak-compiler-transfer-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-compiler-transfer
+      - name: Prepare Compiler Consumer SDK
+        run: |
+          # The producer's builder updates the image SDK before compilation.
+          # Use the same dependency preparation before comparing identities;
+          # any remaining SDK/compiler drift must still reject the archive.
+          timeout 300s flatpak-builder --install-deps-only --install-deps-from=flathub \
+            --arch=x86_64 --state-dir .flatpak-builder flatpak_app build-aux/com.obsproject.Studio.json
       - name: Verify and Restore Compiler Artifact Last
         run: |
           uv run ci/flatpak_compiler_cache.py restore --manifest build-aux/com.obsproject.Studio.json \
