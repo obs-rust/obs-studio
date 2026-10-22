@@ -3,4 +3,5 @@
 
 mod pulse_backlog;
 mod pulse_flags;
+mod pulse_format;
 mod pulse_parity;
