@@ -4,6 +4,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::{fmt::Debug, hint::black_box};
 
+#[path = "port_comparison/callback.rs"]
+mod callback;
 #[path = "port_comparison/codecs.rs"]
 mod codecs;
 #[path = "port_comparison/graphics.rs"]
@@ -37,6 +39,7 @@ fn comparisons(criterion: &mut Criterion) {
     util::benchmarks(criterion);
     graphics::benchmarks(criterion);
     codecs::benchmarks(criterion);
+    callback::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);

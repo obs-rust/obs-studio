@@ -17,13 +17,16 @@ import statistics
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
-CATEGORIES = {"bmem", "dstr", "vec2", "vec3", "vec4", "crc32", "avc", "hevc", "av1"}
+CATEGORIES = {
+    "bmem", "dstr", "vec2", "vec3", "vec4", "crc32", "avc", "hevc", "av1",
+    "decl", "calldata", "proc", "signal",
+}
 
 
 def source_hash() -> str:
     paths = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
     for directory in [
-        "rust/obs-c-oracle", "rust/obs-util", "rust/obs-graphics", "rust/obs-codec",
+        "rust/obs-c-oracle", "rust/obs-util", "rust/obs-graphics", "rust/obs-codec", "rust/obs-callback",
         "libobs", "deps/simde", "deps/libcaption",
     ]:
         paths.update(

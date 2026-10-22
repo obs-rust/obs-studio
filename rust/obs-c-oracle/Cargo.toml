@@ -17,6 +17,7 @@ criterion = { version = "=0.8.2", default-features = false, features = ["cargo_b
 obs-util = { path = "../obs-util" }
 obs-graphics = { path = "../obs-graphics" }
 obs-codec = { path = "../obs-codec" }
+obs-callback = { path = "../obs-callback" }
 
 [[bench]]
 name = "port_comparison"
