@@ -854,3 +854,28 @@ When recollecting into the same output directory, unchanged run metadata retains
 its recorded historical comparison base. Later PR rebases or base-branch updates
 must not silently reclassify a cached run. Updated run metadata still invalidates
 the cache and fetches current job/attempt details.
+
+
+### Manual Flatpak measurement
+
+Use the existing manual workflow to observe the complete Flatpak job without
+launching unrelated native application, Qt, Tier 2 and cross-lint matrices:
+
+```sh
+gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f flatpak-measurement-only=true
+```
+
+`flatpak-measurement-only` defaults to false and is accepted only for
+`workflow_dispatch`. Ordinary PR, merge-group, push, schedule and release
+selection is preserved. Format/Fast Gate remain, and the entire Flatpak job
+is unchanged: setup, cache restore, compilation, debug processing, export,
+validators, pruning, required publication and cleanup all stay in its clock.
+Keep other probe inputs off for a routine warm observation. A cold observation
+also passes `-f flatpak-cold-build=true`; optional Flatpak qualification probes
+remain separate extra work when explicitly requested.
+
+This mode saves measurement runner time and waiting on unrelated jobs. Do not
+count those omissions as a Flatpak build speedup. Record full job/source/cache
+identities, failures and costs; do not restart a live observation on API lag.
+Manual master dispatches share their existing cancellation group, so wait for
+the entire preceding manual master workflow to finish before starting another.

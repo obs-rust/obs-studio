@@ -2,6 +2,10 @@ name: Build Project
 on:
   workflow_call:
     inputs:
+      flatpak-measurement-only:
+        description: Restrict the manual build matrix to complete Flatpak and lightweight gates
+        type: boolean
+        default: false
       flatpak-compiler-diagnostics:
         description: Record bounded compiler cache reasons and log spans (manual diagnostic, no raw command upload)
         type: boolean
@@ -164,9 +168,14 @@ jobs:
       - name: Check Change Scope 🧭
         id: native
         env:
+          FLATPAK_MEASUREMENT_ONLY: ${{ inputs.flatpak-measurement-only }}
           GH_TOKEN: ${{ github.token }}
         run: |
           : Check Change Scope 🧭
+          # A reusable caller cannot use this manual observation mode to omit gates.
+          if [[ "$FLATPAK_MEASUREMENT_ONLY" == true ]]; then
+            [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && '${{ inputs.full }}' != true ]]
+          fi
           # No label changes what runs (#992). Schedule, workflow_dispatch,
           # tags, release branches and the release gate (inputs.full) run
           # everything (#436); a master push runs its paths' lanes plus the
@@ -208,6 +217,10 @@ jobs:
           if [[ "${deferred}" != true ]]; then
             qt=true tier2=true
           fi
+          # Keep the complete Flatpak job and Fast Gate; omit unrelated matrices.
+          if [[ "$FLATPAK_MEASUREMENT_ONLY" == true ]]; then
+            core=false macos=false windows=false qt=false tier2=false linux_targets=
+          fi
           os=()
           [[ "${macos}" == true ]] && os+=('"macos-26"')
           [[ "${windows}" == true ]] && os+=('"windows-2025-vs2026"')
@@ -230,7 +243,7 @@ jobs:
     needs: check-event
     # OBS app builds are release-gating (#436): release gate, tags, schedule,
     # dispatch and path-triggered full PRs only.
-    if: fromJSON(needs.check-event.outputs.full)
+    if: ${{ !inputs.flatpak-measurement-only && fromJSON(needs.check-event.outputs.full) }}
     strategy:
       fail-fast: false
       matrix:
@@ -481,7 +494,7 @@ jobs:
     # the release gate (release-rust.yaml), tags, schedule, dispatch and
     # path-triggered full runs. PRs and pushes build and test the Rust workspace and Tier 2
     # (libobs + cmocka) on Linux instead.
-    if: fromJSON(needs.check-event.outputs.full)
+    if: ${{ !inputs.flatpak-measurement-only && fromJSON(needs.check-event.outputs.full) }}
     defaults:
       run:
         shell: bash
@@ -1273,7 +1286,7 @@ jobs:
     needs: check-event
     # OBS app builds are release-gating (#436): release gate, tags, schedule,
     # dispatch and path-triggered full PRs only.
-    if: fromJSON(needs.check-event.outputs.full)
+    if: ${{ !inputs.flatpak-measurement-only && fromJSON(needs.check-event.outputs.full) }}
     defaults:
       run:
         shell: pwsh
@@ -1779,7 +1792,7 @@ jobs:
     name: Rust Cross Lint 🦀 (Windows, macOS)
     runs-on: ubuntu-26.04
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
+    if: ${{ !inputs.flatpak-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
       run:
         shell: bash
@@ -1825,7 +1838,7 @@ jobs:
     # of the PR gate's targets.
     runs-on: ubuntu-26.04
     needs: check-event
-    if: needs.check-event.outputs.full == 'true'
+    if: ${{ !inputs.flatpak-measurement-only && needs.check-event.outputs.full == 'true' }}
     defaults:
       run:
         shell: bash

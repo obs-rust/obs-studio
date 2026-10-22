@@ -5,6 +5,10 @@ run-name: ${{ github.event.pull_request.title || github.ref_name }} pull request
 on:
   workflow_dispatch:
     inputs:
+      flatpak-measurement-only:
+        description: Restrict the manual build matrix to complete Flatpak and lightweight gates
+        type: boolean
+        default: false
       flatpak-compiler-diagnostics:
         description: Record bounded compiler cache reasons and log spans (manual diagnostic, no raw command upload)
         type: boolean
@@ -108,6 +112,7 @@ jobs:
     if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '') }}
     uses: ./.github/workflows/build-project.yaml
     with:
+      flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}
       flatpak-compiler-diagnostics: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-diagnostics }}
       flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
       flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}
