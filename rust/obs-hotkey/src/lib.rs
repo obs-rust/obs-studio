@@ -1,11 +1,12 @@
 //! Rust ports of `libobs/obs-hotkey-name-map.c`,
 //! `libobs/obs-hotkey-bindings.c.h`, `libobs/obs-hotkey-translations.c.h`,
-//! `libobs/obs-hotkey-press.c.h`, `libobs/obs-nix-hotkey-state.c.h`,
+//! `libobs/obs-hotkey-press.c.h`, `libobs/obs-hotkey-pair.c.h`,
+//! `libobs/obs-nix-hotkey-state.c.h`,
 //! `libobs/obs-nix-portal-shortcut-ids.c.h` and
 //! `libobs/obs-nix-portal-shortcut-sets.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
-//! [`press`], [`nix_hotkey_state`], [`portal_shortcut_ids`] and
+//! [`press`], [`pair`], [`nix_hotkey_state`], [`portal_shortcut_ids`] and
 //! [`portal_shortcut_sets`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
@@ -21,6 +22,7 @@ use obs_util as _; // base log handler
 pub mod bindings;
 pub mod name_map;
 pub mod nix_hotkey_state;
+pub mod pair;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod press;

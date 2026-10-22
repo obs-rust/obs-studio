@@ -5,6 +5,7 @@ mod bindings_parity;
 mod hotkey_name_map;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
+mod pair;
 mod parity;
 mod portal_shortcut_ids;
 mod portal_shortcut_ids_parity;
