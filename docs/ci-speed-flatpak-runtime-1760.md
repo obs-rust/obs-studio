@@ -22,7 +22,7 @@ The recording passes the existing AppImage verifier: moving screen and camera,
 continuous 440 Hz microphone audio, sufficient frames and clean decoding. An
 additional pixel check requires the browser's green HTML rectangle throughout
 the decoded recording. The app must load every packaged OBS module, except the
-existing hardware-only decklink/NVENC exceptions, and exit cleanly. These are
+hardware-only decklink/NVENC exceptions and explicitly diagnosed absent AJA devices, and exit cleanly. These are
 synthetic devices with software rendering; physical hardware is not covered.
 
 ## Cost and evidence
@@ -124,3 +124,26 @@ user-visible `BrowserHWAccel=false` setting in its saved global configuration,
 matching the declared software-only environment. The green-pixel threshold
 remains unchanged. This is a hypothesis to validate, not a confirmed cause or a
 browser pass; hardware browser rendering is outside this synthetic coverage.
+
+## Successful installed-package qualification
+
+[Run 39763463067](https://github.com/obs-rust/obs-studio/actions/runs/39763463067)
+passes the complete installed-package scenario with the unchanged export from
+producer `39754042722`, package source `8ff154c45`, and harness `eb36fc7b5`.
+The app records 361 frames over 12.033 seconds; screen/camera motion and the
+continuous 440 Hz tone pass the unchanged recording verifier. All 302 decoded
+browser frames after the two-second startup allowance meet the original green
+pixel assertion. Authenticated unchanged WebSocket v5, module inventory,
+clean shutdown, installed CEF build IDs and GDB source lookup pass.
+
+See [portable runtime evidence and attempt costs](ci-evidence/2026-10-22-flatpak-installed-runtime.json).
+Five failed attempts are retained; no cancellation or unchanged retry was used.
+This proves software browser rendering on the synthetic runner, not the failed
+default hardware setting or physical device/GPU behavior. Upstream missing DWO
+warnings remain; source-line lookup is not complete Chromium symbol coverage.
+The earlier failed-run entries above are historical evidence, not current holds.
+
+This runtime hold is satisfied for the recorded package. Normal PR CI and the
+merge queue still apply. The next full build must qualify the combined cache
+restore/reset controls, and the issue's three warm observations, cold measurement
+and 50% whole-job target remain unproven. Do not close #1760 on this runtime pass.

@@ -1,0 +1,436 @@
+{
+  "status": "success",
+  "source": "8ff154c45cc0c958aa37065ffadcf003e8ad4e50",
+  "harness_source": "eb36fc7b50b585cd69f23b5b93b9ca0d533161ab",
+  "artifact_run": "39754042722",
+  "app": "com.obsproject.Studio",
+  "coverage": "synthetic screen/camera/microphone producers; software browser rendering; no physical devices or hardware GPU",
+  "limits": "One runtime qualification, not routine full-job performance evidence",
+  "app_ref": "com.obsproject.Studio/x86_64/master",
+  "debug_ref": "com.obsproject.Studio.Debug/x86_64/master",
+  "app_commit": "669d2a5a9ad1f702dbe8fa134f54ed9d024ab17258630b3cb406e7117799a26c",
+  "debug_commit": "f8f01373adb33d19846e1b7807429a1d2188df1e80a86f526d0fa85b6af02268",
+  "cef_build_id": "1057eb4fa0ac432b4deda44fcd2bc20a4d9182c3",
+  "unavailable_hardware_modules": [
+    "aja-output-ui.so",
+    "aja.so"
+  ],
+  "recording": "/home/runner/work/_temp/flatpak-runtime-result/recordings/2026-10-22 10-35-43.mkv",
+  "browser_frames": 302,
+  "modules": [
+    "aja-output-ui.so",
+    "aja.so",
+    "frontend-tools.so",
+    "image-source.so",
+    "linux-capture.so",
+    "linux-jack.so",
+    "linux-pipewire.so",
+    "linux-pulseaudio.so",
+    "linux-v4l2.so",
+    "obs-browser.so",
+    "obs-ffmpeg.so",
+    "obs-filters.so",
+    "obs-libfdk.so",
+    "obs-nvenc.so",
+    "obs-outputs.so",
+    "obs-qsv11.so",
+    "obs-transitions.so",
+    "obs-vst.so",
+    "obs-webrtc.so",
+    "obs-websocket.so",
+    "obs-x264.so",
+    "rtmp-services.so",
+    "text-freetype2.so"
+  ],
+  "seconds": 53.89235704599997,
+  "obs_version": "33.0.0",
+  "websocket_version": "5.7.5",
+  "qualifier_run": 39763463067,
+  "qualifier_job": 119773070115,
+  "qualifier_url": "https://github.com/obs-rust/obs-studio/actions/runs/39763463067",
+  "recording_verifier": "duration: 12.033000 s, video: 320x240, 361 frames, audio: aac,48000,2\nscreen region: 0 freezes \ncamera region: 0 freezes \naudio RMS: -11.738818 dB, at 440 Hz: -11.740692 dB\naudio: 0 silences\nverify-recording: screen and camera move, the microphone carries the 440 Hz tone throughout",
+  "preexisting_missing_dwo_warnings": 41344,
+  "debug_limits": "CEF source-line lookup and matching build IDs pass; incomplete upstream DWO payload remains, not complete Chromium debug coverage.",
+  "performance_limits": "Runtime correctness only; no full-job speedup, warm/cold or cache-hit performance claim.",
+  "qualification_attempts": [
+    {
+      "job": 119746928179,
+      "run": 39754042722,
+      "conclusion": "failure",
+      "seconds": 525.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 49.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 462.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "failure",
+          "seconds": 3.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "skipped",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job": 119755719438,
+      "run": 39758270223,
+      "conclusion": "failure",
+      "seconds": 335.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Record Export Provenance",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 80.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 142.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "failure",
+          "seconds": 98.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "skipped",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job": 119759571516,
+      "run": 39759412764,
+      "conclusion": "failure",
+      "seconds": 158.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Record Export Provenance",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 12.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 81.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "failure",
+          "seconds": 49.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "skipped",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job": 119764424377,
+      "run": 39760870691,
+      "conclusion": "failure",
+      "seconds": 530.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Record Export Provenance",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 41.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 429.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "failure",
+          "seconds": 44.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "skipped",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job": 119769848097,
+      "run": 39762495293,
+      "conclusion": "failure",
+      "seconds": 123.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Record Export Provenance",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 28.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 26.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "failure",
+          "seconds": 57.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "skipped",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job": 119773070115,
+      "run": 39763463067,
+      "conclusion": "success",
+      "seconds": 403.0,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Record Export Provenance",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+          "conclusion": "success",
+          "seconds": 37.0
+        },
+        {
+          "name": "Install Runtime Test Infrastructure",
+          "conclusion": "success",
+          "seconds": 295.0
+        },
+        {
+          "name": "Run Installed Flatpak with Saved Capture Profile",
+          "conclusion": "success",
+          "seconds": 56.0
+        },
+        {
+          "name": "Upload Flatpak Runtime Evidence",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    }
+  ],
+  "qualification_runner_minutes": 34.56666666666667,
+  "qualification_failures": 5,
+  "qualification_cancellations": 0,
+  "repository_tar_bytes": 1096007680,
+  "repository_artifact_payload_bytes": 1096007842,
+  "bytes_limits": "One immutable uploaded repository reused by consumers. Archive payload size is not measured total wire traffic. Qualification costs exclude the separately reported full build and format/gate jobs."
+}
