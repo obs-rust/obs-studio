@@ -38,6 +38,21 @@ class FlatpakRuntimeTest(unittest.TestCase):
             with self.subTest(index=index), self.assertRaises(ValueError):
                 module.check_capture_log('\n'.join(lines[:index] + lines[index + 1:]), modules)
 
+    def test_aja_absence_requires_explicit_hardware_diagnostic(self):
+        module = self.module()
+        log = '\n'.join(['[pipewire] Screencast session created', 'state: "streaming"', 'state: "streaming"',
+                         '[camera-portal] Found device obs-test-camera', "Started recording from 'obs-test-mic'",
+                         'Recording Start', 'Loaded Modules:', '    obs-browser.so', '    obs-websocket.so',
+                         '----------------'])
+        modules = ['obs-browser.so', 'obs-websocket.so', 'aja.so', 'aja-output-ui.so']
+        with self.assertRaises(ValueError):
+            module.check_capture_log(log, modules)
+        diagnostics = "\n".join(["No AJA devices found, skipping loading AJA plugin", "Failed to initialize module 'aja.so'",
+                                  "No AJA devices found, skipping loading AJA UI plugin", "Failed to initialize module 'aja-output-ui.so'"])
+        self.assertEqual(module.check_capture_log(log + '\n' + diagnostics, modules), ['aja.so', 'aja-output-ui.so'])
+        with self.assertRaises(ValueError):
+            module.check_capture_log(log + '\n' + diagnostics.replace("No AJA devices found", "Missing library"), modules)
+
     def test_export_requires_matching_debug_architecture_and_branch(self):
         module = self.module()
         app = 'com.obsproject.Studio/x86_64/master'
