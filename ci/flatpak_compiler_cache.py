@@ -14,6 +14,14 @@ import time
 
 MAX_PAYLOAD_BYTES = 2 * 1024 ** 3
 MAX_FILES = 100_000
+BUILDER_WRAPPERS = frozenset('bin/' + name for name in ('cc', 'c++', 'gcc', 'g++'))
+
+
+def builder_wrapper(path, root):
+    # flatpak-builder 1.4.9 regenerates these four sandbox launchers. They are
+    # scaffolding, not compiler results, and must never enter the archive.
+    return (path.relative_to(root).as_posix() in BUILDER_WRAPPERS
+            and path.is_symlink() and str(path.readlink()) == '/usr/bin/ccache')
 
 
 def digest(path):
@@ -41,13 +49,17 @@ def pack(source, artifact, profile):
     source, artifact = Path(source), Path(artifact)
     if not source.is_dir() or source.is_symlink():
         raise ValueError('compiler cache must be an ordinary directory')
-    files, size = [], 0
+    files, size, omitted = [], 0, []
     for entry in sorted(source.rglob('*')):
         mode = entry.lstat().st_mode
+        if builder_wrapper(entry, source):
+            omitted.append(entry.relative_to(source).as_posix())
+            continue
         if stat.S_ISDIR(mode):
             continue
-        if not stat.S_ISREG(mode):
-            raise ValueError('compiler cache contains a link or non-regular file')
+        if not stat.S_ISREG(mode) or entry.relative_to(source).parts[0] == 'bin':
+            raise ValueError('compiler cache contains an unsupported link/non-regular file or wrapper entry: '
+                             + entry.relative_to(source).as_posix())
         size += entry.stat().st_size
         files.append(entry)
         if size > MAX_PAYLOAD_BYTES or len(files) > MAX_FILES:
@@ -67,7 +79,8 @@ def pack(source, artifact, profile):
                 output.addfile(member, stream)
     report = {'format': 1, 'profile': profile, 'sha256': digest(archive),
               'archive_bytes': archive.stat().st_size, 'payload_bytes': size,
-              'files': len(files), 'pack_seconds': time.monotonic() - start}
+              'files': len(files), 'omitted_builder_wrappers': omitted,
+              'pack_seconds': time.monotonic() - start}
     (artifact / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n')
     return report
 
@@ -99,7 +112,8 @@ def restore(artifact, destination, profile):
         for member in members:
             path = PurePosixPath(member.name)
             if (not member.isfile() or path.is_absolute() or '..' in path.parts
-                    or not path.parts or member.name in names or '\\' in member.name):
+                    or not path.parts or path.parts[0] == 'bin'
+                    or member.name in names or '\\' in member.name):
                 raise ValueError('unsafe compiler archive member')
             names.add(member.name)
             total += member.size
@@ -110,7 +124,8 @@ def restore(artifact, destination, profile):
         if any(parent.is_symlink() for parent in [destination, *destination.parents]):
             raise ValueError('compiler destination contains links')
         if destination.exists() and (not destination.is_dir()
-                                     or any(p.is_symlink() for p in destination.rglob('*'))):
+                                     or any(p.is_symlink() and not builder_wrapper(p, destination)
+                                            for p in destination.rglob('*'))):
             raise ValueError('compiler destination contains links or is not a directory')
         destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='flatpak-compiler-transfer-', dir=destination.parent) as directory:

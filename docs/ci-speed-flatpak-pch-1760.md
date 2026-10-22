@@ -203,3 +203,28 @@ selected workflow costs. It does not establish production retention, changed-sou
 freshness or representative medians. No hosted run has yet executed this route;
 the adoption hold remains. The independently qualified runtime scenario and SDK
 freshness trials remain required evidence alongside it.
+
+
+### First transfer trial: builder passed, wrapper scaffolding rejected
+
+[Run 39776059128 / producer 119815324383](https://github.com/obs-rust/obs-studio/actions/runs/39776059128/job/119815324383)
+built and validated the full application, then failed during artifact packing.
+No compiler artifact was published and neither fresh consumer nor runtime
+qualification ran. The failure and all selected job costs remain part of the
+experiment; this is not cross-runner reuse proof.
+
+The source cache includes `bin/cc`, `bin/c++`, `bin/gcc` and `bin/g++` symlinks to
+`/usr/bin/ccache`, created by
+[flatpak-builder 1.4.9](https://github.com/flatpak/flatpak-builder/blob/1.4.9/src/builder-context.c)
+in `builder_context_set_enable_ccache`. Its hosted inventory reports 60 bytes
+under `ccache/bin`, matching those four launcher links. The ordinary-file-only
+packer rejected this generated scaffolding. The initial fixture omitted these
+links; the new RED regression reproduces the real source and destination layout.
+
+The corrected experiment omits only these exact wrapper paths with the exact
+upstream target, records their omission, and preserves matching destination
+wrappers. It rejects every archive entry under `bin`, all archive links, and
+unexpected source/destination links. This prevents a regular archive entry from
+being copied through an existing compiler wrapper. Profile/digest checks,
+substantial-hit requirements and production adoption holds remain intact.
+A changed-source trial is required; no unchanged rerun was requested.

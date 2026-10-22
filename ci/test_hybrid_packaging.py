@@ -544,6 +544,16 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'profile'):
                 module.restore(artifact, root / 'wrong', dict(profile, compiler='changed'))
             self.assertFalse((root / 'wrong').exists())
+            outside = root / 'outside'
+            outside.write_bytes(b'preserve')
+            wrong_wrapper = root / 'wrong-wrapper'
+            (wrong_wrapper / 'bin').mkdir(parents=True)
+            (wrong_wrapper / 'bin/cc').symlink_to(outside)
+            with self.assertRaisesRegex(ValueError, 'links'):
+                module.restore(artifact, wrong_wrapper, profile)
+            self.assertEqual(outside.read_bytes(), b'preserve')
+            with self.assertRaisesRegex(ValueError, 'link|wrapper'):
+                module.pack(wrong_wrapper, root / 'invalid-wrapper-artifact', profile)
             archive = artifact / 'compiler-cache.tar'
             archive.write_bytes(archive.read_bytes() + b'changed')
             with self.assertRaisesRegex(ValueError, 'digest|size'):
