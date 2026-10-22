@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-hotkey"
 version = "0.1.0"
-description = "Rust ports of libobs/obs-hotkey-name-map.c, libobs/obs-hotkey-bindings.c.h, libobs/obs-hotkey-translations.c.h, libobs/obs-nix-hotkey-state.c.h and libobs/obs-nix-portal-shortcut-ids.c.h"
+description = "Rust ports of libobs/obs-hotkey-name-map.c, libobs/obs-hotkey-bindings.c.h, libobs/obs-hotkey-translations.c.h, libobs/obs-hotkey-press.c.h, libobs/obs-nix-hotkey-state.c.h and libobs/obs-nix-portal-shortcut-ids.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
