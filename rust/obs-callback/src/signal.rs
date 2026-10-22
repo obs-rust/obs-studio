@@ -65,8 +65,17 @@ pub enum AddResult {
 /// callback, so taking this lock twice on one thread is safe.
 #[derive(Default)]
 struct ReentrantLock {
-    state: Mutex<(Option<ThreadId>, usize)>,
+    state: Mutex<Owner>,
     released: Condvar,
+}
+
+/// The thread that holds a `ReentrantLock`, how often, and how many
+/// threads wait for it.
+#[derive(Default)]
+struct Owner {
+    thread: Option<ThreadId>,
+    depth: usize,
+    waiting: usize,
 }
 
 struct ReentrantGuard<'a> {
@@ -77,22 +86,29 @@ impl ReentrantLock {
     fn lock(&self) -> ReentrantGuard<'_> {
         let me = thread::current().id();
         let mut state = lock(&self.state);
-        while state.0.is_some_and(|owner| owner != me) {
+        while state.thread.is_some_and(|owner| owner != me) {
+            state.waiting += 1;
             state = self.released.wait(state).unwrap_or_else(|e| e.into_inner());
+            state.waiting -= 1;
         }
-        state.0 = Some(me);
-        state.1 += 1;
+        state.thread = Some(me);
+        state.depth += 1;
         ReentrantGuard { lock: self }
     }
 }
 
 impl Drop for ReentrantGuard<'_> {
+    // PERF GUARD #1748
     fn drop(&mut self) {
         let mut state = lock(&self.lock.state);
-        state.1 -= 1;
-        if state.1 == 0 {
-            state.0 = None;
-            self.lock.released.notify_one();
+        state.depth -= 1;
+        if state.depth == 0 {
+            state.thread = None;
+            // Only when a thread waits: on Linux every notify is a futex
+            // syscall, and each signal releases two of these locks.
+            if state.waiting > 0 {
+                self.lock.released.notify_one();
+            }
         }
     }
 }

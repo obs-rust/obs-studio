@@ -534,3 +534,56 @@ fn disconnect_from_another_thread_waits_for_the_pass() {
     );
     signaller.join().expect("signal thread");
 }
+
+#[test]
+fn every_thread_that_waits_for_a_pass_gets_the_lock() {
+    // #1748: the lock notifies only when a thread waits. With two waiters,
+    // the release wakes one, and its release wakes the other.
+    let handler = Arc::new(handler_with("void ev()"));
+    handler.connect(b"ev", key(ON_SIGNAL, 1), false);
+    handler.connect(b"ev", key(ON_SIGNAL, 2), false);
+    let running = Arc::new(AtomicBool::new(false));
+    let done = Arc::new(AtomicBool::new(false));
+
+    let signaller = {
+        let (handler, running, done) = (handler.clone(), running.clone(), done.clone());
+        std::thread::spawn(move || {
+            let mut first = true;
+            handler.signal(
+                b"ev",
+                |_| {
+                    if std::mem::take(&mut first) {
+                        running.store(true, Ordering::SeqCst);
+                        std::thread::sleep(Duration::from_millis(100));
+                        done.store(true, Ordering::SeqCst);
+                    }
+                },
+                |_| {},
+            );
+        })
+    };
+    while !running.load(Ordering::SeqCst) {
+        std::thread::yield_now();
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    let waiters: Vec<_> = [1, 2]
+        .into_iter()
+        .map(|id| {
+            let (handler, done, tx) = (handler.clone(), done.clone(), tx.clone());
+            std::thread::spawn(move || {
+                handler.disconnect(b"ev", key(ON_SIGNAL, id));
+                tx.send(done.load(Ordering::SeqCst)).expect("send");
+            })
+        })
+        .collect();
+    for _ in 0..2 {
+        let after_pass = rx
+            .recv_timeout(Duration::from_secs(10))
+            .expect("a waiting thread never got the lock");
+        assert!(after_pass, "disconnect returned mid-callback");
+    }
+    for waiter in waiters {
+        waiter.join().expect("disconnect thread");
+    }
+    signaller.join().expect("signal thread");
+}
