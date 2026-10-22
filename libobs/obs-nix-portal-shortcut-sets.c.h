@@ -13,10 +13,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-nix-portal-shortcut-sets.pch.h"
+#include "libobs/build/libobs-ported-nix-portal-shortcut-sets.pch.h"
 
 /* ------------------------------------------------------------------------ */
 /* Combination sets                                                          */
+
+/* Ported to rust/obs-hotkey (portal_shortcut_sets): the hybrid libobs drops
+ * this file. */
 
 static bool has_combo(const struct obs_nix_portal_combos *combos, obs_key_combination_t combo)
 {

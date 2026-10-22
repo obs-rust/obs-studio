@@ -108,6 +108,13 @@ obs_nix_hotkey_state_is_pressed
 obs_nix_portal_shortcut_id
 obs_nix_portal_shortcut_combo
 obs_nix_portal_shortcut_trigger
+# obs-nix-portal-shortcut-sets.c: obs-nix-portal-shortcuts.c calls them
+# inside libobs. Declared in obs-nix-portal-shortcuts.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_nix_portal_sets_has
+obs_nix_portal_sets_unchanged
+obs_nix_portal_sets_request
+obs_nix_portal_sets_partition
 # obs-video-plan.c: obs.c calls them inside libobs. Declared in
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_video_size_valid

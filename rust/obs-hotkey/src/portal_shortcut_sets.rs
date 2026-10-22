@@ -39,6 +39,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -59,29 +60,119 @@ impl Combination for KeyCombination {
 
 /// `same_combo()` (`obs-nix-portal-shortcuts.h`): the same key and the same
 /// modifier bits, every bit, not only the four the portal knows.
-pub fn same_combo(_a: KeyCombination, _b: KeyCombination) -> bool {
-    todo!()
+pub fn same_combo(a: KeyCombination, b: KeyCombination) -> bool {
+    a.key == b.key && a.modifiers == b.modifiers
 }
 
 /// Whether `combos` holds `combo` (`obs_nix_portal_sets_has`).
-pub fn has<C: Combination>(_combos: &[C], _combo: KeyCombination) -> bool {
-    todo!()
+pub fn has<C: Combination>(combos: &[C], combo: KeyCombination) -> bool {
+    combos.iter().any(|c| same_combo(c.combination(), combo))
+}
+
+/// Every combination of `a` is also in `b`.
+fn covered_by<A: Combination, B: Combination>(a: &[A], b: &[B]) -> bool {
+    a.iter().all(|c| has(b, c.combination()))
+}
+
+/// The description of the first combination of `combos` that is `combo`,
+/// among the ones that have a description (the C's `i < num` guards).
+fn description_of<'a, C: Combination, T>(
+    combos: &[C],
+    descriptions: &'a [Option<T>],
+    combo: KeyCombination,
+) -> Option<&'a T> {
+    combos
+        .iter()
+        .zip(descriptions)
+        .find(|(c, _)| same_combo(c.combination(), combo))
+        .and_then(|(_, d)| d.as_ref())
+}
+
+/// The same combinations, each with the same description. A combination
+/// without a description, or with a NULL one, is never the same.
+fn same_set<A: Combination, B: Combination, T: PartialEq>(
+    a: &[A],
+    a_descriptions: &[Option<T>],
+    b: &[B],
+    b_descriptions: &[Option<T>],
+) -> bool {
+    if !covered_by(a, b) || !covered_by(b, a) {
+        return false;
+    }
+    a.iter().enumerate().all(|(i, c)| {
+        let other = description_of(b, b_descriptions, c.combination());
+        let mine = a_descriptions.get(i).and_then(Option::as_ref);
+        matches!((mine, other), (Some(mine), Some(other)) if mine == other)
+    })
+}
+
+/// Positions written in order into a caller's buffer, counted whether or
+/// not the buffer has room for them.
+struct Positions<'a> {
+    out: &'a mut [usize],
+    num: usize,
+}
+
+impl<'a> Positions<'a> {
+    fn new(out: &'a mut [usize]) -> Self {
+        Self { out, num: 0 }
+    }
+
+    fn push(&mut self, position: usize) {
+        if let Some(slot) = self.out.get_mut(self.num) {
+            *slot = position;
+        }
+        // At most one per element of a slice, so it cannot overflow.
+        self.num = self.num.saturating_add(1);
+    }
+}
+
+/// `select_combos()`: the positions of the combinations of `combos` that
+/// are (`is_in`) or are not (`!is_in`) in `filter`, all of them without a
+/// filter.
+fn select<C: Combination, F: Combination>(
+    combos: &[C],
+    filter: Option<&[F]>,
+    is_in: bool,
+    out: &mut Positions<'_>,
+) {
+    for (i, c) in combos.iter().enumerate() {
+        if filter.is_some_and(|f| has(f, c.combination()) != is_in) {
+            continue;
+        }
+        out.push(i);
+    }
 }
 
 /// `obs_nix_portal_sets_unchanged`: whether a sync leaves the portal session
 /// as it is.
+///
+/// With a session: `current` holds the combinations of `bound`, each with
+/// the same description (a changed description, an action moved to or from
+/// a key, binds again so the desktop's list stays right). Without one:
+/// `current` is empty, or every combination of it was declined before
+/// (a declined set is not asked for again). Either way, `retry` of a
+/// `partly_declined` session binds the full set anew.
 #[allow(clippy::too_many_arguments)]
 pub fn unchanged<C: Combination, T: PartialEq>(
-    _session: bool,
-    _retry: bool,
-    _partly_declined: bool,
-    _current: &[C],
-    _current_descriptions: &[Option<T>],
-    _bound: &[C],
-    _bound_descriptions: &[Option<T>],
-    _declined: &[C],
+    session: bool,
+    retry: bool,
+    partly_declined: bool,
+    current: &[C],
+    current_descriptions: &[Option<T>],
+    bound: &[C],
+    bound_descriptions: &[Option<T>],
+    declined: &[C],
 ) -> bool {
-    todo!()
+    let unchanged = if session {
+        same_set(current, current_descriptions, bound, bound_descriptions)
+    } else {
+        current.is_empty() || covered_by(current, declined)
+    };
+    if retry && session && partly_declined {
+        return false;
+    }
+    unchanged
 }
 
 /// What [`request`] selected.
@@ -94,14 +185,27 @@ pub struct Request {
 }
 
 /// `obs_nix_portal_sets_request`: the positions of the combinations of
-/// `current` to ask the desktop for.
+/// `current` to ask the desktop for, in its order, into `request` (room for
+/// `current.len()`): all of them, or while `partly_declined` those not in
+/// `declined` (left out until Ask again, so the desktop does not ask for
+/// them on every bind).
 pub fn request<C: Combination>(
-    _current: &[C],
-    _partly_declined: bool,
-    _declined: &[C],
-    _request: &mut [usize],
+    current: &[C],
+    partly_declined: bool,
+    declined: &[C],
+    request: &mut [usize],
 ) -> Request {
-    todo!()
+    let mut out = Positions::new(request);
+    select(
+        current,
+        partly_declined.then_some(declined),
+        false,
+        &mut out,
+    );
+    Request {
+        num: out.num,
+        partly: out.num < current.len(),
+    }
 }
 
 /// What [`partition`] selected.
@@ -115,14 +219,45 @@ pub struct Partition {
     pub bind: bool,
 }
 
-/// `obs_nix_portal_sets_partition`: what is bound again after the desktop
-/// declined `request`, and what is declined.
+/// `obs_nix_portal_sets_partition`: the desktop declined `request`. Part is
+/// the combinations of `current` that it approved before and that are in
+/// `request`; declined is the other ones of `current`. Both are positions
+/// in `current`, in its order, each with room for `current.len()`.
+///
+/// As in C, `part` first receives every approved position and is then
+/// filtered in place, so the entries past `num_part` (up to the number of
+/// approved ones) hold approved positions that were filtered out.
 pub fn partition<C: Combination>(
-    _current: &[C],
-    _approved: &[C],
-    _request: &[C],
-    _part: &mut [usize],
-    _declined: &mut [usize],
+    current: &[C],
+    approved: &[C],
+    request: &[C],
+    part: &mut [usize],
+    declined: &mut [usize],
 ) -> Partition {
-    todo!()
+    let mut selected = Positions::new(part);
+    select(current, Some(approved), true, &mut selected);
+    // The approved positions, filtered by request in place. The C reads
+    // them back from part; walking current again gives the same positions
+    // in the same order. A combination of current is in part exactly when
+    // it was approved and requested (its own position is then in part).
+    let in_part = |c: KeyCombination| has(approved, c) && has(request, c);
+    let mut kept = Positions::new(selected.out);
+    for (i, c) in current.iter().enumerate() {
+        if in_part(c.combination()) {
+            kept.push(i);
+        }
+    }
+    let num_part = kept.num;
+
+    let mut rest = Positions::new(declined);
+    for (i, c) in current.iter().enumerate() {
+        if !in_part(c.combination()) {
+            rest.push(i);
+        }
+    }
+    Partition {
+        num_part,
+        num_declined: rest.num,
+        bind: num_part > 0 && num_part < request.len(),
+    }
 }
