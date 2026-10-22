@@ -701,6 +701,15 @@ jobs:
         id: start
         run: echo "epoch=$(date +%s)" >> "${GITHUB_OUTPUT}"
 
+      - name: Reset Flatpak Compiler Counters
+        run: |
+          # The image already supplies this manifest's SDK. Reset only after
+          # both archives are restored, so old stats cannot replace the reset.
+          ccache_dir="${PWD}/.flatpak-builder/ccache"
+          mkdir -p "${ccache_dir}"
+          sdk="org.freedesktop.Sdk//$(sed -n 's/^ *"runtime-version": *"\([^" ]*\)".*/\1/p' build-aux/com.obsproject.Studio.json)"
+          flatpak run --command=ccache --filesystem="${ccache_dir}" --env=CCACHE_DIR="${ccache_dir}" "${sdk}" --zero-stats
+
       - name: Build Flatpak Manifest 🧾
         uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
         with:
@@ -763,7 +772,7 @@ jobs:
             run_ccache --evict-older-than "$(( $(date +%s) - ${{ steps.start.outputs.epoch }} + 60 ))s"
           fi
           {
-            echo '### Flatpak Ccache Stats'
+            echo '### Flatpak Ccache Stats (this build)'
             echo '```'
             run_ccache --show-stats --verbose
             echo '```'

@@ -84,6 +84,12 @@ unnecessary save to an existing immutable key, since the action's internal
 restore no longer supplies that information. No cache family, storage backend,
 capacity allowance or pruning policy changes.
 
+The workflow resets only compiler statistics after both cache restores, before
+building, so the reported hits/misses belong to that build. Cached results and
+manifests remain intact. Existing historical reports with cumulative counters
+cannot establish a per-build hit rate. The reset runs inside the SDK already
+supplied by the pinned build image and its cost remains within whole-job timing.
+
 ## Adoption hold
 
 Real application freshness/reuse inside Flatpak, full-job warm/cold
