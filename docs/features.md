@@ -722,6 +722,11 @@ area.
   invalid interval in the mixer. *All*, 2026-10-18. Issue
   [#838](https://github.com/obs-rust/obs-studio/issues/838), PR
   [#1333](https://github.com/obs-rust/obs-studio/pull/1333).
+- Audio monitoring above 100% volume no longer distorts on PulseAudio and
+  PipeWire outputs that play 16-bit, 32-bit or 8-bit integer audio: loud
+  samples clip instead of wrapping around. *Linux*, 2026-10-21. Issue
+  [#1697](https://github.com/obs-rust/obs-studio/issues/1697), PR
+  [#1709](https://github.com/obs-rust/obs-studio/pull/1709).
 
 ### Encoding, streaming and recording
 

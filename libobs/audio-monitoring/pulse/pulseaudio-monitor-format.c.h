@@ -129,13 +129,19 @@ uint8_t pulseaudio_monitor_sink_channels(uint8_t channels)
 	return channels;
 }
 
+/* The integer formats saturate to their range: above a volume of 1 a loud
+ * sample leaves it, and converting it unclamped is undefined behaviour (it
+ * wrapped). The float format is not clamped; the server clips it. Inside the
+ * range the result is the truncated product, as before. */
 static void process_byte(void *p, size_t frames, size_t channels, float vol)
 {
 	register uint8_t *cur = (uint8_t *)p;
 	register uint8_t *end = cur + frames * channels;
 
-	for (; cur < end; cur++)
-		*cur = ((int)*cur - 128) * vol + 128;
+	for (; cur < end; cur++) {
+		float v = ((int)*cur - 128) * vol + 128;
+		*cur = v >= 255.0f ? 255 : v <= 0.0f ? 0 : (uint8_t)v;
+	}
 }
 
 static void process_s16(void *p, size_t frames, size_t channels, float vol)
@@ -143,8 +149,10 @@ static void process_s16(void *p, size_t frames, size_t channels, float vol)
 	register int16_t *cur = (int16_t *)p;
 	register int16_t *end = cur + frames * channels;
 
-	while (cur < end)
-		*(cur++) *= vol;
+	for (; cur < end; cur++) {
+		float v = *cur * vol;
+		*cur = v >= (float)INT16_MAX ? INT16_MAX : v <= (float)INT16_MIN ? INT16_MIN : (int16_t)v;
+	}
 }
 
 static void process_s32(void *p, size_t frames, size_t channels, float vol)
@@ -152,8 +160,12 @@ static void process_s32(void *p, size_t frames, size_t channels, float vol)
 	register int32_t *cur = (int32_t *)p;
 	register int32_t *end = cur + frames * channels;
 
-	while (cur < end)
-		*(cur++) *= vol;
+	/* INT32_MAX is not a float: 2^31 is the first value past it, and
+	 * -2^31 (INT32_MIN) is exact. */
+	for (; cur < end; cur++) {
+		float v = *cur * vol;
+		*cur = v >= 2147483648.0f ? INT32_MAX : v <= -2147483648.0f ? INT32_MIN : (int32_t)v;
+	}
 }
 
 static void process_float(void *p, size_t frames, size_t channels, float vol)

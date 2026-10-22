@@ -217,8 +217,8 @@ static void pulseaudio_sink_info(pa_context *c, const pa_sink_info *i, int eol, 
 	uint8_t channels = pulseaudio_monitor_sink_channels(i->sample_spec.channels);
 	if (channels != i->sample_spec.channels) {
 		blog(LOG_INFO,
-		     "%c channels not supported by OBS,"
-		     "using %c instead for recording",
+		     "%" PRIu8 " channels not supported by OBS,"
+		     "using %" PRIu8 " instead for recording",
 		     i->sample_spec.channels, channels);
 	}
 
