@@ -893,13 +893,13 @@ jobs:
           if-no-files-found: error
 
       - name: Archive Exported Flatpak for Runtime Qualification
-        if: inputs.flatpak-runtime-test
+        if: inputs.flatpak-runtime-test && !inputs.flatpak-dependency-transfer-probe
         run: |
           tar -cf "$RUNNER_TEMP/flatpak-runtime-repo.tar" repo
           stat -c 'qualification-export-bytes=%s' "$RUNNER_TEMP/flatpak-runtime-repo.tar"
 
       - name: Upload Exported Flatpak for Runtime Qualification
-        if: inputs.flatpak-runtime-test
+        if: inputs.flatpak-runtime-test && !inputs.flatpak-dependency-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flatpak-runtime-repo
@@ -1069,6 +1069,20 @@ jobs:
         with:
           artifact: repo
           path: repo
+      - name: Archive Compiler Consumer for Runtime Qualification
+        if: inputs.flatpak-runtime-test && inputs.flatpak-dependency-transfer-probe
+        run: |
+          tar -cf "$RUNNER_TEMP/flatpak-runtime-repo.tar" repo
+          stat -c 'qualification-consumer-export-bytes=%s' "$RUNNER_TEMP/flatpak-runtime-repo.tar"
+      - name: Upload Compiler Consumer for Runtime Qualification
+        if: inputs.flatpak-runtime-test && inputs.flatpak-dependency-transfer-probe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-runtime-repo
+          path: ${{ runner.temp }}/flatpak-runtime-repo.tar
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
       - name: Stage Compiler Consumer Measurements
         if: ${{ !cancelled() }}
         run: |
@@ -1091,8 +1105,8 @@ jobs:
 
   flatpak-runtime-test:
     name: Flatpak Saved Profile 🧪
-    if: inputs.flatpak-runtime-test
-    needs: flatpak-build
+    if: ${{ !cancelled() && inputs.flatpak-runtime-test && needs.flatpak-build.result == 'success' && (!inputs.flatpak-dependency-transfer-probe || needs.flatpak-compiler-consumer.result == 'success') }}
+    needs: [flatpak-build, flatpak-compiler-consumer]
     runs-on: ubuntu-26.04
     timeout-minutes: 25
     steps:

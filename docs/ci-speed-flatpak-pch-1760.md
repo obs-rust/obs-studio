@@ -312,3 +312,13 @@ The producer export's runtime test does not prove the separately rebuilt consume
 artifact; installed-profile qualification of that artifact remains necessary before
 any shipping decision. Actual transport/reuse/retention and whole-job savings
 must be established before adoption.
+
+
+When both dependency transfer and runtime qualification are selected, only the
+rebuilt consumer publishes `flatpak-runtime-repo`, after its validators pass.
+The saved-profile job explicitly waits for that consumer and runs the unchanged
+installed-artifact harness on its export. Ordinary runtime-only qualification
+continues to use the producer export; an unselected compiler consumer must not
+skip that job. Runtime reuse of the same run ID also selects this unique artifact.
+This wiring closes the planned consumer-output coverage gap; actual hosted
+saved-profile execution of that output remains unproven until the combined trial.
