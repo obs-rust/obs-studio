@@ -11,6 +11,9 @@
  * libobs (and with it a Rust swap) through the public API.
  *
  * It pins what the real libobs cannot reach or cannot show:
+ * - that obs_hotkey_binding_fields() points at the binding's own key,
+ *   pressed flag and modifiers_match latch, the fields the state machine
+ *   reads and writes through it;
  * - the non-strict modifier branch (libobs always sets strict_modifiers);
  * - the modifiers_match latch, one poll at a time;
  * - that the key state is queried lazily: the modifiers in a fixed order,
@@ -577,6 +580,55 @@ static void pressed_count_and_routing(void **state)
 	EXPECT(R(100 + (long)a));
 }
 
+/* obs_hotkey_binding_fields() points into the binding itself: at the
+ * combination it matches, its pressed flag and its modifiers_match latch. So
+ * what the state machine reads and writes through it is the binding's own
+ * state, and a press or release (in obs-hotkey.c) shows through it. */
+static void binding_fields(void **state)
+{
+	UNUSED_PARAMETER(state);
+	obs_hotkey_id a = register_tagged(1);
+	obs_key_combination_t combos[] = {{CTRL, OBS_KEY_A}, {0, OBS_KEY_MOUSE3}};
+	obs_hotkey_load_bindings(a, combos, 2);
+
+	for (size_t i = 0; i < 2; i++) {
+		obs_hotkey_binding_t *binding = binding_at(i);
+		struct obs_hotkey_binding_fields fields = obs_hotkey_binding_fields(binding);
+		assert_ptr_equal(fields.key, &binding->key);
+		assert_ptr_equal(fields.pressed, &binding->pressed);
+		assert_ptr_equal(fields.modifiers_match, &binding->modifiers_match);
+		assert_int_equal(fields.key->modifiers, combos[i].modifiers);
+		assert_int_equal(fields.key->key, combos[i].key);
+		assert_false(*fields.pressed);
+		assert_false(*fields.modifiers_match);
+	}
+
+	/* A latch set through the accessor is the one a poll reads: Ctrl+A,
+	 * held, is pressed on the first poll instead of the second. */
+	struct obs_hotkey_binding_fields fields = obs_hotkey_binding_fields(binding_at(0));
+	*fields.modifiers_match = true;
+	hold(OBS_KEY_CONTROL, OBS_KEY_A, OBS_KEY_NONE);
+	poll_strict();
+	assert_true(*fields.pressed);
+	assert_true(*fields.modifiers_match);
+	EXPECT(P(1));
+
+	/* A released, Ctrl held: the release clears the pressed flag it
+	 * points at and keeps the latch. */
+	hold(OBS_KEY_CONTROL, OBS_KEY_NONE);
+	poll_strict();
+	assert_false(*fields.pressed);
+	assert_true(*fields.modifiers_match);
+	EXPECT(R(1));
+
+	/* An inject presses the second binding through the same fields. */
+	struct obs_hotkey_binding_fields mouse = obs_hotkey_binding_fields(binding_at(1));
+	inject(0, OBS_KEY_MOUSE3, true, true);
+	assert_true(*mouse.pressed);
+	assert_true(*mouse.modifiers_match);
+	EXPECT(P(1));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -590,6 +642,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(no_press_steps, setup, teardown),
 		cmocka_unit_test_setup_teardown(inject_steps, setup, teardown),
 		cmocka_unit_test_setup_teardown(pressed_count_and_routing, setup, teardown),
+		cmocka_unit_test_setup_teardown(binding_fields, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
