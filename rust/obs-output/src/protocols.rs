@@ -24,6 +24,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -42,6 +43,14 @@ pub const SEPARATOR: u8 = b';';
 /// segment, so the empty protocol matches only the empty segments that a
 /// `;` ends.
 pub fn count_matches(list: &[u8], protocol: &[u8]) -> usize {
-    let _ = (list, protocol);
-    todo!()
+    if list.is_empty() {
+        return 0;
+    }
+    // The C scans a segment only while it has not reached the NUL, so a
+    // trailing ';' ends the last segment it compares.
+    let scanned = list.strip_suffix(&[SEPARATOR]).unwrap_or(list);
+    scanned
+        .split(|&b| b == SEPARATOR)
+        .filter(|segment| *segment == protocol)
+        .count()
 }

@@ -83,6 +83,9 @@
     /* obs-output-caption-text.c. obs-output.c calls it inside libobs. Not
      * EXPORT. */
     obs_output_caption_text_page;
+    /* obs-output-protocols.c. obs-output.c calls it inside libobs. Not
+     * EXPORT. */
+    obs_output_protocol_list_count;
     /* obs-output-delay.c. obs-output.c calls them inside libobs. Not
      * EXPORT. */
     process_delay;

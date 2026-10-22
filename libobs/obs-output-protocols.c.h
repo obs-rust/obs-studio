@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-protocols.pch.h"
 
 /* Output protocol-list match, moved from obs-output.c: how many times
  * protocol appears in a service output's ';'-separated protocols string.
@@ -24,7 +24,8 @@
  * empty protocol. A protocol listed twice counts twice. A NULL list counts 0.
  * obs_enum_output_types_with_protocol() in obs-output.c calls enum_cb that
  * many times for the output. Pure: no libobs state. Declared in
- * obs-internal.h. */
+ * obs-internal.h without EXPORT. In hybrid libobs the Rust port
+ * (rust/obs-output) replaces this file. */
 
 size_t obs_output_protocol_list_count(const char *protocols, const char *protocol)
 {

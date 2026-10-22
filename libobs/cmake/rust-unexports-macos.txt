@@ -65,6 +65,8 @@ _obs_scene_transform_val
 _obs_scene_group_transform
 # obs-output-caption-text.c: obs-output.c calls it inside libobs. Not EXPORT.
 _obs_output_caption_text_page
+# obs-output-protocols.c: obs-output.c calls it inside libobs. Not EXPORT.
+_obs_output_protocol_list_count
 # obs-output-delay.c: obs-output.c calls them inside libobs. Not EXPORT.
 _process_delay
 _obs_output_delay_start
