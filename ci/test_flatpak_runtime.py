@@ -93,6 +93,16 @@ class FlatpakRuntimeTest(unittest.TestCase):
             self.assertEqual(server['server_port'], 4456)
             self.assertTrue((root / 'browser.html').is_file())
 
+    def test_profile_environment_is_set_inside_flatpak_sandbox(self):
+        module = self.module()
+        # Flatpak rewrites XDG_CONFIG_HOME after processing --env options.
+        command = module.app_command(Path('/tmp/qualification evidence'), 'com.obsproject.Studio/x86_64/master')
+        app_index = command.index('com.obsproject.Studio/x86_64/master')
+        self.assertIn('--command=env', command[:app_index])
+        self.assertIn('XDG_CONFIG_HOME=/tmp/qualification evidence/profile', command[app_index + 1:])
+        self.assertEqual(command[app_index + 2], '/app/bin/obs')
+        self.assertFalse(any(arg.startswith('--env=XDG_CONFIG_HOME=') for arg in command))
+
     def test_runtime_only_consumer_reuses_artifact_and_preserves_source_identity(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('flatpak-runtime-reuse-run:', text)
