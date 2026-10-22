@@ -124,6 +124,15 @@ ChannelSetup=Stereo
         alerts_enabled=False, auth_required=True, server_password=password)))
 
 
+def app_command(output: Path, app_ref: str) -> list[str]:
+    # Flatpak replaces protected XDG variables after processing --env. Set the
+    # fixture's config root with the packaged runtime's env, inside the sandbox.
+    return ['flatpak', '--user', 'run', f'--filesystem={output}',
+            '--env=LIBGL_ALWAYS_SOFTWARE=1', '--env=QT_QPA_PLATFORM=xcb',
+            '--command=env', app_ref, f'XDG_CONFIG_HOME={output / "profile"}',
+            '/app/bin/obs', '--disable-shutdown-check', '--verbose', '--profile', 'Test', '--collection', 'Test']
+
+
 class Session:
     def __init__(self, output: Path):
         self.output = output
@@ -296,9 +305,7 @@ def qualification(args) -> dict:
             port = port_socket.getsockname()[1]
         password = secrets.token_urlsafe(24)
         write_profile(output, port, password)
-        app = session.start('obs', [*flatpak, 'run', f'--filesystem={output}',
-            f'--env=XDG_CONFIG_HOME={output / "profile"}', '--env=LIBGL_ALWAYS_SOFTWARE=1',
-            '--env=QT_QPA_PLATFORM=xcb', app_ref, '--disable-shutdown-check', '--verbose', '--profile', 'Test', '--collection', 'Test'])
+        app = session.start('obs', app_command(output, app_ref))
         ws = connect_obs(port, password)
         try:
             result['websocket_version'] = request(ws, 'GetVersion')

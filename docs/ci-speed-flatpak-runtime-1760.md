@@ -72,3 +72,18 @@ The first hosted attempt built/exported successfully but stopped before install:
 listing used during local investigation. The exact hosted output now has a
 regression. Only valid app/Debug kinds are normalized; branch/architecture and
 Debug-extension matching remain strict. No live capture pass is claimed yet.
+
+## Hosted qualification failures retained
+
+The first exported repository qualified in run `39754042722`; its runtime
+harness stopped before installation on typed remote refs. Run `39758270223`
+reused that immutable export with the corrected parser, installed the app and
+Debug extension, confirmed the CEF build ID and resolved `cef_version_info`
+source lines with GDB. It then failed to connect to WebSocket: OBS had opened a
+default profile. Flatpak resets protected XDG variables after `--env`, so that
+option did not select the saved fixture. The harness now uses the installed
+runtime's `env` command inside the sandbox to set the fixture config root before
+executing the same packaged `/app/bin/obs`. It grants only the existing fixture
+directory, and neither changes HOME nor modifies the packaged executable.
+See [Flatpak XDG conventions](https://docs.flatpak.org/en/latest/conventions.html).
+These failures are retained; no saved capture/browser runtime pass is claimed yet.
