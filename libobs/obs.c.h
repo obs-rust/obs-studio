@@ -2642,20 +2642,10 @@ void obs_reset_source_uuids(void)
 	pthread_mutex_unlock(&obs->data.sources_mutex);
 }
 
-/* ensures that names are never blank */
+/* ensures that names are never blank (obs-context-names.c) */
 static inline char *dup_name(const char *name, bool private)
 {
-	if (private && !name)
-		return NULL;
-
-	if (!name || !*name) {
-		struct dstr unnamed = {0};
-		dstr_printf(&unnamed, "__unnamed%04lld", obs->data.unnamed_index++);
-
-		return unnamed.array;
-	} else {
-		return bstrdup(name);
-	}
+	return obs_context_name_dup(name, private, &obs->data.unnamed_index);
 }
 
 static inline bool obs_context_data_init_wrap(struct obs_context_data *context, enum obs_obj_type type,
@@ -2746,24 +2736,20 @@ void obs_context_data_insert(struct obs_context_data *context, pthread_mutex_t *
 	pthread_mutex_unlock(mutex);
 }
 
-static inline char *obs_context_deduplicate_name(void *phash, const char *name)
+static bool context_name_exists(void *phash, const char *name)
 {
 	struct obs_context_data *head = phash;
 	struct obs_context_data *item = NULL;
 
 	HASH_FIND_STR(head, name, item);
-	if (!item)
-		return NULL;
+	return item != NULL;
+}
 
-	struct dstr new_name = {0};
-	int suffix = 2;
-
-	while (item) {
-		dstr_printf(&new_name, "%s %d", name, suffix++);
-		HASH_FIND_STR(head, new_name.array, item);
-	}
-
-	return new_name.array;
+/* NULL when the name is free, else the name made unique
+ * (obs-context-names.c) */
+static inline char *obs_context_deduplicate_name(void *phash, const char *name)
+{
+	return obs_context_name_deduplicate(name, context_name_exists, phash);
 }
 
 void obs_context_data_insert_name(struct obs_context_data *context, pthread_mutex_t *mutex, void *pfirst)

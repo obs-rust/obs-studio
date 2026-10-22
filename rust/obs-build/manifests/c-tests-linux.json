@@ -543,6 +543,13 @@
     ]
   },
   {
+    "name": "test_context_name_helpers",
+    "sources": [
+      "test/cmocka/test_context_name_helpers.c",
+      "libobs/obs-context-names.c.h"
+    ]
+  },
+  {
     "name": "test_video_output_plan",
     "sources": [
       "test/cmocka/test_video_output_plan.c"

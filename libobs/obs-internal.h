@@ -785,6 +785,18 @@ extern void obs_context_wait(struct obs_context_data *context);
 extern void obs_context_data_setname(struct obs_context_data *context, const char *name);
 extern void obs_context_data_setname_ht(struct obs_context_data *context, const char *name, void *phead);
 
+/* Context names (obs-context-names.c): pure, no libobs state. Both return a
+ * bmalloc'd name, or NULL, that the caller owns. obs_context_name_dup():
+ * NULL for a private context without a name, "__unnamed%04lld" from
+ * *unnamed_index (then incremented) for a NULL or empty name, else a copy.
+ * obs_context_name_deduplicate(): NULL when exists() says the name is
+ * free, else "<name> <n>" with the first n from 2 up that it says is free.
+ * obs.c keeps the counter and the name tables. Not exported. */
+typedef bool (*obs_context_name_exists_t)(void *param, const char *name);
+
+char *obs_context_name_dup(const char *name, bool private, long long *unnamed_index);
+char *obs_context_name_deduplicate(const char *name, obs_context_name_exists_t exists, void *param);
+
 /* ------------------------------------------------------------------------- */
 /* ref-counting  */
 
