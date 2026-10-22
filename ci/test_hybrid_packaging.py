@@ -172,6 +172,22 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         self.assertTrue(cef["build-options"]["no-debuginfo"],
                         "the OBS install must still split CEF symbols at their installed runtime path")
 
+    def test_flatpak_pch_cache_uses_launcher_and_preserves_input_freshness(self):
+        manifest = json.loads((ROOT / "build-aux/com.obsproject.Studio.json").read_text())
+        obs = next(module for module in manifest["modules"] if module["name"] == "obs")
+        self.assertIn("-DENABLE_CCACHE=ON", obs["config-opts"],
+                      "activate the existing PCH-aware CMake compiler launcher")
+        self.assertIn("-DCMAKE_C_COMPILER=/usr/bin/cc", obs["config-opts"])
+        self.assertIn("-DCMAKE_CXX_COMPILER=/usr/bin/c++", obs["config-opts"],
+                      "avoid nesting the SDK masquerading wrapper inside the launcher")
+        env = obs["build-options"]["env"]
+        self.assertEqual(env.get("CCACHE_DEPEND"), "true",
+                         "PCH creation must not reuse a preprocessor result that omits changed macro definitions")
+        self.assertEqual(env.get("CCACHE_COMPILERCHECK"), "content",
+                         "a compiler replacement with preserved size/mtime must invalidate cached objects")
+        self.assertNotIn("CCACHE_SLOPPINESS", env,
+                         "keep the existing PCH helper's bounded settings; do not weaken header freshness")
+
     def test_flatpak_custom_key_matches_pinned_action_architecture_fallback(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
