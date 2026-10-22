@@ -164,6 +164,14 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         self.assertIn("-DCMAKE_BUILD_TYPE=RelWithDebInfo", obs["config-opts"])
         self.assertIn("-DENABLE_BROWSER=ON", obs["config-opts"])
 
+    def test_flatpak_caches_fast_cef_debug_compression(self):
+        manifest = json.loads((ROOT / "build-aux/com.obsproject.Studio.json").read_text())
+        cef = next(module for module in manifest["modules"] if module["name"] == "cef")
+        self.assertIn("eu-elfcompress -t zstd /app/cef/Release/libcef.so", cef["build-commands"],
+                      "compress immutable CEF debug sections once in its cached dependency module (#1760)")
+        self.assertTrue(cef["build-options"]["no-debuginfo"],
+                        "the OBS install must still split CEF symbols at their installed runtime path")
+
     def test_flatpak_custom_key_matches_pinned_action_architecture_fallback(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
