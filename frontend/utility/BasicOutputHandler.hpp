@@ -149,7 +149,7 @@ void OBSReplayBufferSaved(void *data, calldata_t *params);
 inline bool can_use_output(const char *prot, const char *output, const char *prot_test1,
 			   const char *prot_test2 = nullptr)
 {
-	return (strcmp(prot, prot_test1) == 0 || (prot_test2 && strcmp(prot, prot_test2) == 0)) &&
+	return prot && (strcmp(prot, prot_test1) == 0 || (prot_test2 && strcmp(prot, prot_test2) == 0)) &&
 	       (obs_get_output_flags(output) & OBS_OUTPUT_SERVICE) != 0;
 }
 

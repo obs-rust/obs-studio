@@ -3557,6 +3557,9 @@ bool obs_weak_object_references_object(obs_weak_object_t *weak, obs_object_t *ob
 
 bool obs_is_output_protocol_registered(const char *protocol)
 {
+	if (!protocol)
+		return false;
+
 	for (size_t i = 0; i < obs->data.protocols.num; i++) {
 		if (strcmp(protocol, obs->data.protocols.array[i]) == 0)
 			return true;
@@ -3567,7 +3570,7 @@ bool obs_is_output_protocol_registered(const char *protocol)
 
 bool obs_enum_output_protocols(size_t idx, char **protocol)
 {
-	if (idx >= obs->data.protocols.num)
+	if (!protocol || idx >= obs->data.protocols.num)
 		return false;
 
 	*protocol = obs->data.protocols.array[idx];

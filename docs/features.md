@@ -1655,6 +1655,14 @@ area.
   duplicate, not the source's old name. *All*, 2026-10-22. Issue
   [#1787](https://github.com/obs-rust/obs-studio/issues/1787), PR
   [#1804](https://github.com/obs-rust/obs-studio/pull/1804).
+- A plugin or script that asks whether a NULL output protocol is registered,
+  or lists the outputs for one, no longer crashes OBS; no output supports a
+  protocol that is not there. The auto-configuration wizard's bandwidth test
+  reports that no output fits, instead of crashing, when its stream service
+  could not be created (for example without the rtmp-services plugin).
+  *All*, 2026-10-22. Issue
+  [#1827](https://github.com/obs-rust/obs-studio/issues/1827), PR
+  [#1828](https://github.com/obs-rust/obs-studio/pull/1828).
 
 ### Security hardening
 
