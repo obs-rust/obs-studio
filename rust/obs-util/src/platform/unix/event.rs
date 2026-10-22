@@ -212,10 +212,14 @@ impl Event {
         true
     }
 
-    /// `os_event_signal`.
+    /// `os_event_signal`. The wake goes out with the lock held, as in C:
+    /// once the lock is free, a waiter can see the flag, return, and
+    /// destroy the event (`obs_queue_task` with `wait` does).
     pub fn signal(&self) {
-        *self.signalled.lock().unwrap_or_else(|e| e.into_inner()) = true;
+        let mut signalled = self.signalled.lock().unwrap_or_else(|e| e.into_inner());
+        *signalled = true;
         self.notify(Notify::One);
+        drop(signalled);
     }
 
     /// `os_event_reset`.
