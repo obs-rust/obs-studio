@@ -103,6 +103,29 @@ class FlatpakRuntimeTest(unittest.TestCase):
         self.assertEqual(command[app_index + 2], '/app/bin/obs')
         self.assertFalse(any(arg.startswith('--env=XDG_CONFIG_HOME=') for arg in command))
 
+    def test_wait_for_version_retries_only_explicit_not_ready(self):
+        module = self.module()
+        def reply(code, result=False):
+            return json.dumps(dict(op=7, d=dict(requestId='id', requestStatus=dict(code=code, result=result),
+                                               responseData=dict(obsVersion='test'))))
+        ws = Mock()
+        ws.recv.side_effect = [reply(207), reply(100, True)]
+        with patch.object(module.secrets, 'token_hex', return_value='id'), patch.object(module.time, 'sleep'):
+            self.assertEqual(module.request(ws, 'GetVersion', ready_timeout=60), dict(obsVersion='test'))
+        self.assertEqual(ws.send.call_count, 2)
+        for name, timeout, code in [('StartRecord', 0, 207), ('GetVersion', 60, 500)]:
+            ws = Mock()
+            ws.recv.return_value = reply(code)
+            with patch.object(module.secrets, 'token_hex', return_value='id'), self.assertRaises(RuntimeError):
+                module.request(ws, name, ready_timeout=timeout)
+            self.assertEqual(ws.send.call_count, 1)
+        ws = Mock()
+        ws.recv.return_value = reply(207)
+        with patch.object(module.secrets, 'token_hex', return_value='id'), \
+             patch.object(module.time, 'monotonic', side_effect=[0, 61]), self.assertRaises(RuntimeError):
+            module.request(ws, 'GetVersion', ready_timeout=60)
+        self.assertEqual(ws.send.call_count, 1)
+
     def test_runtime_only_consumer_reuses_artifact_and_preserves_source_identity(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
         self.assertIn('flatpak-runtime-reuse-run:', text)
