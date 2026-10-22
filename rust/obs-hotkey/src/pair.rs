@@ -36,10 +36,10 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(unused_variables)] // the stubs
 
 /// One half of a pair: the first (`func[0]`, `pressed0`) or the second
 /// (`func[1]`, `pressed1`).
@@ -55,12 +55,18 @@ impl Half {
 
     /// The other half: the one whose latch blocks this one.
     pub const fn other(self) -> Half {
-        todo!()
+        match self {
+            Half::First => Half::Second,
+            Half::Second => Half::First,
+        }
     }
 
     /// The C's `half` index (`obs_hotkey_pair_call_func()`): 0 or 1.
     pub const fn index(self) -> usize {
-        todo!()
+        match self {
+            Half::First => 0,
+            Half::Second => 1,
+        }
     }
 }
 
@@ -85,11 +91,17 @@ pub struct PairLatches {
 
 impl Latches for PairLatches {
     fn latched(&self, half: Half) -> bool {
-        todo!()
+        match half {
+            Half::First => self.first,
+            Half::Second => self.second,
+        }
     }
 
     fn set_latched(&mut self, half: Half, latched: bool) {
-        todo!()
+        match half {
+            Half::First => self.first = latched,
+            Half::Second => self.second = latched,
+        }
     }
 }
 
@@ -119,5 +131,18 @@ pub fn event<L: Latches + ?Sized>(
     pressed: bool,
     call: impl FnOnce(&mut L) -> bool,
 ) -> Outcome {
-    todo!()
+    if latches.latched(half.other()) {
+        return Outcome::Dropped;
+    }
+    if latches.latched(half) && !pressed {
+        latches.set_latched(half, false);
+        return Outcome::Cleared;
+    }
+    // The latch is written after the func returns, and only this half's:
+    // the func may have changed either one.
+    let acted = call(latches);
+    if acted {
+        latches.set_latched(half, pressed);
+    }
+    Outcome::Called(acted)
 }

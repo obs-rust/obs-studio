@@ -30,6 +30,11 @@ obs_hotkey_combination_to_data
 obs_hotkey_binding_query
 obs_hotkey_binding_inject
 obs_hotkeys_query_modifiers
+# obs-hotkey-pair.c: register_hotkey_pair_internal() in obs-hotkey.c registers
+# them as the callbacks of a pair's two hotkeys. Declared in obs-internal.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_hotkey_pair_first_func
+obs_hotkey_pair_second_func
 # platform-windows.c: obs-windows.c and obs-win-crash-handler.c call
 # get_win_release_id inside libobs. The C file does not export it.
 # DllMain is the DLL entry, not an EXPORT symbol.

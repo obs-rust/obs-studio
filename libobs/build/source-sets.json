@@ -128,6 +128,7 @@
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-graphics+.h.c",
     "build/libobs.ported-hotkey-bindings+.h.c",
+    "build/libobs.ported-hotkey-pair+.h.c",
     "build/libobs.ported-hotkey-press+.h.c",
     "build/libobs.ported-hotkey-translations+.h.c",
     "build/libobs.ported-missing-files+.h.c",

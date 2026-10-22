@@ -44,6 +44,10 @@
     obs_hotkey_binding_query;
     obs_hotkey_binding_inject;
     obs_hotkeys_query_modifiers;
+    /* obs-hotkey-pair.c. obs-hotkey.c registers them as the callbacks of a
+     * pair's hotkeys. Not EXPORT. */
+    obs_hotkey_pair_first_func;
+    obs_hotkey_pair_second_func;
     /* platform-windows.c. Not EXPORT. */
     get_win_release_id;
     DllMain;

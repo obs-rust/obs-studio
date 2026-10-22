@@ -28,6 +28,9 @@ _obs_hotkey_combination_to_data
 _obs_hotkey_binding_query
 _obs_hotkey_binding_inject
 _obs_hotkeys_query_modifiers
+# obs-hotkey-pair.c: obs-hotkey.c registers them as pair callbacks. Not EXPORT.
+_obs_hotkey_pair_first_func
+_obs_hotkey_pair_second_func
 # platform-nix.c is not exported by the C libobs.
 _get_plugin_info
 # platform-windows.c is not exported for these two.

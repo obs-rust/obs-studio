@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-pair.pch.h"
 
 /* The hotkey pair press latch: the callbacks libobs registers for the two
  * halves of a hotkey pair. Each half keeps a latch (pressed0, pressed1). While one half is latched, the other
@@ -28,7 +28,8 @@
  * obs_hotkey_pair_fields() (the two latches) and calls a half's func through
  * obs_hotkey_pair_call_func(). The pair itself (create_hotkey_pair(),
  * register_hotkey_pair_internal(), the pair hash) stays in obs-hotkey.c.h.
- * Declared in obs-internal.h. */
+ * Declared in obs-internal.h. Ported to rust/obs-hotkey (pair): the hybrid
+ * libobs drops this file. */
 
 void obs_hotkey_pair_first_func(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
