@@ -8,9 +8,19 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
+import shlex
 
 MAX_BYTES = 16 * 1024 * 1024
 LINE = re.compile(r"^\[([\dT:.+-]+)\s+(\d+)\s*\]\s+(.*)$")
+UNSUPPORTED = re.compile(r"^(?:Unsupported compiler option: (\S+)|(?:Compiler option |Option )?(-\S+) is unsupported(?: .*)?)$")
+
+
+def source_label(source):
+    if source.startswith("/run/build/obs/"):
+        source = source.removeprefix("/run/build/obs/")
+    if not source.startswith("/") and ".." not in Path(source).parts and re.fullmatch(r"[\w./+-]{1,240}", source):
+        return source
+    return "(external)"
 
 
 def configure(manifest):
@@ -39,31 +49,36 @@ def summarize(log):
         if "=== CCACHE " in message and "STARTED" in message:
             if pid in active:
                 calls.append(active.pop(pid))
-            active[pid] = {"start": timestamp, "end": timestamp, "source": "(unknown)", "results": set()}
+            active[pid] = {"start": timestamp, "end": timestamp, "source": "(unknown)", "results": set(), "options": set()}
         if pid not in active:
             continue
         call = active[pid]
         call["end"] = timestamp
         if message.startswith("Source file: "):
-            source = message.removeprefix("Source file: ")
-            if source.startswith("/run/build/obs/"):
-                source = source.removeprefix("/run/build/obs/")
-            if not source.startswith("/") and ".." not in Path(source).parts and re.fullmatch(r"[\w./+-]{1,240}", source):
-                call["source"] = source
-            else:
-                call["source"] = "(external)"
+            call["source"] = source_label(message.removeprefix("Source file: "))
+        elif message.startswith("Command line: "):
+            # Argument rejection happens before ccache emits "Source file".
+            # Keep only the source operand after -c; discard every other value.
+            try:
+                args = shlex.split(message.removeprefix("Command line: "))
+                index = args.index("-c")
+                if index + 1 < len(args) and not args[index + 1].startswith("-"):
+                    call["source"] = source_label(args[index + 1])
+            except ValueError:
+                pass
         elif message.startswith("Result: "):
             value = message.removeprefix("Result: ")
             if re.fullmatch(r"[a-z_]{1,80}", value):
                 call["results"].add(value)
-        elif message.startswith("Unsupported compiler option: "):
-            option = message.removeprefix("Unsupported compiler option: ").split("=", 1)[0]
-            if re.fullmatch(r"--?[\w-]{1,80}", option):
+        elif match := UNSUPPORTED.fullmatch(message):
+            option = next(value for value in match.groups() if value).split("=", 1)[0]
+            if re.fullmatch(r"--?[\w-]{1,80}(?:,-?[\w-]{1,80})*", option):
                 options[option] += 1
+                call["options"].add(option)
     calls.extend(active.values())
     results = Counter(result for call in calls for result in call["results"])
     rows = [{"source": c["source"], "log_span_seconds": max(0, (c["end"] - c["start"]).total_seconds()),
-             "results": sorted(c["results"])} for c in calls]
+             "results": sorted(c["results"]), "unsupported_options": sorted(c["options"])} for c in calls]
     return {"calls": len(calls), "results": dict(results), "unsupported_options": dict(options),
             "slowest_calls": sorted(rows, key=lambda c: c["log_span_seconds"], reverse=True)[:40],
             "uncacheable_calls": [c for c in rows if "unsupported_compiler_option" in c["results"]][:80],
