@@ -167,5 +167,9 @@ running, wait and retry.
   follow-up issue for the rest. Tick the tracking-issue checkbox.
 - Stopping early: comment `Releasing <item>` and link the branch; the
   claim bot removes `claimed`.
+- Waiting on something you do not control (a maintainer decision, another
+  PR, non-public work): comment `Blocked: <general reason>` so the claim
+  lasts 7 days instead of 48 hours, and repeat it to renew
+  (coordination.md section 3). Never put non-public details in the reason.
 
 Then return to step 1 for the next issue.
