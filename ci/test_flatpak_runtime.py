@@ -184,5 +184,21 @@ class FlatpakRuntimeTest(unittest.TestCase):
         self.assertIn('name: Validate build directory', build)
         self.assertIn('name: Validate AppStream', build)
         job = build.split('\n  flatpak-runtime-test:\n', 1)[1].split('\n  windows-build:', 1)[0]
-        self.assertIn('if: inputs.flatpak-runtime-test', job)
+        self.assertIn('!cancelled() && inputs.flatpak-runtime-test', job)
+        self.assertIn("needs.flatpak-build.result == 'success'", job)
+        self.assertIn("!inputs.flatpak-dependency-transfer-probe || needs.flatpak-compiler-consumer.result == 'success'", job)
         self.assertNotIn('continue-on-error', job)
+
+
+    def test_dependency_transport_runtime_uses_consumer_export(self):
+        build = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        producer = build.split('      - name: Archive Exported Flatpak for Runtime Qualification', 1)[1].split('  flatpak-compiler-consumer:', 1)[0]
+        self.assertIn('inputs.flatpak-runtime-test && !inputs.flatpak-dependency-transfer-probe', producer)
+        consumer = build.split('  flatpak-compiler-consumer:', 1)[1].split('  flatpak-runtime-test:', 1)[0]
+        export = consumer.split('      - name: Archive Compiler Consumer for Runtime Qualification', 1)[1]
+        self.assertIn('inputs.flatpak-runtime-test && inputs.flatpak-dependency-transfer-probe', export)
+        self.assertIn('name: flatpak-runtime-repo', export)
+        self.assertIn('tar -cf "$RUNNER_TEMP/flatpak-runtime-repo.tar" repo', export)
+        runtime = build.split('  flatpak-runtime-test:', 1)[1].split('  windows-build:', 1)[0]
+        self.assertIn('needs: [flatpak-build, flatpak-compiler-consumer]', runtime)
+        self.assertIn('name: flatpak-runtime-repo', runtime)
