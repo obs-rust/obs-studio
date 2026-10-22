@@ -970,6 +970,26 @@ struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t 
 	};
 }
 
+/* The binding press count (obs-hotkey-binding-press.c.h) reaches a binding
+ * and its hotkey only through these two. Declared in obs-internal.h; not
+ * exported. */
+struct obs_hotkey_binding_count_fields obs_hotkey_binding_count_fields(obs_hotkey_binding_t *binding)
+{
+	return (struct obs_hotkey_binding_count_fields){
+		.pressed = &binding->pressed,
+		.count = &binding->hotkey->pressed,
+		.hotkey = binding->hotkey,
+	};
+}
+
+void obs_hotkey_dispatch(obs_hotkey_t *hotkey, bool pressed)
+{
+	if (!obs->hotkeys.reroute_hotkeys)
+		hotkey->func(hotkey->data, hotkey->id, hotkey, pressed);
+	else if (obs->hotkeys.router_func)
+		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, pressed);
+}
+
 bool obs_hotkey_key_is_pressed(obs_key_t key)
 {
 	return obs_hotkeys_platform_is_pressed(obs->hotkeys.platform_context, key);

@@ -27,35 +27,33 @@
  * state machine (obs-hotkey-press.c.h) calls obs_hotkey_binding_press() and
  * obs_hotkey_binding_release(), and remove_bindings() in obs-hotkey.c.h calls
  * the release for a pressed binding it removes, all with the hotkey mutex
- * held. The bindings array, the hotkeys and the callbacks stay in
- * obs-hotkey.c.h. Declared in obs-internal.h. */
+ * held. This file reaches a binding only through
+ * obs_hotkey_binding_count_fields() (the binding's pressed flag, its
+ * hotkey's pressed count, and the hotkey) and calls the hotkey through
+ * obs_hotkey_dispatch(), which picks the func or the router. The bindings
+ * array, the hotkeys and the callbacks stay in obs-hotkey.c.h. Declared in
+ * obs-internal.h. */
 
 static inline void press_released_binding(obs_hotkey_binding_t *binding)
 {
-	binding->pressed = true;
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding);
+	*fields.pressed = true;
 
-	obs_hotkey_t *hotkey = binding->hotkey;
-	if (hotkey->pressed++)
+	if ((*fields.count)++)
 		return;
 
-	if (!obs->hotkeys.reroute_hotkeys)
-		hotkey->func(hotkey->data, hotkey->id, hotkey, true);
-	else if (obs->hotkeys.router_func)
-		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, true);
+	obs_hotkey_dispatch(fields.hotkey, true);
 }
 
 static inline void release_pressed_binding(obs_hotkey_binding_t *binding)
 {
-	binding->pressed = false;
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding);
+	*fields.pressed = false;
 
-	obs_hotkey_t *hotkey = binding->hotkey;
-	if (--hotkey->pressed)
+	if (--(*fields.count))
 		return;
 
-	if (!obs->hotkeys.reroute_hotkeys)
-		hotkey->func(hotkey->data, hotkey->id, hotkey, false);
-	else if (obs->hotkeys.router_func)
-		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, false);
+	obs_hotkey_dispatch(fields.hotkey, false);
 }
 
 void obs_hotkey_binding_press(obs_hotkey_binding_t *binding)
