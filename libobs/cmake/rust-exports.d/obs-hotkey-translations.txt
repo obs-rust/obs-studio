@@ -1,0 +1,1 @@
+obs_hotkeys_set_translations_s

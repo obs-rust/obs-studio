@@ -20,7 +20,7 @@
 //! The cases after those pin the edges of the safe API.
 
 use std::collections::HashMap;
-use std::ffi::{CStr, CString, c_char};
+use std::ffi::{CString, c_char};
 
 use obs_hotkey::name_map::{
     KEY_NONE, OBS_KEY_ALT, OBS_KEY_CONTROL, OBS_KEY_META, OBS_KEY_SHIFT, key_from_name,

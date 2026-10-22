@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-translations.pch.h"
 
 /* The hotkey key-name translations (moved from obs-hotkey.c.h):
  * obs_hotkeys_set_translations_s() copies the frontend's translated names of
@@ -24,7 +24,8 @@
  * MOUSE1-MOUSE29. A NULL, empty or padding-only template is skipped, so those
  * keys keep their names. The store, obs_hotkeys_store_key_translation(), and
  * its readers (obs_get_hotkey_translation() and the platform key_to_str
- * functions) stay in obs-hotkey.c.h and the platform files. */
+ * functions) stay in obs-hotkey.c.h and the platform files. Ported to
+ * rust/obs-hotkey (translations): the hybrid libobs drops this file. */
 
 void obs_hotkeys_set_translations_s(struct obs_hotkeys_translations *translations, size_t size)
 {

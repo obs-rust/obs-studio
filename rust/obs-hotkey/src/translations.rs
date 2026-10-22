@@ -32,8 +32,16 @@
 //! are bytes, not UTF-8: depadding and replacing work on bytes, and nothing
 //! here can panic, index out of bounds or overflow, whatever the input.
 
-// RED: the functions are stubs until the port.
-#![allow(unused_variables, dead_code)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 use std::ffi::CStr;
 
@@ -306,14 +314,19 @@ const APPLE_KEYPAD_KEYS: [(i32, Member); 6] = [
 /// The named keys `keypad` stores, as (key code, member), in the C's
 /// order: the common keys, then the keypad's own.
 pub fn named_keys(keypad: Keypad) -> impl Iterator<Item = (i32, Member)> {
-    let _ = keypad;
-    let keys: std::iter::Empty<(i32, Member)> = todo!();
-    keys
+    let own: &'static [(i32, Member)] = match keypad {
+        Keypad::Standard => &STANDARD_KEYPAD_KEYS,
+        Keypad::Apple => &APPLE_KEYPAD_KEYS,
+    };
+    COMMON_KEYS.iter().chain(own).copied()
 }
 
 /// The member `keypad` reads the numpad template from.
 pub const fn numpad_template(keypad: Keypad) -> Member {
-    todo!()
+    match keypad {
+        Keypad::Standard => Member::NumpadNum,
+        Keypad::Apple => Member::AppleKeypadNum,
+    }
 }
 
 /// `NUM0`-`NUM9` and the digits that replace `%1` for each, in the C's
@@ -371,17 +384,29 @@ pub const PLACEHOLDER: &[u8] = b"%1";
 /// `is_padding()` of `util/dstr.c`: only `' '`, `'\t'`, `'\n'` and `'\r'`
 /// (not `'\v'` or `'\f'`, which `u8::is_ascii_whitespace` would also take).
 pub const fn is_padding(byte: u8) -> bool {
-    todo!()
+    matches!(byte, b' ' | b'\t' | b'\n' | b'\r')
 }
 
 /// `strdepad()`: `s` without its leading and trailing padding.
 pub fn depad(mut s: &[u8]) -> &[u8] {
-    todo!()
+    while let [first, rest @ ..] = s
+        && is_padding(*first)
+    {
+        s = rest;
+    }
+    while let [rest @ .., last] = s
+        && is_padding(*last)
+    {
+        s = rest;
+    }
+    s
 }
 
 /// Whether `template` has a `%1`: `dstr_find(&t, "%1")`.
 pub fn has_placeholder(template: &[u8]) -> bool {
-    todo!()
+    template
+        .windows(PLACEHOLDER.len())
+        .any(|w| w == PLACEHOLDER)
 }
 
 /// The template the C expands, from a numpad or mouse member: depadded
@@ -389,20 +414,61 @@ pub fn has_placeholder(template: &[u8]) -> bool {
 /// `None` for an empty or padding-only template, which the C skips like a
 /// `NULL` one (`dstr_is_empty`), so those keys keep their names.
 pub fn prepare_template(template: &[u8]) -> Option<Vec<u8>> {
-    todo!()
+    let depadded = depad(template);
+    if depadded.is_empty() {
+        return None;
+    }
+    let mut out = depadded.to_vec();
+    if !has_placeholder(&out) {
+        out.extend_from_slice(b" ");
+        out.extend_from_slice(PLACEHOLDER);
+    }
+    Some(out)
 }
 
 /// `dstr_replace(&button, "%1", digits)`: every `%1` in `template`, left
 /// to right and without rescanning what was put in, replaced by `digits`.
 /// Plain byte replacement, never a format.
 pub fn replace_placeholder(template: &[u8], digits: &[u8]) -> Vec<u8> {
-    todo!()
+    let mut out = Vec::with_capacity(template.len());
+    let mut rest = template;
+    while let Some((first, tail)) = rest.split_first() {
+        if let Some(after) = rest.strip_prefix(PLACEHOLDER) {
+            out.extend_from_slice(digits);
+            rest = after;
+        } else {
+            out.push(*first);
+            rest = tail;
+        }
+    }
+    out
 }
 
 /// One key's name from a template member: [`prepare_template`], then
 /// [`replace_placeholder`]. `None` where the C stores nothing.
 pub fn expand(template: &[u8], digits: &str) -> Option<Vec<u8>> {
-    todo!()
+    prepare_template(template).map(|t| replace_placeholder(&t, digits.as_bytes()))
+}
+
+/// Expands `template` into each of `keys` and stores the result. `None`
+/// (a `NULL`, empty or padding-only template) stores nothing.
+fn store_expanded(
+    template: Option<&CStr>,
+    keys: &[(i32, &str)],
+    store: &mut impl FnMut(i32, &CStr),
+) {
+    let Some(template) = template.and_then(|t| prepare_template(t.to_bytes())) else {
+        return;
+    };
+    for (key, digits) in keys {
+        let mut name = replace_placeholder(&template, digits.as_bytes());
+        name.push(0);
+        // The bytes come from a C string and ASCII digits, so the NUL just
+        // pushed is the first one; as in C, the name ends at the first NUL.
+        if let Ok(name) = CStr::from_bytes_until_nul(&name) {
+            store(*key, name);
+        }
+    }
 }
 
 /// `obs_hotkeys_set_translations_s()` after its copy of the struct: calls
@@ -418,5 +484,15 @@ pub fn for_each_store(
     keypad: Keypad,
     mut store: impl FnMut(i32, &CStr),
 ) {
-    todo!()
+    for (key, member) in named_keys(keypad) {
+        if let Some(name) = translations.get(member) {
+            store(key, name);
+        }
+    }
+    store_expanded(
+        translations.get(numpad_template(keypad)),
+        &NUMPAD_KEYS,
+        &mut store,
+    );
+    store_expanded(translations.get(Member::MouseNum), &MOUSE_KEYS, &mut store);
 }
