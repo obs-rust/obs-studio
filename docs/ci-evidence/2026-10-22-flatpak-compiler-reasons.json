@@ -1,0 +1,602 @@
+{
+  "issue": 1760,
+  "pr": 1803,
+  "run": 39820372855,
+  "job": 119969902046,
+  "source": "9cbb3247eca9cd66df626b1b270de089cac2fc39",
+  "job_conclusion": "success",
+  "job_seconds": 472,
+  "artifact_id": 12443864404,
+  "artifact_bytes": 1678,
+  "helper_sha256": "d1862d27bd41297b7d746d5912d9472847849f24f9bc5159c937c22d98ac4639",
+  "report": {
+    "calls": 347,
+    "results": {
+      "direct_cache_hit": 327,
+      "local_storage_hit": 327,
+      "local_storage_read_hit": 328,
+      "local_storage_miss": 4,
+      "direct_cache_miss": 4,
+      "cache_miss": 4,
+      "local_storage_write": 4,
+      "local_storage_read_miss": 3,
+      "unsupported_compiler_option": 16
+    },
+    "unsupported_options": {
+      "-fmodules-ts": 16
+    },
+    "slowest_calls": [
+      {
+        "source": "_flatpak_build/plugins/obs-websocket/CMakeFiles/obs-websocket.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 2.87866,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-websocket/obs-websocket_autogen/GYHPFG4CL2/qrc_resources.cpp",
+        "log_span_seconds": 2.321523,
+        "results": [
+          "cache_miss",
+          "direct_cache_miss",
+          "local_storage_miss",
+          "local_storage_read_miss",
+          "local_storage_write"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-webrtc/CMakeFiles/obs-webrtc.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.94821,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-browser/CMakeFiles/obs-browser.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.906569,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/frontend/obs-studio_autogen/QM7UNKGVG2/qrc_obs.cpp",
+        "log_span_seconds": 1.85583,
+        "results": [
+          "cache_miss",
+          "direct_cache_miss",
+          "local_storage_miss",
+          "local_storage_read_miss",
+          "local_storage_write"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-vst/CMakeFiles/obs-vst.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.786513,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/aja-output-ui/CMakeFiles/aja-output-ui.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.301175,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/frontend-tools/CMakeFiles/frontend-tools.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.248107,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/shared/qt/idian/CMakeFiles/idian.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.15428,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-qsv11/CMakeFiles/obs-qsv11.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.085967,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/aja/CMakeFiles/aja-support.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.047128,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-websocket/obs-websocket_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 1.02671,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/aja/CMakeFiles/aja.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 1.002656,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-browser/obs-browser_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 0.96019,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "shared/qt/wrappers/build/qt-wrappers.core+.hpp.cpp",
+        "log_span_seconds": 0.939548,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/frontend/CMakeFiles/obs-studio.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 0.918102,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "frontend/build/frontend.components-2+.hpp.cpp",
+        "log_span_seconds": 0.88191,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/frontend/obs-studio_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 0.833436,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/frontend-tools/frontend-tools_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 0.829862,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/obs-websocket/src/Config.cpp",
+        "log_span_seconds": 0.81618,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "frontend/build/frontend.components+.hpp.cpp",
+        "log_span_seconds": 0.807549,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/frontend-tools/build/frontend-tools.core+.hpp.cpp",
+        "log_span_seconds": 0.78263,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/frontend-tools/build/frontend-tools.linux+.hpp.cpp",
+        "log_span_seconds": 0.781608,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "libobs/build/libobs.nix-portal-shortcut-sets+.h.c",
+        "log_span_seconds": 0.772723,
+        "results": [
+          "cache_miss",
+          "direct_cache_miss",
+          "local_storage_miss",
+          "local_storage_read_miss",
+          "local_storage_write"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "frontend/build/frontend.components-4+.hpp.cpp",
+        "log_span_seconds": 0.759663,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-qsv11/CMakeFiles/obs-qsv11.dir/cmake_pch.h.c",
+        "log_span_seconds": 0.73724,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/aja-output-ui/build/aja-output-ui.core+.hpp.cpp",
+        "log_span_seconds": 0.72778,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "frontend/build/frontend.components-3+.hpp.cpp",
+        "log_span_seconds": 0.702014,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "frontend/build/frontend.components-5+.hpp.cpp",
+        "log_span_seconds": 0.697409,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/aja-output-ui/aja-output-ui_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 0.645861,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-outputs/bpm/CMakeFiles/bpm.dir/cmake_pch.h.c",
+        "log_span_seconds": 0.628857,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/rtmp-services/CMakeFiles/rtmp-services.dir/cmake_pch.h.c",
+        "log_span_seconds": 0.627975,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/plugins/obs-browser/CMakeFiles/browser-helper.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 0.606349,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "shared/qt/plain-text-edit/build/qt-plain-text-edit.core+.hpp.cpp",
+        "log_span_seconds": 0.598585,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "shared/qt/idian/build/idian.core+.hpp.cpp",
+        "log_span_seconds": 0.587582,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/shared/qt/idian/idian_autogen/mocs_compilation.cpp",
+        "log_span_seconds": 0.571862,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "shared/qt/icon-label/build/qt-icon-label.core+.hpp.cpp",
+        "log_span_seconds": 0.534716,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/frontend-tools/build/frontend-tools.output-timer+.hpp.cpp",
+        "log_span_seconds": 0.532288,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "plugins/aja/build/aja.support+.hpp.cpp",
+        "log_span_seconds": 0.516906,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      },
+      {
+        "source": "_flatpak_build/frontend/api/CMakeFiles/obs-frontend-api.dir/cmake_pch.hxx.cxx",
+        "log_span_seconds": 0.495848,
+        "results": [
+          "direct_cache_hit",
+          "local_storage_hit",
+          "local_storage_read_hit"
+        ],
+        "unsupported_options": []
+      }
+    ],
+    "uncacheable_calls": [
+      {
+        "source": "plugins/obs-browser/browser-app.cpp",
+        "log_span_seconds": 0.004004,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/browser-dummy-client.cpp",
+        "log_span_seconds": 0.004432,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/obs-browser-page/obs-browser-page-main.cpp",
+        "log_span_seconds": 0.005913,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/browser-app.cpp",
+        "log_span_seconds": 0.001799,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/browser-client.cpp",
+        "log_span_seconds": 0.0013,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/browser-dummy-client.cpp",
+        "log_span_seconds": 0.001204,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/browser-scheme.cpp",
+        "log_span_seconds": 0.001217,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/deps/base64/base64.cpp",
+        "log_span_seconds": 0.001488,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/deps/signal-restore.cpp",
+        "log_span_seconds": 0.001632,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/deps/wide-string.cpp",
+        "log_span_seconds": 0.001677,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/obs-browser-plugin.cpp",
+        "log_span_seconds": 0.001521,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/obs-browser-source.cpp",
+        "log_span_seconds": 0.003202,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/drm-format.cpp",
+        "log_span_seconds": 0.001478,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/deps/ip-string-posix.cpp",
+        "log_span_seconds": 0.001461,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/panel/browser-panel-client.cpp",
+        "log_span_seconds": 0.001514,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      },
+      {
+        "source": "plugins/obs-browser/panel/browser-panel.cpp",
+        "log_span_seconds": 0.001633,
+        "results": [
+          "unsupported_compiler_option"
+        ],
+        "unsupported_options": [
+          "-fmodules-ts"
+        ]
+      }
+    ],
+    "limits": "Log spans are wall intervals, not CPU time. An uncacheable call can exec the compiler after logging ends; its span excludes that execution. Concurrent spans must not be summed as job time. Raw commands/environment are not published."
+  },
+  "finding": "All16uncacheable calls are obs-browser C++20 sources rejected for-fmodules-ts; CMake automatically enabled module scanning. No CXX_MODULES declarations in project/build inputs observed.",
+  "limits": "Call spans stop before fallback compiler exec; no per-call compile CPU claim. Whole workflow/cost remains pending. Default-off diagnostic mode, not routine warm cohort."
+}

@@ -425,3 +425,19 @@ fail the requested diagnostic. Interleaved invocations and PID reuse are
 handled separately. Spans are wall intervals, not CPU time, and uncacheable
 calls can exec the compiler after logging ends. Concurrent spans must not be
 summed into job time. This diagnostic does not itself establish savings.
+
+
+### Actual compiler-rejection attribution
+
+Corrected diagnostic run39820372855/job119969902046 at9cbb3247e passed
+in472s. Artifact12443864404 reports347calls:327directhits,4misses and
+16unsupported-option calls. Every rejection is an obs-browser source with
+`-fmodules-ts`; sources and sanitized option names are now attributed.
+CMake's automatic C++20 module scanning enables that flag, while the project
+currently declares no `CXX_MODULES` file sets. This identifies a separate
+configuration opportunity; no scan setting changes in this diagnostic PR.
+
+Portable evidence: `docs/ci-evidence/2026-10-22-flatpak-compiler-reasons.json`.
+The first report's missing attribution is retained as a limitation and was
+fixed with RED92c06356d/GREEN9cbb3247e. Fallback log spans exclude actual
+compiler execution; they are not the duration of the rejected compile.
