@@ -19,13 +19,9 @@
 
 #include "obs.h"
 #include "graphics/matrix4.h"
+#include "obs-scene-audio-actions.h"
 
 /* how obs scene! */
-
-struct item_action {
-	bool visible;
-	uint64_t timestamp;
-};
 
 struct obs_scene_item {
 	volatile long ref;
@@ -84,7 +80,7 @@ struct obs_scene_item {
 	obs_data_t *private_settings;
 
 	pthread_mutex_t actions_mutex;
-	DARRAY(struct item_action) audio_actions;
+	obs_scene_item_action_array_t audio_actions;
 
 	struct obs_source *show_transition;
 	struct obs_source *hide_transition;

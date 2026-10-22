@@ -1347,7 +1347,7 @@ static uint32_t scene_getheight(void *data)
 }
 
 /* apply_scene_item_audio_actions(), apply_scene_item_volume() and
- * process_all_audio_actions() are in obs-scene-audio-actions.c. */
+ * process_all_audio_actions() are in obs-scene-item-audio-actions.c. */
 
 static void mix_audio_with_buf(float *p_out, float *p_in, float *buf_in, size_t pos, size_t count)
 {

@@ -18,24 +18,23 @@
 
 #include "libobs/build/libobs.pch.h"
 
-/* Scene item visibility audio ramp, moved from obs-scene.c: showing or hiding
- * an item whose source has audio queues an item_action with the time of the
- * call, and these apply the queued actions on the samples they fall on.
- * scene_audio_render() calls apply_scene_item_volume() for each item of a
- * tick, and process_all_audio_actions() when the scene has no audio playing;
- * scene_video_tick() calls apply_scene_item_audio_actions() with no buffer
- * for a scene that is only showing. Declared in obs-internal.h. */
+/* The core of the scene item visibility audio ramp: the loop of
+ * apply_scene_item_audio_actions() and the window of
+ * apply_scene_item_volume(), on the item's fields alone. It reaches no
+ * scene item and no source: obs-scene-item-audio-actions.c passes the
+ * item's queue and visibility with actions_mutex held, and drops one active
+ * reference per hide that obs_scene_audio_actions_apply() returns.
+ * Declared in obs-scene-audio-actions.h. */
 
-void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate)
+size_t obs_scene_audio_actions_apply(obs_scene_item_action_array_t *actions, bool *visible, uint64_t ts,
+				     size_t sample_rate, float *buf)
 {
-	bool cur_visible = item->visible;
+	bool cur_visible = *visible;
 	uint64_t frame_num = 0;
 	size_t deref_count = 0;
 
-	pthread_mutex_lock(&item->actions_mutex);
-
-	for (size_t i = 0; i < item->audio_actions.num; i++) {
-		struct item_action action = item->audio_actions.array[i];
+	for (size_t i = 0; i < actions->num; i++) {
+		struct item_action action = actions->array[i];
 		uint64_t timestamp = action.timestamp;
 		uint64_t new_frame_num;
 
@@ -47,10 +46,10 @@ void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uin
 		if (ts && new_frame_num >= AUDIO_OUTPUT_FRAMES)
 			break;
 
-		da_erase(item->audio_actions, i--);
+		da_erase(*actions, i--);
 
-		item->visible = action.visible;
-		if (!item->visible)
+		*visible = action.visible;
+		if (!*visible)
 			deref_count++;
 
 		if (buf && new_frame_num > frame_num) {
@@ -58,7 +57,7 @@ void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uin
 				buf[frame_num] = cur_visible ? 1.0f : 0.0f;
 		}
 
-		cur_visible = item->visible;
+		cur_visible = *visible;
 	}
 
 	if (buf) {
@@ -66,42 +65,12 @@ void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uin
 			buf[frame_num] = cur_visible ? 1.0f : 0.0f;
 	}
 
-	pthread_mutex_unlock(&item->actions_mutex);
-
-	while (deref_count--) {
-		if (os_atomic_dec_long(&item->active_refs) == 0) {
-			obs_source_remove_active_child(item->parent->source, item->source);
-		}
-	}
+	return deref_count;
 }
 
-bool apply_scene_item_volume(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate)
+bool obs_scene_audio_action_due(uint64_t timestamp, uint64_t ts, size_t sample_rate)
 {
-	bool actions_pending;
-	struct item_action action;
+	uint64_t duration = util_mul_div64(AUDIO_OUTPUT_FRAMES, 1000000000ULL, sample_rate);
 
-	pthread_mutex_lock(&item->actions_mutex);
-
-	actions_pending = item->audio_actions.num > 0;
-	if (actions_pending)
-		action = item->audio_actions.array[0];
-
-	pthread_mutex_unlock(&item->actions_mutex);
-
-	if (actions_pending) {
-		uint64_t duration = util_mul_div64(AUDIO_OUTPUT_FRAMES, 1000000000ULL, sample_rate);
-
-		if (!ts || action.timestamp < (ts + duration)) {
-			apply_scene_item_audio_actions(item, buf, ts, sample_rate);
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void process_all_audio_actions(struct obs_scene_item *item, size_t sample_rate)
-{
-	while (apply_scene_item_volume(item, NULL, 0, sample_rate))
-		;
+	return !ts || timestamp < (ts + duration);
 }

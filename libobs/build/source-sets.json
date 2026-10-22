@@ -28,6 +28,7 @@
     "obs-nal.h",
     "obs-output.h",
     "obs-properties.h",
+    "obs-scene-audio-actions.h",
     "obs-scene-blend.h",
     "obs-scene-bounds.h",
     "obs-scene-coords.h",

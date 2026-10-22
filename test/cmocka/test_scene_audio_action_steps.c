@@ -13,7 +13,8 @@
 
 /*
  * Characterization of the scene item visibility audio ramp in
- * libobs/obs-scene-audio-actions.c, before its Rust port:
+ * libobs/obs-scene-item-audio-actions.c and its core,
+ * libobs/obs-scene-audio-actions.c, before the Rust port of the core:
  * - apply_scene_item_audio_actions() consumes the item's queued
  *   {visible, timestamp} actions up to the end of the audio tick at ts,
  *   places each one on the sample floor((timestamp - ts) * rate / 1e9) (a
@@ -26,7 +27,7 @@
  * They pin the current C behavior; cases marked "characterized, not
  * endorsed" are odd but real.
  *
- * The functions are hidden in libobs, so this test compiles the C source
+ * The functions are hidden in libobs, so this test compiles both C sources
  * into itself and calls only them, with a fake scene item: the real struct,
  * zeroed, with its actions, visibility, active_refs and mutex set. Its scene
  * has no source, so obs_source_remove_active_child() (real libobs) only logs
