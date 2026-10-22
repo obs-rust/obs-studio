@@ -54,10 +54,29 @@ the candidate does not disable debug extraction or enable destructive stripping.
 
 This follows the distinct compression and extraction flags in
 [Flatpak Builder's post-processing implementation](https://github.com/flatpak/flatpak-builder/blob/bd35975d1b089960251809a5bec738ded3cd6f46/src/builder-module.c).
-Actual Flatpak SDK tool support, OSTree export and transferred bytes, packaged
-debugger behavior, browser loading, and a saved screen/camera/microphone profile
-remain to be qualified. Focused manifest regression tests are not substitutes
-for those checks.
+The exact production SDK (elfutils 0.195) processes the pinned CEF with the
+same allocated sections/build ID and source-line lookup. Full export
+[39754042722](https://github.com/obs-rust/obs-studio/actions/runs/39754042722)
+passes existing Flatpak validators. Its complete Flatpak job takes 12m04s,
+including optional runtime-export upload; that is one observation with changed
+source/dependency cache state, not a comparable warm-job speedup.
+
+Installed-package qualification
+[39763463067](https://github.com/obs-rust/obs-studio/actions/runs/39763463067)
+reuses that immutable export and passes app/Debug build IDs, GDB source lookup,
+authenticated unchanged WebSocket v5, all four saved sources, clean shutdown
+and module loading. The 12.033-second recording passes screen/camera motion and
+continuous 440 Hz microphone tone checks. All 302 checked browser frames render
+the green HTML patch. Browser software rendering is explicit; the preceding
+default-hardware fixture failed on a llvmpipe/no-DRM runner. Physical devices and
+GPU rendering are not covered, and the upstream missing DWO limitation remains.
+Portable identities, logs and the six qualification attempts are recorded in
+[the runtime qualification PR](https://github.com/obs-rust/obs-studio/pull/1771).
+
+These observations qualify this debug-processing change's installed artifact;
+they do not establish warm application-cache reuse, production publication cost,
+global retention, cold performance or the whole-issue speedup. The new combined
+configuration has its own full qualification run before further adoption.
 
 The full goal remains at least 50% lower comparable warm job time, with cold
 and warm observations, required validators, complete application functionality,
