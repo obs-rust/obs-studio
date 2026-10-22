@@ -86,6 +86,19 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         self.assertIn("path: .flatpak-builder", dependency)
         self.assertLess(workflow.index("id: flatpak-builder-cache-lookup"), workflow.index("id: flatpak-compiler-cache"))
 
+    def test_flatpak_compiler_statistics_cover_only_this_build(self):
+        workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
+        marker = "- name: Reset Flatpak Compiler Counters"
+        self.assertIn(marker, job)
+        reset = job.split(marker, 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("--zero-stats", reset)
+        self.assertIn('CCACHE_DIR=', reset)
+        self.assertNotIn('continue-on-error', reset)
+        self.assertLess(job.index('id: flatpak-compiler-cache'), job.index(marker))
+        self.assertLess(job.index(marker), job.index('- name: Build Flatpak Manifest'))
+        self.assertIn('Flatpak Ccache Stats (this build)', job)
+
     def test_separate_compiler_snapshot_saves_only_on_master(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
         marker = "key: flatpak-ccache-x86_64-${{ github.sha }}"
