@@ -42,6 +42,16 @@ void obs_video_align_output_size(uint32_t *width, uint32_t *height)
 	*height &= 0xFFFFFFFE;
 }
 
+/* The output size obs_reset_video() accepts: valid as given and still valid
+ * once aligned. The alignment makes an output width of 2 or 3 into 0. */
+bool obs_video_output_size_valid(uint32_t width, uint32_t height)
+{
+	if (!obs_video_size_valid(width, height))
+		return false;
+	obs_video_align_output_size(&width, &height);
+	return obs_video_size_valid(width, height);
+}
+
 const char *obs_video_scale_type_name(enum obs_scale_type scale_type)
 {
 	const char *scale_type_name = "";

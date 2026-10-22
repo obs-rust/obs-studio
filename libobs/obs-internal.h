@@ -469,6 +469,7 @@ struct obs_video_output_plan {
 
 bool obs_video_size_valid(uint32_t width, uint32_t height);
 void obs_video_align_output_size(uint32_t *width, uint32_t *height);
+bool obs_video_output_size_valid(uint32_t width, uint32_t height);
 const char *obs_video_scale_type_name(enum obs_scale_type scale_type);
 struct obs_video_output_plan obs_video_output_plan(enum video_format format, enum video_colorspace colorspace,
 						   uint32_t width, uint32_t height);

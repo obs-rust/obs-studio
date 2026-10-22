@@ -471,11 +471,11 @@ static int obs_init_video(struct obs_video_info *ovi)
 	video->video_frame_interval_ns = util_mul_div64(1000000000ULL, ovi->fps_den, ovi->fps_num);
 	video->video_half_frame_interval_ns = util_mul_div64(500000000ULL, ovi->fps_den, ovi->fps_num);
 
-	if (pthread_mutex_init(&video->task_mutex, NULL) < 0)
+	if (pthread_mutex_init(&video->task_mutex, NULL) != 0)
 		return OBS_VIDEO_FAIL;
-	if (pthread_mutex_init(&video->encoder_group_mutex, NULL) < 0)
+	if (pthread_mutex_init(&video->encoder_group_mutex, NULL) != 0)
 		return OBS_VIDEO_FAIL;
-	if (pthread_mutex_init(&video->mixes_mutex, NULL) < 0)
+	if (pthread_mutex_init(&video->mixes_mutex, NULL) != 0)
 		return OBS_VIDEO_FAIL;
 
 	/* Reset main canvas mix first so it remains first in the rendering order. */
@@ -1500,7 +1500,7 @@ int obs_reset_video(struct obs_video_info *ovi)
 	if (obs_video_active() || outputs_starting())
 		return OBS_VIDEO_CURRENTLY_ACTIVE;
 
-	if (!obs_video_size_valid(ovi->output_width, ovi->output_height) ||
+	if (!obs_video_output_size_valid(ovi->output_width, ovi->output_height) ||
 	    !obs_video_size_valid(ovi->base_width, ovi->base_height))
 		return OBS_VIDEO_INVALID_PARAM;
 

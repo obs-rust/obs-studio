@@ -1578,6 +1578,12 @@ area.
   recording was cut off. *Linux, macOS*, 2026-10-18. Issue
   [#1402](https://github.com/obs-rust/obs-studio/issues/1402), upstream
   [obsproject/obs-studio#10011](https://github.com/obsproject/obs-studio/issues/10011).
+- A plugin or script that resets the video to an output width of 2 or 3
+  gets an invalid-parameter error and keeps the current video; before, the
+  reset failed with no video left, and OBS could then crash. *All*,
+  2026-10-22. Issue
+  [#1713](https://github.com/obs-rust/obs-studio/issues/1713), PR
+  [#1734](https://github.com/obs-rust/obs-studio/pull/1734).
 
 ### Security hardening
 
