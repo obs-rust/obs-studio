@@ -44,7 +44,13 @@ env = {k: v for k, v in os.environ.items() if not k.startswith('CCACHE_')}
 env.update({k: v for k, v in obs['build-options']['env'].items() if k.startswith('CCACHE_')})
 env.update(CCACHE_DIR=str(root / 'cache'), CCACHE_CONFIGPATH='/dev/null')
 def run(args):
-    return subprocess.check_output(args, env=env, stderr=subprocess.STDOUT, text=True, timeout=120)
+    try:
+        return subprocess.check_output(args, env=env, stderr=subprocess.STDOUT, text=True, timeout=120)
+    except subprocess.CalledProcessError as error:
+        with (root / 'failed-command.log').open('a') as log:
+            log.write(json.dumps({'argv': args, 'returncode': error.returncode}) + '\n')
+            log.write(error.output)
+        raise
 def replace_preserving_times(path, before, after):
     stat = path.stat()
     assert len(before) == len(after)

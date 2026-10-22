@@ -1,0 +1,117 @@
+{
+  "scope": "Actual production SDK GCC16.2.0/ccache4.14 in an isolated native-tool chroot. Not Flatpak sandbox or full-app proof.",
+  "manifest_sha256": "5092840cce38cd6e1923afedf92e1b560cfd261e885fa5b3978350a071d65c0e",
+  "compiler": "c++ (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "ccache": "ccache version 4.14\nFeatures: avx2 crsh-storage file-storage http-storage remote-storage\n\nCopyright (C) 2002-2007 Andrew Tridgell\nCopyright (C) 2009-2026 Joel Rosdahl and other contributors\n\nSee <https://ccache.dev/credits.html> for a complete list of contributors.\n\nThis program is free software; you can redistribute it and/or modify it under\nthe terms of the GNU General Public License as published by the Free Software\nFoundation; either version 3 of the License, or (at your option) any later\nversion.\n",
+  "sdk_commit": "ca510bc205bdd1e2a276bf9864850abcc4e461fd71df225c5aa7425120ce5f19",
+  "image_index": "sha256:6ed6921bb5a9e1a916989971844f159b854b7b225880c381fa34f7a158863039",
+  "bosn_job": 375,
+  "probe_source_commit": "e256b71e5dd5a7b56a9fc515500d6337a19613ee",
+  "limits": [
+    "Single tiny-fixture trial per case, no full-job speedup claim.",
+    "Native-tool chroot supplies passwd identity normally mounted by Flatpak. Local namespace launch failed before compiling.",
+    "Prior setup attempts failed: whole-SDK copy timeout; reduced root lacked a usable passwd identity. Neither reached the freshness trials."
+  ],
+  "trials": [
+    {
+      "trial": "cold",
+      "expected": 42,
+      "actual": 42,
+      "seconds": 4.199134947964922,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "warm",
+      "expected": 42,
+      "actual": 42,
+      "seconds": 0.7477030029986054,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "header-same-stat",
+      "expected": 43,
+      "actual": 43,
+      "seconds": 3.0043119688052684,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "header-warm",
+      "expected": 43,
+      "actual": 43,
+      "seconds": 0.6072037410922348,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "source-same-stat",
+      "expected": 44,
+      "actual": 44,
+      "seconds": 0.878744093934074,
+      "direct_hits": 1,
+      "preprocessed_hits": 0,
+      "misses": 1,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "source-warm",
+      "expected": 44,
+      "actual": 44,
+      "seconds": 0.7256760350428522,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "configuration",
+      "expected": 87,
+      "actual": 87,
+      "seconds": 3.7473956069443375,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "configuration-warm",
+      "expected": 87,
+      "actual": 87,
+      "seconds": 0.8820139048621058,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "compiler-same-stat",
+      "expected": 173,
+      "actual": 173,
+      "seconds": 3.4114286028780043,
+      "direct_hits": 0,
+      "preprocessed_hits": 0,
+      "misses": 2,
+      "pch_refusals": 0
+    },
+    {
+      "trial": "compiler-warm",
+      "expected": 173,
+      "actual": 173,
+      "seconds": 0.6316580651327968,
+      "direct_hits": 2,
+      "preprocessed_hits": 0,
+      "misses": 0,
+      "pch_refusals": 0
+    }
+  ]
+}

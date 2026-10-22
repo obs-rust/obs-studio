@@ -35,9 +35,26 @@ Baseline wrapper-only warm rebuild: 1.219 seconds with two PCH refusals; the
 initial dependency-mode launcher fixture: 0.242 seconds with two direct hits.
 These are single tiny-fixture observations, **not a claimed full-job speedup**.
 
+## Production SDK toolchain check
+
+The same ten trials pass with the production SDK's **GCC 16.2.0 and ccache
+4.14**, using its native binaries, libraries and headers in an isolated chroot.
+See [portable SDK evidence](ci-evidence/2026-10-22-flatpak-pch-sdk-freshness.json).
+Every following warm build has two direct hits; header, configuration and
+compiler changes each miss twice; the source-only change misses once and retains
+the PCH hit. The fixture's compiler wrapper changes actual executable output;
+this is stronger than checking cache counters alone.
+
+The local Flatpak namespace launch was denied by the container. The fallback
+initially timed out copying the whole SDK, then exposed the SDK's empty passwd
+file: ccache could not resolve its user identity. A separate root with a real
+passwd entry, as Flatpak normally supplies, fixes that setup failure. These
+failures are recorded; they are not compiler freshness failures or full-job
+observations. The diagnostic now retains failing command arguments and stderr.
+
 ## Adoption hold
 
-Production SDK execution, real application freshness/reuse, full-job warm/cold
+Real application freshness/reuse inside Flatpak, full-job warm/cold
 measurements and the packaged screen/camera/microphone/browser/debugger scenario
 are still required. Keep the PR draft until these are proven. This change alone
 does not complete #1760's 50% whole-job target.
