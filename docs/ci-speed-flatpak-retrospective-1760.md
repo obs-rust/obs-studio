@@ -57,7 +57,13 @@ the manual seed corrects the original automatic-seed assumption. Before any
 final warm sample, the [amended sampling plan](https://github.com/obs-rust/obs-studio/issues/1760#issuecomment-6348807912)
 proposes the default-off manual routing mode in #1817. That mode keeps the
 complete Flatpak job and Fast Gate while omitting unrelated native matrices.
-Its branch qualification is excluded from the production cohort. Routing
+Its branch qualification passed the complete Flatpak job in392s, with342direct
+hits/3misses, all six dependencies reused and all three artifact validators
+passing. Fast Gate reproduced #1816 and the final gate correctly failed;
+whole workflow cost14.033runner-minutes, no cancellations or retries.
+[Portable routing evidence](ci-evidence/2026-10-22-flatpak-measurement-routing.json)
+records the source and skipped native matrices. The branch retains existing
+trusted-master publication restrictions and is excluded from the production cohort. Routing
 savings cannot count toward the Flatpak job's performance target.
 
 ## Where the time went
@@ -141,7 +147,7 @@ All measurement workflow job intervals (all attempts) are retained in
 cost-ledger/summary.json, with raw responses per run. The three baseline
 selected workflows cost374.033runner-minutes; their Flatpak jobs alone
 cost41.967runner-minutes. Completed nonbaseline workflows currently account
-for2114.983runner-minutes, excluding a cancelled seed workflow whose
+for2129.017runner-minutes, excluding a cancelled seed workflow whose
 112.117known runner-minutes have one inconsistent cancelled placeholder. This is runner-interval
 accounting, not an invoice. PR/merge-group CI and local bosn work are explicitly
 outside this ledger scope.
