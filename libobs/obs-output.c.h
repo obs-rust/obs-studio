@@ -1541,8 +1541,6 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 #endif
 	}
 
-	DARRAY(uint8_t) out_data;
-
 	if (out->priority > 1)
 		return false;
 
@@ -1577,10 +1575,6 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	}
 #endif
 	sei_init(&sei, 0.0);
-
-	da_init(out_data);
-	da_push_back_array(out_data, (uint8_t *)&ref, sizeof(ref));
-	da_push_back_array(out_data, out->data, out->size);
 
 	if (ctrack->caption_data.size > 0) {
 
@@ -1634,6 +1628,14 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	}
 
 	if (avc || hevc || av1) {
+		/* The new packet: a reference count, then the old packet's
+		 * data and the caption. Only codecs that carry the caption
+		 * need it; for any other codec the packet stays as it is. */
+		DARRAY(uint8_t) out_data;
+		da_init(out_data);
+		da_push_back_array(out_data, (uint8_t *)&ref, sizeof(ref));
+		da_push_back_array(out_data, out->data, out->size);
+
 		if (avc || hevc) {
 			data = bmalloc(sei_render_size(&sei));
 			size = sei_render(&sei, data);

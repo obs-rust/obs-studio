@@ -1020,6 +1020,11 @@ area.
   is not a keyframe. *All*, 2026-10-21. Issue
   [#1611](https://github.com/obs-rust/obs-studio/issues/1611), PR
   [#1612](https://github.com/obs-rust/obs-studio/pull/1612).
+- Captions sent to an output whose video codec cannot carry them (not
+  H.264, HEVC or AV1, for example ProRes or a plugin's codec) no longer
+  leak a copy of a video frame for each caption. *All*, 2026-10-22. Issue
+  [#1777](https://github.com/obs-rust/obs-studio/issues/1777), PR
+  [#1778](https://github.com/obs-rust/obs-studio/pull/1778).
 
 ### Sources and filters
 
