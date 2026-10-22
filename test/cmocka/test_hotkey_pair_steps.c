@@ -9,6 +9,10 @@
  * swap) through the public API.
  *
  * It pins what the real libobs cannot reach or cannot show:
+ * - that obs_hotkey_pair_fields() points at the pair's own pressed0 and
+ *   pressed1, the latch the callbacks read and write through it, and that
+ *   obs_hotkey_pair_call_func() calls the half's func with its data, the
+ *   pair id and the hotkey, and returns its result;
  * - the latch itself after every event;
  * - every state, inputs and func result: 4 latch states (both latched
  *   included, which only a func that triggers its partner from inside its
@@ -292,12 +296,59 @@ static void latch_written_after_func(void **state)
 	assert_false(pair->pressed1);
 }
 
+/* The accessor points at the pair's own latch, and the call wrapper calls
+ * one half's func. */
+static void pair_fields(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct obs_hotkey_pair_fields fields = obs_hotkey_pair_fields(pair);
+	assert_ptr_equal(fields.pressed0, &pair->pressed0);
+	assert_ptr_equal(fields.pressed1, &pair->pressed1);
+
+	/* A latch set through the accessor is the one the callbacks read. */
+	*fields.pressed1 = true;
+	event(0, true);
+	assert_int_equal(num_calls, 0);
+	event(1, false);
+	assert_int_equal(num_calls, 0);
+	assert_false(pair->pressed1);
+
+	/* A latch set by a callback shows through it. */
+	result = true;
+	event(0, true);
+	assert_int_equal(num_calls, 1);
+	assert_true(*fields.pressed0);
+	assert_false(*fields.pressed1);
+
+	/* The call wrapper: each half's func, with its data, the pair id and
+	 * the hotkey, and its result. It does not touch the latch. */
+	pair->pressed0 = pair->pressed1 = false;
+	num_calls = 0;
+	for (int half = 0; half < 2; half++) {
+		for (int r = 0; r < 2; r++) {
+			result = r != 0;
+			assert_int_equal(obs_hotkey_pair_call_func(pair, (size_t)half, half_hotkey[1 - half], r == 0),
+					 r != 0);
+		}
+	}
+	assert_int_equal(num_calls, 4);
+	for (size_t i = 0; i < 4; i++) {
+		assert_int_equal(calls[i].half, (int)(i / 2));
+		assert_true(calls[i].id == pair_id);
+		assert_ptr_equal(calls[i].hotkey, half_hotkey[1 - i / 2]);
+		assert_int_equal(calls[i].pressed, i % 2 == 0);
+	}
+	assert_false(pair->pressed0);
+	assert_false(pair->pressed1);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(registered_callbacks, setup, teardown),
 		cmocka_unit_test_setup_teardown(every_step, setup, teardown),
 		cmocka_unit_test_setup_teardown(latch_written_after_func, setup, teardown),
+		cmocka_unit_test_setup_teardown(pair_fields, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
