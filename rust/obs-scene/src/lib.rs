@@ -20,6 +20,7 @@ pub mod crop;
 pub mod extent;
 pub mod group_transform;
 mod platform;
+pub mod render_plan;
 
 #[allow(unsafe_code)]
 pub mod ffi;

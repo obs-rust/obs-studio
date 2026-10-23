@@ -9,6 +9,7 @@ mod crop;
 mod crop_parity;
 mod extent;
 mod extent_parity;
+mod render_plan;
 
 mod bounds_place;
 mod bounds_place_parity;
