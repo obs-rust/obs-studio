@@ -69,8 +69,12 @@ class ProbeWorkflowTest(unittest.TestCase):
         self.assertIn('inputs.tier2-setup-probe', producer)
         self.assertIn('needs: build-project', producer)
         self.assertIn('always() && !cancelled()', producer)
-        normal = text.split('  build-project:', 1)[1].split('  tier2-setup-producer:', 1)[0]
-        self.assertNotIn('tier2-setup-probe', normal)
+        normal = text.split('  build-project:', 1)[1].split('  flatpak-runtime-reuse:', 1)[0]
+        # The setup flag may be referenced for conflicting-input validation,
+        # but must not select/replace the normal build or become its own input.
+        normal_condition = normal.split('    if: ', 1)[1].splitlines()[0]
+        self.assertNotIn('tier2-setup-probe', normal_condition)
+        self.assertNotIn('\n      tier2-setup-probe:', normal)
         self.assertNotIn('actions/cache/save@', producer)
 
     def test_stock_does_not_pay_for_prepared_image_transfer(self):

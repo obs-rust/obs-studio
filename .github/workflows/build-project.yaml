@@ -2,6 +2,14 @@ name: Build Project
 on:
   workflow_call:
     inputs:
+      native-cache-measurement-only:
+        description: Measure only native cache protocols and lightweight gates on trusted manual master runs
+        type: boolean
+        default: false
+      native-cache-measurement-conflict:
+        description: Internal caller validation for incompatible additional measurement protocols
+        type: boolean
+        default: false
       flatpak-measurement-only:
         description: Restrict the manual build matrix to complete Flatpak and lightweight gates
         type: boolean
@@ -169,12 +177,29 @@ jobs:
         id: native
         env:
           FLATPAK_MEASUREMENT_ONLY: ${{ inputs.flatpak-measurement-only }}
+          NATIVE_MEASUREMENT_ONLY: ${{ inputs.native-cache-measurement-only }}
+          NATIVE_MEASUREMENT_CONFLICT: ${{ inputs.native-cache-measurement-conflict || inputs.flatpak-measurement-only || inputs.flatpak-compiler-diagnostics || inputs.flatpak-runtime-test || inputs.flatpak-cold-build || inputs.flatpak-dependency-transfer-probe || inputs.flatpak-compiler-transfer-probe || inputs.flatpak-cache-probe || inputs.flatpak-pruned-build-probe }}
+          NATIVE_TRANSPORT_PROBE: ${{ inputs.native-cache-transport-probe }}
+          NATIVE_REUSE_SOURCE: ${{ inputs.native-cache-reuse-source }}
+          NATIVE_BUDGET_PROBE: ${{ inputs.native-cache-probe }}
           GH_TOKEN: ${{ github.token }}
         run: |
           : Check Change Scope 🧭
           # A reusable caller cannot use this manual observation mode to omit gates.
           if [[ "$FLATPAK_MEASUREMENT_ONLY" == true ]]; then
             [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && '${{ inputs.full }}' != true ]]
+          fi
+          # Native observations cannot substitute for a release/full validation.
+          # Reject conflicting protocols before selecting any expensive matrix.
+          if [[ "$NATIVE_MEASUREMENT_ONLY" == true ]]; then
+            [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && '${{ inputs.full }}' != true ]]
+            [[ "$GITHUB_REPOSITORY" == obs-rust/obs-studio && "$GITHUB_REF" == refs/heads/master ]]
+            [[ "$NATIVE_MEASUREMENT_CONFLICT" != true && "$FLATPAK_MEASUREMENT_ONLY" != true && "$NATIVE_BUDGET_PROBE" != true ]]
+            if [[ "$NATIVE_TRANSPORT_PROBE" == true ]]; then
+              [[ -z "$NATIVE_REUSE_SOURCE" ]]
+            else
+              [[ "$NATIVE_REUSE_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+            fi
           fi
           # No label changes what runs (#992). Schedule, workflow_dispatch,
           # tags, release branches and the release gate (inputs.full) run
@@ -217,8 +242,8 @@ jobs:
           if [[ "${deferred}" != true ]]; then
             qt=true tier2=true
           fi
-          # Keep the complete Flatpak job and Fast Gate; omit unrelated matrices.
-          if [[ "$FLATPAK_MEASUREMENT_ONLY" == true ]]; then
+          # Measurement jobs keep their app builds and Fast Gate, not unrelated matrices.
+          if [[ "$FLATPAK_MEASUREMENT_ONLY" == true || "$NATIVE_MEASUREMENT_ONLY" == true ]]; then
             core=false macos=false windows=false qt=false tier2=false linux_targets=
           fi
           os=()
@@ -494,7 +519,7 @@ jobs:
     # the release gate (release-rust.yaml), tags, schedule, dispatch and
     # path-triggered full runs. PRs and pushes build and test the Rust workspace and Tier 2
     # (libobs + cmocka) on Linux instead.
-    if: ${{ !inputs.flatpak-measurement-only && fromJSON(needs.check-event.outputs.full) }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && fromJSON(needs.check-event.outputs.full) }}
     defaults:
       run:
         shell: bash
@@ -675,7 +700,7 @@ jobs:
     name: Flatpak 📦
     runs-on: ubuntu-26.04
     needs: check-event
-    if: fromJSON(needs.check-event.outputs.full)
+    if: ${{ !inputs.native-cache-measurement-only && fromJSON(needs.check-event.outputs.full) }}
     defaults:
       run:
         shell: bash
@@ -1765,7 +1790,7 @@ jobs:
     name: Rust Cross Lint 🦀 (Windows, macOS)
     runs-on: ubuntu-26.04
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
       run:
         shell: bash
@@ -1811,7 +1836,7 @@ jobs:
     # of the PR gate's targets.
     runs-on: ubuntu-26.04
     needs: check-event
-    if: ${{ !inputs.flatpak-measurement-only && needs.check-event.outputs.full == 'true' }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.full == 'true' }}
     defaults:
       run:
         shell: bash

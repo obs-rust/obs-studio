@@ -5,6 +5,10 @@ run-name: ${{ github.event.pull_request.title || github.ref_name }} pull request
 on:
   workflow_dispatch:
     inputs:
+      native-cache-measurement-only:
+        description: Measure only native cache protocols and lightweight gates on trusted manual master runs
+        type: boolean
+        default: false
       flatpak-measurement-only:
         description: Restrict the manual build matrix to complete Flatpak and lightweight gates
         type: boolean
@@ -109,9 +113,11 @@ jobs:
 
   build-project:
     name: Build 🧱
-    if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '') }}
+    if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '' && !inputs.native-cache-measurement-only) }}
     uses: ./.github/workflows/build-project.yaml
     with:
+      native-cache-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-measurement-only }}
+      native-cache-measurement-conflict: ${{ github.event_name == 'workflow_dispatch' && (inputs.flatpak-runtime-reuse-run != '' || inputs.tier2-setup-probe) }}
       flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}
       flatpak-compiler-diagnostics: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-diagnostics }}
       flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
@@ -130,7 +136,7 @@ jobs:
 
   flatpak-runtime-reuse:
     name: Recheck Flatpak Saved Profile 🧪
-    if: github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != ''
+    if: github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '' && !inputs.native-cache-measurement-only
     runs-on: ubuntu-26.04
     timeout-minutes: 25
     permissions:
@@ -193,7 +199,7 @@ jobs:
     # An unrelated platform failure must not suppress valid Linux evidence.
     # Missing/invalid Tier 2 artifacts still fail the producer; the final gate
     # independently requires the normal build-project result.
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.tier2-setup-probe
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.tier2-setup-probe && !inputs.native-cache-measurement-only
     needs: build-project
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -240,6 +246,7 @@ jobs:
           if-no-files-found: error
 
   tier2-setup-consumer:
+    if: ${{ !inputs.native-cache-measurement-only }}
     name: Tier 2 Setup (${{ matrix.variant }}, trial ${{ matrix.trial }})
     needs: tier2-setup-producer
     runs-on: ubuntu-26.04
@@ -386,7 +393,7 @@ jobs:
   # Run surviving axes even when another publisher failed; the gate still fails.
   native-cache-consumer:
     name: Native Cache Consumer (${{ matrix.platform }} ${{ matrix.architecture }})
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.native-cache-transport-probe
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.native-cache-transport-probe && (!inputs.native-cache-measurement-only || needs.build-project.result == 'success')
     needs: build-project
     runs-on: ubuntu-26.04
     timeout-minutes: 15

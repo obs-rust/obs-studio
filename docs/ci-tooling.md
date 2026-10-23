@@ -777,7 +777,8 @@ before deciding whether to change the production limit.
 Manual `ci.yml` dispatches accept `native-cache-reuse-source` (default empty).
 Set it to a complete producer SHA only for a planned master qualification.
 It uses the existing four native app builds, with no extra compiler unit or
-test executable. The normal full-dispatch coverage still runs. Do not combine
+test executable. Normal full-dispatch coverage runs unless the explicit
+measurement-only mode below is selected. Do not combine
 it with native transport publication or the Windows budget rebuild probe.
 
 Each native runner captures its own compiler/SDK/configuration identity and
@@ -802,6 +803,42 @@ or a net performance benefit. Retain the native compiler statistics, actual
 build/restore/setup times, failures and cold conditions, and compare costs
 against an appropriate control before adopting a backend. Routine PRs,
 queue runs, pushes, schedules and releases leave this input empty.
+
+#### Restricting a planned native measurement (#1801)
+
+`native-cache-measurement-only` defaults to false. Set it only for a trusted
+`obs-rust/obs-studio` master `workflow_dispatch`, together with exactly one
+existing native protocol: `native-cache-transport-probe=true` or a complete
+`native-cache-reuse-source` producer SHA. An explicit full/release gate,
+Windows budget probe, Flatpak option, runtime-reuse request or Tier 2 setup
+probe conflicts with this mode and fails input validation. Conflicting
+standalone Flatpak/setup jobs cannot start while native-only mode is set.
+
+The mode retains both Windows architectures and both macOS targets, their
+existing identity/integrity checks, actual builds and reuse-source freshness
+overlays, requested transport publication/consumers, formatting, Fast Gate,
+data validation and required-result aggregation. It omits unrelated Ubuntu,
+Flatpak, cross-lint, native Rust/Tier 2 and Qt matrices. No job or workflow is
+added. The existing experimental publication permission and exact-source/profile
+requirements remain unchanged.
+
+This is a scoped performance experiment, **not full-platform validation** or
+backend adoption. Routine PRs, merge groups, master pushes, schedules, releases
+and ordinary dispatches retain their selection. Check for an existing manual
+master run before dispatch: the shared concurrency group can cancel it. State
+the missing evidence, expected runner/storage cost and sample scope first;
+preserve failures and mismatches, and do not repeat a whole workflow merely to
+get green. No native run is needed to test the routing fixtures themselves.
+
+For a separately planned producer or consumer, respectively:
+
+```sh
+gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f native-cache-measurement-only=true -f native-cache-transport-probe=true
+gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f native-cache-measurement-only=true -f native-cache-reuse-source=COMPLETE_PRODUCER_SHA
+```
+
+These commands remain opt-in. Changing routing alone demonstrates no cache
+speedup, successful transfer, source freshness or global capacity solution.
 
 The [first native build-reuse attempt](ci-evidence/2026-10-22-native-cache-build-reuse.md)
 failed qualification: Windows profiles were cold, and successful macOS app
