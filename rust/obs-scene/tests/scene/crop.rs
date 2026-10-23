@@ -337,3 +337,13 @@ fn edge_clamp_every_sign() {
         check_clamp(crop, 0);
     }
 }
+
+/// The product is an `f32` multiply, not a wider one: 16777217 is
+/// 16777216 as a float, and x 3 is 50331648, where the exact 50331651
+/// would round to 50331652.
+#[test]
+fn edge_scale_crop_product_is_f32() {
+    check_scale(16_777_217, 3.0, 50_331_648);
+    check_scale(-16_777_217, 3.0, -50_331_648);
+    check_scale(16_777_219, 3.0, 50_331_660);
+}

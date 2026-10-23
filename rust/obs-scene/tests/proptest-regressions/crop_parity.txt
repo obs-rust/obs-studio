@@ -1,0 +1,21 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4880dc1fe8b3d1af012df42b9978515f640acfdc2ce0100fc56bf0fc10d4580b # shrinks to size = 0, crop1 = 0, crop2 = 0, aim = 0, delta = 0
+cc 5a32a093897dd4d173d7410a634d24d075da346f606c9c3d38343b6ac9360cf9 # shrinks to size = 0, crop1 = 0, crop2 = 0, aim = 0, delta = 1
+cc d05d09a61c461542bddee8e2d4cc691942c32c5ae524be3b5b87f3f74ecc4936 # shrinks to size = 2147483648, crop1 = 0, crop2 = 0, aim = 0, delta = 0
+cc 6917075ea30b329e4e2a6e762f859caaa1424584d71a12f3ee9771c565e87c3f # shrinks to size = 1545167349, crop1 = -1211660011, crop2 = -1554922287, bounds1 = 0, bounds2 = 0
+cc 7fdb2a76d41238cd1310723016bfa88e45e086f53928e444e58d5262caf35ed7 # shrinks to size = 4294967294, crop1 = 0, crop2 = 3, aim = 0, delta = 2
+cc 1e9c85aba1258e5f664d4cef96bbb3401ed25c802547b9062c7ff04df62070f6 # shrinks to crop = -2336, target = 2147483600.0, nudge = -1
+cc 73e0d511431caddb9eb4e93aa25949f6ebc06fb36938f3040c70d1585fed6e71 # shrinks to crop = 1, factor = 2147483500.0
+cc 0fce8c3e72bf63fa4e49ce46def00cbbc70e09d46ad352f4104646d8f8494e15 # shrinks to crop = -2147483648, target = -2147483600.0, nudge = -1
+cc 2440074acd5010c3b835a67156390a0a653c509bc95cb6e781e3a5ad93dd3e28 # shrinks to crop = -2147483648, factor = 0.99999994
+cc 45ee035b673a65f1c9defae0d8b632194ede10c1b8be137fe4268cdc2e9999b1 # shrinks to crop = -2455, factor = 0.25
+cc 815672e21ba58c82f8a951599888212ecd9d6c8b62e4d4ce5a2077d17dee2d77 # shrinks to crop = 41718466, target = 2147483600.0, nudge = -1
+cc ed1e9c18d19ab9bc7f756a0cfc0163303e5bff276d4f1d7ddd6b26a8d78e7f4f # shrinks to crop = 16777217, factor = -4.533496
+cc 09fa110948f0b5443ca6d1f004f65266cfa81bc0f9102e33c80c4e5a1172fab5 # shrinks to crop = 37848233, factor = 1.0
+cc bc97958e5494db7b9a9af96ec9df557467bd653aa3af2cfb647109de350ffaae # shrinks to crop = -2147483328, target = -2147483600.0, nudge = -1
+cc 6cbf73b2930d9919f6e218544376c4daad7228ff303d4ba4e3236ba50d37e841 # shrinks to crop = -1

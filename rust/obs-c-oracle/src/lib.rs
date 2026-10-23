@@ -112,6 +112,7 @@ pub mod scene_blend;
 pub mod scene_bounds;
 pub mod scene_bounds_place;
 pub mod scene_coords;
+pub mod scene_crop;
 pub mod scene_extent;
 pub mod scene_group_transform;
 pub mod service_getters;
