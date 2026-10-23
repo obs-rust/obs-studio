@@ -3233,10 +3233,13 @@ static void apply_group_transform(obs_sceneitem_t *item, obs_sceneitem_t *group)
 	update_item_transform(item, false);
 }
 
+/* The fold and the size are obs-scene-extent.c.h. The scene still walks
+ * its items and still shifts the children so the content starts at the
+ * origin. */
+
 static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2 *maxv, struct vec2 *scale)
 {
-	vec2_set(minv, M_INFINITE, M_INFINITE);
-	vec2_set(maxv, -M_INFINITE, -M_INFINITE);
+	obs_scene_extent_init(minv, maxv);
 
 	obs_sceneitem_t *item = scene->first_item;
 	if (!item) {
@@ -3246,27 +3249,7 @@ static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2
 	}
 
 	while (item) {
-#define get_min_max(x_val, y_val)                             \
-	do {                                                  \
-		struct vec3 v;                                \
-		vec3_set(&v, x_val, y_val, 0.0f);             \
-		vec3_transform(&v, &v, &item->box_transform); \
-		if (v.x < minv->x)                            \
-			minv->x = v.x;                        \
-		if (v.y < minv->y)                            \
-			minv->y = v.y;                        \
-		if (v.x > maxv->x)                            \
-			maxv->x = v.x;                        \
-		if (v.y > maxv->y)                            \
-			maxv->y = v.y;                        \
-	} while (false)
-
-		get_min_max(0.0f, 0.0f);
-		get_min_max(1.0f, 0.0f);
-		get_min_max(0.0f, 1.0f);
-		get_min_max(1.0f, 1.0f);
-#undef get_min_max
-
+		obs_scene_extent_add(minv, maxv, &item->box_transform);
 		item = item->next;
 	}
 
@@ -3285,9 +3268,7 @@ static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2
 		}
 	}
 
-	vec2_sub(scale, maxv, minv);
-	scene->cx = obs_scene_size_from_extent(scale->x);
-	scene->cy = obs_scene_size_from_extent(scale->y);
+	obs_scene_extent_size(scale, &scene->cx, &scene->cy, minv, maxv);
 	return true;
 }
 

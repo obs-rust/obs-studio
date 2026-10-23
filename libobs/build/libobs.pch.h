@@ -87,6 +87,10 @@
 
 #include "obs-scene-group-transform.h"
 
+/* obs-scene-extent.c */
+
+#include "obs-scene-extent.h"
+
 /* obs-scene.c */
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"

@@ -20,6 +20,7 @@
 #include "obs.h"
 #include "graphics/matrix4.h"
 #include "obs-scene-audio-actions.h"
+#include "obs-scene-extent.h"
 
 #include <limits.h>
 #include <math.h>
@@ -157,16 +158,4 @@ static inline int obs_scene_scale_crop(int crop, float factor)
 static inline float obs_scene_crop_offset(int crop, int bounds_crop)
 {
 	return (float)((int64_t)crop + bounds_crop);
-}
-
-/* A group's size from the extent of its content, rounded up: UINT32_MAX
- * when it is past the range, 0 for none, a negative one or NaN. */
-static inline uint32_t obs_scene_size_from_extent(float extent)
-{
-	float size = ceilf(extent);
-	if (!(size > 0.0f))
-		return 0;
-	if (size >= 4294967296.0f)
-		return UINT32_MAX;
-	return (uint32_t)size;
 }
