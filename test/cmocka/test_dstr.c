@@ -2,6 +2,9 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <string.h>
+#include <locale.h>
+#include <wchar.h>
+#include <wctype.h>
 #include <cmocka.h>
 
 #include <util/bmem.h>
@@ -829,6 +832,658 @@ static void test_dstr_inline_helpers(void **state)
 	dstr_free(&d);
 }
 
+/* ------------------------------------------------------------------------
+ * util/dstr-libc.c: the wide-character helpers, the printf family and the
+ * multibyte and wide conversions. They call the C library (towupper,
+ * towlower, vsnprintf, mbstowcs), so some results depend on the libc and the
+ * current locale. Those cases say which, and are skipped where the locale is
+ * missing. */
+
+static void test_wstrcmpi(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_int_equal(wstrcmpi(L"abc", L"abc"), 0);
+	assert_int_equal(wstrcmpi(L"abc", L"ABC"), 0);
+	assert_int_equal(wstrcmpi(L"aBc", L"AbC"), 0);
+	assert_int_equal(wstrcmpi(L"a", L"b"), -1);
+	assert_int_equal(wstrcmpi(L"B", L"a"), 1);
+	assert_int_equal(wstrcmpi(L"ab", L"abc"), -1);
+	assert_int_equal(wstrcmpi(L"abc", L"ab"), 1);
+	assert_int_equal(wstrcmpi(L"", L""), 0);
+
+	/* both sides are compared upper-cased: '[' (0x5b) sorts after 'A' */
+	assert_int_equal(wstrcmpi(L"[", L"a"), 1);
+	assert_int_equal(wstrcmpi(L"a", L"["), -1);
+
+	/* NULL is treated as the empty string */
+	assert_int_equal(wstrcmpi(NULL, NULL), 0);
+	assert_int_equal(wstrcmpi(NULL, L""), 0);
+	assert_int_equal(wstrcmpi(L"", NULL), 0);
+	assert_int_equal(wstrcmpi(NULL, L"a"), -1);
+	assert_int_equal(wstrcmpi(L"a", NULL), 1);
+}
+
+static void test_wstrcmp_n(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_int_equal(wstrcmp_n(L"abc", L"abd", 2), 0);
+	assert_int_equal(wstrcmp_n(L"abc", L"abd", 3), -1);
+	assert_int_equal(wstrcmp_n(L"abd", L"abc", 3), 1);
+	assert_int_equal(wstrcmp_n(L"abc", L"abc", 10), 0);
+	assert_int_equal(wstrcmp_n(L"ab", L"abc", 5), -1);
+	assert_int_equal(wstrcmp_n(L"abc", L"ab", 5), 1);
+
+	/* case-sensitive: 'a' (0x61) > 'A' (0x41) */
+	assert_int_equal(wstrcmp_n(L"a", L"A", 1), 1);
+	assert_int_equal(wstrcmp_n(L"A", L"a", 1), -1);
+
+	/* n == 0 compares nothing, even NULL against a string */
+	assert_int_equal(wstrcmp_n(L"a", L"b", 0), 0);
+	assert_int_equal(wstrcmp_n(NULL, L"b", 0), 0);
+
+	/* NULL is treated as the empty string */
+	assert_int_equal(wstrcmp_n(NULL, NULL, 4), 0);
+	assert_int_equal(wstrcmp_n(NULL, L"", 4), 0);
+	assert_int_equal(wstrcmp_n(NULL, L"x", 1), -1);
+	assert_int_equal(wstrcmp_n(L"x", NULL, 1), 1);
+}
+
+static void test_wstrcmpi_n(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	assert_int_equal(wstrcmpi_n(L"abc", L"ABD", 2), 0);
+	assert_int_equal(wstrcmpi_n(L"abc", L"ABD", 3), -1);
+	assert_int_equal(wstrcmpi_n(L"ABD", L"abc", 3), 1);
+	assert_int_equal(wstrcmpi_n(L"Hello", L"hELLO", 100), 0);
+	assert_int_equal(wstrcmpi_n(L"ab", L"ABC", 5), -1);
+	assert_int_equal(wstrcmpi_n(L"[", L"a", 1), 1);
+
+	assert_int_equal(wstrcmpi_n(L"a", L"b", 0), 0);
+	assert_int_equal(wstrcmpi_n(NULL, NULL, 3), 0);
+	assert_int_equal(wstrcmpi_n(NULL, L"a", 1), -1);
+	assert_int_equal(wstrcmpi_n(L"a", NULL, 1), 1);
+}
+
+static void test_wstrstri(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	const wchar_t *s = L"Hello World";
+
+	assert_ptr_equal(wstrstri(s, L"world"), s + 6);
+	assert_ptr_equal(wstrstri(s, L"HELLO"), s);
+	assert_ptr_equal(wstrstri(s, L"d"), s + 10);
+	assert_ptr_equal(wstrstri(s, L"lo w"), s + 3);
+	assert_null(wstrstri(s, L"xyz"));
+	assert_null(wstrstri(s, L"Hello World!"));
+
+	/* the first match wins */
+	const wchar_t *rep = L"xABab";
+	assert_ptr_equal(wstrstri(rep, L"ab"), rep + 1);
+
+	/* an empty find matches at the start, also of an empty string */
+	assert_ptr_equal(wstrstri(s, L""), s);
+	const wchar_t *empty = L"";
+	assert_ptr_equal(wstrstri(empty, L""), empty);
+	assert_null(wstrstri(empty, L"a"));
+
+	/* NULL on either side returns NULL */
+	assert_null(wstrstri(NULL, L"a"));
+	assert_null(wstrstri(s, NULL));
+	assert_null(wstrstri(NULL, NULL));
+}
+
+static void test_wcsdepad(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	wchar_t buf[64];
+
+	wcscpy(buf, L"  \t hi there \r\n");
+	assert_ptr_equal(wcsdepad(buf), buf);
+	assert_true(wcscmp(buf, L"hi there") == 0);
+
+	wcscpy(buf, L"nopad");
+	assert_ptr_equal(wcsdepad(buf), buf);
+	assert_true(wcscmp(buf, L"nopad") == 0);
+
+	wcscpy(buf, L"   lead");
+	wcsdepad(buf);
+	assert_true(wcscmp(buf, L"lead") == 0);
+
+	wcscpy(buf, L"trail \t\n");
+	wcsdepad(buf);
+	assert_true(wcscmp(buf, L"trail") == 0);
+
+	/* only ' ', '\t', '\n' and '\r' are padding; '\v' and '\f' stay */
+	wcscpy(buf, L"\v x \f");
+	wcsdepad(buf);
+	assert_true(wcscmp(buf, L"\v x \f") == 0);
+
+	/* all padding leaves an empty string */
+	wcscpy(buf, L" \t\r\n ");
+	assert_ptr_equal(wcsdepad(buf), buf);
+	assert_true(wcscmp(buf, L"") == 0);
+
+	wcscpy(buf, L"");
+	assert_ptr_equal(wcsdepad(buf), buf);
+	assert_true(wcscmp(buf, L"") == 0);
+
+	/* the leading padding is moved out with memmove (string and NUL); the
+	 * trailing padding is overwritten with NULs one by one, so the old tail
+	 * past them is left as it was. Characterized, not endorsed. */
+	wmemset(buf, L'#', 8);
+	wcscpy(buf, L"  ab  ");
+	wcsdepad(buf);
+	assert_true(wcscmp(buf, L"ab") == 0);
+	assert_int_equal(buf[2], 0);
+	assert_int_equal(buf[3], 0);
+	assert_int_equal(buf[4], 0);
+	assert_int_equal(buf[5], L' ');
+	assert_int_equal(buf[6], 0);
+	assert_int_equal(buf[7], L'#');
+
+	assert_null(wcsdepad(NULL));
+}
+
+/* printf attribute for the va_list wrappers below; dstr.h #undefs its own. */
+#ifndef _MSC_VER
+#define TEST_PRINTFATTR(f, a) __attribute__((__format__(__printf__, f, a)))
+#else
+#define TEST_PRINTFATTR(f, a)
+#endif
+
+TEST_PRINTFATTR(2, 3)
+static void call_vprintf(struct dstr *d, const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	dstr_vprintf(d, format, args);
+	va_end(args);
+}
+
+TEST_PRINTFATTR(2, 3)
+static void call_vcatf(struct dstr *d, const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	dstr_vcatf(d, format, args);
+	va_end(args);
+}
+
+static void test_dstr_printf_formats(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* the buffer is sized exactly: capacity = len + 1 on a fresh dstr */
+	dstr_printf(&d, "%s|%d|%u|%zu|%x|%c|%%|%5.2f|%-4s|%.*s", "s", -3, 7u, (size_t)42, 255u, 'z', 1.5, "ab", 2,
+		    "xyz");
+	assert_string_equal(d.array, "s|-3|7|42|ff|z|%| 1.50|ab  |xy");
+	assert_int_equal(d.len, 30);
+	assert_int_equal(d.capacity, 31);
+
+	/* a shorter printf keeps the bigger buffer */
+	dstr_printf(&d, "%d", 5);
+	assert_string_equal(d.array, "5");
+	assert_int_equal(d.len, 1);
+	assert_int_equal(d.capacity, 31);
+
+	/* catf grows with dstr_ensure_capacity: double, or the size if larger */
+	dstr_printf(&d, "%s", "0123456789012345678901234567");
+	assert_int_equal(d.len, 28);
+	assert_int_equal(d.capacity, 31);
+	dstr_catf(&d, "%s", "abcd");
+	assert_string_equal(d.array, "0123456789012345678901234567abcd");
+	assert_int_equal(d.len, 32);
+	assert_int_equal(d.capacity, 62);
+
+	/* catf of an empty result onto a non-empty string keeps it */
+	dstr_catf(&d, "%s", "");
+	assert_int_equal(d.len, 32);
+	assert_int_equal(d.capacity, 62);
+	dstr_free(&d);
+
+	/* catf of an empty result onto an empty dstr allocates and then frees */
+	dstr_catf(&d, "%s", "");
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	/* a result whose first byte is NUL frees, even though vsnprintf
+	 * reported a length. Characterized, not endorsed. */
+	dstr_printf(&d, "%c", 0);
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	/* an embedded NUL later on is counted in len (vsnprintf's count) */
+	dstr_printf(&d, "a%cb", 0);
+	assert_int_equal(d.len, 3);
+	assert_int_equal(d.capacity, 4);
+	assert_int_equal(d.array[0], 'a');
+	assert_int_equal(d.array[1], 0);
+	assert_int_equal(d.array[2], 'b');
+	assert_int_equal(d.array[3], 0);
+
+	/* catf appends after len, past the embedded NUL */
+	dstr_catf(&d, "%s", "c");
+	assert_int_equal(d.len, 4);
+	assert_int_equal(d.array[3], 'c');
+
+	dstr_free(&d);
+}
+
+static void test_dstr_vprintf(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	call_vprintf(&d, "%s-%d", "va", 1);
+	assert_string_equal(d.array, "va-1");
+	assert_int_equal(d.len, 4);
+	assert_int_equal(d.capacity, 5);
+
+	call_vcatf(&d, "+%s", "list");
+	assert_string_equal(d.array, "va-1+list");
+	assert_int_equal(d.len, 9);
+	assert_int_equal(d.capacity, 10);
+
+	call_vprintf(&d, "%s", "");
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	call_vcatf(&d, "%d", 12);
+	assert_string_equal(d.array, "12");
+	assert_int_equal(d.len, 2);
+	assert_int_equal(d.capacity, 3);
+
+	dstr_free(&d);
+}
+
+static void test_dstr_printf_long(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	const size_t n = 100000;
+	char *big = bmalloc(n + 1);
+	memset(big, 'q', n);
+	big[n] = 0;
+
+	struct dstr d;
+	dstr_init(&d);
+
+	dstr_printf(&d, "%s", big);
+	assert_int_equal(d.len, n);
+	assert_int_equal(d.capacity, n + 1);
+	assert_int_equal(d.array[n - 1], 'q');
+	assert_int_equal(d.array[n], 0);
+
+	dstr_catf(&d, "%s!", big);
+	assert_int_equal(d.len, 2 * n + 1);
+	assert_int_equal(d.capacity, 2 * n + 2);
+	assert_int_equal(d.array[2 * n], '!');
+	assert_int_equal(d.array[2 * n + 1], 0);
+
+	/* 4095 and 4096 bytes, around the length the error path assumes */
+	memset(big, 'r', 4096);
+	big[4095] = 0;
+	dstr_free(&d);
+	dstr_printf(&d, "%s", big);
+	assert_int_equal(d.len, 4095);
+	assert_int_equal(d.capacity, 4096);
+	big[4095] = 'r';
+	big[4096] = 0;
+	dstr_printf(&d, "%s", big);
+	assert_int_equal(d.len, 4096);
+	assert_int_equal(d.capacity, 8192);
+
+	dstr_free(&d);
+	bfree(big);
+}
+
+#ifdef __GLIBC__
+/* glibc: in the "C" locale, %ls of a non-ASCII wide character fails
+ * (EILSEQ) and vsnprintf returns -1. The C then assumes 4095 bytes, sizes the
+ * buffer to 4096, and takes the length with strlen of what glibc wrote (the
+ * output up to the failing conversion). Characterized, not endorsed. */
+static void test_dstr_printf_error_path(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	char *saved = bstrdup(setlocale(LC_ALL, NULL));
+	setlocale(LC_ALL, "C");
+
+	struct dstr d;
+	dstr_init(&d);
+
+	dstr_printf(&d, "ab%lscd", L"é");
+	assert_string_equal(d.array, "ab");
+	assert_int_equal(d.len, 2);
+	assert_int_equal(d.capacity, 4096);
+
+	dstr_copy(&d, "x");
+	dstr_catf(&d, "ab%lscd", L"é");
+	assert_string_equal(d.array, "xab");
+	assert_int_equal(d.len, 3);
+	assert_int_equal(d.capacity, 8192);
+
+	/* a failure before any output leaves an empty string, which frees */
+	dstr_printf(&d, "%ls", L"é");
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	dstr_free(&d);
+	setlocale(LC_ALL, saved);
+	bfree(saved);
+}
+#endif
+
+static void test_dstr_mbs(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* from_mbs moves the converted buffer in: capacity stays 0.
+	 * Characterized, not endorsed. */
+	dstr_from_mbs(&d, "hello");
+	assert_string_equal(d.array, "hello");
+	assert_int_equal(d.len, 5);
+	assert_int_equal(d.capacity, 0);
+
+	/* an empty string gives an allocated "" */
+	dstr_from_mbs(&d, "");
+	assert_non_null(d.array);
+	assert_string_equal(d.array, "");
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	/* NULL frees */
+	dstr_from_mbs(&d, NULL);
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	/* to_mbs converts multibyte to UTF-8 (os_mbs_to_utf8_ptr), not the
+	 * other way round, and stops at the first NUL. */
+	char *m = dstr_to_mbs(&d);
+	assert_null(m);
+	dstr_copy(&d, "abc");
+	m = dstr_to_mbs(&d);
+	assert_string_equal(m, "abc");
+	bfree(m);
+	dstr_ncopy(&d, "a\0b", 3);
+	assert_int_equal(d.len, 3);
+	m = dstr_to_mbs(&d);
+	assert_string_equal(m, "a");
+	bfree(m);
+
+	dstr_free(&d);
+}
+
+static void test_dstr_wcs(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* to_wcs of an unallocated dstr is NULL */
+	assert_null(dstr_to_wcs(&d));
+
+	dstr_copy(&d, "Hello");
+	wchar_t *w = dstr_to_wcs(&d);
+	assert_true(wcscmp(w, L"Hello") == 0);
+	bfree(w);
+
+	/* an allocated "" gives an allocated L"" */
+	dstr_from_mbs(&d, "");
+	w = dstr_to_wcs(&d);
+	assert_non_null(w);
+	assert_int_equal(w[0], 0);
+	bfree(w);
+
+	/* from_wcs sizes the buffer to the UTF-8 length + 1 */
+	dstr_free(&d);
+	dstr_from_wcs(&d, L"wide");
+	assert_string_equal(d.array, "wide");
+	assert_int_equal(d.len, 4);
+	assert_int_equal(d.capacity, 5);
+
+	/* into a bigger buffer it keeps the capacity */
+	dstr_copy(&d, "0123456789");
+	dstr_from_wcs(&d, L"ab");
+	assert_string_equal(d.array, "ab");
+	assert_int_equal(d.len, 2);
+	assert_int_equal(d.capacity, 11);
+
+	/* L"" and NULL free */
+	dstr_from_wcs(&d, L"");
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+	dstr_copy(&d, "x");
+	dstr_from_wcs(&d, NULL);
+	assert_null(d.array);
+	assert_int_equal(d.capacity, 0);
+
+	dstr_free(&d);
+}
+
+#ifndef _WIN32
+static void test_dstr_wcs_utf8(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* 2-, 3- and 4-byte UTF-8 round trip through wchar_t */
+	const char *text = "h\xc3\xa9llo \xe2\x82\xac \xf0\x9f\x98\x80";
+	dstr_copy(&d, text);
+	wchar_t *w = dstr_to_wcs(&d);
+	assert_true(wcscmp(w, L"héllo € \U0001F600") == 0);
+	dstr_free(&d);
+	dstr_from_wcs(&d, w);
+	assert_string_equal(d.array, text);
+	assert_int_equal(d.len, strlen(text));
+	assert_int_equal(d.capacity, strlen(text) + 1);
+	bfree(w);
+
+	/* to_wcs converts len bytes, so an embedded NUL is converted too */
+	dstr_ncopy(&d, "a\0b", 3);
+	w = dstr_to_wcs(&d);
+	assert_int_equal(w[0], L'a');
+	assert_int_equal(w[1], 0);
+	assert_int_equal(w[2], L'b');
+	assert_int_equal(w[3], 0);
+	bfree(w);
+
+	/* invalid UTF-8 converts to L"" */
+	dstr_copy(&d, "ok\xff");
+	w = dstr_to_wcs(&d);
+	assert_non_null(w);
+	assert_int_equal(w[0], 0);
+	bfree(w);
+
+	/* a surrogate code point has no UTF-8 form: from_wcs frees */
+	wchar_t sur[] = {L'a', (wchar_t)0xd800, 0};
+	dstr_copy(&d, "x");
+	dstr_from_wcs(&d, sur);
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	dstr_free(&d);
+}
+
+static void test_dstr_case_edges(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* an allocated "" is empty: no-op */
+	dstr_from_mbs(&d, "");
+	char *before = d.array;
+	dstr_to_upper(&d);
+	assert_ptr_equal(d.array, before);
+	assert_int_equal(d.len, 0);
+
+	/* the case is mapped up to the first NUL; the string is rebuilt from
+	 * there, so an embedded NUL truncates it. Characterized, not endorsed. */
+	dstr_ncopy(&d, "a\0b", 3);
+	dstr_to_upper(&d);
+	assert_string_equal(d.array, "A");
+	assert_int_equal(d.len, 1);
+
+	/* invalid UTF-8 converts to L"", so the string is freed.
+	 * Characterized, not endorsed. */
+	dstr_copy(&d, "abc\xff");
+	dstr_to_lower(&d);
+	assert_null(d.array);
+	assert_int_equal(d.len, 0);
+	assert_int_equal(d.capacity, 0);
+
+	/* a long string; the capacity is the UTF-8 length + 1 or the old one */
+	const size_t n = 10000;
+	char *big = bmalloc(n + 1);
+	memset(big, 'm', n);
+	big[n] = 0;
+	dstr_copy(&d, big);
+	dstr_to_upper(&d);
+	assert_int_equal(d.len, n);
+	assert_int_equal(d.capacity, n + 1);
+	assert_int_equal(d.array[0], 'M');
+	assert_int_equal(d.array[n - 1], 'M');
+	dstr_to_lower(&d);
+	assert_int_equal(d.array[n - 1], 'm');
+	bfree(big);
+
+	dstr_free(&d);
+}
+
+/* Switches LC_CTYPE (and with it towupper, towlower and mbstowcs) to a
+ * UTF-8 locale. Returns the old one (bfree it), or NULL if none exists. */
+static char *use_utf8_ctype(void)
+{
+	static const char *const names[] = {"C.UTF-8", "C.utf8", "en_US.UTF-8", "en_US.utf8"};
+	char *saved = bstrdup(setlocale(LC_CTYPE, NULL));
+
+	for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+		if (setlocale(LC_CTYPE, names[i]))
+			return saved;
+	}
+	bfree(saved);
+	return NULL;
+}
+
+static void test_dstr_locale(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	char *saved = use_utf8_ctype();
+	if (!saved) {
+		skip();
+		return;
+	}
+
+	struct dstr d;
+	dstr_init(&d);
+
+	/* the case comes from towupper / towlower of the current locale, one
+	 * code point at a time */
+	if (towupper(0xe9) == 0xc9 && towlower(0xc0) == 0xe0) {
+		dstr_copy(&d, "h\xc3\xa9llo");
+		dstr_to_upper(&d);
+		assert_string_equal(d.array, "H\xc3\x89LLO");
+		assert_int_equal(d.len, 6);
+		dstr_copy(&d, "\xc3\x80\xc3\x89");
+		dstr_to_lower(&d);
+		assert_string_equal(d.array, "\xc3\xa0\xc3\xa9");
+		assert_int_equal(d.len, 4);
+	}
+
+	/* one-to-one mapping: U+00DF has no single upper case, so it stays
+	 * (no "SS") */
+	if (towupper(0xdf) == 0xdf) {
+		dstr_copy(&d, "stra\303\237e");
+		dstr_to_upper(&d);
+		assert_string_equal(d.array, "STRA\303\237E");
+		assert_int_equal(d.len, 7);
+	}
+
+	/* the wide compares use towupper too */
+	if (towupper(0xe9) == 0xc9) {
+		assert_int_equal(wstrcmpi(L"été", L"ÉTÉ"), 0);
+		assert_int_equal(wstrcmpi_n(L"éx", L"Éy", 1), 0);
+		const wchar_t *s = L"café";
+		assert_ptr_equal(wstrstri(s, L"É"), s + 3);
+	}
+
+	/* multibyte input in a UTF-8 locale is UTF-8 */
+	dstr_from_mbs(&d, "h\xc3\xa9");
+	assert_string_equal(d.array, "h\xc3\xa9");
+	assert_int_equal(d.len, 3);
+	assert_int_equal(d.capacity, 0);
+	char *m = dstr_to_mbs(&d);
+	assert_string_equal(m, "h\xc3\xa9");
+	bfree(m);
+
+	/* text the locale cannot convert gives an allocated "" */
+	dstr_from_mbs(&d, "a\xff");
+	assert_non_null(d.array);
+	assert_string_equal(d.array, "");
+	assert_int_equal(d.len, 0);
+
+	dstr_free(&d);
+	setlocale(LC_CTYPE, saved);
+	bfree(saved);
+}
+#endif
+
+#ifdef __GLIBC__
+/* glibc's "C" locale is ASCII: towupper leaves U+00E9 alone, and mbstowcs
+ * fails on a byte >= 0x80, which gives an allocated "". */
+static void test_dstr_c_locale(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	char *saved = bstrdup(setlocale(LC_CTYPE, NULL));
+	setlocale(LC_CTYPE, "C");
+
+	struct dstr d;
+	dstr_init(&d);
+
+	dstr_copy(&d, "h\xc3\xa9llo");
+	dstr_to_upper(&d);
+	assert_string_equal(d.array, "H\xc3\xa9LLO");
+
+	assert_int_equal(wstrcmpi(L"é", L"É"), 1);
+
+	dstr_from_mbs(&d, "h\xc3\xa9");
+	assert_non_null(d.array);
+	assert_string_equal(d.array, "");
+	assert_int_equal(d.len, 0);
+
+	dstr_free(&d);
+	setlocale(LC_CTYPE, saved);
+	bfree(saved);
+}
+#endif
+
 int main()
 {
 	const struct CMUnitTest tests[] = {
@@ -854,6 +1509,27 @@ int main()
 		cmocka_unit_test_setup_teardown(test_dstr_safe_printf, leak_setup, leak_teardown),
 		cmocka_unit_test_setup_teardown(test_dstr_strref, leak_setup, leak_teardown),
 		cmocka_unit_test_setup_teardown(test_dstr_inline_helpers, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_wstrcmpi, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_wstrcmp_n, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_wstrcmpi_n, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_wstrstri, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_wcsdepad, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_printf_formats, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_vprintf, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_printf_long, leak_setup, leak_teardown),
+#ifdef __GLIBC__
+		cmocka_unit_test_setup_teardown(test_dstr_printf_error_path, leak_setup, leak_teardown),
+#endif
+		cmocka_unit_test_setup_teardown(test_dstr_mbs, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_wcs, leak_setup, leak_teardown),
+#ifndef _WIN32
+		cmocka_unit_test_setup_teardown(test_dstr_wcs_utf8, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_case_edges, leak_setup, leak_teardown),
+		cmocka_unit_test_setup_teardown(test_dstr_locale, leak_setup, leak_teardown),
+#endif
+#ifdef __GLIBC__
+		cmocka_unit_test_setup_teardown(test_dstr_c_locale, leak_setup, leak_teardown),
+#endif
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
