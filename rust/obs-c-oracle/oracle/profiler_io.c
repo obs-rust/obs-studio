@@ -22,13 +22,15 @@
 
 /* libobs builds this file without the oracle's strict warnings: the C
  * passes struct pointers to %p, sign-extends an int mask into active, and
- * declares profile_print_func in no header. That is the C file, left as
+ * declares profile_print_func in no header (and the capture helper below
+ * formats a caller's format string). That is the C file, left as
  * written. Clang reports the %p calls as -Wformat-pedantic, which GCC does
  * not accept as a pragma. */
 #if defined(__clang__) || defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wformat"
 #pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #if defined(__clang__)
 #pragma GCC diagnostic ignored "-Wformat-pedantic"
 #endif
