@@ -52,7 +52,7 @@ pub type obs_find_module_callback2_t =
 pub type obs_module_add_extension_t = Option<unsafe extern "C" fn(bin_path: *mut dstr)>;
 
 /// A NUL-terminated copy, for a C call.
-fn c_path(path: &[u8]) -> Option<Vec<u8>> {
+pub(crate) fn c_path(path: &[u8]) -> Option<Vec<u8>> {
     if path.contains(&0) {
         return None;
     }
@@ -63,7 +63,7 @@ fn c_path(path: &[u8]) -> Option<Vec<u8>> {
 }
 
 /// A `bmalloc`'d, NUL-terminated copy of bytes that have no NUL.
-fn bstrdup(bytes: &[u8]) -> *mut c_char {
+pub(crate) fn bstrdup(bytes: &[u8]) -> *mut c_char {
     let Some(size) = bytes.len().checked_add(1) else {
         return ptr::null_mut();
     };
@@ -82,13 +82,13 @@ fn bstrdup(bytes: &[u8]) -> *mut c_char {
 /// # Safety
 ///
 /// `s` is null or NUL-terminated, and outlives `'a`.
-unsafe fn bytes<'a>(s: *const c_char) -> Option<&'a [u8]> {
+pub(crate) unsafe fn bytes<'a>(s: *const c_char) -> Option<&'a [u8]> {
     // SAFETY: the caller guarantees a NUL-terminated string.
     (!s.is_null()).then(|| unsafe { CStr::from_ptr(s) }.to_bytes())
 }
 
 /// libobs's file system: `os_file_exists()` and `os_glob()`.
-struct LibobsFs;
+pub(crate) struct LibobsFs;
 
 impl ModuleFs for LibobsFs {
     fn file_exists(&self, path: &[u8]) -> bool {

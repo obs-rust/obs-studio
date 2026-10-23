@@ -81,25 +81,25 @@ pub struct ModuleInfo<'a> {
 }
 
 /// A `struct dstr` being built: `None` is its NULL array.
-type Dstr = Option<Vec<u8>>;
+pub(crate) type Dstr = Option<Vec<u8>>;
 
 /// `dstr_copy`: NULL for a NULL or empty string.
-fn copy(s: Option<&[u8]>) -> Dstr {
+pub(crate) fn copy(s: Option<&[u8]>) -> Dstr {
     s.filter(|s| !s.is_empty()).map(<[u8]>::to_vec)
 }
 
 /// `dstr_end`: the last byte, 0 for an empty or NULL string.
-fn end(s: &Dstr) -> u8 {
+pub(crate) fn end(s: &Dstr) -> u8 {
     s.as_deref().and_then(<[u8]>::last).copied().unwrap_or(0)
 }
 
 /// `dstr_is_empty`.
-fn is_empty(s: &Dstr) -> bool {
+pub(crate) fn is_empty(s: &Dstr) -> bool {
     s.as_deref().is_none_or(<[u8]>::is_empty)
 }
 
 /// `dstr_resize(s, len)`: NULL for 0.
-fn resize(s: &mut Dstr, len: usize) {
+pub(crate) fn resize(s: &mut Dstr, len: usize) {
     if len == 0 {
         *s = None;
     } else if let Some(v) = s {
@@ -115,14 +115,14 @@ fn drop_last(s: &mut Dstr) {
 }
 
 /// `dstr_cat`: nothing for an empty string, NULL included.
-fn cat(s: &mut Dstr, tail: &[u8]) {
+pub(crate) fn cat(s: &mut Dstr, tail: &[u8]) {
     if !tail.is_empty() {
         s.get_or_insert_with(Vec::new).extend_from_slice(tail);
     }
 }
 
 /// `dstr_cat_ch`.
-fn cat_ch(s: &mut Dstr, ch: u8) {
+pub(crate) fn cat_ch(s: &mut Dstr, ch: u8) {
     s.get_or_insert_with(Vec::new).push(ch);
 }
 
@@ -158,7 +158,7 @@ fn has_lib_prefix(name: &[u8]) -> bool {
         .is_some_and(|start| start.eq_ignore_ascii_case(LIB_PREFIX))
 }
 
-fn exists(fs: &impl ModuleFs, path: &Dstr) -> bool {
+pub(crate) fn exists(fs: &impl ModuleFs, path: &Dstr) -> bool {
     // os_file_exists(NULL) is false.
     path.as_deref().is_some_and(|p| fs.file_exists(p))
 }

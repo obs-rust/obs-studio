@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-names.pch.h"
 
 /* Module names and files, moved from obs-module.c: how a module is named
  * from its binary, where its config file and its manifest are, whether a
@@ -24,7 +24,8 @@
  * obs->disabled_modules, the module list), struct obs_module, the config
  * path (obs->module_config_path) and the loading, and passes in what these
  * need: the paths, the names, the list and the module file extension
- * (get_module_extension()). Declared in obs-internal.h. */
+ * (get_module_extension()). Declared in obs-internal.h. Ported to
+ * rust/obs-core (module_names): the hybrid libobs drops this file. */
 
 const char *obs_module_names_file_name(const char *path)
 {

@@ -147,6 +147,14 @@ obs_nix_portal_sets_partition
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_context_name_dup
 obs_context_name_deduplicate
+# obs-module-names.c: obs-module.c calls them inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shims stay hidden the same way.
+obs_module_names_file_name
+obs_module_names_module_name
+obs_module_names_config_path
+obs_module_names_manifest_path
+obs_module_names_listed
+obs_module_names_find_core
 # obs-module-paths.c: obs-module.c calls them inside libobs. Declared in
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_module_paths_data_dir

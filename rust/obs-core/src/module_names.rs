@@ -36,9 +36,7 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(clippy::todo)]
-
-use crate::module_paths::ModuleFs;
+use crate::module_paths::{self, Dstr, ModuleFs, cat, cat_ch, copy, end, exists, is_empty, resize};
 
 /// The manifest file in a module's data path.
 pub const MANIFEST_FILE: &[u8] = b"manifest.json";
@@ -58,8 +56,10 @@ pub struct CoreModule<'a> {
 /// binary path, the bytes after its last '/', or the whole path without
 /// one.
 pub fn file_name(path: &[u8]) -> &[u8] {
-    let _ = path;
-    todo!()
+    path.iter()
+        .rposition(|&b| b == b'/')
+        .and_then(|at| path.get(at.saturating_add(1)..))
+        .unwrap_or(path)
 }
 
 /// Same contract as C `obs_module_names_module_name`: the file name
@@ -67,8 +67,12 @@ pub fn file_name(path: &[u8]) -> &[u8] {
 /// nothing, or when the file name is shorter than `ext` (intentional
 /// difference: the C underflows).
 pub fn module_name(file: Option<&[u8]>, ext: &[u8]) -> Option<Vec<u8>> {
-    let _ = (file, ext);
-    todo!()
+    let mut name = copy(file);
+    let len = name.as_ref().map_or(0, Vec::len);
+    // The C's `name.len - ext_len` underflows when the name is shorter:
+    // cut to nothing instead.
+    resize(&mut name, len.saturating_sub(ext.len()));
+    name
 }
 
 /// Same contract as C `obs_module_names_config_path`: `config_path`, one
@@ -79,22 +83,31 @@ pub fn config_path(
     module_name: Option<&[u8]>,
     file: Option<&[u8]>,
 ) -> Vec<u8> {
-    let _ = (config_path, module_name, file);
-    todo!()
+    let mut output = copy(config_path);
+    if !is_empty(&output) && end(&output) != b'/' {
+        cat_ch(&mut output, b'/');
+    }
+    cat(&mut output, module_name.unwrap_or_default());
+    cat_ch(&mut output, b'/');
+    cat(&mut output, file.unwrap_or_default());
+    output.unwrap_or_default()
 }
 
 /// Same contract as C `obs_module_names_manifest_path`: `data_path`, one
 /// '/' when it is not empty and has none at the end, `manifest.json`.
 pub fn manifest_path(data_path: Option<&[u8]>) -> Vec<u8> {
-    let _ = data_path;
-    todo!()
+    let mut path = copy(data_path);
+    if !is_empty(&path) && end(&path) != b'/' {
+        cat_ch(&mut path, b'/');
+    }
+    cat(&mut path, MANIFEST_FILE);
+    path.unwrap_or_default()
 }
 
 /// Same contract as C `obs_module_names_listed`: `name` is one of `names`,
 /// byte for byte.
 pub fn listed<'a>(names: impl IntoIterator<Item = &'a [u8]>, name: &[u8]) -> bool {
-    let _ = (names.into_iter(), name);
-    todo!()
+    names.into_iter().any(|n| n == name)
 }
 
 /// Same contract as C `obs_module_names_find_core`: when `binary` plus
@@ -110,6 +123,20 @@ pub fn find_core(
     ext: &[u8],
     callback: &mut dyn FnMut(&CoreModule<'_>),
 ) -> bool {
-    let _ = (fs, binary, name, data, ext, callback);
-    todo!()
+    let mut module_path: Dstr = copy(binary);
+    cat(&mut module_path, ext);
+
+    let data_path = module_paths::data_dir(fs, name, data);
+
+    match module_path.as_deref() {
+        Some(bin_path) if exists(fs, &module_path) => {
+            callback(&CoreModule {
+                bin_path,
+                data_path: data_path.as_deref(),
+                name,
+            });
+            true
+        }
+        _ => false,
+    }
 }

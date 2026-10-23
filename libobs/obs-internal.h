@@ -838,7 +838,8 @@ char *obs_module_paths_find_file(const char *data_path, const char *file);
  * binary plus ext exists, with the data path of obs_module_paths_data_dir();
  * the info is valid for the call. obs-module.c keeps the module lists, the
  * config path, struct obs_module and the loading, and passes
- * get_module_extension(). Not exported. */
+ * get_module_extension(). Ported to rust/obs-core (module_names). Not
+ * exported. */
 const char *obs_module_names_file_name(const char *path);
 char *obs_module_names_module_name(const char *file, const char *ext);
 char *obs_module_names_config_path(const char *config_path, const char *module_name, const char *file);
