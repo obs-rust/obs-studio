@@ -11,7 +11,7 @@
 
 use core::ffi::{CStr, c_int};
 
-use crate::platform;
+use crate::{platform, platform_conversions};
 
 pub use crate::platform::{CFile, SEEK_CUR, SEEK_END, SEEK_SET, WChar};
 
@@ -63,7 +63,7 @@ pub fn fread_mbs(file: &mut CFile) -> Option<Vec<u8>> {
     let mut text = mbs[..end].to_vec();
     text.push(0);
     let text = CStr::from_bytes_with_nul(&text).unwrap_or_default();
-    Some(platform::mbs_to_utf8(text))
+    Some(platform_conversions::mbs_to_utf8(text))
 }
 
 /// `os_fread_utf8(file, &str)`: the whole file without a leading UTF-8 BOM.
@@ -102,7 +102,9 @@ pub fn quick_write_mbs_file(path: &CStr, text: Option<&[u8]>) -> bool {
     let Some(mut file) = fopen(path, c"wb") else {
         return false;
     };
-    let mbs = text.map(platform::utf8_to_mbs).unwrap_or_default();
+    let mbs = text
+        .map(platform_conversions::utf8_to_mbs)
+        .unwrap_or_default();
     let success = mbs.is_empty() || file.write(&mbs, 1, mbs.len()) == mbs.len();
     file.close() && success
 }

@@ -6,7 +6,8 @@
 //! is the empty string, as in C) and run the safe core in
 //! [`crate::dstr_libc`]. The conversions call the same functions the C
 //! does, in the same order: `os_mbs_to_utf8_ptr` and `os_utf8_to_wcs_ptr`
-//! (still C, `util/platform-conversions.c`), the ported `wchar_to_utf8`,
+//! (the obs-util port in [`super::platform_conversions`]), the ported
+//! `wchar_to_utf8`,
 //! and the `dstr.h` inlines `dstr_free`, `dstr_resize` and
 //! `dstr_is_empty`, so `array`, `len` and `capacity` match C.
 
@@ -19,7 +20,8 @@ use super::utf8::wchar_to_utf8;
 use crate::dstr_libc::{self as core_libc, WChar};
 
 unsafe extern "C" {
-    // util/platform-conversions.c (C in libobs; the oracle's in tests).
+    // util/platform-conversions.c: the obs-util shims in
+    // super::platform_conversions, in libobs and in tests alike.
     fn os_mbs_to_utf8_ptr(str: *const c_char, len: usize, pstr: *mut *mut c_char) -> usize;
     fn os_utf8_to_wcs_ptr(str: *const c_char, len: usize, pstr: *mut *mut WChar) -> usize;
 }
