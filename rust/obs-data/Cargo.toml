@@ -24,6 +24,7 @@ obs-hotkey = { path = "../obs-hotkey" }
 obs-missing-files = { path = "../obs-missing-files" }
 obs-output = { path = "../obs-output" }
 obs-scene = { path = "../obs-scene" }
+obs-source = { path = "../obs-source" }
 obs-audio-controls = { path = "../obs-audio-controls" }
 obs-graphics = { path = "../obs-graphics" }
 obs-media-io = { path = "../obs-media-io" }

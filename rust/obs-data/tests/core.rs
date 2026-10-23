@@ -20,3 +20,5 @@ mod output;
 mod properties;
 #[path = "../../obs-scene/tests/scene/main.rs"]
 mod scene;
+#[path = "../../obs-source/tests/source/main.rs"]
+mod source;
