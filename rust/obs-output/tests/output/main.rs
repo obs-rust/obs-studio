@@ -6,6 +6,7 @@ mod caption_text_parity;
 mod delay;
 mod delay_parity;
 mod encoder_roi;
+mod encoder_roi_parity;
 mod interleave;
 mod interleave_parity;
 mod protocols;

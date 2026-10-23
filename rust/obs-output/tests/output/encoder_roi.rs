@@ -449,3 +449,14 @@ fn edge_roi_layout() {
         [0, 4, 8, 12, 16]
     );
 }
+
+/// The edge is rounded to a float before the multiply, not with it:
+/// 2^24 + 1 is 2^24 as a float, so x 0.75 is 12582912, where the exact
+/// product 12582912.75 would round to 12582913 (added for the mutation
+/// check: keeping the edge exact passed the cases above).
+#[test]
+fn edge_scale_edge_rounds_the_edge_first() {
+    assert_eq!(scale_edge(16_777_217, 0.75), 12_582_912);
+    assert_eq!(scale_edge(16_777_219, 0.75), 12_582_915);
+    assert_eq!(scale_edge(2_147_483_647, 0.75), 1_610_612_736);
+}

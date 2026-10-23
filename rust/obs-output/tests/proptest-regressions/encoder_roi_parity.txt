@@ -1,0 +1,25 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 31cafb04ed2f09755a768c378183ff66cd608904210701c5d2438cdff53f2a68 # shrinks to edge = 10584939, target = 4014943.0, d = 6, negative = false
+cc 3f19d16a85d8c68107efa45725e26053bde2bdcb94e00bbe11d312d355fd215f # shrinks to top = 0, bottom = 237503992, left = 0, right = 0, priority = 0.0, x = 0.0, y = 0.018217865
+cc 8364cdebb33e86d7b3aa5a679879fb09476d40ef55aa8f9b9faee3d03a79b12b # shrinks to roi = Roi { top: 0, bottom: 57061270, left: 0, right: 0, priority: 0.0 }, sw = 0, sh = 9619052, w = 1, h = 2147483648
+cc 39036961138b367fb575fd66268168b02804396ddf1109fc49a47cbafba17794 # shrinks to caps = 1799132448, roi = Roi { top: 0, bottom: 16, left: 0, right: 4294967295, priority: 0.0 }
+cc 247300d9fbfbfdd9f280ec7193445be432a4394f9be59c81011f897596e4da0b # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 11, right: 10, priority: 0.0 }
+cc bf8f0cb31f5546d0dc7402c092e22074217af1db40a1f4b6e6f8a1532dd1b149 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 4294967280, right: 0, priority: 0.0 }
+cc 1fd33b2a37a69c99a36cf27286df96518d2ff39cc0726bd55158e6b9980ffb79 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 16, priority: NaN }
+cc bb7677a43c64cbf087eed241e946b775db9f260a0b2b9255b44e88b912733d13 # shrinks to caps = 0, top = 0, bottom = 16, left = 0, right = 16, priority = NaN
+cc 53ca90c7ad3a01d8516c3149c6ae0f2d1e0135592a7031180c32d3d69ef603f6 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 15, left: 0, right: 15, priority: 0.0 }
+cc 5b568f9f9998cb6fe104c0fc8e47c39a728b893b30bed22503ec5bae95c3d1f1 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 16, priority: 0.0 }
+cc 51dae7e821cf82b25917f8da8ec57c489621dfcca92d6d782976cf295e95565d # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 1, priority: 1.0 }
+cc 58ea29a35dc0119c5bf5204899971b62eae4ff9e2572e28a680526ca8c564aa6 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 16, priority: 1.0 }
+cc c41a07379e6156851bde1e3f608547f20f5b91208f4edc1ef2dbf1bc3743d07c # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 16, priority: 1.0000001 }
+cc 112e8d243022d883ec1e7ca26c8a3a9f454c6373fc8242e4e3afa71c19984685 # shrinks to caps = 16, roi = Roi { top: 0, bottom: 16, left: 0, right: 16, priority: -1e-45 }
+cc 60b84743b167ddbf76b4558a1a60705e0997feb74085c166db5866820505a5ec # shrinks to sw = 0, sh = 0, w = 1, h = 0
+cc a16c2cb7f17e908ca6f54d10d67f136274081954e2599807b24f2972c8eda67f # shrinks to edge = 26012143, target = 4294967296.0, d = 0, negative = false
+cc 2689ac8b71b381ceed801b023ba311490d9ae3bf0d81924bd9f2e9dc0901b66a # shrinks to roi = Roi { top: 0, bottom: 4294967295, left: 0, right: 0, priority: 0.0 }, sw = 0, sh = 16777212, w = 1, h = 16777213
+cc f3e8cc0d16c5b349be052eadf942b7264eaf437fd8e698c3f0e8418cd16f42f7 # shrinks to edge = 1, target = 4294967296.0, d = 0, negative = false
+cc 6bf0e4bad0b4c2998a8a91ba866b01ffe41bf4ea8cf2a2024ccf2a3e114f4ba2 # shrinks to top = 0, bottom = 0, left = 0, right = 0, priority = NaN, x = 0.0, y = 0.0
