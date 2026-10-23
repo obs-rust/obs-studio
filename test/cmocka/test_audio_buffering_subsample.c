@@ -349,6 +349,121 @@ static void buffering_rounds_ticks_up(void **state)
 	}
 }
 
+/* The core in obs-audio-mix.c, on plain values: no source and no
+ * struct obs_core_audio. */
+
+static void core_mix_on_plain_buffers(void **state)
+{
+	(void)state;
+	struct audio_output_data mixes[MAX_AUDIO_MIXES];
+	float *buf[MAX_AUDIO_MIXES][MAX_AUDIO_CHANNELS];
+	struct ts_info ts = {start, start + audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES)};
+	mix_setup(mixes, &mix_source);
+	memcpy(buf, mix_source.audio_output_buf, sizeof(buf));
+
+	/* Frame 512's time maps to frame 511 at 48 kHz (both round down). */
+	obs_audio_mix_add(mixes, buf, start + audio_frames_to_ns(48000, 512), &ts, MIX_CHANNELS, 48000);
+	assert_mixed_from(frames_at(48000, audio_frames_to_ns(48000, 512)));
+	assert_int_equal(frames_at(48000, audio_frames_to_ns(48000, 512)), 511);
+
+	/* Outside the tick: nothing. */
+	mix_setup(mixes, &mix_source);
+	obs_audio_mix_add(mixes, buf, ts.end, &ts, MIX_CHANNELS, 48000);
+	assert_mixed_from(AUDIO_OUTPUT_FRAMES);
+	assert_int_equal(obs_audio_mix_time_to_frames(44100, audio_frames_to_ns(44100, 1)), 0);
+}
+
+struct core_buffering {
+	uint64_t buffered_ts;
+	struct deque buffered_timestamps;
+	uint64_t buffering_wait_ticks;
+	int total_buffering_ticks;
+	struct obs_audio_buffering fields;
+};
+
+static void core_buffering_init(struct core_buffering *b, int total, int max)
+{
+	memset(b, 0, sizeof(*b));
+	b->total_buffering_ticks = total;
+	b->fields.buffered_ts = &b->buffered_ts;
+	b->fields.buffered_timestamps = &b->buffered_timestamps;
+	b->fields.buffering_wait_ticks = &b->buffering_wait_ticks;
+	b->fields.total_buffering_ticks = &b->total_buffering_ticks;
+	b->fields.max_buffering_ticks = max;
+}
+
+static void core_buffering_steps(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	struct core_buffering b;
+	struct obs_audio_buffering_step step;
+	struct ts_info ts;
+
+	/* At the maximum: nothing, and added is false. */
+	core_buffering_init(&b, 45, 45);
+	ts = (struct ts_info){start, start + tick};
+	assert_true(obs_audio_buffering_maxed(&b.fields));
+	step = obs_audio_buffering_fixed(&b.fields, 48000, &ts);
+	assert_false(step.added);
+	step = obs_audio_buffering_add(&b.fields, 48000, &ts, start - tick);
+	assert_false(step.added);
+	assert_int_equal(ts.start, start);
+	assert_int_equal(b.buffered_timestamps.size, 0);
+
+	/* Fixed from 0: 45 ticks, 960 ms at 48 kHz. */
+	core_buffering_init(&b, 0, 45);
+	ts = (struct ts_info){start, start + tick};
+	step = obs_audio_buffering_fixed(&b.fields, 48000, &ts);
+	assert_true(step.added);
+	assert_false(step.max_reached);
+	assert_int_equal(step.ticks, 45);
+	assert_int_equal(step.ms, 960);
+	assert_int_equal(step.total_ms, 960);
+	assert_int_equal(b.total_buffering_ticks, 45);
+	assert_int_equal(b.buffering_wait_ticks, 45);
+	assert_int_equal(b.buffered_ts, start);
+	assert_int_equal(b.buffered_timestamps.size, 45 * sizeof(struct ts_info));
+	assert_int_equal(ts.start, start - audio_frames_to_ns(48000, 45 * AUDIO_OUTPUT_FRAMES));
+	deque_free(&b.buffered_timestamps);
+
+	/* 5 ticks late with room for 2: cut at the maximum. */
+	core_buffering_init(&b, 43, 45);
+	ts = (struct ts_info){start, start + tick};
+	step = obs_audio_buffering_add(&b.fields, 48000, &ts, start - 5 * tick);
+	assert_true(step.added);
+	assert_true(step.max_reached);
+	assert_int_equal(step.ticks, 2);
+	assert_int_equal(step.ms, 2 * 1024 * 1000 / 48000);
+	assert_int_equal(step.total_ms, 960);
+	assert_int_equal(b.buffering_wait_ticks, 2);
+	deque_free(&b.buffered_timestamps);
+
+	/* One sample late at 44.1 kHz: one tick, 23 ms. */
+	core_buffering_init(&b, 0, 45);
+	ts = (struct ts_info){start, start + audio_frames_to_ns(44100, AUDIO_OUTPUT_FRAMES)};
+	step = obs_audio_buffering_add(&b.fields, 44100, &ts, start - audio_frames_to_ns(44100, 1) - 1);
+	assert_true(step.added);
+	assert_false(step.max_reached);
+	assert_int_equal(step.ticks, 1);
+	assert_int_equal(step.ms, 1024 * 1000 / 44100);
+	assert_int_equal(step.total_ms, 1024 * 1000 / 44100);
+	deque_free(&b.buffered_timestamps);
+
+	/* Sub-sample late: added with 0 ticks and 0 ms, ts unchanged. */
+	core_buffering_init(&b, 0, 45);
+	ts = (struct ts_info){start, start + tick};
+	step = obs_audio_buffering_add(&b.fields, 48000, &ts, start - 1);
+	assert_true(step.added);
+	assert_int_equal(step.ticks, 0);
+	assert_int_equal(step.ms, 0);
+	assert_int_equal(step.total_ms, 0);
+	assert_int_equal(ts.start, start);
+	assert_int_equal(ts.end, start + tick);
+	assert_int_equal(b.buffered_ts, start);
+	assert_int_equal(b.buffered_timestamps.size, 0);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -368,6 +483,8 @@ int main(void)
 		cmocka_unit_test(fixed_buffering_at_max_changes_nothing),
 		cmocka_unit_test(buffering_stops_at_max),
 		cmocka_unit_test(buffering_rounds_ticks_up),
+		cmocka_unit_test(core_mix_on_plain_buffers),
+		cmocka_unit_test(core_buffering_steps),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
