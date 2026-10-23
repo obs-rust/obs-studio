@@ -1106,6 +1106,41 @@ bool MissingEncoderModuleLoaded(const char *name)
 /* VA-API and QSV register their encoders only when a device can encode
  * with them, and a build may leave obs-qsv11 out (the AppImage does):
  * obs-rust/obs-studio#1720. */
+/* Why obs-ffmpeg found no VA-API device, with the fix: the support rounds of
+ * obs-rust/obs-studio#1720, done by OBS (#1862). */
+ErrorDetails VaapiMissingDetails(const char *encoder)
+{
+	struct profile_vaapi_diagnosis d;
+	profile_vaapi_diagnose(&profile_vaapi_system_host, &d);
+
+	static const char *const causes[] = {"no render device", "NVIDIA GPU only", "no access to the render device",
+					     "no VA-API driver installed", "driver cannot encode this format"};
+	blog(LOG_WARNING, "VAAPI: encoder '%s' missing: %s (device '%s', vendor 0x%04x%s%s)", encoder, causes[d.cause],
+	     d.device, d.vendor, d.package ? ", package " : "", d.package ? d.package : "");
+
+	switch (d.cause) {
+	case PROFILE_VAAPI_NO_RENDER_NODE:
+		return ErrorDetails{"vaapi_no_device", QTStr("EncoderMissing.VAAPI.NoRenderNode")};
+	case PROFILE_VAAPI_NVIDIA:
+		return ErrorDetails{"vaapi_nvidia", QTStr("EncoderMissing.VAAPI.NVIDIA")};
+	case PROFILE_VAAPI_NO_ACCESS:
+		return ErrorDetails{"vaapi_no_access", QTStr("EncoderMissing.VAAPI.NoAccess").arg(d.device)};
+	case PROFILE_VAAPI_NO_DRIVER:
+		if (d.install_command) {
+			return ErrorDetails{"vaapi_no_driver",
+					    QTStr("EncoderMissing.VAAPI.NoDriver").arg(d.install_command)};
+		}
+		if (d.package) {
+			return ErrorDetails{"vaapi_no_driver",
+					    QTStr("EncoderMissing.VAAPI.NoDriverPackage").arg(d.package)};
+		}
+		break;
+	case PROFILE_VAAPI_NO_ENCODE:
+		break;
+	}
+	return ErrorDetails{"vaapi_not_supported", QTStr("EncoderMissing.VAAPI.NotSupported")};
+}
+
 CheckResult CheckHardwareEncoder(std::string_view encoder)
 {
 	const std::string id(encoder);
@@ -1113,9 +1148,12 @@ CheckResult CheckHardwareEncoder(std::string_view encoder)
 
 	switch (profile_missing_encoder_reason(id.c_str(), MissingEncoderModuleLoaded, &module)) {
 	case PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED:
+		if (std::string_view(module) == "obs-qsv11") {
+			return ErrorDetails{"plugin_not_loaded", QTStr("EncoderMissing.QSV.NotInBuild")};
+		}
 		return ErrorDetails{"plugin_not_loaded", QTStr("EncoderMissing.MissingModule").arg(module)};
 	case PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE:
-		return ErrorDetails{"vaapi_not_supported", QTStr("EncoderMissing.VAAPI.NotSupported")};
+		return VaapiMissingDetails(id.c_str());
 	case PROFILE_MISSING_ENCODER_NO_QSV_DEVICE:
 		return ErrorDetails{"qsv_no_device", QTStr("EncoderMissing.QSV.NoDevice")};
 	case PROFILE_MISSING_ENCODER_UNKNOWN:

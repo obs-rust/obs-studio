@@ -180,11 +180,16 @@ not get a line.
 
 - **Missing encoder reasons.** When a profile names a VA-API or Intel QSV
   encoder this OBS does not have, the Missing Encoders dialog says why
-  instead of "Unknown": the QSV module is not part of this build (the
-  AppImage), no Intel GPU can encode the format, or no VA-API driver on
-  the system can encode it, with a pointer to `vainfo`. *All*, pending
-  merge. Issue [#1720](https://github.com/obs-rust/obs-studio/issues/1720), PR
-  [#1841](https://github.com/obs-rust/obs-studio/pull/1841).
+  instead of "Unknown", and how to fix it. For VA-API it names the cause:
+  no GPU render device, an NVIDIA GPU (use NVENC), no access to the render
+  device (with the `usermod` command), or no VA-API driver installed (with
+  the install command for Debian/Ubuntu, Fedora or Arch), and logs it as a
+  `VAAPI:` line. A build without QSV (the AppImage) says to pick another
+  encoder for Streaming and Recording. *All*, pending merge. Issues
+  [#1720](https://github.com/obs-rust/obs-studio/issues/1720),
+  [#1862](https://github.com/obs-rust/obs-studio/issues/1862), PRs
+  [#1841](https://github.com/obs-rust/obs-studio/pull/1841),
+  [#1872](https://github.com/obs-rust/obs-studio/pull/1872).
 
 - **let buffered queues fit one chunk.** Large buffered recording chunks complete when the configured queue limit is smaller than a chunk. *All*, 2026-10-20. Issue [#1526](https://github.com/obs-rust/obs-studio/issues/1526), PR [#1527](https://github.com/obs-rust/obs-studio/pull/1527).
 
