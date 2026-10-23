@@ -10,6 +10,8 @@ mod callback;
 mod codecs;
 #[path = "port_comparison/conversions.rs"]
 mod conversions;
+#[path = "port_comparison/core.rs"]
+mod core_units;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
 #[path = "port_comparison/util.rs"]
@@ -43,6 +45,7 @@ fn comparisons(criterion: &mut Criterion) {
     codecs::benchmarks(criterion);
     callback::benchmarks(criterion);
     conversions::benchmarks(criterion);
+    core_units::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);

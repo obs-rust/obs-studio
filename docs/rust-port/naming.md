@@ -60,7 +60,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/obs-scene*.c.h` | `rust/obs-scene` |
 | `libobs/audio-monitoring/` | `rust/obs-audio-monitoring` |
 | `libobs/obs-audio-controls.c.h` | `rust/obs-audio-controls` |
-| `libobs/obs.c.h` and the units extracted from it (`obs-video-plan.c.h`, `obs-context-names.c.h`) | `rust/obs-core` |
+| `libobs/obs.c.h` and the units extracted from it (`obs-video-plan.c.h`, `obs-context-names.c.h`), and those extracted from `libobs/obs-module.c.h` (`obs-module-paths.c.h`) | `rust/obs-core` |
 | `plugins/obs-nvenc/` (CUDA/NVENC loader) | `rust/obs-nvenc`, linked through `rust/obs-nvenc-plugin` |
 | GPU acceleration status (frontend, #846) | `rust/obs-gpu-status`, linked through `rust/obs-gpu-status-frontend` |
 | all libobs ports, as one C ABI drop-in | `rust/libobs-rust` |
