@@ -16,9 +16,8 @@
 //! `oracle/config_file_host.c`, `oracle/file_serializer_host.c` and
 //! `oracle/obs_data_host.c`).
 //! `oracle/platform_host.c` holds the few that cannot be compiled here: the
-//! breakpoint pair, which aborts loudly instead of raising the platform trap;
-//! Windows forwarders to the renamed `platform.c` helpers; and a weak
-//! zero-clock fallback. `oracle/platform.c` itself ends with the
+//! breakpoint pair, which aborts loudly instead of raising the platform trap,
+//! and a weak zero-clock fallback. `oracle/platform.c` itself ends with the
 //! `obs_get_video_info` and clock fixtures of `platform-filename.c`.
 
 // Fingerprint of the native inputs build.rs feeds to `cc` (oracle/*.c, *.h,

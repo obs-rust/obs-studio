@@ -3,9 +3,10 @@
  * Rust implementation. Windows-only.
  *
  * UNICODE makes FindNextFile the wide entry, as the libobs Windows build
- * does (cmake/windows/compilerconfig.cmake). os_utf8_to_wcs* stay the
- * platform.c names from oracle/platform.c. dstr and bmalloc resolve to the
- * Rust shims. blog and bcrash stay in base-variadic.c.
+ * does (cmake/windows/compilerconfig.cmake). The string conversions it calls
+ * are the oracle_ ones that oracle/platform.c compiles from
+ * platform-conversions.c, since the plain names are the Rust port's. dstr and
+ * bmalloc resolve to the Rust shims. blog and bcrash stay in base-variadic.c.
  *
  * The oracle build defines PTW32_STATIC_LIB, so this copy's DllMain also
  * runs the pthread static-lib hooks. libobs does not define that macro.
@@ -90,6 +91,11 @@
 #define os_get_proc_virtual_size oracle_os_get_proc_virtual_size
 #define os_get_free_disk_space oracle_os_get_free_disk_space
 #define os_generate_uuid oracle_os_generate_uuid
+/* platform-conversions.c, compiled by oracle/platform.c */
+#define os_utf8_to_wcs oracle_os_utf8_to_wcs
+#define os_utf8_to_wcs_ptr oracle_os_utf8_to_wcs_ptr
+#define os_wcs_to_utf8 oracle_os_wcs_to_utf8
+#define os_wcs_to_utf8_ptr oracle_os_wcs_to_utf8_ptr
 /* Variadic and wchar helpers live in the dstr oracle under these names.
  * The inline dstr helpers in dstr.h stay as written and call the Rust shims. */
 #define dstr_printf oracle_dstr_printf

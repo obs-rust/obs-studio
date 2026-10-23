@@ -23,6 +23,7 @@ pub mod path_extension;
 pub mod pipe;
 #[cfg(target_os = "macos")]
 pub mod platform_cocoa;
+pub mod platform_conversions;
 pub mod platform_file;
 pub mod platform_filename;
 pub mod platform_mkdirs;

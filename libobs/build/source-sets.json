@@ -114,8 +114,7 @@
     "build/libobs.util-cf+.h.c",
     "build/libobs.graphics+.h.c",
     "build/libobs.media+.h.c",
-    "build/libobs.nsgif+.h.c",
-    "build/libobs.platform+.h.c"
+    "build/libobs.nsgif+.h.c"
   ],
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-effect-lifecycle+.h.c",

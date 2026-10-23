@@ -37,6 +37,7 @@ pub mod lexer;
 pub mod path_extension;
 pub mod pipe;
 pub mod platform;
+pub mod platform_conversions;
 pub mod platform_file;
 pub mod platform_filename;
 pub mod platform_mkdirs;

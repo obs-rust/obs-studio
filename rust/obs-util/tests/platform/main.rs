@@ -18,6 +18,7 @@ mod pipe;
 mod pipe_parity;
 mod platform_cocoa;
 mod platform_cocoa_parity;
+mod platform_conversions;
 mod platform_file;
 mod platform_file_parity;
 mod platform_filename;

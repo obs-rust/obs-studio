@@ -128,6 +128,65 @@ pub fn set_errno(value: c_int) {
     }
 }
 
+/// `wchar_t` as the UTF-8 decoder's code units: the same 32 bits, signed on
+/// some targets.
+fn wide_as_units(wide: &[WChar]) -> &[u32] {
+    // SAFETY: `WChar` is a 32-bit integer like `u32`, with the same size and
+    // alignment; every bit pattern is valid for both.
+    unsafe { core::slice::from_raw_parts(wide.as_ptr().cast::<u32>(), wide.len()) }
+}
+
+fn wide_as_units_mut(wide: &mut [WChar]) -> &mut [u32] {
+    // SAFETY: as in `wide_as_units`; the borrow is unique.
+    unsafe { core::slice::from_raw_parts_mut(wide.as_mut_ptr().cast::<u32>(), wide.len()) }
+}
+
+/// `utf8_to_wchar(text, len, out, out.len(), 0)`: the wide length of `text`
+/// with `out == None`, else that many units written to `out`. 0 for invalid
+/// input or an `out` that is empty or too small, which may then hold part of
+/// the text.
+pub fn utf8_to_wide(text: &[u8], out: Option<&mut [WChar]>) -> usize {
+    utf8::utf8_to_wchar(text, out.map(wide_as_units_mut), 0)
+}
+
+/// `wchar_to_utf8(wide, len, out, out.len(), 0)`: as [`utf8_to_wide`], the
+/// other way.
+pub fn wide_to_utf8(wide: &[WChar], out: Option<&mut [u8]>) -> usize {
+    utf8::wchar_to_utf8(wide_as_units(wide), out, 0)
+}
+
+/// `mbstowcs(out, text, out.len())`, or `mbstowcs(NULL, text, 0)` with
+/// `out == None`, in the current `LC_CTYPE`. `usize::MAX` (`(size_t)-1`) for
+/// text the locale cannot convert.
+pub fn mbs_to_wide(text: &CStr, out: Option<&mut [WChar]>) -> usize {
+    let (dst, count) = match out {
+        Some(out) => (out.as_mut_ptr(), out.len()),
+        None => (ptr::null_mut(), 0),
+    };
+    // SAFETY: `text` is NUL-terminated; `dst` is null, or holds `count` units.
+    unsafe { mbstowcs(dst, text.as_ptr(), count) }
+}
+
+/// `wcstombs(out, wide, out.len())`, or `wcstombs(NULL, wide, 0)` with
+/// `out == None`, in the current `LC_CTYPE`. The text ends at the first NUL
+/// in `wide` (a copy with one added if it has none). `usize::MAX` for text the
+/// locale cannot convert.
+pub fn wide_to_mbs(wide: &[WChar], out: Option<&mut [u8]>) -> usize {
+    let copy;
+    let wide = if wide.contains(&0) {
+        wide
+    } else {
+        copy = [wide, &[0]].concat();
+        &copy[..]
+    };
+    let (dst, count) = match out {
+        Some(out) => (out.as_mut_ptr().cast::<c_char>(), out.len()),
+        None => (ptr::null_mut(), 0),
+    };
+    // SAFETY: `wide` holds a NUL; `dst` is null, or holds `count` bytes.
+    unsafe { wcstombs(dst, wide.as_ptr(), count) }
+}
+
 /// `os_wcs_to_utf8` over the whole of `wide` (no NUL): `wchar_to_utf8`
 /// counts, then converts into a buffer of exactly that many bytes.
 fn wcs_to_utf8(wide: &[u32]) -> Vec<u8> {

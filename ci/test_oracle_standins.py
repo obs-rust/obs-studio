@@ -24,21 +24,11 @@ DEFINITION = re.compile(
     r"^(?:static\s+)?(?:inline\s+)?[A-Za-z_][\w \t*]*?\b([a-z_][a-z0-9_]*)\s*\([^;{}]*\)\s*\{", re.M
 )
 
-# Windows-only forwarders in platform_host.c: the Rust crates need these plain
-# names, while the oracle's copies are the oracle_-renamed definitions from
-# platform.c. Unix oracle calls already use the oracle_ names directly.
-WINDOWS_FORWARDER = "Windows forwarder to the oracle_ copy from oracle/platform.c"
-
-DIFFERENT = {
-    "os_mbs_to_wcs": WINDOWS_FORWARDER,
-    "os_utf8_to_wcs": WINDOWS_FORWARDER,
-    "os_wcs_to_utf8": WINDOWS_FORWARDER,
-    "os_wcs_to_mbs": WINDOWS_FORWARDER,
-    "os_mbs_to_wcs_ptr": WINDOWS_FORWARDER,
-    "os_utf8_to_wcs_ptr": WINDOWS_FORWARDER,
-    "os_wcs_to_utf8_ptr": WINDOWS_FORWARDER,
-    "os_mbs_to_utf8_ptr": WINDOWS_FORWARDER,
-}
+# Functions that may differ from libobs, with the reason. The Windows
+# forwarders of the string conversions went when obs-util ported them (#262
+# slice 1): the plain names are the Rust shims, and oracle TUs call the
+# oracle_ copies from oracle/platform.c.
+DIFFERENT: dict[str, str] = {}
 
 
 def functions(text: str) -> dict[str, list[str]]:

@@ -1,0 +1,10 @@
+os_utf8_to_wcs
+os_wcs_to_utf8
+os_mbs_to_wcs
+os_wcs_to_mbs
+os_utf8_to_wcs_ptr
+os_wcs_to_utf8_ptr
+os_mbs_to_wcs_ptr
+os_wcs_to_mbs_ptr
+os_utf8_to_mbs_ptr
+os_mbs_to_utf8_ptr

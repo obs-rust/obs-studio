@@ -1,5 +1,5 @@
-/* Precompiled header (BUILD.md) for the libobs unity groups libobs.platform, libobs.ported-platform. C.
- * Every implementation file in them includes this header and nothing else: the includes and macro setup below are
+/* Precompiled header (BUILD.md) for the libobs unity group libobs.ported-platform. C.
+ * Every implementation file in it includes this header and nothing else: the includes and macro setup below are
  * theirs, in group and file order. */
 
 #pragma once

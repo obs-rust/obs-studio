@@ -167,6 +167,52 @@ pub fn stat(path: &[u8], st: &mut Stat) -> c_int {
     ret
 }
 
+/// `utf8_to_wchar(text, len, out, out.len(), 0)`: the UTF-16 length of
+/// `text` with `out == None`, else that many units written to `out`
+/// (`MultiByteToWideChar`, a leading BOM dropped). 0 for an `out` that is
+/// empty or too small, which may then hold part of the text.
+pub fn utf8_to_wide(text: &[u8], out: Option<&mut [WChar]>) -> usize {
+    utf8::utf8_to_wchar(text, out)
+}
+
+/// `wchar_to_utf8(wide, len, out, out.len(), 0)`: as [`utf8_to_wide`], the
+/// other way (`WideCharToMultiByte`).
+pub fn wide_to_utf8(wide: &[WChar], out: Option<&mut [u8]>) -> usize {
+    utf8::wchar_to_utf8(wide, out)
+}
+
+/// `mbstowcs(out, text, out.len())`, or `mbstowcs(NULL, text, 0)` with
+/// `out == None`, in the current `LC_CTYPE`. `usize::MAX` (`(size_t)-1`) for
+/// text the locale cannot convert.
+pub fn mbs_to_wide(text: &CStr, out: Option<&mut [WChar]>) -> usize {
+    let (dst, count) = match out {
+        Some(out) => (out.as_mut_ptr(), out.len()),
+        None => (ptr::null_mut(), 0),
+    };
+    // SAFETY: `text` is NUL-terminated; `dst` is null, or holds `count` units.
+    unsafe { mbstowcs(dst, text.as_ptr(), count) }
+}
+
+/// `wcstombs(out, wide, out.len())`, or `wcstombs(NULL, wide, 0)` with
+/// `out == None`, in the current `LC_CTYPE`. The text ends at the first NUL
+/// in `wide` (a copy with one added if it has none). `usize::MAX` for text the
+/// locale cannot convert.
+pub fn wide_to_mbs(wide: &[WChar], out: Option<&mut [u8]>) -> usize {
+    let copy;
+    let wide = if wide.contains(&0) {
+        wide
+    } else {
+        copy = [wide, &[0]].concat();
+        &copy[..]
+    };
+    let (dst, count) = match out {
+        Some(out) => (out.as_mut_ptr().cast::<c_char>(), out.len()),
+        None => (ptr::null_mut(), 0),
+    };
+    // SAFETY: `wide` holds a NUL; `dst` is null, or holds `count` bytes.
+    unsafe { wcstombs(dst, wide.as_ptr(), count) }
+}
+
 /// `os_utf8_to_wcs_ptr(text, 0)`: `utf8_to_wchar` counts, then converts.
 /// Always NUL-terminated; text that does not convert gives just the NUL.
 fn utf8_to_wcs(text: &[u8]) -> Vec<WChar> {
