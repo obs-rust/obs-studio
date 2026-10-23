@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <util/config-file.h>
 
 #ifdef __cplusplus
@@ -68,6 +69,54 @@ enum profile_missing_encoder {
  * provides encoder_id, or NULL when the result is UNKNOWN. */
 enum profile_missing_encoder
 profile_missing_encoder_reason(const char *encoder_id, bool (*module_loaded)(const char *name), const char **module);
+
+/* Why obs-ffmpeg found no VA-API device (PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE),
+ * so the Missing Encoders dialog can name the fix instead of asking the user
+ * to debug vainfo (obs-rust/obs-studio#1862). */
+enum profile_vaapi_cause {
+	/* No /dev/dri/renderD* device: no GPU kernel driver is loaded. */
+	PROFILE_VAAPI_NO_RENDER_NODE,
+	/* Every render device is an NVIDIA GPU, which has no VA-API encoder. */
+	PROFILE_VAAPI_NVIDIA,
+	/* The user cannot open the render device (not in the render group). */
+	PROFILE_VAAPI_NO_ACCESS,
+	/* No VA-API driver file for the GPU is installed. */
+	PROFILE_VAAPI_NO_DRIVER,
+	/* The driver is installed but encodes no format the profile needs. */
+	PROFILE_VAAPI_NO_ENCODE,
+};
+
+/* What the diagnosis reads of the host, so tests can fake it. */
+struct profile_vaapi_host {
+	void *param;
+	/* Reads up to size - 1 bytes of the file at path into buf, NUL
+	 * terminated. False when it cannot be opened. */
+	bool (*read_file)(void *param, const char *path, char *buf, size_t size);
+	/* The file at path exists. */
+	bool (*exists)(void *param, const char *path);
+	/* This user can open the device at path for reading and writing. */
+	bool (*can_open_rw)(void *param, const char *path);
+};
+
+struct profile_vaapi_diagnosis {
+	enum profile_vaapi_cause cause;
+	/* The render device diagnosed ("/dev/dri/renderD128"), empty for
+	 * PROFILE_VAAPI_NO_RENDER_NODE. */
+	char device[32];
+	/* Its PCI vendor id, 0 when unknown. */
+	unsigned int vendor;
+	/* PROFILE_VAAPI_NO_DRIVER: the driver package to install, NULL for a
+	 * GPU vendor without a known VA-API driver. */
+	const char *package;
+	/* PROFILE_VAAPI_NO_DRIVER: the command that installs it on this
+	 * distribution, NULL when the distribution is not recognized. */
+	const char *install_command;
+};
+
+/* The host access the frontend uses: plain stdio on the real paths. */
+extern const struct profile_vaapi_host profile_vaapi_system_host;
+
+void profile_vaapi_diagnose(const struct profile_vaapi_host *host, struct profile_vaapi_diagnosis *out);
 
 #ifdef __cplusplus
 }

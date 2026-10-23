@@ -80,3 +80,12 @@ profile_missing_encoder_reason(const char *encoder_id, bool (*module_loaded)(con
 	}
 	return module_loaded(name) ? no_device : PROFILE_MISSING_ENCODER_MODULE_NOT_LOADED;
 }
+
+const struct profile_vaapi_host profile_vaapi_system_host = {0};
+
+void profile_vaapi_diagnose(const struct profile_vaapi_host *host, struct profile_vaapi_diagnosis *out)
+{
+	(void)host;
+	memset(out, 0, sizeof(*out));
+	out->cause = PROFILE_VAAPI_NO_ENCODE;
+}

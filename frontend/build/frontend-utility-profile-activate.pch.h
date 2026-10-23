@@ -6,4 +6,7 @@
 #pragma once
 
 /* utility/profile-activate.c */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "frontend/utility/profile-activate.h"

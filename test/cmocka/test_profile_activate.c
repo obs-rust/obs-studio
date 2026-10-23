@@ -268,6 +268,213 @@ static void test_other_encoders_stay_unknown(void **state)
 			 PROFILE_MISSING_ENCODER_UNKNOWN);
 }
 
+/* obs-rust/obs-studio#1862: the host a VA-API diagnosis reads, faked. Each
+ * case is one of the causes that took a round of support each in #1720. */
+struct fake_file {
+	const char *path;
+	const char *text;
+};
+
+struct fake_host {
+	const struct fake_file *files; /* NULL-path terminated; text NULL: not readable */
+	const char *const *rw;         /* devices the user can open, NULL terminated */
+};
+
+static const struct fake_file *fake_find(const struct fake_host *h, const char *path)
+{
+	for (const struct fake_file *f = h->files; f && f->path; f++) {
+		if (strcmp(f->path, path) == 0) {
+			return f;
+		}
+	}
+	return NULL;
+}
+
+static bool fake_read_file(void *param, const char *path, char *buf, size_t size)
+{
+	const struct fake_file *f = fake_find(param, path);
+	if (!f || !f->text) {
+		return false;
+	}
+	snprintf(buf, size, "%s", f->text);
+	return true;
+}
+
+static bool fake_exists(void *param, const char *path)
+{
+	return fake_find(param, path) != NULL;
+}
+
+static bool fake_can_open_rw(void *param, const char *path)
+{
+	const struct fake_host *h = param;
+	for (const char *const *p = h->rw; p && *p; p++) {
+		if (strcmp(*p, path) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void diagnose(struct fake_host *h, struct profile_vaapi_diagnosis *out)
+{
+	const struct profile_vaapi_host host = {h, fake_read_file, fake_exists, fake_can_open_rw};
+	memset(out, 0x5a, sizeof(*out));
+	profile_vaapi_diagnose(&host, out);
+}
+
+static const char ubuntu[] = "PRETTY_NAME=\"Ubuntu 24.04 LTS\"\nID=ubuntu\nID_LIKE=debian\n";
+static const char *const rw_128[] = {"/dev/dri/renderD128", NULL};
+
+static void test_vaapi_no_render_node(void **state)
+{
+	(void)state;
+	const struct fake_file files[] = {{"/etc/os-release", ubuntu}, {NULL, NULL}};
+	struct fake_host h = {files, NULL};
+	struct profile_vaapi_diagnosis d;
+	diagnose(&h, &d);
+	assert_int_equal(d.cause, PROFILE_VAAPI_NO_RENDER_NODE);
+	assert_string_equal(d.device, "");
+}
+
+static void test_vaapi_nvidia_only(void **state)
+{
+	(void)state;
+	const struct fake_file files[] = {
+		{"/dev/dri/renderD128", ""},
+		{"/sys/class/drm/renderD128/device/vendor", "0x10de\n"},
+		{NULL, NULL},
+	};
+	struct fake_host h = {files, rw_128};
+	struct profile_vaapi_diagnosis d;
+	diagnose(&h, &d);
+	assert_int_equal(d.cause, PROFILE_VAAPI_NVIDIA);
+	assert_int_equal(d.vendor, 0x10de);
+}
+
+/* #1720: the user was not in the render group. A second, NVIDIA, device is
+ * skipped in favor of the Intel one. */
+static void test_vaapi_no_access(void **state)
+{
+	(void)state;
+	const struct fake_file files[] = {
+		{"/dev/dri/renderD128", ""},
+		{"/sys/class/drm/renderD128/device/vendor", "0x10de\n"},
+		{"/dev/dri/renderD129", ""},
+		{"/sys/class/drm/renderD129/device/vendor", "0x8086\n"},
+		{"/usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so", ""},
+		{NULL, NULL},
+	};
+	struct fake_host h = {files, rw_128};
+	struct profile_vaapi_diagnosis d;
+	diagnose(&h, &d);
+	assert_int_equal(d.cause, PROFILE_VAAPI_NO_ACCESS);
+	assert_string_equal(d.device, "/dev/dri/renderD129");
+	assert_int_equal(d.vendor, 0x8086);
+}
+
+/* #1720: an Intel HD 530 on Ubuntu with no Intel VA-API driver installed. */
+static void test_vaapi_intel_no_driver_ubuntu(void **state)
+{
+	(void)state;
+	const struct fake_file files[] = {
+		{"/etc/os-release", ubuntu},
+		{"/dev/dri/renderD128", ""},
+		{"/sys/class/drm/renderD128/device/vendor", "0x8086\n"},
+		{NULL, NULL},
+	};
+	struct fake_host h = {files, rw_128};
+	struct profile_vaapi_diagnosis d;
+	diagnose(&h, &d);
+	assert_int_equal(d.cause, PROFILE_VAAPI_NO_DRIVER);
+	assert_string_equal(d.device, "/dev/dri/renderD128");
+	assert_string_equal(d.package, "intel-media-va-driver-non-free");
+	assert_string_equal(d.install_command, "sudo apt install intel-media-va-driver-non-free");
+}
+
+static void test_vaapi_amd_no_driver_per_distro(void **state)
+{
+	(void)state;
+	static const struct {
+		const char *os_release;
+		const char *package;
+		const char *command;
+	} cases[] = {
+		{"ID=debian\n", "mesa-va-drivers", "sudo apt install mesa-va-drivers"},
+		{"ID=\"fedora\"\n", "mesa-va-drivers-freeworld", "sudo dnf install mesa-va-drivers-freeworld"},
+		{"ID=endeavouros\nID_LIKE=arch\n", "mesa", "sudo pacman -S mesa"},
+		{"ID=linuxmint\nID_LIKE=\"ubuntu debian\"\n", "mesa-va-drivers", "sudo apt install mesa-va-drivers"},
+		{"ID=gentoo\n", "mesa-va-drivers", NULL},
+		{NULL, "mesa-va-drivers", NULL},
+	};
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		const struct fake_file files[] = {
+			{"/etc/os-release", cases[i].os_release},
+			{"/dev/dri/renderD128", ""},
+			{"/sys/class/drm/renderD128/device/vendor", "0x1002"},
+			{NULL, NULL},
+		};
+		struct fake_host h = {files, rw_128};
+		struct profile_vaapi_diagnosis d;
+		diagnose(&h, &d);
+		assert_int_equal(d.cause, PROFILE_VAAPI_NO_DRIVER);
+		assert_string_equal(d.package, cases[i].package);
+		if (cases[i].command) {
+			assert_string_equal(d.install_command, cases[i].command);
+		} else {
+			assert_null(d.install_command);
+		}
+	}
+}
+
+/* Any installed driver for the vendor, in any of the dri directories, counts:
+ * the diagnosis then falls back to "cannot encode this format". */
+static void test_vaapi_driver_present(void **state)
+{
+	(void)state;
+	static const char *const drivers[] = {
+		"/usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so",
+		"/usr/lib/x86_64-linux-gnu/dri/i965_drv_video.so",
+		"/usr/lib64/dri/iHD_drv_video.so",
+		"/usr/lib/dri/i965_drv_video.so",
+		"/run/opengl-driver/lib/dri/iHD_drv_video.so",
+	};
+	for (size_t i = 0; i < sizeof(drivers) / sizeof(drivers[0]); i++) {
+		const struct fake_file files[] = {
+			{"/dev/dri/renderD128", ""},
+			{"/sys/class/drm/renderD128/device/vendor", "0x8086\n"},
+			{drivers[i], ""},
+			{NULL, NULL},
+		};
+		struct fake_host h = {files, rw_128};
+		struct profile_vaapi_diagnosis d;
+		diagnose(&h, &d);
+		assert_int_equal(d.cause, PROFILE_VAAPI_NO_ENCODE);
+		assert_null(d.package);
+		assert_null(d.install_command);
+	}
+}
+
+/* A vendor with no known VA-API driver, or an unreadable vendor file: no
+ * package to suggest, so the diagnosis is "cannot encode". */
+static void test_vaapi_unknown_vendor(void **state)
+{
+	(void)state;
+	const struct fake_file files[] = {
+		{"/dev/dri/renderD130", ""},
+		{"/sys/class/drm/renderD130/device/vendor", NULL},
+		{NULL, NULL},
+	};
+	static const char *const rw_130[] = {"/dev/dri/renderD130", NULL};
+	struct fake_host h = {files, rw_130};
+	struct profile_vaapi_diagnosis d;
+	diagnose(&h, &d);
+	assert_int_equal(d.cause, PROFILE_VAAPI_NO_ENCODE);
+	assert_string_equal(d.device, "/dev/dri/renderD130");
+	assert_int_equal(d.vendor, 0);
+	assert_null(d.package);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -278,6 +485,13 @@ int main(void)
 		cmocka_unit_test(test_missing_qsv_names_the_module),
 		cmocka_unit_test(test_missing_vaapi_names_the_device),
 		cmocka_unit_test(test_other_encoders_stay_unknown),
+		cmocka_unit_test(test_vaapi_no_render_node),
+		cmocka_unit_test(test_vaapi_nvidia_only),
+		cmocka_unit_test(test_vaapi_no_access),
+		cmocka_unit_test(test_vaapi_intel_no_driver_ubuntu),
+		cmocka_unit_test(test_vaapi_amd_no_driver_per_distro),
+		cmocka_unit_test(test_vaapi_driver_present),
+		cmocka_unit_test(test_vaapi_unknown_vendor),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
