@@ -58,9 +58,22 @@ uint64_t obs_source_deinterlace_pacing_waiting_frame_ts(uint64_t timestamp, uint
 uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts, uint32_t prev_half,
 						     uint64_t frame_interval_ns)
 {
-	(void)prev_half;
-	(void)frame_interval_ns;
-	return (uint32_t)((timestamp - prev_ts) / 2);
+	/* Half the time from the frame before, unless there is no usable
+	 * previous timestamp: none (a source that never showed a frame), one
+	 * at or after this frame (a timestamp going backwards), or one more
+	 * than twice TS_JUMP_THRESHOLD before it, so a half duration past it
+	 * (a pause, a new clock). Then the gap is no frame duration: half of
+	 * it skipped the second field, or held the frame too long. Keep the
+	 * half duration before when it is set and within the same limit, else
+	 * take half a canvas interval, so the second field comes at the next
+	 * tick. A regular stream of frames up to 140 ms apart (7.1 frames a
+	 * second) keeps its half durations. */
+	if (prev_ts && timestamp > prev_ts &&
+	    timestamp - prev_ts <= 2 * OBS_SOURCE_DEINTERLACE_PACING_TS_JUMP_THRESHOLD)
+		return (uint32_t)((timestamp - prev_ts) / 2);
+	if (prev_half && prev_half <= OBS_SOURCE_DEINTERLACE_PACING_TS_JUMP_THRESHOLD)
+		return prev_half;
+	return (uint32_t)(frame_interval_ns / 2);
 }
 
 uint64_t obs_source_deinterlace_pacing_buffered_offset(uint64_t video_time, uint64_t last_frame_ts)

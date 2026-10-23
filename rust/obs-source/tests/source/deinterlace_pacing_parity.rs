@@ -23,7 +23,12 @@
 //!   (the first-frame path) and the buffering toggled. Every call's result
 //!   bytes and the model's state after every tick must be equal. A second
 //!   test checks that the sequences reach every branch of every function
-//!   more than 100 times.
+//!   more than 100 times, the half duration's fallbacks (#1965) included;
+//! - `first_frame_cadences` (#1965): the first frame of a new source, and
+//!   the first after a pause, at those rates and clean cadences, against
+//!   the half duration of before #1965 and one that knows the source's
+//!   field duration: which fields it shows, and that every later state is
+//!   the one of before.
 //!
 //! No intentional differences: there is no pointer to check.
 
@@ -388,7 +393,13 @@ struct Reached {
     not_waited: usize,
     half_from_pair: usize,
     half_from_frame_ts: usize,
-    half_truncated: usize,
+    /// #1965: no usable previous timestamp (0, at or after the frame, or a
+    /// gap past twice `TS_JUMP_THRESHOLD`), and which fallback it took.
+    half_no_previous: usize,
+    half_backwards: usize,
+    half_after_jump: usize,
+    half_kept: usize,
+    half_interval: usize,
     buffered: usize,
     reanchor_none: usize,
     reanchor_early: usize,
@@ -592,6 +603,7 @@ impl<P: Pacing> Run<'_, P> {
 
         let s = &mut self.s;
         let mut cur = s.async_frames.pop_front().expect("a frame");
+        let prev_half = s.deinterlace_half_duration;
         let half;
         if !s.async_frames.is_empty() && cur.prev_frame {
             let prev = cur;
@@ -616,13 +628,27 @@ impl<P: Pacing> Run<'_, P> {
         self.log.extend(half);
         s.cur_async_frame = Some(cur);
         s.deinterlace_half_duration = u32::from_le_bytes(half);
-        let full = if let Some(prev) = s.prev_async_frame {
-            cur.timestamp.wrapping_sub(prev.timestamp)
+        let prev_ts = s
+            .prev_async_frame
+            .map_or(s.deinterlace_frame_ts, |prev| prev.timestamp);
+        let fallback = if prev_ts == 0 {
+            self.reached.half_no_previous += 1;
+            true
+        } else if cur.timestamp <= prev_ts {
+            self.reached.half_backwards += 1;
+            true
+        } else if cur.timestamp - prev_ts > 2 * JUMP {
+            self.reached.half_after_jump += 1;
+            true
         } else {
-            cur.timestamp.wrapping_sub(s.deinterlace_frame_ts)
+            false
         };
-        if full / 2 > u64::from(u32::MAX) {
-            self.reached.half_truncated += 1;
+        if fallback {
+            if prev_half != 0 && u64::from(prev_half) <= JUMP {
+                self.reached.half_kept += 1;
+            } else {
+                self.reached.half_interval += 1;
+            }
         }
 
         if s.last_frame_ts == 0 {
@@ -862,7 +888,11 @@ fn sequences_reach_every_branch() {
         total.not_waited += reached.not_waited;
         total.half_from_pair += reached.half_from_pair;
         total.half_from_frame_ts += reached.half_from_frame_ts;
-        total.half_truncated += reached.half_truncated;
+        total.half_no_previous += reached.half_no_previous;
+        total.half_backwards += reached.half_backwards;
+        total.half_after_jump += reached.half_after_jump;
+        total.half_kept += reached.half_kept;
+        total.half_interval += reached.half_interval;
         total.buffered += reached.buffered;
         total.reanchor_none += reached.reanchor_none;
         total.reanchor_early += reached.reanchor_early;
@@ -878,7 +908,11 @@ fn sequences_reach_every_branch() {
         ("not waited", total.not_waited),
         ("half from the pair", total.half_from_pair),
         ("half from frame_ts", total.half_from_frame_ts),
-        ("half truncated", total.half_truncated),
+        ("half: no previous timestamp", total.half_no_previous),
+        ("half: timestamp backwards", total.half_backwards),
+        ("half: gap past the threshold", total.half_after_jump),
+        ("half: the one before kept", total.half_kept),
+        ("half: half the canvas interval", total.half_interval),
         ("buffered offset", total.buffered),
         ("re-anchor with no offset", total.reanchor_none),
         ("re-anchor early", total.reanchor_early),
@@ -895,4 +929,363 @@ fn sequences_reach_every_branch() {
         FRAME_RATES.len() * CANVAS_RATES.len(),
         "{pairs:?}"
     );
+}
+
+// --------------------------------------------------------------------------
+// The first frame at real cadences (#1965)
+
+/// The shims with the half duration of before #1965: half the gap from
+/// the previous timestamp, whatever it is, truncated to 32 bits.
+struct Before;
+
+/// The shims with a half duration that knows the source's field duration
+/// when there is no usable previous timestamp: what the first frame would
+/// get if it were timed from a frame before it.
+struct Ideal {
+    field: u32,
+}
+
+/// The half duration of before #1965.
+fn before_half(ts: u64, prev_ts: u64) -> [u8; 4] {
+    let half = ts.wrapping_sub(prev_ts) / 2;
+    half.to_le_bytes()[..4].try_into().expect("4 bytes")
+}
+
+impl Pacing for Before {
+    fn hold(&self, a: u64, b: u64, h: u32, s: u64) -> [u8; 1] {
+        r_hold(a, b, h, s)
+    }
+    fn wait(&self, a: u64, b: u64, o: u64, s: u64) -> [u8; 1] {
+        r_wait(a, b, o, s)
+    }
+    fn waiting_ts(&self, a: u64, b: u64) -> [u8; 8] {
+        r_waiting_ts(a, b)
+    }
+    fn half(&self, a: u64, b: u64, _h: u32, _i: u64) -> [u8; 4] {
+        before_half(a, b)
+    }
+    fn buffered(&self, a: u64, b: u64) -> [u8; 8] {
+        r_buffered(a, b)
+    }
+    fn reanchor(&self, o: u64, v: u64, f: u64, h: u32, i: u64) -> [u8; 8] {
+        r_reanchor(o, v, f, h, i)
+    }
+}
+
+impl Pacing for Ideal {
+    fn hold(&self, a: u64, b: u64, h: u32, s: u64) -> [u8; 1] {
+        r_hold(a, b, h, s)
+    }
+    fn wait(&self, a: u64, b: u64, o: u64, s: u64) -> [u8; 1] {
+        r_wait(a, b, o, s)
+    }
+    fn waiting_ts(&self, a: u64, b: u64) -> [u8; 8] {
+        r_waiting_ts(a, b)
+    }
+    fn half(&self, a: u64, b: u64, _h: u32, _i: u64) -> [u8; 4] {
+        if b != 0 && a > b && a - b <= 2 * JUMP {
+            before_half(a, b)
+        } else {
+            self.field.to_le_bytes()
+        }
+    }
+    fn buffered(&self, a: u64, b: u64) -> [u8; 8] {
+        r_buffered(a, b)
+    }
+    fn reanchor(&self, o: u64, v: u64, f: u64, h: u32, i: u64) -> [u8; 8] {
+        r_reanchor(o, v, f, h, i)
+    }
+}
+
+/// Where the measured frame comes from.
+#[derive(Debug, Clone, Copy)]
+enum Start {
+    /// A source that never showed a frame, its first frame stamped at
+    /// `base`.
+    New { base: u64 },
+    /// A source that pauses for 500 ms after 20 frames, its timestamps
+    /// following its arrivals; with `reset`, `obs_source_output_video(NULL)`
+    /// in the pause (`last_frame_ts` 0, the queue emptied).
+    Pause { reset: bool },
+}
+
+const PAUSE_AFTER: u64 = 20;
+const PAUSE: u64 = 500 * MS;
+const CANVAS_BASE: u64 = 1_000_000_000_000;
+/// A capture timestamp 1000 s after boot (before #1965: 1.78 s), a media
+/// timestamp of 5 s (2.5 s), and one that left 30 ms (held too long).
+const NEW_BASES: [u64; 3] = [
+    1_000_005_000_000,
+    5_000_000_000,
+    2 * (100 * TWO_32 + 30 * MS),
+];
+const HELD_TOO_LONG: u64 = 2 * (100 * TWO_32 + 30 * MS);
+
+/// One run at a clean cadence: the model's state after every tick, the
+/// field each tick shows (the timestamp of the frame and 1 or 2: the second
+/// once the canvas clock reaches the frame's second field time,
+/// `deinterlace_frame_ts + deinterlace_offset + deinterlace_half_duration -
+/// TWOX_TOLERANCE`, as the render decides), and the ticks that picked a
+/// frame.
+struct Cadence {
+    log: Vec<u8>,
+    states: Vec<Source>,
+    shown: Vec<Option<(u64, u8)>>,
+    picks: Vec<usize>,
+}
+
+fn cadence<P: Pacing>(
+    p: &P,
+    frame_rate: (u64, u64),
+    canvas_rate: (u64, u64),
+    unbuffered: bool,
+    start: Start,
+) -> Cadence {
+    let mut r = Run {
+        p,
+        s: Source {
+            async_unbuffered: unbuffered,
+            ..Source::default()
+        },
+        log: Vec::new(),
+        reached: Reached::default(),
+    };
+    let interval = 1_000_000_000 * canvas_rate.1 / canvas_rate.0;
+    let (base, pause_at) = match start {
+        Start::New { base } => (base, u64::MAX),
+        Start::Pause { .. } => (5_000_000_000, PAUSE_AFTER),
+    };
+    let arrival = |k: u64| rate_time(k, frame_rate) + if k >= pause_at { PAUSE } else { 0 };
+    let mut out = Cadence {
+        log: Vec::new(),
+        states: Vec::new(),
+        shown: Vec::new(),
+        picks: Vec::new(),
+    };
+    let mut next_frame = 0u64;
+    let mut shown_ts = None;
+    let mut reset_done = false;
+    for tick in 1u64..=200 {
+        let now = rate_time(tick, canvas_rate);
+        let video_time = CANVAS_BASE + now;
+        if let Start::Pause { reset: true } = start
+            && !reset_done
+            && now >= arrival(PAUSE_AFTER - 1) + PAUSE / 2
+        {
+            r.s.last_frame_ts = 0;
+            r.s.async_frames.clear();
+            reset_done = true;
+        }
+        while arrival(next_frame) <= now {
+            r.s.async_frames.push_back(Frame {
+                timestamp: base + arrival(next_frame),
+                prev_frame: false,
+            });
+            next_frame += 1;
+        }
+        r.tick(video_time, video_time, interval);
+        if let Some(cur) = r.s.cur_async_frame {
+            shown_ts = Some(cur.timestamp);
+            out.picks.push(out.states.len());
+        }
+        let s = &r.s;
+        let frame2_ts = s
+            .deinterlace_frame_ts
+            .wrapping_add(s.deinterlace_offset)
+            .wrapping_add(u64::from(s.deinterlace_half_duration))
+            .wrapping_sub(TWOX);
+        out.shown
+            .push(shown_ts.map(|ts| (ts, if video_time >= frame2_ts { 2 } else { 1 })));
+        out.states.push(r.s.clone());
+    }
+    out.log = r.log;
+    out
+}
+
+/// The measured frame of a run: the first frame picked, or the first after
+/// the pause. Its pick, the first tick that shows its second field, if
+/// any, and the next pick, as tick indices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Measured {
+    pick: usize,
+    second: Option<usize>,
+    next_pick: usize,
+}
+
+fn measured(run: &Cadence, start: Start, frame_rate: (u64, u64)) -> Measured {
+    let k = match start {
+        Start::New { .. } => 0,
+        Start::Pause { .. } => run
+            .picks
+            .iter()
+            .position(|&t| {
+                run.shown[t].expect("a frame").0
+                    >= 5_000_000_000 + rate_time(PAUSE_AFTER, frame_rate)
+            })
+            .expect("a frame after the pause"),
+    };
+    let pick = run.picks[k];
+    let ts = run.shown[pick].expect("a frame").0;
+    let next_pick = run.picks[k + 1];
+    let second = (pick..next_pick).find(|&t| run.shown[t] == Some((ts, 2)));
+    Measured {
+        pick,
+        second,
+        next_pick,
+    }
+}
+
+/// At 25, 29.97, 50 and 59.94 frames a second into 30 and 60 fps, buffered
+/// and unbuffered, for a new source (three first timestamps) and after a
+/// pause (with and without a queue reset), the measured frame (the first,
+/// or the first after the pause):
+/// - the C and the shims agree, call for call and tick for tick;
+/// - it shows at its pick the field `Ideal` shows (a new source: its first
+///   field), and its second field before the next frame whenever `Ideal`
+///   does, never later than `Ideal`; buffered always, unbuffered unless the
+///   next frame is there at the next tick (25 into 30 and 50 into 60 fps),
+///   where showing it would hold the frame a tick longer and move the
+///   unbuffered anchor for good, so it is skipped as before;
+/// - from the next pick on, every state is the one of before #1965
+///   (`Before`), except where `Before` held a new source's first frame too
+///   long, so its next pick came later.
+#[test]
+fn first_frame_cadences() {
+    let mut rows = Vec::new();
+    let (mut fixed, mut as_before) = (0usize, 0usize);
+    for &frame_rate in &FRAME_RATES {
+        for &canvas_rate in &CANVAS_RATES {
+            for unbuffered in [false, true] {
+                let starts = NEW_BASES
+                    .iter()
+                    .map(|&base| Start::New { base })
+                    .chain([Start::Pause { reset: false }, Start::Pause { reset: true }]);
+                for start in starts {
+                    let what = format!(
+                        "{frame_rate:?} into {canvas_rate:?}, unbuffered {unbuffered}, {start:?}"
+                    );
+                    let field = u32::try_from(rate_time(1, frame_rate) / 2).expect("a field");
+                    let c = cadence(&C, frame_rate, canvas_rate, unbuffered, start);
+                    let rust = cadence(&Rust, frame_rate, canvas_rate, unbuffered, start);
+                    let before = cadence(&Before, frame_rate, canvas_rate, unbuffered, start);
+                    let ideal =
+                        cadence(&Ideal { field }, frame_rate, canvas_rate, unbuffered, start);
+                    assert_eq!(c.log, rust.log, "{what}");
+                    assert_eq!(c.states, rust.states, "{what}");
+
+                    let new = measured(&rust, start, frame_rate);
+                    let was = measured(&before, start, frame_rate);
+                    let best = measured(&ideal, start, frame_rate);
+                    let held_too_long =
+                        matches!(start, Start::New { base } if base == HELD_TOO_LONG);
+                    let first = rust.shown[new.pick].expect("a frame");
+                    assert_eq!(new.pick, best.pick, "{what}");
+                    assert_eq!(Some(first), ideal.shown[new.pick], "{what}");
+                    if let Start::New { .. } = start {
+                        assert_eq!(first.1, 1, "first field at the pick: {what}");
+                    }
+                    match (new.second, best.second) {
+                        (Some(second), Some(ideal_second)) => {
+                            assert!(second <= ideal_second, "{what}");
+                            assert!(second > new.pick || ideal_second == new.pick, "{what}");
+                        }
+                        (None, None) => {}
+                        (Some(_), None) => panic!("a second field Ideal does not show: {what}"),
+                        (None, Some(_)) => {
+                            // the next frame is there at the next tick
+                            assert!(unbuffered, "{what}");
+                            assert_eq!(new.next_pick, new.pick + 1, "{what}");
+                            assert!(was.second.is_none() || held_too_long, "{what}");
+                        }
+                    }
+                    if new.second.is_some() && was.second.is_none() {
+                        fixed += 1;
+                    }
+                    if !held_too_long {
+                        assert_eq!(was.next_pick, new.next_pick, "{what}");
+                        assert_eq!(
+                            rust.states[new.next_pick..],
+                            before.states[new.next_pick..],
+                            "{what}"
+                        );
+                        as_before += 1;
+                    }
+                    rows.push(format!(
+                        "{what}: second field after {:?} ticks (before #1965 {:?}, ideal {:?}), next frame after {} (before {})",
+                        new.second.map(|t| t - new.pick),
+                        was.second.map(|t| t - was.pick),
+                        best.second.map(|t| t - best.pick),
+                        new.next_pick - new.pick,
+                        was.next_pick - was.pick
+                    ));
+                }
+            }
+        }
+    }
+    eprintln!("{}", rows.join("\n"));
+    eprintln!(
+        "{} runs: the second field now shown in {fixed}, every later state as before in {as_before}",
+        rows.len()
+    );
+    assert_eq!(rows.len(), 80);
+    assert_eq!(as_before, 64);
+}
+
+/// 12.5 frames a second (25 fields), 80 ms apart, into 30 and 60 fps,
+/// buffered and unbuffered, from the same starts: a regular stream below
+/// 14.3 frames a second keeps its behaviour. The gap is within twice
+/// `TS_JUMP_THRESHOLD`, so each frame is timed from the one before as
+/// before #1965:
+/// - the C and the shims agree;
+/// - after a pause, every state from the stream's second frame up to the
+///   pause is the one of before;
+/// - from the measured frame's next pick on, every state is the one of
+///   before (except where before held a new source's first frame too
+///   long), and a new source shows its first field at its pick.
+#[test]
+fn low_rate_cadences() {
+    let frame_rate = (25, 2);
+    let mut runs = 0usize;
+    for &canvas_rate in &CANVAS_RATES {
+        for unbuffered in [false, true] {
+            let starts = NEW_BASES
+                .iter()
+                .map(|&base| Start::New { base })
+                .chain([Start::Pause { reset: false }, Start::Pause { reset: true }]);
+            for start in starts {
+                let what =
+                    format!("12.5 fps into {canvas_rate:?}, unbuffered {unbuffered}, {start:?}");
+                let c = cadence(&C, frame_rate, canvas_rate, unbuffered, start);
+                let rust = cadence(&Rust, frame_rate, canvas_rate, unbuffered, start);
+                let before = cadence(&Before, frame_rate, canvas_rate, unbuffered, start);
+                assert_eq!(c.log, rust.log, "{what}");
+                assert_eq!(c.states, rust.states, "{what}");
+                let new = measured(&rust, start, frame_rate);
+                let was = measured(&before, start, frame_rate);
+                if let Start::Pause { .. } = start {
+                    // from the stream's second frame to the pause: its
+                    // first frame is a new source's
+                    let second = rust.picks[1];
+                    assert_eq!(second, before.picks[1], "{what}");
+                    assert_eq!(
+                        rust.states[second..new.pick],
+                        before.states[second..new.pick],
+                        "{what}"
+                    );
+                } else {
+                    assert_eq!(rust.shown[new.pick].map(|f| f.1), Some(1), "{what}");
+                }
+                if !matches!(start, Start::New { base } if base == HELD_TOO_LONG) {
+                    assert_eq!(was.next_pick, new.next_pick, "{what}");
+                    assert_eq!(
+                        rust.states[new.next_pick..],
+                        before.states[new.next_pick..],
+                        "{what}"
+                    );
+                }
+                runs += 1;
+            }
+        }
+    }
+    assert_eq!(runs, 20);
 }

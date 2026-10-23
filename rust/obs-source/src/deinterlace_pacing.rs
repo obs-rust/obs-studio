@@ -14,8 +14,10 @@
 //! - [`wait_for_next`] and [`waiting_frame_ts`]: the "don't skip ahead"
 //!   guard of `ready_deinterlace_frames()`, for an unbuffered source with
 //!   two frames queued;
-//! - [`half_duration`]: half the time from the frame before, truncated to
-//!   32 bits;
+//! - [`half_duration`]: half the time from the frame before; with no
+//!   usable frame before (none, a timestamp going backwards, a pause or a
+//!   new clock), the half duration before or half a canvas interval
+//!   (#1965);
 //! - [`buffered_offset`]: a buffered source's offset, from the source clock
 //!   that picks its frames (#395);
 //! - [`reanchor`]: an unbuffered source's offset, kept unless the frame
@@ -30,12 +32,9 @@
 //! Every sum and difference wraps, as `uint64_t` does in the C, and the
 //! re-anchor's lateness is the C's `(int64_t)` conversion of the wrapped
 //! difference. Characterized, not endorsed (`test_deinterlace_pacing_steps`),
-//! and kept: half a duration of 2^32 ns or more is truncated; a timestamp
-//! going backwards wraps the half duration, the guard's end and the waiting
-//! timestamp; the first frame with no second one queued takes its half
-//! duration against a `deinterlace_frame_ts` of 0 (half its own timestamp,
-//! truncated); a frame clock ahead of the canvas wraps the offsets; and a
-//! re-anchor's lateness of 2^63 or more counts as early.
+//! and kept: a timestamp going backwards wraps the guard's end and the
+//! waiting timestamp; a frame clock ahead of the canvas wraps the offsets;
+//! and a re-anchor's lateness of 2^63 or more counts as early.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -96,17 +95,32 @@ pub fn waiting_frame_ts(timestamp: u64, next_timestamp: u64) -> u64 {
 
 /// `obs_source_deinterlace_pacing_half_duration()`: the
 /// `deinterlace_half_duration` of a frame at `timestamp` after one at
-/// `prev_ts`: half the difference, truncated to 32 bits. `_prev_half` and
-/// `_frame_interval_ns` are not used yet (#1965).
-pub fn half_duration(
-    timestamp: u64,
-    prev_ts: u64,
-    _prev_half: u32,
-    _frame_interval_ns: u64,
-) -> u32 {
-    let half = timestamp.wrapping_sub(prev_ts).wrapping_div(2);
-    // (uint32_t): the low 32 bits
-    let [b0, b1, b2, b3, ..] = half.to_le_bytes();
+/// `prev_ts`: half the difference. With no usable previous timestamp, that
+/// is `prev_ts` 0 (a source that never showed a frame), `timestamp` at or
+/// before `prev_ts` (a timestamp going backwards) or more than twice
+/// [`TS_JUMP_THRESHOLD`] after it, a half duration past the threshold (a
+/// pause or a new clock): `prev_half`,
+/// the half duration before, when it is not 0 and at most
+/// [`TS_JUMP_THRESHOLD`], else half of `frame_interval_ns`, the canvas
+/// interval, truncated to 32 bits (#1965).
+pub fn half_duration(timestamp: u64, prev_ts: u64, prev_half: u32, frame_interval_ns: u64) -> u32 {
+    // Half the gap skipped the second field or held the frame too long
+    // when the gap is no frame duration.
+    if prev_ts != 0 && timestamp > prev_ts {
+        let gap = timestamp.wrapping_sub(prev_ts);
+        if gap <= TS_JUMP_THRESHOLD.wrapping_mul(2) {
+            return low_32(gap.wrapping_div(2));
+        }
+    }
+    if prev_half != 0 && u64::from(prev_half) <= TS_JUMP_THRESHOLD {
+        return prev_half;
+    }
+    low_32(frame_interval_ns.wrapping_div(2))
+}
+
+/// `(uint32_t)`: the low 32 bits.
+fn low_32(value: u64) -> u32 {
+    let [b0, b1, b2, b3, ..] = value.to_le_bytes();
     u32::from_le_bytes([b0, b1, b2, b3])
 }
 

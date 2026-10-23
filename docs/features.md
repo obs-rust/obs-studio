@@ -1344,6 +1344,13 @@ area.
   *All*, 2026-10-21. Issue
   [#1677](https://github.com/obs-rust/obs-studio/issues/1677), PR
   [#1678](https://github.com/obs-rust/obs-studio/pull/1678).
+- Double-rate deinterlacing (Yadif 2x, Linear 2x, Discard 2x) shows both
+  fields of the first frame when a source starts, restarts or comes back
+  after a pause, instead of skipping the second field or holding the frame
+  too long (an unbuffered source still moves straight on when its next
+  frame is already waiting). *All*, pending merge. Issue
+  [#1965](https://github.com/obs-rust/obs-studio/issues/1965), PR
+  [#1995](https://github.com/obs-rust/obs-studio/pull/1995).
 
 ### Scenes and UI
 

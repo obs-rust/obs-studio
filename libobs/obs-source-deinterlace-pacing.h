@@ -36,7 +36,8 @@
  *   ahead" guard of ready_deinterlace_frames(), for an unbuffered source
  *   with two frames queued and an offset;
  * - obs_source_deinterlace_pacing_half_duration(): half a frame's duration,
- *   from the frame before it;
+ *   from the frame before it, or the one before or half a canvas interval
+ *   when there is no usable frame before it (#1965);
  * - obs_source_deinterlace_pacing_buffered_offset(): the offset of a
  *   buffered source (#395);
  * - obs_source_deinterlace_pacing_reanchor(): the offset of an unbuffered
@@ -77,9 +78,13 @@ bool obs_source_deinterlace_pacing_wait_for_next(uint64_t timestamp, uint64_t ne
 uint64_t obs_source_deinterlace_pacing_waiting_frame_ts(uint64_t timestamp, uint64_t next_timestamp);
 
 /* deinterlace_half_duration of a frame at timestamp after one at prev_ts:
- * half the difference, truncated to 32 bits. prev_half (the
- * deinterlace_half_duration before) and frame_interval_ns (the canvas
- * interval) are not used yet (#1965). */
+ * half the difference. With no usable previous timestamp, that is prev_ts 0
+ * (a source that never showed a frame), timestamp at or before prev_ts (a
+ * timestamp going backwards) or more than twice TS_JUMP_THRESHOLD after it,
+ * a half duration past TS_JUMP_THRESHOLD (a pause or a new clock):
+ * prev_half, the deinterlace_half_duration before,
+ * when it is not 0 and at most TS_JUMP_THRESHOLD, else half of
+ * frame_interval_ns, the canvas interval, truncated to 32 bits (#1965). */
 uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts, uint32_t prev_half,
 						     uint64_t frame_interval_ns);
 
