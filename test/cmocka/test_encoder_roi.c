@@ -227,31 +227,35 @@ static void test_priority_range(void **state)
 	obs_encoder_release(enc);
 }
 
-/* Characterized, not endorsed: NaN < -1 and NaN > 1 are both false, so a
- * NaN priority is stored. */
+/* A NaN priority is not in [-1, 1]. NaN < -1 and NaN > 1 are both false,
+ * so the range check alone stored it (#1959). */
 static void test_nan_priority(void **state)
 {
 	(void)state;
 	obs_encoder_t *enc = roi_encoder(ROI_ENC_ID);
 
-	expect_add(enc, rect(0, 16, 0, 16, NAN), true);
-	expect_add(enc, rect(0, 16, 0, 16, -NAN), true);
+	expect_add(enc, rect(0, 16, 0, 16, NAN), false);
+	expect_add(enc, rect(0, 16, 0, 16, -NAN), false);
+	assert_false(obs_encoder_has_roi(enc));
 
 	obs_encoder_release(enc);
 }
 
-/* Characterized, not endorsed: the size check subtracts in uint32_t, so an
- * upside-down rectangle (bottom above top, or right left of left) wraps to
- * a large size and is stored. */
+/* An upside-down rectangle (bottom above top, or right left of left) is
+ * refused. The size check subtracts in uint32_t, so on its own it wrapped
+ * to a large size and stored the rectangle (#1959). */
 static void test_upside_down_rect(void **state)
 {
 	(void)state;
 	obs_encoder_t *enc = roi_encoder(ROI_ENC_ID);
 
-	expect_add(enc, rect(200, 100, 0, 64, 0.5f), true);
-	expect_add(enc, rect(0, 64, 200, 100, 0.5f), true);
-	expect_add(enc, rect(200, 100, 200, 100, 0.5f), true);
-	expect_add(enc, rect(101, 100, 0, 64, 0.5f), true);
+	expect_add(enc, rect(200, 100, 0, 64, 0.5f), false);
+	expect_add(enc, rect(0, 64, 200, 100, 0.5f), false);
+	expect_add(enc, rect(200, 100, 200, 100, 0.5f), false);
+	expect_add(enc, rect(101, 100, 0, 64, 0.5f), false);
+	expect_add(enc, rect(0, 64, 101, 100, 0.5f), false);
+	expect_add(enc, rect(UINT32_MAX, 0, 0, 64, 0.5f), false);
+	assert_false(obs_encoder_has_roi(enc));
 
 	obs_encoder_release(enc);
 }
@@ -349,6 +353,48 @@ static void test_enum_order_scaled(void **state)
 	video_output_close(video);
 }
 
+/* A scaled edge at 2^32 or past it is UINT32_MAX, the nearest value in
+ * range. The (uint32_t) cast of such a float is undefined in C (#1959). */
+static void test_enum_scaled_saturates(void **state)
+{
+	(void)state;
+	obs_encoder_t *enc = roi_encoder(ROI_ENC_ID);
+	video_t *video = open_video(16, 16);
+	struct seen seen = {0};
+
+	/* x 256 */
+	obs_encoder_set_video(enc, video);
+	obs_encoder_set_scaled_size(enc, 4096, 4096);
+
+	/* 2^24 - 1 x 256 is 2^32 - 256, in range; 2^24 x 256 is 2^32. */
+	expect_add(enc, rect(0, 0xFFFFFF, 16, 0x1000000, 0.5f), true);
+	expect_add(enc, rect(0x1000000, UINT32_MAX, 0xFFFFFF, UINT32_MAX, -0.5f), true);
+
+	obs_encoder_enum_roi(enc, collect, &seen);
+	assert_int_equal(seen.count, 2);
+	assert_roi(&seen.rois[0], UINT32_MAX, UINT32_MAX, 0xFFFFFF00u, UINT32_MAX, -0.5f);
+	assert_roi(&seen.rois[1], 0, 0xFFFFFF00u, 4096, UINT32_MAX, 0.5f);
+
+	obs_encoder_release(enc);
+	video_output_close(video);
+}
+
+/* The ROI functions check the encoder, as the other obs_encoder_*
+ * functions do (obs_encoder_valid()), instead of dereferencing NULL. */
+static void test_null_encoder(void **state)
+{
+	(void)state;
+	struct obs_encoder_roi roi = rect(0, 16, 0, 16, 0.5f);
+	struct seen seen = {0};
+
+	assert_false(obs_encoder_add_roi(NULL, &roi));
+	assert_false(obs_encoder_has_roi(NULL));
+	obs_encoder_clear_roi(NULL);
+	obs_encoder_enum_roi(NULL, collect, &seen);
+	assert_int_equal(seen.count, 0);
+	assert_int_equal(obs_encoder_get_roi_increment(NULL), 0);
+}
+
 /* A scaled size with no video to scale from: nothing is passed on. */
 static void test_enum_without_video_size(void **state)
 {
@@ -378,6 +424,8 @@ int main(void)
 		cmocka_unit_test(test_enum_order_unscaled),
 		cmocka_unit_test(test_enum_order_scaled),
 		cmocka_unit_test(test_enum_without_video_size),
+		cmocka_unit_test(test_enum_scaled_saturates),
+		cmocka_unit_test(test_null_encoder),
 	};
 	return cmocka_run_group_tests(tests, roi_setup, roi_teardown);
 }
