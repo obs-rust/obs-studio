@@ -52,8 +52,8 @@ static void test_hd530_registers_avc_and_hevc(void **state)
 static void test_format_parse_round_trip(void **state)
 {
 	(void)state;
-	struct qsv_probe_facts in = {"/dev/dri/renderD129", true, "Intel iHD driver for Intel(R) Gen Graphics - 25.2.3 ()",
-				     false, true};
+	struct qsv_probe_facts in = {"/dev/dri/renderD129", true,
+				     "Intel iHD driver for Intel(R) Gen Graphics - 25.2.3 ()", false, true};
 	struct qsv_probe_facts out;
 	char line[300];
 
