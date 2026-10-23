@@ -109,6 +109,7 @@ pub mod shader_sampler_convert;
 pub mod signal;
 pub mod task;
 pub mod text_lookup;
+pub mod texture_render;
 pub mod threading;
 pub mod utf8;
 pub mod util_uint64;
