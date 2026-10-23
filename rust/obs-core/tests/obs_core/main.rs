@@ -2,6 +2,7 @@
 //! the core category binary (obs-tests-core), not a binary of its own.
 
 mod audio_mix;
+mod audio_mix_parity;
 mod context_names;
 mod context_names_parity;
 mod module_paths;

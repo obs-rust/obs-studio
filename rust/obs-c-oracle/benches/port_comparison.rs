@@ -4,6 +4,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::{fmt::Debug, hint::black_box};
 
+#[path = "port_comparison/audio.rs"]
+mod audio;
 #[path = "port_comparison/callback.rs"]
 mod callback;
 #[path = "port_comparison/codecs.rs"]
@@ -46,6 +48,7 @@ fn comparisons(criterion: &mut Criterion) {
     callback::benchmarks(criterion);
     conversions::benchmarks(criterion);
     core_units::benchmarks(criterion);
+    audio::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);

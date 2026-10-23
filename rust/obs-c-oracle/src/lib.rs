@@ -33,6 +33,7 @@ pub mod audio_controls;
 pub mod audio_io;
 pub mod audio_io_inlines;
 pub mod audio_math;
+pub mod audio_mix;
 pub mod av1;
 pub mod avc;
 pub mod base;
