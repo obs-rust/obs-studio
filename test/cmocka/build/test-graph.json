@@ -2652,6 +2652,23 @@
       "watch_inputs": [
         "test/cmocka/remux-queue-stubs"
       ]
+    },
+    "test_qsv_probe": {
+      "sources": [
+        "test/cmocka/test_qsv_probe.c",
+        "plugins/obs-qsv11/qsv-probe.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/obs-qsv11",
+        "test/cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11",
+        "test/cmocka"
+      ]
     }
   },
   "tests": {
@@ -3537,6 +3554,12 @@
       "suite": "qt",
       "timeout_seconds": 120,
       "qt_runtime": "Qt6::Core"
+    },
+    "test_qsv_probe": {
+      "target": "test_qsv_probe",
+      "command": [
+        "${target}"
+      ]
     }
   }
 }

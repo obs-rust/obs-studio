@@ -25,8 +25,10 @@ target_sources(
     $<$<PLATFORM_ID:Windows>:common_directx11.h>
     build/obs-qsv11.core+.hpp.cpp
     build/obs-qsv11.c+.h.c
+    build/obs-qsv11.probe+.h.c
     common_utils.h
     qsv-host.h
+    qsv-probe.h
     QSV_Encoder.h
     QSV_Encoder_Internal.h
 )
