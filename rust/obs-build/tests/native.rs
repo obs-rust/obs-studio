@@ -1307,7 +1307,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
     let (mut covered_tests, mut covered_targets) = (0, 0);
     for (suite, count) in [
         ("core", None),
-        ("graphics", Some(13)),
+        ("graphics", Some(14)),
         ("vlc", Some(6)),
         ("webrtc", Some(2)),
         ("qt", Some(1)),
