@@ -19,7 +19,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[3]
 CATEGORIES = {
     "bmem", "dstr", "vec2", "vec3", "vec4", "crc32", "avc", "hevc", "av1",
-    "decl", "calldata", "proc", "signal",
+    "decl", "calldata", "proc", "signal", "conversions",
 }
 
 

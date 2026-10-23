@@ -20,7 +20,9 @@
 //! `dst[dst_size]`, one element past the buffer. C writes one element past the
 //! buffer; Rust doesn't. Here the capacity is `dst_size - 1`, as
 //! `os_wcs_to_utf8` has it, so that text is too long like any other, and
-//! gives 0 and an empty string.
+//! gives 0 and an empty string. The same capacity lets C's failed conversion
+//! of longer text leave one more unit of partial text after the NUL, at
+//! `dst[dst_size - 1]`.
 //!
 //! The `_ptr` forms take the allocator as a closure, which the C ABI shim
 //! makes `bmalloc`: it is called once, with the number of elements to

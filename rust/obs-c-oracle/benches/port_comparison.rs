@@ -8,6 +8,8 @@ use std::{fmt::Debug, hint::black_box};
 mod callback;
 #[path = "port_comparison/codecs.rs"]
 mod codecs;
+#[path = "port_comparison/conversions.rs"]
+mod conversions;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
 #[path = "port_comparison/util.rs"]
@@ -40,6 +42,7 @@ fn comparisons(criterion: &mut Criterion) {
     graphics::benchmarks(criterion);
     codecs::benchmarks(criterion);
     callback::benchmarks(criterion);
+    conversions::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
