@@ -36,6 +36,17 @@
 //! nothing. The C copies it to a NULL `dstr` and passes that to `strstr()`,
 //! which crashes.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// The text a search path holds for the module name.
 pub const MODULE_PLACEHOLDER: &[u8] = b"%module%";
 
@@ -69,6 +80,100 @@ pub struct ModuleInfo<'a> {
     pub name: Option<&'a [u8]>,
 }
 
+/// A `struct dstr` being built: `None` is its NULL array.
+type Dstr = Option<Vec<u8>>;
+
+/// `dstr_copy`: NULL for a NULL or empty string.
+fn copy(s: Option<&[u8]>) -> Dstr {
+    s.filter(|s| !s.is_empty()).map(<[u8]>::to_vec)
+}
+
+/// `dstr_end`: the last byte, 0 for an empty or NULL string.
+fn end(s: &Dstr) -> u8 {
+    s.as_deref().and_then(<[u8]>::last).copied().unwrap_or(0)
+}
+
+/// `dstr_is_empty`.
+fn is_empty(s: &Dstr) -> bool {
+    s.as_deref().is_none_or(<[u8]>::is_empty)
+}
+
+/// `dstr_resize(s, len)`: NULL for 0.
+fn resize(s: &mut Dstr, len: usize) {
+    if len == 0 {
+        *s = None;
+    } else if let Some(v) = s {
+        v.truncate(len);
+    }
+}
+
+/// `dstr_resize(s, s->len - 1)` after `dstr_end(s) == '/'`, which is never
+/// empty.
+fn drop_last(s: &mut Dstr) {
+    let len = s.as_ref().map_or(0, Vec::len);
+    resize(s, len.saturating_sub(1));
+}
+
+/// `dstr_cat`: nothing for an empty string, NULL included.
+fn cat(s: &mut Dstr, tail: &[u8]) {
+    if !tail.is_empty() {
+        s.get_or_insert_with(Vec::new).extend_from_slice(tail);
+    }
+}
+
+/// `dstr_cat_ch`.
+fn cat_ch(s: &mut Dstr, ch: u8) {
+    s.get_or_insert_with(Vec::new).push(ch);
+}
+
+/// Where `needle` first starts in `hay`, as `strstr`.
+fn position(hay: &[u8], needle: &[u8]) -> Option<usize> {
+    if needle.is_empty() {
+        return Some(0);
+    }
+    hay.windows(needle.len()).position(|w| w == needle)
+}
+
+/// `dstr_replace(s, "%module%", name)`: every match, left to right, the
+/// replacement not searched again; nothing for an empty string.
+fn replace_placeholder(s: &mut Dstr, name: &[u8]) {
+    let Some(v) = s.as_mut().filter(|v| !v.is_empty()) else {
+        return;
+    };
+    let mut out = Vec::with_capacity(v.len());
+    let mut rest: &[u8] = v;
+    while let Some(at) = position(rest, MODULE_PLACEHOLDER) {
+        let (before, from) = rest.split_at(at);
+        out.extend_from_slice(before);
+        out.extend_from_slice(name);
+        rest = from.get(MODULE_PLACEHOLDER.len()..).unwrap_or_default();
+    }
+    out.extend_from_slice(rest);
+    *v = out;
+}
+
+/// `astrcmpi_n(name, "lib", 3) == 0`, in ASCII.
+fn has_lib_prefix(name: &[u8]) -> bool {
+    name.get(..LIB_PREFIX.len())
+        .is_some_and(|start| start.eq_ignore_ascii_case(LIB_PREFIX))
+}
+
+fn exists(fs: &impl ModuleFs, path: &Dstr) -> bool {
+    // os_file_exists(NULL) is false.
+    path.as_deref().is_some_and(|p| fs.file_exists(p))
+}
+
+/// `make_data_dir`: `data_dir` with every `%module%` replaced by `name`, one
+/// trailing '/' taken off.
+fn make_data_dir(data_dir: Option<&[u8]>, name: &[u8]) -> Dstr {
+    let mut parsed = copy(data_dir);
+    replace_placeholder(&mut parsed, name);
+    if end(&parsed) == b'/' {
+        drop_last(&mut parsed);
+    }
+    parsed
+}
+
 /// Same contract as C `obs_module_paths_data_dir`: `data_dir` for the module
 /// `name`, every `%module%` replaced by the name and one trailing '/' taken
 /// off; for a name that starts with "lib" (any case) whose path does not
@@ -79,7 +184,12 @@ pub fn data_dir(
     name: Option<&[u8]>,
     data_dir: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
-    todo!()
+    let name = name.unwrap_or_default();
+    let parsed = make_data_dir(data_dir, name);
+    if !exists(fs, &parsed) && has_lib_prefix(name) {
+        return make_data_dir(data_dir, name.get(LIB_PREFIX.len()..).unwrap_or_default());
+    }
+    parsed
 }
 
 /// Same contract as C `obs_module_paths_find_file`: `data_path`, one '/'
@@ -90,7 +200,44 @@ pub fn find_file(
     data_path: Option<&[u8]>,
     file: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
-    todo!()
+    let file = file.unwrap_or_default();
+    let mut output = copy(data_path);
+    if !is_empty(&output) && end(&output) != b'/' && !file.is_empty() {
+        cat_ch(&mut output, b'/');
+    }
+    cat(&mut output, file);
+    if exists(fs, &output) { output } else { None }
+}
+
+/// `parse_binary_from_directory`: the binary of the module directory `name`
+/// for the binary directory `bin`, `None` when there is none.
+fn parse_binary(
+    fs: &impl ModuleFs,
+    bin: &[u8],
+    name: &[u8],
+    ext: &[u8],
+    add_extension: &mut dyn FnMut(&mut Vec<u8>),
+) -> Dstr {
+    let mut directory = copy(Some(bin));
+    replace_placeholder(&mut directory, name);
+    if end(&directory) != b'/' {
+        cat_ch(&mut directory, b'/');
+    }
+
+    let mut parsed = directory.clone().unwrap_or_default();
+    parsed.extend_from_slice(name);
+    add_extension(&mut parsed);
+    if fs.file_exists(&parsed) {
+        return Some(parsed);
+    }
+
+    // The C appends ".so" here (its "legacy fallback") and overwrites it
+    // right away: the next path tried is lib<name><ext>.
+    let mut parsed = directory;
+    cat(&mut parsed, LIB_PREFIX);
+    cat(&mut parsed, name);
+    cat(&mut parsed, ext);
+    if exists(fs, &parsed) { parsed } else { None }
 }
 
 /// The search of C `obs_module_paths_find` up to `os_glob()`: the pattern,
@@ -98,7 +245,80 @@ pub fn find_file(
 /// rather than module files. `None` for an empty binary directory
 /// (intentional difference: the C crashes).
 pub fn search_pattern(bin: &[u8], ext: &[u8]) -> Option<(Vec<u8>, bool)> {
-    todo!()
+    let mut search = copy(Some(bin));
+    search.as_ref()?;
+    let search_directories = match search
+        .as_deref()
+        .and_then(|s| position(s, MODULE_PLACEHOLDER))
+    {
+        Some(at) => {
+            resize(&mut search, at);
+            true
+        }
+        None => false,
+    };
+    if !is_empty(&search) && end(&search) != b'/' {
+        cat_ch(&mut search, b'/');
+    }
+    cat_ch(&mut search, b'*');
+    if !search_directories {
+        cat(&mut search, ext);
+    }
+    Some((search.unwrap_or_default(), search_directories))
+}
+
+/// `process_found_module`.
+#[allow(clippy::too_many_arguments)]
+fn process_found(
+    fs: &impl ModuleFs,
+    bin: &[u8],
+    data: Option<&[u8]>,
+    ext: &[u8],
+    add_extension: &mut dyn FnMut(&mut Vec<u8>),
+    path: &[u8],
+    directory: bool,
+    callback: &mut dyn FnMut(&ModuleInfo<'_>),
+) {
+    let file = path
+        .iter()
+        .rposition(|&b| b == b'/')
+        .and_then(|at| path.get(at.saturating_add(1)..))
+        .unwrap_or(path);
+    if file == b"." || file == b".." {
+        return;
+    }
+
+    let mut name = copy(Some(file));
+    if let Some(dot) = name
+        .as_deref()
+        .and_then(|n| n.iter().rposition(|&b| b == b'.'))
+    {
+        resize(&mut name, dot);
+    }
+
+    let (bin_path, bin_found) = if directory {
+        let found = parse_binary(
+            fs,
+            bin,
+            name.as_deref().unwrap_or_default(),
+            ext,
+            add_extension,
+        );
+        let bin_found = found.is_some();
+        (found, bin_found)
+    } else {
+        (copy(Some(path)), true)
+    };
+
+    // The C makes the data path whether or not the binary was found.
+    let data_path = self::data_dir(fs, name.as_deref(), data);
+    if let (Some(data_path), true) = (data_path, bin_found) {
+        callback(&ModuleInfo {
+            bin_path: bin_path.as_deref(),
+            data_path: &data_path,
+            name: name.as_deref(),
+        });
+    }
 }
 
 /// Same contract as C `obs_module_paths_find`: calls `callback` for every
@@ -115,5 +335,25 @@ pub fn find(
     add_extension: &mut dyn FnMut(&mut Vec<u8>),
     callback: &mut dyn FnMut(&ModuleInfo<'_>),
 ) {
-    todo!()
+    let Some(bin) = bin else {
+        return;
+    };
+    let Some((pattern, search_directories)) = search_pattern(bin, ext) else {
+        return;
+    };
+    let Some(matches) = fs.glob(&pattern) else {
+        return;
+    };
+    for entry in matches.iter().filter(|e| e.directory == search_directories) {
+        process_found(
+            fs,
+            bin,
+            data,
+            ext,
+            add_extension,
+            &entry.path,
+            search_directories,
+            callback,
+        );
+    }
 }

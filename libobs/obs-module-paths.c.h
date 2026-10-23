@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-paths.pch.h"
 
 /* Module search paths, moved from obs-module.c: how a module's binary and
  * data paths are made from a search path, and where a module's file is.
@@ -23,7 +23,8 @@
  * (obs->module_paths), the module list and the loading, and passes in what
  * these need: the paths, the module type, the module file extension
  * (get_module_extension()) and the host's binary extension hook
- * (obs_host_add_module_extension()). Declared in obs-internal.h. */
+ * (obs_host_add_module_extension()). Declared in obs-internal.h. Ported to
+ * rust/obs-core (module_paths): the hybrid libobs drops this file. */
 
 static inline void make_data_dir(struct dstr *parsed_data_dir, const char *data_dir, const char *name)
 {

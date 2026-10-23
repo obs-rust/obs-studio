@@ -121,6 +121,10 @@ _obs_nix_portal_sets_partition
 # obs-context-names.c: obs.c calls them inside libobs. Not EXPORT.
 _obs_context_name_dup
 _obs_context_name_deduplicate
+# obs-module-paths.c: obs-module.c calls them inside libobs. Not EXPORT.
+_obs_module_paths_data_dir
+_obs_module_paths_find
+_obs_module_paths_find_file
 # obs-video-plan.c: obs.c calls them inside libobs. Not EXPORT.
 _obs_video_size_valid
 _obs_video_align_output_size
