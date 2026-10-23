@@ -1344,6 +1344,132 @@ static void safe_and_disabled_modules(void **state)
 	expect_loaded(f, OBS_MODULE_TYPE_CORE, "ldd");
 }
 
+/* ------------------------------------------------------- module locales */
+
+/*
+ * obs_module_load_locale(module, default_locale, locale): the text of
+ * "locale/<default_locale>.ini" in the module's data path
+ * (obs_find_module_file), with "/locale/<locale>.ini" added on top unless
+ * locale is default_locale, ignoring case (obs-rust/obs-studio#1876). NULL
+ * when a parameter is NULL or the default file is missing.
+ *
+ * Characterized, not endorsed:
+ * - The second name starts with '/' and the first does not, so after a data
+ *   path the second has two: "<data>//locale/<locale>.ini". It still
+ *   resolves.
+ * - With an empty data path the first name is relative to the working
+ *   directory and the second is absolute: "/locale/<locale>.ini".
+ * - A locale that differs from the default only in case is never loaded,
+ *   even when its own file exists.
+ * - A missing locale file keeps the default text.
+ */
+
+#define LOCALE_EN "A=\"en A\"\nB=\"en B\"\n"
+#define LOCALE_DE "A=\"de A\"\n"
+#define LOCALE_EN_CASE "A=\"EN-us A\"\nB=\"EN-us B\"\n"
+
+/* The text of key in lookup, or NULL when it has none. */
+static const char *text_of(lookup_t *lookup, const char *key)
+{
+	const char *out = NULL;
+	return text_lookup_getstr(lookup, key, &out) ? out : NULL;
+}
+
+/* The lookup has A and B as given (NULL: not there), or is NULL when a is
+ * NULL. */
+static void expect_locale(obs_module_t *mod, const char *def, const char *locale, const char *a, const char *b)
+{
+	lookup_t *lookup = obs_module_load_locale(mod, def, locale);
+	if (!a) {
+		assert_null(lookup);
+		return;
+	}
+	assert_non_null(lookup);
+	assert_non_null(text_of(lookup, "A"));
+	assert_string_equal(text_of(lookup, "A"), a);
+	if (b) {
+		assert_non_null(text_of(lookup, "B"));
+		assert_string_equal(text_of(lookup, "B"), b);
+	} else {
+		assert_null(text_of(lookup, "B"));
+	}
+	text_lookup_destroy(lookup);
+}
+
+static void expect_found(struct paths_fixture *f, obs_module_t *mod, const char *file, const char *expected)
+{
+	char *found = obs_find_module_file(mod, file);
+	assert_non_null(found);
+	char rel[1024];
+	bool was_null;
+	copy_rel(rel, sizeof(rel), f->root.array, found, &was_null);
+	assert_string_equal(rel, expected);
+	bfree(found);
+}
+
+static void module_locale(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	write_text(f, "/loc/locale/en-US.ini", LOCALE_EN);
+	write_text(f, "/loc/locale/de-DE.ini", LOCALE_DE);
+	write_text(f, "/loc/locale/EN-us.ini", LOCALE_EN_CASE);
+	write_text(f, "/nodef/locale/de-DE.ini", LOCALE_DE);
+	struct dstr bin = {0};
+	dstr_copy(&bin, at(f, "/n/stub.so"));
+	obs_module_t *mod = disabled_module(bin.array, at(f, "/loc"));
+
+	/* The default only. */
+	expect_locale(mod, "en-US", "en-US", "en A", "en B");
+	/* Another locale on top of the default. */
+	expect_locale(mod, "en-US", "de-DE", "de A", "en B");
+	/* The default in another case: not loaded, though its file exists. */
+	expect_locale(mod, "en-US", "EN-us", "en A", "en B");
+	expect_locale(mod, "EN-us", "en-US", "EN-us A", "EN-us B");
+	/* A missing locale keeps the default. */
+	expect_locale(mod, "en-US", "fr-FR", "en A", "en B");
+	expect_locale(mod, "en-US", "", "en A", "en B");
+	/* A missing default: NULL, though the locale exists. */
+	expect_locale(mod, "xx-XX", "de-DE", NULL, NULL);
+	expect_locale(mod, "", "de-DE", NULL, NULL);
+	expect_locale(disabled_module(bin.array, at(f, "/nodef")), "en-US", "de-DE", NULL, NULL);
+	expect_locale(disabled_module(bin.array, at(f, "/none")), "en-US", "en-US", NULL, NULL);
+	/* The default file is a second locale's file as well. */
+	expect_locale(mod, "de-DE", "en-US", "en A", "en B");
+	expect_locale(mod, "de-DE", "de-DE", "de A", NULL);
+
+	/* NULL parameters. */
+	expect_locale(NULL, "en-US", "en-US", NULL, NULL);
+	expect_locale(mod, NULL, "en-US", NULL, NULL);
+	expect_locale(mod, "en-US", NULL, NULL, NULL);
+	expect_locale(mod, NULL, NULL, NULL, NULL);
+
+	/* The two names as obs_find_module_file() resolves them. */
+	expect_found(f, mod, "locale/de-DE.ini", "R/loc/locale/de-DE.ini");
+	expect_found(f, mod, "/locale/de-DE.ini", "R/loc//locale/de-DE.ini");
+
+	/* A data path with a trailing '/': the same text. */
+	obs_module_t *slash = disabled_module(bin.array, at(f, "/loc/"));
+	expect_locale(slash, "en-US", "de-DE", "de A", "en B");
+	expect_found(f, slash, "/locale/de-DE.ini", "R/loc//locale/de-DE.ini");
+
+	/* An empty data path: the default from the working directory, the
+	 * locale from the root, so the working directory's de-DE is not read.
+	 * (Only where the root has no such file.) */
+	if (!os_file_exists("/locale/de-DE.ini")) {
+		obs_module_t *empty = disabled_module(bin.array, "");
+		char cwd[4096];
+		assert_non_null(getcwd(cwd, sizeof(cwd)));
+		assert_int_equal(chdir(at(f, "/loc")), 0);
+		lookup_t *lookup = obs_module_load_locale(empty, "en-US", "de-DE");
+		assert_int_equal(chdir(cwd), 0);
+		assert_non_null(lookup);
+		assert_string_equal(text_of(lookup, "A"), "en A");
+		text_lookup_destroy(lookup);
+	}
+
+	dstr_free(&bin);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && strcmp(argv[1], "--child") == 0)
@@ -1374,6 +1500,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(module_config_path, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(module_manifest, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(safe_and_disabled_modules, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_locale, paths_setup, paths_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
