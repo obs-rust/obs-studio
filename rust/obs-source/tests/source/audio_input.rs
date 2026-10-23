@@ -911,3 +911,21 @@ fn edge_gate_literals() {
         f32::from_bits(0x3f02_8f5d)
     ));
 }
+
+/// Planes past `channels` are neither added nor written (found by the
+/// mutation check: the shims never pass more, so only this reaches it).
+#[test]
+fn edge_downmix_leaves_planes_past_channels() {
+    let mut m = fill_mix();
+    let input = input();
+    {
+        let mut planes: Vec<&mut [f32]> = m.iter_mut().map(|p| &mut p[..FRAMES]).collect();
+        downmix(&mut planes, 2);
+    }
+    check_downmix(&m, 2, FRAMES);
+    for c in 2..MAX_CHANNELS {
+        for f in 0..FRAMES {
+            check_bits(m[c][f], input[c][f], "plane", c * 100 + f);
+        }
+    }
+}
