@@ -96,6 +96,7 @@ pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod proc;
 pub mod profiler;
+pub mod profiler_io;
 pub mod profiler_snapshot;
 pub mod pulse_format;
 pub mod pulse_stream_flags;

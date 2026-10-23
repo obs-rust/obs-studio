@@ -6,6 +6,7 @@ use std::sync::Mutex;
 pub(crate) static PROFILER_LOCK: Mutex<()> = Mutex::new(());
 
 mod profiler;
+mod profiler_io;
 mod profiler_parity;
 mod profiler_snapshot;
 mod profiler_snapshot_layout;

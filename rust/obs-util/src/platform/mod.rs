@@ -117,7 +117,7 @@ cfg_select! {
 pub const MUL_DIV64_IS_UDIV128: bool = cfg!(all(target_env = "msvc", target_arch = "x86_64"));
 
 mod stdio;
-pub use stdio::{DoubleFormat, snprintf_double};
+pub use stdio::{DoubleFormat, snprintf_double, snprintf_ptr};
 
 /// The `Sleep` argument `os_sleep_ms(ms)` uses on a Windows host whose
 /// version is `winver` (`major << 8 | minor`). Windows 8+ (`0x0602`) sleeps

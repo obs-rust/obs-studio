@@ -3,6 +3,9 @@
 # One symbol per line; lines starting with '#' are comments.
 base_begin_crash
 profiler_name_store_push
+# profiler-io.c: non-static but not EXPORT; nothing outside the file
+# calls it, and the C build hides it.
+profile_print_func
 utf8_to_wchar
 wchar_to_utf8
 # platform-nix-dbus.c: called only by the Linux/FreeBSD sleep inhibitor;

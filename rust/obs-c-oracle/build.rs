@@ -466,6 +466,11 @@ fn main() {
         // forwards to libpulse's header where one is installed and defines
         // the values the oracle needs where not (oracle/pulse-shim/pulse/def.h).
         .include(manifest.join("oracle/pulse-shim"))
+        // util/profiler-io.c includes <zlib.h>, which the Windows Rust test
+        // runners do not have. The stand-in writes the "gzip" stream
+        // uncompressed (oracle/zlib-shim/zlib.h), so Tier 3 compares it with
+        // the Rust port's decompressed output.
+        .include(manifest.join("oracle/zlib-shim"))
         .std("c11");
     // The real build is gnu17, whose glibc headers see _DEFAULT_SOURCE (POSIX
     // 2008: PTHREAD_MUTEX_RECURSIVE for util/threading.h). Strict c11 hides

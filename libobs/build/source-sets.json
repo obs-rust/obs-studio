@@ -120,6 +120,7 @@
     "build/libobs.ported-effect-lifecycle+.h.c",
     "build/libobs.ported-util+.h.c",
     "build/libobs.ported-util-io+.h.c",
+    "build/libobs.ported-profiler-io+.h.c",
     "build/libobs.ported-platform+.h.c",
     "build/libobs.ported-media+.h.c",
     "build/libobs.ported-callback+.h.c",

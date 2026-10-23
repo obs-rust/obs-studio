@@ -38,6 +38,7 @@ pub mod platform_windows;
 #[cfg(all(unix, not(target_os = "macos"), feature = "gio"))]
 pub mod portal_inhibit;
 pub mod profiler;
+pub mod profiler_io;
 pub mod profiler_snapshot;
 pub mod task;
 pub mod text_lookup;

@@ -67,3 +67,23 @@ pub fn snprintf_double(format: DoubleFormat, value: f64) -> Vec<u8> {
     let len = usize::try_from(ret).unwrap_or(0).min(buf.len() - 1);
     buf[..len].to_vec()
 }
+
+/// `snprintf(buf, 64, "%p", ptr)` from the C library: the host's spelling
+/// of a pointer (`0x...` and `(nil)` on glibc, 16 upper-case digits on
+/// MSVC), as `profiler_snapshot_dump_csv` (`libobs/util/profiler-io.c`)
+/// writes its id columns.
+pub fn snprintf_ptr(ptr: usize) -> Vec<u8> {
+    let mut buf = [0u8; 64];
+    // SAFETY: as in `snprintf_double`; the one conversion is `%p`, matched
+    // by a pointer-sized `void *` value that is only printed, never read.
+    let ret = unsafe {
+        snprintf(
+            buf.as_mut_ptr().cast::<c_char>(),
+            buf.len(),
+            c"%p".as_ptr(),
+            core::ptr::without_provenance::<core::ffi::c_void>(ptr),
+        )
+    };
+    let len = usize::try_from(ret).unwrap_or(0).min(buf.len() - 1);
+    buf[..len].to_vec()
+}

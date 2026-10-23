@@ -19,6 +19,9 @@ gio = []
 libc = "0.2"
 # SIMD substring search for dstr_replace (C uses libc strstr), #1297.
 memchr = "2"
+# gzip for profiler_snapshot_dump_csv_gz (C uses zlib); the pure-Rust
+# miniz_oxide backend, so neither libobs-rust nor the test runners need zlib.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }

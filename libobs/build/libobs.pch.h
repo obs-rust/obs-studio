@@ -120,13 +120,6 @@
 #include <stdio.h>
 #include "util/cf-lexer.h"
 
-/* util/profiler-io.c */
-
-#include "util/profiler.h"
-#include "util/profiler-snapshot.h"
-
-#include <zlib.h>
-
 /* util/source-profiler.c */
 #include "util/source-profiler.h"
 

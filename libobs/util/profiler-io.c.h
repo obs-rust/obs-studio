@@ -1,12 +1,13 @@
 /*
- * Print and CSV half of util/profiler.c. Compiled in both builds.
+ * Print and CSV half of util/profiler.c. The C reference compiles it; the
+ * hybrid libobs uses the Rust port (obs-util::profiler_io).
  *
  * Moved verbatim so the recording engine can be swapped for the Rust port
  * without taking zlib or the dstr printf printers with it. profile_print_func
  * stays a non-static C symbol, as it was in profiler.c.
  */
 
-#include "build/libobs.pch.h"
+#include "build/libobs-ported-profiler-io.pch.h"
 
 typedef void (*profile_entry_print_func)(profiler_snapshot_entry_t *entry, struct dstr *indent_buffer,
 					 struct dstr *output_buffer, unsigned indent, uint64_t active,
