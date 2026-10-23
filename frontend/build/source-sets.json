@@ -323,6 +323,8 @@
     "utility/media-time.h",
     "build/frontend.utility-missing-files-list+.h.c",
     "utility/missing-files-list.h",
+    "build/frontend.utility-missing-source-types+.h.c",
+    "utility/missing-source-types.h",
     "utility/MissingFilesModel.hpp",
     "utility/MissingFilesPathItemDelegate.hpp",
     "utility/MultitrackVideoError.hpp",
