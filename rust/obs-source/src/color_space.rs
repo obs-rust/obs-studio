@@ -67,7 +67,7 @@ pub struct Node {
     pub has_filter_target: bool,
 }
 
-/// `enum obs_source_color_space_route`: which source
+/// `enum obs_source_color_space_ask`: which source
 /// `obs_source_get_color_space()` asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Route {
@@ -87,14 +87,40 @@ pub enum Route {
 /// [`TYPE_FILTER`] is a filter, and only the [`VIDEO`] and [`ASYNC`] bits of
 /// the flags count. The rules are tried in the C's order.
 pub fn route(node: Node) -> Route {
-    let _ = node;
-    todo!()
+    let is_filter = node.source_type == TYPE_FILTER;
+    let has_video = node.output_flags & VIDEO != 0;
+
+    if !is_filter && !has_video && node.has_filter_parent {
+        return Route::AskParent;
+    }
+
+    // A filter that produces no video must not answer for the chain below
+    // it (#1493).
+    if is_filter && !has_video && node.has_filter_target {
+        return Route::AskTarget;
+    }
+
+    if (!node.has_data || !node.enabled) && node.has_filter_target {
+        return Route::AskTarget;
+    }
+
+    if node.output_flags & ASYNC != 0 {
+        return Route::AsyncPick;
+    }
+
+    Route::Callback
 }
 
 /// `obs_source_color_space_pick()`: the async pick of `video_space`, the
 /// async frame's space, from `preferred`: the first entry equal to it, else
 /// the last entry, else `video_space`.
 pub fn pick(video_space: i32, preferred: &[i32]) -> i32 {
-    let _ = (video_space, preferred);
-    todo!()
+    let mut space = video_space;
+    for &preferred_space in preferred {
+        space = preferred_space;
+        if space == video_space {
+            break;
+        }
+    }
+    space
 }

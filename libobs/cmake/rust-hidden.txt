@@ -96,6 +96,11 @@ obs_scene_audio_action_due
 obs_source_audio_timing_pre_lock
 obs_source_audio_timing_under_lock
 obs_source_audio_timing_buffer_start
+# obs-source-color-space.c: obs_source_get_color_space() in obs-source.c calls
+# them inside libobs. Declared in obs-source-color-space.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_source_color_space_route
+obs_source_color_space_pick
 # obs-source-deinterlace-pacing.c: deinterlace_get_closest_frames() and
 # ready_deinterlace_frames() in obs-source-deinterlace.c call them inside
 # libobs. Declared in obs-source-deinterlace-pacing.h without EXPORT, so the

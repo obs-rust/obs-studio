@@ -101,6 +101,10 @@
     obs_source_audio_timing_pre_lock;
     obs_source_audio_timing_under_lock;
     obs_source_audio_timing_buffer_start;
+    /* obs-source-color-space.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_color_space_route;
+    obs_source_color_space_pick;
     /* obs-source-deinterlace-pacing.c. obs-source-deinterlace.c calls them
      * inside libobs. Not EXPORT. */
     obs_source_deinterlace_pacing_hold;

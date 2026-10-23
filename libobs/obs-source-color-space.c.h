@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-color-space.pch.h"
 
 /* The colour space query routing of obs_source_get_color_space() in
  * obs-source.c, moved: the decisions, on plain values.
  * obs_source_get_color_space() keeps data_valid(), reads the source's fields,
  * follows the route (the recursion, convert_video_space() and the callback)
  * and returns what comes back. Declared in obs-source-color-space.h without
- * EXPORT. */
+ * EXPORT. In hybrid libobs the Rust port (rust/obs-source) replaces this
+ * file. */
 
 enum obs_source_color_space_ask obs_source_color_space_route(struct obs_source_color_space_node node)
 {
