@@ -240,6 +240,11 @@ not get a line.
   2026-10-16. Issue
   [#1012](https://github.com/obs-rust/obs-studio/issues/1012), PR
   [#1016](https://github.com/obs-rust/obs-studio/pull/1016).
+- **Chromium 156 with H.264/AAC for browser sources.** Linux x86_64 builds
+  use CEF 8078 (Chromium 156), built by obs-rust with proprietary codecs,
+  so browser sources and panels play H.264/AAC media. *Linux*, 2026-10-23.
+  Issue [#1864](https://github.com/obs-rust/obs-studio/issues/1864), PR
+  [#1948](https://github.com/obs-rust/obs-studio/pull/1948).
 
 ### Scenes and UI
 
