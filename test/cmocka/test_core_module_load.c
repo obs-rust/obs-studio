@@ -265,6 +265,146 @@ static void check_others_loaded(const struct child_result *res)
 	}
 }
 
+/* ------------------------------------------- obs_add_module_path() type */
+
+/*
+ * obs_add_module_path() is the search path API from before module types. Its
+ * paths carry no type, so obs_find_modules2() reports their modules as
+ * OBS_MODULE_TYPE_UNDEFINED, and libobs's loader treats that type the way it
+ * treated every module before types existed: the disabled list applies, and a
+ * module named like a core module is not skipped as a legacy copy of it
+ * (obs-rust/obs-studio#1900).
+ *
+ * The type used to be left uninitialized on the stack. stain_stack() first
+ * fills the stack that obs_add_module_path() then runs on with
+ * OBS_MODULE_TYPE_CORE, so an unset type reads as CORE rather than as
+ * whatever happens to be there, often 0 (UNDEFINED) by luck.
+ */
+
+#define STAIN_WORDS 8192
+
+static __attribute__((noinline)) void stain_stack(void)
+{
+	volatile uint32_t words[STAIN_WORDS];
+	for (size_t i = 0; i < STAIN_WORDS; i++)
+		words[i] = OBS_MODULE_TYPE_CORE;
+}
+
+struct typed_found {
+	size_t count;
+	enum obs_runtime_module_type type[4];
+};
+
+static void collect_typed(void *param, const struct obs_module_info2 *info)
+{
+	struct typed_found *found = param;
+	if (found->count < 4)
+		found->type[found->count] = info->type;
+	found->count++;
+}
+
+struct type_fixture {
+	struct dstr root;
+	bool started;
+};
+
+static int type_setup(void **state)
+{
+	struct type_fixture *f = calloc(1, sizeof(*f));
+	assert_non_null(f);
+
+	const char *tmp = getenv("TMPDIR");
+	if (tmp && *tmp) {
+		dstr_printf(&f->root, "%s/obs-module-path-type-XXXXXX", tmp);
+	} else {
+		char self[4096];
+		ssize_t len = readlink("/proc/self/exe", self, sizeof(self) - 1);
+		assert_true(len > 0);
+		self[len] = '\0';
+		*strrchr(self, '/') = '\0';
+		dstr_printf(&f->root, "%s/obs-module-path-type-XXXXXX", self);
+	}
+	assert_non_null(mkdtemp(f->root.array));
+	*state = f;
+	return 0;
+}
+
+static int type_teardown(void **state)
+{
+	struct type_fixture *f = *state;
+	if (f->started)
+		obs_shutdown();
+	rm_rf(f->root.array);
+	dstr_free(&f->root);
+	free(f);
+	return 0;
+}
+
+static void module_path_type(void **state)
+{
+	struct type_fixture *f = *state;
+
+	struct dstr bin = {0}, data = {0}, file = {0};
+	dstr_printf(&bin, "%s/bin", f->root.array);
+	dstr_printf(&data, "%s/data/%%module%%", f->root.array);
+	assert_int_equal(os_mkdirs(bin.array), MKDIR_SUCCESS);
+
+	/* One module on the disabled list, one named like a core module. */
+	const char *disabled = "module-path-type-disabled";
+	const char *core_named = obs_core_modules[0];
+	dstr_printf(&file, "%s/%s.so", bin.array, disabled);
+	assert_true(copy_file(CORE_STUB_PATH, file.array, 0755));
+	dstr_printf(&file, "%s/%s.so", bin.array, core_named);
+	assert_true(copy_file(CORE_STUB_PATH, file.array, 0755));
+	dstr_free(&file);
+
+	f->started = obs_startup("en-US", NULL, NULL);
+	if (!f->started) {
+		dstr_free(&data);
+		dstr_free(&bin);
+		skip();
+	}
+	obs_add_disabled_module(disabled);
+
+	stain_stack();
+	obs_add_module_path(bin.array, data.array);
+
+	struct typed_found found = {0};
+	obs_find_modules2(collect_typed, &found);
+
+	/* Load what was found as a caller of obs_find_modules2() would with
+	 * libobs's loader: from the same path, with the type reported. */
+	struct obs_runtime_module_info info = {
+		.path_info = {.binary = bin.array, .data = data.array},
+		.type = found.type[0],
+	};
+	struct obs_module_failure_info failures = {0};
+	obs_load_plugins(&info, &failures);
+	obs_module_failure_info_free(&failures);
+	dstr_free(&data);
+	dstr_free(&bin);
+
+	obs_module_t *core_named_mod = obs_get_module(core_named);
+	print_message("types %d %d; disabled loaded=%d listed=%d; core-named loaded=%d core=%d legacy=%d\n",
+		      found.type[0], found.type[1], obs_get_module(disabled) != NULL,
+		      obs_get_disabled_module(disabled) != NULL, core_named_mod != NULL,
+		      obs_is_core_module(core_named_mod), obs_is_legacy_module(core_named_mod));
+
+	assert_int_equal(found.count, 2);
+	for (size_t i = 0; i < 2; i++)
+		assert_int_equal(found.type[i], OBS_MODULE_TYPE_UNDEFINED);
+
+	/* The disabled list applies, as it did before module types. */
+	assert_null(obs_get_module(disabled));
+	assert_non_null(obs_get_disabled_module(disabled));
+
+	/* Not skipped as a legacy copy of a core module, and neither core nor
+	 * legacy once loaded. */
+	assert_non_null(core_named_mod);
+	assert_false(obs_is_core_module(core_named_mod));
+	assert_false(obs_is_legacy_module(core_named_mod));
+}
+
 static void all_present(void **state)
 {
 	UNUSED_PARAMETER(state);
@@ -338,6 +478,7 @@ int main(int argc, char **argv)
 	}
 
 	const struct CMUnitTest tests[] = {
+		cmocka_unit_test_setup_teardown(module_path_type, type_setup, type_teardown),
 		cmocka_unit_test(all_present),
 		cmocka_unit_test(missing_dependency),
 		cmocka_unit_test(missing_file),
