@@ -197,6 +197,14 @@ not get a line.
   decision in a test. *Linux*, pending merge. Issue
   [#1863](https://github.com/obs-rust/obs-studio/issues/1863), PR
   [#1879](https://github.com/obs-rust/obs-studio/pull/1879).
+- **Missing source types.** When a loaded scene collection has sources whose
+  plugin this OBS does not have, a "Missing Source Types" warning lists them
+  instead of leaving them blank without a word: browser sources (not in this
+  build yet, with the Window Capture workaround), VLC, or the plugin type,
+  with how many sources each. The sources keep their settings. Safe mode only
+  logs it. *All*, pending merge. Issue
+  [#1865](https://github.com/obs-rust/obs-studio/issues/1865), PR
+  [#1883](https://github.com/obs-rust/obs-studio/pull/1883).
 
 - **let buffered queues fit one chunk.** Large buffered recording chunks complete when the configured queue limit is smaller than a chunk. *All*, 2026-10-20. Issue [#1526](https://github.com/obs-rust/obs-studio/issues/1526), PR [#1527](https://github.com/obs-rust/obs-studio/pull/1527).
 

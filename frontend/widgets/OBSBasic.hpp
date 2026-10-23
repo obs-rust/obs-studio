@@ -25,6 +25,7 @@
 #include <oauth/Auth.hpp>
 #include <utility/BasicOutputHandler.hpp>
 #include <utility/close-top-level.hpp>
+#include <utility/missing-source-types.h>
 #include <utility/OBSCanvas.hpp>
 #include <utility/PreviewProgramSizeObserver.hpp>
 #include <utility/VCamConfig.hpp>
@@ -1130,6 +1131,7 @@ private:
 	void LogScenes();
 	void SaveProjectNow();
 	void ShowMissingFilesDialog(obs_missing_files_t *files);
+	void ShowMissingSourceTypes(const missing_source_types &types);
 
 	void SetupNewSceneCollection(const std::string &collectionName);
 	void SetupDuplicateSceneCollection(const std::string &collectionName);

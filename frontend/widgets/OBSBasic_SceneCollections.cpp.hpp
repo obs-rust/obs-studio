@@ -1314,6 +1314,17 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 	obs_missing_files_t *files = missing_files_list_create(App()->IsMissingFilesCheckDisabled());
 	obs_load_sources(sources, missing_files_list_add_source, files);
 
+	/* Sources whose type no loaded module provides (obs-rust/obs-studio#1865). */
+	struct missing_source_types missingTypes = {};
+	obs_enum_all_sources(
+		[](void *param, obs_source_t *source) {
+			const char *id = obs_source_get_id(source);
+			missing_source_types_add(static_cast<missing_source_types *>(param), id,
+						 obs_source_get_display_name(id) != nullptr);
+			return true;
+		},
+		&missingTypes);
+
 	if (resetVideo) {
 		ResetVideo();
 	}
@@ -1468,6 +1479,8 @@ retryScene:
 	if (files) {
 		ShowMissingFilesDialog(files);
 	}
+
+	ShowMissingSourceTypes(missingTypes);
 
 	disableSaving--;
 
@@ -1654,6 +1667,39 @@ void OBSBasic::ShowMissingFilesDialog(obs_missing_files_t *files)
 						   QTStr("MissingFiles.NoMissing.Text"));
 		}
 	}
+}
+
+void OBSBasic::ShowMissingSourceTypes(const missing_source_types &types)
+{
+	if (types.count == 0) {
+		return;
+	}
+
+	QString items;
+	for (size_t i = 0; i < types.count; i++) {
+		const char *id = types.ids[i];
+		const QString sources = QString::number(types.sources[i]);
+		blog(LOG_WARNING,
+		     "Scene collection uses source type '%s' (%zu sources), which no loaded module provides", id,
+		     types.sources[i]);
+		switch (missing_source_types_hint(id)) {
+		case MISSING_SOURCE_HINT_BROWSER:
+			items += QTStr("MissingSourceTypes.Browser").arg(sources);
+			break;
+		case MISSING_SOURCE_HINT_VLC:
+			items += QTStr("MissingSourceTypes.VLC").arg(sources);
+			break;
+		case MISSING_SOURCE_HINT_PLUGIN:
+			items += QTStr("MissingSourceTypes.Plugin").arg(QString(id).toHtmlEscaped(), sources);
+			break;
+		}
+	}
+
+	/* Safe mode leaves third-party plugins out on purpose: log only. */
+	if (safe_mode) {
+		return;
+	}
+	OBSMessageBox::warning(this, QTStr("MissingSourceTypes.Title"), QTStr("MissingSourceTypes.Text").arg(items));
 }
 
 void OBSBasic::on_actionShowMissingFiles_triggered()

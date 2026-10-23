@@ -202,6 +202,7 @@
 #include <dialogs/OBSMissingFiles.hpp>
 #include <importer/OBSImporter.hpp>
 #include <utility/missing-files-list.h>
+#include <utility/missing-source-types.h>
 
 #include <filesystem>
 #include <vector>
