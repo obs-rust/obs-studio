@@ -1,15 +1,27 @@
-//! obs-core: the module search paths (`libobs/obs-module-paths.c.h`), on a
-//! small real tree in the temporary directory. Both sides call the same
-//! `os_file_exists()` and `os_glob()`, so the timings are mostly the file
-//! system's; the difference is the path building around it.
+//! obs-core: the module search paths (`libobs/obs-module-paths.c.h`) and
+//! the module names and files (`libobs/obs-module-names.c.h`), on a small
+//! real tree in the temporary directory. Both sides call the same
+//! `os_file_exists()` and `os_glob()`, so the timings of the lookups are
+//! mostly the file system's; the difference is the path building around
+//! them. The names, config and manifest paths and the list match touch no
+//! file system.
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::path::PathBuf;
 
 use criterion::Criterion;
+use obs_c_oracle::module_names::{
+    oracle_obs_module_names_config_path, oracle_obs_module_names_file_name,
+    oracle_obs_module_names_find_core, oracle_obs_module_names_listed,
+    oracle_obs_module_names_manifest_path, oracle_obs_module_names_module_name,
+};
 use obs_c_oracle::module_paths::{
     OracleModuleInfo2, oracle_obs_module_paths_data_dir, oracle_obs_module_paths_find,
     oracle_obs_module_paths_find_file,
+};
+use obs_core::ffi::module_names::{
+    obs_module_names_config_path, obs_module_names_file_name, obs_module_names_find_core,
+    obs_module_names_listed, obs_module_names_manifest_path, obs_module_names_module_name,
 };
 use obs_core::ffi::module_paths::{
     obs_module_info2, obs_module_paths_data_dir, obs_module_paths_find, obs_module_paths_find_file,
@@ -34,6 +46,7 @@ impl Tree {
             file(root.join(format!("mods/m{i:02}/bin/64bit/m{i:02}.so")));
             std::fs::create_dir_all(root.join(format!("data/m{i:02}/locale"))).unwrap();
             file(root.join(format!("data/m{i:02}/locale/en-US.ini")));
+            file(root.join(format!("core/c{i:02}.so")));
         }
         Self(root)
     }
@@ -170,6 +183,114 @@ fn module_paths(criterion: &mut Criterion) {
     }
 }
 
+fn module_names(criterion: &mut Criterion) {
+    let path = c"/usr/lib/x86_64-linux-gnu/obs-plugins/obs-ffmpeg.so";
+    super::pair(
+        criterion,
+        "module_names/file_name",
+        // SAFETY: a NUL-terminated path; the result points into it.
+        || unsafe { obs_module_names_file_name(path.as_ptr()) } as usize,
+        || unsafe { oracle_obs_module_names_file_name(path.as_ptr()) } as usize,
+    );
+    let (file, ext) = (c"obs-ffmpeg.so", c".so");
+    super::pair(
+        criterion,
+        "module_names/module_name",
+        // SAFETY: NUL-terminated strings; the result is freed.
+        || take(unsafe { obs_module_names_module_name(file.as_ptr(), ext.as_ptr()) }),
+        || take(unsafe { oracle_obs_module_names_module_name(file.as_ptr(), ext.as_ptr()) }),
+    );
+    let (config, name, json) = (
+        c"/etc/obs-studio/plugin_config",
+        c"obs-ffmpeg",
+        c"settings.json",
+    );
+    super::pair(
+        criterion,
+        "module_names/config_path",
+        // SAFETY: as above.
+        || {
+            take(unsafe {
+                obs_module_names_config_path(config.as_ptr(), name.as_ptr(), json.as_ptr())
+            })
+        },
+        || {
+            take(unsafe {
+                oracle_obs_module_names_config_path(config.as_ptr(), name.as_ptr(), json.as_ptr())
+            })
+        },
+    );
+    let data = c"/usr/share/obs/obs-plugins/obs-ffmpeg";
+    super::pair(
+        criterion,
+        "module_names/manifest_path",
+        // SAFETY: as above.
+        || take(unsafe { obs_module_names_manifest_path(data.as_ptr()) }),
+        || take(unsafe { oracle_obs_module_names_manifest_path(data.as_ptr()) }),
+    );
+
+    let names: Vec<CString> = (0..16)
+        .map(|i| CString::new(format!("plugin-{i:02}")).unwrap())
+        .collect();
+    let mut list: Vec<*mut c_char> = names.iter().map(|n| n.as_ptr().cast_mut()).collect();
+    let list = list.as_mut_ptr().cast_const();
+    for (case, name) in [("last", c"plugin-15"), ("miss", c"plugin-16")] {
+        super::pair(
+            criterion,
+            &format!("module_names/listed/{case}"),
+            // SAFETY: 16 valid names and a valid name.
+            || unsafe { obs_module_names_listed(list, 16, name.as_ptr()) },
+            || unsafe { oracle_obs_module_names_listed(list, 16, name.as_ptr()) },
+        );
+    }
+
+    let tree = Tree::new();
+    let data = tree.at("data/%module%");
+    for (case, binary, name) in [
+        ("hit", tree.at("core/c03"), c"c03"),
+        ("miss", tree.at("core/x03"), c"x03"),
+    ] {
+        super::pair(
+            criterion,
+            &format!("module_names/find_core/{case}"),
+            || {
+                let mut total = (0usize, 0usize);
+                // SAFETY: valid strings and callback; `total` outlives the
+                // call.
+                let found = unsafe {
+                    obs_module_names_find_core(
+                        binary.as_ptr(),
+                        name.as_ptr(),
+                        data.as_ptr(),
+                        0,
+                        c".so".as_ptr(),
+                        Some(count_shim),
+                        (&raw mut total).cast(),
+                    )
+                };
+                (found, total)
+            },
+            || {
+                let mut total = (0usize, 0usize);
+                // SAFETY: as above.
+                let found = unsafe {
+                    oracle_obs_module_names_find_core(
+                        binary.as_ptr(),
+                        name.as_ptr(),
+                        data.as_ptr(),
+                        0,
+                        c".so".as_ptr(),
+                        Some(count_oracle),
+                        (&raw mut total).cast(),
+                    )
+                };
+                (found, total)
+            },
+        );
+    }
+}
+
 pub fn benchmarks(criterion: &mut Criterion) {
     module_paths(criterion);
+    module_names(criterion);
 }
