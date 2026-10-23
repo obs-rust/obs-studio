@@ -4,5 +4,6 @@
 mod context_names;
 mod context_names_parity;
 mod module_paths;
+mod module_paths_parity;
 mod video_plan;
 mod video_plan_parity;

@@ -66,6 +66,7 @@ pub mod hotkey_press;
 pub mod hotkey_translations;
 pub mod lexer;
 pub mod missing_files;
+pub mod module_paths;
 pub mod nal;
 pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
