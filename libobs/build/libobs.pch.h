@@ -47,6 +47,9 @@
 #include "obs-audio-mix.h"
 #include "util/util_uint64.h"
 
+/* obs-encoder-roi.c */
+#include "obs-encoder-roi.h"
+
 /* obs-output.c */
 #include "util/array-serializer.h"
 #include "graphics/math-extra.h"
