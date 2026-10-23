@@ -11,4 +11,5 @@
 #include "libobs/util/cf-tokenizer.c.h"
 #include "libobs/util/config-file.c.h"
 #include "libobs/util/crc32.c.h"
+#include "libobs/util/dstr-libc.c.h"
 #include "libobs/util/dstr.c.h"

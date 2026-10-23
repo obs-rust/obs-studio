@@ -112,7 +112,6 @@
     "build/libobs.core-source+.h.c",
     "build/libobs.util+.h.c",
     "build/libobs.util-cf+.h.c",
-    "build/libobs.util-libc+.h.c",
     "build/libobs.graphics+.h.c",
     "build/libobs.media+.h.c",
     "build/libobs.nsgif+.h.c",

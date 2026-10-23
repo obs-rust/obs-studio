@@ -1,0 +1,11 @@
+dstr_from_mbs
+dstr_from_wcs
+dstr_to_lower
+dstr_to_mbs
+dstr_to_upper
+dstr_to_wcs
+wcsdepad
+wstrcmp_n
+wstrcmpi
+wstrcmpi_n
+wstrstri

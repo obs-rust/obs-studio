@@ -14,6 +14,7 @@ pub mod darray;
 pub mod dbus_inhibit;
 pub mod deque;
 pub mod dstr;
+pub mod dstr_libc;
 pub mod file_serializer;
 pub mod lexer;
 #[cfg(unix)]

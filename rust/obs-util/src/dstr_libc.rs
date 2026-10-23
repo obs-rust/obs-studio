@@ -19,6 +19,8 @@
 //! stays C in `util/dstr-variadic.c` because stable Rust cannot define a C
 //! variadic function or take a `va_list`.
 
+use core::cmp::Ordering;
+
 /// A `wchar_t` unit.
 pub trait WideUnit: Copy + Ord + From<u8> {}
 
@@ -41,8 +43,23 @@ pub fn compare_by<T: WideUnit>(
     fold: impl Fn(T) -> T,
     mut read: impl FnMut(usize) -> (T, T),
 ) -> i32 {
-    let _ = (n, &fold, &mut read);
-    todo!()
+    if n == Some(0) {
+        return 0;
+    }
+    let zero = T::from(0);
+    let mut i = 0;
+    loop {
+        let (a, b) = read(i);
+        match fold(a).cmp(&fold(b)) {
+            Ordering::Less => return -1,
+            Ordering::Greater => return 1,
+            Ordering::Equal => {}
+        }
+        i += 1;
+        if a == zero || b == zero || Some(i) == n {
+            return 0;
+        }
+    }
 }
 
 /// `wstrstri`: the offset of the first position in `s` where `find` matches
@@ -52,8 +69,9 @@ pub fn compare_by<T: WideUnit>(
 /// position up to and including the terminator is tried, and an empty `find`
 /// matches at 0.
 pub fn wstrstri<T: WideUnit>(s: &[T], find: &[T], fold: impl Fn(T) -> T) -> Option<usize> {
-    let _ = (s, find, fold);
-    todo!()
+    let at = |x: &[T], i: usize| x.get(i).copied().unwrap_or_else(|| T::from(0));
+    (0..=s.len())
+        .find(|&i| compare_by(Some(find.len()), &fold, |k| (at(s, i + k), at(find, k))) == 0)
 }
 
 /// `wcsdepad` on `buf`, a wide string followed by its NUL (`len + 1` units).
@@ -62,13 +80,36 @@ pub fn wstrstri<T: WideUnit>(s: &[T], find: &[T], fold: impl Fn(T) -> T) -> Opti
 /// its NUL to the front; trailing padding is then overwritten with NULs one
 /// unit at a time. Units after those NULs keep their old values, as in C.
 pub fn wcsdepad<T: WideUnit>(buf: &mut [T]) {
-    let _ = (buf, is_padding::<T>);
-    todo!()
+    let zero = T::from(0);
+    // The string ends at the first NUL (or at the end of `buf`).
+    let n = buf.iter().position(|&c| c == zero).unwrap_or(buf.len());
+    if n == 0 {
+        return;
+    }
+    let start = buf[..n].iter().position(|&c| !is_padding(c)).unwrap_or(n);
+    let len = n - start;
+    if start != 0 {
+        // memmove(str, temp, (len + 1) * sizeof(wchar_t))
+        buf.copy_within(start..(n + 1).min(buf.len()), 0);
+    }
+    if len != 0 {
+        // buf[0] is not padding, so the walk stops there at the latest.
+        let mut t = len - 1;
+        while is_padding(buf[t]) {
+            buf[t] = zero;
+            if t == 0 {
+                break;
+            }
+            t -= 1;
+        }
+    }
 }
 
 /// The `dstr_to_upper` / `dstr_to_lower` loop: applies `map` to every unit
 /// before the first NUL (or the end of `w`).
 pub fn map_case<T: WideUnit>(w: &mut [T], map: impl Fn(T) -> T) {
-    let _ = (w, map);
-    todo!()
+    let zero = T::from(0);
+    w.iter_mut()
+        .take_while(|c| **c != zero)
+        .for_each(|c| *c = map(*c));
 }

@@ -151,7 +151,7 @@ unsafe fn with<R>(d: *mut dstr, f: impl FnOnce(&mut Dstr) -> R) -> R {
 /// `d` must point to a valid `dstr` whose `array` is null or came from the
 /// `bmalloc` family. A grow may move the buffer, invalidating pointers into
 /// it.
-unsafe fn ensure_capacity(d: *mut dstr, new_size: usize) {
+pub(super) unsafe fn ensure_capacity(d: *mut dstr, new_size: usize) {
     // SAFETY: the caller guarantees `d` is valid.
     let d = unsafe { &mut *d };
     if new_size <= d.capacity {
@@ -168,7 +168,7 @@ unsafe fn ensure_capacity(d: *mut dstr, new_size: usize) {
 /// # Safety
 ///
 /// As for [`ensure_capacity`].
-unsafe fn free(d: *mut dstr) {
+pub(super) unsafe fn free(d: *mut dstr) {
     // SAFETY: the caller guarantees `d` is valid and `array` freeable.
     unsafe {
         bfree((*d).array as *mut c_void);
