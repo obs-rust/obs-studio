@@ -824,6 +824,30 @@ void obs_module_paths_find(const char *bin, const char *data, enum obs_runtime_m
 			   obs_module_add_extension_t add_extension, obs_find_module_callback2_t callback, void *param);
 char *obs_module_paths_find_file(const char *data_path, const char *file);
 
+/* Module names and files (obs-module-names.c): pure, no libobs state.
+ * obs_module_names_file_name(): the file name of a binary path, after its
+ * last '/' (a pointer into path).
+ * obs_module_names_module_name(): a bmalloc'd module name, the file name
+ * without the length of ext at its end; NULL when that is empty.
+ * obs_module_names_config_path(): a bmalloc'd config_path, one '/' when it
+ * has none at the end, module_name, '/', file.
+ * obs_module_names_manifest_path(): a bmalloc'd data_path, one '/' when it
+ * has none at the end, "manifest.json".
+ * obs_module_names_listed(): name is one of the count names.
+ * obs_module_names_find_core(): calls callback for the core module name when
+ * binary plus ext exists, with the data path of obs_module_paths_data_dir();
+ * the info is valid for the call. obs-module.c keeps the module lists, the
+ * config path, struct obs_module and the loading, and passes
+ * get_module_extension(). Not exported. */
+const char *obs_module_names_file_name(const char *path);
+char *obs_module_names_module_name(const char *file, const char *ext);
+char *obs_module_names_config_path(const char *config_path, const char *module_name, const char *file);
+char *obs_module_names_manifest_path(const char *data_path);
+bool obs_module_names_listed(char *const *names, size_t count, const char *name);
+bool obs_module_names_find_core(const char *binary, const char *name, const char *data,
+				enum obs_runtime_module_type type, const char *ext,
+				obs_find_module_callback2_t callback, void *param);
+
 /* Context names (obs-context-names.c): pure, no libobs state. Both return a
  * bmalloc'd name, or NULL, that the caller owns. obs_context_name_dup():
  * NULL for a private context without a name, "__unnamed%04lld" from

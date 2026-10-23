@@ -75,17 +75,7 @@ const char *obs_module_get_locale_text(const obs_module_t *mod, const char *text
 
 static inline char *get_module_name(const char *file)
 {
-	static size_t ext_len = 0;
-	struct dstr name = {0};
-
-	if (ext_len == 0) {
-		const char *ext = get_module_extension();
-		ext_len = strlen(ext);
-	}
-
-	dstr_copy(&name, file);
-	dstr_resize(&name, name.len - ext_len);
-	return name.array;
+	return obs_module_names_module_name(file, get_module_extension());
 }
 
 int obs_module_load_metadata(struct obs_module *mod)
@@ -93,18 +83,12 @@ int obs_module_load_metadata(struct obs_module *mod)
 	struct obs_module_metadata *md = NULL;
 
 	/* Check if the metadata file exists */
-	struct dstr path = {0};
+	char *path = obs_module_names_manifest_path(mod->data_path);
 
-	dstr_copy(&path, mod->data_path);
-	if (!dstr_is_empty(&path) && dstr_end(&path) != '/') {
-		dstr_cat_ch(&path, '/');
-	}
-	dstr_cat(&path, "manifest.json");
-
-	if (os_file_exists(path.array)) {
+	if (os_file_exists(path)) {
 		/* If we find a metadata file, allocate a new metadata. */
 		md = bmalloc(sizeof(obs_module_metadata_t));
-		obs_data_t *metadata = obs_data_create_from_json_file(path.array);
+		obs_data_t *metadata = obs_data_create_from_json_file(path);
 
 		md->display_name = bstrdup(obs_data_get_string(metadata, "display_name"));
 		md->id = bstrdup(obs_data_get_string(metadata, "id"));
@@ -124,7 +108,7 @@ int obs_module_load_metadata(struct obs_module *mod)
 		md->has_icon = obs_data_get_bool(metadata, "has_icon");
 		obs_data_release(metadata);
 	}
-	dstr_free(&path);
+	bfree(path);
 	mod->metadata = md;
 	return MODULE_SUCCESS;
 }
@@ -161,8 +145,7 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 	}
 
 	mod.bin_path = bstrdup(path);
-	mod.file = strrchr(mod.bin_path, '/');
-	mod.file = (!mod.file) ? mod.bin_path : (mod.file + 1);
+	mod.file = obs_module_names_file_name(mod.bin_path);
 	mod.mod_name = get_module_name(mod.file);
 	mod.data_path = bstrdup(data_path);
 	mod.next = obs->first_module;
@@ -195,8 +178,7 @@ bool obs_create_disabled_module(obs_module_t **module, const char *path, const c
 	struct obs_module mod = {0};
 
 	mod.bin_path = bstrdup(path);
-	mod.file = strrchr(mod.bin_path, '/');
-	mod.file = (!mod.file) ? mod.bin_path : (mod.file + 1);
+	mod.file = obs_module_names_file_name(mod.bin_path);
 	mod.mod_name = get_module_name(mod.file);
 	mod.data_path = bstrdup(data_path);
 	mod.next = obs->first_disabled_module;
@@ -364,16 +346,7 @@ char *obs_find_module_file(obs_module_t *module, const char *file)
 
 char *obs_module_get_config_path(obs_module_t *module, const char *file)
 {
-	struct dstr output = {0};
-
-	dstr_copy(&output, obs->module_config_path);
-	if (!dstr_is_empty(&output) && dstr_end(&output) != '/')
-		dstr_cat_ch(&output, '/');
-	dstr_cat(&output, module->mod_name);
-	dstr_cat_ch(&output, '/');
-	dstr_cat(&output, file);
-
-	return output.array;
+	return obs_module_names_config_path(obs->module_config_path, module->mod_name, file);
 }
 
 void obs_add_module_path(const char *bin, const char *data)
@@ -420,12 +393,7 @@ static bool is_safe_module(const char *name)
 	if (!obs->safe_modules.num)
 		return true;
 
-	for (size_t i = 0; i < obs->safe_modules.num; i++) {
-		if (strcmp(name, obs->safe_modules.array[i]) == 0)
-			return true;
-	}
-
-	return false;
+	return obs_module_names_listed(obs->safe_modules.array, obs->safe_modules.num, name);
 }
 
 static bool is_core_module(const char *name)
@@ -438,12 +406,7 @@ static bool is_disabled_module(const char *name)
 	if (obs->disabled_modules.num == 0)
 		return false;
 
-	for (size_t i = 0; i < obs->disabled_modules.num; i++) {
-		if (strcmp(name, obs->disabled_modules.array[i]) == 0)
-			return true;
-	}
-
-	return false;
+	return obs_module_names_listed(obs->disabled_modules.array, obs->disabled_modules.num, name);
 }
 
 bool obs_get_module_allow_disable(const char *name)
@@ -607,8 +570,7 @@ void obs_post_load_modules(void)
  */
 bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_callback2_t callback, void *data)
 {
-	const char *file_name = strrchr(info->path_info.binary, '/');
-	const char *name = file_name ? (file_name + 1) : info->path_info.binary;
+	const char *name = obs_module_names_file_name(info->path_info.binary);
 	info->name = name;
 
 	if (info->type != OBS_MODULE_TYPE_CORE) {
@@ -616,29 +578,8 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 		return false;
 	}
 
-	bool found = false;
-
-	struct dstr module_path;
-	dstr_init_copy(&module_path, info->path_info.binary);
-	dstr_cat(&module_path, get_module_extension());
-
-	char *parsed_data_directory;
-	parsed_data_directory = obs_module_paths_data_dir(name, info->path_info.data);
-
-	if (os_file_exists(module_path.array)) {
-		struct obs_module_info2 callback_info = {.bin_path = module_path.array,
-							 .data_path = parsed_data_directory,
-							 .name = name,
-							 .type = info->type};
-
-		callback(data, &callback_info);
-		found = true;
-	}
-
-	bfree(parsed_data_directory);
-	dstr_free(&module_path);
-
-	return found;
+	return obs_module_names_find_core(info->path_info.binary, name, info->path_info.data, info->type,
+					  get_module_extension(), callback, data);
 }
 
 bool obs_is_core_module(obs_module_t *module)
