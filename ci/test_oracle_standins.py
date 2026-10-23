@@ -24,10 +24,12 @@ DEFINITION = re.compile(
     r"^(?:static\s+)?(?:inline\s+)?[A-Za-z_][\w \t*]*?\b([a-z_][a-z0-9_]*)\s*\([^;{}]*\)\s*\{", re.M
 )
 
-# Windows-only forwarders in platform_host.c: the Rust crates need these plain
-# names, while the oracle's copies are the oracle_-renamed definitions from
-# platform.c. Unix oracle calls already use the oracle_ names directly.
+# Forwarders in platform_host.c: the Rust crates need these plain names, while
+# the oracle's copies are the oracle_-renamed definitions from platform.c.
+# Most are Windows-only; Unix oracle calls already use the oracle_ names.
 WINDOWS_FORWARDER = "Windows forwarder to the oracle_ copy from oracle/platform.c"
+# The two the Rust dstr-libc shims call are forwarded on every host.
+FORWARDER = "forwarder (every host) to the oracle_ copy from oracle/platform.c"
 
 DIFFERENT = {
     "os_mbs_to_wcs": WINDOWS_FORWARDER,
@@ -35,9 +37,9 @@ DIFFERENT = {
     "os_wcs_to_utf8": WINDOWS_FORWARDER,
     "os_wcs_to_mbs": WINDOWS_FORWARDER,
     "os_mbs_to_wcs_ptr": WINDOWS_FORWARDER,
-    "os_utf8_to_wcs_ptr": WINDOWS_FORWARDER,
+    "os_utf8_to_wcs_ptr": FORWARDER,
     "os_wcs_to_utf8_ptr": WINDOWS_FORWARDER,
-    "os_mbs_to_utf8_ptr": WINDOWS_FORWARDER,
+    "os_mbs_to_utf8_ptr": FORWARDER,
 }
 
 

@@ -51,6 +51,7 @@ pub mod dbus_inhibit;
 pub mod decl;
 pub mod deque;
 pub mod dstr;
+pub mod dstr_libc;
 pub mod effect_lookups;
 pub mod effect_parser_lifecycle;
 pub mod encoder_packet;

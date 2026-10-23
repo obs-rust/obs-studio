@@ -125,6 +125,25 @@ size_t os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr)
 {
 	return oracle_os_mbs_to_utf8_ptr(str, len, pstr);
 }
+#else
+/* The Rust dstr-libc.c shims (rust/obs-util/src/ffi/dstr_libc.rs) call these
+ * two by their libobs names on every host; platform.c is still C in libobs. */
+size_t oracle_os_utf8_to_wcs_ptr(const char *str, size_t len, wchar_t **pstr);
+size_t oracle_os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr);
+
+/* platform.c (compiled by oracle/platform.c) */
+size_t os_utf8_to_wcs_ptr(const char *str, size_t len, wchar_t **pstr);
+size_t os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr);
+
+size_t os_utf8_to_wcs_ptr(const char *str, size_t len, wchar_t **pstr)
+{
+	return oracle_os_utf8_to_wcs_ptr(str, len, pstr);
+}
+
+size_t os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr)
+{
+	return oracle_os_mbs_to_utf8_ptr(str, len, pstr);
+}
 #endif
 
 /* The MinGW link-check target excludes platform-windows.c because its libobs

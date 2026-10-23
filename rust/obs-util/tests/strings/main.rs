@@ -6,6 +6,7 @@ mod dstr_conversions;
 mod dstr_ffi_bounds;
 mod dstr_layout;
 mod dstr_libc;
+mod dstr_libc_parity;
 mod dstr_parity;
 mod utf8;
 mod utf8_parity;
