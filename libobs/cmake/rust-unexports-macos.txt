@@ -100,6 +100,10 @@ _obs_audio_buffering_add
 _obs_output_caption_text_page
 # obs-output-protocols.c: obs-output.c calls it inside libobs. Not EXPORT.
 _obs_output_protocol_list_count
+# obs-encoder-roi.c: obs-encoder.c calls them inside libobs. Not EXPORT.
+_obs_encoder_roi_admit
+_obs_encoder_roi_scale_factors
+_obs_encoder_roi_scale
 # obs-output-delay.c: obs-output.c calls them inside libobs. Not EXPORT.
 _process_delay
 _obs_output_delay_start

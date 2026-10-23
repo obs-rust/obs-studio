@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-roi.pch.h"
 
 bool obs_encoder_roi_admit(uint32_t caps, const struct obs_encoder_roi *roi)
 {

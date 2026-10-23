@@ -145,6 +145,7 @@
     "build/libobs.ported-output-delay+.h.c",
     "build/libobs.ported-output-interleave+.h.c",
     "build/libobs.ported-output-protocols+.h.c",
+    "build/libobs.ported-encoder-roi+.h.c",
     "build/libobs.ported-service-getters+.h.c",
     "build/libobs.ported-view+.h.c",
     "build/libobs.ported-scene-audio-actions+.h.c",

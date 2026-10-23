@@ -121,6 +121,11 @@
     /* obs-output-protocols.c. obs-output.c calls it inside libobs. Not
      * EXPORT. */
     obs_output_protocol_list_count;
+    /* obs-encoder-roi.c. obs-encoder.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_encoder_roi_admit;
+    obs_encoder_roi_scale_factors;
+    obs_encoder_roi_scale;
     /* obs-output-delay.c. obs-output.c calls them inside libobs. Not
      * EXPORT. */
     process_delay;

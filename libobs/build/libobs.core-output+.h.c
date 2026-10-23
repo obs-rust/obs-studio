@@ -3,7 +3,6 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-audio.c.h"
-#include "libobs/obs-encoder-roi.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service.c.h"
