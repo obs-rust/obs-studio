@@ -29,6 +29,7 @@ pub mod crc32;
 pub mod darray;
 pub mod deque;
 pub mod dstr;
+pub mod dstr_libc;
 #[allow(unsafe_code)] // the C ABI shims
 pub mod ffi;
 pub mod file_serializer;
