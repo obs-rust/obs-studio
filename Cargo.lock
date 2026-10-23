@@ -436,6 +436,7 @@ dependencies = [
  "obs-output",
  "obs-properties",
  "obs-scene",
+ "obs-source",
  "obs-util",
 ]
 

@@ -183,20 +183,114 @@ pub struct UnderLock {
 
 /// `uint64_diff()`: the distance between two timestamps, not modular.
 pub const fn distance(ts1: u64, ts2: u64) -> u64 {
-    let _ = (ts1, ts2);
-    todo!()
+    ts1.abs_diff(ts2)
 }
 
 /// `obs_source_audio_timing_pre_lock()`.
 pub fn pre_lock(input: PreLockInput) -> PreLock {
-    let _ = input;
-    todo!()
+    let mut out = PreLock {
+        action: Action::Keep,
+        direct: false,
+        reanchor: false,
+        continuous: false,
+        timestamp: input.timestamp,
+        next_audio_ts_min: 0,
+        timing_adjust: 0,
+        diff: 0,
+        drift_error: 0,
+    };
+
+    // detects 'directly' set timestamps as long as they're within a
+    // certain threshold: timing_adjust = 0, timing_set = true
+    out.direct = distance(input.timestamp, input.os_time) < MAX_TS_VAR;
+    let timing_set = input.timing_set || out.direct;
+    // reset_audio_timing(): the timing that puts this packet at os_time
+    let reset_adjust = input.os_time.wrapping_sub(input.timestamp);
+
+    if !timing_set {
+        out.action = Action::Reset;
+        out.timing_adjust = reset_adjust;
+    } else if input.next_audio_ts_min != 0 {
+        let diff = distance(input.next_audio_ts_min, input.timestamp);
+
+        if diff > MAX_TS_VAR && !out.direct {
+            // handle_ts_jump()
+            out.action = Action::Jump;
+            out.diff = diff;
+            out.timing_adjust = reset_adjust;
+        } else if diff < TS_SMOOTHING_THRESHOLD {
+            out.action = Action::Smooth;
+            if input.async_unbuffered && input.async_decoupled {
+                out.reanchor = true;
+                out.timing_adjust = reset_adjust;
+            }
+            // how far the samples run ahead of the timestamps: the C's
+            // (int64_t) of the uint64_t difference
+            out.drift_error = input
+                .next_audio_ts_min
+                .wrapping_sub(input.timestamp)
+                .cast_signed();
+            out.timestamp = input.next_audio_ts_min;
+            out.continuous = true;
+        } else {
+            out.action = Action::Exceeded;
+            out.diff = diff;
+        }
+    }
+
+    out.next_audio_ts_min = out.timestamp.wrapping_add(input.duration);
+    out
 }
 
 /// `obs_source_audio_timing_under_lock()`.
 pub fn under_lock(input: UnderLockInput) -> UnderLock {
-    let _ = input;
-    todo!()
+    let mut timestamp = input.timestamp.wrapping_add(input.packet_timing_adjust);
+    let mut push_back = false;
+    let mut reset_timing = false;
+    let mut timing_adjust = input.timing_adjust;
+
+    if input.next_audio_sys_ts_min == timestamp {
+        push_back = true;
+    } else if input.next_audio_sys_ts_min != 0 {
+        let diff = distance(input.next_audio_sys_ts_min, timestamp);
+
+        if diff < TS_SMOOTHING_THRESHOLD {
+            push_back = true;
+        } else if diff > MAX_TS_VAR && !input.continuous {
+            // The audio jumped ahead of the video: resync to the system
+            // clock. If the audio was continuous, only the timing of the
+            // source's video moved (a Video Delay (Async) filter), and the
+            // audio follows it (#522).
+            reset_timing = true;
+            timing_adjust = input.os_time.wrapping_sub(input.data_timestamp);
+            timestamp = input.data_timestamp.wrapping_add(timing_adjust);
+        }
+    }
+
+    // the C's uint64_t += int64_t converts the offset to uint64_t
+    timestamp = timestamp
+        .wrapping_add(input.sync_offset.cast_unsigned())
+        .wrapping_sub(input.resample_offset);
+
+    let next_audio_sys_ts_min = input.next_audio_ts_min.wrapping_add(timing_adjust);
+
+    // A packet appended to the buffer ignores its timestamp, and so the
+    // sync offset in it: after the offset changes, place the next packet by
+    // its timestamp (#333).
+    let mut last_sync_offset = input.last_sync_offset;
+    if last_sync_offset != input.sync_offset {
+        push_back = false;
+        last_sync_offset = input.sync_offset;
+    }
+
+    UnderLock {
+        timestamp,
+        push_back,
+        reset_timing,
+        timing_adjust,
+        next_audio_sys_ts_min,
+        last_sync_offset,
+    }
 }
 
 /// `obs_source_audio_timing_buffer_start()`: where
@@ -204,6 +298,10 @@ pub fn under_lock(input: UnderLockInput) -> UnderLock {
 /// `os_time`: `os_time` plus the sync offset minus the resampler offset, as
 /// a packet placed on its own lands, or 0 for 0.
 pub fn buffer_start(os_time: u64, sync_offset: i64, resample_offset: u64) -> u64 {
-    let _ = (os_time, sync_offset, resample_offset);
-    todo!()
+    if os_time == 0 {
+        return os_time;
+    }
+    os_time
+        .wrapping_add(sync_offset.cast_unsigned())
+        .wrapping_sub(resample_offset)
 }

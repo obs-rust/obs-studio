@@ -20,3 +20,4 @@ pub use obs_missing_files::ffi as missing_files_ffi;
 pub use obs_output::ffi as output_ffi;
 pub use obs_properties::ffi as properties_ffi;
 pub use obs_scene::ffi as scene_ffi;
+pub use obs_source::ffi as source_ffi;

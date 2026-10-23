@@ -95,11 +95,9 @@
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"
 
-/* obs-source-audio-timing.c */
+/* obs-source.c */
 
 #include "obs-source-audio-timing.h"
-
-/* obs-source.c */
 
 #include "media-io/audio-io.h"
 #include "obs-host/default-monitoring-device.h"

@@ -91,6 +91,11 @@
      * inside libobs. Not EXPORT. */
     obs_scene_audio_actions_apply;
     obs_scene_audio_action_due;
+    /* obs-source-audio-timing.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_audio_timing_pre_lock;
+    obs_source_audio_timing_under_lock;
+    obs_source_audio_timing_buffer_start;
     /* obs-audio-mix.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_mix_time_to_frames;
     obs_audio_mix_add;
