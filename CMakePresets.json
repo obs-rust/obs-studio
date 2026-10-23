@@ -54,11 +54,12 @@
               "cef": {
                   "version": "7871",
                   "baseUrl": "https://github.com/obs-rust/cef/releases/download/7871",
+                  "versions": {"ubuntu-x86_64": "8078"},
                   "label": "Chromium Embedded Framework",
                   "hashes": {
                       "macos-x86_64": "980783bba509e7e79a671c29040bbe29d832a934c1368b500a17a22e076eb0f4",
                       "macos-arm64": "0343233fc462384c2f1f58a4222028bc6171f05948a822241f89df2faa7cee8d",
-                      "ubuntu-x86_64": "8ffc64d06ea74da613eeda7f2aa5d4e98661af6fa3ed8c68724c9a6e4e89ea8e",
+                      "ubuntu-x86_64": "fb36df11bc8280c9cb666732becc1fe267f833bb964dbb13d69cad33488171dc",
                       "ubuntu-aarch64": "b05cf13b0f482e3b0149ac21268268c536d091b5e6608c742019ebd6c8e8a1e3",
                       "windows-x64": "54cd191a3f56bb1f05be22b95e1fa8041061b38bd5fe94e0776fb34dd599f341",
                       "windows-arm64": "3f5b604eab71baab20c08f054d68c6212d06237e172fb8d38271c2384c2eb3a6"

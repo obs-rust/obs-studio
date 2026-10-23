@@ -27,7 +27,11 @@ IFS=';' read -r deps_version deps_baseurl deps_label deps_hash deps_revision <<<
     .configurePresets[]
     | select(.name=="dependencies")
     | .vendor["obsproject.com/obs-studio"].dependencies["cef"]
-    | {version, baseUrl, "label", "hash": .hashes[$target], "revision": .revision[$target]}
+    # versions[target] overrides version for a target obs-rust builds itself
+    # (obs-studio-libs recipes/cef), and replaces baseUrl's release segment.
+    | (.versions[$target] // .version) as $v
+    | {"version": $v, "baseUrl": (.baseUrl | sub("/[^/]+$"; "/" + $v)), "label": .label,
+       "hash": .hashes[$target], "revision": .revision[$target]}
     | join(";")
   ' ${project_root}/CMakePresets.json)"
 

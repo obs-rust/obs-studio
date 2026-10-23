@@ -122,8 +122,8 @@
             "sources": [
                 {
                     "type": "archive",
-                    "url": "https://github.com/obs-rust/cef/releases/download/7871/cef_binary_7871_linux_x86_64.tar.xz",
-                    "sha256": "8ffc64d06ea74da613eeda7f2aa5d4e98661af6fa3ed8c68724c9a6e4e89ea8e"
+                    "url": "https://github.com/obs-rust/cef/releases/download/8078/cef_binary_8078_linux_x86_64.tar.xz",
+                    "sha256": "fb36df11bc8280c9cb666732becc1fe267f833bb964dbb13d69cad33488171dc"
                 }
             ]
         },
