@@ -44,6 +44,7 @@
 #include "obs-audio-controls.h"
 
 /* obs-audio.c */
+#include "obs-audio-mix.h"
 #include "util/util_uint64.h"
 
 /* obs-output.c */
