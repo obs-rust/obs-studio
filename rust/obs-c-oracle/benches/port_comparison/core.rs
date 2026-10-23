@@ -1,15 +1,20 @@
-//! obs-core: the module search paths (`libobs/obs-module-paths.c.h`) and
-//! the module names and files (`libobs/obs-module-names.c.h`), on a small
-//! real tree in the temporary directory. Both sides call the same
-//! `os_file_exists()` and `os_glob()`, so the timings of the lookups are
-//! mostly the file system's; the difference is the path building around
-//! them. The names, config and manifest paths and the list match touch no
-//! file system.
+//! obs-core: the module search paths (`libobs/obs-module-paths.c.h`), the
+//! module names and files (`libobs/obs-module-names.c.h`) and the module
+//! locale files (`libobs/obs-module-locale.c.h`), on a small real tree in
+//! the temporary directory. Both sides call the same `os_file_exists()` and
+//! `os_glob()`, so the timings of the lookups are mostly the file system's;
+//! the difference is the path building around them. The names, config and
+//! manifest paths, the list match and the locale file names and decision
+//! touch no file system.
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::path::PathBuf;
 
 use criterion::Criterion;
+use obs_c_oracle::module_locale::{
+    oracle_obs_module_locale_default_file, oracle_obs_module_locale_file,
+    oracle_obs_module_locale_is_default,
+};
 use obs_c_oracle::module_names::{
     oracle_obs_module_names_config_path, oracle_obs_module_names_file_name,
     oracle_obs_module_names_find_core, oracle_obs_module_names_listed,
@@ -18,6 +23,9 @@ use obs_c_oracle::module_names::{
 use obs_c_oracle::module_paths::{
     OracleModuleInfo2, oracle_obs_module_paths_data_dir, oracle_obs_module_paths_find,
     oracle_obs_module_paths_find_file,
+};
+use obs_core::ffi::module_locale::{
+    obs_module_locale_default_file, obs_module_locale_file, obs_module_locale_is_default,
 };
 use obs_core::ffi::module_names::{
     obs_module_names_config_path, obs_module_names_file_name, obs_module_names_find_core,
@@ -290,7 +298,35 @@ fn module_names(criterion: &mut Criterion) {
     }
 }
 
+fn module_locale(criterion: &mut Criterion) {
+    let (default_locale, locale) = (c"en-US", c"de-DE");
+    super::pair(
+        criterion,
+        "module_locale/default_file",
+        // SAFETY: a NUL-terminated locale; the result is freed.
+        || take(unsafe { obs_module_locale_default_file(default_locale.as_ptr()) }),
+        || take(unsafe { oracle_obs_module_locale_default_file(default_locale.as_ptr()) }),
+    );
+    super::pair(
+        criterion,
+        "module_locale/locale_file",
+        // SAFETY: as above.
+        || take(unsafe { obs_module_locale_file(locale.as_ptr()) }),
+        || take(unsafe { oracle_obs_module_locale_file(locale.as_ptr()) }),
+    );
+    for (case, a) in [("same", c"EN-us"), ("other", c"de-DE")] {
+        super::pair(
+            criterion,
+            &format!("module_locale/is_default/{case}"),
+            // SAFETY: NUL-terminated locales.
+            || unsafe { obs_module_locale_is_default(a.as_ptr(), default_locale.as_ptr()) },
+            || unsafe { oracle_obs_module_locale_is_default(a.as_ptr(), default_locale.as_ptr()) },
+        );
+    }
+}
+
 pub fn benchmarks(criterion: &mut Criterion) {
     module_paths(criterion);
     module_names(criterion);
+    module_locale(criterion);
 }
