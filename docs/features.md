@@ -1712,6 +1712,12 @@ area.
   *All*, 2026-10-22. Issue
   [#1827](https://github.com/obs-rust/obs-studio/issues/1827), PR
   [#1828](https://github.com/obs-rust/obs-studio/pull/1828).
+- A tool or plugin host that adds module search paths with
+  obs_add_module_path() gets a defined module type for the modules found
+  there (undefined: neither core nor legacy), so the disabled list applies
+  to them; before, the type was whatever was in memory. *All*, 2026-10-23.
+  Issue [#1900](https://github.com/obs-rust/obs-studio/issues/1900), PR
+  [#1906](https://github.com/obs-rust/obs-studio/pull/1906).
 
 ### Security hardening
 

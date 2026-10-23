@@ -390,13 +390,15 @@ char *obs_module_get_config_path(obs_module_t *module, const char *file)
 
 void obs_add_module_path(const char *bin, const char *data)
 {
-	struct obs_module_path omp;
-
 	if (!obs || !bin || !data)
 		return;
 
-	omp.bin = bstrdup(bin);
-	omp.data = bstrdup(data);
+	/* Paths from this API carry no type (they predate module types). */
+	struct obs_module_path omp = {
+		.bin = bstrdup(bin),
+		.data = bstrdup(data),
+		.type = OBS_MODULE_TYPE_UNDEFINED,
+	};
 	da_push_back(obs->module_paths, &omp);
 }
 
