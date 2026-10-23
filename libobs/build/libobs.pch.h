@@ -98,6 +98,10 @@
 
 #include "obs-scene-crop.h"
 
+/* obs-scene-render-plan.c */
+
+#include "obs-scene-render-plan.h"
+
 /* obs-scene.c */
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"

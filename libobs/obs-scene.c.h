@@ -25,8 +25,6 @@ static void resize_scene(obs_scene_t *scene);
 static void signal_parent(obs_scene_t *parent, const char *name, calldata_t *params);
 static void get_ungrouped_transform(obs_sceneitem_t *group, obs_sceneitem_t *item, struct vec2 *pos, struct vec2 *scale,
 				    float *rot);
-static inline bool crop_enabled(const struct obs_sceneitem_crop *crop);
-static inline bool item_texture_enabled(const struct obs_scene_item *item);
 static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *name);
 
 typedef DARRAY(struct obs_scene_item *) obs_scene_item_ptr_array_t;
@@ -506,31 +504,90 @@ static inline bool source_size_changed(struct obs_scene_item *item)
 	return item->last_width != width || item->last_height != height;
 }
 
-static inline bool crop_enabled(const struct obs_sceneitem_crop *crop)
-{
-	return crop->left || crop->right || crop->top || crop->bottom;
-}
-
-static inline bool scale_filter_enabled(const struct obs_scene_item *item)
-{
-	return item->scale_filter != OBS_SCALE_DISABLE;
-}
-
-static inline bool default_blending_enabled(const struct obs_scene_item *item)
-{
-	return item->blend_type == OBS_BLEND_NORMAL;
-}
-
-static inline bool item_is_scene(const struct obs_scene_item *item)
-{
-	return item->source && item->source->info.type == OBS_SOURCE_TYPE_SCENE;
-}
+/* obs-scene-render-plan.h mirrors these values, so it needs no core header. */
+_Static_assert(OBS_SCENE_RENDER_SCALE_DISABLE == OBS_SCALE_DISABLE, "OBS_SCALE_DISABLE");
+_Static_assert(OBS_SCENE_RENDER_SCALE_POINT == OBS_SCALE_POINT, "OBS_SCALE_POINT");
+_Static_assert(OBS_SCENE_RENDER_SCALE_BICUBIC == OBS_SCALE_BICUBIC, "OBS_SCALE_BICUBIC");
+_Static_assert(OBS_SCENE_RENDER_SCALE_LANCZOS == OBS_SCALE_LANCZOS, "OBS_SCALE_LANCZOS");
+_Static_assert(OBS_SCENE_RENDER_SCALE_AREA == OBS_SCALE_AREA, "OBS_SCALE_AREA");
+_Static_assert(OBS_SCENE_RENDER_BLEND_METHOD_SRGB_OFF == OBS_BLEND_METHOD_SRGB_OFF, "OBS_BLEND_METHOD_SRGB_OFF");
+_Static_assert(OBS_SCENE_RENDER_BLEND_NORMAL == OBS_BLEND_NORMAL, "OBS_BLEND_NORMAL");
+_Static_assert(OBS_SCENE_RENDER_BLEND_DARKEN == OBS_BLEND_DARKEN, "OBS_BLEND_DARKEN");
+_Static_assert(OBS_SCENE_RENDER_CS_SRGB == GS_CS_SRGB, "GS_CS_SRGB");
+_Static_assert(OBS_SCENE_RENDER_CS_SRGB_16F == GS_CS_SRGB_16F, "GS_CS_SRGB_16F");
+_Static_assert(OBS_SCENE_RENDER_CS_709_EXTENDED == GS_CS_709_EXTENDED, "GS_CS_709_EXTENDED");
+_Static_assert(OBS_SCENE_RENDER_CS_709_SCRGB == GS_CS_709_SCRGB, "GS_CS_709_SCRGB");
+_Static_assert(sizeof(enum obs_scale_type) == sizeof(int), "enum obs_scale_type is int-sized");
+_Static_assert(sizeof(enum obs_blending_method) == sizeof(int), "enum obs_blending_method is int-sized");
+_Static_assert(sizeof(enum obs_blending_type) == sizeof(int), "enum obs_blending_type is int-sized");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is int-sized");
 
 static inline bool item_texture_enabled(const struct obs_scene_item *item)
 {
-	return crop_enabled(&item->crop) || crop_enabled(&item->bounds_crop) || scale_filter_enabled(item) ||
-	       (item->blend_method == OBS_BLEND_METHOD_SRGB_OFF) || !default_blending_enabled(item) ||
-	       (item_is_scene(item) && !item->is_group);
+	const struct obs_scene_render_triggers triggers = {
+		.crop_left = item->crop.left,
+		.crop_top = item->crop.top,
+		.crop_right = item->crop.right,
+		.crop_bottom = item->crop.bottom,
+		.bounds_crop_left = item->bounds_crop.left,
+		.bounds_crop_top = item->bounds_crop.top,
+		.bounds_crop_right = item->bounds_crop.right,
+		.bounds_crop_bottom = item->bounds_crop.bottom,
+		.scale_filter = item->scale_filter,
+		.blend_method = item->blend_method,
+		.blend_type = item->blend_type,
+		.is_scene = item->source && item->source->info.type == OBS_SOURCE_TYPE_SCENE,
+		.is_group = item->is_group,
+	};
+	return obs_scene_render_texture_enabled(&triggers);
+}
+
+/* The child render_item() draws: the show transition is asked for only when
+ * the item is visible, and the hide transition only when it is not. */
+static inline enum obs_scene_render_child_id item_render_child(const struct obs_scene_item *item)
+{
+	const bool user_visible = item->user_visible;
+	const bool show_active = user_visible && scene_transition_active(item->show_transition);
+	const bool hide_active = !user_visible && scene_transition_active(item->hide_transition);
+	return obs_scene_render_child(user_visible, show_active, hide_active);
+}
+
+static gs_effect_t *render_effect(int effect)
+{
+	switch (effect) {
+	case OBS_SCENE_RENDER_EFFECT_BILINEAR_LOWRES:
+		return obs->video.bilinear_lowres_effect;
+	case OBS_SCENE_RENDER_EFFECT_BICUBIC:
+		return obs->video.bicubic_effect;
+	case OBS_SCENE_RENDER_EFFECT_LANCZOS:
+		return obs->video.lanczos_effect;
+	case OBS_SCENE_RENDER_EFFECT_AREA:
+		return obs->video.area_effect;
+	}
+	return obs->video.default_effect;
+}
+
+static const char *render_technique_name(enum obs_scene_render_technique_id tech)
+{
+	switch (tech) {
+	case OBS_SCENE_RENDER_TECH_DRAW:
+		return "Draw";
+	case OBS_SCENE_RENDER_TECH_DRAW_MULTIPLY:
+		return "DrawMultiply";
+	case OBS_SCENE_RENDER_TECH_DRAW_TONEMAP:
+		return "DrawTonemap";
+	case OBS_SCENE_RENDER_TECH_DRAW_MULTIPLY_TONEMAP:
+		return "DrawMultiplyTonemap";
+	case OBS_SCENE_RENDER_TECH_DRAW_UPSCALE:
+		return "DrawUpscale";
+	case OBS_SCENE_RENDER_TECH_DRAW_UPSCALE_MULTIPLY:
+		return "DrawUpscaleMultiply";
+	case OBS_SCENE_RENDER_TECH_DRAW_UPSCALE_TONEMAP:
+		return "DrawUpscaleTonemap";
+	case OBS_SCENE_RENDER_TECH_DRAW_UPSCALE_MULTIPLY_TONEMAP:
+		return "DrawUpscaleMultiplyTonemap";
+	}
+	return "Draw";
 }
 
 static void render_item_texture(struct obs_scene_item *item, enum gs_color_space current_space,
@@ -543,115 +600,38 @@ static void render_item_texture(struct obs_scene_item *item, enum gs_color_space
 
 	GS_DEBUG_MARKER_BEGIN(GS_DEBUG_COLOR_ITEM_TEXTURE, "render_item_texture");
 
-	gs_effect_t *effect = obs->video.default_effect;
-	enum obs_scale_type type = item->scale_filter;
 	uint32_t cx = gs_texture_get_width(tex);
 	uint32_t cy = gs_texture_get_height(tex);
 
-	bool upscale = false;
-	if (type != OBS_SCALE_DISABLE) {
-		if (type == OBS_SCALE_POINT) {
-			gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
-			gs_effect_set_next_sampler(image, obs->video.point_sampler);
+	struct obs_scene_render_effect_plan plan;
+	obs_scene_render_effect(item->scale_filter, item->output_scale.x, item->output_scale.y, &plan);
+	gs_effect_t *effect = render_effect(plan.effect);
 
-		} else if (!close_float(item->output_scale.x, 1.0f, EPSILON) ||
-			   !close_float(item->output_scale.y, 1.0f, EPSILON)) {
-			if (item->output_scale.x < 0.5f || item->output_scale.y < 0.5f) {
-				effect = obs->video.bilinear_lowres_effect;
-			} else if (type == OBS_SCALE_BICUBIC) {
-				effect = obs->video.bicubic_effect;
-			} else if (type == OBS_SCALE_LANCZOS) {
-				effect = obs->video.lanczos_effect;
-			} else if (type == OBS_SCALE_AREA) {
-				effect = obs->video.area_effect;
-				upscale = (item->output_scale.x >= 1.0f) && (item->output_scale.y >= 1.0f);
-			}
+	if (plan.point_sampler) {
+		gs_eparam_t *image = gs_effect_get_param_by_name(effect, "image");
+		gs_effect_set_next_sampler(image, obs->video.point_sampler);
+	}
 
-			gs_eparam_t *const scale_param = gs_effect_get_param_by_name(effect, "base_dimension");
-			if (scale_param) {
-				struct vec2 base_res = {(float)cx, (float)cy};
+	if (plan.base_dimension) {
+		gs_eparam_t *const scale_param = gs_effect_get_param_by_name(effect, "base_dimension");
+		if (scale_param) {
+			struct vec2 base_res = {(float)cx, (float)cy};
 
-				gs_effect_set_vec2(scale_param, &base_res);
-			}
+			gs_effect_set_vec2(scale_param, &base_res);
+		}
 
-			gs_eparam_t *const scale_i_param = gs_effect_get_param_by_name(effect, "base_dimension_i");
-			if (scale_i_param) {
-				struct vec2 base_res_i = {1.0f / (float)cx, 1.0f / (float)cy};
+		gs_eparam_t *const scale_i_param = gs_effect_get_param_by_name(effect, "base_dimension_i");
+		if (scale_i_param) {
+			struct vec2 base_res_i = {1.0f / (float)cx, 1.0f / (float)cy};
 
-				gs_effect_set_vec2(scale_i_param, &base_res_i);
-			}
+			gs_effect_set_vec2(scale_i_param, &base_res_i);
 		}
 	}
 
-	float multiplier = 1.f;
-
-	if (current_space == GS_CS_709_SCRGB) {
-		switch (source_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-		case GS_CS_709_EXTENDED:
-			multiplier = obs_get_video_sdr_white_level() / 80.f;
-			break;
-		case GS_CS_709_SCRGB:
-			break;
-		}
-	}
-
-	if (source_space == GS_CS_709_SCRGB) {
-		switch (current_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-		case GS_CS_709_EXTENDED:
-			multiplier = 80.f / obs_get_video_sdr_white_level();
-			break;
-		case GS_CS_709_SCRGB:
-			break;
-		}
-	}
-
-	const char *tech_name = "Draw";
-	if (upscale) {
-		tech_name = "DrawUpscale";
-		switch (source_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			if (current_space == GS_CS_709_SCRGB)
-				tech_name = "DrawUpscaleMultiply";
-			break;
-		case GS_CS_709_EXTENDED:
-			if (current_space == GS_CS_SRGB || current_space == GS_CS_SRGB_16F)
-				tech_name = "DrawUpscaleTonemap";
-			else if (current_space == GS_CS_709_SCRGB)
-				tech_name = "DrawUpscaleMultiply";
-			break;
-		case GS_CS_709_SCRGB:
-			if (current_space == GS_CS_SRGB || current_space == GS_CS_SRGB_16F)
-				tech_name = "DrawUpscaleMultiplyTonemap";
-			else if (current_space == GS_CS_709_EXTENDED)
-				tech_name = "DrawUpscaleMultiply";
-			break;
-		}
-	} else {
-		switch (source_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			if (current_space == GS_CS_709_SCRGB)
-				tech_name = "DrawMultiply";
-			break;
-		case GS_CS_709_EXTENDED:
-			if (current_space == GS_CS_SRGB || current_space == GS_CS_SRGB_16F)
-				tech_name = "DrawTonemap";
-			else if (current_space == GS_CS_709_SCRGB)
-				tech_name = "DrawMultiply";
-			break;
-		case GS_CS_709_SCRGB:
-			if (current_space == GS_CS_SRGB || current_space == GS_CS_SRGB_16F)
-				tech_name = "DrawMultiplyTonemap";
-			else if (current_space == GS_CS_709_EXTENDED)
-				tech_name = "DrawMultiply";
-			break;
-		}
-	}
+	const float multiplier =
+		obs_scene_render_multiplier(current_space, source_space, obs_get_video_sdr_white_level());
+	const char *tech_name =
+		render_technique_name(obs_scene_render_technique(plan.upscale, current_space, source_space));
 
 	gs_eparam_t *const multiplier_param = gs_effect_get_param_by_name(effect, "multiplier");
 	if (multiplier_param)
@@ -673,20 +653,6 @@ static void render_item_texture(struct obs_scene_item *item, enum gs_color_space
 	GS_DEBUG_MARKER_END();
 }
 
-static bool are_texcoords_centered(struct matrix4 *m)
-{
-	static const struct matrix4 identity = {
-		{1.0f, 0.0f, 0.0f, 0.0f},
-		{0.0f, 1.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, 1.0f, 0.0f},
-		{0.0f, 0.0f, 0.0f, 1.0f},
-	};
-	struct matrix4 copy = identity;
-	copy.t.x = floorf(m->t.x);
-	copy.t.y = floorf(m->t.y);
-	return memcmp(m, &copy, sizeof(*m)) == 0;
-}
-
 /* An item's show/hide transition only runs out, and releases the item's
  * source, when it is rendered. An item drawn through a texture is skipped
  * while its source has no size (a Media Source that cleared its frame at the
@@ -696,10 +662,16 @@ static void render_empty_item_transition(struct obs_scene_item *item)
 {
 	obs_source_t *transition = NULL;
 
-	if (item->user_visible && scene_transition_active(item->show_transition))
+	switch (item_render_child(item)) {
+	case OBS_SCENE_RENDER_CHILD_SHOW:
 		transition = item->show_transition;
-	else if (!item->user_visible && scene_transition_active(item->hide_transition))
+		break;
+	case OBS_SCENE_RENDER_CHILD_HIDE:
 		transition = item->hide_transition;
+		break;
+	case OBS_SCENE_RENDER_CHILD_SOURCE:
+		break;
+	}
 
 	if (!transition)
 		return;
@@ -719,12 +691,19 @@ static inline void render_item(struct obs_scene_item *item)
 	const enum gs_color_space source_space = obs_source_get_color_space(source, 1, &current_space);
 	const enum gs_color_format format = gs_get_format_from_space(source_space);
 
-	if (item->item_render && (!use_texrender || (gs_texrender_get_format(item->item_render) != format))) {
+	/* The texrender's format is asked for only when one is there and
+	 * wanted. */
+	const bool format_matches = item->item_render && use_texrender &&
+				    (gs_texrender_get_format(item->item_render) == format);
+	const enum obs_scene_render_texrender action =
+		obs_scene_render_texrender_action(item->item_render != NULL, use_texrender, format_matches);
+
+	if (action == OBS_SCENE_RENDER_TEXRENDER_DESTROY || action == OBS_SCENE_RENDER_TEXRENDER_RECREATE) {
 		gs_texrender_destroy(item->item_render);
 		item->item_render = NULL;
 	}
 
-	if (!item->item_render && use_texrender) {
+	if (action == OBS_SCENE_RENDER_TEXRENDER_CREATE || action == OBS_SCENE_RENDER_TEXRENDER_RECREATE) {
 		item->item_render = gs_texrender_create(format, GS_ZS_NONE);
 	}
 
@@ -732,7 +711,7 @@ static inline void render_item(struct obs_scene_item *item)
 		uint32_t width = obs_source_get_width(item->source);
 		uint32_t height = obs_source_get_height(item->source);
 
-		if (!width || !height) {
+		if (obs_scene_render_size_empty(width, height)) {
 			render_empty_item_transition(item);
 			goto cleanup;
 		}
@@ -745,13 +724,9 @@ static inline void render_item(struct obs_scene_item *item)
 			float cy_scale = (float)height / (float)cy;
 			struct vec4 clear_color;
 
-			/* Darken draws with GS_BLEND_OP_MIN, for which the graphics
-			 * APIs ignore the blend factors: a transparent pixel (0, 0,
-			 * 0, 0) would always win and draw black, with alpha 0.
-			 * Drawn over white instead, a transparent pixel is white
-			 * with alpha 1 and leaves what is under it, and an opaque
-			 * one is unchanged. */
-			if (item->blend_type == OBS_BLEND_DARKEN)
+			/* White for Darken (#1406), see
+			 * obs_scene_render_clear_white(). */
+			if (obs_scene_render_clear_white(item->blend_type))
 				vec4_set(&clear_color, 1.0f, 1.0f, 1.0f, 1.0f);
 			else
 				vec4_zero(&clear_color);
@@ -762,47 +737,62 @@ static inline void render_item(struct obs_scene_item *item)
 			gs_matrix_translate3f(-obs_scene_crop_offset(item->crop.left, item->bounds_crop.left),
 					      -obs_scene_crop_offset(item->crop.top, item->bounds_crop.top), 0.0f);
 
-			if (item->user_visible && scene_transition_active(item->show_transition)) {
+			switch (item_render_child(item)) {
+			case OBS_SCENE_RENDER_CHILD_SHOW: {
 				const int show_cx = obs_source_get_width(item->source);
 				const int show_cy = obs_source_get_height(item->source);
 				obs_transition_set_size(item->show_transition, show_cx, show_cy);
 				obs_source_video_render(item->show_transition);
-			} else if (!item->user_visible && scene_transition_active(item->hide_transition)) {
+				break;
+			}
+			case OBS_SCENE_RENDER_CHILD_HIDE: {
 				const int hide_cx = obs_source_get_width(item->source);
 				const int hide_cy = obs_source_get_height(item->source);
 				obs_transition_set_size(item->hide_transition, hide_cx, hide_cy);
 				obs_source_video_render(item->hide_transition);
-			} else {
+				break;
+			}
+			case OBS_SCENE_RENDER_CHILD_SOURCE:
 				obs_source_set_texcoords_centered(item->source, true);
 				obs_source_video_render(item->source);
 				obs_source_set_texcoords_centered(item->source, false);
+				break;
 			}
 
 			gs_texrender_end(item->item_render);
 		}
 	}
 
-	const bool linear_srgb = !item->item_render || (item->blend_method != OBS_BLEND_METHOD_SRGB_OFF);
+	const bool linear_srgb = obs_scene_render_linear_srgb(item->item_render != NULL, item->blend_method);
 	const bool previous = gs_set_linear_srgb(linear_srgb);
 	gs_matrix_push();
 	gs_matrix_mul(&item->draw_transform);
 	if (item->item_render) {
 		render_item_texture(item, current_space, source_space);
-	} else if (item->user_visible && scene_transition_active(item->show_transition)) {
-		const int cx = obs_source_get_width(item->source);
-		const int cy = obs_source_get_height(item->source);
-		obs_transition_set_size(item->show_transition, cx, cy);
-		obs_source_video_render(item->show_transition);
-	} else if (!item->user_visible && scene_transition_active(item->hide_transition)) {
-		const int cx = obs_source_get_width(item->source);
-		const int cy = obs_source_get_height(item->source);
-		obs_transition_set_size(item->hide_transition, cx, cy);
-		obs_source_video_render(item->hide_transition);
 	} else {
-		const bool centered = are_texcoords_centered(&item->draw_transform);
-		obs_source_set_texcoords_centered(item->source, centered);
-		obs_source_video_render(item->source);
-		obs_source_set_texcoords_centered(item->source, false);
+		switch (item_render_child(item)) {
+		case OBS_SCENE_RENDER_CHILD_SHOW: {
+			const int cx = obs_source_get_width(item->source);
+			const int cy = obs_source_get_height(item->source);
+			obs_transition_set_size(item->show_transition, cx, cy);
+			obs_source_video_render(item->show_transition);
+			break;
+		}
+		case OBS_SCENE_RENDER_CHILD_HIDE: {
+			const int cx = obs_source_get_width(item->source);
+			const int cy = obs_source_get_height(item->source);
+			obs_transition_set_size(item->hide_transition, cx, cy);
+			obs_source_video_render(item->hide_transition);
+			break;
+		}
+		case OBS_SCENE_RENDER_CHILD_SOURCE: {
+			const bool centered = obs_scene_texcoords_centered(&item->draw_transform);
+			obs_source_set_texcoords_centered(item->source, centered);
+			obs_source_video_render(item->source);
+			obs_source_set_texcoords_centered(item->source, false);
+			break;
+		}
+		}
 	}
 	gs_matrix_pop();
 	gs_set_linear_srgb(previous);
