@@ -29,5 +29,8 @@
 #include <util/dstr.h>
 #include <util/bmem.h>
 
+/* qsv-probe interface (#1863) */
+#include "plugins/obs-qsv11/qsv-probe.h"
+
 /* qsv-host interface (#860) */
 #include "plugins/obs-qsv11/qsv-host.h"

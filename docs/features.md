@@ -190,6 +190,13 @@ not get a line.
   [#1862](https://github.com/obs-rust/obs-studio/issues/1862), PRs
   [#1841](https://github.com/obs-rust/obs-studio/pull/1841),
   [#1872](https://github.com/obs-rust/obs-studio/pull/1872).
+- **QSV probe log.** On Linux, the OBS log has one `QSV probe:` line per GPU
+  render device, with whether VA-API opened it, its driver and whether it
+  encodes HEVC and AV1. That is what decides which Quick Sync encoders
+  appear, so a log from real Intel hardware is enough to check and pin that
+  decision in a test. *Linux*, pending merge. Issue
+  [#1863](https://github.com/obs-rust/obs-studio/issues/1863), PR
+  [#1879](https://github.com/obs-rust/obs-studio/pull/1879).
 
 - **let buffered queues fit one chunk.** Large buffered recording chunks complete when the configured queue limit is smaller than a chunk. *All*, 2026-10-20. Issue [#1526](https://github.com/obs-rust/obs-studio/issues/1526), PR [#1527](https://github.com/obs-rust/obs-studio/pull/1527).
 

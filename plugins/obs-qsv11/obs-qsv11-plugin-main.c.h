@@ -76,15 +76,18 @@ bool obs_module_load(void)
 	adapter_count = MAX_ADAPTERS;
 	check_adapters(adapters, &adapter_count);
 
-	bool avc_supported = false;
-	bool av1_supported = false;
-	bool hevc_supported = false;
+	struct qsv_probe_adapter probe[MAX_ADAPTERS];
+	struct qsv_probe_codecs codecs;
 	for (size_t i = 0; i < adapter_count; i++) {
-		struct adapter_info *adapter = &adapters[i];
-		avc_supported |= adapter->is_intel;
-		av1_supported |= adapter->is_intel && adapter->supports_av1;
-		hevc_supported |= adapter->is_intel && adapter->supports_hevc;
+		probe[i].is_intel = adapters[i].is_intel;
+		probe[i].supports_hevc = adapters[i].supports_hevc;
+		probe[i].supports_av1 = adapters[i].supports_av1;
 	}
+	/* The decision test_qsv_probe replays (obs-rust/obs-studio#1863). */
+	qsv_probe_codecs_from_adapters(probe, adapter_count, &codecs);
+	bool avc_supported = codecs.avc;
+	bool av1_supported = codecs.av1;
+	bool hevc_supported = codecs.hevc;
 
 	if (avc_supported) {
 		obs_register_encoder(&obs_qsv_encoder_tex_v2);

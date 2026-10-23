@@ -405,12 +405,6 @@ static void vaapi_open(const char *device_path, struct vaapi_device *device)
 	}
 
 	const char *driver = vaQueryVendorString(display);
-	if (strstr(driver, "Intel i965 driver") != nullptr) {
-		blog(LOG_WARNING, "Legacy intel-vaapi-driver detected, incompatible with QSV");
-		vaTerminate(display);
-		close(fd);
-		return;
-	}
 
 	device->fd = fd;
 	device->display = display;
@@ -466,17 +460,38 @@ bool check_adapter(void *param, const char *node, uint32_t idx)
 	struct vaapi_device device = {0};
 	struct adapter_info *adapters = (struct adapter_info *)param;
 
+	struct qsv_probe_facts facts = {};
+	struct qsv_probe_adapter probe;
+	char line[300];
+
 	vaapi_open(node, &device);
-	if (!device.display) {
+	snprintf(facts.node, sizeof(facts.node), "%s", node);
+	if (device.display) {
+		facts.opened = true;
+		snprintf(facts.driver, sizeof(facts.driver), "%s", device.driver ? device.driver : "");
+		facts.hevc = vaapi_supports_hevc(device.display);
+		facts.av1 = vaapi_supports_av1(device.display);
+	}
+
+	/* What the decision below is made from, for replaying a log from real
+	 * hardware in test_qsv_probe (obs-rust/obs-studio#1863). */
+	qsv_probe_format(&facts, line, sizeof(line));
+	blog(LOG_INFO, QSV_PROBE_LOG_PREFIX "%s", line);
+
+	if (!qsv_probe_adapter_from_facts(&facts, &probe)) {
+		if (device.display) {
+			blog(LOG_WARNING, "Legacy intel-vaapi-driver detected, incompatible with QSV");
+			vaapi_close(&device);
+		}
 		return true;
 	}
 
 	struct adapter_info *adapter = &adapters[idx];
-	adapter->is_intel = strstr(device.driver, "Intel") != nullptr;
+	adapter->is_intel = probe.is_intel;
 	// This is currently only used for LowPower coding which is busted on VA-API anyway.
 	adapter->is_dgpu = false;
-	adapter->supports_av1 = vaapi_supports_av1(device.display);
-	adapter->supports_hevc = vaapi_supports_hevc(device.display);
+	adapter->supports_av1 = probe.supports_av1;
+	adapter->supports_hevc = probe.supports_hevc;
 
 	if (adapter->is_intel && default_h264_device == nullptr) {
 		default_h264_device = strdup(node);

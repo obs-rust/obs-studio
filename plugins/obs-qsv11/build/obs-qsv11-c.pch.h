@@ -22,5 +22,8 @@
 
 #include "plugins/obs-qsv11/QSV_Encoder.h"
 
+/* qsv-probe interface (#1863) */
+#include "plugins/obs-qsv11/qsv-probe.h"
+
 /* qsv-host interface (#860) */
 #include "plugins/obs-qsv11/qsv-host.h"
