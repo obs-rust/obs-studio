@@ -1536,11 +1536,6 @@ static void source_signal_audio_data(obs_source_t *source, const struct audio_da
 	pthread_mutex_unlock(&source->audio_cb_mutex);
 }
 
-static inline uint64_t uint64_diff(uint64_t ts1, uint64_t ts2)
-{
-	return (ts1 < ts2) ? (ts2 - ts1) : (ts1 - ts2);
-}
-
 static inline size_t get_buf_placement(audio_t *audio, uint64_t offset)
 {
 	uint32_t sample_rate = audio_output_get_sample_rate(audio);
@@ -3947,6 +3942,27 @@ static inline struct obs_audio_data *filter_async_audio(obs_source_t *source, st
 	return in;
 }
 
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_SMOOTHING_THRESHOLD == TS_SMOOTHING_THRESHOLD, "TS_SMOOTHING_THRESHOLD");
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_SPEAKERS_STEREO == SPEAKERS_STEREO, "SPEAKERS_STEREO");
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_FORCE_MONO == OBS_SOURCE_FLAG_FORCE_MONO, "OBS_SOURCE_FLAG_FORCE_MONO");
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_SINE_LAW == OBS_BALANCE_TYPE_SINE_LAW, "OBS_BALANCE_TYPE_SINE_LAW");
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_SQUARE_LAW == OBS_BALANCE_TYPE_SQUARE_LAW, "OBS_BALANCE_TYPE_SQUARE_LAW");
+_Static_assert(OBS_SOURCE_AUDIO_INPUT_LINEAR == OBS_BALANCE_TYPE_LINEAR, "OBS_BALANCE_TYPE_LINEAR");
+_Static_assert(sizeof(enum audio_format) == sizeof(int), "enum audio_format is passed as int");
+_Static_assert(sizeof(enum speaker_layout) == sizeof(int), "enum speaker_layout is passed as int");
+
+/* The audio input steps are obs-source-audio-input.c's: they get the
+ * fields they read, and the stores happen here, in their order. */
+static inline struct obs_source_audio_input_format audio_input_format(const struct resample_info *info)
+{
+	const struct obs_source_audio_input_format format = {
+		.format = (int)info->format,
+		.samples_per_sec = info->samples_per_sec,
+		.speakers = (int)info->speakers,
+	};
+	return format;
+}
+
 static inline void reset_resampler(obs_source_t *source, const struct obs_source_audio *audio)
 {
 	const struct audio_output_info *obs_info;
@@ -3967,11 +3983,9 @@ static inline void reset_resampler(obs_source_t *source, const struct obs_source
 	source->resampler = NULL;
 	source->resample_offset = 0;
 
-	/* Clock drift compensation needs a resampler even when the formats
-	 * match; it passes the audio through untouched until it is needed. */
-	if (source->sample_info.samples_per_sec == obs_info->samples_per_sec &&
-	    source->sample_info.format == obs_info->format && source->sample_info.speakers == obs_info->speakers &&
-	    !source->last_async_compensation) {
+	if (!obs_source_audio_input_resampler_needed(audio_input_format(&source->sample_info),
+						     audio_input_format(&output_info),
+						     source->last_async_compensation)) {
 		source->audio_failed = false;
 		return;
 	}
@@ -4007,72 +4021,25 @@ static void copy_audio_data(obs_source_t *source, const uint8_t *const data[], u
 		source->audio_storage_size = size;
 }
 
-/* TODO: SSE optimization */
-static void downmix_to_mono_planar(struct obs_source *source, uint32_t frames)
-{
-	size_t channels = audio_output_get_channels(obs->audio.audio);
-	const float channels_i = 1.0f / (float)channels;
-	float **data = (float **)source->audio_data.data;
-
-	for (size_t channel = 1; channel < channels; channel++) {
-		for (uint32_t frame = 0; frame < frames; frame++)
-			data[0][frame] += data[channel][frame];
-	}
-
-	for (uint32_t frame = 0; frame < frames; frame++)
-		data[0][frame] *= channels_i;
-
-	for (size_t channel = 1; channel < channels; channel++) {
-		for (uint32_t frame = 0; frame < frames; frame++)
-			data[channel][frame] = data[0][frame];
-	}
-}
-
-static void process_audio_balancing(struct obs_source *source, uint32_t frames, float balance,
-				    enum obs_balance_type type)
-{
-	float **data = (float **)source->audio_data.data;
-
-	switch (type) {
-	case OBS_BALANCE_TYPE_SINE_LAW:
-		for (uint32_t frame = 0; frame < frames; frame++) {
-			data[0][frame] = data[0][frame] * sinf((float)((double)(1.0f - balance) * (M_PI / 2.0)));
-			data[1][frame] = data[1][frame] * sinf((float)((double)balance * (M_PI / 2.0)));
-		}
-		break;
-	case OBS_BALANCE_TYPE_SQUARE_LAW:
-		for (uint32_t frame = 0; frame < frames; frame++) {
-			data[0][frame] = data[0][frame] * sqrtf(1.0f - balance);
-			data[1][frame] = data[1][frame] * sqrtf(balance);
-		}
-		break;
-	case OBS_BALANCE_TYPE_LINEAR:
-		for (uint32_t frame = 0; frame < frames; frame++) {
-			data[0][frame] = data[0][frame] * (1.0f - balance);
-			data[1][frame] = data[1][frame] * balance;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
 /* resamples/remixes new audio to the designated main audio output format */
 static void process_audio(obs_source_t *source, const struct obs_source_audio *audio)
 {
 	uint32_t frames = audio->frames;
 	bool mono_output;
 
-	/* The resampler holds back the last samples of every packet for its
-	 * filter. A packet that does not continue the previous one (a media
-	 * file started again after it ended) begins a new stream: drop what is
-	 * held back instead of playing it in front of the new audio. */
-	bool discontinuous = source->resampler && source->next_resample_in_ts &&
-			     uint64_diff(audio->timestamp, source->next_resample_in_ts) >= TS_SMOOTHING_THRESHOLD;
+	/* A packet that does not continue the previous one restarts the
+	 * resampler (#546). */
+	bool discontinuous = obs_source_audio_input_discontinuous(source->resampler != NULL,
+								  source->next_resample_in_ts, audio->timestamp);
 
-	if (source->sample_info.samples_per_sec != audio->samples_per_sec ||
-	    source->sample_info.format != audio->format || source->sample_info.speakers != audio->speakers ||
-	    source->last_async_compensation != os_atomic_load_bool(&source->async_compensation) || discontinuous)
+	const struct obs_source_audio_input_format packet = {
+		.format = (int)audio->format,
+		.samples_per_sec = audio->samples_per_sec,
+		.speakers = (int)audio->speakers,
+	};
+	if (obs_source_audio_input_reset_needed(audio_input_format(&source->sample_info), packet,
+						source->last_async_compensation,
+						os_atomic_load_bool(&source->async_compensation), discontinuous))
 		reset_resampler(source, audio);
 
 	if (audio->samples_per_sec)
@@ -4097,13 +4064,14 @@ static void process_audio(obs_source_t *source, const struct obs_source_audio *a
 
 	mono_output = audio_output_get_channels(obs->audio.audio) == 1;
 
-	if (!mono_output && source->sample_info.speakers == SPEAKERS_STEREO &&
-	    (source->balance > 0.51f || source->balance < 0.49f)) {
-		process_audio_balancing(source, frames, source->balance, OBS_BALANCE_TYPE_SINE_LAW);
+	if (obs_source_audio_input_balance_needed(mono_output, (int)source->sample_info.speakers, source->balance)) {
+		obs_source_audio_input_balance((float **)source->audio_data.data, frames, source->balance,
+					       OBS_BALANCE_TYPE_SINE_LAW);
 	}
 
-	if (!mono_output && (source->flags & OBS_SOURCE_FLAG_FORCE_MONO) != 0)
-		downmix_to_mono_planar(source, frames);
+	if (obs_source_audio_input_mono_needed(mono_output, source->flags))
+		obs_source_audio_input_downmix((float **)source->audio_data.data,
+					       audio_output_get_channels(obs->audio.audio), frames);
 }
 
 void obs_source_output_audio(obs_source_t *source, const struct obs_source_audio *audio_in)
