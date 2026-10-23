@@ -11,6 +11,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod audio_input;
 pub mod audio_timing;
 pub mod color_space;
 pub mod deinterlace_pacing;
