@@ -226,7 +226,7 @@ fn cmocka_cases_match_oracle() {
 fn entry() -> impl Strategy<Value = f32> {
     prop_oneof![
         4 => -1.0e4f32..1.0e4f32,
-        2 => prop_oneof![-f32::MAX..-1.0e30f32, 1.0e30f32..f32::MAX],
+        2 => huge(),
         2 => prop::sample::select(vec![
             0.0,
             -0.0,
@@ -245,6 +245,17 @@ fn entry() -> impl Strategy<Value = f32> {
         ]),
         1 => any::<u32>().prop_map(f32::from_bits),
     ]
+}
+
+/// A finite value of 1e30 up to `f32::MAX`, either sign. It is drawn from the
+/// bit patterns, not from a float range: proptest's float sampler can trip
+/// its own debug assertion on a range this wide (seen on Windows in #1929's
+/// merge group). Positive floats order like their bits, so the set is the same.
+fn huge() -> impl Strategy<Value = f32> {
+    (any::<bool>(), 1.0e30f32.to_bits()..=f32::MAX.to_bits()).prop_map(|(negative, bits)| {
+        let value = f32::from_bits(bits);
+        if negative { -value } else { value }
+    })
 }
 
 fn rows() -> impl Strategy<Value = Rows> {
