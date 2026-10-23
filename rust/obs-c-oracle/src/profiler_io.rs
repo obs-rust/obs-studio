@@ -18,3 +18,23 @@ unsafe extern "C" {
         filename: *const c_char,
     ) -> bool;
 }
+
+/// `struct oracle_profiler_io_log` in `oracle/profiler_io.c`.
+#[repr(C)]
+#[derive(Debug)]
+pub struct OracleLog {
+    pub data: *mut c_char,
+    pub cap: usize,
+    pub len: usize,
+    pub levels_not_info: core::ffi::c_int,
+    pub overflow: core::ffi::c_int,
+}
+
+unsafe extern "C" {
+    /// A `log_handler_t` whose param is an [`OracleLog`]: appends each
+    /// formatted line and a `'\n'`.
+    pub fn oracle_profiler_io_log_capture();
+    /// Makes the calling thread's lines the ones the capture keeps (`1`),
+    /// or stops (`0`).
+    pub fn oracle_profiler_io_log_own(own: core::ffi::c_int);
+}

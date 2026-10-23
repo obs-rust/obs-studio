@@ -104,3 +104,7 @@ fn module_paths_resolve_to_exact_libtest_names() {
     );
     assert_eq!(test_name("tests::probe"), "tests::probe");
 }
+
+/// Held by every test that replaces the process-global log handler
+/// (`base_set_log_handler`), so they do not swap it under each other.
+pub static LOG_HANDLER_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());

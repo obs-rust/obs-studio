@@ -10,7 +10,6 @@
 
 use std::ffi::{CString, c_char, c_int, c_void};
 use std::ptr;
-use std::sync::Mutex;
 
 use obs_c_oracle::base as c;
 use obs_util::base::{
@@ -19,7 +18,8 @@ use obs_util::base::{
 use obs_util::ffi::base as rs;
 use proptest::prelude::*;
 
-static GATE: Mutex<()> = Mutex::new(());
+/// The log handler is process-global; profiler_io_parity.rs replaces it too.
+use crate::common::LOG_HANDLER_LOCK as GATE;
 
 #[repr(C)]
 struct Rec {

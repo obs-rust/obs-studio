@@ -13,8 +13,6 @@
 //! miniz_oxide, not zlib: the compressed bytes differ, the CSV inside does
 //! not.
 
-#![allow(dead_code, unused_imports, unused_variables)] // RED stubs; the GREEN port uses them
-
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -143,10 +141,33 @@ impl Report {
     }
 }
 
+/// `%g`.
+fn g(out: &mut Vec<u8>, value: f64) {
+    out.extend_from_slice(&snprintf_double(DoubleFormat::G, value));
+}
+
+/// `%g` of a µs time in ms, then `" ms"`.
+fn ms(out: &mut Vec<u8>, time: u64) {
+    g(out, time as f64 / 1000.);
+    out.extend_from_slice(MS);
+}
+
 /// `make_indent_string`: one fragment per level; bit `i` of `active` set
 /// means level `i` still has siblings below.
 pub fn indent_string(indent: u32, active: u64) -> Vec<u8> {
-    todo!("profiler-io port")
+    let mut out = Vec::new();
+    for i in 0..indent {
+        let last = i + 1 == indent;
+        let fragment: &[u8] = if active & 1u64.wrapping_shl(i) != 0 {
+            if last { VPIPE_RIGHT } else { VPIPE }
+        } else if last {
+            DOWN_RIGHT
+        } else {
+            b"  "
+        };
+        out.extend_from_slice(fragment);
+    }
+    out
 }
 
 /// What `gather_stats` reports.
@@ -164,7 +185,42 @@ pub struct Stats {
 /// first reaches half of `calls` and that is not also where it first reaches
 /// 1%; one that reaches half only on a later boundary is left at 0.
 pub fn gather_stats(expected: u64, entries: &[TimeEntry], calls: u64) -> Stats {
-    todo!("profiler-io port")
+    let mut stats = Stats {
+        percentile99: 0,
+        median: 0,
+        percent_within_bounds: 0.,
+    };
+    if entries.is_empty() {
+        return stats;
+    }
+
+    let calls_f = calls as f64;
+    let mut accu: u64 = 0;
+    for entry in entries {
+        let old_accu = accu;
+        accu = accu.wrapping_add(entry.count);
+
+        if (old_accu as f64) < calls_f * 0.01 && accu as f64 >= calls_f * 0.01 {
+            stats.percentile99 = entry.time_delta;
+        } else if (old_accu as f64) < calls_f * 0.5 && accu as f64 >= calls_f * 0.5 {
+            stats.median = entry.time_delta;
+            break;
+        }
+    }
+
+    if expected == 0 {
+        return stats;
+    }
+
+    accu = 0;
+    for entry in entries {
+        if entry.time_delta < expected {
+            break;
+        }
+        accu = accu.wrapping_add(entry.count);
+    }
+    stats.percent_within_bounds = (1. - accu as f64 / calls_f) * 100.;
+    stats
 }
 
 /// What `gather_stats_between` reports: the median, and the percentages of
@@ -186,7 +242,77 @@ pub fn gather_stats_between(
     min: u64,
     max: u64,
 ) -> BetweenStats {
-    todo!("profiler-io port")
+    let mut stats = BetweenStats {
+        median: 0,
+        percent: 0.,
+        lower: 0.,
+        higher: 0.,
+    };
+    if entries.is_empty() {
+        return stats;
+    }
+
+    let calls_f = calls as f64;
+    let mut accu: u64 = 0;
+    for entry in entries {
+        accu = accu.wrapping_add(entry.count);
+        if (accu as f64) < calls_f * 0.5 {
+            continue;
+        }
+        stats.median = entry.time_delta;
+        break;
+    }
+
+    let mut found_upper_bound = max <= upper_bound;
+    let mut found_lower_bound = false;
+
+    if min >= upper_bound {
+        stats.higher = 100.;
+        return stats;
+    }
+
+    if found_upper_bound && min >= lower_bound {
+        stats.percent = 100.;
+        return stats;
+    }
+
+    accu = 0;
+    for entry in entries {
+        let delta = entry.time_delta;
+
+        if !found_upper_bound && delta <= upper_bound {
+            stats.higher = accu as f64 / calls_f * 100.;
+            accu = 0;
+            found_upper_bound = true;
+        }
+
+        if !found_lower_bound && delta < lower_bound {
+            stats.percent = accu as f64 / calls_f * 100.;
+            accu = 0;
+            found_lower_bound = true;
+        }
+
+        accu = accu.wrapping_add(entry.count);
+    }
+
+    if !found_upper_bound {
+        stats.higher = 100.;
+    } else if !found_lower_bound {
+        stats.percent = accu as f64 / calls_f * 100.;
+    } else {
+        stats.lower = accu as f64 / calls_f * 100.;
+    }
+    stats
+}
+
+/// The C's `active &= (1 << indent) - 1`: an `int` shift, sign-extended.
+fn clear_from(active: u64, indent: u32) -> u64 {
+    active & (1i32.wrapping_shl(indent).wrapping_sub(1) as i64 as u64)
+}
+
+/// `lround`, for the finite ratios it sees here.
+fn lround(value: f64) -> i64 {
+    value.round() as i64
 }
 
 /// `profile_print_entry`: one line for `entry`, then its children.
@@ -197,7 +323,54 @@ pub fn print_entry<E: Entry>(
     parent_calls: u64,
     log: &mut impl FnMut(&[u8]),
 ) {
-    todo!("profiler-io port")
+    let calls = entry.overall_count();
+    let min = entry.min_time();
+    let max = entry.max_time();
+    let expected = entry.expected_time_between_calls();
+    let stats = gather_stats(expected, entry.times(), calls);
+
+    let mut line = indent_string(indent, active);
+    line.extend_from_slice(entry.name());
+    if min == max {
+        line.extend_from_slice(b": ");
+        ms(&mut line, min);
+    } else {
+        line.extend_from_slice(b": min=");
+        ms(&mut line, min);
+        line.extend_from_slice(b", median=");
+        ms(&mut line, stats.median);
+        line.extend_from_slice(b", max=");
+        ms(&mut line, max);
+        line.extend_from_slice(b", 99th percentile=");
+        ms(&mut line, stats.percentile99);
+
+        if expected != 0 {
+            line.extend_from_slice(b", ");
+            g(&mut line, stats.percent_within_bounds);
+            line.extend_from_slice(b"% below ");
+            ms(&mut line, expected);
+        }
+    }
+
+    if parent_calls != 0 && calls != parent_calls {
+        let calls_per_parent = calls as f64 / parent_calls as f64;
+        if lround(calls_per_parent * 10.) != 10 {
+            line.extend_from_slice(b", ");
+            g(&mut line, calls_per_parent);
+            line.extend_from_slice(b" calls per parent call");
+        }
+    }
+
+    log(&line);
+
+    let mut active = active | 1u64.wrapping_shl(indent);
+    let children = entry.children();
+    for (i, child) in children.iter().enumerate() {
+        if i + 1 == children.len() {
+            active = clear_from(active, indent);
+        }
+        print_entry(child, indent + 1, active, calls, log);
+    }
 }
 
 /// `profile_print_entry_expected`: for an entry with an expected time
@@ -208,29 +381,149 @@ pub fn print_entry_expected<E: Entry>(
     active: u64,
     log: &mut impl FnMut(&[u8]),
 ) {
-    todo!("profiler-io port")
+    let expected = entry.expected_time_between_calls();
+    if expected == 0 {
+        return;
+    }
+
+    let min = entry.min_time_between_calls();
+    let max = entry.max_time_between_calls();
+    let stats = gather_stats_between(
+        entry.times_between_calls(),
+        entry.overall_between_calls_count(),
+        (expected as f64 * 0.98) as u64,
+        (expected as f64 * 1.02 + 0.5) as u64,
+        min,
+        max,
+    );
+
+    let mut line = indent_string(indent, active);
+    line.extend_from_slice(entry.name());
+    line.extend_from_slice(b": min=");
+    ms(&mut line, min);
+    line.extend_from_slice(b", median=");
+    ms(&mut line, stats.median);
+    line.extend_from_slice(b", max=");
+    ms(&mut line, max);
+    line.extend_from_slice(b", ");
+    g(&mut line, stats.percent);
+    line.extend_from_slice("% within \u{b1}2% of ".as_bytes());
+    ms(&mut line, expected);
+    line.extend_from_slice(b" (");
+    g(&mut line, stats.lower);
+    line.extend_from_slice(b"% lower, ");
+    g(&mut line, stats.higher);
+    line.extend_from_slice(b"% higher)");
+
+    log(&line);
+
+    let mut active = active | 1u64.wrapping_shl(indent);
+    let children = entry.children();
+    for (i, child) in children.iter().enumerate() {
+        if i + 1 == children.len() {
+            active = clear_from(active, indent);
+        }
+        print_entry_expected(child, indent + 1, active, log);
+    }
 }
 
 /// `profile_print_func` with one of the two printers: the intro, every root,
 /// then the footer, each line through `log`.
 pub fn print<E: Entry>(roots: &[E], report: Report, log: &mut impl FnMut(&[u8])) {
-    todo!("profiler-io port")
+    log(report.intro());
+    for root in roots {
+        match report {
+            Report::Results => print_entry(root, 0, 0, 0, log),
+            Report::TimeBetweenCalls => print_entry_expected(root, 0, 0, log),
+        }
+    }
+    log(FOOTER);
+}
+
+fn csv_row<E: Entry>(
+    out: &mut Vec<u8>,
+    entry: &E,
+    parent: Option<&E>,
+    between: u64,
+    time: &TimeEntry,
+) {
+    out.clear();
+    out.extend_from_slice(&snprintf_ptr(entry.id()));
+    out.push(b',');
+    out.extend_from_slice(&snprintf_ptr(parent.map_or(0, Entry::id)));
+    out.push(b',');
+    out.extend_from_slice(&snprintf_ptr(entry.name_id()));
+    out.push(b',');
+    out.extend_from_slice(&snprintf_ptr(parent.map_or(0, Entry::name_id)));
+    out.push(b',');
+    out.extend_from_slice(entry.name());
+    out.extend_from_slice(format!(",{between},{},{}\n", time.time_delta, time.count).as_bytes());
+}
+
+/// `entry_dump_csv`: the entry's time rows, its time-between-calls rows,
+/// then its children's.
+fn entry_dump_csv<E: Entry>(
+    buffer: &mut Vec<u8>,
+    parent: Option<&E>,
+    entry: &E,
+    sink: &mut impl FnMut(&[u8]),
+) {
+    for time in entry.times() {
+        csv_row(buffer, entry, parent, 0, time);
+        sink(buffer);
+    }
+    let expected = entry.expected_time_between_calls();
+    for time in entry.times_between_calls() {
+        csv_row(buffer, entry, parent, expected, time);
+        sink(buffer);
+    }
+    for child in entry.children() {
+        entry_dump_csv(buffer, Some(entry), child, sink);
+    }
 }
 
 /// `profiler_snapshot_dump`: the CSV, one chunk per line, into `sink`.
 pub fn dump_csv<E: Entry>(roots: &[E], sink: &mut impl FnMut(&[u8])) {
-    todo!("profiler-io port")
+    sink(CSV_HEADER);
+    let mut buffer = Vec::new();
+    for root in roots {
+        entry_dump_csv(&mut buffer, None, root, sink);
+    }
 }
 
 /// `profiler_snapshot_dump_csv`: create or truncate `path` (`"wb+"`) and
 /// write the CSV. `false` only when the file cannot be opened; write errors
 /// are ignored, as the C ignores `fwrite`'s result.
 pub fn dump_csv_file<E: Entry>(roots: &[E], path: &Path) -> bool {
-    todo!("profiler-io port")
+    let Ok(file) = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+    else {
+        return false;
+    };
+    let mut out = BufWriter::new(file);
+    dump_csv(roots, &mut |chunk| {
+        let _ = out.write_all(chunk);
+    });
+    let _ = out.flush();
+    true
 }
 
 /// `profiler_snapshot_dump_csv_gz`: the CSV, gzip-compressed (level 6, as
 /// zlib's `gzopen(path, "wb")`), into a created or truncated `path`.
 pub fn dump_csv_gz_file<E: Entry>(roots: &[E], path: &Path) -> bool {
-    todo!("profiler-io port")
+    let Ok(file) = File::create(path) else {
+        return false;
+    };
+    let mut gz = flate2::write::GzEncoder::new(BufWriter::new(file), flate2::Compression::new(6));
+    dump_csv(roots, &mut |chunk| {
+        let _ = gz.write_all(chunk);
+    });
+    if let Ok(mut out) = gz.finish() {
+        let _ = out.flush();
+    }
+    true
 }

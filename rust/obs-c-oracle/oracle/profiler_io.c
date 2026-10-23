@@ -35,3 +35,50 @@
 #endif
 
 #include "util/profiler-io.c.h"
+
+/* Test-only: a base_set_log_handler handler that appends each line, then
+ * '\n', to a caller-owned buffer, so Tier 3 can compare every line the Rust
+ * shim and this file log. Only lines logged on the thread that called
+ * oracle_profiler_io_log_own(1) are kept; tests running in parallel log
+ * through the same global handler. A line that does not fit sets
+ * `overflow`. */
+#include <stdarg.h>
+
+#include "util/threading.h"
+
+static THREAD_LOCAL int profiler_io_log_owner;
+
+void oracle_profiler_io_log_own(int own);
+
+void oracle_profiler_io_log_own(int own)
+{
+	profiler_io_log_owner = own;
+}
+
+struct oracle_profiler_io_log {
+	char *data;
+	size_t cap;
+	size_t len;
+	int levels_not_info;
+	int overflow;
+};
+
+void oracle_profiler_io_log_capture(int level, const char *format, va_list args, void *param);
+
+void oracle_profiler_io_log_capture(int level, const char *format, va_list args, void *param)
+{
+	struct oracle_profiler_io_log *log = param;
+	if (!profiler_io_log_owner)
+		return;
+	if (level != LOG_INFO)
+		log->levels_not_info++;
+
+	size_t room = log->cap - log->len;
+	int n = vsnprintf(log->data + log->len, room, format, args);
+	if (n < 0 || (size_t)n + 1 >= room) {
+		log->overflow = 1;
+		return;
+	}
+	log->len += (size_t)n;
+	log->data[log->len++] = '\n';
+}
