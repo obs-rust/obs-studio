@@ -849,6 +849,17 @@ bool obs_module_names_find_core(const char *binary, const char *name, const char
 				enum obs_runtime_module_type type, const char *ext,
 				obs_find_module_callback2_t callback, void *param);
 
+/* Module locale files (obs-module-locale.c): pure, no libobs state.
+ * obs_module_locale_default_file(): a bmalloc'd "locale/<default_locale>.ini".
+ * obs_module_locale_is_default(): locale is default_locale, ignoring case
+ * (astrcmpi()).
+ * obs_module_locale_file(): a bmalloc'd "/locale/<locale>.ini".
+ * obs_module_load_locale() keeps the module, the lookups and the logging, and
+ * passes the locales. Not exported. */
+char *obs_module_locale_default_file(const char *default_locale);
+bool obs_module_locale_is_default(const char *locale, const char *default_locale);
+char *obs_module_locale_file(const char *locale);
+
 /* Context names (obs-context-names.c): pure, no libobs state. Both return a
  * bmalloc'd name, or NULL, that the caller owns. obs_context_name_dup():
  * NULL for a private context without a name, "__unnamed%04lld" from

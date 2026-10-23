@@ -705,7 +705,7 @@ void free_module(struct obs_module *mod)
 
 lookup_t *obs_module_load_locale(obs_module_t *module, const char *default_locale, const char *locale)
 {
-	struct dstr str = {0};
+	char *name = NULL;
 	lookup_t *lookup = NULL;
 
 	if (!module || !default_locale || !locale) {
@@ -713,11 +713,9 @@ lookup_t *obs_module_load_locale(obs_module_t *module, const char *default_local
 		return NULL;
 	}
 
-	dstr_copy(&str, "locale/");
-	dstr_cat(&str, default_locale);
-	dstr_cat(&str, ".ini");
+	name = obs_module_locale_default_file(default_locale);
 
-	char *file = obs_find_module_file(module, str.array);
+	char *file = obs_find_module_file(module, name);
 	if (file)
 		lookup = text_lookup_create(file);
 
@@ -728,21 +726,20 @@ lookup_t *obs_module_load_locale(obs_module_t *module, const char *default_local
 		goto cleanup;
 	}
 
-	if (astrcmpi(locale, default_locale) == 0)
+	if (obs_module_locale_is_default(locale, default_locale))
 		goto cleanup;
 
-	dstr_copy(&str, "/locale/");
-	dstr_cat(&str, locale);
-	dstr_cat(&str, ".ini");
+	bfree(name);
+	name = obs_module_locale_file(locale);
 
-	file = obs_find_module_file(module, str.array);
+	file = obs_find_module_file(module, name);
 
 	if (!text_lookup_add(lookup, file))
 		blog(LOG_WARNING, "Failed to load '%s' text for module: '%s'", locale, module->file);
 
 	bfree(file);
 cleanup:
-	dstr_free(&str);
+	bfree(name);
 	return lookup;
 }
 
