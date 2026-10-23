@@ -85,7 +85,7 @@ RUN git config --system --add safe.directory '*'
 COPY build-aux/appimage/manylinux/deps.lock.json /opt/deps/deps.lock.json
 RUN uvx --from "git+https://github.com/obs-rust/obs-studio-libs@b35437f2c34dc2468d4255a88a560073272f14db" \
         obs-studio-libs fetch --lock /opt/deps/deps.lock.json
-ENV CMAKE_PREFIX_PATH=/opt/obs-deps/libdatachannel:/opt/obs-deps/qt6:/opt/obs-deps/ffmpeg:/opt/obs-deps/pipewire:/opt/obs-deps/glib:/opt/obs-deps/fdk-aac:/opt/obs-deps/qrcodegen:/opt/obs-deps/headers
+ENV CMAKE_PREFIX_PATH=/opt/obs-deps/libvpl:/opt/obs-deps/libdatachannel:/opt/obs-deps/qt6:/opt/obs-deps/ffmpeg:/opt/obs-deps/pipewire:/opt/obs-deps/glib:/opt/obs-deps/fdk-aac:/opt/obs-deps/qrcodegen:/opt/obs-deps/headers
 ENV PKG_CONFIG_PATH=/opt/obs-deps/qt6/lib/pkgconfig:/opt/obs-deps/ffmpeg/lib/pkgconfig:/opt/obs-deps/pipewire/lib/pkgconfig:/opt/obs-deps/glib/lib/pkgconfig:/opt/obs-deps/fdk-aac/lib/pkgconfig:/opt/obs-deps/qrcodegen/lib/pkgconfig:/opt/obs-deps/headers/lib/pkgconfig:/opt/obs-deps/headers/share/pkgconfig
-ENV LD_LIBRARY_PATH=/opt/obs-deps/libdatachannel/lib:/opt/obs-deps/qt6/lib:/opt/obs-deps/ffmpeg/lib:/opt/obs-deps/pipewire/lib:/opt/obs-deps/glib/lib:/opt/obs-deps/fdk-aac/lib:/opt/obs-deps/qrcodegen/lib
+ENV LD_LIBRARY_PATH=/opt/obs-deps/libvpl/lib:/opt/obs-deps/libdatachannel/lib:/opt/obs-deps/qt6/lib:/opt/obs-deps/ffmpeg/lib:/opt/obs-deps/pipewire/lib:/opt/obs-deps/glib/lib:/opt/obs-deps/fdk-aac/lib:/opt/obs-deps/qrcodegen/lib
 ENV PATH=/opt/obs-deps/glib/bin:/opt/obs-deps/qt6/bin:$PATH
