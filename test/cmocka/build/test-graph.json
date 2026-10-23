@@ -2325,6 +2325,41 @@
       ],
       "sanitizers": "address"
     },
+    "test_source_audio_balance_mono": {
+      "sources": [
+        "test/cmocka/test_source_audio_balance_mono.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "m",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
+    "test_source_audio_input_steps": {
+      "sources": [
+        "test/cmocka/test_source_audio_input_steps.c",
+        "libobs/obs-source-audio-input.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_audio_timing_steps": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
@@ -3751,6 +3786,18 @@
     },
     "test_signal": {
       "target": "test_signal",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_balance_mono": {
+      "target": "test_source_audio_balance_mono",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_input_steps": {
+      "target": "test_source_audio_input_steps",
       "command": [
         "${target}"
       ]
