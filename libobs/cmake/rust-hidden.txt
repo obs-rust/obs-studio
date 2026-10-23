@@ -102,6 +102,16 @@ obs_scene_render_technique
 # stay hidden the same way.
 obs_scene_audio_actions_apply
 obs_scene_audio_action_due
+# obs-source-audio-input.c: process_audio() and reset_resampler() in
+# obs-source.c call them inside libobs. Declared in obs-source-audio-input.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_source_audio_input_discontinuous
+obs_source_audio_input_reset_needed
+obs_source_audio_input_resampler_needed
+obs_source_audio_input_balance_needed
+obs_source_audio_input_mono_needed
+obs_source_audio_input_balance
+obs_source_audio_input_downmix
 # obs-source-audio-timing.c: source_output_audio_data() and
 # reset_audio_data_at_sys_time() in obs-source.c call them inside libobs.
 # Declared in obs-source-audio-timing.h without EXPORT, so the shims stay

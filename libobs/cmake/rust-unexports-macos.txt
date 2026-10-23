@@ -88,6 +88,15 @@ _obs_scene_render_technique
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply
 _obs_scene_audio_action_due
+# obs-source-audio-input.c: obs-source.c calls them inside libobs. Not
+# EXPORT.
+_obs_source_audio_input_discontinuous
+_obs_source_audio_input_reset_needed
+_obs_source_audio_input_resampler_needed
+_obs_source_audio_input_balance_needed
+_obs_source_audio_input_mono_needed
+_obs_source_audio_input_balance
+_obs_source_audio_input_downmix
 # obs-source-audio-timing.c: obs-source.c calls them inside libobs. Not
 # EXPORT.
 _obs_source_audio_timing_pre_lock

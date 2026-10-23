@@ -11,3 +11,19 @@
 # test_source_audio_balance_mono, test_audio_restart_resampler_tail and
 # test_audio_clock_drift cover the caller through the real libobs.
 # Target and test are declared in ../build/test-graph.json.
+
+# Exercise the unchanged characterization against the Rust shims. The test
+# calls only the seven hidden functions and includes only their header, so it
+# links the archive alone: its obs-source member needs nothing from libobs or
+# the other crates. Linking the archive directly avoids exporting private
+# symbols just for a test.
+if(TARGET libobs_rust-static)
+  add_executable(test_source_audio_input_steps_rust test_source_audio_input_steps.c)
+  target_include_directories(
+    test_source_audio_input_steps_rust
+    PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}
+  )
+  target_link_libraries(test_source_audio_input_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES})
+  add_dependencies(cmocka-tests test_source_audio_input_steps_rust)
+  add_test(test_source_audio_input_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_source_audio_input_steps_rust)
+endif()

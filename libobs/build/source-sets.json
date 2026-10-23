@@ -160,6 +160,7 @@
     "build/libobs.ported-scene-group-transform+.h.c",
     "build/libobs.ported-scene-render-plan+.h.c",
     "build/libobs.ported-service-getters+.h.c",
+    "build/libobs.ported-source-audio-input+.h.c",
     "build/libobs.ported-source-audio-timing+.h.c",
     "build/libobs.ported-source-color-space+.h.c",
     "build/libobs.ported-source-deinterlace-pacing+.h.c",

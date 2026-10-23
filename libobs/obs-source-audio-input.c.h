@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-input.pch.h"
 
 /* The audio input steps of process_audio() and reset_resampler(), moved
  * from obs-source.c: the decisions and the two loops, on plain values.
  * obs-source.c reads the source's fields, calls the steps and keeps the
  * stores, next_resample_in_ts, the resampler, copy_audio_data() and the
  * clock drift compensation. Declared in obs-source-audio-input.h without
- * EXPORT. */
+ * EXPORT. In hybrid libobs the Rust port (rust/obs-source) replaces this
+ * file. */
 
 /* The sine law's M_PI must be <math.h>'s double, not graphics/math-defs.h's
  * float fallback. */
