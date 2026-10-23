@@ -120,6 +120,7 @@ pub mod shader_param_names;
 pub mod shader_sampler_convert;
 pub mod signal;
 pub mod source_audio_timing;
+pub mod source_deinterlace_pacing;
 pub mod source_profiler;
 pub mod task;
 pub mod text_lookup;
