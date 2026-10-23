@@ -2200,6 +2200,29 @@
         "libobs/data"
       ]
     },
+    "test_scene_render_plan_steps": {
+      "sources": [
+        "test/cmocka/test_scene_render_plan_steps.c",
+        "libobs/obs-scene-render-plan.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_rotated_scale_filter": {
       "sources": [
         "test/cmocka/test_scene_rotated_scale_filter.c"
@@ -3650,6 +3673,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_render_plan_steps": {
+      "target": "test_scene_render_plan_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_scene_rotated_scale_filter": {
       "target": "test_scene_rotated_scale_filter",
