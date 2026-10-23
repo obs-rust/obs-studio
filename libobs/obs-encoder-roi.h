@@ -26,13 +26,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * obs_encoder_roi_admit: whether an encoder with `caps` stores `roi` (not
  * NULL): the encoder has OBS_ENCODER_CAP_ROI, the ROI is at least 16 x 16
- * (the smallest block) and its priority is in [-1, 1].
+ * (the smallest block), it is not upside down (bottom above top, or right
+ * left of left) and its priority is in [-1, 1] (not NaN).
  *
  * obs_encoder_roi_scale_factors: the factors from the video's size
  * (`width` x `height`) to the scaled size. False, with the factors
  * unchanged, when the video has no size: then no ROI is passed on.
  *
  * obs_encoder_roi_scale: `roi` with its edges scaled, its priority kept.
+ * Each edge is multiplied in float and truncated toward 0, then the
+ * nearest uint32_t: 0 for NaN and below 0, UINT32_MAX from 2^32 up.
  *
  * Not EXPORT: obs-encoder.c.h calls them inside libobs. */
 

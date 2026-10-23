@@ -1126,6 +1126,14 @@ area.
   leak a copy of a video frame for each caption. *All*, 2026-10-22. Issue
   [#1777](https://github.com/obs-rust/obs-studio/issues/1777), PR
   [#1778](https://github.com/obs-rust/obs-studio/pull/1778).
+- A plugin or script that adds an encoder region of interest (ROI) that is
+  upside down (bottom above top, or right left of left) or has a NaN
+  priority gets it refused, as a too small one is; before, it was stored and
+  passed to the encoder's quality map. An ROI edge that an upscaled
+  encoder scales past the largest value an edge can hold gets that value
+  instead of an undefined one, and a NULL encoder no longer crashes OBS. *All*, pending merge. Issue
+  [#1959](https://github.com/obs-rust/obs-studio/issues/1959), PR
+  [#1964](https://github.com/obs-rust/obs-studio/pull/1964).
 
 ### Sources and filters
 
