@@ -7,6 +7,7 @@
 #![deny(unsafe_code)]
 
 pub mod audio_timing;
+pub mod deinterlace_pacing;
 
 #[allow(unsafe_code)]
 pub mod ffi;

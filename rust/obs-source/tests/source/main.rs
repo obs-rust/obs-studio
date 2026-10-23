@@ -2,3 +2,4 @@
 
 mod audio_timing;
 mod audio_timing_parity;
+mod deinterlace_pacing;
