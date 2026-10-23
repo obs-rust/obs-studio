@@ -736,6 +736,26 @@ extern gs_effect_t *obs_load_effect(gs_effect_t **effect, const char *file);
 extern bool audio_callback(void *param, uint64_t start_ts_in, uint64_t end_ts_in, uint64_t *out_ts, uint32_t mixers,
 			   struct audio_output_data *mixes);
 
+/* The arithmetic of the audio tick (obs-audio-mix.c), called by
+ * audio_callback() and its helpers in obs-audio.c. ts_info is the tick window
+ * in ns. convert_time_to_frames() converts a time in the tick to frames.
+ * mix_audio() adds a root source's audio_output_buf to the mixes from its
+ * audio_ts on. set_fixed_audio_buffering() and add_audio_buffering() add
+ * buffering ticks, push their windows to buffered_timestamps and move ts to
+ * the earliest one. Not exported. */
+struct ts_info {
+	uint64_t start;
+	uint64_t end;
+};
+
+size_t convert_time_to_frames(size_t sample_rate, uint64_t t);
+void mix_audio(struct audio_output_data *mixes, obs_source_t *source, size_t channels, size_t sample_rate,
+	       struct ts_info *ts);
+bool audio_buffering_maxed(struct obs_core_audio *audio);
+void set_fixed_audio_buffering(struct obs_core_audio *audio, size_t sample_rate, struct ts_info *ts);
+void add_audio_buffering(struct obs_core_audio *audio, size_t sample_rate, struct ts_info *ts, uint64_t min_ts,
+			 const char *buffering_name);
+
 extern struct obs_core_video_mix *get_mix_for_video(video_t *video);
 
 extern void start_raw_video(video_t *video, const struct video_scale_info *conversion, uint32_t frame_rate_divisor,

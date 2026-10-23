@@ -7,6 +7,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "libobs/obs-audio-mix.c.h"
 #include "libobs/obs-audio.c.h"
 
 static const uint64_t start = 1000000000ULL;
