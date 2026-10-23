@@ -12,6 +12,7 @@ mod module_names_parity;
 mod module_paths;
 mod module_paths_parity;
 mod module_source_rules;
+mod module_source_rules_parity;
 mod source_profiler;
 mod source_profiler_parity;
 mod video_plan;
