@@ -49,10 +49,16 @@ pub extern "C" fn obs_source_deinterlace_pacing_waiting_frame_ts(
 }
 
 /// `uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t
-/// timestamp, uint64_t prev_ts)`.
+/// timestamp, uint64_t prev_ts, uint32_t prev_half, uint64_t
+/// frame_interval_ns)`.
 #[unsafe(no_mangle)]
-pub extern "C" fn obs_source_deinterlace_pacing_half_duration(timestamp: u64, prev_ts: u64) -> u32 {
-    core::half_duration(timestamp, prev_ts)
+pub extern "C" fn obs_source_deinterlace_pacing_half_duration(
+    timestamp: u64,
+    prev_ts: u64,
+    prev_half: u32,
+    frame_interval_ns: u64,
+) -> u32 {
+    core::half_duration(timestamp, prev_ts, prev_half, frame_interval_ns)
 }
 
 /// `uint64_t obs_source_deinterlace_pacing_buffered_offset(uint64_t

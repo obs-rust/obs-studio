@@ -77,8 +77,11 @@ bool obs_source_deinterlace_pacing_wait_for_next(uint64_t timestamp, uint64_t ne
 uint64_t obs_source_deinterlace_pacing_waiting_frame_ts(uint64_t timestamp, uint64_t next_timestamp);
 
 /* deinterlace_half_duration of a frame at timestamp after one at prev_ts:
- * half the difference, truncated to 32 bits. */
-uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts);
+ * half the difference, truncated to 32 bits. prev_half (the
+ * deinterlace_half_duration before) and frame_interval_ns (the canvas
+ * interval) are not used yet (#1965). */
+uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts, uint32_t prev_half,
+						     uint64_t frame_interval_ns);
 
 /* deinterlace_offset of a buffered source: video_time - last_frame_ts +
  * FRAME_TOLERANCE + TWOX_TOLERANCE. */

@@ -30,7 +30,12 @@ unsafe extern "C" {
         timestamp: u64,
         next_timestamp: u64,
     ) -> u64;
-    pub fn oracle_obs_source_deinterlace_pacing_half_duration(timestamp: u64, prev_ts: u64) -> u32;
+    pub fn oracle_obs_source_deinterlace_pacing_half_duration(
+        timestamp: u64,
+        prev_ts: u64,
+        prev_half: u32,
+        frame_interval_ns: u64,
+    ) -> u32;
     pub fn oracle_obs_source_deinterlace_pacing_buffered_offset(
         video_time: u64,
         last_frame_ts: u64,

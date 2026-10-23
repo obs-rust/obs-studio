@@ -18,6 +18,11 @@
  * field may be dropped between two shown ones. Buffered and unbuffered
  * sources are timed by different code, so both are covered.
  *
+ * The first frame (obs-rust/obs-studio#1965): the first_frame cases measure
+ * a source that never showed a frame, and the after_pause cases an
+ * unbuffered source that pauses for longer than the clock-jump threshold
+ * before the measured frames. Both count the first frame's fields too.
+ *
  * Needs core video, so it runs under xvfb-run and skips without a display.
  */
 
@@ -48,6 +53,10 @@
 
 #define MAX_SEEN 1024
 #define STARTUP_FIELDS 4
+/* The pause before the measured frames of the first_frame and after_pause
+ * cases: past the 70 ms after which the gap from the frame before is a pause,
+ * not a frame duration (OBS_SOURCE_DEINTERLACE_PACING_TS_JUMP_THRESHOLD). */
+#define PAUSE_MS 150
 /* Neutral frames pushed before a case is recorded, and output frames to wait
  * for, so the first measured frame doesn't pay for a cold render path
  * (shader compile, first texture upload; obs-rust/obs-studio#456). */
@@ -227,6 +236,13 @@ static const char *mode_name(enum obs_deinterlace_mode mode)
 	}
 }
 
+/* What comes before the measured frames. */
+enum start {
+	START_WARM,  /* the source's own warm-up frames, then at once */
+	START_NEW,   /* nothing: a source that never showed a frame */
+	START_PAUSE, /* the source's own warm-up frames, then a pause */
+};
+
 struct rates {
 	uint32_t source_fps; /* frames per second; the field rate is twice this */
 	uint32_t canvas_fps;
@@ -253,25 +269,33 @@ static bool reset_canvas(uint32_t fps)
 	return ret == OBS_VIDEO_SUCCESS;
 }
 
-static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bool unbuffered, const struct rates *r)
+static obs_source_t *create_interlaced(enum obs_deinterlace_mode mode, bool top_first, bool unbuffered)
 {
-	const uint32_t field_rate = 2 * r->source_fps;
-	char what[128];
-	snprintf(what, sizeof(what), "%s, %s%s", mode_name(mode), top_first ? "top field first" : "bottom field first",
-		 unbuffered ? ", unbuffered" : "");
-
-	if (!reset_canvas(r->canvas_fps))
-		fail();
-
 	obs_source_t *source = obs_source_create("interlaced_test_source", "interlaced", NULL, NULL);
 	/* Capture cards often run unbuffered (DirectShow's "Auto"). */
 	obs_source_set_async_unbuffered(source, unbuffered);
 	obs_source_set_deinterlace_mode(source, mode);
 	obs_source_set_deinterlace_field_order(source, top_first ? OBS_DEINTERLACE_FIELD_ORDER_TOP
 								 : OBS_DEINTERLACE_FIELD_ORDER_BOTTOM);
+	return source;
+}
 
+static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bool unbuffered, const struct rates *r,
+			      enum start start)
+{
+	const uint32_t field_rate = 2 * r->source_fps;
+	char what[128];
+	snprintf(what, sizeof(what), "%s, %s%s%s", mode_name(mode),
+		 top_first ? "top field first" : "bottom field first", unbuffered ? ", unbuffered" : "",
+		 start == START_NEW     ? ", first frame"
+		 : start == START_PAUSE ? ", after a pause"
+					: "");
+
+	if (!reset_canvas(r->canvas_fps))
+		fail();
+
+	obs_source_t *source = create_interlaced(mode, top_first, unbuffered);
 	obs_scene_t *scene = obs_scene_create("scene");
-	obs_scene_add(scene, source);
 
 	static struct watch w;
 	memset(&w, 0, sizeof(w));
@@ -279,7 +303,23 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	obs_add_raw_video_callback(NULL, raw_video, &w);
 	obs_set_output_source(0, obs_scene_get_source(scene));
 
-	warm_up(source, r->source_fps, &w);
+	if (start == START_NEW) {
+		/* Another source, deinterlaced the same way, warms the render
+		 * path up and goes. */
+		obs_source_t *warm = create_interlaced(mode, top_first, unbuffered);
+		obs_sceneitem_t *item = obs_scene_add(scene, warm);
+		warm_up(warm, r->source_fps, &w);
+		obs_sceneitem_remove(item);
+		obs_source_remove(warm);
+		obs_source_release(warm);
+		obs_scene_add(scene, source);
+		os_sleep_ms(PAUSE_MS);
+	} else {
+		obs_scene_add(scene, source);
+		warm_up(source, r->source_fps, &w);
+		if (start == START_PAUSE)
+			os_sleep_ms(PAUSE_MS);
+	}
 
 	pthread_mutex_lock(&w.mutex);
 	w.recording = true;
@@ -302,10 +342,16 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 
 	/* Collapse repeats: the fields in the order they were shown. Count the
 	 * fields skipped between two shown ones, except in the first two
-	 * frames (fields 0-3): the first frame has no previous one to time
-	 * its fields by (and Yadif needs one), which can also delay the
-	 * second. Also count how many output frames each field is held for
-	 * (the last one is held until the case ends). */
+	 * frames (fields 0-3) after the warm-up: its last frame and the first
+	 * measured one are stamped back to back, so the first has no frame
+	 * duration to time its fields by (and Yadif needs a previous frame).
+	 * After a pause or for a new source, count every field from field 0,
+	 * the first one shown included (#1965); only a buffered new source's
+	 * first frame may be held longer than the cadence, as the buffered
+	 * clock starts from it. Also count how many output frames each field
+	 * is held for (the last one is held until the case ends). */
+	const int startup = start == START_WARM ? STARTUP_FIELDS : 0;
+	const int unheld = start == START_NEW && !unbuffered ? 2 : startup;
 	int shown[MAX_SEEN];
 	size_t num = 0, unknown = 0, backwards = 0, skipped = 0, max_gap = 0, held = 0, max_held = 0;
 	size_t holds[MAX_SEEN];
@@ -319,7 +365,7 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 			held++;
 			continue;
 		}
-		if (num && shown[num - 1] >= STARTUP_FIELDS) {
+		if (num && shown[num - 1] >= unheld) {
 			holds[num_holds++] = held;
 			if (held > max_held)
 				max_held = held;
@@ -327,8 +373,9 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 		held = 1;
 		if (num && w.seen[i] < shown[num - 1])
 			backwards++;
-		if (num && w.seen[i] > shown[num - 1] + 1 && w.seen[i] > STARTUP_FIELDS) {
-			int from = shown[num - 1] < STARTUP_FIELDS - 1 ? STARTUP_FIELDS - 1 : shown[num - 1];
+		const int last = num ? shown[num - 1] : -1;
+		if ((num || !startup) && w.seen[i] > last + 1 && w.seen[i] > startup) {
+			int from = last < startup - 1 ? startup - 1 : last;
 			size_t gap = (size_t)(w.seen[i] - from - 1);
 			skipped += gap;
 			if (gap > max_gap)
@@ -389,6 +436,7 @@ struct field_case {
 	bool top_first;
 	bool unbuffered;
 	struct rates rates;
+	enum start start;
 };
 
 static void run_case(void **state)
@@ -396,20 +444,34 @@ static void run_case(void **state)
 	const struct field_case *c = *state;
 	if (!obs_up)
 		skip();
-	check_field_order(c->mode, c->top_first, c->unbuffered, &c->rates);
+	check_field_order(c->mode, c->top_first, c->unbuffered, &c->rates, c->start);
 }
 
 /* source_fps: frames per second, the field rate is twice that */
 #define FIELD_CASE(name, mode, top_first, source_fps, canvas_fps) \
-	{#name, run_case, NULL, NULL, &(struct field_case){mode, top_first, false, {source_fps, canvas_fps}}}
+	{#name, run_case, NULL, NULL, &(struct field_case){mode, top_first, false, {source_fps, canvas_fps}, START_WARM}}
 
 /* Unbuffered sources time their frames differently; the fields are picked
  * the same way for every mode, so Yadif 2x covers them. */
 #define UNBUFFERED_CASES(rate_name, source_fps, canvas_fps)                                                         \
 	{"yadif_2x_top_first_unbuffered_" #rate_name, run_case, NULL, NULL,                                         \
-	 &(struct field_case){OBS_DEINTERLACE_MODE_YADIF_2X, true, true, {source_fps, canvas_fps}}},                \
+	 &(struct field_case){OBS_DEINTERLACE_MODE_YADIF_2X, true, true, {source_fps, canvas_fps}, START_WARM}},    \
 		{"yadif_2x_bottom_first_unbuffered_" #rate_name, run_case, NULL, NULL,                              \
-		 &(struct field_case){OBS_DEINTERLACE_MODE_YADIF_2X, false, true, {source_fps, canvas_fps}}}
+		 &(struct field_case){OBS_DEINTERLACE_MODE_YADIF_2X, false, true, {source_fps, canvas_fps}, START_WARM}}
+
+/* The first frame (#1965), with Linear 2x: Yadif 2x has no previous frame
+ * to interpolate a new source's first frame from. A new source, buffered and
+ * unbuffered; and an unbuffered source after a pause. (A buffered source
+ * catches up through its queue after a pause, and its buffered walk then
+ * shows a frame early, skipping the due frame's fields: a separate
+ * issue.) */
+#define FIRST_FRAME_CASES(rate_name, source_fps, canvas_fps)                                                         \
+	{"first_frame_linear_2x_" #rate_name, run_case, NULL, NULL,                                                  \
+	 &(struct field_case){OBS_DEINTERLACE_MODE_LINEAR_2X, true, false, {source_fps, canvas_fps}, START_NEW}},    \
+		{"first_frame_linear_2x_unbuffered_" #rate_name, run_case, NULL, NULL,                               \
+		 &(struct field_case){OBS_DEINTERLACE_MODE_LINEAR_2X, true, true, {source_fps, canvas_fps}, START_NEW}}, \
+		{"after_pause_linear_2x_unbuffered_" #rate_name, run_case, NULL, NULL,                               \
+		 &(struct field_case){OBS_DEINTERLACE_MODE_LINEAR_2X, true, true, {source_fps, canvas_fps}, START_PAUSE}}
 
 #define FIELD_CASES(rate_name, source_fps, canvas_fps)                                                                         \
 	FIELD_CASE(yadif_2x_top_first_##rate_name, OBS_DEINTERLACE_MODE_YADIF_2X, true, source_fps, canvas_fps),               \
@@ -465,6 +527,11 @@ int main(void)
 		UNBUFFERED_CASES(50i_into_60, 25, 60),
 		UNBUFFERED_CASES(50i_into_30, 25, 30),
 		UNBUFFERED_CASES(60i_into_50, 30, 50),
+		FIRST_FRAME_CASES(60i_into_60, 30, 60),
+		FIRST_FRAME_CASES(50i_into_50, 25, 50),
+		FIRST_FRAME_CASES(50i_into_60, 25, 60),
+		FIRST_FRAME_CASES(50i_into_30, 25, 30),
+		FIRST_FRAME_CASES(60i_into_50, 30, 50),
 	};
 
 	return cmocka_run_group_tests(tests, setup, teardown);

@@ -96,8 +96,14 @@ pub fn waiting_frame_ts(timestamp: u64, next_timestamp: u64) -> u64 {
 
 /// `obs_source_deinterlace_pacing_half_duration()`: the
 /// `deinterlace_half_duration` of a frame at `timestamp` after one at
-/// `prev_ts`: half the difference, truncated to 32 bits.
-pub fn half_duration(timestamp: u64, prev_ts: u64) -> u32 {
+/// `prev_ts`: half the difference, truncated to 32 bits. `_prev_half` and
+/// `_frame_interval_ns` are not used yet (#1965).
+pub fn half_duration(
+    timestamp: u64,
+    prev_ts: u64,
+    _prev_half: u32,
+    _frame_interval_ns: u64,
+) -> u32 {
     let half = timestamp.wrapping_sub(prev_ts).wrapping_div(2);
     // (uint32_t): the low 32 bits
     let [b0, b1, b2, b3, ..] = half.to_le_bytes();

@@ -88,12 +88,16 @@ fn c_waiting_ts(ts: u64, next_ts: u64) -> [u8; 8] {
 fn r_waiting_ts(ts: u64, next_ts: u64) -> [u8; 8] {
     shim::obs_source_deinterlace_pacing_waiting_frame_ts(ts, next_ts).to_le_bytes()
 }
-fn c_half(ts: u64, prev_ts: u64) -> [u8; 4] {
+fn c_half(ts: u64, prev_ts: u64, prev_half: u32, interval: u64) -> [u8; 4] {
     // SAFETY: plain values.
-    unsafe { oracle::oracle_obs_source_deinterlace_pacing_half_duration(ts, prev_ts) }.to_le_bytes()
+    unsafe {
+        oracle::oracle_obs_source_deinterlace_pacing_half_duration(ts, prev_ts, prev_half, interval)
+    }
+    .to_le_bytes()
 }
-fn r_half(ts: u64, prev_ts: u64) -> [u8; 4] {
-    shim::obs_source_deinterlace_pacing_half_duration(ts, prev_ts).to_le_bytes()
+fn r_half(ts: u64, prev_ts: u64, prev_half: u32, interval: u64) -> [u8; 4] {
+    shim::obs_source_deinterlace_pacing_half_duration(ts, prev_ts, prev_half, interval)
+        .to_le_bytes()
 }
 fn c_buffered(video_time: u64, last_frame_ts: u64) -> [u8; 8] {
     // SAFETY: plain values.
@@ -205,7 +209,15 @@ fn special_values_wait() {
 fn special_values_half_and_buffered() {
     for &a in &SPECIAL {
         for &b in &SPECIAL {
-            assert_eq!(c_half(a, b), r_half(a, b), "half_duration({a}, {b})");
+            for &prev_half in &SPECIAL_HALF {
+                for interval in [0, 16_666_666, 33_333_333, u64::MAX] {
+                    assert_eq!(
+                        c_half(a, b, prev_half, interval),
+                        r_half(a, b, prev_half, interval),
+                        "half_duration({a}, {b}, {prev_half}, {interval})"
+                    );
+                }
+            }
             assert_eq!(
                 c_buffered(a, b),
                 r_buffered(a, b),
@@ -277,8 +289,8 @@ proptest! {
     }
 
     #[test]
-    fn proptest_half_and_buffered(a in any_time(), b in any_time()) {
-        prop_assert_eq!(c_half(a, b), r_half(a, b));
+    fn proptest_half_and_buffered(a in any_time(), b in any_time(), prev_half in any_half(), interval in any_time()) {
+        prop_assert_eq!(c_half(a, b, prev_half, interval), r_half(a, b, prev_half, interval));
         prop_assert_eq!(c_buffered(a, b), r_buffered(a, b));
     }
 
@@ -309,7 +321,7 @@ trait Pacing {
     fn hold(&self, frame_ts: u64, offset: u64, half: u32, sys_time: u64) -> [u8; 1];
     fn wait(&self, ts: u64, next_ts: u64, offset: u64, sys_time: u64) -> [u8; 1];
     fn waiting_ts(&self, ts: u64, next_ts: u64) -> [u8; 8];
-    fn half(&self, ts: u64, prev_ts: u64) -> [u8; 4];
+    fn half(&self, ts: u64, prev_ts: u64, prev_half: u32, interval: u64) -> [u8; 4];
     fn buffered(&self, video_time: u64, last_frame_ts: u64) -> [u8; 8];
     fn reanchor(
         &self,
@@ -334,8 +346,8 @@ impl Pacing for C {
     fn waiting_ts(&self, a: u64, b: u64) -> [u8; 8] {
         c_waiting_ts(a, b)
     }
-    fn half(&self, a: u64, b: u64) -> [u8; 4] {
-        c_half(a, b)
+    fn half(&self, a: u64, b: u64, h: u32, i: u64) -> [u8; 4] {
+        c_half(a, b, h, i)
     }
     fn buffered(&self, a: u64, b: u64) -> [u8; 8] {
         c_buffered(a, b)
@@ -355,8 +367,8 @@ impl Pacing for Rust {
     fn waiting_ts(&self, a: u64, b: u64) -> [u8; 8] {
         r_waiting_ts(a, b)
     }
-    fn half(&self, a: u64, b: u64) -> [u8; 4] {
-        r_half(a, b)
+    fn half(&self, a: u64, b: u64, h: u32, i: u64) -> [u8; 4] {
+        r_half(a, b, h, i)
     }
     fn buffered(&self, a: u64, b: u64) -> [u8; 8] {
         r_buffered(a, b)
@@ -585,10 +597,20 @@ impl<P: Pacing> Run<'_, P> {
             let prev = cur;
             cur = s.async_frames.pop_front().expect("a second frame");
             s.prev_async_frame = Some(prev);
-            half = self.p.half(cur.timestamp, prev.timestamp);
+            half = self.p.half(
+                cur.timestamp,
+                prev.timestamp,
+                s.deinterlace_half_duration,
+                interval,
+            );
             self.reached.half_from_pair += 1;
         } else {
-            half = self.p.half(cur.timestamp, s.deinterlace_frame_ts);
+            half = self.p.half(
+                cur.timestamp,
+                s.deinterlace_frame_ts,
+                s.deinterlace_half_duration,
+                interval,
+            );
             self.reached.half_from_frame_ts += 1;
         }
         self.log.extend(half);

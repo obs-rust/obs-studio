@@ -55,8 +55,11 @@ uint64_t obs_source_deinterlace_pacing_waiting_frame_ts(uint64_t timestamp, uint
 	return timestamp - duration;
 }
 
-uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts)
+uint32_t obs_source_deinterlace_pacing_half_duration(uint64_t timestamp, uint64_t prev_ts, uint32_t prev_half,
+						     uint64_t frame_interval_ns)
 {
+	(void)prev_half;
+	(void)frame_interval_ns;
 	return (uint32_t)((timestamp - prev_ts) / 2);
 }
 

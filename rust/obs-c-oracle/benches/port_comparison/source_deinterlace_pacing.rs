@@ -89,7 +89,7 @@ struct Side {
     hold: fn(u64, u64, u32, u64) -> u8,
     wait: fn(u64, u64, u64, u64) -> u8,
     waiting_ts: fn(u64, u64) -> u64,
-    half: fn(u64, u64) -> u32,
+    half: fn(u64, u64, u32, u64) -> u32,
     buffered: fn(u64, u64) -> u64,
     reanchor: fn(u64, u64, u64, u32, u64) -> u64,
 }
@@ -98,7 +98,7 @@ const RUST: Side = Side {
     hold: |a, b, h, s| u8::from(rs::obs_source_deinterlace_pacing_hold(a, b, h, s)),
     wait: |a, b, o, s| u8::from(rs::obs_source_deinterlace_pacing_wait_for_next(a, b, o, s)),
     waiting_ts: |a, b| rs::obs_source_deinterlace_pacing_waiting_frame_ts(a, b),
-    half: |a, b| rs::obs_source_deinterlace_pacing_half_duration(a, b),
+    half: |a, b, h, i| rs::obs_source_deinterlace_pacing_half_duration(a, b, h, i),
     buffered: |a, b| rs::obs_source_deinterlace_pacing_buffered_offset(a, b),
     reanchor: |o, v, f, h, i| rs::obs_source_deinterlace_pacing_reanchor(o, v, f, h, i),
 };
@@ -108,7 +108,7 @@ const C: Side = Side {
     hold: |a, b, h, s| unsafe { c::oracle_obs_source_deinterlace_pacing_hold(a, b, h, s) },
     wait: |a, b, o, s| unsafe { c::oracle_obs_source_deinterlace_pacing_wait_for_next(a, b, o, s) },
     waiting_ts: |a, b| unsafe { c::oracle_obs_source_deinterlace_pacing_waiting_frame_ts(a, b) },
-    half: |a, b| unsafe { c::oracle_obs_source_deinterlace_pacing_half_duration(a, b) },
+    half: |a, b, h, i| unsafe { c::oracle_obs_source_deinterlace_pacing_half_duration(a, b, h, i) },
     buffered: |a, b| unsafe { c::oracle_obs_source_deinterlace_pacing_buffered_offset(a, b) },
     reanchor: |o, v, f, h, i| unsafe {
         c::oracle_obs_source_deinterlace_pacing_reanchor(o, v, f, h, i)
@@ -122,7 +122,7 @@ fn unbuffered(side: &Side, ticks: &[Tick]) -> u64 {
         let held = (side.hold)(t.frame_ts, t.offset, t.half, t.video_time);
         let wait = (side.wait)(t.frame_ts, t.next_ts, t.offset, t.video_time);
         let waiting = (side.waiting_ts)(t.frame_ts, t.next_ts);
-        let half = (side.half)(t.next_ts, t.frame_ts);
+        let half = (side.half)(t.next_ts, t.frame_ts, t.half, TICK_60);
         let offset = (side.reanchor)(t.offset, t.video_time, t.next_ts, half, TICK_60);
         sum = sum
             .wrapping_mul(31)
@@ -141,7 +141,7 @@ fn buffered(side: &Side, ticks: &[Tick]) -> u64 {
     let mut sum = 0u64;
     for t in ticks {
         let t = black_box(*t);
-        let half = (side.half)(t.next_ts, t.frame_ts);
+        let half = (side.half)(t.next_ts, t.frame_ts, t.half, TICK_60);
         let offset = (side.buffered)(t.video_time, t.frame_ts);
         sum = sum
             .wrapping_mul(31)

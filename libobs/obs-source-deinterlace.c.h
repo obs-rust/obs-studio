@@ -160,10 +160,12 @@ static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_
 			da_erase(s->async_frames, 0);
 
 			s->deinterlace_half_duration = obs_source_deinterlace_pacing_half_duration(
-				s->cur_async_frame->timestamp, s->prev_async_frame->timestamp);
+				s->cur_async_frame->timestamp, s->prev_async_frame->timestamp,
+				s->deinterlace_half_duration, obs->video.video_frame_interval_ns);
 		} else {
 			s->deinterlace_half_duration = obs_source_deinterlace_pacing_half_duration(
-				s->cur_async_frame->timestamp, s->deinterlace_frame_ts);
+				s->cur_async_frame->timestamp, s->deinterlace_frame_ts, s->deinterlace_half_duration,
+				obs->video.video_frame_interval_ns);
 		}
 
 		if (!s->last_frame_ts)

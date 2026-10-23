@@ -34,6 +34,11 @@ const TICK_60: u64 = 16_666_666;
 const TICK_30: u64 = 33_333_333;
 const INT64_MAX: u64 = 0x7fff_ffff_ffff_ffff;
 const TWO_32: u64 = 1 << 32;
+/// The longest half duration from a gap (`TS_JUMP_THRESHOLD`), and half of
+/// a 60 and of a 30 fps interval.
+const HALF_JUMP_LIMIT: u32 = 70_000_000;
+const HALF_TICK_60: u32 = 8_333_333;
+const HALF_TICK_30: u32 = 16_666_666;
 
 #[track_caller]
 fn check_hold(frame_ts: u64, offset: u64, half: u32, sys_time: u64, expected: bool) {
@@ -63,11 +68,11 @@ fn check_waiting_ts(ts: u64, next_ts: u64, expected: u64) {
 }
 
 #[track_caller]
-fn check_half(ts: u64, prev_ts: u64, expected: u32) {
+fn check_half(ts: u64, prev_ts: u64, prev_half: u32, interval: u64, expected: u32) {
     assert_eq!(
-        half_duration(ts, prev_ts),
+        half_duration(ts, prev_ts, prev_half, interval),
         expected,
-        "half_duration({ts}, {prev_ts})"
+        "half_duration({ts}, {prev_ts}, {prev_half}, {interval})"
     );
 }
 
@@ -166,7 +171,13 @@ fn steps_wait_until_first_frame_ends() {
 
     check_waiting_ts(TS, TS + FRAME_50I, TS - FRAME_50I);
     check_waiting_ts(TS, TS, TS);
-    check_half(TS, waiting_frame_ts(TS, TS + FRAME_50I), FIELD_50I);
+    check_half(
+        TS,
+        waiting_frame_ts(TS, TS + FRAME_50I),
+        0,
+        TICK_60,
+        FIELD_50I,
+    );
 }
 
 /// Characterized, not endorsed: a timestamp going backwards wraps.
@@ -190,60 +201,109 @@ fn steps_wait_timestamp_backwards_wraps() {
 
 #[test]
 fn steps_half_duration_of_a_frame() {
-    check_half(TS + FRAME_50I, TS, FIELD_50I);
-    check_half(TS + 33_366_667, TS, 16_683_333);
-    check_half(TS + 1, TS, 0);
-    check_half(TS + 3, TS, 1);
-    check_half(TS, TS, 0);
-    check_half(TS + 2 * u64::from(u32::MAX) + 1, TS, u32::MAX);
+    check_half(TS + FRAME_50I, TS, 0, TICK_60, FIELD_50I);
+    check_half(TS + FRAME_50I, TS, 8_000_000, TICK_30, FIELD_50I);
+    check_half(TS + 33_366_667, TS, FIELD_50I, TICK_60, 16_683_333);
+    check_half(TS + 1, TS, FIELD_50I, TICK_60, 0);
+    check_half(TS + 3, TS, FIELD_50I, TICK_60, 1);
+    check_half(TS + 80 * MS, TS, FIELD_50I, TICK_60, 40_000_000);
+    check_half(TS + 80 * MS, TS, 0, TICK_30, 40_000_000);
+    check_half(TS + 2 * JUMP, TS, FIELD_50I, TICK_60, HALF_JUMP_LIMIT);
+    check_half(1, 0, FIELD_50I, TICK_60, FIELD_50I);
 }
 
-/// Characterized, not endorsed: truncated to 32 bits.
+/// A gap past twice `TS_JUMP_THRESHOLD` keeps the half duration before
+/// (#1965).
 #[test]
-fn steps_half_duration_over_2_32_truncated() {
-    check_half(TS + 2 * TWO_32, TS, 0);
-    check_half(TS + 2 * TWO_32 + 6, TS, 3);
-    check_half(TS + 10_000_000_000, TS, 705_032_704);
-    check_half(u64::MAX, 0, u32::MAX);
+fn steps_half_duration_after_a_pause() {
+    check_half(TS + 2 * JUMP + 1, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS + 10_000_000_000, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS + 2 * TWO_32, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(u64::MAX, 1, 16_683_333, TICK_60, 16_683_333);
+    check_half(TS + 10_000_000_000, TS, 0, TICK_60, HALF_TICK_60);
+    check_half(TS + 10_000_000_000, TS, 0, TICK_30, HALF_TICK_30);
 }
 
-/// Characterized, not endorsed: a timestamp going backwards wraps.
+/// A timestamp going backwards, or repeated, has no duration (#1965).
 #[test]
-fn steps_half_duration_timestamp_backwards_wraps() {
-    check_half(TS - FRAME_50I, TS, 4_274_967_296);
-    check_half(TS - 1, TS, u32::MAX);
-    check_half(0, u64::MAX, 0);
+fn steps_half_duration_timestamp_backwards() {
+    check_half(TS - FRAME_50I, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS - 1, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(0, u64::MAX, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS - FRAME_50I, TS, 0, TICK_60, HALF_TICK_60);
 }
 
-/// Characterized, not endorsed: the first frame's half duration is taken
-/// against a `deinterlace_frame_ts` of 0, or of the last frame shown.
+/// The first frame of a new source takes half the canvas interval, the
+/// first after a restart or a pause the half duration before (#1965).
 #[test]
 fn steps_half_duration_first_frame() {
-    check_half(VT, 0, 1_783_793_664);
-    check_half(TS, 0, 2_500_000_000);
-    check_half(2 * (100 * TWO_32 + 30 * MS), 0, 30_000_000);
-    check_half(0, 0, 0);
-    check_half(TS + 10_000_000_000, TS, 705_032_704);
+    check_half(VT, 0, 0, TICK_60, HALF_TICK_60);
+    check_half(VT, 0, 0, TICK_30, HALF_TICK_30);
+    check_half(TS, 0, 0, TICK_60, HALF_TICK_60);
+    check_half(2 * (100 * TWO_32 + 30 * MS), 0, 0, TICK_60, HALF_TICK_60);
+    check_half(0, 0, 0, TICK_60, HALF_TICK_60);
+    check_half(FRAME_50I, 0, 0, TICK_60, HALF_TICK_60);
+    check_half(TS, VT, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(VT, TS, FIELD_50I, TICK_60, FIELD_50I);
+    check_half(TS + 10_000_000_000, TS, FIELD_50I, TICK_60, FIELD_50I);
 }
 
-/// Characterized, not endorsed: what the first frame's half duration does
-/// next.
+/// The half duration before only when it is set and at most
+/// `TS_JUMP_THRESHOLD`; else half the canvas interval, truncated.
+#[test]
+fn steps_half_duration_fallback() {
+    let jump = u32::try_from(JUMP).unwrap();
+    check_half(VT, 0, 1, TICK_60, 1);
+    check_half(VT, 0, jump, TICK_60, jump);
+    check_half(VT, 0, jump + 1, TICK_60, HALF_TICK_60);
+    check_half(VT, 0, u32::MAX, TICK_60, HALF_TICK_60);
+    check_half(VT, 0, 1_783_793_664, TICK_60, HALF_TICK_60);
+    check_half(VT, 0, 0, 0, 0);
+    check_half(VT, 0, 0, 1, 0);
+    check_half(VT, 0, 0, 3, 1);
+    check_half(VT, 0, 0, 2 * TWO_32 + 6, 3);
+}
+
+/// What the first frame's half duration does next (#1965).
 #[test]
 fn steps_first_frame_half_duration_hold() {
     let ts = VT - 5 * MS;
-    let half = half_duration(ts, 0);
-    assert_eq!(half, 1_781_293_664);
+    let half = half_duration(ts, 0, 0, TICK_60);
+    assert_eq!(half, 8_333_333);
     let offset = reanchor(0, VT, ts, half, TICK_60);
     assert_eq!(offset, 5 * MS);
+    let second = ts + offset + u64::from(half) - TWOX;
+    assert!(VT < second, "second field at the pick");
+    assert!(VT + TICK_60 >= second, "second field at the next tick");
+    check_hold(ts, offset, half, VT, true);
+    check_hold(ts, offset, half, VT + TICK_60 - TWOX - 1, true);
+    check_hold(ts, offset, half, VT + TICK_60 - TWOX, false);
     check_hold(ts, offset, half, VT + TICK_60, false);
 
     let ts = 2 * (100 * TWO_32 + 30 * MS);
-    let half = half_duration(ts, 0);
+    let half = half_duration(ts, 0, 0, TICK_60);
     let offset = reanchor(0, VT, ts, half, TICK_60);
     assert_eq!(offset, VT - ts);
-    check_hold(ts, offset, half, VT + 3 * TICK_60, true);
-    check_hold(ts, offset, half, VT + 59 * MS - 1, true);
-    check_hold(ts, offset, half, VT + 59 * MS, false);
+    check_hold(ts, offset, half, VT + TICK_60, false);
+
+    let ts = VT - 5 * MS;
+    let half = half_duration(ts, 0, 0, TICK_60);
+    let offset = buffered_offset(VT, ts);
+    let second = ts + offset + u64::from(half) - TWOX;
+    assert!(VT < second, "buffered second field at the pick");
+    assert!(
+        VT + TICK_60 >= second,
+        "buffered second field at the next tick"
+    );
+
+    let ts = TS + 10_000_000_000;
+    let half = half_duration(ts, TS, FIELD_50I, TICK_60);
+    assert_eq!(half, FIELD_50I);
+    let offset = reanchor(VT - TS, VT, ts, half, TICK_60);
+    assert_eq!(offset, VT - ts);
+    check_hold(ts, offset, half, VT + 39 * MS - 1, true);
+    check_hold(ts, offset, half, VT + 39 * MS, false);
 }
 
 // --------------------------------------------------------------------------
@@ -450,15 +510,36 @@ struct SeqResult {
     early: usize,
 }
 
-/// The C test's model, step for step.
-fn run_unbuffered(
+/// One pick: its tick, timestamp, offset and half duration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Pick {
+    tick: u64,
+    ts: u64,
+    offset: u64,
+    half: u32,
+}
+
+/// What the C test's `struct seq_result` holds.
+#[derive(Debug, Default)]
+struct SeqRun {
+    result: SeqResult,
+    /// The ticks that showed the first frame's first and second field (0:
+    /// none).
+    first_field1: u64,
+    first_field2: u64,
+    picks: Vec<Pick>,
+}
+
+/// The C test's model, step for step, `from_start` included.
+fn run_unbuffered_from(
     frame_num: u64,
     frame_den: u64,
     canvas_num: u64,
     canvas_den: u64,
     frames: i64,
-) -> SeqResult {
-    let mut r = SeqResult::default();
+    from_start: bool,
+) -> SeqRun {
+    let mut run = SeqRun::default();
     let interval = 1_000_000_000 * canvas_den / canvas_num;
     let first_tick = VT + rate_time(1, canvas_num, canvas_den);
     let mut frame_ts = 0;
@@ -470,38 +551,62 @@ fn run_unbuffered(
     let mut tick = 1;
     while last + 1 < frames {
         let video_time = VT + rate_time(tick, canvas_num, canvas_den);
-        tick += 1;
-        if offset != 0 && hold(frame_ts, offset, half, video_time) {
-            continue;
-        }
-
-        let mut next = last;
-        while next + 1 < frames && first_tick + at(next + 1) <= video_time {
-            next += 1;
-        }
-        if next == last {
-            continue;
-        }
-
-        let ts = TS + at(next);
-        let mut prev_ts = ts - at(1);
-        if last >= 0 {
-            r.skipped += usize::try_from(next - last - 1).unwrap();
-            if video_time < frame_ts + offset + 2 * u64::from(half) - TWOX {
-                r.early += 1;
+        if !(offset != 0 && hold(frame_ts, offset, half, video_time)) {
+            let mut next = last;
+            while next + 1 < frames && first_tick + at(next + 1) <= video_time {
+                next += 1;
             }
-            prev_ts = frame_ts;
+            if next != last {
+                let r = &mut run.result;
+                let ts = TS + at(next);
+                let mut prev_ts = if from_start { 0 } else { ts - at(1) };
+                if last >= 0 {
+                    r.skipped += usize::try_from(next - last - 1).unwrap();
+                    if video_time < frame_ts + offset + 2 * u64::from(half) - TWOX {
+                        r.early += 1;
+                    }
+                    prev_ts = frame_ts;
+                }
+                half = half_duration(ts, prev_ts, half, interval);
+                frame_ts = ts;
+                let before = offset;
+                offset = reanchor(offset, video_time, frame_ts, half, interval);
+                if last >= 0 && offset != before {
+                    r.reanchors += 1;
+                }
+                run.picks.push(Pick {
+                    tick,
+                    ts,
+                    offset,
+                    half,
+                });
+                last = next;
+            }
         }
-        half = half_duration(ts, prev_ts);
-        frame_ts = ts;
-        let before = offset;
-        offset = reanchor(offset, video_time, frame_ts, half, interval);
-        if last >= 0 && offset != before {
-            r.reanchors += 1;
+        if last == 0 {
+            let second = video_time >= frame_ts + offset + u64::from(half) - TWOX;
+            let field = if second {
+                &mut run.first_field2
+            } else {
+                &mut run.first_field1
+            };
+            if *field == 0 {
+                *field = tick;
+            }
         }
-        last = next;
+        tick += 1;
     }
-    r
+    run
+}
+
+fn run_unbuffered(
+    frame_num: u64,
+    frame_den: u64,
+    canvas_num: u64,
+    canvas_den: u64,
+    frames: i64,
+) -> SeqResult {
+    run_unbuffered_from(frame_num, frame_den, canvas_num, canvas_den, frames, false).result
 }
 
 #[track_caller]
@@ -539,6 +644,59 @@ fn steps_seq_unbuffered_ntsc() {
     check_seq(30000, 1001, 60, 1, 99, 0);
     check_seq(60000, 1001, 30, 1, 0, 49);
     check_seq(60000, 1001, 60, 1, 99, 0);
+}
+
+/// A source that never showed a frame (#1965).
+#[track_caller]
+fn check_first_frame(frame_num: u64, frame_den: u64, canvas_num: u64, canvas_den: u64) {
+    let what = format!("{frame_num}/{frame_den} into {canvas_num}/{canvas_den}");
+    let timed = run_unbuffered_from(frame_num, frame_den, canvas_num, canvas_den, 100, false);
+    let start = run_unbuffered_from(frame_num, frame_den, canvas_num, canvas_den, 100, true);
+    let frame_over_a_tick = frame_den * canvas_num > frame_num * canvas_den;
+
+    assert_eq!(start.result.early, 0, "{what}");
+    assert_eq!(start.result.skipped, timed.result.skipped, "{what}");
+    assert_eq!(start.result.reanchors, timed.result.reanchors, "{what}");
+    assert_eq!(start.picks.len(), timed.picks.len(), "{what}");
+    assert_eq!(start.first_field1, start.picks[0].tick, "{what}");
+    let second = if frame_over_a_tick {
+        start.picks[0].tick + 1
+    } else {
+        0
+    };
+    assert_eq!(start.first_field2, second, "{what}");
+    if frame_over_a_tick {
+        assert!(start.first_field2 < start.picks[1].tick, "{what}");
+    }
+    assert_eq!(start.picks[1..], timed.picks[1..], "{what}");
+}
+
+/// 12.5 frames a second, 80 ms apart: timed from the frame before, as
+/// before #1965.
+#[test]
+fn steps_seq_unbuffered_12_5() {
+    check_seq(25, 2, 30, 1, 0, 0);
+    check_seq(25, 2, 60, 1, 0, 0);
+    for canvas in [30, 60] {
+        let run = run_unbuffered_from(25, 2, canvas, 1, 100, false);
+        for pick in &run.picks[1..] {
+            assert_eq!(pick.half, 40_000_000, "{canvas}");
+        }
+    }
+}
+
+#[test]
+fn steps_seq_unbuffered_first_frame() {
+    check_first_frame(25, 2, 30, 1);
+    check_first_frame(25, 2, 60, 1);
+    check_first_frame(25, 1, 30, 1);
+    check_first_frame(25, 1, 60, 1);
+    check_first_frame(30000, 1001, 30, 1);
+    check_first_frame(30000, 1001, 60, 1);
+    check_first_frame(50, 1, 30, 1);
+    check_first_frame(50, 1, 60, 1);
+    check_first_frame(60000, 1001, 30, 1);
+    check_first_frame(60000, 1001, 60, 1);
 }
 
 #[test]
@@ -605,9 +763,18 @@ fn model_waiting_ts(ts: u64, next_ts: u64) -> u64 {
     wrap(2 * i128::from(ts) - i128::from(next_ts))
 }
 
-fn model_half(ts: u64, prev_ts: u64) -> u32 {
-    let half = wrap(i128::from(ts) - i128::from(prev_ts)) / 2;
-    u32::try_from(half % TWO_32).unwrap()
+/// #1965: half the gap when there is a previous timestamp at most twice
+/// `TS_JUMP_THRESHOLD` before; else the half duration before when it is set
+/// and at most the threshold; else half the interval, modulo 2^32.
+fn model_half(ts: u64, prev_ts: u64, prev_half: u32, interval: u64) -> u32 {
+    let gap = i128::from(ts) - i128::from(prev_ts);
+    if prev_ts != 0 && gap > 0 && gap <= 2 * i128::from(JUMP) {
+        return u32::try_from(gap / 2).unwrap();
+    }
+    if prev_half != 0 && u64::from(prev_half) <= JUMP {
+        return prev_half;
+    }
+    u32::try_from((interval / 2) % TWO_32).unwrap()
 }
 
 fn model_buffered(video_time: u64, last_frame_ts: u64) -> u64 {
@@ -652,7 +819,7 @@ const SPECIAL: [u64; 22] = [
     u64::MAX,
 ];
 
-const SPECIAL_HALF: [u32; 9] = [
+const SPECIAL_HALF: [u32; 11] = [
     0,
     1,
     500_000,
@@ -660,6 +827,8 @@ const SPECIAL_HALF: [u32; 9] = [
     16_666_666,
     20_000_000,
     35_000_000,
+    70_000_000,
+    70_000_001,
     u32::MAX - 1,
     u32::MAX,
 ];
@@ -723,15 +892,29 @@ fn edge_wait_special_values() {
     }
 }
 
+const SPECIAL_INTERVAL: [u64; 7] = [
+    0,
+    1,
+    TICK_60,
+    TICK_30,
+    2 * TWO_32 - 1,
+    2 * TWO_32 + 6,
+    u64::MAX,
+];
+
 #[test]
 fn edge_half_and_buffered_special_values() {
     for &a in &SPECIAL {
         for &b in &SPECIAL {
-            assert_eq!(
-                half_duration(a, b),
-                model_half(a, b),
-                "half_duration({a}, {b})"
-            );
+            for &prev_half in &SPECIAL_HALF {
+                for &interval in &SPECIAL_INTERVAL {
+                    assert_eq!(
+                        half_duration(a, b, prev_half, interval),
+                        model_half(a, b, prev_half, interval),
+                        "half_duration({a}, {b}, {prev_half}, {interval})"
+                    );
+                }
+            }
             assert_eq!(
                 buffered_offset(a, b),
                 model_buffered(a, b),
@@ -831,8 +1014,20 @@ proptest! {
     }
 
     #[test]
-    fn edge_proptest_half_and_buffered(a in any_time(), b in any_time()) {
-        prop_assert_eq!(half_duration(a, b), model_half(a, b));
+    fn edge_proptest_half_and_buffered(
+        a in any_time(),
+        b in any_time(),
+        gap in prop_oneof![0u64..=4 * JUMP, near(&SPECIAL)],
+        prev_half in any_half(),
+        interval in prop_oneof![any::<u64>(), Just(TICK_60), Just(TICK_30)],
+    ) {
+        // a free pair, and a gap drawn near the threshold as often
+        for (ts, prev_ts) in [(a, b), (b.wrapping_add(gap), b)] {
+            prop_assert_eq!(
+                half_duration(ts, prev_ts, prev_half, interval),
+                model_half(ts, prev_ts, prev_half, interval)
+            );
+        }
         prop_assert_eq!(buffered_offset(a, b), model_buffered(a, b));
     }
 
