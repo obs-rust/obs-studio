@@ -22,6 +22,8 @@ mod media_remux;
 mod scene;
 #[path = "port_comparison/service.rs"]
 mod service;
+#[path = "port_comparison/source_audio_timing.rs"]
+mod source_audio_timing;
 #[path = "port_comparison/source_profiler.rs"]
 mod source_profiler;
 #[path = "port_comparison/util.rs"]
@@ -64,6 +66,7 @@ fn comparisons(criterion: &mut Criterion) {
     media_remux::benchmarks(criterion);
     scene::benchmarks(criterion);
     view::benchmarks(criterion);
+    source_audio_timing::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);

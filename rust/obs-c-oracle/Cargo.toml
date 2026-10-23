@@ -21,6 +21,7 @@ obs-callback = { path = "../obs-callback" }
 obs-core = { path = "../obs-core" }
 obs-output = { path = "../obs-output" }
 obs-media-io = { path = "../obs-media-io" }
+obs-source = { path = "../obs-source" }
 # The obs-service oracle calls obs_data_* and obs_properties_apply_settings.
 obs-data = { path = "../obs-data" }
 obs-properties = { path = "../obs-properties" }
