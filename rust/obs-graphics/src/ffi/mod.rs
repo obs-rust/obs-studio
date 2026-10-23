@@ -11,6 +11,7 @@ pub mod plane;
 pub mod quat;
 pub mod shader_param_names;
 pub mod shader_sampler_convert;
+pub mod texture_render;
 pub mod vec2;
 pub mod vec3;
 pub mod vec4;

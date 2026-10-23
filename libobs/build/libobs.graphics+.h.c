@@ -8,4 +8,3 @@
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/shader-parser.c.h"
-#include "libobs/graphics/texture-render.c.h"

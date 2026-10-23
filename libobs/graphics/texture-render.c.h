@@ -20,7 +20,7 @@
  * without having to duplicate too much code.
  */
 
-#include "build/libobs.pch.h"
+#include "libobs/build/libobs-ported-graphics.pch.h"
 
 struct gs_texture_render {
 	gs_texture_t *target, *prev_target;

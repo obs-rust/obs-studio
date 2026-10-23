@@ -149,6 +149,3 @@
 
 /* graphics/shader-parser.c */
 #include "graphics/shader-parser.h"
-
-/* graphics/texture-render.c */
-#include "graphics/graphics.h"

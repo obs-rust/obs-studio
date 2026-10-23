@@ -33,6 +33,9 @@
 #include "util/platform.h"
 #include "graphics/shader-parser.h"
 
+/* graphics/texture-render.c */
+#include "graphics/graphics.h"
+
 /* graphics/vec2.c */
 #include <math.h>
 

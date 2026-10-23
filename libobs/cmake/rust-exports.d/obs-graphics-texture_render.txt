@@ -1,0 +1,8 @@
+gs_texrender_begin
+gs_texrender_begin_with_color_space
+gs_texrender_create
+gs_texrender_destroy
+gs_texrender_end
+gs_texrender_get_format
+gs_texrender_get_texture
+gs_texrender_reset
