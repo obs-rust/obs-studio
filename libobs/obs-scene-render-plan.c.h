@@ -15,7 +15,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-render-plan.pch.h"
+
+/* Ported to rust/obs-scene (render_plan): the hybrid libobs drops this file. */
 
 /* The per-item render decisions of render_item() and render_item_texture() in
  * obs-scene.c, moved: the decisions, on plain values. obs-scene.c keeps every

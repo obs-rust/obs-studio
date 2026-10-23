@@ -73,6 +73,17 @@ _obs_scene_cropped_size
 _obs_scene_scale_crop
 _obs_scene_crop_offset
 _obs_scene_clamp_crop
+# obs-scene-render-plan.c: obs-scene.c calls them inside libobs. Not EXPORT.
+_obs_scene_render_texture_enabled
+_obs_scene_render_texrender_action
+_obs_scene_render_size_empty
+_obs_scene_render_clear_white
+_obs_scene_render_child
+_obs_scene_render_linear_srgb
+_obs_scene_texcoords_centered
+_obs_scene_render_effect
+_obs_scene_render_multiplier
+_obs_scene_render_technique
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply

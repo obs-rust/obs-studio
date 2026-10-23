@@ -84,6 +84,19 @@ obs_scene_cropped_size
 obs_scene_scale_crop
 obs_scene_crop_offset
 obs_scene_clamp_crop
+# obs-scene-render-plan.c: render_item() and render_item_texture() in
+# obs-scene.c call them inside libobs. Declared in obs-scene-render-plan.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_scene_render_texture_enabled
+obs_scene_render_texrender_action
+obs_scene_render_size_empty
+obs_scene_render_clear_white
+obs_scene_render_child
+obs_scene_render_linear_srgb
+obs_scene_texcoords_centered
+obs_scene_render_effect
+obs_scene_render_multiplier
+obs_scene_render_technique
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Declared in obs-scene-audio-actions.h without EXPORT, so the shims
 # stay hidden the same way.
