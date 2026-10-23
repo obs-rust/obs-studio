@@ -68,6 +68,12 @@ _obs_scene_group_transform
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply
 _obs_scene_audio_action_due
+# obs-audio-mix.c: obs-audio.c calls them inside libobs. Not EXPORT.
+_obs_audio_mix_time_to_frames
+_obs_audio_mix_add
+_obs_audio_buffering_maxed
+_obs_audio_buffering_fixed
+_obs_audio_buffering_add
 # obs-output-caption-text.c: obs-output.c calls it inside libobs. Not EXPORT.
 _obs_output_caption_text_page
 # obs-output-protocols.c: obs-output.c calls it inside libobs. Not EXPORT.

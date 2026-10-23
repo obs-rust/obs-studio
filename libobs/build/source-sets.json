@@ -145,7 +145,8 @@
     "build/libobs.ported-scene-coords+.h.c",
     "build/libobs.ported-scene-group-transform+.h.c",
     "build/libobs.ported-video-plan+.h.c",
-    "build/libobs.ported-audio-controls+.h.c"
+    "build/libobs.ported-audio-controls+.h.c",
+    "build/libobs.ported-audio-mix+.h.c"
   ],
   "LIBOBS_RUST_SOURCES": [
     "build/libobs.rust-variadic+.h.c"

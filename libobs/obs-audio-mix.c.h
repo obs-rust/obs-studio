@@ -15,11 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-audio-mix.pch.h"
 
 /* The arithmetic of the audio tick on plain values, declared in
  * obs-audio-mix.h. obs-audio.c passes the source's and the core's fields in
- * and logs the steps. Ported to rust/obs-core (#1903). */
+ * and logs the steps. Ported to rust/obs-core (audio_mix): the hybrid libobs
+ * drops this file. */
 
 size_t obs_audio_mix_time_to_frames(size_t sample_rate, uint64_t t)
 {
