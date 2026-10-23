@@ -39,6 +39,7 @@ static gs_zstencil_t *device_zs;
 static enum gs_color_space device_space;
 static char call_log[1 << 16];
 static size_t log_len;
+static bool quiet;
 
 void oracle_texrender_device_reset(void);
 void oracle_texrender_device_fail(bool texture, bool zstencil);
@@ -46,12 +47,15 @@ void oracle_texrender_device_set_state(int target, int zstencil, int space);
 int oracle_texrender_device_handle(const void *ptr);
 const char *oracle_texrender_device_log(void);
 void oracle_texrender_device_clear_log(void);
+void oracle_texrender_device_quiet(bool on);
 
 RECORD_FORMAT static void record(const char *format, ...)
 {
 	va_list args;
 	int n;
 
+	if (quiet)
+		return;
 	if (log_len + 1 >= sizeof(call_log))
 		return;
 	if (log_len)
@@ -85,6 +89,7 @@ void oracle_texrender_device_reset(void)
 	next_zstencil = 0;
 	fail_texture = false;
 	fail_zstencil = false;
+	quiet = false;
 	device_target = (gs_texture_t *)&textures[0];
 	device_zs = (gs_zstencil_t *)&zstencils[0];
 	device_space = GS_CS_709_EXTENDED;
@@ -109,6 +114,12 @@ void oracle_texrender_device_set_state(int target, int zstencil, int space)
 const char *oracle_texrender_device_log(void)
 {
 	return call_log;
+}
+
+/* Stops recording, for port_comparison: timing the log is not the point. */
+void oracle_texrender_device_quiet(bool on)
+{
+	quiet = on;
 }
 
 void oracle_texrender_device_clear_log(void)

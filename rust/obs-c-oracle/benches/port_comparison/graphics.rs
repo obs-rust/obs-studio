@@ -370,4 +370,86 @@ pub fn benchmarks(criterion: &mut Criterion) {
             },
         );
     }
+    texrender(criterion);
+}
+
+/// `gs_texrender_*` over the oracle's `gs_*` stand-in with recording off,
+/// so the time is the state machine and its graphics calls.
+fn texrender(criterion: &mut Criterion) {
+    use core::ffi::c_void;
+    use obs_c_oracle::texture_render as ct;
+    use obs_graphics::ffi::texture_render as rt;
+    use obs_graphics::texture_render::{ColorFormat, ColorSpace, ZStencilFormat};
+
+    // SAFETY: the stand-in's state belongs to this single-threaded runner.
+    unsafe {
+        ct::oracle_texrender_device_reset();
+        ct::oracle_texrender_device_quiet(true);
+    }
+    // SAFETY: plain values; it stays live until the end of this function.
+    let rust = unsafe { rt::gs_texrender_create(ColorFormat(3), ZStencilFormat(2)) };
+    // SAFETY: same, on the original C.
+    let original = unsafe { ct::oracle_gs_texrender_create(3, 2) };
+    pair(
+        criterion,
+        "texture_render/begin_end_reset",
+        || {
+            // SAFETY: a live texrender; begin, end and reset are one frame.
+            unsafe {
+                let begun = rt::gs_texrender_begin_with_color_space(
+                    rust,
+                    black_box(64),
+                    black_box(32),
+                    ColorSpace(black_box(2)),
+                );
+                rt::gs_texrender_end(rust);
+                rt::gs_texrender_reset(rust);
+                begun
+            }
+        },
+        || {
+            // SAFETY: same, on the original C.
+            unsafe {
+                let begun = ct::oracle_gs_texrender_begin_with_color_space(
+                    original,
+                    black_box(64),
+                    black_box(32),
+                    black_box(2),
+                );
+                ct::oracle_gs_texrender_end(original);
+                ct::oracle_gs_texrender_reset(original);
+                begun
+            }
+        },
+    );
+    pair(
+        criterion,
+        "texture_render/create_resize_destroy",
+        || {
+            // SAFETY: a fresh texrender, sized once and destroyed.
+            unsafe {
+                let t = rt::gs_texrender_create(ColorFormat(3), ZStencilFormat(2));
+                let begun = rt::gs_texrender_begin(t, black_box(64), black_box(32));
+                rt::gs_texrender_end(t);
+                rt::gs_texrender_destroy(t);
+                begun
+            }
+        },
+        || {
+            // SAFETY: same, on the original C.
+            unsafe {
+                let t: *mut c_void = ct::oracle_gs_texrender_create(3, 2);
+                let begun = ct::oracle_gs_texrender_begin(t, black_box(64), black_box(32));
+                ct::oracle_gs_texrender_end(t);
+                ct::oracle_gs_texrender_destroy(t);
+                begun
+            }
+        },
+    );
+    // SAFETY: both live, destroyed once.
+    unsafe {
+        rt::gs_texrender_destroy(rust);
+        ct::oracle_gs_texrender_destroy(original);
+        ct::oracle_texrender_device_quiet(false);
+    }
 }

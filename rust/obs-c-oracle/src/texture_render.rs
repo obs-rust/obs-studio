@@ -32,4 +32,6 @@ unsafe extern "C" {
     /// Every recorded call since the last reset or clear, `;`-separated.
     pub fn oracle_texrender_device_log() -> *const c_char;
     pub fn oracle_texrender_device_clear_log();
+    /// Stops (or restarts) recording, for benchmarks.
+    pub fn oracle_texrender_device_quiet(on: bool);
 }
