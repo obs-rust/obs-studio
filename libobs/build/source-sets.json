@@ -132,6 +132,7 @@
     "build/libobs.ported-hotkey-press+.h.c",
     "build/libobs.ported-hotkey-translations+.h.c",
     "build/libobs.ported-missing-files+.h.c",
+    "build/libobs.ported-module-locale+.h.c",
     "build/libobs.ported-module-names+.h.c",
     "build/libobs.ported-module-paths+.h.c",
     "build/libobs.ported-output-caption-text+.h.c",

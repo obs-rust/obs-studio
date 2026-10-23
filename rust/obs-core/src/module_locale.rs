@@ -32,7 +32,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(clippy::todo)]
 
 /// What the default locale's file name starts with.
 pub const DEFAULT_PREFIX: &[u8] = b"locale/";
@@ -41,23 +40,24 @@ pub const LOCALE_PREFIX: &[u8] = b"/locale/";
 /// What both file names end with.
 pub const LOCALE_EXT: &[u8] = b".ini";
 
+fn file(prefix: &[u8], locale: Option<&[u8]>) -> Vec<u8> {
+    [prefix, locale.unwrap_or_default(), LOCALE_EXT].concat()
+}
+
 /// Same contract as C `obs_module_locale_default_file`: `locale/`, the
 /// default locale, `.ini`.
 pub fn default_file(default_locale: Option<&[u8]>) -> Vec<u8> {
-    let _ = default_locale;
-    todo!()
+    file(DEFAULT_PREFIX, default_locale)
 }
 
 /// Same contract as C `obs_module_locale_is_default`: `astrcmpi(locale,
 /// default_locale) == 0`, the two equal ignoring ASCII case, NULL as empty.
 pub fn is_default(locale: Option<&[u8]>, default_locale: Option<&[u8]>) -> bool {
-    let _ = (locale, default_locale);
-    todo!()
+    obs_util::dstr::astrcmpi(locale, default_locale) == 0
 }
 
 /// Same contract as C `obs_module_locale_file`: `/locale/`, the locale,
 /// `.ini`.
 pub fn locale_file(locale: Option<&[u8]>) -> Vec<u8> {
-    let _ = locale;
-    todo!()
+    file(LOCALE_PREFIX, locale)
 }

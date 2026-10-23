@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-locale.pch.h"
 
 /* Module locale files, moved from obs_module_load_locale() in obs-module.c:
  * the names of the default locale's file and of the locale's file in a
  * module's data path, and whether the locale is the default one. Pure: no
  * libobs state. obs-module.c keeps the module, the lookups
  * (obs_find_module_file(), text_lookup_create(), text_lookup_add()) and the
- * logging, and passes the locales in. Declared in obs-internal.h. */
+ * logging, and passes the locales in. Declared in obs-internal.h. Ported to
+ * rust/obs-core (module_locale): the hybrid libobs drops this file. */
 
 char *obs_module_locale_default_file(const char *default_locale)
 {

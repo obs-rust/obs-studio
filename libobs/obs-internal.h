@@ -855,7 +855,7 @@ bool obs_module_names_find_core(const char *binary, const char *name, const char
  * (astrcmpi()).
  * obs_module_locale_file(): a bmalloc'd "/locale/<locale>.ini".
  * obs_module_load_locale() keeps the module, the lookups and the logging, and
- * passes the locales. Not exported. */
+ * passes the locales. Ported to rust/obs-core (module_locale). Not exported. */
 char *obs_module_locale_default_file(const char *default_locale);
 bool obs_module_locale_is_default(const char *locale, const char *default_locale);
 char *obs_module_locale_file(const char *locale);

@@ -148,6 +148,11 @@
     /* obs-context-names.c. obs.c calls them inside libobs. Not EXPORT. */
     obs_context_name_dup;
     obs_context_name_deduplicate;
+    /* obs-module-locale.c. obs-module.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_module_locale_default_file;
+    obs_module_locale_is_default;
+    obs_module_locale_file;
     /* obs-module-names.c. obs-module.c calls them inside libobs. Not
      * EXPORT. */
     obs_module_names_file_name;
