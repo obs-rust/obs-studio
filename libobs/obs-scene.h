@@ -20,6 +20,7 @@
 #include "obs.h"
 #include "graphics/matrix4.h"
 #include "obs-scene-audio-actions.h"
+#include "obs-scene-crop.h"
 #include "obs-scene-extent.h"
 
 #include <limits.h>
@@ -115,8 +116,9 @@ struct obs_scene {
 	struct obs_scene_item *first_item;
 };
 
-/* Scene item crop and size arithmetic for obs-scene.c, here so that
- * test_scene_crop_steps can build it on its own with UBSan. */
+/* Scene item crop arithmetic for obs-scene.c, here so that
+ * test_scene_crop_steps can build it on its own with UBSan. The size, the
+ * rescale, the offset and the clamp are in obs-scene-crop.h. */
 
 /* A crop read from a scene collection, as an int: the nearest one when it
  * is past the range. */
@@ -127,35 +129,4 @@ static inline int obs_scene_crop_from_int64(int64_t crop)
 	if (crop < INT_MIN)
 		return INT_MIN;
 	return (int)crop;
-}
-
-/* The size of a source of `size` pixels after the crops on both sides (the
- * item's crop and its bounds crop), or 2 when they crop more than all of it. */
-static inline uint32_t obs_scene_cropped_size(uint32_t size, int crop1, int crop2, int bounds_crop1, int bounds_crop2)
-{
-	/* In 64 bits: four ints can be past the int range. Crops are 0 and up
-	 * (obs_sceneitem_set_crop() clamps them); a negative sum crops all of
-	 * it, as the sum read as unsigned did. */
-	int64_t crop = (int64_t)crop1 + crop2 + bounds_crop1 + bounds_crop2;
-	return (crop < 0 || crop > (int64_t)size) ? 2 : (size - (uint32_t)crop);
-}
-
-/* A nested scene's crop, scaled by the factor the scene's size changed by,
- * truncated: the nearest int when it is past the range, 0 for NaN. */
-static inline int obs_scene_scale_crop(int crop, float factor)
-{
-	float scaled = (float)crop * factor;
-	if (isnan(scaled))
-		return 0;
-	if (scaled >= 2147483648.0f)
-		return INT_MAX;
-	if (scaled <= -2147483648.0f)
-		return INT_MIN;
-	return (int)scaled;
-}
-
-/* How far the crops move the source when it is drawn. */
-static inline float obs_scene_crop_offset(int crop, int bounds_crop)
-{
-	return (float)((int64_t)crop + bounds_crop);
 }

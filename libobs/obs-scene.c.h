@@ -2999,14 +2999,10 @@ void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_cr
 
 	memcpy(&item->crop, crop, sizeof(*crop));
 
-	if (item->crop.left < 0)
-		item->crop.left = 0;
-	if (item->crop.right < 0)
-		item->crop.right = 0;
-	if (item->crop.top < 0)
-		item->crop.top = 0;
-	if (item->crop.bottom < 0)
-		item->crop.bottom = 0;
+	item->crop.left = obs_scene_clamp_crop(item->crop.left);
+	item->crop.right = obs_scene_clamp_crop(item->crop.right);
+	item->crop.top = obs_scene_clamp_crop(item->crop.top);
+	item->crop.bottom = obs_scene_clamp_crop(item->crop.bottom);
 
 	os_atomic_set_bool(&item->update_transform, true);
 }

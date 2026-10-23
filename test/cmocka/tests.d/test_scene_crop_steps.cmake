@@ -1,9 +1,10 @@
-# The scene item crop and size arithmetic in libobs/obs-scene.h on its own,
-# with UBSan: crops and sizes from a scene collection out of range saturate,
-# and nothing overflows. Header only: no display and no libobs core, so it
-# runs on every platform. test_scene_item_crop_load covers the callers
-# through the real libobs.
-add_executable(test_scene_crop_steps test_scene_crop_steps.c)
+# The scene item crop and size arithmetic in libobs/obs-scene.h and
+# libobs/obs-scene-crop.c.h on its own, with UBSan: crops and sizes from a
+# scene collection out of range saturate, and nothing overflows. The crop
+# functions are hidden in libobs, so this builds the moved file itself: no
+# display and no libobs core, so it runs on every platform.
+# test_scene_item_crop_load covers the callers through the real libobs.
+add_executable(test_scene_crop_steps test_scene_crop_steps.c "${CMAKE_SOURCE_DIR}/libobs/obs-scene-crop.c.h")
 target_include_directories(
   test_scene_crop_steps
   PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_SOURCE_DIR}/deps/libcaption"

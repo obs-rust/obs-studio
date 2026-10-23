@@ -91,6 +91,10 @@
 
 #include "obs-scene-extent.h"
 
+/* obs-scene-crop.c */
+
+#include "obs-scene-crop.h"
+
 /* obs-scene.c */
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"
