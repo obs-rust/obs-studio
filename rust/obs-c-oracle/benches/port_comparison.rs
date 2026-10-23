@@ -30,6 +30,8 @@ mod scene_crop;
 mod service;
 #[path = "port_comparison/source_audio_timing.rs"]
 mod source_audio_timing;
+#[path = "port_comparison/source_color_space.rs"]
+mod source_color_space;
 #[path = "port_comparison/source_deinterlace_pacing.rs"]
 mod source_deinterlace_pacing;
 #[path = "port_comparison/source_profiler.rs"]
@@ -79,6 +81,7 @@ fn comparisons(criterion: &mut Criterion) {
     scene_crop::benchmarks(criterion);
     source_deinterlace_pacing::benchmarks(criterion);
     encoder_roi::benchmarks(criterion);
+    source_color_space::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
