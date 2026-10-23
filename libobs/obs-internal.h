@@ -912,8 +912,8 @@ char *obs_context_name_deduplicate(const char *name, obs_context_name_exists_t e
  * audio_render for a composite source (flags). callbacks has a
  * OBS_MODULE_SOURCE_RULES_HAS_* bit for each callback set inside the size.
  * obs_module_source_rules_versioned_id(): a bmalloc'd "<id>_v<version>",
- * the version printed as an int, or a copy of id for version 0. Not
- * exported. */
+ * the version printed as an int, or a copy of id for version 0. Ported to
+ * rust/obs-core (module_source_rules). Not exported. */
 enum obs_module_source_rules_list {
 	OBS_MODULE_SOURCE_RULES_LIST_UNKNOWN,
 	OBS_MODULE_SOURCE_RULES_LIST_NONE,

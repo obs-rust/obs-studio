@@ -137,6 +137,7 @@
     "build/libobs.ported-module-locale+.h.c",
     "build/libobs.ported-module-names+.h.c",
     "build/libobs.ported-module-paths+.h.c",
+    "build/libobs.ported-module-source-rules+.h.c",
     "build/libobs.ported-output-caption-text+.h.c",
     "build/libobs.ported-output-delay+.h.c",
     "build/libobs.ported-output-interleave+.h.c",

@@ -38,8 +38,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-// RED: the stubs below are todo!() until the port lands.
-#![allow(clippy::todo)]
 
 /// `OBS_SOURCE_TYPE_INPUT`.
 pub const TYPE_INPUT: u32 = 0;
@@ -78,23 +76,30 @@ pub enum List {
 
 /// Same contract as C `obs_module_source_rules_list_of`.
 pub fn list_of(source_type: u32) -> List {
-    let _ = (source_type);
-    todo!()
+    match source_type {
+        TYPE_INPUT => List::Input,
+        TYPE_FILTER => List::Filter,
+        TYPE_TRANSITION => List::Transition,
+        TYPE_SCENE => List::None,
+        _ => List::Unknown,
+    }
 }
 
 /// Same contract as C `obs_module_source_rules_size_supported`: the
 /// caller's size is not above the one libobs knows.
 pub fn size_supported(size: usize, supported: usize) -> bool {
-    let _ = (size, supported);
-    todo!()
+    size <= supported
 }
 
 /// Same contract as C `obs_module_source_rules_output_flags`: a filter
 /// without video is made async, a transition composite, video and custom
 /// draw; every other bit is kept.
 pub fn output_flags(source_type: u32, flags: u32) -> u32 {
-    let _ = (source_type, flags);
-    todo!()
+    match source_type {
+        TYPE_FILTER if flags & VIDEO == 0 => flags | ASYNC,
+        TYPE_TRANSITION => flags | COMPOSITE | VIDEO | CUSTOM_DRAW,
+        _ => flags,
+    }
 }
 
 /// `OBS_MODULE_SOURCE_RULES_HAS_GET_NAME`.
@@ -156,8 +161,29 @@ pub fn check(
     flags: u32,
     callbacks: Callbacks,
 ) -> Result<(), Broken> {
-    let _ = (source_type, info_flags, flags, callbacks);
-    todo!()
+    let composite = flags & COMPOSITE != 0;
+    if composite && flags & AUDIO != 0 {
+        return Err(Broken::CompositeAudio);
+    }
+    if composite && flags & ASYNC != 0 {
+        return Err(Broken::CompositeAsync);
+    }
+    if !callbacks.get_name {
+        return Err(Broken::NoGetName);
+    }
+    let sync_video = info_flags & VIDEO != 0 && info_flags & ASYNC == 0;
+    if source_type != TYPE_FILTER && source_type != TYPE_TRANSITION && sync_video {
+        if !callbacks.get_width {
+            return Err(Broken::NoGetWidth);
+        }
+        if !callbacks.get_height {
+            return Err(Broken::NoGetHeight);
+        }
+    }
+    if composite && !callbacks.audio_render {
+        return Err(Broken::NoAudioRender);
+    }
+    Ok(())
 }
 
 /// What the C's `"%s"` prints for a NULL id (glibc, the MSVC CRT and
@@ -170,6 +196,11 @@ pub const NULL_ID: &[u8] = b"(null)";
 /// version, the id, `_v` and the version printed as an `int`; for version
 /// 0, a copy of the id (`None` for NULL).
 pub fn versioned_id(id: Option<&[u8]>, version: u32) -> Option<Vec<u8>> {
-    let _ = (id, version);
-    todo!()
+    if version == 0 {
+        return id.map(<[u8]>::to_vec);
+    }
+    let mut out = id.unwrap_or(NULL_ID).to_vec();
+    out.extend_from_slice(b"_v");
+    out.extend_from_slice(version.cast_signed().to_string().as_bytes());
+    Some(out)
 }

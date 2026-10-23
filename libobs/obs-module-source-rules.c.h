@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-source-rules.pch.h"
 
 /* Source registration rules, moved from obs_register_source_s() in
  * obs-module.c: the list a source type goes in, the size limit, the output
@@ -23,7 +23,8 @@
  * id. Pure: no libobs state. obs-module.c keeps the duplicate lookup, the
  * module's source list, the copy, the type lists, the logging and the error
  * path, and passes the type, the flags, the size, which callbacks are inside
- * the size and the version in. Declared in obs-internal.h. */
+ * the size and the version in. Declared in obs-internal.h. Ported to
+ * rust/obs-core (module_source_rules): the hybrid libobs drops this file. */
 
 enum obs_module_source_rules_list obs_module_source_rules_list_of(enum obs_source_type type)
 {

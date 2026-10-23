@@ -5,6 +5,7 @@ pub mod context_names;
 pub mod module_locale;
 pub mod module_names;
 pub mod module_paths;
+pub mod module_source_rules;
 pub mod source_profiler;
 pub mod video_plan;
 pub mod view;
