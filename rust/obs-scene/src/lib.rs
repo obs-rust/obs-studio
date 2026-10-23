@@ -15,6 +15,7 @@ pub mod blend;
 pub mod bounds;
 pub mod bounds_place;
 pub mod coords;
+pub mod crop;
 pub mod extent;
 pub mod group_transform;
 mod platform;
