@@ -1,6 +1,22 @@
 {
   "schema": 1,
   "targets": {
+    "test_group_extent": {
+      "sources": [
+        "test/cmocka/test_group_extent.c",
+        "libobs/obs-scene-extent.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_scene_group_transform": {
       "sources": [
         "test/cmocka/test_scene_group_transform.c",
@@ -2745,6 +2761,9 @@
     }
   },
   "tests": {
+    "test_group_extent": {
+      "target": "test_group_extent"
+    },
     "test_scene_group_transform": {
       "target": "test_scene_group_transform"
     },
