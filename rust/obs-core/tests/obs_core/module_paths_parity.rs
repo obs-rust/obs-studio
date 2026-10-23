@@ -2,8 +2,10 @@
 //!
 //! The oracle is `libobs/obs-module-paths.c.h`, unmodified, with its entry
 //! points renamed to `oracle_*` (`obs-c-oracle/oracle/module_paths.c`). Both
-//! sides search the same real directory tree, under a new directory in the
-//! temporary directory, through the same `os_file_exists()` and `os_glob()`,
+//! sides search the same real directory tree, nested `ABOVE_ROOT` levels deep
+//! in a new directory in the temporary directory (so that no `..` of a random
+//! path reaches a directory another process can change), through the same
+//! `os_file_exists()` and `os_glob()`,
 //! with the same host hooks and callbacks, which log every call. Compared:
 //!
 //! - `obs_module_paths_find()`: every module reported (binary path, data
@@ -62,7 +64,7 @@ impl Tree {
         let base =
             std::env::temp_dir().join(format!("obs-module-paths-{}-{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
-        let root = base.clone();
+        let root = (0..ABOVE_ROOT).fold(base.clone(), |p, _| p.join("up"));
         std::fs::create_dir_all(&root).unwrap();
         let prefix = root.to_str().unwrap().replace('\\', "/");
         let tree = Self { base, root, prefix };
