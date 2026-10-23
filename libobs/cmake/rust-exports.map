@@ -82,6 +82,11 @@
      * Not EXPORT. */
     obs_scene_transform_val;
     obs_scene_group_transform;
+    /* obs-scene-extent.c. obs-scene.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_scene_extent_init;
+    obs_scene_extent_add;
+    obs_scene_extent_size;
     /* obs-scene-audio-actions.c. obs-scene-item-audio-actions.c calls them
      * inside libobs. Not EXPORT. */
     obs_scene_audio_actions_apply;

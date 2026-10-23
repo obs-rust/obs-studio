@@ -64,6 +64,10 @@ _obs_scene_item_relative_scale
 # obs-scene-group-transform.c: obs-scene.c calls them inside libobs. Not EXPORT.
 _obs_scene_transform_val
 _obs_scene_group_transform
+# obs-scene-extent.c: obs-scene.c calls them inside libobs. Not EXPORT.
+_obs_scene_extent_init
+_obs_scene_extent_add
+_obs_scene_extent_size
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply

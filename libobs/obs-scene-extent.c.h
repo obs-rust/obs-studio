@@ -16,7 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-scene-extent.pch.h"
+#include "libobs/build/libobs-ported-scene-extent.pch.h"
+
+/* Ported to rust/obs-scene (extent): the hybrid libobs drops this file. */
 
 void obs_scene_extent_init(struct vec2 *minv, struct vec2 *maxv)
 {

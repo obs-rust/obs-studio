@@ -73,6 +73,11 @@ obs_scene_item_relative_scale
 # file has no EXPORT, so the shims stay hidden the same way.
 obs_scene_transform_val
 obs_scene_group_transform
+# obs-scene-extent.c: obs-scene.c calls them inside libobs. Declared in
+# obs-scene-extent.h without EXPORT, so the shims stay hidden the same way.
+obs_scene_extent_init
+obs_scene_extent_add
+obs_scene_extent_size
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Declared in obs-scene-audio-actions.h without EXPORT, so the shims
 # stay hidden the same way.
