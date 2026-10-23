@@ -3051,39 +3051,39 @@ uint32_t obs_source_get_height(obs_source_t *source)
 	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source) : get_base_height(source);
 }
 
+_Static_assert(OBS_SOURCE_COLOR_SPACE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURCE_TYPE_FILTER");
+_Static_assert(OBS_SOURCE_COLOR_SPACE_VIDEO == OBS_SOURCE_VIDEO, "OBS_SOURCE_VIDEO");
+_Static_assert(OBS_SOURCE_COLOR_SPACE_ASYNC == OBS_SOURCE_ASYNC, "OBS_SOURCE_ASYNC");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
+
 enum gs_color_space obs_source_get_color_space(obs_source_t *source, size_t count,
 					       const enum gs_color_space *preferred_spaces)
 {
 	if (!data_valid(source, "obs_source_get_color_space"))
 		return GS_CS_SRGB;
 
-	if (source->info.type != OBS_SOURCE_TYPE_FILTER && (source->info.output_flags & OBS_SOURCE_VIDEO) == 0) {
-		if (source->filter_parent)
-			return obs_source_get_color_space(source->filter_parent, count, preferred_spaces);
-	}
+	const struct obs_source_color_space_node node = {
+		.type = (int)source->info.type,
+		.output_flags = source->info.output_flags,
+		.has_data = source->context.data != NULL,
+		.enabled = source->enabled,
+		.has_filter_parent = source->filter_parent != NULL,
+		.has_filter_target = source->filter_target != NULL,
+	};
 
-	/* a filter that produces no video must not answer for the chain below it */
-	if (source->info.type == OBS_SOURCE_TYPE_FILTER && (source->info.output_flags & OBS_SOURCE_VIDEO) == 0) {
-		if (source->filter_target)
-			return obs_source_get_color_space(source->filter_target, count, preferred_spaces);
-	}
-
-	if (!source->context.data || !source->enabled) {
-		if (source->filter_target)
-			return obs_source_get_color_space(source->filter_target, count, preferred_spaces);
-	}
-
-	if (source->info.output_flags & OBS_SOURCE_ASYNC) {
+	switch (obs_source_color_space_route(node)) {
+	case OBS_SOURCE_COLOR_SPACE_ASK_PARENT:
+		return obs_source_get_color_space(source->filter_parent, count, preferred_spaces);
+	case OBS_SOURCE_COLOR_SPACE_ASK_TARGET:
+		return obs_source_get_color_space(source->filter_target, count, preferred_spaces);
+	case OBS_SOURCE_COLOR_SPACE_ASYNC_PICK: {
 		const enum gs_color_space video_space = convert_video_space(source->async_format, source->async_trc);
-
-		enum gs_color_space space = video_space;
-		for (size_t i = 0; i < count; ++i) {
-			space = preferred_spaces[i];
-			if (space == video_space)
-				break;
-		}
-
-		return space;
+		return (enum gs_color_space)obs_source_color_space_pick((int)video_space, count,
+									(const int *)preferred_spaces);
+	}
+	case OBS_SOURCE_COLOR_SPACE_CALLBACK:
+		break;
 	}
 
 	assert(source->context.data);

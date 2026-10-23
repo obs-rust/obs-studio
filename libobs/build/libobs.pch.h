@@ -109,6 +109,7 @@
 /* obs-source.c */
 
 #include "obs-source-audio-timing.h"
+#include "obs-source-color-space.h"
 
 #include "media-io/audio-io.h"
 #include "obs-host/default-monitoring-device.h"
