@@ -24,6 +24,11 @@
  * path a plugin gets. Then ("module names and files") how a module is named
  * from its binary, where its config and manifest files are, and how the safe
  * and disabled module lists match names.
+ *
+ * The last cases ("module type lists") pin which module a type id belongs
+ * to: a type the loading module registers is in its list only once libobs
+ * has accepted it, and obs_module_add_*() copies an id only into a module
+ * (obs-rust/obs-studio#1953).
  */
 
 #include <stdarg.h>
@@ -1470,6 +1475,156 @@ static void module_locale(void **state)
 	dstr_free(&bin);
 }
 
+/* ------------------------------------------------------ module type lists
+ *
+ * CORE_STUB_REGISTERS_PATH registers, from its obs_module_load(), one source,
+ * output, encoder and service type that libobs accepts and types that fail a
+ * check: a composite audio source, a source without get_name, a video source
+ * without get_width, an output without start, an encoder without encode and a
+ * service without get_protocol. A module names a type only if it registered
+ * it: obs_*_get_module() of a rejected id is NULL and its load state is
+ * missing.
+ */
+
+#define REGSTUB_NAME "core_module_stub_registers"
+
+static obs_module_t *load_registering_stub(struct paths_fixture *f)
+{
+	obs_module_t *mod = NULL;
+	assert_int_equal(obs_open_module(&mod, CORE_STUB_REGISTERS_PATH, at(f, "/nodata")), MODULE_SUCCESS);
+	assert_non_null(mod);
+	assert_true(obs_init_module(mod));
+	assert_ptr_equal(obs_get_module(REGSTUB_NAME), mod);
+	return mod;
+}
+
+static bool source_type_listed(const char *id)
+{
+	const char *t;
+	for (size_t i = 0; obs_enum_source_types(i, &t); i++) {
+		if (strcmp(t, id) == 0)
+			return true;
+	}
+	return false;
+}
+
+/* Accepted types: registered, and named by the loading module. */
+static void module_lists_accepted_types(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	obs_module_t *mod = load_registering_stub(f);
+
+	assert_true(source_type_listed("regstub_source"));
+	assert_ptr_equal(obs_source_get_module("regstub_source"), mod);
+	assert_int_equal(obs_source_load_state("regstub_source"), OBS_MODULE_ENABLED);
+	assert_ptr_equal(obs_output_get_module("regstub_output"), mod);
+	assert_int_equal(obs_output_load_state("regstub_output"), OBS_MODULE_ENABLED);
+	assert_ptr_equal(obs_encoder_get_module("regstub_encoder"), mod);
+	assert_int_equal(obs_encoder_load_state("regstub_encoder"), OBS_MODULE_ENABLED);
+	assert_ptr_equal(obs_service_get_module("regstub_service"), mod);
+	assert_int_equal(obs_service_load_state("regstub_service"), OBS_MODULE_ENABLED);
+}
+
+static void expect_unowned_source(const char *id)
+{
+	assert_false(source_type_listed(id));
+	assert_null(obs_source_get_module(id));
+	assert_int_equal(obs_source_load_state(id), OBS_MODULE_MISSING);
+}
+
+/* A source type that fails a check after the duplicate and size checks (the
+ * composite and required callback rules) is not registered, and the module
+ * that tried does not name it. */
+static void module_omits_rejected_sources(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	load_registering_stub(f);
+
+	expect_unowned_source("regstub_composite_audio");
+	expect_unowned_source("regstub_no_name");
+	expect_unowned_source("regstub_no_width");
+}
+
+/* Outputs, encoders and services: a rejected type is not named either. */
+static void module_omits_rejected_types(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	load_registering_stub(f);
+
+	assert_null(obs_output_get_display_name("regstub_output_no_start"));
+	assert_null(obs_output_get_module("regstub_output_no_start"));
+	assert_int_equal(obs_output_load_state("regstub_output_no_start"), OBS_MODULE_MISSING);
+	assert_null(obs_encoder_get_display_name("regstub_encoder_no_encode"));
+	assert_null(obs_encoder_get_module("regstub_encoder_no_encode"));
+	assert_int_equal(obs_encoder_load_state("regstub_encoder_no_encode"), OBS_MODULE_MISSING);
+	assert_null(obs_service_get_display_name("regstub_service_no_protocol"));
+	assert_null(obs_service_get_module("regstub_service_no_protocol"));
+	assert_int_equal(obs_service_load_state("regstub_service_no_protocol"), OBS_MODULE_MISSING);
+}
+
+static const char *reg_name(void *type_data)
+{
+	(void)type_data;
+	return "registered later";
+}
+
+/* The id a module failed to register, registered later outside any module:
+ * a type of no module, not one of the module that was rejected. */
+static void rejected_id_registered_later(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	load_registering_stub(f);
+
+	struct obs_source_info info = {0};
+	info.id = "regstub_no_name";
+	info.type = OBS_SOURCE_TYPE_INPUT;
+	info.get_name = reg_name;
+	obs_register_source(&info);
+
+	assert_true(source_type_listed("regstub_no_name"));
+	assert_null(obs_source_get_module("regstub_no_name"));
+	assert_int_equal(obs_source_load_state("regstub_no_name"), OBS_MODULE_MISSING);
+}
+
+/* obs_module_add_*() with a module: the id is copied into the module's list
+ * (the plugin manager names a disabled module's types this way). Without
+ * one: nothing is allocated. */
+static void module_add_types(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	obs_module_t *mod = disabled_module(at(f, "/n/added.so"), at(f, "/nodata"));
+
+	char id[] = "regstub_added";
+	obs_module_add_source(mod, id);
+	obs_module_add_output(mod, id);
+	obs_module_add_encoder(mod, id);
+	obs_module_add_service(mod, id);
+	/* A copy: the caller's string can change. */
+	id[0] = 'X';
+	assert_ptr_equal(obs_source_get_module("regstub_added"), mod);
+	assert_int_equal(obs_source_load_state("regstub_added"), OBS_MODULE_DISABLED);
+	assert_ptr_equal(obs_output_get_module("regstub_added"), mod);
+	assert_ptr_equal(obs_encoder_get_module("regstub_added"), mod);
+	assert_ptr_equal(obs_service_get_module("regstub_added"), mod);
+	assert_null(obs_source_get_module("Xegstub_added"));
+
+	/* The allocations each call leaves behind. */
+	long left[4], allocs = bnum_allocs();
+	obs_module_add_source(NULL, "regstub_null");
+	left[0] = bnum_allocs() - allocs;
+	obs_module_add_output(NULL, "regstub_null");
+	left[1] = bnum_allocs() - allocs - left[0];
+	obs_module_add_encoder(NULL, "regstub_null");
+	left[2] = bnum_allocs() - allocs - left[0] - left[1];
+	obs_module_add_service(NULL, "regstub_null");
+	left[3] = bnum_allocs() - allocs - left[0] - left[1] - left[2];
+	printf("allocations left by obs_module_add_*(NULL): source %ld, output %ld, encoder %ld, service %ld\n",
+	       left[0], left[1], left[2], left[3]);
+	for (size_t i = 0; i < 4; i++)
+		assert_int_equal(left[i], 0);
+	assert_null(obs_source_get_module("regstub_null"));
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && strcmp(argv[1], "--child") == 0)
@@ -1501,6 +1656,11 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(module_manifest, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(safe_and_disabled_modules, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(module_locale, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_lists_accepted_types, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_omits_rejected_sources, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_omits_rejected_types, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(rejected_id_registered_later, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_add_types, paths_setup, paths_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
