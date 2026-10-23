@@ -28,6 +28,8 @@ mod scene_crop;
 mod service;
 #[path = "port_comparison/source_audio_timing.rs"]
 mod source_audio_timing;
+#[path = "port_comparison/source_deinterlace_pacing.rs"]
+mod source_deinterlace_pacing;
 #[path = "port_comparison/source_profiler.rs"]
 mod source_profiler;
 #[path = "port_comparison/util.rs"]
@@ -73,6 +75,7 @@ fn comparisons(criterion: &mut Criterion) {
     source_audio_timing::benchmarks(criterion);
     module_source_rules::benchmarks(criterion);
     scene_crop::benchmarks(criterion);
+    source_deinterlace_pacing::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
