@@ -65,8 +65,14 @@ pub const TS_JUMP_THRESHOLD: u64 = 70_000_000;
 /// the frame's end, `frame_ts + offset + 2 * half_duration -`
 /// [`TWOX_TOLERANCE`], by less than [`TS_JUMP_THRESHOLD`].
 pub fn hold(frame_ts: u64, offset: u64, half_duration: u32, sys_time: u64) -> bool {
-    let _ = (frame_ts, offset, half_duration, sys_time);
-    todo!()
+    // Want to keep frame if it has not elapsed. The half duration is
+    // widened before it is doubled, so it cannot wrap.
+    let frame_end = frame_ts
+        .wrapping_add(offset)
+        .wrapping_add(u64::from(half_duration).wrapping_mul(2))
+        .wrapping_sub(TWOX_TOLERANCE);
+    // Process new frames if we think time jumped.
+    sys_time < frame_end && frame_end.wrapping_sub(sys_time) < TS_JUMP_THRESHOLD
 }
 
 /// `obs_source_deinterlace_pacing_wait_for_next()`: whether an unbuffered
@@ -74,32 +80,38 @@ pub fn hold(frame_ts: u64, offset: u64, half_duration: u32, sys_time: u64) -> bo
 /// `timestamp` and `next_timestamp`: `sys_time` is before `timestamp +
 /// offset +` the frame's duration.
 pub fn wait_for_next(timestamp: u64, next_timestamp: u64, offset: u64, sys_time: u64) -> bool {
-    let _ = (timestamp, next_timestamp, offset, sys_time);
-    todo!()
+    let duration = next_timestamp.wrapping_sub(timestamp);
+    let frame_end = timestamp.wrapping_add(offset).wrapping_add(duration);
+    // Don't skip ahead prematurely.
+    sys_time < frame_end
 }
 
 /// `obs_source_deinterlace_pacing_waiting_frame_ts()`: the
 /// `deinterlace_frame_ts` stored when [`wait_for_next`] waits: `timestamp`
 /// less the frame's duration, `next_timestamp - timestamp`.
 pub fn waiting_frame_ts(timestamp: u64, next_timestamp: u64) -> u64 {
-    let _ = (timestamp, next_timestamp);
-    todo!()
+    let duration = next_timestamp.wrapping_sub(timestamp);
+    timestamp.wrapping_sub(duration)
 }
 
 /// `obs_source_deinterlace_pacing_half_duration()`: the
 /// `deinterlace_half_duration` of a frame at `timestamp` after one at
 /// `prev_ts`: half the difference, truncated to 32 bits.
 pub fn half_duration(timestamp: u64, prev_ts: u64) -> u32 {
-    let _ = (timestamp, prev_ts);
-    todo!()
+    let half = timestamp.wrapping_sub(prev_ts).wrapping_div(2);
+    // (uint32_t): the low 32 bits
+    let [b0, b1, b2, b3, ..] = half.to_le_bytes();
+    u32::from_le_bytes([b0, b1, b2, b3])
 }
 
 /// `obs_source_deinterlace_pacing_buffered_offset()`: a buffered source's
 /// `deinterlace_offset`, `video_time - last_frame_ts +`
 /// [`FRAME_TOLERANCE`] `+` [`TWOX_TOLERANCE`].
 pub fn buffered_offset(video_time: u64, last_frame_ts: u64) -> u64 {
-    let _ = (video_time, last_frame_ts);
-    todo!()
+    video_time
+        .wrapping_sub(last_frame_ts)
+        .wrapping_add(FRAME_TOLERANCE)
+        .wrapping_add(TWOX_TOLERANCE)
 }
 
 /// `obs_source_deinterlace_pacing_reanchor()`: an unbuffered source's
@@ -116,12 +128,20 @@ pub fn reanchor(
     half_duration: u32,
     frame_interval_ns: u64,
 ) -> u64 {
-    let _ = (
-        offset,
-        video_time,
-        frame_ts,
-        half_duration,
-        frame_interval_ns,
-    );
-    todo!()
+    let half_duration = u64::from(half_duration);
+    let field_or_tick = if half_duration > frame_interval_ns {
+        half_duration
+    } else {
+        frame_interval_ns
+    };
+    let new_offset = video_time.wrapping_sub(frame_ts);
+    // (int64_t)(offset - deinterlace_offset)
+    let late = new_offset.wrapping_sub(offset).cast_signed();
+
+    if offset == 0 || late < 0 || late.cast_unsigned().wrapping_add(TWOX_TOLERANCE) >= field_or_tick
+    {
+        new_offset
+    } else {
+        offset
+    }
 }

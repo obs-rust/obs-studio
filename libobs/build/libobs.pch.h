@@ -99,7 +99,7 @@
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"
 
-/* obs-source-deinterlace-pacing.c */
+/* obs-source-deinterlace.c */
 
 #include "obs-source-deinterlace-pacing.h"
 

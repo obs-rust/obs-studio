@@ -155,6 +155,7 @@
     "build/libobs.ported-scene-extent+.h.c",
     "build/libobs.ported-scene-group-transform+.h.c",
     "build/libobs.ported-source-audio-timing+.h.c",
+    "build/libobs.ported-source-deinterlace-pacing+.h.c",
     "build/libobs.ported-video-plan+.h.c",
     "build/libobs.ported-audio-controls+.h.c",
     "build/libobs.ported-audio-mix+.h.c",

@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-deinterlace-pacing.pch.h"
 
 /* The 2x deinterlace frame pacing of obs-source-deinterlace.c, moved from
  * deinterlace_get_closest_frames() and ready_deinterlace_frames(): the
  * decisions, on plain values. obs-source-deinterlace.c reads the source's
  * fields and obs->video, calls these and stores the results; it keeps the
  * async_frames queue, the buffered walk, first_frame(), the textures and the
- * render. Declared in obs-source-deinterlace-pacing.h without EXPORT. */
+ * render. Declared in obs-source-deinterlace-pacing.h without EXPORT. In hybrid
+ * libobs the Rust port (rust/obs-source) replaces this file. */
 
 bool obs_source_deinterlace_pacing_hold(uint64_t frame_ts, uint64_t offset, uint32_t half_duration, uint64_t sys_time)
 {

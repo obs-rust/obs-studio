@@ -82,6 +82,14 @@ _obs_scene_audio_action_due
 _obs_source_audio_timing_pre_lock
 _obs_source_audio_timing_under_lock
 _obs_source_audio_timing_buffer_start
+# obs-source-deinterlace-pacing.c: obs-source-deinterlace.c calls them inside
+# libobs. Not EXPORT.
+_obs_source_deinterlace_pacing_hold
+_obs_source_deinterlace_pacing_wait_for_next
+_obs_source_deinterlace_pacing_waiting_frame_ts
+_obs_source_deinterlace_pacing_half_duration
+_obs_source_deinterlace_pacing_buffered_offset
+_obs_source_deinterlace_pacing_reanchor
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Not EXPORT.
 _obs_audio_mix_time_to_frames
 _obs_audio_mix_add
