@@ -518,6 +518,7 @@ dependencies = [
  "obs-media-io",
  "obs-output",
  "obs-properties",
+ "obs-scene",
  "obs-util",
  "pkg-config",
 ]

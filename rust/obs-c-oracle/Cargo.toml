@@ -24,6 +24,7 @@ obs-media-io = { path = "../obs-media-io" }
 # The obs-service oracle calls obs_data_* and obs_properties_apply_settings.
 obs-data = { path = "../obs-data" }
 obs-properties = { path = "../obs-properties" }
+obs-scene = { path = "../obs-scene" }
 
 [[bench]]
 name = "port_comparison"

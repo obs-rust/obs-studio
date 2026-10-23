@@ -18,6 +18,8 @@ mod core_units;
 mod graphics;
 #[path = "port_comparison/media_remux.rs"]
 mod media_remux;
+#[path = "port_comparison/scene.rs"]
+mod scene;
 #[path = "port_comparison/service.rs"]
 mod service;
 #[path = "port_comparison/source_profiler.rs"]
@@ -58,6 +60,7 @@ fn comparisons(criterion: &mut Criterion) {
     service::benchmarks(criterion);
     source_profiler::benchmarks(criterion);
     media_remux::benchmarks(criterion);
+    scene::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
