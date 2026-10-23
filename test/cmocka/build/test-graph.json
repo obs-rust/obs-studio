@@ -1082,6 +1082,23 @@
         }
       ]
     },
+    "test_source_audio_timing_steps": {
+      "sources": [
+        "test/cmocka/test_source_audio_timing_steps.c",
+        "libobs/obs-source-audio-timing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_audio_action_steps": {
       "sources": [
         "test/cmocka/test_scene_audio_action_steps.c",
@@ -3001,6 +3018,12 @@
     },
     "test_flv_mux": {
       "target": "test_flv_mux",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_timing_steps": {
+      "target": "test_source_audio_timing_steps",
       "command": [
         "${target}"
       ]
