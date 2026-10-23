@@ -809,14 +809,23 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 {
 	struct obs_source_info data = {0};
 	obs_source_info_array_t *array = NULL;
+	enum obs_module_source_rules_error err;
+	uint32_t callbacks = 0;
 
-	if (info->type == OBS_SOURCE_TYPE_INPUT) {
+	switch (obs_module_source_rules_list_of(info->type)) {
+	case OBS_MODULE_SOURCE_RULES_LIST_INPUT:
 		array = &obs->input_types;
-	} else if (info->type == OBS_SOURCE_TYPE_FILTER) {
+		break;
+	case OBS_MODULE_SOURCE_RULES_LIST_FILTER:
 		array = &obs->filter_types;
-	} else if (info->type == OBS_SOURCE_TYPE_TRANSITION) {
+		break;
+	case OBS_MODULE_SOURCE_RULES_LIST_TRANSITION:
 		array = &obs->transition_types;
-	} else if (info->type != OBS_SOURCE_TYPE_SCENE) {
+		break;
+	case OBS_MODULE_SOURCE_RULES_LIST_NONE:
+		break;
+	case OBS_MODULE_SOURCE_RULES_LIST_UNKNOWN:
+	default:
 		source_warn("Tried to register unknown source type: %u", info->type);
 		goto error;
 	}
@@ -828,7 +837,7 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 		goto error;
 	}
 
-	if (size > sizeof(data)) {
+	if (!obs_module_source_rules_size_supported(size, sizeof(data))) {
 		source_warn("Tried to register obs_source_info with size "
 			    "%llu which is more than libobs currently "
 			    "supports (%llu)",
@@ -844,12 +853,6 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 
 	memcpy(&data, info, size);
 
-	/* mark audio-only filters as an async filter categorically */
-	if (data.type == OBS_SOURCE_TYPE_FILTER) {
-		if ((data.output_flags & OBS_SOURCE_VIDEO) == 0)
-			data.output_flags |= OBS_SOURCE_ASYNC;
-	}
-
 	if (data.type == OBS_SOURCE_TYPE_TRANSITION) {
 		if (data.get_width)
 			source_warn("get_width ignored registering "
@@ -859,47 +862,60 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 			source_warn("get_height ignored registering "
 				    "transition '%s'",
 				    data.id);
-		data.output_flags |= OBS_SOURCE_COMPOSITE | OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW;
 	}
 
-	if ((data.output_flags & OBS_SOURCE_COMPOSITE) != 0) {
-		if ((data.output_flags & OBS_SOURCE_AUDIO) != 0) {
-			source_warn("Source '%s': Composite sources "
-				    "cannot be audio sources",
-				    info->id);
-			goto error;
-		}
-		if ((data.output_flags & OBS_SOURCE_ASYNC) != 0) {
-			source_warn("Source '%s': Composite sources "
-				    "cannot be async sources",
-				    info->id);
-			goto error;
-		}
-	}
+	data.output_flags = obs_module_source_rules_output_flags(data.type, data.output_flags);
 
-#define CHECK_REQUIRED_VAL_(info, val, func) CHECK_REQUIRED_VAL(struct obs_source_info, info, val, func)
-	CHECK_REQUIRED_VAL_(info, get_name, obs_register_source);
+	if (HAS_VAL(struct obs_source_info, info, get_name))
+		callbacks |= OBS_MODULE_SOURCE_RULES_HAS_GET_NAME;
+	if (HAS_VAL(struct obs_source_info, info, get_width))
+		callbacks |= OBS_MODULE_SOURCE_RULES_HAS_GET_WIDTH;
+	if (HAS_VAL(struct obs_source_info, info, get_height))
+		callbacks |= OBS_MODULE_SOURCE_RULES_HAS_GET_HEIGHT;
+	if (HAS_VAL(struct obs_source_info, info, audio_render))
+		callbacks |= OBS_MODULE_SOURCE_RULES_HAS_AUDIO_RENDER;
 
-	if (info->type != OBS_SOURCE_TYPE_FILTER && info->type != OBS_SOURCE_TYPE_TRANSITION &&
-	    (info->output_flags & OBS_SOURCE_VIDEO) != 0 && (info->output_flags & OBS_SOURCE_ASYNC) == 0) {
-		CHECK_REQUIRED_VAL_(info, get_width, obs_register_source);
-		CHECK_REQUIRED_VAL_(info, get_height, obs_register_source);
+	/* The required callbacks are checked against the caller's type and
+	 * flags, the composite rules against the normalized flags. */
+#define source_required(val)                                                                 \
+	blog(LOG_ERROR,                                                                       \
+	     "Required value '" #val "' for "                                                 \
+	     "'%s' not found.  obs_register_source failed.",                                  \
+	     info->id)
+	err = obs_module_source_rules_check(info->type, info->output_flags, data.output_flags, callbacks);
+	switch (err) {
+	case OBS_MODULE_SOURCE_RULES_OK:
+		break;
+	case OBS_MODULE_SOURCE_RULES_COMPOSITE_AUDIO:
+		source_warn("Source '%s': Composite sources "
+			    "cannot be audio sources",
+			    info->id);
+		break;
+	case OBS_MODULE_SOURCE_RULES_COMPOSITE_ASYNC:
+		source_warn("Source '%s': Composite sources "
+			    "cannot be async sources",
+			    info->id);
+		break;
+	case OBS_MODULE_SOURCE_RULES_NO_GET_NAME:
+		source_required(get_name);
+		break;
+	case OBS_MODULE_SOURCE_RULES_NO_GET_WIDTH:
+		source_required(get_width);
+		break;
+	case OBS_MODULE_SOURCE_RULES_NO_GET_HEIGHT:
+		source_required(get_height);
+		break;
+	case OBS_MODULE_SOURCE_RULES_NO_AUDIO_RENDER:
+		source_required(audio_render);
+		break;
 	}
-
-	if ((data.output_flags & OBS_SOURCE_COMPOSITE) != 0) {
-		CHECK_REQUIRED_VAL_(info, audio_render, obs_register_source);
-	}
-#undef CHECK_REQUIRED_VAL_
+	if (err != OBS_MODULE_SOURCE_RULES_OK)
+		goto error;
+#undef source_required
 
 	/* version-related stuff */
 	data.unversioned_id = data.id;
-	if (data.version) {
-		struct dstr versioned_id = {0};
-		dstr_printf(&versioned_id, "%s_v%d", data.id, (int)data.version);
-		data.id = versioned_id.array;
-	} else {
-		data.id = bstrdup(data.id);
-	}
+	data.id = obs_module_source_rules_versioned_id(data.id, data.version);
 
 	if (array)
 		da_push_back(*array, &data);

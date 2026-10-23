@@ -895,6 +895,55 @@ typedef bool (*obs_context_name_exists_t)(void *param, const char *name);
 char *obs_context_name_dup(const char *name, bool private, long long *unnamed_index);
 char *obs_context_name_deduplicate(const char *name, obs_context_name_exists_t exists, void *param);
 
+/* Source registration rules (obs-module-source-rules.c): pure, no libobs
+ * state. obs_register_source_s() keeps the duplicate lookup, the module's
+ * source list, the copy, the type lists, the logging and the error path, and
+ * calls these in its order of checks.
+ * obs_module_source_rules_list_of(): the list of a type: input, filter or
+ * transition, none for a scene, unknown for any other type.
+ * obs_module_source_rules_size_supported(): size is at most supported.
+ * obs_module_source_rules_output_flags(): the flags, an audio-only (no
+ * video) filter made async and a transition made composite, video and
+ * custom draw.
+ * obs_module_source_rules_check(): the first rule a source breaks, in order:
+ * composite with audio, composite with async (flags, normalized), no
+ * get_name, no get_width or get_height for a sync video source that is not
+ * a filter or a transition (type and info_flags, the caller's), no
+ * audio_render for a composite source (flags). callbacks has a
+ * OBS_MODULE_SOURCE_RULES_HAS_* bit for each callback set inside the size.
+ * obs_module_source_rules_versioned_id(): a bmalloc'd "<id>_v<version>",
+ * the version printed as an int, or a copy of id for version 0. Not
+ * exported. */
+enum obs_module_source_rules_list {
+	OBS_MODULE_SOURCE_RULES_LIST_UNKNOWN,
+	OBS_MODULE_SOURCE_RULES_LIST_NONE,
+	OBS_MODULE_SOURCE_RULES_LIST_INPUT,
+	OBS_MODULE_SOURCE_RULES_LIST_FILTER,
+	OBS_MODULE_SOURCE_RULES_LIST_TRANSITION,
+};
+
+#define OBS_MODULE_SOURCE_RULES_HAS_GET_NAME (1 << 0)
+#define OBS_MODULE_SOURCE_RULES_HAS_GET_WIDTH (1 << 1)
+#define OBS_MODULE_SOURCE_RULES_HAS_GET_HEIGHT (1 << 2)
+#define OBS_MODULE_SOURCE_RULES_HAS_AUDIO_RENDER (1 << 3)
+
+enum obs_module_source_rules_error {
+	OBS_MODULE_SOURCE_RULES_OK,
+	OBS_MODULE_SOURCE_RULES_COMPOSITE_AUDIO,
+	OBS_MODULE_SOURCE_RULES_COMPOSITE_ASYNC,
+	OBS_MODULE_SOURCE_RULES_NO_GET_NAME,
+	OBS_MODULE_SOURCE_RULES_NO_GET_WIDTH,
+	OBS_MODULE_SOURCE_RULES_NO_GET_HEIGHT,
+	OBS_MODULE_SOURCE_RULES_NO_AUDIO_RENDER,
+};
+
+enum obs_module_source_rules_list obs_module_source_rules_list_of(enum obs_source_type type);
+bool obs_module_source_rules_size_supported(size_t size, size_t supported);
+uint32_t obs_module_source_rules_output_flags(enum obs_source_type type, uint32_t output_flags);
+enum obs_module_source_rules_error obs_module_source_rules_check(enum obs_source_type type, uint32_t info_flags,
+								 uint32_t flags, uint32_t callbacks);
+char *obs_module_source_rules_versioned_id(const char *id, uint32_t version);
+
 /* Scene item visibility audio ramp (obs-scene-item-audio-actions.c, around
  * the core in obs-scene-audio-actions.c), called by obs-scene.c. apply_scene_item_audio_actions() applies the item's queued
  * show/hide actions that fall in the audio tick at ts (all of them when ts is
