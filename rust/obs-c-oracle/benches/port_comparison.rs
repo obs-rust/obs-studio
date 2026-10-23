@@ -22,6 +22,8 @@ mod media_remux;
 mod module_source_rules;
 #[path = "port_comparison/scene.rs"]
 mod scene;
+#[path = "port_comparison/scene_crop.rs"]
+mod scene_crop;
 #[path = "port_comparison/service.rs"]
 mod service;
 #[path = "port_comparison/source_audio_timing.rs"]
@@ -70,6 +72,7 @@ fn comparisons(criterion: &mut Criterion) {
     view::benchmarks(criterion);
     source_audio_timing::benchmarks(criterion);
     module_source_rules::benchmarks(criterion);
+    scene_crop::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
