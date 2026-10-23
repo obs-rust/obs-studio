@@ -37,6 +37,7 @@
     "obs-scene-group-transform.h",
     "obs-scene.h",
     "obs-service.h",
+    "obs-source-audio-timing.h",
     "obs-source.h",
     "obs.h",
     "obs.hpp",

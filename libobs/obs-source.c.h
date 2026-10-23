@@ -1479,6 +1479,10 @@ static inline size_t conv_time_to_frames(const size_t sample_rate, const uint64_
  * possible */
 #define TS_SMOOTHING_THRESHOLD 70000000ULL
 
+/* obs-source-audio-timing.c decides with the same thresholds */
+_Static_assert(OBS_SOURCE_AUDIO_TS_SMOOTHING_THRESHOLD == TS_SMOOTHING_THRESHOLD, "TS_SMOOTHING_THRESHOLD");
+_Static_assert(OBS_SOURCE_AUDIO_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
+
 static inline void reset_audio_timing(obs_source_t *source, uint64_t timestamp, uint64_t os_time)
 {
 	source->timing_set = true;
@@ -1504,8 +1508,7 @@ static void reset_audio_data(obs_source_t *source, uint64_t os_time)
 static void reset_audio_data_at_sys_time(obs_source_t *source, uint64_t os_time)
 {
 	reset_audio_data(source, os_time);
-	if (os_time)
-		source->audio_ts = os_time + source->sync_offset - source->resample_offset;
+	source->audio_ts = obs_source_audio_timing_buffer_start(os_time, source->sync_offset, source->resample_offset);
 }
 
 static void handle_ts_jump(obs_source_t *source, uint64_t expected, uint64_t ts, uint64_t diff, uint64_t os_time)
@@ -1612,98 +1615,88 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 {
 	size_t sample_rate = audio_output_get_sample_rate(obs->audio.audio);
 	struct audio_data in = *data;
-	uint64_t diff;
 	uint64_t os_time = os_gettime_ns();
-	int64_t sync_offset;
-	bool using_direct_ts = false;
-	bool continuous = false;
-	bool push_back = false;
-	int64_t drift_error = 0;
+	uint64_t timing_adjust;
+	bool push_back;
 
-	/* detects 'directly' set timestamps as long as they're within
-	 * a certain threshold */
-	if (uint64_diff(in.timestamp, os_time) < MAX_TS_VAR) {
+	/* The timestamp placement is obs-source-audio-timing.c's: each step
+	 * gets the fields it reads and returns what to store, and the stores
+	 * happen here, in their order. */
+	struct obs_source_audio_timing_pre pre = {
+		.timestamp = in.timestamp,
+		.os_time = os_time,
+		.duration = conv_frames_to_time(sample_rate, in.frames),
+		.next_audio_ts_min = source->next_audio_ts_min,
+		.timing_set = source->timing_set,
+		.async_unbuffered = source->async_unbuffered,
+		.async_decoupled = source->async_decoupled,
+	};
+	obs_source_audio_timing_pre_lock(&pre);
+
+	if (pre.direct) {
 		source->timing_adjust = 0;
 		source->timing_set = true;
-		using_direct_ts = true;
 	}
 
-	if (!source->timing_set) {
-		reset_audio_timing(source, in.timestamp, os_time);
-
-	} else if (source->next_audio_ts_min != 0) {
-		diff = uint64_diff(source->next_audio_ts_min, in.timestamp);
-
-		/* smooth audio if within threshold */
-		if (diff > MAX_TS_VAR && !using_direct_ts)
-			handle_ts_jump(source, source->next_audio_ts_min, in.timestamp, diff, os_time);
-		else if (diff < TS_SMOOTHING_THRESHOLD) {
-			if (source->async_unbuffered && source->async_decoupled)
-				source->timing_adjust = os_time - in.timestamp;
-			/* how far the samples run ahead of the timestamps */
-			drift_error = (int64_t)(source->next_audio_ts_min - in.timestamp);
-			in.timestamp = source->next_audio_ts_min;
-			continuous = true;
-		} else {
-			blog(LOG_DEBUG,
-			     "Audio timestamp for '%s' exceeded TS_SMOOTHING_THRESHOLD, diff=%" PRIu64
-			     " ns, expected %" PRIu64 ", input %" PRIu64,
-			     source->context.name, diff, source->next_audio_ts_min, in.timestamp);
-		}
+	switch (pre.action) {
+	case OBS_SOURCE_AUDIO_TS_KEEP:
+		break;
+	case OBS_SOURCE_AUDIO_TS_RESET:
+		/* reset_audio_timing(source, in.timestamp, os_time) */
+		source->timing_set = true;
+		source->timing_adjust = pre.timing_adjust;
+		break;
+	case OBS_SOURCE_AUDIO_TS_JUMP:
+		handle_ts_jump(source, source->next_audio_ts_min, in.timestamp, pre.diff, os_time);
+		break;
+	case OBS_SOURCE_AUDIO_TS_SMOOTH:
+		if (pre.reanchor)
+			source->timing_adjust = pre.timing_adjust;
+		break;
+	case OBS_SOURCE_AUDIO_TS_EXCEEDED:
+		blog(LOG_DEBUG,
+		     "Audio timestamp for '%s' exceeded TS_SMOOTHING_THRESHOLD, diff=%" PRIu64 " ns, expected %" PRIu64
+		     ", input %" PRIu64,
+		     source->context.name, pre.diff, source->next_audio_ts_min, in.timestamp);
+		break;
 	}
 
 	/* Feed the error to the resampler so that the samples keep pace with
 	 * the timestamps instead of drifting until the threshold above is
 	 * exceeded. After a resync the error is unknown, so hold. */
 	if (source->resampler && source->last_async_compensation)
-		audio_resampler_set_compensation_error(source->resampler, drift_error);
+		audio_resampler_set_compensation_error(source->resampler, pre.drift_error);
 
-	source->next_audio_ts_min = in.timestamp + conv_frames_to_time(sample_rate, in.frames);
+	source->next_audio_ts_min = pre.next_audio_ts_min;
 
-	in.timestamp += source->timing_adjust;
+	timing_adjust = source->timing_adjust;
 
 	pthread_mutex_lock(&source->audio_buf_mutex);
 
-	if (source->next_audio_sys_ts_min == in.timestamp) {
-		push_back = true;
+	struct obs_source_audio_timing_under under = {
+		.timestamp = pre.timestamp,
+		.packet_timing_adjust = timing_adjust,
+		.data_timestamp = data->timestamp,
+		.os_time = os_time,
+		.next_audio_ts_min = source->next_audio_ts_min,
+		.resample_offset = source->resample_offset,
+		.sync_offset = source->sync_offset,
+		.timing_adjust = source->timing_adjust,
+		.next_audio_sys_ts_min = source->next_audio_sys_ts_min,
+		.last_sync_offset = source->last_sync_offset,
+		.continuous = pre.continuous,
+	};
+	obs_source_audio_timing_under_lock(&under);
 
-	} else if (source->next_audio_sys_ts_min) {
-		diff = uint64_diff(source->next_audio_sys_ts_min, in.timestamp);
-
-		if (diff < TS_SMOOTHING_THRESHOLD) {
-			push_back = true;
-
-		} else if (diff > MAX_TS_VAR && !continuous) {
-			/* This typically only happens if used with async video when
-			 * audio/video start transitioning in to a timestamp jump.
-			 * Audio will typically have a timestamp jump, and then video
-			 * will have a timestamp jump.  If that case is encountered,
-			 * just clear the audio data in that small window and force a
-			 * resync.  This handles all cases rather than just looping.
-			 *
-			 * If the audio itself did not jump, the timing of the
-			 * source's video moved (a Video Delay (Async) filter), and
-			 * the audio follows it as it does for smaller moves:
-			 * resetting would only be undone by the next frame. */
-			reset_audio_timing(source, data->timestamp, os_time);
-			in.timestamp = data->timestamp + source->timing_adjust;
-		}
+	if (under.reset_timing) {
+		/* reset_audio_timing(source, data->timestamp, os_time) */
+		source->timing_set = true;
+		source->timing_adjust = under.timing_adjust;
 	}
-
-	sync_offset = source->sync_offset;
-	in.timestamp += sync_offset;
-	in.timestamp -= source->resample_offset;
-
-	source->next_audio_sys_ts_min = source->next_audio_ts_min + source->timing_adjust;
-
-	/* A packet appended to the buffer ignores its timestamp, and so the
-	 * sync offset in it: after the offset changes, place the next packet
-	 * by its timestamp, whatever the previous offset was. Before the first
-	 * packet (no audio_ts yet) it is placed anyway. */
-	if (source->last_sync_offset != sync_offset) {
-		push_back = false;
-		source->last_sync_offset = sync_offset;
-	}
+	source->next_audio_sys_ts_min = under.next_audio_sys_ts_min;
+	source->last_sync_offset = under.last_sync_offset;
+	in.timestamp = under.timestamp;
+	push_back = under.push_back;
 
 	if (source->monitoring_type != OBS_MONITORING_TYPE_MONITOR_ONLY) {
 		if (push_back && source->audio_ts)

@@ -95,6 +95,10 @@
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"
 
+/* obs-source-audio-timing.c */
+
+#include "obs-source-audio-timing.h"
+
 /* obs-source.c */
 
 #include "media-io/audio-io.h"
