@@ -75,7 +75,8 @@ samples remain under `target/criterion/<benchmark>/<baseline>/`.
 
 The suite covers all exported bmem and vec2/3/4 shims, CRC at 64/4096/65536
 bytes, dstr concatenation/safe formatting/replacement at 128/4096 bytes,
-and the AVC/HEVC/AV1 parser entry points on structured synthetic packets.
+the dstr-libc case map, wide conversion, wide compare and wide search at
+128/4096 characters, and the AVC/HEVC/AV1 parser entry points on structured synthetic packets.
 AVC start-code cases scan a 256/16384-byte prefix. Packet comparisons include
 the allocation's reference-count prefix and metadata. Allocating batches
 hold at most 64 live outputs; allocation/free and reallocation have separate
