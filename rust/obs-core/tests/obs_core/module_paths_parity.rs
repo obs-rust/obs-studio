@@ -43,8 +43,12 @@ use obs_util::ffi::platform_nix::os_file_exists;
 use obs_util::ffi::platform_windows::os_file_exists;
 use proptest::prelude::*;
 
-/// A directory tree of empty files, removed on drop.
+/// A directory tree of empty files, removed on drop. The entries are under
+/// `root`, which is `ABOVE_ROOT` levels of `up/` below `base`, a new directory
+/// in the temporary directory: every directory a search reaches by climbing
+/// up to `ABOVE_ROOT` levels above `root` is the test's own.
 struct Tree {
+    base: PathBuf,
     root: PathBuf,
     /// The root as C writes paths: '/' separators.
     prefix: String,
@@ -55,12 +59,13 @@ static NEXT: AtomicUsize = AtomicUsize::new(0);
 impl Tree {
     fn new(entries: &[&str]) -> Self {
         let n = NEXT.fetch_add(1, Ordering::Relaxed);
-        let root =
+        let base =
             std::env::temp_dir().join(format!("obs-module-paths-{}-{n}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&base);
+        let root = base.clone();
         std::fs::create_dir_all(&root).unwrap();
         let prefix = root.to_str().unwrap().replace('\\', "/");
-        let tree = Self { root, prefix };
+        let tree = Self { base, root, prefix };
         for e in entries {
             tree.add(e);
         }
@@ -93,7 +98,7 @@ impl Tree {
 
 impl Drop for Tree {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.root);
+        let _ = std::fs::remove_dir_all(&self.base);
     }
 }
 
@@ -603,46 +608,121 @@ fn null_hook_leaves_the_path() {
 
 // ------------------------------------------------------------ proptests
 
-/// Pieces random paths are built from: the tree's names, separators, dots
-/// and the placeholder.
 fn piece() -> impl Strategy<Value = &'static str> {
-    prop::sample::select(vec![
-        "/",
-        "/",
-        "//",
-        "%module%",
-        "%module",
-        "module%",
-        ".",
-        "..",
-        "lib",
-        "LIB",
-        "a",
-        "b",
-        "f",
-        "g",
-        "x",
-        "y",
-        "stub",
-        "data",
-        "plugins",
-        "mods",
-        "bin",
-        "64bit",
-        "locale",
-        "en-US.ini",
-        ".so",
-        ".dll",
-        "sub",
-        "shared",
-        "p.q",
-        "\u{fc}",
-        " ",
-    ])
+    prop::sample::select(PIECES)
 }
 
+/// Pieces random paths are built from: the tree's names, separators, dots
+/// and the placeholder.
+const PIECES: &[&str] = &[
+    "/",
+    "/",
+    "//",
+    "%module%",
+    "%module",
+    "module%",
+    ".",
+    "..",
+    "lib",
+    "LIB",
+    "a",
+    "b",
+    "f",
+    "g",
+    "x",
+    "y",
+    "stub",
+    "data",
+    "plugins",
+    "mods",
+    "bin",
+    "64bit",
+    "locale",
+    "en-US.ini",
+    ".so",
+    ".dll",
+    "sub",
+    "shared",
+    "p.q",
+    "\u{fc}",
+    " ",
+];
+
+/// The most pieces in a random path.
+const MAX_PIECES: usize = 9;
+
+/// How many levels above the tree's root a random path can climb. A piece
+/// has at most two dots and no piece has both a dot and a '/' (checked by
+/// `climbing_above_the_root_stays_in_the_tree`), so each `..` takes at least
+/// one piece and the next one a separator piece before it (the first one gets
+/// the '/' after the root): k of them take at least 2k - 1 pieces.
+const ABOVE_ROOT: usize = MAX_PIECES.div_ceil(2);
+
 fn path() -> impl Strategy<Value = String> {
-    prop::collection::vec(piece(), 0..10).prop_map(|p| p.concat())
+    prop::collection::vec(piece(), 0..=MAX_PIECES).prop_map(|p| p.concat())
+}
+
+/// How many levels above the root `<root>/<rel>` climbs, by its components,
+/// at the deepest point: over the path with each `%module%` replaced by a
+/// module's name (what the search stats), and over the part before the first
+/// `%module%` (the directory the search lists).
+fn levels_above_root(rel: &str) -> usize {
+    fn climb(p: &str) -> usize {
+        let (mut depth, mut lowest) = (0isize, 0isize);
+        for c in p.split('/') {
+            match c {
+                "" | "." => {}
+                ".." => {
+                    depth -= 1;
+                    lowest = lowest.min(depth);
+                }
+                _ => depth += 1,
+            }
+        }
+        lowest.unsigned_abs()
+    }
+    let listed = rel.split("%module%").next().unwrap_or_default();
+    climb(&rel.replace("%module%", "name")).max(climb(listed))
+}
+
+#[test]
+fn climbing_above_the_root_stays_in_the_tree() {
+    // What ABOVE_ROOT relies on.
+    for p in PIECES {
+        assert!(p.matches('.').count() <= 2, "{p:?}");
+        assert!(!(p.contains('.') && p.contains('/')), "{p:?}");
+    }
+    assert_eq!(levels_above_root(""), 0);
+    assert_eq!(levels_above_root("plugins/../data"), 0);
+    assert_eq!(levels_above_root(".."), 1);
+    assert_eq!(levels_above_root("../"), 1);
+    assert_eq!(levels_above_root("...."), 0);
+    assert_eq!(levels_above_root("mods/../../.."), 2);
+    // The search lists <root>/.. for this one.
+    assert_eq!(levels_above_root("..%module%"), 1);
+    assert_eq!(levels_above_root("%module%/../.."), 1);
+    // The most a path of MAX_PIECES pieces climbs.
+    let most = [".."; ABOVE_ROOT].join("/");
+    assert!(most.matches("..").count() + most.matches('/').count() <= MAX_PIECES);
+    assert_eq!(levels_above_root(&most), ABOVE_ROOT);
+    // That many levels up is the tree's own directory, and holds only the
+    // way back down.
+    let tree = tree();
+    let top = (0..ABOVE_ROOT).fold(tree.root.clone(), |p, _| p.join(".."));
+    assert_eq!(
+        top.canonicalize().unwrap(),
+        tree.base.canonicalize().unwrap()
+    );
+    let mut dir = tree.base.clone();
+    for _ in 0..ABOVE_ROOT {
+        let names: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["up"]);
+        dir.push("up");
+    }
+    assert_eq!(dir, tree.root);
 }
 
 proptest! {
@@ -671,6 +751,10 @@ proptest! {
     #[test]
     fn find_matches_c_for_any_path(bin in path(), data in path(), ext in 0..EXTS.len(), hook in 0..HOOKS.len()) {
         // Rooted only: a relative search would glob the working directory.
+        // Neither path leaves the tree (a search of the temporary directory
+        // would race other processes).
+        prop_assert!(levels_above_root(&bin) <= ABOVE_ROOT, "bin {bin:?}");
+        prop_assert!(levels_above_root(&data) <= ABOVE_ROOT, "data {data:?}");
         let tree = TREE.with(|t| t.prefix.clone());
         let bin = Some(CString::new(format!("{tree}/{bin}")).unwrap());
         let data = Some(CString::new(format!("{tree}/{data}")).unwrap());
