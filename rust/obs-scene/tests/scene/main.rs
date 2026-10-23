@@ -6,6 +6,7 @@ mod blend;
 mod bounds;
 mod coords;
 mod extent;
+mod extent_parity;
 
 mod bounds_place;
 mod bounds_place_parity;
