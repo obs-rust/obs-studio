@@ -346,6 +346,9 @@ char *obs_find_module_file(obs_module_t *module, const char *file)
 
 char *obs_module_get_config_path(obs_module_t *module, const char *file)
 {
+	if (!module)
+		return NULL;
+
 	return obs_module_names_config_path(obs->module_config_path, module->mod_name, file);
 }
 
