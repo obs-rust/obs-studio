@@ -1174,6 +1174,7 @@
         "OBS::libobs",
         "OBS::opts-parser",
         "OBS::bpm",
+        "MbedTLS::mbedtls",
         "OBS::native-test-cmocka"
       ],
       "definitions": [
