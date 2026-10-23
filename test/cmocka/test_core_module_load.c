@@ -1186,6 +1186,10 @@ static void module_config_path(void **state)
 	assert_int_equal(obs_open_module(&mod, CORE_STUB_PATH, at(f, "/nodata")), MODULE_SUCCESS);
 	expect_config(f, mod, "f.json", "R/cfg/" OBS_STUB_NAME "/f.json");
 
+	/* No module: NULL, as obs_find_module_file() returns. */
+	assert_null(obs_module_get_config_path(NULL, "f.json"));
+	assert_null(obs_module_get_config_path(NULL, NULL));
+
 	dstr_free(&bin);
 }
 
