@@ -252,6 +252,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_profiler_io": {
+      "sources": [
+        "test/cmocka/test_profiler_io.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_platform": {
       "sources": [
         "test/cmocka/test_platform.c"
@@ -2772,6 +2781,9 @@
     },
     "test_profiler": {
       "target": "test_profiler"
+    },
+    "test_profiler_io": {
+      "target": "test_profiler_io"
     },
     "test_platform": {
       "target": "test_platform"
