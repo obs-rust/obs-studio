@@ -1,0 +1,21 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 88baacf0833f4d12e2a29f0804175420f3cb69490059de8df83758ceedc4af74 # shrinks to c = [0, 0, 0, 0], b = [0, 0, 0, 1], scale_filter = 0, blend_method = 0, blend_type = 0, is_scene = false, is_group = false
+cc b95095ac6294be012fe9a82e3d8715b2ec23048900680374bfdf4eb489526fb6 # shrinks to c = [0, 0, -1, 0], b = [0, 0, 0, 0], scale_filter = 0, blend_method = 0, blend_type = 0, is_scene = false, is_group = false
+cc b2378c9535df89fcf320d6bd9f3be1bedc07a3c4174b6eb20de241fd7dfb424d # shrinks to c = [0, 0, 0, 0], b = [0, 0, 0, 0], scale_filter = -1, blend_method = 0, blend_type = 0, is_scene = false, is_group = false
+cc 9ed8292a85241ea7062c7b87c72b010e6ea034fdb541afd88d220e189c8e0fff # shrinks to c = [0, 0, 0, 0], b = [0, 0, 0, 0], scale_filter = 0, blend_method = 2, blend_type = 0, is_scene = false, is_group = false
+cc 4539c98d8da084d25111e137a3e6928d4c01814ab4b9cba42ed08d2d96ed2c3b # shrinks to c = [0, 0, 0, 0], b = [0, 0, 0, 0], scale_filter = 0, blend_method = 0, blend_type = -1, is_scene = false, is_group = false
+cc c7f8f0429eec63d18611d486d82e9e3d66d8fe209eea14e0c24042aefc945406 # shrinks to bits = [1065353216, 0, 0, 0, 0, 1065353216, 0, 0, 0, 0, 1065353216, 0, 0, 1266679808, 0, 1073741824]
+cc 0288833b48aa46f5c2428702f5265bfa5b6c6f7b3db00d01b95f8b58ff597e71 # shrinks to filter = 2, sx = 1.0001, sy = 0.9998989
+cc 6cd03942926eecbc19ada057dd6f36dbee92d3373a5e6a85036895fbe5b5acb6 # shrinks to filter = -1, sx = NaN, sy = 0.99990004
+cc cb7f49b18c1c802d2b8bda8d7f1f9e0b7a915241d6325d98e8665a3e052bcf8c # shrinks to filter = 2, sx = 0.5, sy = 0.5
+cc 2d966ec8e453fc1aa1d6e4b8cff5102a8022040c2bfd90e7fe2a90247fead984 # shrinks to filter = 5, sx = 1.0001, sy = 1.0
+cc 30542ec77d6efa9052b7de2357a38b31b588fe2c88164e81b0b107d098170d13 # shrinks to filter = 5, sx = 1.0001, sy = 0.9998989
+cc 75df817b263ec4d38daf26651f1b8973346c3a49fbe87a75b844d29620f294b7 # shrinks to filter = 1, sx = 0.0, sy = 0.0
+cc 7e13e340b75603b7c314334cfcc752d051a8fb7cfc8f5814ac0141e3f4407a2c # shrinks to current = 0, source = 2, white = 0, upscale = false
+cc 2dcd87adbfb5bf9c66254110ef46725ebb812d7a6f5a5187fc46120836d6b00b # shrinks to current = 2, source = 3, white = 0, upscale = false
+cc f87d0175850086a5041c0c4945d80d2c1aea0ef77366de8cd21d78614a500fd0 # shrinks to filter = 2, sx = 0.5, sy = 0.9998989

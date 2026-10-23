@@ -1,0 +1,20 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc b3c3b196e5d4d0002b3adaed9659318c0edcb44a64c9b57601dee4141bb79096 # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: 0, crop_bottom: 0, bounds_crop_left: -1, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: 0, blend_method: 0, blend_type: 0, is_scene: false, is_group: false }
+cc 784b9dd302aecd51c4ab0cb57d64e0d6bb808aa153d458b66f6accca83eb167e # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: -1, crop_bottom: 0, bounds_crop_left: 0, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: 0, blend_method: 0, blend_type: 0, is_scene: false, is_group: false }
+cc 1b309fd5d5720d043ba01b5a256f38c6d965cf1a32d84f0c84636e526c22f819 # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: 0, crop_bottom: 0, bounds_crop_left: 0, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: -1, blend_method: 0, blend_type: 0, is_scene: false, is_group: false }
+cc 90bb136e77a46dab35fe4c901a40824257c85fcd7293e753b61b69948d73a7d2 # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: 0, crop_bottom: 0, bounds_crop_left: 0, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: 0, blend_method: -1, blend_type: 0, is_scene: false, is_group: false }
+cc 862376e9ffa8efc655fdc298a023bacefbdec5330d9e0229c6dd2d6e9d2983ba # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: 0, crop_bottom: 0, bounds_crop_left: 0, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: 0, blend_method: 0, blend_type: -1, is_scene: false, is_group: false }
+cc a9e17eab44d17d680b6590f6d66d9958670c0bb1e5f366f4366b858c30a9b460 # shrinks to t = Triggers { crop_left: 0, crop_top: 0, crop_right: 0, crop_bottom: 0, bounds_crop_left: 0, bounds_crop_top: 0, bounds_crop_right: 0, bounds_crop_bottom: 0, scale_filter: 0, blend_method: 0, blend_type: 0, is_scene: true, is_group: true }
+cc d3d2dba64402c6b0cf1bb1b8d114c73b49d92e0ce59d92d12bb03a866d8366c3 # shrinks to tx = 0, ty = 0, entry = 13, bits = 0
+cc 012658c1182854da91be61817433ad6c22c859880f86bcfa57332d631d44041f # shrinks to filter = -1, sx = 0.99999976, sy = 1.0001
+cc 9bc4ca7e41dd4916d904e40359807b8e013655ae8783e4d689e650c6fdca7134 # shrinks to filter = -1, sx = NaN, sy = 0.99999976
+cc 0a5b5e8b14b14aa27db6e505f6519e528c5b0ad67402a379d52e1710a00a834a # shrinks to filter = -1, sx = 0.5, sy = 0.9998998
+cc a4e957405924085b6bfe7927fdd812822cef9bb6357d0cf6e5e747ef4b571f67 # shrinks to filter = 5, sx = 1.0, sy = 1.0001
+cc 13cacf6952ba5ee0a7eaf16c01d5dc08b5db4a55358bc9c17404a6a572581201 # shrinks to filter = 5, sx = 0.9998998, sy = 1.0000994
+cc c180ed653dfa01527e064904efa4088677cd9f1e142ce341b795440d9221df84 # shrinks to filter = 1, sx = 0.0, sy = 0.0
+cc e51317f14ed2f117fefe0853f8ba10dee251c0f35dbcf19f7691fa828b647b17 # shrinks to filter = 3, sx = 0.9998998, sy = 0.9998998
