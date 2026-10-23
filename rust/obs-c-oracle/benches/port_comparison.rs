@@ -14,6 +14,8 @@ mod codecs;
 mod conversions;
 #[path = "port_comparison/core.rs"]
 mod core_units;
+#[path = "port_comparison/encoder_roi.rs"]
+mod encoder_roi;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
 #[path = "port_comparison/media_remux.rs"]
@@ -76,6 +78,7 @@ fn comparisons(criterion: &mut Criterion) {
     module_source_rules::benchmarks(criterion);
     scene_crop::benchmarks(criterion);
     source_deinterlace_pacing::benchmarks(criterion);
+    encoder_roi::benchmarks(criterion);
 }
 
 criterion_group!(benches, comparisons);
