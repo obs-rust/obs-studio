@@ -356,22 +356,10 @@ void *obs_get_module_lib(obs_module_t *module)
 
 char *obs_find_module_file(obs_module_t *module, const char *file)
 {
-	struct dstr output = {0};
-
-	if (!file)
-		file = "";
-
 	if (!module)
 		return NULL;
 
-	dstr_copy(&output, module->data_path);
-	if (!dstr_is_empty(&output) && dstr_end(&output) != '/' && *file)
-		dstr_cat_ch(&output, '/');
-	dstr_cat(&output, file);
-
-	if (!os_file_exists(output.array))
-		dstr_free(&output);
-	return output.array;
+	return obs_module_paths_find_file(module->data_path, file);
 }
 
 char *obs_module_get_config_path(obs_module_t *module, const char *file)
@@ -583,17 +571,12 @@ bool obs_load_core_modules(void)
 	return obs->core_modules_loaded;
 }
 
-static void find_modules_in_path(struct obs_module_path *omp, obs_find_module_callback2_t callback, void *param);
-
 void obs_load_plugins(struct obs_runtime_module_info *info, struct obs_module_failure_info *error)
 {
-	struct obs_module_path omp = {.bin = (char *)(uintptr_t)info->path_info.binary,
-				      .data = (char *)(uintptr_t)info->path_info.data,
-				      .type = info->type};
-
 	struct fail_info failure = {0};
 
-	find_modules_in_path(&omp, load_all_callback, &failure);
+	obs_module_paths_find(info->path_info.binary, info->path_info.data, info->type, get_module_extension(),
+			      obs_host_add_module_extension, load_all_callback, &failure);
 
 	error->count = failure.fail_count;
 	error->failed_modules = strlist_split(failure.fail_modules.array, ';', false);
@@ -614,29 +597,6 @@ void obs_post_load_modules(void)
 	for (obs_module_t *mod = obs->first_module; !!mod; mod = mod->next)
 		if (mod->post_load)
 			mod->post_load();
-}
-
-static inline void make_data_dir(struct dstr *parsed_data_dir, const char *data_dir, const char *name)
-{
-	dstr_copy(parsed_data_dir, data_dir);
-	dstr_replace(parsed_data_dir, "%module%", name);
-	if (dstr_end(parsed_data_dir) == '/')
-		dstr_resize(parsed_data_dir, parsed_data_dir->len - 1);
-}
-
-static char *make_data_directory(const char *module_name, const char *data_dir)
-{
-	struct dstr parsed_data_dir = {0};
-	bool found = false;
-
-	make_data_dir(&parsed_data_dir, data_dir, module_name);
-
-	found = os_file_exists(parsed_data_dir.array);
-
-	if (!found && astrcmpi_n(module_name, "lib", 3) == 0)
-		make_data_dir(&parsed_data_dir, data_dir, module_name + 3);
-
-	return parsed_data_dir.array;
 }
 
 /* Function to find a specifically defined module. Used for loading core modules by name.
@@ -661,7 +621,7 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 	dstr_cat(&module_path, get_module_extension());
 
 	char *parsed_data_directory;
-	parsed_data_directory = make_data_directory(name, info->path_info.data);
+	parsed_data_directory = obs_module_paths_data_dir(name, info->path_info.data);
 
 	if (os_file_exists(module_path.array)) {
 		struct obs_module_info2 callback_info = {.bin_path = module_path.array,
@@ -695,115 +655,6 @@ bool obs_is_legacy_module(obs_module_t *module)
 	return module->module_type == OBS_MODULE_TYPE_LEGACY_PLUGIN;
 }
 
-static bool parse_binary_from_directory(struct dstr *parsed_bin_path, const char *bin_path, const char *file)
-{
-	struct dstr directory = {0};
-	bool found = true;
-
-	dstr_copy(&directory, bin_path);
-	dstr_replace(&directory, "%module%", file);
-	if (dstr_end(&directory) != '/')
-		dstr_cat_ch(&directory, '/');
-
-	dstr_copy_dstr(parsed_bin_path, &directory);
-	dstr_cat(parsed_bin_path, file);
-	obs_host_add_module_extension(parsed_bin_path);
-
-	if (!os_file_exists(parsed_bin_path->array)) {
-		/* Legacy fallback: Check for plugin with .so suffix*/
-		dstr_cat(parsed_bin_path, ".so");
-		/* if the file doesn't exist, check with 'lib' prefix */
-		dstr_copy_dstr(parsed_bin_path, &directory);
-		dstr_cat(parsed_bin_path, "lib");
-		dstr_cat(parsed_bin_path, file);
-		dstr_cat(parsed_bin_path, get_module_extension());
-
-		/* if neither exist, don't include this as a library */
-		if (!os_file_exists(parsed_bin_path->array)) {
-			dstr_free(parsed_bin_path);
-			found = false;
-		}
-	}
-
-	dstr_free(&directory);
-	return found;
-}
-
-static void process_found_module(struct obs_module_path *omp, const char *path, bool directory,
-				 obs_find_module_callback2_t callback, void *param)
-{
-	struct obs_module_info2 info;
-	struct dstr name = {0};
-	struct dstr parsed_bin_path = {0};
-	const char *file;
-	char *parsed_data_dir;
-	bool bin_found = true;
-
-	file = strrchr(path, '/');
-	file = file ? (file + 1) : path;
-
-	if (strcmp(file, ".") == 0 || strcmp(file, "..") == 0)
-		return;
-
-	dstr_copy(&name, file);
-	char *ext = strrchr(name.array, '.');
-	if (ext)
-		dstr_resize(&name, ext - name.array);
-
-	if (!directory) {
-		dstr_copy(&parsed_bin_path, path);
-	} else {
-		bin_found = parse_binary_from_directory(&parsed_bin_path, omp->bin, name.array);
-	}
-
-	parsed_data_dir = make_data_directory(name.array, omp->data);
-
-	if (parsed_data_dir && bin_found) {
-		info.bin_path = parsed_bin_path.array;
-		info.data_path = parsed_data_dir;
-		info.name = name.array;
-		info.type = omp->type;
-		callback(param, &info);
-	}
-
-	bfree(parsed_data_dir);
-	dstr_free(&name);
-	dstr_free(&parsed_bin_path);
-}
-
-static void find_modules_in_path(struct obs_module_path *omp, obs_find_module_callback2_t callback, void *param)
-{
-	struct dstr search_path = {0};
-	char *module_start;
-	bool search_directories = false;
-	os_glob_t *gi;
-
-	dstr_copy(&search_path, omp->bin);
-	module_start = strstr(search_path.array, "%module%");
-	if (module_start) {
-		dstr_resize(&search_path, module_start - search_path.array);
-		search_directories = true;
-	}
-
-	if (!dstr_is_empty(&search_path) && dstr_end(&search_path) != '/')
-		dstr_cat_ch(&search_path, '/');
-
-	dstr_cat_ch(&search_path, '*');
-	if (!search_directories)
-		dstr_cat(&search_path, get_module_extension());
-
-	if (os_glob(search_path.array, 0, &gi) == 0) {
-		for (size_t i = 0; i < gi->gl_pathc; i++) {
-			if (search_directories == gi->gl_pathv[i].directory)
-				process_found_module(omp, gi->gl_pathv[i].path, search_directories, callback, param);
-		}
-
-		os_globfree(gi);
-	}
-
-	dstr_free(&search_path);
-}
-
 void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
 {
 	if (!obs)
@@ -811,7 +662,8 @@ void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
 
 	for (size_t i = 0; i < obs->module_paths.num; i++) {
 		struct obs_module_path *omp = obs->module_paths.array + i;
-		find_modules_in_path(omp, callback, param);
+		obs_module_paths_find(omp->bin, omp->data, omp->type, get_module_extension(),
+				      obs_host_add_module_extension, callback, param);
 	}
 }
 

@@ -804,6 +804,26 @@ extern void obs_context_wait(struct obs_context_data *context);
 extern void obs_context_data_setname(struct obs_context_data *context, const char *name);
 extern void obs_context_data_setname_ht(struct obs_context_data *context, const char *name, void *phead);
 
+/* Module search paths (obs-module-paths.c): pure, no libobs state.
+ * obs_module_paths_data_dir(): a bmalloc'd data path for the module name,
+ * every %module% of data_dir replaced by it and one trailing '/' taken off;
+ * for a name that starts with "lib" (any case) whose path does not exist, the
+ * path without "lib". NULL when that is empty.
+ * obs_module_paths_find(): calls callback for every module that the search
+ * path bin/data has: *ext files in bin, or, when bin has %module%, the
+ * directories where bin ends before it, with the binary <name> plus
+ * add_extension(), else lib<name><ext>. The info is valid for the call.
+ * obs_module_paths_find_file(): a bmalloc'd data_path '/' file, or NULL when
+ * that does not exist. obs-module.c keeps the search path list, the module
+ * list and the loading, and passes get_module_extension() and
+ * obs_host_add_module_extension(). Not exported. */
+typedef void (*obs_module_add_extension_t)(struct dstr *bin_path);
+
+char *obs_module_paths_data_dir(const char *module_name, const char *data_dir);
+void obs_module_paths_find(const char *bin, const char *data, enum obs_runtime_module_type type, const char *ext,
+			   obs_module_add_extension_t add_extension, obs_find_module_callback2_t callback, void *param);
+char *obs_module_paths_find_file(const char *data_path, const char *file);
+
 /* Context names (obs-context-names.c): pure, no libobs state. Both return a
  * bmalloc'd name, or NULL, that the caller owns. obs_context_name_dup():
  * NULL for a private context without a name, "__unnamed%04lld" from
