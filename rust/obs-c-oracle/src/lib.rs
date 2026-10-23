@@ -68,6 +68,7 @@ pub mod hotkey_translations;
 pub mod image_file;
 pub mod lexer;
 pub mod missing_files;
+pub mod module_locale;
 pub mod module_names;
 pub mod module_paths;
 pub mod nal;
