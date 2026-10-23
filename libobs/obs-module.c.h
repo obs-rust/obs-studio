@@ -273,32 +273,32 @@ const char *obs_get_module_version(obs_module_t *module)
 
 void obs_module_add_source(obs_module_t *module, const char *id)
 {
-	char *source_id = bstrdup(id);
 	if (module) {
+		char *source_id = bstrdup(id);
 		da_push_back(module->sources, &source_id);
 	}
 }
 
 void obs_module_add_output(obs_module_t *module, const char *id)
 {
-	char *output_id = bstrdup(id);
 	if (module) {
+		char *output_id = bstrdup(id);
 		da_push_back(module->outputs, &output_id);
 	}
 }
 
 void obs_module_add_encoder(obs_module_t *module, const char *id)
 {
-	char *encoder_id = bstrdup(id);
 	if (module) {
+		char *encoder_id = bstrdup(id);
 		da_push_back(module->encoders, &encoder_id);
 	}
 }
 
 void obs_module_add_service(obs_module_t *module, const char *id)
 {
-	char *service_id = bstrdup(id);
 	if (module) {
+		char *service_id = bstrdup(id);
 		da_push_back(module->services, &service_id);
 	}
 }
@@ -845,12 +845,6 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 		goto error;
 	}
 
-	/* NOTE: The assignment of data.module must occur before memcpy! */
-	if (loadingModule) {
-		char *source_id = bstrdup(info->id);
-		da_push_back(loadingModule->sources, &source_id);
-	}
-
 	memcpy(&data, info, size);
 
 	if (data.type == OBS_SOURCE_TYPE_TRANSITION) {
@@ -920,6 +914,12 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 	if (array)
 		da_push_back(*array, &data);
 	da_push_back(obs->source_types, &data);
+
+	/* The loading module names the type only once it is registered. */
+	if (loadingModule) {
+		char *source_id = bstrdup(info->id);
+		da_push_back(loadingModule->sources, &source_id);
+	}
 	return;
 
 error:

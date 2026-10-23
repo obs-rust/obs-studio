@@ -1741,6 +1741,14 @@ area.
   to them; before, the type was whatever was in memory. *All*, 2026-10-23.
   Issue [#1900](https://github.com/obs-rust/obs-studio/issues/1900), PR
   [#1906](https://github.com/obs-rust/obs-studio/pull/1906).
+- A source type that a plugin fails to register (libobs rejects it, for
+  example a composite audio source or one without a name) is no longer
+  counted as that plugin's: its sources show as missing in the Sources list
+  instead of as provided by a loaded plugin, and the type is not credited to
+  the plugin if something else registers it later. A plugin or script that
+  adds a type id to no module (NULL) no longer leaks a copy of it. *All*,
+  pending merge. Issue [#1953](https://github.com/obs-rust/obs-studio/issues/1953), PR
+  [#1960](https://github.com/obs-rust/obs-studio/pull/1960).
 
 ### Security hardening
 
