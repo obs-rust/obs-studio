@@ -17,9 +17,13 @@
  *   mode ON picks libobs-with-rust through LD_LIBRARY_PATH; a child that falls
  *   back to the C libobs from its RUNPATH tests the C build in both modes.
  *
+ * - core_module_paths: the binary and data paths each core module gets.
+ *
  * The cases after those ("module search paths") pin how modules are found:
  * the search paths, the module info list, the module file lookup and the data
- * path a plugin gets.
+ * path a plugin gets. Then ("module names and files") how a module is named
+ * from its binary, where its config and manifest files are, and how the safe
+ * and disabled module lists match names.
  */
 
 #include <stdarg.h>
@@ -38,12 +42,16 @@
 #include <unistd.h>
 
 #include <obs.h>
+#include <obs-module.h>
 #include <obsconfig.h>
 #include <obs-core-modules.h>
 #include <util/dstr.h>
 #include <util/platform.h>
 
 #define SKIP_CODE 77
+
+/* The name of CORE_STUB_PATH's module: its file name without ".so". */
+#define OBS_STUB_NAME "core_module_stub"
 
 /* The libobs.so this process mapped, as the loader opened it; false if none. */
 static bool mapped_libobs(char *path, size_t size)
@@ -89,6 +97,12 @@ static int run_child(void)
 		const char *name = obs_core_modules[i];
 		printf("module %s loaded=%d disabled=%d\n", name, obs_get_module(name) ? 1 : 0,
 		       obs_get_disabled_module(name) ? 1 : 0);
+		obs_module_t *mod = obs_get_module(name);
+		if (!mod)
+			mod = obs_get_disabled_module(name);
+		if (mod)
+			printf("paths %s\t%s\t%s\t%s\n", name, obs_get_module_file_name(mod),
+			       obs_get_module_binary_path(mod), obs_get_module_data_path(mod));
 	}
 	fflush(stdout);
 
@@ -100,12 +114,25 @@ static int run_child(void)
 
 enum scenario { ALL_PRESENT, MISSING_DEPENDENCY, MISSING_FILE };
 
+/* What the child reported for one core module: its file name, binary path
+ * and data path. */
+struct child_paths {
+	bool seen;
+	char file[256];
+	char bin[1024];
+	char data[1024];
+};
+
 struct child_result {
 	bool skipped;
 	int load_result;
 	bool loaded[256];
 	bool disabled[256];
 	char libobs[4096];
+	/* The scenario's root, kept after it is removed. */
+	char root[1024];
+	/* NULL, or one per core module. */
+	struct child_paths *paths;
 };
 
 static bool copy_file(const char *from, const char *to, mode_t mode)
@@ -156,6 +183,24 @@ static void parse_child_output(FILE *f, struct child_result *res)
 			res->libobs[strcspn(res->libobs, "\n")] = '\0';
 		} else if (sscanf(line, "result %d", &res->load_result) == 1) {
 			continue;
+		} else if (strncmp(line, "paths ", 6) == 0) {
+			line[strcspn(line, "\n")] = '\0';
+			char *fields[4] = {line + 6, NULL, NULL, NULL};
+			for (int k = 1; k < 4 && fields[k - 1]; k++) {
+				char *tab = strchr(fields[k - 1], '\t');
+				if (tab) {
+					*tab = '\0';
+					fields[k] = tab + 1;
+				}
+			}
+			int i = index_of(fields[0]);
+			if (i >= 0 && res->paths && fields[3]) {
+				struct child_paths *p = &res->paths[i];
+				p->seen = true;
+				snprintf(p->file, sizeof(p->file), "%s", fields[1]);
+				snprintf(p->bin, sizeof(p->bin), "%s", fields[2]);
+				snprintf(p->data, sizeof(p->data), "%s", fields[3]);
+			}
 		} else if (sscanf(line, "module %511s loaded=%d disabled=%d", name, &loaded, &failed) == 3) {
 			int i = index_of(name);
 			if (i >= 0) {
@@ -185,13 +230,16 @@ static void rm_rf(const char *path)
  * module comes after it. */
 static void run_scenario(enum scenario scenario, struct child_result *res)
 {
+	struct child_paths *paths = res->paths;
 	memset(res, 0, sizeof(*res));
+	res->paths = paths;
 	res->load_result = -1;
 
 	const char *tmp = getenv("TMPDIR");
 	struct dstr root = {0};
 	dstr_printf(&root, "%s/obs-core-load-XXXXXX", tmp && *tmp ? tmp : "/tmp");
 	assert_non_null(mkdtemp(root.array));
+	snprintf(res->root, sizeof(res->root), "%s", root.array);
 
 	struct dstr bin_dir = {0}, exe = {0}, mod_dir = {0};
 	dstr_printf(&bin_dir, "%s/bin", root.array);
@@ -412,7 +460,7 @@ static void module_path_type(void **state)
 static void all_present(void **state)
 {
 	UNUSED_PARAMETER(state);
-	struct child_result res;
+	struct child_result res = {0};
 	run_scenario(ALL_PRESENT, &res);
 	if (res.skipped)
 		skip();
@@ -425,7 +473,7 @@ static void all_present(void **state)
 static void missing_dependency(void **state)
 {
 	UNUSED_PARAMETER(state);
-	struct child_result res;
+	struct child_result res = {0};
 	run_scenario(MISSING_DEPENDENCY, &res);
 	if (res.skipped)
 		skip();
@@ -441,7 +489,7 @@ static void missing_dependency(void **state)
 static void missing_file(void **state)
 {
 	UNUSED_PARAMETER(state);
-	struct child_result res;
+	struct child_result res = {0};
 	run_scenario(MISSING_FILE, &res);
 	if (res.skipped)
 		skip();
@@ -454,7 +502,7 @@ static void missing_file(void **state)
 static void same_libobs(void **state)
 {
 	UNUSED_PARAMETER(state);
-	struct child_result res;
+	struct child_result res = {0};
 	run_scenario(ALL_PRESENT, &res);
 	if (res.skipped)
 		skip();
@@ -469,6 +517,43 @@ static void same_libobs(void **state)
 	if (strcmp(parent_real, child_real) != 0)
 		print_error("child loaded %s, this process runs on %s\n", child_real, parent_real);
 	assert_string_equal(child_real, parent_real);
+}
+
+/* Every core module, loaded or not, gets "<exe dir>/../" OBS_PLUGIN_PATH
+ * "/<name>.so" as its binary path, its file name after the last '/', and
+ * "<exe dir>/../" OBS_DATA_PATH "/obs-modules/core/<name>" as its data path,
+ * whether or not that exists (obs-rust/obs-studio#1876). The first one, whose
+ * dependency is missing, is a disabled module with the same paths. */
+static void core_module_paths(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct child_paths *paths = calloc(256, sizeof(*paths));
+	assert_non_null(paths);
+	struct child_result res = {.paths = paths};
+	run_scenario(MISSING_DEPENDENCY, &res);
+	if (res.skipped) {
+		free(paths);
+		skip();
+	}
+
+	assert_true(res.disabled[0]);
+	for (unsigned int i = 0; i < obs_core_modules_count; i++) {
+		const char *name = obs_core_modules[i];
+		struct dstr bin = {0}, data = {0}, file = {0};
+		dstr_printf(&bin, "%s/bin/../" OBS_PLUGIN_PATH "/%s.so", res.root, name);
+		dstr_printf(&data, "%s/bin/../" OBS_DATA_PATH "/obs-modules/core/%s", res.root, name);
+		dstr_printf(&file, "%s.so", name);
+		if (!paths[i].seen)
+			print_error("core module '%s' reported no paths\n", name);
+		assert_true(paths[i].seen);
+		assert_string_equal(paths[i].file, file.array);
+		assert_string_equal(paths[i].bin, bin.array);
+		assert_string_equal(paths[i].data, data.array);
+		dstr_free(&bin);
+		dstr_free(&data);
+		dstr_free(&file);
+	}
+	free(paths);
 }
 
 /* --------------------------------------------------- module search paths */
@@ -933,6 +1018,328 @@ static void load_plugins_data_path(void **state)
 	dstr_free(&data);
 }
 
+/* ------------------------------------------------ module names and files */
+
+/*
+ * How a module is named from its binary (obs_open_module,
+ * obs_create_disabled_module: obs_get_module_file_name, the name that
+ * obs_get_module and obs_get_disabled_module look up), where its config file
+ * is (obs_module_get_config_path) and its manifest (obs_get_module_id), and
+ * how the safe and disabled module lists match names (obs_add_safe_module,
+ * obs_add_disabled_module, obs_load_plugins) (obs-rust/obs-studio#1876). The
+ * name shows in the config path, which is "<config>/<name>/<file>".
+ *
+ * Characterized, not endorsed:
+ * - The name is the file name without its last three bytes (the length of
+ *   ".so"), whatever they are: "noext" is "no", "x.dll" is "x.".
+ * - A file name of three bytes, or ".so", has a NULL name: its config path is
+ *   "<config>//<file>". (A name lookup then dereferences it, so none is made.)
+ * - A module without a config path, or an empty one, has a relative config
+ *   path; only one '/' is checked at the end of the config path.
+ * - A module without a data path, or an empty one, reads "manifest.json" in
+ *   the working directory.
+ * - The safe list and the disabled list match whole names, case-sensitively.
+ *   The disabled list does not apply to core modules.
+ */
+
+/* Shuts the libobs of the fixture down and starts a new one. */
+static void restart(struct paths_fixture *f, const char *config)
+{
+	if (f->started)
+		obs_shutdown();
+	f->started = obs_startup("en-US", config, NULL);
+	assert_true(f->started);
+}
+
+static void write_text(struct paths_fixture *f, const char *rel, const char *text)
+{
+	make(f, rel);
+	FILE *file = fopen(at(f, rel), "wb");
+	assert_non_null(file);
+	assert_int_equal(fputs(text, file) >= 0, 1);
+	fclose(file);
+}
+
+static obs_module_t *disabled_module(const char *path, const char *data)
+{
+	obs_module_t *mod = NULL;
+	assert_true(obs_create_disabled_module(&mod, path, data, OBS_MODULE_DISABLED));
+	assert_non_null(mod);
+	return mod;
+}
+
+static void expect_config(struct paths_fixture *f, obs_module_t *mod, const char *file, const char *expected)
+{
+	char *path = obs_module_get_config_path(mod, file);
+	assert_non_null(path);
+	char rel[1024];
+	bool was_null;
+	copy_rel(rel, sizeof(rel), f->root.array, path, &was_null);
+	assert_string_equal(rel, expected);
+	bfree(path);
+}
+
+/* The file name and name of a module with the binary path, the name as its
+ * config path under "R/cfg" shows it. */
+static void expect_names(struct paths_fixture *f, const char *path, const char *file, const char *config)
+{
+	obs_module_t *mod = disabled_module(path, at(f, "/nodata"));
+	assert_string_equal(obs_get_module_binary_path(mod), path);
+	const char *bin = obs_get_module_binary_path(mod);
+	const char *name = obs_get_module_file_name(mod);
+	assert_string_equal(name, file);
+	/* The file name points into the binary path. */
+	assert_ptr_equal(name, bin + strlen(bin) - strlen(file));
+	expect_config(f, mod, "f", config);
+}
+
+/* The file name is after the last '/'; the name is the file name without its
+ * last three bytes. */
+static void module_names(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	restart(f, at(f, "/cfg"));
+
+	expect_names(f, at(f, "/n/stub.so"), "stub.so", "R/cfg/stub/f");
+	expect_names(f, at(f, "/n/a.b.so"), "a.b.so", "R/cfg/a.b/f");
+	expect_names(f, at(f, "/n/libz.so"), "libz.so", "R/cfg/libz/f");
+	expect_names(f, at(f, "/n/LIBZ.SO"), "LIBZ.SO", "R/cfg/LIBZ/f");
+	expect_names(f, at(f, "/n/noext"), "noext", "R/cfg/no/f");
+	expect_names(f, at(f, "/n/x.dll"), "x.dll", "R/cfg/x./f");
+	expect_names(f, at(f, "/n/d.so/x.so"), "x.so", "R/cfg/x/f");
+	expect_names(f, at(f, "/n/a\\b.so"), "a\\b.so", "R/cfg/a\\b/f");
+	expect_names(f, at(f, "/n/sp ace.so"), "sp ace.so", "R/cfg/sp ace/f");
+	expect_names(f, at(f, "//n//two.so"), "two.so", "R/cfg/two/f");
+	expect_names(f, "plain.so", "plain.so", "R/cfg/plain/f");
+	expect_names(f, "abcd", "abcd", "R/cfg/a/f");
+
+	/* Looked up by name, the newest first. */
+	obs_module_t *stub = obs_get_disabled_module("stub");
+	assert_non_null(stub);
+	assert_string_equal(obs_get_module_file_name(stub), "stub.so");
+	assert_non_null(obs_get_disabled_module("a.b"));
+	assert_non_null(obs_get_disabled_module("x."));
+	assert_null(obs_get_disabled_module("stub.so"));
+	assert_null(obs_get_disabled_module("x.dll"));
+	assert_null(obs_get_disabled_module("Stub"));
+	assert_null(obs_get_module("stub"));
+
+	/* A loaded module is named the same way. */
+	obs_module_t *mod = NULL;
+	assert_int_equal(obs_open_module(&mod, CORE_STUB_PATH, at(f, "/nodata")), MODULE_SUCCESS);
+	const char *slash = strrchr(CORE_STUB_PATH, '/');
+	assert_string_equal(obs_get_module_file_name(mod), slash ? slash + 1 : CORE_STUB_PATH);
+	assert_string_equal(obs_get_module_binary_path(mod), CORE_STUB_PATH);
+	assert_ptr_equal(obs_get_module(OBS_STUB_NAME), mod);
+	assert_null(obs_get_disabled_module(OBS_STUB_NAME));
+
+	/* Last: names that are NULL. */
+	expect_names(f, at(f, "/n/abc"), "abc", "R/cfg//f");
+	expect_names(f, at(f, "/n/.so"), ".so", "R/cfg//f");
+}
+
+/* obs_module_get_config_path(): the config path, one '/' when it has none at
+ * the end, the name, '/', the file. */
+static void module_config_path(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	const char *stub = at(f, "/n/stub.so");
+	struct dstr bin = {0};
+	dstr_copy(&bin, stub);
+
+	restart(f, at(f, "/cfg"));
+	obs_module_t *mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "R/cfg/stub/f.json");
+	expect_config(f, mod, "a/b.ini", "R/cfg/stub/a/b.ini");
+	expect_config(f, mod, "/abs", "R/cfg/stub//abs");
+	expect_config(f, mod, "", "R/cfg/stub/");
+	expect_config(f, mod, NULL, "R/cfg/stub/");
+
+	restart(f, at(f, "/cfg/"));
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "R/cfg/stub/f.json");
+
+	restart(f, at(f, "/cfg//"));
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "R/cfg//stub/f.json");
+
+	restart(f, "/");
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "/stub/f.json");
+
+	restart(f, "rel");
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "rel/stub/f.json");
+
+	restart(f, "");
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "stub/f.json");
+	expect_config(f, mod, NULL, "stub/");
+
+	restart(f, NULL);
+	mod = disabled_module(bin.array, at(f, "/nodata"));
+	expect_config(f, mod, "f.json", "stub/f.json");
+
+	/* A loaded module too. */
+	restart(f, at(f, "/cfg"));
+	mod = NULL;
+	assert_int_equal(obs_open_module(&mod, CORE_STUB_PATH, at(f, "/nodata")), MODULE_SUCCESS);
+	expect_config(f, mod, "f.json", "R/cfg/" OBS_STUB_NAME "/f.json");
+
+	dstr_free(&bin);
+}
+
+#define MANIFEST "{\"id\": \"%s\", \"version\": \"1.2\", \"display_name\": \"Shown\"}"
+
+static void write_manifest(struct paths_fixture *f, const char *dir, const char *id)
+{
+	struct dstr rel = {0}, text = {0};
+	dstr_printf(&rel, "%s/manifest.json", dir);
+	dstr_printf(&text, MANIFEST, id);
+	write_text(f, rel.array, text.array);
+	dstr_free(&rel);
+	dstr_free(&text);
+}
+
+static void expect_id(obs_module_t *mod, const char *id)
+{
+	if (!id) {
+		assert_null(obs_get_module_id(mod));
+		return;
+	}
+	assert_non_null(obs_get_module_id(mod));
+	assert_string_equal(obs_get_module_id(mod), id);
+}
+
+/* The manifest is "manifest.json" in the data path, with one '/' between
+ * them. */
+static void module_manifest(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	write_manifest(f, "/m1", "m1-id");
+	write_manifest(f, "/m1/sub", "sub-id");
+	make(f, "/m2/");
+	struct dstr bin = {0};
+	dstr_copy(&bin, at(f, "/n/stub.so"));
+	const char *stub = bin.array;
+
+	obs_module_t *mod = disabled_module(stub, at(f, "/m1"));
+	expect_id(mod, "m1-id");
+	assert_string_equal(obs_get_module_version(mod), "1.2");
+	assert_string_equal(obs_get_module_name(mod), "Shown");
+	expect_id(disabled_module(stub, at(f, "/m1/")), "m1-id");
+	expect_id(disabled_module(stub, at(f, "/m1/sub")), "sub-id");
+	expect_id(disabled_module(stub, at(f, "/m2")), NULL);
+	expect_id(disabled_module(stub, at(f, "/none")), NULL);
+	expect_id(disabled_module(stub, at(f, "/m1/manifest.json")), NULL);
+
+	/* No data path: the working directory's manifest. */
+	char cwd[4096];
+	assert_non_null(getcwd(cwd, sizeof(cwd)));
+	assert_int_equal(chdir(at(f, "/m1")), 0);
+	obs_module_t *empty = disabled_module(stub, "");
+	obs_module_t *null = disabled_module(stub, NULL);
+	assert_int_equal(chdir(at(f, "/m2")), 0);
+	obs_module_t *empty_none = disabled_module(stub, "");
+	assert_int_equal(chdir(cwd), 0);
+	expect_id(empty, "m1-id");
+	expect_id(null, "m1-id");
+	expect_id(empty_none, NULL);
+
+	/* A loaded module reads it the same way. */
+	mod = NULL;
+	assert_int_equal(obs_open_module(&mod, CORE_STUB_PATH, at(f, "/m1/sub")), MODULE_SUCCESS);
+	expect_id(mod, "sub-id");
+	dstr_free(&bin);
+}
+
+/* Lays out plugins a, b and bb, loads them with obs_load_plugins() as the
+ * type, and checks which are loaded ('l') and which disabled ('d'). */
+static void expect_loaded(struct paths_fixture *f, enum obs_runtime_module_type type, const char *expected)
+{
+	struct dstr bin = {0}, data = {0};
+	dstr_copy(&bin, at(f, "/pl"));
+	dstr_copy(&data, at(f, "/pd/%module%"));
+	struct obs_runtime_module_info info = {
+		.path_info = {.binary = bin.array, .data = data.array},
+		.type = type,
+	};
+	struct obs_module_failure_info failures = {0};
+	obs_load_plugins(&info, &failures);
+	assert_int_equal(failures.count, 0);
+	obs_module_failure_info_free(&failures);
+
+	const char *names[] = {"a", "b", "bb"};
+	char got[4] = {0};
+	for (size_t i = 0; i < 3; i++) {
+		bool loaded = obs_get_module(names[i]) != NULL;
+		bool off = obs_get_disabled_module(names[i]) != NULL;
+		got[i] = loaded && !off ? 'l' : !loaded && off ? 'd' : '?';
+	}
+	assert_string_equal(got, expected);
+	dstr_free(&bin);
+	dstr_free(&data);
+}
+
+/* The safe list, when it is not empty, holds the only modules that load; the
+ * disabled list holds modules that do not. Whole names, case-sensitive. */
+static void safe_and_disabled_modules(void **state)
+{
+	struct paths_fixture *f = paths_begin(state);
+	make(f, "/pd/");
+	make(f, "/pl/");
+	assert_true(copy_file(CORE_STUB_PATH, at(f, "/pl/a.so"), 0755));
+	assert_true(copy_file(CORE_STUB_PATH, at(f, "/pl/b.so"), 0755));
+	assert_true(copy_file(CORE_STUB_PATH, at(f, "/pl/bb.so"), 0755));
+
+	restart(f, NULL);
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "lll");
+
+	restart(f, NULL);
+	obs_add_safe_module("a");
+	obs_add_safe_module("bb");
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "ldl");
+
+	restart(f, NULL);
+	obs_add_safe_module("A");
+	obs_add_safe_module("b ");
+	obs_add_safe_module("");
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "ddd");
+
+	restart(f, NULL);
+	obs_add_disabled_module("b");
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "ldl");
+
+	restart(f, NULL);
+	obs_add_disabled_module("B");
+	obs_add_disabled_module("bbb");
+	obs_add_disabled_module("a.so");
+	obs_add_disabled_module("");
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "lll");
+
+	restart(f, NULL);
+	obs_add_safe_module("b");
+	obs_add_safe_module("bb");
+	obs_add_disabled_module("bb");
+	obs_add_disabled_module("bb");
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "dld");
+
+	/* NULL names are not added. */
+	restart(f, NULL);
+	obs_add_safe_module(NULL);
+	obs_add_disabled_module(NULL);
+	expect_loaded(f, OBS_MODULE_TYPE_PLUGIN, "lll");
+
+	/* Core modules: the safe list applies, the disabled list does not. */
+	restart(f, NULL);
+	obs_add_disabled_module("a");
+	expect_loaded(f, OBS_MODULE_TYPE_CORE, "lll");
+
+	restart(f, NULL);
+	obs_add_safe_module("a");
+	expect_loaded(f, OBS_MODULE_TYPE_CORE, "ldd");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && strcmp(argv[1], "--child") == 0)
@@ -949,6 +1356,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test(missing_dependency),
 		cmocka_unit_test(missing_file),
 		cmocka_unit_test(same_libobs),
+		cmocka_unit_test(core_module_paths),
 		cmocka_unit_test_setup_teardown(search_flat_directory, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(search_trailing_separators, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(search_module_directories, paths_setup, paths_teardown),
@@ -958,6 +1366,10 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(find_module_file, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(find_module_file_relative, paths_setup, paths_teardown),
 		cmocka_unit_test_setup_teardown(load_plugins_data_path, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_names, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_config_path, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(module_manifest, paths_setup, paths_teardown),
+		cmocka_unit_test_setup_teardown(safe_and_disabled_modules, paths_setup, paths_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
