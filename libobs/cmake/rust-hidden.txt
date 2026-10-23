@@ -78,6 +78,12 @@ obs_scene_group_transform
 obs_scene_extent_init
 obs_scene_extent_add
 obs_scene_extent_size
+# obs-scene-crop.c: obs-scene.c calls them inside libobs. Declared in
+# obs-scene-crop.h without EXPORT, so the shims stay hidden the same way.
+obs_scene_cropped_size
+obs_scene_scale_crop
+obs_scene_crop_offset
+obs_scene_clamp_crop
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Declared in obs-scene-audio-actions.h without EXPORT, so the shims
 # stay hidden the same way.

@@ -4,6 +4,7 @@ pub mod scene_audio_actions;
 pub mod scene_blend;
 pub mod scene_bounds;
 pub mod scene_coords;
+pub mod scene_crop;
 pub mod scene_extent;
 pub mod scene_group_transform;
 

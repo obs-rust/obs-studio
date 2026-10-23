@@ -15,7 +15,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-scene-crop.pch.h"
+#include "libobs/build/libobs-ported-scene-crop.pch.h"
+
+/* Ported to rust/obs-scene (crop): the hybrid libobs drops this file. */
 
 uint32_t obs_scene_cropped_size(uint32_t size, int crop1, int crop2, int bounds_crop1, int bounds_crop2)
 {

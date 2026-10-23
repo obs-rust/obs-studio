@@ -68,6 +68,11 @@ _obs_scene_group_transform
 _obs_scene_extent_init
 _obs_scene_extent_add
 _obs_scene_extent_size
+# obs-scene-crop.c: obs-scene.c calls them inside libobs. Not EXPORT.
+_obs_scene_cropped_size
+_obs_scene_scale_crop
+_obs_scene_crop_offset
+_obs_scene_clamp_crop
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply

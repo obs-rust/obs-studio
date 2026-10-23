@@ -117,8 +117,7 @@
     "build/libobs.util-cf+.h.c",
     "build/libobs.graphics+.h.c",
     "build/libobs.media+.h.c",
-    "build/libobs.nsgif+.h.c",
-    "build/libobs.scene-crop+.h.c"
+    "build/libobs.nsgif+.h.c"
   ],
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-effect-lifecycle+.h.c",
@@ -151,6 +150,7 @@
     "build/libobs.ported-scene-bounds+.h.c",
     "build/libobs.ported-scene-bounds-place+.h.c",
     "build/libobs.ported-scene-coords+.h.c",
+    "build/libobs.ported-scene-crop+.h.c",
     "build/libobs.ported-scene-extent+.h.c",
     "build/libobs.ported-scene-group-transform+.h.c",
     "build/libobs.ported-source-audio-timing+.h.c",
