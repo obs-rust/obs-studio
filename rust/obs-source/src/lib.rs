@@ -10,6 +10,7 @@
 #![deny(unsafe_code)]
 
 pub mod audio_timing;
+pub mod color_space;
 pub mod deinterlace_pacing;
 
 #[allow(unsafe_code)]
