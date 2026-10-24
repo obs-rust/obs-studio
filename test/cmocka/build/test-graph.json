@@ -446,6 +446,19 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_flags": {
+      "sources": [
+        "test/cmocka/test_canvas_flags.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=pthread_mutex_init"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_cf_lexer": {
       "sources": [
         "test/cmocka/test_cf_lexer.c"
@@ -3441,6 +3454,21 @@
     },
     "test_canvas_destroy_scene_refs": {
       "target": "test_canvas_destroy_scene_refs",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_canvas_flags": {
+      "target": "test_canvas_flags",
       "command": [
         "${target}"
       ],
