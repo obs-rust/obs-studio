@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-conversion-plan.pch.h"
 
 /* The async video GPU conversion plan, moved from obs-source.c:
  * get_convert_type(), the set_*_sizes() of init_gpu_conversion(),
  * select_conversion_technique() and need_linear_output(), on plain values.
  * The setters write a plan instead of the source; obs-source.c copies it
  * into the source and keeps the asserts for a frame that needs no
- * conversion. Declared in obs-source-conversion-plan.h without EXPORT. */
+ * conversion. Declared in obs-source-conversion-plan.h without EXPORT. In
+ * hybrid libobs the Rust port (rust/obs-source) replaces this file. */
 
 _Static_assert(sizeof(enum video_format) == sizeof(int), "enum video_format is passed as int");
 _Static_assert(sizeof(enum gs_color_format) == sizeof(int), "enum gs_color_format is passed as int");

@@ -128,6 +128,11 @@ obs_source_audio_timing_buffer_start
 # the shims stay hidden the same way.
 obs_source_color_space_route
 obs_source_color_space_pick
+# obs-source-conversion-plan.c: get_convert_type(), init_gpu_conversion(),
+# select_conversion_technique() and need_linear_output() in obs-source.c call
+# it inside libobs. Declared in obs-source-conversion-plan.h without EXPORT, so
+# the shim stays hidden the same way.
+obs_source_conversion_plan_fill
 # obs-source-deinterlace-pacing.c: deinterlace_get_closest_frames() and
 # ready_deinterlace_frames() in obs-source-deinterlace.c call them inside
 # libobs. Declared in obs-source-deinterlace-pacing.h without EXPORT, so the

@@ -129,6 +129,9 @@
      * EXPORT. */
     obs_source_color_space_route;
     obs_source_color_space_pick;
+    /* obs-source-conversion-plan.c. obs-source.c calls it inside libobs. Not
+     * EXPORT. */
+    obs_source_conversion_plan_fill;
     /* obs-source-deinterlace-pacing.c. obs-source-deinterlace.c calls them
      * inside libobs. Not EXPORT. */
     obs_source_deinterlace_pacing_hold;
