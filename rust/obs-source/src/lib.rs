@@ -35,5 +35,7 @@ pub mod ptm_gate;
 pub mod transition_clock;
 pub mod transition_render;
 
+mod platform;
+
 #[allow(unsafe_code)]
 pub mod ffi;

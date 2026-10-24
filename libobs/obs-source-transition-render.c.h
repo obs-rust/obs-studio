@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-render.pch.h"
 
 /* The render and audio step decisions of the transitions, moved from
  * obs-source-transition.c: the stop steps of obs_transition_video_render2(),
@@ -28,7 +28,8 @@
  * obs_transition_stop(), handle_stop() and the signals, the child reads, the
  * texture lock, the renders, the callbacks, mix_child(), the (int) casts,
  * add_alignment() and the matrix calls, in their order. Declared in
- * obs-source-transition-render.h without EXPORT. */
+ * obs-source-transition-render.h without EXPORT. In hybrid libobs the Rust
+ * port (rust/obs-source) replaces this file. */
 
 bool obs_source_transition_render_video_due(float t, bool transitioning_video)
 {
