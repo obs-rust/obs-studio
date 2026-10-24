@@ -1,6 +1,7 @@
 //! obs-source integration tests, one module per extracted C file.
 
 mod async_pacing;
+mod async_pacing_parity;
 mod audio_input;
 mod audio_input_parity;
 mod audio_timing;
