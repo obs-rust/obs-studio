@@ -4,6 +4,7 @@
     "obs-audio-mix.h",
     "obs-av1.h",
     "obs-avc.h",
+    "obs-canvas-draw.h",
     "obs-config.h",
     "obs-core-modules-loader.h",
     "obs-data.h",

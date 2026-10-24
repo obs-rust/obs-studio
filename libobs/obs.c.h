@@ -2221,26 +2221,15 @@ static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_ble
 	gs_eparam_t *param;
 
 	video = canvas->mix;
-	if (!video || !video->texture_rendered)
+	if (obs_canvas_draw_skip(video != NULL, video && video->texture_rendered))
 		return;
 
 	const enum gs_color_space source_space = video->render_space;
 	const enum gs_color_space current_space = gs_get_color_space();
-	const char *tech_name = "Draw";
+	const char *tech_name = obs_source_draw_technique_name(obs_canvas_draw_technique(source_space, current_space));
 	float multiplier = 1.f;
-	switch (current_space) {
-	case GS_CS_SRGB:
-	case GS_CS_SRGB_16F:
-		if (source_space == GS_CS_709_EXTENDED)
-			tech_name = "DrawTonemap";
-		break;
-	case GS_CS_709_SCRGB:
-		tech_name = "DrawMultiply";
-		multiplier = obs_get_video_sdr_white_level() / 80.f;
-		break;
-	case GS_CS_709_EXTENDED:
-		break;
-	}
+	if (obs_canvas_draw_reads_white_level(current_space))
+		multiplier = obs_canvas_draw_multiplier(obs_get_video_sdr_white_level());
 
 	const bool previous = gs_framebuffer_srgb_enabled();
 	gs_enable_framebuffer_srgb(true);

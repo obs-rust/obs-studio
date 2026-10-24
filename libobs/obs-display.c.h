@@ -160,6 +160,11 @@ void obs_display_remove_draw_callback(obs_display_t *display, void (*draw)(void 
 	pthread_mutex_unlock(&display->draw_callbacks_mutex);
 }
 
+/* The clear flags obs-canvas-draw.h copies. */
+_Static_assert(OBS_DISPLAY_CLEAR_COLOR == GS_CLEAR_COLOR, "GS_CLEAR_COLOR");
+_Static_assert(OBS_DISPLAY_CLEAR_DEPTH == GS_CLEAR_DEPTH, "GS_CLEAR_DEPTH");
+_Static_assert(OBS_DISPLAY_CLEAR_STENCIL == GS_CLEAR_STENCIL, "GS_CLEAR_STENCIL");
+
 static inline bool render_display_begin(struct obs_display *display, uint32_t cx, uint32_t cy, bool update_color_space)
 {
 	struct vec4 clear_color;
@@ -187,9 +192,9 @@ static inline bool render_display_begin(struct obs_display *display, uint32_t cx
 		 * render pass that returns the clear color for every fragment, the color becomes subject to automatic sRGB
 		 * gamma encoding if the render target uses an sRGB color format.
 		 */
-		if (obs_host_display_clear_color_always_srgb())
+		if (!obs_display_clear_reads_space(obs_host_display_clear_color_always_srgb()))
 			vec4_from_rgba_srgb(&clear_color, display->background_color);
-		else if (gs_get_color_space() == GS_CS_SRGB)
+		else if (obs_display_clear_linear(gs_get_color_space()))
 			vec4_from_rgba(&clear_color, display->background_color);
 		else
 			vec4_from_rgba_srgb(&clear_color, display->background_color);
@@ -197,9 +202,7 @@ static inline bool render_display_begin(struct obs_display *display, uint32_t cx
 
 		const bool use_clear_workaround = display->use_clear_workaround;
 
-		uint32_t clear_flags = GS_CLEAR_DEPTH | GS_CLEAR_STENCIL;
-		if (!use_clear_workaround)
-			clear_flags |= GS_CLEAR_COLOR;
+		const uint32_t clear_flags = obs_display_clear_flags(use_clear_workaround);
 		gs_clear(clear_flags, &clear_color, 1.0f, 0);
 
 		gs_enable_depth_test(false);
@@ -209,7 +212,7 @@ static inline bool render_display_begin(struct obs_display *display, uint32_t cx
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 		gs_set_viewport(0, 0, cx, cy);
 
-		if (use_clear_workaround) {
+		if (obs_display_clear_draws_solid(use_clear_workaround)) {
 			gs_effect_t *const solid_effect = obs->video.solid_effect;
 			gs_effect_set_vec4(gs_effect_get_param_by_name(solid_effect, "color"), &clear_color);
 			while (gs_effect_loop(solid_effect, "Solid"))

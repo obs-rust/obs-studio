@@ -4,6 +4,9 @@
 
 #pragma once
 
+/* obs-canvas-draw.c */
+#include "obs-canvas-draw.h"
+
 /* obs-hotkey.c */
 #include <inttypes.h>
 
