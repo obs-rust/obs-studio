@@ -60,6 +60,8 @@ mod source_profiler;
 mod source_ptm_gate;
 #[path = "port_comparison/source_transition_clock.rs"]
 mod source_transition_clock;
+#[path = "port_comparison/source_transition_render.rs"]
+mod source_transition_render;
 #[path = "port_comparison/util.rs"]
 mod util;
 #[path = "port_comparison/video_copy_plan.rs"]
@@ -149,6 +151,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_profiler,
         source_ptm_gate,
         source_transition_clock,
+        source_transition_render,
         util,
         video_copy_plan,
         view,

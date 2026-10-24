@@ -14,13 +14,15 @@
 //! technique and multiplier, the second field and the mode change);
 //! `libobs/obs-source-deinterlace-pacing.c.h`, the frame pacing of
 //! double-rate deinterlacing; `libobs/obs-source-ptm-gate.c.h`, the
-//! push-to-mute and push-to-talk gate of `source_muted()`; and
+//! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
-//! the transitions.
+//! the transitions; and `libobs/obs-source-transition-render.c.h`, the
+//! render and audio step decisions of the transitions.
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`ptm_gate`] and [`transition_clock`]. The C ABI shims live in [`ffi`].
+//! [`deinterlace_pacing`], [`ptm_gate`], [`transition_clock`] and
+//! [`transition_render`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
