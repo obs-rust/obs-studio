@@ -13,7 +13,12 @@
 //! deinterlacing (the effect, the early return, the linear sRGB flag, the
 //! technique and multiplier, the second field and the mode change);
 //! `libobs/obs-source-deinterlace-pacing.c.h`, the frame pacing of
-//! double-rate deinterlacing; `libobs/obs-source-ptm-gate.c.h`, the
+//! double-rate deinterlacing; `libobs/obs-source-draw-plan.c.h`, the source
+//! draw decisions of `rotate_async_video()`,
+//! `obs_source_render_async_video()` and `source_render()` (the rotation
+//! translate, the linear sRGB flag and non-linear alpha, the technique, the
+//! multiplier and the colour space conversion);
+//! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
@@ -25,8 +30,10 @@
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`ptm_gate`], [`size_route`],
-//! [`transition_clock`], [`transition_render`] and [`volume_apply`]. The C
+//! [`deinterlace_pacing`], [`draw_plan`], [`ptm_gate`], [`size_route`],
+//! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
+//! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
+//! share. The C
 //! ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]

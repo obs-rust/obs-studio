@@ -56,6 +56,8 @@ mod source_conversion_plan;
 mod source_deinterlace_draw;
 #[path = "port_comparison/source_deinterlace_pacing.rs"]
 mod source_deinterlace_pacing;
+#[path = "port_comparison/source_draw_plan.rs"]
+mod source_draw_plan;
 #[path = "port_comparison/source_load.rs"]
 mod source_load;
 #[path = "port_comparison/source_profiler.rs"]
@@ -159,6 +161,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_conversion_plan,
         source_deinterlace_draw,
         source_deinterlace_pacing,
+        source_draw_plan,
         source_load,
         source_profiler,
         source_ptm_gate,
