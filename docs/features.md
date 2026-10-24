@@ -555,6 +555,13 @@ area.
   [#1254](https://github.com/obs-rust/obs-studio/issues/1254), PR
   [#1256](https://github.com/obs-rust/obs-studio/pull/1256), upstream
   [obsproject/obs-studio#1349](https://github.com/obsproject/obs-studio/issues/1349).
+- obs-websocket GetInputPropertiesListPropertyItems no longer aborts OBS
+  when a list item has no name or no value, such as the placeholder at the
+  top of the macOS Screen Capture display and application lists; those items
+  are reported with empty strings. *All*, 2026-10-23. Issue
+  [#1266](https://github.com/obs-rust/obs-studio/issues/1266), PR
+  [#1996](https://github.com/obs-rust/obs-studio/pull/1996), upstream
+  [obsproject/obs-studio#13905](https://github.com/obsproject/obs-studio/issues/13905).
 - A RequestBatch with the Parallel execution type no longer crashes OBS
   when its last request finishes. *All*, 2026-10-23. PR
   [#1996](https://github.com/obs-rust/obs-studio/pull/1996).
