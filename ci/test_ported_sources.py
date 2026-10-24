@@ -16,6 +16,7 @@ SPEC.loader.exec_module(PORTED)
 # add rows here instead of appending assertions at the end.
 # Ported on Linux, Windows and macOS.
 PORTED_ON_EVERY_HOST = (
+    "graphics/graphics-sprite.c.h.o",
     "obs-audio-mix.c.h.o",
     "obs-context-names.c.h.o",
     "obs-encoder-roi.c.h.o",
@@ -48,6 +49,7 @@ PORTED_ON_LINUX = (
 )
 # The unported remainder of a split file: still compiled as C.
 NOT_PORTED = (
+    "graphics/graphics.c.h.o",
     "obs-audio.c.h.o",
     "obs-encoder.c.h.o",
     "obs-module.c.h.o",

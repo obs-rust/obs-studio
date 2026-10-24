@@ -51,6 +51,21 @@ video_output_inc_texture_frames
 video_output_inc_texture_skipped_frames
 video_output_create_with_frame_rate_divisor
 video_output_free_frame_rate_divisor
+# graphics/graphics-sprite.c: gs_draw_quadf(), gs_draw_sprite_subregion(),
+# gs_texture_set_image(), gs_texture_create(), gs_cubetexture_create() and
+# graphics_init_sprite_vbs() in graphics.c call them inside libobs. Declared
+# in graphics-sprite.h without EXPORT, so the shims stay hidden the same way.
+gs_sprite_build
+gs_sprite_quad_flipped_buffer
+gs_sprite_quad_refusal
+gs_sprite_quad_texture_size
+gs_sprite_subregion_is_whole
+gs_sprite_uv_norm
+gs_sprite_uv_rect
+gs_sprite_uv_subregion
+gs_texture_is_pow2
+gs_texture_mip_plan
+gs_texture_upload_plan
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. The C file has
 # no EXPORT, so the shim stays hidden the same way.
 obs_bounds_fit_scale

@@ -41,7 +41,6 @@
 //! source pointer by, undefined, before its loop found no row). No
 //! intentional differences from `graphics-sprite.c.h`.
 
-#![allow(unused_variables)] // the RED stubs
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -80,29 +79,85 @@ pub struct SpriteUv {
 /// `(end_u, end_v)`. The floats are copied, never computed on.
 #[must_use]
 pub const fn sprite(cx: f32, cy: f32, uv: SpriteUv) -> ([Vec3; 4], [Vec2; 4]) {
-    todo!()
+    (
+        [
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(cx, 0.0, 0.0),
+            Vec3::new(0.0, cy, 0.0),
+            Vec3::new(cx, cy, 0.0),
+        ],
+        [
+            Vec2::new(uv.start_u, uv.start_v),
+            Vec2::new(uv.end_u, uv.start_v),
+            Vec2::new(uv.start_u, uv.end_v),
+            Vec2::new(uv.end_u, uv.end_v),
+        ],
+    )
+}
+
+/// `assign_sprite_uv` / `assign_sprite_rect`: 0 to `size`, or `size` to 0
+/// when flipped.
+const fn span(size: f32, flip: bool) -> (f32, f32) {
+    if flip { (size, 0.0) } else { (0.0, size) }
+}
+
+const fn flips_u(flip: u32) -> bool {
+    flip & FLIP_U != 0
+}
+
+const fn flips_v(flip: u32) -> bool {
+    flip & FLIP_V != 0
 }
 
 /// `build_sprite_norm`'s coordinates: 0 to 1 on each axis, swapped by
 /// [`FLIP_U`] and [`FLIP_V`]; other bits are ignored.
 #[must_use]
 pub const fn sprite_uv(flip: u32) -> SpriteUv {
-    todo!()
+    let (start_u, end_u) = span(1.0, flips_u(flip));
+    let (start_v, end_v) = span(1.0, flips_v(flip));
+    SpriteUv {
+        start_u,
+        end_u,
+        start_v,
+        end_v,
+    }
 }
 
 /// `(float)size`: the nearest `f32`, ties to even, as C converts.
 #[allow(clippy::cast_precision_loss)] // the C's own rounding
 #[allow(clippy::as_conversions)] // no lossless `From` exists; `as` rounds as C does
+const fn to_f32(size: u32) -> f32 {
+    size as f32
+}
+
 /// `build_sprite_rect`'s coordinates: 0 to the texture's size in texels.
 #[must_use]
 pub const fn rect_uv(width: u32, height: u32, flip: u32) -> SpriteUv {
-    todo!()
+    let (start_u, end_u) = span(to_f32(width), flips_u(flip));
+    let (start_v, end_v) = span(to_f32(height), flips_v(flip));
+    SpriteUv {
+        start_u,
+        end_u,
+        start_v,
+        end_v,
+    }
 }
 
 /// `build_subsprite_norm` on one axis: `pos / size` and `(pos + len) /
 /// size`, swapped when flipped. Plain IEEE `f32`: a size of 0 gives `+inf`,
 /// or NaN for `0 / 0`.
 #[allow(clippy::arithmetic_side_effects)] // f32: no overflow panic, IEEE as the C
+fn sub_span(pos: u32, len: u32, size: u32, flip: bool) -> (f32, f32) {
+    let pos = to_f32(pos);
+    let len = to_f32(len);
+    let size = to_f32(size);
+    if flip {
+        ((pos + len) / size, pos / size)
+    } else {
+        (pos / size, (pos + len) / size)
+    }
+}
+
 /// `build_subsprite_norm`'s coordinates of the subregion `(x, y, cx, cy)`
 /// of a `tex_cx` by `tex_cy` texture.
 #[must_use]
@@ -115,7 +170,14 @@ pub fn subsprite_uv(
     tex_cy: u32,
     flip: u32,
 ) -> SpriteUv {
-    todo!()
+    let (start_u, end_u) = sub_span(x, cx, tex_cx, flips_u(flip));
+    let (start_v, end_v) = sub_span(y, cy, tex_cy, flips_v(flip));
+    SpriteUv {
+        start_u,
+        end_u,
+        start_v,
+        end_v,
+    }
 }
 
 /// `gs_draw_sprite_subregion`: the region is the whole texture, so it is
@@ -129,7 +191,7 @@ pub const fn subregion_is_whole(
     tex_cx: u32,
     tex_cy: u32,
 ) -> bool {
-    todo!()
+    x == 0 && y == 0 && cx == tex_cx && cy == tex_cy
 }
 
 /// Why `gs_draw_quadf` draws nothing (`enum gs_sprite_quad_refusal`).
@@ -148,7 +210,17 @@ pub enum QuadRefusal {
 /// (-0.0 is 0, NaN is not).
 #[must_use]
 pub fn quad_refusal(has_texture: bool, texture_2d: bool, width: f32, height: f32) -> QuadRefusal {
-    todo!()
+    if has_texture {
+        if texture_2d {
+            QuadRefusal::Draw
+        } else {
+            QuadRefusal::NotTwoD
+        }
+    } else if quad_texture_size(width) || quad_texture_size(height) {
+        QuadRefusal::NoSize
+    } else {
+        QuadRefusal::Draw
+    }
 }
 
 /// `gs_draw_quadf` takes this axis from the texture: `size == 0.0f`, so 0
@@ -156,14 +228,14 @@ pub fn quad_refusal(has_texture: bool, texture_2d: bool, width: f32, height: f32
 #[must_use]
 #[allow(clippy::float_cmp)] // the C's exact compare
 pub fn quad_texture_size(size: f32) -> bool {
-    todo!()
+    size == 0.0
 }
 
 /// `gs_draw_quadf` draws a texture that is not a rectangle texture with the
 /// static buffer flipped on v: any bit set.
 #[must_use]
 pub const fn quad_flipped_buffer(flip: u32) -> bool {
-    todo!()
+    flip != 0
 }
 
 /// How `gs_texture_set_image` copies (`enum gs_texture_upload_mode`).
@@ -194,6 +266,10 @@ pub struct UploadPlan {
 /// `u32` to `usize`: lossless where libobs builds (`usize` is 32 or 64
 /// bits), as C's conversion to `size_t`.
 #[allow(clippy::as_conversions)] // `usize: From<u32>` does not exist
+const fn to_usize(v: u32) -> usize {
+    v as usize
+}
+
 /// `gs_texture_set_image`'s copy plan for `height` rows of `linesize`
 /// bytes into the mapped rows of `linesize_out` bytes.
 #[must_use]
@@ -203,13 +279,37 @@ pub const fn upload_plan(
     height: usize,
     flip: bool,
 ) -> UploadPlan {
-    todo!()
+    let row_copy = to_usize(if linesize < linesize_out {
+        linesize
+    } else {
+        linesize_out
+    });
+    let mut plan = UploadPlan {
+        row_copy,
+        whole_size: 0,
+        src_offset: 0,
+        mode: UploadMode::Rows,
+    };
+    if flip {
+        // A flip with no rows copies nothing; the C before the move
+        // computed (height - 1) * linesize first, which wrapped.
+        if height == 0 {
+            plan.mode = UploadMode::None;
+            return plan;
+        }
+        plan.src_offset = height.wrapping_sub(1).wrapping_mul(to_usize(linesize));
+        plan.mode = UploadMode::Flipped;
+    } else if linesize == linesize_out {
+        plan.whole_size = row_copy.wrapping_mul(height);
+        plan.mode = UploadMode::Whole;
+    }
+    plan
 }
 
 /// `is_pow2`: at least 2 and one bit set.
 #[must_use]
 pub const fn is_pow2(size: u32) -> bool {
-    todo!()
+    size >= 2 && size.is_power_of_two()
 }
 
 /// The warning `gs_texture_create` logs (`enum gs_texture_mip_warning`).
@@ -239,5 +339,22 @@ pub struct MipPlan {
 /// Every other flag is kept.
 #[must_use]
 pub const fn texture_flags(width: u32, height: u32, flags: u32, levels: u32) -> MipPlan {
-    todo!()
+    let pow2tex = is_pow2(width) && is_pow2(height);
+    let uses_mipmaps = flags & BUILD_MIPMAPS != 0 || levels != 1;
+    let warning = if uses_mipmaps && !pow2tex {
+        MipWarning::NotPow2
+    } else if uses_mipmaps && flags & RENDER_TARGET != 0 {
+        MipWarning::RenderTarget
+    } else {
+        return MipPlan {
+            flags,
+            levels,
+            warning: MipWarning::Ok,
+        };
+    };
+    MipPlan {
+        flags: flags & !BUILD_MIPMAPS,
+        levels: 1,
+        warning,
+    }
 }

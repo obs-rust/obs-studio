@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-sprite.pch.h"
 
 /* The sprite and texture upload geometry of graphics.c, moved from
  * assign_sprite_rect(), assign_sprite_uv(), build_sprite(),
@@ -24,7 +24,8 @@
  * is_pow2() and gs_texture_create(): the decisions and the float arithmetic,
  * on values. graphics.c keeps the device calls, the vertex buffers, the
  * matrix stack, the texture map and every memcpy, and the logs. Declared in
- * graphics-sprite.h without EXPORT. */
+ * graphics-sprite.h without EXPORT. In hybrid libobs the Rust port
+ * (rust/obs-graphics, sprite) replaces this file. */
 
 static inline void sprite_assign_rect(float *start, float *end, float size, bool flip)
 {

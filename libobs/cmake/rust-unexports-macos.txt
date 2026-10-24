@@ -46,6 +46,18 @@ _video_output_create_with_frame_rate_divisor
 _video_output_free_frame_rate_divisor
 # obs-data.c: json_decref is a static inline. The glue is not EXPORT.
 _obs_data_json_decref
+# graphics/graphics-sprite.c: graphics.c calls them inside libobs. Not EXPORT.
+_gs_sprite_build
+_gs_sprite_quad_flipped_buffer
+_gs_sprite_quad_refusal
+_gs_sprite_quad_texture_size
+_gs_sprite_subregion_is_whole
+_gs_sprite_uv_norm
+_gs_sprite_uv_rect
+_gs_sprite_uv_subregion
+_gs_texture_is_pow2
+_gs_texture_mip_plan
+_gs_texture_upload_plan
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. Not EXPORT.
 _obs_bounds_fit_scale
 # obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it inside
