@@ -605,6 +605,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_deinterlace_draw_plan_steps": {
+      "sources": [
+        "test/cmocka/test_deinterlace_draw_plan_steps.c",
+        "libobs/obs-source-deinterlace-draw.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_deinterlace_mode_load": {
       "sources": [
         "test/cmocka/test_deinterlace_mode_load.c"
@@ -3556,6 +3579,12 @@
     },
     "test_decl": {
       "target": "test_decl",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_deinterlace_draw_plan_steps": {
+      "target": "test_deinterlace_draw_plan_steps",
       "command": [
         "${target}"
       ]
