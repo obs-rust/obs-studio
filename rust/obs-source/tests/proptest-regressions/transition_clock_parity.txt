@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ff86453fd9212c463067da001ef46d02c5cfaa0f7b680e2d6ea8a3717f047e82 # shrinks to mode = 1, val = 0.0, target = NaN, torque = 1e-45, clamp = 0.0, t = NaN

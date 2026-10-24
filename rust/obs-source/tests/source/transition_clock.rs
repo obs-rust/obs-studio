@@ -687,7 +687,7 @@ pub fn x87_ratio(p: u64, q: u64) -> f32 {
 
 /// `(float)((double)p / (double)q)`: the C where `long double` is a
 /// `double` (MSVC, Apple silicon).
-fn f64_ratio(p: u64, q: u64) -> f32 {
+pub fn f64_ratio(p: u64, q: u64) -> f32 {
     (p as f64 / q as f64) as f32
 }
 
@@ -696,7 +696,7 @@ fn f64_ratio(p: u64, q: u64) -> f32 {
 /// 33.5 s: a `double` lands on a float rounding tie and rounds it to even,
 /// the x87 and the nearest do not. The other four are above 2^39: the x87
 /// lands on a tie, the nearest does not.
-const PLATFORM_TIES: [(u64, u64, u32, u32, u32); 6] = [
+pub const PLATFORM_TIES: [(u64, u64, u32, u32, u32); 6] = [
     (
         33_554_426_999,
         33_554_431_999,
