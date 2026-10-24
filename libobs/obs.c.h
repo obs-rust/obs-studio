@@ -245,6 +245,12 @@ static int obs_init_graphics(struct obs_video_info *ovi)
 		}
 	}
 
+	/* The levels obs_get_video_sdr_white_level() and
+	 * obs_get_video_hdr_nominal_peak_level() report until
+	 * obs_set_video_levels() is called (#2209). */
+	video->sdr_white_level = 300.f;
+	video->hdr_nominal_peak_level = 1000.f;
+
 	profile_start(shader_comp_name);
 	gs_enter_context(video->graphics);
 
@@ -1658,8 +1664,19 @@ void obs_set_video_levels(float sdr_white_level, float hdr_nominal_peak_level)
 	struct obs_core_video *video = &obs->video;
 	assert(video->graphics);
 
-	video->sdr_white_level = sdr_white_level;
-	video->hdr_nominal_peak_level = hdr_nominal_peak_level;
+	/* The draw paths divide by these, so a level that is not finite and
+	 * greater than 0 is ignored and the previous one stays (#2209). */
+	if (isfinite(sdr_white_level) && sdr_white_level > 0.f)
+		video->sdr_white_level = sdr_white_level;
+	else
+		blog(LOG_WARNING, "obs_set_video_levels: ignoring SDR white level %g, keeping %g",
+		     (double)sdr_white_level, (double)video->sdr_white_level);
+
+	if (isfinite(hdr_nominal_peak_level) && hdr_nominal_peak_level > 0.f)
+		video->hdr_nominal_peak_level = hdr_nominal_peak_level;
+	else
+		blog(LOG_WARNING, "obs_set_video_levels: ignoring HDR nominal peak level %g, keeping %g",
+		     (double)hdr_nominal_peak_level, (double)video->hdr_nominal_peak_level);
 }
 
 bool obs_get_audio_info(struct obs_audio_info *oai)

@@ -1918,6 +1918,13 @@ area.
   texture, a refused callback with a warning, "not active" and a 0x0
   canvas. *All*, pending merge. Issue
   [#2253](https://github.com/obs-rust/obs-studio/issues/2253).
+- An SDR white level or HDR nominal peak level of 0, below 0, NaN or
+  infinite (from an edited profile, a plugin or a script) no longer makes
+  HDR and scRGB sources draw solid white, black or garbage: the level is
+  ignored with a warning in the log and the previous one stays. With
+  graphics up, the levels also start at 300 and 1000 nits instead of 0
+  until something sets them. *All*, pending merge. Issue
+  [#2209](https://github.com/obs-rust/obs-studio/issues/2209).
 
 ### Security hardening
 
