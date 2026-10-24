@@ -1,0 +1,21 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc b80a38da54c3b06790562917859d4a47d44b880135120462daaf9fb3cfaf8929 # shrinks to mask = 64
+cc cf9175830d7d94ee8b1f09243db54df29292f012c4697817c98f02f594202212 # shrinks to mask = 2438264633832653088
+cc 7da5a76b9b27fb495c4396aedddab4844729459d5f6a6f0896510d19583344b7 # shrinks to mask = 225640616217353
+cc c39a81d08ab1f787ba2737d1feaf0fc89125f8bdabd0b0e25ac219d039432374 # shrinks to encoded = false, has_encoder = false, scaled = 1
+cc 0cc50f75548147326f0aa771e7a17773e170ef9cbf84702d69f36fa433b3189e # shrinks to encoded = false, has_encoder = true, scaled = 0
+cc 98f905cd24acb932193ea2bc926e72f8784a33b6d07e19d25dd6a1e1418c430f # shrinks to flags = 1407258437, v = 1, a = 0, bits = 2
+cc 1954b67a2b462b5233f0b7ca8bc772815db498053aae7209e964d69ab1829295 # shrinks to flags = 384803085, v = 1081609216, a = 0, bits = 4
+cc 87fa7945eed9b619118f92f5c7a84e58c3c921d8a0640e5b6e9952335a891700 # shrinks to flags = 6, v = 0, a = 32, bits = 0
+cc 2f11ff81788755796b155c9fcac10b1b5bf8d4673fa9e5cdd2bf4214bdf24b38 # shrinks to flags = 9, v = 0, a = 0, bits = 6
+cc 3db895f7218f12672e5397fc672635d1644c7966f390570ea0ec09f3e31ebbce # shrinks to s = obs_output_conversion_sizes { set: true, set_width: 0, set_height: 0, scaled_width: 1, scaled_height: 0, video_width: 2, video_height: 0 }
+cc 11f9d91507250e49bad6c1931c9c418ad882014503018fca691e1ba6de9677c4 # shrinks to s = obs_output_conversion_sizes { set: false, set_width: 0, set_height: 0, scaled_width: 1, scaled_height: 0, video_width: 2, video_height: 0 }
+cc 82f2d6fdc16bbcca1fcd18e17952e5e7c5ef70fc3b422d580bbde34fb9e24390 # shrinks to s = obs_output_conversion_sizes { set: false, set_width: 0, set_height: 0, scaled_width: 1, scaled_height: 1, video_width: 1, video_height: 1 }
+cc 792111adbb5402eee3b3d585a71575be94bf1a17566636f227d10945951c5f01 # shrinks to center = 2147483648, d = 0
+cc 34776d02fd3215d77e51f370e212ff846949e09bcbeb9ca837c76ba77341e734 # shrinks to bits = 2139095041
+cc 4f51f5e5ba401e0fd3b3f61d787cf2cfa50103b878618e15be2adfc4b4859615 # shrinks to flags = 3612174175, v = 512, a = 1, bits = 4
