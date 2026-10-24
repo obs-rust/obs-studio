@@ -139,6 +139,7 @@
 #include "obs-source-color-space.h"
 #include "obs-source-conversion-plan.h"
 #include "obs-source-ptm-gate.h"
+#include "obs-source-size.h"
 
 #include "media-io/audio-io.h"
 #include "obs-host/default-monitoring-device.h"

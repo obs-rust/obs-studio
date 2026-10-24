@@ -2219,50 +2219,64 @@ static inline void obs_source_render_filters(obs_source_t *source)
 	obs_source_release(first_filter);
 }
 
-static inline uint32_t get_async_width(const obs_source_t *source)
-{
-	return ((source->async_rotation % 180) == 0) ? source->async_width : source->async_height;
-}
+_Static_assert(OBS_SOURCE_SIZE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURCE_TYPE_FILTER");
+_Static_assert(OBS_SOURCE_SIZE_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
+_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
 
-static inline uint32_t get_async_height(const obs_source_t *source)
+/* The fields obs_source_size_route() reads; has_callback is the size
+ * callback of the axis asked for. */
+static inline struct obs_source_size_node size_node(const obs_source_t *source, bool has_callback)
 {
-	return ((source->async_rotation % 180) == 0) ? source->async_height : source->async_width;
+	const struct obs_source_size_node node = {
+		.type = (int)source->info.type,
+		.has_data = source->context.data != NULL,
+		.has_callback = has_callback,
+		.has_filter_parent = source->filter_parent != NULL,
+		.enabled = source->enabled,
+		.async_active = source->async_active,
+		.async_rotation = source->async_rotation,
+	};
+	return node;
 }
 
 static uint32_t get_base_width(const obs_source_t *source)
 {
-	bool is_filter = !!source->filter_parent;
-	bool func_valid = source->context.data && source->info.get_width;
-
-	if (source->info.type == OBS_SOURCE_TYPE_TRANSITION) {
-		return source->enabled ? source->transition_actual_cx : 0;
-
-	} else if (func_valid && (!is_filter || source->enabled)) {
+	switch (obs_source_size_route(size_node(source, source->info.get_width != NULL))) {
+	case OBS_SOURCE_SIZE_TRANSITION:
+		return source->transition_actual_cx;
+	case OBS_SOURCE_SIZE_CALLBACK:
 		return source->info.get_width(source->context.data);
-
-	} else if (is_filter) {
+	case OBS_SOURCE_SIZE_ASK_TARGET:
 		return get_base_width(source->filter_target);
+	case OBS_SOURCE_SIZE_ASYNC:
+		return source->async_width;
+	case OBS_SOURCE_SIZE_ASYNC_SWAPPED:
+		return source->async_height;
+	case OBS_SOURCE_SIZE_ZERO:
+		break;
 	}
 
-	return source->async_active ? get_async_width(source) : 0;
+	return 0;
 }
 
 static uint32_t get_base_height(const obs_source_t *source)
 {
-	bool is_filter = !!source->filter_parent;
-	bool func_valid = source->context.data && source->info.get_height;
-
-	if (source->info.type == OBS_SOURCE_TYPE_TRANSITION) {
-		return source->enabled ? source->transition_actual_cy : 0;
-
-	} else if (func_valid && (!is_filter || source->enabled)) {
+	switch (obs_source_size_route(size_node(source, source->info.get_height != NULL))) {
+	case OBS_SOURCE_SIZE_TRANSITION:
+		return source->transition_actual_cy;
+	case OBS_SOURCE_SIZE_CALLBACK:
 		return source->info.get_height(source->context.data);
-
-	} else if (is_filter) {
+	case OBS_SOURCE_SIZE_ASK_TARGET:
 		return get_base_height(source->filter_target);
+	case OBS_SOURCE_SIZE_ASYNC:
+		return source->async_height;
+	case OBS_SOURCE_SIZE_ASYNC_SWAPPED:
+		return source->async_width;
+	case OBS_SOURCE_SIZE_ZERO:
+		break;
 	}
 
-	return source->async_active ? get_async_height(source) : 0;
+	return 0;
 }
 
 static void source_render(obs_source_t *source, gs_effect_t *effect)
@@ -2496,13 +2510,27 @@ void obs_source_video_render(obs_source_t *source)
 	}
 }
 
+/* Where obs_source_get_width() and obs_source_get_height() start a source
+ * that is not a filter. The caller holds its filter_mutex. */
+static const obs_source_t *size_start(const obs_source_t *source)
+{
+	switch (obs_source_size_entry((int)source->info.type, source->filters.num != 0)) {
+	case OBS_SOURCE_SIZE_ENTRY_FIRST_FILTER:
+		return source->filters.array[0];
+	case OBS_SOURCE_SIZE_ENTRY_SELF:
+		break;
+	}
+
+	return source;
+}
+
 static uint32_t get_recurse_width(obs_source_t *source)
 {
 	uint32_t width;
 
 	pthread_mutex_lock(&source->filter_mutex);
 
-	width = (source->filters.num) ? get_base_width(source->filters.array[0]) : get_base_width(source);
+	width = get_base_width(size_start(source));
 
 	pthread_mutex_unlock(&source->filter_mutex);
 
@@ -2515,7 +2543,7 @@ static uint32_t get_recurse_height(obs_source_t *source)
 
 	pthread_mutex_lock(&source->filter_mutex);
 
-	height = (source->filters.num) ? get_base_height(source->filters.array[0]) : get_base_height(source);
+	height = get_base_height(size_start(source));
 
 	pthread_mutex_unlock(&source->filter_mutex);
 
@@ -2527,6 +2555,8 @@ uint32_t obs_source_get_width(obs_source_t *source)
 	if (!data_valid(source, "obs_source_get_width"))
 		return 0;
 
+	/* a filter starts at itself (obs_source_size_entry()) and takes no
+	 * lock: its filter_mutex guards filters it never reads */
 	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_width(source) : get_base_width(source);
 }
 
@@ -2535,6 +2565,7 @@ uint32_t obs_source_get_height(obs_source_t *source)
 	if (!data_valid(source, "obs_source_get_height"))
 		return 0;
 
+	/* as obs_source_get_width() */
 	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source) : get_base_height(source);
 }
 
