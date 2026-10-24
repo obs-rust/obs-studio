@@ -20,6 +20,7 @@
 #include "obs-core-modules.h"
 #include "obs-defs.h"
 #include "obs-module.h"
+#include "obs-module-type-rules.h"
 #include "obs-host/module-paths.h"
 #include "obs-host/module-symbols.h"
 #include "util/platform.h"

@@ -751,7 +751,7 @@ cleanup:
 			return;                                                                         \
 		}                                                                                       \
                                                                                                         \
-		if (size_var > sizeof(data)) {                                                          \
+		if (!obs_module_source_rules_size_supported(size_var, sizeof(data))) {                  \
 			blog(LOG_ERROR,                                                                 \
 			     "Tried to register " #structure " with size %llu which is more "           \
 			     "than libobs currently supports "                                          \
@@ -765,28 +765,6 @@ cleanup:
 	} while (false)
 
 #define HAS_VAL(type, info, val) ((offsetof(type, val) + sizeof(info->val) <= size) && info->val)
-
-#define CHECK_REQUIRED_VAL(type, info, val, func)                  \
-	do {                                                       \
-		if (!HAS_VAL(type, info, val)) {                   \
-			blog(LOG_ERROR,                            \
-			     "Required value '" #val "' for "      \
-			     "'%s' not found.  " #func " failed.", \
-			     info->id);                            \
-			goto error;                                \
-		}                                                  \
-	} while (false)
-
-#define CHECK_REQUIRED_VAL_EITHER(type, info, val1, val2, func)                 \
-	do {                                                                    \
-		if (!HAS_VAL(type, info, val1) && !HAS_VAL(type, info, val2)) { \
-			blog(LOG_ERROR,                                         \
-			     "Neither '" #val1 "' nor '" #val2 "' "             \
-			     "for '%s' found.  " #func " failed.",              \
-			     info->id);                                         \
-			goto error;                                             \
-		}                                                               \
-	} while (false)
 
 #define HANDLE_ERROR(size_var, structure, info)                                         \
 	do {                                                                            \
@@ -926,8 +904,33 @@ error:
 	HANDLE_ERROR(size, obs_source_info, info);
 }
 
+/* The constants obs-module-type-rules.h copies. */
+_Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
+_Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_AUDIO == OBS_OUTPUT_AUDIO, "OBS_OUTPUT_AUDIO");
+_Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_ENCODED == OBS_OUTPUT_ENCODED, "OBS_OUTPUT_ENCODED");
+_Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_SERVICE == OBS_OUTPUT_SERVICE, "OBS_OUTPUT_SERVICE");
+_Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_MULTI_TRACK == OBS_OUTPUT_MULTI_TRACK, "OBS_OUTPUT_MULTI_TRACK");
+_Static_assert(OBS_MODULE_TYPE_RULES_ENCODER_AUDIO == OBS_ENCODER_AUDIO, "OBS_ENCODER_AUDIO");
+_Static_assert(OBS_MODULE_TYPE_RULES_CAP_PASS_TEXTURE == OBS_ENCODER_CAP_PASS_TEXTURE, "OBS_ENCODER_CAP_PASS_TEXTURE");
+_Static_assert(OBS_MODULE_TYPE_RULES_CAP_SCALING == OBS_ENCODER_CAP_SCALING, "OBS_ENCODER_CAP_SCALING");
+
+/* The message of a missing callback, as CHECK_REQUIRED_VAL logged it. */
+#define type_required(val, func)                             \
+	blog(LOG_ERROR,                                      \
+	     "Required value '" #val "' for "                \
+	     "'%s' not found.  " #func " failed.",           \
+	     info->id)
+#define has_val(type, val, bit)                   \
+	do {                                      \
+		if (HAS_VAL(type, info, val))     \
+			callbacks |= OBS_MODULE_TYPE_RULES_HAS_##bit; \
+	} while (false)
+
 void obs_register_output_s(const struct obs_output_info *info, size_t size)
 {
+	enum obs_module_type_rules_error err;
+	uint32_t callbacks = 0;
+
 	if (find_output(info->id)) {
 		output_warn("Output id '%s' already exists!  "
 			    "Duplicate library?",
@@ -935,44 +938,64 @@ void obs_register_output_s(const struct obs_output_info *info, size_t size)
 		goto error;
 	}
 
-#define CHECK_REQUIRED_VAL_(info, val, func) CHECK_REQUIRED_VAL(struct obs_output_info, info, val, func)
-	CHECK_REQUIRED_VAL_(info, get_name, obs_register_output);
-	CHECK_REQUIRED_VAL_(info, create, obs_register_output);
-	CHECK_REQUIRED_VAL_(info, destroy, obs_register_output);
-	CHECK_REQUIRED_VAL_(info, start, obs_register_output);
-	CHECK_REQUIRED_VAL_(info, stop, obs_register_output);
+	has_val(struct obs_output_info, get_name, GET_NAME);
+	has_val(struct obs_output_info, create, CREATE);
+	has_val(struct obs_output_info, destroy, DESTROY);
+	has_val(struct obs_output_info, start, START);
+	has_val(struct obs_output_info, stop, STOP);
+	has_val(struct obs_output_info, protocols, PROTOCOLS);
+	has_val(struct obs_output_info, encoded_packet, ENCODED_PACKET);
+	has_val(struct obs_output_info, raw_video, RAW_VIDEO);
+	has_val(struct obs_output_info, raw_audio, RAW_AUDIO);
+	has_val(struct obs_output_info, raw_audio2, RAW_AUDIO2);
 
-	if (info->flags & OBS_OUTPUT_SERVICE)
-		CHECK_REQUIRED_VAL_(info, protocols, obs_register_output);
-
-	if (info->flags & OBS_OUTPUT_ENCODED) {
-		CHECK_REQUIRED_VAL_(info, encoded_packet, obs_register_output);
-	} else {
-		if (info->flags & OBS_OUTPUT_VIDEO)
-			CHECK_REQUIRED_VAL_(info, raw_video, obs_register_output);
-
-		if (info->flags & OBS_OUTPUT_AUDIO) {
-			if (info->flags & OBS_OUTPUT_MULTI_TRACK) {
-				CHECK_REQUIRED_VAL_(info, raw_audio2, obs_register_output);
-			} else {
-				CHECK_REQUIRED_VAL_(info, raw_audio, obs_register_output);
-			}
-		}
+	err = obs_module_type_rules_output_check(info->flags, callbacks);
+	switch (err) {
+	case OBS_MODULE_TYPE_RULES_OK:
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_GET_NAME:
+		type_required(get_name, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_CREATE:
+		type_required(create, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_DESTROY:
+		type_required(destroy, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_START:
+		type_required(start, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_STOP:
+		type_required(stop, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_PROTOCOLS:
+		type_required(protocols, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_ENCODED_PACKET:
+		type_required(encoded_packet, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_RAW_VIDEO:
+		type_required(raw_video, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_RAW_AUDIO:
+		type_required(raw_audio, obs_register_output);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_RAW_AUDIO2:
+		type_required(raw_audio2, obs_register_output);
+		break;
+	default:
+		break;
 	}
-#undef CHECK_REQUIRED_VAL_
+	if (err != OBS_MODULE_TYPE_RULES_OK)
+		goto error;
 
 	REGISTER_OBS_DEF(size, obs_output_info, obs->output_types, info);
 
 	if (info->flags & OBS_OUTPUT_SERVICE) {
 		char **protocols = strlist_split(info->protocols, ';', false);
 		for (char **protocol = protocols; *protocol; ++protocol) {
-			bool skip = false;
-			for (size_t i = 0; i < obs->data.protocols.num; i++) {
-				if (strcmp(*protocol, obs->data.protocols.array[i]) == 0)
-					skip = true;
-			}
-
-			if (skip)
+			if (obs_module_type_rules_protocol_listed(*protocol, obs->data.protocols.array,
+								  obs->data.protocols.num))
 				continue;
 			char *new_prtcl = bstrdup(*protocol);
 			da_push_back(obs->data.protocols, &new_prtcl);
@@ -993,6 +1016,9 @@ error:
 
 void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size)
 {
+	enum obs_module_type_rules_error err;
+	uint32_t callbacks = 0;
+
 	if (find_encoder(info->id)) {
 		encoder_warn("Encoder id '%s' already exists!  "
 			     "Duplicate library?",
@@ -1000,25 +1026,49 @@ void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size)
 		goto error;
 	}
 
-	if (((info->caps & OBS_ENCODER_CAP_PASS_TEXTURE) != 0 && info->caps & OBS_ENCODER_CAP_SCALING) != 0) {
+	has_val(struct obs_encoder_info, get_name, GET_NAME);
+	has_val(struct obs_encoder_info, create, CREATE);
+	has_val(struct obs_encoder_info, destroy, DESTROY);
+	has_val(struct obs_encoder_info, encode, ENCODE);
+	has_val(struct obs_encoder_info, encode_texture, ENCODE_TEXTURE);
+	has_val(struct obs_encoder_info, encode_texture2, ENCODE_TEXTURE2);
+	has_val(struct obs_encoder_info, get_frame_size, GET_FRAME_SIZE);
+
+	/* The type and the capabilities are the caller's, read whatever the
+	 * size. */
+	err = obs_module_type_rules_encoder_check((uint32_t)info->type, info->caps, callbacks);
+	switch (err) {
+	case OBS_MODULE_TYPE_RULES_OK:
+		break;
+	case OBS_MODULE_TYPE_RULES_TEXTURE_SCALING:
 		encoder_warn("Texture encoders cannot self-scale. Encoder id '%s' not registered.", info->id);
-		goto error;
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_GET_NAME:
+		type_required(get_name, obs_register_encoder);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_CREATE:
+		type_required(create, obs_register_encoder);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_DESTROY:
+		type_required(destroy, obs_register_encoder);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_ENCODE_TEXTURE:
+		blog(LOG_ERROR,
+		     "Neither 'encode_texture' nor 'encode_texture2' "
+		     "for '%s' found.  obs_register_encoder failed.",
+		     info->id);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_ENCODE:
+		type_required(encode, obs_register_encoder);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_GET_FRAME_SIZE:
+		type_required(get_frame_size, obs_register_encoder);
+		break;
+	default:
+		break;
 	}
-
-#define CHECK_REQUIRED_VAL_(info, val, func) CHECK_REQUIRED_VAL(struct obs_encoder_info, info, val, func)
-	CHECK_REQUIRED_VAL_(info, get_name, obs_register_encoder);
-	CHECK_REQUIRED_VAL_(info, create, obs_register_encoder);
-	CHECK_REQUIRED_VAL_(info, destroy, obs_register_encoder);
-
-	if ((info->caps & OBS_ENCODER_CAP_PASS_TEXTURE) != 0)
-		CHECK_REQUIRED_VAL_EITHER(struct obs_encoder_info, info, encode_texture, encode_texture2,
-					  obs_register_encoder);
-	else
-		CHECK_REQUIRED_VAL_(info, encode, obs_register_encoder);
-
-	if (info->type == OBS_ENCODER_AUDIO)
-		CHECK_REQUIRED_VAL_(info, get_frame_size, obs_register_encoder);
-#undef CHECK_REQUIRED_VAL_
+	if (err != OBS_MODULE_TYPE_RULES_OK)
+		goto error;
 
 	REGISTER_OBS_DEF(size, obs_encoder_info, obs->encoder_types, info);
 
@@ -1035,6 +1085,9 @@ error:
 
 void obs_register_service_s(const struct obs_service_info *info, size_t size)
 {
+	enum obs_module_type_rules_error err;
+	uint32_t callbacks = 0;
+
 	if (find_service(info->id)) {
 		service_warn("Service id '%s' already exists!  "
 			     "Duplicate library?",
@@ -1042,12 +1095,32 @@ void obs_register_service_s(const struct obs_service_info *info, size_t size)
 		goto error;
 	}
 
-#define CHECK_REQUIRED_VAL_(info, val, func) CHECK_REQUIRED_VAL(struct obs_service_info, info, val, func)
-	CHECK_REQUIRED_VAL_(info, get_name, obs_register_service);
-	CHECK_REQUIRED_VAL_(info, create, obs_register_service);
-	CHECK_REQUIRED_VAL_(info, destroy, obs_register_service);
-	CHECK_REQUIRED_VAL_(info, get_protocol, obs_register_service);
-#undef CHECK_REQUIRED_VAL_
+	has_val(struct obs_service_info, get_name, GET_NAME);
+	has_val(struct obs_service_info, create, CREATE);
+	has_val(struct obs_service_info, destroy, DESTROY);
+	has_val(struct obs_service_info, get_protocol, GET_PROTOCOL);
+
+	err = obs_module_type_rules_service_check(callbacks);
+	switch (err) {
+	case OBS_MODULE_TYPE_RULES_OK:
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_GET_NAME:
+		type_required(get_name, obs_register_service);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_CREATE:
+		type_required(create, obs_register_service);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_DESTROY:
+		type_required(destroy, obs_register_service);
+		break;
+	case OBS_MODULE_TYPE_RULES_NO_GET_PROTOCOL:
+		type_required(get_protocol, obs_register_service);
+		break;
+	default:
+		break;
+	}
+	if (err != OBS_MODULE_TYPE_RULES_OK)
+		goto error;
 
 	REGISTER_OBS_DEF(size, obs_service_info, obs->service_types, info);
 
@@ -1063,10 +1136,10 @@ error:
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
+#undef type_required
+#undef has_val
 #undef REGISTER_OBS_DEF
 #undef HAS_VAL
-#undef CHECK_REQUIRED_VAL
-#undef CHECK_REQUIRED_VAL_EITHER
 #undef HANDLE_ERROR
 #undef source_warn
 #undef output_warn
