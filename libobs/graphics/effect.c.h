@@ -406,6 +406,12 @@ size_t gs_effect_get_default_val_size(gs_eparam_t *param)
 
 void gs_effect_set_default(gs_eparam_t *param)
 {
+	/* the error the other setters log through effect_setval_inline() */
+	if (!param) {
+		blog(LOG_ERROR, "effect_setval_inline: invalid param");
+		return;
+	}
+
 	effect_setval_inline(param, param->default_val.array, param->default_val.num);
 }
 

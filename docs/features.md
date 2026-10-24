@@ -1925,6 +1925,11 @@ area.
   graphics up, the levels also start at 300 and 1000 nits instead of 0
   until something sets them. *All*, pending merge. Issue
   [#2209](https://github.com/obs-rust/obs-studio/issues/2209).
+- A plugin or script that resets an effect parameter to its default with
+  a parameter it failed to look up no longer crashes OBS; the call logs an
+  error and does nothing, like the other effect parameter setters. *All*,
+  pending merge. Issue
+  [#2210](https://github.com/obs-rust/obs-studio/issues/2210).
 
 ### Security hardening
 
