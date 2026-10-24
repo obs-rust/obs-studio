@@ -102,6 +102,7 @@
     "graphics/effect-parser.h",
     "graphics/effect.h",
     "graphics/graphics-internal.h",
+    "graphics/graphics-sprite.h",
     "graphics/graphics.h",
     "graphics/half.h",
     "graphics/image-file.h",

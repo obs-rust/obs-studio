@@ -162,6 +162,7 @@
 
 /* graphics/graphics.c */
 
+#include "graphics/graphics-sprite.h"
 #include "graphics/quat.h"
 #include "graphics/axisang.h"
 
