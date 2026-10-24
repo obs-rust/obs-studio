@@ -26,6 +26,8 @@ mod graphics_sprite;
 mod media_remux;
 #[path = "port_comparison/module_source_rules.rs"]
 mod module_source_rules;
+#[path = "port_comparison/module_type_rules.rs"]
+mod module_type_rules;
 #[path = "port_comparison/output_video_checks.rs"]
 mod output_video_checks;
 #[path = "port_comparison/scene.rs"]
@@ -136,6 +138,7 @@ fn comparisons(criterion: &mut Criterion) {
         graphics_sprite,
         media_remux,
         module_source_rules,
+        module_type_rules,
         output_video_checks,
         scene,
         scene_crop,
