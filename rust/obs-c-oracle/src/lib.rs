@@ -137,6 +137,7 @@ pub mod source_profiler;
 pub mod source_ptm_gate;
 pub mod source_size;
 pub mod source_transition_clock;
+pub mod source_transition_render;
 pub mod source_volume;
 pub mod task;
 pub mod text_lookup;
