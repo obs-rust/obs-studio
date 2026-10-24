@@ -81,7 +81,7 @@ BUILD = r"""
 # A journal records why each compile missed, so a warm run that still
 # compiles cold says which input varied (#2182).
 journal="$PWD/build_ubuntu/zccache-journal.jsonl"
-ZCCACHE_SESSION_ID="$(zccache session-start --stats --journal "$journal")" || ZCCACHE_SESSION_ID=
+ZCCACHE_SESSION_ID="$(zccache session-start --stats --journal "$journal" | sed -n 's/.*"session_id":"\([^"]*\)".*/\1/p')" || ZCCACHE_SESSION_ID=
 export ZCCACHE_SESSION_ID ZCCACHE_PROFILE_CC_MISS=1
 cmake --build build_ubuntu
 if [ -n "$ZCCACHE_SESSION_ID" ]; then
