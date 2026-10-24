@@ -658,6 +658,20 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_dshow_rotation": {
+      "sources": [
+        "test/cmocka/test_dshow_rotation.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/win-dshow"
+      ],
+      "watch_inputs": [
+        "plugins/win-dshow"
+      ]
+    },
     "test_dstr": {
       "sources": [
         "test/cmocka/test_dstr.c"
@@ -3492,6 +3506,12 @@
     },
     "test_disk_space_monitor": {
       "target": "test_disk_space_monitor",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_dshow_rotation": {
+      "target": "test_dshow_rotation",
       "command": [
         "${target}"
       ]
