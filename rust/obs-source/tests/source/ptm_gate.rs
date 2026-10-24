@@ -16,7 +16,8 @@
 use obs_source::ptm_gate::{NS_PER_MS, held, mutes, stop_time, talk_mutes};
 use proptest::prelude::*;
 
-const MS: u64 = NS_PER_MS;
+/// Written out, not the port's constant, so a wrong `NS_PER_MS` fails.
+const MS: u64 = 1_000_000;
 const SEC: u64 = 1000 * MS;
 /// The largest delay whose product does not wrap: 18446744073709 ms.
 const MAX_DELAY: u64 = u64::MAX / MS;
@@ -506,6 +507,13 @@ fn special_values() -> Vec<u64> {
     values.sort_unstable();
     values.dedup();
     values
+}
+
+#[test]
+fn edge_ns_per_ms_is_a_millisecond() {
+    assert_eq!(NS_PER_MS, 1_000_000);
+    check_stop(0, 1, 1_000_000);
+    check_stop(0, 1000, 1_000_000_000);
 }
 
 #[test]

@@ -11,5 +11,6 @@ mod color_space_parity;
 mod deinterlace_pacing;
 mod deinterlace_pacing_parity;
 mod ptm_gate;
+mod ptm_gate_parity;
 mod transition_clock;
 mod transition_clock_parity;
