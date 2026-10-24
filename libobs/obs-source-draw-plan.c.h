@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-draw-plan.pch.h"
 
 /* The source draw decisions of obs-source.c, moved from rotate_async_video(),
  * obs_source_render_async_video() and source_render(): the decisions, on

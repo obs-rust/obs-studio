@@ -44,6 +44,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-conversion-plan.c.h.o",
     "obs-source-deinterlace-draw.c.h.o",
     "obs-source-deinterlace-pacing.c.h.o",
+    "obs-source-draw-plan.c.h.o",
     "obs-source-load.c.h.o",
     "obs-source-ptm-gate.c.h.o",
     "obs-source-size.c.h.o",

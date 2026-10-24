@@ -7,6 +7,7 @@ pub mod source_color_space;
 pub mod source_conversion_plan;
 pub mod source_deinterlace_draw;
 pub mod source_deinterlace_pacing;
+pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_ptm_gate;
 pub mod source_size;

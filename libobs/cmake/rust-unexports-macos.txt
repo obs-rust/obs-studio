@@ -161,6 +161,15 @@ _obs_source_deinterlace_pacing_waiting_frame_ts
 _obs_source_deinterlace_pacing_half_duration
 _obs_source_deinterlace_pacing_buffered_offset
 _obs_source_deinterlace_pacing_reanchor
+# obs-source-draw-plan.c: obs-source.c calls them inside libobs. Not EXPORT.
+_obs_source_draw_plan_rotation_x
+_obs_source_draw_plan_rotation_y
+_obs_source_draw_plan_async_linear_srgb
+_obs_source_draw_plan_async_nonlinear_alpha
+_obs_source_draw_plan_technique
+_obs_source_draw_plan_reads_white_level
+_obs_source_draw_plan_multiplier
+_obs_source_draw_plan_convert
 # obs-source-ptm-gate.c: obs-source.c calls them inside libobs. Not EXPORT.
 _obs_source_ptm_gate_stop_time
 _obs_source_ptm_gate_held

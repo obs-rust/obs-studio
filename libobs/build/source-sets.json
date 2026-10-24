@@ -192,6 +192,7 @@
     "build/libobs.ported-source-conversion-plan+.h.c",
     "build/libobs.ported-source-deinterlace-draw+.h.c",
     "build/libobs.ported-source-deinterlace-pacing+.h.c",
+    "build/libobs.ported-source-draw-plan+.h.c",
     "build/libobs.ported-source-load+.h.c",
     "build/libobs.ported-source-profiler+.h.c",
     "build/libobs.ported-source-ptm-gate+.h.c",

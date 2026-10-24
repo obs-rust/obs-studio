@@ -194,6 +194,18 @@ obs_source_deinterlace_pacing_waiting_frame_ts
 obs_source_deinterlace_pacing_half_duration
 obs_source_deinterlace_pacing_buffered_offset
 obs_source_deinterlace_pacing_reanchor
+# obs-source-draw-plan.c: rotate_async_video(),
+# obs_source_render_async_video() and source_render() in obs-source.c call
+# them inside libobs. Declared in obs-source-draw-plan.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_source_draw_plan_rotation_x
+obs_source_draw_plan_rotation_y
+obs_source_draw_plan_async_linear_srgb
+obs_source_draw_plan_async_nonlinear_alpha
+obs_source_draw_plan_technique
+obs_source_draw_plan_reads_white_level
+obs_source_draw_plan_multiplier
+obs_source_draw_plan_convert
 # obs-source-ptm-gate.c: source_muted() and get_source_volume() in
 # obs-source.c call them inside libobs. Declared in obs-source-ptm-gate.h
 # without EXPORT, so the shims stay hidden the same way.
