@@ -1095,6 +1095,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_main_mix_before_video": {
+      "sources": [
+        "test/cmocka/test_main_mix_before_video.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_math_extra": {
       "sources": [
         "test/cmocka/test_math_extra.c"
@@ -4118,6 +4139,23 @@
     },
     "test_lexer": {
       "target": "test_lexer"
+    },
+    "test_main_mix_before_video": {
+      "target": "test_main_mix_before_video",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_math_extra": {
       "target": "test_math_extra",
