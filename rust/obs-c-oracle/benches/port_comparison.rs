@@ -18,6 +18,8 @@ mod core_units;
 mod encoder_roi;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
+#[path = "port_comparison/graphics_sprite.rs"]
+mod graphics_sprite;
 #[path = "port_comparison/media_remux.rs"]
 mod media_remux;
 #[path = "port_comparison/module_source_rules.rs"]
@@ -81,6 +83,7 @@ fn comparisons(criterion: &mut Criterion) {
     core_units::benchmarks(criterion);
     encoder_roi::benchmarks(criterion);
     graphics::benchmarks(criterion);
+    graphics_sprite::benchmarks(criterion);
     media_remux::benchmarks(criterion);
     module_source_rules::benchmarks(criterion);
     scene::benchmarks(criterion);
