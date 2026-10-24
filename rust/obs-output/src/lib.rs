@@ -26,6 +26,7 @@ pub mod encoder_roi;
 pub mod interleave;
 pub mod protocols;
 pub mod service;
+pub mod video_checks;
 
 #[allow(unsafe_code)]
 pub mod ffi;
