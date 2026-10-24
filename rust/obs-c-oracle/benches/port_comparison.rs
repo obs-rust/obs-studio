@@ -32,6 +32,8 @@ mod module_type_rules;
 mod output_video_checks;
 #[path = "port_comparison/scene.rs"]
 mod scene;
+#[path = "port_comparison/scene_audio_window.rs"]
+mod scene_audio_window;
 #[path = "port_comparison/scene_crop.rs"]
 mod scene_crop;
 #[path = "port_comparison/scene_item_names.rs"]
@@ -145,6 +147,7 @@ fn comparisons(criterion: &mut Criterion) {
         module_type_rules,
         output_video_checks,
         scene,
+        scene_audio_window,
         scene_crop,
         scene_item_names,
         scene_render_plan,
