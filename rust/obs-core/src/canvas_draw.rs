@@ -32,7 +32,23 @@
 //! depend on. The colour spaces are `enum gs_color_space`, taken as the C's
 //! `int`; a value outside the enum takes the path it took in the C.
 //!
+//! No input comes from outside OBS (the spaces come from the graphics
+//! subsystem and the mix, the white level from `obs_set_video_levels()`, the
+//! flags from libobs and the host), but nothing here can panic on any input.
+//!
 //! No intentional differences from the C.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 use core::ffi::c_int;
 
@@ -97,8 +113,7 @@ impl Technique {
 /// is not rendered.
 #[must_use]
 pub fn skip(has_mix: bool, texture_rendered: bool) -> bool {
-    let _ = (has_mix, texture_rendered);
-    todo!()
+    !has_mix || !texture_rendered
 }
 
 /// `obs_canvas_draw_technique()`: `DrawTonemap` for a
@@ -106,54 +121,56 @@ pub fn skip(has_mix: bool, texture_rendered: bool) -> bool {
 /// [`GS_CS_709_SCRGB`], `Draw` otherwise.
 #[must_use]
 pub fn technique(source_space: c_int, current_space: c_int) -> Technique {
-    let _ = (source_space, current_space);
-    todo!()
+    match current_space {
+        GS_CS_SRGB | GS_CS_SRGB_16F if source_space == GS_CS_709_EXTENDED => Technique::DrawTonemap,
+        GS_CS_709_SCRGB => Technique::DrawMultiply,
+        _ => Technique::Draw,
+    }
 }
 
 /// `obs_canvas_draw_reads_white_level()`: whether the white level is read,
 /// into [`GS_CS_709_SCRGB`] only.
 #[must_use]
 pub fn reads_white_level(current_space: c_int) -> bool {
-    let _ = current_space;
-    todo!()
+    current_space == GS_CS_709_SCRGB
 }
 
 /// `obs_canvas_draw_multiplier()`: the white level over [`SCRGB_WHITE`], one
 /// `f32` division.
 #[must_use]
 pub fn multiplier(sdr_white_level: f32) -> f32 {
-    let _ = sdr_white_level;
-    todo!()
+    sdr_white_level / SCRGB_WHITE
 }
 
 /// `obs_display_clear_reads_space()`: whether the colour space is read for
 /// the clear colour, only when the host does not always clear in sRGB.
 #[must_use]
 pub fn clear_reads_space(always_srgb: bool) -> bool {
-    let _ = always_srgb;
-    todo!()
+    !always_srgb
 }
 
 /// `obs_display_clear_linear()`: whether the clear colour stays linear
 /// (`vec4_from_rgba()`), into [`GS_CS_SRGB`] only.
 #[must_use]
 pub fn clear_linear(current_space: c_int) -> bool {
-    let _ = current_space;
-    todo!()
+    current_space == GS_CS_SRGB
 }
 
 /// `obs_display_clear_flags()`: depth and stencil, and colour without the
 /// clear workaround.
 #[must_use]
 pub fn clear_flags(use_clear_workaround: bool) -> u32 {
-    let _ = use_clear_workaround;
-    todo!()
+    let flags = CLEAR_DEPTH | CLEAR_STENCIL;
+    if use_clear_workaround {
+        flags
+    } else {
+        flags | CLEAR_COLOR
+    }
 }
 
 /// `obs_display_clear_draws_solid()`: whether the solid effect draws the
 /// clear colour, with the clear workaround only.
 #[must_use]
 pub fn clear_draws_solid(use_clear_workaround: bool) -> bool {
-    let _ = use_clear_workaround;
-    todo!()
+    use_clear_workaround
 }

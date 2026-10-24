@@ -15,7 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-canvas-draw.pch.h"
+
+/* The canvas texture draw and display clear decisions, moved from
+ * obs_render_canvas_texture_internal() in obs.c and render_display_begin() in
+ * obs-display.c: only colour spaces, flags and the white level, no texture,
+ * effect or display. obs.c and obs-display.c make the calls they decide on.
+ * Ported to rust/obs-core (canvas_draw): the hybrid libobs drops this file. */
 
 /* obs_render_canvas_texture_internal()'s early return. */
 bool obs_canvas_draw_skip(bool has_mix, bool texture_rendered)

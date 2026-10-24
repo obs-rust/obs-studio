@@ -425,6 +425,16 @@
     obs_video_step_ring;
     obs_video_step_download;
     obs_video_step_output;
+    /* obs-canvas-draw.c. obs.c and obs-display.c call them inside libobs.
+     * Not EXPORT. */
+    obs_canvas_draw_multiplier;
+    obs_canvas_draw_reads_white_level;
+    obs_canvas_draw_skip;
+    obs_canvas_draw_technique;
+    obs_display_clear_draws_solid;
+    obs_display_clear_flags;
+    obs_display_clear_linear;
+    obs_display_clear_reads_space;
     /* util/source-profiler.c. obs.c, obs-video.c and obs-source.c call the
      * frame hooks inside libobs. Declared in obs-internal.h, not EXPORT. */
     source_profiler_reset_video;

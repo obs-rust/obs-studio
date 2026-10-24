@@ -18,6 +18,7 @@ SPEC.loader.exec_module(PORTED)
 PORTED_ON_EVERY_HOST = (
     "graphics/graphics-sprite.c.h.o",
     "obs-audio-mix.c.h.o",
+    "obs-canvas-draw.c.h.o",
     "obs-context-names.c.h.o",
     "obs-encoder-roi.c.h.o",
     "obs-encoder-size.c.h.o",
