@@ -31,6 +31,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-output-protocols.c.h.o",
     "obs-output-video-checks.c.h.o",
     "obs-scene-audio-actions.c.h.o",
+    "obs-scene-audio-window.c.h.o",
     "obs-scene-crop.c.h.o",
     "obs-scene-extent.c.h.o",
     "obs-scene-item-names.c.h.o",

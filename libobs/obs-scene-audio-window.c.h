@@ -15,9 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-audio-window.pch.h"
 
-/* The audio window decisions of scene_audio_render() in obs-scene.c, on
+/* Ported to rust/obs-scene (audio_window): the hybrid libobs drops this file.
+ * The audio window decisions of scene_audio_render() in obs-scene.c, on
  * plain values: the source each item is read from, the tick's earliest
  * timestamp, and the frames each item is mixed on. obs-scene.c keeps the
  * lock, the volume buffer and the audio actions, every libobs call and the

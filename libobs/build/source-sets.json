@@ -172,6 +172,7 @@
     "build/libobs.ported-platform+.h.c",
     "build/libobs.ported-profiler-io+.h.c",
     "build/libobs.ported-scene-audio-actions+.h.c",
+    "build/libobs.ported-scene-audio-window+.h.c",
     "build/libobs.ported-scene-blend+.h.c",
     "build/libobs.ported-scene-bounds+.h.c",
     "build/libobs.ported-scene-bounds-place+.h.c",

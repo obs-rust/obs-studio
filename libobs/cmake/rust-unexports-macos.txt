@@ -110,6 +110,14 @@ _obs_scene_item_save_relative
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply
 _obs_scene_audio_action_due
+# obs-scene-audio-window.c: obs-scene.c calls them inside libobs. Not EXPORT.
+_obs_scene_audio_window_pick
+_obs_scene_audio_window_counts
+_obs_scene_audio_window_earliest
+_obs_scene_audio_window_silent
+_obs_scene_audio_window_frames
+_obs_scene_audio_window_mixes
+_obs_scene_audio_window_adds
 # obs-source-async-pacing.c: obs-source.c calls it inside libobs. Not
 # EXPORT.
 _obs_source_async_pacing
