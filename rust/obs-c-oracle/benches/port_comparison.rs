@@ -30,6 +30,8 @@ mod scene_crop;
 mod scene_render_plan;
 #[path = "port_comparison/service.rs"]
 mod service;
+#[path = "port_comparison/source_audio_input.rs"]
+mod source_audio_input;
 #[path = "port_comparison/source_audio_timing.rs"]
 mod source_audio_timing;
 #[path = "port_comparison/source_color_space.rs"]
@@ -79,6 +81,7 @@ fn comparisons(criterion: &mut Criterion) {
     scene_crop::benchmarks(criterion);
     scene_render_plan::benchmarks(criterion);
     service::benchmarks(criterion);
+    source_audio_input::benchmarks(criterion);
     source_audio_timing::benchmarks(criterion);
     source_color_space::benchmarks(criterion);
     source_deinterlace_pacing::benchmarks(criterion);
