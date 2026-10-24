@@ -202,8 +202,14 @@ not get a line.
   no GPU render device, an NVIDIA GPU (use NVENC), no access to the render
   device (with the `usermod` command), or no VA-API driver installed (with
   the install command for Debian/Ubuntu, Fedora or Arch), and logs it as a
-  `VAAPI:` line. A build without QSV (the AppImage) says to pick another
-  encoder for Streaming and Recording. *All*, pending merge. Issues
+  `VAAPI:` line. On Linux, for QSV it reads the Intel GPU's device id and
+  names the runtime that generation needs (Intel Media SDK up to Ice Lake,
+  oneVPL GPU runtime from Tiger Lake) with its install command, or says the
+  GPU is too old for Quick Sync, or that the iHD driver or render access is
+  missing, and logs it as a `QSV:` line
+  ([#1925](https://github.com/obs-rust/obs-studio/issues/1925)). A build
+  without QSV (the AppImage) says to pick another encoder for Streaming and
+  Recording. *All*, pending merge. Issues
   [#1720](https://github.com/obs-rust/obs-studio/issues/1720),
   [#1862](https://github.com/obs-rust/obs-studio/issues/1862), PRs
   [#1841](https://github.com/obs-rust/obs-studio/pull/1841),

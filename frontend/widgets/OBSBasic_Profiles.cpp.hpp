@@ -1135,6 +1135,48 @@ ErrorDetails VaapiMissingDetails(const char *encoder)
 	return ErrorDetails{"vaapi_not_supported", QTStr("EncoderMissing.VAAPI.NotSupported")};
 }
 
+/* Why obs-qsv11 found no usable Intel GPU, with the runtime that GPU
+ * generation needs (#1925). Away from Linux there is no /dev/dri, so this is
+ * PROFILE_QSV_NO_INTEL_GPU and keeps the generic message. */
+ErrorDetails QsvMissingDetails(const char *encoder)
+{
+	struct profile_qsv_diagnosis d;
+	profile_qsv_diagnose(&profile_vaapi_system_host, &d);
+
+	static const char *const causes[] = {
+		"Intel GPU and runtime present",        "no Intel GPU",
+		"Intel GPU without Quick Sync support", "no access to the render device",
+		"Quick Sync runtime not installed",     "Intel VA-API driver not installed"};
+	static const char *const runtimes[] = {"none", "Media SDK", "oneVPL"};
+	blog(LOG_WARNING, "QSV: encoder '%s' missing: %s (device '%s', id 0x%04x, runtime %s%s%s)", encoder,
+	     causes[d.cause], d.device, d.device_id, runtimes[d.runtime], d.package ? ", package " : "",
+	     d.package ? d.package : "");
+
+	switch (d.cause) {
+	case PROFILE_QSV_UNSUPPORTED_GPU:
+		return ErrorDetails{"qsv_unsupported_gpu", QTStr("EncoderMissing.QSV.UnsupportedGPU")};
+	case PROFILE_QSV_NO_ACCESS:
+		return ErrorDetails{"qsv_no_access", QTStr("EncoderMissing.VAAPI.NoAccess").arg(d.device)};
+	case PROFILE_QSV_NO_RUNTIME:
+	case PROFILE_QSV_NO_DRIVER: {
+		const char *what = d.cause == PROFILE_QSV_NO_DRIVER             ? "QSV.NoDriver"
+				   : d.runtime == PROFILE_QSV_RUNTIME_MEDIA_SDK ? "QSV.NoMediaSDK"
+										: "QSV.NoOneVPL";
+		const char *code = d.cause == PROFILE_QSV_NO_DRIVER ? "qsv_no_driver" : "qsv_no_runtime";
+		std::string key = std::string("EncoderMissing.") + what;
+		if (d.install_command) {
+			return ErrorDetails{
+				code, QTStr(key.c_str()).arg(QStringLiteral("<code>%1</code>").arg(d.install_command))};
+		}
+		return ErrorDetails{code, QTStr(key.c_str()).arg(QTStr("EncoderMissing.QSV.Package").arg(d.package))};
+	}
+	case PROFILE_QSV_NO_INTEL_GPU:
+	case PROFILE_QSV_AVAILABLE:
+		break;
+	}
+	return ErrorDetails{"qsv_no_device", QTStr("EncoderMissing.QSV.NoDevice")};
+}
+
 CheckResult CheckHardwareEncoder(std::string_view encoder)
 {
 	const std::string id(encoder);
@@ -1149,7 +1191,7 @@ CheckResult CheckHardwareEncoder(std::string_view encoder)
 	case PROFILE_MISSING_ENCODER_NO_VAAPI_DEVICE:
 		return VaapiMissingDetails(id.c_str());
 	case PROFILE_MISSING_ENCODER_NO_QSV_DEVICE:
-		return ErrorDetails{"qsv_no_device", QTStr("EncoderMissing.QSV.NoDevice")};
+		return QsvMissingDetails(id.c_str());
 	case PROFILE_MISSING_ENCODER_UNKNOWN:
 		break;
 	}
