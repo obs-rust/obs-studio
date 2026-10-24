@@ -56,6 +56,7 @@
     "obs-source-draw-technique.h",
     "obs-source-load.h",
     "obs-source-ptm-gate.h",
+    "obs-source-render-route.h",
     "obs-source-size.h",
     "obs-source-transition-clock.h",
     "obs-source-transition-render.h",

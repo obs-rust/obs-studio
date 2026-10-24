@@ -2318,12 +2318,20 @@ void obs_source_default_render(obs_source_t *source)
 	}
 }
 
+_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
+_Static_assert(sizeof(enum obs_allow_direct_render) == sizeof(int), "enum obs_allow_direct_render is passed as int");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+_Static_assert(sizeof(enum gs_color_format) == sizeof(int), "enum gs_color_format is passed as int");
+
 static inline void obs_source_main_render(obs_source_t *source)
 {
 	uint32_t flags = source->info.output_flags;
-	bool custom_draw = (flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
-	bool srgb_aware = (flags & OBS_SOURCE_SRGB) != 0;
-	bool default_effect = !source->filter_parent && source->filters.num == 0 && !custom_draw;
+	bool custom_draw = obs_source_render_route_main_custom_draw(flags);
+	bool srgb_aware = obs_source_render_route_main_srgb_aware(flags);
+	const bool has_filter_parent = source->filter_parent != NULL;
+	bool default_effect = obs_source_render_route_main_default_effect(
+		flags, has_filter_parent,
+		obs_source_render_route_main_reads_filters(has_filter_parent) && source->filters.num != 0);
 	bool previous_srgb = false;
 
 	if (!srgb_aware) {
@@ -2359,22 +2367,49 @@ static const char *get_type_format(enum obs_source_type type)
 }
 #endif
 
+/* The draw of source_render_video(): each READ_ step reads one value, in the
+ * old order, and only when the route asks for it. */
+static inline enum obs_source_render_route_draw source_draw_route(obs_source_t *source)
+{
+	enum obs_source_render_route_draw route = obs_source_render_route_draw(source->filters.num != 0);
+
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_RENDERING_FILTER)
+		route = obs_source_render_route_draw_next(route, source->rendering_filter);
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_VIDEO_RENDER)
+		route = obs_source_render_route_draw_next(route, source->info.video_render != NULL);
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_FILTER_TARGET)
+		route = obs_source_render_route_draw_next(route, source->filter_target != NULL);
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_DEINTERLACING)
+		route = obs_source_render_route_draw_next(route, deinterlacing_enabled(source));
+
+	return route;
+}
+
 static inline void source_render_video(obs_source_t *source)
 {
-	if (source->info.type != OBS_SOURCE_TYPE_FILTER && (source->info.output_flags & OBS_SOURCE_VIDEO) == 0) {
+	int type = (int)source->info.type;
+	uint32_t flags = obs_source_render_route_video_reads_flags(type) ? source->info.output_flags : 0;
+
+	if (obs_source_render_route_video_none(type, flags)) {
 		if (source->filter_parent)
 			obs_source_skip_video_filter(source);
 		return;
 	}
 
-	if (source->info.type == OBS_SOURCE_TYPE_INPUT && (source->info.output_flags & OBS_SOURCE_ASYNC) != 0 &&
-	    !source->rendering_filter) {
+	/* the async check reads the type and the flags again, as before */
+	type = (int)source->info.type;
+	flags = obs_source_render_route_async_reads_flags(type) ? source->info.output_flags : 0;
+	if (obs_source_render_route_async_update(type, flags,
+						 obs_source_render_route_async_reads_rendering_filter(type, flags) &&
+							 source->rendering_filter)) {
 		if (deinterlacing_enabled(source))
 			deinterlace_update_async_video(source);
 		obs_source_update_async_video(source);
 	}
 
-	if (!source->context.data || !source->enabled) {
+	const bool has_data = source->context.data != NULL;
+	if (obs_source_render_route_inactive(has_data,
+					     obs_source_render_route_reads_enabled(has_data) && source->enabled)) {
 		if (source->filter_parent)
 			obs_source_skip_video_filter(source);
 		return;
@@ -2383,20 +2418,32 @@ static inline void source_render_video(obs_source_t *source)
 	GS_DEBUG_MARKER_BEGIN_FORMAT(GS_DEBUG_COLOR_SOURCE, get_type_format(source->info.type),
 				     obs_source_get_name(source));
 
-	if (source->filters.num && !source->rendering_filter)
+	switch (source_draw_route(source)) {
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_FILTERS:
 		obs_source_render_filters(source);
-
-	else if (source->info.video_render)
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_MAIN:
 		obs_source_main_render(source);
-
-	else if (source->filter_target)
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_TARGET:
 		obs_source_video_render(source->filter_target);
-
-	else if (deinterlacing_enabled(source))
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_DEINTERLACE:
 		deinterlace_render(source);
-
-	else
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_ASYNC:
 		obs_source_render_async_video(source);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_DEFAULT:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_RENDERING_FILTER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_VIDEO_RENDER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_FILTER_TARGET:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_DEINTERLACING:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_VIDEO_RENDER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_DEINTERLACING:
+		/* not a draw of source_render_video() */
+		break;
+	}
 
 	GS_DEBUG_MARKER_END();
 }
@@ -3760,12 +3807,15 @@ static inline void render_filter_tex(gs_texture_t *tex, gs_effect_t *effect, uin
 	gs_enable_framebuffer_srgb(previous);
 }
 
+/* can_bypass(): gs_get_color_space() is called only when the other
+ * conditions hold, as before. */
 static inline bool can_bypass(obs_source_t *target, obs_source_t *parent, uint32_t filter_flags, uint32_t parent_flags,
 			      enum obs_allow_direct_render allow_direct, enum gs_color_space space)
 {
-	return (target == parent) && (allow_direct == OBS_ALLOW_DIRECT_RENDERING) &&
-	       ((parent_flags & OBS_SOURCE_CUSTOM_DRAW) == 0) && ((parent_flags & OBS_SOURCE_ASYNC) == 0) &&
-	       ((filter_flags & OBS_SOURCE_SRGB) == (parent_flags & OBS_SOURCE_SRGB) && space == gs_get_color_space());
+	const bool reads_space = obs_source_render_route_bypass_reads_space(target == parent, (int)allow_direct,
+									    filter_flags, parent_flags);
+	return obs_source_render_route_bypass(target == parent, (int)allow_direct, filter_flags, parent_flags,
+					      (int)space, reads_space ? (int)gs_get_color_space() : (int)GS_CS_SRGB);
 }
 
 bool obs_source_process_filter_begin(obs_source_t *filter, enum gs_color_format format,
@@ -3790,13 +3840,15 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 	target = obs_filter_get_target(filter);
 	parent = obs_filter_get_parent(filter);
 
-	if (!target) {
+	switch (obs_source_render_route_filter(target != NULL, parent != NULL)) {
+	case OBS_SOURCE_RENDER_ROUTE_FILTER_NO_TARGET:
 		blog(LOG_INFO, "filter '%s' being processed with no target!", filter->context.name);
 		return false;
-	}
-	if (!parent) {
+	case OBS_SOURCE_RENDER_ROUTE_FILTER_NO_PARENT:
 		blog(LOG_INFO, "filter '%s' being processed with no parent!", filter->context.name);
 		return false;
+	case OBS_SOURCE_RENDER_ROUTE_FILTER_READY:
+		break;
 	}
 
 	filter_flags = filter->info.output_flags;
@@ -3815,12 +3867,13 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 		return true;
 	}
 
-	if (!cx || !cy) {
+	if (obs_source_render_route_size_skip(cx, cy)) {
 		obs_source_skip_video_filter(filter);
 		return false;
 	}
 
-	if (filter->filter_texrender && (gs_texrender_get_format(filter->filter_texrender) != format)) {
+	if (filter->filter_texrender && obs_source_render_route_texrender_stale(
+						(int)gs_texrender_get_format(filter->filter_texrender), (int)format)) {
 		gs_texrender_destroy(filter->filter_texrender);
 		filter->filter_texrender = NULL;
 	}
@@ -3833,15 +3886,14 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 		gs_blend_state_push();
 		gs_blend_function_separate(GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
-		bool custom_draw = (parent_flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
-		bool async = (parent_flags & OBS_SOURCE_ASYNC) != 0;
 		struct vec4 clear_color;
 
 		vec4_zero(&clear_color);
 		gs_clear(GS_CLEAR_COLOR, &clear_color, 0.0f, 0);
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 
-		if (target == parent && !custom_draw && !async)
+		if (obs_source_render_route_filter_render(target == parent, parent_flags) ==
+		    OBS_SOURCE_RENDER_ROUTE_DRAW_DEFAULT)
 			obs_source_default_render(target);
 		else
 			obs_source_video_render(target);
@@ -3869,22 +3921,25 @@ void obs_source_process_filter_tech_end(obs_source_t *filter, gs_effect_t *effec
 	target = obs_filter_get_target(filter);
 	parent = obs_filter_get_parent(filter);
 
-	if (!target || !parent)
+	if (obs_source_render_route_filter(target != NULL, parent != NULL) != OBS_SOURCE_RENDER_ROUTE_FILTER_READY)
 		return;
 
 	filter_flags = filter->info.output_flags;
 
-	const bool previous = gs_set_linear_srgb((filter_flags & OBS_SOURCE_SRGB) != 0);
+	const bool previous = gs_set_linear_srgb(obs_source_render_route_tech_end_linear_srgb(filter_flags));
 
-	const char *tech = tech_name ? tech_name : "Draw";
+	const char *tech = obs_source_render_route_tech_name(tech_name);
 
-	if (filter_bypass_active) {
+	switch (obs_source_render_route_tech_end(filter_bypass_active)) {
+	case OBS_SOURCE_RENDER_ROUTE_TECH_END_BYPASS:
 		render_filter_bypass(target, effect, tech);
-	} else {
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_TECH_END_TEXTURE:
 		texture = gs_texrender_get_texture(filter->filter_texrender);
 		if (texture) {
 			render_filter_tex(texture, effect, width, height, tech);
 		}
+		break;
 	}
 
 	gs_set_linear_srgb(previous);
@@ -3901,7 +3956,6 @@ void obs_source_process_filter_end(obs_source_t *filter, gs_effect_t *effect, ui
 void obs_source_skip_video_filter(obs_source_t *filter)
 {
 	obs_source_t *target, *parent;
-	bool custom_draw, async;
 	uint32_t parent_flags;
 
 	if (!obs_ptr_valid(filter, "obs_source_skip_video_filter"))
@@ -3913,25 +3967,43 @@ void obs_source_skip_video_filter(obs_source_t *filter)
 	/* A filter removed while it renders has no parent or target any
 	 * more: draw nothing this frame, as obs_source_process_filter_begin
 	 * does. */
-	if (!target || !parent)
+	if (obs_source_render_route_filter(target != NULL, parent != NULL) != OBS_SOURCE_RENDER_ROUTE_FILTER_READY)
 		return;
 
 	parent_flags = parent->info.output_flags;
-	custom_draw = (parent_flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
-	async = (parent_flags & OBS_SOURCE_ASYNC) != 0;
 
-	if (target == parent) {
-		if (!custom_draw && !async)
-			obs_source_default_render(target);
-		else if (target->info.video_render)
-			obs_source_main_render(target);
-		else if (deinterlacing_enabled(target))
-			deinterlace_render(target);
-		else
-			obs_source_render_async_video(target);
+	/* each READ_ step reads one value of the target, in the old order */
+	enum obs_source_render_route_draw route = obs_source_render_route_skip(target == parent, parent_flags);
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_VIDEO_RENDER)
+		route = obs_source_render_route_draw_next(route, target->info.video_render != NULL);
+	if (route == OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_DEINTERLACING)
+		route = obs_source_render_route_draw_next(route, deinterlacing_enabled(target));
 
-	} else {
+	switch (route) {
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_DEFAULT:
+		obs_source_default_render(target);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_MAIN:
+		obs_source_main_render(target);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_DEINTERLACE:
+		deinterlace_render(target);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_ASYNC:
+		obs_source_render_async_video(target);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_TARGET:
 		obs_source_video_render(target);
+		break;
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_FILTERS:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_RENDERING_FILTER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_VIDEO_RENDER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_FILTER_TARGET:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_DEINTERLACING:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_VIDEO_RENDER:
+	case OBS_SOURCE_RENDER_ROUTE_DRAW_READ_TARGET_DEINTERLACING:
+		/* not a draw of a skipped filter */
+		break;
 	}
 }
 
