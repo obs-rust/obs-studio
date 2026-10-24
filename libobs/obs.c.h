@@ -2290,6 +2290,16 @@ gs_texture_t *obs_get_main_texture(void)
 	return video->render_texture;
 }
 
+/* obs-source-load.h copies these */
+_Static_assert(OBS_SOURCE_LOAD_MONITOR_ONLY_BEFORE == MAKE_SEMANTIC_VERSION(23, 2, 2), "23.2.2");
+_Static_assert(OBS_SOURCE_LOAD_MONITORING_ENABLED_BEFORE == MAKE_SEMANTIC_VERSION(33, 0, 0), "33.0.0");
+_Static_assert(OBS_SOURCE_LOAD_MONITOR_BY_DEFAULT == OBS_SOURCE_MONITOR_BY_DEFAULT, "OBS_SOURCE_MONITOR_BY_DEFAULT");
+_Static_assert(OBS_SOURCE_LOAD_MONITORING_NONE == OBS_MONITORING_TYPE_NONE, "OBS_MONITORING_TYPE_NONE");
+_Static_assert(OBS_SOURCE_LOAD_MONITORING_MONITOR_ONLY == OBS_MONITORING_TYPE_MONITOR_ONLY,
+	       "OBS_MONITORING_TYPE_MONITOR_ONLY");
+_Static_assert(OBS_SOURCE_LOAD_ALL_MIXERS == (1 << MAX_AUDIO_MIXES) - 1, "MAX_AUDIO_MIXES");
+_Static_assert(OBS_SOURCE_LOAD_DEINTERLACE_DISABLE == OBS_DEINTERLACE_MODE_DISABLE, "OBS_DEINTERLACE_MODE_DISABLE");
+
 static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_private)
 {
 	obs_data_array_t *filters = obs_data_get_array(source_data, "filters");
@@ -2312,9 +2322,10 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	uint32_t mixers;
 	int di_order;
 	int64_t di_mode;
-	int monitoring_type;
+	int64_t monitoring_type;
+	struct obs_source_load_monitoring monitoring;
 
-	prev_ver = (uint32_t)obs_data_get_int(source_data, "prev_ver");
+	prev_ver = obs_source_load_prev_ver(obs_data_get_int(source_data, "prev_ver"));
 
 	if (!*v_id)
 		v_id = id;
@@ -2340,25 +2351,15 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 
 	caps = obs_source_get_output_flags(source);
 
+	/* the value rules and the monitoring migration are in
+	 * obs-source-load.c */
 	obs_data_set_default_double(source_data, "volume", 1.0);
 	volume = obs_data_get_double(source_data, "volume");
-	/* in float's range before the cast; the setter maps NaN, negative
-	 * and infinite volumes (#2108) */
-	if (volume < 0.0)
-		volume = 0.0;
-	else if (volume > (double)FLT_MAX)
-		volume = INFINITY;
-	obs_source_set_volume(source, (float)volume);
+	obs_source_set_volume(source, obs_source_load_volume(volume));
 
 	obs_data_set_default_double(source_data, "balance", 0.5);
 	balance = obs_data_get_double(source_data, "balance");
-	/* in range before the float cast; the setter clamps it and maps NaN
-	 * to 0.5 (#2051) */
-	if (balance < 0.0)
-		balance = 0.0;
-	else if (balance > 1.0)
-		balance = 1.0;
-	obs_source_set_balance_value(source, (float)balance);
+	obs_source_set_balance_value(source, obs_source_load_balance(balance));
 
 	sync = obs_data_get_int(source_data, "sync");
 	obs_source_set_sync_offset(source, sync);
@@ -2382,42 +2383,29 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 
 	obs_data_set_default_int(source_data, "push-to-mute-delay", 0);
 	ptm_delay = obs_data_get_int(source_data, "push-to-mute-delay");
-	/* stored signed; a negative delay is none (#2051) */
-	obs_source_set_push_to_mute_delay(source, ptm_delay < 0 ? 0 : (uint64_t)ptm_delay);
+	obs_source_set_push_to_mute_delay(source, obs_source_load_delay(ptm_delay));
 
 	obs_data_set_default_bool(source_data, "push-to-talk", false);
 	obs_source_enable_push_to_talk(source, obs_data_get_bool(source_data, "push-to-talk"));
 
 	obs_data_set_default_int(source_data, "push-to-talk-delay", 0);
 	ptt_delay = obs_data_get_int(source_data, "push-to-talk-delay");
-	/* stored signed; a negative delay is none (#2051) */
-	obs_source_set_push_to_talk_delay(source, ptt_delay < 0 ? 0 : (uint64_t)ptt_delay);
+	obs_source_set_push_to_talk_delay(source, obs_source_load_delay(ptt_delay));
 
-	/* stored as int64; a mode past the int range is no mode, not its low
-	 * 32 bits, and the setter disables a mode it does not know (#2090) */
 	di_mode = obs_data_get_int(source_data, "deinterlace_mode");
-	obs_source_set_deinterlace_mode(source, di_mode < INT_MIN || di_mode > INT_MAX
-							? OBS_DEINTERLACE_MODE_DISABLE
-							: (enum obs_deinterlace_mode)di_mode);
+	obs_source_set_deinterlace_mode(source, (enum obs_deinterlace_mode)obs_source_load_deinterlace_mode(di_mode));
 
 	di_order = (int)obs_data_get_int(source_data, "deinterlace_field_order");
 	obs_source_set_deinterlace_field_order(source, (enum obs_deinterlace_field_order)di_order);
 
-	monitoring_type = (int)obs_data_get_int(source_data, "monitoring_type");
-	if (prev_ver < MAKE_SEMANTIC_VERSION(23, 2, 2)) {
-		if ((caps & OBS_SOURCE_MONITOR_BY_DEFAULT) != 0) {
-			/* updates older sources to enable monitoring
-			 * automatically if they added monitoring by default in
-			 * version 24 */
-			monitoring_type = OBS_MONITORING_TYPE_MONITOR_ONLY;
-			obs_source_set_audio_mixers(source, 0x3F);
-		}
-	}
+	monitoring_type = obs_data_get_int(source_data, "monitoring_type");
+	monitoring = obs_source_load_monitoring_migration(prev_ver, caps, monitoring_type);
+	if (monitoring.set_mixers)
+		obs_source_set_audio_mixers(source, monitoring.mixers);
 
 	obs_data_set_default_bool(source_data, "monitoring_enabled", false);
-	if (prev_ver < MAKE_SEMANTIC_VERSION(33, 0, 0)) {
-		obs_data_set_bool(source_data, "monitoring_enabled", monitoring_type != OBS_MONITORING_TYPE_NONE);
-	}
+	if (monitoring.store_enabled)
+		obs_data_set_bool(source_data, "monitoring_enabled", monitoring.enabled);
 	obs_source_set_monitoring_enabled(source, obs_data_get_bool(source_data, "monitoring_enabled"));
 
 	obs_data_release(source->private_settings);

@@ -24,6 +24,9 @@
 #include "obs-host/module-symbols.h"
 #include "util/platform.h"
 
+/* obs-source-load.c */
+#include "obs-source-load.h"
+
 /* obs.c */
 
 #include "graphics/matrix4.h"
