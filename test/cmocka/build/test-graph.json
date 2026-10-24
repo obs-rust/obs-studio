@@ -2000,6 +2000,15 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_register_partial_callbacks": {
+      "sources": [
+        "test/cmocka/test_register_partial_callbacks.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_register_refused_type_data": {
       "sources": [
         "test/cmocka/test_register_refused_type_data.c"
@@ -4384,6 +4393,20 @@
     },
     "test_quick_write": {
       "target": "test_quick_write"
+    },
+    "test_register_partial_callbacks": {
+      "target": "test_register_partial_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_register_refused_type_data": {
       "target": "test_register_refused_type_data",
