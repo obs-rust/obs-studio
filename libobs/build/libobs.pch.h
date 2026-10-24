@@ -150,6 +150,7 @@
 #include "obs-source-conversion-plan.h"
 #include "obs-source-draw-plan.h"
 #include "obs-source-frame-copy.h"
+#include "obs-source-media-admission.h"
 #include "obs-source-ptm-gate.h"
 #include "obs-source-render-route.h"
 #include "obs-source-size.h"

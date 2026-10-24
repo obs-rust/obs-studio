@@ -1303,6 +1303,19 @@ static void filter_frame(obs_source_t *source, struct obs_source_frame **ref_fra
 	*ref_frame = frame;
 }
 
+_Static_assert(MEDIA_ACTION_NONE == OBS_SOURCE_MEDIA_ACTION_NONE, "MEDIA_ACTION_NONE");
+_Static_assert(MEDIA_ACTION_PLAY_PAUSE == OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, "MEDIA_ACTION_PLAY_PAUSE");
+_Static_assert(MEDIA_ACTION_RESTART == OBS_SOURCE_MEDIA_ACTION_RESTART, "MEDIA_ACTION_RESTART");
+_Static_assert(MEDIA_ACTION_STOP == OBS_SOURCE_MEDIA_ACTION_STOP, "MEDIA_ACTION_STOP");
+_Static_assert(MEDIA_ACTION_NEXT == OBS_SOURCE_MEDIA_ACTION_NEXT, "MEDIA_ACTION_NEXT");
+_Static_assert(MEDIA_ACTION_PREVIOUS == OBS_SOURCE_MEDIA_ACTION_PREVIOUS, "MEDIA_ACTION_PREVIOUS");
+_Static_assert(MEDIA_ACTION_SET_TIME == OBS_SOURCE_MEDIA_ACTION_SET_TIME, "MEDIA_ACTION_SET_TIME");
+_Static_assert(sizeof(enum media_action_type) == sizeof(int), "enum media_action_type is passed as int");
+
+/* What each queued action calls and the signal it emits go through
+ * obs-source-media-admission.c. The queue and its mutex, the callbacks and
+ * the signals stay here, the callback before the signal as before;
+ * action.pause is read only for a play/pause. */
 void process_media_actions(obs_source_t *source)
 {
 	struct media_action action = {0};
@@ -1317,39 +1330,37 @@ void process_media_actions(obs_source_t *source)
 		}
 		pthread_mutex_unlock(&source->media_actions_mutex);
 
-		switch (action.type) {
-		case MEDIA_ACTION_NONE:
+		enum obs_source_media_dispatch dispatch = obs_source_media_dispatch((int)action.type);
+
+		switch (dispatch) {
+		case OBS_SOURCE_MEDIA_DISPATCH_RETURN:
 			return;
-		case MEDIA_ACTION_PLAY_PAUSE:
+		case OBS_SOURCE_MEDIA_DISPATCH_PLAY_PAUSE:
 			source->info.media_play_pause(source->context.data, action.pause);
-
-			if (action.pause)
-				obs_source_dosignal(source, NULL, "media_pause");
-			else
-				obs_source_dosignal(source, NULL, "media_play");
 			break;
-
-		case MEDIA_ACTION_RESTART:
+		case OBS_SOURCE_MEDIA_DISPATCH_RESTART:
 			source->info.media_restart(source->context.data);
-			obs_source_dosignal(source, NULL, "media_restart");
 			break;
-
-		case MEDIA_ACTION_STOP:
+		case OBS_SOURCE_MEDIA_DISPATCH_STOP:
 			source->info.media_stop(source->context.data);
-			obs_source_dosignal(source, NULL, "media_stopped");
 			break;
-		case MEDIA_ACTION_NEXT:
+		case OBS_SOURCE_MEDIA_DISPATCH_NEXT:
 			source->info.media_next(source->context.data);
-			obs_source_dosignal(source, NULL, "media_next");
 			break;
-		case MEDIA_ACTION_PREVIOUS:
+		case OBS_SOURCE_MEDIA_DISPATCH_PREVIOUS:
 			source->info.media_previous(source->context.data);
-			obs_source_dosignal(source, NULL, "media_previous");
 			break;
-		case MEDIA_ACTION_SET_TIME:
+		case OBS_SOURCE_MEDIA_DISPATCH_SET_TIME:
 			source->info.media_set_time(source->context.data, action.ms);
 			break;
+		case OBS_SOURCE_MEDIA_DISPATCH_SKIP:
+			break;
 		}
+
+		const char *signal = obs_source_media_signal(dispatch, obs_source_media_signal_reads_pause(dispatch) &&
+									       action.pause);
+		if (signal)
+			obs_source_dosignal(source, NULL, signal);
 	}
 }
 
@@ -5323,14 +5334,29 @@ const char *obs_source_get_light_icon(const char *id)
 	return (info && info->get_light_icon) ? info->get_light_icon(info->type_data) : NULL;
 }
 
+_Static_assert(OBS_SOURCE_MEDIA_CONTROLLABLE == OBS_SOURCE_CONTROLLABLE_MEDIA, "OBS_SOURCE_CONTROLLABLE_MEDIA");
+_Static_assert(OBS_SOURCE_MEDIA_STATE_NONE == OBS_MEDIA_STATE_NONE, "OBS_MEDIA_STATE_NONE");
+_Static_assert(sizeof(enum obs_media_state) == sizeof(int), "enum obs_media_state is passed as int");
+
+/* Whether a media call is accepted goes through
+ * obs-source-media-admission.c, in the old order: the validity check (it
+ * logs), then the output flags, then (in the caller, for the calls that
+ * have one) the callback, each read only when the step before passed. */
+static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid, enum obs_source_media_call call)
+{
+	enum obs_source_media_admit admit = obs_source_media_admit(valid);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_FLAGS)
+		admit = obs_source_media_admit_flags(call, source->info.output_flags);
+	return admit;
+}
+
 void obs_source_media_play_pause(obs_source_t *source, bool pause)
 {
-	if (!data_valid(source, "obs_source_media_play_pause"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_play_pause)
+	enum obs_source_media_admit admit = media_admit(source, data_valid(source, "obs_source_media_play_pause"),
+							OBS_SOURCE_MEDIA_CALL_PLAY_PAUSE);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_play_pause != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5345,12 +5371,11 @@ void obs_source_media_play_pause(obs_source_t *source, bool pause)
 
 void obs_source_media_restart(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_restart"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_restart)
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_restart"), OBS_SOURCE_MEDIA_CALL_RESTART);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_restart != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5364,12 +5389,11 @@ void obs_source_media_restart(obs_source_t *source)
 
 void obs_source_media_stop(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_stop"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_stop)
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_stop"), OBS_SOURCE_MEDIA_CALL_STOP);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_stop != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5383,12 +5407,11 @@ void obs_source_media_stop(obs_source_t *source)
 
 void obs_source_media_next(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_next"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_next)
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_next"), OBS_SOURCE_MEDIA_CALL_NEXT);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_next != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5402,12 +5425,11 @@ void obs_source_media_next(obs_source_t *source)
 
 void obs_source_media_previous(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_previous"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_previous)
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_previous"), OBS_SOURCE_MEDIA_CALL_PREVIOUS);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_previous != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5421,37 +5443,35 @@ void obs_source_media_previous(obs_source_t *source)
 
 int64_t obs_source_media_get_duration(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_get_duration"))
-		return 0;
+	enum obs_source_media_admit admit = media_admit(source, data_valid(source, "obs_source_media_get_duration"),
+							OBS_SOURCE_MEDIA_CALL_GET_DURATION);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_get_duration != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
+		return obs_source_media_time_fallback();
 
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return 0;
-	if (source->info.media_get_duration)
-		return source->info.media_get_duration(source->context.data);
-	else
-		return 0;
+	return source->info.media_get_duration(source->context.data);
 }
 
 int64_t obs_source_media_get_time(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_get_time"))
-		return 0;
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_get_time"), OBS_SOURCE_MEDIA_CALL_GET_TIME);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_get_time != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
+		return obs_source_media_time_fallback();
 
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return 0;
-	if (source->info.media_get_time)
-		return source->info.media_get_time(source->context.data);
-	else
-		return 0;
+	return source->info.media_get_time(source->context.data);
 }
 
 void obs_source_media_set_time(obs_source_t *source, int64_t ms)
 {
-	if (!data_valid(source, "obs_source_media_set_time"))
-		return;
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_set_time)
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_set_time"), OBS_SOURCE_MEDIA_CALL_SET_TIME);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_set_time != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	struct media_action action = {
@@ -5466,22 +5486,21 @@ void obs_source_media_set_time(obs_source_t *source, int64_t ms)
 
 enum obs_media_state obs_source_media_get_state(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_get_state"))
-		return OBS_MEDIA_STATE_NONE;
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return OBS_MEDIA_STATE_NONE;
+	enum obs_source_media_admit admit =
+		media_admit(source, data_valid(source, "obs_source_media_get_state"), OBS_SOURCE_MEDIA_CALL_GET_STATE);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_CALLBACK)
+		admit = obs_source_media_admit_callback(source->info.media_get_state != NULL);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
+		return (enum obs_media_state)obs_source_media_state_fallback();
 
-	if (source->info.media_get_state)
-		return source->info.media_get_state(source->context.data);
-	else
-		return OBS_MEDIA_STATE_NONE;
+	return source->info.media_get_state(source->context.data);
 }
 
 void obs_source_media_started(obs_source_t *source)
 {
-	if (!obs_source_valid(source, "obs_source_media_started"))
-		return;
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
+	enum obs_source_media_admit admit = media_admit(source, obs_source_valid(source, "obs_source_media_started"),
+							OBS_SOURCE_MEDIA_CALL_STARTED);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	obs_source_dosignal(source, NULL, "media_started");
@@ -5489,9 +5508,9 @@ void obs_source_media_started(obs_source_t *source)
 
 void obs_source_media_ended(obs_source_t *source)
 {
-	if (!obs_source_valid(source, "obs_source_media_ended"))
-		return;
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
+	enum obs_source_media_admit admit =
+		media_admit(source, obs_source_valid(source, "obs_source_media_ended"), OBS_SOURCE_MEDIA_CALL_ENDED);
+	if (admit != OBS_SOURCE_MEDIA_ADMIT_ACCEPT)
 		return;
 
 	obs_source_dosignal(source, NULL, "media_ended");

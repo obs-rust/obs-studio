@@ -57,6 +57,7 @@
     "obs-source-draw-technique.h",
     "obs-source-frame-copy.h",
     "obs-source-load.h",
+    "obs-source-media-admission.h",
     "obs-source-ptm-gate.h",
     "obs-source-render-route.h",
     "obs-source-size.h",
