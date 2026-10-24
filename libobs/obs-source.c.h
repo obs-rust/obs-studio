@@ -2930,8 +2930,6 @@ static inline void obs_source_main_render(obs_source_t *source)
 		gs_set_linear_srgb(previous_srgb);
 }
 
-static bool ready_async_frame(obs_source_t *source, uint64_t sys_time);
-
 #if GS_USE_DEBUG_MARKERS
 static const char *get_type_format(enum obs_source_type type)
 {
@@ -4130,112 +4128,53 @@ void remove_async_frame(obs_source_t *source, struct obs_source_frame *frame)
 	}
 }
 
-#define DEBUG_ASYNC_FRAMES 0
+/* obs-source-async-pacing.c decides with the same threshold */
+_Static_assert(OBS_SOURCE_ASYNC_PACING_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
 
-static bool ready_async_frame(obs_source_t *source, uint64_t sys_time)
-{
-	struct obs_source_frame *next_frame = source->async_frames.array[0];
-	struct obs_source_frame *frame = NULL;
-	uint64_t sys_offset = sys_time - source->last_sys_timestamp;
-	uint64_t frame_time = next_frame->timestamp;
-	uint64_t frame_offset = 0;
-
-	if (source->async_unbuffered) {
-		while (source->async_frames.num > 1) {
-			da_erase(source->async_frames, 0);
-			remove_async_frame(source, next_frame);
-			next_frame = source->async_frames.array[0];
-		}
-
-		source->last_frame_ts = next_frame->timestamp;
-		return true;
-	}
-
-#if DEBUG_ASYNC_FRAMES
-	blog(LOG_DEBUG,
-	     "source->last_frame_ts: %llu, frame_time: %llu, "
-	     "sys_offset: %llu, frame_offset: %llu, "
-	     "number of frames: %lu",
-	     source->last_frame_ts, frame_time, sys_offset, frame_time - source->last_frame_ts,
-	     (unsigned long)source->async_frames.num);
-#endif
-
-	/* account for timestamp invalidation */
-	if (frame_out_of_bounds(source, frame_time)) {
-#if DEBUG_ASYNC_FRAMES
-		blog(LOG_DEBUG, "timing jump");
-#endif
-		source->last_frame_ts = next_frame->timestamp;
-		return true;
-	} else {
-		frame_offset = frame_time - source->last_frame_ts;
-		source->last_frame_ts += sys_offset;
-	}
-
-	while (source->last_frame_ts > next_frame->timestamp) {
-
-		/* this tries to reduce the needless frame duplication, also
-		 * helps smooth out async rendering to frame boundaries.  In
-		 * other words, tries to keep the framerate as smooth as
-		 * possible */
-		if (frame && (source->last_frame_ts - next_frame->timestamp) < 2000000)
-			break;
-
-		if (frame)
-			da_erase(source->async_frames, 0);
-
-#if DEBUG_ASYNC_FRAMES
-		blog(LOG_DEBUG,
-		     "new frame, "
-		     "source->last_frame_ts: %llu, "
-		     "next_frame->timestamp: %llu",
-		     source->last_frame_ts, next_frame->timestamp);
-#endif
-
-		remove_async_frame(source, frame);
-
-		if (source->async_frames.num == 1)
-			return true;
-
-		frame = next_frame;
-		next_frame = source->async_frames.array[1];
-
-		/* more timestamp checking and compensating */
-		if ((next_frame->timestamp - frame_time) > MAX_TS_VAR) {
-#if DEBUG_ASYNC_FRAMES
-			blog(LOG_DEBUG, "timing jump");
-#endif
-			source->last_frame_ts = next_frame->timestamp - frame_offset;
-		}
-
-		frame_time = next_frame->timestamp;
-		frame_offset = frame_time - source->last_frame_ts;
-	}
-
-#if DEBUG_ASYNC_FRAMES
-	if (!frame)
-		blog(LOG_DEBUG, "no frame!");
-#endif
-
-	return frame != NULL;
-}
-
+/* async_mutex is held (async_tick()). obs-source-async-pacing.c decides from
+ * the queue's timestamps; this applies the result in the order
+ * ready_async_frame() and get_closest_frame() did: the dropped frames off the
+ * front, each erased and then released to the cache, the new last_frame_ts,
+ * and the front frame taken. */
 static inline struct obs_source_frame *get_closest_frame(obs_source_t *source, uint64_t sys_time)
 {
-	if (!source->async_frames.num)
+	uint64_t stack_timestamps[MAX_ASYNC_FRAMES];
+	uint64_t *timestamps = stack_timestamps;
+	const size_t num = source->async_frames.num;
+	struct obs_source_async_pacing_result pacing;
+	struct obs_source_frame *frame = NULL;
+
+	if (!num)
 		return NULL;
 
-	if (!source->last_frame_ts || ready_async_frame(source, sys_time)) {
-		struct obs_source_frame *frame = source->async_frames.array[0];
+	/* cache_video() stops at MAX_ASYNC_FRAMES, but it unlocks async_mutex
+	 * before obs_source_output_video_internal() queues the frame, so
+	 * sources that output from more than one thread can queue a few more. */
+	if (num > MAX_ASYNC_FRAMES)
+		timestamps = bmalloc(num * sizeof(*timestamps));
+	for (size_t i = 0; i < num; i++)
+		timestamps[i] = source->async_frames.array[i]->timestamp;
+
+	pacing = obs_source_async_pacing(timestamps, num, sys_time, source->last_frame_ts, source->last_sys_timestamp,
+					 source->async_unbuffered);
+
+	if (timestamps != stack_timestamps)
+		bfree(timestamps);
+
+	for (size_t i = 0; i < pacing.drop_front; i++) {
+		struct obs_source_frame *dropped = source->async_frames.array[0];
 		da_erase(source->async_frames, 0);
-
-		if (!source->last_frame_ts)
-			source->last_frame_ts = frame->timestamp;
-
-		return frame;
+		remove_async_frame(source, dropped);
 	}
 
-	return NULL;
+	source->last_frame_ts = pacing.last_frame_ts;
+
+	if (pacing.take_first) {
+		frame = source->async_frames.array[0];
+		da_erase(source->async_frames, 0);
+	}
+
+	return frame;
 }
 
 /*
@@ -6125,4 +6064,3 @@ obs_canvas_t *obs_source_get_canvas(const obs_source_t *source)
 #undef OBS_SOURCE_AV
 #undef MAX_UNUSED_FRAME_DURATION
 #undef MAX_ASYNC_FRAMES
-#undef DEBUG_ASYNC_FRAMES
