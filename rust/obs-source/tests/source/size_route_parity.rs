@@ -146,6 +146,9 @@ fn r_route(f: Fields, rotation: c_long) -> u32 {
     })
 }
 
+// `c_long` is already `i32` on Windows, so the 32-bit check's conversion
+// there is a no-op that always matches.
+#[allow(clippy::useless_conversion, irrefutable_let_patterns)]
 #[track_caller]
 fn check_route(f: Fields, rotation: c_long) -> u32 {
     let c = c_route(f, rotation);
