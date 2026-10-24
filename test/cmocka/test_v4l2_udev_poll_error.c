@@ -42,13 +42,6 @@ static void *run_loop(void *vrun)
 	return NULL;
 }
 
-static uint64_t now_ms(void)
-{
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
 static void run_with_fd(int fd, int stop_fd)
 {
 	struct loop_run run = {.fd = fd, .stop_fd = stop_fd};
@@ -57,11 +50,9 @@ static void run_with_fd(int fd, int stop_fd)
 	assert_int_equal(os_event_init(&run.stop, OS_EVENT_TYPE_MANUAL), 0);
 	assert_int_equal(pthread_create(&thread, NULL, run_loop, &run), 0);
 
-	uint64_t start = now_ms();
 	struct timespec nap = {0, 1000000};
 	for (int i = 0; i < 500 && !run.done; i++)
 		nanosleep(&nap, NULL);
-	uint64_t elapsed = now_ms() - start;
 	int returned = run.done;
 
 	/* stop a spinning loop so the test ends either way */
@@ -69,8 +60,10 @@ static void run_with_fd(int fd, int stop_fd)
 	pthread_join(thread, NULL);
 	os_event_destroy(run.stop);
 
+	/* Returning within the 500 x 1 ms wait and at most two polls prove the
+	 * loop stopped instead of spinning; a wall-clock bound only flakes on a
+	 * loaded runner (#2198). */
 	assert_true(returned);
-	assert_true(elapsed < 50);
 	assert_true(run.iterations <= 2);
 }
 
