@@ -24,6 +24,7 @@ pub mod module_names;
 pub mod module_paths;
 pub mod module_source_rules;
 mod platform;
+pub mod source_load;
 pub mod source_profiler;
 pub mod video_copy_plan;
 pub mod video_plan;
