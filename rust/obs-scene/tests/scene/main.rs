@@ -10,6 +10,7 @@ mod crop_parity;
 mod extent;
 mod extent_parity;
 mod item_names;
+mod item_names_parity;
 mod render_plan;
 mod render_plan_parity;
 
