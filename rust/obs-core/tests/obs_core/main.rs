@@ -3,6 +3,7 @@
 
 mod audio_mix;
 mod audio_mix_parity;
+mod canvas_draw;
 mod context_names;
 mod context_names_parity;
 mod module_locale;
