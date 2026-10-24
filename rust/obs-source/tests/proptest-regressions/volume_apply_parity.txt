@@ -1,0 +1,18 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 0bf756ff4b8366cc1593f1875c567ced0b2177f69604de59f192ca5daef1120b # shrinks to bits = 953267992, muted = false
+cc c358414093818531058c562200cc62de6bc83e858d0533e551ec94840ab3ff8f # shrinks to bits = 25, stops = (0, 1854891035493653107), delays = (0, 0), volume_bits = 3100751640, os_time = 0
+cc 4bba76f2c527408e19d22f702710107b8bbbc9756dbe49ce204d17b3c52286e8 # shrinks to bits = 953267992, muted = true
+cc a6128ea45185f9838e5c0c0149485d04b200b33bd421add2ccba69428337f550 # shrinks to bits = 18, stops = (0, 0), volume_bits = 953267992, audio_mixers = 0, mixers = 1, actions = 0, times = (0, 0), duration = 0, channels = 1
+cc 6ea4ae5394f10d5cb0c281242a2a2f395166efbd301439ee8367601ee86099aa # shrinks to bits = 2139095041, muted = false
+cc 2ad991e77e1f6af4e2a77faa995bdea0a9ce9e0181360f1b4fda1ec7d480ff8a # shrinks to bits = 57, stops = (0, 0), volume_bits = 2139095041, audio_mixers = 0, mixers = 1, actions = 0, times = (0, 0), duration = 0, channels = 1
+cc a6ce076383f2d6d94c1687393c02b6398ec4c0946b82340de77fc22d93010abf # shrinks to bits = 53, stops = (0, 0), delays = (0, 0), volume_bits = 2139095041, os_time = 0
+cc 94d689db6c04e00d042d846bd2d83c08cde5d097c299e8d77b496c81370522cf # shrinks to bits = 0, stops = (0, 0), volume_bits = 0, audio_mixers = 0, mixers = 0, actions = 1, times = (4587755104661100850, 11589332100806679634), duration = 6857411972902871982, channels = 1
+cc 91d527cc563a40f5e627f65781afecb7c48349c441855c12bdc304aa347e3f29 # shrinks to bits = 1, stops = (0, 0), volume_bits = 1065354055, audio_mixers = 2, mixers = 2, actions = 0, times = (0, 0), duration = 0, channels = 1
+cc dbf17cf3a7a559db55540bd64c0036336a2145468d202a01c403df58f51eae7a # shrinks to bits = 33, stops = (0, 0), volume_bits = 953267992, audio_mixers = 0, mixers = 0, actions = 0, times = (0, 0), duration = 0, channels = 1
+cc 604bebcd57d3f6a6b0c7b2deea1c75ac95f5bcff68889b9b36987aafc95f9485 # shrinks to a = 1606667136, b = 128, mix = 7
+cc 034579ad8489592e13e6c1743a52a4a28d92599e0d3df34e9d022578cfd58b7c # shrinks to bits = 9, stops = (0, 0), volume_bits = 3100751640, audio_mixers = 32, mixers = 1949625248, actions = 0, times = (0, 0), duration = 0, channels = 1
