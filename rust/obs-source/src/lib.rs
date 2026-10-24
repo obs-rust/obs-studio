@@ -50,6 +50,7 @@ pub mod deinterlace_draw;
 pub mod deinterlace_pacing;
 pub mod draw_plan;
 pub mod draw_technique;
+pub mod frame_copy;
 pub mod ptm_gate;
 pub mod render_route;
 pub mod size_route;
