@@ -145,6 +145,29 @@
       ],
       "sanitizers": "undefined"
     },
+    "test_async_conversion_plan": {
+      "sources": [
+        "test/cmocka/test_async_conversion_plan.c",
+        "libobs/obs-source-conversion-plan.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_async_frame_pacing_steps": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
@@ -3099,6 +3122,12 @@
     },
     "test_amf_decode": {
       "target": "test_amf_decode",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_async_conversion_plan": {
+      "target": "test_async_conversion_plan",
       "command": [
         "${target}"
       ]
