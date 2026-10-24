@@ -134,18 +134,18 @@ jobs:
       # private, so the save below (the runner user) could not read it and
       # saved nothing (#1832).
       - name: Return zccache to the runner user
-        if: always() && github.ref == 'refs/heads/master'
+        if: always() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/infra/2182-appimage-zccache')
         run: if [ -d .zccache ]; then sudo chown -R "$(id -u):$(id -g)" .zccache; fi
 
       - name: Save zccache
-        if: always() && github.ref == 'refs/heads/master'
+        if: always() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/infra/2182-appimage-zccache')
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .zccache
           key: zccache-appimage-${{ github.run_id }}
 
       - name: Save cargo
-        if: always() && github.ref == 'refs/heads/master'
+        if: always() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/infra/2182-appimage-zccache')
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -339,7 +339,7 @@ jobs:
         run: sudo chown -R "$(id -u):$(id -g)" pkgcache
 
       - name: Save test-infrastructure packages
-        if: always() && github.ref == 'refs/heads/master' && steps.pkgcache.outputs.cache-hit != 'true'
+        if: always() && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/infra/2182-appimage-zccache') && steps.pkgcache.outputs.cache-hit != 'true'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: pkgcache
