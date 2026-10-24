@@ -731,6 +731,11 @@ area.
   frame to that app slightly earlier instead. *Windows*, 2026-10-21. Issue
   [#1279](https://github.com/obs-rust/obs-studio/issues/1279), PR
   [#1638](https://github.com/obs-rust/obs-studio/pull/1638).
+- A camera or other async source rotated by a multiple of 90 degrees other
+  than 0, 90, -90, 180 or 270 (such as -180, -270 or 450, from a camera's
+  autorotation or a plugin) is drawn turned in its place, instead of outside
+  its box. *All*, pending merge. Issue
+  [#2121](https://github.com/obs-rust/obs-studio/issues/2121).
 
 ### Audio
 

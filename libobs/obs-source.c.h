@@ -2082,12 +2082,12 @@ static void rotate_async_video(obs_source_t *source, long rotation)
 	float x = 0;
 	float y = 0;
 
+	/* obs_source_set_async_rotation() keeps the rotation in 0-359 */
 	switch (rotation) {
 	case 90:
 		y = (float)source->async_width;
 		break;
 	case 270:
-	case -90:
 		x = (float)source->async_height;
 		break;
 	case 180:
@@ -3195,8 +3195,15 @@ void obs_source_output_video2(obs_source_t *source, const struct obs_source_fram
 
 void obs_source_set_async_rotation(obs_source_t *source, long rotation)
 {
-	if (source)
-		source->async_rotation = rotation;
+	/* In 0-359, so rotate_async_video() moves every multiple of 90 (-180,
+	 * 450, ...) back into the item's box as its equivalent (#2121). The
+	 * remainder is in (-360, 360), so adding 360 cannot overflow, even for
+	 * LONG_MIN. A rotation that is not a multiple of 90 keeps its axis
+	 * swap, as 360 is a multiple of 180. */
+	if (source) {
+		rotation %= 360;
+		source->async_rotation = rotation < 0 ? rotation + 360 : rotation;
+	}
 }
 
 void obs_source_output_cea708(obs_source_t *source, const struct obs_source_cea_708 *captions)

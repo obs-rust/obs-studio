@@ -1690,7 +1690,8 @@ Functions used by sources
 
    Allows the ability to set rotation (0, 90, 180, -90, 270) for an
    async video source.  The rotation will be automatically applied to
-   the source.
+   the source.  The rotation is in degrees; any multiple of 90 (such as
+   -180 or 450) is taken as its equivalent in 0-359.
 
 ---------------------
 
