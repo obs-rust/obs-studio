@@ -11,17 +11,21 @@
 //! and `libobs/obs-video-output-step.c.h` (from `obs-video.c.h`), the output
 //! frame copy plan and scale effect choice, and the per-frame video output
 //! step decisions; and `libobs/obs-source-load.c.h` (from `obs.c.h`), the
-//! source load migration and value rules.
+//! source load migration and value rules; and `libobs/obs-canvas-draw.c.h`
+//! (from `obs.c.h` and `obs-display.c.h`), the canvas texture draw and
+//! display clear decisions.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
-//! [`video_copy_plan`], [`video_output_step`] and [`source_load`].
+//! [`video_copy_plan`], [`video_output_step`], [`source_load`] and
+//! [`canvas_draw`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
-//! downloaded frame into each output frame. The C ABI shims live in
-//! [`ffi`].
+//! downloaded frame into each output frame; [`canvas_draw`] picks the
+//! technique a canvas texture draws into a display with, and how the display
+//! is cleared. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
