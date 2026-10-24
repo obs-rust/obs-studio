@@ -143,6 +143,7 @@
 #include "obs-source-conversion-plan.h"
 #include "obs-source-ptm-gate.h"
 #include "obs-source-size.h"
+#include "obs-source-volume.h"
 
 #include "media-io/audio-io.h"
 #include "obs-host/default-monitoring-device.h"

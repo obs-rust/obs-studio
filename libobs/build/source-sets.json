@@ -54,6 +54,7 @@
     "obs-source-ptm-gate.h",
     "obs-source-size.h",
     "obs-source-transition-clock.h",
+    "obs-source-volume.h",
     "obs-source.h",
     "obs-video-copy-plan.h",
     "obs-video-output-step.h",
