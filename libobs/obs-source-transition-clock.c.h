@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-clock.pch.h"
 
 /* The clock and fit decisions of the transitions, moved from
  * obs-source-transition.c: calc_time(), the manual step of
@@ -25,7 +25,8 @@
  * on plain values. obs-source-transition.c keeps the locks, the field reads
  * and writes, the child reads, calc_torquef(), the offsets, add_alignment(),
  * the matrix build and get_sample_time(). Declared in
- * obs-source-transition-clock.h without EXPORT. */
+ * obs-source-transition-clock.h without EXPORT. In hybrid libobs the Rust
+ * port (rust/obs-source) replaces this file. */
 
 float obs_source_transition_clock_time(int mode, float manual_val, uint64_t start_time, uint64_t duration, uint64_t ts)
 {

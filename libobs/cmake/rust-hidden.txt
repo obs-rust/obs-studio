@@ -138,6 +138,18 @@ obs_source_deinterlace_pacing_waiting_frame_ts
 obs_source_deinterlace_pacing_half_duration
 obs_source_deinterlace_pacing_buffered_offset
 obs_source_deinterlace_pacing_reanchor
+# obs-source-transition-clock.c: calc_time(), obs_transition_tick(), get_cx(),
+# get_cy(), recalculate_transition_size(), recalculate_transition_matrix(),
+# mix_spaces() and transition_calc_min_ts() in obs-source-transition.c call
+# them inside libobs. Declared in obs-source-transition-clock.h without
+# EXPORT, so the shims stay hidden the same way.
+obs_source_transition_clock_time
+obs_source_transition_clock_manual
+obs_source_transition_clock_size
+obs_source_transition_clock_fold
+obs_source_transition_clock_fit
+obs_source_transition_clock_mix_spaces
+obs_source_transition_clock_min_ts
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Declared in
 # obs-audio-mix.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_mix_time_to_frames

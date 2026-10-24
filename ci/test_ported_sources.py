@@ -36,6 +36,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-audio-timing.c.h.o",
     "obs-source-color-space.c.h.o",
     "obs-source-deinterlace-pacing.c.h.o",
+    "obs-source-transition-clock.c.h.o",
     "obs-view-api.c.h.o",
 )
 # Ported, checked on Linux.
@@ -52,6 +53,7 @@ NOT_PORTED = (
     "obs-scene-item-audio-actions.c.h.o",
     "obs-scene.c.h.o",
     "obs-source-deinterlace.c.h.o",
+    "obs-source-transition.c.h.o",
     "obs-source.c.h.o",
 )
 

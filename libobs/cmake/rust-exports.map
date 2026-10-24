@@ -137,6 +137,15 @@
     obs_source_deinterlace_pacing_half_duration;
     obs_source_deinterlace_pacing_buffered_offset;
     obs_source_deinterlace_pacing_reanchor;
+    /* obs-source-transition-clock.c. obs-source-transition.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_source_transition_clock_time;
+    obs_source_transition_clock_manual;
+    obs_source_transition_clock_size;
+    obs_source_transition_clock_fold;
+    obs_source_transition_clock_fit;
+    obs_source_transition_clock_mix_spaces;
+    obs_source_transition_clock_min_ts;
     /* obs-audio-mix.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_mix_time_to_frames;
     obs_audio_mix_add;

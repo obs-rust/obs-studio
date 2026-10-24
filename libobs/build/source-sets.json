@@ -168,6 +168,7 @@
     "build/libobs.ported-source-color-space+.h.c",
     "build/libobs.ported-source-deinterlace-pacing+.h.c",
     "build/libobs.ported-source-profiler+.h.c",
+    "build/libobs.ported-source-transition-clock+.h.c",
     "build/libobs.ported-util+.h.c",
     "build/libobs.ported-util-io+.h.c",
     "build/libobs.ported-video-plan+.h.c",
