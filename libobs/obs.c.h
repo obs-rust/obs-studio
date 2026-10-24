@@ -2311,7 +2311,7 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	uint32_t flags;
 	uint32_t mixers;
 	int di_order;
-	int di_mode;
+	int64_t di_mode;
 	int monitoring_type;
 
 	prev_ver = (uint32_t)obs_data_get_int(source_data, "prev_ver");
@@ -2387,8 +2387,12 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	/* stored signed; a negative delay is none (#2051) */
 	obs_source_set_push_to_talk_delay(source, ptt_delay < 0 ? 0 : (uint64_t)ptt_delay);
 
-	di_mode = (int)obs_data_get_int(source_data, "deinterlace_mode");
-	obs_source_set_deinterlace_mode(source, (enum obs_deinterlace_mode)di_mode);
+	/* stored as int64; a mode past the int range is no mode, not its low
+	 * 32 bits, and the setter disables a mode it does not know (#2090) */
+	di_mode = obs_data_get_int(source_data, "deinterlace_mode");
+	obs_source_set_deinterlace_mode(source, di_mode < INT_MIN || di_mode > INT_MAX
+							? OBS_DEINTERLACE_MODE_DISABLE
+							: (enum obs_deinterlace_mode)di_mode);
 
 	di_order = (int)obs_data_get_int(source_data, "deinterlace_field_order");
 	obs_source_set_deinterlace_field_order(source, (enum obs_deinterlace_field_order)di_order);

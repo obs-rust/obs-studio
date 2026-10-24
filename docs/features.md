@@ -1369,6 +1369,11 @@ area.
   after it a frame early. *All*, pending merge. Issue
   [#2009](https://github.com/obs-rust/obs-studio/issues/2009), PR
   [#2048](https://github.com/obs-rust/obs-studio/pull/2048).
+- A camera, capture card or media source whose deinterlace mode is not one
+  OBS knows (from an edited or generated scene collection, a plugin or a
+  script) is drawn with deinterlacing off, instead of drawing nothing, and
+  its Deinterlacing menu shows Disable. *All*, pending merge. Issue
+  [#2090](https://github.com/obs-rust/obs-studio/issues/2090).
 
 ### Scenes and UI
 

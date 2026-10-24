@@ -281,6 +281,25 @@ static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 	return NULL;
 }
 
+/* DISABLE and the modes get_effect() has an effect for. */
+static bool deinterlace_mode_known(enum obs_deinterlace_mode mode)
+{
+	switch (mode) {
+	case OBS_DEINTERLACE_MODE_DISABLE:
+	case OBS_DEINTERLACE_MODE_DISCARD:
+	case OBS_DEINTERLACE_MODE_RETRO:
+	case OBS_DEINTERLACE_MODE_BLEND:
+	case OBS_DEINTERLACE_MODE_BLEND_2X:
+	case OBS_DEINTERLACE_MODE_LINEAR:
+	case OBS_DEINTERLACE_MODE_LINEAR_2X:
+	case OBS_DEINTERLACE_MODE_YADIF:
+	case OBS_DEINTERLACE_MODE_YADIF_2X:
+		return true;
+	}
+
+	return false;
+}
+
 static bool deinterlace_linear_required(enum obs_deinterlace_mode mode)
 {
 	switch (mode) {
@@ -430,6 +449,11 @@ void obs_source_set_deinterlace_mode(obs_source_t *source, enum obs_deinterlace_
 {
 	if (!obs_source_valid(source, "obs_source_set_deinterlace_mode"))
 		return;
+	/* A mode outside the enum has no effect to draw with, so the source
+	 * would draw nothing: it is DISABLE, and the getter and a saved scene
+	 * collection say so (#2090). */
+	if (!deinterlace_mode_known(mode))
+		mode = OBS_DEINTERLACE_MODE_DISABLE;
 	if (source->deinterlace_mode == mode)
 		return;
 
