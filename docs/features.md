@@ -1851,6 +1851,11 @@ area.
   thread does not start no longer stays "reconnecting" for good; and the
   screen saver inhibitor reports that it could not start. *All*, pending
   merge. Issue [#2152](https://github.com/obs-rust/obs-studio/issues/2152).
+- A filter that is removed (in the Filters dialog, by a script or by
+  obs-websocket) while OBS is drawing it no longer crashes OBS when it has
+  nothing to draw (for example while it is disabled or has a size of 0); it
+  draws nothing for that frame. *All*, pending merge. Issue
+  [#2160](https://github.com/obs-rust/obs-studio/issues/2160).
 
 ### Security hardening
 

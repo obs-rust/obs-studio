@@ -3975,6 +3975,13 @@ void obs_source_skip_video_filter(obs_source_t *filter)
 
 	target = obs_filter_get_target(filter);
 	parent = obs_filter_get_parent(filter);
+
+	/* A filter removed while it renders has no parent or target any
+	 * more: draw nothing this frame, as obs_source_process_filter_begin
+	 * does. */
+	if (!target || !parent)
+		return;
+
 	parent_flags = parent->info.output_flags;
 	custom_draw = (parent_flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
 	async = (parent_flags & OBS_SOURCE_ASYNC) != 0;
