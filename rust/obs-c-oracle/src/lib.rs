@@ -139,6 +139,7 @@ pub mod threading;
 pub mod utf8;
 pub mod util_uint64;
 pub mod vec2;
+pub mod video_copy_plan;
 pub mod video_fourcc;
 pub mod video_frame;
 pub mod video_io;

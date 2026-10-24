@@ -1,0 +1,23 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e4f40cf00db223969ca67d32a84ea43c62242ec4c095ccb5ea18300bdb6094c5 # shrinks to f = 1, w = 1, h = 0, input = [0, 0, 0], output = [0, 0, 0], tight_mask = 0
+cc 589fb6f6256481ebff3dba43731450741f96edcb4117626f44068d3d553962a1 # shrinks to f = 2, w = 0, h = 0, input = [0, 1, 0], output = [0, 0, 0], tight_mask = 0
+cc 599eff117032d448dd05229dcf8c3aa67e6de320925bf2154954b825ea2d97c2 # shrinks to f = 10, w = 0, h = 0, input = [0, 0, 0], output = [0, 0, 1], tight_mask = 0
+cc aae25712166c6825270b1d78afed96f96f3e65ce044121a5d88687749549ee69 # shrinks to f = 17, w = 1, h = 0, input = [0, 0, 0], output = [0, 0, 0], tight_mask = 0
+cc 8f32d1513ecd6cfb0ceabb79584c5162d9f624d1a6263522de2f5f00c07a0226 # shrinks to f = 22, w = 0, h = 1, input = [0, 0, 0], output = [0, 0, 0], tight_mask = 0
+cc 308d47312412ebaec87dd0e3ff401ee49456f63dd397da3558619491402722ad # shrinks to f = 23, w = 1, h = 0, input = [0, 0, 0], output = [0, 0, 0], tight_mask = 0
+cc da4fe599ddb0721746ee41962fca7564c151609358ae20f19782b78e8ce9c34d # shrinks to f = 20, w = 0, h = 0, input = [0, 0, 0], output = [0, 0, 0], tight_mask = 0
+cc 0e01e7d888a73202504d35be4b14d745a9dc9ba48a2c98b03e24fcbe988aac00 # shrinks to bw = 16, bh = 0, w = 0, h = 0, dw = 0, dh = 0
+cc 2193956d538f31ae1cee98f6694161e3e3183d043c82a14e70b980d0321e4d39 # shrinks to bw = 16, w = 0, d = 0
+cc ecaa2837787ec6f94a80e6d7747d189eec3c205735f7a14f8e79977843260d0b # shrinks to bw = 0, bh = 7, tw = 4136742224, th = 203782071, ow = 0, oh = 0, t = 4, loaded = 8595556, near = true
+cc 53fa691d5c26f86955c4f235b0215a3efba30ffdc5cf837e3d729a1b28e01f7c # shrinks to bw = 2044299596, bh = 1040713528, tw = 0, th = 0, ow = 511074899, oh = 0, t = 0, loaded = 1441719626, near = false
+cc 45af66e660729424ed8301233f607a5e7f50c735d87da69f4762215bdc58752b # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, t = 3, loaded = 2023548645, near = false
+cc 3c06bf4c80f39277b78a61db2f80be4dff6cf71b13a70c2d99fc94bdeda2843b # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, t = 1, loaded = 4087562903, near = false
+cc bf99d07b6b623d37dc0c353d0706e47a972cb042a35adc80e553cf892b7950be # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, t = 5, loaded = 174677100, near = false
+cc 03fd8dfe7b6c3f6beac8a3c37b9b08d110e5b04ab41a6292159abbd90ad33eaf # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = false, mix_rendered = false, flips = 0
+cc e2d896599adc8738c2f31e36c7738f8bd73948858ecd9cd6e77124a1a1a466c8 # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = true, mix_rendered = false, flips = 0
+cc 5916faa961e9f340171315993c186561f7a9fe1836713f8977208294a5fce5fb # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = true, mix_rendered = false, flips = 24

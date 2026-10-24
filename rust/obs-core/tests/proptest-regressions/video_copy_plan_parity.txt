@@ -1,0 +1,30 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 308a54b7032c0f8125d2d3421331801619cced8392acb5f1db23e1c03539990f # shrinks to f = 1, w = 1, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc 68126121868ff5bffc9d58061ad09adedbbbcec4939bc1c10b32f198d20c2e81 # shrinks to f = 2, w = 0, h = 0, raw_in = [1, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 19478
+cc 4e19f4ffd3e5f07ea1fb0b5d8b33c3bb4a66df19d0ed4704b339d9d494aa5901 # shrinks to f = 10, w = 0, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 1, 0, 0, 0, 0, 0, 0], bias = 9152
+cc 78b03320d25f4be57b8de079e5f44fdd4849e53f9e8884e984c132dc8e61d8e7 # shrinks to f = 17, w = 1, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc 6a2f3e980bdbefab2531a68185a39fc45b9e9b0c2413bc68344e338dcc5d1ab0 # shrinks to f = 18, w = 0, h = 1, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc d510ec5746f9ded51ce1c551d491ed47c206705d8e226f5a0f1f8c3e5d0353d3 # shrinks to f = 22, w = 0, h = 1, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc 1be63ee2dea3caa278fc806f08a9f5f853bb9fbd523b6d1a40b630bd8c210ad3 # shrinks to f = 23, w = 1, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc cd68bb4f5f1d0ca2cb338bd0556597861dd7e7736c7fcaa8af8d6e2776ab51af # shrinks to f = 17, w = 2147483648, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc 71ad5d22795918946cdf96ca285480345a8bd9d851b7ad0f2cbdd15a46b12671 # shrinks to f = 23, w = 1073741824, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc 988e1e1bfd02d5c6e28af70de6f75adbc30bcb1d49bf0a542cae1450bc50960c # shrinks to f = 1, w = 0, h = 1, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc b3b1834ec1ab70007730dbeabfe604a241f91661ff54cbfa703f7d9c4df5a235 # shrinks to f = 20, w = 0, h = 0, raw_in = [0, 0, 0, 0, 0, 0, 0, 0], raw_out = [0, 0, 0, 0, 0, 0, 0, 0], bias = 0
+cc bf1f9a68fa5c02140b5fd8d8738cb7ac36ed2451256acc0a741a9f35826a9aed # shrinks to bw = 16, bh = 0, w = 0, h = 0, d = 0
+cc 04e09b63455d6dde5f612abb6aa1817f3b79bab9f3386969279ccae7f4fb0617 # shrinks to bw = 16, bh = 8, tw = 0, th = 0, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 0, use_small = false, loaded = 3649770
+cc d582db0b33848e83688a72fe18415c3fea5ca47eef89d8bb94c82f49bbc70842 # shrinks to bw = 4294967294, bh = 3, tw = 0, th = 0, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 0, use_small = false, loaded = 4321682
+cc e00217434aa2245e1bc94a31650f194430aa56145fbe89797abec12bbe5728fd # shrinks to bw = 4294967294, bh = 8, tw = 0, th = 0, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 0, use_small = false, loaded = 22126210
+cc 442fa2868b8bce6f38ec0309f3f0f0aa5313fafa16364935fb1a490edb9089d9 # shrinks to bw = 0, bh = 6594, tw = 0, th = 0, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 0, use_small = false, loaded = 3547943018
+cc 23d7b2060067fee3c78ca6cce1974bc6058766e2b8c0f1e5922c48f91ffbb9c8 # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 3, use_small = true, loaded = 2263259237
+cc 5c081015ade5fc89c8482c7b0355abd3ba557249df7c70f7469c9ae48951f3fc # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 1, use_small = true, loaded = 548326813
+cc af212b9adcaa653d6dba2f3ea8c2d3d28dc49059b3f2ca3b66a72742df642e67 # shrinks to bw = 720, bh = 3842, tw = 0, th = 0, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 0, use_small = false, loaded = 2499186692
+cc 0089e78b168c80107069f363a6f4c74e7d9b0013f8fc65d672acf0003b56c828 # shrinks to bw = 0, bh = 0, tw = 0, th = 17, ow = 0, oh = 0, near = false, dw = 0, dh = 0, scale_type = 0, small_type = 5, use_small = true, loaded = 1629482600
+cc 4170b6a2d9d3640c8704c0a64b0df76544f53ce7fb8f14ff604d32f5054c8bd3 # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = true, mix_view = 0, mix_space = -1, mix_w = 0, mix_h = 0, mix_rendered = false, same = 28
+cc 6321ea4b1b01cc782415f9753af604d4ea66a2ef8fa3a3c272775d74847fe944 # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = false, mix_view = 0, mix_space = 0, mix_w = 0, mix_h = 0, mix_rendered = true, same = 0
+cc e4d8c15bbb76d334745d1d26ca055eaabf5e7bd88bee7db38db1200d9a8f12b3 # shrinks to view = 0, space = 0, w = 0, h = 0, rendered = true, mix_view = 0, mix_space = 0, mix_w = 0, mix_h = 1, mix_rendered = false, same = 16
+cc ebb7c757c307aa888927284af3c8a1ad9aad321d1a28758d41805a1c814926a4 # shrinks to bw = 0, bh = 0, tw = 0, th = 0, ow = 0, oh = 0, near = true, dw = 0, dh = 17, scale_type = 0, small_type = 4, use_small = true, loaded = 318122824
