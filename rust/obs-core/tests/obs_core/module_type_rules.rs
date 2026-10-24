@@ -424,8 +424,9 @@ fn inside(set: bool, offset: usize, len: usize, size: usize) -> bool {
     set && offset + len <= size
 }
 
-/// A field as `memcpy(&data, info, size)` leaves it: whole inside the
-/// size, or zero. No case here cuts a field.
+/// A field as `REGISTER_OBS_DEF()` copies it: whole inside the size, or
+/// zero. The copy ends at the last field wholly within the size, so a field
+/// the size cuts is not partly copied (#2203).
 fn copied<T: Default>(value: T, offset: usize, len: usize, size: usize) -> T {
     if offset + len <= size {
         value

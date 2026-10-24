@@ -743,6 +743,69 @@ cleanup:
 	return lookup;
 }
 
+/* A registration copies only the fields of the caller's structure that lie
+ * wholly within its size, the rule HAS_VAL() applies to the callbacks. A
+ * field the size ends inside stays zero instead of keeping some of the
+ * caller's bytes: a partly copied pointer would be called later, an
+ * optional callback when OBS needs it and free_type_data at shutdown.
+ *
+ * Every field of the four info structures is a pointer, aligned to and as
+ * large as a pointer, except the 32-bit fields each type lists here. So the
+ * copy ends at the size rounded down to a pointer, or at the end of a 32-bit
+ * field that starts there and lies wholly within the size. A size of
+ * sizeof() is a multiple of a pointer, so such a copy is whole, as before. */
+static size_t whole_fields_size(size_t size, const size_t *u32_fields, size_t count)
+{
+	size_t whole = size - size % sizeof(void *);
+
+	for (size_t i = 0; i < count; i++) {
+		if (u32_fields[i] >= whole && u32_fields[i] + sizeof(uint32_t) <= size)
+			whole = u32_fields[i] + sizeof(uint32_t);
+	}
+	return whole;
+}
+
+/* The 32-bit fields. */
+_Static_assert(sizeof(((struct obs_source_info *)NULL)->type) == sizeof(uint32_t), "obs_source_info.type");
+_Static_assert(sizeof(((struct obs_source_info *)NULL)->output_flags) == sizeof(uint32_t),
+	       "obs_source_info.output_flags");
+_Static_assert(sizeof(((struct obs_source_info *)NULL)->icon_type) == sizeof(uint32_t), "obs_source_info.icon_type");
+_Static_assert(sizeof(((struct obs_source_info *)NULL)->version) == sizeof(uint32_t), "obs_source_info.version");
+_Static_assert(sizeof(((struct obs_output_info *)NULL)->flags) == sizeof(uint32_t), "obs_output_info.flags");
+_Static_assert(sizeof(((struct obs_encoder_info *)NULL)->type) == sizeof(uint32_t), "obs_encoder_info.type");
+_Static_assert(sizeof(((struct obs_encoder_info *)NULL)->caps) == sizeof(uint32_t), "obs_encoder_info.caps");
+
+static size_t copy_size_obs_source_info(size_t size)
+{
+	const size_t u32_fields[] = {
+		offsetof(struct obs_source_info, type),
+		offsetof(struct obs_source_info, output_flags),
+		offsetof(struct obs_source_info, icon_type),
+		offsetof(struct obs_source_info, version),
+	};
+	return whole_fields_size(size, u32_fields, sizeof(u32_fields) / sizeof(u32_fields[0]));
+}
+
+static size_t copy_size_obs_output_info(size_t size)
+{
+	const size_t u32_fields[] = {offsetof(struct obs_output_info, flags)};
+	return whole_fields_size(size, u32_fields, sizeof(u32_fields) / sizeof(u32_fields[0]));
+}
+
+static size_t copy_size_obs_encoder_info(size_t size)
+{
+	const size_t u32_fields[] = {
+		offsetof(struct obs_encoder_info, type),
+		offsetof(struct obs_encoder_info, caps),
+	};
+	return whole_fields_size(size, u32_fields, sizeof(u32_fields) / sizeof(u32_fields[0]));
+}
+
+static size_t copy_size_obs_service_info(size_t size)
+{
+	return whole_fields_size(size, NULL, 0);
+}
+
 #define REGISTER_OBS_DEF(size_var, structure, dest, info)                                               \
 	do {                                                                                            \
 		struct structure data = {0};                                                            \
@@ -760,7 +823,7 @@ cleanup:
 			goto error;                                                                     \
 		}                                                                                       \
                                                                                                         \
-		memcpy(&data, info, size_var);                                                          \
+		memcpy(&data, info, copy_size_##structure(size_var));                                   \
 		da_push_back(dest, &data);                                                              \
 	} while (false)
 
@@ -824,7 +887,7 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 		goto error;
 	}
 
-	memcpy(&data, info, size);
+	memcpy(&data, info, copy_size_obs_source_info(size));
 
 	if (data.type == OBS_SOURCE_TYPE_TRANSITION) {
 		if (data.get_width)

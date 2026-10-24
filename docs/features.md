@@ -1879,6 +1879,12 @@ area.
   crashes OBS when the registration is refused; the type data is freed only
   when the size holds both fields whole. *All*, pending merge. Issue
   [#2195](https://github.com/obs-rust/obs-studio/issues/2195).
+- A plugin that registers a source, output, encoder or service with a
+  structure size that ends partway through a callback or its type data no
+  longer leaves that field partly copied, which crashed OBS when it was
+  called later or at shutdown; a field is kept only when the size holds it
+  whole. *All*, pending merge. Issue
+  [#2203](https://github.com/obs-rust/obs-studio/issues/2203).
 
 ### Security hardening
 

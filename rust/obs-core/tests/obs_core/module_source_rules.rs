@@ -5,7 +5,7 @@
 //! with the same ids, sizes and expected messages. [`Registry::register`]
 //! stands for `obs_register_source_s()`: it picks the list with
 //! [`list_of`], looks for a duplicate, checks the size with
-//! [`size_supported`], copies the part of the structure inside the size,
+//! [`size_supported`], copies the fields wholly inside the size,
 //! normalizes the flags with [`output_flags`], finds the callbacks inside
 //! the size (`HAS_VAL()`), asks [`check`], and names the type with
 //! [`versioned_id`], logging what the C logs. The field offsets are those of
@@ -105,14 +105,11 @@ fn inside(offset: usize, len: usize, size: usize) -> bool {
     offset + len <= size
 }
 
-/// The bytes of a little-endian `u32` at `offset` that a copy of `size`
-/// bytes keeps.
+/// A `u32` at `offset` as the copy keeps it: whole inside the size, or
+/// zero. The copy ends at the last field wholly within the size, so a field
+/// the size cuts is not partly copied (#2203).
 fn copied_u32(value: u32, offset: usize, size: usize) -> u32 {
-    let kept = size.saturating_sub(offset).min(4);
-    let bytes = value.to_le_bytes();
-    let mut out = [0u8; 4];
-    out[..kept].copy_from_slice(&bytes[..kept]);
-    u32::from_le_bytes(out)
+    if inside(offset, 4, size) { value } else { 0 }
 }
 
 impl Registry {
@@ -182,7 +179,7 @@ impl Registry {
             return Err(());
         }
 
-        // memcpy(&data, info, size)
+        // memcpy(&data, info, size), cut down to the last whole field
         let data_type = copied_u32(info.source_type, OFF_TYPE, size);
         let data_flags = copied_u32(info.output_flags, OFF_OUTPUT_FLAGS, size);
         let data_version = copied_u32(info.version, OFF_VERSION, size);
