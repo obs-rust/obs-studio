@@ -1874,6 +1874,11 @@ area.
   waited for. macOS display and screen capture also no longer free the
   same event twice after an update that could not restart them. *All*,
   pending merge. Issue [#2164](https://github.com/obs-rust/obs-studio/issues/2164).
+- A plugin that registers a source, output, encoder or service with a
+  structure size that ends partway through its type data fields no longer
+  crashes OBS when the registration is refused; the type data is freed only
+  when the size holds both fields whole. *All*, pending merge. Issue
+  [#2195](https://github.com/obs-rust/obs-studio/issues/2195).
 
 ### Security hardening
 

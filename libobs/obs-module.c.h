@@ -768,14 +768,15 @@ cleanup:
 
 #define HANDLE_ERROR(size_var, structure, info)                                         \
 	do {                                                                            \
-		struct structure err_data = {0};                                            \
-		if (!size_var)                                                          \
-			return;                                                         \
-                                                                                        \
-		memcpy(&err_data, info, sizeof(err_data) < size_var ? sizeof(err_data) : size_var); \
-                                                                                        \
-		if (err_data.type_data && err_data.free_type_data)                              \
-			err_data.free_type_data(err_data.type_data);                            \
+		/* Free the caller's type data only when type_data and          \
+		 * free_type_data each lie wholly within the size, as in        \
+		 * HAS_VAL(): a size that ends inside a pointer would leave it  \
+		 * partly copied, and calling that jumps to a wrong address.    \
+		 */                                                             \
+		if (offsetof(struct structure, type_data) + sizeof(info->type_data) <= (size_var) &&       \
+		    offsetof(struct structure, free_type_data) + sizeof(info->free_type_data) <= (size_var) && \
+		    info->type_data && info->free_type_data)                                           \
+			info->free_type_data(info->type_data);                                     \
 	} while (false)
 
 #define source_warn(format, ...) blog(LOG_WARNING, "obs_register_source: " format, ##__VA_ARGS__)
