@@ -132,9 +132,6 @@ static inline bool first_frame(obs_source_t *s)
 	return true;
 }
 
-#define TWOX_TOLERANCE 1000000
-_Static_assert(TWOX_TOLERANCE == OBS_SOURCE_DEINTERLACE_PACING_TWOX_TOLERANCE, "TWOX_TOLERANCE");
-
 static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_time)
 {
 	if (s->async_unbuffered && s->deinterlace_offset) {
@@ -255,68 +252,50 @@ void deinterlace_update_async_video(obs_source_t *source)
 	}
 }
 
+_Static_assert(sizeof(enum obs_deinterlace_mode) == sizeof(int), "enum obs_deinterlace_mode is passed as int");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+
 static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 {
-	switch (mode) {
-	case OBS_DEINTERLACE_MODE_DISABLE:
+	switch (obs_source_deinterlace_draw_effect(mode)) {
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_NONE:
 		return NULL;
-	case OBS_DEINTERLACE_MODE_DISCARD:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_DISCARD:
 		return obs_load_effect(&obs->video.deinterlace_discard_effect, "deinterlace_discard.effect");
-	case OBS_DEINTERLACE_MODE_RETRO:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_DISCARD_2X:
 		return obs_load_effect(&obs->video.deinterlace_discard_2x_effect, "deinterlace_discard_2x.effect");
-	case OBS_DEINTERLACE_MODE_BLEND:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_BLEND:
 		return obs_load_effect(&obs->video.deinterlace_blend_effect, "deinterlace_blend.effect");
-	case OBS_DEINTERLACE_MODE_BLEND_2X:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_BLEND_2X:
 		return obs_load_effect(&obs->video.deinterlace_blend_2x_effect, "deinterlace_blend_2x.effect");
-	case OBS_DEINTERLACE_MODE_LINEAR:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_LINEAR:
 		return obs_load_effect(&obs->video.deinterlace_linear_effect, "deinterlace_linear.effect");
-	case OBS_DEINTERLACE_MODE_LINEAR_2X:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_LINEAR_2X:
 		return obs_load_effect(&obs->video.deinterlace_linear_2x_effect, "deinterlace_linear_2x.effect");
-	case OBS_DEINTERLACE_MODE_YADIF:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF:
 		return obs_load_effect(&obs->video.deinterlace_yadif_effect, "deinterlace_yadif.effect");
-	case OBS_DEINTERLACE_MODE_YADIF_2X:
+	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF_2X:
 		return obs_load_effect(&obs->video.deinterlace_yadif_2x_effect, "deinterlace_yadif_2x.effect");
 	}
 
 	return NULL;
 }
 
-/* DISABLE and the modes get_effect() has an effect for. */
-static bool deinterlace_mode_known(enum obs_deinterlace_mode mode)
+/* The names of enum obs_source_deinterlace_draw_technique. */
+static const char *deinterlace_technique_name(enum obs_source_deinterlace_draw_technique technique)
 {
-	switch (mode) {
-	case OBS_DEINTERLACE_MODE_DISABLE:
-	case OBS_DEINTERLACE_MODE_DISCARD:
-	case OBS_DEINTERLACE_MODE_RETRO:
-	case OBS_DEINTERLACE_MODE_BLEND:
-	case OBS_DEINTERLACE_MODE_BLEND_2X:
-	case OBS_DEINTERLACE_MODE_LINEAR:
-	case OBS_DEINTERLACE_MODE_LINEAR_2X:
-	case OBS_DEINTERLACE_MODE_YADIF:
-	case OBS_DEINTERLACE_MODE_YADIF_2X:
-		return true;
+	switch (technique) {
+	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW:
+		return "Draw";
+	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY:
+		return "DrawMultiply";
+	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP:
+		return "DrawTonemap";
+	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP:
+		return "DrawMultiplyTonemap";
 	}
 
-	return false;
-}
-
-static bool deinterlace_linear_required(enum obs_deinterlace_mode mode)
-{
-	switch (mode) {
-	case OBS_DEINTERLACE_MODE_DISABLE:
-	case OBS_DEINTERLACE_MODE_DISCARD:
-	case OBS_DEINTERLACE_MODE_RETRO:
-		return false;
-	case OBS_DEINTERLACE_MODE_BLEND:
-	case OBS_DEINTERLACE_MODE_BLEND_2X:
-	case OBS_DEINTERLACE_MODE_LINEAR:
-	case OBS_DEINTERLACE_MODE_LINEAR_2X:
-	case OBS_DEINTERLACE_MODE_YADIF:
-	case OBS_DEINTERLACE_MODE_YADIF_2X:
-		return true;
-	}
-
-	return false;
+	return "Draw";
 }
 
 void deinterlace_render(obs_source_t *s)
@@ -336,54 +315,22 @@ void deinterlace_render(obs_source_t *s)
 	gs_texture_t *prev_tex = s->async_prev_texrender ? gs_texrender_get_texture(s->async_prev_texrender)
 							 : s->async_prev_textures[0];
 
-	if (!cur_tex || !prev_tex || !s->async_width || !s->async_height)
+	if (obs_source_deinterlace_draw_skip(cur_tex != NULL, prev_tex != NULL, s->async_width, s->async_height))
 		return;
 
 	const enum gs_color_space source_space = convert_video_space(s->async_format, s->async_trc);
 
-	const bool linear_srgb = (source_space != GS_CS_SRGB) || gs_get_linear_srgb() ||
-				 deinterlace_linear_required(s->deinterlace_mode);
+	const bool gs_linear_srgb = obs_source_deinterlace_draw_reads_linear_srgb(source_space) && gs_get_linear_srgb();
+	const bool linear_srgb =
+		obs_source_deinterlace_draw_linear_srgb(source_space, gs_linear_srgb, s->deinterlace_mode);
 
 	const enum gs_color_space current_space = gs_get_color_space();
-	const char *tech_name = "Draw";
-	float multiplier = 1.0;
-	switch (source_space) {
-	case GS_CS_SRGB:
-	case GS_CS_SRGB_16F:
-		if (current_space == GS_CS_709_SCRGB) {
-			tech_name = "DrawMultiply";
-			multiplier = obs_get_video_sdr_white_level() / 80.0f;
-		}
-		break;
-	case GS_CS_709_EXTENDED:
-		switch (current_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			tech_name = "DrawTonemap";
-			break;
-		case GS_CS_709_SCRGB:
-			tech_name = "DrawMultiply";
-			multiplier = obs_get_video_sdr_white_level() / 80.0f;
-			break;
-		case GS_CS_709_EXTENDED:
-			break;
-		}
-		break;
-	case GS_CS_709_SCRGB:
-		switch (current_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			tech_name = "DrawMultiplyTonemap";
-			multiplier = 80.0f / obs_get_video_sdr_white_level();
-			break;
-		case GS_CS_709_EXTENDED:
-			tech_name = "DrawMultiply";
-			multiplier = 80.0f / obs_get_video_sdr_white_level();
-			break;
-		case GS_CS_709_SCRGB:
-			break;
-		}
-	}
+	const char *tech_name =
+		deinterlace_technique_name(obs_source_deinterlace_draw_technique(source_space, current_space));
+	const float multiplier = obs_source_deinterlace_draw_reads_white_level(source_space, current_space)
+					 ? obs_source_deinterlace_draw_multiplier(source_space, current_space,
+										  obs_get_video_sdr_white_level())
+					 : 1.0f;
 
 	const bool previous = gs_framebuffer_srgb_enabled();
 	gs_enable_framebuffer_srgb(linear_srgb);
@@ -400,9 +347,9 @@ void deinterlace_render(obs_source_t *s)
 	gs_effect_set_int(field, s->deinterlace_top_first);
 	gs_effect_set_vec2(dimensions, &size);
 
-	const uint64_t frame2_ts =
-		s->deinterlace_frame_ts + s->deinterlace_offset + s->deinterlace_half_duration - TWOX_TOLERANCE;
-	gs_effect_set_bool(frame2, obs->video.video_time >= frame2_ts);
+	gs_effect_set_bool(frame2,
+			   obs_source_deinterlace_draw_frame2(obs->video.video_time, s->deinterlace_frame_ts,
+							      s->deinterlace_offset, s->deinterlace_half_duration));
 
 	while (gs_effect_loop(effect, tech_name))
 		gs_draw_sprite(NULL, s->async_flip ? GS_FLIP_V : 0, s->async_width, s->async_height);
@@ -449,23 +396,24 @@ void obs_source_set_deinterlace_mode(obs_source_t *source, enum obs_deinterlace_
 {
 	if (!obs_source_valid(source, "obs_source_set_deinterlace_mode"))
 		return;
-	/* A mode outside the enum has no effect to draw with, so the source
-	 * would draw nothing: it is DISABLE, and the getter and a saved scene
-	 * collection say so (#2090). */
-	if (!deinterlace_mode_known(mode))
-		mode = OBS_DEINTERLACE_MODE_DISABLE;
-	if (source->deinterlace_mode == mode)
+	/* A mode outside the enum is DISABLE (#2090): the decision says
+	 * disable, or nothing when the source is disabled already. Enable and
+	 * switch come only with a mode in the enum. */
+	switch (obs_source_deinterlace_draw_mode_change(source->deinterlace_mode, mode)) {
+	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_SAME:
 		return;
-
-	if (source->deinterlace_mode == OBS_DEINTERLACE_MODE_DISABLE) {
+	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_ENABLE:
 		enable_deinterlacing(source, mode);
-	} else if (mode == OBS_DEINTERLACE_MODE_DISABLE) {
+		break;
+	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_DISABLE:
 		disable_deinterlacing(source);
-	} else {
+		break;
+	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_SWITCH:
 		obs_enter_graphics();
 		source->deinterlace_mode = mode;
 		source->deinterlace_effect = get_effect(mode);
 		obs_leave_graphics();
+		break;
 	}
 }
 
@@ -493,4 +441,3 @@ enum obs_deinterlace_field_order obs_source_get_deinterlace_field_order(const ob
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef FRAME_TOLERANCE
-#undef TWOX_TOLERANCE
