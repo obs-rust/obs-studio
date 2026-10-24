@@ -20,6 +20,7 @@
 
 /* The C++ headers come before cmocka.h: its macros break libstdc++. */
 #include <cstdio>
+#include <cstring>
 #include <exception>
 #include <string>
 
@@ -146,6 +147,13 @@ static int case_setup(void **)
 	if (!scene_a || !scene_b || !input) {
 		return -1;
 	}
+	/* libobs renames an input whose name is in use. RemoveInput then finds
+	 * a leftover from the last case instead of this input. */
+	if (strcmp(obs_source_get_name(input), "ws remove input") != 0) {
+		fprintf(stderr, "input is named '%s': a source of the last case is still alive\n",
+			obs_source_get_name(input));
+		return -1;
+	}
 	obs_scene_add(scene_a, input);
 	obs_scene_add(scene_b, input);
 	return 0;
@@ -166,6 +174,12 @@ static int case_teardown(void **)
 	obs_source_remove(input);
 	obs_source_release(input);
 	input = nullptr;
+	/* libobs destroys sources on its destruction thread. Destroying a scene
+	 * queues the destruction of its items' sources behind the wait marker,
+	 * so wait until a pass processes nothing, as obs_shutdown() does. The
+	 * next case can then use the same names. */
+	while (obs_wait_for_destroy_queue())
+		;
 	return 0;
 }
 
