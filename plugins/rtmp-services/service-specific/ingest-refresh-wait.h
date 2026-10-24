@@ -6,7 +6,11 @@
  * connect thread via rtmp_common_url, or the UI thread via the
  * *_ingests_refresh proc handlers) blocks until the refresh attempt ends or
  * the timeout passes. The refresh signals a manual-reset event when its
- * attempt ends, so the waiter wakes at once instead of at a polling tick. */
+ * attempt ends, so the waiter wakes at once instead of at a polling tick.
+ *
+ * If that event cannot be created, it stays NULL: the refresh still runs,
+ * but there is nothing to wait on, so the caller goes on at once with the
+ * ingest list it has (the default one, or the cached one). */
 
 #include <util/threading.h>
 #include <util/platform.h>
@@ -17,7 +21,8 @@ struct ingest_refresh_wait {
 
 static inline void ingest_refresh_wait_init(struct ingest_refresh_wait *w)
 {
-	os_event_init(&w->done, OS_EVENT_TYPE_MANUAL);
+	if (os_event_init(&w->done, OS_EVENT_TYPE_MANUAL) != 0)
+		w->done = NULL;
 }
 
 static inline void ingest_refresh_wait_free(struct ingest_refresh_wait *w)
@@ -31,7 +36,8 @@ static inline void ingest_refresh_wait_free(struct ingest_refresh_wait *w)
 /* Called before a new refresh starts. */
 static inline void ingest_refresh_wait_reset(struct ingest_refresh_wait *w)
 {
-	os_event_reset(w->done);
+	if (w->done)
+		os_event_reset(w->done);
 }
 
 /* Called by the refresh when its attempt ends, whatever the outcome: a
@@ -39,7 +45,8 @@ static inline void ingest_refresh_wait_reset(struct ingest_refresh_wait *w)
 static inline void ingest_refresh_wait_complete(struct ingest_refresh_wait *w, bool success)
 {
 	(void)success;
-	os_event_signal(w->done);
+	if (w->done)
+		os_event_signal(w->done);
 }
 
 /* Whether a caller has to wait: only when no ingest list is available yet
@@ -53,5 +60,5 @@ static inline bool ingest_refresh_needs_wait(bool refreshed, bool loaded)
  * when the attempt ended. */
 static inline bool ingest_refresh_wait_for(struct ingest_refresh_wait *w, unsigned long timeout_ms)
 {
-	return os_event_timedwait(w->done, timeout_ms) == 0;
+	return w->done && os_event_timedwait(w->done, timeout_ms) == 0;
 }

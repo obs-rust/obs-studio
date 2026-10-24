@@ -1,6 +1,9 @@
 /* obs-rust/obs-studio#1284: waiting for an rtmp-services ingest refresh
  * (service-ingest and dacast) ends when the refresh attempt ends, not at a
- * 10 ms polling tick or at the timeout. */
+ * 10 ms polling tick or at the timeout.
+ *
+ * obs-rust/obs-studio#2164: when its event cannot be created, the refresh
+ * and the wait go on without it instead of using a NULL event. */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -114,6 +117,26 @@ static void needs_wait_only_without_any_list(void **state)
 	assert_false(ingest_refresh_needs_wait(true, true));
 }
 
+/* os_event_init() failed, so there is no event (it stays NULL). Starting
+ * and ending a refresh does nothing, and the wait ends at once: there is
+ * nothing to wait on, and the caller goes on with the list it has. */
+static void wait_without_event_ends_at_once(void **state)
+{
+	(void)state;
+	struct ingest_refresh_wait w = {.done = NULL};
+
+	ingest_refresh_wait_reset(&w);
+	ingest_refresh_wait_complete(&w, true);
+
+	uint64_t start = os_gettime_ns();
+	assert_false(ingest_refresh_wait_for(&w, 5000));
+	uint64_t elapsed_ms = (os_gettime_ns() - start) / 1000000;
+	assert_true(elapsed_ms < 1000);
+
+	ingest_refresh_wait_free(&w);
+	assert_null(w.done);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -122,6 +145,7 @@ int main(void)
 		cmocka_unit_test(refresh_that_never_ends_times_out),
 		cmocka_unit_test(completed_wait_returns_at_once_until_reset),
 		cmocka_unit_test(needs_wait_only_without_any_list),
+		cmocka_unit_test(wait_without_event_ends_at_once),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
