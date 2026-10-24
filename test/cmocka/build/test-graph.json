@@ -2632,6 +2632,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_scale_type": {
+      "sources": [
+        "test/cmocka/test_transition_scale_type.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_unclean_launch": {
       "sources": [
         "test/cmocka/test_unclean_launch.cpp"
@@ -4025,6 +4046,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_transition_scale_type": {
+      "target": "test_transition_scale_type",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_unclean_launch": {
       "target": "test_unclean_launch",
