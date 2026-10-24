@@ -113,6 +113,7 @@ pub mod profiler_snapshot;
 pub mod pulse_format;
 pub mod pulse_stream_flags;
 pub mod scene_audio_actions;
+pub mod scene_audio_window;
 pub mod scene_blend;
 pub mod scene_bounds;
 pub mod scene_bounds_place;

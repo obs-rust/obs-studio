@@ -1,0 +1,16 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 97d902510e04794183e90ab667d7d46285fbe1a4e9e6e54ac89b6ab20c74b3b6 # shrinks to items = [Item { visible: true, show_active: true, hide_active: false, pending: false, ts: 0, apply_buf: false, duplicated: false }], rate = 8000
+cc 4124eb64af8c16d71d94ae30fe2800f3c9dad126c8fb151adbe4b96d45eadbc4 # shrinks to items = [Item { visible: false, show_active: false, hide_active: true, pending: false, ts: 0, apply_buf: false, duplicated: false }], rate = 8000
+cc 3a8573a9f8535c6a1f5293de767b216e880df392527051c6fa798b075c203494 # shrinks to a = 1, b = 0
+cc 1b6cbd7a4a58e024f0ac4b8e417fcbc54664678b1faac1dffb06e450bb94ff35 # shrinks to items = [Item { visible: false, show_active: false, hide_active: true, pending: false, ts: 1, apply_buf: false, duplicated: false }, Item { visible: false, show_active: false, hide_active: true, pending: false, ts: 0, apply_buf: false, duplicated: false }], rate = 8000
+cc 40eb170efcd721112e2969da7980c68404d4996f11f5a2725138d2e9261640ea # shrinks to a = 0, b = 1
+cc 8a186e79986e210991cee06c819b94c2dceb8d949f6c4f3ba61d195677eaf27f # shrinks to pending = true, source_ts = 1000000000000, timestamp = 1000000000000, rate = 8000
+cc 97882fd20bb96657d3d27b4526a16499e9efbdfa9de1f0651265113dec10fc0e # shrinks to pending = false, source_ts = 0, timestamp = 18446744073709551615, rate = 8000
+cc f97921f87911b0e93165bbdb18fa7b5de0f32ef975be1735b7b823e0c061af34 # shrinks to items = [Item { visible: true, show_active: false, hide_active: false, pending: false, ts: 18446744073709551615, apply_buf: false, duplicated: false }, Item { visible: false, show_active: false, hide_active: false, pending: false, ts: 0, apply_buf: false, duplicated: false }], rate = 8000
+cc 59862f2a70147c30e72a48ab0d7a29446645b76e68a4dc63daac4a1ea25a2543 # shrinks to pending = false, source_ts = 31364139, timestamp = 18446744073708915755, rate = 32000
+cc f0f8003ee8cc60ec024adb1c3f7f0aff1ed2535fb97a2d56996ae4f0332557a8 # shrinks to pending = false, source_ts = 18446744073697007199, timestamp = 18446744073709551615, rate = 8000
