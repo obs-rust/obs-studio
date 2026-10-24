@@ -144,6 +144,7 @@
 
 #include "obs-source-async-pacing.h"
 #include "obs-source-audio-input.h"
+#include "obs-source-audio-render.h"
 #include "obs-source-audio-timing.h"
 #include "obs-source-color-space.h"
 #include "obs-source-conversion-plan.h"

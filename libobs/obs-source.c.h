@@ -4862,6 +4862,12 @@ static void apply_audio_volume(obs_source_t *source, uint32_t mixers, size_t cha
 	}
 }
 
+/* Which mixes are cleared before and after the callback, and its timestamp
+ * and pending result, go through obs-source-audio-render.c, on values. The
+ * buffers, the callback, audio_buf_mutex, the memsets and
+ * apply_audio_volume() stay here, in the same order; source->audio_mixers is
+ * read once per mix where it was before, source->audio_ts only after a
+ * successful callback. */
 static void custom_audio_render(obs_source_t *source, uint32_t mixers, size_t channels, size_t sample_rate)
 {
 	struct obs_source_audio_mix audio_data;
@@ -4873,7 +4879,7 @@ static void custom_audio_render(obs_source_t *source, uint32_t mixers, size_t ch
 			audio_data.output[mix].data[ch] = source->audio_output_buf[mix][ch];
 		}
 
-		if ((source->audio_mixers & mixers & (1 << mix)) != 0) {
+		if (obs_source_audio_render_custom_clear_before(source->audio_mixers, mixers, mix)) {
 			memset(source->audio_output_buf[mix][0], 0, sizeof(float) * AUDIO_OUTPUT_FRAMES * channels);
 		}
 	}
@@ -4881,21 +4887,21 @@ static void custom_audio_render(obs_source_t *source, uint32_t mixers, size_t ch
 	success = source->info.audio_render(source->context.data, &ts, &audio_data, mixers, channels, sample_rate);
 	/* The callback may render other sources or submit capture audio. */
 	pthread_mutex_lock(&source->audio_buf_mutex);
-	source->audio_ts = success ? ts : 0;
-	source->audio_pending = !success;
+	/* ts is passed but not used when the callback failed. */
+	source->audio_ts = obs_source_audio_render_custom_ts(success, ts);
+	source->audio_pending = obs_source_audio_render_custom_pending(success);
 
-	if (!success || !source->audio_ts || !mixers) {
+	if (obs_source_audio_render_custom_pending(success) ||
+	    obs_source_audio_render_custom_unmixed(source->audio_ts, mixers)) {
 		pthread_mutex_unlock(&source->audio_buf_mutex);
 		return;
 	}
 
 	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
-		uint32_t mix_bit = 1 << mix;
-
-		if ((mixers & mix_bit) == 0)
+		if (!obs_source_audio_render_custom_in_tick(mixers, mix))
 			continue;
 
-		if ((source->audio_mixers & mix_bit) == 0) {
+		if (obs_source_audio_render_custom_clear_after(source->audio_mixers, mix)) {
 			memset(source->audio_output_buf[mix][0], 0, sizeof(float) * AUDIO_OUTPUT_FRAMES * channels);
 		}
 	}
@@ -4934,6 +4940,11 @@ static void audio_submix(obs_source_t *source, size_t channels, size_t sample_ra
 	obs_source_output_audio(source, &audio);
 }
 
+/* The pending check and whether each mix copies mix 0 or is cleared go
+ * through obs-source-audio-render.c, on values. audio_buf_mutex,
+ * deque_peek_front(), the memsets, the memcpys and apply_audio_volume() stay
+ * here, in the same order; the input size is read only with a timestamp, and
+ * source->audio_mixers once per mix where it was before. */
 static inline void process_audio_source_tick(obs_source_t *source, uint32_t mixers, size_t channels, size_t sample_rate,
 					     size_t size)
 {
@@ -4941,7 +4952,8 @@ static inline void process_audio_source_tick(obs_source_t *source, uint32_t mixe
 
 	pthread_mutex_lock(&source->audio_buf_mutex);
 
-	if (!source->audio_ts || source->audio_input_buf[0].size < size) {
+	if (obs_source_audio_render_tick_unset(source->audio_ts) ||
+	    obs_source_audio_render_tick_short(source->audio_input_buf[0].size, size)) {
 		source->audio_pending = true;
 		pthread_mutex_unlock(&source->audio_buf_mutex);
 		return;
@@ -4951,17 +4963,10 @@ static inline void process_audio_source_tick(obs_source_t *source, uint32_t mixe
 		deque_peek_front(&source->audio_input_buf[ch], source->audio_output_buf[0][ch], size);
 
 	for (size_t mix = 1; mix < MAX_AUDIO_MIXES; mix++) {
-		uint32_t mix_and_val = (1 << mix);
+		if (obs_source_audio_render_tick_stop(audio_submix, mix))
+			break;
 
-		if (audio_submix) {
-			if (mix > 1)
-				break;
-
-			mixers = 1;
-			mix_and_val = 1;
-		}
-
-		if ((source->audio_mixers & mix_and_val) == 0 || (mixers & mix_and_val) == 0) {
+		if (!obs_source_audio_render_tick_copy(audio_submix, source->audio_mixers, mixers, mix)) {
 			memset(source->audio_output_buf[mix][0], 0, size * channels);
 			continue;
 		}
@@ -4970,13 +4975,13 @@ static inline void process_audio_source_tick(obs_source_t *source, uint32_t mixe
 			memcpy(source->audio_output_buf[mix][ch], source->audio_output_buf[0][ch], size);
 	}
 
-	if (audio_submix) {
+	if (!obs_source_audio_render_tick_volume(audio_submix)) {
 		source->audio_pending = false;
 		pthread_mutex_unlock(&source->audio_buf_mutex);
 		return;
 	}
 
-	if ((source->audio_mixers & 1) == 0 || (mixers & 1) == 0)
+	if (obs_source_audio_render_tick_clear_main(source->audio_mixers, mixers))
 		memset(source->audio_output_buf[0][0], 0, size * channels);
 
 	apply_audio_volume(source, mixers, channels, sample_rate);
@@ -4984,20 +4989,25 @@ static inline void process_audio_source_tick(obs_source_t *source, uint32_t mixe
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 }
 
+/* The route goes through obs-source-audio-render.c, on values. Each field is
+ * read only where the checks before reached it, as before: the audio thread
+ * can render a source whose context.data is not set yet (432017b2c). */
 void obs_source_audio_render(obs_source_t *source, uint32_t mixers, size_t channels, size_t sample_rate, size_t size)
 {
-	if (!source->audio_output_buf[0][0]) {
+	const bool has_buffer = source->audio_output_buf[0][0] != NULL;
+	const bool custom = has_buffer && source->info.audio_render != NULL;
+	const bool has_data = custom && source->context.data != NULL;
+
+	switch (obs_source_audio_render_route(has_buffer, custom, has_data)) {
+	case OBS_SOURCE_AUDIO_RENDER_PENDING:
 		source->audio_pending = true;
 		return;
-	}
-
-	if (source->info.audio_render) {
-		if (!source->context.data) {
-			source->audio_pending = true;
-			return;
-		}
+	case OBS_SOURCE_AUDIO_RENDER_CUSTOM:
 		custom_audio_render(source, mixers, channels, sample_rate);
 		return;
+	case OBS_SOURCE_AUDIO_RENDER_TICK:
+	default:
+		break;
 	}
 
 	if (source->info.audio_mix) {
