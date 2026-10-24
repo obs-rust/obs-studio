@@ -3584,6 +3584,9 @@ static inline struct obs_source_frame *cache_video(struct obs_source *source, co
 		if (!af->used) {
 			new_frame = af->frame;
 			new_frame->format = format;
+			/* A frame from the cache starts unpaired, whatever its
+			 * last use left on it (#2009). */
+			new_frame->prev_frame = false;
 			af->used = true;
 			af->unused_count = 0;
 			break;

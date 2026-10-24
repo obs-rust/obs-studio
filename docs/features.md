@@ -1354,6 +1354,12 @@ area.
   frame is already waiting). *All*, pending merge. Issue
   [#1965](https://github.com/obs-rust/obs-studio/issues/1965), PR
   [#1995](https://github.com/obs-rust/obs-studio/pull/1995).
+- Double-rate deinterlacing (Yadif 2x, Linear 2x, Discard 2x) shows every
+  frame of a buffered source after it falls behind and catches up, instead
+  of sometimes skipping the fields of a later frame and showing the frame
+  after it a frame early. *All*, pending merge. Issue
+  [#2009](https://github.com/obs-rust/obs-studio/issues/2009), PR
+  [#2048](https://github.com/obs-rust/obs-studio/pull/2048).
 
 ### Scenes and UI
 

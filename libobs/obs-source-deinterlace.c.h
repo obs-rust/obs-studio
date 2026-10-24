@@ -84,12 +84,12 @@ static bool ready_deinterlace_frames(obs_source_t *source, uint64_t sys_time)
 		if (source->async_frames.num <= 2) {
 			bool exit = true;
 
-			if (prev_frame) {
-				prev_frame->prev_frame = true;
-
-			} else if (!frame && source->async_frames.num == 2) {
+			/* Two frames or fewer left: stop and show the front one
+			 * alone, unless none was taken yet. A prev_frame was just
+			 * erased and has gone back to the cache, so it is no
+			 * pair for the front frame and is not flagged (#2009). */
+			if (!frame && source->async_frames.num == 2)
 				exit = false;
-			}
 
 			if (exit) {
 				source->deinterlace_offset = 0;

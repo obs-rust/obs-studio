@@ -28,7 +28,18 @@
 //!   the first after a pause, at those rates and clean cadences, against
 //!   the half duration of before #1965 and one that knows the source's
 //!   field duration: which fields it shows, and that every later state is
-//!   the one of before.
+//!   the one of before;
+//! - #2009: the model also keeps the async cache (`cache_video()`,
+//!   `clean_cache()`, `remove_async_frame()`, `free_async_cache()` and the
+//!   render's release of the previous frame), so a frame reused from the
+//!   cache starts with the `prev_frame` its entry was left with.
+//!   `behind_cadence` runs the `behind` cases of
+//!   `test_deinterlace_2x_field_order`, and `buffered_walk_cadences` and
+//!   `buffered_walk_sequences` run the cadences and the sequences above
+//!   through the walk before #2009 and after: a run changes exactly when a
+//!   frame reused with the flag left on was paired, and each half of the
+//!   fix alone (the walk, or the clear in `cache_video()`) gives the same
+//!   runs.
 //!
 //! No intentional differences: there is no pointer to check.
 
@@ -406,18 +417,60 @@ struct Reached {
     reanchor_late: usize,
     reanchor_kept: usize,
     first_frame: usize,
+    /// #2009: the buffered walk's exit with two frames left after it
+    /// erased `prev_frame`, and the picks that paired a front frame whose
+    /// `prev_frame` no call of this tick set (one reused from the cache
+    /// with the flag left on).
+    exit_after_erase: usize,
+    stale_pairs: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Frame {
     timestamp: u64,
     prev_frame: bool,
+    /// The `async_cache` entry the frame is (`Slot::id`).
+    slot: u64,
 }
+
+/// An `async_cache` entry (`struct async_frame`). A frame's `prev_frame`
+/// is kept on its `Frame` while the frame is queued or shown, and here
+/// while the entry is unused: what the next frame to reuse it starts with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Slot {
+    id: u64,
+    used: bool,
+    unused_count: u32,
+    prev_frame: bool,
+}
+
+/// `MAX_UNUSED_FRAME_DURATION` and `MAX_ASYNC_FRAMES` (`obs-source.c.h`).
+const MAX_UNUSED_FRAME_DURATION: u32 = 5;
+const MAX_ASYNC_FRAMES: usize = 30;
+
+/// The buffered walk's exit with two frames left after it erased
+/// `prev_frame` (#2009).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Walk {
+    /// Before #2009: `prev_frame->prev_frame = true` on the frame just
+    /// erased and returned to the cache.
+    Upstream,
+    /// No flag: the front frame is shown alone (#2009).
+    NoFlag,
+    /// The front frame flagged: it is shown as the previous frame of a
+    /// pair with the frame after it.
+    FlagFront,
+}
+
+/// The walk and the cache of the C (#2009).
+const FIXED: (Walk, bool) = (Walk::NoFlag, true);
 
 /// The fields of `struct obs_source` the deinterlace pacing reads and
 /// writes, and the frames it holds.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Source {
+    async_cache: Vec<Slot>,
+    next_slot: u64,
     async_frames: VecDeque<Frame>,
     async_unbuffered: bool,
     last_frame_ts: u64,
@@ -439,9 +492,100 @@ struct Run<'a, P: Pacing> {
     s: Source,
     log: Vec<u8>,
     reached: Reached,
+    /// The buffered walk's exit after an erase, and whether
+    /// `cache_video()` clears `prev_frame` on a reused frame (#2009).
+    walk: Walk,
+    clear_on_reuse: bool,
+    /// A call of this tick set the front frame's `prev_frame`.
+    flagged: bool,
 }
 
-impl<P: Pacing> Run<'_, P> {
+impl<'a, P: Pacing> Run<'a, P> {
+    fn new(p: &'a P, unbuffered: bool, (walk, clear_on_reuse): (Walk, bool)) -> Self {
+        Run {
+            p,
+            s: Source {
+                async_unbuffered: unbuffered,
+                ..Source::default()
+            },
+            log: Vec::new(),
+            reached: Reached::default(),
+            walk,
+            clear_on_reuse,
+            flagged: false,
+        }
+    }
+
+    /// `obs_source_output_video()`: `cache_video()` (the first unused
+    /// cache entry, then `clean_cache()`, else a new entry) and the push.
+    /// With a full queue the cache is freed and the frame dropped.
+    fn output_video(&mut self, timestamp: u64) {
+        if self.s.async_frames.len() >= MAX_ASYNC_FRAMES {
+            self.free_async_cache();
+            self.s.last_frame_ts = 0;
+            return;
+        }
+        let s = &mut self.s;
+        let mut reused = None;
+        if let Some(slot) = s.async_cache.iter_mut().find(|slot| !slot.used) {
+            slot.used = true;
+            slot.unused_count = 0;
+            if self.clear_on_reuse {
+                slot.prev_frame = false;
+            }
+            reused = Some((slot.id, slot.prev_frame));
+        }
+        // clean_cache()
+        s.async_cache.retain_mut(|slot| {
+            if slot.used {
+                return true;
+            }
+            slot.unused_count += 1;
+            slot.unused_count != MAX_UNUSED_FRAME_DURATION
+        });
+        let (slot, prev_frame) = reused.unwrap_or_else(|| {
+            let id = s.next_slot;
+            s.next_slot += 1;
+            s.async_cache.push(Slot {
+                id,
+                used: true,
+                unused_count: 0,
+                prev_frame: false,
+            });
+            (id, false)
+        });
+        s.async_frames.push_back(Frame {
+            timestamp,
+            prev_frame,
+            slot,
+        });
+    }
+
+    /// `remove_async_frame()`: the flag cleared, the entry unused.
+    fn remove_async_frame(&mut self, frame: Frame) {
+        if let Some(slot) = self.s.async_cache.iter_mut().find(|s| s.id == frame.slot) {
+            slot.used = false;
+            slot.prev_frame = false;
+        }
+    }
+
+    /// `free_async_cache()`: `obs_source_output_video(NULL)` or a full
+    /// queue.
+    fn free_async_cache(&mut self) {
+        self.s.async_cache.clear();
+        self.s.async_frames.clear();
+        self.s.cur_async_frame = None;
+        self.s.prev_async_frame = None;
+    }
+
+    /// `deinterlace_update_async_video()` at the render after the tick:
+    /// the previous frame of a pair goes back to the cache.
+    fn render(&mut self) {
+        if let Some(prev) = self.s.prev_async_frame.take() {
+            self.remove_async_frame(prev);
+        }
+    }
+
     /// `frame_out_of_bounds()` (`obs-internal.h`).
     fn frame_out_of_bounds(&self, ts: u64) -> bool {
         let last = self.s.last_frame_ts;
@@ -459,10 +603,11 @@ impl<P: Pacing> Run<'_, P> {
         let sys_offset = sys_time.wrapping_sub(self.s.last_sys_timestamp);
 
         if self.s.async_unbuffered {
-            let s = &mut self.s;
-            while s.async_frames.len() > 2 {
-                s.async_frames.pop_front();
+            while self.s.async_frames.len() > 2 {
+                let erased = self.s.async_frames.pop_front().expect("a frame");
+                self.remove_async_frame(erased);
             }
+            let s = &mut self.s;
             if s.async_frames.len() == 2 {
                 let mut has_prev_frame = true;
                 if s.async_unbuffered && s.deinterlace_offset != 0 {
@@ -483,6 +628,7 @@ impl<P: Pacing> Run<'_, P> {
                     }
                 }
                 s.async_frames[0].prev_frame = has_prev_frame;
+                self.flagged = has_prev_frame;
             }
             s.last_frame_ts = s.async_frames[0].timestamp;
             return true;
@@ -494,43 +640,60 @@ impl<P: Pacing> Run<'_, P> {
             self.s.deinterlace_offset = 0;
             return true;
         }
-        let s = &mut self.s;
-        let mut frame_offset = frame_time.wrapping_sub(s.last_frame_ts);
-        s.last_frame_ts = s.last_frame_ts.wrapping_add(sys_offset);
+        let mut frame_offset = frame_time.wrapping_sub(self.s.last_frame_ts);
+        self.s.last_frame_ts = self.s.last_frame_ts.wrapping_add(sys_offset);
 
         let mut next = 0usize;
         let mut frame: Option<usize> = None;
-        // Some(None): the C's prev_frame points to a frame already erased
-        let mut prev: Option<Option<usize>> = None;
-        while s.last_frame_ts > s.async_frames[next].timestamp {
-            if s.last_frame_ts - s.async_frames[next].timestamp < FRAME_TOLERANCE {
+        let mut prev: Option<usize> = None;
+        while self.s.last_frame_ts > self.s.async_frames[next].timestamp {
+            if self.s.last_frame_ts - self.s.async_frames[next].timestamp < FRAME_TOLERANCE {
                 break;
             }
+            let mut erased = None;
             if prev.is_some() {
                 // da_erase(0) and remove_async_frame(prev_frame): it is
                 // the front
-                s.async_frames.pop_front();
-                prev = Some(None);
+                let front = self.s.async_frames.pop_front().expect("a frame");
+                self.remove_async_frame(front);
+                erased = Some(front);
                 frame = frame.map(|f| f - 1);
                 next -= 1;
             }
-            if s.async_frames.len() <= 2 {
+            if self.s.async_frames.len() <= 2 {
                 let mut exit = true;
-                if prev.is_some() {
-                    // prev_frame->prev_frame = true on the erased frame
-                } else if frame.is_none() && s.async_frames.len() == 2 {
+                if let Some(erased) = erased {
+                    self.reached.exit_after_erase += 1;
+                    match self.walk {
+                        Walk::Upstream => {
+                            // prev_frame->prev_frame = true on the erased
+                            // frame, back in the cache
+                            if let Some(slot) =
+                                self.s.async_cache.iter_mut().find(|s| s.id == erased.slot)
+                            {
+                                slot.prev_frame = true;
+                            }
+                        }
+                        Walk::NoFlag => {}
+                        Walk::FlagFront => {
+                            self.s.async_frames[0].prev_frame = true;
+                            self.flagged = true;
+                        }
+                    }
+                } else if frame.is_none() && self.s.async_frames.len() == 2 {
                     exit = false;
                 }
                 if exit {
-                    s.deinterlace_offset = 0;
+                    self.s.deinterlace_offset = 0;
                     return true;
                 }
             }
             let idx = if frame.is_some() { 2 } else { 1 };
-            prev = frame.map(Some);
+            prev = frame;
             frame = Some(next);
             next = idx;
 
+            let s = &mut self.s;
             if s.async_frames[next].timestamp.wrapping_sub(frame_time) > MAX_TS_VAR {
                 s.last_frame_ts = s.async_frames[next].timestamp.wrapping_sub(frame_offset);
                 s.deinterlace_offset = 0;
@@ -538,8 +701,9 @@ impl<P: Pacing> Run<'_, P> {
             frame_time = s.async_frames[next].timestamp;
             frame_offset = frame_time.wrapping_sub(s.last_frame_ts);
         }
-        if let Some(Some(p)) = prev {
-            s.async_frames[p].prev_frame = true;
+        if let Some(p) = prev {
+            self.s.async_frames[p].prev_frame = true;
+            self.flagged = true;
         }
         frame.is_some()
     }
@@ -552,9 +716,15 @@ impl<P: Pacing> Run<'_, P> {
     }
 
     fn closest(&mut self, sys_time: u64, video_time: u64, interval: u64) {
-        // deinterlace_process_last_frame(): the shown frames go
-        self.s.prev_async_frame = None;
-        self.s.cur_async_frame = None;
+        // deinterlace_process_last_frame(): the shown frames go back to
+        // the cache
+        if let Some(prev) = self.s.prev_async_frame.take() {
+            self.remove_async_frame(prev);
+        }
+        if let Some(cur) = self.s.cur_async_frame.take() {
+            self.remove_async_frame(cur);
+        }
+        self.flagged = false;
 
         if self.s.async_unbuffered && self.s.deinterlace_offset != 0 {
             let s = &self.s;
@@ -593,6 +763,7 @@ impl<P: Pacing> Run<'_, P> {
         } else {
             if self.s.async_frames.len() >= 2 {
                 self.s.async_frames[0].prev_frame = true;
+                self.flagged = true;
             }
             self.reached.first_frame += 1;
             true
@@ -606,6 +777,9 @@ impl<P: Pacing> Run<'_, P> {
         let prev_half = s.deinterlace_half_duration;
         let half;
         if !s.async_frames.is_empty() && cur.prev_frame {
+            if !self.flagged {
+                self.reached.stale_pairs += 1;
+            }
             let prev = cur;
             cur = s.async_frames.pop_front().expect("a second frame");
             s.prev_async_frame = Some(prev);
@@ -762,15 +936,16 @@ fn sequence() -> impl Strategy<Value = Sequence> {
 /// A sequence run: a frame is due every frame duration on the canvas clock
 /// (arrivals are queued at the tick at or after them), plus the events.
 fn run<P: Pacing>(p: &P, seq: &Sequence) -> (Vec<u8>, Vec<Source>, Reached) {
-    let mut r = Run {
-        p,
-        s: Source {
-            async_unbuffered: seq.unbuffered,
-            ..Source::default()
-        },
-        log: Vec::new(),
-        reached: Reached::default(),
-    };
+    run_with(p, seq, FIXED)
+}
+
+/// `run()` with the walk and cache of `variant` (#2009).
+fn run_with<P: Pacing>(
+    p: &P,
+    seq: &Sequence,
+    variant: (Walk, bool),
+) -> (Vec<u8>, Vec<Source>, Reached) {
+    let mut r = Run::new(p, seq.unbuffered, variant);
     let interval = 1_000_000_000 * seq.canvas_rate.1 / seq.canvas_rate.0;
     let mut states = Vec::with_capacity(seq.ticks.len());
     let mut clock = seq.frame_base;
@@ -814,8 +989,8 @@ fn run<P: Pacing>(p: &P, seq: &Sequence) -> (Vec<u8>, Vec<Source>, Reached) {
                     pending.push((0, timestamp));
                 }
                 Event::Reset => {
+                    r.free_async_cache();
                     r.s.last_frame_ts = 0;
-                    r.s.async_frames.clear();
                 }
                 Event::ToggleBuffering => {
                     r.s.async_unbuffered = !r.s.async_unbuffered;
@@ -829,15 +1004,7 @@ fn run<P: Pacing>(p: &P, seq: &Sequence) -> (Vec<u8>, Vec<Source>, Reached) {
         let mut kept = Vec::new();
         for (arrival, timestamp) in pending.drain(..) {
             if arrival <= now {
-                if r.s.async_frames.len() < 30 {
-                    r.s.async_frames.push_back(Frame {
-                        timestamp,
-                        prev_frame: false,
-                    });
-                } else {
-                    // MAX_ASYNC_FRAMES: the cache is dropped
-                    r.s.last_frame_ts = 0;
-                }
+                r.output_video(timestamp);
             } else {
                 kept.push((arrival, timestamp));
             }
@@ -846,6 +1013,7 @@ fn run<P: Pacing>(p: &P, seq: &Sequence) -> (Vec<u8>, Vec<Source>, Reached) {
 
         r.tick(video_time, video_time, interval);
         states.push(r.s.clone());
+        r.render();
     }
     (r.log, states, r.reached)
 }
@@ -1041,21 +1209,27 @@ fn cadence<P: Pacing>(
     unbuffered: bool,
     start: Start,
 ) -> Cadence {
-    let mut r = Run {
-        p,
-        s: Source {
-            async_unbuffered: unbuffered,
-            ..Source::default()
-        },
-        log: Vec::new(),
-        reached: Reached::default(),
-    };
+    cadence_with(p, frame_rate, canvas_rate, unbuffered, start, PAUSE, FIXED).0
+}
+
+/// `cadence()` with a pause of `pause` and the walk and cache of
+/// `variant` (#2009), and what the run reached.
+fn cadence_with<P: Pacing>(
+    p: &P,
+    frame_rate: (u64, u64),
+    canvas_rate: (u64, u64),
+    unbuffered: bool,
+    start: Start,
+    pause: u64,
+    variant: (Walk, bool),
+) -> (Cadence, Reached) {
+    let mut r = Run::new(p, unbuffered, variant);
     let interval = 1_000_000_000 * canvas_rate.1 / canvas_rate.0;
     let (base, pause_at) = match start {
         Start::New { base } => (base, u64::MAX),
         Start::Pause { .. } => (5_000_000_000, PAUSE_AFTER),
     };
-    let arrival = |k: u64| rate_time(k, frame_rate) + if k >= pause_at { PAUSE } else { 0 };
+    let arrival = |k: u64| rate_time(k, frame_rate) + if k >= pause_at { pause } else { 0 };
     let mut out = Cadence {
         log: Vec::new(),
         states: Vec::new(),
@@ -1070,17 +1244,14 @@ fn cadence<P: Pacing>(
         let video_time = CANVAS_BASE + now;
         if let Start::Pause { reset: true } = start
             && !reset_done
-            && now >= arrival(PAUSE_AFTER - 1) + PAUSE / 2
+            && now >= arrival(PAUSE_AFTER - 1) + pause / 2
         {
+            r.free_async_cache();
             r.s.last_frame_ts = 0;
-            r.s.async_frames.clear();
             reset_done = true;
         }
         while arrival(next_frame) <= now {
-            r.s.async_frames.push_back(Frame {
-                timestamp: base + arrival(next_frame),
-                prev_frame: false,
-            });
+            r.output_video(base + arrival(next_frame));
             next_frame += 1;
         }
         r.tick(video_time, video_time, interval);
@@ -1097,9 +1268,10 @@ fn cadence<P: Pacing>(
         out.shown
             .push(shown_ts.map(|ts| (ts, if video_time >= frame2_ts { 2 } else { 1 })));
         out.states.push(r.s.clone());
+        r.render();
     }
     out.log = r.log;
-    out
+    (out, r.reached)
 }
 
 /// The measured frame of a run: the first frame picked, or the first after
@@ -1288,4 +1460,274 @@ fn low_rate_cadences() {
         }
     }
     assert_eq!(runs, 20);
+}
+
+// --------------------------------------------------------------------------
+// The buffered walk's flag on an erased frame (#2009)
+
+/// What a run shows and how it is paced, without the `prev_frame` flags
+/// and cache entries: the pacing calls' bytes, and after every tick the
+/// frames shown, the queue's timestamps and the pacing fields.
+type Visible = (Vec<u8>, Vec<(Option<u64>, Option<u64>, Vec<u64>, [u64; 5])>);
+
+fn visible(log: &[u8], states: &[Source]) -> Visible {
+    let states = states
+        .iter()
+        .map(|s| {
+            (
+                s.prev_async_frame.map(|f| f.timestamp),
+                s.cur_async_frame.map(|f| f.timestamp),
+                s.async_frames.iter().map(|f| f.timestamp).collect(),
+                [
+                    s.last_frame_ts,
+                    s.last_sys_timestamp,
+                    s.deinterlace_offset,
+                    s.deinterlace_frame_ts,
+                    u64::from(s.deinterlace_half_duration),
+                ],
+            )
+        })
+        .collect();
+    (log.to_vec(), states)
+}
+
+/// The variants checked against the fix: before #2009, each half of the
+/// fix alone, and the front frame flagged instead.
+const UPSTREAM: (Walk, bool) = (Walk::Upstream, false);
+const CLEAR_ONLY: (Walk, bool) = (Walk::Upstream, true);
+const NO_FLAG_ONLY: (Walk, bool) = (Walk::NoFlag, false);
+const FLAG_FRONT: (Walk, bool) = (Walk::FlagFront, true);
+
+/// Runs `one` for each variant and counts the runs that differ from the
+/// fix. Before #2009 a run differs exactly when a frame reused from the
+/// cache with the flag left on was paired; each half of the fix alone
+/// gives the fix.
+#[derive(Debug, Default)]
+struct Changed {
+    runs: usize,
+    exits: usize,
+    upstream: usize,
+    stale: usize,
+    flag_front: usize,
+}
+
+fn compare(changed: &mut Changed, what: &str, one: impl Fn((Walk, bool)) -> (Visible, Reached)) {
+    let (fixed, reached) = one(FIXED);
+    let (upstream, up_reached) = one(UPSTREAM);
+    assert_eq!(reached.stale_pairs, 0, "{what}");
+    assert_eq!(one(CLEAR_ONLY).0, fixed, "the cache clear alone: {what}");
+    assert_eq!(one(NO_FLAG_ONLY).0, fixed, "the walk alone: {what}");
+    changed.runs += 1;
+    changed.exits += usize::from(reached.exit_after_erase > 0);
+    changed.stale += usize::from(up_reached.stale_pairs > 0);
+    if upstream != fixed {
+        changed.upstream += 1;
+    }
+    assert_eq!(upstream != fixed, up_reached.stale_pairs > 0, "{what}");
+    if one(FLAG_FRONT).0 != fixed {
+        changed.flag_front += 1;
+    }
+}
+
+/// The cadences of `first_frame_cadences` and `low_rate_cadences`, with
+/// pauses of 150 ms (the real-libobs test) and 500 ms, through the walk
+/// before #2009 and after: a run changes only where a frame reused from the
+/// cache with the flag left on was paired (shown in place of the frame
+/// before it). In those runs, before #2009, a frame was shown a frame early
+/// after the pause; after it, the frames after the pause are shown in
+/// order.
+#[test]
+fn buffered_walk_cadences() {
+    let mut changed = Changed::default();
+    let mut early = 0usize;
+    let rates = FRAME_RATES.iter().copied().chain([(25, 2)]);
+    for frame_rate in rates {
+        for &canvas_rate in &CANVAS_RATES {
+            for unbuffered in [false, true] {
+                let starts = NEW_BASES
+                    .iter()
+                    .map(|&base| (Start::New { base }, PAUSE))
+                    .chain([false, true].into_iter().flat_map(|reset| {
+                        [150 * MS, PAUSE].map(|pause| (Start::Pause { reset }, pause))
+                    }));
+                for (start, pause) in starts {
+                    let what = format!(
+                        "{frame_rate:?} into {canvas_rate:?}, unbuffered {unbuffered}, {start:?}, pause {pause}"
+                    );
+                    let one = |variant| {
+                        let (c, reached) = cadence_with(
+                            &C,
+                            frame_rate,
+                            canvas_rate,
+                            unbuffered,
+                            start,
+                            pause,
+                            variant,
+                        );
+                        let (r, _) = cadence_with(
+                            &Rust,
+                            frame_rate,
+                            canvas_rate,
+                            unbuffered,
+                            start,
+                            pause,
+                            variant,
+                        );
+                        assert_eq!(c.log, r.log, "{what}");
+                        assert_eq!(c.states, r.states, "{what}");
+                        (visible(&c.log, &c.states), reached)
+                    };
+                    compare(&mut changed, &what, one);
+
+                    // the frames shown, in order, every one of them
+                    let fixed =
+                        cadence_with(&C, frame_rate, canvas_rate, unbuffered, start, pause, FIXED)
+                            .0;
+                    let before = cadence_with(
+                        &C,
+                        frame_rate,
+                        canvas_rate,
+                        unbuffered,
+                        start,
+                        pause,
+                        UPSTREAM,
+                    )
+                    .0;
+                    let order = |run: &Cadence| {
+                        let picked: Vec<u64> = run
+                            .picks
+                            .iter()
+                            .map(|&t| run.shown[t].expect("a frame").0)
+                            .collect();
+                        picked.windows(2).all(|w| w[0] < w[1])
+                    };
+                    assert!(order(&fixed), "{what}");
+                    if fixed.shown != before.shown {
+                        early += 1;
+                        eprintln!(
+                            "{what}: shown before #2009 {:?}\n  after {:?}",
+                            before
+                                .picks
+                                .iter()
+                                .map(|&t| before.shown[t])
+                                .collect::<Vec<_>>(),
+                            fixed
+                                .picks
+                                .iter()
+                                .map(|&t| fixed.shown[t])
+                                .collect::<Vec<_>>()
+                        );
+                    }
+                }
+            }
+        }
+    }
+    eprintln!("cadences: {changed:?}, shown differently {early}");
+}
+
+/// The sequences of `sequences_reach_every_branch`, through the walk
+/// before #2009 and after.
+#[test]
+fn buffered_walk_sequences() {
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let mut changed = Changed::default();
+    for _ in 0..2000 {
+        let seq = sequence()
+            .new_tree(&mut runner)
+            .expect("a sequence")
+            .current();
+        let what = format!("{seq:?}");
+        compare(&mut changed, &what, |variant| {
+            let (log, states, reached) = run_with(&C, &seq, variant);
+            (visible(&log, &states), reached)
+        });
+    }
+    eprintln!("sequences: {changed:?}");
+}
+
+/// The `behind` cases of `test_deinterlace_2x_field_order` through the
+/// model: a buffered source that never showed a frame shows frame 0, gets
+/// frames 1 to 3 at once right after a tick, stamped 4, 8 and 12 ms after
+/// frame 0 (all overdue at the next tick), then right after that tick
+/// frames 4 to 9 at once, at its rate after frame 3. Returns the frames
+/// picked, in order, and what the run reached.
+fn behind(
+    frame_rate: (u64, u64),
+    canvas_rate: (u64, u64),
+    variant: (Walk, bool),
+) -> (Vec<u64>, Reached) {
+    let mut r = Run::new(&C, false, variant);
+    let interval = 1_000_000_000 * canvas_rate.1 / canvas_rate.0;
+    let t0 = CANVAS_BASE + MS;
+    let stamp = |n: u64| {
+        if n < 4 {
+            t0 + n * 4 * MS
+        } else {
+            t0 + 12 * MS + rate_time(n - 3, frame_rate)
+        }
+    };
+    let mut picked = Vec::new();
+    for tick in 1u64..=60 {
+        let frames = match tick {
+            1 => 0..1,
+            4 => 1..4,
+            5 => 4..10,
+            _ => 0..0,
+        };
+        for n in frames {
+            r.output_video(stamp(n));
+        }
+        let video_time = CANVAS_BASE + tick * interval;
+        r.tick(video_time, video_time, interval);
+        if let Some(cur) = r.s.cur_async_frame {
+            picked.push(
+                (0..10)
+                    .find(|&n| stamp(n) == cur.timestamp)
+                    .expect("a frame"),
+            );
+        }
+        r.render();
+    }
+    (picked, r.reached)
+}
+
+/// Before #2009 the walk's exit flags frame 1 (erased and in the cache),
+/// frame 4 reuses its entry and is paired, so frame 5 is shown in its
+/// place; after it, frame 1 is dropped (it is overdue) and 2 to 9 are shown
+/// in order. Each half of the fix alone does the same. Flagging the front
+/// frame at the exit instead would drop frame 2 too.
+#[test]
+fn behind_cadence() {
+    let rates = [
+        ((30, 1), (60, 1)),
+        ((25, 1), (50, 1)),
+        ((25, 1), (60, 1)),
+        ((30, 1), (50, 1)),
+    ];
+    for (frame_rate, canvas_rate) in rates {
+        let what = format!("{frame_rate:?} into {canvas_rate:?}");
+        let (before, up) = behind(frame_rate, canvas_rate, UPSTREAM);
+        let (after, fixed) = behind(frame_rate, canvas_rate, FIXED);
+        eprintln!("{what}: picked before #2009 {before:?}, after {after:?}");
+        assert_eq!(up.exit_after_erase, 1, "{what}");
+        assert_eq!(up.stale_pairs, 1, "{what}");
+        assert_eq!(fixed.stale_pairs, 0, "{what}");
+        assert_eq!(before, [0, 2, 3, 5, 6, 7, 8, 9], "{what}");
+        assert_eq!(after, [0, 2, 3, 4, 5, 6, 7, 8, 9], "{what}");
+        assert_eq!(
+            behind(frame_rate, canvas_rate, CLEAR_ONLY).0,
+            after,
+            "{what}"
+        );
+        assert_eq!(
+            behind(frame_rate, canvas_rate, NO_FLAG_ONLY).0,
+            after,
+            "{what}"
+        );
+        // flagging the front frame instead would pair 2 with 3 at the
+        // exit, dropping frame 2 as well
+        let (front, _) = behind(frame_rate, canvas_rate, FLAG_FRONT);
+        eprintln!("{what}: front flagged {front:?}");
+        assert_eq!(front, [0, 3, 4, 5, 6, 7, 8, 9], "{what}");
+    }
 }
