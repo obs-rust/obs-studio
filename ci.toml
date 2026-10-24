@@ -1024,7 +1024,7 @@ issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "RUST-018"
-path = "rust/obs-gpu-status-frontend/Cargo.toml"
+path = "rust/obs-frontend/Cargo.toml"
 reason = "No workspace complexity lint configured yet."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"

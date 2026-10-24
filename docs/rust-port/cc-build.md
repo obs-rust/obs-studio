@@ -582,9 +582,9 @@ configuration is Linux with browser panels disabled; other feature/platform
 configurations and release paths remain under conversion.
 
 Build the GPU archive with
-`soldr cargo build -p obs-gpu-status-frontend --release`, then enable the integration
+`soldr cargo build -p obs-frontend --release`, then enable the integration
 check with `OBS_BUILD_APP=1` and `OBS_BUILD_GPU_ARCHIVE` pointing to the resulting
-`target/release/libobs_gpu_status_frontend.a`. The executable runs and reports
+`target/release/libobs_frontend.a`. The executable runs and reports
 `--version` identifies the OBS-Studio-Rust application version as `0.1.0`,
 based on OBS `33.0.0-cc-build`.
 This establishes compilation, linking and CLI execution; GUI startup, runtime

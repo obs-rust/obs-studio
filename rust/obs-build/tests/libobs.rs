@@ -487,7 +487,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     if enabled("OBS_BUILD_APP") {
         let gpu_archive = PathBuf::from(
             std::env::var_os("OBS_BUILD_GPU_ARCHIVE")
-                .expect("build obs-gpu-status-frontend in release mode first"),
+                .expect("build obs-frontend in release mode first"),
         );
         let executable = frontend::build_application_with_options(
             &build,

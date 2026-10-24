@@ -98,7 +98,7 @@ exit 19
     def test_every_corrosion_import_joins_the_cargo_build_order(self):
         imports = {
             "libobs/cmake/rust.cmake": "libobs-rust",
-            "frontend/cmake/feature-gpu-status.cmake": "obs-gpu-status-frontend",
+            "frontend/cmake/feature-gpu-status.cmake": "obs-frontend",
             "plugins/obs-nvenc/CMakeLists.txt": "obs-nvenc-plugin",
         }
         for path, crate in imports.items():

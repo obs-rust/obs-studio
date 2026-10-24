@@ -255,7 +255,7 @@ where
             "-p",
             "libobs-rust",
             "-p",
-            "obs-gpu-status-frontend",
+            "obs-frontend",
             "--target",
         ])
         .arg(&build.target)

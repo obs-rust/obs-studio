@@ -2,7 +2,7 @@ include_guard(DIRECTORY)
 
 # GPU acceleration status light (obs-rust/obs-studio#846). The classifier is
 # rust/obs-gpu-status, linked into the frontend through the staticlib
-# rust/obs-gpu-status-frontend (like obs-nvenc links obs-nvenc-plugin), so
+# rust/obs-frontend (like obs-nvenc links obs-nvenc-plugin), so
 # libobs' exported symbols do not change.
 #
 # It is built whenever cargo is available (#946): the crate has no crates.io
@@ -31,24 +31,24 @@ endif()
 if(ENABLE_GPU_STATUS AND COMMAND corrosion_import_crate)
   corrosion_import_crate(
     MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
-    CRATES obs-gpu-status-frontend
+    CRATES obs-frontend
     CRATE_TYPES staticlib
     PROFILE release
   )
-  obs_serialize_cargo_build(obs-gpu-status-frontend)
+  obs_serialize_cargo_build(obs-frontend)
   if(OS_MACOS)
     # Same as libobs/cmake/rust.cmake (#777): let the linker use the selected
     # Xcode SDK, not the CLT SDK Corrosion injects.
-    get_target_property(_obs_gpu_status_link_dirs obs_gpu_status_frontend-static INTERFACE_LINK_DIRECTORIES)
+    get_target_property(_obs_gpu_status_link_dirs obs_frontend-static INTERFACE_LINK_DIRECTORIES)
     if(_obs_gpu_status_link_dirs)
       list(REMOVE_ITEM _obs_gpu_status_link_dirs "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib")
       set_property(
-        TARGET obs_gpu_status_frontend-static
+        TARGET obs_frontend-static
         PROPERTY INTERFACE_LINK_DIRECTORIES "${_obs_gpu_status_link_dirs}"
       )
     endif()
   endif()
-  target_link_libraries(obs-studio PRIVATE obs_gpu_status_frontend-static)
+  target_link_libraries(obs-studio PRIVATE obs_frontend-static)
   # A staticlib's #[link(name = ...)] system libraries don't reach the final
   # link: the Windows GPU engine counters (#1228) need pdh.lib.
   target_link_libraries(obs-studio PRIVATE $<$<PLATFORM_ID:Windows>:pdh>)

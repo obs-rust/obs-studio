@@ -1,5 +1,5 @@
 //! C ABI for the frontend (`frontend/utility/obs-gpu-status.h`). The
-//! frontend links it through the staticlib rust/obs-gpu-status-frontend,
+//! frontend links it through the staticlib rust/obs-frontend,
 //! like obs-nvenc links obs-nvenc-plugin, so libobs' exported symbol set
 //! does not change.
 

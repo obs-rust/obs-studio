@@ -579,18 +579,18 @@ name = "obs-fallback-warning"
 version = "0.1.0"
 
 [[package]]
+name = "obs-frontend"
+version = "0.1.0"
+dependencies = [
+ "obs-gpu-status",
+]
+
+[[package]]
 name = "obs-gpu-status"
 version = "0.1.0"
 dependencies = [
  "libloading",
  "obs-fallback-warning",
-]
-
-[[package]]
-name = "obs-gpu-status-frontend"
-version = "0.1.0"
-dependencies = [
- "obs-gpu-status",
 ]
 
 [[package]]
