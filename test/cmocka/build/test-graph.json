@@ -2609,6 +2609,29 @@
         }
       ]
     },
+    "test_transition_clock_steps": {
+      "sources": [
+        "test/cmocka/test_transition_clock_steps.c",
+        "libobs/obs-source-transition-clock.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_unclean_launch": {
       "sources": [
         "test/cmocka/test_unclean_launch.cpp"
@@ -3996,6 +4019,12 @@
     },
     "test_threading": {
       "target": "test_threading"
+    },
+    "test_transition_clock_steps": {
+      "target": "test_transition_clock_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_unclean_launch": {
       "target": "test_unclean_launch",
