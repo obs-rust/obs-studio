@@ -64,6 +64,8 @@ mod source_load;
 mod source_profiler;
 #[path = "port_comparison/source_ptm_gate.rs"]
 mod source_ptm_gate;
+#[path = "port_comparison/source_render_route.rs"]
+mod source_render_route;
 #[path = "port_comparison/source_size.rs"]
 mod source_size;
 #[path = "port_comparison/source_transition_clock.rs"]
@@ -165,6 +167,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_load,
         source_profiler,
         source_ptm_gate,
+        source_render_route,
         source_size,
         source_transition_clock,
         source_transition_render,
