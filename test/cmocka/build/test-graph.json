@@ -822,6 +822,27 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_filter_skip_removed": {
+      "sources": [
+        "test/cmocka/test_filter_skip_removed.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_flv_mux": {
       "sources": [
         "test/cmocka/test_flv_mux.c",
@@ -3666,6 +3687,15 @@
     },
     "test_file_serializer_safe": {
       "target": "test_file_serializer_safe"
+    },
+    "test_filter_skip_removed": {
+      "target": "test_filter_skip_removed",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_flv_mux": {
       "target": "test_flv_mux",
