@@ -20,6 +20,7 @@ pub mod audio_input;
 pub mod audio_timing;
 pub mod color_space;
 pub mod deinterlace_pacing;
+pub mod transition_clock;
 
 #[allow(unsafe_code)]
 pub mod ffi;
