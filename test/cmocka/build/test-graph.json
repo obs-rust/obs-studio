@@ -2892,6 +2892,29 @@
         }
       ]
     },
+    "test_video_copy_plan_steps": {
+      "sources": [
+        "test/cmocka/test_video_copy_plan_steps.c",
+        "libobs/obs-video-copy-plan.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_video_fourcc": {
       "sources": [
         "test/cmocka/test_video_fourcc.c"
@@ -4270,6 +4293,12 @@
     },
     "test_vec4": {
       "target": "test_vec4"
+    },
+    "test_video_copy_plan_steps": {
+      "target": "test_video_copy_plan_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_video_fourcc": {
       "target": "test_video_fourcc"
