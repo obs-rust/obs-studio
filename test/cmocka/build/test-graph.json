@@ -446,6 +446,29 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_draw_steps": {
+      "sources": [
+        "test/cmocka/test_canvas_draw_steps.c",
+        "libobs/obs-canvas-draw.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_canvas_flags": {
       "sources": [
         "test/cmocka/test_canvas_flags.c"
@@ -3852,6 +3875,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_canvas_draw_steps": {
+      "target": "test_canvas_draw_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_canvas_flags": {
