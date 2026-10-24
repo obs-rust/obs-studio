@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-render-route.pch.h"
 
 /* The source and filter render routing of obs-source.c, moved from
  * source_render_video(), obs_source_main_render(), can_bypass(),

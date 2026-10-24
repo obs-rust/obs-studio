@@ -197,6 +197,7 @@
     "build/libobs.ported-source-load+.h.c",
     "build/libobs.ported-source-profiler+.h.c",
     "build/libobs.ported-source-ptm-gate+.h.c",
+    "build/libobs.ported-source-render-route+.h.c",
     "build/libobs.ported-source-size+.h.c",
     "build/libobs.ported-source-transition-clock+.h.c",
     "build/libobs.ported-source-transition-render+.h.c",

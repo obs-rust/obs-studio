@@ -201,6 +201,31 @@
     obs_source_ptm_gate_held;
     obs_source_ptm_gate_mutes;
     obs_source_ptm_gate_talk_mutes;
+    /* obs-source-render-route.c. obs-source.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_source_render_route_filter;
+    obs_source_render_route_video_reads_flags;
+    obs_source_render_route_video_none;
+    obs_source_render_route_async_reads_flags;
+    obs_source_render_route_async_reads_rendering_filter;
+    obs_source_render_route_async_update;
+    obs_source_render_route_reads_enabled;
+    obs_source_render_route_inactive;
+    obs_source_render_route_draw;
+    obs_source_render_route_draw_next;
+    obs_source_render_route_main_custom_draw;
+    obs_source_render_route_main_srgb_aware;
+    obs_source_render_route_main_reads_filters;
+    obs_source_render_route_main_default_effect;
+    obs_source_render_route_bypass_reads_space;
+    obs_source_render_route_bypass;
+    obs_source_render_route_size_skip;
+    obs_source_render_route_texrender_stale;
+    obs_source_render_route_filter_render;
+    obs_source_render_route_tech_end_linear_srgb;
+    obs_source_render_route_tech_name;
+    obs_source_render_route_tech_end;
+    obs_source_render_route_skip;
     /* obs-source-size.c. obs-source.c calls them inside libobs. Not EXPORT. */
     obs_source_size_route;
     obs_source_size_entry;

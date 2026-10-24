@@ -10,6 +10,7 @@ pub mod source_deinterlace_pacing;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_ptm_gate;
+pub mod source_render_route;
 pub mod source_size;
 pub mod source_transition_clock;
 pub mod source_transition_render;
