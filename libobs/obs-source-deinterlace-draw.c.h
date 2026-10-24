@@ -109,23 +109,23 @@ bool obs_source_deinterlace_draw_linear_srgb(int source_space, bool gs_linear_sr
 	       obs_source_deinterlace_draw_linear_required(mode);
 }
 
-enum obs_source_deinterlace_draw_technique obs_source_deinterlace_draw_technique(int source_space, int current_space)
+enum obs_source_draw_technique obs_source_deinterlace_draw_technique(int source_space, int current_space)
 {
-	enum obs_source_deinterlace_draw_technique technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW;
+	enum obs_source_draw_technique technique = OBS_SOURCE_DRAW_TECH_DRAW;
 	switch ((enum gs_color_space)source_space) {
 	case GS_CS_SRGB:
 	case GS_CS_SRGB_16F:
 		if ((enum gs_color_space)current_space == GS_CS_709_SCRGB)
-			technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY;
+			technique = OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY;
 		break;
 	case GS_CS_709_EXTENDED:
 		switch ((enum gs_color_space)current_space) {
 		case GS_CS_SRGB:
 		case GS_CS_SRGB_16F:
-			technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP;
+			technique = OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP;
 			break;
 		case GS_CS_709_SCRGB:
-			technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY;
+			technique = OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY;
 			break;
 		case GS_CS_709_EXTENDED:
 			break;
@@ -135,10 +135,10 @@ enum obs_source_deinterlace_draw_technique obs_source_deinterlace_draw_technique
 		switch ((enum gs_color_space)current_space) {
 		case GS_CS_SRGB:
 		case GS_CS_SRGB_16F:
-			technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP;
+			technique = OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP;
 			break;
 		case GS_CS_709_EXTENDED:
-			technique = OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY;
+			technique = OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY;
 			break;
 		case GS_CS_709_SCRGB:
 			break;
@@ -151,11 +151,13 @@ enum obs_source_deinterlace_draw_technique obs_source_deinterlace_draw_technique
 bool obs_source_deinterlace_draw_reads_white_level(int source_space, int current_space)
 {
 	switch (obs_source_deinterlace_draw_technique(source_space, current_space)) {
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY:
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP:
+	case OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY:
+	case OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP:
+	case OBS_SOURCE_DRAW_TECH_DRAW_NONLINEAR_ALPHA_MULTIPLY:
 		return true;
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW:
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP:
+	case OBS_SOURCE_DRAW_TECH_DRAW:
+	case OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP:
+	case OBS_SOURCE_DRAW_TECH_DRAW_NONLINEAR_ALPHA:
 		break;
 	}
 

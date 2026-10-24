@@ -20,6 +20,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "obs-source-draw-technique.h"
+
 /* The deinterlace draw decisions of obs-source-deinterlace.c, on plain values
  * (obs-source-deinterlace-draw.c):
  * - obs_source_deinterlace_draw_effect(): which effect a mode draws with
@@ -63,19 +65,6 @@ enum obs_source_deinterlace_draw_effect {
 	OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF_2X,
 };
 
-/* The technique deinterlace_render() draws with; obs-source-deinterlace.c
- * maps it to the name. */
-enum obs_source_deinterlace_draw_technique {
-	/* "Draw" */
-	OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW,
-	/* "DrawMultiply" */
-	OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY,
-	/* "DrawTonemap" */
-	OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP,
-	/* "DrawMultiplyTonemap" */
-	OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP,
-};
-
 /* What obs_source_set_deinterlace_mode() does. */
 enum obs_source_deinterlace_draw_mode_change {
 	/* nothing: the mode is the current one */
@@ -114,7 +103,7 @@ bool obs_source_deinterlace_draw_linear_srgb(int source_space, bool gs_linear_sr
  * GS_CS_709_SCRGB, DrawTonemap for GS_CS_709_EXTENDED into SDR,
  * DrawMultiplyTonemap for GS_CS_709_SCRGB into SDR, DrawMultiply for
  * GS_CS_709_SCRGB into GS_CS_709_EXTENDED, Draw for any other pair. */
-enum obs_source_deinterlace_draw_technique obs_source_deinterlace_draw_technique(int source_space, int current_space);
+enum obs_source_draw_technique obs_source_deinterlace_draw_technique(int source_space, int current_space);
 
 /* Whether deinterlace_render() reads obs_get_video_sdr_white_level() for the
  * pair: when the technique multiplies. */

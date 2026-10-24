@@ -119,16 +119,16 @@ static void enum_values(void **state)
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_LINEAR_2X, 5);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF, 6);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF_2X, 7);
-	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, 0);
-	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY, 1);
-	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP, 2);
-	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP, 3);
+	CHECK_INT(OBS_SOURCE_DRAW_TECH_DRAW, 0);
+	CHECK_INT(OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY, 1);
+	CHECK_INT(OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP, 2);
+	CHECK_INT(OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP, 3);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_MODE_SAME, 0);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_MODE_ENABLE, 1);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_MODE_DISABLE, 2);
 	CHECK_INT(OBS_SOURCE_DEINTERLACE_DRAW_MODE_SWITCH, 3);
 	CHECK_INT(sizeof(enum obs_source_deinterlace_draw_effect), sizeof(int));
-	CHECK_INT(sizeof(enum obs_source_deinterlace_draw_technique), sizeof(int));
+	CHECK_INT(sizeof(enum obs_source_draw_technique), sizeof(int));
 	CHECK_INT(sizeof(enum obs_source_deinterlace_draw_mode_change), sizeof(int));
 }
 
@@ -249,19 +249,19 @@ static void linear_srgb_every_input(void **state)
 /* --- technique and multiplier per space pair ---------------------------- */
 
 /* [source][current], in SPACES order */
-static const enum obs_source_deinterlace_draw_technique TECHNIQUES[4][4] = {
+static const enum obs_source_draw_technique TECHNIQUES[4][4] = {
 	/* GS_CS_SRGB into SRGB, SRGB_16F, 709_EXTENDED, 709_SCRGB */
-	{OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW,
-	 OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY},
+	{OBS_SOURCE_DRAW_TECH_DRAW, OBS_SOURCE_DRAW_TECH_DRAW, OBS_SOURCE_DRAW_TECH_DRAW,
+	 OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY},
 	/* GS_CS_SRGB_16F */
-	{OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW,
-	 OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY},
+	{OBS_SOURCE_DRAW_TECH_DRAW, OBS_SOURCE_DRAW_TECH_DRAW, OBS_SOURCE_DRAW_TECH_DRAW,
+	 OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY},
 	/* GS_CS_709_EXTENDED */
-	{OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP,
-	 OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY},
+	{OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP, OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP, OBS_SOURCE_DRAW_TECH_DRAW,
+	 OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY},
 	/* GS_CS_709_SCRGB */
-	{OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP,
-	 OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY, OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW},
+	{OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP, OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP,
+	 OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY, OBS_SOURCE_DRAW_TECH_DRAW},
 };
 
 /* The multiplier at a white level of 80, 300 and 0, as float bits:
@@ -299,16 +299,15 @@ static void technique_space_pairs(void **state)
 	(void)state;
 	for (size_t s = 0; s < SPACE_COUNT; s++)
 		for (size_t c = 0; c < SPACE_COUNT; c++) {
-			const enum obs_source_deinterlace_draw_technique t =
+			const enum obs_source_draw_technique t =
 				obs_source_deinterlace_draw_technique(SPACES[s], SPACES[c]);
 			if (t != TECHNIQUES[s][c]) {
 				fprintf(stderr, "source %d into %d: technique %d, expected %d\n", SPACES[s], SPACES[c],
 					(int)t, (int)TECHNIQUES[s][c]);
 				fail();
 			}
-			const bool multiplies = TECHNIQUES[s][c] == OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY ||
-						TECHNIQUES[s][c] ==
-							OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP;
+			const bool multiplies = TECHNIQUES[s][c] == OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY ||
+						TECHNIQUES[s][c] == OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP;
 			CHECK_BOOL(obs_source_deinterlace_draw_reads_white_level(SPACES[s], SPACES[c]), multiplies);
 		}
 }
@@ -321,9 +320,9 @@ static void technique_outside_enum(void **state)
 	for (size_t o = 0; o < OUTSIDE_SPACE_COUNT; o++) {
 		for (size_t s = 0; s < SPACE_COUNT; s++) {
 			CHECK_INT(obs_source_deinterlace_draw_technique(OUTSIDE_SPACES[o], SPACES[s]),
-				  OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW);
+				  OBS_SOURCE_DRAW_TECH_DRAW);
 			CHECK_INT(obs_source_deinterlace_draw_technique(SPACES[s], OUTSIDE_SPACES[o]),
-				  OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW);
+				  OBS_SOURCE_DRAW_TECH_DRAW);
 			CHECK_BOOL(obs_source_deinterlace_draw_reads_white_level(OUTSIDE_SPACES[o], SPACES[s]), false);
 			CHECK_BOOL(obs_source_deinterlace_draw_reads_white_level(SPACES[s], OUTSIDE_SPACES[o]), false);
 			CHECK_BITS(obs_source_deinterlace_draw_multiplier(OUTSIDE_SPACES[o], SPACES[s], 300.0f),

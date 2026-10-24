@@ -2079,21 +2079,8 @@ static void obs_source_update_async_video(obs_source_t *source)
 
 static void rotate_async_video(obs_source_t *source, long rotation)
 {
-	float x = 0;
-	float y = 0;
-
-	/* obs_source_set_async_rotation() keeps the rotation in 0-359 */
-	switch (rotation) {
-	case 90:
-		y = (float)source->async_width;
-		break;
-	case 270:
-		x = (float)source->async_height;
-		break;
-	case 180:
-		x = (float)source->async_width;
-		y = (float)source->async_height;
-	}
+	const float x = obs_source_draw_plan_rotation_x(rotation, source->async_width, source->async_height);
+	const float y = obs_source_draw_plan_rotation_y(rotation, source->async_width, source->async_height);
 
 	gs_matrix_translate3f(x, y, 0);
 	gs_matrix_rotaa4f(0.0f, 0.0f, -1.0f, RAD((float)rotation));
@@ -2108,64 +2095,17 @@ static inline void obs_source_render_async_video(obs_source_t *source)
 		const enum gs_color_space source_space = convert_video_space(source->async_format, source->async_trc);
 
 		gs_effect_t *const effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
-		const char *tech_name = "Draw";
-		float multiplier = 1.0;
 		const enum gs_color_space current_space = gs_get_color_space();
-		bool linear_srgb = gs_get_linear_srgb();
-		bool nonlinear_alpha = false;
-		switch (source_space) {
-		case GS_CS_SRGB:
-			linear_srgb = linear_srgb || (current_space != GS_CS_SRGB);
-			nonlinear_alpha = linear_srgb && !source->async_linear_alpha;
-			switch (current_space) {
-			case GS_CS_SRGB:
-			case GS_CS_SRGB_16F:
-			case GS_CS_709_EXTENDED:
-				if (nonlinear_alpha)
-					tech_name = "DrawNonlinearAlpha";
-				break;
-			case GS_CS_709_SCRGB:
-				tech_name = nonlinear_alpha ? "DrawNonlinearAlphaMultiply" : "DrawMultiply";
-				multiplier = obs_get_video_sdr_white_level() / 80.0f;
-			}
-			break;
-		case GS_CS_SRGB_16F:
-			if (current_space == GS_CS_709_SCRGB) {
-				tech_name = "DrawMultiply";
-				multiplier = obs_get_video_sdr_white_level() / 80.0f;
-			}
-			break;
-		case GS_CS_709_EXTENDED:
-			switch (current_space) {
-			case GS_CS_SRGB:
-			case GS_CS_SRGB_16F:
-				tech_name = "DrawTonemap";
-				linear_srgb = true;
-				break;
-			case GS_CS_709_SCRGB:
-				tech_name = "DrawMultiply";
-				multiplier = obs_get_video_sdr_white_level() / 80.0f;
-				break;
-			case GS_CS_709_EXTENDED:
-				break;
-			}
-			break;
-		case GS_CS_709_SCRGB:
-			switch (current_space) {
-			case GS_CS_SRGB:
-			case GS_CS_SRGB_16F:
-				tech_name = "DrawMultiplyTonemap";
-				multiplier = 80.0f / obs_get_video_sdr_white_level();
-				linear_srgb = true;
-				break;
-			case GS_CS_709_EXTENDED:
-				tech_name = "DrawMultiply";
-				multiplier = 80.0f / obs_get_video_sdr_white_level();
-				break;
-			case GS_CS_709_SCRGB:
-				break;
-			}
-		}
+		const bool linear_srgb =
+			obs_source_draw_plan_async_linear_srgb(source_space, current_space, gs_get_linear_srgb());
+		const bool nonlinear_alpha = obs_source_draw_plan_async_nonlinear_alpha(source_space, linear_srgb,
+											source->async_linear_alpha);
+		const char *tech_name = obs_source_draw_technique_name(
+			obs_source_draw_plan_technique(source_space, current_space, nonlinear_alpha));
+		const float multiplier = obs_source_draw_plan_reads_white_level(source_space, current_space)
+						 ? obs_source_draw_plan_multiplier(source_space, current_space,
+										   obs_get_video_sdr_white_level())
+						 : 1.0f;
 
 		const bool previous = gs_set_linear_srgb(linear_srgb);
 
@@ -2292,57 +2232,16 @@ static void source_render(obs_source_t *source, gs_effect_t *effect)
 	const enum gs_color_space current_space = gs_get_color_space();
 	const enum gs_color_space source_space = obs_source_get_color_space(source, 1, &current_space);
 
-	const char *convert_tech = NULL;
-	float multiplier = 1.0;
 	enum gs_color_format format = gs_get_format_from_space(source_space);
-	switch (source_space) {
-	case GS_CS_SRGB:
-	case GS_CS_SRGB_16F:
-		switch (current_space) {
-		case GS_CS_709_EXTENDED:
-			convert_tech = "Draw";
-			break;
-		case GS_CS_709_SCRGB:
-			convert_tech = "DrawMultiply";
-			multiplier = obs_get_video_sdr_white_level() / 80.0f;
-			break;
-		case GS_CS_SRGB:
-			break;
-		case GS_CS_SRGB_16F:
-			break;
-		}
-		break;
-	case GS_CS_709_EXTENDED:
-		switch (current_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			convert_tech = "DrawTonemap";
-			break;
-		case GS_CS_709_SCRGB:
-			convert_tech = "DrawMultiply";
-			multiplier = obs_get_video_sdr_white_level() / 80.0f;
-			break;
-		case GS_CS_709_EXTENDED:
-			break;
-		}
-		break;
-	case GS_CS_709_SCRGB:
-		switch (current_space) {
-		case GS_CS_SRGB:
-		case GS_CS_SRGB_16F:
-			convert_tech = "DrawMultiplyTonemap";
-			multiplier = 80.0f / obs_get_video_sdr_white_level();
-			break;
-		case GS_CS_709_EXTENDED:
-			convert_tech = "DrawMultiply";
-			multiplier = 80.0f / obs_get_video_sdr_white_level();
-			break;
-		case GS_CS_709_SCRGB:
-			break;
-		}
-	}
+	const bool convert = obs_source_draw_plan_convert(source_space, current_space);
+	const char *convert_tech =
+		obs_source_draw_technique_name(obs_source_draw_plan_technique(source_space, current_space, false));
+	const float multiplier =
+		obs_source_draw_plan_reads_white_level(source_space, current_space)
+			? obs_source_draw_plan_multiplier(source_space, current_space, obs_get_video_sdr_white_level())
+			: 1.0f;
 
-	if (convert_tech) {
+	if (convert) {
 		if (source->color_space_texrender) {
 			if (gs_texrender_get_format(source->color_space_texrender) != format) {
 				gs_texrender_destroy(source->color_space_texrender);

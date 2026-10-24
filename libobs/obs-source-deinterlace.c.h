@@ -281,23 +281,6 @@ static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 	return NULL;
 }
 
-/* The names of enum obs_source_deinterlace_draw_technique. */
-static const char *deinterlace_technique_name(enum obs_source_deinterlace_draw_technique technique)
-{
-	switch (technique) {
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW:
-		return "Draw";
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY:
-		return "DrawMultiply";
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP:
-		return "DrawTonemap";
-	case OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP:
-		return "DrawMultiplyTonemap";
-	}
-
-	return "Draw";
-}
-
 void deinterlace_render(obs_source_t *s)
 {
 	gs_effect_t *effect = s->deinterlace_effect;
@@ -326,7 +309,7 @@ void deinterlace_render(obs_source_t *s)
 
 	const enum gs_color_space current_space = gs_get_color_space();
 	const char *tech_name =
-		deinterlace_technique_name(obs_source_deinterlace_draw_technique(source_space, current_space));
+		obs_source_draw_technique_name(obs_source_deinterlace_draw_technique(source_space, current_space));
 	const float multiplier = obs_source_deinterlace_draw_reads_white_level(source_space, current_space)
 					 ? obs_source_deinterlace_draw_multiplier(source_space, current_space,
 										  obs_get_video_sdr_white_level())

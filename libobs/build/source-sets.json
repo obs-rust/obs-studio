@@ -52,6 +52,8 @@
     "obs-source-conversion-plan.h",
     "obs-source-deinterlace-draw.h",
     "obs-source-deinterlace-pacing.h",
+    "obs-source-draw-plan.h",
+    "obs-source-draw-technique.h",
     "obs-source-load.h",
     "obs-source-ptm-gate.h",
     "obs-source-size.h",

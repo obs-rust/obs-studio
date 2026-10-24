@@ -60,11 +60,11 @@ int64_t oracle_source_deinterlace_draw_value(size_t which)
 		OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_LINEAR_2X,
 		OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF,
 		OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_YADIF_2X,
-		/* enum obs_source_deinterlace_draw_technique */
-		OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW,
-		OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY,
-		OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_TONEMAP,
-		OBS_SOURCE_DEINTERLACE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP,
+		/* enum obs_source_draw_technique */
+		OBS_SOURCE_DRAW_TECH_DRAW,
+		OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY,
+		OBS_SOURCE_DRAW_TECH_DRAW_TONEMAP,
+		OBS_SOURCE_DRAW_TECH_DRAW_MULTIPLY_TONEMAP,
 		/* enum obs_source_deinterlace_draw_mode_change */
 		OBS_SOURCE_DEINTERLACE_DRAW_MODE_SAME,
 		OBS_SOURCE_DEINTERLACE_DRAW_MODE_ENABLE,
@@ -72,12 +72,12 @@ int64_t oracle_source_deinterlace_draw_value(size_t which)
 		OBS_SOURCE_DEINTERLACE_DRAW_MODE_SWITCH,
 		/* TWOX_TOLERANCE */
 		(int64_t)OBS_SOURCE_DEINTERLACE_PACING_TWOX_TOLERANCE,
-		/* sizes; the renames above also renamed the three enum tags that
+		/* sizes; the renames above also renamed the two enum tags that
 		 * share their function's name */
 		sizeof(enum obs_deinterlace_mode),
 		sizeof(enum gs_color_space),
 		sizeof(enum oracle_obs_source_deinterlace_draw_effect),
-		sizeof(enum oracle_obs_source_deinterlace_draw_technique),
+		sizeof(enum obs_source_draw_technique),
 		sizeof(enum oracle_obs_source_deinterlace_draw_mode_change),
 		sizeof(int),
 		sizeof(bool),
