@@ -781,6 +781,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_set_default_null": {
+      "sources": [
+        "test/cmocka/test_effect_set_default_null.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_encoder_fallback": {
       "sources": [
         "test/cmocka/test_encoder_fallback.c",
@@ -4066,6 +4087,23 @@
     },
     "test_dtostr_exponent": {
       "target": "test_dtostr_exponent"
+    },
+    "test_effect_set_default_null": {
+      "target": "test_effect_set_default_null",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_encoder_fallback": {
       "target": "test_encoder_fallback",
