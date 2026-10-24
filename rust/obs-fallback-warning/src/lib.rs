@@ -62,26 +62,40 @@ impl Session {
     /// nobody sees a dialog, so it does not show one and is not remembered.
     /// An `id` that already showed one in this session does not show it
     /// again. An empty `id` is never remembered.
-    pub fn begin(&mut self, _id: &str, _window_visible: bool) -> Show {
-        let _ = &self.shown;
-        Show::AcceptNow
+    pub fn begin(&mut self, id: &str, window_visible: bool) -> Show {
+        if !window_visible {
+            return Show::AcceptNow;
+        }
+        if id.is_empty() || self.shown.insert(id.to_owned()) {
+            Show::Dialog
+        } else {
+            Show::AcceptNow
+        }
     }
 }
 
 /// Whether the caller continues in the fallback mode after the dialog
 /// ended with `end`. Cancel and Close stop only a caller that can stop
 /// (`can_cancel`); for the others there is nothing to stop.
-pub fn accepted(_end: End, _can_cancel: bool) -> bool {
-    false
+pub fn accepted(end: End, can_cancel: bool) -> bool {
+    match end {
+        End::CountdownDone | End::AcceptClicked => true,
+        End::CancelClicked | End::Closed => !can_cancel,
+    }
 }
 
 /// The countdown progress after `elapsed_ms`, from 0 to 100.
-pub fn progress_percent(_elapsed_ms: u64) -> u8 {
-    0
+pub fn progress_percent(elapsed_ms: u64) -> u8 {
+    let percent = elapsed_ms.min(COUNTDOWN_MS) * 100 / COUNTDOWN_MS;
+    u8::try_from(percent).unwrap_or(100)
 }
 
 /// The log line for warning `id`: the message, then [`FUTURE_ERROR`].
 /// The frontend logs it at error level, so it is on stderr once.
-pub fn log_line(_id: &str, _message: &str) -> String {
-    String::new()
+pub fn log_line(id: &str, message: &str) -> String {
+    if message.is_empty() {
+        format!("[fallback] {id}: {FUTURE_ERROR}")
+    } else {
+        format!("[fallback] {id}: {message} {FUTURE_ERROR}")
+    }
 }
