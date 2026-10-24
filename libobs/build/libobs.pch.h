@@ -50,6 +50,9 @@
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 
+/* obs-output-video-checks.c */
+#include "obs-output-video-checks.h"
+
 /* obs-output.c */
 #include "util/array-serializer.h"
 #include "graphics/math-extra.h"

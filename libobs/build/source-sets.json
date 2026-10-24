@@ -28,6 +28,7 @@
     "obs-missing-files.h",
     "obs-module.h",
     "obs-nal.h",
+    "obs-output-video-checks.h",
     "obs-output.h",
     "obs-properties.h",
     "obs-scene-audio-actions.h",
