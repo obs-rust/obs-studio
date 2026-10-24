@@ -2000,6 +2000,15 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_register_refused_type_data": {
+      "sources": [
+        "test/cmocka/test_register_refused_type_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_remux_queue_model": {
       "sources": [
         "test/cmocka/test_remux_queue_model.cpp",
@@ -4306,6 +4315,20 @@
     },
     "test_quick_write": {
       "target": "test_quick_write"
+    },
+    "test_register_refused_type_data": {
+      "target": "test_register_refused_type_data",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_remux_queue_model": {
       "target": "test_remux_queue_model",
