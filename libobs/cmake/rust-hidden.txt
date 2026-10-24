@@ -314,6 +314,14 @@ obs_module_source_rules_size_supported
 obs_module_source_rules_output_flags
 obs_module_source_rules_check
 obs_module_source_rules_versioned_id
+# obs-source-load.c: obs.c calls them inside libobs. Declared in
+# obs-source-load.h without EXPORT, so the shims stay hidden the same way.
+obs_source_load_prev_ver
+obs_source_load_volume
+obs_source_load_balance
+obs_source_load_delay
+obs_source_load_deinterlace_mode
+obs_source_load_monitoring_migration
 # obs-video-plan.c: obs.c calls them inside libobs. Declared in
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_video_size_valid

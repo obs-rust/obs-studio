@@ -288,6 +288,13 @@
     obs_module_source_rules_output_flags;
     obs_module_source_rules_check;
     obs_module_source_rules_versioned_id;
+    /* obs-source-load.c. obs.c calls them inside libobs. Not EXPORT. */
+    obs_source_load_prev_ver;
+    obs_source_load_volume;
+    obs_source_load_balance;
+    obs_source_load_delay;
+    obs_source_load_deinterlace_mode;
+    obs_source_load_monitoring_migration;
     /* obs-video-plan.c. obs.c calls them inside libobs. Not EXPORT. */
     obs_video_size_valid;
     obs_video_align_output_size;

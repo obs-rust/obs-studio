@@ -15,7 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-load.pch.h"
+
+/* The source load migration and value rules, moved from obs.c: only values,
+ * no source, data or libobs state. obs.c reads each saved value and calls
+ * each setter. Ported to rust/obs-core (source_load): the hybrid libobs drops
+ * this file. */
 
 uint32_t obs_source_load_prev_ver(int64_t stored)
 {

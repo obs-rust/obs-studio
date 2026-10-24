@@ -37,6 +37,17 @@
 //!
 //! No intentional differences.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// `MAKE_SEMANTIC_VERSION(major, minor, patch)` (`obs-config.h`).
 #[must_use]
 pub const fn semantic_version(major: u8, minor: u8, patch: u16) -> u32 {
@@ -96,36 +107,58 @@ const fn u32_of16(value: u16) -> u32 {
 /// `obs_source_load_prev_ver()`: the saved `"prev_ver"` as a `uint32_t`, its
 /// low 32 bits (the C's cast).
 #[must_use]
-pub fn prev_ver(stored: i64) -> u32 {
-    todo!()
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+pub const fn prev_ver(stored: i64) -> u32 {
+    stored as u32
 }
 
 /// `obs_source_load_volume()`: the saved `"volume"`, 0 when negative,
 /// infinity past `FLT_MAX`, then as an `f32`. NaN stays NaN.
 #[must_use]
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 pub fn volume(saved: f64) -> f32 {
-    todo!()
+    let value = if saved < 0.0 {
+        0.0
+    } else if saved > f64::from(f32::MAX) {
+        f64::INFINITY
+    } else {
+        saved
+    };
+    value as f32
 }
 
 /// `obs_source_load_balance()`: the saved `"balance"`, 0 when negative, 1
 /// past 1, then as an `f32`. NaN stays NaN.
 #[must_use]
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 pub fn balance(saved: f64) -> f32 {
-    todo!()
+    // f64::clamp() is the C's two comparisons: NaN and -0.0 pass through
+    saved.clamp(0.0, 1.0) as f32
 }
 
 /// `obs_source_load_delay()`: a saved push-to-mute or push-to-talk delay, 0
 /// when negative.
 #[must_use]
 pub fn delay(saved: i64) -> u64 {
-    todo!()
+    u64::try_from(saved).unwrap_or(0)
 }
 
 /// `obs_source_load_deinterlace_mode()`: the saved `"deinterlace_mode"`,
 /// [`DEINTERLACE_DISABLE`] past the `int` range, else as an `int`.
 #[must_use]
 pub fn deinterlace_mode(saved: i64) -> i32 {
-    todo!()
+    i32::try_from(saved).unwrap_or(DEINTERLACE_DISABLE)
+}
+
+/// The saved `"monitoring_type"` read as an `int`: its low 32 bits (the C's
+/// cast).
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+const fn monitoring_type_of(stored: i64) -> i32 {
+    stored as i32
 }
 
 /// `obs_source_load_monitoring_migration()`: the monitoring migration for a
@@ -133,5 +166,21 @@ pub fn deinterlace_mode(saved: i64) -> i32 {
 /// `"monitoring_type"`.
 #[must_use]
 pub fn monitoring_migration(prev_ver: u32, caps: u32, monitoring_type: i64) -> MonitoringPlan {
-    todo!()
+    let mut plan = MonitoringPlan::default();
+    let mut monitoring_type = monitoring_type_of(monitoring_type);
+
+    if prev_ver < MONITOR_ONLY_BEFORE && caps & MONITOR_BY_DEFAULT != 0 {
+        // updates older sources to enable monitoring automatically if they
+        // added monitoring by default in version 24
+        monitoring_type = MONITORING_MONITOR_ONLY;
+        plan.set_mixers = true;
+        plan.mixers = ALL_MIXERS;
+    }
+
+    if prev_ver < MONITORING_ENABLED_BEFORE {
+        plan.store_enabled = true;
+        plan.enabled = monitoring_type != MONITORING_NONE;
+    }
+
+    plan
 }
