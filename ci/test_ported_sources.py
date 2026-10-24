@@ -27,6 +27,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-module-names.c.h.o",
     "obs-module-paths.c.h.o",
     "obs-module-source-rules.c.h.o",
+    "obs-module-type-rules.c.h.o",
     "obs-output-protocols.c.h.o",
     "obs-output-video-checks.c.h.o",
     "obs-scene-audio-actions.c.h.o",
