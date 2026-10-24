@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdbool.h>
 #include <cmocka.h>
 #include <time.h>
 #include <netdb.h>

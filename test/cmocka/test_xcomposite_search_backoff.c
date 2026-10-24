@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
+#include "cmocka-compat.h"
 
 #include "plugins/linux-capture/xcomposite-search.h"
 

@@ -1,6 +1,8 @@
 project(obs-cmocka)
 
-find_package(CMocka CONFIG REQUIRED)
+# 1.1: Debian 13 and Ubuntu 24.04 ship 1.1.7. cmocka-compat.h maps the 2.x
+# names that the tests use (#2197).
+find_package(CMocka 1.1 CONFIG REQUIRED)
 add_library(obs-native-test-cmocka INTERFACE)
 add_library(OBS::native-test-cmocka ALIAS obs-native-test-cmocka)
 target_include_directories(obs-native-test-cmocka INTERFACE ${CMOCKA_INCLUDE_DIR})

@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <stdbool.h>
 #include <cmocka.h>
+#include "cmocka-compat.h"
 
 #include "plugins/linux-capture/xcomposite-presence.h"
 
