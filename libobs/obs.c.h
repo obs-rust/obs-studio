@@ -1803,7 +1803,10 @@ audio_t *obs_get_audio(void)
 
 video_t *obs_get_video(void)
 {
-	return obs->data.main_canvas->mix->video;
+	/* The main canvas has no mix until the first obs_reset_video(): no
+	 * video yet, as obs_canvas_get_video() answers for any canvas (#2237). */
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	return canvas && canvas->mix ? canvas->mix->video : NULL;
 }
 
 obs_source_t *obs_get_output_source(uint32_t channel)

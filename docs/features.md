@@ -1885,6 +1885,10 @@ area.
   called later or at shutdown; a field is kept only when the size holds it
   whole. *All*, pending merge. Issue
   [#2203](https://github.com/obs-rust/obs-studio/issues/2203).
+- A plugin, script or headless tool that creates an output before OBS has
+  set up video no longer crashes OBS; the output has no video until one is
+  set, and it cannot start without it. *All*, pending merge. Issue
+  [#2237](https://github.com/obs-rust/obs-studio/issues/2237).
 
 ### Security hardening
 
