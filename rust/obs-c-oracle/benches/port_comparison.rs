@@ -26,6 +26,8 @@ mod module_source_rules;
 mod scene;
 #[path = "port_comparison/scene_crop.rs"]
 mod scene_crop;
+#[path = "port_comparison/scene_render_plan.rs"]
+mod scene_render_plan;
 #[path = "port_comparison/service.rs"]
 mod service;
 #[path = "port_comparison/source_audio_timing.rs"]
@@ -75,6 +77,7 @@ fn comparisons(criterion: &mut Criterion) {
     module_source_rules::benchmarks(criterion);
     scene::benchmarks(criterion);
     scene_crop::benchmarks(criterion);
+    scene_render_plan::benchmarks(criterion);
     service::benchmarks(criterion);
     source_audio_timing::benchmarks(criterion);
     source_color_space::benchmarks(criterion);
