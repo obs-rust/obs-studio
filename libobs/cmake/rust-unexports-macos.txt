@@ -88,6 +88,9 @@ _obs_scene_render_technique
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply
 _obs_scene_audio_action_due
+# obs-source-async-pacing.c: obs-source.c calls it inside libobs. Not
+# EXPORT.
+_obs_source_async_pacing
 # obs-source-audio-input.c: obs-source.c calls them inside libobs. Not
 # EXPORT.
 _obs_source_audio_input_discontinuous

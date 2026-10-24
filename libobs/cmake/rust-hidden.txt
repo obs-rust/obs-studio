@@ -102,6 +102,10 @@ obs_scene_render_technique
 # stay hidden the same way.
 obs_scene_audio_actions_apply
 obs_scene_audio_action_due
+# obs-source-async-pacing.c: get_closest_frame() in obs-source.c calls it
+# inside libobs. Declared in obs-source-async-pacing.h without EXPORT, so the
+# shim stays hidden the same way.
+obs_source_async_pacing
 # obs-source-audio-input.c: process_audio() and reset_resampler() in
 # obs-source.c call them inside libobs. Declared in obs-source-audio-input.h
 # without EXPORT, so the shims stay hidden the same way.

@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-async-pacing.pch.h"
 
 /* The async video frame pacing of obs-source.c, moved from
  * get_closest_frame() and ready_async_frame(): the decisions, on the queue's
  * timestamps. obs-source.c copies the timestamps, calls this and applies the
  * result: it keeps the async_frames queue, da_erase(), remove_async_frame(),
  * the async cache, async_mutex and the frame pointers. Declared in
- * obs-source-async-pacing.h without EXPORT. */
+ * obs-source-async-pacing.h without EXPORT. In hybrid libobs the Rust port
+ * (rust/obs-source) replaces this file. */
 
 /* frame_out_of_bounds() of obs-internal.h, on values: that inline stays for
  * obs-source-deinterlace.c. */

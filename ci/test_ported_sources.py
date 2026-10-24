@@ -31,6 +31,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-scene-extent.c.h.o",
     "obs-scene-render-plan.c.h.o",
     "obs-service-getters.c.h.o",
+    "obs-source-async-pacing.c.h.o",
     "obs-source-audio-input.c.h.o",
     "obs-source-audio-timing.c.h.o",
     "obs-source-color-space.c.h.o",
