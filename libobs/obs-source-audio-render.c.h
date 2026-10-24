@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-render.pch.h"
 
 /* The audio render mix plan of obs-source.c, moved from
  * obs_source_audio_render() (the route), custom_audio_render() (the clears
@@ -23,7 +23,8 @@
  * pending check, the copy or clear of each mix): the decisions, on plain
  * values. obs-source.c keeps every field read and write in the same order
  * and passes the values it read. Declared in obs-source-audio-render.h
- * without EXPORT. */
+ * without EXPORT. In hybrid libobs the Rust port (rust/obs-source,
+ * audio_render_plan) replaces this file. */
 
 enum obs_source_audio_render_route obs_source_audio_render_route(bool has_buffer, bool custom, bool has_data)
 {

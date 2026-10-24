@@ -2,6 +2,7 @@
 
 pub mod source_async_pacing;
 pub mod source_audio_input;
+pub mod source_audio_render;
 pub mod source_audio_timing;
 pub mod source_color_space;
 pub mod source_conversion_plan;

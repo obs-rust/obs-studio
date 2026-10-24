@@ -39,6 +39,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-service-getters.c.h.o",
     "obs-source-async-pacing.c.h.o",
     "obs-source-audio-input.c.h.o",
+    "obs-source-audio-render.c.h.o",
     "obs-source-audio-timing.c.h.o",
     "obs-source-color-space.c.h.o",
     "obs-source-conversion-plan.c.h.o",

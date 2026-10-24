@@ -190,6 +190,7 @@
     "build/libobs.ported-service-getters+.h.c",
     "build/libobs.ported-source-async-pacing+.h.c",
     "build/libobs.ported-source-audio-input+.h.c",
+    "build/libobs.ported-source-audio-render+.h.c",
     "build/libobs.ported-source-audio-timing+.h.c",
     "build/libobs.ported-source-color-space+.h.c",
     "build/libobs.ported-source-conversion-plan+.h.c",

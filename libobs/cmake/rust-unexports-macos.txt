@@ -130,6 +130,21 @@ _obs_source_audio_input_balance_needed
 _obs_source_audio_input_mono_needed
 _obs_source_audio_input_balance
 _obs_source_audio_input_downmix
+# obs-source-audio-render.c: obs-source.c calls them inside libobs. Not
+# EXPORT.
+_obs_source_audio_render_route
+_obs_source_audio_render_custom_clear_before
+_obs_source_audio_render_custom_ts
+_obs_source_audio_render_custom_pending
+_obs_source_audio_render_custom_unmixed
+_obs_source_audio_render_custom_in_tick
+_obs_source_audio_render_custom_clear_after
+_obs_source_audio_render_tick_unset
+_obs_source_audio_render_tick_short
+_obs_source_audio_render_tick_stop
+_obs_source_audio_render_tick_copy
+_obs_source_audio_render_tick_volume
+_obs_source_audio_render_tick_clear_main
 # obs-source-audio-timing.c: obs-source.c calls them inside libobs. Not
 # EXPORT.
 _obs_source_audio_timing_pre_lock

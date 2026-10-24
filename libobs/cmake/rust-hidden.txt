@@ -153,6 +153,23 @@ obs_source_audio_input_balance_needed
 obs_source_audio_input_mono_needed
 obs_source_audio_input_balance
 obs_source_audio_input_downmix
+# obs-source-audio-render.c: obs_source_audio_render(), custom_audio_render()
+# and process_audio_source_tick() in obs-source.c call them inside libobs.
+# Declared in obs-source-audio-render.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_source_audio_render_route
+obs_source_audio_render_custom_clear_before
+obs_source_audio_render_custom_ts
+obs_source_audio_render_custom_pending
+obs_source_audio_render_custom_unmixed
+obs_source_audio_render_custom_in_tick
+obs_source_audio_render_custom_clear_after
+obs_source_audio_render_tick_unset
+obs_source_audio_render_tick_short
+obs_source_audio_render_tick_stop
+obs_source_audio_render_tick_copy
+obs_source_audio_render_tick_volume
+obs_source_audio_render_tick_clear_main
 # obs-source-audio-timing.c: source_output_audio_data() and
 # reset_audio_data_at_sys_time() in obs-source.c call them inside libobs.
 # Declared in obs-source-audio-timing.h without EXPORT, so the shims stay
