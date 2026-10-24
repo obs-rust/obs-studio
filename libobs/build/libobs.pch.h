@@ -101,6 +101,10 @@
 
 #include "obs-scene-crop.h"
 
+/* obs-scene-item-names.c */
+
+#include "obs-scene-item-names.h"
+
 /* obs-scene-render-plan.c */
 
 #include "obs-scene-render-plan.h"

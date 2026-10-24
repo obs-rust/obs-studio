@@ -536,6 +536,23 @@ _Static_assert(sizeof(enum obs_blending_method) == sizeof(int), "enum obs_blendi
 _Static_assert(sizeof(enum obs_blending_type) == sizeof(int), "enum obs_blending_type is int-sized");
 _Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is int-sized");
 
+/* obs-scene-item-names.h mirrors these values, so it needs no core header. */
+_Static_assert(OBS_SCENE_ITEM_SCALE_DISABLE == OBS_SCALE_DISABLE, "OBS_SCALE_DISABLE");
+_Static_assert(OBS_SCENE_ITEM_SCALE_POINT == OBS_SCALE_POINT, "OBS_SCALE_POINT");
+_Static_assert(OBS_SCENE_ITEM_SCALE_BICUBIC == OBS_SCALE_BICUBIC, "OBS_SCALE_BICUBIC");
+_Static_assert(OBS_SCENE_ITEM_SCALE_BILINEAR == OBS_SCALE_BILINEAR, "OBS_SCALE_BILINEAR");
+_Static_assert(OBS_SCENE_ITEM_SCALE_LANCZOS == OBS_SCALE_LANCZOS, "OBS_SCALE_LANCZOS");
+_Static_assert(OBS_SCENE_ITEM_SCALE_AREA == OBS_SCALE_AREA, "OBS_SCALE_AREA");
+_Static_assert(OBS_SCENE_ITEM_BLEND_METHOD_DEFAULT == OBS_BLEND_METHOD_DEFAULT, "OBS_BLEND_METHOD_DEFAULT");
+_Static_assert(OBS_SCENE_ITEM_BLEND_METHOD_SRGB_OFF == OBS_BLEND_METHOD_SRGB_OFF, "OBS_BLEND_METHOD_SRGB_OFF");
+_Static_assert(OBS_SCENE_ITEM_BLEND_NORMAL == OBS_BLEND_NORMAL, "OBS_BLEND_NORMAL");
+_Static_assert(OBS_SCENE_ITEM_BLEND_ADDITIVE == OBS_BLEND_ADDITIVE, "OBS_BLEND_ADDITIVE");
+_Static_assert(OBS_SCENE_ITEM_BLEND_SUBTRACT == OBS_BLEND_SUBTRACT, "OBS_BLEND_SUBTRACT");
+_Static_assert(OBS_SCENE_ITEM_BLEND_SCREEN == OBS_BLEND_SCREEN, "OBS_BLEND_SCREEN");
+_Static_assert(OBS_SCENE_ITEM_BLEND_MULTIPLY == OBS_BLEND_MULTIPLY, "OBS_BLEND_MULTIPLY");
+_Static_assert(OBS_SCENE_ITEM_BLEND_LIGHTEN == OBS_BLEND_LIGHTEN, "OBS_BLEND_LIGHTEN");
+_Static_assert(OBS_SCENE_ITEM_BLEND_DARKEN == OBS_BLEND_DARKEN, "OBS_BLEND_DARKEN");
+
 static inline bool item_texture_enabled(const struct obs_scene_item *item)
 {
 	const struct obs_scene_render_triggers triggers = {
@@ -1014,14 +1031,22 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	visible = obs_data_get_bool(item_data, "visible");
 	lock = obs_data_get_bool(item_data, "locked");
 
-	if (!item->absolute_coordinates && obs_data_has_user_value(item_data, "pos_rel") &&
-	    obs_data_has_user_value(item_data, "scale_rel") && obs_data_has_user_value(item_data, "scale_ref")) {
+	/* Asked in this order, then passed to the choice
+	 * (obs-scene-item-names.c). Each is a plain lookup in item_data; the
+	 * old && chain skipped the later ones when an earlier test failed. */
+	bool has_pos_rel = obs_data_has_user_value(item_data, "pos_rel");
+	bool has_scale_rel = obs_data_has_user_value(item_data, "scale_rel");
+	bool has_scale_ref = obs_data_has_user_value(item_data, "scale_ref");
+	enum obs_scene_item_keys keys =
+		obs_scene_item_transform_keys(item->absolute_coordinates, has_pos_rel, has_scale_rel, has_scale_ref);
+
+	if (keys == OBS_SCENE_ITEM_KEYS_RELATIVE) {
 		obs_data_get_vec2(item_data, "pos_rel", &item->pos);
 		obs_data_get_vec2(item_data, "scale_rel", &item->scale);
 		obs_data_get_vec2(item_data, "scale_ref", &item->scale_ref);
 	} else {
 		obs_data_get_vec2(item_data, "pos", &item->pos);
-		if (!item->absolute_coordinates)
+		if (keys == OBS_SCENE_ITEM_KEYS_FROM_ABSOLUTE)
 			pos_from_absolute(&item->pos, &item->pos, item);
 		obs_data_get_vec2(item_data, "scale", &item->scale);
 	}
@@ -1039,11 +1064,14 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	item->crop_to_bounds = obs_data_get_bool(item_data, "bounds_crop");
 	obs_data_get_vec2(item_data, "bounds", &item->bounds);
 
-	if (!item->absolute_coordinates && obs_data_has_user_value(item_data, "bounds_rel")) {
+	bool has_bounds_rel = obs_data_has_user_value(item_data, "bounds_rel");
+	keys = obs_scene_item_bounds_keys(item->absolute_coordinates, has_bounds_rel);
+
+	if (keys == OBS_SCENE_ITEM_KEYS_RELATIVE) {
 		obs_data_get_vec2(item_data, "bounds_rel", &item->bounds);
 	} else {
 		obs_data_get_vec2(item_data, "bounds", &item->bounds);
-		if (!item->absolute_coordinates)
+		if (keys == OBS_SCENE_ITEM_KEYS_FROM_ABSOLUTE)
 			size_from_absolute(&item->bounds, &item->bounds, item);
 	}
 
@@ -1058,46 +1086,14 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	obs_sceneitem_set_crop(item, &crop);
 
 	scale_filter_str = obs_data_get_string(item_data, "scale_filter");
-	item->scale_filter = OBS_SCALE_DISABLE;
-
-	if (scale_filter_str) {
-		if (astrcmpi(scale_filter_str, "point") == 0)
-			item->scale_filter = OBS_SCALE_POINT;
-		else if (astrcmpi(scale_filter_str, "bilinear") == 0)
-			item->scale_filter = OBS_SCALE_BILINEAR;
-		else if (astrcmpi(scale_filter_str, "bicubic") == 0)
-			item->scale_filter = OBS_SCALE_BICUBIC;
-		else if (astrcmpi(scale_filter_str, "lanczos") == 0)
-			item->scale_filter = OBS_SCALE_LANCZOS;
-		else if (astrcmpi(scale_filter_str, "area") == 0)
-			item->scale_filter = OBS_SCALE_AREA;
-	}
+	item->scale_filter = (enum obs_scale_type)obs_scene_item_scale_filter_from_name(scale_filter_str, astrcmpi);
 
 	blend_method_str = obs_data_get_string(item_data, "blend_method");
-	item->blend_method = OBS_BLEND_METHOD_DEFAULT;
-
-	if (blend_method_str) {
-		if (astrcmpi(blend_method_str, "srgb_off") == 0)
-			item->blend_method = OBS_BLEND_METHOD_SRGB_OFF;
-	}
+	item->blend_method =
+		(enum obs_blending_method)obs_scene_item_blend_method_from_name(blend_method_str, astrcmpi);
 
 	blend_str = obs_data_get_string(item_data, "blend_type");
-	item->blend_type = OBS_BLEND_NORMAL;
-
-	if (blend_str) {
-		if (astrcmpi(blend_str, "additive") == 0)
-			item->blend_type = OBS_BLEND_ADDITIVE;
-		else if (astrcmpi(blend_str, "subtract") == 0)
-			item->blend_type = OBS_BLEND_SUBTRACT;
-		else if (astrcmpi(blend_str, "screen") == 0)
-			item->blend_type = OBS_BLEND_SCREEN;
-		else if (astrcmpi(blend_str, "multiply") == 0)
-			item->blend_type = OBS_BLEND_MULTIPLY;
-		else if (astrcmpi(blend_str, "lighten") == 0)
-			item->blend_type = OBS_BLEND_LIGHTEN;
-		else if (astrcmpi(blend_str, "darken") == 0)
-			item->blend_type = OBS_BLEND_DARKEN;
-	}
+	item->blend_type = (enum obs_blending_type)obs_scene_item_blend_type_from_name(blend_str, astrcmpi);
 
 	obs_data_t *show_data = obs_data_get_obj(item_data, "show_transition");
 	if (show_data) {
@@ -1184,7 +1180,7 @@ static void scene_save_item(obs_data_array_t *array, struct obs_scene_item *item
 	obs_data_set_int(item_data, "id", item->id);
 	obs_data_set_bool(item_data, "group_item_backup", !!backup_group);
 
-	if (!item->absolute_coordinates) {
+	if (obs_scene_item_save_relative(item->absolute_coordinates)) {
 		/* For backwards compatibility, also store absolute values. */
 		struct vec2 tmp_abs;
 
@@ -1223,45 +1219,13 @@ static void scene_save_item(obs_data_array_t *array, struct obs_scene_item *item
 		full_unlock(group_scene);
 	}
 
-	if (item->scale_filter == OBS_SCALE_POINT)
-		scale_filter = "point";
-	else if (item->scale_filter == OBS_SCALE_BILINEAR)
-		scale_filter = "bilinear";
-	else if (item->scale_filter == OBS_SCALE_BICUBIC)
-		scale_filter = "bicubic";
-	else if (item->scale_filter == OBS_SCALE_LANCZOS)
-		scale_filter = "lanczos";
-	else if (item->scale_filter == OBS_SCALE_AREA)
-		scale_filter = "area";
-	else
-		scale_filter = "disable";
-
+	scale_filter = obs_scene_item_scale_filter_name((int)item->scale_filter);
 	obs_data_set_string(item_data, "scale_filter", scale_filter);
 
-	if (item->blend_method == OBS_BLEND_METHOD_SRGB_OFF)
-		blend_method = "srgb_off";
-	else
-		blend_method = "default";
-
+	blend_method = obs_scene_item_blend_method_name((int)item->blend_method);
 	obs_data_set_string(item_data, "blend_method", blend_method);
 
-	if (item->blend_type == OBS_BLEND_NORMAL)
-		blend_type = "normal";
-	else if (item->blend_type == OBS_BLEND_ADDITIVE)
-		blend_type = "additive";
-	else if (item->blend_type == OBS_BLEND_SUBTRACT)
-		blend_type = "subtract";
-	else if (item->blend_type == OBS_BLEND_SCREEN)
-		blend_type = "screen";
-	else if (item->blend_type == OBS_BLEND_MULTIPLY)
-		blend_type = "multiply";
-	else if (item->blend_type == OBS_BLEND_LIGHTEN)
-		blend_type = "lighten";
-	else if (item->blend_type == OBS_BLEND_DARKEN)
-		blend_type = "darken";
-	else
-		blend_type = "normal";
-
+	blend_type = obs_scene_item_blend_type_name((int)item->blend_type);
 	obs_data_set_string(item_data, "blend_type", blend_type);
 
 	obs_data_t *show_data = obs_sceneitem_transition_save(item, true);
