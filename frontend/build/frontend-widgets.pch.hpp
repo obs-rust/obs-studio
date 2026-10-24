@@ -151,6 +151,7 @@
 #endif
 #include <dialogs/OBSLogViewer.hpp>
 #include <dialogs/OBSRemux.hpp>
+#include <dialogs/OBSRtmpsFallback.hpp>
 #include <utility/RemoteTextThread.hpp>
 #if defined(_WIN32) || defined(WHATSNEW_ENABLED)
 #include <utility/WhatsNewInfoThread.hpp>

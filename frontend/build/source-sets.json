@@ -238,6 +238,8 @@
     "dialogs/OBSFallbackWarning.hpp",
     "dialogs/OBSLogViewer.hpp",
     "dialogs/OBSMissingFiles.hpp",
+    "build/frontend.dialogs-obsrtmpsfallback+.hpp.cpp",
+    "dialogs/OBSRtmpsFallback.hpp",
     "build/frontend.dialogs-2+.hpp.cpp",
     "dialogs/OBSRemux.hpp",
     "dialogs/OBSWhatsNew.hpp"
