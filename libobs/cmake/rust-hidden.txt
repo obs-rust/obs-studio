@@ -171,6 +171,18 @@ obs_output_caption_text_page
 # obs-output.c calls it inside libobs. Declared in obs-internal.h without
 # EXPORT, so the shim stays hidden the same way.
 obs_output_protocol_list_count
+# obs-output-video-checks.c: get_first_mixer(), obs_output_get_width2(),
+# obs_output_get_height2(), can_begin_data_capture(),
+# obs_output_get_video_conversion(), obs_output_can_begin_data_capture() and
+# obs_output_get_congestion() in obs-output.c call them inside libobs.
+# Declared in obs-output-video-checks.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_output_first_mixer
+obs_output_size_route
+obs_output_capture_ready
+obs_output_begin_gate
+obs_output_conversion_plan
+obs_output_congestion_clamp
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

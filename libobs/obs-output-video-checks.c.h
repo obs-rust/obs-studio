@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-video-checks.pch.h"
 
 size_t obs_output_first_mixer(size_t mixer_mask)
 {

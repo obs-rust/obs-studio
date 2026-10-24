@@ -152,6 +152,7 @@
     "build/libobs.ported-output-delay+.h.c",
     "build/libobs.ported-output-interleave+.h.c",
     "build/libobs.ported-output-protocols+.h.c",
+    "build/libobs.ported-output-video-checks+.h.c",
     "build/libobs.ported-platform+.h.c",
     "build/libobs.ported-profiler-io+.h.c",
     "build/libobs.ported-scene-audio-actions+.h.c",

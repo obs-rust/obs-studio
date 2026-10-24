@@ -31,6 +31,17 @@
 //!
 //! No intentional differences.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// `OBS_OUTPUT_VIDEO` (`obs-output.h`).
 pub const OBS_OUTPUT_VIDEO: u32 = 1 << 0;
 /// `OBS_OUTPUT_AUDIO`.
@@ -125,7 +136,9 @@ pub enum Conversion {
 /// at or above [`MAX_AUDIO_MIXES`]).
 #[must_use]
 pub fn first_mixer(mixer_mask: usize) -> usize {
-    todo!("video_checks::first_mixer")
+    (0..MAX_AUDIO_MIXES)
+        .find(|&i| mixer_mask & (1usize << i) != 0)
+        .unwrap_or(0)
 }
 
 /// One axis of `obs_output_get_width2()` / `_height2()`, after the
@@ -134,7 +147,23 @@ pub fn first_mixer(mixer_mask: usize) -> usize {
 /// scaled size on that axis.
 #[must_use]
 pub fn size_route(encoded: bool, has_encoder: bool, scaled: u32) -> SizeRoute {
-    todo!("video_checks::size_route")
+    if encoded {
+        if has_encoder {
+            SizeRoute::Encoder
+        } else {
+            SizeRoute::Zero
+        }
+    } else if scaled != 0 {
+        SizeRoute::Scaled
+    } else {
+        SizeRoute::Video
+    }
+}
+
+/// Whether `mask` has a bit set below `limit` (the C's loop over the
+/// encoder array).
+fn any_below(mask: u32, limit: u32) -> bool {
+    (0..limit).any(|i| mask & (1u32 << i) != 0)
 }
 
 /// `can_begin_data_capture()`: false when the output wants video
@@ -143,29 +172,88 @@ pub fn size_route(encoded: bool, has_encoder: bool, scaled: u32) -> SizeRoute {
 /// one; true otherwise. Encoder bits at or above the limits are ignored.
 #[must_use]
 pub fn capture_ready(p: &Presence) -> bool {
-    todo!("video_checks::capture_ready")
+    let encoded = p.flags & OBS_OUTPUT_ENCODED != 0;
+    let video_valid = if encoded {
+        any_below(p.video_encoders, MAX_OUTPUT_VIDEO_ENCODERS)
+    } else {
+        p.video
+    };
+    if p.flags & OBS_OUTPUT_VIDEO != 0 && !video_valid {
+        return false;
+    }
+    let audio_valid = if encoded {
+        any_below(p.audio_encoders, MAX_OUTPUT_AUDIO_ENCODERS)
+    } else {
+        p.audio
+    };
+    if p.flags & OBS_OUTPUT_AUDIO != 0 && !audio_valid {
+        return false;
+    }
+    if p.flags & OBS_OUTPUT_SERVICE != 0 && !p.service {
+        return false;
+    }
+    true
 }
 
 /// The gates of `obs_output_can_begin_data_capture()`, on the loaded
 /// `delay_active` and `active` atomics.
 #[must_use]
 pub fn begin_gate(delay_active: bool, active: bool) -> BeginGate {
-    todo!("video_checks::begin_gate")
+    if delay_active {
+        BeginGate::Ready
+    } else if active {
+        BeginGate::Refuse
+    } else {
+        BeginGate::Check
+    }
+}
+
+/// `obs_output_get_width()` / `_height()` of a raw output on one axis: the
+/// scaled size when it is set, else the video's.
+fn raw_size(scaled: u32, video: u32) -> u32 {
+    if scaled != 0 { scaled } else { video }
 }
 
 /// `obs_output_get_video_conversion()` after its flag checks: the set
-/// conversion, each 0 axis filled with the output's size (the scaled size when it is set, else the video's);
-/// else, when the scaled size has both axes and differs from the video's on
-/// either (`has_scaling()`), the scaled size; else none.
+/// conversion, each 0 axis filled with the output's size (the scaled size
+/// when it is set, else the video's); else, when the scaled size has both
+/// axes and differs from the video's on either (`has_scaling()`), the
+/// scaled size; else none.
 #[must_use]
 pub fn video_conversion(s: &ConversionSizes) -> Conversion {
-    todo!("video_checks::video_conversion")
+    if s.set {
+        let width = if s.set_width != 0 {
+            s.set_width
+        } else {
+            raw_size(s.scaled_width, s.video_width)
+        };
+        let height = if s.set_height != 0 {
+            s.set_height
+        } else {
+            raw_size(s.scaled_height, s.video_height)
+        };
+        return Conversion::UseSet { width, height };
+    }
+    let has_scaling = s.scaled_width != 0
+        && s.scaled_height != 0
+        && (s.video_width != s.scaled_width || s.video_height != s.scaled_height);
+    if has_scaling {
+        Conversion::Scaled {
+            width: s.scaled_width,
+            height: s.scaled_height,
+        }
+    } else {
+        Conversion::None
+    }
 }
 
 /// `obs_output_get_congestion()`'s clamp: below 0 is 0, above 1 is 1, the
 /// rest unchanged, bit for bit (-0 stays -0). A NaN is neither, so it
-/// passes through with its payload, as in C.
+/// passes through with its payload, as in C. `f32::clamp` makes the C's
+/// two comparisons in the C's order (`< min`, then `> max`), so it gives
+/// the same bits on every input; its bounds are constants, so it cannot
+/// panic.
 #[must_use]
 pub fn congestion(value: f32) -> f32 {
-    todo!("video_checks::congestion")
+    value.clamp(0.0, 1.0)
 }
