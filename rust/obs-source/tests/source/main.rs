@@ -21,6 +21,7 @@ mod draw_plan_parity;
 mod frame_copy;
 mod frame_copy_parity;
 mod media_admission;
+mod media_admission_parity;
 mod ptm_gate;
 mod ptm_gate_parity;
 mod render_route;
