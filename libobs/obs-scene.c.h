@@ -1343,6 +1343,50 @@ static inline void scene_mix_audio(float *p_out, float *p_in, size_t pos, size_t
 		*(out++) += *(in++);
 }
 
+/* The window decisions are obs-scene-audio-window.c.h. The scene still takes
+ * audio_lock, calls apply_scene_item_volume() and
+ * process_all_audio_actions(), asks the sources for their pending state,
+ * timestamp and mix, and mixes. It reads each item and source field only
+ * where the old expressions read it, in their order. */
+
+/* The source an item's audio is read from. The reads of the old
+ * `visible && active(show) ? show : !visible && active(hide) ? hide : source`:
+ * visible, the show transition when visible, then, when it is not picked,
+ * visible again and the hide transition when not visible. */
+static inline struct obs_source *audio_window_source(struct obs_scene_item *item)
+{
+	bool visible = item->visible;
+	bool show_active = false;
+	bool hide_active = false;
+
+	if (visible)
+		show_active = scene_transition_active(item->show_transition);
+	if (!show_active) {
+		visible = item->visible;
+		if (!visible)
+			hide_active = scene_transition_active(item->hide_transition);
+	}
+
+	switch (obs_scene_audio_window_pick(visible, show_active, hide_active)) {
+	case OBS_SCENE_AUDIO_WINDOW_SHOW:
+		return item->show_transition;
+	case OBS_SCENE_AUDIO_WINDOW_HIDE:
+		return item->hide_transition;
+	case OBS_SCENE_AUDIO_WINDOW_SOURCE:
+		break;
+	}
+	return item->source;
+}
+
+/* The reads of the old `item->visible || active(hide)`: visible, and the
+ * hide transition only when not visible. */
+static inline void audio_window_heard(const struct obs_scene_item *item, bool *visible, bool *hide_active)
+{
+	*visible = item->visible;
+	if (!*visible)
+		*hide_active = scene_transition_active(item->hide_transition);
+}
+
 static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio_output, uint32_t mixers,
 			       size_t channels, size_t sample_rate)
 {
@@ -1356,26 +1400,21 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 
 	item = scene->first_item;
 	while (item) {
-		struct obs_source *source;
-		if (item->visible && scene_transition_active(item->show_transition))
-			source = item->show_transition;
-		else if (!item->visible && scene_transition_active(item->hide_transition))
-			source = item->hide_transition;
-		else
-			source = item->source;
+		struct obs_source *source = audio_window_source(item);
+		const bool pending = obs_source_audio_pending(source);
+		bool visible = false;
+		bool hide_active = false;
 
-		if (!obs_source_audio_pending(source) &&
-		    (item->visible || scene_transition_active(item->hide_transition))) {
-			uint64_t source_ts = obs_source_get_audio_timestamp(source);
+		if (!pending)
+			audio_window_heard(item, &visible, &hide_active);
 
-			if (source_ts && (!timestamp || source_ts < timestamp))
-				timestamp = source_ts;
-		}
+		if (obs_scene_audio_window_counts(pending, visible, hide_active))
+			timestamp = obs_scene_audio_window_earliest(timestamp, obs_source_get_audio_timestamp(source));
 
 		item = item->next;
 	}
 
-	if (!timestamp) {
+	if (obs_scene_audio_window_silent(timestamp)) {
 		/* just process all pending audio actions if no audio playing,
 		 * otherwise audio actions will just never be processed */
 		item = scene->first_item;
@@ -1390,49 +1429,37 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 
 	item = scene->first_item;
 	while (item) {
-		uint64_t source_ts;
-		size_t pos;
-		size_t count;
+		struct obs_scene_audio_window window;
+		uint64_t source_ts = 0;
 		bool apply_buf;
-		struct obs_source *source;
-
-		if (item->visible && scene_transition_active(item->show_transition))
-			source = item->show_transition;
-		else if (!item->visible && scene_transition_active(item->hide_transition))
-			source = item->hide_transition;
-		else
-			source = item->source;
+		bool pending;
+		bool visible = false;
+		bool hide_active = false;
+		struct obs_source *source = audio_window_source(item);
 
 		apply_buf = apply_scene_item_volume(item, buf, timestamp, sample_rate);
 
-		if (obs_source_audio_pending(source)) {
+		pending = obs_source_audio_pending(source);
+		if (!pending)
+			source_ts = obs_source_get_audio_timestamp(source);
+
+		window = obs_scene_audio_window_frames(pending, source_ts, timestamp, sample_rate);
+		if (!window.mix) {
 			item = item->next;
 			continue;
 		}
 
-		source_ts = obs_source_get_audio_timestamp(source);
-		if (!source_ts) {
-			item = item->next;
-			continue;
-		}
+		if (!apply_buf)
+			audio_window_heard(item, &visible, &hide_active);
 
-		pos = (size_t)ns_to_audio_frames(sample_rate, source_ts - timestamp);
-
-		if (pos >= AUDIO_OUTPUT_FRAMES) {
-			item = item->next;
-			continue;
-		}
-
-		count = AUDIO_OUTPUT_FRAMES - pos;
-
-		if (!apply_buf && !item->visible && !scene_transition_active(item->hide_transition)) {
+		if (!obs_scene_audio_window_mixes(apply_buf, visible, hide_active)) {
 			item = item->next;
 			continue;
 		}
 
 		obs_source_get_audio_mix(source, &child_audio);
 
-		if (!source->audio_is_duplicated) {
+		if (obs_scene_audio_window_adds(source->audio_is_duplicated)) {
 			for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
 				if ((mixers & (1 << mix)) == 0)
 					continue;
@@ -1441,9 +1468,9 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 					float *out = audio_output->output[mix].data[ch];
 					float *in = child_audio.output[mix].data[ch];
 					if (apply_buf)
-						mix_audio_with_buf(out, in, buf, pos, count);
+						mix_audio_with_buf(out, in, buf, window.pos, window.count);
 					else
-						scene_mix_audio(out, in, pos, count);
+						scene_mix_audio(out, in, window.pos, window.count);
 				}
 			}
 		}
