@@ -76,6 +76,7 @@ pub mod module_locale;
 pub mod module_names;
 pub mod module_paths;
 pub mod module_source_rules;
+pub mod module_type_rules;
 pub mod nal;
 pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
