@@ -18,6 +18,9 @@
 //! `obs_source_render_async_video()` and `source_render()` (the rotation
 //! translate, the linear sRGB flag and non-linear alpha, the technique, the
 //! multiplier and the colour space conversion);
+//! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
+//! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
+//! `obs_source_output_video()` families;
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
@@ -33,7 +36,7 @@
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`draw_plan`], [`ptm_gate`], [`render_route`], [`size_route`],
+//! [`deinterlace_pacing`], [`draw_plan`], [`frame_copy`], [`ptm_gate`], [`render_route`], [`size_route`],
 //! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
