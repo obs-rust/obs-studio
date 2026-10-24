@@ -191,6 +191,17 @@
     obs_source_transition_clock_fit;
     obs_source_transition_clock_mix_spaces;
     obs_source_transition_clock_min_ts;
+    /* obs-source-transition-render.c. obs-source-transition.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_source_transition_render_video_due;
+    obs_source_transition_render_video_stop;
+    obs_source_transition_render_draw;
+    obs_source_transition_render_direct_index;
+    obs_source_transition_render_audio_stop;
+    obs_source_transition_render_audio_mix;
+    obs_source_transition_render_audio_valid;
+    obs_source_transition_render_audio_place;
+    obs_source_transition_render_offset;
     /* obs-audio-mix.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_mix_time_to_frames;
     obs_audio_mix_add;

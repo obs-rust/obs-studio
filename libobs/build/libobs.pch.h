@@ -130,6 +130,7 @@
 /* obs-source-transition.c */
 
 #include "obs-source-transition-clock.h"
+#include "obs-source-transition-render.h"
 
 /* obs-source.c */
 
