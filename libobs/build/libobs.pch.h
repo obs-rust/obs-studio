@@ -70,6 +70,9 @@
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
 
+/* obs-video-output-step.c */
+#include "obs-video-output-step.h"
+
 /* obs-video.c */
 #include <time.h>
 #include <stdlib.h>

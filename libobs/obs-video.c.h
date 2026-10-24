@@ -422,6 +422,10 @@ static void render_convert_texture(struct obs_core_video_mix *video, gs_texture_
 	profile_end(render_convert_texture_name);
 }
 
+/* The texture ring and channel counts obs-video-output-step.h copies. */
+_Static_assert(OBS_VIDEO_STEP_TEXTURES == NUM_TEXTURES, "NUM_TEXTURES");
+_Static_assert(OBS_VIDEO_STEP_CHANNELS == NUM_CHANNELS, "NUM_CHANNELS");
+
 static const char *stage_output_texture_name = "stage_output_texture";
 static inline void stage_output_texture(struct obs_core_video_mix *video, int cur_texture,
 					gs_texture_t *const *const convert_textures, gs_texture_t *output_texture,
@@ -431,25 +435,18 @@ static inline void stage_output_texture(struct obs_core_video_mix *video, int cu
 
 	unmap_last_surface(video);
 
-	if (!video->gpu_conversion) {
-		gs_stagesurf_t *copy = copy_surfaces[0];
-		if (copy)
-			gs_stage_texture(copy, output_texture);
-		video->active_copy_surfaces[cur_texture][0] = copy;
+	const struct obs_video_step_stage stage =
+		obs_video_step_stage(video->gpu_conversion, video->texture_converted, channel_count);
 
-		for (size_t i = 1; i < NUM_CHANNELS; ++i)
-			video->active_copy_surfaces[cur_texture][i] = NULL;
-
-		video->textures_copied[cur_texture] = true;
-	} else if (video->texture_converted) {
-		for (size_t i = 0; i < channel_count; i++) {
+	if (stage.staged) {
+		for (size_t i = 0; i < stage.channels; i++) {
 			gs_stagesurf_t *copy = copy_surfaces[i];
 			if (copy)
-				gs_stage_texture(copy, convert_textures[i]);
+				gs_stage_texture(copy, stage.from_output ? output_texture : convert_textures[i]);
 			video->active_copy_surfaces[cur_texture][i] = copy;
 		}
 
-		for (size_t i = channel_count; i < NUM_CHANNELS; ++i)
+		for (size_t i = stage.channels; i < NUM_CHANNELS; ++i)
 			video->active_copy_surfaces[cur_texture][i] = NULL;
 
 		video->textures_copied[cur_texture] = true;
@@ -460,10 +457,10 @@ static inline void stage_output_texture(struct obs_core_video_mix *video, int cu
 
 static inline bool queue_frame(struct obs_core_video_mix *video, bool raw_active, struct obs_vframe_info *vframe_info)
 {
-	bool duplicate = !video->gpu_encoder_avail_queue.size ||
-			 (video->gpu_encoder_queue.size && vframe_info->count > 1);
+	const enum obs_video_step_queue_action action = obs_video_step_queue(
+		video->gpu_encoder_avail_queue.size, video->gpu_encoder_queue.size, vframe_info->count, raw_active);
 
-	if (duplicate) {
+	if (action == OBS_VIDEO_STEP_QUEUE_DUPLICATE) {
 		struct obs_tex_frame *tf =
 			deque_data(&video->gpu_encoder_queue, video->gpu_encoder_queue.size - sizeof(*tf));
 
@@ -485,17 +482,9 @@ static inline bool queue_frame(struct obs_core_video_mix *video, bool raw_active
 		tf.released = false;
 	}
 
-	/* the vframe_info->count > 1 case causing a copy can only happen if by
-	 * some chance the very first frame has to be duplicated for whatever
-	 * reason.  otherwise, it goes to the 'duplicate' case above, which
-	 * will ensure better performance. */
-	if (raw_active || vframe_info->count > 1) {
+	if (action == OBS_VIDEO_STEP_QUEUE_COPY) {
 		gs_copy_texture(tf.tex, video->convert_textures_encode[0]);
-		/* Y and UV textures are views of the same texture on D3D, and
-		 * gs_copy_texture will copy all views of the underlying
-		 * texture. On other platforms, these are two distinct textures
-		 * that must be copied separately. */
-		if (!obs_host_nv12_planes_share_texture())
+		if (obs_video_step_queue_copy_uv(obs_host_nv12_planes_share_texture()))
 			gs_copy_texture(tf.tex_uv, video->convert_textures_encode[1]);
 	} else {
 		gs_texture_t *tex = video->convert_textures_encode[0];
@@ -517,7 +506,8 @@ static inline bool queue_frame(struct obs_core_video_mix *video, bool raw_active
 	os_sem_post(video->gpu_encode_semaphore);
 
 finish:
-	return --vframe_info->count;
+	vframe_info->count = obs_video_step_queue_count(vframe_info->count);
+	return vframe_info->count;
 }
 
 extern void full_stop(struct obs_encoder *encoder);
@@ -559,26 +549,30 @@ static inline void render_video(struct obs_core_video_mix *video, bool raw_activ
 
 	render_main_texture(video);
 
-	if (raw_active || gpu_active) {
+	const struct obs_video_step_render_targets targets = obs_video_step_render_targets(raw_active, gpu_active);
+	if (targets.outputs) {
 		gs_texture_t *const *convert_textures = video->convert_textures;
 		gs_stagesurf_t *const *copy_surfaces = video->copy_surfaces[cur_texture];
 		size_t channel_count = NUM_CHANNELS;
 		gs_texture_t *output_texture = render_output_texture(video);
 
-		if (gpu_active) {
+		if (targets.encode) {
 			convert_textures = video->convert_textures_encode;
 			obs_host_gpu_encode_surfaces(video, &copy_surfaces, &channel_count);
 		}
 
-		if (video->gpu_conversion) {
+		const struct obs_video_step_render step =
+			obs_video_step_render(raw_active, gpu_active, video->gpu_conversion);
+
+		if (step.convert) {
 			render_convert_texture(video, convert_textures, output_texture);
 		}
 
-		if (gpu_active) {
+		if (step.encode) {
 			output_gpu_encoders(video, raw_active);
 		}
 
-		if (raw_active) {
+		if (step.stage) {
 			stage_output_texture(video, cur_texture, convert_textures, output_texture, copy_surfaces,
 					     channel_count);
 		}
@@ -746,7 +740,7 @@ static inline void output_frame(struct obs_core_video_mix *video)
 	const bool gpu_active = video->gpu_was_active;
 
 	int cur_texture = video->cur_texture;
-	int prev_texture = cur_texture == 0 ? NUM_TEXTURES - 1 : cur_texture - 1;
+	int prev_texture = obs_video_step_ring(cur_texture).prev;
 	struct video_data frame;
 	bool frame_ready = 0;
 
@@ -761,7 +755,7 @@ static inline void output_frame(struct obs_core_video_mix *video)
 	GS_DEBUG_MARKER_END();
 	profile_end(output_frame_render_video_name);
 
-	if (raw_active) {
+	if (obs_video_step_download(raw_active)) {
 		profile_start(output_frame_download_frame_name);
 		frame_ready = download_frame(video, prev_texture, &frame);
 		profile_end(output_frame_download_frame_name);
@@ -774,7 +768,7 @@ static inline void output_frame(struct obs_core_video_mix *video)
 	gs_leave_context();
 	profile_end(output_frame_gs_context_name);
 
-	if (raw_active && frame_ready) {
+	if (obs_video_step_output(raw_active, frame_ready)) {
 		struct obs_vframe_info vframe_info;
 		deque_pop_front(&video->vframe_info_buffer, &vframe_info, sizeof(vframe_info));
 
@@ -784,8 +778,7 @@ static inline void output_frame(struct obs_core_video_mix *video)
 		profile_end(output_frame_output_video_data_name);
 	}
 
-	if (++video->cur_texture == NUM_TEXTURES)
-		video->cur_texture = 0;
+	video->cur_texture = obs_video_step_ring(video->cur_texture).next;
 }
 
 static inline void output_frames(void)
@@ -848,24 +841,27 @@ static const char *render_displays_name = "render_displays";
 static const char *output_frame_name = "output_frame";
 static inline void update_active_state(struct obs_core_video_mix *video)
 {
-	const bool raw_was_active = video->raw_was_active;
-	const bool gpu_was_active = video->gpu_was_active;
-	const bool was_active = video->was_active;
+	struct obs_video_step_activation_input input = {
+		.raw_was_active = video->raw_was_active,
+		.gpu_was_active = video->gpu_was_active,
+		.was_active = video->was_active,
+	};
 
-	bool raw_active = os_atomic_load_long(&video->raw_active) > 0;
-	const bool gpu_active = os_atomic_load_long(&video->gpu_encoder_active) > 0;
-	const bool active = raw_active || gpu_active;
+	input.raw_active = os_atomic_load_long(&video->raw_active);
+	input.gpu_encoder_active = os_atomic_load_long(&video->gpu_encoder_active);
 
-	if (!was_active && active)
+	const struct obs_video_step_activation step = obs_video_step_activation(&input);
+
+	if (step.clear_base)
 		clear_base_frame_data(video);
-	if (!raw_was_active && raw_active)
+	if (step.clear_raw)
 		clear_raw_frame_data(video);
-	if (!gpu_was_active && gpu_active)
+	if (step.clear_gpu)
 		clear_gpu_frame_data(video);
 
-	video->gpu_was_active = gpu_active;
-	video->raw_was_active = raw_active;
-	video->was_active = active;
+	video->gpu_was_active = step.gpu_active;
+	video->raw_was_active = step.raw_active;
+	video->was_active = step.active;
 }
 
 static inline void update_active_states(void)
