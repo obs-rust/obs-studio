@@ -37,6 +37,7 @@ pub mod deinterlace_pacing;
 pub mod ptm_gate;
 pub mod size_route;
 pub mod transition_clock;
+pub mod volume_apply;
 
 #[allow(unsafe_code)]
 pub mod ffi;
