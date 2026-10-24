@@ -36,6 +36,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-audio-timing.c.h.o",
     "obs-source-color-space.c.h.o",
     "obs-source-deinterlace-pacing.c.h.o",
+    "obs-source-ptm-gate.c.h.o",
     "obs-source-transition-clock.c.h.o",
     "obs-view-api.c.h.o",
 )

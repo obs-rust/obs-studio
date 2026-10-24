@@ -116,6 +116,11 @@ _obs_source_deinterlace_pacing_waiting_frame_ts
 _obs_source_deinterlace_pacing_half_duration
 _obs_source_deinterlace_pacing_buffered_offset
 _obs_source_deinterlace_pacing_reanchor
+# obs-source-ptm-gate.c: obs-source.c calls them inside libobs. Not EXPORT.
+_obs_source_ptm_gate_stop_time
+_obs_source_ptm_gate_held
+_obs_source_ptm_gate_mutes
+_obs_source_ptm_gate_talk_mutes
 # obs-source-transition-clock.c: obs-source-transition.c calls them inside
 # libobs. Not EXPORT.
 _obs_source_transition_clock_time

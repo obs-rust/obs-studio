@@ -138,6 +138,13 @@ obs_source_deinterlace_pacing_waiting_frame_ts
 obs_source_deinterlace_pacing_half_duration
 obs_source_deinterlace_pacing_buffered_offset
 obs_source_deinterlace_pacing_reanchor
+# obs-source-ptm-gate.c: source_muted() and get_source_volume() in
+# obs-source.c call them inside libobs. Declared in obs-source-ptm-gate.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_source_ptm_gate_stop_time
+obs_source_ptm_gate_held
+obs_source_ptm_gate_mutes
+obs_source_ptm_gate_talk_mutes
 # obs-source-transition-clock.c: calc_time(), obs_transition_tick(), get_cx(),
 # get_cy(), recalculate_transition_size(), recalculate_transition_matrix(),
 # mix_spaces() and transition_calc_min_ts() in obs-source-transition.c call

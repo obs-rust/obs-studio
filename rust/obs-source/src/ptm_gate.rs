@@ -20,6 +20,22 @@
 //! `get_source_volume()` on the audio mix thread too, so nothing here sees
 //! `struct obs_source`. Nothing here keeps state, takes a lock or calls
 //! libobs.
+//!
+//! Characterized, not endorsed (`test_source_ptm_gate_steps`), and kept: a
+//! saturated stop time does not hold at `os_time` `u64::MAX` itself; while
+//! held, each packet stores its own time plus the delay, so an earlier
+//! packet moves the stop time back.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 /// `OBS_SOURCE_PTM_GATE_NS_PER_MS`: the delays are milliseconds, the clock
 /// and the stop times nanoseconds.
@@ -27,28 +43,29 @@ pub const NS_PER_MS: u64 = 1_000_000;
 
 /// `obs_source_ptm_gate_stop_time()`: `os_time + delay_ms * NS_PER_MS`, or
 /// `u64::MAX` where the product or the sum would wrap.
-pub fn stop_time(os_time: u64, delay_ms: u64) -> u64 {
-    let _ = (os_time, delay_ms);
-    todo!()
+///
+/// The C checks `delay_ms > UINT64_MAX / 1000000` and then
+/// `delay_ns > UINT64_MAX - os_time`; the two saturating operations are the
+/// same: a saturated product is `u64::MAX`, and any clock plus that
+/// saturates too.
+pub const fn stop_time(os_time: u64, delay_ms: u64) -> u64 {
+    os_time.saturating_add(delay_ms.saturating_mul(NS_PER_MS))
 }
 
 /// `obs_source_ptm_gate_held()`: whether a key let go still holds at
-/// `os_time`.
-pub fn held(os_time: u64, stop_time: u64) -> bool {
-    let _ = (os_time, stop_time);
-    todo!()
+/// `os_time`, strictly before its stop time.
+pub const fn held(os_time: u64, stop_time: u64) -> bool {
+    os_time < stop_time
 }
 
 /// `obs_source_ptm_gate_mutes()`: whether push-to-mute mutes, from
 /// `push_to_mute_enabled` and whether its key is pressed or held.
-pub fn mutes(enabled: bool, active: bool) -> bool {
-    let _ = (enabled, active);
-    todo!()
+pub const fn mutes(enabled: bool, active: bool) -> bool {
+    enabled && active
 }
 
 /// `obs_source_ptm_gate_talk_mutes()`: whether push-to-talk mutes, from
 /// `push_to_talk_enabled` and whether its key is pressed or held.
-pub fn talk_mutes(enabled: bool, active: bool) -> bool {
-    let _ = (enabled, active);
-    todo!()
+pub const fn talk_mutes(enabled: bool, active: bool) -> bool {
+    enabled && !active
 }
