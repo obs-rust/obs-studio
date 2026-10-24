@@ -50,6 +50,8 @@ mod source_color_space;
 mod source_conversion_plan;
 #[path = "port_comparison/source_deinterlace_pacing.rs"]
 mod source_deinterlace_pacing;
+#[path = "port_comparison/source_load.rs"]
+mod source_load;
 #[path = "port_comparison/source_profiler.rs"]
 mod source_profiler;
 #[path = "port_comparison/source_ptm_gate.rs"]
@@ -140,6 +142,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_color_space,
         source_conversion_plan,
         source_deinterlace_pacing,
+        source_load,
         source_profiler,
         source_ptm_gate,
         source_transition_clock,
