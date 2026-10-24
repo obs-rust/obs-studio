@@ -2684,7 +2684,7 @@ static inline bool obs_context_data_init_wrap(struct obs_context_data *context, 
 	context->type = type;
 
 	pthread_mutex_init_value(&context->rename_cache_mutex);
-	if (pthread_mutex_init(&context->rename_cache_mutex, NULL) < 0)
+	if (pthread_mutex_init(&context->rename_cache_mutex, NULL) != 0)
 		return false;
 
 	context->signals = signal_handler_create();
@@ -2857,7 +2857,10 @@ void obs_context_data_remove_name(struct obs_context_data *context, pthread_mute
 
 	assert(head);
 
-	if (!context)
+	/* A context whose object failed to initialize was never added (its
+	 * hash handle is still zeroed), and deleting it would corrupt or
+	 * dereference the table. */
+	if (!context || !context->hh.tbl)
 		return;
 
 	pthread_mutex_lock(mutex);
@@ -2881,6 +2884,10 @@ void obs_context_data_remove_uuid(struct obs_context_data *context, pthread_mute
 
 void obs_context_wait(struct obs_context_data *context)
 {
+	/* Not in any list: its object failed to initialize. */
+	if (!context->mutex)
+		return;
+
 	pthread_mutex_lock(context->mutex);
 	pthread_mutex_unlock(context->mutex);
 }

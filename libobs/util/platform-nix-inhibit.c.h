@@ -135,7 +135,7 @@ bool os_inhibit_sleep_set_active(os_inhibit_t *info, bool active)
 
 	if (active) {
 		ret = pthread_create(&info->screensaver_thread, NULL, &screensaver_thread, info);
-		if (ret < 0) {
+		if (ret != 0) {
 			blog(LOG_ERROR, "Failed to create screensaver "
 					"inhibitor thread");
 			return false;

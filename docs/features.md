@@ -1844,6 +1844,13 @@ area.
   plugins, which kept it; unknown bits were saved back. A canvas that fails
   to set up is no longer leaked. *All*, pending merge. Issue
   [#2141](https://github.com/obs-rust/obs-studio/issues/2141).
+- When the system cannot set up a lock or start a thread, OBS reports it
+  instead of carrying on as if it had worked: a source, output or other
+  object whose lock fails is not created, and a source that fails to set up
+  no longer crashes OBS while it is cleaned up; an output whose reconnect
+  thread does not start no longer stays "reconnecting" for good; and the
+  screen saver inhibitor reports that it could not start. *All*, pending
+  merge. Issue [#2152](https://github.com/obs-rust/obs-studio/issues/2152).
 
 ### Security hardening
 

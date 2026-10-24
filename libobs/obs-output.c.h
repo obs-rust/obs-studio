@@ -237,7 +237,7 @@ obs_output_t *obs_output_create(const char *id, const char *name, obs_data_t *se
 		output->info.get_defaults(output->context.settings);
 
 	ret = os_event_init(&output->reconnect_stop_event, OS_EVENT_TYPE_MANUAL);
-	if (ret < 0)
+	if (ret != 0)
 		goto fail;
 
 	output->reconnect_retry_sec = 2;
@@ -2525,7 +2525,7 @@ static void output_reconnect(struct obs_output *output)
 
 	output->stop_code = OBS_OUTPUT_DISCONNECTED;
 	ret = pthread_create(&output->reconnect_thread, NULL, &reconnect_thread, output);
-	if (ret < 0) {
+	if (ret != 0) {
 		blog(LOG_WARNING, "Failed to create reconnect thread");
 		os_atomic_set_bool(&output->reconnecting, false);
 	} else {

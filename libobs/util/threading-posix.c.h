@@ -29,12 +29,12 @@ int os_event_init(os_event_t **event, enum os_event_type type)
 
 	struct os_event_data *data = bzalloc(sizeof(struct os_event_data));
 
-	if ((code = pthread_mutex_init(&data->mutex, NULL)) < 0) {
+	if ((code = pthread_mutex_init(&data->mutex, NULL)) != 0) {
 		bfree(data);
 		return code;
 	}
 
-	if ((code = pthread_cond_init(&data->cond, NULL)) < 0) {
+	if ((code = pthread_cond_init(&data->cond, NULL)) != 0) {
 		pthread_mutex_destroy(&data->mutex);
 		bfree(data);
 		return code;
