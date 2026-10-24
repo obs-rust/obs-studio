@@ -16,6 +16,8 @@ mod conversions;
 mod core_units;
 #[path = "port_comparison/encoder_roi.rs"]
 mod encoder_roi;
+#[path = "port_comparison/encoder_size.rs"]
+mod encoder_size;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
 #[path = "port_comparison/graphics_sprite.rs"]
@@ -90,6 +92,7 @@ fn comparisons(criterion: &mut Criterion) {
     conversions::benchmarks(criterion);
     core_units::benchmarks(criterion);
     encoder_roi::benchmarks(criterion);
+    encoder_size::benchmarks(criterion);
     graphics::benchmarks(criterion);
     graphics_sprite::benchmarks(criterion);
     media_remux::benchmarks(criterion);
