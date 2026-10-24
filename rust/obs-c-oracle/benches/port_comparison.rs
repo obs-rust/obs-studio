@@ -46,6 +46,8 @@ mod service;
 mod source_async_pacing;
 #[path = "port_comparison/source_audio_input.rs"]
 mod source_audio_input;
+#[path = "port_comparison/source_audio_render.rs"]
+mod source_audio_render;
 #[path = "port_comparison/source_audio_timing.rs"]
 mod source_audio_timing;
 #[path = "port_comparison/source_color_space.rs"]
@@ -160,6 +162,7 @@ fn comparisons(criterion: &mut Criterion) {
         service,
         source_async_pacing,
         source_audio_input,
+        source_audio_render,
         source_audio_timing,
         source_color_space,
         source_conversion_plan,

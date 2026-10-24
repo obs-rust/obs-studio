@@ -4,6 +4,9 @@
 //! `libobs/obs-source-async-pacing.c.h`, the async video frame pacing of
 //! `get_closest_frame()`; `libobs/obs-source-audio-input.c.h`, the audio
 //! input steps of `process_audio()` and `reset_resampler()`;
+//! `libobs/obs-source-audio-render.c.h`, the audio render mix plan of
+//! `obs_source_audio_render()`, `custom_audio_render()` and
+//! `process_audio_source_tick()`;
 //! `libobs/obs-source-audio-timing.c.h`, the audio timestamp placement of
 //! `source_output_audio_data()`; `libobs/obs-source-color-space.c.h`, the
 //! colour space query routing of `obs_source_get_color_space()`;
@@ -34,7 +37,8 @@
 //! `libobs/obs-source-volume.c.h`, the volume snap of
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
-//! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
+//! The safe cores are [`async_pacing`], [`audio_input`],
+//! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`draw_plan`], [`frame_copy`], [`ptm_gate`], [`render_route`], [`size_route`],
 //! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
