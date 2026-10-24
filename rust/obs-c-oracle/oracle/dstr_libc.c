@@ -2,11 +2,20 @@
  * functions renamed to oracle_*. It also calls functions that the Rust port
  * replaces (the dstr.c ones) and the utf8 conversions, so those are renamed
  * to the oracle_* versions compiled by oracle/dstr.c, oracle/utf8.c and
- * oracle/platform.c. */
+ * oracle/platform.c.
+ *
+ * The two allocating conversions are the exception: dstr-libc.c frees what
+ * os_utf8_to_wcs_ptr returns with bfree and keeps what os_mbs_to_utf8_ptr
+ * returns as a dstr's array, both the libobs allocator that the dstr oracles
+ * share. oracle/platform.c's copies allocate with oracle_bmalloc, so they
+ * are defined below as their util/platform-conversions.c.h bodies around
+ * oracle/platform.c's conversions, allocating with bmalloc (#2154). */
+
+/* allocating conversions, defined at the end of this file */
+#define os_mbs_to_utf8_ptr oracle_dstr_libc_mbs_to_utf8_ptr
+#define os_utf8_to_wcs_ptr oracle_dstr_libc_utf8_to_wcs_ptr
 
 /* functions defined by dstr-libc.c */
-#define os_mbs_to_utf8_ptr oracle_os_mbs_to_utf8_ptr
-#define os_utf8_to_wcs_ptr oracle_os_utf8_to_wcs_ptr
 #define wstrcmpi oracle_wstrcmpi
 #define wstrcmp_n oracle_wstrcmp_n
 #define wstrcmpi_n oracle_wstrcmpi_n
@@ -56,3 +65,44 @@
 #define utf8_to_wchar oracle_utf8_to_wchar
 
 #include "util/dstr-libc.c.h"
+
+/* oracle/platform.c, which allocates with oracle_bmalloc */
+size_t oracle_os_utf8_to_wcs(const char *str, size_t len, wchar_t *dst, size_t dst_size);
+size_t oracle_os_mbs_to_wcs_ptr(const char *str, size_t len, wchar_t **pstr);
+size_t oracle_os_wcs_to_utf8(const wchar_t *str, size_t len, char *dst, size_t dst_size);
+void oracle_bfree(void *ptr);
+
+size_t os_utf8_to_wcs_ptr(const char *str, size_t len, wchar_t **pstr)
+{
+	if (str) {
+		size_t out_len = oracle_os_utf8_to_wcs(str, len, NULL, 0);
+
+		*pstr = bmalloc((out_len + 1) * sizeof(wchar_t));
+		return oracle_os_utf8_to_wcs(str, len, *pstr, out_len + 1);
+	} else {
+		*pstr = NULL;
+		return 0;
+	}
+}
+
+size_t os_mbs_to_utf8_ptr(const char *str, size_t len, char **pstr)
+{
+	char *dst = NULL;
+	size_t out_len = 0;
+
+	if (str) {
+		wchar_t *wstr = NULL;
+		size_t wlen = oracle_os_mbs_to_wcs_ptr(str, len, &wstr);
+
+		/* os_wcs_to_utf8_ptr, allocating with bmalloc */
+		if (wstr) {
+			out_len = oracle_os_wcs_to_utf8(wstr, wlen, NULL, 0);
+			dst = bmalloc((out_len + 1) * sizeof(char));
+			out_len = oracle_os_wcs_to_utf8(wstr, wlen, dst, out_len + 1);
+		}
+		oracle_bfree(wstr);
+	}
+
+	*pstr = dst;
+	return out_len;
+}
