@@ -38,6 +38,8 @@ mod source_audio_input;
 mod source_audio_timing;
 #[path = "port_comparison/source_color_space.rs"]
 mod source_color_space;
+#[path = "port_comparison/source_conversion_plan.rs"]
+mod source_conversion_plan;
 #[path = "port_comparison/source_deinterlace_pacing.rs"]
 mod source_deinterlace_pacing;
 #[path = "port_comparison/source_profiler.rs"]
@@ -91,6 +93,7 @@ fn comparisons(criterion: &mut Criterion) {
     source_audio_input::benchmarks(criterion);
     source_audio_timing::benchmarks(criterion);
     source_color_space::benchmarks(criterion);
+    source_conversion_plan::benchmarks(criterion);
     source_deinterlace_pacing::benchmarks(criterion);
     source_profiler::benchmarks(criterion);
     source_ptm_gate::benchmarks(criterion);
