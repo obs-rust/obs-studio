@@ -2288,10 +2288,11 @@ void obs_render_canvas_texture_src_color_only(obs_canvas_t *canvas)
 
 gs_texture_t *obs_get_main_texture(void)
 {
-	struct obs_core_video_mix *video;
+	/* The main canvas has no mix until the first obs_reset_video() (#2253). */
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
 
-	video = obs->data.main_canvas->mix;
-	if (!video->texture_rendered)
+	if (!video || !video->texture_rendered)
 		return NULL;
 
 	return video->render_texture;
@@ -3218,13 +3219,26 @@ void obs_add_raw_video_callback(const struct video_scale_info *conversion,
 void obs_add_raw_video_callback2(const struct video_scale_info *conversion, uint32_t frame_rate_divisor,
 				 void (*callback)(void *param, struct video_data *frame), void *param)
 {
-	struct obs_core_video_mix *video = obs->data.main_canvas->mix;
+	/* The main canvas has no mix until the first obs_reset_video() (#2253):
+	 * there is no video to connect to, and the callback is not kept for
+	 * later. */
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
+	if (!video) {
+		blog(LOG_WARNING, "obs_add_raw_video_callback2: video is not set up yet, "
+				  "the raw video callback was not added");
+		return;
+	}
 	start_raw_video(video->video, conversion, frame_rate_divisor, callback, param);
 }
 
 void obs_remove_raw_video_callback(void (*callback)(void *param, struct video_data *frame), void *param)
 {
-	struct obs_core_video_mix *video = obs->data.main_canvas->mix;
+	/* Before the first obs_reset_video() no callback can have been added. */
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
+	if (!video)
+		return;
 	stop_raw_video(video->video, callback, param);
 }
 
@@ -3377,16 +3391,20 @@ bool obs_video_active(void)
 	return result;
 }
 
+/* The main canvas has no mix until the first obs_reset_video() (#2253): no
+ * video, so no texture conversion either. */
 bool obs_nv12_tex_active(void)
 {
-	struct obs_core_video_mix *video = obs->data.main_canvas->mix;
-	return video->using_nv12_tex;
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
+	return video && video->using_nv12_tex;
 }
 
 bool obs_p010_tex_active(void)
 {
-	struct obs_core_video_mix *video = obs->data.main_canvas->mix;
-	return video->using_p010_tex;
+	const obs_canvas_t *canvas = obs->data.main_canvas;
+	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
+	return video && video->using_p010_tex;
 }
 
 /* ------------------------------------------------------------------------- */

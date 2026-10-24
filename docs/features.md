@@ -1906,6 +1906,13 @@ area.
   set up video no longer crashes OBS; the output has no video until one is
   set, and it cannot start without it. *All*, pending merge. Issue
   [#2237](https://github.com/obs-rust/obs-studio/issues/2237).
+- A plugin, script or headless tool that asks for the main texture, adds or
+  removes a raw video callback, asks whether NV12 or P010 texture output is
+  active, or reads the position or scale of a scene item that is no longer
+  in a scene before OBS has set up video no longer crashes OBS; it gets no
+  texture, a refused callback with a warning, "not active" and a 0x0
+  canvas. *All*, pending merge. Issue
+  [#2253](https://github.com/obs-rust/obs-studio/issues/2253).
 
 ### Security hardening
 
