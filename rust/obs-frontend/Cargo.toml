@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-frontend"
 version = "0.1.0"
-description = "The staticlib the frontend links: obs-gpu-status's C ABI (obs-rust/obs-studio#846)"
+description = "The frontend's staticlib: the C ABI of obs-gpu-status (#846) and obs-fallback-warning (#2218)"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -17,4 +17,5 @@ test = false
 doctest = false
 
 [dependencies]
+obs-fallback-warning = { path = "../obs-fallback-warning" }
 obs-gpu-status = { path = "../obs-gpu-status" }

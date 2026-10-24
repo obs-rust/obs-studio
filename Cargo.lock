@@ -582,6 +582,7 @@ version = "0.1.0"
 name = "obs-frontend"
 version = "0.1.0"
 dependencies = [
+ "obs-fallback-warning",
  "obs-gpu-status",
 ]
 

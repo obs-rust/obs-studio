@@ -98,6 +98,7 @@ include(cmake/feature-restream.cmake)
 include(cmake/feature-youtube.cmake)
 include(cmake/feature-whatsnew.cmake)
 include(cmake/feature-idian-playground.cmake)
+include(cmake/frontend-rust.cmake)
 include(cmake/feature-gpu-status.cmake)
 
 configure_file(cmake/templates/ui-config.h.in ui-config.h)
