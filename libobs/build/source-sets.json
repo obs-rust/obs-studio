@@ -191,6 +191,7 @@
     "build/libobs.ported-util+.h.c",
     "build/libobs.ported-util-io+.h.c",
     "build/libobs.ported-video-copy-plan+.h.c",
+    "build/libobs.ported-video-output-step+.h.c",
     "build/libobs.ported-video-plan+.h.c",
     "build/libobs.ported-view+.h.c"
   ],

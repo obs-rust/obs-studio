@@ -288,6 +288,17 @@ _obs_video_rgbx_copy_plan
 _obs_video_scale_resolution_close
 _obs_video_scale_effect_choice
 _obs_video_mix_reuse_match
+# obs-video-output-step.c: obs-video.c calls them inside libobs. Not EXPORT.
+_obs_video_step_activation
+_obs_video_step_stage
+_obs_video_step_queue
+_obs_video_step_queue_copy_uv
+_obs_video_step_queue_count
+_obs_video_step_render_targets
+_obs_video_step_render
+_obs_video_step_ring
+_obs_video_step_download
+_obs_video_step_output
 # util/source-profiler.c: the frame hooks libobs calls inside itself. Not
 # EXPORT.
 _source_profiler_reset_video

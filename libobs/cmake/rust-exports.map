@@ -320,6 +320,18 @@
     obs_video_scale_resolution_close;
     obs_video_scale_effect_choice;
     obs_video_mix_reuse_match;
+    /* obs-video-output-step.c. obs-video.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_video_step_activation;
+    obs_video_step_stage;
+    obs_video_step_queue;
+    obs_video_step_queue_copy_uv;
+    obs_video_step_queue_count;
+    obs_video_step_render_targets;
+    obs_video_step_render;
+    obs_video_step_ring;
+    obs_video_step_download;
+    obs_video_step_output;
     /* util/source-profiler.c. obs.c, obs-video.c and obs-source.c call the
      * frame hooks inside libobs. Declared in obs-internal.h, not EXPORT. */
     source_profiler_reset_video;

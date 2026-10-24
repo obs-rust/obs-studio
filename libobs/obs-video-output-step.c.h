@@ -15,7 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-output-step.pch.h"
+
+/* The per-frame video output step decisions, moved from obs-video.c: only
+ * flags and counts, no texture, deque or libobs state. obs-video.c makes the
+ * calls they decide on. Ported to rust/obs-core (video_output_step): the
+ * hybrid libobs drops this file. */
 
 /* update_active_state(), without the clears and the stores. */
 struct obs_video_step_activation obs_video_step_activation(const struct obs_video_step_activation_input *input)

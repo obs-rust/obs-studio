@@ -32,6 +32,23 @@
 //! No input comes from outside OBS (the flags and counts come from the
 //! outputs and encoders libobs starts, the sizes from its own deques), but
 //! nothing here can panic on any input.
+//!
+//! Intentional difference, unreachable: where the C's `int` arithmetic
+//! overflows (undefined), the port wraps: [`queue_count`] of `INT_MIN`, and
+//! [`ring`] of `INT_MIN` (prev) and `INT_MAX` (next). libobs passes counts
+//! of 1 and more from `video_sleep()`, and `cur_texture` is only ever 0 or
+//! set by the ring.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 use core::ffi::{c_int, c_long};
 
@@ -97,19 +114,23 @@ impl Stage {
     /// Whether the copy surfaces are staged (`textures_copied` is set).
     #[must_use]
     pub const fn staged(self) -> bool {
-        todo!()
+        !matches!(self, Self::Skip)
     }
 
     /// Whether copy surface 0 stages the output texture.
     #[must_use]
     pub const fn from_output(self) -> bool {
-        todo!()
+        matches!(self, Self::Output)
     }
 
     /// The copy surfaces staged: 0 when skipped.
     #[must_use]
     pub const fn channels(self) -> usize {
-        todo!()
+        match self {
+            Self::Skip => 0,
+            Self::Output => 1,
+            Self::Convert { channels } => channels,
+        }
     }
 }
 
@@ -163,8 +184,18 @@ pub struct Ring {
 /// clears its frame data.
 #[must_use]
 pub fn activation(input: &ActivationInput) -> Activation {
-    let _ = input;
-    todo!()
+    let raw_active = input.raw_active > 0;
+    let gpu_active = input.gpu_encoder_active > 0;
+    let active = raw_active || gpu_active;
+
+    Activation {
+        clear_base: !input.was_active && active,
+        clear_raw: !input.raw_was_active && raw_active,
+        clear_gpu: !input.gpu_was_active && gpu_active,
+        raw_active,
+        gpu_active,
+        active,
+    }
 }
 
 /// `stage_output_texture()`: without GPU conversion the output texture into
@@ -172,8 +203,15 @@ pub fn activation(input: &ActivationInput) -> Activation {
 /// from the convert textures; else nothing.
 #[must_use]
 pub fn stage(gpu_conversion: bool, texture_converted: bool, channel_count: usize) -> Stage {
-    let _ = (gpu_conversion, texture_converted, channel_count);
-    todo!()
+    if !gpu_conversion {
+        Stage::Output
+    } else if texture_converted {
+        Stage::Convert {
+            channels: channel_count,
+        }
+    } else {
+        Stage::Skip
+    }
 }
 
 /// `queue_frame()`: a duplicate when no frame is free (`avail_size` 0), or
@@ -186,61 +224,79 @@ pub fn queue_step(
     count: c_int,
     raw_active: bool,
 ) -> QueueStep {
-    let _ = (avail_size, queue_size, count, raw_active);
-    todo!()
+    let repeat = count > 1;
+    if avail_size == 0 || (queue_size != 0 && repeat) {
+        QueueStep::Duplicate
+    } else if raw_active || repeat {
+        // A repeat is copied only when nothing is queued yet (the very
+        // first frame repeated); otherwise it is a duplicate above.
+        QueueStep::Copy
+    } else {
+        QueueStep::Swap
+    }
 }
 
 /// `queue_frame()`: after the Y copy, whether the UV texture is copied on
 /// its own: unless `obs_host_nv12_planes_share_texture()`.
 #[must_use]
 pub fn copy_uv(planes_share_texture: bool) -> bool {
-    let _ = planes_share_texture;
-    todo!()
+    !planes_share_texture
 }
 
 /// `queue_frame()`: the count left after a frame is queued or duplicated
 /// (`--vframe_info->count`); `encode_gpu()` goes on while it is not 0.
 #[must_use]
 pub fn queue_count(count: c_int) -> c_int {
-    let _ = count;
-    todo!()
+    count.wrapping_sub(1)
 }
 
 /// `render_video()`: the outputs are rendered when raw output or GPU
 /// encoding is active, from the encode textures for GPU encoding.
 #[must_use]
 pub fn render_targets(raw_active: bool, gpu_active: bool) -> RenderTargets {
-    let _ = (raw_active, gpu_active);
-    todo!()
+    let outputs = raw_active || gpu_active;
+    RenderTargets {
+        outputs,
+        encode: outputs && gpu_active,
+    }
 }
 
 /// `render_video()`: convert with GPU conversion, feed the GPU encoders for
 /// GPU encoding, stage for raw output.
 #[must_use]
 pub fn render_steps(raw_active: bool, gpu_active: bool, gpu_conversion: bool) -> RenderSteps {
-    let _ = (raw_active, gpu_active, gpu_conversion);
-    todo!()
+    RenderSteps {
+        convert: gpu_conversion,
+        encode: gpu_active,
+        stage: raw_active,
+    }
 }
 
 /// `output_frame()`: the textures before and after `cur_texture` in the
 /// ring of [`TEXTURES`].
 #[must_use]
 pub fn ring(cur_texture: c_int) -> Ring {
-    let _ = cur_texture;
-    todo!()
+    let prev = if cur_texture == 0 {
+        TEXTURES.wrapping_sub(1)
+    } else {
+        cur_texture.wrapping_sub(1)
+    };
+    let next = match cur_texture.wrapping_add(1) {
+        TEXTURES => 0,
+        next => next,
+    };
+    Ring { prev, next }
 }
 
 /// `output_frame()`: the previous texture is downloaded for raw output.
 #[must_use]
 pub fn download(raw_active: bool) -> bool {
-    let _ = raw_active;
-    todo!()
+    raw_active
 }
 
 /// `output_frame()`: the downloaded frame is output for raw output, once
 /// it is ready.
 #[must_use]
 pub fn output(raw_active: bool, frame_ready: bool) -> bool {
-    let _ = (raw_active, frame_ready);
-    todo!()
+    raw_active && frame_ready
 }
