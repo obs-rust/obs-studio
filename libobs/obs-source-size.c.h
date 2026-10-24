@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-size.pch.h"
 
 /* The size query routing of obs_source_get_width() and
  * obs_source_get_height() in obs-source.c, moved: the decisions of
  * get_async_width(), get_base_width(), get_recurse_width() and
  * obs_source_get_width() (and their height twins), on plain values.
  * obs-source.c keeps data_valid(), filter_mutex, the recursion, the callbacks
- * and the field reads. Declared in obs-source-size.h without EXPORT. */
+ * and the field reads. Declared in obs-source-size.h without EXPORT. In
+ * hybrid libobs the Rust port (rust/obs-source) replaces this file. */
 
 enum obs_source_size_ask obs_source_size_route(struct obs_source_size_node node)
 {

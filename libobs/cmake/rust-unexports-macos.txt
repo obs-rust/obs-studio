@@ -158,6 +158,9 @@ _obs_source_ptm_gate_stop_time
 _obs_source_ptm_gate_held
 _obs_source_ptm_gate_mutes
 _obs_source_ptm_gate_talk_mutes
+# obs-source-size.c: obs-source.c calls them inside libobs. Not EXPORT.
+_obs_source_size_route
+_obs_source_size_entry
 # obs-source-transition-clock.c: obs-source-transition.c calls them inside
 # libobs. Not EXPORT.
 _obs_source_transition_clock_time

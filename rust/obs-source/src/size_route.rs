@@ -99,21 +99,57 @@ pub enum Entry {
 
 /// `(rotation % 180) != 0`, the C's test on its `long`: whether an async
 /// frame's axes swap.
+///
+/// `wrapping_rem` is `%` for every rotation: it wraps only for a divisor of
+/// -1. Its sign follows the rotation, as C99's `%` does, but only whether it
+/// is 0 counts, and that is the same for truncating and flooring division.
 pub const fn swaps(rotation: c_long) -> bool {
-    let _ = rotation;
-    todo!()
+    rotation.wrapping_rem(180) != 0
 }
 
 /// `obs_source_size_route()`: where the size of the source in `node` comes
 /// from. The rules are tried in the C's order.
-pub fn route(node: Node) -> Route {
-    let _ = node;
-    todo!()
+pub const fn route(node: Node) -> Route {
+    let is_filter = node.has_filter_parent;
+    let func_valid = node.has_data && node.has_callback;
+
+    if node.source_type == TYPE_TRANSITION {
+        return if node.enabled {
+            Route::Transition
+        } else {
+            Route::Zero
+        };
+    }
+
+    // A disabled filter does not resize; a source that is not a filter
+    // answers enabled or not.
+    if func_valid && (!is_filter || node.enabled) {
+        return Route::Callback;
+    }
+
+    if is_filter {
+        return Route::AskTarget;
+    }
+
+    if !node.async_active {
+        return Route::Zero;
+    }
+
+    Route::Async {
+        swap: swaps(node.async_rotation),
+    }
 }
 
 /// `obs_source_size_entry()`: where `obs_source_get_width()` starts, from
 /// `source->info.type` and `source->filters.num != 0`.
-pub fn entry(source_type: i32, has_filters: bool) -> Entry {
-    let _ = (source_type, has_filters);
-    todo!()
+pub const fn entry(source_type: i32, has_filters: bool) -> Entry {
+    if source_type == TYPE_FILTER {
+        return Entry::Itself;
+    }
+
+    if has_filters {
+        Entry::FirstFilter
+    } else {
+        Entry::Itself
+    }
 }
