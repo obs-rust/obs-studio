@@ -59,7 +59,7 @@ impl Host for BenchHost {
 
 pub fn benchmarks(criterion: &mut Criterion) {
     // SAFETY: the bench is single-threaded; the oracle's state and sources
-    // are this function's until it returns (the sources are leaked).
+    // are this function's until it returns, which frees the sources.
     let sources: Vec<*mut c_void> = unsafe {
         c_sp::oracle_sp_reset();
         c_sp::oracle_sp_set_clock_step(STEP);
@@ -136,6 +136,12 @@ pub fn benchmarks(criterion: &mut Criterion) {
         })
     });
     group.finish();
-    // SAFETY: as above.
-    unsafe { c_sp::oracle_sp_reset() };
+    // SAFETY: as above; the reset drops the profiler's entries for the
+    // sources first, then each source is freed once.
+    unsafe {
+        c_sp::oracle_sp_reset();
+        for source in sources {
+            c_sp::oracle_sp_source_free(source);
+        }
+    }
 }
