@@ -15,7 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-copy-plan.pch.h"
+
+/* The output frame copy plan and the scale effect choice, moved from
+ * obs-video.c: only numbers, no frame, graphics device or libobs state.
+ * obs-video.c runs the copies and maps the effect. Ported to rust/obs-core
+ * (video_copy_plan): the hybrid libobs drops this file. */
 
 /* set_gpu_converted_plane(), without the copies: one memcpy() when the row
  * size and both line sizes match, else a row at a time. */

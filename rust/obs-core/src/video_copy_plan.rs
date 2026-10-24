@@ -36,6 +36,17 @@
 //!
 //! No intentional differences.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 use obs_media_io::video_io::VideoFormat;
 
 use crate::video_plan::ObsScaleType;
@@ -81,6 +92,13 @@ impl CopyPlan {
     #[must_use]
     pub fn used(&self) -> &[FrameCopy] {
         self.copies.get(..self.count).unwrap_or(&[])
+    }
+
+    fn push(&mut self, copy: FrameCopy) {
+        if let Some(slot) = self.copies.get_mut(self.count) {
+            *slot = copy;
+            self.count = self.count.saturating_add(1);
+        }
     }
 }
 
@@ -164,6 +182,36 @@ pub struct MixReuseKey {
     pub rendered: bool,
 }
 
+/// `size_t` of a `u32`.
+#[allow(clippy::as_conversions)]
+const fn size(value: u32) -> usize {
+    value as usize
+}
+
+/// One plane (`set_gpu_converted_plane()`): one copy when the row size and
+/// both line sizes match, else a row at a time.
+fn plane(
+    row: u32,
+    rows: u32,
+    linesize_input: u32,
+    linesize_output: u32,
+    src_after_plane0: bool,
+) -> FrameCopy {
+    let whole = row == linesize_input && row == linesize_output;
+    FrameCopy {
+        src_after_plane0,
+        whole,
+        bytes: if whole {
+            size(row).wrapping_mul(size(rows))
+        } else {
+            size(row)
+        },
+        rows,
+        src_stride: linesize_input,
+        dst_stride: linesize_output,
+    }
+}
+
 /// `set_gpu_converted_data()`: the copies of a frame of `format` (`None`
 /// outside `enum video_format`) at `width` x `height`, from a GPU-converted
 /// frame with the line sizes `input` into one with `output`. No copy for a
@@ -176,7 +224,79 @@ pub fn gpu_copy_plan(
     input: &LineSizes,
     output: &LineSizes,
 ) -> CopyPlan {
-    todo!()
+    let [in0, in1, in2] = *input;
+    let [out0, out1, out2] = *output;
+    let width_d2 = width / 2;
+    let height_d2 = height / 2;
+    let width_x2 = width.wrapping_mul(2);
+    let width_x4 = width.wrapping_mul(4);
+    let mut plan = CopyPlan::default();
+
+    match format {
+        Some(VideoFormat::I420) => {
+            plan.push(plane(width, height, in0, out0, false));
+            plan.push(plane(width_d2, height_d2, in1, out1, false));
+            plan.push(plane(width_d2, height_d2, in2, out2, false));
+        }
+        Some(VideoFormat::Nv12) => {
+            plan.push(plane(width, height, in0, out0, false));
+            if in1 != 0 {
+                plan.push(plane(width, height_d2, in1, out1, false));
+            } else {
+                plan.push(plane(width, height_d2, in0, out1, true));
+            }
+        }
+        Some(VideoFormat::I444) => {
+            plan.push(plane(width, height, in0, out0, false));
+            plan.push(plane(width, height, in1, out1, false));
+            plan.push(plane(width, height, in2, out2, false));
+        }
+        Some(VideoFormat::I010) => {
+            plan.push(plane(width_x2, height, in0, out0, false));
+            plan.push(plane(width, height_d2, in1, out1, false));
+            plan.push(plane(width, height_d2, in2, out2, false));
+        }
+        Some(VideoFormat::P010) => {
+            plan.push(plane(width_x2, height, in0, out0, false));
+            if in1 != 0 {
+                plan.push(plane(width_x2, height_d2, in1, out1, false));
+            } else {
+                plan.push(plane(width_x2, height_d2, in0, out1, true));
+            }
+        }
+        Some(VideoFormat::P216) => {
+            plan.push(plane(width_x2, height, in0, out0, false));
+            plan.push(plane(width_x2, height, in1, out1, false));
+        }
+        Some(VideoFormat::P416) => {
+            plan.push(plane(width_x2, height, in0, out0, false));
+            plan.push(plane(width_x4, height, in1, out1, false));
+        }
+        Some(
+            VideoFormat::None
+            | VideoFormat::Yvyu
+            | VideoFormat::Yuy2
+            | VideoFormat::Uyvy
+            | VideoFormat::Rgba
+            | VideoFormat::Bgra
+            | VideoFormat::Bgrx
+            | VideoFormat::Y800
+            | VideoFormat::Bgr3
+            | VideoFormat::I412
+            | VideoFormat::I422
+            | VideoFormat::I210
+            | VideoFormat::I40a
+            | VideoFormat::I42a
+            | VideoFormat::Yuva
+            | VideoFormat::Ya2l
+            | VideoFormat::Ayuv
+            | VideoFormat::V210
+            | VideoFormat::R10l,
+        )
+        | None => {}
+    }
+
+    plan
 }
 
 /// `copy_rgbx_frame()`: one copy of `linesize * height` when the line sizes
@@ -185,7 +305,19 @@ pub fn gpu_copy_plan(
 /// 64-bit host).
 #[must_use]
 pub fn rgbx_copy_plan(width: u32, height: u32, in_linesize: u32, out_linesize: u32) -> FrameCopy {
-    todo!()
+    let whole = in_linesize == out_linesize;
+    FrameCopy {
+        src_after_plane0: false,
+        whole,
+        bytes: if whole {
+            size(in_linesize).wrapping_mul(size(height))
+        } else {
+            size(width).wrapping_mul(4)
+        },
+        rows: height,
+        src_stride: in_linesize,
+        dst_stride: out_linesize,
+    }
 }
 
 /// `resolution_close()`: `width` x `height` within 16 of the base size on
@@ -194,7 +326,24 @@ pub fn rgbx_copy_plan(width: u32, height: u32, in_linesize: u32, out_linesize: u
 /// below 2^31 with a 32-bit one.
 #[must_use]
 pub fn resolution_close(base_width: u32, base_height: u32, width: u32, height: u32) -> bool {
-    todo!()
+    base_width.abs_diff(width) <= 16 && base_height.abs_diff(height) <= 16
+}
+
+/// `get_scale_effect_internal()`: the bilinear low resolution effect when
+/// the output is under half the base size on both axes, else the scale
+/// type's.
+fn scale_effect_internal(input: &ScaleInput) -> ScaleEffect {
+    if input.output_width < input.base_width / 2 && input.output_height < input.base_height / 2 {
+        return ScaleEffect::BilinearLowres;
+    }
+    match input.scale_type {
+        Some(ObsScaleType::Bilinear) => ScaleEffect::Default,
+        Some(ObsScaleType::Lanczos) => ScaleEffect::Lanczos,
+        Some(ObsScaleType::Area) => ScaleEffect::Area,
+        Some(ObsScaleType::Bicubic | ObsScaleType::Disable | ObsScaleType::Point) | None => {
+            ScaleEffect::Bicubic
+        }
+    }
 }
 
 /// `get_scale_effect()`: the default effect when the target is close to the
@@ -203,7 +352,22 @@ pub fn resolution_close(base_width: u32, base_height: u32, width: u32, height: u
 /// bicubic effect if it loaded, else the default (loaded or not).
 #[must_use]
 pub fn scale_effect(input: &ScaleInput) -> ScaleEffect {
-    todo!()
+    if resolution_close(
+        input.base_width,
+        input.base_height,
+        input.target_width,
+        input.target_height,
+    ) {
+        return ScaleEffect::Default;
+    }
+    let effect = scale_effect_internal(input);
+    if input.loaded & effect.loaded_bit() != 0 {
+        effect
+    } else if input.loaded & ScaleEffect::Bicubic.loaded_bit() != 0 {
+        ScaleEffect::Bicubic
+    } else {
+        ScaleEffect::Default
+    }
 }
 
 /// One comparison of `can_reuse_mix_texture()`: `other` (an earlier mix)
@@ -212,5 +376,9 @@ pub fn scale_effect(input: &ScaleInput) -> ScaleEffect {
 /// not looked at.
 #[must_use]
 pub fn mix_reuse_match(other: &MixReuseKey, mix: &MixReuseKey) -> bool {
-    todo!()
+    other.view == mix.view
+        && other.render_space == mix.render_space
+        && other.base_width == mix.base_width
+        && other.base_height == mix.base_height
+        && other.rendered
 }

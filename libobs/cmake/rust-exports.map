@@ -274,6 +274,13 @@
     obs_video_output_size_valid;
     obs_video_scale_type_name;
     obs_video_output_plan;
+    /* obs-video-copy-plan.c. obs-video.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_video_gpu_copy_plan;
+    obs_video_rgbx_copy_plan;
+    obs_video_scale_resolution_close;
+    obs_video_scale_effect_choice;
+    obs_video_mix_reuse_match;
     /* util/source-profiler.c. obs.c, obs-video.c and obs-source.c call the
      * frame hooks inside libobs. Declared in obs-internal.h, not EXPORT. */
     source_profiler_reset_video;
