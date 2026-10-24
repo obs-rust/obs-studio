@@ -2887,6 +2887,23 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_media_admission_steps": {
+      "sources": [
+        "test/cmocka/test_source_media_admission_steps.c",
+        "libobs/obs-source-media-admission.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_profiler": {
       "sources": [
         "test/cmocka/test_source_profiler.c"
@@ -4806,6 +4823,12 @@
     },
     "test_source_load_migration_steps": {
       "target": "test_source_load_migration_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_media_admission_steps": {
+      "target": "test_source_media_admission_steps",
       "command": [
         "${target}"
       ]
