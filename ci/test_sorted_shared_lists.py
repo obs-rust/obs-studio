@@ -10,7 +10,7 @@ new entry at its own place. Order is not meaning in any of these:
 - libobs/build/source-sets.json `*_PORTED_SOURCES`: unity groups, each its
   own translation unit, with no constructors.
 - rust/obs-c-oracle/benches/port_comparison.rs: the `mod` lines and the
-  `<unit>::benchmarks(criterion);` calls; each unit's benchmarks stand alone.
+  `modules![...]` list in comparisons(); each unit's benchmarks stand alone.
 - ci/test_ported_sources.py: the per-port object tables.
 """
 
@@ -48,9 +48,11 @@ class SortedSharedListsTest(unittest.TestCase):
     def test_port_comparison_lists(self):
         text = (ROOT / "rust/obs-c-oracle/benches/port_comparison.rs").read_text()
         mods = re.findall(r"^mod (\w+);$", text, re.M)
-        calls = re.findall(r"^    (\w+)::benchmarks\(criterion\);$", text, re.M)
+        listed = re.search(r"^    modules!\[\n(.*?)^    \];$", text, re.M | re.S)
+        self.assertIsNotNone(listed, "port_comparison.rs comparisons() has a modules![...] list")
+        calls = re.findall(r"^        (\w+),$", listed.group(1), re.M)
         self.assert_sorted("port_comparison.rs mod lines", mods)
-        self.assert_sorted("port_comparison.rs benchmarks() calls", calls)
+        self.assert_sorted("port_comparison.rs modules![...] entries", calls)
         self.assertEqual(sorted(mods), sorted(calls), "every bench module is called once")
 
     def test_ported_sources_tables(self):

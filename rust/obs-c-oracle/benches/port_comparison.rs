@@ -85,36 +85,68 @@ fn measure_pair<T>(
     group.finish();
 }
 
+/// Both allocation counters: obs-util's bmalloc (which the Rust shims and
+/// most oracles share) and the C bmem oracle's own.
+fn allocation_counts() -> (std::ffi::c_long, std::ffi::c_long) {
+    // SAFETY: each reads only its allocator's counter.
+    unsafe {
+        (
+            obs_util::ffi::bmem::bnum_allocs(),
+            obs_c_oracle::bmem::oracle_bnum_allocs(),
+        )
+    }
+}
+
+/// Runs one module's benches and checks they free what their fixtures
+/// allocate, so a leak names its module instead of failing a later
+/// `bmem/count` fixture (#2154).
+fn module(criterion: &mut Criterion, name: &str, benchmarks: fn(&mut Criterion)) {
+    let before = allocation_counts();
+    benchmarks(criterion);
+    assert_eq!(
+        allocation_counts(),
+        before,
+        "{name} benches leave (bmalloc, oracle_bmalloc) allocations live"
+    );
+}
+
 fn comparisons(criterion: &mut Criterion) {
-    audio::benchmarks(criterion);
-    callback::benchmarks(criterion);
-    codecs::benchmarks(criterion);
-    conversions::benchmarks(criterion);
-    core_units::benchmarks(criterion);
-    encoder_roi::benchmarks(criterion);
-    encoder_size::benchmarks(criterion);
-    graphics::benchmarks(criterion);
-    graphics_sprite::benchmarks(criterion);
-    media_remux::benchmarks(criterion);
-    module_source_rules::benchmarks(criterion);
-    output_video_checks::benchmarks(criterion);
-    scene::benchmarks(criterion);
-    scene_crop::benchmarks(criterion);
-    scene_item_names::benchmarks(criterion);
-    scene_render_plan::benchmarks(criterion);
-    service::benchmarks(criterion);
-    source_async_pacing::benchmarks(criterion);
-    source_audio_input::benchmarks(criterion);
-    source_audio_timing::benchmarks(criterion);
-    source_color_space::benchmarks(criterion);
-    source_conversion_plan::benchmarks(criterion);
-    source_deinterlace_pacing::benchmarks(criterion);
-    source_profiler::benchmarks(criterion);
-    source_ptm_gate::benchmarks(criterion);
-    source_transition_clock::benchmarks(criterion);
-    util::benchmarks(criterion);
-    video_copy_plan::benchmarks(criterion);
-    view::benchmarks(criterion);
+    macro_rules! modules {
+        ($($module:ident),* $(,)?) => {
+            $(module(criterion, stringify!($module), $module::benchmarks);)*
+        };
+    }
+    modules![
+        audio,
+        callback,
+        codecs,
+        conversions,
+        core_units,
+        encoder_roi,
+        encoder_size,
+        graphics,
+        graphics_sprite,
+        media_remux,
+        module_source_rules,
+        output_video_checks,
+        scene,
+        scene_crop,
+        scene_item_names,
+        scene_render_plan,
+        service,
+        source_async_pacing,
+        source_audio_input,
+        source_audio_timing,
+        source_color_space,
+        source_conversion_plan,
+        source_deinterlace_pacing,
+        source_profiler,
+        source_ptm_gate,
+        source_transition_clock,
+        util,
+        video_copy_plan,
+        view,
+    ];
 }
 
 criterion_group!(benches, comparisons);
