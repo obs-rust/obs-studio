@@ -26,6 +26,7 @@
 pub mod caption_text;
 pub mod delay;
 pub mod encoder_roi;
+pub mod encoder_size;
 pub mod interleave;
 pub mod protocols;
 pub mod service;
