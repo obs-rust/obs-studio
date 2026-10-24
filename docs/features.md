@@ -1830,6 +1830,13 @@ area.
   video no longer crashes OBS when asked for its video conversion; it has
   none. *All*, pending merge. Issue
   [#2127](https://github.com/obs-rust/obs-studio/issues/2127).
+- A canvas that a plugin or script creates, or that a scene collection
+  (edited by hand or written by another tool) loads, keeps only the public
+  canvas flags. Before, a removed bit in its flags made the canvas count as
+  removed from the start, so removing it later did not tell OBS or other
+  plugins, which kept it; unknown bits were saved back. A canvas that fails
+  to set up is no longer leaked. *All*, pending merge. Issue
+  [#2141](https://github.com/obs-rust/obs-studio/issues/2141).
 
 ### Security hardening
 

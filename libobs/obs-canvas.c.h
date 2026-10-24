@@ -22,6 +22,9 @@ static const char *MAIN_CANVAS_NAME = "Main";
 static const char *MAIN_CANVAS_UUID = "6c69626f-6273-4c00-9d88-c5136d61696e";
 /* Internal flag to mark a canvas as removed */
 static const uint32_t REMOVED = 1u << 31;
+/* The flags a caller or a scene collection may set (MAIN is the main
+ * canvas's own; REMOVED and unknown bits are dropped). */
+static const uint32_t PUBLIC_CANVAS_FLAGS = ACTIVATE | MIX_AUDIO | SCENE_REF | EPHEMERAL;
 
 /*** Signals ***/
 
@@ -139,8 +142,11 @@ static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uu
 	struct obs_canvas *canvas = bzalloc(sizeof(struct obs_canvas));
 	canvas->flags = flags;
 
-	if (!obs_context_data_init(&canvas->context, OBS_OBJ_TYPE_CANVAS, NULL, name, uuid, NULL, private))
+	if (!obs_context_data_init(&canvas->context, OBS_OBJ_TYPE_CANVAS, NULL, name, uuid, NULL, private)) {
+		/* obs_context_data_init() already freed the context. */
+		bfree(canvas);
 		return NULL;
+	}
 
 	if (!signal_handler_add_array(canvas->context.signals, canvas_signals)) {
 		obs_context_data_free(&canvas->context);
@@ -191,13 +197,13 @@ obs_canvas_t *obs_create_main_canvas(void)
 
 obs_canvas_t *obs_canvas_create(const char *name, struct obs_video_info *ovi, uint32_t flags)
 {
-	flags &= ~MAIN; /* Prevent user from creating a MAIN canvas. */
+	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, NULL, ovi, flags, false);
 }
 
 obs_canvas_t *obs_canvas_create_private(const char *name, struct obs_video_info *ovi, uint32_t flags)
 {
-	flags &= ~MAIN; /* Prevent user from creating a MAIN canvas. */
+	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, NULL, ovi, flags, true);
 }
 
@@ -264,7 +270,7 @@ obs_canvas_t *obs_load_canvas(obs_data_t *data)
 	const bool private = obs_data_get_bool(data, "private");
 	uint32_t flags = (uint32_t)obs_data_get_int(data, "flags");
 
-	flags &= ~MAIN; /* Prevent user from creating a MAIN canvas. */
+	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, uuid, NULL, flags, private);
 }
 
