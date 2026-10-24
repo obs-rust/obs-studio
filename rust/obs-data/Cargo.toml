@@ -13,11 +13,11 @@ workspace = true
 
 [dependencies]
 # The hasher of the item name index (#1450).
-foldhash = "=0.2.0"
-libc = "0.2"
+foldhash = { workspace = true, default-features = true }
+libc = { workspace = true, default-features = true }
 
 [build-dependencies]
-cc = "1"
+cc = { workspace = true, default-features = true }
 
 [dev-dependencies]
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }
@@ -34,8 +34,8 @@ obs-media-io = { path = "../obs-media-io" }
 obs-callback = { path = "../obs-callback" }
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
-proptest = "1"
-criterion = { version = "=0.8.2", default-features = false, features = ["cargo_bench_support"] }
+proptest = { workspace = true, default-features = true }
+criterion = { workspace = true, features = ["cargo_bench_support"] }
 
 [lib]
 test = false

@@ -12,11 +12,11 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-libc = "0.2"
+libc = { workspace = true, default-features = true }
 obs-graphics = { path = "../obs-graphics" }
 obs-util = { path = "../obs-util" }
 
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
-proptest = "1"
+proptest = { workspace = true, default-features = true }

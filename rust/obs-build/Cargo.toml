@@ -15,15 +15,15 @@ workspace = true
 libobs-integration = []
 
 [dependencies]
-dunce = "=1.0.5"
-cc = { version = "=1.6.0", features = ["parallel"] }
-pkg-config = "=0.3.34"
-serde = { version = "=1.0.229", features = ["derive"] }
-serde_json = "=1.0.151"
+dunce = { workspace = true, default-features = true }
+cc = { workspace = true, default-features = true, features = ["parallel"] }
+pkg-config = { workspace = true, default-features = true }
+serde = { workspace = true, default-features = true, features = ["derive"] }
+serde_json = { workspace = true, default-features = true }
 
 [dev-dependencies]
-libloading.workspace = true
-tempfile = "=3.27.0"
+libloading = { workspace = true, default-features = true }
+tempfile = { workspace = true, default-features = true }
 
 [lib]
 test = false

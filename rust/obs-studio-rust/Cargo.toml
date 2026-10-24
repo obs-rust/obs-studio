@@ -22,10 +22,10 @@ bundled-native = ["dep:obs-sys", "obs-sys/bundled"]
 
 [dependencies]
 obs-sys = { path = "../obs-sys", optional = true }
-base64 = "0.23.1"
-serde_json = "1.0.151"
-sha2 = "0.11.0"
-tungstenite = { version = "0.30.0", default-features = false, features = ["handshake"] }
+base64 = { workspace = true, default-features = true }
+serde_json = { workspace = true, default-features = true }
+sha2 = { workspace = true, default-features = true }
+tungstenite = { workspace = true, features = ["handshake"] }
 
 [lib]
 test = false
@@ -35,8 +35,8 @@ name = "obs-tests-app"
 path = "tests/cli/main.rs"
 
 [dev-dependencies]
-dunce = "=1.0.5"
-pkg-config = "=0.3.34"
+dunce = { workspace = true, default-features = true }
+pkg-config = { workspace = true, default-features = true }
 obs-build = { path = "../obs-build" }
-libloading.workspace = true
-tempfile = "=3.27.0"
+libloading = { workspace = true, default-features = true }
+tempfile = { workspace = true, default-features = true }

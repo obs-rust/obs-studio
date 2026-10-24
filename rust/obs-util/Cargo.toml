@@ -19,17 +19,17 @@ gio = []
 
 [dependencies]
 # Unix errno values and pthread_setname_np in ffi/threading.rs.
-libc = "0.2"
+libc = { workspace = true, default-features = true }
 # SIMD substring search for dstr_replace (C uses libc strstr), #1297.
-memchr = "2"
+memchr = { workspace = true, default-features = true }
 # gzip for profiler_snapshot_dump_csv_gz (C uses zlib); the pure-Rust
 # miniz_oxide backend, so neither libobs-rust nor the test runners need zlib.
-flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+flate2 = { workspace = true, features = ["rust_backend"] }
 
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }
-proptest = "1"
+proptest = { workspace = true, default-features = true }
 
 [build-dependencies]
-cc = "1"
-pkg-config = "0.3"
+cc = { workspace = true, default-features = true }
+pkg-config = { workspace = true, default-features = true }

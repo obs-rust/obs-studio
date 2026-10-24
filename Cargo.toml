@@ -9,9 +9,27 @@ rust-version = "1.98"
 license = "GPL-2.0-or-later"
 publish = false
 
-# Shared third-party pins (exact, so loader behaviour cannot drift).
+# Every third-party dependency (#2056): the version in Cargo.lock, pinned
+# with `=` so behaviour cannot drift, and no features. Crates inherit it
+# with `workspace = true` and enable what they need (`default-features =
+# true`, `features = [...]`); ci/test_workspace_dependencies.py checks it.
 [workspace.dependencies]
-libloading = "=0.8.9"
+base64 = { version = "=0.23.1", default-features = false }
+cc = { version = "=1.6.0", default-features = false }
+criterion = { version = "=0.8.2", default-features = false }
+dunce = { version = "=1.0.5", default-features = false }
+flate2 = { version = "=1.1.10", default-features = false }
+foldhash = { version = "=0.2.0", default-features = false }
+libc = { version = "=0.2.190", default-features = false }
+libloading = { version = "=0.8.9", default-features = false }
+memchr = { version = "=2.8.3", default-features = false }
+pkg-config = { version = "=0.3.34", default-features = false }
+proptest = { version = "=1.11.0", default-features = false }
+serde = { version = "=1.0.229", default-features = false }
+serde_json = { version = "=1.0.151", default-features = false }
+sha2 = { version = "=0.11.0", default-features = false }
+tempfile = { version = "=3.27.0", default-features = false }
+tungstenite = { version = "=0.30.0", default-features = false }
 
 # Glob imports hide where a name comes from (#1873). Clippy keeps its
 # defaults: `use super::*` in test modules and `*::prelude::*` stay allowed.

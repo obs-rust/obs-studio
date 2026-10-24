@@ -12,7 +12,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-libloading = { workspace = true }
+libloading = { workspace = true, default-features = true }
 
 [lib]
 test = false

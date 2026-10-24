@@ -12,11 +12,11 @@ publish.workspace = true
 workspace = true
 
 [build-dependencies]
-cc = "1"
-pkg-config = "0.3"
+cc = { workspace = true, default-features = true }
+pkg-config = { workspace = true, default-features = true }
 
 [dev-dependencies]
-criterion = { version = "=0.8.2", default-features = false, features = ["cargo_bench_support"] }
+criterion = { workspace = true, features = ["cargo_bench_support"] }
 obs-util = { path = "../obs-util" }
 obs-graphics = { path = "../obs-graphics" }
 obs-codec = { path = "../obs-codec" }

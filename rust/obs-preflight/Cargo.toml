@@ -21,11 +21,11 @@ name = "obs-preflight"
 path = "src/main.rs"
 
 [dependencies]
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde = { workspace = true, default-features = true, features = ["derive"] }
+serde_json = { workspace = true, default-features = true }
 
 [dev-dependencies]
-proptest = "1"
+proptest = { workspace = true, default-features = true }
 
 [[test]]
 name = "obs-tests-preflight"

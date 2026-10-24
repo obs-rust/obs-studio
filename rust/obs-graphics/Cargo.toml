@@ -14,11 +14,11 @@ workspace = true
 [dependencies]
 obs-util = { path = "../obs-util" }
 # `rand` / `RAND_MAX` in ffi/math_extra.rs, the same CRT libobs calls.
-libc = "0.2"
+libc = { workspace = true, default-features = true }
 
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }
-proptest = "1"
+proptest = { workspace = true, default-features = true }
 
 [lib]
 test = false
