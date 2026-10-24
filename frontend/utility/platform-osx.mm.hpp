@@ -255,14 +255,21 @@ MacPermissionStatus CheckPermissionWithPrompt(MacPermissionType type, bool promp
 		AVAuthorizationStatus audioStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
 
 		if (audioStatus == AVAuthorizationStatusNotDetermined && prompt_for_permission) {
-			os_event_t *block_finished;
-			os_event_init(&block_finished, OS_EVENT_TYPE_MANUAL);
+			/* Without the event, prompt anyway, but do not wait for the answer. */
+			os_event_t *block_finished = nullptr;
+			if (os_event_init(&block_finished, OS_EVENT_TYPE_MANUAL) != 0) {
+				blog(LOG_WARNING, "[macOS] Not waiting for the audio device access prompt");
+			}
 			[AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
 						 completionHandler:^(BOOL granted __attribute((unused))) {
-							 os_event_signal(block_finished);
+							 if (block_finished) {
+								 os_event_signal(block_finished);
+							 }
 						 }];
-			os_event_wait(block_finished);
-			os_event_destroy(block_finished);
+			if (block_finished) {
+				os_event_wait(block_finished);
+				os_event_destroy(block_finished);
+			}
 			audioStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
 		}
 
@@ -277,15 +284,22 @@ MacPermissionStatus CheckPermissionWithPrompt(MacPermissionType type, bool promp
 		AVAuthorizationStatus videoStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
 
 		if (videoStatus == AVAuthorizationStatusNotDetermined && prompt_for_permission) {
-			os_event_t *block_finished;
-			os_event_init(&block_finished, OS_EVENT_TYPE_MANUAL);
+			/* Without the event, prompt anyway, but do not wait for the answer. */
+			os_event_t *block_finished = nullptr;
+			if (os_event_init(&block_finished, OS_EVENT_TYPE_MANUAL) != 0) {
+				blog(LOG_WARNING, "[macOS] Not waiting for the video device access prompt");
+			}
 			[AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
 						 completionHandler:^(BOOL granted __attribute((unused))) {
-							 os_event_signal(block_finished);
+							 if (block_finished) {
+								 os_event_signal(block_finished);
+							 }
 						 }];
 
-			os_event_wait(block_finished);
-			os_event_destroy(block_finished);
+			if (block_finished) {
+				os_event_wait(block_finished);
+				os_event_destroy(block_finished);
+			}
 			videoStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
 		}
 
