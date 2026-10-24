@@ -54,6 +54,7 @@
     "obs-source-deinterlace-pacing.h",
     "obs-source-draw-plan.h",
     "obs-source-draw-technique.h",
+    "obs-source-frame-copy.h",
     "obs-source-load.h",
     "obs-source-ptm-gate.h",
     "obs-source-render-route.h",
