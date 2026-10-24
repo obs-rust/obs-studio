@@ -22,6 +22,8 @@ mod graphics;
 mod media_remux;
 #[path = "port_comparison/module_source_rules.rs"]
 mod module_source_rules;
+#[path = "port_comparison/output_video_checks.rs"]
+mod output_video_checks;
 #[path = "port_comparison/scene.rs"]
 mod scene;
 #[path = "port_comparison/scene_crop.rs"]
@@ -83,6 +85,7 @@ fn comparisons(criterion: &mut Criterion) {
     graphics::benchmarks(criterion);
     media_remux::benchmarks(criterion);
     module_source_rules::benchmarks(criterion);
+    output_video_checks::benchmarks(criterion);
     scene::benchmarks(criterion);
     scene_crop::benchmarks(criterion);
     scene_render_plan::benchmarks(criterion);
