@@ -1591,31 +1591,26 @@ static inline void source_output_audio_push_back(obs_source_t *source, const str
 	source->last_audio_input_buf_size = 0;
 }
 
-/* When a push-to-mute or push-to-talk key released at os_time stops
- * holding: delay_ms milliseconds later, saturated at UINT64_MAX instead of
- * wrapping (#2051). */
-static inline uint64_t push_to_stop_time(uint64_t os_time, uint64_t delay_ms)
-{
-	if (delay_ms > UINT64_MAX / 1000000)
-		return UINT64_MAX;
-
-	uint64_t delay_ns = delay_ms * 1000000;
-	return delay_ns > UINT64_MAX - os_time ? UINT64_MAX : os_time + delay_ns;
-}
-
+/* The gate's decisions are in obs-source-ptm-gate.c, on values. Each field
+ * is read and written here as before, in the same order: the pressed flags
+ * are written by the hotkey thread without atomics, and get_source_volume()
+ * on the audio mix thread writes the stop times too. */
 static inline bool source_muted(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->user_push_to_mute_pressed)
-		source->push_to_mute_stop_time = push_to_stop_time(os_time, source->push_to_mute_delay);
+		source->push_to_mute_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_mute_delay);
 
 	if (source->push_to_talk_enabled && source->user_push_to_talk_pressed)
-		source->push_to_talk_stop_time = push_to_stop_time(os_time, source->push_to_talk_delay);
+		source->push_to_talk_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_talk_delay);
 
-	bool push_to_mute_active = source->user_push_to_mute_pressed || os_time < source->push_to_mute_stop_time;
-	bool push_to_talk_active = source->user_push_to_talk_pressed || os_time < source->push_to_talk_stop_time;
+	bool push_to_mute_active = source->user_push_to_mute_pressed ||
+				   obs_source_ptm_gate_held(os_time, source->push_to_mute_stop_time);
+	bool push_to_talk_active = source->user_push_to_talk_pressed ||
+				   obs_source_ptm_gate_held(os_time, source->push_to_talk_stop_time);
 
-	return !source->enabled || source->user_muted || (source->push_to_mute_enabled && push_to_mute_active) ||
-	       (source->push_to_talk_enabled && !push_to_talk_active);
+	return !source->enabled || source->user_muted ||
+	       obs_source_ptm_gate_mutes(source->push_to_mute_enabled, push_to_mute_active) ||
+	       obs_source_ptm_gate_talk_mutes(source->push_to_talk_enabled, push_to_talk_active);
 }
 
 static void source_output_audio_data(obs_source_t *source, const struct audio_data *data)
@@ -5209,10 +5204,10 @@ void *obs_source_get_type_data(obs_source_t *source)
 static float get_source_volume(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->push_to_mute_pressed)
-		source->push_to_mute_stop_time = push_to_stop_time(os_time, source->push_to_mute_delay);
+		source->push_to_mute_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_mute_delay);
 
 	if (source->push_to_talk_enabled && source->push_to_talk_pressed)
-		source->push_to_talk_stop_time = push_to_stop_time(os_time, source->push_to_talk_delay);
+		source->push_to_talk_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_talk_delay);
 
 	bool push_to_mute_active = source->push_to_mute_pressed || os_time < source->push_to_mute_stop_time;
 	bool push_to_talk_active = source->push_to_talk_pressed || os_time < source->push_to_talk_stop_time;
