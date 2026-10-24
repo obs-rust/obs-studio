@@ -42,6 +42,8 @@ mod source_color_space;
 mod source_deinterlace_pacing;
 #[path = "port_comparison/source_profiler.rs"]
 mod source_profiler;
+#[path = "port_comparison/source_ptm_gate.rs"]
+mod source_ptm_gate;
 #[path = "port_comparison/source_transition_clock.rs"]
 mod source_transition_clock;
 #[path = "port_comparison/util.rs"]
@@ -91,6 +93,7 @@ fn comparisons(criterion: &mut Criterion) {
     source_color_space::benchmarks(criterion);
     source_deinterlace_pacing::benchmarks(criterion);
     source_profiler::benchmarks(criterion);
+    source_ptm_gate::benchmarks(criterion);
     source_transition_clock::benchmarks(criterion);
     util::benchmarks(criterion);
     view::benchmarks(criterion);

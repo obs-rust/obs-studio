@@ -8,13 +8,14 @@
 //! `source_output_audio_data()`; `libobs/obs-source-color-space.c.h`, the
 //! colour space query routing of `obs_source_get_color_space()`;
 //! `libobs/obs-source-deinterlace-pacing.c.h`, the frame pacing of
-//! double-rate deinterlacing; and `libobs/obs-source-transition-clock.c.h`,
-//! the clock and fit decisions of the transitions.
+//! double-rate deinterlacing; `libobs/obs-source-ptm-gate.c.h`, the
+//! push-to-mute and push-to-talk gate of `source_muted()`; and
+//! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
+//! the transitions.
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
-//! [`color_space`], [`deinterlace_pacing`] and [`transition_clock`]. The C
-//! ABI shims live in
-//! [`ffi`].
+//! [`color_space`], [`deinterlace_pacing`], [`ptm_gate`] and
+//! [`transition_clock`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
