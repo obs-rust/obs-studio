@@ -95,12 +95,25 @@ static inline void *window_capture_create_internal(obs_data_t *settings, obs_sou
     wc->image_option = obs_data_get_bool(settings, "show_shadow") ? kCGWindowImageDefault
                                                                   : kCGWindowImageBoundsIgnoreFraming;
 
-    os_event_init(&wc->capture_event, OS_EVENT_TYPE_AUTO);
-    os_event_init(&wc->stop_event, OS_EVENT_TYPE_MANUAL);
+    if (os_event_init(&wc->capture_event, OS_EVENT_TYPE_AUTO) != 0)
+        goto fail;
+    if (os_event_init(&wc->stop_event, OS_EVENT_TYPE_MANUAL) != 0)
+        goto fail;
 
-    pthread_create(&wc->capture_thread, NULL, capture_thread, wc);
+    if (pthread_create(&wc->capture_thread, NULL, capture_thread, wc) != 0)
+        goto fail;
 
     return wc;
+
+fail:
+    blog(LOG_ERROR, "%s: Failed to start the window capture thread", obs_source_get_name(source));
+    os_event_destroy(wc->stop_event);
+    os_event_destroy(wc->capture_event);
+    CGColorSpaceRelease(wc->color_space);
+    da_free(wc->buffer);
+    destroy_window(&wc->window);
+    bfree(wc);
+    return NULL;
 }
 
 static void *window_capture_create(obs_data_t *settings, obs_source_t *source)

@@ -81,6 +81,7 @@ static void destroy_display_stream(struct display_capture *dc)
     }
 
     os_event_destroy(dc->disp_finished);
+    dc->disp_finished = NULL;
 }
 
 static void display_capture_destroy(void *data)
@@ -198,7 +199,10 @@ static bool init_display_stream(struct display_capture *dc)
         (__bridge NSString *) kCGDisplayStreamShowCursor: (id) show_cursor_cf,
     };
 
-    os_event_init(&dc->disp_finished, OS_EVENT_TYPE_MANUAL);
+    if (os_event_init(&dc->disp_finished, OS_EVENT_TYPE_MANUAL) != 0) {
+        blog(LOG_ERROR, "%s: Failed to create the display stream stop event", obs_source_get_name(dc->source));
+        return false;
+    }
 
     FourCharCode bgra_code = 0;
     bgra_code = ('B' << 24) | ('G' << 16) | ('R' << 8) | 'A';

@@ -51,6 +51,7 @@ API_AVAILABLE(macos(13.0)) static void destroy_audio_screen_stream(struct screen
     }
 
     os_event_destroy(sc->stream_start_completed);
+    sc->stream_start_completed = NULL;
 }
 
 API_AVAILABLE(macos(13.0)) static void sck_audio_capture_destroy(void *data)
@@ -174,7 +175,12 @@ API_AVAILABLE(macos(13.0)) static bool init_audio_screen_stream(struct screen_ca
         sc->disp = NULL;
         return !did_add_output;
     }
-    os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL);
+    if (os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL) != 0) {
+        MACCAP_ERR("init_audio_screen_stream: Failed to create the stream start event\n");
+        [sc->disp release];
+        sc->disp = NULL;
+        return false;
+    }
 
     __block BOOL did_stream_start = false;
     [sc->disp startCaptureWithCompletionHandler:^(NSError *_Nullable error2) {

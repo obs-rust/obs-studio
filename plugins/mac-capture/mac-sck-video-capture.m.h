@@ -63,6 +63,7 @@ API_AVAILABLE(macos(12.5)) static void destroy_screen_stream(struct screen_captu
     }
 
     os_event_destroy(sc->stream_start_completed);
+    sc->stream_start_completed = NULL;
 }
 
 API_AVAILABLE(macos(12.5)) static void sck_video_capture_destroy(void *data)
@@ -280,7 +281,12 @@ API_AVAILABLE(macos(12.5)) static bool init_screen_stream(struct screen_capture 
             return !did_add_output;
         }
     }
-    os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL);
+    if (os_event_init(&sc->stream_start_completed, OS_EVENT_TYPE_MANUAL) != 0) {
+        MACCAP_ERR("init_screen_stream: Failed to create the stream start event\n");
+        [sc->disp release];
+        sc->disp = NULL;
+        return false;
+    }
 
     __block BOOL did_stream_start = NO;
     [sc->disp startCaptureWithCompletionHandler:^(NSError *_Nullable error) {
