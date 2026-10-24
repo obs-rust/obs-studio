@@ -2262,6 +2262,23 @@
         "libobs/data"
       ]
     },
+    "test_scene_item_names_steps": {
+      "sources": [
+        "test/cmocka/test_scene_item_names_steps.c",
+        "libobs/obs-scene-item-names.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_list_remove": {
       "sources": [
         "test/cmocka/test_scene_list_remove.c",
@@ -3954,6 +3971,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_item_names_steps": {
+      "target": "test_scene_item_names_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_scene_list_remove": {
       "target": "test_scene_list_remove",
