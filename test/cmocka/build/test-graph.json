@@ -1356,6 +1356,28 @@
         "frontend/utility"
       ]
     },
+    "test_output_input_checks": {
+      "sources": [
+        "test/cmocka/test_output_input_checks.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_interleave": {
       "sources": [
         "test/cmocka/test_output_interleave.c",
@@ -3736,6 +3758,19 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_input_checks": {
+      "target": "test_output_input_checks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
     },
     "test_output_interleave": {
       "target": "test_output_interleave"
