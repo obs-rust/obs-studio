@@ -60,7 +60,7 @@
 /// Written out here, not taken from `obs-util`, so `obs-scene` links on its
 /// own (`test_scene_bounds_place_rust` links the staticlib without
 /// `obs-util`'s system libraries).
-fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+pub(crate) fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
     if crate::platform::MUL_DIV64_IS_UDIV128 {
         let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
             .checked_div(u128::from(div))

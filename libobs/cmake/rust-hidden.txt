@@ -129,6 +129,16 @@ obs_scene_item_save_relative
 # stay hidden the same way.
 obs_scene_audio_actions_apply
 obs_scene_audio_action_due
+# obs-scene-audio-window.c: scene_audio_render() in obs-scene.c calls them
+# inside libobs. Declared in obs-scene-audio-window.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_scene_audio_window_pick
+obs_scene_audio_window_counts
+obs_scene_audio_window_earliest
+obs_scene_audio_window_silent
+obs_scene_audio_window_frames
+obs_scene_audio_window_mixes
+obs_scene_audio_window_adds
 # obs-source-async-pacing.c: get_closest_frame() in obs-source.c calls it
 # inside libobs. Declared in obs-source-async-pacing.h without EXPORT, so the
 # shim stays hidden the same way.

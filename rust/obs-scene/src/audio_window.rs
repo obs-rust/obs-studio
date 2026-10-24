@@ -59,6 +59,16 @@
 
 pub use crate::audio_actions::AUDIO_OUTPUT_FRAMES;
 
+use crate::audio_actions::mul_div64;
+
+/// [`AUDIO_OUTPUT_FRAMES`] as the C compares it with the `uint64_t` frame.
+const FRAMES: u64 = 1024;
+
+/// Nanoseconds per second, the unit of the timestamps.
+const NS: u64 = 1_000_000_000;
+
+const _: () = assert!(AUDIO_OUTPUT_FRAMES == 1024);
+
 /// The source `scene_audio_render()` reads an item's audio from
 /// (`enum obs_scene_audio_window_child`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -77,23 +87,30 @@ pub enum Child {
 /// transition only when the item is visible, and for the hide transition
 /// only when the show transition is not picked and the item is hidden.
 pub fn pick(visible: bool, show_active: bool, hide_active: bool) -> Child {
-    let _ = (visible, show_active, hide_active);
-    todo!()
+    if visible && show_active {
+        Child::Show
+    } else if !visible && hide_active {
+        Child::Hide
+    } else {
+        Child::Source
+    }
 }
 
 /// `obs_scene_audio_window_counts()`: whether an item's timestamp takes part
 /// in the tick's earliest timestamp: its source is not pending, and it is
 /// visible or its hide transition is active.
 pub fn counts(pending: bool, visible: bool, hide_active: bool) -> bool {
-    let _ = (pending, visible, hide_active);
-    todo!()
+    !pending && (visible || hide_active)
 }
 
 /// `obs_scene_audio_window_earliest()`: `timestamp`, the earliest so far,
 /// with `source_ts` folded in. 0 is no timestamp, on either side.
 pub fn earliest(timestamp: u64, source_ts: u64) -> u64 {
-    let _ = (timestamp, source_ts);
-    todo!()
+    if source_ts != 0 && (timestamp == 0 || source_ts < timestamp) {
+        source_ts
+    } else {
+        timestamp
+    }
 }
 
 /// The tick's timestamp over the timestamps of the items that [`counts`]:
@@ -102,22 +119,19 @@ pub fn min_timestamp<I>(timestamps: I) -> u64
 where
     I: IntoIterator<Item = u64>,
 {
-    let _ = timestamps;
-    todo!()
+    timestamps.into_iter().fold(0, earliest)
 }
 
 /// `obs_scene_audio_window_silent()`: the scene has no audio this tick.
 pub fn silent(timestamp: u64) -> bool {
-    let _ = timestamp;
-    todo!()
+    timestamp == 0
 }
 
 /// `ns_to_audio_frames()` (`media-io/audio-io.h`): the frame `ns` after the
 /// start of a tick at `sample_rate`, `util_mul_div64(ns, sample_rate, 1e9)`
 /// as the C computes it on this target.
 pub fn ns_to_audio_frames(sample_rate: u64, ns: u64) -> u64 {
-    let _ = (sample_rate, ns);
-    todo!()
+    mul_div64(ns, sample_rate, NS)
 }
 
 /// Where an item's audio lands in the tick
@@ -138,8 +152,17 @@ pub struct Frames {
 /// the tick. The caller asks for `source_ts` only when the source is not
 /// pending.
 pub fn frames(pending: bool, source_ts: u64, timestamp: u64, sample_rate: u64) -> Option<Frames> {
-    let _ = (pending, source_ts, timestamp, sample_rate);
-    todo!()
+    if pending || source_ts == 0 {
+        return None;
+    }
+    let pos = ns_to_audio_frames(sample_rate, source_ts.wrapping_sub(timestamp));
+    if pos >= FRAMES {
+        return None;
+    }
+    // Below FRAMES, so it fits, and FRAMES - pos does not underflow.
+    let pos = usize::try_from(pos).ok()?;
+    let count = AUDIO_OUTPUT_FRAMES.checked_sub(pos)?;
+    Some(Frames { pos, count })
 }
 
 /// `obs_scene_audio_window_mixes()`: whether an item in the window is
@@ -147,13 +170,11 @@ pub fn frames(pending: bool, source_ts: u64, timestamp: u64, sample_rate: u64) -
 /// is active. The caller asks for the visibility only without a volume
 /// buffer, and for the hide transition only when the item is hidden.
 pub fn mixes(apply_buf: bool, visible: bool, hide_active: bool) -> bool {
-    let _ = (apply_buf, visible, hide_active);
-    todo!()
+    apply_buf || visible || hide_active
 }
 
 /// `obs_scene_audio_window_adds()`: whether the item's mix, once read, is
 /// added to the scene's: not when the source's audio is duplicated.
 pub fn adds(audio_is_duplicated: bool) -> bool {
-    let _ = audio_is_duplicated;
-    todo!()
+    !audio_is_duplicated
 }
