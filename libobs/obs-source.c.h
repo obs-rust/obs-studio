@@ -1712,448 +1712,63 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 	source_signal_audio_data(source, data, source_muted(source, os_time));
 }
 
+/* The conversion plan is obs-source-conversion-plan.c's: it gets the frame's
+ * format, range, transfer and size, and the stores into the source happen
+ * here. */
+_Static_assert(sizeof(enum video_format) == sizeof(int), "enum video_format is passed as int");
+_Static_assert(sizeof(enum gs_color_format) == sizeof(int), "enum gs_color_format is passed as int");
+_Static_assert(OBS_SOURCE_CONVERSION_PLAN_PLANES <= MAX_AV_PLANES, "the plan's planes fit the source's");
+
 enum convert_type {
-	CONVERT_NONE,
-	CONVERT_NV12,
-	CONVERT_420,
-	CONVERT_420_PQ,
-	CONVERT_420_A,
-	CONVERT_422,
-	CONVERT_422P10LE,
-	CONVERT_422_A,
-	CONVERT_422_PACK,
-	CONVERT_444,
-	CONVERT_444P12LE,
-	CONVERT_444_A,
-	CONVERT_444P12LE_A,
-	CONVERT_444_A_PACK,
-	CONVERT_800,
-	CONVERT_RGB_LIMITED,
-	CONVERT_BGR3,
-	CONVERT_I010,
-	CONVERT_P010,
-	CONVERT_V210,
-	CONVERT_R10L,
+	CONVERT_NONE = OBS_SOURCE_CONVERT_NONE,
+	CONVERT_NV12 = OBS_SOURCE_CONVERT_NV12,
+	CONVERT_420 = OBS_SOURCE_CONVERT_420,
+	CONVERT_420_PQ = OBS_SOURCE_CONVERT_420_PQ,
+	CONVERT_420_A = OBS_SOURCE_CONVERT_420_A,
+	CONVERT_422 = OBS_SOURCE_CONVERT_422,
+	CONVERT_422P10LE = OBS_SOURCE_CONVERT_422P10LE,
+	CONVERT_422_A = OBS_SOURCE_CONVERT_422_A,
+	CONVERT_422_PACK = OBS_SOURCE_CONVERT_422_PACK,
+	CONVERT_444 = OBS_SOURCE_CONVERT_444,
+	CONVERT_444P12LE = OBS_SOURCE_CONVERT_444P12LE,
+	CONVERT_444_A = OBS_SOURCE_CONVERT_444_A,
+	CONVERT_444P12LE_A = OBS_SOURCE_CONVERT_444P12LE_A,
+	CONVERT_444_A_PACK = OBS_SOURCE_CONVERT_444_A_PACK,
+	CONVERT_800 = OBS_SOURCE_CONVERT_800,
+	CONVERT_RGB_LIMITED = OBS_SOURCE_CONVERT_RGB_LIMITED,
+	CONVERT_BGR3 = OBS_SOURCE_CONVERT_BGR3,
+	CONVERT_I010 = OBS_SOURCE_CONVERT_I010,
+	CONVERT_P010 = OBS_SOURCE_CONVERT_P010,
+	CONVERT_V210 = OBS_SOURCE_CONVERT_V210,
+	CONVERT_R10L = OBS_SOURCE_CONVERT_R10L,
 };
 
 static inline enum convert_type get_convert_type(enum video_format format, bool full_range, uint8_t trc)
 {
-	switch (format) {
-	case VIDEO_FORMAT_I420:
-		return (trc == VIDEO_TRC_PQ) ? CONVERT_420_PQ : CONVERT_420;
-	case VIDEO_FORMAT_NV12:
-		return CONVERT_NV12;
-	case VIDEO_FORMAT_I444:
-		return CONVERT_444;
-	case VIDEO_FORMAT_I412:
-		return CONVERT_444P12LE;
-	case VIDEO_FORMAT_I422:
-		return CONVERT_422;
-	case VIDEO_FORMAT_I210:
-		return CONVERT_422P10LE;
-
-	case VIDEO_FORMAT_YVYU:
-	case VIDEO_FORMAT_YUY2:
-	case VIDEO_FORMAT_UYVY:
-		return CONVERT_422_PACK;
-
-	case VIDEO_FORMAT_Y800:
-		return CONVERT_800;
-
-	case VIDEO_FORMAT_NONE:
-	case VIDEO_FORMAT_RGBA:
-	case VIDEO_FORMAT_BGRA:
-	case VIDEO_FORMAT_BGRX:
-		return full_range ? CONVERT_NONE : CONVERT_RGB_LIMITED;
-
-	case VIDEO_FORMAT_BGR3:
-		return CONVERT_BGR3;
-
-	case VIDEO_FORMAT_I40A:
-		return CONVERT_420_A;
-
-	case VIDEO_FORMAT_I42A:
-		return CONVERT_422_A;
-
-	case VIDEO_FORMAT_YUVA:
-		return CONVERT_444_A;
-
-	case VIDEO_FORMAT_YA2L:
-		return CONVERT_444P12LE_A;
-
-	case VIDEO_FORMAT_AYUV:
-		return CONVERT_444_A_PACK;
-
-	case VIDEO_FORMAT_I010:
-		return CONVERT_I010;
-
-	case VIDEO_FORMAT_P010:
-		return CONVERT_P010;
-
-	case VIDEO_FORMAT_V210:
-		return CONVERT_V210;
-
-	case VIDEO_FORMAT_R10L:
-		return CONVERT_R10L;
-
-	case VIDEO_FORMAT_P216:
-	case VIDEO_FORMAT_P416:
-		/* Unimplemented */
-		break;
-	}
-
-	return CONVERT_NONE;
-}
-
-static inline bool set_packed422_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	source->async_convert_width[0] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_texture_formats[0] = GS_BGRA;
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_packed444_alpha_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_texture_formats[0] = GS_BGRA;
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_planar444_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_width[1] = frame->width;
-	source->async_convert_width[2] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_convert_height[1] = frame->height;
-	source->async_convert_height[2] = frame->height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_channel_count = 3;
-	return true;
-}
-
-static inline bool set_planar444_16_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_width[1] = frame->width;
-	source->async_convert_width[2] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_convert_height[1] = frame->height;
-	source->async_convert_height[2] = frame->height;
-	source->async_texture_formats[0] = GS_R16;
-	source->async_texture_formats[1] = GS_R16;
-	source->async_texture_formats[2] = GS_R16;
-	source->async_channel_count = 3;
-	return true;
-}
-
-static inline bool set_planar444_alpha_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_width[1] = frame->width;
-	source->async_convert_width[2] = frame->width;
-	source->async_convert_width[3] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_convert_height[1] = frame->height;
-	source->async_convert_height[2] = frame->height;
-	source->async_convert_height[3] = frame->height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_texture_formats[3] = GS_R8;
-	source->async_channel_count = 4;
-	return true;
-}
-
-static inline bool set_planar444_16_alpha_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_width[1] = frame->width;
-	source->async_convert_width[2] = frame->width;
-	source->async_convert_width[3] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_convert_height[1] = frame->height;
-	source->async_convert_height[2] = frame->height;
-	source->async_convert_height[3] = frame->height;
-	source->async_texture_formats[0] = GS_R16;
-	source->async_texture_formats[1] = GS_R16;
-	source->async_texture_formats[2] = GS_R16;
-	source->async_texture_formats[3] = GS_R16;
-	source->async_channel_count = 4;
-	return true;
-}
-
-static inline bool set_planar420_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	const uint32_t half_height = (height + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = half_height;
-	source->async_convert_height[2] = half_height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_channel_count = 3;
-	return true;
-}
-
-static inline bool set_planar420_alpha_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	const uint32_t half_height = (height + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_width[3] = width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = half_height;
-	source->async_convert_height[2] = half_height;
-	source->async_convert_height[3] = height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_texture_formats[3] = GS_R8;
-	source->async_channel_count = 4;
-	return true;
-}
-
-static inline bool set_planar422_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = height;
-	source->async_convert_height[2] = height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_channel_count = 3;
-	return true;
-}
-static inline bool set_planar422_16_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = height;
-	source->async_convert_height[2] = height;
-	source->async_texture_formats[0] = GS_R16;
-	source->async_texture_formats[1] = GS_R16;
-	source->async_texture_formats[2] = GS_R16;
-	source->async_channel_count = 3;
-	return true;
-}
-
-static inline bool set_planar422_alpha_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_width[3] = width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = height;
-	source->async_convert_height[2] = height;
-	source->async_convert_height[3] = height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8;
-	source->async_texture_formats[2] = GS_R8;
-	source->async_texture_formats[3] = GS_R8;
-	source->async_channel_count = 4;
-	return true;
-}
-
-static inline bool set_nv12_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	const uint32_t half_height = (height + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = half_height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_texture_formats[1] = GS_R8G8;
-	source->async_channel_count = 2;
-	return true;
-}
-
-static inline bool set_y800_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_rgb_limited_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_texture_formats[0] = convert_video_format(frame->format, frame->trc);
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_bgr3_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width * 3;
-	source->async_convert_height[0] = frame->height;
-	source->async_texture_formats[0] = GS_R8;
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_i010_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	const uint32_t half_height = (height + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_width[2] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = half_height;
-	source->async_convert_height[2] = half_height;
-	source->async_texture_formats[0] = GS_R16;
-	source->async_texture_formats[1] = GS_R16;
-	source->async_texture_formats[2] = GS_R16;
-	source->async_channel_count = 3;
-	return true;
-}
-
-static inline bool set_p010_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t half_width = (width + 1) / 2;
-	const uint32_t half_height = (height + 1) / 2;
-	source->async_convert_width[0] = width;
-	source->async_convert_width[1] = half_width;
-	source->async_convert_height[0] = height;
-	source->async_convert_height[1] = half_height;
-	source->async_texture_formats[0] = GS_R16;
-	source->async_texture_formats[1] = GS_RG16;
-	source->async_channel_count = 2;
-	return true;
-}
-
-static inline bool set_v210_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	const uint32_t width = frame->width;
-	const uint32_t height = frame->height;
-	const uint32_t adjusted_width = ((width + 5) / 6) * 4;
-	source->async_convert_width[0] = adjusted_width;
-	source->async_convert_height[0] = height;
-	source->async_texture_formats[0] = GS_R10G10B10A2;
-	source->async_channel_count = 1;
-	return true;
-}
-
-static inline bool set_r10l_sizes(struct obs_source *source, const struct obs_source_frame *frame)
-{
-	source->async_convert_width[0] = frame->width;
-	source->async_convert_height[0] = frame->height;
-	source->async_texture_formats[0] = GS_BGRA_UNORM;
-	source->async_channel_count = 1;
-	return true;
+	struct obs_source_conversion_plan plan;
+	obs_source_conversion_plan_fill((int)format, full_range, trc, 0, 0, &plan);
+	return (enum convert_type)plan.convert_type;
 }
 
 static inline bool init_gpu_conversion(struct obs_source *source, const struct obs_source_frame *frame)
 {
-	switch (get_convert_type(frame->format, frame->full_range, frame->trc)) {
-	case CONVERT_422_PACK:
-		return set_packed422_sizes(source, frame);
+	struct obs_source_conversion_plan plan;
+	obs_source_conversion_plan_fill((int)frame->format, frame->full_range, frame->trc, frame->width, frame->height,
+					&plan);
 
-	case CONVERT_420:
-	case CONVERT_420_PQ:
-		return set_planar420_sizes(source, frame);
-
-	case CONVERT_422:
-		return set_planar422_sizes(source, frame);
-
-	case CONVERT_422P10LE:
-		return set_planar422_16_sizes(source, frame);
-
-	case CONVERT_NV12:
-		return set_nv12_sizes(source, frame);
-
-	case CONVERT_444:
-		return set_planar444_sizes(source, frame);
-
-	case CONVERT_444P12LE:
-		return set_planar444_16_sizes(source, frame);
-
-	case CONVERT_800:
-		return set_y800_sizes(source, frame);
-
-	case CONVERT_RGB_LIMITED:
-		return set_rgb_limited_sizes(source, frame);
-
-	case CONVERT_BGR3:
-		return set_bgr3_sizes(source, frame);
-
-	case CONVERT_420_A:
-		return set_planar420_alpha_sizes(source, frame);
-
-	case CONVERT_422_A:
-		return set_planar422_alpha_sizes(source, frame);
-
-	case CONVERT_444_A:
-		return set_planar444_alpha_sizes(source, frame);
-
-	case CONVERT_444P12LE_A:
-		return set_planar444_16_alpha_sizes(source, frame);
-
-	case CONVERT_444_A_PACK:
-		return set_packed444_alpha_sizes(source, frame);
-
-	case CONVERT_I010:
-		return set_i010_sizes(source, frame);
-
-	case CONVERT_P010:
-		return set_p010_sizes(source, frame);
-
-	case CONVERT_V210:
-		return set_v210_sizes(source, frame);
-
-	case CONVERT_R10L:
-		return set_r10l_sizes(source, frame);
-
-	case CONVERT_NONE:
+	if (plan.convert_type == CONVERT_NONE) {
 		assert(false && "No conversion requested");
-		break;
+		return false;
 	}
-	return false;
+
+	for (int c = 0; c < plan.channel_count; c++)
+		source->async_convert_width[c] = plan.width[c];
+	for (int c = 0; c < plan.channel_count; c++)
+		source->async_convert_height[c] = plan.height[c];
+	for (int c = 0; c < plan.channel_count; c++)
+		source->async_texture_formats[c] = (enum gs_color_format)plan.format[c];
+	source->async_channel_count = plan.channel_count;
+	return true;
 }
 
 bool set_async_texture_size(struct obs_source *source, const struct obs_source_frame *frame)
@@ -2244,156 +1859,28 @@ static void upload_raw_frame(gs_texture_t *tex[MAX_AV_PLANES], const struct obs_
 
 static const char *select_conversion_technique(enum video_format format, bool full_range, uint8_t trc)
 {
+	struct obs_source_conversion_plan plan;
+	obs_source_conversion_plan_fill((int)format, full_range, trc, 0, 0, &plan);
+
 	switch (format) {
-	case VIDEO_FORMAT_UYVY:
-		return "UYVY_Reverse";
-
-	case VIDEO_FORMAT_YUY2:
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "YUY2_PQ_Reverse";
-		case VIDEO_TRC_HLG:
-			return "YUY2_HLG_Reverse";
-		default:
-			return "YUY2_Reverse";
-		}
-
-	case VIDEO_FORMAT_YVYU:
-		return "YVYU_Reverse";
-
-	case VIDEO_FORMAT_I420:
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "I420_PQ_Reverse";
-		case VIDEO_TRC_HLG:
-			return "I420_HLG_Reverse";
-		default:
-			return "I420_Reverse";
-		}
-
-	case VIDEO_FORMAT_NV12:
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "NV12_PQ_Reverse";
-		case VIDEO_TRC_HLG:
-			return "NV12_HLG_Reverse";
-		default:
-			return "NV12_Reverse";
-		}
-
-	case VIDEO_FORMAT_I444:
-		return "I444_Reverse";
-
-	case VIDEO_FORMAT_I412:
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "I412_PQ_Reverse";
-		case VIDEO_TRC_HLG:
-			return "I412_HLG_Reverse";
-		default:
-			return "I412_Reverse";
-		}
-
-	case VIDEO_FORMAT_Y800:
-		return full_range ? "Y800_Full" : "Y800_Limited";
-
-	case VIDEO_FORMAT_BGR3:
-		return full_range ? "BGR3_Full" : "BGR3_Limited";
-
-	case VIDEO_FORMAT_I422:
-		return "I422_Reverse";
-
-	case VIDEO_FORMAT_I210:
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "I210_PQ_Reverse";
-		case VIDEO_TRC_HLG:
-			return "I210_HLG_Reverse";
-		default:
-			return "I210_Reverse";
-		}
-
-	case VIDEO_FORMAT_I40A:
-		return "I40A_Reverse";
-
-	case VIDEO_FORMAT_I42A:
-		return "I42A_Reverse";
-
-	case VIDEO_FORMAT_YUVA:
-		return "YUVA_Reverse";
-
-	case VIDEO_FORMAT_YA2L:
-		return "YA2L_Reverse";
-
-	case VIDEO_FORMAT_AYUV:
-		return "AYUV_Reverse";
-
-	case VIDEO_FORMAT_I010: {
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "I010_PQ_2020_709_Reverse";
-		case VIDEO_TRC_HLG:
-			return "I010_HLG_2020_709_Reverse";
-		default:
-			return "I010_SRGB_Reverse";
-		}
-	}
-
-	case VIDEO_FORMAT_P010: {
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "P010_PQ_2020_709_Reverse";
-		case VIDEO_TRC_HLG:
-			return "P010_HLG_2020_709_Reverse";
-		default:
-			return "P010_SRGB_Reverse";
-		}
-	}
-
-	case VIDEO_FORMAT_V210: {
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return "V210_PQ_2020_709_Reverse";
-		case VIDEO_TRC_HLG:
-			return "V210_HLG_2020_709_Reverse";
-		default:
-			return "V210_SRGB_Reverse";
-		}
-	}
-
-	case VIDEO_FORMAT_R10L: {
-		switch (trc) {
-		case VIDEO_TRC_PQ:
-			return full_range ? "R10L_PQ_2020_709_Full_Reverse" : "R10L_PQ_2020_709_Limited_Reverse";
-		case VIDEO_TRC_HLG:
-			return full_range ? "R10L_HLG_2020_709_Full_Reverse" : "R10L_HLG_2020_709_Limited_Reverse";
-		default:
-			return full_range ? "R10L_SRGB_Full_Reverse" : "R10L_SRGB_Limited_Reverse";
-		}
-	}
-
 	case VIDEO_FORMAT_BGRA:
 	case VIDEO_FORMAT_BGRX:
 	case VIDEO_FORMAT_RGBA:
 	case VIDEO_FORMAT_NONE:
 		if (full_range)
 			assert(false && "No conversion requested");
-		else
-			return "RGB_Limited";
 		break;
-
-	case VIDEO_FORMAT_P216:
-	case VIDEO_FORMAT_P416:
-		/* Unimplemented */
+	default:
 		break;
 	}
-	return NULL;
+	return plan.technique;
 }
 
 static bool need_linear_output(enum video_format format)
 {
-	return (format == VIDEO_FORMAT_I010) || (format == VIDEO_FORMAT_P010) || (format == VIDEO_FORMAT_I210) ||
-	       (format == VIDEO_FORMAT_I412) || (format == VIDEO_FORMAT_YA2L);
+	struct obs_source_conversion_plan plan;
+	obs_source_conversion_plan_fill((int)format, false, 0, 0, 0, &plan);
+	return plan.linear;
 }
 
 static inline void set_eparam(gs_effect_t *effect, const char *name, float val)

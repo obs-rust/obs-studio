@@ -44,6 +44,7 @@
     "obs-source-audio-input.h",
     "obs-source-audio-timing.h",
     "obs-source-color-space.h",
+    "obs-source-conversion-plan.h",
     "obs-source-deinterlace-pacing.h",
     "obs-source-ptm-gate.h",
     "obs-source-transition-clock.h",

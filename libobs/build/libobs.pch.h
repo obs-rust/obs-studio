@@ -120,6 +120,7 @@
 #include "obs-source-audio-input.h"
 #include "obs-source-audio-timing.h"
 #include "obs-source-color-space.h"
+#include "obs-source-conversion-plan.h"
 #include "obs-source-ptm-gate.h"
 
 #include "media-io/audio-io.h"
