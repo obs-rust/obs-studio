@@ -36,9 +36,12 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
+
+use crate::deinterlace_pacing::TWOX_TOLERANCE;
 
 /// `OBS_DEINTERLACE_MODE_DISABLE` (`enum obs_deinterlace_mode`, `obs.h`).
 pub const MODE_DISABLE: i32 = 0;
@@ -67,6 +70,9 @@ pub const GS_CS_SRGB_16F: i32 = 1;
 pub const GS_CS_709_EXTENDED: i32 = 2;
 /// `GS_CS_709_SCRGB`: 1.0 = 80 nits, Windows and Linux HDR.
 pub const GS_CS_709_SCRGB: i32 = 3;
+
+/// The nits of 1.0 in scRGB: the multiplier is the white level over it.
+const SCRGB_WHITE: f32 = 80.0;
 
 /// `enum obs_source_deinterlace_draw_effect`: the effect a mode draws with,
 /// `obs->video.deinterlace_<name>_effect`. The discriminants are the C's.
@@ -125,38 +131,55 @@ pub enum ModeChange {
 /// each mode from DISCARD to YADIF_2X (RETRO draws with discard 2x); `None`
 /// for DISABLE and for a mode outside the enum.
 pub fn effect(mode: i32) -> Option<Effect> {
-    let _ = (mode,);
-    todo!()
+    match mode {
+        MODE_DISCARD => Some(Effect::Discard),
+        MODE_RETRO => Some(Effect::Discard2x),
+        MODE_BLEND => Some(Effect::Blend),
+        MODE_BLEND_2X => Some(Effect::Blend2x),
+        MODE_LINEAR => Some(Effect::Linear),
+        MODE_LINEAR_2X => Some(Effect::Linear2x),
+        MODE_YADIF => Some(Effect::Yadif),
+        MODE_YADIF_2X => Some(Effect::Yadif2x),
+        _ => None,
+    }
 }
 
 /// The index of [`effect`]: 0 for DISCARD to 7 for YADIF_2X, `None` for no
 /// effect. The C's enum value, -1 for none.
 pub fn effect_index(mode: i32) -> Option<u8> {
-    let _ = (mode,);
-    todo!()
+    effect(mode).map(|effect| match effect {
+        Effect::Discard => 0,
+        Effect::Discard2x => 1,
+        Effect::Blend => 2,
+        Effect::Blend2x => 3,
+        Effect::Linear => 4,
+        Effect::Linear2x => 5,
+        Effect::Yadif => 6,
+        Effect::Yadif2x => 7,
+    })
 }
 
 /// `deinterlace_draw_mode_known()`: DISABLE and the modes [`effect`] has an
 /// effect for.
 pub fn mode_known(mode: i32) -> bool {
-    let _ = (mode,);
-    todo!()
+    mode == MODE_DISABLE || effect(mode).is_some()
 }
 
 /// `obs_source_deinterlace_draw_linear_required()`: whether a mode needs
 /// linear sRGB input: BLEND to YADIF_2X, which read neighbouring lines;
 /// not DISABLE, DISCARD, RETRO or a mode outside the enum.
 pub fn linear_required(mode: i32) -> bool {
-    let _ = (mode,);
-    todo!()
+    matches!(
+        mode,
+        MODE_BLEND | MODE_BLEND_2X | MODE_LINEAR | MODE_LINEAR_2X | MODE_YADIF | MODE_YADIF_2X
+    )
 }
 
 /// `obs_source_deinterlace_draw_skip()`: the early return of
 /// `deinterlace_render()`, without the current or the previous texture or
 /// with a width or height of 0.
 pub fn skip(has_cur_tex: bool, has_prev_tex: bool, width: u32, height: u32) -> bool {
-    let _ = (has_cur_tex, has_prev_tex, width, height);
-    todo!()
+    !has_cur_tex || !has_prev_tex || width == 0 || height == 0
 }
 
 /// `obs_source_deinterlace_draw_reads_linear_srgb()`: whether
@@ -164,8 +187,7 @@ pub fn skip(has_cur_tex: bool, has_prev_tex: bool, width: u32, height: u32) -> b
 /// `source_space`, only for [`GS_CS_SRGB`] (the short circuit of the C's
 /// expression).
 pub fn reads_linear_srgb(source_space: i32) -> bool {
-    let _ = (source_space,);
-    todo!()
+    source_space == GS_CS_SRGB
 }
 
 /// `obs_source_deinterlace_draw_linear_srgb()`: whether
@@ -173,8 +195,12 @@ pub fn reads_linear_srgb(source_space: i32) -> bool {
 /// [`GS_CS_SRGB`], `gs_linear_srgb` (`gs_get_linear_srgb()`, false when it
 /// was not read), or a mode that needs it ([`linear_required`]).
 pub fn linear_srgb(source_space: i32, gs_linear_srgb: bool, mode: i32) -> bool {
-    let _ = (source_space, gs_linear_srgb, mode);
-    todo!()
+    source_space != GS_CS_SRGB || gs_linear_srgb || linear_required(mode)
+}
+
+/// Whether a space is SDR, [`GS_CS_SRGB`] or [`GS_CS_SRGB_16F`].
+fn sdr(space: i32) -> bool {
+    space == GS_CS_SRGB || space == GS_CS_SRGB_16F
 }
 
 /// `obs_source_deinterlace_draw_technique()`: the technique for a source in
@@ -185,16 +211,36 @@ pub fn linear_srgb(source_space: i32, gs_linear_srgb: bool, mode: i32) -> bool {
 /// [`GS_CS_709_EXTENDED`], Draw for any other pair, a space outside the
 /// enum included.
 pub fn technique(source_space: i32, current_space: i32) -> Technique {
-    let _ = (source_space, current_space);
-    todo!()
+    if sdr(source_space) {
+        if current_space == GS_CS_709_SCRGB {
+            return Technique::DrawMultiply;
+        }
+    } else if source_space == GS_CS_709_EXTENDED {
+        if sdr(current_space) {
+            return Technique::DrawTonemap;
+        }
+        if current_space == GS_CS_709_SCRGB {
+            return Technique::DrawMultiply;
+        }
+    } else if source_space == GS_CS_709_SCRGB {
+        if sdr(current_space) {
+            return Technique::DrawMultiplyTonemap;
+        }
+        if current_space == GS_CS_709_EXTENDED {
+            return Technique::DrawMultiply;
+        }
+    }
+    Technique::Draw
 }
 
 /// `obs_source_deinterlace_draw_reads_white_level()`: whether
 /// `deinterlace_render()` reads `obs_get_video_sdr_white_level()` for the
 /// pair: when the [`technique`] multiplies.
 pub fn reads_white_level(source_space: i32, current_space: i32) -> bool {
-    let _ = (source_space, current_space);
-    todo!()
+    matches!(
+        technique(source_space, current_space),
+        Technique::DrawMultiply | Technique::DrawMultiplyTonemap
+    )
 }
 
 /// `obs_source_deinterlace_draw_multiplier()`: `sdr_white_level / 80.0`
@@ -203,8 +249,17 @@ pub fn reads_white_level(source_space: i32, current_space: i32) -> bool {
 /// [`GS_CS_709_EXTENDED`], 1.0 for any other pair. One `f32` division, as
 /// in the C: 0 gives +inf from scRGB, -0 gives -inf, a NaN stays a NaN.
 pub fn multiplier(source_space: i32, current_space: i32, sdr_white_level: f32) -> f32 {
-    let _ = (source_space, current_space, sdr_white_level);
-    todo!()
+    let into_scrgb = current_space == GS_CS_709_SCRGB
+        && (sdr(source_space) || source_space == GS_CS_709_EXTENDED);
+    let from_scrgb = source_space == GS_CS_709_SCRGB
+        && (sdr(current_space) || current_space == GS_CS_709_EXTENDED);
+    if into_scrgb {
+        sdr_white_level / SCRGB_WHITE
+    } else if from_scrgb {
+        SCRGB_WHITE / sdr_white_level
+    } else {
+        1.0
+    }
 }
 
 /// `obs_source_deinterlace_draw_frame2()`: whether the second field is
@@ -212,8 +267,11 @@ pub fn multiplier(source_space: i32, current_space: i32, sdr_white_level: f32) -
 /// [`TWOX_TOLERANCE`], each step wrapping as the C's `uint64_t` does
 /// (#395, #1995, #2048).
 pub fn frame2(video_time: u64, frame_ts: u64, offset: u64, half_duration: u32) -> bool {
-    let _ = (video_time, frame_ts, offset, half_duration);
-    todo!()
+    let frame2_ts = frame_ts
+        .wrapping_add(offset)
+        .wrapping_add(u64::from(half_duration))
+        .wrapping_sub(TWOX_TOLERANCE);
+    video_time >= frame2_ts
 }
 
 /// `obs_source_deinterlace_draw_mode_change()`: what
@@ -222,6 +280,14 @@ pub fn frame2(video_time: u64, frame_ts: u64, offset: u64, half_duration: u32) -
 /// for the current mode, enable from DISABLE, disable to DISABLE, else
 /// switch.
 pub fn mode_change(current_mode: i32, mode: i32) -> ModeChange {
-    let _ = (current_mode, mode);
-    todo!()
+    let mode = if mode_known(mode) { mode } else { MODE_DISABLE };
+    if current_mode == mode {
+        ModeChange::Same
+    } else if current_mode == MODE_DISABLE {
+        ModeChange::Enable
+    } else if mode == MODE_DISABLE {
+        ModeChange::Disable
+    } else {
+        ModeChange::Switch
+    }
 }

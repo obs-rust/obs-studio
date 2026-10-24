@@ -156,6 +156,18 @@
     /* obs-source-conversion-plan.c. obs-source.c calls it inside libobs. Not
      * EXPORT. */
     obs_source_conversion_plan_fill;
+    /* obs-source-deinterlace-draw.c. obs-source-deinterlace.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_source_deinterlace_draw_effect;
+    obs_source_deinterlace_draw_linear_required;
+    obs_source_deinterlace_draw_skip;
+    obs_source_deinterlace_draw_reads_linear_srgb;
+    obs_source_deinterlace_draw_linear_srgb;
+    obs_source_deinterlace_draw_technique;
+    obs_source_deinterlace_draw_reads_white_level;
+    obs_source_deinterlace_draw_multiplier;
+    obs_source_deinterlace_draw_frame2;
+    obs_source_deinterlace_draw_mode_change;
     /* obs-source-deinterlace-pacing.c. obs-source-deinterlace.c calls them
      * inside libobs. Not EXPORT. */
     obs_source_deinterlace_pacing_hold;

@@ -133,6 +133,18 @@ _obs_source_color_space_pick
 # obs-source-conversion-plan.c: obs-source.c calls it inside libobs. Not
 # EXPORT.
 _obs_source_conversion_plan_fill
+# obs-source-deinterlace-draw.c: obs-source-deinterlace.c calls them inside
+# libobs. Not EXPORT.
+_obs_source_deinterlace_draw_effect
+_obs_source_deinterlace_draw_linear_required
+_obs_source_deinterlace_draw_skip
+_obs_source_deinterlace_draw_reads_linear_srgb
+_obs_source_deinterlace_draw_linear_srgb
+_obs_source_deinterlace_draw_technique
+_obs_source_deinterlace_draw_reads_white_level
+_obs_source_deinterlace_draw_multiplier
+_obs_source_deinterlace_draw_frame2
+_obs_source_deinterlace_draw_mode_change
 # obs-source-deinterlace-pacing.c: obs-source-deinterlace.c calls them inside
 # libobs. Not EXPORT.
 _obs_source_deinterlace_pacing_hold

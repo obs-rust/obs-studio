@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-deinterlace-draw.pch.h"
 
 /* The deinterlace draw decisions of obs-source-deinterlace.c, moved from
  * get_effect(), deinterlace_linear_required(), deinterlace_render() and
