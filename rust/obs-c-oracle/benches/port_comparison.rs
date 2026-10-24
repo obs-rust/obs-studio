@@ -30,6 +30,8 @@ mod output_video_checks;
 mod scene;
 #[path = "port_comparison/scene_crop.rs"]
 mod scene_crop;
+#[path = "port_comparison/scene_item_names.rs"]
+mod scene_item_names;
 #[path = "port_comparison/scene_render_plan.rs"]
 mod scene_render_plan;
 #[path = "port_comparison/service.rs"]
@@ -93,6 +95,7 @@ fn comparisons(criterion: &mut Criterion) {
     output_video_checks::benchmarks(criterion);
     scene::benchmarks(criterion);
     scene_crop::benchmarks(criterion);
+    scene_item_names::benchmarks(criterion);
     scene_render_plan::benchmarks(criterion);
     service::benchmarks(criterion);
     source_async_pacing::benchmarks(criterion);
