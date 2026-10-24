@@ -24,6 +24,10 @@
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
+//! `libobs/obs-source-media-admission.c.h`, the media action admission
+//! decisions of the `obs_source_media_*()` functions and
+//! `process_media_actions()` (whether a call is accepted, the getters'
+//! fallbacks, and each queued action's callback and signal);
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
@@ -40,7 +44,7 @@
 //! The safe cores are [`async_pacing`], [`audio_input`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`draw_plan`], [`frame_copy`], [`ptm_gate`], [`render_route`], [`size_route`],
+//! [`deinterlace_pacing`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
 //! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C

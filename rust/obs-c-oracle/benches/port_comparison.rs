@@ -64,6 +64,8 @@ mod source_draw_plan;
 mod source_frame_copy;
 #[path = "port_comparison/source_load.rs"]
 mod source_load;
+#[path = "port_comparison/source_media_admission.rs"]
+mod source_media_admission;
 #[path = "port_comparison/source_profiler.rs"]
 mod source_profiler;
 #[path = "port_comparison/source_ptm_gate.rs"]
@@ -171,6 +173,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_draw_plan,
         source_frame_copy,
         source_load,
+        source_media_admission,
         source_profiler,
         source_ptm_gate,
         source_render_route,
