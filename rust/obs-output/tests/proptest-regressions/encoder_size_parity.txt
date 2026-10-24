@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc dff591a5c750fcad5fffcd1cdb096eb242ecf7c7449122c2c980eb167bbee72e # shrinks to f = 0, r = 0, s = 0, mf = 1, mr = 0, ms = 0
+cc aad8fa0a9cfeb90927b516a133dfc461e1fb6c0224ac221cc6471984631110ab # shrinks to f = 0, r = 0, s = 0, mf = 0, mr = 1, ms = 0
+cc 69dcedf21249561076261b6da2d0149d447793ac7ec924d0f1c7b942820f8018 # shrinks to t = 1, active = true, initialized = true
+cc c6afeee8dea3f28eb8e8d8b5b85545eb59fe4cbd65c9f8e03f06ae48801b8dbd # shrinks to t = -1, active = false, initialized = false
+cc fe7ecdbce01b2c4d2ff3543c5b1e8c6c3ed428bea12add8d562ec238d7cbf056 # shrinks to has_voi = true, vw = 0, vh = 0, w = 0, h = 1, same = 0
+cc fcbd72378b9980c6889be893e32eefe004828755b9afc7d0d63df6538997ef35 # shrinks to has_voi = false, vw = 0, vh = 0, w = 0, h = 0, same = 0
+cc d8f45afbd0e05556642f6c676989a834a860abec4d4acb5f261ca824b8d4bcd1 # shrinks to t = -1, has_media = false, stored = 0

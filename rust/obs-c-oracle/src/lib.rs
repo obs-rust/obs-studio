@@ -56,6 +56,7 @@ pub mod effect_lookups;
 pub mod effect_parser_lifecycle;
 pub mod encoder_packet;
 pub mod encoder_roi;
+pub mod encoder_size;
 pub mod file_serializer;
 pub mod format_conversion;
 pub mod frame_rate;
