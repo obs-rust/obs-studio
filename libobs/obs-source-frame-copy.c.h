@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-frame-copy.pch.h"
 
 /* The async frame copy plan and cache decisions, moved from obs-source.c:
  * the plane copies of copy_frame_data_line(), copy_frame_data_plane() and

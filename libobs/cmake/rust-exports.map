@@ -195,6 +195,14 @@
     obs_source_draw_plan_reads_white_level;
     obs_source_draw_plan_multiplier;
     obs_source_draw_plan_convert;
+    /* obs-source-frame-copy.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_frame_copy_plan;
+    obs_source_frame_copy_cache_step;
+    obs_source_frame_copy_cache_clean;
+    obs_source_frame_copy_full_range;
+    obs_source_frame_copy_full_range2;
+    obs_source_frame_copy_preload_changed;
     /* obs-source-ptm-gate.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_ptm_gate_stop_time;

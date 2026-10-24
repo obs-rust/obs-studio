@@ -9,6 +9,7 @@ pub mod source_deinterlace_draw;
 pub mod source_deinterlace_pacing;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
+pub mod source_frame_copy;
 pub mod source_ptm_gate;
 pub mod source_render_route;
 pub mod source_size;

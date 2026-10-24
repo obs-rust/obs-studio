@@ -40,6 +40,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -155,16 +156,44 @@ pub struct Shape {
 /// `u32::MAX` as the C's `uint32_t` does.
 #[must_use]
 pub const fn half(height: u32) -> u32 {
-    let _ = height;
-    todo!()
+    height.wrapping_add(1) / 2
 }
 
 /// `copy_frame_data()`'s switch: the planes of `format` and how each one's
 /// rows follow the height. P216, P416 and values outside the enum have none.
 #[must_use]
 pub const fn plane_rows(format: i32) -> &'static [Rows] {
-    let _ = format;
-    todo!()
+    use Rows::{Full, Half};
+    match format {
+        video_format::I420 | video_format::I010 => &[Full, Half, Half],
+        video_format::NV12 | video_format::P010 => &[Full, Half],
+        video_format::I444 | video_format::I422 | video_format::I210 | video_format::I412 => {
+            &[Full, Full, Full]
+        }
+        video_format::YVYU
+        | video_format::YUY2
+        | video_format::UYVY
+        | video_format::NONE
+        | video_format::RGBA
+        | video_format::BGRA
+        | video_format::BGRX
+        | video_format::Y800
+        | video_format::BGR3
+        | video_format::AYUV
+        | video_format::V210
+        | video_format::R10L => &[Full],
+        video_format::I40A => &[Full, Half, Half, Full],
+        video_format::I42A | video_format::YUVA | video_format::YA2L => &[Full, Full, Full, Full],
+        // "Unimplemented"
+        video_format::P216 | video_format::P416 => &[],
+        _ => &[],
+    }
+}
+
+/// `size_t` of a `u32`.
+#[allow(clippy::as_conversions)]
+const fn size(value: u32) -> usize {
+    value as usize
 }
 
 /// `copy_frame_data_plane()` and `copy_frame_data_line()`: one copy of
@@ -172,8 +201,23 @@ pub const fn plane_rows(format: i32) -> &'static [Rows] {
 /// of the smaller line size.
 #[must_use]
 pub const fn plane_copy(rows: u32, src: u32, dst: u32) -> PlaneCopy {
-    let _ = (rows, src, dst);
-    todo!()
+    if dst == src {
+        PlaneCopy {
+            whole: true,
+            bytes: size(dst).wrapping_mul(size(rows)),
+            rows,
+            src_stride: src,
+            dst_stride: dst,
+        }
+    } else {
+        PlaneCopy {
+            whole: false,
+            bytes: size(if dst < src { dst } else { src }),
+            rows,
+            src_stride: src,
+            dst_stride: dst,
+        }
+    }
 }
 
 /// `obs_source_frame_copy_plan()`: the copies from a frame of `format` and
@@ -187,23 +231,46 @@ pub fn copy_plan(
     src: [u32; PLANES],
     dst: [u32; PLANES],
 ) -> CopyPlan {
-    let _ = (format, full_range, height, src, dst);
-    todo!()
+    let mut plan = CopyPlan {
+        color_range: !full_range,
+        ..CopyPlan::default()
+    };
+    for (((slot, rule), s), d) in plan
+        .planes
+        .iter_mut()
+        .zip(plane_rows(format))
+        .zip(src)
+        .zip(dst)
+    {
+        let rows = match rule {
+            Rows::Full => height,
+            Rows::Half => half(height),
+        };
+        *slot = plane_copy(rows, s, d);
+        plan.count = plan.count.saturating_add(1);
+    }
+    plan
 }
 
 /// `async_texture_changed()`: the size or the convert type differs.
 #[must_use]
 pub const fn texture_changed(cache: Key, frame: Key) -> bool {
-    let _ = (cache, frame);
-    todo!()
+    cache.width != frame.width
+        || cache.height != frame.height
+        || cache.convert_type != frame.convert_type
 }
 
 /// `cache_video()`: `queued` is `async_frames.num`. The queue limit comes
 /// first, then [`texture_changed`].
 #[must_use]
 pub const fn cache_step(queued: usize, cache: Key, frame: Key) -> CacheStep {
-    let _ = (queued, cache, frame);
-    todo!()
+    if queued >= MAX_ASYNC_FRAMES {
+        CacheStep::Overflow
+    } else if texture_changed(cache, frame) {
+        CacheStep::Reset
+    } else {
+        CacheStep::Keep
+    }
 }
 
 /// One entry of `clean_cache()`: an unused entry counts one more call
@@ -212,23 +279,64 @@ pub const fn cache_step(queued: usize, cache: Key, frame: Key) -> CacheStep {
 /// which no entry reaches (counts start at 0 and the entry is erased at 5).
 #[must_use]
 pub const fn clean(used: bool, unused_count: c_long) -> CacheAge {
-    let _ = (used, unused_count);
-    todo!()
+    if used {
+        return CacheAge::InUse;
+    }
+    let count = unused_count.wrapping_add(1);
+    if count == MAX_UNUSED {
+        CacheAge::Drop(count)
+    } else {
+        CacheAge::Counted(count)
+    }
 }
 
 /// `format_is_yuv()` (`media-io/video-io.h`): false outside the enum.
 #[must_use]
 pub const fn is_yuv(format: i32) -> bool {
-    let _ = format;
-    todo!()
+    match format {
+        video_format::I420
+        | video_format::NV12
+        | video_format::I422
+        | video_format::I210
+        | video_format::YVYU
+        | video_format::YUY2
+        | video_format::UYVY
+        | video_format::I444
+        | video_format::I412
+        | video_format::I40A
+        | video_format::I42A
+        | video_format::YUVA
+        | video_format::YA2L
+        | video_format::AYUV
+        | video_format::I010
+        | video_format::P010
+        | video_format::P216
+        | video_format::P416
+        | video_format::V210 => true,
+        video_format::NONE
+        | video_format::RGBA
+        | video_format::BGRA
+        | video_format::BGRX
+        | video_format::Y800
+        | video_format::BGR3
+        | video_format::R10L => false,
+        _ => false,
+    }
 }
 
 /// `resolve_video_range()` (`media-io/video-io.h`): `DEFAULT` is partial
 /// for YUV and full otherwise; any other value is kept.
 #[must_use]
 pub const fn resolve_range(format: i32, range: i32) -> i32 {
-    let _ = (format, range);
-    todo!()
+    if range == video_range::DEFAULT {
+        if is_yuv(format) {
+            video_range::PARTIAL
+        } else {
+            video_range::FULL
+        }
+    } else {
+        range
+    }
 }
 
 /// `obs_source_output_video()`, `obs_source_preload_video()` and
@@ -236,22 +344,26 @@ pub const fn resolve_range(format: i32, range: i32) -> i32 {
 /// is full range.
 #[must_use]
 pub const fn full_range(format: i32, full_range: bool) -> bool {
-    let _ = (format, full_range);
-    todo!()
+    if is_yuv(format) { full_range } else { true }
 }
 
 /// The `*2()` variants: full range exactly when [`resolve_range`] gives
 /// `FULL`.
 #[must_use]
 pub const fn full_range2(format: i32, range: i32) -> bool {
-    let _ = (format, range);
-    todo!()
+    resolve_range(format, range) == video_range::FULL
 }
 
 /// `preload_frame_changed()`: there is no preload frame, or its size or
 /// format differs from the new frame's.
 #[must_use]
 pub const fn preload_changed(preload: Option<Shape>, frame: Shape) -> bool {
-    let _ = (preload, frame);
-    todo!()
+    match preload {
+        None => true,
+        Some(preload) => {
+            frame.width != preload.width
+                || frame.height != preload.height
+                || frame.format != preload.format
+        }
+    }
 }
