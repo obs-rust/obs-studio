@@ -1856,6 +1856,15 @@ area.
   nothing to draw (for example while it is disabled or has a size of 0); it
   draws nothing for that frame. *All*, pending merge. Issue
   [#2160](https://github.com/obs-rust/obs-studio/issues/2160).
+- When the system cannot set up the event that OBS waits on, OBS no
+  longer crashes on it: a task that OBS hands to another of its threads
+  still runs once and is waited for; recording through the buffered file
+  writer or ffmpeg-mux, macOS window capture and the screen saver
+  inhibitor fail to start instead; macOS display and screen capture do not
+  start their stream; and a streaming service's ingest list refresh is not
+  waited for. macOS display and screen capture also no longer free the
+  same event twice after an update that could not restart them. *All*,
+  pending merge. Issue [#2164](https://github.com/obs-rust/obs-studio/issues/2164).
 
 ### Security hardening
 
