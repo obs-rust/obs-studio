@@ -50,6 +50,9 @@
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 
+/* obs-encoder-size.c */
+#include "obs-encoder-size.h"
+
 /* obs-output-video-checks.c */
 #include "obs-output-video-checks.h"
 

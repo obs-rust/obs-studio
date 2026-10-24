@@ -9,6 +9,7 @@
     "obs-data.h",
     "obs-defs.h",
     "obs-encoder-roi.h",
+    "obs-encoder-size.h",
     "obs-encoder.h",
     "obs-ffmpeg-compat.h",
     "obs-hotkey.h",
