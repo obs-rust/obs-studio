@@ -170,6 +170,11 @@ _obs_source_transition_clock_fold
 _obs_source_transition_clock_fit
 _obs_source_transition_clock_mix_spaces
 _obs_source_transition_clock_min_ts
+# obs-source-volume.c: obs-source.c calls them inside libobs. Not EXPORT.
+_obs_source_volume_snap
+_obs_source_volume_action_due
+_obs_source_volume_step
+_obs_source_volume_mixes
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Not EXPORT.
 _obs_audio_mix_time_to_frames
 _obs_audio_mix_add

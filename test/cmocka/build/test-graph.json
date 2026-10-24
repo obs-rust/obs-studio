@@ -2793,6 +2793,30 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_volume_apply_steps": {
+      "sources": [
+        "test/cmocka/test_source_volume_apply_steps.c",
+        "libobs/obs-source-ptm-gate.c.h",
+        "libobs/obs-source-volume.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_volume_mix": {
       "sources": [
         "test/cmocka/test_source_volume_mix.c"
@@ -4523,6 +4547,12 @@
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_volume_apply_steps": {
+      "target": "test_source_volume_apply_steps",
       "command": [
         "${target}"
       ]

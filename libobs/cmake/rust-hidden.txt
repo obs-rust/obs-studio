@@ -208,6 +208,13 @@ obs_source_transition_clock_fold
 obs_source_transition_clock_fit
 obs_source_transition_clock_mix_spaces
 obs_source_transition_clock_min_ts
+# obs-source-volume.c: get_source_volume() and apply_audio_volume() in
+# obs-source.c call them inside libobs. Declared in obs-source-volume.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_source_volume_snap
+obs_source_volume_action_due
+obs_source_volume_step
+obs_source_volume_mixes
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Declared in
 # obs-audio-mix.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_mix_time_to_frames

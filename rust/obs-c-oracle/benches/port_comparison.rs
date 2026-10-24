@@ -62,6 +62,8 @@ mod source_ptm_gate;
 mod source_size;
 #[path = "port_comparison/source_transition_clock.rs"]
 mod source_transition_clock;
+#[path = "port_comparison/source_volume.rs"]
+mod source_volume;
 #[path = "port_comparison/util.rs"]
 mod util;
 #[path = "port_comparison/video_copy_plan.rs"]
@@ -154,6 +156,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_ptm_gate,
         source_size,
         source_transition_clock,
+        source_volume,
         util,
         video_copy_plan,
         video_output_step,

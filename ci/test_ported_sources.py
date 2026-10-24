@@ -46,6 +46,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-ptm-gate.c.h.o",
     "obs-source-size.c.h.o",
     "obs-source-transition-clock.c.h.o",
+    "obs-source-volume.c.h.o",
     "obs-video-copy-plan.c.h.o",
     "obs-video-output-step.c.h.o",
     "obs-view-api.c.h.o",

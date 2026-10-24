@@ -194,6 +194,12 @@
     obs_source_transition_clock_fit;
     obs_source_transition_clock_mix_spaces;
     obs_source_transition_clock_min_ts;
+    /* obs-source-volume.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_volume_snap;
+    obs_source_volume_action_due;
+    obs_source_volume_step;
+    obs_source_volume_mixes;
     /* obs-audio-mix.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_mix_time_to_frames;
     obs_audio_mix_add;

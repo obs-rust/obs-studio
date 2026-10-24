@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 918aafe22a2cfb49361c1d27ae6ce843f3d9115b324ff1d321c31834579270ce # shrinks to bits = 953267992, muted = false
+cc c5e185dcd381bea75fa8a42b70b4d431e2164cb29e4ac52ea46e1a3bff3599f6 # shrinks to bits = 1, stops = (0, 0), delays = (0, 0), volume_bits = 3100751640, os_time = 0
+cc 232faba71d476ad1d0c253a024552197cab0abb1da028945f424a801fa765bf9 # shrinks to bits = 953267992, muted = true
+cc 1c42cd4ff17bd5ab6adbbc2da0d13d801b0cb80c1dc7214891423debd2e9acad # shrinks to bits = 2, stops = (0, 0), delays = (0, 0), volume_bits = 953267992, os_time = 0
+cc cc3a4ad4005994cb38eb7b7840a9a63890675caef3ccbdb2e8e8f7c851698fb3 # shrinks to bits = 2139095041, muted = false
+cc 207987afd600ecc0fc30061d9cfe0f37766a8efac3d41cc41172279b3a37aad3 # shrinks to bits = 1, stops = (0, 0), delays = (0, 0), volume_bits = 2139095041, os_time = 0
+cc 35f3b09a2b420abdede49dc276da954b8872d4ca504a19e30ad77dc50f29767f # shrinks to bits = 2143289344, mixers = 0

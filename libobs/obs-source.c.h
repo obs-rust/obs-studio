@@ -4754,6 +4754,11 @@ void *obs_source_get_type_data(obs_source_t *source)
 	return obs_source_valid(source, "obs_source_get_type_data") ? source->info.type_data : NULL;
 }
 
+/* The gate goes through obs-source-ptm-gate.c and the snap through
+ * obs-source-volume.c, on values. Each field is read and written here as
+ * before, in the same order: the stop times only when their key is not
+ * pressed, enabled, muted and the gates' enabled flags only where the
+ * short-circuit reaches them. */
 static float get_source_volume(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->push_to_mute_pressed)
@@ -4762,18 +4767,18 @@ static float get_source_volume(obs_source_t *source, uint64_t os_time)
 	if (source->push_to_talk_enabled && source->push_to_talk_pressed)
 		source->push_to_talk_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_talk_delay);
 
-	bool push_to_mute_active = source->push_to_mute_pressed || os_time < source->push_to_mute_stop_time;
-	bool push_to_talk_active = source->push_to_talk_pressed || os_time < source->push_to_talk_stop_time;
+	bool push_to_mute_active = source->push_to_mute_pressed ||
+				   obs_source_ptm_gate_held(os_time, source->push_to_mute_stop_time);
+	bool push_to_talk_active = source->push_to_talk_pressed ||
+				   obs_source_ptm_gate_held(os_time, source->push_to_talk_stop_time);
 
-	bool muted = !source->enabled || source->muted || (source->push_to_mute_enabled && push_to_mute_active) ||
-		     (source->push_to_talk_enabled && !push_to_talk_active);
+	bool muted = !source->enabled || source->muted ||
+		     obs_source_ptm_gate_mutes(source->push_to_mute_enabled, push_to_mute_active) ||
+		     obs_source_ptm_gate_talk_mutes(source->push_to_talk_enabled, push_to_talk_active);
 
-	if (muted || close_float(source->volume, 0.0f, 0.0001f))
-		return 0.0f;
-	if (close_float(source->volume, 1.0f, 0.0001f))
-		return 1.0f;
-
-	return source->volume;
+	/* source->volume is written only by apply_audio_action() on this
+	 * thread, so reading it once, muted or not, reads the same value. */
+	return obs_source_volume_snap(muted, source->volume);
 }
 
 static inline void multiply_output_audio(obs_source_t *source, size_t mix, size_t channels, float vol)
@@ -4859,6 +4864,10 @@ static void apply_audio_actions(obs_source_t *source, size_t channels, size_t sa
 	}
 }
 
+/* Whether the first queued action is due, and skip, clear or multiply, go
+ * through obs-source-volume.c, on values. The queue and its mutex,
+ * apply_audio_actions(), conv_frames_to_time(), the memset and the multiply
+ * stay here. */
 static void apply_audio_volume(obs_source_t *source, uint32_t mixers, size_t channels, size_t sample_rate)
 {
 	struct audio_action action;
@@ -4876,25 +4885,29 @@ static void apply_audio_volume(obs_source_t *source, uint32_t mixers, size_t cha
 	if (actions_pending) {
 		uint64_t duration = conv_frames_to_time(sample_rate, AUDIO_OUTPUT_FRAMES);
 
-		if (action.timestamp < (source->audio_ts + duration)) {
+		if (obs_source_volume_action_due(action.timestamp, source->audio_ts, duration)) {
 			apply_audio_actions(source, channels, sample_rate);
 			return;
 		}
 	}
 
 	vol = get_source_volume(source, source->audio_ts);
-	if (vol == 1.0f)
-		return;
 
-	if (vol == 0.0f || mixers == 0) {
+	switch (obs_source_volume_step(vol, mixers)) {
+	case OBS_SOURCE_VOLUME_SKIP:
+		return;
+	case OBS_SOURCE_VOLUME_CLEAR:
 		memset(source->audio_output_buf[0][0], 0,
 		       AUDIO_OUTPUT_FRAMES * sizeof(float) * MAX_AUDIO_CHANNELS * MAX_AUDIO_MIXES);
 		return;
+	case OBS_SOURCE_VOLUME_MULTIPLY:
+	default:
+		break;
 	}
 
+	/* source->audio_mixers is read once per mix, as before. */
 	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
-		uint32_t mix_and_val = (1 << mix);
-		if ((source->audio_mixers & mix_and_val) != 0 && (mixers & mix_and_val) != 0)
+		if (obs_source_volume_mixes(source->audio_mixers, mixers, mix))
 			multiply_output_audio(source, mix, channels, vol);
 	}
 }

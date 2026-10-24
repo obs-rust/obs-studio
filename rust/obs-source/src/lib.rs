@@ -16,14 +16,16 @@
 //! double-rate deinterlacing; `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-size.c.h`, the size query routing of
-//! `obs_source_get_width()` and `obs_source_get_height()`; and
+//! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
-//! the transitions.
+//! the transitions; and `libobs/obs-source-volume.c.h`, the volume snap of
+//! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`ptm_gate`],
-//! [`size_route`] and [`transition_clock`]. The C ABI shims live in [`ffi`].
+//! [`size_route`], [`transition_clock`] and
+//! [`volume_apply`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
@@ -37,6 +39,7 @@ pub mod deinterlace_pacing;
 pub mod ptm_gate;
 pub mod size_route;
 pub mod transition_clock;
+pub mod volume_apply;
 
 #[allow(unsafe_code)]
 pub mod ffi;
