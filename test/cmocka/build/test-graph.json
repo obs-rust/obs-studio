@@ -2479,6 +2479,23 @@
         "libobs/data"
       ]
     },
+    "test_source_ptm_gate_steps": {
+      "sources": [
+        "test/cmocka/test_source_ptm_gate_steps.c",
+        "libobs/obs-source-ptm-gate.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_registration": {
       "sources": [
         "test/cmocka/test_source_registration.c"
@@ -3966,6 +3983,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_source_ptm_gate_steps": {
+      "target": "test_source_ptm_gate_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_source_registration": {
       "target": "test_source_registration",
