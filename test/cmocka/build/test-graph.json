@@ -1874,7 +1874,18 @@
         "-Wl,--export-dynamic-symbol=pthread_mutex_destroy",
         "-Wl,--export-dynamic-symbol=pthread_mutex_init"
       ],
-      "requires": "OS_LINUX"
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
     },
     "test_pulse_default_id": {
       "sources": [
@@ -4151,7 +4162,8 @@
       "command": [
         "${target}"
       ],
-      "timeout_seconds": 60,
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
       "optional_prefixes": [
         [
           "xvfb-run",
