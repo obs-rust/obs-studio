@@ -32,8 +32,6 @@
 //! kept: started and ended need no callback, so they signal for any
 //! controllable source; a set-time emits no signal; a queued type outside
 //! the enum is dropped silently and the loop takes the next action.
-//!
-//! Not ported yet: every function is `todo!()`, so the Tier 1 tests fail.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -42,6 +40,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -119,15 +118,38 @@ impl Call {
     ];
 
     /// The C enum's value.
-    pub fn value(self) -> i32 {
-        let _ = self;
-        todo!("Call::value")
+    pub const fn value(self) -> i32 {
+        match self {
+            Self::PlayPause => 0,
+            Self::Restart => 1,
+            Self::Stop => 2,
+            Self::Next => 3,
+            Self::Previous => 4,
+            Self::GetDuration => 5,
+            Self::GetTime => 6,
+            Self::SetTime => 7,
+            Self::GetState => 8,
+            Self::Started => 9,
+            Self::Ended => 10,
+        }
     }
 
     /// The call with the C enum's value `value`, `None` outside the enum.
-    pub fn from_value(value: i32) -> Option<Self> {
-        let _ = value;
-        todo!("Call::from_value")
+    pub const fn from_value(value: i32) -> Option<Self> {
+        Some(match value {
+            0 => Self::PlayPause,
+            1 => Self::Restart,
+            2 => Self::Stop,
+            3 => Self::Next,
+            4 => Self::Previous,
+            5 => Self::GetDuration,
+            6 => Self::GetTime,
+            7 => Self::SetTime,
+            8 => Self::GetState,
+            9 => Self::Started,
+            10 => Self::Ended,
+            _ => return None,
+        })
     }
 }
 
@@ -149,9 +171,13 @@ pub enum Admit {
 
 impl Admit {
     /// The C enum's value.
-    pub fn value(self) -> u32 {
-        let _ = self;
-        todo!("Admit::value")
+    pub const fn value(self) -> i32 {
+        match self {
+            Self::Reject => 0,
+            Self::Accept => 1,
+            Self::ReadFlags => 2,
+            Self::ReadCallback => 3,
+        }
     }
 }
 
@@ -193,62 +219,132 @@ impl Dispatch {
     ];
 
     /// The C enum's value.
-    pub fn value(self) -> i32 {
-        let _ = self;
-        todo!("Dispatch::value")
+    pub const fn value(self) -> i32 {
+        match self {
+            Self::Return => 0,
+            Self::PlayPause => 1,
+            Self::Restart => 2,
+            Self::Stop => 3,
+            Self::Next => 4,
+            Self::Previous => 5,
+            Self::SetTime => 6,
+            Self::Skip => 7,
+        }
     }
 
     /// The dispatch with the C enum's value `value`, `None` outside the
     /// enum.
-    pub fn from_value(value: i32) -> Option<Self> {
-        let _ = value;
-        todo!("Dispatch::from_value")
+    pub const fn from_value(value: i32) -> Option<Self> {
+        Some(match value {
+            0 => Self::Return,
+            1 => Self::PlayPause,
+            2 => Self::Restart,
+            3 => Self::Stop,
+            4 => Self::Next,
+            5 => Self::Previous,
+            6 => Self::SetTime,
+            7 => Self::Skip,
+            _ => return None,
+        })
     }
 }
 
-/// `obs_source_media_admit()`.
-pub fn admit(valid: bool) -> Admit {
-    let _ = valid;
-    todo!("obs_source_media_admit")
+/// `obs_source_media_admit()`: the first step, [`Admit::ReadFlags`] for a
+/// valid source (`data_valid()`, or `obs_source_valid()` for started and
+/// ended), else [`Admit::Reject`].
+pub const fn admit(valid: bool) -> Admit {
+    if valid {
+        Admit::ReadFlags
+    } else {
+        Admit::Reject
+    }
 }
 
-/// `obs_source_media_admit_flags()`; `call` is `None` outside the enum.
-pub fn admit_flags(call: Option<Call>, output_flags: u32) -> Admit {
-    let _ = (call, output_flags);
-    todo!("obs_source_media_admit_flags")
+/// `obs_source_media_admit_flags()`: the step after reading the output
+/// flags. [`Admit::Reject`] without [`CONTROLLABLE_MEDIA`],
+/// [`Admit::Accept`] for [`Call::Started`] and [`Call::Ended`], else
+/// [`Admit::ReadCallback`], a call outside the enum (`None`) included.
+pub const fn admit_flags(call: Option<Call>, output_flags: u32) -> Admit {
+    if output_flags & CONTROLLABLE_MEDIA == 0 {
+        return Admit::Reject;
+    }
+
+    match call {
+        Some(Call::Started | Call::Ended) => Admit::Accept,
+        Some(
+            Call::PlayPause
+            | Call::Restart
+            | Call::Stop
+            | Call::Next
+            | Call::Previous
+            | Call::GetDuration
+            | Call::GetTime
+            | Call::SetTime
+            | Call::GetState,
+        )
+        | None => Admit::ReadCallback,
+    }
 }
 
-/// `obs_source_media_admit_callback()`.
-pub fn admit_callback(has_callback: bool) -> Admit {
-    let _ = has_callback;
-    todo!("obs_source_media_admit_callback")
+/// `obs_source_media_admit_callback()`: the step after reading the call's
+/// callback, [`Admit::Accept`] when it is set, else [`Admit::Reject`].
+pub const fn admit_callback(has_callback: bool) -> Admit {
+    if has_callback {
+        Admit::Accept
+    } else {
+        Admit::Reject
+    }
 }
 
-/// `obs_source_media_time_fallback()`.
-pub fn time_fallback() -> i64 {
-    todo!("obs_source_media_time_fallback")
+/// `obs_source_media_time_fallback()`: what `obs_source_media_get_duration()`
+/// and `obs_source_media_get_time()` return for a rejected call, 0.
+pub const fn time_fallback() -> i64 {
+    0
 }
 
-/// `obs_source_media_state_fallback()`.
-pub fn state_fallback() -> i32 {
-    todo!("obs_source_media_state_fallback")
+/// `obs_source_media_state_fallback()`: what
+/// `obs_source_media_get_state()` returns for a rejected call,
+/// [`MEDIA_STATE_NONE`].
+pub const fn state_fallback() -> i32 {
+    MEDIA_STATE_NONE
 }
 
-/// `obs_source_media_dispatch()`.
-pub fn dispatch(action_type: i32) -> Dispatch {
-    let _ = action_type;
-    todo!("obs_source_media_dispatch")
+/// `obs_source_media_dispatch()`: the callback a queued action of type
+/// `action_type` calls, [`Dispatch::Return`] for [`action::NONE`] and
+/// [`Dispatch::Skip`] for a type outside the enum.
+pub const fn dispatch(action_type: i32) -> Dispatch {
+    match action_type {
+        action::NONE => Dispatch::Return,
+        action::PLAY_PAUSE => Dispatch::PlayPause,
+        action::RESTART => Dispatch::Restart,
+        action::STOP => Dispatch::Stop,
+        action::NEXT => Dispatch::Next,
+        action::PREVIOUS => Dispatch::Previous,
+        action::SET_TIME => Dispatch::SetTime,
+        _ => Dispatch::Skip,
+    }
 }
 
-/// `obs_source_media_signal_reads_pause()`; `dispatch` is `None` outside
-/// the enum.
-pub fn signal_reads_pause(dispatch: Option<Dispatch>) -> bool {
-    let _ = dispatch;
-    todo!("obs_source_media_signal_reads_pause")
+/// `obs_source_media_signal_reads_pause()`: whether the signal reads
+/// `action.pause`, only for [`Dispatch::PlayPause`] (the union holds the
+/// time for a set-time). `None` is a value outside the enum.
+pub const fn signal_reads_pause(dispatch: Option<Dispatch>) -> bool {
+    matches!(dispatch, Some(Dispatch::PlayPause))
 }
 
-/// `obs_source_media_signal()`; `dispatch` is `None` outside the enum.
-pub fn signal(dispatch: Option<Dispatch>, pause: bool) -> Option<&'static CStr> {
-    let _ = (dispatch, pause);
-    todo!("obs_source_media_signal")
+/// `obs_source_media_signal()`: the signal emitted after the callback,
+/// `media_pause` or `media_play` by `pause`, `media_restart`,
+/// `media_stopped`, `media_next` and `media_previous`; none for
+/// [`Dispatch::SetTime`], [`Dispatch::Return`], [`Dispatch::Skip`] and a
+/// value outside the enum (`None`). The names are static, as the C's
+/// string literals.
+pub const fn signal(dispatch: Option<Dispatch>, pause: bool) -> Option<&'static CStr> {
+    match dispatch {
+        Some(Dispatch::PlayPause) => Some(if pause { c"media_pause" } else { c"media_play" }),
+        Some(Dispatch::Restart) => Some(c"media_restart"),
+        Some(Dispatch::Stop) => Some(c"media_stopped"),
+        Some(Dispatch::Next) => Some(c"media_next"),
+        Some(Dispatch::Previous) => Some(c"media_previous"),
+        Some(Dispatch::Return | Dispatch::SetTime | Dispatch::Skip) | None => None,
+    }
 }

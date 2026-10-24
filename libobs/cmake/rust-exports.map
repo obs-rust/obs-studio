@@ -218,6 +218,16 @@
     obs_source_frame_copy_full_range;
     obs_source_frame_copy_full_range2;
     obs_source_frame_copy_preload_changed;
+    /* obs-source-media-admission.c. obs-source.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_source_media_admit;
+    obs_source_media_admit_flags;
+    obs_source_media_admit_callback;
+    obs_source_media_time_fallback;
+    obs_source_media_state_fallback;
+    obs_source_media_dispatch;
+    obs_source_media_signal_reads_pause;
+    obs_source_media_signal;
     /* obs-source-ptm-gate.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_ptm_gate_stop_time;

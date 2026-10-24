@@ -200,6 +200,7 @@
     "build/libobs.ported-source-draw-plan+.h.c",
     "build/libobs.ported-source-frame-copy+.h.c",
     "build/libobs.ported-source-load+.h.c",
+    "build/libobs.ported-source-media-admission+.h.c",
     "build/libobs.ported-source-profiler+.h.c",
     "build/libobs.ported-source-ptm-gate+.h.c",
     "build/libobs.ported-source-render-route+.h.c",

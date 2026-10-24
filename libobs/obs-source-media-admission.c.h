@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-media-admission.pch.h"
 
 /* The media action admission decisions of obs-source.c, moved from the
  * obs_source_media_*() functions (the controllable and callback checks and

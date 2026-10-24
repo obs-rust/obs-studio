@@ -234,6 +234,18 @@ obs_source_frame_copy_cache_clean
 obs_source_frame_copy_full_range
 obs_source_frame_copy_full_range2
 obs_source_frame_copy_preload_changed
+# obs-source-media-admission.c: the obs_source_media_*() functions and
+# process_media_actions() in obs-source.c call them inside libobs. Declared in
+# obs-source-media-admission.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_source_media_admit
+obs_source_media_admit_flags
+obs_source_media_admit_callback
+obs_source_media_time_fallback
+obs_source_media_state_fallback
+obs_source_media_dispatch
+obs_source_media_signal_reads_pause
+obs_source_media_signal
 # obs-source-ptm-gate.c: source_muted() and get_source_volume() in
 # obs-source.c call them inside libobs. Declared in obs-source-ptm-gate.h
 # without EXPORT, so the shims stay hidden the same way.
