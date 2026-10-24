@@ -110,6 +110,10 @@
 
 #include "obs-source-deinterlace-pacing.h"
 
+/* obs-source-transition.c */
+
+#include "obs-source-transition-clock.h"
+
 /* obs-source.c */
 
 #include "obs-source-async-pacing.h"

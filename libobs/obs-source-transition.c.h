@@ -24,6 +24,21 @@
 #define lock_textures(transition) pthread_mutex_lock(&transition->transition_tex_mutex)
 #define unlock_textures(transition) pthread_mutex_unlock(&transition->transition_tex_mutex)
 
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
+	       "OBS_TRANSITION_SCALE_MAX_ONLY");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
+	       "OBS_TRANSITION_SCALE_STRETCH");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB == GS_CS_SRGB, "GS_CS_SRGB");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB_16F == GS_CS_SRGB_16F, "GS_CS_SRGB_16F");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_EXTENDED == GS_CS_709_EXTENDED, "GS_CS_709_EXTENDED");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_SCRGB == GS_CS_709_SCRGB, "GS_CS_709_SCRGB");
+_Static_assert(sizeof(enum obs_transition_mode) == sizeof(int), "enum obs_transition_mode is passed as int");
+_Static_assert(sizeof(enum obs_transition_scale_type) == sizeof(int),
+	       "enum obs_transition_scale_type is passed as int");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+
 static inline bool transition_valid(const obs_source_t *transition, const char *func)
 {
 	if (!obs_ptr_valid(transition, func))
@@ -92,12 +107,12 @@ void add_alignment(struct vec2 *v, uint32_t align, int cx, int cy);
 
 static inline uint32_t get_cx(obs_source_t *tr)
 {
-	return tr->transition_cx ? tr->transition_cx : tr->transition_actual_cx;
+	return obs_source_transition_clock_size(tr->transition_cx, tr->transition_actual_cx);
 }
 
 static inline uint32_t get_cy(obs_source_t *tr)
 {
-	return tr->transition_cy ? tr->transition_cy : tr->transition_actual_cy;
+	return obs_source_transition_clock_size(tr->transition_cy, tr->transition_actual_cy);
 }
 
 static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
@@ -110,8 +125,6 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	float tr_cy = (float)get_cy(tr);
 	float source_cx;
 	float source_cy;
-	float tr_aspect = tr_cx / tr_cy;
-	float source_aspect;
 	enum obs_transition_scale_type scale_type = tr->transition_scale_type;
 
 	lock_transition(tr);
@@ -126,28 +139,8 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	source_cy = (float)obs_source_get_height(child);
 	unlock_transition(tr);
 
-	if (source_cx == 0.0f || source_cy == 0.0f)
+	if (!obs_source_transition_clock_fit(tr_cx, tr_cy, source_cx, source_cy, (int)scale_type, &scale.x, &scale.y))
 		return;
-
-	source_aspect = source_cx / source_cy;
-
-	if (scale_type == OBS_TRANSITION_SCALE_MAX_ONLY) {
-		if (source_cx > tr_cx || source_cy > tr_cy) {
-			scale_type = OBS_TRANSITION_SCALE_ASPECT;
-		} else {
-			scale.x = 1.0f;
-			scale.y = 1.0f;
-		}
-	}
-
-	if (scale_type == OBS_TRANSITION_SCALE_ASPECT) {
-		bool use_width = tr_aspect < source_aspect;
-		scale.x = scale.y = use_width ? tr_cx / source_cx : tr_cy / source_cy;
-
-	} else if (scale_type == OBS_TRANSITION_SCALE_STRETCH) {
-		scale.x = tr_cx / source_cx;
-		scale.y = tr_cy / source_cy;
-	}
 
 	source_cx *= scale.x;
 	source_cy *= scale.y;
@@ -179,10 +172,8 @@ static void recalculate_transition_size(obs_source_t *transition)
 		if (child) {
 			uint32_t new_cx = obs_source_get_width(child);
 			uint32_t new_cy = obs_source_get_height(child);
-			if (new_cx > cx)
-				cx = new_cx;
-			if (new_cy > cy)
-				cy = new_cy;
+			cx = obs_source_transition_clock_fold(cx, new_cx);
+			cy = obs_source_transition_clock_fold(cy, new_cy);
 		}
 	}
 
@@ -197,15 +188,18 @@ void obs_transition_tick(obs_source_t *transition, float t)
 	recalculate_transition_size(transition);
 	recalculate_transition_matrices(transition);
 
-	if (transition->transition_mode == OBS_TRANSITION_MODE_MANUAL) {
-		if (transition->transition_manual_torque == 0.0f) {
-			transition->transition_manual_val = transition->transition_manual_target;
-		} else {
-			transition->transition_manual_val = calc_torquef(transition->transition_manual_val,
-									 transition->transition_manual_target,
-									 transition->transition_manual_torque,
-									 transition->transition_manual_clamp, t);
-		}
+	switch (obs_source_transition_clock_manual((int)transition->transition_mode,
+						   transition->transition_manual_torque)) {
+	case OBS_SOURCE_TRANSITION_CLOCK_SNAP:
+		transition->transition_manual_val = transition->transition_manual_target;
+		break;
+	case OBS_SOURCE_TRANSITION_CLOCK_STEP:
+		transition->transition_manual_val =
+			calc_torquef(transition->transition_manual_val, transition->transition_manual_target,
+				     transition->transition_manual_torque, transition->transition_manual_clamp, t);
+		break;
+	case OBS_SOURCE_TRANSITION_CLOCK_HOLD:
+		break;
 	}
 
 	if (trylock_textures(transition) == 0) {
@@ -509,20 +503,8 @@ void obs_transition_set(obs_source_t *transition, obs_source_t *source)
 
 static float calc_time(obs_source_t *transition, uint64_t ts)
 {
-	if (transition->transition_mode == OBS_TRANSITION_MODE_MANUAL)
-		return transition->transition_manual_val;
-
-	uint64_t end;
-
-	if (ts <= transition->transition_start_time)
-		return 0.0f;
-
-	end = transition->transition_duration;
-	ts -= transition->transition_start_time;
-	if (ts >= end || end == 0)
-		return 1.0f;
-
-	return (float)((long double)ts / (long double)end);
+	return obs_source_transition_clock_time((int)transition->transition_mode, transition->transition_manual_val,
+						transition->transition_start_time, transition->transition_duration, ts);
 }
 
 static inline float get_video_time(obs_source_t *transition)
@@ -836,11 +818,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 
 static enum gs_color_space mix_spaces(enum gs_color_space a, enum gs_color_space b)
 {
-	if ((a == GS_CS_709_EXTENDED) || (a == GS_CS_709_SCRGB) || (b == GS_CS_709_EXTENDED) || (b == GS_CS_709_SCRGB))
-		return GS_CS_709_EXTENDED;
-	if ((a == GS_CS_SRGB_16F) || (b == GS_CS_SRGB_16F))
-		return GS_CS_SRGB_16F;
-	return GS_CS_SRGB;
+	return (enum gs_color_space)obs_source_transition_clock_mix_spaces((int)a, (int)b);
 }
 
 enum gs_color_space obs_transition_video_get_color_space(obs_source_t *transition)
@@ -983,17 +961,14 @@ static void transition_process_audio(obs_source_t *transition, obs_source_t *chi
 
 static inline uint64_t transition_calc_min_ts(obs_source_t *sources[2])
 {
-	uint64_t min_ts = 0;
+	uint64_t timestamps[2] = {0, 0};
 
 	for (size_t i = 0; i < 2; i++) {
-		if (sources[i] && !sources[i]->audio_pending) {
-			uint64_t timestamp = obs_source_get_audio_timestamp(sources[i]);
-			if (timestamp && (!min_ts || timestamp < min_ts))
-				min_ts = timestamp;
-		}
+		if (sources[i] && !sources[i]->audio_pending)
+			timestamps[i] = obs_source_get_audio_timestamp(sources[i]);
 	}
 
-	return min_ts;
+	return obs_source_transition_clock_min_ts(timestamps[0], timestamps[1]);
 }
 
 static inline bool transition_stop_audio(obs_source_t *transition)
