@@ -38,6 +38,8 @@ pub mod color_space;
 pub mod conversion_plan;
 pub mod deinterlace_draw;
 pub mod deinterlace_pacing;
+pub mod draw_plan;
+pub mod draw_technique;
 pub mod ptm_gate;
 pub mod size_route;
 pub mod transition_clock;

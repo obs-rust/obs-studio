@@ -21,7 +21,7 @@
 
 use std::os::raw::c_int;
 
-use crate::deinterlace_draw::{self as core, ModeChange, Technique};
+use crate::deinterlace_draw::{self as core, ModeChange};
 
 /// `enum obs_source_deinterlace_draw_effect`.
 #[allow(non_camel_case_types)]
@@ -29,22 +29,13 @@ pub type obs_source_deinterlace_draw_effect = c_int;
 /// `OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_NONE`.
 pub const OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_NONE: obs_source_deinterlace_draw_effect = -1;
 
-/// `enum obs_source_deinterlace_draw_technique`.
-#[allow(non_camel_case_types)]
-pub type obs_source_deinterlace_draw_technique = u32;
+/// `enum obs_source_draw_technique` (`obs-source-draw-technique.h`),
+/// shared with the source draw plan.
+pub use super::source_draw_technique::obs_source_draw_technique;
 
 /// `enum obs_source_deinterlace_draw_mode_change`.
 #[allow(non_camel_case_types)]
 pub type obs_source_deinterlace_draw_mode_change = u32;
-
-const fn technique_value(technique: Technique) -> obs_source_deinterlace_draw_technique {
-    match technique {
-        Technique::Draw => 0,
-        Technique::DrawMultiply => 1,
-        Technique::DrawTonemap => 2,
-        Technique::DrawMultiplyTonemap => 3,
-    }
-}
 
 const fn mode_change_value(change: ModeChange) -> obs_source_deinterlace_draw_mode_change {
     match change {
@@ -99,15 +90,15 @@ pub extern "C" fn obs_source_deinterlace_draw_linear_srgb(
     core::linear_srgb(source_space, gs_linear_srgb, mode)
 }
 
-/// `enum obs_source_deinterlace_draw_technique
+/// `enum obs_source_draw_technique
 /// obs_source_deinterlace_draw_technique(int source_space, int
 /// current_space)`.
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_source_deinterlace_draw_technique(
     source_space: c_int,
     current_space: c_int,
-) -> obs_source_deinterlace_draw_technique {
-    technique_value(core::technique(source_space, current_space))
+) -> obs_source_draw_technique {
+    core::technique(source_space, current_space).value()
 }
 
 /// `bool obs_source_deinterlace_draw_reads_white_level(int source_space,

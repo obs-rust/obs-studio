@@ -42,6 +42,11 @@
 )]
 
 use crate::deinterlace_pacing::TWOX_TOLERANCE;
+/// The colour spaces and the technique, shared with [`crate::draw_plan`].
+pub use crate::draw_technique::{
+    GS_CS_709_EXTENDED, GS_CS_709_SCRGB, GS_CS_SRGB, GS_CS_SRGB_16F, Technique,
+};
+use crate::draw_technique::{SCRGB_WHITE, sdr};
 
 /// `OBS_DEINTERLACE_MODE_DISABLE` (`enum obs_deinterlace_mode`, `obs.h`).
 pub const MODE_DISABLE: i32 = 0;
@@ -61,18 +66,6 @@ pub const MODE_LINEAR_2X: i32 = 6;
 pub const MODE_YADIF: i32 = 7;
 /// `OBS_DEINTERLACE_MODE_YADIF_2X`.
 pub const MODE_YADIF_2X: i32 = 8;
-
-/// `GS_CS_SRGB` (`enum gs_color_space`, `graphics/graphics.h`): SDR.
-pub const GS_CS_SRGB: i32 = 0;
-/// `GS_CS_SRGB_16F`: high-precision SDR.
-pub const GS_CS_SRGB_16F: i32 = 1;
-/// `GS_CS_709_EXTENDED`: the canvas, Mac EDR (HDR).
-pub const GS_CS_709_EXTENDED: i32 = 2;
-/// `GS_CS_709_SCRGB`: 1.0 = 80 nits, Windows and Linux HDR.
-pub const GS_CS_709_SCRGB: i32 = 3;
-
-/// The nits of 1.0 in scRGB: the multiplier is the white level over it.
-const SCRGB_WHITE: f32 = 80.0;
 
 /// `enum obs_source_deinterlace_draw_effect`: the effect a mode draws with,
 /// `obs->video.deinterlace_<name>_effect`. The discriminants are the C's.
@@ -94,21 +87,6 @@ pub enum Effect {
     Yadif = 6,
     /// `deinterlace_yadif_2x`: YADIF_2X.
     Yadif2x = 7,
-}
-
-/// `enum obs_source_deinterlace_draw_technique`: the technique
-/// `deinterlace_render()` draws with; C maps it to the name. The
-/// discriminants are the C's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Technique {
-    /// `"Draw"`.
-    Draw = 0,
-    /// `"DrawMultiply"`.
-    DrawMultiply = 1,
-    /// `"DrawTonemap"`.
-    DrawTonemap = 2,
-    /// `"DrawMultiplyTonemap"`.
-    DrawMultiplyTonemap = 3,
 }
 
 /// `enum obs_source_deinterlace_draw_mode_change`: what
@@ -196,11 +174,6 @@ pub fn reads_linear_srgb(source_space: i32) -> bool {
 /// was not read), or a mode that needs it ([`linear_required`]).
 pub fn linear_srgb(source_space: i32, gs_linear_srgb: bool, mode: i32) -> bool {
     source_space != GS_CS_SRGB || gs_linear_srgb || linear_required(mode)
-}
-
-/// Whether a space is SDR, [`GS_CS_SRGB`] or [`GS_CS_SRGB_16F`].
-fn sdr(space: i32) -> bool {
-    space == GS_CS_SRGB || space == GS_CS_SRGB_16F
 }
 
 /// `obs_source_deinterlace_draw_technique()`: the technique for a source in
