@@ -187,8 +187,9 @@ pub struct Output {
 impl Output {
     /// `buffered_file_serializer_init`. A zero size selects the C default.
     ///
-    /// Returns `None` when the file cannot be created. `s` is left untouched
-    /// in that case, as in C (`fopen` fails before the serializer is stored).
+    /// Returns `None` when the file cannot be created or the writer thread
+    /// cannot start. `s` is left untouched in that case, as in C (the open
+    /// fails before the serializer is stored).
     pub fn create(path: &Path, max_bufsize: usize, chunk_size: usize) -> Option<Self> {
         let file = File::create(path).ok()?;
         let buffer_size = if max_bufsize == 0 {
@@ -217,7 +218,7 @@ impl Output {
         let join = std::thread::Builder::new()
             .name("buffered writer i/o thread".to_string())
             .spawn(move || io_thread(thread_inner, file))
-            .expect("spawn buffered writer thread");
+            .ok()?;
         Some(Self {
             inner,
             join: Some(join),

@@ -342,12 +342,16 @@ bool buffered_file_serializer_init(struct serializer *s, const char *path, size_
 	// on how fast data is going in and out.
 	deque_reserve(&out->io.data, 1048576);
 
-	pthread_mutex_init(&out->io.data_mutex, NULL);
+	if (pthread_mutex_init(&out->io.data_mutex, NULL) != 0)
+		goto fail_mutex;
 
-	os_event_init(&out->io.buffer_space_available_event, OS_EVENT_TYPE_AUTO);
-	os_event_init(&out->io.new_data_available_event, OS_EVENT_TYPE_AUTO);
+	if (os_event_init(&out->io.buffer_space_available_event, OS_EVENT_TYPE_AUTO) != 0)
+		goto fail_space_event;
+	if (os_event_init(&out->io.new_data_available_event, OS_EVENT_TYPE_AUTO) != 0)
+		goto fail_data_event;
 
-	pthread_create(&out->io.io_thread, NULL, io_thread, out);
+	if (pthread_create(&out->io.io_thread, NULL, io_thread, out) != 0)
+		goto fail_thread;
 
 	out->io.active = true;
 
@@ -357,6 +361,20 @@ bool buffered_file_serializer_init(struct serializer *s, const char *path, size_
 	s->seek = buffered_file_output_seek;
 	s->get_pos = buffered_file_output_get_pos;
 	return true;
+
+fail_thread:
+	os_event_destroy(out->io.new_data_available_event);
+fail_data_event:
+	os_event_destroy(out->io.buffer_space_available_event);
+fail_space_event:
+	pthread_mutex_destroy(&out->io.data_mutex);
+fail_mutex:
+	blog(LOG_ERROR, "Failed to start the buffered writer for '%s'", path);
+	deque_free(&out->io.data);
+	fclose(out->io.output_file);
+	dstr_free(&out->filename);
+	bfree(out);
+	return false;
 }
 
 void buffered_file_serializer_free(struct serializer *s)

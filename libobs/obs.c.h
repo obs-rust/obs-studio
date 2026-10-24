@@ -3393,6 +3393,8 @@ struct task_wait_info {
 	obs_task_t task;
 	void *param;
 	os_event_t *event;
+	/* Set instead of the event when it could not be created. */
+	volatile bool done;
 };
 
 static void task_wait_callback(void *param)
@@ -3400,7 +3402,25 @@ static void task_wait_callback(void *param)
 	struct task_wait_info *info = param;
 	if (info->task)
 		info->task(info->param);
-	os_event_signal(info->event);
+	if (info->event)
+		os_event_signal(info->event);
+	else
+		os_atomic_set_bool(&info->done, true);
+}
+
+/* Waits for task_wait_callback(). Without an event (its init failed), it
+ * polls: the task still runs once, on its own thread, and the caller still
+ * waits for it, which a caller whose param lives on its stack relies on. */
+static void task_wait_for_callback(struct task_wait_info *info)
+{
+	if (info->event) {
+		os_event_wait(info->event);
+		return;
+	}
+
+	while (!os_atomic_load_bool(&info->done))
+		os_sleep_ms(1);
+	os_atomic_set_bool(&info->done, false);
 }
 
 THREAD_LOCAL bool is_graphics_thread = false;
@@ -3446,9 +3466,11 @@ void obs_queue_task(enum obs_task_type type, obs_task_t task, void *param, bool 
 				.param = param,
 			};
 
-			os_event_init(&info.event, OS_EVENT_TYPE_MANUAL);
+			if (os_event_init(&info.event, OS_EVENT_TYPE_MANUAL) != 0)
+				blog(LOG_WARNING, "obs_queue_task: Failed to create the wait event, "
+						  "polling for the task instead");
 			obs_queue_task(type, task_wait_callback, &info, false);
-			os_event_wait(info.event);
+			task_wait_for_callback(&info);
 			os_event_destroy(info.event);
 
 		} else if (type == OBS_TASK_GRAPHICS) {
@@ -3482,11 +3504,13 @@ bool obs_wait_for_destroy_queue(void)
 	 * (no video reset) sources are still destroyed by the destruction
 	 * thread, so that queue is waited for regardless. */
 	if (obs->video.thread_initialized && obs->audio.audio) {
-		os_event_init(&info.event, OS_EVENT_TYPE_AUTO);
+		if (os_event_init(&info.event, OS_EVENT_TYPE_AUTO) != 0)
+			blog(LOG_WARNING, "obs_wait_for_destroy_queue: Failed to create the wait event, "
+					  "polling instead");
 		obs_queue_task(OBS_TASK_GRAPHICS, task_wait_callback, &info, false);
-		os_event_wait(info.event);
+		task_wait_for_callback(&info);
 		obs_queue_task(OBS_TASK_AUDIO, task_wait_callback, &info, false);
-		os_event_wait(info.event);
+		task_wait_for_callback(&info);
 		os_event_destroy(info.event);
 	}
 
