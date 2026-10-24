@@ -575,10 +575,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-fallback-warning"
+version = "0.1.0"
+
+[[package]]
 name = "obs-gpu-status"
 version = "0.1.0"
 dependencies = [
  "libloading",
+ "obs-fallback-warning",
 ]
 
 [[package]]

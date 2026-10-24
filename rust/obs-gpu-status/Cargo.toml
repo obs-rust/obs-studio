@@ -14,6 +14,9 @@ workspace = true
 [dependencies]
 libloading = { workspace = true, default-features = true }
 
+[dev-dependencies]
+obs-fallback-warning = { path = "../obs-fallback-warning" }
+
 [lib]
 test = false
 

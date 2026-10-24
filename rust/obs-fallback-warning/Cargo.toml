@@ -1,0 +1,17 @@
+[package]
+autotests = false
+name = "obs-fallback-warning"
+version = "0.1.0"
+description = "The shared warning for fallbacks that lower security (obs-rust/obs-studio#2218)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# The tests run in obs-gpu-status's obs-tests-gpu (ci/test_binary_cap.py: one
+# executable per category; both are the frontend's Rust).
+[lib]
+test = false

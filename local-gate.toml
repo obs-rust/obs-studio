@@ -64,7 +64,8 @@ tools = ["docker"]
 # Every workspace manifest stays an input: cargo reads them all.
 exclude = ["docs/**", "**/*.md", "build-aux/**", "libobs-d3d11/**", "libobs-metal/**", "libobs-winrt/**", "additional_install_files/**", "tools/**", "ci/**", ".github/**", ".claude/**",
   "rust/*/tests/**", "rust/*/benches/**", "rust/*/examples/**",
-  "rust/obs-c-oracle/**", "rust/obs-gpu-status/**", "rust/obs-gpu-status-frontend/**"]
+  "rust/obs-c-oracle/**", "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**",
+  "rust/obs-gpu-status-frontend/**"]
 keep = ["rust/*/Cargo.toml"]
 
 # GATE-008: decided from THIS file as committed on the PR's base. Fails
