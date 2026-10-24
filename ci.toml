@@ -76,9 +76,13 @@ zccache-tier2 = { prefix = "zccache-tier2-linux-", max = "550MB", evict = "lru" 
 zccache-ubuntu = { prefix = "zccache-ubuntu-", max = "1.1GB", evict = "lru" }
 zccache = { prefix = "zccache-", max = "500MB", evict = "lru", shapes = { appimage = { max = "400MB" }, sanitize = { max = "300MB" } } }
 # Windows compiler cache: ccache as cl.exe (build-project.yaml windows-build).
-windows-ccache = { prefix = "windows-ccache-", max = "800MB", evict = "lru" }
+# Independent newest-entry protection: the pooled family deleted a current
+# x64 seed while retaining ARM64 (#1269). Allowances cover observed archives.
+windows-ccache-x64 = { prefix = "windows-ccache-x64-", max = "1.3GB", evict = "lru" }
+windows-ccache-arm64 = { prefix = "windows-ccache-arm64-", max = "1.1GB", evict = "lru" }
 # macOS: Xcode's compilation cache (build-project.yaml macos-build).
-xcode = { prefix = "macOS-xcode-", max = "500MB", evict = "lru" }
+xcode-x86_64 = { prefix = "macOS-xcode-x86_64-", max = "800MB", evict = "lru" }
+xcode-arm64 = { prefix = "macOS-xcode-arm64-", max = "800MB", evict = "lru" }
 # Flatpak: the projected archive contains dependency OSTree and SDK ccache.
 flatpak-builder = { prefix = "flatpak-builder-", max = "2.5GB", evict = "lru" }
 # The standalone compiler migration reader/writer is retired (#1801).
