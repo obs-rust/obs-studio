@@ -3022,6 +3022,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_render_steps": {
+      "sources": [
+        "test/cmocka/test_transition_render_steps.c",
+        "libobs/obs-source-transition-render.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_transition_scale_type": {
       "sources": [
         "test/cmocka/test_transition_scale_type.c"
@@ -4633,6 +4656,12 @@
     },
     "test_transition_clock_steps": {
       "target": "test_transition_clock_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_transition_render_steps": {
+      "target": "test_transition_render_steps",
       "command": [
         "${target}"
       ]
