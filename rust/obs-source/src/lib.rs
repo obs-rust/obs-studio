@@ -33,6 +33,7 @@ pub mod deinterlace_draw;
 pub mod deinterlace_pacing;
 pub mod ptm_gate;
 pub mod transition_clock;
+pub mod transition_render;
 
 #[allow(unsafe_code)]
 pub mod ffi;
