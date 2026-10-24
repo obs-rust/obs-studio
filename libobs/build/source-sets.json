@@ -53,6 +53,7 @@
     "obs-source-load.h",
     "obs-source-ptm-gate.h",
     "obs-source-transition-clock.h",
+    "obs-source-transition-render.h",
     "obs-source.h",
     "obs-video-copy-plan.h",
     "obs.h",
