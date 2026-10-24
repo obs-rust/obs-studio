@@ -145,6 +145,23 @@
       ],
       "sanitizers": "undefined"
     },
+    "test_async_frame_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_async_frame_pacing_steps.c",
+        "libobs/obs-source-async-pacing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_buffering_subsample": {
       "sources": [
         "test/cmocka/test_audio_buffering_subsample.c"
@@ -2992,6 +3009,12 @@
     },
     "test_amf_decode": {
       "target": "test_amf_decode",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_async_frame_pacing_steps": {
+      "target": "test_async_frame_pacing_steps",
       "command": [
         "${target}"
       ]
