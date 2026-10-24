@@ -1,0 +1,14 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2cffe3ca7beb60eac02c82d81cf5ee3f3b88e92337f3fec62ac5f76b39535924 # shrinks to format = 13, full = false, height = 4294967295, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc b4f9104542753dab62bdf505cf618e27e1f742c2431ee7ded392b931a801cbaa # shrinks to format = 17, full = false, height = 4294967295, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc 588260675500a16f03fd430ffb02d91fee3e709a453cfbea0579af424f0deab5 # shrinks to format = 18, full = false, height = 4294967295, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc 40fc726869684a03eb5d5d1e7c65da0a3176783490a9a38c3d3c09ab6ec3b1b0 # shrinks to format = 12, full = false, height = 4294967295, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc 332e4e78dd08043d64e0d9cf39033eff061b0bdf1abc4848b87b5d8a12c444ec # shrinks to format = 22, full = false, height = 0, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc e5ae738129558fcca8941f87a12eb27469dbbaa8cd949657ae38dfd70a25b78f # shrinks to format = 9, full = false, height = 0, src = [0, 0, 0, 0], dst = [0, 0, 0, 0], equal = [false, false, false, false]
+cc 93f4f13a0bcbe4d445ad26bc9e2910f0938c88d51007a888d895fd5c53242630 # shrinks to queued = 30, cache = (0, 0, 0), frame = (0, 0, 0), same = false
+cc 902d9d7ee29dd374b05cffd3464433de2ffe3737dc3ff49abeadae9f6425acce # shrinks to queued = 0, cache = (2147483648, 4294967294, 0), frame = (2147483648, 4294967294, 1), same = false

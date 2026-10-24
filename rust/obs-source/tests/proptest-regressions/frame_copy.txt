@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 16308e3820af2fec50d09fe0e117f736ba8db88f724c953b1e4694f3feadfc17 # shrinks to format = 1, height = 4294967295, src = [0, 0, 0, 0], dst = [0, 0, 0, 0]
+cc adc216a154a3b742b5cdcb55de0540ec75e8f790bf448d95def9f6284918335b # shrinks to format = 0, height = 0, src = [1, 0, 0, 0], dst = [0, 0, 0, 0]
+cc 150cbdaf24574bd955ce378a885008cbbadbcca3278ac55741b46a2f423c0d84 # shrinks to queued = 30, cw = 0, ch = 0, ct = 0, fw = 0, fh = 0, ft = 0, same = false
+cc 055d0df56821b4b9f37ad7a5ff62d12e7c111b43bbbe8b04d94192be81fd15ad # shrinks to queued = 0, cw = 4294967295, ch = 4294967295, ct = 0, fw = 4294967295, fh = 4294967295, ft = -1, same = false
+cc 195ba24b0df767c36858da51de06756c379433b2735ae8c323368ebbd708e053 # shrinks to used = true, count = 0
+cc afb756ee6827734b0ba5b38d57772178f7113b6f7a70c705a1f2cb527a5438c4 # shrinks to has = true, pf = 0, pw = 1, ph = 4294967295, nf = 1, nw = 1, nh = 4294967295, same = false
