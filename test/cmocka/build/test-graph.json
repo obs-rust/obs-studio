@@ -2797,6 +2797,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_frame_copy_steps": {
+      "sources": [
+        "test/cmocka/test_source_frame_copy_steps.c",
+        "libobs/obs-source-frame-copy.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_load_migration_steps": {
       "sources": [
         "test/cmocka/test_source_load_migration_steps.c",
@@ -4704,6 +4727,12 @@
     },
     "test_source_draw_plan_steps": {
       "target": "test_source_draw_plan_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_frame_copy_steps": {
+      "target": "test_source_frame_copy_steps",
       "command": [
         "${target}"
       ]
