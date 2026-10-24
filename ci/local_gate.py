@@ -14,9 +14,12 @@ Lanes:
                build-aux/run-clang-format and run-gersemi, plus rustfmt,
                clippy -D warnings and the repo Dylints (dylints/*). Formatters are pinned through uvx, so no
                brew/zsh install is needed. Also ci/platform_ifdef_ratchet.py (#847)
-               and ci/perf_guard_lint.py (#1303).
-  rust-test    soldr cargo test --workspace --locked (Tiers 1-3), plus a
-               --no-run build of the tests for x86_64-pc-windows-gnu.
+               and ci/perf_guard_lint.py (#1303). Plus one clippy per Cargo
+               feature set in FEATURE_SETS (#2056), and a check that every
+               workspace feature is built on and off by some clippy run.
+  rust-test    soldr cargo test --workspace --locked (Tiers 1-3), the
+               FEATURE_TEST_SETS runs, plus a --no-run build of the tests
+               for x86_64-pc-windows-gnu.
 
 Cargo runs with SOLDR_RUSTC_WRAPPER=none (soldr's zccache has replayed stale
 rustc output; #134). Set OBS_GATE_ZCCACHE=1 to keep the cache locally.
@@ -353,29 +356,188 @@ def check_test_binary_inventory() -> None:
 # Cargo feature sets that the --workspace runs do not build (#2056): Cargo
 # unifies features across one build, so `clippy --workspace` sees each crate
 # only with the union of what its dependents enable.
-FEATURE_SETS: tuple[tuple[str, ...], ...] = ()
-FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = ()
-FEATURE_SET_EXEMPT: dict[tuple[str, str], str] = {}
+# The lint lane runs one clippy per FEATURE_SETS entry, the rust-test lane one
+# test per FEATURE_TEST_SETS entry. check_feature_sets() fails the lint lane
+# when a workspace feature is not built both on and off by some clippy run.
+FEATURE_SETS: tuple[tuple[str, ...], ...] = (
+    # libobs without GIO: libobs/cmake/os-linux.cmake and os-freebsd.cmake
+    # build libobs_rust with NO_DEFAULT_FEATURES and add gio only when Gio
+    # is found.
+    ("-p", "libobs-rust", "--no-default-features"),
+    # obs-util's own test and bench targets with gio off (the run above
+    # builds obs-util as a library only).
+    ("-p", "obs-util"),
+    # The native libobs contracts of obs-tests-app. Tier 2 and the Qt SDK
+    # step build them for a few tests on macOS and Windows only.
+    ("-p", "obs-studio-rust", "--features", "libobs-integration"),
+)
+FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = (
+    ("-p", "obs-util"),
+)
+_NEEDS_RUST_ARCHIVE = (
+    "obs-sys/build.rs needs OBS_BUILD_RUST_ARCHIVE (a release libobs-rust staticlib); "
+    "Tier 2 checks it after its native build (rust/tools/tier2-validate/validate.sh, validate.ps1)"
+)
+FEATURE_SET_EXEMPT: dict[tuple[str, str], str] = {
+    ("obs-studio-rust", "bundled-native"): _NEEDS_RUST_ARCHIVE,
+    ("obs-sys", "bundled"): _NEEDS_RUST_ARCHIVE,
+}
 
 
 def workspace_manifests() -> dict[str, dict]:
-    raise NotImplementedError
+    """Package name -> parsed Cargo.toml of every workspace member."""
+    import tomllib
+
+    workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]
+    excluded = {(ROOT / p).resolve() for p in workspace.get("exclude", [])}
+    manifests = {}
+    for pattern in workspace["members"]:
+        for path in sorted(ROOT.glob(f"{pattern}/Cargo.toml")):
+            if path.parent.resolve() in excluded:
+                continue
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            manifests[data["package"]["name"]] = data
+    return manifests
+
+
+def _workspace_deps(manifest: dict, names: set[str]) -> dict[str, list[dict]]:
+    """The workspace dependencies of one manifest, every kind and target:
+    every run is --all-targets, so dev-dependencies are built too."""
+    deps: dict[str, list[dict]] = {}
+    for table in (manifest, *manifest.get("target", {}).values()):
+        for kind in ("dependencies", "dev-dependencies", "build-dependencies"):
+            for dep, spec in table.get(kind, {}).items():
+                if dep in names and isinstance(spec, dict):
+                    deps.setdefault(dep, []).append(spec)
+    return deps
+
+
+def _resolve(manifests: dict[str, dict], name: str, features: tuple[str, ...], default: bool) -> tuple[set[str], set[tuple[str, str]]]:
+    """The crates one `-p name` run builds and the (crate, feature) pairs it
+    enables, with Cargo's feature syntax (dep:x, x/y, x?/y)."""
+    names = set(manifests)
+    deps = {n: _workspace_deps(m, names) for n, m in manifests.items()}
+    active: set[str] = set()
+    on: set[tuple[str, str]] = set()
+    weak: set[tuple[str, str]] = set()
+    work: list[tuple[str, str | None]] = [(name, None), *((name, f) for f in features)]
+    if default:
+        work.append((name, "default"))
+
+    def use(crate: str, spec: dict) -> None:
+        work.append((crate, None))
+        if spec.get("default-features", True):
+            work.append((crate, "default"))
+        work.extend((crate, f) for f in spec.get("features", []))
+
+    while work:
+        while work:
+            crate, feature = work.pop()
+            if feature is None:
+                if crate not in active:
+                    active.add(crate)
+                    for dep, specs in deps[crate].items():
+                        for spec in specs:
+                            if not spec.get("optional"):
+                                use(dep, spec)
+                continue
+            if (crate, feature) in on:
+                continue
+            on.add((crate, feature))
+            table = manifests[crate].get("features", {})
+            if feature not in table:
+                # The implicit feature of an optional dependency.
+                for spec in deps[crate].get(feature, []):
+                    use(feature, spec)
+                continue
+            for item in table[feature]:
+                if item.startswith("dep:"):
+                    for spec in deps[crate].get(item[4:], []):
+                        use(item[4:], spec)
+                elif "/" in item:
+                    dep, sub = item.split("/", 1)
+                    if dep.endswith("?"):
+                        weak.add((dep[:-1], sub))
+                    elif dep in deps[crate]:
+                        for spec in deps[crate][dep]:
+                            use(dep, spec)
+                        work.append((dep, sub))
+                else:
+                    work.append((crate, item))
+        # `x?/y` enables y only where x is built for another reason.
+        work = [(dep, sub) for dep, sub in weak if dep in active and (dep, sub) not in on]
+    return active, {(c, f) for c, f in on if c in active and f != "default"}
 
 
 def active_crates(manifests: dict[str, dict], name: str, features: tuple[str, ...], default: bool) -> set[str]:
-    raise NotImplementedError
+    return _resolve(manifests, name, features, default)[0]
 
 
 def enabled_features(manifests: dict[str, dict], name: str, features: tuple[str, ...], default: bool) -> set[tuple[str, str]]:
-    raise NotImplementedError
+    return _resolve(manifests, name, features, default)[1]
+
+
+def _parse_set(args: tuple[str, ...]) -> tuple[str, tuple[str, ...], bool]:
+    name, features, default = "", [], True
+    rest = iter(args)
+    for arg in rest:
+        if arg == "-p":
+            name = next(rest)
+        elif arg == "--no-default-features":
+            default = False
+        elif arg == "--features":
+            features += next(rest).split(",")
+        else:
+            raise ValueError(f"feature set {' '.join(args)}: unsupported argument {arg}")
+    return name, tuple(features), default
 
 
 def feature_coverage(manifests: dict[str, dict], sets: tuple[tuple[str, ...], ...], exempt: dict[tuple[str, str], str]) -> list[str]:
-    raise NotImplementedError
+    """Every feature of a workspace crate is built on in one clippy run and
+    off in another (the --workspace run, where Cargo unifies features, or a
+    FEATURE_SETS entry), unless `exempt` says why not. A run turns a
+    feature off only where it builds the crate."""
+    errors = []
+    runs = []
+    built: set[str] = set()
+    unified: set[tuple[str, str]] = set()
+    for name in manifests:
+        active, on = _resolve(manifests, name, (), True)
+        built |= active
+        unified |= on
+    runs.append((built, unified))
+    for args in sets:
+        name, features, default = _parse_set(args)
+        label = " ".join(args)
+        if name not in manifests:
+            errors.append(f"{label}: {name} is not a workspace crate")
+            continue
+        unknown = [f for f in features if f not in manifests[name].get("features", {})]
+        if unknown:
+            errors.append(f"{label}: {name} has no feature {', '.join(unknown)}")
+            continue
+        runs.append(_resolve(manifests, name, features, default))
+    for (crate, feature), why in sorted(exempt.items()):
+        if feature not in manifests.get(crate, {}).get("features", {}):
+            errors.append(f"{crate}/{feature}: exempt, but there is no such feature")
+        elif not why.strip():
+            errors.append(f"{crate}/{feature}: the exemption needs a reason")
+    for crate in sorted(manifests):
+        for feature in sorted(manifests[crate].get("features", {})):
+            if feature == "default" or (crate, feature) in exempt:
+                continue
+            if not any((crate, feature) in on for _, on in runs):
+                errors.append(f"{crate}/{feature}: no clippy run builds it on (add a FEATURE_SETS entry)")
+            if not any(crate in active and (crate, feature) not in on for active, on in runs):
+                errors.append(f"{crate}/{feature}: no clippy run builds it off (add a FEATURE_SETS entry)")
+    return errors
 
 
 def check_feature_sets() -> None:
-    raise NotImplementedError
+    errors = feature_coverage(workspace_manifests(), FEATURE_SETS, FEATURE_SET_EXEMPT)
+    if errors:
+        raise RuntimeError("Cargo feature sets (#2056):\n" + "\n".join(errors))
+    print(f"+ Cargo feature sets: {len(FEATURE_SETS)} runs, every feature built on and off", flush=True)
 
 
 def lane_lint(fix: bool) -> None:
@@ -388,10 +550,13 @@ def lane_lint(fix: bool) -> None:
     gersemi(fmt_files, fix)
     self_test()
     check_test_binary_inventory()
+    check_feature_sets()
     platform_ifdef_ratchet()
     perf_guard_lint()
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
     soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
+    for args in FEATURE_SETS:
+        soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
     # Pre-expansion Dylints (dylints/*), so host-cfg'd code is checked on
     # one Linux lane (obs-rust/obs-studio#323). They scan whole src/ files,
     # inline test modules included, so lib + bins covers their scope;
@@ -474,6 +639,8 @@ def rust_tests(packages: list[str]) -> None:
 
 def lane_rust_test(fix: bool) -> None:
     rust_tests(["--workspace"])
+    for args in FEATURE_TEST_SETS:
+        rust_tests(list(args))
     # Every test binary, C oracle included, must also link for a GCC-based
     # Windows target (obs-rust/obs-studio#291). soldr provides the
     # mingw-w64 cross toolchain; nothing runs, so no Wine is needed.

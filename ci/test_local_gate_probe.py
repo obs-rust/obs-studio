@@ -29,6 +29,17 @@ def is_cross_step(cmd: list[str]) -> bool:
     return CROSS_TARGET in cmd
 
 
+def is_feature_set_step(cmd: list[str]) -> bool:
+    """A FEATURE_TEST_SETS run of the rust-test lane (#2056). The probe skips
+    it: it names workspace crates (`-p obs-util`) that the scratch crate does
+    not have, and the real rust-test lane runs it on the full workspace."""
+    return any(
+        list(args) == cmd[i : i + len(args)]
+        for args in local_gate.FEATURE_TEST_SETS
+        for i in range(len(cmd))
+    )
+
+
 # Needs soldr: CI runs it in the lint step on the soldr runner, not in the
 # ubuntu-latest ci-self-test job (#427).
 @unittest.skipUnless(shutil.which("soldr"), "soldr not on PATH")
@@ -53,7 +64,7 @@ class RustSourceProbeTest(unittest.TestCase):
         output = []
 
         def run_in_scratch(cmd, **kw):
-            if is_cross_step(cmd):
+            if is_cross_step(cmd) or is_feature_set_step(cmd):
                 return
             result = subprocess.run(
                 cmd, cwd=scratch, env=kw.get("env"), capture_output=True, text=True, timeout=90, check=False
@@ -89,6 +100,13 @@ class ProbeScopeTest(unittest.TestCase):
         self.assertTrue(is_cross_step(
             ["soldr", "cargo", "test", "--workspace", "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"]))
         self.assertFalse(is_cross_step(["soldr", "cargo", "test", "--workspace", "--locked"]))
+
+    def test_feature_set_steps_are_skipped_in_the_scratch_crate(self):
+        # The scratch crate has no obs-util (#2056).
+        self.assertTrue(local_gate.FEATURE_TEST_SETS)
+        for args in local_gate.FEATURE_TEST_SETS:
+            self.assertTrue(is_feature_set_step(["soldr", "cargo", "test", *args, "--locked", "--doc"]))
+        self.assertFalse(is_feature_set_step(["soldr", "cargo", "test", "--workspace", "--locked"]))
 
 
 if __name__ == "__main__":

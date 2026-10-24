@@ -501,6 +501,14 @@ timing evidence before claiming a speed improvement.
   any Dockerfile, workflow or doc pin differs.
 - `soldr cargo clippy --all-targets -- -D warnings` and `soldr cargo fmt --check`
   must be clean.
+- **Cargo feature sets** (#2056). `--workspace` runs unify features, so they
+  build each crate only with the union of what its dependents enable (for
+  example `obs-util/gio` always on). `./lint` also runs clippy for each entry
+  of `FEATURE_SETS` in `ci/local_gate.py`, and `./unittest` runs the
+  `FEATURE_TEST_SETS` tests. `./lint` fails when a workspace feature is not
+  built both on and off by some clippy run. A new Cargo feature therefore
+  needs a `FEATURE_SETS` entry, or a `FEATURE_SET_EXEMPT` entry that says
+  why not and where it is checked instead.
 - `unsafe` is allowed only in `src/ffi/` shims, in `obs-c-oracle`, and in the
   Tier 2/3 test files that call C ABI functions. Each `unsafe` block has a
   `// SAFETY:` comment. Every port crate denies the `unsafe_code` lint, so a
