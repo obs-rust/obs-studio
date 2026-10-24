@@ -14,5 +14,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
+
 #include <stdio.h>
 #include <util/base.h>

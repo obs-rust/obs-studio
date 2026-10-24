@@ -69,6 +69,11 @@ void OBSBasic::StartStreaming()
 		}
 	}
 
+	/* A start the user asks for tries RTMPS again; only the restart after
+	 * "Proceed anyway" keeps plain RTMP. */
+	SetPlainRtmp(rtmpsFallbackRestart);
+	rtmpsFallbackRestart = false;
+
 	emit StreamingPreparing();
 
 	if (sysTrayStream) {
@@ -91,6 +96,8 @@ void OBSBasic::StartStreaming()
 		if (sysTrayStream) {
 			sysTrayStream->setText("Basic.Main.Connecting");
 		}
+
+		streamUsesMultitrack = outputHandler->multitrackVideoActive;
 
 		if (!outputHandler->StartStreaming(service)) {
 			DisplayStreamStartError();
@@ -335,6 +342,13 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 		errorDescription = Str("Output.ConnectFail.Disconnected");
 	}
 
+	/* A service connection that rtmp-services upgraded to RTMPS can retry
+	 * over plain RTMP; multitrack video brings its own URLs. */
+	std::string rtmpsPlainUrl;
+	if (code == OBS_OUTPUT_CONNECT_FAILED && !streamUsesMultitrack) {
+		rtmpsPlainUrl = RtmpsFallbackUrl();
+	}
+
 	if (use_last_error && !last_error.isEmpty()) {
 		dstr_printf(errorMessage, "%s\n\n%s", errorDescription, QT_TO_UTF8(last_error));
 	} else {
@@ -368,6 +382,9 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 						   : QTStr("Output.StreamEncodeError.Msg.LastError").arg(last_error);
 		OBSMessageBox::information(this, QTStr("Output.StreamEncodeError.Title"), msg);
 
+	} else if (!rtmpsPlainUrl.empty()) {
+		OfferRtmpsFallback(rtmpsPlainUrl);
+
 	} else if (code != OBS_OUTPUT_SUCCESS && isVisible()) {
 		OBSMessageBox::information(this, QTStr("Output.ConnectFail.Title"), QT_UTF8(errorMessage));
 
@@ -381,6 +398,61 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	}
 	if (should_reconnect) {
 		QMetaObject::invokeMethod(this, &OBSBasic::StartStreaming, Qt::QueuedConnection);
+	}
+}
+
+std::string OBSBasic::RtmpsFallbackUrl()
+{
+	calldata_t cd = {0};
+	const char *plain = nullptr;
+	std::string url;
+
+	calldata_set_ptr(&cd, "service", GetService());
+	if (proc_handler_call(obs_get_proc_handler(), "rtmp_services_rtmps_fallback", &cd) &&
+	    calldata_get_string(&cd, "plain_url", &plain) && plain) {
+		url = plain;
+	}
+	calldata_free(&cd);
+	return url;
+}
+
+void OBSBasic::SetPlainRtmp(bool enabled)
+{
+	calldata_t cd = {0};
+	calldata_set_ptr(&cd, "service", GetService());
+	calldata_set_bool(&cd, "enabled", enabled);
+	proc_handler_call(obs_get_proc_handler(), "rtmp_services_set_plain_rtmp", &cd);
+	calldata_free(&cd);
+}
+
+/* The RTMPS connection failed: "Proceed anyway" restarts the stream over
+ * plain RTMP after a three-second countdown unless the user cancels. With the
+ * window hidden there is nobody to ask, so the countdown runs on its own. */
+void OBSBasic::OfferRtmpsFallback(const std::string &plainUrl)
+{
+	auto proceed = [this, plainUrl]() {
+		OBSRtmpsFallback::LogFallback(plainUrl.c_str());
+		rtmpsFallbackRestart = true;
+		QMetaObject::invokeMethod(this, &OBSBasic::StartStreaming, Qt::QueuedConnection);
+	};
+
+	if (!isVisible()) {
+		SysTrayNotify(QTStr("Output.RtmpsFallback.Tray"), QSystemTrayIcon::Warning);
+		QTimer::singleShot(OBSRtmpsFallback::CountdownMs, this, proceed);
+		return;
+	}
+
+	OBSRtmpsFallback::Texts texts = {
+		QTStr("Output.RtmpsFallback.Title"),
+		QTStr("Output.RtmpsFallback.Text").arg(QString::fromStdString(plainUrl)),
+		QTStr("Output.RtmpsFallback.Proceed"),
+		QTStr("Cancel"),
+	};
+	OBSRtmpsFallback dialog(this, texts);
+	if (dialog.exec() == QDialog::Accepted) {
+		proceed();
+	} else {
+		blog(LOG_INFO, "RTMPS fallback cancelled; the stream was not started");
 	}
 }
 

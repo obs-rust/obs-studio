@@ -37,4 +37,7 @@ private:
 	QElapsedTimer elapsed;
 
 	void Tick();
+
+protected:
+	void showEvent(QShowEvent *event) override;
 };
