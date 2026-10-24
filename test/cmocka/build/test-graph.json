@@ -1437,6 +1437,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_output_video_checks_steps": {
+      "sources": [
+        "test/cmocka/test_output_video_checks_steps.c",
+        "libobs/obs-output-video-checks.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_pipe": {
       "sources": [
         "test/cmocka/test_pipe.c"
@@ -3652,6 +3675,12 @@
     },
     "test_output_start_twice": {
       "target": "test_output_start_twice",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_video_checks_steps": {
+      "target": "test_output_video_checks_steps",
       "command": [
         "${target}"
       ]
