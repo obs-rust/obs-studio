@@ -18,14 +18,16 @@
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
-//! the transitions; and `libobs/obs-source-volume.c.h`, the volume snap of
+//! the transitions; `libobs/obs-source-transition-render.c.h`, the render
+//! and audio step decisions of the transitions; and
+//! `libobs/obs-source-volume.c.h`, the volume snap of
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
 //! The safe cores are [`async_pacing`], [`audio_input`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`ptm_gate`],
-//! [`size_route`], [`transition_clock`] and
-//! [`volume_apply`]. The C ABI shims live in [`ffi`].
+//! [`deinterlace_pacing`], [`ptm_gate`], [`size_route`],
+//! [`transition_clock`], [`transition_render`] and [`volume_apply`]. The C
+//! ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
