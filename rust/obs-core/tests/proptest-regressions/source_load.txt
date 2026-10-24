@@ -1,0 +1,16 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 62e1c96d04233a71e644ff84961194f8411fc611f1c0033b2404036536ffff2e # shrinks to stored = -2147483648
+cc 11ac6a18bbd36f052566ae2671a0389220263a0febf209ace06f0312d5fd9e76 # shrinks to x = -5e-324
+cc 7c7a414c2ac6da0361575f6a7c057ad42a7b38c8255a3d75430b05fa6d30147c # shrinks to x = 3.402823466385289e38
+cc b123c938ee0237616da23438b5c02f7c6c9c5fbcffa2dcc0bb0b043e685633b3 # shrinks to x = 3.4028234663852886e38
+cc 059e95a9bc9ef69d73e496e72fb033bd7687b1af338111016dc416443d183cad # shrinks to x = NaN
+cc e89f3f93ec3a440d68bca026b9161073160e52a87070858cb23874954bd91aa9 # shrinks to prev = 386007042, caps = 0, with_cap = true, ty = 0
+cc 282b0c0a912a4713f0bd142203b18a7960cd38cdeb705a58dd28c25658c7c059 # shrinks to prev = 553648128, caps = 0, with_cap = false, ty = 0
+cc 03713edd1ba67dd3df7fa93b66e291399d6c6950775a0a3c8c474f361836738d # shrinks to prev = 0, caps = 0, with_cap = true, ty = 4294967296
+cc b7918046b913ac3ef79965481fceab1f90880b1859d7f815915e203a3620b911 # shrinks to prev = 386007040, caps = 1, with_cap = false, ty = 0
+cc 9cdbaee02793e42ecbe8ae689b38e27906e39331637ec5ac23766c79f1a20a2f # shrinks to prev = 386007041, caps = 0, with_cap = true, ty = 0

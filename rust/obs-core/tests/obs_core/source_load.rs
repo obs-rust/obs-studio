@@ -614,3 +614,17 @@ proptest! {
         }
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 4096, ..ProptestConfig::default() })]
+
+    /// `MAKE_SEMANTIC_VERSION()` written out, over every major, minor and
+    /// patch.
+    #[test]
+    fn edge_semantic_version(major in any::<u8>(), minor in any::<u8>(), patch in any::<u16>()) {
+        prop_assert_eq!(
+            semantic_version(major, minor, patch),
+            u32::from(major) * 0x0100_0000 + u32::from(minor) * 0x1_0000 + u32::from(patch)
+        );
+    }
+}
