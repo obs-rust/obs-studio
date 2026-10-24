@@ -13,8 +13,10 @@
 //! (`rust-hidden.txt`).
 //!
 //! The enums cross as `c_int`s; a format or scale type outside its enum
-//! takes the C's `default:`. No intentional differences. A null pointer is
-//! not checked: libobs passes a frame's `linesize` arrays and locals.
+//! takes the C's `default:`. The one intentional difference is the core's
+//! (`resolution_close()` with a 32-bit `long`, MSVC only, unreachable). A
+//! null pointer is not checked: libobs passes a frame's `linesize` arrays
+//! and locals.
 
 use core::ffi::c_int;
 

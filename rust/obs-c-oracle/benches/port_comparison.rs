@@ -54,6 +54,8 @@ mod source_ptm_gate;
 mod source_transition_clock;
 #[path = "port_comparison/util.rs"]
 mod util;
+#[path = "port_comparison/video_copy_plan.rs"]
+mod video_copy_plan;
 #[path = "port_comparison/view.rs"]
 mod view;
 
@@ -105,6 +107,7 @@ fn comparisons(criterion: &mut Criterion) {
     source_ptm_gate::benchmarks(criterion);
     source_transition_clock::benchmarks(criterion);
     util::benchmarks(criterion);
+    video_copy_plan::benchmarks(criterion);
     view::benchmarks(criterion);
 }
 

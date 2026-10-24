@@ -6,11 +6,14 @@
 //! `libobs/obs-audio-mix.c.h` (from `obs-audio.c.h`); and
 //! `libobs/util/source-profiler.c.h`, which reads core state (sources and the
 //! graphics context) and so belongs to the core rather than obs-util; and
-//! `libobs/obs-view-api.c.h`, the views.
+//! `libobs/obs-view-api.c.h`, the views; and `libobs/obs-video-copy-plan.c.h`
+//! (from `obs-video.c.h`), the output frame copy plan and scale effect choice.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`], [`audio_mix`],
-//! [`source_profiler`] and [`view`]. The C ABI shims live in [`ffi`].
+//! [`source_profiler`], [`view`] and [`video_copy_plan`]. [`video_plan`]
+//! sizes the conversion textures; [`video_copy_plan`] plans the copies out
+//! of them into each output frame. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 

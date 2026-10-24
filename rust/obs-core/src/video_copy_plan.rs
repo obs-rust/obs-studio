@@ -34,7 +34,10 @@
 //! `obs_reset_video()`, the line sizes from the graphics driver and
 //! video-io), but nothing here can panic on any input.
 //!
-//! No intentional differences.
+//! Intentional difference, MSVC only and unreachable: with a 32-bit `long`
+//! the C's `resolution_close()` turns a size of 2^31 or more negative and its
+//! subtraction can overflow (undefined); the port answers as an `i64`
+//! subtraction does. No texture or video size gets near 2^31.
 
 #![deny(
     clippy::arithmetic_side_effects,
