@@ -15,12 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-item-names.pch.h"
 
-/* The scene item names and coordinate keys of scene_load_item() and
- * scene_save_item() in obs-scene.c, moved: the tables and the key choice, on
- * plain values. obs-scene.c keeps every obs_data_* call and stores the
- * results in the item. Declared in obs-scene-item-names.h without EXPORT. */
+/* Ported to rust/obs-scene (item_names): the hybrid libobs drops this file.
+ * The scene item names and coordinate keys of scene_load_item() and
+ * scene_save_item() in obs-scene.c: the tables and the key choice, on plain
+ * values. obs-scene.c keeps every obs_data_* call and stores the results in
+ * the item. Declared in obs-scene-item-names.h without EXPORT. */
 
 int obs_scene_item_scale_filter_from_name(const char *name, obs_scene_item_name_cmp cmp)
 {

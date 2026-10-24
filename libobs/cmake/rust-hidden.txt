@@ -112,6 +112,18 @@ obs_scene_texcoords_centered
 obs_scene_render_effect
 obs_scene_render_multiplier
 obs_scene_render_technique
+# obs-scene-item-names.c: scene_load_item() and scene_save_item() in
+# obs-scene.c call them inside libobs. Declared in obs-scene-item-names.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_scene_item_scale_filter_from_name
+obs_scene_item_blend_method_from_name
+obs_scene_item_blend_type_from_name
+obs_scene_item_scale_filter_name
+obs_scene_item_blend_method_name
+obs_scene_item_blend_type_name
+obs_scene_item_transform_keys
+obs_scene_item_bounds_keys
+obs_scene_item_save_relative
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Declared in obs-scene-audio-actions.h without EXPORT, so the shims
 # stay hidden the same way.

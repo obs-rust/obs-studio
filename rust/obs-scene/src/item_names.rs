@@ -112,41 +112,85 @@ pub enum Keys {
     Absolute = 2,
 }
 
+/// The value of the first entry of `table` that `equal(name, entry)` finds
+/// equal, asked in the C's order and not past the first match, else
+/// `default`. `None` (the C's `NULL`) is the default without a compare, as
+/// the C's `if (name)`.
+fn from_name(
+    table: &[(&CStr, i32)],
+    default: i32,
+    name: Option<&CStr>,
+    mut equal: impl FnMut(&CStr, &CStr) -> bool,
+) -> i32 {
+    let Some(name) = name else {
+        return default;
+    };
+    table
+        .iter()
+        .find(|(entry, _)| equal(name, entry))
+        .map_or(default, |&(_, value)| value)
+}
+
+/// The choice of [`transform_keys`] and [`bounds_keys`], once `relative`
+/// says whether every relative key is there.
+fn keys(absolute_coordinates: bool, relative: bool) -> Keys {
+    if !absolute_coordinates && relative {
+        Keys::Relative
+    } else if !absolute_coordinates {
+        Keys::FromAbsolute
+    } else {
+        Keys::Absolute
+    }
+}
+
 /// `obs_scene_item_scale_filter_from_name`: `None` is the C's `NULL`.
 /// `equal(name, known)` is the C's `cmp(name, known) == 0`.
 pub fn scale_filter_from_name(name: Option<&CStr>, equal: impl FnMut(&CStr, &CStr) -> bool) -> i32 {
-    let _ = (name, equal);
-    todo!()
+    from_name(&SCALE_FILTER_NAMES, SCALE_DISABLE, name, equal)
 }
 
 /// `obs_scene_item_blend_method_from_name`.
 pub fn blend_method_from_name(name: Option<&CStr>, equal: impl FnMut(&CStr, &CStr) -> bool) -> i32 {
-    let _ = (name, equal);
-    todo!()
+    from_name(&BLEND_METHOD_NAMES, BLEND_METHOD_DEFAULT, name, equal)
 }
 
 /// `obs_scene_item_blend_type_from_name`.
 pub fn blend_type_from_name(name: Option<&CStr>, equal: impl FnMut(&CStr, &CStr) -> bool) -> i32 {
-    let _ = (name, equal);
-    todo!()
+    from_name(&BLEND_TYPE_NAMES, BLEND_NORMAL, name, equal)
 }
 
 /// `obs_scene_item_scale_filter_name`.
 pub fn scale_filter_name(scale_filter: i32) -> &'static CStr {
-    let _ = scale_filter;
-    todo!()
+    match scale_filter {
+        SCALE_POINT => c"point",
+        SCALE_BILINEAR => c"bilinear",
+        SCALE_BICUBIC => c"bicubic",
+        SCALE_LANCZOS => c"lanczos",
+        SCALE_AREA => c"area",
+        _ => c"disable",
+    }
 }
 
 /// `obs_scene_item_blend_method_name`.
 pub fn blend_method_name(blend_method: i32) -> &'static CStr {
-    let _ = blend_method;
-    todo!()
+    match blend_method {
+        BLEND_METHOD_SRGB_OFF => c"srgb_off",
+        _ => c"default",
+    }
 }
 
 /// `obs_scene_item_blend_type_name`.
 pub fn blend_type_name(blend_type: i32) -> &'static CStr {
-    let _ = blend_type;
-    todo!()
+    match blend_type {
+        BLEND_NORMAL => c"normal",
+        BLEND_ADDITIVE => c"additive",
+        BLEND_SUBTRACT => c"subtract",
+        BLEND_SCREEN => c"screen",
+        BLEND_MULTIPLY => c"multiply",
+        BLEND_LIGHTEN => c"lighten",
+        BLEND_DARKEN => c"darken",
+        _ => c"normal",
+    }
 }
 
 /// `obs_scene_item_transform_keys`.
@@ -156,23 +200,18 @@ pub fn transform_keys(
     has_scale_rel: bool,
     has_scale_ref: bool,
 ) -> Keys {
-    let _ = (
+    keys(
         absolute_coordinates,
-        has_pos_rel,
-        has_scale_rel,
-        has_scale_ref,
-    );
-    todo!()
+        has_pos_rel && has_scale_rel && has_scale_ref,
+    )
 }
 
 /// `obs_scene_item_bounds_keys`.
 pub fn bounds_keys(absolute_coordinates: bool, has_bounds_rel: bool) -> Keys {
-    let _ = (absolute_coordinates, has_bounds_rel);
-    todo!()
+    keys(absolute_coordinates, has_bounds_rel)
 }
 
 /// `obs_scene_item_save_relative`.
 pub fn save_relative(absolute_coordinates: bool) -> bool {
-    let _ = absolute_coordinates;
-    todo!()
+    !absolute_coordinates
 }
