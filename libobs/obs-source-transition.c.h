@@ -120,7 +120,7 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	obs_source_t *child;
 	struct matrix4 mat;
 	struct vec2 pos;
-	struct vec2 scale;
+	struct vec2 scale = {.x = 1.0f, .y = 1.0f};
 	float tr_cx = (float)get_cx(tr);
 	float tr_cy = (float)get_cy(tr);
 	float source_cx;
@@ -530,12 +530,26 @@ static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_trans
 	return gs_texrender_get_texture(transition->transition_texrender[idx]);
 }
 
+/* A scale type outside the enum (from a scene collection or a caller) is the
+ * default, Max Only. */
+static enum obs_transition_scale_type valid_scale_type(int64_t type)
+{
+	switch (type) {
+	case OBS_TRANSITION_SCALE_MAX_ONLY:
+	case OBS_TRANSITION_SCALE_ASPECT:
+	case OBS_TRANSITION_SCALE_STRETCH:
+		return (enum obs_transition_scale_type)type;
+	default:
+		return OBS_TRANSITION_SCALE_MAX_ONLY;
+	}
+}
+
 void obs_transition_set_scale_type(obs_source_t *transition, enum obs_transition_scale_type type)
 {
 	if (!transition_valid(transition, "obs_transition_set_scale_type"))
 		return;
 
-	transition->transition_scale_type = type;
+	transition->transition_scale_type = valid_scale_type((int64_t)type);
 }
 
 enum obs_transition_scale_type obs_transition_get_scale_type(const obs_source_t *transition)
@@ -629,7 +643,7 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	tr->transition_source_active[0] = true;
 	tr->transition_alignment = (uint32_t)alignment;
 	tr->transition_mode = (enum obs_transition_mode)mode;
-	tr->transition_scale_type = (enum obs_transition_scale_type)scale_type;
+	tr->transition_scale_type = valid_scale_type(scale_type);
 	tr->transition_cx = (uint32_t)cx;
 	tr->transition_cy = (uint32_t)cy;
 	unlock_transition(tr);

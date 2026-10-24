@@ -1613,6 +1613,12 @@ area.
   one. *All*, 2026-10-22. Issue
   [#1839](https://github.com/obs-rust/obs-studio/issues/1839), PR
   [#1840](https://github.com/obs-rust/obs-studio/pull/1840).
+- A scene collection whose transition has an unknown scale type (edited by
+  hand or written by another tool) loads with the default, which only
+  scales sources down to fit; before, the transition drew its scenes with
+  an undefined scale. *All*, pending merge. Issue
+  [#2064](https://github.com/obs-rust/obs-studio/issues/2064), PR
+  [#2080](https://github.com/obs-rust/obs-studio/pull/2080).
 
 ### Scripting
 
