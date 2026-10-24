@@ -303,6 +303,12 @@
     obs_module_source_rules_output_flags;
     obs_module_source_rules_check;
     obs_module_source_rules_versioned_id;
+    /* obs-module-type-rules.c. obs-module.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_module_type_rules_output_check;
+    obs_module_type_rules_encoder_check;
+    obs_module_type_rules_service_check;
+    obs_module_type_rules_protocol_listed;
     /* obs-source-load.c. obs.c calls them inside libobs. Not EXPORT. */
     obs_source_load_prev_ver;
     obs_source_load_volume;

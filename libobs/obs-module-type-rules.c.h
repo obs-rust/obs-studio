@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-type-rules.pch.h"
 
 /* Output, encoder and service registration rules, moved from
  * obs_register_output_s(), obs_register_encoder_s() and
@@ -25,7 +25,9 @@
  * duplicate lookups, the HAS_VAL() size checks, the copy, the type lists, the
  * protocol split and list, the loading module's lists, the logging and the
  * error path, and passes the flags, the capabilities, the type and which
- * callbacks are inside the size in. Declared in obs-module-type-rules.h. */
+ * callbacks are inside the size in. Declared in obs-module-type-rules.h.
+ * Ported to rust/obs-core (module_type_rules): the hybrid libobs drops this
+ * file. */
 
 #define HAS(val) ((callbacks & OBS_MODULE_TYPE_RULES_HAS_##val) != 0)
 

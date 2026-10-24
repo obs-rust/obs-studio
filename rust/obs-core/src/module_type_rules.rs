@@ -40,8 +40,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-// RED: the stubs below are todo!() until the port lands.
-#![allow(clippy::todo)]
 
 /// `OBS_OUTPUT_VIDEO`.
 pub const OUTPUT_VIDEO: u32 = 1 << 0;
@@ -180,33 +178,82 @@ pub enum Broken {
     NoGetProtocol,
 }
 
+/// `Err(broken)` unless `present`.
+const fn need(present: bool, broken: Broken) -> Result<(), Broken> {
+    if present { Ok(()) } else { Err(broken) }
+}
+
+/// get_name, create and destroy, which every type needs first.
+const fn common(callbacks: Callbacks) -> Result<(), Broken> {
+    if !callbacks.get_name {
+        return Err(Broken::NoGetName);
+    }
+    if !callbacks.create {
+        return Err(Broken::NoCreate);
+    }
+    need(callbacks.destroy, Broken::NoDestroy)
+}
+
 /// Same contract as C `obs_module_type_rules_output_check`: get_name,
 /// create, destroy, start and stop; protocols for a service output;
 /// encoded_packet for an encoded output, else raw_video for video and
 /// raw_audio2 (multi-track) or raw_audio for audio.
-pub fn output_check(_flags: u32, _callbacks: Callbacks) -> Result<(), Broken> {
-    todo!()
+pub fn output_check(flags: u32, callbacks: Callbacks) -> Result<(), Broken> {
+    common(callbacks)?;
+    need(callbacks.start, Broken::NoStart)?;
+    need(callbacks.stop, Broken::NoStop)?;
+    if flags & OUTPUT_SERVICE != 0 {
+        need(callbacks.protocols, Broken::NoProtocols)?;
+    }
+    if flags & OUTPUT_ENCODED != 0 {
+        return need(callbacks.encoded_packet, Broken::NoEncodedPacket);
+    }
+    if flags & OUTPUT_VIDEO != 0 {
+        need(callbacks.raw_video, Broken::NoRawVideo)?;
+    }
+    if flags & OUTPUT_AUDIO != 0 {
+        if flags & OUTPUT_MULTI_TRACK != 0 {
+            need(callbacks.raw_audio2, Broken::NoRawAudio2)?;
+        } else {
+            need(callbacks.raw_audio, Broken::NoRawAudio)?;
+        }
+    }
+    Ok(())
 }
 
 /// Same contract as C `obs_module_type_rules_encoder_check`: a texture
 /// encoder that scales itself first, whatever its callbacks; then get_name,
 /// create, destroy; encode_texture or encode_texture2 for a texture encoder,
 /// else encode; get_frame_size for an audio encoder.
-pub fn encoder_check(_encoder_type: u32, _caps: u32, _callbacks: Callbacks) -> Result<(), Broken> {
-    todo!()
+pub fn encoder_check(encoder_type: u32, caps: u32, callbacks: Callbacks) -> Result<(), Broken> {
+    let texture = caps & CAP_PASS_TEXTURE != 0;
+    if texture && caps & CAP_SCALING != 0 {
+        return Err(Broken::TextureScaling);
+    }
+    common(callbacks)?;
+    if texture {
+        need(
+            callbacks.encode_texture || callbacks.encode_texture2,
+            Broken::NoEncodeTexture,
+        )?;
+    } else {
+        need(callbacks.encode, Broken::NoEncode)?;
+    }
+    if encoder_type == ENCODER_AUDIO {
+        need(callbacks.get_frame_size, Broken::NoGetFrameSize)?;
+    }
+    Ok(())
 }
 
 /// Same contract as C `obs_module_type_rules_service_check`: get_name,
 /// create, destroy and get_protocol.
-pub fn service_check(_callbacks: Callbacks) -> Result<(), Broken> {
-    todo!()
+pub fn service_check(callbacks: Callbacks) -> Result<(), Broken> {
+    common(callbacks)?;
+    need(callbacks.get_protocol, Broken::NoGetProtocol)
 }
 
 /// Same contract as C `obs_module_type_rules_protocol_listed`: `protocol`
 /// is one of `protocols`, byte for byte (`strcmp() == 0`).
-pub fn protocol_listed<'a>(
-    _protocol: &[u8],
-    _protocols: impl IntoIterator<Item = &'a [u8]>,
-) -> bool {
-    todo!()
+pub fn protocol_listed<'a>(protocol: &[u8], protocols: impl IntoIterator<Item = &'a [u8]>) -> bool {
+    protocols.into_iter().any(|listed| listed == protocol)
 }
