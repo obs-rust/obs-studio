@@ -50,6 +50,7 @@
     "obs-source-ptm-gate.h",
     "obs-source-transition-clock.h",
     "obs-source.h",
+    "obs-video-copy-plan.h",
     "obs.h",
     "obs.hpp",
     "util/array-serializer.h",

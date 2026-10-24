@@ -121,19 +121,29 @@ static inline void unmap_last_surface(struct obs_core_video_mix *video)
 	}
 }
 
+static inline struct obs_video_mix_reuse_key mix_reuse_key(const struct obs_core_video_mix *mix)
+{
+	struct obs_video_mix_reuse_key key = {
+		.view = (uintptr_t)mix->view,
+		.render_space = mix->render_space,
+		.base_width = mix->ovi.base_width,
+		.base_height = mix->ovi.base_height,
+		.rendered = mix->texture_rendered,
+	};
+	return key;
+}
+
 static inline bool can_reuse_mix_texture(const struct obs_core_video_mix *mix, size_t *idx)
 {
+	const struct obs_video_mix_reuse_key key = mix_reuse_key(mix);
+
 	for (size_t i = 0, num = obs->video.mixes.num; i < num; i++) {
 		const struct obs_core_video_mix *other = obs->video.mixes.array[i];
 		if (other == mix)
 			break;
-		if (other->view != mix->view)
-			continue;
-		if (other->render_space != mix->render_space)
-			continue;
-		if (other->ovi.base_width != mix->ovi.base_width || other->ovi.base_height != mix->ovi.base_height)
-			continue;
-		if (!other->texture_rendered)
+
+		const struct obs_video_mix_reuse_key other_key = mix_reuse_key(other);
+		if (!obs_video_mix_reuse_match(&other_key, &key))
 			continue;
 
 		*idx = i;
@@ -210,54 +220,69 @@ static inline void render_main_texture(struct obs_core_video_mix *video)
 	profile_end(render_main_texture_name);
 }
 
-static inline gs_effect_t *get_scale_effect_internal(struct obs_core_video_mix *mix)
+/* The scale types obs-video-copy-plan.h copies. */
+_Static_assert(OBS_VIDEO_COPY_SCALE_DISABLE == OBS_SCALE_DISABLE, "OBS_SCALE_DISABLE");
+_Static_assert(OBS_VIDEO_COPY_SCALE_POINT == OBS_SCALE_POINT, "OBS_SCALE_POINT");
+_Static_assert(OBS_VIDEO_COPY_SCALE_BICUBIC == OBS_SCALE_BICUBIC, "OBS_SCALE_BICUBIC");
+_Static_assert(OBS_VIDEO_COPY_SCALE_BILINEAR == OBS_SCALE_BILINEAR, "OBS_SCALE_BILINEAR");
+_Static_assert(OBS_VIDEO_COPY_SCALE_LANCZOS == OBS_SCALE_LANCZOS, "OBS_SCALE_LANCZOS");
+_Static_assert(OBS_VIDEO_COPY_SCALE_AREA == OBS_SCALE_AREA, "OBS_SCALE_AREA");
+_Static_assert(OBS_VIDEO_COPY_MAX == NUM_CHANNELS, "NUM_CHANNELS");
+
+static inline uint32_t loaded_scale_effects(const struct obs_core_video *video)
 {
-	struct obs_core_video *video = &obs->video;
-	const struct video_output_info *info = video_output_get_info(mix->video);
-
-	/* if the dimension is under half the size of the original image,
-	 * bicubic/lanczos can't sample enough pixels to create an accurate
-	 * image, so use the bilinear low resolution effect instead */
-	if (info->width < (mix->ovi.base_width / 2) && info->height < (mix->ovi.base_height / 2)) {
-		return video->bilinear_lowres_effect;
-	}
-
-	switch (mix->ovi.scale_type) {
-	case OBS_SCALE_BILINEAR:
-		return video->default_effect;
-	case OBS_SCALE_LANCZOS:
-		return video->lanczos_effect;
-	case OBS_SCALE_AREA:
-		return video->area_effect;
-	case OBS_SCALE_BICUBIC:
-	default:;
-	}
-
-	return video->bicubic_effect;
+	uint32_t loaded = 0;
+	if (video->default_effect)
+		loaded |= OBS_VIDEO_SCALE_LOADED(OBS_VIDEO_SCALE_EFFECT_DEFAULT);
+	if (video->bilinear_lowres_effect)
+		loaded |= OBS_VIDEO_SCALE_LOADED(OBS_VIDEO_SCALE_EFFECT_BILINEAR_LOWRES);
+	if (video->bicubic_effect)
+		loaded |= OBS_VIDEO_SCALE_LOADED(OBS_VIDEO_SCALE_EFFECT_BICUBIC);
+	if (video->lanczos_effect)
+		loaded |= OBS_VIDEO_SCALE_LOADED(OBS_VIDEO_SCALE_EFFECT_LANCZOS);
+	if (video->area_effect)
+		loaded |= OBS_VIDEO_SCALE_LOADED(OBS_VIDEO_SCALE_EFFECT_AREA);
+	return loaded;
 }
 
-static inline bool resolution_close(struct obs_core_video_mix *mix, uint32_t width, uint32_t height)
+static inline gs_effect_t *scale_effect_pointer(const struct obs_core_video *video, enum obs_video_scale_effect effect)
 {
-	long width_cmp = (long)mix->ovi.base_width - (long)width;
-	long height_cmp = (long)mix->ovi.base_height - (long)height;
-
-	return labs(width_cmp) <= 16 && labs(height_cmp) <= 16;
+	switch (effect) {
+	case OBS_VIDEO_SCALE_EFFECT_BILINEAR_LOWRES:
+		return video->bilinear_lowres_effect;
+	case OBS_VIDEO_SCALE_EFFECT_BICUBIC:
+		return video->bicubic_effect;
+	case OBS_VIDEO_SCALE_EFFECT_LANCZOS:
+		return video->lanczos_effect;
+	case OBS_VIDEO_SCALE_EFFECT_AREA:
+		return video->area_effect;
+	case OBS_VIDEO_SCALE_EFFECT_DEFAULT:
+	default:
+		return video->default_effect;
+	}
 }
 
 static inline gs_effect_t *get_scale_effect(struct obs_core_video_mix *mix, uint32_t width, uint32_t height)
 {
 	struct obs_core_video *video = &obs->video;
+	struct obs_video_scale_input input = {
+		.base_width = mix->ovi.base_width,
+		.base_height = mix->ovi.base_height,
+		.target_width = width,
+		.target_height = height,
+		.scale_type = mix->ovi.scale_type,
+		.loaded = loaded_scale_effects(video),
+	};
 
-	if (resolution_close(mix, width, height)) {
-		return video->default_effect;
-	} else {
-		/* if the scale method couldn't be loaded, use either bicubic
-		 * or bilinear by default */
-		gs_effect_t *effect = get_scale_effect_internal(mix);
-		if (!effect)
-			effect = !!video->bicubic_effect ? video->bicubic_effect : video->default_effect;
-		return effect;
+	/* The output's size is only read when the target is not close to the
+	 * base size, as before. */
+	if (!obs_video_scale_resolution_close(input.base_width, input.base_height, width, height)) {
+		const struct video_output_info *info = video_output_get_info(mix->video);
+		input.output_width = info->width;
+		input.output_height = info->height;
 	}
+
+	return scale_effect_pointer(video, obs_video_scale_effect_choice(&input));
 }
 
 static const char *render_output_texture_name = "render_output_texture";
@@ -582,18 +607,18 @@ static inline bool download_frame(struct obs_core_video_mix *video, int prev_tex
 	return true;
 }
 
-static const uint8_t *set_gpu_converted_plane(uint32_t width, uint32_t height, uint32_t linesize_input,
-					      uint32_t linesize_output, const uint8_t *in, uint8_t *out)
+/* One copy of the plan (obs-video-copy-plan.c): returns where the source
+ * ended. */
+static const uint8_t *set_gpu_converted_plane(const struct obs_video_copy *copy, const uint8_t *in, uint8_t *out)
 {
-	if ((width == linesize_input) && (width == linesize_output)) {
-		size_t total = (size_t)width * (size_t)height;
-		memcpy(out, in, total);
-		in += total;
+	if (copy->whole) {
+		memcpy(out, in, copy->bytes);
+		in += copy->bytes;
 	} else {
-		for (size_t y = 0; y < height; y++) {
-			memcpy(out, in, width);
-			out += linesize_output;
-			in += linesize_input;
+		for (size_t y = 0; y < copy->rows; y++) {
+			memcpy(out, in, copy->bytes);
+			out += copy->dst_stride;
+			in += copy->src_stride;
 		}
 	}
 
@@ -603,160 +628,26 @@ static const uint8_t *set_gpu_converted_plane(uint32_t width, uint32_t height, u
 static void set_gpu_converted_data(struct video_frame *output, const struct video_data *input,
 				   const struct video_output_info *info)
 {
-	switch (info->format) {
-	case VIDEO_FORMAT_I420: {
-		const uint32_t width = info->width;
-		const uint32_t height = info->height;
+	const struct obs_video_copy_plan plan =
+		obs_video_gpu_copy_plan(info->format, info->width, info->height, input->linesize, output->linesize);
+	const uint8_t *after_plane0 = NULL;
 
-		set_gpu_converted_plane(width, height, input->linesize[0], output->linesize[0], input->data[0],
-					output->data[0]);
-
-		const uint32_t width_d2 = width / 2;
-		const uint32_t height_d2 = height / 2;
-
-		set_gpu_converted_plane(width_d2, height_d2, input->linesize[1], output->linesize[1], input->data[1],
-					output->data[1]);
-
-		set_gpu_converted_plane(width_d2, height_d2, input->linesize[2], output->linesize[2], input->data[2],
-					output->data[2]);
-
-		break;
-	}
-	case VIDEO_FORMAT_NV12: {
-		const uint32_t width = info->width;
-		const uint32_t height = info->height;
-		const uint32_t height_d2 = height / 2;
-		if (input->linesize[1]) {
-			set_gpu_converted_plane(width, height, input->linesize[0], output->linesize[0], input->data[0],
-						output->data[0]);
-			set_gpu_converted_plane(width, height_d2, input->linesize[1], output->linesize[1],
-						input->data[1], output->data[1]);
-		} else {
-			const uint8_t *const in_uv = set_gpu_converted_plane(width, height, input->linesize[0],
-									     output->linesize[0], input->data[0],
-									     output->data[0]);
-			set_gpu_converted_plane(width, height_d2, input->linesize[0], output->linesize[1], in_uv,
-						output->data[1]);
-		}
-
-		break;
-	}
-	case VIDEO_FORMAT_I444: {
-		const uint32_t width = info->width;
-		const uint32_t height = info->height;
-
-		set_gpu_converted_plane(width, height, input->linesize[0], output->linesize[0], input->data[0],
-					output->data[0]);
-
-		set_gpu_converted_plane(width, height, input->linesize[1], output->linesize[1], input->data[1],
-					output->data[1]);
-
-		set_gpu_converted_plane(width, height, input->linesize[2], output->linesize[2], input->data[2],
-					output->data[2]);
-
-		break;
-	}
-	case VIDEO_FORMAT_I010: {
-		const uint32_t width = info->width;
-		const uint32_t height = info->height;
-
-		set_gpu_converted_plane(width * 2, height, input->linesize[0], output->linesize[0], input->data[0],
-					output->data[0]);
-
-		const uint32_t height_d2 = height / 2;
-
-		set_gpu_converted_plane(width, height_d2, input->linesize[1], output->linesize[1], input->data[1],
-					output->data[1]);
-
-		set_gpu_converted_plane(width, height_d2, input->linesize[2], output->linesize[2], input->data[2],
-					output->data[2]);
-
-		break;
-	}
-	case VIDEO_FORMAT_P010: {
-		const uint32_t width_x2 = info->width * 2;
-		const uint32_t height = info->height;
-		const uint32_t height_d2 = height / 2;
-		if (input->linesize[1]) {
-			set_gpu_converted_plane(width_x2, height, input->linesize[0], output->linesize[0],
-						input->data[0], output->data[0]);
-			set_gpu_converted_plane(width_x2, height_d2, input->linesize[1], output->linesize[1],
-						input->data[1], output->data[1]);
-		} else {
-			const uint8_t *const in_uv = set_gpu_converted_plane(width_x2, height, input->linesize[0],
-									     output->linesize[0], input->data[0],
-									     output->data[0]);
-			set_gpu_converted_plane(width_x2, height_d2, input->linesize[0], output->linesize[1], in_uv,
-						output->data[1]);
-		}
-
-		break;
-	}
-	case VIDEO_FORMAT_P216: {
-		const uint32_t width_x2 = info->width * 2;
-		const uint32_t height = info->height;
-
-		set_gpu_converted_plane(width_x2, height, input->linesize[0], output->linesize[0], input->data[0],
-					output->data[0]);
-
-		set_gpu_converted_plane(width_x2, height, input->linesize[1], output->linesize[1], input->data[1],
-					output->data[1]);
-
-		break;
-	}
-	case VIDEO_FORMAT_P416: {
-		const uint32_t height = info->height;
-
-		set_gpu_converted_plane(info->width * 2, height, input->linesize[0], output->linesize[0],
-					input->data[0], output->data[0]);
-
-		set_gpu_converted_plane(info->width * 4, height, input->linesize[1], output->linesize[1],
-					input->data[1], output->data[1]);
-
-		break;
-	}
-
-	case VIDEO_FORMAT_NONE:
-	case VIDEO_FORMAT_YVYU:
-	case VIDEO_FORMAT_YUY2:
-	case VIDEO_FORMAT_UYVY:
-	case VIDEO_FORMAT_RGBA:
-	case VIDEO_FORMAT_BGRA:
-	case VIDEO_FORMAT_BGRX:
-	case VIDEO_FORMAT_Y800:
-	case VIDEO_FORMAT_BGR3:
-	case VIDEO_FORMAT_I412:
-	case VIDEO_FORMAT_I422:
-	case VIDEO_FORMAT_I210:
-	case VIDEO_FORMAT_I40A:
-	case VIDEO_FORMAT_I42A:
-	case VIDEO_FORMAT_YUVA:
-	case VIDEO_FORMAT_YA2L:
-	case VIDEO_FORMAT_AYUV:
-	case VIDEO_FORMAT_V210:
-	case VIDEO_FORMAT_R10L:
-		/* unimplemented */
-		;
+	for (size_t i = 0; i < plan.count && i < OBS_VIDEO_COPY_MAX; i++) {
+		const struct obs_video_copy *copy = &plan.copies[i];
+		const uint8_t *in = copy->src_after_plane0 ? after_plane0 : input->data[i];
+		const uint8_t *end = set_gpu_converted_plane(copy, in, output->data[i]);
+		if (i == 0)
+			after_plane0 = end;
 	}
 }
 
 static inline void copy_rgbx_frame(struct video_frame *output, const struct video_data *input,
 				   const struct video_output_info *info)
 {
-	uint8_t *in_ptr = input->data[0];
-	uint8_t *out_ptr = output->data[0];
+	const struct obs_video_copy copy =
+		obs_video_rgbx_copy_plan(info->width, info->height, input->linesize[0], output->linesize[0]);
 
-	/* if the line sizes match, do a single copy */
-	if (input->linesize[0] == output->linesize[0]) {
-		memcpy(out_ptr, in_ptr, (size_t)input->linesize[0] * (size_t)info->height);
-	} else {
-		const size_t copy_size = (size_t)info->width * 4;
-		for (size_t y = 0; y < info->height; y++) {
-			memcpy(out_ptr, in_ptr, copy_size);
-			in_ptr += input->linesize[0];
-			out_ptr += output->linesize[0];
-		}
-	}
+	set_gpu_converted_plane(&copy, input->data[0], output->data[0]);
 }
 
 static inline void output_video_data(struct obs_core_video_mix *video, struct video_data *input_frame, int count)

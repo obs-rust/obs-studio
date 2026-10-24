@@ -61,6 +61,9 @@
 #include <caption/caption.h>
 #include <caption/mpeg.h>
 
+/* obs-video-copy-plan.c */
+#include "obs-video-copy-plan.h"
+
 /* obs-video.c */
 #include <time.h>
 #include <stdlib.h>
