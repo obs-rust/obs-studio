@@ -12,15 +12,20 @@
  *   filename buffer when opening the next file failed; main() then freed
  *   that buffer and, on Windows, argv[1] again.
  *
+ * - open_output_file() ignored its writer's mutex, event and thread results
+ *   (obs-rust/obs-studio#2164): with an event that could not be created,
+ *   the writer thread waited on or signalled a NULL event.
+ *
  * The file is included with main() renamed so the static functions can be
- * called directly. stdin is redirected to a temporary file for the cases
- * that read packets.
+ * called directly, and with os_event_init() wrapped so a case can fail it.
+ * stdin is redirected to a temporary file for the cases that read packets.
  */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,9 +33,22 @@
 
 #include "plugins/obs-ffmpeg/ffmpeg-mux/build/ffmpeg-mux.pch.h"
 
+/* The Nth os_event_init() call fails (0: none). */
+static int event_init_fail_at;
+static int event_init_calls;
+
+static int test_os_event_init(os_event_t **event, enum os_event_type type)
+{
+	if (event_init_fail_at && ++event_init_calls == event_init_fail_at)
+		return EAGAIN;
+	return os_event_init(event, type);
+}
+
 int ffmpeg_mux_main(int argc, char *argv[]);
 #define main ffmpeg_mux_main
+#define os_event_init test_os_event_init
 #include "plugins/obs-ffmpeg/ffmpeg-mux/ffmpeg-mux.c.h"
+#undef os_event_init
 #undef main
 
 static void temp_path(char *buf, size_t size, const char *name)
@@ -113,6 +131,47 @@ static void test_failed_open_cleanup(void **state)
 	ffmpeg_mux_free(&ffm);
 }
 
+/* One of the writer's two events cannot be created: the open fails, and
+ * the writer thread is not started around a NULL event. */
+static void test_writer_event_init_failure(void **state)
+{
+	(void)state;
+
+	for (int n = 1; n <= 2; n++) {
+		char out[512];
+		temp_path(out, sizeof(out), "event.mkv");
+
+		struct ffmpeg_mux ffm = {0};
+		ffm.params.file = out;
+		dstr_copy(&ffm.params.printable_file, ffm.params.file);
+		ffm.params.tracks = 1;
+		ffm.params.acodec = "pcm_s16le";
+		ffm.params.muxer_settings = "";
+		ffm.audio = calloc(1, sizeof(*ffm.audio));
+		ffm.audio[0] = (struct audio_params){.name = "a",
+						     .abitrate = 128,
+						     .sample_rate = 48000,
+						     .frame_size = 1024,
+						     .channels = 2};
+		ffm.audio_header = calloc(1, sizeof(*ffm.audio_header));
+
+		event_init_calls = 0;
+		event_init_fail_at = n;
+		int ret = ffmpeg_mux_init_context(&ffm);
+		int calls = event_init_calls;
+		event_init_fail_at = 0;
+
+		bool active = ffm.io.active;
+		ffmpeg_mux_free(&ffm);
+		unlink(out);
+
+		assert_int_equal(ret, FFM_ERROR);
+		assert_false(active);
+		/* It stops at the first init that fails. */
+		assert_int_equal(calls, n);
+	}
+}
+
 /* A packet whose payload ends early fails the recording, and the exit
  * status says so. */
 static void test_main_reports_packet_failure(void **state)
@@ -159,6 +218,7 @@ int main(void)
 		cmocka_unit_test(test_seek_reports_position),
 		cmocka_unit_test(test_seek_rejects_unsupported),
 		cmocka_unit_test(test_failed_open_cleanup),
+		cmocka_unit_test(test_writer_event_init_failure),
 		cmocka_unit_test(test_main_reports_packet_failure),
 		cmocka_unit_test(test_change_file_failure_restores_argv),
 	};

@@ -844,6 +844,34 @@ static int ffmpeg_mux_write_av_buffer(void *opaque, const uint8_t *buf, int buf_
 	return buf_size;
 }
 
+/* The file writer's lock, events and thread. On failure, none of them is
+ * left to clean up. */
+static bool start_io_thread(struct ffmpeg_mux *ffm)
+{
+	if (pthread_mutex_init(&ffm->io.data_mutex, NULL) != 0)
+		return false;
+
+	if (os_event_init(&ffm->io.buffer_space_available_event, OS_EVENT_TYPE_AUTO) != 0)
+		goto fail_space_event;
+	if (os_event_init(&ffm->io.new_data_available_event, OS_EVENT_TYPE_AUTO) != 0)
+		goto fail_data_event;
+
+	if (pthread_create(&ffm->io.io_thread, NULL, ffmpeg_mux_io_thread, ffm) != 0)
+		goto fail_thread;
+
+	return true;
+
+fail_thread:
+	os_event_destroy(ffm->io.new_data_available_event);
+	ffm->io.new_data_available_event = NULL;
+fail_data_event:
+	os_event_destroy(ffm->io.buffer_space_available_event);
+	ffm->io.buffer_space_available_event = NULL;
+fail_space_event:
+	pthread_mutex_destroy(&ffm->io.data_mutex);
+	return false;
+}
+
 static inline int open_output_file(struct ffmpeg_mux *ffm)
 {
 	const AVOutputFormat *format = ffm->output->oformat;
@@ -869,12 +897,14 @@ static inline int open_output_file(struct ffmpeg_mux *ffm)
 			// ffmpeg_mux_write_av_buffer)
 			deque_reserve(&ffm->io.data, 1048576);
 
-			pthread_mutex_init(&ffm->io.data_mutex, NULL);
-
-			os_event_init(&ffm->io.buffer_space_available_event, OS_EVENT_TYPE_AUTO);
-			os_event_init(&ffm->io.new_data_available_event, OS_EVENT_TYPE_AUTO);
-
-			pthread_create(&ffm->io.io_thread, NULL, ffmpeg_mux_io_thread, ffm);
+			if (!start_io_thread(ffm)) {
+				fprintf(stderr, "Couldn't start the writer for '%s'\n",
+					ffm->params.printable_file.array);
+				deque_free(&ffm->io.data);
+				fclose(ffm->io.output_file);
+				ffm->io.output_file = NULL;
+				return FFM_ERROR;
+			}
 
 			unsigned char *avio_ctx_buffer = av_malloc(AVIO_BUFFER_SIZE);
 
