@@ -543,7 +543,8 @@ General Output Functions
 
    Sets/gets the current audio mixer for non-encoded outputs.  For
    multi-track outputs, this would be the equivalent of setting the mask
-   only for the specified mixer index.
+   only for the specified mixer index.  An index of MAX_AUDIO_MIXES (6) or
+   more is ignored with a warning, and the mask stays as it was.
 
 ---------------------
 
@@ -812,7 +813,8 @@ Functions used by outputs
               const struct video_scale_info *obs_output_get_video_conversion(obs_output_t *output)
 
    Optionally sets/gets the video conversion information.  Only used by
-   raw outputs.
+   raw outputs.  The getter returns *NULL* when no conversion is set and
+   the output is not scaled, or when it is scaled but has no video.
 
    .. versionadded:: 29.1
      :c:func:`obs_output_get_video_conversion`

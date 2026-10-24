@@ -127,7 +127,8 @@ pub enum Conversion {
     /// The set `video_conversion`, with this width and height.
     UseSet { width: u32, height: u32 },
     /// `video_conversion` built from the video's format, the default colour
-    /// space and range, and this (the scaled) size.
+    /// space and range, and this (the scaled) size. The C caller returns NULL
+    /// instead when the output has no video, as there is no format (#2127).
     Scaled { width: u32, height: u32 },
 }
 

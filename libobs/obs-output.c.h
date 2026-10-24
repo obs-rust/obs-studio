@@ -1027,6 +1027,11 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 		return;
 	if (log_flag_encoded(output, __FUNCTION__, true))
 		return;
+	if (mixer_idx >= MAX_AUDIO_MIXES) {
+		blog(LOG_WARNING, "output '%s': Ignoring mixer index %zu, it must be below %d",
+		     obs_output_get_name(output), mixer_idx, MAX_AUDIO_MIXES);
+		return;
+	}
 	if (active(output))
 		return;
 
@@ -1479,6 +1484,11 @@ const struct video_scale_info *obs_output_get_video_conversion(struct obs_output
 
 	} else if (plan.kind == OBS_OUTPUT_CONVERSION_SCALED) {
 		const struct video_output_info *info = video_output_get_info(output->video);
+
+		/* A scaled size but no video (obs_output_set_media() with NULL
+		 * video): nothing to convert from. */
+		if (!info)
+			return NULL;
 
 		output->video_conversion.format = info->format;
 		output->video_conversion.colorspace = VIDEO_CS_DEFAULT;

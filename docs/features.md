@@ -1810,6 +1810,12 @@ area.
   adds a type id to no module (NULL) no longer leaks a copy of it. *All*,
   pending merge. Issue [#1953](https://github.com/obs-rust/obs-studio/issues/1953), PR
   [#1960](https://github.com/obs-rust/obs-studio/pull/1960).
+- A plugin or script that gives an output an audio mixer index OBS does not
+  have (6 or more) no longer changes the output's mixers; the call is
+  ignored with a warning. A raw output with a preferred (scaled) size but no
+  video no longer crashes OBS when asked for its video conversion; it has
+  none. *All*, pending merge. Issue
+  [#2127](https://github.com/obs-rust/obs-studio/issues/2127).
 
 ### Security hardening
 

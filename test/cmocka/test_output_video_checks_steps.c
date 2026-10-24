@@ -90,9 +90,9 @@ static void first_mixer_several_bits(void **state)
 }
 
 /* Characterized, not endorsed: a mask with bits only at or above
- * MAX_AUDIO_MIXES (obs_output_set_mixer() with an index of 6 or more, or
- * obs_output_set_mixers() with such a mask) reports mixer 0, which the
- * output does not use. */
+ * MAX_AUDIO_MIXES (obs_output_set_mixers() with such a mask;
+ * obs_output_set_mixer() ignores an index of 6 or more since #2127) reports
+ * mixer 0, which the output does not use. */
 static void first_mixer_high_bits_only(void **state)
 {
 	(void)state;

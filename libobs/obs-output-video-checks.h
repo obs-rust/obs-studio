@@ -155,7 +155,9 @@ bool obs_output_capture_ready(const struct obs_output_capture_presence *presence
  * are the loaded atomics. */
 enum obs_output_begin_action obs_output_begin_gate(bool delay_active, bool active);
 
-/* obs_output_get_video_conversion(), after its flag checks. */
+/* obs_output_get_video_conversion(), after its flag checks. On
+ * OBS_OUTPUT_CONVERSION_SCALED the caller still returns NULL when the output
+ * has no video, since there is no format to convert from (#2127). */
 struct obs_output_conversion_choice obs_output_conversion_plan(const struct obs_output_conversion_sizes *sizes);
 
 /* obs_output_get_congestion(): below 0 is 0, above 1 is 1, the rest (NaN
