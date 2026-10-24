@@ -2380,6 +2380,23 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_ranges": {
+      "sources": [
+        "test/cmocka/test_source_audio_ranges.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_audio_timing_steps": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
@@ -3848,6 +3865,12 @@
     },
     "test_source_audio_input_steps": {
       "target": "test_source_audio_input_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_ranges": {
+      "target": "test_source_audio_ranges",
       "command": [
         "${target}"
       ]
