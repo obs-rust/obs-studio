@@ -350,6 +350,34 @@ def check_test_binary_inventory() -> None:
     print(f"+ Cargo inventory: {len(targets)} category test executables", flush=True)
 
 
+# Cargo feature sets that the --workspace runs do not build (#2056): Cargo
+# unifies features across one build, so `clippy --workspace` sees each crate
+# only with the union of what its dependents enable.
+FEATURE_SETS: tuple[tuple[str, ...], ...] = ()
+FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = ()
+FEATURE_SET_EXEMPT: dict[tuple[str, str], str] = {}
+
+
+def workspace_manifests() -> dict[str, dict]:
+    raise NotImplementedError
+
+
+def active_crates(manifests: dict[str, dict], name: str, features: tuple[str, ...], default: bool) -> set[str]:
+    raise NotImplementedError
+
+
+def enabled_features(manifests: dict[str, dict], name: str, features: tuple[str, ...], default: bool) -> set[tuple[str, str]]:
+    raise NotImplementedError
+
+
+def feature_coverage(manifests: dict[str, dict], sets: tuple[tuple[str, ...], ...], exempt: dict[tuple[str, str], str]) -> list[str]:
+    raise NotImplementedError
+
+
+def check_feature_sets() -> None:
+    raise NotImplementedError
+
+
 def lane_lint(fix: bool) -> None:
     files = tracked_files()
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
