@@ -1185,7 +1185,9 @@ General Source Functions
 .. function:: void obs_source_set_balance_value(obs_source_t *source, float balance)
               float obs_source_get_balance_value(const obs_source_t *source)
 
-   Sets/gets the audio balance value.
+   Sets/gets the audio balance value, from 0.0 (left) to 1.0 (right).
+   A value outside that range is clamped to it, and NaN sets the
+   default, 0.5.
 
 ---------------------
 
@@ -1277,7 +1279,7 @@ General Source Functions
 .. function:: uint64_t obs_source_get_push_to_mute_delay(const obs_source_t *source)
               void obs_source_set_push_to_mute_delay(obs_source_t *source, uint64_t delay)
 
-   Sets/gets the push-to-mute delay.
+   Sets/gets the push-to-mute delay, in milliseconds.
 
 ---------------------
 
@@ -1291,7 +1293,7 @@ General Source Functions
 .. function:: uint64_t obs_source_get_push_to_talk_delay(const obs_source_t *source)
               void obs_source_set_push_to_talk_delay(obs_source_t *source, uint64_t delay)
 
-   Sets/gets the push-to-talk delay.
+   Sets/gets the push-to-talk delay, in milliseconds.
 
 ---------------------
 

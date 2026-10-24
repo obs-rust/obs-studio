@@ -2304,6 +2304,8 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	double volume;
 	double balance;
 	int64_t sync;
+	int64_t ptm_delay;
+	int64_t ptt_delay;
 	uint32_t prev_ver;
 	uint32_t caps;
 	uint32_t flags;
@@ -2344,6 +2346,12 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 
 	obs_data_set_default_double(source_data, "balance", 0.5);
 	balance = obs_data_get_double(source_data, "balance");
+	/* in range before the float cast; the setter clamps it and maps NaN
+	 * to 0.5 (#2051) */
+	if (balance < 0.0)
+		balance = 0.0;
+	else if (balance > 1.0)
+		balance = 1.0;
 	obs_source_set_balance_value(source, (float)balance);
 
 	sync = obs_data_get_int(source_data, "sync");
@@ -2367,13 +2375,17 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	obs_source_enable_push_to_mute(source, obs_data_get_bool(source_data, "push-to-mute"));
 
 	obs_data_set_default_int(source_data, "push-to-mute-delay", 0);
-	obs_source_set_push_to_mute_delay(source, obs_data_get_int(source_data, "push-to-mute-delay"));
+	ptm_delay = obs_data_get_int(source_data, "push-to-mute-delay");
+	/* stored signed; a negative delay is none (#2051) */
+	obs_source_set_push_to_mute_delay(source, ptm_delay < 0 ? 0 : (uint64_t)ptm_delay);
 
 	obs_data_set_default_bool(source_data, "push-to-talk", false);
 	obs_source_enable_push_to_talk(source, obs_data_get_bool(source_data, "push-to-talk"));
 
 	obs_data_set_default_int(source_data, "push-to-talk-delay", 0);
-	obs_source_set_push_to_talk_delay(source, obs_data_get_int(source_data, "push-to-talk-delay"));
+	ptt_delay = obs_data_get_int(source_data, "push-to-talk-delay");
+	/* stored signed; a negative delay is none (#2051) */
+	obs_source_set_push_to_talk_delay(source, ptt_delay < 0 ? 0 : (uint64_t)ptt_delay);
 
 	di_mode = (int)obs_data_get_int(source_data, "deinterlace_mode");
 	obs_source_set_deinterlace_mode(source, (enum obs_deinterlace_mode)di_mode);

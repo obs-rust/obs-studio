@@ -855,6 +855,15 @@ area.
   samples clip instead of wrapping around. *Linux*, 2026-10-21. Issue
   [#1697](https://github.com/obs-rust/obs-studio/issues/1697), PR
   [#1709](https://github.com/obs-rust/obs-studio/pull/1709).
+- A push-to-talk or push-to-mute delay too large to count in nanoseconds
+  no longer wraps around and ends the moment the key is released; it holds
+  for as long as it can. A negative delay in a scene collection loads as no
+  delay. An audio balance outside full left to full right, from a scene
+  collection, a plugin or a script, is clamped to that range (NaN is
+  centred) instead of inverting or overdriving a channel. *All*, pending
+  merge. Issue
+  [#2051](https://github.com/obs-rust/obs-studio/issues/2051), PR
+  [#2058](https://github.com/obs-rust/obs-studio/pull/2058).
 
 ### Encoding, streaming and recording
 

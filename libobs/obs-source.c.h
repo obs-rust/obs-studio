@@ -1591,13 +1591,25 @@ static inline void source_output_audio_push_back(obs_source_t *source, const str
 	source->last_audio_input_buf_size = 0;
 }
 
+/* When a push-to-mute or push-to-talk key released at os_time stops
+ * holding: delay_ms milliseconds later, saturated at UINT64_MAX instead of
+ * wrapping (#2051). */
+static inline uint64_t push_to_stop_time(uint64_t os_time, uint64_t delay_ms)
+{
+	if (delay_ms > UINT64_MAX / 1000000)
+		return UINT64_MAX;
+
+	uint64_t delay_ns = delay_ms * 1000000;
+	return delay_ns > UINT64_MAX - os_time ? UINT64_MAX : os_time + delay_ns;
+}
+
 static inline bool source_muted(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->user_push_to_mute_pressed)
-		source->push_to_mute_stop_time = os_time + source->push_to_mute_delay * 1000000;
+		source->push_to_mute_stop_time = push_to_stop_time(os_time, source->push_to_mute_delay);
 
 	if (source->push_to_talk_enabled && source->user_push_to_talk_pressed)
-		source->push_to_talk_stop_time = os_time + source->push_to_talk_delay * 1000000;
+		source->push_to_talk_stop_time = push_to_stop_time(os_time, source->push_to_talk_delay);
 
 	bool push_to_mute_active = source->user_push_to_mute_pressed || os_time < source->push_to_mute_stop_time;
 	bool push_to_talk_active = source->user_push_to_talk_pressed || os_time < source->push_to_talk_stop_time;
@@ -5255,10 +5267,10 @@ void *obs_source_get_type_data(obs_source_t *source)
 static float get_source_volume(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->push_to_mute_pressed)
-		source->push_to_mute_stop_time = os_time + source->push_to_mute_delay * 1000000;
+		source->push_to_mute_stop_time = push_to_stop_time(os_time, source->push_to_mute_delay);
 
 	if (source->push_to_talk_enabled && source->push_to_talk_pressed)
-		source->push_to_talk_stop_time = os_time + source->push_to_talk_delay * 1000000;
+		source->push_to_talk_stop_time = push_to_stop_time(os_time, source->push_to_talk_delay);
 
 	bool push_to_mute_active = source->push_to_mute_pressed || os_time < source->push_to_mute_stop_time;
 	bool push_to_talk_active = source->push_to_talk_pressed || os_time < source->push_to_talk_stop_time;
@@ -5769,6 +5781,15 @@ enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source)
 	return source->sample_info.speakers;
 }
 
+/* The balance is 0 (left) to 1 (right); NaN is the default, centred
+ * (#2051). */
+static inline float clamp_balance(float balance)
+{
+	if (isnan(balance))
+		return 0.5f;
+	return balance < 0.0f ? 0.0f : balance > 1.0f ? 1.0f : balance;
+}
+
 void obs_source_set_balance_value(obs_source_t *source, float balance)
 {
 	if (obs_source_valid(source, "obs_source_set_balance_value")) {
@@ -5777,11 +5798,12 @@ void obs_source_set_balance_value(obs_source_t *source, float balance)
 
 		calldata_init_fixed(&data, stack, sizeof(stack));
 		calldata_set_ptr(&data, "source", source);
-		calldata_set_float(&data, "balance", balance);
+		calldata_set_float(&data, "balance", clamp_balance(balance));
 
 		signal_handler_signal(source->context.signals, "audio_balance", &data);
 
-		source->balance = (float)calldata_float(&data, "balance");
+		/* a handler may change it */
+		source->balance = clamp_balance((float)calldata_float(&data, "balance"));
 	}
 }
 
