@@ -90,6 +90,10 @@
 
 #include "obs-scene-audio-actions.h"
 
+/* obs-scene-audio-window.c */
+
+#include "obs-scene-audio-window.h"
+
 /* obs-scene-bounds.c */
 
 #include "obs-scene-bounds.h"
