@@ -64,6 +64,8 @@ mod source_transition_clock;
 mod util;
 #[path = "port_comparison/video_copy_plan.rs"]
 mod video_copy_plan;
+#[path = "port_comparison/video_output_step.rs"]
+mod video_output_step;
 #[path = "port_comparison/view.rs"]
 mod view;
 
@@ -151,6 +153,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_transition_clock,
         util,
         video_copy_plan,
+        video_output_step,
         view,
     ];
 }
