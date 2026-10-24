@@ -23,7 +23,12 @@ endif()
 
 target_sources(
   win-dshow
-  PRIVATE build/win-dshow.windows+.hpp.cpp build/win-dshow.decode-windows+.h.c encode-dstr.hpp ffmpeg-decode.h
+  PRIVATE
+    build/win-dshow.windows+.hpp.cpp
+    build/win-dshow.decode-windows+.h.c
+    dshow-rotation.h
+    encode-dstr.hpp
+    ffmpeg-decode.h
 )
 
 configure_file(cmake/windows/obs-module.rc.in win-dshow.rc)

@@ -43,9 +43,14 @@ static inline bool dshow_rotation_on_frame(bool autorotation, long *last_rotatio
  * set the rotation back to 0. */
 static inline bool dshow_rotation_on_settings(bool autorotation, long *last_rotation)
 {
-	(void)autorotation;
-	(void)last_rotation;
-	return false;
+	if (autorotation || *last_rotation == 0) {
+		return false;
+	}
+
+	/* The next frame with Autorotation on applies the device's roll again,
+	 * even when it is the roll applied before. */
+	*last_rotation = 0;
+	return true;
 }
 
 #ifdef __cplusplus

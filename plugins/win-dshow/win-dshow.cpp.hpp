@@ -505,8 +505,7 @@ void DShowInput::OnReactivate()
 void DShowInput::OnVideoData(const VideoConfig &config, unsigned char *data, size_t size, long long startTime,
 			     long long endTime, long rotation)
 {
-	if (autorotation && rotation != lastRotation) {
-		lastRotation = rotation;
+	if (dshow_rotation_on_frame(autorotation, &lastRotation, rotation)) {
 		obs_source_set_async_rotation(source, rotation);
 	}
 
@@ -862,6 +861,11 @@ bool DShowInput::UpdateVideoConfig(obs_data_t *settings)
 	deactivateWhenNotShowing = obs_data_get_bool(settings, DEACTIVATE_WNS);
 	flip = obs_data_get_bool(settings, FLIP_IMAGE);
 	autorotation = obs_data_get_bool(settings, AUTOROTATION);
+	/* Autorotation turned off: undo the roll it applied (#2137). Runs on
+	 * the DShow thread after ResetGraph(), so no frame is in OnVideoData(). */
+	if (dshow_rotation_on_settings(autorotation, &lastRotation)) {
+		obs_source_set_async_rotation(source, 0);
+	}
 	hw_decode = obs_data_get_bool(settings, HW_DECODE);
 
 	DeviceId id;

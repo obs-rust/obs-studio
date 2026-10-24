@@ -37,6 +37,7 @@
 #endif
 #include "plugins/win-dshow/ffmpeg-decode.h"
 #include "plugins/win-dshow/encode-dstr.hpp"
+#include "plugins/win-dshow/dshow-rotation.h"
 
 #include <algorithm>
 #include <limits>

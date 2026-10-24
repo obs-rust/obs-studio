@@ -736,6 +736,10 @@ area.
   autorotation or a plugin) is drawn turned in its place, instead of outside
   its box. *All*, pending merge. Issue
   [#2121](https://github.com/obs-rust/obs-studio/issues/2121).
+- Turning off Autorotation on a Video Capture Device source takes back the
+  rotation it applied, instead of leaving the camera turned until OBS
+  restarts or the source is recreated. *Windows*, pending merge. Issue
+  [#2137](https://github.com/obs-rust/obs-studio/issues/2137).
 
 ### Audio
 
