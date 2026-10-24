@@ -5,16 +5,20 @@
 //! `libobs/obs-scene-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
 //! `libobs/obs-scene-crop.c.h`, `libobs/obs-scene-render-plan.c.h` (the
 //! per-item render decisions of `render_item` and `render_item_texture`),
-//! and `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
-//! coordinate keys of `scene_load_item` and `scene_save_item`).
+//! `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
+//! coordinate keys of `scene_load_item` and `scene_save_item`), and
+//! `libobs/obs-scene-audio-window.c.h` (the audio window decisions of
+//! `scene_audio_render`: the source each item is read from, the tick's
+//! earliest timestamp, and each item's frames).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
-//! [`group_transform`], [`audio_actions`], [`extent`], [`crop`],
-//! [`render_plan`], and [`item_names`]. The C ABI shims live in [`ffi`].
+//! [`group_transform`], [`audio_actions`], [`audio_window`], [`extent`],
+//! [`crop`], [`render_plan`], and [`item_names`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
 pub mod audio_actions;
+pub mod audio_window;
 pub mod blend;
 pub mod bounds;
 pub mod bounds_place;

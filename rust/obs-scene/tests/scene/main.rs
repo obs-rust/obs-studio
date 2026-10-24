@@ -2,6 +2,8 @@
 
 mod audio_actions;
 mod audio_actions_parity;
+mod audio_window;
+mod audio_window_parity;
 mod blend;
 mod bounds;
 mod coords;
