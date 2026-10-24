@@ -69,8 +69,7 @@ pub enum VideoStep {
 /// `obs_source_transition_render_video_due()`: whether the video stop step
 /// is due at video time `t`. `t >= 1.0` in `f32`, so a NaN `t` is never due.
 pub fn video_due(t: f32, transitioning_video: bool) -> bool {
-    let _ = (t, transitioning_video);
-    todo!()
+    t >= 1.0 && transitioning_video
 }
 
 /// `obs_source_transition_render_video_stop()`: the due video stop step,
@@ -78,8 +77,13 @@ pub fn video_due(t: f32, transitioning_video: bool) -> bool {
 /// (`obs_source_active()`, asked by the direct render only once the step is
 /// due; render2 passes `true`).
 pub fn video_stop(transitioning_audio: bool, active: bool) -> VideoStep {
-    let _ = (transitioning_audio, active);
-    todo!()
+    if !active {
+        VideoStep::StopAudio
+    } else if !transitioning_audio {
+        VideoStep::Stop
+    } else {
+        VideoStep::End
+    }
 }
 
 /// `enum obs_source_transition_render_draw_step`: what
@@ -104,21 +108,20 @@ pub fn draw(
     has_callback: bool,
     transitioning_audio: bool,
 ) -> Draw {
-    let _ = (
-        transitioning_video,
-        textures_locked,
-        has_callback,
-        transitioning_audio,
-    );
-    todo!()
+    if transitioning_video && textures_locked && has_callback {
+        Draw::Callback
+    } else if transitioning_audio {
+        Draw::B
+    } else {
+        Draw::A
+    }
 }
 
 /// `obs_source_transition_render_direct_index()`: the child (0 or 1) the
 /// direct render draws, for whether it is `transitioning` (audio or video)
 /// and the `target` asked for (an `enum obs_transition_target`, any `int`).
 pub fn direct_index(transitioning: bool, target: i32) -> usize {
-    let _ = (transitioning, target);
-    todo!()
+    usize::from(transitioning && target == TARGET_B)
 }
 
 /// `enum obs_source_transition_render_audio_step`: what the audio stop step
@@ -143,8 +146,18 @@ pub fn audio_stop(
     transitioning_video: bool,
     transitioning_audio: bool,
 ) -> AudioStep {
-    let _ = (t, transitioning_video, transitioning_audio);
-    todo!()
+    let ends = match t {
+        Some(t) => t >= 1.0 && transitioning_audio,
+        None => !transitioning_video && transitioning_audio,
+    };
+    if !ends {
+        AudioStep::Keep
+    } else if !transitioning_video {
+        // transition_stop_audio()
+        AudioStep::Stop
+    } else {
+        AudioStep::End
+    }
 }
 
 /// The result of [`audio_mix`]: the bits of
@@ -162,15 +175,17 @@ pub struct AudioMix {
 /// `obs_source_transition_render_audio_mix()`: from the copied state's
 /// `transitioning_audio` and the children it holds.
 pub fn audio_mix(transitioning_audio: bool, has_a: bool, has_b: bool) -> AudioMix {
-    let _ = (transitioning_audio, has_a, has_b);
-    todo!()
+    AudioMix {
+        mix_a: transitioning_audio && has_a,
+        mix_b: transitioning_audio && has_b,
+        copy_a: !transitioning_audio && has_a,
+    }
 }
 
 /// `obs_source_transition_render_audio_valid()`: whether
 /// `transition_process_audio()` reads a child's audio.
 pub fn audio_valid(present: bool, pending: bool, duplicated: bool) -> bool {
-    let _ = (present, pending, duplicated);
-    todo!()
+    present && !pending && !duplicated
 }
 
 /// `enum obs_source_transition_render_audio_place`, with the start frame:
@@ -195,8 +210,17 @@ pub enum Place {
 /// min_ts)` with the difference wrapping in `u64` and the C's
 /// `util_mul_div64()`, cast to `usize` as the C casts to `size_t`.
 pub fn audio_place(ts: u64, min_ts: u64, sample_rate: usize) -> Place {
-    let _ = (ts, min_ts, sample_rate);
-    todo!()
+    if ts == 0 {
+        return Place::None;
+    }
+
+    let rate = u64::try_from(sample_rate).unwrap_or(u64::MAX);
+    let pos = to_size(ns_to_audio_frames(rate, ts.wrapping_sub(min_ts)));
+    if pos > AUDIO_FRAMES {
+        Place::Late(pos)
+    } else {
+        Place::Mix(pos)
+    }
 }
 
 /// `struct obs_source_transition_render_offset`: the offsets of
@@ -221,6 +245,48 @@ pub fn offset(
     scale_x: f32,
     scale_y: f32,
 ) -> Offset {
-    let _ = (tr_cx, tr_cy, source_cx, source_cy, scale_x, scale_y);
-    todo!()
+    let scaled_cx = source_cx * scale_x;
+    let scaled_cy = source_cy * scale_y;
+    Offset {
+        x: tr_cx - scaled_cx,
+        y: tr_cy - scaled_cy,
+    }
+}
+
+/// `ns_to_audio_frames()` (`media-io/audio-io.h`): `util_mul_div64(ns,
+/// sample_rate, 1000000000)`.
+fn ns_to_audio_frames(sample_rate: u64, ns: u64) -> u64 {
+    mul_div64(ns, sample_rate, 1_000_000_000)
+}
+
+/// `util_mul_div64()` (`util/util_uint64.h`). Outside MSVC x64 it is the
+/// `uint64_t` formula `(num / div) * mul + (num % div * mul) / div`, which
+/// wraps where it overflows. On MSVC x64 it is exact 128-bit math
+/// (`_umul128`, `_udiv128`), which faults when the quotient does not fit in
+/// 64 bits; here that saturates. `div` is never 0 here (1e9). For a sample
+/// rate up to 1e9 neither overflows and both are the exact quotient.
+///
+/// Written out here, not taken from `obs-util`, so `obs-source` still
+/// depends on no other crate (as `obs-scene`'s `audio_actions` does).
+fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+    if crate::platform::MUL_DIV64_IS_UDIV128 {
+        let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
+            .checked_div(u128::from(div))
+            .unwrap_or(0);
+        u64::try_from(quotient).unwrap_or(u64::MAX)
+    } else {
+        let rem = num.checked_rem(div).unwrap_or(0);
+        num.checked_div(div)
+            .unwrap_or(0)
+            .wrapping_mul(mul)
+            .wrapping_add(rem.wrapping_mul(mul).checked_div(div).unwrap_or(0))
+    }
+}
+
+/// The C's `(size_t)` cast of a `uint64_t`: the value on a 64-bit host, its
+/// low bits on a 32-bit one.
+#[allow(clippy::as_conversions)] // u64 to usize truncates as the C's cast does; there is no From
+#[allow(clippy::cast_possible_truncation)]
+const fn to_size(value: u64) -> usize {
+    value as usize
 }

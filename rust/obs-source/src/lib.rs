@@ -42,5 +42,7 @@ pub mod transition_clock;
 pub mod transition_render;
 pub mod volume_apply;
 
+mod platform;
+
 #[allow(unsafe_code)]
 pub mod ffi;

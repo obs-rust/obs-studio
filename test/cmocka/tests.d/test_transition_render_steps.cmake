@@ -17,3 +17,22 @@
 # test_transition_audio_rescale and test_group_hide_transition_audio cover
 # the callers through the real libobs.
 # Target and test are declared in ../build/test-graph.json.
+
+# Exercise the unchanged characterization against the Rust shims. The test
+# calls only the nine hidden functions and includes only their header (no
+# obs.h, so no SIMDe), so it links the archive alone: its obs-source member
+# needs nothing from libobs or the other crates. Linking the archive directly
+# avoids exporting private symbols just for a test.
+if(TARGET libobs_rust-static)
+  add_executable(test_transition_render_steps_rust test_transition_render_steps.c)
+  target_include_directories(
+    test_transition_render_steps_rust
+    PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}
+  )
+  target_link_libraries(test_transition_render_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES})
+  if(NOT MSVC)
+    target_link_libraries(test_transition_render_steps_rust PRIVATE m)
+  endif()
+  add_dependencies(cmocka-tests test_transition_render_steps_rust)
+  add_test(test_transition_render_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_transition_render_steps_rust)
+endif()

@@ -170,6 +170,17 @@ _obs_source_transition_clock_fold
 _obs_source_transition_clock_fit
 _obs_source_transition_clock_mix_spaces
 _obs_source_transition_clock_min_ts
+# obs-source-transition-render.c: obs-source-transition.c calls them inside
+# libobs. Not EXPORT.
+_obs_source_transition_render_video_due
+_obs_source_transition_render_video_stop
+_obs_source_transition_render_draw
+_obs_source_transition_render_direct_index
+_obs_source_transition_render_audio_stop
+_obs_source_transition_render_audio_mix
+_obs_source_transition_render_audio_valid
+_obs_source_transition_render_audio_place
+_obs_source_transition_render_offset
 # obs-source-volume.c: obs-source.c calls them inside libobs. Not EXPORT.
 _obs_source_volume_snap
 _obs_source_volume_action_due

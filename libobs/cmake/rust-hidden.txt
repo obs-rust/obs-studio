@@ -208,6 +208,21 @@ obs_source_transition_clock_fold
 obs_source_transition_clock_fit
 obs_source_transition_clock_mix_spaces
 obs_source_transition_clock_min_ts
+# obs-source-transition-render.c: obs_transition_video_render2(),
+# obs_transition_video_render_direct(), obs_transition_audio_render(),
+# transition_process_audio() and recalculate_transition_matrix() in
+# obs-source-transition.c call them inside libobs. Declared in
+# obs-source-transition-render.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_source_transition_render_video_due
+obs_source_transition_render_video_stop
+obs_source_transition_render_draw
+obs_source_transition_render_direct_index
+obs_source_transition_render_audio_stop
+obs_source_transition_render_audio_mix
+obs_source_transition_render_audio_valid
+obs_source_transition_render_audio_place
+obs_source_transition_render_offset
 # obs-source-volume.c: get_source_volume() and apply_audio_volume() in
 # obs-source.c call them inside libobs. Declared in obs-source-volume.h
 # without EXPORT, so the shims stay hidden the same way.
