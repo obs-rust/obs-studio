@@ -177,6 +177,14 @@ _obs_output_congestion_clamp
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors
 _obs_encoder_roi_scale
+# obs-encoder-size.c: obs-encoder.c calls them inside libobs. Not EXPORT.
+_obs_encoder_size_audio_defaults
+_obs_encoder_size_cap_override
+_obs_encoder_size_scaled_gate
+_obs_encoder_size_scaled_match
+_obs_encoder_size_scaling
+_obs_encoder_size_video_route
+_obs_encoder_size_rate_route
 # obs-output-delay.c: obs-output.c calls them inside libobs. Not EXPORT.
 _process_delay
 _obs_output_delay_start

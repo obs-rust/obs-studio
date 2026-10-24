@@ -204,6 +204,15 @@
     obs_encoder_roi_admit;
     obs_encoder_roi_scale_factors;
     obs_encoder_roi_scale;
+    /* obs-encoder-size.c. obs-encoder.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_encoder_size_audio_defaults;
+    obs_encoder_size_cap_override;
+    obs_encoder_size_scaled_gate;
+    obs_encoder_size_scaled_match;
+    obs_encoder_size_scaling;
+    obs_encoder_size_video_route;
+    obs_encoder_size_rate_route;
     /* obs-output-delay.c. obs-output.c calls them inside libobs. Not
      * EXPORT. */
     process_delay;

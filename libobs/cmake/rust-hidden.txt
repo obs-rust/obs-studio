@@ -221,6 +221,19 @@ obs_output_congestion_clamp
 obs_encoder_roi_admit
 obs_encoder_roi_scale_factors
 obs_encoder_roi_scale
+# obs-encoder-size.c: get_audio_info(), get_video_info(),
+# obs_encoder_set_scaled_size(), obs_encoder_scaling_enabled(),
+# obs_encoder_get_width(), obs_encoder_get_height() and
+# obs_encoder_get_sample_rate() in obs-encoder.c call them inside libobs.
+# Declared in obs-encoder-size.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_encoder_size_audio_defaults
+obs_encoder_size_cap_override
+obs_encoder_size_scaled_gate
+obs_encoder_size_scaled_match
+obs_encoder_size_scaling
+obs_encoder_size_video_route
+obs_encoder_size_rate_route
 # obs-output-delay.c: obs-output.c calls them inside libobs and installs
 # process_delay as the encoded packet callback. Declared in obs-internal.h
 # without EXPORT, so the shims stay hidden the same way.

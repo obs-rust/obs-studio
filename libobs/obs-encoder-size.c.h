@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-size.pch.h"
 
 struct obs_encoder_audio_fill obs_encoder_size_audio_defaults(const struct obs_encoder_audio_fill *info,
 							      const struct obs_encoder_audio_fill *mix)

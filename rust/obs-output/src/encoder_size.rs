@@ -31,6 +31,17 @@
 //!
 //! No intentional differences.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// `OBS_ENCODER_AUDIO` (`enum obs_encoder_type`, `obs-encoder.h`).
 pub const OBS_ENCODER_AUDIO: i32 = 0;
 /// `OBS_ENCODER_VIDEO`.
@@ -107,8 +118,23 @@ pub enum ScaledMatch {
 /// kept. Any other value counts as known, values outside the enums too.
 #[must_use]
 pub fn audio_defaults(info: AudioFill, mix: AudioFill) -> AudioFill {
-    let _ = (info, mix);
-    todo!("encoder_size::audio_defaults")
+    AudioFill {
+        format: if info.format == AUDIO_FORMAT_UNKNOWN {
+            mix.format
+        } else {
+            info.format
+        },
+        samples_per_sec: if info.samples_per_sec == 0 {
+            mix.samples_per_sec
+        } else {
+            info.samples_per_sec
+        },
+        speakers: if info.speakers == SPEAKERS_UNKNOWN {
+            mix.speakers
+        } else {
+            info.speakers
+        },
+    }
 }
 
 /// `get_video_info()` after the plugin's `get_video_info`: the video's size
@@ -116,8 +142,14 @@ pub fn audio_defaults(info: AudioFill, mix: AudioFill) -> AudioFill {
 /// plugin left (`info`).
 #[must_use]
 pub fn cap_override(caps: u32, info: Size, voi: Size) -> Size {
-    let _ = (caps, info, voi);
-    todo!("encoder_size::cap_override")
+    // Prevent video output from performing an actual scale. If GPU scaling
+    // is enabled, the voi holds the scaled size, so GPU scaling takes
+    // priority over the encoder's own scaling.
+    if caps & OBS_ENCODER_CAP_SCALING != 0 {
+        voi
+    } else {
+        info
+    }
 }
 
 /// `obs_encoder_set_scaled_size()` after `obs_encoder_valid()`:
@@ -125,8 +157,15 @@ pub fn cap_override(caps: u32, info: Size, voi: Size) -> Size {
 /// `initialized` the field.
 #[must_use]
 pub fn scaled_gate(encoder_type: i32, active: bool, initialized: bool) -> ScaledGate {
-    let _ = (encoder_type, active, initialized);
-    todo!("encoder_size::scaled_gate")
+    if encoder_type != OBS_ENCODER_VIDEO {
+        ScaledGate::NotVideo
+    } else if active {
+        ScaledGate::Active
+    } else if initialized {
+        ScaledGate::Initialized
+    } else {
+        ScaledGate::Check
+    }
 }
 
 /// `obs_encoder_set_scaled_size()` after the gates: `voi` is the video's
@@ -134,16 +173,18 @@ pub fn scaled_gate(encoder_type: i32, active: bool, initialized: bool) -> Scaled
 /// asked for. [`ScaledMatch::Disable`] when they are equal on both axes.
 #[must_use]
 pub fn scaled_match(voi: Option<Size>, size: Size) -> ScaledMatch {
-    let _ = (voi, size);
-    todo!("encoder_size::scaled_match")
+    if voi == Some(size) {
+        ScaledMatch::Disable
+    } else {
+        ScaledMatch::Set
+    }
 }
 
 /// `obs_encoder_scaling_enabled()` after `obs_encoder_valid()`: either
 /// scaled axis is not 0.
 #[must_use]
 pub fn scaling_enabled(scaled: Size) -> bool {
-    let _ = scaled;
-    todo!("encoder_size::scaling_enabled")
+    scaled.width != 0 || scaled.height != 0
 }
 
 /// One axis of `obs_encoder_get_width()` / `_height()` after
@@ -151,8 +192,7 @@ pub fn scaling_enabled(scaled: Size) -> bool {
 /// whether the encoder has a video, `scaled` the scaled size on that axis.
 #[must_use]
 pub fn video_size_route(encoder_type: i32, has_media: bool, scaled: u32) -> SizeRoute {
-    let _ = (encoder_type, has_media, scaled);
-    todo!("encoder_size::video_size_route")
+    route(encoder_type == OBS_ENCODER_VIDEO, has_media, scaled)
 }
 
 /// `obs_encoder_get_sample_rate()` after `obs_encoder_valid()`:
@@ -160,6 +200,19 @@ pub fn video_size_route(encoder_type: i32, has_media: bool, scaled: u32) -> Size
 /// audio, `samplerate` the rate stored at initialization.
 #[must_use]
 pub fn sample_rate_route(encoder_type: i32, has_media: bool, samplerate: u32) -> SizeRoute {
-    let _ = (encoder_type, has_media, samplerate);
-    todo!("encoder_size::sample_rate_route")
+    route(encoder_type == OBS_ENCODER_AUDIO, has_media, samplerate)
+}
+
+/// Both getters: the type, then the media, then the stored value when it
+/// is set.
+fn route(right_type: bool, has_media: bool, stored: u32) -> SizeRoute {
+    if !right_type {
+        SizeRoute::WrongType
+    } else if !has_media {
+        SizeRoute::NoMedia
+    } else if stored != 0 {
+        SizeRoute::Stored
+    } else {
+        SizeRoute::Media
+    }
 }
