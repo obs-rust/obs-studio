@@ -2765,6 +2765,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_draw_plan_steps": {
+      "sources": [
+        "test/cmocka/test_source_draw_plan_steps.c",
+        "libobs/obs-source-draw-plan.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_load_migration_steps": {
       "sources": [
         "test/cmocka/test_source_load_migration_steps.c",
@@ -4629,6 +4652,12 @@
     },
     "test_source_color_space_steps": {
       "target": "test_source_color_space_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_draw_plan_steps": {
+      "target": "test_source_draw_plan_steps",
       "command": [
         "${target}"
       ]
