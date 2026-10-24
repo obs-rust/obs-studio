@@ -17,5 +17,6 @@ mod deinterlace_pacing_parity;
 mod ptm_gate;
 mod ptm_gate_parity;
 mod size_route;
+mod size_route_parity;
 mod transition_clock;
 mod transition_clock_parity;
