@@ -26,6 +26,7 @@ pub mod audio_input;
 pub mod audio_timing;
 pub mod color_space;
 pub mod conversion_plan;
+pub mod deinterlace_draw;
 pub mod deinterlace_pacing;
 pub mod ptm_gate;
 pub mod transition_clock;
