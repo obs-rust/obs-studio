@@ -868,6 +868,12 @@ area.
   merge. Issue
   [#2051](https://github.com/obs-rust/obs-studio/issues/2051), PR
   [#2058](https://github.com/obs-rust/obs-studio/pull/2058).
+- A source volume that is not a number, negative or infinite, from a scene
+  collection, a plugin or a script, no longer silences or corrupts every
+  audio track the source is in: NaN is read as 100%, a negative volume as
+  0% and an infinite one as 2000% (+26 dB), the most the volume controls
+  allow. *All*, pending merge. Issue
+  [#2108](https://github.com/obs-rust/obs-studio/issues/2108).
 
 ### Encoding, streaming and recording
 

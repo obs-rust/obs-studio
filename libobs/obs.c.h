@@ -2342,6 +2342,12 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 
 	obs_data_set_default_double(source_data, "volume", 1.0);
 	volume = obs_data_get_double(source_data, "volume");
+	/* in float's range before the cast; the setter maps NaN, negative
+	 * and infinite volumes (#2108) */
+	if (volume < 0.0)
+		volume = 0.0;
+	else if (volume > (double)FLT_MAX)
+		volume = INFINITY;
 	obs_source_set_volume(source, (float)volume);
 
 	obs_data_set_default_double(source_data, "balance", 0.5);

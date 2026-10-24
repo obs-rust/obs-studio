@@ -1165,7 +1165,9 @@ General Source Functions
 .. function:: void obs_source_set_volume(obs_source_t *source, float volume)
               float obs_source_get_volume(const obs_source_t *source)
 
-   Sets/gets the user volume for a source that has audio output.
+   Sets/gets the user volume for a source that has audio output, as a
+   multiplier of 0.0 or more (1.0 is unchanged). A negative volume sets
+   0.0, NaN sets the default, 1.0, and infinity sets 20.0 (+26 dB).
 
 ---------------------
 

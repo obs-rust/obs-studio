@@ -3997,9 +3997,23 @@ proc_handler_t *obs_source_get_proc_handler(const obs_source_t *source)
 	return obs_source_valid(source, "obs_source_get_proc_handler") ? source->context.procs : NULL;
 }
 
+/* The volume multiplies every sample, so it is 0 or more. NaN is the
+ * default, 1, and +inf is 20 (+26 dB), the most the Advanced Audio
+ * Properties (2000%) and obs-websocket's SetInputVolume set. Other volumes
+ * of 0 or more are kept, above 20 too (#2108). */
+static inline float clamp_volume(float volume)
+{
+	if (isnan(volume))
+		return 1.0f;
+	if (volume < 0.0f)
+		return 0.0f;
+	return isinf(volume) ? 20.0f : volume;
+}
+
 void obs_source_set_volume(obs_source_t *source, float volume)
 {
 	if (obs_source_valid(source, "obs_source_set_volume")) {
+		volume = clamp_volume(volume);
 		struct audio_action action = {.timestamp = os_gettime_ns(), .type = AUDIO_ACTION_VOL, .vol = volume};
 
 		struct calldata data;
@@ -4013,7 +4027,8 @@ void obs_source_set_volume(obs_source_t *source, float volume)
 		if (!source->context.private)
 			signal_handler_signal(obs->signals, "source_volume", &data);
 
-		volume = (float)calldata_float(&data, "volume");
+		/* a handler may change it */
+		volume = clamp_volume((float)calldata_float(&data, "volume"));
 
 		pthread_mutex_lock(&source->audio_actions_mutex);
 		da_push_back(source->audio_actions, &action);
