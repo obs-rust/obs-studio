@@ -20,6 +20,7 @@ mod source_profiler_parity;
 mod video_copy_plan;
 mod video_copy_plan_parity;
 mod video_output_step;
+mod video_output_step_parity;
 mod video_plan;
 mod video_plan_parity;
 mod view;

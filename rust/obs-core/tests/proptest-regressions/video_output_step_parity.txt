@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 90c70a4e335156739594548fcb0e69bce33cb0d92de04e819e68b934e4ae3043 # shrinks to raw_was = true, gpu_was = false, was = false, raw = 1, gpu = 0
+cc 616c7df0a3bcfc235b5d2a4f6afcfd2a33e94b086b35a24e6aa3048f815557fc # shrinks to conversion = false, converted = false, channels = 0
+cc 68d368ed7fb336dbe79738f889ea766075b765cb65da96979a307088eec6ddd7 # shrinks to conversion = true, converted = true, channels = 4
+cc 7dcc50b182bdee5ad7603d7d602f7c828f29c48add0bf399b349aa2cba7f867b # shrinks to avail = 48, queue = 0, count = 1, raw = false
+cc 3dba6dc73a9fe5707f8033c72d9585b8578a0ecd6332597bbf1be6524faeb140 # shrinks to avail = 48, queue = 0, count = 2, raw = false

@@ -149,6 +149,7 @@ pub mod video_frame;
 pub mod video_io;
 pub mod video_io_inlines;
 pub mod video_matrices;
+pub mod video_output_step;
 pub mod video_plan;
 pub mod view;
 
