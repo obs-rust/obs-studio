@@ -60,6 +60,7 @@ pub mod file_serializer;
 pub mod format_conversion;
 pub mod frame_rate;
 pub mod graphics_math;
+pub mod graphics_sprite;
 pub mod hevc;
 pub mod hotkey_bindings;
 pub mod hotkey_name_map;
