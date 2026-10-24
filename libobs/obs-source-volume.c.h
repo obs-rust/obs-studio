@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-volume.pch.h"
 
 /* The volume decisions of obs-source.c, moved from get_source_volume() (the
  * 0/1 snap) and apply_audio_volume() (whether the first queued action is
  * due, and skip, clear or multiply over the mix masks): the decisions, on
  * plain values. obs-source.c keeps every field read and write in the same
  * order and passes the values it read. Declared in obs-source-volume.h
- * without EXPORT. */
+ * without EXPORT. In hybrid libobs the Rust port (rust/obs-source,
+ * volume_apply) replaces this file. */
 
 float obs_source_volume_snap(bool muted, float volume)
 {
