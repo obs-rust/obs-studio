@@ -13,6 +13,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod async_pacing;
 pub mod audio_input;
 pub mod audio_timing;
 pub mod color_space;
