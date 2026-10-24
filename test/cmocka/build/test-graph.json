@@ -2576,6 +2576,33 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_volume_mix": {
+      "sources": [
+        "test/cmocka/test_source_volume_mix.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_sprite_geometry_steps": {
       "sources": [
         "test/cmocka/test_sprite_geometry_steps.c",
@@ -4131,6 +4158,23 @@
       "command": [
         "${target}"
       ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_source_volume_mix": {
+      "target": "test_source_volume_mix",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
       "optional_prefixes": [
         [
           "xvfb-run",

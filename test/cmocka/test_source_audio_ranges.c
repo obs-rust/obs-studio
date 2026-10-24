@@ -1,6 +1,6 @@
-/* The range of a source's push-to-mute and push-to-talk delays and of its
- * audio balance (#2051), through the public API and through a loaded scene
- * collection (obs_load_source() on obs_data):
+/* The range of a source's push-to-mute and push-to-talk delays (#2051), of
+ * its audio balance (#2051) and of its volume (#2108), through the public API
+ * and through a loaded scene collection (obs_load_source() on obs_data):
  *
  *   - the delays are milliseconds. A scene collection stores them as signed
  *     integers, so a negative one loads as 0. The stop time, the moment the
@@ -8,10 +8,17 @@
  *     UINT64_MAX / 1000000 + 1 ms the multiply wraps, and at
  *     UINT64_MAX / 1000000 ms the sum does;
  *   - the balance is 0 to 1: the setter and the load clamp it, and NaN is
- *     the default, 0.5. The samples come out as at the clamped value.
+ *     the default, 0.5. The samples come out as at the clamped value;
+ *   - the volume is a multiplier of 0 or more: NaN is the default, 1, a
+ *     negative volume is 0, and +inf is 20 (+26 dB), the most the Advanced
+ *     Audio Properties and obs-websocket set. Finite volumes above that are
+ *     kept. The setter and the load map it, and so does the setter after the
+ *     "volume" signal, whose volume is in/out. The value queued for the mix
+ *     is the mapped one too; test_source_volume_mix checks the mixed audio.
  *
- * Values that were valid stay as they were: delays of 0 and 300 ms, and
- * balances of 0, 0.25 and 1, bit for bit.
+ * Values that were valid stay as they were: delays of 0 and 300 ms,
+ * balances of 0, 0.25 and 1, and volumes of 0, -0, 0.5, 1, 20 and above, bit
+ * for bit.
  *
  * The key is pressed through the hotkey router, as the frontend does, and
  * the stop time is read back after one packet: source_output_audio_data()
@@ -28,6 +35,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <float.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -35,6 +43,7 @@
 
 #include <obs-internal.h>
 #include <util/platform.h>
+#include <util/threading.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -520,6 +529,198 @@ static void loaded_balance_is_clamped(void **state)
 	release_source(source);
 }
 
+/* --- volume (#2108) ----------------------------------------------------- */
+
+struct volume_case {
+	float in;
+	float out;
+};
+
+static const struct volume_case volume_out_of_range[] = {
+	{NAN, 1.0f}, {-1.0f, 0.0f}, {-INFINITY, 0.0f}, {INFINITY, 20.0f}, {-FLT_MAX, 0.0f},
+};
+
+/* kept bit for bit: -0 compares equal to 0, so it is not negative; 19.95 is
+ * +26 dB, the top of the Advanced Audio Properties spin box, and 20 its 2000% */
+static const float valid_volumes[] = {0.0f, -0.0f, 0.5f, 1.0f, 19.952623f, 20.0f, 100.0f, FLT_MAX};
+
+static void check_volume(obs_source_t *source, float expected, const char *what, float in)
+{
+	float got = obs_source_get_volume(source);
+	if (bits_of(got) != bits_of(expected)) {
+		fprintf(stderr, "%s %a: volume %a, expected %a\n", what, (double)in, (double)got, (double)expected);
+		fail();
+	}
+}
+
+/* The volume the mix applies next: the last volume action queued. The
+ * sources are out of the mix, so nothing takes it off the queue. */
+static void check_queued_volume(obs_source_t *source, float expected, const char *what, float in)
+{
+	bool found = false;
+	float got = 0.0f;
+
+	pthread_mutex_lock(&source->audio_actions_mutex);
+	for (size_t i = 0; i < source->audio_actions.num; i++) {
+		if (source->audio_actions.array[i].type == AUDIO_ACTION_VOL) {
+			got = source->audio_actions.array[i].vol;
+			found = true;
+		}
+	}
+	pthread_mutex_unlock(&source->audio_actions_mutex);
+
+	if (!found) {
+		fprintf(stderr, "%s %a: no volume queued for the mix\n", what, (double)in);
+		fail();
+	}
+	if (bits_of(got) != bits_of(expected)) {
+		fprintf(stderr, "%s %a: mix volume %a, expected %a\n", what, (double)in, (double)got, (double)expected);
+		fail();
+	}
+}
+
+static void setter_maps_volume(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	for (size_t i = 0; i < sizeof(volume_out_of_range) / sizeof(volume_out_of_range[0]); i++) {
+		obs_source_t *source = new_source();
+		obs_source_set_volume(source, volume_out_of_range[i].in);
+		check_volume(source, volume_out_of_range[i].out, "set", volume_out_of_range[i].in);
+		check_queued_volume(source, volume_out_of_range[i].out, "set", volume_out_of_range[i].in);
+		release_source(source);
+	}
+}
+
+static void setter_keeps_valid_volume(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	for (size_t i = 0; i < sizeof(valid_volumes) / sizeof(valid_volumes[0]); i++) {
+		obs_source_t *source = new_source();
+		obs_source_set_volume(source, valid_volumes[i]);
+		check_volume(source, valid_volumes[i], "set", valid_volumes[i]);
+		check_queued_volume(source, valid_volumes[i], "set", valid_volumes[i]);
+		release_source(source);
+	}
+}
+
+struct volume_signal {
+	float seen;
+	bool replace;
+	float replacement;
+};
+
+static void volume_signal_cb(void *param, calldata_t *data)
+{
+	struct volume_signal *sig = param;
+	sig->seen = (float)calldata_float(data, "volume");
+	if (sig->replace)
+		calldata_set_float(data, "volume", sig->replacement);
+}
+
+/* The "volume" signal's volume is in/out: its handlers see the mapped
+ * volume, and what they hand back is mapped too. The mix keeps the volume
+ * the setter was given, as before. */
+static void volume_signal_is_mapped(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	for (size_t i = 0; i < sizeof(volume_out_of_range) / sizeof(volume_out_of_range[0]); i++) {
+		obs_source_t *source = new_source();
+		struct volume_signal sig = {0};
+		signal_handler_t *handler = obs_source_get_signal_handler(source);
+		signal_handler_connect(handler, "volume", volume_signal_cb, &sig);
+
+		obs_source_set_volume(source, volume_out_of_range[i].in);
+		if (bits_of(sig.seen) != bits_of(volume_out_of_range[i].out)) {
+			fprintf(stderr, "signal %a: handler saw %a, expected %a\n", (double)volume_out_of_range[i].in,
+				(double)sig.seen, (double)volume_out_of_range[i].out);
+			fail();
+		}
+
+		/* a handler that hands back an out-of-range volume */
+		sig.replace = true;
+		sig.replacement = volume_out_of_range[i].in;
+		obs_source_set_volume(source, 0.5f);
+		check_volume(source, volume_out_of_range[i].out, "handler", volume_out_of_range[i].in);
+		check_queued_volume(source, 0.5f, "handler", volume_out_of_range[i].in);
+
+		signal_handler_disconnect(handler, "volume", volume_signal_cb, &sig);
+		release_source(source);
+	}
+
+	/* a handler that hands back a valid volume: kept, as before */
+	obs_source_t *source = new_source();
+	struct volume_signal sig = {.replace = true, .replacement = 0.25f};
+	signal_handler_t *handler = obs_source_get_signal_handler(source);
+	signal_handler_connect(handler, "volume", volume_signal_cb, &sig);
+	obs_source_set_volume(source, 0.5f);
+	assert_true(bits_of(sig.seen) == bits_of(0.5f));
+	check_volume(source, 0.25f, "handler", 0.25f);
+	check_queued_volume(source, 0.5f, "handler", 0.25f);
+	signal_handler_disconnect(handler, "volume", volume_signal_cb, &sig);
+	release_source(source);
+}
+
+static obs_source_t *load_with_volume(double volume)
+{
+	obs_data_t *data = obs_data_create();
+	obs_data_set_double(data, "volume", volume);
+	obs_source_t *source = load_source(data);
+	obs_data_release(data);
+	return source;
+}
+
+static void loaded_volume_is_mapped(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	for (size_t i = 0; i < sizeof(volume_out_of_range) / sizeof(volume_out_of_range[0]); i++) {
+		obs_source_t *source = load_with_volume((double)volume_out_of_range[i].in);
+		check_volume(source, volume_out_of_range[i].out, "loaded", volume_out_of_range[i].in);
+		check_queued_volume(source, volume_out_of_range[i].out, "loaded", volume_out_of_range[i].in);
+		release_source(source);
+	}
+
+	/* a double beyond float's range: infinite as a float */
+	obs_source_t *source = load_with_volume(1e300);
+	check_volume(source, 20.0f, "loaded", INFINITY);
+	check_queued_volume(source, 20.0f, "loaded", INFINITY);
+	release_source(source);
+	source = load_with_volume(-1e300);
+	check_volume(source, 0.0f, "loaded", -INFINITY);
+	check_queued_volume(source, 0.0f, "loaded", -INFINITY);
+	release_source(source);
+
+	for (size_t i = 0; i < sizeof(valid_volumes) / sizeof(valid_volumes[0]); i++) {
+		source = load_with_volume((double)valid_volumes[i]);
+		check_volume(source, valid_volumes[i], "loaded", valid_volumes[i]);
+		check_queued_volume(source, valid_volumes[i], "loaded", valid_volumes[i]);
+		release_source(source);
+	}
+
+	/* a double cast to float as before: 0.3 rounds the same way */
+	source = load_with_volume(0.3);
+	check_volume(source, (float)0.3, "loaded", (float)0.3);
+	release_source(source);
+
+	/* no volume in the entry: the default */
+	obs_data_t *data = obs_data_create();
+	source = load_source(data);
+	obs_data_release(data);
+	check_volume(source, 1.0f, "default", 1.0f);
+	release_source(source);
+}
+
 static int setup(void **state)
 {
 	(void)state;
@@ -573,7 +774,9 @@ int main(void)
 		cmocka_unit_test(delay_multiply_saturates),      cmocka_unit_test(delay_sum_saturates),
 		cmocka_unit_test(loaded_negative_delay_is_zero), cmocka_unit_test(loaded_delays_keep_their_value),
 		cmocka_unit_test(setter_clamps_balance),         cmocka_unit_test(setter_keeps_valid_balance),
-		cmocka_unit_test(loaded_balance_is_clamped),
+		cmocka_unit_test(loaded_balance_is_clamped),     cmocka_unit_test(setter_maps_volume),
+		cmocka_unit_test(setter_keeps_valid_volume),     cmocka_unit_test(volume_signal_is_mapped),
+		cmocka_unit_test(loaded_volume_is_mapped),
 	};
 
 	return cmocka_run_group_tests(tests, setup, teardown);
