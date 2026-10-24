@@ -1815,6 +1815,23 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_pthread_init_failures": {
+      "sources": [
+        "test/cmocka/test_pthread_init_failures.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=pthread_create",
+        "-Wl,--export-dynamic-symbol=pthread_cond_init",
+        "-Wl,--export-dynamic-symbol=pthread_mutex_destroy",
+        "-Wl,--export-dynamic-symbol=pthread_mutex_init"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_pulse_default_id": {
       "sources": [
         "test/cmocka/test_pulse_default_id.c",
@@ -4046,6 +4063,21 @@
     },
     "test_profiler_io": {
       "target": "test_profiler_io"
+    },
+    "test_pthread_init_failures": {
+      "target": "test_pthread_init_failures",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_pulse_default_id": {
       "target": "test_pulse_default_id"
