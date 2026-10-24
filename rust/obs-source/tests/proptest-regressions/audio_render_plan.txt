@@ -1,0 +1,18 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 970ebc5182180a729e90fe69fc1c281b841b14aa8a7f043e50ec43f317ac8b92 # shrinks to bits = 0, audio_ts = 0, audio_mixers = 0, mixers = 0, input_size = 0, tick_size = 0, channels = 0, cb_ts = 0
+cc 32e25fff3b0710c9a8f1aa294fbbabb5e91e63333b27fdd0cff1167c286cf1a6 # shrinks to a = 0, m = 0, mix = 0, ts = 0, input = 0, want = 0, success = false, submix = false
+cc 6f072a5cb2b06caf9e50aee54afd81350dcf3276d940225e930b98515ab79959 # shrinks to bits = 55, audio_ts = 0, audio_mixers = 0, mixers = 1, input_size = 0, tick_size = 0, channels = 0, cb_ts = 0
+cc 3311652f70ae61e285d492b587c2b4dc1eb5a60cf4be498909b98b38c5770654 # shrinks to a = 285212672, m = 3372220416, mix = 23, ts = 0, input = 0, want = 0, success = false, submix = false
+cc 6fe2ee617f44c7571f06f2d64a8a24313ca3ee6769722c8cfd1851b43aacc652 # shrinks to bits = 7, audio_ts = 0, audio_mixers = 0, mixers = 0, input_size = 0, tick_size = 0, channels = 0, cb_ts = 1
+cc f1dd88724b1dfff2141adfb40ba1c8045e2ec236968f7b29f0547c06b1d70775 # shrinks to bits = 47, audio_ts = 0, audio_mixers = 0, mixers = 1, input_size = 0, tick_size = 0, channels = 0, cb_ts = 0
+cc abc333658f38ba65bd1b67f518f085bfa24471945806b3089f0f13c7cf9c5f2e # shrinks to bits = 41, audio_ts = 1, audio_mixers = 0, mixers = 0, input_size = 4096, tick_size = 0, channels = 0, cb_ts = 0
+cc 5638351be6b724f3bfa627d4b3d1aefbe0ced89e00c2862924f8396ad16f48db # shrinks to bits = 9, audio_ts = 1, audio_mixers = 0, mixers = 0, input_size = 0, tick_size = 0, channels = 0, cb_ts = 0
+cc 467e0b259a75c8deac5c0f165f93f9da4d67efdc7fb8111ae7fa74d98edba4e0 # shrinks to bits = 29, audio_ts = 1, audio_mixers = 0, mixers = 0, input_size = 0, tick_size = 0, channels = 0, cb_ts = 0
+cc 03f9eed11fdd255230f868b638e2c0e5c19f6e0c8e7a8a95d7cdf04e3c4b22fa # shrinks to a = 0, m = 0, mix = 1, ts = 0, input = 0, want = 0, success = false, submix = true
+cc e4172a56e179009f2bca993204b2a931fa7dfae4852aae9eaeea14644bb4d4f3 # shrinks to bits = 25, audio_ts = 1, audio_mixers = 65, mixers = 2344418720, input_size = 18446744073709551615, tick_size = 0, channels = 0, cb_ts = 0
+cc 4090bd418ac49c221f939825faa41038dc40c596e4624032385d0124e1468327 # shrinks to a = 0, m = 2147483648, mix = 31, ts = 0, input = 0, want = 0, success = false, submix = false

@@ -1,0 +1,16 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 6023426853ca31469b16899defa366e7787498f08dd2a7bd6089e41d95a5258a # shrinks to a = 0, m = 0, mix = 0, any_mix = 0, ts = 0, input = 0, want = 0, success = false, submix = false, bits = 3
+cc 4e2de601f62ee4f1b414b27de077020bcea3b4c614a524ae1ddd301d059744a2 # shrinks to bits = 43, ts = 0, cb_ts = 0, a = 0, m = 0, input = 0, want = 0, channels = 0
+cc 46958aefb4a2bf86479a148969f61e74c87341513b4df2a80405fdf422d3af96 # shrinks to bits = 7, ts = 0, cb_ts = 0, a = 0, m = 1, input = 0, want = 0, channels = 0
+cc 1746be6ea8c727b8fceafba66c4c41091f4b2f79e7269533403673baa2af0a7f # shrinks to a = 0, m = 0, mix = 0, any_mix = 0, ts = 18446744073709551615, input = 0, want = 0, success = false, submix = false, bits = 0
+cc a08e747b22331ef3da6f23c9d75822d5ac07f2638ea473859f2381f087be9bc6 # shrinks to bits = 7, ts = 0, cb_ts = 18446744073709551615, a = 0, m = 0, input = 0, want = 0, channels = 0
+cc 23bb9032bcaf863633ad8e7af37f4c85ded3c878ec25343cb226de1879f52d49 # shrinks to bits = 55, ts = 0, cb_ts = 18446744073709551615, a = 0, m = 1, input = 0, want = 0, channels = 0
+cc f5758ca202c8c718cd9b1a9eece407021b496f3c39d171310fbea8c91ba60876 # shrinks to bits = 57, ts = 18446744073709551615, cb_ts = 0, a = 0, m = 0, input = 4096, want = 4096, channels = 0
+cc 5ae6b06426425731d21716f8803671db8c66d7bb84fc23f210a078eb57832f13 # shrinks to bits = 49, ts = 18446744073709551615, cb_ts = 0, a = 0, m = 0, input = 0, want = 0, channels = 0
+cc 1c2f461394cb0d1436c758524526db03f2d11a3de922abea31c19cddc38a00ca # shrinks to a = 0, m = 0, mix = 0, any_mix = 0, ts = 18446744073709551615, input = 0, want = 0, success = false, submix = false, bits = 0
+cc de2fef4d5b4c144cb15a2ce10f137e7685d9b73854a138b64c5c10fc1d128ce8 # shrinks to bits = 55, ts = 0, cb_ts = 18446744073709551615, a = 0, m = 0, input = 0, want = 0, channels = 0

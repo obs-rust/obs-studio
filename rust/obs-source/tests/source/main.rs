@@ -5,6 +5,7 @@ mod async_pacing_parity;
 mod audio_input;
 mod audio_input_parity;
 mod audio_render_plan;
+mod audio_render_plan_parity;
 mod audio_timing;
 mod audio_timing_parity;
 mod color_space;
