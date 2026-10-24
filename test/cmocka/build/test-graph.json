@@ -746,6 +746,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_size_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_size_steps.c",
+        "libobs/obs-encoder-size.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_encoder_video_reset": {
       "sources": [
         "test/cmocka/test_encoder_video_reset.c"
@@ -3576,6 +3599,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_size_steps": {
+      "target": "test_encoder_size_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_video_reset": {
