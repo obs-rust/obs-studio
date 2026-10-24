@@ -558,6 +558,11 @@ area.
 - A RequestBatch with the Parallel execution type no longer crashes OBS
   when its last request finishes. *All*, 2026-10-23. PR
   [#1996](https://github.com/obs-rust/obs-studio/pull/1996).
+- obs-websocket RemoveInput removes the scene items of the input at once,
+  also in scenes that are not on program or preview, so GetSceneItemList
+  and GetInputList no longer show the removed input. *All*, 2026-10-24.
+  Issue [#1613](https://github.com/obs-rust/obs-studio/issues/1613), PR
+  [#2196](https://github.com/obs-rust/obs-studio/pull/2196).
 
 ### Video capture
 
