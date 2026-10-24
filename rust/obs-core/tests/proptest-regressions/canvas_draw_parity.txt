@@ -1,0 +1,20 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e05d337ff79e21b2edc93dfe43730fefbcfb7a619c0730c9027aa4b225415876 # shrinks to s = 0, c = 0, bits = 0, flags = 1
+cc 33816f6bd07a4450c2e90ad7df010cbffcf82c4a4f5779d59ed100d8c5ab08f2 # shrinks to s = 0, c = 0, bits = 0, flags = 1
+cc 4489b1cc093701c60b47de46eb0a78f20bc9c0aff29443d11e89590997f5c909 # shrinks to s = 2, c = 1, bits = 0, flags = 0
+cc 2b3b774240383ea4b7ae2ced9986dd3b270caa27f2c1ec74e1b3f7f748a02429 # shrinks to s = 2, c = 1, bits = 0, flags = 3
+cc 2ed9c43425df5e0396ee3874e4af782a83ae848a5fd4db5e096f6d528472566b # shrinks to s = 0, c = 3, bits = 0, flags = 0
+cc f18c6e1f2935f3f85fc5510ee3a22e033859e38f78db89b134bafa1c262fea61 # shrinks to s = 0, c = 3, bits = 0, flags = 3
+cc 893a05a6b304c6da22613b21a7ea53940e71410e727bf95f7dcf61918c43ae97 # shrinks to s = 0, c = 2, bits = 0, flags = 0
+cc aafea503a1b3629008f8c457067d7d96e6ad86900c7c87cd1d5b902ff465a8a2 # shrinks to s = 0, c = 2, bits = 0, flags = 3
+cc 22cabad396670d3bbd486421cfb3391172ebb65cbd04960bdd636802772ceb43 # shrinks to s = 0, c = 4, bits = 0, flags = 3
+cc e99b41b3d6a9b11faf637aac3fe8ffc8a28b98a5b1a7830dac05a72f2d2c8708 # shrinks to s = 0, c = 3, bits = 289374447, flags = 3
+cc 67c225c8141ab89db465aadcb959267d86db4862185f949b60c0f52a14d18fb2 # shrinks to s = 0, c = 0, bits = 2139095041, flags = 0
+cc 113cd52ad3530e11f00574bf37be348d515d63586e266f13292aeca689130f9a # shrinks to s = 0, c = 3, bits = 2139095041, flags = 3
+cc 64991d04c6f7985964c1ef6543ec9fed60e7973b43e4a3daa8564bdb23dcf9f7 # shrinks to s = 0, c = -1, bits = 0, flags = 0
+cc 503a6dc14f7828944ee1af776df7d536bc25a6eb6b1babea37c8ace53b7fc797 # shrinks to s = 0, c = -1, bits = 0, flags = 0
