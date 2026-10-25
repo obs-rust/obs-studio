@@ -41,6 +41,7 @@ pub mod encoder_size;
 pub mod interleave;
 pub mod protocols;
 pub mod service;
+pub mod stop_stats;
 pub mod video_checks;
 
 #[allow(unsafe_code)]

@@ -21,6 +21,7 @@ mod service_lifecycle_parity;
 mod service_parity;
 mod service_settings;
 mod service_settings_parity;
+mod stop_stats;
 mod video_checks;
 mod video_checks_parity;
 
