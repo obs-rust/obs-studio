@@ -87,141 +87,89 @@ static inline void mix_audio(struct audio_output_data *mixes, obs_source_t *sour
 	obs_audio_mix_add(mixes, source->audio_output_buf, source->audio_ts, ts, channels, sample_rate);
 }
 
+static inline struct obs_audio_input audio_input(obs_source_t *source)
+{
+	struct obs_audio_input in = {
+		.buf = source->audio_input_buf,
+		.audio_ts = &source->audio_ts,
+		.last_size = &source->last_audio_input_buf_size,
+		.pending = &source->audio_pending,
+		.pending_stop = &source->pending_stop,
+		.timing_set = &source->timing_set,
+	};
+	return in;
+}
+
+/* The drop steps are the core in obs-audio-discard.c, on these fields. */
 static bool ignore_audio(obs_source_t *source, size_t channels, size_t sample_rate, uint64_t start_ts)
 {
-	size_t num_floats = source->audio_input_buf[0].size / sizeof(float);
+	struct obs_audio_input in = audio_input(source);
 	const char *name = obs_source_get_name(source);
+#if DEBUG_LAGGED_AUDIO == 1
+	uint64_t audio_ts = source->audio_ts;
+#endif
+	struct obs_audio_ignore_step step = obs_audio_discard_ignore(&in, channels, sample_rate, start_ts);
 
-	if (!source->audio_ts && num_floats) {
+	if (step.no_timestamp) {
 #if DEBUG_LAGGED_AUDIO == 1
 		blog(LOG_DEBUG, "[src: %s] no timestamp, but audio available?", name);
 #endif
-		for (size_t ch = 0; ch < channels; ch++)
-			deque_pop_front(&source->audio_input_buf[ch], NULL, source->audio_input_buf[0].size);
-		source->last_audio_input_buf_size = 0;
 		return false;
 	}
 
-	if (num_floats) {
-		/* round up the number of samples to drop */
-		size_t drop = (size_t)util_mul_div64(start_ts - source->audio_ts - 1, sample_rate, 1000000000ULL) + 1;
-		if (drop > num_floats)
-			drop = num_floats;
-
+	if (step.buffered) {
 #if DEBUG_LAGGED_AUDIO == 1
-		blog(LOG_DEBUG, "[src: %s] ignored %" PRIu64 "/%" PRIu64 " samples", name, (uint64_t)drop,
-		     (uint64_t)num_floats);
+		blog(LOG_DEBUG, "[src: %s] ignored %" PRIu64 "/%" PRIu64 " samples", name, (uint64_t)step.dropped,
+		     (uint64_t)step.buffered);
 #endif
-		for (size_t ch = 0; ch < channels; ch++)
-			deque_pop_front(&source->audio_input_buf[ch], NULL, drop * sizeof(float));
-
-		source->last_audio_input_buf_size = 0;
-		source->audio_ts += util_mul_div64(drop, 1000000000ULL, sample_rate);
-		blog(LOG_DEBUG, "[src: %s] ts lag after ignoring: %" PRIu64, name, start_ts - source->audio_ts);
-
-		/* rounding error, adjust */
-		if (source->audio_ts == (start_ts - 1))
-			source->audio_ts = start_ts;
-
-		/* source is back in sync */
-		if (source->audio_ts >= start_ts)
-			return true;
+		blog(LOG_DEBUG, "[src: %s] ts lag after ignoring: %" PRIu64, name, step.lag);
 	} else {
 #if DEBUG_LAGGED_AUDIO == 1
-		blog(LOG_DEBUG, "[src: %s] no samples to ignore! ts = %" PRIu64, name, source->audio_ts);
+		blog(LOG_DEBUG, "[src: %s] no samples to ignore! ts = %" PRIu64, name, audio_ts);
 #endif
 	}
 
-	if (!source->audio_pending || num_floats) {
+	if (step.warn) {
 		blog(LOG_WARNING,
 		     "Source %s audio is lagging (over by %.02f ms) "
 		     "at max audio buffering. Restarting source audio.",
-		     name, (start_ts - source->audio_ts) / 1000000.);
+		     name, step.warn_lag / 1000000.);
 	}
 
-	source->audio_pending = true;
-	source->audio_ts = 0;
-	/* tell the timestamp adjustment code in source_output_audio_data to
-	 * reset everything, and hopefully fix the timestamps */
-	source->timing_set = false;
-	return false;
+	return step.rerender;
 }
-
-static bool discard_if_stopped(obs_source_t *source, size_t channels)
-{
-	size_t last_size;
-	size_t size;
-
-	last_size = source->last_audio_input_buf_size;
-	size = source->audio_input_buf[0].size;
-
-	if (!size)
-		return false;
-
-	/* if perpetually pending data, it means the audio has stopped,
-	 * so clear the audio data */
-	if (last_size == size) {
-		if (!source->pending_stop) {
-			source->pending_stop = true;
-#if DEBUG_AUDIO == 1
-			blog(LOG_DEBUG, "doing pending stop trick: '%s'", source->context.name);
-#endif
-			return false;
-		}
-
-		for (size_t ch = 0; ch < channels; ch++)
-			deque_pop_front(&source->audio_input_buf[ch], NULL, source->audio_input_buf[ch].size);
-
-		source->pending_stop = false;
-		source->audio_ts = 0;
-		source->last_audio_input_buf_size = 0;
-#if DEBUG_AUDIO == 1
-		blog(LOG_DEBUG, "source audio data appears to have "
-				"stopped, clearing");
-#endif
-		return true;
-	} else {
-		source->last_audio_input_buf_size = size;
-		return false;
-	}
-}
-
-#define MAX_AUDIO_SIZE (AUDIO_OUTPUT_FRAMES * sizeof(float))
 
 static inline void discard_audio(struct obs_core_audio *audio, obs_source_t *source, size_t channels,
 				 size_t sample_rate, struct ts_info *ts)
 {
-	size_t total_floats = AUDIO_OUTPUT_FRAMES;
-	size_t size;
+	struct obs_audio_input in = audio_input(source);
+	struct obs_audio_discard_step step =
+		obs_audio_discard_tick(&in, source->info.audio_render != NULL, channels, sample_rate, ts);
 	/* debug assert only */
 	UNUSED_PARAMETER(audio);
 
 #if DEBUG_AUDIO == 1
 	bool is_audio_source = source->info.output_flags & OBS_SOURCE_AUDIO;
-#endif
 
-	if (source->info.audio_render) {
-		source->audio_ts = 0;
-		return;
-	}
+	if (step.stop == OBS_AUDIO_STOP_PENDING)
+		blog(LOG_DEBUG, "doing pending stop trick: '%s'", source->context.name);
+	else if (step.stop == OBS_AUDIO_STOP_CLEARED)
+		blog(LOG_DEBUG, "source audio data appears to have "
+				"stopped, clearing");
 
-	if (ts->end <= source->audio_ts) {
-#if DEBUG_AUDIO == 1
+	switch (step.path) {
+	case OBS_AUDIO_DISCARD_RENDER_SOURCE:
+		break;
+	case OBS_AUDIO_DISCARD_AHEAD:
 		blog(LOG_DEBUG,
 		     "can't discard, source "
 		     "timestamp (%" PRIu64 ") >= "
 		     "end timestamp (%" PRIu64 ")",
 		     source->audio_ts, ts->end);
-#endif
-		return;
-	}
-
-	if (source->audio_ts < (ts->start - 1)) {
-		if (source->audio_pending && source->audio_input_buf[0].size < MAX_AUDIO_SIZE &&
-		    discard_if_stopped(source, channels))
-			return;
-
-#if DEBUG_AUDIO == 1
+		break;
+	case OBS_AUDIO_DISCARD_BEHIND:
+		if (step.stop == OBS_AUDIO_STOP_CLEARED)
+			break;
 		if (is_audio_source) {
 			blog(LOG_DEBUG,
 			     "can't discard, source "
@@ -234,50 +182,24 @@ static inline void discard_audio(struct obs_core_audio *audio, obs_source_t *sou
 		 * pending, unless we *just* added buffering */
 		assert(audio->total_buffering_ticks < audio->max_buffering_ticks || source->audio_pending ||
 		       !source->audio_ts || audio->buffering_wait_ticks);
-#endif
-		return;
-	}
-
-	if (source->audio_ts != ts->start && source->audio_ts != (ts->start - 1)) {
-		size_t start_point = convert_time_to_frames(sample_rate, source->audio_ts - ts->start);
-		if (start_point == AUDIO_OUTPUT_FRAMES) {
-#if DEBUG_AUDIO == 1
-			if (is_audio_source)
-				blog(LOG_DEBUG, "can't discard, start point is "
-						"at audio frame count");
-#endif
-			return;
-		}
-
-		total_floats -= start_point;
-	}
-
-	size = total_floats * sizeof(float);
-
-	if (source->audio_input_buf[0].size < size) {
-		if (discard_if_stopped(source, channels))
-			return;
-
-#if DEBUG_AUDIO == 1
+		break;
+	case OBS_AUDIO_DISCARD_START_AT_END:
 		if (is_audio_source)
+			blog(LOG_DEBUG, "can't discard, start point is "
+					"at audio frame count");
+		break;
+	case OBS_AUDIO_DISCARD_PENDING:
+		if (step.stop != OBS_AUDIO_STOP_CLEARED && is_audio_source)
 			blog(LOG_DEBUG, "can't discard, data still pending");
-#endif
-		source->audio_ts = ts->end;
-		return;
+		break;
+	case OBS_AUDIO_DISCARD_DONE:
+		if (is_audio_source)
+			blog(LOG_DEBUG, "audio discarded, new ts: %" PRIu64, ts->end);
+		break;
 	}
-
-	for (size_t ch = 0; ch < channels; ch++)
-		deque_pop_front(&source->audio_input_buf[ch], NULL, size);
-
-	source->last_audio_input_buf_size = 0;
-
-#if DEBUG_AUDIO == 1
-	if (is_audio_source)
-		blog(LOG_DEBUG, "audio discarded, new ts: %" PRIu64, ts->end);
+#else
+	UNUSED_PARAMETER(step);
 #endif
-
-	source->pending_stop = false;
-	source->audio_ts = ts->end;
 }
 
 static inline struct obs_audio_buffering audio_buffering(struct obs_core_audio *audio)
@@ -665,4 +587,3 @@ bool audio_callback(void *param, uint64_t start_ts_in, uint64_t end_ts_in, uint6
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef DEBUG_AUDIO
 #undef DEBUG_LAGGED_AUDIO
-#undef MAX_AUDIO_SIZE
