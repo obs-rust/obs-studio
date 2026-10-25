@@ -2780,6 +2780,39 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_transform_steps": {
+      "sources": [
+        "test/cmocka/test_scene_item_transform_steps.c",
+        "libobs/obs-scene-item-transform.c.h",
+        "libobs/obs-scene-bounds-place.c.h",
+        "libobs/obs-scene-bounds.c.h",
+        "libobs/obs-scene-coords.c.h",
+        "libobs/obs-scene-crop.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-item-transform.h",
+        "libobs/obs-scene-bounds.h",
+        "libobs/obs-scene-coords.h",
+        "libobs/obs-scene-crop.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_list_remove": {
       "sources": [
         "test/cmocka/test_scene_list_remove.c",
@@ -5067,6 +5100,12 @@
     },
     "test_scene_item_names_steps": {
       "target": "test_scene_item_names_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_transform_steps": {
+      "target": "test_scene_item_transform_steps",
       "command": [
         "${target}"
       ]
