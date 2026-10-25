@@ -15,11 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-audio-min-ts.pch.h"
 
 /* The per-source decisions of the minimum audio timestamp step, on plain
  * values, declared in obs-audio-min-ts.h. obs-audio.c walks the sources,
- * holds each one's audio_buf_mutex and passes the fields in. */
+ * holds each one's audio_buf_mutex and passes the fields in. Ported to
+ * rust/obs-core (audio_min_ts): the hybrid libobs drops this file. */
 
 bool obs_audio_min_ts_earlier(bool pending, uint64_t audio_ts, uint64_t *min_ts)
 {

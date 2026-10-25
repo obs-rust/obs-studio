@@ -364,6 +364,11 @@ obs_source_volume_mixes
 obs_audio_discard_ignore
 obs_audio_discard_if_stopped
 obs_audio_discard_tick
+# obs-audio-min-ts.c: obs-audio.c calls them inside libobs. Declared in
+# obs-audio-min-ts.h without EXPORT, so the shims stay hidden the same way.
+obs_audio_min_ts_earlier
+obs_audio_min_ts_insufficient
+obs_audio_min_ts_buffering
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Declared in
 # obs-audio-mix.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_mix_time_to_frames

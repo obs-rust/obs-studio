@@ -296,6 +296,10 @@ _obs_source_volume_mixes
 _obs_audio_discard_ignore
 _obs_audio_discard_if_stopped
 _obs_audio_discard_tick
+# obs-audio-min-ts.c: obs-audio.c calls them inside libobs. Not EXPORT.
+_obs_audio_min_ts_earlier
+_obs_audio_min_ts_insufficient
+_obs_audio_min_ts_buffering
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Not EXPORT.
 _obs_audio_mix_time_to_frames
 _obs_audio_mix_add

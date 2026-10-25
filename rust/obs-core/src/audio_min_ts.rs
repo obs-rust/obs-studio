@@ -35,8 +35,8 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(unused_variables, dead_code)]
-use crate::audio_mix::AUDIO_OUTPUT_FRAMES;
+
+use crate::audio_mix::{AUDIO_OUTPUT_FRAMES, NS, mul_div64, rate_u64};
 
 /// `sizeof(float)`: the input deques hold `f32` samples.
 const SAMPLE_SIZE: usize = 4;
@@ -57,7 +57,11 @@ pub enum BufferingChoice {
 /// `find_min_ts`'s test for one source: a source that is not pending, has a
 /// timestamp, and is strictly earlier than `min_ts` becomes the minimum.
 pub fn earlier(pending: bool, audio_ts: u64, min_ts: &mut u64) -> bool {
-    todo!()
+    if !pending && audio_ts != 0 && audio_ts < *min_ts {
+        *min_ts = audio_ts;
+        return true;
+    }
+    false
 }
 
 /// `audio_buffer_insufficient`: whether a source with `buffered` bytes in
@@ -71,12 +75,41 @@ pub fn insufficient(
     sample_rate: usize,
     min_ts: u64,
 ) -> bool {
-    todo!()
+    if audio_render || *pending || audio_ts == 0 {
+        return false;
+    }
+
+    let mut total_floats = AUDIO_OUTPUT_FRAMES;
+    if audio_ts != min_ts && audio_ts != min_ts.wrapping_sub(1) {
+        let since = audio_ts.wrapping_sub(min_ts);
+        let start_point = mul_div64(since, rate_u64(sample_rate), NS) as usize;
+        if start_point >= AUDIO_OUTPUT_FRAMES {
+            return false;
+        }
+        total_floats = total_floats.wrapping_sub(start_point);
+    }
+
+    if buffered < total_floats.wrapping_mul(SAMPLE_SIZE) {
+        *pending = true;
+        return true;
+    }
+    false
 }
 
 /// The choice after the search: fixed buffering when `fixed_buffer` is set
 /// and the buffering is not at the maximum, added buffering when `min_ts`
 /// is before the tick start, or none.
 pub fn buffering(fixed_buffer: bool, maxed: bool, min_ts: u64, tick_start: u64) -> BufferingChoice {
-    todo!()
+    if fixed_buffer {
+        return if maxed {
+            BufferingChoice::None
+        } else {
+            BufferingChoice::Fixed
+        };
+    }
+    if min_ts < tick_start {
+        BufferingChoice::Add
+    } else {
+        BufferingChoice::None
+    }
 }
