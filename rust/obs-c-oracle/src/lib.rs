@@ -29,6 +29,7 @@ const _: &str = env!("OBS_ORACLE_INPUT_HASH");
 
 pub mod array_serializer;
 pub mod audio_controls;
+pub mod audio_discard;
 #[cfg(any(unix, windows))]
 pub mod audio_io;
 pub mod audio_io_inlines;

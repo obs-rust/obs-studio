@@ -6,6 +6,8 @@ use std::{fmt::Debug, hint::black_box};
 
 #[path = "port_comparison/audio.rs"]
 mod audio;
+#[path = "port_comparison/audio_discard.rs"]
+mod audio_discard;
 #[path = "port_comparison/callback.rs"]
 mod callback;
 #[path = "port_comparison/canvas_draw.rs"]
@@ -156,6 +158,7 @@ fn comparisons(criterion: &mut Criterion) {
     }
     modules![
         audio,
+        audio_discard,
         callback,
         canvas_draw,
         codecs,
