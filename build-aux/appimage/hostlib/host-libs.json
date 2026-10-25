@@ -18,6 +18,14 @@
       "install": {"debian": "libopengl0", "fedora": "libglvnd-opengl", "arch": "libglvnd", "suse": "libOpenGL0", "nixos": "hardware.graphics.enable = true"}
     },
     {
+      "name": "glx",
+      "kind": "required",
+      "feature": "OpenGL under X11 (GLX; OBS and Qt link it, also under Wayland)",
+      "sonames": ["libGLX.so.0"],
+      "symbols": ["glXGetProcAddressARB", "glXQueryVersion"],
+      "install": {"debian": "libglx0", "fedora": "libglvnd-glx", "arch": "libglvnd", "suse": "libGLX0", "nixos": "hardware.graphics.enable = true"}
+    },
+    {
       "name": "gbm",
       "kind": "required",
       "feature": "GPU buffer sharing (screen capture, DMA-BUF)",

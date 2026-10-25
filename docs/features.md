@@ -432,6 +432,11 @@ not get a line.
   (libwayland-egl1 on Debian and Ubuntu) instead of "Failed to initialize
   video: Graphics module not found". *Linux (AppImage)*, pending merge.
   Issue [#2298](https://github.com/obs-rust/obs-studio/issues/2298).
+- **AppImage names a missing libGLX.** On a host without libGLX.so.0, the
+  AppImage says which package to install (libglx0 on Debian and Ubuntu)
+  instead of the dynamic loader's "error while loading shared libraries".
+  *Linux (AppImage)*, pending merge. Issue
+  [#2337](https://github.com/obs-rust/obs-studio/issues/2337).
 - **Builds with Qt 6.8.** The frontend builds against distribution Qt 6.8,
   for example on Debian 13. *Linux*, 2026-10-16. Issue
   [#1015](https://github.com/obs-rust/obs-studio/issues/1015), PR
