@@ -10,7 +10,8 @@
 //! on the frame's time and 1 ns either side, with the buffer one sample
 //! short, exact and one sample over; 50 000 random cases per function
 //! (timestamps near the minimum, near 0 and near `u64::MAX`, any buffered
-//! size, rates from 0 to 384 kHz and any).
+//! size, rates from 0 to 384 kHz and any; on MSVC x64 below 1e9, where the
+//! C's `util_mul_div64` faults on a quotient that does not fit).
 //!
 //! Excluded, the intentional difference, tested on the shim alone below:
 //! null pointers. `test_audio_buffering_subsample` compiles the C into
@@ -33,6 +34,12 @@ use proptest::prelude::*;
 
 const START: u64 = 1_000_000_000;
 const F32: usize = 4;
+
+/// On MSVC x64 `util_mul_div64` is exact 128-bit math, which faults when
+/// the quotient does not fit in 64 bits (the shim saturates). The random
+/// rate stays below 1e9 there, so `t * rate / 1e9` fits for any `t`, as in
+/// `audio_mix_parity`.
+const MSVC_X64: bool = cfg!(all(target_env = "msvc", target_arch = "x86_64"));
 
 #[test]
 fn layout() {
@@ -154,6 +161,7 @@ proptest! {
         rate in prop_oneof![Just(44100usize), Just(48000usize), 0usize..384_000, any::<usize>()],
         min_ts in timestamp(),
     ) {
+        let rate = if MSVC_X64 { rate % 1_000_000_000 } else { rate };
         compare_insufficient(audio_render, pending, audio_ts, buffered, rate, min_ts);
     }
 
