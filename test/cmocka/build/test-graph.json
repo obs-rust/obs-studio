@@ -689,6 +689,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_deinterlace_select_steps": {
+      "sources": [
+        "test/cmocka/test_deinterlace_select_steps.c",
+        "libobs/obs-source-deinterlace-select.c.h",
+        "libobs/obs-source-deinterlace-pacing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_deque": {
       "sources": [
         "test/cmocka/test_deque.c"
@@ -4092,6 +4110,12 @@
     },
     "test_deinterlace_pacing_steps": {
       "target": "test_deinterlace_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_deinterlace_select_steps": {
+      "target": "test_deinterlace_select_steps",
       "command": [
         "${target}"
       ]
