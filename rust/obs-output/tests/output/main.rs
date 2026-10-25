@@ -22,6 +22,7 @@ mod service_parity;
 mod service_settings;
 mod service_settings_parity;
 mod stop_stats;
+mod stop_stats_parity;
 mod video_checks;
 mod video_checks_parity;
 
