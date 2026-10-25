@@ -144,6 +144,22 @@
     /* obs-source-async-pacing.c. obs-source.c calls it inside libobs. Not
      * EXPORT. */
     obs_source_async_pacing;
+    /* obs-source-async-upload.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_async_upload_texture_changed;
+    obs_source_async_upload_tries_gpu;
+    obs_source_async_upload_size_uniforms;
+    obs_source_async_upload_hlg_peak;
+    obs_source_async_upload_maximum_nits;
+    obs_source_async_upload_over_sdr_white;
+    obs_source_async_upload_hdr_lw;
+    obs_source_async_upload_sets_range;
+    obs_source_async_upload_linear_alpha;
+    obs_source_async_upload_uses_texrender;
+    obs_source_async_upload_plain;
+    obs_source_async_upload_bgr_swap;
+    obs_source_async_upload_reanchor_reads_unbuffered;
+    obs_source_async_upload_reanchor;
     /* obs-source-audio-input.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_audio_input_discontinuous;

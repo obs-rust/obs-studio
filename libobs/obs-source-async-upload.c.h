@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-async-upload.pch.h"
 
 /* The async video upload decisions of obs-source.c, moved from
  * set_async_texture_size(), update_async_texrender(),
@@ -24,7 +24,8 @@
  * values, on plain values. obs-source.c reads the fields and the levels,
  * calls these and keeps every gs_* call, get_convert_type(),
  * init_gpu_conversion() and log10f(). Declared in obs-source-async-upload.h
- * without EXPORT. */
+ * without EXPORT. In hybrid libobs the Rust port (rust/obs-source,
+ * async_upload) replaces this file. */
 
 bool obs_source_async_upload_texture_changed(struct obs_source_async_upload_format cur,
 					     struct obs_source_async_upload_format frame)

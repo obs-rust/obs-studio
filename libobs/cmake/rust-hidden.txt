@@ -143,6 +143,25 @@ obs_scene_audio_window_adds
 # inside libobs. Declared in obs-source-async-pacing.h without EXPORT, so the
 # shim stays hidden the same way.
 obs_source_async_pacing
+# obs-source-async-upload.c: set_async_texture_size(), update_async_texrender(),
+# update_async_textures(), check_to_swap_bgrx_bgra() and
+# obs_source_update_async_video() in obs-source.c call them inside libobs.
+# Declared in obs-source-async-upload.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_source_async_upload_texture_changed
+obs_source_async_upload_tries_gpu
+obs_source_async_upload_size_uniforms
+obs_source_async_upload_hlg_peak
+obs_source_async_upload_maximum_nits
+obs_source_async_upload_over_sdr_white
+obs_source_async_upload_hdr_lw
+obs_source_async_upload_sets_range
+obs_source_async_upload_linear_alpha
+obs_source_async_upload_uses_texrender
+obs_source_async_upload_plain
+obs_source_async_upload_bgr_swap
+obs_source_async_upload_reanchor_reads_unbuffered
+obs_source_async_upload_reanchor
 # obs-source-audio-input.c: process_audio() and reset_resampler() in
 # obs-source.c call them inside libobs. Declared in obs-source-audio-input.h
 # without EXPORT, so the shims stay hidden the same way.

@@ -121,6 +121,22 @@ _obs_scene_audio_window_adds
 # obs-source-async-pacing.c: obs-source.c calls it inside libobs. Not
 # EXPORT.
 _obs_source_async_pacing
+# obs-source-async-upload.c: obs-source.c calls them inside libobs. Not
+# EXPORT.
+_obs_source_async_upload_texture_changed
+_obs_source_async_upload_tries_gpu
+_obs_source_async_upload_size_uniforms
+_obs_source_async_upload_hlg_peak
+_obs_source_async_upload_maximum_nits
+_obs_source_async_upload_over_sdr_white
+_obs_source_async_upload_hdr_lw
+_obs_source_async_upload_sets_range
+_obs_source_async_upload_linear_alpha
+_obs_source_async_upload_uses_texrender
+_obs_source_async_upload_plain
+_obs_source_async_upload_bgr_swap
+_obs_source_async_upload_reanchor_reads_unbuffered
+_obs_source_async_upload_reanchor
 # obs-source-audio-input.c: obs-source.c calls them inside libobs. Not
 # EXPORT.
 _obs_source_audio_input_discontinuous

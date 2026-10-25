@@ -1,6 +1,7 @@
 //! C ABI shims, one module per C file.
 
 pub mod source_async_pacing;
+pub mod source_async_upload;
 pub mod source_audio_input;
 pub mod source_audio_render;
 pub mod source_audio_timing;

@@ -40,6 +40,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-scene-render-plan.c.h.o",
     "obs-service-getters.c.h.o",
     "obs-source-async-pacing.c.h.o",
+    "obs-source-async-upload.c.h.o",
     "obs-source-audio-input.c.h.o",
     "obs-source-audio-render.c.h.o",
     "obs-source-audio-timing.c.h.o",
