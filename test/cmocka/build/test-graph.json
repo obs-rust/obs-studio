@@ -2481,6 +2481,27 @@
         }
       ]
     },
+    "test_scene_bounds_type_range": {
+      "sources": [
+        "test/cmocka/test_scene_bounds_type_range.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_scene_collection_migration": {
       "sources": [
         "test/cmocka/test_scene_collection_migration.cpp",
@@ -4762,6 +4783,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_bounds_type_range": {
+      "target": "test_scene_bounds_type_range",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_scene_collection_migration": {
       "target": "test_scene_collection_migration",
