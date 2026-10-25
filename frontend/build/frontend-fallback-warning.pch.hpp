@@ -21,4 +21,5 @@
 #include <QWidget>
 
 #include <deque>
+#include <memory>
 #include <string>
