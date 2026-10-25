@@ -24,7 +24,6 @@
 use core::ffi::{c_char, c_int, c_void};
 use core::mem::{align_of, offset_of, size_of};
 use core::ptr;
-use std::sync::Mutex;
 
 use obs_c_oracle::effect_params as c;
 use obs_graphics::effect_params::{ByteStore, GS_SHADER_PARAM_TEXTURE};
@@ -33,9 +32,6 @@ use obs_graphics::ffi::effect_params as r;
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
 use obs_util::ffi::darray::darray;
 use proptest::prelude::*;
-
-/// One handler swap at a time.
-static LOG_HANDLER: Mutex<()> = Mutex::new(());
 
 #[repr(C)]
 struct Rec {
@@ -69,7 +65,7 @@ unsafe extern "C" {
 
 /// Runs `f` with the log recorded; returns its result and the record.
 fn recorded<T>(f: impl FnOnce() -> T) -> (T, c_int, String) {
-    let _guard = LOG_HANDLER.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = super::LOG_HANDLER.lock().unwrap_or_else(|e| e.into_inner());
     let mut rec = Rec::new();
     let (mut handler, mut param) = (ptr::null_mut(), ptr::null_mut());
     // SAFETY: live out-pointers; the record outlives the handler, which is

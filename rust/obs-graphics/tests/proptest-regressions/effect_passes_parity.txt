@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2133728c3a48815939095e93a55c5ffaafa412744eb4a7705c46a2e2d038af14 # shrinks to spec = Spec { techniques: [1], params: [ParamSpec { value: [], default: [], changed: false, sampler: 0 }] }, ops = [Loop(182), Loop(0)]
