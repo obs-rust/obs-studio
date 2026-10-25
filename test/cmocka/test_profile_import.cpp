@@ -17,6 +17,15 @@
  * - an import with no directory name must copy nothing into the profiles
  *   folder itself.
  *
+ * Two profiles with the same [General] Name (obs-rust/obs-studio#2382). The
+ * profile list is keyed by name, and the second profile was dropped from it
+ * without a word: still on disk, but impossible to select, rename or remove.
+ * - importing a profile named like an existing one must give it a name of
+ *   its own, and both must be listed under distinct names;
+ * - two folders with the same name (made on disk) must both be listed, the
+ *   second under a name of its own, whatever order they are found in;
+ * - profiles with unique names keep them.
+ *
  * QtCore only; no display. */
 #include "frontend/utility/profile-import.hpp"
 
@@ -24,7 +33,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
+#include <vector>
 #include <system_error>
 
 #include <stdarg.h>
@@ -152,15 +163,166 @@ void test_import_without_name_refused(void **)
 	assert_true(fs::is_empty(tmp.path / "profiles"));
 }
 
+ProfileListEntry entry(const char *name, const char *directoryName)
+{
+	return {name, directoryName, fs::u8path(directoryName), {}, {}};
+}
+
+const ProfileListEntry *find_directory(const std::vector<ProfileListEntry> &list, const char *directoryName)
+{
+	for (const ProfileListEntry &profile : list) {
+		if (profile.directoryName == directoryName) {
+			return &profile;
+		}
+	}
+	fprintf(stderr, "profile folder '%s' is not listed\n", directoryName);
+	return nullptr;
+}
+
+void check_distinct_names(const std::vector<ProfileListEntry> &list)
+{
+	std::set<std::string> names;
+	for (const ProfileListEntry &profile : list) {
+		if (!names.insert(profile.name).second) {
+			fprintf(stderr, "two profiles are listed as '%s'\n", profile.name.c_str());
+			fail();
+		}
+	}
+}
+
+/* An existing profile "Shared" in profiles/Existing, and a profile in
+ * source/Other also named "Shared". The import must give it another name,
+ * and both must be listed. */
+void test_import_name_clash(void **)
+{
+	TempDir tmp;
+	const fs::path source = tmp.path / "source" / "Other";
+	assert_true(fs::create_directories(source));
+	assert_true(fs::create_directories(tmp.path / "profiles" / "Existing"));
+	write_file(tmp.path / "profiles" / "Existing" / "basic.ini", "[General]\nName=Shared\n");
+	write_file(source / "basic.ini", "[General]\nName=Shared\n");
+
+	const std::vector<ProfileListEntry> before = ProfileListEntries({entry("Shared", "Existing")});
+	assert_int_equal((int)before.size(), 1);
+
+	const ProfileImportResult result = ImportProfileFiles(source, tmp.path / "profiles", "Other");
+	assert_int_equal((int)result.status, (int)ProfileImportResult::Status::Imported);
+
+	const std::string name = ImportedProfileName("Shared", [&before](const std::string &candidate) {
+		for (const ProfileListEntry &profile : before) {
+			if (profile.name == candidate) {
+				return true;
+			}
+		}
+		return false;
+	});
+	if (name == "Shared" || name.empty()) {
+		fprintf(stderr, "imported profile named '%s', clashing with the existing one\n", name.c_str());
+		fail();
+	}
+
+	const std::vector<ProfileListEntry> after =
+		ProfileListEntries({entry("Shared", "Existing"), entry(name.c_str(), "Other")});
+	assert_int_equal((int)after.size(), 2);
+	check_distinct_names(after);
+
+	const ProfileListEntry *existing = find_directory(after, "Existing");
+	const ProfileListEntry *imported = find_directory(after, "Other");
+	assert_non_null(existing);
+	assert_non_null(imported);
+	assert_string_equal(existing->name.c_str(), "Shared");
+	assert_string_equal(imported->name.c_str(), name.c_str());
+	assert_true(imported->renamedFrom.empty());
+}
+
+/* An imported profile with no [General] Name is listed under its folder
+ * name, which can be another profile's name too. */
+void test_import_folder_name_clash(void **)
+{
+	const std::string name =
+		ImportedProfileName("Shared", [](const std::string &candidate) { return candidate == "Shared"; });
+	if (name == "Shared" || name.empty()) {
+		fprintf(stderr, "imported profile named '%s', clashing with the existing one\n", name.c_str());
+		fail();
+	}
+}
+
+void check_same_name_folders(const std::vector<ProfileListEntry> &found)
+{
+	const std::vector<ProfileListEntry> list = ProfileListEntries(found);
+	assert_int_equal((int)list.size(), 2);
+	check_distinct_names(list);
+
+	const ProfileListEntry *first = find_directory(list, "A");
+	const ProfileListEntry *second = find_directory(list, "B");
+	assert_non_null(first);
+	assert_non_null(second);
+	assert_string_equal(first->name.c_str(), "Shared");
+	assert_true(first->renamedFrom.empty());
+	assert_string_not_equal(second->name.c_str(), "Shared");
+	assert_string_equal(second->renamedFrom.c_str(), "Shared");
+	assert_string_equal(second->sameNameAs.c_str(), "A");
+	assert_true(second->path == fs::u8path("B"));
+}
+
+/* Two folders, A and B, both named "Shared" on disk. Both are listed; A, the
+ * first by folder name, keeps the name, in either order found. */
+void test_list_same_name_folders(void **)
+{
+	check_same_name_folders({entry("Shared", "A"), entry("Shared", "B")});
+	check_same_name_folders({entry("Shared", "B"), entry("Shared", "A")});
+}
+
+/* The name given to the second must not be one a third profile has. */
+void test_list_same_name_avoids_other_names(void **)
+{
+	const std::vector<ProfileListEntry> found = {entry("Shared", "A"), entry("Shared", "B"), entry("Shared2", "C")};
+	const std::vector<ProfileListEntry> list = ProfileListEntries(found);
+	assert_int_equal((int)list.size(), 3);
+	check_distinct_names(list);
+
+	const ProfileListEntry *third = find_directory(list, "C");
+	assert_non_null(third);
+	assert_string_equal(third->name.c_str(), "Shared2");
+	assert_true(third->renamedFrom.empty());
+}
+
+void test_unique_names_unchanged(void **)
+{
+	const std::vector<ProfileListEntry> list = ProfileListEntries({entry("Two", "b"), entry("One", "a")});
+	assert_int_equal((int)list.size(), 2);
+
+	const ProfileListEntry *one = find_directory(list, "a");
+	const ProfileListEntry *two = find_directory(list, "b");
+	assert_non_null(one);
+	assert_non_null(two);
+	assert_string_equal(one->name.c_str(), "One");
+	assert_string_equal(two->name.c_str(), "Two");
+	assert_true(one->renamedFrom.empty());
+	assert_true(two->renamedFrom.empty());
+
+	const std::string name =
+		ImportedProfileName("Three", [](const std::string &candidate) { return candidate == "One"; });
+	assert_string_equal(name.c_str(), "Three");
+}
+
 } // namespace
 
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_name_trailing_slash),         cmocka_unit_test(test_name_no_trailing_slash),
-		cmocka_unit_test(test_name_space_and_double_slash), cmocka_unit_test(test_name_windows_trailing_slash),
-		cmocka_unit_test(test_name_root_refused),           cmocka_unit_test(test_import_trailing_slash),
+		cmocka_unit_test(test_name_trailing_slash),
+		cmocka_unit_test(test_name_no_trailing_slash),
+		cmocka_unit_test(test_name_space_and_double_slash),
+		cmocka_unit_test(test_name_windows_trailing_slash),
+		cmocka_unit_test(test_name_root_refused),
+		cmocka_unit_test(test_import_trailing_slash),
 		cmocka_unit_test(test_import_without_name_refused),
+		cmocka_unit_test(test_import_name_clash),
+		cmocka_unit_test(test_import_folder_name_clash),
+		cmocka_unit_test(test_list_same_name_folders),
+		cmocka_unit_test(test_list_same_name_avoids_other_names),
+		cmocka_unit_test(test_unique_names_unchanged),
 	};
 
 	return cmocka_run_group_tests_name("profile_import", tests, NULL, NULL);

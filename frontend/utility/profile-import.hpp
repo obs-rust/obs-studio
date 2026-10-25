@@ -1,6 +1,7 @@
 #pragma once
 
-/* Profile > Import (obs-rust/obs-studio#2295). Header-only, QtCore and
+/* Profile > Import (obs-rust/obs-studio#2295) and the names profiles are
+ * listed under (obs-rust/obs-studio#2382). Header-only, QtCore and
  * std::filesystem only, so it can be unit tested without the frontend. */
 
 #include <QDir>
@@ -8,8 +9,10 @@
 
 #include <array>
 #include <filesystem>
+#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 /* The profile directory name for the folder chosen in Profile > Import: the
  * folder's own name. A folder dialog can return the path with a trailing
@@ -95,4 +98,42 @@ inline ProfileImportResult ImportProfileFiles(const std::filesystem::path &sourc
 	}
 
 	return result;
+}
+
+/* A profile found in the profiles folder. `name` is the name it is listed
+ * under: the [General] Name in its basic.ini, or its folder name when that
+ * has none. */
+struct ProfileListEntry {
+	std::string name;
+	std::string directoryName;
+	std::filesystem::path path;
+	/* Set when the profile is listed under another name than its own,
+	 * because a profile in folder `sameNameAs` has `renamedFrom` too. */
+	std::string renamedFrom;
+	std::string sameNameAs;
+};
+
+/* The profiles to list, from those found on disk. The list is keyed by
+ * name: a profile whose name another one has already is dropped. */
+inline std::vector<ProfileListEntry> ProfileListEntries(std::vector<ProfileListEntry> found)
+{
+	std::vector<ProfileListEntry> listed;
+	std::set<std::string> names;
+
+	for (auto &entry : found) {
+		if (names.insert(entry.name).second) {
+			listed.push_back(std::move(entry));
+		}
+	}
+
+	return listed;
+}
+
+/* The name to list an imported profile under. `name` is its [General] Name,
+ * or its folder name when that has none; isUsed(n) is true when a profile
+ * is listed under n already. */
+template<typename IsUsed> inline std::string ImportedProfileName(const std::string &name, IsUsed &&isUsed)
+{
+	(void)isUsed;
+	return name;
 }

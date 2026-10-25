@@ -402,6 +402,8 @@ void OBSBasic::RefreshProfileCache()
 		return;
 	}
 
+	std::vector<ProfileListEntry> found;
+
 	for (const auto &entry : std::filesystem::directory_iterator(profilesPath)) {
 		if (!entry.is_directory()) {
 			continue;
@@ -424,8 +426,19 @@ void OBSBasic::RefreshProfileCache()
 			candidateName = entry.path().filename().u8string();
 		}
 
-		foundProfiles.try_emplace(candidateName, OBSProfile{candidateName, entry.path().filename().u8string(),
-								    entry.path(), profileCandidate});
+		found.push_back({candidateName, entry.path().filename().u8string(), entry.path(), {}, {}});
+	}
+
+	for (const ProfileListEntry &profile : ProfileListEntries(std::move(found))) {
+		if (!profile.renamedFrom.empty()) {
+			blog(LOG_WARNING,
+			     "Profiles in folders '%s' and '%s' are both named '%s'; listing the second as '%s'",
+			     profile.sameNameAs.c_str(), profile.directoryName.c_str(), profile.renamedFrom.c_str(),
+			     profile.name.c_str());
+		}
+
+		foundProfiles.try_emplace(profile.name, OBSProfile{profile.name, profile.directoryName, profile.path,
+								   profile.path / profileSettingsFile});
 	}
 
 	profiles.swap(foundProfiles);
@@ -626,6 +639,31 @@ void OBSBasic::on_actionImportProfile_triggered()
 			blog(LOG_WARNING, "Failed to copy import file '%s' for profile '%s':\n%s", result.file.c_str(),
 			     directoryName.c_str(), result.error.c_str());
 			return;
+		}
+
+		const std::filesystem::path importedFile = std::filesystem::u8path(profilesDirectoryString) /
+							   std::filesystem::u8path(directoryName) /
+							   std::filesystem::u8path(OBSProfileSettingsFile);
+		ConfigFile config;
+
+		if (config.Open(importedFile.u8string().c_str(), CONFIG_OPEN_EXISTING) == CONFIG_SUCCESS) {
+			const char *configName = config_get_string(config, "General", "Name");
+			const std::string listedName = configName ? configName : directoryName;
+			const std::string name = ImportedProfileName(listedName, [this](const std::string &candidate) {
+				return GetProfileByName(candidate).has_value();
+			});
+
+			if (name != listedName) {
+				config_set_string(config, "General", "Name", name.c_str());
+
+				if (config.SaveSafe("tmp") == CONFIG_SUCCESS) {
+					blog(LOG_INFO, "Imported profile '%s' as '%s': a profile with that name exists",
+					     listedName.c_str(), name.c_str());
+				} else {
+					blog(LOG_WARNING, "Failed to rename imported profile '%s' to '%s'",
+					     listedName.c_str(), name.c_str());
+				}
+			}
 		}
 
 		RefreshProfiles(true);
