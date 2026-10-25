@@ -124,6 +124,7 @@ pub mod scene_crop;
 pub mod scene_extent;
 pub mod scene_group_transform;
 pub mod scene_item_names;
+pub mod scene_item_transform;
 pub mod scene_render_plan;
 pub mod service_getters;
 pub mod shader_param_names;

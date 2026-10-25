@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d793d150fb9622d0adcde50e91ac7d43af6daa07896ad94a7721a7219ecd8e3f # shrinks to crop = [0, 0, 0, 1], lw = 0, lh = 0, w = 0, h = 0, nested = false
+cc 8e49d83f4640d00902c509ef0e1ba3873c1b39ed742a5d8c49abadc1d8781151 # shrinks to crop = [0, 0, 0, 1], lw = 0, lh = 280, w = 0, h = 0, nested = true
+cc 854da81c163a8275962638479367a49e2d1785a118044585e38d7cdd40291ab7 # shrinks to crop = [0, 0, 0, 1], lw = 1, lh = 1, w = 0, h = 0, nested = true
+cc dd973b685d09c9b188d2d04ebe0d8e0bd49702599601e580d49f0b4d17055902 # shrinks to crop = [0, 0, 9602255, 0], lw = 4476018, lh = 1, w = 25974691, h = 0, nested = true
+cc 2e0691d36e9cc09dfc2e771db5fb13d9db9477d6ad36c79f579d7767a853fd00 # shrinks to sx = 0.0, sy = 0.0, ox = 0.0, oy = -2899.8772, rot = -608.71124, px = 0.0, py = 0.0
+cc 34664c3fe78fc24365f4f36541ec74cb13db3eb9502049ad27dc5a832d71a527 # shrinks to sx = 0.0, sy = 0.0, ox = 0.0, oy = -1317.8699, rot = 239.76865, px = 0.0, py = 0.0
