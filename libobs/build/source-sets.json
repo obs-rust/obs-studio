@@ -48,6 +48,7 @@
     "obs-scene.h",
     "obs-service.h",
     "obs-source-async-pacing.h",
+    "obs-source-async-upload.h",
     "obs-source-audio-input.h",
     "obs-source-audio-render.h",
     "obs-source-audio-timing.h",

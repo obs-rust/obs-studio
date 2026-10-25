@@ -1782,13 +1782,28 @@ static inline bool init_gpu_conversion(struct obs_source *source, const struct o
 	return true;
 }
 
+/* The upload decisions and shader parameter values are
+ * obs-source-async-upload.c's: the fields, the levels and every gs_* call
+ * stay here, read and made where they were. */
 bool set_async_texture_size(struct obs_source *source, const struct obs_source_frame *frame)
 {
 	enum convert_type cur = get_convert_type(frame->format, frame->full_range, frame->trc);
 
-	if (source->async_width == frame->width && source->async_height == frame->height &&
-	    source->async_format == frame->format && source->async_full_range == frame->full_range &&
-	    source->async_trc == frame->trc)
+	const struct obs_source_async_upload_format cur_format = {
+		.width = source->async_width,
+		.height = source->async_height,
+		.format = (int)source->async_format,
+		.full_range = source->async_full_range,
+		.trc = source->async_trc,
+	};
+	const struct obs_source_async_upload_format frame_format = {
+		.width = frame->width,
+		.height = frame->height,
+		.format = (int)frame->format,
+		.full_range = frame->full_range,
+		.trc = frame->trc,
+	};
+	if (!obs_source_async_upload_texture_changed(cur_format, frame_format))
 		return true;
 
 	source->async_width = frame->width;
@@ -1812,7 +1827,8 @@ bool set_async_texture_size(struct obs_source *source, const struct obs_source_f
 	source->async_prev_texrender = NULL;
 
 	const enum gs_color_format format = convert_video_format(frame->format, frame->trc);
-	const bool async_gpu_conversion = (cur != CONVERT_NONE) && init_gpu_conversion(source, frame);
+	const bool async_gpu_conversion = obs_source_async_upload_tries_gpu((int)cur) &&
+					  init_gpu_conversion(source, frame);
 	source->async_gpu_conversion = async_gpu_conversion;
 	if (async_gpu_conversion) {
 		source->async_texrender = gs_texrender_create(format, GS_ZS_NONE);
@@ -1936,23 +1952,23 @@ static bool update_async_texrender(struct obs_source *source, const struct obs_s
 			gs_effect_set_texture(gs_effect_get_param_by_name(conv, "image2"), tex[2]);
 		if (tex[3])
 			gs_effect_set_texture(gs_effect_get_param_by_name(conv, "image3"), tex[3]);
-		set_eparam(conv, "width", (float)cx);
-		set_eparam(conv, "height", (float)cy);
-		set_eparam(conv, "width_d2", (float)cx * 0.5f);
-		set_eparam(conv, "height_d2", (float)cy * 0.5f);
-		set_eparam(conv, "width_x2_i", 0.5f / (float)cx);
-		set_eparam(conv, "height_x2_i", 0.5f / (float)cy);
+		const struct obs_source_async_upload_size size = obs_source_async_upload_size_uniforms(cx, cy);
+		set_eparam(conv, "width", size.width);
+		set_eparam(conv, "height", size.height);
+		set_eparam(conv, "width_d2", size.width_d2);
+		set_eparam(conv, "height_d2", size.height_d2);
+		set_eparam(conv, "width_x2_i", size.width_x2_i);
+		set_eparam(conv, "height_x2_i", size.height_x2_i);
 
 		/* BT.2408 says higher than 1000 isn't comfortable */
-		float hlg_peak_level = obs->video.hdr_nominal_peak_level;
-		if (hlg_peak_level > 1000.f)
-			hlg_peak_level = 1000.f;
+		const float hlg_peak_level = obs_source_async_upload_hlg_peak(obs->video.hdr_nominal_peak_level);
 
-		const float maximum_nits = (frame->trc == VIDEO_TRC_HLG) ? hlg_peak_level : 10000.f;
-		set_eparam(conv, "maximum_over_sdr_white_nits", maximum_nits / obs_get_video_sdr_white_level());
+		const float maximum_nits = obs_source_async_upload_maximum_nits(frame->trc, hlg_peak_level);
+		set_eparam(conv, "maximum_over_sdr_white_nits",
+			   obs_source_async_upload_over_sdr_white(maximum_nits, obs_get_video_sdr_white_level()));
 		const float hlg_exponent = 0.2f + (0.42f * log10f(hlg_peak_level / 1000.f));
 		set_eparam(conv, "hlg_exponent", hlg_exponent);
-		set_eparam(conv, "hdr_lw", (float)frame->max_luminance);
+		set_eparam(conv, "hdr_lw", obs_source_async_upload_hdr_lw(frame->max_luminance));
 		set_eparam(conv, "hdr_lmax", obs_get_video_hdr_nominal_peak_level());
 
 		struct vec4 vec0, vec1, vec2;
@@ -1965,7 +1981,7 @@ static bool update_async_texrender(struct obs_source *source, const struct obs_s
 		gs_effect_set_vec4(gs_effect_get_param_by_name(conv, "color_vec0"), &vec0);
 		gs_effect_set_vec4(gs_effect_get_param_by_name(conv, "color_vec1"), &vec1);
 		gs_effect_set_vec4(gs_effect_get_param_by_name(conv, "color_vec2"), &vec2);
-		if (!frame->full_range) {
+		if (obs_source_async_upload_sets_range(frame->full_range)) {
 			gs_eparam_t *min_param = gs_effect_get_param_by_name(conv, "color_range_min");
 			gs_effect_set_val(min_param, frame->color_range_min, sizeof(float) * 3);
 			gs_eparam_t *max_param = gs_effect_get_param_by_name(conv, "color_range_max");
@@ -2001,13 +2017,13 @@ bool update_async_textures(struct obs_source *source, const struct obs_source_fr
 	enum convert_type type;
 
 	source->async_flip = frame->flip;
-	source->async_linear_alpha = (frame->flags & OBS_SOURCE_FRAME_LINEAR_ALPHA) != 0;
+	source->async_linear_alpha = obs_source_async_upload_linear_alpha(frame->flags);
 
-	if (source->async_gpu_conversion && texrender)
+	if (obs_source_async_upload_uses_texrender(source->async_gpu_conversion, texrender != NULL))
 		return update_async_texrender(source, frame, tex, texrender);
 
 	type = get_convert_type(frame->format, frame->full_range, frame->trc);
-	if (type == CONVERT_NONE) {
+	if (obs_source_async_upload_plain((int)type)) {
 		gs_texture_set_image(tex[0], frame->data[0], frame->linesize[0], false);
 		return true;
 	}
@@ -2055,11 +2071,9 @@ static void recreate_async_texture(obs_source_t *source, enum gs_color_format fo
 static inline void check_to_swap_bgrx_bgra(obs_source_t *source, struct obs_source_frame *frame)
 {
 	enum gs_color_format format = gs_texture_get_color_format(source->async_textures[0]);
-	if (format == GS_BGRX && frame->format == VIDEO_FORMAT_BGRA) {
-		recreate_async_texture(source, GS_BGRA);
-	} else if (format == GS_BGRA && frame->format == VIDEO_FORMAT_BGRX) {
-		recreate_async_texture(source, GS_BGRX);
-	}
+	const int swap = obs_source_async_upload_bgr_swap((int)format, (int)frame->format);
+	if (swap != GS_UNKNOWN)
+		recreate_async_texture(source, (enum gs_color_format)swap);
 }
 
 static void obs_source_update_async_video(obs_source_t *source)
@@ -2071,7 +2085,12 @@ static void obs_source_update_async_video(obs_source_t *source)
 		if (frame) {
 			check_to_swap_bgrx_bgra(source, frame);
 
-			if (!source->async_decoupled || !source->async_unbuffered) {
+			/* async_unbuffered is set without a lock: read it only
+			 * where it was, for a decoupled source */
+			const bool decoupled = source->async_decoupled;
+			const bool unbuffered = obs_source_async_upload_reanchor_reads_unbuffered(decoupled) &&
+						source->async_unbuffered;
+			if (obs_source_async_upload_reanchor(decoupled, unbuffered)) {
 				source->timing_adjust = obs->video.video_time - frame->timestamp;
 				source->timing_set = true;
 			}
