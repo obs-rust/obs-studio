@@ -3,6 +3,7 @@
 
 mod audio_discard;
 mod audio_discard_parity;
+mod audio_min_ts;
 mod audio_mix;
 mod audio_mix_parity;
 mod canvas_draw;

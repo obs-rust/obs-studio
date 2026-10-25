@@ -14,13 +14,15 @@
 //! source load migration and value rules; and `libobs/obs-canvas-draw.c.h`
 //! (from `obs.c.h` and `obs-display.c.h`), the canvas texture draw and
 //! display clear decisions; and `libobs/obs-audio-discard.c.h` (from
-//! `obs-audio.c.h`), the steps that drop audio from a source's input.
+//! `obs-audio.c.h`), the steps that drop audio from a source's input; and
+//! `libobs/obs-audio-min-ts.c.h` (from `obs-audio.c.h`), the per-source
+//! decisions of the minimum audio timestamp step.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
 //! [`video_copy_plan`], [`video_output_step`], [`source_load`],
-//! [`canvas_draw`] and [`audio_discard`].
+//! [`canvas_draw`], [`audio_discard`] and [`audio_min_ts`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -31,6 +33,7 @@
 #![deny(unsafe_code)]
 
 pub mod audio_discard;
+pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod canvas_draw;
 pub mod context_names;
