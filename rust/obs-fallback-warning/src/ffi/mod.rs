@@ -1,6 +1,7 @@
-//! C ABI for the frontend (#2218). It converts types and calls the safe
-//! core; there is no logic here. The frontend calls it from its UI thread;
-//! the session is one per process.
+//! C ABI for the frontend (#2218), declared in
+//! `frontend/utility/obs-fallback-warning.h`. It converts types and calls the
+//! safe core; there is no logic here. The frontend calls it from its UI
+//! thread; the session is one per process.
 
 use std::ffi::{CStr, CString, c_char, c_int};
 use std::sync::Mutex;

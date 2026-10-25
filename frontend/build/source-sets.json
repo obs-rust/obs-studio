@@ -15,6 +15,13 @@
     "utility/ExtraBrowsersDelegate.hpp",
     "utility/ExtraBrowsersModel.hpp"
   ],
+  "FALLBACK_WARNING_RUST_HEADER": [
+    "utility/obs-fallback-warning.h"
+  ],
+  "FALLBACK_WARNING": [
+    "build/frontend.fallback-warning+.hpp.cpp",
+    "utility/FallbackWarning.hpp"
+  ],
   "GPU_STATUS_RUST_HEADER": [
     "utility/obs-gpu-status.h"
   ],
