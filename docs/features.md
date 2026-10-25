@@ -1945,6 +1945,11 @@ area.
   error and does nothing, like the other effect parameter setters. *All*,
   pending merge. Issue
   [#2210](https://github.com/obs-rust/obs-studio/issues/2210).
+- Asking whether a video encoder uses NV12 or P010 texture input no longer
+  crashes OBS when the encoder has no video yet, or when its video belonged
+  to a canvas that has been removed; the answer is "not active", so an
+  encoder plugin falls back to raw frames. *All*, pending merge. Issue
+  [#2267](https://github.com/obs-rust/obs-studio/issues/2267).
 
 ### Security hardening
 
