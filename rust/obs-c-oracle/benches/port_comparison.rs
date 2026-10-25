@@ -16,6 +16,8 @@ mod codecs;
 mod conversions;
 #[path = "port_comparison/core.rs"]
 mod core_units;
+#[path = "port_comparison/encoder_audio_start.rs"]
+mod encoder_audio_start;
 #[path = "port_comparison/encoder_roi.rs"]
 mod encoder_roi;
 #[path = "port_comparison/encoder_size.rs"]
@@ -151,6 +153,7 @@ fn comparisons(criterion: &mut Criterion) {
         codecs,
         conversions,
         core_units,
+        encoder_audio_start,
         encoder_roi,
         encoder_size,
         graphics,

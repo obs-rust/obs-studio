@@ -4,13 +4,15 @@
 //! `libobs/obs-output-protocols.c.h`, the output protocol-list match,
 //! `libobs/obs-encoder-roi.c.h`, the encoder region of interest checks and
 //! scaling, `libobs/obs-output-video-checks.c.h`, the output video size,
-//! conversion and capture checks, and `libobs/obs-encoder-size.c.h`, the
-//! encoder size and info choices.
+//! conversion and capture checks, `libobs/obs-encoder-size.c.h`, the
+//! encoder size and info choices, and `libobs/obs-encoder-audio-start.c.h`,
+//! the encoder audio start alignment and setter gates.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
-//! [`encoder_roi`], [`video_checks`] and [`encoder_size`] are the safe
-//! cores: [`delay`] decides when a held packet, start or stop leaves the
-//! delay queue, and what start, stop and cleanup do to the output;
+//! [`encoder_roi`], [`video_checks`], [`encoder_size`] and
+//! [`encoder_audio_start`] are the safe cores: [`delay`] decides when a held
+//! packet, start or stop leaves the delay queue, and what start, stop and
+//! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
 //! started, starts the tracks together at timestamp 0 and sends the packets
 //! in `dts` order; [`caption_text`] wraps caption text into rows of 32
@@ -22,7 +24,10 @@
 //! it has what it needs to begin capturing, and clamps its congestion;
 //! [`encoder_size`] fills an encoder's audio info from the mix, applies the
 //! scaling cap to its video info, decides whether a scaled size is refused,
-//! disabled or set, and where its width, height and sample rate come from.
+//! disabled or set, and where its width, height and sample rate come from;
+//! [`encoder_audio_start`] decides when an encoder's audio starts against
+//! its paired video (wait, truncate, clear or start from the buffer), the
+//! pts steps, and the first refusal and divisor rule of the setters.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
