@@ -1995,6 +1995,14 @@ area.
   [#2211](https://github.com/obs-rust/obs-studio/issues/2211), PR
   [#2213](https://github.com/obs-rust/obs-studio/pull/2213).
 
+### Building from source
+
+- Building with `-DENABLE_CORE_MODULES=OFF` works again: libobs no longer
+  fails to compile a core module list that was never generated. *All*,
+  pending merge. Issue
+  [#2280](https://github.com/obs-rust/obs-studio/issues/2280);
+  obsproject/obs-studio#14013.
+
 ## Development builds
 
 - **Cargo application command.** `./native-build` builds and stages a Linux hybrid

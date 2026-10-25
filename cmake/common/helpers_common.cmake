@@ -537,7 +537,14 @@ function(set_obs_core_modules)
   string(REPLACE ";" "\",\n\t\"" core_modules_array_content "${OBS_MODULES_ENABLED}")
 
   set(OBS_CORE_MODULE_COUNT "${core_modules_count}")
-  set(OBS_CORE_MODULE_LIST "\t\"${core_modules_array_content}\"")
+
+  # With no core modules, an empty list would expand to one empty name, and
+  # an empty initializer is not valid C: emit a lone NULL instead.
+  if(core_modules_count GREATER 0)
+    set(OBS_CORE_MODULE_LIST "\t\"${core_modules_array_content}\"")
+  else()
+    set(OBS_CORE_MODULE_LIST "\tNULL")
+  endif()
 
   configure_file(
     "${libobs_source_directory}/obs-core-modules.c.in"

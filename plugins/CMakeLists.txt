@@ -9,6 +9,8 @@ set_property(GLOBAL PROPERTY ENABLE_PLUGINS ${ENABLE_CORE_MODULES})
 
 if(NOT ENABLE_CORE_MODULES)
   set_property(GLOBAL APPEND PROPERTY OBS_FEATURES_DISABLED "Core Modules")
+  # libobs-core-modules compiles the generated list even with no modules.
+  set_obs_core_modules()
   return()
 endif()
 
