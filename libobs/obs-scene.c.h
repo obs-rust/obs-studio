@@ -390,24 +390,13 @@ static inline void log_matrix(const struct matrix4 *mat, const char *name)
 }
 #endif
 
-static inline void update_nested_scene_crop(struct obs_scene_item *item, uint32_t width, uint32_t height)
-{
-	if (!item->last_height || !item->last_width)
-		return;
-
-	/* Use last size and new size to calculate factor to adjust crop by. */
-	float scale_x = (float)width / (float)item->last_width;
-	float scale_y = (float)height / (float)item->last_height;
-
-	item->crop.left = obs_scene_scale_crop(item->crop.left, scale_x);
-	item->crop.right = obs_scene_scale_crop(item->crop.right, scale_x);
-	item->crop.top = obs_scene_scale_crop(item->crop.top, scale_y);
-	item->crop.bottom = obs_scene_scale_crop(item->crop.bottom, scale_y);
-}
-
-/* Needs the parent's video lock: the graphics thread reads the results. */
+/* Needs the parent's video lock: the graphics thread reads the results.
+ * The composition is obs-scene-item-transform.c.h, in steps; each
+ * get_scene_dimensions() read and each float-to-integer cast stays here,
+ * between them. */
 static void compute_item_transform(struct obs_scene_item *item, uint32_t width, uint32_t height, bool update_tex)
 {
+	struct obs_scene_item_transform_size size;
 	uint32_t cx;
 	uint32_t cy;
 	struct vec2 base_origin;
@@ -415,17 +404,11 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 	struct vec2 scale;
 	struct vec2 position;
 
-	/* Reset bounds crop */
-	memset(&item->bounds_crop, 0, sizeof(item->bounds_crop));
-
-	/* Adjust crop on nested scenes (if any) */
-	if (update_tex && item->is_scene)
-		update_nested_scene_crop(item, width, height);
-
-	cx = calc_cx(item, width);
-	cy = calc_cy(item, height);
-	item->last_width = width;
-	item->last_height = height;
+	/* Reset bounds crop, adjust crop on nested scenes (if any) */
+	size = obs_scene_item_transform_prepare(&item->crop, &item->bounds_crop, &item->last_width, &item->last_height,
+						width, height, update_tex && item->is_scene);
+	cx = size.cx;
+	cy = size.cy;
 
 	width = cx;
 	height = cy;
@@ -443,7 +426,7 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 
 	/* ----------------------- */
 
-	if (item->bounds_type != OBS_BOUNDS_NONE) {
+	if (obs_scene_item_transform_bounded(item->bounds_type)) {
 		calculate_bounds_data(item, &origin, &scale, &cx, &cy);
 	} else {
 		cx = (uint32_t)((float)cx * scale.x);
@@ -452,11 +435,7 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 
 	add_alignment(&origin, item->align, (int)cx, (int)cy);
 
-	matrix4_identity(&item->draw_transform);
-	matrix4_scale3f(&item->draw_transform, &item->draw_transform, scale.x, scale.y, 1.0f);
-	matrix4_translate3f(&item->draw_transform, &item->draw_transform, -origin.x, -origin.y, 0.0f);
-	matrix4_rotate_aa4f(&item->draw_transform, &item->draw_transform, 0.0f, 0.0f, 1.0f, RAD(item->rot));
-	matrix4_translate3f(&item->draw_transform, &item->draw_transform, position.x, position.y, 0.0f);
+	obs_scene_item_transform_matrix(&item->draw_transform, &scale, &origin, item->rot, &position);
 
 #ifdef DEBUG_TRANSFORM
 	blog(LOG_DEBUG, "Transform updated for \"%s\":", obs_source_get_name(item->source));
@@ -467,25 +446,20 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 
 	/* ----------------------- */
 
-	if (item->bounds_type != OBS_BOUNDS_NONE) {
+	if (obs_scene_item_transform_bounded(item->bounds_type)) {
 		if (!item->absolute_coordinates)
 			size_to_absolute(&scale, &item->bounds, item);
 		else
 			vec2_copy(&scale, &item->bounds);
 	} else {
-		scale.x *= (float)width;
-		scale.y *= (float)height;
+		obs_scene_item_transform_box_scale(&scale, width, height);
 	}
 
 	item->box_scale = scale;
 
 	add_alignment(&base_origin, item->align, (int)scale.x, (int)scale.y);
 
-	matrix4_identity(&item->box_transform);
-	matrix4_scale3f(&item->box_transform, &item->box_transform, scale.x, scale.y, 1.0f);
-	matrix4_translate3f(&item->box_transform, &item->box_transform, -base_origin.x, -base_origin.y, 0.0f);
-	matrix4_rotate_aa4f(&item->box_transform, &item->box_transform, 0.0f, 0.0f, 1.0f, RAD(item->rot));
-	matrix4_translate3f(&item->box_transform, &item->box_transform, position.x, position.y, 0.0f);
+	obs_scene_item_transform_matrix(&item->box_transform, &scale, &base_origin, item->rot, &position);
 
 #ifdef DEBUG_TRANSFORM
 	log_matrix(&item->draw_transform, "box_transform");

@@ -128,6 +128,10 @@
 
 #include "obs-scene-item-names.h"
 
+/* obs-scene-item-transform.c */
+
+#include "obs-scene-item-transform.h"
+
 /* obs-scene-render-plan.c */
 
 #include "obs-scene-render-plan.h"
