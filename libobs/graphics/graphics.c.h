@@ -830,14 +830,6 @@ input_t *gs_get_input(void)
 	return NULL;
 }
 
-/* Hidden: graphics->cur_effect for the Rust effect pass loop
- * (rust/obs-graphics ffi::effect_passes), which writes it through an
- * effect's graphics subsystem without struct graphics_subsystem. */
-void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect)
-{
-	graphics->cur_effect = effect;
-}
-
 gs_effect_t *gs_get_effect(void)
 {
 	if (!gs_valid("gs_get_effect"))

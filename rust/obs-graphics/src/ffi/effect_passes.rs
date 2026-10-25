@@ -6,10 +6,11 @@
 //! and the C graphics functions. The technique lookup is the Rust
 //! `gs_effect_get_technique`; the values are emptied and filled in place
 //! with [`super::effect_params::DarrayStore`]. `graphics->cur_effect` is
-//! written by `obs_graphics_set_cur_effect` (`graphics.c.h`), so `struct
-//! graphics_subsystem` does not cross, and the two warnings go to `blog`
-//! with the C's literal formats through `obs_graphics_effect_loop_warning`
-//! (`obs-graphics-adapter.c.h`).
+//! written by `obs_graphics_set_cur_effect`, so `struct graphics_subsystem`
+//! does not cross, and the two warnings go to `blog` with the C's literal
+//! formats through `obs_graphics_effect_loop_warning`; both are adapters in
+//! `obs-graphics-adapter.c.h`, which the executables that link the
+//! staticlib next to libobs compile too.
 //!
 //! Intentional differences, where the C dereferences a NULL pointer and
 //! libobs never gets there: a NULL technique name finds no technique (the
@@ -57,7 +58,7 @@ unsafe extern "C" {
     fn gs_shader_set_next_sampler(param: *mut c_void, sampler: *mut c_void);
     fn gs_shader_get_param_info(param: *const c_void, info: *mut gs_shader_param_info);
     fn gs_shader_set_texture(param: *mut c_void, val: *mut c_void);
-    /// `graphics->cur_effect = effect` (`graphics.c.h`, hidden).
+    /// `graphics->cur_effect = effect` (`obs-graphics-adapter.c.h`).
     fn obs_graphics_set_cur_effect(graphics: *mut c_void, effect: *mut gs_effect);
     /// `blog(LOG_WARNING, ...)` with the C's literal formats.
     fn obs_graphics_effect_loop_warning(which: c_int, name: *const c_char);

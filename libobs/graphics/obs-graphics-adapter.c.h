@@ -10,6 +10,7 @@ void obs_graphics_bfree(void *ptr);
 void obs_graphics_log(int level, const char *line);
 void obs_graphics_effect_param_error(int which);
 void obs_graphics_effect_loop_warning(int which, const char *name);
+void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect);
 FILE *obs_graphics_fopen_rb(const char *path);
 int64_t obs_graphics_ftelli64(FILE *file);
 
@@ -68,6 +69,14 @@ void obs_graphics_effect_loop_warning(int which, const char *name)
 		     name);
 		break;
 	}
+}
+
+/* graphics->cur_effect for the effect pass loop (effect-passes.c), which
+ * writes it through an effect's graphics subsystem; struct
+ * graphics_subsystem does not cross to Rust. */
+void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect)
+{
+	graphics->cur_effect = effect;
 }
 
 FILE *obs_graphics_fopen_rb(const char *path)

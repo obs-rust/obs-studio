@@ -1,8 +1,9 @@
 /* Test-only stand-in for the graphics functions effect-passes.c.h calls:
  * gs_load_vertexshader, gs_load_pixelshader, gs_shader_set_val,
  * gs_shader_set_next_sampler, gs_shader_get_param_info,
- * gs_shader_set_texture and gs_get_effect, plus the hidden
- * obs_graphics_set_cur_effect of graphics.c that the Rust shim calls. Each
+ * gs_shader_set_texture and gs_get_effect (the Rust shim's
+ * obs_graphics_set_cur_effect is the adapter, which oracle/image_file.c
+ * builds into the test binary). Each
  * call is recorded as a line, so the C oracle and the shim can be compared
  * call by call. Shaders, shader parameters, samplers and textures are tags
  * (small integers as pointers); a shader parameter tag of 100 or more is a
@@ -84,12 +85,6 @@ void gs_shader_set_texture(gs_sparam_t *param, gs_texture_t *val)
 gs_effect_t *gs_get_effect(void)
 {
 	return passes_graphics ? passes_graphics->cur_effect : NULL;
-}
-
-void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect);
-void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect)
-{
-	graphics->cur_effect = effect;
 }
 
 /* The layout of struct gs_shader_param_info, for the shim's mirror. */
