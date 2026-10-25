@@ -76,7 +76,7 @@ pub fn group_transform(
 
 /// `matrix4_mul`. `m1` is the left matrix. Each output lane is `vec4_dot`
 /// of an `m1` row with an `m2` column.
-fn matrix_mul(m1: &Matrix4, m2: &Matrix4) -> Matrix4 {
+pub(crate) fn matrix_mul(m1: &Matrix4, m2: &Matrix4) -> Matrix4 {
     let row = |r: Vec4| {
         Vec4::new(
             dot(r, column(m2, 0)),
@@ -99,7 +99,7 @@ fn column(m: &Matrix4, index: usize) -> Vec4 {
 }
 
 /// Header `vec4_dot`: `(w + y) + (z + x)` after the products.
-fn dot(a: Vec4, b: Vec4) -> f32 {
+pub(crate) fn dot(a: Vec4, b: Vec4) -> f32 {
     let m0 = a.x * b.x;
     let m1 = a.y * b.y;
     let m2 = a.z * b.z;

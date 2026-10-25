@@ -106,6 +106,12 @@ _obs_scene_item_blend_type_name
 _obs_scene_item_transform_keys
 _obs_scene_item_bounds_keys
 _obs_scene_item_save_relative
+# obs-scene-item-transform.c: obs-scene.c calls them inside libobs. Not
+# EXPORT.
+_obs_scene_item_transform_prepare
+_obs_scene_item_transform_bounded
+_obs_scene_item_transform_matrix
+_obs_scene_item_transform_box_scale
 # obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply

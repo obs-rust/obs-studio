@@ -128,6 +128,12 @@
     obs_scene_item_transform_keys;
     obs_scene_item_bounds_keys;
     obs_scene_item_save_relative;
+    /* obs-scene-item-transform.c. obs-scene.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_scene_item_transform_prepare;
+    obs_scene_item_transform_bounded;
+    obs_scene_item_transform_matrix;
+    obs_scene_item_transform_box_scale;
     /* obs-scene-audio-actions.c. obs-scene-item-audio-actions.c calls them
      * inside libobs. Not EXPORT. */
     obs_scene_audio_actions_apply;

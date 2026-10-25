@@ -16,9 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-item-transform.pch.h"
 
-/* The scene item transform composition of compute_item_transform() in
+/* Ported to rust/obs-scene (item_transform): the hybrid libobs drops this file.
+ * The scene item transform composition of compute_item_transform() in
  * obs-scene.c, moved here as the steps the scene calls in order, on plain
  * values. obs-scene.c keeps every get_scene_dimensions() read between them,
  * calculate_bounds_data(), add_alignment() and the six float-to-integer
