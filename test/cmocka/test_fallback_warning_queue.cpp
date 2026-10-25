@@ -15,6 +15,7 @@
  * window runs first. */
 
 #include <QApplication>
+#include <QDialog>
 #include <QPushButton>
 #include <QTest>
 #include <QThread>
@@ -28,6 +29,7 @@
 #include <stdio.h>
 #include <string>
 #include <thread>
+#include <list>
 #include <vector>
 
 #include <stddef.h>
@@ -61,6 +63,15 @@ struct Answer {
 struct Caller {
 	std::vector<Answer> answers;
 };
+
+/* Every case's callers live until the next case: a failed assertion leaves
+ * its case early, and the teardown's shutdown call still answers them. */
+static std::list<Caller> callers;
+
+static Caller &new_caller()
+{
+	return callers.emplace_back();
+}
 
 static void answer(void *param, bool accepted)
 {
@@ -110,6 +121,7 @@ static void click(OBSFallbackWarning *dialog, const char *name)
 static int setup(void **)
 {
 	logged.clear();
+	callers.clear();
 	main_window = new QWidget();
 	main_window->show();
 	settle();
@@ -132,7 +144,7 @@ static int teardown(void **)
  * runs, on the UI thread. */
 static void logs_at_once_then_waits_for_the_main_window(void **)
 {
-	Caller caller;
+	Caller &caller = new_caller();
 	std::thread t([&caller]() {
 		FallbackWarning::Warn("test.wait", "Wait title", "The sandbox could not start.", true, answer, &caller);
 	});
@@ -168,7 +180,7 @@ static void logs_at_once_then_waits_for_the_main_window(void **)
 static void never_answers_inside_warn(void **)
 {
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller caller;
+	Caller &caller = new_caller();
 	FallbackWarning::Warn("test.inside", "Title", "Message", false, answer, &caller);
 	assert_true(caller.answers.empty());
 	settle();
@@ -185,7 +197,7 @@ static void never_answers_inside_warn(void **)
 static void no_cancel_for_a_caller_that_cannot_stop(void **)
 {
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller caller;
+	Caller &caller = new_caller();
 	FallbackWarning::Warn("test.nocancel", "Title", "Message", false, answer, &caller);
 	settle();
 #ifdef OBS_FRONTEND_RUST
@@ -202,7 +214,8 @@ static void no_cancel_for_a_caller_that_cannot_stop(void **)
 static void one_dialog_at_a_time(void **)
 {
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller first, second;
+	Caller &first = new_caller();
+	Caller &second = new_caller();
 	FallbackWarning::Warn("test.first", "First", "Message", true, answer, &first);
 	FallbackWarning::Warn("test.second", "Second", "Message", true, answer, &second);
 	settle();
@@ -231,7 +244,8 @@ static void one_dialog_at_a_time(void **)
 static void same_id_shows_once(void **)
 {
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller first, again;
+	Caller &first = new_caller();
+	Caller &again = new_caller();
 	FallbackWarning::Warn("test.once", "Once", "Message", true, answer, &first);
 	settle();
 #ifdef OBS_FRONTEND_RUST
@@ -251,7 +265,7 @@ static void hidden_main_window_accepts(void **)
 {
 	main_window->hide();
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller caller;
+	Caller &caller = new_caller();
 	FallbackWarning::Warn("test.hidden", "Title", "Message", true, answer, &caller);
 	settle();
 	assert_int_equal(main_window->findChildren<OBSFallbackWarning *>().size(), 0);
@@ -259,12 +273,49 @@ static void hidden_main_window_accepts(void **)
 	assert_true(caller.answers[0].accepted);
 }
 
+/* Another modal dialog is open (the first-run wizard opens right after the
+ * main window has loaded): a warning would show behind it or take no input,
+ * and accept unseen. It waits until that dialog has closed, and is not yet
+ * counted as shown. */
+static void waits_while_another_dialog_is_modal(void **)
+{
+	FallbackWarning::SetMainWindow(main_window, texts());
+	QDialog *modal = new QDialog(main_window);
+	modal->setModal(true);
+	modal->show();
+	settle();
+	assert_true(QApplication::activeModalWidget() == modal);
+
+	Caller &caller = new_caller();
+	FallbackWarning::Warn("test.modal", "Behind a modal", "Message", true, answer, &caller);
+	settle(400);
+#ifdef OBS_FRONTEND_RUST
+	assert_int_equal(dialogs().size(), 0);
+	assert_true(caller.answers.empty());
+
+	modal->close();
+	settle(600);
+	assert_int_equal(dialogs().size(), 1);
+	assert_true(dialogs()[0]->windowTitle() == "Behind a modal");
+	click(dialogs()[0], "cancelButton");
+	assert_int_equal(caller.answers.size(), 1);
+	assert_false(caller.answers[0].accepted);
+#else
+	/* No dialog to hide: it accepts. */
+	assert_int_equal(caller.answers.size(), 1);
+	assert_true(caller.answers[0].accepted);
+	modal->close();
+#endif
+	delete modal;
+}
+
 /* At shutdown the open dialog closes (Close: a caller that can stop stops),
  * and queued warnings accept without a dialog. */
 static void shutdown_answers_everyone(void **)
 {
 	FallbackWarning::SetMainWindow(main_window, texts());
-	Caller open, queued;
+	Caller &open = new_caller();
+	Caller &queued = new_caller();
 	FallbackWarning::Warn("test.open", "Open", "Message", true, answer, &open);
 	FallbackWarning::Warn("test.queued", "Queued", "Message", true, answer, &queued);
 	settle();
@@ -310,6 +361,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(one_dialog_at_a_time, setup, teardown),
 		cmocka_unit_test_setup_teardown(same_id_shows_once, setup, teardown),
 		cmocka_unit_test_setup_teardown(hidden_main_window_accepts, setup, teardown),
+		cmocka_unit_test_setup_teardown(waits_while_another_dialog_is_modal, setup, teardown),
 		cmocka_unit_test_setup_teardown(shutdown_answers_everyone, setup, teardown),
 		cmocka_unit_test_setup_teardown(null_callback_and_strings, setup, teardown),
 	};
