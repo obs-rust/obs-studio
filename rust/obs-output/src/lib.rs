@@ -5,12 +5,13 @@
 //! `libobs/obs-encoder-roi.c.h`, the encoder region of interest checks and
 //! scaling, `libobs/obs-output-video-checks.c.h`, the output video size,
 //! conversion and capture checks, `libobs/obs-encoder-size.c.h`, the
-//! encoder size and info choices, and `libobs/obs-encoder-audio-start.c.h`,
-//! the encoder audio start alignment and setter gates.
+//! encoder size and info choices, `libobs/obs-encoder-audio-start.c.h`, the
+//! encoder audio start alignment and setter gates, and
+//! `libobs/obs-output-stop-stats.c.h`, the output stop statistics.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
-//! [`encoder_roi`], [`video_checks`], [`encoder_size`] and
-//! [`encoder_audio_start`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_roi`], [`video_checks`], [`encoder_size`],
+//! [`encoder_audio_start`] and [`stop_stats`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -27,7 +28,9 @@
 //! disabled or set, and where its width, height and sample rate come from;
 //! [`encoder_audio_start`] decides when an encoder's audio starts against
 //! its paired video (wait, truncate, clear or start from the buffer), the
-//! pts steps, and the first refusal and divisor rule of the setters.
+//! pts steps, and the first refusal and divisor rule of the setters;
+//! [`stop_stats`] decides the numbers and lines an output logs when it
+//! stops (frames output, drawn, lagged and dropped, and their percentages).
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
