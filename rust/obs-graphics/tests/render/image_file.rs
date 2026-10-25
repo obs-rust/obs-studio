@@ -300,6 +300,7 @@ impl Host for Fake {
             ("image-file-still.gif", _) => (2, 2, vec![0; 16]),
             ("image-file.png", ImageAlphaMode::PREMULTIPLY) => (3, 2, bytes(PNG_PREMULTIPLIED)),
             ("image-file.png", _) => (3, 2, bytes(PNG_STRAIGHT)),
+            ("solid-1024x1024.png", _) => (1024, 1024, vec![0; 1024 * 1024 * 4]),
             _ => return None,
         };
         *format = GS_RGBA;
@@ -487,7 +488,12 @@ fn animated_gif_load_test() {
     assert_eq!(image.cur_time, 0);
     assert_eq!(image.cur_frame, 0);
     assert_eq!(image.cur_loop, 0);
-    assert_eq!(image.mem_usage, 0);
+    // frame cache (3 pointers), 3 decoded frames, the current frame, the
+    // file (the fake reads 64 bytes)
+    assert_eq!(
+        image.mem_usage,
+        (3 * size_of::<usize>() + 3 * (4 * 2 * 4) + 4 * 2 * 4 + 64) as u64
+    );
     assert_eq!(image.alpha_mode, ImageAlphaMode::STRAIGHT);
     assert_eq!(image.space, ColorSpace(0));
     // internal, file data, nsgif's bitmap, frame cache, frame data
@@ -639,6 +645,7 @@ fn still_gif_test() {
     assert!(!image.is_animated_gif);
     assert_eq!(image.cx, 2);
     assert_eq!(image.cy, 2);
+    assert_eq!(image.mem_usage, 2 * 2 * 4);
     assert!(image.texture_data.is_some());
     assert!(image.internal.is_some());
     // internal, texture data
@@ -662,6 +669,7 @@ fn png_test() {
     assert_eq!(image.cy, 2);
     assert_eq!(image.format, GS_RGBA);
     assert_eq!(image.space, ColorSpace(0));
+    assert_eq!(image.mem_usage, 3 * 2 * 4);
     assert!(image.texture_data.is_some());
     assert_eq!(allocs(), 2);
 
@@ -685,6 +693,40 @@ fn png_test() {
         format!("tex_create T2 3 2 f3 l1 0x0 {PNG_PREMULTIPLIED}")
     );
     image.free();
+}
+
+/// obs-rust/obs-studio#2279: a 1024x1024 picture counts its 4 MiB. The fake
+/// decoder answers for this name, so no file is read.
+#[test]
+fn png_1024_mem_usage_test() {
+    setup();
+    let mut image = image();
+    image.init(
+        Some(&path("solid-1024x1024.png")),
+        ImageAlphaMode::PREMULTIPLY,
+    );
+    assert!(image.loaded);
+    assert_eq!((image.cx, image.cy), (1024, 1024));
+    assert!(image.mem_usage >= 4 << 20);
+    assert_eq!(image.mem_usage, 1024 * 1024 * 4);
+    image.free();
+    assert!(is_zeroed(&image));
+    assert_eq!(allocs(), 0);
+}
+
+/// A file that fails to load counts nothing.
+#[test]
+fn failed_load_counts_nothing() {
+    setup();
+    let mut image = image();
+    image.mem_usage = 7;
+    image.init(
+        Some(&path("image-file-missing.png")),
+        ImageAlphaMode::STRAIGHT,
+    );
+    assert_eq!(image.mem_usage, 0);
+    image.init(Some(&path("image-file-wide.gif")), ImageAlphaMode::STRAIGHT);
+    assert_eq!(image.mem_usage, 0);
 }
 
 // New edge cases of the helpers.

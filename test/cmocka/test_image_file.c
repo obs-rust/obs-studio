@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <cmocka.h>
 
@@ -11,7 +12,9 @@
 #include <graphics/matrix4.h>
 #include <util/base.h>
 #include <util/bmem.h>
+#include <util/crc32.h>
 #include <util/dstr.h>
+#include <util/platform.h>
 
 /*
  * Characterization of libobs/graphics/image-file.c.h (gs_image_file_ex_*),
@@ -21,12 +24,18 @@
  * does, with a fake device that records texture creates (with the bytes
  * they are given), destroys and the bytes gs_texture_set_image writes. The
  * pictures are the image-file-* files in data/ (data/image-file.py writes
- * them). GIFs go through libnsgif, everything else through FFmpeg.
+ * them; the 1024x1024 PNG is written at run time). GIFs go through
+ * libnsgif, everything else through FFmpeg.
  *
  * Characterized, not endorsed:
  * - A .gif that cannot be opened, or is larger than 4096 in either
  *   direction, fails without trying FFmpeg. A one-frame .gif goes to FFmpeg.
- * - gs_image_file_ex_init does not fill mem_usage, alpha_mode or space.
+ * - gs_image_file_ex_init does not fill alpha_mode or space.
+ *
+ * mem_usage is the decoded size the Image Slide Show counts against its
+ * memory cap (obs-rust/obs-studio#2279, upstream #14076): width * height *
+ * bytes per pixel for a still picture; for an animated GIF the frame cache,
+ * every decoded frame, the current frame and the file itself.
  * - Only frame 0 gets the alpha mode given to init. Frames decoded later by
  *   tick and update_texture are always straight alpha.
  * - A GIF that loops forever never counts cur_loop up.
@@ -318,7 +327,11 @@ static void animated_gif_load_test(void **state)
 	assert_int_equal(image.cur_time, 0);
 	assert_int_equal(image.cur_frame, 0);
 	assert_int_equal(image.cur_loop, 0);
-	assert_int_equal(image.mem_usage, 0);
+	/* frame cache (3 pointers), 3 decoded frames, the current frame, the
+	 * file */
+	assert_int_equal(image.mem_usage, 3 * sizeof(uint8_t *) + 3 * (4 * 2 * 4) + 4 * 2 * 4 +
+						  (uint64_t)os_get_file_size(DATA("image-file-anim.gif")));
+	assert_true(image.mem_usage > 0);
 	assert_int_equal(image.alpha_mode, GS_IMAGE_ALPHA_STRAIGHT);
 	assert_int_equal(image.space, GS_CS_SRGB);
 	/* internal, file data, nsgif's bitmap, frame cache, frame data */
@@ -469,6 +482,7 @@ static void still_gif_test(void **state)
 	assert_false(image.is_animated_gif);
 	assert_int_equal(image.cx, 2);
 	assert_int_equal(image.cy, 2);
+	assert_int_equal(image.mem_usage, 2 * 2 * 4);
 	assert_non_null(image.texture_data);
 	assert_non_null(image.internal);
 	/* internal, texture data */
@@ -495,6 +509,7 @@ static void png_test(void **state)
 	assert_int_equal(image.cy, 2);
 	assert_int_equal(image.format, GS_RGBA);
 	assert_int_equal(image.space, GS_CS_SRGB);
+	assert_int_equal(image.mem_usage, 3 * 2 * 4);
 	assert_non_null(image.texture_data);
 	assert_int_equal(bnum_allocs(), allocs + 2);
 
@@ -516,6 +531,106 @@ static void png_test(void **state)
 	gs_image_file_ex_free(&image);
 }
 
+/* PNG writer for one RGBA colour, deflate "stored" blocks (no zlib needed) */
+
+static void put_be32(uint8_t *p, uint32_t v)
+{
+	p[0] = (uint8_t)(v >> 24);
+	p[1] = (uint8_t)(v >> 16);
+	p[2] = (uint8_t)(v >> 8);
+	p[3] = (uint8_t)v;
+}
+
+static bool write_chunk(FILE *f, const char *type, const uint8_t *data, size_t size)
+{
+	uint8_t be[4];
+	put_be32(be, (uint32_t)size);
+	if (fwrite(be, 1, 4, f) != 4 || fwrite(type, 1, 4, f) != 4)
+		return false;
+	if (size && fwrite(data, 1, size, f) != size)
+		return false;
+	put_be32(be, calc_crc32(calc_crc32(0, type, 4), data, size));
+	return fwrite(be, 1, 4, f) == 4;
+}
+
+static bool write_solid_png(const char *path, uint32_t cx, uint32_t cy, const uint8_t rgba[4])
+{
+	const size_t row = 1 + (size_t)cx * 4;
+	const size_t raw_size = row * cy;
+	const size_t blocks = (raw_size + 65534) / 65535;
+	const size_t z_size = 2 + raw_size + blocks * 5 + 4;
+	uint8_t *z = malloc(z_size);
+	if (!z)
+		return false;
+
+	/* zlib header, then stored blocks of filter-0 rows */
+	uint8_t *out = z;
+	*out++ = 0x78;
+	*out++ = 0x01;
+	uint32_t a = 1, b = 0;
+	for (size_t done = 0; done < raw_size;) {
+		const size_t n = raw_size - done < 65535 ? raw_size - done : 65535;
+		*out++ = (uint8_t)(done + n == raw_size); /* BFINAL */
+		*out++ = (uint8_t)n;
+		*out++ = (uint8_t)(n >> 8);
+		*out++ = (uint8_t)~n;
+		*out++ = (uint8_t)(~n >> 8);
+		for (size_t i = done; i < done + n; i++) {
+			const size_t x = i % row;
+			const uint8_t v = x ? rgba[(x - 1) % 4] : 0;
+			*out++ = v;
+			a = (a + v) % 65521;
+			b = (b + a) % 65521;
+		}
+		done += n;
+	}
+	put_be32(out, (b << 16) | a);
+
+	FILE *f = fopen(path, "wb");
+	bool ok = f != NULL;
+	static const uint8_t sig[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+	uint8_t ihdr[13] = {0};
+	put_be32(ihdr, cx);
+	put_be32(ihdr + 4, cy);
+	ihdr[8] = 8; /* bit depth */
+	ihdr[9] = 6; /* colour type: RGBA */
+	ok = ok && fwrite(sig, 1, sizeof(sig), f) == sizeof(sig);
+	ok = ok && write_chunk(f, "IHDR", ihdr, sizeof(ihdr));
+	ok = ok && write_chunk(f, "IDAT", z, z_size);
+	ok = ok && write_chunk(f, "IEND", NULL, 0);
+	if (f)
+		ok = fclose(f) == 0 && ok;
+	free(z);
+	return ok;
+}
+
+/* obs-rust/obs-studio#2279: a 1024x1024 picture counts its 4 MiB. The
+ * picture is written to the working directory at run time. */
+static void png_1024_mem_usage_test(void **state)
+{
+	static const char *path = "test_image_file_1024.png";
+	static const uint8_t navy[4] = {30, 60, 90, 255};
+	gs_image_file_ex_t image;
+
+	(void)state;
+
+	assert_true(write_solid_png(path, 1024, 1024, navy));
+	gs_image_file_ex_init(&image, path, GS_IMAGE_ALPHA_PREMULTIPLY);
+	remove(path);
+	assert_true(image.loaded);
+	assert_int_equal(image.cx, 1024);
+	assert_int_equal(image.cy, 1024);
+	assert_int_equal(image.format, GS_RGBA);
+	assert_true(image.mem_usage >= 4 * 1024 * 1024);
+	assert_int_equal(image.mem_usage, 1024 * 1024 * 4);
+
+	gs_image_file_ex_init_texture(&image);
+	/* still counted once the decoded copy is on the GPU */
+	assert_int_equal(image.mem_usage, 1024 * 1024 * 4);
+	gs_image_file_ex_free(&image);
+	assert_true(is_zeroed(&image));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -529,6 +644,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(loop_count_test, setup, teardown),
 		cmocka_unit_test_setup_teardown(still_gif_test, setup, teardown),
 		cmocka_unit_test_setup_teardown(png_test, setup, teardown),
+		cmocka_unit_test_setup_teardown(png_1024_mem_usage_test, setup, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
