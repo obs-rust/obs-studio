@@ -32,6 +32,7 @@
     "obs-module-type-rules.h",
     "obs-module.h",
     "obs-nal.h",
+    "obs-output-stop-stats.h",
     "obs-output-video-checks.h",
     "obs-output.h",
     "obs-properties.h",

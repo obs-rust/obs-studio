@@ -63,6 +63,9 @@
 /* obs-encoder-size.c */
 #include "obs-encoder-size.h"
 
+/* obs-output-stop-stats.c */
+#include "obs-output-stop-stats.h"
+
 /* obs-output-video-checks.c */
 #include "obs-output-video-checks.h"
 

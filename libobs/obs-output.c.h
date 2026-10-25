@@ -521,46 +521,41 @@ static void log_frame_info(struct obs_output *output)
 	uint32_t total_frames;
 	uint32_t lagged_frames;
 	obs_video_stats_frame_counts(&video->stats, &total_frames, &lagged_frames);
-	uint32_t drawn = total_frames - output->starting_drawn_count;
-	uint32_t lagged = lagged_frames - output->starting_lagged_count;
+	uint32_t starting_drawn = output->starting_drawn_count;
+	uint32_t starting_lagged = output->starting_lagged_count;
 
 	int dropped = obs_output_get_frames_dropped(output);
 	int total = output->total_frames;
 
-	double percentage_lagged = 0.0f;
-	double percentage_dropped = 0.0f;
-
-	if (drawn)
-		percentage_lagged = (double)lagged / (double)drawn * 100.0;
-	if (dropped)
-		percentage_dropped = (double)dropped / (double)total * 100.0;
+	struct obs_output_stop_stats stats =
+		obs_output_stop_stats(total_frames, lagged_frames, starting_drawn, starting_lagged, dropped, total);
 
 	blog(LOG_INFO, "Output '%s': stopping", output->context.name);
-	if (!dropped || !total)
-		blog(LOG_INFO, "Output '%s': Total frames output: %d", output->context.name, total);
+	if (!stats.output_attempted)
+		blog(LOG_INFO, "Output '%s': Total frames output: %d", output->context.name, stats.frames_output);
 	else
 		blog(LOG_INFO,
 		     "Output '%s': Total frames output: %d"
 		     " (%d attempted)",
-		     output->context.name, total - dropped, total);
+		     output->context.name, stats.frames_output, total);
 
-	if (!lagged || !drawn)
-		blog(LOG_INFO, "Output '%s': Total drawn frames: %" PRIu32, output->context.name, drawn);
+	if (!stats.drawn_attempted)
+		blog(LOG_INFO, "Output '%s': Total drawn frames: %" PRIu32, output->context.name, stats.frames_drawn);
 	else
 		blog(LOG_INFO, "Output '%s': Total drawn frames: %" PRIu32 " (%" PRIu32 " attempted)",
-		     output->context.name, drawn - lagged, drawn);
+		     output->context.name, stats.frames_drawn, stats.drawn);
 
-	if (drawn && lagged)
+	if (stats.lag_line)
 		blog(LOG_INFO,
 		     "Output '%s': Number of lagged frames due "
 		     "to rendering lag/stalls: %" PRIu32 " (%0.1f%%)",
-		     output->context.name, lagged, percentage_lagged);
-	if (total && dropped)
+		     output->context.name, stats.lagged, stats.percentage_lagged);
+	if (stats.drop_line)
 		blog(LOG_INFO,
 		     "Output '%s': Number of dropped frames due "
 		     "to insufficient bandwidth/connection stalls: "
 		     "%d (%0.1f%%)",
-		     output->context.name, dropped, percentage_dropped);
+		     output->context.name, dropped, stats.percentage_dropped);
 }
 
 static inline void signal_stop(struct obs_output *output);
