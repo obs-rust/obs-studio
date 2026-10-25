@@ -427,6 +427,11 @@ not get a line.
   libdatachannel, so WHIP appears in Settings > Stream > Service. *Linux*,
   2026-10-23. Issue [#1744](https://github.com/obs-rust/obs-studio/issues/1744),
   PR [#1871](https://github.com/obs-rust/obs-studio/pull/1871).
+- **AppImage names a missing libwayland-egl.** On a host without
+  libwayland-egl.so.1, the AppImage says which package to install
+  (libwayland-egl1 on Debian and Ubuntu) instead of "Failed to initialize
+  video: Graphics module not found". *Linux (AppImage)*, pending merge.
+  Issue [#2298](https://github.com/obs-rust/obs-studio/issues/2298).
 - **Builds with Qt 6.8.** The frontend builds against distribution Qt 6.8,
   for example on Debian 13. *Linux*, 2026-10-16. Issue
   [#1015](https://github.com/obs-rust/obs-studio/issues/1015), PR

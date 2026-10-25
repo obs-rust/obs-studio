@@ -42,6 +42,14 @@
       "install": {"debian": "libwayland-client0", "fedora": "libwayland-client", "arch": "wayland", "suse": "libwayland-client0", "nixos": "run through appimage-run or nix-ld (programs.nix-ld.libraries = [ pkgs.wayland ])"}
     },
     {
+      "name": "wayland-egl",
+      "kind": "required",
+      "feature": "OpenGL rendering (libobs-opengl links it, also under X11)",
+      "sonames": ["libwayland-egl.so.1"],
+      "symbols": ["wl_egl_window_create", "wl_egl_window_destroy"],
+      "install": {"debian": "libwayland-egl1", "fedora": "libwayland-egl", "arch": "wayland", "suse": "libwayland-egl1", "nixos": "run through appimage-run or nix-ld (programs.nix-ld.libraries = [ pkgs.wayland ])"}
+    },
+    {
       "name": "va",
       "kind": "optional",
       "feature": "VA-API hardware encoding and decoding",
