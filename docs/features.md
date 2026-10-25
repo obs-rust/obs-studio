@@ -1757,6 +1757,10 @@ area.
 
 ### Stability
 
+- A scene item with a bounds type OBS doesn't know (a hand-edited or
+  foreign scene collection, undo data, a plugin) no longer draws inside a
+  phantom bounding box; it is loaded and set as no bounds. *All*, pending
+  merge. Issue [#2281](https://github.com/obs-rust/obs-studio/issues/2281).
 - Restoring a source's filters (undo, paste, scene collection load) no longer
   crashes when the source's size is read while a filter is being attached; a
   filter with no target yet reports a size of 0. *All*, 2026-10-24. Issue

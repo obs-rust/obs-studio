@@ -340,6 +340,17 @@ static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, c
 	obs_scene_item_relative_scale(dst, v, y, item->scale_ref.y);
 }
 
+/* A bounds type outside the enum (a hand-edited or foreign scene
+ * collection, undo data, a plugin) has no bounding box: OBS_BOUNDS_NONE.
+ * Takes the int64 a load reads, before any cast truncates it, and an enum
+ * value from a setter (an unsigned or a signed int, by compiler). */
+static inline enum obs_bounds_type valid_bounds_type(int64_t type)
+{
+	if (type < OBS_BOUNDS_NONE || type > OBS_BOUNDS_MAX_ONLY)
+		return OBS_BOUNDS_NONE;
+	return (enum obs_bounds_type)type;
+}
+
 static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *origin, struct vec2 *scale, uint32_t *cx,
 				  uint32_t *cy)
 {
@@ -1064,7 +1075,7 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	set_visibility(item, visible);
 	obs_sceneitem_set_locked(item, lock);
 
-	item->bounds_type = (enum obs_bounds_type)obs_data_get_int(item_data, "bounds_type");
+	item->bounds_type = valid_bounds_type(obs_data_get_int(item_data, "bounds_type"));
 	item->bounds_align = (uint32_t)obs_data_get_int(item_data, "bounds_align");
 	item->crop_to_bounds = obs_data_get_bool(item_data, "bounds_crop");
 	obs_data_get_vec2(item_data, "bounds", &item->bounds);
@@ -2398,7 +2409,7 @@ void load_transform_states(obs_data_t *temp, void *vp_scene)
 	obs_data_get_vec2(temp, "scale", &info.scale);
 	info.rot = (float)obs_data_get_double(temp, "rot");
 	info.alignment = (uint32_t)obs_data_get_int(temp, "alignment");
-	info.bounds_type = (enum obs_bounds_type)obs_data_get_int(temp, "bounds_type");
+	info.bounds_type = valid_bounds_type(obs_data_get_int(temp, "bounds_type"));
 	info.bounds_alignment = (uint32_t)obs_data_get_int(temp, "bounds_alignment");
 	obs_data_get_vec2(temp, "bounds", &info.bounds);
 	info.crop_to_bounds = obs_data_get_bool(temp, "crop_to_bounds");
@@ -2644,7 +2655,7 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type type)
 {
 	if (item) {
-		item->bounds_type = type;
+		item->bounds_type = valid_bounds_type(type);
 		do_update_transform(item);
 	}
 }
@@ -2778,7 +2789,7 @@ static inline void scene_item_set_info_internal(obs_sceneitem_t *item, const str
 
 	item->rot = info->rot;
 	item->align = info->alignment;
-	item->bounds_type = info->bounds_type;
+	item->bounds_type = valid_bounds_type(info->bounds_type);
 	item->bounds_align = info->bounds_alignment;
 }
 
