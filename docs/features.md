@@ -765,6 +765,16 @@ area.
   before upstream 7b8b51b29. *All*, 2026-10-24. Issue
   [#2124](https://github.com/obs-rust/obs-studio/issues/2124), PR
   [#2135](https://github.com/obs-rust/obs-studio/pull/2135).
+- A V4L2 Video Capture Device follows its camera, not a /dev/videoN number:
+  a camera replugged or renumbered under another number is captured again,
+  and another camera that takes its old number is not captured in its place
+  (the log says the source waits for its camera). The source saves the
+  camera's name, bus and USB serial number next to the node; two cameras of
+  one model without serial numbers are told apart by their USB port.
+  *Linux*, pending merge. Issue
+  [#2262](https://github.com/obs-rust/obs-studio/issues/2262), upstream
+  [obsproject/obs-studio#3824](https://github.com/obsproject/obs-studio/issues/3824),
+  [obsproject/obs-studio#4972](https://github.com/obsproject/obs-studio/issues/4972).
 
 ### Audio
 

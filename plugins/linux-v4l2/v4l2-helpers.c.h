@@ -308,5 +308,219 @@ int_fast32_t v4l2_set_dv_timing(int_fast32_t dev, int *timing)
 	return 0;
 }
 
+void v4l2_identity_clear(struct v4l2_identity *identity)
+{
+	memset(identity, 0, sizeof(*identity));
+	identity->index = -1;
+}
+
+bool v4l2_identity_known(const struct v4l2_identity *identity)
+{
+	return identity->card[0] != 0;
+}
+
+bool v4l2_identity_equal(const struct v4l2_identity *a, const struct v4l2_identity *b)
+{
+	return strcmp(a->card, b->card) == 0 && strcmp(a->bus_info, b->bus_info) == 0 &&
+	       strcmp(a->serial, b->serial) == 0 && a->index == b->index;
+}
+
+/* The first line of a small sysfs file, without the newline */
+static bool v4l2_read_sysfs(const char *path, char *buf, size_t size)
+{
+	FILE *f = fopen(path, "r");
+	if (!f)
+		return false;
+	bool ok = fgets(buf, (int)size, f) != NULL;
+	fclose(f);
+	if (!ok)
+		return false;
+	buf[strcspn(buf, "\r\n")] = 0;
+	return true;
+}
+
+/* The node's index and its USB device's serial number, from sysfs. Only for
+ * nodes in V4L2_DEV_DIR, whose sysfs entry has the node's name. */
+static void v4l2_identity_read_sysfs(const char *path, struct v4l2_identity *identity)
+{
+	char node[PATH_MAX], dev_dir[PATH_MAX], file[PATH_MAX + 64], text[32];
+
+	if (!realpath(path, node) || !realpath(V4L2_DEV_DIR, dev_dir))
+		return;
+	size_t len = strlen(dev_dir);
+	const char *name = node + len + 1;
+	if (strncmp(node, dev_dir, len) != 0 || node[len] != '/' || strchr(name, '/'))
+		return;
+
+	snprintf(file, sizeof(file), V4L2_SYSFS_ROOT "/class/video4linux/%s/index", name);
+	if (v4l2_read_sysfs(file, text, sizeof(text)))
+		identity->index = atoi(text);
+
+	/* The node's device is a USB interface; its parent, the USB device,
+	 * has idVendor and, if the camera has one, serial. */
+	char device[PATH_MAX];
+	snprintf(file, sizeof(file), V4L2_SYSFS_ROOT "/class/video4linux/%s/device", name);
+	if (!realpath(file, device))
+		return;
+	for (int level = 0; level < 4; level++) {
+		snprintf(file, sizeof(file), "%s/idVendor", device);
+		if (access(file, F_OK) == 0) {
+			snprintf(file, sizeof(file), "%s/serial", device);
+			if (!v4l2_read_sysfs(file, identity->serial, sizeof(identity->serial)))
+				identity->serial[0] = 0;
+			return;
+		}
+		char *slash = strrchr(device, '/');
+		if (!slash || slash == device)
+			return;
+		*slash = 0;
+	}
+}
+
+bool v4l2_identity_query(int_fast32_t dev, const char *path, struct v4l2_identity *identity)
+{
+	struct v4l2_capability cap;
+	uint32_t caps;
+
+	v4l2_identity_clear(identity);
+	memset(&cap, 0, sizeof(cap));
+	if (dev < 0 || v4l2_ioctl(dev, VIDIOC_QUERYCAP, &cap) != 0)
+		return false;
+#ifndef V4L2_CAP_DEVICE_CAPS
+	caps = cap.capabilities;
+#else
+	caps = (cap.capabilities & V4L2_CAP_DEVICE_CAPS) ? cap.device_caps : cap.capabilities;
+#endif
+	if (!(caps & V4L2_CAP_VIDEO_CAPTURE) || !cap.card[0])
+		return false;
+
+	/* Bounded: the kernel's strings fill their arrays at most */
+	snprintf(identity->card, sizeof(identity->card), "%.*s", (int)sizeof(cap.card), (char *)cap.card);
+	snprintf(identity->bus_info, sizeof(identity->bus_info), "%.*s", (int)sizeof(cap.bus_info),
+		 (char *)cap.bus_info);
+	if (path)
+		v4l2_identity_read_sysfs(path, identity);
+	return true;
+}
+
+void v4l2_identity_load(obs_data_t *settings, struct v4l2_identity *identity)
+{
+	v4l2_identity_clear(identity);
+	obs_data_t *saved = settings ? obs_data_get_obj(settings, V4L2_DEVICE_IDENTITY) : NULL;
+	if (!saved)
+		return;
+	snprintf(identity->card, sizeof(identity->card), "%s", obs_data_get_string(saved, "card"));
+	snprintf(identity->bus_info, sizeof(identity->bus_info), "%s", obs_data_get_string(saved, "bus_info"));
+	snprintf(identity->serial, sizeof(identity->serial), "%s", obs_data_get_string(saved, "serial"));
+	if (obs_data_has_user_value(saved, "index"))
+		identity->index = (int)obs_data_get_int(saved, "index");
+	obs_data_release(saved);
+}
+
+void v4l2_identity_save(obs_data_t *settings, const struct v4l2_identity *identity)
+{
+	obs_data_t *saved = obs_data_create();
+	obs_data_set_string(saved, "card", identity->card);
+	obs_data_set_string(saved, "bus_info", identity->bus_info);
+	obs_data_set_string(saved, "serial", identity->serial);
+	obs_data_set_int(saved, "index", identity->index);
+	obs_data_set_obj(settings, V4L2_DEVICE_IDENTITY, saved);
+	obs_data_release(saved);
+}
+
+void v4l2_identity_label(const struct v4l2_identity *identity, struct dstr *label)
+{
+	dstr_printf(label, "%s (%s)", identity->card, identity->bus_info);
+}
+
+static bool v4l2_bus_is_usb(const char *bus_info)
+{
+	return strncmp(bus_info, "usb-", 4) == 0;
+}
+
+enum v4l2_identity_match v4l2_identity_match(const struct v4l2_identity *saved, const struct v4l2_identity *camera)
+{
+	if (!v4l2_identity_known(saved) || !v4l2_identity_known(camera))
+		return V4L2_MATCH_NONE;
+	if (strcmp(saved->card, camera->card) != 0)
+		return V4L2_MATCH_NONE;
+	if (saved->index >= 0 && camera->index >= 0 && saved->index != camera->index)
+		return V4L2_MATCH_NONE;
+	if (strcmp(saved->serial, camera->serial) != 0)
+		return V4L2_MATCH_NONE;
+
+	if (strcmp(saved->bus_info, camera->bus_info) == 0)
+		return V4L2_MATCH_EXACT;
+	if (saved->serial[0])
+		return V4L2_MATCH_SERIAL;
+	/* Without a serial number, only the port tells two cameras of one
+	 * model apart. A USB camera can be plugged into another port; the bus
+	 * info of a device on another bus (PCI, platform) is the device. */
+	if (v4l2_bus_is_usb(saved->bus_info) && v4l2_bus_is_usb(camera->bus_info))
+		return V4L2_MATCH_MODEL;
+	return V4L2_MATCH_NONE;
+}
+
+bool v4l2_candidate_at(const char *path, struct v4l2_candidate *candidate)
+{
+	if (!path || !*path || strlen(path) >= sizeof(candidate->path))
+		return false;
+	int fd = v4l2_open(path, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+	if (fd == -1)
+		return false;
+	bool ok = v4l2_identity_query(fd, path, &candidate->identity);
+	v4l2_close(fd);
+	if (ok)
+		snprintf(candidate->path, sizeof(candidate->path), "%s", path);
+	return ok;
+}
+
+size_t v4l2_candidates_scan(struct v4l2_candidate *list, size_t count, size_t max)
+{
+	DIR *dirp = opendir(V4L2_SYSFS_ROOT "/class/video4linux");
+	struct dirent *dp;
+	char path[sizeof(list->path)];
+
+	if (!dirp)
+		return count;
+	while (count < max && (dp = readdir(dirp)) != NULL) {
+		if (dp->d_name[0] == '.')
+			continue;
+		if (snprintf(path, sizeof(path), V4L2_DEV_DIR "/%s", dp->d_name) >= (int)sizeof(path))
+			continue;
+		bool listed = false;
+		for (size_t i = 0; i < count && !listed; i++)
+			listed = strcmp(list[i].path, path) == 0;
+		if (!listed && v4l2_candidate_at(path, &list[count]))
+			count++;
+	}
+	closedir(dirp);
+	return count;
+}
+
+int v4l2_identity_pick(const struct v4l2_identity *saved, const char *saved_path, const struct v4l2_candidate *list,
+		       size_t count, enum v4l2_identity_match *match)
+{
+	*match = V4L2_MATCH_NONE;
+	for (enum v4l2_identity_match want = V4L2_MATCH_EXACT; want > V4L2_MATCH_NONE; want--) {
+		int found = -1;
+		size_t matches = 0;
+		for (size_t i = 0; i < count; i++) {
+			if (v4l2_identity_match(saved, &list[i].identity) != want)
+				continue;
+			/* among equals, the one at the saved node */
+			if (!matches++ || (saved_path && strcmp(list[i].path, saved_path) == 0))
+				found = (int)i;
+		}
+		if (matches == 1 || (matches > 1 && saved_path && strcmp(list[found].path, saved_path) == 0)) {
+			*match = want;
+			return found;
+		}
+		if (matches > 1)
+			return -1;
+	}
+	return -1;
+}
+
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef blog
