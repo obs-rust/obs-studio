@@ -1,0 +1,16 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc dd4ef51b6a23690cf9746192ae24cd3a4b824565f1e6b44dc9c2105fb5462b63 # shrinks to a = 0, b = 0, d = 0, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0, has = false
+cc 1aee7f30c0135757b24bece19616813a3a7fe86734f9b4a4a226da1e97e8cd49 # shrinks to a = 0, b = 0, d = 0, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0, has = false
+cc 9c365a1c015735985a268d39139119b89abdab8eb48ea594bb2af457183c0076 # shrinks to a = 1, b = 0, d = 0, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0, has = true
+cc 13ace604a014cb3b62c8d6643a59e1f97940746536bd1f3326d98b97e4d2213d # shrinks to rate = 48000, blocksize = 4, framesize = 1024, started = false, paired = true, v_start = 0, first = 9914666668, preload = 0, packets = [(0, 0)]
+cc a2514144eb9247f93db280e67b0f62c8421b3540657660a01c647cae16282390 # shrinks to a = 18446744073709551615, b = 18446744073709551615, d = 0, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0, has = false
+cc 05be1c66c8107e3e813c25605f163e9b398e429f11143a78f934866f6b19cc0b # shrinks to a = 18446744073709551615, b = 10048514487, d = 9914666668, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0, has = false
+cc abe14638ec72f52d1c7c58dc7579edbd4575cd81e0a2ee642a0ca316214ced38 # shrinks to rate = 48000, blocksize = 4, framesize = 1024, started = false, paired = true, v_start = 9944479789, first = 9914666668, preload = 0, packets = [(1432, 0)]
+cc acae13ac6e097baef7465f507762b858476a90e0405b0734cde89203adb81af8 # shrinks to rate = 48000, blocksize = 4, framesize = 1024, started = false, paired = true, v_start = 9936000001, first = 9936000002, preload = 0, packets = [(0, 0)]
+cc f17ce91a4af24d21c9943341e4fd79fda781971421b213d66b84f86bd3a0bbee # shrinks to rate = 48000, blocksize = 0, framesize = 1024, started = false, paired = true, v_start = 9936000001, first = 9918687502, preload = 0, packets = [(831, 0)]
+cc d39994fb2b503525ae15392e71aa055c541f3f655852ca78a1203ba3ca10aa37 # shrinks to rate = 124793, blocksize = 4, framesize = 1024, started = false, paired = true, v_start = 9996469649, first = 9916856543, preload = 0, packets = [(0, 8355759), (0, 40956976), (1, 30300372), (0, 0)]

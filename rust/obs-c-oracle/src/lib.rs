@@ -55,6 +55,7 @@ pub mod dstr;
 pub mod dstr_libc;
 pub mod effect_lookups;
 pub mod effect_parser_lifecycle;
+pub mod encoder_audio_start;
 pub mod encoder_packet;
 pub mod encoder_roi;
 pub mod encoder_size;

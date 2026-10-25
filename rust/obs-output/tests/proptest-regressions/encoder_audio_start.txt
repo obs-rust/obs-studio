@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 838478b9a4604ae86a10d67aae859deafa03c7b4a6e9095408bede2ec8080b8b # shrinks to a = 0, b = 0, d = 0, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0
+cc a9314756bfd0fafb0bbeea383ad987c7584e53f0d3f688d6ee6c7b274033f4a6 # shrinks to samplerate = 48000, blocksize = 4, paired = true, v_start = 9936000001, first = 9914666668, packets = [(1025, 0), (0, 0)]
+cc 2c5034c2f64eedad196b6d0e5ac8a0741554085d87879a4883e77ebe8de9ca67 # shrinks to a = 12128568095969894231, b = 0, d = 6318175977739657385, frames = 0, blocksize = 0, size = 0, offset = 0, pts = 0, tb = 0, div = 0, t = 0
+cc e01320a5d92ecb979bdc61a7dbe74a6b71964412e5322bbc539b4c63d622de0a # shrinks to samplerate = 48000, blocksize = 4, paired = true, v_start = 9936000001, first = 9914666668, packets = [(0, 0), (1025, 0)]
