@@ -48,6 +48,8 @@ mod scene_render_plan;
 mod service;
 #[path = "port_comparison/source_async_pacing.rs"]
 mod source_async_pacing;
+#[path = "port_comparison/source_async_upload.rs"]
+mod source_async_upload;
 #[path = "port_comparison/source_audio_input.rs"]
 mod source_audio_input;
 #[path = "port_comparison/source_audio_render.rs"]
@@ -171,6 +173,7 @@ fn comparisons(criterion: &mut Criterion) {
         scene_render_plan,
         service,
         source_async_pacing,
+        source_async_upload,
         source_audio_input,
         source_audio_render,
         source_audio_timing,

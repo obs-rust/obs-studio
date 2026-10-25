@@ -2,7 +2,11 @@
 //! `libobs/obs-source-deinterlace.c` and `libobs/obs-source-transition.c`,
 //! one module per file: so far
 //! `libobs/obs-source-async-pacing.c.h`, the async video frame pacing of
-//! `get_closest_frame()`; `libobs/obs-source-audio-input.c.h`, the audio
+//! `get_closest_frame()`; `libobs/obs-source-async-upload.c.h`, the async
+//! video upload decisions of `set_async_texture_size()`,
+//! `update_async_texrender()`, `update_async_textures()`,
+//! `check_to_swap_bgrx_bgra()` and `obs_source_update_async_video()`;
+//! `libobs/obs-source-audio-input.c.h`, the audio
 //! input steps of `process_audio()` and `reset_resampler()`;
 //! `libobs/obs-source-audio-render.c.h`, the audio render mix plan of
 //! `obs_source_audio_render()`, `custom_audio_render()` and
@@ -44,7 +48,7 @@
 //! `libobs/obs-source-volume.c.h`, the volume snap of
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
-//! The safe cores are [`async_pacing`], [`audio_input`],
+//! The safe cores are [`async_pacing`], [`async_upload`], [`audio_input`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
