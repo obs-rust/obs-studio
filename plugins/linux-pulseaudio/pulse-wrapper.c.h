@@ -67,17 +67,26 @@ static void pulse_reconnect(pa_mainloop_api *api, pa_time_event *e, const struct
 }
 
 /* Tell the sources when a device appears or goes away, so one whose stream
- * died with its device can record again once it is back. */
+ * died with its device can record again once it is back, and when the
+ * server's default devices may have changed, so one set to "default" can
+ * follow them. */
 static void pulse_subscribed_event(pa_context *c, pa_subscription_event_type_t t, uint32_t index, void *userdata)
 {
 	UNUSED_PARAMETER(userdata);
 
-	if (c != pulse_context || (t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK) != PA_SUBSCRIPTION_EVENT_SOURCE)
+	if (c != pulse_context)
 		return;
 
+	pa_subscription_event_type_t facility = t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
 	pa_subscription_event_type_t type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
-	if (type != PA_SUBSCRIPTION_EVENT_NEW && type != PA_SUBSCRIPTION_EVENT_REMOVE)
+	if (facility == PA_SUBSCRIPTION_EVENT_SERVER) {
+		if (type != PA_SUBSCRIPTION_EVENT_CHANGE)
+			return;
+		type = PA_SUBSCRIPTION_EVENT_SERVER | PA_SUBSCRIPTION_EVENT_CHANGE;
+	} else if (facility != PA_SUBSCRIPTION_EVENT_SOURCE ||
+		   (type != PA_SUBSCRIPTION_EVENT_NEW && type != PA_SUBSCRIPTION_EVENT_REMOVE)) {
 		return;
+	}
 
 	for (size_t i = 0; i < pulse_source_event_callbacks.num; i++)
 		pulse_source_event_callbacks.array[i].cb(pulse_source_event_callbacks.array[i].userdata, type, index);
@@ -87,7 +96,8 @@ static void pulse_subscribe_sources(pa_context *c)
 {
 	pa_context_set_subscribe_callback(c, pulse_subscribed_event, NULL);
 
-	pa_operation *op = pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SOURCE, NULL, NULL);
+	pa_operation *op =
+		pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SOURCE | PA_SUBSCRIPTION_MASK_SERVER, NULL, NULL);
 	if (op)
 		pa_operation_unref(op);
 }

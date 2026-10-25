@@ -112,6 +112,8 @@ enum pulse_stream_event {
 	PULSE_SOURCE_NEW,
 	/* The source with the given index went away. */
 	PULSE_SOURCE_REMOVED,
+	/* The server changed, e.g. its default sink or source. */
+	PULSE_SERVER_CHANGED,
 };
 
 enum pulse_stream_action {
@@ -127,8 +129,15 @@ struct pulse_stream_status {
 	bool has_stream;
 	/* ... that failed or was terminated. */
 	bool failed;
-	/* The stream follows the default device: the server moves it. */
+	/* The source is set to the default device. Its stream is connected
+	 * to the device the default was when it started, and may not be moved
+	 * by the server: PulseAudio moves record streams to the default
+	 * source, which for a sink monitor is the microphone. The source
+	 * restarts it on the new default instead (PULSE_SERVER_CHANGED). */
 	bool follows_default;
+	/* PULSE_SERVER_CHANGED: the server's default device is not the one
+	 * the source records from (or was going to). */
+	bool default_changed;
 	/* Index of the device the stream records from, or PA_INVALID_INDEX. */
 	uint32_t device_index;
 };

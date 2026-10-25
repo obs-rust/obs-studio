@@ -103,7 +103,8 @@ enum pulse_stream_action pulse_stream_on_event(const struct pulse_stream_status 
 		return status->has_stream && status->failed ? PULSE_STREAM_RESTART : PULSE_STREAM_KEEP;
 
 	case PULSE_SOURCE_REMOVED:
-		/* A stream on the default device is moved by the server. */
+		/* A stream on the default device follows the server's new
+		 * default (PULSE_SERVER_CHANGED). */
 		if (running && !status->follows_default && status->device_index != PA_INVALID_INDEX &&
 		    index == status->device_index)
 			return PULSE_STREAM_STOP;
@@ -113,6 +114,10 @@ enum pulse_stream_action pulse_stream_on_event(const struct pulse_stream_status 
 		/* Device names are unique, so a running stream cannot be
 		 * waiting for this one. */
 		return running ? PULSE_STREAM_KEEP : PULSE_STREAM_RESTART;
+
+	case PULSE_SERVER_CHANGED:
+		/* Also restarts a stopped stream: the new default is there. */
+		return status->follows_default && status->default_changed ? PULSE_STREAM_RESTART : PULSE_STREAM_KEEP;
 	}
 
 	return PULSE_STREAM_KEEP;

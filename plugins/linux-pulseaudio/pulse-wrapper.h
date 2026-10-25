@@ -52,7 +52,9 @@ void pulse_remove_reconnected_callback(pulse_reconnected_cb cb, void *userdata);
 /**
  * Called on the pulse mainloop thread, with the mainloop locked, when a
  * source (a device or a sink monitor) appears (PA_SUBSCRIPTION_EVENT_NEW) or
- * goes away (PA_SUBSCRIPTION_EVENT_REMOVE) while the connection is up.
+ * goes away (PA_SUBSCRIPTION_EVENT_REMOVE) while the connection is up, and
+ * with PA_SUBSCRIPTION_EVENT_SERVER | PA_SUBSCRIPTION_EVENT_CHANGE when the
+ * server changed, e.g. its default sink or source (index is then unused).
  */
 typedef void (*pulse_source_event_cb)(void *userdata, pa_subscription_event_type_t type, uint32_t index);
 

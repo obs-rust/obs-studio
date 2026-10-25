@@ -355,9 +355,11 @@ static enum pulse_start_result pulse_start_recording(struct pulse_data *data)
 	attr.prebuf = (uint32_t)-1;
 	attr.tlength = (uint32_t)-1;
 
-	pa_stream_flags_t flags = PA_STREAM_ADJUST_LATENCY;
-	if (!data->is_default)
-		flags |= PA_STREAM_DONT_MOVE;
+	/* Never let the server move the stream, "default" included: PulseAudio
+	 * moves record streams to the default source, so a "default" output
+	 * capture whose sink went away would record the microphone. The source
+	 * follows the default itself (PULSE_SERVER_CHANGED). */
+	pa_stream_flags_t flags = PA_STREAM_ADJUST_LATENCY | PA_STREAM_DONT_MOVE;
 
 	pulse_lock();
 	int_fast32_t ret = pa_stream_connect_record(data->stream, data->device, &attr, flags);
@@ -414,6 +416,30 @@ static void pulse_call_restart_later(struct pulse_data *data, pulse_reconnected_
 
 static void pulse_retry_restart(void *userdata);
 static void pulse_retry_stream(void *userdata);
+
+static void pulse_default_device_info(pa_context *c, const pa_server_info *i, void *userdata)
+{
+	UNUSED_PARAMETER(c);
+	struct pulse_data *data = ((void **)userdata)[0];
+	char **device = ((void **)userdata)[1];
+
+	*device = pulse_default_device(i, data->input);
+	pulse_signal(0);
+}
+
+/**
+ * The server's current default device for this source, allocated with
+ * bmalloc, or NULL if it has none or cannot be asked. Runs on the UI thread.
+ */
+static char *pulse_current_default_device(struct pulse_data *data)
+{
+	char *device = NULL;
+	void *userdata[2] = {data, &device};
+
+	if (pulse_get_server_info(pulse_default_device_info, userdata) < 0)
+		return NULL;
+	return device;
+}
 
 /**
  * Start the stream again; if that fails, retry after PULSE_RESTART_RETRY_USEC
@@ -551,6 +577,11 @@ static void pulse_stream_event_task(void *param)
 		.follows_default = data->is_default,
 		.device_index = PA_INVALID_INDEX,
 	};
+	char *new_default = NULL;
+	if (task->event == PULSE_SERVER_CHANGED && data->is_default) {
+		new_default = pulse_current_default_device(data);
+		status.default_changed = new_default && (!data->device || strcmp(new_default, data->device) != 0);
+	}
 	if (data->stream) {
 		pulse_lock();
 		pa_stream_state_t state = pa_stream_get_state(data->stream);
@@ -566,9 +597,12 @@ static void pulse_stream_event_task(void *param)
 		pulse_stop_recording(data);
 		break;
 	case PULSE_STREAM_RESTART:
-		/* After a failure the audio was running: skip the startup
-		 * period as after a reconnect. */
-		data->reconnected = task->event == PULSE_STREAM_FAILED;
+		/* After a failure or a change of the default the audio was
+		 * running: skip the startup period as after a reconnect. */
+		data->reconnected = task->event == PULSE_STREAM_FAILED || task->event == PULSE_SERVER_CHANGED;
+		if (task->event == PULSE_SERVER_CHANGED)
+			blog(LOG_INFO, "Default %s device changed from '%s' to '%s'", data->input ? "input" : "output",
+			     data->device, new_default);
 		if (task->event == PULSE_STREAM_FAILED) {
 			uint64_t delay_usec;
 			pulse_lock();
@@ -593,6 +627,7 @@ static void pulse_stream_event_task(void *param)
 		break;
 	}
 
+	bfree(new_default);
 release:
 	obs_source_release(source);
 out:
@@ -631,12 +666,18 @@ static void pulse_stream_state_changed(pa_stream *s, void *userdata)
 }
 
 /**
- * A device appeared or went away; called on the pulse mainloop thread
+ * A device appeared or went away, or the server's defaults may have changed;
+ * called on the pulse mainloop thread
  */
 static void pulse_source_event(void *userdata, pa_subscription_event_type_t type, uint32_t index)
 {
-	pulse_queue_stream_task(userdata, type == PA_SUBSCRIPTION_EVENT_NEW ? PULSE_SOURCE_NEW : PULSE_SOURCE_REMOVED,
-				index, NULL);
+	enum pulse_stream_event event;
+
+	if (type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK)
+		event = PULSE_SERVER_CHANGED;
+	else
+		event = type == PA_SUBSCRIPTION_EVENT_NEW ? PULSE_SOURCE_NEW : PULSE_SOURCE_REMOVED;
+	pulse_queue_stream_task(userdata, event, index, NULL);
 }
 
 /**
@@ -768,7 +809,9 @@ static void pulse_update(void *vptr, obs_data_t *settings)
 	PULSE_DATA(vptr);
 	bool restart = false;
 	const char *new_device = obs_data_get_string(settings, "device_id");
-	if (!data->device || strcmp(data->device, new_device) != 0) {
+	/* data->device holds what "default" resolved to. */
+	const char *old_device = data->is_default ? "default" : data->device;
+	if (!old_device || strcmp(old_device, new_device) != 0) {
 		/* Signal to deduplication logic in case the device is also used for monitoring. */
 		if (!data->input)
 			obs_source_audio_output_capture_device_changed(data->source, new_device);

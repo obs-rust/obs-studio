@@ -130,7 +130,7 @@ static void removed_device_stops_its_stream_only(void **state)
 
 	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_STOP);
 	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_REMOVED, OTHER_DEVICE), PULSE_STREAM_KEEP);
-	/* The server moves a stream on the default device elsewhere. */
+	/* A stream on the default device follows the new default instead. */
 	assert_int_equal(pulse_stream_on_event(&follows_default, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
 	assert_int_equal(pulse_stream_on_event(&stopped, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
 	assert_int_equal(pulse_stream_on_event(&failed, PULSE_SOURCE_REMOVED, DEVICE), PULSE_STREAM_KEEP);
@@ -143,6 +143,30 @@ static void new_device_restarts_only_a_dead_stream(void **state)
 	assert_int_equal(pulse_stream_on_event(&stopped, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_RESTART);
 	assert_int_equal(pulse_stream_on_event(&failed, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_RESTART);
 	assert_int_equal(pulse_stream_on_event(&running, PULSE_SOURCE_NEW, OTHER_DEVICE), PULSE_STREAM_KEEP);
+}
+
+/* obs-rust/obs-studio#2260: a source set to "default" restarts its stream
+ * on the server's new default device; a named one stays. */
+
+static void default_change_restarts_a_default_stream(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct pulse_stream_status changed = running;
+	changed.follows_default = true;
+	changed.default_changed = true;
+	struct pulse_stream_status same = changed;
+	same.default_changed = false;
+	struct pulse_stream_status named = running;
+	named.default_changed = true;
+	struct pulse_stream_status stopped_default = stopped;
+	stopped_default.follows_default = true;
+	stopped_default.default_changed = true;
+
+	assert_int_equal(pulse_stream_on_event(&changed, PULSE_SERVER_CHANGED, PA_INVALID_INDEX), PULSE_STREAM_RESTART);
+	assert_int_equal(pulse_stream_on_event(&stopped_default, PULSE_SERVER_CHANGED, PA_INVALID_INDEX),
+			 PULSE_STREAM_RESTART);
+	assert_int_equal(pulse_stream_on_event(&same, PULSE_SERVER_CHANGED, PA_INVALID_INDEX), PULSE_STREAM_KEEP);
+	assert_int_equal(pulse_stream_on_event(&named, PULSE_SERVER_CHANGED, PA_INVALID_INDEX), PULSE_STREAM_KEEP);
 }
 
 /* Follow-up of #378: a restart that fails while the device is there is
@@ -234,6 +258,7 @@ int main(void)
 		cmocka_unit_test(failed_stream_is_restarted_once),
 		cmocka_unit_test(removed_device_stops_its_stream_only),
 		cmocka_unit_test(new_device_restarts_only_a_dead_stream),
+		cmocka_unit_test(default_change_restarts_a_default_stream),
 		cmocka_unit_test(failed_start_is_retried_while_the_device_is_there),
 		cmocka_unit_test(missing_device_is_waited_for_unless_the_server_came_back),
 		cmocka_unit_test(failing_stream_is_restarted_at_once_then_paced),
