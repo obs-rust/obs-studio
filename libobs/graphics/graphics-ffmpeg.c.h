@@ -415,6 +415,31 @@ static int ffmpeg_image_get_orientation(const AVFrame *frame)
 #endif
 }
 
+/* The JPEG decoders output the deprecated full-range YUVJ formats. swscale
+ * still takes them, but logs "deprecated pixel format used" for every
+ * context made from one, so each decoded JPEG logged it once (#2334). Give
+ * swscale the matching YUV format and say the range is full instead; the
+ * pixels come out the same. Other formats are passed as they are. */
+static enum AVPixelFormat ffmpeg_image_sws_format(enum AVPixelFormat format, bool *full_range)
+{
+	*full_range = true;
+	switch (format) {
+	case AV_PIX_FMT_YUVJ420P:
+		return AV_PIX_FMT_YUV420P;
+	case AV_PIX_FMT_YUVJ422P:
+		return AV_PIX_FMT_YUV422P;
+	case AV_PIX_FMT_YUVJ444P:
+		return AV_PIX_FMT_YUV444P;
+	case AV_PIX_FMT_YUVJ440P:
+		return AV_PIX_FMT_YUV440P;
+	case AV_PIX_FMT_YUVJ411P:
+		return AV_PIX_FMT_YUV411P;
+	default:
+		*full_range = false;
+		return format;
+	}
+}
+
 static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
 {
 	struct SwsContext *sws_ctx = NULL;
@@ -516,7 +541,9 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 	} else {
 		static const enum AVPixelFormat format = AV_PIX_FMT_BGRA;
 
-		sws_ctx = sws_getContext(info->cx, info->cy, info->format, info->cx, info->cy, format, SWS_POINT, NULL,
+		bool full_range;
+		const enum AVPixelFormat src_format = ffmpeg_image_sws_format(info->format, &full_range);
+		sws_ctx = sws_getContext(info->cx, info->cy, src_format, info->cx, info->cy, format, SWS_POINT, NULL,
 					 NULL, NULL);
 		if (!sws_ctx) {
 			blog(LOG_WARNING,
@@ -524,6 +551,13 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 			     "for '%s'",
 			     info->file);
 			goto fail;
+		}
+
+		if (full_range) {
+			/* What swscale sets up for a YUVJ format itself:
+			 * full range in, its default (BT.601) matrix. */
+			const int *coeff = sws_getCoefficients(SWS_CS_DEFAULT);
+			sws_setColorspaceDetails(sws_ctx, coeff, 1, coeff, 0, 0, 1 << 16, 1 << 16);
 		}
 
 		uint8_t *pointers[4];
