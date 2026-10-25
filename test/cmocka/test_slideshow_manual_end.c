@@ -56,6 +56,11 @@ void image_source_preload_image(void *data)
 	UNUSED_PARAMETER(data);
 }
 
+void image_source_ready_slide(void *data)
+{
+	UNUSED_PARAMETER(data);
+}
+
 static const char *slide_name(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);

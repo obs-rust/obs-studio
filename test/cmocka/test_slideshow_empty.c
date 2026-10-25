@@ -29,6 +29,16 @@ uint64_t image_source_get_memory_usage(void *data)
 	return 0;
 }
 
+void image_source_preload_image(void *data)
+{
+	UNUSED_PARAMETER(data);
+}
+
+void image_source_ready_slide(void *data)
+{
+	UNUSED_PARAMETER(data);
+}
+
 static const char *image_name(void *data)
 {
 	UNUSED_PARAMETER(data);

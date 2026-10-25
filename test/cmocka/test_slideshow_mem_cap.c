@@ -294,8 +294,11 @@ static obs_source_t *get_transition(obs_source_t *ss)
 	return transition;
 }
 
-/* Waits for a Next/Previous to land: the index changes and the transition
- * finishes. */
+static int shown_slide(obs_source_t *ss, uint32_t *cx, uint32_t *cy);
+
+/* Waits for a Next/Previous to land: the index changes, the transition
+ * shows that slide and finishes. A slide past the cap may still be
+ * decoding when the index changes. */
 static void press(obs_source_t *ss, bool next)
 {
 	long long before = current_index(ss);
@@ -306,8 +309,10 @@ static void press(obs_source_t *ss, bool next)
 
 	for (int i = 0; i < 250; i++) {
 		os_sleep_ms(20);
+		uint32_t cx, cy;
+		long long idx = current_index(ss);
 		obs_source_t *tr = get_transition(ss);
-		if (current_index(ss) != before && tr && obs_transition_get_time(tr) >= 1.0f)
+		if (idx != before && shown_slide(ss, &cx, &cy) == idx && tr && obs_transition_get_time(tr) >= 1.0f)
 			break;
 	}
 	os_sleep_ms(60);
@@ -393,7 +398,7 @@ static void fade_has_both_slides(void **state)
 	if (!obs_up)
 		skip();
 
-	obs_data_t *settings = slideshow_settings(false, "fade", 1500);
+	obs_data_t *settings = slideshow_settings(false, "fade", 700);
 	set_files(settings, false);
 	obs_source_t *ss = create_slideshow(settings);
 

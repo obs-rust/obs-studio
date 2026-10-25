@@ -57,13 +57,27 @@
 /* ------------------------------------------------------------------------- */
 
 extern uint64_t image_source_get_memory_usage(void *data);
+extern void image_source_preload_image(void *data);
+extern void image_source_ready_slide(void *data);
 
+/* The slides are loaded when the list is read, in order, until together
+ * they use MAX_MEM_USAGE. The rest stay in the list "on demand": each is
+ * decoded once to size the slideshow, then loaded only while it is the
+ * current slide, the one before or after it, the one being transitioned
+ * away from or (in random order) the one picked to come next, and released
+ * after (obs-rust/obs-studio#2279). */
 #define BYTES_TO_MBYTES (1024 * 1024)
 #define MAX_MEM_USAGE (400 * BYTES_TO_MBYTES)
 
+#define NO_SLIDE SIZE_MAX
+
 struct image_file_data {
 	char *path;
+	/* NULL for an on-demand slide that is not loaded */
 	obs_source_t *source;
+	bool on_demand;
+	uint32_t cx;
+	uint32_t cy;
 };
 
 typedef DARRAY(struct image_file_data) image_file_array_t;
@@ -103,6 +117,13 @@ struct slideshow {
 	pthread_mutex_t mutex;
 	image_file_array_t files;
 
+	/* past the memory cap (see MAX_MEM_USAGE) */
+	bool on_demand;
+	os_task_queue_t *queue;
+	size_t shown_item;
+	size_t prev_item;
+	size_t next_random;
+
 	enum behavior behavior;
 
 	obs_hotkey_id play_pause_hotkey;
@@ -137,6 +158,7 @@ static obs_source_t *get_transition(struct slideshow *ss)
 	return tr;
 }
 
+/* A loaded slide's source for the path, not an on-demand one. */
 static obs_source_t *get_source(image_file_array_t *files, const char *path)
 {
 	obs_source_t *source = NULL;
@@ -144,7 +166,7 @@ static obs_source_t *get_source(image_file_array_t *files, const char *path)
 	for (size_t i = 0; i < files->num; i++) {
 		const char *cur_path = files->array[i].path;
 
-		if (strcmp(path, cur_path) == 0) {
+		if (!files->array[i].on_demand && strcmp(path, cur_path) == 0) {
 			source = obs_source_get_ref(files->array[i].source);
 			break;
 		}
@@ -153,17 +175,43 @@ static obs_source_t *get_source(image_file_array_t *files, const char *path)
 	return source;
 }
 
-static obs_source_t *create_source_from_file(const char *file)
+static const struct image_file_data *get_file(image_file_array_t *files, const char *path)
+{
+	for (size_t i = 0; i < files->num; i++) {
+		if (strcmp(path, files->array[i].path) == 0)
+			return &files->array[i];
+	}
+
+	return NULL;
+}
+
+/* A slide decodes its picture when it is created, or with is_slide later,
+ * when image_source_preload_image() is called. */
+static obs_source_t *create_source_from_file(const char *file, bool is_slide)
 {
 	obs_data_t *settings = obs_data_create();
 	obs_source_t *source;
 
 	obs_data_set_string(settings, "file", file);
 	obs_data_set_bool(settings, "unload", false);
+	obs_data_set_bool(settings, "is_slide", is_slide);
 	source = obs_source_create_private("image_source", NULL, settings);
 
 	obs_data_release(settings);
 	return source;
+}
+
+static void decode_slide(void *data)
+{
+	obs_weak_source_t *weak = data;
+	obs_source_t *source = obs_weak_source_get_source(weak);
+
+	if (source) {
+		image_source_preload_image(obs_obj_get_data(source));
+		obs_source_release(source);
+	}
+
+	obs_weak_source_release(weak);
 }
 
 static void free_files(image_file_array_t *files)
@@ -188,6 +236,88 @@ static inline size_t random_file(struct slideshow *ss)
 	return next;
 }
 
+/* The next random slide. With on-demand slides it is picked one slide
+ * early (see load_slides()) so it can be loaded before it is shown. */
+static size_t next_random_file(struct slideshow *ss)
+{
+	size_t next = ss->next_random;
+
+	ss->next_random = NO_SLIDE;
+	if (ss->on_demand && next < ss->files.num && next != ss->cur_item)
+		return next;
+
+	return random_file(ss);
+}
+
+static bool slide_wanted(struct slideshow *ss, size_t i)
+{
+	const size_t num = ss->files.num;
+
+	if (i == ss->cur_item || i == ss->prev_item)
+		return true;
+	if (ss->randomize)
+		return i == ss->next_random;
+
+	return i == (ss->cur_item + 1) % num || i == (ss->cur_item + num - 1) % num;
+}
+
+/* Loads the on-demand slides around the current one and releases the
+ * others. A slide that is not current decodes on ss->queue. Runs on the
+ * video thread, as the update and the transitions do, without ss->mutex:
+ * creating and destroying sources takes libobs locks that are held while
+ * ss_enum_sources() takes ss->mutex. */
+static void load_slides(struct slideshow *ss)
+{
+	DARRAY(obs_source_t *) unload;
+	DARRAY(size_t) load;
+
+	if (!ss->on_demand || !ss->files.num)
+		return;
+
+	if (ss->randomize && ss->next_random >= ss->files.num)
+		ss->next_random = random_file(ss);
+
+	da_init(unload);
+	da_init(load);
+
+	pthread_mutex_lock(&ss->mutex);
+	for (size_t i = 0; i < ss->files.num; i++) {
+		struct image_file_data *file = &ss->files.array[i];
+
+		if (!file->on_demand)
+			continue;
+
+		if (slide_wanted(ss, i)) {
+			if (!file->source)
+				da_push_back(load, &i);
+		} else if (file->source) {
+			da_push_back(unload, &file->source);
+			file->source = NULL;
+		}
+	}
+	pthread_mutex_unlock(&ss->mutex);
+
+	for (size_t i = 0; i < unload.num; i++)
+		obs_source_release(unload.array[i]);
+
+	for (size_t i = 0; i < load.num; i++) {
+		struct image_file_data *file = &ss->files.array[load.array[i]];
+		obs_source_t *source = create_source_from_file(file->path, true);
+
+		if (!source)
+			continue;
+
+		os_task_queue_queue_task(ss->queue, decode_slide, obs_source_get_weak_source(source));
+
+		pthread_mutex_lock(&ss->mutex);
+		file->source = source;
+		pthread_mutex_unlock(&ss->mutex);
+	}
+
+	da_free(unload);
+	da_free(load);
+}
+
 /* ------------------------------------------------------------------------- */
 
 static const char *ss_getname(void *unused)
@@ -196,36 +326,80 @@ static const char *ss_getname(void *unused)
 	return obs_module_text("SlideShow");
 }
 
-static void add_file(struct slideshow *ss, image_file_array_t *new_files, const char *path, uint32_t *cx, uint32_t *cy)
+/* An on-demand slide's size: from the old list, or by decoding it once. */
+static bool measure_file(struct slideshow *ss, const char *path, uint32_t *cx, uint32_t *cy)
 {
-	struct image_file_data data;
-	obs_source_t *new_source;
+	const struct image_file_data *old;
+	bool found = false;
 
 	pthread_mutex_lock(&ss->mutex);
-	new_source = get_source(&ss->files, path);
+	old = get_file(&ss->files, path);
+	if (old && old->on_demand) {
+		*cx = old->cx;
+		*cy = old->cy;
+		found = true;
+	} else if (old && old->source) {
+		*cx = obs_source_get_width(old->source);
+		*cy = obs_source_get_height(old->source);
+		found = true;
+	}
 	pthread_mutex_unlock(&ss->mutex);
 
-	if (!new_source)
-		new_source = get_source(new_files, path);
-	if (!new_source)
-		new_source = create_source_from_file(path);
+	if (found)
+		return true;
 
-	if (new_source) {
-		uint32_t new_cx = obs_source_get_width(new_source);
-		uint32_t new_cy = obs_source_get_height(new_source);
+	obs_source_t *source = create_source_from_file(path, true);
+	if (!source)
+		return false;
 
-		data.path = bstrdup(path);
-		data.source = new_source;
-		da_push_back(*new_files, &data);
+	image_source_preload_image(obs_obj_get_data(source));
+	*cx = obs_source_get_width(source);
+	*cy = obs_source_get_height(source);
+	obs_source_release(source);
+	return true;
+}
 
-		if (new_cx > *cx)
-			*cx = new_cx;
-		if (new_cy > *cy)
-			*cy = new_cy;
+static void add_file(struct slideshow *ss, image_file_array_t *new_files, const char *path, uint32_t *cx, uint32_t *cy)
+{
+	struct image_file_data data = {0};
+	obs_source_t *new_source = NULL;
+	uint32_t new_cx = 0;
+	uint32_t new_cy = 0;
+
+	if (ss->mem_usage >= MAX_MEM_USAGE) {
+		if (!measure_file(ss, path, &new_cx, &new_cy))
+			return;
+
+		data.on_demand = true;
+	} else {
+		pthread_mutex_lock(&ss->mutex);
+		new_source = get_source(&ss->files, path);
+		pthread_mutex_unlock(&ss->mutex);
+
+		if (!new_source)
+			new_source = get_source(new_files, path);
+		if (!new_source)
+			new_source = create_source_from_file(path, false);
+		if (!new_source)
+			return;
+
+		new_cx = obs_source_get_width(new_source);
+		new_cy = obs_source_get_height(new_source);
 
 		void *source_data = obs_obj_get_data(new_source);
 		ss->mem_usage += image_source_get_memory_usage(source_data);
 	}
+
+	data.path = bstrdup(path);
+	data.source = new_source;
+	data.cx = new_cx;
+	data.cy = new_cy;
+	da_push_back(*new_files, &data);
+
+	if (new_cx > *cx)
+		*cx = new_cx;
+	if (new_cy > *cy)
+		*cy = new_cy;
 }
 
 bool valid_extension(const char *ext)
@@ -255,6 +429,7 @@ struct transition_plan {
 	bool valid;
 	bool use_cut;
 	bool to_null;
+	bool on_demand;
 };
 
 static void prepare_transition(struct slideshow *ss, bool to_null, struct transition_plan *plan)
@@ -270,11 +445,41 @@ static void prepare_transition(struct slideshow *ss, bool to_null, struct transi
 		plan->index = ss->cur_item;
 		plan->dest = obs_source_get_ref(ss->files.array[ss->cur_item].source);
 		plan->path = bstrdup(ss->files.array[ss->cur_item].path);
+		plan->on_demand = ss->files.array[ss->cur_item].on_demand;
 	}
+}
+
+/* An on-demand slide about to be shown: wait for its decode, or decode it
+ * now if it was not loaded, and give it its texture before the transition
+ * draws it. */
+static void ready_slide(struct slideshow *ss, struct transition_plan *plan)
+{
+	os_task_queue_wait(ss->queue);
+
+	if (plan->dest) {
+		image_source_ready_slide(obs_obj_get_data(plan->dest));
+		return;
+	}
+
+	plan->dest = create_source_from_file(plan->path, false);
+	if (!plan->dest)
+		return;
+
+	pthread_mutex_lock(&ss->mutex);
+	struct image_file_data *file = plan->index < ss->files.num ? &ss->files.array[plan->index] : NULL;
+	if (file && file->on_demand && !file->source && strcmp(file->path, plan->path) == 0)
+		file->source = obs_source_get_ref(plan->dest);
+	pthread_mutex_unlock(&ss->mutex);
 }
 
 static void run_transition(struct slideshow *ss, struct transition_plan *plan)
 {
+	/* A Cut shows the slide even when going to nothing (see below). */
+	const bool shows_slide = plan->valid && (plan->use_cut || !plan->to_null);
+
+	if (shows_slide && plan->on_demand)
+		ready_slide(ss, plan);
+
 	if (plan->valid && plan->use_cut) {
 		obs_transition_set(plan->transition, plan->dest);
 
@@ -295,9 +500,14 @@ static void run_transition(struct slideshow *ss, struct transition_plan *plan)
 		signal_handler_signal(sh, "slide_changed", &ss->cd);
 	}
 
+	ss->prev_item = ss->shown_item;
+	ss->shown_item = shows_slide ? plan->index : NO_SLIDE;
+
 	obs_source_release(plan->dest);
 	obs_source_release(plan->transition);
 	bfree(plan->path);
+
+	load_slides(ss);
 }
 
 /* Callers must not hold ss->mutex. */
@@ -404,9 +614,6 @@ static void ss_update(void *data, obs_data_t *settings)
 				dstr_cat_ch(&dir_path, '/');
 				dstr_cat(&dir_path, ent->d_name);
 				add_file(ss, &new_files, dir_path.array, &cx, &cy);
-
-				if (ss->mem_usage >= MAX_MEM_USAGE)
-					break;
 			}
 
 			dstr_free(&dir_path);
@@ -416,9 +623,6 @@ static void ss_update(void *data, obs_data_t *settings)
 		}
 
 		obs_data_release(item);
-
-		if (ss->mem_usage >= MAX_MEM_USAGE)
-			break;
 	}
 
 	/* ------------------------------------- */
@@ -428,6 +632,12 @@ static void ss_update(void *data, obs_data_t *settings)
 
 	old_files = ss->files;
 	ss->files = new_files;
+	ss->on_demand = false;
+	for (size_t i = 0; i < new_files.num; i++)
+		ss->on_demand = ss->on_demand || new_files.array[i].on_demand;
+	ss->shown_item = NO_SLIDE;
+	ss->prev_item = NO_SLIDE;
+	ss->next_random = NO_SLIDE;
 	if (new_tr) {
 		old_tr = ss->transition;
 		ss->transition = new_tr;
@@ -587,7 +797,7 @@ static void ss_next_slide(void *data)
 	}
 
 	if (ss->randomize)
-		ss->cur_item = random_file(ss);
+		ss->cur_item = next_random_file(ss);
 	else if (++ss->cur_item >= ss->files.num)
 		ss->cur_item = 0;
 
@@ -602,7 +812,7 @@ static void ss_previous_slide(void *data)
 		return;
 
 	if (ss->randomize)
-		ss->cur_item = random_file(ss);
+		ss->cur_item = next_random_file(ss);
 	else if (ss->cur_item == 0)
 		ss->cur_item = ss->files.num - 1;
 	else
@@ -688,6 +898,8 @@ static void ss_destroy(void *data)
 {
 	struct slideshow *ss = data;
 
+	/* pending decodes hold only weak references */
+	os_task_queue_destroy(ss->queue);
 	obs_source_release(ss->transition);
 	free_files(&ss->files);
 	pthread_mutex_destroy(&ss->mutex);
@@ -701,6 +913,10 @@ static void *ss_create(obs_data_t *settings, obs_source_t *source)
 	proc_handler_t *ph = obs_source_get_proc_handler(source);
 
 	ss->source = source;
+	ss->queue = os_task_queue_create();
+	ss->shown_item = NO_SLIDE;
+	ss->prev_item = NO_SLIDE;
+	ss->next_random = NO_SLIDE;
 
 	ss->manual = false;
 	ss->paused = false;
@@ -768,7 +984,7 @@ static void ss_video_tick(void *data, float seconds)
 
 	if (ss->restart_on_activate && ss->use_cut) {
 		ss->elapsed = 0.0f;
-		ss->cur_item = ss->randomize ? random_file(ss) : 0;
+		ss->cur_item = ss->randomize ? next_random_file(ss) : 0;
 		prepare_transition(ss, false, &plan);
 		run_plan = true;
 		ss->restart_on_activate = false;
@@ -1170,4 +1386,5 @@ struct obs_source_info slideshow_info = {
 #undef T_TR_SLIDE
 #undef BYTES_TO_MBYTES
 #undef MAX_MEM_USAGE
+#undef NO_SLIDE
 #undef NUM_ASPECTS

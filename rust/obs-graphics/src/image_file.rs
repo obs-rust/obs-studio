@@ -16,7 +16,7 @@
 //! - A `.gif` that cannot be opened or read, cannot be scanned, or is larger
 //!   than 4096 in either direction fails without trying FFmpeg. Its nsgif
 //!   object is not destroyed.
-//! - Init never fills `mem_usage`, `alpha_mode` or `space`.
+//! - Init never fills `alpha_mode` or `space`.
 //! - Only frame 0 gets the alpha mode given to init; frames decoded later by
 //!   tick and update are straight alpha.
 //! - A GIF that loops forever never counts `cur_loop` up.
@@ -448,10 +448,18 @@ pub fn effective_loops(loop_max: i32) -> i32 {
 }
 
 impl<H: Host> ImageFileEx<H> {
-    /// `gs_image_file_ex_init`.
+    /// `gs_image_file_ex_init`: counts the decoded size in `mem_usage`,
+    /// which the Image Slide Show checks against its memory cap. The C
+    /// passes `&image->mem_usage`; here the count is kept aside while
+    /// `init_internal` resets `self`, and a failed load (which C frees and
+    /// zeroes) counts nothing.
     pub fn init(&mut self, file: Option<&CStr>, alpha_mode: ImageAlphaMode) {
         let mut unused = ColorSpace(0);
-        self.init_internal(file, None, &mut unused, alpha_mode);
+        let mut mem_usage = 0;
+        self.init_internal(file, Some(&mut mem_usage), &mut unused, alpha_mode);
+        if self.loaded {
+            self.mem_usage = mem_usage;
+        }
     }
 
     /// `gs_image_file_ex_init_internal`.

@@ -62,6 +62,17 @@ static void image_source_load_texture(void *data)
 	os_atomic_set_bool(&context->texture_loaded, true);
 }
 
+/* A slide (is_slide) the Image Slide Show is about to show: decoded and
+ * with its texture now, not on its next tick. The caller makes sure no
+ * image_source_preload_image() of it is still running. */
+void image_source_ready_slide(void *data)
+{
+	struct image_source *context = data;
+
+	image_source_preload_image(context);
+	image_source_load_texture(context);
+}
+
 static void image_source_unload(void *data)
 {
 	struct image_source *context = data;

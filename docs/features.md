@@ -1615,6 +1615,13 @@ area.
   libnsgif 2255b2f74). *All*, 2026-10-26. Issue
   [#2465](https://github.com/obs-rust/obs-studio/issues/2465), PR
   [#2468](https://github.com/obs-rust/obs-studio/pull/2468).
+- Image sources report the memory their picture uses again, and an Image
+  Slide Show saved before the slideshow rework keeps no more than about
+  400 MiB of slides decoded: the slides past that are loaded only around
+  the one on screen, and every slide is still shown in order. Newer
+  slideshows are unchanged. *All*, pending merge. Issue
+  [#2279](https://github.com/obs-rust/obs-studio/issues/2279), upstream
+  [obsproject/obs-studio#14076](https://github.com/obsproject/obs-studio/issues/14076).
 
 ### Scenes and UI
 
