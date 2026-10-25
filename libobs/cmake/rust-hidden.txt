@@ -211,6 +211,19 @@ obs_source_deinterlace_pacing_waiting_frame_ts
 obs_source_deinterlace_pacing_half_duration
 obs_source_deinterlace_pacing_buffered_offset
 obs_source_deinterlace_pacing_reanchor
+# obs-source-deinterlace-select.c: first_frame(), ready_deinterlace_frames(),
+# deinterlace_get_closest_frames() and deinterlace_update_async_video() in
+# obs-source-deinterlace.c call them inside libobs. Declared in
+# obs-source-deinterlace-select.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_source_deinterlace_select_first
+obs_source_deinterlace_select_walk
+obs_source_deinterlace_select_unbuffered_pair
+obs_source_deinterlace_select_take_reads_flag
+obs_source_deinterlace_select_take_pair
+obs_source_deinterlace_select_take_init_last
+obs_source_deinterlace_select_take_offset
+obs_source_deinterlace_select_update
 # obs-source-draw-plan.c: rotate_async_video(),
 # obs_source_render_async_video() and source_render() in obs-source.c call
 # them inside libobs. Declared in obs-source-draw-plan.h without EXPORT, so the

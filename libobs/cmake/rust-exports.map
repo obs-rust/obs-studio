@@ -200,6 +200,16 @@
     obs_source_deinterlace_pacing_half_duration;
     obs_source_deinterlace_pacing_buffered_offset;
     obs_source_deinterlace_pacing_reanchor;
+    /* obs-source-deinterlace-select.c. obs-source-deinterlace.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_source_deinterlace_select_first;
+    obs_source_deinterlace_select_walk;
+    obs_source_deinterlace_select_unbuffered_pair;
+    obs_source_deinterlace_select_take_reads_flag;
+    obs_source_deinterlace_select_take_pair;
+    obs_source_deinterlace_select_take_init_last;
+    obs_source_deinterlace_select_take_offset;
+    obs_source_deinterlace_select_update;
     /* obs-source-draw-plan.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_draw_plan_rotation_x;

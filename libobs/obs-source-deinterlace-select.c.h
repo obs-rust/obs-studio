@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-deinterlace-select.pch.h"
 
 /* The deinterlace frame selection of obs-source-deinterlace.c, moved from
  * first_frame(), ready_deinterlace_frames(),
@@ -25,7 +25,8 @@
  * these and applies the results: it keeps the async_frames queue,
  * da_erase(), remove_async_frame(), the prev_frame writes, the frame
  * pointers, the textures and async_mutex. Declared in
- * obs-source-deinterlace-select.h without EXPORT. */
+ * obs-source-deinterlace-select.h without EXPORT. In hybrid libobs the Rust
+ * port (rust/obs-source, deinterlace_select) replaces this file. */
 
 /* frame_out_of_bounds() of obs-internal.h, on values. */
 static inline bool deinterlace_select_out_of_bounds(uint64_t last_frame_ts, uint64_t ts)
