@@ -42,6 +42,8 @@ mod scene_audio_window;
 mod scene_crop;
 #[path = "port_comparison/scene_item_names.rs"]
 mod scene_item_names;
+#[path = "port_comparison/scene_item_transform.rs"]
+mod scene_item_transform;
 #[path = "port_comparison/scene_render_plan.rs"]
 mod scene_render_plan;
 #[path = "port_comparison/service.rs"]
@@ -170,6 +172,7 @@ fn comparisons(criterion: &mut Criterion) {
         scene_audio_window,
         scene_crop,
         scene_item_names,
+        scene_item_transform,
         scene_render_plan,
         service,
         source_async_pacing,

@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-scene"
 version = "0.1.0"
-description = "Rust ports of libobs/obs-scene-bounds.c.h, libobs/obs-scene-blend.c.h, libobs/obs-scene-coords.c.h, libobs/obs-scene-group-transform.c.h, libobs/obs-scene-audio-actions.c.h, libobs/obs-scene-extent.c.h, libobs/obs-scene-crop.c.h, libobs/obs-scene-render-plan.c.h, libobs/obs-scene-item-names.c.h, and libobs/obs-scene-audio-window.c.h"
+description = "Rust ports of libobs/obs-scene-bounds.c.h, libobs/obs-scene-blend.c.h, libobs/obs-scene-coords.c.h, libobs/obs-scene-group-transform.c.h, libobs/obs-scene-audio-actions.c.h, libobs/obs-scene-extent.c.h, libobs/obs-scene-crop.c.h, libobs/obs-scene-render-plan.c.h, libobs/obs-scene-item-names.c.h, libobs/obs-scene-audio-window.c.h, and libobs/obs-scene-item-transform.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
