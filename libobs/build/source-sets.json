@@ -2,6 +2,7 @@
   "LIBOBS_SOURCES": [
     "obs-audio-controls.h",
     "obs-audio-discard.h",
+    "obs-audio-min-ts.h",
     "obs-audio-mix.h",
     "obs-av1.h",
     "obs-avc.h",

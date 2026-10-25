@@ -52,6 +52,7 @@
 
 /* obs-audio.c */
 #include "obs-audio-discard.h"
+#include "obs-audio-min-ts.h"
 #include "obs-audio-mix.h"
 #include "util/util_uint64.h"
 

@@ -264,31 +264,12 @@ static void add_audio_buffering(struct obs_core_audio *audio, size_t sample_rate
 #endif
 }
 
+/* The per-source decisions are the core in obs-audio-min-ts.c, on these
+ * fields. */
 static bool audio_buffer_insufficient_locked(struct obs_source *source, size_t sample_rate, uint64_t min_ts)
 {
-	size_t total_floats = AUDIO_OUTPUT_FRAMES;
-	size_t size;
-
-	if (source->info.audio_render || source->audio_pending || !source->audio_ts) {
-		return false;
-	}
-
-	if (source->audio_ts != min_ts && source->audio_ts != (min_ts - 1)) {
-		size_t start_point = convert_time_to_frames(sample_rate, source->audio_ts - min_ts);
-		if (start_point >= AUDIO_OUTPUT_FRAMES)
-			return false;
-
-		total_floats -= start_point;
-	}
-
-	size = total_floats * sizeof(float);
-
-	if (source->audio_input_buf[0].size < size) {
-		source->audio_pending = true;
-		return true;
-	}
-
-	return false;
+	return obs_audio_min_ts_insufficient(source->info.audio_render != NULL, &source->audio_pending,
+					     source->audio_ts, source->audio_input_buf[0].size, sample_rate, min_ts);
 }
 
 static bool audio_buffer_insufficient(struct obs_source *source, size_t sample_rate, uint64_t min_ts)
@@ -305,10 +286,8 @@ static inline const char *find_min_ts(struct obs_core_data *data, uint64_t *min_
 	struct obs_source *source = data->first_audio_source;
 	while (source) {
 		pthread_mutex_lock(&source->audio_buf_mutex);
-		if (!source->audio_pending && source->audio_ts && source->audio_ts < *min_ts) {
-			*min_ts = source->audio_ts;
+		if (obs_audio_min_ts_earlier(source->audio_pending, source->audio_ts, min_ts))
 			buffering_source = source;
-		}
 		pthread_mutex_unlock(&source->audio_buf_mutex);
 
 		source = (struct obs_source *)source->next_audio_source;
@@ -524,12 +503,16 @@ bool audio_callback(void *param, uint64_t start_ts_in, uint64_t end_ts_in, uint6
 
 	/* ------------------------------------------------ */
 	/* if a source has gone backward in time, buffer    */
-	if (audio->fixed_buffer) {
-		if (!audio_buffering_maxed(audio)) {
-			set_fixed_audio_buffering(audio, sample_rate, &ts);
-		}
-	} else if (min_ts < ts.start) {
+	switch (obs_audio_min_ts_buffering(audio->fixed_buffer, audio->fixed_buffer && audio_buffering_maxed(audio),
+					   min_ts, ts.start)) {
+	case OBS_AUDIO_BUFFERING_FIXED:
+		set_fixed_audio_buffering(audio, sample_rate, &ts);
+		break;
+	case OBS_AUDIO_BUFFERING_ADD:
 		add_audio_buffering(audio, sample_rate, &ts, min_ts, buffering_name);
+		break;
+	case OBS_AUDIO_BUFFERING_NONE:
+		break;
 	}
 
 	/* ------------------------------------------------ */

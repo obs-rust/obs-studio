@@ -13,6 +13,7 @@
 #include <cmocka.h>
 
 #include "libobs/obs-audio-discard.c.h"
+#include "libobs/obs-audio-min-ts.c.h"
 #include "libobs/obs-audio-mix.c.h"
 #include "libobs/obs-audio.c.h"
 
