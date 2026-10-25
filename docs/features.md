@@ -255,15 +255,20 @@ not get a line.
   so browser sources and panels play H.264/AAC media. *Linux*, 2026-10-23.
   Issue [#1864](https://github.com/obs-rust/obs-studio/issues/1864), PR
   [#1948](https://github.com/obs-rust/obs-studio/pull/1948).
-- **Chromium sandbox for browser sources on Linux.** Browser sources and
-  panels run in Chromium's sandbox where it can work: with unprivileged user
-  namespaces, or with a `chrome-sandbox` helper that is setuid root. Where
-  it can't (OBS runs as root, or neither is available), they run without it
-  as before, and OBS shows the fallback warning with the cause and what to
-  change. *Linux*, pending merge. Issue
-  [#1092](https://github.com/obs-rust/obs-studio/issues/1092), PRs
+- **Chromium sandbox for browser sources on Linux and macOS.** Browser
+  sources and panels run in Chromium's sandbox where it can work. On Linux:
+  with unprivileged user namespaces, or with a `chrome-sandbox` helper that
+  is setuid root. On macOS: each helper app sandboxes itself (Seatbelt) with
+  `libcef_sandbox.dylib` from the CEF framework in the app. Where it can't
+  (on Linux, OBS runs as root or neither is available; on macOS, the library
+  is missing), they run without it as before, and OBS shows the fallback
+  warning with the cause and what to change. *Linux*, 2026-10-25; *macOS*,
+  pending merge. Windows: [#2379](https://github.com/obs-rust/obs-studio/issues/2379).
+  Issue [#1092](https://github.com/obs-rust/obs-studio/issues/1092), PRs
+  [#2378](https://github.com/obs-rust/obs-studio/pull/2378),
   [obs-rust/obs-browser#3](https://github.com/obs-rust/obs-browser/pull/3),
-  [obs-rust/obs-browser#8](https://github.com/obs-rust/obs-browser/pull/8).
+  [obs-rust/obs-browser#8](https://github.com/obs-rust/obs-browser/pull/8),
+  [obs-rust/obs-browser#12](https://github.com/obs-rust/obs-browser/pull/12).
 
 ### Scenes and UI
 
@@ -1575,10 +1580,14 @@ area.
 - On macOS, a first browser source created by obs-websocket (`CreateInput`)
   renders. Before, CEF started on obs-websocket's thread, and no browser
   source rendered for the rest of the session, also ones added in the UI
-  later. *macOS*, pending merge. Issue
-  [#2387](https://github.com/obs-rust/obs-studio/issues/2387), PRs
+  later. If that first source arrives while OBS quits, after Qt's main loop
+  has stopped, OBS leaves CEF uninitialized and quits, instead of hanging.
+  *macOS*, 2026-10-25 (the quit part pending merge). Issues
+  [#2387](https://github.com/obs-rust/obs-studio/issues/2387),
+  [#2391](https://github.com/obs-rust/obs-studio/issues/2391), PRs
   [#2390](https://github.com/obs-rust/obs-studio/pull/2390),
-  [obs-rust/obs-browser#10](https://github.com/obs-rust/obs-browser/pull/10).
+  [obs-rust/obs-browser#10](https://github.com/obs-rust/obs-browser/pull/10),
+  [obs-rust/obs-browser#11](https://github.com/obs-rust/obs-browser/pull/11).
 
 ### Scenes and UI
 
