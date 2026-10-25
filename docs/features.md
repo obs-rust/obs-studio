@@ -389,6 +389,13 @@ not get a line.
   and a VA-API or QSV device that has no driver is closed again.
   *Linux, macOS*, pending merge. Issue
   [#2305](https://github.com/obs-rust/obs-studio/issues/2305).
+- **Profiles with the same name are all listed.** Importing a profile
+  named like an existing one gives it a name of its own (for example
+  "Name2"), and two profile folders with the same name both show up in
+  the Profile menu, the second under a unique name with a warning in the
+  log; before, one of them was hidden and could not be selected, renamed
+  or removed. *All*, pending merge. Issue
+  [#2382](https://github.com/obs-rust/obs-studio/issues/2382).
 
 ### Platforms and packages
 

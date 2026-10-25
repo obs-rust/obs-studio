@@ -7,8 +7,10 @@
 #include <QDir>
 #include <QString>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -113,27 +115,66 @@ struct ProfileListEntry {
 	std::string sameNameAs;
 };
 
-/* The profiles to list, from those found on disk. The list is keyed by
- * name: a profile whose name another one has already is dropped. */
-inline std::vector<ProfileListEntry> ProfileListEntries(std::vector<ProfileListEntry> found)
+/* `name`, or, when isUsed(name), the first of name + "2", name + "3", ...
+ * that is not used: the rule CreateProfile() uses to give a new profile a
+ * folder of its own (GetClosestUnusedFileName()). */
+template<typename IsUsed> inline std::string UniqueProfileName(const std::string &name, IsUsed &&isUsed)
 {
-	std::vector<ProfileListEntry> listed;
-	std::set<std::string> names;
-
-	for (auto &entry : found) {
-		if (names.insert(entry.name).second) {
-			listed.push_back(std::move(entry));
-		}
+	if (!isUsed(name)) {
+		return name;
 	}
 
-	return listed;
+	std::string candidate;
+	int index = 1;
+
+	do {
+		candidate = name + std::to_string(++index);
+	} while (isUsed(candidate));
+
+	return candidate;
+}
+
+/* The profiles to list, from those found on disk. The list is keyed by
+ * name, so when profiles share a name, the first by folder name keeps it,
+ * and each other one is listed under a unique name (UniqueProfileName()),
+ * with renamedFrom and sameNameAs set. Names nothing clashes with are kept
+ * (obs-rust/obs-studio#2382). */
+inline std::vector<ProfileListEntry> ProfileListEntries(std::vector<ProfileListEntry> found)
+{
+	std::sort(found.begin(), found.end(), [](const ProfileListEntry &lhs, const ProfileListEntry &rhs) {
+		return lhs.directoryName < rhs.directoryName;
+	});
+
+	std::set<std::string> foundNames;
+	for (const ProfileListEntry &entry : found) {
+		foundNames.insert(entry.name);
+	}
+
+	std::map<std::string, std::string> listedNames;
+
+	for (ProfileListEntry &entry : found) {
+		const auto listed = listedNames.find(entry.name);
+
+		if (listed != listedNames.end()) {
+			entry.renamedFrom = entry.name;
+			entry.sameNameAs = listed->second;
+			entry.name = UniqueProfileName(entry.name, [&](const std::string &candidate) {
+				return foundNames.count(candidate) > 0 || listedNames.count(candidate) > 0;
+			});
+		}
+
+		listedNames.emplace(entry.name, entry.directoryName);
+	}
+
+	return found;
 }
 
 /* The name to list an imported profile under. `name` is its [General] Name,
  * or its folder name when that has none; isUsed(n) is true when a profile
- * is listed under n already. */
+ * is listed under n already. A name that is taken is made unique
+ * (UniqueProfileName()), so the imported profile is not hidden behind the
+ * existing one (obs-rust/obs-studio#2382). */
 template<typename IsUsed> inline std::string ImportedProfileName(const std::string &name, IsUsed &&isUsed)
 {
-	(void)isUsed;
-	return name;
+	return UniqueProfileName(name, isUsed);
 }
