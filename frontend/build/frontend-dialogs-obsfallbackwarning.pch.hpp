@@ -8,6 +8,7 @@
 /* dialogs/OBSFallbackWarning.cpp */
 #include "frontend/dialogs/OBSFallbackWarning.hpp"
 
+#include <QApplication>
 #include <QCloseEvent>
 #include <QDialogButtonBox>
 #include <QLabel>

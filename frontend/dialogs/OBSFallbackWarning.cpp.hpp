@@ -84,7 +84,21 @@ void OBSFallbackWarning::tick()
 	if (done) {
 		return;
 	}
-	qint64 elapsed = std::min(clock.elapsed(), countdownMs);
+	qint64 step = clock.restart();
+	/* Another modal dialog covers this one or takes its input (the
+	 * first-run wizard opens right after the main window has loaded): do
+	 * not accept unseen. Go on, in front, once it has closed. */
+	QWidget *modal = QApplication::activeModalWidget();
+	if (modal && modal != this) {
+		paused = true;
+		return;
+	}
+	if (paused) {
+		paused = false;
+		raise();
+		activateWindow();
+	}
+	elapsed = std::min(elapsed + step, countdownMs);
 	progress->setValue((int)elapsed);
 	if (elapsed >= countdownMs) {
 		finish(End::CountdownDone);

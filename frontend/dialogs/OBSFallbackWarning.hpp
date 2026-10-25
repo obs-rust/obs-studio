@@ -14,7 +14,8 @@ class QTimer;
  * the fallback by itself. The decisions (whether to show it, what an end
  * means) are in rust/obs-fallback-warning; this is only the window. It takes
  * every text from its caller (no App(), no Str()), so it builds without the
- * frontend. It is not modal: OBS keeps running while it counts down. */
+ * frontend. It is not modal: OBS keeps running while it counts down. The
+ * countdown pauses while another modal dialog is open. */
 class OBSFallbackWarning : public QDialog {
 	Q_OBJECT
 
@@ -52,6 +53,9 @@ private:
 
 	qint64 countdownMs;
 	bool done = false;
+	/* Time counted down, only while no other modal dialog is open. */
+	qint64 elapsed = 0;
+	bool paused = false;
 	QElapsedTimer clock;
 	QTimer *timer = nullptr;
 	QLabel *messageLabel = nullptr;

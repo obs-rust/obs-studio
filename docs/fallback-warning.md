@@ -19,7 +19,8 @@ the rules for every fallback, and the shared code that applies them
    line also goes to stderr.
 2. Warn the user in a dialog. The dialog shows what fell back and why, and a
    countdown. When the countdown ends after 3 seconds, the dialog accepts the
-   fallback.
+   fallback. The countdown pauses while another modal dialog is open, so the
+   dialog never accepts unseen.
 3. The dialog has an "Accept anyway" button. It has a Cancel button only when
    the caller can stop instead of using the fallback. Then Cancel is the
    default button.
