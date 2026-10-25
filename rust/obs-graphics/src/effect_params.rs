@@ -29,7 +29,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(unused_variables)]
 
 /// `GS_SHADER_PARAM_TEXTURE` of `enum gs_shader_param_type`
 /// (`graphics/graphics.h`).
@@ -46,14 +45,58 @@ pub trait ByteStore {
 /// `effect_setval_inline` with a valid parameter and data: store `data`,
 /// resizing when the size differs, and set `changed` when the size or the
 /// bytes differ.
+#[inline(always)]
 pub fn set_val<S: ByteStore + ?Sized>(cur: &mut S, changed: &mut bool, data: &[u8]) {
-    todo!()
+    // Every length below is `data.len()`, a constant in each inlined
+    // setter, so the comparison and the copy are inlined as the C's are.
+    let n = data.len();
+    let size_changed = cur.bytes().len() != n;
+    if size_changed {
+        cur.resize(n);
+    }
+    let same = !size_changed && cur.bytes().get(..n).is_some_and(|c| bytes_eq(c, data));
+    if !same {
+        if let Some(dst) = cur.bytes_mut().get_mut(..n) {
+            dst.copy_from_slice(data);
+        }
+        *changed = true;
+    }
+}
+
+/// Whether two values of the same length are equal. Up to 64 bytes (every
+/// typed setter: a matrix4 is the largest) it ORs the XOR of 8-byte chunks,
+/// which the compiler unrolls into a few loads for the constant length of
+/// an inlined setter, as GCC expands the C's `memcmp`; LLVM calls `bcmp`
+/// for a 64-byte slice comparison. Longer values (`gs_effect_set_val`) use
+/// the slice comparison.
+#[inline(always)]
+fn bytes_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    if a.len() > 64 {
+        return a == b;
+    }
+    let (a8, a_rest) = a.as_chunks::<8>();
+    let (b8, b_rest) = b.as_chunks::<8>();
+    let mut diff = 0u64;
+    for (x, y) in a8.iter().zip(b8) {
+        diff |= u64::from_ne_bytes(*x) ^ u64::from_ne_bytes(*y);
+    }
+    for (x, y) in a_rest.iter().zip(b_rest) {
+        diff |= u64::from(x ^ y);
+    }
+    diff == 0
 }
 
 /// `effect_getval_inline` / `effect_getdefaultval_inline`: copy at most the
 /// stored bytes into `dst`; returns the bytes copied.
 pub fn copy_out(src: &[u8], dst: &mut [u8]) -> usize {
-    todo!()
+    let bytes = src.len().min(dst.len());
+    if let (Some(to), Some(from)) = (dst.get_mut(..bytes), src.get(..bytes)) {
+        to.copy_from_slice(from);
+    }
+    bytes
 }
 
 /// `vec4_from_bgra` (`graphics/vec4.h`): the bytes of `bgra` in memory
@@ -61,10 +104,11 @@ pub fn copy_out(src: &[u8], dst: &mut [u8]) -> usize {
 /// little-endian hosts libobs builds for, `0xAARRGGBB` gives
 /// `{r, g, b, a} / 255`.
 pub fn bgra_to_vec4(bgra: u32) -> [f32; 4] {
-    todo!()
+    let [b0, b1, b2, b3] = bgra.to_ne_bytes();
+    [b2, b1, b0, b3].map(|u| f32::from(u) / 255.0)
 }
 
 /// `gs_effect_set_next_sampler`: only a texture parameter takes a sampler.
 pub fn takes_next_sampler(param_type: i32) -> bool {
-    todo!()
+    param_type == GS_SHADER_PARAM_TEXTURE
 }

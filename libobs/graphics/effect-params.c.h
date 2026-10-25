@@ -15,11 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "libobs/build/libobs-ported-graphics.pch.h"
 
 /* The parameter values of an effect: the gs_effect_set_* setters, the
  * getters, gs_effect_set_default and gs_effect_set_next_sampler, on
- * struct gs_effect_param. None of them touches the graphics subsystem. */
+ * struct gs_effect_param. None of them touches the graphics subsystem.
+ * Ported to rust/obs-graphics (effect_params): the hybrid libobs drops this
+ * file. */
 
 #ifndef min
 #define min(a, b) (((a) < (b)) ? (a) : (b))

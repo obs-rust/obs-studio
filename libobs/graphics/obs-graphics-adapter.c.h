@@ -8,6 +8,7 @@
 void *obs_graphics_bmalloc(size_t size);
 void obs_graphics_bfree(void *ptr);
 void obs_graphics_log(int level, const char *line);
+void obs_graphics_effect_param_error(int which);
 FILE *obs_graphics_fopen_rb(const char *path);
 int64_t obs_graphics_ftelli64(FILE *file);
 
@@ -24,6 +25,30 @@ void obs_graphics_bfree(void *ptr)
 void obs_graphics_log(int level, const char *line)
 {
 	blog(level, "%s", line);
+}
+
+/* The LOG_ERROR lines of the effect parameter values (effect-params.c), with
+ * the C's literal formats, so a log handler sees the same format string as
+ * before the port (test_effect_set_default_null matches on it). */
+void obs_graphics_effect_param_error(int which)
+{
+	switch (which) {
+	case 0:
+		blog(LOG_ERROR, "effect_setval_inline: invalid param");
+		break;
+	case 1:
+		blog(LOG_ERROR, "effect_setval_inline: invalid data");
+		break;
+	case 2:
+		blog(LOG_ERROR, "gs_effect_get_val: invalid param");
+		break;
+	case 3:
+		blog(LOG_ERROR, "gs_effect_get_default_val: invalid param");
+		break;
+	case 4:
+		blog(LOG_ERROR, "gs_effect_set_next_sampler: invalid param");
+		break;
+	}
 }
 
 FILE *obs_graphics_fopen_rb(const char *path)

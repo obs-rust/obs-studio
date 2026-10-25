@@ -5,6 +5,7 @@
 #include "libobs/graphics/axisang.c.h"
 #include "libobs/graphics/bounds.c.h"
 #include "libobs/graphics/effect-lookups.c.h"
+#include "libobs/graphics/effect-params.c.h"
 #include "libobs/graphics/image-file.c.h"
 #include "libobs/graphics/math-extra.c.h"
 #include "libobs/graphics/matrix3.c.h"

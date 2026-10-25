@@ -3,6 +3,7 @@
 pub mod axisang;
 pub mod bounds;
 pub mod effect_lookups;
+pub mod effect_params;
 pub mod effect_parser_lifecycle;
 pub mod image_file;
 pub mod math_extra;

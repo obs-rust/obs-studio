@@ -1,0 +1,17 @@
+gs_effect_get_default_val
+gs_effect_get_default_val_size
+gs_effect_get_val
+gs_effect_get_val_size
+gs_effect_set_bool
+gs_effect_set_color
+gs_effect_set_default
+gs_effect_set_float
+gs_effect_set_int
+gs_effect_set_matrix4
+gs_effect_set_next_sampler
+gs_effect_set_texture
+gs_effect_set_texture_srgb
+gs_effect_set_val
+gs_effect_set_vec2
+gs_effect_set_vec3
+gs_effect_set_vec4
