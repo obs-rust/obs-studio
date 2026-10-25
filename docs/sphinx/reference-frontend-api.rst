@@ -243,6 +243,11 @@ Structures/Enumerations
 
    Undo redo callback
 
+.. type:: void (*obs_frontend_fallback_cb)(void *param, bool accepted)
+
+   Fallback warning callback: *accepted* is *true* when the caller continues
+   in the fallback mode. See :c:func:`obs_frontend_warn_fallback()`.
+
 
 Functions
 ---------
@@ -1000,3 +1005,37 @@ Functions
    :return: *true* if OBS was launched in Safe Mode, *false* otherwise
 
    .. versionadded:: 33.0
+
+---------------------------------------
+
+.. function:: void obs_frontend_warn_fallback(const char *id, const char *title, const char *message, bool can_cancel, obs_frontend_fallback_cb cb, void *param)
+
+   Tells the user that a feature fell back to a less safe mode, so that it
+   keeps working (for example a browser source without the Chromium sandbox).
+   OBS logs *message* at error level at once, from any thread. Then, on the
+   UI thread, it shows a warning with a countdown that accepts the fallback
+   after 3 seconds, and calls *cb* once with the result.
+
+   A warning shows once per *id* in each OBS session, and only one shows at
+   a time. Warnings wait until the main window has loaded. With a hidden
+   main window, or when the same *id* already showed, the warning accepts at
+   once (after the log line). At exit, an open warning closes and queued
+   warnings accept.
+
+   *cb* is never called inside this call when OBS runs. In a host without
+   the OBS frontend, this call logs, then calls *cb* with *true* inside the
+   call.
+
+   See ``docs/fallback-warning.md`` in OBS-Studio-Rust
+   (obs-rust/obs-studio#2218).
+
+   :param id:         A stable name for the fallback, for example
+                      ``"browser.sandbox"``. It is in the log line.
+   :param title:      The window title, translated by the caller
+   :param message:    What fell back and why, translated by the caller
+   :param can_cancel: *true* if the caller can stop instead. The warning
+                      then has a Cancel button.
+   :param cb:         Called once with *accepted*: *true* for the countdown
+                      and "Accept anyway"; *false* for Cancel or a closed
+                      warning if *can_cancel*, else *true*. Can be NULL.
+   :param param:      Passed to *cb*. Keep it valid until *cb* is called.

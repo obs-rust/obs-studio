@@ -1216,6 +1216,10 @@ void OBSBasic::OnFirstLoad()
 {
 	OnEvent(OBS_FRONTEND_EVENT_FINISHED_LOADING);
 
+	/* Fallback warnings (#2218) waited for the main window; they run now. */
+	FallbackWarning::SetMainWindow(this, {QTStr("FallbackWarning.AcceptAnyway"), QTStr("Cancel"),
+					      QTStr("FallbackWarning.FutureError")});
+
 #ifdef WHATSNEW_ENABLED
 	/* Attempt to load init screen if available */
 	if (cef) {
@@ -1877,6 +1881,11 @@ void OBSBasic::closeWindow()
 	}
 #endif
 #endif
+
+	/* Answer every fallback warning (#2218), also those still queued, while
+	 * its callers (sources) exist: the open dialog closes, the rest accept. */
+	FallbackWarning::SetMainWindow(nullptr, {});
+	QApplication::sendPostedEvents(nullptr);
 
 	OnEvent(OBS_FRONTEND_EVENT_SCRIPTING_SHUTDOWN);
 

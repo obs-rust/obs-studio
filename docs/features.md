@@ -285,6 +285,14 @@ not get a line.
   item opens the OBS Rust Discord, where this build's bugs and questions
   belong, instead of upstream OBS Studio's server. *All*, 2026-10-24.
   Issue [#2097](https://github.com/obs-rust/obs-studio/issues/2097).
+- **Fallback warning.** When a feature falls back to a less safe mode so
+  that it keeps working (for example a browser source without the Chromium
+  sandbox), OBS logs it at error level and shows a warning with a 3-second
+  countdown that accepts the fallback, once per session. Plugins call
+  `obs_frontend_warn_fallback()` ([fallback-warning.md](fallback-warning.md)).
+  *All*, pending merge. Issue
+  [#2218](https://github.com/obs-rust/obs-studio/issues/2218), PR
+  [#2238](https://github.com/obs-rust/obs-studio/pull/2238).
 - **No upstream release notes or donor list downloads.** The What's New
   dialog, which showed upstream OBS Studio's release notes from
   obsproject.com, is off by default (`ENABLE_WHATSNEW=OFF`); a build that
