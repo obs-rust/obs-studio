@@ -125,6 +125,10 @@ struct rtmp_stream {
 	RTMP rtmp;
 
 	bool new_socket_loop;
+
+	/* The last connect failed because the server's TLS certificate did
+	 * not verify (rtmp_tls_cert_unverified). */
+	bool tls_cert_unverified;
 	bool low_latency_mode;
 	bool disable_send_window_optimization;
 	bool socket_thread_active;

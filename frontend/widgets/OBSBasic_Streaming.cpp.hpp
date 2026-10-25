@@ -346,7 +346,13 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	 * over plain RTMP; multitrack video brings its own URLs. */
 	std::string rtmpsPlainUrl;
 	if (code == OBS_OUTPUT_CONNECT_FAILED && !streamUsesMultitrack) {
-		rtmpsPlainUrl = RtmpsFallbackUrl();
+		bool certUnverified = StreamTlsCertUnverified();
+		if (RtmpsFallback::Allowed(code, streamUsesMultitrack, certUnverified)) {
+			rtmpsPlainUrl = RtmpsFallbackUrl();
+		} else if (certUnverified && !RtmpsFallbackUrl().empty()) {
+			blog(LOG_ERROR, "RTMPS: the server's certificate did not verify; "
+					"the stream is not started and does not fall back to RTMP");
+		}
 	}
 
 	if (use_last_error && !last_error.isEmpty()) {
@@ -425,35 +431,50 @@ void OBSBasic::SetPlainRtmp(bool enabled)
 	calldata_free(&cd);
 }
 
-/* The RTMPS connection failed: "Proceed anyway" restarts the stream over
- * plain RTMP after a three-second countdown unless the user cancels. With the
- * window hidden there is nobody to ask, so the countdown runs on its own. */
+/* Whether the stream output's last connect failed because the server's TLS
+ * certificate did not verify (obs-outputs' rtmp output reports it). */
+bool OBSBasic::StreamTlsCertUnverified()
+{
+	obs_output_t *output = outputHandler ? outputHandler->streamOutput.Get() : nullptr;
+	if (!output) {
+		return false;
+	}
+
+	calldata_t cd = {0};
+	bool unverified = false;
+	if (proc_handler_call(obs_output_get_proc_handler(output), "rtmp_tls_cert_unverified", &cd)) {
+		unverified = calldata_bool(&cd, "unverified");
+	}
+	calldata_free(&cd);
+	return unverified;
+}
+
+/* The RTMPS connection failed: the shared fallback warning counts down three
+ * seconds and then OBS restarts the stream over plain RTMP, unless the user
+ * cancels. The warning logs the fallback. */
 void OBSBasic::OfferRtmpsFallback(const std::string &plainUrl)
 {
-	auto proceed = [this, plainUrl]() {
-		OBSRtmpsFallback::LogFallback(plainUrl.c_str());
+	auto restart = [this]() {
+		if (isClosing() || outputHandler->StreamingActive()) {
+			return;
+		}
 		rtmpsFallbackRestart = true;
 		QMetaObject::invokeMethod(this, &OBSBasic::StartStreaming, Qt::QueuedConnection);
 	};
 
-	if (!isVisible()) {
-		SysTrayNotify(QTStr("Output.RtmpsFallback.Tray"), QSystemTrayIcon::Warning);
-		QTimer::singleShot(OBSRtmpsFallback::CountdownMs, this, proceed);
-		return;
-	}
-
-	OBSRtmpsFallback::Texts texts = {
-		QTStr("Output.RtmpsFallback.Title"),
-		QTStr("Output.RtmpsFallback.Text").arg(QString::fromStdString(plainUrl)),
-		QTStr("Output.RtmpsFallback.Proceed"),
-		QTStr("Cancel"),
-	};
-	OBSRtmpsFallback dialog(this, texts);
-	if (dialog.exec() == QDialog::Accepted) {
-		proceed();
-	} else {
-		blog(LOG_INFO, "RTMPS fallback cancelled; the stream was not started");
-	}
+	RtmpsFallback::Warn(QTStr("Output.RtmpsFallback.Title"), QTStr("Output.RtmpsFallback.Message"), plainUrl,
+			    [this, restart](bool accepted) {
+				    if (!accepted) {
+					    blog(LOG_INFO, "RTMPS fallback cancelled; the stream was not started");
+					    return;
+				    }
+				    if (RtmpsFallback::CountdownWhenHidden && !isVisible()) {
+					    SysTrayNotify(QTStr("Output.RtmpsFallback.Tray"), QSystemTrayIcon::Warning);
+					    QTimer::singleShot(RtmpsFallback::HiddenCountdownMs, this, restart);
+					    return;
+				    }
+				    restart();
+			    });
 }
 
 void OBSBasic::StreamActionTriggered()

@@ -57,6 +57,7 @@
 #include <models/SceneCollection.hpp>
 #include <settings/OBSBasicSettings.hpp>
 #include <utility/QuickTransition.hpp>
+#include <utility/RtmpsFallback.hpp>
 #include <utility/SceneRenameDelegate.hpp>
 #include <utility/ScreenshotObj.hpp>
 #if defined(_WIN32) || defined(WHATSNEW_ENABLED)
@@ -151,7 +152,6 @@
 #endif
 #include <dialogs/OBSLogViewer.hpp>
 #include <dialogs/OBSRemux.hpp>
-#include <dialogs/OBSRtmpsFallback.hpp>
 #include <utility/RemoteTextThread.hpp>
 #if defined(_WIN32) || defined(WHATSNEW_ENABLED)
 #include <utility/WhatsNewInfoThread.hpp>

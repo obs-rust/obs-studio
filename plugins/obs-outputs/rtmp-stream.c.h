@@ -140,6 +140,23 @@ static void rtmp_stream_destroy(void *data)
 	bfree(stream);
 }
 
+/* The TLS handshake failed because the server's certificate did not verify:
+ * not trusted, expired, or issued for another host name (mbedTLS reports a
+ * host-name mismatch the same way). Unlike a timeout, refusal or reset, this
+ * is no network trouble, so the frontend does not retry over plain RTMP
+ * (obs-rust/obs-studio#2205). */
+static bool rtmp_tls_cert_unverified(int last_error_code)
+{
+	return last_error_code == -0x2700; /* MBEDTLS_ERR_X509_CERT_VERIFY_FAILED */
+}
+
+/* Output proc: whether the last connect failed on certificate verification. */
+static void rtmp_stream_tls_cert_unverified_proc(void *data, calldata_t *cd)
+{
+	struct rtmp_stream *stream = data;
+	calldata_set_bool(cd, "unverified", stream->tls_cert_unverified);
+}
+
 static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct rtmp_stream *stream = bzalloc(sizeof(struct rtmp_stream));
@@ -180,6 +197,9 @@ static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 		warn("Failed to initialize socket exit event");
 		goto fail;
 	}
+
+	proc_handler_add(obs_output_get_proc_handler(output), "void rtmp_tls_cert_unverified(out bool unverified)",
+			 rtmp_stream_tls_cert_unverified_proc, stream);
 
 	UNUSED_PARAMETER(settings);
 	return stream;
@@ -992,7 +1012,11 @@ static int try_connect(struct rtmp_stream *stream)
 
 	rtmp_host_log_interface_type(stream);
 
+	stream->tls_cert_unverified = false;
 	if (!RTMP_Connect(&stream->rtmp, NULL)) {
+		stream->tls_cert_unverified = rtmp_tls_cert_unverified(stream->rtmp.last_error_code);
+		if (stream->tls_cert_unverified)
+			warn("The server's TLS certificate did not verify; the stream is not started");
 		set_output_error(stream);
 		return OBS_OUTPUT_CONNECT_FAILED;
 	}
