@@ -206,6 +206,29 @@
         "libobs/data"
       ]
     },
+    "test_async_upload_steps": {
+      "sources": [
+        "test/cmocka/test_async_upload_steps.c",
+        "libobs/obs-source-async-upload.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_buffering_subsample": {
       "sources": [
         "test/cmocka/test_audio_buffering_subsample.c"
@@ -3939,6 +3962,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_async_upload_steps": {
+      "target": "test_async_upload_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_audio_buffering_subsample": {
       "target": "test_audio_buffering_subsample"
