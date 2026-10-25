@@ -385,6 +385,10 @@ obs_output_capture_ready
 obs_output_begin_gate
 obs_output_conversion_plan
 obs_output_congestion_clamp
+# obs-output-stop-stats.c: log_frame_info() in obs-output.c calls it inside
+# libobs. Declared in obs-output-stop-stats.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_output_stop_stats
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-stop-stats.pch.h"
 
 struct obs_output_stop_stats obs_output_stop_stats(uint32_t total_frames, uint32_t lagged_frames,
 						   uint32_t starting_drawn, uint32_t starting_lagged, int dropped,

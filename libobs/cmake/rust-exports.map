@@ -340,6 +340,9 @@
     obs_output_begin_gate;
     obs_output_conversion_plan;
     obs_output_congestion_clamp;
+    /* obs-output-stop-stats.c. obs-output.c calls it inside libobs. Not
+     * EXPORT. */
+    obs_output_stop_stats;
     /* obs-encoder-roi.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_roi_admit;

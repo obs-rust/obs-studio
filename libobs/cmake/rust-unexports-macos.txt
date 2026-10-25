@@ -310,6 +310,8 @@ _obs_output_capture_ready
 _obs_output_begin_gate
 _obs_output_conversion_plan
 _obs_output_congestion_clamp
+# obs-output-stop-stats.c: obs-output.c calls it inside libobs. Not EXPORT.
+_obs_output_stop_stats
 # obs-encoder-roi.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors

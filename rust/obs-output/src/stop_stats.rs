@@ -20,6 +20,18 @@
 //! percentages are the C's `double` expressions, in the same order, so they
 //! are bit for bit the C's. Nothing here can panic on any input.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// What `log_frame_info()` reads before it logs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counts {
@@ -95,6 +107,54 @@ pub struct Stats {
 /// `log_frame_info()`'s numbers and lines from what it read.
 #[must_use]
 pub fn stats(counts: Counts) -> Stats {
-    let _ = counts;
-    todo!("stop_stats::stats")
+    let Counts {
+        total_frames,
+        lagged_frames,
+        starting_drawn,
+        starting_lagged,
+        dropped,
+        total,
+    } = counts;
+    let drawn = total_frames.wrapping_sub(starting_drawn);
+    let lagged = lagged_frames.wrapping_sub(starting_lagged);
+
+    // The C's double expressions: converted, divided, then multiplied.
+    let percentage_lagged = if drawn != 0 {
+        f64::from(lagged) / f64::from(drawn) * 100.0
+    } else {
+        0.0
+    };
+    let percentage_dropped = if dropped != 0 {
+        f64::from(dropped) / f64::from(total) * 100.0
+    } else {
+        0.0
+    };
+
+    let total_line = if dropped == 0 || total == 0 {
+        Line::Plain(total)
+    } else {
+        Line::Attempted {
+            done: total.wrapping_sub(dropped),
+            attempted: total,
+        }
+    };
+    let drawn_line = if lagged == 0 || drawn == 0 {
+        Line::Plain(drawn)
+    } else {
+        Line::Attempted {
+            done: drawn.wrapping_sub(lagged),
+            attempted: drawn,
+        }
+    };
+
+    Stats {
+        drawn,
+        lagged,
+        percentage_lagged,
+        percentage_dropped,
+        total_line,
+        drawn_line,
+        lag_line: drawn != 0 && lagged != 0,
+        drop_line: total != 0 && dropped != 0,
+    }
 }
