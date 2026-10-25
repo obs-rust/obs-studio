@@ -7,7 +7,8 @@ class QWidget;
 /* The shared fallback warning (obs-rust/obs-studio#2218), between its callers
  * (obs_frontend_warn_fallback) and the window (OBSFallbackWarning). It logs
  * at error level at once, then on the UI thread shows the dialog or accepts
- * now, as rust/obs-fallback-warning decides, one dialog at a time.
+ * now, as rust/obs-fallback-warning decides, one dialog at a time, and not
+ * while another modal dialog is open.
  *
  * Without the frontend's Rust (OBS_FRONTEND_RUST, the C rollback build) it
  * only logs and accepts. It does not use App() or OBSBasic: the main window

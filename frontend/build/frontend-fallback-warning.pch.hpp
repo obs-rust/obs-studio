@@ -15,7 +15,7 @@
 
 #include <util/base.h>
 
-#include <QCoreApplication>
+#include <QApplication>
 #include <QPointer>
 #include <QTimer>
 #include <QWidget>

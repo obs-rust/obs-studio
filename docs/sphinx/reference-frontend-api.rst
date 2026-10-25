@@ -1017,7 +1017,8 @@ Functions
    after 3 seconds, and calls *cb* once with the result.
 
    A warning shows once per *id* in each OBS session, and only one shows at
-   a time. Warnings wait until the main window has loaded. With a hidden
+   a time. Warnings wait until the main window has loaded, and while another
+   modal dialog is open. With a hidden
    main window, or when the same *id* already showed, the warning accepts at
    once (after the log line). At exit, an open warning closes and queued
    warnings accept.

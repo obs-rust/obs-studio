@@ -26,8 +26,9 @@ the rules for every fallback, and the shared code that applies them
 4. Each fallback shows its dialog once in an OBS session. The log line comes
    every time.
 5. Do not show a dialog when the user cannot see it: before the main window
-   has loaded, the warning waits; with a hidden main window (OBS started to
-   the tray), the warning accepts at once.
+   has loaded, and while another modal dialog is open (for example the
+   first-run wizard), the warning waits; with a hidden main window (OBS
+   started to the tray), the warning accepts at once.
 6. Each dialog says: "This may become an error in a future version of OBS."
    A fallback is a temporary help, not a supported mode.
 7. Do not fall back when a security check fails. For example, a certificate

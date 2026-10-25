@@ -88,6 +88,18 @@ static void fw_open(const FwRequest &r)
 }
 #endif
 
+#ifdef OBS_FRONTEND_RUST
+/* How often the queue looks again while another modal dialog is open. */
+static constexpr int fw_modal_retry_ms = 250;
+static bool fw_retry_queued = false;
+
+static void fw_retry_pump()
+{
+	fw_retry_queued = false;
+	fw_pump();
+}
+#endif
+
 /* Runs the queued warnings until one shows a dialog. */
 static void fw_pump()
 {
@@ -95,10 +107,23 @@ static void fw_pump()
 		return;
 	}
 	while (!fw_state.pending.empty()) {
+#ifdef OBS_FRONTEND_RUST
+		bool visible = fw_state.window && fw_state.window->isVisible();
+		/* Another modal dialog (the first-run wizard opens right after
+		 * the main window has loaded) would hide the warning or take its
+		 * input, and it would accept unseen: wait until it has closed. The
+		 * warning is not counted as shown before it shows. */
+		if (visible && QApplication::activeModalWidget()) {
+			if (!fw_retry_queued) {
+				fw_retry_queued = true;
+				QTimer::singleShot(fw_modal_retry_ms, qApp, fw_retry_pump);
+			}
+			return;
+		}
+#endif
 		FwRequest r = std::move(fw_state.pending.front());
 		fw_state.pending.pop_front();
 #ifdef OBS_FRONTEND_RUST
-		bool visible = fw_state.window && fw_state.window->isVisible();
 		if (obs_fallback_warning_begin(r.id.c_str(), visible) == OBS_FALLBACK_WARNING_DIALOG) {
 			fw_open(r);
 			return;
