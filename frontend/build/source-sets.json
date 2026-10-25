@@ -227,6 +227,8 @@
     "dialogs/OBSBasicSourceSelect.hpp",
     "dialogs/OBSBasicTransform.hpp",
     "dialogs/OBSBasicVCamConfig.hpp",
+    "build/frontend.dialogs-obsfallbackwarning+.hpp.cpp",
+    "dialogs/OBSFallbackWarning.hpp",
     "dialogs/OBSLogViewer.hpp",
     "dialogs/OBSMissingFiles.hpp",
     "build/frontend.dialogs-2+.hpp.cpp",
