@@ -54,6 +54,7 @@
     "obs-source-conversion-plan.h",
     "obs-source-deinterlace-draw.h",
     "obs-source-deinterlace-pacing.h",
+    "obs-source-deinterlace-select.h",
     "obs-source-draw-plan.h",
     "obs-source-draw-technique.h",
     "obs-source-frame-copy.h",
