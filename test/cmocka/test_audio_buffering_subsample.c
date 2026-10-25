@@ -3,7 +3,8 @@
  * mix window and add loop, the fixed and added buffering steps) before its
  * port to obs-core (#1903), and of obs-audio-discard.c (the drop steps
  * ignore_audio, discard_if_stopped and discard_audio) before its port
- * (#2403).
+ * (#2403), and of obs-audio-min-ts.c (the per-source decisions of the
+ * minimum audio timestamp step) before its port.
  * Compile the original private implementation directly: this checks the C
  * buffering algorithm, rather than the Rust swap or real-time scheduling.
  * Unused core functions are discarded at link time. */
@@ -907,6 +908,169 @@ static void source_wrappers_use_the_source_fields(void **state)
 	bfree(source);
 }
 
+/* Characterization of obs-audio-min-ts.c before its port to obs-core. */
+
+static void min_ts_takes_only_earlier_valid_sources(void **state)
+{
+	(void)state;
+	uint64_t min_ts = start;
+
+	/* Pending, or without a timestamp: not taken. */
+	assert_false(obs_audio_min_ts_earlier(true, start - 10, &min_ts));
+	assert_false(obs_audio_min_ts_earlier(false, 0, &min_ts));
+	assert_int_equal(min_ts, start);
+
+	/* Equal: not taken (strict). */
+	assert_false(obs_audio_min_ts_earlier(false, start, &min_ts));
+
+	/* Earlier: taken, and the next one must be earlier still. */
+	assert_true(obs_audio_min_ts_earlier(false, start - 10, &min_ts));
+	assert_int_equal(min_ts, start - 10);
+	assert_false(obs_audio_min_ts_earlier(false, start - 10, &min_ts));
+	assert_false(obs_audio_min_ts_earlier(false, start - 5, &min_ts));
+	assert_true(obs_audio_min_ts_earlier(false, start - 11, &min_ts));
+	assert_int_equal(min_ts, start - 11);
+}
+
+static void insufficient_skips_render_pending_and_untimed(void **state)
+{
+	(void)state;
+	bool pending;
+
+	pending = false;
+	assert_false(obs_audio_min_ts_insufficient(true, &pending, start, 0, 48000, start));
+	assert_false(pending);
+
+	pending = true;
+	assert_false(obs_audio_min_ts_insufficient(false, &pending, start, 0, 48000, start));
+	assert_true(pending);
+
+	pending = false;
+	assert_false(obs_audio_min_ts_insufficient(false, &pending, 0, 0, 48000, start));
+	assert_false(pending);
+}
+
+static void insufficient_needs_the_rest_of_the_tick(void **state)
+{
+	(void)state;
+	const size_t tick = AUDIO_OUTPUT_FRAMES * sizeof(float);
+	bool pending;
+
+	/* On min_ts and on min_ts - 1: a whole tick is enough, one sample
+	 * less is short and marks the source pending. */
+	for (uint64_t off = 0; off < 2; off++) {
+		pending = false;
+		assert_false(obs_audio_min_ts_insufficient(false, &pending, start - off, tick, 48000, start));
+		assert_false(pending);
+		assert_true(obs_audio_min_ts_insufficient(false, &pending, start - off, tick - sizeof(float), 48000,
+							  start));
+		assert_true(pending);
+	}
+
+	/* From frame 512's time (frame 511): 513 frames needed. */
+	const uint64_t at = start + audio_frames_to_ns(48000, 512);
+	pending = false;
+	assert_false(obs_audio_min_ts_insufficient(false, &pending, at, (AUDIO_OUTPUT_FRAMES - 511) * sizeof(float),
+						   48000, start));
+	assert_true(obs_audio_min_ts_insufficient(false, &pending, at, (AUDIO_OUTPUT_FRAMES - 512) * sizeof(float),
+						  48000, start));
+
+	/* A start point at and past AUDIO_OUTPUT_FRAMES (>=, where
+	 * discard_audio stops only on ==): never short. 8 kHz, where one tick
+	 * is exactly 128 ms. */
+	const uint64_t tick8 = audio_frames_to_ns(8000, AUDIO_OUTPUT_FRAMES);
+	pending = false;
+	assert_false(obs_audio_min_ts_insufficient(false, &pending, start + tick8, 0, 8000, start));
+	assert_false(obs_audio_min_ts_insufficient(false, &pending, start + 2 * tick8, 0, 8000, start));
+	assert_false(pending);
+}
+
+static void buffering_choice(void **state)
+{
+	(void)state;
+	assert_int_equal(obs_audio_min_ts_buffering(true, false, start, start), OBS_AUDIO_BUFFERING_FIXED);
+	assert_int_equal(obs_audio_min_ts_buffering(true, false, start - 1, start), OBS_AUDIO_BUFFERING_FIXED);
+	assert_int_equal(obs_audio_min_ts_buffering(true, true, start - 1, start), OBS_AUDIO_BUFFERING_NONE);
+	assert_int_equal(obs_audio_min_ts_buffering(false, false, start - 1, start), OBS_AUDIO_BUFFERING_ADD);
+	assert_int_equal(obs_audio_min_ts_buffering(false, true, start - 1, start), OBS_AUDIO_BUFFERING_ADD);
+	assert_int_equal(obs_audio_min_ts_buffering(false, false, start, start), OBS_AUDIO_BUFFERING_NONE);
+	assert_int_equal(obs_audio_min_ts_buffering(false, false, start + 1, start), OBS_AUDIO_BUFFERING_NONE);
+}
+
+/* A source in the audio source list for calc_min_ts. */
+static struct obs_source *list_source(struct obs_core_data *data, const char *name, uint64_t audio_ts, size_t frames)
+{
+	struct obs_source *source = bzalloc(sizeof(*source));
+	pthread_mutex_init(&source->audio_buf_mutex, NULL);
+	source->context.name = (char *)name;
+	source->audio_ts = audio_ts;
+	deque_push_back_zero(&source->audio_input_buf[0], frames * sizeof(float));
+	/* added at the head, as obs_source_init does */
+	source->next_audio_source = data->first_audio_source;
+	data->first_audio_source = source;
+	return source;
+}
+
+static void list_free(struct obs_core_data *data)
+{
+	struct obs_source *source = data->first_audio_source;
+	while (source) {
+		struct obs_source *next = (struct obs_source *)source->next_audio_source;
+		deque_free(&source->audio_input_buf[0]);
+		pthread_mutex_destroy(&source->audio_buf_mutex);
+		bfree(source);
+		source = next;
+	}
+	data->first_audio_source = NULL;
+}
+
+static void calc_min_ts_through_the_list(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	struct obs_core_data data = {0};
+	uint64_t min_ts;
+	const char *name;
+
+	/* Two sources with enough audio: the earlier one. */
+	list_source(&data, "a", start - 1000, 2 * AUDIO_OUTPUT_FRAMES);
+	list_source(&data, "b", start - 2000, 2 * AUDIO_OUTPUT_FRAMES);
+	min_ts = start;
+	name = calc_min_ts(&data, 48000, &min_ts);
+	assert_int_equal(min_ts, start - 2000);
+	assert_string_equal(name, "b");
+	list_free(&data);
+
+	/* Ties: the first in the list (the newest) stays. */
+	list_source(&data, "old", start - 2000, 2 * AUDIO_OUTPUT_FRAMES);
+	list_source(&data, "new", start - 2000, 2 * AUDIO_OUTPUT_FRAMES);
+	min_ts = start;
+	assert_string_equal(calc_min_ts(&data, 48000, &min_ts), "new");
+	list_free(&data);
+
+	/* Nothing earlier than the tick: no name, min_ts unchanged. */
+	list_source(&data, "a", start + tick / 2, 2 * AUDIO_OUTPUT_FRAMES);
+	min_ts = start;
+	assert_null(calc_min_ts(&data, 48000, &min_ts));
+	assert_int_equal(min_ts, start);
+	list_free(&data);
+
+	/* Kept, characterized, not endorsed: the source with the minimum is
+	 * short for a tick at its timestamp. The first pass takes it, the
+	 * check marks it pending, and the second pass starts from the first
+	 * pass's minimum, so with a strict comparison it finds nothing: the
+	 * minimum stays that source's timestamp and the name becomes NULL. */
+	struct obs_source *short_src = list_source(&data, "short", start - 2000, 10);
+	struct obs_source *ok_src = list_source(&data, "ok", start - 1000, 2 * AUDIO_OUTPUT_FRAMES);
+	min_ts = start;
+	name = calc_min_ts(&data, 48000, &min_ts);
+	assert_true(short_src->audio_pending);
+	assert_false(ok_src->audio_pending);
+	assert_int_equal(min_ts, start - 2000);
+	assert_null(name);
+	list_free(&data);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -940,6 +1104,11 @@ int main(void)
 		cmocka_unit_test(discard_pops_the_tick),
 		cmocka_unit_test(discard_waits_for_pending_data),
 		cmocka_unit_test(source_wrappers_use_the_source_fields),
+		cmocka_unit_test(min_ts_takes_only_earlier_valid_sources),
+		cmocka_unit_test(insufficient_skips_render_pending_and_untimed),
+		cmocka_unit_test(insufficient_needs_the_rest_of_the_tick),
+		cmocka_unit_test(buffering_choice),
+		cmocka_unit_test(calc_min_ts_through_the_list),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
