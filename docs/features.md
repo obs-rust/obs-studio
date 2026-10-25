@@ -405,11 +405,13 @@ not get a line.
   version it is based on, in the window title, log, About dialog,
   `--version` and package metadata. On first run it copies the upstream OBS
   settings without changing them. Plugins still see a valid OBS version.
-  *All*, 2026-10-10. Issues
+  On macOS the browser source's helper apps take the app's name too, so
+  adding a browser source no longer crashes OBS. *All*, 2026-10-10. Issues
   [#111](https://github.com/obs-rust/obs-studio/issues/111),
   [#631](https://github.com/obs-rust/obs-studio/issues/631),
   [#632](https://github.com/obs-rust/obs-studio/issues/632),
-  [#1087](https://github.com/obs-rust/obs-studio/issues/1087), PRs
+  [#1087](https://github.com/obs-rust/obs-studio/issues/1087),
+  [#2386](https://github.com/obs-rust/obs-studio/issues/2386), PRs
   [#67](https://github.com/obs-rust/obs-studio/pull/67),
   [#112](https://github.com/obs-rust/obs-studio/pull/112),
   [#510](https://github.com/obs-rust/obs-studio/pull/510),

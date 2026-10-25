@@ -110,6 +110,30 @@ def check_bundle(root: Path) -> None:
         raise RuntimeError("packaged SUPublicEDKey is not obs-rust's Sparkle key")
     if not (root / "Contents/Frameworks/Sparkle.framework").is_dir():
         raise RuntimeError("packaged app has an update feed but no Sparkle.framework")
+    check_browser_helpers(root, metadata["CFBundleExecutable"])
+
+
+# Chromium finds the browser source's helper apps by the main executable's
+# name, and their bundle IDs follow the app's (#2386).
+BROWSER_HELPER_FLAVORS = (("", ""), (" (GPU)", ".gpu"), (" (Plugin)", ".plugin"), (" (Renderer)", ".renderer"))
+
+
+def check_browser_helpers(root: Path, executable: str) -> None:
+    frameworks = root / "Contents/Frameworks"
+    helpers = sorted(path.name for path in frameworks.glob("* Helper*.app"))
+    if not helpers:
+        return  # built without the browser source
+    expected = {f"{executable} Helper{suffix}.app": f"{APP_ID}.helper{plist}" for suffix, plist in BROWSER_HELPER_FLAVORS}
+    if sorted(expected) != helpers:
+        raise RuntimeError(f"browser helpers are {helpers}, expected {sorted(expected)}: Chromium cannot launch them")
+    for name, bundle_id in expected.items():
+        with (frameworks / name / "Contents/Info.plist").open("rb") as stream:
+            helper = plistlib.load(stream)
+        if helper.get("CFBundleExecutable") != name.removesuffix(".app") or helper.get("CFBundleIdentifier") != bundle_id:
+            raise RuntimeError(
+                f"browser helper {name} has executable {helper.get('CFBundleExecutable')!r} and bundle ID "
+                f"{helper.get('CFBundleIdentifier')!r}, expected {name.removesuffix('.app')!r} and {bundle_id!r}"
+            )
 
 
 def main() -> None:
