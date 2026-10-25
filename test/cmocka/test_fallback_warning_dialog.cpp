@@ -11,6 +11,7 @@
  * Qt Test: the countdown, both buttons, Escape and the window close. */
 
 #include <QApplication>
+#include <QDialog>
 #include <QLabel>
 #include <QPointer>
 #include <QProgressBar>
@@ -180,6 +181,34 @@ static void escape_closes(void **)
 	check_one_end(s, End::Closed);
 }
 
+/* Another modal dialog opened over the warning (OBS queues the first-run
+ * wizard right after the main window has loaded): the warning is hidden or
+ * takes no input, so its countdown must not accept it unseen. It pauses
+ * while that dialog is open and goes on after it has closed. */
+static void countdown_pauses_while_another_dialog_is_modal(void **)
+{
+	Shown s;
+	show(s, true, 400);
+	settle(100);
+
+	QDialog *modal = new QDialog();
+	modal->setModal(true);
+	modal->show();
+	settle(50);
+	assert_true(QApplication::activeModalWidget() == modal);
+	qint64 before = s.dialog->elapsedShown();
+	settle(900);
+	assert_true(s.ends.empty());
+	assert_non_null(s.dialog.data());
+	/* One tick may still have counted when the modal opened. */
+	assert_true(s.dialog->elapsedShown() <= before + 100);
+
+	modal->close();
+	delete modal;
+	settle(900);
+	check_one_end(s, End::CountdownDone);
+}
+
 static void window_close_closes(void **)
 {
 	Shown s;
@@ -204,6 +233,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_teardown(cancel_click_ends_once, teardown),
 		cmocka_unit_test_teardown(escape_closes, teardown),
 		cmocka_unit_test_teardown(window_close_closes, teardown),
+		cmocka_unit_test_teardown(countdown_pauses_while_another_dialog_is_modal, teardown),
 	};
 	if (argc > 1) {
 		cmocka_set_test_filter(argv[1]);
