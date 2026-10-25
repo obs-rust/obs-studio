@@ -18,6 +18,7 @@
 /* graphics/effect-lookups.c */
 #include <string.h>
 #include "graphics/effect.h"
+#include "graphics/graphics-internal.h"
 
 /* graphics/image-file.c */
 #include "graphics/image-file.h"

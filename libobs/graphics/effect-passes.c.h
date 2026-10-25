@@ -15,11 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "libobs/build/libobs-ported-graphics.pch.h"
 
 /* The technique and pass loop of an effect (gs_effect_loop, the technique
  * and pass begin/end functions, gs_effect_update_params) and the upload of
- * the parameters to the shaders. */
+ * the parameters to the shaders. Ported to rust/obs-graphics
+ * (effect_passes): the hybrid libobs drops this file. */
 
 bool gs_effect_loop(gs_effect_t *effect, const char *name)
 {

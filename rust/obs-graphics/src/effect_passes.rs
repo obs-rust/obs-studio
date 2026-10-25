@@ -34,7 +34,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(unused_variables, dead_code)]
 
 /// The shader stage of a pass's parameter list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,17 +122,61 @@ pub trait PassModel {
 
 /// `gs_effect_loop`.
 pub fn effect_loop<M: PassModel>(m: &mut M, name: &[u8]) -> bool {
-    todo!()
+    if !m.looping() {
+        if m.effect_active() {
+            m.warn(LoopWarning::AlreadyActive, name);
+            return false;
+        }
+        let Some(tech) = m.find_technique(name) else {
+            m.warn(LoopWarning::TechniqueNotFound, name);
+            return false;
+        };
+        technique_begin(m, Some(tech));
+        m.set_looping(true);
+    } else {
+        let tech = m.cur_technique();
+        technique_end_pass(m, tech);
+    }
+
+    let pass = m.loop_pass();
+    m.set_loop_pass(pass.wrapping_add(1));
+    let tech = m.cur_technique();
+    if !technique_begin_pass(m, tech, pass) {
+        technique_end(m, tech);
+        m.set_looping(false);
+        m.set_loop_pass(0);
+        return false;
+    }
+    true
 }
 
 /// `gs_technique_begin`: the number of passes.
 pub fn technique_begin<M: PassModel>(m: &mut M, tech: Option<M::Technique>) -> usize {
-    todo!()
+    let Some(tech) = tech else {
+        return 0;
+    };
+    m.set_cur_technique(Some(tech));
+    m.set_current_effect(true);
+    m.num_passes(tech)
 }
 
 /// `gs_technique_end`.
 pub fn technique_end<M: PassModel>(m: &mut M, tech: Option<M::Technique>) {
-    todo!()
+    if tech.is_none() {
+        return;
+    }
+    m.load_shaders(None, Stage::Vertex);
+    m.load_shaders(None, Stage::Pixel);
+    m.set_cur_technique(None);
+    m.set_current_effect(false);
+    for i in 0..m.num_params() {
+        let param = m.param(i);
+        m.empty_value(param);
+        m.set_changed(param, false);
+        if m.has_next_sampler(param) {
+            m.clear_next_sampler(param);
+        }
+    }
 }
 
 /// `upload_shader_params`.
@@ -178,7 +221,7 @@ fn upload_parameters<M: PassModel>(m: &mut M, changed_only: bool) {
 
 /// `gs_effect_update_params`: only the changed parameters.
 pub fn effect_update_params<M: PassModel>(m: &mut M) {
-    todo!()
+    upload_parameters(m, true);
 }
 
 /// `gs_technique_begin_pass`.
@@ -187,7 +230,18 @@ pub fn technique_begin_pass<M: PassModel>(
     tech: Option<M::Technique>,
     idx: usize,
 ) -> bool {
-    todo!()
+    let Some(tech) = tech else {
+        return false;
+    };
+    if idx >= m.num_passes(tech) {
+        return false;
+    }
+    let pass = m.pass(tech, idx);
+    m.set_cur_pass(Some(pass));
+    m.load_shaders(Some(pass), Stage::Vertex);
+    m.load_shaders(Some(pass), Stage::Pixel);
+    upload_parameters(m, false);
+    true
 }
 
 /// `gs_technique_begin_pass_by_name`.
@@ -196,7 +250,16 @@ pub fn technique_begin_pass_by_name<M: PassModel>(
     tech: Option<M::Technique>,
     name: &[u8],
 ) -> bool {
-    todo!()
+    let Some(t) = tech else {
+        return false;
+    };
+    for i in 0..m.num_passes(t) {
+        if m.pass_name_is(m.pass(t, i), name) {
+            technique_begin_pass(m, tech, i);
+            return true;
+        }
+    }
+    false
 }
 
 /// `clear_tex_params`.
@@ -211,5 +274,13 @@ fn clear_tex_params<M: PassModel>(m: &mut M, pass: M::Pass, stage: Stage) {
 
 /// `gs_technique_end_pass`.
 pub fn technique_end_pass<M: PassModel>(m: &mut M, tech: Option<M::Technique>) {
-    todo!()
+    if tech.is_none() {
+        return;
+    }
+    let Some(pass) = m.cur_pass() else {
+        return;
+    };
+    clear_tex_params(m, pass, Stage::Vertex);
+    clear_tex_params(m, pass, Stage::Pixel);
+    m.set_cur_pass(None);
 }

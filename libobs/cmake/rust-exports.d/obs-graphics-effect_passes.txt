@@ -1,0 +1,7 @@
+gs_effect_loop
+gs_effect_update_params
+gs_technique_begin
+gs_technique_begin_pass
+gs_technique_begin_pass_by_name
+gs_technique_end
+gs_technique_end_pass

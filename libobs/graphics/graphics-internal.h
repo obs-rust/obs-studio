@@ -282,3 +282,6 @@ struct graphics_subsystem {
  * it: image loading rejects pictures too large for a texture before decoding
  * them. */
 uint32_t gs_image_max_texture_size(void);
+
+/* Hidden; graphics.c. The Rust effect pass loop writes cur_effect with it. */
+void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect);
