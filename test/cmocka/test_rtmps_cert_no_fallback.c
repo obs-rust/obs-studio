@@ -3,8 +3,10 @@
  * rule 7). The frontend retries a failed RTMPS start over RTMP only for a
  * connection failure: timeout, refusal, reset, or a handshake that fails for
  * another reason. A certificate that does not verify, also one issued for
- * another host name, stops the start; the RTMP output reports it through its
- * "rtmp_tls_cert_unverified" proc.
+ * another host name, stops the start. A system without trusted root
+ * certificates still falls back, with a warning that names that cause. The
+ * RTMP output reports the cause through its "rtmp_tls_failure" proc:
+ * "cert_unverified", "no_root_certs", or "" for any other failure.
  *
  * The test builds the real rtmp-stream.c and librtmp into this executable and
  * connects to a TLS listener on the loopback interface. The listener presents
@@ -12,7 +14,9 @@
  * that certificate trusted, only the host name is wrong; without it, the
  * certificate is also untrusted. A listener that closes the connection during
  * the handshake, and a port with no listener, are connection failures that
- * still fall back. The output is a small fake, so no display or encoder is
+ * still fall back. An empty trust store (the system's certificate directory
+ * has no certificates) and a missing one (it could not be read) are the
+ * no-root-certificates case. The output is a small fake, so no display or encoder is
  * needed. */
 
 #include <stdarg.h>
@@ -25,6 +29,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -90,10 +95,31 @@ proc_handler_t *fake_output_get_proc_handler(const obs_output_t *output)
 /* A certificate the client trusts in addition to the system's, or NULL. */
 static mbedtls_x509_crt *trusted_extra;
 
+/* The client's trust store. */
+enum store {
+	STORE_SYSTEM,  /* the system's root certificates */
+	STORE_EMPTY,   /* the certificate directory parsed, with nothing in it */
+	STORE_MISSING, /* the certificates could not be loaded at all */
+};
+static enum store store = STORE_SYSTEM;
+
 static int test_rtmp_connect(RTMP *r, RTMPPacket *cp)
 {
-	if (trusted_extra && r->RTMP_TLS_ctx)
-		mbedtls_ssl_conf_ca_chain(&r->RTMP_TLS_ctx->conf, trusted_extra, NULL);
+	tls_ctx *tls = r->RTMP_TLS_ctx;
+	if (tls && store == STORE_EMPTY && tls->cacert) {
+		mbedtls_x509_crt_free(tls->cacert);
+		mbedtls_x509_crt_init(tls->cacert);
+	} else if (tls && store == STORE_MISSING) {
+		/* What RTMP_TLS_LoadCerts leaves when it fails. */
+		if (tls->cacert) {
+			mbedtls_x509_crt_free(tls->cacert);
+			free(tls->cacert);
+			tls->cacert = NULL;
+		}
+		mbedtls_ssl_conf_ca_chain(&tls->conf, NULL, NULL);
+	}
+	if (trusted_extra && tls)
+		mbedtls_ssl_conf_ca_chain(&tls->conf, trusted_extra, NULL);
 	return RTMP_Connect(r, cp);
 }
 
@@ -227,7 +253,7 @@ static int closed_port(void)
 struct result {
 	int code;
 	bool proc_found;
-	bool unverified;
+	char failure[32];
 };
 
 /* Connects the RTMP output to rtmps://127.0.0.1:port/live and asks it, as
@@ -245,8 +271,9 @@ static struct result connect_to(int port)
 
 	r.code = try_connect(stream);
 
-	r.proc_found = proc_handler_call(output_procs, "rtmp_tls_cert_unverified", &cd);
-	r.unverified = r.proc_found && calldata_bool(&cd, "unverified");
+	r.proc_found = proc_handler_call(output_procs, "rtmp_tls_failure", &cd);
+	const char *failure = r.proc_found ? calldata_string(&cd, "failure") : NULL;
+	snprintf(r.failure, sizeof(r.failure), "%s", failure ? failure : "(none)");
 	calldata_free(&cd);
 
 	rtmp_stream_destroy(stream);
@@ -270,7 +297,7 @@ static void cert_for_other_host_does_not_fall_back(void **state)
 	trusted_extra = NULL;
 	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
 	assert_true(r.proc_found);
-	assert_true(r.unverified);
+	assert_string_equal(r.failure, "cert_unverified");
 }
 
 /* The certificate is not trusted (and for another host): no fallback. */
@@ -285,7 +312,7 @@ static void untrusted_cert_does_not_fall_back(void **state)
 	stop_server(&s);
 	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
 	assert_true(r.proc_found);
-	assert_true(r.unverified);
+	assert_string_equal(r.failure, "cert_unverified");
 }
 
 /* The server closes the connection during the handshake: a connection
@@ -301,7 +328,7 @@ static void reset_handshake_still_falls_back(void **state)
 	stop_server(&s);
 	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
 	assert_true(r.proc_found);
-	assert_false(r.unverified);
+	assert_string_equal(r.failure, "");
 }
 
 /* Nothing listens: a refused connection, so the fallback stays open. */
@@ -312,7 +339,59 @@ static void refused_connection_still_falls_back(void **state)
 
 	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
 	assert_true(r.proc_found);
-	assert_false(r.unverified);
+	assert_string_equal(r.failure, "");
+}
+
+/* The system has no trusted root certificates: the start falls back, and the
+ * output names the cause so that the warning can say so. */
+static void empty_trust_store_reports_no_root_certs(void **state)
+{
+	(void)state;
+	struct server s;
+	store = STORE_EMPTY;
+	start_server(&s, LISTENER_TLS);
+
+	struct result r = connect_to(s.port);
+
+	stop_server(&s);
+	store = STORE_SYSTEM;
+	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
+	assert_true(r.proc_found);
+	assert_string_equal(r.failure, "no_root_certs");
+}
+
+static void missing_trust_store_reports_no_root_certs(void **state)
+{
+	(void)state;
+	struct server s;
+	store = STORE_MISSING;
+	start_server(&s, LISTENER_TLS);
+
+	struct result r = connect_to(s.port);
+
+	stop_server(&s);
+	store = STORE_SYSTEM;
+	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
+	assert_true(r.proc_found);
+	assert_string_equal(r.failure, "no_root_certs");
+}
+
+/* Without root certificates, a failure before the certificate is checked is
+ * still an ordinary connection failure. */
+static void empty_trust_store_reset_is_ordinary(void **state)
+{
+	(void)state;
+	struct server s;
+	store = STORE_EMPTY;
+	start_server(&s, LISTENER_RESET);
+
+	struct result r = connect_to(s.port);
+
+	stop_server(&s);
+	store = STORE_SYSTEM;
+	assert_int_equal(r.code, OBS_OUTPUT_CONNECT_FAILED);
+	assert_true(r.proc_found);
+	assert_string_equal(r.failure, "");
 }
 
 static int setup(void **state)
@@ -347,6 +426,9 @@ int main(void)
 		cmocka_unit_test(untrusted_cert_does_not_fall_back),
 		cmocka_unit_test(reset_handshake_still_falls_back),
 		cmocka_unit_test(refused_connection_still_falls_back),
+		cmocka_unit_test(empty_trust_store_reports_no_root_certs),
+		cmocka_unit_test(missing_trust_store_reports_no_root_certs),
+		cmocka_unit_test(empty_trust_store_reset_is_ordinary),
 	};
 	return cmocka_run_group_tests(tests, setup, teardown);
 }

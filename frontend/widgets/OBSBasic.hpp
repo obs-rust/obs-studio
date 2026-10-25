@@ -1406,9 +1406,9 @@ private:
 	bool rtmpsFallbackRestart = false;
 	bool streamUsesMultitrack = false;
 	std::string RtmpsFallbackUrl();
-	bool StreamTlsCertUnverified();
+	std::string StreamTlsFailure();
 	void SetPlainRtmp(bool enabled);
-	void OfferRtmpsFallback(const std::string &plainUrl);
+	void OfferRtmpsFallback(const std::string &plainUrl, const std::string &tlsFailure);
 
 public slots:
 	void DisplayStreamStartError();

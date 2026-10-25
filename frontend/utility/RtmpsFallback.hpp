@@ -6,6 +6,7 @@
 #include <QByteArray>
 #include <QString>
 
+#include <cstring>
 #include <functional>
 #include <string>
 #include <utility>
@@ -18,32 +19,59 @@
  * and Cancel, which stops the start. */
 namespace RtmpsFallback {
 
-/* Two choices are open; both keep the behaviour of the first draft of #2219
- * until they are decided.
- *
- * (a) How often to ask. The shared warning shows its dialog once per id in an
- *     OBS session. true: the id names the server, so each server asks once
- *     per session (closest to asking on every failed start without an API
- *     change; a second failure to the same server only logs and continues
- *     over RTMP). false: one id for every server, the helper's default. */
+/* How often to ask: the shared warning shows its dialog once per id in an
+ * OBS session, and the id names the server, so each server asks once per
+ * session. A second failure to the same server only logs and continues over
+ * RTMP. */
 inline constexpr bool IdPerServer = true;
 
-/* (b) The main window hidden (OBS in the tray). The shared warning then logs
- *     and accepts at once. true: OBS also shows a tray notice and waits
- *     HiddenCountdownMs before it restarts over RTMP. false: it restarts at
- *     once. */
+/* With the main window hidden (OBS in the tray) the shared warning logs and
+ * accepts at once; OBS then shows a tray notice and waits HiddenCountdownMs
+ * before it restarts over RTMP. */
 inline constexpr bool CountdownWhenHidden = true;
 inline constexpr int HiddenCountdownMs = 3000;
 
-inline constexpr const char *BaseId = "rtmp.unencrypted";
+/* Why the RTMPS connection failed, as the RTMP output's rtmp_tls_failure proc
+ * reports it. */
+enum class Cause {
+	Connection,     /* timeout, refused, reset, other handshake failure */
+	CertUnverified, /* "cert_unverified": the server's certificate */
+	NoRootCerts,    /* "no_root_certs": the system has no trusted roots */
+};
 
-/* The fallback warning's id for a stream to plainUrl. */
-inline std::string Id(const std::string &plainUrl)
+inline Cause ParseCause(const char *failure)
 {
-	if (!IdPerServer || plainUrl.empty()) {
-		return BaseId;
+	if (!failure) {
+		return Cause::Connection;
 	}
-	return std::string(BaseId) + ":" + plainUrl;
+	if (strcmp(failure, "cert_unverified") == 0) {
+		return Cause::CertUnverified;
+	}
+	if (strcmp(failure, "no_root_certs") == 0) {
+		return Cause::NoRootCerts;
+	}
+	return Cause::Connection;
+}
+
+inline constexpr const char *BaseId = "rtmp.unencrypted";
+inline constexpr const char *NoRootCertsId = "rtmp.unencrypted.nocerts";
+
+/* The fallback warning's id for a stream to plainUrl. The missing root
+ * certificates have their own id, so that warning is shown once per server
+ * even when an ordinary failure was shown first. */
+inline std::string Id(const std::string &plainUrl, Cause cause = Cause::Connection)
+{
+	std::string base = cause == Cause::NoRootCerts ? NoRootCertsId : BaseId;
+	if (!IdPerServer || plainUrl.empty()) {
+		return base;
+	}
+	return base + ":" + plainUrl;
+}
+
+/* The locale key of the warning's message (%1 is the plain RTMP URL). */
+inline const char *MessageKey(Cause cause)
+{
+	return cause == Cause::NoRootCerts ? "Output.RtmpsFallback.NoRootCerts" : "Output.RtmpsFallback.Message";
 }
 
 /* Whether a stream that stopped with code may retry over plain RTMP: only a
@@ -51,9 +79,9 @@ inline std::string Id(const std::string &plainUrl)
  * URLs), and never when the server's certificate did not verify. That is no
  * network trouble, and plain RTMP would send the stream key unencrypted to a
  * server that could not prove who it is. */
-inline bool Allowed(int code, bool multitrack, bool certUnverified)
+inline bool Allowed(int code, bool multitrack, Cause cause)
 {
-	return code == OBS_OUTPUT_CONNECT_FAILED && !multitrack && !certUnverified;
+	return code == OBS_OUTPUT_CONNECT_FAILED && !multitrack && cause != Cause::CertUnverified;
 }
 
 using Answer = std::function<void(bool accepted)>;
@@ -62,9 +90,9 @@ using Answer = std::function<void(bool accepted)>;
  * and has %1 for the URL. answer is called once, on the UI thread: true for
  * the countdown or "Accept anyway" (restart over plain RTMP), false for
  * Cancel or a closed dialog. */
-inline void Warn(const QString &title, const QString &message, const std::string &plainUrl, Answer answer)
+inline void Warn(const QString &title, const QString &message, const std::string &plainUrl, Cause cause, Answer answer)
 {
-	std::string id = Id(plainUrl);
+	std::string id = Id(plainUrl, cause);
 	QByteArray t = title.toUtf8();
 	QByteArray m = message.arg(QString::fromStdString(plainUrl)).toUtf8();
 	auto *held = new Answer(std::move(answer));

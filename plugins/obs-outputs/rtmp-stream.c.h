@@ -140,21 +140,50 @@ static void rtmp_stream_destroy(void *data)
 	bfree(stream);
 }
 
-/* The TLS handshake failed because the server's certificate did not verify:
- * not trusted, expired, or issued for another host name (mbedTLS reports a
- * host-name mismatch the same way). Unlike a timeout, refusal or reset, this
- * is no network trouble, so the frontend does not retry over plain RTMP
- * (obs-rust/obs-studio#2205). */
-static bool rtmp_tls_cert_unverified(int last_error_code)
+/* Why the TLS handshake of a failed connect failed (obs-rust/obs-studio#2205).
+ *
+ * The server's certificate did not verify: not trusted, expired, or issued
+ * for another host name (mbedTLS reports a host-name mismatch the same way).
+ * Unlike a timeout, refusal or reset this is no network trouble, so the
+ * frontend does not retry over plain RTMP.
+ *
+ * The system has no trusted root certificates (RTMP_TLS_LoadCerts loaded
+ * none, so nothing can verify): the frontend still falls back, and its
+ * warning names the cause.
+ *
+ * Any other failure, also one before the certificate is checked, is a
+ * connection failure. */
+static enum rtmp_tls_failure rtmp_tls_failure(RTMP *r)
 {
-	return last_error_code == -0x2700; /* MBEDTLS_ERR_X509_CERT_VERIFY_FAILED */
+	int code = r->last_error_code;
+	bool verify_failed = code == -0x2700; /* MBEDTLS_ERR_X509_CERT_VERIFY_FAILED */
+	bool no_ca_chain = code == -0x7680;   /* MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED */
+	if (!verify_failed && !no_ca_chain)
+		return RTMP_TLS_FAILURE_NONE;
+
+	bool has_roots = r->RTMP_TLS_ctx && r->RTMP_TLS_ctx->cacert && r->RTMP_TLS_ctx->cacert->raw.len > 0;
+	if (!has_roots)
+		return RTMP_TLS_FAILURE_NO_ROOT_CERTS;
+	return verify_failed ? RTMP_TLS_FAILURE_CERT_UNVERIFIED : RTMP_TLS_FAILURE_NONE;
 }
 
-/* Output proc: whether the last connect failed on certificate verification. */
-static void rtmp_stream_tls_cert_unverified_proc(void *data, calldata_t *cd)
+/* Output proc: why the last connect's TLS handshake failed, as
+ * "cert_unverified", "no_root_certs", or "" for anything else. */
+static void rtmp_stream_tls_failure_proc(void *data, calldata_t *cd)
 {
 	struct rtmp_stream *stream = data;
-	calldata_set_bool(cd, "unverified", stream->tls_cert_unverified);
+	const char *failure = "";
+	switch (stream->tls_failure) {
+	case RTMP_TLS_FAILURE_CERT_UNVERIFIED:
+		failure = "cert_unverified";
+		break;
+	case RTMP_TLS_FAILURE_NO_ROOT_CERTS:
+		failure = "no_root_certs";
+		break;
+	case RTMP_TLS_FAILURE_NONE:
+		break;
+	}
+	calldata_set_string(cd, "failure", failure);
 }
 
 static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
@@ -198,8 +227,8 @@ static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 		goto fail;
 	}
 
-	proc_handler_add(obs_output_get_proc_handler(output), "void rtmp_tls_cert_unverified(out bool unverified)",
-			 rtmp_stream_tls_cert_unverified_proc, stream);
+	proc_handler_add(obs_output_get_proc_handler(output), "void rtmp_tls_failure(out string failure)",
+			 rtmp_stream_tls_failure_proc, stream);
 
 	UNUSED_PARAMETER(settings);
 	return stream;
@@ -1012,11 +1041,13 @@ static int try_connect(struct rtmp_stream *stream)
 
 	rtmp_host_log_interface_type(stream);
 
-	stream->tls_cert_unverified = false;
+	stream->tls_failure = RTMP_TLS_FAILURE_NONE;
 	if (!RTMP_Connect(&stream->rtmp, NULL)) {
-		stream->tls_cert_unverified = rtmp_tls_cert_unverified(stream->rtmp.last_error_code);
-		if (stream->tls_cert_unverified)
+		stream->tls_failure = rtmp_tls_failure(&stream->rtmp);
+		if (stream->tls_failure == RTMP_TLS_FAILURE_CERT_UNVERIFIED)
 			warn("The server's TLS certificate did not verify; the stream is not started");
+		else if (stream->tls_failure == RTMP_TLS_FAILURE_NO_ROOT_CERTS)
+			warn("No trusted root certificates were found, so the TLS connection could not be verified");
 		set_output_error(stream);
 		return OBS_OUTPUT_CONNECT_FAILED;
 	}
