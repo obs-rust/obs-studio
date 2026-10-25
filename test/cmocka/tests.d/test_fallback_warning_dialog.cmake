@@ -1,6 +1,6 @@
 # Fallback warning window (obs-rust/obs-studio#2218): the countdown, both
 # buttons, Escape and the window close each end the dialog exactly once, with
-# the right end for rust/obs-fallback-warning. Builds the real
+# the right end value of the C ABI. Builds the real
 # OBSFallbackWarning (its own unity group, frontend/build/) without the
 # frontend and runs it on Qt's offscreen platform, so it needs Qt Widgets and
 # Qt Test but no display.
