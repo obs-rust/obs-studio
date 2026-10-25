@@ -986,6 +986,13 @@ area.
   [#2271](https://github.com/obs-rust/obs-studio/pull/2271), upstream
   [obsproject/obs-studio#4828](https://github.com/obsproject/obs-studio/issues/4828),
   [obsproject/obs-studio#3211](https://github.com/obsproject/obs-studio/issues/3211).
+- A browser source with "Control audio via OBS" no longer raises the audio
+  buffering of every source for good (up to 960 ms of added latency) when
+  its audio arrives late under load. Audio that arrives too late to mix is
+  dropped and logged instead: during such a stall the browser source is
+  silent for about the stall's length (up to about a second), and other
+  sources keep their latency. *All*, pending merge. Issue
+  [#2335](https://github.com/obs-rust/obs-studio/issues/2335).
 
 ### Encoding, streaming and recording
 
