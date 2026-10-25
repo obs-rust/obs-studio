@@ -950,6 +950,13 @@ area.
   [#2271](https://github.com/obs-rust/obs-studio/pull/2271), upstream
   [obsproject/obs-studio#4828](https://github.com/obsproject/obs-studio/issues/4828),
   [obsproject/obs-studio#3211](https://github.com/obsproject/obs-studio/issues/3211).
+- A browser source playing sound through WebAudio (alert boxes and the like)
+  no longer goes silent for good when Chromium's audio service process dies;
+  its sound comes back about 3 s later, without a page refresh or toggling
+  "Control audio via OBS". A page that paused its own audio stays paused.
+  *All*, pending merge. Issue
+  [#2328](https://github.com/obs-rust/obs-studio/issues/2328), upstream
+  [obsproject/obs-studio#10586](https://github.com/obsproject/obs-studio/issues/10586).
 
 ### Encoding, streaming and recording
 
