@@ -232,6 +232,9 @@ struct OBSStudioAPI : obs_frontend_callbacks {
 
 	bool obs_frontend_is_safe_mode_enabled(void) override;
 
+	void obs_frontend_warn_fallback(const char *id, const char *title, const char *message, bool can_cancel,
+					obs_frontend_fallback_cb cb, void *param) override;
+
 	void on_load(obs_data_t *settings) override;
 
 	void on_preload(obs_data_t *settings) override;

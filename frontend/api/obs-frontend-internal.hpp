@@ -143,6 +143,9 @@ struct obs_frontend_callbacks {
 	virtual bool obs_frontend_can_paste_sceneitem(bool duplicate) = 0;
 	virtual void obs_frontend_paste_sceneitem(obs_scene_t *scene, bool duplicate) = 0;
 	virtual bool obs_frontend_is_safe_mode_enabled(void) = 0;
+
+	virtual void obs_frontend_warn_fallback(const char *id, const char *title, const char *message, bool can_cancel,
+						obs_frontend_fallback_cb cb, void *param) = 0;
 };
 
 EXPORT void obs_frontend_set_callbacks_internal(obs_frontend_callbacks *callbacks);

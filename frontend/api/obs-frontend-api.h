@@ -264,6 +264,13 @@ EXPORT void obs_frontend_paste_sceneitem(obs_scene_t *scene, bool duplicate);
 
 EXPORT bool obs_frontend_is_safe_mode_enabled(void);
 
+/* A feature fell back to a less safe mode (obs-rust/obs-studio#2218). Logs
+ * at error level, warns the user with a countdown, and calls `cb` once on the
+ * UI thread with whether to continue in the fallback mode. */
+typedef void (*obs_frontend_fallback_cb)(void *param, bool accepted);
+EXPORT void obs_frontend_warn_fallback(const char *id, const char *title, const char *message, bool can_cancel,
+				       obs_frontend_fallback_cb cb, void *param);
+
 /* ------------------------------------------------------------------------- */
 
 #ifdef __cplusplus

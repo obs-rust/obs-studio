@@ -691,5 +691,10 @@ bool obs_frontend_is_safe_mode_enabled(void)
 	return !!callbacks_valid() ? c->obs_frontend_is_safe_mode_enabled() : false;
 }
 
+void obs_frontend_warn_fallback(const char *, const char *, const char *, bool, obs_frontend_fallback_cb, void *)
+{
+	/* RED (#2218). */
+}
+
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef callbacks_valid

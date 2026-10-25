@@ -739,6 +739,12 @@ bool OBSStudioAPI::obs_frontend_is_safe_mode_enabled()
 	return safe_mode;
 }
 
+void OBSStudioAPI::obs_frontend_warn_fallback(const char *, const char *, const char *, bool, obs_frontend_fallback_cb,
+					      void *)
+{
+	/* RED (#2218). */
+}
+
 void OBSStudioAPI::on_load(obs_data_t *settings)
 {
 	for (size_t i = saveCallbacks.size(); i > 0; i--) {
