@@ -2201,7 +2201,7 @@
         "OBS::native-test-cmocka"
       ],
       "link_options": [
-        "-Wl,--wrap=MFXLoad,--wrap=MFXUnload,--wrap=MFXCreateConfig,--wrap=MFXSetConfigFilterProperty,--wrap=MFXCreateSession,--wrap=MFXClose,--wrap=MFXVideoCORE_SetHandle,--wrap=vaGetDisplayDRM,--wrap=vaInitialize,--wrap=vaTerminate"
+        "-Wl,--wrap=MFXLoad,--wrap=MFXUnload,--wrap=MFXCreateConfig,--wrap=MFXSetConfigFilterProperty,--wrap=MFXCreateSession,--wrap=MFXClose,--wrap=MFXVideoCORE_SetHandle,--wrap=vaGetDisplayDRM,--wrap=vaInitialize,--wrap=vaTerminate,--wrap=MFXVideoCORE_GetHandle,--wrap=vaCreateSurfaces,--wrap=vaDestroySurfaces,--wrap=vaExportSurfaceHandle,--wrap=gs_texture_create_from_dmabuf,--wrap=gs_texture_destroy,--wrap=obs_enter_graphics,--wrap=obs_leave_graphics"
       ],
       "compile_options": [
         "-fvisibility=default"

@@ -42,9 +42,15 @@ static int reset_calls;
 static mfxVideoParam reset_params;
 static mfxU16 reset_winbrc_max_avg;
 static int fake_session_obj;
+/* The encoder's startup probe: loaders live, and whether its session fails
+ * (#2396). */
+static int loaders;
+static bool session_fails;
 
 static void fake_defaults(void)
 {
+	loaders = 0;
+	session_fails = false;
 	encode_mode = ENCODE_OK;
 	sync_mode = SYNC_OK;
 	fake_platform = 0;
@@ -58,12 +64,14 @@ extern "C" {
 
 mfxLoader MFXLoad(void)
 {
+	loaders++;
 	return (mfxLoader)&fake_session_obj;
 }
 
 void MFXUnload(mfxLoader loader)
 {
 	(void)loader;
+	loaders--;
 }
 
 mfxConfig MFXCreateConfig(mfxLoader loader)
@@ -84,6 +92,9 @@ mfxStatus MFXCreateSession(mfxLoader loader, mfxU32 i, mfxSession *session)
 {
 	(void)loader;
 	(void)i;
+	if (session_fails) {
+		return MFX_ERR_NOT_FOUND;
+	}
 	*session = (mfxSession)&fake_session_obj;
 	return MFX_ERR_NONE;
 }
@@ -495,6 +506,25 @@ static void test_reconfig_winbrc_follows_target(void **state)
 #endif
 }
 
+/* The constructor's probe unloads its VPL loader whether or not it gets a
+ * session (#2396). */
+static void test_probe_unloads_loader(void **state)
+{
+	(void)state;
+
+	for (int fails = 0; fails < 2; fails++) {
+		fake_defaults();
+		session_fails = fails;
+		mfxVersion version = {{0, 1}};
+		delete new QSV_Encoder_Internal(version, false);
+		if (loaders) {
+			fprintf(stderr, "the probe left %d VPL loaders when its session %s\n", loaders,
+				fails ? "failed" : "opened");
+			fail();
+		}
+	}
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -505,6 +535,7 @@ int main(void)
 		cmocka_unit_test(test_reconfig_warning_is_applied),
 		cmocka_unit_test(test_reconfig_unchanged_skips_reset),
 		cmocka_unit_test(test_reconfig_winbrc_follows_target),
+		cmocka_unit_test(test_probe_unloads_loader),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
