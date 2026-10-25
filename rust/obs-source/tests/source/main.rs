@@ -3,6 +3,7 @@
 mod async_pacing;
 mod async_pacing_parity;
 mod async_upload;
+mod async_upload_parity;
 mod audio_input;
 mod audio_input_parity;
 mod audio_render_plan;
