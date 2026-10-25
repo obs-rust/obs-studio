@@ -586,8 +586,15 @@ void OBSBasic::on_actionImportProfile_triggered()
 	const QString sourceDirectory = SelectDirectory(this, QTStr("Basic.MainMenu.Profile.Import"), home);
 
 	if (!sourceDirectory.isEmpty() && !sourceDirectory.isNull()) {
-		const std::filesystem::path sourcePath = std::filesystem::u8path(sourceDirectory.toStdString());
+		const std::filesystem::path sourcePath =
+			std::filesystem::u8path(QDir::cleanPath(sourceDirectory).toStdString());
 		const std::string directoryName = ProfileImportDirectoryName(sourceDirectory);
+
+		if (directoryName.empty()) {
+			blog(LOG_WARNING, "Failed to import profile from '%s': the path has no folder name",
+			     QT_TO_UTF8(sourceDirectory));
+			return;
+		}
 
 		if (auto profile = GetProfileByDirectoryName(directoryName)) {
 			OBSMessageBox::warning(this, QTStr("Basic.MainMenu.Profile.Import"),
@@ -605,6 +612,8 @@ void OBSBasic::on_actionImportProfile_triggered()
 		switch (result.status) {
 		case ProfileImportResult::Status::Imported:
 			break;
+		case ProfileImportResult::Status::NoDirectoryName:
+			return;
 		case ProfileImportResult::Status::CreateFailed:
 			blog(LOG_WARNING, "Failed to create profile directory '%s':\n%s", directoryName.c_str(),
 			     result.error.c_str());

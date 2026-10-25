@@ -1717,6 +1717,13 @@ area.
   window squeezed them to their minimum. *All*, 2026-10-24. Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225).
 
+- Importing a profile from a folder path that ends in a slash (as the
+  macOS folder dialog returns it) creates the profile in a folder of its
+  own; before, its files were copied into the profiles folder itself and no
+  profile showed up. *All*, pending merge. Issue
+  [#2295](https://github.com/obs-rust/obs-studio/issues/2295), upstream
+  [obsproject/obs-studio#13862](https://github.com/obsproject/obs-studio/issues/13862).
+
 ### Scripting
 
 - A busy Lua source no longer makes the graphics thread poll its locks. OBS
