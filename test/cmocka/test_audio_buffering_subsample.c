@@ -1,7 +1,9 @@
 /* Regression for the uninitialized interval in add_audio_buffering (#838),
  * and characterization of the rest of obs-audio-mix.c (time to frames, the
  * mix window and add loop, the fixed and added buffering steps) before its
- * port to obs-core (#1903).
+ * port to obs-core (#1903), and of obs-audio-discard.c (the drop steps
+ * ignore_audio, discard_if_stopped and discard_audio) before its port
+ * (#2403).
  * Compile the original private implementation directly: this checks the C
  * buffering algorithm, rather than the Rust swap or real-time scheduling.
  * Unused core functions are discarded at link time. */
@@ -465,6 +467,445 @@ static void core_buffering_steps(void **state)
 	assert_int_equal(b.buffered_timestamps.size, 0);
 }
 
+/* Characterization of obs-audio-discard.c before its port to obs-core
+ * (#2403), on plain fields: no struct obs_source. */
+
+struct core_input {
+	struct deque buf[MAX_AUDIO_CHANNELS];
+	uint64_t audio_ts;
+	size_t last_size;
+	bool pending;
+	bool pending_stop;
+	volatile bool timing_set;
+	struct obs_audio_input in;
+};
+
+/* `frames` floats per channel, value ch * 10000 + index, so the front value
+ * says how many were popped. */
+static void core_input_init(struct core_input *c, size_t channels, size_t frames, uint64_t audio_ts)
+{
+	memset(c, 0, sizeof(*c));
+	for (size_t ch = 0; ch < channels; ch++) {
+		for (size_t i = 0; i < frames; i++) {
+			float v = (float)(ch * 10000 + i);
+			deque_push_back(&c->buf[ch], &v, sizeof(v));
+		}
+	}
+	c->audio_ts = audio_ts;
+	c->timing_set = true;
+	c->in.buf = c->buf;
+	c->in.audio_ts = &c->audio_ts;
+	c->in.last_size = &c->last_size;
+	c->in.pending = &c->pending;
+	c->in.pending_stop = &c->pending_stop;
+	c->in.timing_set = &c->timing_set;
+}
+
+static void core_input_free(struct core_input *c)
+{
+	for (size_t ch = 0; ch < MAX_AUDIO_CHANNELS; ch++)
+		deque_free(&c->buf[ch]);
+}
+
+static size_t frames_left(const struct core_input *c, size_t ch)
+{
+	return c->buf[ch].size / sizeof(float);
+}
+
+/* Index of the front sample of channel ch: the number popped. */
+static size_t front_index(struct core_input *c, size_t ch)
+{
+	float v;
+	deque_peek_front(&c->buf[ch], &v, sizeof(v));
+	return (size_t)v - ch * 10000;
+}
+
+static void ignore_without_timestamp_clears_channel_0(void **state)
+{
+	(void)state;
+	/* Kept, characterized, not endorsed: each channel pops channel 0's
+	 * size, read again for each channel, so once channel 0 is empty the
+	 * other channels keep their audio. */
+	struct core_input c;
+	core_input_init(&c, 2, 100, 0);
+	c.last_size = 400;
+	struct obs_audio_ignore_step step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_true(step.no_timestamp);
+	assert_false(step.rerender);
+	assert_false(step.warn);
+	assert_int_equal(step.buffered, 100);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(frames_left(&c, 1), 100);
+	assert_int_equal(c.last_size, 0);
+	assert_int_equal(c.audio_ts, 0);
+	/* not a restart */
+	assert_false(c.pending);
+	assert_true(c.timing_set);
+	core_input_free(&c);
+}
+
+static void ignore_drop_rounds_up(void **state)
+{
+	(void)state;
+	const uint64_t sample = audio_frames_to_ns(48000, 1);
+	struct core_input c;
+	struct obs_audio_ignore_step step;
+
+	/* Exactly one sample behind: one dropped, in sync, lag 0. */
+	core_input_init(&c, 2, 100, start - sample);
+	c.last_size = 400;
+	step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_true(step.rerender);
+	assert_false(step.warn);
+	assert_int_equal(step.buffered, 100);
+	assert_int_equal(step.dropped, 1);
+	assert_int_equal(step.lag, 0);
+	assert_int_equal(c.audio_ts, start);
+	assert_int_equal(front_index(&c, 0), 1);
+	assert_int_equal(front_index(&c, 1), 1);
+	assert_int_equal(c.last_size, 0);
+	core_input_free(&c);
+
+	/* A partial sample more: two dropped, audio_ts past start_ts. */
+	core_input_init(&c, 2, 100, start - 30000);
+	step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_true(step.rerender);
+	assert_int_equal(step.dropped, 2);
+	assert_int_equal(c.audio_ts, start - 30000 + audio_frames_to_ns(48000, 2));
+	assert_int_equal(front_index(&c, 0), 2);
+	core_input_free(&c);
+}
+
+static void ignore_lag_wraps_when_the_drop_overshoots(void **state)
+{
+	(void)state;
+	/* 1 ns behind: one sample (20833 ns at 48 kHz) is dropped, audio_ts
+	 * lands after start_ts, and the logged lag (start_ts - audio_ts) wraps.
+	 * Kept, characterized, not endorsed: C prints it at LOG_DEBUG. */
+	struct core_input c;
+	core_input_init(&c, 1, 100, start - 1);
+	struct obs_audio_ignore_step step = obs_audio_discard_ignore(&c.in, 1, 48000, start);
+	assert_true(step.rerender);
+	assert_int_equal(step.dropped, 1);
+	assert_int_equal(c.audio_ts, start - 1 + audio_frames_to_ns(48000, 1));
+	assert_int_equal(step.lag, (uint64_t)0 - (audio_frames_to_ns(48000, 1) - 1));
+	core_input_free(&c);
+}
+
+static void ignore_adjusts_one_ns_short(void **state)
+{
+	(void)state;
+	/* At 44.1 kHz one sample is 22675 ns (rounded down): 22676 ns behind,
+	 * one dropped, audio_ts lands on start_ts - 1 and is moved to start_ts.
+	 * The lag is logged before the adjustment. */
+	const uint64_t sample = audio_frames_to_ns(44100, 1);
+	struct core_input c;
+	core_input_init(&c, 2, 100, start - sample - 1);
+	struct obs_audio_ignore_step step = obs_audio_discard_ignore(&c.in, 2, 44100, start);
+	assert_int_equal(sample, 22675);
+	assert_true(step.rerender);
+	assert_int_equal(step.dropped, 1);
+	assert_int_equal(step.lag, 1);
+	assert_int_equal(c.audio_ts, start);
+	core_input_free(&c);
+}
+
+static void ignore_restarts_when_buffer_is_short(void **state)
+{
+	(void)state;
+	/* 1 ms (48 samples) behind with 10 buffered: all 10 dropped, still
+	 * behind, so the source's audio restarts with a warning. */
+	struct core_input c;
+	core_input_init(&c, 2, 10, start - 1000000);
+	struct obs_audio_ignore_step step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	const uint64_t after = start - 1000000 + audio_frames_to_ns(48000, 10);
+	assert_false(step.rerender);
+	assert_int_equal(step.dropped, 10);
+	assert_int_equal(step.lag, start - after);
+	assert_true(step.warn);
+	assert_int_equal(step.warn_lag, start - after);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(frames_left(&c, 1), 0);
+	assert_true(c.pending);
+	assert_int_equal(c.audio_ts, 0);
+	assert_false(c.timing_set);
+	core_input_free(&c);
+}
+
+static void ignore_without_samples_warns_unless_pending(void **state)
+{
+	(void)state;
+	struct core_input c;
+	struct obs_audio_ignore_step step;
+
+	/* Not pending: restart with a warning. */
+	core_input_init(&c, 2, 0, start - 1000);
+	step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_false(step.rerender);
+	assert_int_equal(step.buffered, 0);
+	assert_int_equal(step.dropped, 0);
+	assert_true(step.warn);
+	assert_int_equal(step.warn_lag, 1000);
+	assert_true(c.pending);
+	assert_int_equal(c.audio_ts, 0);
+	assert_false(c.timing_set);
+	core_input_free(&c);
+
+	/* Already pending: the same restart, no warning. */
+	core_input_init(&c, 2, 0, start - 1000);
+	c.pending = true;
+	step = obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_false(step.warn);
+	assert_true(c.pending);
+	assert_int_equal(c.audio_ts, 0);
+	assert_false(c.timing_set);
+	core_input_free(&c);
+}
+
+static void ignore_pops_channel_0_size_everywhere(void **state)
+{
+	(void)state;
+	/* Kept, characterized, not endorsed: the count is channel 0's, and
+	 * every channel pops it. 1 ms (48 samples) behind with 10 in channel 0
+	 * and 20 in channel 1: 10 dropped from each. */
+	struct core_input c;
+	core_input_init(&c, 2, 10, start - 1000000);
+	for (size_t i = 0; i < 10; i++) {
+		float v = 10000.0f + 10 + i;
+		deque_push_back(&c.buf[1], &v, sizeof(v));
+	}
+	obs_audio_discard_ignore(&c.in, 2, 48000, start);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(frames_left(&c, 1), 10);
+	assert_int_equal(front_index(&c, 1), 10);
+	core_input_free(&c);
+}
+
+static void stop_check_needs_two_unchanged_ticks(void **state)
+{
+	(void)state;
+	struct core_input c;
+
+	/* Empty: nothing. */
+	core_input_init(&c, 2, 0, start);
+	c.last_size = 40;
+	assert_int_equal(obs_audio_discard_if_stopped(&c.in, 2), OBS_AUDIO_STOP_NONE);
+	assert_int_equal(c.last_size, 40);
+	core_input_free(&c);
+
+	/* The size changed: remembered. */
+	core_input_init(&c, 2, 10, start);
+	assert_int_equal(obs_audio_discard_if_stopped(&c.in, 2), OBS_AUDIO_STOP_NONE);
+	assert_int_equal(c.last_size, 10 * sizeof(float));
+	assert_false(c.pending_stop);
+
+	/* Unchanged once: pending_stop, data kept. */
+	assert_int_equal(obs_audio_discard_if_stopped(&c.in, 2), OBS_AUDIO_STOP_PENDING);
+	assert_true(c.pending_stop);
+	assert_int_equal(frames_left(&c, 0), 10);
+
+	/* Unchanged twice: cleared, each channel by its own size. */
+	for (size_t i = 0; i < 5; i++) {
+		float v = 10000.0f + 10 + i;
+		deque_push_back(&c.buf[1], &v, sizeof(v));
+	}
+	assert_int_equal(obs_audio_discard_if_stopped(&c.in, 2), OBS_AUDIO_STOP_CLEARED);
+	assert_false(c.pending_stop);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(frames_left(&c, 1), 0);
+	assert_int_equal(c.audio_ts, 0);
+	assert_int_equal(c.last_size, 0);
+	core_input_free(&c);
+}
+
+static void discard_early_returns(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	const struct ts_info ts = {start, start + tick};
+	struct core_input c;
+	struct obs_audio_discard_step step;
+
+	/* A render source: audio_ts reset, nothing popped. */
+	core_input_init(&c, 2, 2000, start);
+	step = obs_audio_discard_tick(&c.in, true, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_RENDER_SOURCE);
+	assert_int_equal(c.audio_ts, 0);
+	assert_int_equal(frames_left(&c, 0), 2000);
+	core_input_free(&c);
+
+	/* At or after the tick end: nothing. */
+	const uint64_t ahead[] = {ts.end, ts.end + 1};
+	for (size_t i = 0; i < 2; i++) {
+		core_input_init(&c, 2, 2000, ahead[i]);
+		step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+		assert_int_equal(step.path, OBS_AUDIO_DISCARD_AHEAD);
+		assert_int_equal(c.audio_ts, ahead[i]);
+		assert_int_equal(frames_left(&c, 0), 2000);
+		core_input_free(&c);
+	}
+
+	/* Behind, not pending: no stop check. */
+	core_input_init(&c, 2, 10, start - 2);
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_BEHIND);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_NONE);
+	assert_int_equal(c.last_size, 0);
+	assert_int_equal(c.audio_ts, start - 2);
+	core_input_free(&c);
+
+	/* Behind, pending, with a full tick buffered: no stop check either. */
+	core_input_init(&c, 2, AUDIO_OUTPUT_FRAMES, start - 2);
+	c.pending = true;
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_BEHIND);
+	assert_int_equal(c.last_size, 0);
+	core_input_free(&c);
+
+	/* Behind, pending, less than a tick: the stop check runs. */
+	core_input_init(&c, 2, 10, start - 2);
+	c.pending = true;
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_NONE);
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_PENDING);
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_BEHIND);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_CLEARED);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(c.audio_ts, 0);
+	core_input_free(&c);
+
+	/* A start point on AUDIO_OUTPUT_FRAMES, in a two-tick window at 8 kHz
+	 * (one tick is exactly 128 ms there): nothing. */
+	const uint64_t tick8 = audio_frames_to_ns(8000, AUDIO_OUTPUT_FRAMES);
+	const struct ts_info wide = {start, start + 2 * tick8};
+	core_input_init(&c, 2, 2000, start + tick8);
+	step = obs_audio_discard_tick(&c.in, false, 2, 8000, &wide);
+	assert_int_equal(tick8, 128000000);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_START_AT_END);
+	assert_int_equal(c.audio_ts, start + tick8);
+	assert_int_equal(frames_left(&c, 0), 2000);
+	core_input_free(&c);
+}
+
+static void discard_pops_the_tick(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	const struct ts_info ts = {start, start + tick};
+	const size_t channels[] = {1, 2, 8};
+	struct core_input c;
+	struct obs_audio_discard_step step;
+
+	/* On ts->start and on ts->start - 1: the whole tick. */
+	for (size_t i = 0; i < 3; i++) {
+		for (uint64_t off = 0; off < 2; off++) {
+			core_input_init(&c, channels[i], 1500, start - off);
+			c.last_size = 40;
+			c.pending_stop = true;
+			step = obs_audio_discard_tick(&c.in, false, channels[i], 48000, &ts);
+			assert_int_equal(step.path, OBS_AUDIO_DISCARD_DONE);
+			assert_int_equal(step.stop, OBS_AUDIO_STOP_NONE);
+			for (size_t ch = 0; ch < channels[i]; ch++) {
+				assert_int_equal(frames_left(&c, ch), 1500 - AUDIO_OUTPUT_FRAMES);
+				assert_int_equal(front_index(&c, ch), AUDIO_OUTPUT_FRAMES);
+			}
+			assert_int_equal(c.audio_ts, ts.end);
+			assert_int_equal(c.last_size, 0);
+			assert_false(c.pending_stop);
+			core_input_free(&c);
+		}
+	}
+
+	/* From frame 512's time, which maps to frame 511: 513 frames. */
+	core_input_init(&c, 2, 1500, start + audio_frames_to_ns(48000, 512));
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_DONE);
+	assert_int_equal(front_index(&c, 0), AUDIO_OUTPUT_FRAMES - 511);
+	assert_int_equal(front_index(&c, 1), AUDIO_OUTPUT_FRAMES - 511);
+	assert_int_equal(c.audio_ts, ts.end);
+	core_input_free(&c);
+}
+
+static void discard_waits_for_pending_data(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	const struct ts_info ts = {start, start + tick};
+	struct core_input c;
+	struct obs_audio_discard_step step;
+
+	/* Less than the tick: nothing popped, audio_ts moves to the end, the
+	 * size is remembered. */
+	core_input_init(&c, 2, 100, start);
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_PENDING);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_NONE);
+	assert_int_equal(frames_left(&c, 0), 100);
+	assert_int_equal(c.audio_ts, ts.end);
+	assert_int_equal(c.last_size, 100 * sizeof(float));
+	core_input_free(&c);
+
+	/* The same size again: pending stop, audio_ts still moves to the end. */
+	core_input_init(&c, 2, 100, start);
+	c.last_size = 100 * sizeof(float);
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_PENDING);
+	assert_true(c.pending_stop);
+	assert_int_equal(c.audio_ts, ts.end);
+	core_input_free(&c);
+
+	/* And again: cleared, audio_ts stays 0. */
+	core_input_init(&c, 2, 100, start);
+	c.last_size = 100 * sizeof(float);
+	c.pending_stop = true;
+	step = obs_audio_discard_tick(&c.in, false, 2, 48000, &ts);
+	assert_int_equal(step.path, OBS_AUDIO_DISCARD_PENDING);
+	assert_int_equal(step.stop, OBS_AUDIO_STOP_CLEARED);
+	assert_int_equal(frames_left(&c, 0), 0);
+	assert_int_equal(c.audio_ts, 0);
+	core_input_free(&c);
+}
+
+/* The wrappers in obs-audio.c pass the right source fields. */
+static void source_wrappers_use_the_source_fields(void **state)
+{
+	(void)state;
+	const uint64_t tick = audio_frames_to_ns(48000, AUDIO_OUTPUT_FRAMES);
+	struct ts_info ts = {start, start + tick};
+	struct obs_core_audio audio = {0};
+	struct obs_source *source = bzalloc(sizeof(*source));
+	for (size_t ch = 0; ch < 2; ch++) {
+		for (size_t i = 0; i < 1500; i++) {
+			float v = (float)i;
+			deque_push_back(&source->audio_input_buf[ch], &v, sizeof(v));
+		}
+	}
+
+	source->audio_ts = start;
+	source->last_audio_input_buf_size = 40;
+	source->pending_stop = true;
+	discard_audio(&audio, source, 2, 48000, &ts);
+	assert_int_equal(source->audio_input_buf[1].size, (1500 - AUDIO_OUTPUT_FRAMES) * sizeof(float));
+	assert_int_equal(source->audio_ts, ts.end);
+	assert_int_equal(source->last_audio_input_buf_size, 0);
+	assert_false(source->pending_stop);
+
+	/* 20 ms (960 samples) behind with 476 buffered: all dropped, restart. */
+	source->audio_ts = start - 20000000;
+	source->timing_set = true;
+	assert_false(ignore_audio(source, 2, 48000, start));
+	assert_true(source->audio_pending);
+	assert_int_equal(source->audio_ts, 0);
+	assert_false(source->timing_set);
+	assert_int_equal(source->audio_input_buf[1].size, 0);
+
+	for (size_t ch = 0; ch < 2; ch++)
+		deque_free(&source->audio_input_buf[ch]);
+	bfree(source);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -486,6 +927,18 @@ int main(void)
 		cmocka_unit_test(buffering_rounds_ticks_up),
 		cmocka_unit_test(core_mix_on_plain_buffers),
 		cmocka_unit_test(core_buffering_steps),
+		cmocka_unit_test(ignore_without_timestamp_clears_channel_0),
+		cmocka_unit_test(ignore_drop_rounds_up),
+		cmocka_unit_test(ignore_lag_wraps_when_the_drop_overshoots),
+		cmocka_unit_test(ignore_adjusts_one_ns_short),
+		cmocka_unit_test(ignore_restarts_when_buffer_is_short),
+		cmocka_unit_test(ignore_without_samples_warns_unless_pending),
+		cmocka_unit_test(ignore_pops_channel_0_size_everywhere),
+		cmocka_unit_test(stop_check_needs_two_unchanged_ticks),
+		cmocka_unit_test(discard_early_returns),
+		cmocka_unit_test(discard_pops_the_tick),
+		cmocka_unit_test(discard_waits_for_pending_data),
+		cmocka_unit_test(source_wrappers_use_the_source_fields),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
