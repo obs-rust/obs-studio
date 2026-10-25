@@ -822,6 +822,18 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_param_values": {
+      "sources": [
+        "test/cmocka/test_effect_param_values.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_effect_set_default_null": {
       "sources": [
         "test/cmocka/test_effect_set_default_null.c"
@@ -4421,6 +4433,12 @@
     },
     "test_dtostr_exponent": {
       "target": "test_dtostr_exponent"
+    },
+    "test_effect_param_values": {
+      "target": "test_effect_param_values",
+      "command": [
+        "${target}"
+      ]
     },
     "test_effect_set_default_null": {
       "target": "test_effect_set_default_null",
