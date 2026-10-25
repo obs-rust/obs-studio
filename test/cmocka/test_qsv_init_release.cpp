@@ -1,0 +1,289 @@
+/* obs-qsv11: on Linux, Initialize() never unloaded the VPL loader it got
+ * from MFXLoad(), on success or failure, and the session it created was
+ * never closed. When MFXCreateSession(), vaInitialize() or
+ * MFXVideoCORE_SetHandle() failed it also left the session, the VA display
+ * or the device open (obs-rust/obs-studio#2393).
+ *
+ * The real common_utils_linux.cpp is compiled in. The libvpl and libva
+ * calls Initialize() makes are wrapped (--wrap): the wrappers hand out
+ * fake objects, count what is acquired and released, and fail the step a
+ * test asks to fail. The "device" is a temporary file and its descriptors
+ * are counted in /proc/self/fd, so no GPU is needed. */
+
+/* The C++ headers go first: cmocka.h defines macros (fail, ...) that clash
+ * with libstdc++. */
+#include "plugins/obs-qsv11/common_utils_linux.cpp.hpp"
+
+#include <limits.h>
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <stdint.h>
+// The Windows cmocka.h has no extern "C" guard of its own.
+extern "C" {
+#include <cmocka.h>
+}
+
+enum fail_step {
+	FAIL_NONE,
+	FAIL_OPEN,
+	FAIL_DISPLAY,
+	FAIL_SESSION,
+	FAIL_VA_INIT,
+	FAIL_SET_HANDLE,
+};
+
+static char device_path[PATH_MAX];
+static enum fail_step failing;
+
+/* Live objects: acquired minus released. */
+static int loaders;
+static int sessions;
+static int displays;
+/* Order of releases, to check sessions close before their loader. */
+static bool loader_unloaded_with_session_open;
+
+static int fake_loader_obj;
+static int fake_config_obj;
+static int fake_session_obj;
+static int fake_display_obj;
+
+extern "C" {
+mfxLoader __wrap_MFXLoad(void);
+void __wrap_MFXUnload(mfxLoader loader);
+mfxConfig __wrap_MFXCreateConfig(mfxLoader loader);
+mfxStatus __wrap_MFXSetConfigFilterProperty(mfxConfig config, const mfxU8 *name, mfxVariant value);
+mfxStatus __wrap_MFXCreateSession(mfxLoader loader, mfxU32 i, mfxSession *session);
+mfxStatus __wrap_MFXClose(mfxSession session);
+mfxStatus __wrap_MFXVideoCORE_SetHandle(mfxSession session, mfxHandleType type, mfxHDL hdl);
+VADisplay __wrap_vaGetDisplayDRM(int fd);
+VAStatus __wrap_vaInitialize(VADisplay dpy, int *major, int *minor);
+VAStatus __wrap_vaTerminate(VADisplay dpy);
+
+mfxLoader __wrap_MFXLoad(void)
+{
+	loaders++;
+	return (mfxLoader)&fake_loader_obj;
+}
+
+void __wrap_MFXUnload(mfxLoader loader)
+{
+	assert_ptr_equal(loader, &fake_loader_obj);
+	if (sessions > 0) {
+		loader_unloaded_with_session_open = true;
+	}
+	loaders--;
+}
+
+mfxConfig __wrap_MFXCreateConfig(mfxLoader loader)
+{
+	assert_ptr_equal(loader, &fake_loader_obj);
+	return (mfxConfig)&fake_config_obj;
+}
+
+mfxStatus __wrap_MFXSetConfigFilterProperty(mfxConfig config, const mfxU8 *name, mfxVariant value)
+{
+	(void)name;
+	(void)value;
+	assert_ptr_equal(config, &fake_config_obj);
+	return MFX_ERR_NONE;
+}
+
+mfxStatus __wrap_MFXCreateSession(mfxLoader loader, mfxU32 i, mfxSession *session)
+{
+	(void)i;
+	assert_ptr_equal(loader, &fake_loader_obj);
+	if (failing == FAIL_SESSION) {
+		return MFX_ERR_NOT_FOUND;
+	}
+	sessions++;
+	*session = (mfxSession)&fake_session_obj;
+	return MFX_ERR_NONE;
+}
+
+mfxStatus __wrap_MFXClose(mfxSession session)
+{
+	assert_ptr_equal(session, &fake_session_obj);
+	sessions--;
+	return MFX_ERR_NONE;
+}
+
+mfxStatus __wrap_MFXVideoCORE_SetHandle(mfxSession session, mfxHandleType type, mfxHDL hdl)
+{
+	assert_ptr_equal(session, &fake_session_obj);
+	assert_int_equal(type, MFX_HANDLE_VA_DISPLAY);
+	assert_ptr_equal(hdl, &fake_display_obj);
+	return failing == FAIL_SET_HANDLE ? MFX_ERR_UNDEFINED_BEHAVIOR : MFX_ERR_NONE;
+}
+
+VADisplay __wrap_vaGetDisplayDRM(int fd)
+{
+	(void)fd;
+	if (failing == FAIL_DISPLAY) {
+		return NULL;
+	}
+	displays++;
+	return (VADisplay)&fake_display_obj;
+}
+
+VAStatus __wrap_vaInitialize(VADisplay dpy, int *major, int *minor)
+{
+	assert_ptr_equal(dpy, &fake_display_obj);
+	if (failing == FAIL_VA_INIT) {
+		return VA_STATUS_ERROR_UNKNOWN;
+	}
+	*major = 1;
+	*minor = 22;
+	return VA_STATUS_SUCCESS;
+}
+
+VAStatus __wrap_vaTerminate(VADisplay dpy)
+{
+	assert_ptr_equal(dpy, &fake_display_obj);
+	displays--;
+	return VA_STATUS_SUCCESS;
+}
+}
+
+static int setup(void **state)
+{
+	(void)state;
+	const char *dir = getenv("TMPDIR");
+	snprintf(device_path, sizeof(device_path), "%s/qsv-init-release-XXXXXX", dir && *dir ? dir : "/tmp");
+	int fd = mkstemp(device_path);
+	if (fd < 0) {
+		return -1;
+	}
+	close(fd);
+	return 0;
+}
+
+static int teardown(void **state)
+{
+	(void)state;
+	unlink(device_path);
+	return 0;
+}
+
+/* Closes, and counts, the descriptors of the device this process holds. */
+static int close_left_open(void)
+{
+	int left = 0;
+	for (int fd = 3; fd < 1024; fd++) {
+		char link[64];
+		char target[PATH_MAX];
+		snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+		ssize_t n = readlink(link, target, sizeof(target) - 1);
+		if (n < 0) {
+			continue;
+		}
+		target[n] = 0;
+		if (strcmp(target, device_path) == 0) {
+			close(fd);
+			left++;
+		}
+	}
+	return left;
+}
+
+static mfxStatus open_encoder(enum fail_step step, void **data)
+{
+	failing = step;
+	loaders = 0;
+	sessions = 0;
+	displays = 0;
+	loader_unloaded_with_session_open = false;
+	/* A missing device makes open() fail. */
+	default_h264_device = step == FAIL_OPEN ? "/nonexistent/qsv-init-release" : device_path;
+
+	mfxVersion ver = {};
+	mfxSession session = nullptr;
+	*data = nullptr;
+	mfxStatus sts = Initialize(ver, &session, nullptr, nullptr, false, QSV_CODEC_AVC, data);
+
+	default_h264_device = nullptr;
+	return sts;
+}
+
+/* Nothing Initialize() acquired is still held. */
+static void check_all_released(const char *what)
+{
+	int fds = close_left_open();
+	if (loaders || sessions || displays || fds || loader_unloaded_with_session_open) {
+		fprintf(stderr, "%s left %d loaders, %d sessions, %d VA displays and %d device descriptors%s\n", what,
+			loaders, sessions, displays, fds,
+			loader_unloaded_with_session_open ? "; the loader was unloaded with its session open" : "");
+		fail();
+	}
+}
+
+static void check_failed_open(enum fail_step step, const char *what)
+{
+	void *data;
+	mfxStatus sts = open_encoder(step, &data);
+
+	if (sts >= MFX_ERR_NONE) {
+		fprintf(stderr, "Initialize() succeeded although %s failed\n", what);
+		fail();
+	}
+	assert_null(data);
+	check_all_released(what);
+}
+
+/* An encoder opened and closed releases everything */
+static void open_and_close_release_all(void **state)
+{
+	(void)state;
+	void *data;
+	mfxStatus sts = open_encoder(FAIL_NONE, &data);
+
+	assert_int_equal(sts, MFX_ERR_NONE);
+	assert_non_null(data);
+	assert_int_equal(loaders, 1);
+	assert_int_equal(sessions, 1);
+	assert_int_equal(displays, 1);
+
+	ReleaseSessionData(data);
+	check_all_released("open and close");
+}
+
+static void failed_device_open_releases_all(void **state)
+{
+	(void)state;
+	check_failed_open(FAIL_OPEN, "open()");
+}
+
+static void failed_display_releases_all(void **state)
+{
+	(void)state;
+	check_failed_open(FAIL_DISPLAY, "vaGetDisplayDRM()");
+}
+
+static void failed_session_releases_all(void **state)
+{
+	(void)state;
+	check_failed_open(FAIL_SESSION, "MFXCreateSession()");
+}
+
+static void failed_va_init_releases_all(void **state)
+{
+	(void)state;
+	check_failed_open(FAIL_VA_INIT, "vaInitialize()");
+}
+
+static void failed_set_handle_releases_all(void **state)
+{
+	(void)state;
+	check_failed_open(FAIL_SET_HANDLE, "MFXVideoCORE_SetHandle()");
+}
+
+int main(void)
+{
+	const struct CMUnitTest tests[] = {
+		cmocka_unit_test(open_and_close_release_all),  cmocka_unit_test(failed_device_open_releases_all),
+		cmocka_unit_test(failed_display_releases_all), cmocka_unit_test(failed_session_releases_all),
+		cmocka_unit_test(failed_va_init_releases_all), cmocka_unit_test(failed_set_handle_releases_all),
+	};
+	return cmocka_run_group_tests(tests, setup, teardown);
+}
