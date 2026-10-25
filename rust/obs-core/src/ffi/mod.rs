@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 
+pub mod audio_discard;
 pub mod audio_mix;
 pub mod canvas_draw;
 pub mod context_names;

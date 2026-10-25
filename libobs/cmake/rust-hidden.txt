@@ -359,6 +359,11 @@ obs_source_volume_snap
 obs_source_volume_action_due
 obs_source_volume_step
 obs_source_volume_mixes
+# obs-audio-discard.c: obs-audio.c calls them inside libobs. Declared in
+# obs-audio-discard.h without EXPORT, so the shims stay hidden the same way.
+obs_audio_discard_ignore
+obs_audio_discard_if_stopped
+obs_audio_discard_tick
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Declared in
 # obs-audio-mix.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_mix_time_to_frames

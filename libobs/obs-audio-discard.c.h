@@ -15,14 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/media-io/audio-io.h"
-#include "libobs/obs-audio-discard.h"
-#include "libobs/util/util_uint64.h"
+#include "libobs/build/libobs-ported-audio-discard.pch.h"
 
 /* The steps of the audio tick that drop audio from a source's input buffer,
  * on the source's fields by pointer, declared in obs-audio-discard.h.
  * obs-audio.c holds the source's audio_buf_mutex, passes the fields in and
- * logs the steps. */
+ * logs the steps. Ported to rust/obs-core (audio_discard): the hybrid
+ * libobs drops this file. */
 
 static inline void obs_audio_discard_pop(const struct obs_audio_input *in, size_t channels, size_t size)
 {

@@ -22,6 +22,9 @@
 //! - the sample count is channel 0's, and every channel pops it
 //!   ([`Pop::Bytes`]); only the stop check clears each channel by its own
 //!   size ([`Pop::EachAll`]);
+//! - [`ignore`] without a timestamp pops channel 0's size from each
+//!   channel, read again for each one, so only channel 0 is cleared and the
+//!   other channels keep their audio ([`Pop::Channel0`]);
 //! - the drop is rounded up, so a source 1 ns behind drops a whole sample
 //!   and lands after the tick start; the lag [`ignore`] reports for the
 //!   log is then `start_ts - audio_ts` in wrapping `u64`.
@@ -43,8 +46,8 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(unused_variables, dead_code)]
-use crate::audio_mix::{AUDIO_OUTPUT_FRAMES, TsInfo};
+
+use crate::audio_mix::{AUDIO_OUTPUT_FRAMES, NS, TsInfo, mul_div64, rate_u64};
 
 /// `sizeof(float)`: the deques hold `f32` samples.
 const SAMPLE_SIZE: usize = 4;
@@ -89,7 +92,7 @@ pub enum Pop {
 pub struct IgnoreStep {
     /// The source is back in sync: render it again.
     pub rerender: bool,
-    /// Audio without a timestamp: all of channel 0's size was popped.
+    /// Audio without a timestamp: channel 0 was cleared.
     pub no_timestamp: bool,
     /// Channel 0's sample count before the step.
     pub buffered: usize,
@@ -153,13 +156,80 @@ pub fn ignore(
     sample_rate: usize,
     start_ts: u64,
 ) -> (IgnoreStep, Pop) {
-    todo!()
+    let num_floats = buffered_bytes / SAMPLE_SIZE;
+    let mut step = IgnoreStep {
+        buffered: num_floats,
+        ..IgnoreStep::default()
+    };
+    let mut pop = Pop::None;
+
+    if state.audio_ts == 0 && num_floats != 0 {
+        step.no_timestamp = true;
+        state.last_size = 0;
+        return (step, Pop::Channel0(buffered_bytes));
+    }
+
+    if num_floats != 0 {
+        // Round the samples to drop up: (size_t)(lag - 1 in samples) + 1.
+        let behind = start_ts.wrapping_sub(state.audio_ts).wrapping_sub(1);
+        let drop = (mul_div64(behind, rate_u64(sample_rate), NS) as usize)
+            .wrapping_add(1)
+            .min(num_floats);
+
+        step.dropped = drop;
+        pop = Pop::Bytes(drop.wrapping_mul(SAMPLE_SIZE));
+
+        state.last_size = 0;
+        state.audio_ts =
+            state
+                .audio_ts
+                .wrapping_add(mul_div64(drop as u64, NS, rate_u64(sample_rate)));
+        step.lag = start_ts.wrapping_sub(state.audio_ts);
+
+        // Rounding error, adjust.
+        if state.audio_ts == start_ts.wrapping_sub(1) {
+            state.audio_ts = start_ts;
+        }
+
+        // Back in sync.
+        if state.audio_ts >= start_ts {
+            step.rerender = true;
+            return (step, pop);
+        }
+    }
+
+    if !state.pending || num_floats != 0 {
+        step.warn = true;
+        step.warn_lag = start_ts.wrapping_sub(state.audio_ts);
+    }
+
+    state.pending = true;
+    state.audio_ts = 0;
+    step.restarted = true;
+    (step, pop)
 }
 
 /// `discard_if_stopped`: the pending stop check, on channel 0's `size` in
 /// bytes.
 pub fn if_stopped(state: &mut InputState, size: usize) -> (StopCheck, Pop) {
-    todo!()
+    if size == 0 {
+        return (StopCheck::None, Pop::None);
+    }
+
+    if state.last_size != size {
+        state.last_size = size;
+        return (StopCheck::None, Pop::None);
+    }
+
+    if !state.pending_stop {
+        state.pending_stop = true;
+        return (StopCheck::Pending, Pop::None);
+    }
+
+    state.pending_stop = false;
+    state.audio_ts = 0;
+    state.last_size = 0;
+    (StopCheck::Cleared, Pop::EachAll)
 }
 
 /// `discard_audio`: after the mix, drop the frames of the tick `ts` from
@@ -172,5 +242,54 @@ pub fn discard_tick(
     sample_rate: usize,
     ts: TsInfo,
 ) -> (DiscardStep, Pop) {
-    todo!()
+    let mut step = DiscardStep::default();
+
+    if audio_render {
+        state.audio_ts = 0;
+        step.path = DiscardPath::RenderSource;
+        return (step, Pop::None);
+    }
+
+    if ts.end <= state.audio_ts {
+        step.path = DiscardPath::Ahead;
+        return (step, Pop::None);
+    }
+
+    let start_minus_1 = ts.start.wrapping_sub(1);
+    if state.audio_ts < start_minus_1 {
+        step.path = DiscardPath::Behind;
+        let mut pop = Pop::None;
+        if state.pending && size < MAX_AUDIO_SIZE {
+            (step.stop, pop) = if_stopped(state, size);
+        }
+        return (step, pop);
+    }
+
+    let mut total_floats = AUDIO_OUTPUT_FRAMES;
+    if state.audio_ts != ts.start && state.audio_ts != start_minus_1 {
+        let since_start = state.audio_ts.wrapping_sub(ts.start);
+        let start_point = mul_div64(since_start, rate_u64(sample_rate), NS) as usize;
+        if start_point == AUDIO_OUTPUT_FRAMES {
+            step.path = DiscardPath::StartAtEnd;
+            return (step, Pop::None);
+        }
+        total_floats = total_floats.wrapping_sub(start_point);
+    }
+
+    let tick_size = total_floats.wrapping_mul(SAMPLE_SIZE);
+
+    if size < tick_size {
+        step.path = DiscardPath::Pending;
+        let pop;
+        (step.stop, pop) = if_stopped(state, size);
+        if step.stop != StopCheck::Cleared {
+            state.audio_ts = ts.end;
+        }
+        return (step, pop);
+    }
+
+    state.last_size = 0;
+    state.pending_stop = false;
+    state.audio_ts = ts.end;
+    (step, Pop::Bytes(tick_size))
 }

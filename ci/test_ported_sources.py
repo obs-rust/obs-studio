@@ -17,6 +17,7 @@ SPEC.loader.exec_module(PORTED)
 # Ported on Linux, Windows and macOS.
 PORTED_ON_EVERY_HOST = (
     "graphics/graphics-sprite.c.h.o",
+    "obs-audio-discard.c.h.o",
     "obs-audio-mix.c.h.o",
     "obs-canvas-draw.c.h.o",
     "obs-context-names.c.h.o",
