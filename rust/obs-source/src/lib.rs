@@ -60,6 +60,7 @@ pub mod color_space;
 pub mod conversion_plan;
 pub mod deinterlace_draw;
 pub mod deinterlace_pacing;
+pub mod deinterlace_select;
 pub mod draw_plan;
 pub mod draw_technique;
 pub mod frame_copy;
