@@ -102,7 +102,7 @@ pub struct Step {
 /// MSVC x64 it is exact 128-bit math (`_umul128`, `_udiv128`), which faults
 /// when the quotient does not fit in 64 bits; here that saturates. A `div`
 /// of 0 (a sample rate of 0, where the C divides by 0) gives 0.
-fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+pub(crate) fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
     if crate::platform::MUL_DIV64_IS_UDIV128 {
         let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
             .checked_div(u128::from(div))
@@ -118,7 +118,7 @@ fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
 }
 
 /// Nanoseconds per second, the unit of the timestamps.
-const NS: u64 = 1_000_000_000;
+pub(crate) const NS: u64 = 1_000_000_000;
 
 /// [`AUDIO_OUTPUT_FRAMES`] as the C's `int` macro takes part in `uint64_t`
 /// and `int` arithmetic.
@@ -129,7 +129,7 @@ const FRAMES_U64_MINUS_1: u64 = 1023;
 
 /// The C converts `size_t` to `uint64_t` without loss on every host libobs
 /// builds for.
-fn rate_u64(sample_rate: usize) -> u64 {
+pub(crate) fn rate_u64(sample_rate: usize) -> u64 {
     u64::try_from(sample_rate).unwrap_or(u64::MAX)
 }
 

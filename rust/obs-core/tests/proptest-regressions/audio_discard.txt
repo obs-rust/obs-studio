@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f7029a5bca38604db5de1e42d4cfeff953029690b7f0ad56e48956c955597c00 # shrinks to channels = 1, frames = 0, behind = 1, rate = 44100, pending = false, no_ts = false
+cc bada28263f56b87afc30e3482c81c6b99bf64f27764fba4646b63cdad6cb7521 # shrinks to frames = 0, offset = 0, rate = 44100, pending = false, pending_stop = false, last_frames = 0, audio_render = false
+cc e188b12abda31cc9974fcbeb5bafe06aeb1445594aa45958e4345c7e4706c3b7 # shrinks to audio_ts = 0, start = 0, end = 0, size = 0, rate = 0, last_size = 0, flags = [false, false, false]
