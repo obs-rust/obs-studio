@@ -802,6 +802,29 @@
         "libobs/data"
       ]
     },
+    "test_encoder_audio_start_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_audio_start_steps.c",
+        "libobs/obs-encoder-audio-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_encoder_fallback": {
       "sources": [
         "test/cmocka/test_encoder_fallback.c",
@@ -4145,6 +4168,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_audio_start_steps": {
+      "target": "test_encoder_audio_start_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_fallback": {
