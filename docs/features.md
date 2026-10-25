@@ -255,6 +255,15 @@ not get a line.
   so browser sources and panels play H.264/AAC media. *Linux*, 2026-10-23.
   Issue [#1864](https://github.com/obs-rust/obs-studio/issues/1864), PR
   [#1948](https://github.com/obs-rust/obs-studio/pull/1948).
+- **Chromium sandbox for browser sources on Linux.** Browser sources and
+  panels run in Chromium's sandbox where it can work: with unprivileged user
+  namespaces, or with a `chrome-sandbox` helper that is setuid root. Where
+  it can't (OBS runs as root, or neither is available), they run without it
+  as before, and OBS shows the fallback warning with the cause and what to
+  change. *Linux*, pending merge. Issue
+  [#1092](https://github.com/obs-rust/obs-studio/issues/1092), PRs
+  [obs-rust/obs-browser#3](https://github.com/obs-rust/obs-browser/pull/3),
+  [obs-rust/obs-browser#8](https://github.com/obs-rust/obs-browser/pull/8).
 
 ### Scenes and UI
 
@@ -289,10 +298,12 @@ not get a line.
   that it keeps working (for example a browser source without the Chromium
   sandbox), OBS logs it at error level and shows a warning with a 3-second
   countdown that accepts the fallback, once per session. Plugins call
-  `obs_frontend_warn_fallback()` ([fallback-warning.md](fallback-warning.md)).
-  *All*, pending merge. Issue
-  [#2218](https://github.com/obs-rust/obs-studio/issues/2218), PR
-  [#2238](https://github.com/obs-rust/obs-studio/pull/2238).
+  `obs_frontend_warn_fallback()` ([fallback-warning.md](fallback-warning.md));
+  the browser source uses it when the Chromium sandbox can't work. *All*,
+  2026-10-25. Issue
+  [#2218](https://github.com/obs-rust/obs-studio/issues/2218), PRs
+  [#2238](https://github.com/obs-rust/obs-studio/pull/2238),
+  [obs-rust/obs-browser#8](https://github.com/obs-rust/obs-browser/pull/8).
 - **No upstream release notes or donor list downloads.** The What's New
   dialog, which showed upstream OBS Studio's release notes from
   obsproject.com, is off by default (`ENABLE_WHATSNEW=OFF`); a build that
@@ -1000,6 +1011,20 @@ area.
   [#2271](https://github.com/obs-rust/obs-studio/pull/2271), upstream
   [obsproject/obs-studio#4828](https://github.com/obsproject/obs-studio/issues/4828),
   [obsproject/obs-studio#3211](https://github.com/obsproject/obs-studio/issues/3211).
+- A browser source playing sound through WebAudio (alert boxes and the like)
+  no longer goes silent for good when Chromium's audio service process dies;
+  its sound comes back about 3 s later, without a page refresh or toggling
+  "Control audio via OBS". A page that paused its own audio stays paused.
+  *All*, pending merge. Issue
+  [#2328](https://github.com/obs-rust/obs-studio/issues/2328), upstream
+  [obsproject/obs-studio#10586](https://github.com/obsproject/obs-studio/issues/10586).
+- A browser source with "Control audio via OBS" no longer raises the audio
+  buffering of every source for good (up to 960 ms of added latency) when
+  its audio arrives late under load. Audio that arrives too late to mix is
+  dropped and logged instead: during such a stall the browser source is
+  silent for about the stall's length (up to about a second), and other
+  sources keep their latency. *All*, pending merge. Issue
+  [#2335](https://github.com/obs-rust/obs-studio/issues/2335).
 
 ### Encoding, streaming and recording
 
