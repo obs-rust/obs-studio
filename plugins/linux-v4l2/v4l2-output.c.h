@@ -104,7 +104,7 @@ bool loopback_module_available()
 
 	for (i = 0; i != 32; i++) {
 		snprintf(new_device, 16, "/dev/video%d", i);
-		fd = open(new_device, O_RDWR);
+		fd = open(new_device, O_RDWR | O_CLOEXEC);
 		if (fd < 0)
 			continue;
 		if (ioctl(fd, VIDIOC_QUERYCAP, &capability) < 0) {
@@ -144,7 +144,7 @@ static bool try_connect(void *data, const char *device)
 
 	vcam->frame_size = width * height * 2;
 
-	vcam->device = open(device, O_RDWR);
+	vcam->device = open(device, O_RDWR | O_CLOEXEC);
 
 	if (vcam->device < 0)
 		return false;

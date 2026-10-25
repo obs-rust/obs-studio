@@ -32,8 +32,11 @@ fn spawn(program: &CString, argv0: &CString, rest: &[&CString], read_mode: bool)
     for arg in rest {
         cmd.arg(std::ffi::OsStr::from_bytes(arg.as_bytes()));
     }
-    // Rust sets CLOEXEC on every new fd and closes non-stdio fds in the
-    // child, matching the C `fcntl` + `posix_spawn` file actions.
+    // Rust sets CLOEXEC on the pipe fds it creates and closes the unused
+    // ends in the child, matching the C `fcntl` + `posix_spawn` file
+    // actions. Like the C, it closes nothing else: the child inherits every
+    // other fd of the process that lacks FD_CLOEXEC, so callers must open
+    // what they hold with O_CLOEXEC (obsproject/obs-studio#14054).
     if read_mode {
         cmd.stdout(Stdio::piped());
     } else {

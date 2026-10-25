@@ -789,6 +789,11 @@ area.
   delivers frames. *Linux*, pending merge. Issue
   [#2264](https://github.com/obs-rust/obs-studio/issues/2264), upstream
   [obsproject/obs-studio#9434](https://github.com/obsproject/obs-studio/issues/9434).
+- The Virtual Camera can be stopped and started again while recording: the
+  recording no longer keeps the v4l2loopback device open, and no longer
+  holds the VA-API encoder's GPU device either. *Linux*, pending merge.
+  Issue [#2278](https://github.com/obs-rust/obs-studio/issues/2278), upstream
+  [obsproject/obs-studio#14054](https://github.com/obsproject/obs-studio/issues/14054).
 
 ### Audio
 

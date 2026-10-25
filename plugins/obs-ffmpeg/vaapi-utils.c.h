@@ -21,7 +21,7 @@ inline static VADisplay vaapi_open_display_drm(int *fd, const char *device_path)
 	if (!device_path)
 		return NULL;
 
-	*fd = open(device_path, O_RDWR);
+	*fd = open(device_path, O_RDWR | O_CLOEXEC);
 	if (*fd < 0) {
 		blog(LOG_ERROR, "VAAPI: Failed to open device '%s'", device_path);
 		return NULL;
