@@ -1304,6 +1304,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
+        ("HAVE_OBS_FFMPEG".into(), false),
+        ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_QT6_WIDGETS".into(), false),
     ]);
     // No suite's size is pinned: every new cmocka test lands in one, and two

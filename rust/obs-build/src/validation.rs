@@ -251,6 +251,9 @@ pub fn build_c_tests(
         ("HAVE_OBS_FILTERS".into(), options.filters),
         ("HAVE_OBS_PIPEWIRE".into(), options.pipewire),
         ("HAVE_OBS_PULSEAUDIO".into(), options.pulseaudio_plugin),
+        // obs-build builds neither plugin; their tests run under CMake.
+        ("HAVE_OBS_FFMPEG".into(), false),
+        ("HAVE_OBS_QSV11".into(), false),
     ]);
     let mut core_interface = SharedLibrary {
         include_dirs: vec![

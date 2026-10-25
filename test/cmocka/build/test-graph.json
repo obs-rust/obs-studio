@@ -1048,6 +1048,27 @@
         "libobs/data"
       ]
     },
+    "test_happy_eyeballs_cloexec": {
+      "sources": [
+        "test/cmocka/test_happy_eyeballs_cloexec.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_OBS_OUTPUTS",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "shared/happy-eyeballs"
+      ]
+    },
     "test_hevc": {
       "sources": [
         "test/cmocka/test_hevc.c"
@@ -2064,6 +2085,41 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
+    },
+    "test_qsv_open_cloexec": {
+      "sources": [
+        "test/cmocka/test_qsv_open_cloexec.cpp",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/qsv-probe.c.h"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_QSV11"
+        ]
+      },
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "packages": [
+        "vpl",
+        "libva",
+        "libva-drm"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=vaGetDisplayDRM"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11"
+      ]
     },
     "test_qsv_probe": {
       "sources": [
@@ -3401,6 +3457,47 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_vaapi_open_fd_leak": {
+      "sources": [
+        "test/cmocka/test_vaapi_open_fd_leak.c",
+        "plugins/obs-ffmpeg/vaapi-probe-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_FFMPEG"
+        ]
+      },
+      "includes": [
+        "plugins/obs-ffmpeg",
+        "shared/opts-parser"
+      ],
+      "packages": [
+        "libva",
+        "libva-drm",
+        "libavutil"
+      ],
+      "header_packages": [
+        "libpci",
+        "libdrm",
+        "libavcodec",
+        "libavformat",
+        "libavfilter"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=vaGetDisplayDRM"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg"
+      ]
+    },
     "test_vec2": {
       "sources": [
         "test/cmocka/test_vec2.c"
@@ -4232,6 +4329,13 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120
     },
+    "test_happy_eyeballs_cloexec": {
+      "target": "test_happy_eyeballs_cloexec",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_hevc": {
       "target": "test_hevc"
     },
@@ -4669,6 +4773,13 @@
     },
     "test_pulse_reconnect": {
       "target": "test_pulse_reconnect"
+    },
+    "test_qsv_open_cloexec": {
+      "target": "test_qsv_open_cloexec",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_qsv_probe": {
       "target": "test_qsv_probe",
@@ -5144,6 +5255,13 @@
     },
     "test_util_uint64": {
       "target": "test_util_uint64"
+    },
+    "test_vaapi_open_fd_leak": {
+      "target": "test_vaapi_open_fd_leak",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_vec2": {
       "target": "test_vec2"

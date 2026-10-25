@@ -303,7 +303,11 @@ foreach(_fragment IN LISTS _cmocka_test_fragments)
 endforeach()
 include("${CMAKE_CURRENT_SOURCE_DIR}/native-test-graph.cmake")
 # Match the existing plugin-target guards independently of core feature options.
-foreach(_graph_plugin IN ITEMS filters pipewire pulseaudio outputs)
+foreach(
+  _graph_plugin
+  IN
+  ITEMS ffmpeg filters pipewire pulseaudio outputs qsv11
+)
   string(TOUPPER "${_graph_plugin}" _graph_plugin_upper)
   if(TARGET OBS::${_graph_plugin})
     set(HAVE_OBS_${_graph_plugin_upper} TRUE)
