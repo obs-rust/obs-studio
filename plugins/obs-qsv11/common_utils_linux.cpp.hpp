@@ -7,9 +7,29 @@ static const char *default_hevc_device = nullptr;
 static const char *default_av1_device = nullptr;
 
 struct linux_data {
+	mfxLoader loader;
+	mfxSession session;
 	int fd;
 	VADisplay vaDisplay;
 };
+
+/* Releases what Initialize() acquired, in reverse order: the session goes
+ * before the display it uses and the loader that runs it (#2393). */
+static void release_init(mfxLoader loader, mfxSession session, VADisplay display, int fd)
+{
+	if (session) {
+		MFXClose(session);
+	}
+	if (display) {
+		vaTerminate(display);
+	}
+	if (fd >= 0) {
+		close(fd);
+	}
+	if (loader) {
+		MFXUnload(loader);
+	}
+}
 
 #define DEVICE_MGR_TYPE MFX_HANDLE_VA_DISPLAY
 // This ends up at like 72 for 1440p@120 AV1.
@@ -291,12 +311,13 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 	fd = open(device_path, O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		blog(LOG_ERROR, "Failed to open device '%s'", device_path);
+		release_init(loader, nullptr, nullptr, fd);
 		return MFX_ERR_DEVICE_FAILED;
 	}
 
 	mfxHDL vaDisplay = vaGetDisplayDRM(fd);
 	if (!vaDisplay) {
-		close(fd);
+		release_init(loader, nullptr, nullptr, fd);
 		return MFX_ERR_DEVICE_FAILED;
 	}
 
@@ -304,7 +325,7 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 	if (MFX_ERR_NONE > sts) {
 		blog(LOG_ERROR, "Failed to initialize MFX");
 		MSDK_PRINT_RET_MSG(sts);
-		close(fd);
+		release_init(loader, nullptr, vaDisplay, fd);
 		return sts;
 	}
 
@@ -313,13 +334,18 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 	int minor;
 	if (vaInitialize(vaDisplay, &major, &minor) != VA_STATUS_SUCCESS) {
 		blog(LOG_ERROR, "Failed to initialize VA-API");
-		vaTerminate(vaDisplay);
-		close(fd);
+		release_init(loader, *pSession, vaDisplay, fd);
+		*pSession = nullptr;
 		return MFX_ERR_DEVICE_FAILED;
 	}
 
 	sts = MFXVideoCORE_SetHandle(*pSession, DEVICE_MGR_TYPE, vaDisplay);
-	MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
+	if (MFX_ERR_NONE > sts) {
+		MSDK_PRINT_RET_MSG(sts);
+		release_init(loader, *pSession, vaDisplay, fd);
+		*pSession = nullptr;
+		return sts;
+	}
 
 	if (pmfxAllocator) {
 		// Allow us to access the session during allocation.
@@ -331,10 +357,17 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 		pmfxAllocator->GetHDL = simple_gethdl;
 
 		sts = MFXVideoCORE_SetFrameAllocator(*pSession, pmfxAllocator);
-		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
+		if (MFX_ERR_NONE > sts) {
+			MSDK_PRINT_RET_MSG(sts);
+			release_init(loader, *pSession, vaDisplay, fd);
+			*pSession = nullptr;
+			return sts;
+		}
 	}
 
 	struct linux_data *d = (struct linux_data *)bmalloc(sizeof(struct linux_data));
+	d->loader = loader;
+	d->session = *pSession;
 	d->fd = fd;
 	d->vaDisplay = (VADisplay)vaDisplay;
 	*data = d;
@@ -349,8 +382,7 @@ void ReleaseSessionData(void *data)
 {
 	struct linux_data *d = (struct linux_data *)data;
 	if (d) {
-		vaTerminate(d->vaDisplay);
-		close(d->fd);
+		release_init(d->loader, d->session, d->vaDisplay, d->fd);
 		bfree(d);
 	}
 }

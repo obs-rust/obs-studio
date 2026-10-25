@@ -396,6 +396,11 @@ not get a line.
   log; before, one of them was hidden and could not be selected, renamed
   or removed. *All*, pending merge. Issue
   [#2382](https://github.com/obs-rust/obs-studio/issues/2382).
+- **QSV encoders release the GPU when they stop.** Each QSV encoder
+  start on Linux, including a failed one, no longer leaks the Intel VPL
+  loader and session; a start that fails no longer keeps the VA display
+  and the GPU device open. *Linux*, pending merge. Issue
+  [#2393](https://github.com/obs-rust/obs-studio/issues/2393).
 
 ### Platforms and packages
 
