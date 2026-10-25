@@ -1,0 +1,28 @@
+# Libraries that the bundled ELF files of a released AppImage link (DT_NEEDED)
+# and that are not in the AppImage, so they come from the host. Each line:
+# the soname and one bundled file that links it. ci/test_appimage_host_stack.py
+# checks that the preflight (hostlib/host-libs.json) knows every one of them
+# (obs-rust/obs-studio#2298); hostlib/build.py checks the same on every build.
+# From OBS-Studio-Rust-0.1.0-beta.20261023-linux-x86_64.AppImage
+# sha256 6d9d292fd72979dea10491a5a766bc985d1f031a6af7e85367754dbc88b69503
+# Regenerate in the extracted AppImage (--appimage-extract) with:
+#   find usr -type f -exec sh -c 'readelf -d "$1" 2>/dev/null |
+#     sed -n "s|.*(NEEDED).*\[\(.*\)\]|\1 $1|p"' _ {} \; | LC_ALL=C sort -u |
+#     awk '!seen[$1]++' | while read -r s c; do
+#     [ -n "$(find . -name "$s" -print -quit)" ] || echo "$s $c"; done
+ld-linux-x86-64.so.2 usr/bin/obs-studio-rust-gui
+libEGL.so.1 usr/lib/libQt6Gui.so.6
+libGLX.so.0 usr/bin/obs-studio-rust-gui
+libOpenGL.so.0 usr/bin/obs-studio-rust-gui
+libc.so.6 usr/bin/obs-ffmpeg-mux
+libdl.so.2 usr/bin/obs-hostlib-check
+libdrm.so.2 usr/lib/libavdevice.so.62
+libgcc_s.so.1 usr/bin/obs-nvenc-test
+libm.so.6 usr/bin/obs-nvenc-test
+libpthread.so.0 usr/bin/obs-ffmpeg-mux
+libresolv.so.2 usr/lib/libQt6Network.so.6
+librt.so.1 usr/bin/obs-studio-rust-gui
+libstdc++.so.6 usr/bin/obs-nvenc-test
+libutil.so.1 usr/bin/obs-studio-rust-gui
+libwayland-client.so.0 usr/lib/libQt6WaylandClient.so.6
+libwayland-egl.so.1 usr/lib/obs-studio-rust/libobs-opengl.so.30

@@ -82,6 +82,40 @@ def parse_host_libs(path: Path) -> tuple[HostLib, ...]:
             raise SystemExit(f"{where}: kind must be required or optional, and optional needs headers")
         out.append(lib)
     return tuple(out)
+
+
+# Host libraries a bundled ELF file may link without a host-libs.json entry.
+# The C and C++ runtime is the base system (check-glibc-floor.sh checks its
+# version; above the floor it is bundled anyway).
+HOST_RUNTIME = re.compile(r"(ld-linux-x86-64|libc|libm|libmvec|libpthread|libdl|librt|libresolv|libnss_[a-z]+"
+                          r"|libutil|libanl|libBrokenLocale|libthread_db|libstdc\+\+|libgcc_s)\.so\.\d+")
+# libGLX.so.0: libglvnd's GLX dispatch library, which ships with the host's
+# OpenGL on desktop installs (libOpenGL and libEGL are checked). The preflight
+# does not look for it (yet).
+UNCHECKED_HOST_LIBS = frozenset({"libGLX.so.0"})
+
+
+def unchecked_host_needs(deps: dict[str, list[str]], bundled: set[str],
+                         libs: tuple[HostLib, ...]) -> dict[str, list[str]]:
+    """Libraries the AppImage takes from the host that the preflight knows nothing about.
+
+    deps maps each bundled ELF file to its DT_NEEDED entries, bundled holds the
+    file names in the AppDir. Every needed library that is not bundled must be
+    in host-libs.json (or be the C runtime, or be in UNCHECKED_HOST_LIBS):
+    otherwise a host without it gets the dynamic loader's error, or "Graphics
+    module not found" for a dlopen()ed module, instead of obs-hostlib-check's
+    message (obs-rust/obs-studio#2298). Returns soname -> consumers.
+    """
+    known = {s for lib in libs for s in lib.sonames} | UNCHECKED_HOST_LIBS
+    out: dict[str, list[str]] = {}
+    for consumer, names in sorted(deps.items()):
+        for soname in names:
+            if soname in bundled or soname in known or HOST_RUNTIME.fullmatch(soname):
+                continue
+            out.setdefault(soname, []).append(consumer)
+    return out
+
+
 IMPLIB_COMMIT = "a3e167cf978a5b8a38ec0f710d8c4331e8dcdd9a"
 IMPLIB_SHA256 = "c4fdcae8a6a7db45eb636e5b862be3da914e666d66a803944aedbeeefe0c70aa"
 IMPLIB_URL = f"https://github.com/yugr/Implib.so/archive/{IMPLIB_COMMIT}.tar.gz"
@@ -189,6 +223,11 @@ def main(argv: list[str] | None = None) -> int:
 
     elves = [f for f in (appdir / "usr").rglob("*") if f.is_file() and not f.is_symlink() and is_elf(f)]
     deps = {f: needed(f) for f in elves}
+    bundled = {f.name for f in appdir.rglob("*") if f.is_file()}
+    unchecked = unchecked_host_needs({str(f.relative_to(appdir)): n for f, n in deps.items()}, bundled, libs)
+    if unchecked:
+        raise SystemExit("hostlib: these libraries come from the host, and host-libs.json does not list them:\n"
+                         + "".join(f"  {s} (linked by {', '.join(c)})\n" for s, c in unchecked.items()))
 
     with tempfile.TemporaryDirectory(prefix="hostlib-") as tmp_s:
         tmp = Path(tmp_s)

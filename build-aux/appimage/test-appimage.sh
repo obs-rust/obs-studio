@@ -24,6 +24,12 @@
 #      OBS must start, render and map no libva; the hostlib/ shim reports it
 #      unavailable at most once (obs-rust/obs-studio#959; without the shims the
 #      loader failed before main()).
+#   2c. missing-host-lib: a host without libwayland-egl.so.1, which
+#      libobs-opengl links and the AppImage takes from the host. AppRun's
+#      preflight (obs-hostlib-check) must stop with exit status 127 and name
+#      the library and the package to install, instead of OBS starting and
+#      failing with "Graphics module not found" (obs-rust/obs-studio#2298).
+#      Debian and Ubuntu images only.
 #   3. probes: the AppImage's own PipeWire, PulseAudio, gconv and D-Bus
 #      libraries, in AppRun's environment, work against a private session.
 #   4. saved-profile: OBS starts with a returning user's scene that holds a
@@ -51,11 +57,12 @@ unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS PIPEWIRE_REMOTE PIPEWIRE_
 
 APPIMAGE="$(realpath "$1")"
 OUT="$(realpath -m "${2:-.}")"
-USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile|saved-profile-custom|saved-profile-existing|gpu|first-start-no-libva>"
+USAGE="usage: test-appimage.sh <AppImage> <output-dir> <obs-appimage-testkit> <bundle|first-start|probes|saved-profile|saved-profile-custom|saved-profile-existing|gpu|first-start-no-libva|missing-host-lib>"
 TESTKIT="$(realpath "${3:?$USAGE}")"
 SCENARIO="${4:?$USAGE}"
 case "$SCENARIO" in
-bundle | first-start | first-start-no-libva | probes | saved-profile | saved-profile-custom | saved-profile-existing | gpu) ;;
+bundle | first-start | first-start-no-libva | missing-host-lib | probes | saved-profile | saved-profile-custom | \
+    saved-profile-existing | gpu) ;;
 *)
     echo "::error::unknown scenario $SCENARIO; $USAGE"
     exit 1
@@ -578,6 +585,50 @@ if [ "$SCENARIO" = first-start-no-libva ]; then
         fail "libva is still on this host after removing it"
     fi
     echo "::endgroup::"
+fi
+
+if [ "$SCENARIO" = missing-host-lib ]; then
+    require_no_obs_running
+    echo "::group::2c. A host without libwayland-egl.so.1"
+    [ "$FAMILY" = debian ] || { fail "missing-host-lib runs on Debian and Ubuntu images only"; finish; }
+    find / -xdev -name 'libwayland-egl.so*' \( -type f -o -type l \) -not -path "$APPDIR/*" \
+        -not -path '/proc/*' -print -delete
+    ldconfig 2>/dev/null || true
+    if ldconfig -p | grep -q 'libwayland-egl'; then
+        fail "libwayland-egl is still on this host after removing it"
+        finish
+    fi
+    export HOME="$PWD/home-missing"
+    mkdir -p "$HOME"
+    # The preflight exits at once. Without it OBS starts and waits at its
+    # "Failed to initialize video" dialog until finish stops it.
+    LD_LIBRARY_PATH="$HOSTILE_LD" dbus-run-session -- "$APPDIR/AppRun" --disable-shutdown-check \
+        >"$OUT/obs-stdout.log" 2>"$OUT/obs-stderr.log" &
+    APP_PID=$!
+    OWN_PIDS+=("$APP_PID")
+    for _ in $(seq 1 30); do
+        alive "$APP_PID" || break
+        sleep 1
+    done
+    if alive "$APP_PID"; then
+        fail "AppRun was still running 30 s after starting on a host without libwayland-egl.so.1; the preflight exits 127 at once"
+    else
+        set +e
+        wait "$APP_PID"
+        rc=$?
+        set -e
+        [ "$rc" -eq 127 ] || fail "AppRun $(describe_exit "$rc") on a host without libwayland-egl.so.1; the preflight exits 127"
+    fi
+    cat "$OUT/obs-stderr.log"
+    echo "::endgroup::"
+    grep -q '^  libwayland-egl\.so\.1 (' "$OUT/obs-stderr.log" ||
+        fail "the preflight did not name libwayland-egl.so.1"
+    grep -q 'install libwayland-egl1' "$OUT/obs-stderr.log" ||
+        fail "the preflight did not say to install libwayland-egl1"
+    if grep -h 'Graphics module not found' "$OUT/obs-stdout.log" "$OUT/obs-stderr.log"; then
+        fail "OBS started without libwayland-egl.so.1 and could not load its graphics module"
+    fi
+    finish
 fi
 
 if [ "$SCENARIO" = first-start ] || [ "$SCENARIO" = first-start-no-libva ]; then
