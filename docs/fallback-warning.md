@@ -35,6 +35,23 @@ the rules for every fallback, and the shared code that applies them
 7. Do not fall back when a security check fails. For example, a certificate
    that does not verify is an error, not a reason to use RTMP.
 
+## Wording
+
+Every fallback uses the same words, so the user knows the case at once:
+
+- **Title:** what runs, and without what. For example "Browser source
+  without the sandbox", "Streaming unencrypted (RTMP)".
+- **Message:** what failed, what OBS does instead, and what the user can do
+  about it, in this order. One or two short sentences each.
+- **Terms:** "sandbox" for the Chromium sandbox, "unencrypted" for a
+  connection without TLS. Do not use "insecure" or "unsafe mode".
+- **Buttons:** "Accept anyway" and "Cancel". The frontend supplies them.
+- **Id:** `<plugin>.<fallback>`, for example `browser.sandbox`,
+  `rtmp.unencrypted`. It is in the log line.
+
+A new fallback uses this helper, not a dialog of its own. Existing
+warnings change to this wording case by case.
+
 ## How to use it
 
 A plugin calls `obs_frontend_warn_fallback()` from `obs-frontend-api.h`:
