@@ -1192,6 +1192,17 @@
         ]
       }
     },
+    "test_image_jpeg_range": {
+      "sources": [
+        "test/cmocka/test_image_jpeg_range.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_lexer": {
       "sources": [
         "test/cmocka/test_lexer.c"
@@ -4353,6 +4364,13 @@
           "-a"
         ]
       ]
+    },
+    "test_image_jpeg_range": {
+      "target": "test_image_jpeg_range",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_lexer": {
       "target": "test_lexer"
