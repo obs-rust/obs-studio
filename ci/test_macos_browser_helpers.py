@@ -21,6 +21,11 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+BROWSER_CMAKE = ROOT / "plugins/obs-browser/cmake/os-macos.cmake"
+# Jobs that check out no submodules (the Format job) skip the source checks;
+# the bundle checks below still run, and the release workflow runs
+# app_identity_check.py on every built macOS app.
+NEEDS_BROWSER = unittest.skipUnless(BROWSER_CMAKE.is_file(), "plugins/obs-browser is not checked out")
 FLAVORS = (("", ""), (" (GPU)", ".gpu"), (" (Plugin)", ".plugin"), (" (Renderer)", ".renderer"))
 
 
@@ -39,7 +44,7 @@ def identities() -> dict[str, dict[str, str]]:
 
 def browser_helpers(identity: dict[str, str]) -> list[tuple[str, str]]:
     """(name, bundle id) of each helper that obs-browser's macOS CMake builds."""
-    text = (ROOT / "plugins/obs-browser/cmake/os-macos.cmake").read_text()
+    text = BROWSER_CMAKE.read_text()
     name = re.search(r'set\(helper_output_name\s+"([^"]+)"\)', text).group(1)
     bundle = re.search(r"XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER\s+(\S+)", text).group(1)
     for var, value in identity.items():
@@ -83,6 +88,7 @@ def write_bundle(root: Path, helper_name: str, helper_id: str) -> Path:
 
 
 class MacosBrowserHelpersTest(unittest.TestCase):
+    @NEEDS_BROWSER
     def test_helpers_follow_the_app_identity(self):
         for brand, identity in identities().items():
             with self.subTest(brand=brand):
@@ -92,6 +98,7 @@ class MacosBrowserHelpersTest(unittest.TestCase):
                 ]
                 self.assertEqual(browser_helpers(identity), expected)
 
+    @NEEDS_BROWSER
     def test_upstream_names_are_unchanged(self):
         self.assertEqual(browser_helpers(identities()["upstream"])[0], ("OBS Helper", "com.obsproject.obs-studio.helper"))
 
