@@ -105,6 +105,7 @@ QSV_Encoder_Internal::QSV_Encoder_Internal(mfxVersion &version, bool useTexAlloc
 		m_ver = version;
 		return;
 	}
+	MFXUnload(loader);
 }
 
 QSV_Encoder_Internal::~QSV_Encoder_Internal()

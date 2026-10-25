@@ -43,6 +43,23 @@ struct surface_info {
 	gs_texture_t *tex_uv;
 };
 
+/* Releases what simple_alloc() acquired before it failed, in reverse
+ * order: the textures of the first `textured` surfaces, the arrays, then
+ * the VA surfaces (#2396). */
+static void release_frames(VADisplay display, VASurfaceID *ids, unsigned int num_surfaces, mfxMemId *mids,
+			   struct surface_info *surfaces, unsigned int textured)
+{
+	obs_enter_graphics();
+	for (unsigned int i = textured; i-- > 0;) {
+		gs_texture_destroy(surfaces[i].tex_uv);
+		gs_texture_destroy(surfaces[i].tex_y);
+	}
+	obs_leave_graphics();
+	bfree(surfaces);
+	bfree(mids);
+	vaDestroySurfaces(display, ids, num_surfaces);
+}
+
 mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllocResponse *response)
 {
 	if (request->Type & (MFX_MEMTYPE_SYSTEM_MEMORY | MFX_MEMTYPE_VIDEO_MEMORY_PROCESSOR_TARGET)) {
@@ -117,6 +134,7 @@ mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllo
 		VADRMPRIMESurfaceDescriptor surfDesc = {0};
 		if (vaExportSurfaceHandle(display, surfaces[i].id, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
 					  VA_EXPORT_SURFACE_READ_WRITE, &surfDesc) != VA_STATUS_SUCCESS) {
+			release_frames(display, temp_surfaces, num_surfaces, mids, surfaces, (unsigned int)i);
 			return MFX_ERR_MEMORY_ALLOC;
 		}
 
@@ -146,6 +164,7 @@ mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllo
 
 		close(surfDesc.objects[surfDesc.layers[0].object_index[0]].fd);
 		if (!surfaces[i].tex_y || !surfaces[i].tex_uv) {
+			release_frames(display, temp_surfaces, num_surfaces, mids, surfaces, (unsigned int)i + 1);
 			return MFX_ERR_MEMORY_ALLOC;
 		}
 	}

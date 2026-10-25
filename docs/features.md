@@ -401,6 +401,11 @@ not get a line.
   loader and session; a start that fails no longer keeps the VA display
   and the GPU device open. *Linux*, pending merge. Issue
   [#2393](https://github.com/obs-rust/obs-studio/issues/2393).
+- **Failed QSV starts release what they took.** A QSV encoder start
+  whose Intel VPL session can't be created no longer leaks the VPL
+  loader, and on Linux a failed frame allocation no longer keeps its VA
+  surfaces and textures. *All*, pending merge. Issue
+  [#2396](https://github.com/obs-rust/obs-studio/issues/2396).
 
 ### Platforms and packages
 
