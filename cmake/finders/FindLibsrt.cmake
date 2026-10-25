@@ -82,9 +82,17 @@ find_path(
 
 if(PC_Libsrt_VERSION VERSION_GREATER 0)
   set(Libsrt_VERSION ${PC_Libsrt_VERSION})
-elseif(EXISTS "${Libsrt_INCLUDE_DIR}/version.h")
-  file(STRINGS "${Libsrt_INCLUDE_DIR}/version.h" _VERSION_STRING REGEX "#define[ \t]+SRT_VERSION_STRING[ \t]+.+")
+elseif(EXISTS "${Libsrt_INCLUDE_DIR}/version.h" OR EXISTS "${Libsrt_INCLUDE_DIR}/srt/version.h")
+  # find_path matches srt/srt.h for the usual layout (include/srt/), so the
+  # header is in the srt subdirectory there.
+  if(EXISTS "${Libsrt_INCLUDE_DIR}/version.h")
+    set(_version_header "${Libsrt_INCLUDE_DIR}/version.h")
+  else()
+    set(_version_header "${Libsrt_INCLUDE_DIR}/srt/version.h")
+  endif()
+  file(STRINGS "${_version_header}" _VERSION_STRING REGEX "#define[ \t]+SRT_VERSION_STRING[ \t]+.+")
   string(REGEX REPLACE ".*#define[ \t]+SRT_VERSION_STRING[ \t]+\"(.+)\".*" "\\1" Libsrt_VERSION "${_VERSION_STRING}")
+  unset(_version_header)
 else()
   if(NOT Libsrt_FIND_QUIETLY)
     message(AUTHOR_WARNING "Failed to find Libsrt version.")

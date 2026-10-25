@@ -31,6 +31,29 @@ if(ENABLE_NEW_MPEGTS_OUTPUT)
     endif()
   endforeach()
 
+  # The packages OBS builds with its own libsrt (Windows and macOS from
+  # obs-deps, the Flatpak from obs-deps-buildstream) need at least 1.5.7: older
+  # releases have public advisories (GHSA-6xg9-784j-24rm, GHSA-4mc6-qmpp-g7gw,
+  # GHSA-m96h-3rc9-xx6h; obs-rust/obs-studio#2372). The AppImage checks its
+  # libsrt in build-aux/appimage/check-appdir.sh. Distribution packages use the
+  # distribution's libsrt and are not checked here.
+  # An unknown version (0.0.0) fails too: the check never passes a version it
+  # cannot read.
+  set(_libsrt_minimum 1.5.7)
+  if((OS_WINDOWS OR OS_MACOS OR OS_FLATPAK) AND TARGET Libsrt::Libsrt)
+    if(Libsrt_VERSION VERSION_EQUAL 0.0.0)
+      list(
+        APPEND _error_messages
+        "Cannot read the Libsrt version: at least ${_libsrt_minimum} is required (obs-rust/obs-studio#2372)."
+      )
+    elseif(Libsrt_VERSION VERSION_LESS _libsrt_minimum)
+      list(
+        APPEND _error_messages
+        "Libsrt ${Libsrt_VERSION} is too old: at least ${_libsrt_minimum} is required (public advisories, see obs-rust/obs-studio#2372)."
+      )
+    endif()
+  endif()
+
   if(_error_messages)
     list(JOIN _error_messages "\n" _error_string)
     message(
