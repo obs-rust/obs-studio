@@ -54,6 +54,9 @@
 #include "obs-audio-mix.h"
 #include "util/util_uint64.h"
 
+/* obs-encoder-audio-start.c */
+#include "obs-encoder-audio-start.h"
+
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 

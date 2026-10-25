@@ -183,6 +183,9 @@ _Static_assert(OBS_ENCODER_SIZE_CAP_SCALING == OBS_ENCODER_CAP_SCALING, "OBS_ENC
 _Static_assert(OBS_ENCODER_SIZE_AUDIO_FORMAT_UNKNOWN == AUDIO_FORMAT_UNKNOWN, "AUDIO_FORMAT_UNKNOWN");
 _Static_assert(OBS_ENCODER_SIZE_SPEAKERS_UNKNOWN == SPEAKERS_UNKNOWN, "SPEAKERS_UNKNOWN");
 
+/* The constant obs-encoder-audio-start.h copies. */
+_Static_assert(OBS_ENCODER_AUDIO_START_TYPE_VIDEO == OBS_ENCODER_VIDEO, "OBS_ENCODER_VIDEO");
+
 static inline void get_audio_info(const struct obs_encoder *encoder, struct audio_convert_info *info)
 {
 	const struct audio_output_info *aoi;
@@ -1116,7 +1119,7 @@ void obs_encoder_set_gpu_scale_type(obs_encoder_t *encoder, enum obs_scale_type 
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_gpu_scale_type"))
 		return;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_gpu_scale_type: "
 		     "encoder '%s' is not a video encoder",
@@ -1146,7 +1149,7 @@ bool obs_encoder_set_frame_rate_divisor(obs_encoder_t *encoder, uint32_t frame_r
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_frame_rate_divisor"))
 		return false;
 
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_frame_rate_divisor: "
 		     "encoder '%s' is not a video encoder",
@@ -1170,7 +1173,7 @@ bool obs_encoder_set_frame_rate_divisor(obs_encoder_t *encoder, uint32_t frame_r
 		return false;
 	}
 
-	if (frame_rate_divisor == 0) {
+	if (!obs_encoder_audio_start_divisor_ok(frame_rate_divisor)) {
 		blog(LOG_WARNING,
 		     "encoder '%s': Cannot set frame "
 		     "rate divisor to 0",
@@ -1775,7 +1778,7 @@ static void receive_video(void *param, struct video_data *frame)
 		struct obs_encoder_group *group = encoder->encoder_group;
 		bool ready = false;
 		pthread_mutex_lock(&group->mutex);
-		ready = group->start_timestamp == frame->timestamp;
+		ready = obs_encoder_audio_start_group_ready(group->start_timestamp, frame->timestamp);
 		pthread_mutex_unlock(&group->mutex);
 		if (!ready)
 			goto wait_for_audio;
@@ -1787,7 +1790,8 @@ static void receive_video(void *param, struct video_data *frame)
 			if (!paired)
 				continue;
 
-			if (!paired->first_received || paired->first_raw_ts > frame->timestamp) {
+			if (!paired->first_received ||
+			    obs_encoder_audio_start_paired_late(paired->first_raw_ts, frame->timestamp)) {
 				obs_encoder_release(paired);
 				goto wait_for_audio;
 			}
@@ -1815,7 +1819,8 @@ static void receive_video(void *param, struct video_data *frame)
 	enc_frame.pts = encoder->cur_pts;
 
 	if (do_encode(encoder, &enc_frame, &frame->timestamp))
-		encoder->cur_pts += encoder->timebase_num * encoder->frame_rate_divisor;
+		encoder->cur_pts = obs_encoder_audio_start_video_pts(encoder->cur_pts, encoder->timebase_num,
+								     encoder->frame_rate_divisor);
 
 wait_for_audio:
 	profile_end(receive_video_name);
@@ -1830,10 +1835,9 @@ static void clear_audio(struct obs_encoder *encoder)
 static inline void push_back_audio(struct obs_encoder *encoder, struct audio_data *data, size_t size,
 				   size_t offset_size)
 {
-	if (offset_size >= size)
+	size = obs_encoder_audio_start_push_size(size, offset_size);
+	if (!size)
 		return;
-
-	size -= offset_size;
 
 	/* push in to the circular buffer */
 	for (size_t i = 0; i < encoder->planes; i++)
@@ -1842,9 +1846,9 @@ static inline void push_back_audio(struct obs_encoder *encoder, struct audio_dat
 
 static inline size_t calc_offset_size(struct obs_encoder *encoder, uint64_t v_start_ts, uint64_t a_start_ts)
 {
-	uint64_t offset = v_start_ts - a_start_ts;
+	uint64_t offset = obs_encoder_audio_start_offset_ns(v_start_ts, a_start_ts);
 	offset = util_mul_div64(offset, encoder->samplerate, 1000000000ULL);
-	return (size_t)offset * encoder->blocksize;
+	return obs_encoder_audio_start_offset_size(offset, encoder->blocksize);
 }
 
 static void start_from_buffer(struct obs_encoder *encoder, uint64_t v_start_ts)
@@ -1858,7 +1862,7 @@ static void start_from_buffer(struct obs_encoder *encoder, uint64_t v_start_ts)
 		memset(&encoder->audio_input_buffer[i], 0, sizeof(struct deque));
 	}
 
-	if (encoder->first_raw_ts < v_start_ts)
+	if (obs_encoder_audio_start_buffer_offset(encoder->first_raw_ts, v_start_ts))
 		offset_size = calc_offset_size(encoder, v_start_ts, encoder->first_raw_ts);
 
 	push_back_audio(encoder, &audio, size, offset_size);
@@ -1872,7 +1876,7 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 {
 	profile_start(buffer_audio_name);
 
-	size_t size = data->frames * encoder->blocksize;
+	size_t size = obs_encoder_audio_start_size(data->frames, encoder->blocksize);
 	size_t offset_size = 0;
 	bool success = true;
 
@@ -1882,38 +1886,34 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 		paired_encoder = obs_weak_encoder_get_encoder(encoder->paired_encoders.array[0]);
 	}
 
-	if (!encoder->start_ts && paired_encoder) {
-		uint64_t end_ts = data->timestamp;
+	if (obs_encoder_audio_start_paired(encoder->start_ts, paired_encoder != NULL)) {
 		uint64_t v_start_ts = paired_encoder->start_ts;
+		struct obs_encoder_audio_start_plan plan;
 
-		/* no video yet, so don't start audio */
-		if (!v_start_ts) {
+		if (obs_encoder_audio_start_no_video(v_start_ts)) {
 			success = false;
 			goto fail;
 		}
 
-		/* audio starting point still not synced with video starting
-		 * point, so don't start audio */
-		end_ts += util_mul_div64(data->frames, 1000000000ULL, encoder->samplerate);
-		if (end_ts <= v_start_ts) {
+		plan = obs_encoder_audio_start_packet(
+			data->timestamp, util_mul_div64(data->frames, 1000000000ULL, encoder->samplerate), v_start_ts);
+		if (plan.wait) {
 			success = false;
 			goto fail;
 		}
 
-		/* ready to start audio, truncate if necessary */
-		if (data->timestamp < v_start_ts)
+		if (plan.truncate)
 			offset_size = calc_offset_size(encoder, v_start_ts, data->timestamp);
-		if (data->timestamp <= v_start_ts)
+		if (plan.clear)
 			clear_audio(encoder);
 
 		encoder->start_ts = v_start_ts;
 
-		/* use currently buffered audio instead */
-		if (v_start_ts < data->timestamp) {
+		if (plan.from_buffer) {
 			start_from_buffer(encoder, v_start_ts);
 		}
 
-	} else if (!encoder->start_ts && !paired_encoder) {
+	} else if (obs_encoder_audio_start_unpaired(encoder->start_ts, paired_encoder != NULL)) {
 		encoder->start_ts = data->timestamp;
 	}
 
@@ -1945,7 +1945,7 @@ static bool send_audio_data(struct obs_encoder *encoder)
 	if (!do_encode(encoder, &enc_frame, NULL))
 		return false;
 
-	encoder->cur_pts += encoder->framesize;
+	encoder->cur_pts = obs_encoder_audio_start_audio_pts(encoder->cur_pts, encoder->framesize);
 	return true;
 }
 
@@ -2034,7 +2034,7 @@ static void receive_audio(void *param, size_t mix_idx, struct audio_data *in)
 	if (!buffer_audio(encoder, &audio))
 		goto end;
 
-	while (encoder->audio_input_buffer[0].size >= encoder->framesize_bytes) {
+	while (obs_encoder_audio_start_can_send(encoder->audio_input_buffer[0].size, encoder->framesize_bytes)) {
 		if (!send_audio_data(encoder)) {
 			break;
 		}
