@@ -9,6 +9,7 @@
 #include "frontend/OBSStudioAPI.hpp"
 
 #include <models/SceneCollection.hpp>
+#include <utility/FallbackWarning.hpp>
 #include <widgets/OBSBasic.hpp>
 #include <widgets/OBSProjector.hpp>
 

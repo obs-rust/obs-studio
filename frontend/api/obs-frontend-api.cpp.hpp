@@ -691,9 +691,28 @@ bool obs_frontend_is_safe_mode_enabled(void)
 	return !!callbacks_valid() ? c->obs_frontend_is_safe_mode_enabled() : false;
 }
 
-void obs_frontend_warn_fallback(const char *, const char *, const char *, bool, obs_frontend_fallback_cb, void *)
+void obs_frontend_warn_fallback(const char *id, const char *title, const char *message, bool can_cancel,
+				obs_frontend_fallback_cb cb, void *param)
 {
-	/* RED (#2218). */
+	if (c) {
+		c->obs_frontend_warn_fallback(id, title, message, can_cancel, cb, param);
+		return;
+	}
+
+	/* No frontend, so nobody to warn: log and accept. The line of
+	 * rust/obs-fallback-warning's log_line(), which the frontend logs. */
+	const char *future_error = "This may become an error in a future version of OBS.";
+	if (!id) {
+		id = "";
+	}
+	if (message && *message) {
+		blog(LOG_ERROR, "[fallback] %s: %s %s", id, message, future_error);
+	} else {
+		blog(LOG_ERROR, "[fallback] %s: %s", id, future_error);
+	}
+	if (cb) {
+		cb(param, true);
+	}
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
