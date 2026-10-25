@@ -775,6 +775,12 @@ area.
   [#2262](https://github.com/obs-rust/obs-studio/issues/2262), upstream
   [obsproject/obs-studio#3824](https://github.com/obsproject/obs-studio/issues/3824),
   [obsproject/obs-studio#4972](https://github.com/obsproject/obs-studio/issues/4972).
+- A V4L2 camera that stops working without being unplugged (a firmware
+  hang, an error after suspend and resume) no longer freezes its source on
+  the last frame: OBS closes the camera and opens it again until it
+  delivers frames. *Linux*, pending merge. Issue
+  [#2264](https://github.com/obs-rust/obs-studio/issues/2264), upstream
+  [obsproject/obs-studio#9434](https://github.com/obsproject/obs-studio/issues/9434).
 
 ### Audio
 

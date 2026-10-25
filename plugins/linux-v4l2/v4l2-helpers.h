@@ -170,6 +170,27 @@ static void v4l2_unpack_tuple(int32_t *a, int32_t *b, int64_t packed)
 }
 
 /**
+ * Delay before the capture thread reopens a failed device
+ *
+ * 1 s before the first attempt, doubling to at most 10 s, so a device that
+ * stays broken is not opened in a busy loop.
+ *
+ * @param attempt the attempts made since the device last delivered a buffer
+ *
+ * @return the delay in milliseconds
+ */
+static inline uint32_t v4l2_reopen_delay_ms(uint32_t attempt)
+{
+	const uint32_t first_ms = 1000;
+	const uint32_t max_ms = 10000;
+
+	if (attempt >= 4)
+		return max_ms;
+	uint32_t delay = first_ms << attempt;
+	return delay < max_ms ? delay : max_ms;
+}
+
+/**
  * Start the video capture on the device.
  *
  * This enqueues the memory mapped buffers and instructs the device to start

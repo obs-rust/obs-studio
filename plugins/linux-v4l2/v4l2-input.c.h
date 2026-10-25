@@ -115,6 +115,9 @@ struct v4l2_data {
 
 /* forward declarations */
 static void v4l2_init(struct v4l2_data *data, const char *hint);
+static int v4l2_setup_device(struct v4l2_data *data);
+static void v4l2_close_device(struct v4l2_data *data);
+static int v4l2_open_saved_camera(struct v4l2_data *data);
 static void v4l2_terminate(struct v4l2_data *data);
 static void v4l2_update(void *vptr, obs_data_t *settings);
 
@@ -173,11 +176,12 @@ static void v4l2_prep_obs_frame(struct v4l2_data *data, struct obs_source_frame 
 }
 
 /*
- * Worker thread to get video data
+ * Capture from the open device until the source stops it (returns true) or
+ * the device fails (returns false). Sets *attempt to 0 once the device
+ * delivers a buffer.
  */
-static void *v4l2_thread(void *vptr)
+static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 {
-	V4L2_DATA(vptr);
 	int r;
 	fd_set fds;
 	uint8_t *start;
@@ -185,6 +189,7 @@ static void *v4l2_thread(void *vptr)
 	uint64_t first_ts;
 	bool have_first_ts;
 	uint64_t dropped;
+	bool stopped = false;
 	struct timeval tv;
 	struct v4l2_buffer buf;
 	struct obs_source_frame out;
@@ -192,9 +197,6 @@ static void *v4l2_thread(void *vptr)
 	int fps_num, fps_denom;
 	float ffps;
 	uint64_t timeout_usec;
-
-	blog(LOG_DEBUG, "%s: new capture thread", data->device_id);
-	os_set_thread_name("v4l2: capture");
 
 	/* Get framerate and calculate appropriate select timeout value. */
 	v4l2_unpack_tuple(&fps_num, &fps_denom, data->framerate);
@@ -218,7 +220,7 @@ static void *v4l2_thread(void *vptr)
 
 	blog(LOG_DEBUG, "%s: obs frame prepared", data->device_id);
 
-	while (os_event_try(data->event) == EAGAIN) {
+	while (!(stopped = os_event_try(data->event) != EAGAIN)) {
 		FD_ZERO(&fds);
 		FD_SET(data->dev, &fds);
 
@@ -230,7 +232,7 @@ static void *v4l2_thread(void *vptr)
 		if (r < 0) {
 			if (errno == EINTR)
 				continue;
-			blog(LOG_ERROR, "%s: select failed", data->device_id);
+			blog(LOG_ERROR, "%s: select failed: %s", data->device_id, strerror(errno));
 			break;
 		} else if (r == 0) {
 			blog(LOG_ERROR, "%s: select timed out", data->device_id);
@@ -261,9 +263,10 @@ static void *v4l2_thread(void *vptr)
 				blog(LOG_DEBUG, "%s: ioctl dqbuf eagain", data->device_id);
 				continue;
 			}
-			blog(LOG_ERROR, "%s: failed to dequeue buffer", data->device_id);
+			blog(LOG_ERROR, "%s: failed to dequeue buffer: %s", data->device_id, strerror(errno));
 			break;
 		}
+		*attempt = 0;
 
 		blog(LOG_DEBUG, "%s: ts: %06ld buf id #%d, flags 0x%08X, seq #%d, len %d, used %d", data->device_id,
 		     buf.timestamp.tv_usec, buf.index, buf.flags, buf.sequence, buf.length, buf.bytesused);
@@ -299,7 +302,7 @@ static void *v4l2_thread(void *vptr)
 
 	continue_queue_buffer:
 		if (v4l2_ioctl(data->dev, VIDIOC_QBUF, &buf) < 0) {
-			blog(LOG_ERROR, "%s: failed to enqueue buffer", data->device_id);
+			blog(LOG_ERROR, "%s: failed to enqueue buffer: %s", data->device_id, strerror(errno));
 			break;
 		}
 
@@ -310,6 +313,73 @@ static void *v4l2_thread(void *vptr)
 
 exit:
 	v4l2_stop_capture(data->dev);
+	return stopped;
+}
+
+/*
+ * The device failed while it stays registered: no udev "remove" comes for a
+ * camera whose firmware hangs, a driver that fails with EIO or ENODEV after
+ * resume, or a stream another process pulled (obs-rust/obs-studio#2264,
+ * upstream obsproject/obs-studio#9434). Let go of the device, which some
+ * drivers need before they recover, and open it again after a growing delay
+ * until it captures or the source stops. A real unplug ends this through
+ * device_removed(), and the replug starts the capture through device_added().
+ *
+ * Returns true with the device open again, false when the source stopped.
+ */
+static bool v4l2_reopen(struct v4l2_data *data, uint32_t *attempt)
+{
+	v4l2_close_device(data);
+	if (*attempt == 0)
+		blog(LOG_WARNING, "%s: the device failed, closing it and opening it again until it works",
+		     data->device_id);
+
+	for (;;) {
+		/* Returns at once when the source stops (v4l2_terminate) */
+		if (os_event_timedwait(data->event, v4l2_reopen_delay_ms(*attempt)) != ETIMEDOUT)
+			return false;
+		(*attempt)++;
+
+		/* Only the source's own camera: another one may have taken
+		 * the node meanwhile (obs-rust/obs-studio#2262) */
+		pthread_mutex_lock(&data->device_mutex);
+		bool known = v4l2_identity_known(&data->identity);
+		pthread_mutex_unlock(&data->device_mutex);
+		int dev = known ? v4l2_open_saved_camera(data)
+				: v4l2_open(data->device_id, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+		const char *why = known ? "the camera is not at the node, or it cannot be opened" : strerror(errno);
+		if (dev != -1) {
+			pthread_mutex_lock(&data->controls_mutex);
+			data->dev = dev;
+			pthread_mutex_unlock(&data->controls_mutex);
+			if (v4l2_setup_device(data) == 0) {
+				blog(LOG_INFO, "%s: device reopened (attempt %" PRIu32 ")", data->device_id, *attempt);
+				return true;
+			}
+			why = strerror(errno);
+			v4l2_close_device(data);
+		}
+		blog(LOG_INFO, "%s: cannot reopen the device (attempt %" PRIu32 "): %s; next attempt in %" PRIu32 " s",
+		     data->device_id, *attempt, why, v4l2_reopen_delay_ms(*attempt) / 1000);
+	}
+}
+
+/*
+ * Worker thread to get video data
+ */
+static void *v4l2_thread(void *vptr)
+{
+	V4L2_DATA(vptr);
+	/* reopen attempts since the device last delivered a buffer */
+	uint32_t attempt = 0;
+
+	blog(LOG_DEBUG, "%s: new capture thread", data->device_id);
+	os_set_thread_name("v4l2: capture");
+
+	while (!v4l2_capture(data, &attempt)) {
+		if (!v4l2_reopen(data, &attempt))
+			break;
+	}
 	return NULL;
 }
 
@@ -1383,14 +1453,26 @@ static void v4l2_terminate(struct v4l2_data *data)
 		data->thread = 0;
 	}
 
+	v4l2_close_device(data);
+}
+
+/*
+ * Free what v4l2_setup_device() set up and close the device, once no capture
+ * runs on it
+ */
+static void v4l2_close_device(struct v4l2_data *data)
+{
 	if (data->pixfmt == V4L2_PIX_FMT_MJPEG || data->pixfmt == V4L2_PIX_FMT_H264) {
 		v4l2_destroy_decoder(&data->decoder);
 	}
 	v4l2_destroy_mmap(&data->buffers);
 
 	if (data->dev != -1) {
+		/* v4l2_restore_controls() uses the device from other threads */
+		pthread_mutex_lock(&data->controls_mutex);
 		v4l2_close(data->dev);
 		data->dev = -1;
+		pthread_mutex_unlock(&data->controls_mutex);
 	}
 }
 
@@ -1491,9 +1573,11 @@ static int64_t v4l2_saved_framerate(int_fast32_t dev, uint32_t pixelformat, int 
  */
 static void v4l2_init(struct v4l2_data *data, const char *hint)
 {
-	uint32_t input_caps;
-	int fps_num, fps_denom;
-	int64_t saved;
+	/* A capture thread still waiting to reopen its failed device has no
+	 * device open (data->dev is -1), so device_added() takes the source
+	 * for stopped: stop that thread before starting another. */
+	if (data->thread)
+		v4l2_terminate(data);
 
 	/* The camera at its node opens right away; otherwise it is looked
 	 * for, and when it is not there the source waits for it. */
@@ -1511,6 +1595,35 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 		blog(LOG_ERROR, "Unable to open device");
 		goto fail;
 	}
+	if (v4l2_setup_device(data) < 0)
+		goto fail;
+
+	/* start the capture thread */
+	if (os_event_init(&data->event, OS_EVENT_TYPE_MANUAL) != 0)
+		goto fail;
+	if (pthread_create(&data->thread, NULL, v4l2_thread, data) != 0)
+		goto fail;
+	v4l2_busy_update(data, 0);
+	return;
+fail:;
+	int err = errno;
+	blog(LOG_ERROR, "Initialization failed, errno: %s", strerror(err));
+	v4l2_terminate(data);
+	v4l2_busy_update(data, err);
+}
+
+/*
+ * Set up the open device for capture: input, standard or dv timing, format,
+ * framerate, the saved controls, the buffers and the decoder. Also used when
+ * the capture thread reopens a failed device. Returns negative on failure,
+ * with errno set; v4l2_close_device() frees what was set up.
+ */
+static int v4l2_setup_device(struct v4l2_data *data)
+{
+	uint32_t input_caps;
+	int fps_num, fps_denom;
+	int64_t saved;
+
 	pthread_mutex_lock(&data->controls_mutex);
 	v4l2_device_identity(data->dev, &data->dev_identity);
 	pthread_mutex_unlock(&data->controls_mutex);
@@ -1519,19 +1632,19 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	/* set input */
 	if (v4l2_set_input(data->dev, &data->input) < 0) {
 		blog(LOG_ERROR, "Unable to set input %d", data->input);
-		goto fail;
+		return -1;
 	}
 	blog(LOG_INFO, "Input: %d", data->input);
 	if (v4l2_get_input_caps(data->dev, -1, &input_caps) < 0) {
 		blog(LOG_ERROR, "Unable to get input capabilities");
-		goto fail;
+		return -1;
 	}
 
 	/* set video standard if supported */
 	if (input_caps & V4L2_IN_CAP_STD) {
 		if (v4l2_set_standard(data->dev, &data->standard) < 0) {
 			blog(LOG_ERROR, "Unable to set video standard");
-			goto fail;
+			return -1;
 		}
 		data->resolution = -1;
 		data->framerate = -1;
@@ -1540,7 +1653,7 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	if (input_caps & V4L2_IN_CAP_DV_TIMINGS) {
 		if (v4l2_set_dv_timing(data->dev, &data->dv_timing) < 0) {
 			blog(LOG_ERROR, "Unable to set dv timing");
-			goto fail;
+			return -1;
 		}
 		data->resolution = -1;
 		data->framerate = -1;
@@ -1549,12 +1662,12 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	/* set pixel format and resolution */
 	if (v4l2_set_format(data->dev, &data->resolution, &data->pixfmt, &data->linesize) < 0) {
 		blog(LOG_ERROR, "Unable to set format");
-		goto fail;
+		return -1;
 	}
 	if (v4l2_to_obs_video_format(data->pixfmt) == VIDEO_FORMAT_NONE && data->pixfmt != V4L2_PIX_FMT_MJPEG &&
 	    data->pixfmt != V4L2_PIX_FMT_H264) {
 		blog(LOG_ERROR, "Selected video format not supported");
-		goto fail;
+		return -1;
 	}
 	v4l2_unpack_tuple(&data->width, &data->height, data->resolution);
 	blog(LOG_INFO, "Resolution: %dx%d", data->width, data->height);
@@ -1571,7 +1684,7 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	}
 	if (v4l2_set_framerate(data->dev, &data->framerate) < 0) {
 		blog(LOG_ERROR, "Unable to set framerate");
-		goto fail;
+		return -1;
 	}
 	if (data->framerate == 0) {
 		blog(LOG_ERROR, "Framerate is not set, falling back to %i", FALLBACK_FRAMERATE);
@@ -1588,28 +1701,17 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	/* map buffers */
 	if (v4l2_create_mmap(data->dev, &data->buffers) < 0) {
 		blog(LOG_ERROR, "Failed to map buffers");
-		goto fail;
+		return -1;
 	}
 
 	if (data->pixfmt == V4L2_PIX_FMT_MJPEG || data->pixfmt == V4L2_PIX_FMT_H264) {
 		if (v4l2_init_decoder(&data->decoder, data->pixfmt) < 0) {
 			blog(LOG_ERROR, "Failed to initialize decoder");
-			goto fail;
+			return -1;
 		}
 	}
 
-	/* start the capture thread */
-	if (os_event_init(&data->event, OS_EVENT_TYPE_MANUAL) != 0)
-		goto fail;
-	if (pthread_create(&data->thread, NULL, v4l2_thread, data) != 0)
-		goto fail;
-	v4l2_busy_update(data, 0);
-	return;
-fail:;
-	int err = errno;
-	blog(LOG_ERROR, "Initialization failed, errno: %s", strerror(err));
-	v4l2_terminate(data);
-	v4l2_busy_update(data, err);
+	return 0;
 }
 
 /** Update source flags depending on the settings */

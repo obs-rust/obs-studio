@@ -71,6 +71,9 @@ static struct {
 	uint32_t sequence;
 	size_t streamoffs;
 
+	/* the camera at the node, as VIDIOC_QUERYCAP reports it */
+	const char *card;
+
 	/* the next open_failures opens fail with open_errno */
 	size_t open_failures;
 	int open_errno;
@@ -96,6 +99,7 @@ static void fake_reset(const struct fake_frame *script, size_t size)
 	fake.next = 0;
 	fake.sequence = 0;
 	fake.streamoffs = 0;
+	fake.card = "Camera A";
 	fake.open_failures = 0;
 	fake.open_errno = 0;
 	fake.opens = 0;
@@ -109,6 +113,14 @@ static void fake_fail_opens(size_t n, int err)
 	pthread_mutex_lock(&fake.mutex);
 	fake.open_failures = n;
 	fake.open_errno = err;
+	pthread_mutex_unlock(&fake.mutex);
+}
+
+/* Another camera takes the node (NULL: the source's camera again) */
+static void fake_set_camera(const char *card)
+{
+	pthread_mutex_lock(&fake.mutex);
+	fake.card = card ? card : "Camera A";
 	pthread_mutex_unlock(&fake.mutex);
 }
 
@@ -238,6 +250,14 @@ int v4l2_ioctl(int fd, unsigned long int request, ...)
 	}
 
 	switch ((unsigned long)request) {
+	case VIDIOC_QUERYCAP: {
+		struct v4l2_capability *cap = arg;
+		memset(cap, 0, sizeof(*cap));
+		snprintf((char *)cap->card, sizeof(cap->card), "%s", fake.card);
+		snprintf((char *)cap->bus_info, sizeof(cap->bus_info), "usb-fake-1");
+		cap->capabilities = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
+		break;
+	}
 	case VIDIOC_G_INPUT:
 		*(int *)arg = 0;
 		break;
@@ -544,6 +564,57 @@ static void destroy_while_waiting_returns_promptly(void **state)
 	assert_int_equal(opens_after, before.opens);
 }
 
+/* While the camera is away another camera takes its node (the numbers
+ * follow the order cameras appear, obs-rust/obs-studio#2262): the reopen
+ * does not capture it, and the camera is captured once it is back. */
+static void another_camera_at_the_node_is_not_captured(void **state)
+{
+	(void)state;
+	static const struct fake_frame script[] = {{1, 0}, {0, ENODEV}, {2, 0}, {3, 0}};
+	static const uint8_t want[] = {1, 2, 3};
+	fake_reset(script, sizeof(script) / sizeof(script[0]));
+
+	void *source = start_source();
+	assert_true(wait_until(outputs_reached, 1, 5000));
+	fake_set_camera("Camera B");
+
+	/* the first reopen (after 1 s) finds Camera B */
+	bool tried = wait_until(opens_reached, 2, 5000);
+	os_sleep_ms(300);
+	struct seen with_other = seen();
+	fake_set_camera(NULL);
+	bool resumed = wait_until(outputs_reached, 3, 10000);
+	struct seen s = seen();
+	v4l2_input.destroy(source);
+
+	assert_true(tried);
+	if (with_other.outputs != 1 || with_other.open) {
+		fprintf(stderr,
+			"with another camera at the node the source output %zu frames (1 before) and has it %s\n",
+			with_other.outputs, with_other.open ? "open" : "closed");
+		fail();
+	}
+	if (!resumed) {
+		fprintf(stderr, "the camera came back, but the source output %zu of 3 frames\n", s.outputs);
+		fail();
+	}
+	expect_values(3, want);
+}
+
+/* The wait before each reopen: 1 s, doubling to at most 10 s */
+static void reopen_delay_doubles_to_a_cap(void **state)
+{
+	(void)state;
+	assert_int_equal(v4l2_reopen_delay_ms(0), 1000);
+	assert_int_equal(v4l2_reopen_delay_ms(1), 2000);
+	assert_int_equal(v4l2_reopen_delay_ms(2), 4000);
+	assert_int_equal(v4l2_reopen_delay_ms(3), 8000);
+	assert_int_equal(v4l2_reopen_delay_ms(4), 10000);
+	assert_int_equal(v4l2_reopen_delay_ms(31), 10000);
+	assert_int_equal(v4l2_reopen_delay_ms(32), 10000);
+	assert_int_equal(v4l2_reopen_delay_ms(UINT32_MAX), 10000);
+}
+
 /* Control: stopping the source ends the capture without reopening */
 static void stopping_the_source_does_not_reopen(void **state)
 {
@@ -570,6 +641,8 @@ int main(void)
 		cmocka_unit_test(capture_resumes_once_the_device_opens_again),
 		cmocka_unit_test(destroy_while_waiting_returns_promptly),
 		cmocka_unit_test(stopping_the_source_does_not_reopen),
+		cmocka_unit_test(another_camera_at_the_node_is_not_captured),
+		cmocka_unit_test(reopen_delay_doubles_to_a_cap),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

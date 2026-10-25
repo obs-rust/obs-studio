@@ -672,7 +672,9 @@ static void capture_continues_after_corrupt_frame(void **state)
 	free(junk.data);
 }
 
-/* Control: losing the device (unplugging it) still ends the capture */
+/* Control: a device error (ENODEV) still stops the stream; the capture
+ * thread then closes the device and opens it again after a delay, which
+ * test_v4l2_dqbuf_error covers (obs-rust/obs-studio#2264). */
 static void capture_stops_when_device_is_gone(void **state)
 {
 	(void)state;
