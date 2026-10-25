@@ -282,4 +282,3 @@ struct graphics_subsystem {
  * it: image loading rejects pictures too large for a texture before decoding
  * them. */
 uint32_t gs_image_max_texture_size(void);
-
