@@ -187,6 +187,24 @@ static inline bool HasAV1ScreenContentSupport(const mfxPlatform &platform, const
 }
 PRAGMA_WARN_POP
 
+/* The sliding-window maximum for optimized CBR: a margin above the target,
+ * held within the field's 16 bits. */
+static inline mfxU16 WinBRCMaxAvgKbps(mfxU32 codecId, mfxU16 targetKbps)
+{
+	const double kbps = (codecId == MFX_CODEC_AV1 ? 1.2 : 1.3) * targetKbps;
+	return kbps < 65535.0 ? (mfxU16)kbps : (mfxU16)65535;
+}
+
+/* How long EncodeFrameAsync may keep returning a warning without taking the
+ * frame (MFX_WRN_DEVICE_BUSY) before the encode gives up. The runtime asks
+ * for a retry "in a few milliseconds"; the retries hold the lock every QSV
+ * encoder shares, so a device that stays busy would stall them all for good
+ * (#2291). */
+static constexpr auto kEncodeBusyLimit = std::chrono::seconds(2);
+
+/* How long SyncOperation waits for one frame. */
+static constexpr mfxU32 kSyncWaitMs = 60000;
+
 mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams, enum qsv_codec codec)
 {
 	memset(&m_mfxEncParams, 0, sizeof(m_mfxEncParams));
@@ -320,11 +338,7 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams, enum qsv_codec 
 		m_co3.Header.BufferSz = sizeof(m_co3);
 		m_co3.WinBRCSize = pParams->nFpsNum / pParams->nFpsDen;
 
-		if (codec == QSV_CODEC_AVC || codec == QSV_CODEC_HEVC) {
-			m_co3.WinBRCMaxAvgKbps = mfxU16(1.3 * pParams->nTargetBitRate);
-		} else if (codec == QSV_CODEC_AV1) {
-			m_co3.WinBRCMaxAvgKbps = mfxU16(1.2 * pParams->nTargetBitRate);
-		}
+		m_co3.WinBRCMaxAvgKbps = WinBRCMaxAvgKbps(m_mfxEncParams.mfx.CodecId, pParams->nTargetBitRate);
 		extendedBuffers.push_back((mfxExtBuffer *)&m_co3);
 	}
 
@@ -437,13 +451,34 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams, enum qsv_codec 
 	return sts;
 }
 
+/* Applies a live bitrate change to the encoder parameters. Returns whether
+ * anything changed, that is whether the encoder needs a reset. */
 bool QSV_Encoder_Internal::UpdateParams(qsv_param_t *pParams)
 {
-	switch (pParams->nRateControl) {
-	case MFX_RATECONTROL_CBR:
-		m_mfxEncParams.mfx.TargetKbps = pParams->nTargetBitRate;
-	default:
-		break;
+	mfxInfoMFX &mfx = m_mfxEncParams.mfx;
+	mfxU16 target = mfx.TargetKbps;
+	mfxU16 max = mfx.MaxKbps;
+
+	/* The rate control the encoder runs: InitParams rewrites
+	 * pParams->nRateControl to a lookahead mode for "low" and "normal"
+	 * latency, but initializes the encoder with the one chosen. */
+	if (mfx.RateControlMethod == MFX_RATECONTROL_CBR) {
+		target = pParams->nTargetBitRate;
+	} else if (mfx.RateControlMethod == MFX_RATECONTROL_VBR) {
+		target = pParams->nTargetBitRate;
+		max = pParams->nMaxBitRate;
+	}
+
+	if (target == mfx.TargetKbps && max == mfx.MaxKbps) {
+		return false;
+	}
+
+	mfx.TargetKbps = target;
+	mfx.MaxKbps = max;
+
+	if (std::find(extendedBuffers.begin(), extendedBuffers.end(), (mfxExtBuffer *)&m_co3) !=
+	    extendedBuffers.end()) {
+		m_co3.WinBRCMaxAvgKbps = WinBRCMaxAvgKbps(mfx.CodecId, target);
 	}
 
 	return true;
@@ -706,7 +741,7 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY, uint8_t *pD
 
 	while (MFX_ERR_NOT_FOUND == nTaskIdx || MFX_ERR_NOT_FOUND == nSurfIdx) {
 		// No more free tasks or surfaces, need to sync
-		sts = MFXVideoCORE_SyncOperation(m_session, m_pTaskPool[m_nFirstSyncTask].syncp, 60000);
+		sts = SyncTask(&m_pTaskPool[m_nFirstSyncTask]);
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
 		mfxU8 *pTemp = m_outBitstream.Data;
@@ -753,28 +788,7 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY, uint8_t *pD
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 	}
 
-	for (;;) {
-		// Encode a frame asynchronously (returns immediately)
-		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface, &m_pTaskPool[nTaskIdx].mfxBS,
-						  &m_pTaskPool[nTaskIdx].syncp);
-
-		if (MFX_ERR_NONE < sts && !m_pTaskPool[nTaskIdx].syncp) {
-			// Repeat the call if warning and no output
-			if (MFX_WRN_DEVICE_BUSY == sts) {
-				MSDK_SLEEP(1); // Wait if device is busy, then repeat the same call
-			}
-		} else if (MFX_ERR_NONE < sts && m_pTaskPool[nTaskIdx].syncp) {
-			sts = MFX_ERR_NONE; // Ignore warnings if output is available
-			break;
-		} else if (MFX_ERR_NOT_ENOUGH_BUFFER == sts) {
-			// Allocate more bitstream buffer memory here if needed...
-			break;
-		} else {
-			break;
-		}
-	}
-
-	return sts;
+	return EncodeFrame(pSurface, &m_pTaskPool[nTaskIdx]);
 }
 
 mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, void *tex, uint64_t lock_key, uint64_t *next_key,
@@ -787,7 +801,7 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, void *tex, uint64_t lock
 
 	while (MFX_ERR_NOT_FOUND == nTaskIdx || MFX_ERR_NOT_FOUND == nSurfIdx) {
 		// No more free tasks or surfaces, need to sync
-		sts = MFXVideoCORE_SyncOperation(m_session, m_pTaskPool[m_nFirstSyncTask].syncp, 60000);
+		sts = SyncTask(&m_pTaskPool[m_nFirstSyncTask]);
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
 		mfxU8 *pTemp = m_outBitstream.Data;
@@ -813,27 +827,48 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, void *tex, uint64_t lock
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 	}
 
+	return EncodeFrame(pSurface, &m_pTaskPool[nTaskIdx]);
+}
+
+mfxStatus QSV_Encoder_Internal::EncodeFrame(mfxFrameSurface1 *pSurface, Task *pTask)
+{
+	const auto start = std::chrono::steady_clock::now();
+
 	for (;;) {
 		// Encode a frame asynchronously (returns immediately)
-		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface, &m_pTaskPool[nTaskIdx].mfxBS,
-						  &m_pTaskPool[nTaskIdx].syncp);
+		mfxStatus sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface, &pTask->mfxBS, &pTask->syncp);
 
-		if (MFX_ERR_NONE < sts && !m_pTaskPool[nTaskIdx].syncp) {
-			// Repeat the call if warning and no output
-			if (MFX_WRN_DEVICE_BUSY == sts) {
-				MSDK_SLEEP(1); // Wait if device is busy, then repeat the same call
-			}
-		} else if (MFX_ERR_NONE < sts && m_pTaskPool[nTaskIdx].syncp) {
-			sts = MFX_ERR_NONE; // Ignore warnings if output is available
-			break;
-		} else if (MFX_ERR_NOT_ENOUGH_BUFFER == sts) {
-			// Allocate more bitstream buffer memory here if needed...
-			break;
-		} else {
-			break;
+		if (sts <= MFX_ERR_NONE) {
+			return sts;
+		}
+		if (pTask->syncp) {
+			return MFX_ERR_NONE; // Ignore warnings if output is available
+		}
+
+		// A warning and no output: repeat the call, but not forever.
+		if (std::chrono::steady_clock::now() - start >= kEncodeBusyLimit) {
+			warn("EncodeFrameAsync still returns %d after %lld ms, giving up", (int)sts,
+			     (long long)std::chrono::duration_cast<std::chrono::milliseconds>(kEncodeBusyLimit).count());
+			return MFX_ERR_DEVICE_FAILED;
+		}
+		if (MFX_WRN_DEVICE_BUSY == sts) {
+			MSDK_SLEEP(1); // Wait if device is busy, then repeat the same call
 		}
 	}
+}
 
+/* Waits for a task's frame. A timeout (MFX_WRN_IN_EXECUTION) is an error: the
+ * frame is not done, its bitstream is empty, and the device is not finishing
+ * work. Encoding on would send nothing while looking successful (#2291). */
+mfxStatus QSV_Encoder_Internal::SyncTask(Task *pTask)
+{
+	mfxStatus sts = MFXVideoCORE_SyncOperation(m_session, pTask->syncp, kSyncWaitMs);
+
+	if (sts == MFX_WRN_IN_EXECUTION) {
+		warn("Frame not encoded after %u ms, the device has stopped", (unsigned)kSyncWaitMs);
+		m_bSyncTimedOut = true;
+		return MFX_ERR_DEVICE_FAILED;
+	}
 	return sts;
 }
 
@@ -841,8 +876,9 @@ mfxStatus QSV_Encoder_Internal::Drain()
 {
 	mfxStatus sts = MFX_ERR_NONE;
 
-	while (m_pTaskPool && m_pTaskPool[m_nFirstSyncTask].syncp) {
-		sts = MFXVideoCORE_SyncOperation(m_session, m_pTaskPool[m_nFirstSyncTask].syncp, 60000);
+	/* After a timeout, do not wait for the other frames too. */
+	while (!m_bSyncTimedOut && m_pTaskPool && m_pTaskPool[m_nFirstSyncTask].syncp) {
+		sts = SyncTask(&m_pTaskPool[m_nFirstSyncTask]);
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 
 		m_pTaskPool[m_nFirstSyncTask].syncp = NULL;

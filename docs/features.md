@@ -1223,6 +1223,15 @@ area.
   instead of an undefined one, and a NULL encoder no longer crashes OBS. *All*, pending merge. Issue
   [#1959](https://github.com/obs-rust/obs-studio/issues/1959), PR
   [#1964](https://github.com/obs-rust/obs-studio/pull/1964).
+- Changing the bitrate of a QSV encoder while streaming no longer races the
+  other QSV encoders: the reset now takes the lock they share. A device that
+  stays busy or stops finishing frames now stops the output with an error
+  instead of leaving it connected at 0 kbps. Live bitrate changes now also
+  apply in VBR and in CBR with "low" or "normal" latency, and settings that
+  leave the bitrate alone no longer reset the encoder. *Linux, Windows*,
+  pending merge. Issue
+  [#2291](https://github.com/obs-rust/obs-studio/issues/2291), upstream
+  [obsproject/obs-studio#13228](https://github.com/obsproject/obs-studio/issues/13228).
 
 ### Sources and filters
 

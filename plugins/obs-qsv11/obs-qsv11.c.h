@@ -749,8 +749,16 @@ static bool obs_qsv_update(void *data, obs_data_t *settings)
 {
 	struct obs_qsv *obsqsv = data;
 	obsqsv->params.nTargetBitRate = (mfxU16)obs_data_get_int(settings, "bitrate");
+	obsqsv->params.nMaxBitRate = (mfxU16)obs_data_get_int(settings, "max_bitrate");
 
-	if (!qsv_encoder_reconfig(obsqsv->context, &obsqsv->params)) {
+	/* The reset touches the device every QSV session shares, like open,
+	 * encode and close: libobs runs this on the encoder's own thread
+	 * while the other QSV encoders keep encoding (#2291). */
+	pthread_mutex_lock(&g_QsvLock);
+	bool ok = qsv_encoder_reconfig(obsqsv->context, &obsqsv->params);
+	pthread_mutex_unlock(&g_QsvLock);
+
+	if (!ok) {
 		warn("Failed to reconfigure");
 		return false;
 	}

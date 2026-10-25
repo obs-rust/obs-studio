@@ -17,6 +17,8 @@
 #include <vpl/mfxstructures.h>
 #include <vpl/mfxvideo++.h>
 #include <vpl/mfxdispatcher.h>
+#include <algorithm>
+#include <chrono>
 
 /* qsv-host interface (#860) */
 #include "plugins/obs-qsv11/qsv-host.h"

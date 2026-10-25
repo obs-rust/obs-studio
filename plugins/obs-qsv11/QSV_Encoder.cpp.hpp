@@ -224,11 +224,20 @@ int qsv_param_apply_profile(qsv_param_t *, const char *profile)
 int qsv_encoder_reconfig(qsv_t *pContext, qsv_param_t *pParams)
 {
 	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)pContext;
-	pEncoder->UpdateParams(pParams);
+	if (!pEncoder->UpdateParams(pParams)) {
+		return true; // Nothing to change: no reset
+	}
+
 	mfxStatus sts = pEncoder->ReconfigureEncoder();
 
-	if (sts != MFX_ERR_NONE) {
+	/* A warning (such as MFX_WRN_INCOMPATIBLE_VIDEO_PARAM) means the runtime
+	 * adjusted a parameter and applied the reset. */
+	if (sts < MFX_ERR_NONE) {
+		do_log(LOG_WARNING, "Encoder reset failed (%d)", (int)sts);
 		return false;
+	}
+	if (sts > MFX_ERR_NONE) {
+		do_log(LOG_INFO, "Encoder reset applied with warning %d", (int)sts);
 	}
 	return true;
 }

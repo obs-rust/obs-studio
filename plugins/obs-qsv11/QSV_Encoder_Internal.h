@@ -91,6 +91,8 @@ protected:
 	mfxStatus LoadP010(mfxFrameSurface1 *pSurface, uint8_t *pDataY, uint8_t *pDataUV, uint32_t strideY,
 			   uint32_t strideUV);
 	mfxStatus Drain();
+	mfxStatus EncodeFrame(mfxFrameSurface1 *pSurface, Task *pTask);
+	mfxStatus SyncTask(Task *pTask);
 	int GetFreeTaskIndex(Task *pTaskPool, mfxU16 nPoolSize);
 
 private:
@@ -130,6 +132,7 @@ private:
 	mfxBitstream m_outBitstream;
 	bool m_bUseD3D11;
 	bool m_bUseTexAlloc;
+	bool m_bSyncTimedOut = false;
 	static mfxU16 g_numEncodersOpen;
 	static mfxHDL g_GFX_Handle; // we only want one handle for all instances to use;
 
