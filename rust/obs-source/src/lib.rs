@@ -16,7 +16,10 @@
 //! deinterlacing (the effect, the early return, the linear sRGB flag, the
 //! technique and multiplier, the second field and the mode change);
 //! `libobs/obs-source-deinterlace-pacing.c.h`, the frame pacing of
-//! double-rate deinterlacing; `libobs/obs-source-draw-plan.c.h`, the source
+//! double-rate deinterlacing; `libobs/obs-source-deinterlace-select.c.h`,
+//! the frame selection of deinterlacing (which queued frames a deinterlaced
+//! source drops and takes, and the texture update);
+//! `libobs/obs-source-draw-plan.c.h`, the source
 //! draw decisions of `rotate_async_video()`,
 //! `obs_source_render_async_video()` and `source_render()` (the rotation
 //! translate, the linear sRGB flag and non-linear alpha, the technique, the
@@ -44,7 +47,7 @@
 //! The safe cores are [`async_pacing`], [`audio_input`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
 //! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
