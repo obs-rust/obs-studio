@@ -288,7 +288,7 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 			device_path = default_av1_device;
 		}
 	}
-	fd = open(device_path, O_RDWR);
+	fd = open(device_path, O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		blog(LOG_ERROR, "Failed to open device '%s'", device_path);
 		return MFX_ERR_DEVICE_FAILED;
@@ -296,6 +296,7 @@ mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pm
 
 	mfxHDL vaDisplay = vaGetDisplayDRM(fd);
 	if (!vaDisplay) {
+		close(fd);
 		return MFX_ERR_DEVICE_FAILED;
 	}
 
@@ -381,7 +382,7 @@ struct vaapi_device {
 
 static void vaapi_open(const char *device_path, struct vaapi_device *device)
 {
-	int fd = open(device_path, O_RDWR);
+	int fd = open(device_path, O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		return;
 	}

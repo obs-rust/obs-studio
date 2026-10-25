@@ -23,6 +23,7 @@
 /* Platform layer for happy-eyeballs.c on POSIX systems (BSD sockets). */
 #pragma once
 
+#include <fcntl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -37,9 +38,18 @@ static inline int he_platform_dns_blocked(const char **message)
 	return 0;
 }
 
+/* Close-on-exec, so a process OBS starts while connected (a recording's
+ * muxer) gets no copy of the connection. macOS has no SOCK_CLOEXEC. */
 static inline SOCKET he_platform_socket(int family)
 {
-	return socket(family, SOCK_STREAM, IPPROTO_TCP);
+#ifdef SOCK_CLOEXEC
+	return socket(family, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+#else
+	SOCKET fd = socket(family, SOCK_STREAM, IPPROTO_TCP);
+	if (fd >= 0)
+		fcntl(fd, F_SETFD, FD_CLOEXEC);
+	return fd;
+#endif
 }
 
 /* BSD and macOS raise SIGPIPE on a write to a closed socket unless told

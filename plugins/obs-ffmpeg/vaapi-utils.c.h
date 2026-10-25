@@ -31,6 +31,8 @@ inline static VADisplay vaapi_open_display_drm(int *fd, const char *device_path)
 
 	if (!va_dpy) {
 		blog(LOG_ERROR, "VAAPI: Failed to initialize DRM display");
+		close(*fd);
+		*fd = -1;
 		return NULL;
 	}
 

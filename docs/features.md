@@ -359,6 +359,12 @@ not get a line.
   session, with one log line. *All*, 2026-10-17. Issue
   [#1022](https://github.com/obs-rust/obs-studio/issues/1022), PR
   [#1287](https://github.com/obs-rust/obs-studio/pull/1287).
+- **Recordings no longer hold the stream's connection or the QSV device.**
+  A recording started while streaming no longer keeps a copy of the RTMP
+  connection in its muxer, nor of the QSV encoder's GPU device on Linux,
+  and a VA-API or QSV device that has no driver is closed again.
+  *Linux, macOS*, pending merge. Issue
+  [#2305](https://github.com/obs-rust/obs-studio/issues/2305).
 
 ### Platforms and packages
 
