@@ -282,6 +282,24 @@ _obs_output_congestion_clamp
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors
 _obs_encoder_roi_scale
+# obs-encoder-audio-start.c: obs-encoder.c calls them inside libobs. Not
+# EXPORT.
+_obs_encoder_audio_start_group_ready
+_obs_encoder_audio_start_paired_late
+_obs_encoder_audio_start_video_pts
+_obs_encoder_audio_start_size
+_obs_encoder_audio_start_paired
+_obs_encoder_audio_start_unpaired
+_obs_encoder_audio_start_no_video
+_obs_encoder_audio_start_packet
+_obs_encoder_audio_start_offset_ns
+_obs_encoder_audio_start_offset_size
+_obs_encoder_audio_start_buffer_offset
+_obs_encoder_audio_start_push_size
+_obs_encoder_audio_start_can_send
+_obs_encoder_audio_start_audio_pts
+_obs_encoder_audio_start_not_video
+_obs_encoder_audio_start_divisor_ok
 # obs-encoder-size.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_size_audio_defaults
 _obs_encoder_size_cap_override

@@ -313,6 +313,24 @@
     obs_encoder_roi_admit;
     obs_encoder_roi_scale_factors;
     obs_encoder_roi_scale;
+    /* obs-encoder-audio-start.c. obs-encoder.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_encoder_audio_start_group_ready;
+    obs_encoder_audio_start_paired_late;
+    obs_encoder_audio_start_video_pts;
+    obs_encoder_audio_start_size;
+    obs_encoder_audio_start_paired;
+    obs_encoder_audio_start_unpaired;
+    obs_encoder_audio_start_no_video;
+    obs_encoder_audio_start_packet;
+    obs_encoder_audio_start_offset_ns;
+    obs_encoder_audio_start_offset_size;
+    obs_encoder_audio_start_buffer_offset;
+    obs_encoder_audio_start_push_size;
+    obs_encoder_audio_start_can_send;
+    obs_encoder_audio_start_audio_pts;
+    obs_encoder_audio_start_not_video;
+    obs_encoder_audio_start_divisor_ok;
     /* obs-encoder-size.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_size_audio_defaults;

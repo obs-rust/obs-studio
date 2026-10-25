@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-audio-start.pch.h"
 
 bool obs_encoder_audio_start_group_ready(uint64_t group_start, uint64_t timestamp)
 {

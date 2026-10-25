@@ -158,6 +158,7 @@
     "build/libobs.ported-context-names+.h.c",
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-effect-lifecycle+.h.c",
+    "build/libobs.ported-encoder-audio-start+.h.c",
     "build/libobs.ported-encoder-roi+.h.c",
     "build/libobs.ported-encoder-size+.h.c",
     "build/libobs.ported-graphics+.h.c",

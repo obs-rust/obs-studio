@@ -20,6 +20,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-audio-mix.c.h.o",
     "obs-canvas-draw.c.h.o",
     "obs-context-names.c.h.o",
+    "obs-encoder-audio-start.c.h.o",
     "obs-encoder-roi.c.h.o",
     "obs-encoder-size.c.h.o",
     "obs-hotkey-pair.c.h.o",
