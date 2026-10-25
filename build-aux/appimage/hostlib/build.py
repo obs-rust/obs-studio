@@ -89,10 +89,6 @@ def parse_host_libs(path: Path) -> tuple[HostLib, ...]:
 # version; above the floor it is bundled anyway).
 HOST_RUNTIME = re.compile(r"(ld-linux-x86-64|libc|libm|libmvec|libpthread|libdl|librt|libresolv|libnss_[a-z]+"
                           r"|libutil|libanl|libBrokenLocale|libthread_db|libstdc\+\+|libgcc_s)\.so\.\d+")
-# libGLX.so.0: libglvnd's GLX dispatch library, which ships with the host's
-# OpenGL on desktop installs (libOpenGL and libEGL are checked). The preflight
-# does not look for it (yet).
-UNCHECKED_HOST_LIBS = frozenset({"libGLX.so.0"})
 
 
 def unchecked_host_needs(deps: dict[str, list[str]], bundled: set[str],
@@ -101,12 +97,12 @@ def unchecked_host_needs(deps: dict[str, list[str]], bundled: set[str],
 
     deps maps each bundled ELF file to its DT_NEEDED entries, bundled holds the
     file names in the AppDir. Every needed library that is not bundled must be
-    in host-libs.json (or be the C runtime, or be in UNCHECKED_HOST_LIBS):
-    otherwise a host without it gets the dynamic loader's error, or "Graphics
-    module not found" for a dlopen()ed module, instead of obs-hostlib-check's
-    message (obs-rust/obs-studio#2298). Returns soname -> consumers.
+    in host-libs.json (or be the C runtime): otherwise a host without it gets
+    the dynamic loader's error, or "Graphics module not found" for a dlopen()ed
+    module, instead of obs-hostlib-check's message (obs-rust/obs-studio#2298,
+    #2337). Returns soname -> consumers.
     """
-    known = {s for lib in libs for s in lib.sonames} | UNCHECKED_HOST_LIBS
+    known = {s for lib in libs for s in lib.sonames}
     out: dict[str, list[str]] = {}
     for consumer, names in sorted(deps.items()):
         for soname in names:

@@ -127,10 +127,12 @@ class HostDriverStackTest(unittest.TestCase):
         # A host library that host-libs.json does not list is never checked by
         # obs-hostlib-check: a host without libwayland-egl.so.1 got "Failed to
         # initialize video: Graphics module not found" instead of the
-        # preflight's message naming the package (obs-rust/obs-studio#2298).
+        # preflight's message naming the package (obs-rust/obs-studio#2298);
+        # a host without libGLX.so.0 got the dynamic loader's error (#2337).
         build = hostlib_build()
         deps = recorded_host_needs()
         self.assertIn("libwayland-egl.so.1", deps["usr/lib/obs-studio-rust/libobs-opengl.so.30"])
+        self.assertIn("libGLX.so.0", deps["usr/bin/obs-studio-rust-gui"])
         unchecked = build.unchecked_host_needs(
             deps, set(), build.parse_host_libs(HOSTLIB / "host-libs.json")
         )
