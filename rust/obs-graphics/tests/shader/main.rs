@@ -6,6 +6,7 @@ mod effect_lookups_parity;
 mod effect_params;
 mod effect_params_parity;
 mod effect_parser_lifecycle;
+mod effect_passes;
 mod shader_param_names;
 mod shader_param_names_parity;
 
