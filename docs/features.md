@@ -418,7 +418,9 @@ not get a line.
   [#515](https://github.com/obs-rust/obs-studio/pull/515),
   [#657](https://github.com/obs-rust/obs-studio/pull/657),
   [#706](https://github.com/obs-rust/obs-studio/pull/706),
-  [#1088](https://github.com/obs-rust/obs-studio/pull/1088).
+  [#1088](https://github.com/obs-rust/obs-studio/pull/1088),
+  [#2390](https://github.com/obs-rust/obs-studio/pull/2390),
+  [obs-rust/obs-browser#9](https://github.com/obs-rust/obs-browser/pull/9).
 - **Daily beta packages.** A beta is published every day as the latest
   release: an AppImage for Linux, zips for Windows x64 (with the Visual C++
   runtime) and ARM64, and DMGs for Apple silicon and Intel Macs. *All*,
@@ -1553,6 +1555,13 @@ area.
   own goes away. *Linux*, 2026-10-25. Issue
   [#2261](https://github.com/obs-rust/obs-studio/issues/2261), upstream
   [obsproject/obs-studio#5502](https://github.com/obsproject/obs-studio/issues/5502).
+- On macOS, a first browser source created by obs-websocket (`CreateInput`)
+  renders. Before, CEF started on obs-websocket's thread, and no browser
+  source rendered for the rest of the session, also ones added in the UI
+  later. *macOS*, pending merge. Issue
+  [#2387](https://github.com/obs-rust/obs-studio/issues/2387), PRs
+  [#2390](https://github.com/obs-rust/obs-studio/pull/2390),
+  [obs-rust/obs-browser#10](https://github.com/obs-rust/obs-browser/pull/10).
 
 ### Scenes and UI
 
