@@ -1939,6 +1939,20 @@
         "frontend/utility"
       ]
     },
+    "test_profile_import": {
+      "sources": [
+        "test/cmocka/test_profile_import.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT6_WIDGETS",
+      "libraries": [
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/profile-import.hpp"
+      ]
+    },
     "test_profile_qsv": {
       "sources": [
         "test/cmocka/test_profile_qsv.c",
@@ -4619,6 +4633,11 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_profile_import": {
+      "target": "test_profile_import",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core"
     },
     "test_profile_qsv": {
       "target": "test_profile_qsv",

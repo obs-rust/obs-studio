@@ -354,6 +354,7 @@
     "utility/product-name.h",
     "build/frontend.utility-profile-activate+.h.c",
     "utility/profile-activate.h",
+    "utility/profile-import.hpp",
     "build/frontend.utility-profile-remove+.h.c",
     "utility/profile-remove.h",
     "build/frontend.utility-preview-audio-sources+.hpp.cpp",

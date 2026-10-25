@@ -173,6 +173,7 @@
 #include <docks/YouTubeAppDock.hpp>
 #endif
 #include <utility/menu-text.h>
+#include <utility/profile-import.hpp>
 #include <utility/profile-remove.h>
 
 #include <util/pipe.h>
