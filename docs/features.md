@@ -2187,7 +2187,7 @@ area.
   [#1121](https://github.com/obs-rust/obs-studio/issues/1121),
   [#2374](https://github.com/obs-rust/obs-studio/issues/2374), PRs
   [#2427](https://github.com/obs-rust/obs-studio/pull/2427),
-  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
+  [#2455](https://github.com/obs-rust/obs-studio/pull/2455).
 
 ### Building from source
 
