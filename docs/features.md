@@ -2163,6 +2163,12 @@ area.
   and reads back as Monitor Only. Setting it back to no monitoring undoes
   that mute. *All*, pending merge. Issue
   [#2447](https://github.com/obs-rust/obs-studio/issues/2447).
+- A scene shown in Program or a projector, and the sources in it, no longer
+  stop when a plugin or script sets a transition inside that scene to the
+  scene itself and then to another source; before, the second set took the
+  scene's active reference away, and a source set after it was never shown.
+  *All*, pending merge. Issue
+  [#2484](https://github.com/obs-rust/obs-studio/issues/2484).
 
 ### Security hardening
 

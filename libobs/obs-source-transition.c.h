@@ -504,8 +504,15 @@ void obs_transition_set(obs_source_t *transition, obs_source_t *source)
 		obs_source_release(s[i]);
 	}
 
-	if (source)
-		obs_source_add_active_child(transition, source);
+	/* The add fails for a source that contains the transition: then slot A
+	 * is not active, so the next set does not remove a reference that
+	 * another parent holds. */
+	if (source && !obs_source_add_active_child(transition, source)) {
+		lock_transition(transition);
+		if (transition->transition_sources[0] == source)
+			transition->transition_source_active[0] = false;
+		unlock_transition(transition);
+	}
 }
 
 static float calc_time(obs_source_t *transition, uint64_t ts)
