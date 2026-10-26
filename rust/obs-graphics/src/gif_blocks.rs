@@ -58,8 +58,12 @@ pub enum NsgifError {
     AnimationEnd,
 }
 
-/// `enum nsgif_disposal` values that the graphic control extension maps.
+/// `enum nsgif_disposal` values.
 pub mod disposal {
+    /// `NSGIF_DISPOSAL_UNSPECIFIED`.
+    pub const UNSPECIFIED: u8 = 0;
+    /// `NSGIF_DISPOSAL_NONE`.
+    pub const NONE: u8 = 1;
     /// `NSGIF_DISPOSAL_RESTORE_BG`.
     pub const RESTORE_BG: u8 = 2;
     /// `NSGIF_DISPOSAL_RESTORE_PREV`.
