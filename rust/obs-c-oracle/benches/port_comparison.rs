@@ -34,6 +34,8 @@ mod encoder_gpu_gates;
 mod encoder_roi;
 #[path = "port_comparison/encoder_size.rs"]
 mod encoder_size;
+#[path = "port_comparison/gif_blocks.rs"]
+mod gif_blocks;
 #[path = "port_comparison/graphics.rs"]
 mod graphics;
 #[path = "port_comparison/graphics_sprite.rs"]
@@ -196,6 +198,7 @@ fn comparisons(criterion: &mut Criterion) {
         encoder_gpu_gates,
         encoder_roi,
         encoder_size,
+        gif_blocks,
         graphics,
         graphics_sprite,
         lzw,

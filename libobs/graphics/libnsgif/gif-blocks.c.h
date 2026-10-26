@@ -8,7 +8,7 @@
  *                http://www.opensource.org/licenses/mit-license.php
  */
 
-#include "build/libobs-nsgif.pch.h"
+#include "build/libobs-ported-nsgif-blocks.pch.h"
 
 /* The GIF block parsers of libnsgif, declared in gif-blocks.h: the code of
  * gif.c's nsgif__parse_header, nsgif__parse_logical_screen_descriptor,
@@ -16,7 +16,8 @@
  * extensions), nsgif__parse_image_descriptor and nsgif__colour_table_extract,
  * on a byte position into the data in place of a pointer, and on plain
  * values in place of struct nsgif and struct nsgif_frame. gif.c keeps those
- * names as wrappers. */
+ * names as wrappers. Ported to rust/obs-graphics (gif_blocks): the hybrid
+ * libobs drops this file. */
 
 /**
  * Parse the Graphic Control Extension.

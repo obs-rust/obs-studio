@@ -4,7 +4,7 @@
 
 #pragma once
 
-/* graphics/libnsgif/gif-blocks.c, graphics/libnsgif/gif.c */
+/* graphics/libnsgif/gif.c */
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>

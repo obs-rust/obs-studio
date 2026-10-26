@@ -192,6 +192,7 @@
     "build/libobs.ported-module-paths+.h.c",
     "build/libobs.ported-module-source-rules+.h.c",
     "build/libobs.ported-module-type-rules+.h.c",
+    "build/libobs.ported-nsgif-blocks+.h.c",
     "build/libobs.ported-nsgif-lzw+.h.c",
     "build/libobs.ported-output-caption-text+.h.c",
     "build/libobs.ported-output-delay+.h.c",

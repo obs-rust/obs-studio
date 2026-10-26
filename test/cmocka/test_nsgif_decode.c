@@ -22,9 +22,9 @@
  * header, the logical screen descriptor, the extensions before a frame,
  * the image descriptor and the colour tables, on hand-written bytes.
  *
- * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST_LZW:
- * without lzw.c, against the Rust shims of obs-graphics (lzw.h is the
- * boundary; gif.c stays C here too).
+ * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST:
+ * without lzw.c and gif-blocks.c, against the Rust shims of obs-graphics
+ * (lzw.h and gif-blocks.h are the boundary; gif.c stays C here too).
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -39,10 +39,10 @@
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
 #endif
-#ifndef NSGIF_TEST_RUST_LZW
+#ifndef NSGIF_TEST_RUST
 #include "graphics/libnsgif/lzw.c.h"
-#endif
 #include "graphics/libnsgif/gif-blocks.c.h"
+#endif
 #include "graphics/libnsgif/gif.c.h"
 #ifdef _MSC_VER
 #pragma warning(pop)

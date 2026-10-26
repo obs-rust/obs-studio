@@ -58,6 +58,14 @@ _gs_sprite_uv_subregion
 _gs_texture_is_pow2
 _gs_texture_mip_plan
 _gs_texture_upload_plan
+# graphics/libnsgif/gif-blocks.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
+_nsgif_blocks_header
+_nsgif_blocks_screen
+_nsgif_blocks_screen_size_quirk
+_nsgif_blocks_extensions
+_nsgif_blocks_image_descriptor
+_nsgif_blocks_colour_table
+_nsgif_blocks_colour_table_decode
 # graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
 _lzw_context_create
 _lzw_context_destroy
