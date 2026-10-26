@@ -10,6 +10,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <stdbool.h>
 #include <string.h>
 
 #include "shared/file-updater/file-updater/curl-accept-encoding.h"
