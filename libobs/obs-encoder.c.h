@@ -189,6 +189,10 @@ _Static_assert(OBS_ENCODER_AUDIO_START_TYPE_VIDEO == OBS_ENCODER_VIDEO, "OBS_ENC
 /* The constant obs-encoder-bind.h copies. */
 _Static_assert(OBS_ENCODER_BIND_TYPE_AUDIO == OBS_ENCODER_AUDIO, "OBS_ENCODER_AUDIO");
 
+/* The constants obs-encoder-lifecycle.h copies. */
+_Static_assert(OBS_ENCODER_LIFECYCLE_CAP_PASS_TEXTURE == OBS_ENCODER_CAP_PASS_TEXTURE, "OBS_ENCODER_CAP_PASS_TEXTURE");
+_Static_assert(OBS_ENCODER_LIFECYCLE_NOT_FOUND == DARRAY_INVALID, "DARRAY_INVALID");
+
 static inline void get_audio_info(const struct obs_encoder *encoder, struct audio_convert_info *info)
 {
 	const struct audio_output_info *aoi;
@@ -238,7 +242,7 @@ static inline bool gpu_encode_available(const struct obs_encoder *encoder)
 	struct obs_core_video_mix *video = get_mix_for_video(encoder->media);
 	if (!video)
 		return false;
-	return (encoder->info.caps & OBS_ENCODER_CAP_PASS_TEXTURE) != 0 &&
+	return obs_encoder_lifecycle_pass_texture(encoder->info.caps) &&
 	       (video->using_p010_tex || video->using_nv12_tex);
 }
 
@@ -385,7 +389,7 @@ static int lcm(int a, int b)
 
 static void add_connection(struct obs_encoder *encoder)
 {
-	if (encoder->info.type == OBS_ENCODER_AUDIO) {
+	if (!obs_encoder_bind_not_audio((int)encoder->info.type)) {
 		struct audio_convert_info audio_info = {0};
 		get_audio_info(encoder, &audio_info);
 
@@ -403,7 +407,7 @@ static void add_connection(struct obs_encoder *encoder)
 
 	if (encoder->encoder_group) {
 		pthread_mutex_lock(&encoder->encoder_group->mutex);
-		if (encoder->encoder_group->frame_rate_divisors_lcm == 0)
+		if (obs_encoder_lifecycle_lcm_unset(encoder->encoder_group->frame_rate_divisors_lcm))
 			encoder->encoder_group->frame_rate_divisors_lcm = 1;
 
 		/* The Least Common Multiple (LCM) of all frame rate divisors determines the alignment boundary
@@ -416,8 +420,9 @@ static void add_connection(struct obs_encoder *encoder)
 		encoder->encoder_group->frame_rate_divisors_lcm =
 			lcm(encoder->encoder_group->frame_rate_divisors_lcm, encoder->frame_rate_divisor);
 
-		encoder->encoder_group->num_encoders_started += 1;
-		bool ready = encoder->encoder_group->num_encoders_started >= encoder->encoder_group->encoders.num;
+		uint32_t started = obs_encoder_lifecycle_started_inc(encoder->encoder_group->num_encoders_started);
+		encoder->encoder_group->num_encoders_started = started;
+		bool ready = obs_encoder_lifecycle_group_ready(started, encoder->encoder_group->encoders.num);
 		pthread_mutex_unlock(&encoder->encoder_group->mutex);
 		if (ready)
 			add_ready_encoder_group(encoder);
@@ -429,7 +434,7 @@ static void add_connection(struct obs_encoder *encoder)
 void obs_encoder_group_actually_destroy(obs_encoder_group_t *group);
 static void remove_connection(struct obs_encoder *encoder, bool shutdown)
 {
-	if (encoder->info.type == OBS_ENCODER_AUDIO) {
+	if (!obs_encoder_bind_not_audio((int)encoder->info.type)) {
 		audio_output_disconnect(encoder->media, encoder->mixer_idx, receive_audio, encoder);
 	} else {
 		if (gpu_encode_available(encoder)) {
@@ -442,7 +447,9 @@ static void remove_connection(struct obs_encoder *encoder, bool shutdown)
 	if (encoder->encoder_group) {
 		struct obs_encoder_group *group = encoder->encoder_group;
 		pthread_mutex_lock(&group->mutex);
-		if (--group->num_encoders_started == 0) {
+		uint32_t started = obs_encoder_lifecycle_started_dec(group->num_encoders_started);
+		group->num_encoders_started = started;
+		if (obs_encoder_lifecycle_group_idle(started)) {
 			group->start_timestamp = 0;
 			group->frame_rate_divisors_lcm = 1;
 
@@ -961,10 +968,10 @@ static inline void obs_encoder_start_internal(obs_encoder_t *encoder, encoded_ca
 
 	pthread_mutex_lock(&encoder->callbacks_mutex);
 
-	first = (encoder->callbacks.num == 0);
+	first = obs_encoder_lifecycle_first(encoder->callbacks.num);
 
 	size_t idx = get_callback_idx(encoder, new_packet, param);
-	bool added = idx == DARRAY_INVALID;
+	bool added = !obs_encoder_lifecycle_found(idx);
 	if (added)
 		da_push_back(encoder->callbacks, &cb);
 
@@ -976,7 +983,8 @@ static inline void obs_encoder_start_internal(obs_encoder_t *encoder, encoded_ca
 
 		encoder->cur_pts = 0;
 		add_connection(encoder);
-	} else if (added && encoder->info.type == OBS_ENCODER_VIDEO && encoder->info.request_keyframe) {
+	} else if (added && !obs_encoder_audio_start_not_video((int)encoder->info.type) &&
+		   encoder->info.request_keyframe) {
 		/* The new output gets no packet before a keyframe (see
 		 * send_first_video_packet), and the running encoder's next
 		 * scheduled one can be many seconds away. */
@@ -1010,9 +1018,9 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 	pthread_mutex_lock(&encoder->callbacks_mutex);
 
 	idx = get_callback_idx(encoder, new_packet, param);
-	if (idx != DARRAY_INVALID) {
+	if (obs_encoder_lifecycle_found(idx)) {
 		da_erase(encoder->callbacks, idx);
-		last = (encoder->callbacks.num == 0);
+		last = obs_encoder_lifecycle_last(encoder->callbacks.num);
 	}
 
 	pthread_mutex_unlock(&encoder->callbacks_mutex);
@@ -1032,7 +1040,7 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 		 * also destroyed. */
 		if (group) {
 			pthread_mutex_lock(&group->mutex);
-			if (group->destroy_on_stop && group->num_encoders_started == 0)
+			if (group->destroy_on_stop && obs_encoder_lifecycle_group_idle(group->num_encoders_started))
 				obs_encoder_group_actually_destroy(group);
 			else
 				pthread_mutex_unlock(&group->mutex);
@@ -1505,8 +1513,8 @@ static void send_first_video_packet(struct obs_encoder *encoder, struct encoder_
 {
 	struct encoder_packet first_packet;
 	DARRAY(uint8_t) data;
-	uint8_t *sei;
-	size_t size;
+	uint8_t *sei = NULL;
+	size_t size = 0;
 
 	/* always wait for first keyframe */
 	if (!packet->keyframe)
@@ -1514,7 +1522,8 @@ static void send_first_video_packet(struct obs_encoder *encoder, struct encoder_
 
 	da_init(data);
 
-	if (!get_sei(encoder, &sei, &size) || !sei || !size) {
+	bool got = get_sei(encoder, &sei, &size);
+	if (!obs_encoder_lifecycle_prepend_sei(got, sei != NULL, size)) {
 		cb->new_packet(cb->param, packet, packet_time);
 		cb->sent_first_packet = true;
 		return;
@@ -1539,7 +1548,7 @@ static inline void send_packet(struct obs_encoder *encoder, struct encoder_callb
 {
 	profile_start(send_packet_name);
 	/* include SEI in first video packet */
-	if (encoder->info.type == OBS_ENCODER_VIDEO && !cb->sent_first_packet)
+	if (!obs_encoder_audio_start_not_video((int)encoder->info.type) && !cb->sent_first_packet)
 		send_first_video_packet(encoder, cb, packet, packet_time);
 	else
 		cb->new_packet(cb->param, packet, packet_time);

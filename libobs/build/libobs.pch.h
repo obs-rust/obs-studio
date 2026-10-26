@@ -66,6 +66,9 @@
 /* obs-encoder-gpu-gates.c */
 #include "obs-encoder-gpu-gates.h"
 
+/* obs-encoder-lifecycle.c */
+#include "obs-encoder-lifecycle.h"
+
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 

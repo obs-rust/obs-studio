@@ -15,6 +15,7 @@
     "obs-encoder-audio-start.h",
     "obs-encoder-bind.h",
     "obs-encoder-gpu-gates.h",
+    "obs-encoder-lifecycle.h",
     "obs-encoder-roi.h",
     "obs-encoder-size.h",
     "obs-encoder.h",

@@ -70,7 +70,10 @@ struct obs_encoder_bind_timebase {
 /* obs_encoder_set_audio() and obs_encoder_audio() after obs_encoder_valid():
  * type (info.type, an enum obs_encoder_type value) is not
  * OBS_ENCODER_BIND_TYPE_AUDIO, so the caller logs and refuses. The setter's
- * active refusal follows in obs-encoder.c; it has no initialized refusal. */
+ * active refusal follows in obs-encoder.c; it has no initialized refusal.
+ * Negated, it is the connection route of add_connection() and
+ * remove_connection() (obs-encoder-lifecycle.h): the audio mix, else the GPU
+ * encode or the raw video. */
 bool obs_encoder_bind_not_audio(int type);
 
 /* encoder_set_video(): has_video is whether a video is set, fps_num and
