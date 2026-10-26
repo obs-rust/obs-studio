@@ -4601,6 +4601,8 @@ void obs_source_set_muted(obs_source_t *source, bool muted)
 		return;
 
 	source->user_muted = muted;
+	/* a mute set by anything else is not Monitor Only's to undo (#2447) */
+	os_atomic_set_bool(&source->monitor_only_muted, false);
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
@@ -5164,7 +5166,12 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 	if (source->monitoring_enabled == enabled)
 		return;
 
-	compat_type = enabled ? OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT : OBS_MONITORING_TYPE_NONE;
+	/* the deprecated type: a monitored source that is muted is monitor-only
+	 * (#2447); the stored type stays monitor and output */
+	compat_type = OBS_MONITORING_TYPE_NONE;
+	if (enabled)
+		compat_type = source->user_muted ? OBS_MONITORING_TYPE_MONITOR_ONLY
+						 : OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
@@ -5180,7 +5187,7 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 
 	was_on = source->monitoring_enabled;
 	source->monitoring_enabled = enabled;
-	source->monitoring_type = compat_type;
+	source->monitoring_type = enabled ? OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT : OBS_MONITORING_TYPE_NONE;
 
 	if (was_on != enabled) {
 		if (!was_on) {
@@ -5199,13 +5206,46 @@ bool obs_source_get_monitoring_enabled(const obs_source_t *source)
 
 void obs_source_set_monitoring_type(obs_source_t *source, enum obs_monitoring_type type)
 {
+	bool muted_for_monitor_only;
+
 	if (!obs_source_valid(source, "obs_source_set_monitoring_type"))
 		return;
 
 	blog(LOG_WARNING,
 	     "obs_source_set_monitoring_type is deprecated. Use obs_source_set_monitoring_enabled instead.");
 
-	obs_source_set_monitoring_enabled(source, type != OBS_MONITORING_TYPE_NONE);
+	/* Since 33.0 monitoring is on or off, on means monitor and output, and
+	 * the monitor ignores mute: monitor-only is monitoring on and muted, as
+	 * a pre-33.0 Monitor Only source loads (#2444, #2447). The mute comes
+	 * first, so the source never plays into the outputs in between. Leaving
+	 * monitor-only for none undoes the mute monitor-only set, as long as
+	 * nothing has set the mute since; any other mute stays. */
+	muted_for_monitor_only = os_atomic_load_bool(&source->monitor_only_muted);
+
+	switch (type) {
+	case OBS_MONITORING_TYPE_NONE:
+		obs_source_set_monitoring_enabled(source, false);
+		if (muted_for_monitor_only && obs_source_muted(source))
+			obs_source_set_muted(source, false);
+		os_atomic_set_bool(&source->monitor_only_muted, false);
+		break;
+	case OBS_MONITORING_TYPE_MONITOR_ONLY:
+		if (!obs_source_muted(source)) {
+			obs_source_set_muted(source, true);
+			muted_for_monitor_only = true;
+		}
+		obs_source_set_monitoring_enabled(source, true);
+		os_atomic_set_bool(&source->monitor_only_muted, muted_for_monitor_only);
+		break;
+	case OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT:
+		obs_source_set_muted(source, false);
+		obs_source_set_monitoring_enabled(source, true);
+		break;
+	default:
+		/* not a type: on, as before */
+		obs_source_set_monitoring_enabled(source, true);
+		break;
+	}
 }
 
 enum obs_monitoring_type obs_source_get_monitoring_type(const obs_source_t *source)
@@ -5213,8 +5253,11 @@ enum obs_monitoring_type obs_source_get_monitoring_type(const obs_source_t *sour
 	blog(LOG_WARNING,
 	     "obs_source_get_monitoring_type is deprecated. Use obs_source_get_monitoring_enabled instead.");
 
-	return obs_source_valid(source, "obs_source_get_monitoring_type") ? source->monitoring_type
-									  : OBS_MONITORING_TYPE_NONE;
+	if (!obs_source_valid(source, "obs_source_get_monitoring_type") || !source->monitoring_enabled)
+		return OBS_MONITORING_TYPE_NONE;
+
+	/* monitoring on and muted is monitor-only (#2447) */
+	return source->user_muted ? OBS_MONITORING_TYPE_MONITOR_ONLY : OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
 }
 
 void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)

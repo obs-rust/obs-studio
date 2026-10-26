@@ -2144,6 +2144,13 @@ area.
   to a canvas that has been removed; the answer is "not active", so an
   encoder plugin falls back to raw frames. *All*, pending merge. Issue
   [#2267](https://github.com/obs-rust/obs-studio/issues/2267).
+- A source set to "Monitor Only" through obs-websocket's
+  SetInputAudioMonitorType, or by a plugin or script through the
+  deprecated monitoring type call, no longer plays into the stream and
+  recordings: it is monitored and muted, the 33.0 form of monitor-only,
+  and reads back as Monitor Only. Setting it back to no monitoring undoes
+  that mute. *All*, pending merge. Issue
+  [#2447](https://github.com/obs-rust/obs-studio/issues/2447).
 
 ### Security hardening
 

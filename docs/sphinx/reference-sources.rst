@@ -1238,6 +1238,16 @@ General Source Functions
                  | OBS_MONITORING_TYPE_MONITOR_ONLY - Send to monitor device, no outputs
                  | OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT - Send to monitor device and outputs
 
+   Since 33.0, monitoring is on or off, and the monitor plays a source even
+   when it is muted. OBS_MONITORING_TYPE_MONITOR_ONLY turns monitoring on
+   and mutes the source; OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT turns
+   monitoring on and unmutes it; OBS_MONITORING_TYPE_NONE turns monitoring
+   off and leaves the mute, except that it unmutes a source whose mute
+   OBS_MONITORING_TYPE_MONITOR_ONLY set, if nothing has set the mute since.
+   The getter reports a monitored source that is muted as
+   OBS_MONITORING_TYPE_MONITOR_ONLY, and one that is not muted as
+   OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT.
+
 ---------------------
 
 .. function:: void obs_source_set_monitoring_enabled(obs_source_t *source, bool enable)

@@ -1288,6 +1288,9 @@ struct obs_source {
 	struct audio_monitor *monitor;
 	enum obs_monitoring_type monitoring_type;
 	bool monitoring_enabled;
+	/* obs_source_set_monitoring_type(MONITOR_ONLY) set the mute, and nothing
+	 * has set it since (#2447) */
+	volatile bool monitor_only_muted;
 	obs_hotkey_pair_id monitor_on_off_key;
 
 	/* media action queue */
