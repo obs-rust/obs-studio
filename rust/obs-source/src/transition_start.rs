@@ -36,6 +36,18 @@
 //! to the same destination finishes on it and the start is refused, so the
 //! [`Admission::Done`] success needs another thread's start in between.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// `OBS_TRANSITION_MODE_MANUAL` (`enum obs_transition_mode`), the same
 /// constant [`crate::transition_clock`] uses.
 pub const MODE_MANUAL: i32 = crate::transition_clock::MODE_MANUAL;
@@ -58,18 +70,16 @@ pub enum Admission {
 /// transition is not active. The first read's gate, and the first rule of
 /// [`admit`].
 #[must_use]
-pub fn refused(same_as_source: bool, active: bool) -> bool {
-    let _ = (same_as_source, active);
-    todo!("transition_start::refused")
+pub const fn refused(same_as_source: bool, active: bool) -> bool {
+    same_as_source && !active
 }
 
 /// Whether the recursion walk of the destination's tree runs: there is a
 /// destination and it is not the transition itself (`recursive`, the
 /// walk's start value).
 #[must_use]
-pub fn walks(has_dest: bool, recursive: bool) -> bool {
-    let _ = (has_dest, recursive);
-    todo!("transition_start::walks")
+pub const fn walks(has_dest: bool, recursive: bool) -> bool {
+    has_dest && !recursive
 }
 
 /// The second admission of `obs_transition_start()`: [`Admission::Refuse`]
@@ -77,89 +87,86 @@ pub fn walks(has_dest: bool, recursive: bool) -> bool {
 /// is [`MODE_MANUAL`], the mode is the same and the destination is already
 /// source B; else [`Admission::Go`].
 #[must_use]
-pub fn admit(
+pub const fn admit(
     same_as_source: bool,
     same_as_dest: bool,
     same_mode: bool,
     mode: i32,
     active: bool,
 ) -> Admission {
-    let _ = (same_as_source, same_as_dest, same_mode, mode, active);
-    todo!("transition_start::admit")
+    if refused(same_as_source, active) {
+        Admission::Refuse
+    } else if active && mode == MODE_MANUAL && same_mode && same_as_dest {
+        Admission::Done
+    } else {
+        Admission::Go
+    }
 }
 
 /// A duration in ms as the start clock's ns: `(uint64_t)ms * 1000000`,
 /// which cannot overflow.
 #[must_use]
 pub fn duration_ns(ms: u32) -> u64 {
-    let _ = ms;
-    todo!("transition_start::duration_ns")
+    // u32::MAX * 1e6 is below 2^52: the widened product never wraps.
+    u64::from(ms).wrapping_mul(1_000_000)
 }
 
 /// Whether `set_source()` restarts the clock: the transition is not
 /// active, or the new child is neither the old one nor source A.
 #[must_use]
-pub fn restart(active: bool, same_as_dest: bool, same_as_source: bool) -> bool {
-    let _ = (active, same_as_dest, same_as_source);
-    todo!("transition_start::restart")
+pub const fn restart(active: bool, same_as_dest: bool, same_as_source: bool) -> bool {
+    !active || (!same_as_dest && !same_as_source)
 }
 
 /// Whether `set_source()` adds the new child as an active child: its slot
 /// is already active and there is a new child.
 #[must_use]
-pub fn adds(already_active: bool, has_new: bool) -> bool {
-    let _ = (already_active, has_new);
-    todo!("transition_start::adds")
+pub const fn adds(already_active: bool, has_new: bool) -> bool {
+    already_active && has_new
 }
 
 /// Whether `set_source()` removes the old child as an active child: its
 /// slot is already active, there is an old child and the add (if any)
 /// worked.
 #[must_use]
-pub fn removes(already_active: bool, has_old: bool, add_ok: bool) -> bool {
-    let _ = (already_active, has_old, add_ok);
-    todo!("transition_start::removes")
+pub const fn removes(already_active: bool, has_old: bool, add_ok: bool) -> bool {
+    already_active && has_old && add_ok
 }
 
 /// Whether `set_source()` calls its admission callback: there is one and
 /// the add (if any) worked.
 #[must_use]
-pub fn calls_back(has_callback: bool, add_ok: bool) -> bool {
-    let _ = (has_callback, add_ok);
-    todo!("transition_start::calls_back")
+pub const fn calls_back(has_callback: bool, add_ok: bool) -> bool {
+    has_callback && add_ok
 }
 
 /// `obs_source_transition_start_unsized()`: whether a transition size
 /// leaves the size to the children (`size == 0`). The C asks it for `cx`,
 /// and for `cy` only when `cx` is not 0.
 #[must_use]
-pub fn is_unsized(size: u32) -> bool {
-    let _ = size;
-    todo!("transition_start::is_unsized")
+pub const fn is_unsized(size: u32) -> bool {
+    size == 0
 }
 
 /// Whether a start to no destination sets both transitioning flags itself:
 /// no destination, source B was already none and source A is not none.
 #[must_use]
-pub fn null_dest(has_dest: bool, same_as_dest: bool, same_as_source: bool) -> bool {
-    let _ = (has_dest, same_as_dest, same_as_source);
-    todo!("transition_start::null_dest")
+pub const fn null_dest(has_dest: bool, same_as_dest: bool, same_as_source: bool) -> bool {
+    !has_dest && same_as_dest && !same_as_source
 }
 
 /// Whether `activate_transition()` adds the child: its slot is not active
 /// yet.
 #[must_use]
-pub fn activates(slot_active: bool) -> bool {
-    let _ = slot_active;
-    todo!("transition_start::activates")
+pub const fn activates(slot_active: bool) -> bool {
+    !slot_active
 }
 
 /// The index of the active child: 1 (source B) while the transition is
 /// active, else 0 (source A).
 #[must_use]
-pub fn active_index(active: bool) -> usize {
-    let _ = active;
-    todo!("transition_start::active_index")
+pub const fn active_index(active: bool) -> usize {
+    if active { 1 } else { 0 }
 }
 
 /// Whether `obs_transition_set_manual_time()` sets source A: the mode is
@@ -167,15 +174,13 @@ pub fn active_index(active: bool) -> usize {
 /// for NaN, as the C's `t == 0.0f`).
 #[must_use]
 pub fn manual_reset(mode: i32, t: f32) -> bool {
-    let _ = (mode, t);
-    todo!("transition_start::manual_reset")
+    mode == MODE_MANUAL && t == 0.0
 }
 
 /// Whether a child goes out (`obs_transition_set()`) or comes in
 /// (`copy_source_state()`) as an active child: there is one and its slot is
 /// active.
 #[must_use]
-pub fn child_active(has_child: bool, active: bool) -> bool {
-    let _ = (has_child, active);
-    todo!("transition_start::child_active")
+pub const fn child_active(has_child: bool, active: bool) -> bool {
+    has_child && active
 }

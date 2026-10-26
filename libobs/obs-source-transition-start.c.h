@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-start.pch.h"
 
 /* The start checks and child handover of the transitions, moved from
  * obs-source-transition.c: the admission steps of obs_transition_start(),
@@ -26,7 +26,9 @@
  * plain values. obs-source-transition.c keeps every read of the
  * transition's fields at its point and in its lock section, the locks, the
  * pointer comparisons, the active child calls, the callbacks, the signals
- * and the logs. Declared in obs-source-transition-start.h without EXPORT. */
+ * and the logs. Declared in obs-source-transition-start.h without EXPORT. In
+ * hybrid libobs the Rust port (rust/obs-source, transition_start) replaces
+ * this file. */
 
 bool obs_source_transition_start_refused(bool same_as_source, bool active)
 {

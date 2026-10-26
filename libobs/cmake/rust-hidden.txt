@@ -376,6 +376,26 @@ obs_source_transition_render_audio_mix
 obs_source_transition_render_audio_valid
 obs_source_transition_render_audio_place
 obs_source_transition_render_offset
+# obs-source-transition-start.c: obs_transition_start(), set_source(),
+# activate_transition(), obs_transition_get_active_source(),
+# obs_transition_save(), obs_transition_set_manual_time(),
+# obs_transition_set() and copy_source_state() in obs-source-transition.c call
+# them inside libobs. Declared in obs-source-transition-start.h without EXPORT,
+# so the shims stay hidden the same way.
+obs_source_transition_start_refused
+obs_source_transition_start_walks
+obs_source_transition_start_admit
+obs_source_transition_start_duration_ns
+obs_source_transition_start_restart
+obs_source_transition_start_adds
+obs_source_transition_start_removes
+obs_source_transition_start_calls_back
+obs_source_transition_start_unsized
+obs_source_transition_start_null_dest
+obs_source_transition_start_activates
+obs_source_transition_start_active_index
+obs_source_transition_start_manual_reset
+obs_source_transition_start_child_active
 # obs-source-video-tick.c: obs_source_video_tick() and async_tick() in
 # obs-source.c call them inside libobs. Declared in
 # obs-source-video-tick.h without EXPORT, so the shims stay hidden the same

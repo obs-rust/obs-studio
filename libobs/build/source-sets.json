@@ -234,6 +234,7 @@
     "build/libobs.ported-source-size+.h.c",
     "build/libobs.ported-source-transition-clock+.h.c",
     "build/libobs.ported-source-transition-render+.h.c",
+    "build/libobs.ported-source-transition-start+.h.c",
     "build/libobs.ported-source-video-tick+.h.c",
     "build/libobs.ported-source-volume+.h.c",
     "build/libobs.ported-sprite+.h.c",

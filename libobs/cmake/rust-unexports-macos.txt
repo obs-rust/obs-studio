@@ -307,6 +307,22 @@ _obs_source_transition_render_audio_mix
 _obs_source_transition_render_audio_valid
 _obs_source_transition_render_audio_place
 _obs_source_transition_render_offset
+# obs-source-transition-start.c: obs-source-transition.c calls them inside
+# libobs. Not EXPORT.
+_obs_source_transition_start_refused
+_obs_source_transition_start_walks
+_obs_source_transition_start_admit
+_obs_source_transition_start_duration_ns
+_obs_source_transition_start_restart
+_obs_source_transition_start_adds
+_obs_source_transition_start_removes
+_obs_source_transition_start_calls_back
+_obs_source_transition_start_unsized
+_obs_source_transition_start_null_dest
+_obs_source_transition_start_activates
+_obs_source_transition_start_active_index
+_obs_source_transition_start_manual_reset
+_obs_source_transition_start_child_active
 # obs-source-video-tick.c: obs-source.c calls them inside libobs. Not
 # EXPORT.
 _obs_source_video_tick_transition

@@ -18,3 +18,21 @@
 # test_tbar_position, test_fade_to_color_mix, test_visibility_transition and
 # test_stinger_media_duration cover the callers through the real libobs.
 # Target and test are declared in ../build/test-graph.json.
+
+# Exercise the unchanged characterization against the Rust shims. The test
+# calls only the fourteen hidden functions, and includes their header and obs.h
+# (for the libobs values the header mirrors; obs.h pulls SIMDe and
+# obsconfig.h, hence libobs's include directories), so it links the archive
+# alone: its obs-source member needs nothing from libobs or the other crates.
+# Linking the archive directly avoids exporting private symbols just for a
+# test.
+if(TARGET libobs_rust-static)
+  add_executable(test_transition_start_steps_rust test_transition_start_steps.c)
+  target_include_directories(
+    test_transition_start_steps_rust
+    PRIVATE "${CMAKE_SOURCE_DIR}/libobs" $<TARGET_PROPERTY:libobs,INTERFACE_INCLUDE_DIRECTORIES> ${CMOCKA_INCLUDE_DIR}
+  )
+  target_link_libraries(test_transition_start_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES})
+  add_dependencies(cmocka-tests test_transition_start_steps_rust)
+  add_test(test_transition_start_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_transition_start_steps_rust)
+endif()
