@@ -8,7 +8,7 @@
  *                http://www.opensource.org/licenses/mit-license.php
  */
 
-#include "build/libobs-nsgif.pch.h"
+#include "build/libobs-ported-nsgif-frame.pch.h"
 
 /* The frame pixel decode and disposal of libnsgif, declared in
  * gif-frame.h: the code of gif.c's nsgif__decode (with
@@ -16,7 +16,8 @@
  * nsgif__restore_bg and nsgif__recover_frame, on struct nsgif_canvas and
  * struct nsgif_frame_area in place of struct nsgif and struct nsgif_frame.
  * gif.c keeps those names as wrappers. The helpers have an nsgif_frame__
- * prefix, so they do not clash with gif.c's in the unity group. */
+ * prefix, so they do not clash with gif.c's. Ported to rust/obs-graphics
+ * (gif_frame): the hybrid libobs drops this file. */
 
 /**
  * Convert an LZW result code to equivalent GIF result code.

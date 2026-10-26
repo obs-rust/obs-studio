@@ -29,8 +29,9 @@
  * the LZW results, and the restore and recover steps.
  *
  * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST:
- * without lzw.c and gif-blocks.c, against the Rust shims of obs-graphics
- * (lzw.h and gif-blocks.h are the boundary; gif.c stays C here too).
+ * without lzw.c, gif-blocks.c and gif-frame.c, against the Rust shims of
+ * obs-graphics (lzw.h, gif-blocks.h and gif-frame.h are the boundary; gif.c
+ * stays C here too).
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -48,8 +49,8 @@
 #ifndef NSGIF_TEST_RUST
 #include "graphics/libnsgif/lzw.c.h"
 #include "graphics/libnsgif/gif-blocks.c.h"
-#endif
 #include "graphics/libnsgif/gif-frame.c.h"
+#endif
 #include "graphics/libnsgif/gif.c.h"
 #ifdef _MSC_VER
 #pragma warning(pop)

@@ -69,6 +69,7 @@ pub mod file_serializer;
 pub mod format_conversion;
 pub mod frame_rate;
 pub mod gif_blocks;
+pub mod gif_frame;
 pub mod graphics_math;
 pub mod graphics_sprite;
 pub mod hevc;

@@ -83,6 +83,10 @@
     nsgif_blocks_image_descriptor;
     nsgif_blocks_colour_table;
     nsgif_blocks_colour_table_decode;
+    /* graphics/libnsgif/gif-frame.c. libnsgif's gif.c calls them inside libobs. */
+    nsgif_frame_pixels_decode;
+    nsgif_frame_restore_bg;
+    nsgif_frame_recover;
     /* graphics/libnsgif/lzw.c. libnsgif's gif.c calls them inside libobs. */
     lzw_context_create;
     lzw_context_destroy;

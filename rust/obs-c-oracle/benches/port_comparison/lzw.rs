@@ -18,7 +18,8 @@ use crate::pair;
 const PIXELS: usize = 1920 * 1080;
 
 /// Codes with the decoder's width rule (as the emitter of the Tier 1 tests).
-fn stream() -> Vec<u8> {
+/// Also the frame data of the gif_frame bench.
+pub fn stream() -> Vec<u8> {
     let (min, clear, eoi) = (8u32, 256u32, 257u32);
     let mut raw = vec![0u8; PIXELS * 2];
     let mut bits = 0usize;

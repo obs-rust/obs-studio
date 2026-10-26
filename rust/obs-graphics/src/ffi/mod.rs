@@ -7,6 +7,7 @@ pub mod effect_params;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 pub mod gif_blocks;
+pub mod gif_frame;
 pub mod image_file;
 pub mod lzw;
 pub mod math_extra;

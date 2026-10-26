@@ -66,6 +66,10 @@ _nsgif_blocks_extensions
 _nsgif_blocks_image_descriptor
 _nsgif_blocks_colour_table
 _nsgif_blocks_colour_table_decode
+# graphics/libnsgif/gif-frame.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
+_nsgif_frame_pixels_decode
+_nsgif_frame_restore_bg
+_nsgif_frame_recover
 # graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
 _lzw_context_create
 _lzw_context_destroy

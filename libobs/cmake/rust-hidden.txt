@@ -75,6 +75,11 @@ nsgif_blocks_extensions
 nsgif_blocks_image_descriptor
 nsgif_blocks_colour_table
 nsgif_blocks_colour_table_decode
+# graphics/libnsgif/gif-frame.c: libnsgif's gif.c calls them inside libobs.
+# Declared in gif-frame.h without EXPORT, so the shims stay hidden the same way.
+nsgif_frame_pixels_decode
+nsgif_frame_restore_bg
+nsgif_frame_recover
 # graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs.
 # Declared in lzw.h without EXPORT, so the shims stay hidden the same way.
 lzw_context_create

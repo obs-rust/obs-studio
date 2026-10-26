@@ -47,6 +47,15 @@ unsafe fn input<'a>(data: *const u8, len: usize) -> &'a [u8] {
 }
 
 impl LzwCtx {
+    /// The safe decoder, for the frame decode shim
+    /// ([`crate::ffi::gif_frame`]), which inits and decodes it on slices of
+    /// its own. The input and colour table pointers stay as the last
+    /// `lzw_decode_init*` left them: no caller decodes through them after a
+    /// frame decode (`gif.c` inits before every frame).
+    pub(crate) fn decoder_mut(&mut self) -> &mut Decoder {
+        &mut self.decoder
+    }
+
     /// The pointers init stores before it can fail, as the C does.
     fn store_input(&mut self, minimum_code_size: u8, data: *const u8, len: usize) {
         if minimum_code_size < LZW_CODE_MAX {
