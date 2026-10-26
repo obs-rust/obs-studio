@@ -36,6 +36,8 @@ mod encoder_size;
 mod graphics;
 #[path = "port_comparison/graphics_sprite.rs"]
 mod graphics_sprite;
+#[path = "port_comparison/lzw.rs"]
+mod lzw;
 #[path = "port_comparison/media_remux.rs"]
 mod media_remux;
 #[path = "port_comparison/module_source_rules.rs"]
@@ -185,6 +187,7 @@ fn comparisons(criterion: &mut Criterion) {
         encoder_size,
         graphics,
         graphics_sprite,
+        lzw,
         media_remux,
         module_source_rules,
         module_type_rules,

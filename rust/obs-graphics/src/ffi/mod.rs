@@ -7,6 +7,7 @@ pub mod effect_params;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 pub mod image_file;
+pub mod lzw;
 pub mod math_extra;
 pub mod matrix3;
 pub mod matrix4;

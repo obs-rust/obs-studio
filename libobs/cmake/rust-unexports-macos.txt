@@ -58,6 +58,13 @@ _gs_sprite_uv_subregion
 _gs_texture_is_pow2
 _gs_texture_mip_plan
 _gs_texture_upload_plan
+# graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
+_lzw_context_create
+_lzw_context_destroy
+_lzw_decode_init
+_lzw_decode
+_lzw_decode_init_map
+_lzw_decode_map
 # obs-scene-bounds.c: obs-scene.c calls it inside libobs. Not EXPORT.
 _obs_bounds_fit_scale
 # obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it inside

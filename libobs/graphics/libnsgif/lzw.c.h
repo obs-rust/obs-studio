@@ -7,7 +7,7 @@
  * Copyright 2021 Michael Drake <tlsa@netsurf-browser.org>
  */
 
-#include "build/libobs-nsgif.pch.h"
+#include "build/libobs-ported-nsgif-lzw.pch.h"
 
 /**
  * \file

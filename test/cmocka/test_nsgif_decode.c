@@ -16,6 +16,10 @@
  * with the decoder's own width rule: the width grows when an entry is added
  * at table_size == code_max, up to LZW_CODE_MAX, and nothing is added once
  * the table has 4096 entries.
+ *
+ * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST_LZW:
+ * without lzw.c, against the Rust shims of obs-graphics (lzw.h is the
+ * boundary; gif.c stays C here too).
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -30,7 +34,9 @@
 #pragma warning(push)
 #pragma warning(disable : 4244 4267)
 #endif
+#ifndef NSGIF_TEST_RUST_LZW
 #include "graphics/libnsgif/lzw.c.h"
+#endif
 #include "graphics/libnsgif/gif.c.h"
 #ifdef _MSC_VER
 #pragma warning(pop)

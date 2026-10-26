@@ -75,6 +75,13 @@
     gs_texture_is_pow2;
     gs_texture_mip_plan;
     gs_texture_upload_plan;
+    /* graphics/libnsgif/lzw.c. libnsgif's gif.c calls them inside libobs. */
+    lzw_context_create;
+    lzw_context_destroy;
+    lzw_decode_init;
+    lzw_decode;
+    lzw_decode_init_map;
+    lzw_decode_map;
     /* obs-scene-bounds.c. obs-scene.c calls it inside libobs. Not EXPORT. */
     obs_bounds_fit_scale;
     /* obs-scene-blend.c: the blend mode table, data. obs-scene.c reads it
