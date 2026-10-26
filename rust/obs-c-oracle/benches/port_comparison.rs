@@ -60,6 +60,8 @@ mod output_raw_audio;
 mod output_slots;
 #[path = "port_comparison/output_start.rs"]
 mod output_start;
+#[path = "port_comparison/output_stop.rs"]
+mod output_stop;
 #[path = "port_comparison/output_stop_stats.rs"]
 mod output_stop_stats;
 #[path = "port_comparison/output_video_checks.rs"]
@@ -221,6 +223,7 @@ fn comparisons(criterion: &mut Criterion) {
         output_raw_audio,
         output_slots,
         output_start,
+        output_stop,
         output_stop_stats,
         output_video_checks,
         pulse_monitor,
