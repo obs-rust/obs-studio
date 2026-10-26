@@ -44,7 +44,11 @@
 //! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
 //! the transitions; `libobs/obs-source-transition-render.c.h`, the render
-//! and audio step decisions of the transitions; and
+//! and audio step decisions of the transitions;
+//! `libobs/obs-source-video-tick.c.h`, the per-frame decisions of
+//! `obs_source_video_tick()` and `async_tick()` (which steps run, the
+//! deferred update, the show and activate edges, the plugin callback and
+//! the async route); and
 //! `libobs/obs-source-volume.c.h`, the volume snap of
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
@@ -52,7 +56,8 @@
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
-//! [`transition_clock`], [`transition_render`] and [`volume_apply`]; [`draw_technique`] holds the
+//! [`transition_clock`], [`transition_render`], [`video_tick`] and
+//! [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
 //! ABI shims live in [`ffi`].

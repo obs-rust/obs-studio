@@ -98,6 +98,8 @@ mod source_size;
 mod source_transition_clock;
 #[path = "port_comparison/source_transition_render.rs"]
 mod source_transition_render;
+#[path = "port_comparison/source_video_tick.rs"]
+mod source_video_tick;
 #[path = "port_comparison/source_volume.rs"]
 mod source_volume;
 #[path = "port_comparison/util.rs"]
@@ -210,6 +212,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_size,
         source_transition_clock,
         source_transition_render,
+        source_video_tick,
         source_volume,
         util,
         video_copy_plan,
