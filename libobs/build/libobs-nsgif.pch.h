@@ -4,7 +4,7 @@
 
 #pragma once
 
-/* graphics/libnsgif/gif.c */
+/* graphics/libnsgif/gif-frame.c, graphics/libnsgif/gif.c */
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,3 +14,4 @@
 #include "graphics/libnsgif/lzw.h"
 #include "graphics/libnsgif/nsgif.h"
 #include "graphics/libnsgif/gif-blocks.h"
+#include "graphics/libnsgif/gif-frame.h"
