@@ -32,3 +32,11 @@ pub(crate) const NATIVE_ROUND: bool = cfg_select! {
     target_arch = "aarch64" => { true }
     _ => { false }
 };
+
+/// `nsgif__host_is_little_endian`: libnsgif maps its host-order bitmap
+/// formats (`NSGIF_BITMAP_FMT_RGBA8888` and the others) to byte orders by
+/// it.
+#[inline]
+pub(crate) fn host_is_little_endian() -> bool {
+    cfg!(target_endian = "little")
+}

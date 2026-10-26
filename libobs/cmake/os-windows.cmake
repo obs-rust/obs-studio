@@ -51,9 +51,9 @@ set_source_files_properties(
 )
 
 set_source_files_properties(
-  build/libobs.nsgif+.h.c
   build/libobs.ported-nsgif-blocks+.h.c
   build/libobs.ported-nsgif-frame+.h.c
+  build/libobs.ported-nsgif-gif+.h.c
   build/libobs.ported-nsgif-lzw+.h.c
   graphics/libnsgif/gif-blocks.h
   graphics/libnsgif/gif-frame.h

@@ -22,11 +22,9 @@ if(TARGET libobs_rust-static)
     test_effect_parser_lifecycle.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     # The staticlib's obs-graphics also holds gs_image_file_ex_* and
-    # gs_texrender_*, which call the vendored libnsgif and the private
-    # obs-graphics adapters. libobs links
-    # them but does not export them, so this executable compiles its own
-    # copies, as libobs does.
-    "${CMAKE_SOURCE_DIR}/libobs/build/libobs.nsgif+.h.c"
+    # gs_texrender_*, which call the private obs-graphics adapters (libnsgif
+    # is in the staticlib, ported). libobs links them but does not export
+    # them, so this executable compiles its own copies, as libobs does.
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
   )
   target_include_directories(
@@ -35,7 +33,6 @@ if(TARGET libobs_rust-static)
   )
   if(MSVC)
     set_source_files_properties(
-      "${CMAKE_SOURCE_DIR}/libobs/build/libobs.nsgif+.h.c"
       TARGET_DIRECTORY test_effect_parser_lifecycle_rust
       PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
     )

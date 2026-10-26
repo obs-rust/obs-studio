@@ -58,6 +58,21 @@ _gs_sprite_uv_subregion
 _gs_texture_is_pow2
 _gs_texture_mip_plan
 _gs_texture_upload_plan
+# graphics/libnsgif/gif.c: gs_image_file calls them inside libobs. Not EXPORT.
+_nsgif_create
+_nsgif_destroy
+_nsgif_set_frame_delay_behaviour
+_nsgif_data_scan
+_nsgif_data_complete
+_nsgif_reset
+_nsgif_frame_prepare
+_nsgif_frame_decode
+_nsgif_get_info
+_nsgif_get_frame_info
+_nsgif_global_palette
+_nsgif_local_palette
+_nsgif_strerror
+_nsgif_str_disposal
 # graphics/libnsgif/gif-blocks.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
 _nsgif_blocks_header
 _nsgif_blocks_screen

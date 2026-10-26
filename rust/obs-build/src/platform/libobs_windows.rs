@@ -43,7 +43,7 @@ pub fn configure(
             options: vec![format!("/DOBS_VERSION=\"{}\"", version.join("."))],
         },
         SourceCompileOptions {
-            sources: vec![root.join("libobs/build/libobs.nsgif+.h.c")],
+            sources: vec![root.join("libobs/build/libobs.ported-nsgif-gif+.h.c")],
             options: vec!["/wd4244".into(), "/wd4267".into()],
         },
     ]);

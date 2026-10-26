@@ -690,16 +690,10 @@ fn main() {
     }
     jansson.compile("jansson_vendor");
 
-    // The vendored libnsgif that image-file.c.h calls, for the oracle and
-    // the Rust shim alike (libobs links its own copy). Its own library,
-    // warnings off: third-party code, not part of the ratchet (#516).
-    let mut nsgif = cc::Build::new();
-    nsgif
-        .include(&libobs)
-        .include(libobs.parent().expect("libobs has a parent"))
-        .warnings(false)
-        .file(libobs.join("build").join("libobs.nsgif+.h.c"));
-    nsgif.compile("obs_c_oracle_nsgif");
+    // libnsgif is ported (graphics/libnsgif, #2466, #2488, #2501, #2510):
+    // image-file.c.h's nsgif_* calls in the oracle reach the Rust shims of
+    // obs-graphics, as the hybrid libobs does. The C of libnsgif is in the
+    // oracle only renamed, for the parity tests (oracle/gif*.c, lzw.c).
 
     if macos {
         let mut objc = cc::Build::new();

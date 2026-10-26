@@ -66,6 +66,22 @@ gs_sprite_uv_subregion
 gs_texture_is_pow2
 gs_texture_mip_plan
 gs_texture_upload_plan
+# graphics/libnsgif/gif.c: gs_image_file calls them inside libobs.
+# Declared in nsgif.h without EXPORT, so the shims stay hidden the same way.
+nsgif_create
+nsgif_destroy
+nsgif_set_frame_delay_behaviour
+nsgif_data_scan
+nsgif_data_complete
+nsgif_reset
+nsgif_frame_prepare
+nsgif_frame_decode
+nsgif_get_info
+nsgif_get_frame_info
+nsgif_global_palette
+nsgif_local_palette
+nsgif_strerror
+nsgif_str_disposal
 # graphics/libnsgif/gif-blocks.c: libnsgif's gif.c calls them inside libobs.
 # Declared in gif-blocks.h without EXPORT, so the shims stay hidden the same way.
 nsgif_blocks_header

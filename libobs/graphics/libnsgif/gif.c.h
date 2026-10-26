@@ -8,7 +8,7 @@
  *                http://www.opensource.org/licenses/mit-license.php
  */
 
-#include "build/libobs-nsgif.pch.h"
+#include "build/libobs-ported-nsgif-gif.pch.h"
 
 /** Default minimum allowable frame delay in cs. */
 #define NSGIF_FRAME_DELAY_MIN 2

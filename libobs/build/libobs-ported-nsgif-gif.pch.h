@@ -1,6 +1,6 @@
-/* Precompiled header (BUILD.md) for the libobs unity groups libobs.nsgif. C.
- * Every implementation file in them includes this header and nothing else: the includes and macro setup below are
- * theirs, in group and file order. */
+/* Precompiled header (BUILD.md) for the libobs unity group
+ * libobs.ported-nsgif-gif. graphics/libnsgif/gif.c includes this header and
+ * nothing else: the includes below are its own. */
 
 #pragma once
 

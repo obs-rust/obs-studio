@@ -37,9 +37,8 @@
  * little-endian host (every CI host is).
  *
  * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST:
- * without lzw.c, gif-blocks.c and gif-frame.c, against the Rust shims of
- * obs-graphics (lzw.h, gif-blocks.h and gif-frame.h are the boundary; gif.c
- * stays C here too).
+ * without libnsgif's C, against the Rust shims of obs-graphics (nsgif.h,
+ * gif-blocks.h, gif-frame.h and lzw.h are the boundary).
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -58,8 +57,15 @@
 #include "graphics/libnsgif/lzw.c.h"
 #include "graphics/libnsgif/gif-blocks.c.h"
 #include "graphics/libnsgif/gif-frame.c.h"
-#endif
 #include "graphics/libnsgif/gif.c.h"
+#else
+#include <stdbool.h>
+#include <stdint.h>
+#include "graphics/libnsgif/nsgif.h"
+#include "graphics/libnsgif/lzw.h"
+#include "graphics/libnsgif/gif-blocks.h"
+#include "graphics/libnsgif/gif-frame.h"
+#endif
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif

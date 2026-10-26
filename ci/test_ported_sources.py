@@ -20,6 +20,7 @@ PORTED_ON_EVERY_HOST = (
     "graphics/graphics-state-stacks.c.h.o",
     "graphics/libnsgif/gif-blocks.c.h.o",
     "graphics/libnsgif/gif-frame.c.h.o",
+    "graphics/libnsgif/gif.c.h.o",
     "graphics/libnsgif/lzw.c.h.o",
     "obs-audio-discard.c.h.o",
     "obs-audio-min-ts.c.h.o",

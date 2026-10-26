@@ -70,6 +70,7 @@ pub mod encoder_size;
 pub mod file_serializer;
 pub mod format_conversion;
 pub mod frame_rate;
+pub mod gif;
 pub mod gif_blocks;
 pub mod gif_frame;
 pub mod graphics_math;

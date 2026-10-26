@@ -3,17 +3,15 @@
 # gs_image_file, so test_image_file does not reach libnsgif for it.
 # test_nsgif_decode is defined in ../build/test-graph.json.
 
-# The same cases against the Rust LZW decoder (#2466), block parsers (#2488)
-# and frame decode (#2501), built and run only with the hybrid backend
-# (OBS_LIBOBS_BACKEND=C has no Rust target). lzw_*, nsgif_blocks_* and
-# nsgif_frame_* are hidden in the shared library, so the test takes them from
-# the production staticlib at executable link time and compiles libnsgif's
-# gif.c itself, without lzw.c, gif-blocks.c and gif-frame.c.
+# The same cases against libnsgif in Rust (#2466, #2488, #2501, #2510), built
+# and run only with the hybrid backend (OBS_LIBOBS_BACKEND=C has no Rust
+# target). nsgif_*, nsgif_blocks_*, nsgif_frame_* and lzw_* are hidden in the
+# shared library, so the test takes them from the production staticlib at
+# executable link time and compiles none of libnsgif's C.
 # The staticlib's obs-graphics also holds gs_image_file_ex_*, gs_texrender_* and
 # the effect parser lifecycle, which call the private obs-graphics and effect
 # parser adapters; libobs links those but does not export them, so this
 # executable compiles its own copies, as test_sprite_geometry_steps_rust does.
-# libnsgif's gif.c comes from test_nsgif_decode.c itself.
 if(TARGET libobs_rust-static)
   add_executable(
     test_nsgif_decode_rust
