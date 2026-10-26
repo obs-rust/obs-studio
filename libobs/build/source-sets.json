@@ -142,6 +142,7 @@
     "graphics/half.h",
     "graphics/image-file.h",
     "graphics/input.h",
+    "graphics/libnsgif/gif-blocks.h",
     "graphics/libnsgif/lzw.h",
     "graphics/libnsgif/nsgif.h",
     "graphics/math-defs.h",

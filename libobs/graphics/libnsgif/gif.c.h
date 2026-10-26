@@ -46,14 +46,6 @@ typedef struct nsgif_frame {
 	uint32_t flags;
 } nsgif_frame;
 
-/** Pixel format: colour component order. */
-struct nsgif_colour_layout {
-	uint8_t r; /**< Byte offset within pixel to red component. */
-	uint8_t g; /**< Byte offset within pixel to green component. */
-	uint8_t b; /**< Byte offset within pixel to blue component. */
-	uint8_t a; /**< Byte offset within pixel to alpha component. */
-};
-
 /** GIF animation data */
 struct nsgif {
 	struct nsgif_info info;
@@ -157,7 +149,6 @@ struct nsgif {
 /* GIF Flags */
 #define NSGIF_COLOUR_TABLE_MASK 0x80
 #define NSGIF_COLOUR_TABLE_SIZE_MASK 0x07
-#define NSGIF_BLOCK_TERMINATOR 0x00
 #define NSGIF_TRAILER 0x3b
 
 /**
@@ -730,146 +721,11 @@ static nsgif_error nsgif__update_bitmap(
 }
 
 /**
- * Parse the graphic control extension
- *
- * \param[in] frame  The gif frame object we're decoding.
- * \param[in] data   The data to decode.
- * \param[in] len    Byte length of data.
- * \return NSGIF_ERR_END_OF_DATA if more data is needed,
- *         NSGIF_OK for success.
- */
-static nsgif_error nsgif__parse_extension_graphic_control(
-		struct nsgif_frame *frame,
-		const uint8_t *data,
-		size_t len)
-{
-	enum {
-		GIF_MASK_TRANSPARENCY = 0x01,
-		GIF_MASK_DISPOSAL     = 0x1c,
-	};
-
-	/* 6-byte Graphic Control Extension is:
-	 *
-	 *  +0  CHAR    Graphic Control Label
-	 *  +1  CHAR    Block Size
-	 *  +2  CHAR    __Packed Fields__
-	 *              3BITS   Reserved
-	 *              3BITS   Disposal Method
-	 *              1BIT    User Input Flag
-	 *              1BIT    Transparent Color Flag
-	 *  +3  SHORT   Delay Time
-	 *  +5  CHAR    Transparent Color Index
-	 */
-	if (len < 6) {
-		return NSGIF_ERR_END_OF_DATA;
-	}
-
-	frame->info.delay = data[3] | (data[4] << 8);
-
-	if (data[2] & GIF_MASK_TRANSPARENCY) {
-		frame->info.transparency = true;
-		frame->transparency_index = data[5];
-	}
-
-	frame->info.disposal = ((data[2] & GIF_MASK_DISPOSAL) >> 2);
-	/* I have encountered documentation and GIFs in the
-	 * wild that use 0x04 to restore the previous frame,
-	 * rather than the officially documented 0x03.  I
-	 * believe some (older?)  software may even actually
-	 * export this way.  We handle this as a type of
-	 * "quirks" mode. */
-	if (frame->info.disposal == NSGIF_DISPOSAL_RESTORE_QUIRK) {
-		frame->info.disposal = NSGIF_DISPOSAL_RESTORE_PREV;
-	}
-
-	/* if we are clearing the background then we need to
-	 * redraw enough to cover the previous frame too. */
-	frame->redraw_required =
-			frame->info.disposal == NSGIF_DISPOSAL_RESTORE_BG ||
-			frame->info.disposal == NSGIF_DISPOSAL_RESTORE_PREV;
-
-	return NSGIF_OK;
-}
-
-/**
- * Check an app ext identifier and authentication code for loop count extension.
- *
- * \param[in] data  The data to decode.
- * \param[in] len   Byte length of data.
- * \return true if extension is a loop count extension.
- */
-static bool nsgif__app_ext_is_loop_count(
-		const uint8_t *data,
-		size_t len)
-{
-	enum {
-		EXT_LOOP_COUNT_BLOCK_SIZE = 0x0b,
-	};
-
-	assert(len > 13);
-	(void)(len);
-
-	if (data[1] == EXT_LOOP_COUNT_BLOCK_SIZE) {
-		if (strncmp((const char *)data + 2, "NETSCAPE2.0", 11) == 0 ||
-		    strncmp((const char *)data + 2, "ANIMEXTS1.0", 11) == 0) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-/**
- * Parse the application extension
- *
- * \param[in] gif   The gif object we're decoding.
- * \param[in] data  The data to decode.
- * \param[in] len   Byte length of data.
- * \return NSGIF_ERR_END_OF_DATA if more data is needed,
- *         NSGIF_OK for success.
- */
-static nsgif_error nsgif__parse_extension_application(
-		struct nsgif *gif,
-		const uint8_t *data,
-		size_t len)
-{
-	/* 14-byte+ Application Extension is:
-	 *
-	 *  +0    CHAR    Application Extension Label
-	 *  +1    CHAR    Block Size
-	 *  +2    8CHARS  Application Identifier
-	 *  +10   3CHARS  Appl. Authentication Code
-	 *  +13   1-256   Application Data (Data sub-blocks)
-	 */
-	if (len < 17) {
-		return NSGIF_ERR_END_OF_DATA;
-	}
-
-	if (nsgif__app_ext_is_loop_count(data, len)) {
-		enum {
-			EXT_LOOP_COUNT_SUB_BLOCK_SIZE = 0x03,
-			EXT_LOOP_COUNT_SUB_BLOCK_ID   = 0x01,
-		};
-		if ((data[13] == EXT_LOOP_COUNT_SUB_BLOCK_SIZE) &&
-		    (data[14] == EXT_LOOP_COUNT_SUB_BLOCK_ID)) {
-			gif->info.loop_max = data[15] | (data[16] << 8);
-
-			/* The value in the source data means repeat N times
-			 * after the first implied play. A value of zero has
-			 * the special meaning of loop forever. (The only way
-			 * to play the animation once is  not to have this
-			 * extension at all. */
-			if (gif->info.loop_max > 0) {
-				gif->info.loop_max++;
-			}
-		}
-	}
-
-	return NSGIF_OK;
-}
-
-/**
  * Parse the frame's extensions
+ *
+ * The parser is nsgif_blocks_extensions() (gif-blocks.c). It writes the
+ * graphic control fields and the loop count as it parses, also before an
+ * error, so they are copied back in every case.
  *
  * \param[in] gif     The gif object we're decoding.
  * \param[in] frame   The frame to parse extensions for.
@@ -884,112 +740,33 @@ static nsgif_error nsgif__parse_frame_extensions(
 		const uint8_t **pos,
 		bool decode)
 {
-	enum {
-		GIF_EXT_INTRODUCER      = 0x21,
-		GIF_EXT_GRAPHIC_CONTROL = 0xf9,
-		GIF_EXT_COMMENT         = 0xfe,
-		GIF_EXT_PLAIN_TEXT      = 0x01,
-		GIF_EXT_APPLICATION     = 0xff,
+	size_t p = *pos - gif->buf;
+	struct nsgif_blocks_frame_ext ext = {
+		.delay = frame->info.delay,
+		.disposal = frame->info.disposal,
+		.transparency = frame->info.transparency,
+		.transparency_index = frame->transparency_index,
+		.redraw_required = frame->redraw_required,
 	};
-	const uint8_t *nsgif_data = *pos;
-	const uint8_t *nsgif_end = gif->buf + gif->buf_len;
-	int nsgif_bytes = nsgif_end - nsgif_data;
+	nsgif_error ret;
 
-	/* Initialise the extensions */
-	while (nsgif_bytes > 0 && nsgif_data[0] == GIF_EXT_INTRODUCER) {
-		bool block_step = true;
-		nsgif_error ret;
+	ret = nsgif_blocks_extensions(gif->buf, gif->buf_len, &p, decode,
+			&ext, &gif->info.loop_max);
 
-		nsgif_data++;
-		nsgif_bytes--;
+	frame->info.delay = ext.delay;
+	frame->info.disposal = ext.disposal;
+	frame->info.transparency = ext.transparency;
+	frame->transparency_index = ext.transparency_index;
+	frame->redraw_required = ext.redraw_required;
 
-		if (nsgif_bytes == 0) {
-			return NSGIF_ERR_END_OF_DATA;
-		}
-
-		/* Switch on extension label */
-		switch (nsgif_data[0]) {
-		case GIF_EXT_GRAPHIC_CONTROL:
-			if (decode) {
-				ret = nsgif__parse_extension_graphic_control(
-						frame,
-						nsgif_data,
-						nsgif_bytes);
-				if (ret != NSGIF_OK) {
-					return ret;
-				}
-			}
-			break;
-
-		case GIF_EXT_APPLICATION:
-			if (decode) {
-				ret = nsgif__parse_extension_application(
-						gif, nsgif_data, nsgif_bytes);
-				if (ret != NSGIF_OK) {
-					return ret;
-				}
-			}
-			break;
-
-		case GIF_EXT_COMMENT:
-			/* Move the pointer to the first data sub-block Skip 1
-			 * byte for the extension label. */
-			++nsgif_data;
-			block_step = false;
-			break;
-
-		default:
-			break;
-		}
-
-		if (block_step) {
-			/* Move the pointer to the first data sub-block Skip 2
-			 * bytes for the extension label and size fields Skip
-			 * the extension size itself
-			 */
-			if (nsgif_bytes < 2) {
-				return NSGIF_ERR_END_OF_DATA;
-			}
-			nsgif_data += 2 + nsgif_data[1];
-		}
-
-		/* Repeatedly skip blocks until we get a zero block or run out
-		 * of data.  This data is ignored by this gif decoder. */
-		while (nsgif_data < nsgif_end && nsgif_data[0] != NSGIF_BLOCK_TERMINATOR) {
-			nsgif_data += nsgif_data[0] + 1;
-			if (nsgif_data >= nsgif_end) {
-				return NSGIF_ERR_END_OF_DATA;
-			}
-		}
-		nsgif_data++;
-		nsgif_bytes = nsgif_end - nsgif_data;
+	if (ret == NSGIF_OK) {
+		*pos = gif->buf + p;
 	}
-
-	if (nsgif_data > nsgif_end) {
-		nsgif_data = nsgif_end;
-	}
-
-	/* Set buffer position and return */
-	*pos = nsgif_data;
-	return NSGIF_OK;
+	return ret;
 }
 
 /**
- * Parse a GIF Image Descriptor.
- *
- * The format is:
- *
- *  +0   CHAR   Image Separator (0x2c)
- *  +1   SHORT  Image Left Position
- *  +3   SHORT  Image Top Position
- *  +5   SHORT  Width
- *  +7   SHORT  Height
- *  +9   CHAR   __Packed Fields__
- *              1BIT    Local Colour Table Flag
- *              1BIT    Interlace Flag
- *              1BIT    Sort Flag
- *              2BITS   Reserved
- *              3BITS   Size of Local Colour Table
+ * Parse a GIF Image Descriptor (nsgif_blocks_image_descriptor()).
  *
  * \param[in] gif     The gif object we're decoding.
  * \param[in] frame   The frame to parse an image descriptor for.
@@ -1003,119 +780,27 @@ static nsgif_error nsgif__parse_image_descriptor(
 		const uint8_t **pos,
 		bool decode)
 {
-	const uint8_t *data = *pos;
-	size_t len = gif->buf + gif->buf_len - data;
-	enum {
-		NSGIF_IMAGE_DESCRIPTOR_LEN = 10u,
-		NSGIF_IMAGE_SEPARATOR      = 0x2Cu,
-		NSGIF_MASK_INTERLACE       = 0x40u,
-	};
+	size_t p = *pos - gif->buf;
+	struct nsgif_blocks_image image;
+	nsgif_error ret;
 
 	assert(gif != NULL);
 	assert(frame != NULL);
 
-	if (len < NSGIF_IMAGE_DESCRIPTOR_LEN) {
-		return NSGIF_ERR_END_OF_DATA;
+	ret = nsgif_blocks_image_descriptor(gif->buf, gif->buf_len, &p,
+			decode, gif->info.frame_count == 0, &image,
+			&gif->info.width, &gif->info.height);
+	if (ret != NSGIF_OK) {
+		return ret;
 	}
 
 	if (decode) {
-		uint32_t x, y, w, h;
-
-		if (data[0] != NSGIF_IMAGE_SEPARATOR) {
-			return NSGIF_ERR_DATA_FRAME;
-		}
-
-		x = data[1] | (data[2] << 8);
-		y = data[3] | (data[4] << 8);
-		w = data[5] | (data[6] << 8);
-		h = data[7] | (data[8] << 8);
-		frame->flags = data[9];
-
-		frame->info.rect.x0 = x;
-		frame->info.rect.y0 = y;
-		frame->info.rect.x1 = x + w;
-		frame->info.rect.y1 = y + h;
-
-		frame->info.interlaced = frame->flags & NSGIF_MASK_INTERLACE;
-
-		/* Allow first frame to grow image dimensions. */
-		if (gif->info.frame_count == 0) {
-			if (x + w > gif->info.width) {
-				gif->info.width = x + w;
-			}
-			if (y + h > gif->info.height) {
-				gif->info.height = y + h;
-			}
-		}
+		frame->flags = image.flags;
+		frame->info.rect = image.rect;
+		frame->info.interlaced = image.interlaced;
 	}
 
-	*pos += NSGIF_IMAGE_DESCRIPTOR_LEN;
-	return NSGIF_OK;
-}
-
-/**
- * Extract a GIF colour table into a LibNSGIF colour table buffer.
- *
- * \param[in] colour_table          The colour table to populate.
- * \param[in] layout                la.
- * \param[in] colour_table_entries  The number of colour table entries.
- * \param[in] data                  Raw colour table data.
- */
-static void nsgif__colour_table_decode(
-		uint32_t colour_table[NSGIF_MAX_COLOURS],
-		const struct nsgif_colour_layout *layout,
-		size_t colour_table_entries,
-		const uint8_t *data)
-{
-	uint8_t *entry = (uint8_t *)colour_table;
-
-	while (colour_table_entries--) {
-		/* Gif colour map contents are r,g,b.
-		 *
-		 * We want to pack them bytewise into the colour table,
-		 * according to the client colour layout.
-		 */
-
-		entry[layout->r] = *data++;
-		entry[layout->g] = *data++;
-		entry[layout->b] = *data++;
-		entry[layout->a] = 0xff;
-
-		entry += sizeof(uint32_t);
-	}
-}
-
-/**
- * Extract a GIF colour table into a LibNSGIF colour table buffer.
- *
- * \param[in]  colour_table          The colour table to populate.
- * \param[in]  layout                The target pixel format to decode to.
- * \param[in]  colour_table_entries  The number of colour table entries.
- * \param[in]  data                  Current position in data.
- * \param[in]  data_len              The available length of `data`.
- * \param[out] used                  Number of colour table bytes read.
- * \param[in]  decode                Whether to decode the colour table.
- * \return NSGIF_OK on success, appropriate error otherwise.
- */
-static inline nsgif_error nsgif__colour_table_extract(
-		uint32_t colour_table[NSGIF_MAX_COLOURS],
-		const struct nsgif_colour_layout *layout,
-		size_t colour_table_entries,
-		const uint8_t *data,
-		size_t data_len,
-		size_t *used,
-		bool decode)
-{
-	if (data_len < colour_table_entries * 3) {
-		return NSGIF_ERR_END_OF_DATA;
-	}
-
-	if (decode) {
-		nsgif__colour_table_decode(colour_table, layout,
-				colour_table_entries, data);
-	}
-
-	*used = colour_table_entries * 3;
+	*pos = gif->buf + p;
 	return NSGIF_OK;
 }
 
@@ -1153,7 +838,7 @@ static nsgif_error nsgif__parse_colour_table(
 		frame->colour_table_offset = *pos - gif->buf;
 	}
 
-	ret = nsgif__colour_table_extract(
+	ret = nsgif_blocks_colour_table(
 			gif->local_colour_table, &gif->colour_layout,
 			2 << (frame->flags & NSGIF_COLOUR_TABLE_SIZE_MASK),
 			data, len, &used_bytes, decode);
@@ -1514,12 +1199,7 @@ void nsgif_set_frame_delay_behaviour(
 }
 
 /**
- * Read GIF header.
- *
- * 6-byte GIF file header is:
- *
- *  +0   3CHARS   Signature ('GIF')
- *  +3   3CHARS   Version ('87a' or '89a')
+ * Read GIF header (nsgif_blocks_header()).
  *
  * \param[in]      gif     The GIF object we're decoding.
  * \param[in,out]  pos     The current buffer position, updated on success.
@@ -1531,44 +1211,20 @@ static nsgif_error nsgif__parse_header(
 		const uint8_t **pos,
 		bool strict)
 {
-	const uint8_t *data = *pos;
-	size_t len = gif->buf + gif->buf_len - data;
+	size_t p = *pos - gif->buf;
+	nsgif_error ret;
 
-	if (len < 6) {
-		return NSGIF_ERR_END_OF_DATA;
+	ret = nsgif_blocks_header(gif->buf, gif->buf_len, &p, strict);
+	if (ret != NSGIF_OK) {
+		return ret;
 	}
 
-	if (strncmp((const char *) data, "GIF", 3) != 0) {
-		return NSGIF_ERR_DATA;
-	}
-	data += 3;
-
-	if (strict == true) {
-		if ((strncmp((const char *) data, "87a", 3) != 0) &&
-		    (strncmp((const char *) data, "89a", 3) != 0)) {
-			return NSGIF_ERR_DATA;
-		}
-	}
-	data += 3;
-
-	*pos = data;
+	*pos = gif->buf + p;
 	return NSGIF_OK;
 }
 
 /**
- * Read Logical Screen Descriptor.
- *
- * 7-byte Logical Screen Descriptor is:
- *
- *  +0   SHORT   Logical Screen Width
- *  +2   SHORT   Logical Screen Height
- *  +4   CHAR    __Packed Fields__
- *               1BIT    Global Colour Table Flag
- *               3BITS   Colour Resolution
- *               1BIT    Sort Flag
- *               3BITS   Size of Global Colour Table
- *  +5   CHAR    Background Colour Index
- *  +6   CHAR    Pixel Aspect Ratio
+ * Read Logical Screen Descriptor (nsgif_blocks_screen()).
  *
  * \param[in]      gif     The GIF object we're decoding.
  * \param[in,out]  pos     The current buffer position, updated on success.
@@ -1578,22 +1234,24 @@ static nsgif_error nsgif__parse_logical_screen_descriptor(
 		struct nsgif *gif,
 		const uint8_t **pos)
 {
-	const uint8_t *data = *pos;
-	size_t len = gif->buf + gif->buf_len - data;
+	size_t p = *pos - gif->buf;
+	struct nsgif_screen screen;
+	nsgif_error ret;
 
-	if (len < 7) {
-		return NSGIF_ERR_END_OF_DATA;
+	ret = nsgif_blocks_screen(gif->buf, gif->buf_len, &p, &screen);
+	if (ret != NSGIF_OK) {
+		return ret;
 	}
 
-	gif->info.width = data[0] | (data[1] << 8);
-	gif->info.height = data[2] | (data[3] << 8);
-	gif->info.global_palette = data[4] & NSGIF_COLOUR_TABLE_MASK;
-	gif->colour_table_size = 2 << (data[4] & NSGIF_COLOUR_TABLE_SIZE_MASK);
-	gif->bg_index = data[5];
-	gif->aspect_ratio = data[6];
-	gif->info.loop_max = 1;
+	gif->info.width = screen.width;
+	gif->info.height = screen.height;
+	gif->info.global_palette = screen.global_palette;
+	gif->colour_table_size = screen.colour_table_size;
+	gif->bg_index = screen.bg_index;
+	gif->aspect_ratio = screen.aspect_ratio;
+	gif->info.loop_max = screen.loop_max;
 
-	*pos += 7;
+	*pos = gif->buf + p;
 	return NSGIF_OK;
 }
 
@@ -1646,22 +1304,9 @@ nsgif_error nsgif_data_scan(
 		/* Remember we've done this now */
 		gif->buf_pos = nsgif_data - gif->buf;
 
-		/* Some broken GIFs report the size as the screen size they
-		 * were created in. As such, we detect for the common cases and
-		 * set the sizes as 0 if they are found which results in the
-		 * GIF being the maximum size of the frames.
-		 */
-		if (((gif->info.width == 640) && (gif->info.height == 480)) ||
-		    ((gif->info.width == 640) && (gif->info.height == 512)) ||
-		    ((gif->info.width == 800) && (gif->info.height == 600)) ||
-		    ((gif->info.width == 1024) && (gif->info.height == 768)) ||
-		    ((gif->info.width == 1280) && (gif->info.height == 1024)) ||
-		    ((gif->info.width == 1600) && (gif->info.height == 1200)) ||
-		    ((gif->info.width == 0) || (gif->info.height == 0)) ||
-		    ((gif->info.width > 2048) || (gif->info.height > 2048))) {
-			gif->info.width = 1;
-			gif->info.height = 1;
-		}
+		/* Broken GIFs that report a screen size get 1x1. */
+		nsgif_blocks_screen_size_quirk(
+				&gif->info.width, &gif->info.height);
 
 		/* Set the first colour to a value that will never occur in
 		 * reality so we know if we've processed it
@@ -1689,7 +1334,7 @@ nsgif_error nsgif_data_scan(
 			size_t remaining = gif->buf + gif->buf_len - nsgif_data;
 			size_t used;
 
-			ret = nsgif__colour_table_extract(
+			ret = nsgif_blocks_colour_table(
 					gif->global_colour_table,
 					&gif->colour_layout,
 					gif->colour_table_size,
@@ -2022,7 +1667,7 @@ bool nsgif_local_palette(
 	}
 
 	*entries = 2 << (f->flags & NSGIF_COLOUR_TABLE_SIZE_MASK);
-	nsgif__colour_table_decode(table, &gif->colour_layout,
+	nsgif_blocks_colour_table_decode(table, &gif->colour_layout,
 			*entries, gif->buf + f->colour_table_offset);
 
 	return true;
@@ -2078,5 +1723,4 @@ const char *nsgif_str_disposal(enum nsgif_disposal disposal)
 #undef NSGIF_NO_TRANSPARENCY
 #undef NSGIF_COLOUR_TABLE_MASK
 #undef NSGIF_COLOUR_TABLE_SIZE_MASK
-#undef NSGIF_BLOCK_TERMINATOR
 #undef NSGIF_TRAILER

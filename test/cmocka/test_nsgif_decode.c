@@ -37,6 +37,7 @@
 #ifndef NSGIF_TEST_RUST_LZW
 #include "graphics/libnsgif/lzw.c.h"
 #endif
+#include "graphics/libnsgif/gif-blocks.c.h"
 #include "graphics/libnsgif/gif.c.h"
 #ifdef _MSC_VER
 #pragma warning(pop)
