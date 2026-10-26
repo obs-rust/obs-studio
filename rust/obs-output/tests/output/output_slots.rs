@@ -419,8 +419,10 @@ impl StandIn {
         self.video[idx] = self.get_ref(encoder);
         self.push(format!("hook{}", id(self.video[idx])));
 
+        // Decide on the stored slot, as obs_output_set_video_encoder2 does
+        // since #2495.
         self.destroy_caption(idx);
-        if encoder.is_some() {
+        if self.video[idx].is_some() {
             self.next_caption += 1;
             self.captions[idx] = self.next_caption;
             self.push(format!("caption{idx}"));
@@ -428,7 +430,10 @@ impl StandIn {
             self.captions[idx] = 0;
         }
 
-        if self.d_default(idx) && self.d_axis(self.scaled_width) && self.d_axis(self.scaled_height)
+        if self.d_default(idx)
+            && self.video[idx].is_some()
+            && self.d_axis(self.scaled_width)
+            && self.d_axis(self.scaled_height)
         {
             self.push(format!(
                 "size{}={}x{}",
@@ -641,13 +646,13 @@ fn steps_e2e_video_replace() {
     o.clear();
     o.set_video_encoder2(None, 3);
     assert_eq!(o.ev(), "active?");
-    // an encoder whose reference fails leaves the slot empty but still gets
-    // a caption track (characterized, not endorsed)
+    // an encoder whose reference fails leaves the slot empty and gets no
+    // caption track (#2495)
     o.clear();
     o.set_video_encoder2(Some(D6), 4);
-    assert_eq!(o.ev(), "active? unhook0 release0 ref6 hook0 caption4");
+    assert_eq!(o.ev(), "active? unhook0 release0 ref6 hook0");
     assert_eq!(o.video[4], None);
-    assert_ne!(o.captions[4], 0);
+    assert_eq!(o.captions[4], 0);
 }
 
 #[test]
@@ -674,15 +679,13 @@ fn steps_e2e_video_preferred_size() {
     o.scaled_height = 720;
     o.set_video_encoder2(Some(V1), 0);
     assert_eq!(o.ev(), "active? unhook0 release0 ref1 hook1 caption0");
-    // clearing index 0 with a scaled size: the size is still set, on the
-    // NULL slot, so obs_encoder_set_scaled_size() logs a NULL parameter
-    // (characterized, not endorsed)
+    // clearing index 0 with a scaled size: no size on the empty slot (#2495)
     let mut o = StandIn::new(F_ENCODED | F_VIDEO);
     o.scaled_width = 1280;
     o.scaled_height = 720;
     o.video[0] = Some(V1);
     o.set_video_encoder2(None, 0);
-    assert_eq!(o.ev(), "active? unhook1 release1 ref0 hook0 size0=1280x720");
+    assert_eq!(o.ev(), "active? unhook1 release1 ref0 hook0");
 }
 
 #[test]

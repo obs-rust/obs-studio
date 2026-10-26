@@ -337,15 +337,17 @@ static void si_set_video_encoder2(struct stand_in *o, struct si_encoder *encoder
 	o->video[idx] = si_get_ref(o, encoder);
 	si_ev(o, "hook%d", si_id(o->video[idx]));
 
+	/* Decide on the stored slot, as obs_output_set_video_encoder2 does
+	 * since #2495. */
 	si_destroy_caption(o, idx);
-	if (encoder != NULL) {
+	if (o->video[idx] != NULL) {
 		o->captions[idx] = ++o->next_caption;
 		si_ev(o, "caption%zu", idx);
 	} else {
 		o->captions[idx] = 0;
 	}
 
-	if (obs_output_slots_default_index(idx)) {
+	if (obs_output_slots_default_index(idx) && o->video[idx]) {
 		if (obs_output_slots_scaled_axis_set(o->scaled_width) &&
 		    obs_output_slots_scaled_axis_set(o->scaled_height))
 			si_ev(o, "size%d=%ux%u", si_id(o->video[idx]), o->scaled_width, o->scaled_height);
@@ -570,13 +572,13 @@ static void e2e_video_replace(void **state)
 	si_clear(&o);
 	si_set_video_encoder2(&o, NULL, 3);
 	assert_string_equal(o.ev, "active?");
-	/* an encoder whose reference fails leaves the slot empty but still gets
-	 * a caption track (characterized, not endorsed) */
+	/* an encoder whose reference fails leaves the slot empty and gets no
+	 * caption track (#2495) */
 	si_clear(&o);
 	si_set_video_encoder2(&o, &D6, 4);
-	assert_string_equal(o.ev, "active? unhook0 release0 ref6 hook0 caption4");
+	assert_string_equal(o.ev, "active? unhook0 release0 ref6 hook0");
 	assert_null(o.video[4]);
-	assert_int_not_equal(o.captions[4], 0);
+	assert_int_equal(o.captions[4], 0);
 }
 
 static void e2e_video_preferred_size(void **state)
@@ -601,15 +603,13 @@ static void e2e_video_preferred_size(void **state)
 	o.scaled_height = 720;
 	si_set_video_encoder2(&o, &V1, 0);
 	assert_string_equal(o.ev, "active? unhook0 release0 ref1 hook1 caption0");
-	/* clearing index 0 with a scaled size: the size is still set, on the
-	 * NULL slot, so obs_encoder_set_scaled_size() logs a NULL parameter
-	 * (characterized, not endorsed) */
+	/* clearing index 0 with a scaled size: no size on the empty slot (#2495) */
 	o = si_new(F_ENCODED | F_VIDEO);
 	o.scaled_width = 1280;
 	o.scaled_height = 720;
 	o.video[0] = &V1;
 	si_set_video_encoder2(&o, NULL, 0);
-	assert_string_equal(o.ev, "active? unhook1 release1 ref0 hook0 size0=1280x720");
+	assert_string_equal(o.ev, "active? unhook1 release1 ref0 hook0");
 }
 
 static void e2e_audio(void **state)

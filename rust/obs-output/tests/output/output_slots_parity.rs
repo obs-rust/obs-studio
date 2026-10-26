@@ -534,12 +534,15 @@ fn set_encoder(s: Side, o: &mut StandIn, kind: SlotKind, encoder: Option<Encoder
                 o.push(format!("uncaption{idx}"));
             }
             o.captions[idx] = 0;
-            if encoder.is_some() {
+            // On the stored slot, as obs_output_set_video_encoder2 decides
+            // since #2495.
+            if new.is_some() {
                 o.next_caption += 1;
                 o.captions[idx] = o.next_caption;
                 o.push(format!("caption{idx}"));
             }
-            if default_index(s, idx) && axis(s, o.scaled.0) && axis(s, o.scaled.1) {
+            if default_index(s, idx) && new.is_some() && axis(s, o.scaled.0) && axis(s, o.scaled.1)
+            {
                 o.push(format!("size{}={:?}", id(new), o.scaled));
             }
         }
