@@ -61,6 +61,7 @@ pub mod effect_params;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 pub mod encoder_audio_start;
+pub mod encoder_gpu_gates;
 pub mod encoder_packet;
 pub mod encoder_roi;
 pub mod encoder_size;
