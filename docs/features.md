@@ -2207,6 +2207,12 @@ area.
   left without that source, with a warning in the log, instead of holding
   a loop back to itself. *All*, pending merge. Issue
   [#2499](https://github.com/obs-rust/obs-studio/issues/2499).
+- Logging into Twitch with Connect Account no longer crashes OBS when the
+  login window closes itself after the login (Restream uses the same
+  window); the window now reacts to the browser's address and title changes
+  after the browser has finished handling them. *macOS*, pending merge. Issue
+  [#2523](https://github.com/obs-rust/obs-studio/issues/2523), upstream
+  [obsproject/obs-studio#14072](https://github.com/obsproject/obs-studio/pull/14072).
 
 ### Security hardening
 
