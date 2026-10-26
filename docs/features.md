@@ -1930,6 +1930,12 @@ area.
   gs_matrix functions do. *All*, pending merge. Issue
   [#2518](https://github.com/obs-rust/obs-studio/issues/2518), PR
   [#2520](https://github.com/obs-rust/obs-studio/pull/2520).
+- After a plugin or script resets the blend state with
+  gs_reset_blend_state, the blend op is back to add; a subtract, min or
+  max op set before no longer carries over into later drawing. *All*,
+  pending merge. Issue
+  [#2519](https://github.com/obs-rust/obs-studio/issues/2519), PR
+  [#2528](https://github.com/obs-rust/obs-studio/pull/2528).
 - Python scripts can call obs_source_enum_filters to get a list of the
   filters on a source. *All*, 2026-10-11. Issue
   [#282](https://github.com/obs-rust/obs-studio/issues/282), PR
