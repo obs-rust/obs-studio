@@ -9,12 +9,13 @@
 //! encoder audio start alignment and setter gates,
 //! `libobs/obs-output-stop-stats.c.h`, the output stop statistics,
 //! `libobs/obs-output-raw-audio.c.h`, the raw output audio admission and
-//! capture hookup, and `libobs/obs-output-slots.c.h`, the output encoder
-//! slot rules and setter gates.
+//! capture hookup, `libobs/obs-output-slots.c.h`, the output encoder
+//! slot rules and setter gates, and `libobs/obs-encoder-gpu-gates.c.h`, the
+//! GPU encode thread gates.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`] and [`output_slots`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`] and [`encoder_gpu_gates`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -41,7 +42,11 @@
 //! output's first video and audio encoder, decides which encoder types,
 //! indexes and mixers its setters take, which slots its getters and
 //! preferred size reach, and when the encoder at index 0 takes the scaled
-//! size.
+//! size; [`encoder_gpu_gates`] decides, for the GPU encode thread, the
+//! frames skipped at its start, which frames each texture encoder takes
+//! through its frame rate divisor, the keyed mutex key each encoder hands
+//! on, the frame timing entry, when a frame goes back to the queue and at
+//! which timestamp, and P010 or NV12 encode textures.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
