@@ -17,6 +17,11 @@
  * at table_size == code_max, up to LZW_CODE_MAX, and nothing is added once
  * the table has 4096 entries.
  *
+ * The blocks_* cases characterize the GIF block parsers (gif-blocks.c)
+ * through gif-blocks.h before their port to obs-graphics (#2488): the
+ * header, the logical screen descriptor, the extensions before a frame,
+ * the image descriptor and the colour tables, on hand-written bytes.
+ *
  * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST_LZW:
  * without lzw.c, against the Rust shims of obs-graphics (lzw.h is the
  * boundary; gif.c stays C here too).
@@ -634,6 +639,468 @@ static void lzw_decode_map_needs_a_colour_table(void **state)
 	lzw_context_destroy(ctx);
 }
 
+/* ---------------------------------------------------------------------- */
+/* The GIF block parsers (gif-blocks.c) through gif-blocks.h. */
+
+static const struct nsgif_colour_layout layout_rgba = {.r = 0, .g = 1, .b = 2, .a = 3};
+static const struct nsgif_colour_layout layout_bgra = {.b = 0, .g = 1, .r = 2, .a = 3};
+
+/* Frame fields before an extension: values no extension writes. */
+static struct nsgif_blocks_frame_ext blocks_ext_unset(void)
+{
+	return (struct nsgif_blocks_frame_ext){
+		.delay = 77,
+		.disposal = 9,
+		.transparency = false,
+		.transparency_index = 0xFFFFFFFFu,
+		.redraw_required = false,
+	};
+}
+
+static void assert_ext_unset(const struct nsgif_blocks_frame_ext *ext)
+{
+	assert_int_equal(ext->delay, 77);
+	assert_int_equal(ext->disposal, 9);
+	assert_false(ext->transparency);
+	assert_int_equal(ext->transparency_index, 0xFFFFFFFFu);
+	assert_false(ext->redraw_required);
+}
+
+/* "GIF" is required; the version only when strict. Six bytes from pos. */
+static void blocks_header(void **state)
+{
+	(void)state;
+	size_t pos;
+
+	pos = 0;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIF89a", 6, &pos, true), NSGIF_OK);
+	assert_int_equal(pos, 6);
+	pos = 0;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIF87a", 6, &pos, true), NSGIF_OK);
+	assert_int_equal(pos, 6);
+
+	/* Kept, characterized, not endorsed: lenient (nsgif_data_scan) takes
+	 * any version. */
+	pos = 0;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIF90a", 6, &pos, true), NSGIF_ERR_DATA);
+	assert_int_equal(pos, 0);
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIF90a", 6, &pos, false), NSGIF_OK);
+	assert_int_equal(pos, 6);
+
+	pos = 0;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIX89a", 6, &pos, false), NSGIF_ERR_DATA);
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"GIF89a", 5, &pos, false), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+
+	/* From a position inside the data. */
+	pos = 3;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"xyzGIF89a", 9, &pos, true), NSGIF_OK);
+	assert_int_equal(pos, 9);
+	pos = 4;
+	assert_int_equal(nsgif_blocks_header((const uint8_t *)"xyzGIF89a", 9, &pos, true), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 4);
+}
+
+/* Seven bytes: width, height, the packed fields, background, aspect. */
+static void blocks_screen(void **state)
+{
+	(void)state;
+	const uint8_t lsd[] = {'G', 'I', 'F', '8', '9', 'a', 0x34, 0x12, 0x02, 0x01, 0xF5, 0x07, 0x31};
+	struct nsgif_screen screen;
+	size_t pos = 6;
+
+	assert_int_equal(nsgif_blocks_screen(lsd, sizeof(lsd), &pos, &screen), NSGIF_OK);
+	assert_int_equal(pos, 13);
+	assert_int_equal(screen.width, 0x1234);
+	assert_int_equal(screen.height, 0x0102);
+	assert_true(screen.global_palette);
+	assert_int_equal(screen.colour_table_size, 64); /* 2 << 5 */
+	assert_int_equal(screen.bg_index, 7);
+	assert_int_equal(screen.aspect_ratio, 0x31);
+	assert_int_equal(screen.loop_max, 1);
+
+	/* Without the flag, the size bits still give a size. */
+	const uint8_t no_table[] = {0x10, 0x00, 0x08, 0x00, 0x07, 0xFF, 0x00};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_screen(no_table, sizeof(no_table), &pos, &screen), NSGIF_OK);
+	assert_false(screen.global_palette);
+	assert_int_equal(screen.colour_table_size, 256);
+	assert_int_equal(screen.bg_index, 255);
+
+	/* Six bytes: nothing is set and pos stays. */
+	memset(&screen, 0xAB, sizeof(screen));
+	pos = 0;
+	assert_int_equal(nsgif_blocks_screen(no_table, 6, &pos, &screen), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+	assert_int_equal(screen.width, 0xABABABABu);
+}
+
+/* The screen sizes that broken GIFs report become 1x1. */
+static void blocks_screen_size_quirk(void **state)
+{
+	(void)state;
+	static const struct {
+		uint32_t w, h, out_w, out_h;
+	} cases[] = {
+		{640, 480, 1, 1},     {640, 512, 1, 1},     {800, 600, 1, 1},
+		{1024, 768, 1, 1},    {1280, 1024, 1, 1},   {1600, 1200, 1, 1},
+		{0, 5, 1, 1},         {5, 0, 1, 1},         {2049, 5, 1, 1},
+		{5, 2049, 1, 1},      {65535, 65535, 1, 1}, {2048, 2048, 2048, 2048},
+		{480, 640, 480, 640}, {640, 481, 640, 481}, {1920, 1080, 1920, 1080},
+		{1, 1, 1, 1},
+	};
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		uint32_t w = cases[i].w, h = cases[i].h;
+		nsgif_blocks_screen_size_quirk(&w, &h);
+		assert_int_equal(w, cases[i].out_w);
+		assert_int_equal(h, cases[i].out_h);
+	}
+}
+
+/* entries r,g,b triplets into the layout, alpha 0xff; every table size. */
+static void blocks_colour_table(void **state)
+{
+	(void)state;
+	uint8_t rgb[3 * 256];
+	uint32_t table[NSGIF_MAX_COLOURS];
+	size_t used;
+
+	for (size_t i = 0; i < sizeof(rgb); i++)
+		rgb[i] = (uint8_t)(i * 7 + 1);
+
+	for (unsigned bits = 0; bits < 8; bits++) {
+		size_t entries = 2u << bits;
+		memset(table, 0x5A, sizeof(table));
+		used = 0;
+		assert_int_equal(nsgif_blocks_colour_table(table, &layout_rgba, entries, rgb, entries * 3, &used, true),
+				 NSGIF_OK);
+		assert_int_equal(used, entries * 3);
+		for (size_t e = 0; e < entries; e++) {
+			const uint8_t *px = (const uint8_t *)&table[e];
+			assert_int_equal(px[0], rgb[3 * e]);
+			assert_int_equal(px[1], rgb[3 * e + 1]);
+			assert_int_equal(px[2], rgb[3 * e + 2]);
+			assert_int_equal(px[3], 0xFF);
+		}
+		/* Entries past the table stay. */
+		if (entries < NSGIF_MAX_COLOURS)
+			assert_int_equal(table[entries], 0x5A5A5A5Au);
+
+		/* One byte short. */
+		used = 99;
+		assert_int_equal(nsgif_blocks_colour_table(table, &layout_rgba, entries, rgb, entries * 3 - 1, &used,
+							   true),
+				 NSGIF_ERR_END_OF_DATA);
+		assert_int_equal(used, 99);
+	}
+
+	/* Another layout. */
+	assert_int_equal(nsgif_blocks_colour_table(table, &layout_bgra, 2, rgb, 6, &used, true), NSGIF_OK);
+	const uint8_t *px = (const uint8_t *)&table[1];
+	assert_int_equal(px[0], rgb[5]);
+	assert_int_equal(px[1], rgb[4]);
+	assert_int_equal(px[2], rgb[3]);
+	assert_int_equal(px[3], 0xFF);
+
+	/* Without decode: the length is checked and counted, the table stays. */
+	memset(table, 0x5A, sizeof(table));
+	assert_int_equal(nsgif_blocks_colour_table(table, &layout_rgba, 4, rgb, 12, &used, false), NSGIF_OK);
+	assert_int_equal(used, 12);
+	assert_int_equal(table[0], 0x5A5A5A5Au);
+	assert_int_equal(nsgif_blocks_colour_table(table, &layout_rgba, 4, rgb, 11, &used, false),
+			 NSGIF_ERR_END_OF_DATA);
+
+	/* The plain decode (nsgif_local_palette) checks no length. */
+	nsgif_blocks_colour_table_decode(table, &layout_rgba, 3, rgb);
+	px = (const uint8_t *)&table[2];
+	assert_int_equal(px[0], rgb[6]);
+	assert_int_equal(px[3], 0xFF);
+	assert_int_equal(table[3], 0x5A5A5A5Au);
+}
+
+/* The graphic control extension: delay, disposal (4 is 3) and the
+ * transparent index; redraw for the two restore disposals. */
+static void blocks_graphic_control(void **state)
+{
+	(void)state;
+	for (unsigned disposal = 0; disposal < 8; disposal++) {
+		/* introducer, label, size, packed, delay (2), index, terminator,
+		 * then the next block. */
+		uint8_t gce[] = {0x21, 0xF9, 0x04, (uint8_t)(disposal << 2 | 0xE0), 0x34, 0x12, 0x05, 0x00, 0x2C};
+		struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+		int loop_max = 1;
+		size_t pos = 0;
+
+		assert_int_equal(nsgif_blocks_extensions(gce, sizeof(gce), &pos, true, &ext, &loop_max), NSGIF_OK);
+		assert_int_equal(pos, 8);
+		assert_int_equal(ext.delay, 0x1234);
+		unsigned expect = disposal == NSGIF_DISPOSAL_RESTORE_QUIRK ? NSGIF_DISPOSAL_RESTORE_PREV : disposal;
+		assert_int_equal(ext.disposal, expect);
+		assert_int_equal(ext.redraw_required,
+				 expect == NSGIF_DISPOSAL_RESTORE_BG || expect == NSGIF_DISPOSAL_RESTORE_PREV);
+		/* No transparency flag: transparency and its index stay. */
+		assert_false(ext.transparency);
+		assert_int_equal(ext.transparency_index, 0xFFFFFFFFu);
+		assert_int_equal(loop_max, 1);
+	}
+
+	/* With the transparency flag. A second extension changes the delay
+	 * and disposal; transparency stays set once set. */
+	const uint8_t two[] = {0x21, 0xF9, 0x04, 0x09, 0x00, 0x00, 0x07, 0x00,
+			       0x21, 0xF9, 0x04, 0x00, 0x02, 0x00, 0x09, 0x00};
+	struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+	int loop_max = 1;
+	size_t pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(two, sizeof(two), &pos, true, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(pos, sizeof(two));
+	assert_int_equal(ext.delay, 2);
+	assert_int_equal(ext.disposal, NSGIF_DISPOSAL_UNSPECIFIED);
+	assert_false(ext.redraw_required);
+	assert_true(ext.transparency);
+	assert_int_equal(ext.transparency_index, 7);
+
+	/* Without decode, the extensions are skipped and nothing is set. */
+	ext = blocks_ext_unset();
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(two, sizeof(two), &pos, false, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(pos, sizeof(two));
+	assert_ext_unset(&ext);
+
+	/* Kept, characterized, not endorsed: the size byte is not checked.
+	 * Size 0 still reads four bytes of fields, and then the skip starts
+	 * at the packed byte (5) as a sub-block size: it runs past the end
+	 * and the fields are set although the result is an error. */
+	const uint8_t size0[] = {0x21, 0xF9, 0x00, 0x05, 0x0A, 0x00, 0x07, 0x00};
+	ext = blocks_ext_unset();
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(size0, sizeof(size0), &pos, true, &ext, &loop_max),
+			 NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+	assert_int_equal(ext.delay, 10);
+	assert_int_equal(ext.disposal, NSGIF_DISPOSAL_NONE);
+	assert_true(ext.transparency);
+	assert_int_equal(ext.transparency_index, 7);
+}
+
+/* Fewer than six bytes from the label: the extension is short. */
+static void blocks_graphic_control_short(void **state)
+{
+	(void)state;
+	const uint8_t gce[] = {0x21, 0xF9, 0x04, 0x05, 0x0A};
+	struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+	int loop_max = 1;
+	size_t pos = 0;
+
+	for (size_t len = 1; len <= sizeof(gce); len++) {
+		pos = 0;
+		assert_int_equal(nsgif_blocks_extensions(gce, len, &pos, true, &ext, &loop_max), NSGIF_ERR_END_OF_DATA);
+		assert_int_equal(pos, 0);
+		assert_ext_unset(&ext);
+	}
+	/* Without decode, the fields are not read and the skip needs only the
+	 * size byte. Kept, characterized, not endorsed: once that is there, a
+	 * skip past the end is not an error and pos stops at the end. */
+	for (size_t len = 1; len <= sizeof(gce); len++) {
+		pos = 0;
+		assert_int_equal(nsgif_blocks_extensions(gce, len, &pos, false, &ext, &loop_max),
+				 len < 3 ? NSGIF_ERR_END_OF_DATA : NSGIF_OK);
+		assert_int_equal(pos, len < 3 ? 0 : len);
+	}
+
+	/* A short extension after a complete one: the first one's fields are
+	 * set, the result is an error and pos stays. */
+	const uint8_t later[] = {0x21, 0xF9, 0x04, 0x01, 0x03, 0x00, 0x02, 0x00, 0x21, 0xF9, 0x04};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(later, sizeof(later), &pos, true, &ext, &loop_max),
+			 NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+	assert_int_equal(ext.delay, 3);
+	assert_true(ext.transparency);
+	assert_int_equal(ext.transparency_index, 2);
+}
+
+/* NETSCAPE2.0 and ANIMEXTS1.0 with sub-block 3, id 1: the loop count. */
+static void blocks_loop_count(void **state)
+{
+	(void)state;
+	static const char *const idents[] = {"NETSCAPE2.0", "ANIMEXTS1.0", "NETSCAPE2.1", "XMP DataXMP"};
+	static const struct {
+		uint16_t value;
+		int loop_max;
+	} counts[] = {{0, 0}, {1, 2}, {5, 6}, {0xFFFF, 0x10000}};
+
+	for (size_t i = 0; i < 4; i++) {
+		for (size_t c = 0; c < 4; c++) {
+			uint8_t app[19] = {0x21, 0xFF, 0x0B};
+			memcpy(app + 3, idents[i], 11);
+			app[14] = 0x03;
+			app[15] = 0x01;
+			app[16] = (uint8_t)(counts[c].value & 0xFF);
+			app[17] = (uint8_t)(counts[c].value >> 8);
+			app[18] = 0x00;
+			struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+			int loop_max = 1;
+			size_t pos = 0;
+
+			assert_int_equal(nsgif_blocks_extensions(app, sizeof(app), &pos, true, &ext, &loop_max),
+					 NSGIF_OK);
+			assert_int_equal(pos, sizeof(app));
+			assert_int_equal(loop_max, i < 2 ? counts[c].loop_max : 1);
+			assert_ext_unset(&ext);
+
+			/* Without decode, the count stays. */
+			loop_max = 1;
+			pos = 0;
+			assert_int_equal(nsgif_blocks_extensions(app, sizeof(app), &pos, false, &ext, &loop_max),
+					 NSGIF_OK);
+			assert_int_equal(loop_max, 1);
+		}
+	}
+
+	/* A block size other than 11, a sub-block size other than 3 or an id
+	 * other than 1: no loop count. */
+	uint8_t app[19] = {0x21, 0xFF, 0x0B, 'N', 'E',  'T',  'S',  'C',  'A', 'P',
+			   'E',  '2',  '.',  '0', 0x03, 0x01, 0x05, 0x00, 0x00};
+	int loop_max = 1;
+	size_t pos = 0;
+	struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+	app[15] = 0x02;
+	assert_int_equal(nsgif_blocks_extensions(app, sizeof(app), &pos, true, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(loop_max, 1);
+	app[15] = 0x01;
+	app[14] = 0x04;
+	app[18] = 0x00;
+	pos = 0;
+	/* The sub-block of 4 now covers the terminator: the skip runs off. */
+	assert_int_equal(nsgif_blocks_extensions(app, sizeof(app), &pos, true, &ext, &loop_max), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(loop_max, 1);
+
+	/* Fewer than 17 bytes from the label: short. */
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(app, 17, &pos, true, &ext, &loop_max), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+}
+
+/* Comments, plain text and unknown labels are skipped by their
+ * sub-blocks; the loop ends at the first byte that is not 0x21. */
+static void blocks_skip_extensions(void **state)
+{
+	(void)state;
+	const uint8_t data[] = {
+		0x21, 0xFE, 0x03, 'a',  'b',  'c',  0x02, 'd',  'e', 0x00, /* comment: 0..9 */
+		0x21, 0x01, 0x0C, 1,    2,    3,    4,    5,    6,   7,
+		8,    9,    10,   11,   12,   0x01, 'x',  0x00, /* plain text: 10..27 */
+		0x21, 0x99, 0x02, 0xAA, 0xBB, 0x00,             /* unknown: 28..33 */
+		0x21, 0xFE, 0x00,                               /* empty comment: 34..36 */
+		0x2C, 0x00,
+	};
+	struct nsgif_blocks_frame_ext ext = blocks_ext_unset();
+	int loop_max = 1;
+	size_t pos = 0;
+
+	assert_int_equal(nsgif_blocks_extensions(data, sizeof(data), &pos, true, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(pos, 37);
+	assert_ext_unset(&ext);
+
+	/* No extension: pos stays. Empty data too. */
+	pos = 37;
+	assert_int_equal(nsgif_blocks_extensions(data, sizeof(data), &pos, true, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(pos, 37);
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(data, 0, &pos, true, &ext, &loop_max), NSGIF_OK);
+	assert_int_equal(pos, 0);
+
+	/* An introducer at the end of the data. */
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(data, 1, &pos, true, &ext, &loop_max), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+
+	/* A sub-block that runs past the end. */
+	const uint8_t runs_off[] = {0x21, 0xFE, 0x05, 'a', 'b'};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(runs_off, sizeof(runs_off), &pos, true, &ext, &loop_max),
+			 NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(pos, 0);
+
+	/* Kept, characterized, not endorsed: an extension size that skips past
+	 * the end is not an error. pos stops at the end of the data. */
+	const uint8_t size_past_end[] = {0x21, 0x99, 0xFF};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(size_past_end, sizeof(size_past_end), &pos, true, &ext, &loop_max),
+			 NSGIF_OK);
+	assert_int_equal(pos, 3);
+	const uint8_t size_to_end[] = {0x21, 0x99, 0x01, 0x00};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_extensions(size_to_end, sizeof(size_to_end), &pos, true, &ext, &loop_max),
+			 NSGIF_OK);
+	assert_int_equal(pos, 4);
+}
+
+/* Ten bytes: separator, x, y, width, height, flags. */
+static void blocks_image_descriptor(void **state)
+{
+	(void)state;
+	const uint8_t desc[] = {0x00, 0x2C, 0x05, 0x00, 0x00, 0x00, 0x14, 0x00, 0x05, 0x00, 0xC3, 0x00};
+	struct nsgif_blocks_image image;
+	uint32_t width = 10, height = 10;
+	size_t pos = 1;
+
+	assert_int_equal(nsgif_blocks_image_descriptor(desc, sizeof(desc), &pos, true, true, &image, &width, &height),
+			 NSGIF_OK);
+	assert_int_equal(pos, 11);
+	assert_int_equal(image.flags, 0xC3);
+	assert_true(image.interlaced);
+	assert_int_equal(image.rect.x0, 5);
+	assert_int_equal(image.rect.y0, 0);
+	assert_int_equal(image.rect.x1, 25);
+	assert_int_equal(image.rect.y1, 5);
+	/* The first frame grows the image, never shrinks it. */
+	assert_int_equal(width, 25);
+	assert_int_equal(height, 10);
+
+	/* A later frame does not grow it. */
+	width = 10;
+	pos = 1;
+	assert_int_equal(nsgif_blocks_image_descriptor(desc, sizeof(desc), &pos, true, false, &image, &width, &height),
+			 NSGIF_OK);
+	assert_int_equal(width, 10);
+
+	/* 16-bit fields: x + w does not wrap. */
+	const uint8_t far[] = {0x2C, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
+	pos = 0;
+	assert_int_equal(nsgif_blocks_image_descriptor(far, sizeof(far), &pos, true, true, &image, &width, &height),
+			 NSGIF_OK);
+	assert_int_equal(image.rect.x1, 131070);
+	assert_int_equal(image.rect.y1, 131070);
+	assert_false(image.interlaced);
+	assert_int_equal(width, 131070);
+	assert_int_equal(height, 131070);
+
+	/* A bad separator with decode; nine bytes. */
+	const uint8_t bad[] = {0x2D, 0, 0, 0, 0, 1, 0, 1, 0, 0};
+	struct nsgif_blocks_image untouched;
+	memset(&untouched, 0x5A, sizeof(untouched));
+	image = untouched;
+	pos = 0;
+	assert_int_equal(nsgif_blocks_image_descriptor(bad, sizeof(bad), &pos, true, true, &image, &width, &height),
+			 NSGIF_ERR_DATA_FRAME);
+	assert_int_equal(pos, 0);
+	assert_memory_equal(&image, &untouched, sizeof(image));
+	pos = 0;
+	assert_int_equal(nsgif_blocks_image_descriptor(bad, 9, &pos, true, true, &image, &width, &height),
+			 NSGIF_ERR_END_OF_DATA);
+
+	/* Kept, characterized, not endorsed: without decode (the frame decode
+	 * pass) the separator is not checked and nothing is read. */
+	width = 3;
+	pos = 0;
+	assert_int_equal(nsgif_blocks_image_descriptor(bad, sizeof(bad), &pos, false, true, &image, &width, &height),
+			 NSGIF_OK);
+	assert_int_equal(pos, 10);
+	assert_int_equal(width, 3);
+	assert_memory_equal(&image, &untouched, sizeof(image));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -648,6 +1115,15 @@ int main(void)
 		cmocka_unit_test(lzw_output_stack_full),
 		cmocka_unit_test(lzw_decode_map_colours_and_transparency),
 		cmocka_unit_test(lzw_decode_map_needs_a_colour_table),
+		cmocka_unit_test(blocks_header),
+		cmocka_unit_test(blocks_screen),
+		cmocka_unit_test(blocks_screen_size_quirk),
+		cmocka_unit_test(blocks_colour_table),
+		cmocka_unit_test(blocks_graphic_control),
+		cmocka_unit_test(blocks_graphic_control_short),
+		cmocka_unit_test(blocks_loop_count),
+		cmocka_unit_test(blocks_skip_extensions),
+		cmocka_unit_test(blocks_image_descriptor),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
