@@ -1748,42 +1748,45 @@ static void default_raw_video_callback(void *param, struct video_data *frame)
 	output->total_frames++;
 }
 
+/* The constants obs-output-raw-audio.h copies. */
+_Static_assert(OBS_OUTPUT_RAW_AUDIO_FLAG_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
+_Static_assert(OBS_OUTPUT_RAW_AUDIO_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
+
 static bool prepare_audio(struct obs_output *output, const struct audio_data *old, struct audio_data *new)
 {
-	if ((output->info.flags & OBS_OUTPUT_VIDEO) == 0) {
+	if (obs_output_raw_audio_passthrough(output->info.flags)) {
 		*new = *old;
 		return true;
 	}
 
-	if (!output->video_start_ts) {
+	if (obs_output_raw_audio_video_unset(output->video_start_ts)) {
 		pthread_mutex_lock(&output->pause.mutex);
 		output->video_start_ts = output->pause.last_video_ts;
 		pthread_mutex_unlock(&output->pause.mutex);
 	}
 
-	if (!output->video_start_ts)
+	if (obs_output_raw_audio_video_unset(output->video_start_ts))
 		return false;
 
 	/* ------------------ */
 
 	*new = *old;
 
-	if (old->timestamp < output->video_start_ts) {
+	if (obs_output_raw_audio_before_video(old->timestamp, output->video_start_ts)) {
 		uint64_t duration = util_mul_div64(old->frames, 1000000000ULL, output->sample_rate);
-		uint64_t end_ts = (old->timestamp + duration);
 		uint64_t cutoff;
 
-		if (end_ts <= output->video_start_ts)
+		if (obs_output_raw_audio_ends_before(old->timestamp, duration, output->video_start_ts))
 			return false;
 
-		cutoff = output->video_start_ts - old->timestamp;
-		new->timestamp += cutoff;
+		cutoff = obs_output_raw_audio_cut_ns(output->video_start_ts, old->timestamp);
+		new->timestamp = obs_output_raw_audio_cut_ts(new->timestamp, cutoff);
 
 		cutoff = util_mul_div64(cutoff, output->sample_rate, 1000000000ULL);
 
 		for (size_t i = 0; i < output->planes; i++)
-			new->data[i] += output->audio_size * (uint32_t)cutoff;
-		new->frames -= (uint32_t)cutoff;
+			new->data[i] += obs_output_raw_audio_cut_bytes(output->audio_size, cutoff);
+		new->frames = obs_output_raw_audio_cut_frames(new->frames, cutoff);
 	}
 
 	return true;
@@ -1804,32 +1807,33 @@ static void default_raw_audio_callback(void *param, size_t mix_idx, struct audio
 		return;
 	if (audio_pause_check(&output->pause, &out, output->sample_rate))
 		return;
-	if (!output->audio_start_ts) {
+	if (obs_output_raw_audio_start_unset(output->audio_start_ts)) {
 		output->audio_start_ts = out.timestamp;
 	}
 
-	frame_size_bytes = AUDIO_OUTPUT_FRAMES * output->audio_size;
+	frame_size_bytes = obs_output_raw_audio_block_bytes(output->audio_size);
 
 	for (size_t i = 0; i < output->planes; i++)
-		deque_push_back(&output->audio_buffer[mix_idx][i], out.data[i], out.frames * output->audio_size);
+		deque_push_back(&output->audio_buffer[mix_idx][i], out.data[i],
+				obs_output_raw_audio_push_bytes(out.frames, output->audio_size));
 
 	/* -------------- */
 
-	while (output->audio_buffer[mix_idx][0].size > frame_size_bytes) {
+	while (obs_output_raw_audio_can_pop(output->audio_buffer[mix_idx][0].size, frame_size_bytes)) {
 		for (size_t i = 0; i < output->planes; i++) {
 			deque_pop_front(&output->audio_buffer[mix_idx][i], output->audio_data[i], frame_size_bytes);
 			out.data[i] = (uint8_t *)output->audio_data[i];
 		}
 
 		out.frames = AUDIO_OUTPUT_FRAMES;
-		out.timestamp =
-			output->audio_start_ts + audio_frames_to_ns(output->sample_rate, output->total_audio_frames);
+		out.timestamp = obs_output_raw_audio_block_ts(
+			output->audio_start_ts, audio_frames_to_ns(output->sample_rate, output->total_audio_frames));
 
 		pthread_mutex_lock(&output->pause.mutex);
-		out.timestamp += output->pause.ts_offset;
+		out.timestamp = obs_output_raw_audio_paused_ts(out.timestamp, output->pause.ts_offset);
 		pthread_mutex_unlock(&output->pause.mutex);
 
-		output->total_audio_frames += AUDIO_OUTPUT_FRAMES;
+		output->total_audio_frames = obs_output_raw_audio_next_frames(output->total_audio_frames);
 
 		if (output->info.raw_audio2)
 			output->info.raw_audio2(output->context.data, mix_idx, &out);
@@ -1860,7 +1864,7 @@ static inline void start_raw_audio(obs_output_t *output)
 {
 	if (output->info.raw_audio2) {
 		for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
-			if ((output->mixer_mask & ((size_t)1 << idx)) != 0) {
+			if (obs_output_raw_audio_mix_on(output->mixer_mask, (size_t)idx)) {
 				audio_output_connect(output->audio, idx, get_audio_conversion(output),
 						     default_raw_audio_callback, output);
 			}
@@ -1907,10 +1911,11 @@ static void hook_data_capture(struct obs_output *output)
 		reset_packet_data(output);
 		pthread_mutex_unlock(&output->interleaved_mutex);
 
-		encoded_callback = (has_video && has_audio) ? interleave_packets : default_encoded_callback;
+		encoded_callback = obs_output_raw_audio_interleave(has_video, has_audio) ? interleave_packets
+											 : default_encoded_callback;
 
-		if (output->delay_sec) {
-			output->active_delay_ns = (uint64_t)output->delay_sec * 1000000000ULL;
+		if (obs_output_raw_audio_delay_on(output->delay_sec)) {
+			output->active_delay_ns = obs_output_raw_audio_delay_ns(output->delay_sec);
 			output->delay_cur_flags = output->delay_flags;
 			output->delay_callback = encoded_callback;
 			encoded_callback = process_delay;
