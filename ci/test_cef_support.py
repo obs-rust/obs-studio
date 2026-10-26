@@ -39,6 +39,14 @@ class CefSupport(unittest.TestCase):
         # CMakePresets.json overrides one platform, and the Flatpak pins its own.
         self.assertNotEqual(pins["ubuntu-x86_64"], pins["windows-x64"])
 
+    def test_a_rebuild_release_keeps_its_branch(self):
+        # A rebuild of a branch is published as <branch>-r<n> (8078-r2, #2363);
+        # its Flatpak pin must still count, not drop out of the check.
+        url = "https://github.com/obs-rust/cef/releases/download/{}/cef_binary_8078_linux_x86_64.tar.xz"
+        self.assertEqual(cef_support.flatpak_branch(url.format("8078")), 8078)
+        self.assertEqual(cef_support.flatpak_branch(url.format("8078-r2")), 8078)
+        self.assertIsNone(cef_support.flatpak_branch("no cef url here"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,8 +9,10 @@ builds are not. obs-rust builds one (obs-studio-libs recipes/cef/linux) and
 publishes it to the obs-rust/cef mirror as release 8078.
 
 Two Linux consumers read the pin: .github/scripts/utils.zsh/setup_ubuntu
-(from CMakePresets.json, where `versions` overrides `version` per target)
-and the Flatpak manifest (its own URL). They must agree, and neither may
+(from CMakePresets.json, where `versions` overrides `version` per target, and
+`releases` the release tag when a rebuild of the same branch is published
+under a new one, such as 8078-r2, #2363) and the Flatpak manifest (its own
+URL). They must agree, and neither may
 fall back to 7871. macOS and Windows stay on `version` until they have a
 build host.
 """
@@ -35,10 +37,12 @@ def cef_spec() -> dict:
 
 
 def ubuntu_url(spec: dict, target: str) -> str:
-    # Mirrors setup_ubuntu's jq: a per-target version replaces the release
-    # segment of baseUrl.
+    # Mirrors setup_ubuntu's jq: a per-target version, or a per-target
+    # release tag when there is one, replaces the release segment of baseUrl.
+    # The file name always carries the version.
     version = spec.get("versions", {}).get(target, spec["version"])
-    base = spec["baseUrl"].rsplit("/", 1)[0] + f"/{version}"
+    release = spec.get("releases", {}).get(target, version)
+    base = spec["baseUrl"].rsplit("/", 1)[0] + f"/{release}"
     arch = target.removeprefix("ubuntu-")
     return f"{base}/cef_binary_{version}_linux_{arch}.tar.xz"
 
@@ -56,7 +60,9 @@ class CefPinTest(unittest.TestCase):
         spec = cef_spec()
         version = spec.get("versions", {}).get("ubuntu-x86_64", spec["version"])
         self.assertGreaterEqual(int(version), FLOOR)
-        self.assertTrue(ubuntu_url(spec, "ubuntu-x86_64").startswith(f"{MIRROR}/{version}/"))
+        release = spec.get("releases", {}).get("ubuntu-x86_64", version)
+        self.assertTrue(release == version or release.startswith(f"{version}-r"), release)
+        self.assertTrue(ubuntu_url(spec, "ubuntu-x86_64").startswith(f"{MIRROR}/{release}/"))
 
     def test_flatpak_matches_the_ubuntu_pin(self):
         spec = cef_spec()
@@ -67,11 +73,12 @@ class CefPinTest(unittest.TestCase):
     def test_setup_ubuntu_reads_the_override(self):
         script = (ROOT / ".github/scripts/utils.zsh/setup_ubuntu").read_text()
         self.assertIn(".versions[$target]", script)
+        self.assertIn(".releases[$target]", script)
 
     def test_other_targets_keep_their_release(self):
         # Only targets with an obs-rust build move; the rest keep `version`.
         spec = cef_spec()
-        for target in spec.get("versions", {}):
+        for target in [*spec.get("versions", {}), *spec.get("releases", {})]:
             self.assertEqual(target, "ubuntu-x86_64")
         self.assertTrue(spec["baseUrl"].endswith(f"/{spec['version']}"))
 
