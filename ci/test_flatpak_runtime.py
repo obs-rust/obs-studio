@@ -112,6 +112,23 @@ class FlatpakRuntimeTest(unittest.TestCase):
             self.assertEqual(server['server_port'], 4456)
             self.assertTrue((root / 'browser.html').is_file())
 
+    def test_profile_is_in_the_rust_brand_config_directory(self):
+        # The Flatpak builds with OBS_BRAND_RUST (#2358), so OBS reads its
+        # profile from and writes its logs to obs-studio-rust; the test
+        # looked in obs-studio and found no log.
+        module = self.module()
+        identity = (ROOT / 'frontend/utility/AppIdentity.hpp').read_text()
+        directory = re.search(r'#define OBS_CONFIG_DIRECTORY "([^"]+)"', identity)[1]
+        self.assertEqual(directory, 'obs-studio-rust')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module.write_profile(root, 4456, 'temporary-test-password')
+            self.assertTrue((root / 'profile' / directory / 'global.ini').is_file())
+        self.assertEqual(module.logs_directory(Path('/out')), Path('/out/profile') / directory / 'logs')
+        for name in ('ci.yml', 'build-project.yaml'):
+            text = (ROOT / '.github/workflows' / name).read_text()
+            self.assertIn(f'flatpak-runtime-result/profile/{directory}/logs/*.txt', text)
+
     def test_profile_environment_is_set_inside_flatpak_sandbox(self):
         module = self.module()
         # Flatpak rewrites XDG_CONFIG_HOME after processing --env options.
