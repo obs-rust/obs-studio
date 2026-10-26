@@ -16,6 +16,7 @@
 #include "libobs/obs-audio-discard.c.h"
 #include "libobs/obs-audio-min-ts.c.h"
 #include "libobs/obs-audio-mix.c.h"
+#include "libobs/obs-audio-render.c.h"
 #include "libobs/obs-audio.c.h"
 
 static const uint64_t start = 1000000000ULL;

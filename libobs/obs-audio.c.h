@@ -35,12 +35,6 @@ static void push_audio_tree(obs_source_t *parent, obs_source_t *source, void *p)
 	UNUSED_PARAMETER(parent);
 }
 
-static inline bool is_individual_audio_source(obs_source_t *source)
-{
-	return source->info.type == OBS_SOURCE_TYPE_INPUT && (source->info.output_flags & OBS_SOURCE_AUDIO) &&
-	       !(source->info.output_flags & OBS_SOURCE_COMPOSITE);
-}
-
 /*
  * This version of push_audio_tree checks whether any source is an Audio Output Capture source ('Desktop Audio',
  * 'wasapi_output_capture' on Windows, 'pulse_output_capture' on Linux, 'coreaudio_output_capture' on macOS), & if the
@@ -49,28 +43,37 @@ static inline bool is_individual_audio_source(obs_source_t *source)
  * Moreover, it has the purpose of detecting sources which appear several times in the audio tree. They are then tagged
  * as such to avoid their mixing in scenes and transitions and mixed directly as root_nodes.
  */
+/* The constants obs-audio-render.h copies. */
+_Static_assert(OBS_AUDIO_RENDER_TYPE_INPUT == OBS_SOURCE_TYPE_INPUT, "OBS_SOURCE_TYPE_INPUT");
+_Static_assert(OBS_AUDIO_RENDER_SOURCE_AUDIO == OBS_SOURCE_AUDIO, "OBS_SOURCE_AUDIO");
+_Static_assert(OBS_AUDIO_RENDER_SOURCE_COMPOSITE == OBS_SOURCE_COMPOSITE, "OBS_SOURCE_COMPOSITE");
+
 static void push_audio_tree2(obs_source_t *parent, obs_source_t *source, void *p)
 {
-	if (obs_source_removed(source))
-		return;
-
+	/* The choice is the core in obs-audio-render.c, on these fields. */
 	struct obs_core_audio *audio = p;
-	size_t idx = da_find(audio->render_order, &source, 0);
+	bool removed = obs_source_removed(source);
+	size_t idx = removed ? DARRAY_INVALID : da_find(audio->render_order, &source, 0);
+	bool present = idx != DARRAY_INVALID;
+	obs_source_t *s = present ? audio->render_order.array[idx] : source;
 
-	if (idx == DARRAY_INVALID) {
+	switch (obs_audio_render_tree(removed, present, s->info.type, s->info.output_flags, s->audio_is_duplicated)) {
+	case OBS_AUDIO_TREE_ADD:
 		/* First time we see this source → add to render order */
-		obs_source_t *s = obs_source_get_ref(source);
+		s = obs_source_get_ref(source);
 		if (s) {
 			da_push_back(audio->render_order, &s);
 			s->audio_is_duplicated = false;
 		}
-	} else {
-		/* Source already present in tree → mark as duplicated if applicable */
-		obs_source_t *s = audio->render_order.array[idx];
-		if (is_individual_audio_source(s) && !s->audio_is_duplicated) {
-			da_push_back(audio->root_nodes, &source);
-			s->audio_is_duplicated = true;
-		}
+		break;
+	case OBS_AUDIO_TREE_DUPLICATE:
+		/* Source already present in tree → mixed as a root node */
+		da_push_back(audio->root_nodes, &source);
+		s->audio_is_duplicated = true;
+		break;
+	case OBS_AUDIO_TREE_SKIP:
+	case OBS_AUDIO_TREE_NONE:
+		break;
 	}
 	UNUSED_PARAMETER(parent);
 }
@@ -339,22 +342,27 @@ static inline void execute_audio_tasks(void)
 /* In case monitoring and an 'Audio Output Capture' source have the same device, one silences all the monitored
  * sources unless the 'Audio Output Capture' is muted.
  */
-static inline bool should_silence_monitored_source(obs_source_t *source, struct obs_core_audio *audio)
+/* The silence check and the choice of mixes are the core in
+ * obs-audio-render.c, on these fields. */
+static inline struct obs_audio_monitor_dedup monitor_dedup(struct obs_core_audio *audio)
 {
 	obs_source_t *dup_src = audio->monitoring_duplicating_source;
+	struct obs_audio_monitor_dedup dedup = {.set = dup_src != NULL};
 
-	if (!dup_src || !obs_source_active(dup_src))
-		return false;
-
-	bool fader_muted = close_float(audio->monitoring_duplicating_source->volume, 0.0f, 0.0001f);
-	bool output_capture_unmuted = !audio->monitoring_duplicating_source->muted && !fader_muted;
-
-	if (output_capture_unmuted) {
-		if (source->monitoring_enabled && source != audio->monitoring_duplicating_source) {
-			return true;
-		}
+	if (dup_src) {
+		dedup.active = obs_source_active(dup_src);
+		dedup.muted = dup_src->muted;
+		dedup.volume = dup_src->volume;
+		dedup.mixers = dup_src->audio_mixers;
 	}
-	return false;
+	return dedup;
+}
+
+static inline bool should_silence_monitored_source(obs_source_t *source, struct obs_core_audio *audio)
+{
+	struct obs_audio_monitor_dedup dedup = monitor_dedup(audio);
+	return obs_audio_render_silence(&dedup, source->monitoring_enabled,
+					source == audio->monitoring_duplicating_source);
 }
 
 static inline void clear_audio_output_buf(obs_source_t *source, struct obs_core_audio *audio)
@@ -362,12 +370,11 @@ static inline void clear_audio_output_buf(obs_source_t *source, struct obs_core_
 	if (!audio->monitoring_duplicating_source)
 		return;
 
-	uint32_t aoc_mixers = audio->monitoring_duplicating_source->audio_mixers;
-	uint32_t source_mixers = source->audio_mixers;
+	uint32_t mixes =
+		obs_audio_render_clear_mixes(audio->monitoring_duplicating_source->audio_mixers, source->audio_mixers);
 
 	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
-		uint32_t mix_and_val = (1 << mix);
-		if ((aoc_mixers & mix_and_val) && (source_mixers & mix_and_val)) {
+		if (mixes & (1u << mix)) {
 			for (size_t ch = 0; ch < MAX_AUDIO_CHANNELS; ch++) {
 				float *buf = source->audio_output_buf[mix][ch];
 				if (buf)
@@ -470,23 +477,26 @@ bool audio_callback(void *param, uint64_t start_ts_in, uint64_t end_ts_in, uint6
 		 * longer buffer, drop some or all of its audio */
 		bool rerender = false;
 		pthread_mutex_lock(&render_source->audio_buf_mutex);
-		if (audio_buffering_maxed(audio) && render_source->audio_ts != 0 &&
-		    render_source->audio_ts < ts.start) {
-			if (render_source->info.audio_render) {
-				blog(LOG_DEBUG,
-				     "render audio source %s timestamp has "
-				     "gone backwards",
-				     obs_source_get_name(render_source));
+		switch (obs_audio_render_backwards(audio_buffering_maxed(audio), render_source->audio_ts, ts.start,
+						   render_source->info.audio_render != NULL)) {
+		case OBS_AUDIO_BACKWARDS_PENDING:
+			blog(LOG_DEBUG,
+			     "render audio source %s timestamp has "
+			     "gone backwards",
+			     obs_source_get_name(render_source));
 
-				/* just avoid further damage */
-				render_source->audio_pending = true;
+			/* just avoid further damage */
+			render_source->audio_pending = true;
 #if DEBUG_AUDIO == 1
-				/* this should really be fixed */
-				assert(false);
+			/* this should really be fixed */
+			assert(false);
 #endif
-			} else {
-				rerender = ignore_audio(render_source, channels, sample_rate, ts.start);
-			}
+			break;
+		case OBS_AUDIO_BACKWARDS_IGNORE:
+			rerender = ignore_audio(render_source, channels, sample_rate, ts.start);
+			break;
+		case OBS_AUDIO_BACKWARDS_NONE:
+			break;
 		}
 		pthread_mutex_unlock(&render_source->audio_buf_mutex);
 

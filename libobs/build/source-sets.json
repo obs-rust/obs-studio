@@ -4,6 +4,7 @@
     "obs-audio-discard.h",
     "obs-audio-min-ts.h",
     "obs-audio-mix.h",
+    "obs-audio-render.h",
     "obs-av1.h",
     "obs-avc.h",
     "obs-canvas-draw.h",
