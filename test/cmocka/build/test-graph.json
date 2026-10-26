@@ -1928,6 +1928,28 @@
         "frontend/utility"
       ]
     },
+    "test_output_slot_stored_encoder": {
+      "sources": [
+        "test/cmocka/test_output_slot_stored_encoder.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_output_slots_steps": {
       "sources": [
         "test/cmocka/test_output_slots_steps.c",
@@ -5217,6 +5239,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_slot_stored_encoder": {
+      "target": "test_output_slot_stored_encoder",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_output_slots_steps": {
       "target": "test_output_slots_steps",
