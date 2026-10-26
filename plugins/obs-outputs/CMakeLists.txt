@@ -1,6 +1,22 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
 find_package(MbedTLS 3...<4 REQUIRED)
+
+# The packages OBS builds with its own Mbed TLS (Windows and macOS from
+# obs-deps, the Flatpak from obs-deps-buildstream) need at least 3.6.7: older
+# releases have public advisories on the RTMPS client's certificate checks
+# (obs-rust/obs-studio#1121). The AppImage checks its Mbed TLS with
+# probe-mbedtls in build-aux/appimage/test-appimage.sh. Distribution packages
+# use the distribution's Mbed TLS and are not checked here.
+set(_mbedtls_minimum 3.6.7)
+if((OS_WINDOWS OR OS_MACOS OR OS_FLATPAK) AND MbedTLS_VERSION VERSION_LESS _mbedtls_minimum)
+  message(
+    FATAL_ERROR
+    "Mbed TLS ${MbedTLS_VERSION} is too old: at least ${_mbedtls_minimum} is required (public advisories, see obs-rust/obs-studio#1121)."
+  )
+endif()
+unset(_mbedtls_minimum)
+
 find_package(ZLIB REQUIRED)
 find_package(jansson REQUIRED)
 
