@@ -43,6 +43,23 @@ pub const SOURCE_AUDIO: u32 = 1 << 1;
 /// `OBS_SOURCE_COMPOSITE` (`obs-source.h`).
 pub const SOURCE_COMPOSITE: u32 = 1 << 6;
 
+/// The bits of the [`MAX_AUDIO_MIXES`] mixes in a mixer mask.
+const MIXES_MASK: u32 = (1 << MAX_AUDIO_MIXES) - 1;
+
+/// The precision of the fader check, as `should_silence_monitored_source`.
+const FADER_PRECISION: f32 = 0.0001;
+
+/// `close_float()` (`graphics/math-defs.h`): `fabsf(f1 - f2) <= precision`,
+/// in `f32`. NaN is never close.
+fn close_float(f1: f32, f2: f32, precision: f32) -> bool {
+    (f1 - f2).abs() <= precision
+}
+
+/// `is_individual_audio_source`: an input with audio that is not composite.
+fn individual(kind: u32, output_flags: u32) -> bool {
+    kind == TYPE_INPUT && output_flags & SOURCE_AUDIO != 0 && output_flags & SOURCE_COMPOSITE == 0
+}
+
 /// `enum obs_audio_tree_choice`: what `push_audio_tree2` does with a visited
 /// source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,21 +114,32 @@ pub fn tree(
     output_flags: u32,
     duplicated: bool,
 ) -> TreeChoice {
-    let _ = (removed, present, kind, output_flags, duplicated);
-    todo!("RED")
+    if removed {
+        return TreeChoice::Skip;
+    }
+    if !present {
+        return TreeChoice::Add;
+    }
+    if individual(kind, output_flags) && !duplicated {
+        return TreeChoice::Duplicate;
+    }
+    TreeChoice::None
 }
 
 /// `should_silence_monitored_source`: whether a monitored source is silenced
 /// while the deduplication source records the monitoring device.
 pub fn silence(dedup: &MonitorDedup, monitoring_enabled: bool, is_dedup_source: bool) -> bool {
-    let _ = (dedup, monitoring_enabled, is_dedup_source);
-    todo!("RED")
+    if !dedup.set || !dedup.active {
+        return false;
+    }
+    let fader_muted = close_float(dedup.volume, 0.0, FADER_PRECISION);
+    let output_capture_unmuted = !dedup.muted && !fader_muted;
+    output_capture_unmuted && monitoring_enabled && !is_dedup_source
 }
 
 /// `clear_audio_output_buf`'s choice: the mixes both sources use.
 pub fn clear_mixes(dedup_mixers: u32, source_mixers: u32) -> u32 {
-    let _ = (dedup_mixers, source_mixers);
-    todo!("RED")
+    dedup_mixers & source_mixers & MIXES_MASK
 }
 
 /// The render loop's check for a source that has gone backward in time.
@@ -121,6 +149,12 @@ pub fn backwards(
     tick_start: u64,
     audio_render: bool,
 ) -> BackwardsChoice {
-    let _ = (maxed, audio_ts, tick_start, audio_render);
-    todo!("RED")
+    if !maxed || audio_ts == 0 || audio_ts >= tick_start {
+        return BackwardsChoice::None;
+    }
+    if audio_render {
+        BackwardsChoice::Pending
+    } else {
+        BackwardsChoice::Ignore
+    }
 }

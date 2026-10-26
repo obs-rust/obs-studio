@@ -163,6 +163,7 @@
     "build/libobs.ported-audio-discard+.h.c",
     "build/libobs.ported-audio-min-ts+.h.c",
     "build/libobs.ported-audio-mix+.h.c",
+    "build/libobs.ported-audio-render+.h.c",
     "build/libobs.ported-callback+.h.c",
     "build/libobs.ported-canvas-draw+.h.c",
     "build/libobs.ported-context-names+.h.c",

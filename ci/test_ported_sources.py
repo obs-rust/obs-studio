@@ -20,6 +20,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-audio-discard.c.h.o",
     "obs-audio-min-ts.c.h.o",
     "obs-audio-mix.c.h.o",
+    "obs-audio-render.c.h.o",
     "obs-canvas-draw.c.h.o",
     "obs-context-names.c.h.o",
     "obs-encoder-audio-start.c.h.o",

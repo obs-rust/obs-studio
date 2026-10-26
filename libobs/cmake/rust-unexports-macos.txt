@@ -315,6 +315,11 @@ _obs_audio_mix_add
 _obs_audio_buffering_maxed
 _obs_audio_buffering_fixed
 _obs_audio_buffering_add
+# obs-audio-render.c: obs-audio.c calls them inside libobs. Not EXPORT.
+_obs_audio_render_tree
+_obs_audio_render_silence
+_obs_audio_render_clear_mixes
+_obs_audio_render_backwards
 # obs-output-caption-text.c: obs-output.c calls it inside libobs. Not EXPORT.
 _obs_output_caption_text_page
 # obs-output-protocols.c: obs-output.c calls it inside libobs. Not EXPORT.

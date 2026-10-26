@@ -10,6 +10,8 @@ mod audio;
 mod audio_discard;
 #[path = "port_comparison/audio_min_ts.rs"]
 mod audio_min_ts;
+#[path = "port_comparison/audio_render.rs"]
+mod audio_render;
 #[path = "port_comparison/callback.rs"]
 mod callback;
 #[path = "port_comparison/canvas_draw.rs"]
@@ -168,6 +170,7 @@ fn comparisons(criterion: &mut Criterion) {
         audio,
         audio_discard,
         audio_min_ts,
+        audio_render,
         callback,
         canvas_draw,
         codecs,

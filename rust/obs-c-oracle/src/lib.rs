@@ -36,6 +36,7 @@ pub mod audio_io_inlines;
 pub mod audio_math;
 pub mod audio_min_ts;
 pub mod audio_mix;
+pub mod audio_render;
 pub mod av1;
 pub mod avc;
 pub mod base;

@@ -3,6 +3,7 @@
 pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
+pub mod audio_render;
 pub mod canvas_draw;
 pub mod context_names;
 pub mod module_locale;
