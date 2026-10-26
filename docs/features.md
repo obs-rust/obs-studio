@@ -2186,6 +2186,10 @@ area.
   pending merge. Issue
   [#2280](https://github.com/obs-rust/obs-studio/issues/2280);
   obsproject/obs-studio#14013.
+- obs-nvenc-test builds again against nv-codec-headers master, whose new
+  `dynlink_nvml.h` declares the same NVML types. *Linux, Windows*, pending
+  merge. Issue [#2462](https://github.com/obs-rust/obs-studio/issues/2462);
+  obsproject/obs-studio#14075.
 
 ## Development builds
 
