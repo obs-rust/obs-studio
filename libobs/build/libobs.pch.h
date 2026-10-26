@@ -171,6 +171,7 @@
 #include "obs-source-ptm-gate.h"
 #include "obs-source-render-route.h"
 #include "obs-source-size.h"
+#include "obs-source-video-tick.h"
 #include "obs-source-volume.h"
 
 #include "media-io/audio-io.h"

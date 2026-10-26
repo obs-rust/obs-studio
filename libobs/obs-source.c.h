@@ -1370,7 +1370,8 @@ static void async_tick(obs_source_t *source)
 
 	pthread_mutex_lock(&source->async_mutex);
 
-	if (deinterlacing_enabled(source)) {
+	if (obs_source_video_tick_async_route(deinterlacing_enabled(source)) ==
+	    OBS_SOURCE_VIDEO_TICK_ASYNC_DEINTERLACE) {
 		deinterlace_process_last_frame(source, sys_time);
 	} else {
 		if (source->cur_async_frame) {
@@ -1383,7 +1384,7 @@ static void async_tick(obs_source_t *source)
 
 	source->last_sys_timestamp = sys_time;
 
-	if (deinterlacing_enabled(source))
+	if (obs_source_video_tick_async_route(deinterlacing_enabled(source)) == OBS_SOURCE_VIDEO_TICK_ASYNC_DEINTERLACE)
 		filter_frame(source, &source->prev_async_frame);
 	filter_frame(source, &source->cur_async_frame);
 
@@ -1393,23 +1394,34 @@ static void async_tick(obs_source_t *source)
 	pthread_mutex_unlock(&source->async_mutex);
 }
 
+_Static_assert(OBS_SOURCE_VIDEO_TICK_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
+_Static_assert(OBS_SOURCE_VIDEO_TICK_ASYNC == OBS_SOURCE_ASYNC, "OBS_SOURCE_ASYNC");
+_Static_assert(OBS_SOURCE_VIDEO_TICK_CONTROLLABLE_MEDIA == OBS_SOURCE_CONTROLLABLE_MEDIA,
+	       "OBS_SOURCE_CONTROLLABLE_MEDIA");
+
+/* The decisions are in obs-source-video-tick.c. Each step asks at its own
+ * point, so every field is read and every call made where it was: the
+ * output flags are read again for the media step, after async_tick(), and
+ * the activate refs are loaded only after the show edge has run. */
 void obs_source_video_tick(obs_source_t *source, float seconds)
 {
-	bool now_showing, now_active;
+	bool now_showing, now_active, has_data, has_callback;
+	enum obs_source_video_tick_edge edge;
+	long refs;
 
 	if (!obs_source_valid(source, "obs_source_video_tick"))
 		return;
 
-	if (source->info.type == OBS_SOURCE_TYPE_TRANSITION)
+	if (obs_source_video_tick_transition((int)source->info.type))
 		obs_transition_tick(source, seconds);
 
-	if ((source->info.output_flags & OBS_SOURCE_ASYNC) != 0)
+	if (obs_source_video_tick_async(source->info.output_flags))
 		async_tick(source);
 
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0)
+	if (obs_source_video_tick_media(source->info.output_flags))
 		process_media_actions(source);
 
-	if (os_atomic_load_long(&source->defer_update_count) > 0)
+	if (obs_source_video_tick_deferred_update(os_atomic_load_long(&source->defer_update_count)))
 		obs_source_deferred_update(source);
 
 	/* reset the filter render texture information once every frame */
@@ -1417,8 +1429,10 @@ void obs_source_video_tick(obs_source_t *source, float seconds)
 		gs_texrender_reset(source->filter_texrender);
 
 	/* call show/hide if the reference changed */
-	now_showing = os_atomic_load_long(&source->show_refs) != 0;
-	if (now_showing != source->showing) {
+	refs = os_atomic_load_long(&source->show_refs);
+	edge = obs_source_video_tick_edge(refs, source->showing);
+	if (edge != OBS_SOURCE_VIDEO_TICK_EDGE_NONE) {
+		now_showing = edge == OBS_SOURCE_VIDEO_TICK_EDGE_ON;
 		if (now_showing) {
 			show_source(source);
 		} else {
@@ -1440,8 +1454,10 @@ void obs_source_video_tick(obs_source_t *source, float seconds)
 	}
 
 	/* call activate/deactivate if the reference changed */
-	now_active = os_atomic_load_long(&source->activate_refs) != 0;
-	if (now_active != source->active) {
+	refs = os_atomic_load_long(&source->activate_refs);
+	edge = obs_source_video_tick_edge(refs, source->active);
+	if (edge != OBS_SOURCE_VIDEO_TICK_EDGE_NONE) {
+		now_active = edge == OBS_SOURCE_VIDEO_TICK_EDGE_ON;
 		if (now_active) {
 			activate_source(source);
 		} else {
@@ -1462,7 +1478,11 @@ void obs_source_video_tick(obs_source_t *source, float seconds)
 		source->active = now_active;
 	}
 
-	if (source->context.data && source->info.video_tick)
+	/* info.video_tick is set when the source is created, so reading it
+	 * without data reads the same value it always has */
+	has_data = source->context.data != NULL;
+	has_callback = source->info.video_tick != NULL;
+	if (obs_source_video_tick_calls_tick(has_data, has_callback))
 		source->info.video_tick(source->context.data, seconds);
 
 	source->async_rendered = false;
