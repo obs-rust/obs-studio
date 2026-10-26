@@ -459,6 +459,19 @@
     obs_encoder_audio_start_audio_pts;
     obs_encoder_audio_start_not_video;
     obs_encoder_audio_start_divisor_ok;
+    /* obs-encoder-gpu-gates.c. obs-video-gpu-encode.c calls them inside
+     * libobs. Not EXPORT. */
+    obs_encoder_gpu_gates_warming;
+    obs_encoder_gpu_gates_warm_next;
+    obs_encoder_gpu_gates_divisor_inc;
+    obs_encoder_gpu_gates_divisor_wrap;
+    obs_encoder_gpu_gates_divisor_skip;
+    obs_encoder_gpu_gates_next_key;
+    obs_encoder_gpu_gates_record_timing;
+    obs_encoder_gpu_gates_count_next;
+    obs_encoder_gpu_gates_requeue;
+    obs_encoder_gpu_gates_requeue_ts;
+    obs_encoder_gpu_gates_p010;
     /* obs-encoder-size.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_size_audio_defaults;
