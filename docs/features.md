@@ -1610,6 +1610,11 @@ area.
   [#2390](https://github.com/obs-rust/obs-studio/pull/2390),
   [obs-rust/obs-browser#10](https://github.com/obs-rust/obs-browser/pull/10),
   [obs-rust/obs-browser#11](https://github.com/obs-rust/obs-browser/pull/11).
+- A frame of an animated GIF whose last LZW code ends on a byte boundary at
+  the end of the frame's data no longer loses its last pixels (backport of
+  libnsgif 2255b2f74). *All*, 2026-10-26. Issue
+  [#2465](https://github.com/obs-rust/obs-studio/issues/2465), PR
+  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
 
 ### Scenes and UI
 
