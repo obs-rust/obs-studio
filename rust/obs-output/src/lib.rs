@@ -12,13 +12,14 @@
 //! capture hookup, `libobs/obs-output-slots.c.h`, the output encoder
 //! slot rules and setter gates, `libobs/obs-encoder-gpu-gates.c.h`, the
 //! GPU encode thread gates, `libobs/obs-encoder-bind.c.h`, the encoder
-//! media binding and shutdown checks, and
-//! `libobs/obs-encoder-lifecycle.c.h`, the encoder callback and connection
-//! lifecycle decisions.
+//! media binding and shutdown checks, `libobs/obs-encoder-lifecycle.c.h`,
+//! the encoder callback and connection lifecycle decisions, and
+//! `libobs/obs-output-start.c.h`, the output start and begin-capture
+//! decisions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`] and [`encoder_lifecycle`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`] and [`output_start`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -57,7 +58,10 @@
 //! it and its last disconnects it, whether a callback is new, the GPU
 //! encode texture cap, the encoder group's counts (the divisor LCM start,
 //! ready, the reset and the destroy when none is started), and whether the
-//! SEI goes in front of the first keyframe.
+//! SEI goes in front of the first keyframe; [`output_start`] decides
+//! whether a start or a begin asks the service, when a delayed restart's
+//! reference is dropped, which encoders an output initializes, and whether
+//! a begin resets a raw output's audio and pairs the encoders.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 

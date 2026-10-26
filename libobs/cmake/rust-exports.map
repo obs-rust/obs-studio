@@ -465,6 +465,14 @@
     obs_output_slots_scaled_axis_set;
     obs_output_slots_video_slot;
     obs_output_slots_audio_slot;
+    /* obs-output-start.c. obs-output.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_output_start_service;
+    obs_output_start_drop_restart_ref;
+    obs_output_start_init_video;
+    obs_output_start_init_audio;
+    obs_output_start_reset_raw;
+    obs_output_start_pair;
     /* obs-encoder-roi.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_roi_admit;

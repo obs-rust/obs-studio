@@ -532,6 +532,17 @@ obs_output_slots_default_index
 obs_output_slots_scaled_axis_set
 obs_output_slots_video_slot
 obs_output_slots_audio_slot
+# obs-output-start.c: obs_output_start(), obs_output_actual_start(),
+# obs_output_initialize_encoders() and
+# obs_output_begin_data_capture_internal() in obs-output.c call them inside
+# libobs. Declared in obs-output-start.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_output_start_service
+obs_output_start_drop_restart_ref
+obs_output_start_init_video
+obs_output_start_init_audio
+obs_output_start_reset_raw
+obs_output_start_pair
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

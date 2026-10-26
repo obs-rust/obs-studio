@@ -41,6 +41,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -64,8 +65,7 @@ pub const OBS_OUTPUT_SERVICE: u32 = crate::video_checks::OBS_OUTPUT_SERVICE;
 /// after the hookup: the service is activated.
 #[must_use]
 pub fn service(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_SERVICE) != 0
 }
 
 /// `obs_output_actual_start()`, after `info.start` and the `starting`
@@ -74,8 +74,7 @@ pub fn service(flags: u32) -> bool {
 /// negative count is dropped too (the C tests "not 0").
 #[must_use]
 pub fn drop_restart_ref(delay_restart_refs: i64) -> bool {
-    let _ = delay_restart_refs;
-    todo!()
+    delay_restart_refs != 0
 }
 
 /// `obs_output_initialize_encoders()`, for an encoded output that is not
@@ -83,16 +82,14 @@ pub fn drop_restart_ref(delay_restart_refs: i64) -> bool {
 /// initialized (a failure returns before the audio ones).
 #[must_use]
 pub fn init_video(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_VIDEO) != 0
 }
 
 /// `obs_output_initialize_encoders()`, after the video encoders: with
 /// [`OBS_OUTPUT_AUDIO`] in `flags`, the audio encoders are initialized.
 #[must_use]
 pub fn init_audio(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_AUDIO) != 0
 }
 
 /// `obs_output_begin_data_capture_internal()`, for an output that is
@@ -100,8 +97,7 @@ pub fn init_audio(flags: u32) -> bool {
 /// raw output), `reset_raw_output()` runs before the capture check.
 #[must_use]
 pub fn reset_raw(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_ENCODED) == 0
 }
 
 /// `obs_output_begin_data_capture_internal()`, after the capture check:
@@ -109,6 +105,5 @@ pub fn reset_raw(flags: u32) -> bool {
 /// video and audio encoders are paired.
 #[must_use]
 pub fn pair(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_VIDEO) != 0 && (flags & OBS_OUTPUT_AUDIO) != 0
 }
