@@ -304,7 +304,7 @@ fn parity_migration_exhaustive_caps_and_types() {
 
 /// Every major.minor with patches 0 to 3 and 0xffff, with and without the
 /// cap, for each type and one outside the enum.
-/// #TBD: every version, caps set and type; the mute is only ever asked for
+/// #2444: every version, caps set and type; the mute is only ever asked for
 /// a source the migration turns monitoring on for.
 #[test]
 fn parity_monitor_only_mutes_exhaustive() {

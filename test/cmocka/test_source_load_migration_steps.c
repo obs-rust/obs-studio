@@ -27,7 +27,7 @@
  * - obs_source_load_monitoring_migration(): before 23.2.2 a monitor-by-default
  *   source becomes monitor-only with all six mixers; before 33.0.0
  *   "monitoring_enabled" is stored from the monitoring type;
- * - obs_source_load_monitor_only_mutes() (#TBD): before 33.0.0 a
+ * - obs_source_load_monitor_only_mutes() (#2444): before 33.0.0 a
  *   monitor-only source (after the 23.2.2 migration) loads muted.
  * They pin the current C behaviour; cases marked "characterized, not
  * endorsed" are odd but real.
@@ -469,7 +469,7 @@ static void test_deinterlace_mode_out_of_range(void **state)
 	assert_int_equal(obs_source_load_deinterlace_mode(INT64_MIN), 0);
 }
 
-/* monitor-only mute (#TBD) */
+/* monitor-only mute (#2444) */
 
 static void expect_mutes(uint32_t prev_ver, uint32_t caps, int64_t type, bool expected)
 {

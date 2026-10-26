@@ -1,6 +1,6 @@
 /*
  * A source saved before 33.0 as "Monitor Only" must stay out of the stream
- * and recordings (#TBD).
+ * and recordings (#2444).
  *
  * Before 33.0 a source had three monitoring types: off, Monitor Only and
  * Monitor and Output. 33.0 keeps an on/off switch, and on means monitor and

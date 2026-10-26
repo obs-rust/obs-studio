@@ -243,7 +243,7 @@ fn steps_migration_type_truncates() {
 }
 
 // ------------------------------------------------------------------------
-// monitor-only mute (#TBD)
+// monitor-only mute (#2444)
 
 /// A pre-33.0.0 Monitor Only source loads muted; Monitor and Output, off and
 /// the values outside the enum do not, nor does anything saved by 33.0.0.
