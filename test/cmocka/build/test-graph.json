@@ -3842,6 +3842,26 @@
         "libobs/data"
       ]
     },
+    "test_transition_start_steps": {
+      "sources": [
+        "test/cmocka/test_transition_start_steps.c",
+        "libobs/obs-source-transition-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-start.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_unclean_launch": {
       "sources": [
         "test/cmocka/test_unclean_launch.cpp"
@@ -5815,6 +5835,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_transition_start_steps": {
+      "target": "test_transition_start_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_unclean_launch": {
       "target": "test_unclean_launch",
