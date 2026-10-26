@@ -8,6 +8,10 @@
 //! `check_to_swap_bgrx_bgra()` and `obs_source_update_async_video()`;
 //! `libobs/obs-source-audio-input.c.h`, the audio
 //! input steps of `process_audio()` and `reset_resampler()`;
+//! `libobs/obs-source-audio-place.c.h`, the audio placement and action
+//! timeline of `source_output_audio_place()`,
+//! `source_output_audio_push_back()`, `source_output_audio_data()` and
+//! `apply_audio_actions()`;
 //! `libobs/obs-source-audio-render.c.h`, the audio render mix plan of
 //! `obs_source_audio_render()`, `custom_audio_render()` and
 //! `process_audio_source_tick()`;
@@ -53,6 +57,7 @@
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
 //!
 //! The safe cores are [`async_pacing`], [`async_upload`], [`audio_input`],
+//! [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
