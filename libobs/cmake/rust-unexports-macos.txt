@@ -329,6 +329,26 @@ _obs_output_conversion_plan
 _obs_output_congestion_clamp
 # obs-output-stop-stats.c: obs-output.c calls it inside libobs. Not EXPORT.
 _obs_output_stop_stats
+# obs-output-raw-audio.c: obs-output.c calls them inside libobs. Not EXPORT.
+_obs_output_raw_audio_passthrough
+_obs_output_raw_audio_video_unset
+_obs_output_raw_audio_before_video
+_obs_output_raw_audio_ends_before
+_obs_output_raw_audio_cut_ns
+_obs_output_raw_audio_cut_ts
+_obs_output_raw_audio_cut_bytes
+_obs_output_raw_audio_cut_frames
+_obs_output_raw_audio_start_unset
+_obs_output_raw_audio_block_bytes
+_obs_output_raw_audio_push_bytes
+_obs_output_raw_audio_can_pop
+_obs_output_raw_audio_block_ts
+_obs_output_raw_audio_paused_ts
+_obs_output_raw_audio_next_frames
+_obs_output_raw_audio_mix_on
+_obs_output_raw_audio_interleave
+_obs_output_raw_audio_delay_on
+_obs_output_raw_audio_delay_ns
 # obs-encoder-roi.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors

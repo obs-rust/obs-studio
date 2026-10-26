@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-raw-audio.pch.h"
 
 bool obs_output_raw_audio_passthrough(uint32_t flags)
 {

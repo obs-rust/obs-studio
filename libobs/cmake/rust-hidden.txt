@@ -410,6 +410,29 @@ obs_output_congestion_clamp
 # libobs. Declared in obs-output-stop-stats.h without EXPORT, so the shim stays
 # hidden the same way.
 obs_output_stop_stats
+# obs-output-raw-audio.c: prepare_audio(), default_raw_audio_callback(),
+# start_raw_audio() and hook_data_capture() in obs-output.c call them inside
+# libobs. Declared in obs-output-raw-audio.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_output_raw_audio_passthrough
+obs_output_raw_audio_video_unset
+obs_output_raw_audio_before_video
+obs_output_raw_audio_ends_before
+obs_output_raw_audio_cut_ns
+obs_output_raw_audio_cut_ts
+obs_output_raw_audio_cut_bytes
+obs_output_raw_audio_cut_frames
+obs_output_raw_audio_start_unset
+obs_output_raw_audio_block_bytes
+obs_output_raw_audio_push_bytes
+obs_output_raw_audio_can_pop
+obs_output_raw_audio_block_ts
+obs_output_raw_audio_paused_ts
+obs_output_raw_audio_next_frames
+obs_output_raw_audio_mix_on
+obs_output_raw_audio_interleave
+obs_output_raw_audio_delay_on
+obs_output_raw_audio_delay_ns
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

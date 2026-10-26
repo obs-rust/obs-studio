@@ -360,6 +360,27 @@
     /* obs-output-stop-stats.c. obs-output.c calls it inside libobs. Not
      * EXPORT. */
     obs_output_stop_stats;
+    /* obs-output-raw-audio.c. obs-output.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_output_raw_audio_passthrough;
+    obs_output_raw_audio_video_unset;
+    obs_output_raw_audio_before_video;
+    obs_output_raw_audio_ends_before;
+    obs_output_raw_audio_cut_ns;
+    obs_output_raw_audio_cut_ts;
+    obs_output_raw_audio_cut_bytes;
+    obs_output_raw_audio_cut_frames;
+    obs_output_raw_audio_start_unset;
+    obs_output_raw_audio_block_bytes;
+    obs_output_raw_audio_push_bytes;
+    obs_output_raw_audio_can_pop;
+    obs_output_raw_audio_block_ts;
+    obs_output_raw_audio_paused_ts;
+    obs_output_raw_audio_next_frames;
+    obs_output_raw_audio_mix_on;
+    obs_output_raw_audio_interleave;
+    obs_output_raw_audio_delay_on;
+    obs_output_raw_audio_delay_ns;
     /* obs-encoder-roi.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_roi_admit;

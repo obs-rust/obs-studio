@@ -34,31 +34,55 @@
 //! the frontend, the flags from an output plugin), and nothing here can
 //! panic on any input. Nothing here divides.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
+use crate::delay::NS_PER_SEC;
 pub use crate::video_checks::OBS_OUTPUT_VIDEO;
 
 /// `AUDIO_OUTPUT_FRAMES` (`media-io/audio-io.h`): the frames of one block.
 pub const AUDIO_OUTPUT_FRAMES: u32 = 1024;
 
+// `push_bytes()` and `cut_bytes()` widen a `u32` to `usize`, as the C's
+// `uint32_t * size_t` does.
+const _: () = assert!(usize::BITS >= u32::BITS);
+
+/// `u32` to `usize`: lossless, since `usize` has at least 32 bits.
+fn widen(n: u32) -> usize {
+    usize::try_from(n).unwrap_or(usize::MAX)
+}
+
+/// The low 32 bits of `n`, as the C's `(uint32_t)` cast.
+fn low_u32(n: u64) -> u32 {
+    u32::try_from(n & u64::from(u32::MAX)).unwrap_or(u32::MAX)
+}
+
 /// `prepare_audio()`: the output has no `OBS_OUTPUT_VIDEO` flag, so the
 /// packet passes as it is.
 #[must_use]
 pub fn passthrough(flags: u32) -> bool {
-    let _ = flags;
-    todo!("raw_audio::passthrough")
+    flags & OBS_OUTPUT_VIDEO == 0
 }
 
 /// `prepare_audio()`: `video_start_ts` is 0.
 #[must_use]
 pub fn video_unset(video_start_ts: u64) -> bool {
-    let _ = video_start_ts;
-    todo!("raw_audio::video_unset")
+    video_start_ts == 0
 }
 
 /// `prepare_audio()`: the packet starts before the video.
 #[must_use]
 pub fn before_video(timestamp: u64, video_start_ts: u64) -> bool {
-    let _ = (timestamp, video_start_ts);
-    todo!("raw_audio::before_video")
+    timestamp < video_start_ts
 }
 
 /// `prepare_audio()`, for a packet that starts before the video: it ends
@@ -66,96 +90,84 @@ pub fn before_video(timestamp: u64, video_start_ts: u64) -> bool {
 /// it is dropped.
 #[must_use]
 pub fn ends_before(timestamp: u64, duration_ns: u64, video_start_ts: u64) -> bool {
-    let _ = (timestamp, duration_ns, video_start_ts);
-    todo!("raw_audio::ends_before")
+    timestamp.wrapping_add(duration_ns) <= video_start_ts
 }
 
 /// `prepare_audio()`: the nanoseconds cut from the packet's front,
 /// `video_start_ts - timestamp` (wrapping).
 #[must_use]
 pub fn cut_ns(video_start_ts: u64, timestamp: u64) -> u64 {
-    let _ = (video_start_ts, timestamp);
-    todo!("raw_audio::cut_ns")
+    video_start_ts.wrapping_sub(timestamp)
 }
 
 /// `prepare_audio()`: the cut packet's timestamp, `timestamp + cut_ns`
 /// (wrapping).
 #[must_use]
 pub fn cut_ts(timestamp: u64, cut_ns: u64) -> u64 {
-    let _ = (timestamp, cut_ns);
-    todo!("raw_audio::cut_ts")
+    timestamp.wrapping_add(cut_ns)
 }
 
 /// `prepare_audio()`, for each plane: the bytes its data advances,
 /// `audio_size` times the low 32 bits of `cut_frames` (wrapping).
 #[must_use]
 pub fn cut_bytes(audio_size: usize, cut_frames: u64) -> usize {
-    let _ = (audio_size, cut_frames);
-    todo!("raw_audio::cut_bytes")
+    audio_size.wrapping_mul(widen(low_u32(cut_frames)))
 }
 
 /// `prepare_audio()`: the frames left, `frames` minus the low 32 bits of
 /// `cut_frames` (wrapping).
 #[must_use]
 pub fn cut_frames(frames: u32, cut_frames: u64) -> u32 {
-    let _ = (frames, cut_frames);
-    todo!("raw_audio::cut_frames")
+    frames.wrapping_sub(low_u32(cut_frames))
 }
 
 /// `default_raw_audio_callback()`: `audio_start_ts` is 0, so this packet's
 /// timestamp becomes the audio's start.
 #[must_use]
 pub fn start_unset(audio_start_ts: u64) -> bool {
-    let _ = audio_start_ts;
-    todo!("raw_audio::start_unset")
+    audio_start_ts == 0
 }
 
 /// `default_raw_audio_callback()`: the bytes of one block of one plane,
 /// [`AUDIO_OUTPUT_FRAMES`] times `audio_size` (wrapping).
 #[must_use]
 pub fn block_bytes(audio_size: usize) -> usize {
-    let _ = audio_size;
-    todo!("raw_audio::block_bytes")
+    widen(AUDIO_OUTPUT_FRAMES).wrapping_mul(audio_size)
 }
 
 /// `default_raw_audio_callback()`, for each plane: the bytes pushed,
 /// `frames` times `audio_size` (wrapping).
 #[must_use]
 pub fn push_bytes(frames: u32, audio_size: usize) -> usize {
-    let _ = (frames, audio_size);
-    todo!("raw_audio::push_bytes")
+    widen(frames).wrapping_mul(audio_size)
 }
 
 /// `default_raw_audio_callback()`: the block loop pops a block while plane
 /// 0 holds strictly more than one.
 #[must_use]
 pub fn can_pop(buffered: usize, block_bytes: usize) -> bool {
-    let _ = (buffered, block_bytes);
-    todo!("raw_audio::can_pop")
+    buffered > block_bytes
 }
 
 /// `default_raw_audio_callback()`: a block's timestamp before the pause
 /// offset, `audio_start_ts + frames_ns` (wrapping).
 #[must_use]
 pub fn block_ts(audio_start_ts: u64, frames_ns: u64) -> u64 {
-    let _ = (audio_start_ts, frames_ns);
-    todo!("raw_audio::block_ts")
+    audio_start_ts.wrapping_add(frames_ns)
 }
 
 /// `default_raw_audio_callback()`, under the pause mutex: `timestamp +
 /// ts_offset` (wrapping).
 #[must_use]
 pub fn paused_ts(timestamp: u64, ts_offset: u64) -> u64 {
-    let _ = (timestamp, ts_offset);
-    todo!("raw_audio::paused_ts")
+    timestamp.wrapping_add(ts_offset)
 }
 
 /// `default_raw_audio_callback()`: `total_audio_frames` after a block, plus
 /// [`AUDIO_OUTPUT_FRAMES`] (wrapping).
 #[must_use]
 pub fn next_frames(total_audio_frames: usize) -> usize {
-    let _ = total_audio_frames;
-    todo!("raw_audio::next_frames")
+    total_audio_frames.wrapping_add(widen(AUDIO_OUTPUT_FRAMES))
 }
 
 /// `start_raw_audio()` with `raw_audio2`, for each mix below
@@ -164,30 +176,29 @@ pub fn next_frames(total_audio_frames: usize) -> usize {
 /// 0 to 5) is not set.
 #[must_use]
 pub fn mix_on(mixer_mask: usize, idx: usize) -> bool {
-    let _ = (mixer_mask, idx);
-    todo!("raw_audio::mix_on")
+    u32::try_from(idx)
+        .ok()
+        .and_then(|i| mixer_mask.checked_shr(i))
+        .is_some_and(|m| m & 1 != 0)
 }
 
 /// `hook_data_capture()`, for an encoded output: `interleave_packets()`
 /// when it has both video and audio, else `default_encoded_callback()`.
 #[must_use]
 pub fn interleave(has_video: bool, has_audio: bool) -> bool {
-    let _ = (has_video, has_audio);
-    todo!("raw_audio::interleave")
+    has_video && has_audio
 }
 
 /// `hook_data_capture()`: `delay_sec` is not 0, so `process_delay()` wraps
 /// the callback.
 #[must_use]
 pub fn delay_on(delay_sec: u32) -> bool {
-    let _ = delay_sec;
-    todo!("raw_audio::delay_on")
+    delay_sec != 0
 }
 
 /// `hook_data_capture()`: `active_delay_ns`, `delay_sec` seconds in
 /// nanoseconds (a `u64` product; `u32::MAX` seconds fit).
 #[must_use]
 pub fn delay_ns(delay_sec: u32) -> u64 {
-    let _ = delay_sec;
-    todo!("raw_audio::delay_ns")
+    u64::from(delay_sec).wrapping_mul(NS_PER_SEC)
 }
