@@ -2126,6 +2126,36 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_output_start_steps": {
+      "sources": [
+        "test/cmocka/test_output_start_steps.c",
+        "libobs/obs-output-start.c.h",
+        "libobs/obs-output-raw-audio.c.h",
+        "libobs/obs-encoder-size.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-start.h",
+        "libobs/obs-output-raw-audio.h",
+        "libobs/obs-encoder-size.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_start_twice": {
       "sources": [
         "test/cmocka/test_output_start_twice.c"
@@ -5539,6 +5569,12 @@
     },
     "test_output_start_log": {
       "target": "test_output_start_log",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_start_steps": {
+      "target": "test_output_start_steps",
       "command": [
         "${target}"
       ]
