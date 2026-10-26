@@ -20,6 +20,7 @@ pub mod effect_passes;
 #[allow(unsafe_code)] // the C ABI shims
 pub mod ffi;
 pub mod gif_blocks;
+pub mod gif_frame;
 pub mod image_file;
 pub mod lzw;
 pub mod math_extra;

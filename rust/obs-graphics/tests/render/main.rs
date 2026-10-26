@@ -2,6 +2,7 @@
 
 mod gif_blocks;
 mod gif_blocks_parity;
+mod gif_frame;
 mod image_file;
 mod image_file_layout;
 mod image_file_parity;
