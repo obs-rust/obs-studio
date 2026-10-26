@@ -186,6 +186,9 @@ _Static_assert(OBS_ENCODER_SIZE_SPEAKERS_UNKNOWN == SPEAKERS_UNKNOWN, "SPEAKERS_
 /* The constant obs-encoder-audio-start.h copies. */
 _Static_assert(OBS_ENCODER_AUDIO_START_TYPE_VIDEO == OBS_ENCODER_VIDEO, "OBS_ENCODER_VIDEO");
 
+/* The constant obs-encoder-bind.h copies. */
+_Static_assert(OBS_ENCODER_BIND_TYPE_AUDIO == OBS_ENCODER_AUDIO, "OBS_ENCODER_AUDIO");
+
 static inline void get_audio_info(const struct obs_encoder *encoder, struct audio_convert_info *info)
 {
 	const struct audio_output_info *aoi;
@@ -860,9 +863,9 @@ void obs_encoder_shutdown(obs_encoder_t *encoder)
  * this function existed, until the next normal stop. */
 void obs_encoder_shutdown_unstarted(obs_encoder_t *encoder)
 {
-	if (pthread_mutex_trylock(&encoder->outputs_mutex) != 0)
+	if (!obs_encoder_bind_locked(pthread_mutex_trylock(&encoder->outputs_mutex)))
 		return;
-	if (pthread_mutex_trylock(&encoder->init_mutex) != 0) {
+	if (!obs_encoder_bind_locked(pthread_mutex_trylock(&encoder->init_mutex))) {
 		pthread_mutex_unlock(&encoder->outputs_mutex);
 		return;
 	}
@@ -873,7 +876,7 @@ void obs_encoder_shutdown_unstarted(obs_encoder_t *encoder)
 		needed = obs_output_needs_encoders(output);
 	}
 
-	if (encoder->initialized && !needed) {
+	if (obs_encoder_bind_shutdown_unstarted(encoder->initialized, needed)) {
 		obs_encoder_shutdown(encoder);
 		encoder->initialized = false;
 	}
@@ -896,7 +899,7 @@ video_t *obs_encoder_unbind_video(obs_encoder_t *encoder, video_t *const *videos
 	video_t *video = NULL;
 	bool bound = false;
 
-	if (encoder->info.type != OBS_ENCODER_VIDEO)
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type))
 		return NULL;
 
 	pthread_mutex_lock(&encoder->init_mutex);
@@ -1352,7 +1355,7 @@ void obs_encoder_set_video(obs_encoder_t *encoder, video_t *video)
 
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_video"))
 		return;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_video: "
 		     "encoder '%s' is not a video encoder",
@@ -1380,6 +1383,7 @@ void obs_encoder_set_video(obs_encoder_t *encoder, video_t *video)
 static void encoder_set_video(obs_encoder_t *encoder, video_t *video)
 {
 	const struct video_output_info *voi;
+	struct obs_encoder_bind_timebase timebase;
 
 	if (encoder->fps_override) {
 		video_output_free_frame_rate_divisor(encoder->fps_override);
@@ -1389,17 +1393,19 @@ static void encoder_set_video(obs_encoder_t *encoder, video_t *video)
 	if (video) {
 		voi = video_output_get_info(video);
 		encoder->media = video;
-		encoder->timebase_num = voi->fps_den;
-		encoder->timebase_den = voi->fps_num;
+		timebase = obs_encoder_bind_video_timebase(true, voi->fps_num, voi->fps_den);
+		encoder->timebase_num = timebase.num;
+		encoder->timebase_den = timebase.den;
 
-		if (encoder->frame_rate_divisor) {
+		if (obs_encoder_bind_divisor_override(encoder->frame_rate_divisor)) {
 			encoder->fps_override =
 				video_output_create_with_frame_rate_divisor(video, encoder->frame_rate_divisor);
 		}
 	} else {
 		encoder->media = NULL;
-		encoder->timebase_num = 0;
-		encoder->timebase_den = 0;
+		timebase = obs_encoder_bind_video_timebase(false, 0, 0);
+		encoder->timebase_num = timebase.num;
+		encoder->timebase_den = timebase.den;
 	}
 }
 
@@ -1407,7 +1413,7 @@ void obs_encoder_set_audio(obs_encoder_t *encoder, audio_t *audio)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_audio"))
 		return;
-	if (encoder->info.type != OBS_ENCODER_AUDIO) {
+	if (obs_encoder_bind_not_audio((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_audio: "
 		     "encoder '%s' is not an audio encoder",
@@ -1422,14 +1428,18 @@ void obs_encoder_set_audio(obs_encoder_t *encoder, audio_t *audio)
 		return;
 	}
 
+	struct obs_encoder_bind_timebase timebase;
+
 	if (audio) {
 		encoder->media = audio;
-		encoder->timebase_num = 1;
-		encoder->timebase_den = audio_output_get_sample_rate(audio);
+		timebase = obs_encoder_bind_audio_timebase(true, audio_output_get_sample_rate(audio));
+		encoder->timebase_num = timebase.num;
+		encoder->timebase_den = timebase.den;
 	} else {
 		encoder->media = NULL;
-		encoder->timebase_num = 0;
-		encoder->timebase_den = 0;
+		timebase = obs_encoder_bind_audio_timebase(false, 0);
+		encoder->timebase_num = timebase.num;
+		encoder->timebase_den = timebase.den;
 	}
 }
 
@@ -1437,7 +1447,7 @@ video_t *obs_encoder_video(const obs_encoder_t *encoder)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_video"))
 		return NULL;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_video: "
 		     "encoder '%s' is not a video encoder",
@@ -1452,7 +1462,7 @@ video_t *obs_encoder_parent_video(const obs_encoder_t *encoder)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_parent_video"))
 		return NULL;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (obs_encoder_audio_start_not_video((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_parent_video: "
 		     "encoder '%s' is not a video encoder",
@@ -1467,7 +1477,7 @@ audio_t *obs_encoder_audio(const obs_encoder_t *encoder)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_audio"))
 		return NULL;
-	if (encoder->info.type != OBS_ENCODER_AUDIO) {
+	if (obs_encoder_bind_not_audio((int)encoder->info.type)) {
 		blog(LOG_WARNING,
 		     "obs_encoder_set_audio: "
 		     "encoder '%s' is not an audio encoder",

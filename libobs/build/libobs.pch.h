@@ -60,6 +60,9 @@
 /* obs-encoder-audio-start.c */
 #include "obs-encoder-audio-start.h"
 
+/* obs-encoder-bind.c */
+#include "obs-encoder-bind.h"
+
 /* obs-encoder-gpu-gates.c */
 #include "obs-encoder-gpu-gates.h"
 

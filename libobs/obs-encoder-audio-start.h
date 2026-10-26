@@ -44,7 +44,9 @@
  *   send_audio_data(): obs_encoder_audio_start_audio_pts() (the pts step);
  * - obs_encoder_set_gpu_scale_type() and obs_encoder_set_frame_rate_divisor():
  *   obs_encoder_audio_start_not_video() (the first refusal) and
- *   obs_encoder_audio_start_divisor_ok().
+ *   obs_encoder_audio_start_divisor_ok(); obs_encoder_set_video(),
+ *   obs_encoder_video(), obs_encoder_parent_video() and
+ *   obs_encoder_unbind_video() ask the same type refusal (obs-encoder-bind.h).
  *
  * obs-encoder.c keeps every read of the encoder, its group and its paired
  * encoders, in its order and under its conditions (the walk over the paired
@@ -139,10 +141,13 @@ bool obs_encoder_audio_start_can_send(size_t buffered, size_t framesize_bytes);
 /* send_audio_data() after a successful encode: cur_pts plus framesize. */
 int64_t obs_encoder_audio_start_audio_pts(int64_t cur_pts, size_t framesize);
 
-/* obs_encoder_set_gpu_scale_type() and obs_encoder_set_frame_rate_divisor()
- * after obs_encoder_valid(): type (info.type) is not
+/* obs_encoder_set_gpu_scale_type(), obs_encoder_set_frame_rate_divisor() and
+ * obs_encoder_set_video() after obs_encoder_valid(): type (info.type) is not
  * OBS_ENCODER_AUDIO_START_TYPE_VIDEO, the first refusal. The active and
- * initialized refusals follow in obs-encoder.c. */
+ * initialized refusals follow in obs-encoder.c. obs_encoder_video() and
+ * obs_encoder_parent_video() (after obs_encoder_valid()) and
+ * obs_encoder_unbind_video() refuse an encoder of another type the same
+ * way. */
 bool obs_encoder_audio_start_not_video(int type);
 
 /* obs_encoder_set_frame_rate_divisor() after the refusals: the divisor is
