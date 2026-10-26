@@ -58,6 +58,8 @@ mod module_type_rules;
 mod output_raw_audio;
 #[path = "port_comparison/output_slots.rs"]
 mod output_slots;
+#[path = "port_comparison/output_start.rs"]
+mod output_start;
 #[path = "port_comparison/output_stop_stats.rs"]
 mod output_stop_stats;
 #[path = "port_comparison/output_video_checks.rs"]
@@ -218,6 +220,7 @@ fn comparisons(criterion: &mut Criterion) {
         module_type_rules,
         output_raw_audio,
         output_slots,
+        output_start,
         output_stop_stats,
         output_video_checks,
         pulse_monitor,
