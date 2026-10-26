@@ -187,7 +187,7 @@ jobs:
           path: |
             ${{ runner.temp }}/flatpak-runtime-result/result.json
             ${{ runner.temp }}/flatpak-runtime-result/*.log
-            ${{ runner.temp }}/flatpak-runtime-result/profile/obs-studio/logs/*.txt
+            ${{ runner.temp }}/flatpak-runtime-result/profile/obs-studio-rust/logs/*.txt
             ${{ runner.temp }}/flatpak-runtime-result/recordings/*.mkv
           if-no-files-found: error
           retention-days: 7

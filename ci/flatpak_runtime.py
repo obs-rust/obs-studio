@@ -91,8 +91,17 @@ def check_origin(origin: str, bundle: bool) -> None:
         raise RuntimeError('the app was installed from the repo, not from the bundle')
 
 
+# OBS_CONFIG_DIRECTORY of the Rust brand (frontend/utility/AppIdentity.hpp),
+# which the Flatpak builds with (#2358).
+CONFIG_DIRECTORY = 'obs-studio-rust'
+
+
+def logs_directory(output: Path) -> Path:
+    return output / 'profile' / CONFIG_DIRECTORY / 'logs'
+
+
 def write_profile(output: Path, port: int, password: str) -> None:
-    config = output / 'profile/obs-studio'
+    config = output / 'profile' / CONFIG_DIRECTORY
     profile = config / 'basic/profiles/Test'
     profile.mkdir(parents=True)
     scenes = config / 'basic/scenes'
@@ -381,7 +390,7 @@ def qualification(args) -> dict:  # noqa: C901
         os.kill(processes[0], signal.SIGINT)
         if app.wait(timeout=30) != 0:
             raise RuntimeError('packaged OBS did not exit cleanly')
-        logs = list((output / 'profile/obs-studio/logs').glob('*.txt'))
+        logs = list(logs_directory(output).glob('*.txt'))
         if len(logs) != 1:
             raise RuntimeError('saved profile must produce exactly one OBS log')
         modules = []

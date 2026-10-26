@@ -98,7 +98,7 @@ class FlatpakRuntimeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             module.write_profile(root, 4456, 'temporary-test-password')
-            config = root / 'profile/obs-studio'
+            config = root / 'profile' / module.CONFIG_DIRECTORY
             global_config = configparser.ConfigParser()
             global_config.read(config / 'global.ini')
             self.assertFalse(global_config.getboolean('General', 'BrowserHWAccel'))
