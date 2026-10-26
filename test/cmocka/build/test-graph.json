@@ -3290,6 +3290,33 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_monitor_only_load": {
+      "sources": [
+        "test/cmocka/test_source_monitor_only_load.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_profiler": {
       "sources": [
         "test/cmocka/test_source_profiler.c"
@@ -5420,6 +5447,23 @@
       "target": "test_source_media_admission_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_monitor_only_load": {
+      "target": "test_source_monitor_only_load",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_source_profiler": {
