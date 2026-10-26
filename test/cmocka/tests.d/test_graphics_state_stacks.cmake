@@ -10,7 +10,10 @@
 # vendored libnsgif and the private obs-graphics and effect parser adapters;
 # libobs links those but does not export them, so this executable compiles its
 # own copies, as test_sprite_geometry_steps_rust does.
-if(TARGET libobs_rust-static)
+# Not on MSVC: the test calls the matrix4_* exports of obs.dll, and the
+# staticlib object that holds the shims also defines them, so link.exe fails
+# with LNK2005 (follow-up: restore the Windows run).
+if(TARGET libobs_rust-static AND NOT MSVC)
   add_executable(
     test_graphics_state_stacks_rust
     test_graphics_state_stacks.c
