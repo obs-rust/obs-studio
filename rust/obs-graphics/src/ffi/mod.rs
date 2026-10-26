@@ -18,6 +18,7 @@ pub mod quat;
 pub mod shader_param_names;
 pub mod shader_sampler_convert;
 pub mod sprite;
+pub mod state_stacks;
 pub mod texture_render;
 pub mod vec2;
 pub mod vec3;

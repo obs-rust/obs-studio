@@ -186,6 +186,7 @@
     "build/libobs.ported-encoder-roi+.h.c",
     "build/libobs.ported-encoder-size+.h.c",
     "build/libobs.ported-graphics+.h.c",
+    "build/libobs.ported-graphics-state-stacks+.h.c",
     "build/libobs.ported-hotkey-bindings+.h.c",
     "build/libobs.ported-hotkey-pair+.h.c",
     "build/libobs.ported-hotkey-press+.h.c",

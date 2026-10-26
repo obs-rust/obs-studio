@@ -126,6 +126,8 @@ mod source_transition_start;
 mod source_video_tick;
 #[path = "port_comparison/source_volume.rs"]
 mod source_volume;
+#[path = "port_comparison/state_stacks.rs"]
+mod state_stacks;
 #[path = "port_comparison/util.rs"]
 mod util;
 #[path = "port_comparison/video_copy_plan.rs"]
@@ -250,6 +252,7 @@ fn comparisons(criterion: &mut Criterion) {
         source_transition_start,
         source_video_tick,
         source_volume,
+        state_stacks,
         util,
         video_copy_plan,
         video_output_step,

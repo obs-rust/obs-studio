@@ -21,6 +21,7 @@ use crate::axisang::AxisAng;
 use crate::matrix4::Matrix4;
 use crate::quat::Quat;
 use crate::vec3::Vec3;
+use crate::vec4::Vec4;
 
 /// A stack of values: the operations the C does on its darrays.
 pub trait Stack<T: Copy> {
@@ -124,51 +125,83 @@ pub enum MatrixOp {
 /// `matrix4_identity`.
 #[must_use]
 pub fn identity() -> Matrix4 {
-    todo!("identity")
+    Matrix4::new(
+        Vec4::new(1.0, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 1.0, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, 1.0, 0.0),
+        Vec4::new(0.0, 0.0, 0.0, 1.0),
+    )
 }
 
 /// `gs_matrix_stack_push`: a copy of the top on top.
 pub fn matrix_push<S: Stack<Matrix4>>(stack: &mut S, cur: &mut usize) {
-    let _ = (stack, cur);
-    todo!("matrix_push")
+    if let Some(top) = stack.get(*cur) {
+        stack.push(top);
+        *cur = cur.wrapping_add(1);
+    }
 }
 
 /// `gs_matrix_stack_pop`: false when the top is the last matrix.
 pub fn matrix_pop<S: Stack<Matrix4>>(stack: &mut S, cur: &mut usize) -> bool {
-    let _ = (stack, cur);
-    todo!("matrix_pop")
+    if *cur == 0 {
+        return false;
+    }
+    stack.erase(*cur);
+    *cur = cur.wrapping_sub(1);
+    true
 }
 
 /// The operations on the top (`gs_matrix_stack_identity` to
 /// `gs_matrix_stack_scale`).
 pub fn matrix_apply<S: Stack<Matrix4>>(stack: &mut S, cur: usize, op: MatrixOp) {
-    let _ = (stack, cur, op);
-    todo!("matrix_apply")
+    let Some(top) = stack.get(cur) else {
+        return;
+    };
+    let result = match op {
+        MatrixOp::Identity => identity(),
+        MatrixOp::Transpose => top.transpose(),
+        MatrixOp::Set(matrix) => matrix,
+        // matrix4_mul(top, matrix, top): the argument times the top.
+        MatrixOp::Mul(matrix) => core::ops::Mul::mul(matrix, &top),
+        MatrixOp::RotQuat(rot) => top.rotate_i(rot),
+        MatrixOp::RotAa(rot) => top.rotate_aa_i(rot),
+        MatrixOp::Translate(pos) => top.translate3v_i(pos),
+        MatrixOp::Scale(scale) => top.scale_i(scale),
+    };
+    stack.set(cur, result);
 }
 
 /// `gs_matrix_stack_get`: the top.
 #[must_use]
 pub fn matrix_get<S: Stack<Matrix4>>(stack: &S, cur: usize) -> Option<Matrix4> {
-    let _ = (stack, cur);
-    todo!("matrix_get")
+    stack.get(cur)
 }
 
 /// `gs_viewport_stack_push` and `gs_blend_state_stack_push`.
 pub fn state_push<T: Copy, S: Stack<T>>(stack: &mut S, value: T) {
-    let _ = (stack, value);
-    todo!("state_push")
+    stack.push(value);
 }
 
 /// `gs_viewport_stack_pop` and `gs_blend_state_stack_pop`: the value to
 /// restore, `None` when the stack is empty.
 pub fn state_pop<T: Copy, S: Stack<T>>(stack: &mut S) -> Option<T> {
-    let _ = stack;
-    todo!("state_pop")
+    let last = stack.len().checked_sub(1)?;
+    let value = stack.get(last);
+    stack.pop();
+    value
 }
 
 /// `gs_blend_state_reset_steps`.
 #[must_use]
 pub fn blend_reset_steps(cur: &BlendState) -> BlendReset {
-    let _ = cur;
-    todo!("blend_reset_steps")
+    let function = cur.src_c != blend::SRCALPHA
+        || cur.dest_c != blend::INVSRCALPHA
+        || cur.src_a != blend::ONE
+        || cur.dest_a != blend::INVSRCALPHA;
+    BlendReset {
+        enable: !cur.enabled,
+        function,
+        // The op is part of the default state too (#2519).
+        op: function || cur.op != blend::OP_ADD,
+    }
 }

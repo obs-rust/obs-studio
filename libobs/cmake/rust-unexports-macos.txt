@@ -70,6 +70,23 @@ _nsgif_blocks_colour_table_decode
 _nsgif_frame_pixels_decode
 _nsgif_frame_restore_bg
 _nsgif_frame_recover
+# graphics/graphics-state-stacks.c: graphics.c calls them inside libobs. Not EXPORT.
+_gs_matrix_stack_push
+_gs_matrix_stack_pop
+_gs_matrix_stack_identity
+_gs_matrix_stack_transpose
+_gs_matrix_stack_set
+_gs_matrix_stack_get
+_gs_matrix_stack_mul
+_gs_matrix_stack_rotquat
+_gs_matrix_stack_rotaa
+_gs_matrix_stack_translate
+_gs_matrix_stack_scale
+_gs_viewport_stack_push
+_gs_viewport_stack_pop
+_gs_blend_state_stack_push
+_gs_blend_state_stack_pop
+_gs_blend_state_reset_steps
 # graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs. Not EXPORT.
 _lzw_context_create
 _lzw_context_destroy

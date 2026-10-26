@@ -80,6 +80,24 @@ nsgif_blocks_colour_table_decode
 nsgif_frame_pixels_decode
 nsgif_frame_restore_bg
 nsgif_frame_recover
+# graphics/graphics-state-stacks.c: graphics.c calls them inside libobs.
+# Declared in graphics-state-stacks.h without EXPORT, so the shims stay hidden.
+gs_matrix_stack_push
+gs_matrix_stack_pop
+gs_matrix_stack_identity
+gs_matrix_stack_transpose
+gs_matrix_stack_set
+gs_matrix_stack_get
+gs_matrix_stack_mul
+gs_matrix_stack_rotquat
+gs_matrix_stack_rotaa
+gs_matrix_stack_translate
+gs_matrix_stack_scale
+gs_viewport_stack_push
+gs_viewport_stack_pop
+gs_blend_state_stack_push
+gs_blend_state_stack_pop
+gs_blend_state_reset_steps
 # graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs.
 # Declared in lzw.h without EXPORT, so the shims stay hidden the same way.
 lzw_context_create

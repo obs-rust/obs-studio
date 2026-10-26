@@ -15,13 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "build/libobs-ported-graphics-state-stacks.pch.h"
 
 /* The state stacks of the graphics context, declared in
  * graphics-state-stacks.h: the code of graphics.c's gs_matrix_*,
  * gs_viewport_push/pop, gs_blend_state_push/pop and gs_reset_blend_state
  * without gs_valid, the device calls and the logging, which graphics.c
- * keeps. */
+ * keeps. Ported to rust/obs-graphics (state_stacks): the hybrid libobs
+ * drops this file. */
 
 static inline struct matrix4 *gs_matrix_stack__top(struct darray *stack, size_t cur)
 {
