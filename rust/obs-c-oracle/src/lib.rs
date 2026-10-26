@@ -96,6 +96,7 @@ pub mod output_delay;
 pub mod output_interleave;
 pub mod output_protocols;
 pub mod output_raw_audio;
+pub mod output_slots;
 pub mod output_stop_stats;
 pub mod output_video_checks;
 pub mod path_extension;

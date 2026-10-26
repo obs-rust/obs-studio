@@ -14,6 +14,7 @@ mod encoder_size_parity;
 mod interleave;
 mod interleave_parity;
 mod output_slots;
+mod output_slots_parity;
 mod protocols;
 mod protocols_parity;
 mod raw_audio;
