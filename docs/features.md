@@ -1925,6 +1925,11 @@ area.
   [#238](https://github.com/obs-rust/obs-studio/issues/238), PR
   [#239](https://github.com/obs-rust/obs-studio/pull/239), upstream
   [obsproject/obs-studio#6674](https://github.com/obsproject/obs-studio/issues/6674).
+- A plugin or script that calls gs_matrix_scale3f outside a graphics
+  context no longer crashes OBS; the call logs and returns, as the other
+  gs_matrix functions do. *All*, pending merge. Issue
+  [#2518](https://github.com/obs-rust/obs-studio/issues/2518), PR
+  [#2520](https://github.com/obs-rust/obs-studio/pull/2520).
 - Python scripts can call obs_source_enum_filters to get a list of the
   filters on a source. *All*, 2026-10-11. Issue
   [#282](https://github.com/obs-rust/obs-studio/issues/282), PR
