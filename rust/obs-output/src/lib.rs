@@ -48,6 +48,7 @@ pub mod encoder_audio_start;
 pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
+pub mod output_slots;
 pub mod protocols;
 pub mod raw_audio;
 pub mod service;
