@@ -78,7 +78,7 @@ bool obs_source_transition_start_refused(bool same_as_source, bool active);
 
 /* Whether the recursion walk of the destination's tree runs: there is a
  * destination and it is not the transition itself (recursive, the walk's
- * start value). */
+ * start value). obs_transition_set() asks it for its new source too. */
 bool obs_source_transition_start_walks(bool has_dest, bool recursive);
 
 /* The second admission of obs_transition_start(), from its second read of

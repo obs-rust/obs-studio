@@ -2195,6 +2195,12 @@ area.
   new transition although it was not, and the next set took the scene's
   active reference away. *All*, pending merge. Issue
   [#2486](https://github.com/obs-rust/obs-studio/issues/2486).
+- OBS no longer hangs when a plugin or script sets a transition to a scene
+  that contains that transition (or to the transition itself); the set is
+  refused with a warning in the log, as loading such a transition already
+  was, and the transition keeps its source.
+  *All*, pending merge. Issue
+  [#2487](https://github.com/obs-rust/obs-studio/issues/2487).
 
 ### Security hardening
 

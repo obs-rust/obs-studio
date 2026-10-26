@@ -13,7 +13,8 @@
 //! - [`active_index`], in `obs_transition_get_active_source()` and
 //!   `obs_transition_save()`;
 //! - [`manual_reset`], in `obs_transition_set_manual_time()`;
-//! - [`child_active`], in `obs_transition_set()` and `copy_source_state()`.
+//! - [`child_active`], in `obs_transition_set()` and `copy_source_state()`;
+//!   `obs_transition_set()` also asks [`walks`] before its recursion walk.
 //!
 //! Each decision is its own function, asked at its own point, so
 //! `obs-source-transition.c` keeps every read where it was.
@@ -76,7 +77,8 @@ pub const fn refused(same_as_source: bool, active: bool) -> bool {
 
 /// Whether the recursion walk of the destination's tree runs: there is a
 /// destination and it is not the transition itself (`recursive`, the
-/// walk's start value).
+/// walk's start value). `obs_transition_set()` asks it for its new source
+/// too.
 #[must_use]
 pub const fn walks(has_dest: bool, recursive: bool) -> bool {
     has_dest && !recursive

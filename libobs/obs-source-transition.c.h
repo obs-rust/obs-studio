@@ -477,6 +477,20 @@ void obs_transition_set(obs_source_t *transition, obs_source_t *source)
 	if (!transition_valid(transition, "obs_transition_set"))
 		return;
 
+	/* Refuse a source that contains the transition, or the transition
+	 * itself, as obs_transition_load() and obs_transition_start() do, before
+	 * changing anything: a walk of its active tree would enter the transition
+	 * again and lock its mutex twice. */
+	struct transition_recursion_check check = {transition, source == transition};
+	if (obs_source_transition_start_walks(source != NULL, check.recursive))
+		obs_source_enum_full_tree(source, check_transition_recursion, &check);
+	if (check.recursive) {
+		blog(LOG_WARNING,
+		     "obs_transition_set: cannot set transition '%s' to source '%s' due to infinite recursion",
+		     obs_source_get_name(transition), obs_source_get_name(source));
+		return;
+	}
+
 	source = obs_source_get_ref(source);
 
 	if (transition_active(transition)) {
