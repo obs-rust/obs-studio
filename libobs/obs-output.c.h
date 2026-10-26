@@ -437,6 +437,12 @@ bool obs_output_interleave_active(const obs_output_t *output)
 	return active(output);
 }
 
+/* The flags obs-output-start.h copies. */
+_Static_assert(OBS_OUTPUT_START_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
+_Static_assert(OBS_OUTPUT_START_AUDIO == OBS_OUTPUT_AUDIO, "OBS_OUTPUT_AUDIO");
+_Static_assert(OBS_OUTPUT_START_ENCODED == OBS_OUTPUT_ENCODED, "OBS_OUTPUT_ENCODED");
+_Static_assert(OBS_OUTPUT_START_SERVICE == OBS_OUTPUT_SERVICE, "OBS_OUTPUT_SERVICE");
+
 bool obs_output_actual_start(obs_output_t *output)
 {
 	bool success = false;
@@ -460,7 +466,7 @@ bool obs_output_actual_start(obs_output_t *output)
 	if (!success)
 		os_atomic_set_bool(&output->starting, false);
 
-	if (os_atomic_load_long(&output->delay_restart_refs))
+	if (obs_output_start_drop_restart_ref(os_atomic_load_long(&output->delay_restart_refs)))
 		os_atomic_dec_long(&output->delay_restart_refs);
 
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
@@ -493,11 +499,11 @@ bool obs_output_start(obs_output_t *output)
 		return false;
 	}
 
-	if (flag_service(output) &&
+	if (obs_output_start_service(output->info.flags) &&
 	    !(obs_service_can_try_to_connect(output->service) && obs_service_initialize(output->service, output)))
 		return false;
 
-	if (output->delay_sec) {
+	if (obs_output_raw_audio_delay_on(output->delay_sec)) {
 		return obs_output_delay_start(output);
 	} else {
 		if (obs_output_actual_start(output)) {
@@ -2098,9 +2104,9 @@ bool obs_output_initialize_encoders(obs_output_t *output, uint32_t flags)
 	if (active(output))
 		return delay_active(output);
 
-	if (flag_video(output) && !initialize_video_encoders(output))
+	if (obs_output_start_init_video(output->info.flags) && !initialize_video_encoders(output))
 		return false;
-	if (flag_audio(output) && !initialize_audio_encoders(output))
+	if (obs_output_start_init_audio(output->info.flags) && !initialize_audio_encoders(output))
 		return false;
 
 	return true;
@@ -2139,13 +2145,24 @@ static void reset_raw_output(obs_output_t *output)
 			aoi->speakers,
 		};
 
+		/* Each conversion field that is set (a rate that is not 0, a format
+		 * and speakers that are not unknown) replaces the mix's: the rule
+		 * get_audio_info() fills an encoder's audio with. */
 		if (output->audio_conversion_set) {
-			if (conv.samples_per_sec)
-				info.samples_per_sec = conv.samples_per_sec;
-			if (conv.format != AUDIO_FORMAT_UNKNOWN)
-				info.format = conv.format;
-			if (conv.speakers != SPEAKERS_UNKNOWN)
-				info.speakers = conv.speakers;
+			const struct obs_encoder_audio_fill set = {
+				.format = (int)conv.format,
+				.samples_per_sec = conv.samples_per_sec,
+				.speakers = (int)conv.speakers,
+			};
+			const struct obs_encoder_audio_fill mix = {
+				.format = (int)info.format,
+				.samples_per_sec = info.samples_per_sec,
+				.speakers = (int)info.speakers,
+			};
+			const struct obs_encoder_audio_fill out = obs_encoder_size_audio_defaults(&set, &mix);
+			info.samples_per_sec = out.samples_per_sec;
+			info.format = (enum audio_format)out.format;
+			info.speakers = (enum speaker_layout)out.speakers;
 		}
 
 		output->sample_rate = info.samples_per_sec;
@@ -2218,13 +2235,13 @@ static bool obs_output_begin_data_capture_internal(obs_output_t *output)
 
 	output->total_frames = 0;
 
-	if (!flag_encoded(output))
+	if (obs_output_start_reset_raw(output->info.flags))
 		reset_raw_output(output);
 
 	if (!can_begin_data_capture(output))
 		return false;
 
-	if (flag_video(output) && flag_audio(output))
+	if (obs_output_start_pair(output->info.flags))
 		pair_encoders(output);
 
 	os_atomic_set_bool(&output->data_active, true);
@@ -2232,7 +2249,7 @@ static bool obs_output_begin_data_capture_internal(obs_output_t *output)
 
 	calculate_batch_size(output);
 
-	if (flag_service(output))
+	if (obs_output_start_service(output->info.flags))
 		obs_service_activate(output->service);
 
 	do_output_signal(output, "activate");

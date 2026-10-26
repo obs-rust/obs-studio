@@ -25,7 +25,9 @@
  * caller reads at that point:
  * - obs_encoder_size_audio_defaults(): get_audio_info()'s default fill, before
  *   the plugin's get_audio_info: an unknown format, a 0 sample rate and
- *   unknown speakers come from the audio mix;
+ *   unknown speakers come from the audio mix; reset_raw_output() in
+ *   obs-output.c asks it too, for a raw output's audio conversion
+ *   (obs-output-start.h);
  * - obs_encoder_size_cap_override(): get_video_info()'s override after the
  *   plugin's get_video_info: an encoder with OBS_ENCODER_CAP_SCALING gets the
  *   video's size, whatever the plugin set;

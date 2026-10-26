@@ -38,7 +38,9 @@
  * - start_raw_audio(): obs_output_raw_audio_mix_on() (asked for each mix
  *   with raw_audio2);
  * - hook_data_capture(): obs_output_raw_audio_interleave() (the encoded
- *   callback), obs_output_raw_audio_delay_on() and _delay_ns().
+ *   callback), obs_output_raw_audio_delay_on() and _delay_ns();
+ *   obs_output_start() asks obs_output_raw_audio_delay_on() too, whether the
+ *   start is delayed.
  *
  * obs-output.c keeps data_active(), every read of the output, the pause
  * mutex and its reads (last_video_ts only while video_start_ts is 0, and
@@ -134,7 +136,8 @@ bool obs_output_raw_audio_mix_on(size_t mixer_mask, size_t idx);
 bool obs_output_raw_audio_interleave(bool has_video, bool has_audio);
 
 /* hook_data_capture(): delay_sec is not 0, so process_delay() wraps the
- * callback. */
+ * callback. obs_output_start() asks it too: the start goes through
+ * obs_output_delay_start() (obs-output-start.h). */
 bool obs_output_raw_audio_delay_on(uint32_t delay_sec);
 
 /* hook_data_capture(): active_delay_ns, delay_sec times 1000000000 (a

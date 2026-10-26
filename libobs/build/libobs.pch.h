@@ -81,6 +81,9 @@
 /* obs-output-slots.c */
 #include "obs-output-slots.h"
 
+/* obs-output-start.c */
+#include "obs-output-start.h"
+
 /* obs-output-stop-stats.c */
 #include "obs-output-stop-stats.h"
 
