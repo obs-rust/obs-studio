@@ -22,6 +22,7 @@ mod interleave_parity;
 mod output_slots;
 mod output_slots_parity;
 mod output_start;
+mod output_start_parity;
 mod protocols;
 mod protocols_parity;
 mod raw_audio;
