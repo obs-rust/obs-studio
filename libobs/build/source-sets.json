@@ -194,6 +194,7 @@
     "build/libobs.ported-output-interleave+.h.c",
     "build/libobs.ported-output-protocols+.h.c",
     "build/libobs.ported-output-raw-audio+.h.c",
+    "build/libobs.ported-output-slots+.h.c",
     "build/libobs.ported-output-stop-stats+.h.c",
     "build/libobs.ported-output-video-checks+.h.c",
     "build/libobs.ported-platform+.h.c",

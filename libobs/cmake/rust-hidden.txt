@@ -463,6 +463,23 @@ obs_output_raw_audio_mix_on
 obs_output_raw_audio_interleave
 obs_output_raw_audio_delay_on
 obs_output_raw_audio_delay_ns
+# obs-output-slots.c: the encoder setters and getters, obs_output_audio(),
+# obs_output_set_mixer(), obs_output_remove_encoder_internal() and
+# obs_output_set_preferred_size2() in obs-output.c call them inside libobs.
+# Declared in obs-output-slots.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_output_slots_first_video
+obs_output_slots_first_audio
+obs_output_slots_mixer_in_range
+obs_output_slots_mixer_mask
+obs_output_slots_video_type_ok
+obs_output_slots_audio_type_ok
+obs_output_slots_video_index_ok
+obs_output_slots_audio_index_ok
+obs_output_slots_default_index
+obs_output_slots_scaled_axis_set
+obs_output_slots_video_slot
+obs_output_slots_audio_slot
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

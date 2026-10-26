@@ -35,7 +35,23 @@
 //! encoder's type from an encoder plugin, the indexes and sizes from the
 //! frontend or a plugin), and nothing here can panic on any input.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 pub use crate::video_checks::MAX_AUDIO_MIXES;
+use crate::video_checks::{
+    MAX_OUTPUT_AUDIO_ENCODERS as CHECKS_AUDIO_ENCODERS,
+    MAX_OUTPUT_VIDEO_ENCODERS as CHECKS_VIDEO_ENCODERS,
+};
 
 /// `OBS_OUTPUT_MULTI_TRACK_AUDIO` (`OBS_OUTPUT_MULTI_TRACK`, `obs-output.h`).
 pub const OBS_OUTPUT_MULTI_TRACK_AUDIO: u32 = 1 << 4;
@@ -50,6 +66,19 @@ pub const OBS_ENCODER_AUDIO: i32 = 0;
 /// `OBS_ENCODER_VIDEO`.
 pub const OBS_ENCODER_VIDEO: i32 = 1;
 
+// The slot counts are the ones `video_checks` mirrors for
+// `can_begin_data_capture()`.
+const _: () = assert!(CHECKS_VIDEO_ENCODERS == 10 && MAX_OUTPUT_VIDEO_ENCODERS == 10);
+const _: () = assert!(CHECKS_AUDIO_ENCODERS == 6 && MAX_OUTPUT_AUDIO_ENCODERS == 6);
+
+/// Bit `i` of `mask`; clear from the width of `mask` up.
+fn bit_set(mask: u32, i: usize) -> bool {
+    u32::try_from(i)
+        .ok()
+        .and_then(|i| mask.checked_shr(i))
+        .is_some_and(|m| m & 1 != 0)
+}
+
 /// The two kinds of encoder slot an output has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SlotKind {
@@ -63,8 +92,26 @@ impl SlotKind {
     /// The number of slots of this kind.
     #[must_use]
     pub fn count(self) -> usize {
-        let _ = self;
-        todo!("output_slots::SlotKind::count")
+        match self {
+            Self::Video => MAX_OUTPUT_VIDEO_ENCODERS,
+            Self::Audio => MAX_OUTPUT_AUDIO_ENCODERS,
+        }
+    }
+
+    /// The flag that gives an output more than one slot of this kind.
+    fn multi_track_flag(self) -> u32 {
+        match self {
+            Self::Video => OBS_OUTPUT_MULTI_TRACK_VIDEO,
+            Self::Audio => OBS_OUTPUT_MULTI_TRACK_AUDIO,
+        }
+    }
+
+    /// The `enum obs_encoder_type` value of an encoder for these slots.
+    fn encoder_type(self) -> i32 {
+        match self {
+            Self::Video => OBS_ENCODER_VIDEO,
+            Self::Audio => OBS_ENCODER_AUDIO,
+        }
     }
 }
 
@@ -74,16 +121,14 @@ impl SlotKind {
 /// ignored.
 #[must_use]
 pub fn first_slot(kind: SlotKind, occupied: u32) -> Option<usize> {
-    let _ = (kind, occupied);
-    todo!("output_slots::first_slot")
+    (0..kind.count()).find(|&i| bit_set(occupied, i))
 }
 
 /// `obs_output_set_mixer()`: `mixer_idx` is below [`MAX_AUDIO_MIXES`];
 /// otherwise the C logs and ignores it.
 #[must_use]
 pub fn mixer_in_range(mixer_idx: usize) -> bool {
-    let _ = mixer_idx;
-    todo!("output_slots::mixer_in_range")
+    mixer_idx < MAX_AUDIO_MIXES
 }
 
 /// `obs_output_set_mixer()`: the mixer mask of `mixer_idx` alone, bit
@@ -91,8 +136,10 @@ pub fn mixer_in_range(mixer_idx: usize) -> bool {
 /// C's shift is undefined) the mask is 0.
 #[must_use]
 pub fn mixer_mask(mixer_idx: usize) -> usize {
-    let _ = mixer_idx;
-    todo!("output_slots::mixer_mask")
+    u32::try_from(mixer_idx)
+        .ok()
+        .and_then(|i| 1usize.checked_shl(i))
+        .unwrap_or(0)
 }
 
 /// `obs_output_set_video_encoder2()` / `obs_output_set_audio_encoder()`, for
@@ -102,8 +149,7 @@ pub fn mixer_mask(mixer_idx: usize) -> usize {
 /// that is neither).
 #[must_use]
 pub fn type_ok(kind: SlotKind, encoder_type: i32) -> bool {
-    let _ = (kind, encoder_type);
-    todo!("output_slots::type_ok")
+    encoder_type == kind.encoder_type()
 }
 
 /// `obs_output_set_video_encoder2()` / `obs_output_set_audio_encoder()`,
@@ -112,8 +158,11 @@ pub fn type_ok(kind: SlotKind, encoder_type: i32) -> bool {
 /// `flags`, `idx` is below the kind's count; without it, `idx` is 0.
 #[must_use]
 pub fn index_ok(kind: SlotKind, flags: u32, idx: usize) -> bool {
-    let _ = (kind, flags, idx);
-    todo!("output_slots::index_ok")
+    if flags & kind.multi_track_flag() != 0 {
+        idx < kind.count()
+    } else {
+        idx == 0
+    }
 }
 
 /// `obs_output_set_video_encoder2()` and `obs_output_set_preferred_size2()`:
@@ -121,8 +170,7 @@ pub fn index_ok(kind: SlotKind, flags: u32, idx: usize) -> bool {
 /// behaviour.
 #[must_use]
 pub fn default_index(idx: usize) -> bool {
-    let _ = idx;
-    todo!("output_slots::default_index")
+    idx == 0
 }
 
 /// `obs_output_set_video_encoder2()` at the default index: one axis of the
@@ -130,8 +178,7 @@ pub fn default_index(idx: usize) -> bool {
 /// the height only when the width is set.
 #[must_use]
 pub fn scaled_axis_set(size: u32) -> bool {
-    let _ = size;
-    todo!("output_slots::scaled_axis_set")
+    size != 0
 }
 
 /// `obs_output_get_video_encoder2()`, `obs_output_get_audio_encoder()` and
@@ -139,6 +186,5 @@ pub fn scaled_axis_set(size: u32) -> bool {
 /// slots, whatever the flags.
 #[must_use]
 pub fn slot_exists(kind: SlotKind, idx: usize) -> bool {
-    let _ = (kind, idx);
-    todo!("output_slots::slot_exists")
+    idx < kind.count()
 }

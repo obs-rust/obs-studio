@@ -374,6 +374,19 @@ _obs_output_raw_audio_mix_on
 _obs_output_raw_audio_interleave
 _obs_output_raw_audio_delay_on
 _obs_output_raw_audio_delay_ns
+# obs-output-slots.c: obs-output.c calls them inside libobs. Not EXPORT.
+_obs_output_slots_first_video
+_obs_output_slots_first_audio
+_obs_output_slots_mixer_in_range
+_obs_output_slots_mixer_mask
+_obs_output_slots_video_type_ok
+_obs_output_slots_audio_type_ok
+_obs_output_slots_video_index_ok
+_obs_output_slots_audio_index_ok
+_obs_output_slots_default_index
+_obs_output_slots_scaled_axis_set
+_obs_output_slots_video_slot
+_obs_output_slots_audio_slot
 # obs-encoder-roi.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors
