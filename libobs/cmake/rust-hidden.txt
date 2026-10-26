@@ -543,6 +543,17 @@ obs_output_start_init_video
 obs_output_start_init_audio
 obs_output_start_reset_raw
 obs_output_start_pair
+# obs-output-stop.c: obs_output_stop(), end_data_capture_thread() and
+# obs_output_end_data_capture_internal() in obs-output.c call them inside
+# libobs. Declared in obs-output-stop.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_output_stop_delay_on
+obs_output_stop_encoded
+obs_output_stop_end_delay
+obs_output_stop_has_audio
+obs_output_stop_has_video
+obs_output_stop_service
+obs_output_stop_thread_failed
 # obs-encoder-roi.c: obs_encoder_add_roi() and obs_encoder_enum_roi() in
 # obs-encoder.c call them inside libobs. Declared in obs-encoder-roi.h without
 # EXPORT, so the shims stay hidden the same way.

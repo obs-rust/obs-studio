@@ -439,6 +439,14 @@ _obs_output_start_init_video
 _obs_output_start_init_audio
 _obs_output_start_reset_raw
 _obs_output_start_pair
+# obs-output-stop.c: obs-output.c calls them inside libobs. Not EXPORT.
+_obs_output_stop_delay_on
+_obs_output_stop_encoded
+_obs_output_stop_end_delay
+_obs_output_stop_has_audio
+_obs_output_stop_has_video
+_obs_output_stop_service
+_obs_output_stop_thread_failed
 # obs-encoder-roi.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_roi_admit
 _obs_encoder_roi_scale_factors

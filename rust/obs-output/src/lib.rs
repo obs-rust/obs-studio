@@ -13,13 +13,14 @@
 //! slot rules and setter gates, `libobs/obs-encoder-gpu-gates.c.h`, the
 //! GPU encode thread gates, `libobs/obs-encoder-bind.c.h`, the encoder
 //! media binding and shutdown checks, `libobs/obs-encoder-lifecycle.c.h`,
-//! the encoder callback and connection lifecycle decisions, and
+//! the encoder callback and connection lifecycle decisions,
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
-//! decisions.
+//! decisions, and `libobs/obs-output-stop.c.h`, the output stop and
+//! end-capture decisions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`] and [`output_start`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`output_start`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -61,7 +62,13 @@
 //! SEI goes in front of the first keyframe; [`output_start`] decides
 //! whether a start or a begin asks the service, when a delayed restart's
 //! reference is dropped, which encoders an output initializes, and whether
-//! a begin resets a raw output's audio and pairs the encoders.
+//! a begin resets a raw output's audio and pairs the encoders;
+//! [`output_stop`] decides when a stop goes through the delay, which
+//! encoders or raw connections an end of capture stops and with which
+//! callback, whether it deactivates the service and cleans up the delay,
+//! when restart references keep the delay, when an output that never
+//! began shuts its encoders down, and when the end runs inline because
+//! its thread could not be created.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 

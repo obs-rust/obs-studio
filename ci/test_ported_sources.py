@@ -45,6 +45,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-output-slots.c.h.o",
     "obs-output-start.c.h.o",
     "obs-output-stop-stats.c.h.o",
+    "obs-output-stop.c.h.o",
     "obs-output-video-checks.c.h.o",
     "obs-scene-audio-actions.c.h.o",
     "obs-scene-audio-window.c.h.o",

@@ -69,8 +69,7 @@ pub const OBS_OUTPUT_SERVICE: u32 = crate::video_checks::OBS_OUTPUT_SERVICE;
 /// active: the encoders it initialized are shut down on a thread.
 #[must_use]
 pub fn encoded(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_ENCODED) != 0
 }
 
 /// `obs_output_stop()`, for an encoded output, and
@@ -79,8 +78,7 @@ pub fn encoded(flags: u32) -> bool {
 /// are stopped with `process_delay()` and the delay is cleaned up.
 #[must_use]
 pub fn delay_on(active_delay_ns: u64) -> bool {
-    let _ = active_delay_ns;
-    todo!()
+    active_delay_ns != 0
 }
 
 /// `end_data_capture_thread()`: with [`OBS_OUTPUT_VIDEO`] in `flags`, the
@@ -88,24 +86,21 @@ pub fn delay_on(active_delay_ns: u64) -> bool {
 /// `obs_output_end_data_capture_internal()`: the frame counts are logged.
 #[must_use]
 pub fn has_video(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_VIDEO) != 0
 }
 
 /// `end_data_capture_thread()`: with [`OBS_OUTPUT_AUDIO`] in `flags`, the
 /// audio encoders (or the raw audio) are stopped.
 #[must_use]
 pub fn has_audio(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_AUDIO) != 0
 }
 
 /// `end_data_capture_thread()`, after the encoders: with
 /// [`OBS_OUTPUT_SERVICE`] in `flags`, the service is deactivated.
 #[must_use]
 pub fn service(flags: u32) -> bool {
-    let _ = flags;
-    todo!()
+    (flags & OBS_OUTPUT_SERVICE) != 0
 }
 
 /// `obs_output_end_data_capture_internal()`, for an active output with its
@@ -116,8 +111,7 @@ pub fn service(flags: u32) -> bool {
 /// "0").
 #[must_use]
 pub fn end_delay(delay_restart_refs: i64) -> bool {
-    let _ = delay_restart_refs;
-    todo!()
+    delay_restart_refs == 0
 }
 
 /// `obs_output_end_data_capture_internal()`: `pthread_create()` returned
@@ -126,6 +120,5 @@ pub fn end_delay(delay_restart_refs: i64) -> bool {
 /// warning.
 #[must_use]
 pub fn thread_failed(ret: i32) -> bool {
-    let _ = ret;
-    todo!()
+    ret != 0
 }
