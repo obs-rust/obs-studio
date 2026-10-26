@@ -149,7 +149,8 @@ struct gs_blend_reset gs_blend_state_reset_steps(const struct blend_state *cur)
 			    cur->src_a != GS_BLEND_ONE || cur->dest_a != GS_BLEND_INVSRCALPHA,
 	};
 
-	/* The op only with the function. */
-	steps.op = steps.function;
+	/* The op is part of the default state too (#2519): with a different
+	 * function, as before, and on its own. */
+	steps.op = steps.function || cur->op != GS_BLEND_OP_ADD;
 	return steps;
 }
