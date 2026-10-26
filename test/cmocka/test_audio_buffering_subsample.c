@@ -4,7 +4,9 @@
  * port to obs-core (#1903), and of obs-audio-discard.c (the drop steps
  * ignore_audio, discard_if_stopped and discard_audio) before its port
  * (#2403), and of obs-audio-min-ts.c (the per-source decisions of the
- * minimum audio timestamp step) before its port.
+ * minimum audio timestamp step) before its port (#2405), and of
+ * obs-audio-render.c (the per-source decisions of the render order and
+ * render steps) before its port.
  * Compile the original private implementation directly: this checks the C
  * buffering algorithm, rather than the Rust swap or real-time scheduling.
  * Unused core functions are discarded at link time. */
@@ -1072,6 +1074,196 @@ static void calc_min_ts_through_the_list(void **state)
 	list_free(&data);
 }
 
+/* Characterization of obs-audio-render.c before its port to obs-core. */
+
+static void tree_choice(void **state)
+{
+	(void)state;
+	const uint32_t audio_in = OBS_SOURCE_AUDIO;
+	const uint32_t av_in = OBS_SOURCE_AUDIO | OBS_SOURCE_VIDEO | OBS_SOURCE_ASYNC;
+
+	/* Removed: skipped before anything else. */
+	assert_int_equal(obs_audio_render_tree(true, false, OBS_SOURCE_TYPE_INPUT, audio_in, false),
+			 OBS_AUDIO_TREE_SKIP);
+	assert_int_equal(obs_audio_render_tree(true, true, OBS_SOURCE_TYPE_INPUT, audio_in, false),
+			 OBS_AUDIO_TREE_SKIP);
+
+	/* Not in the render order yet: added, whatever the type. */
+	assert_int_equal(obs_audio_render_tree(false, false, OBS_SOURCE_TYPE_INPUT, audio_in, true),
+			 OBS_AUDIO_TREE_ADD);
+	assert_int_equal(obs_audio_render_tree(false, false, OBS_SOURCE_TYPE_SCENE, OBS_SOURCE_COMPOSITE, false),
+			 OBS_AUDIO_TREE_ADD);
+
+	/* Present, an individual audio source, not tagged yet: tagged. */
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_INPUT, audio_in, false),
+			 OBS_AUDIO_TREE_DUPLICATE);
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_INPUT, av_in, false),
+			 OBS_AUDIO_TREE_DUPLICATE);
+
+	/* Present and tagged already: nothing. */
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_INPUT, audio_in, true),
+			 OBS_AUDIO_TREE_NONE);
+
+	/* Present but not individual: a scene, a transition, a composite input
+	 * with audio, an input without audio, a filter. Not tagged, so they
+	 * are mixed through each parent. */
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_SCENE,
+					       OBS_SOURCE_COMPOSITE | OBS_SOURCE_AUDIO, false),
+			 OBS_AUDIO_TREE_NONE);
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_TRANSITION,
+					       OBS_SOURCE_COMPOSITE | OBS_SOURCE_AUDIO, false),
+			 OBS_AUDIO_TREE_NONE);
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_INPUT,
+					       OBS_SOURCE_COMPOSITE | OBS_SOURCE_AUDIO, false),
+			 OBS_AUDIO_TREE_NONE);
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_INPUT, OBS_SOURCE_VIDEO, false),
+			 OBS_AUDIO_TREE_NONE);
+	assert_int_equal(obs_audio_render_tree(false, true, OBS_SOURCE_TYPE_FILTER, OBS_SOURCE_AUDIO, false),
+			 OBS_AUDIO_TREE_NONE);
+}
+
+static void tree_wrapper_tags_once(void **state)
+{
+	(void)state;
+	struct obs_core_audio audio = {0};
+	struct obs_source *mic = bzalloc(sizeof(*mic));
+	struct obs_source *scene = bzalloc(sizeof(*scene));
+	mic->info.type = OBS_SOURCE_TYPE_INPUT;
+	mic->info.output_flags = OBS_SOURCE_AUDIO;
+	scene->info.type = OBS_SOURCE_TYPE_SCENE;
+	scene->info.output_flags = OBS_SOURCE_COMPOSITE | OBS_SOURCE_AUDIO | OBS_SOURCE_VIDEO;
+	da_push_back(audio.render_order, &mic);
+	da_push_back(audio.render_order, &scene);
+
+	/* The second visit of the mic tags it and makes it a root node; a
+	 * third visit changes nothing. */
+	push_audio_tree2(NULL, mic, &audio);
+	assert_true(mic->audio_is_duplicated);
+	assert_int_equal(audio.root_nodes.num, 1);
+	assert_ptr_equal(audio.root_nodes.array[0], mic);
+	push_audio_tree2(NULL, mic, &audio);
+	assert_int_equal(audio.root_nodes.num, 1);
+
+	/* A scene seen twice is not tagged. */
+	push_audio_tree2(NULL, scene, &audio);
+	assert_false(scene->audio_is_duplicated);
+	assert_int_equal(audio.root_nodes.num, 1);
+
+	/* A removed source is skipped, even if it is in the render order. */
+	mic->audio_is_duplicated = false;
+	mic->removed = true;
+	push_audio_tree2(NULL, mic, &audio);
+	assert_false(mic->audio_is_duplicated);
+	assert_int_equal(audio.root_nodes.num, 1);
+	assert_int_equal(audio.render_order.num, 2);
+
+	da_free(audio.render_order);
+	da_free(audio.root_nodes);
+	bfree(mic);
+	bfree(scene);
+}
+
+static void silence_check(void **state)
+{
+	(void)state;
+	struct obs_audio_monitor_dedup on = {.set = true, .active = true, .volume = 1.0f};
+	struct obs_audio_monitor_dedup d;
+
+	/* An unmuted, active capture source silences a monitored source. */
+	assert_true(obs_audio_render_silence(&on, true, false));
+
+	/* Not the capture source itself, and not an unmonitored source. */
+	assert_false(obs_audio_render_silence(&on, true, true));
+	assert_false(obs_audio_render_silence(&on, false, false));
+
+	/* No capture source, or inactive, or muted. */
+	d = on;
+	d.set = false;
+	assert_false(obs_audio_render_silence(&d, true, false));
+	d = on;
+	d.active = false;
+	assert_false(obs_audio_render_silence(&d, true, false));
+	d = on;
+	d.muted = true;
+	assert_false(obs_audio_render_silence(&d, true, false));
+
+	/* The fader: within 0.0001 of 0 counts as muted. */
+	d = on;
+	d.volume = 0.0f;
+	assert_false(obs_audio_render_silence(&d, true, false));
+	d.volume = 0.00005f;
+	assert_false(obs_audio_render_silence(&d, true, false));
+	d.volume = 0.001f;
+	assert_true(obs_audio_render_silence(&d, true, false));
+}
+
+static void clear_mixes_choice(void **state)
+{
+	(void)state;
+	assert_int_equal(obs_audio_render_clear_mixes(0x01, 0x02), 0);
+	assert_int_equal(obs_audio_render_clear_mixes(0x03, 0x06), 0x02);
+	assert_int_equal(obs_audio_render_clear_mixes(0x3f, 0x3f), 0x3f);
+	/* Bits at and above MAX_AUDIO_MIXES are not mixes. */
+	assert_int_equal(obs_audio_render_clear_mixes(0xffffffff, 0xffffffff), 0x3f);
+	assert_int_equal(obs_audio_render_clear_mixes(0x40, 0x40), 0);
+}
+
+static void silence_wrappers_use_the_source_fields(void **state)
+{
+	(void)state;
+	struct obs_core_audio audio = {0};
+	struct obs_source *capture = bzalloc(sizeof(*capture));
+	struct obs_source *monitored = bzalloc(sizeof(*monitored));
+	float buf[MAX_AUDIO_MIXES][AUDIO_OUTPUT_FRAMES];
+
+	capture->activate_refs = 1;
+	capture->volume = 1.0f;
+	capture->audio_mixers = 0x05; /* mixes 1 and 3 */
+	monitored->monitoring_enabled = true;
+	monitored->audio_mixers = 0x07; /* mixes 1, 2 and 3 */
+	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
+		for (size_t i = 0; i < AUDIO_OUTPUT_FRAMES; i++)
+			buf[mix][i] = 1.0f;
+		monitored->audio_output_buf[mix][0] = buf[mix];
+	}
+
+	/* No deduplication source: nothing. */
+	assert_false(should_silence_monitored_source(monitored, &audio));
+	clear_audio_output_buf(monitored, &audio);
+	assert_true(buf[0][0] == 1.0f);
+
+	audio.monitoring_duplicating_source = capture;
+	assert_true(should_silence_monitored_source(monitored, &audio));
+	assert_false(should_silence_monitored_source(capture, &audio));
+
+	/* Only the common mixes are cleared, all frames of them. */
+	clear_audio_output_buf(monitored, &audio);
+	assert_true(buf[0][0] == 0.0f && buf[0][AUDIO_OUTPUT_FRAMES - 1] == 0.0f);
+	assert_true(buf[1][0] == 1.0f);
+	assert_true(buf[2][0] == 0.0f);
+	assert_true(buf[3][0] == 1.0f);
+
+	capture->activate_refs = 0;
+	assert_false(should_silence_monitored_source(monitored, &audio));
+
+	bfree(capture);
+	bfree(monitored);
+}
+
+static void backwards_choice(void **state)
+{
+	(void)state;
+	/* Only at the maximum, with a timestamp, strictly before the tick. */
+	assert_int_equal(obs_audio_render_backwards(false, start - 10, start, false), OBS_AUDIO_BACKWARDS_NONE);
+	assert_int_equal(obs_audio_render_backwards(true, 0, start, false), OBS_AUDIO_BACKWARDS_NONE);
+	assert_int_equal(obs_audio_render_backwards(true, start, start, false), OBS_AUDIO_BACKWARDS_NONE);
+	assert_int_equal(obs_audio_render_backwards(true, start + 1, start, true), OBS_AUDIO_BACKWARDS_NONE);
+
+	/* A render source is marked pending; another one is dropped. */
+	assert_int_equal(obs_audio_render_backwards(true, start - 1, start, true), OBS_AUDIO_BACKWARDS_PENDING);
+	assert_int_equal(obs_audio_render_backwards(true, start - 1, start, false), OBS_AUDIO_BACKWARDS_IGNORE);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1110,6 +1302,12 @@ int main(void)
 		cmocka_unit_test(insufficient_needs_the_rest_of_the_tick),
 		cmocka_unit_test(buffering_choice),
 		cmocka_unit_test(calc_min_ts_through_the_list),
+		cmocka_unit_test(tree_choice),
+		cmocka_unit_test(tree_wrapper_tags_once),
+		cmocka_unit_test(silence_check),
+		cmocka_unit_test(clear_mixes_choice),
+		cmocka_unit_test(silence_wrappers_use_the_source_fields),
+		cmocka_unit_test(backwards_choice),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
