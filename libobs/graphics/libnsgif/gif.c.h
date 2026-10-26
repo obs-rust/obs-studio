@@ -779,7 +779,13 @@ static nsgif_error nsgif__process_frame(
 
 cleanup:
 	if (!decode) {
-		gif->buf_pos = pos - gif->buf;
+		/* At the end of the data inside the frame, the next scan starts
+		 * the frame again, not where this one stopped (#2515). */
+		if (ret == NSGIF_ERR_END_OF_DATA) {
+			gif->buf_pos = frame->frame_offset;
+		} else {
+			gif->buf_pos = pos - gif->buf;
+		}
 	}
 
 	return ret;

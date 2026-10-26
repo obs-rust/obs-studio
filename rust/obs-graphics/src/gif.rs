@@ -16,10 +16,6 @@
 //!
 //! Characterized, not endorsed (`test_nsgif_decode`), and kept as the C has
 //! them:
-//! - when a scan stops at the end of the data inside a frame, the next scan
-//!   resumes where the frame's parse stopped, not at the frame's start, and
-//!   reads the rest of the frame as the next block (a bad frame from then
-//!   on);
 //! - with play once, one more [`Gif::frame_prepare`] after the last frame
 //!   (infinite delay) shows frame 0 again before
 //!   [`NsgifError::AnimationEnd`].
@@ -472,7 +468,13 @@ impl<B: Bitmaps> Gif<B> {
 
         let ret = self.parse_frame(data, idx, &mut pos, decode);
         if !decode {
-            self.buf_pos = pos;
+            // At the end of the data inside the frame, the next scan starts
+            // the frame again, not where this one stopped (#2515).
+            self.buf_pos = if ret == NsgifError::EndOfData {
+                self.holder(idx).frame_offset
+            } else {
+                pos
+            };
         }
         ret
     }
