@@ -7,13 +7,14 @@
 //! conversion and capture checks, `libobs/obs-encoder-size.c.h`, the
 //! encoder size and info choices, `libobs/obs-encoder-audio-start.c.h`, the
 //! encoder audio start alignment and setter gates,
-//! `libobs/obs-output-stop-stats.c.h`, the output stop statistics, and
+//! `libobs/obs-output-stop-stats.c.h`, the output stop statistics,
 //! `libobs/obs-output-raw-audio.c.h`, the raw output audio admission and
-//! capture hookup.
+//! capture hookup, and `libobs/obs-output-slots.c.h`, the output encoder
+//! slot rules and setter gates.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`] and [`raw_audio`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`] and [`output_slots`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -36,7 +37,11 @@
 //! [`raw_audio`] decides when a raw output takes, cuts, drops or holds an
 //! audio packet against its video start, when its block loop sends a block
 //! and with which timestamp, which mixes it connects, and which encoded
-//! callback and delay an output starts with.
+//! callback and delay an output starts with; [`output_slots`] finds an
+//! output's first video and audio encoder, decides which encoder types,
+//! indexes and mixers its setters take, which slots its getters and
+//! preferred size reach, and when the encoder at index 0 takes the scaled
+//! size.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
