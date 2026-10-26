@@ -26,7 +26,9 @@
  *   no mode;
  * - obs_source_load_monitoring_migration(): before 23.2.2 a monitor-by-default
  *   source becomes monitor-only with all six mixers; before 33.0.0
- *   "monitoring_enabled" is stored from the monitoring type.
+ *   "monitoring_enabled" is stored from the monitoring type;
+ * - obs_source_load_monitor_only_mutes() (#TBD): before 33.0.0 a
+ *   monitor-only source (after the 23.2.2 migration) loads muted.
  * They pin the current C behaviour; cases marked "characterized, not
  * endorsed" are odd but real.
  *
@@ -467,6 +469,60 @@ static void test_deinterlace_mode_out_of_range(void **state)
 	assert_int_equal(obs_source_load_deinterlace_mode(INT64_MIN), 0);
 }
 
+/* monitor-only mute (#TBD) */
+
+static void expect_mutes(uint32_t prev_ver, uint32_t caps, int64_t type, bool expected)
+{
+	bool got = obs_source_load_monitor_only_mutes(prev_ver, caps, type);
+	if (got != expected) {
+		fprintf(stderr, "monitor_only_mutes(prev_ver 0x%08x, caps 0x%08x, type %lld): %d, expected %d\n",
+			prev_ver, caps, (long long)type, got, expected);
+		fail();
+	}
+}
+
+/* Before 33.0.0 only Monitor Only mutes; from 33.0.0 nothing does. */
+static void test_monitor_only_mutes_33_0_0_edges(void **state)
+{
+	(void)state;
+	const uint32_t below[] = {V23_2_2, V(30, 2, 3), V(32, 2, 2), V33_0_0 - 1};
+	const uint32_t at_or_above[] = {V33_0_0, V33_0_0 + 1, V(33, 1, 0), V(34, 0, 0), UINT32_MAX};
+	const int64_t others[] = {0, 2, 3, -1, INT32_MAX};
+
+	for (size_t i = 0; i < sizeof(below) / sizeof(below[0]); i++) {
+		expect_mutes(below[i], 0, 1, true);
+		expect_mutes(below[i], CAP, 1, true);
+		for (size_t t = 0; t < sizeof(others) / sizeof(others[0]); t++) {
+			expect_mutes(below[i], 0, others[t], false);
+			expect_mutes(below[i], CAP, others[t], false);
+		}
+	}
+	for (size_t i = 0; i < sizeof(at_or_above) / sizeof(at_or_above[0]); i++) {
+		for (int64_t type = -1; type <= 3; type++) {
+			expect_mutes(at_or_above[i], 0, type, false);
+			expect_mutes(at_or_above[i], CAP, type, false);
+		}
+	}
+}
+
+/* Before 23.2.2 a monitor-by-default source became monitor-only, whatever
+ * type it saved; the saved type is read as an int. */
+static void test_monitor_only_mutes_23_2_2_and_truncation(void **state)
+{
+	(void)state;
+	const uint32_t below[] = {0, V(22, 0, 3), V23_2_2 - 1};
+
+	for (size_t i = 0; i < sizeof(below) / sizeof(below[0]); i++) {
+		for (int64_t type = 0; type <= 2; type++)
+			expect_mutes(below[i], CAP, type, true);
+		expect_mutes(below[i], 0, 0, false);
+		expect_mutes(below[i], 0, 1, true);
+		expect_mutes(below[i], 0, 2, false);
+	}
+	expect_mutes(V(30, 0, 0), 0, ((int64_t)1 << 32) + 1, true);
+	expect_mutes(V(30, 0, 0), 0, (int64_t)1 << 32, false);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -479,6 +535,8 @@ int main(void)
 		cmocka_unit_test(test_migration_each_type),
 		cmocka_unit_test(test_migration_type_truncates),
 		cmocka_unit_test(test_migration_cross),
+		cmocka_unit_test(test_monitor_only_mutes_33_0_0_edges),
+		cmocka_unit_test(test_monitor_only_mutes_23_2_2_and_truncation),
 		cmocka_unit_test(test_volume_in_range),
 		cmocka_unit_test(test_volume_negative),
 		cmocka_unit_test(test_volume_past_float),

@@ -434,6 +434,7 @@ _obs_source_load_balance
 _obs_source_load_delay
 _obs_source_load_deinterlace_mode
 _obs_source_load_monitoring_migration
+_obs_source_load_monitor_only_mutes
 # obs-video-plan.c: obs.c calls them inside libobs. Not EXPORT.
 _obs_video_size_valid
 _obs_video_align_output_size

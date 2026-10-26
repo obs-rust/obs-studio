@@ -1,5 +1,5 @@
 /* Test-only oracle: the original libobs/obs-source-load.c.h, unmodified,
- * with its six functions renamed to oracle_* so they can link next to the
+ * with its seven functions renamed to oracle_* so they can link next to the
  * Rust shims, plus the constants and the layout of its struct as the C sees
  * them. */
 #include <stddef.h>
@@ -11,9 +11,11 @@
 #define obs_source_load_delay oracle_obs_source_load_delay
 #define obs_source_load_deinterlace_mode oracle_obs_source_load_deinterlace_mode
 #define obs_source_load_monitoring_migration oracle_obs_source_load_monitoring_migration
+#define obs_source_load_monitor_only_mutes oracle_obs_source_load_monitor_only_mutes
 
 #include "obs-source-load.c.h"
 
+#undef obs_source_load_monitor_only_mutes
 #undef obs_source_load_monitoring_migration
 #undef obs_source_load_deinterlace_mode
 #undef obs_source_load_delay

@@ -53,6 +53,12 @@ unsafe extern "C" {
         monitoring_type: i64,
     ) -> OracleMonitoring;
 
+    pub fn oracle_obs_source_load_monitor_only_mutes(
+        prev_ver: u32,
+        caps: u32,
+        monitoring_type: i64,
+    ) -> bool;
+
     /// The entry named `CONSTANT_NAMES[which]`; -1 out of range.
     pub fn oracle_source_load_constant(which: usize) -> i64;
 

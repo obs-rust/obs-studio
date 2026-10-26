@@ -86,3 +86,16 @@ struct obs_source_load_monitoring obs_source_load_monitoring_migration(uint32_t 
 
 	return plan;
 }
+
+bool obs_source_load_monitor_only_mutes(uint32_t prev_ver, uint32_t caps, int64_t stored_type)
+{
+	int monitoring_type = (int)stored_type;
+
+	if (prev_ver >= OBS_SOURCE_LOAD_MONITORING_ENABLED_BEFORE)
+		return false;
+
+	if (prev_ver < OBS_SOURCE_LOAD_MONITOR_ONLY_BEFORE && (caps & OBS_SOURCE_LOAD_MONITOR_BY_DEFAULT) != 0)
+		monitoring_type = OBS_SOURCE_LOAD_MONITORING_MONITOR_ONLY;
+
+	return monitoring_type == OBS_SOURCE_LOAD_MONITORING_MONITOR_ONLY;
+}

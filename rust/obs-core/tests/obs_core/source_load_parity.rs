@@ -29,13 +29,14 @@ use core::mem::{align_of, offset_of, size_of};
 use obs_c_oracle::source_load::{
     CONSTANT_NAMES, LAYOUT_NAMES, OracleMonitoring, oracle_obs_source_load_balance,
     oracle_obs_source_load_deinterlace_mode, oracle_obs_source_load_delay,
-    oracle_obs_source_load_monitoring_migration, oracle_obs_source_load_prev_ver,
-    oracle_obs_source_load_volume, oracle_source_load_constant, oracle_source_load_layout,
+    oracle_obs_source_load_monitor_only_mutes, oracle_obs_source_load_monitoring_migration,
+    oracle_obs_source_load_prev_ver, oracle_obs_source_load_volume, oracle_source_load_constant,
+    oracle_source_load_layout,
 };
 use obs_core::ffi::source_load::{
     obs_source_load_balance, obs_source_load_deinterlace_mode, obs_source_load_delay,
-    obs_source_load_monitoring, obs_source_load_monitoring_migration, obs_source_load_prev_ver,
-    obs_source_load_volume,
+    obs_source_load_monitor_only_mutes, obs_source_load_monitoring,
+    obs_source_load_monitoring_migration, obs_source_load_prev_ver, obs_source_load_volume,
 };
 use obs_core::source_load::{
     self as load, ALL_MIXERS, DEINTERLACE_DISABLE, MONITOR_BY_DEFAULT, MONITOR_ONLY_BEFORE,
@@ -68,6 +69,23 @@ fn check_migration(prev: u32, caps: u32, ty: i64) -> obs_source_load_monitoring 
         obs_source_load_monitoring::from(load::monitoring_migration(prev, caps, ty)),
         c,
         "core migration(prev_ver {prev:#010x}, caps {caps:#010x}, type {ty})"
+    );
+    c
+}
+
+/// The shim, the C and the core on one monitor-only mute; returns the C's.
+fn check_mutes(prev: u32, caps: u32, ty: i64) -> bool {
+    let rust = obs_source_load_monitor_only_mutes(prev, caps, ty);
+    // SAFETY: a plain value function.
+    let c = unsafe { oracle_obs_source_load_monitor_only_mutes(prev, caps, ty) };
+    assert_eq!(
+        rust, c,
+        "monitor_only_mutes(prev_ver {prev:#010x}, caps {caps:#010x}, type {ty})"
+    );
+    assert_eq!(
+        load::monitor_only_mutes(prev, caps, ty),
+        c,
+        "core monitor_only_mutes(prev_ver {prev:#010x}, caps {caps:#010x}, type {ty})"
     );
     c
 }
@@ -286,6 +304,29 @@ fn parity_migration_exhaustive_caps_and_types() {
 
 /// Every major.minor with patches 0 to 3 and 0xffff, with and without the
 /// cap, for each type and one outside the enum.
+/// #TBD: every version, caps set and type; the mute is only ever asked for
+/// a source the migration turns monitoring on for.
+#[test]
+fn parity_monitor_only_mutes_exhaustive() {
+    let (vs, cs, ts) = (versions(), caps_sets(), types());
+    let mut mutes = 0usize;
+    for &prev in &vs {
+        for &caps in &cs {
+            for &ty in &ts {
+                if check_mutes(prev, caps, ty) {
+                    mutes += 1;
+                    let plan = check_migration(prev, caps, ty);
+                    assert!(
+                        plan.store_enabled && plan.enabled,
+                        "muted but not monitored: {prev:#010x} {caps:#010x} {ty}"
+                    );
+                }
+            }
+        }
+    }
+    assert!(mutes > 0);
+}
+
 #[test]
 fn parity_migration_every_major_minor() {
     for major in 0..=255u8 {
@@ -431,6 +472,12 @@ proptest! {
         let caps = if with_cap { caps | CAP } else { caps & !CAP };
         check_migration(prev, caps, ty);
         check_migration(prev, caps, ty & 3);
+    }
+
+    #[test]
+    fn parity_monitor_only_mutes_any(prev in any::<u32>(), caps in any::<u32>(), with_cap in any::<bool>(), ty in any::<i64>()) {
+        let caps = if with_cap { caps | CAP } else { caps & !CAP };
+        check_mutes(prev, caps, ty);
     }
 
     #[test]

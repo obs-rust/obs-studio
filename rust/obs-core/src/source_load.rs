@@ -25,6 +25,10 @@
 //!   33.0.0 `"monitoring_enabled"` is stored as the (migrated) type not being
 //!   none. The saved type is an `int64` read as an `int` ("characterized,
 //!   not endorsed": `2^32` is none).
+//! - [`monitor_only_mutes`] (#TBD): before 33.0.0 a monitor-only source (after
+//!   the 23.2.2 migration) is muted. 33.0.0 monitors and outputs a source
+//!   with monitoring on, and the monitor plays it muted, so muted keeps it
+//!   out of the outputs as before.
 //!
 //! The comparisons are the C's, NaN included: `-0.0` is not below 0, so it
 //! stays `-0.0` ("characterized, not endorsed"), and a value past `FLT_MAX`
@@ -183,4 +187,17 @@ pub fn monitoring_migration(prev_ver: u32, caps: u32, monitoring_type: i64) -> M
     }
 
     plan
+}
+
+/// `obs_source_load_monitor_only_mutes()` (#TBD): whether a source saved by
+/// `prev_ver`, with the output flags `caps` and the saved
+/// `"monitoring_type"`, was monitor-only (after the 23.2.2 migration) and
+/// must load muted. False for a source saved by 33.0.0 or later.
+#[must_use]
+pub fn monitor_only_mutes(prev_ver: u32, caps: u32, monitoring_type: i64) -> bool {
+    if prev_ver >= MONITORING_ENABLED_BEFORE {
+        return false;
+    }
+    let monitor_by_default = prev_ver < MONITOR_ONLY_BEFORE && caps & MONITOR_BY_DEFAULT != 0;
+    monitor_by_default || monitoring_type_of(monitoring_type) == MONITORING_MONITOR_ONLY
 }

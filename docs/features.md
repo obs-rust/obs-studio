@@ -1067,6 +1067,12 @@ area.
   silent for about the stall's length (up to about a second), and other
   sources keep their latency. *All*, pending merge. Issue
   [#2335](https://github.com/obs-rust/obs-studio/issues/2335).
+- A source set to "Monitor Only" before 33.0 no longer plays into the
+  stream and recordings after the upgrade: it loads with monitoring on and
+  muted, the 33.0 form of monitor-only. Sources saved by 33.0 are
+  unchanged. *All*, pending merge. Issue
+  [#2444](https://github.com/obs-rust/obs-studio/issues/2444), upstream
+  [obsproject/obs-studio@646836a](https://github.com/obsproject/obs-studio/commit/646836a3118ca961653c69da1ece902bc3dd9f92).
 
 ### Encoding, streaming and recording
 

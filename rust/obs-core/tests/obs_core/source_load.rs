@@ -12,7 +12,8 @@
 use obs_core::source_load::{
     ALL_MIXERS, DEINTERLACE_DISABLE, MONITOR_BY_DEFAULT, MONITOR_ONLY_BEFORE,
     MONITORING_ENABLED_BEFORE, MONITORING_MONITOR_ONLY, MONITORING_NONE, MonitoringPlan, balance,
-    deinterlace_mode, delay, monitoring_migration, prev_ver, semantic_version, volume,
+    deinterlace_mode, delay, monitor_only_mutes, monitoring_migration, prev_ver, semantic_version,
+    volume,
 };
 use proptest::prelude::*;
 
@@ -239,6 +240,63 @@ fn steps_migration_type_truncates() {
     expect_plan(v(30, 0, 0), 0, i64::MAX, false, true, true);
     expect_plan(v(30, 0, 0), 0, -TWO_32, false, true, false);
     expect_plan(v(20, 0, 0), CAP, TWO_32, true, true, true);
+}
+
+// ------------------------------------------------------------------------
+// monitor-only mute (#TBD)
+
+/// A pre-33.0.0 Monitor Only source loads muted; Monitor and Output, off and
+/// the values outside the enum do not, nor does anything saved by 33.0.0.
+#[test]
+fn steps_monitor_only_mutes() {
+    for prev in [V23_2_2, v(30, 2, 3), v(32, 2, 2), V33_0_0 - 1] {
+        assert!(monitor_only_mutes(prev, 0, 1), "{prev:#010x} monitor only");
+        assert!(
+            monitor_only_mutes(prev, CAP, 1),
+            "{prev:#010x} monitor only, cap"
+        );
+        for ty in [0, 2, 3, -1, i64::from(i32::MAX)] {
+            assert!(!monitor_only_mutes(prev, 0, ty), "{prev:#010x} type {ty}");
+            assert!(
+                !monitor_only_mutes(prev, CAP, ty),
+                "{prev:#010x} type {ty}, cap"
+            );
+        }
+    }
+    for prev in [V33_0_0, V33_0_0 + 1, v(33, 1, 0), v(34, 0, 0), u32::MAX] {
+        for ty in -1..=3 {
+            assert!(!monitor_only_mutes(prev, 0, ty), "{prev:#010x} type {ty}");
+            assert!(
+                !monitor_only_mutes(prev, CAP, ty),
+                "{prev:#010x} type {ty}, cap"
+            );
+        }
+    }
+}
+
+/// Before 23.2.2 a monitor-by-default source became monitor-only, so it
+/// loads muted whatever type it saved.
+#[test]
+fn steps_monitor_only_mutes_23_2_2() {
+    for prev in [0, v(22, 0, 3), V23_2_2 - 1] {
+        for ty in [0, 1, 2] {
+            assert!(
+                monitor_only_mutes(prev, CAP, ty),
+                "{prev:#010x} type {ty}, cap"
+            );
+        }
+        assert!(!monitor_only_mutes(prev, 0, 0));
+        assert!(monitor_only_mutes(prev, 0, 1));
+        assert!(!monitor_only_mutes(prev, 0, 2));
+    }
+}
+
+/// The saved int64 type is read as an int, as for the migration.
+#[test]
+fn steps_monitor_only_mutes_type_truncates() {
+    assert!(monitor_only_mutes(v(30, 0, 0), 0, TWO_32 + 1));
+    assert!(!monitor_only_mutes(v(30, 0, 0), 0, TWO_32));
+    assert!(!monitor_only_mutes(v(30, 0, 0), 0, TWO_32 + 2));
 }
 
 /// The rule written out: `ty` read as its low 32 bits.

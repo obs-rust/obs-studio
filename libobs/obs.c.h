@@ -2421,6 +2421,10 @@ static obs_source_t *obs_load_source_type(obs_data_t *source_data, bool is_priva
 	if (monitoring.store_enabled)
 		obs_data_set_bool(source_data, "monitoring_enabled", monitoring.enabled);
 	obs_source_set_monitoring_enabled(source, obs_data_get_bool(source_data, "monitoring_enabled"));
+	/* a pre-33.0 Monitor Only source is monitored and muted, so it stays
+	 * out of the outputs (#TBD) */
+	if (obs_source_load_monitor_only_mutes(prev_ver, caps, monitoring_type))
+		obs_source_set_muted(source, true);
 
 	obs_data_release(source->private_settings);
 	source->private_settings = obs_data_get_obj(source_data, "private_settings");

@@ -77,3 +77,14 @@ pub extern "C" fn obs_source_load_monitoring_migration(
 ) -> obs_source_load_monitoring {
     source_load::monitoring_migration(prev_ver, caps, monitoring_type).into()
 }
+
+/// `bool obs_source_load_monitor_only_mutes(uint32_t prev_ver, uint32_t caps,
+/// int64_t monitoring_type)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_source_load_monitor_only_mutes(
+    prev_ver: u32,
+    caps: u32,
+    monitoring_type: i64,
+) -> bool {
+    source_load::monitor_only_mutes(prev_ver, caps, monitoring_type)
+}

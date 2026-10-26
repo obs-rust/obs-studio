@@ -36,7 +36,10 @@
  *   value past the int range as no mode;
  * - obs_source_load_monitoring_migration(): the monitoring migration: before
  *   23.2.2, a monitor-by-default source becomes monitor-only with all six
- *   mixers; before 33.0.0, "monitoring_enabled" is stored from the type.
+ *   mixers; before 33.0.0, "monitoring_enabled" is stored from the type;
+ * - obs_source_load_monitor_only_mutes(): before 33.0.0, a monitor-only
+ *   source is muted, since 33.0.0 monitoring is monitor and output and the
+ *   monitor ignores mute (#TBD).
  *
  * obs.c keeps every obs_data_*() call and setter, in the same order, the
  * source creation, the canvas lookup and the filter recursion. Nothing here
@@ -100,3 +103,10 @@ int obs_source_load_deinterlace_mode(int64_t mode);
  * flags caps and the saved "monitoring_type" (an int64, read as an int). */
 struct obs_source_load_monitoring obs_source_load_monitoring_migration(uint32_t prev_ver, uint32_t caps,
 								       int64_t monitoring_type);
+
+/* Whether a source saved by prev_ver, with the output flags caps and the
+ * saved "monitoring_type", was monitor-only (after the 23.2.2 migration) and
+ * must load muted: 33.0.0 monitors and outputs a source with monitoring on,
+ * and the monitor plays it muted, so muted keeps it out of the outputs as
+ * before (#TBD). False for a source saved by 33.0.0 or later. */
+bool obs_source_load_monitor_only_mutes(uint32_t prev_ver, uint32_t caps, int64_t monitoring_type);
