@@ -30,20 +30,18 @@ if(TARGET libobs_rust-static)
       PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
     )
   endif()
+  target_link_libraries(
+    test_graphics_state_stacks_rust
+    PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static
+  )
   if(MSVC)
-    # The staticlib goes first: the codegen unit that holds the shims also
-    # defines the matrix4_* functions the test calls, so link.exe resolves them
-    # there and never pulls obs.lib's copies (LNK2005 otherwise, #2533). GNU ld
-    # keeps it last: first, libuuid is missing from its link line.
-    target_link_libraries(
-      test_graphics_state_stacks_rust
-      PRIVATE libobs_rust-static OBS::libobs OBS::caption ${CMOCKA_LIBRARIES}
-    )
+    # The staticlib object that holds the shims also defines the matrix4_*
+    # functions the test calls, which obs.lib provides as well (LNK2005,
+    # #2533); allow the duplicate, which is the same code. Listing the
+    # staticlib first instead pulls obs_util objects that need libobs internals.
+    target_link_options(test_graphics_state_stacks_rust PRIVATE /FORCE:MULTIPLE /IGNORE:4006 /IGNORE:4088)
   else()
-    target_link_libraries(
-      test_graphics_state_stacks_rust
-      PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static m
-    )
+    target_link_libraries(test_graphics_state_stacks_rust PRIVATE m)
   endif()
   obs_test_sanitize(test_graphics_state_stacks_rust "address,undefined")
   add_dependencies(cmocka-tests test_graphics_state_stacks_rust)
