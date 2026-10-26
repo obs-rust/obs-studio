@@ -977,15 +977,6 @@
       ],
       "sanitizers": "address,undefined"
     },
-    "test_encoder_output_getters_characterization": {
-      "sources": [
-        "test/cmocka/test_encoder_output_getters_characterization.c"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka"
-      ]
-    },
     "test_encoder_lifecycle_steps": {
       "sources": [
         "test/cmocka/test_encoder_lifecycle_steps.c",
@@ -1015,6 +1006,15 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_encoder_output_getters_characterization": {
+      "sources": [
+        "test/cmocka/test_encoder_output_getters_characterization.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_encoder_roi": {
       "sources": [
@@ -5006,6 +5006,12 @@
         "${target}"
       ]
     },
+    "test_encoder_lifecycle_steps": {
+      "target": "test_encoder_lifecycle_steps",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_encoder_output_getters_characterization": {
       "target": "test_encoder_output_getters_characterization",
       "command": [
@@ -5018,12 +5024,6 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
-      ]
-    },
-    "test_encoder_lifecycle_steps": {
-      "target": "test_encoder_lifecycle_steps",
-      "command": [
-        "${target}"
       ]
     },
     "test_encoder_roi": {
