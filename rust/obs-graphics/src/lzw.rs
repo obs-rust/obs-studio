@@ -167,10 +167,16 @@ impl Input {
         let current_bit = (self.sb_bit & 0x7) as u32;
 
         if self.sb_bit.wrapping_add(24) <= self.sb_bit_count as usize {
-            // Fast path: three bytes from this sub-block.
-            code |= self.byte(data, self.sb_bit);
-            code |= self.byte(data, self.sb_bit.wrapping_add(8)) << 8;
-            code |= self.byte(data, self.sb_bit.wrapping_add(16)) << 16;
+            // Fast path: three bytes from this sub-block, in one slice.
+            let start = self.sb_data.wrapping_add(self.sb_bit >> 3);
+            code = match data.get(start..start.wrapping_add(3)) {
+                Some(&[b0, b1, b2]) => u32::from_le_bytes([b0, b1, b2, 0]),
+                _ => {
+                    self.byte(data, self.sb_bit)
+                        | self.byte(data, self.sb_bit.wrapping_add(8)) << 8
+                        | self.byte(data, self.sb_bit.wrapping_add(16)) << 16
+                }
+            };
             self.sb_bit = self.sb_bit.wrapping_add(usize::from(code_size));
         } else {
             // Slow path: the code spans sub-blocks.
@@ -214,20 +220,74 @@ impl Input {
     }
 }
 
-/// How a decode writes values: to the output stack, or through a colour
-/// table to the caller's pixels.
-enum Writer<'a> {
-    Stack,
-    Map {
-        colours: &'a [u32; 256],
-        out: &'a mut [u32],
-    },
+/// How a decode writes values: to the output stack ([`StackOut`]), or
+/// through a colour table to the caller's pixels ([`MapOut`]). Generic, so
+/// each has its own loop, as the C passes its writer as a separate inline
+/// function.
+trait Out {
+    /// `output_length`.
+    fn length(&self) -> u32;
+    /// Write one value at `pos`.
+    fn put(
+        &mut self,
+        stack: &mut [u8; TABLE_ENTRY_MAX],
+        transparent: Option<u8>,
+        pos: usize,
+        value: u8,
+    );
+}
+
+/// `lzw__write_fn`: the decoder's own output stack.
+struct StackOut;
+
+impl Out for StackOut {
+    fn length(&self) -> u32 {
+        TABLE_ENTRY_MAX as u32
+    }
+
+    fn put(&mut self, stack: &mut [u8; TABLE_ENTRY_MAX], _: Option<u8>, pos: usize, value: u8) {
+        // `pos` is below `used + count`, at most the stack's length: the
+        // mask changes no index and drops the bounds check.
+        if let Some(v) = stack.get_mut(pos & (TABLE_ENTRY_MAX - 1)) {
+            *v = value;
+        }
+    }
+}
+
+/// `lzw__map_write_fn`: colour-mapped pixels; the transparent value leaves
+/// its pixel.
+struct MapOut<'a> {
+    colours: &'a [u32; 256],
+    out: &'a mut [u32],
+}
+
+impl Out for MapOut<'_> {
+    fn length(&self) -> u32 {
+        self.out.len() as u32
+    }
+
+    fn put(
+        &mut self,
+        _: &mut [u8; TABLE_ENTRY_MAX],
+        transparent: Option<u8>,
+        pos: usize,
+        value: u8,
+    ) {
+        if transparent != Some(value)
+            && let Some(v) = self.out.get_mut(pos)
+        {
+            *v = self.colours.get(usize::from(value)).copied().unwrap_or(0);
+        }
+    }
 }
 
 impl Decoder {
+    /// The entry of `code`. Codes are at most `LZW_CODE_MAX` (12) bits, and
+    /// so are the `extends` links made from them: the mask changes no index
+    /// and lets the compiler drop the bounds check.
     fn entry(&self, code: u16) -> Entry {
         self.table
-            .get(usize::from(code))
+            .get(usize::from(code) & (TABLE_ENTRY_MAX - 1))
             .copied()
             .unwrap_or_default()
     }
@@ -333,12 +393,8 @@ impl Decoder {
     /// `lzw__write_fn` and `lzw__map_write_fn`: write up to `left` values of
     /// `code`'s record at `used`, the first ones that fit; keep the rest
     /// for the next call.
-    fn write(&mut self, writer: &mut Writer<'_>, used: u32, mut code: u16, mut left: u16) -> u32 {
-        let length = match writer {
-            Writer::Stack => TABLE_ENTRY_MAX as u32,
-            Writer::Map { out, .. } => out.len() as u32,
-        };
-        let space = length.wrapping_sub(used);
+    fn write<O: Out>(&mut self, out: &mut O, used: u32, mut code: u16, mut left: u16) -> u32 {
+        let space = out.length().wrapping_sub(used);
         let mut count = left;
 
         if u32::from(count) > space {
@@ -355,31 +411,19 @@ impl Decoder {
             code = self.entry(code).extends;
         }
 
+        let transparent = self.has_transparency.then_some(self.transparency_idx);
         let mut pos = used.wrapping_add(u32::from(count)) as usize;
         for _ in 0..count {
             let entry = self.entry(code);
             pos = pos.wrapping_sub(1);
-            match writer {
-                Writer::Stack => {
-                    if let Some(v) = self.stack.get_mut(pos) {
-                        *v = entry.value;
-                    }
-                }
-                Writer::Map { colours, out } => {
-                    if (!self.has_transparency || entry.value != self.transparency_idx)
-                        && let Some(v) = out.get_mut(pos)
-                    {
-                        *v = colours.get(usize::from(entry.value)).copied().unwrap_or(0);
-                    }
-                }
-            }
+            out.put(&mut self.stack, transparent, pos, entry.value);
             code = entry.extends;
         }
         u32::from(count)
     }
 
     /// `lzw__decode`: read one code and write its values.
-    fn decode_one(&mut self, data: &[u8], writer: &mut Writer<'_>, written: &mut u32) -> LzwResult {
+    fn decode_one<O: Out>(&mut self, data: &[u8], writer: &mut O, written: &mut u32) -> LzwResult {
         let mut code = match self.input.read_code(data, self.code_size) {
             Ok(code) => code,
             Err(res) => return res,
@@ -422,7 +466,7 @@ impl Decoder {
 
     /// Continue a partial record, then decode until `length` values are
     /// written or a result other than `Ok`.
-    fn run(&mut self, data: &[u8], writer: &mut Writer<'_>, length: u32) -> (LzwResult, u32) {
+    fn run<O: Out>(&mut self, data: &[u8], writer: &mut O, length: u32) -> (LzwResult, u32) {
         let mut written = 0u32;
         if self.output_left != 0 {
             let (code, left) = (self.output_code, self.output_left);
@@ -440,7 +484,7 @@ impl Decoder {
     /// `lzw_decode`: fill the output stack ([`Decoder::output`]); returns
     /// the result and the number of values written.
     pub fn decode(&mut self, data: &[u8]) -> (LzwResult, u32) {
-        self.run(data, &mut Writer::Stack, TABLE_ENTRY_MAX as u32)
+        self.run(data, &mut StackOut, TABLE_ENTRY_MAX as u32)
     }
 
     /// The output stack [`Decoder::decode`] writes.
@@ -461,6 +505,6 @@ impl Decoder {
             return (LzwResult::NoColour, 0);
         };
         let length = out.len() as u32;
-        self.run(data, &mut Writer::Map { colours, out }, length)
+        self.run(data, &mut MapOut { colours, out }, length)
     }
 }
