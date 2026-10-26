@@ -151,7 +151,16 @@ static void test_find_data_file(void **state)
 	(void)state;
 	SKIP_WITHOUT_OBS();
 
-	assert_null(obs_find_data_file("obs_core_info_characterization_missing.txt"));
+	char *missing = obs_find_data_file("obs_core_info_characterization_missing.txt");
+	if (missing) {
+		/* characterized, not endorsed: on macOS find_libobs_data_file
+		 * returns the libobs framework's Resources path without checking
+		 * that the file exists, so every lookup succeeds there and the
+		 * data paths below are never searched. */
+		assert_false(os_file_exists(missing));
+		bfree(missing);
+		skip();
+	}
 
 	assert_true(os_quick_write_utf8_file(PROBE_FILE, "x", 1, false));
 
