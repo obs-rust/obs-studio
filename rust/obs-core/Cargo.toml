@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-core"
 version = "0.1.0"
-description = "Rust ports of the units extracted from the libobs core: libobs/obs-video-plan.c.h, libobs/obs-context-names.c.h, libobs/obs-module-paths.c.h, libobs/obs-module-names.c.h, libobs/obs-module-locale.c.h, libobs/obs-module-source-rules.c.h, libobs/obs-module-type-rules.c.h, libobs/obs-audio-mix.c.h, libobs/obs-audio-discard.c.h, libobs/obs-audio-min-ts.c.h, libobs/util/source-profiler.c.h, libobs/obs-view-api.c.h, libobs/obs-video-copy-plan.c.h, libobs/obs-source-load.c.h, libobs/obs-video-output-step.c.h, libobs/obs-canvas-draw.c.h"
+description = "Rust ports of the units extracted from the libobs core: libobs/obs-video-plan.c.h, libobs/obs-context-names.c.h, libobs/obs-module-paths.c.h, libobs/obs-module-names.c.h, libobs/obs-module-locale.c.h, libobs/obs-module-source-rules.c.h, libobs/obs-module-type-rules.c.h, libobs/obs-audio-mix.c.h, libobs/obs-audio-discard.c.h, libobs/obs-audio-min-ts.c.h, libobs/obs-audio-render.c.h, libobs/util/source-profiler.c.h, libobs/obs-view-api.c.h, libobs/obs-video-copy-plan.c.h, libobs/obs-source-load.c.h, libobs/obs-video-output-step.c.h, libobs/obs-canvas-draw.c.h"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

@@ -22,7 +22,7 @@
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
 //! [`video_copy_plan`], [`video_output_step`], [`source_load`],
-//! [`canvas_draw`], [`audio_discard`] and [`audio_min_ts`].
+//! [`canvas_draw`], [`audio_discard`], [`audio_min_ts`] and [`audio_render`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -35,6 +35,7 @@
 pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
+pub mod audio_render;
 pub mod canvas_draw;
 pub mod context_names;
 pub mod module_locale;
