@@ -566,6 +566,12 @@ static void log_frame_info(struct obs_output *output)
 
 static inline void signal_stop(struct obs_output *output);
 
+/* The flags obs-output-stop.h copies. */
+_Static_assert(OBS_OUTPUT_STOP_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
+_Static_assert(OBS_OUTPUT_STOP_AUDIO == OBS_OUTPUT_AUDIO, "OBS_OUTPUT_AUDIO");
+_Static_assert(OBS_OUTPUT_STOP_ENCODED == OBS_OUTPUT_ENCODED, "OBS_OUTPUT_ENCODED");
+_Static_assert(OBS_OUTPUT_STOP_SERVICE == OBS_OUTPUT_SERVICE, "OBS_OUTPUT_SERVICE");
+
 void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 {
 	bool call_stop = true;
@@ -641,7 +647,7 @@ void obs_output_stop(obs_output_t *output)
 		return;
 	}
 
-	if (flag_encoded(output) && output->active_delay_ns) {
+	if (obs_output_stop_encoded(output->info.flags) && obs_output_stop_delay_on(output->active_delay_ns)) {
 		obs_output_delay_stop(output);
 	} else if (!stopping(output)) {
 		do_output_signal(output, "stopping");
@@ -2307,7 +2313,7 @@ static inline void stop_raw_audio(obs_output_t *output)
 {
 	if (output->info.raw_audio2) {
 		for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
-			if ((output->mixer_mask & ((size_t)1 << idx)) != 0) {
+			if (obs_output_raw_audio_mix_on(output->mixer_mask, (size_t)idx)) {
 				audio_output_disconnect(output->audio, idx, default_raw_audio_callback, output);
 			}
 		}
@@ -2320,14 +2326,16 @@ static void *end_data_capture_thread(void *data)
 {
 	encoded_callback_t encoded_callback;
 	obs_output_t *output = data;
-	bool has_video = flag_video(output);
-	bool has_audio = flag_audio(output);
+	bool has_video = obs_output_stop_has_video(output->info.flags);
+	bool has_audio = obs_output_stop_has_audio(output->info.flags);
 
-	if (flag_encoded(output)) {
-		if (output->active_delay_ns)
+	if (obs_output_stop_encoded(output->info.flags)) {
+		if (obs_output_stop_delay_on(output->active_delay_ns))
 			encoded_callback = process_delay;
 		else
-			encoded_callback = (has_video && has_audio) ? interleave_packets : default_encoded_callback;
+			encoded_callback = obs_output_raw_audio_interleave(has_video, has_audio)
+						   ? interleave_packets
+						   : default_encoded_callback;
 
 		if (has_video)
 			stop_video_encoders(output, encoded_callback);
@@ -2340,10 +2348,10 @@ static void *end_data_capture_thread(void *data)
 			stop_raw_audio(output);
 	}
 
-	if (flag_service(output))
+	if (obs_output_stop_service(output->info.flags))
 		obs_service_deactivate(output->service, false);
 
-	if (output->active_delay_ns)
+	if (obs_output_stop_delay_on(output->active_delay_ns))
 		obs_output_cleanup_delay(output);
 
 	os_atomic_set_bool(&output->active, false);
@@ -2415,12 +2423,14 @@ static void obs_output_end_data_capture_internal(obs_output_t *output, bool sign
 			 * last errors that the stop signal reports (#2086). */
 			struct calldata params;
 			stop_params_init(output, &params);
-			if (!active(output) && flag_encoded(output) && !data_capture_ending(output)) {
+			if (!active(output) && obs_output_stop_encoded(output->info.flags) &&
+			    !data_capture_ending(output)) {
 				/* A finished one is still unjoined: never waits. */
 				join_end_data_capture_thread(output);
 				os_atomic_set_bool(&output->end_data_capture_thread_active, true);
-				if (pthread_create(&output->end_data_capture_thread, NULL,
-						   shutdown_unstarted_encoders_thread, output) != 0)
+				ret = pthread_create(&output->end_data_capture_thread, NULL,
+						     shutdown_unstarted_encoders_thread, output);
+				if (obs_output_stop_thread_failed(ret))
 					os_atomic_set_bool(&output->end_data_capture_thread_active, false);
 				else
 					os_atomic_set_bool(&output->end_data_capture_thread_joinable, true);
@@ -2435,7 +2445,7 @@ static void obs_output_end_data_capture_internal(obs_output_t *output, bool sign
 	if (delay_active(output)) {
 		os_atomic_set_bool(&output->delay_capturing, false);
 
-		if (!os_atomic_load_long(&output->delay_restart_refs)) {
+		if (obs_output_stop_end_delay(os_atomic_load_long(&output->delay_restart_refs))) {
 			os_atomic_set_bool(&output->delay_active, false);
 		} else {
 			os_event_signal(output->stopping_event);
@@ -2445,7 +2455,7 @@ static void obs_output_end_data_capture_internal(obs_output_t *output, bool sign
 
 	os_atomic_set_bool(&output->data_active, false);
 
-	if (flag_video(output))
+	if (obs_output_stop_has_video(output->info.flags))
 		log_frame_info(output);
 
 	join_end_data_capture_thread(output);
@@ -2458,7 +2468,7 @@ static void obs_output_end_data_capture_internal(obs_output_t *output, bool sign
 
 	os_atomic_set_bool(&output->end_data_capture_thread_active, true);
 	ret = pthread_create(&output->end_data_capture_thread, NULL, end_data_capture_thread, output);
-	if (ret != 0) {
+	if (obs_output_stop_thread_failed(ret)) {
 		blog(LOG_WARNING,
 		     "Failed to create end_data_capture_thread "
 		     "for output '%s'!",

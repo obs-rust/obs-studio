@@ -36,11 +36,14 @@
  *   for each plane), _can_pop() (the block loop), _block_ts(), _paused_ts()
  *   (under the pause mutex) and _next_frames();
  * - start_raw_audio(): obs_output_raw_audio_mix_on() (asked for each mix
- *   with raw_audio2);
+ *   with raw_audio2); stop_raw_audio() asks it too, for each mix it
+ *   disconnects;
  * - hook_data_capture(): obs_output_raw_audio_interleave() (the encoded
  *   callback), obs_output_raw_audio_delay_on() and _delay_ns();
  *   obs_output_start() asks obs_output_raw_audio_delay_on() too, whether the
- *   start is delayed.
+ *   start is delayed, and end_data_capture_thread() asks
+ *   obs_output_raw_audio_interleave() for the callback it stops the encoders
+ *   with (obs-output-stop.h).
  *
  * obs-output.c keeps data_active(), every read of the output, the pause
  * mutex and its reads (last_video_ts only while video_start_ts is 0, and
@@ -128,11 +131,12 @@ uint64_t obs_output_raw_audio_paused_ts(uint64_t timestamp, uint64_t ts_offset);
 size_t obs_output_raw_audio_next_frames(size_t total_audio_frames);
 
 /* start_raw_audio() with raw_audio2, for each mix below MAX_AUDIO_MIXES:
- * bit idx of mixer_mask is set. */
+ * bit idx of mixer_mask is set. stop_raw_audio() asks it the same way. */
 bool obs_output_raw_audio_mix_on(size_t mixer_mask, size_t idx);
 
 /* hook_data_capture(), for an encoded output: interleave_packets() when it
- * has both video and audio, else default_encoded_callback(). */
+ * has both video and audio, else default_encoded_callback().
+ * end_data_capture_thread() asks it for an undelayed encoded output. */
 bool obs_output_raw_audio_interleave(bool has_video, bool has_audio);
 
 /* hook_data_capture(): delay_sec is not 0, so process_delay() wraps the

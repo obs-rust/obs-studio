@@ -42,6 +42,7 @@
     "obs-output-slots.h",
     "obs-output-start.h",
     "obs-output-stop-stats.h",
+    "obs-output-stop.h",
     "obs-output-video-checks.h",
     "obs-output.h",
     "obs-properties.h",
