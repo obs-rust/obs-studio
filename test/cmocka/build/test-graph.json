@@ -2268,6 +2268,41 @@
         ]
       }
     },
+    "test_pulse_monitor_steps": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_steps.c",
+        "libobs/audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h"
+      ],
+      "includes": [
+        "libobs/audio-monitoring/pulse",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/pulse/pulseaudio-monitor-steps.h",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
+      ],
+      "header_libraries": [
+        "PulseAudio::PulseAudio"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "sanitizers": "address,undefined",
+      "requires": {
+        "all": [
+          "ENABLE_PULSEAUDIO",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        ]
+      }
+    },
     "test_pulse_reconnect": {
       "sources": [
         "test/cmocka/test_pulse_reconnect.c",
@@ -5207,6 +5242,12 @@
       ],
       "timeout_seconds": 60,
       "skip_return_code": 77
+    },
+    "test_pulse_monitor_steps": {
+      "target": "test_pulse_monitor_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_pulse_reconnect": {
       "target": "test_pulse_reconnect"
