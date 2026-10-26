@@ -13,34 +13,27 @@
 # Not on MSVC: the test calls the matrix4_* exports of obs.dll, and the
 # staticlib object that holds the shims also defines them, so link.exe fails
 # with LNK2005 (follow-up: restore the Windows run).
-if(TARGET libobs_rust-static AND NOT MSVC)
-  add_executable(
-    test_graphics_state_stacks_rust
-    test_graphics_state_stacks.c
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
-    "${CMAKE_SOURCE_DIR}/libobs/build/libobs.nsgif+.h.c"
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
-  )
-  target_compile_definitions(test_graphics_state_stacks_rust PRIVATE GS_STATE_STACKS_TEST_RUST)
-  target_include_directories(
-    test_graphics_state_stacks_rust
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
-  )
-  if(MSVC)
-    set_source_files_properties(
-      "${CMAKE_SOURCE_DIR}/libobs/build/libobs.nsgif+.h.c"
-      TARGET_DIRECTORY test_graphics_state_stacks_rust
-      PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
-    )
-  endif()
-  target_link_libraries(
-    test_graphics_state_stacks_rust
-    PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static
-  )
+if(TARGET libobs_rust-static)
   if(NOT MSVC)
+    add_executable(
+      test_graphics_state_stacks_rust
+      test_graphics_state_stacks.c
+      "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/build/libobs.nsgif+.h.c"
+      "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    )
+    target_compile_definitions(test_graphics_state_stacks_rust PRIVATE GS_STATE_STACKS_TEST_RUST)
+    target_include_directories(
+      test_graphics_state_stacks_rust
+      PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
+    )
+    target_link_libraries(
+      test_graphics_state_stacks_rust
+      PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static
+    )
     target_link_libraries(test_graphics_state_stacks_rust PRIVATE m)
+    obs_test_sanitize(test_graphics_state_stacks_rust "address,undefined")
+    add_dependencies(cmocka-tests test_graphics_state_stacks_rust)
+    add_test(test_graphics_state_stacks_rust ${CMAKE_CURRENT_BINARY_DIR}/test_graphics_state_stacks_rust)
   endif()
-  obs_test_sanitize(test_graphics_state_stacks_rust "address,undefined")
-  add_dependencies(cmocka-tests test_graphics_state_stacks_rust)
-  add_test(test_graphics_state_stacks_rust ${CMAKE_CURRENT_BINARY_DIR}/test_graphics_state_stacks_rust)
 endif()
