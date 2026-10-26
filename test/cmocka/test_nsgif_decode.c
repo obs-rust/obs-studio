@@ -22,6 +22,12 @@
  * header, the logical screen descriptor, the extensions before a frame,
  * the image descriptor and the colour tables, on hand-written bytes.
  *
+ * The frame_* cases characterize the frame pixel decode and disposal
+ * (gif-frame.c) through gif-frame.h before their port to obs-graphics
+ * (#2501): frames at every position relative to the canvas, clipping,
+ * interlacing, transparency, the two decode paths, the end of the data,
+ * the LZW results, and the restore and recover steps.
+ *
  * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST:
  * without lzw.c and gif-blocks.c, against the Rust shims of obs-graphics
  * (lzw.h and gif-blocks.h are the boundary; gif.c stays C here too).
@@ -43,6 +49,7 @@
 #include "graphics/libnsgif/lzw.c.h"
 #include "graphics/libnsgif/gif-blocks.c.h"
 #endif
+#include "graphics/libnsgif/gif-frame.c.h"
 #include "graphics/libnsgif/gif.c.h"
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -1101,6 +1108,390 @@ static void blocks_image_descriptor(void **state)
 	assert_memory_equal(&image, &untouched, sizeof(image));
 }
 
+/* ---------------------------------------------------------------------- */
+/* The frame pixel decode and disposal (gif-frame.c) through gif-frame.h. */
+
+#define CANVAS_PX 4096
+#define SENTINEL 0x5A5A5A5Au
+
+static uint32_t canvas_px[CANVAS_PX];
+static uint8_t frame_buf[1 << 14];
+
+/* Palette entry i is 0xAB0000ii, so a pixel names its index. */
+static uint32_t frame_palette[NSGIF_MAX_COLOURS];
+
+static void frame_setup(void)
+{
+	for (uint32_t i = 0; i < NSGIF_MAX_COLOURS; i++)
+		frame_palette[i] = 0xAB000000u | i;
+	for (size_t i = 0; i < CANVAS_PX; i++)
+		canvas_px[i] = SENTINEL;
+}
+
+/* A frame's image data at position 0 of frame_buf: minimum code size 8,
+ * then n indices as root codes after a clear, an EOI when eoi, in
+ * sub-blocks of block bytes with the zero-length terminator. */
+static size_t frame_stream(const uint8_t *idx, size_t n, bool eoi, size_t block)
+{
+	lzw_begin(&st, 8);
+	lzw_clear(&st);
+	for (size_t i = 0; i < n; i++)
+		lzw_code(&st, idx[i]);
+	if (eoi)
+		lzw_eoi(&st);
+	frame_buf[0] = 8;
+	return 1 + lzw_pack(&st, block, frame_buf + 1);
+}
+
+static struct nsgif_frame_area frame_area(uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+	return (struct nsgif_frame_area){
+		.rect = {.x0 = x, .y0 = y, .x1 = x + w, .y1 = y + h},
+		.interlaced = false,
+		.display = true,
+		.transparency = false,
+		.transparency_index = NSGIF_MAX_COLOURS, /* none */
+	};
+}
+
+static nsgif_error frame_decode(const struct nsgif_canvas *canvas, const struct nsgif_frame_area *area, size_t len,
+				bool data_complete)
+{
+	struct lzw_ctx *ctx;
+	assert_int_equal(lzw_context_create(&ctx), LZW_OK);
+	nsgif_error ret = nsgif_frame_pixels_decode(ctx, frame_buf, len, 0, canvas, area, frame_palette, data_complete);
+	lzw_context_destroy(ctx);
+	return ret;
+}
+
+/* The pixel at (x, y) of a canvas with this row span. */
+static uint32_t px_at(uint32_t rowspan, uint32_t x, uint32_t y)
+{
+	return canvas_px[(size_t)y * rowspan + x];
+}
+
+/* A full-width frame at x 0, not interlaced, on a canvas whose row span is
+ * its width: the simple path (lzw_decode_map), row after row. */
+static void frame_simple_full_frame(void **state)
+{
+	(void)state;
+	uint8_t idx[12];
+	for (int i = 0; i < 12; i++)
+		idx[i] = (uint8_t)(i + 1);
+	frame_setup();
+	size_t len = frame_stream(idx, 12, true, 255);
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 4, .height = 3, .rowspan = 4, .background = 0};
+	struct nsgif_frame_area area = frame_area(0, 0, 4, 3);
+
+	assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+	for (uint32_t i = 0; i < 12; i++)
+		assert_int_equal(canvas_px[i], 0xAB000000u | (i + 1));
+	assert_int_equal(canvas_px[12], SENTINEL);
+
+	/* A full-width frame lower down: rows from offset_y, clipped at the
+	 * bottom. */
+	frame_setup();
+	area = frame_area(0, 1, 4, 3);
+	assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+	assert_int_equal(canvas_px[3], SENTINEL);
+	for (uint32_t i = 0; i < 8; i++)
+		assert_int_equal(canvas_px[4 + i], 0xAB000000u | (i + 1));
+	assert_int_equal(canvas_px[12], SENTINEL);
+}
+
+/* Any other frame: the complex path (lzw_decode). The rectangle is clipped
+ * to the image on the right and at the bottom; rows step by the row span. */
+static void frame_complex_offset_and_clip(void **state)
+{
+	(void)state;
+	uint8_t idx[12];
+	for (int i = 0; i < 12; i++)
+		idx[i] = (uint8_t)(i + 1);
+	frame_setup();
+	size_t len = frame_stream(idx, 12, true, 255);
+	/* Image 5x4 in a bitmap of 7 pixels per row; frame 4x3 at (3, 2). */
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 5, .height = 4, .rowspan = 7, .background = 0};
+	struct nsgif_frame_area area = frame_area(3, 2, 4, 3);
+
+	assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+	/* Rows 0 and 1 of the frame, columns 0 and 1: indices 1, 2 and 5, 6. */
+	assert_int_equal(px_at(7, 3, 2), 0xAB000001u);
+	assert_int_equal(px_at(7, 4, 2), 0xAB000002u);
+	assert_int_equal(px_at(7, 3, 3), 0xAB000005u);
+	assert_int_equal(px_at(7, 4, 3), 0xAB000006u);
+	/* Nothing past the image: the clipped columns and the row span. */
+	assert_int_equal(px_at(7, 5, 2), SENTINEL);
+	assert_int_equal(px_at(7, 2, 2), SENTINEL);
+	assert_int_equal(px_at(7, 3, 1), SENTINEL);
+	assert_int_equal(px_at(7, 3, 4), SENTINEL);
+
+	/* A full-width frame at x 0 in a bitmap wider than the image: the
+	 * complex path, rows stepped by the row span. */
+	frame_setup();
+	canvas = (struct nsgif_canvas){.bitmap = canvas_px, .width = 4, .height = 3, .rowspan = 6};
+	area = frame_area(0, 0, 4, 3);
+	assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+	for (uint32_t r = 0; r < 3; r++) {
+		for (uint32_t c = 0; c < 4; c++)
+			assert_int_equal(px_at(6, c, r), 0xAB000000u | (r * 4 + c + 1));
+		assert_int_equal(px_at(6, 4, r), SENTINEL);
+	}
+
+	/* The same pixels on both paths: a full frame with the row span equal
+	 * to the width goes simple; interlaced off but x 1 goes complex. */
+	frame_setup();
+	canvas = (struct nsgif_canvas){.bitmap = canvas_px, .width = 4, .height = 3, .rowspan = 4};
+	area = frame_area(0, 0, 4, 3);
+	area.interlaced = true; /* forces the complex path */
+	len = frame_stream(idx, 12, true, 255);
+	assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+	uint32_t interlaced_rows[3] = {canvas_px[0], canvas_px[4], canvas_px[8]};
+	/* Interlaced height 3: rows 0, 2, 1 in that order. */
+	assert_int_equal(interlaced_rows[0], 0xAB000001u);
+	assert_int_equal(interlaced_rows[1], 0xAB000009u);
+	assert_int_equal(interlaced_rows[2], 0xAB000005u);
+}
+
+/* The row of the i-th decoded row of an interlaced frame (GIF89a, appendix
+ * E): rows 0, 8, 16, ..., then 4, 12, ..., then 2, 6, ..., then 1, 3, .... */
+static uint32_t interlaced_row(uint32_t height, uint32_t i)
+{
+	static const uint32_t start[4] = {0, 4, 2, 1}, step[4] = {8, 8, 4, 2};
+	for (int pass = 0; pass < 4; pass++) {
+		for (uint32_t y = start[pass]; y < height; y += step[pass]) {
+			if (i-- == 0)
+				return y;
+		}
+	}
+	return UINT32_MAX;
+}
+
+static void frame_interlaced_heights(void **state)
+{
+	(void)state;
+	static const uint32_t heights[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 64};
+	uint8_t idx[64];
+	for (int i = 0; i < 64; i++)
+		idx[i] = (uint8_t)i;
+
+	for (size_t k = 0; k < sizeof(heights) / sizeof(heights[0]); k++) {
+		uint32_t h = heights[k];
+		frame_setup();
+		size_t len = frame_stream(idx, h, true, 255);
+		struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 1, .height = h, .rowspan = 1};
+		struct nsgif_frame_area area = frame_area(0, 0, 1, h);
+		area.interlaced = true;
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+		for (uint32_t i = 0; i < h; i++)
+			assert_int_equal(canvas_px[interlaced_row(h, i)], 0xAB000000u | i);
+		assert_int_equal(canvas_px[h], SENTINEL);
+	}
+}
+
+/* The transparent index leaves its pixels; above 0xFF there is none. */
+static void frame_transparency(void **state)
+{
+	(void)state;
+	const uint8_t idx[6] = {1, 7, 2, 7, 7, 3};
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 3, .height = 2, .rowspan = 3};
+
+	for (int complex = 0; complex < 2; complex++) {
+		frame_setup();
+		size_t len = frame_stream(idx, 6, true, 255);
+		struct nsgif_frame_area area = frame_area(0, 0, 3, 2);
+		area.interlaced = complex;
+		area.transparency_index = 7;
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+		const uint32_t expect[6] = {0xAB000001u, SENTINEL, 0xAB000002u, SENTINEL, SENTINEL, 0xAB000003u};
+		/* Interlaced height 2: rows 0 and 1 in order. */
+		for (int i = 0; i < 6; i++)
+			assert_int_equal(canvas_px[i], expect[i]);
+
+		frame_setup();
+		area.transparency_index = 0x100;
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+		assert_int_equal(canvas_px[1], 0xAB000007u);
+	}
+}
+
+/* A frame that starts past the image, or is clipped to nothing, writes
+ * nothing and is a success, without reading the data. */
+static void frame_outside_the_image(void **state)
+{
+	(void)state;
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 4, .height = 3, .rowspan = 4};
+	static const uint32_t rects[][4] = {
+		{4, 0, 2, 2}, {0, 3, 2, 2}, {9, 9, 1, 1}, {1, 1, 0, 2}, {1, 1, 2, 0}, {0, 3, 4, 1}, {0, 0, 4, 0},
+	};
+	/* Data a decode would refuse: minimum code size 12. */
+	frame_buf[0] = 12;
+	frame_buf[1] = 0;
+
+	for (size_t k = 0; k < sizeof(rects) / sizeof(rects[0]); k++) {
+		frame_setup();
+		struct nsgif_frame_area area = frame_area(rects[k][0], rects[k][1], rects[k][2], rects[k][3]);
+		assert_int_equal(frame_decode(&canvas, &area, 2, false), NSGIF_OK);
+		for (size_t i = 0; i < 12; i++)
+			assert_int_equal(canvas_px[i], SENTINEL);
+	}
+
+	/* Inside the image, the same data is a bad frame on both paths. */
+	for (int complex = 0; complex < 2; complex++) {
+		frame_setup();
+		struct nsgif_frame_area area = frame_area(0, 0, 4, 3);
+		area.interlaced = complex;
+		assert_int_equal(frame_decode(&canvas, &area, 2, false), NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(canvas_px[0], SENTINEL);
+	}
+}
+
+/* Data that ends before the frame is full. */
+static void frame_end_of_data(void **state)
+{
+	(void)state;
+	const uint8_t idx[5] = {1, 2, 3, 4, 5};
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 4, .height = 2, .rowspan = 4};
+
+	for (int complex = 0; complex < 2; complex++) {
+		struct nsgif_frame_area area = frame_area(0, 0, 4, 2);
+		area.interlaced = complex;
+
+		/* An EOI after five pixels: a success, the rest left alone. */
+		frame_setup();
+		size_t len = frame_stream(idx, 5, true, 255);
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+		for (int i = 0; i < 5; i++)
+			assert_int_equal(canvas_px[complex ? (i < 4 ? i : 4 + i - 4) : i],
+					 0xAB000000u | (uint32_t)(i + 1));
+		assert_int_equal(canvas_px[5], SENTINEL);
+
+		/* The zero-length sub-block after five pixels, no EOI. */
+		frame_setup();
+		len = frame_stream(idx, 5, false, 255);
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_OK);
+		assert_int_equal(canvas_px[4], 0xAB000005u);
+		assert_int_equal(canvas_px[5], SENTINEL);
+
+		/* The data stops inside a sub-block: the end of the data, unless it
+		 * is complete. */
+		frame_setup();
+		len = frame_stream(idx, 5, false, 255) - 1;
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_ERR_END_OF_DATA);
+		frame_setup();
+		assert_int_equal(frame_decode(&canvas, &area, len, true), NSGIF_OK);
+	}
+}
+
+/* Each LZW result the decode can see, as an nsgif_error: a bad code. */
+static void frame_lzw_results(void **state)
+{
+	(void)state;
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 4, .height = 2, .rowspan = 4};
+
+	for (int complex = 0; complex < 2; complex++) {
+		struct nsgif_frame_area area = frame_area(0, 0, 4, 2);
+		area.interlaced = complex;
+
+		/* A code past the table after two pixels. */
+		frame_setup();
+		lzw_begin(&st, 8);
+		lzw_clear(&st);
+		lzw_code(&st, 1);
+		lzw_code(&st, 2);
+		lzw_put(&st, 300, st.width);
+		frame_buf[0] = 8;
+		size_t len = 1 + lzw_pack(&st, 255, frame_buf + 1);
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(canvas_px[0], 0xAB000001u);
+		assert_int_equal(canvas_px[1], 0xAB000002u);
+		/* Complete data does not change a bad frame. */
+		assert_int_equal(frame_decode(&canvas, &area, len, true), NSGIF_ERR_DATA_FRAME);
+
+		/* A first code that is not a clear or a root. */
+		frame_setup();
+		lzw_begin(&st, 8);
+		lzw_put(&st, 300, st.width);
+		frame_buf[0] = 8;
+		len = 1 + lzw_pack(&st, 255, frame_buf + 1);
+		assert_int_equal(frame_decode(&canvas, &area, len, false), NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(canvas_px[0], SENTINEL);
+	}
+}
+
+/* The restore before a frame: the whole image, or a frame's rectangle. */
+static void frame_restore_bg(void **state)
+{
+	(void)state;
+	/* Image 5x4 in a bitmap of 7 pixels per row. */
+	struct nsgif_canvas canvas = {.bitmap = canvas_px,
+				      .width = 5,
+				      .height = 4,
+				      .rowspan = 7,
+				      .background = 0xFF112233u};
+
+	/* The whole image: width * height pixels from the start to 0.
+	 * Kept, characterized, not endorsed: by the image size, not the row
+	 * span, so the last 2 * 4 pixels of the bitmap stay. */
+	frame_setup();
+	nsgif_frame_restore_bg(&canvas, NULL);
+	for (size_t i = 0; i < 20; i++)
+		assert_int_equal(canvas_px[i], 0);
+	assert_int_equal(canvas_px[20], SENTINEL);
+
+	/* A frame: its rectangle clipped to the image, to the background, rows
+	 * stepped by the image width (also not the row span). */
+	frame_setup();
+	struct nsgif_frame_area area = frame_area(3, 2, 4, 3);
+	nsgif_frame_restore_bg(&canvas, &area);
+	assert_int_equal(canvas_px[2 * 5 + 3], 0xFF112233u);
+	assert_int_equal(canvas_px[2 * 5 + 4], 0xFF112233u);
+	assert_int_equal(canvas_px[3 * 5 + 3], 0xFF112233u);
+	assert_int_equal(canvas_px[3 * 5 + 4], 0xFF112233u);
+	assert_int_equal(canvas_px[2 * 5 + 5], SENTINEL);
+	assert_int_equal(canvas_px[4 * 5 + 3], SENTINEL);
+	assert_int_equal(canvas_px[2 * 5 + 2], SENTINEL);
+
+	/* With transparency: to 0. */
+	frame_setup();
+	area.transparency = true;
+	nsgif_frame_restore_bg(&canvas, &area);
+	assert_int_equal(canvas_px[2 * 5 + 3], 0);
+	assert_int_equal(canvas_px[3 * 5 + 4], 0);
+	assert_int_equal(canvas_px[2 * 5 + 5], SENTINEL);
+
+	/* A frame that is not displayed, or starts past the image: nothing. */
+	static const uint32_t none[][4] = {{5, 0, 1, 1}, {0, 4, 1, 1}};
+	for (size_t k = 0; k < 2; k++) {
+		frame_setup();
+		area = frame_area(none[k][0], none[k][1], none[k][2], none[k][3]);
+		nsgif_frame_restore_bg(&canvas, &area);
+		for (size_t i = 0; i < 28; i++)
+			assert_int_equal(canvas_px[i], SENTINEL);
+	}
+	frame_setup();
+	area = frame_area(0, 0, 2, 2);
+	area.display = false;
+	nsgif_frame_restore_bg(&canvas, &area);
+	assert_int_equal(canvas_px[0], SENTINEL);
+}
+
+/* The recover: width * height pixels of the saved frame back, from the
+ * start (also by the image size). */
+static void frame_recover(void **state)
+{
+	(void)state;
+	static uint32_t saved[28];
+	for (uint32_t i = 0; i < 28; i++)
+		saved[i] = 0xC0000000u | i;
+	struct nsgif_canvas canvas = {.bitmap = canvas_px, .width = 5, .height = 4, .rowspan = 7};
+
+	frame_setup();
+	nsgif_frame_recover(&canvas, saved);
+	for (uint32_t i = 0; i < 20; i++)
+		assert_int_equal(canvas_px[i], 0xC0000000u | i);
+	assert_int_equal(canvas_px[20], SENTINEL);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1124,6 +1515,15 @@ int main(void)
 		cmocka_unit_test(blocks_loop_count),
 		cmocka_unit_test(blocks_skip_extensions),
 		cmocka_unit_test(blocks_image_descriptor),
+		cmocka_unit_test(frame_simple_full_frame),
+		cmocka_unit_test(frame_complex_offset_and_clip),
+		cmocka_unit_test(frame_interlaced_heights),
+		cmocka_unit_test(frame_transparency),
+		cmocka_unit_test(frame_outside_the_image),
+		cmocka_unit_test(frame_end_of_data),
+		cmocka_unit_test(frame_lzw_results),
+		cmocka_unit_test(frame_restore_bg),
+		cmocka_unit_test(frame_recover),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
