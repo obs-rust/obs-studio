@@ -2218,6 +2218,14 @@ area.
   after the browser has finished handling them. *macOS*, pending merge. Issue
   [#2523](https://github.com/obs-rust/obs-studio/issues/2523), upstream
   [obsproject/obs-studio#14072](https://github.com/obsproject/obs-studio/pull/14072).
+- OBS no longer crashes at startup when a browser dock (most often the
+  Twitch Chat dock) was closed before OBS quit: the dock creates its
+  browser after the saved dock layout has been restored, not in the
+  middle of it. *Windows*, pending merge. Issue
+  [#2524](https://github.com/obs-rust/obs-studio/issues/2524), PR
+  [obs-rust/obs-browser#13](https://github.com/obs-rust/obs-browser/pull/13), upstream
+  [obsproject/obs-studio#14088](https://github.com/obsproject/obs-studio/issues/14088),
+  [obsproject/obs-browser#554](https://github.com/obsproject/obs-browser/pull/554).
 
 ### Security hardening
 
