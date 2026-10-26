@@ -78,6 +78,7 @@ pub mod render_route;
 pub mod size_route;
 pub mod transition_clock;
 pub mod transition_render;
+pub mod video_tick;
 pub mod volume_apply;
 
 mod platform;
