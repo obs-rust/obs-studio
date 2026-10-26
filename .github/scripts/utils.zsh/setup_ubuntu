@@ -29,8 +29,12 @@ IFS=';' read -r deps_version deps_baseurl deps_label deps_hash deps_revision <<<
     | .vendor["obsproject.com/obs-studio"].dependencies["cef"]
     # versions[target] overrides version for a target obs-rust builds itself
     # (obs-studio-libs recipes/cef), and replaces the release segment of baseUrl.
+    # releases[target] replaces that segment instead when a rebuild of the
+    # branch is published under its own tag (8078-r2, #2363); the file name
+    # keeps the version.
     | (.versions[$target] // .version) as $v
-    | {"version": $v, "baseUrl": (.baseUrl | sub("/[^/]+$"; "/" + $v)), "label": .label,
+    | (.releases[$target] // $v) as $r
+    | {"version": $v, "baseUrl": (.baseUrl | sub("/[^/]+$"; "/" + $r)), "label": .label,
        "hash": .hashes[$target], "revision": .revision[$target]}
     | join(";")
   ' ${project_root}/CMakePresets.json)"

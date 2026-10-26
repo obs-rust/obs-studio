@@ -32,10 +32,18 @@ def pins() -> dict[str, int]:
         if "cef" in (vendor := preset.get("vendor", {}).get("obsproject.com/obs-studio", {})).get("dependencies", {})
     )
     found = {platform: int(cef.get("versions", {}).get(platform, cef["version"])) for platform in cef["hashes"]}
-    match = re.search(r"/cef/releases/download/(\d+)/", FLATPAK.read_text(encoding="utf-8"))
-    if match:
-        found["flatpak"] = int(match.group(1))
+    branch = flatpak_branch(FLATPAK.read_text(encoding="utf-8"))
+    if branch is not None:
+        found["flatpak"] = branch
     return found
+
+
+def flatpak_branch(text: str) -> int | None:
+    """The CEF branch of the obs-rust/cef release a URL in text downloads.
+
+    A rebuild of a branch is its own release, <branch>-r<n> (8078-r2)."""
+    match = re.search(r"/cef/releases/download/(\d+)(?:-r\d+)?/", text)
+    return int(match.group(1)) if match else None
 
 
 def extended_stable(data: dict) -> tuple[int, int]:
