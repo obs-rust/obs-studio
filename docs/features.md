@@ -2178,6 +2178,16 @@ area.
   2026-10-24. Issue
   [#2211](https://github.com/obs-rust/obs-studio/issues/2211), PR
   [#2213](https://github.com/obs-rust/obs-studio/pull/2213).
+- The Windows, macOS and Flatpak packages bundle libsrt 1.5.7 and Mbed TLS
+  3.6.7, and the Windows package curl 8.23.0: the public advisories in SRT,
+  in the RTMPS certificate checks and in curl no longer apply. A build of
+  these packages with an older libsrt or Mbed TLS stops at configure.
+  *Linux, Windows, macOS*, 2026-10-25. Issues
+  [#2372](https://github.com/obs-rust/obs-studio/issues/2372),
+  [#1121](https://github.com/obs-rust/obs-studio/issues/1121),
+  [#2374](https://github.com/obs-rust/obs-studio/issues/2374), PRs
+  [#2427](https://github.com/obs-rust/obs-studio/pull/2427),
+  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
 
 ### Building from source
 
