@@ -234,7 +234,9 @@ static void edge_sequence(void **state)
 
 	for (size_t i = 0; i < sizeof(refs) / sizeof(refs[0]); i++) {
 		enum obs_source_video_tick_edge edge = obs_source_video_tick_edge(refs[i], flag);
-		strcat(trace, edge == ON ? "on " : edge == OFF ? "off " : "- ");
+		strcat(trace, edge == OBS_SOURCE_VIDEO_TICK_EDGE_ON    ? "on "
+			      : edge == OBS_SOURCE_VIDEO_TICK_EDGE_OFF ? "off "
+								       : "- ");
 		if (edge != OBS_SOURCE_VIDEO_TICK_EDGE_NONE)
 			flag = edge == OBS_SOURCE_VIDEO_TICK_EDGE_ON;
 	}
