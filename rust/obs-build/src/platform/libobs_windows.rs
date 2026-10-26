@@ -37,16 +37,12 @@ pub fn configure(
     library.file_name = Some("obs.dll".into());
     library.include_dirs.push(root.join("deps/w32-pthreads"));
     let version = api_version(root)?;
-    library.source_compile_options.extend([
-        SourceCompileOptions {
+    library
+        .source_compile_options
+        .extend([SourceCompileOptions {
             sources: vec![root.join("libobs/build/libobs.windows-crash-handler+.h.c")],
             options: vec![format!("/DOBS_VERSION=\"{}\"", version.join("."))],
-        },
-        SourceCompileOptions {
-            sources: vec![root.join("libobs/build/libobs.ported-nsgif-gif+.h.c")],
-            options: vec!["/wd4244".into(), "/wd4267".into()],
-        },
-    ]);
+        }]);
     for name in [
         "kernel32", "user32", "gdi32", "winspool", "shell32", "ole32", "oleaut32", "uuid",
         "comdlg32", "advapi32", "avrt", "dwmapi", "dxgi", "winmm", "rpcrt4",
