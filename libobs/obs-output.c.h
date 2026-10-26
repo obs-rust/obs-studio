@@ -1141,15 +1141,17 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 	output->video_encoders[idx] = obs_encoder_get_ref(encoder);
 	obs_encoder_add_output(output->video_encoders[idx], output);
 
+	/* Decide on the stored slot, not the argument: the reference fails
+	 * for an encoder that is being destroyed, and the slot stays empty. */
 	destroy_caption_track(&output->caption_tracks[idx]);
-	if (encoder != NULL) {
+	if (output->video_encoders[idx] != NULL) {
 		output->caption_tracks[idx] = create_caption_track();
 	} else {
 		output->caption_tracks[idx] = NULL;
 	}
 
 	// Set preferred resolution on the default index to preserve old behavior
-	if (obs_output_slots_default_index(idx)) {
+	if (obs_output_slots_default_index(idx) && output->video_encoders[idx]) {
 		/* set the preferred resolution on the encoder */
 		if (obs_output_slots_scaled_axis_set(output->scaled_width) &&
 		    obs_output_slots_scaled_axis_set(output->scaled_height))

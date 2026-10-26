@@ -1378,6 +1378,12 @@ area.
   pending merge. Issue
   [#2291](https://github.com/obs-rust/obs-studio/issues/2291), upstream
   [obsproject/obs-studio#13228](https://github.com/obsproject/obs-studio/issues/13228).
+- Removing the video encoder from an output that has a rescale size set
+  no longer logs a NULL parameter for `obs_encoder_set_scaled_size()`, and
+  an encoder set on an output while it is being destroyed no longer leaves
+  a caption track behind in the slot it could not take. *All*, pending
+  merge. Issue
+  [#2491](https://github.com/obs-rust/obs-studio/issues/2491).
 
 ### Sources and filters
 
