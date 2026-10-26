@@ -49,6 +49,10 @@
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
 //! the transitions; `libobs/obs-source-transition-render.c.h`, the render
 //! and audio step decisions of the transitions;
+//! `libobs/obs-source-transition-start.c.h`, the start checks and child
+//! handover of the transitions (`obs_transition_start()`, `set_source()`,
+//! `activate_transition()`, the active source, the manual reset and the
+//! active child rule of `obs_transition_set()` and the swap);
 //! `libobs/obs-source-video-tick.c.h`, the per-frame decisions of
 //! `obs_source_video_tick()` and `async_tick()` (which steps run, the
 //! deferred update, the show and activate edges, the plugin callback and
@@ -61,7 +65,8 @@
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
-//! [`transition_clock`], [`transition_render`], [`video_tick`] and
+//! [`transition_clock`], [`transition_render`], [`transition_start`],
+//! [`video_tick`] and
 //! [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
