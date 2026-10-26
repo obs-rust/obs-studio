@@ -977,6 +977,15 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_output_getters_characterization": {
+      "sources": [
+        "test/cmocka/test_encoder_output_getters_characterization.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoder_lifecycle_steps": {
       "sources": [
         "test/cmocka/test_encoder_lifecycle_steps.c",
@@ -1290,6 +1299,24 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_hotkey_getters_characterization": {
+      "sources": [
+        "test/cmocka/test_hotkey_getters_characterization.c",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
         "OBS::native-test-cmocka"
       ]
     },
@@ -1643,9 +1670,27 @@
         "-Wl,--wrap=obs_output_can_begin_data_capture,--wrap=obs_output_initialize_encoders,--wrap=obs_output_begin_data_capture,--wrap=obs_output_end_data_capture,--wrap=pthread_create,--wrap=pthread_join"
       ]
     },
+    "test_obs_core_info_characterization": {
+      "sources": [
+        "test/cmocka/test_obs_core_info_characterization.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_obs_data": {
       "sources": [
         "test/cmocka/test_obs_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_obs_data_characterization": {
+      "sources": [
+        "test/cmocka/test_obs_data_characterization.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -2188,6 +2233,15 @@
     "test_platform_file": {
       "sources": [
         "test/cmocka/test_platform_file.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_platform_fs_characterization": {
+      "sources": [
+        "test/cmocka/test_platform_fs_characterization.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -2972,6 +3026,15 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_scene_canvas_characterization": {
+      "sources": [
+        "test/cmocka/test_scene_canvas_characterization.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_scene_collection_migration": {
@@ -4943,6 +5006,20 @@
         "${target}"
       ]
     },
+    "test_encoder_output_getters_characterization": {
+      "target": "test_encoder_output_getters_characterization",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
     "test_encoder_lifecycle_steps": {
       "target": "test_encoder_lifecycle_steps",
       "command": [
@@ -5075,6 +5152,12 @@
           "xvfb-run",
           "-a"
         ]
+      ]
+    },
+    "test_hotkey_getters_characterization": {
+      "target": "test_hotkey_getters_characterization",
+      "command": [
+        "${target}"
       ]
     },
     "test_hotkey_load": {
@@ -5225,8 +5308,28 @@
       ],
       "timeout_seconds": 60
     },
+    "test_obs_core_info_characterization": {
+      "target": "test_obs_core_info_characterization",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
     "test_obs_data": {
       "target": "test_obs_data",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_obs_data_characterization": {
+      "target": "test_obs_data_characterization",
       "command": [
         "${target}"
       ]
@@ -5457,6 +5560,12 @@
     "test_platform_file": {
       "target": "test_platform_file"
     },
+    "test_platform_fs_characterization": {
+      "target": "test_platform_fs_characterization",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_platform_mkdirs": {
       "target": "test_platform_mkdirs"
     },
@@ -5663,6 +5772,20 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_canvas_characterization": {
+      "target": "test_scene_canvas_characterization",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_scene_collection_migration": {
       "target": "test_scene_collection_migration",
