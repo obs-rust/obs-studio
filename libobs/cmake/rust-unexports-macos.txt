@@ -287,6 +287,15 @@ _obs_source_transition_render_audio_mix
 _obs_source_transition_render_audio_valid
 _obs_source_transition_render_audio_place
 _obs_source_transition_render_offset
+# obs-source-video-tick.c: obs-source.c calls them inside libobs. Not
+# EXPORT.
+_obs_source_video_tick_transition
+_obs_source_video_tick_async
+_obs_source_video_tick_media
+_obs_source_video_tick_deferred_update
+_obs_source_video_tick_edge
+_obs_source_video_tick_calls_tick
+_obs_source_video_tick_async_route
 # obs-source-volume.c: obs-source.c calls them inside libobs. Not EXPORT.
 _obs_source_volume_snap
 _obs_source_volume_action_due

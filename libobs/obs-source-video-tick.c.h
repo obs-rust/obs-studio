@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-video-tick.pch.h"
 
 /* The per-frame decisions of obs-source.c, moved from
  * obs_source_video_tick() and async_tick(): the decisions, on plain values.
  * obs-source.c keeps every read of the source's fields, the three atomic
  * loads and every call where they were, passes the values in and acts on
  * what comes back. Declared in obs-source-video-tick.h without EXPORT. In
- * hybrid libobs the Rust port (rust/obs-source) replaces this file. */
+ * hybrid libobs the Rust port (rust/obs-source, video_tick) replaces this
+ * file. */
 
 bool obs_source_video_tick_transition(int type)
 {

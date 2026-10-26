@@ -352,6 +352,17 @@ obs_source_transition_render_audio_mix
 obs_source_transition_render_audio_valid
 obs_source_transition_render_audio_place
 obs_source_transition_render_offset
+# obs-source-video-tick.c: obs_source_video_tick() and async_tick() in
+# obs-source.c call them inside libobs. Declared in
+# obs-source-video-tick.h without EXPORT, so the shims stay hidden the same
+# way.
+obs_source_video_tick_transition
+obs_source_video_tick_async
+obs_source_video_tick_media
+obs_source_video_tick_deferred_update
+obs_source_video_tick_edge
+obs_source_video_tick_calls_tick
+obs_source_video_tick_async_route
 # obs-source-volume.c: get_source_volume() and apply_audio_volume() in
 # obs-source.c call them inside libobs. Declared in obs-source-volume.h
 # without EXPORT, so the shims stay hidden the same way.

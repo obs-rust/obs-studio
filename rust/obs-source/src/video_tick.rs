@@ -22,6 +22,25 @@
 //! `async_mutex` and both `deinterlacing_enabled()` calls. It passes the
 //! values in and acts on what comes back. Nothing here keeps state, takes a
 //! lock or calls libobs.
+//!
+//! The counts are `i64`: the shim widens the C's `long` (32 bits on
+//! Windows), and every rule compares with 0, so the width changes nothing.
+//! Characterized, not endorsed (`test_source_video_tick_steps`), and kept:
+//! the type is not checked against the flags; a negative defer count is not
+//! due; a negative reference count is not 0, so it shows or activates the
+//! source.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
 
 /// `OBS_SOURCE_TYPE_TRANSITION` (`enum obs_source_type`, `obs-source.h`).
 pub const TYPE_TRANSITION: i32 = 2;
@@ -56,54 +75,58 @@ pub enum AsyncRoute {
 /// Whether `obs_transition_tick()` runs: a type of
 /// `OBS_SOURCE_TYPE_TRANSITION`.
 #[must_use]
-pub fn transition_tick(source_type: i32) -> bool {
-    let _ = source_type;
-    todo!("video_tick::transition_tick")
+pub const fn transition_tick(source_type: i32) -> bool {
+    source_type == TYPE_TRANSITION
 }
 
 /// Whether `async_tick()` runs: `OBS_SOURCE_ASYNC` in the output flags.
 #[must_use]
-pub fn async_tick(output_flags: u32) -> bool {
-    let _ = output_flags;
-    todo!("video_tick::async_tick")
+pub const fn async_tick(output_flags: u32) -> bool {
+    output_flags & ASYNC != 0
 }
 
 /// Whether `process_media_actions()` runs: `OBS_SOURCE_CONTROLLABLE_MEDIA`
 /// in the output flags.
 #[must_use]
-pub fn media_actions(output_flags: u32) -> bool {
-    let _ = output_flags;
-    todo!("video_tick::media_actions")
+pub const fn media_actions(output_flags: u32) -> bool {
+    output_flags & CONTROLLABLE_MEDIA != 0
 }
 
 /// Whether `obs_source_deferred_update()` runs: a loaded
 /// `defer_update_count` above 0.
 #[must_use]
-pub fn deferred_update(defer_update_count: i64) -> bool {
-    let _ = defer_update_count;
-    todo!("video_tick::deferred_update")
+pub const fn deferred_update(defer_update_count: i64) -> bool {
+    defer_update_count > 0
 }
 
 /// The edge of a loaded reference count against the flag it sets: the flag
 /// is now `refs != 0`; [`Edge::On`] or [`Edge::Off`] when that differs from
 /// `was`, [`Edge::None`] when it does not.
 #[must_use]
-pub fn edge(refs: i64, was: bool) -> Edge {
-    let _ = (refs, was);
-    todo!("video_tick::edge")
+pub const fn edge(refs: i64, was: bool) -> Edge {
+    let now = refs != 0;
+    if now == was {
+        Edge::None
+    } else if now {
+        Edge::On
+    } else {
+        Edge::Off
+    }
 }
 
 /// Whether the plugin's `video_tick` callback is called: the source has
 /// data and a callback.
 #[must_use]
-pub fn calls_tick(has_data: bool, has_callback: bool) -> bool {
-    let _ = (has_data, has_callback);
-    todo!("video_tick::calls_tick")
+pub const fn calls_tick(has_data: bool, has_callback: bool) -> bool {
+    has_data && has_callback
 }
 
 /// The route of `async_tick()` for `deinterlacing_enabled()`.
 #[must_use]
-pub fn async_route(deinterlacing: bool) -> AsyncRoute {
-    let _ = deinterlacing;
-    todo!("video_tick::async_route")
+pub const fn async_route(deinterlacing: bool) -> AsyncRoute {
+    if deinterlacing {
+        AsyncRoute::Deinterlace
+    } else {
+        AsyncRoute::Closest
+    }
 }
