@@ -15,6 +15,7 @@ mod interleave;
 mod interleave_parity;
 mod protocols;
 mod protocols_parity;
+mod raw_audio;
 mod service;
 mod service_lifecycle;
 mod service_lifecycle_parity;

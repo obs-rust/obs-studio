@@ -43,6 +43,7 @@ pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
 pub mod protocols;
+pub mod raw_audio;
 pub mod service;
 pub mod stop_stats;
 pub mod video_checks;
