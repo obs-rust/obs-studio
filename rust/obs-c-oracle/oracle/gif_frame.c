@@ -19,7 +19,10 @@
 #define lzw_decode_map oracle_lzw_decode_map
 
 /* Third-party code: not part of the warning ratchet (#516), as the
- * obs_c_oracle_nsgif library in build.rs. */
+ * obs_c_oracle_nsgif library in build.rs. MSVC's -W4 also reports
+ * 'uncompressed' in nsgif_frame__decode_complex as maybe uninitialized
+ * (C4701/C4703): it is set by lzw_decode before the first read, because
+ * available starts at 0. */
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
@@ -29,7 +32,7 @@
 #endif
 #elif defined(_MSC_VER)
 #pragma warning(push)
-#pragma warning(disable : 4244 4267)
+#pragma warning(disable : 4244 4267 4701 4703)
 #endif
 #include "graphics/libnsgif/gif-frame.c.h"
 #if defined(__GNUC__) || defined(__clang__)
