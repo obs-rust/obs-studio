@@ -1080,6 +1080,14 @@ area.
   unchanged. *All*, pending merge. Issue
   [#2444](https://github.com/obs-rust/obs-studio/issues/2444), upstream
   [obsproject/obs-studio@646836a](https://github.com/obsproject/obs-studio/commit/646836a3118ca961653c69da1ece902bc3dd9f92).
+- Audio monitoring of a Media Source playing a song with embedded cover
+  art keeps working after the source restarts (the scene is shown again,
+  or the file loops), instead of going silent until monitoring is switched
+  off and on. *Windows*, pending merge. Issue
+  [#2530](https://github.com/obs-rust/obs-studio/issues/2530), upstream
+  [obsproject/obs-studio#9428](https://github.com/obsproject/obs-studio/issues/9428),
+  [obsproject/obs-studio#11739](https://github.com/obsproject/obs-studio/issues/11739),
+  [obsproject/obs-studio#14091](https://github.com/obsproject/obs-studio/pull/14091).
 
 ### Encoding, streaming and recording
 

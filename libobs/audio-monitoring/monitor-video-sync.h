@@ -40,6 +40,7 @@ static inline void audio_monitor_track_video_ts(uint64_t *prev_video_ts, uint64_
 	} else if (*prev_video_ts == last_frame_ts) {
 		*time_since_prev += packet_ns;
 	} else {
+		*prev_video_ts = last_frame_ts;
 		*time_since_prev = 0;
 	}
 }
