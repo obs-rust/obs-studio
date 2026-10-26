@@ -28,6 +28,8 @@
 #include <obs.h>
 #include <util/base.h>
 #include <util/bmem.h>
+#include <util/platform.h>
+#include <util/threading.h>
 
 #include "visibility-transition.h"
 
@@ -179,12 +181,41 @@ static void no_task(void *param)
 	(void)param;
 }
 
+static volatile long destroyed;
+
+static void count_destroyed(void *param, calldata_t *cd)
+{
+	(void)param;
+	(void)cd;
+	os_atomic_inc_long(&destroyed);
+}
+
+static void watch_destroy(obs_source_t *source)
+{
+	signal_handler_connect(obs_source_get_signal_handler(source), "destroy", count_destroyed, NULL);
+}
+
 static int teardown(void **state)
 {
 	struct fixture *f = *state;
 
 	if (!f)
 		return 0;
+
+	/* The next case creates sources with the same names, and libobs
+	 * renames a source whose name is still taken ("c 2"). The video
+	 * thread holds a reference on every source while it ticks, so the
+	 * release below is not always the scene's last one: the video thread
+	 * can destroy the scene after the destruction queue was flushed, and
+	 * the boxes stay alive in it until then. Wait until the scene, the
+	 * group and every box are destroyed ("destroy" is signalled after
+	 * the name is freed). */
+	const long expected = NUM_BOXES + 2;
+	os_atomic_set_long(&destroyed, 0);
+	watch_destroy(obs_scene_get_source(f->scene));
+	watch_destroy(obs_sceneitem_get_source(f->group));
+	for (int i = 0; i < NUM_BOXES; i++)
+		watch_destroy(f->sources[i]);
 
 	obs_data_release(f->undo);
 	obs_data_release(f->redo);
@@ -194,11 +225,18 @@ static int teardown(void **state)
 		obs_source_remove(f->sources[i]);
 		obs_source_release(f->sources[i]);
 	}
+	for (int ms = 0; os_atomic_load_long(&destroyed) < expected && ms < 10000; ms++)
+		os_sleep_ms(1);
 	/* Scenes are destroyed on libobs's destruction thread. Let that finish
 	 * before the next case, and before obs_shutdown() frees what is left. */
 	obs_queue_task(OBS_TASK_DESTROY, no_task, NULL, true);
 	bfree(f);
 	*state = NULL;
+	if (os_atomic_load_long(&destroyed) < expected) {
+		fprintf(stderr, "teardown: %ld of %ld sources destroyed after 10 s\n", os_atomic_load_long(&destroyed),
+			expected);
+		return -1;
+	}
 	return 0;
 }
 
