@@ -8,6 +8,7 @@
 #![deny(unsafe_code)]
 
 pub mod pulse_format;
+pub mod pulse_monitor;
 pub mod pulse_stream_flags;
 
 #[allow(unsafe_code)]
