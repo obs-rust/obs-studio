@@ -227,6 +227,7 @@
 #include "graphics/effect.h"
 
 /* graphics/effect.c */
+#include "graphics/graphics-state-stacks.h"
 #include "graphics/graphics-internal.h"
 #include "graphics/vec2.h"
 

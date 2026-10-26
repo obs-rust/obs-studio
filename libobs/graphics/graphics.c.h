@@ -396,10 +396,7 @@ int gs_get_device_type(void)
 	return gs_valid("gs_get_device_type") ? thread_graphics->exports.device_get_type() : -1;
 }
 
-static inline struct matrix4 *top_matrix(graphics_t *graphics)
-{
-	return graphics->matrix_stack.array + graphics->cur_matrix;
-}
+/* The matrix stack is in graphics-state-stacks.c. */
 
 void gs_matrix_push(void)
 {
@@ -408,11 +405,7 @@ void gs_matrix_push(void)
 	if (!gs_valid("gs_matrix_push"))
 		return;
 
-	struct matrix4 mat, *top_mat = top_matrix(graphics);
-
-	memcpy(&mat, top_mat, sizeof(struct matrix4));
-	da_push_back(graphics->matrix_stack, &mat);
-	graphics->cur_matrix++;
+	gs_matrix_stack_push(&graphics->matrix_stack.da, &graphics->cur_matrix);
 }
 
 void gs_matrix_pop(void)
@@ -422,166 +415,113 @@ void gs_matrix_pop(void)
 	if (!gs_valid("gs_matrix_pop"))
 		return;
 
-	if (graphics->cur_matrix == 0) {
+	if (!gs_matrix_stack_pop(&graphics->matrix_stack.da, &graphics->cur_matrix))
 		blog(LOG_ERROR, "Tried to pop last matrix on stack");
-		return;
-	}
-
-	da_erase(graphics->matrix_stack, graphics->cur_matrix);
-	graphics->cur_matrix--;
 }
 
 void gs_matrix_identity(void)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_identity"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_identity(top_mat);
+	gs_matrix_stack_identity(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix);
 }
 
 void gs_matrix_transpose(void)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_transpose"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_transpose(top_mat, top_mat);
+	gs_matrix_stack_transpose(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix);
 }
 
 void gs_matrix_set(const struct matrix4 *matrix)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_set"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_copy(top_mat, matrix);
+	gs_matrix_stack_set(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, matrix);
 }
 
 void gs_matrix_get(struct matrix4 *dst)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_get"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_copy(dst, top_mat);
+	gs_matrix_stack_get(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, dst);
 }
 
 void gs_matrix_mul(const struct matrix4 *matrix)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_mul"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_mul(top_mat, matrix, top_mat);
+	gs_matrix_stack_mul(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, matrix);
 }
 
 void gs_matrix_rotquat(const struct quat *rot)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_rotquat"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_rotate_i(top_mat, rot, top_mat);
+	gs_matrix_stack_rotquat(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, rot);
 }
 
 void gs_matrix_rotaa(const struct axisang *rot)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_rotaa"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_rotate_aa_i(top_mat, rot, top_mat);
+	gs_matrix_stack_rotaa(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, rot);
 }
 
 void gs_matrix_translate(const struct vec3 *pos)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_translate"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_translate3v_i(top_mat, pos, top_mat);
+	gs_matrix_stack_translate(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, pos);
 }
 
 void gs_matrix_scale(const struct vec3 *scale)
 {
-	struct matrix4 *top_mat;
-
 	if (!gs_valid("gs_matrix_scale"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat)
-		matrix4_scale_i(top_mat, scale, top_mat);
+	gs_matrix_stack_scale(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, scale);
 }
 
 void gs_matrix_rotaa4f(float x, float y, float z, float angle)
 {
-	struct matrix4 *top_mat;
 	struct axisang aa;
 
 	if (!gs_valid("gs_matrix_rotaa4f"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat) {
-		axisang_set(&aa, x, y, z, angle);
-		matrix4_rotate_aa_i(top_mat, &aa, top_mat);
-	}
+	axisang_set(&aa, x, y, z, angle);
+	gs_matrix_stack_rotaa(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, &aa);
 }
 
 void gs_matrix_translate3f(float x, float y, float z)
 {
-	struct matrix4 *top_mat;
 	struct vec3 p;
 
 	if (!gs_valid("gs_matrix_translate3f"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat) {
-		vec3_set(&p, x, y, z);
-		matrix4_translate3v_i(top_mat, &p, top_mat);
-	}
+	vec3_set(&p, x, y, z);
+	gs_matrix_stack_translate(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, &p);
 }
 
 void gs_matrix_scale3f(float x, float y, float z)
 {
-	struct matrix4 *top_mat;
 	struct vec3 p;
 
 	if (!gs_valid("gs_matrix_scale3f"))
 		return;
 
-	top_mat = top_matrix(thread_graphics);
-	if (top_mat) {
-		vec3_set(&p, x, y, z);
-		matrix4_scale_i(top_mat, &p, top_mat);
-	}
+	vec3_set(&p, x, y, z);
+	gs_matrix_stack_scale(&thread_graphics->matrix_stack.da, thread_graphics->cur_matrix, &p);
 }
 
 static inline void reset_immediate_arrays(graphics_t *graphics)
@@ -1112,25 +1052,24 @@ void gs_set_3d_mode(double fovy, double znear, double zvar)
 
 void gs_viewport_push(void)
 {
+	struct gs_rect rect = {0};
+
 	if (!gs_valid("gs_viewport_push"))
 		return;
 
-	struct gs_rect *rect = da_push_back_new(thread_graphics->viewport_stack);
-	gs_get_viewport(rect);
+	gs_get_viewport(&rect);
+	gs_viewport_stack_push(&thread_graphics->viewport_stack.da, &rect);
 }
 
 void gs_viewport_pop(void)
 {
-	struct gs_rect *rect;
+	struct gs_rect rect;
 
 	if (!gs_valid("gs_viewport_pop"))
 		return;
-	if (!thread_graphics->viewport_stack.num)
-		return;
 
-	rect = da_end(thread_graphics->viewport_stack);
-	gs_set_viewport(rect->x, rect->y, rect->cx, rect->cy);
-	da_pop_back(thread_graphics->viewport_stack);
+	if (gs_viewport_stack_pop(&thread_graphics->viewport_stack.da, &rect))
+		gs_set_viewport(rect.x, rect.y, rect.cx, rect.cy);
 }
 
 void gs_texture_set_image(gs_texture_t *tex, const uint8_t *data, uint32_t linesize, bool flip)
@@ -1216,45 +1155,40 @@ void gs_blend_state_push(void)
 	if (!gs_valid("gs_blend_state_push"))
 		return;
 
-	da_push_back(graphics->blend_state_stack, &graphics->cur_blend_state);
+	gs_blend_state_stack_push(&graphics->blend_state_stack.da, &graphics->cur_blend_state);
 }
 
 void gs_blend_state_pop(void)
 {
 	graphics_t *graphics = thread_graphics;
-	struct blend_state *state;
+	struct blend_state state;
 
 	if (!gs_valid("gs_blend_state_pop"))
 		return;
 
-	state = da_end(graphics->blend_state_stack);
-	if (!state)
+	if (!gs_blend_state_stack_pop(&graphics->blend_state_stack.da, &state))
 		return;
 
-	gs_enable_blending(state->enabled);
-	gs_blend_function_separate(state->src_c, state->dest_c, state->src_a, state->dest_a);
-	gs_blend_op(state->op);
-
-	da_pop_back(graphics->blend_state_stack);
+	gs_enable_blending(state.enabled);
+	gs_blend_function_separate(state.src_c, state.dest_c, state.src_a, state.dest_a);
+	gs_blend_op(state.op);
 }
 
 void gs_reset_blend_state(void)
 {
 	graphics_t *graphics = thread_graphics;
+	struct gs_blend_reset steps;
 
 	if (!gs_valid("gs_reset_blend_state"))
 		return;
 
-	if (!graphics->cur_blend_state.enabled)
+	steps = gs_blend_state_reset_steps(&graphics->cur_blend_state);
+	if (steps.enable)
 		gs_enable_blending(true);
-
-	if (graphics->cur_blend_state.src_c != GS_BLEND_SRCALPHA ||
-	    graphics->cur_blend_state.dest_c != GS_BLEND_INVSRCALPHA ||
-	    graphics->cur_blend_state.src_a != GS_BLEND_ONE ||
-	    graphics->cur_blend_state.dest_a != GS_BLEND_INVSRCALPHA) {
+	if (steps.function)
 		gs_blend_function_separate(GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
+	if (steps.op)
 		gs_blend_op(GS_BLEND_OP_ADD);
-	}
 }
 
 /* ------------------------------------------------------------------------- */

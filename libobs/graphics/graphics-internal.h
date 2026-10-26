@@ -22,6 +22,7 @@
 #include "graphics.h"
 #include "matrix3.h"
 #include "matrix4.h"
+#include "graphics-state-stacks.h"
 
 /* ========================================================================= *
  * Exports                                                                   *
@@ -229,14 +230,7 @@ struct gs_exports {
  * Graphics Subsystem Data                                                   *
  * ========================================================================= */
 
-struct blend_state {
-	bool enabled;
-	enum gs_blend_type src_c;
-	enum gs_blend_type dest_c;
-	enum gs_blend_type src_a;
-	enum gs_blend_type dest_a;
-	enum gs_blend_op_type op;
-};
+/* struct blend_state is in graphics-state-stacks.h. */
 
 struct graphics_subsystem {
 	void *module;
