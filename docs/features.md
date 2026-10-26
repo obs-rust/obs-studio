@@ -2176,6 +2176,12 @@ area.
   scene's active reference away, and a source set after it was never shown.
   *All*, pending merge. Issue
   [#2484](https://github.com/obs-rust/obs-studio/issues/2484).
+- A scene shown in Program or a projector, and the sources in it, no longer
+  stop when the transition is changed to one that this scene contains and a
+  source is then set on it; before, the swap marked the scene as held by the
+  new transition although it was not, and the next set took the scene's
+  active reference away. *All*, pending merge. Issue
+  [#2486](https://github.com/obs-rust/obs-studio/issues/2486).
 
 ### Security hardening
 

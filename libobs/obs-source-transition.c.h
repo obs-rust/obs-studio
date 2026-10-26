@@ -1118,8 +1118,12 @@ static inline obs_source_t *copy_source_state(obs_source_t *tr_dest, obs_source_
 	tr_dest->transition_sources[idx] = new_child;
 	tr_dest->transition_source_active[idx] = active;
 
-	if (obs_source_transition_start_child_active(new_child != NULL, active))
-		obs_source_add_active_child(tr_dest, new_child);
+	/* The add fails for a source that contains tr_dest: then the slot is not
+	 * active, so the next set does not remove a reference that another
+	 * parent holds. */
+	if (obs_source_transition_start_child_active(new_child != NULL, active) &&
+	    !obs_source_add_active_child(tr_dest, new_child))
+		tr_dest->transition_source_active[idx] = false;
 
 	return old_child;
 }
