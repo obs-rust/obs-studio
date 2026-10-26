@@ -219,14 +219,10 @@ static void test_module_allow_disable(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_initialized),
-		cmocka_unit_test(test_version),
-		cmocka_unit_test(test_cmdline_args),
-		cmocka_unit_test(test_locale),
-		cmocka_unit_test(test_find_data_file),
-		cmocka_unit_test(test_audio_info_without_reset),
-		cmocka_unit_test(test_module_getters_null),
-		cmocka_unit_test(test_module_allow_disable),
+		cmocka_unit_test(test_initialized),         cmocka_unit_test(test_version),
+		cmocka_unit_test(test_cmdline_args),        cmocka_unit_test(test_locale),
+		cmocka_unit_test(test_find_data_file),      cmocka_unit_test(test_audio_info_without_reset),
+		cmocka_unit_test(test_module_getters_null), cmocka_unit_test(test_module_allow_disable),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);

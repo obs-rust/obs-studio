@@ -458,7 +458,8 @@ static void test_output_lookup_by_id(void **state)
 	(void)state;
 	need_obs();
 
-	assert_int_equal(obs_get_output_flags(ENC_OUTPUT_ID), OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED | OBS_OUTPUT_CAN_PAUSE);
+	assert_int_equal(obs_get_output_flags(ENC_OUTPUT_ID),
+			 OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED | OBS_OUTPUT_CAN_PAUSE);
 	assert_int_equal(obs_get_output_flags(RAW_OUTPUT_ID), OBS_OUTPUT_AUDIO);
 	assert_int_equal(obs_get_output_flags("test_getters_missing"), 0);
 

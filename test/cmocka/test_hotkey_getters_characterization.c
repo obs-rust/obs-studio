@@ -188,10 +188,10 @@ static void frontend_hotkey_null_strings(void **state)
 static void pair_getters(void **state)
 {
 	UNUSED_PARAMETER(state);
-	obs_hotkey_pair_id p0 = obs_hotkey_pair_register_frontend("p0.a", "P0 A", "p0.b", "P0 B", pair_func, pair_func,
-								  NULL, NULL);
-	obs_hotkey_pair_id p1 = obs_hotkey_pair_register_frontend("p1.a", "P1 A", "p1.b", "P1 B", pair_func, pair_func,
-								  NULL, NULL);
+	obs_hotkey_pair_id p0 =
+		obs_hotkey_pair_register_frontend("p0.a", "P0 A", "p0.b", "P0 B", pair_func, pair_func, NULL, NULL);
+	obs_hotkey_pair_id p1 =
+		obs_hotkey_pair_register_frontend("p1.a", "P1 A", "p1.b", "P1 B", pair_func, pair_func, NULL, NULL);
 	/* Pair ids are their own sequence from 0. */
 	assert_int_equal(p0, 0);
 	assert_int_equal(p1, 1);
