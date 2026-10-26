@@ -263,12 +263,16 @@ static void blend_reset_steps(void **state)
 	assert_true(steps.function);
 	assert_true(steps.op);
 
-	/* The default function with another op: the op stays (#2519). */
-	st = blend_default;
-	st.op = GS_BLEND_OP_REVERSE_SUBTRACT;
-	steps = gs_blend_state_reset_steps(&st);
-	assert_false(steps.function);
-	assert_false(steps.op);
+	/* The default function with another op: the op is reset too, as the
+	 * reset sets the whole state to its default (#2519). */
+	for (int op = GS_BLEND_OP_SUBTRACT; op <= GS_BLEND_OP_MAX; op++) {
+		st = blend_default;
+		st.op = (enum gs_blend_op_type)op;
+		steps = gs_blend_state_reset_steps(&st);
+		assert_false(steps.enable);
+		assert_false(steps.function);
+		assert_true(steps.op);
+	}
 }
 
 int main(void)
