@@ -1,5 +1,6 @@
 //! obs-graphics integration tests: rendering helpers over the graphics subsystem.
 
+mod gif_blocks;
 mod image_file;
 mod image_file_layout;
 mod image_file_parity;

@@ -19,6 +19,7 @@ pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 #[allow(unsafe_code)] // the C ABI shims
 pub mod ffi;
+pub mod gif_blocks;
 pub mod image_file;
 pub mod lzw;
 pub mod math_extra;
