@@ -11,5 +11,6 @@ mod lzw;
 mod lzw_parity;
 mod sprite;
 mod sprite_parity;
+mod state_stacks;
 mod texture_render;
 mod texture_render_parity;
