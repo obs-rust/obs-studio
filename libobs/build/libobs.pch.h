@@ -162,6 +162,7 @@
 
 #include "obs-source-transition-clock.h"
 #include "obs-source-transition-render.h"
+#include "obs-source-transition-start.h"
 
 /* obs-source.c */
 

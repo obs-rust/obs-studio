@@ -75,6 +75,7 @@
     "obs-source-size.h",
     "obs-source-transition-clock.h",
     "obs-source-transition-render.h",
+    "obs-source-transition-start.h",
     "obs-source-video-tick.h",
     "obs-source-volume.h",
     "obs-source.h",

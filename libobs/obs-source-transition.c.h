@@ -41,6 +41,7 @@ _Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space 
 _Static_assert(OBS_SOURCE_TRANSITION_RENDER_TARGET_B == OBS_TRANSITION_SOURCE_B, "OBS_TRANSITION_SOURCE_B");
 _Static_assert(OBS_SOURCE_TRANSITION_RENDER_AUDIO_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
 _Static_assert(sizeof(enum obs_transition_target) == sizeof(int), "enum obs_transition_target is passed as int");
+_Static_assert(OBS_SOURCE_TRANSITION_START_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
 
 static inline bool transition_valid(const obs_source_t *transition, const char *func)
 {
@@ -247,8 +248,9 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 
 	clock->same_as_source = new_child == transition->transition_sources[0];
 	clock->same_as_dest = new_child == old_child;
-	clock->restart = !(transition->transitioning_audio || transition->transitioning_video) ||
-			 (!clock->same_as_dest && !clock->same_as_source);
+	clock->restart =
+		obs_source_transition_start_restart(transition->transitioning_audio || transition->transitioning_video,
+						    clock->same_as_dest, clock->same_as_source);
 
 	if (new_child == old_child) {
 		write_start_clock(transition, clock);
@@ -259,14 +261,12 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 
 	already_active = transition->transition_source_active[idx];
 
-	if (already_active) {
-		if (new_child)
-			add_success = obs_source_add_active_child(transition, new_child);
-		if (old_child && add_success)
-			obs_source_remove_active_child(transition, old_child);
-	}
+	if (obs_source_transition_start_adds(already_active, new_child != NULL))
+		add_success = obs_source_add_active_child(transition, new_child);
+	if (obs_source_transition_start_removes(already_active, old_child != NULL, add_success))
+		obs_source_remove_active_child(transition, old_child);
 
-	if (callback && add_success)
+	if (obs_source_transition_start_calls_back(callback != NULL, add_success))
 		add_success = callback(transition, idx, new_child);
 
 	if (add_success) {
@@ -281,7 +281,8 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 		return false;
 	}
 
-	if (transition->transition_cx == 0 || transition->transition_cy == 0) {
+	if (obs_source_transition_start_unsized(transition->transition_cx) ||
+	    obs_source_transition_start_unsized(transition->transition_cy)) {
 		recalculate_transition_size(transition);
 		recalculate_transition_matrices(transition);
 	}
@@ -309,15 +310,14 @@ obs_source_t *obs_transition_get_source(obs_source_t *transition, enum obs_trans
 obs_source_t *obs_transition_get_active_source(obs_source_t *transition)
 {
 	obs_source_t *ret;
+	bool active;
 
 	if (!transition_valid(transition, "obs_transition_get_source"))
 		return NULL;
 
 	lock_transition(transition);
-	if (transition->transitioning_audio || transition->transitioning_video)
-		ret = transition->transition_sources[1];
-	else
-		ret = transition->transition_sources[0];
+	active = transition->transitioning_audio || transition->transitioning_video;
+	ret = transition->transition_sources[obs_source_transition_start_active_index(active)];
 	ret = obs_source_get_ref(ret);
 	unlock_transition(transition);
 
@@ -326,7 +326,7 @@ obs_source_t *obs_transition_get_active_source(obs_source_t *transition)
 
 static bool activate_transition(obs_source_t *transition, size_t idx, obs_source_t *child)
 {
-	if (!transition->transition_source_active[idx]) {
+	if (obs_source_transition_start_activates(transition->transition_source_active[idx])) {
 		if (!obs_source_add_active_child(transition, child))
 			return false;
 
@@ -375,13 +375,13 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 	same_as_source = dest == transition->transition_sources[0];
 	active = transition_active(transition);
 	unlock_transition(transition);
-	if (same_as_source && !active)
+	if (obs_source_transition_start_refused(same_as_source, active))
 		return false;
 
 	/* The destination walk can visit this transition. Check before child
 	 * activation holds its mutex, and before changing state or calling plugins. */
 	struct transition_recursion_check check = {transition, dest == transition};
-	if (dest && !check.recursive)
+	if (obs_source_transition_start_walks(dest != NULL, check.recursive))
 		obs_source_enum_full_tree(dest, check_transition_recursion, &check);
 	if (check.recursive) {
 		blog(LOG_WARNING, "obs_transition_start: transition '%s' has recursive destination '%s'",
@@ -400,10 +400,14 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 	active = transition_active(transition);
 	unlock_transition(transition);
 
-	if (same_as_source && !active)
+	switch (obs_source_transition_start_admit(same_as_source, same_as_dest, same_mode, (int)mode, active)) {
+	case OBS_SOURCE_TRANSITION_START_REFUSE:
 		return false;
-	if (active && mode == OBS_TRANSITION_MODE_MANUAL && same_mode && same_as_dest)
+	case OBS_SOURCE_TRANSITION_START_DONE:
 		return true;
+	case OBS_SOURCE_TRANSITION_START_GO:
+		break;
+	}
 
 	/* Written before the plugin callback: a start the callback makes on this
 	 * transition replaces the mode, and it stays even if this start then
@@ -424,13 +428,13 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 	 * or started this transition itself. Child admission checks again without
 	 * descending into our held mutex, and the clock is decided from the state
 	 * being replaced, so a rejected start leaves a nested start's clock intact. */
-	struct transition_start_clock clock = {(uint64_t)duration_ms * 1000000ULL};
+	struct transition_start_clock clock = {obs_source_transition_start_duration_ns(duration_ms)};
 	if (!set_source(transition, OBS_TRANSITION_SOURCE_B, dest, activate_transition, &clock)) {
 		blog(LOG_WARNING, "obs_transition_start: transition '%s' has recursive destination '%s'",
 		     obs_source_get_name(transition), obs_source_get_name(dest));
 		return false;
 	}
-	if (dest == NULL && clock.same_as_dest && !clock.same_as_source) {
+	if (obs_source_transition_start_null_dest(dest != NULL, clock.same_as_dest, clock.same_as_source)) {
 		transition->transitioning_video = true;
 		transition->transitioning_audio = true;
 	}
@@ -460,7 +464,7 @@ void obs_transition_set_manual_time(obs_source_t *transition, float t)
 	mode = transition->transition_mode;
 	unlock_transition(transition);
 
-	if (mode == OBS_TRANSITION_MODE_MANUAL && t == 0.0f) {
+	if (obs_source_transition_start_manual_reset((int)mode, t)) {
 		obs_transition_set(transition, transition->transition_sources[0]);
 	}
 }
@@ -495,7 +499,7 @@ void obs_transition_set(obs_source_t *transition, obs_source_t *source)
 	unlock_transition(transition);
 
 	for (size_t i = 0; i < 2; i++) {
-		if (s[i] && active[i])
+		if (obs_source_transition_start_child_active(s[i] != NULL, active[i]))
 			obs_source_remove_active_child(transition, s[i]);
 		obs_source_release(s[i]);
 	}
@@ -600,7 +604,7 @@ void obs_transition_save(obs_source_t *tr, obs_data_t *data)
 	obs_source_t *child;
 
 	lock_transition(tr);
-	child = transition_active(tr) ? tr->transition_sources[1] : tr->transition_sources[0];
+	child = tr->transition_sources[obs_source_transition_start_active_index(transition_active(tr))];
 
 	obs_data_set_string(data, "transition_source_a", child ? child->context.name : "");
 	obs_data_set_int(data, "transition_alignment", tr->transition_alignment);
@@ -1107,7 +1111,7 @@ static inline obs_source_t *copy_source_state(obs_source_t *tr_dest, obs_source_
 	tr_dest->transition_sources[idx] = new_child;
 	tr_dest->transition_source_active[idx] = active;
 
-	if (active && new_child)
+	if (obs_source_transition_start_child_active(new_child != NULL, active))
 		obs_source_add_active_child(tr_dest, new_child);
 
 	return old_child;
