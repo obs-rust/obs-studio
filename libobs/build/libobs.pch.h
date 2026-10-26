@@ -69,6 +69,9 @@
 /* obs-output-raw-audio.c */
 #include "obs-output-raw-audio.h"
 
+/* obs-output-slots.c */
+#include "obs-output-slots.h"
+
 /* obs-output-stop-stats.c */
 #include "obs-output-stop-stats.h"
 

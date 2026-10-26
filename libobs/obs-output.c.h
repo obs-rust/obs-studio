@@ -767,19 +767,27 @@ static inline bool pause_can_stop(struct pause_data *pause)
 	return !!pause->ts_start && !pause->ts_end;
 }
 
+/* The flags, limits and encoder types obs-output-slots.h copies. */
+_Static_assert(OBS_OUTPUT_SLOTS_MULTI_TRACK_AUDIO == OBS_OUTPUT_MULTI_TRACK_AUDIO, "OBS_OUTPUT_MULTI_TRACK_AUDIO");
+_Static_assert(OBS_OUTPUT_SLOTS_MULTI_TRACK_VIDEO == OBS_OUTPUT_MULTI_TRACK_VIDEO, "OBS_OUTPUT_MULTI_TRACK_VIDEO");
+_Static_assert(OBS_OUTPUT_SLOTS_MAX_VIDEO_ENCODERS == MAX_OUTPUT_VIDEO_ENCODERS, "MAX_OUTPUT_VIDEO_ENCODERS");
+_Static_assert(OBS_OUTPUT_SLOTS_MAX_AUDIO_ENCODERS == MAX_OUTPUT_AUDIO_ENCODERS, "MAX_OUTPUT_AUDIO_ENCODERS");
+_Static_assert(OBS_OUTPUT_SLOTS_MAX_AUDIO_MIXES == MAX_AUDIO_MIXES, "MAX_AUDIO_MIXES");
+_Static_assert(OBS_OUTPUT_SLOTS_ENCODER_AUDIO == (int)OBS_ENCODER_AUDIO, "OBS_ENCODER_AUDIO");
+_Static_assert(OBS_OUTPUT_SLOTS_ENCODER_VIDEO == (int)OBS_ENCODER_VIDEO, "OBS_ENCODER_VIDEO");
+
 static bool get_first_audio_encoder_index(const struct obs_output *output, size_t *index)
 {
 	if (!index)
 		return false;
 
+	uint32_t occupied = 0;
 	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-		if (output->audio_encoders[i]) {
-			*index = i;
-			return true;
-		}
+		if (output->audio_encoders[i])
+			occupied |= (uint32_t)1 << i;
 	}
 
-	return false;
+	return obs_output_slots_first_audio(occupied, index);
 }
 
 static bool get_first_video_encoder_index(const struct obs_output *output, size_t *index)
@@ -787,14 +795,13 @@ static bool get_first_video_encoder_index(const struct obs_output *output, size_
 	if (!index)
 		return false;
 
+	uint32_t occupied = 0;
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-		if (output->video_encoders[i]) {
-			*index = i;
-			return true;
-		}
+		if (output->video_encoders[i])
+			occupied |= (uint32_t)1 << i;
 	}
 
-	return false;
+	return obs_output_slots_first_video(occupied, index);
 }
 
 static bool obs_encoded_output_pause(obs_output_t *output, bool pause)
@@ -1003,10 +1010,9 @@ audio_t *obs_output_audio(const obs_output_t *output)
 	if (!flag_encoded(output))
 		return output->audio;
 
-	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-		if (output->audio_encoders[i])
-			return obs_encoder_audio(output->audio_encoders[i]);
-	}
+	size_t first_aenc_idx;
+	if (get_first_audio_encoder_index(output, &first_aenc_idx))
+		return obs_encoder_audio(output->audio_encoders[first_aenc_idx]);
 
 	return NULL;
 }
@@ -1022,7 +1028,7 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 		return;
 	if (log_flag_encoded(output, __FUNCTION__, true))
 		return;
-	if (mixer_idx >= MAX_AUDIO_MIXES) {
+	if (!obs_output_slots_mixer_in_range(mixer_idx)) {
 		blog(LOG_WARNING, "output '%s': Ignoring mixer index %zu, it must be below %d",
 		     obs_output_get_name(output), mixer_idx, MAX_AUDIO_MIXES);
 		return;
@@ -1030,7 +1036,7 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 	if (active(output))
 		return;
 
-	output->mixer_mask = (size_t)1 << mixer_idx;
+	output->mixer_mask = obs_output_slots_mixer_mask(mixer_idx);
 }
 
 size_t obs_output_get_mixer(const obs_output_t *output)
@@ -1063,7 +1069,7 @@ void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_en
 	if (!obs_output_valid(output, "obs_output_remove_encoder_internal"))
 		return;
 
-	if (encoder->info.type == OBS_ENCODER_VIDEO) {
+	if (obs_output_slots_video_type_ok(encoder->info.type)) {
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
 			obs_encoder_t *video = output->video_encoders[i];
 			if (video == encoder) {
@@ -1071,7 +1077,7 @@ void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_en
 				obs_encoder_release(video);
 			}
 		}
-	} else if (encoder->info.type == OBS_ENCODER_AUDIO) {
+	} else if (obs_output_slots_audio_type_ok(encoder->info.type)) {
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
 			obs_encoder_t *audio = output->audio_encoders[i];
 			if (audio == encoder) {
@@ -1110,7 +1116,7 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 		return;
 	if (!log_flag_encoded(output, __FUNCTION__, false) || !log_flag_video(output, __FUNCTION__))
 		return;
-	if (encoder && encoder->info.type != OBS_ENCODER_VIDEO) {
+	if (encoder && !obs_output_slots_video_type_ok(encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_video_encoder: "
 				  "encoder passed is not a video encoder");
 		return;
@@ -1123,15 +1129,8 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 		return;
 	}
 
-	if ((output->info.flags & OBS_OUTPUT_MULTI_TRACK_VIDEO) != 0) {
-		if (idx >= MAX_OUTPUT_VIDEO_ENCODERS) {
-			return;
-		}
-	} else {
-		if (idx > 0) {
-			return;
-		}
-	}
+	if (!obs_output_slots_video_index_ok(output->info.flags, idx))
+		return;
 
 	if (output->video_encoders[idx] == encoder)
 		return;
@@ -1150,9 +1149,10 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 	}
 
 	// Set preferred resolution on the default index to preserve old behavior
-	if (idx == 0) {
+	if (obs_output_slots_default_index(idx)) {
 		/* set the preferred resolution on the encoder */
-		if (output->scaled_width && output->scaled_height)
+		if (obs_output_slots_scaled_axis_set(output->scaled_width) &&
+		    obs_output_slots_scaled_axis_set(output->scaled_height))
 			obs_encoder_set_scaled_size(output->video_encoders[idx], output->scaled_width,
 						    output->scaled_height);
 	}
@@ -1172,7 +1172,7 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 		return;
 	if (!log_flag_encoded(output, __FUNCTION__, false) || !log_flag_audio(output, __FUNCTION__))
 		return;
-	if (encoder && encoder->info.type != OBS_ENCODER_AUDIO) {
+	if (encoder && !obs_output_slots_audio_type_ok(encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_audio_encoder: "
 				  "encoder passed is not an audio encoder");
 		return;
@@ -1185,15 +1185,8 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 		return;
 	}
 
-	if ((output->info.flags & OBS_OUTPUT_MULTI_TRACK_AUDIO) != 0) {
-		if (idx >= MAX_OUTPUT_AUDIO_ENCODERS) {
-			return;
-		}
-	} else {
-		if (idx > 0) {
-			return;
-		}
-	}
+	if (!obs_output_slots_audio_index_ok(output->info.flags, idx))
+		return;
 
 	if (output->audio_encoders[idx] == encoder)
 		return;
@@ -1210,7 +1203,7 @@ obs_encoder_t *obs_output_get_video_encoder2(const obs_output_t *output, size_t 
 	if (!obs_output_valid(output, "obs_output_get_video_encoder2"))
 		return NULL;
 
-	if (idx >= MAX_OUTPUT_VIDEO_ENCODERS)
+	if (!obs_output_slots_video_slot(idx))
 		return NULL;
 
 	return output->video_encoders[idx];
@@ -1233,7 +1226,7 @@ obs_encoder_t *obs_output_get_audio_encoder(const obs_output_t *output, size_t i
 	if (!obs_output_valid(output, "obs_output_get_audio_encoder"))
 		return NULL;
 
-	if (idx >= MAX_OUTPUT_AUDIO_ENCODERS)
+	if (!obs_output_slots_audio_slot(idx))
 		return NULL;
 
 	return output->audio_encoders[idx];
@@ -1301,7 +1294,7 @@ void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32
 		return;
 	if (!log_flag_video(output, __FUNCTION__))
 		return;
-	if (idx >= MAX_OUTPUT_VIDEO_ENCODERS)
+	if (!obs_output_slots_video_slot(idx))
 		return;
 
 	if (active(output)) {
@@ -1313,7 +1306,7 @@ void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32
 	}
 
 	// Used for raw video output
-	if (idx == 0) {
+	if (obs_output_slots_default_index(idx)) {
 		output->scaled_width = width;
 		output->scaled_height = height;
 	}
