@@ -165,6 +165,7 @@
 #include "obs-source-async-pacing.h"
 #include "obs-source-async-upload.h"
 #include "obs-source-audio-input.h"
+#include "obs-source-audio-place.h"
 #include "obs-source-audio-render.h"
 #include "obs-source-audio-timing.h"
 #include "obs-source-color-space.h"

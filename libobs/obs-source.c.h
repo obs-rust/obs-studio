@@ -1498,11 +1498,6 @@ static inline uint64_t conv_frames_to_time(const size_t sample_rate, const size_
 	return util_mul_div64(frames, 1000000000ULL, sample_rate);
 }
 
-static inline size_t conv_time_to_frames(const size_t sample_rate, const uint64_t duration)
-{
-	return (size_t)util_mul_div64(duration, sample_rate, 1000000000ULL);
-}
-
 /* maximum buffer size */
 #define MAX_BUF_SIZE (1000 * AUDIO_OUTPUT_FRAMES * sizeof(float))
 
@@ -1567,10 +1562,20 @@ static void source_signal_audio_data(obs_source_t *source, const struct audio_da
 	pthread_mutex_unlock(&source->audio_cb_mutex);
 }
 
-static inline size_t get_buf_placement(audio_t *audio, uint64_t offset)
+/* The placement decisions are obs-source-audio-place.c's, on values: each
+ * read of the source and each call stays here, in its order. The timestamps
+ * are read before get_buf_placement() asks for the sample rate, as they were
+ * when the difference was its argument, and audio_ts again after
+ * reset_audio_data() has set it. */
+_Static_assert(OBS_SOURCE_AUDIO_PLACE_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
+_Static_assert(OBS_SOURCE_AUDIO_PLACE_MAX_BUF_SIZE == MAX_BUF_SIZE, "MAX_BUF_SIZE");
+_Static_assert(OBS_SOURCE_AUDIO_PLACE_MONITOR_ONLY == OBS_MONITORING_TYPE_MONITOR_ONLY, "MONITOR_ONLY");
+_Static_assert(sizeof(enum obs_monitoring_type) == sizeof(int), "enum obs_monitoring_type is passed as int");
+
+static inline size_t get_buf_placement(audio_t *audio, uint64_t timestamp, uint64_t audio_ts)
 {
 	uint32_t sample_rate = audio_output_get_sample_rate(audio);
-	return (size_t)util_mul_div64(offset, sample_rate, 1000000000ULL);
+	return obs_source_audio_place_offset(timestamp, audio_ts, sample_rate);
 }
 
 static void source_output_audio_place(obs_source_t *source, const struct audio_data *in)
@@ -1578,12 +1583,13 @@ static void source_output_audio_place(obs_source_t *source, const struct audio_d
 	audio_t *audio = obs->audio.audio;
 	size_t buf_placement;
 	size_t channels = audio_output_get_channels(audio);
-	size_t size = in->frames * sizeof(float);
+	size_t size = obs_source_audio_place_size(in->frames);
 
-	if (!source->audio_ts || in->timestamp < source->audio_ts)
+	if (!obs_source_audio_place_started(source->audio_ts) ||
+	    obs_source_audio_place_older(in->timestamp, source->audio_ts))
 		reset_audio_data(source, in->timestamp);
 
-	buf_placement = get_buf_placement(audio, in->timestamp - source->audio_ts) * sizeof(float);
+	buf_placement = get_buf_placement(audio, in->timestamp, source->audio_ts);
 
 #if defined(DEBUG_AUDIO) && DEBUG_AUDIO == 1
 	blog(LOG_DEBUG, "frames: %lu, size: %lu, placement: %lu, base_ts: %llu, ts: %llu", (unsigned long)in->frames,
@@ -1592,13 +1598,13 @@ static void source_output_audio_place(obs_source_t *source, const struct audio_d
 #endif
 
 	/* do not allow the circular buffers to become too big */
-	if ((buf_placement + size) > MAX_BUF_SIZE)
+	if (!obs_source_audio_place_fits(buf_placement, size))
 		return;
 
 	for (size_t i = 0; i < channels; i++) {
 		deque_place(&source->audio_input_buf[i], buf_placement, in->data[i], size);
 		deque_pop_back(&source->audio_input_buf[i], NULL,
-			       source->audio_input_buf[i].size - (buf_placement + size));
+			       obs_source_audio_place_pop_back(source->audio_input_buf[i].size, buf_placement, size));
 	}
 
 	source->last_audio_input_buf_size = 0;
@@ -1608,10 +1614,10 @@ static inline void source_output_audio_push_back(obs_source_t *source, const str
 {
 	audio_t *audio = obs->audio.audio;
 	size_t channels = audio_output_get_channels(audio);
-	size_t size = in->frames * sizeof(float);
+	size_t size = obs_source_audio_place_size(in->frames);
 
 	/* do not allow the circular buffers to become too big */
-	if ((source->audio_input_buf[0].size + size) > MAX_BUF_SIZE)
+	if (!obs_source_audio_place_fits(source->audio_input_buf[0].size, size))
 		return;
 
 	for (size_t i = 0; i < channels; i++)
@@ -1731,8 +1737,8 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 	in.timestamp = under.timestamp;
 	push_back = under.push_back;
 
-	if (source->monitoring_type != OBS_MONITORING_TYPE_MONITOR_ONLY) {
-		if (push_back && source->audio_ts)
+	if (obs_source_audio_place_outputs(source->monitoring_type)) {
+		if (push_back && obs_source_audio_place_started(source->audio_ts))
 			source_output_audio_push_back(source, &in);
 		else
 			source_output_audio_place(source, &in);
@@ -4820,6 +4826,14 @@ static inline void apply_audio_action(obs_source_t *source, const struct audio_a
 	}
 }
 
+/* Each action's clamp, frame and stop, how far the previous volume fills and
+ * the mixes multiplied go through obs-source-audio-place.c, on values. The
+ * queue and its mutex, apply_audio_action(), the get_source_volume() calls
+ * (before the loop and after each applied action, so the push-to-talk and
+ * push-to-mute state of each action is seen), the volume array and
+ * multiply_vol_data() stay here. source->audio_ts is read where it was:
+ * once for the clamp, again when the clamp applies, and again for the
+ * frame. */
 static void apply_audio_actions(obs_source_t *source, size_t channels, size_t sample_rate)
 {
 	float vol_data[AUDIO_OUTPUT_FRAMES];
@@ -4833,22 +4847,21 @@ static void apply_audio_actions(obs_source_t *source, size_t channels, size_t sa
 		uint64_t timestamp = action.timestamp;
 		size_t new_frame_num;
 
-		if (timestamp < source->audio_ts)
+		if (obs_source_audio_place_older(timestamp, source->audio_ts))
 			timestamp = source->audio_ts;
 
-		new_frame_num = conv_time_to_frames(sample_rate, timestamp - source->audio_ts);
+		new_frame_num = obs_source_audio_place_action_frame(timestamp, source->audio_ts, sample_rate);
 
-		if (new_frame_num >= AUDIO_OUTPUT_FRAMES)
+		if (obs_source_audio_place_action_stops(new_frame_num))
 			break;
 
 		da_erase(source->audio_actions, i--);
 
 		apply_audio_action(source, &action);
 
-		if (new_frame_num > frame_num) {
-			for (; frame_num < new_frame_num; frame_num++)
-				vol_data[frame_num] = cur_vol;
-		}
+		size_t fill_end = obs_source_audio_place_fill_end(frame_num, new_frame_num);
+		for (; frame_num < fill_end; frame_num++)
+			vol_data[frame_num] = cur_vol;
 
 		cur_vol = get_source_volume(source, timestamp);
 	}
@@ -4858,8 +4871,9 @@ static void apply_audio_actions(obs_source_t *source, size_t channels, size_t sa
 
 	pthread_mutex_unlock(&source->audio_actions_mutex);
 
+	/* source->audio_mixers is read once per mix, as before. */
 	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++) {
-		if ((source->audio_mixers & (1 << mix)) != 0)
+		if (obs_source_audio_place_mix_on(source->audio_mixers, mix))
 			multiply_vol_data(source, mix, channels, vol_data);
 	}
 }
