@@ -49,8 +49,8 @@
                 {
                     "type": "file",
                     "dest-filename": "base.tar.xz",
-                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-09-24/flatpak-base-x86_64-2026-09-24.tar.xz",
-                    "sha256": "480a98e55b51566603b6ea0ee28dbeddaefc1e172d18fb72f16ab9d941794c79"
+                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-10-25/flatpak-base-x86_64-2026-10-25.tar.xz",
+                    "sha256": "b081928cda9e75ccdc0b9664f38f8f05589f5b51fc5d5fe51ecb53219be6b498"
                 }
             ]
         },
@@ -64,8 +64,8 @@
                 {
                     "type": "file",
                     "dest-filename": "devel.tar.xz",
-                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-09-24/flatpak-devel-x86_64-2026-09-24.tar.xz",
-                    "sha256": "c15e10e46054150d927bd81880dfbcc71641658395b84cdaad3f572920481f4a"
+                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-10-25/flatpak-devel-x86_64-2026-10-25.tar.xz",
+                    "sha256": "6c834f5bcb1b0480dc4cd4b0a53540977821a6b3b38116a83f3875c8b6250737"
                 }
             ]
         },
@@ -82,7 +82,7 @@
                 {
                     "type": "file",
                     "dest-filename": "devtools.tar.xz",
-                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-09-24/flatpak-devtools-x86_64-2026-09-24.tar.xz",
+                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-10-25/flatpak-devtools-x86_64-2026-10-25.tar.xz",
                     "sha256": "f5ba4578cade6bfd3670340e7eeb0f31876b39e29bc978b5ed47da7de03ffc70"
                 }
             ]
@@ -97,8 +97,8 @@
                 {
                     "type": "file",
                     "dest-filename": "qt.tar.xz",
-                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-09-24/flatpak-qt-x86_64-2026-09-24.tar.xz",
-                    "sha256": "7a4060cab48798e13be0eb9aa967dd3cb6f94209c6594eacccf3223c5c91e3de"
+                    "url": "https://github.com/obs-rust/obs-deps-buildstream/releases/download/2026-10-25/flatpak-qt-x86_64-2026-10-25.tar.xz",
+                    "sha256": "af0f8bd96f1958ca3ca29dd7b74d3da65a07e16e193bd6975b70cc77cd6c0b5b"
                 }
             ]
         },
