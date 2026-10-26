@@ -1169,6 +1169,21 @@
         }
       ]
     },
+    "test_graphics_no_context": {
+      "sources": [
+        "test/cmocka/test_graphics_no_context.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_group_extent": {
       "sources": [
         "test/cmocka/test_group_extent.c",
@@ -4982,6 +4997,12 @@
     },
     "test_graphics_alias_rest": {
       "target": "test_graphics_alias_rest",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_no_context": {
+      "target": "test_graphics_no_context",
       "command": [
         "${target}"
       ]
