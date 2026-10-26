@@ -190,6 +190,37 @@ class FlatpakRuntimeTest(unittest.TestCase):
         self.assertNotIn('continue-on-error', job)
 
 
+    def test_bundle_installs_the_app_and_takes_debug_from_the_repo(self):
+        # #2400: the released .flatpak is what runs; a bundle holds only the
+        # app, so the Debug extension still comes from the exported repo.
+        module = self.module()
+        flatpak = ['flatpak', '--user']
+        app = 'io.github.obs_rust.OBSStudioRust/x86_64/master'
+        debug = 'io.github.obs_rust.OBSStudioRust.Debug/x86_64/master'
+        self.assertEqual(module.install_commands(flatpak, app, debug, None),
+                         [[*flatpak, 'install', '-y', '--noninteractive', 'qualification', app, debug]])
+        self.assertEqual(module.install_commands(flatpak, app, debug, Path('/b/obs.flatpak')),
+                         [[*flatpak, 'install', '-y', '--noninteractive', '--bundle', '/b/obs.flatpak'],
+                          [*flatpak, 'install', '-y', '--noninteractive', 'qualification', debug]])
+
+    def test_bundle_origin_must_not_be_the_repo(self):
+        module = self.module()
+        module.check_origin('io.github.obs_rust.OBSStudioRust-origin', bundle=True)
+        module.check_origin('qualification', bundle=False)
+        with self.assertRaises(RuntimeError):
+            module.check_origin('qualification', bundle=True)
+
+    def test_saved_profile_job_builds_runs_and_uploads_the_bundle(self):
+        build = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        job = build.split('\n  flatpak-runtime-test:\n', 1)[1].split('\n  windows-build:', 1)[0]
+        self.assertIn('flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo', job)
+        self.assertIn('--bundle "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak"', job)
+        upload = job.split('name: flatpak-bundle', 1)
+        self.assertEqual(len(upload), 2, 'the tested bundle is uploaded for the release')
+        run = job.index('uv run ci/flatpak_runtime.py')
+        self.assertLess(job.index('flatpak build-bundle'), run)
+        self.assertLess(run, job.index('name: flatpak-bundle'))
+
     def test_dependency_transport_runtime_uses_consumer_export(self):
         build = (ROOT / '.github/workflows/build-project.yaml').read_text()
         producer = build.split('      - name: Archive Exported Flatpak for Runtime Qualification', 1)[1].split('  flatpak-compiler-consumer:', 1)[0]

@@ -100,6 +100,24 @@ class ReleasePlatformsTest(unittest.TestCase):
         present = [name for name in release_decision.required_assets(version) if name != arm64]
         self.assertEqual(release_decision.missing_assets(version, present), [arm64])
 
+    def test_release_refuses_missing_flatpak(self):
+        # A beta ships a .flatpak next to the .deb and the AppImage (#2400).
+        version = "0.1.0-beta.20261026"
+        flatpak = f"OBS-Studio-Rust-{version}-linux-x86_64.flatpak"
+        self.assertIn(flatpak, release_decision.required_assets(version))
+        present = [name for name in release_decision.required_assets(version) if name != flatpak]
+        self.assertEqual(release_decision.missing_assets(version, present), [flatpak])
+
+    def test_release_ships_the_bundle_the_gate_ran(self):
+        # The gate's Flatpak Saved Profile job installs the bundle with
+        # `flatpak install --bundle` and runs it; the release publishes that file.
+        gate = re.search(r"^  gate:\n(.*?)^  release:", self.text, re.M | re.S)
+        self.assertIsNotNone(gate)
+        self.assertIn("flatpak-runtime-test: true", gate.group(1))
+        release = self.text.split("\n  release:\n", 1)[1]
+        self.assertIn("name: flatpak-bundle", release)
+        self.assertIn('flatpak/obs-studio-rust-x86_64.flatpak "dist/OBS-Studio-Rust-$VERSION-linux-x86_64.flatpak"', release)
+
     def test_windows_arm64_rust_target_is_installed_before_build(self):
         steps = self.text.split("      - name: ")
         provision = next(
