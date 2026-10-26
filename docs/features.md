@@ -2226,6 +2226,14 @@ area.
   [obs-rust/obs-browser#13](https://github.com/obs-rust/obs-browser/pull/13), upstream
   [obsproject/obs-studio#14088](https://github.com/obsproject/obs-studio/issues/14088),
   [obsproject/obs-browser#554](https://github.com/obsproject/obs-browser/pull/554).
+- With a YouTube account connected, OBS no longer freezes (often seconds
+  after launch, or while logging in) when the YouTube Live Control Panel
+  dock navigates: the dock reacts to the new address after the browser has
+  finished handling the navigation, not inside it. *macOS*, pending merge.
+  Issue [#2527](https://github.com/obs-rust/obs-studio/issues/2527), PR
+  [obs-rust/obs-browser#14](https://github.com/obs-rust/obs-browser/pull/14), upstream
+  [obsproject/obs-studio#14082](https://github.com/obsproject/obs-studio/issues/14082),
+  [obsproject/obs-browser#556](https://github.com/obsproject/obs-browser/pull/556).
 
 ### Security hardening
 
