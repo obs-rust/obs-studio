@@ -268,7 +268,7 @@ fn ns_to_audio_frames(sample_rate: u64, ns: u64) -> u64 {
 ///
 /// Written out here, not taken from `obs-util`, so `obs-source` still
 /// depends on no other crate (as `obs-scene`'s `audio_actions` does).
-fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+pub(crate) fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
     if crate::platform::MUL_DIV64_IS_UDIV128 {
         let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
             .checked_div(u128::from(div))
@@ -287,6 +287,6 @@ fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
 /// low bits on a 32-bit one.
 #[allow(clippy::as_conversions)] // u64 to usize truncates as the C's cast does; there is no From
 #[allow(clippy::cast_possible_truncation)]
-const fn to_size(value: u64) -> usize {
+pub(crate) const fn to_size(value: u64) -> usize {
     value as usize
 }

@@ -179,6 +179,22 @@ obs_source_audio_input_balance_needed
 obs_source_audio_input_mono_needed
 obs_source_audio_input_balance
 obs_source_audio_input_downmix
+# obs-source-audio-place.c: source_output_audio_place(),
+# source_output_audio_push_back(), source_output_audio_data() and
+# apply_audio_actions() in obs-source.c call them inside libobs. Declared in
+# obs-source-audio-place.h without EXPORT, so the shims stay hidden the same
+# way.
+obs_source_audio_place_started
+obs_source_audio_place_older
+obs_source_audio_place_size
+obs_source_audio_place_offset
+obs_source_audio_place_fits
+obs_source_audio_place_pop_back
+obs_source_audio_place_outputs
+obs_source_audio_place_action_frame
+obs_source_audio_place_action_stops
+obs_source_audio_place_fill_end
+obs_source_audio_place_mix_on
 # obs-source-audio-render.c: obs_source_audio_render(), custom_audio_render()
 # and process_audio_source_tick() in obs-source.c call them inside libobs.
 # Declared in obs-source-audio-render.h without EXPORT, so the shims stay

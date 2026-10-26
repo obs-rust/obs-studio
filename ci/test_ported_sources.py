@@ -48,6 +48,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-async-pacing.c.h.o",
     "obs-source-async-upload.c.h.o",
     "obs-source-audio-input.c.h.o",
+    "obs-source-audio-place.c.h.o",
     "obs-source-audio-render.c.h.o",
     "obs-source-audio-timing.c.h.o",
     "obs-source-color-space.c.h.o",

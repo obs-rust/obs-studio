@@ -23,92 +23,140 @@
 //! loop and after each applied action), the volume array and
 //! `multiply_vol_data()`. Nothing here keeps state, takes a lock or calls
 //! libobs.
+//!
+//! The arithmetic wraps where the C's unsigned arithmetic does: the
+//! `uint64_t` differences, the `size_t` sums, products and difference.
+//! The frame conversions are `util_mul_div64(diff, rate, 1e9)` with the
+//! host's formula ([`crate::transition_render`]'s copy): the wrapping
+//! `uint64_t` formula, or on MSVC x64 the exact 128-bit quotient, which in
+//! the C faults when it does not fit in 64 bits and here saturates (an
+//! intentional difference, only for a rate above 1e9 Hz). [`mix_on`] past
+//! the `u32`'s width says no mix, where the C's `int` shift is undefined
+//! (from 31 on; libobs asks only 0 to 5).
+//!
+//! Characterized, not endorsed (`test_source_audio_place_steps`), and kept:
+//! a packet or action less than a sample after `audio_ts` lands on frame 0;
+//! a packet larger than [`MAX_BUF_SIZE`] is dropped whole; a push back
+//! checks only the first channel; the action loop stops at the first action
+//! at or past [`FRAMES`], so later due ones wait; a monitoring type outside
+//! the enum outputs.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
+use crate::transition_render::{mul_div64, to_size};
+
+/// Nanoseconds per second, the divisor of the frame conversions.
+const NS_PER_SEC: u64 = 1_000_000_000;
+/// `sizeof(float)`.
+const SAMPLE_BYTES: usize = size_of::<f32>();
 
 /// `AUDIO_OUTPUT_FRAMES` (`media-io/audio-io.h`).
 pub const FRAMES: usize = 1024;
 /// `MAX_BUF_SIZE` (`obs-source.c`): `1000 * AUDIO_OUTPUT_FRAMES *
 /// sizeof(float)` bytes per channel.
-pub const MAX_BUF_SIZE: usize = 1000 * FRAMES * size_of::<f32>();
+pub const MAX_BUF_SIZE: usize = 1000 * FRAMES * SAMPLE_BYTES;
 /// `OBS_MONITORING_TYPE_MONITOR_ONLY` (`enum obs_monitoring_type`, `obs.h`).
 pub const MONITOR_ONLY: i32 = 1;
 
 /// Whether the source has an audio timestamp: `audio_ts != 0`.
 #[must_use]
 pub fn started(audio_ts: u64) -> bool {
-    let _ = audio_ts;
-    todo!("audio_place::started")
+    audio_ts != 0
 }
 
 /// Whether `timestamp` is older than `audio_ts`.
 #[must_use]
 pub fn older(timestamp: u64, audio_ts: u64) -> bool {
-    let _ = (timestamp, audio_ts);
-    todo!("audio_place::older")
+    timestamp < audio_ts
 }
 
 /// A packet's bytes per channel: `frames * sizeof(float)` in `size_t`.
 #[must_use]
 pub fn size(frames: u32) -> usize {
-    let _ = frames;
-    todo!("audio_place::size")
+    usize::try_from(frames)
+        .unwrap_or(usize::MAX)
+        .wrapping_mul(SAMPLE_BYTES)
 }
 
 /// `get_buf_placement()` in bytes: `(size_t)util_mul_div64(timestamp -
 /// audio_ts, sample_rate, 1e9) * sizeof(float)`.
 #[must_use]
 pub fn offset(timestamp: u64, audio_ts: u64, sample_rate: u32) -> usize {
-    let _ = (timestamp, audio_ts, sample_rate);
-    todo!("audio_place::offset")
+    frames(timestamp, audio_ts, u64::from(sample_rate)).wrapping_mul(SAMPLE_BYTES)
 }
 
 /// Whether `size` bytes from `start` stay within [`MAX_BUF_SIZE`].
 #[must_use]
 pub fn fits(start: usize, size: usize) -> bool {
-    let _ = (start, size);
-    todo!("audio_place::fits")
+    start.wrapping_add(size) <= MAX_BUF_SIZE
 }
 
 /// The bytes popped off the back of a channel after the place:
 /// `buf_size - (placement + size)`.
 #[must_use]
 pub fn pop_back(buf_size: usize, placement: usize, size: usize) -> usize {
-    let _ = (buf_size, placement, size);
-    todo!("audio_place::pop_back")
+    buf_size.wrapping_sub(placement.wrapping_add(size))
 }
 
 /// Whether the packet goes to the buffers: not [`MONITOR_ONLY`].
 #[must_use]
 pub fn outputs(monitoring_type: i32) -> bool {
-    let _ = monitoring_type;
-    todo!("audio_place::outputs")
+    monitoring_type != MONITOR_ONLY
 }
 
 /// An action's frame: `conv_time_to_frames(sample_rate, timestamp -
 /// audio_ts)`.
 #[must_use]
 pub fn action_frame(timestamp: u64, audio_ts: u64, sample_rate: usize) -> usize {
-    let _ = (timestamp, audio_ts, sample_rate);
-    todo!("audio_place::action_frame")
+    frames(
+        timestamp,
+        audio_ts,
+        u64::try_from(sample_rate).unwrap_or(u64::MAX),
+    )
 }
 
 /// Whether the action loop stops at this frame: `frame >= FRAMES`.
 #[must_use]
 pub fn action_stops(frame: usize) -> bool {
-    let _ = frame;
-    todo!("audio_place::action_stops")
+    frame >= FRAMES
 }
 
 /// How far the previous volume fills before an action at `new_frame_num`.
 #[must_use]
 pub fn fill_end(frame_num: usize, new_frame_num: usize) -> usize {
-    let _ = (frame_num, new_frame_num);
-    todo!("audio_place::fill_end")
+    if new_frame_num > frame_num {
+        new_frame_num
+    } else {
+        frame_num
+    }
 }
 
 /// Whether the volume array multiplies mix `mix`: bit `mix` of
 /// `audio_mixers`.
 #[must_use]
 pub fn mix_on(audio_mixers: u32, mix: usize) -> bool {
-    let _ = (audio_mixers, mix);
-    todo!("audio_place::mix_on")
+    u32::try_from(mix)
+        .ok()
+        .and_then(|shift| 1_u32.checked_shl(shift))
+        .is_some_and(|bit| audio_mixers & bit != 0)
+}
+
+/// `(size_t)util_mul_div64(timestamp - audio_ts, sample_rate, 1e9)`: the
+/// frames from `audio_ts` to `timestamp`, the difference wrapping.
+fn frames(timestamp: u64, audio_ts: u64, sample_rate: u64) -> usize {
+    to_size(mul_div64(
+        timestamp.wrapping_sub(audio_ts),
+        sample_rate,
+        NS_PER_SEC,
+    ))
 }

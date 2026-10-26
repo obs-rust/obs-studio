@@ -175,6 +175,19 @@
     obs_source_audio_input_mono_needed;
     obs_source_audio_input_balance;
     obs_source_audio_input_downmix;
+    /* obs-source-audio-place.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_audio_place_started;
+    obs_source_audio_place_older;
+    obs_source_audio_place_size;
+    obs_source_audio_place_offset;
+    obs_source_audio_place_fits;
+    obs_source_audio_place_pop_back;
+    obs_source_audio_place_outputs;
+    obs_source_audio_place_action_frame;
+    obs_source_audio_place_action_stops;
+    obs_source_audio_place_fill_end;
+    obs_source_audio_place_mix_on;
     /* obs-source-audio-render.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_audio_render_route;

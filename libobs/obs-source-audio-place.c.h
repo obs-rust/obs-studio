@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-place.pch.h"
 
 /* The source audio placement and action timeline of obs-source.c, moved
  * from get_buf_placement(), source_output_audio_place(),
@@ -23,7 +23,8 @@
  * apply_audio_actions(): the decisions, on plain values. obs-source.c keeps
  * every read of the source's fields, both mutexes, the deques and every
  * call where they were, passes the values in and acts on what comes back.
- * Declared in obs-source-audio-place.h without EXPORT. */
+ * Declared in obs-source-audio-place.h without EXPORT. In hybrid libobs the
+ * Rust port (rust/obs-source, audio_place) replaces this file. */
 
 bool obs_source_audio_place_started(uint64_t audio_ts)
 {
