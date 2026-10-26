@@ -513,16 +513,6 @@ jobs:
           Build="${Stamp:0:4}.$((10#${Stamp:4:2})).$((10#${Stamp:6:2}))"
           [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$Plist")" = "$Build" ]
           [ "$(/usr/libexec/PlistBuddy -c 'Print :OBSStudioRustVersion' "$Plist")" = "$VERSION" ]
-          # Exercise the documented targeted quarantine removal on a copy of
-          # the actual packaged app. This does not assert notarization or grant
-          # camera/microphone/screen permissions on the hosted machine.
-          printf -v Quarantine '0083;%x;Safari;%s' "$(date +%s)" "$(uuidgen)"
-          xattr -w com.apple.quarantine "$Quarantine" "$App"
-          xattr -p com.apple.quarantine "$App"
-          xattr -dr com.apple.quarantine "$App"
-          if xattr -p com.apple.quarantine "$App" >/dev/null 2>&1; then
-            echo '::error::documented quarantine removal did not clear the app attribute'; exit 1
-          fi
           for mode in fresh migrate-default migrate-custom existing; do
             uv run --no-project test/packaged-startup.py --app "$App" \
               --config-dir "$HOME/Library/Application Support/obs-studio-rust" --platform macos --config-mode "$mode"
@@ -637,7 +627,7 @@ jobs:
           cat >notes.md <<EOF
           Daily beta of OBS-Studio-Rust $VERSION. It ships the C libobs; the Rust ports of its internals are built and tested on every build but not shipped yet (#1065). Built from [\`${SHA:0:9}\`](https://github.com/$GITHUB_REPOSITORY/commit/$SHA).
 
-          **Daily beta (pre-release).** The in-app updaters offer only certified releases, which a maintainer promotes from a daily beta. macOS packages are signed and notarized when the project's release credentials are configured. For an unnotarized download, copy OBS-Studio-Rust.app to Applications and try opening it, then choose **System Settings → Privacy & Security → Open Anyway**. For a download you trust, the Terminal alternative is \`xattr -dr com.apple.quarantine /Applications/OBS-Studio-Rust.app\`; it removes quarantine from that app only. See [Apple's guidance](https://support.apple.com/102445).
+          **Daily beta (pre-release).** The in-app updaters offer only certified releases, which a maintainer promotes from a daily beta. macOS packages are signed and notarized when the project's release credentials are configured.
 
           Windows: SmartScreen will warn. Linux: \`sudo apt install ./OBS-Studio-Rust-$VERSION-ubuntu-26.04-x86_64.deb\` (Ubuntu 26.04 only), or the AppImage for any distribution: \`chmod +x OBS-Studio-Rust-$VERSION-linux-x86_64.AppImage\` and run it. Flatpak: \`flatpak install --user ./OBS-Studio-Rust-$VERSION-linux-x86_64.flatpak\` (installs as \`io.github.obs_rust.OBSStudioRust\`, beside upstream's Flatpak; no automatic updates yet).
 
