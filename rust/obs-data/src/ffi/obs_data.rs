@@ -99,9 +99,25 @@ fn c_str<'a>(ptr: *const c_char) -> Option<Cow<'a, str>> {
     } else {
         // SAFETY: `ptr` is a C string that outlives the call, or null
         // (handled above).
+        // Short ASCII names (every real key) are measured and checked in
+        // one walk, instead of `strlen` and then a UTF-8 pass (#1453).
+        let mut len = 0;
+        let mut high = 0u8;
+        loop {
+            // SAFETY: every byte up to and including the NUL is readable.
+            let byte = unsafe { *ptr.add(len) } as u8;
+            if byte == 0 {
+                break;
+            }
+            high |= byte;
+            len += 1;
+        }
+        if high < 0x80 {
+            // SAFETY: `len` bytes before the NUL, all ASCII, so valid UTF-8.
+            let bytes = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), len) };
+            return Some(Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(bytes) }));
+        }
         let text = unsafe { CStr::from_ptr(ptr) };
-        // `from_utf8` checks valid text faster than the lossy decoder's
-        // chunk walk, and names are almost always valid (#1453).
         Some(match std::str::from_utf8(text.to_bytes()) {
             Ok(valid) => Cow::Borrowed(valid),
             Err(_) => text.to_string_lossy(),
