@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <cmocka.h>
 
+#include <pulse/pulseaudio.h>
+
 #include <obs.h>
 #include <util/base.h>
 
@@ -89,6 +91,75 @@ static void unload_module(int *module)
 	*module = -1;
 }
 
+/* A client that stays connected, as libobs's monitoring context does.
+ * pipewire-pulse acknowledges set-default-sink before every connected
+ * client sees the new default: a fresh client (pactl) reads it at once,
+ * one connected earlier only once the server has passed the change on to
+ * it. Monitoring opened in that window resolves "default" to the old sink,
+ * so set_default_sink() waits until this client reports the new one. */
+static pa_mainloop *observer_loop;
+static pa_context *observer;
+
+static bool observer_wait(pa_operation *op)
+{
+	if (!op)
+		return false;
+	while (pa_operation_get_state(op) == PA_OPERATION_RUNNING)
+		if (pa_mainloop_iterate(observer_loop, 1, NULL) < 0)
+			break;
+	bool done = pa_operation_get_state(op) == PA_OPERATION_DONE;
+	pa_operation_unref(op);
+	return done;
+}
+
+static bool observer_connect(void)
+{
+	observer_loop = pa_mainloop_new();
+	observer = pa_context_new(pa_mainloop_get_api(observer_loop), "obs-test-default-sink-observer");
+	if (pa_context_connect(observer, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0)
+		return false;
+	for (;;) {
+		pa_context_state_t st = pa_context_get_state(observer);
+		if (st == PA_CONTEXT_READY)
+			return true;
+		if (!PA_CONTEXT_IS_GOOD(st) || pa_mainloop_iterate(observer_loop, 1, NULL) < 0)
+			return false;
+	}
+}
+
+static void observer_disconnect(void)
+{
+	if (observer) {
+		pa_context_disconnect(observer);
+		pa_context_unref(observer);
+		observer = NULL;
+	}
+	if (observer_loop) {
+		pa_mainloop_free(observer_loop);
+		observer_loop = NULL;
+	}
+}
+
+static void observer_server_info(pa_context *c, const pa_server_info *info, void *userdata)
+{
+	(void)c;
+	snprintf(userdata, 128, "%s", info && info->default_sink_name ? info->default_sink_name : "");
+}
+
+/* Waits up to 3 s for the observer to report `name` as the default sink. */
+static bool observer_sees_default(const char *name)
+{
+	char seen[128] = "";
+	for (int i = 0; i < 300; i++) {
+		if (observer_wait(pa_context_get_server_info(observer, observer_server_info, seen)) &&
+		    strcmp(seen, name) == 0)
+			return true;
+		usleep(10000);
+	}
+	fprintf(stderr, "a connected client still sees default sink '%s', expected '%s'\n", seen, name);
+	return false;
+}
+
 static void set_default_sink(const char *name)
 {
 	char cmd[128];
@@ -97,6 +168,8 @@ static void set_default_sink(const char *name)
 		fprintf(stderr, "pactl set-default-sink %s failed\n", name);
 		fail();
 	}
+	if (!observer_sees_default(name))
+		fail();
 }
 
 /* Name of the sink the (only) sink input plays on, or "" if there is none. */
@@ -210,6 +283,10 @@ static int setup(void **state)
 		fprintf(stderr, "could not load null sinks; is PULSE_SERVER a private test server?\n");
 		return -1;
 	}
+	if (!observer_connect()) {
+		fprintf(stderr, "could not connect to PULSE_SERVER\n");
+		return -1;
+	}
 
 	base_set_log_handler(quiet_log, NULL);
 	/* obs_startup() needs a display on Linux; the cases skip without one. */
@@ -242,6 +319,7 @@ static int teardown(void **state)
 	(void)state;
 	if (obs_up)
 		obs_shutdown();
+	observer_disconnect();
 	unload_module(&module_a);
 	unload_module(&module_b);
 	return 0;

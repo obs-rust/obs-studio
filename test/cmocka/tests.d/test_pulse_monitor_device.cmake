@@ -3,9 +3,11 @@
 # sound server started by test_pulse_monitor_device.sh. Skipped (exit 77)
 # when PipeWire, WirePlumber or pipewire-pulse are not installed.
 if(OS_LINUX AND ENABLE_PULSEAUDIO)
+  find_package(PulseAudio REQUIRED)
+
   add_executable(test_pulse_monitor_device test_pulse_monitor_device.c)
   target_include_directories(test_pulse_monitor_device PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(test_pulse_monitor_device PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+  target_link_libraries(test_pulse_monitor_device PRIVATE OBS::libobs PulseAudio::PulseAudio ${CMOCKA_LIBRARIES})
   add_dependencies(cmocka-tests test_pulse_monitor_device)
   add_test(
     NAME test_pulse_monitor_device
