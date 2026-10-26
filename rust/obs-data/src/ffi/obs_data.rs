@@ -105,7 +105,7 @@ fn c_str<'a>(ptr: *const c_char) -> Option<Cow<'a, str>> {
         let mut high = 0u8;
         loop {
             // SAFETY: every byte up to and including the NUL is readable.
-            let byte = unsafe { *ptr.add(len) } as u8;
+            let byte = unsafe { *ptr.cast::<u8>().add(len) };
             if byte == 0 {
                 break;
             }
