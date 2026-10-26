@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "build/libobs-pulse.pch.h"
+#include "libobs/build/libobs-ported-pulse-monitor.pch.h"
 
 bool pulseaudio_monitor_grow(size_t queued, uint32_t tlength)
 {

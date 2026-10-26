@@ -422,6 +422,28 @@ _pulseaudio_monitor_process_volume
 _pulseaudio_monitor_queued_bytes
 _pulseaudio_monitor_drop_split
 _pulseaudio_monitor_devices_match
+# pulseaudio-monitor-steps.c: pulseaudio-output.c calls them inside libobs on
+# Linux and FreeBSD. Built on every host; not EXPORT.
+_pulseaudio_monitor_grow
+_pulseaudio_monitor_grown_tlength
+_pulseaudio_monitor_uncork
+_pulseaudio_monitor_write_more
+_pulseaudio_monitor_write_short
+_pulseaudio_monitor_playback_idle
+_pulseaudio_monitor_playback_bytes
+_pulseaudio_monitor_needs_volume
+_pulseaudio_monitor_sink_result
+_pulseaudio_monitor_has_device
+_pulseaudio_monitor_self_monitor_check
+_pulseaudio_monitor_is_default
+_pulseaudio_monitor_fallback
+_pulseaudio_monitor_sink_named
+_pulseaudio_monitor_format_invalid
+_pulseaudio_monitor_tlength_usec
+_pulseaudio_monitor_open_flags
+_pulseaudio_monitor_event_queued
+_pulseaudio_monitor_context_good
+_pulseaudio_monitor_last
 # obs-nix-hotkey-state.c: the Wayland hotkey code calls them inside libobs
 # on Linux and FreeBSD. Built on every host; not EXPORT.
 _obs_nix_hotkey_state_free

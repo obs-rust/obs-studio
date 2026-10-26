@@ -8,13 +8,6 @@
 #include <obs-internal.h>
 #include "audio-monitoring/pulse/pulseaudio-wrapper.h"
 
-/* audio-monitoring/pulse/pulseaudio-monitor-steps.c */
-#include <string.h>
-
-#include "graphics/math-defs.h"
-#include "audio-monitoring/pulse/pulseaudio-monitor-steps.h"
-#include "audio-monitoring/pulse/pulseaudio-stream-flags.h"
-
 /* audio-monitoring/pulse/pulseaudio-output.c */
 #include "obs-internal.h"
 #include "util/util_uint64.h"

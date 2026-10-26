@@ -458,6 +458,28 @@
     pulseaudio_monitor_queued_bytes;
     pulseaudio_monitor_drop_split;
     pulseaudio_monitor_devices_match;
+    /* pulseaudio-monitor-steps.c. pulseaudio-output.c calls them inside
+     * libobs. Not EXPORT. */
+    pulseaudio_monitor_grow;
+    pulseaudio_monitor_grown_tlength;
+    pulseaudio_monitor_uncork;
+    pulseaudio_monitor_write_more;
+    pulseaudio_monitor_write_short;
+    pulseaudio_monitor_playback_idle;
+    pulseaudio_monitor_playback_bytes;
+    pulseaudio_monitor_needs_volume;
+    pulseaudio_monitor_sink_result;
+    pulseaudio_monitor_has_device;
+    pulseaudio_monitor_self_monitor_check;
+    pulseaudio_monitor_is_default;
+    pulseaudio_monitor_fallback;
+    pulseaudio_monitor_sink_named;
+    pulseaudio_monitor_format_invalid;
+    pulseaudio_monitor_tlength_usec;
+    pulseaudio_monitor_open_flags;
+    pulseaudio_monitor_event_queued;
+    pulseaudio_monitor_context_good;
+    pulseaudio_monitor_last;
     /* obs-nix-hotkey-state.c. obs-nix-wayland.c and obs-nix-portal-shortcuts.c
      * call them inside libobs. Not EXPORT. */
     obs_nix_hotkey_state_free;
