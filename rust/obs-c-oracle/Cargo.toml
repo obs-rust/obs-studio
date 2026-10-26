@@ -18,6 +18,7 @@ pkg-config = { workspace = true, default-features = true }
 [dev-dependencies]
 criterion = { workspace = true, features = ["cargo_bench_support"] }
 obs-util = { path = "../obs-util" }
+obs-audio-monitoring = { path = "../obs-audio-monitoring" }
 obs-graphics = { path = "../obs-graphics" }
 obs-codec = { path = "../obs-codec" }
 obs-callback = { path = "../obs-callback" }

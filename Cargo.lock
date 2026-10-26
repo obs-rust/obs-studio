@@ -511,6 +511,7 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "criterion",
+ "obs-audio-monitoring",
  "obs-callback",
  "obs-codec",
  "obs-core",

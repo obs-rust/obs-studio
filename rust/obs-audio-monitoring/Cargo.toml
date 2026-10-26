@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-audio-monitoring"
 version = "0.1.0"
-description = "Rust port of libobs/audio-monitoring/"
+description = "Rust port of libobs/audio-monitoring/: the PulseAudio monitor's stream flags, format, volume and open and write steps"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
