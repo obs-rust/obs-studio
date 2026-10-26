@@ -1583,6 +1583,17 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_monitor_video_sync": {
+      "sources": [
+        "test/cmocka/test_monitor_video_sync.c"
+      ],
+      "includes": [
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_mp4_mux_multichannel": {
       "sources": [
         "test/cmocka/test_mp4_mux_multichannel.c",
@@ -5332,6 +5343,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_monitor_video_sync": {
+      "target": "test_monitor_video_sync",
+      "command": [
+        "${target}"
       ]
     },
     "test_mp4_mux_multichannel": {

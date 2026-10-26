@@ -12,6 +12,7 @@
 #include <propsys.h>
 
 /* audio-monitoring/win32/wasapi-output.c */
+#include "audio-monitoring/monitor-video-sync.h"
 #include "media-io/audio-resampler.h"
 #include "util/deque.h"
 #include "util/platform.h"

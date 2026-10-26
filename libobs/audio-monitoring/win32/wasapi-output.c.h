@@ -64,14 +64,8 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 	deque_push_back(&monitor->delay_buffer, frames, sizeof(*frames));
 	deque_push_back(&monitor->delay_buffer, *data, *frames * blocksize);
 
-	if (!monitor->prev_video_ts) {
-		monitor->prev_video_ts = last_frame_ts;
-
-	} else if (monitor->prev_video_ts == last_frame_ts) {
-		monitor->time_since_prev += util_mul_div64(*frames, 1000000000ULL, monitor->sample_rate);
-	} else {
-		monitor->time_since_prev = 0;
-	}
+	audio_monitor_track_video_ts(&monitor->prev_video_ts, &monitor->time_since_prev, last_frame_ts,
+				     util_mul_div64(*frames, 1000000000ULL, monitor->sample_rate));
 
 	while (monitor->delay_buffer.size != 0) {
 		size_t size;
@@ -80,7 +74,8 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 		deque_peek_front(&monitor->delay_buffer, &cur_ts, sizeof(ts));
 		front_ts = cur_ts - util_mul_div64(pad, 1000000000ULL, monitor->sample_rate);
 		diff = (int64_t)front_ts - (int64_t)last_frame_ts;
-		bad_diff = !last_frame_ts || llabs(diff) > 5000000000 || monitor->time_since_prev > 100000000ULL;
+		bad_diff = !last_frame_ts || llabs(diff) > 5000000000 ||
+			   monitor->time_since_prev > AUDIO_MONITOR_VIDEO_STALL_NS;
 
 		/* delay audio if rushing */
 		if (!bad_diff && diff > 75000000) {
