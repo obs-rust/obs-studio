@@ -1614,7 +1614,7 @@ area.
   the end of the frame's data no longer loses its last pixels (backport of
   libnsgif 2255b2f74). *All*, 2026-10-26. Issue
   [#2465](https://github.com/obs-rust/obs-studio/issues/2465), PR
-  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
+  [#2468](https://github.com/obs-rust/obs-studio/pull/2468).
 
 ### Scenes and UI
 
