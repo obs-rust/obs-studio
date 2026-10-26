@@ -1,6 +1,9 @@
 #include "build/libobs-pulse.pch.h"
 
 #define PULSE_DATA(voidptr) struct audio_monitor *data = voidptr;
+
+_Static_assert(PULSEAUDIO_MONITOR_DO_NOT_SELF_MONITOR == OBS_SOURCE_DO_NOT_SELF_MONITOR,
+	       "pulseaudio-monitor-steps.h copies OBS_SOURCE_DO_NOT_SELF_MONITOR");
 #define blog(level, msg, ...) blog(level, "pulse-am: " msg, ##__VA_ARGS__)
 
 struct audio_monitor {
@@ -95,19 +98,17 @@ static void do_stream_write(void *param)
 	pulseaudio_lock();
 	pthread_mutex_lock(&data->playback_mutex);
 
-	// If we have grown a large buffer internally, grow the pulse buffer to match so we can write our data out.
-	if (data->new_data.size > data->attr.tlength * 2) {
+	if (pulseaudio_monitor_grow(data->new_data.size, data->attr.tlength)) {
 		data->attr.fragsize = (uint32_t)-1;
 		data->attr.maxlength = (uint32_t)-1;
 		data->attr.prebuf = (uint32_t)-1;
 		data->attr.minreq = (uint32_t)-1;
-		data->attr.tlength = data->new_data.size;
+		data->attr.tlength = pulseaudio_monitor_grown_tlength(data->new_data.size);
 		pa_stream_set_buffer_attr(data->stream, &data->attr, NULL, NULL);
 	}
 
-	// Buffer up enough data before we start playing.
 	if (pa_stream_is_corked(data->stream)) {
-		if (data->new_data.size >= data->attr.tlength) {
+		if (pulseaudio_monitor_uncork(data->new_data.size, data->attr.tlength)) {
 			pa_stream_cork(data->stream, 0, NULL, NULL);
 		} else {
 			goto finish;
@@ -116,14 +117,12 @@ static void do_stream_write(void *param)
 
 	drop_backlog(data);
 
-	while (data->new_data.size > 0) {
+	while (pulseaudio_monitor_write_more(data->new_data.size)) {
 		size_t bytesToFill = data->new_data.size;
 		if (pa_stream_begin_write(data->stream, (void **)&buffer, &bytesToFill))
 			goto finish;
 
-		// PA may request we submit more or less data than we have.
-		// Wait for more data if we cannot perform a full write.
-		if (bytesToFill > data->new_data.size) {
+		if (pulseaudio_monitor_write_short(bytesToFill, data->new_data.size)) {
 			pa_stream_cancel_write(data->stream);
 			goto finish;
 		}
@@ -155,7 +154,7 @@ static void on_audio_playback(void *param, obs_source_t *source, const struct au
 	if (pthread_mutex_trylock(&monitor->playback_mutex) != 0)
 		return;
 
-	if (os_atomic_load_long(&source->activate_refs) == 0)
+	if (pulseaudio_monitor_playback_idle(os_atomic_load_long(&source->activate_refs)))
 		goto unlock;
 
 	success = audio_resampler_resample(monitor->resampler, resample_data, &resample_frames, &ts_offset,
@@ -164,9 +163,9 @@ static void on_audio_playback(void *param, obs_source_t *source, const struct au
 	if (!success)
 		goto unlock;
 
-	bytes = monitor->bytes_per_frame * resample_frames;
+	bytes = pulseaudio_monitor_playback_bytes(monitor->bytes_per_frame, resample_frames);
 
-	if (!close_float(vol, 1.0f, EPSILON)) {
+	if (pulseaudio_monitor_needs_volume(vol)) {
 		pulseaudio_monitor_process_volume(monitor->format, monitor->channels, vol, resample_data,
 						  resample_frames);
 	}
@@ -194,14 +193,15 @@ static void pulseaudio_sink_info(pa_context *c, const pa_sink_info *i, int eol, 
 {
 	UNUSED_PARAMETER(c);
 	PULSE_DATA(userdata);
-	// An error occurred
-	if (eol < 0) {
+	switch (pulseaudio_monitor_sink_result(eol)) {
+	case PULSEAUDIO_MONITOR_SINK_ERROR:
 		data->format = PA_SAMPLE_INVALID;
 		goto skip;
-	}
-	// Terminating call for multi instance callbacks
-	if (eol > 0)
+	case PULSEAUDIO_MONITOR_SINK_END:
 		goto skip;
+	case PULSEAUDIO_MONITOR_SINK_INFO:
+		break;
+	}
 
 	blog(LOG_INFO, "Audio format: %s, %" PRIu32 " Hz, %" PRIu8 " channels",
 	     pa_sample_format_to_string(i->sample_spec.format), i->sample_spec.rate, i->sample_spec.channels);
@@ -263,10 +263,10 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 	monitor->source = source;
 
 	const char *id = obs->audio.monitoring_device_id;
-	if (!id)
+	if (!pulseaudio_monitor_has_device(id))
 		return false;
 
-	if (source->info.output_flags & OBS_SOURCE_DO_NOT_SELF_MONITOR) {
+	if (pulseaudio_monitor_self_monitor_check(source->info.output_flags)) {
 		obs_data_t *s = obs_source_get_settings(source);
 		const char *s_dev_id = obs_data_get_string(s, "device_id");
 		bool match = devices_match(s_dev_id, id);
@@ -281,7 +281,7 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 
 	pulseaudio_init();
 
-	if (strcmp(id, "default") == 0)
+	if (pulseaudio_monitor_is_default(id))
 		get_default_id(&monitor->device);
 	else
 		monitor->device = bstrdup(id);
@@ -298,21 +298,19 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 		blog(LOG_ERROR, "Unable to get sink info !");
 		return false;
 	}
-	if (monitor->format == PA_SAMPLE_INVALID && strcmp(id, "default") != 0) {
-		/* The chosen sink is gone (unplugged); play on the default sink
-		 * until it returns, as the server would have moved us there. */
+	if (pulseaudio_monitor_fallback(monitor->format, id)) {
 		blog(LOG_WARNING, "'%s' is not available, monitoring on the default device until it returns",
 		     monitor->device);
 		bfree(monitor->device);
 		get_default_id(&monitor->device);
 		monitor->fallback = true;
-		if (!monitor->device || !*monitor->device ||
+		if (!pulseaudio_monitor_sink_named(monitor->device) ||
 		    pulseaudio_get_sink_info(pulseaudio_sink_info, monitor->device, (void *)monitor) < 0) {
 			blog(LOG_ERROR, "Unable to get sink info !");
 			return false;
 		}
 	}
-	if (monitor->format == PA_SAMPLE_INVALID) {
+	if (pulseaudio_monitor_format_invalid(monitor->format)) {
 		blog(LOG_ERROR, "An error occurred while getting the source info!");
 		return false;
 	}
@@ -357,9 +355,9 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 	monitor->attr.maxlength = (uint32_t)-1;
 	monitor->attr.minreq = (uint32_t)-1;
 	monitor->attr.prebuf = (uint32_t)-1;
-	monitor->attr.tlength = pa_usec_to_bytes(25000, &spec);
+	monitor->attr.tlength = pa_usec_to_bytes(pulseaudio_monitor_tlength_usec(), &spec);
 
-	pa_stream_flags_t flags = pulseaudio_monitor_stream_flags(monitor->fallback ? "default" : id);
+	pa_stream_flags_t flags = pulseaudio_monitor_open_flags(monitor->fallback, id);
 
 	int_fast32_t ret = pulseaudio_connect_playback(monitor->stream, monitor->device, &monitor->attr, flags);
 	if (ret < 0) {
@@ -400,8 +398,7 @@ static void on_sink_event(pa_context *c, pa_subscription_event_type_t t, uint32_
 	UNUSED_PARAMETER(c);
 	UNUSED_PARAMETER(userdata);
 
-	pa_subscription_event_type_t type = t & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
-	if (type != PA_SUBSCRIPTION_EVENT_NEW && type != PA_SUBSCRIPTION_EVENT_REMOVE)
+	if (!pulseaudio_monitor_event_queued(t))
 		return;
 
 	pthread_mutex_lock(&sink_event_mutex);
@@ -495,7 +492,7 @@ void audio_monitor_reset(struct audio_monitor *monitor)
 		if (monitor->stream) {
 			pulseaudio_lock();
 			pa_context *context = pa_stream_get_context(monitor->stream);
-			bool context_good = context && PA_CONTEXT_IS_GOOD(pa_context_get_state(context));
+			bool context_good = context && pulseaudio_monitor_context_good(pa_context_get_state(context));
 			pulseaudio_unlock();
 
 			if (!context_good) {
@@ -516,7 +513,7 @@ void audio_monitor_destroy(struct audio_monitor *monitor)
 
 		pthread_mutex_lock(&obs->audio.monitoring_mutex);
 		da_erase_item(obs->audio.monitors, &monitor);
-		bool last = obs->audio.monitors.num == 0;
+		bool last = pulseaudio_monitor_last(obs->audio.monitors.num);
 		pthread_mutex_unlock(&obs->audio.monitoring_mutex);
 
 		if (last)
