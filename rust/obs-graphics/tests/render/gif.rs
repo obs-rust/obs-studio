@@ -305,35 +305,41 @@ fn gif_scan_whole() {
 
 #[test]
 fn gif_scan_incremental() {
+    // Every split point and a byte-by-byte scan end in the state of a whole
+    // scan (#2515).
     let data = three_frames(Some(2), u32::from(disposal::RESTORE_BG), None);
     let whole = scan_all(&data, VecBitmaps::default(), R8G8B8A8, false);
 
-    for k in [13, 25, 44, 50, 52, 61] {
+    for k in 0..=data.len() {
         let mut g = Gif::new(VecBitmaps::default(), R8G8B8A8 as u32);
-        assert_eq!(g.data_scan(&data[..k]), NsgifError::EndOfData);
-        assert_eq!(g.data_scan(&data), NsgifError::Ok);
-        assert_eq!(g.info(), whole.info());
+        let _ = g.data_scan(&data[..k]);
+        assert_eq!(g.data_scan(&data), NsgifError::Ok, "split {k}");
+        assert_eq!(g.info(), whole.info(), "split {k}");
         for f in 0..3 {
             assert_eq!(g.frame_info(f), whole.frame_info(f), "split {k} frame {f}");
         }
     }
-    // Kept, characterized, not endorsed: resuming inside a frame.
-    for k in [51, 62, 70, 85] {
-        let mut g = Gif::new(VecBitmaps::default(), R8G8B8A8 as u32);
-        assert_eq!(g.data_scan(&data[..k]), NsgifError::EndOfData);
-        assert_eq!(g.data_scan(&data), NsgifError::DataFrame);
-        assert_eq!(g.data_scan(&data), NsgifError::DataFrame);
-        assert_eq!(g.info().frame_count, 0);
-    }
+
     let mut g = Gif::new(VecBitmaps::default(), R8G8B8A8 as u32);
+    let mut count = 0;
     for n in 0..=data.len() {
-        let expect = if n < 61 {
-            NsgifError::EndOfData
-        } else {
-            NsgifError::DataFrame
-        };
-        assert_eq!(g.data_scan(&data[..n]), expect, "n {n}");
-        assert_eq!(g.info().frame_count, 0);
+        let ret = g.data_scan(&data[..n]);
+        let now = g.info().frame_count;
+        assert!(now >= count);
+        count = now;
+        assert_eq!(
+            ret,
+            if now == 0 {
+                NsgifError::EndOfData
+            } else {
+                NsgifError::Ok
+            },
+            "n {n}"
+        );
+    }
+    assert_eq!(g.info(), whole.info());
+    for f in 0..3 {
+        assert_eq!(g.frame_info(f), whole.frame_info(f));
     }
 }
 

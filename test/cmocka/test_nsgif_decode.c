@@ -1789,16 +1789,9 @@ static void assert_frame_info_equal(const nsgif_frame_info_t *a, const nsgif_fra
 	assert_memory_equal(&a->rect, &b->rect, sizeof(a->rect));
 }
 
-/* Scans in parts, as data arrives. The writer's three-frame GIF puts
- * frame 0's graphic control extension at bytes 44 to 51, its image
- * descriptor at 52 to 61 and its image data from 62.
- *
- * Kept, characterized, not endorsed: when a scan stops at the end of the
- * data inside a frame, nsgif_data_scan keeps the position where the frame's
- * parse stopped, not the frame's start. The next scan resumes there and
- * reads image data (or an extension's terminator) as the next block, which
- * is a bad frame from then on, also with all the data. A split before the
- * extension's last byte or inside the image descriptor resumes correctly. */
+/* Scans in parts, as data arrives: every split point and a byte-by-byte
+ * scan end in the state of a whole scan (#2515). A scan that stops at the
+ * end of the data inside a frame resumes at the frame's start. */
 static void gif_scan_incremental(void **state)
 {
 	(void)state;
@@ -1806,11 +1799,9 @@ static void gif_scan_incremental(void **state)
 	nsgif_t *whole = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
 	nsgif_t *gif;
 
-	/* Split points that resume correctly: the end state of a whole scan. */
-	static const size_t good[] = {13, 25, 44, 50, 52, 61};
-	for (size_t k = 0; k < sizeof(good) / sizeof(good[0]); k++) {
+	for (size_t k = 0; k <= gb_len; k++) {
 		assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
-		assert_int_equal(nsgif_data_scan(gif, good[k], gb), NSGIF_ERR_END_OF_DATA);
+		(void)nsgif_data_scan(gif, k, gb);
 		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_OK);
 		assert_info_equal(nsgif_get_info(gif), nsgif_get_info(whole));
 		for (uint32_t f = 0; f < 3; f++)
@@ -1818,25 +1809,20 @@ static void gif_scan_incremental(void **state)
 		nsgif_destroy(gif);
 	}
 
-	/* Split points inside frame 0's image data, or on its extension's
-	 * last byte: a bad frame for good. */
-	static const size_t bad[] = {51, 62, 70, 85};
-	for (size_t k = 0; k < sizeof(bad) / sizeof(bad[0]); k++) {
-		assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
-		assert_int_equal(nsgif_data_scan(gif, bad[k], gb), NSGIF_ERR_END_OF_DATA);
-		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_FRAME);
-		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_FRAME);
-		assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
-		nsgif_destroy(gif);
-	}
-
-	/* Byte by byte: the end of the data up to byte 60, then a bad frame. */
+	/* Byte by byte: the end of the data until the first frame is complete,
+	 * a success after; the frame count only grows. */
 	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	uint32_t count = 0;
 	for (size_t n = 0; n <= gb_len; n++) {
 		nsgif_error ret = nsgif_data_scan(gif, n, gb);
-		assert_int_equal(ret, n < 61 ? NSGIF_ERR_END_OF_DATA : NSGIF_ERR_DATA_FRAME);
-		assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+		uint32_t now = nsgif_get_info(gif)->frame_count;
+		assert_true(now >= count);
+		count = now;
+		assert_int_equal(ret, now == 0 ? NSGIF_ERR_END_OF_DATA : NSGIF_OK);
 	}
+	assert_info_equal(nsgif_get_info(gif), nsgif_get_info(whole));
+	for (uint32_t f = 0; f < 3; f++)
+		assert_frame_info_equal(nsgif_get_frame_info(gif, f), nsgif_get_frame_info(whole, f));
 	nsgif_destroy(gif);
 	nsgif_destroy(whole);
 }
