@@ -29,6 +29,8 @@
  *   obs_encoder_audio_start_paired_late() (asked for each paired encoder the
  *   walk reaches, once it has received audio) and
  *   obs_encoder_audio_start_video_pts() (the pts step after an encode);
+ *   gpu_encode_thread() (obs-video-gpu-encode.c) asks the same three for each
+ *   texture encoder, the pts step after every encode, successful or not;
  * - buffer_audio(): obs_encoder_audio_start_size(),
  *   obs_encoder_audio_start_paired() and _unpaired() (the two branches),
  *   obs_encoder_audio_start_no_video() (the paired video has not started) and

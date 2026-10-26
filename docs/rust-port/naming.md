@@ -56,7 +56,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/obs-hotkey-name-map.c`, `obs-hotkey-bindings.c.h`, `obs-hotkey-translations.c.h`, `obs-hotkey-press.c.h`, `obs-hotkey-pair.c.h`, `obs-nix-hotkey-state.c.h`, `obs-nix-portal-shortcut-ids.c.h`, `obs-nix-portal-shortcut-sets.c.h` | `rust/obs-hotkey` |
 | `libobs/callback/` | `rust/obs-callback` |
 | `libobs/obs-missing-files.c.h` | `rust/obs-missing-files` |
-| `libobs/obs-output-delay.c.h`, `obs-output-interleave.c.h`, `obs-output-caption-text.c.h`, `obs-output-protocols.c.h`, `obs-service-getters.c.h`, `obs-encoder-roi.c.h`, `obs-output-video-checks.c.h`, `obs-encoder-size.c.h`, `obs-encoder-audio-start.c.h`, `obs-output-stop-stats.c.h`, `obs-output-raw-audio.c.h`, `obs-output-slots.c.h` | `rust/obs-output` |
+| `libobs/obs-output-delay.c.h`, `obs-output-interleave.c.h`, `obs-output-caption-text.c.h`, `obs-output-protocols.c.h`, `obs-service-getters.c.h`, `obs-encoder-roi.c.h`, `obs-output-video-checks.c.h`, `obs-encoder-size.c.h`, `obs-encoder-audio-start.c.h`, `obs-output-stop-stats.c.h`, `obs-output-raw-audio.c.h`, `obs-output-slots.c.h`, `obs-encoder-gpu-gates.c.h` | `rust/obs-output` |
 | `libobs/obs-scene*.c.h` | `rust/obs-scene` |
 | `libobs/obs-source*.c.h` | `rust/obs-source` |
 | `libobs/audio-monitoring/` | `rust/obs-audio-monitoring` |

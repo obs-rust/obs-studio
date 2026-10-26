@@ -19,6 +19,10 @@
 
 void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder);
 
+_Static_assert(OBS_ENCODER_GPU_GATES_WAIT_FRAMES == NUM_ENCODE_TEXTURE_FRAMES_TO_WAIT,
+	       "NUM_ENCODE_TEXTURE_FRAMES_TO_WAIT");
+_Static_assert(OBS_ENCODER_GPU_GATES_FORMAT_P010 == VIDEO_FORMAT_P010, "VIDEO_FORMAT_P010");
+
 #define NBSP "\xC2\xA0"
 static const char *gpu_encode_frame_name = "gpu_encode_frame";
 static void *gpu_encode_thread(void *data)
@@ -46,8 +50,8 @@ static void *gpu_encode_thread(void *data)
 		if (os_atomic_load_bool(&video->gpu_encode_stop))
 			break;
 
-		if (wait_frames) {
-			wait_frames--;
+		if (obs_encoder_gpu_gates_warming(wait_frames)) {
+			wait_frames = obs_encoder_gpu_gates_warm_next(wait_frames);
 			continue;
 		}
 
@@ -97,7 +101,7 @@ static void *gpu_encode_thread(void *data)
 				struct obs_encoder_group *group = encoder->encoder_group;
 				bool ready = false;
 				pthread_mutex_lock(&group->mutex);
-				ready = group->start_timestamp == timestamp;
+				ready = obs_encoder_audio_start_group_ready(group->start_timestamp, timestamp);
 				pthread_mutex_unlock(&group->mutex);
 				if (!ready)
 					continue;
@@ -111,7 +115,8 @@ static void *gpu_encode_thread(void *data)
 					if (!enc)
 						continue;
 
-					if (!enc->first_received || enc->first_raw_ts > timestamp) {
+					if (!enc->first_received ||
+					    obs_encoder_audio_start_paired_late(enc->first_raw_ts, timestamp)) {
 						wait_for_audio = true;
 					}
 
@@ -128,10 +133,12 @@ static void *gpu_encode_thread(void *data)
 			// an explicit counter is used instead of remainder calculation
 			// to allow multiple encoders started at the same time to start on
 			// the same frame
-			skip = encoder->frame_rate_divisor_counter++;
-			if (encoder->frame_rate_divisor_counter == encoder->frame_rate_divisor)
+			skip = encoder->frame_rate_divisor_counter;
+			encoder->frame_rate_divisor_counter = obs_encoder_gpu_gates_divisor_inc(skip);
+			if (obs_encoder_gpu_gates_divisor_wrap(encoder->frame_rate_divisor_counter,
+							       encoder->frame_rate_divisor))
 				encoder->frame_rate_divisor_counter = 0;
-			if (skip)
+			if (obs_encoder_gpu_gates_divisor_skip(skip))
 				continue;
 
 			handle_encoder_group_reconfigure_request(encoder);
@@ -144,10 +151,7 @@ static void *gpu_encode_thread(void *data)
 			if (!encoder->start_ts)
 				encoder->start_ts = timestamp;
 
-			if (++lock_count == encoders.num)
-				next_key = 0;
-			else
-				next_key++;
+			next_key = obs_encoder_gpu_gates_next_key(++lock_count, encoders.num, next_key);
 
 			/* Get the frame encode request timestamp. This
 			 * needs to be read just before the encode request.
@@ -175,7 +179,7 @@ static void *gpu_encode_thread(void *data)
 			 * the CTS (composition time), FER (frame encode request), FERC
 			 * (frame encode request complete) and current PTS. PTS is used to
 			 * associate the frame timing data with the encode packet. */
-			if (tf.timestamp) {
+			if (obs_encoder_gpu_gates_record_timing(tf.timestamp)) {
 				struct encoder_packet_time *ept = da_push_back_new(encoder->encoder_packet_times);
 				// Get the frame encode request complete timestamp
 				if (success) {
@@ -194,7 +198,8 @@ static void *gpu_encode_thread(void *data)
 
 			lock_key = next_key;
 
-			encoder->cur_pts += encoder->timebase_num * encoder->frame_rate_divisor;
+			encoder->cur_pts = obs_encoder_audio_start_video_pts(encoder->cur_pts, encoder->timebase_num,
+									     encoder->frame_rate_divisor);
 		}
 
 		/* -------------- */
@@ -203,8 +208,9 @@ static void *gpu_encode_thread(void *data)
 
 		tf.lock_key = next_key;
 
-		if (--tf.count) {
-			tf.timestamp += interval;
+		tf.count = obs_encoder_gpu_gates_count_next(tf.count);
+		if (obs_encoder_gpu_gates_requeue(tf.count)) {
+			tf.timestamp = obs_encoder_gpu_gates_requeue_ts(tf.timestamp, interval);
 			deque_push_front(&video->gpu_encoder_queue, &tf, sizeof(tf));
 
 			video_output_inc_texture_skipped_frames(video->video);
@@ -242,7 +248,7 @@ bool init_gpu_encoding(struct obs_core_video_mix *video)
 		gs_texture_t *tex;
 		gs_texture_t *tex_uv;
 
-		if (info->format == VIDEO_FORMAT_P010) {
+		if (obs_encoder_gpu_gates_p010(info->format)) {
 			gs_texture_create_p010(&tex, &tex_uv, info->width, info->height,
 					       GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 		} else {

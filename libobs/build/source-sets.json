@@ -13,6 +13,7 @@
     "obs-data.h",
     "obs-defs.h",
     "obs-encoder-audio-start.h",
+    "obs-encoder-gpu-gates.h",
     "obs-encoder-roi.h",
     "obs-encoder-size.h",
     "obs-encoder.h",
