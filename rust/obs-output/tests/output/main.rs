@@ -8,6 +8,7 @@ mod delay_parity;
 mod encoder_audio_start;
 mod encoder_audio_start_parity;
 mod encoder_bind;
+mod encoder_bind_parity;
 mod encoder_gpu_gates;
 mod encoder_gpu_gates_parity;
 mod encoder_roi;

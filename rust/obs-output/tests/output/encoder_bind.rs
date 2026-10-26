@@ -21,8 +21,8 @@ use obs_output::encoder_bind::{
 };
 use proptest::prelude::*;
 
-const TYPE_AUDIO: i32 = 0;
-const TYPE_VIDEO: i32 = 1;
+pub(crate) const TYPE_AUDIO: i32 = 0;
+pub(crate) const TYPE_VIDEO: i32 = 1;
 
 const EDGE_TYPE: [i32; 7] = [i32::MIN, -1, TYPE_AUDIO, TYPE_VIDEO, 2, 3, i32::MAX];
 const EDGE_U32: [u32; 11] = [
@@ -39,7 +39,7 @@ const EDGE_U32: [u32; 11] = [
     u32::MAX,
 ];
 
-fn tb(num: u32, den: u32) -> Timebase {
+pub(crate) fn tb(num: u32, den: u32) -> Timebase {
     Timebase { num, den }
 }
 
@@ -48,7 +48,7 @@ fn tb(num: u32, den: u32) -> Timebase {
 
 /// What an encoder's `media` (or `fps_override`) points at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Media {
+pub(crate) enum Media {
     Video(Video),
     Audio(u32),
     /// The frame rate divisor video `encoder_set_video()` creates.
@@ -56,38 +56,38 @@ enum Media {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Video {
-    fps_num: u32,
-    fps_den: u32,
+pub(crate) struct Video {
+    pub(crate) fps_num: u32,
+    pub(crate) fps_den: u32,
 }
 
-const V_NTSC: Video = Video {
+pub(crate) const V_NTSC: Video = Video {
     fps_num: 30000,
     fps_den: 1001,
 };
-const V_60: Video = Video {
+pub(crate) const V_60: Video = Video {
     fps_num: 60,
     fps_den: 1,
 };
-const V_FPS0: Video = Video {
+pub(crate) const V_FPS0: Video = Video {
     fps_num: 0,
     fps_den: 1,
 };
-const A_48K: u32 = 48000;
+pub(crate) const A_48K: u32 = 48000;
 
 /// The gates the callers ask, so the stand-in runs on the core
 /// ([`CORE`]) or on the origin/master expressions inline ([`ORIGIN`]).
-struct Gates {
-    not_video: fn(i32) -> bool,
-    not_audio: fn(i32) -> bool,
-    video_timebase: fn(bool, u32, u32) -> Timebase,
-    audio_timebase: fn(bool, u32) -> Timebase,
-    divisor_override: fn(u32) -> bool,
-    locked: fn(i32) -> bool,
-    shutdown_unstarted: fn(bool, bool) -> bool,
+pub(crate) struct Gates {
+    pub(crate) not_video: fn(i32) -> bool,
+    pub(crate) not_audio: fn(i32) -> bool,
+    pub(crate) video_timebase: fn(bool, u32, u32) -> Timebase,
+    pub(crate) audio_timebase: fn(bool, u32) -> Timebase,
+    pub(crate) divisor_override: fn(u32) -> bool,
+    pub(crate) locked: fn(i32) -> bool,
+    pub(crate) shutdown_unstarted: fn(bool, bool) -> bool,
 }
 
-const CORE: Gates = Gates {
+pub(crate) const CORE: Gates = Gates {
     not_video,
     not_audio,
     video_timebase,
@@ -98,7 +98,7 @@ const CORE: Gates = Gates {
 };
 
 /// origin/master's obs-encoder.c, its expressions inline.
-const ORIGIN: Gates = Gates {
+pub(crate) const ORIGIN: Gates = Gates {
     not_video: |t| t != TYPE_VIDEO,
     not_audio: |t| t != TYPE_AUDIO,
     video_timebase: |has, num, den| if has { tb(den, num) } else { tb(0, 0) },
@@ -109,27 +109,27 @@ const ORIGIN: Gates = Gates {
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct Stand {
-    encoder_type: i32,
-    active: bool,
-    initialized: bool,
-    media: Option<Media>,
-    original_video: Option<Video>,
-    fps_override: bool,
-    frame_rate_divisor: u32,
-    timebase: Timebase,
+pub(crate) struct Stand {
+    pub(crate) encoder_type: i32,
+    pub(crate) active: bool,
+    pub(crate) initialized: bool,
+    pub(crate) media: Option<Media>,
+    pub(crate) original_video: Option<Video>,
+    pub(crate) fps_override: bool,
+    pub(crate) frame_rate_divisor: u32,
+    pub(crate) timebase: Timebase,
     /// the outputs' `obs_output_needs_encoders()`
-    needs: Vec<bool>,
-    warnings: u32,
-    shutdowns: u32,
-    overrides_created: u32,
-    overrides_freed: u32,
-    needs_asked: usize,
-    unlocks: u32,
+    pub(crate) needs: Vec<bool>,
+    pub(crate) warnings: u32,
+    pub(crate) shutdowns: u32,
+    pub(crate) overrides_created: u32,
+    pub(crate) overrides_freed: u32,
+    pub(crate) needs_asked: usize,
+    pub(crate) unlocks: u32,
 }
 
 impl Stand {
-    fn new(encoder_type: i32, active: bool, initialized: bool) -> Self {
+    pub(crate) fn new(encoder_type: i32, active: bool, initialized: bool) -> Self {
         Self {
             encoder_type,
             active,
@@ -150,7 +150,7 @@ impl Stand {
     }
 
     /// `encoder_set_video()`
-    fn encoder_set_video(&mut self, g: &Gates, video: Option<Video>) {
+    pub(crate) fn encoder_set_video(&mut self, g: &Gates, video: Option<Video>) {
         if self.fps_override {
             self.overrides_freed += 1;
             self.fps_override = false;
@@ -169,7 +169,7 @@ impl Stand {
     }
 
     /// `obs_encoder_set_video()` after `obs_encoder_valid()`
-    fn set_video(&mut self, g: &Gates, video: Option<Video>) {
+    pub(crate) fn set_video(&mut self, g: &Gates, video: Option<Video>) {
         if (g.not_video)(self.encoder_type) || self.active || self.initialized {
             self.warnings += 1;
             return;
@@ -178,7 +178,7 @@ impl Stand {
     }
 
     /// `obs_encoder_set_audio()` after `obs_encoder_valid()`
-    fn set_audio(&mut self, g: &Gates, audio: Option<u32>) {
+    pub(crate) fn set_audio(&mut self, g: &Gates, audio: Option<u32>) {
         if (g.not_audio)(self.encoder_type) || self.active {
             self.warnings += 1;
             return;
@@ -193,7 +193,7 @@ impl Stand {
     }
 
     /// `obs_encoder_video()`
-    fn video(&mut self, g: &Gates) -> Option<Media> {
+    pub(crate) fn video(&mut self, g: &Gates) -> Option<Media> {
         if (g.not_video)(self.encoder_type) {
             self.warnings += 1;
             return None;
@@ -206,7 +206,7 @@ impl Stand {
     }
 
     /// `obs_encoder_parent_video()`
-    fn parent_video(&mut self, g: &Gates) -> Option<Media> {
+    pub(crate) fn parent_video(&mut self, g: &Gates) -> Option<Media> {
         if (g.not_video)(self.encoder_type) {
             self.warnings += 1;
             return None;
@@ -215,7 +215,7 @@ impl Stand {
     }
 
     /// `obs_encoder_audio()`
-    fn audio(&mut self, g: &Gates) -> Option<Media> {
+    pub(crate) fn audio(&mut self, g: &Gates) -> Option<Media> {
         if (g.not_audio)(self.encoder_type) {
             self.warnings += 1;
             return None;
@@ -224,7 +224,12 @@ impl Stand {
     }
 
     /// `obs_encoder_shutdown_unstarted()`, with the two trylock results
-    fn shutdown_unstarted(&mut self, g: &Gates, outputs_trylock: i32, init_trylock: i32) {
+    pub(crate) fn shutdown_unstarted(
+        &mut self,
+        g: &Gates,
+        outputs_trylock: i32,
+        init_trylock: i32,
+    ) {
         if !(g.locked)(outputs_trylock) {
             return;
         }
@@ -247,7 +252,7 @@ impl Stand {
     }
 
     /// `obs_encoder_unbind_video()`
-    fn unbind_video(&mut self, g: &Gates, videos: &[Video]) -> Option<Media> {
+    pub(crate) fn unbind_video(&mut self, g: &Gates, videos: &[Video]) -> Option<Media> {
         if (g.not_video)(self.encoder_type) {
             return None;
         }
@@ -271,7 +276,7 @@ impl Stand {
     }
 
     /// `obs_encoder_rebind_video()`
-    fn rebind_video(&mut self, g: &Gates, video: Option<Video>) {
+    pub(crate) fn rebind_video(&mut self, g: &Gates, video: Option<Video>) {
         if self.media.is_none() && !self.initialized && !self.active {
             self.encoder_set_video(g, video);
         }
@@ -740,7 +745,7 @@ fn edge_stand_in_every_gate_combination() {
 // Proptests
 
 #[derive(Clone, Debug)]
-enum Call {
+pub(crate) enum Call {
     SetVideo(Option<Video>),
     SetAudio(Option<u32>),
     Video,
@@ -762,7 +767,7 @@ fn video() -> impl Strategy<Value = Video> {
     ]
 }
 
-fn call() -> impl Strategy<Value = Call> {
+pub(crate) fn call() -> impl Strategy<Value = Call> {
     prop_oneof![
         proptest::option::of(video()).prop_map(Call::SetVideo),
         proptest::option::of(any::<u32>()).prop_map(Call::SetAudio),
@@ -780,7 +785,7 @@ fn call() -> impl Strategy<Value = Call> {
     ]
 }
 
-fn apply(e: &mut Stand, g: &Gates, c: &Call) -> Option<Media> {
+pub(crate) fn apply(e: &mut Stand, g: &Gates, c: &Call) -> Option<Media> {
     match c {
         Call::SetVideo(v) => e.set_video(g, *v),
         Call::SetAudio(a) => e.set_audio(g, *a),
