@@ -187,10 +187,13 @@ pub fn audio_pts(cur_pts: i64, framesize: usize) -> i64 {
     cur_pts.wrapping_add_unsigned(to_u64(framesize))
 }
 
-/// `obs_encoder_set_gpu_scale_type()` and
-/// `obs_encoder_set_frame_rate_divisor()` after `obs_encoder_valid()`:
-/// `encoder_type` (`info.type`) is not [`OBS_ENCODER_VIDEO`], the first
-/// refusal. The active and initialized refusals follow in the C.
+/// `obs_encoder_set_gpu_scale_type()`,
+/// `obs_encoder_set_frame_rate_divisor()` and `obs_encoder_set_video()`
+/// after `obs_encoder_valid()`: `encoder_type` (`info.type`) is not
+/// [`OBS_ENCODER_VIDEO`], the first refusal. The active and initialized
+/// refusals follow in the C. `obs_encoder_video()`,
+/// `obs_encoder_parent_video()` and `obs_encoder_unbind_video()` refuse an
+/// encoder of another type the same way ([`crate::encoder_bind`]).
 #[must_use]
 pub fn not_video(encoder_type: i32) -> bool {
     crate::encoder_size::scaled_gate(encoder_type, false, false) == ScaledGate::NotVideo

@@ -26,6 +26,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-canvas-draw.c.h.o",
     "obs-context-names.c.h.o",
     "obs-encoder-audio-start.c.h.o",
+    "obs-encoder-bind.c.h.o",
     "obs-encoder-gpu-gates.c.h.o",
     "obs-encoder-roi.c.h.o",
     "obs-encoder-size.c.h.o",

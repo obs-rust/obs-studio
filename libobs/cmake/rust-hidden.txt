@@ -537,6 +537,15 @@ obs_encoder_audio_start_can_send
 obs_encoder_audio_start_audio_pts
 obs_encoder_audio_start_not_video
 obs_encoder_audio_start_divisor_ok
+# obs-encoder-bind.c: the setters, getters and unstarted shutdown in
+# obs-encoder.c call them inside libobs. Declared in obs-encoder-bind.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_encoder_bind_not_audio
+obs_encoder_bind_video_timebase
+obs_encoder_bind_audio_timebase
+obs_encoder_bind_divisor_override
+obs_encoder_bind_locked
+obs_encoder_bind_shutdown_unstarted
 # obs-encoder-gpu-gates.c: gpu_encode_thread() and init_gpu_encoding() in
 # obs-video-gpu-encode.c call them inside libobs. Declared in
 # obs-encoder-gpu-gates.h without EXPORT, so the shims stay hidden the same

@@ -37,6 +37,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -60,32 +61,42 @@ pub struct Timebase {
 /// active refusal follows in the C; it has no initialized refusal.
 #[must_use]
 pub fn not_audio(encoder_type: i32) -> bool {
-    let _ = encoder_type;
-    todo!()
+    encoder_type != OBS_ENCODER_AUDIO
 }
 
 /// `encoder_set_video()`: with a video, the frame period, `fps_den` over
 /// `fps_num`; without one, 0 over 0.
 #[must_use]
 pub fn video_timebase(has_video: bool, fps_num: u32, fps_den: u32) -> Timebase {
-    let _ = (has_video, fps_num, fps_den);
-    todo!()
+    if has_video {
+        Timebase {
+            num: fps_den,
+            den: fps_num,
+        }
+    } else {
+        Timebase::default()
+    }
 }
 
 /// `obs_encoder_set_audio()` after the refusals: with an audio, 1 over the
 /// sample rate; without one, 0 over 0.
 #[must_use]
 pub fn audio_timebase(has_audio: bool, sample_rate: u32) -> Timebase {
-    let _ = (has_audio, sample_rate);
-    todo!()
+    if has_audio {
+        Timebase {
+            num: 1,
+            den: sample_rate,
+        }
+    } else {
+        Timebase::default()
+    }
 }
 
 /// `encoder_set_video()` with a video: the frame rate divisor is not 0, so
 /// the video with that divisor (`fps_override`) is created.
 #[must_use]
 pub fn divisor_override(frame_rate_divisor: u32) -> bool {
-    let _ = frame_rate_divisor;
-    todo!()
+    frame_rate_divisor != 0
 }
 
 /// `obs_encoder_shutdown_unstarted()`: a `pthread_mutex_trylock()` result
@@ -93,8 +104,7 @@ pub fn divisor_override(frame_rate_divisor: u32) -> bool {
 /// `init_mutex` only when `outputs_mutex` is held.
 #[must_use]
 pub fn locked(trylock_result: i32) -> bool {
-    let _ = trylock_result;
-    todo!()
+    trylock_result == 0
 }
 
 /// `obs_encoder_shutdown_unstarted()` with both mutexes held: shut the
@@ -102,6 +112,5 @@ pub fn locked(trylock_result: i32) -> bool {
 /// that needs its encoders; the caller's walk stops at the first).
 #[must_use]
 pub fn shutdown_unstarted(initialized: bool, needed: bool) -> bool {
-    let _ = (initialized, needed);
-    todo!()
+    initialized && !needed
 }
