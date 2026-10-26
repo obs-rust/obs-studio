@@ -3410,6 +3410,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_video_tick_steps": {
+      "sources": [
+        "test/cmocka/test_source_video_tick_steps.c",
+        "libobs/obs-source-video-tick.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-video-tick.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_volume_apply_steps": {
       "sources": [
         "test/cmocka/test_source_volume_apply_steps.c",
@@ -5503,6 +5523,12 @@
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_video_tick_steps": {
+      "target": "test_source_video_tick_steps",
       "command": [
         "${target}"
       ]
