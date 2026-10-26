@@ -1497,6 +1497,20 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_nsgif_decode": {
+      "sources": [
+        "test/cmocka/test_nsgif_decode.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "definitions": [
+        "NSGIF_DATA_DIR=\"${source}/test/cmocka/data\""
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_null_output_stop_thread": {
       "sources": [
         "test/cmocka/test_null_output_stop_thread.c"
@@ -4837,6 +4851,9 @@
     },
     "test_nal": {
       "target": "test_nal"
+    },
+    "test_nsgif_decode": {
+      "target": "test_nsgif_decode"
     },
     "test_null_output_stop_thread": {
       "target": "test_null_output_stop_thread",
