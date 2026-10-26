@@ -26,12 +26,22 @@ const char *get_module_extension(void)
 char *find_libobs_data_file(const char *file)
 {
     NSBundle *frameworkBundle = [NSBundle bundleWithIdentifier:@"com.obsproject.libobs"];
+    /* Without the bundle (a libobs.framework with no Info.plist), there is no
+     * Resources path. Return NULL, so obs_find_data_file searches the data
+     * paths, as it does on the other platforms. */
+    if (!frameworkBundle)
+        return NULL;
+
     NSString *libobsDataPath =
         [[[frameworkBundle bundleURL] path] stringByAppendingFormat:@"/%@/%s", @"Resources", file];
-    size_t path_length = strlen(libobsDataPath.UTF8String);
+    const char *libobsDataPathUTF8 = libobsDataPath.UTF8String;
+    if (!libobsDataPathUTF8)
+        return NULL;
+
+    size_t path_length = strlen(libobsDataPathUTF8);
 
     char *path = bmalloc(path_length + 1);
-    snprintf(path, (path_length + 1), "%s", libobsDataPath.UTF8String);
+    snprintf(path, (path_length + 1), "%s", libobsDataPathUTF8);
 
     return path;
 }

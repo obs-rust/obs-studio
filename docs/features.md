@@ -2248,6 +2248,11 @@ area.
   [obs-rust/obs-browser#14](https://github.com/obs-rust/obs-browser/pull/14), upstream
   [obsproject/obs-studio#14082](https://github.com/obsproject/obs-studio/issues/14082),
   [obsproject/obs-browser#556](https://github.com/obsproject/obs-browser/pull/556).
+- On macOS, looking up a libobs data file no longer crashes when libobs
+  is loaded from a framework without a bundle identifier (no
+  `Info.plist`); the lookup searches the data paths instead. *macOS*,
+  pending merge. Issue
+  [#2538](https://github.com/obs-rust/obs-studio/issues/2538).
 
 ### Security hardening
 
