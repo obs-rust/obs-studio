@@ -1,7 +1,9 @@
 //! `libobs/graphics/libnsgif/lzw.c.h` shims against the C oracle. The
-//! fixture is a whole 1920x1080 GIF frame through `lzw_decode_map`, as
-//! `gif.c` decodes it: a code stream with 8-bit roots, records of 2 to 40
-//! values and a clear whenever the table is full, in 255-byte sub-blocks.
+//! fixture is a whole 1920x1080 GIF frame, as `gif.c` decodes it: a code
+//! stream with 8-bit roots, records of 2 to 40 values and a clear whenever
+//! the table is full, in 255-byte sub-blocks. Through `lzw_decode_map` (a
+//! full-width frame) and through `lzw_decode` until the end of the data
+//! (an interlaced or clipped frame decodes through the output stack).
 
 use core::ffi::c_void;
 use core::ptr;
@@ -10,7 +12,8 @@ use std::hint::black_box;
 use criterion::Criterion;
 use obs_c_oracle::lzw as c_lzw;
 use obs_graphics::ffi::lzw::{
-    LzwCtx, lzw_context_create, lzw_context_destroy, lzw_decode_init_map, lzw_decode_map,
+    LzwCtx, lzw_context_create, lzw_context_destroy, lzw_decode, lzw_decode_init,
+    lzw_decode_init_map, lzw_decode_map,
 };
 
 use crate::pair;
@@ -129,6 +132,40 @@ pub fn benchmarks(criterion: &mut Criterion) {
                 c_lzw::oracle_lzw_decode_map(c_ctx, c_px.as_mut_ptr(), PIXELS as u32, &mut written);
             }
             (written, black_box(c_px[PIXELS - 1]))
+        },
+    );
+    pair(
+        criterion,
+        "lzw/decode_stack_1080p",
+        || {
+            let (mut total, mut out, mut n) = (0u64, ptr::null::<u8>(), 0u32);
+            // SAFETY: a live context and valid out-pointers.
+            let res = unsafe {
+                lzw_decode_init(rust_ctx, 8, data.as_ptr(), data.len(), 0);
+                loop {
+                    let res = lzw_decode(rust_ctx, &mut out, &mut n);
+                    total += u64::from(n);
+                    if res != obs_graphics::lzw::LzwResult::Ok {
+                        break res as i32;
+                    }
+                }
+            };
+            (res, black_box(total))
+        },
+        || {
+            let (mut total, mut out, mut n) = (0u64, ptr::null::<u8>(), 0u32);
+            // SAFETY: as above, through the C signature.
+            let res = unsafe {
+                c_lzw::oracle_lzw_decode_init(c_ctx, 8, data.as_ptr(), data.len(), 0);
+                loop {
+                    let res = c_lzw::oracle_lzw_decode(c_ctx, &mut out, &mut n);
+                    total += u64::from(n);
+                    if res != 0 {
+                        break res;
+                    }
+                }
+            };
+            (res, black_box(total))
         },
     );
     // SAFETY: from the create functions, not used afterwards.
