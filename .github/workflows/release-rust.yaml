@@ -554,6 +554,9 @@ jobs:
     uses: ./.github/workflows/build-project.yaml
     with:
       full: true
+      # Installs the .flatpak bundle and runs it with a saved capture
+      # profile; the release publishes that bundle (#2400).
+      flatpak-runtime-test: true
     secrets: inherit
     permissions:
       actions: read
@@ -595,6 +598,11 @@ jobs:
           name: obs-studio-appimage
           path: appimage
 
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: flatpak-bundle
+          path: flatpak
+
       - name: Create or repair release 🛫
         env:
           GH_TOKEN: ${{ github.token }}
@@ -619,6 +627,8 @@ jobs:
           # Preserve the name and zsync metadata generated from the executable.
           # Copy both so the same artifacts remain available to continuous.
           cp appimage/OBS-Studio-Rust-*-linux-x86_64.AppImage* dist/
+          # The bundle the gate's Flatpak Saved Profile job installed and ran.
+          cp flatpak/obs-studio-rust-x86_64.flatpak "dist/OBS-Studio-Rust-$VERSION-linux-x86_64.flatpak"
           uv run --no-project ci/release_decision.py assets --version "$VERSION" dist
           cd dist
           files=(OBS-Studio-Rust-*)
@@ -629,7 +639,7 @@ jobs:
 
           **Daily beta (pre-release).** The in-app updaters offer only certified releases, which a maintainer promotes from a daily beta. macOS packages are signed and notarized when the project's release credentials are configured. For an unnotarized download, copy OBS-Studio-Rust.app to Applications and try opening it, then choose **System Settings → Privacy & Security → Open Anyway**. For a download you trust, the Terminal alternative is \`xattr -dr com.apple.quarantine /Applications/OBS-Studio-Rust.app\`; it removes quarantine from that app only. See [Apple's guidance](https://support.apple.com/102445).
 
-          Windows: SmartScreen will warn. Linux: \`sudo apt install ./OBS-Studio-Rust-$VERSION-ubuntu-26.04-x86_64.deb\` (Ubuntu 26.04 only), or the AppImage for any distribution: \`chmod +x OBS-Studio-Rust-$VERSION-linux-x86_64.AppImage\` and run it.
+          Windows: SmartScreen will warn. Linux: \`sudo apt install ./OBS-Studio-Rust-$VERSION-ubuntu-26.04-x86_64.deb\` (Ubuntu 26.04 only), or the AppImage for any distribution: \`chmod +x OBS-Studio-Rust-$VERSION-linux-x86_64.AppImage\` and run it. Flatpak: \`flatpak install --user ./OBS-Studio-Rust-$VERSION-linux-x86_64.flatpak\` (installs as \`io.github.obs_rust.OBSStudioRust\`, beside upstream's Flatpak; no automatic updates yet).
 
           **Separate settings and app identity.** This beta uses \`obs-studio-rust\` inside your OS's usual config directory. On first launch it copies upstream OBS settings, profiles, scenes and plugin settings without changing the originals. Existing Rust settings are kept. Custom configuration, profile, scene and plugin storage locations stay selected, with a separate \`obs-studio-rust\` directory in each location. Later upstream changes are not imported automatically.
 

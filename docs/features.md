@@ -454,6 +454,13 @@ not get a line.
   [#642](https://github.com/obs-rust/obs-studio/pull/642),
   [#664](https://github.com/obs-rust/obs-studio/pull/664),
   [#679](https://github.com/obs-rust/obs-studio/pull/679).
+- **Flatpak bundle with each release.** Every beta has an
+  `OBS-Studio-Rust-<version>-linux-x86_64.flatpak` next to the .deb and the
+  AppImage. It installs as `io.github.obs_rust.OBSStudioRust` beside
+  upstream's Flatpak, and the release gate installs that file and runs it
+  with a saved screen capture, camera, microphone and browser profile before
+  it ships. *Linux (Flatpak)*, pending merge. Issue
+  [#2400](https://github.com/obs-rust/obs-studio/issues/2400).
 - **AppImage for most Linux distributions.** The AppImage is built on glibc
   2.28 and uses the host's GPU and VA-API drivers, so it starts and encodes
   in hardware on older and current distributions. It bundles PipeWire, finds

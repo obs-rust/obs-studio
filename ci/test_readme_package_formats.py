@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 """The README names as a user's setup only package formats a release ships
-(#2304): a Flatpak is a CI build check, not a download.
+(#2304). Since #2400 each release ships a .flatpak bundle.
 
     uv run --no-project ci/test_readme_package_formats.py
 """
@@ -27,9 +27,12 @@ class ReadmePackageFormatsTest(unittest.TestCase):
                 with self.subTest(format=name):
                     self.assertRegex(release, asset, f"README asks about {name}, but no release ships one")
 
-    def test_readme_says_there_is_no_flatpak(self):
+    def test_readme_names_the_released_flatpak(self):
         readme = " ".join((ROOT / "README.md").read_text().split())
-        self.assertIn("There is no OBS-Studio-Rust Flatpak yet", readme)
+        release = (ROOT / ".github/workflows/release-rust.yaml").read_text()
+        self.assertRegex(release, FORMATS["Flatpak"])
+        self.assertIn("flatpak install --user ./OBS-Studio-Rust-*-linux-x86_64.flatpak", readme)
+        self.assertNotIn("no OBS-Studio-Rust Flatpak yet", readme)
 
 
 if __name__ == "__main__":

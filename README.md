@@ -54,7 +54,7 @@ for the full breakdown.
 > [!TIP]
 > **Come talk to us on [Discord](https://discord.gg/6MWWX4x9pf).** We're a
 > new project, and the people building it are there. Ask a question, tell us
-> what works or breaks on your setup (AppImage, .deb, your plug-ins and
+> what works or breaks on your setup (AppImage, .deb, Flatpak, your plug-ins and
 > capture devices), suggest an idea, or follow the port as it lands. No
 > question is too small.
 
@@ -138,9 +138,12 @@ Each [release](https://github.com/obs-rust/obs-studio/releases) has an
 AppImage, which runs on any distribution (`chmod +x` it and run it), and a
 .deb for Ubuntu 26.04 (`sudo apt install ./OBS-Studio-Rust-*.deb`).
 The AppImage is tested on AlmaLinux 8 (the glibc 2.28 floor), Ubuntu 22.04,
-Ubuntu 24.04, Arch Linux and NixOS. There is
-no OBS-Studio-Rust Flatpak yet: `com.obsproject.Studio` on Flathub is
-upstream OBS Studio, so report its bugs there. Ours will install as
+Ubuntu 24.04, Arch Linux and NixOS. Each release also has a Flatpak
+bundle: `flatpak install --user ./OBS-Studio-Rust-*-linux-x86_64.flatpak`,
+then `flatpak run io.github.obs_rust.OBSStudioRust`. It gets the Freedesktop
+runtime from Flathub and doesn't update itself yet; install the next
+release's bundle the same way. It isn't on Flathub: `com.obsproject.Studio`
+there is upstream OBS Studio, so report its bugs there. Ours installs as
 `io.github.obs_rust.OBSStudioRust`, beside upstream's rather than over it.
 It keeps its settings in its own folder, so to bring over your scenes from
 upstream's Flatpak, copy `~/.var/app/com.obsproject.Studio/config/obs-studio`

@@ -31,7 +31,8 @@ class Decision(unittest.TestCase):
 
     def test_required_assets(self):
         names = rd.required_assets(V)
-        self.assertEqual(len(names), 6)
+        self.assertEqual(len(names), 7)
+        self.assertIn(f"OBS-Studio-Rust-{V}-linux-x86_64.flatpak", names)
         self.assertEqual(rd.missing_assets(V, names), [])
         short = [n for n in names if not n.endswith(".zip")]
         self.assertEqual(

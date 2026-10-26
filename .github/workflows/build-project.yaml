@@ -1270,8 +1270,23 @@ jobs:
       - name: Run Installed Flatpak with Saved Capture Profile
         run: |
           tar -xf "$RUNNER_TEMP/flatpak-runtime-input/flatpak-runtime-repo.tar" -C "$RUNNER_TEMP/flatpak-runtime-input"
+          # The release ships this bundle (#2400), so the test installs the
+          # app from it, the way a user does; the Debug extension comes from
+          # the repo. --runtime-repo lets `flatpak install` find the runtime.
+          flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
+            "$RUNNER_TEMP/flatpak-runtime-input/repo" "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak" \
+            io.github.obs_rust.OBSStudioRust master
           uv run ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
+            --bundle "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak" \
             --output "$RUNNER_TEMP/flatpak-runtime-result"
+      - name: Upload Tested Flatpak Bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flatpak-bundle
+          path: ${{ runner.temp }}/obs-studio-rust-x86_64.flatpak
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
       - name: Upload Flatpak Runtime Evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
