@@ -28,6 +28,14 @@
  * interlacing, transparency, the two decode paths, the end of the data,
  * the LZW results, and the restore and recover steps.
  *
+ * The gif_* cases characterize the state machine and the public API
+ * (gif.c) through nsgif.h before its port to obs-graphics (#2510), on GIFs
+ * that a small writer builds: the strings, the colour layouts, whole and
+ * incremental scans, the screen size quirk, nsgif_data_complete, the frame
+ * order and loops of nsgif_frame_prepare, the disposal across frames in
+ * nsgif_frame_decode and the bitmap callbacks. The pixel values assume a
+ * little-endian host (every CI host is).
+ *
  * test_nsgif_decode_rust builds the same cases with NSGIF_TEST_RUST:
  * without lzw.c, gif-blocks.c and gif-frame.c, against the Rust shims of
  * obs-graphics (lzw.h, gif-blocks.h and gif-frame.h are the boundary; gif.c
@@ -1493,6 +1501,713 @@ static void frame_recover(void **state)
 	assert_int_equal(canvas_px[20], SENTINEL);
 }
 
+/* ---------------------------------------------------------------------- */
+/* The state machine and the public API (gif.c) through nsgif.h. */
+
+static uint8_t gb[1 << 16];
+static size_t gb_len;
+
+static void gb_u8(unsigned v)
+{
+	gb[gb_len++] = (uint8_t)v;
+}
+
+static void gb_u16(unsigned v)
+{
+	gb_u8(v & 0xff);
+	gb_u8(v >> 8);
+}
+
+static void gb_put(const void *p, size_t n)
+{
+	memcpy(gb + gb_len, p, n);
+	gb_len += n;
+}
+
+/* Colour i of every table the writer makes: (i * 16, 255 - i * 16, i * 8). */
+static void gb_table(unsigned bits)
+{
+	for (unsigned i = 0; i < (2u << bits); i++) {
+		gb_u8(i * 16);
+		gb_u8(255 - i * 16);
+		gb_u8(i * 8);
+	}
+}
+
+/* That colour as an R8G8B8A8 pixel on a little-endian host. */
+static uint32_t gb_rgba(unsigned i)
+{
+	return (i * 16) | ((255 - i * 16) << 8) | ((i * 8) << 16) | 0xFF000000u;
+}
+
+/* Header and logical screen descriptor, with a global colour table of
+ * 2 << gct_bits entries when gct_bits >= 0. */
+static void gb_begin(unsigned w, unsigned h, int gct_bits, unsigned bg)
+{
+	gb_len = 0;
+	gb_put("GIF89a", 6);
+	gb_u16(w);
+	gb_u16(h);
+	gb_u8(gct_bits >= 0 ? 0x80u | (unsigned)gct_bits : 0);
+	gb_u8(bg);
+	gb_u8(0);
+	if (gct_bits >= 0)
+		gb_table((unsigned)gct_bits);
+}
+
+static void gb_gce(unsigned disposal, unsigned delay, int transparent)
+{
+	gb_u8(0x21);
+	gb_u8(0xF9);
+	gb_u8(4);
+	gb_u8((disposal << 2) | (transparent >= 0 ? 1 : 0));
+	gb_u16(delay);
+	gb_u8(transparent >= 0 ? (unsigned)transparent : 0);
+	gb_u8(0);
+}
+
+static void gb_loops(unsigned count)
+{
+	gb_u8(0x21);
+	gb_u8(0xFF);
+	gb_u8(11);
+	gb_put("NETSCAPE2.0", 11);
+	gb_u8(3);
+	gb_u8(1);
+	gb_u16(count);
+	gb_u8(0);
+}
+
+/* An image of one colour index, w * h pixels, with a local colour table
+ * when lct_bits >= 0. */
+static void gb_image(unsigned x, unsigned y, unsigned w, unsigned h, bool interlaced, int lct_bits, unsigned index)
+{
+	gb_u8(0x2C);
+	gb_u16(x);
+	gb_u16(y);
+	gb_u16(w);
+	gb_u16(h);
+	gb_u8((lct_bits >= 0 ? 0x80u | (unsigned)lct_bits : 0) | (interlaced ? 0x40u : 0));
+	if (lct_bits >= 0)
+		gb_table((unsigned)lct_bits);
+	lzw_begin(&st, 8);
+	lzw_clear(&st);
+	for (unsigned i = 0; i < w * h; i++)
+		lzw_code(&st, index);
+	lzw_eoi(&st);
+	gb_u8(8);
+	gb_len += lzw_pack(&st, 255, gb + gb_len);
+}
+
+static void gb_end(void)
+{
+	gb_u8(0x3B);
+}
+
+/* The three-frame GIF of most cases: 4x4, four global colours, background
+ * colour 3, loop count `loops` (none when negative).
+ * Frame 0: the whole image in colour 1, delay 5, disposal none.
+ * Frame 1: 2x2 at (1, 1) in colour 2, delay 7, disposal `disposal1`,
+ *          transparent index `transparent1` (none when negative).
+ * Frame 2: 1x1 at (0, 0) in colour 0 of a two-entry local table, no
+ *          graphic control extension. */
+static void gb_three_frames(int loops, unsigned disposal1, int transparent1)
+{
+	gb_begin(4, 4, 1, 3);
+	if (loops >= 0)
+		gb_loops((unsigned)loops);
+	gb_gce(NSGIF_DISPOSAL_NONE, 5, -1);
+	gb_image(0, 0, 4, 4, false, -1, 1);
+	gb_gce(disposal1, 7, transparent1);
+	gb_image(1, 1, 2, 2, false, -1, 2);
+	gb_image(0, 0, 1, 1, false, 0, 0);
+	gb_end();
+}
+
+static nsgif_t *gif_scan_all(const nsgif_bitmap_cb_vt *vt, nsgif_bitmap_fmt_t fmt, bool complete)
+{
+	nsgif_t *gif;
+	assert_int_equal(nsgif_create(vt, fmt, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_OK);
+	if (complete)
+		nsgif_data_complete(gif);
+	return gif;
+}
+
+static void gif_strings(void **state)
+{
+	(void)state;
+	static const char *const errors[] = {
+		"Success",
+		"Out of memory",
+		"Invalid source data",
+		"Requested frame does not exist",
+		"Invalid frame data",
+		"Unexpected end of GIF source data",
+		"Can't add data to completed GIF",
+		"Frame can't be displayed",
+		"Animation complete",
+	};
+	for (int i = 0; i < 9; i++)
+		assert_string_equal(nsgif_strerror((nsgif_error)i), errors[i]);
+	assert_string_equal(nsgif_strerror((nsgif_error)9), "Unknown error");
+	assert_string_equal(nsgif_strerror((nsgif_error)1000), "Unknown error");
+
+	static const char *const disposals[] = {
+		"Unspecified", "None", "Restore background", "Restore previous", "Restore quirk",
+	};
+	for (int i = 0; i < 5; i++)
+		assert_string_equal(nsgif_str_disposal((enum nsgif_disposal)i), disposals[i]);
+	assert_string_equal(nsgif_str_disposal((enum nsgif_disposal)5), "Unspecified");
+	assert_string_equal(nsgif_str_disposal((enum nsgif_disposal)200), "Unspecified");
+}
+
+/* The bitmap format sets the byte order of every palette and pixel; the
+ * host-order formats map to the byte orders of a little-endian host. */
+static void gif_create_and_layouts(void **state)
+{
+	(void)state;
+	static const struct {
+		nsgif_bitmap_fmt_t fmt;
+		uint8_t bytes[4]; /* colour 1: r 16, g 239, b 8, a 255 */
+	} cases[] = {
+		{NSGIF_BITMAP_FMT_R8G8B8A8, {16, 239, 8, 255}}, {NSGIF_BITMAP_FMT_B8G8R8A8, {8, 239, 16, 255}},
+		{NSGIF_BITMAP_FMT_A8R8G8B8, {255, 16, 239, 8}}, {NSGIF_BITMAP_FMT_A8B8G8R8, {255, 8, 239, 16}},
+		{NSGIF_BITMAP_FMT_RGBA8888, {255, 8, 239, 16}}, {NSGIF_BITMAP_FMT_BGRA8888, {255, 16, 239, 8}},
+		{NSGIF_BITMAP_FMT_ARGB8888, {8, 239, 16, 255}}, {NSGIF_BITMAP_FMT_ABGR8888, {16, 239, 8, 255}},
+		{(nsgif_bitmap_fmt_t)99, {16, 239, 8, 255}},
+	};
+	gb_three_frames(-1, NSGIF_DISPOSAL_NONE, -1);
+	for (size_t k = 0; k < sizeof(cases) / sizeof(cases[0]); k++) {
+		nsgif_t *gif = gif_scan_all(&bitmap_vt, cases[k].fmt, false);
+		uint32_t table[NSGIF_MAX_COLOURS];
+		size_t entries = 0;
+		nsgif_global_palette(gif, table, &entries);
+		assert_int_equal(entries, 4);
+		assert_memory_equal(&table[1], cases[k].bytes, 4);
+		nsgif_destroy(gif);
+	}
+
+	/* Without a global colour table: black and white, two entries. */
+	gb_begin(2, 1, -1, 0);
+	gb_image(0, 0, 2, 1, false, -1, 1);
+	gb_end();
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+	uint32_t table[NSGIF_MAX_COLOURS];
+	size_t entries = 0;
+	nsgif_global_palette(gif, table, &entries);
+	assert_int_equal(entries, 2);
+	assert_int_equal(table[0], 0xFF000000u);
+	assert_int_equal(table[1], 0xFFFFFFFFu);
+	assert_false(nsgif_get_info(gif)->global_palette);
+	assert_int_equal(nsgif_get_info(gif)->background, 0xFF000000u);
+	nsgif_destroy(gif);
+
+	/* nsgif_destroy takes NULL. */
+	nsgif_destroy(NULL);
+}
+
+static void gif_scan_whole(void **state)
+{
+	(void)state;
+	gb_three_frames(2, NSGIF_DISPOSAL_RESTORE_BG, -1);
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+	const nsgif_info_t *info = nsgif_get_info(gif);
+	assert_int_equal(info->width, 4);
+	assert_int_equal(info->height, 4);
+	assert_int_equal(info->frame_count, 3);
+	assert_int_equal(info->loop_max, 3);
+	assert_true(info->global_palette);
+	assert_int_equal(info->background, gb_rgba(3));
+
+	static const struct {
+		uint32_t delay, disposal, x0, y0, x1, y1;
+		bool local_palette;
+	} frames[] = {
+		{5, NSGIF_DISPOSAL_NONE, 0, 0, 4, 4, false},
+		{7, NSGIF_DISPOSAL_RESTORE_BG, 1, 1, 3, 3, false},
+		{10, NSGIF_DISPOSAL_UNSPECIFIED, 0, 0, 1, 1, true},
+	};
+	for (uint32_t f = 0; f < 3; f++) {
+		const nsgif_frame_info_t *fi = nsgif_get_frame_info(gif, f);
+		assert_non_null(fi);
+		assert_true(fi->display);
+		assert_false(fi->transparency);
+		assert_false(fi->interlaced);
+		assert_int_equal(fi->delay, frames[f].delay);
+		assert_int_equal(fi->disposal, frames[f].disposal);
+		assert_int_equal(fi->rect.x0, frames[f].x0);
+		assert_int_equal(fi->rect.y0, frames[f].y0);
+		assert_int_equal(fi->rect.x1, frames[f].x1);
+		assert_int_equal(fi->rect.y1, frames[f].y1);
+		assert_int_equal(fi->local_palette, frames[f].local_palette);
+	}
+	assert_null(nsgif_get_frame_info(gif, 3));
+
+	uint32_t table[NSGIF_MAX_COLOURS];
+	size_t entries = 0;
+	assert_false(nsgif_local_palette(gif, 0, table, &entries));
+	assert_true(nsgif_local_palette(gif, 2, table, &entries));
+	assert_int_equal(entries, 2);
+	assert_int_equal(table[1], gb_rgba(1));
+	assert_false(nsgif_local_palette(gif, 3, table, &entries));
+
+	/* Scanning again with the same data finds nothing new. */
+	assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_OK);
+	assert_int_equal(info->frame_count, 3);
+	/* After nsgif_data_complete, no more data. */
+	nsgif_data_complete(gif);
+	assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_COMPLETE);
+	nsgif_destroy(gif);
+}
+
+/* Field by field: the padding of the structs is not part of the API. */
+static void assert_info_equal(const nsgif_info_t *a, const nsgif_info_t *b)
+{
+	assert_int_equal(a->width, b->width);
+	assert_int_equal(a->height, b->height);
+	assert_int_equal(a->frame_count, b->frame_count);
+	assert_int_equal(a->loop_max, b->loop_max);
+	assert_int_equal(a->background, b->background);
+	assert_int_equal(a->global_palette, b->global_palette);
+}
+
+static void assert_frame_info_equal(const nsgif_frame_info_t *a, const nsgif_frame_info_t *b)
+{
+	assert_int_equal(a->display, b->display);
+	assert_int_equal(a->transparency, b->transparency);
+	assert_int_equal(a->local_palette, b->local_palette);
+	assert_int_equal(a->interlaced, b->interlaced);
+	assert_int_equal(a->disposal, b->disposal);
+	assert_int_equal(a->delay, b->delay);
+	assert_memory_equal(&a->rect, &b->rect, sizeof(a->rect));
+}
+
+/* Scans in parts, as data arrives. The writer's three-frame GIF puts
+ * frame 0's graphic control extension at bytes 44 to 51, its image
+ * descriptor at 52 to 61 and its image data from 62.
+ *
+ * Kept, characterized, not endorsed: when a scan stops at the end of the
+ * data inside a frame, nsgif_data_scan keeps the position where the frame's
+ * parse stopped, not the frame's start. The next scan resumes there and
+ * reads image data (or an extension's terminator) as the next block, which
+ * is a bad frame from then on, also with all the data. A split before the
+ * extension's last byte or inside the image descriptor resumes correctly. */
+static void gif_scan_incremental(void **state)
+{
+	(void)state;
+	gb_three_frames(2, NSGIF_DISPOSAL_RESTORE_BG, -1);
+	nsgif_t *whole = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+	nsgif_t *gif;
+
+	/* Split points that resume correctly: the end state of a whole scan. */
+	static const size_t good[] = {13, 25, 44, 50, 52, 61};
+	for (size_t k = 0; k < sizeof(good) / sizeof(good[0]); k++) {
+		assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+		assert_int_equal(nsgif_data_scan(gif, good[k], gb), NSGIF_ERR_END_OF_DATA);
+		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_OK);
+		assert_info_equal(nsgif_get_info(gif), nsgif_get_info(whole));
+		for (uint32_t f = 0; f < 3; f++)
+			assert_frame_info_equal(nsgif_get_frame_info(gif, f), nsgif_get_frame_info(whole, f));
+		nsgif_destroy(gif);
+	}
+
+	/* Split points inside frame 0's image data, or on its extension's
+	 * last byte: a bad frame for good. */
+	static const size_t bad[] = {51, 62, 70, 85};
+	for (size_t k = 0; k < sizeof(bad) / sizeof(bad[0]); k++) {
+		assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+		assert_int_equal(nsgif_data_scan(gif, bad[k], gb), NSGIF_ERR_END_OF_DATA);
+		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+		nsgif_destroy(gif);
+	}
+
+	/* Byte by byte: the end of the data up to byte 60, then a bad frame. */
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	for (size_t n = 0; n <= gb_len; n++) {
+		nsgif_error ret = nsgif_data_scan(gif, n, gb);
+		assert_int_equal(ret, n < 61 ? NSGIF_ERR_END_OF_DATA : NSGIF_ERR_DATA_FRAME);
+		assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+	}
+	nsgif_destroy(gif);
+	nsgif_destroy(whole);
+}
+
+/* Reported screen sizes from the quirk list become 1x1, and the first frame
+ * sets the size; a first frame larger than the screen grows it; later
+ * frames do not. */
+static void gif_screen_size(void **state)
+{
+	(void)state;
+	static const unsigned screens[][2] = {{640, 480}, {0, 0}, {2049, 5}};
+	for (size_t k = 0; k < 3; k++) {
+		gb_begin(screens[k][0], screens[k][1], 1, 0);
+		gb_image(0, 0, 3, 2, false, -1, 1);
+		gb_end();
+		nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+		assert_int_equal(nsgif_get_info(gif)->width, 3);
+		assert_int_equal(nsgif_get_info(gif)->height, 2);
+		nsgif_destroy(gif);
+	}
+
+	gb_begin(4, 4, 1, 0);
+	gb_image(0, 0, 6, 5, false, -1, 1);
+	gb_image(0, 0, 9, 9, false, -1, 1);
+	gb_end();
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+	assert_int_equal(nsgif_get_info(gif)->width, 6);
+	assert_int_equal(nsgif_get_info(gif)->height, 5);
+	nsgif_destroy(gif);
+}
+
+/* A GIF with no frames: a header, a screen and a trailer scans; nothing can
+ * be displayed or decoded. Without the trailer it is the end of the data. */
+static void gif_without_frames(void **state)
+{
+	(void)state;
+	gb_begin(4, 4, -1, 0);
+	gb_end();
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+	nsgif_bitmap_t *bitmap = NULL;
+	assert_int_equal(nsgif_frame_decode(gif, 0, &bitmap), NSGIF_ERR_BAD_FRAME);
+	nsgif_rect_t area;
+	uint32_t delay, frame;
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_ERR_FRAME_DISPLAY);
+	nsgif_destroy(gif);
+
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, gb_len - 1, gb), NSGIF_ERR_END_OF_DATA);
+	nsgif_destroy(gif);
+
+	/* Image data that is only a minimum code size and the trailer: no
+	 * frame and no error. */
+	gb_begin(4, 4, -1, 0);
+	gb_u8(0x2C);
+	gb_u16(0);
+	gb_u16(0);
+	gb_u16(2);
+	gb_u16(2);
+	gb_u8(0);
+	gb_u8(8);
+	gb_u8(0x3B);
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_OK);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+	nsgif_destroy(gif);
+
+	/* A minimum code size of 12 (LZW_CODE_MAX): a bad frame. */
+	gb_begin(4, 4, -1, 0);
+	gb_u8(0x2C);
+	gb_u16(0);
+	gb_u16(0);
+	gb_u16(2);
+	gb_u16(2);
+	gb_u8(0);
+	gb_u8(12);
+	gb_u8(1);
+	gb_u8(0);
+	gb_u8(0);
+	gb_end();
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, gb_len, gb), NSGIF_ERR_DATA_FRAME);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+	nsgif_destroy(gif);
+
+	/* Not a GIF. */
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, 13, (const uint8_t *)"PNG89a\0\0\0\0\0\0\0"), NSGIF_ERR_DATA);
+	nsgif_destroy(gif);
+}
+
+/* nsgif_data_complete makes the first frame with image data that the scan
+ * could not finish displayable; a first frame gets transparency. */
+static void gif_data_complete_partial(void **state)
+{
+	(void)state;
+	gb_three_frames(-1, NSGIF_DISPOSAL_NONE, -1);
+	size_t full = gb_len;
+
+	/* Cut inside frame 1's image data (its last sub-block, before the
+	 * frame 2 extension and image). */
+	size_t cut = 0;
+	{
+		/* A new scan for every length (not one scan in parts, see
+		 * gif_scan_incremental). */
+		for (size_t n = 0; n <= full && !cut; n++) {
+			nsgif_t *gif;
+			assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+			(void)nsgif_data_scan(gif, n, gb);
+			if (nsgif_get_info(gif)->frame_count == 2)
+				cut = n - 2;
+			nsgif_destroy(gif);
+		}
+	}
+	assert_true(cut > 0);
+
+	nsgif_t *gif;
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	assert_int_equal(nsgif_data_scan(gif, cut, gb), NSGIF_OK);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 1);
+	assert_null(nsgif_get_frame_info(gif, 1));
+	nsgif_data_complete(gif);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 2);
+	assert_true(nsgif_get_frame_info(gif, 1)->display);
+	assert_false(nsgif_get_frame_info(gif, 1)->transparency);
+	nsgif_bitmap_t *bitmap = NULL;
+	assert_int_equal(nsgif_frame_decode(gif, 1, &bitmap), NSGIF_OK);
+	nsgif_destroy(gif);
+
+	/* Cut inside frame 0: nothing scanned; complete makes frame 0
+	 * displayable with transparency, and it decodes as far as it goes. */
+	assert_int_equal(nsgif_create(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, &gif), NSGIF_OK);
+	size_t cut0 = 13 + 12 + 19 + 8 + 10 + 3;
+	assert_int_equal(nsgif_data_scan(gif, cut0, gb), NSGIF_ERR_END_OF_DATA);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 0);
+	nsgif_data_complete(gif);
+	assert_int_equal(nsgif_get_info(gif)->frame_count, 1);
+	assert_true(nsgif_get_frame_info(gif, 0)->display);
+	assert_true(nsgif_get_frame_info(gif, 0)->transparency);
+	assert_int_equal(nsgif_frame_decode(gif, 0, &bitmap), NSGIF_OK);
+	nsgif_destroy(gif);
+}
+
+/* The frame order of nsgif_frame_prepare: the redraw area, the delay rules
+ * (below the minimum becomes the default), the loop count and the last
+ * frame's infinite delay. */
+static void gif_prepare_sequence(void **state)
+{
+	(void)state;
+	nsgif_rect_t area;
+	uint32_t delay, frame;
+
+	/* No loop extension: loop_max 1, play once. */
+	gb_three_frames(-1, NSGIF_DISPOSAL_NONE, -1);
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_get_info(gif)->loop_max, 1);
+	static const struct {
+		uint32_t frame, delay, x0, y0, x1, y1;
+	} once[] = {
+		{0, 5, 0, 0, 4, 4},
+		{1, 7, 0, 0, 4, 4},
+		{2, NSGIF_INFINITE, 0, 0, 3, 3},
+		/* Kept, characterized, not endorsed: one more call shows frame 0
+		 * again before the end. */
+		{0, 5, 0, 0, 4, 4},
+	};
+	for (size_t k = 0; k < 4; k++) {
+		assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+		assert_int_equal(frame, once[k].frame);
+		assert_int_equal(delay, once[k].delay);
+		assert_int_equal(area.x0, once[k].x0);
+		assert_int_equal(area.y0, once[k].y0);
+		assert_int_equal(area.x1, once[k].x1);
+		assert_int_equal(area.y1, once[k].y1);
+	}
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_ERR_ANIMATION_END);
+
+	/* nsgif_reset starts over. */
+	assert_int_equal(nsgif_reset(gif), NSGIF_OK);
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+	assert_int_equal(frame, 0);
+
+	/* The delay rules: below delay_min, delay_default. */
+	nsgif_set_frame_delay_behaviour(gif, 6, 50);
+	assert_int_equal(nsgif_reset(gif), NSGIF_OK);
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+	assert_int_equal(delay, 50);
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+	assert_int_equal(delay, 7);
+	nsgif_destroy(gif);
+
+	/* Loop count 0: forever, no infinite delay. */
+	gb_three_frames(0, NSGIF_DISPOSAL_NONE, -1);
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_get_info(gif)->loop_max, 0);
+	for (int k = 0; k < 10; k++) {
+		assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+		assert_int_equal(frame, (uint32_t)(k % 3));
+		assert_true(delay != NSGIF_INFINITE);
+	}
+	nsgif_destroy(gif);
+
+	/* Data not complete: after the last scanned frame, the end of the
+	 * data. */
+	gb_three_frames(0, NSGIF_DISPOSAL_NONE, -1);
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, false);
+	for (int k = 0; k < 3; k++)
+		assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_ERR_END_OF_DATA);
+	nsgif_destroy(gif);
+
+	/* One frame: an infinite delay. */
+	gb_begin(2, 2, 1, 0);
+	gb_image(0, 0, 2, 2, false, -1, 1);
+	gb_end();
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_frame_prepare(gif, &area, &delay, &frame), NSGIF_OK);
+	assert_int_equal(delay, NSGIF_INFINITE);
+	nsgif_destroy(gif);
+}
+
+static const uint32_t *gif_pixels(nsgif_bitmap_t *bitmap)
+{
+	return (const uint32_t *)bitmap_get_buffer(bitmap);
+}
+
+/* The disposal of the previous frame before a decode, frames decoded in
+ * order from a restart, and a cached frame. */
+static void gif_decode_disposal(void **state)
+{
+	(void)state;
+	nsgif_bitmap_t *bitmap = NULL;
+
+	/* Restore background: frame 1's rectangle back to the background
+	 * colour (3), then frame 2 at (0, 0). */
+	gb_three_frames(-1, NSGIF_DISPOSAL_RESTORE_BG, -1);
+	nsgif_t *gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_frame_decode(gif, 2, &bitmap), NSGIF_OK);
+	const uint32_t *px = gif_pixels(bitmap);
+	for (uint32_t y = 0; y < 4; y++) {
+		for (uint32_t x = 0; x < 4; x++) {
+			uint32_t expect = gb_rgba(1);
+			if (x >= 1 && x < 3 && y >= 1 && y < 3)
+				expect = gb_rgba(3);
+			if (x == 0 && y == 0)
+				expect = gb_rgba(0);
+			assert_int_equal(px[y * 4 + x], expect);
+		}
+	}
+	/* Out of order: frame 1 restarts from frame 0. */
+	assert_int_equal(nsgif_frame_decode(gif, 1, &bitmap), NSGIF_OK);
+	px = gif_pixels(bitmap);
+	assert_int_equal(px[0], gb_rgba(1));
+	assert_int_equal(px[1 * 4 + 1], gb_rgba(2));
+	/* The same frame again: the cached bitmap. */
+	nsgif_bitmap_t *again = NULL;
+	assert_int_equal(nsgif_frame_decode(gif, 1, &again), NSGIF_OK);
+	assert_ptr_equal(again, bitmap);
+	assert_int_equal(nsgif_frame_decode(gif, 3, &again), NSGIF_ERR_BAD_FRAME);
+	nsgif_destroy(gif);
+
+	/* Restore background with a transparent index: back to 0. */
+	gb_three_frames(-1, NSGIF_DISPOSAL_RESTORE_BG, 9);
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_frame_decode(gif, 2, &bitmap), NSGIF_OK);
+	px = gif_pixels(bitmap);
+	assert_int_equal(px[1 * 4 + 1], 0);
+	assert_int_equal(px[2 * 4 + 2], 0);
+	assert_int_equal(px[3 * 4 + 3], gb_rgba(1));
+	nsgif_destroy(gif);
+
+	/* Restore previous: frame 1's area as before frame 1 (colour 1). */
+	gb_three_frames(-1, NSGIF_DISPOSAL_RESTORE_PREV, -1);
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_frame_decode(gif, 1, &bitmap), NSGIF_OK);
+	assert_int_equal(gif_pixels(bitmap)[1 * 4 + 1], gb_rgba(2));
+	assert_int_equal(nsgif_frame_decode(gif, 2, &bitmap), NSGIF_OK);
+	px = gif_pixels(bitmap);
+	assert_int_equal(px[0], gb_rgba(0));
+	assert_int_equal(px[1 * 4 + 1], gb_rgba(1));
+	assert_int_equal(px[2 * 4 + 2], gb_rgba(1));
+	nsgif_destroy(gif);
+
+	/* Frame 1's own transparent pixels leave frame 0. */
+	gb_three_frames(-1, NSGIF_DISPOSAL_NONE, 2);
+	gif = gif_scan_all(&bitmap_vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	assert_int_equal(nsgif_frame_decode(gif, 1, &bitmap), NSGIF_OK);
+	assert_int_equal(gif_pixels(bitmap)[1 * 4 + 1], gb_rgba(1));
+	nsgif_destroy(gif);
+}
+
+/* The optional callbacks: when each is called, and a row span wider than
+ * the image. */
+static int cb_create, cb_modified, cb_test_opaque, cb_set_opaque;
+static bool cb_last_opaque;
+static uint32_t cb_extra;
+
+static nsgif_bitmap_t *cb_bitmap_create(int width, int height)
+{
+	cb_create++;
+	return calloc(((size_t)width + cb_extra) * (size_t)height, 4);
+}
+
+static void cb_bitmap_modified(nsgif_bitmap_t *bitmap)
+{
+	(void)bitmap;
+	cb_modified++;
+}
+
+static bool cb_bitmap_test_opaque(nsgif_bitmap_t *bitmap)
+{
+	(void)bitmap;
+	cb_test_opaque++;
+	return true;
+}
+
+static void cb_bitmap_set_opaque(nsgif_bitmap_t *bitmap, bool opaque)
+{
+	(void)bitmap;
+	cb_set_opaque++;
+	cb_last_opaque = opaque;
+}
+
+static uint32_t cb_bitmap_rowspan(nsgif_bitmap_t *bitmap)
+{
+	(void)bitmap;
+	return 4 + cb_extra;
+}
+
+static void gif_callbacks(void **state)
+{
+	(void)state;
+	const nsgif_bitmap_cb_vt vt = {
+		.create = cb_bitmap_create,
+		.destroy = bitmap_destroy,
+		.get_buffer = bitmap_get_buffer,
+		.set_opaque = cb_bitmap_set_opaque,
+		.test_opaque = cb_bitmap_test_opaque,
+		.modified = cb_bitmap_modified,
+		.get_rowspan = cb_bitmap_rowspan,
+	};
+	cb_create = cb_modified = cb_test_opaque = cb_set_opaque = 0;
+	cb_extra = 3;
+	gb_three_frames(-1, NSGIF_DISPOSAL_NONE, -1);
+	nsgif_t *gif = gif_scan_all(&vt, NSGIF_BITMAP_FMT_R8G8B8A8, true);
+	nsgif_bitmap_t *bitmap = NULL;
+
+	assert_int_equal(nsgif_frame_decode(gif, 0, &bitmap), NSGIF_OK);
+	assert_int_equal(cb_create, 1);
+	assert_int_equal(cb_modified, 1);
+	assert_int_equal(cb_test_opaque, 1);
+	assert_int_equal(cb_set_opaque, 1);
+	assert_true(cb_last_opaque);
+	/* Rows step by the row span (7). */
+	const uint32_t *px = gif_pixels(bitmap);
+	assert_int_equal(px[0], gb_rgba(1));
+	assert_int_equal(px[3], gb_rgba(1));
+	assert_int_equal(px[7], gb_rgba(1));
+	assert_int_equal(px[3 * 7 + 3], gb_rgba(1));
+
+	assert_int_equal(nsgif_frame_decode(gif, 1, &bitmap), NSGIF_OK);
+	assert_int_equal(cb_modified, 2);
+	assert_int_equal(cb_test_opaque, 2);
+	assert_int_equal(cb_set_opaque, 2);
+	assert_int_equal(gif_pixels(bitmap)[1 * 7 + 1], gb_rgba(2));
+
+	/* Frame 0 again: a restart; frame 0 was decoded before, so its opacity
+	 * is not tested again, only set. */
+	assert_int_equal(nsgif_frame_decode(gif, 0, &bitmap), NSGIF_OK);
+	assert_int_equal(cb_create, 1);
+	assert_int_equal(cb_modified, 3);
+	assert_int_equal(cb_test_opaque, 2);
+	assert_int_equal(cb_set_opaque, 3);
+	nsgif_destroy(gif);
+	cb_extra = 0;
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -1525,6 +2240,16 @@ int main(void)
 		cmocka_unit_test(frame_lzw_results),
 		cmocka_unit_test(frame_restore_bg),
 		cmocka_unit_test(frame_recover),
+		cmocka_unit_test(gif_strings),
+		cmocka_unit_test(gif_create_and_layouts),
+		cmocka_unit_test(gif_scan_whole),
+		cmocka_unit_test(gif_scan_incremental),
+		cmocka_unit_test(gif_screen_size),
+		cmocka_unit_test(gif_without_frames),
+		cmocka_unit_test(gif_data_complete_partial),
+		cmocka_unit_test(gif_prepare_sequence),
+		cmocka_unit_test(gif_decode_disposal),
+		cmocka_unit_test(gif_callbacks),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
