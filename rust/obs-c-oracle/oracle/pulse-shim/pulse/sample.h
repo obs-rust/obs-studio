@@ -24,7 +24,12 @@
 #endif
 
 #ifndef OBS_ORACLE_PULSE_SAMPLE_REAL
+#include <stdint.h>
+
 #define PA_CHANNELS_MAX 32U
+
+/* For the pulseaudio-monitor-steps oracle (oracle/pulse_monitor_steps.c). */
+typedef uint64_t pa_usec_t;
 
 typedef enum pa_sample_format {
 	PA_SAMPLE_U8,

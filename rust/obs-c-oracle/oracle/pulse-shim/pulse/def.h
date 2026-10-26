@@ -46,4 +46,21 @@ typedef enum pa_subscription_event_type {
 	PA_SUBSCRIPTION_EVENT_REMOVE = 0x0020U,
 	PA_SUBSCRIPTION_EVENT_TYPE_MASK = 0x0030U,
 } pa_subscription_event_type_t;
+
+typedef enum pa_context_state {
+	PA_CONTEXT_UNCONNECTED,
+	PA_CONTEXT_CONNECTING,
+	PA_CONTEXT_AUTHORIZING,
+	PA_CONTEXT_SETTING_NAME,
+	PA_CONTEXT_READY,
+	PA_CONTEXT_FAILED,
+	PA_CONTEXT_TERMINATED,
+} pa_context_state_t;
+
+/* For the pulseaudio-monitor-steps oracle (oracle/pulse_monitor_steps.c). */
+static inline int PA_CONTEXT_IS_GOOD(pa_context_state_t x)
+{
+	return x == PA_CONTEXT_CONNECTING || x == PA_CONTEXT_AUTHORIZING || x == PA_CONTEXT_SETTING_NAME ||
+	       x == PA_CONTEXT_READY;
+}
 #endif
