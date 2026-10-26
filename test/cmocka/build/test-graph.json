@@ -1843,6 +1843,34 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_raw_audio_steps": {
+      "sources": [
+        "test/cmocka/test_output_raw_audio_steps.c",
+        "libobs/obs-output-raw-audio.c.h",
+        "libobs/obs-output-video-checks.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-raw-audio.h",
+        "libobs/obs-output-video-checks.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_rescale": {
       "sources": [
         "test/cmocka/test_output_rescale.c",
@@ -4973,6 +5001,12 @@
     },
     "test_output_protocol_list_steps": {
       "target": "test_output_protocol_list_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_raw_audio_steps": {
+      "target": "test_output_raw_audio_steps",
       "command": [
         "${target}"
       ]
