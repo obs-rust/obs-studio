@@ -115,7 +115,9 @@ fn c_str<'a>(ptr: *const c_char) -> Option<Cow<'a, str>> {
         if high < 0x80 {
             // SAFETY: `len` bytes before the NUL, all ASCII, so valid UTF-8.
             let bytes = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), len) };
-            return Some(Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(bytes) }));
+            // SAFETY: ASCII bytes are valid UTF-8.
+            let name = unsafe { std::str::from_utf8_unchecked(bytes) };
+            return Some(Cow::Borrowed(name));
         }
         let text = unsafe { CStr::from_ptr(ptr) };
         Some(match std::str::from_utf8(text.to_bytes()) {
