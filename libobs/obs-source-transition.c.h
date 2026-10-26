@@ -1129,15 +1129,22 @@ static inline obs_source_t *copy_source_state(obs_source_t *tr_dest, obs_source_
 	if (old_child && tr_dest->transition_source_active[idx])
 		obs_source_remove_active_child(tr_dest, old_child);
 
+	/* The add fails for a source that contains tr_dest, or for tr_dest itself.
+	 * Store nothing then, as obs_transition_set() refuses such a source: a
+	 * walk of the slot's tree would enter tr_dest again and lock its mutex
+	 * twice. tr_source still holds its own reference until the swap ends. */
+	if (obs_source_transition_start_child_active(new_child != NULL, active) &&
+	    !obs_source_add_active_child(tr_dest, new_child)) {
+		blog(LOG_WARNING,
+		     "obs_transition_swap_begin: cannot give transition '%s' source '%s' due to infinite recursion",
+		     obs_source_get_name(tr_dest), obs_source_get_name(new_child));
+		obs_source_release(new_child);
+		new_child = NULL;
+		active = false;
+	}
+
 	tr_dest->transition_sources[idx] = new_child;
 	tr_dest->transition_source_active[idx] = active;
-
-	/* The add fails for a source that contains tr_dest: then the slot is not
-	 * active, so the next set does not remove a reference that another
-	 * parent holds. */
-	if (obs_source_transition_start_child_active(new_child != NULL, active) &&
-	    !obs_source_add_active_child(tr_dest, new_child))
-		tr_dest->transition_source_active[idx] = false;
 
 	return old_child;
 }

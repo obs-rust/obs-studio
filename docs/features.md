@@ -2201,6 +2201,12 @@ area.
   was, and the transition keeps its source.
   *All*, pending merge. Issue
   [#2487](https://github.com/obs-rust/obs-studio/issues/2487).
+- OBS no longer hangs when the transition is changed while the old one
+  holds a scene that contains the new transition (or holds the new
+  transition itself) and that scene is then shown; the new transition is
+  left without that source, with a warning in the log, instead of holding
+  a loop back to itself. *All*, pending merge. Issue
+  [#2499](https://github.com/obs-rust/obs-studio/issues/2499).
 
 ### Security hardening
 
