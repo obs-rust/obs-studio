@@ -566,6 +566,20 @@ obs_encoder_gpu_gates_count_next
 obs_encoder_gpu_gates_requeue
 obs_encoder_gpu_gates_requeue_ts
 obs_encoder_gpu_gates_p010
+# obs-encoder-lifecycle.c: the start, stop, connect, disconnect, GPU test and
+# first packet in obs-encoder.c call them inside libobs. Declared in
+# obs-encoder-lifecycle.h without EXPORT, so the shims stay hidden the same
+# way.
+obs_encoder_lifecycle_first
+obs_encoder_lifecycle_found
+obs_encoder_lifecycle_last
+obs_encoder_lifecycle_pass_texture
+obs_encoder_lifecycle_lcm_unset
+obs_encoder_lifecycle_started_inc
+obs_encoder_lifecycle_group_ready
+obs_encoder_lifecycle_started_dec
+obs_encoder_lifecycle_group_idle
+obs_encoder_lifecycle_prepend_sei
 # obs-encoder-size.c: get_audio_info(), get_video_info(),
 # obs_encoder_set_scaled_size(), obs_encoder_scaling_enabled(),
 # obs_encoder_get_width(), obs_encoder_get_height() and

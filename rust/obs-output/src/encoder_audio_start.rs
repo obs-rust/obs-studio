@@ -194,6 +194,9 @@ pub fn audio_pts(cur_pts: i64, framesize: usize) -> i64 {
 /// refusals follow in the C. `obs_encoder_video()`,
 /// `obs_encoder_parent_video()` and `obs_encoder_unbind_video()` refuse an
 /// encoder of another type the same way ([`crate::encoder_bind`]).
+/// Negated, it is the video type test of `obs_encoder_start_internal()`'s
+/// keyframe request and `send_packet()`'s first packet route
+/// ([`crate::encoder_lifecycle`]).
 #[must_use]
 pub fn not_video(encoder_type: i32) -> bool {
     crate::encoder_size::scaled_gate(encoder_type, false, false) == ScaledGate::NotVideo

@@ -3,6 +3,7 @@
 pub mod encoder_audio_start;
 pub mod encoder_bind;
 pub mod encoder_gpu_gates;
+pub mod encoder_lifecycle;
 pub mod encoder_roi;
 pub mod encoder_size;
 pub mod output_caption_text;

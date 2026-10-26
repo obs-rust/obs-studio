@@ -59,6 +59,8 @@ pub struct Timebase {
 /// `obs_encoder_valid()`: `encoder_type` (`info.type`) is not
 /// [`OBS_ENCODER_AUDIO`], so the caller logs and refuses. The setter's
 /// active refusal follows in the C; it has no initialized refusal.
+/// Negated, it is the connection route of `add_connection()` and
+/// `remove_connection()` ([`crate::encoder_lifecycle`]).
 #[must_use]
 pub fn not_audio(encoder_type: i32) -> bool {
     encoder_type != OBS_ENCODER_AUDIO

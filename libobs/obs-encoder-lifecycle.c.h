@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-lifecycle.pch.h"
 
 bool obs_encoder_lifecycle_first(size_t num_callbacks)
 {

@@ -11,12 +11,14 @@
 //! `libobs/obs-output-raw-audio.c.h`, the raw output audio admission and
 //! capture hookup, `libobs/obs-output-slots.c.h`, the output encoder
 //! slot rules and setter gates, `libobs/obs-encoder-gpu-gates.c.h`, the
-//! GPU encode thread gates, and `libobs/obs-encoder-bind.c.h`, the encoder
-//! media binding and shutdown checks.
+//! GPU encode thread gates, `libobs/obs-encoder-bind.c.h`, the encoder
+//! media binding and shutdown checks, and
+//! `libobs/obs-encoder-lifecycle.c.h`, the encoder callback and connection
+//! lifecycle decisions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`] and [`encoder_bind`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`] and [`encoder_lifecycle`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -50,7 +52,12 @@
 //! which timestamp, and P010 or NV12 encode textures; [`encoder_bind`]
 //! decides an encoder's audio type refusal, the timebase it takes from its
 //! video or audio, whether it gets a frame rate divisor video, and when an
-//! encoder initialized for an output that never started is shut down.
+//! encoder initialized for an output that never started is shut down;
+//! [`encoder_lifecycle`] decides when an encoder's first callback connects
+//! it and its last disconnects it, whether a callback is new, the GPU
+//! encode texture cap, the encoder group's counts (the divisor LCM start,
+//! ready, the reset and the destroy when none is started), and whether the
+//! SEI goes in front of the first keyframe.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
