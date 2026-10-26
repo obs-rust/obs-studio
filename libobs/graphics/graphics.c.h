@@ -571,9 +571,13 @@ void gs_matrix_translate3f(float x, float y, float z)
 
 void gs_matrix_scale3f(float x, float y, float z)
 {
-	struct matrix4 *top_mat = top_matrix(thread_graphics);
+	struct matrix4 *top_mat;
 	struct vec3 p;
 
+	if (!gs_valid("gs_matrix_scale3f"))
+		return;
+
+	top_mat = top_matrix(thread_graphics);
 	if (top_mat) {
 		vec3_set(&p, x, y, z);
 		matrix4_scale_i(top_mat, &p, top_mat);
@@ -1238,7 +1242,7 @@ void gs_reset_blend_state(void)
 {
 	graphics_t *graphics = thread_graphics;
 
-	if (!gs_valid("gs_preprocessor_name"))
+	if (!gs_valid("gs_reset_blend_state"))
 		return;
 
 	if (!graphics->cur_blend_state.enabled)
