@@ -32,6 +32,8 @@ mod encoder_audio_start;
 mod encoder_bind;
 #[path = "port_comparison/encoder_gpu_gates.rs"]
 mod encoder_gpu_gates;
+#[path = "port_comparison/encoder_lifecycle.rs"]
+mod encoder_lifecycle;
 #[path = "port_comparison/encoder_roi.rs"]
 mod encoder_roi;
 #[path = "port_comparison/encoder_size.rs"]
@@ -201,6 +203,7 @@ fn comparisons(criterion: &mut Criterion) {
         encoder_audio_start,
         encoder_bind,
         encoder_gpu_gates,
+        encoder_lifecycle,
         encoder_roi,
         encoder_size,
         gif_blocks,
