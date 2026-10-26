@@ -136,9 +136,11 @@ class ReleaseNotarizationTest(unittest.TestCase):
         self.assertIn("secrets.MACOS_NOTARIZATION_USERNAME", input_value(self.package, "codesignUser"))
         self.assertIn("secrets.MACOS_NOTARIZATION_PASSWORD", input_value(self.package, "codesignPass"))
 
-    def test_unsigned_download_instructions_use_current_gatekeeper_controls(self):
-        for instruction in ("Privacy & Security", "Open Anyway", "xattr -dr com.apple.quarantine"):
-            self.assertTrue(instruction in self.workflow, f"release notes omit {instruction}")
+    def test_release_notes_carry_no_gatekeeper_workaround(self):
+        # The DMGs are signed and notarized (#2430), so the notes need no
+        # quarantine instructions and the workflow no step testing them (#2493).
+        for instruction in ("Privacy & Security", "Open Anyway", "com.apple.quarantine"):
+            self.assertFalse(instruction in self.workflow, f"release workflow still carries {instruction}")
         self.assertFalse("right-click → Open" in self.workflow, "release notes still rely on the old shortcut")
         self.assertFalse("**Pre-release, unsigned.**" in self.workflow, "release notes mislabel signed builds")
 
