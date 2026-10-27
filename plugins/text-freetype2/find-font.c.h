@@ -101,7 +101,7 @@ static bool load_cached_font_list(struct serializer *s)
 	return true;
 }
 
-extern uint32_t get_font_checksum();
+extern uint32_t get_font_checksum(void);
 static const uint32_t font_cache_ver = 1;
 
 bool load_cached_os_font_list(void)
