@@ -2214,6 +2214,13 @@ area.
   texture, a refused callback with a warning, "not active" and a 0x0
   canvas. *All*, pending merge. Issue
   [#2253](https://github.com/obs-rust/obs-studio/issues/2253).
+- **Video levels, audio info and texture checks with no core.** A plugin,
+  script or headless tool that reads the SDR white level, the HDR nominal
+  peak level or the audio settings, or asks whether NV12 or P010 texture
+  output is active, before OBS has started or after it has shut down no
+  longer crashes; it gets 300 and 1000 nits, "no audio" and "not active",
+  as it already did with no video or audio set up. *All*, pending merge.
+  Issue [#2566](https://github.com/obs-rust/obs-studio/issues/2566).
 - An SDR white level or HDR nominal peak level of 0, below 0, NaN or
   infinite (from an edited profile, a plugin or a script) no longer makes
   HDR and scRGB sources draw solid white, black or garbage: the level is
