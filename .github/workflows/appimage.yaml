@@ -187,7 +187,7 @@ jobs:
       - name: Test the host-library loader 🧪
         # hostlib/ (#959): the libva shims with the host's libva, without it,
         # with bad candidates, and the required-library preflight (exit 127).
-        run: uv run --script build-aux/appimage/manylinux/run.py bash build-aux/appimage/hostlib/test-hostlib.sh
+        run: uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/hostlib/test_hostlib.py
 
       - name: Build the test helper 🧰
         # Run by test-appimage.sh next to obs, with (through the same relative
