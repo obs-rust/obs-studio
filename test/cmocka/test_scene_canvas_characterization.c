@@ -31,57 +31,8 @@
 #include <obs.h>
 #include <util/bmem.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <dbghelp.h>
-#pragma comment(lib, "Dbghelp.lib")
-#endif
-
 #define LEAF_ID "test_scene_canvas_char_leaf"
 #define TRANSITION_ID "test_scene_canvas_char_transition"
-
-#ifdef _WIN32
-/* WER produces no dump on the CI runner (#2547). During an opt-in repro,
- * capture the first access violation in-process, using the faulting thread's
- * exception context rather than a debugger rerun with different timing. */
-static volatile LONG dump_written;
-
-static LONG WINAPI scene_crash_dump(EXCEPTION_POINTERS *exception)
-{
-	if (exception->ExceptionRecord->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
-	    InterlockedCompareExchange(&dump_written, 1, 0) != 0)
-		return EXCEPTION_CONTINUE_SEARCH;
-
-	char directory[MAX_PATH];
-	DWORD length = GetEnvironmentVariableA("OBS_TEST_CRASH_DUMP_DIR", directory, sizeof(directory));
-	if (!length || length >= sizeof(directory))
-		return EXCEPTION_CONTINUE_SEARCH;
-
-	char path[MAX_PATH];
-	int written = snprintf(path, sizeof(path), "%s\\test_scene_canvas_characterization.%lu.dmp", directory,
-			       GetCurrentProcessId());
-	if (written < 0 || (size_t)written >= sizeof(path))
-		return EXCEPTION_CONTINUE_SEARCH;
-
-	HANDLE file = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE)
-		return EXCEPTION_CONTINUE_SEARCH;
-
-	MINIDUMP_EXCEPTION_INFORMATION dump_info = {
-		.ThreadId = GetCurrentThreadId(),
-		.ExceptionPointers = exception,
-		.ClientPointers = FALSE,
-	};
-	BOOL saved = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpWithThreadInfo,
-				       &dump_info, NULL, NULL);
-	CloseHandle(file);
-	fprintf(stderr, "scene canvas fault at %p (0x%08lx): dump %s (%s)\n",
-		exception->ExceptionRecord->ExceptionAddress, exception->ExceptionRecord->ExceptionCode, path,
-		saved ? "saved" : "failed");
-	fflush(stderr);
-	return EXCEPTION_CONTINUE_SEARCH;
-}
-#endif
 
 static bool obs_up;
 static int transition_stop_calls;
@@ -777,12 +728,6 @@ static int setup(void **state)
 		return 0;
 	}
 	register_sources();
-#ifdef _WIN32
-	if (getenv("OBS_SCENE_CANVAS_REPRO") && !AddVectoredExceptionHandler(1, scene_crash_dump)) {
-		fprintf(stderr, "could not install scene canvas crash dump handler\n");
-		return -1;
-	}
-#endif
 	return 0;
 }
 

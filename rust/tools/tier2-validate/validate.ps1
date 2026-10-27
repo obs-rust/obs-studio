@@ -252,7 +252,7 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
   $dll = Get-Item $selected
   $savedPath = $env:PATH
   $dumpDirectory = $null
-  $dumpKey = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\test_scene_canvas_characterization.exe'
+  $dumpKey = 'HKLM:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\test_scene_canvas_characterization.exe'
   try {
     if (-not (Test-Path $dumpKey)) {
       $dumpDirectory = Join-Path $nativeOutput 'crash-dumps'
@@ -283,10 +283,9 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
       if ($LASTEXITCODE -ne 0) { throw "CMake $renderer probe failed ($LASTEXITCODE)" }
     }
     # Temporary #2547 diagnostic: reproduce inside the entire Cargo suite,
-    # not in isolated reruns (all 60 focused attempts passed). The handler
-    # writes the faulting thread's dump before CTest reports the exception.
+    # not in isolated reruns. WER captures the fault without instrumenting
+    # the test process; LocalDumps must be configured under HKLM.
     $env:OBS_SCENE_CANVAS_REPRO = '1'
-    $env:OBS_TEST_CRASH_DUMP_DIR = $dumpDirectory
     Write-Host "== Cargo [$($dll.Directory.Name)] unchanged ctest suite with scene repro"
     ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @ctestJobs
     $ctestExit = $LASTEXITCODE
@@ -306,7 +305,7 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
       throw "Cargo core CTest failed ($ctestExit)"
     }
   } finally {
-    Remove-Item Env:OBS_SCENE_CANVAS_REPRO, Env:OBS_TEST_CRASH_DUMP_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:OBS_SCENE_CANVAS_REPRO -ErrorAction SilentlyContinue
     if ($dumpDirectory) { Remove-Item -Path $dumpKey -Force }
     $env:PATH = $savedPath
   }
