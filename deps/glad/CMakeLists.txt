@@ -25,7 +25,14 @@ target_sources(
     "$<$<TARGET_EXISTS:OpenGL::EGL>:${CMAKE_CURRENT_SOURCE_DIR}/include/glad/glad_egl.h>"
 )
 
-target_compile_options(obsglad PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-strict-prototypes>)
+# Vendored loader: casts between object and function pointers throughout, which
+# -Wpedantic rejects. Exempt the target, as #2623 asks, not the whole build.
+target_compile_options(
+  obsglad
+  PRIVATE
+    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-strict-prototypes>
+    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>
+)
 
 # Generated GL/WGL loaders share a tentative C global; clang-cl otherwise
 # rejects the separate objects instead of matching MSVC's common symbols.

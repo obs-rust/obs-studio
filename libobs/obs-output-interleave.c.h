@@ -166,11 +166,11 @@ static inline void send_interleaved(struct obs_output *output)
 			}
 			if (found_ept == false) {
 				blog(LOG_DEBUG, "%s: Track %lu encoder packet timing for PTS%" PRId64 " not found.",
-				     __FUNCTION__, out.track_idx, out.pts);
+				     __func__, out.track_idx, out.pts);
 			}
 		} else {
 			// encoder_packet_times should not be empty; log if so.
-			blog(LOG_DEBUG, "%s: Track %lu encoder packet timing array empty.", __FUNCTION__,
+			blog(LOG_DEBUG, "%s: Track %lu encoder packet timing array empty.", __func__,
 			     out.track_idx);
 		}
 	}

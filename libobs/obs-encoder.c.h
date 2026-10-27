@@ -1635,7 +1635,7 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success, bool received
 				}
 			}
 			if (!found_ept)
-				blog(LOG_DEBUG, "%s: Encoder packet timing for PTS %" PRId64 " not found", __FUNCTION__,
+				blog(LOG_DEBUG, "%s: Encoder packet timing for PTS %" PRId64 " not found", __func__,
 				     pkt->pts);
 		}
 

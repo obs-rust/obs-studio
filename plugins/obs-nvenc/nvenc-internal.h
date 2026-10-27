@@ -23,10 +23,10 @@
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
-#define error_hr(msg) error("%s: %s: 0x%08lX", __FUNCTION__, msg, (uint32_t)hr);
+#define error_hr(msg) error("%s: %s: 0x%08lX", __func__, msg, (uint32_t)hr);
 
 #define NV_FAIL(format, ...) nv_fail(enc->encoder, format, ##__VA_ARGS__)
-#define NV_FAILED(x) nv_failed(enc->encoder, x, __FUNCTION__, #x)
+#define NV_FAILED(x) nv_failed(enc->encoder, x, __func__, #x)
 
 /* ------------------------------------------------------------------------- */
 /* Main Implementation Structure                                             */

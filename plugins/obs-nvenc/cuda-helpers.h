@@ -55,11 +55,11 @@ bool cuda_error_check(struct nvenc_data *enc, CUresult res, const char *func, co
 
 /* CUDA error handling */
 #define CU_FAILED(call)                                        \
-	if (!cuda_error_check(enc, call, __FUNCTION__, #call)) \
+	if (!cuda_error_check(enc, call, __func__, #call)) \
 		return false;
 
 #define CU_CHECK(call)                                           \
-	if (!cuda_error_check(enc, call, __FUNCTION__, #call)) { \
+	if (!cuda_error_check(enc, call, __func__, #call)) { \
 		success = false;                                 \
 		goto unmap;                                      \
 	}

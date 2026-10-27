@@ -201,7 +201,7 @@ void obs_output_set_delay(obs_output_t *output, uint32_t delay_sec, uint32_t fla
 		return;
 
 	od_fields_t f = obs_output_delay_fields(output);
-	if (!od_log_flag_encoded(&f, __FUNCTION__, false))
+	if (!od_log_flag_encoded(&f, __func__, false))
 		return;
 
 	*f.delay_sec = delay_sec;

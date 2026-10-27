@@ -16,12 +16,12 @@ static bool update_metrics(obs_output_t *output, const struct encoder_packet *pk
 			   const struct encoder_packet_time *ept, struct metrics_data *m_track)
 {
 	if (!pkt) {
-		blog(LOG_DEBUG, "%s: Null encoder_packet pointer", __FUNCTION__);
+		blog(LOG_DEBUG, "%s: Null encoder_packet pointer", __func__);
 		return false;
 	}
 
 	if (!output || !ept || !m_track) {
-		blog(LOG_DEBUG, "%s: Null arguments for track %lu", __FUNCTION__, pkt->track_idx);
+		blog(LOG_DEBUG, "%s: Null arguments for track %lu", __func__, pkt->track_idx);
 		return false;
 	}
 
@@ -563,7 +563,7 @@ void bpm_inject(obs_output_t *output, struct encoder_packet *pkt, struct encoder
 	pthread_once(&bpm_once, bpm_init);
 
 	if (!output || !pkt) {
-		blog(LOG_DEBUG, "%s: Null pointer arguments supplied, returning", __FUNCTION__);
+		blog(LOG_DEBUG, "%s: Null pointer arguments supplied, returning", __func__);
 		return;
 	}
 
@@ -573,7 +573,7 @@ void bpm_inject(obs_output_t *output, struct encoder_packet *pkt, struct encoder
 	if (pkt->type == OBS_ENCODER_VIDEO && pkt->keyframe) {
 		/* Video packet must have pkt_timing supplied for BPM */
 		if (!pkt_time) {
-			blog(LOG_DEBUG, "%s: Packet timing missing for track %ld, PTS %" PRId64, __FUNCTION__,
+			blog(LOG_DEBUG, "%s: Packet timing missing for track %ld, PTS %" PRId64, __func__,
 			     pkt->track_idx, pkt->pts);
 			return;
 		}
@@ -583,14 +583,14 @@ void bpm_inject(obs_output_t *output, struct encoder_packet *pkt, struct encoder
 		 */
 		struct metrics_data *m_track = NULL;
 		if (!bpm_get_track(output, pkt->track_idx, &m_track)) {
-			blog(LOG_DEBUG, "%s: BPM metrics track not found!", __FUNCTION__);
+			blog(LOG_DEBUG, "%s: BPM metrics track not found!", __func__);
 			return;
 		}
 
 		pthread_mutex_lock(&m_track->metrics_mutex);
 		/* Update the metrics and generate BPM messages. */
 		if (!process_metrics(output, pkt, pkt_time, m_track)) {
-			blog(LOG_DEBUG, "%s: BPM injection processing failed", __FUNCTION__);
+			blog(LOG_DEBUG, "%s: BPM injection processing failed", __func__);
 		}
 		pthread_mutex_unlock(&m_track->metrics_mutex);
 	}

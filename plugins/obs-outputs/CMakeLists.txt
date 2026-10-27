@@ -97,7 +97,8 @@ target_include_directories(
 )
 
 # Vendored librtmp (C89 code that casts away const throughout) is not ported
-# or edited here; -Wcast-qual and -Wshadow (obs-rust/obs-studio#516) cover our own sources.
+# or edited here; -Wcast-qual, -Wshadow and -Wpedantic (its __FUNCTION__ use;
+# obs-rust/obs-studio#516, #2623) cover our own sources.
 set_source_files_properties(
   librtmp/amf.c
   librtmp/cencode.c
@@ -106,7 +107,7 @@ set_source_files_properties(
   librtmp/md5.c
   librtmp/parseurl.c
   librtmp/rtmp.c
-  PROPERTIES COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow>"
+  PROPERTIES COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic>"
 )
 
 target_compile_options(

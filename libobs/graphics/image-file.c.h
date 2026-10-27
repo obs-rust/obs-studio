@@ -17,7 +17,7 @@
 
 #include "libobs/build/libobs-ported-graphics.pch.h"
 
-#define blog(level, format, ...) blog(level, "%s: " format, __FUNCTION__, __VA_ARGS__)
+#define blog(level, format, ...) blog(level, "%s: " format, __func__, __VA_ARGS__)
 
 struct gs_image_file_internal {
 	nsgif_t *gif;

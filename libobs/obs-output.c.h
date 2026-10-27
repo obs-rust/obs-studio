@@ -993,7 +993,7 @@ void obs_output_set_media(obs_output_t *output, video_t *video, audio_t *audio)
 {
 	if (!obs_output_valid(output, "obs_output_set_media"))
 		return;
-	if (log_flag_encoded(output, __FUNCTION__, true))
+	if (log_flag_encoded(output, __func__, true))
 		return;
 
 	if (flag_video(output))
@@ -1038,7 +1038,7 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 {
 	if (!obs_output_valid(output, "obs_output_set_mixer"))
 		return;
-	if (log_flag_encoded(output, __FUNCTION__, true))
+	if (log_flag_encoded(output, __func__, true))
 		return;
 	if (!obs_output_slots_mixer_in_range(mixer_idx)) {
 		blog(LOG_WARNING, "output '%s': Ignoring mixer index %zu, it must be below %d",
@@ -1063,7 +1063,7 @@ void obs_output_set_mixers(obs_output_t *output, size_t mixers)
 {
 	if (!obs_output_valid(output, "obs_output_set_mixers"))
 		return;
-	if (log_flag_encoded(output, __FUNCTION__, true))
+	if (log_flag_encoded(output, __func__, true))
 		return;
 	if (active(output))
 		return;
@@ -1126,7 +1126,7 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 {
 	if (!obs_output_valid(output, "obs_output_set_video_encoder2"))
 		return;
-	if (!log_flag_encoded(output, __FUNCTION__, false) || !log_flag_video(output, __FUNCTION__))
+	if (!log_flag_encoded(output, __func__, false) || !log_flag_video(output, __func__))
 		return;
 	if (encoder && !obs_output_slots_video_type_ok(encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_video_encoder: "
@@ -1137,7 +1137,7 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 		blog(LOG_WARNING,
 		     "%s: tried to set video encoder on output \"%s\" "
 		     "while the output is still active!",
-		     __FUNCTION__, output->context.name);
+		     __func__, output->context.name);
 		return;
 	}
 
@@ -1184,7 +1184,7 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 {
 	if (!obs_output_valid(output, "obs_output_set_audio_encoder"))
 		return;
-	if (!log_flag_encoded(output, __FUNCTION__, false) || !log_flag_audio(output, __FUNCTION__))
+	if (!log_flag_encoded(output, __func__, false) || !log_flag_audio(output, __func__))
 		return;
 	if (encoder && !obs_output_slots_audio_type_ok(encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_audio_encoder: "
@@ -1195,7 +1195,7 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 		blog(LOG_WARNING,
 		     "%s: tried to set audio encoder %d on output \"%s\" "
 		     "while the output is still active!",
-		     __FUNCTION__, (int)idx, output->context.name);
+		     __func__, (int)idx, output->context.name);
 		return;
 	}
 
@@ -1250,7 +1250,7 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 {
 	if (!obs_output_valid(output, "obs_output_set_service"))
 		return;
-	if (!log_flag_service(output, __FUNCTION__) || active(output) || !service || service->active)
+	if (!log_flag_service(output, __func__) || active(output) || !service || service->active)
 		return;
 
 	if (service->output)
@@ -1306,7 +1306,7 @@ void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32
 {
 	if (!obs_output_valid(output, "obs_output_set_preferred_size2"))
 		return;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return;
 	if (!obs_output_slots_video_slot(idx))
 		return;
@@ -1335,7 +1335,7 @@ void obs_output_set_preferred_size(obs_output_t *output, uint32_t width, uint32_
 {
 	if (!obs_output_valid(output, "obs_output_set_preferred_size"))
 		return;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return;
 
 	obs_output_set_preferred_size2(output, width, height, 0);
@@ -1345,7 +1345,7 @@ uint32_t obs_output_get_width2(const obs_output_t *output, size_t idx)
 {
 	if (!obs_output_valid(output, "obs_output_get_width2"))
 		return 0;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return 0;
 	if (idx >= MAX_OUTPUT_VIDEO_ENCODERS)
 		return 0;
@@ -1368,7 +1368,7 @@ uint32_t obs_output_get_width(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_width"))
 		return 0;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return 0;
 
 	return obs_output_get_width2(output, 0);
@@ -1378,7 +1378,7 @@ uint32_t obs_output_get_height2(const obs_output_t *output, size_t idx)
 {
 	if (!obs_output_valid(output, "obs_output_get_height2"))
 		return 0;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return 0;
 	if (idx >= MAX_OUTPUT_VIDEO_ENCODERS)
 		return 0;
@@ -1401,7 +1401,7 @@ uint32_t obs_output_get_height(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_height"))
 		return 0;
-	if (!log_flag_video(output, __FUNCTION__))
+	if (!log_flag_video(output, __func__))
 		return 0;
 
 	return obs_output_get_height2(output, 0);
@@ -1413,7 +1413,7 @@ void obs_output_set_video_conversion(obs_output_t *output, const struct video_sc
 		return;
 	if (!obs_ptr_valid(conversion, "obs_output_set_video_conversion"))
 		return;
-	if (log_flag_encoded(output, __FUNCTION__, true) || !log_flag_video(output, __FUNCTION__))
+	if (log_flag_encoded(output, __func__, true) || !log_flag_video(output, __func__))
 		return;
 
 	output->video_conversion = *conversion;
@@ -1426,7 +1426,7 @@ void obs_output_set_audio_conversion(obs_output_t *output, const struct audio_co
 		return;
 	if (!obs_ptr_valid(conversion, "obs_output_set_audio_conversion"))
 		return;
-	if (log_flag_encoded(output, __FUNCTION__, true) || !log_flag_audio(output, __FUNCTION__))
+	if (log_flag_encoded(output, __func__, true) || !log_flag_audio(output, __func__))
 		return;
 
 	output->audio_conversion = *conversion;
@@ -1465,7 +1465,7 @@ static bool can_begin_data_capture(const struct obs_output *output)
 
 const struct video_scale_info *obs_output_get_video_conversion(struct obs_output *output)
 {
-	if (log_flag_encoded(output, __FUNCTION__, true) || !log_flag_video(output, __FUNCTION__))
+	if (log_flag_encoded(output, __func__, true) || !log_flag_video(output, __func__))
 		return NULL;
 
 	struct obs_output_conversion_sizes sizes = {
@@ -2105,7 +2105,7 @@ bool obs_output_initialize_encoders(obs_output_t *output, uint32_t flags)
 
 	if (!obs_output_valid(output, "obs_output_initialize_encoders"))
 		return false;
-	if (!log_flag_encoded(output, __FUNCTION__, false))
+	if (!log_flag_encoded(output, __func__, false))
 		return false;
 	if (active(output))
 		return delay_active(output);
@@ -2822,12 +2822,12 @@ bool obs_output_reconnecting(const obs_output_t *output)
 
 const char *obs_output_get_supported_video_codecs(const obs_output_t *output)
 {
-	return obs_output_valid(output, __FUNCTION__) ? output->info.encoded_video_codecs : NULL;
+	return obs_output_valid(output, __func__) ? output->info.encoded_video_codecs : NULL;
 }
 
 const char *obs_output_get_supported_audio_codecs(const obs_output_t *output)
 {
-	return obs_output_valid(output, __FUNCTION__) ? output->info.encoded_audio_codecs : NULL;
+	return obs_output_valid(output, __func__) ? output->info.encoded_audio_codecs : NULL;
 }
 
 const char *obs_output_get_protocols(const obs_output_t *output)

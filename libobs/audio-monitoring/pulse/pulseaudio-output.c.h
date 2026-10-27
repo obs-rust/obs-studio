@@ -336,7 +336,7 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 
 	monitor->resampler = audio_resampler_create(&to, &from);
 	if (!monitor->resampler) {
-		blog(LOG_WARNING, "%s: %s", __FUNCTION__, "Failed to create resampler");
+		blog(LOG_WARNING, "%s: %s", __func__, "Failed to create resampler");
 		return false;
 	}
 

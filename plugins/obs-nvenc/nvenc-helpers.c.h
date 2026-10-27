@@ -98,7 +98,7 @@ bool nv_failed2(obs_encoder_t *encoder, void *session, NVENCSTATUS err, const ch
 	return true;
 }
 
-#define NVH_FAILED(e, x) nv_failed2(e, NULL, x, __FUNCTION__, #x)
+#define NVH_FAILED(e, x) nv_failed2(e, NULL, x, __func__, #x)
 
 static void *load_nv_func(const char *func)
 {

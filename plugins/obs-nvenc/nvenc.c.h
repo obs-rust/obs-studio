@@ -268,7 +268,7 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 	preset_config.presetCfg.version = NV_ENC_CONFIG_VER;
 
 	err = nv.nvEncGetEncodePresetConfigEx(enc->session, enc->codec_guid, nv_preset, nv_tuning, &preset_config);
-	if (nv_failed(enc->encoder, err, __FUNCTION__, "nvEncGetEncodePresetConfig")) {
+	if (nv_failed(enc->encoder, err, __func__, "nvEncGetEncodePresetConfig")) {
 		return false;
 	}
 
@@ -1171,7 +1171,7 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 		if (nvtex && nvtex->mapped_res) {
 			NVENCSTATUS err;
 			err = nv.nvEncUnmapInputResource(s, nvtex->mapped_res);
-			if (nv_failed(enc->encoder, err, __FUNCTION__, "unmap")) {
+			if (nv_failed(enc->encoder, err, __func__, "unmap")) {
 				return false;
 			}
 			nvtex->mapped_res = NULL;
@@ -1182,7 +1182,7 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 		if (surf && surf->mapped_res) {
 			NVENCSTATUS err;
 			err = nv.nvEncUnmapInputResource(s, surf->mapped_res);
-			if (nv_failed(enc->encoder, err, __FUNCTION__, "unmap")) {
+			if (nv_failed(enc->encoder, err, __func__, "unmap")) {
 				return false;
 			}
 			surf->mapped_res = NULL;
@@ -1332,7 +1332,7 @@ bool nvenc_encode_base(struct nvenc_data *enc, struct nv_bitstream *bs, void *pi
 
 	NVENCSTATUS err = nv.nvEncEncodePicture(enc->session, &params);
 	if (err != NV_ENC_SUCCESS && err != NV_ENC_ERR_NEED_MORE_INPUT) {
-		nv_failed(enc->encoder, err, __FUNCTION__, "nvEncEncodePicture");
+		nv_failed(enc->encoder, err, __func__, "nvEncEncodePicture");
 		return false;
 	}
 
