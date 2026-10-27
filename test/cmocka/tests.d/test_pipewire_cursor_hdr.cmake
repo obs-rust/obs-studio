@@ -41,7 +41,8 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   add_dependencies(cmocka-tests test_pipewire_cursor_hdr)
   add_test(
     NAME test_pipewire_cursor_hdr
-    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_cursor_hdr>
+    COMMAND
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_cursor_hdr>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_cursor_hdr PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90)

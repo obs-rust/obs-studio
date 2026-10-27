@@ -48,7 +48,9 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_dependencies(cmocka-tests test_pipewire_camera_renegotiate)
   add_test(
     NAME test_pipewire_camera_renegotiate
-    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_renegotiate>
+    COMMAND
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py"
+      $<TARGET_FILE:test_pipewire_camera_renegotiate>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_camera_renegotiate PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)

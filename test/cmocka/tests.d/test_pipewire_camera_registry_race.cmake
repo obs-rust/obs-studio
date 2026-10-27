@@ -49,7 +49,8 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_test(
     NAME test_pipewire_camera_registry_race
     COMMAND
-      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_registry_race>
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py"
+      $<TARGET_FILE:test_pipewire_camera_registry_race>
   )
   set_tests_properties(test_pipewire_camera_registry_race PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
 endif()
