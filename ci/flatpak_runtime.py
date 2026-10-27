@@ -91,6 +91,24 @@ def check_origin(origin: str, bundle: bool) -> None:
         raise RuntimeError('the app was installed from the repo, not from the bundle')
 
 
+def cef_symbol_addresses(symbols: str) -> list[int]:
+    """Addresses of cef_version_info in `readelf --syms`/`--dyn-syms` output.
+
+    The name may carry a symbol version suffix (`@@CEF_1`), and readelf prints
+    the section as either an index or, for some binaries, its name."""
+    pattern = r'^\s*\d+:\s+([0-9a-fA-F]+)\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+cef_version_info(?:@\S*)?\s*$'
+    return [int(address, 16) for address in re.findall(pattern, symbols, re.M)]
+
+
+def check_cef_source_line(lines: str) -> None:
+    """The Debug extension must map cef_version_info to a CEF C++ source line.
+
+    `addr2line -f -i` prints a function name and a `file:line` location per
+    inlined frame; `??:0` means the debug file carries no line table."""
+    if not re.search(r'libcef_dll2\.cc:\d+', lines):
+        raise RuntimeError('installed CEF Debug extension has no line table for cef_version_info')
+
+
 # OBS_CONFIG_DIRECTORY of the Rust brand (frontend/utility/AppIdentity.hpp),
 # which the Flatpak builds with (#2358).
 CONFIG_DIRECTORY = 'obs-studio-rust'
@@ -320,12 +338,18 @@ def qualification(args) -> dict:  # noqa: C901
                for path in (cef[0], cef_debug[0])]
         if ids[0] != ids[1]:
             raise RuntimeError('CEF binary and installed Debug extension build IDs differ')
-        # Explicit directory covers Flatpak's /app/lib/debug layout from a host debugger.
-        gdb = session.run(['gdb', '-nx', '-batch', '-iex', 'set debuginfod enabled off',
-                           '-ex', f'set debug-file-directory {debug / "files"}', '-ex', f'file {cef[0]}',
-                           '-ex', f'add-symbol-file {cef_debug[0]}', '-ex', 'info line cef_version_info'])
-        if not re.search(r'Line \d+ of .*libcef_dll2.cc', gdb):
-            raise RuntimeError('GDB could not resolve CEF source lines from the installed Debug extension')
+        # GDB 17.1 aborts with "malloc(): corrupted top size" while loading the
+        # 270 MB .debug_line of CEF 8078-r2 (#2363), so resolve the line with
+        # binutils. The debug file carries the symbol table flatpak's
+        # split-debuginfo left behind; the stripped binary's dynamic symbols
+        # are the fallback.
+        addresses = cef_symbol_addresses(session.run(['readelf', '--syms', '--wide', str(cef_debug[0])]))
+        if not addresses:
+            addresses = cef_symbol_addresses(session.run(['readelf', '--dyn-syms', '--wide', str(cef[0])]))
+        if not addresses:
+            raise RuntimeError('installed Debug extension does not define cef_version_info')
+        check_cef_source_line(session.run(['addr2line', '-f', '-i', '-e', str(cef_debug[0]),
+                                           *(hex(address) for address in addresses)], timeout=900))
         result['cef_build_id'] = ids[0]
         flags = shlex.split(session.run(['pkg-config', '--cflags', '--libs', 'gio-unix-2.0', 'libpipewire-0.3', 'libpulse', 'libcurl']))
         kit = output / 'testkit'
