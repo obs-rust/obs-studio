@@ -260,8 +260,66 @@ const GNU_ORACLE_RENAMES: &[(&str, &str)] = gnu_oracle_renames!(
     sem_wait,
 );
 
+/// Generate the bench unit list from `benches/port_comparison` so a port adds
+/// its file and edits nothing shared (#1997): the `#[path] mod` lines and the
+/// `modules![...]` call used to be two hand-kept lists every port appended to,
+/// and two ports touching one file collided in the merge queue.
+///
+/// The file stem is the module name, so a file that would shadow a prelude
+/// path is named around it: `core.rs` is `core_units.rs`, because a `mod core`
+/// at the crate root would make the units' `use core::ffi::...` ambiguous.
+fn write_port_comparison_units(out_dir: &Path, manifest: &Path) {
+    let dir = manifest.join("benches/port_comparison");
+    let mut units: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("read {}: {e}", dir.display()))
+        .map(|entry| entry.expect("dir entry").path())
+        .filter(|path| path.extension().is_some_and(|e| e == "rs"))
+        .map(|path| {
+            path.file_stem()
+                .expect("a .rs file has a stem")
+                .to_string_lossy()
+                .into_owned()
+        })
+        .collect();
+    units.sort();
+
+    // `#[path]` with an absolute path, not `mod x { include!(..) }`: the unit
+    // files open with `//!` inner docs, which `include!` cannot carry.
+    let modules: String = units
+        .iter()
+        .map(|unit| {
+            let path = dir.join(format!("{unit}.rs"));
+            format!(
+                "#[path = \"{}\"]\nmod {unit};\n",
+                path.to_string_lossy().replace('\\', "/")
+            )
+        })
+        .collect();
+    std::fs::write(out_dir.join("port_comparison_modules.rs"), modules)
+        .expect("write port_comparison_modules.rs");
+
+    let calls: String = units
+        .iter()
+        .map(|unit| format!("    module(criterion, \"{unit}\", {unit}::benchmarks);\n"))
+        .collect();
+    std::fs::write(
+        out_dir.join("port_comparison_units.rs"),
+        format!(
+            "/// Runs every bench unit, one per file in `benches/port_comparison`\
+             \n/// (#1997).\nfn run_units(criterion: &mut Criterion) {{\n{calls}}}\n"
+        ),
+    )
+    .expect("write port_comparison_units.rs");
+
+    println!("cargo:rerun-if-changed={}", dir.display());
+}
+
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    write_port_comparison_units(
+        &PathBuf::from(std::env::var_os("OUT_DIR").expect("build script runs with OUT_DIR")),
+        &manifest,
+    );
     // No canonicalize(): on Windows it yields a verbatim `\\?\` path, and
     // MSVC cannot resolve `#include "util/..."` against such an include dir.
     // CARGO_MANIFEST_DIR is already absolute.
