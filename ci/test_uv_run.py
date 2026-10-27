@@ -97,6 +97,32 @@ def find_violations(path: str, text: str) -> list[str]:
     return hits
 
 
+# `uv run` in a repository without a Python project still looks for one first;
+# the flag keeps a CI step from depending on that discovery (ci-lint TOOL-003).
+# `--script` runs a PEP 723 file on its own and `--no-sync` reuses an already
+# synced environment, so both are isolation too.
+_UV_RUN = re.compile(r"\buv\s+run\b")
+_ISOLATION_FLAGS = ("--no-project", "--no-sync", "--script")
+_PYTHON_PROGRAM = re.compile(r"\S+\.py\b|(?<![\w.-])python3?(?:\.\d+)?\b")
+WORKFLOWS = ROOT / ".github" / "workflows"
+
+
+def find_unisolated_uv_runs(path: str, text: str) -> list[str]:
+    """`uv run <python program>` invocations that name no isolation flag."""
+    hits = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        for match in _UV_RUN.finditer(line):
+            rest = line[match.end():]
+            if not _PYTHON_PROGRAM.search(rest):
+                continue
+            if any(flag in rest.split() for flag in _ISOLATION_FLAGS):
+                continue
+            hits.append(f"{path}:{n}: {line.strip()}")
+    return hits
+
+
 class UvRunTest(unittest.TestCase):
     def test_detector(self):
         bad = [
@@ -145,6 +171,34 @@ class UvRunTest(unittest.TestCase):
 
     def test_allowlist_is_small(self):
         self.assertLessEqual(len(ALLOWLIST), 5)
+
+
+class UvRunIsolationTest(unittest.TestCase):
+    def test_detector(self):
+        self.assertEqual(len(find_unisolated_uv_runs("w.yaml", "run: uv run ci/local_gate.py --lane lint")), 1)
+        for line in (
+            "run: uv run --no-project ci/local_gate.py --lane lint",
+            "uv run --script ci/update_feed.py build",
+            "uv run --with playwright==1.49.1 playwright install --with-deps chromium",
+            "# uv run ci/local_gate.py --lane lint",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual(find_unisolated_uv_runs("w.yaml", line), [])
+
+    def test_workflows_isolate_uv_run(self):
+        """A workflow's `uv run` never depends on project discovery (TOOL-003).
+
+        This repository has no pyproject.toml, so `uv run` only ever runs a
+        script; naming the flag keeps that explicit and stops a future project
+        file from silently syncing an environment on every runner.
+        """
+        hits, sites = [], 0
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            text = path.read_text(encoding="utf-8")
+            sites += sum(len(_UV_RUN.findall(line)) for line in text.splitlines())
+            hits += find_unisolated_uv_runs(path.relative_to(ROOT).as_posix(), text)
+        self.assertGreater(sites, 20, "the scan found no `uv run` sites: the check would pass vacuously")
+        self.assertEqual(hits, [], f"{len(hits)} `uv run` without --no-project/--no-sync/--script:\n" + "\n".join(hits))
 
 
 if __name__ == "__main__":
