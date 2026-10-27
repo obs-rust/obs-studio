@@ -189,6 +189,7 @@ class ToolInvocation(unittest.TestCase):
             recorded,
             [
                 [
+                    str(stub.path),
                     "--exceptions",
                     "--user-exceptions",
                     str(stub.exceptions),
