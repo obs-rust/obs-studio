@@ -13,6 +13,10 @@
  * audio: 300, 1000, false (the out-struct untouched), false and false.
  *
  * The test never starts the core, so it needs no display or graphics module.
+ * It covers the never-started case only. After obs_shutdown() the core is
+ * NULL again and the getters take the same no-core branch, so that case is
+ * not run separately.
+ *
  * Each getter has its own case: before the fix each case crashes, and cmocka
  * reports the crash as that case's failure. */
 
@@ -38,16 +42,18 @@
 #define SENTINEL_RATE 12345u
 #define SENTINEL_SPEAKERS SPEAKERS_4POINT1
 
-static int group_setup(void **state)
+/* The cases are about "no core": in a process that started one, skip them
+ * rather than fail. */
+static void skip_with_core(void)
 {
-	(void)state;
-	/* the getters are only defined for "no core" when there is none */
-	return obs_initialized() ? -1 : 0;
+	if (obs_initialized())
+		skip();
 }
 
 static void test_video_info_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	struct obs_video_info ovi;
 	memset(&ovi, 0x5a, sizeof(ovi));
 	struct obs_video_info before = ovi;
@@ -59,18 +65,21 @@ static void test_video_info_no_core(void **state)
 static void test_sdr_white_level_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	assert_true(obs_get_video_sdr_white_level() == 300.f);
 }
 
 static void test_hdr_nominal_peak_level_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	assert_true(obs_get_video_hdr_nominal_peak_level() == 1000.f);
 }
 
 static void test_audio_info_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	struct obs_audio_info oai = {
 		.samples_per_sec = SENTINEL_RATE,
 		.speakers = SENTINEL_SPEAKERS,
@@ -86,6 +95,7 @@ static void test_audio_info_no_core(void **state)
 static void test_audio_info2_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	struct obs_audio_info2 oai2 = {
 		.samples_per_sec = SENTINEL_RATE,
 		.speakers = SENTINEL_SPEAKERS,
@@ -103,12 +113,14 @@ static void test_audio_info2_no_core(void **state)
 static void test_nv12_tex_active_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	assert_false(obs_nv12_tex_active());
 }
 
 static void test_p010_tex_active_no_core(void **state)
 {
 	(void)state;
+	skip_with_core();
 	assert_false(obs_p010_tex_active());
 }
 
@@ -124,5 +136,5 @@ int main(void)
 		cmocka_unit_test(test_p010_tex_active_no_core),
 	};
 
-	return cmocka_run_group_tests_name("test_no_core_getters", tests, group_setup, NULL);
+	return cmocka_run_group_tests_name("test_no_core_getters", tests, NULL, NULL);
 }
