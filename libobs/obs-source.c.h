@@ -4903,7 +4903,10 @@ static void apply_audio_actions(obs_source_t *source, size_t channels, size_t sa
  * stay here. */
 static void apply_audio_volume(obs_source_t *source, uint32_t mixers, size_t channels, size_t sample_rate)
 {
-	struct audio_action action;
+	/* Set only when an action is pending, and read under the same guard;
+	 * MSVC's flow analysis cannot carry that across the branch: C4701 at
+	 * /W4. Zero-initializing cannot be observed, the read is guarded. */
+	struct audio_action action = {0};
 	bool actions_pending;
 	float vol;
 

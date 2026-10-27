@@ -49,7 +49,9 @@ void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uin
 bool apply_scene_item_volume(struct obs_scene_item *item, float *buf, uint64_t ts, size_t sample_rate)
 {
 	bool actions_pending;
-	struct item_action action;
+	/* Set only when an action is pending, and read under the same guard:
+	 * C4701 at /W4. Zero-initializing cannot be observed. */
+	struct item_action action = {0};
 
 	pthread_mutex_lock(&item->actions_mutex);
 
