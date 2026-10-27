@@ -125,7 +125,7 @@ GetDigestOffset2(uint8_t *handshake, unsigned int len)
     {
         RTMP_Log(RTMP_LOGERROR,
                  "%s: Couldn't calculate correct digest offset (got %d), exiting",
-                 __FUNCTION__, res);
+                 __func__, res);
         exit(1);
     }
 
@@ -158,7 +158,7 @@ GetDigestOffset1(uint8_t *handshake, unsigned int len)
     {
         RTMP_Log(RTMP_LOGERROR,
                  "%s: Couldn't calculate digest offset (got %d), exiting!",
-                 __FUNCTION__, res);
+                 __func__, res);
         exit(1);
     }
 
@@ -683,7 +683,7 @@ HandShake(RTMP * r, int FP9HandShake)
 
     if (encrypted)
     {
-        RTMP_Log(RTMP_LOGERROR, "%s: encrypted RTMP is not supported", __FUNCTION__);
+        RTMP_Log(RTMP_LOGERROR, "%s: encrypted RTMP is not supported", __func__);
         return FALSE;
     }
     else if (r->Link.SWFSize)
@@ -703,7 +703,7 @@ HandShake(RTMP * r, int FP9HandShake)
         clientsig[5] = 0;
         clientsig[7] = 2;
 
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Client type: %02X", __FUNCTION__, clientsig[-1]);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Client type: %02X", __func__, clientsig[-1]);
         getdig = digoff[offalg];
     }
     else
@@ -724,13 +724,13 @@ HandShake(RTMP * r, int FP9HandShake)
     if (FP9HandShake)
     {
         digestPosClient = getdig(clientsig, RTMP_SIG_SIZE);	/* reuse this value in verification */
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Client digest offset: %d", __FUNCTION__,
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Client digest offset: %d", __func__,
                  digestPosClient);
 
         CalculateDigest(digestPosClient, clientsig, GenuineFPKey, 30,
                         &clientsig[digestPosClient]);
 
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Initial client digest: ", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Initial client digest: ", __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, clientsig + digestPosClient,
                     SHA256_DIGEST_LENGTH);
     }
@@ -746,11 +746,11 @@ HandShake(RTMP * r, int FP9HandShake)
     if (ReadN(r, (char *)&type, 1) != 1)	/* 0x03 or 0x06 */
         return FALSE;
 
-    RTMP_Log(RTMP_LOGDEBUG, "%s: Type Answer   : %02X", __FUNCTION__, type);
+    RTMP_Log(RTMP_LOGDEBUG, "%s: Type Answer   : %02X", __func__, type);
 
     if (type != clientsig[-1])
         RTMP_Log(RTMP_LOGWARNING, "%s: Type mismatch: client sent %d, server answered %d",
-                 __FUNCTION__, clientsig[-1], type);
+                 __func__, clientsig[-1], type);
 
     if (ReadN(r, (char *)serversig, RTMP_SIG_SIZE) != RTMP_SIG_SIZE)
         return FALSE;
@@ -759,8 +759,8 @@ HandShake(RTMP * r, int FP9HandShake)
     memcpy(&uptime, serversig, 4);
     uptime = ntohl(uptime);
 
-    RTMP_Log(RTMP_LOGDEBUG, "%s: Server Uptime : %d", __FUNCTION__, uptime);
-    RTMP_Log(RTMP_LOGDEBUG, "%s: FMS Version   : %d.%d.%d.%d", __FUNCTION__, serversig[4],
+    RTMP_Log(RTMP_LOGDEBUG, "%s: Server Uptime : %d", __func__, uptime);
+    RTMP_Log(RTMP_LOGDEBUG, "%s: FMS Version   : %d.%d.%d.%d", __func__, serversig[4],
              serversig[5], serversig[6], serversig[7]);
 
     if (FP9HandShake && type == 3 && !serversig[4])
@@ -827,7 +827,7 @@ HandShake(RTMP * r, int FP9HandShake)
         /* some info output */
         RTMP_Log(RTMP_LOGDEBUG,
                  "%s: Calculated digest key from secure key and server digest: ",
-                 __FUNCTION__);
+                 __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, digestResp, SHA256_DIGEST_LENGTH);
 
 #ifdef FP10
@@ -848,7 +848,7 @@ HandShake(RTMP * r, int FP9HandShake)
                 rtmpe9_sig(sig+i, sig+i, dptr[i] % 15);
         }
 #endif
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Client signature calculated:", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Client signature calculated:", __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, signatureResp, SHA256_DIGEST_LENGTH);
     }
     else
@@ -862,7 +862,7 @@ HandShake(RTMP * r, int FP9HandShake)
 
 #ifdef _DEBUG
     RTMP_Log(RTMP_LOGDEBUG, "%s: Sending handshake response: ",
-             __FUNCTION__);
+             __func__);
     RTMP_LogHex(RTMP_LOGDEBUG, reply, RTMP_SIG_SIZE);
 #endif
     if (!WriteN(r, (char *)reply, RTMP_SIG_SIZE))
@@ -873,7 +873,7 @@ HandShake(RTMP * r, int FP9HandShake)
         return FALSE;
 
 #ifdef _DEBUG
-    RTMP_Log(RTMP_LOGDEBUG, "%s: 2nd handshake: ", __FUNCTION__);
+    RTMP_Log(RTMP_LOGDEBUG, "%s: 2nd handshake: ", __func__);
     RTMP_LogHex(RTMP_LOGDEBUG, serversig, RTMP_SIG_SIZE);
 #endif
 
@@ -887,9 +887,9 @@ HandShake(RTMP * r, int FP9HandShake)
         {
             RTMP_Log(RTMP_LOGDEBUG,
                      "%s: Wait, did the server just refuse signed authentication?",
-                     __FUNCTION__);
+                     __func__);
         }
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Server sent signature:", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Server sent signature:", __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, &serversig[RTMP_SIG_SIZE - SHA256_DIGEST_LENGTH],
                     SHA256_DIGEST_LENGTH);
 
@@ -900,7 +900,7 @@ HandShake(RTMP * r, int FP9HandShake)
                    SHA256_DIGEST_LENGTH, signature);
 
         /* show some information */
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Digest key: ", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Digest key: ", __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, digest, SHA256_DIGEST_LENGTH);
 
 #ifdef FP10
@@ -921,18 +921,18 @@ HandShake(RTMP * r, int FP9HandShake)
                 rtmpe9_sig(sig+i, sig+i, dptr[i] % 15);
         }
 #endif
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Signature calculated:", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Signature calculated:", __func__);
         RTMP_LogHex(RTMP_LOGDEBUG, signature, SHA256_DIGEST_LENGTH);
         if (memcmp
                 (signature, &serversig[RTMP_SIG_SIZE - SHA256_DIGEST_LENGTH],
                  SHA256_DIGEST_LENGTH) != 0)
         {
-            RTMP_Log(RTMP_LOGWARNING, "%s: Server not genuine Adobe!", __FUNCTION__);
+            RTMP_Log(RTMP_LOGWARNING, "%s: Server not genuine Adobe!", __func__);
             return FALSE;
         }
         else
         {
-            RTMP_Log(RTMP_LOGDEBUG, "%s: Genuine Adobe Flash Media Server", __FUNCTION__);
+            RTMP_Log(RTMP_LOGDEBUG, "%s: Genuine Adobe Flash Media Server", __func__);
         }
     }
     else
@@ -940,11 +940,11 @@ HandShake(RTMP * r, int FP9HandShake)
         if (memcmp(serversig, clientsig, RTMP_SIG_SIZE) != 0)
         {
             RTMP_Log(RTMP_LOGWARNING, "%s: client signature does not match!",
-                     __FUNCTION__);
+                     __func__);
         }
     }
     // TODO(mgoulet): Should this have a HMAC_finish here?
 
-    RTMP_Log(RTMP_LOGDEBUG, "%s: Handshaking finished....", __FUNCTION__);
+    RTMP_Log(RTMP_LOGDEBUG, "%s: Handshaking finished....", __func__);
     return TRUE;
 }

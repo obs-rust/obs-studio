@@ -169,7 +169,7 @@ HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
     if (ssl)
     {
 #ifdef NO_SSL
-        RTMP_Log(RTMP_LOGERROR, "%s, No SSL/TLS support", __FUNCTION__);
+        RTMP_Log(RTMP_LOGERROR, "%s, No SSL/TLS support", __func__);
         ret = HTTPRES_BAD_REQUEST;
         goto leave;
 #else
@@ -186,7 +186,7 @@ HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
         int connect_return = TLS_connect(sb.sb_ssl);
         if (connect_return < 0)
         {
-            RTMP_Log(RTMP_LOGERROR, "%s, TLS_Connect failed", __FUNCTION__);
+            RTMP_Log(RTMP_LOGERROR, "%s, TLS_Connect failed", __func__);
             ret = HTTPRES_LOST_CONNECTION;
             goto leave;
         }
@@ -203,7 +203,7 @@ HTTP_get(struct HTTP_ctx *http, const char *url, HTTP_read_callback *cb)
                 (sb.sb_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv)))
         {
             RTMP_Log(RTMP_LOGERROR, "%s, Setting socket timeout to %ds failed!",
-                     __FUNCTION__, HTTP_TIMEOUT);
+                     __func__, HTTP_TIMEOUT);
         }
     }
 
@@ -618,12 +618,12 @@ RTMP_HashSWF(const char *url, unsigned int *size, unsigned char *hash,
         ret = -1;
         if (httpres == HTTPRES_LOST_CONNECTION)
             RTMP_Log(RTMP_LOGERROR, "%s: connection lost while downloading swfurl %s",
-                     __FUNCTION__, url);
+                     __func__, url);
         else if (httpres == HTTPRES_NOT_FOUND)
-            RTMP_Log(RTMP_LOGERROR, "%s: swfurl %s not found", __FUNCTION__, url);
+            RTMP_Log(RTMP_LOGERROR, "%s: swfurl %s not found", __func__, url);
         else
             RTMP_Log(RTMP_LOGERROR, "%s: couldn't contact swfurl %s (HTTP error %d)",
-                     __FUNCTION__, url, http.status);
+                     __func__, url, http.status);
     }
     else
     {
@@ -639,7 +639,7 @@ RTMP_HashSWF(const char *url, unsigned int *size, unsigned char *hash,
                 int err = errno;
                 RTMP_Log(RTMP_LOGERROR,
                          "%s: couldn't open %s for writing, errno %d (%s)",
-                         __FUNCTION__, path, err, strerror(err));
+                         __func__, path, err, strerror(err));
                 ret = -1;
                 goto out;
             }

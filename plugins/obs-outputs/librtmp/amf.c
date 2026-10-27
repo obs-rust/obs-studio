@@ -430,7 +430,7 @@ AMFProp_Encode(AMFObjectProperty *prop, char *pBuffer, char *pBufEnd)
         break;
 
     default:
-        RTMP_Log(RTMP_LOGERROR, "%s, invalid type. %d", __FUNCTION__, prop->p_type);
+        RTMP_Log(RTMP_LOGERROR, "%s, invalid type. %d", __func__, prop->p_type);
         pBuffer = NULL;
     };
 
@@ -500,7 +500,7 @@ AMF3ReadString(const char *data, AVal *str)
         uint32_t refIndex = (ref >> 1);
         RTMP_Log(RTMP_LOGDEBUG,
                  "%s, string reference, index: %d, not supported, ignoring!",
-                 __FUNCTION__, refIndex);
+                 __func__, refIndex);
         str->av_val = NULL;
         str->av_len = 0;
         return len;
@@ -537,7 +537,7 @@ AMF3Prop_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
     if (depth > AMF_MAX_DEPTH)
     {
         RTMP_Log(RTMP_LOGDEBUG, "%s: maximum AMF depth %d exceeded",
-                 __FUNCTION__, AMF_MAX_DEPTH);
+                 __func__, AMF_MAX_DEPTH);
         return -1;
     }
 
@@ -646,7 +646,7 @@ AMF3Prop_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
     case AMF3_BYTE_ARRAY:
     default:
         RTMP_Log(RTMP_LOGDEBUG, "%s - AMF3 unknown/unsupported datatype 0x%02x, @%p",
-                 __FUNCTION__, (unsigned char)(*pBuffer), pBuffer);
+                 __func__, (unsigned char)(*pBuffer), pBuffer);
         return -1;
     }
 
@@ -676,13 +676,13 @@ AMFProp_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
     if (depth > AMF_MAX_DEPTH)
     {
         RTMP_Log(RTMP_LOGDEBUG, "%s: maximum AMF depth %d exceeded",
-                 __FUNCTION__, AMF_MAX_DEPTH);
+                 __func__, AMF_MAX_DEPTH);
         return -1;
     }
 
     if (nSize == 0 || !pBuffer)
     {
-        RTMP_Log(RTMP_LOGDEBUG, "%s: Empty buffer/no buffer pointer!", __FUNCTION__);
+        RTMP_Log(RTMP_LOGDEBUG, "%s: Empty buffer/no buffer pointer!", __func__);
         return -1;
     }
 
@@ -691,7 +691,7 @@ AMFProp_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
         /* at least name (length + at least 1 byte) and 1 byte of data */
         RTMP_Log(RTMP_LOGDEBUG,
                  "%s: Not enough data for decoding with name, less than 4 bytes!",
-                 __FUNCTION__);
+                 __func__);
         return -1;
     }
 
@@ -702,7 +702,7 @@ AMFProp_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
         {
             RTMP_Log(RTMP_LOGDEBUG,
                      "%s: Name size out of range: namesize (%d) > len (%d) - 2",
-                     __FUNCTION__, nNameSize, nSize);
+                     __func__, nNameSize, nSize);
             return -1;
         }
 
@@ -846,7 +846,7 @@ AMFProp_DecodeDepth(AMFObjectProperty *prop, const char *pBuffer, int nSize,
         break;
     }
     default:
-        RTMP_Log(RTMP_LOGDEBUG, "%s - unknown datatype 0x%02x, @%p", __FUNCTION__,
+        RTMP_Log(RTMP_LOGDEBUG, "%s - unknown datatype 0x%02x, @%p", __func__,
                  prop->p_type, pBuffer - 1);
         return -1;
     }
@@ -1066,7 +1066,7 @@ AMF_DecodeArrayDepth(AMFObject *obj, const char *pBuffer, int nSize,
     if (depth > AMF_MAX_DEPTH)
     {
         RTMP_Log(RTMP_LOGDEBUG, "%s: maximum AMF depth %d exceeded",
-                 __FUNCTION__, AMF_MAX_DEPTH);
+                 __func__, AMF_MAX_DEPTH);
         return -1;
     }
 
@@ -1121,7 +1121,7 @@ AMF3_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bAMFData,
     if (depth > AMF_MAX_DEPTH)
     {
         RTMP_Log(RTMP_LOGDEBUG, "%s: maximum AMF depth %d exceeded",
-                 __FUNCTION__, AMF_MAX_DEPTH);
+                 __func__, AMF_MAX_DEPTH);
         return -1;
     }
 
@@ -1193,7 +1193,7 @@ AMF3_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bAMFData,
                 {
                 invalid:
                     RTMP_Log(RTMP_LOGDEBUG, "%s, invalid class encoding!",
-                        __FUNCTION__);
+                        __func__);
                     if (cd.cd_props)
                         free(cd.cd_props);
                     return nOriginalSize;
@@ -1221,7 +1221,7 @@ AMF3_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bAMFData,
             if (nRes == -1)
             {
                 RTMP_Log(RTMP_LOGDEBUG, "%s, failed to decode AMF3 property!",
-                         __FUNCTION__);
+                         __func__);
                 /* prop was never set; fail the object instead of adding it */
                 AMF_Reset(obj);
                 if (cd.cd_props)
@@ -1246,7 +1246,7 @@ AMF3_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bAMFData,
                 if (nRes == -1)
                 {
                     RTMP_Log(RTMP_LOGDEBUG, "%s, failed to decode AMF3 property!",
-                             __FUNCTION__);
+                             __func__);
                     /* adding -1 to pBuffer would step back into data already read */
                     AMF_Reset(obj);
                     if (cd.cd_props)
@@ -1273,7 +1273,7 @@ AMF3_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bAMFData,
                     if (nRes == -1)
                     {
                         RTMP_Log(RTMP_LOGDEBUG, "%s, failed to decode AMF3 property!",
-                                 __FUNCTION__);
+                                 __func__);
                         AMF_Reset(obj);
                         if (cd.cd_props)
                             free(cd.cd_props);
@@ -1316,7 +1316,7 @@ AMF_DecodeDepth(AMFObject *obj, const char *pBuffer, int nSize, int bDecodeName,
     if (depth > AMF_MAX_DEPTH)
     {
         RTMP_Log(RTMP_LOGDEBUG, "%s: maximum AMF depth %d exceeded",
-                 __FUNCTION__, AMF_MAX_DEPTH);
+                 __func__, AMF_MAX_DEPTH);
         return -1;
     }
 
