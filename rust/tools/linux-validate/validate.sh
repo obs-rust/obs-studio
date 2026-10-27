@@ -318,7 +318,7 @@ else
       costs="${OBS_TIER2_COST_DIR:-${ZCCACHE_CACHE_DIR:-}}/ctest-cost-$mode.txt"
       [ -s "$costs" ] || costs=/dev/null
       echo "== [$mode] shard plan ($(wc -l <"$names") tests, costs from ${costs})"
-      "$SRC"/rust/tools/linux-validate/shard-plan.sh "$costs" "$names" "$OBS_TIER2_SHARDS" "$build/tier2-shards/$mode"
+      uv run --script "$SRC/rust/tools/linux-validate/shard-plan.py" "$costs" "$names" "$OBS_TIER2_SHARDS" "$build/tier2-shards/$mode"
     done
   fi
 

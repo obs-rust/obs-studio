@@ -39,8 +39,7 @@ COSTS = {
 }
 
 
-def run_plan(costs: dict[str, float], names: list[str], shards: int,
-             env: dict[str, str] | None = None) -> dict[int, list[str]]:
+def run_plan(costs: dict[str, float], names: list[str], shards: int) -> dict[int, list[str]]:
     d = Path(tempfile.mkdtemp())
     cost = d / "CTestCostData.txt"
     cost.write_text("".join(f"{n} 3 {c}\n" for n, c in costs.items()) + ("---\ntest_flaky\n" if costs else ""))
@@ -49,7 +48,7 @@ def run_plan(costs: dict[str, float], names: list[str], shards: int,
     out = d / "out"
     r = subprocess.run([sys.executable, str(PLAN), str(cost), str(listing), str(shards), str(out)],
                        capture_output=True, text=True,
-                       env={k: v for k, v in os.environ.items() if k != "DEFAULT_COST"} | (env or {}))
+                       env={k: v for k, v in os.environ.items() if k != "DEFAULT_COST"})
     assert r.returncode == 0, r.stdout + r.stderr
     plan = {}
     for i in range(1, shards + 1):
@@ -119,7 +118,7 @@ class ShardPlanTest(unittest.TestCase):
 class ValidateUsesPlanTest(unittest.TestCase):
     def test_build_stage_writes_and_test_stage_uses_the_plan(self):
         text = VALIDATE.read_text(encoding="utf-8")
-        self.assertIn('uv run "$SRC/rust/tools/linux-validate/shard-plan.py"', text)
+        self.assertIn('uv run --script "$SRC/rust/tools/linux-validate/shard-plan.py"', text)
         self.assertIn("tier2-shards", text)
         self.assertRegex(text, r'shard_args=\(-R "\$\(cat "\$plan"\)"\)')
 
