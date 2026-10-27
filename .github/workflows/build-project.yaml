@@ -2040,7 +2040,7 @@ jobs:
           uv run ci/fetch_libs_asset.py "${QT_TAG}" "${asset}" "${sha}" "${RUNNER_TEMP}/qt"
           echo "fetched ${asset} in $((SECONDS - start)) s"
           export "${variable}=${RUNNER_TEMP}/qt"
-          soldr cargo test -p obs-studio-rust --locked --test obs-tests-app -- --exact qt_sdk::qt_sdk_resolves_published_sdks --nocapture 2>&1 | tee "${RUNNER_TEMP}/qt-sdk.log"
+          soldr cargo test -p obs-studio-rust --locked --test obs-tests-app -- --exact qt_sdk::qt_sdk_resolves_published_sdks --show-output 2>&1 | tee "${RUNNER_TEMP}/qt-sdk.log"
           grep -q ": Qt 6\." "${RUNNER_TEMP}/qt-sdk.log"
           # The Qt native test graph (moc, uic, rcc, link, run) against the
           # same SDK; Windows loads the Qt DLLs and the minimal platform plugin
@@ -2060,7 +2060,7 @@ jobs:
             "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
           fi
           export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
-          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --nocapture
+          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
 
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
