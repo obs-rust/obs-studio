@@ -162,6 +162,18 @@ class PulseAudioTest(unittest.TestCase):
         self.assertFalse((self.record / "test-binary.json").exists())
         self.assert_private_dir_removed()
 
+    def test_a_daemon_that_is_still_starting_is_waited_for(self) -> None:
+        # `pactl` answering is the harness's signal that the daemon serves the
+        # test binary, as the real one does only once it listens; a stub that
+        # answers before the daemon has even started lets the harness stop it
+        # mid-startup, and its record never appears (seen as a
+        # FileNotFoundError in ./lint's parallel self-test).
+        self.stub("pulseaudio", "import time\ntime.sleep(1.0)\n" + DAEMON)
+        result = self.run_script("test-pulse", PRIVATE_PULSEAUDIO_STARTED="1")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((self.record / "pulseaudio.json").exists(), "the daemon started up")
+        self.assertTrue((self.record / "test-binary.json").exists())
+
     def test_a_deep_tmpdir_moves_the_private_dir_to_tmp(self) -> None:
         deep = self.root / ("d" * 80)
         deep.mkdir(parents=True)
