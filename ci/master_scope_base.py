@@ -1,7 +1,18 @@
 #!/usr/bin/env -S uv run --script
 """Retain selected paths when pending master Push builds are coalesced."""
 import json
+import os
 import subprocess
+
+# setup-soldr exports these through GITHUB_ENV; gh then colourises --json.
+_COLOUR = ("CLICOLOR_FORCE", "FORCE_COLOR", "GH_FORCE_TTY")
+
+
+def plain_env(environ=None):
+    """The environment a `gh --json` call is parsed from: never coloured."""
+    env = {k: v for k, v in (os.environ if environ is None else environ).items() if k not in _COLOUR}
+    env["NO_COLOR"] = "1"
+    return env
 
 
 def baseline_covers_coalesced_pushes(sha, run):
@@ -23,6 +34,7 @@ def scope_base(run=subprocess.run):
             ['gh', 'run', 'list', '--workflow', 'push.yaml', '--branch', 'master',
              '--event', 'push', '--status', 'success', '--limit', '30',
              '--json', 'headSha'], check=True, capture_output=True, text=True,
+            env=plain_env(),
         )
         for item in json.loads(result.stdout):
             sha = item['headSha']
