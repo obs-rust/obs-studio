@@ -452,10 +452,31 @@ class AllowPermissionsTest(unittest.TestCase):
             with self.subTest(job=job, scope=scope):
                 self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
 
+    def test_build_project_job_scopes_are_granted(self):
+        """build-project.yaml's native-cache-transport job writes caches (SEC-002).
+
+        ci-lint checks the grant with the network; this offline half keeps the
+        workflow and ci.toml from drifting apart.
+        """
+        scopes = {entry for entry in job_permission_scopes(WORKFLOWS / "build-project.yaml")
+                  if entry[1].endswith(": write")}
+        grants = load()["allow"]["permissions"]
+        self.assertEqual(scopes, {("native-cache-transport", "contents: write")},
+                         "native-cache-transport's contents: write is build-project.yaml's only elevated scope")
+        for job, scope in sorted(scopes):
+            with self.subTest(job=job, scope=scope):
+                self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
+
     def test_claim_bot_has_no_sec_002_exception(self):
         stale = [entry for entry in load()["exceptions"]
                  if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/claim-bot.yaml"]
         self.assertEqual(stale, [], "the job-level scopes replace this exception (#962)")
+
+    def test_build_project_has_no_sec_002_exception(self):
+        stale = [entry for entry in load()["exceptions"]
+                 if entry["rule"] == "SEC-002"
+                 and entry["path"] == ".github/workflows/build-project.yaml"]
+        self.assertEqual(stale, [], "the grants replace this exception (#962)")
 
 
 class NativeArchitectureRetentionTest(unittest.TestCase):
