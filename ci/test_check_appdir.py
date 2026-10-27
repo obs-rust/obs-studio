@@ -99,6 +99,8 @@ class CheckAppdirTest(unittest.TestCase):
         write(self.appdir / "usr" / "share" / "pipewire" / "client.conf", CLIENT_CONF)
         # SRT_VERSION lives as a bare x.y.z string between NULs in .rodata.
         self.write_srt(b"1.5.7")
+        # libvpx's version string is a bare `vX.Y.Z` (vpx_codec_version_str).
+        self.write_vpx(b"1.17.0")
 
     def write(self, path: Path, data: str | bytes) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,6 +109,13 @@ class CheckAppdirTest(unittest.TestCase):
 
     def write_srt(self, version: bytes) -> Path:
         return self.write(self.appdir / "usr" / "lib" / "libsrt.so.1.5.7", b"\x7fELF" + b"\x00" + version + b"\x00")
+
+    def write_vpx(self, version: bytes) -> Path:
+        """A libvpx with its soname and version string, the way .rodata holds them."""
+        return self.write(
+            self.appdir / "usr" / "lib" / "libvpx.so.12.1.0",
+            b"\x7fELF" + b"\x00" + b"libvpx.so.12" + b"\x00" + b"v" + version + b"\x00",
+        )
 
     def run_check(self) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
@@ -129,6 +138,7 @@ class CheckAppdirTest(unittest.TestCase):
         # the shell's `case "$APPDIR"/*` skipped it: five paths are counted.
         self.assertIn("check-appdir: all 5 AppDir paths that AppRun exports exist", out)
         self.assertIn("one libsrt (1.5.7)", out)
+        self.assertIn("one libvpx (1.17.0)", out)
 
     def test_an_optional_pipewire_module_is_a_note(self):
         code, out, _ = self.run_check()
@@ -214,6 +224,26 @@ class CheckAppdirTest(unittest.TestCase):
         self.write(self.appdir / "usr" / "lib" / "libavformat.so", b"\x7fELF\x00libsrt-gnutls.so.1.5\x00")
         self.assert_fails(
             "usr/lib/libavformat.so needs libsrt-gnutls.so.1.5, a second libsrt next to the bundled libsrt.so.1.5.7"
+        )
+
+    def test_no_libvpx_fails(self):
+        (self.appdir / "usr" / "lib" / "libvpx.so.12.1.0").unlink()
+        self.assert_fails("expected exactly one libvpx in the AppImage, found 0: ")
+
+    def test_two_libvpx_fails(self):
+        self.write(self.appdir / "usr" / "lib" / "extra" / "libvpx.so.9.0.1", b"\x7fELF")
+        self.assert_fails(
+            "expected exactly one libvpx in the AppImage, found 2: usr/lib/extra/libvpx.so.9.0.1 usr/lib/libvpx.so.12.1.0"
+        )
+
+    def test_a_libvpx_older_than_the_floor_fails(self):
+        self.write_vpx(b"1.14.1")
+        self.assert_fails("the bundled usr/lib/libvpx.so.12.1.0 is libvpx 1.14.1; at least 1.17.0 is required")
+
+    def test_a_second_libvpx_soname_referenced_by_another_library_fails(self):
+        self.write(self.appdir / "usr" / "lib" / "libavcodec.so", b"\x7fELF\x00libvpx.so.9\x00")
+        self.assert_fails(
+            "usr/lib/libavcodec.so needs libvpx.so.9, a second libvpx next to the bundled libvpx.so.12"
         )
 
     def test_no_appdir_is_a_usage_error(self):
