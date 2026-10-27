@@ -717,6 +717,61 @@ class ScheduledPermissionsTest(unittest.TestCase):
             and entry.get("path") == ".github/workflows/scheduled.yaml"
         ]
         self.assertEqual(stale, [], "the SEC-002 exception for scheduled.yaml must be deleted")
+class PushPermissionsTest(unittest.TestCase):
+    """SEC-002: push.yaml's top-level token default is read-only.
+
+    The push workflow carried a top-level ``contents: write``, so every job and
+    step in it held a write token by default. The block is now read-only; the
+    one job that writes, ``create-release`` (action-gh-release), carries its own
+    ``contents: write`` grant, and every job write scope is recorded in
+    ci.toml's ``[allow].permissions``.
+
+    The file keeps its SEC-002 exception for one structural finding:
+    ``sign-windows-build`` grants ``id-token: write`` to the upstream Windows
+    signing reusable workflow, and ci-lint's OIDC rule allows that scope only on
+    a PyPI or crates.io publisher job (ci_lint/rules/secrets_rules.py,
+    ``_is_oidc_publisher``), which this caller is not. Dropping the grant would
+    break signing, so the exception stays, narrowed to that one case (#962).
+    ci-lint needs the network, so the rule is mirrored here over the workflow
+    text and ci.toml.
+    """
+
+    WORKFLOW = WORKFLOWS / "push.yaml"
+
+    def test_top_level_permissions_are_read_only(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        block = re.search(r"(?m)^permissions:\n((?:[ \t].*\n|\n)*)", text)
+        self.assertIsNotNone(block, "push.yaml needs a top-level permissions block")
+        assert block is not None
+        self.assertRegex(block.group(1), r"(?m)^\s+contents: read$")
+        self.assertNotRegex(block.group(1), r"write", "the top-level block must stay read-only")
+
+    def test_create_release_grants_contents_write_and_is_allowlisted(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        job = text.split("  create-release:\n", 1)[1]
+        perms = re.search(r"(?m)^    permissions:\n((?:[ \t].*\n|\n)*)", job)
+        self.assertIsNotNone(perms, "the create-release job must carry its own permissions block")
+        assert perms is not None
+        self.assertRegex(perms.group(1), r"(?m)^\s+contents: write$")
+        allowed = load()["allow"]["permissions"].get("contents: write", [])
+        self.assertIn("create-release", allowed)
+
+    def test_every_job_write_scope_is_granted(self):
+        scopes = {entry for entry in job_permission_scopes(self.WORKFLOW)
+                  if entry[1].endswith(": write")}
+        grants = load()["allow"]["permissions"]
+        self.assertTrue(scopes, "push.yaml's jobs declare write scopes")
+        for job, scope in sorted(scopes):
+            with self.subTest(job=job, scope=scope):
+                self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
+
+    def test_exception_is_narrowed_to_the_id_token_grant(self):
+        entries = [entry for entry in load().get("exceptions", [])
+                   if entry.get("rule") == "SEC-002"
+                   and entry.get("path") == ".github/workflows/push.yaml"]
+        self.assertEqual(len(entries), 1, "push.yaml keeps one narrowed SEC-002 exception")
+        self.assertIn("id-token", entries[0].get("reason", ""),
+                      "the exception's reason must name the id-token grant it cannot clear")
 
 
 if __name__ == "__main__":
