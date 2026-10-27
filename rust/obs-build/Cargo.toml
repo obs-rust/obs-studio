@@ -19,7 +19,7 @@ dunce = { workspace = true, default-features = true }
 cc = { workspace = true, default-features = true, features = ["parallel"] }
 pkg-config = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true, features = ["derive"] }
-serde_json = { workspace = true, default-features = true }
+serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 libloading = { workspace = true, default-features = true }

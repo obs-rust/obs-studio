@@ -22,7 +22,7 @@ path = "src/main.rs"
 
 [dependencies]
 serde = { workspace = true, default-features = true, features = ["derive"] }
-serde_json = { workspace = true, default-features = true }
+serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 proptest = { workspace = true, default-features = true }
