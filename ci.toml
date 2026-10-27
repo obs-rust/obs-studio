@@ -194,7 +194,11 @@ secrets = [
 # `analyze-project`/`codeql` upload security events (`codeql` also reads
 # packages). Its two no-block jobs (`upload-language-files`, `steam-upload`) are
 # upstream-only, gated on `repository_owner == 'obsproject'`.
-permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "checks: write" = ["validate-data", "services-validation", "services-availability"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation", "services-availability"], "issues: write" = ["welcome", "claim", "report-nightly-failure"], "packages: read" = ["codeql"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome", "services-validation", "services-availability"], "security-events: write" = ["windows", "macos", "analyze-project", "codeql"] }
+# push.yaml's top-level block is read-only; its `create-release` job carries the
+# contents: write the release action needs, `compatibility-validation` and
+# `services-validation` hold checks: write, and `sign-windows-build` holds the
+# attestations scope plus the id-token it hands to the upstream signing workflow.
+permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "attestations: write" = ["sign-windows-build"], "checks: write" = ["validate-data", "services-validation", "compatibility-validation", "services-availability"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation", "create-release", "services-availability"], "id-token: write" = ["sign-windows-build"], "issues: write" = ["welcome", "claim", "report-nightly-failure"], "packages: read" = ["codeql"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome", "services-validation", "services-availability"], "security-events: write" = ["windows", "macos", "analyze-project", "codeql"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!
@@ -950,7 +954,7 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "SEC-002"
 path = ".github/workflows/push.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
+reason = "push.yaml's sign-windows-build job grants id-token: write to the upstream Windows signing reusable workflow; ci-lint's OIDC rule allows that scope only on a PyPI/crates.io publisher job (ci_lint/rules/secrets_rules.py::_is_oidc_publisher), so the grant cannot be dropped without breaking signing. The file's other SEC-002 findings are cleared (#962)."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 # TAG-003: PR runs do not read title tags, so a title edit need not re-trigger them.
