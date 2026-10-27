@@ -170,8 +170,8 @@ def main(argv: list[str]) -> int:
 
         # A TMPDIR deep enough that <TMPDIR>/<wrapper dir>/pipewire-0-manager
         # is over 108 bytes.
-        long_tmpdir = work / "a-build-tree-in-a-deeply-nested-worktree-directory" / "build-tmp"
-        long_tmpdir.mkdir(parents=True, exist_ok=True)
+        deep_tmpdir = work / "a-build-tree-in-a-deeply-nested-worktree-directory" / "build-tmp"
+        deep_tmpdir.mkdir(parents=True, exist_ok=True)
 
         bin_dying = work / "bin-dying"
         bin_dying.mkdir(parents=True, exist_ok=True)
@@ -190,7 +190,9 @@ def main(argv: list[str]) -> int:
             env = dict(os.environ)
             env["PATH"] = os.environ.get("PATH", "") if long_tmpdir else path_with(bin_dying)
             if long_tmpdir:
-                env["TMPDIR"] = str(target)
+                # The shell ran the case with `TMPDIR="$long"`: a deep *directory*,
+                # not the stub path (which is the test-binary argument).
+                env["TMPDIR"] = str(deep_tmpdir)
             return run_wrapper(uv, scripts / wrapper, target, out, env)
 
         pulse_stub = work / "pulse-stub"
