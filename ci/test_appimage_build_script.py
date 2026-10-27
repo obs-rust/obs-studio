@@ -136,7 +136,7 @@ class ManylinuxLauncherTest(unittest.TestCase):
             }
             command = ["printf", "value with spaces", "literal;$(not-a-command)"]
             result = subprocess.run(
-                ["bash", str(ROOT / "build-aux/appimage/manylinux/run.sh"), *command],
+                [sys.executable, str(ROOT / "build-aux/appimage/manylinux/run.py"), *command],
                 cwd=ROOT, env=environment, capture_output=True, text=True, timeout=10,
             )
             self.assertEqual(result.returncode, 0, result.stderr)

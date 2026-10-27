@@ -4,7 +4,7 @@
     uv run python -m unittest ci/test_appimage_zccache_save.py
 
 The build steps run as root in the glibc 2.28 container
-(build-aux/appimage/manylinux/run.sh), so zccache creates .zccache owned by
+(build-aux/appimage/manylinux/run.py), so zccache creates .zccache owned by
 root with a private mode. actions/cache/save runs as the runner user: it
 warned "EACCES: permission denied, scandir '.zccache'", saved nothing and
 still passed, so every AppImage build compiled cold (master release run
