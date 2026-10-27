@@ -122,12 +122,22 @@ chmod +x "$OBS_NATIVE_TOOL_OUTPUT/x86_64-unknown-linux-gnu/debug/obs-build"
         self.assertIn("could not determine the Rust host target", result.stderr)
         self.assertNotIn("cargo build", log.read_text())
 
-    def test_the_root_launcher_hands_off_to_the_python_module(self):
-        # The repository root command stays a two-line shim, so the logic has
-        # one copy and GEN-005 has no shell script to flag.
-        text = (ROOT / "native-build").read_text()
-        self.assertIn("ci/native_build.py", text)
-        self.assertNotIn("soldr", text)
+    def test_the_root_shell_launcher_is_gone_and_the_module_is_the_entry_point(self):
+        # GEN-005 (#962): the logic lives in ci/native_build.py, so no root
+        # shell shim is tracked for `ci-lint precheck` to flag -- the root
+        # command is `uv run --script ci/native_build.py`. This replaces the
+        # two-line `./native-build` shim, which the linter reports as a
+        # [GEN-005] VIOLATION `native-build` finding.
+        self.assertFalse(
+            (ROOT / "native-build").exists(),
+            "the root `native-build` shell shim is a GEN-005 violation (#962); "
+            "run `uv run --script ci/native_build.py` instead",
+        )
+        self.assertTrue((ROOT / "ci" / "native_build.py").exists())
+        for doc in ("docs/rust-port/cc-build.md",):
+            text = (ROOT / doc).read_text()
+            self.assertNotIn("./native-build", text, doc)
+            self.assertIn("ci/native_build.py", text, doc)
 
     def test_every_corrosion_import_joins_the_cargo_build_order(self):
         imports = {
