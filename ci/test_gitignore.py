@@ -28,6 +28,7 @@ NEW_SOURCE = (
 
 # Build output and local files that must stay ignored.
 GENERATED = (
+    "ci-evidence-1694/setup-observations.json",
     "build/CMakeCache.txt",
     "build_x64/obs.sln",
     "target/debug/obs",
