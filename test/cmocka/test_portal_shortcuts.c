@@ -143,6 +143,10 @@ static struct fake_portal {
 	/* Like a dialog cancelled for one new shortcut: a BindShortcuts with
 	 * this id answers 1 (cancelled); one without it succeeds. */
 	const char *decline_with_id;
+	/* Like a dialog cancelled for a changed description: a BindShortcuts
+	 * requesting a shortcut with this description answers 1 (cancelled);
+	 * one without it succeeds. */
+	const char *decline_description;
 } fake;
 
 static char *request_path(const char *sender, const char *token)
@@ -305,6 +309,18 @@ static void portal_method(GDBusConnection *conn, const char *sender, const char 
 			g_variant_iter_init(&iter, shortcuts);
 			while (g_variant_iter_next(&iter, "(&s@a{sv})", &requested, &requested_props)) {
 				if (strcmp(requested, fake.decline_with_id) == 0)
+					response = 1;
+				g_variant_unref(requested_props);
+			}
+		}
+		if (fake.decline_description) {
+			const char *requested;
+			GVariant *requested_props;
+			g_variant_iter_init(&iter, shortcuts);
+			while (g_variant_iter_next(&iter, "(&s@a{sv})", &requested, &requested_props)) {
+				const char *description = "";
+				g_variant_lookup(requested_props, "description", "&s", &description);
+				if (strcmp(description, fake.decline_description) == 0)
 					response = 1;
 				g_variant_unref(requested_props);
 			}
@@ -1950,11 +1966,11 @@ static void descriptions_compared_as_bytes(void **state)
 }
 
 /* The dialog for a set with no new key (an action moved onto an approved
- * key, so only its description changed) is cancelled. Characterized, not
- * endorsed: the approved key is not bound again, because bind_approved()
- * binds only a strict part of the request, so every key stops until Ask
+ * key, so only its description changed) is cancelled: the approved key is
+ * bound again with the description it was approved with, so it keeps
+ * working. The new description is declined, and is asked for again on Ask
  * again. */
-static void declined_description_change_unbinds_approved_key(void **state)
+static void declined_description_change_rebinds_approved_key(void **state)
 {
 	UNUSED_PARAMETER(state);
 	REQUIRE_DBUS_DAEMON();
@@ -1965,22 +1981,37 @@ static void declined_description_change_unbinds_approved_key(void **state)
 
 	struct obs_nix_portal_shortcuts *portal = obs_nix_portal_shortcuts_start(&key_state, test_key_name);
 	expect_bind(1);
+	expect_description("OBS_KEY_F13", "OBS: Push-to-talk");
 	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "approved");
 
-	fake.bind_response = 1;
+	/* The dialog for the changed description is cancelled, so a bind that
+	 * asks for the new description is declined; the re-bind of the key
+	 * with the description it was approved with is not. */
+	fake.decline_description = "OBS: Push-to-talk, Push-to-mute";
 	register_bound("Push-to-mute", &mute, f13);
-	expect_bind(2);
-	expect_description("OBS_KEY_F13", "OBS: Push-to-talk, Push-to-mute");
-	expect_state(OBS_HOTKEYS_BACKGROUND_DECLINED, "dialog for a new description cancelled");
-	expect_no_bind_after(2, 800, "declined description change");
-	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
+	/* bind 2 is the cancelled dialog for the new description; bind 3 is the
+	 * approved key bound again. */
+	if (!wait_until(binds_at_least, (void *)(uintptr_t)3)) {
+		fprintf(stderr,
+			"after the dialog for a new description was cancelled, the approved "
+			"key was not bound again (state %s)\n",
+			state_name(obs_hotkeys_get_background_state(NULL)));
+		fail();
+	}
+	expect_description("OBS_KEY_F13", "OBS: Push-to-talk");
+	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "approved key bound again");
+	assert_true(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
 	assert_true(shortcut_info(f13).found);
-	assert_false(shortcut_info(f13).bound);
+	assert_true(shortcut_info(f13).bound);
+	assert_true(bound_has("OBS_KEY_F13"));
+	expect_no_bind_after(3, 800, "declined description change");
 
-	fake.bind_response = 0;
+	fake.decline_description = NULL;
 	obs_hotkeys_retry_background();
-	expect_bind(3);
+	expect_bind(4);
+	expect_description("OBS_KEY_F13", "OBS: Push-to-talk, Push-to-mute");
 	expect_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, "asked again");
+	assert_false(background_flags() & OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
 	assert_true(shortcut_info(f13).bound);
 
 	obs_nix_portal_shortcuts_stop(portal);
@@ -2065,7 +2096,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(configure_failure_is_reported, setup, teardown),
 		cmocka_unit_test_setup_teardown(reordered_set_is_not_bound_again, setup, teardown),
 		cmocka_unit_test_setup_teardown(descriptions_compared_as_bytes, setup, teardown),
-		cmocka_unit_test_setup_teardown(declined_description_change_unbinds_approved_key, setup, teardown),
+		cmocka_unit_test_setup_teardown(declined_description_change_rebinds_approved_key, setup, teardown),
 		cmocka_unit_test_setup_teardown(only_declined_keys_left_binds_nothing, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
