@@ -38,7 +38,7 @@ QUERIES = [
 def search(query: str, pages: int) -> list[dict]:
     items: list[dict] = []
     for page in range(1, pages + 1):
-        batch = json.loads(gh(["-X", "GET", "search/issues", "-f", f"q={query}",
+        batch = json.loads(gh(["-X", "GET", "search/issues", "-f", f"q={query}",  # ci-lint: allow GHAPI-001 bounded search page walk; the sleep is gh()'s 429 backoff, not a state poll
                                "-f", "per_page=100", "-f", f"page={page}"]))["items"]
         items += batch
         if len(batch) < 100:
