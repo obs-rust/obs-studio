@@ -26,7 +26,7 @@ ordering and receives refreshed `ctest-cost-OFF.txt` or
 mode under a distinct `tier2-cost-<mode>` artifact. Hidden-file upload must
 be enabled because the source directory is `.tier2-cost`.
 
-Master combines the artifacts with `merge-costs.sh`, validates that both
+Master combines the artifacts with `merge_costs.py`, validates that both
 modes contain measured tests with `check-costs.sh`, then saves the cache
 for subsequent runs. Never save an empty cache as successful measurement.
 The downloader may flatten a single matching artifact, while multiple

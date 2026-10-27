@@ -2376,7 +2376,7 @@ jobs:
             # v8 flattens one matching artifact; multiple matches get subdirectories.
             set -- "$RUNNER_TEMP"/tier2-cost-shards/ctest-cost-"$mode".[t]xt "$RUNNER_TEMP"/tier2-cost-shards/tier2-cost*/ctest-cost-"$mode".txt
             [ "$#" -gt 0 ] || continue
-            bash rust/tools/linux-validate/merge-costs.sh "$@" >".tier2-cost/ctest-cost-$mode.txt"
+            uv run --script rust/tools/linux-validate/merge_costs.py "$@" >".tier2-cost/ctest-cost-$mode.txt"
             echo "$mode: $(grep -c -v -e '^---$' ".tier2-cost/ctest-cost-$mode.txt") lines"
           done
           bash rust/tools/linux-validate/check-costs.sh .tier2-cost
