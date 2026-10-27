@@ -46,7 +46,7 @@ it, and the module needs nothing else.
 
     uv run --no-project ci/flatpak_builder_lint.py guard --artifact manifest
     uv run --no-project ci/flatpak_builder_lint.py lint --artifact builddir --path flatpak_app \\
-        --exceptions "${{ github.action_path }}/exceptions.json"
+        --exceptions .github/actions/flatpak-builder-lint/exceptions.json
 """
 
 from __future__ import annotations

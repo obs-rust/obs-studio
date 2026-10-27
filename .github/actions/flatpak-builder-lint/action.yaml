@@ -17,13 +17,20 @@ runs:
     # Both steps were inline shell (an artifact-type guard and the linter call
     # with its jq annotation pipeline); they are a ci/ Python module now, so the
     # action carries no shell logic (GEN-005, #2700).
+    #
+    # The module and the action's own exceptions.json are addressed *relative*
+    # to `workingDirectory` (the workspace by default), never through
+    # `${{ github.workspace }}` / `${{ github.action_path }}`: the Flatpak job
+    # runs in a container whose working directory is /__w/<repo>/<repo>, while
+    # those contexts interpolate the runner host path, which the container
+    # cannot resolve -- the step then dies with "Failed to spawn" (#2705).
     - name: Check artifact type
       shell: bash
       working-directory: ${{ inputs.workingDirectory }}
-      run: uv run --no-project "${{ github.workspace }}/ci/flatpak_builder_lint.py" guard --artifact '${{ inputs.artifact }}'
+      run: uv run --no-project ci/flatpak_builder_lint.py guard --artifact '${{ inputs.artifact }}'
 
     - name: Run flatpak-builder-lint
       id: result
       shell: bash
       working-directory: ${{ inputs.workingDirectory }}
-      run: uv run --no-project "${{ github.workspace }}/ci/flatpak_builder_lint.py" lint --artifact '${{ inputs.artifact }}' --path '${{ inputs.path }}' --exceptions "${{ github.action_path }}/exceptions.json"
+      run: uv run --no-project ci/flatpak_builder_lint.py lint --artifact '${{ inputs.artifact }}' --path '${{ inputs.path }}' --exceptions '.github/actions/flatpak-builder-lint/exceptions.json'
