@@ -12,10 +12,13 @@
  * obs_startup() runs without obs_reset_video(), so no canvas has a video mix
  * and nothing renders. obs_startup() needs a display on Linux (run under
  * xvfb-run); without one the cases skip. On Windows the Cargo-built cores
- * intermittently crash during deferred source destruction even with CTest
- * RUN_SERIAL (#2543); the entire executable is skipped there until #2547
- * fixes the root cause. This is characterized, not endorsed. Public API only,
- * so it runs against libobs, the hybrid libobs and libobs-c-reference. */
+ * intermittently crashed during deferred source destruction even with CTest
+ * RUN_SERIAL (#2543): the executable returned CTest's skip code (77) there
+ * while #2547 diagnosed it, and runs there again since #2581 restores the
+ * global source mutex when a source leaves a canvas, so the deferred destroy
+ * no longer waits on a canvas mutex that has been freed. This is
+ * characterized, not endorsed. Public API only, so it runs against libobs,
+ * the hybrid libobs and libobs-c-reference. */
 
 #include <stdarg.h>
 #include <stddef.h>
