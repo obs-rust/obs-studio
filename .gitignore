@@ -60,3 +60,11 @@ build-aux/flatpak-github-action-modified-*
 /appimagetool
 /squashfs-root/
 /.apt-cache/
+
+# CI and measurement evidence dumps: run metadata never lands in the tree.
+# The attestations that matter are commit-message trailers (Local-Gate /
+# Ci-Attestation); run output belongs in Actions artifacts or a side branch.
+# (docs/ci-evidence/ is retired separately: its files are tracked today, and
+# ci/test_gitignore.py rightly forbids ignoring tracked files.)
+/ci-evidence-*/
+/ci-evidence/
