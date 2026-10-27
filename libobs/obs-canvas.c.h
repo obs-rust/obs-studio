@@ -225,6 +225,11 @@ void obs_canvas_destroy(obs_canvas_t *canvas)
 		/* The release can free the source; take the next one first. */
 		obs_source_t *next = source->context.hh.next;
 
+		/* This canvas mutex is freed below; a source still in the list
+		 * may have a deferred destroy that waits on it (#2547). */
+		if (source->context.mutex == &canvas->sources_mutex)
+			source->context.mutex = &obs->data.sources_mutex;
+
 		/* Canvases can hold strong refs to scene sources, release them here. */
 		if (canvas->flags & SCENE_REF && obs_source_is_scene(source))
 			obs_source_release(source);
@@ -375,6 +380,13 @@ void obs_canvas_remove_source(obs_source_t *source)
 	obs_weak_canvas_release(source->canvas);
 	if (canvas) {
 		obs_context_data_remove_name(&source->context, &canvas->sources_mutex, &canvas->sources);
+
+		/* The source has left the canvas name list, so its wait
+		 * mutex is the global source mutex again. Keeping the canvas
+		 * mutex here would dangle once the canvas is freed, and the
+		 * deferred destroy reads it from the task thread (#2547). */
+		if (source->context.mutex == &canvas->sources_mutex)
+			source->context.mutex = &obs->data.sources_mutex;
 
 		canvas_dosignal_source("source_remove", canvas, source);
 		if (canvas->flags & SCENE_REF && obs_source_is_scene(source))
