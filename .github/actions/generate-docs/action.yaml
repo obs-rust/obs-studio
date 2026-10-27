@@ -12,51 +12,20 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Set Up uv 🐍
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        save-cache: ${{ github.ref == 'refs/heads/master' }}
+        # A PR save carries a delimited pr-<N> key so the janitor can delete it
+        # when the PR closes (CACHE-013, #962).
+        cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+    # GEN-005 (the shell budget): one call, the stamping lives in the module
+    # (ci/test_docs_version_stamp.py pins both halves).
     - name: Update Version Number and Copyright ↗️
       id: setup
       shell: bash
-      run: |
-        : Update Version Number and Copyright ↗️
-        if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-
-        : "${major:=}"
-        : "${minor:=}"
-        : "${patch:=}"
-
-        # This expression will first try to match all the LIBOBS_API_[...]_VER
-        # lines in 'obs-config.h', before removing the '#define ' prefix and
-        # trimming away whitespace characters and linebreaks.
-        # This will yield a single line with the each major, minor, and patch
-        # version variable name followed by its value, so every even item
-        # in this string will contain a version part.
-
-        read -r _ major _ minor _ patch _ <<< \
-          "$(grep -E -e "#define LIBOBS_API_(MAJOR|MINOR|PATCH)_VER *" libobs/obs-config.h \
-            | sed 's/#define //g' \
-            | tr -s ' ' \
-            | tr '\n' ' ')"
-
-        # This expression simply replaces the definition of the 'version' and
-        # 'release' variables in the Python script with updated variants using
-        # the version tokens set by the previous expression.
-        # The copyright variable assignment is updated to use the current
-        # local year as the second year value.
-
-        sed -i -E \
-          -e "s/version = '([0-9]+\.[0-9]+\.[0-9]+)'/version = '${major}.${minor}.${patch}'/g" \
-          -e "s/release = '([0-9]+\.[0-9]+\.[0-9]+)'/release = '${major}.${minor}.${patch}'/g" \
-          -e "s/copyright = '(2017-[0-9]+, Lain Bailey)'/copyright = '2017-$(date +"%Y"), Lain Bailey'/g" \
-          ${{ inputs.sourceDirectory }}/docs/sphinx/conf.py
-
-        if [[ '${{ inputs.disableLinkExtensions }}' == 'true' ]]; then
-          sed -i -e "s/html_link_suffix = None/html_link_suffix = ''/g" \
-           ${{ inputs.sourceDirectory }}/docs/sphinx/conf.py
-          echo "artifactName=OBS Studio Docs (No Extensions)" >> $GITHUB_OUTPUT
-        else
-          echo "artifactName=OBS Studio Docs" >> $GITHUB_OUTPUT
-        fi
-
-        echo "commitHash=${GITHUB_SHA:0:9}" >> $GITHUB_OUTPUT
+      run: uv run --no-project --script ci/docs_version_stamp.py --source-directory "${{ inputs.sourceDirectory }}" --disable-link-extensions "${{ inputs.disableLinkExtensions }}"
 
     - name: Install Sphinx 📜
       uses: totaldebug/sphinx-publish-action@a44364271972de3b13c5b63801c2596dfde82413

@@ -26,7 +26,6 @@ import importlib.util
 import io
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 import tomllib
 import unittest
@@ -157,17 +156,6 @@ class GenerateDocsActionWiringTest(unittest.TestCase):
             [],
             'the GEN-005 exception for generate-docs must be deleted with the port',
         )
-
-
-class UvGateTest(unittest.TestCase):
-    def test_uv_run_gate_is_clean(self):
-        completed = subprocess.run(
-            ['uv', 'run', 'python', '-m', 'unittest', 'ci/test_uv_run.py'],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
 
 class HelperTest(unittest.TestCase):

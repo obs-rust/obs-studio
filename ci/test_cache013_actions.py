@@ -34,6 +34,7 @@ SUFFIX = "format('pr-{0}', github.event.pull_request.number)"
 
 TARGETS = (
     "compatibility-validator/action.yaml",
+    "generate-docs/action.yaml",
     "flatpak-manifest-validator/action.yaml",
     "package-obs/action.yaml",
     "services-validator/action.yaml",
