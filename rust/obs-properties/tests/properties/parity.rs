@@ -11,11 +11,7 @@
 //!
 //! Reminder: the mutation check (break the core, see this file fail) is done
 //! once per port, not on every change.
-#![allow(
-    clippy::missing_safety_doc,
-    clippy::too_many_lines,
-    clippy::new_without_default
-)]
+#![allow(clippy::missing_safety_doc, clippy::new_without_default)]
 
 use std::cell::RefCell;
 use std::ffi::{CStr, c_char, c_void};
