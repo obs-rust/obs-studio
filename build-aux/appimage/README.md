@@ -8,8 +8,8 @@ pre-release, a tag push attaches it to that tag's release.
 
 | File | Purpose |
 | --- | --- |
-| `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set-runpaths.sh`. |
-| `set-runpaths.sh` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
+| `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set_runpaths.py`. |
+| `set_runpaths.py` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
 | `build.py` | The build: version, configure, build, AppDir, AppImage, in the glibc 2.28 image (`manylinux/Dockerfile`). Run by the workflow and by `bosn run --task appimage`. |
 | `AppRun` | Entry point. Installs the bundled loader, sets up the environment, runs OBS and writes a crash report if it crashes. |
 | `check-appdir.sh` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled, or when the AppDir holds anything but exactly one libsrt of at least 1.5.7 (two copies in one process aborted OBS on quit after any SRT use). Run by `assemble-appdir.sh` (fails the build) and again by the test. |

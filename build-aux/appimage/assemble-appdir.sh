@@ -276,9 +276,9 @@ else
     LOADER_DIR=""
 fi
 
-# --- relative RPATHs instead of an exported LD_LIBRARY_PATH (see set-runpaths.sh) ---
+# --- relative RPATHs instead of an exported LD_LIBRARY_PATH (see set_runpaths.py) ---
 unset LD_LIBRARY_PATH # patchelf and friends are host programs
-"$HERE/set-runpaths.sh" "$APPDIR" ${LOADER_DIR:+"$LOADER_DIR/lib"}
+uv run --no-project "$HERE/set_runpaths.py" "$APPDIR" ${LOADER_DIR:+"$LOADER_DIR/lib"}
 
 # --- desktop integration -----------------------------------------------------
 sed -e "s|@LOADER@|$LOADER|" -e "s|@BUNDLE_GLIBC@|$BUNDLE_GLIBC|" -e "s|@OBS_GUI_NAME@|$GUI_NAME|" "$HERE/AppRun" >"$APPDIR/AppRun"
