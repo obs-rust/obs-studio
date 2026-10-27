@@ -1,7 +1,7 @@
 # End to end for an Audio Output Capture set to "Default" when the default
 # output changes or is unplugged (obs-rust/obs-studio#2260, upstream
 # obsproject/obs-studio#4828, #3211): the real linux-pulseaudio module in the
-# real libobs, against a private PulseAudio daemon (test_pulse_pulseaudio.sh)
+# real libobs, against a private PulseAudio daemon (test_pulse_pulseaudio.py)
 # and a private pipewire-pulse (test_pulse_monitor_device.sh), with null
 # sinks and a pipe source as the microphone. No audio reaches a device.
 # Each run skips (exit 77) when its sound server, pactl or pacat is not
@@ -26,7 +26,7 @@ if(OS_LINUX AND TARGET OBS::pulseaudio)
   add_test(
     NAME test_pulse_default_follow
     COMMAND
-      ${_pulse_display} sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_pulseaudio.sh"
+      ${_pulse_display} uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_pulseaudio.py"
       $<TARGET_FILE:test_pulse_default_follow>
   )
   add_test(

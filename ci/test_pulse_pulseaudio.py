@@ -86,11 +86,9 @@ class PulseAudioTest(unittest.TestCase):
     def run_script(self, *args: str, **env: str) -> subprocess.CompletedProcess:
         environment = {k: v for k, v in os.environ.items() if k not in ("PRIVATE_PULSEAUDIO_STARTED", "VIRTUAL_ENV")}
         environment.update(
-            PATH=f"{self.bin}{os.pathsep}{environment['PATH']}",
-            RECORD=str(self.record),
-            TMPDIR=str(self.root),
-            **env,
+            {"PATH": f"{self.bin}{os.pathsep}{environment['PATH']}", "RECORD": str(self.record), "TMPDIR": str(self.root)}
         )
+        environment.update(env)
         return subprocess.run(
             [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=environment, timeout=60
         )
@@ -111,10 +109,12 @@ class PulseAudioTest(unittest.TestCase):
     def test_the_harness_runs_itself_inside_a_private_dbus_session(self) -> None:
         result = self.run_script("test-pulse", OBS_TEST_PULSEAUDIO=str(self.bin / "pulseaudio"))
         self.assertEqual(result.returncode, 0, result.stderr)
+        # dbus-run-session -- <interpreter> <this script> <test binary>
         argv = self.recorded("dbus-run-session.json")["argv"]
         self.assertEqual(argv[0], "--")
-        self.assertEqual(Path(argv[1]).name, "test_pulse_pulseaudio.py")
-        self.assertEqual(argv[2:], ["test-pulse"])
+        self.assertTrue(argv[1], "the harness re-executes through its interpreter")
+        self.assertEqual(Path(argv[2]).name, "test_pulse_pulseaudio.py")
+        self.assertEqual(argv[3:], ["test-pulse"])
         env = self.recorded("dbus-run-session.json")["env"]
         self.assertEqual(env["PRIVATE_PULSEAUDIO_STARTED"], "1")
         self.assertEqual(env["OBS_TEST_PULSEAUDIO"], str(self.bin / "pulseaudio"))
