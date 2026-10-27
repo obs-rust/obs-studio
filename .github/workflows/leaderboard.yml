@@ -11,8 +11,11 @@ on:
     - cron: "17 */4 * * *"
   workflow_dispatch:
 
+# Read-only at the top level: the tree is measured here and nothing else in the
+# workflow needs it. The one write scope sits on the job that pushes to the
+# `leaderboard` branch (SEC-002); the top-level block stays read-only.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: leaderboard
@@ -22,6 +25,11 @@ jobs:
   update:
     # Not in forks: a fork's schedule fails there and mails its owner (#1258).
     if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    # The commit that pushes to the `leaderboard` branch is the only thing that
+    # writes, so the write scope is minted here, not at the top level (SEC-002);
+    # the job is listed in ci.toml's [allow].permissions.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

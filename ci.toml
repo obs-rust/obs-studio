@@ -180,7 +180,9 @@ secrets = [
 # nightly_feed) plus appimage and gate, which grant it on to the reusable
 # workflows they call: a called workflow may not ask for more than its caller
 # grants, and granting less made GitHub refuse to start the run (startup_failure).
-permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "contents: write" = ["appimage", "certify", "gate", "nightly_feed", "release"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome"], "pull-requests: write" = ["welcome"] }
+# leaderboard.yml's `update` job is the other holder: it pushes to the
+# leaderboard branch, so its grant sits on that job, not the top-level block.
+permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "contents: write" = ["appimage", "certify", "gate", "nightly_feed", "release", "update"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome"], "pull-requests: write" = ["welcome"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!
@@ -978,12 +980,6 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "SEC-002"
 path = ".github/workflows/dispatch.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "SEC-002"
-path = ".github/workflows/leaderboard.yml"
 reason = "Upstream workflows without a top-level permissions block; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
