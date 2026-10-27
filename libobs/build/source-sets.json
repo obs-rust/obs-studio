@@ -80,6 +80,7 @@
     "obs-source-render-route.h",
     "obs-source-size.h",
     "obs-source-transition-clock.h",
+    "obs-source-transition-load.h",
     "obs-source-transition-render.h",
     "obs-source-transition-start.h",
     "obs-source-video-tick.h",

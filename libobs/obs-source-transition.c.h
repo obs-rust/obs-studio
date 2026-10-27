@@ -42,12 +42,19 @@ _Static_assert(OBS_SOURCE_TRANSITION_RENDER_TARGET_B == OBS_TRANSITION_SOURCE_B,
 _Static_assert(OBS_SOURCE_TRANSITION_RENDER_AUDIO_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
 _Static_assert(sizeof(enum obs_transition_target) == sizeof(int), "enum obs_transition_target is passed as int");
 _Static_assert(OBS_SOURCE_TRANSITION_START_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
+_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
+	       "OBS_TRANSITION_SCALE_MAX_ONLY");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
+	       "OBS_TRANSITION_SCALE_STRETCH");
 
 static inline bool transition_valid(const obs_source_t *transition, const char *func)
 {
 	if (!obs_ptr_valid(transition, func))
 		return false;
-	else if (transition->info.type != OBS_SOURCE_TYPE_TRANSITION)
+	else if (!obs_source_transition_load_is_transition((int)transition->info.type))
 		return false;
 
 	return true;
@@ -558,18 +565,9 @@ static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_trans
 	return gs_texrender_get_texture(transition->transition_texrender[idx]);
 }
 
-/* A scale type outside the enum (from a scene collection or a caller) is the
- * default, Max Only. */
-static enum obs_transition_scale_type valid_scale_type(int64_t type)
+static inline enum obs_transition_scale_type valid_scale_type(int64_t type)
 {
-	switch (type) {
-	case OBS_TRANSITION_SCALE_MAX_ONLY:
-	case OBS_TRANSITION_SCALE_ASPECT:
-	case OBS_TRANSITION_SCALE_STRETCH:
-		return (enum obs_transition_scale_type)type;
-	default:
-		return OBS_TRANSITION_SCALE_MAX_ONLY;
-	}
+	return (enum obs_transition_scale_type)obs_source_transition_load_scale_type(type);
 }
 
 void obs_transition_set_scale_type(obs_source_t *transition, enum obs_transition_scale_type type)
@@ -648,23 +646,30 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	obs_source_t *old;
 	bool old_active;
 
-	if (name) {
+	if (obs_source_transition_load_looks_up(name != NULL)) {
 		source = obs_get_source_by_name(name);
-		if (source) {
-			if (!obs_source_add_active_child(tr, source)) {
-				blog(LOG_WARNING,
-				     "Cannot set transition '%s' "
-				     "to source '%s' due to "
-				     "infinite recursion",
-				     tr->context.name, name);
-				obs_source_release(source);
-				source = NULL;
-			}
-		} else {
+		/* The add only for a found source, as before. */
+		bool found = source != NULL;
+		bool add_ok = found && obs_source_add_active_child(tr, source);
+
+		switch (obs_source_transition_load_source(found, add_ok)) {
+		case OBS_SOURCE_TRANSITION_LOAD_REFUSE:
+			blog(LOG_WARNING,
+			     "Cannot set transition '%s' "
+			     "to source '%s' due to "
+			     "infinite recursion",
+			     tr->context.name, name);
+			obs_source_release(source);
+			source = NULL;
+			break;
+		case OBS_SOURCE_TRANSITION_LOAD_NOT_FOUND:
 			blog(LOG_WARNING,
 			     "Failed to find source '%s' for "
 			     "transition '%s'",
 			     name, tr->context.name);
+			break;
+		case OBS_SOURCE_TRANSITION_LOAD_KEEP:
+			break;
 		}
 	}
 
@@ -681,7 +686,7 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	unlock_transition(tr);
 
 	/* Take back the source the slot held, as obs_transition_clear() does. */
-	if (old && old_active)
+	if (obs_source_transition_start_child_active(old != NULL, old_active))
 		obs_source_remove_active_child(tr, old);
 	obs_source_release(old);
 
@@ -1142,8 +1147,9 @@ static inline obs_source_t *copy_source_state(obs_source_t *tr_dest, obs_source_
 	 * Store nothing then, as obs_transition_set() refuses such a source: a
 	 * walk of the slot's tree would enter tr_dest again and lock its mutex
 	 * twice. tr_source still holds its own reference until the swap ends. */
-	if (obs_source_transition_start_child_active(new_child != NULL, active) &&
-	    !obs_source_add_active_child(tr_dest, new_child)) {
+	bool adds = obs_source_transition_start_child_active(new_child != NULL, active);
+
+	if (!obs_source_transition_load_copy_stores(adds, adds && obs_source_add_active_child(tr_dest, new_child))) {
 		blog(LOG_WARNING,
 		     "obs_transition_swap_begin: cannot give transition '%s' source '%s' due to infinite recursion",
 		     obs_source_get_name(tr_dest), obs_source_get_name(new_child));
@@ -1162,7 +1168,7 @@ void obs_transition_swap_begin(obs_source_t *tr_dest, obs_source_t *tr_source)
 {
 	obs_source_t *old_children[2];
 
-	if (tr_dest == tr_source)
+	if (!obs_source_transition_load_swaps(tr_dest == tr_source))
 		return;
 
 	lock_textures(tr_source);
@@ -1194,7 +1200,7 @@ void obs_transition_swap_begin(obs_source_t *tr_dest, obs_source_t *tr_source)
 
 void obs_transition_swap_end(obs_source_t *tr_dest, obs_source_t *tr_source)
 {
-	if (tr_dest == tr_source)
+	if (!obs_source_transition_load_swaps(tr_dest == tr_source))
 		return;
 
 	obs_transition_clear(tr_source);
