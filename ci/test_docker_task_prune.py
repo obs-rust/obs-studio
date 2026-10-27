@@ -28,7 +28,6 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parent.parent
 CI = ROOT / "ci"
 MODULE = CI / "docker_task.py"
-SHIM = CI / "docker-task.sh"
 
 # `image ls` prints four tags with one CreatedAt: the reverse sort puts 9999
 # first and 0000 last, and 0000 is the image the run just built and is about to
@@ -57,14 +56,24 @@ def load_module():
     return module
 
 
-class ShimTest(unittest.TestCase):
-    """ci/docker-task.sh keeps its path and arguments; the logic is Python."""
+class EntryPointTest(unittest.TestCase):
+    """ci/docker_task.py is the entry point; the shell shim is gone (#962 GEN-005)."""
 
-    def test_the_shim_execs_the_python_module(self):
-        text = SHIM.read_text(encoding="utf-8")
-        self.assertIn("ci/docker_task.py", text)
-        self.assertNotIn("prune_images", text)
-        self.assertNotIn("docker run", text)
+    def test_the_shell_shim_is_gone(self):
+        self.assertFalse(
+            (CI / "docker-task.sh").exists(),
+            "ci/docker-task.sh is a GEN-005 violation (#962): run `uv run --script ci/docker_task.py`",
+        )
+
+    def test_every_caller_runs_the_module_through_uv(self):
+        for caller in (
+            ROOT / "cmake" / "cross" / "docker.py",
+            ROOT / "rust" / "tools" / "linux-validate" / "run.py",
+        ):
+            with self.subTest(caller=str(caller.relative_to(ROOT))):
+                text = caller.read_text(encoding="utf-8")
+                self.assertNotIn("docker-task.sh", text)
+                self.assertIn('"uv",', text)
 
     def test_the_entry_point_reports_usage_errors_as_docker_task(self):
         for args in (["run"], ["gc", "--bogus"]):
