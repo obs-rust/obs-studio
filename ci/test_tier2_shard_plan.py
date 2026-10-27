@@ -4,7 +4,7 @@
     uv run python -m unittest ci/test_tier2_shard_plan.py
 
 `ctest -I <i>,,3` striped tests by number, so one shard ran tests for
-153 s and another for 63 s (master run 38874213546). shard-plan.sh assigns
+153 s and another for 63 s (master run 38874213546). shard-plan.py assigns
 tests longest-first to the lightest shard using ctest's own cost data
 (CTestCostData.txt, carried in the Tier 2 ccache since #931) and writes one
 exact-name regex per shard for `ctest -R`.
@@ -12,6 +12,7 @@ exact-name regex per shard for `ctest -R`.
 
 from __future__ import annotations
 
+import os
 import re
 import json
 import subprocess
@@ -22,7 +23,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PLAN = ROOT / "rust" / "tools" / "linux-validate" / "shard-plan.sh"
+PLAN = ROOT / "rust" / "tools" / "linux-validate" / "shard-plan.py"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
 CHECK = PLAN.parent / "check-plan.py"
 
@@ -38,15 +39,17 @@ COSTS = {
 }
 
 
-def run_plan(costs: dict[str, float], names: list[str], shards: int) -> dict[int, list[str]]:
+def run_plan(costs: dict[str, float], names: list[str], shards: int,
+             env: dict[str, str] | None = None) -> dict[int, list[str]]:
     d = Path(tempfile.mkdtemp())
     cost = d / "CTestCostData.txt"
     cost.write_text("".join(f"{n} 3 {c}\n" for n, c in costs.items()) + ("---\ntest_flaky\n" if costs else ""))
     listing = d / "names.txt"
     listing.write_text("\n".join(names) + "\n")
     out = d / "out"
-    r = subprocess.run(["bash", str(PLAN), str(cost), str(listing), str(shards), str(out)],
-                       capture_output=True, text=True)
+    r = subprocess.run([sys.executable, str(PLAN), str(cost), str(listing), str(shards), str(out)],
+                       capture_output=True, text=True,
+                       env={k: v for k, v in os.environ.items() if k != "DEFAULT_COST"} | (env or {}))
     assert r.returncode == 0, r.stdout + r.stderr
     plan = {}
     for i in range(1, shards + 1):
@@ -95,11 +98,28 @@ class ShardPlanTest(unittest.TestCase):
         plan = run_plan({"test_a": 1.0, "test_ab": 1.0}, ["test_a", "test_ab"], 1)
         self.assertEqual(sorted(plan[1]), ["test_a", "test_ab"])
 
+    def test_default_cost_applies_to_tests_without_timings(self):
+        """DEFAULT_COST replaces the 1 s a test with no recorded cost gets."""
+        with tempfile.TemporaryDirectory() as directory:
+            d = Path(directory)
+            (d / "cost").write_text("")
+            (d / "names").write_text("test_a\ntest_b\n")
+            env = {k: v for k, v in os.environ.items() if k != "DEFAULT_COST"} | {"DEFAULT_COST": "5"}
+            r = subprocess.run([sys.executable, str(PLAN), str(d / "cost"), str(d / "names"), "1", str(d / "out")],
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("shard 1/1: 10.0 s", r.stdout)
+
+    def test_wrong_argument_count_prints_usage(self):
+        r = subprocess.run([sys.executable, str(PLAN)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("usage: shard-plan.py", r.stderr)
+
 
 class ValidateUsesPlanTest(unittest.TestCase):
     def test_build_stage_writes_and_test_stage_uses_the_plan(self):
         text = VALIDATE.read_text(encoding="utf-8")
-        self.assertIn("shard-plan.sh", text)
+        self.assertIn('uv run "$SRC/rust/tools/linux-validate/shard-plan.py"', text)
         self.assertIn("tier2-shards", text)
         self.assertRegex(text, r'shard_args=\(-R "\$\(cat "\$plan"\)"\)')
 
