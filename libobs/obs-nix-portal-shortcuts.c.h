@@ -83,9 +83,12 @@ struct obs_nix_portal_shortcuts {
 	 * the desktop closed. They are not bound again (no repeated prompt)
 	 * until the bindings gain a combination or the portal restarts. */
 	combo_array_t declined;
-	/* The combinations the desktop last approved in full. When its dialog
-	 * for a set with new ones is declined, these are bound again. */
+	/* The combinations the desktop last approved in full, and the
+	 * description each was approved with. When its dialog for a set with
+	 * new ones (or with a changed description) is declined, these are
+	 * bound again with their approved descriptions. */
 	combo_array_t approved;
+	description_array_t approved_descriptions;
 	/* The session binds only the approved part of its set. */
 	bool partly_declined;
 	/* GlobalShortcuts interface version; 2 adds ConfigureShortcuts. */
@@ -653,6 +656,7 @@ static void session_closed(GDBusConnection *conn, const char *sender_name, const
 		       "global hotkeys are bound again when a new key combination is assigned");
 	da_copy(portal->declined, portal->bound);
 	da_resize(portal->approved, 0);
+	free_descriptions(&portal->approved_descriptions);
 	portal->partly_declined = false;
 	forget_session(portal);
 
@@ -753,12 +757,41 @@ static void take_combos(const combo_array_t *combos, const description_array_t *
 	}
 }
 
-/* The desktop's dialog for a request with new combinations was declined
- * (GNOME lists every shortcut again in it): bind the ones it approved
- * before again, which needs no dialog, so they keep working. The rest of
- * the bindings stay unbound, and are left out of later binds, until
- * obs_hotkeys_retry_background(). The session's set is the full one, so
- * the next sync does not bind again by itself. */
+/* The description a combination was approved with, or NULL if it was not
+ * among those approved. */
+static const char *approved_description(const combo_array_t *approved, const description_array_t *approved_descriptions,
+					obs_key_combination_t combo)
+{
+	for (size_t i = 0; i < approved->num && i < approved_descriptions->num; i++) {
+		if (same_combo(approved->array[i], combo))
+			return approved_descriptions->array[i];
+	}
+	return NULL;
+}
+
+/* As take_combos(), but each combination carries the description it was
+ * approved with, not the current one. */
+static void take_approved_combos(const combo_array_t *combos, const size_t *selected, size_t num_selected,
+				 const combo_array_t *approved, const description_array_t *approved_descriptions,
+				 combo_array_t *out, description_array_t *out_descriptions)
+{
+	for (size_t j = 0; j < num_selected; j++) {
+		size_t i = selected[j];
+		const char *was = approved_description(approved, approved_descriptions, combos->array[i]);
+		char *description = bstrdup(was ? was : "OBS");
+		da_push_back(*out, &combos->array[i]);
+		da_push_back(*out_descriptions, &description);
+	}
+}
+
+/* The desktop's dialog for a request with new combinations, or with a new
+ * description for a combination it approved before (GNOME lists every
+ * shortcut again in it), was declined: bind the ones it approved before
+ * again with the descriptions they were approved with, which needs no
+ * dialog, so they keep working. Any combination the desktop did not approve
+ * stays unbound, and is left out of later binds, until
+ * obs_hotkeys_retry_background(). The session's set is the full one, so the
+ * next sync does not bind again by itself. */
 static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_array_t *current,
 			  const description_array_t *descriptions, const combo_array_t *request)
 {
@@ -772,17 +805,24 @@ static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_a
 	da_resize(part_selected, current->num);
 	da_resize(declined_selected, current->num);
 	size_t num_part, num_declined;
-	bool bound = obs_nix_portal_sets_partition(&current_combos, &approved, &requested, part_selected.array,
-						   &num_part, declined_selected.array, &num_declined);
+	obs_nix_portal_sets_partition(&current_combos, &approved, &requested, part_selected.array, &num_part,
+				      declined_selected.array, &num_declined);
 
 	combo_array_t part;
 	description_array_t part_descriptions;
 	da_init(part);
 	da_init(part_descriptions);
-	take_combos(current, descriptions, part_selected.array, num_part, &part, &part_descriptions);
+	take_approved_combos(current, part_selected.array, num_part, &portal->approved, &portal->approved_descriptions,
+			     &part, &part_descriptions);
+	/* num_part > 0 also covers a request the desktop approved in full:
+	 * then no key is new and only a description changed, and the approved
+	 * keys are bound again rather than taken down with the dialog. */
+	bool bound = num_part > 0;
 	if (bound) {
 		blog(LOG_INFO,
-		     "[portal] The desktop declined the new shortcuts; binding the %zu it approved before again",
+		     num_declined > 0
+			     ? "[portal] The desktop declined the new shortcuts; binding the %zu it approved before again"
+			     : "[portal] The desktop declined a new description; binding the %zu approved shortcuts again",
 		     part.num);
 		da_copy(portal->bound, *current);
 		copy_descriptions(&portal->bound_descriptions, descriptions);
@@ -939,6 +979,7 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	if (!partly)
 		da_resize(portal->declined, 0);
 	da_copy(portal->approved, request);
+	copy_descriptions(&portal->approved_descriptions, &request_descriptions);
 	free_collected(&collected);
 	da_free(request);
 	free_descriptions(&request_descriptions);
@@ -1296,6 +1337,7 @@ static void free_portal(struct obs_nix_portal_shortcuts *portal)
 	free_descriptions(&portal->bound_descriptions);
 	da_free(portal->declined);
 	da_free(portal->approved);
+	free_descriptions(&portal->approved_descriptions);
 	bfree(portal);
 }
 
