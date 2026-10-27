@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 82285,
-      "libobs": 82204,
-      "plugins": 144794,
+      "libobs": 82337,
+      "plugins": 144804,
       "shared": 15912
     },
-    "percent": 10.9,
-    "ported_lines": 35451,
-    "total_lines": 325195
+    "percent": 10.93,
+    "ported_lines": 35552,
+    "total_lines": 325338
   },
-  "commit": "3321450",
-  "date": "2026-10-26",
+  "commit": "2986194",
+  "date": "2026-10-27",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 31.93,
-          "ported_lines": 16964,
-          "total_lines": 53130
+          "percent": 32.04,
+          "ported_lines": 17065,
+          "total_lines": 53263
         },
         "graphics": {
           "percent": 36.62,
@@ -49,19 +49,19 @@
           "total_lines": 13076
         }
       },
-      "files": 217,
-      "hybrid_lines": 46753,
-      "percent": 43.13,
-      "ported_lines": 35451,
-      "total_lines": 82204
+      "files": 219,
+      "hybrid_lines": 46785,
+      "percent": 43.18,
+      "ported_lines": 35552,
+      "total_lines": 82337
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 34.6,
-            "ported_lines": 16964,
-            "total_lines": 49029
+            "percent": 34.72,
+            "ported_lines": 17065,
+            "total_lines": 49157
           },
           "graphics": {
             "percent": 37.11,
@@ -79,9 +79,9 @@
             "total_lines": 9921
           }
         },
-        "files": 195,
-        "hybrid_lines": 41849,
-        "percent": 44.04,
+        "files": 197,
+        "hybrid_lines": 41876,
+        "percent": 44.1,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -158,7 +158,9 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
           "obs-output-slots.c.h",
+          "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
+          "obs-output-stop.c.h",
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
@@ -238,15 +240,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 32929,
-        "total_lines": 74778
+        "ported_lines": 33030,
+        "total_lines": 74906
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 36.83,
-            "ported_lines": 16122,
-            "total_lines": 43770
+            "percent": 36.95,
+            "ported_lines": 16223,
+            "total_lines": 43908
           },
           "graphics": {
             "percent": 37.11,
@@ -264,9 +266,9 @@
             "total_lines": 9845
           }
         },
-        "files": 182,
-        "hybrid_lines": 37432,
-        "percent": 46.1,
+        "files": 184,
+        "hybrid_lines": 37469,
+        "percent": 46.15,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -337,7 +339,9 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
           "obs-output-slots.c.h",
+          "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
+          "obs-output-stop.c.h",
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
@@ -415,15 +419,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 32011,
-        "total_lines": 69443
+        "ported_lines": 32112,
+        "total_lines": 69581
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 35.88,
-            "ported_lines": 16122,
-            "total_lines": 44929
+            "percent": 36.01,
+            "ported_lines": 16223,
+            "total_lines": 45052
           },
           "graphics": {
             "percent": 36.66,
@@ -441,9 +445,9 @@
             "total_lines": 10532
           }
         },
-        "files": 186,
-        "hybrid_lines": 39379,
-        "percent": 44.88,
+        "files": 188,
+        "hybrid_lines": 39401,
+        "percent": 44.95,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -514,7 +518,9 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
           "obs-output-slots.c.h",
+          "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
+          "obs-output-stop.c.h",
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
@@ -592,12 +598,12 @@
           "util/utf8-host-windows.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 32065,
-        "total_lines": 71444
+        "ported_lines": 32166,
+        "total_lines": 71567
       }
     }
   },
   "rust": {
-    "lines": 126068
+    "lines": 126755
   }
 }
