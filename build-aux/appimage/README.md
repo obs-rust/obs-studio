@@ -37,7 +37,7 @@ persist in bosn volumes, as does `build_ubuntu/`; the other intermediates
 owned by the container's root.
 
 The script refuses to build anywhere but glibc 2.28, so run it inside that
-image (`manylinux/run.sh`, as the workflow does). `--dry-run` works anywhere:
+image (`manylinux/run.py`, as the workflow does). `--dry-run` works anywhere:
 
 ```sh
 uv run build-aux/appimage/build.py --steps version,configure --dry-run

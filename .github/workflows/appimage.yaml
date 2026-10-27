@@ -107,7 +107,7 @@ jobs:
 
       # The glibc 2.28 build image (#926): AlmaLinux 8 packages plus the prebuilt
       # dependencies from obs-rust/obs-studio-libs (deps.lock.json); every build
-      # step below runs in it through manylinux/run.sh.
+      # step below runs in it through manylinux/run.py.
       # A stalled mirror or registry fails one attempt, not the run; the second
       # attempt reuses every layer the first one finished (#2182).
       - name: Build the glibc 2.28 image 🐳
@@ -132,11 +132,11 @@ jobs:
           OBS_RUST_VERSION: ${{ inputs.rust_version }}
         # Determine version 🏷️ + Configure: the OBS version is only used here.
         run: |
-          build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps version,configure \
+          uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/build.py --base manylinux --steps version,configure \
             --rust-libobs "$RUST_LIBOBS" --qsv "$QSV" --rust-version "$OBS_RUST_VERSION"
 
       - name: Build 🧱
-        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps build
+        run: uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/build.py --base manylinux --steps build
 
       # Each compilation's hit or miss, its miss reason and which inputs
       # differed, per source (#2182). Diagnostics only.
@@ -177,17 +177,17 @@ jobs:
           key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
 
       - name: Assemble AppDir 📁
-        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps appdir
+        run: uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/build.py --base manylinux --steps appdir
 
       - name: Create AppImage 📀
         env:
           PUBLISH_CONTINUOUS: ${{ inputs.publish_continuous == true }}
-        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps appimage --publish-continuous "$PUBLISH_CONTINUOUS"
+        run: uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/build.py --base manylinux --steps appimage --publish-continuous "$PUBLISH_CONTINUOUS"
 
       - name: Test the host-library loader 🧪
         # hostlib/ (#959): the libva shims with the host's libva, without it,
         # with bad candidates, and the required-library preflight (exit 127).
-        run: build-aux/appimage/manylinux/run.sh bash build-aux/appimage/hostlib/test-hostlib.sh
+        run: uv run --script build-aux/appimage/manylinux/run.py bash build-aux/appimage/hostlib/test-hostlib.sh
 
       - name: Build the test helper 🧰
         # Run by test-appimage.sh next to obs, with (through the same relative
@@ -195,7 +195,7 @@ jobs:
         # ScreenCast/Camera portal and the test tone. Built in the glibc 2.28
         # image so they run on every host the AppImage does.
         run: |
-          build-aux/appimage/manylinux/run.sh sh -c '
+          uv run --script build-aux/appimage/manylinux/run.py sh -c '
             gcc -O2 -Wall -Wextra -Werror -fPIE -pie -o obs-appimage-testkit build-aux/appimage/testkit.c \
               $(pkg-config --cflags --libs gio-unix-2.0 libpipewire-0.3 libpulse libcurl) -lm -ldl \
               -Wl,--disable-new-dtags -Wl,-rpath,"\$ORIGIN/../lib"
