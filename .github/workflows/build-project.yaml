@@ -1698,7 +1698,7 @@ jobs:
           # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
           version: 0.9.43
           build-cache: false
-          prebuild-deps-flags: ${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev' }}
+          prebuild-deps-flags: ${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}
           # Host/container archive paths have different Actions-cache versions.
           # Explicit identities stop the janitor treating them as duplicates.
           cache-key-suffix: linux-host-v1
@@ -2019,7 +2019,7 @@ jobs:
           # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
           version: 0.9.43
           build-cache: false
-          prebuild-deps-flags: --profile dev
+          prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Set Up uv 🐍

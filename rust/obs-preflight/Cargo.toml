@@ -25,7 +25,7 @@ serde = { workspace = true, default-features = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-proptest = { workspace = true, default-features = true }
+proptest = { workspace = true, features = ["std", "fork", "timeout", "bit-set"] }
 
 [[test]]
 name = "obs-tests-preflight"
