@@ -257,24 +257,6 @@ expires = "2027-04-15"
 # CACHE-013: astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962.
 [[exceptions]]
 rule = "CACHE-013"
-path = ".github/actions/compatibility-validator/action.yaml"
-reason = "astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "CACHE-013"
-path = ".github/actions/flatpak-manifest-validator/action.yaml"
-reason = "astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "CACHE-013"
-path = ".github/actions/package-obs/action.yaml"
-reason = "astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "CACHE-013"
 path = ".github/actions/services-validator/action.yaml"
 reason = "astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
