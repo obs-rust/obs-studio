@@ -5853,6 +5853,7 @@
       "command": [
         "${target}"
       ],
+      "run_serial": true,
       "optional_prefixes": [
         [
           "xvfb-run",

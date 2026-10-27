@@ -11,8 +11,10 @@
  *
  * obs_startup() runs without obs_reset_video(), so no canvas has a video mix
  * and nothing renders. obs_startup() needs a display on Linux (run under
- * xvfb-run); without one the cases skip. Public API only, so it runs against
- * libobs, the hybrid libobs and libobs-c-reference. */
+ * xvfb-run); without one the cases skip. This fixture runs serially because
+ * Cargo-built Windows libobs cores intermittently crash on the deferred
+ * destruction queue under concurrent CTest load (#2543). Public API only,
+ * so it runs against libobs, the hybrid libobs and libobs-c-reference. */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -163,16 +165,6 @@ static void scene_find_source_recursive(void **state)
 {
 	(void)state;
 	REQUIRE_OBS();
-
-#ifdef _WIN32
-	/* Characterized, not endorsed (#2543): this graphics-less group
-	 * fixture intermittently crashes during deferred source destruction
-	 * against the Cargo-built Windows core. Both CMake cores and the Cargo
-	 * C-reference pass; isolated debugger reruns also pass. Keep the Linux
-	 * assertions and the other Windows cases while the cause is investigated. */
-	skip();
-	return;
-#endif
 
 	assert_null(obs_scene_find_source_recursive(NULL, "x"));
 

@@ -254,7 +254,7 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
   $dumpDirectory = $null
   $dumpKey = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\test_scene_canvas_characterization.exe'
   try {
-    if ($selected -eq $nativeArtifacts.core -and -not (Test-Path $dumpKey)) {
+    if (-not (Test-Path $dumpKey)) {
       $dumpDirectory = Join-Path $nativeOutput 'crash-dumps'
       New-Item -ItemType Directory -Path $dumpDirectory -Force | Out-Null
       New-Item -Path $dumpKey -Force | Out-Null
