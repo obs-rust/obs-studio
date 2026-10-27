@@ -24,8 +24,8 @@ command -v pipewire >/dev/null 2>&1 || {
 	exit 77
 }
 
-# The cursor-hdr wrapper is Python now (#962, GEN-005); run it the way its ctest
-# caller does. Resolve uv by absolute path so a stub PATH still reaches it.
+# The cursor-hdr wrapper is Python now (#962, GEN-005). The no-pipewire control
+# at the end runs with a stripped PATH, so resolve uv by absolute path for it.
 uv=$(command -v uv) || {
 	echo "uv not found: skipping"
 	exit 77
@@ -81,12 +81,12 @@ check() {
 }
 
 # Both wrappers are Python now (#962, GEN-005): run them the way their ctest
-# callers do, uv resolved by absolute path so a stub PATH still reaches it.
+# callers do.
 for wrapper in test_pipewire_cursor_hdr.py test_pipewire_context_fail.py; do
-	TMPDIR="$long" timeout 60 "$uv" run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
+	TMPDIR="$long" timeout 60 uv run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
 	check "$wrapper, long TMPDIR: the daemon starts and the test runs" 0 $?
 
-	PATH="$work/bin-dying:$PATH" timeout 60 "$uv" run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
+	PATH="$work/bin-dying:$PATH" timeout 60 uv run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
 	status=$?
 	if [ $status -ne 0 ] && [ $status -ne 77 ] && [ $status -ne 3 ]; then
 		echo "ok:   $wrapper, daemon exits at once: fails (exit $status)"
