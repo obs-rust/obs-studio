@@ -11,6 +11,14 @@ on:
       - '*'
 permissions:
   contents: write
+# A newer run of the same ref waits for the one already running, so a burst of
+# master pushes does not stack whole push workflows on the runner pool
+# (WF-002, #962). cancel-in-progress stays false: this is the entry that warms
+# master's caches, and #1286 preserves the one active warm build, dropping only
+# older pending snapshots. The literal prefix keeps the group distinct per ref.
+concurrency:
+  group: push-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   ci-pre:
     name: CI Pre 🧹
