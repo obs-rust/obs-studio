@@ -54,6 +54,12 @@ if shutil.which("pipewire") is None:
     sys.exit(77)
 if "bin-dying" in os.environ.get("PATH", ""):
     sys.exit(1)
+# The long-TMPDIR case must hand the wrapper a deep *directory*; if TMPDIR
+# names a file the daemon cannot make its socket and the real test fails.
+tmpdir = os.environ.get("TMPDIR")
+if tmpdir and not os.path.isdir(tmpdir):
+    print(f"stub: TMPDIR is not a directory: {tmpdir}", file=sys.stderr)
+    sys.exit(4)
 sys.exit(int(os.environ.get("OBS_PW_WRAPPER_STUB_EXIT", "0")))
 """
 
