@@ -171,8 +171,6 @@
     "build/libobs.nsgif+.h.c"
   ],
   "LIBOBS_PORTED_SOURCES": [
-    "build/libobs.ported-audio-controls+.h.c",
-    "build/libobs.ported-audio-discard+.h.c",
     "build/libobs.ported-audio-min-ts+.h.c",
     "build/libobs.ported-audio-mix+.h.c",
     "build/libobs.ported-audio-render+.h.c",

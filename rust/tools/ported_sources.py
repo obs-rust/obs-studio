@@ -10,7 +10,21 @@ HOSTS = ("linux", "windows", "macos")
 
 
 def source_sets(root: Path) -> dict[str, list[str]]:
-    return json.loads((root / "libobs/build/source-sets.json").read_text())
+    build = root / "libobs/build"
+    sets = json.loads((build / "source-sets.json").read_text())
+    for fragment in sorted((build / "ported-source-sets").glob("*.json")):
+        additions = json.loads(fragment.read_text())
+        for name, members in additions.items():
+            if name not in sets or not name.endswith("_PORTED_SOURCES"):
+                raise ValueError(f"unknown ported source set in {fragment}: {name}")
+            duplicates = set(members) & set(sets[name])
+            if len(members) != len(set(members)) or duplicates:
+                raise ValueError(f"duplicate ported source in {fragment}: {sorted(duplicates)}")
+            sets[name].extend(members)
+    for name in sets:
+        if name.endswith("_PORTED_SOURCES"):
+            sets[name].sort()
+    return sets
 
 
 def group_members(root: Path, group: str) -> list[str]:

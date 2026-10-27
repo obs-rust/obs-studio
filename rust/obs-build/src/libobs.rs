@@ -96,12 +96,65 @@ struct Plan {
     sets: BTreeMap<String, Vec<String>>,
 }
 
-fn prepare(build: &NativeBuild, root: &Path, options: &Options) -> Result<Plan, String> {
-    let root = root.canonicalize().map_err(|e| e.to_string())?;
-    let manifest = root.join("libobs/build/source-sets.json");
-    let sets: BTreeMap<String, Vec<String>> =
+fn read_source_sets(root: &Path) -> Result<BTreeMap<String, Vec<String>>, String> {
+    let build = root.join("libobs/build");
+    let manifest = build.join("source-sets.json");
+    println!("cargo:rerun-if-changed={}", manifest.display());
+    let mut sets: BTreeMap<String, Vec<String>> =
         serde_json::from_slice(&fs::read(&manifest).map_err(|e| e.to_string())?)
             .map_err(|e| format!("read {}: {e}", manifest.display()))?;
+    let fragments = build.join("ported-source-sets");
+    println!("cargo:rerun-if-changed={}", fragments.display());
+    if fragments.exists() {
+        let mut paths = fs::read_dir(&fragments)
+            .map_err(|e| format!("read {}: {e}", fragments.display()))?
+            .map(|entry| entry.map(|entry| entry.path()).map_err(|e| e.to_string()))
+            .collect::<Result<Vec<_>, _>>()?;
+        paths.sort();
+        for path in paths
+            .into_iter()
+            .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+        {
+            println!("cargo:rerun-if-changed={}", path.display());
+            let additions: BTreeMap<String, Vec<String>> =
+                serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
+                    .map_err(|e| format!("read {}: {e}", path.display()))?;
+            for (name, members) in additions {
+                if !name.ends_with("_PORTED_SOURCES") {
+                    return Err(format!(
+                        "unknown ported source set in {}: {name}",
+                        path.display()
+                    ));
+                }
+                let Some(existing) = sets.get_mut(&name) else {
+                    return Err(format!(
+                        "unknown ported source set in {}: {name}",
+                        path.display()
+                    ));
+                };
+                for member in members {
+                    if existing.contains(&member) {
+                        return Err(format!(
+                            "duplicate ported source in {}: {member}",
+                            path.display()
+                        ));
+                    }
+                    existing.push(member);
+                }
+            }
+        }
+    }
+    for (name, members) in &mut sets {
+        if name.ends_with("_PORTED_SOURCES") {
+            members.sort();
+        }
+    }
+    Ok(sets)
+}
+
+fn prepare(build: &NativeBuild, root: &Path, options: &Options) -> Result<Plan, String> {
+    let root = root.canonicalize().map_err(|e| e.to_string())?;
+    let sets = read_source_sets(&root)?;
     let config = build.output.join("config");
     fs::create_dir_all(&config).map_err(|e| e.to_string())?;
     let config = config.canonicalize().map_err(|e| e.to_string())?;

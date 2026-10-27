@@ -206,6 +206,13 @@ When an upstream merge adds a new `foo.c` to a converted component, rename
 it, move its includes into its group's header and add it to a group in the
 merge PR.
 
+A newly ported libobs unity group can register itself in
+`libobs/build/ported-source-sets/<unit>.json` with the same
+`LIBOBS_*_PORTED_SOURCES` keys as `libobs/build/source-sets.json`. The CMake,
+Cargo-native and Tier 2 inventory readers discover these fragments, so two
+ports can add their own files without editing the same ported-source list.
+Keep each member in exactly one list or fragment.
+
 ## Verifying a change
 
 - Linux: `./unittest` and the local gate as usual; `./lint` runs
