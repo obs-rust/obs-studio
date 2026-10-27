@@ -39,6 +39,26 @@ class FormatJobsTest(unittest.TestCase):
             self.assertIn(f"uv run --no-project ci/local_gate.py --only {check}", j, check)
 
 
+class DeadFormatActionsTest(unittest.TestCase):
+    """The actions the jobs used to call are gone, not kept alongside (#2676).
+
+    #984 moved the clang-format and gersemi checks to the local gate's pinned
+    tools and left upstream's composite actions behind. Nothing references
+    them, so they are dead code with their own ci-lint exceptions.
+    """
+
+    DEAD = (".github/actions/run-clang-format/action.yaml", ".github/actions/run-gersemi/action.yaml")
+
+    def test_actions_are_deleted(self):
+        for path in self.DEAD:
+            self.assertFalse((ROOT / path).exists(), f"{path} is unreferenced and must be deleted")
+
+    def test_no_gen_005_exception_is_left_for_them(self):
+        text = (ROOT / "ci.toml").read_text(encoding="utf-8")
+        for path in self.DEAD:
+            self.assertFalse(f'path = "{path}"' in text, f"stale GEN-005 exception for {path}")
+
+
 class GateOnlyTest(unittest.TestCase):
     def test_only_flag_is_offered(self):
         out = subprocess.run([sys.executable, str(GATE), "--help"], capture_output=True, text=True).stdout
