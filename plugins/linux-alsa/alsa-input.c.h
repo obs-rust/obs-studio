@@ -128,7 +128,7 @@ void *alsa_create(obs_data_t *settings, obs_source_t *source)
 		device = obs_data_get_string(settings, "custom_pcm");
 
 	data->device = bstrdup(device);
-	data->rate = obs_data_get_int(settings, "rate");
+	data->rate = (uint32_t)obs_data_get_int(settings, "rate");
 
 	if (os_event_init(&data->abort_event, OS_EVENT_TYPE_MANUAL) != 0) {
 		blog(LOG_ERROR, "Abort event creation failed!");
@@ -203,7 +203,7 @@ void alsa_update(void *vptr, obs_data_t *settings)
 		reset = true;
 	}
 
-	rate = obs_data_get_int(settings, "rate");
+	rate = (uint32_t)obs_data_get_int(settings, "rate");
 	if (data->rate != rate) {
 		data->rate = rate;
 		reset = true;
@@ -511,7 +511,7 @@ bool _alsa_configure(struct alsa_data *data)
 		return false;
 	}
 
-	data->sample_size = (data->channels * snd_pcm_format_physical_width(data->format)) / 8;
+	data->sample_size = data->channels * (uint32_t)snd_pcm_format_physical_width(data->format) / 8;
 
 	if (data->buffer)
 		bfree(data->buffer);
@@ -581,7 +581,7 @@ void *_alsa_listen(void *attr)
 			break;
 
 		if (frames <= 0) {
-			frames = snd_pcm_recover(data->handle, frames, 0);
+			frames = snd_pcm_recover(data->handle, (int)frames, 0);
 			if (frames <= 0) {
 				snd_pcm_wait(data->handle, 100);
 				continue;
@@ -591,8 +591,8 @@ void *_alsa_listen(void *attr)
 		if (data->buffer32)
 			_alsa_s24_3le_to_s32(data->buffer, data->buffer32, (size_t)frames * data->channels);
 
-		out.frames = frames;
-		out.timestamp = os_gettime_ns() - util_mul_div64(frames, NSEC_PER_SEC, data->rate);
+		out.frames = (uint32_t)frames;
+		out.timestamp = os_gettime_ns() - util_mul_div64((uint64_t)frames, NSEC_PER_SEC, data->rate);
 
 		if (!data->first_ts)
 			data->first_ts = out.timestamp + STARTUP_TIMEOUT_NS;
