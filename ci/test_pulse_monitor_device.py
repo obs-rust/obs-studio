@@ -16,7 +16,7 @@ No real daemon, sound server or test binary runs here: the five tools are
 stubs on PATH and the test binary records its environment and argv.
 
 The shell's callers are the four ctest entries in `test/cmocka/tests.d/*.cmake`
-and the `test_pipewire_wrapper.sh` wrapper, so this suite drives the module
+and the `test_pipewire_wrapper.py` wrapper, so this suite drives the module
 directly and pins that the wiring -- the shell gone, its GEN-005 exception
 gone, the cmake callers and the test graph on `uv run --script` -- is complete.
 """
@@ -35,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pulse_monitor_device.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pulse_monitor_device.sh"
-WRAPPER = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.sh"
+WRAPPER = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.py"
 GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pulse_monitor_device.sh"'

@@ -15,7 +15,7 @@ directory and the argv the module handed it.
 
 The shell's callers are the `test_pipewire_camera_*` / `test_pipewire_screencast_*`
 ctest entries (all through `test/cmocka/tests.d/*.cmake`) plus the wrapper
-`test_pipewire_wrapper.sh`, so this suite drives the module directly and pins
+`test_pipewire_wrapper.py`, so this suite drives the module directly and pins
 that the wiring -- the shell script gone, its GEN-005 exception gone, the cmake
 callers running the Python through `uv run --script` -- is complete.
 """

@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.sh"
 CMAKE = ROOT / "test" / "cmocka" / "tests.d" / "test_pipewire_context_fail.cmake"
-WRAPPER_TEST = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.sh"
+WRAPPER_TEST = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.py"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pipewire_context_fail.sh"'
 
