@@ -202,7 +202,7 @@ else
   # Restart the daemon and rebuild once; ninja redoes only the failed edges,
   # and a real compile error fails the second time too.
   tier2_targets=(libobs libobs-c-reference cmocka-tests decklink obs-nvenc obs-nvenc-c-reference)
-  "$SRC"/rust/tools/linux-validate/drop-depless-objects.sh "$build"
+  uv run --script "$SRC/rust/tools/linux-validate/drop_depless_objects.py" "$build"
   if ! cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0 >"$build.build.log" 2>&1; then
     # Ninja colors its log (\e[31mFAILED: ...), so strip the escapes first.
     launcher_failed=$(sed 's/\x1b\[[0-9;]*m//g' "$build.build.log" | grep -c '^FAILED: \[code=125\]' || true)

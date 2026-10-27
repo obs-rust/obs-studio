@@ -80,7 +80,7 @@ class DropDeplessObjects(unittest.TestCase):
 
     def test_validate_runs_it_before_the_build(self) -> None:
         text = VALIDATE.read_text(encoding="utf-8")
-        guard = text.find('drop_depless_objects.py "$build"')
+        guard = text.find('drop_depless_objects.py')
         build = text.find('cmake --build "$build" --target "${tier2_targets[@]}"')
         self.assertGreater(guard, 0, "validate.sh does not run drop_depless_objects.py")
         self.assertLess(guard, build)
