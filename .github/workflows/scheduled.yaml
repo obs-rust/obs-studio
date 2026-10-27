@@ -52,7 +52,7 @@ jobs:
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Compare the CEF pins with Chrome's extended stable 🔍
-        run: uv run ci/cef_support.py
+        run: uv run --no-project ci/cef_support.py
 
   build-project:
     name: Build 🧱

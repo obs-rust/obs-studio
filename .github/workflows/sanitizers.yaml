@@ -116,7 +116,7 @@ jobs:
           FAIL: ${{ inputs.fail_on_findings && '--fail-on-findings' || '' }}
         run: |
           [ -d "$SAN_OUT/${{ matrix.tool }}" ] || { echo "No results (build failed?)" >>"$GITHUB_STEP_SUMMARY"; exit 1; }
-          uv run rust/tools/sanitize/triage.py "$SAN_OUT/${{ matrix.tool }}" ${FAIL:+"$FAIL"} | tee -a "$GITHUB_STEP_SUMMARY"
+          uv run --no-project rust/tools/sanitize/triage.py "$SAN_OUT/${{ matrix.tool }}" ${FAIL:+"$FAIL"} | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload logs 📤
         if: always()

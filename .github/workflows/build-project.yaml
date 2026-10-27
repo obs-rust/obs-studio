@@ -169,7 +169,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           BASE: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
-        run: uv run ci/submodule_direction.py "${BASE}"
+        run: uv run --no-project ci/submodule_direction.py "${BASE}"
 
       # What this change needs (#436, ci/ci_scope.py): the Linux Rust tests
       # and Tier 2 always run; macOS or Windows code, or shared build/CI
@@ -227,13 +227,13 @@ jobs:
             elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF_NAME}" == master ]]; then
               # Pending master builds coalesce. Include paths from every
               # push since the last successful build, including skipped pushes.
-              base="$(uv run ci/master_scope_base.py)"
+              base="$(uv run --no-project ci/master_scope_base.py)"
             else
               # A merge-queue push can carry several commits. Warm every
               # selected path in the push, not only its final commit.
               base="${{ github.event.before || 'HEAD^1' }}"
             fi
-            eval "$(uv run ci/ci_scope.py "${base}")"
+            eval "$(uv run --no-project ci/ci_scope.py "${base}")"
           fi
           # Fast PR path (#992): a PR or merge-queue run that no path escalates
           # to the full builds runs only the lanes its paths select; the
@@ -335,9 +335,9 @@ jobs:
           NATIVE_REUSE_SOURCE: ${{ inputs.native-cache-reuse-source }}
           NATIVE_CACHE_JOB_TOKEN: ${{ github.token }}
         run: |
-          uv run ci/native_cache_identity.py --platform macos --architecture '${{ matrix.target }}' --configuration '${{ needs.check-event.outputs.config }}' --output "$RUNNER_TEMP/native-reuse-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-identity-diagnostics.json"
-          uv run ci/native_cache_transport.py consume --require-hit --expected-source "$NATIVE_REUSE_SOURCE" --identity "$RUNNER_TEMP/native-reuse-identity.json" --destination "$RUNNER_TEMP/native-reuse-cache" --report "$RUNNER_TEMP/native-reuse-consume.json"
-          uv run ci/native_cache_freshness.py prepare --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-prepare.json"
+          uv run --no-project ci/native_cache_identity.py --platform macos --architecture '${{ matrix.target }}' --configuration '${{ needs.check-event.outputs.config }}' --output "$RUNNER_TEMP/native-reuse-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-identity-diagnostics.json"
+          uv run --no-project ci/native_cache_transport.py consume --require-hit --expected-source "$NATIVE_REUSE_SOURCE" --identity "$RUNNER_TEMP/native-reuse-identity.json" --destination "$RUNNER_TEMP/native-reuse-cache" --report "$RUNNER_TEMP/native-reuse-consume.json"
+          uv run --no-project ci/native_cache_freshness.py prepare --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-prepare.json"
           echo "cache_path=$RUNNER_TEMP/native-reuse-cache" >> "$GITHUB_OUTPUT"
 
       # Compiler cache policy (zackees/ci.yml): only master pushes save, keyed by
@@ -400,15 +400,15 @@ jobs:
         if: inputs.native-cache-reuse-source != ''
         shell: bash
         run: |
-          uv run ci/native_cache_identity.py --platform macos --architecture '${{ matrix.target }}' --configuration '${{ needs.check-event.outputs.config }}' --expected "$RUNNER_TEMP/native-reuse-identity.json" --output "$RUNNER_TEMP/native-reuse-final-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-final-identity-diagnostics.json"
-          uv run ci/native_cache_freshness.py verify --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --platform macos --architecture '${{ matrix.target }}' --report "$RUNNER_TEMP/native-reuse-freshness.json"
+          uv run --no-project ci/native_cache_identity.py --platform macos --architecture '${{ matrix.target }}' --configuration '${{ needs.check-event.outputs.config }}' --expected "$RUNNER_TEMP/native-reuse-identity.json" --output "$RUNNER_TEMP/native-reuse-final-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-final-identity-diagnostics.json"
+          uv run --no-project ci/native_cache_freshness.py verify --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --platform macos --architecture '${{ matrix.target }}' --report "$RUNNER_TEMP/native-reuse-freshness.json"
 
       - name: Restore Native Freshness Source
         if: always() && inputs.native-cache-reuse-source != ''
         shell: bash
         run: |
           if [[ -f "$RUNNER_TEMP/native-reuse-state.json" ]]; then
-            uv run ci/native_cache_freshness.py restore --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-restore.json"
+            uv run --no-project ci/native_cache_freshness.py restore --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-restore.json"
           fi
 
       - name: Upload Native Build Reuse Evidence
@@ -463,7 +463,7 @@ jobs:
       - name: Record Native Transport Identity
         if: inputs.native-cache-transport-probe
         run: >-
-          uv run ci/native_cache_identity.py --platform macos
+          uv run --no-project ci/native_cache_identity.py --platform macos
           --architecture '${{ matrix.target }}' --configuration '${{ needs.check-event.outputs.config }}'
           --output '${{ runner.temp }}/native-cache-identity.json'
           --diagnostics '${{ runner.temp }}/native-cache-identity-diagnostics.json'
@@ -473,7 +473,7 @@ jobs:
         if: inputs.native-cache-transport-probe
         shell: bash
         run: >-
-          uv run ci/native_cache_seed.py
+          uv run --no-project ci/native_cache_seed.py
           --identity '${{ runner.temp }}/native-cache-identity.json'
           --source-sha '${{ github.sha }}' --output "$GITHUB_OUTPUT"
 
@@ -483,7 +483,7 @@ jobs:
         env:
           CACHE_SOURCE: ${{ steps.setup.outputs.xcodeCasPath }}
         run: >-
-          uv run ci/native_cache_transport.py verify-local
+          uv run --no-project ci/native_cache_transport.py verify-local
           --identity '${{ runner.temp }}/native-cache-identity.json' --source "$CACHE_SOURCE"
           --report '${{ runner.temp }}/native-cache-local.json'
 
@@ -574,7 +574,7 @@ jobs:
         run: |
           rust/tools/linux-validate/install-zccache.sh "${HOME}/.local/bin"
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
-          uv run ci/native_cache_journal.py start \
+          uv run --no-project ci/native_cache_journal.py start \
             --tool "${HOME}/.local/bin/zccache" --cache-dir "${ZCCACHE_CACHE_DIR}" \
             --workspace "${GITHUB_WORKSPACE}" \
             --journal "${RUNNER_TEMP}/native-cache-${{ matrix.rust }}.jsonl"
@@ -602,7 +602,7 @@ jobs:
         continue-on-error: true
         run: |
           echo 'ZCCACHE_SESSION_ID=' >> "${GITHUB_ENV}"
-          uv run ci/native_cache_journal.py summarize \
+          uv run --no-project ci/native_cache_journal.py summarize \
             --workspace "${GITHUB_WORKSPACE}" \
             --journal "${RUNNER_TEMP}/native-cache-${{ matrix.rust }}.jsonl" \
             --build-outcome "${{ steps.ubuntu-native-build.outcome }}" \
@@ -668,7 +668,7 @@ jobs:
           : Tier 4 GPU Acceleration Check 🎮
           sudo cmake --install build_ubuntu --config ${{ needs.check-event.outputs.config }} > /dev/null
           command -v xvfb-run > /dev/null || sudo apt-get install -y --no-install-recommends xvfb
-          uv run --with websockets==13.1 test/websocket-tier4/run_tier4.py --only gpu --obs /usr/bin/obs-studio-rust-gui
+          uv run --no-project --with websockets==13.1 test/websocket-tier4/run_tier4.py --only gpu --obs /usr/bin/obs-studio-rust-gui
 
       # The whole black-box obs-websocket suite against the real app with Rust
       # libobs (#140): auth handshake, every request type, scene collections,
@@ -677,7 +677,7 @@ jobs:
       - name: Tier 4 Suite (Rust libobs app) 🔌
         if: matrix.rust == 'ON'
         timeout-minutes: 15
-        run: uv run --with websockets==13.1 test/websocket-tier4/run_tier4.py --obs /usr/bin/obs-studio-rust-gui
+        run: uv run --no-project --with websockets==13.1 test/websocket-tier4/run_tier4.py --obs /usr/bin/obs-studio-rust-gui
 
       # build-obs's summary step stopped the zccache daemon, flushing its index.
       # If accumulated objects exceed a normal build plus margin, keep the
@@ -810,7 +810,7 @@ jobs:
       - name: Configure Flatpak Compiler Diagnostics
         id: flatpak-compiler-diagnostic-config
         if: inputs.flatpak-compiler-diagnostics
-        run: uv run ci/flatpak_compiler_diagnostics.py configure --manifest build-aux/io.github.obs_rust.OBSStudioRust.json
+        run: uv run --no-project ci/flatpak_compiler_diagnostics.py configure --manifest build-aux/io.github.obs_rust.OBSStudioRust.json
 
       - name: Validate Flatpak manifest
         uses: ./.github/actions/flatpak-builder-lint
@@ -878,7 +878,7 @@ jobs:
       # Measure its composition before considering any cache-content changes.
       - name: Summarize Flatpak Compiler Diagnostics
         if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
-        run: uv run ci/flatpak_compiler_diagnostics.py summarize --output "$RUNNER_TEMP/flatpak-compiler-diagnostics.json"
+        run: uv run --no-project ci/flatpak_compiler_diagnostics.py summarize --output "$RUNNER_TEMP/flatpak-compiler-diagnostics.json"
 
       - name: Upload Flatpak Compiler Diagnostics
         if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
@@ -970,7 +970,7 @@ jobs:
         if: inputs.flatpak-cache-probe
         timeout-minutes: 15
         run: |
-          uv run ci/flatpak_cache_probe.py \
+          uv run --no-project ci/flatpak_cache_probe.py \
             --manifest build-aux/flatpak-github-action-modified-io.github.obs_rust.OBSStudioRust.json \
             --temp-root "${RUNNER_TEMP}" --output "${RUNNER_TEMP}/flatpak-cache-probe.json"
 
@@ -987,7 +987,7 @@ jobs:
         if: inputs.flatpak-pruned-build-probe
         timeout-minutes: 40
         run: |
-          uv run ci/flatpak_pruned_build_probe.py --compiler-reuse \
+          uv run --no-project ci/flatpak_pruned_build_probe.py --compiler-reuse \
             --manifest build-aux/flatpak-github-action-modified-io.github.obs_rust.OBSStudioRust.json \
             --temp-root "${RUNNER_TEMP}" --output "${RUNNER_TEMP}/flatpak-pruned-build.json"
 
@@ -1004,7 +1004,7 @@ jobs:
       - name: Pack Experimental Flatpak Dependency Artifact
         if: inputs.flatpak-dependency-transfer-probe
         run: |
-          timeout 600s uv run ci/flatpak_dependency_cache.py pack --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          timeout 600s uv run --no-project ci/flatpak_dependency_cache.py pack --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
       - name: Upload Experimental Flatpak Dependency Artifact
         if: inputs.flatpak-dependency-transfer-probe
@@ -1018,7 +1018,7 @@ jobs:
       - name: Pack Experimental Flatpak Compiler Artifact
         if: inputs.flatpak-compiler-transfer-probe
         run: |
-          uv run ci/flatpak_compiler_cache.py pack --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_compiler_cache.py pack --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Upload Experimental Flatpak Compiler Artifact
         if: inputs.flatpak-compiler-transfer-probe
@@ -1156,23 +1156,23 @@ jobs:
       - name: Restore Experimental Dependency Artifact
         if: inputs.flatpak-dependency-transfer-probe
         run: |
-          timeout 600s uv run ci/flatpak_dependency_cache.py restore --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          timeout 600s uv run --no-project ci/flatpak_dependency_cache.py restore --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
       - name: Verify and Restore Compiler Artifact Last
         run: |
-          uv run ci/flatpak_compiler_cache.py restore --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_compiler_cache.py restore --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer" \
             > "$RUNNER_TEMP/flatpak-compiler-transfer/consumer-restore.json"
-          uv run ci/flatpak_compiler_cache.py reset --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_compiler_cache.py reset --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Force Application Work Without Changing Compiler Inputs
         run: |
-          uv run ci/flatpak_compiler_cache.py force --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_compiler_cache.py force --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Record Experimental Dependency Reuse
         if: inputs.flatpak-dependency-transfer-probe
         run: |
-          uv run ci/flatpak_dependency_cache.py instrument --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_dependency_cache.py instrument --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer" >> "$GITHUB_PATH"
       - name: Build Full Flatpak Compiler Consumer
         uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
@@ -1186,11 +1186,11 @@ jobs:
       - name: Verify All Dependency Modules Were Reused
         if: inputs.flatpak-dependency-transfer-probe
         run: |
-          uv run ci/flatpak_dependency_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_dependency_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
       - name: Verify Substantial Cross Runner Compiler Reuse
         run: |
-          uv run ci/flatpak_compiler_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
+          uv run --no-project ci/flatpak_compiler_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Validate Compiler Consumer AppStream
         uses: ./.github/actions/flatpak-builder-lint
@@ -1276,7 +1276,7 @@ jobs:
           flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
             "$RUNNER_TEMP/flatpak-runtime-input/repo" "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak" \
             io.github.obs_rust.OBSStudioRust master
-          uv run ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
+          uv run --no-project ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
             --bundle "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak" \
             --output "$RUNNER_TEMP/flatpak-runtime-result"
       - name: Upload Tested Flatpak Bundle
@@ -1336,9 +1336,9 @@ jobs:
           NATIVE_REUSE_SOURCE: ${{ inputs.native-cache-reuse-source }}
           NATIVE_CACHE_JOB_TOKEN: ${{ github.token }}
         run: |
-          uv run ci/native_cache_identity.py --platform windows --architecture '${{ matrix.architecture }}' --configuration '${{ needs.check-event.outputs.config }}' --output "$RUNNER_TEMP/native-reuse-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-identity-diagnostics.json"
-          uv run ci/native_cache_transport.py consume --require-hit --expected-source "$NATIVE_REUSE_SOURCE" --identity "$RUNNER_TEMP/native-reuse-identity.json" --destination "$RUNNER_TEMP/native-reuse-cache" --report "$RUNNER_TEMP/native-reuse-consume.json"
-          uv run ci/native_cache_freshness.py prepare --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-prepare.json"
+          uv run --no-project ci/native_cache_identity.py --platform windows --architecture '${{ matrix.architecture }}' --configuration '${{ needs.check-event.outputs.config }}' --output "$RUNNER_TEMP/native-reuse-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-identity-diagnostics.json"
+          uv run --no-project ci/native_cache_transport.py consume --require-hit --expected-source "$NATIVE_REUSE_SOURCE" --identity "$RUNNER_TEMP/native-reuse-identity.json" --destination "$RUNNER_TEMP/native-reuse-cache" --report "$RUNNER_TEMP/native-reuse-consume.json"
+          uv run --no-project ci/native_cache_freshness.py prepare --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-prepare.json"
           echo "cache_path=$RUNNER_TEMP/native-reuse-cache" >> "$GITHUB_OUTPUT"
 
       # Compiler cache: ccache masquerading as cl.exe through MSBuild's
@@ -1413,15 +1413,15 @@ jobs:
         if: inputs.native-cache-reuse-source != ''
         shell: bash
         run: |
-          uv run ci/native_cache_identity.py --platform windows --architecture '${{ matrix.architecture }}' --configuration '${{ needs.check-event.outputs.config }}' --expected "$RUNNER_TEMP/native-reuse-identity.json" --output "$RUNNER_TEMP/native-reuse-final-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-final-identity-diagnostics.json"
-          uv run ci/native_cache_freshness.py verify --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --platform windows --architecture '${{ matrix.architecture }}' --report "$RUNNER_TEMP/native-reuse-freshness.json"
+          uv run --no-project ci/native_cache_identity.py --platform windows --architecture '${{ matrix.architecture }}' --configuration '${{ needs.check-event.outputs.config }}' --expected "$RUNNER_TEMP/native-reuse-identity.json" --output "$RUNNER_TEMP/native-reuse-final-identity.json" --diagnostics "$RUNNER_TEMP/native-reuse-final-identity-diagnostics.json"
+          uv run --no-project ci/native_cache_freshness.py verify --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --platform windows --architecture '${{ matrix.architecture }}' --report "$RUNNER_TEMP/native-reuse-freshness.json"
 
       - name: Restore Native Freshness Source
         if: always() && inputs.native-cache-reuse-source != ''
         shell: bash
         run: |
           if [[ -f "$RUNNER_TEMP/native-reuse-state.json" ]]; then
-            uv run ci/native_cache_freshness.py restore --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-restore.json"
+            uv run --no-project ci/native_cache_freshness.py restore --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-restore.json"
           fi
 
       - name: Upload Native Build Reuse Evidence
@@ -1441,7 +1441,7 @@ jobs:
 
       - name: Measure Windows Cache Budgets
         if: github.event_name == 'workflow_dispatch' && inputs.native-cache-probe
-        run: uv run ci/native_cache_probe.py --target '${{ matrix.architecture }}' --config '${{ needs.check-event.outputs.config }}' --output '${{ runner.temp }}/native-cache-probe-${{ matrix.architecture }}'
+        run: uv run --no-project ci/native_cache_probe.py --target '${{ matrix.architecture }}' --config '${{ needs.check-event.outputs.config }}' --output '${{ runner.temp }}/native-cache-probe-${{ matrix.architecture }}'
 
       - name: Upload Windows Cache Probe
         if: always() && github.event_name == 'workflow_dispatch' && inputs.native-cache-probe
@@ -1493,7 +1493,7 @@ jobs:
       - name: Record Native Transport Identity
         if: inputs.native-cache-transport-probe
         run: >-
-          uv run ci/native_cache_identity.py --platform windows
+          uv run --no-project ci/native_cache_identity.py --platform windows
           --architecture '${{ matrix.architecture }}' --configuration '${{ needs.check-event.outputs.config }}'
           --output '${{ runner.temp }}/native-cache-identity.json'
           --diagnostics '${{ runner.temp }}/native-cache-identity-diagnostics.json'
@@ -1503,7 +1503,7 @@ jobs:
         if: inputs.native-cache-transport-probe
         shell: bash
         run: >-
-          uv run ci/native_cache_seed.py
+          uv run --no-project ci/native_cache_seed.py
           --identity '${{ runner.temp }}/native-cache-identity.json'
           --source-sha '${{ github.sha }}' --output "$GITHUB_OUTPUT"
 
@@ -1513,7 +1513,7 @@ jobs:
         env:
           CACHE_SOURCE: ${{ github.workspace }}/.ccache
         run: >-
-          uv run ci/native_cache_transport.py verify-local
+          uv run --no-project ci/native_cache_transport.py verify-local
           --identity '${{ runner.temp }}/native-cache-identity.json' --source "$CACHE_SOURCE"
           --report '${{ runner.temp }}/native-cache-local.json'
 
@@ -1593,7 +1593,7 @@ jobs:
       - name: Local Gate Attestation 🛂
         id: gate
         if: github.event_name != 'merge_group'
-        run: PYTHONPATH=.ci-lint uv run python -m ci_lint local-gate verify --repo . --trust --github-output
+        run: PYTHONPATH=.ci-lint uv run --no-project python -m ci_lint local-gate verify --repo . --trust --github-output
 
       # Lane proofs (#699): a lane whose exact inputs already passed in a
       # trusted run of this workflow is skipped (ci/lane_proof.py). Keys come
@@ -1615,19 +1615,19 @@ jobs:
         if: env.PROOFS == 'true'
         working-directory: merge
         continue-on-error: true
-        run: uv run ci/lane_proof.py check --lane rust-test --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
+        run: uv run --no-project ci/lane_proof.py check --lane rust-test --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
       - name: cross
         id: cross
         if: env.PROOFS == 'true'
         working-directory: merge
         continue-on-error: true
-        run: uv run ci/lane_proof.py check --lane cross --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
+        run: uv run --no-project ci/lane_proof.py check --lane cross --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
       - name: tier2-linux
         id: tier2-linux
         if: env.PROOFS == 'true'
         working-directory: merge
         continue-on-error: true
-        run: uv run ci/lane_proof.py check --lane tier2-linux --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
+        run: uv run --no-project ci/lane_proof.py check --lane tier2-linux --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
 
   rust-tests-linux:
     timeout-minutes: 60
@@ -1696,7 +1696,7 @@ jobs:
       - name: Local Gate (lint) 🧪
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
-        run: uv run ci/local_gate.py --lane lint
+        run: uv run --no-project ci/local_gate.py --lane lint
 
       - name: Unit Tests (changed crates) 🧪
         if: needs.check-event.outputs.deferred == 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
@@ -1704,7 +1704,7 @@ jobs:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
           git fetch -q --depth=1 origin "${BASE}"
-          uv run ci/local_gate.py --test-diff "${BASE}"
+          uv run --no-project ci/local_gate.py --test-diff "${BASE}"
 
       # Step 3 (#992): only the plugin/shared modules the diff touches, on
       # Linux, one configure with ENABLE_FRONTEND=OFF (no Qt). Master and full
@@ -1801,7 +1801,7 @@ jobs:
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
         if: needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
-        run: uv run ci/local_gate.py --lane rust-test
+        run: uv run --no-project ci/local_gate.py --lane rust-test
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
@@ -1903,7 +1903,7 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Local Gate (cross) 🧪
-        run: uv run ci/local_gate.py --lane cross
+        run: uv run --no-project ci/local_gate.py --lane cross
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
@@ -1953,7 +1953,7 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Local Gate (cross-release) 🧪
-        run: uv run ci/local_gate.py --lane cross-release
+        run: uv run --no-project ci/local_gate.py --lane cross-release
 
   rust-tests:
     timeout-minutes: 60
@@ -2003,7 +2003,7 @@ jobs:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
           git fetch -q --depth=1 origin "${BASE}"
-          uv run ci/local_gate.py --test-diff "${BASE}"
+          uv run --no-project ci/local_gate.py --test-diff "${BASE}"
 
       - name: Run Rust Tests 🧪
         if: needs.check-event.outputs.deferred != 'true'
@@ -2037,7 +2037,7 @@ jobs:
             variable=OBS_QT_TEST_MACOS_PREFIX
           fi
           start=${SECONDS}
-          uv run ci/fetch_libs_asset.py "${QT_TAG}" "${asset}" "${sha}" "${RUNNER_TEMP}/qt"
+          uv run --no-project ci/fetch_libs_asset.py "${QT_TAG}" "${asset}" "${sha}" "${RUNNER_TEMP}/qt"
           echo "fetched ${asset} in $((SECONDS - start)) s"
           export "${variable}=${RUNNER_TEMP}/qt"
           soldr cargo test -p obs-studio-rust --locked --test obs-tests-app -- --exact qt_sdk::qt_sdk_resolves_published_sdks --nocapture 2>&1 | tee "${RUNNER_TEMP}/qt-sdk.log"
@@ -2442,8 +2442,8 @@ jobs:
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
       - name: Fetch Prebuilt Libs 📦
         run: |
-          uv run ci/fetch_libs_asset.py "${QT_TAG}" "${QT_ASSET}" "${QT_SHA256}" "${{ runner.temp }}/qt"
-          uv run ci/fetch_libs_asset.py "${FFMPEG_TAG}" "${FFMPEG_ASSET}" "${FFMPEG_SHA256}" "${{ runner.temp }}/ffmpeg"
+          uv run --no-project ci/fetch_libs_asset.py "${QT_TAG}" "${QT_ASSET}" "${QT_SHA256}" "${{ runner.temp }}/qt"
+          uv run --no-project ci/fetch_libs_asset.py "${FFMPEG_TAG}" "${FFMPEG_ASSET}" "${FFMPEG_SHA256}" "${{ runner.temp }}/ffmpeg"
 
       # No distro Qt, FFmpeg or codec dev packages: the prebuilt prefixes
       # supply them.
@@ -2725,14 +2725,14 @@ jobs:
           path: ${{ runner.temp }}/native-cache-build-identity
       - name: Record Transport Copier Identity
         run: >-
-          uv run ci/native_cache_identity.py --platform '${{ matrix.platform }}'
+          uv run --no-project ci/native_cache_identity.py --platform '${{ matrix.platform }}'
           --architecture '${{ matrix.architecture }}' --configuration RelWithDebInfo
           --output '${{ runner.temp }}/native-cache-current-identity.json'
           --diagnostics '${{ runner.temp }}/native-cache-current-identity-diagnostics.json'
       - name: Bind Native Transport Seed
         id: native-seed
         run: >-
-          uv run ci/native_cache_seed.py
+          uv run --no-project ci/native_cache_seed.py
           --identity '${{ runner.temp }}/native-cache-build-identity/native-cache-identity.json'
           --source-sha '${{ github.sha }}' --output "$GITHUB_OUTPUT"
       - name: Select Native Cache Path
@@ -2767,7 +2767,7 @@ jobs:
           NATIVE_CACHE_JOB_TOKEN: ${{ github.token }}
           CACHE_SOURCE: ${{ steps.path.outputs.cache }}
         run: >-
-          uv run ci/native_cache_transport.py publish
+          uv run --no-project ci/native_cache_transport.py publish
           --identity '${{ runner.temp }}/native-cache-build-identity/native-cache-identity.json' --source "$CACHE_SOURCE"
           --report '${{ runner.temp }}/native-cache-publish.json'
       - name: Upload Native Transport Evidence

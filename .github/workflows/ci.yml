@@ -102,7 +102,7 @@ jobs:
       - name: Cancel 🧹
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run ci/cancel_superseded.py
+        run: uv run --no-project ci/cancel_superseded.py
 
   check-format:
     name: Format 🔍
@@ -177,7 +177,7 @@ jobs:
       - name: Run Installed Flatpak with Saved Capture Profile
         run: |
           tar -xf "$RUNNER_TEMP/flatpak-runtime-input/flatpak-runtime-repo.tar" -C "$RUNNER_TEMP/flatpak-runtime-input"
-          uv run ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
+          uv run --no-project ci/flatpak_runtime.py --repo "$RUNNER_TEMP/flatpak-runtime-input/repo" \
             --output "$RUNNER_TEMP/flatpak-runtime-result"
       - name: Upload Flatpak Runtime Evidence
         if: ${{ !cancelled() }}
@@ -425,7 +425,7 @@ jobs:
         env:
           NATIVE_CACHE_JOB_TOKEN: ${{ github.token }}
         run: >-
-          uv run ci/native_cache_transport.py consume --require-hit --expected-source '${{ github.sha }}'
+          uv run --no-project ci/native_cache_transport.py consume --require-hit --expected-source '${{ github.sha }}'
           --identity '${{ runner.temp }}/native-cache-build-identity/native-cache-identity.json'
           --destination '${{ runner.temp }}/native-cache-roundtrip'
           --report '${{ runner.temp }}/native-cache-consume.json'
@@ -463,7 +463,7 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run ci/queue_report.py
+        run: uv run --no-project ci/queue_report.py
       - name: Check Job Results ✅
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
@@ -472,7 +472,7 @@ jobs:
       - name: Check Run Jobs ✅
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run ci/gate_jobs.py
+        run: uv run --no-project ci/gate_jobs.py
       - run: echo 'All required jobs passed or were skipped.'
   # Last job of the merge queue run (#1854, zackees/ci.yml#405 GEN-022). The
   # queue serializes master's cache writes, so this sweep has the cache to

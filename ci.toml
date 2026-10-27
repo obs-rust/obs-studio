@@ -1173,33 +1173,6 @@ reason = "PR runs do not read title tags, so a title edit need not re-trigger th
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 
-# TOOL-003: uv run executes PEP 723 scripts; the repository has no Python project to build.
-[[exceptions]]
-rule = "TOOL-003"
-path = ".github/workflows/appimage.yaml"
-reason = "uv run executes PEP 723 scripts; the repository has no Python project to build."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "TOOL-003"
-path = ".github/workflows/build-project.yaml"
-reason = "uv run executes PEP 723 scripts; the repository has no Python project to build."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "TOOL-003"
-path = ".github/workflows/claim-bot.yaml"
-reason = "uv run executes PEP 723 scripts; the repository has no Python project to build."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "TOOL-003"
-path = ".github/workflows/leaderboard.yml"
-reason = "uv run executes PEP 723 scripts; the repository has no Python project to build."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-
-
 # WF-002: Upstream workflows without top-level concurrency; tracked in #962.
 [[exceptions]]
 rule = "WF-002"

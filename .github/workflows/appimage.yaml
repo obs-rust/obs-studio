@@ -132,11 +132,11 @@ jobs:
           OBS_RUST_VERSION: ${{ inputs.rust_version }}
         # Determine version 🏷️ + Configure: the OBS version is only used here.
         run: |
-          build-aux/appimage/manylinux/run.sh uv run build-aux/appimage/build.py --base manylinux --steps version,configure \
+          build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps version,configure \
             --rust-libobs "$RUST_LIBOBS" --qsv "$QSV" --rust-version "$OBS_RUST_VERSION"
 
       - name: Build 🧱
-        run: build-aux/appimage/manylinux/run.sh uv run build-aux/appimage/build.py --base manylinux --steps build
+        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps build
 
       # Each compilation's hit or miss, its miss reason and which inputs
       # differed, per source (#2182). Diagnostics only.
@@ -144,7 +144,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          uv run ci/native_cache_journal.py summarize \
+          uv run --no-project ci/native_cache_journal.py summarize \
             --workspace "${GITHUB_WORKSPACE}" \
             --journal "${RUNNER_TEMP}/appimage-zccache.jsonl" \
             --output "${RUNNER_TEMP}/appimage-zccache.json"
@@ -177,12 +177,12 @@ jobs:
           key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
 
       - name: Assemble AppDir 📁
-        run: build-aux/appimage/manylinux/run.sh uv run build-aux/appimage/build.py --base manylinux --steps appdir
+        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps appdir
 
       - name: Create AppImage 📀
         env:
           PUBLISH_CONTINUOUS: ${{ inputs.publish_continuous == true }}
-        run: build-aux/appimage/manylinux/run.sh uv run build-aux/appimage/build.py --base manylinux --steps appimage --publish-continuous "$PUBLISH_CONTINUOUS"
+        run: build-aux/appimage/manylinux/run.sh uv run --no-project build-aux/appimage/build.py --base manylinux --steps appimage --publish-continuous "$PUBLISH_CONTINUOUS"
 
       - name: Test the host-library loader 🧪
         # hostlib/ (#959): the libva shims with the host's libva, without it,

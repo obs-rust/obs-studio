@@ -43,10 +43,10 @@ jobs:
           echo "Swift files changed: $swift"
       - name: clang-format Check 🐉
         if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
-        run: uv run ci/local_gate.py --only clang-format
+        run: uv run --no-project ci/local_gate.py --only clang-format
       - name: gersemi Check 🎛️
         if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
-        run: uv run ci/local_gate.py --only gersemi
+        run: uv run --no-project ci/local_gate.py --only gersemi
       - name: Flatpak Manifest Check 📦
         id: flatpak-check
         uses: ./.github/actions/flatpak-manifest-validator
@@ -59,7 +59,7 @@ jobs:
           failCondition: error
       # The 373 plain-Python ci/ tests need nothing from the 26.04 runner (#427).
       - name: ci/ Self-Tests 🧪
-        run: uv run ci/local_gate.py --only self-test
+        run: uv run --no-project ci/local_gate.py --only self-test
 
   swift-format:
     timeout-minutes: 20

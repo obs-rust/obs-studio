@@ -43,15 +43,15 @@ jobs:
         run: |
           cp tools/leaderboard/site/* data/
           touch data/.nojekyll
-          uv run --python 3.12 tools/leaderboard/generate.py --repo "${{ github.repository }}" --out data/leaderboard.json
+          uv run --no-project --python 3.12 tools/leaderboard/generate.py --repo "${{ github.repository }}" --out data/leaderboard.json
       - name: Measure Rust conversion
-        run: uv run --python 3.12 tools/conversion/measure.py --json data/conversion.json --svg data/conversion.svg
+        run: uv run --no-project --python 3.12 tools/conversion/measure.py --json data/conversion.json --svg data/conversion.svg
       - name: Render JPEG
         run: |
           uv run --python 3.12 --with playwright==1.49.1 playwright install --with-deps chromium
-          uv run --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data
-          uv run --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion.html conversion.jpg
-          uv run --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion-minimal.html conversion-minimal.jpg 640x100
+          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data
+          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion.html conversion.jpg
+          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion-minimal.html conversion-minimal.jpg 640x100
       - name: Commit to leaderboard branch
         working-directory: data
         run: |
