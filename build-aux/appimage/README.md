@@ -8,12 +8,12 @@ pre-release, a tag push attaches it to that tag's release.
 
 | File | Purpose |
 | --- | --- |
-| `assemble-appdir.sh` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set_runpaths.py`. |
+| `assemble_appdir.py` | Turns a `cmake --install` tree into an AppDir: bundles Qt plugins and every shared library (including all of glibc and its loader), then calls `set_runpaths.py`. |
 | `set_runpaths.py` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
 | `build.py` | The build: version, configure, build, AppDir, AppImage, in the glibc 2.28 image (`manylinux/Dockerfile`). Run by the workflow and by `bosn run --task appimage`. |
 | `AppRun` | Entry point. Installs the bundled loader, sets up the environment, runs OBS and writes a crash report if it crashes. |
-| `check_appdir.py` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled, or when the AppDir holds anything but exactly one libsrt of at least 1.5.7 (two copies in one process aborted OBS on quit after any SRT use). Run by `assemble-appdir.sh` (fails the build) and again by the test. |
-| `check-glibc-floor.py` | Fails when any ELF file in the AppDir requires a `GLIBC_` symbol version above the floor (2.28, #926). Reads only the versions a file *requires* (`objdump -p`), so the bundled glibc does not count. Run by `assemble-appdir.sh` (fails the build). |
+| `check_appdir.py` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled, or when the AppDir holds anything but exactly one libsrt of at least 1.5.7 (two copies in one process aborted OBS on quit after any SRT use). Run by `assemble_appdir.py` (fails the build) and again by the test. |
+| `check-glibc-floor.py` | Fails when any ELF file in the AppDir requires a `GLIBC_` symbol version above the floor (2.28, #926). Reads only the versions a file *requires* (`objdump -p`), so the bundled glibc does not count. Run by `assemble_appdir.py` (fails the build). |
 | `test-appimage.sh` | The distribution test, run inside a stock container (see below). |
 | `testkit.c` | Test helper built next to the AppImage: runtime probes, a fake ScreenCast/Camera portal, the test tone. The test runs it with the AppImage's own loader and libraries. |
 | `gpu-test.c` | Physical render-node checks: GBM buffer export and EGL DMA-BUF import with pixel readback, and VAAPI decoding with downloaded frame data. Built as a separate test artifact. |
@@ -85,7 +85,7 @@ checks that and that the workflow calls every step with every input.
   bundled loader and libc and link more of glibc (the NVIDIA driver's `libcuda`
   needs `librt`, `libpthread` and `libdl`). The host's copies of those need
   private symbols of the host's glibc, so on a host with a newer glibc
-  `libcuda` failed to load and NVENC was missing. `assemble-appdir.sh` bundles
+  `libcuda` failed to load and NVENC was missing. `assemble_appdir.py` bundles
   every library of the package that owns the bundled `libc.so.6`.
 - **No `LD_LIBRARY_PATH`.** It would leak into every process OBS starts
   (`/bin/sh`, `xdg-open`, ...), and those host programs crash when they load the
@@ -107,7 +107,7 @@ checks that and that the workflow calls every step with every input.
   `client.conf`, `pw_context_new()` returned NULL and every OBS with a PipeWire
   screen capture in its scene crashed on start (obs-rust/obs-studio#426). On
   Ubuntu 26.04 they come from `libpipewire-0.3-modules`, `libspa-0.2-modules`
-  and `pipewire-bin`; `assemble-appdir.sh` fails the build without them.
+  and `pipewire-bin`; `assemble_appdir.py` fails the build without them.
 
 - **HTTPS uses the host's CA bundle.** AlmaLinux 8's libcurl has the RHEL
   path `/etc/pki/tls/certs/ca-bundle.crt` built in and hands it to OpenSSL on

@@ -98,7 +98,7 @@ zccache stop || true # flush the cache index before the workflow saves it
 
 APPDIR = r"""
 DESTDIR="$PWD/AppDir" cmake --install build_ubuntu
-build-aux/appimage/assemble-appdir.sh AppDir "${AVUTIL_LIB}"
+uv run --no-project build-aux/appimage/assemble_appdir.py AppDir "${AVUTIL_LIB}"
 """
 
 APPIMAGE = r"""

@@ -108,9 +108,11 @@ class GlibcFloorTest(unittest.TestCase):
         self.assertIn("no ELF files under", result.stderr)
 
     def test_assemble_appdir_runs_it_before_the_appimage_is_written(self) -> None:
-        assemble = ROOT / "build-aux" / "appimage" / "assemble-appdir.sh"
+        assemble = ROOT / "build-aux" / "appimage" / "assemble_appdir.py"
         text = assemble.read_text(encoding="utf-8")
         self.assertIn("check-glibc-floor.py", text)
+        # `uv run --script`, like the shell ran it.
+        self.assertIn("--script", text)
 
 
 if __name__ == "__main__":

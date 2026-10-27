@@ -2,7 +2,7 @@
 """check-appdir keeps AppRun's runtime files inside the AppDir (#962), in Python.
 
 The rule lives in build-aux/appimage/check_appdir.py since the port off the
-136-line shell script, and assemble-appdir.sh and test-appimage.sh call it
+136-line shell script, and assemble_appdir.py and test-appimage.sh call it
 through `uv run --no-project`. This builds a small AppDir and drives the port
 over it, pinning the verdict the shell reached: a complete AppDir passes, and a
 missing or empty exported path, a missing client.conf, a missing required
@@ -228,10 +228,11 @@ class WiringTest(unittest.TestCase):
     """The shell script is gone; its callers run the Python through uv."""
 
     def test_assemble_appdir_runs_the_python_module_through_uv(self):
-        assemble = (APPIMAGE / "assemble-appdir.sh").read_text(encoding="utf-8")
-        self.assertTrue(
-            'uv run --no-project "$HERE/check_appdir.py" "$APPDIR"' in assemble,
-            "assemble-appdir.sh does not run check_appdir.py through uv",
+        assemble = (APPIMAGE / "assemble_appdir.py").read_text(encoding="utf-8")
+        self.assertIn(
+            '["uv", "run", "--no-project", str(here / "check_appdir.py"), str(appdir)]',
+            assemble,
+            "assemble_appdir.py does not run check_appdir.py through uv",
         )
 
     def test_test_appimage_runs_the_python_module_through_uv(self):

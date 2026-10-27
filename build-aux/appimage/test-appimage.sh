@@ -380,7 +380,7 @@ host_glibc_is_newer() {
 # the bundled libraries exactly the way obs does (no --library-path).
 install -m755 "$TESTKIT" "$APPDIR/usr/bin/obs-appimage-testkit"
 
-# The modules the build installed (assemble-appdir.sh records them).
+# The modules the build installed (assemble_appdir.py records them).
 INVENTORY="$PACKAGE_DATA/appimage-modules.txt"
 if [ ! -f "$INVENTORY" ]; then
     echo "::warning::no module inventory (built before obs-rust/obs-studio#426); using the modules present"

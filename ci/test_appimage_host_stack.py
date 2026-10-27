@@ -3,14 +3,30 @@
 
 from pathlib import Path
 import importlib.util
+import io
+import re
 import subprocess
 import sys
 import tempfile
 import textwrap
 import unittest
+from contextlib import redirect_stderr
 
 ROOT = Path(__file__).resolve().parent.parent
 HOSTLIB = ROOT / "build-aux/appimage/hostlib"
+ASSEMBLE = ROOT / "build-aux/appimage/assemble_appdir.py"
+
+
+def assemble_appdir():
+    """build-aux/appimage/assemble_appdir.py as a module (#962): the EXCLUDE
+    patterns it compiles are the ones this test checks the recorded host
+    libraries against."""
+    spec = importlib.util.spec_from_file_location("assemble_appdir", ASSEMBLE)
+    assert spec is not None and spec.loader is not None, f"cannot load {ASSEMBLE}"
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def hostlib_build():
@@ -55,35 +71,32 @@ class HostDriverStackTest(unittest.TestCase):
             self.assertIn(package, result.stdout.splitlines())
 
     def test_assembly_requires_the_source_built_compatibility_library(self):
+        module = assemble_appdir()
         with tempfile.TemporaryDirectory(prefix="obs-appdir-compat-") as scratch:
             root = Path(scratch)
-            result = subprocess.run(
-                [
-                    "bash",
-                    str(ROOT / "build-aux/appimage/assemble-appdir.sh"),
-                    str(root),
-                ],
-                capture_output=True,
-                text=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("validated VA-compatible libavutil", result.stderr)
+            err = io.StringIO()
+            with redirect_stderr(err):
+                code = module.main([str(root)])
+            self.assertEqual(code, 2)
+            self.assertIn("validated VA-compatible libavutil", err.getvalue())
             self.assertEqual(
                 list(root.iterdir()), [], "invalid input must fail before assembly"
             )
 
     def test_workflow_passes_the_image_ffmpeg_libavutil(self):
         workflow = (ROOT / "build-aux/appimage/build.py").read_text()
-        self.assertIn('assemble-appdir.sh AppDir "${AVUTIL_LIB}"', workflow)
+        self.assertIn(
+            'uv run --no-project build-aux/appimage/assemble_appdir.py AppDir "${AVUTIL_LIB}"',
+            workflow,
+        )
         # The glibc 2.28 base (#926) passes its own FFmpeg's, built against
         # AlmaLinux 8's libva (the Ubuntu base was retired in #1999).
         self.assertIn('"AVUTIL_LIB": "/opt/obs-deps/ffmpeg/lib/libavutil.so.60"', workflow)
 
     def test_driver_libraries_are_excluded_without_excluding_app_dependencies(self):
-        source = (ROOT / "build-aux/appimage/assemble-appdir.sh").read_text()
-        selector = next(
-            line for line in source.splitlines() if line.startswith("EXCLUDE=")
-        )
+        # The base selector the dependency-copy loop uses, before the glibc
+        # additions; the rule's home is assemble_appdir.py since the port (#962).
+        selector = assemble_appdir().HOST_EXCLUDE
         host = (
             "libEGL.so.1",
             "libGLX.so.0",
@@ -111,17 +124,13 @@ class HostDriverStackTest(unittest.TestCase):
             "libpipewire-0.3.so.0",
             "libvamp-hostsdk.so.3",
         )
-        # Run the actual Bash selector used by the dependency-copy loop.
-        script = (
-            selector
-            + '\nfor name in "$@"; do if [[ "$name" =~ $EXCLUDE ]]; then echo host; else echo bundled; fi; done'
-        )
-        selected = subprocess.check_output(
-            ["bash", "-c", script, "selector", *host, *bundled], text=True
-        ).splitlines()
-        for library, actual in zip(host + bundled, selected, strict=True):
+        # Run the real selector over both lists.
+        for library in host:
             with self.subTest(library=library):
-                self.assertEqual(actual, "host" if library in host else "bundled")
+                self.assertIsNotNone(re.search(selector, library))
+        for library in bundled:
+            with self.subTest(library=library):
+                self.assertIsNone(re.search(selector, library))
 
     def test_preflight_knows_every_library_the_release_takes_from_the_host(self):
         # A host library that host-libs.json does not list is never checked by
@@ -143,23 +152,17 @@ class HostDriverStackTest(unittest.TestCase):
         )
 
     def test_recorded_host_libraries_are_the_ones_assembly_excludes(self):
-        # The recorded list is what assemble-appdir.sh's EXCLUDE keeps out of
-        # the bundle (built at the glibc floor: the C runtime too).
-        source = (ROOT / "build-aux/appimage/assemble-appdir.sh").read_text()
-        selector = [
-            line.strip()
-            for line in source.splitlines()
-            if line.strip().startswith("EXCLUDE=")
-        ]
-        self.assertEqual(len(selector), 2, selector)
-        sonames = sorted({s for names in recorded_host_needs().values() for s in names})
-        script = (
-            "\n".join(selector)
-            + '\nfor name in "$@"; do [[ "$name" =~ $EXCLUDE ]] || echo "$name"; done'
+        # The recorded list is what assemble_appdir.py's EXCLUDE keeps out of
+        # the bundle (built at the glibc floor: the C runtime too, so the
+        # extended pattern).
+        module = assemble_appdir()
+        selector = module.GLIBC_EXCLUDE
+        self.assertTrue(
+            selector.startswith(module.HOST_EXCLUDE.removesuffix(")")),
+            "the glibc pattern is the host-driver one plus the C runtime",
         )
-        bundled = subprocess.check_output(
-            ["bash", "-c", script, "selector", *sonames], text=True
-        ).split()
+        sonames = sorted({s for names in recorded_host_needs().values() for s in names})
+        bundled = [name for name in sonames if re.search(selector, name) is None]
         self.assertEqual(bundled, [], "recorded as host libraries, but assembly bundles them")
 
     def test_unchecked_host_needs_names_only_unknown_host_libraries(self):

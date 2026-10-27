@@ -68,6 +68,11 @@ LATER = {
         # #2182: tracked files get the commit time, so rcc's output is stable.
         ("cmake --build build_ubuntu\n", STABLE_MTIMES + "cmake --build build_ubuntu\n"),
     ],
+    # #962: the AppDir assembly is Python now.
+    "appdir": [
+        ("build-aux/appimage/assemble-appdir.sh AppDir",
+         "uv run --no-project build-aux/appimage/assemble_appdir.py AppDir"),
+    ],
     # #1881: the update information follows the certified release, like
     # Windows and macOS, not the daily continuous build.
     "appimage": [

@@ -11,7 +11,7 @@ when the host's newer ones are used).
 
     uv run --no-project build-aux/appimage/set_runpaths.py <AppDir> [extra-absolute-dir]
 
-Ported off the shell script in #962; assemble-appdir.sh runs it in the AppImage
+Ported off the shell script in #962; assemble_appdir.py runs it in the AppImage
 build image, which has uv on PATH like every other step of that build.
 """
 

@@ -132,10 +132,10 @@ class AssembleAppdirTest(unittest.TestCase):
             self.stub(name, source)
 
         # The scripts assemble_appdir.py calls by absolute path (AppRun and
-        # check-appdir.sh live next to it in the real tree).
+        # check_appdir.py live next to it in the real tree).
         self.here = self.root / "appimage"
         self.here.mkdir()
-        self.script("check-appdir.sh", "#!/bin/sh\nexit 0\n")
+        self.script("check_appdir.py", "#!/bin/sh\nexit 0\n")
         (self.here / "AppRun").write_text(APPRUN, encoding="utf-8")
         setattr(self.module, "HERE", self.here)  # the port's `$HERE`, the script's directory
 
@@ -400,13 +400,14 @@ class AssembleAppdirTest(unittest.TestCase):
         self.assertTrue(diricon.is_symlink())
         self.assertEqual(os.readlink(diricon), "com.obsproject.Studio.png")
 
-        # The three helper steps went through uv, in order.
+        # The four helper steps went through uv, in order.
         calls = self.uv_calls()
         self.assertEqual(
             calls,
             [
                 f"run --no-project {self.here / 'hostlib' / 'build.py'} {self.appdir}",
                 f"run --no-project {self.here / 'set_runpaths.py'} {self.appdir}",
+                f"run --no-project {self.here / 'check_appdir.py'} {self.appdir}",
                 f"run --script {self.here / 'check-glibc-floor.py'} {self.appdir} 2.28",
             ],
         )

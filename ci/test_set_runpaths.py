@@ -2,7 +2,7 @@
 """set-runpaths gives every bundled ELF a relative DT_RPATH (#962), in Python.
 
 The rule lives in build-aux/appimage/set_runpaths.py since the port off the
-shell script, and assemble-appdir.sh calls it through `uv run`. A stub
+shell script, and assemble_appdir.py calls it through `uv run`. A stub
 `patchelf` on PATH records the argv it was given, so this pins the exact RPATH
 the shell set: `$ORIGIN` for a file in usr/lib, `$ORIGIN/..` one level below it,
 `$ORIGIN/../lib` for usr/bin, plus the optional trailing absolute directory.
@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 APPIMAGE = ROOT / "build-aux" / "appimage"
 MODULE = APPIMAGE / "set_runpaths.py"
 SHELL_SCRIPT = APPIMAGE / "set-runpaths.sh"
+ASSEMBLE_MODULE = APPIMAGE / "assemble_appdir.py"
+ASSEMBLE_SHELL = APPIMAGE / "assemble-appdir.sh"
 
 # Enough of an ELF header for the `head -c4` magic test the shell used.
 ELF = b"\x7fELF\x02\x01\x01\x00" + b"\x00" * 8
@@ -38,12 +40,12 @@ exit "${PATCHELF_EXIT:-0}"
 """
 
 
-def load_module():
+def load_module(path: Path = MODULE, name: str = "set_runpaths"):
     """build-aux/appimage/set_runpaths.py by path: `uv run python -m unittest
     ci/test_set_runpaths.py` does not put build-aux/ on sys.path, and no file in
     this repo edits sys.path (ci/test_no_sys_path_edits.py)."""
-    spec = importlib.util.spec_from_file_location("set_runpaths", MODULE)
-    assert spec is not None and spec.loader is not None, f"cannot load {MODULE}"
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -144,18 +146,29 @@ class RunpathsTest(unittest.TestCase):
 
 
 class WiringTest(unittest.TestCase):
-    """The shell script is gone; assemble-appdir.sh runs the Python through uv."""
+    """The shell scripts are gone; assemble_appdir.py runs the Python through uv."""
 
     def test_assemble_appdir_runs_the_python_module_through_uv(self):
-        assemble = (APPIMAGE / "assemble-appdir.sh").read_text(encoding="utf-8")
-        # assertTrue with a short message: assertIn would echo the whole script.
-        self.assertTrue(
-            'uv run --no-project "$HERE/set_runpaths.py" "$APPDIR" '
-            '${LOADER_DIR:+"$LOADER_DIR/lib"}'
-            in assemble,
-            "assemble-appdir.sh does not run set_runpaths.py through uv",
+        assemble = load_module(ASSEMBLE_MODULE, "assemble_appdir")
+        appdir = Path("/tmp/AppDir")
+        self.assertEqual(
+            assemble.set_runpaths_command(APPIMAGE, appdir, ""),
+            ["uv", "run", "--no-project", str(APPIMAGE / "set_runpaths.py"), str(appdir)],
+        )
+        # When glibc is bundled the loader's lib directory is appended.
+        self.assertEqual(
+            assemble.set_runpaths_command(APPIMAGE, appdir, "/tmp/.obs-rust-appimage-abc123"),
+            [
+                "uv",
+                "run",
+                "--no-project",
+                str(APPIMAGE / "set_runpaths.py"),
+                str(appdir),
+                "/tmp/.obs-rust-appimage-abc123/lib",
+            ],
         )
         self.assertFalse(SHELL_SCRIPT.exists(), "the shell script is the ported one")
+        self.assertFalse(ASSEMBLE_SHELL.exists(), "assemble-appdir.sh is the ported one")
 
     def test_no_exception_is_left_for_the_ported_script(self):
         ci_toml = (ROOT / "ci.toml").read_text(encoding="utf-8")

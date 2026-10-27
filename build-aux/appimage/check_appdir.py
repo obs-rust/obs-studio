@@ -3,16 +3,16 @@
 
     uv run --no-project build-aux/appimage/check_appdir.py <AppDir>
 
-assemble-appdir.sh runs it to fail the build, and test-appimage.sh runs it again
+assemble_appdir.py runs it to fail the build, and test-appimage.sh runs it again
 on the extracted AppImage. Libraries that the dynamic loader can see are covered
-by assemble-appdir.sh; this is about what is found at runtime through environment
+by assemble_appdir.py; this is about what is found at runtime through environment
 variables and configuration files instead (PipeWire modules, SPA plugins,
 client.conf, gconv, Qt's X11 and Wayland plugins), where a missing file is not
 noticed until OBS uses it (obs-rust/obs-studio#426: no client.conf, so
 pw_context_new() returned NULL and OBS crashed on start with a PipeWire screen
 capture in the scene).
 
-Ported off the 136-line shell script in #962; assemble-appdir.sh and
+Ported off the 136-line shell script in #962; assemble_appdir.py and
 test-appimage.sh call this file through `uv run --no-project`.
 """
 
