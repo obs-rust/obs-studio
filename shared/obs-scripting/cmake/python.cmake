@@ -52,8 +52,9 @@ if(ENABLE_SCRIPTING_PYTHON)
   # -Wpedantic rejects. Neither file is ours, so this target opts out of those
   # diagnostics instead of the global C flag list (obs-rust/obs-studio#2695).
   target_compile_options(
-    obs-scripting PRIVATE
-    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic>)
+    obs-scripting
+    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic>
+  )
 
   target_compile_definitions(
     obs-scripting
