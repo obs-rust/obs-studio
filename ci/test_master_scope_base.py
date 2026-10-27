@@ -1,7 +1,8 @@
 """Coalescing must retain work from superseded master pushes."""
+import os
 import subprocess
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from master_scope_base import scope_base
 
 class MasterScopeBaseTest(unittest.TestCase):
@@ -48,6 +49,21 @@ class MasterScopeBaseTest(unittest.TestCase):
         with patch('ci_scope.subprocess.run', return_value=subprocess.CompletedProcess([], 0, 'plugins/linux-v4l2/build/plugin.c\n')) as run:
             self.assertEqual(changed_files('ALL'), ['plugins/linux-v4l2/build/plugin.c'])
             self.assertEqual(run.call_args.args[0], ['git', 'ls-files'])
+
+    def test_gh_json_is_parsed_without_colour_codes(self):
+        """setup-soldr exports FORCE_COLOR through GITHUB_ENV; gh then colourises --json."""
+        sha = 'a' * 40
+        run = Mock(side_effect=[subprocess.CompletedProcess([], 0, '[{"headSha":"' + sha + '"}]'),
+                                subprocess.CompletedProcess([], 0),
+                                subprocess.CompletedProcess([], 0, '# before coalescing')])
+        hostile = {'CLICOLOR_FORCE': '1', 'FORCE_COLOR': '1', 'GH_FORCE_TTY': '120', 'PATH': '/bin'}
+        with patch.dict(os.environ, hostile, clear=True):
+            self.assertEqual(scope_base(run), sha)
+        env = run.call_args_list[0].kwargs['env']
+        for key in ('CLICOLOR_FORCE', 'FORCE_COLOR', 'GH_FORCE_TTY'):
+            self.assertNotIn(key, env)
+        self.assertEqual(env['NO_COLOR'], '1')
+        self.assertEqual(env['PATH'], '/bin')
 
     def test_master_workflow_uses_catchup_scope(self):
         from pathlib import Path
