@@ -15,7 +15,7 @@ struct d3d11_data {
 			struct shtex_data *shtex_info;
 			ID3D11Texture2D *texture;
 			HANDLE handle;
-		};
+		} shtex;
 		/* shared memory */
 		struct {
 			ID3D11Texture2D *copy_surfaces[NUM_BUFFERS];
@@ -25,8 +25,8 @@ struct d3d11_data {
 			struct shmem_data *shmem_info;
 			int cur_tex;
 			int copy_wait;
-		};
-	};
+		} shmem;
+	} u;
 };
 
 static struct d3d11_data data = {};
@@ -36,16 +36,16 @@ void d3d11_free(void)
 	capture_free();
 
 	if (data.using_shtex) {
-		if (data.texture) {
-			data.texture->Release();
+		if (data.u.shtex.texture) {
+			data.u.shtex.texture->Release();
 		}
 	} else {
 		for (size_t i = 0; i < NUM_BUFFERS; i++) {
-			if (data.copy_surfaces[i]) {
-				if (data.texture_mapped[i]) {
-					data.context->Unmap(data.copy_surfaces[i], 0);
+			if (data.u.shmem.copy_surfaces[i]) {
+				if (data.u.shmem.texture_mapped[i]) {
+					data.context->Unmap(data.u.shmem.copy_surfaces[i], 0);
 				}
-				data.copy_surfaces[i]->Release();
+				data.u.shmem.copy_surfaces[i]->Release();
 			}
 		}
 	}
@@ -146,7 +146,7 @@ static bool d3d11_shmem_init_buffers(size_t idx)
 {
 	bool success;
 
-	success = create_d3d11_stage_surface(&data.copy_surfaces[idx]);
+	success = create_d3d11_stage_surface(&data.u.shmem.copy_surfaces[idx]);
 	if (!success) {
 		hlog("d3d11_shmem_init_buffers: failed to create copy surface");
 		return false;
@@ -156,7 +156,7 @@ static bool d3d11_shmem_init_buffers(size_t idx)
 		D3D11_MAPPED_SUBRESOURCE map = {};
 		HRESULT hr;
 
-		hr = data.context->Map(data.copy_surfaces[idx], 0, D3D11_MAP_READ, 0, &map);
+		hr = data.context->Map(data.u.shmem.copy_surfaces[idx], 0, D3D11_MAP_READ, 0, &map);
 		if (FAILED(hr)) {
 			hlog_hr("d3d11_shmem_init_buffers: failed to get "
 				"pitch",
@@ -164,8 +164,8 @@ static bool d3d11_shmem_init_buffers(size_t idx)
 			return false;
 		}
 
-		data.pitch = map.RowPitch;
-		data.context->Unmap(data.copy_surfaces[idx], 0);
+		data.u.shmem.pitch = map.RowPitch;
+		data.context->Unmap(data.u.shmem.copy_surfaces[idx], 0);
 	}
 
 	return true;
@@ -180,7 +180,8 @@ static bool d3d11_shmem_init(HWND window)
 			return false;
 		}
 	}
-	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.pitch, data.format, false)) {
+	if (!capture_init_shmem(&data.u.shmem.shmem_info, window, data.cx, data.cy, data.u.shmem.pitch, data.format,
+				false)) {
 		return false;
 	}
 
@@ -194,14 +195,14 @@ static bool d3d11_shtex_init(HWND window)
 
 	data.using_shtex = true;
 
-	success = create_d3d11_tex(data.cx, data.cy, &data.texture, &data.handle);
+	success = create_d3d11_tex(data.cx, data.cy, &data.u.shtex.texture, &data.u.shtex.handle);
 
 	if (!success) {
 		hlog("d3d11_shtex_init: failed to create texture");
 		return false;
 	}
-	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, data.format, false,
-				(uintptr_t)data.handle)) {
+	if (!capture_init_shtex(&data.u.shtex.shtex_info, window, data.cx, data.cy, data.format, false,
+				(uintptr_t)data.u.shtex.handle)) {
 		return false;
 	}
 
@@ -246,8 +247,8 @@ static inline void d3d11_copy_texture(ID3D11Resource *dst, ID3D11Resource *src)
 
 static inline void d3d11_shtex_capture(ID3D11Resource *backbuffer)
 {
-	if (data.texture) {
-		d3d11_copy_texture(data.texture, backbuffer);
+	if (data.u.shtex.texture) {
+		d3d11_copy_texture(data.u.shtex.texture, backbuffer);
 	}
 }
 
@@ -256,12 +257,12 @@ static void d3d11_shmem_capture_copy(int i)
 	D3D11_MAPPED_SUBRESOURCE map;
 	HRESULT hr;
 
-	if (data.texture_ready[i]) {
-		data.texture_ready[i] = false;
+	if (data.u.shmem.texture_ready[i]) {
+		data.u.shmem.texture_ready[i] = false;
 
-		hr = data.context->Map(data.copy_surfaces[i], 0, D3D11_MAP_READ, 0, &map);
+		hr = data.context->Map(data.u.shmem.copy_surfaces[i], 0, D3D11_MAP_READ, 0, &map);
 		if (SUCCEEDED(hr)) {
-			data.texture_mapped[i] = true;
+			data.u.shmem.texture_mapped[i] = true;
 			shmem_copy_data(i, map.pData);
 		}
 	}
@@ -271,23 +272,23 @@ static inline void d3d11_shmem_capture(ID3D11Resource *backbuffer)
 {
 	int next_tex;
 
-	next_tex = (data.cur_tex + 1) % NUM_BUFFERS;
+	next_tex = (data.u.shmem.cur_tex + 1) % NUM_BUFFERS;
 	d3d11_shmem_capture_copy(next_tex);
 
-	if (data.copy_wait < NUM_BUFFERS - 1) {
-		data.copy_wait++;
+	if (data.u.shmem.copy_wait < NUM_BUFFERS - 1) {
+		data.u.shmem.copy_wait++;
 	} else {
-		if (shmem_texture_data_lock(data.cur_tex)) {
-			data.context->Unmap(data.copy_surfaces[data.cur_tex], 0);
-			data.texture_mapped[data.cur_tex] = false;
-			shmem_texture_data_unlock(data.cur_tex);
+		if (shmem_texture_data_lock(data.u.shmem.cur_tex)) {
+			data.context->Unmap(data.u.shmem.copy_surfaces[data.u.shmem.cur_tex], 0);
+			data.u.shmem.texture_mapped[data.u.shmem.cur_tex] = false;
+			shmem_texture_data_unlock(data.u.shmem.cur_tex);
 		}
 
-		d3d11_copy_texture(data.copy_surfaces[data.cur_tex], backbuffer);
-		data.texture_ready[data.cur_tex] = true;
+		d3d11_copy_texture(data.u.shmem.copy_surfaces[data.u.shmem.cur_tex], backbuffer);
+		data.u.shmem.texture_ready[data.u.shmem.cur_tex] = true;
 	}
 
-	data.cur_tex = next_tex;
+	data.u.shmem.cur_tex = next_tex;
 }
 
 void d3d11_capture(void *swap_ptr, void *backbuffer_ptr)
@@ -302,7 +303,7 @@ void d3d11_capture(void *swap_ptr, void *backbuffer_ptr)
 	if (capture_should_init()) {
 		d3d11_init(swap);
 	}
-	if (data.handle != nullptr && capture_ready()) {
+	if (data.u.shtex.handle != nullptr && capture_ready()) {
 		ID3D11Resource *backbuffer;
 
 		hr = dxgi_backbuffer->QueryInterface(__uuidof(ID3D11Resource), (void **)&backbuffer);

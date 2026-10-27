@@ -20,15 +20,11 @@ struct d3d12_data {
 	ID3D11DeviceContext *context11;
 	ID3D11On12Device *device11on12;
 
-	union {
-		struct {
-			struct shtex_data *shtex_info;
-			UINT backbuffer_count;
-			UINT cur_backbuffer;
-			ID3D11Texture2D *copy_tex;
-			HANDLE handle;
-		};
-	};
+	struct shtex_data *shtex_info;
+	UINT backbuffer_count;
+	UINT cur_backbuffer;
+	ID3D11Texture2D *copy_tex;
+	HANDLE handle;
 };
 
 static struct d3d12_data data = {};

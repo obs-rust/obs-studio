@@ -173,12 +173,14 @@ static inline int get_d3d9_patch(HMODULE d3d9)
 	return -1;
 }
 
-static inline uint8_t *get_d3d9_patch_addr(HMODULE d3d9, int patch)
+/* The parameter used to be called `patch`, which hides a global symbol of that
+ * name (C4459 at /W4); `index` also matches get_d3d9_patch's return value. */
+static inline uint8_t *get_d3d9_patch_addr(HMODULE d3d9, int index)
 {
-	if (patch == -1) {
+	if (index == -1) {
 		return nullptr;
 	}
 
 	uint8_t *addr = (uint8_t *)d3d9;
-	return addr + patch_offset[patch] + CMP_SIZE;
+	return addr + patch_offset[index] + CMP_SIZE;
 }
