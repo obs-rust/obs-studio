@@ -29,6 +29,7 @@ NEW_SOURCE = (
 # Build output and local files that must stay ignored.
 GENERATED = (
     "ci-evidence-1694/setup-observations.json",
+    "docs/ci-evidence/2026-10-22-ubuntu-cache-allocation.json",
     "build/CMakeCache.txt",
     "build_x64/obs.sln",
     "target/debug/obs",
@@ -61,6 +62,20 @@ def ignored(paths: tuple[str, ...]) -> list[str]:
 
 
 class GitignoreTest(unittest.TestCase):
+    def test_ci_evidence_dumps_are_retired_from_the_tree(self):
+        """#2686: the run-metadata snapshots were 185 tracked files (11.6 MiB).
+
+        They are measurement output, not source, and the CI attestations live
+        in commit-message trailers. The directory may come back as untracked
+        scratch from a local run, so it stays ignored -- but nothing under it
+        may be tracked again.
+        """
+        tracked = subprocess.run(
+            ["git", "ls-files", "docs/ci-evidence"],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.split()
+        self.assertEqual(tracked, [])
+
     def test_tracked_files_are_not_ignored(self):
         tracked = subprocess.run(
             ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
