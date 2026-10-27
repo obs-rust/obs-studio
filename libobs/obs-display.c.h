@@ -228,6 +228,8 @@ static inline void render_display_end(void)
 	gs_end_scene();
 }
 
+void render_display(struct obs_display *display);
+
 void render_display(struct obs_display *display)
 {
 	uint32_t cx, cy;

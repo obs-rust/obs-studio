@@ -38,6 +38,8 @@
 		exports->func = _sym.fn;                                 \
 	} while (false)
 
+bool load_graphics_imports(struct gs_exports *exports, void *module, const char *module_name);
+
 bool load_graphics_imports(struct gs_exports *exports, void *module, const char *module_name)
 {
 	bool success = true;

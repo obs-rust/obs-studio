@@ -49,6 +49,7 @@ struct xcompcap {
 static void xcompcap_update(void *data, obs_data_t *settings);
 static xcb_window_t convert_encoded_window_id(const char *str, char **p_wname, char **p_wcls);
 
+xcb_atom_t get_atom(xcb_connection_t *xconn, const char *name);
 xcb_atom_t get_atom(xcb_connection_t *xconn, const char *name)
 {
 	xcb_intern_atom_cookie_t atom_c = xcb_intern_atom(xconn, 1, strlen(name), name);
@@ -58,6 +59,7 @@ xcb_atom_t get_atom(xcb_connection_t *xconn, const char *name)
 	return a;
 }
 
+void xcomp_gather_atoms(xcb_connection_t *xconn);
 void xcomp_gather_atoms(xcb_connection_t *xconn)
 {
 	ATOM_UTF8_STRING = get_atom(xconn, "UTF8_STRING");
@@ -71,6 +73,7 @@ void xcomp_gather_atoms(xcb_connection_t *xconn)
 	ATOM__NET_CLIENT_LIST = get_atom(xconn, "_NET_CLIENT_LIST");
 }
 
+bool xcomp_window_exists(xcb_connection_t *xconn, xcb_window_t win);
 bool xcomp_window_exists(xcb_connection_t *xconn, xcb_window_t win)
 {
 	xcb_generic_error_t *err = NULL;
@@ -83,6 +86,7 @@ bool xcomp_window_exists(xcb_connection_t *xconn, xcb_window_t win)
 	return exists;
 }
 
+xcb_get_property_reply_t *xcomp_property_sync(xcb_connection_t *xconn, xcb_window_t win, xcb_atom_t atom);
 xcb_get_property_reply_t *xcomp_property_sync(xcb_connection_t *xconn, xcb_window_t win, xcb_atom_t atom)
 {
 	if (atom == XCB_ATOM_NONE)
@@ -103,6 +107,8 @@ xcb_get_property_reply_t *xcomp_property_sync(xcb_connection_t *xconn, xcb_windo
 
 // See ICCCM https://www.x.org/releases/X11R7.6/doc/xorg-docs/specs/ICCCM/icccm.html#text_properties
 // for more info on the galactic brained string types used in Xorg.
+
+struct dstr xcomp_window_name(xcb_connection_t *xconn, Display *xdisp, xcb_window_t win);
 struct dstr xcomp_window_name(xcb_connection_t *xconn, Display *xdisp, xcb_window_t win)
 {
 	struct dstr ret = {0};
@@ -172,6 +178,7 @@ fail:
 	return ret;
 }
 
+struct dstr xcomp_window_class(xcb_connection_t *xconn, xcb_window_t win);
 struct dstr xcomp_window_class(xcb_connection_t *xconn, xcb_window_t win)
 {
 	struct dstr ret = {0};
@@ -189,6 +196,8 @@ struct dstr xcomp_window_class(xcb_connection_t *xconn, xcb_window_t win)
 
 // Specification for checking for ewmh support at
 // http://standards.freedesktop.org/wm-spec/wm-spec-latest.html#idm140200472693600
+
+bool xcomp_check_ewmh(xcb_connection_t *xconn, xcb_window_t root);
 bool xcomp_check_ewmh(xcb_connection_t *xconn, xcb_window_t root)
 {
 	xcb_get_property_reply_t *check = xcomp_property_sync(xconn, root, ATOM__NET_SUPPORTING_WM_CHECK);
@@ -206,6 +215,7 @@ bool xcomp_check_ewmh(xcb_connection_t *xconn, xcb_window_t root)
 	return true;
 }
 
+struct darray xcomp_top_level_windows(xcb_connection_t *xconn);
 struct darray xcomp_top_level_windows(xcb_connection_t *xconn)
 {
 	DARRAY(xcb_window_t) res = {0};
@@ -267,6 +277,7 @@ static xcb_window_t convert_encoded_window_id(const char *str, char **p_wname, c
 	return ret;
 }
 
+xcb_window_t xcomp_find_window(xcb_connection_t *xconn, Display *xdisp, const char *str);
 xcb_window_t xcomp_find_window(xcb_connection_t *xconn, Display *xdisp, const char *str)
 {
 	xcb_window_t ret = 0;
@@ -311,6 +322,7 @@ cleanup:
 	return ret;
 }
 
+void xcomp_cleanup_pixmap(Display *xdisp, struct xcompcap *s);
 void xcomp_cleanup_pixmap(Display *xdisp, struct xcompcap *s)
 {
 	if (s->gltex) {
@@ -332,6 +344,7 @@ static int silence_x11_errors(Display *display, XErrorEvent *err)
 	return 0;
 }
 
+void xcomp_create_pixmap(xcb_connection_t *xconn, struct xcompcap *s, int log_level);
 void xcomp_create_pixmap(xcb_connection_t *xconn, struct xcompcap *s, int log_level)
 {
 	if (!s->win)
@@ -383,6 +396,7 @@ struct reg_item {
 static DARRAY(struct reg_item) watcher_registry = {0};
 static pthread_mutex_t watcher_lock = PTHREAD_MUTEX_INITIALIZER;
 
+void watcher_register(xcb_connection_t *xconn, struct xcompcap *s);
 void watcher_register(xcb_connection_t *xconn, struct xcompcap *s)
 {
 	pthread_mutex_lock(&watcher_lock);
@@ -399,6 +413,7 @@ void watcher_register(xcb_connection_t *xconn, struct xcompcap *s)
 	pthread_mutex_unlock(&watcher_lock);
 }
 
+void watcher_unregister(xcb_connection_t *xconn, struct xcompcap *s);
 void watcher_unregister(xcb_connection_t *xconn, struct xcompcap *s)
 {
 	pthread_mutex_lock(&watcher_lock);
@@ -441,6 +456,7 @@ done:
 	pthread_mutex_unlock(&watcher_lock);
 }
 
+void watcher_process(xcb_generic_event_t *ev);
 void watcher_process(xcb_generic_event_t *ev)
 {
 	if (!ev)
@@ -493,7 +509,8 @@ void watcher_process(xcb_generic_event_t *ev)
 	pthread_mutex_unlock(&watcher_lock);
 }
 
-void watcher_unload()
+void watcher_unload(void);
+void watcher_unload(void)
 {
 	da_free(watcher_registry);
 }

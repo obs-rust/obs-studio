@@ -658,6 +658,7 @@ static void obs_free_graphics(void)
 	}
 }
 
+void set_monitoring_duplication_source(void *param);
 void set_monitoring_duplication_source(void *param)
 {
 	obs_source_t *src = param;
@@ -776,6 +777,7 @@ fail:
 	return data->valid;
 }
 
+void obs_main_view_free(struct obs_view *view);
 void obs_main_view_free(struct obs_view *view)
 {
 	if (!view)

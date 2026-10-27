@@ -173,11 +173,13 @@ void obs_weak_service_free(obs_weak_service_t *weak)
 	bfree(weak);
 }
 
+signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service);
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service)
 {
 	return obs_service_valid(service, "obs_service_get_signal_handler") ? service->context.signals : NULL;
 }
 
+proc_handler_t *obs_service_get_proc_handler(const obs_service_t *service);
 proc_handler_t *obs_service_get_proc_handler(const obs_service_t *service)
 {
 	return obs_service_valid(service, "obs_service_get_proc_handler") ? service->context.procs : NULL;

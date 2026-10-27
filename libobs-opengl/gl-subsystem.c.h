@@ -125,7 +125,7 @@ static void gl_enable_debug()
 	}
 }
 #else
-static void gl_enable_debug() {}
+static void gl_enable_debug(void) {}
 #endif
 
 static bool gl_init_extensions(struct gs_device *device)

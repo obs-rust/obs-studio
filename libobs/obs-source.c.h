@@ -391,6 +391,7 @@ static void obs_source_init_audio_hotkeys(struct obs_source *source)
 							      obs_source_hotkey_push_to_talk, source);
 }
 
+void obs_source_audio_output_capture_device_activated(void *vptr, calldata_t *cd);
 void obs_source_audio_output_capture_device_activated(void *vptr, calldata_t *cd)
 {
 	UNUSED_PARAMETER(vptr);
@@ -986,6 +987,7 @@ static inline obs_data_t *source_get_defaults(const struct obs_source_info *info
 	return settings;
 }
 
+obs_data_t *obs_source_settings(const char *id);
 obs_data_t *obs_source_settings(const char *id)
 {
 	const struct obs_source_info *info = get_source_info(id);
@@ -1316,6 +1318,8 @@ _Static_assert(sizeof(enum media_action_type) == sizeof(int), "enum media_action
  * obs-source-media-admission.c. The queue and its mutex, the callbacks and
  * the signals stay here, the callback before the signal as before;
  * action.pause is read only for a play/pause. */
+
+void process_media_actions(obs_source_t *source);
 void process_media_actions(obs_source_t *source)
 {
 	struct media_action action = {0};
@@ -5346,6 +5350,8 @@ bool obs_source_async_decoupled(const obs_source_t *source)
 }
 
 /* hidden/undocumented export to allow source type redefinition for scripts */
+
+EXPORT void obs_enable_source_type(const char *name, bool enable);
 EXPORT void obs_enable_source_type(const char *name, bool enable)
 {
 	struct obs_source_info *info = get_source_info(name);

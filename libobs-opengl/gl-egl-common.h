@@ -25,9 +25,13 @@ struct gs_texture *gl_egl_create_texture_from_pixmap(EGLDisplay egl_display, uin
 						     enum gs_color_format color_format, EGLint target,
 						     EGLClientBuffer pixmap);
 
+struct gs_texture *gl_egl_create_texture_from_eglimage(EGLDisplay egl_display, uint32_t width, uint32_t height,
+						       enum gs_color_format color_format, EGLint target,
+						       EGLImage image);
+
 bool gl_egl_enum_adapters(EGLDisplay display, bool (*callback)(void *param, const char *name, uint32_t id),
 			  void *param);
-uint32_t gs_get_adapter_count();
+uint32_t gs_get_adapter_count(void);
 
 bool gl_egl_query_sync_capabilities(int drm_fd);
 

@@ -17,6 +17,8 @@
 
 #include "build/libobs.pch.h"
 
+void gs_effect_actually_destroy(gs_effect_t *effect);
+
 void gs_effect_actually_destroy(gs_effect_t *effect)
 {
 	effect_free(effect);

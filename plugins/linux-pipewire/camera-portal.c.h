@@ -1615,6 +1615,7 @@ static uint32_t pipewire_camera_get_height(void *data)
 		return 0;
 }
 
+void camera_portal_load(void);
 void camera_portal_load(void)
 {
 	const struct obs_source_info pipewire_camera_info = {
@@ -1636,6 +1637,7 @@ void camera_portal_load(void)
 	obs_register_source(&pipewire_camera_info);
 }
 
+void camera_portal_unload(void);
 void camera_portal_unload(void)
 {
 	g_clear_pointer(&camera_connection, pw_portal_connection_free);

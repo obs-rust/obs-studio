@@ -124,7 +124,7 @@ static const char *get_egl_error_string2(const EGLint error)
 	}
 }
 
-static const char *get_egl_error_string()
+static const char *get_egl_error_string(void)
 {
 	return get_egl_error_string2(eglGetError());
 }

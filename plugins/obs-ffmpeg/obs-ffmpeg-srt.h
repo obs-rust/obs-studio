@@ -205,6 +205,7 @@ static int libsrt_network_wait_fd(URLContext *h, int eid, int write)
 	return ret;
 }
 
+int check_interrupt(AVIOInterruptCB *cb);
 int check_interrupt(AVIOInterruptCB *cb)
 {
 	if (cb && cb->callback)

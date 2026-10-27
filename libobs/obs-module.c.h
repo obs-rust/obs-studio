@@ -88,6 +88,7 @@ static inline char *get_module_name(const char *file)
 	return obs_module_names_module_name(file, get_module_extension());
 }
 
+int obs_module_load_metadata(struct obs_module *mod);
 int obs_module_load_metadata(struct obs_module *mod)
 {
 	struct obs_module_metadata *md = NULL;

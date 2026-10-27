@@ -1565,6 +1565,8 @@ static inline void send_packet(struct obs_encoder *encoder, struct encoder_callb
 	profile_end(send_packet_name);
 }
 
+void full_stop(struct obs_encoder *encoder);
+
 void full_stop(struct obs_encoder *encoder)
 {
 	if (encoder) {
@@ -1757,6 +1759,7 @@ static void encoder_group_new_reconfigure_request(struct obs_encoder_group *grou
 	group->reconfigure_again = false;
 }
 
+void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder);
 void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder)
 {
 	if (!encoder->encoder_group)

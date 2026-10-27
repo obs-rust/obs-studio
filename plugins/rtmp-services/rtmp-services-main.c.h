@@ -18,6 +18,7 @@ extern struct obs_service_info rtmp_custom_service;
 static update_info_t *update_info = NULL;
 static struct dstr module_name = {0};
 
+const char *get_module_name(void);
 const char *get_module_name(void)
 {
 	return module_name.array;

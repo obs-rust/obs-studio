@@ -354,6 +354,7 @@ void obs_properties_remove_by_name(obs_properties_t *props, const char *name)
 
 typedef DARRAY(struct obs_property *) obs_property_da_t;
 
+void obs_properties_apply_settings_internal(obs_properties_t *props, obs_property_da_t *properties_with_callback);
 void obs_properties_apply_settings_internal(obs_properties_t *props, obs_property_da_t *properties_with_callback)
 {
 	struct obs_property *p = props->properties;

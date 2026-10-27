@@ -121,6 +121,8 @@ static void mp4_output_destroy(void *data)
 }
 
 void mp4_pkt_callback(obs_output_t *output, struct encoder_packet *pkt, struct encoder_packet_time *pkt_time,
+		      void *param);
+void mp4_pkt_callback(obs_output_t *output, struct encoder_packet *pkt, struct encoder_packet_time *pkt_time,
 		      void *param)
 {
 	UNUSED_PARAMETER(output);
@@ -587,6 +589,7 @@ static obs_properties_t *mp4_output_properties(void *unused)
 	return props;
 }
 
+uint64_t mp4_output_total_bytes(void *data);
 uint64_t mp4_output_total_bytes(void *data)
 {
 	struct mp4_output *out = data;

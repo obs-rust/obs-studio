@@ -234,7 +234,7 @@ void pulse_call_later(pulse_reconnected_cb cb, void *userdata, void (*free_userd
 /**
  * get the default properties
  */
-static pa_proplist *pulse_properties()
+static pa_proplist *pulse_properties(void)
 {
 	pa_proplist *p = pa_proplist_new();
 
@@ -264,7 +264,7 @@ static void pulse_connect_context(pa_context_flags_t flags)
 /**
  * Initialize the pulse audio context with properties and callback
  */
-static void pulse_init_context()
+static void pulse_init_context(void)
 {
 	pulse_lock();
 	pulse_connect_context(PA_CONTEXT_NOAUTOSPAWN);
@@ -274,7 +274,7 @@ static void pulse_init_context()
 /**
  * wait for context to be ready
  */
-static int_fast32_t pulse_context_ready()
+static int_fast32_t pulse_context_ready(void)
 {
 	pulse_lock();
 
@@ -292,7 +292,8 @@ static int_fast32_t pulse_context_ready()
 	return 0;
 }
 
-int_fast32_t pulse_init()
+int_fast32_t pulse_init(void);
+int_fast32_t pulse_init(void)
 {
 	pthread_mutex_lock(&pulse_mutex);
 
@@ -310,7 +311,8 @@ int_fast32_t pulse_init()
 	return 0;
 }
 
-void pulse_unref()
+void pulse_unref(void);
+void pulse_unref(void)
 {
 	pthread_mutex_lock(&pulse_mutex);
 
@@ -339,17 +341,20 @@ void pulse_unref()
 	pthread_mutex_unlock(&pulse_mutex);
 }
 
-void pulse_lock()
+void pulse_lock(void);
+void pulse_lock(void)
 {
 	pa_threaded_mainloop_lock(pulse_mainloop);
 }
 
-void pulse_unlock()
+void pulse_unlock(void);
+void pulse_unlock(void)
 {
 	pa_threaded_mainloop_unlock(pulse_mainloop);
 }
 
-void pulse_wait()
+void pulse_wait(void);
+void pulse_wait(void)
 {
 	pa_threaded_mainloop_wait(pulse_mainloop);
 }
@@ -359,7 +364,8 @@ void pulse_signal(int wait_for_accept)
 	pa_threaded_mainloop_signal(pulse_mainloop, wait_for_accept);
 }
 
-void pulse_accept()
+void pulse_accept(void);
+void pulse_accept(void)
 {
 	pa_threaded_mainloop_accept(pulse_mainloop);
 }

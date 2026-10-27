@@ -657,6 +657,9 @@ fail:
 	return data;
 }
 
+void gs_init_image_deps(void);
+void gs_free_image_deps(void);
+
 void gs_init_image_deps(void) {}
 
 void gs_free_image_deps(void) {}

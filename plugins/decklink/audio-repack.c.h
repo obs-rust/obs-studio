@@ -1,5 +1,6 @@
 #include "plugins/decklink/build/decklink-audio-repack.pch.h"
 
+int check_buffer(struct audio_repack *repack, uint32_t frame_count);
 int check_buffer(struct audio_repack *repack, uint32_t frame_count)
 {
 	const uint32_t new_size = frame_count * repack->base_dst_size + repack->extra_dst_size;
@@ -26,6 +27,7 @@ int check_buffer(struct audio_repack *repack, uint32_t frame_count)
  * | FL | FR | LFE |
 */
 
+int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count);
 int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
@@ -51,6 +53,7 @@ int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t fra
 	return 0;
 }
 
+int repack_squash_swap(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count);
 int repack_squash_swap(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {

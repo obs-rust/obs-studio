@@ -53,7 +53,7 @@ static int run_command(const char *command)
 	return result;
 }
 
-static bool loopback_module_loaded()
+static bool loopback_module_loaded(void)
 {
 	bool loaded = false;
 
@@ -76,7 +76,8 @@ static bool loopback_module_loaded()
 	return loaded;
 }
 
-bool loopback_module_available()
+bool loopback_module_available(void);
+bool loopback_module_available(void)
 {
 	if (loopback_module_loaded()) {
 		return true;
@@ -89,7 +90,7 @@ bool loopback_module_available()
 	return false;
 }
 
-static int loopback_module_load()
+static int loopback_module_load(void)
 {
 	return run_command(
 		"pkexec modprobe v4l2loopback exclusive_caps=1 card_label='OBS Virtual Camera' && sleep 0.5");

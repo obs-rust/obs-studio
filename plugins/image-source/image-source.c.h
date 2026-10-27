@@ -31,6 +31,7 @@ static const char *image_source_get_name(void *unused)
 	return obs_module_text("ImageInput");
 }
 
+void image_source_preload_image(void *data);
 void image_source_preload_image(void *data)
 {
 	struct image_source *context = data;
@@ -65,6 +66,8 @@ static void image_source_load_texture(void *data)
 /* A slide (is_slide) the Image Slide Show is about to show: decoded and
  * with its texture now, not on its next tick. The caller makes sure no
  * image_source_preload_image() of it is still running. */
+
+void image_source_ready_slide(void *data);
 void image_source_ready_slide(void *data)
 {
 	struct image_source *context = data;
@@ -299,6 +302,7 @@ static obs_properties_t *image_source_properties(void *data)
 	return props;
 }
 
+uint64_t image_source_get_memory_usage(void *data);
 uint64_t image_source_get_memory_usage(void *data)
 {
 	struct image_source *s = data;

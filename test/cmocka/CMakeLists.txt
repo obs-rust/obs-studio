@@ -53,6 +53,12 @@ add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-shadow>
 # `__int128`), so it covers the product code, not the tests
 # (obs-rust/obs-studio#516, #2623).
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>)
+# Existing C tests are never edited to satisfy a new warning, and they declare
+# helpers without a prototype (or with an empty one), so -Wmissing-prototypes
+# and -Wstrict-prototypes (obs-rust/obs-studio#516, #2624) cover the product
+# code, not the tests.
+add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-missing-prototypes>)
+add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-strict-prototypes>)
 
 # Per-test sanitizers (obs-rust/obs-studio#159). Some tests compile the code
 # they check with ASan/UBSan so a bug fails the test. Those flags are added

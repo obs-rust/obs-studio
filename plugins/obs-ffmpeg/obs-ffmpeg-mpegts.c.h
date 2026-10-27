@@ -33,6 +33,7 @@ static void ffmpeg_mpegts_set_last_error(struct ffmpeg_data *data, const char *e
 	data->last_error = bstrdup(error);
 }
 
+void ffmpeg_mpegts_log_error(int log_level, struct ffmpeg_data *data, const char *format, ...);
 void ffmpeg_mpegts_log_error(int log_level, struct ffmpeg_data *data, const char *format, ...)
 {
 	va_list args;
@@ -253,6 +254,7 @@ static inline bool init_streams(struct ffmpeg_output *stream, struct ffmpeg_data
 	return true;
 }
 
+int ff_network_init(void);
 int ff_network_init(void)
 {
 #if defined(HAVE_WINSOCK2_H) && HAVE_WINSOCK2_H
@@ -568,6 +570,7 @@ static void close_mpegts_url(struct ffmpeg_output *stream, bool is_rist)
 		info("[ffmpeg mpegts muxer]: Error closing URL %s", stream->ff_data.config.url);
 }
 
+void ffmpeg_mpegts_data_free(struct ffmpeg_output *stream, struct ffmpeg_data *data);
 void ffmpeg_mpegts_data_free(struct ffmpeg_output *stream, struct ffmpeg_data *data)
 {
 	if (data->initialized)
@@ -602,6 +605,7 @@ void ffmpeg_mpegts_data_free(struct ffmpeg_output *stream, struct ffmpeg_data *d
 	memset(data, 0, sizeof(struct ffmpeg_data));
 }
 
+bool ffmpeg_mpegts_data_init(struct ffmpeg_output *stream, struct ffmpeg_data *data, struct ffmpeg_cfg *config);
 bool ffmpeg_mpegts_data_init(struct ffmpeg_output *stream, struct ffmpeg_data *data, struct ffmpeg_cfg *config)
 {
 	memset(data, 0, sizeof(struct ffmpeg_data));
@@ -1099,6 +1103,7 @@ static void stop(void *data, bool signal, uint64_t ts)
 	}
 }
 
+void *start_stop_thread_fn(void *data);
 void *start_stop_thread_fn(void *data)
 {
 	struct mpegts_cmd *cmd = data;
@@ -1243,6 +1248,8 @@ static inline int64_t rescale_ts2(AVStream *stream, AVRational codec_time_base, 
 /* Convert obs encoder_packet to FFmpeg AVPacket and write to circular buffer
  * where it will be processed in the write_thread by process_packet.
  */
+
+void mpegts_write_packet(struct ffmpeg_output *stream, struct encoder_packet *encpacket);
 void mpegts_write_packet(struct ffmpeg_output *stream, struct encoder_packet *encpacket)
 {
 	if (mpegts_stopping(stream) || !stream->ff_data.video || !stream->ff_data.video_ctx ||

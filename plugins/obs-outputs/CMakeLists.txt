@@ -107,7 +107,9 @@ set_source_files_properties(
   librtmp/md5.c
   librtmp/parseurl.c
   librtmp/rtmp.c
-  PROPERTIES COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic>"
+  PROPERTIES
+    COMPILE_OPTIONS
+      "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>"
 )
 
 target_compile_options(

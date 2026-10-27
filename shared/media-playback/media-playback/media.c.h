@@ -307,6 +307,7 @@ static bool mp_media_check_scaling(mp_media_t *m)
 	return mp_media_init_scaling(m, f);
 }
 
+bool mp_media_prepare_frames(mp_media_t *m);
 bool mp_media_prepare_frames(mp_media_t *m)
 {
 	bool actively_seeking = m->seek_next_ts && m->pause;
@@ -397,6 +398,7 @@ static inline bool mp_media_can_play_frame(mp_media_t *m, struct mp_decode *d)
 	return d->frame_ready && (d->frame_pts <= m->next_pts_ns || (d->frame_pts - m->next_pts_ns > MAX_TS_VAR));
 }
 
+void mp_media_next_audio(mp_media_t *m);
 void mp_media_next_audio(mp_media_t *m)
 {
 	struct mp_decode *d = &m->a;
@@ -426,6 +428,7 @@ void mp_media_next_audio(mp_media_t *m)
 	m->a_cb(m->opaque, &audio);
 }
 
+void mp_media_next_video(mp_media_t *m, bool preload);
 void mp_media_next_video(mp_media_t *m, bool preload)
 {
 	struct mp_decode *d = &m->v;
@@ -621,6 +624,7 @@ static void seek_to(mp_media_t *m, int64_t pos, bool exact)
 		mp_decode_flush(&m->a);
 }
 
+bool mp_media_reset(mp_media_t *m);
 bool mp_media_reset(mp_media_t *m)
 {
 	bool stopping;
@@ -692,6 +696,7 @@ static inline bool mp_media_sleep(mp_media_t *m)
 	return timeout;
 }
 
+bool mp_media_eof(mp_media_t *m);
 bool mp_media_eof(mp_media_t *m)
 {
 	bool v_ended = !m->has_video || !m->v.frame_ready;
@@ -919,6 +924,7 @@ static void mp_media_measure_duration(mp_media_t *m)
 	m->measured_frames = frames;
 }
 
+bool mp_media_init2(mp_media_t *m);
 bool mp_media_init2(mp_media_t *m)
 {
 	if (!init_avformat(m)) {

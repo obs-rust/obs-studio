@@ -88,6 +88,7 @@ static bool gpu_enabled = false;
 static volatile bool enable_next = false;
 static volatile bool gpu_enable_next = false;
 
+void ucirclebuf_init(struct ucirclebuf *buf, size_t capacity);
 void ucirclebuf_init(struct ucirclebuf *buf, size_t capacity)
 {
 	if (!capacity)
@@ -98,12 +99,14 @@ void ucirclebuf_init(struct ucirclebuf *buf, size_t capacity)
 	buf->array = bmalloc(sizeof(uint64_t) * capacity);
 }
 
+void ucirclebuf_free(struct ucirclebuf *buf);
 void ucirclebuf_free(struct ucirclebuf *buf)
 {
 	bfree(buf->array);
 	memset(buf, 0, sizeof(struct ucirclebuf));
 }
 
+void ucirclebuf_push(struct ucirclebuf *buf, uint64_t val);
 void ucirclebuf_push(struct ucirclebuf *buf, uint64_t val)
 {
 	if (buf->num == buf->capacity) {
@@ -138,6 +141,7 @@ static void frame_sample_destroy(struct frame_sample *sample)
 	bfree(sample);
 }
 
+struct source_samples *source_samples_create(const uintptr_t key);
 struct source_samples *source_samples_create(const uintptr_t key)
 {
 	struct source_samples *smps = bzalloc(sizeof(struct source_samples));

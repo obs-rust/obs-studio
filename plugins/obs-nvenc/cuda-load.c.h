@@ -2,6 +2,7 @@
 
 static void *cuda_lib = NULL;
 
+bool load_cuda_lib(void);
 bool load_cuda_lib(void)
 {
 #ifdef _WIN32

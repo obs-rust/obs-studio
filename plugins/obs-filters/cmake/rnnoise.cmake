@@ -41,7 +41,10 @@ if(ENABLE_RNNOISE)
 
       add_library(Librnnoise::Librnnoise ALIAS obs-rnnoise)
 
-      target_include_directories(obs-rnnoise PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/rnnoise/include")
+      # Vendored header: rnnoise.h declares with empty parameter lists, so
+      # -Wstrict-prototypes / -Wmissing-prototypes (#2624) fire in the
+      # obs-filters TU that includes it. SYSTEM keeps it out of the strict sets.
+      target_include_directories(obs-rnnoise SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/rnnoise/include")
 
       target_compile_definitions(obs-rnnoise PUBLIC COMPILE_OPUS)
 
@@ -52,7 +55,7 @@ if(ENABLE_RNNOISE)
           -Wno-error=null-dereference
           -Wno-double-promotion
           -Wno-cast-qual
-          $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-shadow>
+          $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-shadow;-Wno-missing-prototypes;-Wno-strict-prototypes>
       )
 
       set_target_properties(obs-rnnoise PROPERTIES FOLDER plugins/obs-filters/rnnoise POSITION_INDEPENDENT_CODE TRUE)

@@ -233,6 +233,7 @@ static void profile_print_entry_expected(profiler_snapshot_entry_t *entry, struc
 	}
 }
 
+void profile_print_func(const char *intro, profile_entry_print_func print, profiler_snapshot_t *snap);
 void profile_print_func(const char *intro, profile_entry_print_func print, profiler_snapshot_t *snap)
 {
 	struct dstr indent_buffer = {0};

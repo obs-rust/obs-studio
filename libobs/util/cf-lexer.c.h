@@ -328,6 +328,7 @@ static inline struct cf_def *cf_preprocess_get_def(struct cf_preprocessor *pp, c
 	return pp->defines.array + idx;
 }
 
+bool cf_preprocess_get_def_value(struct cf_preprocessor *pp, const struct strref *def_name, int *value);
 bool cf_preprocess_get_def_value(struct cf_preprocessor *pp, const struct strref *def_name, int *value)
 {
 	struct cf_def *def = cf_preprocess_get_def(pp, def_name);

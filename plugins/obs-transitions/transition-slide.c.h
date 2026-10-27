@@ -36,6 +36,7 @@ static void slide_update(void *data, obs_data_t *settings)
 		slide->dir = (struct vec2){1.0f, 0.0f};
 }
 
+void *slide_create(obs_data_t *settings, obs_source_t *source);
 void *slide_create(obs_data_t *settings, obs_source_t *source)
 {
 	struct slide_info *slide;
@@ -70,6 +71,7 @@ void *slide_create(obs_data_t *settings, obs_source_t *source)
 	return slide;
 }
 
+void slide_destroy(void *data);
 void slide_destroy(void *data)
 {
 	struct slide_info *slide = data;
@@ -103,6 +105,7 @@ static void slide_callback(void *data, gs_texture_t *a, gs_texture_t *b, float t
 	gs_enable_framebuffer_srgb(previous);
 }
 
+void slide_video_render(void *data, gs_effect_t *effect);
 void slide_video_render(void *data, gs_effect_t *effect)
 {
 	struct slide_info *slide = data;
@@ -122,6 +125,8 @@ static float slide_mix_b(void *data, float t)
 	return cubic_ease_in_out(t);
 }
 
+bool slide_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio, uint32_t mixers,
+			size_t channels, size_t sample_rate);
 bool slide_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio, uint32_t mixers,
 			size_t channels, size_t sample_rate)
 {

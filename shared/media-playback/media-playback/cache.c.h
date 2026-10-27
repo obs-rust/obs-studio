@@ -105,6 +105,7 @@ static bool mp_cache_eof(mp_cache_t *c)
 	return true;
 }
 
+bool mp_cache_decode(mp_cache_t *c);
 bool mp_cache_decode(mp_cache_t *c)
 {
 	mp_media_t *m = &c->m;

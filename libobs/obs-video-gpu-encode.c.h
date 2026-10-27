@@ -237,6 +237,7 @@ static void *gpu_encode_thread(void *data)
 	return NULL;
 }
 
+bool init_gpu_encoding(struct obs_core_video_mix *video);
 bool init_gpu_encoding(struct obs_core_video_mix *video)
 {
 	const struct video_output_info *info = video_output_get_info(video->video);
@@ -279,6 +280,7 @@ bool init_gpu_encoding(struct obs_core_video_mix *video)
 	return true;
 }
 
+void stop_gpu_encoding_thread(struct obs_core_video_mix *video);
 void stop_gpu_encoding_thread(struct obs_core_video_mix *video)
 {
 	if (video->gpu_encode_thread_initialized) {
@@ -289,6 +291,7 @@ void stop_gpu_encoding_thread(struct obs_core_video_mix *video)
 	}
 }
 
+void free_gpu_encoding(struct obs_core_video_mix *video);
 void free_gpu_encoding(struct obs_core_video_mix *video)
 {
 	if (video->gpu_encode_semaphore) {

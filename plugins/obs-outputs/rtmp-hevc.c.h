@@ -228,6 +228,7 @@ static inline bool has_start_code(const uint8_t *data, size_t size)
 	return false;
 }
 
+uint8_t *ff_nal_unit_extract_rbsp(uint8_t *dst, const uint8_t *src, int src_len, uint32_t *dst_len, int header_len);
 uint8_t *ff_nal_unit_extract_rbsp(uint8_t *dst, const uint8_t *src, int src_len, uint32_t *dst_len, int header_len)
 {
 	int i, len;

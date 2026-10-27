@@ -73,6 +73,7 @@ struct dbus_sleep_info {
 	enum service_type type;
 };
 
+void dbus_sleep_info_destroy(struct dbus_sleep_info *info);
 void dbus_sleep_info_destroy(struct dbus_sleep_info *info)
 {
 	if (info) {
@@ -81,6 +82,7 @@ void dbus_sleep_info_destroy(struct dbus_sleep_info *info)
 	}
 }
 
+struct dbus_sleep_info *dbus_sleep_info_create(void);
 struct dbus_sleep_info *dbus_sleep_info_create(void)
 {
 	struct dbus_sleep_info *info = bzalloc(sizeof(*info));
@@ -117,6 +119,7 @@ struct dbus_sleep_info *dbus_sleep_info_create(void)
 	return NULL;
 }
 
+void dbus_inhibit_sleep(struct dbus_sleep_info *info, const char *reason, bool active);
 void dbus_inhibit_sleep(struct dbus_sleep_info *info, const char *reason, bool active)
 {
 	g_autoptr(GVariant) reply = NULL;

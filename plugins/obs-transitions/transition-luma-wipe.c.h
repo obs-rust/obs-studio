@@ -177,6 +177,7 @@ static void luma_wipe_callback(void *data, gs_texture_t *a, gs_texture_t *b, flo
 	gs_enable_framebuffer_srgb(previous);
 }
 
+void luma_wipe_video_render(void *data, gs_effect_t *effect);
 void luma_wipe_video_render(void *data, gs_effect_t *effect)
 {
 	struct luma_wipe_info *lwipe = data;
@@ -196,6 +197,8 @@ static float luma_wipe_mix_b(void *data, float t)
 	return t;
 }
 
+bool luma_wipe_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio, uint32_t mixers,
+			    size_t channels, size_t sample_rate);
 bool luma_wipe_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio, uint32_t mixers,
 			    size_t channels, size_t sample_rate)
 {

@@ -192,12 +192,14 @@ static bool openh264_encode(void *data, struct encoder_frame *frame, struct enco
 	return ffmpeg_video_encode(&enc->ffve, frame, packet, received_packet);
 }
 
+void openh264_defaults(obs_data_t *settings);
 void openh264_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "bitrate", 6000);
 	obs_data_set_default_string(settings, "profile", "main");
 }
 
+obs_properties_t *h264_properties(enum openh264_encoder_type type);
 obs_properties_t *h264_properties(enum openh264_encoder_type type)
 {
 	UNUSED_PARAMETER(type); // Only one encoder right now...
@@ -221,6 +223,7 @@ obs_properties_t *h264_properties(enum openh264_encoder_type type)
 	return props;
 }
 
+obs_properties_t *openh264_properties(void *unused);
 obs_properties_t *openh264_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);

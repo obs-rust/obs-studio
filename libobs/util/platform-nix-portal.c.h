@@ -181,6 +181,7 @@ static void do_uninhibit(struct portal_inhibit_info *info)
 	remove_inhibit_data(info);
 }
 
+void portal_inhibit_info_destroy(struct portal_inhibit_info *info);
 void portal_inhibit_info_destroy(struct portal_inhibit_info *info)
 {
 	if (info) {
@@ -196,6 +197,7 @@ void portal_inhibit_info_destroy(struct portal_inhibit_info *info)
 	}
 }
 
+struct portal_inhibit_info *portal_inhibit_info_create(void);
 struct portal_inhibit_info *portal_inhibit_info_create(void)
 {
 	struct portal_inhibit_info *info = bzalloc(sizeof(*info));
@@ -228,6 +230,7 @@ struct portal_inhibit_info *portal_inhibit_info_create(void)
 	return NULL;
 }
 
+void portal_inhibit(struct portal_inhibit_info *info, const char *reason, bool active);
 void portal_inhibit(struct portal_inhibit_info *info, const char *reason, bool active)
 {
 	if (active == info->active)

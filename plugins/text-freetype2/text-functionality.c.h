@@ -202,17 +202,21 @@ void cache_standard_glyphs(struct ft2_source *srcdata)
 			      L"!@#$%^&*()-_=+,<.>/?\\|[]{}`~ \'\"\0");
 }
 
+FT_Render_Mode get_render_mode(struct ft2_source *srcdata);
 FT_Render_Mode get_render_mode(struct ft2_source *srcdata)
 {
 	return srcdata->antialiasing ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO;
 }
 
+void load_glyph(struct ft2_source *srcdata, const FT_UInt glyph_index, const FT_Render_Mode render_mode);
 void load_glyph(struct ft2_source *srcdata, const FT_UInt glyph_index, const FT_Render_Mode render_mode)
 {
 	const FT_Int32 load_mode = render_mode == FT_RENDER_MODE_MONO ? FT_LOAD_TARGET_MONO : FT_LOAD_DEFAULT;
 	FT_Load_Glyph(srcdata->font_face, glyph_index, load_mode);
 }
 
+struct glyph_info *init_glyph(FT_GlyphSlot slot, const uint32_t dx, const uint32_t dy, const uint32_t g_w,
+			      const uint32_t g_h);
 struct glyph_info *init_glyph(FT_GlyphSlot slot, const uint32_t dx, const uint32_t dy, const uint32_t g_w,
 			      const uint32_t g_h)
 {
@@ -230,6 +234,7 @@ struct glyph_info *init_glyph(FT_GlyphSlot slot, const uint32_t dx, const uint32
 	return glyph;
 }
 
+uint8_t get_pixel_value(const unsigned char *buf_row, FT_Render_Mode render_mode, const uint32_t x);
 uint8_t get_pixel_value(const unsigned char *buf_row, FT_Render_Mode render_mode, const uint32_t x)
 {
 	if (render_mode == FT_RENDER_MODE_NORMAL) {
@@ -242,6 +247,8 @@ uint8_t get_pixel_value(const unsigned char *buf_row, FT_Render_Mode render_mode
 	return pixel_set ? 255 : 0;
 }
 
+void rasterize(struct ft2_source *srcdata, FT_GlyphSlot slot, const FT_Render_Mode render_mode, const uint32_t dx,
+	       const uint32_t dy);
 void rasterize(struct ft2_source *srcdata, FT_GlyphSlot slot, const FT_Render_Mode render_mode, const uint32_t dx,
 	       const uint32_t dy)
 {

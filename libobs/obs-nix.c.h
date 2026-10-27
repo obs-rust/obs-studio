@@ -18,6 +18,7 @@
 
 #include "libobs/build/libobs-nix.pch.h"
 
+const char *get_module_extension(void);
 const char *get_module_extension(void)
 {
 	return ".so";
@@ -29,6 +30,8 @@ static const struct obs_nix_hotkeys_vtable *hotkeys_vtable = NULL;
  *   /usr/local/share/libobs
  *   /usr/share/libobs
  */
+
+char *find_libobs_data_file(const char *file);
 char *find_libobs_data_file(const char *file)
 {
 	struct dstr output;
@@ -312,6 +315,7 @@ static void log_desktop_session_info(void)
 }
 #endif
 
+void log_system_info(void);
 void log_system_info(void)
 {
 #if defined(__linux__) || defined(__FreeBSD__)

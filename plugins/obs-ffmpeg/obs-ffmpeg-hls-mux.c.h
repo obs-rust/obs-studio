@@ -6,18 +6,21 @@
 #define warn(format, ...) do_log(LOG_WARNING, format, ##__VA_ARGS__)
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 
+const char *ffmpeg_hls_mux_getname(void *type);
 const char *ffmpeg_hls_mux_getname(void *type)
 {
 	UNUSED_PARAMETER(type);
 	return obs_module_text("FFmpegHlsMuxer");
 }
 
+int hls_stream_dropped_frames(void *data);
 int hls_stream_dropped_frames(void *data)
 {
 	struct ffmpeg_muxer *stream = data;
 	return stream->dropped_frames;
 }
 
+void ffmpeg_hls_mux_destroy(void *data);
 void ffmpeg_hls_mux_destroy(void *data)
 {
 	struct ffmpeg_muxer *stream = data;
@@ -41,6 +44,7 @@ void ffmpeg_hls_mux_destroy(void *data)
 	}
 }
 
+void *ffmpeg_hls_mux_create(obs_data_t *settings, obs_output_t *output);
 void *ffmpeg_hls_mux_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct ffmpeg_muxer *stream = bzalloc(sizeof(*stream));
@@ -102,6 +106,7 @@ static void *hls_write_thread(void *data)
 	return NULL;
 }
 
+bool ffmpeg_hls_mux_start(void *data);
 bool ffmpeg_hls_mux_start(void *data)
 {
 	struct ffmpeg_muxer *stream = data;
@@ -215,6 +220,7 @@ static bool find_first_video_packet(struct ffmpeg_muxer *stream, struct encoder_
 	return false;
 }
 
+void check_to_drop_frames(struct ffmpeg_muxer *stream, bool pframes);
 void check_to_drop_frames(struct ffmpeg_muxer *stream, bool pframes)
 {
 	struct encoder_packet first;
@@ -250,6 +256,7 @@ static bool add_video_packet(struct ffmpeg_muxer *stream, struct encoder_packet 
 	return write_packet_to_buf(stream, packet);
 }
 
+void ffmpeg_hls_mux_data(void *data, struct encoder_packet *packet);
 void ffmpeg_hls_mux_data(void *data, struct encoder_packet *packet)
 {
 	struct ffmpeg_muxer *stream = data;

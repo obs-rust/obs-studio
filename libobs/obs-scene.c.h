@@ -1481,6 +1481,7 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 	return true;
 }
 
+enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces);
 enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
 {
 	UNUSED_PARAMETER(data);
@@ -2252,6 +2253,7 @@ void obs_sceneitem_save(obs_sceneitem_t *item, obs_data_array_t *arr)
 	scene_save_item(arr, item, NULL);
 }
 
+void sceneitem_restore(obs_data_t *data, void *vp);
 void sceneitem_restore(obs_data_t *data, void *vp)
 {
 	obs_scene_t *scene = (obs_scene_t *)vp;
@@ -2285,6 +2287,7 @@ struct passthrough {
 	bool all_items;
 };
 
+bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_pass);
 bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_pass)
 {
 	struct passthrough *pass = (struct passthrough *)vp_pass;
@@ -2378,6 +2381,7 @@ obs_data_t *obs_scene_save_transform_states(obs_scene_t *scene, bool all_items)
 	return wrapper;
 }
 
+void load_transform_states(obs_data_t *temp, void *vp_scene);
 void load_transform_states(obs_data_t *temp, void *vp_scene)
 {
 	obs_scene_t *scene = (obs_scene_t *)vp_scene;
@@ -2407,6 +2411,7 @@ void load_transform_states(obs_data_t *temp, void *vp_scene)
 	obs_sceneitem_defer_update_end(item);
 }
 
+void iterate_scenes_and_groups_transform_states(obs_data_t *data, void *vp);
 void iterate_scenes_and_groups_transform_states(obs_data_t *data, void *vp)
 {
 	obs_data_array_t *items = obs_data_get_array(data, "items");
@@ -3854,6 +3859,7 @@ uint32_t obs_sceneitem_get_transition_duration(obs_sceneitem_t *item, bool show)
 	return show ? item->show_transition_duration : item->hide_transition_duration;
 }
 
+void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata)
 {
 	obs_source_t *parent = data;

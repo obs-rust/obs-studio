@@ -30,7 +30,7 @@ target_sources(
 target_compile_options(
   obsglad
   PRIVATE
-    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-strict-prototypes>
+    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-strict-prototypes>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>
 )
 
@@ -40,7 +40,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
   target_compile_options(obsglad PRIVATE /clang:-fcommon)
 endif()
 
-target_include_directories(obsglad PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# Vendored, generated loader header: it declares GL entry points with empty
+# parameter lists, so -Wstrict-prototypes (#2624) fires in every consumer TU
+# that includes it. Mark the include directory SYSTEM, which is how a vendored
+# header is kept out of the strict sets without editing it.
+target_include_directories(obsglad SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 target_link_libraries(
   obsglad

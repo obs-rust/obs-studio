@@ -22,6 +22,8 @@ const char *core_module_data = "../" OBS_DATA_PATH "/obs-modules/core/%module%";
 
 extern bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_callback2_t callback, void *data);
 
+void load_core_modules(obs_find_module_callback2_t callback, void *data);
+
 void load_core_modules(obs_find_module_callback2_t callback, void *data)
 {
 	char *core_bin_path = os_get_executable_path_ptr(core_module_bin);

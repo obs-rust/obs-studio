@@ -133,6 +133,8 @@ static bool update_metrics(obs_output_t *output, const struct encoder_packet *pk
 
 	return true;
 }
+
+void bpm_ts_sei_render(struct metrics_data *m_track);
 void bpm_ts_sei_render(struct metrics_data *m_track)
 {
 	uint8_t num_timestamps = 0;
@@ -199,6 +201,7 @@ void bpm_ts_sei_render(struct metrics_data *m_track)
 	m_track->sei_rendered[BPM_TS_SEI] = true;
 }
 
+void bpm_sm_sei_render(struct metrics_data *m_track);
 void bpm_sm_sei_render(struct metrics_data *m_track)
 {
 	uint8_t num_timestamps = 0;
@@ -245,6 +248,7 @@ void bpm_sm_sei_render(struct metrics_data *m_track)
 	m_track->sei_rendered[BPM_SM_SEI] = true;
 }
 
+void bpm_erm_sei_render(struct metrics_data *m_track);
 void bpm_erm_sei_render(struct metrics_data *m_track)
 {
 	uint8_t num_timestamps = 0;

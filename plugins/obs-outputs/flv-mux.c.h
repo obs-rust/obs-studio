@@ -380,6 +380,8 @@ void flv_packet_mux(struct encoder_packet *packet, int32_t dts_offset, uint8_t *
 }
 
 void flv_packet_audio_ex(struct encoder_packet *packet, enum audio_id_t codec_id, int32_t dts_offset, uint8_t **output,
+			 size_t *size, int type, size_t idx);
+void flv_packet_audio_ex(struct encoder_packet *packet, enum audio_id_t codec_id, int32_t dts_offset, uint8_t **output,
 			 size_t *size, int type, size_t idx)
 {
 	struct array_output_data data;
@@ -438,6 +440,9 @@ void flv_packet_audio_ex(struct encoder_packet *packet, enum audio_id_t codec_id
 }
 
 // Y2023 spec
+
+void flv_packet_ex(struct encoder_packet *packet, enum video_id_t codec_id, int32_t dts_offset, uint8_t **output,
+		   size_t *size, int type, size_t idx);
 void flv_packet_ex(struct encoder_packet *packet, enum video_id_t codec_id, int32_t dts_offset, uint8_t **output,
 		   size_t *size, int type, size_t idx)
 {

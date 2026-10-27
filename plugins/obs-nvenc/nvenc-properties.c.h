@@ -104,6 +104,7 @@ static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p, obs
 	return true;
 }
 
+obs_properties_t *nvenc_properties_internal(enum codec_type codec);
 obs_properties_t *nvenc_properties_internal(enum codec_type codec)
 {
 	obs_properties_t *props = obs_properties_create();

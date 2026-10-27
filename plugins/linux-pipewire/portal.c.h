@@ -47,6 +47,7 @@ static void ensure_connection(void)
 	}
 }
 
+char *get_sender_name(void);
 char *get_sender_name(void)
 {
 	char *sender_name;

@@ -27,6 +27,7 @@ static void ffmpeg_output_set_last_error(struct ffmpeg_data *data, const char *e
 	data->last_error = bstrdup(error);
 }
 
+void ffmpeg_log_error(int log_level, struct ffmpeg_data *data, const char *format, ...);
 void ffmpeg_log_error(int log_level, struct ffmpeg_data *data, const char *format, ...)
 {
 	va_list args;

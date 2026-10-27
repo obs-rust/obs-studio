@@ -254,6 +254,7 @@ static bool av1_encode(void *data, struct encoder_frame *frame, struct encoder_p
 	return ffmpeg_video_encode(&enc->ffve, frame, packet, received_packet);
 }
 
+void av1_defaults(obs_data_t *settings);
 void av1_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "bitrate", 6000);
@@ -279,6 +280,7 @@ static bool av1_rate_control_modified(obs_properties_t *ppts, obs_property_t *p,
 	return true;
 }
 
+obs_properties_t *av1_properties(enum av1_encoder_type type);
 obs_properties_t *av1_properties(enum av1_encoder_type type)
 {
 	obs_properties_t *props = obs_properties_create();
@@ -323,12 +325,14 @@ obs_properties_t *av1_properties(enum av1_encoder_type type)
 	return props;
 }
 
+obs_properties_t *aom_av1_properties(void *unused);
 obs_properties_t *aom_av1_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);
 	return av1_properties(AV1_ENCODER_TYPE_AOM);
 }
 
+obs_properties_t *svt_av1_properties(void *unused);
 obs_properties_t *svt_av1_properties(void *unused)
 {
 	UNUSED_PARAMETER(unused);

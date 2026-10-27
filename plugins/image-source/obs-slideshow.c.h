@@ -402,6 +402,7 @@ static void add_file(struct slideshow *ss, image_file_array_t *new_files, const 
 		*cy = new_cy;
 }
 
+bool valid_extension(const char *ext);
 bool valid_extension(const char *ext)
 {
 	if (!ext)

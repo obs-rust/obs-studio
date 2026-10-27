@@ -8,7 +8,7 @@
 		}                                                                                            \
 	} while (0)
 
-static void test_obs_parse_options()
+static void test_obs_parse_options(void)
 {
 	struct obs_options options;
 
@@ -61,7 +61,7 @@ static void test_obs_parse_options()
 	obs_free_options(options);
 }
 
-int main()
+int main(void)
 {
 	test_obs_parse_options();
 	return 0;

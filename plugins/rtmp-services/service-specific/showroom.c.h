@@ -10,6 +10,7 @@ static DARRAY(struct showroom_ingest_info) cur_ingests = {0};
 
 struct showroom_ingest invalid_ingest = {"", ""};
 
+void free_showroom_data(void);
 void free_showroom_data(void)
 {
 	for (size_t i = 0; i < cur_ingests.num; i++) {

@@ -25,7 +25,7 @@ MODULE_EXPORT const char *obs_module_description(void)
 
 extern struct obs_source_info v4l2_input;
 extern struct obs_output_info virtualcam_info;
-extern bool loopback_module_available();
+extern bool loopback_module_available(void);
 
 bool obs_module_load(void)
 {
