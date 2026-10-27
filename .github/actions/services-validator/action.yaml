@@ -45,6 +45,9 @@ runs:
       uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       with:
         save-cache: ${{ github.ref == 'refs/heads/master' }}
+        # A PR save carries a delimited pr-<N> key so the janitor can delete it
+        # when the PR closes (CACHE-013, #962).
+        cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
     - name: Validate Services File JSON Schema 🕵️
       if: fromJSON(inputs.runSchemaChecks)
@@ -77,7 +80,9 @@ runs:
       uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ github.workspace }}/other
-        key: service-check-${{ github.run_id }}
+        # The key matches the writer's below; off a PR the pr-<N> component is
+        # empty, so it is the same key master has always used (CACHE-013, #962).
+        key: service-check-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
         restore-keys: service-check-
 
     - name: Check for defunct services 📉
@@ -118,4 +123,6 @@ runs:
       uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ github.workspace }}/other
-        key: service-check-${{ github.run_id }}
+        # The janitor reclaims a closed PR's entries by a delimited pr-<N> key
+        # component, so the save key carries one (empty off a PR) (CACHE-013, #962).
+        key: service-check-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
