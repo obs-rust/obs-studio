@@ -751,12 +751,15 @@ failures are investigated through nightly reports rather than blocking the queue
 
 The existing Fast Gate, Qt frontend, full Ubuntu app and both Flatpak
 saved-profile runtime jobs run
-`sudo bash ci/host_apt_mirrors.sh` before package work. It recognizes the
+`sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py` before
+package work (the jobs that reach it before any other uv step add a
+`setup-uv` step first, since the helper is Python; CI logic lives in Python,
+not shell -- GEN-005, #962). It recognizes the
 runner-image mirror list with Azure HTTP priority 1 and Ubuntu archive HTTPS
 priority 2, then swaps those priorities. All URLs and security fallback remain
 present. Missing, linked, duplicate or unfamiliar layouts keep their original
 configuration; an actual rewrite failure fails the step. The helper needs no
-download or additional setup tool.
+download of its own beyond the uv setup the step already has.
 
 Fast Gate, Qt and both runtime jobs use command-line acquire bounds of one retry and 15-second
 HTTP/HTTPS timeouts, on both update and installation. Package lists, trust

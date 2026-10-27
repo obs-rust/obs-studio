@@ -168,7 +168,7 @@ jobs:
           path: ${{ runner.temp }}/flatpak-runtime-input
       - name: Install Runtime Test Infrastructure
         run: |
-          sudo bash ci/host_apt_mirrors.sh
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update -qq
           sudo apt-get install -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 -y --no-install-recommends flatpak xvfb dbus-daemon pipewire wireplumber \
             pipewire-pulse pipewire-bin pulseaudio-utils gstreamer1.0-tools gstreamer1.0-plugins-base \

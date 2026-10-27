@@ -543,8 +543,16 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      # The mirror step runs before every package install, and it is Python
+      # now: this job has no other step that installs uv, so without this the
+      # step fails with `uv: command not found` (exit 127).
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Configure Host apt Mirrors
-        run: sudo bash ci/host_apt_mirrors.sh
+        run: sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
 
       # Compiler cache policy (zackees/ci.yml): only master pushes save, keyed by
       # commit so the cache follows master instead of freezing at its first save.
@@ -1261,7 +1269,7 @@ jobs:
           path: ${{ runner.temp }}/flatpak-runtime-input
       - name: Install Runtime Test Infrastructure
         run: |
-          sudo bash ci/host_apt_mirrors.sh
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update -qq
           sudo apt-get install -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 -y --no-install-recommends flatpak xvfb dbus-daemon pipewire wireplumber \
             pipewire-pulse pipewire-bin pulseaudio-utils gstreamer1.0-tools gstreamer1.0-plugins-base \
@@ -1651,9 +1659,16 @@ jobs:
       # The oracle compile and the Rust libuuid link both need the package.
       # The obs-util D-Bus and portal inhibitors link GIO. The portal oracle
       # needs the headers even when the gio Cargo feature is off.
+      # The mirror step runs before soldr and before every package install, and
+      # it is Python now: this job has no earlier step that installs uv.
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Install libuuid and GIO
         run: |
-          sudo bash ci/host_apt_mirrors.sh
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           # Match runner-images' bounded mirror failover (#1269). CLI options
           # take precedence over older images' late apt.conf.d overrides.
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
@@ -1849,9 +1864,17 @@ jobs:
           # The cross toolchain adds targets mid-job (cmake/common/soldr.cmake).
           solo-toolchain-cache: false
 
+      # The mirror step runs before every package install, and it is Python
+      # now: soldr does not install uv, so without this the step fails with
+      # `uv: command not found` (exit 127).
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Install Build Dependencies 📦
         run: |
-          sudo bash ci/host_apt_mirrors.sh
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
           sudo apt-get "${apt_options[@]}" update
           sudo apt-get install "${apt_options[@]}" -y --no-install-recommends cmake ninja-build
@@ -2457,7 +2480,7 @@ jobs:
       # supply them.
       - name: Install Build Dependencies 📦
         run: |
-          sudo bash ci/host_apt_mirrors.sh
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           # Preserve the runner's fallback routes, but bound each failed acquire
           # before fallback. Installation errors still fail the job (#1269).
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
