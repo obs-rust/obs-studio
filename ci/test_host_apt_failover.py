@@ -53,7 +53,7 @@ class HostAptFailoverTest(unittest.TestCase):
         mock = r'''
 : > "$APT_TRACE"
 sudo() {
-    if [[ "$1" == bash && "$2" == ci/host_apt_mirrors.sh ]]; then
+    if [[ "$*" == *host_apt_mirrors.py* ]]; then
         # Mirror rewriting is separately executed on isolated fixture files.
         if [[ "$APT_FAIL" == mirror ]]; then return 42; fi
         return 0
