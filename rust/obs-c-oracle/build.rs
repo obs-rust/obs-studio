@@ -402,6 +402,13 @@ fn main() {
         // previous include has declared it. Force that for the oracle only.
         oracle.flag("-include").flag("sys/stat.h");
         owned_flags.push("-include sys/stat.h".to_string());
+        // MinGW's isfinite() is a type-generic macro whose float branch
+        // casts its argument to float. GCC checks that branch even for a
+        // double, so audio-math.h's `isfinite((double)db)` (a public header)
+        // trips -Wfloat-conversion here only. The Linux, macOS and clang
+        // builds keep the check (obs-rust/obs-studio#2648).
+        oracle.flag("-Wno-float-conversion");
+        flags.push("-Wno-float-conversion");
         for (from, to) in GNU_ORACLE_RENAMES {
             oracle.define(from, Some(*to));
             owned_flags.push(format!("-D{from}={to}"));
