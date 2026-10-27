@@ -439,6 +439,24 @@ class AllowPermissionsTest(unittest.TestCase):
                  if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/release-rust.yaml"]
         self.assertEqual(stale, [], "the grants replace this exception (#962)")
 
+    def test_claim_bot_job_scopes_are_granted(self):
+        # claim-bot.yaml's only job calls the org claim bot, which assigns the
+        # issue and reads its pull requests. Both scopes sit on that job rather
+        # than the top-level block, which asked for more than the repo max
+        # (contents: read, actions: read) and so tripped SEC-002.
+        scopes = {entry for entry in job_permission_scopes(WORKFLOWS / "claim-bot.yaml")
+                  if entry[1].endswith(": write")}
+        grants = load()["allow"]["permissions"]
+        self.assertTrue(scopes, "claim-bot.yaml's job declares its permission scopes")
+        for job, scope in sorted(scopes):
+            with self.subTest(job=job, scope=scope):
+                self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
+
+    def test_claim_bot_has_no_sec_002_exception(self):
+        stale = [entry for entry in load()["exceptions"]
+                 if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/claim-bot.yaml"]
+        self.assertEqual(stale, [], "the job-level scopes replace this exception (#962)")
+
 
 class NativeArchitectureRetentionTest(unittest.TestCase):
     def test_current_architecture_seeds_have_independent_honest_allowances(self):
