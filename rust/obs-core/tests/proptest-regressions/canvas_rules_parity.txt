@@ -1,0 +1,14 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e2f27063ed0d86a25b3aa2ed4efeeea9cb794171cec5e3742099c4ed8ffc13bb # shrinks to f = 0, private = false, channel = 0, name = None, sizes = [0, 0, 0, 0], format = 0
+cc 4eece9ad2987522e108a9815bed15db9672a1511de34e37547f576c5dd20fd52 # shrinks to f = 2147483664, private = false, channel = 0, name = None, sizes = [0, 0, 0, 0], format = 0
+cc 7194baa97cdd0f8bcec97ee3bc9fa218341a39b2784f9535704950d8bd3989a7 # shrinks to f = 0, saved = -2520340364160605473, size = 0, format = 0, channel = 0, first = None, private = false
+cc 950c683d607f04116589294ab6e5e2d164758d7dcd05a42ba93e731856db5baf # shrinks to f = 0, private = false, channel = 64, name = None, sizes = [0, 0, 0, 0], format = 0
+cc e9f18cb7cb71b536fb90dd6fe7d73f1c73514163518a6e1165937d91e09c27ba # shrinks to f = 0, private = false, channel = 0, name = Some(0), sizes = [0, 0, 0, 0], format = 0
+cc 875b8006dff8e819f0a962cb72f48015676bafc05c2c8d0c2db906840bdb4186 # shrinks to f = 0, saved = 0, size = 0, format = 0, channel = 0, first = Some(0), private = false
+cc 021b58021b510b37be6c83bc47e3452dbcadbefd401e20bc93fa9a459816b02d # shrinks to f = 0, private = false, channel = 63, name = None, sizes = [0, 0, 0, 0], format = 0
+cc bbd6fbee4525281ea6fa6aff840d7d9eb83df62eecf09cd38ec70e80868e691f # shrinks to f = 0, private = false, channel = 1197368320, name = None, sizes = [0, 0, 0, 0], format = 0
