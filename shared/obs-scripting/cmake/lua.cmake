@@ -30,13 +30,15 @@ if(ENABLE_SCRIPTING_LUA)
   )
 
   # The SWIG-generated swigluarun.h casts const away (-Wcast-qual, obs-rust/obs-studio#516),
-  # and the generated glue declares its entry points with no prototype in scope
-  # (-Wmissing-prototypes, obs-rust/obs-studio#2703). Neither file is ours, so
-  # this target opts out of those diagnostics instead of the global flag list.
+  # rejects __FUNCTION__ in strict C (-Wpedantic, obs-rust/obs-studio#2695) and declares
+  # its entry points with no prototype in scope (-Wmissing-prototypes, obs-rust/obs-studio#2703).
+  # None of those files are ours, so this target opts out of those diagnostics instead of the
+  # global flag list. -Wno-pedantic belongs here as well as in python.cmake: the AppImage build
+  # sets ENABLE_SCRIPTING_PYTHON=OFF, and the Lua sources are compiled either way (#2711).
   target_compile_options(
     obs-scripting
     PRIVATE
-      $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-missing-prototypes;-Wno-strict-prototypes>
+      $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>
   )
 
   target_compile_definitions(obs-scripting PUBLIC LUAJIT_FOUND)
