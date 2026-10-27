@@ -117,8 +117,6 @@ test_env=(env HOME="$test_home" XDG_CONFIG_HOME="$test_home/.config"
 echo "== environment: user=$(id -un) nproc=$(nproc) locale=$LC_ALL" \
   "cmake=$(cmake --version | head -1 | awk '{print $3}')" \
   "cc=$(cc --version | head -1)" "kernel=$(uname -r)"
-# shellcheck source=stale-build.sh
-source "$SRC"/rust/tools/linux-validate/stale-build.sh
 # rustc as rust-toolchain.toml selects it, which is what Corrosion configures.
 # Only building needs rustc (stale-build detection); the CI test shards
 # run an unpacked tree without a Rust toolchain (#937).
@@ -177,7 +175,7 @@ runpath_flags=(-DCMAKE_EXE_LINKER_FLAGS=-Wl,--enable-new-dtags
 if [ "$stage" = test ]; then
   [ -f "$build/CTestTestfile.cmake" ] || { echo "FAIL: no build tree at $build for OBS_TIER2_STAGE=test"; exit 1; }
 else
-  reset_stale_build "$build" "$rustc_version"
+  uv run --script "$SRC/rust/tools/linux-validate/stale_build.py" "$build" "$rustc_version" "$SRC"
   echo "== configure + build (libobs and libobs-c-reference)"
   cmake -S "$SRC" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -423,7 +421,7 @@ fi
 # line uses.
 echo "== [Debug] Rust staticlib profile"
 dbg="$BUILD/tree-debug"
-reset_stale_build "$dbg" "$rustc_version"
+uv run --script "$SRC/rust/tools/linux-validate/stale_build.py" "$dbg" "$rustc_version" "$SRC"
 cmake -S "$SRC" -B "$dbg" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
   -DENABLE_UNIT_TESTS=OFF \
   -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
