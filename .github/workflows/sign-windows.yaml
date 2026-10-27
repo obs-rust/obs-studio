@@ -1,6 +1,9 @@
 name: Sign Windows Project
 on:
   workflow_call:
+concurrency:
+  group: sign-windows-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   create-windows-update:
     timeout-minutes: 60
