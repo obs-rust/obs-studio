@@ -13,11 +13,13 @@ target_compile_definitions(w32-pthreads PRIVATE __CLEANUP_C PTW32_BUILD)
 # MSVC /W4 (#2626): vendored pthreads-win32 keeps its own suppressions rather
 # than source edits (the #516 vendored-code exemption): C4324 alignment
 # padding, C4057 indirection of a volatile LONG64/size_t pair in the MCS lock,
-# C4310 a truncating constant cast, C4456 a shadowed local.
+# C4310 a truncating constant cast, C4456 a shadowed local, C4702 the
+# unreachable path after its own assert.
 target_compile_options(
   w32-pthreads
   PRIVATE
     $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4057>
+    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4702>
     $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4310>
     $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4324>
     $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4456>

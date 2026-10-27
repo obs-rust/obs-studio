@@ -41,6 +41,9 @@ target_compile_options(
     # MSVC /W4 (#2626): vendored upstream C stays vendored, with its own
     # suppressions instead of edits (the #516 vendored-code exemption).
     $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244>
+    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4701>
+    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4702>
+    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4703>
 )
 
 set_target_properties(caption PROPERTIES FOLDER deps POSITION_INDEPENDENT_CODE TRUE)
