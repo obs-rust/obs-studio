@@ -39,6 +39,12 @@
 //! decisions of the `obs_source_media_*()` functions and
 //! `process_media_actions()` (whether a call is accepted, the getters'
 //! fallbacks, and each queued action's callback and signal);
+//! `libobs/obs-source-monitoring.c.h`, the monitoring, monitor-only mute,
+//! balance, mixer, flag, push-to and audio active rules of
+//! `obs_source_set_monitoring_type()`, `obs_source_set_monitoring_enabled()`,
+//! `obs_source_set_balance_value()`, `obs_source_set_audio_mixers()`,
+//! `obs_source_set_flags()`, the push-to enables and
+//! `obs_source_set_audio_active()`;
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
@@ -68,7 +74,7 @@
 //! [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_start`],
 //! [`video_tick`] and
