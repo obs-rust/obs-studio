@@ -373,8 +373,8 @@ jobs:
       # needs that target's standard library too.
       - name: Install the Rust toolchain 🦀
         run: |
-          rustup toolchain install
-          if [[ '${{ matrix.target }}' == x86_64 ]] rustup target add x86_64-apple-darwin
+          soldr rustup toolchain install
+          if [[ '${{ matrix.target }}' == x86_64 ]] soldr rustup target add x86_64-apple-darwin
 
       - name: Build OBS Studio 🧱
         uses: ./.github/actions/build-obs
@@ -1398,8 +1398,8 @@ jobs:
       # that target's standard library too.
       - name: Install the Rust toolchain 🦀
         run: |
-          rustup toolchain install
-          if ( '${{ matrix.architecture }}' -eq 'arm64' ) { rustup target add aarch64-pc-windows-msvc }
+          soldr rustup toolchain install
+          if ( '${{ matrix.architecture }}' -eq 'arm64' ) { soldr rustup target add aarch64-pc-windows-msvc }
 
       - name: Build OBS Studio 🧱
         uses: ./.github/actions/build-obs
