@@ -47,14 +47,16 @@ static VT: BitmapCbVt = BitmapCbVt {
     get_rowspan: None,
 };
 
-/// The last pixel of a decoded 1920x1080 frame.
+/// The last pixel of a decoded 1920x1080 frame. The bitmap is the boxed
+/// `Vec` from `create`, not its pixels, so the read goes through
+/// `get_buffer`, as libnsgif's own writes do.
 ///
 /// # Safety
 ///
 /// `bitmap` is non-null, from `create` for a 1920x1080 frame.
 unsafe fn last_pixel(bitmap: *mut c_void) -> u64 {
     // SAFETY: a 1920x1080 frame (the contract).
-    u64::from(unsafe { *bitmap.cast::<u32>().add(1920 * 1080 - 1) })
+    u64::from(unsafe { *get_buffer(bitmap).cast::<u32>().add(1920 * 1080 - 1) })
 }
 
 fn gif() -> Vec<u8> {
