@@ -87,7 +87,7 @@ struct gl_platform {
 	int drm_fd;
 };
 
-struct gl_windowinfo *gl_wayland_egl_windowinfo_create(const struct gs_init_data *info)
+static struct gl_windowinfo *gl_wayland_egl_windowinfo_create(const struct gs_init_data *info)
 {
 	struct wl_egl_window *window = wl_egl_window_create(info->window.display, info->cx, info->cy);
 	if (window == NULL) {
