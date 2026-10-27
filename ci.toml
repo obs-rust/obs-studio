@@ -176,7 +176,11 @@ secrets = [
   "RESTREAM_HASH", "SPARKLE_PRIVATE_KEY", "STEAM_PASSWORD", "STEAM_SHARED_SECRET", "STEAM_USER", "TWITCH_CLIENT_ID",
   "TWITCH_HASH", "YOUTUBE_CLIENTID", "YOUTUBE_CLIENTID_HASH", "YOUTUBE_SECRET", "YOUTUBE_SECRET_HASH",
 ]
-permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome"], "pull-requests: write" = ["welcome"] }
+# "contents: write" is release-rust.yaml's publishers (release, certify,
+# nightly_feed) plus appimage and gate, which grant it on to the reusable
+# workflows they call: a called workflow may not ask for more than its caller
+# grants, and granting less made GitHub refuse to start the run (startup_failure).
+permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "contents: write" = ["appimage", "certify", "gate", "nightly_feed", "release"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome"], "pull-requests: write" = ["welcome"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!
@@ -992,12 +996,6 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "SEC-002"
 path = ".github/workflows/push.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "SEC-002"
-path = ".github/workflows/release-rust.yaml"
 reason = "Upstream workflows without a top-level permissions block; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
