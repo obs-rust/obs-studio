@@ -107,7 +107,7 @@ printf reacquired > "$state/downloads/archive"
         self.assertLess(job.index('- name: Validate repository'), job.index(marker))
         probe = job.split(marker, 1)[1].split('\n      - ', 1)[0]
         self.assertIn('inputs.flatpak-cache-probe', probe)
-        self.assertIn('uv run ci/flatpak_cache_probe.py', probe)
+        self.assertIn('uv run --no-project ci/flatpak_cache_probe.py', probe)
         self.assertNotIn('continue-on-error', probe)
 
     def test_windows_nvenc_reference_has_separate_linker_outputs(self):
@@ -514,7 +514,7 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
         self.assertLess(workflow.index('- name: Validate repository'), workflow.index('- name: Probe Pruned Flatpak Rebuild'))
         self.assertIn('if: inputs.flatpak-pruned-build-probe', workflow)
-        self.assertIn('uv run ci/flatpak_pruned_build_probe.py', workflow)
+        self.assertIn('uv run --no-project ci/flatpak_pruned_build_probe.py', workflow)
         self.assertIn('--compiler-reuse', workflow)
 
     def test_pruned_rebuild_still_rejects_links_in_dependency_repository(self):

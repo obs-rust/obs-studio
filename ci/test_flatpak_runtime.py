@@ -226,7 +226,7 @@ class FlatpakRuntimeTest(unittest.TestCase):
             block = re.search(r'(?m)^      flatpak-runtime-test:\n((?:        .*\n)+)', text)[1]
             self.assertIn('default: false', block)
         build = (ROOT / '.github/workflows/build-project.yaml').read_text()
-        self.assertIn('uv run ci/flatpak_runtime.py', build)
+        self.assertIn('uv run --no-project ci/flatpak_runtime.py', build)
         self.assertIn('name: Validate repository', build)
         self.assertIn('name: Validate build directory', build)
         self.assertIn('name: Validate AppStream', build)
@@ -264,7 +264,7 @@ class FlatpakRuntimeTest(unittest.TestCase):
         self.assertIn('--bundle "$RUNNER_TEMP/obs-studio-rust-x86_64.flatpak"', job)
         upload = job.split('name: flatpak-bundle', 1)
         self.assertEqual(len(upload), 2, 'the tested bundle is uploaded for the release')
-        run = job.index('uv run ci/flatpak_runtime.py')
+        run = job.index('uv run --no-project ci/flatpak_runtime.py')
         self.assertLess(job.index('flatpak build-bundle'), run)
         self.assertLess(run, job.index('name: flatpak-bundle'))
 
