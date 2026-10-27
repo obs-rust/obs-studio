@@ -68,7 +68,7 @@ class GateJobs(unittest.TestCase):
         gate = re.search(r"^  ci-gate:\n((?:    .*\n|\s*\n)*)", PULL, re.M).group(1)
         step = re.search(r"- name: Check Run Jobs ✅\n((?:        .*\n)*)", gate)
         self.assertIsNotNone(step, "CI Gate must list the run's jobs (ci/gate_jobs.py)")
-        self.assertIn("uv run ci/gate_jobs.py", step.group(1))
+        self.assertIn("uv run --no-project ci/gate_jobs.py", step.group(1))
         self.assertNotIn("if:", step.group(1))
 
 

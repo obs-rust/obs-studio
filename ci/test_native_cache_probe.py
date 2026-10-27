@@ -106,7 +106,7 @@ class NativeCacheProbeTest(unittest.TestCase):
         self.assertIn("default: false", probe)
         step = build.split("- name: Measure Windows Cache Budgets", 1)[1].split("\n      - ", 1)[0]
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.native-cache-probe", step)
-        self.assertIn("uv run ci/native_cache_probe.py", step)
+        self.assertIn("uv run --no-project ci/native_cache_probe.py", step)
         self.assertNotIn("continue-on-error", step)
         # Ordinary compilation happens first and is not conditional on the probe.
         windows = build.split("  windows-build:", 1)[1].split("  rust-tests-linux:", 1)[0]

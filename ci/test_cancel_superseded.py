@@ -93,7 +93,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn("actions: write", top)
 
     def test_calls_the_script(self):
-        self.assertIn("uv run ci/cancel_superseded.py", self.job)
+        self.assertIn("uv run --no-project ci/cancel_superseded.py", self.job)
 
 
 if __name__ == "__main__":

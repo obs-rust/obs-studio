@@ -122,7 +122,7 @@ class SubmoduleDirection(unittest.TestCase):
 class Wiring(unittest.TestCase):
     def test_pr_ci_runs_the_check(self):
         workflow = (ROOT / ".github" / "workflows" / "build-project.yaml").read_text()
-        self.assertIn("uv run ci/submodule_direction.py", workflow)
+        self.assertIn("uv run --no-project ci/submodule_direction.py", workflow)
         self.assertIn("PR_TITLE: ${{ github.event.pull_request.title }}", workflow)
 
 

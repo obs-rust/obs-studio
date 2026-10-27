@@ -98,7 +98,7 @@ class WorkflowTest(unittest.TestCase):
         step = m.group(0)
         self.assertIn("github.event_name == 'merge_group'", step)
         self.assertIn("continue-on-error: true", step)
-        self.assertIn("uv run ci/queue_report.py", step)
+        self.assertIn("uv run --no-project ci/queue_report.py", step)
         self.assertIn("actions: read", gate)
 
 

@@ -52,7 +52,7 @@ class MasterScopeBaseTest(unittest.TestCase):
     def test_master_workflow_uses_catchup_scope(self):
         from pathlib import Path
         text = Path('.github/workflows/build-project.yaml').read_text()
-        self.assertIn('base="$(uv run ci/master_scope_base.py)"', text)
+        self.assertIn('base="$(uv run --no-project ci/master_scope_base.py)"', text)
         self.assertIn('GH_TOKEN: ${{ github.token }}', text)
 
 if __name__ == '__main__':

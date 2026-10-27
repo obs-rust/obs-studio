@@ -36,7 +36,7 @@ class FormatJobsTest(unittest.TestCase):
         self.assertNotIn("./.github/actions/run-", j)
         self.assertRegex(j, r"astral-sh/setup-uv@[0-9a-f]{40}")
         for check in ("clang-format", "gersemi"):
-            self.assertIn(f"uv run ci/local_gate.py --only {check}", j, check)
+            self.assertIn(f"uv run --no-project ci/local_gate.py --only {check}", j, check)
 
 
 class GateOnlyTest(unittest.TestCase):
