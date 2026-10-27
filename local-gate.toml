@@ -30,8 +30,8 @@ mirrors = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux
 # The lane-proof steps only publish a pass (ci/lane_proof.py, #699).
 setup-steps = ["Save Tier 2 zccache 💾", "Mark Lane Proof 🧾", "Upload Lane Proof 🧾"]
 
-# clang-format 22.1.3 + gersemi 0.25.0 (pinned via uvx, same files as
-# build-aux/run-clang-format and run-gersemi), rustfmt, clippy -D warnings.
+# clang-format 22.1.3 + gersemi 0.25.0 (pinned via uvx), rustfmt,
+# clippy -D warnings.
 [gate.lanes.lint]
 run = ["uv", "run", "ci/local_gate.py", "--lane", "lint"]
 tools = ["uvx", "soldr"]

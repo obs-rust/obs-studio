@@ -10,8 +10,8 @@ commit message (see local-gate.toml and ci-attestations.yml).
     uv run ci/local_gate.py --lane lint --fix
 
 Lanes:
-  lint         clang-format 22.1.3 and gersemi 0.25.0 over the same files as
-               build-aux/run-clang-format and run-gersemi, plus rustfmt,
+  lint         clang-format 22.1.3 and gersemi 0.25.0 over the C/C++ and
+               CMake trees, plus rustfmt,
                clippy -D warnings and the repo Dylints (dylints/*). Formatters are pinned through uvx, so no
                brew/zsh install is needed. Also ci/platform_ifdef_ratchet.py (#847)
                and ci/perf_guard_lint.py (#1303). Plus one clippy per Cargo
@@ -46,7 +46,7 @@ CLANG_FORMAT = "clang-format==22.1.3"
 GERSEMI = "gersemi==0.25.0"
 RUFF = "ruff==0.14.0"
 
-# build-aux/run-clang-format
+# clang-format source sets (formerly build-aux/run-clang-format, #2708)
 CLANG_DIRS = ("libobs", "libobs-*", "frontend", "plugins", "deps", "shared", "test", "rust")
 CLANG_EXTS = (".c", ".cpp", ".h", ".hpp", ".m", ".mm")
 CLANG_EXCLUDE = (
@@ -55,7 +55,7 @@ CLANG_EXCLUDE = (
     "*/mac-syphon/syphon-framework/*",
     "*/libdshowcapture/*",
 )
-# build-aux/run-gersemi
+# gersemi source sets (formerly build-aux/run-gersemi, #2708)
 GERSEMI_DIRS = ("libobs", "libobs-*", "frontend", "plugins", "deps", "shared", "cmake", "test")
 GERSEMI_EXCLUDE = (
     "*/jansson/*",
