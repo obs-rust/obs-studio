@@ -203,7 +203,9 @@ class CacheMetricsTest(unittest.TestCase):
                 if missing_compare:
                     raise subprocess.CalledProcessError(1, ["gh", "api", endpoint])
                 return {"files": [{"filename": "docs/a.md"}]}
-            if "/actions/caches?" in endpoint:
+            if "/actions/caches?per_page=100" in endpoint:
+                self.assertIn("--paginate", args)
+                self.assertIn("--slurp", args)
                 return [{"actions_caches": []}]
             raise AssertionError(args)
 
@@ -226,7 +228,9 @@ class CacheMetricsTest(unittest.TestCase):
             if args[:2] == ('pr', 'list'):
                 return [{'headRefName': 'fix/one', 'headRefOid': 'b' * 40, 'baseRefOid': 'c' * 40,
                          'createdAt': '2026-01-01T07:00:00Z', 'closedAt': None}]
-            if '/actions/caches?' in args[1]:
+            if '/actions/caches?per_page=100' in args[1]:
+                self.assertIn('--paginate', args)
+                self.assertIn('--slurp', args)
                 return [{'actions_caches': []}]
             raise AssertionError('An unchanged cached run must not be reclassified against a later base: ' + str(args))
 
