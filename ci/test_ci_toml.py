@@ -322,6 +322,26 @@ def cache_keys() -> list[tuple[str, str]]:
     return out
 
 
+def job_permission_scopes(path: Path) -> set[tuple[str, str]]:
+    """(job id, 'scope: access') of every job-level permissions block."""
+    lines = path.read_text().splitlines()
+    out: set[tuple[str, str]] = set()
+    job = ""
+    for index, line in enumerate(lines):
+        header = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if header:
+            job = header.group(1)
+            continue
+        if not re.match(r"^    permissions:\s*$", line):
+            continue
+        for entry in lines[index + 1 :]:
+            granted = re.match(r"^      ([a-z-]+): (read|write)\s*$", entry)
+            if not granted:
+                break
+            out.add((job, f"{granted.group(1)}: {granted.group(2)}"))
+    return out
+
+
 def triggers(path: Path) -> list[str]:
     text = path.read_text()
     m = re.search(r"^(?:on|'on'|\"on\"):\n((?:[ \t]+.*\n|\n)*)", text, re.M)
@@ -388,6 +408,36 @@ class CiTomlTest(unittest.TestCase):
         for name, path in files.items():
             with self.subTest(workflow=name):
                 self.assertEqual(sorted(set(triggers(path))), sorted(set(t.split(":")[0] for t in allowed[name])))
+
+
+class AllowPermissionsTest(unittest.TestCase):
+    """A job's permission scope is granted in ci.toml's [allow].permissions (SEC-002).
+
+    release-rust.yaml's jobs ask for contents: write. The publishers (release,
+    certify, nightly_feed) write the release itself, and appimage/gate have to
+    grant it on to the reusable workflows they call: a called workflow may not
+    ask for more than its caller grants, and granting less made GitHub refuse
+    to start the whole run (startup_failure, appimage's comment). ci-lint
+    checks the grant with the network; this offline half keeps the workflow
+    and ci.toml from drifting apart.
+    """
+
+    def test_release_rust_job_scopes_are_granted(self):
+        # [allow].permissions records the elevated scopes a job may hold; a
+        # read scope is inside the default grant and ci-lint does not ask for
+        # it (SEC-002 reports the ': write' ones).
+        scopes = {entry for entry in job_permission_scopes(WORKFLOWS / "release-rust.yaml")
+                  if entry[1].endswith(": write")}
+        grants = load()["allow"]["permissions"]
+        self.assertTrue(scopes, "release-rust.yaml's jobs declare permission scopes")
+        for job, scope in sorted(scopes):
+            with self.subTest(job=job, scope=scope):
+                self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
+
+    def test_release_rust_has_no_sec_002_exception(self):
+        stale = [entry for entry in load()["exceptions"]
+                 if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/release-rust.yaml"]
+        self.assertEqual(stale, [], "the grants replace this exception (#962)")
 
 
 class NativeArchitectureRetentionTest(unittest.TestCase):
