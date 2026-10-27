@@ -27,7 +27,7 @@ mode under a distinct `tier2-cost-<mode>` artifact. Hidden-file upload must
 be enabled because the source directory is `.tier2-cost`.
 
 Master combines the artifacts with `merge_costs.py`, validates that both
-modes contain measured tests with `check-costs.sh`, then saves the cache
+modes contain measured tests with `check-costs.py`, then saves the cache
 for subsequent runs. Never save an empty cache as successful measurement.
 The downloader may flatten a single matching artifact, while multiple
 artifacts have named subdirectories; consumers must support both layouts.

@@ -2379,7 +2379,7 @@ jobs:
             uv run --script rust/tools/linux-validate/merge_costs.py "$@" >".tier2-cost/ctest-cost-$mode.txt"
             echo "$mode: $(grep -c -v -e '^---$' ".tier2-cost/ctest-cost-$mode.txt") lines"
           done
-          bash rust/tools/linux-validate/check-costs.sh .tier2-cost
+          uv run --script rust/tools/linux-validate/check-costs.py .tier2-cost
       - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
