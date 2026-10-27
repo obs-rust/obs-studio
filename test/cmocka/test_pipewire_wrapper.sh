@@ -1,6 +1,6 @@
 #!/bin/sh
 # Checks the wrappers that start a private PipeWire daemon for the PipeWire
-# and PulseAudio tests (test_pipewire_cursor_hdr.sh,
+# and PulseAudio tests (test_pipewire_cursor_hdr.py,
 # test_pipewire_context_fail.py, test_pulse_monitor_device.sh).
 #
 # They used to give up after waiting 5 s for the daemon's socket and report
@@ -21,6 +21,13 @@ scripts=$1
 
 command -v pipewire >/dev/null 2>&1 || {
 	echo "pipewire not found: skipping"
+	exit 77
+}
+
+# The cursor-hdr wrapper is Python now (#962, GEN-005); run it the way its ctest
+# caller does. Resolve uv by absolute path so a stub PATH still reaches it.
+uv=$(command -v uv) || {
+	echo "uv not found: skipping"
 	exit 77
 }
 
@@ -73,18 +80,13 @@ check() {
 	fi
 }
 
-# Each wrapper with the interpreter it now uses: the context-failure wrapper is
-# Python (test_pipewire_context_fail.py, #962), the others are still shell.
-for wrapper in test_pipewire_cursor_hdr.sh test_pipewire_context_fail.py; do
-	case $wrapper in
-		*.py) runner="uv run --script $scripts/$wrapper" ;;
-		*)    runner="sh $scripts/$wrapper" ;;
-	esac
-
-	TMPDIR="$long" timeout 60 $runner "$work/stub" >"$work/out" 2>&1
+# Both wrappers are Python now (#962, GEN-005): run them the way their ctest
+# callers do, uv resolved by absolute path so a stub PATH still reaches it.
+for wrapper in test_pipewire_cursor_hdr.py test_pipewire_context_fail.py; do
+	TMPDIR="$long" timeout 60 "$uv" run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
 	check "$wrapper, long TMPDIR: the daemon starts and the test runs" 0 $?
 
-	PATH="$work/bin-dying:$PATH" timeout 60 $runner "$work/stub" >"$work/out" 2>&1
+	PATH="$work/bin-dying:$PATH" timeout 60 "$uv" run --script "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
 	status=$?
 	if [ $status -ne 0 ] && [ $status -ne 77 ] && [ $status -ne 3 ]; then
 		echo "ok:   $wrapper, daemon exits at once: fails (exit $status)"
@@ -123,7 +125,7 @@ else
 fi
 
 # Control: no pipewire binary, as in CI.
-PATH="$work/bin-none" sh "$scripts/test_pipewire_cursor_hdr.sh" "$work/stub" >"$work/out" 2>&1
-check "test_pipewire_cursor_hdr.sh, no pipewire binary: skips" 77 $?
+PATH="$work/bin-none" "$uv" run --script "$scripts/test_pipewire_cursor_hdr.py" "$work/stub" >"$work/out" 2>&1
+check "test_pipewire_cursor_hdr.py, no pipewire binary: skips" 77 $?
 
 exit $failed

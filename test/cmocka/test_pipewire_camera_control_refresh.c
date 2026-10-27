@@ -59,7 +59,7 @@
  * End to end: the real camera portal code against a fake
  * org.freedesktop.portal.Camera on a private D-Bus bus (GTestDBus), with its
  * PipeWire connection on a private PipeWire daemon that
- * test_pipewire_cursor_hdr.sh starts (own runtime dir, no session manager, no
+ * test_pipewire_cursor_hdr.py starts (own runtime dir, no session manager, no
  * devices). Two stream nodes in this test play two cameras the way
  * PipeWire's V4L2 node publishes them (PropInfo and Props params, the same
  * prop ids, and the "device.api" and "object.path" node properties), and
@@ -1107,7 +1107,7 @@ int main(void)
 		return SKIP_EXIT;
 	}
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 

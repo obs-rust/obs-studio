@@ -30,7 +30,7 @@
  * shows a green, banded picture or crashes OBS as soon as it streams.
  *
  * End to end: a producer stream on a private PipeWire daemon (started by
- * test_pipewire_cursor_hdr.sh: own runtime dir, no session manager, no
+ * test_pipewire_cursor_hdr.py: own runtime dir, no session manager, no
  * devices) plays the camera. It offers only NV12, like the cameras in the
  * reports, and sends a picture of four coloured quadrants. The capture is
  * the PipeWire camera source's own stream code (pipewire.c), connected the
@@ -822,7 +822,7 @@ int main(void)
 	};
 
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 

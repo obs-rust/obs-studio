@@ -1,7 +1,7 @@
 # The PipeWire capture cursor in Rec. 2100 (PQ/HLG) output
 # (obsproject/obs-studio#13350): the screencast portal source against a fake
 # portal on a private D-Bus bus and a producer stream with cursor metadata on
-# a private PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Needs an
+# a private PipeWire daemon that test_pipewire_cursor_hdr.py starts. Needs an
 # X display (xvfb-run) for obs_startup(), dbus-daemon and pipewire; skips
 # (77, or cmocka skips) without them.
 if(OS_LINUX AND TARGET OBS::pipewire)
@@ -41,7 +41,7 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   add_dependencies(cmocka-tests test_pipewire_cursor_hdr)
   add_test(
     NAME test_pipewire_cursor_hdr
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_cursor_hdr>
+    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_cursor_hdr>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_cursor_hdr PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90)

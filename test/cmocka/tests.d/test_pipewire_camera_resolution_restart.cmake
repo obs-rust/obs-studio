@@ -3,7 +3,7 @@
 # libcamera cameras then drop the stream): the camera portal against a fake
 # portal on a private D-Bus bus and a camera node that, like libcamera,
 # refuses a new format while it streams, on a private PipeWire daemon that
-# test_pipewire_cursor_hdr.sh starts. Needs an X display (xvfb-run) for
+# test_pipewire_cursor_hdr.py starts. Needs an X display (xvfb-run) for
 # obs_startup(), dbus-daemon and pipewire; skips (77, or cmocka skips) without
 # them.
 if(OS_LINUX AND TARGET OBS::pipewire)
@@ -53,7 +53,7 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_test(
     NAME test_pipewire_camera_resolution_restart
     COMMAND
-      sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh"
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py"
       $<TARGET_FILE:test_pipewire_camera_resolution_restart>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )

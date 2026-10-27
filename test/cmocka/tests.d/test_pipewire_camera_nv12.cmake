@@ -1,7 +1,7 @@
 # A PipeWire camera sending NV12 (obsproject/obs-studio#13823) or only I420 or
 # YV12 (obsproject/obs-studio#13744): the camera source's stream code
 # (pipewire.c) against a producer stream on a private PipeWire daemon that
-# test_pipewire_cursor_hdr.sh starts, with the output read back. Needs an X display (xvfb-run) for obs_startup() and pipewire; skips
+# test_pipewire_cursor_hdr.py starts, with the output read back. Needs an X display (xvfb-run) for obs_startup() and pipewire; skips
 # (77, or cmocka skips) without them. The no-display half is
 # test_pipewire_frame_layout.
 if(OS_LINUX AND TARGET OBS::pipewire)
@@ -39,7 +39,7 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   add_dependencies(cmocka-tests test_pipewire_camera_nv12)
   add_test(
     NAME test_pipewire_camera_nv12
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_camera_nv12>
+    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_nv12>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_camera_nv12 PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90)

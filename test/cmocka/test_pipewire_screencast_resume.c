@@ -32,7 +32,7 @@
  *
  * The screencast portal source runs against a fake ScreenCast portal on a
  * private D-Bus bus and a producer stream (the "monitor") on a private
- * PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Turning the monitor
+ * PipeWire daemon that test_pipewire_cursor_hdr.py starts. Turning the monitor
  * off destroys the producer stream; while it is off, the portal fails to start
  * a screencast. Needs an X display (xvfb-run) for obs_startup(), dbus-daemon
  * and pipewire; skips (77, or cmocka skips) without them.
@@ -1362,7 +1362,7 @@ int main(void)
 		return SKIP_EXIT;
 	}
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 	return cmocka_run_group_tests(tests, setup, teardown);

@@ -1,7 +1,7 @@
 # A screen capture frozen after its monitor was switched off or unplugged
 # (obsproject/obs-studio#12063): the screencast portal source against a fake
 # portal on a private D-Bus bus and a producer stream (the monitor) on a
-# private PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Needs an X
+# private PipeWire daemon that test_pipewire_cursor_hdr.py starts. Needs an X
 # display (xvfb-run) for obs_startup(), dbus-daemon and pipewire; skips (77,
 # or cmocka skips) without them. Also: screen captures that are not showing
 # keep their streams paused (obsproject/obs-studio#13836).
@@ -47,7 +47,7 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   add_dependencies(cmocka-tests test_pipewire_screencast_resume)
   add_test(
     NAME test_pipewire_screencast_resume
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_screencast_resume>
+    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_screencast_resume>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_screencast_resume PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120)

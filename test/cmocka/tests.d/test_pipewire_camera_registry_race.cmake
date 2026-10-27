@@ -1,6 +1,6 @@
 # A saved PipeWire camera source at startup (obsproject/obs-studio#13971): the
 # camera portal against a fake portal on a private D-Bus bus and a camera node
-# on a private PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Needs
+# on a private PipeWire daemon that test_pipewire_cursor_hdr.py starts. Needs
 # an X display (xvfb-run) for obs_startup(), dbus-daemon and pipewire; skips
 # (77, or cmocka skips) without them. Linked with --wrap to hold the camera
 # portal while the registry delivers its globals.
@@ -49,7 +49,7 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_test(
     NAME test_pipewire_camera_registry_race
     COMMAND
-      sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_camera_registry_race>
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_registry_race>
   )
   set_tests_properties(test_pipewire_camera_registry_race PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
 endif()

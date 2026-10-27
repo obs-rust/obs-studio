@@ -37,7 +37,7 @@
  * End to end, like test_pipewire_camera_unplug: the real camera portal code
  * talks to a fake org.freedesktop.portal.Camera on a private D-Bus bus
  * (GTestDBus) and gets its PipeWire connection from a private PipeWire daemon
- * that test_pipewire_cursor_hdr.sh starts for it. A stream node in this test
+ * that test_pipewire_cursor_hdr.py starts for it. A stream node in this test
  * plays the camera, so the camera portal binds a device proxy for it.
  *
  * The race itself is rare; what makes it possible is deterministic. The test
@@ -556,7 +556,7 @@ int main(void)
 		return SKIP_EXIT;
 	}
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 

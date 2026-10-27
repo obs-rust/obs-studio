@@ -1,6 +1,6 @@
 # The camera portal unloading (OBS quitting) while its PipeWire thread runs:
 # the camera portal against a fake portal on a private D-Bus bus and a camera
-# node on a private PipeWire daemon that test_pipewire_cursor_hdr.sh starts.
+# node on a private PipeWire daemon that test_pipewire_cursor_hdr.py starts.
 # Needs an X display (xvfb-run) for obs_startup(), dbus-daemon and pipewire;
 # skips (77, or cmocka skips) without them. Linked with --wrap to check that
 # PipeWire proxies are destroyed on the loop thread or under the loop lock.
@@ -50,7 +50,7 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_dependencies(cmocka-tests test_pipewire_camera_unload)
   add_test(
     NAME test_pipewire_camera_unload
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_camera_unload>
+    COMMAND uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_unload>
   )
   set_tests_properties(test_pipewire_camera_unload PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
 endif()

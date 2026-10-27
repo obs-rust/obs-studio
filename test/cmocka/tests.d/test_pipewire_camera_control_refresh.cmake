@@ -3,7 +3,7 @@
 # window to rebuild), manual controls stayed enabled while their automatic
 # mode was on, and menu controls were missing. The camera portal against a
 # fake portal on a private D-Bus bus and two V4L2 camera nodes on a private
-# PipeWire daemon that test_pipewire_cursor_hdr.sh starts. Needs an X display
+# PipeWire daemon that test_pipewire_cursor_hdr.py starts. Needs an X display
 # (xvfb-run) for obs_startup(), dbus-daemon and pipewire; skips (77, or cmocka
 # skips) without them.
 if(OS_LINUX AND TARGET OBS::pipewire)
@@ -50,7 +50,7 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_test(
     NAME test_pipewire_camera_control_refresh
     COMMAND
-      sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_camera_control_refresh>
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_control_refresh>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_camera_control_refresh PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)

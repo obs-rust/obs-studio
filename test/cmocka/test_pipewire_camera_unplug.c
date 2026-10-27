@@ -33,7 +33,7 @@
  * End to end: the real camera portal code talks to a fake
  * org.freedesktop.portal.Camera on a private D-Bus bus (GTestDBus) and gets
  * its PipeWire connection from a private PipeWire daemon that
- * test_pipewire_cursor_hdr.sh starts for it (own runtime dir, no session
+ * test_pipewire_cursor_hdr.py starts for it (own runtime dir, no session
  * manager, no devices). A stream node in this test plays the camera: it is
  * plugged in before the source is created and unplugged by destroying it.
  *
@@ -566,7 +566,7 @@ int main(void)
 		return SKIP_EXIT;
 	}
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 

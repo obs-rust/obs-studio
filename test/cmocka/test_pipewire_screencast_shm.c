@@ -37,7 +37,7 @@
  * End to end: the real screencast portal source talks to a fake
  * org.freedesktop.portal.ScreenCast on a private D-Bus bus (GTestDBus) and
  * receives its stream from a private PipeWire daemon that
- * test_pipewire_cursor_hdr.sh starts for it (own runtime dir, no session
+ * test_pipewire_cursor_hdr.py starts for it (own runtime dir, no session
  * manager, no devices). A producer stream in this test plays the
  * compositor: it sends BGRx frames, black on the left half and white on the
  * right, with the rows, offset and chunk size a case asks for; bytes that
@@ -812,7 +812,7 @@ int main(void)
 		return SKIP_EXIT;
 	}
 	if (!getenv("PIPEWIRE_RUNTIME_DIR")) {
-		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.sh (private PipeWire)\n");
+		fprintf(stderr, "skipped: run through test_pipewire_cursor_hdr.py (private PipeWire)\n");
 		return SKIP_EXIT;
 	}
 

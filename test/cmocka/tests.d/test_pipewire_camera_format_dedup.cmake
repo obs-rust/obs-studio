@@ -1,7 +1,7 @@
 # A libcamera camera lists its default size twice in its EnumFormat params, so
 # the camera source's format list showed it twice (obs-rust/obs-studio#1068):
 # the camera portal against a fake portal on a private D-Bus bus and a camera
-# node on a private PipeWire daemon that test_pipewire_cursor_hdr.sh starts.
+# node on a private PipeWire daemon that test_pipewire_cursor_hdr.py starts.
 # Needs an X display (xvfb-run) for obs_startup(), dbus-daemon and pipewire;
 # skips (77, or cmocka skips) without them.
 if(OS_LINUX AND TARGET OBS::pipewire)
@@ -48,7 +48,7 @@ if(OS_LINUX AND TARGET OBS::pipewire AND PipeWire_FOUND)
   add_test(
     NAME test_pipewire_camera_format_dedup
     COMMAND
-      sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.sh" $<TARGET_FILE:test_pipewire_camera_format_dedup>
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_cursor_hdr.py" $<TARGET_FILE:test_pipewire_camera_format_dedup>
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
   set_tests_properties(test_pipewire_camera_format_dedup PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
