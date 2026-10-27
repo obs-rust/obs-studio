@@ -72,6 +72,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-frame-copy.c.h.o",
     "obs-source-load.c.h.o",
     "obs-source-media-admission.c.h.o",
+    "obs-source-monitoring.c.h.o",
     "obs-source-ptm-gate.c.h.o",
     "obs-source-render-route.c.h.o",
     "obs-source-size.c.h.o",

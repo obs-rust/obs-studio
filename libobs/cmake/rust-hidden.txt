@@ -357,6 +357,26 @@ obs_source_media_state_fallback
 obs_source_media_dispatch
 obs_source_media_signal_reads_pause
 obs_source_media_signal
+# obs-source-monitoring.c: obs_source_set_flags(),
+# obs_source_set_audio_mixers(), obs_source_get_audio_mixers(), the push-to
+# enables, obs_source_set_monitoring_enabled(),
+# obs_source_set_monitoring_type(), obs_source_get_monitoring_type(),
+# clamp_balance() and obs_source_set_audio_active() in obs-source.c call them
+# inside libobs. Declared in obs-source-monitoring.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_source_monitoring_audio_active
+obs_source_monitoring_balance
+obs_source_monitoring_changes
+obs_source_monitoring_has_audio
+obs_source_monitoring_mixers_store
+obs_source_monitoring_monitor
+obs_source_monitoring_off_reads_mute
+obs_source_monitoring_off_unmutes
+obs_source_monitoring_on_type
+obs_source_monitoring_only_mutes
+obs_source_monitoring_push_to_logs
+obs_source_monitoring_route
+obs_source_monitoring_stored_type
 # obs-source-ptm-gate.c: source_muted() and get_source_volume() in
 # obs-source.c call them inside libobs. Declared in obs-source-ptm-gate.h
 # without EXPORT, so the shims stay hidden the same way.

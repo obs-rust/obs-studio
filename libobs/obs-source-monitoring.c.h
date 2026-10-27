@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-monitoring.pch.h"
 
 /* The monitoring, monitor-only mute, balance, mixer, flag, push-to and audio
  * active rules of the sources, moved from obs-source.c: the same-value
@@ -27,7 +27,8 @@
  * the signal of obs_source_set_audio_active(), on plain values. obs-source.c
  * keeps obs_source_valid(), every read of the source's fields at its point,
  * the mutex, the atomics, the mute calls, the signals, the monitor and the
- * logs. Declared in obs-source-monitoring.h without EXPORT. */
+ * logs. Declared in obs-source-monitoring.h without EXPORT. In hybrid libobs
+ * the Rust port (rust/obs-source, monitoring) replaces this file. */
 
 bool obs_source_monitoring_changes(uint32_t cur, uint32_t value)
 {

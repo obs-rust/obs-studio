@@ -324,6 +324,21 @@
     obs_source_media_dispatch;
     obs_source_media_signal_reads_pause;
     obs_source_media_signal;
+    /* obs-source-monitoring.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_monitoring_audio_active;
+    obs_source_monitoring_balance;
+    obs_source_monitoring_changes;
+    obs_source_monitoring_has_audio;
+    obs_source_monitoring_mixers_store;
+    obs_source_monitoring_monitor;
+    obs_source_monitoring_off_reads_mute;
+    obs_source_monitoring_off_unmutes;
+    obs_source_monitoring_on_type;
+    obs_source_monitoring_only_mutes;
+    obs_source_monitoring_push_to_logs;
+    obs_source_monitoring_route;
+    obs_source_monitoring_stored_type;
     /* obs-source-ptm-gate.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_ptm_gate_stop_time;
