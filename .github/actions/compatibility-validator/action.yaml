@@ -11,14 +11,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Check Runner Operating System 🏃‍♂️
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        : Check Runner Operating System 🏃‍♂️
-        echo "services-validation action requires a macOS-based or Linux-based runner."
-        exit 2
-
     - name: Set Up uv 🐍
       uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       with:
@@ -27,20 +19,17 @@ runs:
         # when the PR closes (CACHE-013, #962).
         cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+    # The guard calls the module through uv, so the toolchain is installed above
+    # it; it still fails an unsupported runner before the check runs (#2692).
+    - name: Check Runner Operating System 🏃‍♂️
+      if: runner.os == 'Windows'
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/compatibility_validate.py guard --notice "services-validation action requires a macOS-based or Linux-based runner."
+
     - name: Validate Compatibility Files JSON Schema 🕵️
       shell: bash
       working-directory: ${{ inputs.workingDirectory }}
-      run: |
-        : Validate services file JSON schema 🕵️
-        if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-        shopt -s extglob
-
-        echo ::group::Schema Validation
-        PYTHONUNBUFFERED=1 uv run --no-project --with jsonschema --with json_source_map \
-          .github/scripts/utils.py/check-jsonschema.py \
-          --loglevel INFO \
-          plugins/win-capture/data/@(compatibility|package).json
-        echo ::endgroup::
+      run: uv run --no-project --script ${{ github.workspace }}/ci/compatibility_validate.py validate plugins/win-capture/data/compatibility.json plugins/win-capture/data/package.json
 
     - name: Annotate Schema Validation Errors 🏷️
       uses: yuzutech/annotations-action@00b2d488bcba3bd01014dc073d276ef4a45d5c6c # v0.6.0
