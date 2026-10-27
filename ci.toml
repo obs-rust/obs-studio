@@ -130,8 +130,9 @@ codeql-overlay = { prefix = "codeql-overlay-base-database-", max = "200MB", evic
 service-check = { prefix = "service-check-", max = "1MB" }
 # Pre-zccache tier2-ccache-linux- has no consumer or live entry; no family.
 # Tier 2's apt downloads (#1055) and the per-target Linux plugin builds' ccache.
-tier2-apt = { prefix = "tier2-apt-", max = "400MB" }
-targets-ccache = { prefix = "targets-ccache-linux-", max = "300MB" }
+# Both write a new key per configuration/commit, so LRU bounds how many stay.
+tier2-apt = { prefix = "tier2-apt-", max = "400MB", evict = "lru" }
+targets-ccache = { prefix = "targets-ccache-linux-", max = "300MB", evict = "lru" }
 # Host package archive: measured ~147 MB; isolated from container package versions.
 targets-apt = { prefix = "targets-apt-", max = "200MB", evict = "lru" }
 # Added on master after #957 was written.
