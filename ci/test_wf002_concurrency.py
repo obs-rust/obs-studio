@@ -27,6 +27,7 @@ EXPECTED = {
     "check-format.yaml": "check-format-${{ github.event_name }}-${{ github.ref }}",
     "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
     "push.yaml": "push-${{ github.event_name }}-${{ github.ref }}",
+    "sign-windows.yaml": "sign-windows-${{ github.event_name }}-${{ github.ref }}",
 }
 
 
@@ -81,6 +82,9 @@ class Wf002ConcurrencyTest(unittest.TestCase):
         text = (WORKFLOWS / "push.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: false", text)
 
+    def test_a_sign_windows_run_cancels_the_one_it_supersedes(self):
+        text = (WORKFLOWS / "sign-windows.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: true", text)
 
 if __name__ == "__main__":
     unittest.main()
