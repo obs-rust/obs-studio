@@ -1647,14 +1647,21 @@ bool obs_get_video_info(struct obs_video_info *ovi)
 	return true;
 }
 
+/* With no core, the levels are the no-video defaults (#2566). */
 float obs_get_video_sdr_white_level(void)
 {
+	if (!obs)
+		return 300.f;
+
 	struct obs_core_video *video = &obs->video;
 	return video->graphics ? video->sdr_white_level : 300.f;
 }
 
 float obs_get_video_hdr_nominal_peak_level(void)
 {
+	if (!obs)
+		return 1000.f;
+
 	struct obs_core_video *video = &obs->video;
 	return video->graphics ? video->hdr_nominal_peak_level : 1000.f;
 }
@@ -1681,6 +1688,10 @@ void obs_set_video_levels(float sdr_white_level, float hdr_nominal_peak_level)
 
 bool obs_get_audio_info(struct obs_audio_info *oai)
 {
+	/* no core (before obs_startup): no audio (#2566) */
+	if (!obs)
+		return false;
+
 	struct obs_core_audio *audio = &obs->audio;
 	const struct audio_output_info *info;
 
@@ -3401,10 +3412,14 @@ bool obs_video_active(void)
 	return result;
 }
 
-/* The main canvas has no mix until the first obs_reset_video() (#2253): no
- * video, so no texture conversion either. */
+/* The main canvas has no mix until the first obs_reset_video() (#2253), and
+ * there is no canvas at all with no core (#2566): no video, so no texture
+ * conversion either. */
 bool obs_nv12_tex_active(void)
 {
+	if (!obs)
+		return false;
+
 	const obs_canvas_t *canvas = obs->data.main_canvas;
 	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
 	return video && video->using_nv12_tex;
@@ -3412,6 +3427,9 @@ bool obs_nv12_tex_active(void)
 
 bool obs_p010_tex_active(void)
 {
+	if (!obs)
+		return false;
+
 	const obs_canvas_t *canvas = obs->data.main_canvas;
 	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
 	return video && video->using_p010_tex;
