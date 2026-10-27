@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MERGE = ROOT / "rust" / "tools" / "linux-validate" / "merge_costs.py"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
-CHECK = ROOT / "rust" / "tools" / "linux-validate" / "check-costs.sh"
+CHECK = ROOT / "rust" / "tools" / "linux-validate" / "check-costs.py"
 
 
 def job(name: str) -> str:
@@ -96,7 +96,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_cache_save_requires_valid_timings(self):
         j = job("rust-linux-tier2-done")
-        self.assertLess(j.index("check-costs.sh .tier2-cost"), j.index("actions/cache/save@"))
+        self.assertLess(j.index("check-costs.py .tier2-cost"), j.index("actions/cache/save@"))
 
     def test_validate_reads_a_cost_dir(self):
         text = VALIDATE.read_text(encoding="utf-8")
@@ -188,18 +188,44 @@ class CheckCostsTest(unittest.TestCase):
             for mode, body in (("OFF", off), ("ON", on)):
                 if body is not None:
                     (root / f"ctest-cost-{mode}.txt").write_text(body)
-            return subprocess.run(["bash", str(CHECK), directory], capture_output=True, text=True)
+            return subprocess.run([sys.executable, str(CHECK), directory], capture_output=True, text=True)
 
     def test_both_modes_have_measured_tests(self):
         result = self.check("test_one 1 0.2\n---\n", "test_one 2 0.3\n---\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("OFF: 1 measured tests", result.stdout)
         self.assertIn("ON: 1 measured tests", result.stdout)
+        self.assertIn(f"({len('test_one 1 0.2\n---\n')} bytes)", result.stdout)
+
+    def test_only_measured_rows_before_the_terminator_count(self):
+        # ctest's failure list follows "---"; a row needs three fields, a
+        # positive integer run count and a numeric time.
+        off = (
+            "test_one 1 0.2\n"
+            "test_two 3 4\n"
+            "test_three 2 1e-3\n"
+            "test_four 0 5\n"  # never ran
+            "test_five 2 0.4 extra\n"  # four fields
+            "test_six x 0.5\n"  # count is not a number
+            "test_seven 1 fast\n"  # time is not a number
+            "---\n"
+            "test_eight 1 0.6\n"
+        )
+        result = self.check(off, "test_one 1 0.2\n---\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("OFF: 3 measured tests", result.stdout)
 
     def test_empty_or_unmeasured_modes_fail(self):
         for bad in (None, "", "---\n", "test_one 0 0\n---\n"):
             with self.subTest(body=bad):
-                self.assertNotEqual(self.check("test_one 1 0.2\n---\n", bad).returncode, 0)
+                result = self.check("test_one 1 0.2\n---\n", bad)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("ON", result.stderr)
+
+    def test_a_missing_directory_argument_prints_usage(self):
+        result = subprocess.run([sys.executable, str(CHECK)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("usage: check-costs.py COST_DIR", result.stderr)
 
 
 if __name__ == "__main__":
