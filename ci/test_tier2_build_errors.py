@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""Tests for rust/tools/linux-validate/build-errors.sh.
+"""Tests for rust/tools/linux-validate/build_errors.py.
 
     uv run python -m unittest ci/test_tier2_build_errors.py
 
@@ -7,18 +7,29 @@ A failed Tier 2 build printed only lines matching ": error" and "FAILED:".
 cargo's messages ("error[E0308]: ...", "error: ...", a build script's
 panic) match neither, so #814's ON build showed just
 "FAILED: [code=101] .../libobs_preflight_ffi.a" and no reason.
+
+The rule lives in rust/tools/linux-validate/build_errors.py since the port off
+the shell script (#962), and validate.sh runs it through `uv run --no-project`.
+This drives the port's output over canned build logs.
 """
 
 from __future__ import annotations
 
+import importlib.util
+import io
 import os
+import shlex
 import subprocess
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "rust" / "tools" / "linux-validate" / "build-errors.sh"
+TOOLS = ROOT / "rust" / "tools" / "linux-validate"
+MODULE = TOOLS / "build_errors.py"
+SHELL_SCRIPT = TOOLS / "build-errors.sh"
 
 LOG = """\
 [12/900] Building C object libobs/CMakeFiles/libobs.dir/util/dstr.c.o
@@ -40,15 +51,32 @@ warning: unused variable: `x`
 """
 
 
+def load_module():
+    """rust/tools/linux-validate/build_errors.py by path: `uv run python -m unittest
+    ci/test_tier2_build_errors.py` does not put that directory on sys.path, and no
+    file in this repo edits sys.path (ci/test_no_sys_path_edits.py)."""
+    spec = importlib.util.spec_from_file_location("build_errors", MODULE)
+    assert spec is not None and spec.loader is not None, f"cannot load {MODULE}"
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 class BuildErrorsTest(unittest.TestCase):
+    def setUp(self):
+        self.module = load_module()
+
     @staticmethod
     def recovery_script() -> str:
-        source = (SCRIPT.parent / 'validate.sh').read_text()
+        source = (TOOLS / 'validate.sh').read_text()
         recovery = source.split('  tier2_targets=', 1)[1].split('  if [ -n "${OBS_EXTRA_CFLAGS:-}"', 1)[0]
         recovery = 'tier2_targets=' + recovery
-        # Run the same helper through bash on hosts without /bin/bash.
-        return recovery.replace('"$SRC"/rust/tools/linux-validate/build-errors.sh',
-                                'bash "$SRC"/rust/tools/linux-validate/build-errors.sh')
+        # Run the ported helper with the interpreter running this suite: the
+        # recovery block is extracted from validate.sh, which reaches the module
+        # through `uv run --no-project`.
+        return recovery.replace('uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py',
+                                f'{shlex.quote(sys.executable)} "$SRC"/rust/tools/linux-validate/build_errors.py')
 
     # A launcher that cannot reach the daemon exits 125 (run 39002068564). A
     # request the daemon accepted and then lost exits 1 with a
@@ -134,39 +162,53 @@ zccache() { echo "daemon diagnostic: $*"; }
         self.assertIn('id: tier2-build', build)
         self.assertIn("steps.tier2-build.outputs.cache-healthy != 'false'", save)
 
-    def run_script(self, log: str):
+    def run_script(self, log: str) -> str:
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "build.log"
             p.write_text(log)
-            return subprocess.run(["bash", str(SCRIPT), str(p)], capture_output=True, text=True)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = self.module.main(["build_errors.py", str(p)])
+        self.assertEqual(code, 0, out.getvalue())
+        return out.getvalue()
 
     def test_keeps_c_and_ninja_errors(self):
-        out = self.run_script(LOG).stdout
+        out = self.run_script(LOG)
         self.assertIn("dstr.c:10:5: error: unknown type name 'foo'", out)
         self.assertIn("FAILED: [code=101] obs-preflight-cargo/release/libobs_preflight_ffi.a", out)
 
     def test_shows_rustc_errors_with_their_location(self):
-        out = self.run_script(LOG).stdout
+        out = self.run_script(LOG)
         self.assertIn("error[E0308]: mismatched types", out)
         self.assertIn("--> rust/obs-preflight/src/lib.rs:42:9", out)
         self.assertIn("could not compile `obs-preflight`", out)
 
     def test_shows_build_script_panics(self):
-        out = self.run_script(LOG).stdout
+        out = self.run_script(LOG)
         self.assertIn("panicked at rust/obs-preflight-ffi/build.rs:7:5", out)
         self.assertIn("cbindgen failed", out)
 
     def test_drops_noise(self):
-        out = self.run_script(LOG).stdout
+        out = self.run_script(LOG)
         self.assertNotIn("Compiling obs-util", out)
         self.assertNotIn("warning: unused variable", out)
 
     def test_shows_launcher_failure_reason_before_failed_edge_limit(self):
         reason = "zccache[err][D]: daemon unavailable at /cache/daemon.sock (cannot connect); refusing to run cc uncached."
         log = "".join(f"FAILED: [code=125] object-{i}.o\n{reason}\n" for i in range(213))
-        out = self.run_script(log).stdout
+        out = self.run_script(log)
         self.assertIn(reason, out)
         self.assertEqual(out.count(reason), 1)
+
+    def test_usage_error(self):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = self.module.main(["build_errors.py"])
+        self.assertEqual(code, 2)
+        self.assertIn("usage: build_errors.py BUILD_LOG", err.getvalue())
+
+    def test_shell_script_removed(self):
+        self.assertFalse(SHELL_SCRIPT.exists(), f"{SHELL_SCRIPT} should have been deleted")
 
 
 if __name__ == "__main__":
