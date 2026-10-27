@@ -22,3 +22,6 @@
 
 /* transition-stinger.c */
 #include "util/platform.h"
+/* transition-stinger-monitoring.h: the pre-33.0 audio monitoring migration
+ * the Stinger needs, shared with its test (#2638). */
+#include "transition-stinger-monitoring.h"

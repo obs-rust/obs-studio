@@ -1464,6 +1464,12 @@ area.
   [#373](https://github.com/obs-rust/obs-studio/issues/373), PR
   [#374](https://github.com/obs-rust/obs-studio/pull/374), upstream
   [obsproject/obs-studio#9755](https://github.com/obsproject/obs-studio/issues/9755).
+- A Stinger transition set to "Monitor Only" before 33.0 no longer plays
+  into the stream and recordings after the upgrade: it loads with its
+  monitoring restored and muted, the 33.0 form of monitor-only. A
+  transition saved by 33.0 is unchanged. *All*, pending merge. Issue
+  [#2638](https://github.com/obs-rust/obs-studio/issues/2638), upstream
+  [obsproject/obs-studio@646836a](https://github.com/obsproject/obs-studio/commit/646836a3118ca961653c69da1ece902bc3dd9f92).
 - Double-rate deinterlacing (Yadif 2x, Linear 2x, Discard 2x) shows every
   field when the source field rate is not the canvas rate, so 50i on a 60
   fps canvas is no longer choppy. *All*, 2026-10-12. Issue

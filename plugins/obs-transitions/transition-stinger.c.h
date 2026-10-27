@@ -134,8 +134,12 @@ static void stinger_update(void *data, obs_data_t *settings)
 		obs_source_set_muted(s->matte_source, true);
 	}
 
-	s->monitoring = obs_data_get_bool(settings, "enable_monitoring");
+	struct stinger_monitoring monitoring = stinger_monitoring_migration(
+		obs_data_has_user_value(settings, "enable_monitoring"),
+		obs_data_get_bool(settings, "enable_monitoring"), obs_data_get_int(settings, "audio_monitoring"));
+	s->monitoring = monitoring.enabled;
 	obs_source_set_monitoring_enabled(s->media_source, s->monitoring);
+	obs_source_set_muted(s->media_source, monitoring.mute);
 
 	s->fade_style = (enum fade_style)obs_data_get_int(settings, "audio_fade_style");
 
