@@ -39,6 +39,29 @@ def load() -> dict:
     return tomllib.loads(CI_TOML.read_text())
 
 
+def cargo_test_binaries() -> set[str]:
+    """Every integration-test target of the workspace, as `<crate>:test:<name>`.
+
+    Mirrors what Cargo would build for `cargo test`: an explicit `[[test]]`
+    entry, plus a `tests/*.rs` or `tests/*/main.rs` file when the crate does
+    not turn autotests off.
+    """
+    found = set()
+    for manifest in sorted((ROOT / "rust").glob("*/Cargo.toml")):
+        crate = tomllib.loads(manifest.read_text())
+        name = crate["package"]["name"]
+        for test in crate.get("test", []):
+            found.add(f"{name}:test:{test['name']}")
+        if not crate["package"].get("autotests", True):
+            continue
+        tests = manifest.parent / "tests"
+        for path in sorted(tests.glob("*.rs")):
+            found.add(f"{name}:test:{path.stem}")
+        for path in sorted(tests.glob("*/main.rs")):
+            found.add(f"{name}:test:{path.parent.name}")
+    return found
+
+
 class UvCacheWriterTest(unittest.TestCase):
     def test_uv_remote_saves_are_master_only_and_restores_remain_enabled(self):
         files = sorted(WORKFLOWS.glob("*.y*ml")) + sorted(GITHUB.glob("actions/*/action.y*ml"))
@@ -278,6 +301,17 @@ def triggers(path: Path) -> list[str]:
 
 
 class CiTomlTest(unittest.TestCase):
+    def test_declared_test_binaries_are_the_workspace_test_targets(self):
+        """[rust.tests].binaries is the test-binary budget (#962, RUST-005).
+
+        The testing policy allows one amalgamated test binary per category, so
+        a new integration-test target is a deliberate edit to ci.toml rather
+        than a binary that appears unnoticed. ci-lint needs the network, so
+        the list is checked here against the Cargo manifests instead.
+        """
+        declared = set(load().get("rust", {}).get("tests", {}).get("binaries", []))
+        self.assertEqual(declared, cargo_test_binaries())
+
     def test_disabled_store_has_no_retention_protection(self):
         prefixes = family_prefixes(load())
         for platform in ("linux-x64", "macos-arm64", "windows-x64"):
