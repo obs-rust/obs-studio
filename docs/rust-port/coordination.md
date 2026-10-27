@@ -30,7 +30,8 @@ The org-wide rules, commands and the definition of Ready are in
   Ready. Maintainers (and the coordinator) triage new issues with `/ready` or
   `/investigate`.
 - Comment on the issue: `Claiming: <item>` followed by a short numbered plan
-  (one PR per C file or unit) and when you expect to open the first PR.
+  (one PR per unit; a call-site-wide warning class is one unit in any number of
+  directories, see section 4) and when you expect to open the first PR.
 - The claim bot then **assigns you** and reacts 🚀 to your comment; you don't
   need any rights. It replies only to refuse: an issue that is not Ready, is
   blocked by an open issue, waits on a decision or is claimed by someone
@@ -108,6 +109,20 @@ The org-wide rules, commands and the definition of Ready are in
   master before merge. Check the base before asking for a merge.
 - **One unit per PR.** Branch names: `port/<unit>`, `fix/<issue>-<topic>`,
   `test/<unit>`, `infra/<topic>`.
+- **Mechanical warning work is one PR per warning class, in any number of
+  directories.** A call-site-wide compiler warning (#516) is a single class:
+  fix it in one PR, with the flag that surfaces it removed in the same change,
+  and put a findings table grouped by directory in the description so the diff
+  can still be reviewed in slices. A per-directory series is not a rule that
+  appears anywhere else in these docs, it costs a full `Pull` run (~35 min)
+  plus a merge-queue run per directory, and every flag-list edit invalidates
+  the compile cache (#2689). Measure the class with
+  `uv run ci/warning_findings.py --compdb <tree compdb> --drop <the -Wno-* pin>`:
+  it replays only the affected translation units with `-fsyntax-only` and
+  prints the findings grouped by directory, which is both the RED evidence and
+  the inner loop. The limits do not move — explicit casts or widened types
+  only, no behaviour change, no per-file `-Wno-*`, never an existing C test or
+  public header, and the pin goes away in the same PR as the fixes.
 - **Commit order:** characterization test (if the unit had none), then RED
   (failing test or `todo!()` core), then GREEN. The PR description names the RED
   commit, how it fails (test names or counts), and the GREEN result.
