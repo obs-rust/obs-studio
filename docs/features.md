@@ -2183,7 +2183,7 @@ area.
   peak level or the audio settings, or asks whether NV12 or P010 texture
   output is active, before OBS has started or after it has shut down no
   longer crashes; it gets 300 and 1000 nits, "no audio" and "not active",
-  as it already did with no video or audio set up. *All*, 2026-10-27.
+  as it already did with no video or audio set up. *All*, pending merge.
   Issue [#2566](https://github.com/obs-rust/obs-studio/issues/2566).
 - An SDR white level or HDR nominal peak level of 0, below 0, NaN or
   infinite (from an edited profile, a plugin or a script) no longer makes
