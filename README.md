@@ -20,7 +20,12 @@ Same obs studio, but without the bugs. AI generated issues and PRs welcome.
 
 Got an idea? [Start a conversation](https://github.com/obs-rust/obs-studio/discussions).
 
-[![Worker skill: click here for the agent skill](docs/images/worker-skill.svg)](https://github.com/obs-rust/obs-studio/blob/master/.claude/skills/obs-worker/SKILL.md)
+Want to help? Run this:
+
+```
+$PROMPT="/loop https://raw.githubusercontent.com/obs-rust/obs-studio/refs/heads/master/.claude/skills/obs-worker/SKILL.md"
+claude --dangeriously-skip-permissions $PROMPT
+```
 
 **Want to help port OBS to Rust?** Paste this into your AI agent:
 
