@@ -38,11 +38,10 @@ Set-Location $RepoRoot
 # cmocka.dll must be on PATH for the test executables.
 $env:PATH = "$CMockaPrefix/bin;$env:PATH"
 
-# ctest reports a crashed test only as "Exception: SegFault". Run each failed
-# test again under cdb and print the faulting stack, so a Windows-only crash
-# can be diagnosed from the log. An intermittent crash may not recur on the
-# first run, so retry until cdb reports an exception (#2543).
-function Show-CrashStacks([string]$build) {
+# ctest reports a crashed test only as "Exception: SegFault". WER saves a
+# dump of the *original* faulting process: #2543 did not reproduce in 20
+# isolated cdb reruns. The cdb rerun remains a fallback for tests without dumps.
+function Show-CrashStacks([string]$build, [string]$dumpDirectory) {
   $failedLog = Join-Path $build 'Testing/Temporary/LastTestsFailed.log'
   if (-not (Test-Path $failedLog)) { return }
   $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/Debuggers/x64/cdb.exe'
@@ -61,16 +60,19 @@ function Show-CrashStacks([string]$build) {
     if (-not $exe) { continue }
     Write-Host "== crash stack: $name"
     $env:PATH = $runPath
-    $out = @()
-    for ($attempt = 1; $attempt -le 20; $attempt++) {
-      $out = & $kits -g -G -lines -c '.ecxr;kn 40;q' $exe.FullName 2>&1
-      if ($out -match '\(([0-9a-f]+)\): .*(exception|violation)|code c0000') {
-        Write-Host "crashed on attempt $attempt"
-        break
-      }
+    $dump = if ($dumpDirectory) {
+      Get-ChildItem -Path $dumpDirectory -Filter "$name*.dmp" -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
     }
-    if ($attempt -gt 20) { Write-Host 'no crash in 20 runs under cdb' }
-    $out | Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
+    if ($dump) {
+      Write-Host "analyzing original crash dump: $($dump.Name)"
+      & $kits -z $dump.FullName -lines -c '.ecxr;kn 40;q' 2>&1 |
+        Select-Object -Last 100 | ForEach-Object { Write-Host $_ }
+    } else {
+      Write-Host 'no crash dump; rerunning once under cdb'
+      & $kits -g -G -lines -c '.ecxr;kn 40;q' $exe.FullName 2>&1 |
+        Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
+    }
   }
 }
 
@@ -249,7 +251,17 @@ foreach ($test in $testPlan.tests) {
 foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
   $dll = Get-Item $selected
   $savedPath = $env:PATH
+  $dumpDirectory = $null
+  $dumpKey = 'HKCU:\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\test_scene_canvas_characterization.exe'
   try {
+    if ($selected -eq $nativeArtifacts.core -and -not (Test-Path $dumpKey)) {
+      $dumpDirectory = Join-Path $nativeOutput 'crash-dumps'
+      New-Item -ItemType Directory -Path $dumpDirectory -Force | Out-Null
+      New-Item -Path $dumpKey -Force | Out-Null
+      New-ItemProperty -Path $dumpKey -Name DumpFolder -Value $dumpDirectory -PropertyType ExpandString | Out-Null
+      New-ItemProperty -Path $dumpKey -Name DumpType -Value 2 -PropertyType DWord | Out-Null
+      New-ItemProperty -Path $dumpKey -Name DumpCount -Value 1 -PropertyType DWord | Out-Null
+    }
     $nativePthreads = Split-Path $nativeArtifacts.pthreads
     $env:PATH = "$($dll.DirectoryName);$nativePthreads;$($avcodec.DirectoryName);$savedPath"
     Write-Host "== Cargo loader identity: $($dll.FullName)"
@@ -280,10 +292,11 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
       $ctestExit = $LASTEXITCODE
     }
     if ($ctestExit -ne 0) {
-      Show-CrashStacks $build
+      Show-CrashStacks $build $dumpDirectory
       throw "Cargo core CTest failed ($ctestExit)"
     }
   } finally {
+    if ($dumpDirectory) { Remove-Item -Path $dumpKey -Force }
     $env:PATH = $savedPath
   }
 }
