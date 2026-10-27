@@ -410,9 +410,11 @@ jobs:
       - name: Run through appimageTools.wrapType2 on NixOS 🐳
         run: |
           # bubblewrap (inside wrapType2) needs user namespaces: --privileged.
+          # The lane's checks live in Python, run through uv with the nix shell's
+          # interpreter, as the other nix shells here run gcc and Xvfb.
           docker run --rm --privileged -v "$PWD:/work" -w /work \
             nixos/nix@sha256:e623d73af9cac82d1b50784c83e0cf2a4b83bfd2cfe8d5b67809a2fc94e043ac \
-            bash build-aux/appimage/test-appimage-nixos.sh OBS-Studio-*-linux-x86_64.AppImage results/nixos
+            nix --extra-experimental-features "nix-command flakes" shell "github:NixOS/nixpkgs/c5c4a43b0e8056328ec4529f735cabdb8f1942bb#uv" "github:NixOS/nixpkgs/c5c4a43b0e8056328ec4529f735cabdb8f1942bb#python3" --command uv run --no-project build-aux/appimage/test_appimage_nixos.py OBS-Studio-*-linux-x86_64.AppImage results/nixos
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
