@@ -426,7 +426,6 @@ void audio_monitor_reset(struct audio_monitor *monitor)
 	ReleaseSRWLockExclusive(&monitor->playback_mutex);
 
 	if (success) {
-		obs_source_t *source = monitor->source;
 		audio_monitor_free(monitor);
 		*monitor = new_monitor;
 		audio_monitor_init_final(monitor);
