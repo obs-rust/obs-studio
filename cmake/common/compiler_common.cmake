@@ -93,7 +93,11 @@ if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
 endif()
 
 if(NOT DEFINED CMAKE_COMPILE_WARNING_AS_ERROR)
-  set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+  # Scratch branch only (wip/2626-w4-enumerate): keep the /W4 level but do not
+  # turn warnings into errors, so one Windows build enumerates every remaining
+  # finding instead of stopping at the first one per project. Reverted before
+  # anything lands on fix/2626-msvc-w4.
+  set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
 endif()
 
 # Enable interprocedural optimization
