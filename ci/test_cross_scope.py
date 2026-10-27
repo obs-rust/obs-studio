@@ -60,7 +60,7 @@ class CrossScopeTest(unittest.TestCase):
             self.assertEqual(self.targets(path), "mac-arm64", path)
 
     def test_the_check_itself_selects_both(self):
-        for path in ("cmake/cross/CMakeLists.txt", "cmake/cross/docker.sh", "cmake/common/soldr.cmake"):
+        for path in ("cmake/cross/CMakeLists.txt", "cmake/cross/docker.py", "cmake/common/soldr.cmake"):
             self.assertEqual(self.targets(path), "mac-arm64,win-x64", path)
 
     def test_pr_1292_selects_both(self):

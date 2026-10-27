@@ -205,7 +205,7 @@ cmake --build build_cross_win-x64
 cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64, cross-all
 ```
 
-- **Only Docker on the host:** `cmake/cross/docker.sh mac-arm64 win-x64` runs the same check in a container (through `ci/docker-task.sh`).
+- **Only Docker on the host:** `uv run --script cmake/cross/docker.py mac-arm64 win-x64` runs the same check in a container (through `ci/docker-task.sh`).
   - The checkout is a copy-on-write overlay at `/src`.
   - Writable caches are named volumes the next run reattaches: `/build` per checkout; soldr's LLVM and SDKs and the prebuilt deps shared.
   - `--clean` starts the build volume over.

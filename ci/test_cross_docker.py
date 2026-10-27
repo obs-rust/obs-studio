@@ -11,6 +11,7 @@ started.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -22,7 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "cmake" / "cross" / "docker.py"
 DOCS = ROOT / "docs" / "ci-tooling.md"
 
-BASH_STUB = 'printf \'%s\\n\' "$@" >"$CALLS"\n'
+# The stub records argv as JSON, so a container command stays one argument.
+BASH_STUB = ("import json, os, sys\n"
+             "open(os.environ['CALLS'], 'w').write(json.dumps(sys.argv[1:]))\n")
 
 
 class CrossDockerTest(unittest.TestCase):
@@ -33,7 +36,7 @@ class CrossDockerTest(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         stub = self.bin / "bash"
-        stub.write_text("#!/bin/sh\n" + BASH_STUB)
+        stub.write_text("#!/usr/bin/env -S uv run --script\n" + BASH_STUB)
         stub.chmod(0o755)
         self.calls = self.root / "calls.log"
 
@@ -43,7 +46,7 @@ class CrossDockerTest(unittest.TestCase):
         return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=environment)
 
     def argv(self) -> list[str]:
-        return self.calls.read_text(encoding="utf-8").splitlines()
+        return json.loads(self.calls.read_text(encoding="utf-8"))
 
     def test_every_alias_is_built_in_one_container(self) -> None:
         result = self.run_script("mac-arm64", "win-x64")
@@ -72,8 +75,8 @@ class CrossDockerTest(unittest.TestCase):
         self.assertRegex(soldr, r"^\d+\.\d+\.\d+$")
 
     def environment(self, argv: list[str], name: str) -> str:
-        values = [argv[i + 1] for i, arg in enumerate(argv) if arg == "-e" or arg == "--env"]
-        return next(value.split("=", 1)[1] for value in values if value.startswith(name + "="))
+        value = next(value for value in argv if value.startswith(name + "="))
+        return value.split("=", 1)[1]
 
     def test_clean_and_wait_reach_the_task_runner(self) -> None:
         self.assertEqual(self.run_script("--clean", "--wait", "win-x64").returncode, 0)
@@ -86,7 +89,8 @@ class CrossDockerTest(unittest.TestCase):
         extra = "-DOBS_UNITY_BUILD_BATCH_SIZE=0"
         self.assertEqual(self.run_script("win-x64", OBS_CROSS_CMAKE_ARGS=extra).returncode, 0)
         self.assertEqual(self.environment(self.argv(), "OBS_CROSS_CMAKE_ARGS"), extra)
-        self.assertIn(extra, self.argv()[self.argv().index("-c") + 1])
+        # The container's shell expands it: the command only names the variable.
+        self.assertIn("${OBS_CROSS_CMAKE_ARGS:-}", self.argv()[self.argv().index("-c") + 1])
 
     def test_usage_is_printed_without_an_alias_or_for_an_option(self) -> None:
         for args in ((), ("--bogus", "win-x64")):
