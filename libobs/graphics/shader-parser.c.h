@@ -424,7 +424,8 @@ static inline int sp_parse_param_assign_intfloat(struct shader_parser *sp, struc
 		long l = strtol(sp->cfp.cur_token->str.array, NULL, 10);
 		if (is_negative)
 			l = -l;
-		da_push_back_array(param->default_val, (uint8_t *)&l, sizeof(long));
+		int i = (int)l;
+		da_push_back_array(param->default_val, (uint8_t *)&i, sizeof(int));
 	}
 
 	return PARSE_SUCCESS;

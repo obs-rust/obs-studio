@@ -949,7 +949,8 @@ static inline int ep_parse_param_assign_intfloat(struct effect_parser *ep, struc
 		long l = strtol(ep->cfp.cur_token->str.array, NULL, 10);
 		if (is_negative)
 			l = -l;
-		da_push_back_array(param->default_val, (uint8_t *)&l, sizeof(long));
+		int i = (int)l;
+		da_push_back_array(param->default_val, (uint8_t *)&i, sizeof(int));
 	}
 
 	return PARSE_SUCCESS;
@@ -961,12 +962,12 @@ static inline int ep_parse_param_assign_bool(struct effect_parser *ep, struct ep
 		return PARSE_EOF;
 
 	if (cf_token_is(&ep->cfp, "true")) {
-		long l = 1;
-		da_push_back_array(param->default_val, (uint8_t *)&l, sizeof(long));
+		int i = 1;
+		da_push_back_array(param->default_val, (uint8_t *)&i, sizeof(int));
 		return PARSE_SUCCESS;
 	} else if (cf_token_is(&ep->cfp, "false")) {
-		long l = 0;
-		da_push_back_array(param->default_val, (uint8_t *)&l, sizeof(long));
+		int i = 0;
+		da_push_back_array(param->default_val, (uint8_t *)&i, sizeof(int));
 		return PARSE_SUCCESS;
 	}
 

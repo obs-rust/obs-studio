@@ -1643,6 +1643,11 @@ area.
   slideshows are unchanged. *All*, pending merge. Issue
   [#2279](https://github.com/obs-rust/obs-studio/issues/2279), upstream
   [obsproject/obs-studio#14076](https://github.com/obsproject/obs-studio/issues/14076).
+- Shader effects that give an `int` or `bool` parameter a default value (in
+  a plugin's shader filter or a custom `.effect` file) now draw with that
+  default on Linux and macOS, instead of 0 or false with a "Size of shader
+  param does not match" error in the log. *Linux, macOS*, 2026-10-27.
+  Issue [#2548](https://github.com/obs-rust/obs-studio/issues/2548).
 
 ### Scenes and UI
 
