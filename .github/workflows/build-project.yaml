@@ -805,7 +805,7 @@ jobs:
           # before flatpak-builder enters its network-isolated build sandbox.
           cmake -P cmake/common/prepare-flatpak-soldr.cmake
       - name: Vendor Flatpak Cargo sources
-        run: build-aux/prepare-flatpak-rust.sh
+        run: uv run --script build-aux/prepare_flatpak_rust.py
 
       - name: Configure Flatpak Compiler Diagnostics
         id: flatpak-compiler-diagnostic-config
@@ -1127,7 +1127,7 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           cmake -P cmake/common/prepare-flatpak-soldr.cmake
       - name: Vendor Flatpak Compiler Consumer Sources
-        run: build-aux/prepare-flatpak-rust.sh
+        run: uv run --script build-aux/prepare_flatpak_rust.py
       - name: Restore Dependency State Before Compiler Artifact
         if: ${{ !inputs.flatpak-dependency-transfer-probe }}
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5

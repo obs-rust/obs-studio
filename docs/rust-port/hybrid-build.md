@@ -45,7 +45,7 @@ and bundled `OBS_SYS_C_ROLLBACK=1` are explicit reference/rollback entry points.
 
 ## Flatpak and packaged validation
 
-Before flatpak-builder, run `build-aux/prepare-flatpak-rust.sh` to vendor the
+Before flatpak-builder, run `build-aux/prepare_flatpak_rust.py` to vendor the
 locked Cargo inputs. The existing workflow does this before entering the offline
 sandbox. The manifest supplies checksum-pinned Rust and Corrosion, and retains
 Flatpak's existing application identity through `OBS_BRAND_RUST=OFF`.
