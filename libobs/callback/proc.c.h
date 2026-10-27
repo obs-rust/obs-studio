@@ -111,7 +111,10 @@ bool proc_handler_call(proc_handler_t *handler, const char *name, calldata_t *pa
 
 	pthread_mutex_lock(&handler->mutex);
 	struct proc_info *info = getproc(handler, name);
-	struct proc_info info_copy;
+	/* Copied under the lock only when `info` is set, and used only after the
+	 * `!info` early return; MSVC cannot correlate the two: C4701 at /W4.
+	 * Zero-initializing cannot be observed. */
+	struct proc_info info_copy = {0};
 	if (info)
 		info_copy = *info;
 	pthread_mutex_unlock(&handler->mutex);
