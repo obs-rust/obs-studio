@@ -23,7 +23,7 @@ Lanes:
 
 Cargo runs with SOLDR_RUSTC_WRAPPER=none (soldr's zccache has replayed stale
 rustc output; #134). Set OBS_GATE_ZCCACHE=1 to keep the cache locally.
-  tier2-linux  rust/tools/linux-validate/run.sh: libobs + cmocka with
+  tier2-linux  rust/tools/linux-validate/run.py: libobs + cmocka with
                libobs and libobs-c-reference in Docker, exported-symbol diff.
 """
 
@@ -742,7 +742,7 @@ def test_diff(base: str) -> None:
 
 
 def lane_tier2_linux(fix: bool) -> None:
-    run(["bash", "rust/tools/linux-validate/run.sh"])
+    run([sys.executable, "rust/tools/linux-validate/run.py"])
 
 
 LANES = {"lint": lane_lint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release, "tier2-linux": lane_tier2_linux}

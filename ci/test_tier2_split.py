@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
-RUN = ROOT / "rust" / "tools" / "linux-validate" / "run.sh"
+RUN = ROOT / "rust" / "tools" / "linux-validate" / "run.py"
 
 
 def _unused_job(text: str, name: str) -> str:

@@ -51,7 +51,7 @@ class ValidatePathsTest(unittest.TestCase):
         self.text = (HERE / "validate.sh").read_text(encoding="utf-8")
 
     def test_roots_are_configurable(self):
-        # /ro: run.sh mounts the checkout read-only there and builds out of source.
+        # /ro: run.py mounts the checkout read-only there and builds out of source.
         self.assertIn('SRC="${OBS_TIER2_SRC:-/ro}"', self.text)
         self.assertIn('BUILD="${OBS_TIER2_BUILD:-/build}"', self.text)
 

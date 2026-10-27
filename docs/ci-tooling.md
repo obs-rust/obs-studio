@@ -303,7 +303,7 @@ job's `check-event` and `ci-mode` dependencies unsupported and skips Tier 2
 `./unittest` (the Docker lane below) locally.
 
 The local gate's Tier 2 lane (`./unittest`) uses
-`rust/tools/linux-validate/run.sh` and `ci/docker_task.py` (reached through the
+`rust/tools/linux-validate/run.py` and `ci/docker_task.py` (reached through the
 `ci/docker-task.sh` shim), the current stand-in
 for zackees/bosn#666. It has per-checkout build volumes and container ownership,
 shared compiler/crate caches, and explicit storage budgets. Run local Docker
@@ -621,7 +621,7 @@ of a past window. See the [2026-10-17 audit](ci-cache-audit-2026-10-17.md).
 Each gap is a step toward the full protocol, and a good issue to pick up:
 
 - **Docker through bosn.** The Tier 2 Linux harness
-  (`rust/tools/linux-validate/run.sh`) drives Docker directly, so concurrent
+  (`rust/tools/linux-validate/run.py`) drives Docker directly, so concurrent
   local gates run unmanaged. Running it under bosn's bounded runner slots is
   the biggest single relief for shared machines. (The AppImage build already
   runs under bosn: `bosn run --task appimage`.)

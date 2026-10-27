@@ -86,7 +86,7 @@ cannot prove both, so every ported unit carries the four tiers below.
   migration; their exclusion from production does not end parity coverage.
 - Hybrid `libobs` MUST export exactly the C reference's dynamic symbols:
   no missing C symbols or leaked Rust internals. Keep platform export controls.
-- Run `rust/tools/linux-validate/run.sh` to check both requirements. It builds
+- Run `rust/tools/linux-validate/run.py` to check both requirements. It builds
   once in Docker, runs the cmocka tests against each libobs, and diffs the
   exported symbols. PR CI's Tier 2 jobs run it and satisfy this requirement;
   paste its summary into the PR only if you ran it locally.
@@ -119,7 +119,7 @@ cannot prove both, so every ported unit carries the four tiers below.
   `-unexported_symbols_list`.
 - CI: `.github/workflows/build-project.yaml` runs the Rust tests on Linux,
   macOS and Windows (job `rust-tests`). It runs
-  `rust/tools/linux-validate/run.sh` (job `rust-linux-tier2`) and
+  `rust/tools/linux-validate/run.py` (job `rust-linux-tier2`) and
   `rust/tools/tier2-validate/validate.sh` / `validate.ps1` on macOS and
   Windows (job `rust-tier2`). Each OFF/ON pair must export identical symbol
   sets.
@@ -166,7 +166,7 @@ cannot prove both, so every ported unit carries the four tiers below.
 2. **GREEN:** implement the safe Rust core until Tier 1 passes.
 3. Add the C shim, the layout test, and the Tier 3 differential test.
 4. Move the C file's `#include` into a ported group (`libobs/build/libobs.ported-*+.h.c`,
-   [BUILD.md](../../BUILD.md)) and run `rust/tools/linux-validate/run.sh`: the unchanged C tests pass against
+   [BUILD.md](../../BUILD.md)) and run `rust/tools/linux-validate/run.py`: the unchanged C tests pass against
    `libobs-c-reference` and hybrid `libobs`, and the exported symbol sets are identical.
 5. Record every intentional behavior difference in the tracking issue.
 
@@ -268,7 +268,7 @@ Tier 2 checks.
   Check it with the Tier 2 harness, which reruns the given tests in both the
   OFF and ON builds after the normal run, stopping at the first failure
   (`ctest --repeat until-fail:N`):
-  `rust/tools/linux-validate/run.sh --repeat 100 --tests 'test_threading|test_task'`
+  `rust/tools/linux-validate/run.py --repeat 100 --tests 'test_threading|test_task'`
   (`tier2-validate/validate.sh` takes the same options on macOS;
   `validate.ps1 -Repeat 100 -Tests '...'` on Windows).
 - Tier 3 parity for I/O code runs the oracle and the Rust shim against
@@ -495,7 +495,7 @@ timing evidence before claiming a speed improvement.
   soldr release supports in its own `rust-toolchain.toml` (zackees/soldr, at
   that tag). Never pin beyond it; bump the toolchain only together with, and
   after, a soldr bump that supports it. The Tier 2 Docker image installs the
-  same pinned version (`rust/tools/linux-validate/run.sh`). `./lint` enforces
+  same pinned version (`rust/tools/linux-validate/run.py`). `./lint` enforces
   this: `ci/test_toolchain.py` holds the expected version
   (`SOLDR_SUPPORTED_RUST`) and fails if `rust-toolchain.toml`, the MSRV, or
   any Dockerfile, workflow or doc pin differs.

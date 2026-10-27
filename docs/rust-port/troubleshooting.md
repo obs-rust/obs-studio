@@ -59,7 +59,7 @@ missing or too-old libraries.
 needs newer versions (FFmpeg 8.0) than many distributions ship.
 
 **Fix:** Tier 2 runs in Docker. Use `./unittest` (or
-`rust/tools/linux-validate/run.sh`), which builds in an image with the right
+`rust/tools/linux-validate/run.py`), which builds in an image with the right
 dependencies. Don't run Tier 2 against host packages.
 
 ## `Cannot connect to the Docker daemon`

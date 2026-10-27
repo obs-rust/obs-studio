@@ -31,7 +31,7 @@ VERSION = "1.15.5"
 # and never ccache.
 LINUX_BUILD_FILES = [
     TOOLS / "linux-validate" / "Dockerfile",
-    TOOLS / "linux-validate" / "run.sh",
+    TOOLS / "linux-validate" / "run.py",
     TOOLS / "linux-validate" / "validate.sh",
     TOOLS / "sanitize" / "sanitize.sh",
     TOOLS / "sanitize" / "shell.nix",
