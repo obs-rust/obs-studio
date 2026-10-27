@@ -7,7 +7,7 @@ Since the build/test split (#975) the build job plans the shards from
 ctest-cost-<mode>.txt in the Tier 2 ccache, but only shards run ctest and
 they kept no cache, so the cost data froze at its last pre-split value and
 new or slower tests were planned at the 1 s default. Each shard now uploads
-its CTestCostData.txt, the done job merges them per mode (merge-costs.sh)
+its CTestCostData.txt, the done job merges them per mode (merge_costs.py)
 and caches the result on master, and the build job restores it.
 """
 
@@ -16,12 +16,13 @@ from __future__ import annotations
 import re
 import itertools
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MERGE = ROOT / "rust" / "tools" / "linux-validate" / "merge-costs.sh"
+MERGE = ROOT / "rust" / "tools" / "linux-validate" / "merge_costs.py"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
 CHECK = ROOT / "rust" / "tools" / "linux-validate" / "check-costs.sh"
@@ -41,7 +42,7 @@ def merge(*files: str) -> str:
         p = d / f"{i}.txt"
         p.write_text(body)
         paths.append(str(p))
-    r = subprocess.run(["bash", str(MERGE), *paths], capture_output=True, text=True)
+    r = subprocess.run([sys.executable, str(MERGE), *paths], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     return r.stdout
 
@@ -123,7 +124,7 @@ class WorkflowTest(unittest.TestCase):
     def test_done_job_merges_and_caches_on_master(self):
         j = job("rust-linux-tier2-done")
         self.assertIn("pattern: tier2-cost*", j)
-        self.assertIn("merge-costs.sh", j)
+        self.assertIn("merge_costs.py", j)
         self.assertIn("actions/cache/save@", j)
         self.assertIn("key: tier2-ctest-cost-${{ github.sha }}", j)
 
@@ -158,7 +159,8 @@ class WorkflowTest(unittest.TestCase):
                             "test_one 1 0.2\n---\n"
                         )
                 # Resolve repo scripts while retaining an isolated output dir.
-                script_here = script.replace("bash rust/", f"bash {ROOT}/rust/")
+                script_here = script.replace("uv run --script rust/", f"{sys.executable} {ROOT}/rust/")
+                script_here = script_here.replace("bash rust/", f"bash {ROOT}/rust/")
                 result = subprocess.run(
                     ["bash", "-e", "-c", script_here],
                     cwd=root,
