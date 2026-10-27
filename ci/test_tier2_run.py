@@ -1,9 +1,9 @@
 #!/usr/bin/env -S uv run --script
-"""Tests for rust/tools/linux-validate/run.sh (obs-rust/obs-studio#135).
+"""Tests for rust/tools/linux-validate/run.py (obs-rust/obs-studio#135, #962).
 
     uv run python -m unittest ci/test_tier2_run.py
 
-run.sh is executed from two throwaway checkouts with stub `docker` and `git`
+run.py is executed from two throwaway checkouts with stub `docker` and `git`
 commands on PATH that record their arguments, so no container is started.
 """
 
@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -66,7 +67,7 @@ class Tier2VolumeTest(unittest.TestCase):
         self.last_log = log
         env = {k: v for k, v in os.environ.items() if not k.startswith(("OBS_TIER2", "OBS_CCACHE", "OBS_ZCCACHE"))}
         env.update(PATH=f"{self.bin}:{env['PATH']}", STUB_LOG=str(log), STUB_STATE="", XDG_STATE_HOME=str(self.tmp / "state"), **(extra_env or {}))
-        subprocess.run(["bash", str(repo / "rust/tools/linux-validate/run.sh"), *getattr(self, "run_args", [])], env=env, check=True)
+        subprocess.run([sys.executable, str(repo / "rust/tools/linux-validate/run.py"), *getattr(self, "run_args", [])], env=env, check=True)
         # The task's own run carries --name; helper runs (the soldr tools
         # fetch, du for volume budgets) don't.
         runs = [line.split() for line in log.read_text().splitlines() if line.startswith("run ") and " --name " in line]
@@ -117,7 +118,7 @@ class Tier2VolumeTest(unittest.TestCase):
         log = self.tmp / f"{repo.name}-direct.log"
         env = {k: v for k, v in os.environ.items() if not k.startswith(("OBS_TIER2", "OBS_CCACHE", "OBS_ZCCACHE"))}
         env.update(PATH=f"{self.bin}:{env['PATH']}", STUB_LOG=str(log), STUB_STATE=state, XDG_STATE_HOME=str(self.tmp / "state"))
-        r = subprocess.run(["bash", str(repo / "rust/tools/linux-validate/run.sh"), *args], env=env, capture_output=True, text=True)
+        r = subprocess.run([sys.executable, str(repo / "rust/tools/linux-validate/run.py"), *args], env=env, capture_output=True, text=True)
         return r, log.read_text() if log.exists() else ""
 
     def test_second_run_of_a_checkout_refuses_while_one_runs(self):
@@ -193,6 +194,25 @@ class Tier2VolumeTest(unittest.TestCase):
         builds = [line.split() for line in self.last_log.read_text().splitlines() if line.startswith("build ")]
         self.assertEqual(len(builds), 1, self.last_log.read_text())
         self.assertIn("RUST_TOOLCHAIN=1.2.3", builds[0])
+
+
+class PortedRunTest(unittest.TestCase):
+    """run.sh is gone; the port is the module (#962 GEN-005)."""
+
+    def test_shell_script_is_gone(self):
+        self.assertFalse((TOOLS / "run.sh").exists(), "run.sh is the ported script")
+
+    def test_no_exception_is_left_for_the_ported_script(self):
+        ci_toml = (ROOT / "ci.toml").read_text(encoding="utf-8")
+        self.assertNotIn(
+            "rust/tools/linux-validate/run.sh",
+            ci_toml,
+            "the GEN-005 exception for run.sh is still in ci.toml",
+        )
+
+    def test_the_local_gate_lane_runs_the_python(self):
+        gate = (ROOT / "ci" / "local_gate.py").read_text(encoding="utf-8")
+        self.assertIn("rust/tools/linux-validate/run.py", gate)
 
 
 class StaleBuildTest(unittest.TestCase):
