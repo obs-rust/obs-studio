@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""Tests for rust/tools/linux-validate/drop-depless-objects.sh (#2244).
+"""Tests for rust/tools/linux-validate/drop_depless_objects.py (#2244).
 
     uv run python -m unittest ci/test_tier2_depless_objects.py
 
@@ -17,13 +17,14 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "rust" / "tools" / "linux-validate" / "drop-depless-objects.sh"
+SCRIPT = ROOT / "rust" / "tools" / "linux-validate" / "drop_depless_objects.py"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
 
 DEPS = """\
@@ -59,7 +60,7 @@ class DropDeplessObjects(unittest.TestCase):
                 obj.parent.mkdir(parents=True, exist_ok=True)
                 obj.write_text("object")
         env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}")
-        result = subprocess.run(["bash", str(SCRIPT), str(build)], env=env, capture_output=True, text=True)
+        result = subprocess.run([sys.executable, str(SCRIPT), str(build)], env=env, capture_output=True, text=True)
         return result, build
 
     def test_objects_with_zero_deps_are_deleted(self) -> None:
@@ -79,9 +80,9 @@ class DropDeplessObjects(unittest.TestCase):
 
     def test_validate_runs_it_before_the_build(self) -> None:
         text = VALIDATE.read_text(encoding="utf-8")
-        guard = text.find('drop-depless-objects.sh "$build"')
+        guard = text.find('drop_depless_objects.py "$build"')
         build = text.find('cmake --build "$build" --target "${tier2_targets[@]}"')
-        self.assertGreater(guard, 0, "validate.sh does not run drop-depless-objects.sh")
+        self.assertGreater(guard, 0, "validate.sh does not run drop_depless_objects.py")
         self.assertLess(guard, build)
 
 
