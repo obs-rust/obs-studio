@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 """Bootstrap the native obs-build tool, then enter it outside Cargo/Soldr's
-process tree. `./native-build <args>` runs this file through uv.
+process tree. The repository root command is this module (GEN-005, #962); the
+former `./native-build` shell shim is gone.
 
     uv run --script ci/native_build.py --help
 """

@@ -24,8 +24,8 @@ parity, release readiness or completion of the full conversion in #1332.
 From a native Linux checkout with the existing native build dependencies installed:
 
 ```sh
-./native-build build --profile relwithdebinfo
-./native-build --help
+uv run --script ci/native_build.py build --profile relwithdebinfo
+uv run --script ci/native_build.py --help
 ```
 
 The launcher builds the `obs-build` tool through `soldr cargo`, then runs it

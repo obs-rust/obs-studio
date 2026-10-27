@@ -2336,9 +2336,11 @@ area.
 
 ## Development builds
 
-- **Cargo application command.** `./native-build` builds and stages a Linux hybrid
-  OBS development application with selectable profiles and plugin features,
-  including default NVENC support and its capability helper.
+- **Cargo application command.** `uv run --script ci/native_build.py` builds and
+  stages a Linux hybrid OBS development application with selectable profiles and
+  plugin features, including default NVENC support and its capability helper.
+  The `./native-build` shell shim was removed (GEN-005, #962); the module is the
+  entry point.
   *Linux*, 2026-10-22. Issue [#1332](https://github.com/obs-rust/obs-studio/issues/1332),
   PRs [#1725](https://github.com/obs-rust/obs-studio/pull/1725),
   [#1772](https://github.com/obs-rust/obs-studio/pull/1772).

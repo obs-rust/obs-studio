@@ -1,4 +1,0 @@
-#!/bin/sh
-# Build the native obs-build tool, then enter it outside Cargo/Soldr's process
-# tree (ci/native_build.py). The logic lives in Python (GEN-005).
-exec uv run --script "$(dirname "$0")/ci/native_build.py" "$@"
