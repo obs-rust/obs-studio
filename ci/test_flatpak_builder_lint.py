@@ -92,6 +92,28 @@ class ActionHasNoShell(unittest.TestCase):
         ]
         self.assertEqual(inline, [], "port the remaining run: block to ci/flatpak_builder_lint.py")
 
+    def test_action_locates_the_module_from_the_container_side(self):
+        """The action must not hand the module a runner-side path.
+
+        `github.workspace` in the `run:` text is the runner's host path
+        (`/home/runner/work/<repo>/<repo>`). In a job container the workspace is
+        mounted at `/__w/<repo>/<repo>`, so `uv` cannot spawn the file and the
+        step dies with `Failed to spawn: ... (os error 2)` -- the Flatpak lane
+        did exactly that (#2700 follow-up). `GITHUB_ACTION_PATH` is the env
+        value the shell sees container-side, which is why the old inline shell
+        used it for `exceptions.json`.
+        """
+        text = ACTION.read_text()
+        self.assertNotIn("${{ github.workspace }}/ci/", text)
+        self.assertNotIn("${{ github.action_path }}", text)
+        self.assertEqual(
+            text.count('repo="${GITHUB_ACTION_PATH%/.github/actions/flatpak-builder-lint}"'),
+            2,
+            text,
+        )
+        self.assertEqual(text.count('"${repo}/ci/flatpak_builder_lint.py"'), 2, text)
+        self.assertIn('"${GITHUB_ACTION_PATH}/exceptions.json"', text)
+
     def test_action_calls_the_module(self):
         text = ACTION.read_text()
         self.assertEqual(text.count("ci/flatpak_builder_lint.py"), 2, text)
