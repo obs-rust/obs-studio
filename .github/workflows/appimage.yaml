@@ -362,7 +362,7 @@ jobs:
       - name: Check the recording 🎞️
         run: |
           command -v ffmpeg >/dev/null || sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
-          build-aux/appimage/verify-recording.sh --self-test
+          uv run --no-project build-aux/appimage/verify_recording.py --self-test
           # (test-appimage.sh allows a run without the test producers only on
           # Ubuntu 22.04, and fails anywhere else)
           for scenario in ${{ matrix.scenarios }}; do
@@ -370,7 +370,7 @@ jobs:
             if [ -f "results/$scenario/recording-skipped.txt" ]; then
               echo "::notice::no recording on ${{ matrix.image }} ($scenario): $(cat "results/$scenario/recording-skipped.txt")"
             else
-              build-aux/appimage/verify-recording.sh "results/$scenario/recording.mkv"
+              uv run --no-project build-aux/appimage/verify_recording.py "results/$scenario/recording.mkv"
             fi
           done
 

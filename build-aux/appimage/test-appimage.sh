@@ -41,7 +41,7 @@
 #      ships, and start every source. It must load no plugin from the host's
 #      system plugin directories, where a distribution's OBS keeps its own, and
 #      must load the plugins in the user's folders. The recording is left in
-#      <output-dir> for verify-recording.sh. (Every continuous build before
+#      <output-dir> for verify_recording.py. (Every continuous build before
 #      obs-rust/obs-studio#426 crashed here on start.) Only on Ubuntu 22.04,
 #      whose PipeWire 0.3.x cannot run the test producers, it runs without
 #      them: OBS must still get its PipeWire connection from the portal, stay
@@ -994,7 +994,7 @@ echo "::group::4. Saved profile: PipeWire screen capture, PipeWire camera, Pulse
 SCREEN_NODE=""
 if [ -z "$LAUNCH_ONLY" ]; then
     # Test producers stand in for a monitor, a camera and a microphone: scrolling
-    # colour bars, a bouncing ball and a 440 Hz tone, which verify-recording.sh
+    # colour bars, a bouncing ball and a 440 Hz tone, which verify_recording.py
     # looks for.
     gst-launch-1.0 -q videotestsrc pattern=smpte horizontal-speed=4 is-live=true \
         ! video/x-raw,format=BGRx,width=320,height=240,framerate=30/1 \
@@ -1315,6 +1315,6 @@ if [ -z "$LAUNCH_ONLY" ]; then
     else
         fail "OBS produced no recording"
     fi
-    finish "verify-recording.sh checks $OUT/recording.mkv"
+    finish "verify_recording.py checks $OUT/recording.mkv"
 fi
 finish "without test producers: no recording"

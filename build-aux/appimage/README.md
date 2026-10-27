@@ -17,7 +17,7 @@ pre-release, a tag push attaches it to that tag's release.
 | `test-appimage.sh` | The distribution test, run inside a stock container (see below). |
 | `testkit.c` | Test helper built next to the AppImage: runtime probes, a fake ScreenCast/Camera portal, the test tone. The test runs it with the AppImage's own loader and libraries. |
 | `gpu-test.c` | Physical render-node checks: GBM buffer export and EGL DMA-BUF import with pixel readback, and VAAPI decoding with downloaded frame data. Built as a separate test artifact. |
-| `verify-recording.sh` | Checks the recording the test made (outside the container, which must not have ffmpeg). |
+| `verify_recording.py` | Checks the recording the test made (outside the container, which must not have ffmpeg). |
 
 ## Building locally
 
@@ -143,7 +143,7 @@ with none of OBS's dependencies installed, and fails unless all of these pass:
    PipeWire, WirePlumber, `pipewire-pulse`), the helper serves a fake
    ScreenCast and Camera portal, and test producers play scrolling colour bars
    (screen), a bouncing ball (camera) and a 440 Hz tone (microphone). OBS must
-   stay up, every source must start, and `verify-recording.sh` then requires
+   stay up, every source must start, and `verify_recording.py` then requires
    both pictures to keep moving and the tone to be present throughout. A file
    that no OBS can load sits in every system plugin directory a distribution
    OBS (or an installed OBS-Studio-Rust) uses, and OBS must not try to load

@@ -17,6 +17,7 @@ import shlex
 import signal
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -429,7 +430,7 @@ def qualification(args) -> dict:  # noqa: C901
         result['unavailable_hardware_modules'] = check_capture_log(logs[0].read_text(), modules)
         if 'OpenPipeWireRemote' not in (output / 'portal.log').read_text():
             raise RuntimeError('packaged app never requested its portal PipeWire connection')
-        session.run(['bash', str(ROOT / 'build-aux/appimage/verify-recording.sh'), str(recording)])
+        session.run([sys.executable, str(ROOT / 'build-aux/appimage/verify_recording.py'), str(recording)])
         pixels = subprocess.check_output(['ffmpeg', '-nostdin', '-v', 'error', '-ss', '2', '-i', str(recording),
             '-an', '-vf', 'crop=32:32:272:32,scale=1:1:flags=area,format=rgb24', '-f', 'rawvideo', '-'], timeout=60)
         check_browser_pixels(pixels)
