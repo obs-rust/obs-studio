@@ -88,7 +88,7 @@ static inline void s_w8(struct serializer *s, uint8_t u8)
 static inline void s_wl16(struct serializer *s, uint16_t u16)
 {
 	s_w8(s, (uint8_t)u16);
-	s_w8(s, u16 >> 8);
+	s_w8(s, (uint8_t)(u16 >> 8));
 }
 
 static inline void s_wl24(struct serializer *s, uint32_t u24)
@@ -121,7 +121,7 @@ static inline void s_wld(struct serializer *s, double d)
 
 static inline void s_wb16(struct serializer *s, uint16_t u16)
 {
-	s_w8(s, u16 >> 8);
+	s_w8(s, (uint8_t)(u16 >> 8));
 	s_w8(s, (uint8_t)u16);
 }
 

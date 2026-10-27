@@ -458,7 +458,7 @@ static void volmeter_process_magnitude(obs_volmeter_t *volmeter, const struct au
 			float sample = samples[i];
 			sum += sample * sample;
 		}
-		volmeter->magnitude[channel_nr] = sqrtf(sum / nr_samples);
+		volmeter->magnitude[channel_nr] = sqrtf(sum / (float)nr_samples);
 
 		channel_nr++;
 	}

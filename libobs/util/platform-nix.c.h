@@ -93,7 +93,7 @@ os_cpu_usage_info_t *os_cpu_usage_info_start(void)
 	info->last_cpu_time = times(&time_sample);
 	info->last_sys_time = time_sample.tms_stime;
 	info->last_user_time = time_sample.tms_utime;
-	info->core_count = sysconf(_SC_NPROCESSORS_ONLN);
+	info->core_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
 	return info;
 }
 
@@ -161,7 +161,7 @@ bool os_sleepto_ns_fast(uint64_t time_target)
 
 	do {
 		uint64_t remain_us = (time_target - current + 999) / 1000;
-		useconds_t us = remain_us >= 1000000 ? 999999 : remain_us;
+		useconds_t us = remain_us >= 1000000 ? 999999 : (useconds_t)remain_us;
 		usleep(us);
 
 		current = os_gettime_ns();
@@ -625,7 +625,7 @@ static void os_get_cores_internal(void)
 
 	core_count_initialized = true;
 
-	logical_cores = sysconf(_SC_NPROCESSORS_ONLN);
+	logical_cores = (int)sysconf(_SC_NPROCESSORS_ONLN);
 
 #if defined(__linux__)
 	int physical_id = -1;

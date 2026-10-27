@@ -96,7 +96,7 @@ static void add_hashmap_entry(profile_times_table *map, uint64_t usec, uint64_t 
 		if (entry->probes >= probes)
 			continue;
 
-		if (map->occupied / (double)map->size > 0.7) {
+		if ((double)map->occupied / (double)map->size > 0.7) {
 			grow_hashmap(map, usec, count);
 			return;
 		}

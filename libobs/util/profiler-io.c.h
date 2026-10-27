@@ -60,9 +60,9 @@ static void gather_stats(uint64_t expected_time_between_calls, profiler_time_ent
 		uint64_t old_accu = accu;
 		accu += entries->array[i].count;
 
-		if (old_accu < calls * 0.01 && accu >= calls * 0.01)
+		if (old_accu < (double)calls * 0.01 && accu >= (double)calls * 0.01)
 			*percentile99 = entries->array[i].time_delta;
-		else if (old_accu < calls * 0.5 && accu >= calls * 0.5) {
+		else if (old_accu < (double)calls * 0.5 && accu >= (double)calls * 0.5) {
 			*median = entries->array[i].time_delta;
 			break;
 		}
@@ -80,7 +80,7 @@ static void gather_stats(uint64_t expected_time_between_calls, profiler_time_ent
 
 		accu += entry->count;
 	}
-	*percent_within_bounds = (1. - (double)accu / calls) * 100;
+	*percent_within_bounds = (1. - (double)accu / (double)calls) * 100;
 }
 
 #define G_MS "g\xC2\xA0ms"
@@ -100,22 +100,22 @@ static void profile_print_entry(profiler_snapshot_entry_t *entry, struct dstr *i
 	make_indent_string(indent_buffer, indent, active);
 
 	if (min_ == max_) {
-		dstr_printf(output_buffer, "%s%s: %" G_MS, indent_buffer->array, entry->name, min_ / 1000.);
+		dstr_printf(output_buffer, "%s%s: %" G_MS, indent_buffer->array, entry->name, (double)min_ / 1000.);
 	} else {
 		dstr_printf(output_buffer,
 			    "%s%s: min=%" G_MS ", median=%" G_MS ", "
 			    "max=%" G_MS ", 99th percentile=%" G_MS,
-			    indent_buffer->array, entry->name, min_ / 1000., median / 1000., max_ / 1000.,
-			    percentile99 / 1000.);
+			    indent_buffer->array, entry->name, (double)min_ / 1000., (double)median / 1000.,
+			    (double)max_ / 1000., (double)percentile99 / 1000.);
 
 		if (entry->expected_time_between_calls) {
-			double expected_ms = entry->expected_time_between_calls / 1000.;
+			double expected_ms = (double)entry->expected_time_between_calls / 1000.;
 			dstr_catf(output_buffer, ", %g%% below %" G_MS, percent_within_bounds, expected_ms);
 		}
 	}
 
 	if (parent_calls && calls != parent_calls) {
-		double calls_per_parent = (double)calls / parent_calls;
+		double calls_per_parent = (double)calls / (double)parent_calls;
 		if (lround(calls_per_parent * 10) != 10)
 			dstr_catf(output_buffer, ", %g calls per parent call", calls_per_parent);
 	}
@@ -145,7 +145,7 @@ static void gather_stats_between(profiler_time_entries_t *entries, uint64_t call
 	uint64_t accu = 0;
 	for (size_t i = 0; i < entries->num; i++) {
 		accu += entries->array[i].count;
-		if (accu < calls * 0.5)
+		if (accu < (double)calls * 0.5)
 			continue;
 
 		*median = entries->array[i].time_delta;
@@ -170,13 +170,13 @@ static void gather_stats_between(profiler_time_entries_t *entries, uint64_t call
 		uint64_t delta = entries->array[i].time_delta;
 
 		if (!found_upper_bound && delta <= upper_bound) {
-			*higher = (double)accu / calls * 100;
+			*higher = (double)accu / (double)calls * 100;
 			accu = 0;
 			found_upper_bound = true;
 		}
 
 		if (!found_lower_bound && delta < lower_bound) {
-			*percent = (double)accu / calls * 100;
+			*percent = (double)accu / (double)calls * 100;
 			accu = 0;
 			found_lower_bound = true;
 		}
@@ -188,10 +188,10 @@ static void gather_stats_between(profiler_time_entries_t *entries, uint64_t call
 		*higher = 100.;
 
 	} else if (!found_lower_bound) {
-		*percent = (double)accu / calls * 100;
+		*percent = (double)accu / (double)calls * 100;
 
 	} else {
-		*lower = (double)accu / calls * 100;
+		*lower = (double)accu / (double)calls * 100;
 	}
 }
 
@@ -213,16 +213,16 @@ static void profile_print_entry_expected(profiler_snapshot_entry_t *entry, struc
 	double lower = 0.;
 	double higher = 0.;
 	gather_stats_between(&entry->times_between_calls, entry->overall_between_calls_count,
-			     (uint64_t)(expected_time * 0.98), (uint64_t)(expected_time * 1.02 + 0.5), min_, max_,
-			     &median, &percent, &lower, &higher);
+			     (uint64_t)((double)expected_time * 0.98), (uint64_t)((double)expected_time * 1.02 + 0.5),
+			     min_, max_, &median, &percent, &lower, &higher);
 
 	make_indent_string(indent_buffer, indent, active);
 
 	blog(LOG_INFO,
 	     "%s%s: min=%" G_MS ", median=%" G_MS ", max=%" G_MS ", %g%% "
 	     "within ±2%% of %" G_MS " (%g%% lower, %g%% higher)",
-	     indent_buffer->array, entry->name, min_ / 1000., median / 1000., max_ / 1000., percent,
-	     expected_time / 1000., lower, higher);
+	     indent_buffer->array, entry->name, (double)min_ / 1000., (double)median / 1000., (double)max_ / 1000.,
+	     percent, (double)expected_time / 1000., lower, higher);
 
 	active |= (uint64_t)1 << indent;
 	for (size_t i = 0; i < entry->children.num; i++) {

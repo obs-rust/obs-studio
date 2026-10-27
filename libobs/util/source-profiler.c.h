@@ -265,7 +265,7 @@ void source_profiler_frame_begin(void)
 		gpu_enabled = true;
 	} else if (gpu_enabled) {
 		/* Advance timer idx if gpu sp_enabled */
-		timer_idx = (timer_idx + 1) % FRAME_BUFFER_SIZE;
+		timer_idx = (uint8_t)((timer_idx + 1) % FRAME_BUFFER_SIZE);
 	}
 }
 
@@ -286,7 +286,7 @@ void source_profiler_frame_collect(void)
 	uint64_t freq = 0;
 
 	if (gpu_enabled) {
-		uint8_t timer_range_idx = (timer_idx + 1) % FRAME_BUFFER_SIZE;
+		uint8_t timer_range_idx = (uint8_t)((timer_idx + 1) % FRAME_BUFFER_SIZE);
 
 		if (timer_ranges[timer_range_idx]) {
 			gpu_ready = true;
@@ -304,7 +304,7 @@ void source_profiler_frame_collect(void)
 	struct source_samples *smps = hm_samples;
 	while (smps) {
 		/* processing is delayed by FRAME_BUFFER_SIZE - 1 frames */
-		uint8_t frame_idx = (smps->frame_idx + 1) % FRAME_BUFFER_SIZE;
+		uint8_t frame_idx = (uint8_t)((smps->frame_idx + 1) % FRAME_BUFFER_SIZE);
 		struct frame_sample *smp = smps->frames[frame_idx];
 
 		if (!smp->tick) {
@@ -429,7 +429,7 @@ void source_profiler_source_tick_end(obs_source_t *source, uint64_t start)
 	} else {
 		/* Advance index here since tick happens first and only once
 		 * at the start of each frame. */
-		smp->frame_idx = (smp->frame_idx + 1) % FRAME_BUFFER_SIZE;
+		smp->frame_idx = (uint8_t)((smp->frame_idx + 1) % FRAME_BUFFER_SIZE);
 	}
 
 	smp->frames[smp->frame_idx]->tick = delta;

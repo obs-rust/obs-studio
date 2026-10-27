@@ -127,7 +127,7 @@ static inline void send_interleaved(struct obs_output *output)
 
 		pthread_mutex_lock(ctrack.caption_mutex);
 
-		double frame_timestamp = (out.pts * out.timebase_num) / (double)out.timebase_den;
+		double frame_timestamp = (double)(out.pts * out.timebase_num) / (double)out.timebase_den;
 
 		if (*ctrack.caption_head && *ctrack.caption_timestamp <= frame_timestamp) {
 			blog(LOG_DEBUG, "Sending caption: %f \"%s\"", frame_timestamp,
