@@ -13,8 +13,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
-import sys
 import tempfile
+
+import host_platform as host
 
 
 AXES = {('windows', 'x64'), ('windows', 'arm64'), ('macos', 'x86_64'), ('macos', 'arm64')}
@@ -33,13 +34,13 @@ def command(arguments):
 
 def tool_versions(platform, architecture):
     if platform == 'macos':
-        if sys.platform != 'darwin':
+        if not host.is_macos():
             raise ValueError('macOS identity requires a macOS runner')
         return {'xcode': command(['xcodebuild', '-version']),
                 'compiler': command(['xcrun', 'clang++', '--version']),
                 'sdk': command(['xcrun', '--sdk', 'macosx', '--show-sdk-version']),
                 'sdk_build': command(['xcrun', '--sdk', 'macosx', '--show-sdk-build-version'])}
-    if sys.platform != 'win32':
+    if not host.is_windows():
         raise ValueError('Windows identity requires a Windows runner')
     vswhere = Path(os.environ['ProgramFiles(x86)']) / 'Microsoft Visual Studio/Installer/vswhere.exe'
     installations = json.loads(command([str(vswhere), '-latest', '-products', '*', '-requires',

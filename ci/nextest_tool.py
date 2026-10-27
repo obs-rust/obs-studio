@@ -10,10 +10,11 @@ import os
 from pathlib import Path
 import platform
 import shutil
-import sys
 import tarfile
 import tempfile
 from urllib.request import urlopen
+
+import host_platform as host
 
 VERSION = '0.9.143'
 ARCHIVES = {
@@ -47,7 +48,7 @@ def unpack_checked(archive: Path, output: Path, digest: str) -> None:
 
 
 def ensure_nextest() -> Path | None:
-    if sys.platform != 'linux' or platform.machine() not in ARCHIVES:
+    if not host.is_linux() or platform.machine() not in ARCHIVES:
         return None
     target, digest = ARCHIVES[platform.machine()]
     root = Path(os.environ.get('XDG_CACHE_HOME', Path.home() / '.cache')) / 'obs-rust' / 'nextest' / VERSION / target

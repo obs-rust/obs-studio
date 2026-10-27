@@ -40,7 +40,7 @@
     clippy::unreachable
 )]
 
-use std::os::raw::c_long;
+use core::ffi::c_long;
 
 pub use crate::draw_technique::{
     GS_CS_709_EXTENDED, GS_CS_709_SCRGB, GS_CS_SRGB, GS_CS_SRGB_16F, Technique,

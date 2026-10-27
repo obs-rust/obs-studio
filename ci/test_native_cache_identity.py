@@ -4,6 +4,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -51,7 +52,7 @@ class NativeCacheIdentityTest(unittest.TestCase):
             output = root / 'current.json'
             arguments = ['identity', '--platform', 'windows', '--architecture', 'x64',
                          '--configuration', 'RelWithDebInfo', '--output', str(output), '--expected', str(expected)]
-            with mock.patch.object(IDENTITY.sys, 'argv', arguments), mock.patch.object(IDENTITY, 'capture', return_value=current):
+            with mock.patch.object(sys, 'argv', arguments), mock.patch.object(IDENTITY, 'capture', return_value=current):
                 with self.assertRaisesRegex(ValueError, 'compiler'):
                     IDENTITY.main()
             self.assertEqual(json.loads(output.read_text()), current)
@@ -68,7 +69,7 @@ class NativeCacheIdentityTest(unittest.TestCase):
             arguments = ['identity', '--platform', 'windows', '--architecture', 'x64', '--configuration', 'Release',
                          '--output', str(root / 'current.json'), '--expected', str(expected),
                          '--diagnostics', str(diagnostics)]
-            with mock.patch.object(IDENTITY.sys, 'argv', arguments), mock.patch.object(IDENTITY, 'capture', return_value=current), mock.patch.dict(IDENTITY.os.environ, {'ImageVersion': '20261007.264.1', 'ImageOS': 'win25-vs2026'}, clear=True):
+            with mock.patch.object(sys, 'argv', arguments), mock.patch.object(IDENTITY, 'capture', return_value=current), mock.patch.dict(IDENTITY.os.environ, {'ImageVersion': '20261007.264.1', 'ImageOS': 'win25-vs2026'}, clear=True):
                 with self.assertRaises(ValueError):
                     IDENTITY.main()
             report = json.loads(diagnostics.read_text())

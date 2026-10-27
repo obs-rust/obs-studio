@@ -183,7 +183,7 @@ setup-soldr = { only-in = ".github/workflows", require = {} }
 # dylints/ban_platform_cfg_outside_boundary (AGENTS.md, testing-policy.md).
 # Tests, the C oracle and the tools are exempt there too.
 platform-selector = "rust/obs-util/src/platform/mod.rs"
-platform-code = ["rust/*/src/platform/**", "rust/*/src/ffi/**", "rust/*/tests/**", "rust/*/benches/**", "rust/*/build.rs", "rust/obs-c-oracle/**", "rust/tools/**", "dylints/**"]
+platform-code = ["rust/*/src/platform/**", "rust/*/src/ffi/**", "rust/*/tests/**", "rust/*/benches/**", "rust/*/build.rs", "rust/obs-c-oracle/**", "rust/tools/**", "dylints/**", "ci/host_platform.py"]
 
 [publish]
 pypi = { auth = "none", environment = "none", mode = "none" }

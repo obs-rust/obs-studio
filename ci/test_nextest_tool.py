@@ -53,7 +53,7 @@ class NextestToolTest(unittest.TestCase):
 
     def test_unsupported_hosts_do_not_download_or_change_the_cargo_runner(self):
         from unittest import mock
-        with mock.patch.object(nextest_tool.sys, 'platform', 'win32'):
+        with mock.patch.object(nextest_tool.host, 'is_linux', return_value=False):
             self.assertIsNone(nextest_tool.ensure_nextest())
 
 
