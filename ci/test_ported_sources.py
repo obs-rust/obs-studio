@@ -103,6 +103,19 @@ NOT_PORTED = (
 
 
 class PortedSourceTest(unittest.TestCase):
+    def test_per_unit_fragments_add_independent_ported_groups(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary)
+            build = fixture / "libobs/build"
+            fragments = build / "ported-source-sets"
+            fragments.mkdir(parents=True)
+            (build / "source-sets.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": []}))
+            (fragments / "alpha.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": ["build/alpha+.h.c"]}))
+            (fragments / "beta.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": ["build/beta+.h.c"]}))
+            self.assertEqual(PORTED.source_sets(fixture)["LIBOBS_PORTED_SOURCES"], [
+                "build/alpha+.h.c", "build/beta+.h.c",
+            ])
+
     def test_current_linux_inventory_keeps_the_existing_exclusion_floor(self):
         objects = PORTED.ported_objects(ROOT, "linux")
         self.assertGreaterEqual(len(objects), 20)
