@@ -615,5 +615,53 @@ class SignWindowsPermissionsTest(unittest.TestCase):
         self.assertEqual(stale, [], "the SEC-002 exception for sign-windows.yaml must be deleted")
 
 
+class DispatchPermissionsTest(unittest.TestCase):
+    """SEC-002: dispatch.yaml keeps reads read-only and the one writer on its job.
+
+    `services-validation` is the only job in dispatch.yaml that writes (it opens
+    a PR), and it already carries its grants at job level; the top-level block
+    stays read-only so a change to the workflow cannot hand a write token to any
+    other job (they are all upstream-only, gated on `repository_owner ==
+    'obsproject'`). The job is recorded in ci.toml's [allow].permissions, and the
+    file's SEC-002 [[exceptions]] block is gone (#962). ci-lint needs the
+    network, so the rule is mirrored here over the workflow text.
+    """
+
+    WORKFLOW = WORKFLOWS / "dispatch.yaml"
+    JOB = "services-validation"
+
+    def top_level_permissions(self) -> str:
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        block = re.search(r"(?m)^permissions:\n((?:[ \t].*\n|\n)*)", text)
+        self.assertIsNotNone(block, "dispatch.yaml needs a top-level permissions block")
+        assert block is not None
+        return block.group(1)
+
+    def test_top_level_permissions_are_read_only(self):
+        body = self.top_level_permissions()
+        self.assertRegex(body, r"(?m)^\s+contents: read$")
+        self.assertNotRegex(body, r"write", "the top-level block must stay read-only")
+
+    def test_writer_job_grants_are_allowlisted(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        job = text.split(f"  {self.JOB}:\n", 1)[1]
+        perms = re.search(r"(?m)^    permissions:\n((?:[ \t].*\n|\n)*)", job)
+        self.assertIsNotNone(perms, "the services-validation job must carry its own permissions block")
+        assert perms is not None
+        for scope in ("checks: write", "contents: write", "pull-requests: write"):
+            self.assertRegex(perms.group(1), rf"(?m)^\s+{re.escape(scope)}$")
+            allowed = load()["allow"]["permissions"].get(scope, [])
+            self.assertIn(self.JOB, allowed, f"{scope} must list {self.JOB}")
+
+    def test_no_sec002_exception_for_this_workflow(self):
+        stale = [
+            entry
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "SEC-002"
+            and entry.get("path") == ".github/workflows/dispatch.yaml"
+        ]
+        self.assertEqual(stale, [], "the SEC-002 exception for dispatch.yaml must be deleted")
+
+
 if __name__ == "__main__":
     unittest.main()
