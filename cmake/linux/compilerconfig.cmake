@@ -66,7 +66,7 @@ set(
 add_compile_options(
   -fopenmp-simd
   "$<$<COMPILE_LANG_AND_ID:C,GNU>:${_obs_gcc_c_options}>"
-  "$<$<COMPILE_LANG_AND_ID:C,GNU>:-Wint-conversion;-Wundef;-Wdouble-promotion;-Wcast-qual;-Wformat=2;-Wpedantic;-Wshadow;-Wno-missing-prototypes;-Wno-strict-prototypes;-Wpointer-sign>"
+  "$<$<COMPILE_LANG_AND_ID:C,GNU>:-Wint-conversion;-Wundef;-Wdouble-promotion;-Wcast-qual;-Wformat=2;-Wpedantic;-Wshadow;-Wmissing-prototypes;-Wstrict-prototypes;-Wpointer-sign>"
   "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:${_obs_gcc_c_options}>"
   "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-shadow;-Winvalid-offsetof;-Wno-overloaded-virtual>"
   "$<$<COMPILE_LANG_AND_ID:C,Clang>:${_obs_clang_c_options}>"

@@ -22,7 +22,6 @@ set(
   -fno-strict-aliasing
   -Wno-trigraphs
   -Wno-missing-field-initializers
-  -Wno-missing-prototypes
   -Werror=return-type
   -Wunreachable-code
   -Wquoted-include-in-framework-header
@@ -53,7 +52,6 @@ set(
   -Wno-sign-conversion
   -Winfinite-recursion
   -Wcomma
-  -Wno-strict-prototypes
   -Wno-semicolon-before-method-body
   -Wformat-security
   -Wvla
@@ -72,6 +70,8 @@ set(
   -Wpedantic
   -Wshadow
   -Wno-float-conversion
+  -Wmissing-prototypes
+  -Wstrict-prototypes
 )
 
 # clang options for C++
