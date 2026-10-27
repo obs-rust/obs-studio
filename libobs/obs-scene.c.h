@@ -18,7 +18,11 @@
 
 #include "libobs/build/libobs.pch.h"
 
-const struct obs_source_info group_info;
+/* Forward declaration: the definition (with its initializer) is at
+ * the bottom of this file. `extern` keeps MSVC from reading this as a
+ * tentative definition and warning C4132 "const object should be
+ * initialized" at /W4. */
+extern const struct obs_source_info group_info;
 
 static void resize_group(obs_sceneitem_t *group, bool scene_resize);
 static void resize_scene(obs_scene_t *scene);

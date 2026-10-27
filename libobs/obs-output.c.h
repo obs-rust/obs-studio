@@ -1530,7 +1530,10 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 	struct encoder_packet backup = *out;
 	sei_t sei;
 	uint8_t *data = NULL;
-	size_t size;
+	/* Only set when the packet carries a caption; reading it without
+	 * a caption is guarded below. Starting at zero silences MSVC's C4701
+	 * "potentially uninitialized" at /W4 without changing behavior. */
+	size_t size = 0;
 	long ref = 1;
 	bool avc = false;
 	bool hevc = false;
