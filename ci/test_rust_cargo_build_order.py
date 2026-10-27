@@ -73,27 +73,61 @@ else:
             for crate in ("first", "second", "third"):
                 self.assertTrue((build / (crate + "-done")).exists())
 
-    def test_application_launcher_uses_the_native_rust_cache_safeguard(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            soldr = root / "soldr"
-            soldr.write_text("""#!/bin/bash
-if [[ "$*" == *rustc* ]]; then
+    def launcher(self, soldr_body: str, *args: str) -> tuple[subprocess.CompletedProcess, Path, Path]:
+        """Run ci/native_build.py against a stub soldr; return it, the log, the wrapper marker."""
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory, True)
+        soldr = directory / "soldr"
+        soldr.write_text('#!/bin/bash\nprintf \'%s\\n\' "$*" >> "$OBS_TEST_SOLDR_LOG"\n' + soldr_body)
+        soldr.chmod(0o755)
+        log, marker = directory / "soldr.log", directory / "wrapper"
+        env = dict(os.environ, PATH=str(directory) + os.pathsep + os.environ["PATH"],
+                   OBS_TEST_SOLDR_LOG=str(log), OBS_TEST_WRAPPER_LOG=str(marker),
+                   OBS_NATIVE_TOOL_OUTPUT=str(directory / "target"))
+        env.pop("SOLDR_RUSTC_WRAPPER", None)
+        result = subprocess.run([sys.executable, str(ROOT / "ci/native_build.py"), *args],
+                                env=env, capture_output=True, text=True, timeout=60)
+        return result, log, marker
+
+    HOST = """if [[ "$*" == *rustc* ]]; then
   echo 'host: x86_64-unknown-linux-gnu'
   exit 0
-fi
+fi"""
+
+    def test_application_launcher_uses_the_native_rust_cache_safeguard(self):
+        result, _, marker = self.launcher(self.HOST + """
 printf '%s' "${SOLDR_RUSTC_WRAPPER:-unset}" > "$OBS_TEST_WRAPPER_LOG"
 exit 19
-""")
-            soldr.chmod(0o755)
-            marker = root / "wrapper"
-            env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ["PATH"],
-                       OBS_TEST_WRAPPER_LOG=str(marker), OBS_NATIVE_TOOL_OUTPUT=str(root / "target"))
-            env.pop("SOLDR_RUSTC_WRAPPER", None)
-            result = subprocess.run(["bash", str(ROOT / "native-build"), "--help"], env=env,
-                                    capture_output=True, text=True, timeout=30)
-            self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
-            self.assertEqual(marker.read_text(), "none")
+""", "--help")
+        self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
+        self.assertEqual(marker.read_text(), "none")
+
+    def test_the_tool_is_built_for_the_host_and_run_with_the_arguments(self):
+        result, log, _ = self.launcher(self.HOST + """
+mkdir -p "$OBS_NATIVE_TOOL_OUTPUT/x86_64-unknown-linux-gnu/debug"
+printf '%s\\n' '#!/bin/sh' 'printf "%s\\n" "$*"' > "$OBS_NATIVE_TOOL_OUTPUT/x86_64-unknown-linux-gnu/debug/obs-build"
+chmod +x "$OBS_NATIVE_TOOL_OUTPUT/x86_64-unknown-linux-gnu/debug/obs-build"
+""", "build", "--profile", "relwithdebinfo")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "build --profile relwithdebinfo\n")
+        rustc, build = log.read_text().splitlines()
+        self.assertIn("rustc -vV", rustc)
+        for expected in ("--locked", "--target x86_64-unknown-linux-gnu", "--target-dir",
+                         "-p obs-build --bin obs-build", "Cargo.toml"):
+            self.assertIn(expected, build)
+
+    def test_a_launcher_that_cannot_read_the_host_target_stops(self):
+        result, log, _ = self.launcher("exit 0\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("could not determine the Rust host target", result.stderr)
+        self.assertNotIn("cargo build", log.read_text())
+
+    def test_the_root_launcher_hands_off_to_the_python_module(self):
+        # The repository root command stays a two-line shim, so the logic has
+        # one copy and GEN-005 has no shell script to flag.
+        text = (ROOT / "native-build").read_text()
+        self.assertIn("ci/native_build.py", text)
+        self.assertNotIn("soldr", text)
 
     def test_every_corrosion_import_joins_the_cargo_build_order(self):
         imports = {
