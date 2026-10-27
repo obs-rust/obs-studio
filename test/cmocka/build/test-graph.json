@@ -3789,6 +3789,32 @@
         "libobs/data"
       ]
     },
+    "test_source_monitoring_steps": {
+      "sources": [
+        "test/cmocka/test_source_monitoring_steps.c",
+        "libobs/obs-source-monitoring.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-monitoring.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_monitoring_type": {
       "sources": [
         "test/cmocka/test_source_monitoring_type.c"
@@ -6328,6 +6354,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_monitoring_steps": {
+      "target": "test_source_monitoring_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_monitoring_type": {
