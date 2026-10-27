@@ -663,5 +663,61 @@ class DispatchPermissionsTest(unittest.TestCase):
         self.assertEqual(stale, [], "the SEC-002 exception for dispatch.yaml must be deleted")
 
 
+class ScheduledPermissionsTest(unittest.TestCase):
+    """SEC-002: scheduled.yaml keeps its top level read-only and each writer's grant on its job.
+
+    The top-level block was `contents: write`, which exceeds the read-only
+    maximum a top-level block may hold. Every job that needs an elevated scope
+    now mints it on its own block (`services-availability`, `build-project`,
+    `report-nightly-failure`, `analyze-project`, `codeql`), each job id is
+    recorded in ci.toml's [allow].permissions, and the file's SEC-002
+    [[exceptions]] block is gone (#962). The two jobs without a permissions
+    block (`upload-language-files`, `steam-upload`) are upstream-only, gated on
+    `repository_owner == 'obsproject'`, and declare no write need. ci-lint needs
+    the network, so the rule is mirrored here over the workflow text.
+    """
+
+    WORKFLOW = WORKFLOWS / "scheduled.yaml"
+    # The scopes ci-lint asks a job to have allowlisted (its write scopes, plus
+    # `packages: read`, which is not inside the default grant).
+    JOB_SCOPES = {
+        "services-availability": {"checks: write", "contents: write", "pull-requests: write"},
+        "build-project": {"contents: write"},
+        "report-nightly-failure": {"issues: write"},
+        "analyze-project": {"security-events: write"},
+        "codeql": {"security-events: write", "packages: read"},
+    }
+
+    def top_level_permissions(self) -> str:
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        block = re.search(r"(?m)^permissions:\n((?:[ \t].*\n|\n)*)", text)
+        self.assertIsNotNone(block, "scheduled.yaml needs a top-level permissions block")
+        assert block is not None
+        return block.group(1)
+
+    def test_top_level_permissions_are_read_only(self):
+        body = self.top_level_permissions()
+        self.assertRegex(body, r"(?m)^\s+contents: read$")
+        self.assertNotRegex(body, r"write", "the top-level block must stay read-only")
+
+    def test_writer_job_grants_are_allowlisted(self):
+        scopes = job_permission_scopes(self.WORKFLOW)
+        grants = load()["allow"]["permissions"]
+        for job, required in sorted(self.JOB_SCOPES.items()):
+            with self.subTest(job=job):
+                for scope in sorted(required):
+                    self.assertIn((job, scope), scopes, f"{job} must declare {scope}")
+                    self.assertIn(job, grants.get(scope, []), f"{scope} must list {job}")
+
+    def test_no_sec002_exception_for_this_workflow(self):
+        stale = [
+            entry
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "SEC-002"
+            and entry.get("path") == ".github/workflows/scheduled.yaml"
+        ]
+        self.assertEqual(stale, [], "the SEC-002 exception for scheduled.yaml must be deleted")
+
+
 if __name__ == "__main__":
     unittest.main()
