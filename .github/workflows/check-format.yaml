@@ -31,16 +31,7 @@ jobs:
         id: diff
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-        run: |
-          if [ -z "$BASE" ]; then
-            swift=true
-          elif git diff --name-only "$BASE" HEAD -- '*.swift' | grep -q .; then
-            swift=true
-          else
-            swift=false
-          fi
-          echo "swift=$swift" >> "$GITHUB_OUTPUT"
-          echo "Swift files changed: $swift"
+        run: uv run --no-project ci/swift_changes.py
       - name: clang-format Check 🐉
         if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         run: uv run --no-project ci/local_gate.py --only clang-format

@@ -46,7 +46,8 @@ class SwiftGateTest(unittest.TestCase):
         j = job(FORMAT, "checks")
         self.assertIn("github.event.pull_request.base.sha", j)
         self.assertIn("github.event.merge_group.base_sha", j)
-        self.assertIn("'*.swift'", j)
+        # The comparison, and its '*.swift' pathspec, live in the script (#962).
+        self.assertIn("run: uv run --no-project ci/swift_changes.py", j)
 
 
 if __name__ == "__main__":
