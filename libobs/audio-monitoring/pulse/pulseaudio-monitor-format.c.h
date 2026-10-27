@@ -139,7 +139,7 @@ static void process_byte(void *p, size_t frames, size_t channels, float vol)
 	register uint8_t *end = cur + frames * channels;
 
 	for (; cur < end; cur++) {
-		float v = ((int)*cur - 128) * vol + 128;
+		float v = (float)((int)*cur - 128) * vol + 128;
 		*cur = v >= 255.0f ? 255 : v <= 0.0f ? 0 : (uint8_t)v;
 	}
 }

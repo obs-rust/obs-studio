@@ -55,10 +55,10 @@ uint32_t calc_crc32(uint32_t crc, const void *buf, size_t size)
 	const uint8_t *p;
 
 	p = buf;
-	crc = crc ^ ~0UL;
+	crc = (uint32_t)(crc ^ ~0UL);
 
 	while (size--)
 		crc = crc32_tab[(crc ^ *p++) & 0xFF] ^ (crc >> 8);
 
-	return crc ^ ~0UL;
+	return (uint32_t)(crc ^ ~0UL);
 }

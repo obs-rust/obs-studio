@@ -60,9 +60,9 @@ static void gather_stats(uint64_t expected_time_between_calls, profiler_time_ent
 		uint64_t old_accu = accu;
 		accu += entries->array[i].count;
 
-		if (old_accu < (double)calls * 0.01 && accu >= (double)calls * 0.01)
+		if ((double)old_accu < (double)calls * 0.01 && (double)accu >= (double)calls * 0.01)
 			*percentile99 = entries->array[i].time_delta;
-		else if (old_accu < (double)calls * 0.5 && accu >= (double)calls * 0.5) {
+		else if ((double)old_accu < (double)calls * 0.5 && (double)accu >= (double)calls * 0.5) {
 			*median = entries->array[i].time_delta;
 			break;
 		}
@@ -145,7 +145,7 @@ static void gather_stats_between(profiler_time_entries_t *entries, uint64_t call
 	uint64_t accu = 0;
 	for (size_t i = 0; i < entries->num; i++) {
 		accu += entries->array[i].count;
-		if (accu < (double)calls * 0.5)
+		if ((double)accu < (double)calls * 0.5)
 			continue;
 
 		*median = entries->array[i].time_delta;

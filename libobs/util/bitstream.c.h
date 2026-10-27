@@ -44,5 +44,5 @@ uint8_t bitstream_reader_r8(struct bitstream_reader *r)
 uint16_t bitstream_reader_r16(struct bitstream_reader *r)
 {
 	uint8_t b = bitstream_reader_read_bits(r, 8);
-	return ((uint16_t)b << 8) | bitstream_reader_read_bits(r, 8);
+	return (uint16_t)(((uint16_t)b << 8) | bitstream_reader_read_bits(r, 8));
 }
