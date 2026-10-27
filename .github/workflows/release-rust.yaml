@@ -770,7 +770,7 @@ jobs:
           keys="$RUNNER_TEMP/keys"
           (umask 077 && mkdir -p "$keys" && printf '%s' "$SPARKLE_KEY" >"$keys/sparkle.key" && printf '%s\n' "$RSA_KEY" >"$keys/rsa.pem")
           trap 'rm -rf "$keys"' EXIT
-          ci/sparkle_mac_info.sh dist "$keys/sparkle.key" "$RUNNER_TEMP/Sparkle/bin/sign_update" mac.json
+          uv run --no-project --script ci/sparkle_mac_info.py dist "$keys/sparkle.key" "$RUNNER_TEMP/Sparkle/bin/sign_update" mac.json
           uv run --script ci/update_feed.py build --channel nightly --tag "$TAG" --assets dist \
             --mac-info mac.json --rsa-key "$keys/rsa.pem" --out feed
           ls -l feed
@@ -876,7 +876,7 @@ jobs:
           keys="$RUNNER_TEMP/keys"
           (umask 077 && mkdir -p "$keys" && printf '%s' "$SPARKLE_KEY" >"$keys/sparkle.key" && printf '%s\n' "$RSA_KEY" >"$keys/rsa.pem")
           trap 'rm -rf "$keys"' EXIT
-          ci/sparkle_mac_info.sh dist "$keys/sparkle.key" "$RUNNER_TEMP/Sparkle/bin/sign_update" mac.json
+          uv run --no-project --script ci/sparkle_mac_info.py dist "$keys/sparkle.key" "$RUNNER_TEMP/Sparkle/bin/sign_update" mac.json
           uv run --script ci/update_feed.py build --tag "$TAG" --assets dist --mac-info mac.json \
             --rsa-key "$keys/rsa.pem" --out feed
           ls -l feed

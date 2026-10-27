@@ -483,7 +483,7 @@ class SparkleMacInfoTests(unittest.TestCase):
             esac
         """)
         self.stub("sign_update", """
-            [[ -n "$NO_SIGNATURE" ]] && exit 0
+            [[ -n "${NO_SIGNATURE:-}" ]] && exit 0
             echo "sparkle:edSignature=\\"sig-$(basename "${!#}" .dmg)\\" length=\\"1\\""
         """)
         self.key = self.root / "sparkle.key"
