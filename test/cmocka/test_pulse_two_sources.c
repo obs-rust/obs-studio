@@ -31,7 +31,7 @@
  * streams on two connections are delivered evenly.
  *
  * Runs the linux-pulseaudio capture code against a private PipeWire +
- * WirePlumber + pipewire-pulse stack started by test_pulse_monitor_device.sh
+ * WirePlumber + pipewire-pulse stack started by test_pulse_monitor_device.py
  * (no hardware), with libobs's source plumbing stubbed (--wrap) like
  * test_pulse_stream_restart. Without that stack the wrapper exits 77. */
 
@@ -480,7 +480,7 @@ static int teardown(void **state)
 int main(void)
 {
 	if (!getenv("PULSE_SERVER")) {
-		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.sh\n");
+		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.py\n");
 		return 77;
 	}
 

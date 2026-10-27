@@ -36,7 +36,7 @@
  *
  * Runs the linux-pulseaudio capture code against a real sound server: a
  * private PipeWire + WirePlumber + pipewire-pulse stack started by
- * test_pulse_monitor_device.sh (no hardware, its own runtime dir and D-Bus),
+ * test_pulse_monitor_device.py (no hardware, its own runtime dir and D-Bus),
  * with virtual sources this test loads itself. libobs's source plumbing is
  * replaced by the stubs below (linked with --wrap), so no display is needed:
  * each test source counts the audio frames the plugin hands to OBS, and UI
@@ -475,7 +475,7 @@ static void drop_client(int id)
 	assert_true(run(cmd, NULL, 0));
 }
 
-/* The pipewire-pulse that test_pulse_monitor_device.sh started (our sibling),
+/* The pipewire-pulse that test_pulse_monitor_device.py started (our sibling),
  * or the one this test started instead; 0 if none. */
 static pid_t own_pulse_server;
 
@@ -1179,7 +1179,7 @@ static int teardown(void **state)
 int main(void)
 {
 	if (!getenv("PULSE_SERVER")) {
-		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.sh\n");
+		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.py\n");
 		return 77;
 	}
 

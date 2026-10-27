@@ -22,7 +22,7 @@
  * tests check streams and devices, not the sample values.
  *
  * Runs libobs audio monitoring against a private PipeWire + WirePlumber +
- * pipewire-pulse stack started by test_pulse_monitor_device.sh (no hardware,
+ * pipewire-pulse stack started by test_pulse_monitor_device.py (no hardware,
  * its own runtime dir and D-Bus). For each sample format it loads a null sink
  * in that format, records the sink's monitor with parec, and plays a constant
  * +0.75 (left) / -0.75 (right) at source volumes 0.5, 1 and 2, 0.3 s each.
@@ -408,7 +408,7 @@ static int teardown(void **state)
 int main(void)
 {
 	if (!getenv("PULSE_SERVER")) {
-		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.sh\n");
+		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.py\n");
 		return 77;
 	}
 	if (system("command -v parec >/dev/null 2>&1") != 0) {

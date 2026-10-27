@@ -2,7 +2,7 @@
 """Runs a PulseAudio end-to-end test against a private PulseAudio daemon (not
 pipewire-pulse): its own runtime dir, HOME and D-Bus, no hardware, session
 or Bluetooth modules, so there is no audio output; the test loads null sinks
-itself. test_pulse_monitor_device.sh is the same for PipeWire.
+itself. test_pulse_monitor_device.py is the same for PipeWire.
 The daemon is "pulseaudio" from PATH, or $OBS_TEST_PULSEAUDIO (e.g. a script
 that runs an unpacked build). Exits 77 (skip) when it, pactl or
 dbus-run-session are missing, and fails when they are installed but the

@@ -20,7 +20,7 @@
  *
  * Runs libobs audio monitoring against a real sound server: a private
  * PipeWire + WirePlumber + pipewire-pulse stack started by
- * test_pulse_monitor_device.sh (no hardware, its own runtime dir and D-Bus),
+ * test_pulse_monitor_device.py (no hardware, its own runtime dir and D-Bus),
  * with two null sinks this test loads itself. The monitoring stream is the
  * only sink input on that server; pactl reports which sink it plays on.
  * Without that stack the wrapper exits 77 and ctest reports a skip. */
@@ -328,7 +328,7 @@ static int teardown(void **state)
 int main(void)
 {
 	if (!getenv("PULSE_SERVER")) {
-		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.sh\n");
+		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_monitor_device.py\n");
 		return 77;
 	}
 

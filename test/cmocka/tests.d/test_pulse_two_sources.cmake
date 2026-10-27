@@ -1,7 +1,7 @@
 # End to end for two Audio Input Capture sources on one device at a large
 # PipeWire graph quantum (the second one mostly silent): the linux-pulseaudio
 # capture code against a private PipeWire sound server started by
-# test_pulse_monitor_device.sh. libobs's source calls are stubbed (--wrap), so
+# test_pulse_monitor_device.py. libobs's source calls are stubbed (--wrap), so
 # no display is needed. Skipped (exit 77) when PipeWire, WirePlumber or
 # pipewire-pulse are not installed.
 if(TARGET OBS::pulseaudio)
@@ -29,7 +29,8 @@ if(TARGET OBS::pulseaudio)
   add_dependencies(cmocka-tests test_pulse_two_sources)
   add_test(
     NAME test_pulse_two_sources
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_monitor_device.sh" $<TARGET_FILE:test_pulse_two_sources>
+    COMMAND
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_monitor_device.py" $<TARGET_FILE:test_pulse_two_sources>
   )
   set_tests_properties(test_pulse_two_sources PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
   unset(_pulse_dir)

@@ -1,7 +1,7 @@
 # End to end for a PulseAudio input whose own stream dies while the server
 # stays up (obsproject/obs-studio#10072): the linux-pulseaudio capture code
 # against a private PipeWire sound server started by
-# test_pulse_monitor_device.sh. libobs's source calls are stubbed (--wrap), so
+# test_pulse_monitor_device.py. libobs's source calls are stubbed (--wrap), so
 # no display is needed; pa_stream_new_with_proplist and
 # pa_stream_connect_record are wrapped to make restarts fail on demand. Also
 # drops a stream's own server connection, the shared one, or restarts
@@ -34,7 +34,9 @@ if(TARGET OBS::pulseaudio)
   add_dependencies(cmocka-tests test_pulse_stream_restart)
   add_test(
     NAME test_pulse_stream_restart
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_monitor_device.sh" $<TARGET_FILE:test_pulse_stream_restart>
+    COMMAND
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_monitor_device.py"
+      $<TARGET_FILE:test_pulse_stream_restart>
   )
   set_tests_properties(test_pulse_stream_restart PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90)
   unset(_pulse_dir)

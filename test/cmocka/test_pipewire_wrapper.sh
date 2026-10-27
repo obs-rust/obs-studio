@@ -1,7 +1,7 @@
 #!/bin/sh
 # Checks the wrappers that start a private PipeWire daemon for the PipeWire
 # and PulseAudio tests (test_pipewire_cursor_hdr.py,
-# test_pipewire_context_fail.py, test_pulse_monitor_device.sh).
+# test_pipewire_context_fail.py, test_pulse_monitor_device.py).
 #
 # They used to give up after waiting 5 s for the daemon's socket and report
 # the test as skipped (77), which ctest counts as passed. With TMPDIR in a
@@ -107,12 +107,18 @@ echo "stub: the private sound server does not answer"
 exit 3
 STUB
 	chmod +x "$work/pulse-stub"
-	wrapper=test_pulse_monitor_device.sh
+	wrapper=test_pulse_monitor_device.py
+	# The PulseAudio wrapper is Python now (#962, GEN-005); run it the way its
+	# ctest callers do. Resolve uv by absolute path so a stub PATH reaches it.
+	uv_pulse=$(command -v uv) || {
+		echo "uv not found: skipping"
+		exit 77
+	}
 
-	TMPDIR="$long" timeout 60 sh "$scripts/$wrapper" "$work/pulse-stub" >"$work/out" 2>&1
+	TMPDIR="$long" timeout 60 "$uv_pulse" run --script "$scripts/$wrapper" "$work/pulse-stub" >"$work/out" 2>&1
 	check "$wrapper, long TMPDIR: the sound server starts and the test runs" 0 $?
 
-	PATH="$work/bin-dying:$PATH" timeout 60 sh "$scripts/$wrapper" "$work/pulse-stub" >"$work/out" 2>&1
+	PATH="$work/bin-dying:$PATH" timeout 60 "$uv_pulse" run --script "$scripts/$wrapper" "$work/pulse-stub" >"$work/out" 2>&1
 	status=$?
 	if [ $status -ne 0 ] && [ $status -ne 77 ] && [ $status -ne 3 ]; then
 		echo "ok:   $wrapper, daemon exits at once: fails (exit $status)"
@@ -121,7 +127,7 @@ STUB
 		failed=1
 	fi
 else
-	echo "skipped: test_pulse_monitor_device.sh checks (WirePlumber, pipewire-pulse, pactl or dbus-run-session missing)"
+	echo "skipped: test_pulse_monitor_device.py checks (WirePlumber, pipewire-pulse, pactl or dbus-run-session missing)"
 fi
 
 # Control: no pipewire binary, as in CI.

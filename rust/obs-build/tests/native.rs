@@ -1565,8 +1565,10 @@ fn native_test_graph_preserves_sources_and_runtime_requirements() {
     assert_eq!(
         pulse["command"],
         serde_json::json!([
-            "sh",
-            "${source}/test/cmocka/test_pulse_monitor_device.sh",
+            "uv",
+            "run",
+            "--script",
+            "${source}/test/cmocka/test_pulse_monitor_device.py",
             "${target}"
         ])
     );

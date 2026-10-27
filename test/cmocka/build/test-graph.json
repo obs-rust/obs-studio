@@ -5918,8 +5918,10 @@
     "test_pulse_monitor_samples": {
       "target": "test_pulse_monitor_samples",
       "command": [
-        "sh",
-        "${source}/test/cmocka/test_pulse_monitor_device.sh",
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
         "${target}"
       ],
       "timeout_seconds": 60,

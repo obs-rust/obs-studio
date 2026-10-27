@@ -30,7 +30,7 @@
  * Loads the real linux-pulseaudio module into the real libobs and runs it
  * against a private sound server: a PulseAudio daemon started by
  * test_pulse_pulseaudio.sh, or pipewire-pulse started by
- * test_pulse_monitor_device.sh (it already followed the default there). No
+ * test_pulse_monitor_device.py (it already followed the default there). No
  * audio reaches a real device: the outputs are null sinks this test loads.
  *
  * Each sample tells where it came from. The "desktop" is a pacat playback
@@ -737,7 +737,7 @@ int main(void)
 {
 	if (!getenv("PULSE_SERVER")) {
 		fprintf(stderr, "PULSE_SERVER is not set: run through test_pulse_pulseaudio.sh or "
-				"test_pulse_monitor_device.sh\n");
+				"test_pulse_monitor_device.py\n");
 		return 77;
 	}
 	if (system("command -v pacat >/dev/null 2>&1") != 0) {
