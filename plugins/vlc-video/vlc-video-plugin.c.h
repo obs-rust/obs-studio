@@ -74,7 +74,12 @@ static bool load_vlc_funcs(void)
 {
 #define LOAD_VLC_FUNC(func)                                     \
 	do {                                                    \
-		func##_ = os_dlsym(libvlc_module, #func);       \
+		union {                                         \
+			void *obj;                              \
+			__typeof__(func##_) fn;                 \
+		} _sym;                                         \
+		_sym.obj = os_dlsym(libvlc_module, #func);      \
+		func##_ = _sym.fn;                              \
 		if (!func##_) {                                 \
 			blog(LOG_WARNING,                       \
 			     "[vlc-video]: Could not func VLC " \

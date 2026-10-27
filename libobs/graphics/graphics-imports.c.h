@@ -17,10 +17,12 @@
 
 #include "build/libobs.pch.h"
 
-#define GRAPHICS_IMPORT(func)                                     \
-	do {                                                      \
-		exports->func = os_dlsym(module, #func);          \
-		if (!exports->func) {                             \
+#define GRAPHICS_IMPORT(func)                                            \
+	do {                                                             \
+		union { void *obj; __typeof__(exports->func) fn; } _sym; \
+		_sym.obj = os_dlsym(module, #func);                      \
+		exports->func = _sym.fn;                                 \
+		if (!exports->func) {                                    \
 			success = false;                          \
 			blog(LOG_ERROR,                           \
 			     "Could not load function '%s' from " \
@@ -29,9 +31,11 @@
 		}                                                 \
 	} while (false)
 
-#define GRAPHICS_IMPORT_OPTIONAL(func)                   \
-	do {                                             \
-		exports->func = os_dlsym(module, #func); \
+#define GRAPHICS_IMPORT_OPTIONAL(func)                                   \
+	do {                                                             \
+		union { void *obj; __typeof__(exports->func) fn; } _sym; \
+		_sym.obj = os_dlsym(module, #func);                      \
+		exports->func = _sym.fn;                                 \
 	} while (false)
 
 bool load_graphics_imports(struct gs_exports *exports, void *module, const char *module_name)

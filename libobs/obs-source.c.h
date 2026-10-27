@@ -4518,7 +4518,12 @@ void obs_source_enum_filters(obs_source_t *source, obs_source_enum_proc_t callba
 {
 	if (!obs_source_valid(source, "obs_source_enum_filters"))
 		return;
-	if (!obs_ptr_valid(callback, "obs_source_enum_filters"))
+	union {
+		void *obj;
+		obs_source_enum_proc_t fn;
+	} callback_obj = {.fn = callback};
+
+	if (!obs_ptr_valid(callback_obj.obj, "obs_source_enum_filters"))
 		return;
 
 	pthread_mutex_lock(&source->filter_mutex);

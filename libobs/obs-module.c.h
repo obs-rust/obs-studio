@@ -30,29 +30,39 @@ static inline int req_func_not_found(const char *name, const char *path)
 	return MODULE_MISSING_EXPORTS;
 }
 
+/* ISO C forbids converting the object pointer os_dlsym() returns into a function
+ * pointer, and -Wpedantic rejects a cast that does it (#2623); copy the value
+ * through a union instead. No code is generated for the copy. */
+#define LOAD_MODULE_SYMBOL(field, name)                            \
+	do {                                                       \
+		union { void *obj; __typeof__(mod->field) fn; } _sym; \
+		_sym.obj = os_dlsym(mod->module, (name));          \
+		mod->field = _sym.fn;                              \
+	} while (false)
+
 static int load_module_exports(struct obs_module *mod, const char *path)
 {
-	mod->load = os_dlsym(mod->module, "obs_module_load");
+	LOAD_MODULE_SYMBOL(load, "obs_module_load");
 	if (!mod->load)
 		return req_func_not_found("obs_module_load", path);
 
-	mod->set_pointer = os_dlsym(mod->module, "obs_module_set_pointer");
+	LOAD_MODULE_SYMBOL(set_pointer, "obs_module_set_pointer");
 	if (!mod->set_pointer)
 		return req_func_not_found("obs_module_set_pointer", path);
 
-	mod->ver = os_dlsym(mod->module, "obs_module_ver");
+	LOAD_MODULE_SYMBOL(ver, "obs_module_ver");
 	if (!mod->ver)
 		return req_func_not_found("obs_module_ver", path);
 
 	/* optional exports */
-	mod->unload = os_dlsym(mod->module, "obs_module_unload");
-	mod->post_load = os_dlsym(mod->module, "obs_module_post_load");
-	mod->set_locale = os_dlsym(mod->module, "obs_module_set_locale");
-	mod->free_locale = os_dlsym(mod->module, "obs_module_free_locale");
-	mod->name = os_dlsym(mod->module, "obs_module_name");
-	mod->description = os_dlsym(mod->module, "obs_module_description");
-	mod->author = os_dlsym(mod->module, "obs_module_author");
-	mod->get_string = os_dlsym(mod->module, "obs_module_get_string");
+	LOAD_MODULE_SYMBOL(unload, "obs_module_unload");
+	LOAD_MODULE_SYMBOL(post_load, "obs_module_post_load");
+	LOAD_MODULE_SYMBOL(set_locale, "obs_module_set_locale");
+	LOAD_MODULE_SYMBOL(free_locale, "obs_module_free_locale");
+	LOAD_MODULE_SYMBOL(name, "obs_module_name");
+	LOAD_MODULE_SYMBOL(description, "obs_module_description");
+	LOAD_MODULE_SYMBOL(author, "obs_module_author");
+	LOAD_MODULE_SYMBOL(get_string, "obs_module_get_string");
 	return MODULE_SUCCESS;
 }
 
@@ -1202,6 +1212,7 @@ error:
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef type_required
 #undef has_val
+#undef LOAD_MODULE_SYMBOL
 #undef REGISTER_OBS_DEF
 #undef HAS_VAL
 #undef HANDLE_ERROR

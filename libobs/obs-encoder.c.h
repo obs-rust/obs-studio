@@ -996,7 +996,12 @@ void obs_encoder_start(obs_encoder_t *encoder, encoded_callback_t new_packet, vo
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_start"))
 		return;
-	if (!obs_ptr_valid(new_packet, "obs_encoder_start"))
+	union {
+		void *obj;
+		encoded_callback_t fn;
+	} new_packet_obj = {.fn = new_packet};
+
+	if (!obs_ptr_valid(new_packet_obj.obj, "obs_encoder_start"))
 		return;
 
 	pthread_mutex_lock(&encoder->init_mutex);
@@ -1011,7 +1016,12 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 
 	if (!obs_encoder_valid(encoder, "obs_encoder_stop"))
 		return;
-	if (!obs_ptr_valid(new_packet, "obs_encoder_stop"))
+	union {
+		void *obj;
+		encoded_callback_t fn;
+	} new_packet_obj = {.fn = new_packet};
+
+	if (!obs_ptr_valid(new_packet_obj.obj, "obs_encoder_stop"))
 		return;
 
 	pthread_mutex_lock(&encoder->init_mutex);

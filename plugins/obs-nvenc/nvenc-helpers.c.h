@@ -124,7 +124,13 @@ static uint32_t get_nvenc_ver(void)
 		if (failed)
 			return 0;
 
-		nv_max_ver = (NV_MAX_VER_FUNC)load_nv_func("NvEncodeAPIGetMaxSupportedVersion");
+		union {
+			void *obj;
+			NV_MAX_VER_FUNC fn;
+		} _sym;
+
+		_sym.obj = load_nv_func("NvEncodeAPIGetMaxSupportedVersion");
+		nv_max_ver = _sym.fn;
 		if (!nv_max_ver) {
 			failed = true;
 			return 0;
@@ -201,7 +207,13 @@ static inline bool init_nvenc_internal(obs_encoder_t *encoder)
 		return false;
 	}
 
-	nv_create_instance = (NV_CREATE_INSTANCE_FUNC)load_nv_func("NvEncodeAPICreateInstance");
+	union {
+		void *obj;
+		NV_CREATE_INSTANCE_FUNC fn;
+	} _sym;
+
+	_sym.obj = load_nv_func("NvEncodeAPICreateInstance");
+	nv_create_instance = _sym.fn;
 	if (!nv_create_instance) {
 		obs_encoder_set_last_error(encoder, "Missing NvEncodeAPICreateInstance, check "
 						    "your video card drivers are up to date.");

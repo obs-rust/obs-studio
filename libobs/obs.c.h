@@ -1929,11 +1929,10 @@ static void obs_service_enum_release(struct obs_context_data *context)
  * on every entry. The callback may therefore release the reference it owns for
  * the current entry: an entry released during the walk is destroyed when the
  * snapshot reference is dropped after the walk, on the enumerating thread. */
-static inline void obs_enum(void *pstart, pthread_mutex_t *mutex, void *proc, void *param, obs_enum_get_ref_t get_ref,
-			    obs_enum_release_t release)
+static inline void obs_enum(void *pstart, pthread_mutex_t *mutex, bool (*enum_proc)(void *, void *), void *param,
+			    obs_enum_get_ref_t get_ref, obs_enum_release_t release)
 {
 	struct obs_context_data **start = pstart, *context;
-	bool (*enum_proc)(void *, void *) = proc;
 	DARRAY(struct obs_context_data *) snapshot;
 
 	assert(start);
@@ -1972,10 +1971,9 @@ static inline void obs_enum(void *pstart, pthread_mutex_t *mutex, void *proc, vo
 	da_free(snapshot);
 }
 
-static inline void obs_enum_uuid(void *pstart, pthread_mutex_t *mutex, void *proc, void *param)
+static inline void obs_enum_uuid(void *pstart, pthread_mutex_t *mutex, bool (*enum_proc)(void *, void *), void *param)
 {
 	struct obs_context_data **start = pstart, *context, *tmp;
-	bool (*enum_proc)(void *, void *) = proc;
 
 	assert(start);
 	assert(mutex);
@@ -1993,25 +1991,25 @@ static inline void obs_enum_uuid(void *pstart, pthread_mutex_t *mutex, void *pro
 
 void obs_enum_all_sources(bool (*enum_proc)(void *, obs_source_t *), void *param)
 {
-	obs_enum_uuid(&obs->data.sources, &obs->data.sources_mutex, enum_proc, param);
+	obs_enum_uuid(&obs->data.sources, &obs->data.sources_mutex, (bool (*)(void *, void *))enum_proc, param);
 }
 
 void obs_enum_outputs(bool (*enum_proc)(void *, obs_output_t *), void *param)
 {
-	obs_enum(&obs->data.first_output, &obs->data.outputs_mutex, enum_proc, param, obs_output_enum_get_ref,
-		 obs_output_enum_release);
+	obs_enum(&obs->data.first_output, &obs->data.outputs_mutex, (bool (*)(void *, void *))enum_proc, param,
+		 obs_output_enum_get_ref, obs_output_enum_release);
 }
 
 void obs_enum_encoders(bool (*enum_proc)(void *, obs_encoder_t *), void *param)
 {
-	obs_enum(&obs->data.first_encoder, &obs->data.encoders_mutex, enum_proc, param, obs_encoder_enum_get_ref,
-		 obs_encoder_enum_release);
+	obs_enum(&obs->data.first_encoder, &obs->data.encoders_mutex, (bool (*)(void *, void *))enum_proc, param,
+		 obs_encoder_enum_get_ref, obs_encoder_enum_release);
 }
 
 void obs_enum_services(bool (*enum_proc)(void *, obs_service_t *), void *param)
 {
-	obs_enum(&obs->data.first_service, &obs->data.services_mutex, enum_proc, param, obs_service_enum_get_ref,
-		 obs_service_enum_release);
+	obs_enum(&obs->data.first_service, &obs->data.services_mutex, (bool (*)(void *, void *))enum_proc, param,
+		 obs_service_enum_get_ref, obs_service_enum_release);
 }
 
 void obs_enum_canvases(bool (*enum_proc)(void *, obs_canvas_t *), void *param)

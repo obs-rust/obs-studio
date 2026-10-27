@@ -16,17 +16,21 @@
 #error "graphics-functions-linux.h is missing"
 #endif
 
+/* ISO C forbids converting a function pointer to an object pointer, and
+ * -Wpedantic rejects the cast (#2623); copy the value through a union. */
+#define FNPTR_AS_VOID(fn) ((union { void *obj; __typeof__(&(fn)) fnptr; }){.fnptr = &(fn)}.obj)
+
 static void test_linux_entry_points(void **state)
 {
 	(void)state;
-	assert_non_null((void *)gs_texture_create_from_dmabuf);
-	assert_non_null((void *)gs_query_dmabuf_capabilities);
-	assert_non_null((void *)gs_query_dmabuf_modifiers_for_format);
-	assert_non_null((void *)gs_texture_create_from_pixmap);
-	assert_non_null((void *)gs_query_sync_capabilities);
-	assert_non_null((void *)gs_sync_create);
-	assert_non_null((void *)gs_sync_destroy);
-	assert_non_null((void *)gs_sync_wait);
+	assert_non_null(FNPTR_AS_VOID(gs_texture_create_from_dmabuf));
+	assert_non_null(FNPTR_AS_VOID(gs_query_dmabuf_capabilities));
+	assert_non_null(FNPTR_AS_VOID(gs_query_dmabuf_modifiers_for_format));
+	assert_non_null(FNPTR_AS_VOID(gs_texture_create_from_pixmap));
+	assert_non_null(FNPTR_AS_VOID(gs_query_sync_capabilities));
+	assert_non_null(FNPTR_AS_VOID(gs_sync_create));
+	assert_non_null(FNPTR_AS_VOID(gs_sync_destroy));
+	assert_non_null(FNPTR_AS_VOID(gs_sync_wait));
 }
 
 int main(void)
@@ -36,3 +40,5 @@ int main(void)
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
+
+#undef FNPTR_AS_VOID

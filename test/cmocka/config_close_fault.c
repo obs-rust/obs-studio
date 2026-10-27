@@ -8,6 +8,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/* ISO C forbids converting the object pointer dlsym() returns into a function
+ * pointer, and -Wpedantic rejects the cast (#2623); copy the value through a
+ * union instead. */
+#define DLSYM_FN(var, name) ((union { void *obj; __typeof__(var) fn; }){.obj = dlsym(RTLD_NEXT, (name))}.fn)
+
 /* Single-threaded fault injection, confined to the armed fixture's inode. */
 static char armed_path[4096];
 static int faults;
@@ -72,7 +77,7 @@ int fault_close(int fd)
 #else
 	static int (*real_close)(int);
 	if (!real_close)
-		real_close = (int (*)(int))dlsym(RTLD_NEXT, "close");
+		real_close = DLSYM_FN(real_close, "close");
 	if (!real_close)
 		abort();
 #endif
@@ -96,7 +101,7 @@ int fault_fclose(FILE *f)
 #else
 	static int (*real_fclose)(FILE *);
 	if (!real_fclose)
-		real_fclose = (int (*)(FILE *))dlsym(RTLD_NEXT, "fclose");
+		real_fclose = DLSYM_FN(real_fclose, "fclose");
 	if (!real_fclose)
 		abort();
 #endif
@@ -124,3 +129,5 @@ __attribute__((used, section("__DATA,__interpose"))) static const struct {
 } interposers[] = {{(const void *)fault_close, (const void *)close},
 		   {(const void *)fault_fclose, (const void *)fclose}};
 #endif
+
+#undef DLSYM_FN

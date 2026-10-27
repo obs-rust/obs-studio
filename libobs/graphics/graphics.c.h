@@ -64,9 +64,16 @@ static inline bool gs_valid(const char *f)
 
 void gs_enum_adapters(bool (*callback)(void *param, const char *name, uint32_t id), void *param)
 {
+	/* ISO C forbids passing a function pointer where gs_valid_p() takes an
+	 * object pointer, and -Wpedantic rejects the cast (#2623); pass the value
+	 * through a union instead. */
+	union {
+		void *obj;
+		__typeof__(callback) fn;
+	} callback_obj = {.fn = callback};
 	graphics_t *graphics = thread_graphics;
 
-	if (!gs_valid_p("gs_enum_adapters", callback))
+	if (!gs_valid_p("gs_enum_adapters", callback_obj.obj))
 		return;
 
 	if (graphics->exports.device_enum_adapters) {
