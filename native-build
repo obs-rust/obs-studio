@@ -1,17 +1,4 @@
-#!/usr/bin/env bash
-# Bootstrap the Rust build tool, then enter it outside Cargo/Soldr's process tree.
-set -euo pipefail
-repository=$(cd "$(dirname "$0")" && pwd)
-build_host=$(soldr --no-timestamp-lines rustc -vV | sed -n 's/^host: //p')
-if [ -z "$build_host" ]; then
-  echo "native-build: could not determine the Rust host target" >&2
-  exit 1
-fi
-tool_output="${OBS_NATIVE_TOOL_OUTPUT:-$repository/build_cargo/tool}"
-# Match the native Rust consumer safeguard in docs/ci-tooling.md.
-export SOLDR_RUSTC_WRAPPER=none
-soldr cargo build --locked --manifest-path "$repository/Cargo.toml" \
-  -p obs-build --bin obs-build --target "$build_host" --target-dir "$tool_output"
-tool="$tool_output/$build_host/debug/obs-build"
-case "$build_host" in *-windows-*) tool="$tool.exe" ;; esac
-exec "$tool" "$@"
+#!/bin/sh
+# Build the native obs-build tool, then enter it outside Cargo/Soldr's process
+# tree (ci/native_build.py). The logic lives in Python (GEN-005).
+exec uv run --script "$(dirname "$0")/ci/native_build.py" "$@"
