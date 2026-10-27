@@ -183,10 +183,10 @@ class LinuxQtFrontendTest(unittest.TestCase):
         self.assertEqual(unittest_call["env"]["PYTHONPATH"], "ci")
         ctest = self.calls("xvfb-run")[0]
         self.assertEqual(
-            ctest["argv"][:1] + ctest["argv"][2:],
-            ["ctest", "--test-dir", str(self.build), "--output-on-failure", "-j", "4", "-R", f"^({'|'.join(built)})$"],
+            ctest["argv"],
+            ["-a", "ctest", "--test-dir", str(self.build), "--output-on-failure", "-j", "4",
+             "-R", f"^({'|'.join(built)})$"],
         )
-        self.assertEqual(ctest["argv"][1], "ctest")
         self.assertEqual(ctest["env"]["LD_LIBRARY_PATH"], f"{self.qt}/lib:{self.ff}/lib")
         self.assertEqual(ctest["env"]["QT_PLUGIN_PATH"], f"{self.qt}/plugins")
         self.assertIn("qt-phase phase=build seconds=", result.stdout)

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github/workflows/build-project.yaml"
 APT_LIST = ROOT / "rust/tools/linux-validate/apt-packages.txt"
 # Scripts a step runs that configure a ccache launcher themselves.
-CCACHE_SCRIPTS = ("ci/linux_qt_frontend.sh",)
+CCACHE_SCRIPTS = ("ci/linux_qt_frontend.py",)
 
 
 def jobs(text: str) -> dict[str, str]:

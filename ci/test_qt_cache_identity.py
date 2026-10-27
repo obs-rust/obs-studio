@@ -25,7 +25,7 @@ class QtCacheIdentityTest(unittest.TestCase):
         self.stage("docs/audit.json", "{}\n")
         self.stage("README.md", "Documentation\n")
         self.stage(".github/workflows/build-project.yaml", "Qt build workflow\n")
-        self.stage("ci/linux_qt_frontend.sh", "Qt build driver\n")
+        self.stage("ci/linux_qt_frontend.py", "Qt build driver\n")
         self.stage("ci/test_ci_toml.py", "cache policy checks\n")
         self.stage("ci.toml", "cache policy\n")
         self.stage(".github/ISSUE_TEMPLATE/bug.yml", "issue template\n")
@@ -70,7 +70,7 @@ class QtCacheIdentityTest(unittest.TestCase):
     def test_code_and_build_configuration_change_identity(self):
         initial = self.key()
         for name in ("frontend/widget.cpp", "cmake/options.cmake",
-                     ".github/workflows/build-project.yaml", "ci/linux_qt_frontend.sh"):
+                     ".github/workflows/build-project.yaml", "ci/linux_qt_frontend.py"):
             with self.subTest(path=name):
                 original = (self.root / name).read_text()
                 self.stage(name, original + "// changed input\n")
@@ -92,7 +92,7 @@ class QtCacheIdentityTest(unittest.TestCase):
     def test_build_and_tests_are_not_conditional_on_cache_hit(self):
         build = self.job.split("- name: Build Frontend and Run Qt Tests", 1)[1].split("- name:", 1)[0]
         self.assertNotIn("if:", build)
-        self.assertIn("run: ci/linux_qt_frontend.sh", build)
+        self.assertIn("run: uv run --no-project ci/linux_qt_frontend.py", build)
 
     def test_compiler_tools_image_and_library_pins_change_identity(self):
         initial = self.key()

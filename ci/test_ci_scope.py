@@ -152,7 +152,7 @@ class QtScopeTest(unittest.TestCase):
         self.assertTrue(self.qt("test/cmocka/tests.d/test_source_select_list.cmake"))
         self.assertTrue(self.qt("test/cmocka/CMakeLists.txt"))
         self.assertFalse(self.qt(".github/workflows/build-project.yaml"))  # only the Qt job's own files
-        self.assertTrue(self.qt("ci/linux_qt_frontend.sh"))
+        self.assertTrue(self.qt("ci/linux_qt_frontend.py"))
 
     def test_qt_cache_contract_changes_run_the_job(self):
         for path in ("ci/test_qt_cache_budget.py", "ci/test_qt_cache_identity.py"):

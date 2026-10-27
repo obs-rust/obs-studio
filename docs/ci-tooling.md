@@ -163,7 +163,7 @@ above remains enabled.
 Qt compiler snapshots use `qt-ccache-linux-inputs-v2-<digest>` rather than a
 new key for every commit. On the clean CI checkout, the digest includes staged
 file identities except `docs/`, Markdown, `.github/`, `ci/`, and `ci.toml`;
-the build workflow and `ci/linux_qt_frontend.sh` are explicitly included again.
+the build workflow and `ci/linux_qt_frontend.py` are explicitly included again.
 Thus CI policy/test metadata does not cause an upload, while workflow settings,
 dependency installation and the Qt build commands remain publication inputs.
 The digest also includes the runner image, pinned Qt/FFmpeg

@@ -2475,7 +2475,7 @@ jobs:
         run: |
           inputs="$RUNNER_TEMP/qt-compiler-inputs"
           git ls-files --stage -z -- . ':!docs/**' ':!*.md' ':!**/*.md' ':!.github/**' ':!ci/**' ':!ci.toml' > "$inputs"
-          git ls-files --stage -z -- .github/workflows/build-project.yaml ci/linux_qt_frontend.sh >> "$inputs"
+          git ls-files --stage -z -- .github/workflows/build-project.yaml ci/linux_qt_frontend.py >> "$inputs"
           printf '\nimage=%s\nqt=%s\nffmpeg=%s\n' "${ImageVersion:-unknown}" "$QT_SHA256" "$FFMPEG_SHA256" >> "$inputs"
           cc --version >> "$inputs"
           c++ --version >> "$inputs"
@@ -2503,7 +2503,7 @@ jobs:
           du -sh "$CCACHE_DIR"
 
       - name: Build Frontend and Run Qt Tests 🏗️
-        run: ci/linux_qt_frontend.sh "${{ runner.temp }}/qt" "${{ runner.temp }}/ffmpeg" "${{ runner.temp }}/qt-build"
+        run: uv run --no-project ci/linux_qt_frontend.py "${{ runner.temp }}/qt" "${{ runner.temp }}/ffmpeg" "${{ runner.temp }}/qt-build"
 
       - name: Report Qt Cache 🗄️
         if: always()
