@@ -29,8 +29,14 @@ if(ENABLE_SCRIPTING_LUA)
       swig/swigluarun.h
   )
 
-  # The SWIG-generated swigluarun.h casts const away (-Wcast-qual, obs-rust/obs-studio#516).
-  target_compile_options(obs-scripting PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual>)
+  # The SWIG-generated swigluarun.h casts const away (-Wcast-qual, obs-rust/obs-studio#516),
+  # and the generated glue declares its entry points with no prototype in scope
+  # (-Wmissing-prototypes, obs-rust/obs-studio#2703). Neither file is ours, so
+  # this target opts out of those diagnostics instead of the global flag list.
+  target_compile_options(
+    obs-scripting
+    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-missing-prototypes>
+  )
 
   target_compile_definitions(obs-scripting PUBLIC LUAJIT_FOUND)
   # The Lua C module suffix the startup scripts splice in (obs-scripting-lua-host.h).

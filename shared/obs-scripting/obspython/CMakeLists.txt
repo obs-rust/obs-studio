@@ -52,8 +52,11 @@ target_compile_options(
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-double-promotion>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual>
     # The SWIG-generated wrapper converts function pointers to object pointers,
-    # which -Wpedantic rejects in strict C (obs-rust/obs-studio#2695).
+    # which -Wpedantic rejects in strict C (obs-rust/obs-studio#2695), and
+    # declares its entry points with no prototype in scope, which
+    # -Wmissing-prototypes rejects (obs-rust/obs-studio#2703).
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>
+    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-missing-prototypes>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-macro-redefined>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-unreachable-code>
 )

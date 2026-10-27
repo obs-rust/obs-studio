@@ -49,11 +49,13 @@ if(ENABLE_SCRIPTING_PYTHON)
   # The SWIG-generated swigpyrun.h casts const away (-Wcast-qual, obs-rust/obs-studio#516)
   # and converts function pointers to object pointers (-Wpedantic); the upstream
   # py_error() macro in obs-scripting-python.h also uses __FUNCTION__, which
-  # -Wpedantic rejects. Neither file is ours, so this target opts out of those
-  # diagnostics instead of the global C flag list (obs-rust/obs-studio#2695).
+  # -Wpedantic rejects. The generated glue also declares its entry points with no
+  # prototype in scope (-Wmissing-prototypes, obs-rust/obs-studio#2703). None of
+  # those files is ours, so this target opts out of those diagnostics instead of
+  # the global C flag list (obs-rust/obs-studio#2695, #2703).
   target_compile_options(
     obs-scripting
-    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic>
+    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic;-Wno-missing-prototypes>
   )
 
   target_compile_definitions(
