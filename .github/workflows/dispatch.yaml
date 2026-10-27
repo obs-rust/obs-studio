@@ -35,6 +35,9 @@ on:
         required: false
 permissions:
   contents: write
+concurrency:
+  group: dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   services-validation:
     timeout-minutes: 30

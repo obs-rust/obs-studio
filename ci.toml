@@ -1043,12 +1043,6 @@ issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "WF-002"
-path = ".github/workflows/dispatch.yaml"
-reason = "Upstream workflows without top-level concurrency; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "WF-002"
 path = ".github/workflows/push.yaml"
 reason = "Upstream workflows without top-level concurrency; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
