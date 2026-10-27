@@ -34,9 +34,12 @@ target_sources(libobs-objects PRIVATE ${LIBOBS_SOURCES})
 # MSVC /W4 (#2626): uthash's HASH_* macros end in uthash_fatal -> exit(-1),
 # whose non-returning path makes MSVC report C4702 "unreachable code" at the
 # closing brace of every HASH_ADD/HASH_ITER use in obs.c.h and obs-hotkey.c.h.
-# The Rust oracle already suppresses C4702 for the same macros
-# (rust/obs-c-oracle/build.rs), so this follows the vendored-code exemption
-# (#516) instead of editing uthash or sprinkling pragmas in first-party code.
+# The C oracle already suppresses C4702 for the same macros in its own build
+# script, so this follows the vendored-code exemption (#516) instead of editing
+# uthash or sprinkling pragmas in first-party code.
+#
+# Do not name a crate here: ci/test_tier2_proof_inputs.py treats any crate name
+# mentioned in a cmake or CMakeLists.txt file as a Tier 2 root.
 target_compile_options(libobs-objects PRIVATE $<$<C_COMPILER_ID:MSVC>:/wd4702>)
 obs_libobs_add_c_sources(${LIBOBS_PORTED_SOURCES})
 # MSVC warns about INFINITY (a standard library macro) in obs-audio-controls.c
