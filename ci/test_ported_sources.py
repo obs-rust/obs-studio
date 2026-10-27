@@ -76,6 +76,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-render-route.c.h.o",
     "obs-source-size.c.h.o",
     "obs-source-transition-clock.c.h.o",
+    "obs-source-transition-load.c.h.o",
     "obs-source-transition-render.c.h.o",
     "obs-source-transition-start.c.h.o",
     "obs-source-video-tick.c.h.o",

@@ -30,6 +30,18 @@
 //! C: the loaded alignment, width and height are truncated to their low 32
 //! bits, and the loaded mode is stored as is.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// `OBS_SOURCE_TYPE_TRANSITION` (`enum obs_source_type`).
 pub const TYPE_TRANSITION: i32 = 2;
 
@@ -56,49 +68,55 @@ pub enum Source {
 /// Whether a source of this type is a transition:
 /// `type == OBS_SOURCE_TYPE_TRANSITION`.
 #[must_use]
-pub fn is_transition(source_type: i32) -> bool {
-    let _ = source_type;
-    todo!("transition_load::is_transition")
+pub const fn is_transition(source_type: i32) -> bool {
+    source_type == TYPE_TRANSITION
 }
 
 /// A scale type as stored: [`SCALE_MAX_ONLY`], [`SCALE_ASPECT`] and
 /// [`SCALE_STRETCH`] as they are, any other value [`SCALE_MAX_ONLY`]. The
 /// value is compared in 64 bits, as `obs_data` holds it.
 #[must_use]
-pub fn scale_type(value: i64) -> i32 {
-    let _ = value;
-    todo!("transition_load::scale_type")
+pub const fn scale_type(value: i64) -> i32 {
+    // The whole i64 is matched, so 2^32 + 1 is not Aspect; 0 is Max Only
+    // either way.
+    match value {
+        1 => SCALE_ASPECT,
+        2 => SCALE_STRETCH,
+        _ => SCALE_MAX_ONLY,
+    }
 }
 
 /// Whether `obs_transition_load()` looks its saved source up: it has a
 /// name.
 #[must_use]
-pub fn looks_up(has_name: bool) -> bool {
-    let _ = has_name;
-    todo!("transition_load::looks_up")
+pub const fn looks_up(has_name: bool) -> bool {
+    has_name
 }
 
 /// What `obs_transition_load()` does with the looked-up source, after the
 /// add (asked only for a found source): [`Source::NotFound`] when none was
 /// found, [`Source::Refuse`] when the add failed, else [`Source::Keep`].
 #[must_use]
-pub fn source(found: bool, add_ok: bool) -> Source {
-    let _ = (found, add_ok);
-    todo!("transition_load::source")
+pub const fn source(found: bool, add_ok: bool) -> Source {
+    if !found {
+        Source::NotFound
+    } else if !add_ok {
+        Source::Refuse
+    } else {
+        Source::Keep
+    }
 }
 
 /// Whether `obs_transition_swap_begin()` and `obs_transition_swap_end()`
 /// do anything: not for a transition swapped with itself.
 #[must_use]
-pub fn swaps(same: bool) -> bool {
-    let _ = same;
-    todo!("transition_load::swaps")
+pub const fn swaps(same: bool) -> bool {
+    !same
 }
 
 /// Whether `copy_source_state()` stores the new child: it was not to be
 /// added as an active child, or the add worked.
 #[must_use]
-pub fn copy_stores(adds: bool, add_ok: bool) -> bool {
-    let _ = (adds, add_ok);
-    todo!("transition_load::copy_stores")
+pub const fn copy_stores(adds: bool, add_ok: bool) -> bool {
+    !adds || add_ok
 }

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-load.pch.h"
 
 /* The load, scale type and swap checks of the transitions, moved from
  * obs-source-transition.c: the type check of transition_valid(), the scale
@@ -26,7 +26,9 @@
  * values. obs-source-transition.c keeps obs_ptr_valid(), every read of the
  * transition's fields at its point and in its lock section, the locks, the
  * pointer comparisons, the lookup, the active child calls, the references
- * and the logs. Declared in obs-source-transition-load.h without EXPORT. */
+ * and the logs. Declared in obs-source-transition-load.h without EXPORT. In
+ * hybrid libobs the Rust port (rust/obs-source, transition_load) replaces
+ * this file. */
 
 bool obs_source_transition_load_is_transition(int type)
 {

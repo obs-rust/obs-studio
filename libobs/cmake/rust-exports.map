@@ -367,6 +367,14 @@
     obs_source_transition_clock_fit;
     obs_source_transition_clock_mix_spaces;
     obs_source_transition_clock_min_ts;
+    /* obs-source-transition-load.c. obs-source-transition.c calls them
+     * inside libobs. Not EXPORT. */
+    obs_source_transition_load_is_transition;
+    obs_source_transition_load_scale_type;
+    obs_source_transition_load_looks_up;
+    obs_source_transition_load_source;
+    obs_source_transition_load_swaps;
+    obs_source_transition_load_copy_stores;
     /* obs-source-transition-render.c. obs-source-transition.c calls them
      * inside libobs. Not EXPORT. */
     obs_source_transition_render_video_due;
