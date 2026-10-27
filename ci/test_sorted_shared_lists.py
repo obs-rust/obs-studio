@@ -9,8 +9,8 @@ new entry at its own place. Order is not meaning in any of these:
   them into BTreeMaps; CMake defines each target independently.
 - libobs/build/source-sets.json `*_PORTED_SOURCES`: unity groups, each its
   own translation unit, with no constructors.
-- rust/obs-c-oracle/benches/port_comparison.rs: the `mod` lines and the
-  `modules![...]` list in comparisons(); each unit's benchmarks stand alone.
+- rust/obs-c-oracle/benches/port_comparison.rs: no list is left to sort; its
+  unit list is generated from the directory (see the test below).
 - ci/test_ported_sources.py: the per-port object tables.
 """
 
@@ -45,15 +45,33 @@ class SortedSharedListsTest(unittest.TestCase):
         for name, members in ported.items():
             self.assert_sorted(f"source-sets.json {name}", members)
 
-    def test_port_comparison_lists(self):
+    def test_port_comparison_units_are_discovered(self):
+        """A new bench file edits no shared file (#1997).
+
+        `port_comparison.rs` used to carry two hand-kept lists, the `#[path]`
+        `mod` lines and the `modules![...]` call in comparisons(), and every
+        port appended to both, so two ports landed on the same hunk. The
+        build script now enumerates `benches/port_comparison` instead.
+        """
         text = (ROOT / "rust/obs-c-oracle/benches/port_comparison.rs").read_text()
-        mods = re.findall(r"^mod (\w+);$", text, re.M)
-        listed = re.search(r"^    modules!\[\n(.*?)^    \];$", text, re.M | re.S)
-        self.assertIsNotNone(listed, "port_comparison.rs comparisons() has a modules![...] list")
-        calls = re.findall(r"^        (\w+),$", listed.group(1), re.M)
-        self.assert_sorted("port_comparison.rs mod lines", mods)
-        self.assert_sorted("port_comparison.rs modules![...] entries", calls)
-        self.assertEqual(sorted(mods), sorted(calls), "every bench module is called once")
+        self.assertNotRegex(text, r'(?m)^#\[path = "port_comparison/', "no hand-kept mod list")
+        self.assertNotIn("modules![", text, "no hand-kept unit list")
+        for generated in ("port_comparison_modules.rs", "port_comparison_units.rs"):
+            self.assertIn(
+                f'include!(concat!(env!("OUT_DIR"), "/{generated}"));',
+                text,
+                f"port_comparison.rs includes the generated {generated}",
+            )
+        build = (ROOT / "rust/obs-c-oracle/build.rs").read_text()
+        self.assertIn("benches/port_comparison", build, "build.rs enumerates the unit directory")
+
+    def test_every_port_comparison_unit_defines_benchmarks(self):
+        """Discovery registers every file in the directory, so each is a bench."""
+        units = sorted((ROOT / "rust/obs-c-oracle/benches/port_comparison").glob("*.rs"))
+        self.assertTrue(units, "the port_comparison directory has no units")
+        for path in units:
+            with self.subTest(unit=path.name):
+                self.assertIn("fn benchmarks(", path.read_text(), f"{path.name} defines no benchmarks()")
 
     def test_ported_sources_tables(self):
         spec = importlib.util.spec_from_file_location(
