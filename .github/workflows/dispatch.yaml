@@ -33,8 +33,12 @@ on:
         description: Channel to use when generating Windows update files
         type: string
         required: false
+# Read-only at the top level: only `services-validation` writes (it opens a PR),
+# and it mints that grant on its own job below (SEC-002). Every other job is
+# upstream-only, gated on `repository_owner == 'obsproject'`, so a change to this
+# workflow cannot hand a write token to a step that does not need one.
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
@@ -44,6 +48,9 @@ jobs:
     name: Validate Services 🕵️
     if: github.repository_owner == 'obsproject' && inputs.job == 'services'
     runs-on: macos-26
+    # The services validator opens a PR, so it mints contents/checks/pull-requests
+    # writes here rather than at the top level (SEC-002); the job id is listed in
+    # ci.toml's [allow].permissions.
     permissions:
       checks: write
       contents: write
