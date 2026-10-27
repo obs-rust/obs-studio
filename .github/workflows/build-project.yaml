@@ -1638,7 +1638,9 @@ jobs:
         run: uv run --no-project ci/lane_proof.py check --lane tier2-linux --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
 
   rust-tests-linux:
-    timeout-minutes: 60
+    # Fast Gate runs 7.7-11.3 min; 2x bounds a dead runner at 20 instead of
+    # letting it hold the queue for an hour (#2593 A).
+    timeout-minutes: 20
     name: Fast Gate ⚡
     runs-on: ubuntu-26.04
     needs: [check-event, ci-mode]
@@ -1979,7 +1981,8 @@ jobs:
         run: uv run --no-project ci/local_gate.py --lane cross-release
 
   rust-tests:
-    timeout-minutes: 60
+    # 2x the 9-14.3 min the lane runs: windows 30, macos-26 25 (#2593 A).
+    timeout-minutes: ${{ matrix.os == 'windows-2025-vs2026' && 30 || 25 }}
     name: Rust Tests 🦀
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
     if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.platform_os != '[]') }}
@@ -2576,7 +2579,8 @@ jobs:
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
 
   rust-tier2:
-    timeout-minutes: 90
+    # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).
+    timeout-minutes: 25
     name: Rust Tier 2 ${{ matrix.os }}
     strategy:
       fail-fast: false
