@@ -1652,6 +1652,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_no_core_getters": {
+      "sources": [
+        "test/cmocka/test_no_core_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_nsgif_decode": {
       "sources": [
         "test/cmocka/test_nsgif_decode.c"
@@ -5396,6 +5405,12 @@
     },
     "test_nal": {
       "target": "test_nal"
+    },
+    "test_no_core_getters": {
+      "target": "test_no_core_getters",
+      "command": [
+        "${target}"
+      ]
     },
     "test_nsgif_decode": {
       "target": "test_nsgif_decode"
