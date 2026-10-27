@@ -2264,6 +2264,12 @@ area.
   `Info.plist`); the lookup searches the data paths instead. *macOS*,
   pending merge. Issue
   [#2538](https://github.com/obs-rust/obs-studio/issues/2538).
+- A source that a plugin or script puts into a transition while a scene
+  collection is still loading is no longer kept forever, and no longer
+  stays active (or shown in Program) after the loaded transition replaces
+  it; loading the transition lets go of it, as clearing the transition
+  does. *All*, 2026-10-27. Issue
+  [#2582](https://github.com/obs-rust/obs-studio/issues/2582).
 
 ### Security hardening
 

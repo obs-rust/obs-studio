@@ -645,6 +645,8 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	int64_t cx = obs_data_get_int(data, "transition_cx");
 	int64_t cy = obs_data_get_int(data, "transition_cy");
 	obs_source_t *source = NULL;
+	obs_source_t *old;
+	bool old_active;
 
 	if (name) {
 		source = obs_get_source_by_name(name);
@@ -667,6 +669,8 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	}
 
 	lock_transition(tr);
+	old = tr->transition_sources[0];
+	old_active = tr->transition_source_active[0];
 	tr->transition_sources[0] = source;
 	tr->transition_source_active[0] = true;
 	tr->transition_alignment = (uint32_t)alignment;
@@ -675,6 +679,11 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	tr->transition_cx = (uint32_t)cx;
 	tr->transition_cy = (uint32_t)cy;
 	unlock_transition(tr);
+
+	/* Take back the source the slot held, as obs_transition_clear() does. */
+	if (old && old_active)
+		obs_source_remove_active_child(tr, old);
+	obs_source_release(old);
 
 	recalculate_transition_size(tr);
 	recalculate_transition_matrices(tr);
