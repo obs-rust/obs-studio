@@ -402,7 +402,7 @@ if [ "$stage" != build ]; then
     fi
     [ "$ctest_status" -eq 0 ] || exit "$ctest_status"
     # A PipeWire test that skips for lack of a daemon is a hole, not a pass (#776).
-    "$SRC"/rust/tools/linux-validate/check-skips.sh "$build.ctest-$mode.log"
+    uv run --no-project "$SRC"/rust/tools/linux-validate/check_skips.py "$build.ctest-$mode.log"
 
     if [ "$repeat" -gt 0 ]; then
       echo "== [$mode] ctest --repeat until-fail:$repeat${tests:+ -R $tests}"

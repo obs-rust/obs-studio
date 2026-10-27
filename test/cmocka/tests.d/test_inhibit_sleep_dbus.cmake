@@ -2,7 +2,7 @@
 # org.freedesktop.portal.Inhibit portal and the org.freedesktop.ScreenSaver
 # fallback. Both are faked on a private bus (GTestDBus starts its own
 # dbus-daemon; with none the test exits 77, which ctest reports as Skipped and
-# Tier 2 refuses, rust/tools/linux-validate/check-skips.sh). No display is needed.
+# Tier 2 refuses, rust/tools/linux-validate/check_skips.py). No display is needed.
 if(OS_LINUX OR OS_FREEBSD)
   find_package(Gio QUIET)
   find_package(PkgConfig QUIET)

@@ -789,7 +789,7 @@ int main(void)
 
 	/* Exit 77 (ctest: Skipped, SKIP_RETURN_CODE) rather than skip each
 	 * case, which cmocka reports as a pass: Tier 2 must see a skip
-	 * (rust/tools/linux-validate/check-skips.sh, #453). */
+	 * (rust/tools/linux-validate/check_skips.py, #453). */
 	if (!dbus_daemon_available() || access("/.flatpak-info", F_OK) == 0) {
 		fprintf(stderr, "dbus-daemon not found (or in a Flatpak); skipping\n");
 		return 77;
