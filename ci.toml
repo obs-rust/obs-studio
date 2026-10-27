@@ -1023,12 +1023,6 @@ expires = "2027-04-15"
 # WF-002: Upstream workflows without top-level concurrency; tracked in #962.
 [[exceptions]]
 rule = "WF-002"
-path = ".github/workflows/analyze-project.yaml"
-reason = "Upstream workflows without top-level concurrency; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "WF-002"
 path = ".github/workflows/build-project.yaml"
 reason = "Upstream workflows without top-level concurrency; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
