@@ -374,14 +374,31 @@ jobs:
           notarizationUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
           notarizationPassword: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
 
-      # The GPU status light links Rust into every frontend build (#946).
-      # Install the toolchain rust-toolchain.toml pins (rustup's auto-install
-      # is deprecated); the x86_64 leg cross-builds on an arm64 runner and
-      # needs that target's standard library too.
-      - name: Install the Rust toolchain 🦀
-        run: |
-          soldr rustup toolchain install
-          if [[ '${{ matrix.target }}' == x86_64 ]] soldr rustup target add x86_64-apple-darwin
+      # The GPU status light links Rust into every frontend build (#946), so
+      # this job needs the Rust toolchain. setup-soldr provisions the one
+      # rust-toolchain.toml pins and puts `soldr` on PATH; #2650 rewrote the
+      # step below to `soldr rustup` without adding this, and both app builds
+      # then died with `command not found: soldr` (#2699).
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        with:
+          # One scope for every caller (push.yaml, ci.yml), so PRs replay
+          # the verdicts master publishes (forge-ci/setup-soldr#604).
+          verdict-scope: build-project
+          version: 0.9.43
+          build-cache: false
+          # Cook the workspace dependencies the app build compiles anyway.
+          prebuild-deps-flags: --release
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          shims: true
+          # The x86_64 leg adds a target std library after setup (#507/#969).
+          solo-toolchain-cache: false
+
+      # The x86_64 leg cross-builds on an arm64 runner and needs that
+      # target's standard library too.
+      - name: Add the Rust x86_64 macOS target 🦀
+        if: matrix.target == 'x86_64'
+        run: soldr rustup target add x86_64-apple-darwin
 
       - name: Build OBS Studio 🧱
         uses: ./.github/actions/build-obs
@@ -1399,14 +1416,31 @@ jobs:
           & (Join-Path $CcacheHome 'ccache.exe') --zero-stats
           "epoch=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" >> $env:GITHUB_OUTPUT
 
-      # The GPU status light links Rust into every frontend build (#946).
-      # Install the toolchain rust-toolchain.toml pins (rustup's auto-install
-      # is deprecated); the arm64 leg cross-builds on an x64 runner and needs
-      # that target's standard library too.
-      - name: Install the Rust toolchain 🦀
-        run: |
-          soldr rustup toolchain install
-          if ( '${{ matrix.architecture }}' -eq 'arm64' ) { soldr rustup target add aarch64-pc-windows-msvc }
+      # The GPU status light links Rust into every frontend build (#946), so
+      # this job needs the Rust toolchain. setup-soldr provisions the one
+      # rust-toolchain.toml pins and puts `soldr` on PATH; #2650 rewrote the
+      # step below to `soldr rustup` without adding this, and both app builds
+      # then died with `The term 'soldr' is not recognized` (#2699).
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        with:
+          # One scope for every caller (push.yaml, ci.yml), so PRs replay
+          # the verdicts master publishes (forge-ci/setup-soldr#604).
+          verdict-scope: build-project
+          version: 0.9.43
+          build-cache: false
+          # Cook the workspace dependencies the app build compiles anyway.
+          prebuild-deps-flags: --release
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          shims: true
+          # The arm64 leg adds a target std library after setup (#507/#969).
+          solo-toolchain-cache: false
+
+      # The arm64 leg cross-builds on an x64 runner and needs that target's
+      # standard library too.
+      - name: Add the Rust arm64 Windows target 🦀
+        if: matrix.architecture == 'arm64'
+        run: soldr rustup target add aarch64-pc-windows-msvc
 
       - name: Build OBS Studio 🧱
         uses: ./.github/actions/build-obs
