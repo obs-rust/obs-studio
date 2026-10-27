@@ -327,7 +327,16 @@ API_AVAILABLE(macos(12.5)) void screen_stream_video_update(struct screen_capture
         CFRetain(sc->current);
         IOSurfaceIncrementUseCount(sc->current);
 
+        /* A published frame ends the stall window (mac-sck-stall.h). */
+        sc->last_delivery_ns = os_gettime_ns();
+        sc->stall_warned_ns = 0;
+
         pthread_mutex_unlock(&sc->mutex);
+    } else {
+        /* No IOSurface, or the tick holds the mutex: the frame is dropped
+         * without a word, so record when, and let the tick say whether the
+         * gap it reports is frames refused rather than frames absent. */
+        sc->last_drop_ns = os_gettime_ns();
     }
 
     if (prev_current) {

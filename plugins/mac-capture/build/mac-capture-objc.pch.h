@@ -19,6 +19,7 @@
 
 /* mac-sck-audio-capture.m */
 #include "plugins/mac-capture/mac-sck-common.h"
+#include "plugins/mac-capture/mac-sck-stall.h"
 #include "plugins/mac-capture/mac-sck-stop.h"
 
 /* mac-window-capture.m */

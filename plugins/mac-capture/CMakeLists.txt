@@ -8,8 +8,14 @@ obs_macos_capture_sources(_capture_sources MAC_CAPTURE "${CMAKE_CURRENT_SOURCE_D
 
 target_sources(
   mac-capture
-  PRIVATE ${_capture_sources} audio-device-enum.h coreaudio-retry.h mac-sck-common.h mac-sck-stall.h mac-sck-stop.h
-          window-utils.h
+  PRIVATE
+    ${_capture_sources}
+    audio-device-enum.h
+    coreaudio-retry.h
+    mac-sck-common.h
+    mac-sck-stall.h
+    mac-sck-stop.h
+    window-utils.h
 )
 
 target_link_libraries(

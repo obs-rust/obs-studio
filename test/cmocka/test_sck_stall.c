@@ -20,16 +20,14 @@ static void test_no_warning_before_threshold(void **state)
 {
 	UNUSED_PARAMETER(state);
 	const uint64_t now = 600 * 1000 * MS;
-	assert_false(sck_stall_should_warn(now, now - 1000 * MS, 0, SCK_STALL_WARN_MS,
-					   SCK_STALL_REWARN_MS));
+	assert_false(sck_stall_should_warn(now, now - 1000 * MS, 0, SCK_STALL_WARN_MS, SCK_STALL_REWARN_MS));
 }
 
 static void test_warning_after_threshold(void **state)
 {
 	UNUSED_PARAMETER(state);
 	const uint64_t now = 600 * 1000 * MS;
-	assert_true(sck_stall_should_warn(now, now - 2500 * MS, 0, SCK_STALL_WARN_MS,
-					  SCK_STALL_REWARN_MS));
+	assert_true(sck_stall_should_warn(now, now - 2500 * MS, 0, SCK_STALL_WARN_MS, SCK_STALL_REWARN_MS));
 }
 
 static void test_warning_repeats_after_rewarn(void **state)
@@ -37,10 +35,8 @@ static void test_warning_repeats_after_rewarn(void **state)
 	UNUSED_PARAMETER(state);
 	const uint64_t now = 600 * 1000 * MS;
 	const uint64_t delivered = now - 5000 * MS;
-	assert_false(sck_stall_should_warn(now, delivered, now - 1000 * MS, SCK_STALL_WARN_MS,
-					   SCK_STALL_REWARN_MS));
-	assert_true(sck_stall_should_warn(now, delivered, now - 31000 * MS, SCK_STALL_WARN_MS,
-					  SCK_STALL_REWARN_MS));
+	assert_false(sck_stall_should_warn(now, delivered, now - 1000 * MS, SCK_STALL_WARN_MS, SCK_STALL_REWARN_MS));
+	assert_true(sck_stall_should_warn(now, delivered, now - 31000 * MS, SCK_STALL_WARN_MS, SCK_STALL_REWARN_MS));
 }
 
 static void test_never_delivered_is_no_frames(void **state)
@@ -62,16 +58,14 @@ static void test_drop_after_delivery_is_dropped(void **state)
 {
 	UNUSED_PARAMETER(state);
 	const uint64_t now = 600 * 1000 * MS;
-	assert_int_equal(sck_stall_classify(now, now - 5000 * MS, now - 1000 * MS),
-			 SCK_STALL_FRAMES_DROPPED);
+	assert_int_equal(sck_stall_classify(now, now - 5000 * MS, now - 1000 * MS), SCK_STALL_FRAMES_DROPPED);
 }
 
 static void test_drop_before_delivery_is_no_frames(void **state)
 {
 	UNUSED_PARAMETER(state);
 	const uint64_t now = 600 * 1000 * MS;
-	assert_int_equal(sck_stall_classify(now, now - 1000 * MS, now - 5000 * MS),
-			 SCK_STALL_NO_FRAMES);
+	assert_int_equal(sck_stall_classify(now, now - 1000 * MS, now - 5000 * MS), SCK_STALL_NO_FRAMES);
 }
 
 int main(void)

@@ -3,6 +3,7 @@
 #include <AvailabilityMacros.h>
 #include <Cocoa/Cocoa.h>
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <obs-module.h>
 #include <util/threading.h>
@@ -61,6 +62,13 @@ struct API_AVAILABLE(macos(12.5)) screen_capture {
     os_sem_t *shareable_content_available;
     IOSurfaceRef current, prev;
     bool capture_failed;
+
+    /* Stall detection (mac-sck-stall.h): when a frame was last published,
+     * when the delegate last refused one, and when a stall was last logged.
+     * A frozen source keeps showing the last frame with no other trace. */
+    uint64_t last_delivery_ns;
+    uint64_t last_drop_ns;
+    uint64_t stall_warned_ns;
 
     pthread_mutex_t mutex;
 

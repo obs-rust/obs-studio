@@ -364,7 +364,13 @@ not get a line.
 
 ### Stability
 
-- Repeated null-output encoding sessions reclaim completed stop threads. *All*.
+- **A frozen macOS Screen Capture says so in the log.** When the source
+  stops receiving frames, one warning every 30 s names the gap in seconds
+  and whether frames stopped arriving or are arriving but cannot be
+  published; the last frame stays on screen and the recording continues.
+  *macOS*, pending merge. Issue
+  [#2223](https://github.com/obs-rust/obs-studio/issues/2223).
+- Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel
   format used, make sure you did set range correctly" once per image or

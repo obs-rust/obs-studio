@@ -288,6 +288,10 @@ API_AVAILABLE(macos(12.5)) static bool init_screen_stream(struct screen_capture 
         return false;
     }
 
+    /* Start the stall clock here, not at the first frame: a stream that
+     * never delivers must still be reportable (mac-sck-stall.h). */
+    sc->last_delivery_ns = os_gettime_ns();
+
     __block BOOL did_stream_start = NO;
     [sc->disp startCaptureWithCompletionHandler:^(NSError *_Nullable error) {
         did_stream_start = (BOOL) (error == nil);
@@ -354,10 +358,26 @@ API_AVAILABLE(macos(12.5)) static void sck_video_capture_tick(void *data, float 
 {
     struct screen_capture *sc = data;
 
-    if (!sc->current)
-        return;
     if (!obs_source_showing(sc->source))
         return;
+
+    const uint64_t now_ns = os_gettime_ns();
+
+    if (!sc->current) {
+        /* No new surface: the texture keeps the last frame, the canvas and
+         * any recording keep showing it, and nothing else reports it. Say so
+         * once per window, naming the side the stall is on (#2223). */
+        if (sck_stall_should_warn(now_ns, sc->last_delivery_ns, sc->stall_warned_ns, SCK_STALL_WARN_MS,
+                                  SCK_STALL_REWARN_MS)) {
+            const enum sck_stall_cause cause = sck_stall_classify(now_ns, sc->last_delivery_ns, sc->last_drop_ns);
+            MACCAP_LOG(LOG_WARNING,
+                       "No screen frame for %.1f seconds (%s). The last frame stays on screen and the "
+                       "recording continues.",
+                       (double) (now_ns - sc->last_delivery_ns) / 1e9, sck_stall_cause_name(cause));
+            sc->stall_warned_ns = now_ns;
+        }
+        return;
+    }
 
     IOSurfaceRef prev_prev = sc->prev;
     if (pthread_mutex_lock(&sc->mutex))

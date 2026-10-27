@@ -51,14 +51,13 @@ enum sck_stall_cause {
  * current gap is frames that stopped arriving: SCK_STALL_NO_FRAMES.
  * Nothing was ever refused and a frame did arrive is
  * SCK_STALL_FRAMES_ARRIVED. */
-enum sck_stall_cause sck_stall_classify(uint64_t now_ns, uint64_t last_delivery_ns,
-					uint64_t last_drop_ns);
+enum sck_stall_cause sck_stall_classify(uint64_t now_ns, uint64_t last_delivery_ns, uint64_t last_drop_ns);
 
 /* True once threshold_ms has passed since the last published frame, and at
  * most once per rewarn_ms, so a frozen source does not flood the log. False
  * while last_delivery_ns is 0, which is the state before capture starts. */
-bool sck_stall_should_warn(uint64_t now_ns, uint64_t last_delivery_ns, uint64_t warned_at_ns,
-			   unsigned int threshold_ms, unsigned int rewarn_ms);
+bool sck_stall_should_warn(uint64_t now_ns, uint64_t last_delivery_ns, uint64_t warned_at_ns, unsigned int threshold_ms,
+			   unsigned int rewarn_ms);
 
 /* The cause as it appears in the log line, never NULL. */
 const char *sck_stall_cause_name(enum sck_stall_cause cause);
