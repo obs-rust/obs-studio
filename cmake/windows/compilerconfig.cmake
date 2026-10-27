@@ -65,7 +65,7 @@ if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
 endif()
 
 add_compile_options(
-  /W3
+  /W4
   /utf-8
   /Brepro
   /permissive-
@@ -97,7 +97,3 @@ add_link_options(
   /DEBUG
   /Brepro
 )
-
-if(CMAKE_COMPILE_WARNING_AS_ERROR)
-  add_link_options(/WX)
-endif()
