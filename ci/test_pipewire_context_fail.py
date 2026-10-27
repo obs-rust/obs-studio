@@ -98,6 +98,8 @@ class Harness:
         self.work = work
         self.bin = work / "bin"
         self.bin.mkdir(parents=True, exist_ok=True)
+        # True once shell_tools_only() has made PATH the stub directory alone.
+        self.restricted = False
         if pipewire is not None:
             write_stub(self.bin / "pipewire", pipewire)
         self.capture_file = work / "capture.txt"
@@ -108,7 +110,7 @@ class Harness:
         write_stub(self.test_bin, body)
 
     def shell_tools_only(self) -> None:
-        """A PATH with the shell tools but no pipewire."""
+        """A PATH with the shell tools but no pipewire (the host PATH may have one)."""
         only = self.work / "bin-none"
         only.mkdir(parents=True, exist_ok=True)
         for tool in SHELL_TOOLS:
@@ -118,14 +120,17 @@ class Harness:
             if not link.exists():
                 link.symlink_to(found)
         self.bin = only
+        self.restricted = True
 
     def env(self, tmpdir: Path | None = None) -> dict[str, str]:
         env = dict(os.environ)
         # The stub directory wins over the real PATH, so the stub pipewire (and
         # no real one) is what the module finds; the host PATH stays behind it
         # so the stubs' own `sh`, `env` and `sort` still resolve (NixOS has no
-        # /usr/bin coreutils, and `uv` runs the live stub).
-        env["PATH"] = f"{self.bin}:{os.environ.get('PATH', '')}"
+        # /usr/bin coreutils, and `uv` runs the live stub). With no pipewire
+        # stub at all, PATH is the tools directory alone: a host pipewire
+        # (CI's Tier 2 container has one) must not be found either.
+        env["PATH"] = str(self.bin) if self.restricted else f"{self.bin}:{os.environ.get('PATH', '')}"
         env["CAPTURE_FILE"] = str(self.capture_file)
         env.pop("PIPEWIRE_RUNTIME_DIR", None)
         env.pop("PIPEWIRE_CONFIG_DIR", None)
@@ -201,7 +206,6 @@ class PipewireContextFailTest(unittest.TestCase):
             self.assertEqual(capture["HOME"], str(runtime.parent / "home"))
             # The daemon started, so the test binary sees its runtime directory.
             self.assertEqual(capture["PIPEWIRE_RUNTIME_DIR"], str(runtime))
-            self.assertEqual(capture["PIPEWIRE_CONFIG_DIR"], str(runtime.parent / "daemon-config"))
             for name in (
                 "DISPLAY",
                 "WAYLAND_DISPLAY",
@@ -209,6 +213,9 @@ class PipewireContextFailTest(unittest.TestCase):
                 "DBUS_SESSION_BUS_ADDRESS",
                 "DBUS_SYSTEM_BUS_ADDRESS",
                 "PIPEWIRE_REMOTE",
+                # PIPEWIRE_CONFIG_DIR is the daemon's alone: the shell gave it
+                # as a prefix on the `pipewire` command, not an export.
+                "PIPEWIRE_CONFIG_DIR",
                 "PIPEWIRE_CONFIG_NAME",
             ):
                 self.assertNotIn(name, capture, name)

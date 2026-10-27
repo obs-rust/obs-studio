@@ -2,7 +2,7 @@
 # configuration (the obs-rust AppImage shipped without client.conf) made
 # pw_context_new() return NULL, which obs_pipewire_connect_fd() then passed on.
 # The failure cases need no daemon and always run; the control case uses a
-# private PipeWire daemon that test_pipewire_context_fail.sh starts when
+# private PipeWire daemon that test_pipewire_context_fail.py starts when
 # pipewire is installed. Needs no display.
 if(OS_LINUX AND TARGET OBS::pipewire)
   find_package(PkgConfig REQUIRED)
@@ -28,7 +28,9 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   add_dependencies(cmocka-tests test_pipewire_context_fail)
   add_test(
     NAME test_pipewire_context_fail
-    COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_context_fail.sh" $<TARGET_FILE:test_pipewire_context_fail>
+    COMMAND
+      uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pipewire_context_fail.py"
+      $<TARGET_FILE:test_pipewire_context_fail>
   )
   set_tests_properties(test_pipewire_context_fail PROPERTIES TIMEOUT 60)
 endif()

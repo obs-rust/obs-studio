@@ -34,7 +34,7 @@
  * The failure cases need no PipeWire daemon: the configuration is read
  * before connecting, and a socket with no daemon behind it stands in for the
  * portal's fd. They always run, CI included. Only the control case needs a
- * daemon: test_pipewire_context_fail.sh starts a private one (own runtime
+ * daemon: test_pipewire_context_fail.py starts a private one (own runtime
  * dir and minimal configuration, no D-Bus, no session manager, no devices)
  * when pipewire is installed, and the case skips without it. No display is
  * needed. */
