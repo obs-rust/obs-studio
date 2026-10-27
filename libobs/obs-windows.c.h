@@ -1116,22 +1116,28 @@ static void reset_win32_symbol_paths(void)
 	if (!funcs_initialized) {
 		HMODULE mod;
 		/* GetProcAddress yields a FARPROC and the members are function
-		 * pointers: casting between them is C4152 at /W4. Copy the
-		 * address through a union instead (as LOAD_MODULE_SYMBOL does). */
+		 * pointers: casting between them is C4152 at /W4. Copy each
+		 * address through a union of that member's own type instead (as
+		 * LOAD_MODULE_SYMBOL does), one union per member because the two
+		 * prototypes differ and a shared union would be C4113. */
 		union {
 			FARPROC proc;
 			__typeof__(sym_initialize_w) fn;
-		} sym;
+		} sym_initialize;
+		union {
+			FARPROC proc;
+			__typeof__(sym_set_search_path_w) fn;
+		} sym_search_path;
 		funcs_initialized = true;
 
 		mod = LoadLibraryW(L"DbgHelp");
 		if (!mod)
 			return;
 
-		sym.proc = GetProcAddress(mod, "SymInitializeW");
-		sym_initialize_w = sym.fn;
-		sym.proc = GetProcAddress(mod, "SymSetSearchPathW");
-		sym_set_search_path_w = sym.fn;
+		sym_initialize.proc = GetProcAddress(mod, "SymInitializeW");
+		sym_initialize_w = sym_initialize.fn;
+		sym_search_path.proc = GetProcAddress(mod, "SymSetSearchPathW");
+		sym_set_search_path_w = sym_search_path.fn;
 		if (!sym_initialize_w || !sym_set_search_path_w) {
 			FreeLibrary(mod);
 			return;

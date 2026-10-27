@@ -299,7 +299,11 @@ static inline void get_module_name(struct exception_handler_data *data, struct m
 static inline bool walk_stack(struct exception_handler_data *data, HANDLE thread, struct stack_trace *trace)
 {
 	struct module_info module_info = {0};
-	DWORD64 func_offset;
+	/* sym_from_addr fills this through a pointer, so MSVC's flow analysis
+	 * cannot see that the read below is guarded by its return value: C4701
+	 * at /W4. Starting it at zero costs nothing and cannot be observed,
+	 * because it is only printed when that call succeeded. */
+	DWORD64 func_offset = 0;
 	char sym_name[256];
 	char *p;
 
@@ -517,12 +521,10 @@ static LONG CALLBACK exception_handler(PEXCEPTION_POINTERS exception)
 	inside_handler = true;
 
 	handle_exception(&data, exception);
+	/* bcrash is OBS_NORETURN (libobs/util/base.h), so the cleanup, the
+	 * inside_handler reset and the return that used to follow it were dead
+	 * statements - C4702 at /W4. Nothing is leaked: the process is gone. */
 	bcrash("%s", data.str.array);
-	exception_handler_data_free(&data);
-
-	inside_handler = false;
-
-	return EXCEPTION_CONTINUE_SEARCH;
 }
 
 void initialize_crash_handler(void)
