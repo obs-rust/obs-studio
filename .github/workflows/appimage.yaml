@@ -341,6 +341,9 @@ jobs:
           status=0
           for scenario in ${{ matrix.scenarios }}; do
             echo "::group::Scenario: $scenario"
+            # The containers run test-appimage.sh's Python checks (check_appdir.py),
+            # and a stock image ships neither uv nor an interpreter, so hand them the
+            # runner's uv, as ci.yml does for its Tier 2 container (#2608).
             docker run --rm --cap-add SYS_PTRACE \
               ${{ matrix.image == 'debian:trixie-slim' && '-e HOSTILE_QT=1' || '' }} \
               ${{ inputs.publish_continuous && '-e EXPECT_APPIMAGE_UPDATE=1' || '' }} \
@@ -350,6 +353,7 @@ jobs:
               -v "$PWD/pkgcache/lists:/var/lib/apt/lists" \
               -v "$PWD/pkgcache/dnf:/var/cache/libdnf5" \
               -v "$PWD/pkgcache/pacman:/var/cache/pacman/pkg" \
+              --mount "type=bind,src=$(command -v uv),dst=/usr/local/bin/uv,readonly" \
               -v "$PWD:/work" -w /work "${{ matrix.image }}" \
               bash -c "build-aux/appimage/test-appimage.sh OBS-Studio-*-linux-x86_64.AppImage results/$scenario obs-appimage-testkit $scenario" ||
               { status=1; echo "::error::scenario $scenario failed on ${{ matrix.image }}"; }
