@@ -32,10 +32,10 @@ class CookProfilesTest(unittest.TestCase):
 
     def test_build_consumers_declare_the_profile_policy(self):
         expected = {
-            "rust-tests-linux": "${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev' }}",
+            "rust-tests-linux": "${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}",
             "rust-cross-lint": "--profile dev",
             "rust-cross-lint-release": "--profile dev",
-            "rust-tests": "--profile dev",
+            "rust-tests": "--profile dev -- --tests",
             "rust-linux-tier2-build": "--release",
             "rust-tier2": "--release",
         }
@@ -66,6 +66,36 @@ class CookProfilesTest(unittest.TestCase):
             with self.subTest(platform=platform):
                 actual = expression[2] if platform == expression[1] else expression[3]
                 self.assertEqual(actual, expected)
+
+    def test_cook_dev_dependencies_declare_explicit_features(self):
+        """Re-enabled defaults use explicit features, not `default-features` (#2661).
+
+        The cook with dev-dependencies (`-- --tests`) drops a member's
+        `default-features = true` override for a `[workspace.dependencies]`
+        entry declared with `default-features = false` (the #2603/#2604
+        defect), so the recipe either fails or serves the wrong feature set.
+        The fix is the #2604 pattern: an explicit list equal to the crate's
+        own `default`.
+        """
+        crate_defaults = {
+            "proptest": {"std", "fork", "timeout", "bit-set"},
+            "base64": {"std", "simd-unsafe"},
+            "memchr": {"std"},
+            "sha2": {"alloc", "oid"},
+        }
+        seen: set[str] = set()
+        for manifest in sorted((ROOT / "rust").glob("*/Cargo.toml")):
+            for line_no, line in enumerate(manifest.read_text().splitlines(), 1):
+                crate = line.split(" = ", 1)[0]
+                if crate not in crate_defaults:
+                    continue
+                seen.add(crate)
+                match = re.search(r"features = \[([^\]]*)\]", line)
+                declared = {feature.strip().strip('"') for feature in match[1].split(",")} if match else set()
+                with self.subTest(manifest=manifest.name, line=line_no, crate=crate):
+                    self.assertNotIn("default-features = true", line)
+                    self.assertEqual(declared, crate_defaults[crate])
+        self.assertEqual(seen, set(crate_defaults), "Every re-enabled dependency must be covered")
 
 
 if __name__ == "__main__":
