@@ -39,8 +39,9 @@ Set-Location $RepoRoot
 $env:PATH = "$CMockaPrefix/bin;$env:PATH"
 
 # ctest reports a crashed test only as "Exception: SegFault". Run each failed
-# test once more under cdb and print the faulting stack, so a Windows-only
-# crash can be diagnosed from the log.
+# test again under cdb and print the faulting stack, so a Windows-only crash
+# can be diagnosed from the log. An intermittent crash may not recur on the
+# first run, so retry until cdb reports an exception (#2543).
 function Show-CrashStacks([string]$build) {
   $failedLog = Join-Path $build 'Testing/Temporary/LastTestsFailed.log'
   if (-not (Test-Path $failedLog)) { return }
@@ -60,7 +61,16 @@ function Show-CrashStacks([string]$build) {
     if (-not $exe) { continue }
     Write-Host "== crash stack: $name"
     $env:PATH = $runPath
-    & $kits -g -G -lines -c '.ecxr;kn 40;q' $exe.FullName 2>&1 | Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
+    $out = @()
+    for ($attempt = 1; $attempt -le 20; $attempt++) {
+      $out = & $kits -g -G -lines -c '.ecxr;kn 40;q' $exe.FullName 2>&1
+      if ($out -match '\(([0-9a-f]+)\): .*(exception|violation)|code c0000') {
+        Write-Host "crashed on attempt $attempt"
+        break
+      }
+    }
+    if ($attempt -gt 20) { Write-Host 'no crash in 20 runs under cdb' }
+    $out | Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
   }
 }
 

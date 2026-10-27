@@ -77,6 +77,18 @@ static void transition_video_render(void *data, gs_effect_t *effect)
 	(void)effect;
 }
 
+static bool transition_audio_render(void *data, uint64_t *ts_out, struct obs_source_audio_mix *audio_output,
+				    uint32_t mixers, size_t channels, size_t sample_rate)
+{
+	(void)data;
+	(void)ts_out;
+	(void)audio_output;
+	(void)mixers;
+	(void)channels;
+	(void)sample_rate;
+	return false;
+}
+
 static void transition_stop_cb(void *data)
 {
 	(void)data;
@@ -105,6 +117,7 @@ static void register_sources(void)
 		.create = transition_create,
 		.destroy = transition_destroy,
 		.video_render = transition_video_render,
+		.audio_render = transition_audio_render,
 		.transition_stop = transition_stop_cb,
 	};
 	obs_register_source(&transition);
