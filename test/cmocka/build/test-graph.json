@@ -505,6 +505,26 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_rules_steps": {
+      "sources": [
+        "test/cmocka/test_canvas_rules_steps.c",
+        "libobs/obs-canvas-rules.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-canvas-rules.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_cf_lexer": {
       "sources": [
         "test/cmocka/test_cf_lexer.c"
@@ -4922,6 +4942,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_canvas_rules_steps": {
+      "target": "test_canvas_rules_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_cf_lexer": {
