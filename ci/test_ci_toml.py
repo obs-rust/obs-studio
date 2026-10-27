@@ -478,6 +478,35 @@ class AllowPermissionsTest(unittest.TestCase):
                  and entry["path"] == ".github/workflows/build-project.yaml"]
         self.assertEqual(stale, [], "the grants replace this exception (#962)")
 
+    def test_ci_yml_job_write_grants_are_recorded_not_excepted(self):
+        """ci.yml's job write grants live in [allow].permissions (#962, SEC-002).
+
+        ci.yml's job-level write grants are real (its jobs cancel superseded
+        runs, write caches and write check results), so SEC-002's first fix
+        applies: record each ci.yml job id under its scope in ci.toml's
+        [allow].permissions and drop that file's SEC-002 exception. This pins
+        both halves so ci.yml cannot silently re-enter the baseline.
+        """
+        writes = {entry for entry in job_permission_scopes(WORKFLOWS / "ci.yml")
+                  if entry[1].endswith(": write")}
+        self.assertEqual(
+            writes,
+            {
+                ("cache-janitor", "actions: write"),
+                ("cancel-superseded", "actions: write"),
+                ("ci-pre", "actions: write"),
+                ("build-project", "contents: write"),
+                ("validate-data", "checks: write"),
+            },
+            "ci.yml's job-level write scopes")
+        grants = load()["allow"]["permissions"]
+        for job, scope in sorted(writes):
+            with self.subTest(job=job, scope=scope):
+                self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
+        stale = [entry for entry in load()["exceptions"]
+                 if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/ci.yml"]
+        self.assertEqual(stale, [], "ci.yml has no SEC-002 finding left to except")
+
 
 class NativeArchitectureRetentionTest(unittest.TestCase):
     def test_current_architecture_seeds_have_independent_honest_allowances(self):
