@@ -32,11 +32,16 @@ SCRIPTING = ROOT / "shared" / "obs-scripting"
 CLANG_OPTIONS = ROOT / "cmake" / "common" / "compiler_common.cmake"
 GNU_OPTIONS = ROOT / "cmake" / "linux" / "compilerconfig.cmake"
 
-# target -> the file that declares its options
+# target -> every file that compiles SWIG-generated code into that target, so
+# the exemption cannot hide behind one of the ENABLE_SCRIPTING_* options
+# (#2711: it lived in python.cmake, and the AppImage build turns Python off).
 TARGETS = {
-    "obs-scripting": SCRIPTING / "cmake" / "python.cmake",
-    "obspython": SCRIPTING / "obspython" / "CMakeLists.txt",
-    "obslua": SCRIPTING / "obslua" / "CMakeLists.txt",
+    "obs-scripting": (
+        SCRIPTING / "cmake" / "lua.cmake",
+        SCRIPTING / "cmake" / "python.cmake",
+    ),
+    "obspython": (SCRIPTING / "obspython" / "CMakeLists.txt",),
+    "obslua": (SCRIPTING / "obslua" / "CMakeLists.txt",),
 }
 
 C_ONLY_PEDANTIC = re.compile(
@@ -58,22 +63,39 @@ def target_options(text: str, target: str) -> str:
 class ScriptingPedanticExemptionTest(unittest.TestCase):
     def test_each_generated_swig_target_opts_out_of_pedantic(self):
         """-Wno-pedantic on every SWIG target, always inside a C-only genex."""
-        for target, path in TARGETS.items():
-            with self.subTest(target=target):
-                options = target_options(path.read_text(encoding="utf-8"), target)
-                self.assertIn("-Wno-pedantic", options)
-                self.assertIsNotNone(
-                    C_ONLY_PEDANTIC.search(options),
-                    f"{target}: -Wno-pedantic must sit in the C-only "
-                    "COMPILE_LANG_AND_ID guard, never in a C++ option list",
-                )
+        for target, paths in TARGETS.items():
+            for path in paths:
+                with self.subTest(target=target, file=path.name):
+                    options = target_options(path.read_text(encoding="utf-8"), target)
+                    self.assertIn("-Wno-pedantic", options)
+                    self.assertIsNotNone(
+                        C_ONLY_PEDANTIC.search(options),
+                        f"{target} ({path.name}): -Wno-pedantic must sit in the "
+                        "C-only COMPILE_LANG_AND_ID guard, never in a C++ option "
+                        "list",
+                    )
+
+    def test_the_lua_sources_are_exempt_even_with_python_off(self):
+        """The AppImage build sets ENABLE_SCRIPTING_PYTHON=OFF and still links
+        the Lua SWIG runtime, so python.cmake cannot be its only exemption."""
+        lua = target_options(
+            (SCRIPTING / "cmake" / "lua.cmake").read_text(encoding="utf-8"),
+            "obs-scripting",
+        )
+        self.assertIsNotNone(
+            C_ONLY_PEDANTIC.search(lua),
+            "cmake/lua.cmake must carry -Wno-pedantic for obs-scripting: with "
+            "ENABLE_SCRIPTING_PYTHON=OFF (build-aux/appimage/build.py) "
+            "python.cmake's exemption is not applied at all (#2711)",
+        )
 
     def test_exemptions_match_the_cast_qual_precedent(self):
         """Both exonerations cover the same generated files (#516, #2695)."""
-        for target, path in TARGETS.items():
-            with self.subTest(target=target):
-                options = target_options(path.read_text(encoding="utf-8"), target)
-                self.assertIn("-Wno-cast-qual", options)
+        for target, paths in TARGETS.items():
+            for path in paths:
+                with self.subTest(target=target, file=path.name):
+                    options = target_options(path.read_text(encoding="utf-8"), target)
+                    self.assertIn("-Wno-cast-qual", options)
 
     def test_global_c_flag_lists_keep_pedantic(self):
         """The fix is target-scoped: the tree still compiles C at -Wpedantic."""
