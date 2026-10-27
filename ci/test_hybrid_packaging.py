@@ -154,7 +154,7 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         self.assertIn("-DOBS_LIBOBS_BACKEND=HYBRID", obs["config-opts"])
         self.assertTrue(any(source.get("dest") == ".flatpak-rust/corrosion" and source.get("sha256") for source in obs["sources"]))
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.assertLess(workflow.index("run: build-aux/prepare-flatpak-rust.sh"), workflow.index("- name: Build Flatpak Manifest"))
+        self.assertLess(workflow.index("run: uv run --script build-aux/prepare_flatpak_rust.py"), workflow.index("- name: Build Flatpak Manifest"))
 
     def test_flatpak_keeps_debug_symbols_without_recompressing_elf(self):
         manifest = json.loads((ROOT / "build-aux/io.github.obs_rust.OBSStudioRust.json").read_text())
@@ -328,12 +328,12 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
             root = Path(directory)
             (root / "build-aux").mkdir()
             (root / "bin").mkdir()
-            script = root / "build-aux/prepare-flatpak-rust.sh"
-            shutil.copyfile(ROOT / "build-aux/prepare-flatpak-rust.sh", script)
+            script = root / "build-aux/prepare_flatpak_rust.py"
+            shutil.copyfile(ROOT / "build-aux/prepare_flatpak_rust.py", script)
             stub = root / "bin/soldr"
             stub.write_text('#!/bin/sh\ncat <<\'CONFIG\'\nRust is installed now. Great!\n[source.crates-io]\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = ".flatpak-rust/vendor"\nCONFIG\n')
             stub.chmod(0o755)
-            result = subprocess.run(["bash", str(script)], env={**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"]}, capture_output=True, text=True)
+            result = subprocess.run([sys.executable, str(script)], env={**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"]}, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             config = tomllib.loads((root / ".flatpak-rust/cargo/config.toml").read_text())
             self.assertEqual(config["source"]["vendored-sources"]["directory"], "/run/build/obs/.flatpak-rust/vendor")
@@ -687,7 +687,7 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         consumer = workflow.split('  flatpak-compiler-consumer:\n', 1)[1].split('  flatpak-runtime-test:', 1)[0]
         self.assertRegex(consumer, r'cmake -P cmake/common/prepare-flatpak-soldr\.cmake\n'
                          r'      - name: Vendor Flatpak Compiler Consumer Sources\n'
-                         r'        run: build-aux/prepare-flatpak-rust\.sh')
+                         r'        run: uv run --script build-aux/prepare_flatpak_rust\.py')
 
     def test_container_artifacts_use_one_directory_to_preserve_the_cache_payload(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
