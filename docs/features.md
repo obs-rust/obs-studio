@@ -1654,6 +1654,13 @@ area.
   default on Linux and macOS, instead of 0 or false with a "Size of shader
   param does not match" error in the log. *Linux, macOS*, 2026-10-27.
   Issue [#2548](https://github.com/obs-rust/obs-studio/issues/2548).
+- A frame read in parts, the way a Media Source scans an animated GIF, no
+  longer makes the rest of the frame decode as a separate block when the read
+  stops at the end of the frame's data: the next scan starts the frame again,
+  so the frames after it decode instead of coming out corrupted. *All*,
+  2026-10-27. Issue
+  [#2515](https://github.com/obs-rust/obs-studio/issues/2515), PR
+  [#2516](https://github.com/obs-rust/obs-studio/pull/2516).
 
 ### Scenes and UI
 
