@@ -19,4 +19,4 @@ obs-util = { path = "../obs-util" }
 [dev-dependencies]
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
-proptest = { workspace = true, default-features = true }
+proptest = { workspace = true, features = ["std", "fork", "timeout", "bit-set"] }

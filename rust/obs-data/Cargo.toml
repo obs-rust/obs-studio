@@ -34,7 +34,7 @@ obs-media-io = { path = "../obs-media-io" }
 obs-callback = { path = "../obs-callback" }
 obs-c-oracle = { path = "../obs-c-oracle" }
 obs-util = { path = "../obs-util" }
-proptest = { workspace = true, default-features = true }
+proptest = { workspace = true, features = ["std", "fork", "timeout", "bit-set"] }
 criterion = { workspace = true, features = ["cargo_bench_support"] }
 
 [lib]
