@@ -2,6 +2,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
+#include "libobs/obs-canvas-rules.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"

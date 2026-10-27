@@ -118,6 +118,7 @@
 
 /* obs-canvas.c */
 #include "obs-scene.h"
+#include "obs-canvas-rules.h"
 
 /* obs-display.c */
 #include "obs-host/display-clear-workaround.h"

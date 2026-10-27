@@ -8,6 +8,7 @@
     "obs-av1.h",
     "obs-avc.h",
     "obs-canvas-draw.h",
+    "obs-canvas-rules.h",
     "obs-config.h",
     "obs-core-modules-loader.h",
     "obs-data.h",

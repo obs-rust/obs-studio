@@ -20,11 +20,18 @@
 /* The primary canvas has static name/uuid. */
 static const char *MAIN_CANVAS_NAME = "Main";
 static const char *MAIN_CANVAS_UUID = "6c69626f-6273-4c00-9d88-c5136d61696e";
-/* Internal flag to mark a canvas as removed */
-static const uint32_t REMOVED = 1u << 31;
-/* The flags a caller or a scene collection may set (MAIN is the main
- * canvas's own; REMOVED and unknown bits are dropped). */
-static const uint32_t PUBLIC_CANVAS_FLAGS = ACTIVATE | MIX_AUDIO | SCENE_REF | EPHEMERAL;
+
+/* obs-canvas-rules.h copies the flags and limits it decides on. */
+_Static_assert(OBS_CANVAS_RULES_MAIN == MAIN, "MAIN");
+_Static_assert(OBS_CANVAS_RULES_ACTIVATE == ACTIVATE, "ACTIVATE");
+_Static_assert(OBS_CANVAS_RULES_MIX_AUDIO == MIX_AUDIO, "MIX_AUDIO");
+_Static_assert(OBS_CANVAS_RULES_SCENE_REF == SCENE_REF, "SCENE_REF");
+_Static_assert(OBS_CANVAS_RULES_EPHEMERAL == EPHEMERAL, "EPHEMERAL");
+_Static_assert((OBS_CANVAS_RULES_MAIN | OBS_CANVAS_RULES_ACTIVATE | OBS_CANVAS_RULES_MIX_AUDIO |
+		OBS_CANVAS_RULES_SCENE_REF) == (MAIN | PROGRAM),
+	       "MAIN | PROGRAM");
+_Static_assert(OBS_CANVAS_RULES_FORMAT_NONE == VIDEO_FORMAT_NONE, "VIDEO_FORMAT_NONE");
+_Static_assert(OBS_CANVAS_RULES_MAX_CHANNELS == MAX_CHANNELS, "MAX_CHANNELS");
 
 /*** Signals ***/
 
@@ -51,7 +58,7 @@ static inline void canvas_dosignal(obs_canvas_t *canvas, const char *signal_obs,
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "canvas", canvas);
-	if (signal_obs && !canvas->context.private)
+	if (signal_obs && obs_canvas_rules_public(canvas->context.private))
 		signal_handler_signal(obs->signals, signal_obs, &data);
 	if (signal_canvas)
 		signal_handler_signal(canvas->context.signals, signal_canvas, &data);
@@ -160,7 +167,7 @@ static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uu
 		return NULL;
 	}
 
-	obs_view_init(&canvas->view, flags & ACTIVATE ? MAIN_VIEW : AUX_VIEW);
+	obs_view_init(&canvas->view, obs_canvas_rules_main_view(flags) ? MAIN_VIEW : AUX_VIEW);
 	obs_context_init_control(&canvas->context, canvas, (obs_destroy_cb)obs_canvas_destroy);
 
 	/* A canvas can be created without a mix. */
@@ -169,7 +176,7 @@ static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uu
 		canvas->mix = obs_create_video_mix(ovi);
 		if (canvas->mix) {
 			canvas->mix->view = &canvas->view;
-			canvas->mix->mix_audio = (flags & MIX_AUDIO) != 0;
+			canvas->mix->mix_audio = obs_canvas_rules_mix_audio(flags);
 
 			pthread_mutex_lock(&obs->video.mixes_mutex);
 			da_push_back(obs->video.mixes, &canvas->mix);
@@ -178,7 +185,7 @@ static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uu
 	}
 
 	obs_context_data_insert_uuid(&canvas->context, &obs->data.canvases_mutex, &obs->data.canvases);
-	if (!private) {
+	if (obs_canvas_rules_public(private)) {
 		obs_context_data_insert_name(&canvas->context, &obs->data.canvases_mutex, &obs->data.named_canvases);
 		canvas_dosignal(canvas, "canvas_create", NULL);
 	}
@@ -191,19 +198,19 @@ static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uu
 
 obs_canvas_t *obs_create_main_canvas(void)
 {
-	const uint32_t main_flags = MAIN | PROGRAM;
+	const uint32_t main_flags = obs_canvas_rules_main_flags();
 	return obs_canvas_create_internal(MAIN_CANVAS_NAME, MAIN_CANVAS_UUID, NULL, main_flags, false);
 }
 
 obs_canvas_t *obs_canvas_create(const char *name, struct obs_video_info *ovi, uint32_t flags)
 {
-	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
+	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, NULL, ovi, flags, false);
 }
 
 obs_canvas_t *obs_canvas_create_private(const char *name, struct obs_video_info *ovi, uint32_t flags)
 {
-	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
+	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, NULL, ovi, flags, true);
 }
 
@@ -226,14 +233,14 @@ void obs_canvas_destroy(obs_canvas_t *canvas)
 		obs_source_t *next = source->context.hh.next;
 
 		/* Canvases can hold strong refs to scene sources, release them here. */
-		if (canvas->flags & SCENE_REF && obs_source_is_scene(source))
+		if (obs_canvas_rules_holds_scenes(canvas->flags) && obs_source_is_scene(source))
 			obs_source_release(source);
 
 		source = next;
 	}
 
 	obs_context_data_remove_uuid(&canvas->context, &obs->data.canvases_mutex, &obs->data.canvases);
-	if (!canvas->context.private) {
+	if (obs_canvas_rules_public(canvas->context.private)) {
 		obs_context_data_remove_name(&canvas->context, &obs->data.canvases_mutex, &obs->data.named_canvases);
 	}
 
@@ -250,7 +257,7 @@ void obs_canvas_destroy(obs_canvas_t *canvas)
 
 obs_data_t *obs_save_canvas(obs_canvas_t *canvas)
 {
-	if (canvas->flags & (EPHEMERAL | REMOVED))
+	if (!obs_canvas_rules_saves(canvas->flags))
 		return NULL;
 
 	obs_data_t *canvas_data = obs_data_create();
@@ -270,7 +277,7 @@ obs_canvas_t *obs_load_canvas(obs_data_t *data)
 	const bool private = obs_data_get_bool(data, "private");
 	uint32_t flags = (uint32_t)obs_data_get_int(data, "flags");
 
-	flags &= PUBLIC_CANVAS_FLAGS; /* Prevent user from creating a MAIN or removed canvas. */
+	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
 	return obs_canvas_create_internal(name, uuid, NULL, flags, private);
 }
 
@@ -311,8 +318,9 @@ void obs_free_canvas_mixes(void)
 bool obs_canvas_has_valid_video_info(obs_canvas_t *canvas)
 {
 	struct obs_video_info *ovi = &canvas->ovi;
-	return ovi->base_width && ovi->base_height && ovi->output_width && ovi->output_height &&
-	       ovi->output_format != VIDEO_FORMAT_NONE;
+	return obs_canvas_rules_size_set(ovi->base_width) && obs_canvas_rules_size_set(ovi->base_height) &&
+	       obs_canvas_rules_size_set(ovi->output_width) && obs_canvas_rules_size_set(ovi->output_height) &&
+	       obs_canvas_rules_format_set(ovi->output_format);
 }
 
 bool obs_canvas_reset_video_internal(obs_canvas_t *canvas, struct obs_video_info *ovi)
@@ -323,7 +331,7 @@ bool obs_canvas_reset_video_internal(obs_canvas_t *canvas, struct obs_video_info
 	canvas->mix = obs_create_video_mix(&canvas->ovi);
 	if (canvas->mix) {
 		canvas->mix->view = &canvas->view;
-		canvas->mix->mix_audio = (canvas->flags & MIX_AUDIO) != 0;
+		canvas->mix->mix_audio = obs_canvas_rules_mix_audio(canvas->flags);
 
 		pthread_mutex_lock(&obs->video.mixes_mutex);
 		da_push_back(obs->video.mixes, &canvas->mix);
@@ -337,7 +345,7 @@ bool obs_canvas_reset_video_internal(obs_canvas_t *canvas, struct obs_video_info
 
 void obs_canvas_insert_source(obs_canvas_t *canvas, obs_source_t *source)
 {
-	if (canvas->flags & SCENE_REF && obs_source_is_scene(source))
+	if (obs_canvas_rules_holds_scenes(canvas->flags) && obs_source_is_scene(source))
 		obs_source_get_ref(source);
 	if (source->canvas)
 		obs_canvas_remove_source(source);
@@ -377,7 +385,7 @@ void obs_canvas_remove_source(obs_source_t *source)
 		obs_context_data_remove_name(&source->context, &canvas->sources_mutex, &canvas->sources);
 
 		canvas_dosignal_source("source_remove", canvas, source);
-		if (canvas->flags & SCENE_REF && obs_source_is_scene(source))
+		if (obs_canvas_rules_holds_scenes(canvas->flags) && obs_source_is_scene(source))
 			obs_source_release(source);
 
 		/* If source is a group, also remove it from all other scenes in the old canvas */
@@ -405,7 +413,7 @@ void obs_canvas_rename_source(obs_source_t *source, const char *name)
 
 		signal_handler_signal(source->context.signals, "rename", &data);
 		signal_handler_signal(canvas->context.signals, "source_rename", &data);
-		if (canvas->flags & MAIN)
+		if (obs_canvas_rules_global_signals(canvas->flags))
 			signal_handler_signal(obs->signals, "source_rename", &data);
 
 		calldata_free(&data);
@@ -419,7 +427,7 @@ void obs_canvas_rename_source(obs_source_t *source, const char *name)
 
 bool obs_canvas_reset_video(obs_canvas_t *canvas, struct obs_video_info *ovi)
 {
-	if (!ovi || canvas->flags & MAIN || obs_video_active())
+	if (!ovi || !obs_canvas_rules_resets(canvas->flags) || obs_video_active())
 		return false;
 
 	return obs_canvas_reset_video_internal(canvas, ovi);
@@ -448,7 +456,7 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 {
 	assert(channel < MAX_CHANNELS);
 
-	if (channel >= MAX_CHANNELS)
+	if (!obs_canvas_rules_channel_ok(channel))
 		return;
 
 	struct obs_view *view = &canvas->view;
@@ -472,7 +480,7 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 	calldata_set_ptr(&params, "source", source);
 
 	signal_handler_signal(canvas->context.signals, "channel_change", &params);
-	if (canvas->flags & MAIN)
+	if (obs_canvas_rules_global_signals(canvas->flags))
 		signal_handler_signal(obs->signals, "channel_change", &params);
 
 	/* For some reason the original implementation allows overriding the source from the callback,
@@ -510,16 +518,16 @@ void obs_canvas_scene_remove(obs_scene_t *scene)
 
 void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 {
-	if (!name || !*name)
+	if (obs_canvas_rules_name_empty(name))
 		return;
-	if (canvas->flags & MAIN) /* Do not allow renaming main canvases. */
+	if (!obs_canvas_rules_renames(canvas->flags)) /* Do not allow renaming main canvases. */
 		return;
 	if (strcmp(name, canvas->context.name) == 0)
 		return;
 
 	char *prev_name = bstrdup(canvas->context.name);
 
-	if (canvas->context.private)
+	if (!obs_canvas_rules_public(canvas->context.private))
 		obs_context_data_setname(&canvas->context, name);
 	else
 		obs_context_data_setname_ht(&canvas->context, name, &obs->data.named_canvases);
@@ -531,7 +539,7 @@ void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 	calldata_set_string(&data, "prev_name", prev_name);
 	signal_handler_signal(canvas->context.signals, "rename", &data);
 
-	if (!canvas->context.private)
+	if (obs_canvas_rules_public(canvas->context.private))
 		signal_handler_signal(obs->signals, "canvas_rename", &data);
 
 	calldata_free(&data);
@@ -581,12 +589,12 @@ void obs_canvas_move_scene(obs_scene_t *scene, obs_canvas_t *dst)
 void obs_canvas_remove(obs_canvas_t *canvas)
 {
 	/* Do not allow removing the main canvas, or canvases already marked as removed. */
-	if (canvas->flags & (REMOVED | MAIN))
+	if (!obs_canvas_rules_removable(canvas->flags))
 		return;
 
 	obs_canvas_t *c = obs_canvas_get_ref(canvas);
 	if (c) {
-		c->flags |= REMOVED;
+		c->flags = obs_canvas_rules_mark_removed(c->flags);
 		canvas_dosignal(c, "canvas_remove", "remove");
 		obs_canvas_release(c);
 	}
@@ -594,7 +602,7 @@ void obs_canvas_remove(obs_canvas_t *canvas)
 
 bool obs_canvas_removed(obs_canvas_t *canvas)
 {
-	return (canvas->flags & REMOVED) != 0;
+	return obs_canvas_rules_removed(canvas->flags);
 }
 
 bool obs_canvas_has_video(obs_canvas_t *canvas)
