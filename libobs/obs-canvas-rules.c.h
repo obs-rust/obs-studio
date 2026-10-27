@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-canvas-rules.pch.h"
 
 /* The canvas flag rules and setter checks, moved from obs-canvas.c: the
  * constructors' flags, the view type, mix_audio, the public canvas rule, the
@@ -24,7 +24,8 @@
  * and obs_canvas_remove(), on plain values. obs-canvas.c keeps every read of
  * the canvas's flags at its point, the calls each check guards, the
  * references, the signals and the logs. Declared in obs-canvas-rules.h
- * without EXPORT. */
+ * without EXPORT. Ported to rust/obs-core (canvas_rules): the hybrid libobs
+ * drops this file. */
 
 /* obs_create_main_canvas() */
 uint32_t obs_canvas_rules_main_flags(void)

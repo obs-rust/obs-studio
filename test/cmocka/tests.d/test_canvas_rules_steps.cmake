@@ -13,3 +13,10 @@
 # test_canvas_destroy_scene_refs, test_shutdown_canvas_weak_ref and
 # test_scene_canvas_characterization cover the callers through the real libobs.
 # Target and test are declared in ../build/test-graph.json.
+
+# No _rust variant, as for test_canvas_draw_steps: linking this test against
+# libobs_rust-static fails with 401 undefined references (108 symbols), because
+# the shims' archive member (an obs_core codegen unit) also holds the other
+# obs-core ports, which need libobs and obs-util's platform code. The Tier 3
+# parity tests (rust/obs-core/tests/obs_core/canvas_rules_parity.rs) compare
+# the shims with this C instead.

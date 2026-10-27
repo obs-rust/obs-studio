@@ -648,6 +648,24 @@ _obs_display_clear_draws_solid
 _obs_display_clear_flags
 _obs_display_clear_linear
 _obs_display_clear_reads_space
+# obs-canvas-rules.c: obs-canvas.c calls them inside libobs. Not EXPORT.
+_obs_canvas_rules_channel_ok
+_obs_canvas_rules_format_set
+_obs_canvas_rules_global_signals
+_obs_canvas_rules_holds_scenes
+_obs_canvas_rules_main_flags
+_obs_canvas_rules_main_view
+_obs_canvas_rules_mark_removed
+_obs_canvas_rules_mix_audio
+_obs_canvas_rules_name_empty
+_obs_canvas_rules_public
+_obs_canvas_rules_public_flags
+_obs_canvas_rules_removable
+_obs_canvas_rules_removed
+_obs_canvas_rules_renames
+_obs_canvas_rules_resets
+_obs_canvas_rules_saves
+_obs_canvas_rules_size_set
 # util/source-profiler.c: the frame hooks libobs calls inside itself. Not
 # EXPORT.
 _source_profiler_reset_video

@@ -48,6 +48,18 @@
 //!
 //! No intentional differences from the C.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 use core::ffi::c_int;
 
 /// `MAIN`: the main canvas, created by libobs; it cannot be renamed, reset
@@ -82,120 +94,104 @@ pub const MAX_CHANNELS: u32 = 64;
 /// `obs_canvas_rules_main_flags()`: `MAIN | PROGRAM`.
 #[must_use]
 pub fn main_flags() -> u32 {
-    todo!("canvas_rules::main_flags")
+    MAIN | PROGRAM
 }
 
 /// `obs_canvas_rules_public_flags()`: `flags & PUBLIC`.
 #[must_use]
 pub fn public_flags(flags: u32) -> u32 {
-    let _ = flags;
-    todo!("canvas_rules::public_flags")
+    flags & PUBLIC
 }
 
 /// `obs_canvas_rules_main_view()`: a `MAIN_VIEW` (else `AUX_VIEW`) for an
 /// [`ACTIVATE`] canvas.
 #[must_use]
 pub fn main_view(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::main_view")
+    flags & ACTIVATE != 0
 }
 
 /// `obs_canvas_rules_mix_audio()`: [`MIX_AUDIO`].
 #[must_use]
 pub fn mix_audio(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::mix_audio")
+    flags & MIX_AUDIO != 0
 }
 
 /// `obs_canvas_rules_public()`: a canvas that is not private.
 #[must_use]
 pub fn is_public(is_private: bool) -> bool {
-    let _ = is_private;
-    todo!("canvas_rules::is_public")
+    !is_private
 }
 
 /// `obs_canvas_rules_holds_scenes()`: [`SCENE_REF`].
 #[must_use]
 pub fn holds_scenes(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::holds_scenes")
+    flags & SCENE_REF != 0
 }
 
 /// `obs_canvas_rules_saves()`: neither [`EPHEMERAL`] nor [`REMOVED`].
 #[must_use]
 pub fn saves(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::saves")
+    flags & (EPHEMERAL | REMOVED) == 0
 }
 
 /// `obs_canvas_rules_size_set()`: a size that is not 0.
 #[must_use]
 pub fn size_set(size: u32) -> bool {
-    let _ = size;
-    todo!("canvas_rules::size_set")
+    size != 0
 }
 
 /// `obs_canvas_rules_format_set()`: a format that is not
 /// [`FORMAT_NONE`], one outside the enum included.
 #[must_use]
 pub fn format_set(format: c_int) -> bool {
-    let _ = format;
-    todo!("canvas_rules::format_set")
+    format != FORMAT_NONE
 }
 
 /// `obs_canvas_rules_resets()`: any canvas but [`MAIN`].
 #[must_use]
 pub fn resets(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::resets")
+    flags & MAIN == 0
 }
 
 /// `obs_canvas_rules_global_signals()`: [`MAIN`].
 #[must_use]
 pub fn global_signals(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::global_signals")
+    flags & MAIN != 0
 }
 
 /// `obs_canvas_rules_channel_ok()`: below [`MAX_CHANNELS`].
 #[must_use]
 pub fn channel_ok(channel: u32) -> bool {
-    let _ = channel;
-    todo!("canvas_rules::channel_ok")
+    channel < MAX_CHANNELS
 }
 
 /// `obs_canvas_rules_name_empty()`: no name (`None`, the C's `NULL`), or a
 /// name whose first byte is 0.
 #[must_use]
 pub fn name_empty(first_byte: Option<u8>) -> bool {
-    let _ = first_byte;
-    todo!("canvas_rules::name_empty")
+    first_byte.is_none_or(|byte| byte == 0)
 }
 
 /// `obs_canvas_rules_renames()`: any canvas but [`MAIN`].
 #[must_use]
 pub fn renames(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::renames")
+    flags & MAIN == 0
 }
 
 /// `obs_canvas_rules_removable()`: neither [`REMOVED`] nor [`MAIN`].
 #[must_use]
 pub fn removable(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::removable")
+    flags & (REMOVED | MAIN) == 0
 }
 
 /// `obs_canvas_rules_mark_removed()`: `flags | REMOVED`.
 #[must_use]
 pub fn mark_removed(flags: u32) -> u32 {
-    let _ = flags;
-    todo!("canvas_rules::mark_removed")
+    flags | REMOVED
 }
 
 /// `obs_canvas_rules_removed()`: [`REMOVED`].
 #[must_use]
 pub fn removed(flags: u32) -> bool {
-    let _ = flags;
-    todo!("canvas_rules::removed")
+    flags & REMOVED != 0
 }
