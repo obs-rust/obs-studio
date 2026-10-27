@@ -56,6 +56,13 @@ PW_REQUIRED = (
 SPA_REQUIRED = "support/libspa-support.so"
 # Releases before this have public advisories (GHSA-6xg9-784j-24rm, ...).
 SRT_MIN = "1.5.7"
+# libvpx 1.14.1 has public advisories too (CVE-2026-2447, heap overflow in the
+# VP9 encoder's superframe index) plus decoder fixes on the alpha-WebM path.
+# Its version is a bare `vX.Y.Z` string in .rodata (vpx_codec_version_str).
+LIBVPX_MIN = "1.17.0"
+_VPX_VERSION_RE = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
+_VPX_SONAME_RE = re.compile(rb"libvpx\.so(?:\.[0-9]+)*")
+_VPX_NEEDED_RE = re.compile(rb"libvpx\.so")
 
 
 def _expand(value: str, env: dict[str, str]) -> str:
@@ -212,6 +219,17 @@ def _find_srt_libs(appdir: Path) -> list[str]:
     return sorted(found)
 
 
+def _find_libvpx_libs(appdir: Path) -> list[str]:
+    """`find "$APPDIR" \\( -type f -o -type l \\) -name 'libvpx*.so*'`, sorted."""
+    found = [
+        str(Path(directory, name).relative_to(appdir))
+        for directory, _dirnames, filenames in os.walk(appdir)
+        for name in filenames
+        if fnmatch(name, "libvpx*.so*")
+    ]
+    return sorted(found)
+
+
 def _grep_files(root: Path, pattern: re.Pattern[bytes]) -> list[Path]:
     """`grep -rla`: the files under root whose bytes contain the pattern."""
     hits: list[Path] = []
@@ -254,6 +272,36 @@ def _check_libsrt(appdir: Path) -> tuple[str, list[str]]:
     return version, errors
 
 
+def _check_libvpx(appdir: Path) -> tuple[str, list[str]]:
+    """One bundled libvpx, at least LIBVPX_MIN, and no second soname referenced."""
+    libs = _find_libvpx_libs(appdir)
+    if len(libs) != 1:
+        return "", [f"expected exactly one libvpx in the AppImage, found {len(libs)}: {' '.join(libs)}"]
+    lib = f"{appdir}/{libs[0]}"
+    data = Path(lib).read_bytes().replace(b"\x00", b"\n")
+    versions = [line[1:] for line in data.decode("latin-1").split("\n") if _VPX_VERSION_RE.fullmatch(line)]
+    if len(versions) != 1:
+        return "", [f"cannot read the version of {libs[0]} (version strings found: {' '.join(versions)})"]
+    version = versions[0]
+    if tuple(int(part) for part in version.split(".")) < tuple(int(part) for part in LIBVPX_MIN.split(".")):
+        return "", [f"the bundled {libs[0]} is libvpx {version}; at least {LIBVPX_MIN} is required"]
+    # The loader must resolve libvpx to the bundled copy: a second soname
+    # (libvpx.so.9 after the .12 bump) would map the host's library instead.
+    sonames = sorted({match.decode() for match in _VPX_SONAME_RE.findall(Path(lib).read_bytes())})
+    if len(sonames) != 1:
+        return "", [f"cannot read the soname of {libs[0]} (sonames found: {' '.join(sonames)})"]
+    bundled = sonames[0]
+    errors: list[str] = []
+    for path in _grep_files(appdir / "usr", _VPX_NEEDED_RE):
+        needed = sorted({match.decode() for match in _VPX_SONAME_RE.findall(path.read_bytes())})
+        for soname in needed:
+            if soname != bundled:
+                errors.append(
+                    f"{_relative(str(path), appdir)} needs {soname}, a second libvpx next to the bundled {bundled}"
+                )
+    return version, errors
+
+
 def check(appdir: Path) -> int:
     """Exit code: 0 when every runtime file AppRun points at is bundled."""
     exported = _exported(appdir / "AppRun", appdir)
@@ -264,6 +312,8 @@ def check(appdir: Path) -> int:
     errors += _check_qt(exported)
     version, libsrt_errors = _check_libsrt(appdir)
     errors += libsrt_errors
+    vpx_version, libvpx_errors = _check_libvpx(appdir)
+    errors += libvpx_errors
     for note in notes:
         print(note)
     for error in errors:
@@ -274,6 +324,7 @@ def check(appdir: Path) -> int:
     print(
         f"check-appdir: all {count} AppDir paths that AppRun exports exist; "
         f"PipeWire, gconv and Qt X11/Wayland runtime files are bundled; one libsrt ({version})"
+        f"; one libvpx ({vpx_version})"
     )
     return 0
 

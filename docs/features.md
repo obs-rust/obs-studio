@@ -495,6 +495,14 @@ not get a line.
   libdatachannel, so WHIP appears in Settings > Stream > Service. *Linux*,
   2026-10-23. Issue [#1744](https://github.com/obs-rust/obs-studio/issues/1744),
   PR [#1871](https://github.com/obs-rust/obs-studio/pull/1871).
+- **AppImage decodes alpha WebM and VP9-encodes with libvpx 1.17.0.** The
+  bundled FFmpeg takes libvpx 1.17.0 instead of 1.14.1 — older than the
+  1.16.0 the AppImage had before — so the alpha-WebM decode path (Media
+  Source and Stinger transitions) and Custom FFmpeg Output's libvpx-vp9
+  encoder carry CVE-2026-2447's fix and the 1.17 decoder fixes. *Linux
+  (AppImage)*, pending merge. Issue
+  [#1134](https://github.com/obs-rust/obs-studio/issues/1134), PR
+  [#20](https://github.com/obs-rust/obs-studio-libs/pull/20).
 - **AppImage names a missing libwayland-egl.** On a host without
   libwayland-egl.so.1, the AppImage says which package to install
   (libwayland-egl1 on Debian and Ubuntu) instead of "Failed to initialize
