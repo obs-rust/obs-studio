@@ -1,0 +1,52 @@
+name: Welcome first-time contributors
+
+# #2506: the first contribution of an account gets one short welcome, and
+# nobody gets two. B, the first PR or issue of an account, points at Discord
+# and (for a PR) explains that the first CI run of a fork waits for a
+# maintainer - the question #2483's author had. C, the first merged PR, thanks
+# the author and offers a way to stay around. D, red CI on a first-timer's PR,
+# is deliberately not here: it can repeat for one person, so it would be the
+# message that reads as noise. It can come later on its own.
+#
+# pull_request_target, not pull_request: a fork PR's own run has a read-only
+# token, and the comment must come from the repository. This workflow
+# therefore runs with a write token against a contributor's pull request, so
+# it does not check out that pull request and it runs no code from it: the
+# checkout below is the base branch, and the only thing executed is this
+# repository's ci/welcome.py. Never add a `ref:` naming the pull request here.
+#
+# The rules (who is skipped, the once-only marker, the fail-closed API calls)
+# live in ci/welcome.py and are pinned by ci/test_welcome.py.
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened, closed]
+
+# Only what posting a comment needs: no write access to the tree, and no
+# checkout of the pull request, so a fork cannot reach a write token here.
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: welcome-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  welcome:
+    if: github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The base branch: ci/welcome.py and .github/welcome/*.md as reviewed.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: false
+      - name: Welcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run ci/welcome.py --event "$GITHUB_EVENT_PATH" --repo "$GITHUB_REPOSITORY"

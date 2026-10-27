@@ -16,8 +16,11 @@ and the missing-template assertions.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import re
 import unittest
+from collections.abc import Collection
 from pathlib import Path
 
 import welcome
@@ -58,11 +61,11 @@ def issue_payload(action="opened", *, association="FIRST_TIMER", author="newcome
 class WelcomeDecisionTest(unittest.TestCase):
     """Who gets a welcome, and who does not."""
 
-    def decide(self, payload, *, posted=(), merged_count=1):
-        def already_posted(_number, marker):
+    def decide(self, payload: dict, *, posted: Collection[str] = (), merged_count: int | Exception = 1):
+        def already_posted(_number: int, marker: str) -> bool:
             return marker in posted
 
-        def merged_pr_count(_author):
+        def merged_pr_count(_author: str) -> int:
             if isinstance(merged_count, Exception):
                 raise merged_count
             return merged_count
@@ -95,6 +98,13 @@ class WelcomeDecisionTest(unittest.TestCase):
         self.assertEqual(post.template.name, "first-merge.md")
 
     # --- skipped ----------------------------------------------------------
+
+    def test_a_contributor_whose_first_pr_merges_is_still_welcomed(self):
+        # The author of the very PR being merged can already read CONTRIBUTOR,
+        # so the merge message cannot key off a first-time association.
+        post = self.decide(pr_payload("closed", merged=True, association="CONTRIBUTOR"))
+        assert post is not None
+        self.assertEqual(post.marker, "first-merge")
 
     def test_a_member_is_never_welcomed(self):
         for association in ("MEMBER", "OWNER", "COLLABORATOR"):
@@ -135,7 +145,9 @@ class WelcomeDecisionTest(unittest.TestCase):
     # --- fail closed ------------------------------------------------------
 
     def test_an_api_error_posts_nothing(self):
-        self.assertIsNone(self.decide(pr_payload("closed", merged=True), merged_count=RuntimeError("502")))
+        # decide() logs why it stayed quiet; keep that out of the gate log.
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertIsNone(self.decide(pr_payload("closed", merged=True), merged_count=RuntimeError("502")))
 
 
 class TemplateTest(unittest.TestCase):
@@ -169,6 +181,23 @@ class TemplateTest(unittest.TestCase):
         # template edit silently disable the once-only check.
         for name in ("first-pr.md", "first-merge.md"):
             self.assertNotIn("<!-- welcome:", self.text(name), name)
+
+
+class RenderTest(unittest.TestCase):
+    """What actually gets posted."""
+
+    def test_the_author_is_mentioned_first(self):
+        self.assertTrue(welcome.render("first-pr", "newcomer").startswith("@newcomer "))
+
+    def test_the_marker_is_appended(self):
+        for marker in ("first-pr", "first-merge"):
+            self.assertIn(f"<!-- welcome:{marker} -->", welcome.render(marker, "newcomer"), marker)
+
+    def test_no_placeholder_survives_into_the_comment(self):
+        # C's optional "one line on what the fix does" is dropped, not posted
+        # raw: a comment with {{...}} in it is worse than one without the line.
+        for marker in ("first-pr", "first-merge"):
+            self.assertNotIn("{{", welcome.render(marker, "newcomer"), marker)
 
 
 class WorkflowTest(unittest.TestCase):
