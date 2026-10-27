@@ -301,7 +301,7 @@ static double gcd(uint32_t m, uint32_t n)
 
 static struct dstr aspect_ratio_from_spa_rectangle(struct spa_rectangle rect)
 {
-	struct dstr str = {};
+	struct dstr str = {0};
 	double divisor = gcd(rect.width, rect.height);
 
 	if (divisor <= 50) {
@@ -338,7 +338,7 @@ static void camera_format_list(struct camera_device *dev, obs_property_t *prop)
 {
 	struct param *p;
 	obs_data_t *data = NULL;
-	struct dstr str = {};
+	struct dstr str = {0};
 	g_autoptr(GArray) listed = g_array_new(FALSE, FALSE, sizeof(struct listed_format));
 
 	obs_property_list_clear(prop);
@@ -952,7 +952,7 @@ static bool framerate_list(struct camera_device *dev, uint32_t pixelformat, cons
 	for (size_t i = 0; i < framerates->len; i++) {
 		const struct spa_fraction *framerate = &g_array_index(framerates, struct spa_fraction, i);
 		struct media_frames_per_second fps;
-		struct dstr str = {};
+		struct dstr str = {0};
 
 		fps = (struct media_frames_per_second){
 			.numerator = framerate->num,

@@ -1130,65 +1130,65 @@ static void obs_nix_x11_key_to_str(obs_key_t key, struct dstr *dstr)
 
 	switch (key) {
 	case OBS_KEY_INSERT:
-		return translate_key(key, "Insert");
+		translate_key(key, "Insert");
 	case OBS_KEY_DELETE:
-		return translate_key(key, "Delete");
+		translate_key(key, "Delete");
 	case OBS_KEY_HOME:
-		return translate_key(key, "Home");
+		translate_key(key, "Home");
 	case OBS_KEY_END:
-		return translate_key(key, "End");
+		translate_key(key, "End");
 	case OBS_KEY_PAGEUP:
-		return translate_key(key, "Page Up");
+		translate_key(key, "Page Up");
 	case OBS_KEY_PAGEDOWN:
-		return translate_key(key, "Page Down");
+		translate_key(key, "Page Down");
 	case OBS_KEY_NUMLOCK:
-		return translate_key(key, "Num Lock");
+		translate_key(key, "Num Lock");
 	case OBS_KEY_SCROLLLOCK:
-		return translate_key(key, "Scroll Lock");
+		translate_key(key, "Scroll Lock");
 	case OBS_KEY_CAPSLOCK:
-		return translate_key(key, "Caps Lock");
+		translate_key(key, "Caps Lock");
 	case OBS_KEY_BACKSPACE:
-		return translate_key(key, "Backspace");
+		translate_key(key, "Backspace");
 	case OBS_KEY_TAB:
-		return translate_key(key, "Tab");
+		translate_key(key, "Tab");
 	case OBS_KEY_PRINT:
-		return translate_key(key, "Print");
+		translate_key(key, "Print");
 	case OBS_KEY_PAUSE:
-		return translate_key(key, "Pause");
+		translate_key(key, "Pause");
 	case OBS_KEY_LEFT:
-		return translate_key(key, "Left");
+		translate_key(key, "Left");
 	case OBS_KEY_RIGHT:
-		return translate_key(key, "Right");
+		translate_key(key, "Right");
 	case OBS_KEY_UP:
-		return translate_key(key, "Up");
+		translate_key(key, "Up");
 	case OBS_KEY_DOWN:
-		return translate_key(key, "Down");
+		translate_key(key, "Down");
 	case OBS_KEY_SHIFT:
-		return translate_key(key, "Shift");
+		translate_key(key, "Shift");
 	case OBS_KEY_ALT:
-		return translate_key(key, "Alt");
+		translate_key(key, "Alt");
 	case OBS_KEY_CONTROL:
-		return translate_key(key, "Control");
+		translate_key(key, "Control");
 	case OBS_KEY_META:
-		return translate_key(key, "Super");
+		translate_key(key, "Super");
 	case OBS_KEY_MENU:
-		return translate_key(key, "Menu");
+		translate_key(key, "Menu");
 	case OBS_KEY_NUMASTERISK:
-		return translate_key(key, "Numpad *");
+		translate_key(key, "Numpad *");
 	case OBS_KEY_NUMPLUS:
-		return translate_key(key, "Numpad +");
+		translate_key(key, "Numpad +");
 	case OBS_KEY_NUMMINUS:
-		return translate_key(key, "Numpad -");
+		translate_key(key, "Numpad -");
 	case OBS_KEY_NUMCOMMA:
-		return translate_key(key, "Numpad ,");
+		translate_key(key, "Numpad ,");
 	case OBS_KEY_NUMPERIOD:
-		return translate_key(key, "Numpad .");
+		translate_key(key, "Numpad .");
 	case OBS_KEY_NUMSLASH:
-		return translate_key(key, "Numpad /");
+		translate_key(key, "Numpad /");
 	case OBS_KEY_SPACE:
-		return translate_key(key, "Space");
+		translate_key(key, "Space");
 	case OBS_KEY_ESCAPE:
-		return translate_key(key, "Escape");
+		translate_key(key, "Escape");
 	default:;
 	}
 

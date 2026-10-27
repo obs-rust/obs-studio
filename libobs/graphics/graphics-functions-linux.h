@@ -63,7 +63,7 @@ void gs_sync_destroy(gs_sync_t *sync)
 {
 	graphics_t *graphics = thread_graphics;
 
-	return graphics->exports.device_sync_destroy(graphics->device, sync);
+	graphics->exports.device_sync_destroy(graphics->device, sync);
 }
 
 bool gs_sync_export_syncobj_timeline_point(gs_sync_t *sync, int syncobj_fd, uint64_t timeline_point)

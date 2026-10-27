@@ -170,8 +170,7 @@ static inline void send_interleaved(struct obs_output *output)
 			}
 		} else {
 			// encoder_packet_times should not be empty; log if so.
-			blog(LOG_DEBUG, "%s: Track %lu encoder packet timing array empty.", __func__,
-			     out.track_idx);
+			blog(LOG_DEBUG, "%s: Track %lu encoder packet timing array empty.", __func__, out.track_idx);
 		}
 	}
 

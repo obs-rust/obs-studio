@@ -23,6 +23,8 @@
 #include <obs-module.h>
 
 #include <pipewire/pipewire.h>
+/* enum spa_media_subtype, used below; pipewire.h only forward-declares it. */
+#include <spa/param/format.h>
 
 typedef struct _obs_pipewire obs_pipewire;
 typedef struct _obs_pipewire_stream obs_pipewire_stream;

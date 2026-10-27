@@ -183,7 +183,7 @@ gs_sync_t *device_sync_create_from_syncobj_timeline_point(gs_device_t *device, i
 
 void device_sync_destroy(gs_device_t *device, gs_sync_t *sync)
 {
-	return gl_vtable->device_sync_destroy(device, sync);
+	gl_vtable->device_sync_destroy(device, sync);
 }
 
 bool device_sync_export_syncobj_timeline_point(gs_device_t *device, gs_sync_t *sync, int syncobj_fd,

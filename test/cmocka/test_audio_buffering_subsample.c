@@ -15,6 +15,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <util/util_uint128.h>
+
 #include "libobs/obs-audio-discard.c.h"
 #include "libobs/obs-audio-min-ts.c.h"
 #include "libobs/obs-audio-mix.c.h"
@@ -124,7 +126,9 @@ static void full_buffer_preserves_interval(void **state)
 /* floor(ns * rate / 1e9), independent of util_mul_div64. */
 static size_t frames_at(size_t rate, uint64_t ns)
 {
-	return (size_t)(((unsigned __int128)ns * rate) / 1000000000ULL);
+	util_uint128_t product = util_mul64_64(ns, rate);
+
+	return (size_t)util_div128_32(product, 1000000000U).low;
 }
 
 static void time_to_frames_rounds_down(void **state)

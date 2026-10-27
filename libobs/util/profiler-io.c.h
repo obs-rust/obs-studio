@@ -275,7 +275,8 @@ static void entry_dump_csv(struct dstr *buffer, const profiler_snapshot_entry_t 
 		dstr_printf(buffer,
 			    "%p,%p,%p,%p,%s,0,"
 			    "%" PRIu64 ",%" PRIu64 "\n",
-			    entry, parent, entry->name, parent_name, entry->name, entry->times.array[i].time_delta,
+			    (const void *)entry, (const void *)parent, (const void *)entry->name,
+			    (const void *)parent_name, entry->name, entry->times.array[i].time_delta,
 			    entry->times.array[i].count);
 		func(data, buffer);
 	}
@@ -284,7 +285,8 @@ static void entry_dump_csv(struct dstr *buffer, const profiler_snapshot_entry_t 
 		dstr_printf(buffer,
 			    "%p,%p,%p,%p,%s,"
 			    "%" PRIu64 ",%" PRIu64 ",%" PRIu64 "\n",
-			    entry, parent, entry->name, parent_name, entry->name, entry->expected_time_between_calls,
+			    (const void *)entry, (const void *)parent, (const void *)entry->name,
+			    (const void *)parent_name, entry->name, entry->expected_time_between_calls,
 			    entry->times_between_calls.array[i].time_delta, entry->times_between_calls.array[i].count);
 		func(data, buffer);
 	}

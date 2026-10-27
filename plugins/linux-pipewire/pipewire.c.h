@@ -1200,7 +1200,7 @@ static void on_state_changed_cb(void *user_data, enum pw_stream_state old, enum 
 	obs_pipewire_stream *obs_pw_stream = user_data;
 	obs_pipewire *obs_pw = obs_pw_stream->obs_pw;
 
-	blog(LOG_INFO, "[pipewire] Stream %p state: \"%s\" (error: %s)", obs_pw_stream->stream,
+	blog(LOG_INFO, "[pipewire] Stream %p state: \"%s\" (error: %s)", (void *)obs_pw_stream->stream,
 	     pw_stream_state_as_string(state), error ? error : "none");
 
 	if (obs_pipewire_stream_state_is_lost(&obs_pw->disconnected, &obs_pw_stream->streamed, obs_pw->reconnecting,
@@ -1277,7 +1277,7 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 	obs_pw->watched_node = PW_ID_ANY;
 	obs_pw->thread_loop = pw_thread_loop_new("PipeWire thread loop", NULL);
 	if (!obs_pw->thread_loop) {
-		blog(LOG_WARNING, "[pipewire] Error creating PipeWire thread loop: %m");
+		blog(LOG_WARNING, "[pipewire] Error creating PipeWire thread loop: %s", strerror(errno));
 		goto fail;
 	}
 
@@ -1287,7 +1287,8 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 	obs_pw->context = pw_context_new(pw_thread_loop_get_loop(obs_pw->thread_loop), NULL, 0);
 	if (!obs_pw->context) {
 		blog(LOG_WARNING,
-		     "[pipewire] Error creating PipeWire context: %m (is the PipeWire client configuration missing?)");
+		     "[pipewire] Error creating PipeWire context: %s (is the PipeWire client configuration missing?)",
+		     strerror(errno));
 		goto fail;
 	}
 
@@ -1301,7 +1302,7 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 	/* Core */
 	obs_pw->core = pw_context_connect_fd(obs_pw->context, fcntl(obs_pw->pipewire_fd, F_DUPFD_CLOEXEC, 5), NULL, 0);
 	if (!obs_pw->core) {
-		blog(LOG_WARNING, "[pipewire] Error creating PipeWire core: %m");
+		blog(LOG_WARNING, "[pipewire] Error creating PipeWire core: %s", strerror(errno));
 		pw_thread_loop_unlock(obs_pw->thread_loop);
 		goto fail;
 	}
@@ -1336,7 +1337,7 @@ void obs_pipewire_add_registry_listener(obs_pipewire *obs_pw, const struct pw_re
 	pw_thread_loop_lock(obs_pw->thread_loop);
 	obs_pw->registry = pw_core_get_registry(obs_pw->core, PW_VERSION_REGISTRY, 0);
 	pw_registry_add_listener(obs_pw->registry, &obs_pw->registry_listener, registry_events, user_data);
-	blog(LOG_INFO, "[pipewire] Created registry %p", obs_pw->registry);
+	blog(LOG_INFO, "[pipewire] Created registry %p", (void *)obs_pw->registry);
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 }
 
@@ -1452,12 +1453,12 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 	/* Signal to renegotiate */
 	obs_pw_stream->reneg =
 		pw_loop_add_event(pw_thread_loop_get_loop(obs_pw->thread_loop), renegotiate_format, obs_pw_stream);
-	blog(LOG_DEBUG, "[pipewire] registered event %p", obs_pw_stream->reneg);
+	blog(LOG_DEBUG, "[pipewire] registered event %p", (void *)obs_pw_stream->reneg);
 
 	/* Stream */
 	obs_pw_stream->stream = pw_stream_new(obs_pw->core, connect_info->stream_name, connect_info->stream_properties);
 	pw_stream_add_listener(obs_pw_stream->stream, &obs_pw_stream->stream_listener, &stream_events, obs_pw_stream);
-	blog(LOG_INFO, "[pipewire] Created stream %p", obs_pw_stream->stream);
+	blog(LOG_INFO, "[pipewire] Created stream %p", (void *)obs_pw_stream->stream);
 
 	/* Stream parameters */
 	pod_builder = SPA_POD_BUILDER_INIT(params_buffer, sizeof(params_buffer));
@@ -1476,7 +1477,8 @@ obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_sourc
 			  params, n_params);
 	obs_pw->watched_node = (uint32_t)pipewire_node;
 
-	blog(LOG_INFO, "[pipewire] %s stream %p", connect_info->inactive ? "Paused" : "Playing", obs_pw_stream->stream);
+	blog(LOG_INFO, "[pipewire] %s stream %p", connect_info->inactive ? "Paused" : "Playing",
+	     (void *)obs_pw_stream->stream);
 
 	pw_thread_loop_unlock(obs_pw->thread_loop);
 	bfree(params);

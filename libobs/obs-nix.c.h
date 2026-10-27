@@ -363,7 +363,7 @@ bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t 
 
 void obs_key_to_str(obs_key_t key, struct dstr *dstr)
 {
-	return hotkeys_vtable->key_to_str(key, dstr);
+	hotkeys_vtable->key_to_str(key, dstr);
 }
 
 obs_key_t obs_key_from_virtual_key(int sym)
