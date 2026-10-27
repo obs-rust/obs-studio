@@ -4169,6 +4169,28 @@
         "libobs/data"
       ]
     },
+    "test_transition_load_steps": {
+      "sources": [
+        "test/cmocka/test_transition_load_steps.c",
+        "libobs/obs-source-transition-load.c.h",
+        "libobs/obs-source-transition-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-load.h",
+        "libobs/obs-source-transition-start.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_transition_render_steps": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
@@ -6452,6 +6474,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_transition_load_steps": {
+      "target": "test_transition_load_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_transition_render_steps": {
       "target": "test_transition_render_steps",
