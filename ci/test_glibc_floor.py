@@ -93,7 +93,7 @@ class GlibcFloorTest(unittest.TestCase):
 
     def test_non_elf_files_are_skipped_and_an_empty_appdir_fails(self) -> None:
         (self.appdir / "usr" / "share").mkdir()
-        (self.appdir / "usr" / "share" / "notes.txt").write_text("\x7fELF but not at byte 0")
+        (self.appdir / "usr" / "share" / "notes.txt").write_text("these notes are not a binary")
         (self.appdir / "usr" / "bin").mkdir()
         (self.appdir / "usr" / "bin" / "obs").write_bytes(ELF + b"payload")
         self.stubs.joinpath("obs").write_text(references("GLIBC_2.17"))

@@ -291,7 +291,7 @@ ln -sf "$APP_ID.png" "$APPDIR/.DirIcon"
 "$HERE/check-appdir.sh" "$APPDIR"
 
 # --- nothing in the AppDir may need a glibc newer than the floor (#926) -------
-"$HERE/check-glibc-floor.sh" "$APPDIR" 2.28
+uv run --script "$HERE/check-glibc-floor.py" "$APPDIR" 2.28
 
 # --- sanity: nothing may resolve outside the AppDir except the excluded host libs
 echo "::group::Libraries still resolved from the host"

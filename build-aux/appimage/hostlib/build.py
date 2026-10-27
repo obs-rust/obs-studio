@@ -85,7 +85,7 @@ def parse_host_libs(path: Path) -> tuple[HostLib, ...]:
 
 
 # Host libraries a bundled ELF file may link without a host-libs.json entry.
-# The C and C++ runtime is the base system (check-glibc-floor.sh checks its
+# The C and C++ runtime is the base system (check-glibc-floor.py checks its
 # version; above the floor it is bundled anyway).
 HOST_RUNTIME = re.compile(r"(ld-linux-x86-64|libc|libm|libmvec|libpthread|libdl|librt|libresolv|libnss_[a-z]+"
                           r"|libutil|libanl|libBrokenLocale|libthread_db|libstdc\+\+|libgcc_s)\.so\.\d+")
