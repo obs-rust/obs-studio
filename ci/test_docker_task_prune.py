@@ -1,10 +1,9 @@
 #!/usr/bin/env -S uv run --script
 """docker-task never prunes the image it is about to run (#1218), in Python.
 
-The rule lives in ci/docker_task.py since the port off the shell script (#962);
-`ci/docker-task.sh` is now a shim that execs that file through uv. A fake
-`docker` on PATH lists images that share one CreatedAt and logs every removal,
-so a tie falls to the tag string exactly as the script's
+The rule lives in ci/docker_task.py since the port off the shell script (#962).
+A fake `docker` on PATH lists images that share one CreatedAt and logs every
+removal, so a tie falls to the tag string exactly as the script's
 `LC_ALL=C sort -r | cut -f2` had it: the image just built sorts last and must
 not be removed before its container starts.
 

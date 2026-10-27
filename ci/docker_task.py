@@ -3,11 +3,11 @@
 itself. Each run gets an ephemeral container with a deterministic name; its
 build state lives in named volumes that the next run reattaches.
 
-`ci/docker-task.sh` is a shim that execs this file through uv; it keeps the path
-and the arguments below (GEN-005, #962).
+Run it directly with `uv run --script ci/docker_task.py` (GEN-005, #962); the
+arguments are:
 
-    ci/docker-task.sh run --name NAME [options] -- CMD...
-    ci/docker-task.sh gc  --name NAME [--image IMAGE] [--apply] [--apply-legacy]
+    uv run --script ci/docker_task.py run --name NAME [options] -- CMD...
+    uv run --script ci/docker_task.py gc  --name NAME [--image IMAGE] [--apply] [--apply-legacy]
 
 run:
   --name NAME             task name. Container: NAME-<checkout id>, where the
@@ -101,7 +101,7 @@ for dir in $DOCKER_TASK_PRUNE; do
 done
 exit $status'''
 
-USAGE = "usage: docker-task.sh run|gc --name NAME ... (see the header)"
+USAGE = "usage: docker_task.py run|gc --name NAME ... (see the header)"
 
 
 def die(message: str) -> NoReturn:

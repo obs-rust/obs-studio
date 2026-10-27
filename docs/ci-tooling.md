@@ -205,7 +205,7 @@ cmake --build build_cross_win-x64
 cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64, cross-all
 ```
 
-- **Only Docker on the host:** `uv run --script cmake/cross/docker.py mac-arm64 win-x64` runs the same check in a container (through the `ci/docker-task.sh` shim into `ci/docker_task.py`).
+- **Only Docker on the host:** `uv run --script cmake/cross/docker.py mac-arm64 win-x64` runs the same check in a container (through `uv run --script ci/docker_task.py`).
   - The checkout is a copy-on-write overlay at `/src`.
   - Writable caches are named volumes the next run reattaches: `/build` per checkout; soldr's LLVM and SDKs and the prebuilt deps shared.
   - `--clean` starts the build volume over.
@@ -303,8 +303,8 @@ job's `check-event` and `ci-mode` dependencies unsupported and skips Tier 2
 `./unittest` (the Docker lane below) locally.
 
 The local gate's Tier 2 lane (`./unittest`) uses
-`rust/tools/linux-validate/run.py` and `ci/docker_task.py` (reached through the
-`ci/docker-task.sh` shim), the current stand-in
+`rust/tools/linux-validate/run.py` and `ci/docker_task.py` (through
+`uv run --script`), the current stand-in
 for zackees/bosn#666. It has per-checkout build volumes and container ownership,
 shared compiler/crate caches, and explicit storage budgets. Run local Docker
 work through bosn as described below; the prepared CI consumer does not change

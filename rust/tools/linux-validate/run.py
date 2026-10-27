@@ -13,8 +13,8 @@
       --tests REGEX  limit the repeat run to tests matching REGEX (ctest -R)
     e.g. run.py --repeat 100 --tests 'test_threading|test_task'
 
-Runs validate.sh through ci/docker-task.sh, the shim into ci/docker_task.py
-and the stand-in for zackees/bosn#666: an ephemeral container named
+Runs validate.sh through `uv run --script ci/docker_task.py`, the stand-in for
+zackees/bosn#666: an ephemeral container named
 obs-rust-linux-validate-<checkout id>, one at a time per checkout, removed
 after the run; the checkout mounted read-only at /ro and built out of
 source; volumes the next run reattaches:
@@ -31,7 +31,7 @@ After every run, Corrosion's cargo target dirs keep only their newest
 artifacts (soldr cache prune-target --keep-latest); incremental compilation
 stays on (the prune keeps each crate's newest incremental data).
 <id> is a hash of the checkout path. Volumes of deleted checkouts:
-  ci/docker-task.sh gc --name obs-rust-linux-validate --image obs-rust-linux-validate [--apply]
+  uv run --script ci/docker_task.py gc --name obs-rust-linux-validate --image obs-rust-linux-validate [--apply]
 
 Ported off the shell script in #962; the local gate's tier2-linux lane runs
 this module through the interpreter it already has.
@@ -133,7 +133,7 @@ def task_arguments(env: Mapping[str, str], version_override: str) -> list[str]:
 
 
 def docker_task_command(argv: list[str], env: Mapping[str, str]) -> list[str]:
-    """The `bash ci/docker-task.sh run … -- /validate.sh <args>` command line."""
+    """The `uv run --script ci/docker_task.py run … -- /validate.sh <args>` line."""
     for submodule in SUBMODULES:
         if is_empty(REPO / submodule):
             subprocess.run(
@@ -146,8 +146,10 @@ def docker_task_command(argv: list[str], env: Mapping[str, str]) -> list[str]:
     for argument in argv:
         (task if argument in RUN_FLAGS else validate_args).append(argument)
     return [
-        "bash",
-        str(REPO / "ci" / "docker-task.sh"),
+        "uv",
+        "run",
+        "--script",
+        str(REPO / "ci" / "docker_task.py"),
         "run",
         "--name",
         NAME,
@@ -192,9 +194,9 @@ def docker_task_command(argv: list[str], env: Mapping[str, str]) -> list[str]:
 
 def main(argv: list[str]) -> int:
     try:
-        os.execvp("bash", docker_task_command(argv, os.environ))
+        os.execvp("uv", docker_task_command(argv, os.environ))
     except OSError as error:
-        print(f"run.py: cannot run bash: {error}", file=sys.stderr)
+        print(f"run.py: cannot run uv: {error}", file=sys.stderr)
         return 127
     return 0
 

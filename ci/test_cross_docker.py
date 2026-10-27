@@ -3,10 +3,10 @@
 
     uv run python -m unittest ci/test_cross_docker.py
 
-cmake/cross/docker.py wraps the same check ci/docker-task.sh runs for the CI
-lanes, with the caches and volume budgets the cross builds need. These tests
-stub `bash` and check the argument vector it is handed, so no container is
-started.
+cmake/cross/docker.py wraps the same check `uv run --script ci/docker_task.py`
+runs for the CI lanes, with the caches and volume budgets the cross builds need.
+These tests stub `uv` and check the argument vector it is handed, so no
+container is started.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "cmake" / "cross" / "docker.py"
 DOCS = ROOT / "docs" / "ci-tooling.md"
 
-# The stub records argv as JSON, so a container command stays one argument.
-BASH_STUB = ("import json, os, sys\n"
-             "open(os.environ['CALLS'], 'w').write(json.dumps(sys.argv[1:]))\n")
+# The uv stub records argv as JSON, so a container command stays one argument.
+UV_STUB = ("import json, os, sys\n"
+           "open(os.environ['CALLS'], 'w').write(json.dumps(sys.argv[1:]))\n")
 
 
 class CrossDockerTest(unittest.TestCase):
@@ -35,8 +35,8 @@ class CrossDockerTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        stub = self.bin / "bash"
-        stub.write_text("#!/usr/bin/env -S uv run --script\n" + BASH_STUB)
+        stub = self.bin / "uv"
+        stub.write_text(f"#!{sys.executable}\n" + UV_STUB)
         stub.chmod(0o755)
         self.calls = self.root / "calls.log"
 
@@ -52,8 +52,7 @@ class CrossDockerTest(unittest.TestCase):
         result = self.run_script("mac-arm64", "win-x64")
         self.assertEqual(result.returncode, 0, result.stderr)
         argv = self.argv()
-        self.assertEqual(argv[0], str(ROOT / "ci" / "docker-task.sh"))
-        self.assertEqual(argv[1], "run")
+        self.assertEqual(argv[:4], ["run", "--script", str(ROOT / "ci" / "docker_task.py"), "run"])
         self.assertIn("obs-cross", argv)
         self.assertIn("--source", argv)
         self.assertEqual(argv[argv.index("--source") + 1], "overlay")

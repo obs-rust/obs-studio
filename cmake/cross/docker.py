@@ -1,8 +1,8 @@
 #!/usr/bin/env -S uv run --script
 """Cross-compile check (cmake/cross/) in a container, so the host needs only
-Docker: no soldr, LLVM or SDK. Runs through ci/docker-task.sh, the shim into
-ci/docker_task.py (the stand-in for zackees/bosn#666): an ephemeral container
-per checkout, one at a time.
+Docker: no soldr, LLVM or SDK. Runs through `uv run --script ci/docker_task.py`
+(the stand-in for zackees/bosn#666): an ephemeral container per checkout, one at
+a time.
 
     uv run --script cmake/cross/docker.py [--clean|--clean-all] [--wait] <alias>...
     e.g. cmake/cross/docker.py mac-arm64 win-x64
@@ -73,10 +73,11 @@ def parse(argv: list[str], name: str) -> tuple[list[str], list[str]] | None:
 
 def task_argv(repo: Path, task: list[str], aliases: list[str], extra: str,
               toolchain: str, soldr: str) -> list[str]:
-    """The task runner's arguments (ci/docker-task.sh -> ci/docker_task.py):
+    """The task runner's arguments (uv run --script ci/docker_task.py):
     the volumes, budgets and container command."""
     return [
-        str(repo / "ci" / "docker-task.sh"), "run", "--name", "obs-cross", "--repo", str(repo),
+        "uv", "run", "--script", str(repo / "ci" / "docker_task.py"),
+        "run", "--name", "obs-cross", "--repo", str(repo),
         "--image", "obs-rust-linux-validate",
         "--dockerfile", str(repo / "rust" / "tools" / "linux-validate" / "Dockerfile"),
         "--context", str(repo / "rust" / "tools" / "linux-validate"),
@@ -102,7 +103,7 @@ def main(argv: list[str]) -> int:
     toolchain = pinned(repo / "rust-toolchain.toml", r'^channel *= *"(.*)"')
     soldr = pinned(repo / "cmake" / "common" / "soldr.cmake", r"^set\(OBS_SOLDR_VERSION ([0-9.]+)\)$")
     args = task_argv(repo, task, aliases, os.environ.get("OBS_CROSS_CMAKE_ARGS", ""), toolchain, soldr)
-    os.execvp("bash", ["bash", *args])
+    os.execvp("uv", args)
     return 0  # Unreachable: exec replaces this process.
 
 
