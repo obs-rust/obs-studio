@@ -26,6 +26,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 EXPECTED = {
     "check-format.yaml": "check-format-${{ github.event_name }}-${{ github.ref }}",
     "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
+    "push.yaml": "push-${{ github.event_name }}-${{ github.ref }}",
 }
 
 
@@ -71,6 +72,13 @@ class Wf002ConcurrencyTest(unittest.TestCase):
         (two different dispatches never serialize) and a second dispatch never
         kills an in-flight release operation (the claim-bot.yaml precedent)."""
         text = (WORKFLOWS / "dispatch.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: false", text)
+
+    def test_a_push_run_waits_for_the_one_in_progress(self):
+        # push.yaml warms master's caches; #1286 preserves the one active warm
+        # build and only drops older pending snapshots, so its superseded run
+        # must not be cancelled.
+        text = (WORKFLOWS / "push.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: false", text)
 
 
