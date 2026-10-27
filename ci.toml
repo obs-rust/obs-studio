@@ -187,7 +187,14 @@ secrets = [
 # build-project.yaml's native-cache-transport writes the native build caches.
 # dispatch.yaml's `services-validation` job is the same shape: it opens a PR, so
 # it carries contents/checks/pull-requests writes on the job, not the top level.
-permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "checks: write" = ["validate-data", "services-validation"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome", "claim"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome", "services-validation"] }
+# scheduled.yaml's top-level block is read-only; the jobs that write hold their
+# grant on the job itself: `services-availability` opens a PR (contents/checks/
+# pull-requests: write), `build-project` grants `contents: write` on to the
+# reusable workflow it calls, `report-nightly-failure` files issues, and
+# `analyze-project`/`codeql` upload security events (`codeql` also reads
+# packages). Its two no-block jobs (`upload-language-files`, `steam-upload`) are
+# upstream-only, gated on `repository_owner == 'obsproject'`.
+permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "checks: write" = ["validate-data", "services-validation", "services-availability"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation", "services-availability"], "issues: write" = ["welcome", "claim", "report-nightly-failure"], "packages: read" = ["codeql"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome", "services-validation", "services-availability"], "security-events: write" = ["windows", "macos", "analyze-project", "codeql"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!
@@ -949,12 +956,6 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "SEC-002"
 path = ".github/workflows/push.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "SEC-002"
-path = ".github/workflows/scheduled.yaml"
 reason = "Upstream workflows without a top-level permissions block; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"

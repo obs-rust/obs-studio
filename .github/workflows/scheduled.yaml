@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: 17 0 * * *
+# Read-only at the top level: the jobs that write (services-availability,
+# build-project, report-nightly-failure, analyze-project, codeql) mint their
+# grant on the job itself (SEC-002). The two no-block jobs, upload-language-files
+# and steam-upload, are upstream-only, gated on `repository_owner == 'obsproject'`.
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
