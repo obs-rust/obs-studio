@@ -516,5 +516,36 @@ class LeaderboardPermissionsTest(unittest.TestCase):
         self.assertEqual(stale, [], "the SEC-002 exception for leaderboard.yml must be deleted")
 
 
+class SignWindowsPermissionsTest(unittest.TestCase):
+    """SEC-002: sign-windows.yaml declares a read-only top-level token default.
+
+    The reusable workflow carried no top-level ``permissions`` block, so GitHub
+    applied the wider repository default to it. The block is now read-only; the
+    caller that invokes the workflow supplies the signing job's token scopes and
+    a caller's grant is a ceiling (build-project.yaml's comment). The file's
+    SEC-002 [[exceptions]] block is deleted (#962). ci-lint needs the network, so
+    the rule is mirrored here over the workflow text and ci.toml.
+    """
+
+    WORKFLOW = WORKFLOWS / "sign-windows.yaml"
+
+    def test_top_level_permissions_are_read_only(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        block = re.search(r"(?m)^permissions:\n((?:[ \t].*\n|\n)*)", text)
+        self.assertIsNotNone(block, "sign-windows.yaml needs a top-level permissions block")
+        assert block is not None
+        self.assertRegex(block.group(1), r"(?m)^\s+contents: read$")
+        self.assertNotRegex(block.group(1), r"write", "the top-level block must stay read-only")
+
+    def test_no_sec002_exception_for_this_workflow(self):
+        stale = [
+            entry
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "SEC-002"
+            and entry.get("path") == ".github/workflows/sign-windows.yaml"
+        ]
+        self.assertEqual(stale, [], "the SEC-002 exception for sign-windows.yaml must be deleted")
+
+
 if __name__ == "__main__":
     unittest.main()
