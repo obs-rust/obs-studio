@@ -102,7 +102,9 @@ def render(marker: str, author: str) -> str:
     """The template for this message, with the mention and the marker."""
     text = (TEMPLATES / TEMPLATE_FILES[marker]).read_text(encoding="utf-8").strip()
     if AUTHOR_PLACEHOLDER not in text:
-        raise ValueError(f"{TEMPLATE_FILES[marker]} has no {AUTHOR_PLACEHOLDER} placeholder")
+        raise ValueError(
+            f"{TEMPLATE_FILES[marker]} has no {AUTHOR_PLACEHOLDER} placeholder"
+        )
     text = text.replace(AUTHOR_PLACEHOLDER, f"@{author}")
     # An optional line a maintainer would fill in by hand (C's "one line on
     # what the fix does") is dropped rather than posted raw: the message reads
@@ -111,34 +113,18 @@ def render(marker: str, author: str) -> str:
     return f"{text}\n\n<!-- welcome:{marker} -->"
 
 
-def decide(
-    payload: dict,
-    *,
-    already_posted: Callable[[int, str], bool],
+def marker_for(
+    action: str | None,
+    kind: str | None,
+    target: dict,
+    author: str,
     merged_pr_count: Callable[[str], int],
-) -> Post | None:
-    """Which message this event calls for, or None.
-
-    `already_posted(number, marker)` and `merged_pr_count(author)` are
-    injected, so every rule here is a unit test with no network.
-    """
-    repo = (payload.get("repository") or {}).get("full_name")
-    if repo != REPO:
-        return None
-    action = payload.get("action")
-    kind, target = event_target(payload)
-    if target is None:
-        return None
-    author = (target.get("user") or {}).get("login") or ""
-    if is_bot(author):
-        return None
+) -> str | None:
+    """Which message this event calls for, or None."""
     association = target.get("author_association") or "NONE"
-
     if action == "opened" and kind in ("pr", "issue"):
-        if association not in FIRST_TIME:
-            return None
-        marker = FIRST_PR
-    elif action == "closed" and kind == "pr":
+        return FIRST_PR if association in FIRST_TIME else None
+    if action == "closed" and kind == "pr":
         # CONTRIBUTOR is deliberately allowed here: GitHub assigns it to an
         # author as soon as they have a contribution, so a first-time
         # contributor's association can already read CONTRIBUTOR at the
@@ -146,25 +132,46 @@ def decide(
         # "is this their first" test; only a staff relation is a hard skip.
         if not target.get("merged") or association in STAFF:
             return None
-        marker = FIRST_MERGE
         try:
             # The merged PR that triggers this counts toward the total, so a
             # first merge is exactly 1. Anything else (an older merged PR, an
             # API error, a missing token) means no welcome.
-            if merged_pr_count(author) != 1:
-                return None
-        except Exception as exc:  # noqa: BLE001 - fail closed on any API error
+            return FIRST_MERGE if merged_pr_count(author) == 1 else None
+        except Exception as exc:  # fail closed: no count, no welcome
             print(f"welcome: not welcoming @{author}: {exc}", file=sys.stderr)
             return None
-    else:
-        return None
+    return None
 
+
+def decide(
+    payload: dict,
+    *,
+    already_posted: Callable[[int, str], bool],
+    merged_pr_count: Callable[[str], int],
+) -> Post | None:
+    """Which comment to post for this event, or None.
+
+    `already_posted(number, marker)` and `merged_pr_count(author)` are
+    injected, so every rule here is a unit test with no network.
+    """
+    if (payload.get("repository") or {}).get("full_name") != REPO:
+        return None
+    kind, target = event_target(payload)
+    if target is None:
+        return None
+    author = (target.get("user") or {}).get("login") or ""
+    if is_bot(author):
+        return None
+    marker = marker_for(payload.get("action"), kind, target, author, merged_pr_count)
     number = target.get("number")
-    if not isinstance(number, int):
+    if marker is None or not isinstance(number, int) or already_posted(number, marker):
         return None
-    if already_posted(number, marker):
-        return None
-    return Post(number=number, marker=marker, template=TEMPLATES / TEMPLATE_FILES[marker], body=render(marker, author))
+    return Post(
+        number=number,
+        marker=marker,
+        template=TEMPLATES / TEMPLATE_FILES[marker],
+        body=render(marker, author),
+    )
 
 
 def api(path: str, token: str, *, method: str = "GET", body: dict | None = None):
@@ -194,7 +201,8 @@ def posted_marker(number: int, marker: str, repo: str, token: str, fetch=api) ->
     # does it early, so the marker is inside the first hundred comments of
     # any thread it could still be missing from.
     return any(
-        (comment.get("user") or {}).get("login") in BOT_AUTHORS and needle in (comment.get("body") or "")
+        (comment.get("user") or {}).get("login") in BOT_AUTHORS
+        and needle in (comment.get("body") or "")
         for comment in comments
     )
 
@@ -206,10 +214,18 @@ def merged_pr_count(author: str, repo: str, token: str, fetch=api) -> int:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Welcome a first-time contributor (#2506).")
-    parser.add_argument("--event", default=os.environ.get("GITHUB_EVENT_PATH", ""), help="the event payload JSON")
+    parser = argparse.ArgumentParser(
+        description="Welcome a first-time contributor (#2506)."
+    )
+    parser.add_argument(
+        "--event",
+        default=os.environ.get("GITHUB_EVENT_PATH", ""),
+        help="the event payload JSON",
+    )
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", REPO))
-    parser.add_argument("--dry-run", action="store_true", help="print the comment instead of posting it")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the comment instead of posting it"
+    )
     args = parser.parse_args(argv)
 
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
@@ -224,10 +240,12 @@ def main(argv=None) -> int:
     try:
         post = decide(
             payload,
-            already_posted=lambda number, marker: posted_marker(number, marker, args.repo, token),
+            already_posted=lambda number, marker: posted_marker(
+                number, marker, args.repo, token
+            ),
             merged_pr_count=lambda author: merged_pr_count(author, args.repo, token),
         )
-    except Exception as exc:  # noqa: BLE001 - a bot must never redden CI
+    except Exception as exc:  # a bot must never redden CI
         print(f"welcome: could not decide ({exc}); posting nothing", file=sys.stderr)
         return 0
 
@@ -237,7 +255,12 @@ def main(argv=None) -> int:
     if args.dry_run:
         print(f"welcome: would post {post.marker} on #{post.number}\n\n{post.body}")
         return 0
-    api(f"/repos/{args.repo}/issues/{post.number}/comments", token, method="POST", body={"body": post.body})
+    api(
+        f"/repos/{args.repo}/issues/{post.number}/comments",
+        token,
+        method="POST",
+        body={"body": post.body},
+    )
     print(f"welcome: posted {post.marker} on #{post.number}")
     return 0
 

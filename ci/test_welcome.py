@@ -33,7 +33,15 @@ DISCORD = "https://discord.gg/6MWWX4x9pf"
 DISCUSSIONS = "https://github.com/obs-rust/obs-studio/discussions"
 
 
-def pr_payload(action, *, association="FIRST_TIME_CONTRIBUTOR", author="newcomer", number=42, merged=False, repo="obs-rust/obs-studio"):
+def pr_payload(
+    action,
+    *,
+    association="FIRST_TIME_CONTRIBUTOR",
+    author="newcomer",
+    number=42,
+    merged=False,
+    repo="obs-rust/obs-studio",
+):
     return {
         "action": action,
         "repository": {"full_name": repo},
@@ -46,7 +54,14 @@ def pr_payload(action, *, association="FIRST_TIME_CONTRIBUTOR", author="newcomer
     }
 
 
-def issue_payload(action="opened", *, association="FIRST_TIMER", author="newcomer", number=42, repo="obs-rust/obs-studio"):
+def issue_payload(
+    action="opened",
+    *,
+    association="FIRST_TIMER",
+    author="newcomer",
+    number=42,
+    repo="obs-rust/obs-studio",
+):
     return {
         "action": action,
         "repository": {"full_name": repo},
@@ -61,7 +76,13 @@ def issue_payload(action="opened", *, association="FIRST_TIMER", author="newcome
 class WelcomeDecisionTest(unittest.TestCase):
     """Who gets a welcome, and who does not."""
 
-    def decide(self, payload: dict, *, posted: Collection[str] = (), merged_count: int | Exception = 1):
+    def decide(
+        self,
+        payload: dict,
+        *,
+        posted: Collection[str] = (),
+        merged_count: int | Exception = 1,
+    ):
         def already_posted(_number: int, marker: str) -> bool:
             return marker in posted
 
@@ -70,7 +91,9 @@ class WelcomeDecisionTest(unittest.TestCase):
                 raise merged_count
             return merged_count
 
-        return welcome.decide(payload, already_posted=already_posted, merged_pr_count=merged_pr_count)
+        return welcome.decide(
+            payload, already_posted=already_posted, merged_pr_count=merged_pr_count
+        )
 
     # --- welcomed ---------------------------------------------------------
 
@@ -85,7 +108,10 @@ class WelcomeDecisionTest(unittest.TestCase):
         # FIRST_TIMER is "never contributed anywhere"; FIRST_TIME_CONTRIBUTOR
         # is "never contributed here". A first PR of either kind is a first
         # contribution to this repository (#2506).
-        self.assertEqual(self.decide(pr_payload("opened", association="FIRST_TIMER")).marker, "first-pr")
+        self.assertEqual(
+            self.decide(pr_payload("opened", association="FIRST_TIMER")).marker,
+            "first-pr",
+        )
 
     def test_a_first_issue_gets_the_same_welcome(self):
         post = self.decide(issue_payload())
@@ -108,19 +134,28 @@ class WelcomeDecisionTest(unittest.TestCase):
 
     def test_a_member_is_never_welcomed(self):
         for association in ("MEMBER", "OWNER", "COLLABORATOR"):
-            self.assertIsNone(self.decide(pr_payload("opened", association=association)), association)
-            self.assertIsNone(self.decide(pr_payload("closed", association=association, merged=True)), association)
+            self.assertIsNone(
+                self.decide(pr_payload("opened", association=association)), association
+            )
+            self.assertIsNone(
+                self.decide(pr_payload("closed", association=association, merged=True)),
+                association,
+            )
 
     def test_a_returning_contributor_is_not_welcomed_again(self):
         self.assertIsNone(self.decide(pr_payload("opened", association="CONTRIBUTOR")))
 
     def test_a_bot_is_never_welcomed(self):
         self.assertIsNone(self.decide(pr_payload("opened", author="dependabot[bot]")))
-        self.assertIsNone(self.decide(pr_payload("closed", author="github-actions[bot]", merged=True)))
+        self.assertIsNone(
+            self.decide(pr_payload("closed", author="github-actions[bot]", merged=True))
+        )
 
     def test_the_marker_keeps_it_to_once_per_person(self):
         self.assertIsNone(self.decide(pr_payload("opened"), posted={"first-pr"}))
-        self.assertIsNone(self.decide(pr_payload("closed", merged=True), posted={"first-merge"}))
+        self.assertIsNone(
+            self.decide(pr_payload("closed", merged=True), posted={"first-merge"})
+        )
 
     def test_the_first_pr_marker_does_not_suppress_the_first_merge_welcome(self):
         # A contributor welcomed for their first PR is due the second message
@@ -129,7 +164,9 @@ class WelcomeDecisionTest(unittest.TestCase):
         self.assertEqual(post.marker, "first-merge")
 
     def test_a_second_merged_pr_is_not_welcomed(self):
-        self.assertIsNone(self.decide(pr_payload("closed", merged=True), merged_count=2))
+        self.assertIsNone(
+            self.decide(pr_payload("closed", merged=True), merged_count=2)
+        )
 
     def test_a_closed_but_unmerged_pr_is_not_welcomed(self):
         self.assertIsNone(self.decide(pr_payload("closed", merged=False)))
@@ -137,7 +174,11 @@ class WelcomeDecisionTest(unittest.TestCase):
     def test_an_event_with_nothing_to_do_is_ignored(self):
         self.assertIsNone(self.decide(pr_payload("synchronize")))
         self.assertIsNone(self.decide(pr_payload("opened", association="NONE")))
-        self.assertIsNone(self.decide({"action": "opened", "repository": {"full_name": "obs-rust/obs-studio"}}))
+        self.assertIsNone(
+            self.decide(
+                {"action": "opened", "repository": {"full_name": "obs-rust/obs-studio"}}
+            )
+        )
 
     def test_a_fork_of_the_repository_is_left_alone(self):
         self.assertIsNone(self.decide(pr_payload("opened", repo="someone/obs-studio")))
@@ -147,7 +188,11 @@ class WelcomeDecisionTest(unittest.TestCase):
     def test_an_api_error_posts_nothing(self):
         # decide() logs why it stayed quiet; keep that out of the gate log.
         with contextlib.redirect_stderr(io.StringIO()):
-            self.assertIsNone(self.decide(pr_payload("closed", merged=True), merged_count=RuntimeError("502")))
+            self.assertIsNone(
+                self.decide(
+                    pr_payload("closed", merged=True), merged_count=RuntimeError("502")
+                )
+            )
 
 
 class TemplateTest(unittest.TestCase):
@@ -191,7 +236,9 @@ class RenderTest(unittest.TestCase):
 
     def test_the_marker_is_appended(self):
         for marker in ("first-pr", "first-merge"):
-            self.assertIn(f"<!-- welcome:{marker} -->", welcome.render(marker, "newcomer"), marker)
+            self.assertIn(
+                f"<!-- welcome:{marker} -->", welcome.render(marker, "newcomer"), marker
+            )
 
     def test_no_placeholder_survives_into_the_comment(self):
         # C's optional "one line on what the fix does" is dropped, not posted
@@ -207,8 +254,12 @@ class WorkflowTest(unittest.TestCase):
         self.text = WORKFLOW.read_text(encoding="utf-8")
 
     def test_it_runs_on_issues_and_pull_request_target(self):
-        self.assertRegex(self.text, r"(?m)^on:\n(?:.*\n)*?  issues:\n(?:.*\n)*?    types: \[opened\]")
-        self.assertRegex(self.text, r"pull_request_target:\n(?:.*\n)*?    types: \[opened, closed\]")
+        self.assertRegex(
+            self.text, r"(?m)^on:\n(?:.*\n)*?  issues:\n(?:.*\n)*?    types: \[opened\]"
+        )
+        self.assertRegex(
+            self.text, r"pull_request_target:\n(?:.*\n)*?    types: \[opened, closed\]"
+        )
 
     def test_it_asks_only_for_the_permissions_it_needs(self):
         self.assertIn("issues: write", self.text)
@@ -222,7 +273,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn("head_ref", self.text)
 
     def test_it_runs_the_script_on_the_base_tree(self):
-        self.assertIn("uv run ci/welcome.py", self.text)
+        # --no-project: a workflow's `uv run` never depends on project
+        # discovery (ci/test_uv_run.py, TOOL-003).
+        self.assertIn("uv run --no-project ci/welcome.py", self.text)
         self.assertIn("GITHUB_EVENT_PATH", self.text)
 
     def test_actions_are_pinned_to_a_commit(self):

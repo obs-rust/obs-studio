@@ -45,8 +45,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          save-cache: false
+          # The pattern every workflow here uses; this one never runs on
+          # master (issues / pull_request_target), so it never saves.
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Welcome
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uv run ci/welcome.py --event "$GITHUB_EVENT_PATH" --repo "$GITHUB_REPOSITORY"
+        run: uv run --no-project ci/welcome.py --event "$GITHUB_EVENT_PATH" --repo "$GITHUB_REPOSITORY"
