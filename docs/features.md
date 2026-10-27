@@ -2290,6 +2290,14 @@ area.
   it; loading the transition lets go of it, as clearing the transition
   does. *All*, 2026-10-27. Issue
   [#2582](https://github.com/obs-rust/obs-studio/issues/2582).
+- An unreachable update host no longer holds the application open on exit.
+  The service-list update (and every other file-updater fetch) gives up after
+  a connect/transfer deadline instead of waiting out the operating system's
+  TCP connect timeout — about 75 s on macOS, longer on Linux — while shutdown
+  joins the in-flight fetch. *All*, pending merge. Issue
+  [#2672](https://github.com/obs-rust/obs-studio/issues/2672), PR
+  [#2673](https://github.com/obs-rust/obs-studio/pull/2673);
+  obsproject/obs-studio `shared/file-updater`.
 
 ### Security hardening
 

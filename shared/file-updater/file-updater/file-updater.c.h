@@ -110,6 +110,13 @@ static bool do_http_request(struct update_info *info, const char *url, long *res
 	curl_easy_setopt(info->curl, CURLOPT_WRITEDATA, info);
 	curl_easy_setopt(info->curl, CURLOPT_FAILONERROR, 1L);
 	curl_easy_setopt(info->curl, CURLOPT_NOSIGNAL, 1L);
+	/* Bound the request so an unreachable host cannot hold
+	 * update_info_destroy's pthread_join -- and with it shutdown, since
+	 * rtmp-services unloads the module on the exit path -- for the
+	 * kernel's TCP connect timeout (~75 s on macOS, longer on Linux).
+	 * CURLOPT_NOSIGNAL is set above, so a timeout is thread-safe (#2672). */
+	curl_easy_setopt(info->curl, CURLOPT_CONNECTTIMEOUT, 15L);
+	curl_easy_setopt(info->curl, CURLOPT_TIMEOUT, 60L);
 	/* Never br, and only codings this libcurl decodes (#2213, #2453). */
 	curl_easy_setopt(info->curl, CURLOPT_ACCEPT_ENCODING,
 			 obs_curl_accept_encoding(curl_version_info(CURLVERSION_NOW)));
