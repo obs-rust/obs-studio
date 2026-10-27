@@ -822,6 +822,30 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_int_bool_defaults": {
+      "sources": [
+        "test/cmocka/test_effect_int_bool_defaults.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_effect_param_values": {
       "sources": [
         "test/cmocka/test_effect_param_values.c"
@@ -5039,6 +5063,23 @@
     },
     "test_dtostr_exponent": {
       "target": "test_dtostr_exponent"
+    },
+    "test_effect_int_bool_defaults": {
+      "target": "test_effect_int_bool_defaults",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_effect_param_values": {
       "target": "test_effect_param_values",
