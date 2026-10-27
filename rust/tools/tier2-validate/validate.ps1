@@ -285,6 +285,19 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
     Write-Host "== Cargo [$($dll.Directory.Name)] unchanged ctest suite"
     ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @ctestJobs
     $ctestExit = $LASTEXITCODE
+    if ($ctestExit -eq 0) {
+      # Temporary #2547 diagnostic: restore the Windows case only for this
+      # focused repro and let the test write a dump from the faulting thread.
+      $env:OBS_SCENE_CANVAS_REPRO = '1'
+      $env:OBS_TEST_CRASH_DUMP_DIR = $dumpDirectory
+      try {
+        $repeatArgs = @('--repeat', 'until-fail:30', '-R', '^test_scene_canvas_characterization$')
+        ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @repeatArgs
+        $ctestExit = $LASTEXITCODE
+      } finally {
+        Remove-Item Env:OBS_SCENE_CANVAS_REPRO, Env:OBS_TEST_CRASH_DUMP_DIR -ErrorAction SilentlyContinue
+      }
+    }
     if ($ctestExit -eq 0 -and $Repeat -gt 0) {
       $repeatArgs = @('--repeat', "until-fail:$Repeat")
       if ($Tests) { $repeatArgs += @('-R', $Tests) }
