@@ -4,6 +4,10 @@ on:
 concurrency:
   group: sign-windows-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
+# A caller grants the signing job's token scopes; a called workflow may not ask
+# for more than that, so this default stays read-only (build-project.yaml).
+permissions:
+  contents: read
 jobs:
   create-windows-update:
     timeout-minutes: 60

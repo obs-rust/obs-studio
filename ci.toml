@@ -1001,13 +1001,6 @@ path = ".github/workflows/scheduled.yaml"
 reason = "Upstream workflows without a top-level permissions block; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
-[[exceptions]]
-rule = "SEC-002"
-path = ".github/workflows/sign-windows.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-
 # TAG-003: PR runs do not read title tags, so a title edit need not re-trigger them.
 [[exceptions]]
 rule = "TAG-003"
