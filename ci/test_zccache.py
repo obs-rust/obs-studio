@@ -256,11 +256,12 @@ class WiringTest(unittest.TestCase):
         self.assertNotIn("install-zccache.sh", text)
 
     def test_the_sanitizers_run_the_python_through_uv(self):
-        text = (TOOLS / "sanitize" / "sanitize.sh").read_text()
+        text = (TOOLS / "sanitize" / "sanitize.py").read_text()
         self.assertTrue(
-            'uv run --no-project "$src/rust/tools/linux-validate/install_zccache.py"' in text
+            '"uv", "run", "--no-project"' in text
+            and "install_zccache.py" in text
             and "install-zccache.sh" not in text,
-            "sanitize.sh does not run the installer through uv",
+            "sanitize.py does not run the installer through uv",
         )
 
 
