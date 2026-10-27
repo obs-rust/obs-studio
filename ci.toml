@@ -21,6 +21,36 @@ rust = { run = "uv run ci/local_gate.py --lane rust-test", required = true }
 tier2 = { run = "uv run ci/local_gate.py --lane tier2-linux", required = true }
 sanitizers = { run = "rust/tools/sanitize/sanitize.sh", gating = false }
 
+# -- Rust ---------------------------------------------------------------------
+# The schema requires these two crate globs whenever [rust.tests] is declared,
+# but they describe a published amalgam with private crates behind it, which
+# this repository is not: libobs-rust is the one staticlib libobs links, and
+# every port crate is a workspace member re-exported through it. Empty globs
+# say that, and leave RUST-011's amalgam check with nothing to inspect.
+[rust]
+public = ""
+private = ""
+
+# -- Rust test binaries -------------------------------------------------------
+# The fan-out budget of docs/rust-port/testing-policy.md: one amalgamated test
+# binary per category, so a second binary is a deliberate edit here and not
+# something that appears unnoticed (RUST-005). ci/test_ci_toml.py checks the
+# list against the Cargo manifests. Utilities and media I/O keep their library
+# harness; the other six categories are explicit integration targets.
+[rust.tests]
+max-binary = "256MB"
+max-total = "1GB"
+binaries = [
+  "obs-data:test:obs-tests-core",
+  "obs-gpu-status:test:obs-tests-gpu",
+  "obs-graphics:test:obs-tests-graphics",
+  "obs-media-io:lib",
+  "obs-nvenc:test:obs-tests-codec",
+  "obs-preflight:test:obs-tests-preflight",
+  "obs-studio-rust:test:obs-tests-app",
+  "obs-util:lib",
+]
+
 # -- Flows --------------------------------------------------------------------
 [flow.pr]
 platforms = ["linux-x64"]
@@ -894,74 +924,6 @@ expires = "2027-04-15"
 rule = "RUN-001"
 path = ".github/workflows/sign-windows.yaml"
 reason = "ubuntu-26.04, windows-2025-vs2026 and macos-26 are GitHub-hosted labels outside ci.yml's fleet list."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-
-# RUST-005: No [rust.tests] test-binary budget declared yet.
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-c-oracle/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-codec/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-data/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-gpu-status/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-graphics/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-hotkey/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-media-io/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-nvenc/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-properties/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-studio-rust/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "RUST-005"
-path = "rust/obs-util/tests"
-reason = "No [rust.tests] test-binary budget declared yet."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 

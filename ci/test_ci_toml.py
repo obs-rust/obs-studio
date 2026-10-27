@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""ci.toml declares every cache family and workflow trigger (#957).
+"""ci.toml declares every cache family, workflow trigger and test binary (#957).
 
     uv run python -m unittest ci/test_ci_toml.py
 
@@ -8,11 +8,13 @@ ci.toml is the zackees/ci.yml schema 3 contract. The cache janitor
 no [cache.family], so a cache key added to a workflow without a family would
 be deleted on the next PR run. [allow].workflows must list each workflow with
 its exact triggers (GEN-008). `ci-lint precheck` checks the rest; it needs the
-network, so this offline test covers the two things a workflow edit can break.
+network, so this offline test covers the three things a workflow, manifest or
+test-binary edit can break.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import tomllib
 import unittest
@@ -40,25 +42,26 @@ def load() -> dict:
 
 
 def cargo_test_binaries() -> set[str]:
-    """Every integration-test target of the workspace, as `<crate>:test:<name>`.
+    """Every test binary Cargo builds, named as `[rust.tests].binaries` names it.
 
-    Mirrors what Cargo would build for `cargo test`: an explicit `[[test]]`
-    entry, plus a `tests/*.rs` or `tests/*/main.rs` file when the crate does
-    not turn autotests off.
+    Uses ci/test_binary_cap.py's manifest discovery, the same inventory the
+    testing policy's category map is checked against, so ci.toml's budget and
+    the category binaries cannot drift apart.
     """
+    spec = importlib.util.spec_from_file_location(
+        "test_binary_cap", Path(__file__).with_name("test_binary_cap.py")
+    )
+    cap = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cap)
     found = set()
-    for manifest in sorted((ROOT / "rust").glob("*/Cargo.toml")):
-        crate = tomllib.loads(manifest.read_text())
-        name = crate["package"]["name"]
-        for test in crate.get("test", []):
-            found.add(f"{name}:test:{test['name']}")
-        if not crate["package"].get("autotests", True):
-            continue
-        tests = manifest.parent / "tests"
-        for path in sorted(tests.glob("*.rs")):
-            found.add(f"{name}:test:{path.stem}")
-        for path in sorted(tests.glob("*/main.rs")):
-            found.add(f"{name}:test:{path.parent.name}")
+    for package, name, kinds in cap.workspace_test_targets():
+        kinds = kinds.split(",")
+        if "test" in kinds:
+            found.add(f"{package}:test:{name}")
+        elif "bin" in kinds:
+            found.add(f"{package}:bin:{name}")
+        else:
+            found.add(f"{package}:lib")
     return found
 
 
