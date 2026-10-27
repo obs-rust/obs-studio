@@ -3,15 +3,15 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("frontend-tools", "en-US")
 
-void InitSceneSwitcher();
-void FreeSceneSwitcher();
+void InitSceneSwitcher(void);
+void FreeSceneSwitcher(void);
 
-void InitOutputTimer();
-void FreeOutputTimer();
+void InitOutputTimer(void);
+void FreeOutputTimer(void);
 
 #if defined(ENABLE_SCRIPTING)
-void InitScripts();
-void FreeScripts();
+void InitScripts(void);
+void FreeScripts(void);
 #endif
 
 bool obs_module_load(void)
