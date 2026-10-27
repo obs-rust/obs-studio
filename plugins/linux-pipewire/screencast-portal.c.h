@@ -1033,6 +1033,10 @@ static pthread_mutex_t pending_frees_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void free_capture(struct screencast_portal_capture *capture)
 {
+	/* #2099: a hang here rather than later in shutdown/unload is otherwise
+	 * invisible, since the cancel callback logs first and unload logs last. */
+	blog(LOG_DEBUG, "[portals] Freeing a destroyed capture");
+
 	/* Drops the replies still pending, on the thread that handles them. */
 	g_cancellable_cancel(capture->cancellable);
 	g_clear_object(&capture->cancellable);
@@ -1041,6 +1045,8 @@ static void free_capture(struct screencast_portal_capture *capture)
 	pthread_mutex_destroy(&capture->streams_mutex);
 	pthread_mutex_destroy(&capture->show_mutex);
 	bfree(capture);
+
+	blog(LOG_DEBUG, "[portals] Capture freed");
 }
 
 static gboolean finish_destroy(void *user_data)
@@ -1299,6 +1305,8 @@ void screencast_portal_unload(void)
 {
 	g_autoptr(GPtrArray) captures = NULL;
 
+	blog(LOG_DEBUG, "[portals] Unloading the screencast portal");
+
 	/* The main loop may not run again: free what is still pending. */
 	pthread_mutex_lock(&pending_frees_mutex);
 	captures = g_steal_pointer(&pending_frees);
@@ -1312,6 +1320,8 @@ void screencast_portal_unload(void)
 	}
 
 	g_clear_object(&screencast_proxy);
+
+	blog(LOG_DEBUG, "[portals] Screencast portal unloaded");
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
