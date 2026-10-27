@@ -148,6 +148,18 @@ class NoUpstreamUpdaterTests(unittest.TestCase):
         publish = text(".github/workflows/publish.yaml")
         self.assertNotIn("sparkle-appcast", publish)
         self.assertNotIn("cdn-fastly.obsproject.com", publish)
+        # The composite action the removed jobs called is dead: nothing in the
+        # tree references it, so it is deleted rather than ported (#2676).
+        self.assertFalse(
+            (ROOT / ".github/actions/sparkle-appcast").exists(),
+            "the dead upstream sparkle-appcast composite action must be deleted (#2676)",
+        )
+        # Its ci-lint GEN-005 exception goes with the action (#2676).
+        self.assertNotIn(
+            'path = ".github/actions/sparkle-appcast/action.yaml"',
+            text("ci.toml"),
+            "drop the sparkle-appcast GEN-005 exception with the action (#2676)",
+        )
 
     def test_packaged_bundle_check_requires_obs_rust_feed(self) -> None:
         # release-rust.yaml's macos_smoke runs `app_identity_check.py bundle` on the
