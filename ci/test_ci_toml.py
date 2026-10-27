@@ -471,5 +471,50 @@ class NativeArchitectureRetentionTest(unittest.TestCase):
             self.assertTrue(any(key.startswith(prefix) for key in keys), prefix)
 
 
+class LeaderboardPermissionsTest(unittest.TestCase):
+    """SEC-002: leaderboard.yml keeps its one write scope on the job that pushes.
+
+    The `update` job commits generated data to the `leaderboard` branch, so it
+    genuinely needs `contents: write`; the top-level block stays read-only so a
+    change to the workflow cannot hand a write token to any other step. The job
+    is recorded in ci.toml's [allow].permissions, and the file's SEC-002
+    [[exceptions]] block is gone (#962). ci-lint needs the network, so the rule
+    is mirrored here over the workflow text.
+    """
+
+    WORKFLOW = WORKFLOWS / "leaderboard.yml"
+
+    def top_level_permissions(self) -> str:
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        block = re.search(r"(?m)^permissions:\n((?:[ \t].*\n|\n)*)", text)
+        self.assertIsNotNone(block, "leaderboard.yml needs a top-level permissions block")
+        assert block is not None
+        return block.group(1)
+
+    def test_top_level_permissions_are_read_only(self):
+        body = self.top_level_permissions()
+        self.assertRegex(body, r"(?m)^\s+contents: read$")
+        self.assertNotRegex(body, r"write", "the top-level block must stay read-only")
+
+    def test_update_job_grants_contents_write_and_is_allowlisted(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        job = text.split("  update:\n", 1)[1]
+        perms = re.search(r"(?m)^    permissions:\n((?:[ \t].*\n|\n)*)", job)
+        self.assertIsNotNone(perms, "the update job must carry its own permissions block")
+        assert perms is not None
+        self.assertRegex(perms.group(1), r"(?m)^\s+contents: write$")
+        allowed = load()["allow"]["permissions"].get("contents: write", [])
+        self.assertIn("update", allowed)
+
+    def test_no_sec002_exception_for_this_workflow(self):
+        stale = [
+            entry
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "SEC-002"
+            and entry.get("path") == ".github/workflows/leaderboard.yml"
+        ]
+        self.assertEqual(stale, [], "the SEC-002 exception for leaderboard.yml must be deleted")
+
+
 if __name__ == "__main__":
     unittest.main()
