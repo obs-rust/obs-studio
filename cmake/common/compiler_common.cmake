@@ -69,6 +69,7 @@ set(
   -Wdouble-promotion
   -Wcast-qual
   -Wformat=2
+  -Wpedantic
   -Wshadow
   -Wno-float-conversion
 )
