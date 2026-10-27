@@ -1,5 +1,10 @@
 # Flatpak packaged runtime qualification (#1760)
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 The existing `ci.yml` manual entry point accepts `flatpak-runtime-test=true`.
 It preserves the full build, AppStream/build-directory/repository validators
 and release bundle policy. After validation, the opt-in path transfers the
@@ -136,7 +141,7 @@ browser frames after the two-second startup allowance meet the original green
 pixel assertion. Authenticated unchanged WebSocket v5, module inventory,
 clean shutdown, installed CEF build IDs and GDB source lookup pass.
 
-See [portable runtime evidence and attempt costs](ci-evidence/2026-10-22-flatpak-installed-runtime.json).
+See [portable runtime evidence and attempt costs](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-installed-runtime.json).
 Five failed attempts are retained; no cancellation or unchanged retry was used.
 This proves software browser rendering on the synthetic runner, not the failed
 default hardware setting or physical device/GPU behavior. Upstream missing DWO

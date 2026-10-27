@@ -49,7 +49,9 @@ def cohort(files: list[str]) -> str:
     if not files:
         return "unknown"
     def documentation(name: str) -> bool:
-        # This directory contains report data, figures and their generators.
+        # Retired from master (#2686), but the runs being classified are
+        # historical: their changed-file lists still name the snapshots, and
+        # those runs were documentation-only.
         return name.endswith(".md") or name.startswith("docs/ci-evidence/")
 
     if all(documentation(name) for name in files):

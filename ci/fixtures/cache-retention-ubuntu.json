@@ -1,0 +1,11 @@
+{
+  "retired_from": "docs/ci-evidence/2026-10-22-ubuntu-cache-allocation.json",
+  "historical_commit": "c2af3f9c3e7945566b88440dffb14c255aeebd96",
+  "why": "The one live Ubuntu zccache producer entry as listed by the Actions caches API. Only key and size_in_bytes are kept; the retired snapshot's ci.toml baselines, plans and limits sections are read by no test.",
+  "ubuntu_entries": [
+    {
+      "key": "zccache-ubuntu-ubuntu-26.04-x86_64-rustON-RelWithDebInfo-f1783cf62e4f9ad34ee7abe3d00fc351d2ed4921",
+      "size_in_bytes": 905383834
+    }
+  ]
+}

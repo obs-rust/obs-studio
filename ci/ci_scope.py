@@ -134,7 +134,9 @@ def hidden_lists_mirrored(old: Callable[[str], str | None], new: Callable[[str],
 
 
 # Files no build or Rust lint reads (#2079). ci/test_*.py read some of them,
-# and the Format job runs those tests on every PR.
+# and the Format job runs those tests on every PR. docs/ci-evidence/ is retired
+# (#2686); it stays here so a branch that still carries a snapshot is read as
+# documentation rather than product code.
 DOCS_ONLY = re.compile(r"^(?:.*\.md|docs/ci-evidence/.*|LICENSE|COPYING|\.gitignore)\Z")
 
 

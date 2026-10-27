@@ -1,31 +1,27 @@
 {
+  "retired_from": "docs/ci-evidence/2026-10-24-queue-compiler-caches.json",
+  "historical_commit": "c2af3f9c3e7945566b88440dffb14c255aeebd96",
   "measured_at": "2026-10-24",
   "source": "gh api repos/obs-rust/obs-studio/actions/caches",
   "why": "Merge-queue compiler caches outgrew their declared max; ci-lint cache audit (CACHE-004) reported each one as exceeding max",
   "entries": [
     {
       "key": "macos-tier2-xcas-b7b28af1c9c04961d488521391d891841a57c52c",
-      "id": 9462615531,
       "ref": "refs/heads/master",
       "size_in_bytes": 143462861,
-      "created_at": "2026-10-25T00:43:08.961285Z",
-      "last_accessed_at": "2026-10-25T00:43:08.961285Z"
+      "created_at": "2026-10-25T00:43:08.961285Z"
     },
     {
       "key": "windows-tier2-ccache-b7b28af1c9c04961d488521391d891841a57c52c",
-      "id": 9462606757,
       "ref": "refs/heads/master",
       "size_in_bytes": 284960603,
-      "created_at": "2026-10-25T00:42:41.639684Z",
-      "last_accessed_at": "2026-10-25T00:57:30.800008Z"
+      "created_at": "2026-10-25T00:42:41.639684Z"
     },
     {
       "key": "zccache-tier2-linux-both-a7f12c382f253309a71d574c295a02f7a9e1f93b",
-      "id": 9462738677,
       "ref": "refs/heads/master",
       "size_in_bytes": 1171438427,
-      "created_at": "2026-10-25T00:49:35.036352Z",
-      "last_accessed_at": "2026-10-25T01:04:41.731321Z"
+      "created_at": "2026-10-25T00:49:35.036352Z"
     }
   ]
 }

@@ -8,6 +8,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
+FIXTURES = ROOT / "ci" / "fixtures"
 MIB = 1024 ** 2
 
 
@@ -49,7 +50,7 @@ class Tier2RetentionTest(unittest.TestCase):
         self.assertLessEqual(footprint, (1700 + 800 + 500 + 1024 + 500) * MIB)
 
     def test_current_ubuntu_producer_fits_without_reserving_retired_app_mode(self):
-        snapshot = json.loads((ROOT / "docs/ci-evidence/2026-10-22-ubuntu-cache-allocation.json").read_text())
+        snapshot = json.loads((FIXTURES / "cache-retention-ubuntu.json").read_text())
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         ubuntu = re.search(r"^  ubuntu-build:\n(.*?)(?=^  [a-z0-9-]+:\n)", workflow, re.M | re.S)[1]
         modes = ast.literal_eval(re.search(r"rust: (\[[^\n]+\])", ubuntu)[1])
@@ -70,7 +71,7 @@ class Tier2RetentionTest(unittest.TestCase):
         self.assertRegex(tier2, r'mode: \["OFF", "ON"\]')
 
     def test_reduced_allowances_retain_measured_seeds_with_growth_room(self):
-        snapshot = json.loads((ROOT / "docs/ci-evidence/2026-10-21-cache-retention-report.json").read_text())
+        snapshot = json.loads((FIXTURES / "cache-retention-families.json").read_text())
         for name in ("windows-tier2-ccache", "macos-tier2-xcas", "libs-qt", "libs-ffmpeg"):
             with self.subTest(family=name):
                 measured = snapshot["families"][name]["listed_bytes"]
@@ -80,7 +81,7 @@ class Tier2RetentionTest(unittest.TestCase):
     def test_queue_compiler_caches_hold_their_measured_entry(self):
         # A max below the live entry makes the janitor evict the queue's warm
         # cache (ci-lint cache audit CACHE-004). Keep 25% growth room.
-        snapshot = json.loads((ROOT / "docs/ci-evidence/2026-10-24-queue-compiler-caches.json").read_text())
+        snapshot = json.loads((FIXTURES / "queue-compiler-caches.json").read_text())
         for entry in snapshot["entries"]:
             name = self.owner(entry["key"])
             with self.subTest(family=name):

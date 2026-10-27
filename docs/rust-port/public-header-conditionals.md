@@ -1,9 +1,14 @@
 # Public-header platform conditional audit (#878)
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 Audited base: `c9b06b371e45833fb55b686b78904ae246311be9`. All 33 issue-listed platform conditionals remain in
 14 headers. This change records their interface reasons and existing ratchet
 protection; it changes no header, declaration, layout, inline implementation,
-export or build option. The [machine-readable inventory](../ci-evidence/2026-10-21-public-header-conditionals.json)
+export or build option. The [machine-readable inventory](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-21-public-header-conditionals.json)
 records exact Git blobs, expressions and current line numbers.
 
 ## Protection and scope

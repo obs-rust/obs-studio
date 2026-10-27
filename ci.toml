@@ -98,7 +98,7 @@ soldr-mini = { via = "setup-soldr:soldr-mini", max = "15MB", per = "platform" }
 uv = { via = "setup-uv", max = "50MB" }
 # First-match classification: keep this specific prefix before zccache-.
 # Queue OFF/ON objects share one archive, measured ~1.17 GB on 2026-10-24
-# (docs/ci-evidence/2026-10-24-queue-compiler-caches.json). Independent LRU
+# (ci/fixtures/queue-compiler-caches.json). Independent LRU
 # protection prevents newer nightly writes from evicting that queue seed.
 zccache-tier2 = { prefix = "zccache-tier2-linux-", max = "1.5GB", evict = "lru" }
 # Ubuntu's production app matrix is ON-only; C-reference OFF/ON coverage

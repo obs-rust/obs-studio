@@ -1,0 +1,27 @@
+{
+  "retired_from": "docs/ci-evidence/2026-10-21-cache-retention-report.json",
+  "historical_commit": "c2af3f9c3e7945566b88440dffb14c255aeebd96",
+  "why": "Listed bytes for the families that donate capacity to the queue compiler caches. The retired snapshot recorded all 28 families; only the four the allowance test reads are kept, so the assertion still compares a real listing to ci.toml's declared max.",
+  "families": {
+    "windows-tier2-ccache": {
+      "declared_bytes": 838860800,
+      "listed_bytes": 41427262,
+      "entries": 1
+    },
+    "macos-tier2-xcas": {
+      "declared_bytes": 524288000,
+      "listed_bytes": 44278880,
+      "entries": 1
+    },
+    "libs-qt": {
+      "declared_bytes": 1073741824,
+      "listed_bytes": 25342371,
+      "entries": 1
+    },
+    "libs-ffmpeg": {
+      "declared_bytes": 524288000,
+      "listed_bytes": 66331281,
+      "entries": 1
+    }
+  }
+}

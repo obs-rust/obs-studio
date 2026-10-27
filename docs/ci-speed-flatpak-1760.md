@@ -1,5 +1,10 @@
 # Flatpak performance: CEF debug processing
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 Tracked in [#1760](https://github.com/obs-rust/obs-studio/issues/1760).
 This is the first candidate, not completion of the issue's full-job target.
 
@@ -35,7 +40,7 @@ the same source line for `cef_version_info` in all three variants. All variants
 also report the same 41,344 unavailable DWO references already present in the
 input; this does not establish complete Chromium source-level debug coverage.
 Tool versions, identities, GDB log hashes and observations are retained in the
-[portable experiment](ci-evidence/2026-10-22-flatpak-cef-debug-experiment.json).
+[portable experiment](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cef-debug-experiment.json).
 
 The uncompressed CEF option adds about 1.33 GB of debug data and could move
 cost into exports or caches. It is not the selected CEF payload. Fast

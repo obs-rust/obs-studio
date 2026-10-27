@@ -1,5 +1,10 @@
 # Flatpak PCH cache qualification (#1760)
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 This candidate activates the existing CMake ccache launcher so the existing PCH
 helper supplies `-fpch-preprocess` and its bounded PCH settings. Explicit SDK
 compiler paths avoid nesting the SDK's `/run/ccache/bin` masquerading wrappers.
@@ -39,7 +44,7 @@ These are single tiny-fixture observations, **not a claimed full-job speedup**.
 
 The same ten trials pass with the production SDK's **GCC 16.2.0 and ccache
 4.14**, using its native binaries, libraries and headers in an isolated chroot.
-See [portable SDK evidence](ci-evidence/2026-10-22-flatpak-pch-sdk-freshness.json).
+See [portable SDK evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-pch-sdk-freshness.json).
 Every following warm build has two direct hits; header, configuration and
 compiler changes each miss twice; the source-only change misses once and retains
 the PCH hit. The fixture's compiler wrapper changes actual executable output;
@@ -72,7 +77,7 @@ The header replacement preserves size and modification time; dependency mode
 keeps every output correct. The snapshots are captured after the existing
 fixture's cold and header-warm stages. Extract each ordering with `tar -xf`,
 then rebuild that same fixture with `CCACHE_DIR` pointing at the extracted
-cache. See [portable counters and timings](ci-evidence/2026-10-22-flatpak-cache-overlay.json).
+cache. See [portable counters and timings](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cache-overlay.json).
 An independent file-overlay experiment agrees. This demonstrates lost reuse,
 not stale executable output or a whole-job speedup.
 
@@ -175,7 +180,7 @@ Keep the
 adoption hold: this proof does not establish a retained cross-runner compiler
 consumer, comparable warm whole-job measurements or the 50% whole-job target.
 Portable raw probe results and exact input/limit metadata are recorded in
-[the full-app compiler evidence](ci-evidence/2026-10-22-flatpak-full-app-compiler.json).
+[the full-app compiler evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-full-app-compiler.json).
 
 
 ## Explicit fresh-runner compiler transfer experiment
@@ -253,7 +258,7 @@ the large compiler archive. Bootstrap and vendoring are separate steps. Focused
 RED regressions reproduce the missing upload/step boundaries; the corrected
 configuration still requires a changed-source hosted trial. Production transport,
 budgets and adoption holds remain unchanged. See
-[the second transfer evidence](ci-evidence/2026-10-22-flatpak-transfer-v5.json).
+[the second transfer evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v5.json).
 
 
 ### Cross-runner trial v6: download passes, profile guard rejects
@@ -279,7 +284,7 @@ preparation order and rejection before destination mutation.
 Installed saved-profile runtime119850594274 passed separately. The full trial
 cost135.9333 runner-minutes across22successful and2failed active jobs, with
 no cancellations; skipped jobs excluded and no billing multipliers. See
-[portable evidence](ci-evidence/2026-10-22-flatpak-transfer-v6.json).
+[portable evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v6.json).
 Actual compiler reuse, retained capacity, and routine whole-job savings remain
 unproven. The runtime fixture uses synthetic devices/software rendering.
 
@@ -339,7 +344,7 @@ installation exceeded25minutes, both during Ubuntu package downloads. The runtim
 application/profile test never ran. All selected active jobs total194.6833
 runner-minutes:21success,1failure,2automatic timeout cancellations; skipped jobs
 excluded and no billing multipliers. No manual cancellation or unchanged retry.
-See[portable v7 evidence](ci-evidence/2026-10-22-flatpak-transfer-v7.json).
+See[portable v7 evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v7.json).
 
 ### Actual OSTree preservation and v8 producer evidence
 
@@ -348,7 +353,7 @@ and after archive restoration, same commit/ref, checkout data, symlink payload
 and executable mode. This is a small real repository, not the hosted SDK/cache.
 The first setup was rejected for a nested-manifest Dockerfile context before the
 fixture ran; corrected setup501 and fixture502 passed. Raw identities and exact
-fixture source are in[local evidence](ci-evidence/2026-10-22-flatpak-ostree-local.json).
+fixture source are in[local evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-ostree-local.json).
 
 Live[v8](https://github.com/obs-rust/obs-studio/actions/runs/39792586176) producer
 119872197788 succeeded in899s, including optional experimental work. Actual
@@ -359,7 +364,7 @@ Compiler tar700,098,560B/published700,100,104B took3.045s to pack. Combined publ
 input artifacts total2,326,959,260B. These actual archives are not a minimal
 dependency graph, production Actions-cache size measurement or retention proof.
 Consumer119879152813 was queued at capture; restoration/reuse, consumer runtime
-and full trial cost remain pending. See[producer snapshot](ci-evidence/2026-10-22-flatpak-transfer-v8-producer.json).
+and full trial cost remain pending. See[producer snapshot](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v8-producer.json).
 The prior section's statement that local fixtures mock fsck describes the unit
 fixtures; the separate native fixture here now supplies additional real evidence.
 
@@ -375,7 +380,7 @@ checks. App commit`dcec8109ee89db6fa5affbf9556d290ad39a2632e8fc879c1132bec1abaaa
 and Debug commit`1efed457995d1935bd3b52e79aa1dfd6b4e658a9b318fa6935c3aeb3ed871e9c`
 match the consumer export log. Synthetic/software coverage limits remain. Status
 API lagged completed logs/artifacts; full selected-job cost is still pending.
-See[qualified evidence](ci-evidence/2026-10-22-flatpak-transfer-v8-qualified.json).
+See[qualified evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v8-qualified.json).
 
 The production change uses one existing Actions builder-family archive containing
 only `.flatpak-builder/cache` and `.flatpak-builder/ccache`, with a versioned
@@ -456,7 +461,7 @@ cold output42, then warm output42 with1 direct hit and1 unsupported option,
 failing the required2-hit assertion. With scanning disabled, all10 trials pass:
 source/header/compiler changes with preserved size and mtime, configuration
 change, and the subsequent2-hit warm build after each. No unsupported options
-remain. See [portable SDK evidence](ci-evidence/2026-10-22-flatpak-cpp20-cache.json).
+remain. See [portable SDK evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cpp20-cache.json).
 These isolated fixture timings are not whole-job savings. Full application cache
 consumer and installed saved-profile qualification remain required before adoption.
 
@@ -476,7 +481,7 @@ camera, microphone and browser recording (303verifiedbrowserframes), CEF debugge
 checks and unchanged C++WebSocket v5. Synthetic/software coverage limits remain.
 The rebased recipe/fixture/tests are byte-identical to the qualified source;
 only adjacent documentation needed conflict resolution with merged diagnostics.
-See [full qualification](ci-evidence/2026-10-22-flatpak-cpp20-qualified.json).
+See [full qualification](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cpp20-qualified.json).
 
 The enclosing workflow also had the known Windows callback declaration parity
 failure tracked in #1549/#1541 (664pass/1fail). Its seed/log and cost are retained;

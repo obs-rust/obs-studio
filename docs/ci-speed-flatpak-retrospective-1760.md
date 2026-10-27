@@ -1,5 +1,10 @@
 # Flatpak performance retrospective (#1760)
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 ## Measured performance result
 
 | Metric | Historical baseline | Final configuration |
@@ -79,7 +84,7 @@ Its branch qualification passed the complete Flatpak job in392s, with342direct
 hits/3misses, all six dependencies reused and all three artifact validators
 passing. Fast Gate reproduced #1816 and the final gate correctly failed;
 whole workflow cost14.033runner-minutes, no cancellations or retries.
-[Portable routing evidence](ci-evidence/2026-10-22-flatpak-measurement-routing.json)
+[Portable routing evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-measurement-routing.json)
 records the source and skipped native matrices. The branch retains existing
 trusted-master publication restrictions and is excluded from the production cohort. Routing
 savings cannot count toward the Flatpak job's performance target.
@@ -107,7 +112,7 @@ It includes #1815 scene-audio extraction relative to the first two samples;
 recipe/browser/CEF are unchanged. Its workflow failed #1816,17.017runner-minutes.
 The final median437s meets the target; selected warm workflows cost49.433runner-minutes
 with three failures, no cancellations or unchanged retries.
-[Portable cohort evidence](ci-evidence/2026-10-22-flatpak-final-cohort.json)
+[Portable cohort evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-final-cohort.json)
 retains all three observations and their whole-workflow outcomes.
 
 ## Where the time went
@@ -123,7 +128,7 @@ and production warm 2, run39816841905/job119958260969:
 | Stage commits/cleanup/export through counter report |121s|77.89s |
 | Stats/validators/publication/final cleanup |33s|41.41s |
 
-For the final configuration, [three completed warm phase observations](ci-evidence/2026-10-22-flatpak-final-phases.json)
+For the final configuration, [three completed warm phase observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-final-phases.json)
 show167–192s setup/restores,81–89s configure/compile/install, about14s debug
 processing,117–120s commits/export and28–50s counters/validators/publication/cleanup.
 These sum to the complete437s/434s/447s jobs; setup and export dominate remaining
@@ -218,7 +223,7 @@ runtime costs remain separate from routine Flatpak improvements.
 
 ## Post-cohort cache observation
 
-The [post-cohort inventory](ci-evidence/2026-10-22-flatpak-post-cohort-retention.json)
+The [post-cohort inventory](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-post-cohort-retention.json)
 contains39entries/11,139,864,070B, above the10GiB global budget. Its two projected
 archives total4,549,850,337B, above the2.5GiB family budget. This is a transitional
 snapshot, not settled capacity proof. The newest archive9361847609 is2,275,027,686B
@@ -300,13 +305,13 @@ known issue. No C test was modified by the Flatpak performance units.
 
 ## Evidence index
 
-- [Completed interim production cohort](ci-evidence/2026-10-22-flatpak-interim-cohort.json):
+- [Completed interim production cohort](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-interim-cohort.json):
   all three observations, cold run, identities, costs and failed target.
-- [C++20 SDK RED/GREEN](ci-evidence/2026-10-22-flatpak-cpp20-cache.json):
+- [C++20 SDK RED/GREEN](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cpp20-cache.json):
   all ten invalidation/reuse trials.
-- [Full C++20 qualification](ci-evidence/2026-10-22-flatpak-cpp20-qualified.json):
+- [Full C++20 qualification](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-cpp20-qualified.json):
   actual fresh consumer and installed App/Debug/profile identities.
-- [Earlier transport qualification](ci-evidence/2026-10-22-flatpak-transfer-v8-qualified.json):
+- [Earlier transport qualification](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-transfer-v8-qualified.json):
   original combined transport/runtime evidence and limits.
 
 ## Final cohort status
@@ -319,6 +324,6 @@ so no automatic full Flatpak seed is selected; earlier scheduling assumptions
 were corrected before observing any final warm timings. The first three routine
 warm jobs and matched cold are now complete:437/434/447s and846s respectively.
 
-- [Workflow cost ledger](ci-evidence/2026-10-22-flatpak-workflow-costs.json):
+- [Workflow cost ledger](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-workflow-costs.json):
   all completed measurement runs, including final seed/cohort observations,
   and the cancelled seed metadata anomaly.

@@ -64,7 +64,8 @@ build-aux/flatpak-github-action-modified-*
 # CI and measurement evidence dumps: run metadata never lands in the tree.
 # The attestations that matter are commit-message trailers (Local-Gate /
 # Ci-Attestation); run output belongs in Actions artifacts or a side branch.
-# (docs/ci-evidence/ is retired separately: its files are tracked today, and
-# ci/test_gitignore.py rightly forbids ignoring tracked files.)
+# docs/ci-evidence/ is retired (#2686): the 185 tracked run-metadata snapshots
+# are measurement output, not source, and a local run must not re-add one.
 /ci-evidence-*/
 /ci-evidence/
+/docs/ci-evidence/

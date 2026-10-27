@@ -1,5 +1,10 @@
 # CI and build tooling: how not to drown the machines
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 Many agents and people work on this repo at once, on shared machines and a
 shared pool of GitHub runners. Every unnecessary cold build, raw Docker run or
 "just re-run CI" multiplies across all of them. This repo uses a set of
@@ -110,7 +115,7 @@ exact nanosecond timestamp and report Fresh with the wrapper disabled. The
 pinned setup action's cook keys include the Soldr version, so archives of an
 older Soldr cannot match the new base key or delta restore prefixes. The pinned
 setup-soldr v0.9.88 defaults to Soldr 0.9.42; the workflows still name the
-version explicitly. See the [probe and limits](ci-evidence/2026-10-20-soldr-source-mtime.md).
+version explicitly. See the [probe and limits](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-20-soldr-source-mtime.md).
 
 Soldr 0.9.41+ keeps a **verdict ledger** (soldr#3894): a `clippy`,
 `fmt --check`, `dylint` or doctest run whose exact inputs (git blob ids, or
@@ -585,18 +590,18 @@ and [#1270](https://github.com/obs-rust/obs-studio/pull/1270).
 `save-cache: ${{ github.ref == 'refs/heads/master' }}` while keeping restores
 enabled wherever caching was already enabled. The pinned action otherwise
 saves on PR and queue refs, producing archives the janitor later reclaims.
-The [retention snapshot and offline executor reproduction](ci-evidence/2026-10-21-cache-retention.md)
+The [retention snapshot and offline executor reproduction](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-21-cache-retention.md)
 record that churn separately from the still-open whole-budget allocation and
 durability work. A current inventory below the global budget does not prove
 that useful seeds survive the next nightly writer burst.
 
-The [24-hour PR and merge-group cohort](ci-evidence/2026-10-22-ci-cache-day-cohort.md)
+The [24-hour PR and merge-group cohort](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-ci-cache-day-cohort.md)
 records gate latency, failures, cancellations and incomplete timing proxies
 separately for each event. Its companion and offline reproduction preserve
 the API evidence; the mixed population does not establish code-only latency
 or billed runner cost.
 
-The [janitor report acceptance audit](ci-evidence/2026-10-22-janitor-report-disposition.md)
+The [janitor report acceptance audit](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-janitor-report-disposition.md)
 maps the original incident criteria to hosted evidence and continuing owners.
 Global capacity and useful-seed durability remain tracked in #1801; the report
 does not certify the broader CI backlog as complete.
@@ -793,7 +798,8 @@ and literal ccache statistics/version plus machine-readable counters. The
 probe verifies the effective cache directory and rejects rebuilds with no
 cacheable C/C++ calls. The pinned ccache supports these inspection commands
 in its [manual](https://ccache.dev/manual/4.14.1.html). Artifacts expire after two days;
-preserve useful results in `docs/ci-evidence/` before expiry. Filesystem bytes
+record the useful numbers in the PR or issue comment before expiry; run
+metadata is not tracked on `master` (#2686). Filesystem bytes
 are not compressed GitHub archive sizes. Two samples per size from one runner
 do not establish representative-day latency, repository retention, or a
 universal size recommendation. Compare compile time and actual hits/misses
@@ -867,7 +873,7 @@ gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f native-cache-m
 These commands remain opt-in. Changing routing alone demonstrates no cache
 speedup, successful transfer, source freshness or global capacity solution.
 
-The [first native build-reuse attempt](ci-evidence/2026-10-22-native-cache-build-reuse.md)
+The [first native build-reuse attempt](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-native-cache-build-reuse.md)
 failed qualification: Windows profiles were cold, and successful macOS app
 builds lacked installed-binary freshness proof. Its retained evidence includes
 the final failed gate and successful compatibility and protocol checks.
@@ -923,7 +929,8 @@ runtime; missing markers remain unknown. Nextest passed/failed/skipped/not-run
 counts are kept as reported, without inventing absent zeros or adding skipped
 tests to `tests_run`. Separate Cargo result summaries retain doctest coverage.
 The regression evidence includes a parsed real hosted run in
-`docs/ci-evidence/2026-10-22-nextest-log-observations.json`.
+the snapshot `docs/ci-evidence/2026-10-22-nextest-log-observations.json`
+(retired; at `c2af3f9c3`).
 When recollecting into the same output directory, unchanged run metadata retains
 its recorded historical comparison base. Later PR rebases or base-branch updates
 must not silently reclassify a cached run. Updated run metadata still invalidates
@@ -963,12 +970,12 @@ Current builds reset counters after restoration and still execute the full
 build, export and validators before trusted publication.
 
 The obsolete standalone compiler family no longer reserves 200 MiB. The
-[saved policy replay](ci-evidence/2026-10-22-flatpak-legacy-retirement.md)
+[saved policy replay](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-legacy-retirement.md)
 records the declaration reduction and unchanged deletion plans. This snapshot
 has no standalone entries to reclaim; global overcommit and native architecture
 retention remain open in #1801.
 
-The [allocation and version-retention follow-up](ci-evidence/2026-10-22-cache-allocation-followup.md)
+The [allocation and version-retention follow-up](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-cache-allocation-followup.md)
 maps all 25 remaining families, records overlapping publications and an actual
 registry deletion across different host/container Actions versions, and links
 the existing upstream identity defect. Its portable replay separates observed

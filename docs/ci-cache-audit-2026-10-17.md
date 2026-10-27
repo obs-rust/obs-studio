@@ -1,5 +1,10 @@
 # CI cache audit: 2026-10-17
 
+> The `docs/ci-evidence/` snapshots linked below are retired from `master`
+> (#2686); each link resolves to the commit that last held the file
+> (`c2af3f9c3`), and the commands quoted below name those paths as they were
+> then.
+
 Implementation and measurement tracker:
 [obs-studio#1286](https://github.com/obs-rust/obs-studio/issues/1286).
 
@@ -11,9 +16,9 @@ at `df86995022` passed all seven app builds: Ubuntu OFF/ON, Windows x64/arm64,
 macOS x86/arm64 and Flatpak. Native Rust tests, Tier 2 and nightly scans also
 passed. Linux OFF/ON each registered 296 tests with zero failures; CTest took
 314.80 / 304.42 s. Both Ubuntu modes published compatible snapshots.
-[Current full-run and producer evidence](ci-evidence/2026-10-18-ubuntu-compatible-producer.json).
+[Current full-run and producer evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-ubuntu-compatible-producer.json).
 The earlier full run at `2f9bf8d77` also passed; its distinct 295-test results
-remain [recorded separately](ci-evidence/2026-10-18-full-warm-validation.json).
+remain [recorded separately](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-full-warm-validation.json).
 
 | Finding | Verified result | Recommendation/status |
 | --- | --- | --- |
@@ -32,11 +37,11 @@ measured median CPU 63.482 → 46.620 s (26.6% lower); uncached wall
 315 → 198 s result is a different benchmark. Neither establishes the
 current merge queue's end-to-end improvement.
 
-![Isolated libobs trials showing CPU medians 63.482 to 46.620 seconds and overlapping uncached wall-time ranges](ci-evidence/libobs-2026-10-17/build-trials.svg)
+![Isolated libobs trials showing CPU medians 63.482 to 46.620 seconds and overlapping uncached wall-time ranges](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/libobs-2026-10-17/build-trials.svg)
 
 The plot shows all three trials and min–max ranges. Its warm panel excludes
 the initial seed build and uses a separately identified grouped revision.
-[Raw trials and reproducible plotting script](ci-evidence/libobs-2026-10-17/plot_trials.py).
+[Raw trials and reproducible plotting script](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/libobs-2026-10-17/plot_trials.py).
 
 **Next priorities:** investigate the remaining Ubuntu OFF misses,
 resolve the independently reproduced recording-wait race blocking #1362,
@@ -55,14 +60,14 @@ transport; retiring its unused family allowed the actual queue janitor to
 delete all three remaining archives, totaling **183,330,575 bytes**. A fresh
 inventory contained zero such archives. The pinned offline executor selected
 exactly those three additional IDs, leaving its other decisions unchanged.
-[Executor and runtime evidence](ci-evidence/2026-10-18-retired-embedded-cache.json).
+[Executor and runtime evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-retired-embedded-cache.json).
 This is verified storage reclamation, not a measured CI speedup or proof of
 stable headroom.
 
 The subsequent master run 39088999741 passed. Its Tier 2 build restored
 compiler, apt and timing snapshots and reported 785 cached / 1 cold native
 compilations; OFF and ON each registered 296 tests with zero failures.
-[Post-retirement master observations](ci-evidence/2026-10-18-retired-embedded-master-validation.json)
+[Post-retirement master observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-retired-embedded-master-validation.json)
 verify useful native reuse survived this change. A single passing run does
 not establish durable retention or resolve the separate recording race.
 
@@ -71,7 +76,7 @@ The useful touched-plugin compiler and apt seeds were present in the saved
 01:56 inventory. Seventeen completed janitor logs inspected from 00:42 to
 01:55 record no deletion of those IDs. These observations establish a retention
 gap; they do not identify the deletion actor or prove GitHub eviction.
-[Entries, inspected jobs and limitations](ci-evidence/2026-10-18-plugin-cache-retention-gap.json).
+[Entries, inspected jobs and limitations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-plugin-cache-retention-gap.json).
 The earlier 41/41-hit warm consumer remains valid historical evidence, while
 retention durability remains unresolved under #1269.
 
@@ -88,7 +93,7 @@ In full run 39089156757 on `df86995022`, Ubuntu ON passed with 340 cached,
 archive, then saved a new 795,699,586-byte archive from 5,488 MiB of raw
 state, below the 8,192 MiB guard. Restore/build/save took 19/234/18 s; the
 whole job took 340 s, including successful GPU and app Tier 4 checks.
-[Producer metadata](ci-evidence/2026-10-18-ubuntu-compatible-producer.json)
+[Producer metadata](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-ubuntu-compatible-producer.json)
 keeps this separate from the earlier unmatched warm observations.
 
 OFF also passed. It found no compatible archive, built all 345 cacheable
@@ -106,7 +111,7 @@ sanitizer entries). The pinned janitor, run offline on the saved inventory
 with a hypothetical clock beyond the grace window, plans deletion of the
 ON archive and retention of OFF. Both were present in the real inventory;
 this is a predicted future plan, not an observed deletion.
-[Exact entries, capacity and dry-run plan](ci-evidence/2026-10-18-ubuntu-retention-plan.json).
+[Exact entries, capacity and dry-run plan](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-ubuntu-retention-plan.json).
 Mode-compatible restores repair correctness of reuse and snapshot sizing,
 but cannot keep both modes warm under this allocation. Whole-budget policy
 remains unresolved under #1269; no global allocation change is claimed here.
@@ -123,7 +128,7 @@ revision as the producer, and restored their exact new mode-specific keys.
 
 Each job also reported 16 noncacheable calls. These are individual runner
 observations, not a controlled hardware comparison or queue-throughput result.
-[Consumer logs, counters and step timing metadata](ci-evidence/2026-10-18-ubuntu-compatible-consumer.json).
+[Consumer logs, counters and step timing metadata](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-ubuntu-compatible-consumer.json).
 The parent consumer workflow subsequently passed, including all seven native
 app builds and the remaining checks.
 
@@ -155,7 +160,7 @@ binary reproduces the result, so it is not limited to the Nix compiler wrapper.
 A separate 200 ms settling control returns the correct value; the delay is
 not a production workaround. Private cache/endpoint ownership keeps these
 fixtures separate from the shared daemon.
-[Source, executable results, stamps and raw journals](ci-evidence/2026-10-18-native-journal-freshness.json)
+[Source, executable results, stamps and raw journals](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-native-journal-freshness.json)
 corroborate existing upstream [zccache#1935](https://github.com/zackees/zccache/issues/1935#issuecomment-6244827358).
 This does not establish wrong output in the GitHub runs, explain OFF's 137
 misses, or identify a specific internal shortcut from aggregate outcomes.
@@ -201,7 +206,7 @@ PulseAudio device tests skipped). These are **unmatched phase
 observations**, not proof of overall queue throughput improvement. Source,
 runner placement and compiler-cache rollout conditions differ.
 
-[Machine-readable rollout results](ci-evidence/2026-10-17-master-cache-rollout.json)
+[Machine-readable rollout results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-master-cache-rollout.json)
 include job IDs, phase times and independent compiler counters. The isolated
 libobs results below remain separate from whole-app and CI build timings.
 
@@ -245,7 +250,7 @@ cold compilation, but changed source and runner conditions prevent a matched
 runtime attribution. The disappearance therefore has an observed consumer
 cost even though its cause remains unresolved.
 
-[Job identities, times and observations](ci-evidence/2026-10-17-full-validation.json)
+[Job identities, times and observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-full-validation.json)
 keep the successful native builds, failed test setup, cold cache production
 and unresolved cache loss separate. The full-day comparison remains open.
 
@@ -260,7 +265,7 @@ startup-failure diagnostic test passed in both modes. These observations
 verify queue coverage of the Xvfb `-noreset` fix; they do not replace the
 pending full nightly run or establish a throughput improvement.
 
-[Machine-readable queue results](ci-evidence/2026-10-18-startup-queue-validation.json)
+[Machine-readable queue results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-startup-queue-validation.json)
 keep this verification separate from the earlier PR results and local
 repeated-startup experiment.
 
@@ -276,7 +281,7 @@ remains unmeasured.
 Master run [39081770788](https://github.com/obs-rust/obs-studio/actions/runs/39081770788)
 passed after the startup fix: both modes registered 295 tests with zero
 failures; CTest took 314.72 s OFF and 308.66 s ON. Both the startup diagnostic
-and recording-shutdown test passed. [Raw master observations](ci-evidence/2026-10-18-startup-master-validation.json)
+and recording-shutdown test passed. [Raw master observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-startup-master-validation.json)
 do not disprove the recording race seen in a different run.
 
 The unchanged recording-shutdown test passed 20 local repetitions. A separate
@@ -286,7 +291,7 @@ controlled 100 ms worker pause before the inactive store lets the UI helper
 return `stopped=true` while `active=true`. Both signals were registered and
 the worker joined cleanly. This confirms a possible ordering failure under
 controlled scheduling; it does not prove that pause occurred in historical
-CI. [Fixture source, source identities and results](ci-evidence/2026-10-18-recording-wait-race-probe.json)
+CI. [Fixture source, source identities and results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-recording-wait-race-probe.json)
 are retained separately from the unchanged-test results. The follow-up is
 posted to the existing #1283 claim; production code and existing tests were
 not edited.
@@ -307,7 +312,7 @@ archive. OFF accumulated 9,526 MiB of mixed compiler state, exceeded the
 8,192 MiB save guard and published no OFF archive. The opposite-mode fallback
 therefore provided limited observed reuse and prevented seeding this mode in
 this run. Restore compatibility and snapshot growth must be addressed before
-claiming both modes are warm. [Raw observations](ci-evidence/2026-10-18-ubuntu-warm-consumers.json).
+claiming both modes are warm. [Raw observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-ubuntu-warm-consumers.json).
 
 A mid-run listing summed to 12,218,332,982 bytes, above the declared 10 GiB
 budget. Three Qt snapshots alone held approximately 3.48 GB; their observed
@@ -320,7 +325,7 @@ Fast Gate also missed its host release cook key, then received HTTP 409
 on reservation. Two later listings had no visible entry for that exact key.
 The cause remains unknown; it is tracked in
 [setup-soldr#581](https://github.com/zackees/setup-soldr/issues/581).
-[Inventory summaries and explicit limits](ci-evidence/2026-10-18-cache-pressure-and-cook-conflict.json)
+[Inventory summaries and explicit limits](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-cache-pressure-and-cook-conflict.json)
 keep the publication conflict separate from compiler hits and storage totals.
 
 ### Merged transport policy and a post-native-burst consumer
@@ -338,38 +343,38 @@ compilations, then saved a new seed. The later inventory retained that new
 seed. Thus the queue compiler store has observed useful consumption after
 the native write burst. Registry and mini-tool cache misses still occurred;
 this single observation does not establish durable overall retention.
-[Runtime policy and consumer evidence](ci-evidence/2026-10-18-cache-policy-runtime.json).
+[Runtime policy and consumer evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-cache-policy-runtime.json).
 
 The mode/configuration restore restriction #1371 is also merged, but no
 post-change Ubuntu seed/consumer measurement is claimed. PR #1374 merged and its master Qt producer (job 117551485401, run
 39084764880) passed: 298/300 cacheable hits, a new
 `qt-ccache-linux-inputs-v1-7d748b6e…` snapshot, and a 5-second save step.
-[Producer metadata](ci-evidence/2026-10-18-qt-identity-producer.json) records the
+[Producer metadata](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-qt-identity-producer.json) records the
 exact key and bytes. The subsequent docs-only consumer, job 117554246917 in
 run 39086280608, passed its 15 registered Qt tests with the exact same key,
 298/300 hits, and its Qt
 snapshot save step skipped. It reused the 1,161,888,219-byte archive without
 uploading another Qt snapshot. Build/tests still ran (74 s versus the
 producer's 54 s); these unmatched runner observations do not establish an
-end-to-end speedup. [Consumer and upload evidence](ci-evidence/2026-10-18-qt-identity-consumer.json).
+end-to-end speedup. [Consumer and upload evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-qt-identity-consumer.json).
 
 The producer's parent workflow later failed the separate recording-wait
 assertions. A proposed private-helper patch passes two controlled ordering
 cases where the original fails, and ten invocations of the unchanged test
 (40 cases). It was offered on the existing #1283 claim for review;
 production source and assertions remain unchanged, and real app shutdown
-validation is still required. [Patch, probe source and results](ci-evidence/2026-10-18-recording-wait-proposed-patch.json).
+validation is still required. [Patch, probe source and results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-recording-wait-proposed-patch.json).
 
 The unchanged group-hide audio test passed three isolated and sixteen
 concurrent local invocations on four pinned CPUs (76 cases, no skips). This
 negative sample did not reproduce #838; serial execution preceded concurrent
 execution without cold/warm Mesa cache control, and local binaries were not
 matched to the GitHub revision. No scheduling or assertion change was made.
-[Local probe and limitations](ci-evidence/2026-10-18-audio-resource-probe.json).
+[Local probe and limitations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-audio-resource-probe.json).
 
 ### Subsequent consumers and availability failures
 
-[Consumer and capacity observations](ci-evidence/2026-10-17-cache-consumer-followup.json)
+[Consumer and capacity observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-cache-consumer-followup.json)
 record actual reuse after the host/container namespace split (#1354):
 
 | Consumer | Cook result | Observed timing / outcome |
@@ -398,7 +403,7 @@ reports inactive. Evidence is posted under the existing claim in
 [#1283](https://github.com/obs-rust/obs-studio/issues/1283#issuecomment-6243649634);
 no rerun, skip, or assertion change was made. This is not evidence of a cache
 recovery failure. The daemon-death cause remains unknown, and #1362 is not
-yet merged. [Raw validation summary](ci-evidence/2026-10-18-recovery-pr-validation.json)
+yet merged. [Raw validation summary](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-recovery-pr-validation.json)
 keeps build success separate from test failures.
 
 The full dispatch's native Windows Tier 2 compiler cache hit 308/308
@@ -434,7 +439,7 @@ not a monetary billing calculation. The older code-queue baseline median
 was 954 seconds across eight samples, with different source, test counts
 and runner conditions. One new sample does not establish a causal speedup
 or replace the required representative-day comparison.
-[Raw critical-path observations](ci-evidence/2026-10-17-code-queue-critical-path.json)
+[Raw critical-path observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-code-queue-critical-path.json)
 include the independent OFF/ON results and coverage caveats.
 
 ### Native Rust profile verification
@@ -447,7 +452,7 @@ passed native Rust test jobs on both platforms with `--profile dev`:
 | macOS arm64 | 34 s | 23.1 s | 89 s | 13 s |
 | Windows x64 | 53 s | 30.0 s | 125 s | 15 s |
 
-[Raw job observations](ci-evidence/2026-10-17-native-rust-cook-rollout.json)
+[Raw job observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-native-rust-cook-rollout.json)
 verify profile use and successful consumers. Compiler-wrapper session counters
 were zero in both jobs; these are separate from dependency-cook reuse. The
 parent master run was later canceled after its native jobs and cache writers
@@ -457,7 +462,7 @@ Windows native Tier 2 also passed in this master run, using `--release` for
 the static-library consumer and recording **304/305 cacheable ccache hits**,
 one miss. It saved `windows-tier2-ccache-6d7b7f7a...`. These C/C++ counters
 are independent of the zero embedded zccache session counters printed by
-setup-soldr. [Job timings and counters](ci-evidence/2026-10-17-windows-tier2-cache-rollout.json)
+setup-soldr. [Job timings and counters](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-windows-tier2-cache-rollout.json)
 confirm that useful native compiler reuse survived the changes.
 
 macOS native Tier 2 passed both implementation runs too: 161 registered,
@@ -465,14 +470,14 @@ macOS native Tier 2 passed both implementation runs too: 161 registered,
 Its release-profile consumer succeeded and saved `macos-tier2-xcas-6d7b7f7a...`.
 The embedded compiler session recorded 22 hits and zero misses; this does not
 establish an Xcode compilation-cache hit rate.
-[Native macOS observations](ci-evidence/2026-10-17-macos-tier2-cache-rollout.json)
+[Native macOS observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-macos-tier2-cache-rollout.json)
 keep these independent scopes explicit. The obsolete master workflow was
 canceled after its native jobs and cache writers completed; it is not claimed
 as a full-workflow success. Full nightly verification remains separate.
 
 ### What still dominates test time
 
-The [serial-test profile](ci-evidence/2026-10-17-tier2-serial-profile.json)
+The [serial-test profile](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-tier2-serial-profile.json)
 identifies eight `RUN_SERIAL` tests totaling 174.47 s OFF and 165.17 s ON,
 against CTest wall times of 257.61 s and 248.03 s. The longest are async audio
 delay (~59 s), PipeWire resume (~39 s), VLC pacing (~35 s), and audio clock
@@ -508,7 +513,7 @@ scenarios executed. Their environmental coverage remains a stated limitation.
 Nightly security migration is live-verified: manual Scheduled run
 [39064183327](https://github.com/obs-rust/obs-studio/actions/runs/39064183327)
 passed CodeQL for Actions, C/C++, Python and Rust. Automatic default setup
-remains disabled. [Per-language results](ci-evidence/2026-10-17-nightly-codeql-verification.json)
+remains disabled. [Per-language results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-nightly-codeql-verification.json)
 record durations and job IDs. This proves nightly/manual scanning works; the
 full nightly run subsequently finished with the macOS integrity failure described below.
 
@@ -518,7 +523,7 @@ saved `targets-ccache-linux-713ceb3b...`, a 25,761,103-byte archive on master.
 The touched-target build and save steps succeeded. The prepared measurement
 PR selects only `linux-v4l2`; its tracked compiler-input fingerprint matches
 the seed revision, excluding Markdown and generated version metadata.
-[Experiment records](ci-evidence/2026-10-17-plugin-cache-experiment.json)
+[Experiment records](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-plugin-cache-experiment.json)
 retain the cold sample and trusted save. Subsequent PR compiler reuse is verified below; archive creation alone was
 not used as proof of reuse.
 
@@ -553,13 +558,13 @@ These are individual unmatched runs, with network and runner variation;
 
 ### Full nightly outcome
 
-[Final job results](ci-evidence/2026-10-17-nightly-final-results.json) show
+[Final job results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-nightly-final-results.json) show
 successful Ubuntu OFF/ON app builds, macOS Intel/Apple Silicon, Windows
 x64/arm64, Flatpak, security analysis, Linux OFF/ON Tier 2 and Windows Tier 2.
 The **overall run failed** at macOS `test_ingest_refresh_wait` /
 `failed_refresh_ends_wait`: its elapsed time exceeded 150 ms. The first
 implementation run failed, so the second implementation was not validated.
-[Failure evidence](ci-evidence/2026-10-17-nightly-macos-failure.json) and
+[Failure evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-nightly-macos-failure.json) and
 [#1334](https://github.com/obs-rust/obs-studio/issues/1334) preserve the failure
 and required diagnostics. Scheduling sensitivity is a hypothesis; no cache
 cause is established. The existing C test was neither weakened nor skipped,
@@ -583,13 +588,13 @@ used 211.57 runner-minutes and sampled canceled code merge groups 194.45.
 These cancellation costs describe the sample, not an extrapolated population.
 Docs/configuration cohorts are kept separate.
 
-[Baseline log observations](ci-evidence/2026-10-16_17-ci-baseline-log-observations.json)
+[Baseline log observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-16_17-ci-baseline-log-observations.json)
 preserve the observed compiler counters, archive sizes, saved keys and test
 counts. Logs were unavailable for 33 of 117 sampled attempts, all canceled;
 missing counters are unknown. Repeated archive messages and independent
 compiler scopes must not be summed into fictitious transfer/hit totals.
 
-The [per-lane baseline](ci-evidence/2026-10-16_17-ci-baseline-lane-timings.json)
+The [per-lane baseline](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-16_17-ci-baseline-lane-timings.json)
 separates code/docs/configuration cohorts and records each literal step's
 sample count. Selected **code-cohort successful jobs** were:
 
@@ -606,7 +611,7 @@ counts above. Step medians are not additive totals, and historical lane/shard
 names remain separate. Missing/skipped step times do not become zero samples.
 The collector now emits `lane_cohorts` so the same method applies after rollout.
 
-A [post-nightly inventory snapshot](ci-evidence/2026-10-17-post-nightly-cache-inventory.json)
+A [post-nightly inventory snapshot](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-post-nightly-cache-inventory.json)
 records both cache APIs with collection timestamps. The itemized listing
 contained 41 entries / 8,951,159,430 bytes; the usage endpoint reported 49 /
 10,617,481,983 bytes. The pinned contract interprets `10GB` as 10 GiB
@@ -618,7 +623,7 @@ must remain warm through the full representative-day comparison.
 
 ### Confirmed retention pressure after rollout
 
-[Capacity and eviction evidence](ci-evidence/2026-10-17-cache-retention-capacity.json)
+[Capacity and eviction evidence](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-cache-retention-capacity.json)
 records a confirmed janitor eviction at 20:12 UTC: the 711,970,692-byte Ubuntu
 ON archive exceeded the shared `zccache` family's 1,782,579,200-byte allowance.
 The same sweep removed the 1,083,740,873-byte Windows x64 app archive under
@@ -645,7 +650,7 @@ nightly families pooled at 1,100 MiB: combined 1,650 MiB versus the previous
 1,700 MiB. Cache keys stay unchanged. An offline probe of the pinned janitor
 reproduced deletion of a 475,427,223-byte Tier 2 seed after two newer Ubuntu
 writes; with the split it protects Tier 2 and evicts the older nightly entry.
-[Raw before/after results](ci-evidence/2026-10-17-tier2-cache-retention.json).
+[Raw before/after results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-tier2-cache-retention.json).
 This isolates janitor protection without expanding its allowance. It does not
 prevent GitHub's global-capacity eviction, retain both Ubuntu variants, or
 resolve the overall declared-capacity mismatch. Live retention remains to verify.
@@ -659,7 +664,7 @@ transitional runs into CI/config. Its two successful queue samples (167.5 s
 median) are CI/config, leaving **zero successful product-code queue samples**.
 There is only one successful product-code PR sample (772 s). These sparse,
 unmatched observations establish no queue speedup. See the
-[cohort correction and preserved old/new counts](ci-evidence/2026-10-17-ci-cohort-correction.json).
+[cohort correction and preserved old/new counts](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-ci-cohort-correction.json).
 
 The final after window must cover at least a full day of representative code
 PR and queue traffic following rollout. It has not elapsed. The first host
@@ -683,7 +688,7 @@ generated revision metadata and runner placement still differ.
 | Cold producer 117527420015 | 300 s | 383 s | 0/783 |
 | Warm consumer 117530045228 | 117 s | 238 s | 734/783 |
 
-[Raw producer/consumer observations](ci-evidence/2026-10-17-tier2-reseed-cold-warm.json)
+[Raw producer/consumer observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-tier2-reseed-cold-warm.json)
 establish useful reuse of the smaller new archive. These are single
 observations, not a matched causal benchmark. Survival through another full
 nightly write burst and representative-day traffic remains unverified.
@@ -691,7 +696,7 @@ nightly write burst and representative-day traffic remains unverified.
 ### Expanded soldr lane observations
 
 The earlier full dispatch also supplies
-[eight soldr lane observations](ci-evidence/2026-10-17-full-dispatch-soldr-lanes.json),
+[eight soldr lane observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-full-dispatch-soldr-lanes.json),
 including separate setup/post-step times and literal cook/embedded compiler
 summaries. These are eight expanded jobs from the configured callsites,
 not eight matched cold/warm experiments. Native test and static-library
@@ -704,7 +709,7 @@ disable the working native compiler cache based on the embedded counter.
 
 The successful #1353 queue run uploaded its 177,835,306-byte execution tree
 in 3 seconds. OFF/ON consumers downloaded it in 2/4 seconds and unpacked it
-in 2 seconds each. [Literal step observations](ci-evidence/2026-10-17-tier2-artifact-transfer.json)
+in 2 seconds each. [Literal step observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-tier2-artifact-transfer.json)
 show inexpensive same-run transport for this payload. Cross-run producer
 selection/authentication and deep Cargo/object-state payloads are separate,
 unmeasured costs; this does not implement queue-only cache publication.
@@ -727,7 +732,7 @@ startup failure to the same cause.
 The follow-up fixes also incurred iteration cost. Across eight completed
 runs on only the #1362/#1365 branches, canceled runs consumed 44.07 observed
 runner-minutes and failed runs 58.08. Two active corrected runs are excluded
-from this snapshot. [Per-run observations](ci-evidence/2026-10-17-followup-iteration-cost.json)
+from this snapshot. [Per-run observations](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-followup-iteration-cost.json)
 keep this separate from steady-state gains, billing and total #1286 rollout
 cost. Failures included cache-daemon availability, startup and the new test
 interposer; superseded runs also consumed work before cancellation completed.
@@ -736,7 +741,7 @@ These costs must not be hidden by reporting only successful final runs.
 The pinned janitor's global-budget behavior is now checked directly:
 `cache/ops.py::janitor` plans family/stale/finding cleanup and applies
 newest-entry/grace protection, without a global trim against `[cache].budget`.
-A [read-only synthetic executor probe](ci-evidence/2026-10-17-janitor-global-budget-probe.json)
+A [read-only synthetic executor probe](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-janitor-global-budget-probe.json)
 kept two current 6 GiB entries when their individual limits were 6 GiB,
 despite a 10 GiB global budget. That fixture intentionally has invalid
 aggregate declarations; it is not a live inventory or a claim that static
@@ -802,7 +807,7 @@ no-ops. Current PCH outputs cover `libobs`, `libobs-objects`,
 `libobs-core-modules`, and `libobs-version`; the remaining group families
 include their own headers textually under the build policy.
 
-[Raw trials, compiler settings, environment and cache statistics](ci-evidence/libobs-2026-10-17/)
+[Raw trials, compiler settings, environment and cache statistics](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/libobs-2026-10-17/)
 are committed with the report. Configure and Nix environment startup time
 are excluded from build timings. Existing application build directories and
 global caches were preserved; benchmark outputs and per-revision ccache
@@ -856,7 +861,7 @@ with `SOLDR_RUSTC_WRAPPER=none` failed with the injected diagnostic.
 | Uncached changed source | 101 | Yes | 1.621 |
 
 These durations describe a tiny correctness fixture, not a performance
-benchmark. [Captured result](ci-evidence/2026-10-17-rust-cache-source-probe.json).
+benchmark. [Captured result](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-rust-cache-source-probe.json).
 Keep the local/CI gate's wrapper bypass until this reproduction passes on
 the version we adopt. The standalone Linux C/C++ PCH cache upgrade in
 [#1265](https://github.com/obs-rust/obs-studio/pull/1265) is separate from
@@ -928,8 +933,8 @@ total, and the run outcomes alone do not establish why cancellation occurred.
 The window spans earlier CI/build rollouts; this baseline cannot attribute
 a later difference to any single cache or concurrency change.
 
-[Summary, outcome counts, listing coverage and per-lane medians](ci-evidence/2026-10-16_17-ci-baseline-summary.json)
-and [sample IDs, diffs, gate and runner times](ci-evidence/2026-10-16_17-ci-baseline-samples.json)
+[Summary, outcome counts, listing coverage and per-lane medians](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-16_17-ci-baseline-summary.json)
+and [sample IDs, diffs, gate and runner times](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-16_17-ci-baseline-samples.json)
 are retained. Cache inventory in the summary is a snapshot at collection
 time, not a reconstruction of cache contents at the historical window end.
 The full raw run/job/cache responses remain under `build_ci_audit/metrics-before/`
@@ -966,7 +971,7 @@ from the initial zero-counter run.
 
 The Rust wrapper bypass does not establish that every compiler-cache
 consumer is inactive: dependency cooking and C compiler work may still
-use it. [Captured sample coverage](ci-evidence/2026-10-17-gate-cache-consumption.json).
+use it. [Captured sample coverage](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-gate-cache-consumption.json).
 This is a small measured operation to remove from the deferred path, not
 a claim of a large CI gain. Cold cook may lose potential compiler-cache
 reuse after a lock change; retain the published post-job cook snapshots
@@ -1041,7 +1046,7 @@ state, and currently transfers work from the build job to OFF/ON test jobs.
 Exact-input reuse could save compilation work; it cannot replace executing
 tests, and it does not supply changed-source incremental reuse by itself.
 
-[A manual deep-cache probe](ci-evidence/2026-10-17-deep-test-cache-probe.json)
+[A manual deep-cache probe](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-deep-test-cache-probe.json)
 demonstrates a separate invalidation problem with the compiler wrapper disabled:
 
 | Condition after target restore | Observed result |
@@ -1095,7 +1100,7 @@ it leaves dirty Cargo metadata intact. It therefore cannot alone enforce
 freshness for the preserved-timestamp case. The existing known-package
 quarantine rejects the edit and retains the dependency in both fixtures;
 automatic production mapping and generated-input coverage remain unfinished.
-[Versions, source coverage, CLI outcomes and controls](ci-evidence/2026-10-18-native-fingerprint-helper.json).
+[Versions, source coverage, CLI outcomes and controls](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-18-native-fingerprint-helper.json).
 
 Reproduce with a new directory and the pinned executables:
 
@@ -1130,7 +1135,7 @@ kept test products fresh without timestamp edits: compile-only command
 0.816 s, versus 6.181 s before the mitigation in the earlier diagnostic run.
 These are individual local observations, excluding network and test execution;
 the new snapshot's save/restore still cost 12.620/16.628 s. No whole-CI gain is
-claimed. [Raw results](ci-evidence/2026-10-17-obs-util-build-inputs.json).
+claimed. [Raw results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-obs-util-build-inputs.json).
 
 The upstream replay-precision issue remains
 [soldr#3851](https://github.com/zackees/soldr/issues/3851). This mitigation
@@ -1153,7 +1158,7 @@ master-only saves stay unchanged. The input also namespaces the action's Rust
 build-cache: first consumers can miss until trusted master seeds exist.
 Registry, toolchain, mini and standalone C/C++ keys stay shared as before;
 disabled layers stay disabled. No warm entry is forcibly deleted.
-[Identity probe and side effects](ci-evidence/2026-10-17-cook-layout-namespaces.json).
+[Identity probe and side effects](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-cook-layout-namespaces.json).
 
 Full validation's Fast Gate independently reported a base restore miss and
 later reservation conflict. Its cause remains unproven; namespace isolation
@@ -1180,7 +1185,7 @@ required actual recompilation in the log; source bytes were preserved.
 | dev cook | 36.170 (35.849–40.269) | 82.736 (48.692–139.906) | 187,723,562 |
 | no cook/archive | 72.136 (71.493–74.113) | 78.291 (73.830–79.011) | 0 |
 
-[Raw trial results](ci-evidence/2026-10-17-soldr-cook-post-job.json) include
+[Raw trial results](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-17-soldr-cook-post-job.json) include
 individual command, restore and warm-cook durations and load averages.
 The totals include local restore plus consumer commands, excluding network
 transfer, formatters, Dylint and post-job save. Initial archive creation
