@@ -39,7 +39,10 @@ if(TARGET libobs_rust-static)
     # functions the test calls, which obs.lib provides as well (LNK2005,
     # #2533); allow the duplicate, which is the same code. Listing the
     # staticlib first instead pulls obs_util objects that need libobs internals.
-    target_link_options(test_graphics_state_stacks_rust PRIVATE /FORCE:MULTIPLE /IGNORE:4006 /IGNORE:4088)
+    target_link_options(
+      test_graphics_state_stacks_rust
+      PRIVATE /FORCE:MULTIPLE /INCREMENTAL:NO /IGNORE:4006 /IGNORE:4075 /IGNORE:4088
+    )
   else()
     target_link_libraries(test_graphics_state_stacks_rust PRIVATE m)
   endif()
