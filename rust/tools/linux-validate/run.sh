@@ -11,8 +11,8 @@
 #   --tests REGEX  limit the repeat run to tests matching REGEX (ctest -R)
 # e.g. run.sh --repeat 100 --tests 'test_threading|test_task'
 #
-# Runs validate.sh through ci/docker-task.sh, the shell stand-in for
-# zackees/bosn#666: an ephemeral container named
+# Runs validate.sh through ci/docker-task.sh, the shim into ci/docker_task.py
+# and the stand-in for zackees/bosn#666: an ephemeral container named
 # obs-rust-linux-validate-<checkout id>, one at a time per checkout, removed
 # after the run; the checkout mounted read-only at /ro and built out of
 # source; volumes the next run reattaches:

@@ -49,7 +49,9 @@ class Tier2VolumeTest(unittest.TestCase):
         dest = repo / "rust" / "tools" / "linux-validate"
         shutil.copytree(TOOLS, dest)
         (repo / "ci").mkdir()
-        shutil.copy(ROOT / "ci" / "docker-task.sh", repo / "ci" / "docker-task.sh")
+        # The task runner shim and the Python module it execs (ci/docker_task.py).
+        for name in ("docker-task.sh", "docker_task.py"):
+            shutil.copy(ROOT / "ci" / name, repo / "ci" / name)
         (repo / "cmake" / "common").mkdir(parents=True)
         shutil.copy(ROOT / "cmake" / "common" / "soldr.cmake", repo / "cmake" / "common" / "soldr.cmake")
         shutil.copy(ROOT / "rust-toolchain.toml", repo / "rust-toolchain.toml")
@@ -100,8 +102,9 @@ class Tier2VolumeTest(unittest.TestCase):
         self.assertIn("-DOBS_BUILD_NUMBER=1", text)
 
     def test_container_is_named_per_checkout_and_removed_after(self):
-        """zackees/bosn#666, emulated by ci/docker-task.sh: one ephemeral
-        container per task and checkout, its name the singleton lock."""
+        """zackees/bosn#666, emulated by ci/docker-task.sh (its logic in
+        ci/docker_task.py): one ephemeral container per task and checkout, its
+        name the singleton lock."""
         repo = self.checkout("a")
         self.docker_run_mounts(repo)
         run = [l.split() for l in self.last_log.read_text().splitlines() if l.startswith("run ") and " --name " in l][0]

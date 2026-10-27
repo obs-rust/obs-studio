@@ -1,7 +1,8 @@
 #!/usr/bin/env -S uv run --script
 """Cross-compile check (cmake/cross/) in a container, so the host needs only
-Docker: no soldr, LLVM or SDK. Runs through ci/docker-task.sh (the stand-in for
-zackees/bosn#666): an ephemeral container per checkout, one at a time.
+Docker: no soldr, LLVM or SDK. Runs through ci/docker-task.sh, the shim into
+ci/docker_task.py (the stand-in for zackees/bosn#666): an ephemeral container
+per checkout, one at a time.
 
     uv run --script cmake/cross/docker.py [--clean|--clean-all] [--wait] <alias>...
     e.g. cmake/cross/docker.py mac-arm64 win-x64
@@ -72,7 +73,8 @@ def parse(argv: list[str], name: str) -> tuple[list[str], list[str]] | None:
 
 def task_argv(repo: Path, task: list[str], aliases: list[str], extra: str,
               toolchain: str, soldr: str) -> list[str]:
-    """ci/docker-task.sh's arguments: the volumes, budgets and container command."""
+    """The task runner's arguments (ci/docker-task.sh -> ci/docker_task.py):
+    the volumes, budgets and container command."""
     return [
         str(repo / "ci" / "docker-task.sh"), "run", "--name", "obs-cross", "--repo", str(repo),
         "--image", "obs-rust-linux-validate",
