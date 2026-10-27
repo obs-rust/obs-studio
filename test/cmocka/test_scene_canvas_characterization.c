@@ -741,11 +741,6 @@ static int teardown(void **state)
 
 int main(void)
 {
-#ifdef _WIN32
-	/* CTest marks exit 77 as skipped. Do not run source destruction without
-	 * graphics on Windows until #2547 diagnoses the Cargo-core crash. */
-	return 77;
-#endif
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(scene_get_ref),
 		cmocka_unit_test(scene_find_source_recursive),
