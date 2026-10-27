@@ -10,9 +10,12 @@ on:
     - cron: "23 * * * *"
   workflow_dispatch:
 
+# Only what routing the events needs: the comment/assignment scopes sit on the
+# work itself (the `claim` job below), which is where the token that writes them
+# is minted (ci-lint SEC-002). The top-level block asks for no more than the
+# repository max grant (contents: read, actions: read).
 permissions:
-  issues: write
-  pull-requests: read
+  contents: read
 
 concurrency:
   group: claim-bot-${{ github.event.issue.number || 'sweep' }}
@@ -22,4 +25,10 @@ jobs:
   claim:
     # Not in forks: a fork's schedule fails there and mails its owner (#1258).
     if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    # The claim bot assigns the issue (issues: write) and reads its pull request
+    # (pull-requests: read); both scopes sit on this job, the file's only
+    # consumer, and are listed in ci.toml's [allow].permissions (SEC-002).
+    permissions:
+      issues: write
+      pull-requests: read
     uses: obs-rust/.github/.github/workflows/claim-bot.yml@master
