@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -447,8 +448,88 @@ class CertifiedReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("exit 0", missing)
         self.assertNotIn("exit 1", missing)
         # The signing step itself is shared with certify.
-        self.assertIn("ci/sparkle_mac_info.sh", nightly)
-        self.assertIn("ci/sparkle_mac_info.sh", job(self.text, "certify"))
+        self.assertIn("ci/sparkle_mac_info.py", nightly)
+        self.assertIn("ci/sparkle_mac_info.py", job(self.text, "certify"))
+
+
+class SparkleMacInfoTests(unittest.TestCase):
+    """The macOS half of a feed's input, read out of the shipped DMGs (#1742)."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.dist = self.root / "dist"
+        self.dist.mkdir()
+        for arch in ("arm64", "x86_64"):
+            (self.dist / f"obs-studio-rust-0.1.0-macos-{arch}.dmg").write_bytes(b"dmg")
+        self.calls = self.root / "calls.log"
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.stub("hdiutil", """
+            echo "hdiutil $*" >>"$CALLS"
+            [[ "$1" == attach ]] || exit 0
+            mount=''; previous=''
+            for arg in "$@"; do [[ "$previous" == -mountpoint ]] && mount=$arg; previous=$arg; done
+            mkdir -p "$mount/OBS.app/Contents"
+            : >"$mount/OBS.app/Contents/Info.plist"
+        """)
+        self.stub("plutil", """
+            case "$2" in
+                CFBundleVersion) echo 20261020 ;;
+                CFBundleShortVersionString) echo 0.1.0 ;;
+                LSMinimumSystemVersion) echo '12.0' ;;
+                *) exit 1 ;;
+            esac
+        """)
+        self.stub("sign_update", """
+            [[ -n "$NO_SIGNATURE" ]] && exit 0
+            echo "sparkle:edSignature=\\"sig-$(basename "${!#}" .dmg)\\" length=\\"1\\""
+        """)
+        self.key = self.root / "sparkle.key"
+        self.key.write_text("key")
+        self.sign_update = self.bin / "sign_update"
+        self.out = self.root / "mac.json"
+
+    def stub(self, name: str, body: str) -> None:
+        path = self.bin / name
+        path.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + body)
+        path.chmod(0o755)
+
+    def run_script(self, *args: str, **env: str) -> subprocess.CompletedProcess:
+        environment = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+        environment.update(PATH=f"{self.bin}{os.pathsep}{environment['PATH']}", CALLS=str(self.calls), **env)
+        return subprocess.run(
+            [sys.executable, str(ROOT / "ci" / "sparkle_mac_info.py"),
+             str(self.dist), str(self.key), str(self.sign_update), str(self.out), *args],
+            capture_output=True, text=True, env=environment,
+        )
+
+    def test_each_architecture_gets_its_plist_fields_and_signature(self) -> None:
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.out.read_text(encoding="utf-8")), {
+            "arm64": {"bundle_version": "20261020", "short_version": "0.1.0",
+                      "minimum_system_version": "12.0",
+                      "ed_signature": "sig-obs-studio-rust-0.1.0-macos-arm64"},
+            "x86_64": {"bundle_version": "20261020", "short_version": "0.1.0",
+                       "minimum_system_version": "12.0",
+                       "ed_signature": "sig-obs-studio-rust-0.1.0-macos-x86_64"},
+        })
+        verbs = [line.split()[1] for line in self.calls.read_text().splitlines()]
+        self.assertEqual(verbs, ["attach", "detach", "attach", "detach"])
+
+    def test_a_signature_that_does_not_parse_fails_the_step(self) -> None:
+        result = self.run_script(NO_SIGNATURE="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::sign_update produced no signature", result.stderr)
+
+    def test_an_architecture_with_two_dmgs_is_refused(self) -> None:
+        for name in ("a", "b"):
+            (self.dist / f"{name}-macos-arm64.dmg").write_bytes(b"dmg")
+        result = self.run_script()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exactly one", result.stderr)
 
 
 class NightlyFeedUrlTests(unittest.TestCase):
