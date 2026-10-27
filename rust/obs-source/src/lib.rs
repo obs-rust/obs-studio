@@ -47,7 +47,11 @@
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
-//! the transitions; `libobs/obs-source-transition-render.c.h`, the render
+//! the transitions; `libobs/obs-source-transition-load.c.h`, the type
+//! check, the scale type rule, the load's source steps and the swap checks
+//! of the transitions (`transition_valid()`, `obs_transition_load()`,
+//! `copy_source_state()` and the swap gate);
+//! `libobs/obs-source-transition-render.c.h`, the render
 //! and audio step decisions of the transitions;
 //! `libobs/obs-source-transition-start.c.h`, the start checks and child
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
@@ -65,7 +69,8 @@
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`ptm_gate`], [`render_route`], [`size_route`],
-//! [`transition_clock`], [`transition_render`], [`transition_start`],
+//! [`transition_clock`], [`transition_load`], [`transition_render`],
+//! [`transition_start`],
 //! [`video_tick`] and
 //! [`volume_apply`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
