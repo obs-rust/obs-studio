@@ -165,6 +165,7 @@ pub mod source_draw_plan;
 pub mod source_frame_copy;
 pub mod source_load;
 pub mod source_media_admission;
+pub mod source_monitoring;
 pub mod source_profiler;
 pub mod source_ptm_gate;
 pub mod source_render_route;
