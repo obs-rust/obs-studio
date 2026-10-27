@@ -429,8 +429,15 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 	if (obs_scene_item_transform_bounded(item->bounds_type)) {
 		calculate_bounds_data(item, &origin, &scale, &cx, &cy);
 	} else {
-		cx = (uint32_t)((float)cx * scale.x);
-		cy = (uint32_t)((float)cy * scale.y);
+		/* Keep the scaled size signed: a flipped item's product is
+		 * negative, and converting a negative float straight to uint32_t
+		 * is undefined in C (x86-64 wraps it, arm64 saturates it to 0,
+		 * which placed the item half or all of its size away there;
+		 * #2637). Truncating through int32_t is defined for the sizes a
+		 * scene item has and gives x86-64's placement on every
+		 * architecture. */
+		cx = (uint32_t)(int32_t)((float)cx * scale.x);
+		cy = (uint32_t)(int32_t)((float)cy * scale.y);
 	}
 
 	add_alignment(&origin, item->align, (int)cx, (int)cy);

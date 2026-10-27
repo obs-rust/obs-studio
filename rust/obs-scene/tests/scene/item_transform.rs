@@ -686,9 +686,11 @@ fn steps_compose_alignments() {
 #[test]
 fn steps_compose_flipped() {
     // Flipped items without bounds: (float)cx * scale.x is negative, and
-    // the cast to uint32_t is x86-64's (the width wraps, and add_alignment()
-    // gets the negative width back as an int). arm64 gives 0 there (R7-3),
-    // which obs-scene.c keeps; these pins are x86-64's on every platform.
+    // the Rust composition stops before the cast obs-scene.c does, so this
+    // emulates it with x86-64's conversion (the width wraps, and
+    // add_alignment() gets the negative width back as an int). The defined
+    // cast in obs-scene.c now gives x86-64's placement on every
+    // architecture (#2637); before it, arm64 saturated the size to 0 (R7-3).
     let want: [[[u32; 4]; N_ALIGN]; 4] = [
         [
             [0xc2480000, 0xc1c80000, 0xc2480000, 0xc1c80000], /* -50 -25 -50 -25 */

@@ -1930,6 +1930,13 @@ area.
   [#2295](https://github.com/obs-rust/obs-studio/issues/2295), upstream
   [obsproject/obs-studio#13862](https://github.com/obsproject/obs-studio/issues/13862).
 
+- A flipped item without a bounding box is now placed where x86-64 puts it on
+  arm64 too: the negative scaled size no longer saturates to zero, which
+  offset the item by half or all of its size on Apple Silicon and arm64
+  Linux. *Linux, macOS*, pending merge. Issue
+  [#2637](https://github.com/obs-rust/obs-studio/issues/2637), PRs
+  [#2654](https://github.com/obs-rust/obs-studio/pull/2654).
+
 ### Scripting
 
 - A busy Lua source no longer makes the graphics thread poll its locks. OBS
