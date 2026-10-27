@@ -8,7 +8,7 @@ running, and VA-API is reported unavailable rather than stopping the start
 Runs inside the nixos/nix image; nothing is compiled here except Nix's own
 wrapper around the already-built AppImage and the NVML stand-in.
 
-    nix shell <nixpkgs>#python3 --command python3 test_appimage_nixos.py <AppImage> <out-dir>
+    uv run build-aux/appimage/test_appimage_nixos.py <AppImage> <out-dir>
 """
 
 from __future__ import annotations
@@ -194,11 +194,13 @@ def main(argv: list[str]) -> int:
     wrap(locate(argv[1]))
     driver_setup(out)
     # Xvfb, dbus and the process tools live in the nix shell, so the start
-    # phase runs there, in this same file.
+    # phase runs there, in this same file, under the same `uv run` interpreter
+    # (sys.executable) the outer phase already uses: the lane needs nix only
+    # for the X tools, not for Python (#637).
     started = run(
-        [*NIX, "shell", f"{NIXPKGS}#python3", f"{NIXPKGS}#xorg.xorgserver", f"{NIXPKGS}#dbus",
+        [*NIX, "shell", f"{NIXPKGS}#xorg.xorgserver", f"{NIXPKGS}#dbus",
          f"{NIXPKGS}#procps", f"{NIXPKGS}#coreutils", "--command",
-         "python3", str(Path(__file__).resolve()), *argv[1:]],
+         sys.executable, str(Path(__file__).resolve()), *argv[1:]],
         env=child_environment(**{INNER: "1"}),
     )
     print(started.stdout, end="")
