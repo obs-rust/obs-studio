@@ -19,7 +19,7 @@ macos-arm64 = { target = "aarch64-apple-darwin", runs-on = "macos-26", group = "
 lint = { run = "uv run ci/local_gate.py --lane lint", required = true }
 rust = { run = "uv run ci/local_gate.py --lane rust-test", required = true }
 tier2 = { run = "uv run ci/local_gate.py --lane tier2-linux", required = true }
-sanitizers = { run = "rust/tools/sanitize/sanitize.sh", gating = false }
+sanitizers = { run = "uv run --no-project rust/tools/sanitize/sanitize.py", gating = false }
 
 # -- Rust ---------------------------------------------------------------------
 # The schema requires these two crate globs whenever [rust.tests] is declared,
@@ -742,18 +742,6 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "GEN-005"
 path = "rust/tools/linux-validate/validate.sh"
-reason = "Upstream OBS build/packaging scripts (zsh, PowerShell, shell); porting CI logic to Python is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "GEN-005"
-path = "rust/tools/sanitize/install-ubuntu-deps.sh"
-reason = "Upstream OBS build/packaging scripts (zsh, PowerShell, shell); porting CI logic to Python is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "GEN-005"
-path = "rust/tools/sanitize/sanitize.sh"
 reason = "Upstream OBS build/packaging scripts (zsh, PowerShell, shell); porting CI logic to Python is tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"

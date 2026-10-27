@@ -24,7 +24,7 @@ spec.loader.exec_module(tool_guard)
 # image's own rustup toolchain is the only one. Each is reviewed by hand.
 SCAN_ALLOWLIST = {
     "rust/tools/linux-validate/validate.sh",  # in the linux-validate image
-    "rust/tools/sanitize/sanitize.sh",  # in the sanitizer image
+    "rust/tools/sanitize/sanitize.py",  # in the sanitizer image
 }
 
 

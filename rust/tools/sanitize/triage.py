@@ -1,9 +1,9 @@
 #!/usr/bin/env -S uv run --script
-"""Summarize one sanitize.sh result directory as Markdown.
+"""Summarize one sanitize.py result directory as Markdown.
 
     triage.py <out>/<tool> [--tool=asan|tsan|valgrind] [--fail-on-findings]
 
-The tool defaults to the directory name (sanitize.sh writes to <out>/<tool>).
+The tool defaults to the directory name (sanitize.py writes to <out>/<tool>).
 
 A report counts as an OBS finding when OBS's own sources (libobs/, frontend/,
 plugins/, shared/, deps/, test/) are where it happens, not merely somewhere up

@@ -88,7 +88,7 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install dependencies 📦
-        run: rust/tools/sanitize/install-ubuntu-deps.sh
+        run: uv run --no-project rust/tools/sanitize/install_ubuntu_deps.py
 
       # Builds with different -fsanitize flags share nothing, so each pass has
       # its own cache. Only master saves, so PRs can restore it.
@@ -101,7 +101,7 @@ jobs:
       - name: Build, test and launch under ${{ matrix.tool }} 🔬
         env:
           LAUNCH_SECONDS: ${{ inputs.launch_seconds || 45 }}
-        run: rust/tools/sanitize/sanitize.sh "${{ matrix.tool }}" "$LAUNCH_SECONDS"
+        run: uv run --no-project rust/tools/sanitize/sanitize.py "${{ matrix.tool }}" "$LAUNCH_SECONDS"
 
       - name: Save zccache 💾
         if: always() && github.ref == 'refs/heads/master'

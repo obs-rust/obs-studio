@@ -33,7 +33,7 @@ LINUX_BUILD_FILES = [
     TOOLS / "linux-validate" / "Dockerfile",
     TOOLS / "linux-validate" / "run.py",
     TOOLS / "linux-validate" / "validate.sh",
-    TOOLS / "sanitize" / "sanitize.sh",
+    TOOLS / "sanitize" / "sanitize.py",
     TOOLS / "sanitize" / "shell.nix",
     ROOT / "build-aux" / "appimage" / "build.py",
     ROOT / "bosn.toml",
@@ -74,12 +74,13 @@ class ZccacheTest(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text()
                 self.assertNotRegex(text, r"(?i)(?<!z)ccache", "still uses ccache")
-        for path in (TOOLS / "linux-validate" / "validate.sh", TOOLS / "sanitize" / "sanitize.sh"):
+        for path in (TOOLS / "linux-validate" / "validate.sh", TOOLS / "sanitize" / "sanitize.py"):
             text = path.read_text()
             self.assertIn("-DCMAKE_C_COMPILER_LAUNCHER=zccache", text)
             self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=zccache", text)
-            # The daemon must flush its index before the cache dir is saved.
-            self.assertIn("zccache stop", text)
+            # The daemon must flush its index before the cache dir is saved
+            # (`zccache stop` in the shell, ["zccache", "stop"] in Python).
+            self.assertRegex(text, r"""["']?zccache["']?[,\s]+["']?stop""")
 
     def test_docker_image_installs_pinned_zccache(self):
         text = (TOOLS / "linux-validate" / "Dockerfile").read_text()

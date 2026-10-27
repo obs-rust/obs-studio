@@ -1,4 +1,4 @@
-# Native NixOS environment for sanitize.sh and a host (Docker-free) Tier 2
+# Native NixOS environment for sanitize.py and a host (Docker-free) Tier 2
 # run of rust/tools/linux-validate/validate.sh: the nixpkgs OBS build inputs
 # plus cmocka, valgrind, a headless X server, and what the cmocka tests start
 # (PipeWire with pipewire-pulse, WirePlumber, pactl, D-Bus, VLC).
