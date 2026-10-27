@@ -211,7 +211,7 @@ else
       echo "== zccache launcher failures: $launcher_failed exit 125, $lost_requests requests the daemon lost; restarting it and rebuilding once"
       # Keep the original cause: the retry can report only a recovery cooldown.
       cp "$build.build.log" "$build.build-first-failure.log"
-      "$SRC"/rust/tools/linux-validate/build-errors.sh "$build.build-first-failure.log"
+      uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build-first-failure.log"
       echo "== zccache status before recovery"
       daemon_unavailable=0
       if ! zccache status 2>&1 | head -60; then
@@ -227,9 +227,9 @@ else
         if [ "$daemon_unavailable" = 1 ]; then export ZCCACHE_DISABLE=1; fi
         cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0
       ) >"$build.build.log" 2>&1 ||
-        { "$SRC"/rust/tools/linux-validate/build-errors.sh "$build.build.log"; exit 1; }
+        { uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build.log"; exit 1; }
     else
-      "$SRC"/rust/tools/linux-validate/build-errors.sh "$build.build.log"
+      uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build.log"
       exit 1
     fi
   fi
