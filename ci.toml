@@ -185,7 +185,7 @@ secrets = [
 # "issues: write" and "pull-requests: read" also name claim-bot.yaml's `claim`
 # job, which routes this repo's events to the org claim bot.
 # build-project.yaml's native-cache-transport writes the native build caches.
-permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "contents: write" = ["appimage", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome", "claim"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome"] }
+permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "checks: write" = ["validate-data"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome", "claim"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!
@@ -971,12 +971,6 @@ expires = "2027-04-15"
 [[exceptions]]
 rule = "SEC-002"
 path = ".github/workflows/dispatch.yaml"
-reason = "Upstream workflows without a top-level permissions block; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "SEC-002"
-path = ".github/workflows/ci.yml"
 reason = "Upstream workflows without a top-level permissions block; tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
