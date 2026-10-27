@@ -281,7 +281,11 @@ not get a line.
   while another window has focus, through the desktop's GlobalShortcuts
   portal. Each shortcut is named by its actions in the desktop's shortcut
   list, Settings > Hotkeys shows whether global hotkeys work (with a marker
-  on each key) and can open the desktop's shortcut editor. *Linux*,
+  on each key) and can open the desktop's shortcut editor. Cancelling the
+  desktop's dialog after only a shortcut's description changed — an action
+  moved onto an already-approved key — keeps the approved keys bound with
+  the description they were approved with, instead of unbounding every key
+  until Ask again. *Linux*,
   2026-10-11. Issues
   [#240](https://github.com/obs-rust/obs-studio/issues/240),
   [#255](https://github.com/obs-rust/obs-studio/issues/255),
@@ -294,7 +298,8 @@ not get a line.
   [#348](https://github.com/obs-rust/obs-studio/pull/348),
   [#409](https://github.com/obs-rust/obs-studio/pull/409),
   [#475](https://github.com/obs-rust/obs-studio/pull/475),
-  [#791](https://github.com/obs-rust/obs-studio/pull/791).
+  [#791](https://github.com/obs-rust/obs-studio/pull/791),
+  [#2669](https://github.com/obs-rust/obs-studio/pull/2669).
 - **Help → Discord opens the OBS Rust server.** The Help menu's Discord
   item opens the OBS Rust Discord, where this build's bugs and questions
   belong, instead of upstream OBS Studio's server. *All*, 2026-10-24.
