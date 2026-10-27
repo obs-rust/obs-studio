@@ -47,6 +47,12 @@ add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qu
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-format-nonliteral>)
 # Existing C tests are never edited (obs-rust/obs-studio#516).
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-shadow>)
+# Existing C tests are never edited to satisfy a new warning, and -Wpedantic
+# rejects the ISO-C extensions they and the vendored librtmp sources some of
+# them compile rely on (__FUNCTION__, object <-> function pointer casts,
+# `__int128`), so it covers the product code, not the tests
+# (obs-rust/obs-studio#516, #2623).
+add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>)
 
 # Per-test sanitizers (obs-rust/obs-studio#159). Some tests compile the code
 # they check with ASan/UBSan so a bug fails the test. Those flags are added

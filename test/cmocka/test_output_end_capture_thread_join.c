@@ -30,11 +30,6 @@
 #include <util/bmem.h>
 #include <util/platform.h>
 
-/* ISO C forbids converting the object pointer dlsym() returns into a function
- * pointer, and -Wpedantic rejects the cast (#2623); copy the value through a
- * union instead. */
-#define DLSYM_FN(var, name) ((union { void *obj; __typeof__(var) fn; }){.obj = dlsym(RTLD_NEXT, (name))}.fn)
-
 #define RAW_OUTPUT_ID "end_capture_thread_join_output"
 #define CYCLES 4
 
@@ -49,7 +44,8 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*routin
 {
 	static int (*real)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 	if (!real)
-		real = DLSYM_FN(real, "pthread_create");
+		real = (int (*)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *))dlsym(RTLD_NEXT,
+												      "pthread_create");
 	int err = real(thread, attr, routine, arg);
 	if (err == 0)
 		__atomic_add_fetch(&threads_created, 1, __ATOMIC_SEQ_CST);
@@ -60,7 +56,7 @@ int pthread_join(pthread_t thread, void **result)
 {
 	static int (*real)(pthread_t, void **);
 	if (!real)
-		real = DLSYM_FN(real, "pthread_join");
+		real = (int (*)(pthread_t, void **))dlsym(RTLD_NEXT, "pthread_join");
 	int err = real(thread, result);
 	if (err == 0)
 		__atomic_add_fetch(&threads_joined, 1, __ATOMIC_SEQ_CST);
@@ -71,7 +67,7 @@ int pthread_detach(pthread_t thread)
 {
 	static int (*real)(pthread_t);
 	if (!real)
-		real = DLSYM_FN(real, "pthread_detach");
+		real = (int (*)(pthread_t))dlsym(RTLD_NEXT, "pthread_detach");
 	int err = real(thread);
 	if (err == 0)
 		__atomic_add_fetch(&threads_detached, 1, __ATOMIC_SEQ_CST);
@@ -218,5 +214,3 @@ int main(void)
 	};
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
-
-#undef DLSYM_FN
