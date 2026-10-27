@@ -29,23 +29,33 @@ record = {"argv": sys.argv[1:], "env": dict(os.environ)}
 open(os.path.join(os.environ["RECORD"], os.path.basename(sys.argv[0]) + ".json"), "w").write(json.dumps(record))
 """
 
-# The daemon stays up until the harness stops it, or dies at once to show
-# what a failed start looks like; either way it writes its own record first.
-DAEMON = RECORD + """
-if os.environ.get("DAEMON_MODE") == "die":
-    print("boom: no socket", flush=True)
-    sys.exit(1)
+# The daemon takes its stop signal before it records itself, so a harness that
+# stops it as soon as `pactl` answers cannot race its startup. It stays up
+# until then, or dies at once to show what a failed start looks like.
+DAEMON = "import json, os, signal, sys, time\n" + """
 def stop(signum, frame):
     open(os.path.join(os.environ["RECORD"], "terminated"), "w").write(str(signum))
     sys.exit(0)
 signal.signal(signal.SIGTERM, stop)
+record = {"argv": sys.argv[1:], "env": dict(os.environ)}
+open(os.path.join(os.environ["RECORD"], "pulseaudio.json"), "w").write(json.dumps(record))
+if os.environ.get("DAEMON_MODE") == "die":
+    print("boom: no socket", flush=True)
+    sys.exit(1)
 while True:
     time.sleep(0.05)
 """
-DAEMON = "import signal, time\n" + DAEMON
 
-PACTL = RECORD + """
-sys.exit(0 if os.environ.get("PACTL_MODE", "ok") == "ok" else 1)
+# `pactl` answers only once the daemon has recorded itself, as the real one
+# answers only once the daemon listens.
+PACTL = "import json, os, sys, time\n" + """
+if os.environ.get("PACTL_MODE", "ok") != "ok":
+    sys.exit(1)
+deadline = time.time() + 10
+while not os.path.exists(os.path.join(os.environ["RECORD"], "pulseaudio.json")):
+    if time.time() > deadline:
+        sys.exit(1)
+    time.sleep(0.01)
 """
 
 DBUS = RECORD
