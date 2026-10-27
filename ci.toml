@@ -176,7 +176,7 @@ secrets = [
   "RESTREAM_HASH", "SPARKLE_PRIVATE_KEY", "STEAM_PASSWORD", "STEAM_SHARED_SECRET", "STEAM_USER", "TWITCH_CLIENT_ID",
   "TWITCH_HASH", "YOUTUBE_CLIENTID", "YOUTUBE_CLIENTID_HASH", "YOUTUBE_SECRET", "YOUTUBE_SECRET_HASH",
 ]
-permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "security-events: write" = ["windows", "macos"] }
+permissions = { "actions: write" = ["cache-janitor", "ci-pre"], "security-events: write" = ["windows", "macos"], "issues: write" = ["welcome"], "pull-requests: write" = ["welcome"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!

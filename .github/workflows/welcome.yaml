@@ -24,12 +24,12 @@ on:
   pull_request_target:
     types: [opened, closed]
 
-# Only what posting a comment needs: no write access to the tree, and no
-# checkout of the pull request, so a fork cannot reach a write token here.
+# Only what posting a comment needs: no write access to the tree, so a fork
+# cannot reach a write token here. The comment scopes (issues, pull-requests)
+# sit on the job itself, which is where the token that writes them is minted
+# (ci-lint SEC-002); the top-level block stays read-only.
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: welcome-${{ github.event.issue.number || github.event.pull_request.number }}
@@ -38,7 +38,12 @@ concurrency:
 jobs:
   welcome:
     if: github.repository == 'obs-rust/obs-studio'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # The write scopes the welcome comment needs, on this job only (SEC-002);
+    # listed in ci.toml's [allow].permissions.
+    permissions:
+      issues: write
+      pull-requests: write
     timeout-minutes: 10
     steps:
       # The base branch: ci/welcome.py and .github/welcome/*.md as reviewed.
@@ -48,6 +53,9 @@ jobs:
           # The pattern every workflow here uses; this one never runs on
           # master (issues / pull_request_target), so it never saves.
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          # A PR save carries a delimited pr-<N> key so the janitor can delete
+          # it when the PR closes (CACHE-013, #962).
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       - name: Welcome
         env:
           GH_TOKEN: ${{ github.token }}
