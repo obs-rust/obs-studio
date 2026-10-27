@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""Run flatpak-builder-lint for a build artifact and annotate its findings (#2700).
+r"""Run flatpak-builder-lint for a build artifact and annotate its findings (#2700).
 
 Ports the two inline `run:` blocks of
 `.github/actions/flatpak-builder-lint/action.yaml` into one Python module so the
@@ -25,7 +25,7 @@ and turns its JSON body into GitHub annotations:
   `::error::Flatpak appstream info is not valid` when it is non-zero;
 - every other artifact returns the tool's exit code after the annotations.
 
-Two deliberate differences from the shell, both documented in the PR:
+Three deliberate differences from the shell, all documented in the PR:
 
 - the annotation suffix is now what the shell meant it to be. The old block set
   `template=" found in the Flatpak <artifact>"` but interpolated it inside a
