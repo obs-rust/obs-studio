@@ -28,6 +28,7 @@ EXPECTED = {
     "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
     "push.yaml": "push-${{ github.event_name }}-${{ github.ref }}",
     "sign-windows.yaml": "sign-windows-${{ github.event_name }}-${{ github.ref }}",
+    "analyze-project.yaml": "analyze-project-${{ github.event_name }}-${{ github.ref }}",
 }
 
 
@@ -84,6 +85,10 @@ class Wf002ConcurrencyTest(unittest.TestCase):
 
     def test_a_sign_windows_run_cancels_the_one_it_supersedes(self):
         text = (WORKFLOWS / "sign-windows.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: true", text)
+
+    def test_a_superseded_analyze_project_run_is_cancelled(self):
+        text = (WORKFLOWS / "analyze-project.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", text)
 
 if __name__ == "__main__":
