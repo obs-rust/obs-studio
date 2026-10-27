@@ -4147,6 +4147,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_load_release": {
+      "sources": [
+        "test/cmocka/test_transition_load_release.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_transition_render_steps": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
@@ -6421,6 +6443,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_transition_load_release": {
+      "target": "test_transition_load_release",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_transition_render_steps": {
       "target": "test_transition_render_steps",
