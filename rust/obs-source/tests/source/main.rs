@@ -36,6 +36,7 @@ mod size_route;
 mod size_route_parity;
 mod transition_clock;
 mod transition_clock_parity;
+mod transition_load;
 mod transition_render;
 mod transition_render_parity;
 mod transition_start;
