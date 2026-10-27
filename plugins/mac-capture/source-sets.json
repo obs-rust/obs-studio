@@ -2,6 +2,7 @@
   "MAC_CAPTURE": [
     "plugins/mac-capture/build/mac-capture.core-macos+.h.c",
     "plugins/mac-capture/build/mac-capture.objc-macos+.h.m",
+    "plugins/mac-capture/build/mac-capture.sck-stall+.h.c",
     "plugins/mac-capture/build/mac-capture.sck-stop+.h.c"
   ],
   "MAC_AVCAPTURE": [
