@@ -99,16 +99,20 @@ static inline void exception_handler_data_free(struct exception_handler_data *da
 	FreeLibrary(data->dbghelp);
 }
 
-static inline void *get_proc(HMODULE module, const char *func)
-{
-	return (void *)GetProcAddress(module, func);
-}
-
-#define GET_DBGHELP_IMPORT(target, str)                      \
-	do {                                                 \
-		data->target = get_proc(data->dbghelp, str); \
-		if (!data->target)                           \
-			return false;                        \
+/* GetProcAddress returns a FARPROC and the typed members are function pointers:
+ * a cast between the two is C4152 at /W4. Copy the address through a union
+ * instead, the way LOAD_MODULE_SYMBOL (libobs/obs-module.c.h) does for
+ * os_dlsym. No code is generated for the copy. */
+#define GET_DBGHELP_IMPORT(target, str)                           \
+	do {                                                      \
+		union {                                           \
+			FARPROC proc;                             \
+			__typeof__(data->target) fn;              \
+		} _sym;                                           \
+		_sym.proc = GetProcAddress(data->dbghelp, str);   \
+		data->target = _sym.fn;                           \
+		if (!data->target)                                \
+			return false;                             \
 	} while (false)
 
 static inline bool get_dbghelp_imports(struct exception_handler_data *data)

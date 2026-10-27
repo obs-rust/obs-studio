@@ -70,11 +70,11 @@ bool ms_check_window_property_setting(obs_properties_t *ppts, obs_property_t *p,
 	}
 
 	for (;;) {
-		const char *val = obs_property_list_item_string(p, i++);
-		if (!val)
+		const char *item_val = obs_property_list_item_string(p, i++);
+		if (!item_val)
 			break;
 
-		if (strcmp(val, cur_val) == 0) {
+		if (strcmp(item_val, cur_val) == 0) {
 			match = true;
 			break;
 		}
