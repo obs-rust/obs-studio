@@ -38,6 +38,9 @@ target_compile_options(
     $<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang,GNU>:-Wno-cast-qual>
     $<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang>:-Wno-comma>
     $<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang,GNU>:-Wno-pedantic>
+    # MSVC /W4 (#2626): vendored upstream C stays vendored, with its own
+    # suppressions instead of edits (the #516 vendored-code exemption).
+    $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244>
 )
 
 set_target_properties(caption PROPERTIES FOLDER deps POSITION_INDEPENDENT_CODE TRUE)
