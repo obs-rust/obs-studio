@@ -84,7 +84,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .zccache
-          key: zccache-appimage-${{ github.run_id }}
+          key: zccache-appimage-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: zccache-appimage-
 
       - name: Restore cargo
@@ -94,7 +94,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             build_ubuntu/cargo
-          key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
             cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
             cargo-appimage-
@@ -104,6 +104,9 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          # A PR save carries a delimited pr-<N> key so the janitor can delete
+          # it when the PR closes (CACHE-013, #962).
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # The glibc 2.28 build image (#926): AlmaLinux 8 packages plus the prebuilt
       # dependencies from obs-rust/obs-studio-libs (deps.lock.json); every build
@@ -164,7 +167,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .zccache
-          key: zccache-appimage-${{ github.run_id }}
+          key: zccache-appimage-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save cargo
         if: always() && github.ref == 'refs/heads/master'
@@ -174,7 +177,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             build_ubuntu/cargo
-          key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          key: cargo-appimage-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Assemble AppDir 📁
         run: uv run --script build-aux/appimage/manylinux/run.py uv run --no-project build-aux/appimage/build.py --base manylinux --steps appdir
@@ -286,7 +289,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: pkgcache
-          key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}
+          key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # One fresh container per scenario, so nothing one scenario starts or
       # leaves behind can affect another; each also fails if it leaves anything
@@ -294,6 +297,9 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          # A PR save carries a delimited pr-<N> key so the janitor can delete
+          # it when the PR closes (CACHE-013, #962).
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Install host GPU runtime for metadata check
         timeout-minutes: 10
@@ -387,7 +393,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: pkgcache
-          key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}
+          key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -447,6 +453,9 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          # A PR save carries a delimited pr-<N> key so the janitor can delete
+          # it when the PR closes (CACHE-013, #962).
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
