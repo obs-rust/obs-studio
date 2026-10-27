@@ -129,6 +129,36 @@ class FlatpakRuntimeTest(unittest.TestCase):
             text = (ROOT / '.github/workflows' / name).read_text()
             self.assertIn(f'flatpak-runtime-result/profile/{directory}/logs/*.txt', text)
 
+    def test_cef_line_resolution_uses_binutils_not_gdb(self):
+        # #2363: GDB 17.1 aborts ("malloc(): corrupted top size") while loading
+        # the 270 MB .debug_line of the CEF 8078-r2 debug file, so the check
+        # must resolve the line with binutils instead.
+        module = self.module()
+        script = (ROOT / 'ci/flatpak_runtime.py').read_text()
+        self.assertFalse(re.search(r"'gdb'", script), 'the CEF line check must not invoke gdb (#2363)')
+        self.assertTrue(re.search(r"'addr2line'", script), 'the CEF line check must resolve the line with addr2line')
+        symbols = '\n'.join([
+            "Symbol table '.symtab' contains 5 entries:",
+            '     3: 000000000390ffd0    81 FUNC    GLOBAL DEFAULT   13 cef_version_info',
+            '     4: 000000000392a140   254 FUNC    GLOBAL DEFAULT   13 cef_version_info_v2@@CEF_1',
+            '     5: 0000000000100010    31 FUNC    GLOBAL DEFAULT   13 cef_initialize',
+            '     6: 000000000392a140   254 FUNC    GLOBAL DEFAULT   13 cef_version_info@@CEF_1',
+        ])
+        self.assertEqual(module.cef_symbol_addresses(symbols), [0x390ffd0, 0x392a140])
+        self.assertEqual(module.cef_symbol_addresses("Symbol table '.symtab' contains 1 entries:\n"
+                                                    '     5: 0000000000100010    31 FUNC    GLOBAL DEFAULT   13 cef_initialize'),
+                         [])
+        # readelf prints the section index as a name for some binaries.
+        self.assertEqual(module.cef_symbol_addresses(
+            '     9: 0000000000001a20   114 FUNC    GLOBAL DEFAULT  .text cef_version_info'), [0x1a20])
+
+    def test_cef_source_line_requires_a_dwarf_line_for_cef_cpp(self):
+        module = self.module()
+        module.check_cef_source_line('cef_version_info\n/cef/out/Release/obj/libcef_dll2/libcef_dll2.cc:42\n')
+        for lines in ('cef_version_info\n??:0\n', 'cef_version_info\n/cef/out/Release/obj/other.cc:42\n', ''):
+            with self.subTest(lines=lines), self.assertRaisesRegex(RuntimeError, 'line table'):
+                module.check_cef_source_line(lines)
+
     def test_profile_environment_is_set_inside_flatpak_sandbox(self):
         module = self.module()
         # Flatpak rewrites XDG_CONFIG_HOME after processing --env options.
