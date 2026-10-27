@@ -223,7 +223,7 @@ class StaleBuildTest(unittest.TestCase):
     old configure fails with "Could not find toolchain".
     """
 
-    HELPER = TOOLS / "stale-build.sh"
+    HELPER = TOOLS / "stale_build.py"
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="stale-build-"))
@@ -234,7 +234,7 @@ class StaleBuildTest(unittest.TestCase):
 
     def reset(self, rustc_version: str) -> None:
         subprocess.run(
-            ["bash", "-c", 'source "$1"; reset_stale_build "$2" "$3"', "-", str(self.HELPER), str(self.build), rustc_version],
+            ["uv", "run", "--script", str(self.HELPER), str(self.build), rustc_version],
             check=True,
         )
 
