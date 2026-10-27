@@ -1,7 +1,7 @@
 #!/bin/sh
 # Checks the wrappers that start a private PipeWire daemon for the PipeWire
 # and PulseAudio tests (test_pipewire_cursor_hdr.sh,
-# test_pipewire_context_fail.sh, test_pulse_monitor_device.sh).
+# test_pipewire_context_fail.py, test_pulse_monitor_device.sh).
 #
 # They used to give up after waiting 5 s for the daemon's socket and report
 # the test as skipped (77), which ctest counts as passed. With TMPDIR in a
@@ -73,11 +73,18 @@ check() {
 	fi
 }
 
-for wrapper in test_pipewire_cursor_hdr.sh test_pipewire_context_fail.sh; do
-	TMPDIR="$long" timeout 60 sh "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
+# Each wrapper with the interpreter it now uses: the context-failure wrapper is
+# Python (test_pipewire_context_fail.py, #962), the others are still shell.
+for wrapper in test_pipewire_cursor_hdr.sh test_pipewire_context_fail.py; do
+	case $wrapper in
+		*.py) runner="uv run --script $scripts/$wrapper" ;;
+		*)    runner="sh $scripts/$wrapper" ;;
+	esac
+
+	TMPDIR="$long" timeout 60 $runner "$work/stub" >"$work/out" 2>&1
 	check "$wrapper, long TMPDIR: the daemon starts and the test runs" 0 $?
 
-	PATH="$work/bin-dying:$PATH" timeout 60 sh "$scripts/$wrapper" "$work/stub" >"$work/out" 2>&1
+	PATH="$work/bin-dying:$PATH" timeout 60 $runner "$work/stub" >"$work/out" 2>&1
 	status=$?
 	if [ $status -ne 0 ] && [ $status -ne 77 ] && [ $status -ne 3 ]; then
 		echo "ok:   $wrapper, daemon exits at once: fails (exit $status)"

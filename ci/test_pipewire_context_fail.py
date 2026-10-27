@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.sh"
 CMAKE = ROOT / "test" / "cmocka" / "tests.d" / "test_pipewire_context_fail.cmake"
+WRAPPER_TEST = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.sh"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pipewire_context_fail.sh"'
 
@@ -261,6 +262,13 @@ class PipewireContextFailTest(unittest.TestCase):
         caller = CMAKE.read_text()
         self.assertIn("uv run --script", caller)
         self.assertNotIn("test_pipewire_context_fail.sh", caller)
+        # The sibling wrapper test used to run this shell script as a control;
+        # it must run the Python module instead, or it fails on a machine with
+        # pipewire installed (CI has none, so PR CI does not catch it).
+        wrapper_test = WRAPPER_TEST.read_text()
+        self.assertNotIn("test_pipewire_context_fail.sh", wrapper_test)
+        self.assertIn("test_pipewire_context_fail.py", wrapper_test)
+        self.assertIn("uv run --script", wrapper_test)
         self.assertNotIn(
             EXCEPTION,
             CI_TOML.read_text(),
