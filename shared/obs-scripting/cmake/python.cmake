@@ -55,7 +55,8 @@ if(ENABLE_SCRIPTING_PYTHON)
   # the global C flag list (obs-rust/obs-studio#2695, #2703).
   target_compile_options(
     obs-scripting
-    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic;-Wno-missing-prototypes>
+    PRIVATE
+      $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>
   )
 
   target_compile_definitions(

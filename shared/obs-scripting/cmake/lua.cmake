@@ -35,7 +35,8 @@ if(ENABLE_SCRIPTING_LUA)
   # this target opts out of those diagnostics instead of the global flag list.
   target_compile_options(
     obs-scripting
-    PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-missing-prototypes>
+    PRIVATE
+      $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-missing-prototypes;-Wno-strict-prototypes>
   )
 
   target_compile_definitions(obs-scripting PUBLIC LUAJIT_FOUND)

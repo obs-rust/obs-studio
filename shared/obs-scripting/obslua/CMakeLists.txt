@@ -37,7 +37,7 @@ target_compile_options(
     # declares its entry points with no prototype in scope, which
     # -Wmissing-prototypes rejects (obs-rust/obs-studio#2703).
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedantic>
-    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-missing-prototypes>
+    $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-missing-prototypes;-Wno-strict-prototypes>
 )
 
 target_compile_definitions(

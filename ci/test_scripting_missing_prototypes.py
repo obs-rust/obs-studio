@@ -60,8 +60,8 @@ def exempted_c_warnings(options: str) -> set[str]:
 
 
 class ScriptingMissingPrototypesExemptionTest(unittest.TestCase):
-    def test_every_cast_qual_exemption_also_exempts_missing_prototypes(self):
-        """Each SWIG site opts out of -Wmissing-prototypes next to -Wcast-qual."""
+    def test_every_cast_qual_exemption_also_exempts_the_prototype_rules(self):
+        """Each SWIG site opts out of both prototype diagnostics, C-only."""
         for target, path in SITES:
             with self.subTest(target=target, path=str(path.relative_to(ROOT))):
                 blocks = option_blocks(path.read_text(encoding="utf-8"), target)
@@ -75,13 +75,14 @@ class ScriptingMissingPrototypesExemptionTest(unittest.TestCase):
                     "exemption for the SWIG-generated sources (#516)",
                 )
                 for block in exempting:
-                    self.assertIn(
-                        "-Wno-missing-prototypes",
-                        exempted_c_warnings(block),
-                        f"{target}: -Wno-missing-prototypes must sit in the same "
-                        "C-only COMPILE_LANG_AND_ID guard, never in a C++ list "
-                        "(#2703)",
-                    )
+                    guarded = exempted_c_warnings(block)
+                    for diagnostic in ("-Wno-missing-prototypes", "-Wno-strict-prototypes"):
+                        self.assertIn(
+                            diagnostic,
+                            guarded,
+                            f"{target}: {diagnostic} must sit in the same C-only "
+                            "COMPILE_LANG_AND_ID guard, never in a C++ list (#2703)",
+                        )
 
     def test_global_c_flag_lists_keep_missing_prototypes(self):
         """The fix is target-scoped: first-party C still compiles at the rule."""
