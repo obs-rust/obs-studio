@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8b8a4e847703f654484b6e4bac3397d3951072571cf60ee3d385ff2704abf1f8 # shrinks to case = Case { data: [71, 73, 70, 56, 57, 97, 128, 2, 224, 1, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 184, 8, 3, 0, 3, 2, 0, 33, 249, 4, 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 130, 0, 255, 0, 16, 239, 8, 32, 223, 16, 48, 207, 24, 64, 191, 32, 80, 175, 40, 96, 159, 48, 112, 143, 56, 8, 3, 0, 3, 2, 0, 59], cuts: [29, 47], complete: false, fmt: 0, full_callbacks: false, extra: 0, ops: [] }

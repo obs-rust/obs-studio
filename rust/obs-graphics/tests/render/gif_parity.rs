@@ -18,10 +18,15 @@
 //! parts, with or without `nsgif_data_complete`, in all nine bitmap formats,
 //! with or without a row span wider than the image and the optional
 //! callbacks, then 0 to 24 random calls (prepare, decode of any frame,
-//! reset, the palettes, the delay rules).
+//! reset, the palettes, the delay rules). The bitmap callback refuses
+//! bitmaps over 16 MiB, as an out-of-memory host does.
 //!
-//! Excluded, the intentional differences (C dereferences null): null
-//! pointers, on the shim alone below.
+//! Excluded, the intentional differences: null pointers (C dereferences
+//! null), on the shim alone below; and the local palette colours of a frame
+//! a scan stopped in (C decodes the table from past the end of the data when
+//! the scan stopped inside it; Rust decodes only the bytes in the data), so
+//! for those frames the views keep whether there is a local palette and its
+//! size, not its colours.
 
 use core::ffi::{CStr, c_int, c_void};
 use core::ptr;
@@ -72,9 +77,18 @@ std::thread_local! {
     static EXTRA: core::cell::Cell<u32> = const { core::cell::Cell::new(0) };
 }
 
+/// The largest bitmap the callback makes, in pixels (16 MiB). A mutated
+/// screen descriptor can ask for 65535 x 65535 (17 GB, all written), which
+/// starved 16 GB CI runners; above this the callback fails as an
+/// out-of-memory host does, the same for the C and the Rust side.
+const MAX_BITMAP_PIXELS: u64 = 1 << 22;
+
 unsafe extern "C" fn cb_create(width: c_int, height: c_int) -> *mut c_void {
     let extra = EXTRA.with(core::cell::Cell::get);
     let (w, h) = (width.max(0) as u32, height.max(0) as u32);
+    if (u64::from(w) + u64::from(extra)) * u64::from(h) > MAX_BITMAP_PIXELS {
+        return ptr::null_mut();
+    }
     Box::into_raw(Box::new(Bitmap {
         width: w,
         extra,
@@ -257,6 +271,17 @@ fn case() -> impl Strategy<Value = Case> {
         )
 }
 
+/// The local palette of frame `f` as the views compare it: from the frame a
+/// scan stopped in on (`f >= frame_count`), whether there is one and its
+/// size only (an intentional difference, see the module docs).
+fn local_view(f: u32, info: &Info, table: [u32; MAX_COLOURS], entries: usize) -> (Vec<u32>, usize) {
+    if f < info.frame_count {
+        (table.to_vec(), entries)
+    } else {
+        (Vec::new(), entries)
+    }
+}
+
 /// The view of the Rust GIF.
 fn rust_view(gif: *mut NsgifCtx) -> View {
     // SAFETY: a live GIF; the out-pointers are local.
@@ -274,7 +299,7 @@ fn rust_view(gif: *mut NsgifCtx) -> View {
             .map(|f| {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
-                nsgif_local_palette(gif, f, &mut t, &mut e).then(|| (t.to_vec(), e))
+                nsgif_local_palette(gif, f, &mut t, &mut e).then(|| local_view(f, &info, t, e))
             })
             .collect();
         View {
@@ -310,7 +335,7 @@ fn c_view(gif: *mut c_void) -> View {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
                 c::oracle_nsgif_local_palette(gif, f, t.as_mut_ptr(), &mut e)
-                    .then(|| (t.to_vec(), e))
+                    .then(|| local_view(f, &info, t, e))
             })
             .collect();
         View {
