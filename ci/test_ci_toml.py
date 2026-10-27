@@ -179,6 +179,25 @@ class RetiredCacheFamilyTest(unittest.TestCase):
                 self.assertNotIn(name, families, "obsolete reservation must not consume declared capacity")
 
 
+class CacheEntryBoundTest(unittest.TestCase):
+    """A family whose single entry is large says how many entries may exist.
+
+    `max` sizes one entry, so on its own it cannot stop a family from growing
+    with every commit that writes it. `evict = "lru"` is what lets the janitor
+    keep the family at `max` x cardinality (ci-lint CACHE-029).
+    """
+
+    def test_large_families_bound_their_entry_count(self):
+        unbounded = [name for name, family in load()["cache"]["family"].items()
+                     if size_bytes(family["max"]) >= 256 * 1024 ** 2 and family.get("evict") != "lru"]
+        self.assertEqual(unbounded, [], "declare evict = 'lru' on a family this large")
+
+    def test_size_parser(self):
+        for text, expected in (("300MB", 300 * 1024 ** 2), ("1.5GB", int(1.5 * 1024 ** 3)), ("10GB", 10 * 1024 ** 3)):
+            with self.subTest(text=text):
+                self.assertEqual(size_bytes(text), expected)
+
+
 class CacheWriterPolicyTest(unittest.TestCase):
     @staticmethod
     def blocks(path):
@@ -218,6 +237,13 @@ class CacheWriterPolicyTest(unittest.TestCase):
                     pattern = rf"(?m)^\s+{field}: (.+)$"
                     self.assertEqual(re.search(pattern, restore[0])[1], re.search(pattern, save[0])[1])
                 self.assertIn("outputs.cache-hit != 'true'", save[0])
+
+
+def size_bytes(value: str) -> int:
+    """A `[cache]` size string ("300MB", "1.5GB") in bytes."""
+    match = re.fullmatch(r"([0-9.]+)(MB|GB)", value)
+    assert match, f"unparseable size {value!r}"
+    return int(float(match[1]) * 1024 ** (2 if match[2] == "MB" else 3))
 
 
 def family_prefixes(ci: dict) -> list[str]:
