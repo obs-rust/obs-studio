@@ -198,6 +198,12 @@ static bool audio_monitor_init_wasapi(struct audio_monitor *monitor)
 
 	monitor->sample_rate = (uint32_t)wfex->nSamplesPerSec;
 	monitor->channels = wfex->nChannels;
+	if (to.speakers == SPEAKERS_UNKNOWN) {
+		warn("%s: No speaker layout for %u channels (channel mask 0x%08lX)", __FUNCTION__,
+		     (unsigned int)wfex->nChannels, ext->dwChannelMask);
+		goto fail;
+	}
+
 	monitor->resampler = audio_resampler_create(&to, &from);
 	if (!monitor->resampler) {
 		goto fail;

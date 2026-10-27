@@ -1088,6 +1088,12 @@ area.
   [obsproject/obs-studio#9428](https://github.com/obsproject/obs-studio/issues/9428),
   [obsproject/obs-studio#11739](https://github.com/obsproject/obs-studio/issues/11739),
   [obsproject/obs-studio#14091](https://github.com/obsproject/obs-studio/pull/14091).
+- Audio monitoring to a playback device with 7 or more than 8 channels (a
+  6.1 speaker setup, or an audio interface with 10 or more outputs on one
+  device) logs that OBS has no speaker layout for the device's channels,
+  instead of failing with only a resampler error. Devices OBS could play to
+  before get the same layout. *Windows*, 2026-10-27. Issue
+  [#2559](https://github.com/obs-rust/obs-studio/issues/2559).
 
 ### Encoding, streaming and recording
 
