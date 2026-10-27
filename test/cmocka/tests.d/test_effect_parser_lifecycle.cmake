@@ -31,12 +31,6 @@ if(TARGET libobs_rust-static)
     test_effect_parser_lifecycle_rust
     PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
   )
-  if(MSVC)
-    set_source_files_properties(
-      TARGET_DIRECTORY test_effect_parser_lifecycle_rust
-      PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
-    )
-  endif()
   target_link_libraries(
     test_effect_parser_lifecycle_rust
     PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static

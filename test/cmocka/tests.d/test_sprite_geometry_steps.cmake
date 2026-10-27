@@ -35,12 +35,6 @@ if(TARGET libobs_rust-static)
     test_sprite_geometry_steps_rust
     PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
   )
-  if(MSVC)
-    set_source_files_properties(
-      TARGET_DIRECTORY test_sprite_geometry_steps_rust
-      PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
-    )
-  endif()
   # OBS::libobs also brings its include directories: graphics/vec3.h pulls in
   # util/sse-intrin.h, which needs SIMDe.
   target_link_libraries(
