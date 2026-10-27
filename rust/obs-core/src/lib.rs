@@ -16,19 +16,23 @@
 //! display clear decisions; and `libobs/obs-audio-discard.c.h` (from
 //! `obs-audio.c.h`), the steps that drop audio from a source's input; and
 //! `libobs/obs-audio-min-ts.c.h` (from `obs-audio.c.h`), the per-source
-//! decisions of the minimum audio timestamp step.
+//! decisions of the minimum audio timestamp step; and
+//! `libobs/obs-canvas-rules.c.h` (from `obs-canvas.c.h`), the canvas flag
+//! rules and setter checks.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
 //! [`video_copy_plan`], [`video_output_step`], [`source_load`],
-//! [`canvas_draw`], [`audio_discard`], [`audio_min_ts`] and [`audio_render`].
+//! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`]
+//! and [`audio_render`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
 //! downloaded frame into each output frame; [`canvas_draw`] picks the
 //! technique a canvas texture draws into a display with, and how the display
-//! is cleared. The C ABI shims live in [`ffi`].
+//! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
+//! the checks of its setters. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
