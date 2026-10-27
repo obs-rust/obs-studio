@@ -12,7 +12,7 @@
 #
 # Scenarios:
 #   1. bundle: every path AppRun points OBS at exists and exactly one libsrt,
-#      at least 1.5.7, is bundled (check-appdir.sh), and
+#      at least 1.5.7, is bundled (check_appdir.py), and
 #      every bundled ELF file resolves all of its libraries and symbols with
 #      the bundled loader and its own RPATH. With glibc bundled, the glibc
 #      libraries host GPU drivers link (librt, libpthread, libdl, ...) must
@@ -399,7 +399,7 @@ done
 # container can stand in for a library the AppImage lacks.
 if [ "$SCENARIO" = bundle ]; then
     echo "::group::1. Bundle: runtime paths, libraries and symbols"
-    "$HERE_DIR/check-appdir.sh" "$APPDIR" || fail "the AppImage lacks files that AppRun points OBS at (see above)"
+    uv run --no-project "$HERE_DIR/check_appdir.py" "$APPDIR" || fail "the AppImage lacks files that AppRun points OBS at (see above)"
     # The packaged AppRun's host driver search paths on NixOS, on a host without
     # a NixOS driver tree, and with the user's own choice (obs-rust/obs-studio#722).
     # It needs user and mount namespaces; the first-start scenario checks the

@@ -288,7 +288,7 @@ cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/"
 ln -sf "$APP_ID.png" "$APPDIR/.DirIcon"
 
 # --- everything AppRun points OBS at at runtime must be in the AppDir --------
-"$HERE/check-appdir.sh" "$APPDIR"
+uv run --no-project "$HERE/check_appdir.py" "$APPDIR"
 
 # --- nothing in the AppDir may need a glibc newer than the floor (#926) -------
 uv run --script "$HERE/check-glibc-floor.py" "$APPDIR" 2.28

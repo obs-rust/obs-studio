@@ -12,7 +12,7 @@ pre-release, a tag push attaches it to that tag's release.
 | `set_runpaths.py` | Gives every bundled ELF file a relative `DT_RPATH` pointing at `usr/lib`. |
 | `build.py` | The build: version, configure, build, AppDir, AppImage, in the glibc 2.28 image (`manylinux/Dockerfile`). Run by the workflow and by `bosn run --task appimage`. |
 | `AppRun` | Entry point. Installs the bundled loader, sets up the environment, runs OBS and writes a crash report if it crashes. |
-| `check-appdir.sh` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled, or when the AppDir holds anything but exactly one libsrt of at least 1.5.7 (two copies in one process aborted OBS on quit after any SRT use). Run by `assemble-appdir.sh` (fails the build) and again by the test. |
+| `check_appdir.py` | Fails when a path `AppRun` exports into the AppDir is missing or empty, or when PipeWire's `client.conf`, the modules and SPA plugins it loads, gconv or the Qt xcb plugin are not bundled, or when the AppDir holds anything but exactly one libsrt of at least 1.5.7 (two copies in one process aborted OBS on quit after any SRT use). Run by `assemble-appdir.sh` (fails the build) and again by the test. |
 | `check-glibc-floor.py` | Fails when any ELF file in the AppDir requires a `GLIBC_` symbol version above the floor (2.28, #926). Reads only the versions a file *requires* (`objdump -p`), so the bundled glibc does not count. Run by `assemble-appdir.sh` (fails the build). |
 | `test-appimage.sh` | The distribution test, run inside a stock container (see below). |
 | `testkit.c` | Test helper built next to the AppImage: runtime probes, a fake ScreenCast/Camera portal, the test tone. The test runs it with the AppImage's own loader and libraries. |
@@ -123,7 +123,7 @@ checks that and that the workflow calls every step with every input.
 `test-appimage.sh` runs in stock Debian 13, Ubuntu 22.04, Fedora and Arch Linux (glibc newer than the build host's) containers
 with none of OBS's dependencies installed, and fails unless all of these pass:
 
-1. **Bundle:** `check-appdir.sh` (including exactly one libsrt, at least
+1. **Bundle:** `check_appdir.py` (including exactly one libsrt, at least
    1.5.7), and every bundled ELF file resolves all of its
    libraries and symbols with the bundled loader (`LD_BIND_NOW`), and the
    glibc libraries that host GPU drivers link (`librt`, `libpthread`, `libdl`,

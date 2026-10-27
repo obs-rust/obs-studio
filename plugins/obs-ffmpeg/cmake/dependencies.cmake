@@ -35,7 +35,7 @@ if(ENABLE_NEW_MPEGTS_OUTPUT)
   # obs-deps, the Flatpak from obs-deps-buildstream) need at least 1.5.7: older
   # releases have public advisories (GHSA-6xg9-784j-24rm, GHSA-4mc6-qmpp-g7gw,
   # GHSA-m96h-3rc9-xx6h; obs-rust/obs-studio#2372). The AppImage checks its
-  # libsrt in build-aux/appimage/check-appdir.sh. Distribution packages use the
+  # libsrt in build-aux/appimage/check_appdir.py. Distribution packages use the
   # distribution's libsrt and are not checked here.
   # An unknown version (0.0.0) fails too: the check never passes a version it
   # cannot read.
