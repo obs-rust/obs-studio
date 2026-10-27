@@ -266,6 +266,28 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("pull-requests: write", self.text)
         self.assertNotIn("contents: write", self.text)
 
+    def test_its_runner_is_a_pinned_label_not_latest(self):
+        # RUN-001: a '-latest' label retires without notice, so the welcome job
+        # names the fleet label it runs on (#962).
+        self.assertIn("runs-on: ubuntu-24.04", self.text)
+        self.assertNotIn("ubuntu-latest", self.text)
+
+    def test_the_write_scopes_sit_on_the_job_not_the_top_level(self):
+        # SEC-002: the top-level token stays read-only; the job that posts the
+        # comment, and only it, asks for the two write scopes it needs.
+        top_level = self.text.split("\njobs:", 1)[0]
+        self.assertIn("permissions:\n  contents: read\n", top_level)
+        self.assertNotIn("issues: write", top_level)
+        self.assertNotIn("pull-requests: write", top_level)
+        self.assertIn("issues: write", self.text)
+        self.assertIn("pull-requests: write", self.text)
+
+    def test_its_uv_cache_is_keyed_to_the_pull_request(self):
+        # CACHE-013: a PR save carries a delimited pr-<N> key component so the
+        # cache janitor can delete it when the PR closes (#962).
+        self.assertIn("cache-suffix:", self.text)
+        self.assertIn("format('pr-{0}', github.event.pull_request.number)", self.text)
+
     def test_it_never_checks_out_the_fork_head(self):
         # pull_request_target runs with a write token; checking out the pull
         # request's head would run the contributor's code against it.
