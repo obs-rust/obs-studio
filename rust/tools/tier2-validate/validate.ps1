@@ -282,21 +282,18 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
       & $nativeArtifacts.graphics_probe $referenceRenderers[$renderer] $renderer
       if ($LASTEXITCODE -ne 0) { throw "CMake $renderer probe failed ($LASTEXITCODE)" }
     }
-    Write-Host "== Cargo [$($dll.Directory.Name)] unchanged ctest suite"
+    # Temporary #2547 diagnostic: reproduce inside the entire Cargo suite,
+    # not in isolated reruns (all 60 focused attempts passed). The handler
+    # writes the faulting thread's dump before CTest reports the exception.
+    $env:OBS_SCENE_CANVAS_REPRO = '1'
+    $env:OBS_TEST_CRASH_DUMP_DIR = $dumpDirectory
+    Write-Host "== Cargo [$($dll.Directory.Name)] unchanged ctest suite with scene repro"
     ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @ctestJobs
     $ctestExit = $LASTEXITCODE
     if ($ctestExit -eq 0) {
-      # Temporary #2547 diagnostic: restore the Windows case only for this
-      # focused repro and let the test write a dump from the faulting thread.
-      $env:OBS_SCENE_CANVAS_REPRO = '1'
-      $env:OBS_TEST_CRASH_DUMP_DIR = $dumpDirectory
-      try {
-        $repeatArgs = @('--repeat', 'until-fail:30', '-R', '^test_scene_canvas_characterization$')
-        ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @repeatArgs
-        $ctestExit = $LASTEXITCODE
-      } finally {
-        Remove-Item Env:OBS_SCENE_CANVAS_REPRO, Env:OBS_TEST_CRASH_DUMP_DIR -ErrorAction SilentlyContinue
-      }
+      $repeatArgs = @('--repeat', 'until-fail:3')
+      ctest --test-dir $build -C RelWithDebInfo --output-on-failure --no-tests=error @ctestJobs @repeatArgs
+      $ctestExit = $LASTEXITCODE
     }
     if ($ctestExit -eq 0 -and $Repeat -gt 0) {
       $repeatArgs = @('--repeat', "until-fail:$Repeat")
@@ -309,6 +306,7 @@ foreach ($selected in $nativeArtifacts.reference, $nativeArtifacts.core) {
       throw "Cargo core CTest failed ($ctestExit)"
     }
   } finally {
+    Remove-Item Env:OBS_SCENE_CANVAS_REPRO, Env:OBS_TEST_CRASH_DUMP_DIR -ErrorAction SilentlyContinue
     if ($dumpDirectory) { Remove-Item -Path $dumpKey -Force }
     $env:PATH = $savedPath
   }
