@@ -66,11 +66,13 @@ class Wf002ConcurrencyTest(unittest.TestCase):
                     concurrency_group(path.read_text(encoding="utf-8")), group
                 )
 
-    def test_burned_down_workflows_cancel_the_run_they_supersede(self):
-        for name in EXPECTED:
-            with self.subTest(workflow=name):
-                text = (WORKFLOWS / name).read_text(encoding="utf-8")
-                self.assertIn("cancel-in-progress: true", text)
+    def test_a_check_format_run_cancels_the_one_it_supersedes(self):
+        text = (WORKFLOWS / "check-format.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: true", text)
+
+    def test_a_build_project_run_cancels_the_one_it_supersedes(self):
+        text = (WORKFLOWS / "build-project.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: true", text)
 
     def test_a_dispatch_never_cancels_an_in_flight_run(self):
         """dispatch.yaml is manual and multi-job, so its group keys on `inputs.job`
