@@ -4359,12 +4359,20 @@ static inline void signal_flags_updated(obs_source_t *source)
 	signal_handler_signal(source->context.signals, "update_flags", &data);
 }
 
+_Static_assert(OBS_SOURCE_MONITORING_AUDIO == OBS_SOURCE_AUDIO, "OBS_SOURCE_AUDIO");
+_Static_assert(OBS_SOURCE_MONITORING_TYPE_NONE == OBS_MONITORING_TYPE_NONE, "OBS_MONITORING_TYPE_NONE");
+_Static_assert(OBS_SOURCE_MONITORING_TYPE_MONITOR_ONLY == OBS_MONITORING_TYPE_MONITOR_ONLY,
+	       "OBS_MONITORING_TYPE_MONITOR_ONLY");
+_Static_assert(OBS_SOURCE_MONITORING_TYPE_MONITOR_AND_OUTPUT == OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT,
+	       "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT");
+_Static_assert(sizeof(enum obs_monitoring_type) == sizeof(int), "enum obs_monitoring_type is passed as int");
+
 void obs_source_set_flags(obs_source_t *source, uint32_t flags)
 {
 	if (!obs_source_valid(source, "obs_source_set_flags"))
 		return;
 
-	if (flags != source->flags) {
+	if (obs_source_monitoring_changes(source->flags, flags)) {
 		source->flags = flags;
 		signal_flags_updated(source);
 	}
@@ -4390,10 +4398,10 @@ void obs_source_set_audio_mixers(obs_source_t *source, uint32_t mixers)
 
 	if (!obs_source_valid(source, "obs_source_set_audio_mixers"))
 		return;
-	if (!source->owns_info_id && (source->info.output_flags & OBS_SOURCE_AUDIO) == 0)
+	if (!source->owns_info_id && !obs_source_monitoring_has_audio(source->info.output_flags))
 		return;
 
-	if (source->audio_mixers == mixers)
+	if (!obs_source_monitoring_changes(source->audio_mixers, mixers))
 		return;
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
@@ -4402,7 +4410,7 @@ void obs_source_set_audio_mixers(obs_source_t *source, uint32_t mixers)
 
 	signal_handler_signal(source->context.signals, "audio_mixers", &data);
 
-	mixers = (uint32_t)calldata_int(&data, "mixers");
+	mixers = obs_source_monitoring_mixers_store(calldata_int(&data, "mixers"));
 
 	source->audio_mixers = mixers;
 }
@@ -4411,7 +4419,7 @@ uint32_t obs_source_get_audio_mixers(const obs_source_t *source)
 {
 	if (!obs_source_valid(source, "obs_source_get_audio_mixers"))
 		return 0;
-	if (!source->owns_info_id && (source->info.output_flags & OBS_SOURCE_AUDIO) == 0)
+	if (!source->owns_info_id && !obs_source_monitoring_has_audio(source->info.output_flags))
 		return 0;
 
 	return source->audio_mixers;
@@ -4664,8 +4672,8 @@ void obs_source_enable_push_to_mute(obs_source_t *source, bool enabled)
 		return;
 
 	pthread_mutex_lock(&source->audio_mutex);
-	bool changed = source->push_to_mute_enabled != enabled;
-	if (obs_source_get_output_flags(source) & OBS_SOURCE_AUDIO && changed)
+	bool changed = obs_source_monitoring_changes(source->push_to_mute_enabled, enabled);
+	if (obs_source_monitoring_push_to_logs(obs_source_get_output_flags(source), changed))
 		blog(LOG_INFO, "source '%s' %s push-to-mute", obs_source_get_name(source),
 		     enabled ? "enabled" : "disabled");
 
@@ -4720,8 +4728,8 @@ void obs_source_enable_push_to_talk(obs_source_t *source, bool enabled)
 		return;
 
 	pthread_mutex_lock(&source->audio_mutex);
-	bool changed = source->push_to_talk_enabled != enabled;
-	if (obs_source_get_output_flags(source) & OBS_SOURCE_AUDIO && changed)
+	bool changed = obs_source_monitoring_changes(source->push_to_talk_enabled, enabled);
+	if (obs_source_monitoring_push_to_logs(obs_source_get_output_flags(source), changed))
 		blog(LOG_INFO, "source '%s' %s push-to-talk", obs_source_get_name(source),
 		     enabled ? "enabled" : "disabled");
 
@@ -5177,15 +5185,14 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 	if (!obs_source_valid(source, "obs_source_set_monitoring_enabled"))
 		return;
 
-	if (source->monitoring_enabled == enabled)
+	if (!obs_source_monitoring_changes(source->monitoring_enabled, enabled))
 		return;
 
 	/* the deprecated type: a monitored source that is muted is monitor-only
 	 * (#2447); the stored type stays monitor and output */
 	compat_type = OBS_MONITORING_TYPE_NONE;
 	if (enabled)
-		compat_type = source->user_muted ? OBS_MONITORING_TYPE_MONITOR_ONLY
-						 : OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
+		compat_type = (enum obs_monitoring_type)obs_source_monitoring_on_type(source->user_muted);
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
@@ -5201,15 +5208,18 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 
 	was_on = source->monitoring_enabled;
 	source->monitoring_enabled = enabled;
-	source->monitoring_type = enabled ? OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT : OBS_MONITORING_TYPE_NONE;
+	source->monitoring_type = (enum obs_monitoring_type)obs_source_monitoring_stored_type(enabled);
 
-	if (was_on != enabled) {
-		if (!was_on) {
-			source->monitor = audio_monitor_create(source);
-		} else {
-			audio_monitor_destroy(source->monitor);
-			source->monitor = NULL;
-		}
+	switch (obs_source_monitoring_monitor(was_on, enabled)) {
+	case OBS_SOURCE_MONITORING_MONITOR_CREATE:
+		source->monitor = audio_monitor_create(source);
+		break;
+	case OBS_SOURCE_MONITORING_MONITOR_DESTROY:
+		audio_monitor_destroy(source->monitor);
+		source->monitor = NULL;
+		break;
+	case OBS_SOURCE_MONITORING_MONITOR_KEEP:
+		break;
 	}
 }
 
@@ -5236,27 +5246,27 @@ void obs_source_set_monitoring_type(obs_source_t *source, enum obs_monitoring_ty
 	 * nothing has set the mute since; any other mute stays. */
 	muted_for_monitor_only = os_atomic_load_bool(&source->monitor_only_muted);
 
-	switch (type) {
-	case OBS_MONITORING_TYPE_NONE:
+	switch (obs_source_monitoring_route((int)type)) {
+	case OBS_SOURCE_MONITORING_ROUTE_OFF:
 		obs_source_set_monitoring_enabled(source, false);
-		if (muted_for_monitor_only && obs_source_muted(source))
+		if (obs_source_monitoring_off_reads_mute(muted_for_monitor_only) &&
+		    obs_source_monitoring_off_unmutes(obs_source_muted(source)))
 			obs_source_set_muted(source, false);
 		os_atomic_set_bool(&source->monitor_only_muted, false);
 		break;
-	case OBS_MONITORING_TYPE_MONITOR_ONLY:
-		if (!obs_source_muted(source)) {
+	case OBS_SOURCE_MONITORING_ROUTE_MONITOR_ONLY:
+		if (obs_source_monitoring_only_mutes(obs_source_muted(source))) {
 			obs_source_set_muted(source, true);
 			muted_for_monitor_only = true;
 		}
 		obs_source_set_monitoring_enabled(source, true);
 		os_atomic_set_bool(&source->monitor_only_muted, muted_for_monitor_only);
 		break;
-	case OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT:
+	case OBS_SOURCE_MONITORING_ROUTE_MONITOR_AND_OUTPUT:
 		obs_source_set_muted(source, false);
 		obs_source_set_monitoring_enabled(source, true);
 		break;
-	default:
-		/* not a type: on, as before */
+	case OBS_SOURCE_MONITORING_ROUTE_ON:
 		obs_source_set_monitoring_enabled(source, true);
 		break;
 	}
@@ -5271,7 +5281,7 @@ enum obs_monitoring_type obs_source_get_monitoring_type(const obs_source_t *sour
 		return OBS_MONITORING_TYPE_NONE;
 
 	/* monitoring on and muted is monitor-only (#2447) */
-	return source->user_muted ? OBS_MONITORING_TYPE_MONITOR_ONLY : OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT;
+	return (enum obs_monitoring_type)obs_source_monitoring_on_type(source->user_muted);
 }
 
 void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)
@@ -5351,13 +5361,9 @@ enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source)
 	return source->sample_info.speakers;
 }
 
-/* The balance is 0 (left) to 1 (right); NaN is the default, centred
- * (#2051). */
 static inline float clamp_balance(float balance)
 {
-	if (isnan(balance))
-		return 0.5f;
-	return balance < 0.0f ? 0.0f : balance > 1.0f ? 1.0f : balance;
+	return obs_source_monitoring_balance(balance);
 }
 
 void obs_source_set_balance_value(obs_source_t *source, float balance)
@@ -5387,13 +5393,16 @@ void obs_source_set_audio_active(obs_source_t *source, bool active)
 	if (!obs_source_valid(source, "obs_source_set_audio_active"))
 		return;
 
-	if (os_atomic_set_bool(&source->audio_active, active) == active)
-		return;
-
-	if (active)
+	switch (obs_source_monitoring_audio_active(os_atomic_set_bool(&source->audio_active, active), active)) {
+	case OBS_SOURCE_MONITORING_ACTIVE_ACTIVATE:
 		obs_source_dosignal(source, "source_audio_activate", "audio_activate");
-	else
+		break;
+	case OBS_SOURCE_MONITORING_ACTIVE_DEACTIVATE:
 		obs_source_dosignal(source, "source_audio_deactivate", "audio_deactivate");
+		break;
+	case OBS_SOURCE_MONITORING_ACTIVE_NONE:
+		break;
+	}
 }
 
 bool obs_source_audio_active(const obs_source_t *source)
