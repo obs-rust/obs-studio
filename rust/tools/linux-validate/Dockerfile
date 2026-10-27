@@ -11,8 +11,11 @@ RUN uv run --no-project --offline --python /usr/bin/python3 python -c 'import js
 # Install exactly the toolchain pinned in rust-toolchain.toml (run.sh passes it)
 # so corrosion/CMake finds it; rustup must not have to fetch it at run time.
 # Compiler launcher for the CMake builds: zccache, pinned with its checksum.
-COPY install-zccache.sh /tmp/install-zccache.sh
-RUN /tmp/install-zccache.sh /usr/local/bin && rm /tmp/install-zccache.sh
+# The installer is a Python script (install_zccache.py); this image already has
+# uv from the ghcr layer above, so it runs through `uv run` like the repo's
+# other ported helpers, against the container's own /usr/bin/python3.
+COPY install_zccache.py /tmp/install_zccache.py
+RUN uv run --no-project --offline --python /usr/bin/python3 /tmp/install_zccache.py /usr/local/bin && rm /tmp/install_zccache.py
 ARG RUST_TOOLCHAIN
 RUN test -n "$RUST_TOOLCHAIN" \
  && curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" -c rustfmt -c clippy

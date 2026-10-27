@@ -57,9 +57,11 @@ RUN dnf install -y -q --setopt=install_weak_deps=False dnf-plugins-core rpm-buil
 # ninja from PyPI (AlmaLinux 8 has 1.8, older than the CMake presets need), and
 # SWIG 4 for the Lua scripting bindings (AlmaLinux 8 has 3.0); both build-time only.
 # The ubuntu-ci preset's compiler launcher (#957), pinned and checksum-verified;
-# this image skips build.py's deps step, which installs it on Ubuntu.
-COPY rust/tools/linux-validate/install-zccache.sh /tmp/install-zccache.sh
-RUN sh /tmp/install-zccache.sh /usr/local/bin && rm /tmp/install-zccache.sh
+# this image skips build.py's deps step, which installs it on Ubuntu. The
+# installer is a Python script (install_zccache.py); uv is fetched further down
+# this Dockerfile, so run it with the manylinux image's own interpreter.
+COPY rust/tools/linux-validate/install_zccache.py /tmp/install_zccache.py
+RUN /opt/python/cp312-cp312/bin/python3 /tmp/install_zccache.py /usr/local/bin && rm /tmp/install_zccache.py
 RUN /opt/python/cp312-cp312/bin/pip install --no-cache-dir ninja==1.11.1.4 swig==4.2.1 \
  && ln -sf /opt/python/cp312-cp312/bin/ninja /usr/local/bin/ninja \
  && ln -sf /opt/python/cp312-cp312/bin/swig /usr/local/bin/swig

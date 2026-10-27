@@ -4,7 +4,7 @@ autoload -Uz log_debug
 # pinned release (checksum-verified) and point it at the cache dir CI
 # restores and saves.
 local zccache_bin=${HOME}/.local/bin
-${project_root}/rust/tools/linux-validate/install-zccache.sh ${zccache_bin}
+uv run --no-project ${project_root}/rust/tools/linux-validate/install_zccache.py ${zccache_bin}
 path=(${zccache_bin} ${path})
 if [[ -n ${GITHUB_PATH} ]] print ${zccache_bin} >> ${GITHUB_PATH}
 

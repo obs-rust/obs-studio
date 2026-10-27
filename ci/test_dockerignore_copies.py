@@ -3,7 +3,7 @@
 
 .dockerignore excludes everything (`*`) and lists the files the images built
 from the repo root read. A COPY of an unlisted file fails only when the image
-is built (`bosn run --task appimage`: "install-zccache.sh: not found").
+is built (`bosn run --task appimage`: "install_zccache.py: not found").
 """
 
 from pathlib import Path

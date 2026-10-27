@@ -580,7 +580,7 @@ jobs:
         id: native-cache-journal
         continue-on-error: true
         run: |
-          rust/tools/linux-validate/install-zccache.sh "${HOME}/.local/bin"
+          uv run --no-project rust/tools/linux-validate/install_zccache.py "${HOME}/.local/bin"
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
           uv run --no-project ci/native_cache_journal.py start \
             --tool "${HOME}/.local/bin/zccache" --cache-dir "${ZCCACHE_CACHE_DIR}" \
@@ -2223,7 +2223,7 @@ jobs:
       - name: Install zccache 📦
         run: |
           : Install zccache 📦
-          sh rust/tools/linux-validate/install-zccache.sh "$HOME/.local/bin"
+          uv run --no-project rust/tools/linux-validate/install_zccache.py "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Build Tier 2 (libobs and libobs-c-reference) 🧱

@@ -146,7 +146,7 @@ retention policy. This restriction does not establish that both modes fit the
 current pooled nightly retention allowance.
 
 The Ubuntu build, AppImage, sanitizers and Tier 2 use the standalone zccache
-pinned in `rust/tools/linux-validate/install-zccache.sh`, with SHA-256 checks
+pinned in `rust/tools/linux-validate/install_zccache.py`, with SHA-256 checks
 for both Linux architectures. Version 1.15.5 restores a byte-identical PCH
 input header's recorded mtime before clang loads it; real content changes
 remain subject to clang's validation. This fixes `#pragma once` redefinitions

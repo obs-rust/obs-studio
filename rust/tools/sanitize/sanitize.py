@@ -231,10 +231,14 @@ def git_describe() -> str:
 
 
 def prepare_toolchain(layout: Layout) -> bool:
-    """Install the pinned zccache (install-zccache.sh checks its SHA-256) as
+    """Install the pinned zccache (install_zccache.py checks its SHA-256) as
     the compiler launcher and point ZCCACHE_CACHE_DIR at the dir CI saves."""
-    installer = SRC / "rust/tools/linux-validate/install-zccache.sh"
-    done = subprocess.run([str(installer), str(layout.bin_dir)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    installer = SRC / "rust/tools/linux-validate/install_zccache.py"
+    done = subprocess.run(
+        ["uv", "run", "--no-project", str(installer), str(layout.bin_dir)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     if done.returncode != 0:
         return False
     os.environ["PATH"] = f"{layout.bin_dir}{os.pathsep}{os.environ['PATH']}"
