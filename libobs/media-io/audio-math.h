@@ -35,7 +35,7 @@ static inline float mul_to_db(const float mul)
 
 static inline float db_to_mul(const float db)
 {
-	return isfinite((double)db) ? powf(10.0f, db / 20.0f) : 0.0f;
+	return isfinite(db) ? powf(10.0f, db / 20.0f) : 0.0f;
 }
 
 #ifdef _MSC_VER
