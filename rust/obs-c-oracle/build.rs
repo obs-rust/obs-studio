@@ -121,10 +121,12 @@ const STRICT_FLAGS: &[&str] = &[
     "-Wundef",
     "-Wdouble-promotion",
     "-Wstrict-prototypes",
+    "-Wformat=2",
     "-Wformat-nonliteral",
     "-Wpedantic",
     "-Wcast-qual",
     "-Wsign-conversion",
+    "-Wconversion",
     "-Wmissing-prototypes",
 ];
 
