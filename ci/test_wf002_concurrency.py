@@ -25,6 +25,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 # delete its ci.toml WF-002 exception in the same PR.
 EXPECTED = {
     "check-format.yaml": "check-format-${{ github.event_name }}-${{ github.ref }}",
+    "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
 }
 
 
@@ -64,6 +65,13 @@ class Wf002ConcurrencyTest(unittest.TestCase):
     def test_a_check_format_run_cancels_the_one_it_supersedes(self):
         text = (WORKFLOWS / "check-format.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", text)
+
+    def test_a_dispatch_never_cancels_an_in_flight_run(self):
+        """dispatch.yaml is manual and multi-job, so its group keys on `inputs.job`
+        (two different dispatches never serialize) and a second dispatch never
+        kills an in-flight release operation (the claim-bot.yaml precedent)."""
+        text = (WORKFLOWS / "dispatch.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: false", text)
 
 
 if __name__ == "__main__":
