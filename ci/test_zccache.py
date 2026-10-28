@@ -78,13 +78,26 @@ def job(workflow: str, name: str) -> str:
 
 
 def cache_steps(block: str) -> list[tuple[str, str]]:
-    """(action, key) for every actions/cache step in a job."""
+    """(action, key) for every cache step in a job.
+
+    A step is either a raw `actions/cache/restore|save` call or the
+    `.github/actions/cache` wrapper (#2733), whose action comes from `mode:`.
+    """
     out = []
     # Each step's body is its indented, non-"- " lines (\s+ would run into
     # the next step and hide every later key).
-    for m in re.finditer(r"uses: actions/cache/(restore|save)@\S+.*\n((?:[ \t]+(?![ \t]*- ).*\n)*)", block):
-        key = re.search(r"^\s+key: (.*)$", m.group(2), re.M)
-        out.append((m.group(1), key.group(1) if key else ""))
+    pattern = re.compile(
+        r"uses: (?:actions/cache/(restore|save)@\S+[^\n]*|\./\.github/actions/cache)\n"
+        r"((?:[ \t]+(?![ \t]*- ).*\n)*)"
+    )
+    for m in pattern.finditer(block):
+        body = m.group(2)
+        action = m.group(1)
+        if action is None:
+            mode = re.search(r"^\s+mode: (restore|save)$", body, re.M)
+            action = mode.group(1) if mode else "restore"
+        key = re.search(r"^\s+key: (.*)$", body, re.M)
+        out.append((action, key.group(1) if key else ""))
     return out
 
 
