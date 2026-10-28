@@ -1951,8 +1951,9 @@ area.
   restores the same clamp-safe layout, instead of its own copy taken from the
   live window. *All*,
   2026-10-24 (column: pending merge). Issue
-  [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PR
-  [#2727](https://github.com/obs-rust/obs-studio/pull/2727).
+  [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
+  [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
+  [#2731](https://github.com/obs-rust/obs-studio/pull/2731).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its
