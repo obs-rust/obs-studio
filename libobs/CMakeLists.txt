@@ -33,14 +33,18 @@ set_target_properties(libobs-objects PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(libobs-objects PRIVATE ${LIBOBS_SOURCES})
 # MSVC /W4 (#2626): uthash's HASH_* macros end in uthash_fatal -> exit(-1),
 # whose non-returning path makes MSVC report C4702 "unreachable code" at the
-# closing brace of every HASH_ADD/HASH_ITER use in obs.c.h and obs-hotkey.c.h.
-# The C oracle already suppresses C4702 for the same macros in its own build
-# script, so this follows the vendored-code exemption (#516) instead of editing
-# uthash or sprinkling pragmas in first-party code.
+# closing brace of every HASH_ADD/HASH_ITER use (obs.c.h, obs-data.c.h,
+# obs-hotkey.c.h, ...). The C oracle already suppresses C4702 for the same
+# macros in its own build script, so this follows the vendored-code exemption
+# (#516) instead of editing uthash or sprinkling pragmas in first-party code.
+# Every C target needs it: the ported groups are also compiled by the
+# C-reference library, which has its own compile options.
 #
 # Do not name a crate here: ci/test_tier2_proof_inputs.py treats any crate name
 # mentioned in a cmake or CMakeLists.txt file as a Tier 2 root.
-target_compile_options(libobs-objects PRIVATE $<$<C_COMPILER_ID:MSVC>:/wd4702>)
+foreach(target libobs-objects ${OBS_LIBOBS_C_TARGETS})
+  target_compile_options(${target} PRIVATE $<$<C_COMPILER_ID:MSVC>:/wd4702>)
+endforeach()
 obs_libobs_add_c_sources(${LIBOBS_PORTED_SOURCES})
 # MSVC warns about INFINITY (a standard library macro) in obs-audio-controls.c
 # (#870; was a pragma in the file).
