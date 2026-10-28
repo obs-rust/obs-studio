@@ -186,6 +186,7 @@ void OBSBasic::LoadQuickTransitions(obs_data_array_t *array)
 
 				int idx = (int)quickTransitions.size() - 1;
 				AddQuickTransitionHotkey(&quickTransitions[idx]);
+				MigrateSavedHotkeys(hotkeys);
 				obs_hotkey_load(quickTransitions[idx].hotkey, hotkeys);
 			}
 		}
@@ -199,6 +200,7 @@ obs_data_array_t *OBSBasic::SaveQuickTransitions()
 	for (QuickTransition &qt : quickTransitions) {
 		OBSDataAutoRelease data = obs_data_create();
 		OBSDataArrayAutoRelease hotkeys = obs_hotkey_save(qt.hotkey);
+		MarkSavedHotkeys(hotkeys);
 
 		obs_data_set_string(data, "name", obs_source_get_name(qt.source));
 		obs_data_set_int(data, "duration", qt.duration);

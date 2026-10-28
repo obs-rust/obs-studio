@@ -338,6 +338,10 @@ void log_system_info(void)
 
 bool obs_hotkeys_platform_init(struct obs_core_hotkeys *hotkeys)
 {
+	/* The X11 and Wayland key tables had Volume Up and Down swapped until
+	 * #2635. */
+	hotkeys->saved_volume_keys_swapped = true;
+
 	switch (obs_get_nix_platform()) {
 	case OBS_NIX_PLATFORM_X11_EGL:
 		hotkeys_vtable = obs_nix_x11_get_hotkeys_vtable();

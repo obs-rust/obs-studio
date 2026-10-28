@@ -675,6 +675,10 @@ struct obs_core_hotkeys {
 	bool thread_disable_press;
 	bool strict_modifiers;
 	bool reroute_hotkeys;
+	/* Set by a host whose key tables named Volume Up OBS_KEY_VK_VOLUME_DOWN
+	 * and Volume Down OBS_KEY_VK_VOLUME_UP until #2635 (Linux), so the
+	 * bindings it saved then name the other key. */
+	bool saved_volume_keys_swapped;
 	DARRAY(obs_hotkey_binding_t) bindings;
 
 	obs_hotkey_callback_router_func router_func;

@@ -670,9 +670,9 @@ static int get_keysym(obs_key_t key)
 	case OBS_KEY_VK_VOLUME_MUTE:
 		return XF86XK_AudioMute;
 	case OBS_KEY_VK_VOLUME_DOWN:
-		return XF86XK_AudioRaiseVolume;
-	case OBS_KEY_VK_VOLUME_UP:
 		return XF86XK_AudioLowerVolume;
+	case OBS_KEY_VK_VOLUME_UP:
+		return XF86XK_AudioRaiseVolume;
 
 	/* TODO: Implement keys for non-US keyboards */
 	default:;

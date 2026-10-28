@@ -153,7 +153,7 @@ static void hotkey_signal(const char *signal, obs_hotkey_t *hotkey)
 	calldata_free(&data);
 }
 
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed);
+static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved);
 
 static inline void context_add_hotkey(struct obs_context_data *context, obs_hotkey_id id)
 {
@@ -183,7 +183,7 @@ static inline obs_hotkey_id obs_hotkey_register_internal(obs_hotkey_registerer_t
 
 	if (context) {
 		obs_data_array_t *binding_data = obs_data_get_array(context->hotkey_data, name);
-		load_bindings(hotkey, binding_data, false);
+		load_bindings(hotkey, binding_data, false, true);
 		obs_data_array_release(binding_data);
 
 		context_add_hotkey(context, result);
@@ -455,7 +455,22 @@ static inline void create_binding(obs_hotkey_t *hotkey, obs_key_combination_t co
 	binding->hotkey = hotkey;
 }
 
-static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data)
+/* Until #2635 the X11 and Wayland key tables gave Volume Up the name
+ * OBS_KEY_VK_VOLUME_DOWN and Volume Down OBS_KEY_VK_VOLUME_UP. A binding to
+ * either that libobs saves for a scene collection (a source's, encoder's,
+ * output's or service's hotkey data) has this set since then; one loaded
+ * from there without it, on such a host (saved_volume_keys_swapped), names
+ * the other key and is swapped once. obs_hotkey_load() and obs_hotkey_save()
+ * are left alone: their callers choose what the data is, and the frontend
+ * migrates the hotkeys it saves itself. */
+#define VOLUME_KEYS_FIXED "volume_keys_fixed"
+
+static inline bool is_volume_up_down(obs_key_t key)
+{
+	return key == OBS_KEY_VK_VOLUME_UP || key == OBS_KEY_VK_VOLUME_DOWN;
+}
+
+static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data, bool saved)
 {
 	if (!hotkey || !data)
 		return;
@@ -464,18 +479,23 @@ static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data)
 	if (!obs_hotkey_combination_from_data(data, &combo))
 		return;
 
+	if (saved && is_volume_up_down(combo.key) && !obs_data_get_bool(data, VOLUME_KEYS_FIXED) &&
+	    obs->hotkeys.saved_volume_keys_swapped)
+		combo.key = combo.key == OBS_KEY_VK_VOLUME_UP ? OBS_KEY_VK_VOLUME_DOWN : OBS_KEY_VK_VOLUME_UP;
+
 	create_binding(hotkey, combo);
 }
 
 /* removed: the caller's remove_bindings() removed bindings of this hotkey
  * first, so an empty or missing array still changed them (as in
- * obs_hotkey_load_bindings()). */
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed)
+ * obs_hotkey_load_bindings()). saved: the data is a scene collection's
+ * (VOLUME_KEYS_FIXED). */
+static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved)
 {
 	const size_t count = obs_data_array_count(data);
 	for (size_t i = 0; i < count; i++) {
 		obs_data_t *item = obs_data_array_item(data, i);
-		load_binding(hotkey, item);
+		load_binding(hotkey, item, saved);
 		obs_data_release(item);
 	}
 
@@ -513,7 +533,7 @@ void obs_hotkey_load(obs_hotkey_id id, obs_data_array_t *data)
 	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
 	if (hotkey) {
 		bool removed = remove_bindings(id);
-		load_bindings(hotkey, data, removed);
+		load_bindings(hotkey, data, removed, false);
 	}
 	unlock();
 }
@@ -524,7 +544,7 @@ static inline bool enum_load_bindings(void *data, obs_hotkey_t *hotkey)
 	if (!hotkey_data)
 		return true;
 
-	load_bindings(hotkey, hotkey_data, false);
+	load_bindings(hotkey, hotkey_data, false, true);
 	obs_data_array_release(hotkey_data);
 	return true;
 }
@@ -589,11 +609,11 @@ void obs_hotkey_pair_load(obs_hotkey_pair_id id, obs_data_array_t *data0, obs_da
 
 	if (p1) {
 		bool removed = remove_bindings(pair->id[0]);
-		load_bindings(p1, data0, removed);
+		load_bindings(p1, data0, removed, false);
 	}
 	if (p2) {
 		bool removed = remove_bindings(pair->id[1]);
-		load_bindings(p2, data1, removed);
+		load_bindings(p2, data1, removed, false);
 	}
 
 unlock:
@@ -603,6 +623,8 @@ unlock:
 struct save_bindings_helper_t {
 	obs_data_array_t *array;
 	obs_hotkey_t *hotkey;
+	/* For a scene collection (VOLUME_KEYS_FIXED). */
+	bool saved;
 };
 
 static inline bool save_bindings_helper(void *data, size_t idx, obs_hotkey_binding_t *binding)
@@ -616,6 +638,8 @@ static inline bool save_bindings_helper(void *data, size_t idx, obs_hotkey_bindi
 	obs_data_t *hotkey = obs_data_create();
 
 	obs_hotkey_combination_to_data(binding->key, hotkey);
+	if (h->saved && is_volume_up_down(binding->key.key))
+		obs_data_set_bool(hotkey, VOLUME_KEYS_FIXED, true);
 
 	obs_data_array_push_back(h->array, hotkey);
 
@@ -624,11 +648,11 @@ static inline bool save_bindings_helper(void *data, size_t idx, obs_hotkey_bindi
 	return true;
 }
 
-static inline obs_data_array_t *save_hotkey(obs_hotkey_t *hotkey)
+static inline obs_data_array_t *save_hotkey(obs_hotkey_t *hotkey, bool saved)
 {
 	obs_data_array_t *data = obs_data_array_create();
 
-	struct save_bindings_helper_t arg = {data, hotkey};
+	struct save_bindings_helper_t arg = {data, hotkey, saved};
 	enum_bindings(save_bindings_helper, &arg);
 
 	return data;
@@ -644,7 +668,7 @@ obs_data_array_t *obs_hotkey_save(obs_hotkey_id id)
 	obs_hotkey_t *hotkey;
 	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
 	if (hotkey)
-		result = save_hotkey(hotkey);
+		result = save_hotkey(hotkey, false);
 
 	unlock();
 
@@ -665,12 +689,12 @@ void obs_hotkey_pair_save(obs_hotkey_pair_id id, obs_data_array_t **p_data0, obs
 	if (p_data0) {
 		HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[0], hotkey);
 		if (hotkey)
-			*p_data0 = save_hotkey(hotkey);
+			*p_data0 = save_hotkey(hotkey, false);
 	}
 	if (p_data1) {
 		HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[1], hotkey);
 		if (hotkey)
-			*p_data1 = save_hotkey(hotkey);
+			*p_data1 = save_hotkey(hotkey, false);
 	}
 
 unlock:
@@ -679,7 +703,7 @@ unlock:
 
 static inline bool enum_save_hotkey(void *data, obs_hotkey_t *hotkey)
 {
-	obs_data_array_t *hotkey_data = save_hotkey(hotkey);
+	obs_data_array_t *hotkey_data = save_hotkey(hotkey, true);
 	obs_data_set_array(data, hotkey->name, hotkey_data);
 	obs_data_array_release(hotkey_data);
 	return true;
@@ -1382,3 +1406,4 @@ void obs_hotkeys_set_sceneitem_hotkeys_translations(const char *show, const char
 #undef HASH_ADD_HKEY
 #undef HASH_FIND_HKEY
 #undef NBSP
+#undef VOLUME_KEYS_FIXED

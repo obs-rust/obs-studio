@@ -306,6 +306,13 @@ public:
 	explicit OBSBasic(QWidget *parent = 0);
 	virtual ~OBSBasic();
 
+	/* Hotkey bindings the frontend saves itself (the profile's, and the
+	 * quick transitions'): before #2635 Linux saved Volume Up and Down under
+	 * each other's name. Migrate before obs_hotkey_load(); mark what is
+	 * written with today's names. */
+	static void MigrateSavedHotkeys(obs_data_array_t *bindings);
+	static void MarkSavedHotkeys(obs_data_array_t *bindings);
+
 	virtual void OBSInit() override;
 
 	virtual config_t *Config() const override;

@@ -526,6 +526,11 @@ bool GetPlatformHotkeyOverride(int, obs_key_t &, bool &)
 	return false;
 }
 
+bool SavedVolumeKeysSwapped()
+{
+	return false;
+}
+
 void PlatformLocalTime(const time_t *now, struct tm *out)
 {
 	localtime_s(out, now);

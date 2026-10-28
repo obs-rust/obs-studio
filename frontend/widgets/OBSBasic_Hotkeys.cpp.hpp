@@ -97,6 +97,43 @@ void OBSBasic::HotkeyTriggered(void *data, obs_hotkey_id id, bool pressed)
 	QMetaObject::invokeMethod(&basic, &OBSBasic::ProcessHotkey, id, pressed);
 }
 
+/* As libobs marks a scene collection's own hotkey data (obs-hotkey.c): a
+ * Volume Up or Down binding saved without "volume_keys_fixed" by a host whose
+ * key tables had them swapped names the other key. */
+void OBSBasic::MigrateSavedHotkeys(obs_data_array_t *bindings)
+{
+	if (!SavedVolumeKeysSwapped()) {
+		return;
+	}
+
+	const size_t count = obs_data_array_count(bindings);
+	for (size_t i = 0; i < count; i++) {
+		OBSDataAutoRelease item = obs_data_array_item(bindings, i);
+		if (obs_data_get_bool(item, "volume_keys_fixed")) {
+			continue;
+		}
+
+		obs_key_t key = obs_key_from_name(obs_data_get_string(item, "key"));
+		if (key == OBS_KEY_VK_VOLUME_UP) {
+			obs_data_set_string(item, "key", obs_key_to_name(OBS_KEY_VK_VOLUME_DOWN));
+		} else if (key == OBS_KEY_VK_VOLUME_DOWN) {
+			obs_data_set_string(item, "key", obs_key_to_name(OBS_KEY_VK_VOLUME_UP));
+		}
+	}
+}
+
+void OBSBasic::MarkSavedHotkeys(obs_data_array_t *bindings)
+{
+	const size_t count = obs_data_array_count(bindings);
+	for (size_t i = 0; i < count; i++) {
+		OBSDataAutoRelease item = obs_data_array_item(bindings, i);
+		obs_key_t key = obs_key_from_name(obs_data_get_string(item, "key"));
+		if (key == OBS_KEY_VK_VOLUME_UP || key == OBS_KEY_VK_VOLUME_DOWN) {
+			obs_data_set_bool(item, "volume_keys_fixed", true);
+		}
+	}
+}
+
 void OBSBasic::CreateHotkeys()
 {
 	ProfileScope("OBSBasic::CreateHotkeys");
@@ -118,6 +155,7 @@ void OBSBasic::CreateHotkeys()
 	auto LoadHotkey = [&](obs_hotkey_id id, const char *name) {
 		OBSDataArrayAutoRelease array = obs_data_get_array(LoadHotkeyData(name), "bindings");
 
+		MigrateSavedHotkeys(array);
 		obs_hotkey_load(id, array);
 	};
 
@@ -135,6 +173,8 @@ void OBSBasic::CreateHotkeys()
 		OBSDataArrayAutoRelease array0 = obs_data_get_array(LoadHotkeyData(name0), "bindings");
 		OBSDataArrayAutoRelease array1 = obs_data_get_array(LoadHotkeyData(name1), "bindings");
 
+		MigrateSavedHotkeys(array0);
+		MigrateSavedHotkeys(array1);
 		obs_hotkey_pair_load(id, array0, array1);
 	};
 
@@ -236,8 +276,11 @@ void OBSBasic::CreateHotkeys()
 		LoadHotkey(saveReplayBufferHotkey, "OBSBasic.SaveReplayBuffer");
 	} else {
 		OBSDataArrayAutoRelease array = obs_data_get_array(LoadHotkeyData("ReplayBuffer"), "ReplayBuffer.Save");
+		MigrateSavedHotkeys(array);
 		obs_hotkey_load(saveReplayBufferHotkey, array);
 
+		/* Written back with today's names. */
+		MarkSavedHotkeys(array);
 		OBSDataAutoRelease newData = obs_data_create();
 		obs_data_set_array(newData, "bindings", array);
 		config_set_string(activeConfiguration, "Hotkeys", "OBSBasic.SaveReplayBuffer",

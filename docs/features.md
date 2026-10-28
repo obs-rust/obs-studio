@@ -1954,6 +1954,12 @@ area.
   profile showed up. *All*, pending merge. Issue
   [#2295](https://github.com/obs-rust/obs-studio/issues/2295), upstream
   [obsproject/obs-studio#13862](https://github.com/obsproject/obs-studio/issues/13862).
+- On Linux, Settings > Hotkeys names the Volume Up and Volume Down keys
+  correctly; before, each showed and saved as the other, so a profile moved
+  from Windows, or a binding from a script or plugin, fired on the other
+  key. Existing hotkeys keep firing on the key they were set with.
+  *Linux*, 2026-10-27. Issue
+  [#2635](https://github.com/obs-rust/obs-studio/issues/2635).
 
 - A flipped item without a bounding box is now placed where x86-64 puts it on
   arm64 too: the negative scaled size no longer saturates to zero, which

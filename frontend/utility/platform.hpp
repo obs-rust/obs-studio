@@ -64,6 +64,10 @@ void SetOutputNetworkOptions(config_t *config, obs_data_t *settings);
  * the id the encoder has now (macOS: the VideoToolbox H.264 encoders). */
 void TranslateLegacyEncoderId(const char *&encoder);
 
+/* Hotkeys saved here before #2635 name Volume Up OBS_KEY_VK_VOLUME_DOWN and
+ * Volume Down OBS_KEY_VK_VOLUME_UP (Linux key tables). */
+bool SavedVolumeKeysSwapped();
+
 /* Brings window back to the front after a file dialog closes (macOS:
  * QTBUG-42661 leaves it behind other windows). */
 void RaiseAfterFileDialog(QWidget *window);

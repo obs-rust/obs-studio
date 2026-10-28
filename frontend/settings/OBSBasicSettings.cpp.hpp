@@ -3886,6 +3886,7 @@ void OBSBasicSettings::SaveHotkeySettings()
 		}
 
 		OBSDataArrayAutoRelease array = obs_hotkey_save(hw.id);
+		OBSBasic::MarkSavedHotkeys(array);
 		OBSDataAutoRelease data = obs_data_create();
 		obs_data_set_array(data, "bindings", array);
 		const char *json = obs_data_get_json(data);
