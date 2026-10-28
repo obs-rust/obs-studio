@@ -294,16 +294,16 @@ void OBSBasicSettings::LoadStream1Settings()
 #define SRT_PROTOCOL "srt"
 #define RIST_PROTOCOL "rist"
 
-bool OBSBasicSettings::AllowsMultiTrack(const char *protocol)
+bool OBSBasicSettings::AllowsMultiTrack(const char *protocol_name)
 {
-	return astrcmpi_n(protocol, SRT_PROTOCOL, strlen(SRT_PROTOCOL)) == 0 ||
-	       astrcmpi_n(protocol, RIST_PROTOCOL, strlen(RIST_PROTOCOL)) == 0;
+	return astrcmpi_n(protocol_name, SRT_PROTOCOL, strlen(SRT_PROTOCOL)) == 0 ||
+	       astrcmpi_n(protocol_name, RIST_PROTOCOL, strlen(RIST_PROTOCOL)) == 0;
 }
 
-void OBSBasicSettings::SwapMultiTrack(const char *protocol)
+void OBSBasicSettings::SwapMultiTrack(const char *protocol_name)
 {
-	if (protocol) {
-		if (AllowsMultiTrack(protocol)) {
+	if (protocol_name) {
+		if (AllowsMultiTrack(protocol_name)) {
 			ui->advStreamTrackWidget->setCurrentWidget(ui->streamMultiTracks);
 		} else {
 			ui->advStreamTrackWidget->setCurrentWidget(ui->streamSingleTracks);
@@ -394,12 +394,12 @@ void OBSBasicSettings::SaveStream1Settings()
 	auto oldMultitrackVideoSetting = config_get_bool(main->Config(), "Stream1", "EnableMultitrackVideo");
 
 	if (!IsCustomService()) {
-		OBSDataAutoRelease settings = obs_data_create();
-		obs_data_set_string(settings, "service", QT_TO_UTF8(ui->service->currentText()));
+		OBSDataAutoRelease probe_settings = obs_data_create();
+		obs_data_set_string(probe_settings, "service", QT_TO_UTF8(ui->service->currentText()));
 		OBSServiceAutoRelease temp_service =
-			obs_service_create_private("rtmp_common", "auto config query service", settings);
-		settings = obs_service_get_settings(temp_service);
-		auto available = obs_data_has_user_value(settings, "multitrack_video_configuration_url");
+			obs_service_create_private("rtmp_common", "auto config query service", probe_settings);
+		probe_settings = obs_service_get_settings(temp_service);
+		auto available = obs_data_has_user_value(probe_settings, "multitrack_video_configuration_url");
 
 		if (available) {
 			SaveCheckBox(ui->enableMultitrackVideo, "Stream1", "EnableMultitrackVideo");
@@ -793,9 +793,9 @@ QString OBSBasicSettings::FindProtocol()
 		obs_data_set_string(settings, "service", QT_TO_UTF8(ui->service->currentText()));
 		obs_property_modified(services, settings);
 
-		const char *protocol = obs_data_get_string(settings, "protocol");
-		if (protocol && *protocol) {
-			return QT_UTF8(protocol);
+		const char *protocol_name = obs_data_get_string(settings, "protocol");
+		if (protocol_name && *protocol_name) {
+			return QT_UTF8(protocol_name);
 		}
 	}
 
@@ -1872,55 +1872,55 @@ void OBSBasicSettings::ResetEncoders(bool streamOnly)
 	/* Find fallback encoders                            */
 
 	if (!lastAdvVideoEnc.isEmpty()) {
-		int idx = ui->advOutEncoder->findData(lastAdvVideoEnc);
-		if (idx == -1) {
+		int encoder_idx = ui->advOutEncoder->findData(lastAdvVideoEnc);
+		if (encoder_idx == -1) {
 			lastAdvVideoEnc = get_adv_fallback(lastAdvVideoEnc);
 			ui->advOutEncoder->setProperty("changed", QVariant(true));
 			OutputsChanged();
 		}
 
-		idx = ui->advOutEncoder->findData(lastAdvVideoEnc);
+		encoder_idx = ui->advOutEncoder->findData(lastAdvVideoEnc);
 		s2.unblock();
-		ui->advOutEncoder->setCurrentIndex(idx);
+		ui->advOutEncoder->setCurrentIndex(encoder_idx);
 	}
 
 	if (!lastAdvAudioEnc.isEmpty()) {
-		int idx = ui->advOutAEncoder->findData(lastAdvAudioEnc);
-		if (idx == -1) {
+		int encoder_idx = ui->advOutAEncoder->findData(lastAdvAudioEnc);
+		if (encoder_idx == -1) {
 			lastAdvAudioEnc = get_adv_audio_fallback(lastAdvAudioEnc);
 			ui->advOutAEncoder->setProperty("changed", QVariant(true));
 			OutputsChanged();
 		}
 
-		idx = ui->advOutAEncoder->findData(lastAdvAudioEnc);
+		encoder_idx = ui->advOutAEncoder->findData(lastAdvAudioEnc);
 		s4.unblock();
-		ui->advOutAEncoder->setCurrentIndex(idx);
+		ui->advOutAEncoder->setCurrentIndex(encoder_idx);
 	}
 
 	if (!lastVideoEnc.isEmpty()) {
-		int idx = ui->simpleOutStrEncoder->findData(lastVideoEnc);
-		if (idx == -1) {
+		int encoder_idx = ui->simpleOutStrEncoder->findData(lastVideoEnc);
+		if (encoder_idx == -1) {
 			lastVideoEnc = get_simple_fallback(lastVideoEnc);
 			ui->simpleOutStrEncoder->setProperty("changed", QVariant(true));
 			OutputsChanged();
 		}
 
-		idx = ui->simpleOutStrEncoder->findData(lastVideoEnc);
+		encoder_idx = ui->simpleOutStrEncoder->findData(lastVideoEnc);
 		s1.unblock();
-		ui->simpleOutStrEncoder->setCurrentIndex(idx);
+		ui->simpleOutStrEncoder->setCurrentIndex(encoder_idx);
 	}
 
 	if (!lastAudioEnc.isEmpty()) {
-		int idx = ui->simpleOutStrAEncoder->findData(lastAudioEnc);
-		if (idx == -1) {
+		int encoder_idx = ui->simpleOutStrAEncoder->findData(lastAudioEnc);
+		if (encoder_idx == -1) {
 			lastAudioEnc = (lastAudioEnc == "opus") ? "aac" : "opus";
 			ui->simpleOutStrAEncoder->setProperty("changed", QVariant(true));
 			OutputsChanged();
 		}
 
-		idx = ui->simpleOutStrAEncoder->findData(lastAudioEnc);
+		encoder_idx = ui->simpleOutStrAEncoder->findData(lastAudioEnc);
 		s3.unblock();
-		ui->simpleOutStrAEncoder->setCurrentIndex(idx);
+		ui->simpleOutStrAEncoder->setCurrentIndex(encoder_idx);
 	}
 }
 

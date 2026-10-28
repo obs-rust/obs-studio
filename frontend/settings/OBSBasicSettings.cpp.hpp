@@ -716,8 +716,8 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	LoadColorFormats();
 	LoadFormats();
 
-	auto ReloadAudioSources = [](void *data, calldata_t *param) {
-		auto settings = static_cast<OBSBasicSettings *>(data);
+	auto ReloadAudioSources = [](void *handler_data, calldata_t *param) {
+		auto settings = static_cast<OBSBasicSettings *>(handler_data);
 		auto source = static_cast<obs_source_t *>(calldata_ptr(param, "source"));
 
 		if (!source) {
@@ -735,14 +735,14 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 
 	hotkeyConflictIcon = QIcon::fromTheme("obs", QIcon(":/res/images/warning.svg"));
 
-	auto ReloadHotkeys = [](void *data, calldata_t *) {
-		auto settings = static_cast<OBSBasicSettings *>(data);
+	auto ReloadHotkeys = [](void *handler_data, calldata_t *) {
+		auto settings = static_cast<OBSBasicSettings *>(handler_data);
 		QMetaObject::invokeMethod(settings, &OBSBasicSettings::ReloadHotkeys, OBS_INVALID_HOTKEY_ID);
 	};
 	hotkeyRegistered.Connect(obs_get_signal_handler(), "hotkey_register", ReloadHotkeys, this);
 
-	auto ReloadHotkeysIgnore = [](void *data, calldata_t *param) {
-		auto settings = static_cast<OBSBasicSettings *>(data);
+	auto ReloadHotkeysIgnore = [](void *handler_data, calldata_t *param) {
+		auto settings = static_cast<OBSBasicSettings *>(handler_data);
 		auto key = static_cast<obs_hotkey_t *>(calldata_ptr(param, "key"));
 		QMetaObject::invokeMethod(settings, &OBSBasicSettings::ReloadHotkeys, obs_hotkey_get_id(key));
 	};
@@ -1759,7 +1759,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	const char *streamAudioEnc = config_get_string(main->Config(), "SimpleOutput", "StreamAudioEncoder");
 	int audioBitrate = config_get_uint(main->Config(), "SimpleOutput", "ABitrate");
 	bool advanced = config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
-	const char *preset = config_get_string(main->Config(), "SimpleOutput", "Preset");
+	const char *preset_value = config_get_string(main->Config(), "SimpleOutput", "Preset");
 	const char *qsvPreset = config_get_string(main->Config(), "SimpleOutput", "QSVPreset");
 	const char *nvPreset = config_get_string(main->Config(), "SimpleOutput", "NVENCPreset2");
 	const char *amdPreset = config_get_string(main->Config(), "SimpleOutput", "AMDPreset");
@@ -1781,7 +1781,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	ui->simpleOutRecTrack5->setChecked(tracks & (1 << 4));
 	ui->simpleOutRecTrack6->setChecked(tracks & (1 << 5));
 
-	curPreset = preset;
+	curPreset = preset_value;
 	curQSVPreset = qsvPreset;
 	curNVENCPreset = nvPreset;
 	curAMDPreset = amdPreset;
@@ -1930,9 +1930,9 @@ void OBSBasicSettings::LoadAdvOutputStreamingSettings()
 	ui->advOutMultiTrack6->setChecked(audioMixes & (1 << 5));
 
 	obs_service_t *service_obj = main->GetService();
-	const char *protocol = nullptr;
-	protocol = obs_service_get_protocol(service_obj);
-	SwapMultiTrack(protocol);
+	const char *service_protocol = nullptr;
+	service_protocol = obs_service_get_protocol(service_obj);
+	SwapMultiTrack(service_protocol);
 }
 
 OBSPropertiesView *OBSBasicSettings::CreateEncoderPropertyView(const char *encoder, const char *path, bool changed)
@@ -1947,9 +1947,10 @@ OBSPropertiesView *OBSBasicSettings::CreateEncoderPropertyView(const char *encod
 		const std::filesystem::path jsonFilePath = currentProfile.path / std::filesystem::u8path(path);
 
 		if (!jsonFilePath.empty()) {
-			obs_data_t *data = obs_data_create_from_json_file_safe(jsonFilePath.u8string().c_str(), "bak");
-			obs_data_apply(settings, data);
-			obs_data_release(data);
+			obs_data_t *saved_settings =
+				obs_data_create_from_json_file_safe(jsonFilePath.u8string().c_str(), "bak");
+			obs_data_apply(settings, saved_settings);
+			obs_data_release(saved_settings);
 		}
 	}
 
@@ -2485,32 +2486,32 @@ void OBSBasicSettings::LoadAudioSources()
 		auto handler = obs_source_get_signal_handler(source);
 		audioSourceSignals.emplace_back(
 			handler, "push_to_mute_changed",
-			[](void *data, calldata_t *param) {
-				auto checkBox = static_cast<SilentUpdateCheckBox *>(data);
+			[](void *handler_data, calldata_t *param) {
+				auto checkBox = static_cast<SilentUpdateCheckBox *>(handler_data);
 				bool enabled = calldata_bool(param, "enabled");
 				QMetaObject::invokeMethod(checkBox, &SilentUpdateCheckBox::setCheckedSilently, enabled);
 			},
 			ptmCB);
 		audioSourceSignals.emplace_back(
 			handler, "push_to_mute_delay",
-			[](void *data, calldata_t *param) {
-				auto spinBox = static_cast<SilentUpdateSpinBox *>(data);
+			[](void *handler_data, calldata_t *param) {
+				auto spinBox = static_cast<SilentUpdateSpinBox *>(handler_data);
 				auto delay = static_cast<int>(calldata_int(param, "delay"));
 				QMetaObject::invokeMethod(spinBox, &SilentUpdateSpinBox::setValueSilently, delay);
 			},
 			ptmSB);
 		audioSourceSignals.emplace_back(
 			handler, "push_to_talk_changed",
-			[](void *data, calldata_t *param) {
-				auto checkBox = static_cast<SilentUpdateCheckBox *>(data);
+			[](void *handler_data, calldata_t *param) {
+				auto checkBox = static_cast<SilentUpdateCheckBox *>(handler_data);
 				bool enabled = calldata_bool(param, "enabled");
 				QMetaObject::invokeMethod(checkBox, &SilentUpdateCheckBox::setCheckedSilently, enabled);
 			},
 			pttCB);
 		audioSourceSignals.emplace_back(
 			handler, "push_to_talk_delay",
-			[](void *data, calldata_t *param) {
-				auto spinBox = static_cast<SilentUpdateSpinBox *>(data);
+			[](void *handler_data, calldata_t *param) {
+				auto spinBox = static_cast<SilentUpdateSpinBox *>(handler_data);
 				auto delay = static_cast<int>(calldata_int(param, "delay"));
 				QMetaObject::invokeMethod(spinBox, &SilentUpdateSpinBox::setValueSilently, delay);
 			},
@@ -2533,8 +2534,8 @@ void OBSBasicSettings::LoadAudioSources()
 
 	using AddSource_t = decltype(AddSource);
 	obs_enum_sources(
-		[](void *data, obs_source_t *source) {
-			auto &AddSource = *static_cast<AddSource_t *>(data);
+		[](void *handler_data, obs_source_t *source) {
+			auto &AddSource = *static_cast<AddSource_t *>(handler_data);
 			if (!obs_source_removed(source)) {
 				AddSource(source);
 			}
@@ -2937,8 +2938,8 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 	using keys_t = map<obs_hotkey_id, vector<obs_key_combination_t>>;
 	keys_t keys;
 	obs_enum_hotkey_bindings(
-		[](void *data, size_t, obs_hotkey_binding_t *binding) {
-			auto &keys = *static_cast<keys_t *>(data);
+		[](void *handler_data, size_t, obs_hotkey_binding_t *binding) {
+			auto &keys = *static_cast<keys_t *>(handler_data);
 
 			keys[obs_hotkey_binding_get_hotkey_id(binding)].emplace_back(
 				obs_hotkey_binding_get_key_combination(binding));
@@ -3081,8 +3082,8 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 		});
 	};
 
-	auto data = make_tuple(RegisterHotkey, std::move(keys), ignoreKey, this);
-	using data_t = decltype(data);
+	auto hotkey_enum_data = make_tuple(RegisterHotkey, std::move(keys), ignoreKey, this);
+	using data_t = decltype(hotkey_enum_data);
 	obs_enum_hotkeys(
 		[](void *data, obs_hotkey_id id, obs_hotkey_t *key) {
 			data_t &d = *static_cast<data_t *>(data);
@@ -3091,7 +3092,7 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 			}
 			return true;
 		},
-		&data);
+		&hotkey_enum_data);
 
 	for (auto keyId : pairIds) {
 		auto data1 = pairLabels.find(keyId);
@@ -3887,9 +3888,9 @@ void OBSBasicSettings::SaveHotkeySettings()
 
 		OBSDataArrayAutoRelease array = obs_hotkey_save(hw.id);
 		OBSBasic::MarkSavedHotkeys(array);
-		OBSDataAutoRelease data = obs_data_create();
-		obs_data_set_array(data, "bindings", array);
-		const char *json = obs_data_get_json(data);
+		OBSDataAutoRelease bindings_data = obs_data_create();
+		obs_data_set_array(bindings_data, "bindings", array);
+		const char *json = obs_data_get_json(bindings_data);
 		config_set_string(config, "Hotkeys", hw.name.c_str(), json);
 	}
 }
@@ -4633,12 +4634,12 @@ void OBSBasicSettings::SearchHotkeys(const QString &text, obs_key_combination_t 
 	ui->hotkeyScrollArea->ensureVisible(0, 0);
 
 	QLayoutItem *hotkeysItem = ui->hotkeyFormLayout->itemAt(0);
-	QWidget *hotkeys = hotkeysItem->widget();
-	if (!hotkeys) {
+	QWidget *hotkeys_widget = hotkeysItem->widget();
+	if (!hotkeys_widget) {
 		return;
 	}
 
-	QFormLayout *hotkeysLayout = qobject_cast<QFormLayout *>(hotkeys->layout());
+	QFormLayout *hotkeysLayout = qobject_cast<QFormLayout *>(hotkeys_widget->layout());
 	hotkeysLayout->setEnabled(false);
 
 	QString needle = text.toLower();
@@ -5151,7 +5152,7 @@ extern const char *get_simple_output_encoder(const char *encoder);
 void OBSBasicSettings::SimpleStreamingEncoderChanged()
 {
 	QString encoder = ui->simpleOutStrEncoder->currentData().toString();
-	QString preset;
+	QString selected_preset;
 	const char *defaultPreset = nullptr;
 
 	ui->simpleOutAdvanced->setVisible(true);
@@ -5165,7 +5166,7 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 		ui->simpleOutPreset->addItem("quality", "quality");
 
 		defaultPreset = "balanced";
-		preset = curQSVPreset;
+		selected_preset = curQSVPreset;
 
 	} else if (encoder == SIMPLE_ENCODER_NVENC || encoder == SIMPLE_ENCODER_NVENC_HEVC ||
 		   encoder == SIMPLE_ENCODER_NVENC_AV1) {
@@ -5177,14 +5178,14 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 		obs_property_t *p = obs_properties_get(props, isFFmpegEncoder ? "preset2" : "preset");
 		size_t num = obs_property_list_item_count(p);
 		for (size_t i = 0; i < num; i++) {
-			const char *name = obs_property_list_item_name(p, i);
+			const char *preset_name = obs_property_list_item_name(p, i);
 			const char *val = obs_property_list_item_string(p, i);
 
-			ui->simpleOutPreset->addItem(QT_UTF8(name), val);
+			ui->simpleOutPreset->addItem(QT_UTF8(preset_name), val);
 		}
 
 		defaultPreset = "default";
-		preset = curNVENCPreset;
+		selected_preset = curNVENCPreset;
 
 	} else if (encoder == SIMPLE_ENCODER_AMD || encoder == SIMPLE_ENCODER_AMD_HEVC) {
 		ui->simpleOutPreset->addItem("Speed", "speed");
@@ -5192,7 +5193,7 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 		ui->simpleOutPreset->addItem("Quality", "quality");
 
 		defaultPreset = "balanced";
-		preset = curAMDPreset;
+		selected_preset = curAMDPreset;
 	} else if (encoder == SIMPLE_ENCODER_APPLE_H264
 #ifdef ENABLE_HEVC
 		   || encoder == SIMPLE_ENCODER_APPLE_HEVC
@@ -5210,7 +5211,7 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 		ui->simpleOutPreset->addItem("High Quality", "highQuality");
 
 		defaultPreset = "balanced";
-		preset = curAMDAV1Preset;
+		selected_preset = curAMDAV1Preset;
 	} else {
 
 #define PRESET_STR(val) QString(Str("Basic.Settings.Output.EncoderPreset." val)).arg(val)
@@ -5232,10 +5233,10 @@ void OBSBasicSettings::SimpleStreamingEncoderChanged()
 		}
 
 		defaultPreset = "veryfast";
-		preset = curPreset;
+		selected_preset = curPreset;
 	}
 
-	int idx = ui->simpleOutPreset->findData(QVariant(preset));
+	int idx = ui->simpleOutPreset->findData(QVariant(selected_preset));
 	if (idx == -1) {
 		idx = ui->simpleOutPreset->findData(QVariant(defaultPreset));
 	}
@@ -5361,9 +5362,9 @@ void OBSBasicSettings::AdvReplayBufferChanged()
 			currentProfile.path / std::filesystem::u8path("recordEncoder.json");
 
 		if (!jsonFilePath.empty()) {
-			OBSDataAutoRelease data =
+			OBSDataAutoRelease saved_settings =
 				obs_data_create_from_json_file_safe(jsonFilePath.u8string().c_str(), "bak");
-			obs_data_apply(settings, data);
+			obs_data_apply(settings, saved_settings);
 		}
 	}
 

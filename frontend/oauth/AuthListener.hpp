@@ -20,5 +20,5 @@ protected:
 public:
 	explicit AuthListener(QObject *parent = 0);
 	quint16 GetPort();
-	void SetState(QString state);
+	void SetState(QString newState);
 };
