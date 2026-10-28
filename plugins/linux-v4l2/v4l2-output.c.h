@@ -312,7 +312,7 @@ static void virtual_video(void *param, struct video_data *frame)
 		if (written <= 0)
 			break;
 		frame_data += written;
-		frame_size -= written;
+		frame_size -= (uint32_t)written;
 	}
 }
 

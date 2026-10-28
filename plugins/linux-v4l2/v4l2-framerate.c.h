@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 void v4l2_framerate_list_add_discrete(obs_property_t *prop, struct dstr *buffer, uint32_t numerator,
 				      uint32_t denominator)
 {
-	float fps = (float)denominator / numerator;
-	int64_t pack = v4l2_pack_tuple(numerator, denominator);
+	float fps = (float)denominator / (float)numerator;
+	int64_t pack = v4l2_pack_tuple((int32_t)numerator, (int32_t)denominator);
 	dstr_printf(buffer, "%.2f", (double)fps);
 	obs_property_list_add_int(prop, buffer->array, pack);
 }
@@ -36,7 +36,7 @@ int64_t v4l2_framerate_saved(int64_t setting, const struct v4l2_fract *intervals
 
 	for (size_t i = 0; i < count; i++) {
 		if (legacy_num && intervals[i].numerator == legacy_num && intervals[i].denominator == legacy_denom)
-			return v4l2_pack_tuple(intervals[i].numerator, intervals[i].denominator);
+			return v4l2_pack_tuple((int32_t)intervals[i].numerator, (int32_t)intervals[i].denominator);
 	}
 
 	/* The truncated value: the denominator of the interval picked. If
@@ -52,7 +52,7 @@ int64_t v4l2_framerate_saved(int64_t setting, const struct v4l2_fract *intervals
 		match = &intervals[i];
 	}
 	if (match)
-		return v4l2_pack_tuple(match->numerator, match->denominator);
+		return v4l2_pack_tuple((int32_t)match->numerator, (int32_t)match->denominator);
 
 	/* Neither names a rate (0/x or x/0 s per frame): leave the device's
 	 * rate unchanged rather than have the driver pick its fastest. */

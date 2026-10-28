@@ -41,7 +41,7 @@ static inline bool valid_control(struct v4l2_queryctrl *qctrl)
  * it (uvcvideo with EACCES). Show it disabled. Returns whether a property's
  * state changed, so the Properties window has to be rebuilt.
  */
-static bool v4l2_update_controls_active(int_fast32_t dev, obs_properties_t *props)
+static bool v4l2_update_controls_active(int dev, obs_properties_t *props)
 {
 	struct v4l2_queryctrl qctrl;
 	bool changed = false;
@@ -84,7 +84,7 @@ static bool v4l2_control_changed(void *data, obs_properties_t *props, obs_proper
 		break;
 	case OBS_PROPERTY_INT:
 	case OBS_PROPERTY_LIST:
-		control.value = obs_data_get_int(settings, obs_property_name(prop));
+		control.value = (int32_t)obs_data_get_int(settings, obs_property_name(prop));
 		break;
 	default:
 		blog(LOG_ERROR, "unknown property type for %s", obs_property_name(prop));
@@ -109,7 +109,7 @@ static bool v4l2_control_changed(void *data, obs_properties_t *props, obs_proper
 	return changed;
 }
 
-static bool v4l2_update_controls_menu(int_fast32_t dev, obs_properties_t *props, struct v4l2_queryctrl *qctrl)
+static bool v4l2_update_controls_menu(int dev, obs_properties_t *props, struct v4l2_queryctrl *qctrl)
 {
 	obs_property_t *prop;
 	struct v4l2_querymenu qmenu;
@@ -122,7 +122,8 @@ static bool v4l2_update_controls_menu(int_fast32_t dev, obs_properties_t *props,
 	memset(&qmenu, 0, sizeof(qmenu));
 	qmenu.id = qctrl->id;
 
-	for (qmenu.index = qctrl->minimum; qmenu.index <= (uint32_t)qctrl->maximum; qmenu.index += qctrl->step) {
+	for (qmenu.index = (uint32_t)qctrl->minimum; qmenu.index <= (uint32_t)qctrl->maximum;
+	     qmenu.index += (uint32_t)qctrl->step) {
 		if (0 == v4l2_ioctl(dev, VIDIOC_QUERYMENU, &qmenu)) {
 			obs_property_list_add_int(prop, (char *)qmenu.name, qmenu.index);
 		}
@@ -136,7 +137,7 @@ static bool v4l2_update_controls_menu(int_fast32_t dev, obs_properties_t *props,
 	return true;
 }
 
-static inline void add_control_property(obs_properties_t *props, obs_data_t *settings, int_fast32_t dev,
+static inline void add_control_property(obs_properties_t *props, obs_data_t *settings, int dev,
 					struct v4l2_queryctrl *qctrl)
 {
 	obs_property_t *prop = NULL;
@@ -171,7 +172,7 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 		obs_property_set_enabled(prop, (qctrl->flags & V4L2_CTRL_FLAG_INACTIVE) == 0);
 }
 
-int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs_data_t *settings)
+int v4l2_update_controls(int dev, obs_properties_t *props, obs_data_t *settings)
 {
 	struct v4l2_queryctrl qctrl;
 
@@ -215,7 +216,7 @@ static bool v4l2_saved_control_value(obs_data_t *settings, const struct v4l2_que
  * many were left for a later pass: inactive ones, and on the first pass the
  * ones the device refused.
  */
-static int v4l2_apply_controls_pass(int_fast32_t dev, obs_data_t *settings, bool last_pass)
+static int v4l2_apply_controls_pass(int dev, obs_data_t *settings, bool last_pass)
 {
 	struct v4l2_queryctrl qctrl;
 	int left = 0;
@@ -259,7 +260,7 @@ static int v4l2_apply_controls_pass(int_fast32_t dev, obs_data_t *settings, bool
 	return left;
 }
 
-void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings)
+void v4l2_apply_controls(int dev, obs_data_t *settings)
 {
 	if (dev < 0 || !settings)
 		return;
@@ -268,7 +269,7 @@ void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings)
 		v4l2_apply_controls_pass(dev, settings, true);
 }
 
-void v4l2_device_identity(int_fast32_t dev, struct dstr *identity)
+void v4l2_device_identity(int dev, struct dstr *identity)
 {
 	struct v4l2_capability cap;
 
@@ -306,7 +307,7 @@ static void v4l2_move_control_value(obs_data_t *from, obs_data_t *to, const char
 	obs_data_item_release(&item);
 }
 
-bool v4l2_controls_use_device(int_fast32_t dev, obs_data_t *settings, const char *saved_for, const char *identity)
+bool v4l2_controls_use_device(int dev, obs_data_t *settings, const char *saved_for, const char *identity)
 {
 	if (!settings || !identity || !*identity)
 		return false;

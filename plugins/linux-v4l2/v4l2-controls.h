@@ -38,7 +38,7 @@ extern "C" {
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs_data_t *settings);
+int v4l2_update_controls(int dev, obs_properties_t *props, obs_data_t *settings);
 
 /**
  * Apply the saved camera controls to a device.
@@ -50,7 +50,7 @@ int_fast32_t v4l2_update_controls(int_fast32_t dev, obs_properties_t *props, obs
  * @param dev handle to the v4l2 device
  * @param settings the settings of the source
  */
-void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings);
+void v4l2_apply_controls(int dev, obs_data_t *settings);
 
 /**
  * Get the identity of a device: its card name and bus info, as in the
@@ -59,7 +59,7 @@ void v4l2_apply_controls(int_fast32_t dev, obs_data_t *settings);
  * @param dev handle to the v4l2 device
  * @param identity set to the identity, empty if the device cannot tell
  */
-void v4l2_device_identity(int_fast32_t dev, struct dstr *identity);
+void v4l2_device_identity(int dev, struct dstr *identity);
 
 /**
  * Make the saved controls in the settings those of a device.
@@ -77,7 +77,7 @@ void v4l2_device_identity(int_fast32_t dev, struct dstr *identity);
  *
  * @return true if the settings changed
  */
-bool v4l2_controls_use_device(int_fast32_t dev, obs_data_t *settings, const char *saved_for, const char *identity);
+bool v4l2_controls_use_device(int dev, obs_data_t *settings, const char *saved_for, const char *identity);
 
 #ifdef __cplusplus
 }

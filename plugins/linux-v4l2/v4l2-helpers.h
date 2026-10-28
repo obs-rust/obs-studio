@@ -46,7 +46,7 @@ struct v4l2_mmap_info {
  */
 struct v4l2_buffer_data {
 	/** number of mapped buffers */
-	uint_fast32_t count;
+	uint count;
 	/** memory info for mapped buffers */
 	struct v4l2_mmap_info *info;
 };
@@ -58,7 +58,7 @@ struct v4l2_buffer_data {
  *
  * @return obs video_format id
  */
-static inline enum video_format v4l2_to_obs_video_format(uint_fast32_t format)
+static inline enum video_format v4l2_to_obs_video_format(uint format)
 {
 	switch (format) {
 	case V4L2_PIX_FMT_YVYU:
@@ -201,7 +201,7 @@ static inline uint32_t v4l2_reopen_delay_ms(uint32_t attempt)
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_start_capture(int_fast32_t dev, struct v4l2_buffer_data *buf);
+int v4l2_start_capture(int dev, struct v4l2_buffer_data *buf);
 
 /**
  * Stop the video capture on the device.
@@ -210,7 +210,7 @@ int_fast32_t v4l2_start_capture(int_fast32_t dev, struct v4l2_buffer_data *buf);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_stop_capture(int_fast32_t dev);
+int v4l2_stop_capture(int dev);
 
 /**
  * Resets video capture on the device.
@@ -224,7 +224,7 @@ int_fast32_t v4l2_stop_capture(int_fast32_t dev);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_reset_capture(int_fast32_t dev, struct v4l2_buffer_data *buf);
+int v4l2_reset_capture(int dev, struct v4l2_buffer_data *buf);
 
 #ifdef _DEBUG
 /**
@@ -236,7 +236,7 @@ int_fast32_t v4l2_reset_capture(int_fast32_t dev, struct v4l2_buffer_data *buf);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_query_all_buffers(int_fast32_t dev, struct v4l2_buffer_data *buf_data);
+int v4l2_query_all_buffers(int dev, struct v4l2_buffer_data *buf_data);
 #endif
 
 /**
@@ -249,7 +249,7 @@ int_fast32_t v4l2_query_all_buffers(int_fast32_t dev, struct v4l2_buffer_data *b
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_create_mmap(int_fast32_t dev, struct v4l2_buffer_data *buf);
+int v4l2_create_mmap(int dev, struct v4l2_buffer_data *buf);
 
 /**
  * Destroy the memory mapping for buffers
@@ -258,7 +258,7 @@ int_fast32_t v4l2_create_mmap(int_fast32_t dev, struct v4l2_buffer_data *buf);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_destroy_mmap(struct v4l2_buffer_data *buf);
+int v4l2_destroy_mmap(struct v4l2_buffer_data *buf);
 
 /**
  * Set the video input on the device.
@@ -270,7 +270,7 @@ int_fast32_t v4l2_destroy_mmap(struct v4l2_buffer_data *buf);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_set_input(int_fast32_t dev, int *input);
+int v4l2_set_input(int dev, int *input);
 
 /**
  * Get capabilities for an input.
@@ -281,7 +281,7 @@ int_fast32_t v4l2_set_input(int_fast32_t dev, int *input);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_get_input_caps(int_fast32_t dev, int input, uint32_t *caps);
+int v4l2_get_input_caps(int dev, int input, uint32_t *caps);
 
 /**
  * Set the video format on the device.
@@ -296,7 +296,7 @@ int_fast32_t v4l2_get_input_caps(int_fast32_t dev, int input, uint32_t *caps);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_set_format(int_fast32_t dev, int64_t *resolution, int *pixelformat, int *bytesperline);
+int v4l2_set_format(int dev, int64_t *resolution, int *pixelformat, int *bytesperline);
 
 /**
  * Set the framerate on the device.
@@ -308,7 +308,7 @@ int_fast32_t v4l2_set_format(int_fast32_t dev, int64_t *resolution, int *pixelfo
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_set_framerate(int_fast32_t dev, int64_t *framerate);
+int v4l2_set_framerate(int dev, int64_t *framerate);
 
 /**
  * Set a video standard on the device.
@@ -320,7 +320,7 @@ int_fast32_t v4l2_set_framerate(int_fast32_t dev, int64_t *framerate);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_set_standard(int_fast32_t dev, int *standard);
+int v4l2_set_standard(int dev, int *standard);
 
 /**
  * Get the dv timing for an input with a specified index
@@ -331,7 +331,7 @@ int_fast32_t v4l2_set_standard(int_fast32_t dev, int *standard);
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_enum_dv_timing(int_fast32_t dev, struct v4l2_dv_timings *dvt, int index);
+int v4l2_enum_dv_timing(int dev, struct v4l2_dv_timings *dvt, int index);
 /**
  * Set a dv timing on the device
  *
@@ -342,7 +342,7 @@ int_fast32_t v4l2_enum_dv_timing(int_fast32_t dev, struct v4l2_dv_timings *dvt, 
  *
  * @return negative on failure
  */
-int_fast32_t v4l2_set_dv_timing(int_fast32_t dev, int *timing);
+int v4l2_set_dv_timing(int dev, int *timing);
 
 /* Where the device nodes and sysfs are; tests point them at fakes */
 #ifndef V4L2_DEV_DIR
@@ -408,7 +408,7 @@ bool v4l2_identity_equal(const struct v4l2_identity *a, const struct v4l2_identi
  *
  * @return false if the device cannot tell or does not capture video
  */
-bool v4l2_identity_query(int_fast32_t dev, const char *path, struct v4l2_identity *identity);
+bool v4l2_identity_query(int dev, const char *path, struct v4l2_identity *identity);
 
 /** Read the identity saved in the settings, unknown if there is none */
 void v4l2_identity_load(obs_data_t *settings, struct v4l2_identity *identity);

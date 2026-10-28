@@ -82,7 +82,7 @@ int v4l2_decode_frame(struct obs_source_frame *out, uint8_t *data, size_t length
 {
 	int r;
 	decoder->packet->data = data;
-	decoder->packet->size = length;
+	decoder->packet->size = (int)length;
 	r = avcodec_send_packet(decoder->context, decoder->packet);
 	if (r < 0) {
 		blog(LOG_DEBUG, "failed to send frame to codec: %s", av_err2str(r));
@@ -97,9 +97,9 @@ int v4l2_decode_frame(struct obs_source_frame *out, uint8_t *data, size_t length
 		return r;
 	}
 
-	for (uint_fast32_t i = 0; i < MAX_AV_PLANES; ++i) {
+	for (uint i = 0; i < MAX_AV_PLANES; ++i) {
 		out->data[i] = decoder->frame->data[i];
-		out->linesize[i] = decoder->frame->linesize[i];
+		out->linesize[i] = (uint32_t)decoder->frame->linesize[i];
 	}
 
 	switch (decoder->context->pix_fmt) {

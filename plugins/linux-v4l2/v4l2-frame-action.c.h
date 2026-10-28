@@ -34,7 +34,7 @@ enum v4l2_frame_action v4l2_frame_action(struct obs_source_frame *out, int pixfm
 		if (r < 0)
 			return V4L2_FRAME_DROP;
 	} else {
-		for (uint_fast32_t i = 0; i < MAX_AV_PLANES; ++i)
+		for (uint i = 0; i < MAX_AV_PLANES; ++i)
 			out->data[i] = start + plane_offsets[i];
 	}
 

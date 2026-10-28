@@ -31,7 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define V4L2_FOURCC_STR(code)                                                                \
 	(char[5])                                                                            \
 	{                                                                                    \
-		code & 0xFF, (code >> 8) & 0xFF, (code >> 16) & 0xFF, (code >> 24) & 0xFF, 0 \
+		(char)(code & 0xFF), (char)((code >> 8) & 0xFF), (char)((code >> 16) & 0xFF),      \
+		(char)((code >> 24) & 0xFF), 0                                                     \
 	}
 
 #define blog(level, msg, ...) blog(level, "v4l2-input: " msg, ##__VA_ARGS__)
@@ -61,7 +62,7 @@ struct v4l2_data {
 	/* the framerate setting v4l2_init() mapped a saved value to, for
 	 * v4l2_update() to store; 0 if none */
 	int64_t framerate_setting;
-	int_fast32_t dev;
+	int dev;
 	int width;
 	int height;
 	int linesize;
@@ -140,37 +141,37 @@ static void v4l2_prep_obs_frame(struct v4l2_data *data, struct obs_source_frame 
 	memset(frame, 0, sizeof(struct obs_source_frame));
 	memset(plane_offsets, 0, sizeof(size_t) * MAX_AV_PLANES);
 
-	const enum video_format format = v4l2_to_obs_video_format(data->pixfmt);
+	const enum video_format format = v4l2_to_obs_video_format((uint32_t)data->pixfmt);
 
 	frame->flags = OBS_SOURCE_FRAME_LINEAR_ALPHA;
-	frame->width = data->width;
-	frame->height = data->height;
+	frame->width = (uint32_t)data->width;
+	frame->height = (uint32_t)data->height;
 	frame->format = format;
 	video_format_get_parameters_for_format(VIDEO_CS_DEFAULT, data->color_range, format, frame->color_matrix,
 					       frame->color_range_min, frame->color_range_max);
 
 	switch (data->pixfmt) {
 	case V4L2_PIX_FMT_NV12:
-		frame->linesize[0] = data->linesize;
-		frame->linesize[1] = data->linesize;
-		plane_offsets[1] = data->linesize * data->height;
+		frame->linesize[0] = (uint32_t)data->linesize;
+		frame->linesize[1] = (uint32_t)data->linesize;
+		plane_offsets[1] = (size_t)data->linesize * (size_t)data->height;
 		break;
 	case V4L2_PIX_FMT_YVU420:
-		frame->linesize[0] = data->linesize;
-		frame->linesize[1] = data->linesize / 2;
-		frame->linesize[2] = data->linesize / 2;
-		plane_offsets[1] = data->linesize * data->height * 5 / 4;
-		plane_offsets[2] = data->linesize * data->height;
+		frame->linesize[0] = (uint32_t)data->linesize;
+		frame->linesize[1] = (uint32_t)(data->linesize / 2);
+		frame->linesize[2] = (uint32_t)(data->linesize / 2);
+		plane_offsets[1] = (size_t)data->linesize * (size_t)data->height * 5 / 4;
+		plane_offsets[2] = (size_t)data->linesize * (size_t)data->height;
 		break;
 	case V4L2_PIX_FMT_YUV420:
-		frame->linesize[0] = data->linesize;
-		frame->linesize[1] = data->linesize / 2;
-		frame->linesize[2] = data->linesize / 2;
-		plane_offsets[1] = data->linesize * data->height;
-		plane_offsets[2] = data->linesize * data->height * 5 / 4;
+		frame->linesize[0] = (uint32_t)data->linesize;
+		frame->linesize[1] = (uint32_t)(data->linesize / 2);
+		frame->linesize[2] = (uint32_t)(data->linesize / 2);
+		plane_offsets[1] = (size_t)data->linesize * (size_t)data->height;
+		plane_offsets[2] = (size_t)data->linesize * (size_t)data->height * 5 / 4;
 		break;
 	default:
-		frame->linesize[0] = data->linesize;
+		frame->linesize[0] = (uint32_t)data->linesize;
 		break;
 	}
 }
@@ -200,10 +201,10 @@ static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 
 	/* Get framerate and calculate appropriate select timeout value. */
 	v4l2_unpack_tuple(&fps_num, &fps_denom, data->framerate);
-	ffps = (float)fps_denom / fps_num;
+	ffps = (float)fps_denom / (float)fps_num;
 	blog(LOG_DEBUG, "%s: framerate: %.2f fps", data->device_id, (double)ffps);
 	/* Timeout set to 5 frame periods. */
-	timeout_usec = (1000000 * data->timeout_frames) / ffps;
+	timeout_usec = (uint64_t)((double)(1000000 * data->timeout_frames) / (double)ffps);
 	blog(LOG_INFO, "%s: select timeout set to %" PRIu64 " (%dx frame periods)", data->device_id, timeout_usec,
 	     data->timeout_frames);
 
@@ -226,7 +227,7 @@ static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 
 		/* Set timeout timevalue. */
 		tv.tv_sec = 0;
-		tv.tv_usec = timeout_usec;
+		tv.tv_usec = (suseconds_t)timeout_usec;
 
 		r = select(data->dev + 1, &fds, NULL, NULL, &tv);
 		if (r < 0) {
@@ -555,7 +556,7 @@ static void v4l2_device_list(obs_property_t *prop, obs_data_t *settings)
 /*
  * List inputs for device
  */
-static void v4l2_input_list(int_fast32_t dev, obs_property_t *prop)
+static void v4l2_input_list(int dev, obs_property_t *prop)
 {
 	struct v4l2_input in;
 	memset(&in, 0, sizeof(in));
@@ -613,7 +614,7 @@ static void v4l2_standard_list(int dev, obs_property_t *prop)
 	obs_property_list_add_int(prop, obs_module_text("LeaveUnchanged"), -1);
 
 	while (v4l2_ioctl(dev, VIDIOC_ENUMSTD, &std) == 0) {
-		obs_property_list_add_int(prop, (char *)std.name, std.id);
+		obs_property_list_add_int(prop, (char *)std.name, (long long)std.id);
 		std.index++;
 	}
 }
@@ -653,7 +654,7 @@ static void v4l2_dv_timing_list(int dev, obs_property_t *prop)
 /*
  * List resolutions for device and format
  */
-static void v4l2_resolution_list(int dev, uint_fast32_t pixelformat, obs_property_t *prop)
+static void v4l2_resolution_list(int dev, uint pixelformat, obs_property_t *prop)
 {
 	struct v4l2_frmsizeenum frmsize;
 	frmsize.pixel_format = pixelformat;
@@ -672,7 +673,8 @@ static void v4l2_resolution_list(int dev, uint_fast32_t pixelformat, obs_propert
 		while (v4l2_ioctl(dev, VIDIOC_ENUM_FRAMESIZES, &frmsize) == 0) {
 			dstr_printf(&buffer, "%dx%d", frmsize.discrete.width, frmsize.discrete.height);
 			obs_property_list_add_int(prop, buffer.array,
-						  v4l2_pack_tuple(frmsize.discrete.width, frmsize.discrete.height));
+						  v4l2_pack_tuple((int32_t)frmsize.discrete.width,
+								  (int32_t)frmsize.discrete.height));
 			frmsize.index++;
 		}
 		break;
@@ -696,8 +698,7 @@ static void v4l2_resolution_list(int dev, uint_fast32_t pixelformat, obs_propert
 /*
  * List framerates for device and resolution
  */
-static void v4l2_framerate_list(int dev, uint_fast32_t pixelformat, uint_fast32_t width, uint_fast32_t height,
-				obs_property_t *prop)
+static void v4l2_framerate_list(int dev, uint pixelformat, uint width, uint height, obs_property_t *prop)
 {
 	struct v4l2_frmivalenum frmival;
 	frmival.pixel_format = pixelformat;
@@ -729,7 +730,7 @@ static void v4l2_framerate_list(int dev, uint_fast32_t pixelformat, uint_fast32_
 			int num;
 			int denom;
 			v4l2_unpack_tuple(&num, &denom, *packed);
-			float fps = (float)denom / num;
+			float fps = (float)denom / (float)num;
 			dstr_printf(&buffer, "%.2f", (double)fps);
 			obs_property_list_add_int(prop, buffer.array, *packed);
 		}
@@ -874,7 +875,7 @@ static bool format_selected(obs_properties_t *props, obs_property_t *p, obs_data
 	obs_property_set_visible(dv_timing, (caps & V4L2_IN_CAP_DV_TIMINGS) ? true : false);
 
 	if (!caps) {
-		v4l2_resolution_list(dev, obs_data_get_int(settings, "pixelformat"), resolution);
+		v4l2_resolution_list(dev, (uint32_t)obs_data_get_int(settings, "pixelformat"), resolution);
 	}
 	if (caps & V4L2_IN_CAP_STD)
 		v4l2_standard_list(dev, standard);
@@ -906,7 +907,8 @@ static bool resolution_selected(obs_properties_t *props, obs_property_t *p, obs_
 
 	obs_property_t *prop = obs_properties_get(props, "framerate");
 	v4l2_unpack_tuple(&width, &height, obs_data_get_int(settings, "resolution"));
-	v4l2_framerate_list(dev, obs_data_get_int(settings, "pixelformat"), width, height, prop);
+	v4l2_framerate_list(dev, (uint32_t)obs_data_get_int(settings, "pixelformat"), (uint32_t)width, (uint32_t)height,
+			    prop);
 	v4l2_close(dev);
 
 	obs_property_modified(prop, settings);
@@ -1541,14 +1543,14 @@ static void v4l2_restore_controls(struct v4l2_data *data)
 /*
  * The framerate a saved setting asks for at the device's format and size
  */
-static int64_t v4l2_saved_framerate(int_fast32_t dev, uint32_t pixelformat, int width, int height, int64_t setting)
+static int64_t v4l2_saved_framerate(int dev, uint32_t pixelformat, int width, int height, int64_t setting)
 {
 	struct v4l2_fract intervals[64];
 	size_t count = 0;
 	struct v4l2_frmivalenum frmival = {
-		.pixel_format = pixelformat,
-		.width = width,
-		.height = height,
+		.pixel_format = (uint32_t)pixelformat,
+		.width = (uint32_t)width,
+		.height = (uint32_t)height,
 	};
 
 	while (count < sizeof(intervals) / sizeof(intervals[0]) &&
@@ -1664,8 +1666,8 @@ static int v4l2_setup_device(struct v4l2_data *data)
 		blog(LOG_ERROR, "Unable to set format");
 		return -1;
 	}
-	if (v4l2_to_obs_video_format(data->pixfmt) == VIDEO_FORMAT_NONE && data->pixfmt != V4L2_PIX_FMT_MJPEG &&
-	    data->pixfmt != V4L2_PIX_FMT_H264) {
+	if (v4l2_to_obs_video_format((uint32_t)data->pixfmt) == VIDEO_FORMAT_NONE &&
+	    data->pixfmt != V4L2_PIX_FMT_MJPEG && data->pixfmt != V4L2_PIX_FMT_H264) {
 		blog(LOG_ERROR, "Selected video format not supported");
 		return -1;
 	}
@@ -1675,7 +1677,7 @@ static int v4l2_setup_device(struct v4l2_data *data)
 	blog(LOG_INFO, "Linesize: %d Bytes", data->linesize);
 
 	/* set framerate */
-	saved = v4l2_saved_framerate(data->dev, data->pixfmt, data->width, data->height, data->framerate);
+	saved = v4l2_saved_framerate(data->dev, (uint32_t)data->pixfmt, data->width, data->height, data->framerate);
 	if (saved != data->framerate) {
 		blog(LOG_INFO, "Framerate setting %" PRId64 " was saved by an older version, using %" PRId64,
 		     data->framerate, saved);
@@ -1691,7 +1693,7 @@ static int v4l2_setup_device(struct v4l2_data *data)
 		data->framerate = v4l2_pack_tuple(1, FALLBACK_FRAMERATE);
 	}
 	v4l2_unpack_tuple(&fps_num, &fps_denom, data->framerate);
-	blog(LOG_INFO, "Framerate: %.2f fps", (double)((float)fps_denom / fps_num));
+	blog(LOG_INFO, "Framerate: %.2f fps", (double)((float)fps_denom / (float)fps_num));
 
 	/* The camera starts on the driver's values when it is plugged in, and
 	 * other programs can change them: write the saved controls, unless the
@@ -1815,15 +1817,15 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 	 * restart, v4l2_settings_changed found it unchanged (#2103). */
 	if (needs_restart || !data->settings_device_id)
 		v4l2_update_device(data, settings);
-	data->input = obs_data_get_int(settings, "input");
-	data->pixfmt = obs_data_get_int(settings, "pixelformat");
-	data->standard = obs_data_get_int(settings, "standard");
-	data->dv_timing = obs_data_get_int(settings, "dv_timing");
+	data->input = (int)obs_data_get_int(settings, "input");
+	data->pixfmt = (int)obs_data_get_int(settings, "pixelformat");
+	data->standard = (int)obs_data_get_int(settings, "standard");
+	data->dv_timing = (int)obs_data_get_int(settings, "dv_timing");
 	data->resolution = obs_data_get_int(settings, "resolution");
 	data->framerate = obs_data_get_int(settings, "framerate");
-	data->color_range = obs_data_get_int(settings, "color_range");
+	data->color_range = (int)obs_data_get_int(settings, "color_range");
 	data->auto_reset = obs_data_get_bool(settings, "auto_reset");
-	data->timeout_frames = obs_data_get_int(settings, "timeout_frames");
+	data->timeout_frames = (int)obs_data_get_int(settings, "timeout_frames");
 
 	/* Ticking the option writes nothing: it takes effect the next time
 	 * the device opens or the settings change. */

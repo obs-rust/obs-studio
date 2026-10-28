@@ -23,7 +23,7 @@ enum udev_action { UDEV_ACTION_ADDED, UDEV_ACTION_REMOVED, UDEV_ACTION_UNKNOWN }
 static const char *udev_signals[] = {"void device_added(string device)", "void device_removed(string device)", NULL};
 
 /* global data */
-static uint_fast32_t udev_refs = 0;
+static uint udev_refs = 0;
 static pthread_mutex_t udev_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_t udev_thread;
