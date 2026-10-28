@@ -145,6 +145,7 @@
     "graphics/effect-parser.h",
     "graphics/effect.h",
     "graphics/graphics-ffmpeg-host.h",
+    "graphics/graphics-ffmpeg-orient.h",
     "graphics/graphics-internal.h",
     "graphics/graphics-state-stacks.h",
     "graphics/graphics-sprite.h",

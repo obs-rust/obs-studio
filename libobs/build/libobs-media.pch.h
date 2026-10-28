@@ -21,6 +21,9 @@
 
 #include "graphics/graphics-ffmpeg-host.h"
 
+/* graphics/graphics-ffmpeg-orient.c */
+#include "graphics/graphics-ffmpeg-orient.h"
+
 /* media-io/audio-resampler-ffmpeg.c */
 #include "util/bmem.h"
 #include "media-io/audio-resampler.h"

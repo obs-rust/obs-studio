@@ -17,7 +17,7 @@ struct ffmpeg_image {
  * cannot become a texture. Say so once, before anything is decoded. */
 static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
 {
-	if (!info->max_size || cx <= 0 || cy <= 0 || ((uint32_t)cx <= info->max_size && (uint32_t)cy <= info->max_size))
+	if (!gs_ffmpeg_image_too_large(info->max_size, cx, cy))
 		return false;
 
 	if (!info->too_large)
@@ -158,201 +158,23 @@ static void *ffmpeg_image_copy_data_straight(struct ffmpeg_image *info, AVFrame 
 	return data;
 }
 
-static inline size_t get_dst_position(const size_t w, const size_t h, const size_t x, const size_t y, int orient)
-{
-	size_t res_x = 0;
-	size_t res_y = 0;
-
-	if (orient == 2) {
-		/*
-		 * Orientation 2: Flip X
-		 *
-		 * 888888        888888
-		 *     88   ->   88
-		 *   8888   ->   8888
-		 *     88   ->   88
-		 *     88        88
-		 *
-		 * (0, 0) -> (w, 0)
-		 * (0, h) -> (w, h)
-		 * (w, 0) -> (0, 0)
-		 * (w, h) -> (0, h)
-		 *
-		 * (w - x, y)
-		 */
-
-		res_x = w - 1 - x;
-		res_y = y;
-
-	} else if (orient == 3) {
-		/*
-		 * Orientation 3: 180 degree
-		 *
-		 *     88        888888
-		 *     88   ->   88
-		 *   8888   ->   8888
-		 *     88   ->   88
-		 * 888888        88
-		 *
-		 * (0, 0) -> (w, h)
-		 * (0, h) -> (w, 0)
-		 * (w, 0) -> (0, h)
-		 * (w, h) -> (0, 0)
-		 *
-		 * (w - x, h - y)
-		 */
-
-		res_x = w - 1 - x;
-		res_y = h - 1 - y;
-
-	} else if (orient == 4) {
-		/*
-		 * Orientation 4: Flip Y
-		 *
-		 * 88            888888
-		 * 88       ->   88
-		 * 8888     ->   8888
-		 * 88       ->   88
-		 * 888888        88
-		 *
-		 * (0, 0) -> (0, h)
-		 * (0, h) -> (0, 0)
-		 * (w, 0) -> (w, h)
-		 * (w, h) -> (w, 0)
-		 *
-		 * (x, h - y)
-		 */
-
-		res_x = x;
-		res_y = h - 1 - y;
-
-	} else if (orient == 5) {
-		/*
-		 * Orientation 5: Flip Y + 90 degree CW
-		 *
-		 * 8888888888        888888
-		 * 88  88       ->   88
-		 * 88           ->   8888
-		 *              ->   88
-		 *                   88
-		 *
-		 * (0, 0) -> (0, 0)
-		 * (0, h) -> (w, 0)
-		 * (w, 0) -> (0, h)
-		 * (w, h) -> (w, h)
-		 *
-		 * (y, x)
-		 */
-
-		res_x = y;
-		res_y = x;
-
-	} else if (orient == 6) {
-		/*
-		 * Orientation 6: 90 degree CW
-		 *
-		 * 88                888888
-		 * 88  88       ->   88
-		 * 8888888888   ->   8888
-		 *              ->   88
-		 *                   88
-		 *
-		 * (0, 0) -> (w, 0)
-		 * (0, h) -> (0, 0)
-		 * (w, 0) -> (w, h)
-		 * (w, h) -> (0, h)
-		 *
-		 * (w - y, x)
-		 */
-
-		res_x = w - 1 - y;
-		res_y = x;
-
-	} else if (orient == 7) {
-		/*
-		 * Orientation 7: Flip Y + 90 degree CCW
-		 *
-		 *         88        888888
-		 *     88  88   ->   88
-		 * 8888888888   ->   8888
-		 *              ->   88
-		 *                   88
-		 *
-		 * (0, 0) -> (w, h)
-		 * (0, h) -> (0, h)
-		 * (w, 0) -> (w, 0)
-		 * (w, h) -> (0, 0)
-		 *
-		 * (w - y, h - x)
-		 */
-
-		res_x = w - 1 - y;
-		res_y = h - 1 - x;
-
-	} else if (orient == 8) {
-		/*
-		 * Orientation 8: 90 degree CCW
-		 *
-		 * 8888888888        888888
-		 *     88  88   ->   88
-		 *         88   ->   8888
-		 *              ->   88
-		 *                   88
-		 *
-		 * (0, 0) -> (0, h)
-		 * (0, h) -> (w, h)
-		 * (w, 0) -> (0, 0)
-		 * (w, h) -> (w, 0)
-		 *
-		 * (y, h - x)
-		 */
-
-		res_x = y;
-		res_y = h - 1 - x;
-	}
-
-	return (res_x + res_y * w) * 4;
-}
-
-#define TILE_SIZE 16
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 static void *ffmpeg_image_orient(struct ffmpeg_image *info, void *in_data, int orient)
 {
 	const size_t sx = (size_t)info->cx;
 	const size_t sy = (size_t)info->cy;
 	uint8_t *data = NULL;
 
-	if (orient == 0 || orient == 1)
+	if (!gs_ffmpeg_image_orient_needed(orient))
 		return in_data;
 
 	data = bmalloc(sx * 4 * sy);
 
-	if (orient >= 5 && orient < 9) {
+	if (gs_ffmpeg_image_orient_swaps(orient)) {
 		info->cx = (int)sy;
 		info->cy = (int)sx;
 	}
 
-	uint8_t *src = in_data;
-
-	size_t off_dst;
-	size_t off_src = 0;
-	for (size_t y0 = 0; y0 < sy; y0 += TILE_SIZE) {
-		for (size_t x0 = 0; x0 < sx; x0 += TILE_SIZE) {
-			size_t lim_x = MIN((size_t)sx, x0 + TILE_SIZE);
-			size_t lim_y = MIN((size_t)sy, y0 + TILE_SIZE);
-
-			for (size_t y = y0; y < lim_y; y++) {
-				for (size_t x = x0; x < lim_x; x++) {
-					off_src = (x + y * sx) * 4;
-
-					off_dst = get_dst_position(info->cx, info->cy, x, y, orient);
-
-					memcpy(data + off_dst, src + off_src, 4);
-				}
-			}
-		}
-	}
+	gs_ffmpeg_image_orient_copy(data, in_data, sx, sy, orient);
 
 	bfree(in_data);
 	return data;
@@ -365,31 +187,9 @@ static void *ffmpeg_image_orient(struct ffmpeg_image *info, void *in_data, int o
  * Once the minimum FFmpeg is 8.1, the metadata tag and the sign table below
  * can go. */
 #if !FFMPEG_HAS_EXIF_API
-static inline int matrix_sign(int32_t v)
-{
-	return (v > 0) - (v < 0);
-}
-
-/* The EXIF orientation (1-8) of a display matrix, for FFmpeg without
- * av_exif_matrix_to_orientation(). */
 static int display_matrix_to_orientation(const int32_t *matrix)
 {
-	/* The display matrix FFmpeg derives from each EXIF orientation, as
-	 * the signs of its 2x2 part: {a, b, c, d} = {m[0], m[1], m[3], m[4]}. */
-	static const int8_t orientations[8][4] = {
-		{1, 0, 0, 1}, {-1, 0, 0, 1}, {-1, 0, 0, -1}, {1, 0, 0, -1},
-		{0, 1, 1, 0}, {0, 1, -1, 0}, {0, -1, -1, 0}, {0, -1, 1, 0},
-	};
-	const int sign[4] = {matrix_sign(matrix[0]), matrix_sign(matrix[1]), matrix_sign(matrix[3]),
-			     matrix_sign(matrix[4])};
-
-	for (int i = 0; i < 8; i++) {
-		if (sign[0] == orientations[i][0] && sign[1] == orientations[i][1] && sign[2] == orientations[i][2] &&
-		    sign[3] == orientations[i][3])
-			return i + 1;
-	}
-
-	return 0;
+	return gs_ffmpeg_image_matrix_orientation(matrix[0], matrix[1], matrix[3], matrix[4]);
 }
 #endif
 
@@ -733,5 +533,3 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef obs_bswap16
-#undef TILE_SIZE
-#undef MIN
