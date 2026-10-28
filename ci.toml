@@ -216,14 +216,6 @@ pypi = { auth = "none", environment = "none", mode = "none" }
 # predate this ci.toml, grouped by rule. Each is reported as approved_exception
 # on every run and expires 2027-04-15; burn-down: https://github.com/obs-rust/obs-studio/issues/962.
 
-# CACHE-001: actions/cache is called directly; there is no .github/actions/cache wrapper yet.
-[[exceptions]]
-rule = "CACHE-001"
-path = ".github/actions/services-validator/action.yaml"
-reason = "actions/cache is called directly; there is no .github/actions/cache wrapper yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-
 # CACHE-002: Compiler caches are keyed by commit (github.sha/run_id) on purpose: only master saves and restore-keys pick the newest.
 [[exceptions]]
 rule = "CACHE-002"

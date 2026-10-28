@@ -65,8 +65,9 @@ runs:
     - name: Restore Timestamp Cache ⏳
       id: timestamp-cache
       if: fromJSON(inputs.runServiceChecks)
-      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: ./.github/actions/cache
       with:
+        mode: restore
         path: ${{ github.workspace }}/other
         # The key matches the writer's below; off a PR the pr-<N> component is
         # empty, so it is the same key master has always used (CACHE-013, #962).
@@ -105,8 +106,9 @@ runs:
 
     - name: Save Timestamp Cache ⏳
       if: fromJSON(inputs.runServiceChecks) && github.ref == 'refs/heads/master' && steps.timestamp-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: ./.github/actions/cache
       with:
+        mode: save
         path: ${{ github.workspace }}/other
         # The janitor reclaims a closed PR's entries by a delimited pr-<N> key
         # component, so the save key carries one (empty off a PR) (CACHE-013, #962).
