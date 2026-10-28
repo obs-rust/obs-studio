@@ -156,7 +156,7 @@
       "variant": {
         "optimization": "release"
       },
-      "sha256": "127e3c613f00b05be6391a902700b97307ff364527439a9ff76cde6cdcd66e7b",
+      "sha256": "98f2536522f69c8e3abe8dfa2564b460f65a056a8c744cb34f91d07627a2f129",
       "install": "/opt/obs-deps/libdatachannel"
     },
     {
