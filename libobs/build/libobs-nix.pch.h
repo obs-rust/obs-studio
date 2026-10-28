@@ -37,6 +37,7 @@
 
 #include "util/config-file.h"
 #include "obs-nix-os-release.h"
+#include "obs-nix-system-info.h"
 
 #ifdef ENABLE_WAYLAND
 #include "obs-nix-wayland.h"

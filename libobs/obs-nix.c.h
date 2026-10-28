@@ -85,9 +85,9 @@ static void log_processor_info(void)
 	dstr_init(&proc_speed);
 
 	while (getline(&line, &linecap, fp) != -1) {
-		if (!strncmp(line, "model name", 10)) {
-			char *start = strchr(line, ':');
-			if (!start || *(++start) == '\0')
+		if (obs_nix_system_info_is_name(line)) {
+			const char *start = obs_nix_system_info_value(line);
+			if (!start)
 				continue;
 
 			dstr_copy(&proc_name, start);
@@ -95,17 +95,17 @@ static void log_processor_info(void)
 			dstr_depad(&proc_name);
 		}
 
-		if (!strncmp(line, "physical id", 11)) {
-			char *start = strchr(line, ':');
-			if (!start || *(++start) == '\0')
+		if (obs_nix_system_info_is_physical_id(line)) {
+			const char *start = obs_nix_system_info_value(line);
+			if (!start)
 				continue;
 
-			physical_id = atoi(start);
+			physical_id = obs_nix_system_info_physical_id(start);
 		}
 
-		if (!strncmp(line, "cpu MHz", 7)) {
-			char *start = strchr(line, ':');
-			if (!start || *(++start) == '\0')
+		if (obs_nix_system_info_is_speed(line)) {
+			const char *start = obs_nix_system_info_value(line);
+			if (!start)
 				continue;
 
 			dstr_copy(&proc_speed, start);
@@ -113,7 +113,7 @@ static void log_processor_info(void)
 			dstr_depad(&proc_speed);
 		}
 
-		if (*line == '\n' && physical_id != last_physical_id) {
+		if (obs_nix_system_info_prints(line, physical_id, last_physical_id)) {
 			last_physical_id = physical_id;
 			blog(LOG_INFO, "CPU Name: %s", proc_name.array);
 			blog(LOG_INFO, "CPU Speed: %sMHz", proc_speed.array);
@@ -143,12 +143,12 @@ static void log_processor_speed(void)
 	dstr_init(&proc_speed);
 
 	while (getline(&line, &linecap, fp) != -1) {
-		if (!strncmp(line, "CPU: ", 5)) {
-			char *start = strrchr(line, '(');
-			if (!start || *(++start) == '\0')
+		if (obs_nix_system_info_is_dmesg_cpu(line)) {
+			size_t len;
+			const char *start = obs_nix_system_info_dmesg_speed(line, &len);
+			if (!start)
 				continue;
 
-			size_t len = strcspn(start, "-");
 			dstr_ncopy(&proc_speed, start, len);
 		}
 	}
@@ -200,15 +200,15 @@ static void log_memory_info(void)
 	len = sizeof(mem);
 
 	if (sysctl(mib, 2, &mem, &len, NULL, 0) >= 0)
-		blog(LOG_INFO, "Physical Memory: %" PRIi64 "MB Total", mem / 1024 / 1024);
+		blog(LOG_INFO, "Physical Memory: %" PRIi64 "MB Total", obs_nix_system_info_physmem_mb(mem));
 #else
 	struct sysinfo info;
 	if (sysinfo(&info) < 0)
 		return;
 
 	blog(LOG_INFO, "Physical Memory: %" PRIu64 "MB Total, %" PRIu64 "MB Free",
-	     (uint64_t)info.totalram * info.mem_unit / 1024 / 1024,
-	     ((uint64_t)info.freeram + (uint64_t)info.bufferram) * info.mem_unit / 1024 / 1024);
+	     obs_nix_system_info_total_mb((uint64_t)info.totalram, info.mem_unit),
+	     obs_nix_system_info_free_mb((uint64_t)info.freeram, (uint64_t)info.bufferram, info.mem_unit));
 #endif
 }
 

@@ -307,10 +307,12 @@
   ],
   "LIBOBS_LINUX_SOURCES": [
     "obs-nix-platform.h",
+    "obs-nix-system-info.h",
     "obs-nix-x11-keymap.h",
     "util/threading-posix.h",
     "build/libobs.nix+.h.c",
     "build/libobs.nix-main+.h.c",
+    "build/libobs.nix-system-info+.h.c",
     "build/libobs.graphics-ffmpeg-host-posix+.h.c"
   ],
   "LIBOBS_LINUX_PORTED_SOURCES": [
