@@ -221,8 +221,9 @@ jobs:
       - name: Prepare apt Archive Directory
         run: sudo install -d -m 0777 /var/cache/apt/archives
       - name: Restore apt Archives
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: /var/cache/apt/archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
       - name: Produce Immutable Environment
@@ -276,8 +277,9 @@ jobs:
         run: sudo install -d -m 0777 /var/cache/apt/archives
       - name: Restore apt Archives
         if: matrix.variant == 'stock'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: /var/cache/apt/archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
       - name: Download Prepared Image

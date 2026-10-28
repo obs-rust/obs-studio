@@ -1,0 +1,46 @@
+name: Cache
+description: >-
+  The sanctioned actions/cache wrapper (CACHE-001). Restore or save a cache
+  through one SHA-pinned composite action so workflows never call
+  actions/cache directly. The inner steps are pinned per SEC-004.
+
+inputs:
+  mode:
+    description: 'restore or save'
+    required: false
+    default: restore
+  path:
+    description: The file or directory to cache
+    required: true
+  key:
+    description: The explicit cache key
+    required: true
+  restore-keys:
+    description: Newline-separated prefix keys used on a restore miss
+    required: false
+    default: ''
+
+outputs:
+  cache-hit:
+    description: 'true when a restore found an exact key match'
+    value: ${{ steps.restore.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore cache
+      id: restore
+      if: inputs.mode == 'restore'
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}
+
+    - name: Save cache
+      id: save
+      if: inputs.mode == 'save'
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}

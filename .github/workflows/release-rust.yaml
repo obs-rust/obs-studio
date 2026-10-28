@@ -162,15 +162,17 @@ jobs:
       # Rust-libobs objects cannot grow or skew the app builds' caches.
       - name: Restore Xcode Cache 🗄️
         if: matrix.os == 'macos'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ env.XCODE_CAS_PATH }}
           key: macOS-xcode-${{ matrix.target }}-RelWithDebInfo-${{ needs.check.outputs.sha }}
           restore-keys: macOS-xcode-${{ matrix.target }}-RelWithDebInfo-
       - name: Restore ccache 🗄️
         if: matrix.os == 'windows'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.ccache
           key: windows-ccache-${{ matrix.target }}-RelWithDebInfo-${{ needs.check.outputs.sha }}
           restore-keys: windows-ccache-${{ matrix.target }}-RelWithDebInfo-
