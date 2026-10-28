@@ -117,9 +117,10 @@
         "libc": "glibc"
       },
       "variant": {
-        "optimization": "release"
+        "optimization": "release",
+        "flavor": "r1"
       },
-      "sha256": "f0edfc3432bd57058bbb9a2cf18aacceb55a2564b018346778c34eb0e3369dbf",
+      "sha256": "b33d981e0c6ab0877e183e2c8d06d2dbc64dc26f60b88cbd42d3ba96aeca99fc",
       "install": "/opt/obs-deps/qt6"
     },
     {
