@@ -213,7 +213,12 @@ class FlatpakRuntimeTest(unittest.TestCase):
         block = text.split('\n  flatpak-runtime-reuse:\n', 1)[1].split('\n  # Opt-in', 1)[0]
         self.assertIn('inputs.flatpak-runtime-reuse-run', block)
         self.assertIn('github-token: ${{ github.token }}', block)
-        self.assertIn('FLATPAK_ARTIFACT_SOURCE', block)
+        # The provenance step is one Python call (#2851); the two variables it
+        # publishes live in the module.
+        self.assertIn('ci/ci_gate_steps.py record-export-provenance', block)
+        steps = (ROOT / 'ci/ci_gate_steps.py').read_text()
+        self.assertIn("FLATPAK_ARTIFACT_SOURCE={source_sha}", steps)
+        self.assertIn("FLATPAK_ARTIFACT_RUN={source_run}", steps)
         self.assertIn('flatpak-runtime-reuse]', text)
         script = (ROOT / 'ci/flatpak_runtime.py').read_text()
         self.assertIn("harness_source=os.environ.get('GITHUB_SHA')", script)

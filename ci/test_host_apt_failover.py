@@ -7,11 +7,32 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
 
-WORKFLOW = Path(__file__).resolve().parent.parent / ".github/workflows/build-project.yaml"
+ROOT = Path(__file__).resolve().parent.parent
+WORKFLOW = ROOT / ".github/workflows/build-project.yaml"
+STEPS = ROOT / "ci/ci_gate_steps.py"
+# The `Install Runtime Test Infrastructure` step of ci.yml is one Python call
+# (#2851), so that job is driven through the module; the jobs still carrying a
+# `run: |` block are executed from the workflow text.
+PORTED_CALL = "ci/ci_gate_steps.py install-runtime-deps"
+SUDO_STUB = """#!/bin/sh
+for argument in "$@"; do
+    case "$argument" in
+        *host_apt_mirrors.py) [ "$APT_FAIL" = mirror ] && exit 42; exit 0 ;;
+    esac
+done
+exec "$@"
+"""
+APT_STUB = """#!/bin/sh
+printf '%s\\0' "$@" >> "$APT_TRACE"
+printf '\\n' >> "$APT_TRACE"
+for argument in "$@"; do [ "$argument" = "$APT_FAIL" ] && exit 42; done
+exit 0
+"""
 RUNTIME_PACKAGES = """flatpak xvfb dbus-daemon pipewire wireplumber pipewire-pulse pipewire-bin
     pulseaudio-utils gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-pipewire
     libgl1-mesa-dri gcc pkg-config libglib2.0-dev libpipewire-0.3-dev libpulse-dev
@@ -50,6 +71,9 @@ def dependency_script(job: str) -> str:
 
 class HostAptFailoverTest(unittest.TestCase):
     def execute(self, job: str, fail: str = "") -> tuple[int, list[list[str]]]:
+        script = dependency_script(job)
+        if PORTED_CALL in script:
+            return self.execute_module(fail)
         mock = r'''
 : > "$APT_TRACE"
 sudo() {
@@ -76,6 +100,34 @@ apt-get() {
                 ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", mock + dependency_script(job)],
                 env={**os.environ, "APT_TRACE": str(trace), "APT_FAIL": fail},
                 capture_output=True, text=True, timeout=10,
+            )
+            calls = [line.rstrip(b"\0").decode().split("\0") for line in trace.read_bytes().splitlines()]
+        return result.returncode, calls
+
+    def execute_module(self, fail: str) -> tuple[int, list[list[str]]]:
+        """`ci_gate_steps.py install-runtime-deps` under the same two stubs."""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binaries = root / "bin"
+            binaries.mkdir()
+            for name, text in (("sudo", SUDO_STUB), ("apt-get", APT_STUB)):
+                path = binaries / name
+                path.write_text(text, encoding="utf-8")
+                path.chmod(0o755)
+            trace = root / "calls"
+            trace.touch()
+            result = subprocess.run(
+                [sys.executable, str(STEPS), "install-runtime-deps"],
+                env={
+                    **os.environ,
+                    "APT_TRACE": str(trace),
+                    "APT_FAIL": fail,
+                    "PATH": f"{binaries}{os.pathsep}{os.environ.get('PATH', '')}",
+                },
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             calls = [line.rstrip(b"\0").decode().split("\0") for line in trace.read_bytes().splitlines()]
         return result.returncode, calls

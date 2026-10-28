@@ -247,7 +247,10 @@ class InstallRuntimeDepsTest(unittest.TestCase):
         mirror, update, install = run.calls
         self.assertEqual(mirror[0], '-E')
         self.assertTrue(mirror[1].endswith('/uv'), mirror)
-        self.assertEqual(mirror[2:], ['run', '--no-project', 'ci/host_apt_mirrors.py'])
+        self.assertEqual(
+            mirror[2:],
+            ['run', '--no-project', str(ROOT / 'ci' / 'host_apt_mirrors.py')],
+        )
         self.assertEqual(update, ['apt-get', *APT_OPTIONS, 'update', '-qq'])
         self.assertEqual(
             install,
@@ -277,7 +280,7 @@ class RunSavedCaptureProfileTest(unittest.TestCase):
                 [
                     'run',
                     '--no-project',
-                    'ci/flatpak_runtime.py',
+                    str(ROOT / 'ci' / 'flatpak_runtime.py'),
                     '--repo',
                     str(input_directory / 'repo'),
                     '--output',
@@ -370,13 +373,13 @@ class WorkflowTest(unittest.TestCase):
                         self.assertIn(f'run: {CALL} {subcommand}', runs)
 
     def test_no_shell_block_left(self):
-        # `Measure Setup` stays a folded `>-` line and stays the shell's own
-        # one-line call; this pins that neither job grows a block back.
+        # `Measure Setup` keeps its folded `>-` line: it is one logical command
+        # (a single `uv run` call), so GEN-005 already accepts it. A block `|`
+        # is what this pins out of both jobs.
         for job in STEPS:
             for line in self.runs(job):
                 with self.subTest(job=job, line=line):
                     self.assertFalse(line.endswith('|'), line)
-                    self.assertFalse(line.endswith('>-'), line)
 
     def test_no_gen_005_exception_left(self):
         exceptions = tomllib.loads(CI_TOML.read_text(encoding='utf-8'))['exceptions']
