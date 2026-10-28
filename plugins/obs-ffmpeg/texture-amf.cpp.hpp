@@ -467,13 +467,13 @@ static inline int get_preset(amf_base *enc, const char *preset)
 static inline void refresh_throughput_caps(amf_base *enc, const char *&preset)
 {
 	AMF_RESULT res = AMF_OK;
-	AMFCapsPtr caps;
+	AMFCapsPtr amf_caps;
 
 	set_opt(QUALITY_PRESET, get_preset(enc, preset));
-	res = enc->amf_encoder->GetCaps(&caps);
+	res = enc->amf_encoder->GetCaps(&amf_caps);
 	if (res == AMF_OK) {
-		caps->GetProperty(get_opt_name(CAP_MAX_THROUGHPUT), &enc->max_throughput);
-		caps->GetProperty(get_opt_name(CAP_REQUESTED_THROUGHPUT), &enc->requested_throughput);
+		amf_caps->GetProperty(get_opt_name(CAP_MAX_THROUGHPUT), &enc->max_throughput);
+		amf_caps->GetProperty(get_opt_name(CAP_REQUESTED_THROUGHPUT), &enc->requested_throughput);
 	}
 }
 
@@ -653,6 +653,8 @@ static void roi_cb(void *param, obs_encoder_roi *roi)
 
 static void create_roi(amf_base *enc, AMFSurface *amf_surf)
 {
+	UNUSED_PARAMETER(amf_surf);
+
 	uint32_t mb_size = 16; /* H.264 is always 16x16 */
 	if (enc->codec == amf_codec_type::HEVC || enc->codec == amf_codec_type::AV1) {
 		mb_size = 64; /* AMF HEVC & AV1 use 64x64 blocks */
@@ -663,9 +665,10 @@ static void create_roi(amf_base *enc, AMFSurface *amf_surf)
 
 	if (!enc->roi_map) {
 		AMFContext1Ptr context1(enc->amf_context);
-		AMF_RESULT res = context1->AllocSurfaceEx(AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, mb_width, mb_height,
-							  AMF_SURFACE_USAGE_DEFAULT | AMF_SURFACE_USAGE_LINEAR,
-							  AMF_MEMORY_CPU_DEFAULT, &enc->roi_map);
+		AMF_RESULT res = context1->AllocSurfaceEx(
+			AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, mb_width, mb_height,
+			(AMF_SURFACE_USAGE)(AMF_SURFACE_USAGE_DEFAULT | AMF_SURFACE_USAGE_LINEAR),
+			(AMF_MEMORY_CPU_ACCESS)(AMF_MEMORY_CPU_DEFAULT), &enc->roi_map);
 
 		if (res != AMF_OK) {
 			warn("Failed allocating surface for ROI map!");
@@ -832,7 +835,6 @@ try {
 		throw amf_error("CreateSurfaceFromDX11Native failed", res);
 	}
 
-	int64_t last_ts = convert_to_amf_ts(enc, pts - 1);
 	int64_t cur_ts = convert_to_amf_ts(enc, pts);
 
 	amf_surf->SetPts(cur_ts);
@@ -937,7 +939,6 @@ try {
 		throw amf_error("CreateSurfaceFromHostNative failed", res);
 	}
 
-	int64_t last_ts = convert_to_amf_ts(enc, frame->pts - 1);
 	int64_t cur_ts = convert_to_amf_ts(enc, frame->pts);
 
 	amf_surf->SetPts(cur_ts);
@@ -1308,6 +1309,8 @@ static const char *amf_avc_get_name(void *)
 
 static inline int get_avc_preset(amf_base *enc, const char *preset)
 {
+	UNUSED_PARAMETER(enc);
+
 	if (astrcmpi(preset, "quality") == 0) {
 		return AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY;
 	} else if (astrcmpi(preset, "speed") == 0) {
@@ -1649,13 +1652,13 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 		throw "Failed to create encoder";
 	}
 
-	AMFCapsPtr caps;
-	res = enc->amf_encoder->GetCaps(&caps);
+	AMFCapsPtr amf_caps;
+	res = enc->amf_encoder->GetCaps(&amf_caps);
 	if (res == AMF_OK) {
-		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_BFRAMES, &enc->bframes_supported);
-		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_MAX_THROUGHPUT, &enc->max_throughput);
-		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
-		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_ROI, &enc->roi_supported);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_CAP_BFRAMES, &enc->bframes_supported);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_CAP_MAX_THROUGHPUT, &enc->max_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_CAP_ROI, &enc->roi_supported);
 	}
 
 	const char *preset = obs_data_get_string(settings, "preset");
@@ -1808,6 +1811,8 @@ static const char *amf_hevc_get_name(void *)
 
 static inline int get_hevc_preset(amf_base *enc, const char *preset)
 {
+	UNUSED_PARAMETER(enc);
+
 	if (astrcmpi(preset, "balanced") == 0) {
 		return AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_BALANCED;
 	} else if (astrcmpi(preset, "speed") == 0) {
@@ -2040,12 +2045,12 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 		throw "Failed to create encoder";
 	}
 
-	AMFCapsPtr caps;
-	res = enc->amf_encoder->GetCaps(&caps);
+	AMFCapsPtr amf_caps;
+	res = enc->amf_encoder->GetCaps(&amf_caps);
 	if (res == AMF_OK) {
-		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_MAX_THROUGHPUT, &enc->max_throughput);
-		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
-		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_ROI, &enc->roi_supported);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_MAX_THROUGHPUT, &enc->max_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_ROI, &enc->roi_supported);
 	}
 
 	const bool is10bit = enc->amf_format == AMF_SURFACE_P010;
@@ -2084,8 +2089,8 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 		md->whitePoint[1] = amf_hdr_primary(329, 1000);
 		md->minMasteringLuminance = 0;
 		md->maxMasteringLuminance = amf_make_lum(hdr_nominal_peak_level);
-		md->maxContentLightLevel = hdr_nominal_peak_level;
-		md->maxFrameAverageLightLevel = hdr_nominal_peak_level;
+		md->maxContentLightLevel = (amf_uint16)hdr_nominal_peak_level;
+		md->maxFrameAverageLightLevel = (amf_uint16)hdr_nominal_peak_level;
 		set_hevc_property(enc, INPUT_HDR_METADATA, buf);
 	}
 
@@ -2219,6 +2224,8 @@ static const char *amf_av1_get_name(void *)
 
 static inline int get_av1_preset(amf_base *enc, const char *preset)
 {
+	UNUSED_PARAMETER(enc);
+
 	if (astrcmpi(preset, "highquality") == 0) {
 		return AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_HIGH_QUALITY;
 	} else if (astrcmpi(preset, "quality") == 0) {
@@ -2467,12 +2474,12 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 		throw "Failed to create encoder";
 	}
 
-	AMFCapsPtr caps;
-	AMF_RESULT res = enc->amf_encoder->GetCaps(&caps);
+	AMFCapsPtr amf_caps;
+	AMF_RESULT res = enc->amf_encoder->GetCaps(&amf_caps);
 	if (res == AMF_OK) {
-		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES, &enc->bframes_supported);
-		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_MAX_THROUGHPUT, &enc->max_throughput);
-		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES, &enc->bframes_supported);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_MAX_THROUGHPUT, &enc->max_throughput);
+		amf_caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
 		/* For some reason there's no specific CAP for AV1, but should always be supported */
 		enc->roi_supported = true;
 	}

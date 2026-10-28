@@ -29,7 +29,8 @@ static void load_debug_privilege(void)
 static inline HANDLE open_process(DWORD desired_access, bool inherit_handle, DWORD process_id)
 {
 	HANDLE(WINAPI * open_process_proc)(DWORD, BOOL, DWORD);
-	open_process_proc = ms_get_obfuscated_func(GetModuleHandleW(L"KERNEL32"), "HxjcQrmkb|~", 0xc82efdf78201df87);
+	open_process_proc = (HANDLE(WINAPI *)(DWORD, BOOL, DWORD))ms_get_obfuscated_func(
+		GetModuleHandleW(L"KERNEL32"), "HxjcQrmkb|~", 0xc82efdf78201df87);
 
 	return open_process_proc(desired_access, inherit_handle, process_id);
 }
