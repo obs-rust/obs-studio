@@ -125,13 +125,13 @@ void CrashHandler::checkCrashState()
 {
 	bool currentSentinelFound = false;
 
-	std::filesystem::path crashSentinelPath = crashSentinelFile_.parent_path();
+	std::filesystem::path sentinel_dir = crashSentinelFile_.parent_path();
 
-	if (!ensure_crash_sentinel_dir(crashSentinelPath)) {
+	if (!ensure_crash_sentinel_dir(sentinel_dir)) {
 		return;
 	}
 
-	for (const auto &entry : std::filesystem::directory_iterator(crashSentinelPath)) {
+	for (const auto &entry : std::filesystem::directory_iterator(sentinel_dir)) {
 		if (entry.is_directory()) {
 			continue;
 		}
@@ -268,14 +268,14 @@ void CrashHandler::applicationShutdownHandler() noexcept
 		return;
 	}
 
-	const std::filesystem::path crashSentinelPath = crashSentinelFile_.parent_path();
+	const std::filesystem::path sentinel_dir = crashSentinelFile_.parent_path();
 
-	if (!std::filesystem::exists(crashSentinelPath)) {
-		blog(LOG_ERROR, "Crash sentinel location '%s' does not exist", crashSentinelPath.u8string().c_str());
+	if (!std::filesystem::exists(sentinel_dir)) {
+		blog(LOG_ERROR, "Crash sentinel location '%s' does not exist", sentinel_dir.u8string().c_str());
 		return;
 	}
 
-	for (const auto &entry : std::filesystem::directory_iterator(crashSentinelPath)) {
+	for (const auto &entry : std::filesystem::directory_iterator(sentinel_dir)) {
 		if (entry.is_directory()) {
 			continue;
 		}

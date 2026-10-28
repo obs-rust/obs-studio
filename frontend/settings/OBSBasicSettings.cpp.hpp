@@ -3085,8 +3085,8 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 	auto hotkey_enum_data = make_tuple(RegisterHotkey, std::move(keys), ignoreKey, this);
 	using data_t = decltype(hotkey_enum_data);
 	obs_enum_hotkeys(
-		[](void *data, obs_hotkey_id id, obs_hotkey_t *key) {
-			data_t &d = *static_cast<data_t *>(data);
+		[](void *handler_data, obs_hotkey_id id, obs_hotkey_t *key) {
+			data_t &d = *static_cast<data_t *>(handler_data);
 			if (id != get<2>(d)) {
 				LayoutHotkey(get<3>(d), id, key, get<0>(d), get<1>(d));
 			}
