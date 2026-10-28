@@ -22,68 +22,43 @@ inputs:
 runs:
   using: composite
   steps:
+    # Every step below is one Python call, so the toolchain has to exist before
+    # the first one (#962, GEN-005).
+    - name: Set Up uv 🐍
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        save-cache: ${{ github.ref == 'refs/heads/master' }}
+        # A PR save carries a delimited pr-<N> key so the janitor can delete it
+        # when the PR closes (CACHE-013, #962).
+        cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
     - name: Extract Artifact
-      shell: pwsh
-      run: |
-        Expand-Archive -Path build\*.zip -DestinationPath build
-        Remove-Item build\*.zip
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py extract-artifact
 
     - name: Setup bouf
-      shell: pwsh
+      shell: bash
       env:
         BOUF_TAG: 'v0.6.6'
         BOUF_HASH: 'a4ad7c06fe00c4fdd2c22cab26b72d75b14655f9c756245f4be5dd2dadb7d5c8'
         BOUF_NSIS_HASH: '02b533c3f9388391ec5a5079fac41486886fde67a26e5ed0e2652fa4e895deb4'
         GH_TOKEN: ${{ github.token }}
-      run: |
-        # Download bouf release
-        . ${env:GITHUB_ACTION_PATH}\Ensure-Location.ps1
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        Ensure-Location bouf
-        $windows_zip = "bouf-windows-${env:BOUF_TAG}.zip"
-        $nsis_zip = "bouf-nsis-${env:BOUF_TAG}.zip"
-        Invoke-External gh release download "${env:BOUF_TAG}" -R "obsproject/bouf" -p $windows_zip -p $nsis_zip
-
-        if ((Get-FileHash $windows_zip -Algorithm SHA256).Hash -ne "${env:BOUF_HASH}") {
-          throw "bouf hash does not match."
-        }
-        if ((Get-FileHash $nsis_zip -Algorithm SHA256).Hash -ne "${env:BOUF_NSIS_HASH}") {
-          throw "NSIS package hash does not match."
-        }
-
-        Expand-Archive -Path $windows_zip -DestinationPath bin
-        Expand-Archive -Path $nsis_zip -DestinationPath nsis
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py setup-bouf
 
     - name: Install NSIS
-      shell: pwsh
-      run: |
-        # Install NSIS
-        winget install --silent --accept-package-agreements --accept-source-agreements --disable-interactivity -e --id NSIS.NSIS
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py install-nsis
 
     - name: Setup Google CNG Provider
-      shell: pwsh
+      shell: bash
       env:
         CNG_TAG: 'cng-v1.1'
         GH_TOKEN: ${{ github.token }}
-      run: |
-        # Download Google CNG provider release from github
-        . ${env:GITHUB_ACTION_PATH}\Ensure-Location.ps1
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        Ensure-Location gcng
-
-        Invoke-External gh release download "${env:CNG_TAG}" -R "GoogleCloudPlatform/kms-integrations" -p "*amd64.zip"
-        Expand-Archive -Path *.zip
-        $sigPath = Get-ChildItem *.sig -Recurse
-        $msiPath = Get-ChildItem *.msi -Recurse
-        # Verify digital signature against Google's public key
-        Invoke-External openssl dgst -sha384 -verify "${env:GITHUB_ACTION_PATH}/cng-release-signing-key.pem" -signature $sigPath $msiPath
-        # Finally, install the CNG provider
-        Invoke-External msiexec /i $msiPath /qn /norestart
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py setup-cng
 
     - name: Install rclone
-      shell: pwsh
-      run: |
-        choco install rclone --version=1.69.3 -y --no-progress
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py install-rclone
 
     - name: 'Authenticate to Google Cloud'
       uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093' # v3.0.0
@@ -92,58 +67,30 @@ runs:
         service_account: ${{ inputs.gcpServiceAccountName }}
 
     - name: Download Previous Build
-      shell: pwsh
+      shell: bash
       env:
         RCLONE_GCS_ENV_AUTH: 'true'
-      run: |
-        . ${env:GITHUB_ACTION_PATH}\Ensure-Location.ps1
-        Ensure-Location "${{ github.workspace }}/old_builds"
-        rclone copy --transfers 100 ":gcs:obs-latest/${{ inputs.architecture }}/${{ inputs.channel }}" .
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py download-previous --architecture "${{ inputs.architecture }}" --channel "${{ inputs.channel }}"
 
     - name: Sign Game Capture with RSA cert
-      shell: pwsh
-      run: |
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        $SignToolExe = "C:\Program Files (x86)\Windows Kits\10\App Certification Kit\signtool.exe"
-        $signArgs = @(
-           "sign"
-           "/fd",   "sha256"
-           "/t",    "http://timestamp.digicert.com"
-           "/f",    "repo/.github/actions/windows-signing/prod-gc.crt"
-           "/csp",  "Google Cloud KMS Provider"
-           "/kc",   "projects/ci-signing/locations/global/keyRings/production/cryptoKeys/game-capture-release-sign-hsm/cryptoKeyVersions/1"
-           "${{ github.workspace }}/build/core/win-capture/data/*.dll"
-        )
-        Invoke-External $SignToolExe @signArgs
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py sign-game-capture
 
     - name: Run bouf
-      shell: pwsh
-      run: |
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        $boufArgs = @(
-           "--config",     "${env:GITHUB_ACTION_PATH}/config_${{ inputs.architecture }}.toml"
-           "--version",    "${{ inputs.version }}"
-           "--branch",     "${{ inputs.channel }}"
-           "-i",           "${{ github.workspace }}/build"
-           "-p",           "${{ github.workspace }}/old_builds"
-           "-o",           "${{ github.workspace }}/output"
-           "--packaging-only"
-        )
-        Invoke-External "${{ github.workspace }}\bouf\bin\bouf.exe" @boufArgs
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py run-bouf --version "${{ inputs.version }}" --architecture "${{ inputs.architecture }}" --channel "${{ inputs.channel }}"
 
     - name: Sync Latest Build
-      shell: pwsh
+      shell: bash
       env:
         RCLONE_INCLUDE: '**/${{ inputs.version }}/**'
         RCLONE_GCS_ENV_AUTH: 'true'
         RCLONE_GCS_BUCKET_POLICY_ONLY: 'true'
-      run: |
-        rclone sync --delete-excluded --transfers 100 "${{ github.workspace }}/old_builds" ":gcs:obs-latest/${{ inputs.architecture }}/${{ inputs.channel }}"
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py sync-latest --architecture "${{ inputs.architecture }}" --channel "${{ inputs.channel }}"
 
     - name: Upload Build to Archive
-      shell: pwsh
+      shell: bash
       env:
         RCLONE_GCS_ENV_AUTH: 'true'
         RCLONE_GCS_BUCKET_POLICY_ONLY: 'true'
-      run: |
-        rclone copy --transfers 100 "${{ github.workspace }}/old_builds" ":gcs:obs-builds/${{ inputs.architecture }}"
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_signing.py upload-archive --architecture "${{ inputs.architecture }}"
