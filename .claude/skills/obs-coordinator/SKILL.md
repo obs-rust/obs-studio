@@ -100,6 +100,18 @@ authorizes.
 - **Fixups:** push small mechanical fixes that keep a ready PR from landing
   (lint, formatting, a features-ledger line, a stale reference) as a
   `fixup:` commit, and say so in a comment.
+- **A handoff on a draft PR is invisible to the work list** (the list carries
+  only ready PRs). Sweep the handoff comments on drafts too: on 2026-10-28,
+  #2844's worker wrote "Handed off to the coordinator" while the PR was still
+  a draft, and its Tier 2 Linux tests had failed — the list never showed it.
+  A draft that is failing for a real reason still goes back to the worker as
+  a comment; do not open the review or queue it until the author marks it
+  ready.
+- **A task absent from the list may be leased by another live coordinator**
+  (leases are git refs with a 2 h TTL). Check `git ls-remote origin
+  'refs/leases/*'` in obs-rust/.github before calling a repo quiet: a tick
+  saw obs-browser #6–#12 reviews held that way, so "not listed" is not "no
+  work".
 - **Handed-off PRs** (`Handed off to the coordinator`, obs-worker §7):
   the worker has moved on, so don't wait for them on anything mechanical.
   Rebase, resolve list conflicts, fix counts and formatting, rerun flakes
