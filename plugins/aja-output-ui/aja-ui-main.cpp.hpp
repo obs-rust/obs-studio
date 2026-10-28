@@ -165,9 +165,9 @@ void preview_output_toggle()
 	}
 }
 
-void populate_misc_device_list(obs_property_t *list, aja::CardManager *cardManager, NTV2DeviceID &firstDeviceID)
+void populate_misc_device_list(obs_property_t *list, aja::CardManager *card_manager, NTV2DeviceID &firstDeviceID)
 {
-	for (const auto &iter : *cardManager) {
+	for (const auto &iter : *card_manager) {
 		if (!iter.second) {
 			continue;
 		}
@@ -202,11 +202,11 @@ bool on_misc_device_selected(void *data, obs_properties_t *props, obs_property_t
 	if (!cardID || !cardID[0]) {
 		return false;
 	}
-	aja::CardManager *cardManager = (aja::CardManager *)data;
-	if (!cardManager) {
+	aja::CardManager *card_manager_local = (aja::CardManager *)data;
+	if (!card_manager_local) {
 		return false;
 	}
-	auto cardEntry = cardManager->GetCardEntry(cardID);
+	auto cardEntry = card_manager_local->GetCardEntry(cardID);
 	if (!cardEntry) {
 		return false;
 	}
@@ -267,11 +267,11 @@ bool on_multi_view_toggle(void *data, obs_properties_t *, obs_property_t *, obs_
 	if (!cardID || !cardID[0]) {
 		return false;
 	}
-	aja::CardManager *cardManager = (aja::CardManager *)data;
-	if (!cardManager) {
+	aja::CardManager *card_manager_local = (aja::CardManager *)data;
+	if (!card_manager_local) {
 		return false;
 	}
-	CNTV2Card *card = cardManager->GetCard(cardID);
+	CNTV2Card *card = card_manager_local->GetCard(cardID);
 	if (!card) {
 		return false;
 	}

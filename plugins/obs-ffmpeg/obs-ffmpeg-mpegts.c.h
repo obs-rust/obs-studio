@@ -1131,7 +1131,7 @@ static void ffmpeg_mpegts_stop_internal(void *data, uint64_t ts, bool signal)
 	cmd->ts = ts;
 
 	bool have_to_join = false;
-	pthread_t to_join;
+	pthread_t to_join = {0};
 
 	os_atomic_set_bool(&stream->abort_connect, true);
 

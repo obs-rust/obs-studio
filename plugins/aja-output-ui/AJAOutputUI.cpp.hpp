@@ -27,9 +27,9 @@ void AJAOutputUI::SetupPropertiesView()
 	}
 
 	obs_data_t *settings = obs_data_create();
-	OBSData data = load_settings(kProgramPropsFilename);
-	if (data) {
-		obs_data_apply(settings, data);
+	OBSData settings_data = load_settings(kProgramPropsFilename);
+	if (settings_data) {
+		obs_data_apply(settings, settings_data);
 	} else {
 		// apply default settings
 		obs_data_set_default_int(settings, kUIPropOutput.id, static_cast<long long>(IOSelection::Invalid));
@@ -76,9 +76,9 @@ void AJAOutputUI::SetupPreviewPropertiesView()
 
 	obs_data_t *settings = obs_data_create();
 
-	OBSData data = load_settings(kPreviewPropsFilename);
-	if (data) {
-		obs_data_apply(settings, data);
+	OBSData settings_data = load_settings(kPreviewPropsFilename);
+	if (settings_data) {
+		obs_data_apply(settings, settings_data);
 	} else {
 		// apply default settings
 		obs_data_set_default_int(settings, kUIPropOutput.id, static_cast<long long>(IOSelection::Invalid));
@@ -224,9 +224,9 @@ void AJAOutputUI::SetupMiscPropertiesView()
 	}
 
 	obs_data_t *settings = obs_data_create();
-	OBSData data = load_settings(kMiscPropsFilename);
-	if (data) {
-		obs_data_apply(settings, data);
+	OBSData settings_data = load_settings(kMiscPropsFilename);
+	if (settings_data) {
+		obs_data_apply(settings, settings_data);
 	}
 
 	miscPropertiesView = new OBSPropertiesView(settings, this, (PropertiesReloadCallback)create_misc_props_ui,
