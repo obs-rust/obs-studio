@@ -83,6 +83,14 @@ class MsvcNamelessUnionExemptionTest(unittest.TestCase):
         self.assertIn("/wd4201", helper)
         self.assertIn("COMPILE_LANG_AND_ID:CXX,MSVC", helper)
 
+    def test_helper_is_a_no_op_when_the_module_is_disabled(self) -> None:
+        """ENABLE_BROWSER=OFF / ENABLE_WEBSOCKET=OFF leave no target to exempt."""
+        text = HELPERS.read_text(encoding="utf-8")
+        helper = text.split("function(obs_msvc_exempt_c4201 target)", 1)[1].split("endfunction()", 1)[0]
+        guard = helper.find("if(NOT TARGET ${target})")
+        self.assertNotEqual(guard, -1, "the helper must tolerate a target the config did not create")
+        self.assertLess(guard, helper.find("target_compile_options"), "return before touching the target")
+
     def test_no_blanket_exemption_in_the_msvc_config(self) -> None:
         windows = WINDOWS.read_text(encoding="utf-8")
         self.assertIsNone(
