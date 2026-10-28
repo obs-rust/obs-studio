@@ -125,6 +125,39 @@ class MsvcNamelessUnionExemptionTest(unittest.TestCase):
         self.assertEqual(missing, [])
 
 
+class MsvcDeadInternalFunctionExemptionTest(unittest.TestCase):
+    """C4505 is exempted only for the obs-browser helper target (#2626)."""
+
+    def helper(self) -> str:
+        text = HELPERS.read_text(encoding="utf-8")
+        self.assertIn("function(obs_msvc_exempt_c4505 target)", text)
+        return text.split("function(obs_msvc_exempt_c4505 target)", 1)[1].split("endfunction()", 1)[0]
+
+    def test_helper_is_cxx_and_msvc_scoped(self) -> None:
+        helper = self.helper()
+        self.assertIn("/wd4505", helper)
+        self.assertIn("COMPILE_LANG_AND_ID:CXX,MSVC", helper)
+
+    def test_helper_is_a_no_op_when_the_module_is_disabled(self) -> None:
+        helper = self.helper()
+        guard = helper.find("if(NOT TARGET ${target})")
+        self.assertNotEqual(guard, -1, "the helper must tolerate a target the config did not create")
+        self.assertLess(guard, helper.find("target_compile_options"), "return before touching the target")
+
+    def test_only_the_obs_browser_helper_opts_in(self) -> None:
+        # The dead static is `SetHighDPIv2Scaling()` in the obs-browser
+        # submodule, so the exemption belongs to that target and nowhere else;
+        # deleting the function is an obs-rust/obs-browser change.
+        body = (ROOT / "plugins" / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn("obs_msvc_exempt_c4505(obs-browser-helper)", body)
+        self.assertEqual(body.count("obs_msvc_exempt_c4505("), 1)
+        windows = WINDOWS.read_text(encoding="utf-8")
+        self.assertIsNone(
+            re.search(r"(?<![\w/])/wd4505\b", windows),
+            "the MSVC config must not disable C4505 for every C++ target",
+        )
+
+
 OUTPUTS = ROOT / "plugins" / "obs-outputs" / "CMakeLists.txt"
 DSHOW = ROOT / "deps" / "libdshowcapture" / "CMakeLists.txt"
 

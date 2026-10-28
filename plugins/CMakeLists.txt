@@ -27,6 +27,8 @@ macro(check_obs_browser)
       # defined by the submodule's own CMakeLists, so the exemption is applied
       # here (#2626).
       obs_msvc_exempt_c4201(obs-browser)
+      # obs-browser-page-main.cpp's dead static function, C4505 (#2626).
+      obs_msvc_exempt_c4505(obs-browser-helper)
     endif()
   else()
     add_custom_target(obs-browser)

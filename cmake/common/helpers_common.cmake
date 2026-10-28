@@ -114,6 +114,21 @@ function(obs_msvc_exempt_c4201 target)
   target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4201>)
 endfunction()
 
+# obs_msvc_exempt_c4505: Disable C4505 on one C++ target (MSVC /W4, #2626)
+#
+# /W4 reports C4505 "unreferenced function with internal linkage has been
+# removed" for the static SetHighDPIv2Scaling() in the obs-browser submodule's
+# obs-browser-page-main.cpp. That function is dead in obs-browser, not in this
+# tree: deleting it belongs to an obs-rust/obs-browser change, so until that
+# lands the target gets the same per-target exemption properties-view already
+# uses, and never a blanket /wd4505 for every C++ target.
+function(obs_msvc_exempt_c4505 target)
+  if(NOT TARGET ${target})
+    return()
+  endif()
+  target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4505>)
+endfunction()
+
 # _handle_generator_expression_dependency: Helper function to yield dependency from a generator expression
 function(_handle_generator_expression_dependency library)
   set(oneValueArgs FOUND_VAR)
