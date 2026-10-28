@@ -207,6 +207,9 @@ class CacheWriterPolicyTest(unittest.TestCase):
 
     def test_owned_cache_steps_restore_independently_and_publish_only_on_master(self):
         files = sorted(WORKFLOWS.glob("*.y*ml")) + sorted(GITHUB.glob("actions/*/action.y*ml"))
+        # The CACHE-001 wrapper's save step is gated by its `mode` input; the
+        # callsite that passes `mode: save` carries the branch guard.
+        files = [path for path in files if path != GITHUB / "actions" / "cache" / "action.yml"]
         writers = 0
         for path in files:
             for line, block in self.blocks(path):
@@ -311,6 +314,10 @@ def cache_keys() -> list[tuple[str, str]]:
     and of every flatpak-builder cache key the workflows build."""
     out = []
     files = sorted(WORKFLOWS.glob("*.y*ml")) + sorted(GITHUB.glob("actions/*/action.y*ml"))
+    # The CACHE-001 wrapper (.github/actions/cache) forwards the caller's key and
+    # restore-keys, so its own `key:` has no literal prefix; the callsites that
+    # pass the real keys are scanned above and keep their families.
+    files = [path for path in files if path != GITHUB / "actions" / "cache" / "action.yml"]
     for path in files:
         lines = path.read_text().splitlines()
         starts = [i for i, line in enumerate(lines) if re.match(r"\s+- ", line)] + [len(lines)]
