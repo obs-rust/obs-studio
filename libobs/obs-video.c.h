@@ -21,14 +21,8 @@ static uint64_t tick_sources(uint64_t cur_time, uint64_t last_time)
 {
 	struct obs_core_data *data = &obs->data;
 	struct obs_source *source;
-	uint64_t delta_time;
-	float seconds;
-
-	if (!last_time)
-		last_time = cur_time - obs->video.video_frame_interval_ns;
-
-	delta_time = cur_time - last_time;
-	seconds = (float)((double)delta_time / 1000000000.0);
+	const float seconds =
+		obs_video_frame_timing_tick(cur_time, last_time, obs->video.video_frame_interval_ns).seconds;
 
 	/* ------------------------------------- */
 	/* call tick callbacks                   */
@@ -920,19 +914,19 @@ bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 
 	video_sleep(&obs->video, &obs->video.video_time, context->interval);
 
-	context->frame_time_total_ns += frame_time_ns;
-	context->fps_total_ns += (obs->video.video_time - context->last_time);
-	context->fps_total_frames++;
+	const struct obs_video_frame_sums sums = {
+		.frame_time_total_ns = context->frame_time_total_ns,
+		.fps_total_ns = context->fps_total_ns,
+		.fps_total_frames = context->fps_total_frames,
+	};
+	const struct obs_video_frame_stats stats =
+		obs_video_frame_timing_stats(sums, frame_time_ns, obs->video.video_time, context->last_time);
+	if (stats.report)
+		obs_video_stats_set_timing(&obs->video.stats, stats.fps, stats.avg_frame_time_ns);
 
-	if (context->fps_total_ns >= 1000000000ULL) {
-		const double fps = (double)context->fps_total_frames / ((double)context->fps_total_ns / 1000000000.0);
-		const uint64_t avg_frame_time_ns = context->frame_time_total_ns / (uint64_t)context->fps_total_frames;
-		obs_video_stats_set_timing(&obs->video.stats, fps, avg_frame_time_ns);
-
-		context->frame_time_total_ns = 0;
-		context->fps_total_ns = 0;
-		context->fps_total_frames = 0;
-	}
+	context->frame_time_total_ns = stats.sums.frame_time_total_ns;
+	context->fps_total_ns = stats.sums.fps_total_ns;
+	context->fps_total_frames = stats.sums.fps_total_frames;
 
 	return !stop_requested();
 }

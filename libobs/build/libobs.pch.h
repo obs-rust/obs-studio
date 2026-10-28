@@ -104,6 +104,9 @@
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
 
+/* obs-video-frame-timing.c */
+#include "obs-video-frame-timing.h"
+
 /* obs-video-output-step.c */
 #include "obs-video-output-step.h"
 
