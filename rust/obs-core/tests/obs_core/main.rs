@@ -25,6 +25,7 @@ mod module_source_rules;
 mod module_source_rules_parity;
 mod module_type_rules;
 mod module_type_rules_parity;
+mod nix_system_info;
 mod source_load;
 mod source_load_parity;
 mod source_profiler;
