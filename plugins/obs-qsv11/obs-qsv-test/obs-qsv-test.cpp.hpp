@@ -182,8 +182,8 @@ try {
 
 	MFXUnload(loader);
 
-	for (auto &[adapter_index, caps] : adapter_info) {
-		printf("[%u]\n", adapter_index);
+	for (auto &[caps_index, caps] : adapter_info) {
+		printf("[%u]\n", caps_index);
 		printf("is_intel=%s\n", caps.is_intel ? "true" : "false");
 		printf("is_dgpu=%s\n", caps.is_dgpu ? "true" : "false");
 		printf("supports_av1=%s\n", caps.supports_av1 ? "true" : "false");

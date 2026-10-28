@@ -151,8 +151,8 @@ try {
 	while (get_adapter_caps(factory, idx++))
 		;
 
-	for (auto &[adapter_index, caps] : adapter_info) {
-		printf("[%u]\n", adapter_index);
+	for (auto &[caps_index, caps] : adapter_info) {
+		printf("[%u]\n", caps_index);
 		printf("is_amd=%s\n", caps.is_amd ? "true" : "false");
 		printf("supports_avc=%s\n", caps.supports_avc ? "true" : "false");
 		printf("supports_hevc=%s\n", caps.supports_hevc ? "true" : "false");
