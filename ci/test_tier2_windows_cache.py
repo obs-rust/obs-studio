@@ -28,7 +28,7 @@ def job(name: str) -> str:
 
 class WindowsCcacheTest(unittest.TestCase):
     def setUp(self):
-        self.job = job("rust-tier2")
+        self.job = job("rust-tier2-windows")
 
     def test_restores_and_saves_a_tier2_windows_ccache(self):
         self.assertIn("key: windows-tier2-ccache-${{ github.sha }}", self.job)

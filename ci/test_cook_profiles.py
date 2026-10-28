@@ -26,7 +26,7 @@ class CookProfilesTest(unittest.TestCase):
         self.assertEqual(len(host), 1, "Compatible host jobs must share the same namespace")
         self.assertNotIn(namespace("rust-linux-tier2-build"), host,
                          "Different archive-path versions must not share janitor identity")
-        for name in ("rust-tests", "rust-tier2"):
+        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows"):
             self.assertNotIn("cache-key-suffix:", workflow[name],
                              "Do not invalidate unrelated Windows/macOS caches")
 
@@ -35,9 +35,11 @@ class CookProfilesTest(unittest.TestCase):
             "rust-tests-linux": "${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}",
             "rust-cross-lint": "--profile dev",
             "rust-cross-lint-release": "--profile dev",
-            "rust-tests": "--profile dev -- --tests",
+            "rust-tests-macos": "--profile dev -- --tests",
+            "rust-tests-windows": "--profile dev -- --tests",
             "rust-linux-tier2-build": "--release",
-            "rust-tier2": "--release",
+            "rust-tier2-macos": "--release",
+            "rust-tier2-windows": "--release",
         }
         workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
         for name, flags in expected.items():

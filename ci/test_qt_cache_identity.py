@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class QtCacheIdentityTest(unittest.TestCase):
     def setUp(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.job = text.split("  linux-qt-frontend:\n", 1)[1].split("\n  rust-tier2:", 1)[0]
+        self.job = text.split("  linux-qt-frontend:\n", 1)[1].split("\n  rust-tier2-macos:", 1)[0]
         scratch = ROOT / "build_ci_audit"
         scratch.mkdir(exist_ok=True)
         temporary = tempfile.TemporaryDirectory(prefix="qt-identity-test-", dir=scratch)

@@ -21,7 +21,7 @@ verify = "build-project.yaml:ci-mode"
 # Tier 2 legs. ci.yml's format/validation jobs are seconds long.
 
 # The manual fresh-runner compiler transfer trial cannot be locally attested.
-verify-exempt = ["check-event", "macos-build", "ubuntu-build", "flatpak-build", "flatpak-runtime-test", "flatpak-compiler-consumer", "windows-build", "rust-tests", "rust-tier2", "ci.yml"]
+verify-exempt = ["check-event", "macos-build", "ubuntu-build", "flatpak-build", "flatpak-runtime-test", "flatpak-compiler-consumer", "windows-build", "rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows", "ci.yml"]
 mode = "shadow"
 # GATE-001: these remote jobs run the gate command itself (`--lane` args
 # only), so a green local gate predicts them. setup-steps lists steps that

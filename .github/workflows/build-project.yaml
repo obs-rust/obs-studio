@@ -2036,21 +2036,122 @@ jobs:
       - name: Local Gate (cross-release) 🧪
         run: uv run --no-project ci/local_gate.py --lane cross-release
 
-  rust-tests:
-    # 2x the 9-14.3 min the lane runs: windows 30, macos-26 25 (#2593 A).
-    timeout-minutes: ${{ matrix.os == 'windows-2025-vs2026' && 30 || 25 }}
-    name: Rust Tests 🦀
+  rust-tests-macos:
+    # 2x the 9-14.3 min the lane runs on macos-26 (#2593 A).
+    timeout-minutes: 25
+    name: Rust Tests 🦀 (macos-26)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.platform_os != '[]') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ${{ fromJSON(needs.check-event.outputs.platform_os) }}
-    runs-on: ${{ matrix.os }}
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    runs-on: macos-26
     needs: [check-event, rust-tests-linux]
-    defaults:
-      run:
-        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Same soldr-wrapped commands as docs/rust-port/testing-policy.md.
+      # setup-soldr provisions the toolchain (with the clippy/rustfmt
+      # components) from rust-toolchain.toml and restores its dependency cook
+      # cache and cargo registry. Remote saves only warm master; PR and
+      # merge-group runs restore. Local act/act2 saves stay enabled.
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        with:
+          # One scope for every caller (push.yaml, ci.yml), so PRs replay
+          # the verdicts master publishes (forge-ci/setup-soldr#604).
+          verdict-scope: build-project
+          # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
+          version: 0.9.43
+          build-cache: false
+          prebuild-deps-flags: --profile dev -- --tests
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      # The OS lane runs the tests of the crates the diff touches on a PR
+      # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
+      # workspace on master (#992).
+      - name: Run Rust Tests (changed crates) 🧪
+        if: needs.check-event.outputs.deferred == 'true'
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          git fetch -q --depth=1 origin "${BASE}"
+          uv run --no-project ci/local_gate.py --test-diff "${BASE}"
+
+      - name: Run Rust Tests 🧪
+        if: needs.check-event.outputs.deferred != 'true'
+        run: soldr cargo test --workspace --locked
+
+      - name: Run Clippy 📎
+        run: soldr cargo clippy --locked --workspace --all-targets -- -D warnings
+
+      - name: Check Formatting 🎨
+        run: soldr cargo fmt --all --check
+
+      # rust/obs-build's Qt SDK resolver against the published obs-studio-libs
+      # SDK for this runner's OS (#1878). Only Qt SDK paths and full runs
+      # select it; no Actions cache: the Windows SDK alone is 163 MB packed,
+      # over ci.toml's libs-qt budget.
+      - name: Check Published Qt SDK 🧩
+        if: needs.check-event.outputs.qt_sdk == 'true'
+        # A Qt test app that cannot start can wait on a dialog; bound it.
+        timeout-minutes: 15
+        env:
+          QT_TAG: qt6-6.11.1
+        run: |
+          : Check Published Qt SDK 🧩
+          if [[ "${RUNNER_OS}" == Windows ]]; then
+            asset=qt6-6.11.1-windows-x86_64-relwithdebinfo.tar.zst
+            sha=b05c17386d2a1b0564b00755bc1fba152a18eaac34e512d9315922990715b751
+            variable=OBS_QT_TEST_WINDOWS_PREFIX
+          else
+            asset=qt6-6.11.1-darwin-universal2-11.0-release.tar.zst
+            sha=85093eae764f83d167f8850c5b057c0ff5d2f928ad7d49fe2544ce0ca20074b0
+            variable=OBS_QT_TEST_MACOS_PREFIX
+          fi
+          start=${SECONDS}
+          uv run --no-project ci/fetch_libs_asset.py "${QT_TAG}" "${asset}" "${sha}" "${RUNNER_TEMP}/qt"
+          echo "fetched ${asset} in $((SECONDS - start)) s"
+          export "${variable}=${RUNNER_TEMP}/qt"
+          soldr cargo test -p obs-studio-rust --locked --test obs-tests-app -- --exact qt_sdk::qt_sdk_resolves_published_sdks --show-output 2>&1 | tee "${RUNNER_TEMP}/qt-sdk.log"
+          grep -q ": Qt 6\." "${RUNNER_TEMP}/qt-sdk.log"
+          # The Qt native test graph (moc, uic, rcc, link, run) against the
+          # same SDK; Windows loads the Qt DLLs and the minimal platform plugin
+          # from the SDK.
+          export OBS_QT_TARGET_PREFIX="${RUNNER_TEMP}/qt" CMAKE_PREFIX_PATH="${RUNNER_TEMP}/qt" QT_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins"
+          if [[ "${RUNNER_OS}" == Windows ]]; then
+            export PATH="${RUNNER_TEMP}/qt/bin:${PATH}"
+          fi
+          # The unchanged remux queue test needs cmocka: brew on macOS; on
+          # Windows vcpkg's (as Tier 2) and its pkgconf for the pkg-config crate.
+          if [[ "${RUNNER_OS}" == Windows ]]; then
+            vcpkg="$(cygpath -u "${VCPKG_INSTALLATION_ROOT}")/installed/x64-windows"
+            "${GITHUB_WORKSPACE}/.github/scripts/retry" vcpkg install cmocka:x64-windows pkgconf:x64-windows
+            export PKG_CONFIG="${vcpkg}/tools/pkgconf/pkgconf.exe" PKG_CONFIG_PATH="${vcpkg}/lib/pkgconfig"
+            export PATH="${vcpkg}/bin:${PATH}"
+          else
+            "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
+          fi
+          export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
+          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
+
+  # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
+  # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
+  # (including the enforced C/Rust export comparison, so a mismatch fails
+  # before any test) and uploads the tree; mode x shard jobs run one ctest
+  # slice each against one libobs (OFF: C reference, ON: hybrid libobs via
+  # LD_LIBRARY_PATH) on the same paths; rust-linux-tier2-done publishes the
+  # lane proof.
+  rust-tests-windows:
+    # 2x the 9-14.3 min the lane runs on windows-2025-vs2026 (#2593 A).
+    timeout-minutes: 30
+    name: Rust Tests 🦀 (windows-2025-vs2026)
+    # Only the platforms the change touches (#436); Linux is rust-tests-linux.
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
+    runs-on: windows-2025-vs2026
+    needs: [check-event, rust-tests-linux]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -2640,19 +2741,154 @@ jobs:
           path: ${{ runner.temp }}/ffmpeg
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
-  rust-tier2:
+  rust-tier2-macos:
     # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).
     timeout-minutes: 25
-    name: Rust Tier 2 ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ${{ fromJSON(needs.check-event.outputs.platform_os) }}
-    runs-on: ${{ matrix.os }}
+    name: Rust Tier 2 (macos-26)
+    runs-on: macos-26
     needs: [check-event, rust-tests-linux]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && (needs.check-event.outputs.platform_os != '[]') }}
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # Production hybrid libobs builds Rust ports through Corrosion; shims select
+      # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        with:
+          # One scope for every caller (push.yaml, ci.yml), so PRs replay
+          # the verdicts master publishes (forge-ci/setup-soldr#604).
+          verdict-scope: build-project
+          # soldr 0.9.43 embeds zccache 1.15.5+, which names MSVC staticlib
+          # outputs <crate>-<hash>.lib (zackees/zccache#1937).
+          version: 0.9.43
+          build-cache: false
+          prebuild-deps-flags: --release
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          shims: true
+
+      # validate.sh builds through the macos-ci preset's Xcode compilation
+      # cache; it started empty every run, so every build compiled cold
+      # (about 6.5 of 10 min in run 38908431573, #930). As for the macOS OBS
+      # build, PR and queue runs restore master's CAS; master runs (push,
+      # schedule, dispatch: a push runs this job only for macOS paths) build
+      # cold and save, so the CAS holds only what the tree uses (it cannot be
+      # pruned by age).
+      - name: Restore Tier 2 Xcode Cache 🗄️
+        if: runner.os == 'macOS' && !(github.event_name != 'pull_request' && github.ref == 'refs/heads/master')
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.tier2-xcas
+          key: macos-tier2-xcas-${{ github.sha }}
+          restore-keys: macos-tier2-xcas-
+
+      - name: Validate Tier 2 on macOS (libobs C vs with Rust) 🍏
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          XCODE_CAS_PATH: ${{ github.workspace }}/.tier2-xcas
+          OBS_CTEST_JOBS: 3
+        run: |
+          "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
+          bash rust/tools/tier2-validate/validate.sh
+          du -sh "$XCODE_CAS_PATH"
+
+      - name: Save Tier 2 Xcode Cache 💾
+        if: runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.tier2-xcas
+          key: macos-tier2-xcas-${{ github.sha }}
+
+      # The windows-ci-x64 preset enables ccache (ENABLE_CCACHE) whenever it is
+      # on PATH, as the Windows OBS build does; without it both Tier 2 builds
+      # compiled cold, about 5.5 of 9.1 min (#1038). Only master pushes save.
+      - name: Restore Tier 2 ccache 🗄️
+        if: runner.os == 'Windows'
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: windows-tier2-ccache-${{ github.sha }}
+          restore-keys: windows-tier2-ccache-
+
+      - name: Set Up ccache 🗄️
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Set Up ccache 🗄️ (same pinned build as windows-build)
+          $Version = '4.14.1'
+          $Hash = '6219f3865ca59aec41ee4b678df171d5d35855ecb2b6dbbbd20690b3a68af7b4'
+          $Name = "ccache-${Version}-windows-x86_64"
+          $Zip = "${env:RUNNER_TEMP}/${Name}.zip"
+
+          Invoke-WebRequest -Uri "https://github.com/ccache/ccache/releases/download/v${Version}/${Name}.zip" -OutFile $Zip
+          if ( (Get-FileHash -Algorithm SHA256 -Path $Zip).Hash -ne $Hash ) { throw "${Name}.zip checksum mismatch" }
+          Expand-Archive -Path $Zip -DestinationPath $env:RUNNER_TEMP
+
+          $CcacheHome = Join-Path $env:RUNNER_TEMP $Name
+          $env:CCACHE_DIR = Join-Path $env:GITHUB_WORKSPACE '.ccache'
+          $CcacheHome >> $env:GITHUB_PATH
+          @(
+            "CCACHE_DIR=${env:CCACHE_DIR}"
+            'CCACHE_MAXSIZE=2G'
+            'CCACHE_COMPILERCHECK=content'
+            'CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime'
+          ) >> $env:GITHUB_ENV
+          & (Join-Path $CcacheHome 'ccache.exe') --zero-stats
+
+      # cmocka took 37 s to build from source through vcpkg every run.
+      - name: Cache vcpkg Binaries 🗄️
+        id: cmocka-cache
+        if: runner.os == 'Windows'
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.vcpkg-bin
+          key: vcpkg-bin-cmocka-x64-windows-v1
+
+      - name: Validate Tier 2 on Windows (libobs C vs with Rust) 🪟
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-bin,readwrite
+          OBS_CTEST_JOBS: 4
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE/.vcpkg-bin" | Out-Null
+          vcpkg install cmocka:x64-windows
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed ($LASTEXITCODE)" }
+          ./rust/tools/tier2-validate/validate.ps1 -CMockaPrefix "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows"
+          ccache --show-stats
+
+      - name: Save Tier 2 ccache 💾
+        if: runner.os == 'Windows' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: windows-tier2-ccache-${{ github.sha }}
+
+      - name: Save vcpkg Binaries 💾
+        if: runner.os == 'Windows' && github.ref == 'refs/heads/master' && steps.cmocka-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ github.workspace }}/.vcpkg-bin
+          key: vcpkg-bin-cmocka-x64-windows-v1
+
+  # Manual candidate only. Existing application jobs keep read-only tokens.
+  # Use the job GITHUB_TOKEN: its release/tag writes do not recursively trigger
+  # product workflows. No PAT, Actions artifact cache transport or PR writer.
+  rust-tier2-windows:
+    # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).
+    timeout-minutes: 25
+    name: Rust Tier 2 (windows-2025-vs2026)
+    runs-on: windows-2025-vs2026
+    needs: [check-event, rust-tests-linux]
+    # Only the platforms the change touches (#436); Linux Tier 2 always runs
+    # (rust-linux-tier2).
+    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

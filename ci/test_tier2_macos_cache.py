@@ -38,7 +38,7 @@ def step(j: str, marker: str) -> str:
 
 class MacosTier2CacheTest(unittest.TestCase):
     def setUp(self):
-        self.job = job("rust-tier2")
+        self.job = job("rust-tier2-macos")
 
     def test_validate_takes_the_cas_path_from_the_environment(self):
         self.assertIn('XCODE_CAS_PATH="${XCODE_CAS_PATH:-', VALIDATE.read_text(encoding="utf-8"))

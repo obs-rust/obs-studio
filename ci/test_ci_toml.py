@@ -263,12 +263,18 @@ class CacheWriterPolicyTest(unittest.TestCase):
                             if re.search(rf"(?m)^\s+key: {re.escape(prefix)}", block)]
                 restore = [block for block in selected if "uses: actions/cache/restore@" in block]
                 save = [block for block in selected if "uses: actions/cache/save@" in block]
-                self.assertEqual(len(restore), 1)
-                self.assertEqual(len(save), 1)
+                # The platform-split Tier 2 jobs keep one pair per OS (each
+                # guarded by runner.os), so a prefix can appear in more than one
+                # job; every saved key/path must still match a restore's.
+                self.assertGreaterEqual(len(restore), 1)
+                self.assertEqual(len(restore), len(save))
                 for field in ("path", "key"):
                     pattern = rf"(?m)^\s+{field}: (.+)$"
-                    self.assertEqual(re.search(pattern, restore[0])[1], re.search(pattern, save[0])[1])
-                self.assertIn("outputs.cache-hit != 'true'", save[0])
+                    restored = {re.search(pattern, block)[1] for block in restore}
+                    saved = {re.search(pattern, block)[1] for block in save}
+                    self.assertEqual(saved, restored)
+                for block in save:
+                    self.assertIn("outputs.cache-hit != 'true'", block)
 
 
 def size_bytes(value: str) -> int:

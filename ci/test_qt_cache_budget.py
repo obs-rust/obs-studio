@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class QtCacheBudgetTest(unittest.TestCase):
     def setUp(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.job = text.split("  linux-qt-frontend:\n", 1)[1].split("\n  rust-tier2:", 1)[0]
+        self.job = text.split("  linux-qt-frontend:\n", 1)[1].split("\n  rust-tier2-macos:", 1)[0]
         self.family = tomllib.loads((ROOT / "ci.toml").read_text())["cache"]["family"]["qt-ccache"]
 
     def test_budget_fits_observed_entry_and_enforced_limit(self):

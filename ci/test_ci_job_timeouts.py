@@ -8,7 +8,8 @@ When a CI runner dies, the job stays `in_progress` until its
 60/90-minute timeout on an 8-14-minute job turned one lost runner into a
 44-60-minute stall on #2514. The maintainer's `Decided:` on #2593 sets the
 bounds at about 2x the measured duration: Fast Gate (`rust-tests-linux`) 20;
-`rust-tests` windows 30 / macos-26 25; `rust-tier2` windows 25 / macos-26 25.
+`rust-tests-windows` 30 / `rust-tests-macos` 25; `rust-tier2-windows` 25 /
+`rust-tier2-macos` 25.
 """
 
 from __future__ import annotations
@@ -44,13 +45,14 @@ class JobTimeoutTest(unittest.TestCase):
         self.assertEqual(timeout_line(job_block(self.text, "rust-tests-linux")), "20")
 
     def test_rust_tests_time_out_per_os(self):
-        """`rust-tests` runs 9-14.3 min; windows 30, macos-26 25 (#2593 A)."""
-        line = timeout_line(job_block(self.text, "rust-tests"))
-        self.assertEqual(line, f"${{{{ matrix.os == '{WINDOWS}' && 30 || 25 }}}}")
+        """`rust-tests` runs 9-14.3 min; macos-26 25, windows 30 (#2593 A)."""
+        self.assertEqual(timeout_line(job_block(self.text, "rust-tests-macos")), "25")
+        self.assertEqual(timeout_line(job_block(self.text, "rust-tests-windows")), "30")
 
     def test_rust_tier2_times_out_at_25(self):
         """`rust-tier2` runs about 10-15 min; 25 bounds a dead runner (#2593 A)."""
-        self.assertEqual(timeout_line(job_block(self.text, "rust-tier2")), "25")
+        self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-macos")), "25")
+        self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-windows")), "25")
 
 
 if __name__ == "__main__":

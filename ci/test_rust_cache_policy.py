@@ -24,7 +24,7 @@ class RustCachePolicyTest(unittest.TestCase):
                                         "Preserve the other cache layers")
                     self.assertIn("prebuild-deps-flags:", step)
                     self.assertNotIn("prebuild-deps: none", step)
-        self.assertEqual(found, 10, "Audit new setup-soldr consumers explicitly")
+        self.assertEqual(found, 12, "Audit new setup-soldr consumers explicitly")
 
     def test_all_consumers_inherit_the_rust_wrapper_bypass(self):
         for name in WORKFLOWS:

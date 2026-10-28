@@ -82,7 +82,7 @@ class FastGateWorkflowTest(unittest.TestCase):
     def test_costly_lanes_wait_for_the_fast_gate(self):
         # Tier 2 compilation and the independent Qt lane overlap Fast Gate;
         # Tier 2 execution remains gated (ci/test_tier2_compile_overlap.py).
-        for name in ("rust-tests", "rust-tier2", "rust-cross-lint"):
+        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows", "rust-cross-lint"):
             j = self.job(name)
             self.assertIn("rust-tests-linux", j.split("steps:")[0], name)
             self.assertIn("needs.rust-tests-linux.result != 'failure'", j, name)
