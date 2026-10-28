@@ -267,8 +267,8 @@ void OBSBasicProperties::on_buttonBox_clicked(QAbstractButton *button)
 
 		std::string scene_uuid = obs_source_get_uuid(main->GetCurrentSceneSource());
 
-		auto undo_redo = [scene_uuid](const std::string &data) {
-			OBSDataAutoRelease settings = obs_data_create_from_json(data.c_str());
+		auto undo_redo = [scene_uuid](const std::string &json) {
+			OBSDataAutoRelease settings = obs_data_create_from_json(json.c_str());
 			OBSSourceAutoRelease source =
 				obs_get_source_by_uuid(obs_data_get_string(settings, "undo_uuid"));
 			obs_source_reset_settings(source, settings);
