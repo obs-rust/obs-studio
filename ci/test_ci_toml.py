@@ -523,24 +523,34 @@ def job_if(path: Path, job_id: str) -> str:
     return ""
 
 
-class RustComplexityExceptionTest(unittest.TestCase):
-    """RUST-018 is a workspace finding, so only the workspace manifest is excepted.
+class RustComplexityRatchetTest(unittest.TestCase):
+    """RUST-018 is satisfied in the manifest, not by an exception (#2845).
 
-    The rule reads `[workspace.lints.clippy]` once per run: `ci-lint precheck
-    --json` (the pinned tool in AGENTS.md) reports RUST-018 twice, both on
-    `Cargo.toml`, whatever the member manifests or tests contain. An exception
-    naming another path is dead, and a dead path that has moved is worse than
-    noise -- it hides the day the rule starts reporting at the new location
-    (#2834, where `tests/parity.rs` had moved to `tests/properties/parity.rs`).
+    The rule reads `[workspace.lints.clippy]` once per run, so it reports on
+    the workspace manifest only: an exception anywhere is the finding, not the
+    fix. While the two lints were unset, `ci.toml` carried one `Cargo.toml`
+    block as the whole story (#2834 could only delete the 15 dead ones). Now
+    the lints are set and every existing offender carries an `#[expect]`, so
+    the exception has to be gone -- and it must not come back as the way to
+    silence a new offender.
     """
 
-    def test_every_exception_names_the_workspace_manifest(self):
+    LINTS = ("cognitive_complexity", "too_many_lines")
+
+    def test_no_rust_018_exception_remains(self):
         paths = sorted({entry["path"] for entry in load()["exceptions"]
                         if entry["rule"] == "RUST-018"})
-        self.assertTrue(paths, "the workspace complexity lint is still unset")
-        self.assertEqual(paths, ["Cargo.toml"],
-                         "RUST-018 is reported on the workspace manifest only; "
-                         "delete the exception for any other path")
+        self.assertEqual(paths, [],
+                         "RUST-018 is fixed in Cargo.toml now; a new offender "
+                         "gets #[expect(clippy::<lint>, reason = ...)] at the "
+                         "function, not an [[exceptions]] block")
+
+    def test_both_complexity_lints_are_warned_on_the_workspace(self):
+        manifest = tomllib.loads((ROOT / "Cargo.toml").read_text())
+        clippy = manifest["workspace"]["lints"]["clippy"]
+        for lint in self.LINTS:
+            self.assertEqual(clippy.get(lint), "warn",
+                             f"[workspace.lints.clippy] must set {lint} to warn")
 
 
 NON_LINUX_RUNNER = re.compile(r"^(?:macos|windows)-\d")
