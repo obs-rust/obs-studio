@@ -2201,8 +2201,12 @@ jobs:
         env:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
-          git fetch -q --depth=1 origin "${BASE}"
-          uv run --no-project ci/local_gate.py --test-diff "${BASE}"
+          # This runner's default shell is PowerShell, where an environment
+          # variable is read as $env:BASE: a bash-style brace reference is an
+          # unset PowerShell variable, i.e. "", and `--test-diff ""` used to
+          # run every lane (#2743).
+          git fetch -q --depth=1 origin "$env:BASE"
+          uv run --no-project ci/local_gate.py --test-diff "$env:BASE"
 
       - name: Run Rust Tests 🧪
         if: needs.check-event.outputs.deferred != 'true'

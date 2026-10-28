@@ -759,6 +759,11 @@ def main() -> int:
     parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this check (CI format jobs)")
     args = parser.parse_args()
+    if args.test_diff is not None and not args.test_diff.strip():
+        # A shell that loses the value (a Windows runner's PowerShell reads
+        # `${BASE}` as an unset variable) must fail here, not silently run
+        # every lane: the ci/ self-tests are POSIX-only (#2743).
+        parser.error("--test-diff needs a base commit, not an empty value")
     if args.test_diff:
         try:
             test_diff(args.test_diff)
