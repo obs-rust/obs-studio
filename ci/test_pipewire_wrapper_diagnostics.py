@@ -32,8 +32,6 @@ spec = importlib.util.spec_from_file_location("pipewire_wrapper_harness", HARNES
 if spec is None or spec.loader is None:  # pragma: no cover - the file is in the tree
     raise SystemExit(f"cannot load {HARNESS}")
 harness = importlib.util.module_from_spec(spec)
-# A dataclass's module must be importable from sys.modules while it is built.
-sys.modules[spec.name] = harness
 spec.loader.exec_module(harness)
 
 

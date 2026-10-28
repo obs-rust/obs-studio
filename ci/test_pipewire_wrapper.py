@@ -174,9 +174,13 @@ class PipewireWrapperTest(unittest.TestCase):
             result = harness.run(OBS_PW_WRAPPER_STUB_EXIT="5")
             self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
             self.assertIn(
-                "FAIL: test_pipewire_cursor_hdr.py, long TMPDIR: the daemon starts and the test runs: exit 5",
+                "FAIL: test_pipewire_cursor_hdr.py, long TMPDIR: the daemon starts and the test runs: "
+                "exit status 5, expected 0",
                 result.stdout,
             )
+            # The failure carries the case's own output, so CI can diagnose it
+            # (#2772): the stub wrote nothing, and the report says so.
+            self.assertIn("the case wrote nothing", result.stdout)
 
 
 if __name__ == "__main__":
