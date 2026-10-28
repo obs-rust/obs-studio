@@ -1010,7 +1010,16 @@ static inline void rtl_get_ver(struct win_version_info *ver)
 		return;
 
 	NTSTATUS(WINAPI * get_ver)
-	(RTL_OSVERSIONINFOEXW *) = (void *)GetProcAddress(ntdll, "RtlGetVersion");
+	(RTL_OSVERSIONINFOEXW *);
+	/* GetProcAddress yields a FARPROC and `get_ver` is a function pointer:
+	 * casting between them through a void * is C4152 at /W4. Copy the address
+	 * through a union instead, the way LOAD_MODULE_SYMBOL does for os_dlsym. */
+	union {
+		FARPROC proc;
+		__typeof__(get_ver) fn;
+	} sym;
+	sym.proc = GetProcAddress(ntdll, "RtlGetVersion");
+	get_ver = sym.fn;
 	if (!get_ver) {
 		return;
 	}
