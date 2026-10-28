@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-load-rules.pch.h"
 
 /* Module load rules, moved from obs_open_module(), load_module_exports(),
  * is_safe_module(), is_disabled_module(), obs_get_module_allow_disable(),
@@ -25,7 +25,8 @@
  * rules, the core and legacy types, and the routing of each open and init
  * result. Pure: no libobs state. obs-module.c keeps every lookup, call, list
  * and log message, in the same place and under the same condition, and
- * passes what it read in. Declared in obs-module-load-rules.h. */
+ * passes what it read in. Declared in obs-module-load-rules.h. Ported to
+ * rust/obs-core (module_load_rules): the hybrid libobs drops this file. */
 
 bool obs_module_load_rules_arg_missing(bool present)
 {

@@ -48,8 +48,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-// RED: the stubs below are todo!() until the port lands.
-#![allow(clippy::todo, unused_variables)]
 
 /// `MODULE_SUCCESS`.
 pub const MODULE_SUCCESS: i32 = 0;
@@ -190,57 +188,57 @@ impl Route {
 /// An argument `obs_open_module()` needs is missing.
 #[must_use]
 pub fn arg_missing(present: bool) -> bool {
-    todo!()
+    !present
 }
 
 /// A required export was not found.
 #[must_use]
 pub fn export_missing(found: bool) -> bool {
-    todo!()
+    !found
 }
 
 /// The version a module reports without its patch number.
 #[must_use]
 pub fn version_word(ver: u32) -> u32 {
-    todo!()
+    ver & VERSION_MASK
 }
 
 /// The module's version word is not above `api_ver`, the libobs it runs in
 /// (`LIBOBS_API_VER`, patch included).
 #[must_use]
 pub fn version_ok(ver_word: u32, api_ver: u32) -> bool {
-    todo!()
+    ver_word <= api_ver
 }
 
 /// The safe list, from its length: every module is safe when it is empty.
 #[must_use]
 pub fn safe_list(num: usize) -> List {
-    todo!()
+    if num == 0 { List::All } else { List::Match }
 }
 
 /// The disabled list, from its length: no module is disabled when it is
 /// empty.
 #[must_use]
 pub fn disabled_list(num: usize) -> List {
-    todo!()
+    if num == 0 { List::None } else { List::Match }
 }
 
 /// A module can be disabled unless its name is a core module's.
 #[must_use]
 pub fn allow_disable(core_name: bool) -> bool {
-    todo!()
+    !core_name
 }
 
 /// The core module type.
 #[must_use]
 pub fn is_core(module_type: u32) -> bool {
-    todo!()
+    module_type == TYPE_CORE
 }
 
 /// The legacy plugin type.
 #[must_use]
 pub fn is_legacy(module_type: u32) -> bool {
-    todo!()
+    module_type == TYPE_LEGACY_PLUGIN
 }
 
 /// What `load_all_callback()` does with the code `obs_open_module()`
@@ -248,23 +246,58 @@ pub fn is_legacy(module_type: u32) -> bool {
 /// [`Route::core_continues`], after making the disabled module.
 #[must_use]
 pub fn open_route(code: i32) -> Route {
-    todo!()
+    let stop = Route {
+        stop: true,
+        ..Route::default()
+    };
+    match code {
+        MODULE_MISSING_EXPORTS | MODULE_HARDCODED_SKIP => stop,
+        // Most often a library the module needs is not installed (libcef.so
+        // for obs-browser): a core module carries on without it, as a plugin
+        // does, instead of failing the core module load and OBS startup.
+        MODULE_FAILED_TO_OPEN => Route {
+            disable: Some(STATE_FAILED_TO_OPEN),
+            core_continues: true,
+            fail: true,
+            ..stop
+        },
+        MODULE_INCOMPATIBLE_VER => Route {
+            disable: Some(STATE_FAILED_TO_OPEN),
+            fail: true,
+            ..stop
+        },
+        MODULE_ERROR => Route { fail: true, ..stop },
+        // MODULE_SUCCESS, and any code obs_open_module() never returns.
+        _ => Route::default(),
+    }
 }
 
 /// What `load_all_callback()` does with the result of `obs_init_module()`.
 #[must_use]
 pub fn init_route(ok: bool) -> Route {
-    todo!()
+    if ok {
+        Route {
+            set_type: true,
+            ..Route::default()
+        }
+    } else {
+        Route {
+            disable: Some(STATE_FAILED_TO_INITIALIZE),
+            keep_type: true,
+            free: true,
+            ..Route::default()
+        }
+    }
 }
 
 /// A failure is counted only when the caller passed somewhere to count it.
 #[must_use]
 pub fn count_failure(has_fail_info: bool) -> bool {
-    todo!()
+    has_fail_info
 }
 
 /// The core modules loaded: no failure was counted.
 #[must_use]
 pub fn core_loaded(fail_count: usize) -> bool {
-    todo!()
+    fail_count == 0
 }

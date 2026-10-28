@@ -201,6 +201,7 @@
     "build/libobs.ported-media+.h.c",
     "build/libobs.ported-media-remux+.h.c",
     "build/libobs.ported-missing-files+.h.c",
+    "build/libobs.ported-module-load-rules+.h.c",
     "build/libobs.ported-module-locale+.h.c",
     "build/libobs.ported-module-names+.h.c",
     "build/libobs.ported-module-paths+.h.c",

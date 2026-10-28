@@ -38,6 +38,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-encoder-size.c.h.o",
     "obs-hotkey-pair.c.h.o",
     "obs-hotkey-press.c.h.o",
+    "obs-module-load-rules.c.h.o",
     "obs-module-locale.c.h.o",
     "obs-module-names.c.h.o",
     "obs-module-paths.c.h.o",

@@ -639,6 +639,20 @@ _obs_module_names_find_core
 _obs_module_paths_data_dir
 _obs_module_paths_find
 _obs_module_paths_find_file
+# obs-module-load-rules.c: obs-module.c calls them inside libobs. Not EXPORT.
+_obs_module_load_rules_allow_disable
+_obs_module_load_rules_arg_missing
+_obs_module_load_rules_core_loaded
+_obs_module_load_rules_count_failure
+_obs_module_load_rules_disabled_list
+_obs_module_load_rules_export_missing
+_obs_module_load_rules_init_route
+_obs_module_load_rules_is_core
+_obs_module_load_rules_is_legacy
+_obs_module_load_rules_open_route
+_obs_module_load_rules_safe_list
+_obs_module_load_rules_version_ok
+_obs_module_load_rules_version_word
 # obs-module-source-rules.c: obs-module.c calls them inside libobs. Not
 # EXPORT.
 _obs_module_source_rules_list_of
