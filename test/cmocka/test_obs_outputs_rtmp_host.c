@@ -10,6 +10,10 @@
 
 #include "plugins/obs-outputs/rtmp-stream-host-posix.c.h"
 
+#ifdef TEST_HAVE_MBEDTLS
+#include "plugins/obs-outputs/rtmp-send-result.h"
+#endif
+
 /*
  * The RTMP output's POSIX host (obs-rust/obs-studio#851): socket errors map
  * to the same locale keys, sockets go non-blocking and report pending bytes
@@ -70,6 +74,98 @@ static void test_no_socket_loop(void **state)
 	rtmp_host_log_interface_type(NULL);
 }
 
+#ifdef TEST_HAVE_MBEDTLS
+/*
+ * The socket loop's send rules (obs-rust/obs-studio#2220). The loop is inside
+ * `#ifdef _WIN32`, but these decisions are not: an RTMPS stream sends through
+ * mbedtls_ssl_write(), which answers a full transport with
+ * MBEDTLS_ERR_SSL_WANT_WRITE and a pending handshake with
+ * MBEDTLS_ERR_SSL_WANT_READ instead of -1/EAGAIN.
+ */
+
+/* The two library errors the loop depends on, pinned so an Mbed TLS change
+ * cannot silently move them out from under the classification. */
+static void test_send_result_mbedtls_codes(void **state)
+{
+	(void)state;
+	assert_int_equal(MBEDTLS_ERR_SSL_WANT_READ, -0x6900);
+	assert_int_equal(MBEDTLS_ERR_SSL_WANT_WRITE, -0x6880);
+}
+
+/* A send that accepted bytes is success, whatever the socket error was. */
+static void test_send_result_wrote(void **state)
+{
+	(void)state;
+	assert_int_equal(rtmp_send_result_of(1, false), RTMP_SEND_WROTE);
+	assert_int_equal(rtmp_send_result_of(16384, false), RTMP_SEND_WROTE);
+	assert_int_equal(rtmp_send_result_of(512, true), RTMP_SEND_WROTE);
+
+	struct rtmp_send_action action = rtmp_send_action_of(RTMP_SEND_WROTE);
+	assert_false(action.clear_can_write);
+	assert_false(action.fatal);
+}
+
+/* TLS out of buffer space must stop the loop until FD_WRITE, not spin. */
+static void test_send_result_tls_would_block(void **state)
+{
+	(void)state;
+	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_WANT_WRITE, false), RTMP_SEND_WAIT_WRITE);
+
+	struct rtmp_send_action action = rtmp_send_action_of(RTMP_SEND_WAIT_WRITE);
+	assert_true(action.clear_can_write);
+	assert_false(action.fatal);
+}
+
+/* A handshake or renegotiation read also stops the loop, until FD_READ. */
+static void test_send_result_tls_wants_read(void **state)
+{
+	(void)state;
+	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_WANT_READ, false), RTMP_SEND_WAIT_READ);
+
+	struct rtmp_send_action action = rtmp_send_action_of(RTMP_SEND_WAIT_READ);
+	assert_true(action.clear_can_write);
+	assert_false(action.fatal);
+}
+
+/* A plain socket keeps the old rule: -1 with WSAEWOULDBLOCK waits for FD_WRITE. */
+static void test_send_result_plain_socket(void **state)
+{
+	(void)state;
+	assert_int_equal(rtmp_send_result_of(-1, true), RTMP_SEND_WAIT_WRITE);
+}
+
+/* Everything else ends the stream: a closed connection, an unclassified -1,
+ * and any other Mbed TLS error. */
+static void test_send_result_fatal(void **state)
+{
+	(void)state;
+	assert_int_equal(rtmp_send_result_of(0, false), RTMP_SEND_FAILED);
+	assert_int_equal(rtmp_send_result_of(-1, false), RTMP_SEND_FAILED);
+	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE, false),
+			 RTMP_SEND_FAILED);
+	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_INTERNAL_ERROR, false), RTMP_SEND_FAILED);
+
+	struct rtmp_send_action action = rtmp_send_action_of(RTMP_SEND_FAILED);
+	assert_true(action.fatal);
+}
+
+/* After WANT_WRITE the retry repeats the first call's length, even though the
+ * loop recomputes its length from a write buffer that kept growing. The next
+ * send after a completed one uses the new length. */
+static void test_send_retry_repeats_first_length(void **state)
+{
+	(void)state;
+	struct rtmp_send_retry retry = {0};
+
+	assert_int_equal(rtmp_send_retry_length(&retry, 1000), 1000);
+	assert_int_equal(rtmp_send_retry_length(&retry, 4000), 1000);
+	assert_int_equal(rtmp_send_retry_length(&retry, 8000), 1000);
+
+	rtmp_send_retry_done(&retry);
+	assert_int_equal(rtmp_send_retry_length(&retry, 8000), 8000);
+}
+#endif
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -77,6 +173,15 @@ int main(void)
 		cmocka_unit_test(test_root_cert_error),
 		cmocka_unit_test(test_socket_calls),
 		cmocka_unit_test(test_no_socket_loop),
+#ifdef TEST_HAVE_MBEDTLS
+		cmocka_unit_test(test_send_result_mbedtls_codes),
+		cmocka_unit_test(test_send_result_wrote),
+		cmocka_unit_test(test_send_result_tls_would_block),
+		cmocka_unit_test(test_send_result_tls_wants_read),
+		cmocka_unit_test(test_send_result_plain_socket),
+		cmocka_unit_test(test_send_result_fatal),
+		cmocka_unit_test(test_send_retry_repeats_first_length),
+#endif
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
