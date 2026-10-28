@@ -17,7 +17,7 @@
 
 #include "libobs-d3d11/build/d3d11.pch.hpp"
 
-void gs_texture_3d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &srd)
+void gs_texture_3d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &subresource_data)
 {
 	uint32_t rowSizeBits = width * gs_get_format_bpp(format);
 	uint32_t sliceSizeBytes = height * rowSizeBits / 8;
@@ -35,14 +35,14 @@ void gs_texture_3d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &srd)
 		newSRD.pSysMem = data[level].data();
 		newSRD.SysMemPitch = newRowSize;
 		newSRD.SysMemSlicePitch = newSlizeSize;
-		srd.push_back(newSRD);
+		subresource_data.push_back(newSRD);
 
 		newRowSize /= 2;
 		newSlizeSize /= 4;
 	}
 }
 
-void gs_texture_3d::BackupTexture(const uint8_t *const *data)
+void gs_texture_3d::BackupTexture(const uint8_t *const *plane_data)
 {
 	this->data.resize(levels);
 
@@ -52,7 +52,7 @@ void gs_texture_3d::BackupTexture(const uint8_t *const *data)
 	const uint32_t bbp = gs_get_format_bpp(format);
 
 	for (uint32_t i = 0; i < levels; i++) {
-		if (!data[i]) {
+		if (!plane_data[i]) {
 			break;
 		}
 
@@ -60,7 +60,7 @@ void gs_texture_3d::BackupTexture(const uint8_t *const *data)
 		this->data[i].resize(texSize);
 
 		std::vector<uint8_t> &subData = this->data[i];
-		memcpy(&subData[0], data[i], texSize);
+		memcpy(&subData[0], plane_data[i], texSize);
 
 		if (w > 1) {
 			w /= 2;
@@ -90,7 +90,7 @@ void gs_texture_3d::GetSharedHandle(IDXGIResource *dxgi_res)
 	}
 }
 
-void gs_texture_3d::InitTexture(const uint8_t *const *data)
+void gs_texture_3d::InitTexture(const uint8_t *const *plane_data)
 {
 	HRESULT hr;
 
@@ -114,12 +114,12 @@ void gs_texture_3d::InitTexture(const uint8_t *const *data)
 		td.MiscFlags |= D3D11_RESOURCE_MISC_SHARED;
 	}
 
-	if (data) {
-		BackupTexture(data);
+	if (plane_data) {
+		BackupTexture(plane_data);
 		InitSRD(srd);
 	}
 
-	hr = device->device->CreateTexture3D(&td, data ? srd.data() : NULL, texture.Assign());
+	hr = device->device->CreateTexture3D(&td, plane_data ? srd.data() : NULL, texture.Assign());
 	if (FAILED(hr)) {
 		throw HRError("Failed to create 3D texture", hr);
 	}
@@ -217,19 +217,19 @@ gs_texture_3d::gs_texture_3d(gs_device_t *device, uint32_t handle)
 
 	texture->GetDesc(&td);
 
-	const gs_color_format format = ConvertDXGITextureFormat(td.Format);
+	const gs_color_format tex_format = ConvertDXGITextureFormat(td.Format);
 
 	this->type = GS_TEXTURE_3D;
-	this->format = format;
+	this->format = tex_format;
 	this->levels = 1;
 	this->device = device;
 
 	this->width = td.Width;
 	this->height = td.Height;
 	this->depth = td.Depth;
-	this->dxgiFormatResource = ConvertGSTextureFormatResource(format);
-	this->dxgiFormatView = ConvertGSTextureFormatView(format);
-	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(format);
+	this->dxgiFormatResource = ConvertGSTextureFormatResource(tex_format);
+	this->dxgiFormatView = ConvertGSTextureFormatView(tex_format);
+	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(tex_format);
 
 	InitResourceView();
 }

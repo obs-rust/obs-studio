@@ -17,7 +17,7 @@
 
 #include "libobs-d3d11/build/d3d11.pch.hpp"
 
-void gs_texture_2d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &srd)
+void gs_texture_2d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &subresource_data)
 {
 	uint32_t rowSizeBytes = width * gs_get_format_bpp(format);
 	uint32_t texSizeBytes = height * rowSizeBytes / 8;
@@ -40,7 +40,7 @@ void gs_texture_2d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &srd)
 			newSRD.pSysMem = data[curTex++].data();
 			newSRD.SysMemPitch = newRowSize;
 			newSRD.SysMemSlicePitch = newTexSize;
-			srd.push_back(newSRD);
+			subresource_data.push_back(newSRD);
 
 			newRowSize /= 2;
 			newTexSize /= 4;
@@ -48,7 +48,7 @@ void gs_texture_2d::InitSRD(std::vector<D3D11_SUBRESOURCE_DATA> &srd)
 	}
 }
 
-void gs_texture_2d::BackupTexture(const uint8_t *const *data)
+void gs_texture_2d::BackupTexture(const uint8_t *const *plane_data)
 {
 	uint32_t textures = type == GS_TEXTURE_CUBE ? 6 : 1;
 	uint32_t bbp = gs_get_format_bpp(format);
@@ -61,7 +61,7 @@ void gs_texture_2d::BackupTexture(const uint8_t *const *data)
 
 		for (uint32_t lv = 0; lv < levels; lv++) {
 			uint32_t i = levels * t + lv;
-			if (!data[i]) {
+			if (!plane_data[i]) {
 				break;
 			}
 
@@ -69,7 +69,7 @@ void gs_texture_2d::BackupTexture(const uint8_t *const *data)
 
 			std::vector<uint8_t> &subData = this->data[i];
 			subData.resize(texSize);
-			memcpy(&subData[0], data[i], texSize);
+			memcpy(&subData[0], plane_data[i], texSize);
 
 			if (w > 1) {
 				w /= 2;
@@ -97,7 +97,7 @@ void gs_texture_2d::GetSharedHandle(IDXGIResource *dxgi_res)
 	}
 }
 
-void gs_texture_2d::InitTexture(const uint8_t *const *data)
+void gs_texture_2d::InitTexture(const uint8_t *const *plane_data)
 {
 	HRESULT hr;
 
@@ -130,12 +130,12 @@ void gs_texture_2d::InitTexture(const uint8_t *const *data)
 		td.MiscFlags |= D3D11_RESOURCE_MISC_SHARED;
 	}
 
-	if (data) {
-		BackupTexture(data);
+	if (plane_data) {
+		BackupTexture(plane_data);
 		InitSRD(srd);
 	}
 
-	hr = device->device->CreateTexture2D(&td, data ? srd.data() : NULL, texture.Assign());
+	hr = device->device->CreateTexture2D(&td, plane_data ? srd.data() : NULL, texture.Assign());
 	if (FAILED(hr)) {
 		throw HRError("Failed to create 2D texture", hr);
 	}
@@ -340,18 +340,18 @@ gs_texture_2d::gs_texture_2d(gs_device_t *device, uint32_t handle, bool ntHandle
 
 	texture->GetDesc(&td);
 
-	const gs_color_format format = ConvertDXGITextureFormat(td.Format);
+	const gs_color_format tex_format = ConvertDXGITextureFormat(td.Format);
 
 	this->type = GS_TEXTURE_2D;
-	this->format = format;
+	this->format = tex_format;
 	this->levels = 1;
 	this->device = device;
 
 	this->width = td.Width;
 	this->height = td.Height;
-	this->dxgiFormatResource = ConvertGSTextureFormatResource(format);
-	this->dxgiFormatView = ConvertGSTextureFormatView(format);
-	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(format);
+	this->dxgiFormatResource = ConvertGSTextureFormatResource(tex_format);
+	this->dxgiFormatView = ConvertGSTextureFormatView(tex_format);
+	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(tex_format);
 
 	InitResourceView();
 }
@@ -363,18 +363,18 @@ gs_texture_2d::gs_texture_2d(gs_device_t *device, ID3D11Texture2D *obj)
 
 	texture->GetDesc(&td);
 
-	const gs_color_format format = ConvertDXGITextureFormat(td.Format);
+	const gs_color_format tex_format = ConvertDXGITextureFormat(td.Format);
 
 	this->type = GS_TEXTURE_2D;
-	this->format = format;
+	this->format = tex_format;
 	this->levels = 1;
 	this->device = device;
 
 	this->width = td.Width;
 	this->height = td.Height;
-	this->dxgiFormatResource = ConvertGSTextureFormatResource(format);
-	this->dxgiFormatView = ConvertGSTextureFormatView(format);
-	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(format);
+	this->dxgiFormatResource = ConvertGSTextureFormatResource(tex_format);
+	this->dxgiFormatView = ConvertGSTextureFormatView(tex_format);
+	this->dxgiFormatViewLinear = ConvertGSTextureFormatViewLinear(tex_format);
 
 	InitResourceView();
 }

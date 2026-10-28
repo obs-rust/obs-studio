@@ -1188,11 +1188,11 @@ gs_monitor_color_info gs_device::GetMonitorColorInfo(HMONITOR hMonitor)
 		}
 	}
 
-	ComPtr<IDXGIAdapter> adapter;
+	ComPtr<IDXGIAdapter> dxgi_adapter;
 	ComPtr<IDXGIOutput> output;
 	ComPtr<IDXGIOutput6> output6;
-	for (UINT adapterIndex = 0; SUCCEEDED(factory1->EnumAdapters(adapterIndex, &adapter)); ++adapterIndex) {
-		for (UINT outputIndex = 0; SUCCEEDED(adapter->EnumOutputs(outputIndex, &output)); ++outputIndex) {
+	for (UINT adapterIndex = 0; SUCCEEDED(factory1->EnumAdapters(adapterIndex, &dxgi_adapter)); ++adapterIndex) {
+		for (UINT outputIndex = 0; SUCCEEDED(dxgi_adapter->EnumOutputs(outputIndex, &output)); ++outputIndex) {
 			DXGI_OUTPUT_DESC1 desc1;
 			if (SUCCEEDED(output->QueryInterface(&output6)) && SUCCEEDED(output6->GetDesc1(&desc1)) &&
 			    (desc1.Monitor == hMonitor)) {

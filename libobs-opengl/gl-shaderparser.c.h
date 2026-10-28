@@ -40,7 +40,7 @@ static inline size_t sp_getsampler(struct gl_shader_parser *glsp, struct cf_toke
 			return i;
 	}
 
-	return -1;
+	return (size_t)-1;
 }
 
 static inline int cmp_type(const char *name, const size_t name_len, const char *type, const size_t type_len)
