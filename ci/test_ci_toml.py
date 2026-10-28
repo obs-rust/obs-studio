@@ -523,6 +523,26 @@ def job_if(path: Path, job_id: str) -> str:
     return ""
 
 
+class RustComplexityExceptionTest(unittest.TestCase):
+    """RUST-018 is a workspace finding, so only the workspace manifest is excepted.
+
+    The rule reads `[workspace.lints.clippy]` once per run: `ci-lint precheck
+    --json` (the pinned tool in AGENTS.md) reports RUST-018 twice, both on
+    `Cargo.toml`, whatever the member manifests or tests contain. An exception
+    naming another path is dead, and a dead path that has moved is worse than
+    noise -- it hides the day the rule starts reporting at the new location
+    (#2834, where `tests/parity.rs` had moved to `tests/properties/parity.rs`).
+    """
+
+    def test_every_exception_names_the_workspace_manifest(self):
+        paths = sorted({entry["path"] for entry in load()["exceptions"]
+                        if entry["rule"] == "RUST-018"})
+        self.assertTrue(paths, "the workspace complexity lint is still unset")
+        self.assertEqual(paths, ["Cargo.toml"],
+                         "RUST-018 is reported on the workspace manifest only; "
+                         "delete the exception for any other path")
+
+
 NON_LINUX_RUNNER = re.compile(r"^(?:macos|windows)-\d")
 
 
