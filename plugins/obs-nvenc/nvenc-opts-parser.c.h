@@ -7,7 +7,7 @@
 #define APPLY_BIT_OPT(opt_name, bits)                                                                               \
 	if (strcmp(opt->name, #opt_name) == 0) {                                                                    \
 		uint32_t old_val = nv_conf->opt_name;                                                               \
-		nv_conf->opt_name = strtol(opt->value, NULL, 10);                                                   \
+		nv_conf->opt_name = (uint32_t)strtol(opt->value, NULL, 10) & ((1u << (bits)) - 1u);               \
 		blog(LOG_DEBUG, "[obs-nvenc] Changing parameter: \"%s\": %u -> %u (%d bit(s))", #opt_name, old_val, \
 		     nv_conf->opt_name, bits);                                                                      \
 		return true;                                                                                        \
@@ -104,7 +104,7 @@ static void parse_level_opt(const char *val, uint32_t *level, bool hevc)
 			int_val = high_val * 10 + low_val;
 		}
 	} else {
-		int_val = strtol(val, NULL, 10);
+		int_val = (uint32_t)strtol(val, NULL, 10);
 	}
 
 	if (!int_val)
@@ -215,7 +215,7 @@ bool get_user_arg_int(struct nvenc_data *enc, const char *name, int *val)
 		if (strcmp(opt->name, name) != 0)
 			continue;
 
-		*val = strtol(opt->value, NULL, 10);
+		*val = (int)strtol(opt->value, NULL, 10);
 		return true;
 	}
 

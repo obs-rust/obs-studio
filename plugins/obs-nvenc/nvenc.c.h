@@ -277,10 +277,10 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 
 	enc->config = preset_config.presetCfg;
 
-	int keyint = (int)enc->props.keyint_sec * voi->fps_num / voi->fps_den;
+	int keyint = (int)(enc->props.keyint_sec * voi->fps_num / voi->fps_den);
 	get_user_arg_int(enc, "keyint", &keyint);
 
-	uint32_t gop_size = keyint > 0 ? keyint : 250;
+	uint32_t gop_size = keyint > 0 ? (uint32_t)keyint : 250u;
 
 	NV_ENC_CONFIG *config = &enc->config;
 
@@ -318,22 +318,22 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 		get_user_arg_int(enc, "lookaheadDepth", &rc_lookahead);
 	}
 
-	int buf_count = max(4, config->frameIntervalP * 2 * 2);
+	uint32_t buf_count = max(4u, (uint32_t)config->frameIntervalP * 2u * 2u);
 	if (lookahead) {
-		buf_count = max(buf_count, config->frameIntervalP + rc_lookahead + EXTRA_BUFFERS);
+		buf_count = max(buf_count, (uint32_t)config->frameIntervalP + (uint32_t)rc_lookahead + EXTRA_BUFFERS);
 	}
 
-	buf_count = min(64, buf_count);
+	buf_count = min(64u, buf_count);
 	enc->buf_count = buf_count;
 
-	const int output_delay = buf_count - 1;
+	const int output_delay = (int)buf_count - 1;
 	enc->output_delay = output_delay;
 
 	if (lookahead) {
 		const int lkd_bound = output_delay - config->frameIntervalP - 4;
 		if (lkd_bound >= 0) {
 			config->rcParams.enableLookahead = 1;
-			config->rcParams.lookaheadDepth = min(rc_lookahead, lkd_bound);
+			config->rcParams.lookaheadDepth = (uint16_t)min(rc_lookahead, lkd_bound);
 			config->rcParams.disableIadapt = 0;
 			config->rcParams.disableBadapt = 0;
 		} else {
@@ -353,7 +353,7 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 	if (enc->props.adaptive_quantization) {
 		config->rcParams.enableAQ = 1;
 		config->rcParams.aqStrength = 8;
-		config->rcParams.enableTemporalAQ = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_TEMPORAL_AQ);
+		config->rcParams.enableTemporalAQ = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_TEMPORAL_AQ) != 0;
 	}
 
 	/* -------------------------- */
@@ -362,17 +362,17 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 	enc->can_change_bitrate = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_DYN_BITRATE_CHANGE);
 
 	config->rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR;
-	config->rcParams.averageBitRate = bitrate * 1000;
-	config->rcParams.maxBitRate = vbr ? max_bitrate * 1000 : bitrate * 1000;
-	config->rcParams.vbvBufferSize = bitrate * 1000;
+	config->rcParams.averageBitRate = (uint32_t)bitrate * 1000u;
+	config->rcParams.maxBitRate = vbr ? (uint32_t)max_bitrate * 1000u : (uint32_t)bitrate * 1000u;
+	config->rcParams.vbvBufferSize = (uint32_t)bitrate * 1000u;
 
 	if (cqp || lossless) {
 		int cqp_val = enc->codec == CODEC_AV1 ? (int)enc->props.cqp * 4 : (int)enc->props.cqp;
 
 		config->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
-		config->rcParams.constQP.qpInterP = cqp_val;
-		config->rcParams.constQP.qpInterB = cqp_val;
-		config->rcParams.constQP.qpIntra = cqp_val;
+		config->rcParams.constQP.qpInterP = (uint32_t)cqp_val;
+		config->rcParams.constQP.qpInterB = (uint32_t)cqp_val;
+		config->rcParams.constQP.qpIntra = (uint32_t)cqp_val;
 		enc->can_change_bitrate = false;
 
 		bitrate = 0;
@@ -1099,7 +1099,7 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 	if (!finalize && enc->buffers_queued < enc->output_delay)
 		return true;
 
-	size_t count = finalize ? enc->buffers_queued : 1;
+	size_t count = finalize ? (size_t)enc->buffers_queued : 1;
 
 	for (size_t i = 0; i < count; i++) {
 		size_t cur_bs_idx = enc->cur_bitstream;
