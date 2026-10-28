@@ -115,6 +115,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Check Experimental Flatpak Inputs
         if: inputs.flatpak-dependency-transfer-probe
@@ -333,6 +334,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Prepare Native Release Reuse
         id: native-reuse
@@ -356,7 +358,7 @@ jobs:
         if: ${{ inputs.native-cache-reuse-source == '' && !(github.event_name == 'push' && github.ref == 'refs/heads/master') }}
         with:
           path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
             ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-
             ${{ runner.os }}-xcode-${{ matrix.target }}-
@@ -475,7 +477,7 @@ jobs:
         if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.macos-compiler-cache.outputs.cache-hit != 'true' }}
         with:
           path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # Identity evidence only; the separate manual publisher has its own token.
       - name: Set Up uv for Native Transport Identity
@@ -483,6 +485,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Record Native Transport Identity
         if: inputs.native-cache-transport-probe
@@ -516,7 +519,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}
+          key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Upload Local Native Cache Evidence
         if: always() && inputs.native-cache-transport-probe
@@ -574,6 +577,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Configure Host apt Mirrors
         run: sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
@@ -584,7 +588,7 @@ jobs:
         id: ubuntu-compiler-cache
         with:
           path: ${{ github.workspace }}/.zccache
-          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
             zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-
 
@@ -597,6 +601,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # This full-build job is outside PR/merge-group admission. Capture
       # structured miss evidence without publishing raw compiler arguments.
@@ -737,7 +742,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.cache-size.outputs.save == 'true' && steps.ubuntu-compiler-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ github.workspace }}/.zccache
-          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   flatpak-build:
     timeout-minutes: 120
@@ -831,6 +836,7 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       - name: Prepare offline Flatpak Rust dependencies
         run: |
           # Supply the pinned compiler in the manifest; soldr vendors Cargo inputs
@@ -860,7 +866,7 @@ jobs:
           path: |
             .flatpak-builder/cache
             .flatpak-builder/ccache
-          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}
+          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
             flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-
             flatpak-builder-state-v1-x86_64-
@@ -996,7 +1002,7 @@ jobs:
           path: |
             .flatpak-builder/cache
             .flatpak-builder/ccache
-          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}
+          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Measure Flatpak Cache Capacity
         if: inputs.flatpak-cache-probe
@@ -1359,6 +1365,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Prepare Native Release Reuse
         id: native-reuse
@@ -1384,7 +1391,7 @@ jobs:
         if: inputs.native-cache-reuse-source == ''
         with:
           path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-
 
       - name: Set Up ccache 🗄️
@@ -1487,6 +1494,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Measure Windows Cache Budgets
         if: github.event_name == 'workflow_dispatch' && inputs.native-cache-probe
@@ -1515,7 +1523,7 @@ jobs:
         if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.windows-compiler-cache.outputs.cache-hit != 'true' }}
         with:
           path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}
+          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Package OBS Studio 📀
         uses: ./.github/actions/package-obs
@@ -1538,6 +1546,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Record Native Transport Identity
         if: inputs.native-cache-transport-probe
@@ -1571,7 +1580,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ steps.native-seed.outputs.suffix }}
+          key: windows-ccache-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Upload Local Native Cache Evidence
         if: always() && inputs.native-cache-transport-probe
@@ -1638,6 +1647,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Local Gate Attestation 🛂
         id: gate
@@ -1708,6 +1718,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Install libuuid and GIO
         run: |
@@ -1746,6 +1757,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # GATE-001 mirror (local-gate.toml): exactly the local gate's lint and
       # rust-test lanes (./lint, ./unittest), i.e. rustfmt, clippy -D warnings,
@@ -1773,7 +1785,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.targets-ccache
-          key: targets-ccache-linux-${{ github.sha }}
+          key: targets-ccache-linux-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: targets-ccache-linux-
       # The host package set differs from the Tier 2 container. Keep only
       # host .debs in a workspace-relative archive; PRs restore, master saves.
@@ -1788,7 +1800,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.targets-apt/*.deb
-          key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}
+          key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-
       - name: Build Touched Linux Targets 🧱
         if: needs.check-event.outputs.linux_targets != '' && (needs.check-event.outputs.deferred == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master'))
@@ -1833,7 +1845,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.targets-ccache
-          key: targets-ccache-linux-${{ github.sha }}
+          key: targets-ccache-linux-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Check Touched Target apt Snapshot
         id: target-apt-size
@@ -1854,7 +1866,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.targets-apt/*.deb
-          key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}
+          key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
@@ -1914,6 +1926,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Install Build Dependencies 📦
         run: |
@@ -1967,6 +1980,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Local Gate (cross) 🧪
         run: uv run --no-project ci/local_gate.py --lane cross
@@ -2017,6 +2031,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Local Gate (cross-release) 🧪
         run: uv run --no-project ci/local_gate.py --lane cross-release
@@ -2060,6 +2075,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # The OS lane runs the tests of the crates the diff touches on a PR
       # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
@@ -2191,7 +2207,8 @@ jobs:
         id: apt-cache
         with:
           path: /var/cache/apt/archives
-          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          restore-keys: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
       # The package list is shared with the local Docker harness (run.sh).
       - name: Install Tier 2 Packages 📦
@@ -2205,14 +2222,14 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: /var/cache/apt/archives
-          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # PRs restore the compiler cache; only master pushes save it (a cache
       # saved from a PR ref is unreachable by other PRs).
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.tier2-zccache
-          key: zccache-tier2-linux-both-${{ github.sha }}
+          key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
             zccache-tier2-linux-both-
             zccache-tier2-linux-
@@ -2303,7 +2320,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.tier2-build.outputs.cache-healthy != 'false'
         with:
           path: ${{ github.workspace }}/.tier2-zccache
-          key: zccache-tier2-linux-both-${{ github.sha }}
+          key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
@@ -2437,6 +2454,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
@@ -2459,7 +2477,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
           path: .tier2-cost
-          key: tier2-ctest-cost-${{ github.sha }}
+          key: tier2-ctest-cost-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   # Qt frontend on the Linux fast path (#992): configure, build and link the
   # obs-studio app against PREBUILT Qt and FFmpeg (obs-rust/obs-studio-libs,
@@ -2500,6 +2518,7 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # Unpacked prefixes, keyed on the pinned sha256: a warm run skips the
       # download.
@@ -2508,13 +2527,15 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/qt
-          key: libs-qt-${{ env.QT_SHA256 }}
+          key: libs-qt-${{ env.QT_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          restore-keys: libs-qt-${{ env.QT_SHA256 }}
       - name: Cache Prebuilt FFmpeg 💾
         id: ffmpeg-libs-cache
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/ffmpeg
-          key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
+          key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          restore-keys: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
       - name: Fetch Prebuilt Libs 📦
         run: |
           uv run --no-project ci/fetch_libs_asset.py "${QT_TAG}" "${QT_ASSET}" "${QT_SHA256}" "${{ runner.temp }}/qt"
@@ -2565,7 +2586,7 @@ jobs:
         id: qt-compiler-cache
         with:
           path: ${{ github.workspace }}/.qt-ccache
-          key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}
+          key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: qt-ccache-linux-
 
       - name: Set Qt Cache Limit 🗄️
@@ -2603,21 +2624,21 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.qt-compiler-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ github.workspace }}/.qt-ccache
-          key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}
+          key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save Prebuilt Qt 💾
         if: github.ref == 'refs/heads/master' && steps.qt-libs-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/qt
-          key: libs-qt-${{ env.QT_SHA256 }}
+          key: libs-qt-${{ env.QT_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save Prebuilt FFmpeg 💾
         if: github.ref == 'refs/heads/master' && steps.ffmpeg-libs-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/ffmpeg
-          key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
+          key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   rust-tier2:
     # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).
@@ -2666,7 +2687,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.tier2-xcas
-          key: macos-tier2-xcas-${{ github.sha }}
+          key: macos-tier2-xcas-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: macos-tier2-xcas-
 
       - name: Validate Tier 2 on macOS (libobs C vs with Rust) 🍏
@@ -2685,7 +2706,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.tier2-xcas
-          key: macos-tier2-xcas-${{ github.sha }}
+          key: macos-tier2-xcas-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # The windows-ci-x64 preset enables ccache (ENABLE_CCACHE) whenever it is
       # on PATH, as the Windows OBS build does; without it both Tier 2 builds
@@ -2695,7 +2716,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: windows-tier2-ccache-${{ github.sha }}
+          key: windows-tier2-ccache-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: windows-tier2-ccache-
 
       - name: Set Up ccache 🗄️
@@ -2730,7 +2751,8 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.vcpkg-bin
-          key: vcpkg-bin-cmocka-x64-windows-v1
+          key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          restore-keys: vcpkg-bin-cmocka-x64-windows-v1
 
       - name: Validate Tier 2 on Windows (libobs C vs with Rust) 🪟
         if: runner.os == 'Windows'
@@ -2750,14 +2772,14 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.ccache
-          key: windows-tier2-ccache-${{ github.sha }}
+          key: windows-tier2-ccache-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save vcpkg Binaries 💾
         if: runner.os == 'Windows' && github.ref == 'refs/heads/master' && steps.cmocka-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/.vcpkg-bin
-          key: vcpkg-bin-cmocka-x64-windows-v1
+          key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   # Manual candidate only. Existing application jobs keep read-only tokens.
   # Use the job GITHUB_TOKEN: its release/tag writes do not recursively trigger
@@ -2792,6 +2814,7 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       - name: Select Matching Xcode
         if: matrix.platform == 'macos'
         run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer

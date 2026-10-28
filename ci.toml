@@ -268,12 +268,18 @@ reason = "Compiler caches are keyed by commit (github.sha/run_id) on purpose: on
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 
-# CACHE-013: astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962.
+# CACHE-013: the nine `setup-soldr` steps in build-project.yaml. Their
+# `save-cache-remote` is master-only, so no PR save exists for the rule's
+# requirement to scope, while `cache-key-suffix` also reshapes the restore key:
+# a pr component there would stop PR and merge-group runs restoring master's
+# dependency cook cache, which ci/test_cook_profiles.py pins as shared. Tracked
+# in #2741 for a decision; the `setup-uv` and `cache/save` findings in the same
+# file are fixed.
 [[exceptions]]
 rule = "CACHE-013"
 path = ".github/workflows/build-project.yaml"
-reason = "astral-sh/setup-uv's default cache; scoping its save to writer flows is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
+reason = "setup-soldr's save-cache-remote is master-only and cache-key-suffix reshapes the restore key too; tracked in #2741."
+issue = "https://github.com/obs-rust/obs-studio/issues/2741"
 expires = "2027-04-15"
 
 # CT-006: soldr's cross targets come from setup-soldr inputs and local_gate.py; a [workspace.metadata.soldr] table would change what soldr prefetches.
