@@ -33,14 +33,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Check Runner Operating System 🏃‍♂️
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        : Check Runner Operating System 🏃‍♂️
-        echo "::notice::services-validation action requires a macOS-based or Linux-based runner."
-        exit 2
-
     - name: Set Up uv 🐍
       uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       with:
@@ -49,22 +41,18 @@ runs:
         # when the PR closes (CACHE-013, #962).
         cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+    # The guard calls the module through uv, so the toolchain is installed above
+    # it; it still fails an unsupported runner before either check runs (#2735).
+    - name: Check Runner Operating System 🏃‍♂️
+      if: runner.os == 'Windows'
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/services_validate.py guard --notice "services-validation action requires a macOS-based or Linux-based runner."
+
     - name: Validate Services File JSON Schema 🕵️
       if: fromJSON(inputs.runSchemaChecks)
       shell: bash
       working-directory: ${{ inputs.workingDirectory }}
-      run: |
-        : Validate Services File JSON Schema 🕵️
-        if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-        shopt -s extglob
-
-        echo ::group::Run Validation
-
-        PYTHONUNBUFFERED=1 uv run --no-project --with jsonschema --with json_source_map \
-          .github/scripts/utils.py/check-jsonschema.py \
-          plugins/rtmp-services/data/@(services|package).json \
-          --loglevel INFO
-        echo ::endgroup::
+      run: uv run --no-project --script ${{ github.workspace }}/ci/services_validate.py schema plugins/rtmp-services/data/services.json plugins/rtmp-services/data/package.json
 
     - name: Annotate schema validation errors 🏷️
       if: fromJSON(inputs.runSchemaChecks) && failure()
@@ -96,10 +84,7 @@ runs:
         REPOSITORY: ${{ github.repository }}
         API_KEY: ${{ inputs.checkApiSecret }}
         API_SERVERS: ${{ inputs.checkApiServers }}
-      run: |
-        : Check for defunct services 📉
-
-        PYTHONUNBUFFERED=1 uv run --no-project --with requests --with aiohttp .github/scripts/utils.py/check-services.py
+      run: uv run --no-project --script ${{ github.workspace }}/ci/services_validate.py defunct
 
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: fromJSON(inputs.runServiceChecks)

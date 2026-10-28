@@ -173,7 +173,6 @@ class DefunctTests(unittest.TestCase):
         self.assertEqual(argv[:3], ['run', '--no-project', '--with'])
         self.assertIn('requests', argv)
         self.assertIn('aiohttp', argv)
-        self.assertIn('.github/scripts/utils.py/check-services.py', argv)
         self.assertTrue(
             any(argument.endswith('check-services.py') for argument in argv), argv
         )
