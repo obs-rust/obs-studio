@@ -537,6 +537,13 @@ _obs_encoder_lifecycle_group_ready
 _obs_encoder_lifecycle_started_dec
 _obs_encoder_lifecycle_group_idle
 _obs_encoder_lifecycle_prepend_sei
+# obs-encoder-packet-ts.c: obs-encoder.c and obs-video-gpu-encode.c call them
+# inside libobs. Not EXPORT.
+_obs_encoder_packet_ts_timebase
+_obs_encoder_packet_ts_dts_usec
+_obs_encoder_packet_ts_system
+_obs_encoder_packet_ts_paused
+_obs_encoder_packet_ts_find
 # obs-encoder-size.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_size_audio_defaults
 _obs_encoder_size_cap_override

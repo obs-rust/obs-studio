@@ -33,6 +33,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-encoder-bind.c.h.o",
     "obs-encoder-gpu-gates.c.h.o",
     "obs-encoder-lifecycle.c.h.o",
+    "obs-encoder-packet-ts.c.h.o",
     "obs-encoder-roi.c.h.o",
     "obs-encoder-size.c.h.o",
     "obs-hotkey-pair.c.h.o",

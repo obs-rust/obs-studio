@@ -667,6 +667,14 @@ obs_encoder_lifecycle_group_ready
 obs_encoder_lifecycle_started_dec
 obs_encoder_lifecycle_group_idle
 obs_encoder_lifecycle_prepend_sei
+# obs-encoder-packet-ts.c: do_encode(), send_off_encoder_packet() and the GPU
+# encode thread call them inside libobs. Declared in obs-encoder-packet-ts.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_encoder_packet_ts_timebase
+obs_encoder_packet_ts_dts_usec
+obs_encoder_packet_ts_system
+obs_encoder_packet_ts_paused
+obs_encoder_packet_ts_find
 # obs-encoder-size.c: get_audio_info(), get_video_info(),
 # obs_encoder_set_scaled_size(), obs_encoder_scaling_enabled(),
 # obs_encoder_get_width(), obs_encoder_get_height() and

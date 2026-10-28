@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-packet-ts.pch.h"
 
 /* do_encode(): pkt.timebase_num and pkt.timebase_den. */
 struct obs_encoder_packet_timebase obs_encoder_packet_ts_timebase(uint32_t timebase_num, uint32_t timebase_den,
