@@ -2324,6 +2324,15 @@ area.
   [#2672](https://github.com/obs-rust/obs-studio/issues/2672), PR
   [#2673](https://github.com/obs-rust/obs-studio/pull/2673);
   obsproject/obs-studio `shared/file-updater`.
+- A WebSocket client that never answers the close frame no longer keeps OBS
+  from quitting. The obs-websocket server waits for its sessions to close on a
+  condition variable read under the session mutex, bounded at 5 s, and logs
+  which clients did not close, instead of polling the session list with no lock
+  (a data race with the IO thread's erase) and spinning forever. *All*, pending
+  merge. Issue
+  [#2713](https://github.com/obs-rust/obs-studio/issues/2713);
+  obs-rust/obs-websocket
+  [#22](https://github.com/obs-rust/obs-websocket/pull/22).
 
 ### Security hardening
 
