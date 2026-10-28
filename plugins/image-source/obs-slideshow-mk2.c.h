@@ -827,7 +827,7 @@ static void ss_video_tick(void *data, float seconds)
 	struct slideshow *ss = data;
 	struct slideshow_data *ssd = &ss->data;
 
-	if (!ss->transition || !ssd->slide_time)
+	if (!ss->transition || ssd->slide_time == 0.0f)
 		return;
 
 	if (ssd->restart_on_activate && ssd->use_cut) {
