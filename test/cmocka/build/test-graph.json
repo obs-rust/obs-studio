@@ -4651,6 +4651,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_video_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_video_pacing_steps.c",
+        "libobs/obs-video-pacing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_video_stats_race": {
       "sources": [
         "test/cmocka/test_video_stats_race.c"
@@ -6682,6 +6705,12 @@
     },
     "test_video_output_step_steps": {
       "target": "test_video_output_step_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_pacing_steps": {
+      "target": "test_video_pacing_steps",
       "command": [
         "${target}"
       ]
