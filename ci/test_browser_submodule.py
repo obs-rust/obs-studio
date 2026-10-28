@@ -24,6 +24,9 @@ WARNING_SHADOWING_FIX = "b9c5db137711717bc02cdd265801ad26f270bd66"
 # obs-rust/obs-browser#16: rename browser-client.cpp's shadowing `name` (C4456) and
 # `channels` (C4458) locals, found in the same app-lane build.
 WARNING_SHADOWING_FIX_CLIENT = "96e724b2c948c8500a263320520f971f3f6565c2"
+# obs-rust/obs-browser#17: rename the panel locals that hide a class member
+# (C4458 `script` in browser-panel-client.cpp, `url` in browser-panel.cpp).
+WARNING_SHADOWING_FIX_PANEL = "463e16b468ba607dfea2cc8bfcc1a0204b441ed3"
 
 
 def git(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess:
@@ -58,6 +61,9 @@ class BrowserSubmoduleTest(unittest.TestCase):
 
     def test_pointer_keeps_the_browser_client_renames(self) -> None:
         self._assert_pointer_at_least(WARNING_SHADOWING_FIX_CLIENT, "the browser-client shadowing renames (#16)")
+
+    def test_pointer_keeps_the_panel_renames(self) -> None:
+        self._assert_pointer_at_least(WARNING_SHADOWING_FIX_PANEL, "the panel shadowing renames (#17)")
 
 
 if __name__ == "__main__":
