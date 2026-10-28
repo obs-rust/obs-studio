@@ -60,6 +60,13 @@ public:
 		return unclamped;
 	}
 
+	/* The layout the window was restored from (#2225). A window that starts
+	 * narrower than that layout can show comes up with docks at their
+	 * minimums before any resize is observed, and the first save from it
+	 * would otherwise write the clamp over the layout the user still has in
+	 * the ini. */
+	void SetRestoredState(const QByteArray &state) { restored = state; }
+
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override
 	{
@@ -108,6 +115,9 @@ private:
 	/* The layout as it last was with no dock at its minimum: what a save
 	 * from a narrow window writes instead of the clamp. */
 	QByteArray unclamped;
+	/* The layout this window was restored from: the baseline a clamped start
+	 * saves instead of the clamp (#2225). */
+	QByteArray restored;
 	std::map<QList<QDockWidget *>, Saved> saved;
 	std::map<int, SavedArea> savedAreas;
 	bool updateQueued = false;

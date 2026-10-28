@@ -346,6 +346,56 @@ static void clamped_layout_is_not_the_saved_state(void **state)
 	assert_same_shares(before, after);
 }
 
+/* The other half of the same loss: the layout the ini already holds. A window
+ * restored on a display too small for it comes up with every dock at its
+ * minimum, and saving from that first session overwrote the layout the user
+ * still had (obs-rust/obs-studio#2225). */
+static void restored_layout_survives_a_narrow_first_session(void **state)
+{
+	auto *f = static_cast<Fixture *>(*state);
+	const QList<int> before = widths(f);
+	print_widths("hand sized", before);
+	/* What the app wrote to its ini from a non-clamped session. */
+	const QByteArray saved = f->proportions->StateToSave();
+
+	/* The next start: that layout restored into a window narrower than the
+	 * docks' minimum widths. */
+	QMainWindow window;
+	window.setCentralWidget(new QLabel(QStringLiteral("preview")));
+	auto *proportions = new DockProportions(&window);
+	proportions->SetRestoredState(saved);
+	QList<QDockWidget *> docks;
+	for (int i = 0; i < hand_sized.size(); i++) {
+		auto *dock = new QDockWidget(QString::number(i));
+		dock->setObjectName(QStringLiteral("dock%1").arg(i));
+		dock->setWidget(new QLabel(QStringLiteral("contents")));
+		dock->widget()->setMinimumWidth(dock_min_width);
+		window.addDockWidget(Qt::BottomDockWidgetArea, dock);
+		if (i) {
+			window.splitDockWidget(docks.last(), dock, Qt::Horizontal);
+		}
+		docks.append(dock);
+	}
+	window.resize(700, 900);
+	assert_true(window.restoreState(saved));
+	window.show();
+	QTest::qWait(50);
+
+	QList<int> narrow;
+	for (QDockWidget *dock : docks) {
+		narrow.append(dock->width());
+	}
+	print_widths("restored narrow", narrow);
+	/* The narrow window really clamps the docks to their minimum. */
+	for (int width : narrow) {
+		assert_true(width <= dock_min_width + 10);
+	}
+
+	const QList<int> after = restored_widths(proportions->StateToSave());
+	print_widths("saved from the narrow start, restored at 1600", after);
+	assert_same_shares(before, after);
+}
+
 int main(int argc, char **argv)
 {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -361,6 +411,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(side_column_comes_back_after_steps, setup_column, teardown_column),
 		cmocka_unit_test_setup_teardown(dragged_column_width_is_kept, setup_column, teardown_column),
 		cmocka_unit_test_setup_teardown(clamped_layout_is_not_the_saved_state, setup, teardown),
+		cmocka_unit_test_setup_teardown(restored_layout_survives_a_narrow_first_session, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
