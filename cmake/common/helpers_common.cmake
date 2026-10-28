@@ -105,6 +105,12 @@ endfunction()
 # per-target exemption, only for the C++ targets that include those headers and
 # never as a blanket /wd4201 for every C++ target.
 function(obs_msvc_exempt_c4201 target)
+  # The module options (ENABLE_BROWSER, ENABLE_WEBSOCKET, ...) make a submodule's
+  # CMakeLists return before add_library, so the target exists only when that
+  # module is actually built; nothing to exempt otherwise.
+  if(NOT TARGET ${target})
+    return()
+  endif()
   target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4201>)
 endfunction()
 
