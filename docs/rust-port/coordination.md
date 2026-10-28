@@ -123,6 +123,15 @@ The org-wide rules, commands and the definition of Ready are in
   the inner loop. The limits do not move — explicit casts or widened types
   only, no behaviour change, no per-file `-Wno-*`, never an existing C test or
   public header, and the pin goes away in the same PR as the fixes.
+  **A PR lane's tree is not the whole set.** Many plugin and platform sources
+  compile only in the app builds (#2678, #2710), so a pin-drop that is clean on
+  a Tier 2 tree can still fail a `Scheduled` run. Enumerate the app's C units
+  from its own build tree — configure only, seconds, no compile:
+  `uv run build-aux/appimage/build.py --steps version,configure`, then
+  `ninja -t compdb` in `build_ubuntu/` (or the app build's volume) and replay
+  that compdb. Vendored trees the tree exempts with a target-scoped `-Wno-*`
+  (`librtmp`, `libcaption`) report nothing while their pin is in the flag
+  list; re-run with `--drop` on it to check them.
 - **Commit order:** characterization test (if the unit had none), then RED
   (failing test or `todo!()` core), then GREEN. The PR description names the RED
   commit, how it fails (test names or counts), and the GREEN result.
