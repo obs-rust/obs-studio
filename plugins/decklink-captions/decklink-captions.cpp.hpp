@@ -46,7 +46,8 @@ DecklinkCaptionsUI::DecklinkCaptionsUI(QWidget *parent) : QDialog(parent), ui(ne
 	ui->source->blockSignals(true);
 	ui->source->addItem(QStringLiteral(""));
 	ui->source->setCurrentIndex(0);
-	obs_enum_sources([](void *data, obs_source_t *source) { return (*static_cast<cb_t *>(data))(source); }, &cb);
+	obs_enum_sources([](void *cbData, obs_source_t *source) { return (*static_cast<cb_t *>(cbData))(source); },
+			 &cb);
 	ui->source->blockSignals(false);
 }
 
@@ -60,12 +61,12 @@ void DecklinkCaptionsUI::on_source_currentIndexChanged(int)
 	captions->start();
 }
 
-static void caption_callback(void * /* param */, obs_source_t * /* source */, const struct obs_source_cea_708 *captions)
+static void caption_callback(void * /* param */, obs_source_t * /* source */, const struct obs_source_cea_708 *cea708)
 {
 	obs_output *output = obs_frontend_get_streaming_output();
 	if (output) {
 		if (obs_frontend_streaming_active() && obs_output_active(output)) {
-			obs_output_caption(output, captions);
+			obs_output_caption(output, cea708);
 		}
 		obs_output_release(output);
 	}

@@ -7,6 +7,7 @@
 mfxStatus Initialize(mfxVersion ver, mfxSession *pSession, mfxFrameAllocator *pmfxAllocator, mfxHDL *deviceHandle,
 		     bool bCreateSharedHandles, enum qsv_codec codec, void **data)
 {
+	UNUSED_PARAMETER(ver);
 	UNUSED_PARAMETER(codec);
 	UNUSED_PARAMETER(data);
 
@@ -147,7 +148,7 @@ static bool enum_luids(void *param, uint32_t idx, uint64_t luid)
 	return true;
 }
 
-void check_adapters(struct adapter_info *adapters, size_t *adapter_count)
+void check_adapters(struct adapter_info *adapter_info_list, size_t *adapter_count_out)
 {
 	char *test_exe = os_get_executable_path_ptr("obs-qsv-test.exe");
 	struct dstr cmd = {0};
@@ -199,15 +200,15 @@ void check_adapters(struct adapter_info *adapters, size_t *adapter_count)
 
 	config_adapter_count = config_num_sections(config);
 
-	if (config_adapter_count < *adapter_count) {
-		*adapter_count = config_adapter_count;
+	if (config_adapter_count < *adapter_count_out) {
+		*adapter_count_out = config_adapter_count;
 	}
 
-	for (size_t i = 0; i < *adapter_count; i++) {
+	for (size_t i = 0; i < *adapter_count_out; i++) {
 		char section[16];
 		snprintf(section, sizeof(section), "%d", (int)i);
 
-		struct adapter_info *adapter = &adapters[i];
+		struct adapter_info *adapter = &adapter_info_list[i];
 		adapter->is_intel = config_get_bool(config, section, "is_intel");
 		adapter->is_dgpu = config_get_bool(config, section, "is_dgpu");
 		adapter->supports_av1 = config_get_bool(config, section, "supports_av1");

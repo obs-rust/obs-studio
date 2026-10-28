@@ -379,6 +379,8 @@ static void nvvfx_filter_reset(void *data, calldata_t *calldata)
 	struct nvvfx_data *filter = (struct nvvfx_data *)data;
 	NvCV_Status vfxErr;
 
+	UNUSED_PARAMETER(calldata);
+
 	os_atomic_set_bool(&filter->processing_stop, true);
 	// [A] first destroy
 	if (filter->handle) {
@@ -870,6 +872,7 @@ static void nvvfx_filter_render(void *data, gs_effect_t *effect, bool has_blur)
 
 	const uint32_t target_flags = obs_source_get_output_flags(target);
 	const uint32_t parent_flags = obs_source_get_output_flags(parent);
+	UNUSED_PARAMETER(parent_flags);
 
 	bool custom_draw = (target_flags & OBS_SOURCE_CUSTOM_DRAW) != 0;
 	bool async = (target_flags & OBS_SOURCE_ASYNC) != 0;
@@ -1048,6 +1051,7 @@ static obs_properties_t *nvvfx_filter_properties(void *data)
 	if (filter->filter_id != S_FX_AIGS) {
 		obs_property_t *strength =
 			obs_properties_add_float_slider(props, S_STRENGTH, TEXT_MODE_BLUR_STRENGTH, 0, 1, 0.05);
+		UNUSED_PARAMETER(strength);
 	} else {
 		obs_property_t *mode =
 			obs_properties_add_list(props, S_MODE, TEXT_MODE, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
@@ -1057,6 +1061,7 @@ static obs_properties_t *nvvfx_filter_properties(void *data)
 		obs_property_list_add_int(mode, TEXT_MODE_PERF_CHAIR, S_MODE_PERF_CHAIR);
 		obs_property_t *threshold =
 			obs_properties_add_float_slider(props, S_THRESHOLDFX, TEXT_MODE_THRESHOLD, 0, 1, 0.05);
+		UNUSED_PARAMETER(threshold);
 		obs_property_t *partial = obs_properties_add_int_slider(props, S_PROCESSING, TEXT_PROCESSING, 1, 4, 1);
 		obs_property_set_long_description(partial, TEXT_PROCESSING_HINT);
 	}

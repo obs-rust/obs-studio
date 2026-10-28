@@ -138,6 +138,7 @@ STDMETHODIMP CaptionStream::Read(void *data, ULONG bytes, ULONG *read_bytes)
 STDMETHODIMP CaptionStream::Write(const void *, ULONG bytes, ULONG *)
 {
 	debugfunc("data, %lu, written_bytes", bytes);
+	UNUSED_PARAMETER(bytes);
 
 	return STG_E_INVALIDFUNCTION;
 }
@@ -163,6 +164,7 @@ STDMETHODIMP CaptionStream::Seek(LARGE_INTEGER move, DWORD origin, ULARGE_INTEGE
 STDMETHODIMP CaptionStream::SetSize(ULARGE_INTEGER new_size)
 {
 	debugfunc("%llu", new_size);
+	UNUSED_PARAMETER(new_size);
 	return STG_E_INVALIDFUNCTION;
 }
 
@@ -201,6 +203,7 @@ STDMETHODIMP CaptionStream::CopyTo(IStream *stream, ULARGE_INTEGER bytes, ULARGE
 STDMETHODIMP CaptionStream::Commit(DWORD commit_flags)
 {
 	debugfunc("%lx", commit_flags);
+	UNUSED_PARAMETER(commit_flags);
 	/* TODO? */
 	return S_OK;
 }
@@ -214,6 +217,9 @@ STDMETHODIMP CaptionStream::Revert(void)
 STDMETHODIMP CaptionStream::LockRegion(ULARGE_INTEGER offset, ULARGE_INTEGER size, DWORD type)
 {
 	debugfunc("%llu, %llu, %ld", offset, size, type);
+	UNUSED_PARAMETER(offset);
+	UNUSED_PARAMETER(size);
+	UNUSED_PARAMETER(type);
 	/* TODO? */
 	return STG_E_INVALIDFUNCTION;
 }
@@ -221,6 +227,9 @@ STDMETHODIMP CaptionStream::LockRegion(ULARGE_INTEGER offset, ULARGE_INTEGER siz
 STDMETHODIMP CaptionStream::UnlockRegion(ULARGE_INTEGER offset, ULARGE_INTEGER size, DWORD type)
 {
 	debugfunc("%llu, %llu, %ld", offset, size, type);
+	UNUSED_PARAMETER(offset);
+	UNUSED_PARAMETER(size);
+	UNUSED_PARAMETER(type);
 	/* TODO? */
 	return STG_E_INVALIDFUNCTION;
 }
@@ -347,18 +356,18 @@ STDMETHODIMP CaptionStream::GetBufferInfo(SPAUDIOBUFFERINFO *buf_info_)
 	return S_OK;
 }
 
-STDMETHODIMP CaptionStream::GetDefaultFormat(GUID *format, WAVEFORMATEX **co_mem_wfex_out)
+STDMETHODIMP CaptionStream::GetDefaultFormat(GUID *format_guid, WAVEFORMATEX **co_mem_wfex_out)
 {
 	debugfunc("format, co_mem_wfex_out");
 
-	if (!format || !co_mem_wfex_out) {
+	if (!format_guid || !co_mem_wfex_out) {
 		return E_POINTER;
 	}
 
-	void *wfex = CoTaskMemAlloc(sizeof(format));
-	memcpy(wfex, &format, sizeof(format));
+	void *wfex = CoTaskMemAlloc(sizeof(format_guid));
+	memcpy(wfex, &format_guid, sizeof(format_guid));
 
-	*format = SPDFID_WaveFormatEx;
+	*format_guid = SPDFID_WaveFormatEx;
 	*co_mem_wfex_out = (WAVEFORMATEX *)wfex;
 	return S_OK;
 }

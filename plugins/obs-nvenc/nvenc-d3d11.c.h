@@ -23,6 +23,8 @@ typedef HRESULT(WINAPI *CREATEDXGIFACTORY1PROC)(REFIID, void **);
 
 bool d3d11_init(struct nvenc_data *enc, obs_data_t *settings)
 {
+	UNUSED_PARAMETER(settings);
+
 	HMODULE dxgi = get_lib(enc, "DXGI.dll");
 	HMODULE d3d11 = get_lib(enc, "D3D11.dll");
 	CREATEDXGIFACTORY1PROC create_dxgi;

@@ -20,6 +20,8 @@ void netif_host_addr_to_string(char *dest, struct sockaddr_storage *byte_address
 
 bool netif_host_str_to_addr(struct sockaddr_storage *out, int *addr_len, const char *addr, bool ipv6)
 {
+	UNUSED_PARAMETER(ipv6);
+
 	int ret = WSAStringToAddressA((LPSTR)addr, out->ss_family, NULL, (LPSOCKADDR)out, addr_len);
 	if (ret == SOCKET_ERROR)
 		warn("Could not parse address, error code: %d", GetLastError());

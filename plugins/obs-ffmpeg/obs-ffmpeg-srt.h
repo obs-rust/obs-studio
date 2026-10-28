@@ -426,7 +426,10 @@ static int libsrt_set_options_pre(URLContext *h, SRTSOCKET fd)
 
 	if (s->linger >= 0) {
 		struct linger lin;
-		lin.l_linger = s->linger;
+		/* struct linger::l_linger is u_short on Windows; the value is
+		 * only used when l_onoff is set, and the cast keeps the existing
+		 * (already truncating) assignment explicit. */
+		lin.l_linger = (u_short)s->linger;
 		lin.l_onoff = lin.l_linger > 0 ? 1 : 0;
 		if (libsrt_setsockopt(h, fd, SRTO_LINGER, "SRTO_LINGER", &lin, sizeof(lin)) < 0) {
 			s->last_error.srt_error_code = srt_getlasterror(NULL);
@@ -504,7 +507,8 @@ static int libsrt_setup(URLContext *h, const char *uri)
 			return AVERROR(EIO);
 		}
 		la.sin_family = AF_INET;
-		la.sin_port = htons(port);
+		/* port is bounded to [1, 65535] by the check after av_url_split */
+		la.sin_port = htons((u_short)port);
 		inet_pton(AF_INET, s->localip, &la.sin_addr.s_addr);
 	}
 

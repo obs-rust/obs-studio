@@ -94,10 +94,10 @@ void DeckLinkOutput::WriteAudio(audio_data *frames)
 	instance->WriteAudio(frames);
 }
 
-void DeckLinkOutput::SetSize(int width, int height)
+void DeckLinkOutput::SetSize(int newWidth, int newHeight)
 {
-	this->width = width;
-	this->height = height;
+	this->width = newWidth;
+	this->height = newHeight;
 }
 
 int DeckLinkOutput::GetWidth()

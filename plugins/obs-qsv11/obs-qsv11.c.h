@@ -570,8 +570,8 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		obsqsv->params.MaxDisplayMasteringLuminance = hdr_nominal_peak_level * 10000;
 		obsqsv->params.MinDisplayMasteringLuminance = 0;
 
-		obsqsv->params.MaxContentLightLevel = hdr_nominal_peak_level;
-		obsqsv->params.MaxPicAverageLightLevel = hdr_nominal_peak_level;
+		obsqsv->params.MaxContentLightLevel = (mfxU16)hdr_nominal_peak_level;
+		obsqsv->params.MaxPicAverageLightLevel = (mfxU16)hdr_nominal_peak_level;
 	}
 
 	/* internal convenience parameter, overrides rate control param
@@ -629,9 +629,9 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		if (obsqsv->codec == QSV_CODEC_AV1) {
 			actual_cqp *= 4;
 		}
-		obsqsv->params.nQPI = actual_cqp;
-		obsqsv->params.nQPP = actual_cqp;
-		obsqsv->params.nQPB = actual_cqp;
+		obsqsv->params.nQPI = (mfxU16)actual_cqp;
+		obsqsv->params.nQPP = (mfxU16)actual_cqp;
+		obsqsv->params.nQPB = (mfxU16)actual_cqp;
 	}
 	obsqsv->params.nTargetBitRate = (mfxU16)target_bitrate;
 	obsqsv->params.nMaxBitRate = (mfxU16)max_bitrate;

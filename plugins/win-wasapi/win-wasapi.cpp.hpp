@@ -397,11 +397,11 @@ WASAPISource::WASAPISource(obs_data_t *settings, obs_source_t *source_, SourceTy
 		}
 	}
 
-	auto notify = GetNotify();
-	if (notify) {
-		notify->AddDefaultDeviceChangedCallback(this, std::bind(&WASAPISource::SetDefaultDevice, this,
-									std::placeholders::_1, std::placeholders::_2,
-									std::placeholders::_3));
+	auto notify_handler = GetNotify();
+	if (notify_handler) {
+		notify_handler->AddDefaultDeviceChangedCallback(
+			this, std::bind(&WASAPISource::SetDefaultDevice, this, std::placeholders::_1,
+					std::placeholders::_2, std::placeholders::_3));
 	}
 
 	Start();
@@ -451,9 +451,9 @@ void WASAPISource::Stop()
 
 WASAPISource::~WASAPISource()
 {
-	auto notify = GetNotify();
-	if (notify) {
-		notify->RemoveDefaultDeviceChangedCallback(this);
+	auto notify_handler = GetNotify();
+	if (notify_handler) {
+		notify_handler->RemoveDefaultDeviceChangedCallback(this);
 	}
 	// If the device is also used for monitoring, a cleanup is needed.
 	if (sourceType == SourceType::DeviceOutput) {
@@ -475,21 +475,21 @@ WASAPISource::UpdateParams WASAPISource::BuildUpdateParams(obs_data_t *settings)
 	params.executable.clear();
 	if (sourceType != SourceType::Input) {
 		const char *const window = obs_data_get_string(settings, OPT_WINDOW);
-		char *window_class = nullptr;
-		char *title = nullptr;
-		char *executable = nullptr;
-		ms_build_window_strings(window, &window_class, &title, &executable);
-		if (window_class) {
-			params.window_class = window_class;
-			bfree(window_class);
+		char *window_class_name = nullptr;
+		char *window_title = nullptr;
+		char *window_exe = nullptr;
+		ms_build_window_strings(window, &window_class_name, &window_title, &window_exe);
+		if (window_class_name) {
+			params.window_class = window_class_name;
+			bfree(window_class_name);
 		}
-		if (title) {
-			params.title = title;
-			bfree(title);
+		if (window_title) {
+			params.title = window_title;
+			bfree(window_title);
 		}
-		if (executable) {
-			params.executable = executable;
-			bfree(executable);
+		if (window_exe) {
+			params.executable = window_exe;
+			bfree(window_exe);
 		}
 	}
 
@@ -536,15 +536,15 @@ void WASAPISource::Update(obs_data_t *settings)
 {
 	UpdateParams params = BuildUpdateParams(settings);
 
-	const bool restart = (sourceType == SourceType::ProcessOutput)
-				     ? ((priority != params.priority) || (window_class != params.window_class) ||
-					(title != params.title) || (executable != params.executable))
-				     : (device_id.compare(params.device_id) != 0);
+	const bool should_restart = (sourceType == SourceType::ProcessOutput)
+					    ? ((priority != params.priority) || (window_class != params.window_class) ||
+					       (title != params.title) || (executable != params.executable))
+					    : (device_id.compare(params.device_id) != 0);
 
 	UpdateSettings(std::move(params));
 	LogSettings();
 
-	if (restart) {
+	if (should_restart) {
 		SetEvent(restartSignal);
 	}
 }
@@ -553,14 +553,14 @@ void WASAPISource::OnWindowChanged(obs_data_t *settings)
 {
 	UpdateParams params = BuildUpdateParams(settings);
 
-	const bool restart = (sourceType == SourceType::ProcessOutput)
-				     ? ((priority != params.priority) || (window_class != params.window_class) ||
-					(title != params.title) || (executable != params.executable))
-				     : (device_id.compare(params.device_id) != 0);
+	const bool should_restart = (sourceType == SourceType::ProcessOutput)
+					    ? ((priority != params.priority) || (window_class != params.window_class) ||
+					       (title != params.title) || (executable != params.executable))
+					    : (device_id.compare(params.device_id) != 0);
 
 	UpdateSettings(std::move(params));
 
-	if (restart) {
+	if (should_restart) {
 		SetEvent(restartSignal);
 	}
 }
@@ -890,23 +890,23 @@ void WASAPISource::Initialize()
 
 		signal_handler_t *sh = obs_source_get_signal_handler(source);
 		calldata_t data = {0};
-		struct dstr title = {0};
-		struct dstr window_class = {0};
-		struct dstr executable = {0};
+		struct dstr window_title = {0};
+		struct dstr window_class_name = {0};
+		struct dstr window_exe = {0};
 
-		ms_get_window_title(&title, hwnd);
-		ms_get_window_class(&window_class, hwnd);
-		ms_get_window_exe(&executable, hwnd);
+		ms_get_window_title(&window_title, hwnd);
+		ms_get_window_class(&window_class_name, hwnd);
+		ms_get_window_exe(&window_exe, hwnd);
 
 		calldata_set_ptr(&data, "source", source);
-		calldata_set_string(&data, "title", title.array);
-		calldata_set_string(&data, "class", window_class.array);
-		calldata_set_string(&data, "executable", executable.array);
+		calldata_set_string(&data, "title", window_title.array);
+		calldata_set_string(&data, "class", window_class_name.array);
+		calldata_set_string(&data, "executable", window_exe.array);
 		signal_handler_signal(sh, "hooked", &data);
 
-		dstr_free(&title);
-		dstr_free(&window_class);
-		dstr_free(&executable);
+		dstr_free(&window_title);
+		dstr_free(&window_class_name);
+		dstr_free(&window_exe);
 		calldata_free(&data);
 	}
 }

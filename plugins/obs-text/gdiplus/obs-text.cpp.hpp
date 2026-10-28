@@ -276,7 +276,7 @@ struct TextSource {
 	void GetStringFormat(StringFormat &format);
 	void RemoveNewlinePadding(const StringFormat &format, RectF &box);
 	void CalculateTextSizes(const StringFormat &format, RectF &bounding_box, SIZE &text_size);
-	void RenderOutlineText(Graphics &graphics, const GraphicsPath &path, const Brush &brush);
+	void RenderOutlineText(Graphics &graphics_target, const GraphicsPath &path, const Brush &brush);
 	void RenderText();
 	void LoadFileText();
 	void TransformText();
@@ -538,7 +538,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format, RectF &bounding_
 	bounding_box.Height = temp_box.Height;
 }
 
-void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path, const Brush &brush)
+void TextSource::RenderOutlineText(Graphics &graphics_target, const GraphicsPath &path, const Brush &brush)
 {
 	DWORD outline_rgba = calc_color(outline_color, outline_opacity);
 	Status stat;
@@ -547,10 +547,10 @@ void TextSource::RenderOutlineText(Graphics &graphics, const GraphicsPath &path,
 	stat = pen.SetLineJoin(LineJoinRound);
 	warn_stat("pen.SetLineJoin");
 
-	stat = graphics.DrawPath(&pen, &path);
+	stat = graphics_target.DrawPath(&pen, &path);
 	warn_stat("graphics.DrawPath");
 
-	stat = graphics.FillPath(&brush, &path);
+	stat = graphics_target.FillPath(&brush, &path);
 	warn_stat("graphics.FillPath");
 }
 
@@ -720,7 +720,7 @@ inline void TextSource::Update(obs_data_t *s)
 	const char *valign_str = obs_data_get_string(s, S_VALIGN);
 	uint32_t new_color = obs_data_get_uint32(s, S_COLOR);
 	uint32_t new_opacity = obs_data_get_uint32(s, S_OPACITY);
-	bool gradient = obs_data_get_bool(s, S_GRADIENT);
+	bool new_gradient = obs_data_get_bool(s, S_GRADIENT);
 	uint32_t new_color2 = obs_data_get_uint32(s, S_GRADIENT_COLOR);
 	uint32_t new_opacity2 = obs_data_get_uint32(s, S_GRADIENT_OPACITY);
 	float new_grad_dir = (float)obs_data_get_double(s, S_GRADIENT_DIR);
@@ -791,7 +791,7 @@ inline void TextSource::Update(obs_data_t *s)
 	text_transform = new_text_transform;
 	antialiasing = new_antialiasing;
 
-	if (!gradient) {
+	if (!new_gradient) {
 		color2 = color;
 		opacity2 = opacity;
 	}

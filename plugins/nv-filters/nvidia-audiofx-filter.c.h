@@ -362,13 +362,13 @@ static void *nvidia_audio_initialize(void *data)
 			goto failure;
 		}
 		bool updated_string = ng->sdk_version >= MIN_ARM_AFX_SDK_VERSION;
-		NvAFX_Status err = NvAFX_GetU32(ng->handle[0],
-						updated_string ? NVAFX_PARAM_NUM_SAMPLES_PER_INPUT_FRAME
-							       : NVAFX_PARAM_NUM_INPUT_SAMPLES_PER_FRAME,
-						&ng->num_samples_per_frame);
-		if (err != NVAFX_STATUS_SUCCESS) {
+		NvAFX_Status samples_err = NvAFX_GetU32(ng->handle[0],
+							updated_string ? NVAFX_PARAM_NUM_SAMPLES_PER_INPUT_FRAME
+								       : NVAFX_PARAM_NUM_INPUT_SAMPLES_PER_FRAME,
+							&ng->num_samples_per_frame);
+		if (samples_err != NVAFX_STATUS_SUCCESS) {
 			do_log(LOG_ERROR, "NvAFX_GetU32() failed to get the number of samples per frame, error %i",
-			       err);
+			       samples_err);
 			goto failure;
 		}
 		if (ng->num_samples_per_frame != NVAFX_FRAME_SIZE) {
@@ -832,6 +832,7 @@ static obs_properties_t *nvidia_audio_properties(void *data)
 					     S_METHOD_NVAFX_DEREVERB_DENOISER);
 		obs_property_t *slider = obs_properties_add_float_slider(ppts, S_NVAFX_INTENSITY, TEXT_NVAFX_INTENSITY,
 									 0.0f, 1.0f, 0.01f);
+		UNUSED_PARAMETER(slider);
 		obs_properties_add_bool(ppts, S_NVAFX_VAD, TEXT_NVAFX_VAD);
 		obs_property_set_modified_callback2(method, nvidia_audio_method_modified, ng);
 

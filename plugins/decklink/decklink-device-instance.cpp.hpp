@@ -227,7 +227,7 @@ void DeckLinkDeviceInstance::HandleVideoFrame(IDeckLinkVideoInputFrame *videoFra
 			}
 		}
 	}
-	currentFrame.trc = trc;
+	currentFrame.trc = static_cast<uint8_t>(trc);
 
 	obs_source_output_video2(static_cast<DeckLinkInput *>(decklink)->GetSource(), &currentFrame);
 }
@@ -580,12 +580,12 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 	/* No conversion when create didn't find the device or mode: not HDR (#2144). */
 	const struct video_scale_info *conversion = obs_output_get_video_conversion(decklinkOutput->GetOutput());
 	const bool enable_hdr = source_hdr && conversion && conversion->colorspace == VIDEO_CS_2100_PQ;
-	BMDPixelFormat pixelFormat = enable_hdr ? bmdFormat10BitRGBXLE : bmdFormat8BitBGRA;
+	const BMDPixelFormat outputPixelFormat = enable_hdr ? bmdFormat10BitRGBXLE : bmdFormat8BitBGRA;
 	const int64_t minimumPrerollFrames = std::max(device->GetMinimumPrerollFrames(), INT64_C(3));
 	for (int64_t i = 0; i < minimumPrerollFrames; ++i) {
 		ComPtr<IDeckLinkMutableVideoFrame> decklinkOutputFrame;
 		HRESULT result = output_->CreateVideoFrame(decklinkOutput->GetWidth(), decklinkOutput->GetHeight(),
-							   rowSize, pixelFormat, bmdFrameFlagDefault,
+							   rowSize, outputPixelFormat, bmdFrameFlagDefault,
 							   &decklinkOutputFrame);
 		if (result != S_OK) {
 			blog(LOG_ERROR, "failed to create video frame 0x%X", result);
