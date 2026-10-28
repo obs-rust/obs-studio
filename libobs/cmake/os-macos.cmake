@@ -13,10 +13,7 @@ target_link_libraries(
 libobs_add_host_sources(MACOS)
 
 foreach(target libobs-objects libobs)
-  target_compile_options(
-    ${target}
-    PUBLIC "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-shorten-64-to-32>"
-  )
+  target_compile_options(${target} PUBLIC "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-shorten-64-to-32>")
 endforeach()
 
 set_property(
