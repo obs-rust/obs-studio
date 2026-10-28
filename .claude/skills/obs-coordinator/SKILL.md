@@ -233,6 +233,14 @@ it. Don't leave it for the maintainer: SECURITY.md promises an answer
 within 72 hours, and untriaged advisories hold up reporters who have
 fixes ready.
 
+The computed work list has no advisory kind, so check the advisories
+yourself every tick: `gh api repos/obs-rust/obs-studio/security-advisories`
+for the states, then each advisory's `.../comments`. A reporter with
+security-manager rights can create a report directly as a `draft` with
+no comment at all (GHSA-cw3x-rmx8-h3gh, 2026-10-28), which neither the
+work list nor a `triage`-state filter shows: treat a draft with no
+`## Maintainer triage` section and no comment of yours as untriaged.
+
 1. **Tier.** Apply the two tiers in
    [SECURITY.md](../../../SECURITY.md#two-tiers). Who can reach the bug? A
    file someone else made (a theme, a scene collection, a profile, a
