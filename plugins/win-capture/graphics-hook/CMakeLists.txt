@@ -25,7 +25,12 @@ add_library(graphics-hook MODULE)
 # batches (cmake/common/unity.cmake).
 set_property(TARGET graphics-hook PROPERTY OBS_DISABLE_UNITY_BUILD ON)
 add_library(OBS::graphics-hook ALIAS graphics-hook)
-obs_msvc_exempt_c4201(graphics-hook)
+# MSVC /W4 (#2626): this target is also configured by the child architecture
+# build (cmake/windows/architecture.cmake), which does not include
+# cmake/common/helpers_common.cmake, so the C4201 exemption is written inline
+# here instead of through the per-target helper. d3d10-capture.cpp.hpp's state
+# is an anonymous union over two struct overlays by design.
+target_compile_options(graphics-hook PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4201>)
 
 target_sources(
   graphics-hook

@@ -98,6 +98,16 @@ class MsvcNamelessUnionExemptionTest(unittest.TestCase):
             "the MSVC config must not disable C4201 for every C++ target",
         )
 
+    def test_child_configured_targets_use_inline_flags(self) -> None:
+        # The child architecture build configures win-capture/graphics-hook (and
+        # friends) without cmake/common/helpers_common.cmake, so an
+        # obs_msvc_exempt_c4201() call there fails configuration.
+        hook = (ROOT / "plugins" / "win-capture" / "graphics-hook" / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertNotIn("obs_msvc_exempt_c4201", hook)
+        self.assertIn("/wd4201", hook)
+        child = (ROOT / "cmake" / "windows" / "architecture.cmake").read_text(encoding="utf-8")
+        self.assertIn("add_subdirectory(plugins/win-capture/graphics-hook)", child)
+
     def test_generated_wrapper_and_padded_queue_exemptions(self) -> None:
         obslua = (ROOT / "shared" / "obs-scripting" / "obslua" / "CMakeLists.txt").read_text(encoding="utf-8")
         for flag in ("/wd4100", "/wd4189"):
