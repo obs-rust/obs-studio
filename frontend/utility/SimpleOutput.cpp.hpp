@@ -778,7 +778,7 @@ void SimpleOutput::UpdateRecording()
 		if (!ffmpegOutput) {
 			UpdateRecordingSettings();
 		}
-	} else if (!obs_output_active(streamOutputRef)) {
+	} else if (!obs_output_active(streamOutput)) {
 		Update();
 	}
 
