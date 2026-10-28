@@ -77,25 +77,24 @@ jobs:
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-26.04
     permissions:
+      contents: read
       issues: write
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Open or Update the Nightly Failure Issue 📝
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SHA: ${{ github.sha }}
-        run: |
-          title='ci: Nightly full run failed on master'
-          body="The scheduled full run failed on ${SHA}: ${RUN_URL}
-
-          PRs skip these checks (#992), so a recent merge may have broken them."
-          existing=$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number')
-          if [ -n "${existing}" ]; then
-            gh issue comment "${existing}" --body "${body}"
-          else
-            gh issue create --title "${title}" --body "${body}"
-          fi
+        run: uv run --no-project --script ${{ github.workspace }}/ci/scheduled_steps.py report-nightly-failure
 
   analyze-project:
     name: Analyze 🔬
@@ -141,33 +140,15 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Check Nightly Runs ☑️
         id: nightly-checks
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          : Check Nightly Runs ☑️
-          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
-
-          # This 'gh' command retrieves the last 2 runs of the workflow defined
-          # by 'scheduled.yaml' and retrieves just the 'headSha' value of the
-          # JSON response payload.
-          #
-          # As this job runs in context of the same workflow, the first element
-          # of the workflow list will be the currently active run.
-          #
-          # The jq expression then selects the 'headSha' element of the second
-          # element in the array, which is the SHA-1 hash of the commit used
-          # for the immediately prior run of this workflow.
-
-          last_nightly=$(gh run list --workflow scheduled.yaml --limit 2 --json headSha --jq '.[1].headSha')
-
-          if [[ "${GITHUB_SHA}" == "${last_nightly}" ]]; then
-            echo "passed=false" >> $GITHUB_OUTPUT
-          else
-            echo "passed=true" >> $GITHUB_OUTPUT
-            echo "lastNightly=${last_nightly}" >> $GITHUB_OUTPUT
-          fi
+        run: uv run --no-project --script ${{ github.workspace }}/ci/scheduled_steps.py check-nightly-runs
 
       - name: Check for Changed Files ✅
         if: fromJSON(steps.nightly-checks.outputs.passed)
@@ -190,38 +171,18 @@ jobs:
     needs: [build-project]
     if: github.repository_owner == 'obsproject'
     runs-on: macos-26
-    defaults:
-      run:
-        shell: zsh --no-rcs --errexit --pipefail {0}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Check Nightly Runs ☑️
         id: checks
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          : Check Nightly Runs ☑️
-          if (( ${+RUNNER_DEBUG} )) setopt XTRACE
-
-          # This 'gh' command retrieves the last 2 runs of the workflow defined
-          # by 'scheduled.yaml' and retrieves just the 'headSha' value of the
-          # JSON response payload.
-          #
-          # As this job runs in context of the same workflow, the first element
-          # of the workflow list will be the currently active run.
-          #
-          # The jq expression then selects the 'headSha' element of the second
-          # element in the array, which is the SHA-1 hash of the commit used
-          # for the immediately prior run of this workflow.
-
-          local last_nightly=$(gh run list --workflow scheduled.yaml --limit 2 --json headSha --jq '.[1].headSha')
-
-          if [[ "${GITHUB_SHA}" == "${last_nightly}" ]] {
-            print "passed=false" >> $GITHUB_OUTPUT
-          } else {
-            print "passed=true" >> $GITHUB_OUTPUT
-          }
+        run: uv run --no-project --script ${{ github.workspace }}/ci/scheduled_steps.py check-nightly-runs
 
       - uses: ./.github/actions/steam-upload
         if: fromJSON(steps.checks.outputs.passed)

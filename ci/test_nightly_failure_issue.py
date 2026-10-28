@@ -32,9 +32,15 @@ class NightlyFailureIssueTest(unittest.TestCase):
         self.assertIn("issues: write", self.job)
 
     def test_reuses_an_open_issue_instead_of_piling_up(self):
-        self.assertIn("gh issue list --state open", self.job)
-        self.assertIn("gh issue comment", self.job)
-        self.assertIn("gh issue create", self.job)
+        # The lookup and the comment/create choice moved into
+        # ci/scheduled_steps.py (#2822); the step is that one call now.
+        self.assertIn("ci/scheduled_steps.py report-nightly-failure", self.job)
+        module = (ROOT / "ci" / "scheduled_steps.py").read_text(encoding="utf-8")
+        self.assertIn("'issue',", module)
+        self.assertIn("'--state',", module)
+        self.assertIn("'open',", module)
+        self.assertIn("'comment',", module)
+        self.assertIn("'create',", module)
 
 
 if __name__ == "__main__":
