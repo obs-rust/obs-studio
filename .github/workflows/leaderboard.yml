@@ -30,7 +30,7 @@ jobs:
     # the job is listed in ci.toml's [allow].permissions.
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -48,24 +48,10 @@ jobs:
       - name: Generate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          cp tools/leaderboard/site/* data/
-          touch data/.nojekyll
-          uv run --no-project --python 3.12 tools/leaderboard/generate.py --repo "${{ github.repository }}" --out data/leaderboard.json
+        run: uv run --no-project ci/leaderboard.py generate --repo "${{ github.repository }}" --data data
       - name: Measure Rust conversion
         run: uv run --no-project --python 3.12 tools/conversion/measure.py --json data/conversion.json --svg data/conversion.svg
       - name: Render JPEG
-        run: |
-          uv run --python 3.12 --with playwright==1.49.1 playwright install --with-deps chromium
-          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data
-          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion.html conversion.jpg
-          uv run --no-project --python 3.12 --with playwright==1.49.1 tools/leaderboard/render.py data conversion-minimal.html conversion-minimal.jpg 640x100
+        run: uv run --no-project ci/leaderboard.py render --data data
       - name: Commit to leaderboard branch
-        working-directory: data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet && { echo "no changes"; exit 0; }
-          git commit -m "leaderboard: update $(date -u +%FT%H:%MZ)"
-          git push origin HEAD:leaderboard
+        run: uv run --no-project ci/leaderboard.py commit --data data

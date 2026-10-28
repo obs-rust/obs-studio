@@ -14,6 +14,7 @@ README = ROOT / "README.md"
 WORKFLOW = ROOT / ".github" / "workflows" / "leaderboard.yml"
 SITE = ROOT / "tools" / "leaderboard" / "site"
 RENDER = ROOT / "tools" / "leaderboard" / "render.py"
+MODULE = ROOT / "ci" / "leaderboard.py"
 
 
 def headings(text: str) -> list[str]:
@@ -32,21 +33,26 @@ class ConversionCard(unittest.TestCase):
         self.assertIn("dataset.ready", page)
 
     def test_render_takes_a_page_and_an_output(self):
+        # The two renders moved into ci/leaderboard.py when the step became one
+        # line (GEN-005, #2812), so the page/output pair is pinned there and the
+        # workflow only has to call the module.
         render = RENDER.read_text()
-        self.assertIn("conversion.html", WORKFLOW.read_text())
-        self.assertIn("conversion.jpg", WORKFLOW.read_text())
+        module = MODULE.read_text()
+        self.assertIn("ci/leaderboard.py render", WORKFLOW.read_text())
+        self.assertIn("conversion.html", module)
+        self.assertIn("conversion.jpg", module)
         self.assertRegex(render, r"sys\.argv\[2\]")
 
     def test_measure_runs_before_the_render(self):
         wf = WORKFLOW.read_text()
-        self.assertLess(wf.index("tools/conversion/measure.py"), wf.index("render.py data conversion.html"))
+        self.assertLess(wf.index("tools/conversion/measure.py"), wf.index("ci/leaderboard.py render"))
 
     def test_measure_runs_before_both_renders(self):
         wf = WORKFLOW.read_text()
-        measure = wf.index("tools/conversion/measure.py")
-        full = wf.index("render.py data conversion.html conversion.jpg")
-        minimal = wf.index("render.py data conversion-minimal.html conversion-minimal.jpg")
-        self.assertLess(measure, full)
+        module = MODULE.read_text()
+        self.assertLess(wf.index("tools/conversion/measure.py"), wf.index("ci/leaderboard.py render"))
+        full = module.index("conversion.html")
+        minimal = module.index("conversion-minimal.html")
         self.assertLess(full, minimal)
 
     def test_minimal_card_headline_is_libobs(self):

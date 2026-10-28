@@ -42,14 +42,22 @@ PLAYWRIGHT = "playwright==1.49.1"
 RENDER = "tools/leaderboard/render.py"
 GENERATE = "tools/leaderboard/generate.py"
 
-# The uv stub: append one JSON argv line per call, then run `exit` code from
-# FAIL_ON_CALL when the call index matches, so a test can make the Nth child
-# fail and see whether the module stops there.
-UV_STUB = """#!/bin/sh
-printf '%s\\n' "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1:]))' "$@")" >> "$UV_LOG"
-n=$(wc -l < "$UV_LOG" | tr -d ' ')
-if [ -n "$FAIL_ON_CALL" ] && [ "$n" = "$FAIL_ON_CALL" ]; then exit "${FAIL_CODE:-3}"; fi
-exit 0
+# The uv stub: append one JSON argv line per call, then exit FAIL_CODE when this
+# is the FAIL_ON_CALL-th call, so a test can make the Nth child fail and see
+# whether the module stops there. Its shebang is the running interpreter: a
+# `#!/usr/bin/env python3` stub is a bare-python invocation (TOOL-003), and a
+# `uv run` shebang would make `env` resolve `uv` back to this stub.
+UV_STUB = """#!{interpreter}
+import json, os, sys
+
+with open(os.environ["UV_LOG"], "a", encoding="utf-8") as log:
+    log.write(json.dumps(sys.argv[1:]) + chr(10))
+with open(os.environ["UV_LOG"], encoding="utf-8") as log:
+    call = sum(1 for _ in log)
+fail_on = os.environ.get("FAIL_ON_CALL", "")
+if fail_on and int(fail_on) == call:
+    sys.exit(int(os.environ.get("FAIL_CODE", "3")))
+sys.exit(0)
 """
 
 
@@ -74,7 +82,7 @@ class StubCase(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         stub = self.bin / "uv"
-        stub.write_text(UV_STUB, encoding="utf-8")
+        stub.write_text(UV_STUB.format(interpreter=sys.executable), encoding="utf-8")
         stub.chmod(0o755)
         self.log = self.root / "uv.log"
         self.log.touch()
