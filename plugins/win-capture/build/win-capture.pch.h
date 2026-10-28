@@ -37,6 +37,7 @@
 
 /* duplicator-monitor-capture.c */
 #include "plugins/win-capture/monitor-identity.h"
+#include <setupapi.h>
 
 #include <util/threading.h>
 

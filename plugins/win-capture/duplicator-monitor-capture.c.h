@@ -59,6 +59,8 @@ struct duplicator_capture {
 	obs_source_t *source;
 	pthread_mutex_t update_mutex;
 	char monitor_id[128];
+	char monitor_setting_id[128];
+	char monitor_edid_identity[64];
 	char id[128];
 	char alt_id[128];
 	char monitor_name[64];
@@ -149,11 +151,49 @@ static bool GetMonitorTarget(LPCWSTR device, DISPLAYCONFIG_TARGET_DEVICE_NAME *t
 	return found;
 }
 
-static void GetMonitorName(HMONITOR handle, char *name, size_t count)
+/* monitorDevicePath locates the monitor's hardware key; its instance text
+ * describes the connector and must never be mistaken for an EDID serial. */
+static void duplicator_read_edid(LPCWSTR path, char identity[64])
+{
+	identity[0] = 0;
+	HDEVINFO devices = SetupDiCreateDeviceInfoList(NULL, NULL);
+	if (devices == INVALID_HANDLE_VALUE)
+		return;
+	SP_DEVICE_INTERFACE_DATA interface_data = {0};
+	interface_data.cbSize = sizeof(interface_data);
+	if (SetupDiOpenDeviceInterfaceW(devices, path, 0, &interface_data)) {
+		DWORD needed = 0;
+		SetupDiGetDeviceInterfaceDetailW(devices, &interface_data, NULL, 0, &needed, NULL);
+		if (needed >= sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W)) {
+			SP_DEVICE_INTERFACE_DETAIL_DATA_W *detail = bmalloc(needed);
+			detail->cbSize = sizeof(*detail);
+			SP_DEVINFO_DATA device = {0};
+			device.cbSize = sizeof(device);
+			if (SetupDiGetDeviceInterfaceDetailW(devices, &interface_data, detail, needed, NULL, &device)) {
+				HKEY key = SetupDiOpenDevRegKey(devices, &device, DICS_FLAG_GLOBAL, 0, DIREG_DEV,
+								KEY_READ);
+				if (key != INVALID_HANDLE_VALUE) {
+					BYTE edid[1024];
+					DWORD size = sizeof(edid), type = 0;
+					if (RegQueryValueExW(key, L"EDID", NULL, &type, edid, &size) == ERROR_SUCCESS &&
+					    type == REG_BINARY)
+						monitor_edid_identity(edid, size, identity);
+					RegCloseKey(key);
+				}
+			}
+			bfree(detail);
+		}
+	}
+	SetupDiDestroyDeviceInfoList(devices);
+}
+
+static void GetMonitorDetails(HMONITOR handle, char *name, size_t count, char *identity)
 {
 	MONITORINFOEXW mi;
 	DISPLAYCONFIG_TARGET_DEVICE_NAME target;
 
+	if (identity)
+		identity[0] = 0;
 	mi.cbSize = sizeof(mi);
 	if (GetMonitorInfoW(handle, (LPMONITORINFO)&mi) && GetMonitorTarget(mi.szDevice, &target)) {
 		char *friendly_name;
@@ -161,9 +201,16 @@ static void GetMonitorName(HMONITOR handle, char *name, size_t count)
 
 		strcpy_s(name, count, friendly_name);
 		bfree(friendly_name);
+		if (identity)
+			duplicator_read_edid(target.monitorDevicePath, identity);
 	} else {
 		strcpy_s(name, count, "[OBS: Unknown]");
 	}
+}
+
+static void GetMonitorName(HMONITOR handle, char *name, size_t count)
+{
+	GetMonitorDetails(handle, name, count, NULL);
 }
 
 static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM param)
@@ -184,10 +231,9 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM 
 			monitor_fill_info(&candidate, device.DeviceID, "", "", "");
 			match = monitor_matches(&candidate, monitor->info.device_id, "");
 			if (match) {
-				GetMonitorName(handle, candidate.name, _countof(candidate.name));
+				GetMonitorDetails(handle, candidate.name, _countof(candidate.name),
+						  candidate.edid_identity);
 				strcpy_s(candidate.alt_id, sizeof(candidate.alt_id), mi.szDevice);
-				/* Preserve the original search key until a recovery resolves it. */
-				strcpy_s(candidate.device_id, sizeof(candidate.device_id), monitor->info.device_id);
 				monitor->info = candidate;
 				monitor->rect = *rect;
 				monitor->handle = handle;
@@ -198,27 +244,33 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM 
 	return !match;
 }
 
+struct duplicator_monitor_pass {
+	DARRAY(struct duplicator_monitor_info) infos;
+	DARRAY(struct duplicator_monitor) monitors;
+	bool identity_complete;
+};
+
 static BOOL CALLBACK enum_monitor_fallback(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM param)
 {
 	UNUSED_PARAMETER(hdc);
-
-	struct duplicator_monitor *monitor = (struct duplicator_monitor *)param;
-
-	bool match = false;
-
-	MONITORINFOEXA mi;
+	struct duplicator_monitor_pass *pass = (struct duplicator_monitor_pass *)param;
+	MONITORINFOEXA mi = {0};
 	mi.cbSize = sizeof(mi);
 	if (GetMonitorInfoA(handle, (LPMONITORINFO)&mi)) {
-		match = strcmp(monitor->info.device_id, mi.szDevice) == 0;
-		if (match) {
-			strcpy_s(monitor->info.alt_id, _countof(monitor->info.alt_id), mi.szDevice);
-			GetMonitorName(handle, monitor->info.name, _countof(monitor->info.name));
-			monitor->rect = *rect;
-			monitor->handle = handle;
-		}
+		DISPLAY_DEVICEA device = {0};
+		device.cb = sizeof(device);
+		EnumDisplayDevicesA(mi.szDevice, 0, &device, EDD_GET_DEVICE_INTERFACE_NAME);
+		struct duplicator_monitor monitor = {0};
+		monitor_fill_info(&monitor.info, device.DeviceID, mi.szDevice, "", "");
+		GetMonitorDetails(handle, monitor.info.name, sizeof(monitor.info.name), monitor.info.edid_identity);
+		monitor.rect = *rect;
+		monitor.handle = handle;
+		da_push_back(pass->infos, &monitor.info);
+		da_push_back(pass->monitors, &monitor);
+	} else {
+		pass->identity_complete = false;
 	}
-
-	return !match;
+	return TRUE;
 }
 
 static void log_settings(struct duplicator_capture *capture, const char *monitor, LONG width, LONG height)
@@ -267,13 +319,25 @@ static enum display_capture_method duplicator_choose_method(enum display_capture
 
 extern bool wgc_supported;
 
-static struct duplicator_monitor find_monitor(const char *monitor_id)
+static struct duplicator_monitor find_monitor(const char *monitor_id, const char *edid_identity)
 {
 	struct duplicator_monitor monitor = {0};
 	strcpy_s(monitor.info.device_id, _countof(monitor.info.device_id), monitor_id);
 	EnumDisplayMonitors(NULL, NULL, &enum_monitor, (LPARAM)&monitor);
 	if (monitor.handle == NULL) {
-		EnumDisplayMonitors(NULL, NULL, &enum_monitor_fallback, (LPARAM)&monitor);
+		struct duplicator_monitor_pass pass = {.identity_complete = true};
+		/* A failed/incomplete enumeration cannot prove uniqueness. */
+		if (EnumDisplayMonitors(NULL, NULL, &enum_monitor_fallback, (LPARAM)&pass)) {
+			const size_t index = monitor_find(pass.infos.array, pass.infos.num, monitor_id,
+							  pass.identity_complete ? edid_identity : "");
+			if (index < pass.monitors.num) {
+				monitor = pass.monitors.array[index];
+				if (!monitor.info.device_id[0])
+					strcpy_s(monitor.info.device_id, sizeof(monitor.info.device_id), monitor_id);
+			}
+		}
+		da_free(pass.infos);
+		da_free(pass.monitors);
 	}
 
 	return monitor;
@@ -283,7 +347,16 @@ static inline void duplicator_update_settings(struct duplicator_capture *capture
 {
 	pthread_mutex_lock(&capture->update_mutex);
 
-	struct duplicator_monitor monitor = find_monitor(obs_data_get_string(settings, "monitor_id"));
+	const char *key = obs_data_get_string(settings, "monitor_id");
+	const bool same_selection = strcmp(key, capture->monitor_setting_id) == 0;
+	const char *identity = same_selection ? capture->monitor_edid_identity : "";
+	struct duplicator_monitor monitor = find_monitor(same_selection ? capture->monitor_id : key, identity);
+	if (!same_selection)
+		capture->monitor_edid_identity[0] = 0;
+	if (monitor.info.edid_identity[0])
+		strcpy_s(capture->monitor_edid_identity, sizeof(capture->monitor_edid_identity),
+			 monitor.info.edid_identity);
+	strcpy_s(capture->monitor_setting_id, sizeof(capture->monitor_setting_id), key);
 
 	capture->method =
 		duplicator_choose_method((int)obs_data_get_int(settings, "method"), wgc_supported, monitor.handle);
@@ -477,7 +550,17 @@ static void free_capture_data(struct duplicator_capture *capture)
 
 static void update_monitor_handle(struct duplicator_capture *capture)
 {
-	capture->handle = find_monitor(capture->monitor_id).handle;
+	struct duplicator_monitor monitor = find_monitor(capture->monitor_id, capture->monitor_edid_identity);
+	capture->handle = monitor.handle;
+	if (monitor.handle) {
+		strcpy_s(capture->monitor_id, sizeof(capture->monitor_id), monitor.info.device_id);
+		strcpy_s(capture->id, sizeof(capture->id), monitor.info.id);
+		strcpy_s(capture->alt_id, sizeof(capture->alt_id), monitor.info.alt_id);
+		strcpy_s(capture->monitor_name, sizeof(capture->monitor_name), monitor.info.name);
+		if (monitor.info.edid_identity[0])
+			strcpy_s(capture->monitor_edid_identity, sizeof(capture->monitor_edid_identity),
+				 monitor.info.edid_identity);
+	}
 }
 
 static void duplicator_capture_tick(void *data, float seconds)

@@ -1653,6 +1653,12 @@ area.
   its Deinterlacing menu shows Disable. *All*, pending merge. Issue
   [#2090](https://github.com/obs-rust/obs-studio/issues/2090).
 
+- Display Capture can follow the same monitor after a dock or output change
+  during a session when its EDID manufacturer, product and serial identify
+  exactly one connected display. *Windows*, pending hardware validation and merge.
+  Issues [#2839](https://github.com/obs-rust/obs-studio/issues/2839),
+  [#2224](https://github.com/obs-rust/obs-studio/issues/2224), PR
+  [#2847](https://github.com/obs-rust/obs-studio/pull/2847).
 - Screen Capture (XSHM) keeps capturing the monitor it was set to when
   another monitor is unplugged or plugged in: it saves the RandR monitor's
   name, not only its place in the list, and shows no other monitor when its
