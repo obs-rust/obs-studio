@@ -164,9 +164,11 @@ static inline void init_sym_info(struct exception_handler_data *data)
 	else
 		data->sym_refresh_module_list(data->process);
 
-	data->sym_info = LocalAlloc(LPTR, sizeof(*data->sym_info) + 256);
+	/* MaxNameLen counts WCHARs, so the name needs 256 of them, not 256
+	 * bytes. */
+	data->sym_info = LocalAlloc(LPTR, sizeof(*data->sym_info) + 256 * sizeof(WCHAR));
 	if (data->sym_info) {
-		data->sym_info->SizeOfStruct = sizeof(SYMBOL_INFO);
+		data->sym_info->SizeOfStruct = sizeof(SYMBOL_INFOW);
 		data->sym_info->MaxNameLen = 256;
 	}
 }
@@ -186,14 +188,18 @@ static inline void init_cpu_info(struct exception_handler_data *data)
 
 	status = RegOpenKeyW(HKEY_LOCAL_MACHINE, PROCESSOR_REG_KEY, &key);
 	if (status == ERROR_SUCCESS) {
-		wchar_t str[1024];
-		DWORD size = 1024;
+		/* The size is in bytes, and the value may be stored without its
+		 * terminator: keep the last wchar_t zero. */
+		wchar_t str[1024] = {0};
+		DWORD size = sizeof(str) - sizeof(wchar_t);
 
 		status = RegQueryValueExW(key, L"ProcessorNameString", NULL, NULL, (LPBYTE)str, &size);
 		if (status == ERROR_SUCCESS)
 			dstr_from_wcs(&data->cpu_info, str);
 		else
 			dstr_copy(&data->cpu_info, CPU_ERROR);
+
+		RegCloseKey(key);
 	} else {
 		dstr_copy(&data->cpu_info, CPU_ERROR);
 	}

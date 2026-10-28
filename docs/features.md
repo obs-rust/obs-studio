@@ -2369,6 +2369,13 @@ area.
   [#2720](https://github.com/obs-rust/obs-studio/issues/2720);
   obs-rust/obs-websocket
   [#23](https://github.com/obs-rust/obs-websocket/pull/23).
+- A crash whose stack has a long function name no longer spoils the crash
+  report. The crash handler's symbol buffer holds the 256 wide characters it
+  tells DbgHelp it has, instead of 256 bytes, so long C++ names (Qt, the
+  browser) are no longer written past its end while the report is built. The
+  CPU name it reads is always terminated, and its registry key is closed.
+  *Windows*, 2026-10-28. Issue
+  [#2819](https://github.com/obs-rust/obs-studio/issues/2819).
 
 ### Security hardening
 
