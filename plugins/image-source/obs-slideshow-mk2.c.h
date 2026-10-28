@@ -189,7 +189,7 @@ static size_t random_file(struct slideshow_data *ssd, size_t slide_idx)
 			size_t threshold = (~files + 1) % files;
 			size_t r;
 			do {
-				r = rand();
+				r = (size_t)rand();
 			} while (r < threshold);
 			next = r % files;
 		}
@@ -248,7 +248,7 @@ static void do_transition(void *data, bool to_null)
 	}
 
 	if (valid && !to_null) {
-		calldata_set_int(&ssd->cd, "index", ssd->slides.cur.slide_idx);
+		calldata_set_int(&ssd->cd, "index", (long long)ssd->slides.cur.slide_idx);
 		calldata_set_string(&ssd->cd, "path", ssd->slides.cur.path);
 
 		signal_handler_t *sh = obs_source_get_signal_handler(ss->source);
@@ -749,13 +749,13 @@ static void previous_slide_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *ho
 static void current_slide_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "current_index", ss->data.slides.cur.slide_idx);
+	calldata_set_int(cd, "current_index", (long long)ss->data.slides.cur.slide_idx);
 }
 
 static void total_slides_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "total_files", ss->data.files.num);
+	calldata_set_int(cd, "total_files", (long long)ss->data.files.num);
 }
 
 static void ss_destroy(void *data)
@@ -1021,7 +1021,7 @@ static obs_properties_t *ss_properties(void *data)
 			dstr_replace(&path, "\\", "/");
 			slash = strrchr(path.array, '/');
 			if (slash)
-				dstr_resize(&path, slash - path.array + 1);
+				dstr_resize(&path, (size_t)(slash - path.array + 1));
 		}
 	}
 

@@ -494,7 +494,7 @@ static void run_transition(struct slideshow *ss, struct transition_plan *plan)
 	}
 
 	if (plan->valid && !plan->to_null) {
-		calldata_set_int(&ss->cd, "index", plan->index);
+		calldata_set_int(&ss->cd, "index", (long long)plan->index);
 		calldata_set_string(&ss->cd, "path", plan->path);
 
 		signal_handler_t *sh = obs_source_get_signal_handler(ss->source);
@@ -886,13 +886,13 @@ static void previous_slide_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *ho
 static void current_slide_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "current_index", ss->cur_item);
+	calldata_set_int(cd, "current_index", (long long)ss->cur_item);
 }
 
 static void total_slides_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "total_files", ss->files.num);
+	calldata_set_int(cd, "total_files", (long long)ss->files.num);
 }
 
 static void ss_destroy(void *data)
@@ -1192,7 +1192,7 @@ static obs_properties_t *ss_properties(void *data)
 			dstr_replace(&path, "\\", "/");
 			slash = strrchr(path.array, '/');
 			if (slash)
-				dstr_resize(&path, slash - path.array + 1);
+				dstr_resize(&path, (size_t)(slash - path.array + 1));
 		}
 		pthread_mutex_unlock(&ss->mutex);
 	}
