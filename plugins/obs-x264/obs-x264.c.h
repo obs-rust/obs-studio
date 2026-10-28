@@ -393,7 +393,7 @@ static void update_params(struct obs_x264 *obsx264, obs_data_t *settings, const 
 	}
 
 	if (keyint_sec)
-		obsx264->params.i_keyint_max = keyint_sec * voi->fps_num / voi->fps_den;
+		obsx264->params.i_keyint_max = (int)((uint32_t)keyint_sec * voi->fps_num / voi->fps_den);
 
 	if (!use_bufsize)
 		buffer_size = bitrate;
@@ -518,7 +518,7 @@ static void log_custom_options(struct obs_x264 *obsx264, const struct obs_option
 		assert(chars_written >= 0);
 		assert((size_t)chars_written <= remaining_buffer_size);
 		p += chars_written;
-		remaining_buffer_size -= chars_written;
+		remaining_buffer_size -= (size_t)chars_written;
 	}
 	assert(remaining_buffer_size == 1);
 	assert(*p == '\0');
@@ -608,9 +608,9 @@ static void load_headers(struct obs_x264 *obsx264)
 		x264_nal_t *nal = nals + i;
 
 		if (nal->i_type == NAL_SEI)
-			da_push_back_array(sei, nal->p_payload, nal->i_payload);
+			da_push_back_array(sei, nal->p_payload, (size_t)nal->i_payload);
 		else
-			da_push_back_array(header, nal->p_payload, nal->i_payload);
+			da_push_back_array(header, nal->p_payload, (size_t)nal->i_payload);
 	}
 
 	obsx264->extra_data = header.array;
@@ -674,7 +674,7 @@ static void parse_packet(struct obs_x264 *obsx264, struct encoder_packet *packet
 
 	for (int i = 0; i < nal_count; i++) {
 		x264_nal_t *nal = nals + i;
-		da_push_back_array(obsx264->packet_data, nal->p_payload, nal->i_payload);
+		da_push_back_array(obsx264->packet_data, nal->p_payload, (size_t)nal->i_payload);
 	}
 
 	packet->data = obsx264->packet_data.array;
