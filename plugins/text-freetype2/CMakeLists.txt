@@ -60,3 +60,12 @@ if(OS_WINDOWS)
 endif()
 
 set_target_properties_obs(text-freetype2 PROPERTIES FOLDER plugins PREFIX "")
+
+# #2625: this plugin's C sources have their conversions fixed at the call sites,
+# so the pins that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  text-freetype2
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
