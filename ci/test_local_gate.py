@@ -273,3 +273,23 @@ class EmptyTestDiffTest(unittest.TestCase):
         self.assertIn("--test-diff needs a base commit", stderr.getvalue())
         self.assertEqual(ran, [])
         test_diff.assert_not_called()
+
+
+class LaneGroupTest(unittest.TestCase):
+    """The Docker Tier 2 lane shares no build directory with the host lanes, so
+    it runs as its own heavy chain beside them instead of after them (#2769)."""
+
+    def lanes(self):
+        import tomllib
+        return tomllib.loads((Path(__file__).resolve().parent.parent / "local-gate.toml").read_text())["gate"]["lanes"]
+
+    def test_tier2_linux_runs_beside_the_host_lanes(self):
+        lanes = self.lanes()
+        groups = {name: lanes[name].get("group", "") for name in ("lint", "rust-test", "cross")}
+        self.assertEqual(set(groups.values()), {""}, "the host lanes must stay in one chain")
+        docker = lanes["tier2-linux"].get("group", "")
+        self.assertTrue(docker, "tier2-linux needs its own heavy group to overlap the host lanes")
+        self.assertNotIn(docker, groups.values())
+
+    def test_the_new_group_stays_a_heavy_lane(self):
+        self.assertEqual(self.lanes()["tier2-linux"].get("weight", "heavy"), "heavy")

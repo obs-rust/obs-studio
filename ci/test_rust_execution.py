@@ -10,11 +10,19 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 
+THREADS_VARIABLE = 'OBS_GATE_TEST_THREADS'
+
+
 class RustExecutionTest(unittest.TestCase):
-    def calls(self, packages, tool=Path('/tools/cargo-nextest'), failure=None):
-        with mock.patch.object(gate, 'ensure_nextest', return_value=tool, create=True), \
+    def calls(self, packages, tool=Path('/tools/cargo-nextest'), failure=None, threads=None):
+        # The caller's own setting must not decide what these checks see (#2769).
+        with mock.patch.dict(gate.os.environ, {}, clear=False), \
+             mock.patch.object(gate, 'ensure_nextest', return_value=tool, create=True), \
              mock.patch.object(gate, 'soldr_cargo', side_effect=failure) as cargo, \
              mock.patch.object(gate.os, 'cpu_count', return_value=4):
+            gate.os.environ.pop(THREADS_VARIABLE, None)
+            if threads is not None:
+                gate.os.environ[THREADS_VARIABLE] = threads
             gate.rust_tests(packages)
             return cargo.call_args_list
 
@@ -38,6 +46,12 @@ class RustExecutionTest(unittest.TestCase):
         for scope, expected in [(['--workspace'], 'fail'), (['-p', 'libobs-rust'], 'pass')]:
             args = self.calls(scope)[0].args[0]
             self.assertEqual(args[args.index('--no-tests') + 1], expected)
+
+    def test_nextest_threads_follow_the_host_override(self):
+        # A larger host can raise the bound for its own gate run; CI never sets
+        # the variable, so CI keeps the four-test bound (#2769).
+        args = self.calls(['--workspace'], threads='16')[0].args[0]
+        self.assertEqual(args[args.index('--test-threads') + 1], '16')
 
     def test_unsupported_host_retains_the_complete_cargo_test_command(self):
         calls = self.calls(['--workspace'], tool=None)
