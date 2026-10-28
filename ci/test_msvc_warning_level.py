@@ -124,5 +124,31 @@ class MsvcNamelessUnionExemptionTest(unittest.TestCase):
         self.assertEqual(missing, [])
 
 
+OUTPUTS = ROOT / "plugins" / "obs-outputs" / "CMakeLists.txt"
+DSHOW = ROOT / "deps" / "libdshowcapture" / "CMakeLists.txt"
+
+
+class MsvcVendoredDependencyExemptionTest(unittest.TestCase):
+    """The /W4-only findings left in vendored code are suppressed, not edited (#516)."""
+
+    def test_librtmp_exempts_its_w4_only_classes_on_msvc(self) -> None:
+        text = OUTPUTS.read_text(encoding="utf-8")
+        block = text.split("set_source_files_properties(", 1)[1].split("\n)", 1)[0]
+        self.assertIn("librtmp/rtmp.c", block)
+        self.assertRegex(
+            block,
+            r"COMPILE_LANG_AND_ID:C,MSVC>:/wd4245;/wd4456;/wd4706>",
+            "librtmp needs C4245, C4456 and C4706 at /W4, scoped to the C language",
+        )
+
+    def test_libdshowcapture_exempts_its_shadowed_local_on_msvc_cxx(self) -> None:
+        text = DSHOW.read_text(encoding="utf-8")
+        self.assertRegex(
+            text,
+            r"COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456\b",
+            "src/source/device.cpp:483 is vendored; C4456 stays suppressed",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

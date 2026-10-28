@@ -40,4 +40,10 @@ target_include_directories(
                             "${CMAKE_CURRENT_SOURCE_DIR}/src/external/capture-device-support/Library")
 
 target_compile_definitions(libdshowcapture INTERFACE _UP_WINDOWS=1)
-target_compile_options(libdshowcapture INTERFACE /wd4005 /wd4018)
+
+# /wd4005 and /wd4018 are the vendored-code suppressions this library has always
+# carried. The MSVC /W4-only C4456 below belongs to the same exempt set (#2626,
+# #516): src/source/device.cpp:483 shadows its `defaultMT` local. Fixing it
+# would mean editing the vendored submodule, so the warning is suppressed for
+# the consumers that compile these sources (win-dshow, obs-virtualcam-module).
+target_compile_options(libdshowcapture INTERFACE /wd4005 /wd4018 $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456>)
