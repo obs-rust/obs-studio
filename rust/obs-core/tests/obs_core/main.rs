@@ -46,3 +46,4 @@ mod video_plan_parity;
 mod view;
 mod view_parity;
 mod win_crash_report;
+mod win_crash_report_parity;
