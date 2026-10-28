@@ -13,7 +13,9 @@
  *
  * Each structure is registered from a buffer whose bytes after the size are
  * the rest of the caller's full structure, with the field past the size set,
- * so a read past the size shows in what is registered.
+ * so a read past the size shows in what is registered. The guarded cases
+ * then place the short structure at the very end of a readable page, with
+ * an unreadable page after it, so any read past the size faults.
  *
  * obs_startup() needs a display on Linux, so the test runs under xvfb-run
  * there. It skips only when no display is set at all; with one set, a failed
@@ -29,6 +31,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 #include <obs.h>
 #include <obs-module.h>
@@ -213,6 +222,84 @@ static void test_encoder_caps_within_size(void **state)
 	assert_int_equal(obs_get_encoder_caps("rsi_enc_in2"), OBS_ENCODER_CAP_DYN_BITRATE);
 }
 
+/* ----------------------------------------------------------------- guarded */
+
+/* Two pages, the second unreadable. */
+struct guarded {
+	unsigned char *base;
+	size_t page;
+};
+
+static struct guarded guarded_alloc(void)
+{
+	struct guarded g = {0};
+#ifdef _WIN32
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+	g.page = si.dwPageSize;
+	g.base = VirtualAlloc(NULL, 2 * g.page, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	assert_non_null(g.base);
+	DWORD old;
+	assert_true(VirtualProtect(g.base + g.page, g.page, PAGE_NOACCESS, &old));
+#else
+	g.page = (size_t)sysconf(_SC_PAGESIZE);
+	void *p = mmap(NULL, 2 * g.page, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	assert_true(p != MAP_FAILED);
+	g.base = p;
+	assert_int_equal(mprotect(g.base + g.page, g.page, PROT_NONE), 0);
+#endif
+	return g;
+}
+
+static void guarded_free(struct guarded g)
+{
+#ifdef _WIN32
+	VirtualFree(g.base, 0, MEM_RELEASE);
+#else
+	munmap(g.base, 2 * g.page);
+#endif
+}
+
+/* The first `size` bytes of `info`, ending exactly at the unreadable page. */
+static void *guarded_copy(struct guarded g, const void *info, size_t size)
+{
+	/* The structure stays aligned: each cut is at a pointer boundary. */
+	assert_int_equal(size % sizeof(void *), 0);
+	unsigned char *at = g.base + g.page - size;
+	memcpy(at, info, size);
+	return at;
+}
+
+/* A source cut before version, at the end of a page: registered
+ * unversioned, with nothing read past the size. */
+static void test_source_short_guarded(void **state)
+{
+	(void)state;
+	REQUIRE_OBS();
+
+	struct obs_source_info info = source("rsi_src_guard", 3);
+	struct guarded g = guarded_alloc();
+	obs_register_source_s(guarded_copy(g, &info, source_short), source_short);
+	guarded_free(g);
+	assert_int_equal(listed(obs_enum_input_types, "rsi_src_guard"), 1);
+	assert_int_equal(listed(obs_enum_input_types, "rsi_src_guard_v3"), 0);
+}
+
+/* An encoder cut before caps, at the end of a page: registered with no
+ * caps, with nothing read past the size. */
+static void test_encoder_short_guarded(void **state)
+{
+	(void)state;
+	REQUIRE_OBS();
+
+	struct obs_encoder_info info = encoder("rsi_enc_guard", OBS_ENCODER_CAP_PASS_TEXTURE);
+	struct guarded g = guarded_alloc();
+	obs_register_encoder_s(guarded_copy(g, &info, encoder_short), encoder_short);
+	guarded_free(g);
+	assert_int_equal(listed(obs_enum_encoder_types, "rsi_enc_guard"), 1);
+	assert_int_equal(obs_get_encoder_caps("rsi_enc_guard"), 0);
+}
+
 /* ------------------------------------------------------------------- setup */
 
 static int group_setup(void **state)
@@ -246,6 +333,8 @@ int main(void)
 		cmocka_unit_test(test_encoder_short_scaling_caps),
 		cmocka_unit_test(test_encoder_short_texture_caps),
 		cmocka_unit_test(test_encoder_caps_within_size),
+		cmocka_unit_test(test_source_short_guarded),
+		cmocka_unit_test(test_encoder_short_guarded),
 	};
 	return cmocka_run_group_tests_name("test_register_short_info", tests, group_setup, group_teardown);
 }
