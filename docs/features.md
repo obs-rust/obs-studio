@@ -2333,6 +2333,13 @@ area.
   [#2713](https://github.com/obs-rust/obs-studio/issues/2713);
   obs-rust/obs-websocket
   [#22](https://github.com/obs-rust/obs-websocket/pull/22).
+- A WebSocket client that disconnects while the server is closing no longer
+  crashes OBS. `onClose()` looks the handle up and returns when the session is
+  already gone, instead of default-constructing and inserting a null session it
+  then dereferences. *All*, pending merge. Issue
+  [#2720](https://github.com/obs-rust/obs-studio/issues/2720);
+  obs-rust/obs-websocket
+  [#23](https://github.com/obs-rust/obs-websocket/pull/23).
 
 ### Security hardening
 
