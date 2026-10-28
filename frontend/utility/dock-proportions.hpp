@@ -54,10 +54,16 @@ public:
 	 * itself. */
 	QByteArray StateToSave() const
 	{
-		if (unclamped.isEmpty() || !AnyDockAtMinimum()) {
+		if (!AnyDockAtMinimum()) {
 			return window->saveState();
 		}
-		return unclamped;
+		if (!unclamped.isEmpty()) {
+			return unclamped;
+		}
+		/* Nothing has been observed yet: the window came up clamped
+		 * from the layout it was restored from, which is a better
+		 * state to keep than the clamp. */
+		return restored.isEmpty() ? window->saveState() : restored;
 	}
 
 	/* The layout the window was restored from (#2225). A window that starts

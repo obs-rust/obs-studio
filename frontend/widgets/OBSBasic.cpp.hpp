@@ -1088,6 +1088,10 @@ void OBSBasic::OBSInit()
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 		if (!restoreState(dockState)) {
 			on_resetDocks_triggered(true);
+		} else {
+			/* A window smaller than this layout shows it clamped;
+			 * keep the layout itself as what a save writes. */
+			DockStateRestored(dockState);
 		}
 	}
 
@@ -1719,6 +1723,13 @@ QByteArray OBSBasic::DockStateToSave() const
 	/* A save from a narrow window must not persist the clamped layout:
 	 * the helper keeps the last unclamped one (obs-rust/obs-studio#2225). */
 	return dockProportions ? dockProportions->StateToSave() : saveState();
+}
+
+void OBSBasic::DockStateRestored(const QByteArray &state)
+{
+	if (dockProportions) {
+		dockProportions->SetRestoredState(state);
+	}
 }
 
 void OBSBasic::saveAll()

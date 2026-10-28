@@ -43,6 +43,11 @@ OAUTH_WRITERS = (
 # `main->saveState()` / `App()->saveState()`: a live layout, clamp included.
 LIVE_SAVE = re.compile(r"(?:main|this|App\(\))->saveState\(\)")
 
+# A restored dock snapshot, and the call that records it as the baseline a
+# clamped start saves instead.
+RESTORE = re.compile(r"\brestoreState\(dockState\)")
+RECORDED = re.compile(r"\bDockStateRestored\(dockState\)")
+
 
 class DockStateWritersTest(unittest.TestCase):
     def test_obsbasic_declares_the_clamp_safe_accessor(self):
@@ -79,6 +84,25 @@ class DockStateWritersTest(unittest.TestCase):
                 if '"DockState"' in line and LIVE_SAVE.search(line)
             ]
             self.assertEqual(writes, [], f"{path.name} writes a live snapshot")
+
+    def test_every_dock_state_restore_records_the_baseline(self):
+        """A restored snapshot is the layout a clamped start must save.
+
+        The window can come up narrower than the snapshot it restored, with
+        every dock at its minimum, before any resize is observed. Without
+        the baseline the first save writes that clamp over the layout the
+        ini still holds (#2225).
+        """
+        for path in (OBS_BASIC, *OAUTH_WRITERS):
+            source = path.read_text(encoding="utf-8")
+            restores = RESTORE.findall(source)
+            recorded = RECORDED.findall(source)
+            self.assertEqual(
+                len(recorded),
+                len(restores),
+                f"{path.name}: {len(restores)} dock-state restores, "
+                f"{len(recorded)} DockStateRestored() calls",
+            )
 
 
 if __name__ == "__main__":

@@ -331,6 +331,10 @@ public:
 	 * minimum, so a save from a narrow window does not write the clamp
 	 * (obs-rust/obs-studio#2225). */
 	QByteArray DockStateToSave() const;
+	/* Record the layout a restore just loaded, so a start that comes up
+	 * clamped on a smaller display saves that layout instead of the clamp
+	 * (obs-rust/obs-studio#2225). */
+	void DockStateRestored(const QByteArray &state);
 	bool shouldPromptForClose();
 	/* A quit that nobody can answer a dialog for (SIGTERM): the next close
 	 * goes ahead without the exit confirmation. */

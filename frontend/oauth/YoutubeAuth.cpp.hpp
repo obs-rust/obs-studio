@@ -136,6 +136,7 @@ void YoutubeAuth::LoadUI()
 		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 		main->restoreState(dockState);
+		main->DockStateRestored(dockState);
 	}
 
 	uiLoaded = true;
