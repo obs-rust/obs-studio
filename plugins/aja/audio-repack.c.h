@@ -2,7 +2,7 @@
 
 #define NUM_CHANNELS 8 /* max until OBS supports higher channel counts */
 
-int check_buffer(struct audio_repack *repack, uint32_t frame_count)
+static int check_buffer(struct audio_repack *repack, uint32_t frame_count)
 {
 	const uint32_t new_size = frame_count * repack->base_dst_size + repack->pad_dst_size;
 
@@ -28,7 +28,7 @@ int check_buffer(struct audio_repack *repack, uint32_t frame_count)
  * |    |    |
  * | FL | FR | LFE |
 */
-int repack_squash16(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash16(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
@@ -63,7 +63,7 @@ int repack_squash16(struct audio_repack *repack, const uint8_t *bsrc, uint32_t f
  * |    |    |
  * | FL | FR | LFE | FC | RL | RR | LC | RC |
 */
-int repack_squash_swap16(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash_swap16(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
@@ -85,7 +85,7 @@ int repack_squash_swap16(struct audio_repack *repack, const uint8_t *bsrc, uint3
  * Squash array of 8ch to new channel count
  * 32-bit PCM, SIMD version
  */
-int repack_squash32(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash32(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
@@ -115,7 +115,7 @@ int repack_squash32(struct audio_repack *repack, const uint8_t *bsrc, uint32_t f
  * Squash array of 8ch to new channel count and swap FC with LFE
  * 32-bit PCM, SIMD version
  */
-int repack_squash_swap32(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash_swap32(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
@@ -142,7 +142,7 @@ int repack_squash_swap32(struct audio_repack *repack, const uint8_t *bsrc, uint3
  * Squash array of 8ch to new channel count
  * 16-bit or 32-bit PCM, C version
  */
-int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
@@ -163,7 +163,7 @@ int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t fra
 	return 0;
 }
 
-void shuffle_8ch(uint8_t *dst, const uint8_t *src, size_t szb, int ch1, int ch2, int ch3, int ch4, int ch5, int ch6,
+static void shuffle_8ch(uint8_t *dst, const uint8_t *src, size_t szb, int ch1, int ch2, int ch3, int ch4, int ch5, int ch6,
 		 int ch7, int ch8)
 {
 	/* shuffle 8 channels of audio */
@@ -183,7 +183,7 @@ void shuffle_8ch(uint8_t *dst, const uint8_t *src, size_t szb, int ch1, int ch2,
  * Squash array of 8ch to new channel count and swap FC with LFE
  * 16-bit or 32-bit PCM, C version
  */
-int repack_squash_swap(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
+static int repack_squash_swap(struct audio_repack *repack, const uint8_t *bsrc, uint32_t frame_count)
 {
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
