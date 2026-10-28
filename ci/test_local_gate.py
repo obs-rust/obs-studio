@@ -7,8 +7,10 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -247,3 +249,27 @@ class FormatScopeUpstreamConfigTest(unittest.TestCase):
         self.assertIn("ci/local_gate.py", changed)
         files = ["frontend/a.cpp", "frontend/b.cpp"]
         self.assertEqual(local_gate.format_scope(files, changed, ci=False), files)
+
+
+class EmptyTestDiffTest(unittest.TestCase):
+    """A shell that loses the base must not turn the changed-crates step into
+    the whole gate. On a Windows runner PowerShell reads `${BASE}` as an unset
+    variable, so the step passed `--test-diff ""`, argparse saw a falsy value
+    and the gate ran every lane — the POSIX-only ci/ self-tests included
+    (#2743)."""
+
+    def test_an_empty_base_is_refused(self):
+        ran = []
+        lanes = {name: (lambda fix, name=name: ran.append(name)) for name in local_gate.LANES}
+        with (
+            mock.patch.object(sys, "argv", ["local_gate.py", "--test-diff", ""]),
+            mock.patch.object(local_gate, "LANES", lanes),
+            mock.patch.object(local_gate, "test_diff") as test_diff,
+            mock.patch.object(sys, "stderr", new=io.StringIO()) as stderr,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            local_gate.main()
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("--test-diff needs a base commit", stderr.getvalue())
+        self.assertEqual(ran, [])
+        test_diff.assert_not_called()
