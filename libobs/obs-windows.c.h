@@ -248,8 +248,10 @@ static void log_security_products_by_type(IWSCProductList *prod_list, int type)
 
 	hr = prod_list->lpVtbl->Initialize(prod_list, type);
 
-	if (FAILED(hr))
+	if (FAILED(hr)) {
+		prod_list->lpVtbl->Release(prod_list);
 		return;
+	}
 
 	hr = prod_list->lpVtbl->get_Count(prod_list, &count);
 	if (FAILED(hr)) {
@@ -263,12 +265,15 @@ static void log_security_products_by_type(IWSCProductList *prod_list, int type)
 			continue;
 
 		hr = prod->lpVtbl->get_ProductName(prod, &name);
-		if (FAILED(hr))
+		if (FAILED(hr)) {
+			prod->lpVtbl->Release(prod);
 			continue;
+		}
 
 		hr = prod->lpVtbl->get_ProductState(prod, &prod_state);
 		if (FAILED(hr)) {
 			SysFreeString(name);
+			prod->lpVtbl->Release(prod);
 			continue;
 		}
 
