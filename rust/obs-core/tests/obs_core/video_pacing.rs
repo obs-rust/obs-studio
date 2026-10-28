@@ -91,7 +91,15 @@ fn steps_slept_is_one_frame() {
         T0 + FPS25,
         1,
     );
-    check_step("now ignored (earlier)", T0, FPS25, true, T0 - 5, T0 + FPS25, 1);
+    check_step(
+        "now ignored (earlier)",
+        T0,
+        FPS25,
+        true,
+        T0 - 5,
+        T0 + FPS25,
+        1,
+    );
     check_step("frame time 0", 0, FPS25, true, 0, FPS25, 1);
     check_step("interval 1 ns", T0, 1, true, 0, T0 + 1, 1);
 }

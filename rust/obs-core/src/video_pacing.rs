@@ -36,6 +36,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -57,14 +58,57 @@ pub struct Step {
 /// used when `slept`).
 #[must_use]
 pub fn step(frame_time: u64, interval_ns: u64, slept: bool, now: u64) -> Step {
-    let _ = (frame_time, interval_ns, slept, now);
-    todo!()
+    if slept {
+        return Step {
+            frame_time: frame_time.wrapping_add(interval_ns),
+            count: 1,
+        };
+    }
+    // `memcpy()` of the unsigned difference into an `int64_t`, and the
+    // interval as `(int64_t)`: the same bits read as signed.
+    let diff = i64::from_ne_bytes(now.wrapping_sub(frame_time).to_ne_bytes());
+    let interval = i64::from_ne_bytes(interval_ns.to_ne_bytes());
+    let clamped_diff = if diff > interval {
+        u64::from_ne_bytes(diff.to_ne_bytes())
+    } else {
+        interval_ns
+    };
+    let Some(whole) = clamped_diff.checked_div(interval_ns) else {
+        // Interval 0: the intentional difference (module docs).
+        return Step {
+            frame_time,
+            count: 0,
+        };
+    };
+    let count = int_of(whole);
+    Step {
+        frame_time: frame_time.wrapping_add(interval_ns.wrapping_mul(uint64_of(count))),
+        count,
+    }
+}
+
+/// `(int)` of a `uint64_t`: its low 32 bits as a signed `int`.
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap
+)]
+const fn int_of(value: u64) -> c_int {
+    value as u32 as c_int
+}
+
+/// An `int` converted to `uint64_t` for the multiplication: negative values
+/// wrap (modulo 2^64), as the C's usual arithmetic conversions do.
+#[allow(clippy::as_conversions, clippy::cast_sign_loss)]
+const fn uint64_of(value: c_int) -> u64 {
+    value as i64 as u64
 }
 
 /// `video_sleep()`: a ready encoder's group gets its start timestamp once
 /// every encoder in it has started and it has none yet.
 #[must_use]
 pub fn group_starts(num_encoders_started: u32, num_encoders: usize, start_timestamp: u64) -> bool {
-    let _ = (num_encoders_started, num_encoders, start_timestamp);
-    todo!()
+    // The C compares the uint32_t with the size_t after promotion.
+    usize::try_from(num_encoders_started).map_or(true, |started| started >= num_encoders)
+        && start_timestamp == 0
 }

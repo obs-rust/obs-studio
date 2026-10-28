@@ -675,6 +675,10 @@ _obs_video_step_render
 _obs_video_step_ring
 _obs_video_step_download
 _obs_video_step_output
+# obs-video-pacing.c: video_sleep() in obs-video.c calls them inside libobs. Not
+# EXPORT.
+_obs_video_pacing_step
+_obs_video_pacing_group_starts
 # obs-canvas-draw.c: obs.c and obs-display.c call them inside libobs. Not
 # EXPORT.
 _obs_canvas_draw_multiplier

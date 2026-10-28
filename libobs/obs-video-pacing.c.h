@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-pacing.pch.h"
 
 /* video_sleep(), without the sleep and the clock read. */
 struct obs_video_pacing_step obs_video_pacing_step(uint64_t frame_time, uint64_t interval_ns, bool slept, uint64_t now)

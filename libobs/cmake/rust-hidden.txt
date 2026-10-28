@@ -828,6 +828,11 @@ obs_video_step_render
 obs_video_step_ring
 obs_video_step_download
 obs_video_step_output
+# obs-video-pacing.c: video_sleep() in obs-video.c calls them inside libobs.
+# Declared in obs-video-pacing.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_video_pacing_step
+obs_video_pacing_group_starts
 # obs-canvas-draw.c: obs_render_canvas_texture_internal() in obs.c and
 # render_display_begin() in obs-display.c call them inside libobs. Declared in
 # obs-canvas-draw.h without EXPORT, so the shims stay hidden the same way.
