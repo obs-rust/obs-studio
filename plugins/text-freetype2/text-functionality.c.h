@@ -108,9 +108,9 @@ void set_up_vertex_buffer(struct ft2_source *srcdata)
 		if (srcdata->text[i] == L' ')
 			space_pos = i;
 	next_char:;
-		glyph_index = FT_Get_Char_Index(srcdata->font_face, srcdata->text[i]);
+		glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)srcdata->text[i]);
 		if (src_glyph)
-			word_width += src_glyph->xadv;
+			word_width += (uint32_t)src_glyph->xadv;
 	eos_skip:;
 	}
 
@@ -157,7 +157,7 @@ void fill_vertex_buffer(struct ft2_source *srcdata)
 		if (srcdata->text[i] == L'\r')
 			goto skip_glyph;
 
-		glyph_index = FT_Get_Char_Index(srcdata->font_face, srcdata->text[i]);
+		glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)srcdata->text[i]);
 		if (src_glyph == NULL)
 			goto skip_glyph;
 
@@ -175,9 +175,10 @@ void fill_vertex_buffer(struct ft2_source *srcdata)
 			    (float)dy - (float)src_glyph->yoff, (float)src_glyph->w, (float)src_glyph->h);
 		set_v2_uv(tvarray + (cur_glyph * 6), src_glyph->u, src_glyph->v, src_glyph->u2, src_glyph->v2);
 		set_rect_colors2(col + (cur_glyph * 6), srcdata->color[0], srcdata->color[1]);
-		dx += src_glyph->xadv;
-		if (dy - (float)src_glyph->yoff + src_glyph->h > max_y)
-			max_y = dy - src_glyph->yoff + src_glyph->h;
+		dx += (uint32_t)src_glyph->xadv;
+		const float glyph_bottom = (float)dy - (float)src_glyph->yoff + (float)src_glyph->h;
+		if (glyph_bottom > (float)max_y)
+			max_y = (uint32_t)glyph_bottom;
 		cur_glyph++;
 	skip_glyph:;
 	}
@@ -225,8 +226,8 @@ struct glyph_info *init_glyph(FT_GlyphSlot slot, const uint32_t dx, const uint32
 	glyph->u2 = (float)(dx + g_w) / (float)texbuf_w;
 	glyph->v = (float)dy / (float)texbuf_h;
 	glyph->v2 = (float)(dy + g_h) / (float)texbuf_h;
-	glyph->w = g_w;
-	glyph->h = g_h;
+	glyph->w = (int32_t)g_w;
+	glyph->h = (int32_t)g_h;
 	glyph->yoff = slot->bitmap_top;
 	glyph->xoff = slot->bitmap_left;
 	glyph->xadv = slot->advance.x >> 6;
@@ -258,7 +259,7 @@ void rasterize(struct ft2_source *srcdata, FT_GlyphSlot slot, const FT_Render_Mo
 	 *
 	 * Source: https://www.freetype.org/freetype2/docs/reference/ft2-basic_types.html
 	 */
-	const int pitch = abs(slot->bitmap.pitch);
+	const uint32_t pitch = (uint32_t)abs(slot->bitmap.pitch);
 
 	for (uint32_t y = 0; y < slot->bitmap.rows; y++) {
 		const uint32_t row_start = y * pitch;
@@ -281,7 +282,7 @@ static bool glyph_cache_is_cached(void *data, wchar_t ch)
 {
 	struct glyph_cache_ctx *ctx = data;
 	struct ft2_source *srcdata = ctx->srcdata;
-	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, ch);
+	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)ch);
 
 	return src_glyph != NULL;
 }
@@ -291,7 +292,7 @@ static void glyph_cache_render(void *data, wchar_t ch, uint32_t *w, uint32_t *h)
 	struct glyph_cache_ctx *ctx = data;
 	struct ft2_source *srcdata = ctx->srcdata;
 	FT_GlyphSlot slot = srcdata->font_face->glyph;
-	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, ch);
+	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)ch);
 
 	load_glyph(srcdata, glyph_index, ctx->render_mode);
 	FT_Render_Glyph(slot, ctx->render_mode);
@@ -305,7 +306,7 @@ static void glyph_cache_store(void *data, wchar_t ch, uint32_t x, uint32_t y)
 	struct glyph_cache_ctx *ctx = data;
 	struct ft2_source *srcdata = ctx->srcdata;
 	FT_GlyphSlot slot = srcdata->font_face->glyph;
-	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, ch);
+	const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)ch);
 
 	src_glyph = init_glyph(slot, x, y, slot->bitmap.width, slot->bitmap.rows);
 	rasterize(srcdata, slot, ctx->render_mode, x, y);
@@ -409,17 +410,17 @@ uint32_t get_ft2_text_width(wchar_t *text, struct ft2_source *srcdata)
 	uint32_t w = 0, max_w = 0;
 	const size_t len = wcslen(text);
 	for (size_t i = 0; i < len; i++) {
-		const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, text[i]);
+		const FT_UInt glyph_index = FT_Get_Char_Index(srcdata->font_face, (FT_ULong)text[i]);
 
 		if (text[i] == L'\n')
 			w = 0;
 		else {
 			if (src_glyph) {
 				// Use the cached values.
-				w += src_glyph->xadv;
+				w += (uint32_t)src_glyph->xadv;
 			} else {
 				load_glyph(srcdata, glyph_index, get_render_mode(srcdata));
-				w += slot->advance.x >> 6;
+				w += (uint32_t)(slot->advance.x >> 6);
 			}
 			if (w > max_w)
 				max_w = w;
