@@ -36,6 +36,14 @@ tungstenite = { version = "=0.30.0", default-features = false }
 [workspace.lints.clippy]
 wildcard_imports = "deny"
 enum_glob_use = "deny"
+# A lock or RefCell guard held across `.await` makes the future `!Send` or
+# deadlocks the runtime, and the failure is a hang rather than a diagnostic.
+# All three are pedantic lints, so nothing fires until they are opted in here;
+# the workspace has no async code yet, which is exactly when to set them
+# (RUST-019, #2715).
+await_holding_lock = "deny"
+await_holding_refcell_ref = "deny"
+await_holding_invalid_type = "deny"
 
 [profile.release]
 # libobs links the Rust staticlib; keep panics from unwinding across the C ABI.
