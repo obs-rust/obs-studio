@@ -6,6 +6,7 @@ use std::{
     process::Command,
 };
 
+#[expect(clippy::too_many_lines, reason = "one block per generated resource")]
 pub(crate) fn compile(
     build: &NativeBuild,
     library: &SharedLibrary,

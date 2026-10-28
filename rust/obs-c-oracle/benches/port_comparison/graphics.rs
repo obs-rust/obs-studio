@@ -32,6 +32,7 @@ macro_rules! output_pair {
     }
 }
 
+#[expect(clippy::too_many_lines, reason = "benchmark table: one row per ported unit")]
 pub fn benchmarks(criterion: &mut Criterion) {
     let rv2 = vec2 { x: 3.0, y: -4.0 };
     let cv2 = c2::OracleVec2 { x: 3.0, y: -4.0 };

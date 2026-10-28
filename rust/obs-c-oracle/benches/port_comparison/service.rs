@@ -37,6 +37,7 @@ unsafe extern "C" fn max_bitrate(_: *mut c_void, video: *mut c_int, _: *mut c_in
     unsafe { *video = 6000 };
 }
 
+#[expect(clippy::too_many_lines, reason = "benchmark table: one row per ported unit")]
 pub fn benchmarks(criterion: &mut Criterion) {
     let info = ObsServiceInfo {
         id: c"bench_service".as_ptr(),

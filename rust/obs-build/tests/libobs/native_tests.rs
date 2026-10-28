@@ -2,6 +2,10 @@
 use obs_build::{NativeBuild, validation::Executable};
 use std::path::Path;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per module contract checked"
+)]
 pub fn exercise(
     build: &NativeBuild,
     root: &Path,

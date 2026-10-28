@@ -791,6 +791,10 @@ fn ptr_forms_allocate_size_plus_one() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_utf8_wcs_ptr() {
     if !common::isolated(concat!(module_path!(), "::test_utf8_wcs_ptr")) {
         return;
@@ -915,6 +919,10 @@ fn test_mbs_wcs_ptr() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_utf8_mbs_ptr() {
     if !common::isolated(concat!(module_path!(), "::test_utf8_mbs_ptr")) {
         return;

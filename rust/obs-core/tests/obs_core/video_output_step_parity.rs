@@ -235,6 +235,10 @@ fn parity_constants() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
 fn parity_layout() {
     macro_rules! check {
         ($ty:ty, $c:literal, [$($field:ident),*]) => {{

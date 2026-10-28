@@ -466,6 +466,10 @@ impl NativeBuild {
             .map_err(|e| e.to_string())
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one block per library kind, in link order"
+    )]
     fn objects(&self, library: &SharedLibrary) -> Result<(PathBuf, bool, Vec<PathBuf>), String> {
         if library.name.is_empty()
             || !library

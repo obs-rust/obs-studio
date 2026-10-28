@@ -309,6 +309,10 @@ fn every_format_colorspace_and_size() {
 /// The same plan, written out for the common sizes, so a reader sees the
 /// numbers.
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn common_sizes_written_out() {
     let p = output_plan(
         Some(VideoFormat::Nv12),

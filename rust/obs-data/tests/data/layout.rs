@@ -40,6 +40,10 @@ unsafe extern "C" {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn vec_and_frames_layouts_match_c() {
     // SAFETY: the oracle functions return compile-time sizes.
     unsafe {

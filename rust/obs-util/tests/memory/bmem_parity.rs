@@ -79,6 +79,10 @@ fn matches_c_oracle() {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn check(ops: Vec<Op>, seed: usize) -> Result<(), TestCaseError> {
     {
         let mut slots: Vec<Slot> = Vec::new();

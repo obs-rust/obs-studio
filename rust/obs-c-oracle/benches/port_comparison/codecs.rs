@@ -269,6 +269,7 @@ fn packets(criterion: &mut Criterion, name: &str, input: &[u8], hevc: bool) {
     );
 }
 
+#[expect(clippy::too_many_lines, reason = "benchmark table: one row per ported unit")]
 pub fn benchmarks(criterion: &mut Criterion) {
     for size in [256, 16384] {
         let avc = annex_b(false, size);

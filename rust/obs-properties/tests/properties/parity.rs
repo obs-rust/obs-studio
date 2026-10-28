@@ -379,6 +379,10 @@ macro_rules! side {
 
                 /// Applies `op`; returns the pointer results as "non-null" flags and
                 /// the callback log with set pointers made side-independent.
+                #[expect(
+                    clippy::too_many_lines,
+                    reason = "parity table: one block per ported C case"
+                )]
                 pub fn apply(&mut self, op: &Op) -> Vec<String> {
                     use $api::*;
                     LOG.with_borrow_mut(Vec::clear);

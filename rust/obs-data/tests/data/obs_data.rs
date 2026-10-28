@@ -95,6 +95,10 @@ fn test_json_shapes() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_default_and_autoselect() {
     let data = Data::new();
     data.set_default_string("only", Some("default"));

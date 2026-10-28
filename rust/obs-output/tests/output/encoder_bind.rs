@@ -559,6 +559,10 @@ fn steps_unstarted_shutdown() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_unbind_and_rebind() {
     let g = &CORE;
     let videos = [V_NTSC, V_60];

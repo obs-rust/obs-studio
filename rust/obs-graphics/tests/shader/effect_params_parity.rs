@@ -220,6 +220,10 @@ fn floats(v: &[f32]) -> Vec<u8> {
 }
 
 /// Runs `call` on one side. `null_param` passes NULL instead.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn run(start: &Start, call: &Call, rust: bool, null_param: bool) -> End {
     let mut p = build(start);
     let pp: *mut gs_effect_param = if null_param { ptr::null_mut() } else { &mut *p };

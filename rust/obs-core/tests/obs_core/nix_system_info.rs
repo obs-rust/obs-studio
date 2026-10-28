@@ -389,6 +389,10 @@ fn steps_dmesg_lines() {
 
 /// Mirrors `memory_sizes`.
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_memory_sizes() {
     // mem_unit 1 (64-bit kernels)
     assert_eq!(total_mb(17_179_869_184, 1), 16384);

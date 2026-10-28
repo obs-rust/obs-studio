@@ -176,6 +176,10 @@ fn take_packet(data: *mut u8, size: usize) -> Vec<u8> {
     take(block, size_of::<c_long>() + size).expect("parsed packet has data")
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn check(
     input: &[u8],
     keyframe: bool,

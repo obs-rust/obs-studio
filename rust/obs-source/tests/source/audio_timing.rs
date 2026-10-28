@@ -987,6 +987,10 @@ fn edge_distance() {
 }
 
 /// What each action implies about the outputs, for any input.
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn check_pre_invariants(input: PreLockInput) {
     let out = pre_lock(input);
     let direct = distance(input.timestamp, input.os_time) < MAX_TS_VAR;

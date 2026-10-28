@@ -637,6 +637,14 @@ impl StandIn {
 /// `obs_source_set_monitoring_type()` from every start state: monitoring on
 /// or off, muted or not, Monitor Only's mark set or not.
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_monitoring_type_steps() {
     let types = [TYPE_NONE, TYPE_MONITOR_ONLY, TYPE_MONITOR_AND_OUTPUT, 3, -1];
 

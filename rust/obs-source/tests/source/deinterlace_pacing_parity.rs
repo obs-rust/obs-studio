@@ -715,6 +715,10 @@ impl<'a, P: Pacing> Run<'a, P> {
         self.s.last_sys_timestamp = sys_time;
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "parity table: one block per ported C case"
+    )]
     fn closest(&mut self, sys_time: u64, video_time: u64, interval: u64) {
         // deinterlace_process_last_frame(): the shown frames go back to
         // the cache

@@ -44,6 +44,13 @@ enum_glob_use = "deny"
 await_holding_lock = "deny"
 await_holding_refcell_ref = "deny"
 await_holding_invalid_type = "deny"
+# The complexity ceiling (RUST-018, #2845). Both are pedantic, so nothing fires
+# until they are opted in here; clippy.toml keeps the thresholds at or below
+# the defaults (25 / 100). A function that grows past either carries
+# `#[expect(clippy::<lint>, reason = "...")]` with the reason it is one piece --
+# never `allow`, so a later edit that shrinks it reports the stale expectation.
+cognitive_complexity = "warn"
+too_many_lines = "warn"
 
 [profile.release]
 # libobs links the Rust staticlib; keep panics from unwinding across the C ABI.

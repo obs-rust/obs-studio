@@ -770,6 +770,10 @@ fn steps_compose_flipped() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_compose_bounds() {
     // Each bounds type, a 400 x 400 box, the source centred in it, crop to
     // bounds off and on, upright and flipped on both axes.

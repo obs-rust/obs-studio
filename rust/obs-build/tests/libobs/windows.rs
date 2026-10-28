@@ -6,6 +6,10 @@ use std::{
 };
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per build step of the canonical manifest"
+)]
 fn core_builds_from_the_canonical_manifest() {
     let Some(dependencies) = std::env::var_os("OBS_BUILD_WINDOWS_DEPENDENCIES") else {
         return;

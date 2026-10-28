@@ -302,6 +302,10 @@ fn native_test_graph_prepends_runtime_paths_in_order() {
 
 #[test]
 #[cfg(feature = "libobs-integration")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per generated CMake target"
+)]
 fn native_test_graph_generates_qt_metaobjects() {
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();
@@ -635,6 +639,10 @@ fn native_test_graph_preserves_cpp_helper_build_requirements() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn native_test_graph_cmake_builds_and_runs_selected_contract() {
     let fixture = tempfile::tempdir().unwrap();
     let root = fixture.path();
@@ -1157,6 +1165,14 @@ fn native_test_graph_checks_selection_references_and_commands() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn native_test_graph_replaces_legacy_utility_definitions() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph =
@@ -1668,6 +1684,10 @@ fn native_profile_switch_rebuilds_assertion_policy() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn production_runtime_stages_selected_artifacts_and_rejects_stale_outputs() {
     use obs_build::{application, plugins};
     let temporary = tempfile::tempdir().unwrap();

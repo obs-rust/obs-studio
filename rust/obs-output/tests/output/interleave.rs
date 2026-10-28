@@ -1285,6 +1285,10 @@ fn start_waits_for_every_track() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn start_offsets_and_resort() {
     let mut out = Out::setup();
     out.use_tracks(1, 2);
@@ -1637,6 +1641,10 @@ fn one_packet_per_call_then_catch_up() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn send_interleaved_times_callbacks_and_counts() {
     let mut out = Out::setup();
 

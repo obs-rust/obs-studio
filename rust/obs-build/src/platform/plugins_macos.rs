@@ -90,6 +90,10 @@ fn stage_bundle(binary: &Path, data: &Path, name: &str) -> Result<Module, String
     })
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per captured plugin output"
+)]
 pub fn capture(
     build: &NativeBuild,
     root: &Path,

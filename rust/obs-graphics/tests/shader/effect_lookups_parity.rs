@@ -195,6 +195,14 @@ fn null_owners_match_oracle() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn lookups_match_oracle() {
     let param_names = [
         cstr(b"color"),

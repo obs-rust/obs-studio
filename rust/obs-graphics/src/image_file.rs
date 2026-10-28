@@ -514,6 +514,7 @@ impl<H: Host> ImageFileEx<H> {
         }
     }
 
+    #[expect(clippy::too_many_lines, reason = "one block per GIF header field")]
     fn init_animated_gif(
         &mut self,
         path: &CStr,

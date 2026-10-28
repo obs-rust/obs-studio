@@ -249,6 +249,10 @@ fn test_order_and_lookup() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_numbers() {
     unsafe {
         let props = obs_properties_create();
@@ -388,6 +392,10 @@ fn test_text_path_editable() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_list() {
     unsafe {
         let props = obs_properties_create();

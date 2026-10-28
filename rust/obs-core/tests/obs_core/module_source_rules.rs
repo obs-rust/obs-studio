@@ -146,6 +146,10 @@ impl Registry {
         }
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "scenario table: one block per ported step"
+    )]
     fn try_register(&mut self, info: &Info, size: usize) -> Result<(), ()> {
         let id = info.id;
         let list = list_of(info.source_type);

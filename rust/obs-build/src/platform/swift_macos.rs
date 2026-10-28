@@ -42,6 +42,10 @@ fn xcrun(build: &NativeBuild, arguments: &[&str]) -> Result<OsString, String> {
     Ok(value.into())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per build invocation, in order"
+)]
 pub fn build(build: &NativeBuild, library: &SwiftLibrary) -> Result<PathBuf, String> {
     for variable in ["DEVELOPER_DIR", "TOOLCHAINS"] {
         println!("cargo:rerun-if-env-changed={variable}");

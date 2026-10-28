@@ -1078,6 +1078,10 @@ fn has_audio_at_or_after_start(f: &Fixture) -> bool {
 
 /// The step on one side: `c` picks the oracle or the shim. Returns the
 /// return value and the caller's packet after the call.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn run_side(f: &mut Fixture, c: bool, op: &Op, src: Option<&Src>) -> (Ret, Option<PView>) {
     let o = f.ptr();
     match op {
@@ -1339,6 +1343,10 @@ fn run_static(f: &mut Fixture, c: bool, s: Static) -> (Ret, Option<PView>) {
 /// Builds the step's source packet from the running timestamps, and
 /// clamps the step's tracks to the run's encoders. `None` for a step whose
 /// C precondition does not hold (it is skipped on both sides).
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn prepare(op: &Op, setup: Setup, clocks: &mut Clocks, f: &Fixture) -> Option<(Op, Option<Src>)> {
     let video_tb = (
         i32::try_from(setup.video_timebase.0).unwrap(),
@@ -1519,6 +1527,10 @@ fn aud(track: usize, dts: i64, dts_usec: i64) -> Op {
 
 const F: i64 = 33333;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn scenarios() -> Vec<(Setup, Vec<Op>)> {
     vec![
         // video waits for a keyframe

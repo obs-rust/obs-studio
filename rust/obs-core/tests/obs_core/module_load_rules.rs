@@ -488,6 +488,10 @@ fn test_route_every_combination() {
 
 /// `test_route_examples`.
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_route_examples() {
     let base = World {
         is_plugin: true,

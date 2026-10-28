@@ -173,6 +173,10 @@ struct Case {
     precision: f32,
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn check(case: Case) -> Result<(), TestCaseError> {
     let Case {
         dir,

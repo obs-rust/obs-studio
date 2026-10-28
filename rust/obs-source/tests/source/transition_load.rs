@@ -534,6 +534,10 @@ fn steps_load_fields() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_load_sources() {
     const A: usize = 0;
     const B: usize = 1;

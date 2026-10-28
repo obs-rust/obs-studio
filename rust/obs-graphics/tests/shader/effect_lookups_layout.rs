@@ -19,6 +19,10 @@ macro_rules! layout {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn effect_layouts_match_c() {
     // SAFETY: the oracle layout functions take no arguments and only return constants.
     unsafe {

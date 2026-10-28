@@ -513,6 +513,10 @@ fn animated_gif_load_test() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn tick_test() {
     setup();
     let mut image = image();

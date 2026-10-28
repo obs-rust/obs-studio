@@ -98,6 +98,10 @@ fn values_match_the_c_headers() {
 }
 
 /// Every rule that takes the flags: shim, C and core agree.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn check_flags(f: u32) {
     type Pair = (
         extern "C" fn(u32) -> bool,

@@ -173,6 +173,10 @@ fn same(
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn every_callback_table_matches_the_c() {
     let mut data = 0x5e4c_u32;
     let data = (&raw mut data).cast::<c_void>();
@@ -290,6 +294,10 @@ fn every_callback_table_matches_the_c() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn service_info_mirror_has_the_c_layout() {
     // SAFETY: the oracle's layout getters take no arguments.
     unsafe {

@@ -2,6 +2,10 @@
 use obs_build::{NativeBuild, SharedLibrary, libobs::Options};
 use std::path::{Path, PathBuf};
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per captured output, in build order"
+)]
 pub(super) fn build_probe(
     build: &NativeBuild,
     root: &Path,

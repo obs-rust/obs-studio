@@ -165,6 +165,10 @@ fn steps_flag_rules_every_bit() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_canvas_kinds() {
     // the main canvas: a MAIN_VIEW that mixes audio, holds its scenes, is
     // saved, signals globally and cannot be reset, renamed or removed

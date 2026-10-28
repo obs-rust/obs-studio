@@ -420,6 +420,10 @@ fn flags_events_and_states() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
 fn formats_and_ids() {
     let ids = ids();
     let formats = (-1000..=1000).chain([i32::MIN, i32::MIN + 1, i32::MAX - 1, i32::MAX]);

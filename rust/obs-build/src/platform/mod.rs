@@ -691,6 +691,10 @@ pub fn configure_webrtc(
     Ok(())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per option with its comment"
+)]
 pub fn configure_source(
     target: &str,
     root: &Path,

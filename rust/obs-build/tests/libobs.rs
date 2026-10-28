@@ -25,6 +25,14 @@ mod webrtc_tests;
 mod windows_tests;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the lifecycle contract walks each module kind in order"
+)]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "the lifecycle contract walks each module kind in order"
+)]
 fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     if let Some(path) = std::env::var_os("OBS_BUILD_TEST_CORE") {
         let modules: Vec<(PathBuf, PathBuf)> =
@@ -839,6 +847,14 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per module contract checked"
+)]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "one block per module contract checked"
+)]
 fn exercise(path: &std::path::Path, modules: &[plugins::Module], hevc: bool) {
     let module_config = tempfile::tempdir().unwrap();
     let module_config_path =
@@ -1255,6 +1271,14 @@ fn captures_audio() -> bool {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per build step of the canonical manifest"
+)]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "one block per build step of the canonical manifest"
+)]
 fn macos_core_builds_from_the_canonical_manifest() {
     let Some(dependencies) = std::env::var_os("OBS_BUILD_MACOS_DEPENDENCIES") else {
         return; // Explicit SDK-dependent integration, including cross compilation.

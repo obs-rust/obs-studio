@@ -42,6 +42,7 @@ impl Drop for Allocation {
     }
 }
 
+#[expect(clippy::too_many_lines, reason = "benchmark table: one row per ported unit")]
 fn memory(criterion: &mut Criterion) {
     for size in [64, 4096, 65536] {
         let mut group = criterion.benchmark_group(format!("bmem/alloc_free/{size}"));
@@ -270,6 +271,7 @@ impl Drop for Cstring {
     }
 }
 
+#[expect(clippy::too_many_lines, reason = "benchmark table: one row per ported unit")]
 fn strings(criterion: &mut Criterion) {
     for size in [128, 4096] {
         let seed = std::ffi::CString::new("obs ".repeat(size / 4)).unwrap();

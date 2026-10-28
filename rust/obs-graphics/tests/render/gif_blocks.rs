@@ -235,6 +235,10 @@ fn blocks_colour_table() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn blocks_graphic_control() {
     for d in 0u8..8 {
         let gce = [
@@ -498,6 +502,10 @@ fn blocks_skip_extensions() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn blocks_image_descriptor() {
     let desc = [
         0x00, 0x2C, 0x05, 0x00, 0x00, 0x00, 0x14, 0x00, 0x05, 0x00, 0xC3, 0x00,

@@ -29,6 +29,10 @@ pub struct Artifacts {
     pub python_wrapper: Option<PathBuf>,
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "flat ordered build stages, kept in one place"
+)]
 pub fn build(
     build: &NativeBuild,
     root: &Path,

@@ -153,6 +153,10 @@ fn assert_both(
     Ok(())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn check(
     rows: [[f32; 4]; 4],
     other: [[f32; 4]; 4],

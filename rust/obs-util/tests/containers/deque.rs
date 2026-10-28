@@ -510,6 +510,10 @@ fn record_at<B: DequeBuf>(dq: &Deque<B>, idx: usize) -> Record {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn record_fifo() {
     let (mut dq, allocs) = counted();
     let mut next_push: u32 = 0;

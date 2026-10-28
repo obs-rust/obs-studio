@@ -131,6 +131,10 @@ impl Artifacts {
 /// Assemble a real application through the canonical component builders.
 /// Rust archives are supplied by Cargo orchestration, never built recursively
 /// from a build script. The C compatibility core is not part of this graph.
+#[expect(
+    clippy::too_many_lines,
+    reason = "flat ordered build stages, kept in one place"
+)]
 pub fn build(
     build: &NativeBuild,
     root: &Path,

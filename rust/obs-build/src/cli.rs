@@ -21,6 +21,7 @@ pub struct Request {
     pub options: application::BuildOptions,
 }
 
+#[expect(clippy::too_many_lines, reason = "one arm per flag")]
 pub fn parse<I, S>(arguments: I) -> Result<Invocation, String>
 where
     I: IntoIterator<Item = S>,
@@ -203,6 +204,7 @@ where
 }
 
 /// Execute only after parsing; help and invalid requests do not create outputs.
+#[expect(clippy::too_many_lines, reason = "one arm per subcommand")]
 pub fn run<I, S>(arguments: I) -> Result<(), String>
 where
     I: IntoIterator<Item = S>,

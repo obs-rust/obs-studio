@@ -345,6 +345,10 @@ use Effect::{
 };
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "scenario table: one block per ported step"
+)]
 fn steps_effect_each_filter() {
     let nan = f32::NAN;
     // Disable: nothing at any scale

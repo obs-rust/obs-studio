@@ -521,6 +521,7 @@ impl Graph {
     /// Compile selected targets through cc::Build. Named external libraries
     /// must resolve to the caller's selected artifacts, never a source-tree
     /// search or an implicit same-named system library.
+    #[expect(clippy::too_many_lines, reason = "one block per validation rule")]
     pub fn compile(
         &self,
         build: &NativeBuild,

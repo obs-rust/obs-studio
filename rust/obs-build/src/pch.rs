@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[expect(clippy::too_many_lines, reason = "one block per header")]
 pub(crate) fn apply(
     build: &NativeBuild,
     compiler: &mut cc::Build,

@@ -638,13 +638,9 @@ reason = "setup-soldr is pinned to the soldr version the toolchain pin is tested
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 
-# RUST-018: No workspace complexity lint configured yet.
-[[exceptions]]
-rule = "RUST-018"
-path = "Cargo.toml"
-reason = "No workspace complexity lint configured yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
+# RUST-018 is fixed in the manifest: [workspace.lints.clippy] warns on
+# cognitive_complexity and too_many_lines and every existing offender carries
+# an #[expect] (#2845), so there is no exception to keep here.
 
 # SEC-001: Reusable OBS build/sign workflows receive the caller's release secrets.
 [[exceptions]]

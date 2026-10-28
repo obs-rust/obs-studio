@@ -95,6 +95,10 @@ struct Fx {
 }
 
 impl Fx {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "parity table: one block per ported C case"
+    )]
     fn new(spec: &Spec) -> Box<Self> {
         // SAFETY: the stand-in's allocator.
         let graphics = unsafe { c::oracle_passes_graphics_new() };
@@ -314,6 +318,10 @@ fn events() -> Vec<String> {
 }
 
 /// Runs `ops` on one side and returns one line per call.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn run(spec: &Spec, ops: &[Op], rust: bool) -> Vec<String> {
     let mut fx = Fx::new(spec);
     let other = Box::new(0u8);

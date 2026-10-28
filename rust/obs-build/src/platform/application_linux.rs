@@ -54,6 +54,10 @@ pub fn configure_archive_command(
     Ok(())
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "ordered staging copies, kept together"
+)]
 pub fn stage(inputs: &RuntimeInputs<'_>, destination: &Path) -> Result<StagedRuntime, String> {
     if destination.exists()
         && std::fs::read_dir(destination)

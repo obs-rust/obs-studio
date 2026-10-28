@@ -227,6 +227,7 @@ pub fn build_vlc_tests(
     compile_suite(build, &root, &graph, &facts, &interfaces)
 }
 
+#[expect(clippy::too_many_lines, reason = "one block per generated test target")]
 pub fn build_c_tests(
     build: &NativeBuild,
     root: &Path,

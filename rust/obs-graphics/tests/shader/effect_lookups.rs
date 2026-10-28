@@ -66,6 +66,10 @@ fn null_and_empty_test() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn name_lookups_test() {
     let params: &[&[u8]] = &[b"color", b"Color", b"color", b""];
     assert_eq!(named(true, params, b"color"), Some(0));
@@ -105,6 +109,10 @@ fn name_lookups_test() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn index_bounds_test() {
     let params = [0u8, 1u8];
     let params_ptr = params.as_ptr();

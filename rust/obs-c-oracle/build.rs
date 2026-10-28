@@ -316,6 +316,8 @@ fn write_port_comparison_units(out_dir: &Path, manifest: &Path) {
     println!("cargo:rerun-if-changed={}", dir.display());
 }
 
+#[expect(clippy::cognitive_complexity, reason = "one block per ported module")]
+#[expect(clippy::too_many_lines, reason = "one block per ported module")]
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").unwrap());
     write_port_comparison_units(

@@ -245,6 +245,10 @@ fn compare(ops: &[Op]) {
 }
 
 /// The cmocka cases' situations, as fixed sequences.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn scenarios() -> Vec<Vec<Op>> {
     use Op::*;
     let fmt = |format, zsformat| Create { format, zsformat };

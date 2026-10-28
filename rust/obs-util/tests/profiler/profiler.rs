@@ -123,6 +123,10 @@ fn clock(n: &mut u64) -> u64 {
     *n
 }
 
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "scenario table: one block per ported step"
+)]
 fn test_profiler_lifecycle() {
     let root = ProfileName::from_static(ROOT_NAME);
     let child = ProfileName::from_static(CHILD_NAME);

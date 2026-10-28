@@ -80,6 +80,10 @@ pub fn build_application(
 }
 
 /// Build the Linux frontend graph with its optional browser-panel interface.
+#[expect(
+    clippy::too_many_lines,
+    reason = "flat ordered build stages, kept in one place"
+)]
 pub fn build_application_with_options(
     build: &NativeBuild,
     root: &Path,

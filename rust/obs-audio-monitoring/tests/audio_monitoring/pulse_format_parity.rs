@@ -314,6 +314,10 @@ const PLUS_26_DB: f32 = 19.952_623;
 /// Every input of `test_pulse_monitor_format`, plus the edge cases of the
 /// Tier 1 tests.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn cmocka_cases_match_oracle() {
     for format in ALL_FORMATS
         .into_iter()

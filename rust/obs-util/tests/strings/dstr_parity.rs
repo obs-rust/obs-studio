@@ -317,6 +317,10 @@ fn op() -> impl Strategy<Value = Op> {
 }
 
 /// Runs `op` on both sides, skipping it when its inputs are excluded.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn apply(op: &Op, d: &mut Pair, s: &mut Pair) {
     let ld = d.r.len;
     let ls = s.r.len;

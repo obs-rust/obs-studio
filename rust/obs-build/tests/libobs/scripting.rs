@@ -2,6 +2,10 @@
 use obs_build::{NativeBuild, SharedLibrary, scripting};
 use std::path::Path;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "one block per scripting contract checked"
+)]
 pub fn exercise(
     build: &NativeBuild,
     root: &Path,

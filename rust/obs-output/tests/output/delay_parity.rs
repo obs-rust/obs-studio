@@ -813,6 +813,10 @@ enum Side {
 }
 
 /// Runs one step on one side's output at time `now`.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn run_op(side: Side, f: &mut Fixture, op: &Op, now: u64) -> Ret {
     CLOCK.with(|c| c.set(now));
     let o = f.ptr();
@@ -978,6 +982,10 @@ fn packet(dt: u64, pts: i64) -> Op {
 /// The characterization scenarios of `test_output_delay`, the six
 /// "characterized, not endorsed" behaviours among them, compared step by
 /// step with the C.
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn fixed_sequences() -> Vec<Vec<Op>> {
     let timed = Op::Packet {
         dt: SEC,
