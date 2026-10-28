@@ -89,6 +89,7 @@
     "obs-source.h",
     "obs-video-copy-plan.h",
     "obs-video-output-step.h",
+    "obs-video-pacing.h",
     "obs.h",
     "obs.hpp",
     "util/array-serializer.h",

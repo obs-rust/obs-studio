@@ -677,19 +677,12 @@ static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, u
 	struct obs_vframe_info vframe_info;
 	uint64_t cur_time = *p_time;
 	uint64_t t = cur_time + interval_ns;
-	int count;
 
-	if (os_sleepto_ns(t)) {
-		*p_time = t;
-		count = 1;
-	} else {
-		const uint64_t udiff = os_gettime_ns() - cur_time;
-		int64_t diff;
-		memcpy(&diff, &udiff, sizeof(diff));
-		const uint64_t clamped_diff = (diff > (int64_t)interval_ns) ? (uint64_t)diff : interval_ns;
-		count = (int)(clamped_diff / interval_ns);
-		*p_time = cur_time + interval_ns * count;
-	}
+	const bool slept = os_sleepto_ns(t);
+	const struct obs_video_pacing_step step =
+		obs_video_pacing_step(cur_time, interval_ns, slept, slept ? 0 : os_gettime_ns());
+	const int count = step.count;
+	*p_time = step.frame_time;
 
 	obs_video_stats_add_frames(&video->stats, count, count - 1);
 
@@ -706,7 +699,8 @@ static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, u
 		if (encoder->encoder_group) {
 			struct obs_encoder_group *group = encoder->encoder_group;
 			pthread_mutex_lock(&group->mutex);
-			if (group->num_encoders_started >= group->encoders.num && !group->start_timestamp)
+			if (obs_video_pacing_group_starts(group->num_encoders_started, group->encoders.num,
+							  group->start_timestamp))
 				group->start_timestamp = *p_time;
 			pthread_mutex_unlock(&group->mutex);
 		}

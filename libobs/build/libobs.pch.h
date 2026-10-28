@@ -107,6 +107,9 @@
 /* obs-video-output-step.c */
 #include "obs-video-output-step.h"
 
+/* obs-video-pacing.c */
+#include "obs-video-pacing.h"
+
 /* obs-video.c */
 #include <time.h>
 #include <stdlib.h>
