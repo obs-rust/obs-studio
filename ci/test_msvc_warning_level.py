@@ -137,16 +137,16 @@ class MsvcVendoredDependencyExemptionTest(unittest.TestCase):
         self.assertIn("librtmp/rtmp.c", block)
         self.assertRegex(
             block,
-            r"COMPILE_LANG_AND_ID:C,MSVC>:/wd4245;/wd4456;/wd4706>",
-            "librtmp needs C4245, C4456 and C4706 at /W4, scoped to the C language",
+            r"COMPILE_LANG_AND_ID:C,MSVC>:/wd4245;/wd4456;/wd4702;/wd4706>",
+            "librtmp needs C4245, C4456, C4702 and C4706 at /W4, scoped to the C language",
         )
 
-    def test_libdshowcapture_exempts_its_shadowed_local_on_msvc_cxx(self) -> None:
+    def test_libdshowcapture_exempts_its_shadowed_locals_on_msvc_cxx(self) -> None:
         text = DSHOW.read_text(encoding="utf-8")
         self.assertRegex(
             text,
-            r"COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456\b",
-            "src/source/device.cpp:483 is vendored; C4456 stays suppressed",
+            r"COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456;/wd4458>",
+            "device.cpp:483 and encoder.cpp/output-filter.cpp are vendored; C4456/C4458 stay suppressed",
         )
 
 
