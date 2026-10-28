@@ -26,6 +26,11 @@ GITHUB = ROOT / ".github"
 WORKFLOWS = GITHUB / "workflows"
 PIN = "a1917ce76598904ce515cd7eec83450c317ea6f2"
 
+# Workflows whose CACHE-001 exception is burned down: every cache step in them
+# goes through the `.github/actions/cache` wrapper (#2737). Add a name here in
+# the same PR that deletes its ci.toml `[[exceptions]]` block.
+CONVERTED_CACHE_WORKFLOWS = ("sanitizers.yaml",)
+
 # Prefixes of the families a `via` names (zackees/ci.yml ci_lint/cache/families.py).
 VIA_PREFIXES = {
     "setup-soldr:cargo-registry": "setup-soldr-cargoregistry-v1-",
@@ -215,7 +220,10 @@ class CacheWriterPolicyTest(unittest.TestCase):
             for line, block in self.blocks(path):
                 if re.search(r"uses: actions/cache@", block):
                     self.fail(f"{path.relative_to(ROOT)}:{line}: separate restore/save to control publication")
-                if not re.search(r"uses: actions/cache/save@", block):
+                wrapped_save = "uses: ./.github/actions/cache" in block and re.search(
+                    r"(?m)^\s+mode: save\s*$", block
+                )
+                if not re.search(r"uses: actions/cache/save@", block) and not wrapped_save:
                     continue
                 writers += 1
                 with self.subTest(path=path.relative_to(ROOT), line=line):
@@ -223,6 +231,27 @@ class CacheWriterPolicyTest(unittest.TestCase):
                     self.assertIsNotNone(condition, "cache publication must have an explicit guard")
                     self.assertIn("github.ref == 'refs/heads/master'", condition[1])
         self.assertGreater(writers, 0)
+
+    def test_converted_workflows_call_the_cache_wrapper(self):
+        """A burned-down CACHE-001 path calls no `actions/cache` step directly.
+
+        The exception is path-scoped, so deleting it from ci.toml only keeps
+        `ci-lint precheck` quiet while every raw call in the file is gone.
+        """
+        for name in CONVERTED_CACHE_WORKFLOWS:
+            path = WORKFLOWS / name
+            with self.subTest(path=path.relative_to(ROOT)):
+                blocks = self.blocks(path)
+                raw = [line for line, block in blocks if re.search(r"uses: actions/cache", block)]
+                self.assertEqual(raw, [], "route this step through ./.github/actions/cache")
+                modes = []
+                for _, block in blocks:
+                    if "uses: ./.github/actions/cache" not in block:
+                        continue
+                    mode = re.search(r"(?m)^\s+mode: (\S+)$", block)
+                    self.assertIsNotNone(mode, "the wrapper callsite needs an explicit mode")
+                    modes.append(mode[1])
+                self.assertEqual(sorted(modes), ["restore", "save"])
 
     def test_split_dependency_and_timestamp_caches_preserve_keys_and_paths(self):
         cases = [(WORKFLOWS / "build-project.yaml", key)
