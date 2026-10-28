@@ -23,7 +23,9 @@
 //! `libobs/obs-video-frame-timing.c.h` (from `obs-video.c.h`), the tick time
 //! and frame statistics of the graphics thread loop; and
 //! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
-//! BSD system info parsing of the startup log.
+//! BSD system info parsing of the startup log; and
+//! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
+//! the Windows crash report rules.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
@@ -31,8 +33,8 @@
 //! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_output_step`],
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
-//! [`audio_render`], [`video_pacing`], [`video_frame_timing`] and
-//! [`nix_system_info`].
+//! [`audio_render`], [`video_pacing`], [`video_frame_timing`],
+//! [`nix_system_info`] and [`win_crash_report`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -43,7 +45,9 @@
 //! sleep at the end of each frame; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
-//! startup log prints; [`module_load_rules`] decides which modules load, are
+//! startup log prints; [`win_crash_report`] decides which module holds the
+//! crash address, which threads the report traces and in what order, how
+//! each frame is written and when the crash handler passes on; [`module_load_rules`] decides which modules load, are
 //! disabled or skipped, and which failures count. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
