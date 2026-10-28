@@ -1,5 +1,29 @@
-#!/bin/sh
-# Unit-test lanes of the local gate (ci/local_gate.py): Rust Tiers 1-3, then
-# Tier 2 (cmocka against libobs and libobs-c-reference in Docker). Named unittest
-# because test/ is the C test tree.
-exec uv run "$(dirname "$0")/ci/local_gate.py" --lane rust-test --lane tier2-linux "$@"
+#!/usr/bin/env -S uv run --script
+"""Unit-test lanes of the local gate (`ci/local_gate.py`): Rust Tiers 1-3, then
+Tier 2 (cmocka against libobs and the explicit C reference, in Docker). Named
+`unittest` because `test/` is the C test tree.
+
+    ./unittest [gate arguments]
+
+A Python (not `sh`) launcher, so GEN-005 has no shell shebang to flag.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+GATE = Path(__file__).resolve().parent / "ci" / "local_gate.py"
+
+
+def main() -> int:
+    os.execvp(
+        "uv",
+        ["uv", "run", str(GATE), "--lane", "rust-test", "--lane", "tier2-linux", *sys.argv[1:]],
+    )
+    return 0  # unreachable: execvp replaces this process
+
+
+if __name__ == "__main__":
+    sys.exit(main())
