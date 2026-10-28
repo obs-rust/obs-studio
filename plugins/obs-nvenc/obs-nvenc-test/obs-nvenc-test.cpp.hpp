@@ -377,11 +377,11 @@ static bool get_adapter_caps(int adapter_idx, codec_caps_map &caps, device_info 
 		preset_config.version = NV_ENC_PRESET_CONFIG_VER;
 		preset_config.presetCfg.version = NV_ENC_CONFIG_VER;
 
-		NVENCSTATUS res = nv.nvEncGetEncodePresetConfigEx(nvSession.ptr, *guid, NV_ENC_PRESET_P7_GUID,
-								  NV_ENC_TUNING_INFO_ULTRA_HIGH_QUALITY,
-								  &preset_config);
+		NVENCSTATUS preset_status = nv.nvEncGetEncodePresetConfigEx(nvSession.ptr, *guid, NV_ENC_PRESET_P7_GUID,
+									    NV_ENC_TUNING_INFO_ULTRA_HIGH_QUALITY,
+									    &preset_config);
 
-		device_info.caps[codec_name]["uhq"] = res == NV_ENC_SUCCESS ? 1 : 0;
+		device_info.caps[codec_name]["uhq"] = preset_status == NV_ENC_SUCCESS ? 1 : 0;
 		caps[codec_name]["uhq"] = std::max(device_info.caps[codec_name]["uhq"], caps[codec_name]["uhq"]);
 #endif
 	}

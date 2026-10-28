@@ -168,7 +168,9 @@ try {
 	MFXSetConfigFilterProperty(cfg, (const mfxU8 *)"mfxImplDescription.Impl", impl);
 
 	mfxSession m_session = nullptr;
-	mfxStatus sts = MFXCreateSession(loader, 0, &m_session);
+	// A session that failed to open is simply null: the probe below then
+	// reports no adapters and the close is skipped, so the status is not used.
+	(void)MFXCreateSession(loader, 0, &m_session);
 
 	uint32_t idx = 0;
 	while (get_adapter_caps(factory, loader, m_session, idx++) == true)
@@ -180,8 +182,8 @@ try {
 
 	MFXUnload(loader);
 
-	for (auto &[idx, caps] : adapter_info) {
-		printf("[%u]\n", idx);
+	for (auto &[adapter_index, caps] : adapter_info) {
+		printf("[%u]\n", adapter_index);
 		printf("is_intel=%s\n", caps.is_intel ? "true" : "false");
 		printf("is_dgpu=%s\n", caps.is_dgpu ? "true" : "false");
 		printf("supports_av1=%s\n", caps.supports_av1 ? "true" : "false");

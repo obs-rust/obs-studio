@@ -661,7 +661,10 @@ static void *ffmpeg_mux_io_thread(void *data)
 	// ffmpeg, then we flush the chunk. next_seek_position is the actual
 	// offset we should seek to when we write the chunk.
 	uint64_t current_seek_position = 0;
-	uint64_t next_seek_position;
+	// want_seek is only raised next to the assignment below, so the read in
+	// the write path is always dominated by it; cl.exe cannot see that across
+	// the chunk-flush branch, so the declaration carries the zero (#2626).
+	uint64_t next_seek_position = 0;
 
 	for (;;) {
 		// Wait for ffmpeg to write data to the buffer
