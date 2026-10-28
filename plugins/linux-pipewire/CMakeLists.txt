@@ -41,6 +41,14 @@ endif()
 
 target_include_directories(linux-pipewire PRIVATE ${libdrm_include_directories})
 
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  linux-pipewire
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(linux-pipewire PRIVATE OBS::libobs OBS::glad PipeWire::PipeWire gio::gio)
 
 set_target_properties_obs(linux-pipewire PROPERTIES FOLDER plugins PREFIX "")
