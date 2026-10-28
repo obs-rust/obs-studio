@@ -59,6 +59,14 @@ add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-pedanti
 # code, not the tests.
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-missing-prototypes>)
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-strict-prototypes>)
+# Existing C tests are never edited to satisfy a new warning, and -Wcomma
+# (clang's "possible misuse of comma operator") rejects the deliberate
+# `(asked++, call())` chain in test_module_load_steps.c, which counts how many
+# operands of the `||` chain actually ran. It is the expression the test is
+# about, not a misplaced semicolon, so -Wcomma covers the product code, not the
+# tests (obs-rust/obs-studio#516, #2842). The macOS CI preset builds with
+# CMAKE_COMPILE_WARNING_AS_ERROR, so without this the lane does not compile.
+add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-comma>)
 
 # Per-test sanitizers (obs-rust/obs-studio#159). Some tests compile the code
 # they check with ASan/UBSan so a bug fails the test. Those flags are added
