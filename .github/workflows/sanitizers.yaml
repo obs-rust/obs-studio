@@ -48,6 +48,13 @@ jobs:
     outputs:
       tools: ${{ steps.pick.outputs.tools }}
     steps:
+      # `select` is ci/sanitizers_step.py, so the job needs the working tree:
+      # without a checkout uv fails with "Failed to spawn" (#2797). No
+      # submodules — the step reads only the module.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
