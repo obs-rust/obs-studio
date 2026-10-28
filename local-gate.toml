@@ -57,6 +57,12 @@ keep = ["rust/**", "dylints/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.tom
 [gate.lanes.tier2-linux]
 run = ["uv", "run", "ci/local_gate.py", "--lane", "tier2-linux"]
 tools = ["docker"]
+# Its own heavy chain (#399): it builds in its own Docker container with its
+# own build and zccache volumes, so it overlaps the host lanes instead of
+# queueing behind them, and the gate's wall time is the longer of the two
+# chains rather than their sum (#2769). On a small host, OBS_CTEST_JOBS and
+# OBS_GATE_TEST_THREADS are the controls.
+group = "docker"
 # Never read by the Tier 2 build (strace of validate.sh in the image, #699):
 # docs, packaging, the Windows/Metal/WinRT graphics backends and CI-only files.
 # Nor by its cargo builds (#930 A5): tests/benches/examples of any crate, and

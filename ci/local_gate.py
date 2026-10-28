@@ -25,6 +25,9 @@ Cargo runs with SOLDR_RUSTC_WRAPPER=none (soldr's zccache has replayed stale
 rustc output; #134). Set OBS_GATE_ZCCACHE=1 to keep the cache locally.
   tier2-linux  rust/tools/linux-validate/run.py: libobs + cmocka with
                libobs and libobs-c-reference in Docker, exported-symbol diff.
+
+Set OBS_GATE_TEST_THREADS to lift nextest's four-test bound on a large host
+(CI runs four, the cap the runners are sized for; #2769).
 """
 
 from __future__ import annotations
@@ -679,6 +682,21 @@ def lane_cross_release(fix: bool) -> None:
     cross_lint(RELEASE_CROSS_TARGETS, link=False)
 
 
+def test_threads() -> int:
+    """nextest's --test-threads: the four-test CI bound unless this host sets
+    OBS_GATE_TEST_THREADS (a host with many cores otherwise idles; #2769)."""
+    override = os.environ.get("OBS_GATE_TEST_THREADS", "").strip()
+    if override:
+        try:
+            threads = int(override)
+        except ValueError:
+            threads = 0
+        if threads < 1:
+            raise SystemExit(f"OBS_GATE_TEST_THREADS must be a positive integer, not {override!r}")
+        return threads
+    return min(4, os.cpu_count() or 1)
+
+
 def rust_tests(packages: list[str]) -> None:
     """Schedule unchanged category binaries globally; retain Cargo doctests."""
     executable = ensure_nextest()
@@ -689,7 +707,7 @@ def rust_tests(packages: list[str]) -> None:
     failure = None
     try:
         soldr_cargo(["nextest", "run", *packages, "--locked", "--no-fail-fast",
-                     "--test-threads", str(min(4, os.cpu_count() or 1)),
+                     "--test-threads", str(test_threads()),
                      "--profile", "default", "--config-file", str(Path(__file__).with_name("nextest.toml")),
                      "--user-config-file", "none", "--ignore-default-filter", "--retries", "0",
                      "--no-tests", "pass" if "-p" in packages else "fail"], env)
