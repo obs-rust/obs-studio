@@ -507,7 +507,13 @@ still run unless a developer ran the gate on a Mac or Windows box.
 Flatpak app builds.
 
 **The stamp is ignored (CI runs everything it would anyway) when:**
-- the PR comes from a fork or from a non-writer;
+- the PR comes from a fork or from a non-writer. GATE-008 reads the
+  author's association from the event payload (`ci_lint/gate_trust.py`,
+  `TRUSTED_ASSOCIATIONS` = `OWNER`, `MEMBER`, `COLLABORATOR`), and GitHub
+  reports a member whose organization membership is *private* as
+  `CONTRIBUTOR`: such a member has write access and still loses the skip.
+  Make the membership public (the organization's People page, "Public")
+  if you want the stamp trusted;
 - the head isn't attested for its exact tree;
 - a lane is missing from the stamp;
 - a "surface" changed: the gate itself, the Tier 2 harness,

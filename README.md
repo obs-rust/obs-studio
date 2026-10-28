@@ -113,7 +113,9 @@ built to do as little repeated work as possible:
 - **You can prove your change locally first.** One command (`ci-lint
   local-gate run`) runs the same Linux checks on your machine and signs
   your commit. CI sees the signature and skips the checks you already
-  ran.
+  ran. This applies to a pull request from a branch of this repository
+  whose author has write access; a fork PR runs every check anyway, so
+  stamping saves you nothing there.
 - **Builds are cached and shared.** Rust builds go through `soldr`, which
   reuses compiled code across branches and machines.
 
