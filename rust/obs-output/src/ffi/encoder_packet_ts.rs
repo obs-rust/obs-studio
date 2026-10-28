@@ -11,8 +11,11 @@
 //! entries are the caller's `encoder_packet_time` array, read only. All
 //! five stay hidden (`rust-hidden.txt`).
 //!
-//! The intentional differences are the core's (in `dts_usec`, the inputs
-//! where C is undefined; unreachable).
+//! Intentional differences, unreachable: the core's (in `dts_usec`, the
+//! inputs where C is undefined), and [`obs_encoder_packet_ts_find`] answers
+//! a NULL `times` with a non-zero `num` as
+//! `OBS_ENCODER_PACKET_TS_NOT_FOUND`, where the C dereferences it (libobs's
+//! `encoder_packet_times.array` is NULL only when `num` is 0).
 
 use super::output_delay::encoder_packet_time;
 use crate::encoder_packet_ts::{self as ts, NOT_FOUND, Timebase};
@@ -79,7 +82,9 @@ pub extern "C" fn obs_encoder_packet_ts_paused(sys_dts_usec: i64, pause_ts_offse
 /// # Safety
 ///
 /// `times` points to `num` initialized entries, or `num` is 0 (then
-/// `times` may be NULL). Nothing writes them during the call.
+/// `times` may be NULL). Nothing writes them during the call. A NULL
+/// `times` with a non-zero `num` is answered as
+/// `OBS_ENCODER_PACKET_TS_NOT_FOUND`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_encoder_packet_ts_find(
     times: *const encoder_packet_time,

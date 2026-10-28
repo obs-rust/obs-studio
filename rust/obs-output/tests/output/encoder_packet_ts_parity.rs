@@ -15,6 +15,9 @@
 //! fps and 48 kHz with B-frames and a pause; and proptests over the full
 //! ranges.
 //!
+//! A NULL entry list with a non-zero count is not given to the C (it
+//! dereferences it); the shim answers "not found".
+//!
 //! The C is undefined in `obs_encoder_packet_ts_dts_usec()` for a
 //! `timebase_den` of 0, `dts * 1000000` beyond `int64_t` and
 //! `INT64_MIN / -1`. Those inputs are not given to the C; there the shim is
@@ -271,6 +274,17 @@ fn parity_system_and_paused_exhaustive() {
         for offset in U64S {
             check_paused(sys, offset);
         }
+    }
+}
+
+/// A NULL entry list with a non-zero count: "not found", the shim's
+/// intentional difference (the C dereferences it). The C is not called.
+#[test]
+fn parity_find_null_with_entries() {
+    for num in [1, 3, usize::MAX] {
+        // SAFETY: the shim checks the NULL pointer before it reads.
+        let got = unsafe { obs_encoder_packet_ts_find(std::ptr::null(), num, 0) };
+        assert_eq!(got, NOT_FOUND, "num {num}");
     }
 }
 
