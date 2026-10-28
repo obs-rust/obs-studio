@@ -63,6 +63,12 @@ LIBVPX_MIN = "1.17.0"
 _VPX_VERSION_RE = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
 _VPX_SONAME_RE = re.compile(rb"libvpx\.so(?:\.[0-9]+)*")
 _VPX_NEEDED_RE = re.compile(rb"libvpx\.so")
+# OpenSSL 1.1.1 is EOL (2023-09) and the base's copy was the last EOL library in
+# the bundle: Qt pulled it in through krb5 until the GSSAPI build was dropped
+# (obs-rust/obs-studio#2815). Only the 3.x line ships; `libssl.so.1.*` or
+# `libcrypto.so.1.*` in the AppDir, or a NEEDED on either, fails the build.
+_EOL_OPENSSL_GLOBS = ("libssl.so.1*", "libcrypto.so.1*")
+_EOL_OPENSSL_NEEDED_RE = re.compile(rb"lib(?:ssl|crypto)\.so\.1(?:\.[0-9]+)+")
 
 
 def _expand(value: str, env: dict[str, str]) -> str:
@@ -302,6 +308,25 @@ def _check_libvpx(appdir: Path) -> tuple[str, list[str]]:
     return version, errors
 
 
+def _check_eol_openssl(appdir: Path) -> list[str]:
+    """No `libssl.so.1.*` / `libcrypto.so.1.*` in the AppDir, and no NEEDED on one."""
+    errors = [
+        f"{_relative(str(Path(directory, name)), appdir)} is an EOL OpenSSL 1.1.1 library; the AppImage must ship the 3.x line only"
+        for directory, _dirnames, filenames in os.walk(appdir)
+        for name in sorted(filenames)
+        for glob in _EOL_OPENSSL_GLOBS
+        if fnmatch(name, glob)
+    ]
+    # A bundled ELF that asks for the 1.1 soname would map the host's copy (or
+    # fail to start), which is the same defect even when the file is not bundled.
+    for path in _grep_files(appdir / "usr", _EOL_OPENSSL_NEEDED_RE):
+        needed = sorted({match.decode() for match in _EOL_OPENSSL_NEEDED_RE.findall(path.read_bytes())})
+        errors.append(
+            f"{_relative(str(path), appdir)} needs {', '.join(needed)}: an EOL OpenSSL 1.1.1 soname the AppImage must not depend on"
+        )
+    return errors
+
+
 def check(appdir: Path) -> int:
     """Exit code: 0 when every runtime file AppRun points at is bundled."""
     exported = _exported(appdir / "AppRun", appdir)
@@ -314,6 +339,7 @@ def check(appdir: Path) -> int:
     errors += libsrt_errors
     vpx_version, libvpx_errors = _check_libvpx(appdir)
     errors += libvpx_errors
+    errors += _check_eol_openssl(appdir)
     for note in notes:
         print(note)
     for error in errors:

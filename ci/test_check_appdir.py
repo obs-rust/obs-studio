@@ -145,6 +145,29 @@ class CheckAppdirTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("optional PipeWire module libpipewire-module-rt is not bundled", out)
 
+    def test_a_bundled_openssl_1_1_fails(self):
+        self.write(self.appdir / "usr" / "lib" / "libcrypto.so.1.1", b"\x7fELF")
+        self.assert_fails(
+            "usr/lib/libcrypto.so.1.1 is an EOL OpenSSL 1.1.1 library; the AppImage must ship the 3.x line only"
+        )
+
+    def test_an_elf_needing_openssl_1_1_fails(self):
+        # The pre-#2815 shape: Qt Network NEEDs the base's krb5 stack, which
+        # NEEDs libcrypto.so.1.1.
+        self.write(
+            self.appdir / "usr" / "lib" / "libQt6Network.so.6",
+            b"\x7fELF\x00libgssapi_krb5.so.2\x00libcrypto.so.1.1\x00",
+        )
+        self.assert_fails(
+            "usr/lib/libQt6Network.so.6 needs libcrypto.so.1.1: an EOL OpenSSL 1.1.1 soname the AppImage must not depend on"
+        )
+
+    def test_the_openssl_3_line_is_allowed(self):
+        self.write(self.appdir / "usr" / "lib" / "libcrypto.so.3", b"\x7fELF\x00libcrypto.so.3\x00")
+        self.write(self.appdir / "usr" / "lib" / "libssl.so.3", b"\x7fELF\x00libssl.so.3\x00")
+        code, out, err = self.run_check()
+        self.assertEqual(code, 0, out + err)
+
     def test_a_missing_exported_directory_fails(self):
         shutil.rmtree(self.appdir / "usr" / "lib" / "pipewire-0.3")
         self.assert_fails(
