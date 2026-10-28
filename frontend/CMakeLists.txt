@@ -194,3 +194,11 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Header Files" FILES ${ta
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Qt Files" FILES ${target_qt_sources})
 
 set_target_properties_obs(obs-studio PROPERTIES FOLDER frontend OUTPUT_NAME "$<IF:$<PLATFORM_ID:Windows>,obs64,${OBS_UNIX_GUI_NAME}>")
+
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  obs-studio
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
