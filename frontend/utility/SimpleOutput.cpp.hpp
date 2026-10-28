@@ -717,23 +717,23 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 	SetOutputNetworkOptions(main->Config(), settings);
 	obs_data_set_bool(settings, "dyn_bitrate", enableDynBitrate);
 
-	auto streamOutput = StreamingOutput(); // shadowing is sort of bad, but also convenient
+	auto streamOutputRef = StreamingOutput();
 
-	obs_output_update(streamOutput, settings);
+	obs_output_update(streamOutputRef, settings);
 
 	if (!reconnect) {
 		maxRetries = 0;
 	}
 
-	obs_output_set_delay(streamOutput, useDelay ? delaySec : 0, preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
+	obs_output_set_delay(streamOutputRef, useDelay ? delaySec : 0, preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
 
-	obs_output_set_reconnect_settings(streamOutput, maxRetries, retryDelay);
+	obs_output_set_reconnect_settings(streamOutputRef, maxRetries, retryDelay);
 
 	if (!multitrackVideo || !multitrackVideoActive) {
 		SetupVodTrack(service);
 	}
 
-	if (obs_output_start(streamOutput)) {
+	if (obs_output_start(streamOutputRef)) {
 		bool dumpStarted = false;
 		if (multitrackVideo && multitrackVideoActive) {
 			dumpStarted = multitrackVideo->StartedStreaming();
@@ -747,7 +747,7 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 		multitrackVideoActive = false;
 	}
 
-	const char *error = obs_output_get_last_error(streamOutput);
+	const char *error = obs_output_get_last_error(streamOutputRef);
 	bool hasLastError = error && *error;
 	if (hasLastError) {
 		lastError = error;
@@ -755,7 +755,7 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 		lastError = string();
 	}
 
-	const char *type = obs_output_get_id(streamOutput);
+	const char *type = obs_output_get_id(streamOutputRef);
 	blog(LOG_WARNING, "Stream output type '%s' failed to start!%s%s", type, hasLastError ? "  Last Error: " : "",
 	     hasLastError ? error : "");
 	return false;
@@ -778,7 +778,7 @@ void SimpleOutput::UpdateRecording()
 		if (!ffmpegOutput) {
 			UpdateRecordingSettings();
 		}
-	} else if (!obs_output_active(streamOutput)) {
+	} else if (!obs_output_active(streamOutputRef)) {
 		Update();
 	}
 

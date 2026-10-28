@@ -251,9 +251,9 @@ void ThumbnailManager::deleteItemById(const std::string &uuid)
 		QPointer<ThumbnailItem> item = entry->second;
 
 		if (item && !item->isDefaultPixmap()) {
-			std::string uuid = item->getUuid();
+			std::string item_uuid = item->getUuid();
 			QPixmap pixmap = item->getPixmap();
-			addItemToCache(uuid, pixmap);
+			addItemToCache(item_uuid, pixmap);
 		}
 
 		thumbnailList.erase(uuid);

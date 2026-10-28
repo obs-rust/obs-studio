@@ -40,7 +40,7 @@ public:
 	[[nodiscard]] QPixmap getPixmap() const { return pixmap; }
 
 	[[nodiscard]] bool isEnabled() const { return enabled; }
-	void setEnabled(bool enabled);
+	void setEnabled(bool newEnabled);
 
 	void requestUpdate();
 
@@ -50,5 +50,5 @@ signals:
 	void updateRequested(std::string &uuid);
 
 public slots:
-	void setPixmap(QPixmap pixmap);
+	void setPixmap(QPixmap newPixmap);
 };

@@ -47,7 +47,7 @@ public:
 
 	bool update();
 	[[nodiscard]] QPixmap getPixmap() const;
-	void setPixmap(QPixmap pixmap);
+	void setPixmap(QPixmap newPixmap);
 
 	[[nodiscard]] bool isDefaultPixmap() const { return isDefaultPixmap_; }
 	[[nodiscard]] bool isValid() const

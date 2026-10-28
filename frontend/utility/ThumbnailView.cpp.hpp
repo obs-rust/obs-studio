@@ -39,12 +39,12 @@ ThumbnailView::ThumbnailView(QObject *parent, const QPointer<ThumbnailItem> &ite
 	}
 }
 
-void ThumbnailView::setEnabled(bool enabled)
+void ThumbnailView::setEnabled(bool newEnabled)
 {
-	if (this->enabled != enabled) {
-		this->enabled = enabled;
+	if (this->enabled != newEnabled) {
+		this->enabled = newEnabled;
 
-		emit enabledChanged(enabled);
+		emit enabledChanged(newEnabled);
 	}
 }
 
@@ -57,9 +57,9 @@ void ThumbnailView::requestUpdate()
 	emit updateRequested(uuid);
 }
 
-void ThumbnailView::setPixmap(QPixmap pixmap)
+void ThumbnailView::setPixmap(QPixmap newPixmap)
 {
-	this->pixmap = std::move(pixmap);
+	this->pixmap = std::move(newPixmap);
 
 	emit updated(this->pixmap);
 }

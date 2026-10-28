@@ -87,9 +87,9 @@ QPixmap ThumbnailItem::getPixmap() const
 	return pixmap;
 }
 
-void ThumbnailItem::setPixmap(QPixmap pixmap)
+void ThumbnailItem::setPixmap(QPixmap newPixmap)
 {
-	this->pixmap = std::move(pixmap);
+	this->pixmap = std::move(newPixmap);
 
 	emit pixmapUpdated(this->pixmap);
 }
@@ -164,9 +164,9 @@ bool ThumbnailItem::update()
 		return false;
 	}
 
-	QPixmap pixmap;
+	QPixmap blank_pixmap;
 	if (this->pixmap.isNull()) {
-		this->pixmap = pixmap;
+		this->pixmap = blank_pixmap;
 	}
 
 	if (source) {

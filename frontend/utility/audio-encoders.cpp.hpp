@@ -164,12 +164,12 @@ static void PopulateBitrateLists()
 				     id);
 			}
 
-			ostringstream ss;
+			ostringstream bitrate_list;
 			for (auto &bitrate : encoderBitrates[encoder]) {
-				ss << "\n	" << setw(3) << bitrate << " kbit/s";
+				bitrate_list << "\n	" << setw(3) << bitrate << " kbit/s";
 			}
 
-			blog(LOG_DEBUG, "%s (%s) encoder bitrates:%s", EncoderName(id), id, ss.str().c_str());
+			blog(LOG_DEBUG, "%s (%s) encoder bitrates:%s", EncoderName(id), id, bitrate_list.str().c_str());
 		}
 
 		if (encoderBitrates.empty() && fallbackBitrates.empty()) {
