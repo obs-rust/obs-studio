@@ -35,7 +35,7 @@ args = sys.argv[1:]
 record = {"argv": args}
 with open("__RECORD__", "a", encoding="utf-8") as handle:
     handle.write(json.dumps(record) + "\\n")
-source = next((arg for arg in args if arg.endswith(".c")), "")
+source = next((arg for arg in args if arg.endswith((".c", ".cpp", ".cxx"))), "")
 if source and "clean" not in source:
     print(
         f"{source}:10:5: warning: conversion from 'double' to 'float' "
@@ -146,6 +146,29 @@ class WarningFindingsTest(unittest.TestCase):
         )
         self.assertEqual(len(self.recorded()), 1)
         self.assertIn(str(self.root / "libobs/util/a.c"), self.recorded()[0]["argv"])
+
+    def test_language_defaults_to_the_c_units(self) -> None:
+        compdb = self.compdb(("libobs/util/a.c", []), ("frontend/build/frontend.x.cpp", []))
+        _, report = self.run_cli("--compdb", str(compdb), "--root", str(self.root))
+        self.assertEqual(report["translation_units"], 1, "the default stays C-only")
+        self.assertEqual(len(self.recorded()), 1)
+        self.assertTrue(self.recorded()[0]["argv"][-2].endswith(".c"))
+
+    def test_language_cxx_replays_only_the_cxx_units(self) -> None:
+        compdb = self.compdb(("libobs/util/a.c", []), ("frontend/build/frontend.x.cpp", []))
+        code, report = self.run_cli(
+            "--compdb", str(compdb), "--root", str(self.root), "--language", "cxx"
+        )
+        self.assertEqual(report["translation_units"], 1, "only the .cpp unit replays")
+        self.assertTrue(self.recorded()[0]["argv"][-2].endswith(".cpp"))
+        self.assertEqual(code, 1, "the stub's C++ warning is a finding")
+
+    def test_language_all_replays_both_languages(self) -> None:
+        compdb = self.compdb(("libobs/util/a.c", []), ("frontend/build/frontend.x.cpp", []))
+        _, report = self.run_cli(
+            "--compdb", str(compdb), "--root", str(self.root), "--language", "all"
+        )
+        self.assertEqual(report["translation_units"], 2)
 
     def test_replay_argv_is_pure(self) -> None:
         argv = ["cc", "-c", "a.c", "-o", "a.o", "-Wno-float-conversion", "-Werror", "-O2"]
