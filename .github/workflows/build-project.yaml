@@ -81,6 +81,11 @@ env:
   # Pinned soldr can replay stale Rust output (zackees/zccache#1943).
   # Keep cook/target reuse and standalone C/C++ compiler caching enabled.
   SOLDR_RUSTC_WRAPPER: none
+  # A Windows runner's Python decodes with the ANSI code page, so the ci/
+  # self-tests this workflow runs (ci/local_gate.py, and the children it
+  # starts) raise UnicodeDecodeError on the UTF-8 workflow files (#2757).
+  # A no-op on Linux and macOS, where UTF-8 is already the default.
+  PYTHONUTF8: "1"
 jobs:
   check-event:
     timeout-minutes: 10

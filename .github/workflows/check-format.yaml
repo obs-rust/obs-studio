@@ -10,6 +10,11 @@ permissions:
 concurrency:
   group: check-format-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
+env:
+  # The ci/ self-tests this workflow runs (ci/local_gate.py --only self-test,
+  # and the children it starts) read UTF-8 files; a Windows runner's Python
+  # would decode them with the ANSI code page (#2757). A no-op elsewhere.
+  PYTHONUTF8: "1"
 jobs:
   # One runner for every cheap check (#992): each separate job queued for its
   # own runner on the Free plan, 5-10 minutes each. On a PR the clang-format
