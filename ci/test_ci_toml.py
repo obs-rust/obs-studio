@@ -461,6 +461,99 @@ class CiTomlTest(unittest.TestCase):
                 self.assertEqual(sorted(set(triggers(path))), sorted(set(t.split(":")[0] for t in allowed[name])))
 
 
+def job_runs_on(path: Path) -> dict[str, str]:
+    """job id -> literal `runs-on:` value, for the jobs that name a runner.
+
+    A matrix job (`runs-on: ${{ matrix.runner }}`) is not included: its runner
+    is chosen at run time, so GEN-002 has no literal label to report.
+    """
+    out: dict[str, str] = {}
+    job = ""
+    for line in path.read_text().splitlines():
+        header = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if header:
+            job = header.group(1)
+            continue
+        runs_on = re.match(r"^    runs-on: (\S.*)$", line)
+        if runs_on and job:
+            out[job] = runs_on.group(1).strip()
+    return out
+
+
+def job_if(path: Path, job_id: str) -> str:
+    """A job's `if:` as one string, folding a `>-` block scalar (empty if none)."""
+    lines = path.read_text().splitlines()
+    out: list[str] = []
+    inside = False
+    for index, line in enumerate(lines):
+        if re.match(rf"^  {re.escape(job_id)}:\s*$", line):
+            inside = True
+            continue
+        if not inside:
+            continue
+        if re.match(r"^  [A-Za-z0-9_-]+:\s*$", line) or not line.startswith(" "):
+            break
+        folded = re.match(r"^    if: (>-?|\|-?)\s*$", line)
+        if folded:
+            for entry in lines[index + 1 :]:
+                if entry.startswith("      ") or entry == "":
+                    out.append(entry.strip())
+                else:
+                    break
+            return " ".join(part for part in out if part)
+        one_line = re.match(r"^    if: (\S.*)$", line)
+        if one_line:
+            return one_line.group(1).strip()
+    return ""
+
+
+NON_LINUX_RUNNER = re.compile(r"^(?:macos|windows)-\d")
+
+
+class NonLinuxJobScopeTest(unittest.TestCase):
+    """GEN-002 is recorded per path, so a path without a block is a violation.
+
+    ci-lint's GEN-002 flags a job on a non-Linux runner that no plan output
+    gates. Every workflow that carries such a job holds one `[[exceptions]]`
+    block (17 findings across 7 paths) except `release-rust.yaml`, which has no
+    precheck/plan job at all: it runs on `schedule`/`workflow_dispatch`, and its
+    two macOS jobs are gated by the event and skip conditions instead of a
+    platform plan (#2768). This offline half keeps both facts from drifting --
+    a new workflow with a literal `macos-*`/`windows-*` job, or an ungated
+    release-rust job under cover of that exception, fails here.
+    """
+
+    def test_every_workflow_with_a_non_linux_job_has_a_gen002_exception(self):
+        recorded = {
+            entry["path"]
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "GEN-002"
+        }
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            non_linux = {
+                job: runner
+                for job, runner in job_runs_on(path).items()
+                if NON_LINUX_RUNNER.match(runner)
+            }
+            if not non_linux:
+                continue
+            rel = path.relative_to(ROOT).as_posix()
+            with self.subTest(workflow=path.name, jobs=sorted(non_linux)):
+                self.assertIn(rel, recorded, "no GEN-002 [[exceptions]] block for this path")
+
+    def test_release_rust_non_linux_jobs_are_event_gated(self):
+        path = WORKFLOWS / "release-rust.yaml"
+        non_linux = [
+            job
+            for job, runner in job_runs_on(path).items()
+            if NON_LINUX_RUNNER.match(runner)
+        ]
+        self.assertTrue(non_linux, "release-rust.yaml is expected to keep its macOS jobs")
+        for job in non_linux:
+            with self.subTest(job=job):
+                self.assertTrue(job_if(path, job), "job runs on macOS with no gate at all")
+
+
 class AllowPermissionsTest(unittest.TestCase):
     """A job's permission scope is granted in ci.toml's [allow].permissions (SEC-002).
 
