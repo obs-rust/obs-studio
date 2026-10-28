@@ -62,7 +62,7 @@ bool YoutubeAuth::RetryLogin()
 void YoutubeAuth::SaveInternal()
 {
 	OBSBasic *main = OBSBasic::Get();
-	config_set_string(main->Config(), service(), "DockState", main->saveState().toBase64().constData());
+	config_set_string(main->Config(), service(), "DockState", main->DockStateToSave().toBase64().constData());
 
 	const char *section_name = section.c_str();
 	config_set_string(main->Config(), section_name, "RefreshToken", refresh_token.c_str());

@@ -327,6 +327,10 @@ public:
 	void SetDisplayAffinity(QWindow *window);
 
 	void saveAll();
+	/* The dock layout to persist: the last one seen with no dock at its
+	 * minimum, so a save from a narrow window does not write the clamp
+	 * (obs-rust/obs-studio#2225). */
+	QByteArray DockStateToSave() const;
 	bool shouldPromptForClose();
 	/* A quit that nobody can answer a dialog for (SIGTERM): the next close
 	 * goes ahead without the exit confirmation. */

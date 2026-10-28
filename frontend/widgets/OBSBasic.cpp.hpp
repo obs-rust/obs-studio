@@ -1714,6 +1714,13 @@ config_t *OBSBasic::Config() const
 	return activeConfiguration;
 }
 
+QByteArray OBSBasic::DockStateToSave() const
+{
+	/* A save from a narrow window must not persist the clamped layout:
+	 * the helper keeps the last unclamped one (obs-rust/obs-studio#2225). */
+	return dockProportions ? dockProportions->StateToSave() : saveState();
+}
+
 void OBSBasic::saveAll()
 {
 	if (isVisible()) {
@@ -1726,9 +1733,9 @@ void OBSBasic::saveAll()
 		SaveProjectNow();
 
 		/* A save from a narrow window must not persist the clamped
-		 * layout: the helper keeps the last unclamped one
+		 * layout: the accessor returns the last unclamped one
 		 * (obs-rust/obs-studio#2225). */
-		const QByteArray dockState = dockProportions ? dockProportions->StateToSave() : saveState();
+		const QByteArray dockState = DockStateToSave();
 		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState", dockState.toBase64().constData());
 
 #ifdef BROWSER_AVAILABLE

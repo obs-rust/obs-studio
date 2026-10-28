@@ -151,7 +151,8 @@ void TwitchAuth::SaveInternal()
 	config_set_string(main->Config(), service(), "UUID", uuid.c_str());
 
 	if (uiLoaded) {
-		config_set_string(main->Config(), service(), "DockState", main->saveState().toBase64().constData());
+		config_set_string(main->Config(), service(), "DockState",
+				  main->DockStateToSave().toBase64().constData());
 	}
 	OAuthStreamKey::SaveInternal();
 }
