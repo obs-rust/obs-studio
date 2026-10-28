@@ -96,7 +96,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_cache_save_requires_valid_timings(self):
         j = job("rust-linux-tier2-done")
-        self.assertLess(j.index("check-costs.py .tier2-cost"), j.index("actions/cache/save@"))
+        self.assertLess(j.index("check-costs.py .tier2-cost"), j.index("uses: ./.github/actions/cache"))
 
     def test_validate_reads_a_cost_dir(self):
         text = VALIDATE.read_text(encoding="utf-8")
@@ -125,7 +125,7 @@ class WorkflowTest(unittest.TestCase):
         j = job("rust-linux-tier2-done")
         self.assertIn("pattern: tier2-cost*", j)
         self.assertIn("merge_costs.py", j)
-        self.assertIn("actions/cache/save@", j)
+        self.assertRegex(j, r"uses: (?:actions/cache/save@|\./\.github/actions/cache)")
         self.assertIn("key: tier2-ctest-cost-${{ github.sha }}", j)
 
     def test_merge_handles_single_and_multiple_artifact_layouts(self):

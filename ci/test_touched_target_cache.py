@@ -15,7 +15,7 @@ class TouchedTargetCacheTest(unittest.TestCase):
         self.assertIn("github.event_name == 'push'", build.split("        env:", 1)[0])
         self.assertIn("github.ref == 'refs/heads/master'", build.split("        env:", 1)[0])
         self.assertIn("name: Save Touched Target ccache", build)
-        self.assertIn("actions/cache/save@", build)
+        self.assertRegex(build, r"uses: (?:actions/cache/save@|\./\.github/actions/cache)")
         self.assertIn("key: targets-ccache-linux-${{ github.sha }}", build)
         self.assertIn("ccache --zero-stats", build)
         self.assertIn("ccache --show-stats", build)

@@ -31,8 +31,8 @@ class QtFastPathTest(unittest.TestCase):
 
     def test_caches_by_sha_and_skips_out_of_scope(self):
         job = self.job()
-        self.assertIn("actions/cache/restore@", job)
-        self.assertIn("actions/cache/save@", job)
+        self.assertRegex(job, r"uses: (?:actions/cache/restore@|\./\.github/actions/cache)")
+        self.assertRegex(job, r"uses: (?:actions/cache/save@|\./\.github/actions/cache)")
         for key in ("libs-qt-${{ env.QT_SHA256 }}", "libs-ffmpeg-${{ env.FFMPEG_SHA256 }}"):
             self.assertEqual(job.count(f"key: {key}"), 2, "restore and save must use the same dependency identity")
         self.assertRegex(job, r"key: .*(QT_SHA256|\b[0-9a-f]{64}\b)")

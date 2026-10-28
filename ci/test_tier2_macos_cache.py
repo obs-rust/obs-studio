@@ -45,7 +45,7 @@ class MacosTier2CacheTest(unittest.TestCase):
 
     def test_non_master_runs_restore_before_the_build(self):
         restore = step(self.job, "key: macos-tier2-xcas-${{ github.sha }}")
-        self.assertIn("actions/cache/restore@", restore)
+        self.assertRegex(restore, r"uses: (?:actions/cache/restore@|\./\.github/actions/cache)")
         self.assertIn("runner.os == 'macOS'", restore)
         self.assertIn("refs/heads/master", restore)
         self.assertIn("restore-keys: macos-tier2-xcas-", restore)
@@ -57,7 +57,7 @@ class MacosTier2CacheTest(unittest.TestCase):
 
     def test_only_master_saves(self):
         save = step(self.job, "Save Tier 2 Xcode Cache")
-        self.assertIn("actions/cache/save@", save)
+        self.assertRegex(save, r"uses: (?:actions/cache/save@|\./\.github/actions/cache)")
         self.assertIn("runner.os == 'macOS'", save)
         self.assertIn("github.ref == 'refs/heads/master'", save)
         # Scheduled and dispatched master runs too: master pushes run macOS

@@ -154,11 +154,15 @@ class ZccacheTest(unittest.TestCase):
         # zackees/ci.yml cache policy: a PR-ref save is unreachable by other PRs.
         for name in ("ubuntu-build", "rust-linux-tier2-build"):
             block = job("build-project.yaml", name)
-            saves = re.findall(r"(?:if: (.*)\n\s+uses: actions/cache/save|uses: actions/cache/save@\S+.*\n\s+if: (.*))", block)
+            saves = [step for step in block.split("\n      - ")
+                     if "actions/cache/save@" in step
+                     or ("uses: ./.github/actions/cache" in step and re.search(r"(?m)^\s+mode: save$", step))]
             with self.subTest(job=name):
                 self.assertTrue(saves)
-                for a, b in saves:
-                    self.assertIn("github.ref == 'refs/heads/master'", a or b)
+                for step in saves:
+                    guard = re.search(r"(?m)^\s+if: (.*)$", step)
+                    self.assertIsNotNone(guard)
+                    self.assertIn("github.ref == 'refs/heads/master'", guard[1])
 
     def test_tier2_lane_setup_step_renamed(self):
         text = (ROOT / "local-gate.toml").read_text()

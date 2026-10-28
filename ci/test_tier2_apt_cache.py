@@ -75,7 +75,7 @@ class AptCacheTest(unittest.TestCase):
                 install_git = j[j.index("Install Git"):j.index("actions/checkout@")]
                 self.assertIn("zstd", install_git, name)
             else:
-                self.assertLess(j.index("command -v zstd"), j.index("actions/cache/restore@"))
+                self.assertLess(j.index("command -v zstd"), j.index("uses: ./.github/actions/cache"))
 
     def test_scoped_host_archive_is_used_and_only_master_saves(self):
         text=WORKFLOW.read_text()
@@ -114,7 +114,7 @@ class AptCacheTest(unittest.TestCase):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
             self.assertNotIn("uses: actions/cache@", j, name)
-            self.assertIn("actions/cache/restore@", j, name)
+            self.assertRegex(j, r"uses: (?:actions/cache/restore@|\./\.github/actions/cache)", name)
         self.assertNotIn("actions/cache/save@", job("rust-linux-tier2"))
         build = job("rust-linux-tier2-build")
         save = build[build.index("Save apt Downloads"):]

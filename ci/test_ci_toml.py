@@ -117,7 +117,7 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         self.assertEqual(paths.split(), ['.flatpak-builder/cache', '.flatpak-builder/ccache'])
         for marker in ['name: Ccache Stats', 'name: Validate AppStream', 'name: Validate build directory', 'name: Validate repository']:
             self.assertLess(job.index(marker), job.index('name: Publish Flatpak Projected State'))
-        self.assertEqual(job.count('uses: actions/cache/save@'), 1)
+        self.assertEqual(len(re.findall(r'(?m)^\s+mode: save$', job)), 1)
 
     def test_projected_state_has_no_legacy_overlay(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
@@ -261,8 +261,12 @@ class CacheWriterPolicyTest(unittest.TestCase):
             with self.subTest(prefix=prefix):
                 selected = [block for _, block in self.blocks(path)
                             if re.search(rf"(?m)^\s+key: {re.escape(prefix)}", block)]
-                restore = [block for block in selected if "uses: actions/cache/restore@" in block]
-                save = [block for block in selected if "uses: actions/cache/save@" in block]
+                restore = [block for block in selected
+                           if "uses: actions/cache/restore@" in block
+                           or ("uses: ./.github/actions/cache" in block and re.search(r"(?m)^\s+mode: restore\s*$", block))]
+                save = [block for block in selected
+                        if "uses: actions/cache/save@" in block
+                        or ("uses: ./.github/actions/cache" in block and re.search(r"(?m)^\s+mode: save\s*$", block))]
                 # The platform-split Tier 2 jobs keep one pair per OS (each
                 # guarded by runner.os), so a prefix can appear in more than one
                 # job; every saved key/path must still match a restore's.
@@ -329,7 +333,12 @@ def step_cache_values(step: list[str]) -> list[str]:
     """The key and restore-key values of one actions/cache step, plus any
     flatpak-builder cache_key it builds."""
     values = []
-    if any(re.search(r"uses: actions/cache(/restore|/save)?@", line) for line in step):
+    calls_cache = any(
+        re.search(r"uses: actions/cache(/restore|/save)?@", line)
+        or "uses: ./.github/actions/cache" in line
+        for line in step
+    )
+    if calls_cache:
         for k, line in enumerate(step):
             m = re.match(r"\s+(key|restore-keys): *(.*)", line)
             if not m:

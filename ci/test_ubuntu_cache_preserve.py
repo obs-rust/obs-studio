@@ -15,8 +15,10 @@ class UbuntuCachePreserveTest(unittest.TestCase):
     def test_exact_restore_does_not_repack_immutable_snapshot(self):
         job=ubuntu_job()
         steps=re.split(r'(?m)^      - ',job)
-        restore=next(step for step in steps if 'uses: actions/cache/restore@' in step)
-        save=next(step for step in steps if 'uses: actions/cache/save@' in step)
+        restore=next(step for step in steps if 'actions/cache/restore@' in step
+                  or ('uses: ./.github/actions/cache' in step and re.search(r'(?m)^\s+mode: restore$', step)))
+        save=next(step for step in steps if 'actions/cache/save@' in step
+               or ('uses: ./.github/actions/cache' in step and re.search(r'(?m)^\s+mode: save$', step)))
         self.assertIn('id: ubuntu-compiler-cache',restore)
         guard=re.search(r'^        if: (.+)$',save,re.M).group(1)
         self.assertIn("steps.ubuntu-compiler-cache.outputs.cache-hit != 'true'",guard,

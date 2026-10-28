@@ -353,10 +353,11 @@ jobs:
       # commit so the cache follows master instead of freezing at its first save.
       # Master pushes build cold so the saved Xcode CAS holds only what the
       # current tree uses (the CAS cannot be pruned by age like ccache).
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: macos-compiler-cache
         if: ${{ inputs.native-cache-reuse-source == '' && !(github.event_name == 'push' && github.ref == 'refs/heads/master') }}
         with:
+          mode: restore
           path: ${{ steps.setup.outputs.xcodeCasPath }}
           key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
@@ -473,9 +474,10 @@ jobs:
           name: obs-studio-macos-${{ matrix.target }}-${{ needs.check-event.outputs.commitHash }}-dSYMs
           path: ${{ github.workspace }}/build_macos/obs-studio-*-macos-${{ steps.setup.outputs.cpuName }}-dSYMs.tar.xz
 
-      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.macos-compiler-cache.outputs.cache-hit != 'true' }}
         with:
+          mode: save
           path: ${{ steps.setup.outputs.xcodeCasPath }}
           key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -516,8 +518,9 @@ jobs:
 
       - name: Save Qualified Native Transport Seed
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ steps.setup.outputs.xcodeCasPath }}
           key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -584,9 +587,10 @@ jobs:
 
       # Compiler cache policy (zackees/ci.yml): only master pushes save, keyed by
       # commit so the cache follows master instead of freezing at its first save.
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: ubuntu-compiler-cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.zccache
           key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
@@ -738,9 +742,10 @@ jobs:
               echo 'save=true' >> "$GITHUB_OUTPUT"
             fi
           fi
-      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.cache-size.outputs.save == 'true' && steps.ubuntu-compiler-cache.outputs.cache-hit != 'true'
         with:
+          mode: save
           path: ${{ github.workspace }}/.zccache
           key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -859,10 +864,11 @@ jobs:
       # New snapshots keep OSTree and compiler state together, omitting
       # downloaded inputs and transient build directories. Refresh by source
       # generation so compiler direct manifests do not freeze at first save.
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: flatpak-state-cache
         if: ${{ !inputs.flatpak-cold-build }}
         with:
+          mode: restore
           path: |
             .flatpak-builder/cache
             .flatpak-builder/ccache
@@ -996,9 +1002,10 @@ jobs:
       # The existing master-only ccache eviction keeps this to one useful build.
       # The existing builder-family allocation/backend remain unchanged.
       - name: Publish Flatpak Projected State
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         if: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-state-cache.outputs.cache-hit != 'true' }}
         with:
+          mode: save
           path: |
             .flatpak-builder/cache
             .flatpak-builder/ccache
@@ -1168,8 +1175,9 @@ jobs:
         run: uv run --script build-aux/prepare_flatpak_rust.py
       - name: Restore Dependency State Before Compiler Artifact
         if: ${{ !inputs.flatpak-dependency-transfer-probe }}
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: .flatpak-builder
           key: flatpak-builder-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-x86_64
           restore-keys: flatpak-builder-x86_64
@@ -1386,10 +1394,11 @@ jobs:
       # generator: neither runs as a cl.exe stand-in, and zccache 1.15.2 also
       # refuses every compile that carries /Fd, which CMake always passes.
       # Policy (zackees/ci.yml): only master pushes save, keyed by commit.
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: windows-compiler-cache
         if: inputs.native-cache-reuse-source == ''
         with:
+          mode: restore
           path: ${{ github.workspace }}/.ccache
           key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-
@@ -1519,9 +1528,10 @@ jobs:
           ccache --evict-older-than "${Age}s"
           ccache --show-stats
 
-      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.windows-compiler-cache.outputs.cache-hit != 'true' }}
         with:
+          mode: save
           path: ${{ github.workspace }}/.ccache
           key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -1577,8 +1587,9 @@ jobs:
 
       - name: Save Qualified Native Transport Seed
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.ccache
           key: windows-ccache-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -1782,8 +1793,9 @@ jobs:
       # Scoped master pushes also warm this exact configuration for later PRs.
       - name: Restore ccache 💾
         if: needs.check-event.outputs.linux_targets != '' && (needs.check-event.outputs.deferred == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master'))
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.targets-ccache
           key: targets-ccache-linux-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: targets-ccache-linux-
@@ -1797,8 +1809,9 @@ jobs:
           echo "image=${ImageVersion:-ubuntu2604}" >> "$GITHUB_OUTPUT"
       - name: Restore Touched Target apt Downloads
         if: needs.check-event.outputs.linux_targets != '' && (needs.check-event.outputs.deferred == 'true' || (github.event_name == 'push' && github.ref == 'refs/heads/master'))
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.targets-apt/*.deb
           key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-
@@ -1842,8 +1855,9 @@ jobs:
 
       - name: Save Touched Target ccache 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.check-event.outputs.linux_targets != ''
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.targets-ccache
           key: targets-ccache-linux-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -1863,8 +1877,9 @@ jobs:
           fi
       - name: Save Touched Target apt Downloads
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.check-event.outputs.linux_targets != '' && steps.target-apt-size.outputs.save == 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.targets-apt/*.deb
           key: targets-apt-ubuntu2604-${{ steps.target-apt.outputs.image }}-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -2304,9 +2319,10 @@ jobs:
           printf '%s\n' force-unsafe-io 'path-exclude=/usr/share/doc/*' \
             'path-exclude=/usr/share/man/*' 'path-exclude=/usr/share/info/*' \
             > /etc/dpkg/dpkg.cfg.d/ci-tier2-fast
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: apt-cache
         with:
+          mode: restore
           path: /var/cache/apt/archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
@@ -2320,15 +2336,17 @@ jobs:
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: /var/cache/apt/archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # PRs restore the compiler cache; only master pushes save it (a cache
       # saved from a PR ref is unreachable by other PRs).
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.tier2-zccache
           key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: |
@@ -2365,8 +2383,9 @@ jobs:
       # The shard plan uses the test timings the last master run's shards
       # handed back (rust-linux-tier2-done, #930); until that cache exists,
       # the timings the ccache still carries from before the split (#931).
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         with:
+          mode: restore
           path: .tier2-cost
           key: tier2-ctest-cost-${{ github.sha }}
           restore-keys: tier2-ctest-cost-
@@ -2417,9 +2436,10 @@ jobs:
 
       # validate.sh stops the zccache daemon on exit, flushing its index.
       - name: Save Tier 2 zccache 💾
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.tier2-build.outputs.cache-healthy != 'false'
         with:
+          mode: save
           path: ${{ github.workspace }}/.tier2-zccache
           key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -2464,9 +2484,10 @@ jobs:
           command -v docker
           sudo mkdir -p /var/cache/apt/archives
           sudo chmod a+rwx /var/cache/apt/archives
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: apt-cache
         with:
+          mode: restore
           path: /var/cache/apt/archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
@@ -2484,8 +2505,9 @@ jobs:
       # times; with none, the 59 s and 35 s tests started last and one shard
       # took 168 s for 228 s of -j4 work (run 38892442457). Start from the
       # timings the last master run merged (rust-linux-tier2-done, #930).
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         with:
+          mode: restore
           path: .tier2-cost
           key: tier2-ctest-cost-${{ github.sha }}
           restore-keys: tier2-ctest-cost-
@@ -2574,9 +2596,10 @@ jobs:
             echo "$mode: $(grep -c -v -e '^---$' ".tier2-cost/ctest-cost-$mode.txt") lines"
           done
           uv run --script rust/tools/linux-validate/check-costs.py .tier2-cost
-      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
+          mode: save
           path: .tier2-cost
           key: tier2-ctest-cost-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -2625,15 +2648,17 @@ jobs:
       # download.
       - name: Cache Prebuilt Qt 💾
         id: qt-libs-cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ runner.temp }}/qt
           key: libs-qt-${{ env.QT_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: libs-qt-${{ env.QT_SHA256 }}
       - name: Cache Prebuilt FFmpeg 💾
         id: ffmpeg-libs-cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ runner.temp }}/ffmpeg
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}
@@ -2683,9 +2708,10 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       # Older snapshots remain useful fallbacks when actual inputs change.
-      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      - uses: ./.github/actions/cache
         id: qt-compiler-cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.qt-ccache
           key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: qt-ccache-linux-
@@ -2721,23 +2747,26 @@ jobs:
           du -sh "$CCACHE_DIR"
 
       - name: Save Qt ccache 💾
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.qt-compiler-cache.outputs.cache-hit != 'true'
         with:
+          mode: save
           path: ${{ github.workspace }}/.qt-ccache
           key: qt-ccache-linux-inputs-v2-${{ steps.qt-cache-identity.outputs.digest }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save Prebuilt Qt 💾
         if: github.ref == 'refs/heads/master' && steps.qt-libs-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ runner.temp }}/qt
           key: libs-qt-${{ env.QT_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save Prebuilt FFmpeg 💾
         if: github.ref == 'refs/heads/master' && steps.ffmpeg-libs-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ runner.temp }}/ffmpeg
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -2781,8 +2810,9 @@ jobs:
       # pruned by age).
       - name: Restore Tier 2 Xcode Cache 🗄️
         if: runner.os == 'macOS' && !(github.event_name != 'pull_request' && github.ref == 'refs/heads/master')
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.tier2-xcas
           key: macos-tier2-xcas-${{ github.sha }}
           restore-keys: macos-tier2-xcas-
@@ -2800,8 +2830,9 @@ jobs:
 
       - name: Save Tier 2 Xcode Cache 💾
         if: runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.tier2-xcas
           key: macos-tier2-xcas-${{ github.sha }}
 
@@ -2810,8 +2841,9 @@ jobs:
       # compiled cold, about 5.5 of 9.1 min (#1038). Only master pushes save.
       - name: Restore Tier 2 ccache 🗄️
         if: runner.os == 'Windows'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.ccache
           key: windows-tier2-ccache-${{ github.sha }}
           restore-keys: windows-tier2-ccache-
@@ -2845,8 +2877,9 @@ jobs:
       - name: Cache vcpkg Binaries 🗄️
         id: cmocka-cache
         if: runner.os == 'Windows'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.vcpkg-bin
           key: vcpkg-bin-cmocka-x64-windows-v1
 
@@ -2865,15 +2898,17 @@ jobs:
 
       - name: Save Tier 2 ccache 💾
         if: runner.os == 'Windows' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.ccache
           key: windows-tier2-ccache-${{ github.sha }}
 
       - name: Save vcpkg Binaries 💾
         if: runner.os == 'Windows' && github.ref == 'refs/heads/master' && steps.cmocka-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.vcpkg-bin
           key: vcpkg-bin-cmocka-x64-windows-v1
 
@@ -2920,8 +2955,9 @@ jobs:
       # pruned by age).
       - name: Restore Tier 2 Xcode Cache 🗄️
         if: runner.os == 'macOS' && !(github.event_name != 'pull_request' && github.ref == 'refs/heads/master')
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.tier2-xcas
           key: macos-tier2-xcas-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: macos-tier2-xcas-
@@ -2939,8 +2975,9 @@ jobs:
 
       - name: Save Tier 2 Xcode Cache 💾
         if: runner.os == 'macOS' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.tier2-xcas
           key: macos-tier2-xcas-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -2949,8 +2986,9 @@ jobs:
       # compiled cold, about 5.5 of 9.1 min (#1038). Only master pushes save.
       - name: Restore Tier 2 ccache 🗄️
         if: runner.os == 'Windows'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.ccache
           key: windows-tier2-ccache-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: windows-tier2-ccache-
@@ -2984,8 +3022,9 @@ jobs:
       - name: Cache vcpkg Binaries 🗄️
         id: cmocka-cache
         if: runner.os == 'Windows'
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ github.workspace }}/.vcpkg-bin
           key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: vcpkg-bin-cmocka-x64-windows-v1
@@ -3005,15 +3044,17 @@ jobs:
 
       - name: Save Tier 2 ccache 💾
         if: runner.os == 'Windows' && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.ccache
           key: windows-tier2-ccache-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save vcpkg Binaries 💾
         if: runner.os == 'Windows' && github.ref == 'refs/heads/master' && steps.cmocka-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: ${{ github.workspace }}/.vcpkg-bin
           key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -3081,16 +3122,18 @@ jobs:
       - name: Restore Exact Completed Windows Seed
         if: matrix.platform == 'windows'
         id: windows-seed
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ steps.path.outputs.cache }}
           key: windows-ccache-${{ steps.native-seed.outputs.suffix }}
           fail-on-cache-miss: true
       - name: Restore Exact Completed macOS Seed
         if: matrix.platform == 'macos'
         id: macos-seed
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: ${{ steps.path.outputs.cache }}
           key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}
           fail-on-cache-miss: true

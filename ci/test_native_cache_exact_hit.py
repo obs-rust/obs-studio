@@ -22,9 +22,11 @@ class NativeCacheExactHitTest(unittest.TestCase):
                 block = re.search(rf"^  {job}:\n(.*?)(?=^  [a-z0-9-]+:|\Z)",
                                   workflow, re.M | re.S).group(1)
                 steps = re.split(r"(?m)^      - ", block)
-                restore = next(s for s in steps if "uses: actions/cache/restore@" in s
+                restore = next(s for s in steps if "actions/cache/restore@" in s
+                               or ("uses: ./.github/actions/cache" in s and re.search(r"(?m)^\s+mode: restore$", s))
                                and f"key: {prefix}" in s)
-                save = next(s for s in steps if "uses: actions/cache/save@" in s
+                save = next(s for s in steps if "actions/cache/save@" in s
+                            or ("uses: ./.github/actions/cache" in s and re.search(r"(?m)^\s+mode: save$", s))
                             and f"key: {prefix}" in s)
                 self.assertIn(f"id: {restore_id}", restore)
                 guard = re.search(r"^        if: (.+)$", save, re.M).group(1)

@@ -233,7 +233,9 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
     def test_flatpak_restores_one_projected_build_cache_before_compiling(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  flatpak-compiler-consumer:", 1)[0]
-        restores = [step for step in job.split('\n      - ') if 'uses: actions/cache/restore@' in step]
+        restores = [step for step in job.split('\n      - ')
+                    if 'actions/cache/restore@' in step
+                    or ('uses: ./.github/actions/cache' in step and re.search(r'(?m)^\s+mode: restore$', step))]
         self.assertEqual(len(restores), 1, 'Retired migration restores must not return on a projected miss')
         restore = restores[0]
         self.assertIn('id: flatpak-state-cache', restore)
