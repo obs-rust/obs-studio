@@ -444,6 +444,133 @@ def report_frontend_log(config: Path) -> None:
 
 
 
+DIAGNOSTIC_EXTENSIONS = (".ips", ".crash")
+
+
+def diagnostic_report_directories() -> list[Path]:
+    """Where macOS writes the frontend's crash reports, newest information last."""
+    return [
+        Path.home() / "Library/Logs/DiagnosticReports",
+        Path("/Library/Logs/DiagnosticReports"),
+    ]
+
+
+def newest_diagnostic_reports(directory: Path, since: float) -> list[Path]:
+    """Reports written after `since` (epoch seconds), newest first."""
+    if not directory.is_dir():
+        return []
+    reports = []
+    for path in directory.iterdir():
+        try:
+            stamp = path.stat().st_mtime
+        except OSError:
+            continue
+        if path.is_file() and path.suffix in DIAGNOSTIC_EXTENSIONS and stamp >= since:
+            reports.append((stamp, path))
+    return [path for _, path in sorted(reports, reverse=True)]
+
+
+def _frame_text(frame, images) -> str:
+    if not isinstance(frame, dict):
+        return "unknown frame"
+    image = ""
+    index = frame.get("imageIndex")
+    if isinstance(index, int) and 0 <= index < len(images):
+        entry = images[index]
+        if isinstance(entry, dict) and entry.get("name"):
+            image = str(entry["name"])
+    symbol = str(frame.get("symbol") or "")
+    text = f"{image} {symbol}".strip()
+    location = frame.get("symbolLocation")
+    offset = frame.get("imageOffset")
+    if location is not None:
+        text = f"{text} + {location}"
+    elif offset is not None:
+        text = f"{text} (image + {offset})".strip()
+    return text or "unknown frame"
+
+
+def summarize_diagnostic_report(text: str, frames: int = 10) -> list[str]:
+    """The lines a lane reader needs from an Apple `.ips` crash report.
+
+    `.ips` is two JSON documents: one header line, then the report body. A file
+    that does not parse says so instead of raising - evidence must never turn
+    one failure into two.
+    """
+    lines = text.splitlines()
+    body: object = None
+    if len(lines) > 1:
+        try:
+            body = json.loads("\n".join(lines[1:]))
+        except json.JSONDecodeError:
+            body = None
+    if not isinstance(body, dict):
+        return ["no frames parsed: the report is not the two-document .ips shape"]
+    exception = body.get("exception")
+    exception = exception if isinstance(exception, dict) else {}
+    described = " ".join(
+        str(exception[key]) for key in ("type", "signal", "subtype")
+        if exception.get(key)
+    )
+    summary = [f"exception type: {described or 'unknown'}"]
+    threads = body.get("threads")
+    threads = threads if isinstance(threads, list) else []
+    index = body.get("faultingThread")
+    if not isinstance(index, int) or not 0 <= index < len(threads):
+        summary.append("crashed thread: unknown")
+        return summary
+    thread = threads[index] if isinstance(threads[index], dict) else {}
+    label = thread.get("name") or thread.get("queue") or ""
+    summary.append(f"crashed thread: {index} {label}".rstrip())
+    stacked = thread.get("frames")
+    stacked = stacked if isinstance(stacked, list) else []
+    images = body.get("usedImages")
+    images = images if isinstance(images, list) else []
+    for number, frame in enumerate(stacked[:frames]):
+        summary.append(f"frame {number}: {_frame_text(frame, images)}")
+    return summary
+
+
+def report_crash_reports(directories, since: float, frames: int = 10) -> bool:
+    """Print the newest crash report, or say plainly that none was written."""
+    for directory in directories:
+        reports = newest_diagnostic_reports(Path(directory), since)
+        if not reports:
+            continue
+        report = reports[0]
+        print(f"::group::shutdown evidence: {report.name}", flush=True)
+        print(f"crash report: {report}", flush=True)
+        try:
+            text = report.read_text(encoding="utf-8", errors="replace")
+        except OSError as error:
+            print(f"crash report unreadable: {error}", flush=True)
+        else:
+            for line in summarize_diagnostic_report(text, frames):
+                print(line, flush=True)
+        print("::endgroup::", flush=True)
+        if len(reports) > 1:
+            print(
+                f"{len(reports) - 1} older crash report(s) in {directory} not shown",
+                flush=True,
+            )
+        return True
+    print(
+        "shutdown evidence: no crash report was written after the launch",
+        flush=True,
+    )
+    return False
+
+
+def describe_exit(returncode: int) -> str:
+    """`-11` alone says nothing; name the signal when there is one."""
+    if returncode < 0:
+        try:
+            return f"signal {-returncode} ({signal.Signals(-returncode).name})"
+        except ValueError:
+            return f"signal {-returncode}"
+    return f"exit code {returncode}"
+
+
 def _load(name: str, path: Path):
     """Import `path` as module `name` without editing sys.path."""
     import importlib.util
@@ -537,7 +664,10 @@ async def inspect_running_app(  # noqa: C901
         await client.close_conn()
 
 
-def close_frontend(proc: subprocess.Popen, platform: str) -> None:  # noqa: C901
+def close_frontend(  # noqa: C901
+    proc: subprocess.Popen, platform: str, since: float | None = None
+) -> None:
+    since = time.time() - 600 if since is None else since
     if platform == "macos":
         proc.send_signal(signal.SIGINT)
     else:
@@ -604,7 +734,7 @@ def close_frontend(proc: subprocess.Popen, platform: str) -> None:  # noqa: C901
             # Capture the owned live process before cleanup terminates it. Keep
             # the timeout fatal; a stack is evidence, not a successful shutdown.
             print(
-                f"sampling owned frontend PID {proc.pid} after shutdown timeout",
+                f"::group::shutdown evidence: sample of pid {proc.pid} after the 30 s timeout",
                 flush=True,
             )
             try:
@@ -619,10 +749,17 @@ def close_frontend(proc: subprocess.Popen, platform: str) -> None:  # noqa: C901
                 print(sample.stderr, flush=True)
             except (OSError, subprocess.TimeoutExpired) as error:
                 print(f"shutdown sample unavailable: {error}", flush=True)
+            print("::endgroup::", flush=True)
+            report_crash_reports(diagnostic_report_directories(), since)
         raise
     if result != 0:
+        # #2714: a bare `-11` named no frame; the report is on the run, so put
+        # the part a reader needs into the step output before failing.
+        print(f"shutdown evidence: frontend exited with {describe_exit(result)}", flush=True)
+        if platform == "macos":
+            report_crash_reports(diagnostic_report_directories(), since)
         raise RuntimeError(
-            f"packaged frontend failed during shutdown: {proc.returncode}"
+            f"packaged frontend failed during shutdown: {describe_exit(result)}"
         )
 
 
@@ -657,6 +794,7 @@ def main() -> None:  # noqa: C901
     fixture = ConfigFixture(config, args.platform, args.config_mode, port, password)
     proc = None
     succeeded = False
+    launched = time.time()
     try:
         proc = subprocess.Popen(
             [
@@ -673,7 +811,7 @@ def main() -> None:  # noqa: C901
             cwd=app.parent,
         )
         asyncio.run(inspect_running_app(proc, port, password, args.platform))
-        close_frontend(proc, args.platform)
+        close_frontend(proc, args.platform, launched)
         fixture.verify()
         logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
         current_logs = [
@@ -701,7 +839,7 @@ def main() -> None:  # noqa: C901
     finally:
         if proc is not None and proc.poll() is None:
             try:
-                close_frontend(proc, args.platform)
+                close_frontend(proc, args.platform, launched)
             except (RuntimeError, OSError, subprocess.TimeoutExpired):
                 if proc.poll() is None:
                     proc.terminate()

@@ -373,8 +373,13 @@ class CrashReportEvidenceTest(unittest.TestCase):
     def test_an_older_report_is_not_offered_as_this_runs_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.write_report(tmp, age=3600)
-            with patch("builtins.print"):
-                self.assertFalse(smoke.report_crash_reports([Path(tmp)], since=0.0))
+            with patch("builtins.print") as printed:
+                started = smoke.time.time()
+                self.assertFalse(
+                    smoke.report_crash_reports([Path(tmp)], since=started)
+                )
+            text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+            self.assertIn("no crash report", text)
 
     def test_an_unparsable_report_says_so_without_raising(self):
         with tempfile.TemporaryDirectory() as tmp, patch("builtins.print") as printed:
