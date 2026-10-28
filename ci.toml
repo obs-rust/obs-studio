@@ -225,12 +225,6 @@ issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "CACHE-001"
-path = ".github/workflows/appimage.yaml"
-reason = "actions/cache is called directly; there is no .github/actions/cache wrapper yet."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "CACHE-001"
 path = ".github/workflows/build-project.yaml"
 reason = "actions/cache is called directly; there is no .github/actions/cache wrapper yet."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"

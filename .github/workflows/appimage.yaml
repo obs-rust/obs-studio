@@ -81,15 +81,17 @@ jobs:
       # red build still leaves its compiled objects behind for the next attempt.
       # Keys carry the run id (caches are immutable); restore-keys pick the newest.
       - name: Restore zccache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: .zccache
           key: zccache-appimage-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: zccache-appimage-
 
       - name: Restore cargo
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: |
             ~/.cargo/registry
             ~/.cargo/git
@@ -164,15 +166,17 @@ jobs:
 
       - name: Save zccache
         if: always() && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: .zccache
           key: zccache-appimage-${{ github.run_id }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Save cargo
         if: always() && github.ref == 'refs/heads/master'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: |
             ~/.cargo/registry
             ~/.cargo/git
@@ -286,8 +290,9 @@ jobs:
       # Package downloads of the test infrastructure (X server, Mesa, ...) are cached per image.
       - name: Restore test-infrastructure packages
         id: pkgcache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: restore
           path: pkgcache
           key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
@@ -390,8 +395,9 @@ jobs:
 
       - name: Save test-infrastructure packages
         if: always() && github.ref == 'refs/heads/master' && steps.pkgcache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: ./.github/actions/cache
         with:
+          mode: save
           path: pkgcache
           key: testpkgs-${{ matrix.image }}-${{ hashFiles('build-aux/appimage/test-appimage.sh') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 

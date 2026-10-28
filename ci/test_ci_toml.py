@@ -251,7 +251,7 @@ class CacheWriterPolicyTest(unittest.TestCase):
                     mode = re.search(r"(?m)^\s+mode: (\S+)$", block)
                     self.assertIsNotNone(mode, "the wrapper callsite needs an explicit mode")
                     modes.append(mode[1])
-                self.assertEqual(sorted(modes), ["restore", "save"])
+                self.assertEqual(set(modes), {"restore", "save"})
 
     def test_split_dependency_and_timestamp_caches_preserve_keys_and_paths(self):
         cases = [(WORKFLOWS / "build-project.yaml", key)
