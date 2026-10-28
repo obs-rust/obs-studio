@@ -305,6 +305,12 @@ issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "GEN-002"
+path = ".github/workflows/release-rust.yaml"
+reason = "No plan to scope to: the workflow is schedule/workflow_dispatch only and has no precheck job, so its two macOS jobs (nightly_feed, certify) are gated by the event plus skip/verify_only, and both need macOS itself (Sparkle's sign_update EdDSA binary; the DMG codesign/notary state)."
+issue = "https://github.com/obs-rust/obs-studio/issues/2768"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "GEN-002"
 path = ".github/workflows/scheduled.yaml"
 reason = "Non-Linux jobs are gated by check-event outputs (ci/ci_scope.py), not the ci-lint plan."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
