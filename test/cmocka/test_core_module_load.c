@@ -13,6 +13,10 @@
  *   does not fail as a whole (OBS refused to start: obs-rust/obs-studio#404).
  * - missing_file: one core module is not installed at all (left out by a
  *   package split): every other core module still loads.
+ * - newer_libobs: one core module was built for a newer libobs, which fails
+ *   the load as a whole. A caller that retries obs_load_core_modules() must not
+ *   get every other core module loaded a second time: each stays in the loaded
+ *   module list once (obs-rust/obs-studio#2730).
  * - same_libobs: the child runs on the libobs this process runs on. Tier 2
  *   mode ON picks libobs-with-rust through LD_LIBRARY_PATH; a child that falls
  *   back to the C libobs from its RUNPATH tests the C build in both modes.
@@ -84,7 +88,33 @@ static bool mapped_libobs(char *path, size_t size)
 
 /* ------------------------------------------------------------------ child */
 
-static int run_child(void)
+/* How many entries each core module has in the loaded module list. A module is
+ * matched by its file name ("<core module>.so"), not by the name it reports:
+ * obs_get_module_name() returns a display name when the module's metadata sets
+ * one, while obs_get_module() and the core module list use the file name
+ * (obs_module_names_file_name). */
+struct loaded_count {
+	int count[256];
+};
+
+static void count_loaded_module(void *param, obs_module_t *module)
+{
+	struct loaded_count *lc = param;
+	const char *file = obs_get_module_file_name(module);
+	if (!file)
+		return;
+	/* The base name without the extension is the core module name. */
+	size_t base = strcspn(file, ".");
+	for (unsigned int i = 0; i < obs_core_modules_count; i++) {
+		size_t len = strlen(obs_core_modules[i]);
+		if (len == base && strncmp(obs_core_modules[i], file, len) == 0) {
+			lc->count[i]++;
+			return;
+		}
+	}
+}
+
+static int run_child(bool retry)
 {
 	if (!obs_startup("en-US", NULL, NULL)) {
 		printf("startup-failed\n");
@@ -97,11 +127,19 @@ static int run_child(void)
 
 	bool ok = obs_load_core_modules();
 	printf("result %d\n", ok ? 1 : 0);
+	if (retry) {
+		bool again = obs_load_core_modules();
+		printf("second %d\n", again ? 1 : 0);
+	}
+
+	struct loaded_count lc = {0};
+	obs_enum_modules(count_loaded_module, &lc);
 
 	for (unsigned int i = 0; i < obs_core_modules_count; i++) {
 		const char *name = obs_core_modules[i];
 		printf("module %s loaded=%d disabled=%d\n", name, obs_get_module(name) ? 1 : 0,
 		       obs_get_disabled_module(name) ? 1 : 0);
+		printf("count %s %d\n", name, lc.count[i]);
 		obs_module_t *mod = obs_get_module(name);
 		if (!mod)
 			mod = obs_get_disabled_module(name);
@@ -117,7 +155,7 @@ static int run_child(void)
 
 /* ----------------------------------------------------------------- parent */
 
-enum scenario { ALL_PRESENT, MISSING_DEPENDENCY, MISSING_FILE };
+enum scenario { ALL_PRESENT, MISSING_DEPENDENCY, MISSING_FILE, NEWER_LIBOBS };
 
 /* What the child reported for one core module: its file name, binary path
  * and data path. */
@@ -131,8 +169,13 @@ struct child_paths {
 struct child_result {
 	bool skipped;
 	int load_result;
+	/* What the second obs_load_core_modules() call reported; -1 if the
+	 * child made only one call. */
+	int second_result;
 	bool loaded[256];
 	bool disabled[256];
+	/* Entries in the loaded module list, per core module. */
+	int counts[256];
 	char libobs[4096];
 	/* The scenario's root, kept after it is removed. */
 	char root[1024];
@@ -206,6 +249,12 @@ static void parse_child_output(FILE *f, struct child_result *res)
 				snprintf(p->bin, sizeof(p->bin), "%s", fields[2]);
 				snprintf(p->data, sizeof(p->data), "%s", fields[3]);
 			}
+		} else if (sscanf(line, "second %d", &res->second_result) == 1) {
+			continue;
+		} else if (sscanf(line, "count %511s %d", name, &loaded) == 2) {
+			int i = index_of(name);
+			if (i >= 0)
+				res->counts[i] = loaded;
 		} else if (sscanf(line, "module %511s loaded=%d disabled=%d", name, &loaded, &failed) == 3) {
 			int i = index_of(name);
 			if (i >= 0) {
@@ -233,12 +282,13 @@ static void rm_rf(const char *path)
 
 /* The broken module is the first one in the list, so that every other core
  * module comes after it. */
-static void run_scenario(enum scenario scenario, struct child_result *res)
+static void run_scenario(enum scenario scenario, struct child_result *res, bool retry)
 {
 	struct child_paths *paths = res->paths;
 	memset(res, 0, sizeof(*res));
 	res->paths = paths;
 	res->load_result = -1;
+	res->second_result = -1;
 
 	const char *tmp = getenv("TMPDIR");
 	struct dstr root = {0};
@@ -265,6 +315,8 @@ static void run_scenario(enum scenario scenario, struct child_result *res)
 			continue;
 		if (i == 0 && scenario == MISSING_DEPENDENCY)
 			stub = CORE_STUB_NEEDS_DEP_PATH;
+		if (i == 0 && scenario == NEWER_LIBOBS)
+			stub = CORE_STUB_NEWER_VER_PATH;
 
 		struct dstr dst = {0};
 		dstr_printf(&dst, "%s/%s.so", mod_dir.array, obs_core_modules[i]);
@@ -290,7 +342,7 @@ static void run_scenario(enum scenario scenario, struct child_result *res)
 		 * the child must run on the same libobs: LD_LIBRARY_PATH names
 		 * that libobs's directory and nothing else. */
 		setenv("LD_LIBRARY_PATH", libobs_dir, 1);
-		char *argv[] = {exe.array, "--child", NULL};
+		char *argv[] = {exe.array, "--child", retry ? "--retry" : NULL, NULL};
 		execv(exe.array, argv);
 		_exit(127);
 	}
@@ -466,7 +518,7 @@ static void all_present(void **state)
 {
 	UNUSED_PARAMETER(state);
 	struct child_result res = {0};
-	run_scenario(ALL_PRESENT, &res);
+	run_scenario(ALL_PRESENT, &res, false);
 	if (res.skipped)
 		skip();
 
@@ -479,7 +531,7 @@ static void missing_dependency(void **state)
 {
 	UNUSED_PARAMETER(state);
 	struct child_result res = {0};
-	run_scenario(MISSING_DEPENDENCY, &res);
+	run_scenario(MISSING_DEPENDENCY, &res, false);
 	if (res.skipped)
 		skip();
 
@@ -495,7 +547,7 @@ static void missing_file(void **state)
 {
 	UNUSED_PARAMETER(state);
 	struct child_result res = {0};
-	run_scenario(MISSING_FILE, &res);
+	run_scenario(MISSING_FILE, &res, false);
 	if (res.skipped)
 		skip();
 
@@ -504,11 +556,40 @@ static void missing_file(void **state)
 	check_others_loaded(&res);
 }
 
+/* A failed obs_load_core_modules() leaves core_modules_loaded false, so a caller
+ * that retries gets a second walk of the core module list. The modules that did
+ * load must not be loaded (and register their types) a second time: each core
+ * module stays in the loaded module list once, and both calls still report the
+ * failure (obs-rust/obs-studio#2730). */
+static void retry_after_failure(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct child_result res = {0};
+	run_scenario(NEWER_LIBOBS, &res, true);
+	if (res.skipped)
+		skip();
+
+	assert_int_equal(res.load_result, 0);
+	assert_int_equal(res.second_result, 0);
+
+	/* The module built for a newer libobs is not loaded at all. */
+	assert_false(res.loaded[0]);
+	check_others_loaded(&res);
+
+	for (unsigned int i = 0; i < obs_core_modules_count; i++) {
+		int want = res.loaded[i] ? 1 : 0;
+		if (res.counts[i] != want)
+			print_error("core module '%s' has %d entries in the loaded list, want %d\n",
+				    obs_core_modules[i], res.counts[i], want);
+		assert_int_equal(res.counts[i], want);
+	}
+}
+
 static void same_libobs(void **state)
 {
 	UNUSED_PARAMETER(state);
 	struct child_result res = {0};
-	run_scenario(ALL_PRESENT, &res);
+	run_scenario(ALL_PRESENT, &res, false);
 	if (res.skipped)
 		skip();
 
@@ -535,7 +616,7 @@ static void core_module_paths(void **state)
 	struct child_paths *paths = calloc(256, sizeof(*paths));
 	assert_non_null(paths);
 	struct child_result res = {.paths = paths};
-	run_scenario(MISSING_DEPENDENCY, &res);
+	run_scenario(MISSING_DEPENDENCY, &res, false);
 	if (res.skipped) {
 		free(paths);
 		skip();
@@ -1628,7 +1709,7 @@ static void module_add_types(void **state)
 int main(int argc, char **argv)
 {
 	if (argc > 1 && strcmp(argv[1], "--child") == 0)
-		return run_child();
+		return run_child(argc > 2 && strcmp(argv[2], "--retry") == 0);
 
 	if (obs_core_modules_count < 2 || obs_core_modules_count > 256) {
 		printf("need 2..256 core modules, have %u\n", obs_core_modules_count);
@@ -1640,6 +1721,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test(all_present),
 		cmocka_unit_test(missing_dependency),
 		cmocka_unit_test(missing_file),
+		cmocka_unit_test(retry_after_failure),
 		cmocka_unit_test(same_libobs),
 		cmocka_unit_test(core_module_paths),
 		cmocka_unit_test_setup_teardown(search_flat_directory, paths_setup, paths_teardown),

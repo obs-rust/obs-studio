@@ -130,6 +130,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET OBS::libobs-core-modules)
   target_link_libraries(core_module_stub_registers PRIVATE OBS::libobs)
   set_target_properties(core_module_stub_registers PROPERTIES PREFIX "")
 
+  # Reports a newer libobs, so loading it fails as a core module built for a
+  # newer libobs does, and obs_load_core_modules() records a failure.
+  add_library(core_module_stub_newer MODULE core_module_stub_newer.c)
+  target_link_libraries(core_module_stub_newer PRIVATE OBS::libobs)
+  set_target_properties(core_module_stub_newer PROPERTIES PREFIX "")
+
   add_executable(test_core_module_load test_core_module_load.c)
   target_include_directories(test_core_module_load PRIVATE ${CMOCKA_INCLUDE_DIR})
   target_compile_definitions(
@@ -138,9 +144,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET OBS::libobs-core-modules)
       CORE_STUB_PATH="$<TARGET_FILE:core_module_stub>"
       CORE_STUB_NEEDS_DEP_PATH="$<TARGET_FILE:core_module_stub_needs_dep>"
       CORE_STUB_REGISTERS_PATH="$<TARGET_FILE:core_module_stub_registers>"
+      CORE_STUB_NEWER_VER_PATH="$<TARGET_FILE:core_module_stub_newer>"
   )
   target_link_libraries(test_core_module_load PRIVATE OBS::libobs OBS::libobs-core-modules ${CMOCKA_LIBRARIES})
-  add_dependencies(test_core_module_load core_module_stub core_module_stub_needs_dep core_module_stub_registers)
+  add_dependencies(
+    test_core_module_load
+    core_module_stub
+    core_module_stub_needs_dep
+    core_module_stub_registers
+    core_module_stub_newer
+  )
   add_dependencies(cmocka-tests test_core_module_load)
   add_test(test_core_module_load ${CMAKE_CURRENT_BINARY_DIR}/test_core_module_load)
   set_tests_properties(test_core_module_load PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60)
