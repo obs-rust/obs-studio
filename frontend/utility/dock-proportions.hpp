@@ -49,10 +49,16 @@ public:
 	/* The dock state to write to the user's ini (#2225). A layout that is
 	 * clamped by a narrow window serializes with every dock at its
 	 * minimum, and the next start restores that clamped layout at full
-	 * size. The state saved is therefore the last layout this window
-	 * showed unclamped; a window that is currently unclamped saves
+	 * size. The state saved is therefore the widest layout this window
+	 * last showed unclamped; a window that is currently unclamped saves
 	 * itself. */
-	QByteArray StateToSave() const { return window->saveState(); }
+	QByteArray StateToSave() const
+	{
+		if (unclamped.isEmpty() || !AnyDockAtMinimum()) {
+			return window->saveState();
+		}
+		return unclamped;
+	}
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override
@@ -99,6 +105,9 @@ private:
 	};
 
 	QMainWindow *window;
+	/* The layout as it last was with no dock at its minimum: what a save
+	 * from a narrow window writes instead of the clamp. */
+	QByteArray unclamped;
 	std::map<QList<QDockWidget *>, Saved> saved;
 	std::map<int, SavedArea> savedAreas;
 	bool updateQueued = false;
@@ -192,6 +201,27 @@ private:
 		updateQueued = false;
 		UpdateRows();
 		UpdateAreas();
+		/* A dock pushed to its minimum means the window cannot show the
+		 * layout the user sized, so saveState() now is that clamp. */
+		if (!AnyDockAtMinimum()) {
+			unclamped = window->saveState();
+		}
+	}
+
+	bool AnyDockAtMinimum() const
+	{
+		for (QDockWidget *dock : window->findChildren<QDockWidget *>(Qt::FindDirectChildrenOnly)) {
+			if (dock->isFloating() || !dock->isVisible()) {
+				continue;
+			}
+			Qt::DockWidgetArea area = window->dockWidgetArea(dock);
+			const bool horizontal = area == Qt::TopDockWidgetArea || area == Qt::BottomDockWidgetArea;
+			const Qt::Orientation orientation = horizontal ? Qt::Horizontal : Qt::Vertical;
+			if (Size(dock, orientation) <= Minimum(dock, orientation) + 1) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void UpdateAreas()

@@ -200,7 +200,7 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	/* Docks keep their relative sizes when the window narrows and widens
 	 * again (obs-rust/obs-studio#2225). */
-	new DockProportions(this);
+	dockProportions = new DockProportions(this);
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
@@ -1725,8 +1725,11 @@ void OBSBasic::saveAll()
 		Auth::Save();
 		SaveProjectNow();
 
-		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState",
-				  saveState().toBase64().constData());
+		/* A save from a narrow window must not persist the clamped
+		 * layout: the helper keeps the last unclamped one
+		 * (obs-rust/obs-studio#2225). */
+		const QByteArray dockState = dockProportions ? dockProportions->StateToSave() : saveState();
+		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState", dockState.toBase64().constData());
 
 #ifdef BROWSER_AVAILABLE
 		if (cef) {

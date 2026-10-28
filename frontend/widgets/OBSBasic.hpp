@@ -452,6 +452,7 @@ public slots:
 private:
 	QPointer<QDockWidget> statsDock;
 	QByteArray startingDockLayout;
+	DockProportions *dockProportions = nullptr;
 	QStringList extraDockNames;
 	QList<std::shared_ptr<QDockWidget>> extraDocks;
 
