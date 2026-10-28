@@ -12,13 +12,21 @@ inputs:
 runs:
   using: composite
   steps:
+    # Every step below is one Python call (#962, GEN-005, ci/run_swift_format.py).
+    # The caller (check-format.yaml's swift-format job) installs no toolchain, so
+    # the action brings uv itself.
+    - name: Set Up uv 🐍
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        save-cache: ${{ github.ref == 'refs/heads/master' }}
+        # A PR save carries a delimited pr-<N> key so the janitor can delete it
+        # when the PR closes (CACHE-013, #962).
+        cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
     - name: Check Runner Operating System 🏃‍♂️
       if: runner.os == 'Windows'
       shell: bash
-      run: |
-        : Check Runner Operating System 🏃‍♂️
-        echo "::notice::run-swift-format action requires a macOS-based or Linux-based runner."
-        exit 2
+      run: uv run --no-project --script ${{ github.workspace }}/ci/run_swift_format.py guard --notice "run-swift-format action requires a macOS-based or Linux-based runner."
 
     - name: Check for Changed Files ✅
       uses: ./.github/actions/check-changes
@@ -30,32 +38,13 @@ runs:
     - name: Install Dependencies 🛍️
       if: runner.os == 'Linux' && fromJSON(steps.checks.outputs.hasChangedFiles)
       shell: bash
-      run: |
-        : Install Dependencies 🛍️
-        echo ::group::Install Dependencies
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-        echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
-        "${GITHUB_WORKSPACE}/.github/scripts/retry" brew update
-        "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install --quiet zsh
-        echo ::endgroup::
+      run: uv run --no-project --script ${{ github.workspace }}/ci/run_swift_format.py install-deps
 
     - name: Run swift-format 🔥
       if: fromJSON(steps.checks.outputs.hasChangedFiles)
       id: result
-      shell: zsh --no-rcs --errexit --pipefail {0}
+      shell: bash
       working-directory: ${{ github.workspace }}
       env:
         CHANGED_FILES: ${{ steps.checks.outputs.changedFiles }}
-      run: |
-        : Run swift-format 🔥
-        if (( ${+RUNNER_DEBUG} )) setopt XTRACE
-
-        print ::group::Install swift-format
-        "${GITHUB_WORKSPACE}/.github/scripts/retry" brew update
-        "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install --quiet swift-format
-        print ::endgroup::
-
-        print ::group::Run swift-format
-        local -a changes=(${(s:,:)CHANGED_FILES//[\[\]\'\"]/})
-        ./build-aux/run-swift-format --fail-${{ inputs.failCondition }} --check ${changes}
-        print ::endgroup::
+      run: uv run --no-project --script ${{ github.workspace }}/ci/run_swift_format.py format --fail-condition "${{ inputs.failCondition }}"

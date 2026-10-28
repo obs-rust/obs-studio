@@ -60,8 +60,12 @@ class DeadFormatterScriptsTest(unittest.TestCase):
         self.assertTrue((BUILD_AUX / ".run-format.zsh").exists())
         self.assertIn(LIVE, (BUILD_AUX / "README.md").read_text())
 
+        # The call site moved into the Python port of the action (#2792): the
+        # action calls the module, and the module names the live script.
+        module = (ROOT / "ci" / "run_swift_format.py").read_text()
+        self.assertIn(f"'build-aux' / '{LIVE}'", module)
         action = (ROOT / ".github/actions/run-swift-format/action.yaml").read_text()
-        self.assertIn(f"./build-aux/{LIVE}", action)
+        self.assertIn("ci/run_swift_format.py format", action)
         workflow = (ROOT / ".github/workflows/check-format.yaml").read_text()
         self.assertIn("uses: ./.github/actions/run-swift-format", workflow)
 

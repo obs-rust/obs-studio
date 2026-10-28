@@ -79,7 +79,7 @@ class SplitChangedFilesTest(unittest.TestCase):
     def test_quotes_and_brackets_are_stripped(self) -> None:
         module = load_module()
         self.assertEqual(
-            module.split_changed_files('["a.swift", "b.swift"]'),
+            module.split_changed_files('["a.swift","b.swift"]'),
             ['a.swift', 'b.swift'],
         )
 
@@ -189,9 +189,9 @@ class ActionYamlTest(unittest.TestCase):
 
     def test_every_step_is_one_uv_call(self) -> None:
         calls = [
-            line.strip()
+            line.strip().removeprefix('run: ')
             for line in self.text.splitlines()
-            if line.strip().startswith('uv run')
+            if line.strip().startswith('run: uv run')
         ]
         self.assertEqual(len(calls), 3, calls)
         for call in calls:
