@@ -66,6 +66,7 @@ pub mod encoder_bind;
 pub mod encoder_gpu_gates;
 pub mod encoder_lifecycle;
 pub mod encoder_packet;
+pub mod encoder_packet_ts;
 pub mod encoder_roi;
 pub mod encoder_size;
 pub mod file_serializer;
