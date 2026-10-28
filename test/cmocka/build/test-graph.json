@@ -1737,6 +1737,23 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_nix_system_info_steps": {
+      "sources": [
+        "test/cmocka/test_nix_system_info_steps.c",
+        "libobs/obs-nix-system-info.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-system-info.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_no_core_getters": {
       "sources": [
         "test/cmocka/test_no_core_getters.c"
@@ -5641,6 +5658,12 @@
     },
     "test_nal": {
       "target": "test_nal"
+    },
+    "test_nix_system_info_steps": {
+      "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_no_core_getters": {
       "target": "test_no_core_getters",
