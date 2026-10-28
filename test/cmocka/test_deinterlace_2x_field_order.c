@@ -68,6 +68,16 @@
  * (shader compile, first texture upload; obs-rust/obs-studio#456). */
 #define WARMUP_FRAMES 6
 #define WARMUP_TICKS 4
+/* Output frames to keep recording after the last measured field has been
+ * shown, and the most to wait for it: the fixed sleep this replaces was 300 ms
+ * (#2796). The frames after the last field also record the next one, and a
+ * late step back in time, the way the sleep did. */
+#define END_TICKS 4
+#define END_WAIT_MS 300
+/* Unrecognised (black) output frames in a row that mean the output has
+ * drained, and the most to wait for them (the old fixed sleep was 250 ms). */
+#define DRAIN_TICKS 2
+#define DRAIN_WAIT_MS 250
 
 static bool obs_up;
 
@@ -77,6 +87,8 @@ struct watch {
 	size_t ticks; /* every output frame, recorded or not */
 	size_t count;
 	int seen[MAX_SEEN]; /* field index, or -1 for an unrecognised frame */
+	int max_field;      /* the highest field recorded, recording or not */
+	size_t black_run;   /* unrecognised frames in a row */
 };
 
 static int snap(int v)
@@ -120,6 +132,13 @@ static void raw_video(void *param, struct video_data *frame)
 
 	pthread_mutex_lock(&w->mutex);
 	w->ticks++;
+	if (field < 0) {
+		w->black_run++;
+	} else {
+		w->black_run = 0;
+		if (field > w->max_field)
+			w->max_field = field;
+	}
 	if (w->recording && w->count < MAX_SEEN)
 		w->seen[w->count++] = field;
 	pthread_mutex_unlock(&w->mutex);
@@ -164,7 +183,8 @@ static void fill_rows(uint8_t *pixels, int parity, int t)
 	}
 }
 
-/* Pushes FRAMES interlaced frames at fps, timestamped like a capture card. */
+/* Pushes FRAMES interlaced frames at fps, timestamped like a capture card.
+ * The caller waits for the last fields to be shown (#2796). */
 static void play(obs_source_t *source, bool top_first, uint32_t fps)
 {
 	static uint8_t pixels[W * H * 4];
@@ -189,7 +209,6 @@ static void play(obs_source_t *source, bool top_first, uint32_t fps)
 		os_sleepto_ns(ts);
 		obs_source_output_video(source, &frame);
 	}
-	os_sleep_ms(300);
 }
 
 /* Pushes WARMUP_FRAMES unrecognisable (black) frames at fps, then waits until
@@ -226,6 +245,47 @@ static void warm_up(obs_source_t *source, uint32_t fps, struct watch *w)
 			break;
 		os_sleep_ms(10);
 	}
+}
+
+/* Waits until field `last` has been shown and END_TICKS output frames have
+ * come since the call, and at most END_WAIT_MS: the fixed sleep this replaces
+ * was END_WAIT_MS whether or not the frames were already rendered (#2796). A
+ * wait that reaches its limit reports it and the case keeps the old timing. */
+static void wait_shown(struct watch *w, int last)
+{
+	pthread_mutex_lock(&w->mutex);
+	const size_t ticks = w->ticks;
+	pthread_mutex_unlock(&w->mutex);
+
+	int field = 0;
+	for (int waited = 0; waited < END_WAIT_MS; waited++) {
+		pthread_mutex_lock(&w->mutex);
+		const bool shown = w->max_field >= last && w->ticks >= ticks + END_TICKS;
+		field = w->max_field;
+		pthread_mutex_unlock(&w->mutex);
+		if (shown)
+			return;
+		os_sleep_ms(1);
+	}
+	fprintf(stderr, "wait_shown: field %d shown of %d, frames not rendered after %d ms\n", field, last,
+		END_WAIT_MS);
+}
+
+/* Waits until the output has rendered DRAIN_TICKS unrecognised (black) frames
+ * in a row, and at most DRAIN_WAIT_MS (the fixed drain sleep this replaces). */
+static void wait_drained(struct watch *w)
+{
+	size_t run = 0;
+	for (int waited = 0; waited < DRAIN_WAIT_MS; waited++) {
+		pthread_mutex_lock(&w->mutex);
+		const bool drained = w->black_run >= DRAIN_TICKS;
+		run = w->black_run;
+		pthread_mutex_unlock(&w->mutex);
+		if (drained)
+			return;
+		os_sleep_ms(1);
+	}
+	fprintf(stderr, "wait_drained: %zu unrecognised frames in a row after %d ms\n", run, DRAIN_WAIT_MS);
 }
 
 static const char *mode_name(enum obs_deinterlace_mode mode)
@@ -332,6 +392,9 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	pthread_mutex_unlock(&w.mutex);
 
 	play(source, top_first, r->source_fps);
+	/* Yadif 2x shows the last frame's first field on its own; the second
+	 * needs a frame after it. */
+	wait_shown(&w, 2 * FRAMES - 2);
 
 	pthread_mutex_lock(&w.mutex);
 	w.recording = false;
@@ -339,7 +402,7 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 
 	/* Let the output drain to black so the next case starts clean. */
 	obs_set_output_source(0, NULL);
-	os_sleep_ms(250);
+	wait_drained(&w);
 	obs_remove_raw_video_callback(raw_video, &w);
 	obs_source_remove(obs_scene_get_source(scene));
 	obs_scene_release(scene);
@@ -527,14 +590,14 @@ static void check_burst(enum obs_deinterlace_mode mode, const struct rates *r)
 	wait_ticks(&w, 1);
 	for (int n = 4; n < 4 + BURST_FRAMES; n++)
 		output_frame(source, n, t0 + 12000000ULL + (uint64_t)(n - 3) * period);
-	os_sleep_ms((unsigned)(BURST_FRAMES * period / 1000000 + 300));
+	wait_shown(&w, 2 * (4 + BURST_FRAMES) - 2);
 
 	pthread_mutex_lock(&w.mutex);
 	w.recording = false;
 	pthread_mutex_unlock(&w.mutex);
 
 	obs_set_output_source(0, NULL);
-	os_sleep_ms(250);
+	wait_drained(&w);
 	obs_remove_raw_video_callback(raw_video, &w);
 	obs_source_remove(obs_scene_get_source(scene));
 	obs_scene_release(scene);
