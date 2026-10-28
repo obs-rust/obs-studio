@@ -1944,9 +1944,12 @@ area.
 - Narrowing the main window and widening it again keeps the docks' relative
   sizes: docks side by side no longer come back all the same width after the
   window squeezed them to their minimum, and the Scenes/Sources column gets
-  its width back instead of the preview taking all of it. *All*, 2026-10-24
-  (column: pending merge). Issue
-  [#2225](https://github.com/obs-rust/obs-studio/issues/2225).
+  its width back instead of the preview taking all of it. A layout is also
+  no longer saved while the window is too narrow to show it: quitting then
+  used to bring the docks back all the same width on the next start. *All*,
+  2026-10-24 (column: pending merge). Issue
+  [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PR
+  [#2727](https://github.com/obs-rust/obs-studio/pull/2727).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its
