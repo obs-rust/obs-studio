@@ -13,6 +13,7 @@ mod encoder_gpu_gates;
 mod encoder_gpu_gates_parity;
 mod encoder_lifecycle;
 mod encoder_lifecycle_parity;
+mod encoder_packet_ts;
 mod encoder_roi;
 mod encoder_roi_parity;
 mod encoder_size;

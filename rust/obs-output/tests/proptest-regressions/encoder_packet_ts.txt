@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f1f310140298ea78df52c671496100acf8c78285505fbb5f23fe6dd4abccd706 # shrinks to list = [], pts = 0
+cc c30363e7f5d3ca7564f57a0e1cf27ea05686e1f661b16ed7de5ecba92d34fbfd # shrinks to num = 0, den = 0, divisor = 0
+cc 324480fc592d19206c05fe03b37858dad535459ff9145e7098b8d6e654cce5f1 # shrinks to dts = 0, den = -1
+cc add94a5297c8e74950a9636078cfeb4ee6396b1bfdf7ba8122a0fe4f1aaed110 # shrinks to fps_num = 30, fps_den = 1, start = 0, delay = 0, pause = 0
+cc 5fbbfad2d80cbbe7479bafe80d001f1ff9cd9676d612e083507ce5e60ace0906 # shrinks to sys = 0, offset = 0
+cc 672e9bf5e9464e3f05996b6687967bea38cffb1342761d4c54d71f69f9e6445e # shrinks to start = 0, dts = 0, offset = 0
