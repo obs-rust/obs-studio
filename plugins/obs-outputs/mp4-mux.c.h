@@ -2908,7 +2908,10 @@ void mp4_mux_destroy(struct mp4_mux *mux)
 bool mp4_mux_submit_packet(struct mp4_mux *mux, struct encoder_packet *pkt)
 {
 	struct mp4_track *track = NULL;
-	struct encoder_packet parsed_packet;
+	/* Every branch below fills this except one: a video packet whose track
+	 * codec matches no parse arm. Zero-init keeps that path well defined
+	 * (MSVC reports C4701 at /W4 because it cannot prove a branch ran). */
+	struct encoder_packet parsed_packet = {0};
 	enum obs_encoder_type type = pkt->type;
 	bool fragment_ready = mux->next_frag_pts > 0;
 

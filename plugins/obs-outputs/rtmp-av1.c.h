@@ -449,7 +449,10 @@ size_t obs_parse_av1_header(uint8_t **header, const uint8_t *data, size_t size)
 	}
 
 	// AV1S init
-	AV1SequenceParameters seq_params;
+	/* Filled by parse_sequence_header() in the AV1_OBU_SEQUENCE_HEADER case,
+	 * which the !nb_seq guard below makes mandatory; MSVC cannot see that
+	 * through the switch and reports C4701 at /W4. */
+	AV1SequenceParameters seq_params = {0};
 	int nb_seq = 0, seq_size = 0, meta_size = 0;
 	const uint8_t *seq = 0, *meta = 0;
 
