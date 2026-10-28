@@ -20,3 +20,16 @@ endif()
 set_target_properties_obs(obs-x264 PROPERTIES FOLDER plugins/obs-x264 PREFIX "")
 
 include(cmake/x264-test.cmake)
+
+# #2625: this plugin's C sources have their conversions fixed at the call sites,
+# so the pins that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  obs-x264
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+target_compile_options(
+  obs-x264-test
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
