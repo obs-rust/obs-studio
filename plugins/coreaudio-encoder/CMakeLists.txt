@@ -9,6 +9,7 @@ endif()
 
 add_library(coreaudio-encoder MODULE)
 add_library(OBS::coreaudio-encoder ALIAS coreaudio-encoder)
+obs_msvc_exempt_c4201(coreaudio-encoder)
 
 # SDK types and deleters belong to one host; the Windows imports/functions
 # must share a translation unit with the encoder that calls them.

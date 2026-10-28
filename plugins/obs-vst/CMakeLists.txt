@@ -8,6 +8,7 @@ endif()
 
 add_library(obs-vst MODULE)
 add_library(OBS::vst ALIAS obs-vst)
+obs_msvc_exempt_c4201(obs-vst)
 
 find_package(Qt6 REQUIRED Widgets)
 

@@ -12,6 +12,7 @@ endif()
 
 add_library(decklink-output-ui MODULE)
 add_library(OBS::decklink-output-ui ALIAS decklink-output-ui)
+obs_msvc_exempt_c4201(decklink-output-ui)
 
 if(NOT TARGET OBS::properties-view)
   add_subdirectory("${CMAKE_SOURCE_DIR}/shared/properties-view" "${CMAKE_BINARY_DIR}/shared/properties-view")

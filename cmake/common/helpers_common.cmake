@@ -96,6 +96,18 @@ function(target_disable target)
   set_property(GLOBAL APPEND PROPERTY OBS_MODULES_DISABLED ${target})
 endfunction()
 
+# obs_msvc_exempt_c4201: Disable C4201 on one C++ target (MSVC /W4, #2626)
+#
+# /W4 reports C4201 "nameless struct/union" for the unions in
+# libobs/graphics/vec{2,3,4}.h, libobs/util/profiler.h and
+# frontend/api/obs-frontend-api.h. They are legal C11 (6.7.2.1p13) and consumed
+# from C, so naming them is an API break; #2626 therefore decided on a
+# per-target exemption, only for the C++ targets that include those headers and
+# never as a blanket /wd4201 for every C++ target.
+function(obs_msvc_exempt_c4201 target)
+  target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4201>)
+endfunction()
+
 # _handle_generator_expression_dependency: Helper function to yield dependency from a generator expression
 function(_handle_generator_expression_dependency library)
   set(oneValueArgs FOUND_VAR)

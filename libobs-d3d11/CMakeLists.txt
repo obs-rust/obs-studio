@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.28...3.30)
 
 add_library(libobs-d3d11 MODULE)
 add_library(OBS::libobs-d3d11 ALIAS libobs-d3d11)
+obs_msvc_exempt_c4201(libobs-d3d11)
 
 # Unity group (BUILD.md): build/d3d11.core+.hpp.cpp #includes the
 # implementation files (d3d11-foo.cpp.hpp) behind one precompiled header.

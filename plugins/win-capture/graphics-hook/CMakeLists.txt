@@ -25,6 +25,7 @@ add_library(graphics-hook MODULE)
 # batches (cmake/common/unity.cmake).
 set_property(TARGET graphics-hook PROPERTY OBS_DISABLE_UNITY_BUILD ON)
 add_library(OBS::graphics-hook ALIAS graphics-hook)
+obs_msvc_exempt_c4201(graphics-hook)
 
 target_sources(
   graphics-hook

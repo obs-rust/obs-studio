@@ -22,6 +22,11 @@ macro(check_obs_browser)
       message(FATAL_ERROR "Required submodule 'obs-browser' not available.")
     else()
       add_core_module(obs-browser)
+      # The submodule's C++ sources include libobs/graphics/vec{2,3,4}.h and
+      # libobs/util/profiler.h, whose nameless unions C4201 flags; the target is
+      # defined by the submodule's own CMakeLists, so the exemption is applied
+      # here (#2626).
+      obs_msvc_exempt_c4201(obs-browser)
     endif()
   else()
     add_custom_target(obs-browser)
@@ -34,6 +39,9 @@ macro(check_obs_websocket)
     message(FATAL_ERROR "Required submodule 'obs-websocket' not available.")
   else()
     add_core_module(obs-websocket)
+    # Same C4201 exemption as obs-browser: the target comes from the submodule
+    # (#2626).
+    obs_msvc_exempt_c4201(obs-websocket)
   endif()
 endmacro()
 

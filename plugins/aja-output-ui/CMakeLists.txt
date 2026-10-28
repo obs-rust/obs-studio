@@ -22,6 +22,7 @@ endif()
 
 add_library(aja-output-ui MODULE)
 add_library(OBS::aja-output-ui ALIAS aja-output-ui)
+obs_msvc_exempt_c4201(aja-output-ui)
 
 target_sources(aja-output-ui PRIVATE build/aja-output-ui.core+.hpp.cpp aja-ui-main.h AJAOutputUI.h)
 

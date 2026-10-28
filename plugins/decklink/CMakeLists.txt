@@ -7,6 +7,11 @@ endif()
 
 add_library(decklink MODULE)
 add_library(OBS::decklink ALIAS decklink)
+obs_msvc_exempt_c4201(decklink)
+# MSVC /W4 (#2626): FrameQueue pads its nodes to a cache line so producers and
+# consumers do not share one (decklink-device-instance.hpp), so the padding
+# C4324 reports there is the intent, not slack in a struct layout.
+target_compile_options(decklink PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4324>)
 
 add_library(decklink-sdk INTERFACE)
 add_library(Decklink::SDK ALIAS decklink-sdk)

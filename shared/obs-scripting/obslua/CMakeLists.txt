@@ -26,6 +26,10 @@ target_compile_options(
     $<$<PLATFORM_ID:Windows>:/wd4197>
     $<$<PLATFORM_ID:Windows>:/wd4244>
     $<$<PLATFORM_ID:Windows>:/wd4267>
+    # MSVC /W4 (#2626): the wrapper also leaves its IStream-style parameters
+    # unreferenced (C4100) and declares locals only to convert them (C4189).
+    $<$<PLATFORM_ID:Windows>:/wd4100>
+    $<$<PLATFORM_ID:Windows>:/wd4189>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-shorten-64-to-32>
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-unreachable-code>
     $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wno-maybe-uninitialized>

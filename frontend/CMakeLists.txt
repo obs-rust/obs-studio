@@ -30,6 +30,7 @@ endif()
 
 add_executable(obs-studio)
 add_executable(OBS::studio ALIAS obs-studio)
+obs_msvc_exempt_c4201(obs-studio)
 
 include(cmake/sources.cmake)
 
