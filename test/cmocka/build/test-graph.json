@@ -5034,7 +5034,8 @@
     },
     "test_win_crash_sym_info": {
       "sources": [
-        "test/cmocka/test_win_crash_sym_info.c"
+        "test/cmocka/test_win_crash_sym_info.c",
+        "libobs/obs-win-crash-report.c.h"
       ],
       "libraries": [
         "OBS::libobs",

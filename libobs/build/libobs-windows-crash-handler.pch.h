@@ -17,3 +17,6 @@
 #include "util/dstr.h"
 #include "util/platform.h"
 #include "util/windows/win-version.h"
+
+/* obs-win-crash-handler.c calls the crash report rules (obs-win-crash-report.c). */
+#include "libobs/obs-win-crash-report.h"

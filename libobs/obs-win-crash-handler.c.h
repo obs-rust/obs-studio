@@ -17,6 +17,12 @@
 
 #include "libobs/build/libobs-windows-crash-handler.pch.h"
 
+/* The crash report rules (obs-win-crash-report.c) take no Windows type. */
+_Static_assert(SYMFLAG_EXPORT == OBS_WIN_CRASH_REPORT_SYMFLAG_EXPORT, "SYMFLAG_EXPORT");
+_Static_assert(sizeof(DWORD) == sizeof(uint32_t), "DWORD");
+_Static_assert(sizeof(ULONG) == sizeof(uint32_t), "ULONG");
+_Static_assert(sizeof(DWORD64) == sizeof(uint64_t), "DWORD64");
+
 typedef BOOL(WINAPI *ENUMERATELOADEDMODULES64)(HANDLE process,
 					       PENUMLOADED_MODULES_CALLBACK64 enum_loaded_modules_callback,
 					       PVOID user_context);
@@ -211,8 +217,7 @@ static BOOL CALLBACK enum_all_modules(PCTSTR module_name, DWORD64 module_base, U
 	char name_utf8[MAX_PATH];
 	os_wcs_to_utf8(module_name, 0, name_utf8, MAX_PATH);
 
-	if (data->main_trace.instruction_ptr >= module_base &&
-	    data->main_trace.instruction_ptr < module_base + module_size) {
+	if (obs_win_crash_report_contains(data->main_trace.instruction_ptr, module_base, module_size)) {
 
 		dstr_copy(&data->module_name, name_utf8);
 		strlwr(data->module_name.array);
@@ -272,7 +277,7 @@ struct module_info {
 
 static BOOL CALLBACK enum_module(PCTSTR module_name, DWORD64 module_base, ULONG module_size, struct module_info *info)
 {
-	if (info->addr >= module_base && info->addr < module_base + module_size) {
+	if (obs_win_crash_report_contains(info->addr, module_base, module_size)) {
 
 		os_wcs_to_utf8(module_name, 0, info->name_utf8, MAX_PATH);
 		strlwr(info->name_utf8);
@@ -335,15 +340,15 @@ static inline bool walk_stack(struct exception_handler_data *data, HANDLE thread
 	"%08.8I64X %08.8I64X %08.8I64X %08.8I64X " \
 	"%08.8I64X %08.8I64X %s!0x%I64x\r\n"
 
-	trace->frame.AddrStack.Offset &= 0xFFFFFFFFF;
-	trace->frame.AddrPC.Offset &= 0xFFFFFFFFF;
-	trace->frame.Params[0] &= 0xFFFFFFFF;
-	trace->frame.Params[1] &= 0xFFFFFFFF;
-	trace->frame.Params[2] &= 0xFFFFFFFF;
-	trace->frame.Params[3] &= 0xFFFFFFFF;
+	trace->frame.AddrStack.Offset = obs_win_crash_report_mask_address(trace->frame.AddrStack.Offset);
+	trace->frame.AddrPC.Offset = obs_win_crash_report_mask_address(trace->frame.AddrPC.Offset);
+	trace->frame.Params[0] = obs_win_crash_report_mask_param(trace->frame.Params[0]);
+	trace->frame.Params[1] = obs_win_crash_report_mask_param(trace->frame.Params[1]);
+	trace->frame.Params[2] = obs_win_crash_report_mask_param(trace->frame.Params[2]);
+	trace->frame.Params[3] = obs_win_crash_report_mask_param(trace->frame.Params[3]);
 #endif
 
-	if (success && (data->sym_info->Flags & SYMFLAG_EXPORT) == 0) {
+	if (success && obs_win_crash_report_names_symbol(data->sym_info->Flags)) {
 		dstr_catf(&data->str, SUCCESS_FORMAT, trace->frame.AddrStack.Offset, trace->frame.AddrPC.Offset,
 			  trace->frame.Params[0], trace->frame.Params[1], trace->frame.Params[2],
 			  trace->frame.Params[3], p, sym_name, func_offset);
@@ -392,7 +397,7 @@ static inline char *get_thread_name(HANDLE thread)
 
 	struct dstr name = {0};
 	dstr_from_wcs(&name, w_name);
-	if (name.len)
+	if (obs_win_crash_report_name_prefix(name.len))
 		dstr_insert_ch(&name, 0, ' ');
 	LocalFree(w_name);
 
@@ -401,16 +406,16 @@ static inline char *get_thread_name(HANDLE thread)
 
 static inline void write_thread_trace(struct exception_handler_data *data, THREADENTRY32 *entry, bool first_thread)
 {
-	bool crash_thread = entry->th32ThreadID == GetCurrentThreadId();
+	bool crash_thread = obs_win_crash_report_is_crashed(entry->th32ThreadID, GetCurrentThreadId());
 	struct stack_trace trace = {0};
 	struct stack_trace *ptrace;
 	HANDLE thread;
 	char *thread_name;
 
-	if (first_thread != crash_thread)
+	if (!obs_win_crash_report_in_pass(first_thread, crash_thread))
 		return;
 
-	if (entry->th32OwnerProcessID != GetCurrentProcessId())
+	if (obs_win_crash_report_other_process(entry->th32OwnerProcessID, GetCurrentProcessId()))
 		return;
 
 	thread = OpenThread(THREAD_ALL_ACCESS, false, entry->th32ThreadID);
@@ -501,11 +506,8 @@ static LONG CALLBACK exception_handler(PEXCEPTION_POINTERS exception)
 	struct exception_handler_data data = {0};
 	static bool inside_handler = false;
 
-	/* don't use if a debugger is present */
-	if (IsDebuggerPresent())
-		return EXCEPTION_CONTINUE_SEARCH;
-
-	if (inside_handler)
+	/* don't use if a debugger is present, or when re-entered */
+	if (obs_win_crash_report_pass_on(IsDebuggerPresent(), &inside_handler))
 		return EXCEPTION_CONTINUE_SEARCH;
 
 	inside_handler = true;
