@@ -187,6 +187,7 @@ pub mod vec2;
 pub mod video_copy_plan;
 pub mod video_fourcc;
 pub mod video_frame;
+pub mod video_frame_timing;
 pub mod video_io;
 pub mod video_io_inlines;
 pub mod video_matrices;
