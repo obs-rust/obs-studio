@@ -5032,6 +5032,22 @@
         "plugins/obs-webrtc"
       ]
     },
+    "test_win_crash_report_steps": {
+      "sources": [
+        "test/cmocka/test_win_crash_report_steps.c",
+        "libobs/obs-win-crash-report.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-win-crash-report.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_win_crash_sym_info": {
       "sources": [
         "test/cmocka/test_win_crash_sym_info.c",
@@ -6973,6 +6989,12 @@
         "${target}"
       ],
       "suite": "webrtc"
+    },
+    "test_win_crash_report_steps": {
+      "target": "test_win_crash_report_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_win_crash_sym_info": {
       "target": "test_win_crash_sym_info",
