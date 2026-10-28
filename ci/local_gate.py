@@ -759,7 +759,13 @@ def main() -> int:
     parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this check (CI format jobs)")
     args = parser.parse_args()
-    if args.test_diff:
+    if args.test_diff is not None:
+        if not args.test_diff.strip():
+            # argparse accepts "", and a truth test on it would fall through to
+            # every lane below: the Windows changed-crates step passed an empty
+            # base and ran the whole lint lane, ci/ self-tests included (#2756).
+            print("local_gate: --test-diff needs a base ref, not an empty string", file=sys.stderr, flush=True)
+            return 2
         try:
             test_diff(args.test_diff)
         except subprocess.CalledProcessError as e:
