@@ -329,10 +329,10 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 			QDomNode el = doc.documentElement();
 			QDomNamedNodeMap o_attr = el.attributes();
 
-			QString name = o_attr.namedItem("wndname").nodeValue();
+			QString window_name = o_attr.namedItem("wndname").nodeValue();
 			QString exec = o_attr.namedItem("imagename").nodeValue();
 
-			QString res = name = "::" + exec;
+			QString res = window_name = "::" + exec;
 
 			source["id"] = "game_capture";
 			settings["window"] = res.toStdString();
@@ -353,8 +353,8 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 			}
 		} else if (type == 11) {
 			QString id = attr.namedItem("item").nodeValue();
-			Json source = get_source_with_id(id.toStdString(), sources);
-			name = source["name"].string_value();
+			Json linked_source = get_source_with_id(id.toStdString(), sources);
+			name = linked_source["name"].string_value();
 
 			goto skip;
 		}
