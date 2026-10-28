@@ -1949,11 +1949,14 @@ area.
   used to bring the docks back all the same width on the next start. The
   chat dock of a signed-in Twitch, Restream or YouTube account saves and
   restores the same clamp-safe layout, instead of its own copy taken from the
-  live window. *All*,
+  live window. A start on a display too small for the saved layout also keeps
+  that layout: the docks are squeezed for the session, and the next save
+  writes the layout from the ini instead of the squeeze. *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
-  [#2731](https://github.com/obs-rust/obs-studio/pull/2731).
+  [#2731](https://github.com/obs-rust/obs-studio/pull/2731),
+  [#2743](https://github.com/obs-rust/obs-studio/pull/2743).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its
