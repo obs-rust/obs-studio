@@ -1,17 +1,17 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 82285,
-      "libobs": 82877,
-      "plugins": 144827,
-      "shared": 15919
+      "frontend": 82349,
+      "libobs": 82957,
+      "plugins": 145019,
+      "shared": 15930
     },
-    "percent": 11.46,
-    "ported_lines": 37339,
-    "total_lines": 325908
+    "percent": 11.45,
+    "ported_lines": 37351,
+    "total_lines": 326255
   },
-  "commit": "c2af3f9",
-  "date": "2026-10-27",
+  "commit": "25fc4bc",
+  "date": "2026-10-28",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -23,20 +23,20 @@
     "headers (*.h, *.hpp): declarations; implementation in build-role names (foo.c.h) is counted"
   ],
   "kept_by_design": {
-    "plugins/obs-websocket": 14066
+    "plugins/obs-websocket": 14104
   },
   "libobs": {
     "all": {
       "areas": {
         "core": {
-          "percent": 32.34,
-          "ported_lines": 17391,
-          "total_lines": 53782
+          "percent": 32.3,
+          "ported_lines": 17392,
+          "total_lines": 53843
         },
         "graphics": {
-          "percent": 47.91,
+          "percent": 47.88,
           "ported_lines": 6160,
-          "total_lines": 12858
+          "total_lines": 12865
         },
         "media-io": {
           "percent": 72.52,
@@ -45,28 +45,28 @@
         },
         "util": {
           "percent": 87.91,
-          "ported_lines": 11497,
-          "total_lines": 13078
+          "ported_lines": 11508,
+          "total_lines": 13090
         }
       },
       "files": 222,
-      "hybrid_lines": 45538,
-      "percent": 45.05,
-      "ported_lines": 37339,
-      "total_lines": 82877
+      "hybrid_lines": 45606,
+      "percent": 45.02,
+      "ported_lines": 37351,
+      "total_lines": 82957
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 35.01,
-            "ported_lines": 17391,
-            "total_lines": 49678
+            "percent": 34.97,
+            "ported_lines": 17392,
+            "total_lines": 49739
           },
           "graphics": {
-            "percent": 48.55,
+            "percent": 48.52,
             "ported_lines": 6160,
-            "total_lines": 12688
+            "total_lines": 12695
           },
           "media-io": {
             "percent": 72.52,
@@ -75,13 +75,13 @@
           },
           "util": {
             "percent": 90.45,
-            "ported_lines": 8975,
-            "total_lines": 9923
+            "ported_lines": 8986,
+            "total_lines": 9935
           }
         },
         "files": 200,
-        "hybrid_lines": 40631,
-        "percent": 46.15,
+        "hybrid_lines": 40699,
+        "percent": 46.11,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -244,20 +244,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 34817,
-        "total_lines": 75448
+        "ported_lines": 34829,
+        "total_lines": 75528
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 37.33,
-            "ported_lines": 16549,
-            "total_lines": 44327
+            "percent": 37.29,
+            "ported_lines": 16550,
+            "total_lines": 44378
           },
           "graphics": {
-            "percent": 48.55,
+            "percent": 48.52,
             "ported_lines": 6160,
-            "total_lines": 12688
+            "total_lines": 12695
           },
           "media-io": {
             "percent": 72.52,
@@ -266,13 +266,13 @@
           },
           "util": {
             "percent": 90.37,
-            "ported_lines": 8899,
-            "total_lines": 9847
+            "ported_lines": 8904,
+            "total_lines": 9853
           }
         },
         "files": 187,
-        "hybrid_lines": 36122,
-        "percent": 48.41,
+        "hybrid_lines": 36180,
+        "percent": 48.38,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -427,20 +427,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 33899,
-        "total_lines": 70021
+        "ported_lines": 33905,
+        "total_lines": 70085
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 36.4,
-            "ported_lines": 16549,
-            "total_lines": 45469
+            "percent": 36.36,
+            "ported_lines": 16550,
+            "total_lines": 45520
           },
           "graphics": {
-            "percent": 47.96,
+            "percent": 47.94,
             "ported_lines": 6160,
-            "total_lines": 12843
+            "total_lines": 12850
           },
           "media-io": {
             "percent": 72.52,
@@ -449,13 +449,13 @@
           },
           "util": {
             "percent": 84.99,
-            "ported_lines": 8953,
-            "total_lines": 10534
+            "ported_lines": 8958,
+            "total_lines": 10540
           }
         },
         "files": 191,
-        "hybrid_lines": 38052,
-        "percent": 47.15,
+        "hybrid_lines": 38110,
+        "percent": 47.12,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -610,8 +610,8 @@
           "util/utf8-host-windows.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 33953,
-        "total_lines": 72005
+        "ported_lines": 33959,
+        "total_lines": 72069
       }
     }
   },
