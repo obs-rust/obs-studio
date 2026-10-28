@@ -39,6 +39,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import host_platform
 from nextest_tool import ensure_nextest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -745,7 +746,58 @@ def lane_tier2_linux(fix: bool) -> None:
     run([sys.executable, "rust/tools/linux-validate/run.py"])
 
 
-LANES = {"lint": lane_lint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release, "tier2-linux": lane_tier2_linux}
+# A change to platform code is attested locally or run in CI (#443). These two
+# lanes run what the split native jobs run (build-project.yaml:rust-tests-macos
+# / -windows and rust-tier2-macos / -windows), but only on the host whose jobs
+# they attest: elsewhere they exit 75 (EX_TEMPFAIL), which `ci-lint local-gate`
+# reads as "not applicable on this host" because local-gate.toml declares them
+# `optional`. A Linux host therefore neither fails the gate nor attests them.
+NATIVE_HOSTS = {"macos-native": host_platform.is_macos, "windows-native": host_platform.is_windows}
+
+
+class NotApplicable(Exception):
+    """This lane cannot run on this host; its local-gate.toml lane is `optional`."""
+
+
+def native_host(lane: str) -> bool:
+    """Whether this host is the platform `lane` attests (ci/host_platform.py)."""
+    return NATIVE_HOSTS[lane]()
+
+
+def native_rust_checks() -> None:
+    """The Rust steps of both native jobs: tests, clippy, formatting."""
+    soldr_cargo(["test", "--workspace", "--locked"])
+    soldr_cargo(["clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"])
+    soldr_cargo(["fmt", "--all", "--check"])
+
+
+def lane_macos_native(fix: bool) -> None:
+    """Tier 2 on macOS, as `Validate Tier 2 on macOS` runs it (brew cmocka)."""
+    if not native_host("macos-native"):
+        raise NotApplicable("macos-native attests the macOS jobs; it runs only on macOS")
+    native_rust_checks()
+    run(["bash", "rust/tools/tier2-validate/validate.sh"])
+
+
+def lane_windows_native(fix: bool) -> None:
+    """Tier 2 on Windows, as `Validate Tier 2 on Windows` runs it (vcpkg cmocka)."""
+    if not native_host("windows-native"):
+        raise NotApplicable("windows-native attests the Windows jobs; it runs only on Windows")
+    native_rust_checks()
+    prefix = os.environ.get("CMOCKA_PREFIX") or ""
+    if not prefix and os.environ.get("VCPKG_INSTALLATION_ROOT"):
+        prefix = os.environ["VCPKG_INSTALLATION_ROOT"].replace("\\", "/") + "/installed/x64-windows"
+    if not prefix:
+        raise NotApplicable(
+            "windows-native needs cmocka: `vcpkg install cmocka:x64-windows` and set "
+            "CMOCKA_PREFIX (or VCPKG_INSTALLATION_ROOT)"
+        )
+    run(["pwsh", "-NoProfile", "-NonInteractive", "-File", "rust/tools/tier2-validate/validate.ps1",
+         "-CMockaPrefix", prefix])
+
+
+LANES = {"lint": lane_lint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release,
+         "tier2-linux": lane_tier2_linux, "macos-native": lane_macos_native, "windows-native": lane_windows_native}
 
 # The lint lane's formatter checks on their own, for CI's format jobs: the
 # same pinned tools and files as `./lint`, so the two cannot disagree (#427).
@@ -771,11 +823,18 @@ def main() -> int:
         print(f"== {args.only}: ok", flush=True)
         return 0
     # cross-release runs only in the release gate (#955).
+    ran = 0
     for name in args.lane or [n for n in LANES if n != "cross-release"]:
         start = time.monotonic()
         print(f"== lane {name}", flush=True)
         try:
             LANES[name](args.fix)
+        except NotApplicable as exc:
+            # Exit 75 (EX_TEMPFAIL) when the host cannot run any lane it was
+            # asked for: ci-lint reads that as "not applicable" for an
+            # `optional` lane and attests nothing (#443).
+            print(f"== lane {name}: not applicable: {exc}", flush=True)
+            continue
         except subprocess.CalledProcessError as e:
             print(f"== lane {name}: FAILED ({e.returncode})", flush=True)
             return 1
@@ -787,7 +846,10 @@ def main() -> int:
             print(f"== lane {name}: FAILED (127)", flush=True)
             return 1
         print(f"== lane {name}: ok ({time.monotonic() - start:.1f}s)", flush=True)
-    return 0
+        ran += 1
+    # Asked for lanes and every one was for another host: EX_TEMPFAIL, so the
+    # `optional` declaration is honoured instead of passing unattested.
+    return 0 if ran or not args.lane else 75
 
 
 if __name__ == "__main__":

@@ -1626,6 +1626,10 @@ jobs:
       skip_rust-tests-linux: ${{ steps.gate.outputs.skip_rust-tests-linux }}
       skip_rust-linux-tier2: ${{ steps.gate.outputs.skip_rust-linux-tier2 }}
       skip_rust-cross-lint: ${{ steps.gate.outputs.skip_rust-cross-lint }}
+      skip_rust-tests-macos: ${{ steps.gate.outputs.skip_rust-tests-macos }}
+      skip_rust-tests-windows: ${{ steps.gate.outputs.skip_rust-tests-windows }}
+      skip_rust-tier2-macos: ${{ steps.gate.outputs.skip_rust-tier2-macos }}
+      skip_rust-tier2-windows: ${{ steps.gate.outputs.skip_rust-tier2-windows }}
       rust-test_hit: ${{ steps.rust-test.outputs.hit }}
       rust-test_name: ${{ steps.rust-test.outputs.name }}
       cross_hit: ${{ steps.cross.outputs.hit }}
@@ -2056,9 +2060,9 @@ jobs:
     timeout-minutes: 25
     name: Rust Tests 🦀 (macos-26)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-macos != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
     runs-on: macos-26
-    needs: [check-event, rust-tests-linux]
+    needs: [check-event, ci-mode, rust-tests-linux]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -2164,9 +2168,9 @@ jobs:
     timeout-minutes: 30
     name: Rust Tests 🦀 (windows-2025-vs2026)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-windows != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
     runs-on: windows-2025-vs2026
-    needs: [check-event, rust-tests-linux]
+    needs: [check-event, ci-mode, rust-tests-linux]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -2775,10 +2779,10 @@ jobs:
     timeout-minutes: 25
     name: Rust Tier 2 (macos-26)
     runs-on: macos-26
-    needs: [check-event, rust-tests-linux]
+    needs: [check-event, ci-mode, rust-tests-linux]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -2920,10 +2924,10 @@ jobs:
     timeout-minutes: 25
     name: Rust Tier 2 (windows-2025-vs2026)
     runs-on: windows-2025-vs2026
-    needs: [check-event, rust-tests-linux]
+    needs: [check-event, ci-mode, rust-tests-linux]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

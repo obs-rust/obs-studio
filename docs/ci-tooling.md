@@ -359,7 +359,15 @@ the paths that select them, so a change only triggers the tests it can affect.
     (`test --no-run`) for the Windows and macOS targets, cross-compiled from
     Linux with soldr;
   - `tier2-linux`: the cmocka suite against libobs and libobs-c-reference, in
-    Docker.
+    Docker;
+  - `macos-native` / `windows-native`: what the macOS and Windows Rust test
+    and Tier 2 jobs run (tests, clippy, formatting, then the host's Tier 2
+    validation, `rust/tools/tier2-validate/validate.sh|ps1`). Each is
+    `optional` and exits 75 (`EX_TEMPFAIL`) on any other host, which `ci-lint`
+    reports as "not applicable on this host": a Linux gate passes without
+    attesting them, and only a Mac or Windows host can. Windows needs
+    `vcpkg install cmocka:x64-windows` and `CMOCKA_PREFIX` (or
+    `VCPKG_INSTALLATION_ROOT`), macOS needs `brew install cmocka`.
 - **`ci/ci_scope.py`** maps changed paths to jobs, by path alone (#897). The
   Fast Gate always runs; Linux Tier 2 runs for the paths in its `LANES` row
   (table below). A changed file that belongs to a platform
@@ -484,10 +492,17 @@ verifies the stamp, and if it holds, CI skips the jobs those lanes cover:
 | Rust Tests (Linux) | `lint` and `rust-test` |
 | Rust Tier 2 Linux | `tier2-linux` |
 | Rust Cross Lint | `cross` |
+| Rust Tests (macos-26) | `lint`, `cross` and `macos-native` |
+| Rust Tests (windows-2025-vs2026) | `lint`, `cross` and `windows-native` |
+| Rust Tier 2 (macos-26) | `macos-native` |
+| Rust Tier 2 (windows-2025-vs2026) | `windows-native` |
+
+The two native rows can only be attested on that host (#443): a Linux stamp
+holds `lint` and `cross` but not `macos-native`/`windows-native`, so those jobs
+still run unless a developer ran the gate on a Mac or Windows box.
 
 **Never skipped by a stamp:** the event checks, the macOS, Ubuntu, Windows and
-Flatpak app builds, and the platform Rust test and Tier 2 jobs that
-`ci_scope.py` selects.
+Flatpak app builds.
 
 **The stamp is ignored (CI runs everything it would anyway) when:**
 - the PR comes from a fork or from a non-writer;
@@ -633,9 +648,10 @@ Each gap is a step toward the full protocol, and a good issue to pick up:
 - **A real `ci.toml`.** Path selection lives in `ci/ci_scope.py`, outside
   ci.yml's checker. Moving it into a schema-3 `ci.toml` lets the protocol's
   tooling validate and evolve it.
-- **Attested platforms.** The local gate covers Linux only, so macOS and
-  Windows changes always cost PR CI time. Native or replayed lanes that can
-  attest those jobs would let CI skip them too (see issue #443).
+- **Audit-sampled native lanes.** `macos-native` and `windows-native` now
+  attest their platform's jobs from that host (#443). A Linux-only contributor
+  still pays for them, and no lane replays them, so a macOS or Windows change
+  from a Linux box always costs PR CI time.
 - **Warm PR caches.** setup-soldr restores but doesn't save on PRs, so a
   branch's first build depends on master's cache being warm.
 - **Feed lessons back.** Problems found here, such as the stale zccache

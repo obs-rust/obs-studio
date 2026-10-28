@@ -15,7 +15,20 @@ gates:
   rust/x86_64-pc-windows-msvc/dylint: {lane: cross}
   rust/aarch64-apple-darwin/clippy: {lane: cross}
   rust/aarch64-apple-darwin/dylint: {lane: cross}
+  # Attested on the host itself (#443): the native lanes run only on the
+  # platform whose jobs they cover and exit 75 elsewhere, so a Linux gate
+  # reports them not applicable and never attests them.
+  rust/aarch64-apple-darwin/test: {lane: macos-native}
+  rust/x86_64-pc-windows-msvc/test: {lane: windows-native}
+  cpp/macos-arm64/tier2: {lane: macos-native}
+  cpp/windows-x64/tier2: {lane: windows-native}
 jobs:
   build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]
   build-project.yaml:rust-cross-lint: [rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
+  # The formatting and clippy gates these two run are the Linux lanes' (#427,
+  # #472): only the test half needs the host.
+  build-project.yaml:rust-tests-macos: [rust/all/fmt, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/test]
+  build-project.yaml:rust-tests-windows: [rust/all/fmt, rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/test]
+  build-project.yaml:rust-tier2-macos: [cpp/macos-arm64/tier2]
+  build-project.yaml:rust-tier2-windows: [cpp/windows-x64/tier2]

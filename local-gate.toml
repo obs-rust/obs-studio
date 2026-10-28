@@ -17,11 +17,12 @@ run = ["uv", "run", "ci/local_gate.py"]
 verify = "build-project.yaml:ci-mode"
 # Not skippable by a Linux attestation, so they start at once instead of
 # waiting on ci-mode: event data, the full OBS builds (themselves skipped for
-# non-native PRs by check-event's quick gate), and the macOS/Windows Rust and
-# Tier 2 legs. ci.yml's format/validation jobs are seconds long.
+# non-native PRs by check-event's quick gate), and ci.yml's format/validation
+# jobs, which are seconds long. The macOS/Windows Rust and Tier 2 legs are
+# skippable by their own native lanes ([gate.trust] below, #443).
 
 # The manual fresh-runner compiler transfer trial cannot be locally attested.
-verify-exempt = ["check-event", "macos-build", "ubuntu-build", "flatpak-build", "flatpak-runtime-test", "flatpak-compiler-consumer", "windows-build", "rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows", "ci.yml"]
+verify-exempt = ["check-event", "macos-build", "ubuntu-build", "flatpak-build", "flatpak-runtime-test", "flatpak-compiler-consumer", "windows-build", "ci.yml"]
 mode = "shadow"
 # GATE-001: these remote jobs run the gate command itself (`--lane` args
 # only), so a green local gate predicts them. setup-steps lists steps that
@@ -68,14 +69,30 @@ exclude = ["docs/**", "**/*.md", "build-aux/**", "libobs-d3d11/**", "libobs-meta
   "rust/obs-frontend/**"]
 keep = ["rust/*/Cargo.toml"]
 
+# The platform half of the gate (#443): a change to macOS or Windows code is
+# attested on that host or run in CI. Each lane runs the jobs it attests and
+# exits 75 on any other host, which ci-lint reports as "not applicable on this
+# host" and never attests -- hence `optional`. Their inputs are every tracked
+# file: a host that runs them has the tree and the caches, and the Linux hosts
+# that skip them never key them on anything.
+[gate.lanes.macos-native]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "macos-native"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.windows-native]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "windows-native"]
+tools = ["soldr"]
+optional = true
+
 # GATE-008: decided from THIS file as committed on the PR's base. Fails
 # closed: fork or non-writer author, `ci-full` label, head not attested for
 # its exact tree, a missing lane, a changed surface, or the 1-in-10 audit
 # sample all run the jobs. Pushes to master always run everything.
 [gate.trust]
 mode = "enforce"
-skip = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux-tier2", "build-project.yaml:rust-cross-lint"]
-covered-by = { "build-project.yaml:rust-tests-linux" = ["lint", "rust-test"], "build-project.yaml:rust-linux-tier2" = ["tier2-linux"], "build-project.yaml:rust-cross-lint" = ["cross"] }
+skip = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux-tier2", "build-project.yaml:rust-cross-lint", "build-project.yaml:rust-tests-macos", "build-project.yaml:rust-tests-windows", "build-project.yaml:rust-tier2-macos", "build-project.yaml:rust-tier2-windows"]
+covered-by = { "build-project.yaml:rust-tests-linux" = ["lint", "rust-test"], "build-project.yaml:rust-linux-tier2" = ["tier2-linux"], "build-project.yaml:rust-cross-lint" = ["cross"], "build-project.yaml:rust-tests-macos" = ["lint", "cross", "macos-native"], "build-project.yaml:rust-tests-windows" = ["lint", "cross", "windows-native"], "build-project.yaml:rust-tier2-macos" = ["macos-native"], "build-project.yaml:rust-tier2-windows" = ["windows-native"] }
 surfaces = [
   "ci/nextest_tool.py",
   "ci/nextest.toml",
