@@ -707,6 +707,18 @@ _obs_canvas_rules_renames
 _obs_canvas_rules_resets
 _obs_canvas_rules_saves
 _obs_canvas_rules_size_set
+# obs-nix-system-info.c: obs-nix.c calls them inside libobs. Not EXPORT.
+_obs_nix_system_info_dmesg_speed
+_obs_nix_system_info_free_mb
+_obs_nix_system_info_is_dmesg_cpu
+_obs_nix_system_info_is_name
+_obs_nix_system_info_is_physical_id
+_obs_nix_system_info_is_speed
+_obs_nix_system_info_physical_id
+_obs_nix_system_info_physmem_mb
+_obs_nix_system_info_prints
+_obs_nix_system_info_total_mb
+_obs_nix_system_info_value
 # util/source-profiler.c: the frame hooks libobs calls inside itself. Not
 # EXPORT.
 _source_profiler_reset_video

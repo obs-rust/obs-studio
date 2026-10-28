@@ -864,6 +864,20 @@ obs_canvas_rules_renames
 obs_canvas_rules_resets
 obs_canvas_rules_saves
 obs_canvas_rules_size_set
+# obs-nix-system-info.c: the system info parsing obs-nix.c calls inside
+# libobs. Declared in obs-nix-system-info.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_nix_system_info_dmesg_speed
+obs_nix_system_info_free_mb
+obs_nix_system_info_is_dmesg_cpu
+obs_nix_system_info_is_name
+obs_nix_system_info_is_physical_id
+obs_nix_system_info_is_speed
+obs_nix_system_info_physical_id
+obs_nix_system_info_physmem_mb
+obs_nix_system_info_prints
+obs_nix_system_info_total_mb
+obs_nix_system_info_value
 # util/source-profiler.c: obs.c, obs-video.c and obs-source.c call the frame
 # hooks inside libobs. Declared in obs-internal.h without EXPORT, so the
 # shims stay hidden the same way.

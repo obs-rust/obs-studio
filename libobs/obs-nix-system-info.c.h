@@ -16,12 +16,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix-system-info.pch.h"
+#include "libobs/build/libobs-ported-nix-system-info.pch.h"
 
 /* The system info parsing, moved from obs-nix.c: the /proc/cpuinfo and
  * dmesg.boot line rules and the memory sizes, on plain values. obs-nix.c
  * keeps the file reads, the dstr copies, sysinfo(), sysctl(), the pointer
- * checks and the logs. Declared in obs-nix-system-info.h without EXPORT. */
+ * checks and the logs. Declared in obs-nix-system-info.h without EXPORT.
+ * Ported to rust/obs-core (nix_system_info): the hybrid libobs drops this
+ * file. */
 
 /* log_processor_info() */
 bool obs_nix_system_info_is_name(const char *line)

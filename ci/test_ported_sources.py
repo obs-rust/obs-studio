@@ -91,6 +91,7 @@ PORTED_ON_EVERY_HOST = (
 PORTED_ON_LINUX = (
     "obs-data.c.h.o",
     "obs-hevc.c.h.o",
+    "obs-nix-system-info.c.h.o",
     "obs-video-plan.c.h.o",
 )
 # The unported remainder of a split file: still compiled as C.
