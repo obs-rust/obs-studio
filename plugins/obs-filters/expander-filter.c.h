@@ -127,7 +127,7 @@ static void resize_gain_db_buffer(struct expander_data *cd, size_t len)
 
 static inline float gain_coefficient(uint32_t sample_rate, float time)
 {
-	return expf(-1.0f / (sample_rate * time));
+	return expf(-1.0f / ((float)sample_rate * time));
 }
 
 static const char *expander_name(void *unused)
@@ -274,7 +274,7 @@ static void analyze_envelope(struct expander_data *cd, float **samples, const ui
 		resize_env_in_buffer(cd, num_samples);
 
 	// 10 ms RMS window
-	const float rmscoef = exp2f(-100.0f / cd->sample_rate);
+	const float rmscoef = exp2f(-100.0f / (float)cd->sample_rate);
 
 	for (int i = 0; i < MAX_AUDIO_CHANNELS; i++) {
 		memset(cd->envelope_buf[i], 0, num_samples * sizeof(cd->envelope_buf[i][0]));

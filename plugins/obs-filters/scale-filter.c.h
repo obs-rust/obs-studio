@@ -73,8 +73,8 @@ static void scale_filter_update(void *data, obs_data_t *settings)
 		obs_get_video_info(&ovi);
 		filter->aspect_ratio_only = false;
 		filter->base_canvas_resolution = true;
-		filter->cx_in = ovi.base_width;
-		filter->cy_in = ovi.base_height;
+		filter->cx_in = (int)ovi.base_width;
+		filter->cy_in = (int)ovi.base_height;
 	} else {
 		ret = sscanf(res_str, "%dx%d", &filter->cx_in, &filter->cy_in);
 		if (ret == 2) {
@@ -148,8 +148,8 @@ static void scale_filter_tick(void *data, float seconds)
 	if (filter->base_canvas_resolution) {
 		struct obs_video_info ovi;
 		obs_get_video_info(&ovi);
-		filter->cx_in = ovi.base_width;
-		filter->cy_in = ovi.base_height;
+		filter->cx_in = (int)ovi.base_width;
+		filter->cy_in = (int)ovi.base_height;
 	}
 
 	target = obs_filter_get_target(filter->context);
@@ -160,8 +160,8 @@ static void scale_filter_tick(void *data, float seconds)
 	if (!filter->target_valid)
 		return;
 
-	cx = obs_source_get_base_width(target);
-	cy = obs_source_get_base_height(target);
+	cx = (int)obs_source_get_base_width(target);
+	cy = (int)obs_source_get_base_height(target);
 
 	if (!cx || !cy) {
 		filter->target_valid = false;
@@ -430,8 +430,8 @@ static void scale_filter_render(void *data, gs_effect_t *effect)
 		gs_blend_state_push();
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
-		obs_source_process_filter_tech_end(filter->context, filter->effect, filter->cx_out, filter->cy_out,
-						   technique);
+		obs_source_process_filter_tech_end(filter->context, filter->effect, (uint32_t)filter->cx_out,
+						   (uint32_t)filter->cy_out, technique);
 
 		gs_blend_state_pop();
 	}

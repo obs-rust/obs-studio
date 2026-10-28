@@ -64,7 +64,7 @@ static void limiter_resize_env_buffer(struct limiter_data *cd, size_t len)
 
 static inline float limiter_gain_coefficient(uint32_t sample_rate, float time)
 {
-	return (float)exp(-1.0f / (sample_rate * time));
+	return (float)exp(-1.0f / ((float)sample_rate * time));
 }
 
 static const char *limiter_name(void *unused)

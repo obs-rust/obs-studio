@@ -239,8 +239,8 @@ static void crop_filter_render(void *data, gs_effect_t *effect)
 		gs_blend_state_push();
 		gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
-		obs_source_process_filter_tech_end(filter->context, filter->effect, filter->width, filter->height,
-						   technique);
+		obs_source_process_filter_tech_end(filter->context, filter->effect, (uint32_t)filter->width,
+						   (uint32_t)filter->height, technique);
 
 		gs_blend_state_pop();
 	}

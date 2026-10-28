@@ -135,7 +135,7 @@ static void noise_suppress_destroy(void *data)
 static inline void alloc_channel(struct noise_suppress_data *ng, uint32_t sample_rate, size_t channel, size_t frames)
 {
 #ifdef LIBSPEEXDSP_ENABLED
-	ng->spx_states[channel] = speex_preprocess_state_init((int)frames, sample_rate);
+	ng->spx_states[channel] = speex_preprocess_state_init((int)frames, (int)sample_rate);
 #else
 	UNUSED_PARAMETER(sample_rate);
 #endif
@@ -320,7 +320,8 @@ static inline void process_rnnoise(struct noise_suppress_data *ng)
 					 (const uint8_t **)ng->rnn_segment_buffers, RNNOISE_FRAME_SIZE);
 
 		for (size_t i = 0; i < ng->channels; i++) {
-			for (ssize_t j = 0, k = (ssize_t)out_frames - ng->frames; j < (ssize_t)ng->frames; ++j, ++k) {
+			for (ssize_t j = 0, k = (ssize_t)out_frames - (ssize_t)ng->frames; j < (ssize_t)ng->frames;
+			     ++j, ++k) {
 				if (k >= 0) {
 					ng->copy_buffers[i][j] = output[i][k] / 32768.0f;
 				} else {

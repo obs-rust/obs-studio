@@ -113,7 +113,7 @@ static void mask_filter_update_internal(void *data, obs_data_t *settings, float 
 
 static void mask_filter_update_v1(void *data, obs_data_t *settings)
 {
-	const float opacity = (float)(obs_data_get_int(settings, SETTING_OPACITY) * 0.01);
+	const float opacity = (float)((double)obs_data_get_int(settings, SETTING_OPACITY) * 0.01);
 	mask_filter_update_internal(data, settings, opacity, false);
 }
 

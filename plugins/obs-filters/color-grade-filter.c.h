@@ -66,12 +66,12 @@ static gs_texture_t *make_clut_texture_png(const enum gs_color_format format, co
 	const uint32_t macro_height = image_height / LUT_WIDTH;
 	uint8_t *cursor = buffer;
 	for (uint32_t z = 0; z < LUT_WIDTH; ++z) {
-		const int z_x = (z % macro_width) * LUT_WIDTH;
-		const int z_y = (z / macro_height) * LUT_WIDTH;
+		const int z_x = (int)((z % macro_width) * LUT_WIDTH);
+		const int z_y = (int)((z / macro_height) * LUT_WIDTH);
 		for (uint32_t y = 0; y < LUT_WIDTH; ++y) {
-			const uint32_t row_index = image_width * (z_y + y);
+			const uint32_t row_index = image_width * (uint32_t)(z_y + (int)y);
 			for (uint32_t x = 0; x < LUT_WIDTH; ++x) {
-				const uint32_t index = row_index + z_x + x;
+				const uint32_t index = row_index + (uint32_t)z_x + x;
 				memcpy(cursor, &data[pixel_size * index], pixel_size);
 
 				cursor += pixel_size;
@@ -218,7 +218,7 @@ static obs_properties_t *color_grade_filter_properties(void *data)
 	dstr_replace(&path, "\\", "/");
 	slash = strrchr(path.array, '/');
 	if (slash)
-		dstr_resize(&path, slash - path.array + 1);
+		dstr_resize(&path, (size_t)(slash - path.array + 1));
 
 	obs_properties_add_text(props, SETTING_SDR_ONLY_INFO, TEXT_SDR_ONLY_INFO, OBS_TEXT_INFO);
 	obs_properties_add_path(props, SETTING_IMAGE_PATH, TEXT_IMAGE_PATH, OBS_PATH_FILE, filter_str.array,
