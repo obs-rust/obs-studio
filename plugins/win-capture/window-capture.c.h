@@ -593,10 +593,10 @@ static void wc_hide(void *data)
 		wc->hooked = false;
 
 		signal_handler_t *sh = obs_source_get_signal_handler(wc->source);
-		calldata_t data = {0};
-		calldata_set_ptr(&data, "source", wc->source);
-		signal_handler_signal(sh, "unhooked", &data);
-		calldata_free(&data);
+		calldata_t cd = {0};
+		calldata_set_ptr(&cd, "source", wc->source);
+		signal_handler_signal(sh, "unhooked", &cd);
+		calldata_free(&cd);
 	}
 }
 
@@ -614,10 +614,10 @@ static void wc_tick(void *data, float seconds)
 			wc->hooked = false;
 
 			signal_handler_t *sh = obs_source_get_signal_handler(wc->source);
-			calldata_t data = {0};
-			calldata_set_ptr(&data, "source", wc->source);
-			signal_handler_signal(sh, "unhooked", &data);
-			calldata_free(&data);
+			calldata_t cd = {0};
+			calldata_set_ptr(&cd, "source", wc->source);
+			signal_handler_signal(sh, "unhooked", &cd);
+			calldata_free(&cd);
 		}
 
 		if (!wc->title && !wc->class) {
@@ -679,10 +679,10 @@ static void wc_tick(void *data, float seconds)
 				wc->hooked = false;
 
 				signal_handler_t *sh = obs_source_get_signal_handler(wc->source);
-				calldata_t data = {0};
-				calldata_set_ptr(&data, "source", wc->source);
-				signal_handler_signal(sh, "unhooked", &data);
-				calldata_free(&data);
+				calldata_t cd = {0};
+				calldata_set_ptr(&cd, "source", wc->source);
+				signal_handler_signal(sh, "unhooked", &cd);
+				calldata_free(&cd);
 			}
 			return;
 		}
@@ -723,7 +723,7 @@ static void wc_tick(void *data, float seconds)
 				wc->hooked = true;
 
 				signal_handler_t *sh = obs_source_get_signal_handler(wc->source);
-				calldata_t data = {0};
+				calldata_t cd = {0};
 				struct dstr title = {0};
 				struct dstr class = {0};
 				struct dstr executable = {0};
@@ -732,16 +732,16 @@ static void wc_tick(void *data, float seconds)
 				ms_get_window_class(&class, wc->window);
 				ms_get_window_exe(&executable, wc->window);
 
-				calldata_set_ptr(&data, "source", wc->source);
-				calldata_set_string(&data, "title", title.array);
-				calldata_set_string(&data, "class", class.array);
-				calldata_set_string(&data, "executable", executable.array);
-				signal_handler_signal(sh, "hooked", &data);
+				calldata_set_ptr(&cd, "source", wc->source);
+				calldata_set_string(&cd, "title", title.array);
+				calldata_set_string(&cd, "class", class.array);
+				calldata_set_string(&cd, "executable", executable.array);
+				signal_handler_signal(sh, "hooked", &cd);
 
 				dstr_free(&title);
 				dstr_free(&class);
 				dstr_free(&executable);
-				calldata_free(&data);
+				calldata_free(&cd);
 			}
 		}
 
@@ -761,7 +761,7 @@ static void wc_tick(void *data, float seconds)
 					wc->hooked = true;
 
 					signal_handler_t *sh = obs_source_get_signal_handler(wc->source);
-					calldata_t data = {0};
+					calldata_t cd = {0};
 					struct dstr title = {0};
 					struct dstr class = {0};
 					struct dstr executable = {0};
@@ -770,16 +770,16 @@ static void wc_tick(void *data, float seconds)
 					ms_get_window_class(&class, wc->window);
 					ms_get_window_exe(&executable, wc->window);
 
-					calldata_set_ptr(&data, "source", wc->source);
-					calldata_set_string(&data, "title", title.array);
-					calldata_set_string(&data, "class", class.array);
-					calldata_set_string(&data, "executable", executable.array);
-					signal_handler_signal(sh, "hooked", &data);
+					calldata_set_ptr(&cd, "source", wc->source);
+					calldata_set_string(&cd, "title", title.array);
+					calldata_set_string(&cd, "class", class.array);
+					calldata_set_string(&cd, "executable", executable.array);
+					signal_handler_signal(sh, "hooked", &cd);
 
 					dstr_free(&title);
 					dstr_free(&class);
 					dstr_free(&executable);
-					calldata_free(&data);
+					calldata_free(&cd);
 				}
 			}
 		}

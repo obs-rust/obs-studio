@@ -1761,15 +1761,15 @@ static void game_capture_tick(void *data, float seconds)
 				ms_get_window_class(&gc->class, gc->window);
 			}
 			signal_handler_t *sh = obs_source_get_signal_handler(gc->source);
-			calldata_t data = {0};
+			calldata_t cd = {0};
 
-			calldata_set_ptr(&data, "source", gc->source);
-			calldata_set_string(&data, "title", gc->title.array);
-			calldata_set_string(&data, "class", gc->class.array);
-			calldata_set_string(&data, "executable", gc->executable.array);
+			calldata_set_ptr(&cd, "source", gc->source);
+			calldata_set_string(&cd, "title", gc->title.array);
+			calldata_set_string(&cd, "class", gc->class.array);
+			calldata_set_string(&cd, "executable", gc->executable.array);
 
-			signal_handler_signal(sh, "hooked", &data);
-			calldata_free(&data);
+			signal_handler_signal(sh, "hooked", &cd);
+			calldata_free(&cd);
 
 			if (gc->audio_source) {
 				reconfigure_audio_source(gc->audio_source, gc->window);
