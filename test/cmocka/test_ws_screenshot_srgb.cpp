@@ -227,6 +227,36 @@ static uint64_t frames_seen(void)
 	return n;
 }
 
+/* The program reads black until the scene has drawn once: frames_seen() counts
+ * raw-video deliveries, which begin as soon as obs_set_output_source() is set,
+ * so on a cold runner (llvmpipe still compiling the scene's shaders) the first
+ * frames are black. Wait for the program to paint instead of for the eighth raw
+ * frame, and bound the wait so a program that never renders fails the case with
+ * a reason other than a black-pixel mismatch. None of these cases expects
+ * black, so "not black" is what says the scene has drawn. */
+#define WAIT_FOR_PROGRAM_NS (10 * 1000000000ULL)
+
+static bool wait_for_painted_program(obs_source_t *source, flat_frame *f, uint64_t start)
+{
+	const uint64_t deadline = os_gettime_ns() + WAIT_FOR_PROGRAM_NS;
+	while (os_gettime_ns() < deadline) {
+		f->frame.timestamp = os_gettime_ns();
+		obs_source_output_video(source, &f->frame);
+		os_sleep_ms(20);
+
+		pthread_mutex_lock(&program_mutex);
+		const rgba pixel = program_pixel;
+		const uint64_t frames = program_frames;
+		pthread_mutex_unlock(&program_mutex);
+
+		if (frames > start && (pixel.r || pixel.g || pixel.b)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /* Shows a flat colour in the given format as the program, takes the source
  * screenshot and returns its centre pixel and the program's. */
 static void capture(enum video_format format, rgba colour, rgba *shot, rgba *program)
@@ -240,12 +270,10 @@ static void capture(enum video_format format, rgba colour, rgba *shot, rgba *pro
 	obs_set_output_source(0, obs_scene_get_source(scene));
 
 	flat_frame f(format, colour);
-	/* Keep sending frames until the program has rendered several of them. */
-	const uint64_t start = frames_seen();
-	for (int i = 0; i < 100 && frames_seen() < start + 8; i++) {
-		f.frame.timestamp = os_gettime_ns();
-		obs_source_output_video(source, &f.frame);
-		os_sleep_ms(20);
+	/* Keep sending frames until the program has painted one of them. */
+	if (!wait_for_painted_program(source, &f, frames_seen())) {
+		fail_msg("the program did not paint a %d frame within %d s (%llu raw frames seen)", (int)format,
+			 (int)(WAIT_FOR_PROGRAM_NS / 1000000000ULL), (unsigned long long)frames_seen());
 	}
 
 	bool success = false;
