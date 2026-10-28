@@ -15,7 +15,7 @@ libobs_add_host_sources(MACOS)
 foreach(target libobs-objects libobs)
   target_compile_options(
     ${target}
-    PUBLIC "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-strict-prototypes;-Wno-shorten-64-to-32>"
+    PUBLIC "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-shorten-64-to-32>"
   )
 endforeach()
 

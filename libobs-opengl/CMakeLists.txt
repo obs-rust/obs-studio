@@ -40,8 +40,6 @@ elseif(OS_WINDOWS)
   target_sources(libobs-opengl PRIVATE ${_opengl_sources})
 endif()
 
-target_compile_options(libobs-opengl PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-strict-prototypes>)
-
 target_compile_definitions(libobs-opengl PRIVATE $<$<PLATFORM_ID:Darwin>:GL_SILENCE_DEPRECATION>)
 
 target_link_libraries(
