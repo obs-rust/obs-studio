@@ -171,7 +171,7 @@ static QColor ParseColor(CFParser &cfp)
 			return res;
 		}
 
-		color = strtol(cfp->cur_token->str.array, nullptr, 16);
+		color = static_cast<uint32_t>(strtol(cfp->cur_token->str.array, nullptr, 16));
 	} else if (cf_token_is(cfp, "rgb")) {
 		int ret = cf_next_token_should_be(cfp, "(", ";", nullptr);
 		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
@@ -179,7 +179,7 @@ static QColor ParseColor(CFParser &cfp)
 		}
 
 		array = cfp->cur_token->str.array;
-		color |= strtol(array, nullptr, 10) << 16;
+		color |= static_cast<uint32_t>(strtol(array, nullptr, 10)) << 16;
 
 		ret = cf_next_token_should_be(cfp, ",", ";", nullptr);
 		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
@@ -187,7 +187,7 @@ static QColor ParseColor(CFParser &cfp)
 		}
 
 		array = cfp->cur_token->str.array;
-		color |= strtol(array, nullptr, 10) << 8;
+		color |= static_cast<uint32_t>(strtol(array, nullptr, 10)) << 8;
 
 		ret = cf_next_token_should_be(cfp, ",", ";", nullptr);
 		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
@@ -195,7 +195,7 @@ static QColor ParseColor(CFParser &cfp)
 		}
 
 		array = cfp->cur_token->str.array;
-		color |= strtol(array, nullptr, 10);
+		color |= static_cast<uint32_t>(strtol(array, nullptr, 10));
 
 		ret = cf_next_token_should_be(cfp, ")", ";", nullptr);
 		if (ret != PARSE_SUCCESS) {
@@ -757,7 +757,7 @@ static QString PrepareQSS(const QHash<QString, OBSThemeVariable> &vars, const QS
 		// but then will flat out break with decimals for others.
 		if (replace.right(2) == "px") {
 			QString replaceValue = replace.sliced(0, replace.length() - 2);
-			int val = (int)std::roundf(replaceValue.toDouble());
+			int val = static_cast<int>(std::roundf(static_cast<float>(replaceValue.toDouble())));
 
 			replace = QString::number(val) + "px";
 		}
@@ -893,7 +893,7 @@ bool OBSApp::SetTheme(const QString &name)
 	fontScale.type = OBSThemeVariable::Number;
 	fontScale.value = QVariant::fromValue(config_get_int(App()->GetUserConfig(), "Appearance", "FontScale"));
 
-	const int density = config_get_int(App()->GetUserConfig(), "Appearance", "Density");
+	const int density = static_cast<int>(config_get_int(App()->GetUserConfig(), "Appearance", "Density"));
 
 	OBSThemeVariable padding;
 	padding.name = "obsPadding";

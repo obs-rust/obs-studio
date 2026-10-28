@@ -263,7 +263,7 @@ void get_drm_cards(std::vector<drm_card_info> &cards)
 	struct drm_card_info dci;
 	char *file_str = NULL;
 	char buf[256];
-	int len = 0;
+	ssize_t len = 0;
 	uint val = 0;
 
 	std::string base_path = "/sys/class/drm/";
@@ -308,7 +308,7 @@ void get_drm_cards(std::vector<drm_card_info> &cards)
 				} else {
 					// Skip over the "0x" and convert
 					sscanf(file_str + 2, "%x", &val);
-					dci.device_id = val;
+					dci.device_id = static_cast<uint16_t>(val);
 					bfree(file_str);
 				}
 
@@ -322,7 +322,7 @@ void get_drm_cards(std::vector<drm_card_info> &cards)
 				} else {
 					// Skip over the "0x" and convert
 					sscanf(file_str + 2, "%x", &val);
-					dci.vendor_id = val;
+					dci.vendor_id = static_cast<uint16_t>(val);
 					bfree(file_str);
 				}
 
@@ -335,7 +335,7 @@ void get_drm_cards(std::vector<drm_card_info> &cards)
 				} else {
 					// Skip over the "0x" and convert
 					sscanf(file_str + 2, "%x", &val);
-					dci.subsystem_vendor = val;
+					dci.subsystem_vendor = static_cast<uint16_t>(val);
 					bfree(file_str);
 				}
 
@@ -348,7 +348,7 @@ void get_drm_cards(std::vector<drm_card_info> &cards)
 				} else {
 					// Skip over the "0x" and convert
 					sscanf(file_str + 2, "%x", &val);
-					dci.subsystem_device = val;
+					dci.subsystem_device = static_cast<uint16_t>(val);
 					bfree(file_str);
 				}
 
