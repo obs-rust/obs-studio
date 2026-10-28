@@ -154,7 +154,10 @@ static nsgif_error nsgif_frame__decode_complex(
 	nsgif_error ret = NSGIF_OK;
 	uint32_t clip_x = nsgif_frame__clip(offset_x, width, canvas->width);
 	uint32_t clip_y = nsgif_frame__clip(offset_y, height, canvas->height);
-	const uint8_t *uncompressed;
+	/* Set by lzw_decode() (through the pointer) before the first read, so
+	 * this initializer is never observed; MSVC cannot see that lzw_decode
+	 * writes it and reports C4701/C4703 at /W4. */
+	const uint8_t *uncompressed = NULL;
 	uint32_t available = 0;
 	uint8_t step = 24;
 	uint32_t skip = 0;
