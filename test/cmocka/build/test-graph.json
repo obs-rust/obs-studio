@@ -1485,6 +1485,15 @@
         ]
       }
     },
+    "test_hotkey_volume_keys": {
+      "sources": [
+        "test/cmocka/test_hotkey_volume_keys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_image_jpeg_range": {
       "sources": [
         "test/cmocka/test_image_jpeg_range.c"
@@ -5471,6 +5480,18 @@
     },
     "test_hotkey_translations": {
       "target": "test_hotkey_translations",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_hotkey_volume_keys": {
+      "target": "test_hotkey_volume_keys",
       "command": [
         "${target}"
       ],
