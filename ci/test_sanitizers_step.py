@@ -194,6 +194,20 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("astral-sh/setup-uv@", block)
         self.assertIn("save-cache: ${{ github.ref == 'refs/heads/master' }}", block)
 
+    def test_select_step_is_preceded_by_a_checkout(self):
+        # `select` is a repo module, so the job needs the working tree. Without
+        # it the nightly run died at `Failed to spawn: ci/sanitizers_step.py`
+        # (#2797); the shell block it replaced needed no checkout.
+        block = self.text.split("  matrix:", 1)[1].split("  sanitize:", 1)[0]
+        self.assertIn("uses: actions/checkout@", block)
+        self.assertLess(
+            block.index("uses: actions/checkout@"),
+            block.index("- id: pick"),
+            "jobs.matrix must check the repository out before `pick`",
+        )
+        before_pick = block.split("- id: pick", 1)[0]
+        self.assertIn("persist-credentials: false", before_pick)
+
     def test_no_gen_005_exception_left(self):
         exceptions = tomllib.loads(CI_TOML.read_text(encoding="utf-8"))["exceptions"]
         left = [e for e in exceptions if e.get("path") == WORKFLOW_PATH and e.get("rule") == "GEN-005"]
