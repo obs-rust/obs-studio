@@ -54,6 +54,27 @@ a local checkout of that repo if one exists (look under
 `~/dev/obs-rust/obs-studio2-extern/` and `~/dev/`), fetching and branching in
 it, so its caches stay warm. Clone only when no local copy exists.
 
+**Disk hygiene — your checkout is one of four warm slots.** Each of
+`~/dev/obs-rust/obs-studio{2..5}` carries a 10–30 GB `target/` and the box runs
+four workers every 15 minutes, so keep your cache warm but do not let debris
+pile up on top of it:
+
+- When you finish a task, run `soldr gc target --root "$PWD"` (report-only; it
+  lists every `target/` under your checkout with sizes). Purge the ones under
+  **experiment subdirectories** — `build_ci_audit/soldr*`,
+  `build_ci_audit/native-fp-*`, `build_ci_audit/deep-test-cache-probe-*`,
+  `build_ubuntu/corrosion/*` — with
+  `soldr gc target --root <that subdir> --purge --yes`. Those are cold one-shot
+  probes nobody rebuilds (measured 4.2 GB across the fleet on 2026-10-28).
+- Delete one-off CMake `build_*` trees you created for a diagnosis once they are
+  >24 h old and nothing is building in them (no `/proc/*/cwd` inside; no
+  `cmake`/`ninja`/`cc1` running). Always keep the newest `build_*`.
+- **Never** purge your checkout's top-level `target/`, never touch another
+  slot's caches, and never `docker system prune` — a cold rebuild of this repo
+  is a 30–60 minute tax on whichever worker runs next.
+- If your checkout exceeds ~25 GB, say so in your final message; the
+  coordinator decides whether a slot retires. Do not purge to hide it.
+
 ## 2. Choose and claim one issue
 
 1. List Ready, unclaimed candidates:
