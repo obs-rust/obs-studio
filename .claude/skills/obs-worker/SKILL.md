@@ -59,13 +59,17 @@ it, so its caches stay warm. Clone only when no local copy exists.
 four workers every 15 minutes, so keep your cache warm but do not let debris
 pile up on top of it:
 
-- When you finish a task, run `soldr gc target --root "$PWD"` (report-only; it
-  lists every `target/` under your checkout with sizes). Purge the ones under
-  **experiment subdirectories** — `build_ci_audit/soldr*`,
+- When you finish a task, run `soldr cache prune-target target --force` first: it
+  keeps the newest artifact per `(parent_dir, prefix)` bucket and deletes
+  superseded build output — **76 GB across the fleet's 27 targets in ~15 s on
+  2026-10-28** (`~/dev` targets 118 → 42 GB) with no rebuild of live work. Dry-run
+  is the default. It also works when an old empty `.cargo-lock` is present, which
+  is why it beats `trim-target` (that one refuses on lock *presence*, so stale
+  locks left by finished builds block it forever).
+- Then run `soldr gc target --root "$PWD"` (report) and purge cold experiment
+  targets with `--purge --yes` on that scoped root — `build_ci_audit/soldr*`,
   `build_ci_audit/native-fp-*`, `build_ci_audit/deep-test-cache-probe-*`,
-  `build_ubuntu/corrosion/*` — with
-  `soldr gc target --root <that subdir> --purge --yes`. Those are cold one-shot
-  probes nobody rebuilds (measured 4.2 GB across the fleet on 2026-10-28).
+  `build_ubuntu/corrosion/*` (4.2 GB on 2026-10-28); nobody rebuilds those.
 - Delete one-off CMake `build_*` trees you created for a diagnosis once they are
   >24 h old and nothing is building in them (no `/proc/*/cwd` inside; no
   `cmake`/`ninja`/`cc1` running). Always keep the newest `build_*`.
