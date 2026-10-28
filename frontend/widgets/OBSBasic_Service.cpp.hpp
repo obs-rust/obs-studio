@@ -31,20 +31,20 @@ void OBSBasic::SaveService()
 
 	const std::filesystem::path jsonFilePath = currentProfile.path / std::filesystem::u8path(OBSServiceFileName);
 
-	OBSDataAutoRelease data = obs_data_create();
+	OBSDataAutoRelease serviceData = obs_data_create();
 	OBSDataAutoRelease settings = obs_service_get_settings(service);
 
-	obs_data_set_string(data, "type", obs_service_get_type(service));
-	obs_data_set_obj(data, "settings", settings);
+	obs_data_set_string(serviceData, "type", obs_service_get_type(service));
+	obs_data_set_obj(serviceData, "settings", settings);
 
-	if (!obs_data_save_json_safe(data, jsonFilePath.u8string().c_str(), "tmp", "bak")) {
+	if (!obs_data_save_json_safe(serviceData, jsonFilePath.u8string().c_str(), "tmp", "bak")) {
 		blog(LOG_WARNING, "Failed to save service");
 	}
 }
 
 bool OBSBasic::LoadService()
 {
-	OBSDataAutoRelease data;
+	OBSDataAutoRelease serviceData;
 
 	try {
 		const OBSProfile &currentProfile = GetCurrentProfile();
@@ -52,9 +52,9 @@ bool OBSBasic::LoadService()
 		const std::filesystem::path jsonFilePath =
 			currentProfile.path / std::filesystem::u8path(OBSServiceFileName);
 
-		data = obs_data_create_from_json_file_safe(jsonFilePath.u8string().c_str(), "bak");
+		serviceData = obs_data_create_from_json_file_safe(jsonFilePath.u8string().c_str(), "bak");
 
-		if (!data) {
+		if (!serviceData) {
 			return false;
 		}
 	} catch (const std::invalid_argument &error) {
@@ -63,11 +63,11 @@ bool OBSBasic::LoadService()
 	}
 
 	const char *type;
-	obs_data_set_default_string(data, "type", "rtmp_common");
-	type = obs_data_get_string(data, "type");
+	obs_data_set_default_string(serviceData, "type", "rtmp_common");
+	type = obs_data_get_string(serviceData, "type");
 
-	OBSDataAutoRelease settings = obs_data_get_obj(data, "settings");
-	OBSDataAutoRelease hotkey_data = obs_data_get_obj(data, "hotkeys");
+	OBSDataAutoRelease settings = obs_data_get_obj(serviceData, "settings");
+	OBSDataAutoRelease hotkey_data = obs_data_get_obj(serviceData, "hotkeys");
 
 	service = obs_service_create(type, "default_service", settings, hotkey_data);
 	obs_service_release(service);

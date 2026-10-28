@@ -418,10 +418,11 @@ void OBSBasic::StreamActionTriggered()
 			return;
 		}
 
-		Auth *auth = GetAuth();
+		Auth *currentAuth = GetAuth();
 
-		auto action = (auth && auth->external()) ? StreamSettingsAction::ContinueStream
-							 : UIValidation::StreamSettingsConfirmation(this, service);
+		auto action = (currentAuth && currentAuth->external())
+				      ? StreamSettingsAction::ContinueStream
+				      : UIValidation::StreamSettingsConfirmation(this, service);
 		switch (action) {
 		case StreamSettingsAction::ContinueStream:
 			break;
@@ -440,7 +441,7 @@ void OBSBasic::StreamActionTriggered()
 			OBSDataAutoRelease settings = obs_service_get_settings(service);
 			bwtest = obs_data_get_bool(settings, "bwtest");
 			// Disable confirmation if this is going to open broadcast setup
-			if (auth && auth->broadcastFlow() && !broadcastReady && !broadcastActive) {
+			if (currentAuth && currentAuth->broadcastFlow() && !broadcastReady && !broadcastActive) {
 				confirm = false;
 			}
 		}

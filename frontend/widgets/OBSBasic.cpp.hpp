@@ -775,22 +775,22 @@ void OBSBasic::InitOBSCallbacks()
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_device_busy", OBSBasic::SourceDeviceBusy, this);
 	signalHandlers.emplace_back(
 		obs_get_signal_handler(), "hotkey_background_status_changed",
-		[](void *data, calldata_t *) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data),
+		[](void *handler_data, calldata_t *) {
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data),
 						  &OBSBasic::NotifyHotkeyBackgroundStatus, Qt::QueuedConnection);
 		},
 		this);
 	signalHandlers.emplace_back(
 		obs_get_signal_handler(), "source_filter_add",
-		[](void *data, calldata_t *) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::UpdateEditMenu,
+		[](void *handler_data, calldata_t *) {
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data), &OBSBasic::UpdateEditMenu,
 						  Qt::QueuedConnection);
 		},
 		this);
 	signalHandlers.emplace_back(
 		obs_get_signal_handler(), "source_filter_remove",
-		[](void *data, calldata_t *) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::UpdateEditMenu,
+		[](void *handler_data, calldata_t *) {
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data), &OBSBasic::UpdateEditMenu,
 						  Qt::QueuedConnection);
 		},
 		this);

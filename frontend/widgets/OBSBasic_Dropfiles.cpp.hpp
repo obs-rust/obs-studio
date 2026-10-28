@@ -100,7 +100,7 @@ void OBSBasic::AddDropURL(QUrl url, QString &name, obs_data_t *settings, const o
 	obs_data_set_string(settings, "url", QT_TO_UTF8(url.url()));
 }
 
-void OBSBasic::AddDropSource(const char *data, DropType image)
+void OBSBasic::AddDropSource(const char *droppedValue, DropType image)
 {
 	OBSBasic *main = OBSBasic::Get();
 	OBSDataAutoRelease settings = obs_data_create();
@@ -112,33 +112,33 @@ void OBSBasic::AddDropSource(const char *data, DropType image)
 
 	switch (image) {
 	case DropType_RawText:
-		obs_data_set_string(settings, "text", data);
+		obs_data_set_string(settings, "text", droppedValue);
 		type = GetPlatformTextSourceId();
 		break;
 	case DropType_Text:
-		SetPlatformTextFileSettings(settings, data, name);
+		SetPlatformTextFileSettings(settings, droppedValue, name);
 		type = GetPlatformTextSourceId();
 		break;
 	case DropType_Image:
-		obs_data_set_string(settings, "file", data);
-		name = QUrl::fromLocalFile(QString(data)).fileName();
+		obs_data_set_string(settings, "file", droppedValue);
+		name = QUrl::fromLocalFile(QString(droppedValue)).fileName();
 		type = "image_source";
 		break;
 	case DropType_Media:
-		obs_data_set_string(settings, "local_file", data);
-		name = QUrl::fromLocalFile(QString(data)).fileName();
+		obs_data_set_string(settings, "local_file", droppedValue);
+		name = QUrl::fromLocalFile(QString(droppedValue)).fileName();
 		type = "ffmpeg_source";
 		break;
 	case DropType_Html:
 		obs_data_set_bool(settings, "is_local_file", true);
-		obs_data_set_string(settings, "local_file", data);
+		obs_data_set_string(settings, "local_file", droppedValue);
 		obs_data_set_int(settings, "width", ovi.base_width);
 		obs_data_set_int(settings, "height", ovi.base_height);
-		name = QUrl::fromLocalFile(QString(data)).fileName();
+		name = QUrl::fromLocalFile(QString(droppedValue)).fileName();
 		type = "browser_source";
 		break;
 	case DropType_Url:
-		AddDropURL(QUrl(data), name, settings, ovi);
+		AddDropURL(QUrl(droppedValue), name, settings, ovi);
 		type = "browser_source";
 		break;
 	}
@@ -167,11 +167,11 @@ void OBSBasic::AddDropSource(const char *data, DropType image)
 			OBSSourceAutoRelease scene = obs_get_source_by_uuid(sceneUUID.c_str());
 			OBSBasic::Get()->SetCurrentScene(scene.Get(), true);
 		};
-		auto redo = [sceneUUID, sourceName, type](const std::string &data) {
+		auto redo = [sceneUUID, sourceName, type](const std::string &jsonText) {
 			OBSSourceAutoRelease scene = obs_get_source_by_uuid(sceneUUID.c_str());
 			OBSBasic::Get()->SetCurrentScene(scene.Get(), true);
 
-			OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+			OBSDataAutoRelease dat = obs_data_create_from_json(jsonText.c_str());
 			OBSSourceAutoRelease source = obs_load_source(dat);
 			obs_scene_add(obs_scene_from_source(scene), source.Get());
 		};

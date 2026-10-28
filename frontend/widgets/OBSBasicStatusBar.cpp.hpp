@@ -255,12 +255,12 @@ void OBSBasicStatusBar::UpdateStreamTime()
 {
 	totalStreamSeconds++;
 
-	int seconds = totalStreamSeconds % 60;
+	int secondsPart = totalStreamSeconds % 60;
 	int totalMinutes = totalStreamSeconds / 60;
 	int minutes = totalMinutes % 60;
 	int hours = totalMinutes / 60;
 
-	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, seconds);
+	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, secondsPart);
 	statusWidget->ui->streamTime->setText(text);
 	if (streamOutput && !statusWidget->ui->streamTime->isEnabled()) {
 		statusWidget->ui->streamTime->setDisabled(false);
@@ -315,12 +315,12 @@ void OBSBasicStatusBar::UpdateRecordTime()
 
 void OBSBasicStatusBar::UpdateRecordTimeLabel()
 {
-	int seconds = totalRecordSeconds % 60;
+	int secondsPart = totalRecordSeconds % 60;
 	int totalMinutes = totalRecordSeconds / 60;
 	int minutes = totalMinutes % 60;
 	int hours = totalMinutes / 60;
 
-	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, seconds);
+	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, secondsPart);
 	if (os_atomic_load_bool(&recording_paused)) {
 		text += QStringLiteral(" (PAUSED)");
 	}
@@ -415,7 +415,7 @@ void OBSBasicStatusBar::OBSOutputReconnectSuccess(void *data, calldata_t *)
 	QMetaObject::invokeMethod(statusBar, &OBSBasicStatusBar::ReconnectSuccess);
 }
 
-void OBSBasicStatusBar::Reconnect(int seconds)
+void OBSBasicStatusBar::Reconnect(int timeoutSeconds)
 {
 	OBSBasic *main = qobject_cast<OBSBasic *>(parent());
 
@@ -423,7 +423,7 @@ void OBSBasicStatusBar::Reconnect(int seconds)
 		main->SysTrayNotify(QTStr("Basic.SystemTray.Message.Reconnecting"), QSystemTrayIcon::Warning);
 	}
 
-	reconnectTimeout = seconds;
+	reconnectTimeout = timeoutSeconds;
 
 	if (streamOutput) {
 		OBSOutput output = OBSGetStrongRef(streamOutput);

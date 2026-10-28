@@ -208,8 +208,8 @@ void OBSBasic::UpdateContextBar(bool force)
 				if (toolbar->GetSource() == source) {
 					updateNeeded = false;
 				}
-			} else if (MediaControls *toolbar = dynamic_cast<MediaControls *>(la->widget())) {
-				if (toolbar->GetSource() == source) {
+			} else if (MediaControls *mediaControls = dynamic_cast<MediaControls *>(la->widget())) {
+				if (mediaControls->GetSource() == source) {
 					updateNeeded = false;
 				}
 			}

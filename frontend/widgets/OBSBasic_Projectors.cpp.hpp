@@ -68,15 +68,15 @@ void OBSBasic::LoadSavedProjectors(obs_data_array_t *array)
 	size_t num = obs_data_array_count(array);
 
 	for (size_t i = 0; i < num; i++) {
-		OBSDataAutoRelease data = obs_data_array_item(array, i);
+		OBSDataAutoRelease projectorData = obs_data_array_item(array, i);
 		SavedProjectorInfo info = {};
 
-		info.monitor = obs_data_get_int(data, "monitor");
-		info.type = static_cast<ProjectorType>(obs_data_get_int(data, "type"));
-		info.geometry = std::string(obs_data_get_string(data, "geometry"));
-		info.name = std::string(obs_data_get_string(data, "name"));
-		info.alwaysOnTop = obs_data_get_bool(data, "alwaysOnTop");
-		info.alwaysOnTopOverridden = obs_data_get_bool(data, "alwaysOnTopOverridden");
+		info.monitor = obs_data_get_int(projectorData, "monitor");
+		info.type = static_cast<ProjectorType>(obs_data_get_int(projectorData, "type"));
+		info.geometry = std::string(obs_data_get_string(projectorData, "geometry"));
+		info.name = std::string(obs_data_get_string(projectorData, "name"));
+		info.alwaysOnTop = obs_data_get_bool(projectorData, "alwaysOnTop");
+		info.alwaysOnTopOverridden = obs_data_get_bool(projectorData, "alwaysOnTopOverridden");
 
 		OpenSavedProjector(&info);
 	}

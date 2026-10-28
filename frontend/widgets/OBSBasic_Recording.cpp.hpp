@@ -95,11 +95,11 @@ void OBSBasic::AutoRemux(QString input, bool no_show)
 		output += "mp4";
 	}
 
-	OBSRemux *remux = new OBSRemux(QT_TO_UTF8(path), this, true);
+	OBSRemux *remuxDialog = new OBSRemux(QT_TO_UTF8(path), this, true);
 	if (!no_show) {
-		remux->show();
+		remuxDialog->show();
 	}
-	remux->AutoRemux(input, output);
+	remuxDialog->AutoRemux(input, output);
 }
 
 void OBSBasic::StartRecording()

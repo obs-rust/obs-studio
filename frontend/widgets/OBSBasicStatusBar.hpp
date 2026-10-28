@@ -89,7 +89,7 @@ public slots:
 	void showMessage(const QString &message, int timeout = 0);
 
 private slots:
-	void Reconnect(int seconds);
+	void Reconnect(int timeoutSeconds);
 	void ReconnectSuccess();
 	void UpdateStatusBar();
 	void UpdateCurrentFPS();

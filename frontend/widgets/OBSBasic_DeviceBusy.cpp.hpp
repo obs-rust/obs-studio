@@ -67,22 +67,22 @@ void OBSBasic::ShowDeviceBusy(OBSWeakSource weak, QString device, QString holder
 		(canForce ? QTStr("Basic.DeviceBusy.ForceExplain").arg(holder) : QTStr("Basic.DeviceBusy.Wait"));
 	source = nullptr;
 
-	QMessageBox box(this);
-	box.setIcon(QMessageBox::Warning);
-	box.setWindowTitle(QTStr("Basic.DeviceBusy.Title"));
-	box.setText(text);
-	QPushButton *force = canForce ? box.addButton(QTStr("Basic.DeviceBusy.Force"), QMessageBox::AcceptRole)
+	QMessageBox messageBox(this);
+	messageBox.setIcon(QMessageBox::Warning);
+	messageBox.setWindowTitle(QTStr("Basic.DeviceBusy.Title"));
+	messageBox.setText(text);
+	QPushButton *force = canForce ? messageBox.addButton(QTStr("Basic.DeviceBusy.Force"), QMessageBox::AcceptRole)
 				      : nullptr;
-	box.addButton(canForce ? QMessageBox::Cancel : QMessageBox::Ok);
+	messageBox.addButton(canForce ? QMessageBox::Cancel : QMessageBox::Ok);
 	if (force) {
-		box.setDefaultButton(force);
+		messageBox.setDefaultButton(force);
 	}
 
 	busyDevicePopups.insert(device);
-	box.exec();
+	messageBox.exec();
 	busyDevicePopups.remove(device);
 
-	if (!force || box.clickedButton() != force) {
+	if (!force || messageBox.clickedButton() != force) {
 		return;
 	}
 
