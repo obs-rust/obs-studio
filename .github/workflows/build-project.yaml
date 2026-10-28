@@ -2233,6 +2233,7 @@ jobs:
         timeout-minutes: 15
         env:
           QT_TAG: qt6-6.11.1
+        shell: bash
         run: |
           : Check Published Qt SDK 🧩
           if [[ "${RUNNER_OS}" == Windows ]]; then
