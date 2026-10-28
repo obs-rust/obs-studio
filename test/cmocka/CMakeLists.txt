@@ -67,6 +67,30 @@ add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-strict-
 # tests (obs-rust/obs-studio#516, #2842). The macOS CI preset builds with
 # CMAKE_COMPILE_WARNING_AS_ERROR, so without this the lane does not compile.
 add_compile_options($<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-comma>)
+# The MSVC /W4 set (obs-rust/obs-studio#2626) needs the same split, and for the
+# same reason: these are existing C tests, never edited to satisfy a new
+# warning (obs-rust/obs-studio#516), and several of them compile libobs /
+# libobs-rust sources into their own executable, so the classes the /W4 level
+# adds are reported against them rather than against product code.
+#   C4132  a const struct the test fills in field by field
+#   C4201  the nameless unions in libobs/graphics/vec{2,3,4}.h and
+#          libobs/util/profiler.h (an API change, not a test bug)
+#   C4244/C4245  uint32 -> uint16 and int -> SOCKET in their fixtures, and the
+#          librtmp sources some of them compile
+#   C4310  constant truncation in their tables
+#   C4456/C4459  a test helper or local shadowing an outer local/global
+#   C4702  the non-returning uthash_fatal path at the end of every HASH_* block
+#          (the reason libobs-objects carries /wd4702 as well)
+add_compile_options(
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4132>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4201>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4245>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4310>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4456>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4459>
+  $<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4702>
+)
 
 # Per-test sanitizers (obs-rust/obs-studio#159). Some tests compile the code
 # they check with ASan/UBSan so a bug fails the test. Those flags are added
