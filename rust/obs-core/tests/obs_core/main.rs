@@ -1,6 +1,7 @@
 //! obs-core integration tests, one module per extracted C file. A module of
 //! the core category binary (obs-tests-core), not a binary of its own.
 
+mod alloc_count;
 mod audio_discard;
 mod audio_discard_parity;
 mod audio_min_ts;
@@ -46,4 +47,5 @@ mod video_plan_parity;
 mod view;
 mod view_parity;
 mod win_crash_report;
+mod win_crash_report_alloc;
 mod win_crash_report_parity;
