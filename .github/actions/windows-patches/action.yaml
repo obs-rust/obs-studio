@@ -25,6 +25,16 @@ inputs:
 runs:
   using: composite
   steps:
+    # Every step below is one Python call, so the toolchain has to exist before
+    # the first one (#962, GEN-005).
+    - name: Set Up uv 🐍
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        save-cache: ${{ github.ref == 'refs/heads/master' }}
+        # A PR save carries a delimited pr-<N> key so the janitor can delete it
+        # when the PR closes (CACHE-013, #962).
+        cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         path: "repo"
@@ -32,55 +42,30 @@ runs:
         ref: ${{ inputs.tagName }}
 
     - name: Download Release Artifact
-      shell: pwsh
+      shell: bash
       env:
         GH_TOKEN: ${{ inputs.workflowSecret }}
-      run: |
-        # Download OBS release
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        Invoke-External gh release download "${{ inputs.tagName }}" -p "OBS-Studio-${{ inputs.tagName }}-Windows-${{ inputs.architecture }}.zip"
-        Invoke-External gh attestation verify "OBS-Studio-${{ inputs.tagName }}-Windows-${{ inputs.architecture }}.zip" --owner obsproject
-        Expand-Archive -Path "OBS-Studio-${{ inputs.tagName }}-Windows-${{ inputs.architecture }}.zip" -DestinationPath "${{ github.workspace }}/build"
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py download --tag "${{ inputs.tagName }}" --architecture "${{ inputs.architecture }}"
 
     - name: Setup bouf
-      shell: pwsh
+      shell: bash
       env:
         BOUF_TAG: 'v0.6.5'
         BOUF_HASH: '2e16d5116415579b5dd8cd68b3fe6edaa7513938427567121942f592292605d5'
         BOUF_NSIS_HASH: 'e323043627cfeebd237d306afc001c8c36a3c37f6ecef2b349a19a3209ae3450'
         GH_TOKEN: ${{ github.token }}
-      run: |
-        # Download bouf release
-        . ${env:GITHUB_ACTION_PATH}\Ensure-Location.ps1
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        Ensure-Location bouf
-        $windows_zip = "bouf-windows-${env:BOUF_TAG}.zip"
-        $nsis_zip = "bouf-nsis-${env:BOUF_TAG}.zip"
-        Invoke-External gh release download "${env:BOUF_TAG}" -R "obsproject/bouf" -p $windows_zip -p $nsis_zip
-        
-        if ((Get-FileHash $windows_zip -Algorithm SHA256).Hash -ne "${env:BOUF_HASH}") {
-          throw "bouf hash does not match."
-        }
-        if ((Get-FileHash $nsis_zip -Algorithm SHA256).Hash -ne "${env:BOUF_NSIS_HASH}") {
-          throw "NSIS package hash does not match."
-        }
-        
-        Expand-Archive -Path $windows_zip -DestinationPath bin
-        Expand-Archive -Path $nsis_zip -DestinationPath nsis
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py setup-bouf
 
     - name: Install NSIS
-      shell: pwsh
-      run: |
-        # Install NSIS
-        winget install --silent --accept-package-agreements --accept-source-agreements --disable-interactivity -e --id NSIS.NSIS
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py install-nsis
 
     - name: Install rclone and pandoc
-      shell: pwsh
-      run: |
-        choco install rclone pandoc -y --no-progress
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py install-tools
 
     - name: Download Previous Builds
-      shell: pwsh
+      shell: bash
       env:
         RCLONE_TRANSFERS: '100'
         RCLONE_FAST_LIST: 'true'
@@ -89,34 +74,15 @@ runs:
         RCLONE_S3_ACCESS_KEY_ID: '${{ inputs.gcsAccessKeyId }}'
         RCLONE_S3_SECRET_ACCESS_KEY: '${{ inputs.gcsAccessKeySecret }}'
         RCLONE_S3_ENDPOINT: 'https://storage.googleapis.com'
-      run: |
-        rclone -q copy ":s3:obs-builds/${{ inputs.architecture }}" "${{ github.workspace }}/old_builds"
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py download-previous --architecture "${{ inputs.architecture }}"
 
     - name: Prepare Release Notes
-      shell: pwsh
-      run: |
-        # Release notes are just the tag body on Windows
-        Set-Location repo
-        git tag -l --format='%(contents:subject)' ${{ inputs.tagName }} > "${{ github.workspace }}/notes.rst"
-        Write-Output "###################################################" >> "${{ github.workspace }}/notes.rst"
-        Write-Output "" >> "${{ github.workspace }}/notes.rst"
-        git tag -l --format='%(contents:body)' ${{ inputs.tagName }} >> "${{ github.workspace }}/notes.rst"
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py prepare-notes --tag "${{ inputs.tagName }}"
 
     - name: Run bouf
-      shell: pwsh
-      run: |
-        . ${env:GITHUB_ACTION_PATH}\Invoke-External.ps1
-        $boufArgs = @(
-           "--config",     "${env:GITHUB_ACTION_PATH}/config.toml",
-           "--version",    "${{ inputs.tagName }}"
-           "--branch",     "${{ inputs.channel }}"
-           "--notes-file", "${{ github.workspace }}/notes.rst"
-           "-i",           "${{ github.workspace }}/build"
-           "-p",           "${{ github.workspace }}/old_builds"
-           "-o",           "${{ github.workspace }}/output"
-           "--updater-data-only"
-        )
-        Invoke-External "${{ github.workspace }}\bouf\bin\bouf.exe" @boufArgs
+      shell: bash
+      run: uv run --no-project --script ${{ github.workspace }}/ci/windows_patches.py run-bouf --tag "${{ inputs.tagName }}" --channel "${{ inputs.channel }}"
 
     - name: Upload Outputs
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
