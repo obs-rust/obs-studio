@@ -1661,6 +1661,32 @@
         "test/cmocka"
       ]
     },
+    "test_module_load_steps": {
+      "sources": [
+        "test/cmocka/test_module_load_steps.c",
+        "libobs/obs-module-load-rules.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-load-rules.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_module_type_rules_steps": {
       "sources": [
         "test/cmocka/test_module_type_rules_steps.c",
@@ -5670,6 +5696,20 @@
       "target": "test_missing_source_types",
       "command": [
         "${target}"
+      ]
+    },
+    "test_module_load_steps": {
+      "target": "test_module_load_steps",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_module_type_rules_steps": {
