@@ -163,8 +163,8 @@ static int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint3
 	return 0;
 }
 
-static void shuffle_8ch(uint8_t *dst, const uint8_t *src, size_t szb, int ch1, int ch2, int ch3, int ch4, int ch5, int ch6,
-		 int ch7, int ch8)
+static void shuffle_8ch(uint8_t *dst, const uint8_t *src, size_t szb, int ch1, int ch2, int ch3, int ch4, int ch5,
+			int ch6, int ch7, int ch8)
 {
 	/* shuffle 8 channels of audio */
 	for (size_t i = 0; i < szb; i++) {
