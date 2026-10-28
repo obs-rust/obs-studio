@@ -542,7 +542,7 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 	enc->packet_data = AMFBufferPtr(data);
 	data->GetProperty(L"PTS", &packet->pts);
 
-	const wchar_t *get_output_type;
+	const wchar_t *get_output_type = NULL;
 	switch (enc->codec) {
 	case amf_codec_type::AVC:
 		get_output_type = AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE;

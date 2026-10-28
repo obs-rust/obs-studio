@@ -5,7 +5,7 @@
 static void fatal_sock_shutdown(struct rtmp_stream *stream)
 {
 	closesocket(stream->rtmp.m_sb.sb_socket);
-	stream->rtmp.m_sb.sb_socket = -1;
+	stream->rtmp.m_sb.sb_socket = INVALID_SOCKET;
 	stream->write_buf_len = 0;
 	os_event_signal(stream->buffer_space_available_event);
 }
@@ -107,7 +107,7 @@ static bool socket_event(struct rtmp_stream *stream, bool *can_write, uint64_t l
 	return true;
 }
 
-static void ideal_send_backlog_event(struct rtmp_stream *stream, bool *can_write)
+static void ideal_send_backlog_event(struct rtmp_stream *stream)
 {
 	ULONG ideal_send_backlog;
 	int ret;
@@ -304,7 +304,7 @@ static inline void socket_thread_windows_internal(struct rtmp_stream *stream)
 
 		} else if (status == WAIT_OBJECT_0 + 2) {
 			/* Ideal send backlog event */
-			ideal_send_backlog_event(stream, &can_write);
+			ideal_send_backlog_event(stream);
 
 			ResetEvent(send_backlog_event);
 			idealsendbacklognotify(stream->rtmp.m_sb.sb_socket, &send_backlog_overlapped, NULL);

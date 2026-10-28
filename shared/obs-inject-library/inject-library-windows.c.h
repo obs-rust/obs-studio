@@ -14,7 +14,7 @@ int inject_library_obf(HANDLE process, const wchar_t *dll, const char *create_re
 	int ret = INJECT_ERROR_UNLIKELY_FAIL;
 	DWORD last_error = 0;
 	bool success = false;
-	size_t written_size;
+	SIZE_T written_size;
 	DWORD thread_id;
 	HANDLE thread = NULL;
 	size_t size;
