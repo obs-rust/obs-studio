@@ -324,7 +324,7 @@ static bool process_metrics(obs_output_t *output, struct encoder_packet *out, st
 	struct encoder_packet backup = *out;
 	sei_t sei;
 	uint8_t *data = NULL;
-	size_t size;
+	size_t size = 0;
 	long ref = 1;
 	bool avc = false;
 	bool hevc = false;

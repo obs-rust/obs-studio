@@ -416,7 +416,7 @@ void mp_media_next_audio(mp_media_t *m)
 		audio.data[i] = f->data[i];
 
 	audio.samples_per_sec = f->sample_rate * m->speed / 100;
-	audio.speakers = convert_speaker_layout(f->ch_layout.nb_channels);
+	audio.speakers = convert_speaker_layout((uint8_t)f->ch_layout.nb_channels);
 	audio.format = convert_sample_format(f->format);
 	audio.frames = f->nb_samples;
 	audio.timestamp = m->full_decode ? d->frame_pts

@@ -138,7 +138,7 @@ static uint16_t get_max_luminance(const AVStream *stream)
 		}
 	}
 
-	return max_luminance;
+	return (uint16_t)max_luminance;
 }
 
 bool mp_decode_init(mp_media_t *m, enum AVMediaType type, bool hw)

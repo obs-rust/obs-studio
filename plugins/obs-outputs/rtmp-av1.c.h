@@ -250,18 +250,18 @@ static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContex
 	if (seq_params->profile == FF_PROFILE_AV1_PROFESSIONAL && high_bitdepth)
 		twelve_bit = av1_get_bits(gb, 1);
 
-	seq_params->bitdepth = 8 + (high_bitdepth * 2) + (twelve_bit * 2);
+	seq_params->bitdepth = (uint8_t)(8 + (high_bitdepth * 2) + (twelve_bit * 2));
 
 	if (seq_params->profile == FF_PROFILE_AV1_HIGH)
 		seq_params->monochrome = 0;
 	else
-		seq_params->monochrome = av1_get_bits(gb, 1);
+		seq_params->monochrome = (uint8_t)av1_get_bits(gb, 1);
 
-	seq_params->color_description_present_flag = av1_get_bits(gb, 1);
+	seq_params->color_description_present_flag = (uint8_t)av1_get_bits(gb, 1);
 	if (seq_params->color_description_present_flag) {
-		seq_params->color_primaries = av1_get_bits(gb, 8);
-		seq_params->transfer_characteristics = av1_get_bits(gb, 8);
-		seq_params->matrix_coefficients = av1_get_bits(gb, 8);
+		seq_params->color_primaries = (uint8_t)av1_get_bits(gb, 8);
+		seq_params->transfer_characteristics = (uint8_t)av1_get_bits(gb, 8);
+		seq_params->matrix_coefficients = (uint8_t)av1_get_bits(gb, 8);
 	} else {
 		seq_params->color_primaries = 2;
 		seq_params->transfer_characteristics = 2;
@@ -269,7 +269,7 @@ static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContex
 	}
 
 	if (seq_params->monochrome) {
-		seq_params->color_range = av1_get_bits(gb, 1);
+		seq_params->color_range = (uint8_t)av1_get_bits(gb, 1);
 		seq_params->chroma_subsampling_x = 1;
 		seq_params->chroma_subsampling_y = 1;
 		seq_params->chroma_sample_position = 0;
@@ -279,7 +279,7 @@ static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContex
 		seq_params->chroma_subsampling_x = 0;
 		seq_params->chroma_subsampling_y = 0;
 	} else {
-		seq_params->color_range = av1_get_bits(gb, 1);
+		seq_params->color_range = (uint8_t)av1_get_bits(gb, 1);
 
 		if (seq_params->profile == FF_PROFILE_AV1_MAIN) {
 			seq_params->chroma_subsampling_x = 1;
@@ -289,9 +289,9 @@ static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContex
 			seq_params->chroma_subsampling_y = 0;
 		} else {
 			if (twelve_bit) {
-				seq_params->chroma_subsampling_x = av1_get_bits(gb, 1);
+				seq_params->chroma_subsampling_x = (uint8_t)av1_get_bits(gb, 1);
 				if (seq_params->chroma_subsampling_x)
-					seq_params->chroma_subsampling_y = av1_get_bits(gb, 1);
+					seq_params->chroma_subsampling_y = (uint8_t)av1_get_bits(gb, 1);
 				else
 					seq_params->chroma_subsampling_y = 0;
 			} else {
@@ -300,7 +300,7 @@ static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContex
 			}
 		}
 		if (seq_params->chroma_subsampling_x && seq_params->chroma_subsampling_y)
-			seq_params->chroma_sample_position = av1_get_bits(gb, 2);
+			seq_params->chroma_sample_position = (uint8_t)av1_get_bits(gb, 2);
 	}
 
 	skip_bits(gb, 1); // separate_uv_delta_q
@@ -325,13 +325,13 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 
 	memset(seq_params, 0, sizeof(*seq_params));
 
-	seq_params->profile = av1_get_bits(&gb, 3);
+	seq_params->profile = (uint8_t)av1_get_bits(&gb, 3);
 
 	skip_bits(&gb, 1); // still_picture
 	reduced_still_picture_header = av1_get_bits(&gb, 1);
 
 	if (reduced_still_picture_header) {
-		seq_params->level = av1_get_bits(&gb, 5);
+		seq_params->level = (uint8_t)av1_get_bits(&gb, 5);
 		seq_params->tier = 0;
 	} else {
 		int initial_display_delay_present_flag, operating_points_cnt_minus_1;
@@ -381,8 +381,8 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 			}
 
 			if (i == 0) {
-				seq_params->level = seq_level_idx;
-				seq_params->tier = seq_tier;
+				seq_params->level = (uint8_t)seq_level_idx;
+				seq_params->tier = (uint8_t)seq_tier;
 			}
 		}
 	}

@@ -80,7 +80,7 @@ void *load_cube_file(const char *const path, uint32_t *const width, struct vec3 
 
 	FILE *const file = os_fopen(path, "rb");
 	if (file) {
-		float red, green, blue;
+		float red = 0.0f, green = 0.0f, blue = 0.0f;
 		unsigned width_1d = 0;
 		unsigned width_3d = 0;
 
