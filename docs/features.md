@@ -2130,6 +2130,11 @@ area.
   [#404](https://github.com/obs-rust/obs-studio/issues/404),
   [#749](https://github.com/obs-rust/obs-studio/issues/749), PR
   [#750](https://github.com/obs-rust/obs-studio/pull/750).
+- A caller that retries obs_load_core_modules() after a failed load no longer
+  gets every core module that did load opened a second time: already loaded
+  core modules are skipped, so their types are registered once. *All*,
+  2026-10-28. Issue
+  [#2730](https://github.com/obs-rust/obs-studio/issues/2730).
 - OBS no longer crashes when a stream or recording starts, or obs-websocket
   lists outputs, after a resolution change. *All*, 2026-10-16. Issue
   [#1108](https://github.com/obs-rust/obs-studio/issues/1108), PR

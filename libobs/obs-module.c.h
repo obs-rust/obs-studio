@@ -144,14 +144,21 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 	}
 
 	errorcode = load_module_exports(&mod, path);
-	if (errorcode != MODULE_SUCCESS)
+	if (errorcode != MODULE_SUCCESS) {
+		/* Left loaded on purpose, as free_module() leaves a module's
+		 * library loaded: dlclose() would run the destructors of a library
+		 * whose constructors may have registered something. */
 		return errorcode;
+	}
 
 	/* Reject plugins compiled with a newer libobs. Patch version (lower 16-bit) is ignored. */
 	uint32_t ver = mod.ver ? mod.ver() & 0xFFFF0000 : 0;
 	if (ver > LIBOBS_API_VER) {
 		blog(LOG_WARNING, "Module '%s' compiled with newer libobs %d.%d", path, (ver >> 24) & 0xFF,
 		     (ver >> 16) & 0xFF);
+		/* The library is left loaded on purpose, as free_module() does for
+		 * a module it frees: dlclose() would run the destructors of a
+		 * library whose constructors may have registered something. */
 		return MODULE_INCOMPATIBLE_VER;
 	}
 
@@ -464,7 +471,16 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	}
 
 	obs_module_t *existing_module = obs_get_module(info->name);
-	if (info->type != OBS_MODULE_TYPE_CORE && existing_module != NULL) {
+	if (existing_module != NULL) {
+		if (info->type == OBS_MODULE_TYPE_CORE) {
+			/* obs_load_core_modules() caches only success, so a caller that
+			 * retries after a failure walks the core module list again. A
+			 * core module that did load must not be opened, and its
+			 * obs_module_load() run, a second time. */
+			blog(LOG_DEBUG, "Skipping core module '%s' at '%s', already loaded", info->name,
+			     info->bin_path);
+			return;
+		}
 		if (info->type == OBS_MODULE_TYPE_LEGACY_PLUGIN) {
 			blog(LOG_WARNING, "Skipping legacy plugin '%s' at '%s', already loaded from '%s'", info->name,
 			     info->bin_path, existing_module->bin_path);
