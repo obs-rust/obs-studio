@@ -2577,7 +2577,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
-          sparse-checkout: rust/tools/linux-validate
+          # The save step below calls the local CACHE-001 wrapper, and a sparse
+          # checkout rewrites the worktree to the cone: without it here the step
+          # dies with "Can't find 'action.yml' ... under .github/actions/cache"
+          # (#2764).
+          sparse-checkout: |
+            rust/tools/linux-validate
+            .github/actions/cache
       # `merge_costs.py` is a PEP 723 uv script (`uv run --script`), and this
       # job has no other step that installs uv: without this the master-only
       # step fails with `uv: command not found` (exit 127) and takes the whole
