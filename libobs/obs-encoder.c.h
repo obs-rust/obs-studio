@@ -193,6 +193,9 @@ _Static_assert(OBS_ENCODER_BIND_TYPE_AUDIO == OBS_ENCODER_AUDIO, "OBS_ENCODER_AU
 _Static_assert(OBS_ENCODER_LIFECYCLE_CAP_PASS_TEXTURE == OBS_ENCODER_CAP_PASS_TEXTURE, "OBS_ENCODER_CAP_PASS_TEXTURE");
 _Static_assert(OBS_ENCODER_LIFECYCLE_NOT_FOUND == DARRAY_INVALID, "DARRAY_INVALID");
 
+/* The constant obs-encoder-packet-ts.h copies. */
+_Static_assert(OBS_ENCODER_PACKET_TS_NOT_FOUND == DARRAY_INVALID, "DARRAY_INVALID");
+
 static inline void get_audio_info(const struct obs_encoder *encoder, struct audio_convert_info *info)
 {
 	const struct audio_output_info *aoi;
@@ -1616,17 +1619,19 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success, bool received
 
 	if (received) {
 		if (!encoder->first_received) {
-			encoder->offset_usec = packet_dts_usec(pkt);
+			encoder->offset_usec = obs_encoder_packet_ts_dts_usec(pkt->dts, pkt->timebase_den);
 			encoder->first_received = true;
 		}
 
 		/* we use system time here to ensure sync with other encoders,
 		 * you do not want to use relative timestamps here */
-		pkt->dts_usec = encoder->start_ts / 1000 + packet_dts_usec(pkt) - encoder->offset_usec;
+		pkt->dts_usec = obs_encoder_packet_ts_system(
+			encoder->start_ts, obs_encoder_packet_ts_dts_usec(pkt->dts, pkt->timebase_den),
+			encoder->offset_usec);
 		pkt->sys_dts_usec = pkt->dts_usec;
 
 		pthread_mutex_lock(&encoder->pause.mutex);
-		pkt->sys_dts_usec += encoder->pause.ts_offset / 1000;
+		pkt->sys_dts_usec = obs_encoder_packet_ts_paused(pkt->sys_dts_usec, encoder->pause.ts_offset);
 		pthread_mutex_unlock(&encoder->pause.mutex);
 
 		/* Find the encoder packet timing entry in the encoder
@@ -1634,17 +1639,14 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success, bool received
 		 * the entry from the array to ensure it doesn't continuously fill.
 		 */
 		struct encoder_packet_time ept_local;
-		struct encoder_packet_time *ept = NULL;
 		bool found_ept = false;
 		if (pkt->type == OBS_ENCODER_VIDEO) {
-			for (size_t i = encoder->encoder_packet_times.num; i > 0; i--) {
-				ept = &encoder->encoder_packet_times.array[i - 1];
-				if (ept->pts == pkt->pts) {
-					ept_local = *ept;
-					da_erase(encoder->encoder_packet_times, i - 1);
-					found_ept = true;
-					break;
-				}
+			size_t idx = obs_encoder_packet_ts_find(encoder->encoder_packet_times.array,
+								encoder->encoder_packet_times.num, pkt->pts);
+			if (idx != OBS_ENCODER_PACKET_TS_NOT_FOUND) {
+				ept_local = encoder->encoder_packet_times.array[idx];
+				da_erase(encoder->encoder_packet_times, idx);
+				found_ept = true;
 			}
 			if (!found_ept)
 				blog(LOG_DEBUG, "%s: Encoder packet timing for PTS %" PRId64 " not found", __func__,
@@ -1685,8 +1687,10 @@ bool do_encode(struct obs_encoder *encoder, struct encoder_frame *frame, const u
 		encoder->info.update(encoder->context.data, encoder->context.settings);
 	}
 
-	pkt.timebase_num = encoder->timebase_num * encoder->frame_rate_divisor;
-	pkt.timebase_den = encoder->timebase_den;
+	struct obs_encoder_packet_timebase timebase = obs_encoder_packet_ts_timebase(
+		encoder->timebase_num, encoder->timebase_den, encoder->frame_rate_divisor);
+	pkt.timebase_num = timebase.num;
+	pkt.timebase_den = timebase.den;
 	pkt.encoder = encoder;
 
 	/* Get the frame encode request timestamp. This

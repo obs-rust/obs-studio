@@ -69,6 +69,9 @@
 /* obs-encoder-lifecycle.c */
 #include "obs-encoder-lifecycle.h"
 
+/* obs-encoder-packet-ts.c */
+#include "obs-encoder-packet-ts.h"
+
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 

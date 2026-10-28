@@ -90,8 +90,10 @@ static void *gpu_encode_thread(void *data)
 			obs_weak_encoder_t **paired = encoder->paired_encoders.array;
 			size_t num_paired = encoder->paired_encoders.num;
 
-			pkt.timebase_num = encoder->timebase_num * encoder->frame_rate_divisor;
-			pkt.timebase_den = encoder->timebase_den;
+			struct obs_encoder_packet_timebase timebase = obs_encoder_packet_ts_timebase(
+				encoder->timebase_num, encoder->timebase_den, encoder->frame_rate_divisor);
+			pkt.timebase_num = timebase.num;
+			pkt.timebase_den = timebase.den;
 			pkt.encoder = encoder;
 
 			if (os_atomic_load_bool(&encoder->gpu_encode_failed))
