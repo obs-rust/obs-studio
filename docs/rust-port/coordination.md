@@ -120,7 +120,10 @@ The org-wide rules, commands and the definition of Ready are in
   `uv run ci/warning_findings.py --compdb <tree compdb> --drop <the -Wno-* pin>`:
   it replays only the affected translation units with `-fsyntax-only` and
   prints the findings grouped by directory, which is both the RED evidence and
-  the inner loop. The limits do not move — explicit casts or widened types
+  the inner loop. The default `--language c` keeps its C units; add
+  `--language cxx` (or `all`) for a C++ class such as the frontend's, whose
+  units the C-only selector filters out. The limits do not move — explicit
+  casts or widened types
   only, no behaviour change, no per-file `-Wno-*`, never an existing C test or
   public header, and the pin goes away in the same PR as the fixes.
 - **Commit order:** characterization test (if the unit had none), then RED

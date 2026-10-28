@@ -1,8 +1,13 @@
 #!/usr/bin/env -S uv run --script
-"""Replay C translation units and report the warnings grouped by directory (#2689).
+"""Replay C and C++ translation units and report the warnings grouped by directory (#2689).
 
     uv run ci/warning_findings.py --compdb /tmp/compdb.json \
         --drop -Wno-float-conversion --drop -Wno-sign-conversion
+
+`--language` selects the units: `c` (the default), `cxx`, or `all`. A C++
+warning class such as #2625's frontend needs `--language cxx`; without it the
+helper filters those units out before the replay and the class is undercounted
+to nothing.
 
 A warning class is reviewable as a whole: fixing one call-site-wide class in a
 per-directory series costs one full `Pull` run (~35 min) per directory and
@@ -53,7 +58,14 @@ WRAPPERS = frozenset({"zccache", "ccache", "sccache", "distcc", "time", "env"})
 OUTPUT_FLAGS = frozenset({"-o", "-MF", "-MT", "-MQ"})
 # No object file, no dependency file, and no early failure: enumerate instead.
 NO_OUTPUT_FLAGS = frozenset({"-c", "-MD", "-MMD", "-Werror", "-fsyntax-only"})
-SOURCE = re.compile(r"\.(?:c|m)$")
+# The languages a unit can be selected by. The repo's C++ units are `.cpp`
+# (including the unity units `build/<target>.*.hpp.cpp`) plus the CMake PCH's
+# `.cxx`; `.cc`/`.mm`/`.C` cover a platform source that is not in the tree yet.
+SOURCE = {
+    "c": re.compile(r"\.(?:c|m)$"),
+    "cxx": re.compile(r"\.(?:cc|cpp|cxx|mm|CPP|C)$"),
+}
+LANGUAGES = frozenset(SOURCE)
 # Their values are flag-shaped (`-Wno-float-conversion`), so they need `=` to parse.
 DASH_VALUE_OPTIONS = ("--drop", "--select")
 
@@ -150,10 +162,15 @@ def parse_diagnostics(stderr: str) -> list[Finding]:
     return findings
 
 
-def selects(entry: dict, patterns: list[str]) -> bool:
-    """True when the entry is C and matches one of `patterns` (all, when none)."""
+def languages_for(language: str) -> frozenset[str]:
+    """The unit languages `--language` selects (`all` is every one of them)."""
+    return LANGUAGES if language == "all" else frozenset({language})
+
+
+def selects(entry: dict, patterns: list[str], languages: frozenset[str] = frozenset({"c"})) -> bool:
+    """True when the entry is in `languages` and matches one of `patterns` (all, when none)."""
     path = Path(entry["file"])
-    if not SOURCE.search(path.name):
+    if not any(SOURCE[language].search(path.name) for language in languages):
         return False
     if not patterns:
         return True
@@ -276,7 +293,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="append",
         default=[],
         metavar="GLOB",
-        help="only replay sources matching this glob (repeatable; default: every C source)",
+        help="only replay sources matching this glob (repeatable; default: all of the language)",
+    )
+    parser.add_argument(
+        "--language",
+        choices=("c", "cxx", "all"),
+        default="c",
+        help="which translation units to replay (default: c; cxx for a C++ class, all for both)",
     )
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4, help="parallel replays")
     parser.add_argument("--timeout", type=float, default=300.0, help="seconds per translation unit")
@@ -289,9 +312,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     entries = json.loads(args.compdb.read_text(encoding="utf-8"))
-    selected = [entry for entry in entries if selects(entry, args.select)]
+    languages = languages_for(args.language)
+    selected = [entry for entry in entries if selects(entry, args.select, languages)]
     if not selected:
-        print(f"no C translation unit matches {args.select or 'anything'}", file=sys.stderr)
+        print(
+            f"no {'/'.join(sorted(languages))} translation unit matches {args.select or 'anything'}",
+            file=sys.stderr,
+        )
         return 2
     drop = frozenset(args.drop)
     root = args.root.resolve()
