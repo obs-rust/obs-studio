@@ -22,3 +22,4 @@ pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
+pub mod win_crash_report;

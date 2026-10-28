@@ -168,6 +168,9 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertIn("obs-win-crash-report.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-win-crash-report.c.h.o", objects)
+        self.assertNotIn("obs-win-crash-report.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_host_and_optional_groups_select_the_actual_members(self):

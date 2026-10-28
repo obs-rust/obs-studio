@@ -289,7 +289,6 @@
     "util/windows/window-helpers.h",
     "build/libobs.windows+.h.c",
     "build/libobs.windows-crash-handler+.h.c",
-    "build/libobs.windows-crash-report+.h.c",
     "build/libobs.graphics-ffmpeg-host-windows+.h.c"
   ],
   "LIBOBS_WINDOWS_OBFUSCATE_SOURCES": [

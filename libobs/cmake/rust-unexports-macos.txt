@@ -750,6 +750,17 @@ _obs_nix_system_info_physmem_mb
 _obs_nix_system_info_prints
 _obs_nix_system_info_total_mb
 _obs_nix_system_info_value
+# obs-win-crash-report.c: obs-win-crash-handler.c calls them inside libobs.
+# Not EXPORT.
+_obs_win_crash_report_contains
+_obs_win_crash_report_in_pass
+_obs_win_crash_report_is_crashed
+_obs_win_crash_report_mask_address
+_obs_win_crash_report_mask_param
+_obs_win_crash_report_name_prefix
+_obs_win_crash_report_names_symbol
+_obs_win_crash_report_other_process
+_obs_win_crash_report_pass_on
 # util/source-profiler.c: the frame hooks libobs calls inside itself. Not
 # EXPORT.
 _source_profiler_reset_video

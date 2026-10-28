@@ -15,14 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-windows-crash-report.pch.h"
+#include "libobs/build/libobs-ported-win-crash-report.pch.h"
 
 /* The crash report rules, moved from obs-win-crash-handler.c: the module
  * that holds an address, the thread passes, the frame line, the 32-bit
  * masks, the thread name prefix and when the filter passes on, on plain
  * values. obs-win-crash-handler.c keeps the DbgHelp, toolhelp and thread
  * calls, the conversions, the dstr calls and the static flags. Declared in
- * obs-win-crash-report.h without EXPORT. */
+ * obs-win-crash-report.h without EXPORT. Ported to rust/obs-core
+ * (win_crash_report): the hybrid libobs drops this file. */
 
 /* enum_all_modules() and enum_module() */
 bool obs_win_crash_report_contains(uint64_t addr, uint64_t base, uint32_t size)

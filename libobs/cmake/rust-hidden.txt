@@ -917,6 +917,18 @@ obs_nix_system_info_physmem_mb
 obs_nix_system_info_prints
 obs_nix_system_info_total_mb
 obs_nix_system_info_value
+# obs-win-crash-report.c: the crash report rules obs-win-crash-handler.c
+# calls inside libobs. Declared in obs-win-crash-report.h without EXPORT,
+# so the shims stay hidden the same way.
+obs_win_crash_report_contains
+obs_win_crash_report_in_pass
+obs_win_crash_report_is_crashed
+obs_win_crash_report_mask_address
+obs_win_crash_report_mask_param
+obs_win_crash_report_name_prefix
+obs_win_crash_report_names_symbol
+obs_win_crash_report_other_process
+obs_win_crash_report_pass_on
 # util/source-profiler.c: obs.c, obs-video.c and obs-source.c call the frame
 # hooks inside libobs. Declared in obs-internal.h without EXPORT, so the
 # shims stay hidden the same way.
