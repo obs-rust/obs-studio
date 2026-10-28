@@ -42,13 +42,14 @@ target_include_directories(
 target_compile_definitions(libdshowcapture INTERFACE _UP_WINDOWS=1)
 
 # /wd4005 and /wd4018 are the vendored-code suppressions this library has always
-# carried. The MSVC /W4-only C4456/C4458 below belong to the same exempt set
-# (#2626, #516): src/source/device.cpp:483 shadows its `defaultMT` local, and
+# carried. The MSVC /W4-only C4244/C4456/C4458 below belong to the same exempt set
+# (#2626, #516): src/source/device.cpp:483 shadows its `defaultMT` local,
 # src/source/encoder.cpp / output-filter.cpp shadow the class members `config`
-# and `pin`. Fixing them would mean editing the vendored submodule, so the
-# warnings are suppressed for the consumers that compile these sources
-# (win-dshow, obs-virtualcam-module).
+# and `pin`, and external/capture-device-support/Library/ElgatoUVCDevice.cpp:218
+# stores an int into a uint8_t. Fixing them would mean editing the vendored
+# submodule, so the warnings are suppressed for the consumers that compile these
+# sources (win-dshow, obs-virtualcam-module).
 target_compile_options(
   libdshowcapture
-  INTERFACE /wd4005 /wd4018 $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456;/wd4458>
+  INTERFACE /wd4005 /wd4018 $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4244;/wd4456;/wd4458>
 )

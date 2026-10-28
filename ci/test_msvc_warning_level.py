@@ -145,8 +145,9 @@ class MsvcVendoredDependencyExemptionTest(unittest.TestCase):
         text = DSHOW.read_text(encoding="utf-8")
         self.assertRegex(
             text,
-            r"COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4456;/wd4458>",
-            "device.cpp:483 and encoder.cpp/output-filter.cpp are vendored; C4456/C4458 stay suppressed",
+            r"COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4244;/wd4456;/wd4458>",
+            "device.cpp:483 and encoder.cpp/output-filter.cpp/ElgatoUVCDevice.cpp "
+            "are vendored; C4244/C4456/C4458 stay suppressed",
         )
 
 
