@@ -2389,6 +2389,12 @@ area.
   CPU name it reads is always terminated, and its registry key is closed.
   *Windows*, 2026-10-28. Issue
   [#2819](https://github.com/obs-rust/obs-studio/issues/2819).
+- A plugin built against an older OBS registers its sources and encoders
+  as what they are. A source no longer gets past the duplicate check under
+  a version it doesn't have, so it can't be listed twice, and an encoder is
+  no longer refused, or asked for texture callbacks, because of caps it
+  never set. *All*, 2026-10-29. Issue
+  [#2841](https://github.com/obs-rust/obs-studio/issues/2841).
 
 ### Security hardening
 
