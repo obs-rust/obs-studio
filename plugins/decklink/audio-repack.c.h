@@ -34,7 +34,7 @@ int repack_squash(struct audio_repack *repack, const uint8_t *bsrc, uint32_t fra
 		return -1;
 	}
 
-	int squash = repack->extra_dst_size;
+	int squash = (int)repack->extra_dst_size;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *esrc = src + frame_count;
 	uint16_t *dst = (uint16_t *)repack->packet_buffer;
@@ -59,7 +59,7 @@ int repack_squash_swap(struct audio_repack *repack, const uint8_t *bsrc, uint32_
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
 	}
-	int squash = repack->extra_dst_size;
+	int squash = (int)repack->extra_dst_size;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *esrc = src + frame_count;
 	uint16_t *dst = (uint16_t *)repack->packet_buffer;
@@ -81,8 +81,8 @@ int audio_repack_init(struct audio_repack *repack, audio_repack_mode_t repack_mo
 	}
 	int _audio_repack_ch[8] = {3, 4, 5, 6, 5, 6, 8, 8};
 	repack->base_src_size = 8 * (16 / 8);
-	repack->base_dst_size = _audio_repack_ch[repack_mode] * (16 / 8);
-	repack->extra_dst_size = 8 - _audio_repack_ch[repack_mode];
+	repack->base_dst_size = (uint32_t)(_audio_repack_ch[repack_mode] * (16 / 8));
+	repack->extra_dst_size = (uint32_t)(8 - _audio_repack_ch[repack_mode]);
 	repack->repack_func = &repack_squash;
 	if (repack_mode == repack_mode_8to5ch_swap || repack_mode == repack_mode_8to6ch_swap ||
 	    repack_mode == repack_mode_8ch_swap) {
