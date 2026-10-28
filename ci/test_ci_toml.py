@@ -26,10 +26,16 @@ GITHUB = ROOT / ".github"
 WORKFLOWS = GITHUB / "workflows"
 PIN = "a1917ce76598904ce515cd7eec83450c317ea6f2"
 
-# Workflows whose CACHE-001 exception is burned down: every cache step in them
-# goes through the `.github/actions/cache` wrapper (#2737). Add a name here in
-# the same PR that deletes its ci.toml `[[exceptions]]` block.
-CONVERTED_CACHE_WORKFLOWS = ("sanitizers.yaml", "appimage.yaml", "build-project.yaml")
+# Paths whose CACHE-001 exception is burned down: every cache step in them goes
+# through the `.github/actions/cache` wrapper (#2737). Paths are relative to
+# `.github` so a workflow and a composite action are listed the same way. Add
+# one here in the same PR that deletes its ci.toml `[[exceptions]]` block.
+CONVERTED_CACHE_PATHS = (
+    "workflows/sanitizers.yaml",
+    "workflows/appimage.yaml",
+    "workflows/build-project.yaml",
+    "actions/services-validator/action.yaml",
+)
 
 # Prefixes of the families a `via` names (zackees/ci.yml ci_lint/cache/families.py).
 VIA_PREFIXES = {
@@ -238,8 +244,8 @@ class CacheWriterPolicyTest(unittest.TestCase):
         The exception is path-scoped, so deleting it from ci.toml only keeps
         `ci-lint precheck` quiet while every raw call in the file is gone.
         """
-        for name in CONVERTED_CACHE_WORKFLOWS:
-            path = WORKFLOWS / name
+        for name in CONVERTED_CACHE_PATHS:
+            path = GITHUB / name
             with self.subTest(path=path.relative_to(ROOT)):
                 blocks = self.blocks(path)
                 raw = [line for line, block in blocks if re.search(r"uses: actions/cache", block)]
@@ -252,6 +258,16 @@ class CacheWriterPolicyTest(unittest.TestCase):
                     self.assertIsNotNone(mode, "the wrapper callsite needs an explicit mode")
                     modes.append(mode[1])
                 self.assertEqual(set(modes), {"restore", "save"})
+
+    def test_converted_cache_paths_keep_no_cache_001_exception(self):
+        """A burned-down path leaves the baseline only with every raw call gone."""
+        converted = {f".github/{name}" for name in CONVERTED_CACHE_PATHS}
+        stale = [
+            entry
+            for entry in load().get("exceptions", [])
+            if entry.get("rule") == "CACHE-001" and entry.get("path") in converted
+        ]
+        self.assertEqual(stale, [], "delete the CACHE-001 block for a converted path")
 
     def test_split_dependency_and_timestamp_caches_preserve_keys_and_paths(self):
         cases = [(WORKFLOWS / "build-project.yaml", key)
