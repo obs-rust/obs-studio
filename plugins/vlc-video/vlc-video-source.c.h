@@ -670,7 +670,7 @@ static bool valid_extension(const char *ext)
 
 	for (;;) {
 		if (e)
-			dstr_ncopy(&test, b, e - b);
+			dstr_ncopy(&test, b, (size_t)(e - b));
 		else
 			dstr_copy(&test, b);
 
@@ -803,7 +803,7 @@ static void vlcs_update(void *data, obs_data_t *settings)
 			idxs.array[i] = i;
 		}
 		for (size_t i = idxs.num; i > 0; i--) {
-			size_t val = rand() % i;
+			size_t val = (size_t)rand() % i;
 			size_t idx = idxs.array[val];
 			da_push_back(shuffled_files, &c->files.array[idx]);
 			da_erase(idxs, val);
@@ -1169,7 +1169,7 @@ static obs_properties_t *vlcs_properties(void *data)
 			dstr_replace(&path, "\\", "/");
 			slash = strrchr(path.array, '/');
 			if (slash)
-				dstr_resize(&path, slash - path.array + 1);
+				dstr_resize(&path, (size_t)(slash - path.array + 1));
 		}
 		pthread_mutex_unlock(&c->mutex);
 	}
