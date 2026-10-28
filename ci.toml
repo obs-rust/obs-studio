@@ -455,12 +455,6 @@ issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "GEN-005"
-path = ".github/workflows/dispatch.yaml"
-reason = "Upstream OBS build/packaging scripts (zsh, PowerShell, shell); porting CI logic to Python is tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
-[[exceptions]]
-rule = "GEN-005"
 path = ".github/workflows/ci.yml"
 reason = "Upstream OBS build/packaging scripts (zsh, PowerShell, shell); porting CI logic to Python is tracked in #962."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
