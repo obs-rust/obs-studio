@@ -65,8 +65,8 @@ void OBSBasicVCamConfig::OutputTypeChanged()
 		using AddSource_t = decltype(AddSource);
 
 		obs_enum_sources(
-			[](void *data, obs_source_t *source) {
-				auto &AddSource = *static_cast<AddSource_t *>(data);
+			[](void *handler_data, obs_source_t *source) {
+				auto &AddSource = *static_cast<AddSource_t *>(handler_data);
 				if (!obs_source_removed(source)) {
 					AddSource(source);
 				}

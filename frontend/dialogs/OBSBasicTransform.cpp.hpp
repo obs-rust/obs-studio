@@ -114,11 +114,11 @@ OBSBasicTransform::~OBSBasicTransform()
 {
 	OBSDataAutoRelease wrapper = obs_scene_save_transform_states(main->GetCurrentScene(), false);
 
-	auto undo_redo = [](const std::string &data) {
-		OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+	auto undo_redo = [](const std::string &json) {
+		OBSDataAutoRelease dat = obs_data_create_from_json(json.c_str());
 		OBSSourceAutoRelease source = obs_get_source_by_uuid(obs_data_get_string(dat, "scene_uuid"));
 		OBSBasic::Get()->SetCurrentScene(source.Get(), true);
-		obs_scene_load_transform_states(data.c_str());
+		obs_scene_load_transform_states(json.c_str());
 	};
 
 	std::string redo_data(obs_data_get_json(wrapper));

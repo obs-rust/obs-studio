@@ -185,8 +185,8 @@ void SourceTreeItem::ReconnectSignals()
 
 	/* --------------------------------------------------------- */
 
-	auto removeItem = [](void *data, calldata_t *cd) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto removeItem = [](void *handler_data, calldata_t *cd) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		OBSSceneItem curItem = (obs_sceneitem_t *)calldata_ptr(cd, "item");
 		OBSScene curScene = (obs_scene_t *)calldata_ptr(cd, "scene");
 
@@ -199,8 +199,8 @@ void SourceTreeItem::ReconnectSignals()
 		}
 	};
 
-	auto itemVisible = [](void *data, calldata_t *cd) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto itemVisible = [](void *handler_data, calldata_t *cd) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		obs_sceneitem_t *curItem = (obs_sceneitem_t *)calldata_ptr(cd, "item");
 		bool visible = calldata_bool(cd, "visible");
 
@@ -209,8 +209,8 @@ void SourceTreeItem::ReconnectSignals()
 		}
 	};
 
-	auto itemLocked = [](void *data, calldata_t *cd) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto itemLocked = [](void *handler_data, calldata_t *cd) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		obs_sceneitem_t *curItem = (obs_sceneitem_t *)calldata_ptr(cd, "item");
 		bool locked = calldata_bool(cd, "locked");
 
@@ -219,8 +219,8 @@ void SourceTreeItem::ReconnectSignals()
 		}
 	};
 
-	auto itemSelect = [](void *data, calldata_t *cd) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto itemSelect = [](void *handler_data, calldata_t *cd) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		obs_sceneitem_t *curItem = (obs_sceneitem_t *)calldata_ptr(cd, "item");
 
 		if (curItem == this_->sceneitem) {
@@ -228,8 +228,8 @@ void SourceTreeItem::ReconnectSignals()
 		}
 	};
 
-	auto itemDeselect = [](void *data, calldata_t *cd) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto itemDeselect = [](void *handler_data, calldata_t *cd) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		obs_sceneitem_t *curItem = (obs_sceneitem_t *)calldata_ptr(cd, "item");
 
 		if (curItem == this_->sceneitem) {
@@ -237,8 +237,8 @@ void SourceTreeItem::ReconnectSignals()
 		}
 	};
 
-	auto reorderGroup = [](void *data, calldata_t *) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto reorderGroup = [](void *handler_data, calldata_t *) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		QMetaObject::invokeMethod(this_->tree, &SourceTree::ReorderItems);
 	};
 
@@ -262,8 +262,8 @@ void SourceTreeItem::ReconnectSignals()
 
 	/* --------------------------------------------------------- */
 
-	auto removeSource = [](void *data, calldata_t *) {
-		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(data);
+	auto removeSource = [](void *handler_data, calldata_t *) {
+		SourceTreeItem *this_ = static_cast<SourceTreeItem *>(handler_data);
 		this_->DisconnectSignals();
 		this_->sceneitem = nullptr;
 		QMetaObject::invokeMethod(this_->tree, &SourceTree::RefreshItems);
@@ -300,7 +300,7 @@ void SourceTreeItem::enterEvent(QEnterEvent *event)
 
 	OBSBasicPreview *preview = OBSBasicPreview::Get();
 
-	std::lock_guard<std::mutex> lock(preview->selectMutex);
+	std::lock_guard<std::mutex> select_lock(preview->selectMutex);
 	preview->hoveredPreviewItems.clear();
 	preview->hoveredPreviewItems.push_back(sceneitem);
 }
@@ -311,7 +311,7 @@ void SourceTreeItem::leaveEvent(QEvent *event)
 
 	OBSBasicPreview *preview = OBSBasicPreview::Get();
 
-	std::lock_guard<std::mutex> lock(preview->selectMutex);
+	std::lock_guard<std::mutex> select_lock(preview->selectMutex);
 	preview->hoveredPreviewItems.clear();
 }
 
@@ -407,8 +407,8 @@ void SourceTreeItem::ExitEditModeInternal(bool save)
 	QSignalBlocker sourcesSignalBlocker(this);
 	std::string prevName(obs_source_get_name(source));
 	std::string scene_uuid = obs_source_get_uuid(main->GetCurrentSceneSource());
-	auto undo = [scene_uuid, prevName, main](const std::string &data) {
-		OBSSourceAutoRelease source = obs_get_source_by_uuid(data.c_str());
+	auto undo = [scene_uuid, prevName, main](const std::string &uuid) {
+		OBSSourceAutoRelease source = obs_get_source_by_uuid(uuid.c_str());
 		obs_source_set_name(source, prevName.c_str());
 
 		OBSSourceAutoRelease scene_source = obs_get_source_by_uuid(scene_uuid.c_str());
@@ -417,8 +417,8 @@ void SourceTreeItem::ExitEditModeInternal(bool save)
 
 	std::string editedName = newName;
 
-	auto redo = [scene_uuid, main, editedName](const std::string &data) {
-		OBSSourceAutoRelease source = obs_get_source_by_uuid(data.c_str());
+	auto redo = [scene_uuid, main, editedName](const std::string &uuid) {
+		OBSSourceAutoRelease source = obs_get_source_by_uuid(uuid.c_str());
 		obs_source_set_name(source, editedName.c_str());
 
 		OBSSourceAutoRelease scene_source = obs_get_source_by_uuid(scene_uuid.c_str());
@@ -528,9 +528,9 @@ void SourceTreeItem::Update(bool force)
 		ConfigurePlatformSourceItemWidget(expand);
 		boxLayout->insertWidget(0, expand);
 
-		OBSDataAutoRelease data = obs_sceneitem_get_private_settings(sceneitem);
+		OBSDataAutoRelease privData = obs_sceneitem_get_private_settings(sceneitem);
 		expand->blockSignals(true);
-		expand->setChecked(obs_data_get_bool(data, "collapsed"));
+		expand->setChecked(obs_data_get_bool(privData, "collapsed"));
 		expand->blockSignals(false);
 
 		connect(expand, &QPushButton::toggled, this, &SourceTreeItem::ExpandClicked);
@@ -543,9 +543,9 @@ void SourceTreeItem::Update(bool force)
 
 void SourceTreeItem::ExpandClicked(bool checked)
 {
-	OBSDataAutoRelease data = obs_sceneitem_get_private_settings(sceneitem);
+	OBSDataAutoRelease privData = obs_sceneitem_get_private_settings(sceneitem);
 
-	obs_data_set_bool(data, "collapsed", checked);
+	obs_data_set_bool(privData, "collapsed", checked);
 
 	if (!checked) {
 		tree->GetStm()->ExpandGroup(sceneitem);

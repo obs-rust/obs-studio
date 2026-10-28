@@ -713,12 +713,12 @@ void OBSBasicSourceSelect::createNew()
 		return;
 	}
 
-	OBSSource newSource = createResult.value();
-	if (strcmp(obs_source_get_id(newSource), "group") == 0) {
+	OBSSource createdSource = createResult.value();
+	if (strcmp(obs_source_get_id(createdSource), "group") == 0) {
 		return;
 	}
 
-	std::optional<OBSSceneItem> addResult = setupExistingSource(obs_source_get_uuid(newSource), visible, false);
+	std::optional<OBSSceneItem> addResult = setupExistingSource(obs_source_get_uuid(createdSource), visible, false);
 	if (!addResult.has_value()) {
 		return;
 	}
@@ -727,10 +727,10 @@ void OBSBasicSourceSelect::createNew()
 
 	OBSBasic *main = reinterpret_cast<OBSBasic *>(App()->GetMainWindow());
 	std::string sceneUuid = obs_source_get_uuid(main->GetCurrentSceneSource());
-	auto undo = [sceneUuid](const std::string &data) {
+	auto undo = [sceneUuid](const std::string &uuid) {
 		OBSBasic *main = OBSBasic::Get();
 
-		OBSSourceAutoRelease source = obs_get_source_by_uuid(data.c_str());
+		OBSSourceAutoRelease source = obs_get_source_by_uuid(uuid.c_str());
 		obs_source_remove(source);
 
 		OBSSourceAutoRelease sceneSource = obs_get_source_by_uuid(sceneUuid.c_str());
@@ -742,13 +742,13 @@ void OBSBasicSourceSelect::createNew()
 	obs_data_set_string(wrapper, "name", newName.c_str());
 	obs_data_set_bool(wrapper, "visible", visible);
 
-	auto redo = [sceneUuid](const std::string &data) {
+	auto redo = [sceneUuid](const std::string &uuid) {
 		OBSBasic *main = OBSBasic::Get();
 
 		OBSSourceAutoRelease sceneSource = obs_get_source_by_uuid(sceneUuid.c_str());
 		main->SetCurrentScene(sceneSource.Get(), true);
 
-		OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+		OBSDataAutoRelease dat = obs_data_create_from_json(uuid.c_str());
 
 		std::optional<OBSSource> createResult =
 			setupNewSource(NULL, obs_data_get_string(dat, "id"), obs_data_get_string(dat, "name"));
@@ -769,9 +769,9 @@ void OBSBasicSourceSelect::createNew()
 		obs_sceneitem_set_id(item, static_cast<int64_t>(obs_data_get_int(dat, "item_id")));
 	};
 	undo_s.add_action(QTStr("Undo.Add").arg(QString::fromStdString(newName)), undo, redo,
-			  std::string(obs_source_get_uuid(newSource)), std::string(obs_data_get_json(wrapper)));
+			  std::string(obs_source_get_uuid(createdSource)), std::string(obs_data_get_json(wrapper)));
 
-	main->CreatePropertiesWindow(newSource);
+	main->CreatePropertiesWindow(createdSource);
 
 	close();
 }
@@ -800,8 +800,8 @@ void OBSBasicSourceSelect::addExisting(const std::string &uuid, bool visible)
 
 		OBSScene scene = obs_scene_from_source(sceneSource);
 		OBSSceneItem item;
-		auto cb = [](obs_scene_t *, obs_sceneitem_t *sceneitem, void *data) {
-			OBSSceneItem &last = *static_cast<OBSSceneItem *>(data);
+		auto cb = [](obs_scene_t *, obs_sceneitem_t *sceneitem, void *handler_data) {
+			OBSSceneItem &last = *static_cast<OBSSceneItem *>(handler_data);
 			last = sceneitem;
 			return true;
 		};

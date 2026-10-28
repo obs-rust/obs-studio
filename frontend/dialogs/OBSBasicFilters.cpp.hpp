@@ -546,22 +546,22 @@ void OBSBasicFilters::AddNewFilter(const char *id)
 		obs_data_set_string(uwrapper, "fname", obs_source_get_name(filter));
 		obs_data_set_string(uwrapper, "suuid", parent_uuid.c_str());
 
-		auto undo = [scene_uuid](const std::string &data) {
+		auto undo = [scene_uuid](const std::string &json) {
 			OBSSourceAutoRelease ssource = obs_get_source_by_uuid(scene_uuid.c_str());
 			OBSBasic::Get()->SetCurrentScene(ssource.Get(), true);
 
-			OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+			OBSDataAutoRelease dat = obs_data_create_from_json(json.c_str());
 			OBSSourceAutoRelease source = obs_get_source_by_uuid(obs_data_get_string(dat, "suuid"));
 			OBSSourceAutoRelease filter =
 				obs_source_get_filter_by_name(source, obs_data_get_string(dat, "fname"));
 			obs_source_filter_remove(source, filter);
 		};
 
-		auto redo = [scene_uuid](const std::string &data) {
+		auto redo = [scene_uuid](const std::string &json) {
 			OBSSourceAutoRelease ssource = obs_get_source_by_uuid(scene_uuid.c_str());
 			OBSBasic::Get()->SetCurrentScene(ssource.Get(), true);
 
-			OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+			OBSDataAutoRelease dat = obs_data_create_from_json(json.c_str());
 			OBSSourceAutoRelease source = obs_get_source_by_uuid(obs_data_get_string(dat, "undo_uuid"));
 			OBSSourceAutoRelease filter = obs_load_source(dat);
 			obs_source_filter_add(source, filter);
@@ -1067,11 +1067,11 @@ void OBSBasicFilters::delete_filter(OBSSource filter)
 	obs_data_set_string(wrapper, "undo_uuid", parent_uuid.c_str());
 
 	std::string scene_uuid = obs_source_get_uuid(OBSBasic::Get()->GetCurrentSceneSource());
-	auto undo = [scene_uuid](const std::string &data) {
+	auto undo = [scene_uuid](const std::string &json) {
 		OBSSourceAutoRelease ssource = obs_get_source_by_uuid(scene_uuid.c_str());
 		OBSBasic::Get()->SetCurrentScene(ssource.Get(), true);
 
-		OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+		OBSDataAutoRelease dat = obs_data_create_from_json(json.c_str());
 		OBSSourceAutoRelease source = obs_get_source_by_uuid(obs_data_get_string(dat, "undo_uuid"));
 		OBSSourceAutoRelease filter = obs_load_source(dat);
 		obs_source_filter_add(source, filter);
@@ -1080,11 +1080,11 @@ void OBSBasicFilters::delete_filter(OBSSource filter)
 	OBSDataAutoRelease rwrapper = obs_data_create();
 	obs_data_set_string(rwrapper, "fname", obs_source_get_name(filter));
 	obs_data_set_string(rwrapper, "suuid", parent_uuid.c_str());
-	auto redo = [scene_uuid](const std::string &data) {
+	auto redo = [scene_uuid](const std::string &json) {
 		OBSSourceAutoRelease ssource = obs_get_source_by_uuid(scene_uuid.c_str());
 		OBSBasic::Get()->SetCurrentScene(ssource.Get(), true);
 
-		OBSDataAutoRelease dat = obs_data_create_from_json(data.c_str());
+		OBSDataAutoRelease dat = obs_data_create_from_json(json.c_str());
 		OBSSourceAutoRelease source = obs_get_source_by_uuid(obs_data_get_string(dat, "suuid"));
 		OBSSourceAutoRelease filter = obs_source_get_filter_by_name(source, obs_data_get_string(dat, "fname"));
 		obs_source_filter_remove(source, filter);
