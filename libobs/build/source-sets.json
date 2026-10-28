@@ -37,6 +37,7 @@
     "obs-interaction.h",
     "obs-internal.h",
     "obs-missing-files.h",
+    "obs-module-load-rules.h",
     "obs-module-type-rules.h",
     "obs-module.h",
     "obs-nal.h",

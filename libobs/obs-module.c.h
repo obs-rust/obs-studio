@@ -43,15 +43,15 @@ static inline int req_func_not_found(const char *name, const char *path)
 static int load_module_exports(struct obs_module *mod, const char *path)
 {
 	LOAD_MODULE_SYMBOL(load, "obs_module_load");
-	if (!mod->load)
+	if (obs_module_load_rules_export_missing(mod->load != NULL))
 		return req_func_not_found("obs_module_load", path);
 
 	LOAD_MODULE_SYMBOL(set_pointer, "obs_module_set_pointer");
-	if (!mod->set_pointer)
+	if (obs_module_load_rules_export_missing(mod->set_pointer != NULL))
 		return req_func_not_found("obs_module_set_pointer", path);
 
 	LOAD_MODULE_SYMBOL(ver, "obs_module_ver");
-	if (!mod->ver)
+	if (obs_module_load_rules_export_missing(mod->ver != NULL))
 		return req_func_not_found("obs_module_ver", path);
 
 	/* optional exports */
@@ -129,7 +129,8 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 	struct obs_module mod = {0};
 	int errorcode;
 
-	if (!module || !path || !obs)
+	if (obs_module_load_rules_arg_missing(module != NULL) || obs_module_load_rules_arg_missing(path != NULL) ||
+	    obs_module_load_rules_arg_missing(obs != NULL))
 		return MODULE_ERROR;
 
 	if (obs_host_skip_module(path))
@@ -152,8 +153,8 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 	}
 
 	/* Reject plugins compiled with a newer libobs. Patch version (lower 16-bit) is ignored. */
-	uint32_t ver = mod.ver ? mod.ver() & 0xFFFF0000 : 0;
-	if (ver > LIBOBS_API_VER) {
+	uint32_t ver = mod.ver ? obs_module_load_rules_version_word(mod.ver()) : 0;
+	if (!obs_module_load_rules_version_ok(ver, LIBOBS_API_VER)) {
 		blog(LOG_WARNING, "Module '%s' compiled with newer libobs %d.%d", path, (ver >> 24) & 0xFF,
 		     (ver >> 16) & 0xFF);
 		/* The library is left loaded on purpose, as free_module() does for
@@ -411,8 +412,14 @@ struct fail_info {
 
 static bool is_safe_module(const char *name)
 {
-	if (!obs->safe_modules.num)
+	switch (obs_module_load_rules_safe_list(obs->safe_modules.num)) {
+	case OBS_MODULE_LOAD_RULES_LIST_ALL:
 		return true;
+	case OBS_MODULE_LOAD_RULES_LIST_NONE:
+		return false;
+	case OBS_MODULE_LOAD_RULES_LIST_MATCH:
+		break;
+	}
 
 	return obs_module_names_listed(obs->safe_modules.array, obs->safe_modules.num, name);
 }
@@ -424,15 +431,21 @@ static bool is_core_module(const char *name)
 
 static bool is_disabled_module(const char *name)
 {
-	if (obs->disabled_modules.num == 0)
+	switch (obs_module_load_rules_disabled_list(obs->disabled_modules.num)) {
+	case OBS_MODULE_LOAD_RULES_LIST_ALL:
+		return true;
+	case OBS_MODULE_LOAD_RULES_LIST_NONE:
 		return false;
+	case OBS_MODULE_LOAD_RULES_LIST_MATCH:
+		break;
+	}
 
 	return obs_module_names_listed(obs->disabled_modules.array, obs->disabled_modules.num, name);
 }
 
 bool obs_get_module_allow_disable(const char *name)
 {
-	return !is_core_module(name);
+	return obs_module_load_rules_allow_disable(is_core_module(name));
 }
 
 static void load_all_callback(void *param, const struct obs_module_info2 *info)
@@ -456,7 +469,7 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 		return;
 	}
 
-	if (info->type != OBS_MODULE_TYPE_CORE && is_disabled_module(info->name)) {
+	if (!obs_module_load_rules_is_core(info->type) && is_disabled_module(info->name)) {
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path, OBS_MODULE_DISABLED);
 		blog(LOG_WARNING, "Skipping module '%s', is disabled", info->name);
 		return;
@@ -465,14 +478,14 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	/* This is a necessary check until legacy plugin loading is removed in a future update.
 	 * It covers portable installs where the old core modules still live in `obs-plugins`.
 	 */
-	if (info->type == OBS_MODULE_TYPE_LEGACY_PLUGIN && is_core_module(info->name)) {
+	if (obs_module_load_rules_is_legacy(info->type) && is_core_module(info->name)) {
 		blog(LOG_WARNING, "Skipping module '%s', is a legacy core module", info->name);
 		return;
 	}
 
 	obs_module_t *existing_module = obs_get_module(info->name);
 	if (existing_module != NULL) {
-		if (info->type == OBS_MODULE_TYPE_CORE) {
+		if (obs_module_load_rules_is_core(info->type)) {
 			/* obs_load_core_modules() caches only success, so a caller that
 			 * retries after a failure walks the core module list again. A
 			 * core module that did load must not be opened, and its
@@ -481,7 +494,7 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 			     info->bin_path);
 			return;
 		}
-		if (info->type == OBS_MODULE_TYPE_LEGACY_PLUGIN) {
+		if (obs_module_load_rules_is_legacy(info->type)) {
 			blog(LOG_WARNING, "Skipping legacy plugin '%s' at '%s', already loaded from '%s'", info->name,
 			     info->bin_path, existing_module->bin_path);
 		} else {
@@ -492,50 +505,51 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	}
 
 	int code = obs_open_module(&module, info->bin_path, info->data_path);
+	uint32_t state;
+	uint32_t route = obs_module_load_rules_open_route(code, &state);
 	switch (code) {
 	case MODULE_MISSING_EXPORTS:
 		blog(LOG_DEBUG, "Failed to load module file '%s', not an OBS plugin", info->bin_path);
-		return;
+		break;
 	case MODULE_FAILED_TO_OPEN:
 		blog(LOG_DEBUG, "Failed to load module file '%s', module failed to open", info->bin_path);
-		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
-					   OBS_MODULE_FAILED_TO_OPEN);
-		if (info->type == OBS_MODULE_TYPE_CORE) {
-			/* Most often a library the module needs is not
-			 * installed (libcef.so for obs-browser). Carry on
-			 * without it, as for a plugin, instead of failing
-			 * the core module load and with it OBS startup. */
-			disabled_module->module_type = info->type;
-			blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
-			return;
-		}
-		goto load_failure;
+		break;
 	case MODULE_ERROR:
 		blog(LOG_DEBUG, "Failed to load module file '%s' (unknown error)", info->bin_path);
-		goto load_failure;
+		break;
 	case MODULE_INCOMPATIBLE_VER:
 		blog(LOG_DEBUG, "Failed to load module file '%s', incompatible version", info->bin_path);
+		break;
+	}
+	if (route & OBS_MODULE_LOAD_RULES_DISABLE)
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
-					   OBS_MODULE_FAILED_TO_OPEN);
-		goto load_failure;
-	case MODULE_HARDCODED_SKIP:
+					   (enum obs_module_load_state)state);
+	if ((route & OBS_MODULE_LOAD_RULES_CORE_CONTINUES) && obs_module_load_rules_is_core(info->type)) {
+		disabled_module->module_type = info->type;
+		blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
 		return;
 	}
+	if (route & OBS_MODULE_LOAD_RULES_FAIL)
+		goto load_failure;
+	if (route & OBS_MODULE_LOAD_RULES_STOP)
+		return;
 
-	if (!obs_init_module(module)) {
+	route = obs_module_load_rules_init_route(obs_init_module(module), &state);
+	if (route & OBS_MODULE_LOAD_RULES_FREE)
 		free_module(module);
+	if (route & OBS_MODULE_LOAD_RULES_DISABLE)
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
-					   OBS_MODULE_FAILED_TO_INITIALIZE);
+					   (enum obs_module_load_state)state);
+	if (route & OBS_MODULE_LOAD_RULES_KEEP_TYPE)
 		disabled_module->module_type = info->type;
-	} else {
+	if (route & OBS_MODULE_LOAD_RULES_SET_TYPE)
 		module->module_type = info->type;
-	}
 
 	UNUSED_PARAMETER(param);
 	return;
 
 load_failure:
-	if (fail_info) {
+	if (obs_module_load_rules_count_failure(fail_info != NULL)) {
 		dstr_cat(&fail_info->fail_modules, info->name);
 		dstr_cat(&fail_info->fail_modules, ";");
 		fail_info->fail_count++;
@@ -559,7 +573,7 @@ bool obs_load_core_modules(void)
 
 	load_core_modules(load_all_callback, &error);
 
-	obs->core_modules_loaded = error.fail_count == 0;
+	obs->core_modules_loaded = obs_module_load_rules_core_loaded(error.fail_count);
 
 	dstr_free(&error.fail_modules);
 
@@ -603,7 +617,7 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 	const char *name = obs_module_names_file_name(info->path_info.binary);
 	info->name = name;
 
-	if (info->type != OBS_MODULE_TYPE_CORE) {
+	if (!obs_module_load_rules_is_core(info->type)) {
 		blog(LOG_WARNING, "Module %s is not a core module, and must be loaded with the plugin loader.", name);
 		return false;
 	}
@@ -616,7 +630,7 @@ bool obs_is_core_module(obs_module_t *module)
 {
 	if (!module)
 		return false;
-	return module->module_type == OBS_MODULE_TYPE_CORE;
+	return obs_module_load_rules_is_core(module->module_type);
 }
 
 bool obs_is_legacy_module(obs_module_t *module)
@@ -625,7 +639,7 @@ bool obs_is_legacy_module(obs_module_t *module)
 		return false;
 	}
 
-	return module->module_type == OBS_MODULE_TYPE_LEGACY_PLUGIN;
+	return obs_module_load_rules_is_legacy(module->module_type);
 }
 
 void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
@@ -994,6 +1008,23 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 error:
 	HANDLE_ERROR(size, obs_source_info, info);
 }
+
+/* The constants obs-module-load-rules.h copies. */
+_Static_assert(OBS_MODULE_LOAD_RULES_SUCCESS == MODULE_SUCCESS, "MODULE_SUCCESS");
+_Static_assert(OBS_MODULE_LOAD_RULES_ERROR == MODULE_ERROR, "MODULE_ERROR");
+_Static_assert(OBS_MODULE_LOAD_RULES_FAILED_TO_OPEN == MODULE_FAILED_TO_OPEN, "MODULE_FAILED_TO_OPEN");
+_Static_assert(OBS_MODULE_LOAD_RULES_MISSING_EXPORTS == MODULE_MISSING_EXPORTS, "MODULE_MISSING_EXPORTS");
+_Static_assert(OBS_MODULE_LOAD_RULES_INCOMPATIBLE_VER == MODULE_INCOMPATIBLE_VER, "MODULE_INCOMPATIBLE_VER");
+_Static_assert(OBS_MODULE_LOAD_RULES_HARDCODED_SKIP == MODULE_HARDCODED_SKIP, "MODULE_HARDCODED_SKIP");
+_Static_assert(OBS_MODULE_LOAD_RULES_TYPE_CORE == OBS_MODULE_TYPE_CORE, "OBS_MODULE_TYPE_CORE");
+_Static_assert(OBS_MODULE_LOAD_RULES_TYPE_LEGACY_PLUGIN == OBS_MODULE_TYPE_LEGACY_PLUGIN,
+	       "OBS_MODULE_TYPE_LEGACY_PLUGIN");
+_Static_assert(OBS_MODULE_LOAD_RULES_STATE_INVALID == OBS_MODULE_INVALID, "OBS_MODULE_INVALID");
+_Static_assert(OBS_MODULE_LOAD_RULES_STATE_FAILED_TO_OPEN == OBS_MODULE_FAILED_TO_OPEN, "OBS_MODULE_FAILED_TO_OPEN");
+_Static_assert(OBS_MODULE_LOAD_RULES_STATE_FAILED_TO_INITIALIZE == OBS_MODULE_FAILED_TO_INITIALIZE,
+	       "OBS_MODULE_FAILED_TO_INITIALIZE");
+_Static_assert(sizeof(((struct obs_module_info2 *)NULL)->type) == sizeof(uint32_t), "obs_module_info2.type");
+_Static_assert(sizeof(((struct obs_module *)NULL)->module_type) == sizeof(uint32_t), "obs_module.module_type");
 
 /* The constants obs-module-type-rules.h copies. */
 _Static_assert(OBS_MODULE_TYPE_RULES_OUTPUT_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
