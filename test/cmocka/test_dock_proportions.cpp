@@ -31,6 +31,7 @@ static const QList<int> hand_sized = {720, 224, 256, 200, 200};
 
 struct Fixture {
 	QMainWindow *window = nullptr;
+	DockProportions *proportions = nullptr;
 	QList<QDockWidget *> docks;
 };
 
@@ -39,7 +40,7 @@ static int setup(void **state)
 	auto *f = new Fixture;
 	f->window = new QMainWindow;
 	f->window->setCentralWidget(new QLabel(QStringLiteral("preview")));
-	new DockProportions(f->window);
+	f->proportions = new DockProportions(f->window);
 	for (int i = 0; i < hand_sized.size(); i++) {
 		auto *dock = new QDockWidget(QString::number(i));
 		dock->setObjectName(QStringLiteral("dock%1").arg(i));
@@ -296,6 +297,55 @@ static void dragged_column_width_is_kept(void **state)
 	assert_column_width(f, dragged);
 }
 
+/* The state the app writes to its ini must not be a clamped one: a session
+ * that is narrow when it saves would otherwise come back cramped at full
+ * width on the next start (obs-rust/obs-studio#2225). */
+static QList<int> restored_widths(const QByteArray &state)
+{
+	QMainWindow window;
+	window.setCentralWidget(new QLabel(QStringLiteral("preview")));
+	QList<QDockWidget *> docks;
+	for (int i = 0; i < hand_sized.size(); i++) {
+		auto *dock = new QDockWidget(QString::number(i));
+		dock->setObjectName(QStringLiteral("dock%1").arg(i));
+		dock->setWidget(new QLabel(QStringLiteral("contents")));
+		dock->widget()->setMinimumWidth(dock_min_width);
+		window.addDockWidget(Qt::BottomDockWidgetArea, dock);
+		if (i) {
+			window.splitDockWidget(docks.last(), dock, Qt::Horizontal);
+		}
+		docks.append(dock);
+	}
+	window.resize(1600, 900);
+	assert_true(window.restoreState(state));
+	window.show();
+	QTest::qWait(50);
+
+	QList<int> result;
+	for (QDockWidget *dock : docks) {
+		result.append(dock->width());
+	}
+	return result;
+}
+
+static void clamped_layout_is_not_the_saved_state(void **state)
+{
+	auto *f = static_cast<Fixture *>(*state);
+	const QList<int> before = widths(f);
+	print_widths("before", before);
+
+	f->window->resize(700, 900);
+	QTest::qWait(50);
+	print_widths("narrow", widths(f));
+	for (int width : widths(f)) {
+		assert_true(width <= dock_min_width + 10);
+	}
+
+	const QList<int> after = restored_widths(f->proportions->StateToSave());
+	print_widths("saved while narrow, restored at 1600", after);
+	assert_same_shares(before, after);
+}
+
 int main(int argc, char **argv)
 {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -310,6 +360,7 @@ int main(int argc, char **argv)
 						teardown_column),
 		cmocka_unit_test_setup_teardown(side_column_comes_back_after_steps, setup_column, teardown_column),
 		cmocka_unit_test_setup_teardown(dragged_column_width_is_kept, setup_column, teardown_column),
+		cmocka_unit_test_setup_teardown(clamped_layout_is_not_the_saved_state, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

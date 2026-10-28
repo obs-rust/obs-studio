@@ -24,6 +24,7 @@
  * the area changes size on its own (a dragged edge) and put back when the
  * window changes size. */
 
+#include <QByteArray>
 #include <QDockWidget>
 #include <QEvent>
 #include <QList>
@@ -44,6 +45,14 @@ public:
 			dock->installEventFilter(this);
 		}
 	}
+
+	/* The dock state to write to the user's ini (#2225). A layout that is
+	 * clamped by a narrow window serializes with every dock at its
+	 * minimum, and the next start restores that clamped layout at full
+	 * size. The state saved is therefore the last layout this window
+	 * showed unclamped; a window that is currently unclamped saves
+	 * itself. */
+	QByteArray StateToSave() const { return window->saveState(); }
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override
