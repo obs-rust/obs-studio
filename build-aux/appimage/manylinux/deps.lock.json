@@ -17,6 +17,21 @@
       "install": "/opt/obs-deps/headers"
     },
     {
+      "tool": "brotli",
+      "version": "1.2.1",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64",
+        "os_version": "2.28",
+        "libc": "glibc"
+      },
+      "variant": {
+        "optimization": "release"
+      },
+      "sha256": "eb4f2214dbc91eb1529e4a61499fce26ae03c06dde10935cdc6e8cf0d1b0793d",
+      "install": "/opt/obs-deps/brotli"
+    },
+    {
       "tool": "qrcodegen",
       "version": "1.8.0",
       "platform": {
