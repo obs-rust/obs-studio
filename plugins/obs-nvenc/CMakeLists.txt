@@ -42,6 +42,15 @@ set(
 # Production uses the completed Rust CUDA loader. Its C baseline is explicit,
 # excluded from normal builds and never installed, like libobs-c-reference.
 set(_obs_nvenc_targets obs-nvenc)
+
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  obs-nvenc
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_sources(obs-nvenc PRIVATE ${_obs_nvenc_sources})
 if(OBS_LIBOBS_BACKEND STREQUAL HYBRID)
   target_sources(obs-nvenc PRIVATE ${_obs_nvenc_rust})
