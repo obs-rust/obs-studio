@@ -138,7 +138,8 @@ struct _obs_pipewire_stream {
 		bool valid;
 		int x, y;
 		int hotspot_x, hotspot_y;
-		int width, height;
+		/* texture dimensions, as the PipeWire bitmap reports them */
+		uint32_t width, height;
 		gs_texture_t *texture;
 	} cursor;
 
@@ -280,7 +281,7 @@ static bool push_rotation(obs_pipewire_stream *obs_pw_stream)
 	if (rotation != 0) {
 		gs_matrix_push();
 		gs_matrix_rotaa4f(0.0f, 0.0f, 1.0f, RAD((float)rotation));
-		gs_matrix_translate3f(-offset_x, -offset_y, 0.0f);
+		gs_matrix_translate3f((float)-offset_x, (float)-offset_y, 0.0f);
 	}
 
 	return rotation != 0;
@@ -369,11 +370,12 @@ static inline struct spa_pod *build_format(obs_pipewire_stream *obs_pw_stream, s
 		/* The first element of choice pods is the preferred value. Here
 		 * we arbitrarily pick the first modifier as the preferred one.
 		 */
-		spa_pod_builder_long(b, modifiers[0]);
+		/* the modifier bit flag is below the sign bit */
+		spa_pod_builder_long(b, (int64_t)modifiers[0]);
 
 		/* modifiers from  an array */
 		for (uint32_t i = 0; i < modifier_count; i++)
-			spa_pod_builder_long(b, modifiers[i]);
+			spa_pod_builder_long(b, (int64_t)modifiers[i]);
 
 		spa_pod_builder_pop(b, &modifier_frame);
 	}
@@ -547,8 +549,8 @@ static void remove_modifier_from_format(obs_pipewire_stream *obs_pw_stream, uint
 			continue;
 		}
 
-		int idx = da_find(obs_pw_stream->format_info.array[i].modifiers, &modifier, 0);
-		while (idx != -1) {
+		size_t idx = da_find(obs_pw_stream->format_info.array[i].modifiers, &modifier, 0);
+		while (idx != DARRAY_INVALID) {
 			da_erase(obs_pw_stream->format_info.array[i].modifiers, idx);
 			idx = da_find(obs_pw_stream->format_info.array[i].modifiers, &modifier, 0);
 		}
@@ -591,7 +593,7 @@ static void return_unused_pw_buffer(struct pw_stream *stream, struct pw_buffer *
 		spa_buffer_find_meta_data(buffer, SPA_META_SyncTimeline, sizeof(struct spa_meta_sync_timeline));
 
 	if (synctimeline && (last_data->type == SPA_DATA_SyncObj))
-		gs_sync_signal_syncobj_timeline_point(last_data->fd, synctimeline->release_point);
+		gs_sync_signal_syncobj_timeline_point((int)last_data->fd, synctimeline->release_point);
 #endif
 	pw_stream_queue_buffer(stream, b);
 }
@@ -862,11 +864,12 @@ static void process_video_sync(obs_pipewire_stream *obs_pw_stream)
 		}
 
 		for (uint32_t plane = 0; plane < planes; plane++) {
-			fds[plane] = buffer->datas[plane].fd;
+			fds[plane] = (int)buffer->datas[plane].fd;
 			offsets[plane] = buffer->datas[plane].chunk->offset;
-			strides[plane] = buffer->datas[plane].chunk->stride;
+			strides[plane] = (uint32_t)buffer->datas[plane].chunk->stride;
 			modifiers[plane] = obs_pw_stream->format.info.raw.modifier;
-			corrupt |= (buffer->datas[plane].chunk->flags & SPA_CHUNK_FLAG_CORRUPTED) > 0;
+			const uint32_t chunk_flags = (uint32_t)buffer->datas[plane].chunk->flags;
+			corrupt |= (chunk_flags & (uint32_t)SPA_CHUNK_FLAG_CORRUPTED) != 0;
 		}
 
 		if (corrupt) {
@@ -897,7 +900,7 @@ static void process_video_sync(obs_pipewire_stream *obs_pw_stream)
 
 			/* Copy only once the compositor has finished drawing it */
 			gs_sync_t *acquire_sync = gs_sync_create_from_syncobj_timeline_point(
-				buffer->datas[planes].fd, synctimeline->acquire_point);
+				(int)buffer->datas[planes].fd, synctimeline->acquire_point);
 			gs_sync_wait(acquire_sync);
 			gs_sync_destroy(acquire_sync);
 		} else {
@@ -913,7 +916,7 @@ static void process_video_sync(obs_pipewire_stream *obs_pw_stream)
 		if (synctimeline) {
 			/* The compositor may reuse the buffer once the copy is done */
 			gs_sync_t *release_sync = gs_sync_create();
-			gs_sync_export_syncobj_timeline_point(release_sync, buffer->datas[planes + 1].fd,
+			gs_sync_export_syncobj_timeline_point(release_sync, (int)buffer->datas[planes + 1].fd,
 							      synctimeline->release_point);
 			gs_sync_destroy(release_sync);
 			release_point_exported = true;
@@ -937,7 +940,7 @@ static void process_video_sync(obs_pipewire_stream *obs_pw_stream)
 			goto read_metadata;
 		}
 
-		if ((buffer->datas[0].chunk->flags & SPA_CHUNK_FLAG_CORRUPTED) > 0) {
+		if (((uint32_t)buffer->datas[0].chunk->flags & (uint32_t)SPA_CHUNK_FLAG_CORRUPTED) > 0) {
 			blog(LOG_DEBUG, "[pipewire] buffer contains corrupted data");
 			goto read_metadata;
 		}
@@ -1421,7 +1424,7 @@ void obs_pipewire_destroy(obs_pipewire *obs_pw)
 	bfree(obs_pw);
 }
 
-obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,
+obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, uint32_t pipewire_node,
 						 const struct obs_pipewire_connect_stream_info *connect_info)
 {
 	struct spa_pod_builder pod_builder;
@@ -1638,18 +1641,20 @@ void obs_pipewire_stream_video_render(obs_pipewire_stream *obs_pw_stream, gs_eff
 	gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
 	if (has_effective_crop(obs_pw_stream)) {
-		gs_draw_sprite_subregion(obs_pw_stream->texture, flip, obs_pw_stream->crop.x, obs_pw_stream->crop.y,
-					 obs_pw_stream->crop.width, obs_pw_stream->crop.height);
+		/* an effective crop's region lies inside the frame */
+		gs_draw_sprite_subregion(obs_pw_stream->texture, (uint32_t)flip, (uint32_t)obs_pw_stream->crop.x,
+					 (uint32_t)obs_pw_stream->crop.y, obs_pw_stream->crop.width,
+					 obs_pw_stream->crop.height);
 	} else {
-		gs_draw_sprite(obs_pw_stream->texture, flip, 0, 0);
+		gs_draw_sprite(obs_pw_stream->texture, (uint32_t)flip, 0, 0);
 	}
 
 	if (rotated)
 		gs_matrix_pop();
 
 	if (obs_pw_stream->cursor.visible && obs_pw_stream->cursor.valid && obs_pw_stream->cursor.texture) {
-		float cursor_x = obs_pw_stream->cursor.x - obs_pw_stream->cursor.hotspot_x;
-		float cursor_y = obs_pw_stream->cursor.y - obs_pw_stream->cursor.hotspot_y;
+		float cursor_x = (float)(obs_pw_stream->cursor.x - obs_pw_stream->cursor.hotspot_x);
+		float cursor_y = (float)(obs_pw_stream->cursor.y - obs_pw_stream->cursor.hotspot_y);
 
 		gs_matrix_push();
 		gs_matrix_translate3f(cursor_x, cursor_y, 0.0f);

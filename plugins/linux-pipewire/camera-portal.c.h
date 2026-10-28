@@ -450,7 +450,7 @@ static void camera_format_list(struct camera_device *dev, obs_property_t *prop)
 
 			dstr_cat(&str, " - ");
 
-			for (int i = framerates->len - 1; i >= 0; i--) {
+			for (int i = (int)framerates->len - 1; i >= 0; i--) {
 				const struct spa_fraction *framerate =
 					&g_array_index(framerates, struct spa_fraction, i);
 
@@ -645,13 +645,13 @@ static bool control_changed(void *data, obs_properties_t *props, obs_property_t 
 		break;
 	}
 	case OBS_PROPERTY_FLOAT: {
-		float val = obs_data_get_double(settings, obs_property_name(prop));
+		float val = (float)obs_data_get_double(settings, obs_property_name(prop));
 		spa_pod_builder_add(&b, id, SPA_POD_Float((double)val), 0);
 		break;
 	}
 	case OBS_PROPERTY_INT:
 	case OBS_PROPERTY_LIST: {
-		int val = obs_data_get_int(settings, obs_property_name(prop));
+		int val = (int)obs_data_get_int(settings, obs_property_name(prop));
 		spa_pod_builder_add(&b, id, SPA_POD_Int(val), 0);
 		break;
 	}
@@ -747,7 +747,7 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 		} else {
 			min = n_vals > 1 ? vals[1] : def;
 			max = n_vals > 2 ? vals[2] : def;
-			step = n_vals > 3 ? vals[3] : (max - min) / 256.0f;
+			step = n_vals > 3 ? vals[3] : (int32_t)((max - min) / 256.0);
 			prop = obs_properties_add_int_slider(props, name, name, min, max, step);
 		}
 		obs_data_set_default_int(settings, name, def);
@@ -837,7 +837,7 @@ static int compare_framerates(gconstpointer a, gconstpointer b)
 	double da = framerate_a->num / (double)framerate_a->denom;
 	double db = framerate_b->num / (double)framerate_b->denom;
 
-	return da - db;
+	return (int)(da - db);
 }
 
 /* The framerates the camera lists for a format and size, slowest first */
@@ -1041,15 +1041,17 @@ static bool parse_format(struct camera_portal_source *dest, const char *json)
 		if (obs_data_get_bool(data, "encoded")) {
 			dest->subtype = obs_data_get_int(data, "video_format");
 			ret = true;
-		} else if (obs_pw_video_format_from_spa_format(obs_data_get_int(data, "video_format"), &format)) {
+		} else if (obs_pw_video_format_from_spa_format((uint32_t)obs_data_get_int(data, "video_format"),
+							       &format)) {
 			dest->subtype = SPA_MEDIA_SUBTYPE_raw;
 			dest->format = format;
 			ret = true;
 		}
 
 		if (obs_data_has_user_value(data, "width") && obs_data_has_user_value(data, "height")) {
-			dest->resolution.rect.width = obs_data_get_int(data, "width");
-			dest->resolution.rect.height = obs_data_get_int(data, "height");
+			/* the saved size is a positive frame dimension */
+			dest->resolution.rect.width = (uint32_t)obs_data_get_int(data, "width");
+			dest->resolution.rect.height = (uint32_t)obs_data_get_int(data, "height");
 			dest->resolution.set = true;
 		}
 	}
@@ -1178,8 +1180,9 @@ static void node_info(void *data, const struct pw_node_info *info)
 			if (!(info->params[i].flags & SPA_PARAM_INFO_READ))
 				continue;
 
-			res = pw_node_enum_params((struct pw_node *)device->proxy, ++info->params[i].seq, id, 0, -1,
-						  NULL);
+			/* num = UINT32_MAX asks for every parameter */
+			res = pw_node_enum_params((struct pw_node *)device->proxy, ++info->params[i].seq, id, 0,
+						  (uint32_t)-1, NULL);
 			if (SPA_RESULT_IS_ASYNC(res))
 				info->params[i].seq = res;
 		}
@@ -1470,8 +1473,8 @@ static bool parse_resolution(struct spa_rectangle *dest, const char *json)
 	if (!data)
 		return false;
 
-	dest->width = obs_data_get_int(data, "width");
-	dest->height = obs_data_get_int(data, "height");
+	dest->width = (uint32_t)obs_data_get_int(data, "width");
+	dest->height = (uint32_t)obs_data_get_int(data, "height");
 	obs_data_release(data);
 	return true;
 }
@@ -1488,7 +1491,7 @@ static void *pipewire_camera_create(obs_data_t *settings, obs_source_t *source)
 
 	if (obs_data_has_user_value(settings, "format")) {
 		parse_format(camera_source, obs_data_get_string(settings, "format"));
-	} else if (obs_pw_video_format_from_spa_format(obs_data_get_int(settings, "pixelformat"),
+	} else if (obs_pw_video_format_from_spa_format((uint32_t)obs_data_get_int(settings, "pixelformat"),
 						       &camera_source->format)) {
 		camera_source->subtype = SPA_MEDIA_SUBTYPE_raw;
 

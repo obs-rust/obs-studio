@@ -914,7 +914,7 @@ static gboolean on_reconnected_idle(void *user_data)
 	/* The new stream may have been lost again since this was queued. */
 	if (capture && capture->reconnect.active && obs_pipewire_stream_has_frame(capture->obs_pw_stream)) {
 		blog(LOG_INFO, "[pipewire] Screencast reconnected, first frame %.0f ms after the connection was lost",
-		     (os_gettime_ns() - capture->reconnect.started_ns) / 1000000.0);
+		     (double)(os_gettime_ns() - capture->reconnect.started_ns) / 1000000.0);
 		stop_reconnect(capture);
 	} else if (capture) {
 		obs_enter_graphics();

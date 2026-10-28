@@ -68,7 +68,7 @@ void obs_pipewire_lock(obs_pipewire *obs_pw);
 void obs_pipewire_unlock(obs_pipewire *obs_pw);
 void obs_pipewire_destroy(obs_pipewire *obs_pw);
 
-obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, int pipewire_node,
+obs_pipewire_stream *obs_pipewire_connect_stream(obs_pipewire *obs_pw, obs_source_t *source, uint32_t pipewire_node,
 						 const struct obs_pipewire_connect_stream_info *connect_info);
 
 bool obs_pipewire_stream_has_frame(obs_pipewire_stream *obs_pw_stream);
