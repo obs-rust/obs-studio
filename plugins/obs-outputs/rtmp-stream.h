@@ -10,6 +10,7 @@
 #include "librtmp/log.h"
 #include "flv-mux.h"
 #include "net-if.h"
+#include "rtmp-send-result.h"
 
 #define do_log(level, format, ...) \
 	blog(level, "[rtmp stream: '%s'] " format, obs_output_get_name(stream->output), ##__VA_ARGS__)
@@ -132,6 +133,9 @@ struct rtmp_stream {
 	uint8_t *write_buf;
 	size_t write_buf_len;
 	size_t write_buf_size;
+	/* The length of the TLS record in flight, repeated on a WANT_WRITE retry
+	 * (#2220). Zero between records. */
+	struct rtmp_send_retry send_retry;
 	pthread_mutex_t write_buf_mutex;
 	os_event_t *buffer_space_available_event;
 	os_event_t *buffer_has_data_event;

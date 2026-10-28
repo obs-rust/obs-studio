@@ -57,23 +57,41 @@ static bool socket_event(struct rtmp_stream *stream, bool *can_write, uint64_t l
 
 	if (net_events.lNetworkEvents & FD_READ) {
 		char discard[16384];
-		int err_code;
-		bool fatal = false;
+		int err_code = 0;
+		bool read_failed = false;
+		/* The new socket loop ignores what the server sends, but over TLS a
+		 * read is also how the handshake and renegotiation make progress, so
+		 * it has to go through the session (mbedtls_ssl_read() on sb_ssl)
+		 * rather than a raw recv() (#2220). */
+		bool tls = stream->rtmp.m_sb.sb_ssl != NULL;
 
 		for (;;) {
-			int ret = recv(stream->rtmp.m_sb.sb_socket, discard, sizeof(discard), 0);
-			if (ret == -1) {
+			int ret = tls ? TLS_read(stream->rtmp.m_sb.sb_ssl, discard, sizeof(discard))
+				      : recv(stream->rtmp.m_sb.sb_socket, discard, sizeof(discard), 0);
+
+			if (ret > 0)
+				continue;
+
+			if (tls) {
+				/* The session is drained when it wants to read or
+				 * write again; anything else ends the stream. */
+				if (!rtmp_send_action_of(rtmp_send_result_of(ret, false)).fatal)
+					break;
+
+				err_code = ret;
+				read_failed = true;
+			} else if (ret == -1) {
 				err_code = WSAGetLastError();
 				if (err_code == WSAEWOULDBLOCK)
 					break;
 
-				fatal = true;
-			} else if (ret == 0) {
+				read_failed = true;
+			} else {
 				err_code = 0;
-				fatal = true;
+				read_failed = true;
 			}
 
-			if (fatal) {
+			if (read_failed) {
 				blog(LOG_ERROR,
 				     "socket_thread_windows: "
 				     "Socket error, recv() returned "
@@ -148,16 +166,20 @@ static enum data_ret write_data(struct rtmp_stream *stream, bool *can_write, uin
 		return RET_BREAK;
 	}
 
+	size_t send_len = stream->low_latency_mode ? min(latency_packet_size, stream->write_buf_len)
+						   : stream->write_buf_len;
 	int ret;
-	if (stream->low_latency_mode) {
-		size_t send_len = min(latency_packet_size, stream->write_buf_len);
+	enum rtmp_send_result send_result;
 
-		ret = RTMPSockBuf_Send(&stream->rtmp.m_sb, (const char *)stream->write_buf, (int)send_len);
-	} else {
-		ret = RTMPSockBuf_Send(&stream->rtmp.m_sb, (const char *)stream->write_buf, (int)stream->write_buf_len);
-	}
+	/* A retry after WANT_WRITE repeats the length of the call still in
+	 * flight, even though the buffer has grown since (#2220). */
+	send_len = rtmp_send_retry_length(&stream->send_retry, send_len);
+	ret = RTMPSockBuf_Send(&stream->rtmp.m_sb, (const char *)stream->write_buf, (int)send_len);
+	send_result = rtmp_send_result_of(ret, ret == -1 && WSAGetLastError() == WSAEWOULDBLOCK);
 
-	if (ret > 0) {
+	if (send_result == RTMP_SEND_WROTE) {
+		rtmp_send_retry_done(&stream->send_retry);
+
 		if (stream->write_buf_len - ret)
 			memmove(stream->write_buf, stream->write_buf + ret, stream->write_buf_len - ret);
 		stream->write_buf_len -= ret;
@@ -165,39 +187,39 @@ static enum data_ret write_data(struct rtmp_stream *stream, bool *can_write, uin
 		*last_send_time = os_gettime_ns() / 1000000;
 
 		os_event_signal(stream->buffer_space_available_event);
+	} else if (!rtmp_send_action_of(send_result).fatal) {
+		/* The transport is full, or TLS wants a read first: wait for
+		 * the socket event instead of spinning (#2220). */
+		*can_write = false;
+		pthread_mutex_unlock(&stream->write_buf_mutex);
+		return RET_BREAK;
 	} else {
-		int err_code;
-		bool fatal_err = false;
+		/* connection closed, or connection was aborted /
+		 * socket closed / etc, that's a fatal error. */
+		int err_code = ret;
 
-		if (ret == -1) {
-			err_code = WSAGetLastError();
+		if (stream->rtmp.m_sb.sb_ssl) {
+			char err_buf[128];
 
-			if (err_code == WSAEWOULDBLOCK) {
-				*can_write = false;
-				pthread_mutex_unlock(&stream->write_buf_mutex);
-				return RET_BREAK;
-			}
+			blog(LOG_ERROR,
+			     "socket_thread_windows: "
+			     "TLS error, send() returned %d (%s)",
+			     ret, rtmp_send_tls_error_text(ret, err_buf, sizeof(err_buf)));
+		} else {
+			if (ret == -1)
+				err_code = WSAGetLastError();
 
-			fatal_err = true;
-		} else if (ret == 0) {
-			err_code = 0;
-			fatal_err = true;
-		}
-
-		if (fatal_err) {
-			/* connection closed, or connection was aborted /
-			 * socket closed / etc, that's a fatal error. */
 			blog(LOG_ERROR,
 			     "socket_thread_windows: "
 			     "Socket error, send() returned %d, "
 			     "GetLastError() %d",
 			     ret, err_code);
-
-			pthread_mutex_unlock(&stream->write_buf_mutex);
-			stream->rtmp.last_error_code = err_code;
-			fatal_sock_shutdown(stream);
-			return RET_FATAL;
 		}
+
+		pthread_mutex_unlock(&stream->write_buf_mutex);
+		stream->rtmp.last_error_code = err_code;
+		fatal_sock_shutdown(stream);
+		return RET_FATAL;
 	}
 
 	/* finish writing for now */

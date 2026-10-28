@@ -1417,6 +1417,14 @@ area.
   a caption track behind in the slot it could not take. *All*, pending
   merge. Issue
   [#2491](https://github.com/obs-rust/obs-studio/issues/2491).
+- A Windows stream to an `rtmps://` service keeps "Enable network
+  optimizations" and low-latency mode instead of turning both off with a log
+  line. The optimized socket loop now waits for the TLS layer (a full buffer
+  or a pending handshake) instead of spinning, reports a TLS failure with the
+  Mbed TLS reason, and no longer drops queued bytes when it retries a write
+  the transport had not accepted. *Windows*, pending merge. Issue
+  [#2220](https://github.com/obs-rust/obs-studio/issues/2220), PR
+  [#2778](https://github.com/obs-rust/obs-studio/pull/2778).
 
 ### Sources and filters
 

@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <mbedtls/error.h>
 #include <mbedtls/ssl.h>
 
 enum rtmp_send_result {
@@ -55,9 +56,21 @@ static inline enum rtmp_send_result rtmp_send_result_of(int ret, bool socket_wou
 {
 	if (ret > 0)
 		return RTMP_SEND_WROTE;
+	if (ret == MBEDTLS_ERR_SSL_WANT_WRITE)
+		return RTMP_SEND_WAIT_WRITE;
+	if (ret == MBEDTLS_ERR_SSL_WANT_READ)
+		return RTMP_SEND_WAIT_READ;
 	if (ret == -1 && socket_would_block)
 		return RTMP_SEND_WAIT_WRITE;
 	return RTMP_SEND_FAILED;
+}
+
+/* The reason a TLS send failed, for the log: a library error code means
+ * nothing to the user, and WSAGetLastError() has no answer for it. */
+static inline const char *rtmp_send_tls_error_text(int ret, char *buffer, size_t size)
+{
+	mbedtls_strerror(ret, buffer, size);
+	return buffer;
 }
 
 /* mbedtls_ssl_write() must be retried with the length of the call that
@@ -73,11 +86,12 @@ struct rtmp_send_retry {
 
 static inline size_t rtmp_send_retry_length(struct rtmp_send_retry *retry, size_t want)
 {
-	(void)retry;
-	return want;
+	if (!retry->len)
+		retry->len = want;
+	return retry->len;
 }
 
 static inline void rtmp_send_retry_done(struct rtmp_send_retry *retry)
 {
-	(void)retry;
+	retry->len = 0;
 }

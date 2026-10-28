@@ -127,6 +127,17 @@ static void test_send_result_tls_wants_read(void **state)
 	assert_false(action.fatal);
 }
 
+/* A fatal TLS send logs a reason, not a Winsock error number. */
+static void test_send_result_error_text(void **state)
+{
+	(void)state;
+	char buffer[128];
+
+	const char *text = rtmp_send_tls_error_text(MBEDTLS_ERR_SSL_WANT_WRITE, buffer, sizeof(buffer));
+	assert_ptr_equal(text, buffer);
+	assert_true(strlen(text) > 0);
+}
+
 /* A plain socket keeps the old rule: -1 with WSAEWOULDBLOCK waits for FD_WRITE. */
 static void test_send_result_plain_socket(void **state)
 {
@@ -141,8 +152,7 @@ static void test_send_result_fatal(void **state)
 	(void)state;
 	assert_int_equal(rtmp_send_result_of(0, false), RTMP_SEND_FAILED);
 	assert_int_equal(rtmp_send_result_of(-1, false), RTMP_SEND_FAILED);
-	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE, false),
-			 RTMP_SEND_FAILED);
+	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE, false), RTMP_SEND_FAILED);
 	assert_int_equal(rtmp_send_result_of(MBEDTLS_ERR_SSL_INTERNAL_ERROR, false), RTMP_SEND_FAILED);
 
 	struct rtmp_send_action action = rtmp_send_action_of(RTMP_SEND_FAILED);
@@ -178,6 +188,7 @@ int main(void)
 		cmocka_unit_test(test_send_result_wrote),
 		cmocka_unit_test(test_send_result_tls_would_block),
 		cmocka_unit_test(test_send_result_tls_wants_read),
+		cmocka_unit_test(test_send_result_error_text),
 		cmocka_unit_test(test_send_result_plain_socket),
 		cmocka_unit_test(test_send_result_fatal),
 		cmocka_unit_test(test_send_retry_repeats_first_length),
