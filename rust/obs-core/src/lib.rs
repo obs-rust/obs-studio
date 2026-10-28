@@ -18,15 +18,17 @@
 //! `libobs/obs-audio-min-ts.c.h` (from `obs-audio.c.h`), the per-source
 //! decisions of the minimum audio timestamp step; and
 //! `libobs/obs-canvas-rules.c.h` (from `obs-canvas.c.h`), the canvas flag
-//! rules and setter checks; and `libobs/obs-video-pacing.c.h` (from
-//! `obs-video.c.h`), the frame pacing decisions of `video_sleep()`.
+//! rules and setter checks; `libobs/obs-video-pacing.c.h` (from
+//! `obs-video.c.h`), the frame pacing decisions of `video_sleep()`; and
+//! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
+//! BSD system info parsing of the startup log.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
 //! [`video_copy_plan`], [`video_output_step`], [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
-//! [`audio_render`] and [`video_pacing`].
+//! [`audio_render`], [`video_pacing`] and [`nix_system_info`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -34,7 +36,9 @@
 //! technique a canvas texture draws into a display with, and how the display
 //! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
 //! the checks of its setters; [`video_pacing`] steps the frame time after the
-//! sleep at the end of each frame. The C ABI shims live in [`ffi`].
+//! sleep at the end of each frame; [`nix_system_info`] parses the
+//! `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the startup
+//! log prints. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
