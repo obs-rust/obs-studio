@@ -5031,6 +5031,16 @@
         "test/cmocka",
         "plugins/obs-webrtc"
       ]
+    },
+    "test_win_crash_sym_info": {
+      "sources": [
+        "test/cmocka/test_win_crash_sym_info.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_WINDOWS"
     }
   },
   "tests": {
@@ -6946,6 +6956,13 @@
         "${target}"
       ],
       "suite": "webrtc"
+    },
+    "test_win_crash_sym_info": {
+      "target": "test_win_crash_sym_info",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     }
   }
 }
