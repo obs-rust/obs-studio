@@ -274,6 +274,138 @@ class PackagedStartupTest(unittest.TestCase):
         )
 
 
+class CrashReportEvidenceTest(unittest.TestCase):
+    """#2714: a signal exit printed only `-11`, so the frame that faulted was an
+    artifact download away and the hang variant produced nothing at all."""
+
+    HEADER = (
+        '{"app_name":"OBS-Studio-Rust","timestamp":"2026-10-27 15:36:19.00 +0000",'
+        '"bug_type":"309","os_version":"macOS 26.6.1 (25G76)","incident_id":"0A1B"}'
+    )
+    BODY = json.dumps(
+        {
+            "procLaunch": "2026-10-27 15:36:02.51",
+            "exception": {
+                "type": "EXC_BAD_ACCESS",
+                "signal": "SIGSEGV",
+                "subtype": "KERN_INVALID_ADDRESS at 0x0",
+            },
+            "faultingThread": 0,
+            "threads": [
+                {
+                    "id": 1,
+                    "name": "com.apple.main-thread",
+                    "frames": [
+                        {
+                            "imageIndex": 0,
+                            "imageOffset": 1234,
+                            "symbol": "obs_shutdown",
+                            "symbolLocation": 332,
+                        },
+                        {
+                            "imageIndex": 0,
+                            "imageOffset": 99,
+                            "symbol": "free_module",
+                            "symbolLocation": 57,
+                        },
+                        {"imageIndex": 1, "imageOffset": 777},
+                    ],
+                },
+                {"id": 2, "frames": [{"imageIndex": 0, "symbol": "other"}]},
+            ],
+            "usedImages": [{"name": "libobs"}, {"name": "obs-websocket"}],
+        }
+    )
+
+    def write_report(self, directory, age=0.0, body=None, name=None):
+        report = Path(directory) / (
+            name or "OBS-Studio-Rust-2026-10-27-153619.ips"
+        )
+        report.write_text(
+            f"{self.HEADER}\n{self.BODY if body is None else body}\n",
+            encoding="utf-8",
+        )
+        if age:
+            stamp = os.stat(report).st_mtime - age
+            os.utime(report, (stamp, stamp))
+        return report
+
+    def test_a_crash_report_names_the_exception_thread_and_frames(self):
+        lines = smoke.summarize_diagnostic_report(f"{self.HEADER}\n{self.BODY}")
+        text = "\n".join(lines)
+        self.assertIn("EXC_BAD_ACCESS", text)
+        self.assertIn("SIGSEGV", text)
+        self.assertIn("crashed thread: 0 com.apple.main-thread", text)
+        self.assertIn("frame 0: libobs obs_shutdown + 332", text)
+        self.assertIn("frame 1: libobs free_module + 57", text)
+        self.assertIn("frame 2: obs-websocket", text)
+        self.assertNotIn("other", text, "lines past the crashed thread are noise")
+
+    def test_the_summary_is_bounded_to_the_first_frames(self):
+        body = json.loads(self.BODY)
+        body["threads"][0]["frames"] = [
+            {"imageIndex": 0, "symbol": f"symbol_{index}", "symbolLocation": index}
+            for index in range(40)
+        ]
+        lines = smoke.summarize_diagnostic_report(
+            f"{self.HEADER}\n{json.dumps(body)}", frames=10
+        )
+        frames = [line for line in lines if line.startswith("frame ")]
+        self.assertEqual(len(frames), 10)
+        self.assertTrue(frames[-1].startswith("frame 9:"))
+
+    def test_the_newest_report_is_printed_into_the_step_output(self):
+        with tempfile.TemporaryDirectory() as tmp, patch("builtins.print") as printed:
+            report = self.write_report(tmp)
+            self.assertTrue(smoke.report_crash_reports([Path(tmp)], since=0.0))
+            text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+        self.assertIn(report.name, text)
+        self.assertIn("EXC_BAD_ACCESS", text)
+        self.assertIn("frame 0: libobs obs_shutdown + 332", text)
+
+    def test_no_report_is_a_notice_and_never_a_new_failure(self):
+        for directory in (Path(tempfile.gettempdir()) / "absent-reports",):
+            with patch("builtins.print") as printed:
+                self.assertFalse(smoke.report_crash_reports([directory], since=0.0))
+            text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+            self.assertIn("no crash report", text)
+
+    def test_an_older_report_is_not_offered_as_this_runs_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write_report(tmp, age=3600)
+            with patch("builtins.print"):
+                self.assertFalse(smoke.report_crash_reports([Path(tmp)], since=0.0))
+
+    def test_an_unparsable_report_says_so_without_raising(self):
+        with tempfile.TemporaryDirectory() as tmp, patch("builtins.print") as printed:
+            self.write_report(tmp, body="not json at all", name="legacy.crash")
+            self.assertTrue(smoke.report_crash_reports([Path(tmp)], since=0.0))
+            text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+        self.assertIn("legacy.crash", text)
+        self.assertIn("no frames parsed", text)
+
+    def test_a_signal_exit_prints_the_report_before_raising(self):
+        proc = Mock(pid=123, poll=Mock(return_value=-11))
+        proc.wait.return_value = -11
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "builtins.print"
+        ) as printed, patch.object(
+            smoke, "diagnostic_report_directories", return_value=[Path(tmp)]
+        ):
+            self.write_report(tmp)
+            with self.assertRaisesRegex(RuntimeError, "-11|SIGSEGV"):
+                smoke.close_frontend(proc, "macos", since=0.0)
+            text = "\n".join(str(c.args[0]) for c in printed.call_args_list if c.args)
+        self.assertIn("EXC_BAD_ACCESS", text)
+        self.assertIn("frame 0: libobs obs_shutdown + 332", text)
+
+    def test_a_clean_shutdown_prints_no_evidence(self):
+        proc = Mock(wait=Mock(return_value=0))
+        with patch.object(smoke, "report_crash_reports") as reports:
+            smoke.close_frontend(proc, "macos")
+            reports.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
 
