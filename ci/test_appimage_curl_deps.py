@@ -76,6 +76,10 @@ class CurlDepsTest(unittest.TestCase):
         # CMake's find_package(CURL) and the -lcurl link follow these.
         self.assertEqual(image_env("CMAKE_PREFIX_PATH")[0], CURL_PREFIX)
         self.assertEqual(image_env("PKG_CONFIG_PATH")[0], f"{CURL_PREFIX}/lib/pkgconfig")
+        # The tool has to match the library: the base's 7.61.1 curl passes option
+        # numbers a libcurl 8 refuses (`curl: (48)`), which silently broke the
+        # image's rustup install when only the library was swapped.
+        self.assertEqual(image_env("PATH")[0], f"{CURL_PREFIX}/bin")
         loader = image_env("LD_LIBRARY_PATH")
         # libcurl's NEEDED libssl.so.3/libcrypto.so.3 live in the openssl prefix.
         self.assertEqual(loader[0], f"{OPENSSL_PREFIX}/lib")

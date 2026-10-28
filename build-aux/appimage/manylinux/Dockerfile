@@ -58,7 +58,11 @@ RUN uvx --from "git+https://github.com/obs-rust/obs-studio-libs@0c6b4401c001ad85
 ENV CMAKE_PREFIX_PATH=/opt/obs-deps/curl:/opt/obs-deps/brotli:/opt/obs-deps/libvpl:/opt/obs-deps/libdatachannel:/opt/obs-deps/qt6:/opt/obs-deps/ffmpeg:/opt/obs-deps/pipewire:/opt/obs-deps/glib:/opt/obs-deps/fdk-aac:/opt/obs-deps/qrcodegen:/opt/obs-deps/headers
 ENV PKG_CONFIG_PATH=/opt/obs-deps/curl/lib/pkgconfig:/opt/obs-deps/brotli/lib/pkgconfig:/opt/obs-deps/qt6/lib/pkgconfig:/opt/obs-deps/ffmpeg/lib/pkgconfig:/opt/obs-deps/pipewire/lib/pkgconfig:/opt/obs-deps/glib/lib/pkgconfig:/opt/obs-deps/fdk-aac/lib/pkgconfig:/opt/obs-deps/qrcodegen/lib/pkgconfig:/opt/obs-deps/headers/lib/pkgconfig:/opt/obs-deps/headers/share/pkgconfig
 ENV LD_LIBRARY_PATH=/opt/obs-deps/openssl/lib:/opt/obs-deps/curl/lib:/opt/obs-deps/brotli/lib:/opt/obs-deps/libvpl/lib:/opt/obs-deps/libdatachannel/lib:/opt/obs-deps/qt6/lib:/opt/obs-deps/ffmpeg/lib:/opt/obs-deps/pipewire/lib:/opt/obs-deps/glib/lib:/opt/obs-deps/fdk-aac/lib:/opt/obs-deps/qrcodegen/lib
-ENV PATH=/opt/obs-deps/glib/bin:/opt/obs-deps/qt6/bin:$PATH
+# The pinned curl CLI, not the base's 7.61.1: LD_LIBRARY_PATH already resolves
+# libcurl.so.4 to the pinned prefix for every dynamically linked binary, and the
+# base's curl tool passes option numbers a libcurl 8 does not know (the rustup
+# install step died with `curl: (48)`), so the tool has to be the pinned one too.
+ENV PATH=/opt/obs-deps/curl/bin:/opt/obs-deps/glib/bin:/opt/obs-deps/qt6/bin:$PATH
 
 # The three properties the shipped AppImage depends on, asserted here so a
 # lock or path edit cannot silently fall back to the base's 7.61.1 / 1.0.6 /
