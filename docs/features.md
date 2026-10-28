@@ -2413,6 +2413,13 @@ area.
   [#2374](https://github.com/obs-rust/obs-studio/issues/2374), PRs
   [#2427](https://github.com/obs-rust/obs-studio/pull/2427),
   [#2455](https://github.com/obs-rust/obs-studio/pull/2455).
+- The Linux AppImage no longer bundles OpenSSL 1.1.1: Qt is built without
+  its GSSAPI/SPNEGO auth delegate, so the base's krb5 libraries — the last
+  thing that pulled in `libcrypto.so.1.1` — are not linked at all. *Linux*,
+  2026-10-28. Issue
+  [#2815](https://github.com/obs-rust/obs-studio/issues/2815), PRs
+  [obs-studio-libs#25](https://github.com/obs-rust/obs-studio-libs/pull/25),
+  [#2831](https://github.com/obs-rust/obs-studio/pull/2831).
 
 ### Building from source
 
