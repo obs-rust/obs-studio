@@ -6,9 +6,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -159,6 +162,32 @@ class EnvironmentHintTest(unittest.TestCase):
         text = "\n".join(out)
         self.assertIn("Permission denied", text)
         self.assertIn("hint:", text)
+
+
+class EmptyTestDiffTest(unittest.TestCase):
+    """An empty base ref must not fall through to every lane
+    (obs-rust/obs-studio#2756, #2760): argparse accepts "", and `if
+    args.test_diff:` then reads it as "no --test-diff given", so the gate runs
+    clang-format, gersemi, ruff, the Dylints and all ci/test_*.py. On a Windows
+    runner that is how 273 POSIX-only self-tests reached a lane that asked only
+    for changed crates."""
+
+    def test_an_empty_base_refuses_instead_of_running_every_lane(self):
+        ran = []
+        lanes = {name: (lambda fix, name=name: ran.append(name)) for name in ("lint", "rust-test")}
+        out = io.StringIO()
+        with (
+            mock.patch.object(local_gate, "LANES", lanes),
+            mock.patch.object(local_gate.subprocess, "run") as run,
+            mock.patch.object(sys, "argv", ["local_gate.py", "--test-diff", ""]),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(out),
+        ):
+            code = local_gate.main()
+        self.assertEqual(code, 2, out.getvalue())
+        self.assertEqual(ran, [], "an empty --test-diff ran lanes")
+        run.assert_not_called()
+        self.assertIn("--test-diff", out.getvalue())
 
 
 class CrossTargetsTest(unittest.TestCase):
