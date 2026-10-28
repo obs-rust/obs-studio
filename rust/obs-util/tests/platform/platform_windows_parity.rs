@@ -64,6 +64,14 @@ fn forward_slash(path: &Path) -> Vec<u8> {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "parity table: one block per ported C case"
+)]
 fn filesystem_matches_the_c_file() {
     let _guard = PARITY.lock().unwrap_or_else(|e| e.into_inner());
     let dir = scratch();
@@ -259,6 +267,10 @@ fn glob_entries(pattern: *const c_char, rust: bool) -> Vec<(Vec<u8>, bool)> {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
 fn paths_version_and_cores_match_the_c_file() {
     let _guard = PARITY.lock().unwrap_or_else(|e| e.into_inner());
     let name = cstring(b"obs-studio");
@@ -366,6 +378,10 @@ fn paths_version_and_cores_match_the_c_file() {
 }
 
 #[test]
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "parity table: one block per ported C case"
+)]
 fn load_uuid_and_inhibit_match_where_they_are_stable() {
     let _guard = PARITY.lock().unwrap_or_else(|e| e.into_inner());
     let kernel = cstring(b"kernel32");

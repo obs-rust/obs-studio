@@ -119,6 +119,10 @@ const CF_NUMBER_SINT64: isize = 4;
 /// `IOAccelerator` service with registry entry ID `registry_id`
 /// (obs-rust/obs-studio#1026), for [`crate::iokit::device_utilization`].
 /// Entries that are not numbers are left out; an error gives an empty list.
+#[expect(
+    clippy::too_many_lines,
+    reason = "FFI table: one block per CoreFoundation call, in order"
+)]
 pub(super) fn accelerator_statistics(registry_id: u64) -> Vec<(String, i64)> {
     type IdMatching = unsafe extern "C" fn(u64) -> *mut c_void;
     type GetService = unsafe extern "C" fn(u32, *mut c_void) -> u32;
