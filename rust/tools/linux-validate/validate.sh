@@ -65,6 +65,15 @@ if [ -n "$part" ] && [ -n "${OBS_CTEST_SHARD:-}" ]; then
   echo "FAIL: OBS_CTEST_PART and OBS_CTEST_SHARD cannot be combined" >&2
   exit 2
 fi
+# OBS_TIER2_SERIAL_CPUS=<cpu list>: run the RUN_SERIAL part beside the suite
+# part, each on its own CPUs, instead of one after the other alone (#2773).
+# CI keeps the separate runners of #2071/#2072; this is for a local host that
+# has the cores but not a second runner. Unset, nothing changes.
+serial_cpus="${OBS_TIER2_SERIAL_CPUS:-}"
+if [ -n "$serial_cpus" ] && { [ -n "$part" ] || [ -n "${OBS_CTEST_SHARD:-}" ]; }; then
+  echo "FAIL: OBS_TIER2_SERIAL_CPUS cannot be combined with OBS_CTEST_PART or OBS_CTEST_SHARD" >&2
+  exit 2
+fi
 # Sets mode_shard_args to the part's tests of build tree $1, mode $2.
 select_part() {
   local registry="$1/tier2-registry-$2.json" serial
@@ -109,11 +118,12 @@ fi
 test_home="$BUILD/test-home"
 rm -rf "$test_home"
 mkdir -p "$test_home"
-test_env=(env HOME="$test_home" XDG_CONFIG_HOME="$test_home/.config"
+test_env_pairs=(HOME="$test_home" XDG_CONFIG_HOME="$test_home/.config"
   XDG_DATA_HOME="$test_home/.local/share" XDG_CACHE_HOME="$test_home/.cache"
   # Eight test processes share the runner's CPUs; each software renderer must
   # not start another full-machine worker pool (#1634). Hardware drivers ignore it.
   LP_NUM_THREADS=1)
+test_env=(env "${test_env_pairs[@]}")
 echo "== environment: user=$(id -un) nproc=$(nproc) locale=$LC_ALL" \
   "cmake=$(cmake --version | head -1 | awk '{print $3}')" \
   "cc=$(cc --version | head -1)" "kernel=$(uname -r)"
@@ -392,12 +402,46 @@ if [ "$stage" != build ]; then
     # another test can be opening its hotkey connection at that boundary.
     xvfb_args=(-a '--server-args=-screen 0 1280x1024x24 -noreset')
     ctest_status=0
-    "${mode_env[@]}" xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" "${mode_shard_args[@]}" 2>&1 | tee "$build.ctest-$mode.log" ||
-      ctest_status=$?
+    serial_status=0
+    if [ -n "$serial_cpus" ]; then
+      # Both parts at the same time, each on its own CPUs (#2773): the suite
+      # part pinned to what OBS_TIER2_SERIAL_CPUS leaves, the RUN_SERIAL tests
+      # as one process per CPU pair. serial-runner.py has no ctest of its own,
+      # so CTestCostData.txt keeps a single writer. Both logs are kept and
+      # either part failing fails the mode.
+      registry="$build/tier2-registry-$mode.json"
+      ctest --test-dir "$build" --show-only=json-v1 >"$registry"
+      serial_regex=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-tests.py "$registry")
+      suite_cpu_list=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py suite-cpus --serial "$serial_cpus")
+      serial_env_args=()
+      for name_value in "${test_env_pairs[@]}" "LD_LIBRARY_PATH=$want_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; do
+        serial_env_args+=(--env "$name_value")
+      done
+      echo "== [$mode] ctest (suite on CPUs $suite_cpu_list) beside the RUN_SERIAL part (CPUs $serial_cpus)"
+      uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py pin --cpus "$suite_cpu_list" \
+        "${serial_env_args[@]}" -- \
+        xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" \
+        -E "$serial_regex" >"$build.ctest-$mode.log" 2>&1 &
+      suite_pid=$!
+      # One test per display, so xvfb-run -a (free display, its default
+      # 1280x1024x24 screen) is all the serial part needs; -noreset only
+      # matters when several tests share one display, as in the suite part.
+      uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py run "$registry" \
+        --cpus "$serial_cpus" --log-dir "$build/serial-$mode" --xvfb=-a \
+        "${serial_env_args[@]}" >"$build.serial-$mode.log" 2>&1 &
+      serial_pid=$!
+      wait "$suite_pid" || ctest_status=$?
+      wait "$serial_pid" || serial_status=$?
+      [ "$serial_status" -eq 0 ] || echo "FAIL: [$mode] the RUN_SERIAL part failed, see $build.serial-$mode.log"
+    else
+      "${mode_env[@]}" xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" "${mode_shard_args[@]}" 2>&1 | tee "$build.ctest-$mode.log" ||
+        ctest_status=$?
+    fi
     # Keep the timings even when a test failed: they are still right.
     if [ -n "$cost_cache" ] && [ -s "$cost_file" ]; then
       cp "$cost_file" "$cost_cache"
     fi
+    [ "$serial_status" -eq 0 ] || exit "$serial_status"
     [ "$ctest_status" -eq 0 ] || exit "$ctest_status"
     # A PipeWire test that skips for lack of a daemon is a hole, not a pass (#776).
     uv run --no-project "$SRC"/rust/tools/linux-validate/check_skips.py "$build.ctest-$mode.log"

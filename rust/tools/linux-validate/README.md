@@ -37,3 +37,17 @@ compare their test counts to the prior revision. Report elapsed gate time
 and summed runner time separately: concurrent modes reduce wall time but
 repeat runner setup. Local shell-policy tests alone do not establish that
 the matrix ran or that queue throughput improved.
+
+## Running the RUN_SERIAL part beside the suite
+
+CI gives the `RUN_SERIAL` tests their own runner (`OBS_CTEST_PART=serial`).
+A local host has no second runner, so `OBS_TIER2_SERIAL_CPUS=<cpu list>`
+gives them their own cores instead: the suite part runs `ctest -E` pinned to
+the CPUs the variable leaves, while `serial-runner.py` runs each `RUN_SERIAL`
+test as its own process on its own CPU pair, at the same time.
+`tree.ctest-<mode>.log` and `tree.serial-<mode>.log` are both kept, and
+either part failing fails the mode. Unset, the lane is unchanged; CI never
+sets it, and it cannot be combined with `OBS_CTEST_PART` or
+`OBS_CTEST_SHARD`. The `run.py` harness passes it into the container, so
+`OBS_TIER2_SERIAL_CPUS=0-9 uv run --script rust/tools/linux-validate/run.py`
+is the whole invocation on a 16-core host.

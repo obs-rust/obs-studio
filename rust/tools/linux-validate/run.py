@@ -122,6 +122,9 @@ def task_arguments(env: Mapping[str, str], version_override: str) -> list[str]:
         # CI job that compares OFF with ON.
         arguments += host_directory(env, "OBS_TIER2_EXPORTS_DIR", "/exports")
     arguments += passthrough(env, ("OBS_TIER2_STAGE", "OBS_CTEST_SHARD", "OBS_TIER2_SHARDS"))
+    # OBS_TIER2_SERIAL_CPUS: run the RUN_SERIAL part beside the suite on its own
+    # CPUs (#2773). Host-only knob; CI never sets it.
+    arguments += passthrough(env, ("OBS_TIER2_SERIAL_CPUS",))
     if env.get("OBS_TIER2_PACK_DIR"):
         # A host dir for the build-tree tarballs (#937); see validate.sh.
         arguments += host_directory(env, "OBS_TIER2_PACK_DIR", "/pack")

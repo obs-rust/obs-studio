@@ -50,7 +50,9 @@ class PinnedEnvTest(unittest.TestCase):
     def test_parallel_tests_do_not_inherit_an_oversized_software_renderer_pool(self):
         # Exercise the actual Bash environment array: an inherited renderer
         # pool must not multiply across all eight concurrent test processes.
-        block = re.search(r"test_env=\([\s\S]*?\)\n", self.text)[0]
+        # The pairs array is the source of truth since the serial part of
+        # #2773 needs the same NAME=VALUE list as --env arguments.
+        block = re.search(r"test_env_pairs=\([\s\S]*?\)\ntest_env=\([^\n]*\)\n", self.text)[0]
         result = subprocess.run(["bash", "-c", 'test_home=/fixture-home\n' + block +
                                  '"${test_env[@]}" /usr/bin/env'],
                                 env={**os.environ, "LP_NUM_THREADS": "128"}, capture_output=True, text=True, check=True)
