@@ -3,18 +3,16 @@
 
     uv run python -m unittest ci.test_appimage_brotli_deps
 
-`build-aux/appimage/manylinux/Dockerfile` rebuilds libcurl from AlmaLinux's curl
-source RPM so HTTPS works without `/etc/pki/tls/certs/ca-bundle.crt` (#1085).
-That build resolves brotli from the base image, 1.0.6 — inside
-CVE-2026-111497's range — so the shipped `libbrotlidec` has to come from the
-pinned obs-studio-libs brotli instead (1.2.1, `brotli-1.2.1` release). Two
-things make that true, and both are easy to lose in a Dockerfile edit:
+The image's libcurl is now the pinned one (`deps.lock.json`, fetched from
+obs-studio-libs), not a rebuild from AlmaLinux's source RPM, so the brotli it
+decodes with comes from the pinned 1.2.1 prefix rather than the base's 1.0.6 —
+inside CVE-2026-111497's range (obs-rust/obs-studio#2782, #2774). Two things
+make that true, and both are easy to lose in a Dockerfile edit:
 
 - the artifact is in `deps.lock.json` and on the image's CMake, pkg-config and
-  loader paths, so `pkg-config --modversion libbrotlidec` in the image is 1.2.1;
-- the dependency fetch runs **before** the RPM rebuild, because `rpmbuild` only
-  sees the prefix through the environment it is given. Fetched after, curl links
-  the base's 1.0.6 again with no error (#2774).
+  loader paths, so the shipped `libbrotlidec.so.1` is the pinned 1.2.1;
+- the libcurl that needs it is itself locked (`ci/test_appimage_curl_deps.py`
+  pins that half), so no build in the image can resolve brotli from the base.
 
 The base stays glibc 2.28 (#926): this is a dependency substitution, not a base
 bump.
@@ -31,7 +29,6 @@ ROOT = Path(__file__).resolve().parent.parent
 MANYLINUX = ROOT / "build-aux/appimage/manylinux"
 PREFIX = "/opt/obs-deps/brotli"
 FETCH = "obs-studio-libs fetch"
-RPM_BUILD = "rpmbuild -bb"
 
 
 def dockerfile() -> str:
@@ -66,19 +63,11 @@ class BrotliDepsTest(unittest.TestCase):
         # The AppImage bundles libbrotli*.so.1 from the loader path, like the others.
         self.assertIn(f"{PREFIX}/lib", image_env("LD_LIBRARY_PATH"))
 
-    def test_dependencies_are_fetched_before_the_curl_rebuild(self):
-        text = dockerfile()
-        self.assertLess(
-            text.index(FETCH),
-            text.index(RPM_BUILD),
-            "the prebuilt dependencies are fetched after the libcurl RPM rebuild",
-        )
-
-    def test_curl_rebuild_sees_the_brotli_prefix(self):
-        text = dockerfile()
-        start = text.index("dnf download -q --source")
-        rpm = text[start : text.index("\n\n", text.index(RPM_BUILD))]
-        self.assertIn(PREFIX, rpm, "the libcurl rebuild is not given the brotli prefix")
+    def test_the_dependencies_come_from_the_lock(self):
+        self.assertIn(FETCH, dockerfile())
+        # libcurl is prebuilt too, so nothing in the image rebuilds it against
+        # the base's brotli 1.0.6.
+        self.assertNotIn("rpmbuild", dockerfile())
 
 
 if __name__ == "__main__":
