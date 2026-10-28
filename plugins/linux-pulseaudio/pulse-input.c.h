@@ -197,10 +197,10 @@ static void pulse_stream_read(pa_stream *p, size_t nbytes, void *userdata)
 
 	struct obs_source_audio out;
 	out.speakers = data->speakers;
-	out.samples_per_sec = data->samples_per_sec;
+	out.samples_per_sec = (uint32_t)data->samples_per_sec;
 	out.format = pulse_to_obs_audio_format(data->format);
 	out.data[0] = (uint8_t *)(uintptr_t)frames;
-	out.frames = bytes / data->bytes_per_frame;
+	out.frames = (uint32_t)(bytes / data->bytes_per_frame);
 	out.timestamp = pulse_timing_packet_ts(&data->timing, os_gettime_ns(), out.frames, out.samples_per_sec);
 
 	/* Skip the startup period after a reconnect: the audio was already
@@ -324,7 +324,7 @@ static enum pulse_start_result pulse_start_recording(struct pulse_data *data)
 
 	pa_sample_spec spec;
 	spec.format = data->format;
-	spec.rate = data->samples_per_sec;
+	spec.rate = (uint32_t)data->samples_per_sec;
 	spec.channels = data->channels;
 
 	if (!pa_sample_spec_valid(&spec)) {
@@ -349,7 +349,7 @@ static enum pulse_start_result pulse_start_recording(struct pulse_data *data)
 	pulse_unlock();
 
 	pa_buffer_attr attr;
-	attr.fragsize = pa_usec_to_bytes(25000, &spec);
+	attr.fragsize = (uint32_t)pa_usec_to_bytes(25000, &spec);
 	attr.maxlength = (uint32_t)-1;
 	attr.minreq = (uint32_t)-1;
 	attr.prebuf = (uint32_t)-1;
