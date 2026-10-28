@@ -84,6 +84,7 @@ pub mod hotkey_pair;
 pub mod hotkey_press;
 pub mod hotkey_translations;
 pub mod image_file;
+pub mod image_orient;
 pub mod lexer;
 pub mod lzw;
 pub mod media_remux;
