@@ -16,7 +16,7 @@ local output_name=${3}
 
 log_group "Create macOS disk image"
 
-trap "safe_hdiutil detach /Volumes/${output_name}; rm temp.dmg; log_group; return 2" ERR
+trap "safe_detach_volume /Volumes/${output_name} || true; rm temp.dmg; log_group; return 2" ERR
 
 safe_hdiutil() {
   local _status=0
@@ -39,6 +39,44 @@ safe_hdiutil() {
     log_group
     return 2
   }
+}
+
+# Detaching through the mountpoint cannot be retried: after a failed attempt the volume is
+# usually half-ejected, so the path is gone and every later 'hdiutil detach <path>' fails
+# while resolving it ('No such file or directory') - the state we want, reported as an error
+# (run 40627344990 aborted the release exactly this way). Retry the device node instead,
+# which outlives the mountpoint, and treat a missing mountpoint as success (#2728).
+safe_detach_volume() {
+  local -r mount_point=${1}
+  local -r -a _backoff=(2 5 10 15 30)
+  local device=''
+
+  for i ({1..5}); do
+    if [[ ! -d ${mount_point} ]]; then
+      log_info "Volume ${mount_point} is already detached."
+      return 0
+    fi
+
+    if [[ -z ${device} ]]; then
+      device=$(hdiutil info | awk -v mp="${mount_point}" '$1 ~ /^\/dev\/disk/ { dev = $1 } index($0, mp) { print dev; exit }')
+    fi
+
+    if hdiutil detach ${device:-${mount_point}}; then
+      return 0
+    fi
+
+    log_warning "Unable to detach ${mount_point} (attempt #${i}). Retrying."
+    if (( ${+CI} )); then sudo pkill -9 XProtect >/dev/null || true; fi
+    sleep ${_backoff[${i}]}
+  done
+
+  if hdiutil detach -force ${device:-${mount_point}} || [[ ! -d ${mount_point} ]]; then
+    return 0
+  fi
+
+  log_error "Unable to detach ${mount_point}. Aborting"
+  log_group
+  return 2
 }
 
 safe_hdiutil create \
@@ -68,7 +106,7 @@ SetFile -a C /Volumes/${output_name}
 rm -rf -- /Volumes/${output_name}/.fseventsd(N)
 log_info "Converting disk image..."
 
-safe_hdiutil detach /Volumes/${output_name}
+safe_detach_volume /Volumes/${output_name}
 
 safe_hdiutil convert \
   -format ULFO \
