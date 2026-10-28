@@ -24,6 +24,9 @@ BOUNDED_SESSION_DRAIN = "3253206ff1ba62213936f4e9458e0ebf5eb421ea"
 # obs-rust/obs-websocket#24: rename the two inner errorCode locals in onMessage
 # (C4456) for the MSVC /W4 ratchet (obs-studio#2626), which the app build reports.
 WARNING_SHADOWING_FIX = "960b99e702f116f9cc80ff6b2d3741dc917b7d87"
+# obs-rust/obs-websocket#25: the structured binding in Json.cpp's
+# obs_data_set_json_array hides the function's own `key` parameter (C4457).
+WARNING_JSON_BINDING_FIX = "c2366e8d2c212be569a4fce6687d8a3fb7c6be70"
 # Upstream commits without the fix that stale checkouts have committed (#492, #496).
 KNOWN_BAD = {"073a294cd0646fa1744b0ebf3293bfa63a869b50"}
 
@@ -64,6 +67,9 @@ class WebsocketSubmoduleTest(unittest.TestCase):
 
     def test_pointer_keeps_the_warning_renames(self):
         self._assert_pointer_at_least(WARNING_SHADOWING_FIX, "the /W4 shadowing renames (#24)")
+
+    def test_pointer_keeps_the_json_binding_rename(self):
+        self._assert_pointer_at_least(WARNING_JSON_BINDING_FIX, "the Json.cpp binding rename (#25)")
 
 
 class SessionDrainShapeTest(unittest.TestCase):
