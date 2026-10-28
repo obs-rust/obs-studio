@@ -2,8 +2,8 @@
 //! file: so far `libobs/obs-video-plan.c.h` and `libobs/obs-context-names.c.h`
 //! (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
 //! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
-//! `libobs/obs-module-source-rules.c.h` and `libobs/obs-module-type-rules.c.h`
-//! (from `obs-module.c.h`) and `libobs/obs-audio-mix.c.h` (from
+//! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`
+//! and `libobs/obs-module-load-rules.c.h` (from `obs-module.c.h`) and `libobs/obs-audio-mix.c.h` (from
 //! `obs-audio.c.h`); and
 //! `libobs/util/source-profiler.c.h`, which reads core state (sources and the
 //! graphics context) and so belongs to the core rather than obs-util; and
@@ -27,8 +27,9 @@
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
-//! [`module_type_rules`], [`audio_mix`], [`source_profiler`], [`view`],
-//! [`video_copy_plan`], [`video_output_step`], [`source_load`],
+//! [`module_type_rules`], [`module_load_rules`], [`audio_mix`],
+//! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_output_step`],
+//! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_frame_timing`] and
 //! [`nix_system_info`].
@@ -42,7 +43,8 @@
 //! sleep at the end of each frame; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
-//! startup log prints. The C ABI shims live in [`ffi`].
+//! startup log prints; [`module_load_rules`] decides which modules load, are
+//! disabled or skipped, and which failures count. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
