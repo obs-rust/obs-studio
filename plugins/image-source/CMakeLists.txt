@@ -17,6 +17,14 @@ target_sources(
 
 target_link_libraries(image-source PRIVATE OBS::libobs $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>)
 
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  image-source
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 if(OS_WINDOWS)
   configure_file(cmake/windows/obs-module.rc.in image-source.rc)
   target_sources(image-source PRIVATE build/image-source.windows+.h.c image-source.rc)
