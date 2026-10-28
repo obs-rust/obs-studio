@@ -521,13 +521,18 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 		blog(LOG_DEBUG, "Failed to load module file '%s', incompatible version", info->bin_path);
 		break;
 	}
-	if (route & OBS_MODULE_LOAD_RULES_DISABLE)
+	if (route & OBS_MODULE_LOAD_RULES_DISABLE) {
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
 					   (enum obs_module_load_state)state);
-	if ((route & OBS_MODULE_LOAD_RULES_CORE_CONTINUES) && obs_module_load_rules_is_core(info->type)) {
-		disabled_module->module_type = info->type;
-		blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
-		return;
+		/* CORE_CONTINUES is only returned together with DISABLE
+		 * (obs_module_load_rules_open_route()), so this is the module
+		 * that carries the type. Keeping the two in one branch also
+		 * shows the compiler the variable is set before its use. */
+		if ((route & OBS_MODULE_LOAD_RULES_CORE_CONTINUES) && obs_module_load_rules_is_core(info->type)) {
+			disabled_module->module_type = info->type;
+			blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
+			return;
+		}
 	}
 	if (route & OBS_MODULE_LOAD_RULES_FAIL)
 		goto load_failure;
@@ -537,11 +542,14 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	route = obs_module_load_rules_init_route(obs_init_module(module), &state);
 	if (route & OBS_MODULE_LOAD_RULES_FREE)
 		free_module(module);
-	if (route & OBS_MODULE_LOAD_RULES_DISABLE)
+	if (route & OBS_MODULE_LOAD_RULES_DISABLE) {
 		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
 					   (enum obs_module_load_state)state);
-	if (route & OBS_MODULE_LOAD_RULES_KEEP_TYPE)
-		disabled_module->module_type = info->type;
+		/* KEEP_TYPE likewise comes only with DISABLE
+		 * (obs_module_load_rules_init_route()). */
+		if (route & OBS_MODULE_LOAD_RULES_KEEP_TYPE)
+			disabled_module->module_type = info->type;
+	}
 	if (route & OBS_MODULE_LOAD_RULES_SET_TYPE)
 		module->module_type = info->type;
 
