@@ -46,6 +46,13 @@ _video_output_create_with_frame_rate_divisor
 _video_output_free_frame_rate_divisor
 # obs-data.c: json_decref is a static inline. The glue is not EXPORT.
 _obs_data_json_decref
+# graphics/graphics-ffmpeg-orient.c: graphics-ffmpeg.c calls them inside
+# libobs. Not EXPORT.
+_gs_ffmpeg_image_matrix_orientation
+_gs_ffmpeg_image_orient_copy
+_gs_ffmpeg_image_orient_needed
+_gs_ffmpeg_image_orient_swaps
+_gs_ffmpeg_image_too_large
 # graphics/graphics-sprite.c: graphics.c calls them inside libobs. Not EXPORT.
 _gs_sprite_build
 _gs_sprite_quad_buffer

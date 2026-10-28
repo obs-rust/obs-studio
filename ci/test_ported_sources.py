@@ -16,6 +16,7 @@ SPEC.loader.exec_module(PORTED)
 # add rows here instead of appending assertions at the end.
 # Ported on Linux, Windows and macOS.
 PORTED_ON_EVERY_HOST = (
+    "graphics/graphics-ffmpeg-orient.c.h.o",
     "graphics/graphics-sprite.c.h.o",
     "graphics/graphics-state-stacks.c.h.o",
     "graphics/libnsgif/gif-blocks.c.h.o",

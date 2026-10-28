@@ -1518,11 +1518,6 @@
       ],
       "libraries": [
         "OBS::libobs",
-        "FFmpeg::avcodec",
-        "FFmpeg::avformat",
-        "FFmpeg::avutil",
-        "FFmpeg::swscale",
-        "FFmpeg::swresample",
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"

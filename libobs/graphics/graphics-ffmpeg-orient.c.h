@@ -1,4 +1,4 @@
-#include "build/libobs-media.pch.h"
+#include "libobs/build/libobs-ported-graphics-ffmpeg-orient.pch.h"
 
 static inline int matrix_sign(int32_t v)
 {

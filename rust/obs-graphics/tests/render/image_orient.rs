@@ -239,22 +239,17 @@ fn edge_short_buffers() {
 /// Each orientation and its inverse give the image back.
 #[test]
 fn edge_turn_and_back() {
-    let inverse = [0, 1, 2, 3, 4, 5, 8, 7, 6];
-    for orient in 2..=8_usize {
+    // (orientation, its inverse): 6 and 8 turn by 90 degrees each way; the
+    // mirrors, 180 degrees, the transpose and the transverse undo themselves.
+    let pairs = [(2, 2), (3, 3), (4, 4), (5, 5), (6, 8), (7, 7), (8, 6)];
+    for (orient, inverse) in pairs {
         let (w, h) = (23, 9);
         let src = numbered(w, h);
         let mut once = vec![0; src.len()];
-        let o = i32::try_from(orient).unwrap_or(0);
-        orient_copy(&mut once, &src, w, h, o);
-        let (tw, th) = if orient_swaps(o) { (h, w) } else { (w, h) };
+        orient_copy(&mut once, &src, w, h, orient);
+        let (tw, th) = if orient_swaps(orient) { (h, w) } else { (w, h) };
         let mut back = vec![0; src.len()];
-        orient_copy(
-            &mut back,
-            &once,
-            tw,
-            th,
-            i32::try_from(inverse[orient]).unwrap_or(0),
-        );
+        orient_copy(&mut back, &once, tw, th, inverse);
         assert_eq!(back, src, "orientation {orient}");
     }
 }
