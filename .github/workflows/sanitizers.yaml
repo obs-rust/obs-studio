@@ -48,15 +48,13 @@ jobs:
     outputs:
       tools: ${{ steps.pick.outputs.tools }}
     steps:
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - id: pick
         env:
           TOOLS: ${{ inputs.tools || 'all' }}
-        run: |
-          if [ "$TOOLS" = all ]; then
-            echo 'tools=["asan","tsan","valgrind"]' >>"$GITHUB_OUTPUT"
-          else
-            echo "tools=[\"$TOOLS\"]" >>"$GITHUB_OUTPUT"
-          fi
+        run: uv run --no-project ci/sanitizers_step.py select --tools "$TOOLS"
 
   sanitize:
     name: ${{ matrix.tool }} 🧪
@@ -116,10 +114,8 @@ jobs:
       - name: Triage 🩺
         if: always()
         env:
-          FAIL: ${{ inputs.fail_on_findings && '--fail-on-findings' || '' }}
-        run: |
-          [ -d "$SAN_OUT/${{ matrix.tool }}" ] || { echo "No results (build failed?)" >>"$GITHUB_STEP_SUMMARY"; exit 1; }
-          uv run --no-project rust/tools/sanitize/triage.py "$SAN_OUT/${{ matrix.tool }}" ${FAIL:+"$FAIL"} | tee -a "$GITHUB_STEP_SUMMARY"
+          FAIL_ON_FINDINGS: ${{ inputs.fail_on_findings }}
+        run: uv run --no-project ci/sanitizers_step.py triage "$SAN_OUT/${{ matrix.tool }}"
 
       - name: Upload logs 📤
         if: always()
