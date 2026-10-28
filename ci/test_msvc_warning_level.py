@@ -50,5 +50,61 @@ class MsvcWarningLevelTest(unittest.TestCase):
         self.assertNotIn("/WX", call_tokens(self.text, "add_compile_options"))
 
 
+HELPERS = ROOT / "cmake" / "common" / "helpers_common.cmake"
+
+# Every product C++ target that compiles a translation unit including
+# libobs/graphics/vec{2,3,4}.h, libobs/util/profiler.h or
+# frontend/api/obs-frontend-api.h, and so reports C4201 at /W4. The warnings come
+# from the headers, not from the target's own code, and the nameless unions in
+# them are legal C11 (6.7.2.1p13) consumed from C, so #2626 decided a per-target
+# exemption for exactly these targets rather than renaming the types (an API
+# break) or disabling C4201 for every C++ target.
+C4201_TARGETS = {
+    "aja-output-ui": "plugins/aja-output-ui/CMakeLists.txt",
+    "coreaudio-encoder": "plugins/coreaudio-encoder/CMakeLists.txt",
+    "decklink": "plugins/decklink/CMakeLists.txt",
+    "decklink-output-ui": "plugins/decklink-output-ui/CMakeLists.txt",
+    "frontend-tools": "plugins/frontend-tools/CMakeLists.txt",
+    "libobs-d3d11": "libobs-d3d11/CMakeLists.txt",
+    "obs-studio": "frontend/CMakeLists.txt",
+    "obs-browser": "plugins/CMakeLists.txt",
+    "obs-vst": "plugins/obs-vst/CMakeLists.txt",
+    "obs-websocket": "plugins/CMakeLists.txt",
+}
+
+
+class MsvcNamelessUnionExemptionTest(unittest.TestCase):
+    """C4201 is exempted per target, for the C++ targets that include those headers."""
+
+    def test_helper_is_cxx_and_msvc_scoped(self) -> None:
+        text = HELPERS.read_text(encoding="utf-8")
+        self.assertIn("function(obs_msvc_exempt_c4201 target)", text)
+        helper = text.split("function(obs_msvc_exempt_c4201 target)", 1)[1].split("endfunction()", 1)[0]
+        self.assertIn("/wd4201", helper)
+        self.assertIn("COMPILE_LANG_AND_ID:CXX,MSVC", helper)
+
+    def test_no_blanket_exemption_in_the_msvc_config(self) -> None:
+        windows = WINDOWS.read_text(encoding="utf-8")
+        self.assertIsNone(
+            re.search(r"(?<![\w/])/wd4201\b", windows),
+            "the MSVC config must not disable C4201 for every C++ target",
+        )
+
+    def test_generated_wrapper_and_padded_queue_exemptions(self) -> None:
+        obslua = (ROOT / "shared" / "obs-scripting" / "obslua" / "CMakeLists.txt").read_text(encoding="utf-8")
+        for flag in ("/wd4100", "/wd4189"):
+            self.assertIn(flag, obslua, "the SWIG-generated wrapper is not edited by hand")
+        decklink = (ROOT / "plugins" / "decklink" / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn("/wd4324", decklink, "FrameQueue pads for false-sharing avoidance")
+
+    def test_each_product_cxx_target_opts_in(self) -> None:
+        missing = []
+        for target, relative in sorted(C4201_TARGETS.items()):
+            body = (ROOT / relative).read_text(encoding="utf-8")
+            if f"obs_msvc_exempt_c4201({target})" not in body:
+                missing.append(f"{relative}: {target}")
+        self.assertEqual(missing, [])
+
+
 if __name__ == "__main__":
     unittest.main()
