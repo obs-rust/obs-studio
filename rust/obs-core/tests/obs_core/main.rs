@@ -16,6 +16,7 @@ mod canvas_rules_parity;
 mod context_names;
 mod context_names_parity;
 mod module_load_rules;
+mod module_load_rules_parity;
 mod module_locale;
 mod module_locale_parity;
 mod module_names;
