@@ -483,8 +483,7 @@ static void test_short_size(void **state)
 	expect_rejected("sr_short_type", types, false);
 
 	/* Cut before version: the copy has version 0, so the id is not
-	 * versioned, though the duplicate lookup used the caller's version
-	 * (characterized, not endorsed). */
+	 * versioned, and the duplicate lookup uses version 0 too (#2841). */
 	info = full_info("sr_short_version", OBS_SOURCE_TYPE_INPUT, OBS_SOURCE_VIDEO);
 	info.version = 3;
 	reg(&info, offsetof(struct obs_source_info, version));

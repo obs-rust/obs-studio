@@ -699,7 +699,12 @@ impl Registry {
         let cbs = cb(Self::callbacks(kind, info, size));
         let result = match kind {
             Kind::Output => output_check(info.flags, cbs),
-            Kind::Encoder => encoder_check(info.encoder_type, info.flags, cbs),
+            // The caps only when they lie wholly within the size (#2841).
+            Kind::Encoder => encoder_check(
+                info.encoder_type,
+                copied(info.flags, encoder_off::CAPS, 4, size),
+                cbs,
+            ),
             Kind::Service => service_check(cbs),
         };
         if let Err(broken) = result {
@@ -1281,21 +1286,23 @@ fn encoder_size() {
     assert!(!entry.type_data);
     types += 1;
 
-    // The caps are the caller's whatever the size (characterized, not
-    // endorsed).
+    // The caps are read only when they lie wholly within the size, and
+    // are 0 otherwise, as the copy has them (#2841).
     let info = full_encoder(
         "mtr_enc_caps_cut",
         ENCODER_VIDEO,
         CAP_PASS_TEXTURE | CAP_SCALING,
     );
     reg_encoder(&mut r, &info, caps_off);
-    r.expect_logged(&[(W, &texture_scaling("mtr_enc_caps_cut"))]);
-    r.expect_no(Kind::Encoder, "mtr_enc_caps_cut", types, true);
+    r.expect_logged(&[]);
+    r.expect_encoder("mtr_enc_caps_cut", ENCODER_VIDEO, 0);
+    types += 1;
 
     let info = full_encoder("mtr_enc_caps_cut2", ENCODER_VIDEO, CAP_PASS_TEXTURE);
     reg_encoder(&mut r, &info, caps_off);
-    r.expect_logged(&[(E, &neither("mtr_enc_caps_cut2"))]);
-    r.expect_no(Kind::Encoder, "mtr_enc_caps_cut2", types, true);
+    r.expect_logged(&[]);
+    r.expect_encoder("mtr_enc_caps_cut2", ENCODER_VIDEO, 0);
+    types += 1;
 
     let info = full_encoder(
         "mtr_enc_caps_cut3",

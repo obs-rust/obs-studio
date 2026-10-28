@@ -913,7 +913,11 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 		goto error;
 	}
 
-	if (get_source_info2(info->id, info->version)) {
+	/* The duplicate is looked up with the version the copy registers:
+	 * the caller's only when it lies wholly within the size, 0 otherwise.
+	 * A plugin built against an older header passes a size that ends
+	 * before it. */
+	if (get_source_info2(info->id, HAS_VAL(struct obs_source_info, info, version) ? info->version : 0)) {
 		source_warn("Source '%s' already exists!  "
 			    "Duplicate library?",
 			    info->id);
@@ -1156,9 +1160,11 @@ void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size)
 	has_val(struct obs_encoder_info, encode_texture2, ENCODE_TEXTURE2);
 	has_val(struct obs_encoder_info, get_frame_size, GET_FRAME_SIZE);
 
-	/* The type and the capabilities are the caller's, read whatever the
-	 * size. */
-	err = obs_module_type_rules_encoder_check((uint32_t)info->type, info->caps, callbacks);
+	/* The capabilities are the ones the copy registers: the caller's only
+	 * when they lie wholly within the size, 0 otherwise, as HAS_VAL()
+	 * reads the callbacks. The type is the caller's. */
+	err = obs_module_type_rules_encoder_check(
+		(uint32_t)info->type, HAS_VAL(struct obs_encoder_info, info, caps) ? info->caps : 0, callbacks);
 	switch (err) {
 	case OBS_MODULE_TYPE_RULES_OK:
 		break;

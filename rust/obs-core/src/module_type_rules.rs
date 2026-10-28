@@ -26,9 +26,10 @@
 //! - `OBS_OUTPUT_MULTI_TRACK` without `OBS_OUTPUT_AUDIO` needs no audio
 //!   callback, and an encoded output needs neither raw callback, whatever
 //!   its video and audio flags.
-//! - The C passes the caller's encoder type and capabilities, read from the
-//!   caller's structure whatever its size: a texture encoder that scales
-//!   itself is refused even when the size ends before its capabilities.
+//!
+//! `obs-module.c` passes the caller's encoder type, and its capabilities
+//! only when they lie wholly within the size it was given (0 otherwise, as
+//! the copy has them; #2841).
 
 #![deny(
     clippy::arithmetic_side_effects,

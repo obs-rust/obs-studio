@@ -1270,25 +1270,23 @@ static void test_encoder_size(void **state)
 	assert_string_equal(obs_encoder_get_display_name("mtr_enc_size_fs_video"), "(no type data)");
 	types++;
 
-	/* The capabilities are read from the caller's structure whatever the
-	 * size (characterized, not endorsed: a size that ends before caps
-	 * still has its caps read, past the size). A texture encoder that
-	 * scales is refused though its copy would have no caps. */
+	/* The capabilities are read only when they lie wholly within the
+	 * size, and are 0 otherwise, as the copy has them (#2841). A
+	 * structure cut before caps that says it is a texture encoder that
+	 * scales is a raw encoder with no caps. */
 	info = full_encoder("mtr_enc_caps_cut", OBS_ENCODER_VIDEO, CAP_PASS | CAP_SCALE);
 	reg_encoder(&info, caps_off);
-	expect_logged(1, W,
-		      "obs_register_encoder: Texture encoders cannot self-scale. Encoder id 'mtr_enc_caps_cut' not "
-		      "registered.");
-	expect_no_encoder("mtr_enc_caps_cut", types, true);
+	expect_logged(0);
+	expect_encoder("mtr_enc_caps_cut", OBS_ENCODER_VIDEO, 0);
+	types++;
 
-	/* A texture encoder cut before its texture callbacks lacks them, by
-	 * the caller's caps. */
+	/* Nor does a texture cap past the size ask for the texture
+	 * callbacks. */
 	info = full_encoder("mtr_enc_caps_cut2", OBS_ENCODER_VIDEO, CAP_PASS);
 	reg_encoder(&info, caps_off);
-	expect_logged(1, E,
-		      "Neither 'encode_texture' nor 'encode_texture2' for 'mtr_enc_caps_cut2' found.  "
-		      "obs_register_encoder failed.");
-	expect_no_encoder("mtr_enc_caps_cut2", types, true);
+	expect_logged(0);
+	expect_encoder("mtr_enc_caps_cut2", OBS_ENCODER_VIDEO, 0);
+	types++;
 
 	/* Cut before caps with encode: registered with no caps, though the
 	 * caller's caps said otherwise. */

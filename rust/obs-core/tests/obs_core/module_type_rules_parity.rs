@@ -363,8 +363,9 @@ fn c_fns() -> Fns {
 }
 
 /// The decision of `obs_register_<kind>_s()` for a structure with the
-/// `present` callbacks, cut at `size`. The flags, capabilities and type are
-/// the caller's, as the C reads them whatever the size.
+/// `present` callbacks, cut at `size`. The flags and type are the caller's;
+/// the capabilities are read only when they lie wholly within the size, and
+/// are 0 otherwise (#2841).
 fn decide(
     side: &Fns,
     kind: u32,
@@ -376,7 +377,12 @@ fn decide(
     let cbs = has_val(kind, present, size);
     let code = match kind {
         OUTPUT => (side.output)(flags, cbs),
-        ENCODER => (side.encoder)(encoder_type, flags, cbs),
+        ENCODER => {
+            // SAFETY: plain values.
+            let caps_end = unsafe { oracle_module_type_rules_other_end(2) };
+            let caps = if caps_end <= size { flags } else { 0 };
+            (side.encoder)(encoder_type, caps, cbs)
+        }
         _ => (side.service)(cbs),
     };
     let size_supported = (code == OK).then(|| {
