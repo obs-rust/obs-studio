@@ -7,6 +7,8 @@
 
 /* mac-display-capture.m */
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <obs-module.h>
 #include <util/threading.h>
 #include <pthread.h>
@@ -15,6 +17,7 @@
 #import <CoreGraphics/CGDisplayStream.h>
 #import <Cocoa/Cocoa.h>
 
+#include "plugins/mac-capture/display-reinit.h"
 #include "plugins/mac-capture/window-utils.h"
 
 /* mac-sck-audio-capture.m */

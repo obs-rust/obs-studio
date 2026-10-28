@@ -709,6 +709,13 @@ area.
 
 ### Video capture
 
+- A macOS display capture no longer keeps showing the last frame after its
+  display is unplugged, moved to another port or reconfigured: it notices the
+  display configuration change, waits for the display it was created for, and
+  recreates its stream when that display is back, logging the absence once.
+  It never switches to a different display. *macOS*, pending merge. Issue
+  [#2838](https://github.com/obs-rust/obs-studio/issues/2838).
+
 - **deliver video after a callback disconnects.** A video callback that disconnects itself no longer causes the next subscriber to miss a frame. *All*, 2026-10-20. Issue [#1535](https://github.com/obs-rust/obs-studio/issues/1535), PR [#1539](https://github.com/obs-rust/obs-studio/pull/1539).
 
 - An XComposite window capture no longer asks the X server whether its

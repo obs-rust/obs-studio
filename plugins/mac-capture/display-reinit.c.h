@@ -15,21 +15,46 @@
 
 #include "plugins/mac-capture/build/mac-capture-display-reinit.pch.h"
 
-enum display_reinit_action display_reinit_decide(const char *stored_uuid, const char *const *present_uuids, size_t count,
-						 bool stream_running)
+enum display_reinit_action display_reinit_decide(const char *stored_uuid, const char *const *present_uuids,
+						 size_t count, bool stream_running)
 {
-	UNUSED_PARAMETER(stored_uuid);
-	UNUSED_PARAMETER(present_uuids);
-	UNUSED_PARAMETER(count);
-	UNUSED_PARAMETER(stream_running);
+	/* Nothing to re-resolve: the settings have no uuid to key on, or the
+	 * display list is not readable yet while the configuration settles. */
+	if (!stored_uuid || !*stored_uuid || !present_uuids || count == 0) {
+		return DISPLAY_REINIT_WAIT;
+	}
 
-	/* RED stub (obs-rust/obs-studio#2838): always keeps the stream. */
-	return DISPLAY_REINIT_KEEP;
+	size_t matches = 0;
+	for (size_t i = 0; i < count; i++) {
+		if (present_uuids[i] && strcmp(present_uuids[i], stored_uuid) == 0) {
+			matches++;
+		}
+	}
+
+	/* The saved display is gone, or more than one present display claims its
+	 * identity: wait for the one this source was created for instead of
+	 * switching to another display. */
+	if (matches != 1) {
+		return DISPLAY_REINIT_WAIT;
+	}
+
+	if (stream_running) {
+		return DISPLAY_REINIT_KEEP;
+	}
+
+	return DISPLAY_REINIT_REBUILD;
 }
 
 const char *display_reinit_action_name(enum display_reinit_action action)
 {
-	/* RED stub (obs-rust/obs-studio#2838). */
-	UNUSED_PARAMETER(action);
-	return "keep";
+	switch (action) {
+	case DISPLAY_REINIT_KEEP:
+		return "keep";
+	case DISPLAY_REINIT_WAIT:
+		return "wait";
+	case DISPLAY_REINIT_REBUILD:
+		return "rebuild";
+	}
+
+	return "unknown";
 }

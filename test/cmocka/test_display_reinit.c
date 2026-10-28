@@ -18,8 +18,7 @@
 
 static const char *const SINGLE[] = {"8A1F4C32-0000-4000-8000-00000000A001"};
 static const char *const OTHER[] = {"8A1F4C32-0000-4000-8000-00000000A002"};
-static const char *const DUPLICATE[] = {"8A1F4C32-0000-4000-8000-00000000A001",
-					"8A1F4C32-0000-4000-8000-00000000A001"};
+static const char *const DUPLICATE[] = {"8A1F4C32-0000-4000-8000-00000000A001", "8A1F4C32-0000-4000-8000-00000000A001"};
 
 static void test_present_and_running_keeps_the_stream(void **state)
 {

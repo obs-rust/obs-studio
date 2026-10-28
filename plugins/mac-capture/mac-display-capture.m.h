@@ -38,12 +38,60 @@ struct display_capture {
     CGDisplayStreamRef disp;
     IOSurfaceRef current, prev;
 
+    /* The uuid saved in the source settings, which is what a reconfiguration
+     * is resolved against; never replaced by another display (#2838). */
+    char display_uuid[64];
+    /* Set from the stream's own queue when it stops, and from the
+     * reconfiguration callback: both are read from the video tick. */
+    volatile bool stream_stopped;
+    volatile bool display_changed;
+    bool reconfig_registered;
+    bool absence_logged;
+    uint64_t reinit_attempt_ns;
+
     pthread_mutex_t mutex;
 };
 
 static inline bool crop_mode_valid(enum crop_mode mode)
 {
     return CROP_NONE <= mode && mode < CROP_INVALID;
+}
+
+/* The display capture keys its stream to the `display_uuid` in its settings,
+ * and a display that goes away is waited for, not swapped for another one
+ * (#2838). */
+static void store_display_uuid(struct display_capture *dc, obs_data_t *settings)
+{
+    const char *uuid = obs_data_get_string(settings, "display_uuid");
+    snprintf(dc->display_uuid, sizeof(dc->display_uuid), "%s", uuid ? uuid : "");
+}
+
+static bool display_uuid_string(CGDirectDisplayID display_id, char *out, size_t len)
+{
+    CFUUIDRef uuid = CGDisplayCreateUUIDFromDisplayID(display_id);
+    if (!uuid)
+        return false;
+
+    CFStringRef string = CFUUIDCreateString(kCFAllocatorDefault, uuid);
+    bool ok = string && CFStringGetCString(string, out, (CFIndex) len, kCFStringEncodingUTF8);
+
+    if (string)
+        CFRelease(string);
+    CFRelease(uuid);
+
+    return ok;
+}
+
+/* Runs on the thread that registered it when any display is added, removed,
+ * moved or reconfigured. It only records that something changed: the stream is
+ * rebuilt from the video tick, under the graphics context. */
+static void display_reconfigured(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *user_info)
+{
+    UNUSED_PARAMETER(display);
+    UNUSED_PARAMETER(flags);
+
+    struct display_capture *dc = user_info;
+    os_atomic_set_bool(&dc->display_changed, true);
 }
 
 static void destroy_display_stream(struct display_capture *dc)
@@ -90,6 +138,11 @@ static void display_capture_destroy(void *data)
 
     if (!dc)
         return;
+
+    if (dc->reconfig_registered) {
+        CGDisplayRemoveReconfigurationCallback(display_reconfigured, dc);
+        dc->reconfig_registered = false;
+    }
 
     obs_enter_graphics();
 
@@ -139,6 +192,7 @@ static inline void display_stream_update(struct display_capture *dc, CGDisplaySt
     UNUSED_PARAMETER(display_time);
 
     if (status == kCGDisplayStreamFrameStatusStopped) {
+        os_atomic_set_bool(&dc->stream_stopped, true);
         os_event_signal(dc->disp_finished);
         return;
     }
@@ -219,6 +273,96 @@ static bool init_display_stream(struct display_capture *dc)
     return !CGDisplayStreamStart(dc->disp);
 }
 
+/* How many displays the re-initialization looks at, and how often it retries
+ * while the saved display is away: a dock taking a moment to settle must not
+ * be retried on every tick. */
+#define DISPLAY_REINIT_MAX 16
+#define DISPLAY_REINIT_RETRY_NS (2ULL * 1000ULL * 1000ULL * 1000ULL)
+
+/* Called from the video tick after a display reconfiguration: resolve the saved
+ * `display_uuid` against the displays present now and rebuild the stream once
+ * that display is back. A tick, not the stream's own queue or the
+ * reconfiguration callback, is where the teardown can run: it can take the
+ * graphics context the destruction needs. */
+static void display_reinit_tick(struct display_capture *dc)
+{
+    if (!os_atomic_load_bool(&dc->display_changed))
+        return;
+
+    const uint64_t now = os_gettime_ns();
+    if (dc->reinit_attempt_ns && now - dc->reinit_attempt_ns < DISPLAY_REINIT_RETRY_NS)
+        return;
+    dc->reinit_attempt_ns = now;
+
+    CGDirectDisplayID ids[DISPLAY_REINIT_MAX];
+    uint32_t id_count = 0;
+    if (CGGetOnlineDisplayList(DISPLAY_REINIT_MAX, ids, &id_count) != kCGErrorSuccess)
+        id_count = 0;
+
+    char uuids[DISPLAY_REINIT_MAX][64];
+    const char *present[DISPLAY_REINIT_MAX];
+    size_t present_count = 0;
+
+    for (uint32_t i = 0; i < id_count && present_count < DISPLAY_REINIT_MAX; i++) {
+        if (!display_uuid_string(ids[i], uuids[present_count], sizeof(uuids[0])))
+            continue;
+        present[present_count] = uuids[present_count];
+        present_count++;
+    }
+
+    const bool stream_running = !os_atomic_load_bool(&dc->stream_stopped);
+    const enum display_reinit_action action =
+        display_reinit_decide(dc->display_uuid, present, present_count, stream_running);
+
+    if (action == DISPLAY_REINIT_KEEP) {
+        os_atomic_set_bool(&dc->display_changed, false);
+        dc->reinit_attempt_ns = 0;
+        dc->absence_logged = false;
+        return;
+    }
+
+    if (action == DISPLAY_REINIT_WAIT) {
+        if (!dc->absence_logged) {
+            blog(LOG_INFO, "%s: Display '%s' is not present (%zu displays online); waiting for it to return",
+                 obs_source_get_name(dc->source), dc->display_uuid, present_count);
+            dc->absence_logged = true;
+        }
+        return;
+    }
+
+    CGDirectDisplayID display = 0;
+    for (uint32_t i = 0; i < id_count; i++) {
+        char uuid[64];
+        if (display_uuid_string(ids[i], uuid, sizeof(uuid)) && strcmp(uuid, dc->display_uuid) == 0) {
+            display = ids[i];
+            break;
+        }
+    }
+
+    if (display == 0)
+        return;
+
+    blog(LOG_INFO, "%s: Display '%s' is back; recreating the capture stream", obs_source_get_name(dc->source),
+         dc->display_uuid);
+
+    obs_enter_graphics();
+    destroy_display_stream(dc);
+    dc->display = display;
+    os_atomic_set_bool(&dc->stream_stopped, false);
+    const bool started = init_display_stream(dc);
+    obs_leave_graphics();
+
+    if (!started) {
+        blog(LOG_WARNING, "%s: Failed to recreate the capture stream for display '%s'", obs_source_get_name(dc->source),
+             dc->display_uuid);
+        return;
+    }
+
+    dc->absence_logged = false;
+    dc->reinit_attempt_ns = 0;
+    os_atomic_set_bool(&dc->display_changed, false);
+}
+
 bool init_vertbuf(struct display_capture *dc)
 {
     struct gs_vb_data *vb_data = gs_vbdata_create();
@@ -281,11 +425,15 @@ static void *display_capture_create(obs_data_t *settings, obs_source_t *source)
     load_crop(dc, settings);
 
     dc->display = get_display_migrate_settings(settings);
+    store_display_uuid(dc, settings);
 
     pthread_mutex_init(&dc->mutex, NULL);
 
     if (!init_display_stream(dc))
         goto fail;
+
+    CGDisplayRegisterReconfigurationCallback(display_reconfigured, dc);
+    dc->reconfig_registered = true;
 
     return dc;
 
@@ -319,6 +467,8 @@ static void display_capture_video_tick(void *data, float seconds)
     UNUSED_PARAMETER(seconds);
 
     struct display_capture *dc = data;
+
+    display_reinit_tick(dc);
 
     if (!dc->current)
         return;
@@ -538,14 +688,21 @@ static void display_capture_update(void *data, obs_data_t *settings)
     CGDirectDisplayID display = get_display_migrate_settings(settings);
 
     bool show_cursor = obs_data_get_bool(settings, "show_cursor");
-    if (dc->display == display && dc->hide_cursor != show_cursor)
+    if (dc->display == display && dc->hide_cursor != show_cursor) {
+        store_display_uuid(dc, settings);
         return;
+    }
 
     obs_enter_graphics();
 
     destroy_display_stream(dc);
     dc->display = display;
     dc->hide_cursor = !show_cursor;
+    store_display_uuid(dc, settings);
+    os_atomic_set_bool(&dc->stream_stopped, false);
+    os_atomic_set_bool(&dc->display_changed, false);
+    dc->absence_logged = false;
+    dc->reinit_attempt_ns = 0;
     init_display_stream(dc);
 
     obs_leave_graphics();
@@ -681,3 +838,5 @@ struct obs_source_info display_capture_info = {
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef CROP_VAR_NAME
 #undef COUNTOF
+#undef DISPLAY_REINIT_MAX
+#undef DISPLAY_REINIT_RETRY_NS

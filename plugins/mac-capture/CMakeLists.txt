@@ -12,6 +12,7 @@ target_sources(
     ${_capture_sources}
     audio-device-enum.h
     coreaudio-retry.h
+    display-reinit.h
     mac-sck-common.h
     mac-sck-stall.h
     mac-sck-stop.h

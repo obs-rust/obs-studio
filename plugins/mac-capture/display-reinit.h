@@ -43,8 +43,8 @@ enum display_reinit_action {
  * now and whether its CGDisplayStream is still running. The saved uuid is
  * never replaced: a display that is gone is waited for, not swapped for a
  * different one (obs-rust/obs-studio#2838). */
-enum display_reinit_action display_reinit_decide(const char *stored_uuid, const char *const *present_uuids, size_t count,
-						 bool stream_running);
+enum display_reinit_action display_reinit_decide(const char *stored_uuid, const char *const *present_uuids,
+						 size_t count, bool stream_running);
 
 /* The action as it appears in the log line, never NULL. */
 const char *display_reinit_action_name(enum display_reinit_action action);
