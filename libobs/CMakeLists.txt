@@ -56,17 +56,14 @@ set_property(
 # MSVC /W4 (#2626): vendored libnsgif keeps its own suppressions instead of
 # source edits (the #516 vendored-code exemption). C4701/C4703 are on its
 # `uncompressed` pointer, which its LZW path sets before every read.
-foreach(source
+foreach(
+  source
   build/libobs.ported-nsgif-blocks+.h.c
   build/libobs.ported-nsgif-frame+.h.c
   build/libobs.ported-nsgif-gif+.h.c
   build/libobs.ported-nsgif-lzw+.h.c
 )
-  set_property(
-    SOURCE ${source}
-    APPEND
-    PROPERTY COMPILE_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/wd4701;/wd4703>"
-  )
+  set_property(SOURCE ${source} APPEND PROPERTY COMPILE_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/wd4701;/wd4703>")
 endforeach()
 # libobs-version and libobs-core-modules are object libraries too, and CMake
 # adds an object library's objects only to targets that link it directly, so
