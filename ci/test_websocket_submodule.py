@@ -21,6 +21,9 @@ BOUNDED_PARSER = "7d89109c90a60ed119cf38fa4e35eae774959d7f"
 # obs-rust/obs-websocket#22: Stop() reads the drain predicate under the session
 # mutex and bounds the wait (obs-studio#2713).
 BOUNDED_SESSION_DRAIN = "3253206ff1ba62213936f4e9458e0ebf5eb421ea"
+# obs-rust/obs-websocket#24: rename the two inner errorCode locals in onMessage
+# (C4456) for the MSVC /W4 ratchet (obs-studio#2626), which the app build reports.
+WARNING_SHADOWING_FIX = "960b99e702f116f9cc80ff6b2d3741dc917b7d87"
 # Upstream commits without the fix that stale checkouts have committed (#492, #496).
 KNOWN_BAD = {"073a294cd0646fa1744b0ebf3293bfa63a869b50"}
 
@@ -58,6 +61,9 @@ class WebsocketSubmoduleTest(unittest.TestCase):
 
     def test_pointer_keeps_the_bounded_session_drain(self):
         self._assert_pointer_at_least(BOUNDED_SESSION_DRAIN, "the bounded session drain (#2713)")
+
+    def test_pointer_keeps_the_warning_renames(self):
+        self._assert_pointer_at_least(WARNING_SHADOWING_FIX, "the /W4 shadowing renames (#24)")
 
 
 class SessionDrainShapeTest(unittest.TestCase):
