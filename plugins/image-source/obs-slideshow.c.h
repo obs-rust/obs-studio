@@ -980,7 +980,7 @@ static void ss_video_tick(void *data, float seconds)
 
 	pthread_mutex_lock(&ss->mutex);
 
-	if (!ss->transition || !ss->slide_time)
+	if (!ss->transition || ss->slide_time == 0.0f)
 		goto finish;
 
 	if (ss->restart_on_activate && ss->use_cut) {
