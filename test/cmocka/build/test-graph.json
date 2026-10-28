@@ -5041,6 +5041,22 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_WINDOWS"
+    },
+    "test_win_wsc_product_refs": {
+      "sources": [
+        "test/cmocka/test_win_wsc_product_refs.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_WINDOWS"
     }
   },
   "tests": {
@@ -6959,6 +6975,13 @@
     },
     "test_win_crash_sym_info": {
       "target": "test_win_crash_sym_info",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
+    "test_win_wsc_product_refs": {
+      "target": "test_win_wsc_product_refs",
       "command": [
         "${target}"
       ],
