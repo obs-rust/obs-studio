@@ -53,7 +53,7 @@ static enum speaker_layout jack_channels_to_obs_speakers(uint_fast32_t channels)
 	return SPEAKERS_UNKNOWN;
 }
 
-int jack_process_callback(jack_nframes_t nframes, void *arg)
+static int jack_process_callback(jack_nframes_t nframes, void *arg)
 {
 	struct jack_data *data = (struct jack_data *)arg;
 	jack_nframes_t current_frames;
