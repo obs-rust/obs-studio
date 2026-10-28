@@ -91,7 +91,7 @@ class CurlDepsTest(unittest.TestCase):
         # A lock/path edit that falls back to the base must fail the build.
         self.assertIn('pkg-config --modversion libcurl)" = "', text)
         self.assertIn("/etc/pki/tls/certs/ca-bundle.crt", text)
-        self.assertIn("libssl\\\\.so\\\\.3", text)
+        self.assertIn("libssl.so.3", text)
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ RUN set -eux \
  && test "$(pkg-config --modversion libcurl)" = "8.23.0" \
  && /opt/obs-deps/curl/bin/curl --version | head -1 \
  && ! grep -a -q '/etc/pki/tls/certs/ca-bundle.crt' /opt/obs-deps/curl/lib/libcurl.so.4 \
- && ldd /opt/obs-deps/curl/lib/libcurl.so.4 | grep -q '/opt/obs-deps/openssl/lib/libssl\\.so\\.3' \
+ && ldd /opt/obs-deps/curl/lib/libcurl.so.4 | grep -q '/opt/obs-deps/openssl/lib/libssl.so.3' \
  && ldd /opt/obs-deps/curl/lib/libcurl.so.4 | grep -q '/opt/obs-deps/brotli/lib/libbrotli'
 
 # ninja from PyPI (AlmaLinux 8 has 1.8, older than the CMake presets need), and
