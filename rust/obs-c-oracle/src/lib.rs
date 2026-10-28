@@ -97,6 +97,7 @@ pub mod nal;
 pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub mod nix_inhibit;
+pub mod nix_system_info;
 pub mod obs_nvenc;
 pub mod obs_properties;
 pub mod output_caption_text;
