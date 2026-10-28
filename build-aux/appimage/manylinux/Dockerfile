@@ -30,9 +30,7 @@ RUN dnf install -y --setopt=install_weak_deps=False \
  && dnf clean all
 
 # uv, from obs-rust/obs-studio-libs (the first tool, since it runs the fetch of
-# the others), pinned by version and checksum. Installed before the libcurl
-# rebuild below, because that rebuild needs the fetched brotli (obs-rust/
-# obs-studio#2782).
+# the others), pinned by version and checksum.
 ARG UV_VERSION=0.13.5
 ARG UV_SHA256=8033f23836f7ffe5f9cfb1620beb830d34c7c45226b96512bee9ffd3fdb3dce1
 RUN curl -fsSL --retry 5 --retry-connrefused --retry-delay 5 -o /tmp/uv.tar.zst "https://github.com/obs-rust/obs-studio-libs/releases/download/uv-${UV_VERSION}/uv-${UV_VERSION}-linux-x86_64.tar.zst" \
@@ -46,48 +44,32 @@ RUN curl -fsSL --retry 5 --retry-connrefused --retry-delay 5 -o /tmp/uv.tar.zst 
 # /opt/obs-deps/<tool> (the prefix it was built for). The CLI is pinned to a
 # commit of obs-studio-libs.
 #
-# This runs before the libcurl rebuild: curl's brotli must be the pinned 1.2.1,
-# not the base's 1.0.6 (CVE-2026-111497 range, obs-rust/obs-studio#2782).
+# This is the whole of the image's libcurl: the AlmaLinux 8 base's 7.61.1
+# (2018, EOL) and OpenSSL 1.1.1k (EOL) are not used. The pinned curl 8.23.0 is
+# built with --with-ca-fallback, so it uses OpenSSL's default verify paths and
+# honours the SSL_CERT_FILE AppRun points at the host's bundle, instead of the
+# RHEL-only /etc/pki/tls/certs/ca-bundle.crt (which does not exist on
+# Debian/Ubuntu/Arch hosts, obs-rust/obs-studio#1085); its brotli is the pinned
+# 1.2.1, not the base's 1.0.6 (CVE-2026-111497 range, #2782); and its TLS is the
+# pinned OpenSSL 3.5.9, because curl 8.18+ refuses 1.1.1 (#2774).
 COPY build-aux/appimage/manylinux/deps.lock.json /opt/deps/deps.lock.json
-RUN uvx --from "git+https://github.com/obs-rust/obs-studio-libs@b35437f2c34dc2468d4255a88a560073272f14db" \
+RUN uvx --from "git+https://github.com/obs-rust/obs-studio-libs@0c6b4401c001ad858a61b1a7e06d1f8c6be61b6d" \
         obs-studio-libs fetch --lock /opt/deps/deps.lock.json
-ENV CMAKE_PREFIX_PATH=/opt/obs-deps/brotli:/opt/obs-deps/libvpl:/opt/obs-deps/libdatachannel:/opt/obs-deps/qt6:/opt/obs-deps/ffmpeg:/opt/obs-deps/pipewire:/opt/obs-deps/glib:/opt/obs-deps/fdk-aac:/opt/obs-deps/qrcodegen:/opt/obs-deps/headers
-ENV PKG_CONFIG_PATH=/opt/obs-deps/brotli/lib/pkgconfig:/opt/obs-deps/qt6/lib/pkgconfig:/opt/obs-deps/ffmpeg/lib/pkgconfig:/opt/obs-deps/pipewire/lib/pkgconfig:/opt/obs-deps/glib/lib/pkgconfig:/opt/obs-deps/fdk-aac/lib/pkgconfig:/opt/obs-deps/qrcodegen/lib/pkgconfig:/opt/obs-deps/headers/lib/pkgconfig:/opt/obs-deps/headers/share/pkgconfig
-ENV LD_LIBRARY_PATH=/opt/obs-deps/brotli/lib:/opt/obs-deps/libvpl/lib:/opt/obs-deps/libdatachannel/lib:/opt/obs-deps/qt6/lib:/opt/obs-deps/ffmpeg/lib:/opt/obs-deps/pipewire/lib:/opt/obs-deps/glib/lib:/opt/obs-deps/fdk-aac/lib:/opt/obs-deps/qrcodegen/lib
+ENV CMAKE_PREFIX_PATH=/opt/obs-deps/curl:/opt/obs-deps/brotli:/opt/obs-deps/libvpl:/opt/obs-deps/libdatachannel:/opt/obs-deps/qt6:/opt/obs-deps/ffmpeg:/opt/obs-deps/pipewire:/opt/obs-deps/glib:/opt/obs-deps/fdk-aac:/opt/obs-deps/qrcodegen:/opt/obs-deps/headers
+ENV PKG_CONFIG_PATH=/opt/obs-deps/curl/lib/pkgconfig:/opt/obs-deps/brotli/lib/pkgconfig:/opt/obs-deps/qt6/lib/pkgconfig:/opt/obs-deps/ffmpeg/lib/pkgconfig:/opt/obs-deps/pipewire/lib/pkgconfig:/opt/obs-deps/glib/lib/pkgconfig:/opt/obs-deps/fdk-aac/lib/pkgconfig:/opt/obs-deps/qrcodegen/lib/pkgconfig:/opt/obs-deps/headers/lib/pkgconfig:/opt/obs-deps/headers/share/pkgconfig
+ENV LD_LIBRARY_PATH=/opt/obs-deps/openssl/lib:/opt/obs-deps/curl/lib:/opt/obs-deps/brotli/lib:/opt/obs-deps/libvpl/lib:/opt/obs-deps/libdatachannel/lib:/opt/obs-deps/qt6/lib:/opt/obs-deps/ffmpeg/lib:/opt/obs-deps/pipewire/lib:/opt/obs-deps/glib/lib:/opt/obs-deps/fdk-aac/lib:/opt/obs-deps/qrcodegen/lib
 ENV PATH=/opt/obs-deps/glib/bin:/opt/obs-deps/qt6/bin:$PATH
 
-# libcurl, rebuilt from AlmaLinux's own source package (same version and
-# patches) without the RHEL CA bundle path compiled in (obs-rust/obs-studio#1085).
-# The stock build passes /etc/pki/tls/certs/ca-bundle.crt to OpenSSL on every
-# handle, so HTTPS failed on hosts without that file (Debian, Ubuntu, Arch, ...).
-# Built --with-ca-fallback, libcurl uses OpenSSL's default verify paths, which
-# honour the SSL_CERT_FILE that AppRun points at the host's bundle. libcurl does
-# not read CURL_CA_BUNDLE (only the curl tool does). gcc-toolset's compiler has no
-# annobin plugin, hence --undefine _annotated_build.
-#
-# The brotli prefix is put first on the pkg-config path explicitly, so curl.spec's
-# --with-brotli resolves the pinned library instead of the base's 1.0.6.
-RUN export PKG_CONFIG_PATH="/opt/obs-deps/brotli/lib/pkgconfig:$PKG_CONFIG_PATH" \
-        CMAKE_PREFIX_PATH="/opt/obs-deps/brotli:$CMAKE_PREFIX_PATH" \
-        LD_LIBRARY_PATH="/opt/obs-deps/brotli/lib:$LD_LIBRARY_PATH" \
- && dnf install -y -q --setopt=install_weak_deps=False dnf-plugins-core rpm-build \
- && v="$(rpm -q --qf '%{VERSION}-%{RELEASE}' libcurl)" \
- && pkg-config --modversion libbrotlidec \
- && mkdir /tmp/curl-srpm && cd /tmp/curl-srpm \
- && dnf download -q --source "curl-$v" \
- && dnf builddep -y -q --setopt=install_weak_deps=False "curl-$v.src.rpm" \
- && rpm -i --nosignature "curl-$v.src.rpm" \
- && sed -i 's|--with-ca-bundle=%{_sysconfdir}/pki/tls/certs/ca-bundle.crt|--without-ca-bundle --without-ca-path --with-ca-fallback|' \
-        ~/rpmbuild/SPECS/curl.spec \
- && grep -q -- '--with-ca-fallback' ~/rpmbuild/SPECS/curl.spec \
- && rpmbuild -bb --nocheck --undefine _annotated_build ~/rpmbuild/SPECS/curl.spec >/tmp/curl-srpm/build.log 2>&1 \
-    || { tail -50 /tmp/curl-srpm/build.log; exit 1; } \
- && r=~/rpmbuild/RPMS/x86_64 \
- && rpm -Uvh --force --nodeps "$r"/libcurl-[0-9]*.rpm "$r"/libcurl-devel-[0-9]*.rpm "$r"/curl-[0-9]*.rpm \
- && ! grep -a -q '/etc/pki/tls/certs/ca-bundle.crt' /usr/lib64/libcurl.so.4 \
- && ldd /usr/lib64/libcurl.so.4 | grep -q '/opt/obs-deps/brotli/lib/libbrotli' \
- && cd / && rm -rf /tmp/curl-srpm ~/rpmbuild \
- && dnf clean all
+# The three properties the shipped AppImage depends on, asserted here so a
+# lock or path edit cannot silently fall back to the base's 7.61.1 / 1.0.6 /
+# 1.1.1k: the pkg-config the OBS build sees is the pinned curl, the built
+# library links the pinned prefixes, and no RHEL CA path is compiled in.
+RUN set -eux \
+ && test "$(pkg-config --modversion libcurl)" = "8.23.0" \
+ && /opt/obs-deps/curl/bin/curl --version | head -1 \
+ && ! grep -a -q '/etc/pki/tls/certs/ca-bundle.crt' /opt/obs-deps/curl/lib/libcurl.so.4 \
+ && ldd /opt/obs-deps/curl/lib/libcurl.so.4 | grep -q '/opt/obs-deps/openssl/lib/libssl\\.so\\.3' \
+ && ldd /opt/obs-deps/curl/lib/libcurl.so.4 | grep -q '/opt/obs-deps/brotli/lib/libbrotli'
 
 # ninja from PyPI (AlmaLinux 8 has 1.8, older than the CMake presets need), and
 # SWIG 4 for the Lua scripting bindings (AlmaLinux 8 has 3.0); both build-time only.

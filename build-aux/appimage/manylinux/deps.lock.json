@@ -173,6 +173,36 @@
       },
       "sha256": "29e9873711232a75ba52ffabffc7dde257b4d96c5ed0fd19a155038eb53ab64a",
       "install": "/opt/obs-deps/libvpl"
+    },
+    {
+      "tool": "openssl",
+      "version": "3.5.9",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64",
+        "os_version": "2.28",
+        "libc": "glibc"
+      },
+      "variant": {
+        "optimization": "release"
+      },
+      "sha256": "d8fe8a82a4417f0374ad40af2e6581146e0a2fe9ccc6895363c716d13b41958f",
+      "install": "/opt/obs-deps/openssl"
+    },
+    {
+      "tool": "curl",
+      "version": "8.23.0",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64",
+        "os_version": "2.28",
+        "libc": "glibc"
+      },
+      "variant": {
+        "optimization": "release"
+      },
+      "sha256": "a4f803b5e569ca5e707779583a646f22929438c5e025ef3ab97b0b09181335b1",
+      "install": "/opt/obs-deps/curl"
     }
   ]
 }
