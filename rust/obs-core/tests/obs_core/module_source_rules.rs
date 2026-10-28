@@ -161,10 +161,13 @@ impl Registry {
             );
             return Err(());
         }
+        // The version the copy registers: the caller's only when it lies
+        // wholly within the size (#2841).
+        let lookup_version = copied_u32(info.version, OFF_VERSION, size);
         if self
             .types
             .iter()
-            .any(|e| e.unversioned_id == id.as_bytes() && e.version == info.version)
+            .any(|e| e.unversioned_id == id.as_bytes() && e.version == lookup_version)
         {
             self.log(
                 W,
@@ -519,8 +522,8 @@ fn short_size() {
     r.expect_logged(&[(W, &composite_async("sr_short_type"))]);
     r.expect_rejected("sr_short_type", types, false);
 
-    // Cut before version: not versioned, though the duplicate lookup used
-    // the caller's version (characterized, not endorsed).
+    // Cut before version: not versioned, and the duplicate lookup uses
+    // version 0 too (#2841).
     let mut info = full_info("sr_short_version", TYPE_INPUT, VIDEO);
     info.version = 3;
     r.register(&info, OFF_VERSION);
@@ -533,6 +536,15 @@ fn short_size() {
     info.version = 0;
     r.register(&info, SIZE);
     r.expect_logged(&[(W, &dup("sr_short_version"))]);
+    // An id registered unversioned, then cut before version 3: version 0,
+    // so a duplicate.
+    let mut info = full_info("sr_short_dup", TYPE_INPUT, VIDEO);
+    r.register(&info, SIZE);
+    r.expect_logged(&[]);
+    info.version = 3;
+    r.register(&info, OFF_VERSION);
+    r.expect_logged(&[(W, &dup("sr_short_dup"))]);
+    assert!(r.find("sr_short_dup_v3").is_none());
 }
 
 #[test]
