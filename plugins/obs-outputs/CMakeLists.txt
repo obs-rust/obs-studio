@@ -99,10 +99,11 @@ target_include_directories(
 # Vendored librtmp (C89 code that casts away const throughout) is not ported
 # or edited here; -Wcast-qual, -Wshadow and -Wpedantic (its __FUNCTION__ use;
 # obs-rust/obs-studio#516, #2623) cover our own sources. The same exemption
-# covers the MSVC /W4-only classes librtmp trips (#2626): C4245 an int stored
-# in SOCKET/uint8_t, C4456 its shadowed loop counter `i`, C4706 its
-# `while ((s = ...))` assignment conditions, and C4702 the tail it leaves
-# unreachable after its own error exits. These are per-source options: the
+# covers the MSVC /W4-only classes librtmp trips (#2626): C4244 the
+# `MD5_u32plus` state shifted down into its `unsigned char` digest in md5.c,
+# C4245 an int stored in SOCKET/uint8_t, C4456 its shadowed loop counter `i`,
+# C4706 its `while ((s = ...))` assignment conditions, and C4702 the tail it
+# leaves unreachable after its own error exits. These are per-source options: the
 # Visual Studio generator does honour them, which the 2026-10-28 app-lane runs
 # on this branch show (the C4245/C4456/C4706 findings stop being reported).
 set_source_files_properties(
@@ -115,7 +116,7 @@ set_source_files_properties(
   librtmp/rtmp.c
   PROPERTIES
     COMPILE_OPTIONS
-      "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>;$<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4245;/wd4456;/wd4702;/wd4706>"
+      "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>;$<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244;/wd4245;/wd4456;/wd4702;/wd4706>"
 )
 
 target_compile_options(

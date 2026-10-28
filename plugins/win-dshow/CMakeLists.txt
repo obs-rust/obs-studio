@@ -5,6 +5,10 @@ find_package(FFmpeg 8.0 REQUIRED avcodec avutil)
 add_library(win-dshow MODULE)
 add_library(OBS::dshow ALIAS win-dshow)
 
+# The C++ TUs including the libobs headers report the nameless unions C4201 at
+# /W4; the same per-target exemption as the other product C++ targets (#2626).
+obs_msvc_exempt_c4201(win-dshow)
+
 if(NOT TARGET OBS::tiny-nv12-scale)
   add_subdirectory("${CMAKE_SOURCE_DIR}/shared/obs-tiny-nv12-scale" obs-tiny-nv12-scale)
 endif()

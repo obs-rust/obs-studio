@@ -70,6 +70,7 @@ C4201_TARGETS = {
     "obs-browser": "plugins/CMakeLists.txt",
     "obs-vst": "plugins/obs-vst/CMakeLists.txt",
     "obs-websocket": "plugins/CMakeLists.txt",
+    "win-dshow": "plugins/win-dshow/CMakeLists.txt",
 }
 
 
@@ -137,8 +138,8 @@ class MsvcVendoredDependencyExemptionTest(unittest.TestCase):
         self.assertIn("librtmp/rtmp.c", block)
         self.assertRegex(
             block,
-            r"COMPILE_LANG_AND_ID:C,MSVC>:/wd4245;/wd4456;/wd4702;/wd4706>",
-            "librtmp needs C4245, C4456, C4702 and C4706 at /W4, scoped to the C language",
+            r"COMPILE_LANG_AND_ID:C,MSVC>:/wd4244;/wd4245;/wd4456;/wd4702;/wd4706>",
+            "librtmp needs C4244, C4245, C4456, C4702 and C4706 at /W4, scoped to the C language",
         )
 
     def test_libdshowcapture_exempts_its_shadowed_locals_on_msvc_cxx(self) -> None:
