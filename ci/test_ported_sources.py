@@ -83,6 +83,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-video-tick.c.h.o",
     "obs-source-volume.c.h.o",
     "obs-video-copy-plan.c.h.o",
+    "obs-video-frame-timing.c.h.o",
     "obs-video-output-step.c.h.o",
     "obs-video-pacing.c.h.o",
     "obs-view-api.c.h.o",

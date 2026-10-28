@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-frame-timing.pch.h"
 
 /* tick_sources(), without the callbacks and the sources. */
 struct obs_video_frame_tick obs_video_frame_timing_tick(uint64_t cur_time, uint64_t last_time, uint64_t interval_ns)

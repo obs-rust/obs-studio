@@ -16,6 +16,7 @@ pub mod nix_system_info;
 pub mod source_load;
 pub mod source_profiler;
 pub mod video_copy_plan;
+pub mod video_frame_timing;
 pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;

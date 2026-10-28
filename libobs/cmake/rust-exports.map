@@ -721,6 +721,10 @@
     obs_video_step_ring;
     obs_video_step_download;
     obs_video_step_output;
+    /* obs-video-frame-timing.c. obs-video.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_video_frame_timing_tick;
+    obs_video_frame_timing_stats;
     /* obs-video-pacing.c. obs-video.c calls them inside libobs. Not EXPORT. */
     obs_video_pacing_step;
     obs_video_pacing_group_starts;

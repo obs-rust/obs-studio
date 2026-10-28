@@ -30,6 +30,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -80,8 +81,16 @@ pub struct Stats {
 /// interval.
 #[must_use]
 pub fn tick(cur_time: u64, last_time: u64, interval_ns: u64) -> Tick {
-    let _ = (cur_time, last_time, interval_ns);
-    todo!()
+    let last_time = if last_time == 0 {
+        cur_time.wrapping_sub(interval_ns)
+    } else {
+        last_time
+    };
+    let delta_ns = cur_time.wrapping_sub(last_time);
+    Tick {
+        delta_ns,
+        seconds: f32_of(f64_of(delta_ns) / 1e9),
+    }
 }
 
 /// The end of `obs_graphics_thread_loop()`: `sums` are the context's,
@@ -89,6 +98,39 @@ pub fn tick(cur_time: u64, last_time: u64, interval_ns: u64) -> Tick {
 /// after `video_sleep()`, `last_time` the time of this frame's tick.
 #[must_use]
 pub fn stats(sums: Sums, frame_time_ns: u64, video_time: u64, last_time: u64) -> Stats {
-    let _ = (sums, frame_time_ns, video_time, last_time);
-    todo!()
+    let sums = Sums {
+        frame_time_total_ns: sums.frame_time_total_ns.wrapping_add(frame_time_ns),
+        fps_total_ns: sums
+            .fps_total_ns
+            .wrapping_add(video_time.wrapping_sub(last_time)),
+        fps_total_frames: sums.fps_total_frames.wrapping_add(1),
+    };
+    if sums.fps_total_ns < WINDOW_NS {
+        return Stats {
+            sums,
+            ..Stats::default()
+        };
+    }
+    Stats {
+        sums: Sums::default(),
+        report: true,
+        fps: f64::from(sums.fps_total_frames) / (f64_of(sums.fps_total_ns) / 1e9),
+        // A frame count of 0: the intentional difference (module docs).
+        avg_frame_time_ns: sums
+            .frame_time_total_ns
+            .checked_div(u64::from(sums.fps_total_frames))
+            .unwrap_or(0),
+    }
+}
+
+/// `(double)` of a `uint64_t`: round to nearest, as C does.
+#[allow(clippy::as_conversions, clippy::cast_precision_loss)]
+const fn f64_of(value: u64) -> f64 {
+    value as f64
+}
+
+/// `(float)` of a `double`: round to nearest, as C does.
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+const fn f32_of(value: f64) -> f32 {
+    value as f32
 }

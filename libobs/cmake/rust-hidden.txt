@@ -828,6 +828,11 @@ obs_video_step_render
 obs_video_step_ring
 obs_video_step_download
 obs_video_step_output
+# obs-video-frame-timing.c: tick_sources() and obs_graphics_thread_loop() in
+# obs-video.c call them inside libobs. Declared in obs-video-frame-timing.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_video_frame_timing_tick
+obs_video_frame_timing_stats
 # obs-video-pacing.c: video_sleep() in obs-video.c calls them inside libobs.
 # Declared in obs-video-pacing.h without EXPORT, so the shims stay hidden the
 # same way.
