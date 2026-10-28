@@ -4587,6 +4587,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_video_frame_timing_steps": {
+      "sources": [
+        "test/cmocka/test_video_frame_timing_steps.c",
+        "libobs/obs-video-frame-timing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_video_io_inlines": {
       "sources": [
         "test/cmocka/test_video_io_inlines.c"
@@ -6699,6 +6722,12 @@
     },
     "test_video_frame": {
       "target": "test_video_frame"
+    },
+    "test_video_frame_timing_steps": {
+      "target": "test_video_frame_timing_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_video_io_inlines": {
       "target": "test_video_io_inlines"
