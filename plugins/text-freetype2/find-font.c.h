@@ -55,7 +55,7 @@ static bool load_cached_font_list(struct serializer *s)
 		return false;
 
 	da_init(font_list);
-	da_resize(font_list, count);
+	da_resize(font_list, (size_t)count);
 
 #define do_read(var)                \
 	success = read_var(s, var); \
@@ -215,7 +215,7 @@ static void create_bitmap_sizes(struct font_path_info *info, FT_Face face)
 	}
 
 	da_init(sizes);
-	da_reserve(sizes, face->num_fixed_sizes);
+	da_reserve(sizes, (size_t)face->num_fixed_sizes);
 
 	for (int i = 0; i < face->num_fixed_sizes; i++) {
 		FT_Pos val = face->available_sizes[i].size >> 6;
