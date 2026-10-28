@@ -85,11 +85,8 @@ struct duplicator_capture {
 	struct winrt_capture *capture_winrt;
 };
 
-struct duplicator_monitor_info {
-	char device_id[128];
-	char id[128];
-	char alt_id[128];
-	char name[128];
+struct duplicator_monitor {
+	struct duplicator_monitor_info info;
 	RECT rect;
 	HMONITOR handle;
 };
@@ -173,7 +170,7 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM 
 {
 	UNUSED_PARAMETER(hdc);
 
-	struct duplicator_monitor_info *monitor = (struct duplicator_monitor_info *)param;
+	struct duplicator_monitor *monitor = (struct duplicator_monitor *)param;
 
 	bool match = false;
 
@@ -183,11 +180,15 @@ static BOOL CALLBACK enum_monitor(HMONITOR handle, HDC hdc, LPRECT rect, LPARAM 
 		DISPLAY_DEVICEA device;
 		device.cb = sizeof(device);
 		if (EnumDisplayDevicesA(mi.szDevice, 0, &device, EDD_GET_DEVICE_INTERFACE_NAME)) {
-			match = strcmp(monitor->device_id, device.DeviceID) == 0;
+			struct duplicator_monitor_info candidate = {0};
+			monitor_fill_info(&candidate, device.DeviceID, "", "", "");
+			match = monitor_matches(&candidate, monitor->info.device_id, "");
 			if (match) {
-				strcpy_s(monitor->id, _countof(monitor->id), device.DeviceID);
-				strcpy_s(monitor->alt_id, _countof(monitor->alt_id), mi.szDevice);
-				GetMonitorName(handle, monitor->name, _countof(monitor->name));
+				GetMonitorName(handle, candidate.name, _countof(candidate.name));
+				strcpy_s(candidate.alt_id, sizeof(candidate.alt_id), mi.szDevice);
+				/* Preserve the original search key until a recovery resolves it. */
+				strcpy_s(candidate.device_id, sizeof(candidate.device_id), monitor->info.device_id);
+				monitor->info = candidate;
 				monitor->rect = *rect;
 				monitor->handle = handle;
 			}
@@ -201,17 +202,17 @@ static BOOL CALLBACK enum_monitor_fallback(HMONITOR handle, HDC hdc, LPRECT rect
 {
 	UNUSED_PARAMETER(hdc);
 
-	struct duplicator_monitor_info *monitor = (struct duplicator_monitor_info *)param;
+	struct duplicator_monitor *monitor = (struct duplicator_monitor *)param;
 
 	bool match = false;
 
 	MONITORINFOEXA mi;
 	mi.cbSize = sizeof(mi);
 	if (GetMonitorInfoA(handle, (LPMONITORINFO)&mi)) {
-		match = strcmp(monitor->device_id, mi.szDevice) == 0;
+		match = strcmp(monitor->info.device_id, mi.szDevice) == 0;
 		if (match) {
-			strcpy_s(monitor->alt_id, _countof(monitor->alt_id), mi.szDevice);
-			GetMonitorName(handle, monitor->name, _countof(monitor->name));
+			strcpy_s(monitor->info.alt_id, _countof(monitor->info.alt_id), mi.szDevice);
+			GetMonitorName(handle, monitor->info.name, _countof(monitor->info.name));
 			monitor->rect = *rect;
 			monitor->handle = handle;
 		}
@@ -266,10 +267,10 @@ static enum display_capture_method duplicator_choose_method(enum display_capture
 
 extern bool wgc_supported;
 
-static struct duplicator_monitor_info find_monitor(const char *monitor_id)
+static struct duplicator_monitor find_monitor(const char *monitor_id)
 {
-	struct duplicator_monitor_info monitor = {0};
-	strcpy_s(monitor.device_id, _countof(monitor.device_id), monitor_id);
+	struct duplicator_monitor monitor = {0};
+	strcpy_s(monitor.info.device_id, _countof(monitor.info.device_id), monitor_id);
 	EnumDisplayMonitors(NULL, NULL, &enum_monitor, (LPARAM)&monitor);
 	if (monitor.handle == NULL) {
 		EnumDisplayMonitors(NULL, NULL, &enum_monitor_fallback, (LPARAM)&monitor);
@@ -282,15 +283,15 @@ static inline void duplicator_update_settings(struct duplicator_capture *capture
 {
 	pthread_mutex_lock(&capture->update_mutex);
 
-	struct duplicator_monitor_info monitor = find_monitor(obs_data_get_string(settings, "monitor_id"));
+	struct duplicator_monitor monitor = find_monitor(obs_data_get_string(settings, "monitor_id"));
 
 	capture->method =
 		duplicator_choose_method((int)obs_data_get_int(settings, "method"), wgc_supported, monitor.handle);
 
-	strcpy_s(capture->monitor_id, _countof(capture->monitor_id), monitor.device_id);
-	strcpy_s(capture->id, _countof(capture->id), monitor.id);
-	strcpy_s(capture->alt_id, _countof(capture->alt_id), monitor.alt_id);
-	strcpy_s(capture->monitor_name, _countof(capture->monitor_name), monitor.name);
+	strcpy_s(capture->monitor_id, _countof(capture->monitor_id), monitor.info.device_id);
+	strcpy_s(capture->id, _countof(capture->id), monitor.info.id);
+	strcpy_s(capture->alt_id, _countof(capture->alt_id), monitor.info.alt_id);
+	strcpy_s(capture->monitor_name, _countof(capture->monitor_name), monitor.info.name);
 	capture->handle = monitor.handle;
 
 	capture->capture_cursor = obs_data_get_bool(settings, "capture_cursor");
