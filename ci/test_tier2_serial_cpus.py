@@ -100,6 +100,13 @@ class SerialRunTest(unittest.TestCase):
             self.skipTest(f"needs {2 * count} CPUs")
         return [affinity[2 * i : 2 * i + 2] for i in range(count)]
 
+    def test_a_non_adjacent_pair_is_passed_as_a_list_not_a_range(self):
+        # #2883: on a host whose affinity is not contiguous (an LXC container
+        # given "1,3,7-16,...") the pairs are like [1, 3], and "-" makes that
+        # "1-3" — CPU 2, which the host does not have. The runner then pins the
+        # probe to {1} and the end-to-end check fails on every such host.
+        self.assertEqual(cpus_argument([[1, 3], [7, 8]]), "1,3,7,8")
+
     def test_serial_tests_run_at_the_same_time_on_their_own_cpus(self):
         tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
         pairs = self.pins(tmp, 2)
