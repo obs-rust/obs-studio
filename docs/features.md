@@ -2054,6 +2054,10 @@ area.
   nothing, and asking the position of, or ungrouping, an item that is in no
   scene returns instead of crashing. *All*, 2026-10-29. Issue
   [#2895](https://github.com/obs-rust/obs-studio/issues/2895).
+- A plugin or script that asks obs_key_to_virtual_key for a key OBS doesn't
+  have gets 0 on X11, as for a key with no keysym, instead of an arbitrary
+  number. *Linux*, 2026-10-29. Issue
+  [#2901](https://github.com/obs-rust/obs-studio/issues/2901).
 
 ### Stability
 
