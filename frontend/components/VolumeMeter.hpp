@@ -66,7 +66,7 @@ private:
 	inline void calculateBallistics(uint64_t ts, qreal timeSinceLastRedraw = 0.0);
 	inline void calculateBallisticsForChannel(int channelNr, uint64_t ts, qreal timeSinceLastRedraw);
 
-	inline int convertToInt(float number);
+	inline int convertToInt(qreal number);
 	QColor getPeakColor(float peakHold);
 
 	void paintHTicks(QPainter &painter, int x, int y, int width);

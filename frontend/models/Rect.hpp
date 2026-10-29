@@ -18,21 +18,27 @@
 #pragma once
 
 #include <algorithm>
+#include <type_traits>
 #include <limits>
 
 namespace {
 template<typename numberType> inline double safeConvertToDouble(numberType number)
 {
-	constexpr double minDoubleValue = 0.0;
-	constexpr double maxDoubleValue = std::numeric_limits<double>::max();
+	if constexpr (std::is_floating_point_v<numberType>) {
+		constexpr double minDoubleValue = 0.0;
+		constexpr double maxDoubleValue = std::numeric_limits<double>::max();
 
-	if (number > maxDoubleValue) {
-		return maxDoubleValue;
-	} else if (number < minDoubleValue) {
-		return minDoubleValue;
-	} else {
-		return static_cast<double>(number);
+		/* Compared in the value's own type: every integer type stays below
+		 * maxDoubleValue and above minDoubleValue, so only a floating-point
+		 * numberType can reach the clamp. */
+		if (number > static_cast<numberType>(maxDoubleValue)) {
+			return maxDoubleValue;
+		} else if (number < static_cast<numberType>(minDoubleValue)) {
+			return minDoubleValue;
+		}
 	}
+
+	return static_cast<double>(number);
 }
 } // namespace
 

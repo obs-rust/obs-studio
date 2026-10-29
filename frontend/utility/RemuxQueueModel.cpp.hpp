@@ -19,7 +19,7 @@
 
 int RemuxQueueModel::rowCount(const QModelIndex &) const
 {
-	return queue.length() + (isProcessing ? 0 : 1);
+	return static_cast<int>(queue.length()) + (isProcessing ? 0 : 1);
 }
 
 int RemuxQueueModel::columnCount(const QModelIndex &) const
@@ -110,7 +110,7 @@ bool RemuxQueueModel::setData(const QModelIndex &index, const QVariant &value, i
 
 			if (pathList.size() > 0) {
 				int row = index.row();
-				int lastRow = row + pathList.size() - 1;
+				int lastRow = row + static_cast<int>(pathList.size()) - 1;
 				beginInsertRows(QModelIndex(), row, lastRow);
 
 				for (QString path : pathList) {
@@ -138,7 +138,8 @@ bool RemuxQueueModel::setData(const QModelIndex &index, const QVariant &value, i
 			entry.sourcePath = path;
 			entry.state = RemuxEntryState::Empty;
 
-			beginInsertRows(QModelIndex(), queue.length() + 1, queue.length() + 1);
+			beginInsertRows(QModelIndex(), static_cast<int>(queue.length()) + 1,
+					static_cast<int>(queue.length()) + 1);
 			queue.append(entry);
 			endInsertRows();
 
@@ -269,7 +270,7 @@ bool RemuxQueueModel::checkForErrors() const
 
 void RemuxQueueModel::clearAll()
 {
-	beginRemoveRows(QModelIndex(), 0, queue.size() - 1);
+	beginRemoveRows(QModelIndex(), 0, static_cast<int>(queue.size()) - 1);
 	queue.clear();
 	endRemoveRows();
 }
@@ -311,12 +312,13 @@ void RemuxQueueModel::beginProcessing()
 	}
 
 	// Signal that the insertion point no longer exists.
-	beginRemoveRows(QModelIndex(), queue.length(), queue.length());
+	beginRemoveRows(QModelIndex(), static_cast<int>(queue.length()), static_cast<int>(queue.length()));
 	isProcessing = true;
 	endRemoveRows();
 
 	if (!queue.isEmpty()) {
-		emit dataChanged(index(0, RemuxEntryColumn::State), index(queue.length() - 1, RemuxEntryColumn::State));
+		emit dataChanged(index(0, RemuxEntryColumn::State),
+				 index(static_cast<int>(queue.length()) - 1, RemuxEntryColumn::State));
 	}
 }
 
@@ -330,7 +332,7 @@ void RemuxQueueModel::endProcessing()
 
 	// Signal that the insertion point exists again.
 	if (!autoRemux) {
-		beginInsertRows(QModelIndex(), queue.length(), queue.length());
+		beginInsertRows(QModelIndex(), static_cast<int>(queue.length()), static_cast<int>(queue.length()));
 		isProcessing = false;
 		endInsertRows();
 	} else {
@@ -338,7 +340,8 @@ void RemuxQueueModel::endProcessing()
 	}
 
 	if (!queue.isEmpty()) {
-		emit dataChanged(index(0, RemuxEntryColumn::State), index(queue.length() - 1, RemuxEntryColumn::State));
+		emit dataChanged(index(0, RemuxEntryColumn::State),
+				 index(static_cast<int>(queue.length()) - 1, RemuxEntryColumn::State));
 	}
 }
 

@@ -24,5 +24,5 @@ void DoubleSlider::setDoubleConstraints(double newMin, double newMax, double new
 
 void DoubleSlider::setDoubleVal(double val)
 {
-	setValue(lround((val - minVal) / minStep));
+	setValue(static_cast<int>(lround((val - minVal) / minStep)));
 }

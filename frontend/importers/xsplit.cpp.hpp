@@ -45,7 +45,7 @@ static int hex_string_to_int(string str)
 
 static Json::object parse_text(QString &config)
 {
-	int start = config.indexOf("*{");
+	qsizetype start = config.indexOf("*{");
 	config = config.mid(start + 1);
 	config.replace("\\", "/");
 
@@ -92,12 +92,12 @@ static Json::array parse_playlist(QString &playlist)
 	Json::array out = Json::array{};
 
 	while (true) {
-		int end = playlist.indexOf('*');
+		qsizetype end = playlist.indexOf('*');
 		QString path = playlist.left(end);
 
 		out.push_back(Json::object{{"value", path.toStdString()}});
 
-		int next = playlist.indexOf('|');
+		qsizetype next = playlist.indexOf('|');
 		if (next == -1) {
 			break;
 		}
@@ -122,7 +122,7 @@ static void parse_media_types(QDomNamedNodeMap &attr, Json::object &source, Json
 		}
 	} else {
 		QString url = attr.namedItem("item").nodeValue();
-		int sep = url.indexOf("://");
+		qsizetype sep = url.indexOf("://");
 
 		if (sep != -1) {
 			QString prot = url.left(sep);
@@ -130,7 +130,7 @@ static void parse_media_types(QDomNamedNodeMap &attr, Json::object &source, Json
 				source["id"] = "ndi_source";
 			} else {
 				source["id"] = "ffmpeg_source";
-				int info = url.indexOf("\\");
+				qsizetype info = url.indexOf("\\");
 				QString input;
 
 				if (info != -1) {
@@ -152,7 +152,7 @@ static void parse_media_types(QDomNamedNodeMap &attr, Json::object &source, Json
 
 static Json::object parse_slideshow(QString &config)
 {
-	int start = config.indexOf("images\":[");
+	qsizetype start = config.indexOf("images\":[");
 	if (start == -1) {
 		return Json::object{};
 	}
@@ -160,7 +160,7 @@ static Json::object parse_slideshow(QString &config)
 	config = config.mid(start + 8);
 	config.replace("\\\\", "/");
 
-	int end = config.indexOf(']');
+	qsizetype end = config.indexOf(']');
 	if (end == -1) {
 		return Json::object{};
 	}
@@ -271,7 +271,7 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 				source["id"] = "dshow_input";
 			} else {
 				source["id"] = "wasapi_input_capture";
-				int dev = audio.indexOf("\\wave:") + 6;
+				qsizetype dev = audio.indexOf("\\wave:") + 6;
 
 				QString res = "{0.0.1.00000000}." + audio.mid(dev);
 				res = res.toLower();
@@ -306,7 +306,7 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 				QString window = o_attr.namedItem("window").nodeValue();
 				QString _class = o_attr.namedItem("class").nodeValue();
 
-				int pos = exec.lastIndexOf('\\');
+				qsizetype pos = exec.lastIndexOf('\\');
 
 				if (_class.isEmpty()) {
 					_class = "class";
@@ -348,7 +348,7 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 				settings = parse_text(plugin);
 			} else if (plugin.startsWith("http")) {
 				source["id"] = "browser_source";
-				int end = plugin.indexOf('*');
+				qsizetype end = plugin.indexOf('*');
 				settings["url"] = plugin.left(end).toStdString();
 			}
 		} else if (type == 11) {

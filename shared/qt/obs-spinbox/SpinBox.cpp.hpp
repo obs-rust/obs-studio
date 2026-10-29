@@ -204,28 +204,30 @@ void SpinBox::clampCursorPosition()
 	bool hasSelectedText = !lineEdit()->selectedText().isEmpty();
 
 	if (!suffix().isEmpty()) {
-		int suffixIndex = lineEdit()->text().length() - suffix().length();
+		qsizetype suffixIndex = lineEdit()->text().length() - suffix().length();
 		if (cursorPosition > suffixIndex) {
-			int cursorOvershoot = lineEdit()->selectionEnd() - suffixIndex;
+			qsizetype cursorOvershoot = lineEdit()->selectionEnd() - suffixIndex;
 			if (hasSelectedText && cursorOvershoot > 0) {
-				lineEdit()->setSelection(lineEdit()->selectionStart(),
-							 lineEdit()->selectionLength() - cursorOvershoot);
+				lineEdit()->setSelection(
+					static_cast<int>(lineEdit()->selectionStart()),
+					static_cast<int>(lineEdit()->selectionLength() - cursorOvershoot));
 			} else {
-				lineEdit()->setCursorPosition(suffixIndex);
+				lineEdit()->setCursorPosition(static_cast<int>(suffixIndex));
 			}
 			return;
 		}
 	}
 
 	if (!prefix().isEmpty()) {
-		int prefixIndex = prefix().length();
+		qsizetype prefixIndex = prefix().length();
 		if (cursorPosition < prefixIndex) {
-			int cursorUndershoot = prefixIndex - lineEdit()->selectionStart();
+			qsizetype cursorUndershoot = prefixIndex - lineEdit()->selectionStart();
 			if (hasSelectedText && cursorUndershoot > 0) {
-				lineEdit()->setSelection(lineEdit()->selectionEnd(),
-							 -lineEdit()->selectionLength() + cursorUndershoot);
+				lineEdit()->setSelection(
+					static_cast<int>(lineEdit()->selectionEnd()),
+					static_cast<int>(-lineEdit()->selectionLength() + cursorUndershoot));
 			} else {
-				lineEdit()->setCursorPosition(prefixIndex);
+				lineEdit()->setCursorPosition(static_cast<int>(prefixIndex));
 			}
 			return;
 		}

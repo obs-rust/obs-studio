@@ -74,10 +74,10 @@ void SimpleOutput::LoadStreamingPreset_Lossy(const char *encoderId)
 	obs_encoder_release(videoStreaming);
 
 	if (whipSimulcastEncoders != nullptr) {
-		whipSimulcastEncoders->Create(encoderId, config_get_int(main->Config(), "AdvOut", "RescaleFilter"),
-					      config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers"),
-					      video_output_get_width(obs_get_video()),
-					      video_output_get_height(obs_get_video()));
+		whipSimulcastEncoders->Create(
+			encoderId, static_cast<int>(config_get_int(main->Config(), "AdvOut", "RescaleFilter")),
+			static_cast<int>(config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers")),
+			video_output_get_width(obs_get_video()), video_output_get_height(obs_get_video()));
 	}
 }
 
@@ -270,7 +270,7 @@ void SimpleOutput::Update()
 	OBSDataAutoRelease videoSettings = obs_data_create();
 	OBSDataAutoRelease audioSettings = obs_data_create();
 
-	int videoBitrate = config_get_uint(main->Config(), "SimpleOutput", "VBitrate");
+	int videoBitrate = static_cast<int>(config_get_uint(main->Config(), "SimpleOutput", "VBitrate"));
 	int audioBitrate = GetAudioBitrate();
 	bool advanced = config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
 	bool enforceBitrate = !config_get_bool(main->Config(), "Stream1", "IgnoreRecommended");
@@ -383,7 +383,7 @@ void SimpleOutput::UpdateRecordingAudioSettings()
 	obs_data_set_string(settings, "rate_control", "CBR");
 
 	const char *audioEncoder = config_get_string(main->Config(), "SimpleOutput", "RecAudioEncoder");
-	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
+	int tracks = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecTracks"));
 	const char *recFormat = config_get_string(main->Config(), "SimpleOutput", "RecFormat2");
 	const char *quality = config_get_string(main->Config(), "SimpleOutput", "RecQuality");
 	bool flv = strcmp(recFormat, "flv") == 0;
@@ -414,8 +414,8 @@ void SimpleOutput::UpdateRecordingAudioSettings()
 
 int SimpleOutput::CalcCRF(int crf)
 {
-	int cx = config_get_uint(main->Config(), "Video", "OutputCX");
-	int cy = config_get_uint(main->Config(), "Video", "OutputCY");
+	int cx = static_cast<int>(config_get_uint(main->Config(), "Video", "OutputCX"));
+	int cy = static_cast<int>(config_get_uint(main->Config(), "Video", "OutputCY"));
 	double fCX = double(cx);
 	double fCY = double(cy);
 
@@ -582,7 +582,7 @@ inline void SimpleOutput::SetupOutputs()
 	obs_encoder_set_video(videoStreaming, obs_get_video());
 	obs_encoder_set_audio(audioStreaming, obs_get_audio());
 	obs_encoder_set_audio(audioArchive, obs_get_audio());
-	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
+	int tracks = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecTracks"));
 	const char *recFormat = config_get_string(main->Config(), "SimpleOutput", "RecFormat2");
 	bool flv = strcmp(recFormat, "flv") == 0;
 
@@ -704,10 +704,10 @@ void SimpleOutput::SetupVodTrack(obs_service_t *service)
 bool SimpleOutput::StartStreaming(obs_service_t *service)
 {
 	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
-	int retryDelay = config_get_uint(main->Config(), "Output", "RetryDelay");
-	int maxRetries = config_get_uint(main->Config(), "Output", "MaxRetries");
+	int retryDelay = static_cast<int>(config_get_uint(main->Config(), "Output", "RetryDelay"));
+	int maxRetries = static_cast<int>(config_get_uint(main->Config(), "Output", "MaxRetries"));
 	bool useDelay = config_get_bool(main->Config(), "Output", "DelayEnable");
-	int delaySec = config_get_int(main->Config(), "Output", "DelaySec");
+	int delaySec = static_cast<int>(config_get_int(main->Config(), "Output", "DelaySec"));
 	bool preserveDelay = config_get_bool(main->Config(), "Output", "DelayPreserve");
 	const char *bindIP = config_get_string(main->Config(), "Output", "BindIP");
 	const char *ipFamily = config_get_string(main->Config(), "Output", "IPFamily");
@@ -768,7 +768,7 @@ void SimpleOutput::UpdateRecording()
 {
 	const char *recFormat = config_get_string(main->Config(), "SimpleOutput", "RecFormat2");
 	bool flv = strcmp(recFormat, "flv") == 0;
-	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
+	int tracks = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecTracks"));
 	size_t idx = 0;
 	size_t idx2 = 0;
 	const char *quality = config_get_string(main->Config(), "SimpleOutput", "RecQuality");
@@ -845,9 +845,9 @@ bool SimpleOutput::ConfigureRecording(bool updateReplayBuffer)
 	bool overwriteIfExists = config_get_bool(main->Config(), "Output", "OverwriteIfExists");
 	const char *rbPrefix = config_get_string(main->Config(), "SimpleOutput", "RecRBPrefix");
 	const char *rbSuffix = config_get_string(main->Config(), "SimpleOutput", "RecRBSuffix");
-	int rbTime = config_get_int(main->Config(), "SimpleOutput", "RecRBTime");
-	int rbSize = config_get_int(main->Config(), "SimpleOutput", "RecRBSize");
-	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
+	int rbTime = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecRBTime"));
+	int rbSize = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecRBSize"));
+	int tracks = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecTracks"));
 
 	bool is_fragmented = strncmp(format, "fragmented", 10) == 0;
 	bool is_lossless = videoQuality == "Lossless";

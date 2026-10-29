@@ -493,7 +493,7 @@ inline void VolumeMeter::doLayout()
 	QMutexLocker locker(&dataMutex);
 
 	if (displayNrAudioChannels) {
-		int meterSize = std::floor(22 / displayNrAudioChannels);
+		int meterSize = static_cast<int>(std::floor(22 / displayNrAudioChannels));
 		meterThickness = std::clamp(meterSize, 3, 6);
 	}
 
@@ -530,7 +530,8 @@ inline void VolumeMeter::calculateBallisticsForChannel(int channelNr, uint64_t t
 	} else {
 		// The peak and hold falls back to peak
 		// after 20 seconds.
-		qreal timeSinceLastPeak = (uint64_t)(ts - displayPeakHoldLastUpdateTime[channelNr]) * 0.000000001;
+		qreal timeSinceLastPeak =
+			static_cast<double>(ts - displayPeakHoldLastUpdateTime[channelNr]) * 0.000000001;
 		if (timeSinceLastPeak > peakHoldDuration) {
 			displayPeakHold[channelNr] = currentPeak[channelNr];
 			displayPeakHoldLastUpdateTime[channelNr] = ts;
@@ -545,7 +546,8 @@ inline void VolumeMeter::calculateBallisticsForChannel(int channelNr, uint64_t t
 		displayInputPeakHoldLastUpdateTime[channelNr] = ts;
 	} else {
 		// The peak and hold falls back to peak after 1 second.
-		qreal timeSinceLastPeak = (uint64_t)(ts - displayInputPeakHoldLastUpdateTime[channelNr]) * 0.000000001;
+		qreal timeSinceLastPeak =
+			static_cast<double>(ts - displayInputPeakHoldLastUpdateTime[channelNr]) * 0.000000001;
 		if (timeSinceLastPeak > inputPeakHoldDuration) {
 			displayInputPeakHold[channelNr] = currentInputPeak[channelNr];
 			displayInputPeakHoldLastUpdateTime[channelNr] = ts;
@@ -721,13 +723,12 @@ void VolumeMeter::updateBackgroundCache(bool force)
 	}
 }
 
-inline int VolumeMeter::convertToInt(float number)
+inline int VolumeMeter::convertToInt(qreal number)
 {
 	constexpr int min = std::numeric_limits<int>::min();
 	constexpr int max = std::numeric_limits<int>::max();
 
-	// NOTE: Conversion from 'const int' to 'float' changes max value from 2147483647 to 2147483648
-	if (number >= (float)max) {
+	if (number >= max) {
 		return max;
 	} else if (number < min) {
 		return min;
@@ -758,7 +759,7 @@ void VolumeMeter::showEvent(QShowEvent *event)
 void VolumeMeter::paintEvent(QPaintEvent *)
 {
 	uint64_t ts = os_gettime_ns();
-	qreal timeSinceLastRedraw = (ts - lastRedrawTime) * 0.000000001;
+	qreal timeSinceLastRedraw = static_cast<double>(ts - lastRedrawTime) * 0.000000001;
 	calculateBallistics(ts, timeSinceLastRedraw);
 	bool idle = detectIdle(ts);
 	auto channelLevels = snapshotVolumeMeterChannels(dataMutex, displayPeak, displayPeakHold, displayMagnitude,
@@ -905,11 +906,13 @@ QSize VolumeMeter::minimumSizeHint() const
 QSize VolumeMeter::sizeHint() const
 {
 	QRect meterRect = getBarRect();
-	int labelTotal = std::abs(minimumLevel / TICK_DB_INTERVAL) + 1;
+	int labelTotal = static_cast<int>(std::abs(minimumLevel / TICK_DB_INTERVAL)) + 1;
 
 	if (vertical) {
 		int width = meterRect.width() + tickTextTokenRect.width() + TICK_SIZE + 10;
-		int height = (labelTotal * (tickTextTokenRect.height() * TICK_LABEL_HEIGHT_SCALE_FACTOR)) +
+		int height = static_cast<int>(static_cast<float>(labelTotal) *
+					      (static_cast<float>(tickTextTokenRect.height()) *
+					       TICK_LABEL_HEIGHT_SCALE_FACTOR)) +
 			     INDICATOR_THICKNESS;
 
 		return QSize(width, height);

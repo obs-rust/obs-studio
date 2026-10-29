@@ -51,8 +51,7 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 		for (int db = -10; db >= -90; db -= 10) {
 			float tickValue = fader_db_to_def(static_cast<float>(db));
 
-			float xPos = static_cast<float>(groove.left()) +
-				     (tickValue * static_cast<float>(sliderWidth)) +
+			float xPos = static_cast<float>(groove.left()) + (tickValue * static_cast<float>(sliderWidth)) +
 				     (static_cast<float>(handle.width()) / 2.0f);
 			painter.fillRect(QRectF(xPos, yPos, 1.0f, tickLength), tickMarkColor);
 		}
@@ -62,16 +61,15 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 		const int sliderHeight = groove.height() - handle.height();
 
 		float tickLength = static_cast<float>(groove.width()) * 1.5f;
-		tickLength = static_cast<float>(
-			std::max(static_cast<int>(tickLength) + groove.width(), 8 + groove.width()));
+		tickLength =
+			static_cast<float>(std::max(static_cast<int>(tickLength) + groove.width(), 8 + groove.width()));
 
 		float xPos = static_cast<float>(groove.center().x()) - (tickLength / 2.0f) + 1.0f;
 
 		for (int db = -10; db >= -96; db -= 10) {
 			float tickValue = fader_db_to_def(static_cast<float>(db));
 
-			float yPos = static_cast<float>(groove.height()) +
-				     static_cast<float>(groove.top()) -
+			float yPos = static_cast<float>(groove.height()) + static_cast<float>(groove.top()) -
 				     (tickValue * static_cast<float>(sliderHeight)) -
 				     (static_cast<float>(handle.height()) / 2.0f);
 			painter.fillRect(QRectF(xPos, yPos, tickLength, 1.0f), tickMarkColor);

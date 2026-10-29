@@ -457,7 +457,8 @@ void OBSPropertiesView::AddFloat(obs_property_t *prop, QFormLayout *layout, QLab
 
 	if (stepVal < 1.0) {
 		constexpr int sane_limit = 8;
-		const int decimals = std::min<int>(log10(1.0 / stepVal) + 0.99, sane_limit);
+		const int decimals =
+			static_cast<int>(std::min(log10(1.0 / stepVal) + 0.99, static_cast<double>(sane_limit)));
 		if (decimals > spin->decimals()) {
 			spin->setDecimals(decimals);
 		}
@@ -1370,7 +1371,7 @@ void OBSPropertiesView::AddFrameRate(obs_property_t *prop, bool &warning, QFormL
 					obs_property_frame_rate_fps_range_max(prop, i));
 	}
 
-	int selector_mode = obs_data_get_int(settings, "fps_selector_mode");
+	int selector_mode = static_cast<int>(obs_data_get_int(settings, "fps_selector_mode"));
 
 	auto widget_ptr = CreateFrameRateWidget(prop, warning, option, selector_mode, valid_fps, fps_ranges);
 	auto info = new WidgetInfo(this, prop, widget_ptr);

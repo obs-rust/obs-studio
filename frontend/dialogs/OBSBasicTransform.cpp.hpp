@@ -307,8 +307,8 @@ void OBSBasicTransform::onAlignChanged(int index)
 	uint32_t sourceWidth = obs_source_get_width(source);
 	uint32_t sourceHeight = obs_source_get_height(source);
 
-	int widthForFlip = static_cast<int>(sourceWidth) - crop.left - crop.right;
-	int heightForFlip = static_cast<int>(sourceHeight) - crop.top - crop.bottom;
+	float widthForFlip = static_cast<float>(static_cast<int>(sourceWidth) - crop.left - crop.right);
+	float heightForFlip = static_cast<float>(static_cast<int>(sourceHeight) - crop.top - crop.bottom);
 
 	if (oti.bounds_type != OBS_BOUNDS_NONE) {
 		widthForFlip = oti.bounds.x;
@@ -363,8 +363,8 @@ void OBSBasicTransform::onBoundsType(int index)
 			ui->sizeX->setValue(width);
 			ui->sizeY->setValue(height);
 
-			ui->boundsWidth->setValue((width - crop.left - crop.right) * scale.x);
-			ui->boundsHeight->setValue((height - crop.top - crop.bottom) * scale.y);
+			ui->boundsWidth->setValue(static_cast<float>(width - crop.left - crop.right) * scale.x);
+			ui->boundsHeight->setValue(static_cast<float>(height - crop.top - crop.bottom) * scale.y);
 		} else if (type == OBS_BOUNDS_NONE) {
 			OBSSource source = obs_sceneitem_get_source(item);
 			int width = (int)obs_source_get_width(source);
@@ -373,8 +373,8 @@ void OBSBasicTransform::onBoundsType(int index)
 			matrix4 draw;
 			obs_sceneitem_get_draw_transform(item, &draw);
 
-			ui->sizeX->setValue(width * draw.x.x);
-			ui->sizeY->setValue(height * draw.y.y);
+			ui->sizeX->setValue(static_cast<float>(width) * draw.x.x);
+			ui->sizeY->setValue(static_cast<float>(height) * draw.y.y);
 
 			obs_transform_info oti;
 			obs_sceneitem_get_info2(item, &oti);
@@ -389,8 +389,8 @@ void OBSBasicTransform::onBoundsType(int index)
 			obs_sceneitem_crop crop;
 			obs_sceneitem_get_crop(item, &crop);
 
-			int widthForFlip = static_cast<int>(width) - crop.left - crop.right;
-			int heightForFlip = static_cast<int>(height) - crop.top - crop.bottom;
+			float widthForFlip = static_cast<float>(width - crop.left - crop.right);
+			float heightForFlip = static_cast<float>(height - crop.top - crop.bottom);
 
 			float shiftX = (currentRatio.x - flipRatio.x) * (widthForFlip * draw.x.x);
 			float shiftY = (currentRatio.y - flipRatio.y) * (heightForFlip * draw.y.y);
