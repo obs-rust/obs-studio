@@ -70,6 +70,8 @@ static void enum_audio_devices(obs_enum_audio_device_cb cb, void *data, bool all
 		return;
 
 	ids = malloc(size);
+	if (!ids)
+		return;
 	count = size / sizeof(AudioDeviceID);
 
 	stat = AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, ids);
