@@ -567,7 +567,7 @@ static void update_params(struct obs_qsv *obsqsv, obs_data_t *settings)
 		obsqsv->params.DisplayPrimariesY[2] = 16000;
 		obsqsv->params.WhitePointX = 15635;
 		obsqsv->params.WhitePointY = 16450;
-		obsqsv->params.MaxDisplayMasteringLuminance = hdr_nominal_peak_level * 10000;
+		obsqsv->params.MaxDisplayMasteringLuminance = (mfxU32)hdr_nominal_peak_level * 10000u;
 		obsqsv->params.MinDisplayMasteringLuminance = 0;
 
 		obsqsv->params.MaxContentLightLevel = (mfxU16)hdr_nominal_peak_level;
@@ -1006,7 +1006,7 @@ static void obs_qsv_video_plus_hdr_info(void *data, struct video_scale_info *inf
 
 static mfxU64 ts_obs_to_mfx(int64_t ts, const struct video_output_info *voi)
 {
-	return ts * 90000 / voi->fps_num;
+	return (mfxU64)ts * 90000u / voi->fps_num;
 }
 
 static int64_t ts_mfx_to_obs(mfxI64 ts, const struct video_output_info *voi)
@@ -1069,7 +1069,7 @@ static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, 
 
 		type = start[0] & 0x1F;
 		if (type == OBS_NAL_SLICE_IDR || type == OBS_NAL_SLICE) {
-			start[0] &= ~(3 << 5);
+			start[0] &= (uint8_t)~(3u << 5);
 			start[0] |= priority << 5; //0 for non-ref frames and not equal to 0 for ref frames
 		}
 

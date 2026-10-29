@@ -269,8 +269,8 @@ int GetFreeTaskIndex(Task *pTaskPool, mfxU16 nPoolSize)
 void ClearYUVSurfaceSysMem(mfxFrameSurface1 *pSfc, mfxU16 width, mfxU16 height)
 {
 	// In case simulating direct access to frames we initialize the allocated surfaces with default pattern
-	memset(pSfc->Data.Y, 100, width * height);      // Y plane
-	memset(pSfc->Data.U, 50, (width * height) / 2); // UV plane
+	memset(pSfc->Data.Y, 100, (size_t)width * height);    // Y plane
+	memset(pSfc->Data.U, 50, (size_t)width * height / 2); // UV plane
 }
 
 // Get free raw frame surface

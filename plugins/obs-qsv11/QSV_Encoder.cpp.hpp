@@ -259,8 +259,8 @@ enum qsv_cpu_platform qsv_get_cpu_platform()
 	}
 
 	util_cpuid(cpuInfo, 1);
-	uint8_t model = ((cpuInfo[0] >> 4) & 0xF) + ((cpuInfo[0] >> 12) & 0xF0);
-	uint8_t family = ((cpuInfo[0] >> 8) & 0xF) + ((cpuInfo[0] >> 20) & 0xFF);
+	uint8_t model = static_cast<uint8_t>(((cpuInfo[0] >> 4) & 0xF) + ((cpuInfo[0] >> 12) & 0xF0));
+	uint8_t family = static_cast<uint8_t>(((cpuInfo[0] >> 8) & 0xF) + ((cpuInfo[0] >> 20) & 0xFF));
 
 	// See Intel 64 and IA-32 Architectures Software Developer's Manual,
 	// Vol 3C Table 35-1

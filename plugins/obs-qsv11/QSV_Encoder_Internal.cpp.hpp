@@ -523,7 +523,7 @@ mfxStatus QSV_Encoder_Internal::AllocateSurfaces()
 		mfxU16 width = (mfxU16)MSDK_ALIGN32(EncRequest.Info.Width);
 		mfxU16 height = (mfxU16)MSDK_ALIGN32(EncRequest.Info.Height);
 		mfxU8 bitsPerPixel = 12;
-		mfxU32 surfaceSize = width * height * bitsPerPixel / 8;
+		mfxU32 surfaceSize = (mfxU32)width * (mfxU32)height * (mfxU32)bitsPerPixel / 8u;
 		m_nSurfNum = EncRequest.NumFrameSuggested;
 
 		m_pmfxSurfaces = new mfxFrameSurface1 *[m_nSurfNum];

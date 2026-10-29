@@ -57,7 +57,7 @@ static void release_frames(VADisplay display, VASurfaceID *ids, unsigned int num
 	obs_leave_graphics();
 	bfree(surfaces);
 	bfree(mids);
-	vaDestroySurfaces(display, ids, num_surfaces);
+	vaDestroySurfaces(display, ids, (int)num_surfaces);
 }
 
 mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllocResponse *response)
@@ -90,7 +90,7 @@ mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllo
 		break;
 	}
 
-	int num_attrs = 2;
+	unsigned int num_attrs = 2;
 	VASurfaceAttrib attrs[2] = {{
 					    .type = VASurfaceAttribMemoryType,
 					    .flags = VA_SURFACE_ATTRIB_SETTABLE,
@@ -170,7 +170,7 @@ mfxStatus simple_alloc(mfxHDL pthis, mfxFrameAllocRequest *request, mfxFrameAllo
 	}
 
 	response->mids = (mfxMemId *)mids;
-	response->NumFrameActual = num_surfaces;
+	response->NumFrameActual = (mfxU16)num_surfaces;
 	return MFX_ERR_NONE;
 }
 
@@ -421,8 +421,8 @@ double TimeDiffMsec(mfxTime tfinish, mfxTime tstart)
 
 extern "C" void util_cpuid(int cpuinfo[4], int level)
 {
-	__get_cpuid(level, (unsigned int *)&cpuinfo[0], (unsigned int *)&cpuinfo[1], (unsigned int *)&cpuinfo[2],
-		    (unsigned int *)&cpuinfo[3]);
+	__get_cpuid((unsigned int)level, (unsigned int *)&cpuinfo[0], (unsigned int *)&cpuinfo[1],
+		    (unsigned int *)&cpuinfo[2], (unsigned int *)&cpuinfo[3]);
 }
 
 struct vaapi_device {
