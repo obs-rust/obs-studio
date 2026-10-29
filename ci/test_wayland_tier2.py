@@ -59,6 +59,11 @@ class WaylandTier2Test(unittest.TestCase):
             self.assertIn(unit, cmake)
         self.assertIn("if(ENABLE_WAYLAND)", cmake)
 
+    def test_ported_wayland_sources_stay_in_the_c_reference(self):
+        """The hybrid check must include the Wayland groups once they build."""
+        text = VALIDATE.read_text(encoding="utf-8")
+        self.assertNotIn("--without-wayland", text)
+
     def test_wayland_headers_are_in_the_tier2_image(self):
         packages = APT.read_text(encoding="utf-8").split()
         for package in ("libwayland-dev", "libxkbcommon-dev"):

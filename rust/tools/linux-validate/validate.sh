@@ -155,9 +155,10 @@ trap 'zccache stop >/dev/null 2>&1 || true' EXIT
 # Read the same canonical source sets as CMake and obs-build, then expand the
 # selected ported groups into implementation object names. Scraping sources.cmake
 # misses groups now that it imports the JSON manifest instead of listing them.
-# The build below configures ENABLE_WAYLAND=OFF, so neither Wayland group (with
-# or without GIO) is built.
-ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux --without-wayland)
+# The build below configures ENABLE_WAYLAND=ON (the option's default), so both
+# Wayland groups are built and their ported C sources must stay in the C
+# reference only (#2890).
+ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux)
 
 if [ "$(wc -w <<<"$ported_objs")" -lt 20 ]; then
   echo "FAIL: derived only $(wc -w <<<"$ported_objs") ported objects from libobs/build/source-sets.json"
@@ -196,7 +197,7 @@ else
     ${OBS_EXTRA_CMAKE_ARGS:-} \
     -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
     -DENABLE_WEBSOCKET=OFF -DENABLE_AJA=OFF -DENABLE_WEBRTC=OFF \
-    -DENABLE_NVENC=ON -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=OFF \
+    -DENABLE_NVENC=ON -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=ON \
     ${OBS_VERSION_OVERRIDE:+"-DOBS_VERSION_OVERRIDE=$OBS_VERSION_OVERRIDE"} "${build_number[@]}" \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   # -k 0: keep going after a failed target, so one run reports every compile
@@ -209,7 +210,7 @@ else
   # (wrap/ipc/lost_request.rs) and leaves the replay to the build tool.
   # Restart the daemon and rebuild once; ninja redoes only the failed edges,
   # and a real compile error fails the second time too.
-  tier2_targets=(libobs libobs-c-reference cmocka-tests decklink obs-nvenc obs-nvenc-c-reference)
+  tier2_targets=(libobs libobs-c-reference libobs-opengl cmocka-tests decklink obs-nvenc obs-nvenc-c-reference)
   uv run --script "$SRC/rust/tools/linux-validate/drop_depless_objects.py" "$build"
   if ! cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0 >"$build.build.log" 2>&1; then
     # Ninja colors its log (\e[31mFAILED: ...), so strip the escapes first.
