@@ -784,20 +784,20 @@ obs_context_name_deduplicate
 # obs-core-setup-rules.c: obs.c calls them inside libobs. Declared in
 # obs-core-setup-rules.h without EXPORT, so the shims stay hidden the same
 # way.
-obs_core_setup_rules_video_gate
+obs_core_setup_rules_aoc_check
 obs_core_setup_rules_audio_refused
+obs_core_setup_rules_buffer_default_ticks
 obs_core_setup_rules_buffer_set
 obs_core_setup_rules_buffer_ticks
-obs_core_setup_rules_buffer_default_ticks
-obs_core_setup_rules_cmdline_set
 obs_core_setup_rules_cmdline_len
+obs_core_setup_rules_cmdline_set
 obs_core_setup_rules_cmdline_table
 obs_core_setup_rules_data_path_match
 obs_core_setup_rules_latest_newer
-obs_core_setup_rules_aoc_check
+obs_core_setup_rules_mix_step
 obs_core_setup_rules_monitor_missing
 obs_core_setup_rules_monitor_same
-obs_core_setup_rules_mix_step
+obs_core_setup_rules_video_gate
 # obs-module-locale.c: obs-module.c calls them inside libobs. Declared in
 # obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_module_locale_default_file
