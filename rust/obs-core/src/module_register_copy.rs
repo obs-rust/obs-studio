@@ -25,9 +25,12 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
+
+use crate::module_source_rules::size_supported;
 
 /// `sizeof(uint32_t)`: the size of the 32-bit fields [`whole_size`] keeps.
 pub const U32_SIZE: usize = 4;
@@ -54,29 +57,42 @@ pub enum Gate {
 /// in order, at the end of a 32-bit field that starts at or after the copy's
 /// end so far and lies wholly within `size`.
 pub fn whole_size(size: usize, ptr_size: usize, u32_fields: &[usize]) -> usize {
-    let _ = (size, ptr_size, u32_fields);
-    todo!()
+    let mut whole = size.saturating_sub(size.checked_rem(ptr_size).unwrap_or(0));
+    for &field in u32_fields {
+        if field >= whole
+            && let Some(end) = field.checked_add(U32_SIZE)
+            && end <= size
+        {
+            whole = end;
+        }
+    }
+    whole
 }
 
 /// Same contract as C `obs_module_register_copy_within`: the field at
 /// `offset`, `field_size` bytes long, lies wholly within `size`.
 pub fn within(offset: usize, field_size: usize, size: usize) -> bool {
-    let _ = (offset, field_size, size);
-    todo!()
+    offset
+        .checked_add(field_size)
+        .is_some_and(|end| end <= size)
 }
 
 /// Same contract as C `obs_module_register_copy_gate`: a size of 0 is
 /// outside `obs_module_load`, a size past `supported` is too large, any
 /// other size is copied.
 pub fn gate(size: usize, supported: usize) -> Gate {
-    let _ = (size, supported);
-    todo!()
+    if size == 0 {
+        Gate::OutsideLoad
+    } else if !size_supported(size, supported) {
+        Gate::TooLarge
+    } else {
+        Gate::Copy
+    }
 }
 
 /// Same contract as C `obs_module_register_copy_ignores_size`: a source
 /// type whose `get_width` and `get_height` are warned about and ignored (a
 /// transition).
 pub fn ignores_size(source_type: u32) -> bool {
-    let _ = source_type;
-    todo!()
+    source_type == SOURCE_TYPE_TRANSITION
 }

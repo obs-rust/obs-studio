@@ -43,6 +43,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-module-locale.c.h.o",
     "obs-module-names.c.h.o",
     "obs-module-paths.c.h.o",
+    "obs-module-register-copy.c.h.o",
     "obs-module-source-rules.c.h.o",
     "obs-module-type-rules.c.h.o",
     "obs-output-protocols.c.h.o",

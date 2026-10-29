@@ -660,6 +660,12 @@ _obs_module_load_rules_open_route
 _obs_module_load_rules_safe_list
 _obs_module_load_rules_version_ok
 _obs_module_load_rules_version_word
+# obs-module-register-copy.c: obs-module.c calls them inside libobs. Not
+# EXPORT.
+_obs_module_register_copy_whole_size
+_obs_module_register_copy_within
+_obs_module_register_copy_gate
+_obs_module_register_copy_ignores_size
 # obs-module-source-rules.c: obs-module.c calls them inside libobs. Not
 # EXPORT.
 _obs_module_source_rules_list_of

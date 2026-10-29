@@ -809,6 +809,13 @@ obs_module_load_rules_open_route
 obs_module_load_rules_safe_list
 obs_module_load_rules_version_ok
 obs_module_load_rules_version_word
+# obs-module-register-copy.c: obs-module.c calls them inside libobs.
+# Declared in obs-module-register-copy.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_module_register_copy_whole_size
+obs_module_register_copy_within
+obs_module_register_copy_gate
+obs_module_register_copy_ignores_size
 # obs-module-source-rules.c: obs-module.c calls them inside libobs. Declared
 # in obs-internal.h without EXPORT, so the shims stay hidden the same way.
 obs_module_source_rules_list_of

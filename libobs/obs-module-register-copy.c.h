@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-module-register-copy.pch.h"
 
 /* Registration size rules, moved from whole_fields_size(), HAS_VAL(),
  * HANDLE_ERROR(), REGISTER_OBS_DEF() and obs_register_source_s() in
@@ -24,7 +24,9 @@
  * checks, and the source type that ignores get_width and get_height. Pure:
  * no libobs state. obs-module.c keeps the offsets, the reads of the caller's
  * structure, the copy, the lists, the logging and the error path, and
- * passes the values in. Declared in obs-module-register-copy.h. */
+ * passes the values in. Declared in obs-module-register-copy.h.
+ * Ported to rust/obs-core (module_register_copy): the hybrid libobs drops
+ * this file. */
 
 /* Every field of the four info structures is a pointer, aligned to and as
  * large as a pointer, except the 32-bit fields each type lists. So the copy

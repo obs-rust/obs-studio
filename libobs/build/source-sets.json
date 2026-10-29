@@ -208,6 +208,7 @@
     "build/libobs.ported-module-locale+.h.c",
     "build/libobs.ported-module-names+.h.c",
     "build/libobs.ported-module-paths+.h.c",
+    "build/libobs.ported-module-register-copy+.h.c",
     "build/libobs.ported-module-source-rules+.h.c",
     "build/libobs.ported-module-type-rules+.h.c",
     "build/libobs.ported-nsgif-blocks+.h.c",
