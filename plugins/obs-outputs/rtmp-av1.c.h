@@ -106,7 +106,7 @@ static inline unsigned int get_bit1(Av1GetBitContext *s)
 	int index = s->index;
 	uint8_t result = s->buffer[index >> 3];
 
-	result <<= index & 7;
+	result = (uint8_t)(result << (index & 7));
 	result = (uint8_t)(result >> (8 - 1));
 
 	if (s->index < s->size_in_bits_plus8)
