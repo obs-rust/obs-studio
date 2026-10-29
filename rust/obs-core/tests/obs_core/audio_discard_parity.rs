@@ -10,7 +10,7 @@
 //! left in it.
 //!
 //! Runs: the layout; chosen cases for each path of the three functions;
-//! 20 000 random cases per function (0 to 8 channels, 0 to 3000 frames,
+//! 1 000 random cases (0 to 8 channels, 0 to 3000 frames,
 //! channels 1 to 7 holding at least channel 0's frames, timestamps before,
 //! on, inside, at the end of and after one- and two-tick windows and near 0
 //! and `u64::MAX`, rates from 8 kHz to 384 kHz and odd ones, the stop check
@@ -42,7 +42,7 @@ use obs_core::ffi::audio_discard::{
 };
 use obs_core::ffi::audio_mix::ts_info;
 use obs_media_io::audio_io::audio_frames_to_ns;
-use obs_util::ffi::deque::{deque, deque_free, deque_pop_front, deque_push_back};
+use obs_util::ffi::deque::{deque, deque_free, deque_pop_front, deque_push_back, deque_reserve};
 use proptest::prelude::*;
 
 const FRAMES: u64 = AUDIO_OUTPUT_FRAMES as u64;
@@ -153,10 +153,20 @@ impl Source {
                 capacity: 0,
             }));
         for (ch, dq) in bufs.iter_mut().enumerate() {
-            for i in 0..case.frames[ch] {
-                let v = (ch * 10000 + i) as f32;
-                // SAFETY: a valid deque; one f32.
-                unsafe { deque_push_back(dq, ptr::from_ref(&v).cast::<c_void>(), F32) };
+            let samples: Vec<f32> = (0..case.frames[ch])
+                .map(|i| (ch * 10000 + i) as f32)
+                .collect();
+            if samples.is_empty() {
+                continue;
+            }
+            // One push per deque, into the capacity that pushing one f32 at a
+            // time from empty reaches (4 bytes, doubled until it fits), so
+            // the deque starts in the same state: start 0, end at the size,
+            // that capacity.
+            // SAFETY: a valid deque; `samples` holds `samples.len()` f32s.
+            unsafe {
+                deque_reserve(dq, F32 * samples.len().next_power_of_two());
+                deque_push_back(dq, samples.as_ptr().cast::<c_void>(), F32 * samples.len());
             }
         }
         Self {
@@ -184,13 +194,16 @@ impl Source {
         let mut deques = Vec::new();
         for dq in self.bufs.iter_mut() {
             let fields = (dq.size, dq.start_pos, dq.end_pos, dq.capacity);
-            let mut samples = Vec::new();
-            while dq.size >= F32 {
-                let mut v = 0f32;
-                // SAFETY: a valid deque holding at least one f32.
-                unsafe { deque_pop_front(dq, ptr::from_mut(&mut v).cast::<c_void>(), F32) };
-                samples.push(v.to_bits());
+            // Every whole f32 left, in one pop (a partial f32 stays, as it
+            // did with one pop per sample).
+            let mut left = vec![0f32; dq.size / F32];
+            if !left.is_empty() {
+                // SAFETY: a valid deque holding at least `left.len()` f32s.
+                unsafe {
+                    deque_pop_front(dq, left.as_mut_ptr().cast::<c_void>(), F32 * left.len());
+                }
             }
+            let samples: Vec<u32> = left.iter().map(|v| v.to_bits()).collect();
             // SAFETY: a valid deque with bmem memory.
             unsafe { deque_free(dq) };
             deques.push((fields, samples));
@@ -288,6 +301,51 @@ fn run_oracle(case: &Case) -> End {
         }
     };
     src.end(step)
+}
+
+/// `Source::new` builds each deque with one reserve and one push; that gives
+/// the deque the state that one push per f32 gave it (the test built it that
+/// way before #2891): the same size, start, end, capacity and samples.
+#[test]
+fn one_push_matches_one_push_per_sample() {
+    let sizes = (0..=300).chain([511, 512, 513, 1023, 1024, 1025, 2999, 3199]);
+    for n in sizes {
+        let mut case = case(Op::IfStopped, MAX_AUDIO_CHANNELS, 0, START);
+        case.frames = [n; MAX_AUDIO_CHANNELS];
+        let mut src = Source::new(&case);
+        let mut each = deque {
+            data: ptr::null_mut(),
+            size: 0,
+            start_pos: 0,
+            end_pos: 0,
+            capacity: 0,
+        };
+        for i in 0..n {
+            let v = (3 * 10000 + i) as f32;
+            // SAFETY: a valid deque; one f32.
+            unsafe { deque_push_back(&mut each, ptr::from_ref(&v).cast::<c_void>(), F32) };
+        }
+        let dq = &src.bufs[3];
+        assert_eq!(
+            (dq.size, dq.start_pos, dq.end_pos, dq.capacity),
+            (each.size, each.start_pos, each.end_pos, each.capacity),
+            "{n} frames"
+        );
+        let mut out = Vec::new();
+        for d in [&mut src.bufs[3], &mut each] {
+            let mut left = vec![0f32; d.size / F32];
+            // SAFETY: a valid deque holding `left.len()` f32s.
+            unsafe {
+                if !left.is_empty() {
+                    deque_pop_front(d, left.as_mut_ptr().cast::<c_void>(), F32 * left.len());
+                }
+            }
+            out.push(left.iter().map(|v| v.to_bits()).collect::<Vec<u32>>());
+        }
+        assert_eq!(out[0], out[1], "{n} frames");
+        // SAFETY: a valid deque with bmem memory; src frees its own.
+        unsafe { deque_free(&mut each) };
+    }
 }
 
 /// The C is defined for the case: no rate of 0 where ignore divides by it,
@@ -577,8 +635,12 @@ fn case_strategy() -> impl Strategy<Value = Case> {
         )
 }
 
+// 1 000 cases (20 000 before #2891). Of the 19 mutants of #2404, 16 fail
+// here within 125 cases in every run; the other 3 need an exact boundary
+// that random inputs do not reach (20 000 cases did not either), and the
+// chosen cases above find them.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(1_000))]
 
     #[test]
     fn random_cases_match(c in case_strategy()) {
