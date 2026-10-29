@@ -63,6 +63,7 @@ pub mod audio_render;
 pub mod canvas_draw;
 pub mod canvas_rules;
 pub mod context_names;
+pub mod core_setup_rules;
 pub mod module_load_rules;
 pub mod module_locale;
 pub mod module_names;
