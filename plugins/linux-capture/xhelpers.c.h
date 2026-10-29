@@ -47,7 +47,7 @@ int xinerama_screen_count(xcb_connection_t *xcb)
 	scr_c = xcb_xinerama_query_screens_unchecked(xcb);
 	scr_r = xcb_xinerama_query_screens_reply(xcb, scr_c, NULL);
 	if (scr_r)
-		screens = scr_r->number;
+		screens = (int)scr_r->number;
 	free(scr_r);
 
 	return screens;
@@ -217,7 +217,8 @@ int randr_screen_geo(xcb_connection_t *xcb, int_fast32_t screen, int_fast32_t *x
 			atom_c = xcb_get_atom_name(xcb, mon->name);
 			atom_r = xcb_get_atom_name_reply(xcb, atom_c, 0);
 			if (atom_r) {
-				*name = strndup(xcb_get_atom_name_name(atom_r), xcb_get_atom_name_name_length(atom_r));
+				*name = strndup(xcb_get_atom_name_name(atom_r),
+						(size_t)xcb_get_atom_name_name_length(atom_r));
 				free(atom_r);
 			}
 		}
@@ -295,11 +296,11 @@ xcb_shm_t *xshm_xcb_attach(xcb_connection_t *xcb, const int w, const int h)
 	shm->xcb = xcb;
 	shm->seg = xcb_generate_id(shm->xcb);
 
-	shm->shmid = shmget(IPC_PRIVATE, w * h * 4, IPC_CREAT | 0777);
+	shm->shmid = shmget(IPC_PRIVATE, (size_t)w * (size_t)h * 4, IPC_CREAT | 0777);
 	if (shm->shmid == -1)
 		goto fail;
 
-	xcb_shm_attach(shm->xcb, shm->seg, shm->shmid, false);
+	xcb_shm_attach(shm->xcb, shm->seg, (uint32_t)shm->shmid, false);
 
 	shm->data = shmat(shm->shmid, NULL, 0);
 

@@ -32,9 +32,9 @@ struct xcompcap {
 	bool window_changed;
 	bool window_hooked;
 
-	uint32_t width;
-	uint32_t height;
-	uint32_t border;
+	int width;
+	int height;
+	int border;
 
 	Pixmap pixmap;
 	gs_texture_t *gltex;
@@ -52,7 +52,7 @@ static xcb_window_t convert_encoded_window_id(const char *str, char **p_wname, c
 xcb_atom_t get_atom(xcb_connection_t *xconn, const char *name);
 xcb_atom_t get_atom(xcb_connection_t *xconn, const char *name)
 {
-	xcb_intern_atom_cookie_t atom_c = xcb_intern_atom(xconn, 1, strlen(name), name);
+	xcb_intern_atom_cookie_t atom_c = xcb_intern_atom(xconn, 1, (uint16_t)strlen(name), name);
 	xcb_intern_atom_reply_t *atom_r = xcb_intern_atom_reply(xconn, atom_c, NULL);
 	xcb_atom_t a = atom_r->atom;
 	free(atom_r);
@@ -117,7 +117,7 @@ struct dstr xcomp_window_name(xcb_connection_t *xconn, Display *xdisp, xcb_windo
 	if (name) {
 		// Guaranteed to be UTF8_STRING.
 		const char *data = (const char *)xcb_get_property_value(name);
-		dstr_ncopy(&ret, data, xcb_get_property_value_length(name));
+		dstr_ncopy(&ret, data, (size_t)xcb_get_property_value_length(name));
 		free(name);
 		return ret;
 	}
@@ -129,18 +129,18 @@ struct dstr xcomp_window_name(xcb_connection_t *xconn, Display *xdisp, xcb_windo
 
 	char *data = (char *)xcb_get_property_value(name);
 	if (name->type == ATOM_UTF8_STRING) {
-		dstr_ncopy(&ret, data, xcb_get_property_value_length(name));
+		dstr_ncopy(&ret, data, (size_t)xcb_get_property_value_length(name));
 		free(name);
 		return ret;
 	}
 	if (name->type == ATOM_STRING) { // Latin-1, safe enough
-		dstr_ncopy(&ret, data, xcb_get_property_value_length(name));
+		dstr_ncopy(&ret, data, (size_t)xcb_get_property_value_length(name));
 		free(name);
 		return ret;
 	}
 	if (name->type == ATOM_TEXT) { // Default charset
 		char *utf8;
-		if (!os_mbs_to_utf8_ptr(data, xcb_get_property_value_length(name), &utf8)) {
+		if (!os_mbs_to_utf8_ptr(data, (size_t)xcb_get_property_value_length(name), &utf8)) {
 			free(name);
 			goto fail;
 		}
@@ -235,7 +235,7 @@ struct darray xcomp_top_level_windows(xcb_connection_t *xconn)
 			goto done;
 		}
 
-		uint32_t len = xcb_get_property_value_length(cl_list) / sizeof(xcb_window_t);
+		uint32_t len = (uint32_t)((size_t)xcb_get_property_value_length(cl_list) / sizeof(xcb_window_t));
 		for (uint32_t i = 0; i < len; i++)
 			da_push_back(res, &(((xcb_window_t *)xcb_get_property_value(cl_list))[i]));
 
@@ -266,10 +266,10 @@ static xcb_window_t convert_encoded_window_id(const char *str, char **p_wname, c
 	}
 
 	// wstr also contains window-name and window-class
-	char *wname = bzalloc(secondMark - secondStr + 1);
-	char *wcls = bzalloc(strEnd - thirdStr + 1);
-	memcpy(wname, secondStr, secondMark - secondStr);
-	memcpy(wcls, thirdStr, strEnd - thirdStr);
+	char *wname = bzalloc((size_t)(secondMark - secondStr) + 1);
+	char *wcls = bzalloc((size_t)(strEnd - thirdStr) + 1);
+	memcpy(wname, secondStr, (size_t)(secondMark - secondStr));
+	memcpy(wcls, thirdStr, (size_t)(strEnd - thirdStr));
 	xcb_window_t ret = (xcb_window_t)strtol(str, NULL, 10);
 
 	*p_wname = wname;
@@ -369,14 +369,15 @@ void xcomp_create_pixmap(xcb_connection_t *xconn, struct xcompcap *s, int log_le
 	}
 	free(geom);
 
-	uint32_t vert_borders = s->crop_top + s->crop_bot + 2 * s->border;
-	uint32_t hori_borders = s->crop_left + s->crop_right + 2 * s->border;
+	int vert_borders = s->crop_top + s->crop_bot + 2 * s->border;
+	int hori_borders = s->crop_left + s->crop_right + 2 * s->border;
 	// Skip 0 sized textures.
 	if (vert_borders > s->height || hori_borders > s->width)
 		return;
 
 	s->pixmap = xcb_generate_id(xconn);
-	xcb_void_cookie_t name_cookie = xcb_composite_name_window_pixmap_checked(xconn, s->win, s->pixmap);
+	xcb_void_cookie_t name_cookie =
+		xcb_composite_name_window_pixmap_checked(xconn, s->win, (xcb_pixmap_t)s->pixmap);
 	err = NULL;
 	if ((err = xcb_request_check(xconn, name_cookie)) != NULL) {
 		blog(log_level, "xcb_composite_name_window_pixmap failed");
@@ -385,7 +386,8 @@ void xcomp_create_pixmap(xcb_connection_t *xconn, struct xcompcap *s, int log_le
 	}
 
 	XErrorHandler prev = XSetErrorHandler(silence_x11_errors);
-	s->gltex = gs_texture_create_from_pixmap(s->width, s->height, GS_BGRA_UNORM, GL_TEXTURE_2D, (void *)s->pixmap);
+	s->gltex = gs_texture_create_from_pixmap((uint32_t)s->width, (uint32_t)s->height, GS_BGRA_UNORM, GL_TEXTURE_2D,
+						 (void *)s->pixmap);
 	XSetErrorHandler(prev);
 }
 
@@ -542,9 +544,9 @@ static uint32_t xcompcap_get_width(void *data)
 	if (!s->gltex)
 		return 0;
 
-	int32_t border = s->crop_left + s->crop_right + 2 * s->border;
-	int32_t width = s->width - border;
-	return width < 0 ? 0 : width;
+	int border = s->crop_left + s->crop_right + 2 * s->border;
+	int width = s->width - border;
+	return width < 0 ? 0 : (uint32_t)width;
 }
 
 static uint32_t xcompcap_get_height(void *data)
@@ -553,9 +555,9 @@ static uint32_t xcompcap_get_height(void *data)
 	if (!s->gltex)
 		return 0;
 
-	int32_t border = s->crop_bot + s->crop_top + 2 * s->border;
-	int32_t height = s->height - border;
-	return height < 0 ? 0 : height;
+	int border = s->crop_bot + s->crop_top + 2 * s->border;
+	int height = s->height - border;
+	return height < 0 ? 0 : (uint32_t)height;
 }
 
 static void *xcompcap_create(obs_data_t *settings, obs_source_t *source)
@@ -724,8 +726,8 @@ static void xcompcap_video_render(void *data, gs_effect_t *effect)
 	gs_effect_set_texture(image, s->gltex);
 
 	while (gs_effect_loop(effect, "Draw")) {
-		gs_draw_sprite_subregion(s->gltex, 0, s->crop_left, s->crop_top, xcompcap_get_width(s),
-					 xcompcap_get_height(s));
+		gs_draw_sprite_subregion(s->gltex, 0, (uint32_t)s->crop_left, (uint32_t)s->crop_top,
+					 xcompcap_get_width(s), xcompcap_get_height(s));
 	}
 
 	if (s->gltex && s->show_cursor && !s->cursor_outside) {
@@ -895,10 +897,10 @@ static void xcompcap_update(void *data, obs_data_t *settings)
 	pthread_mutex_lock(&s->lock);
 	char *prev_name = bstrdup(s->windowName);
 
-	s->crop_top = obs_data_get_int(settings, "cut_top");
-	s->crop_left = obs_data_get_int(settings, "cut_left");
-	s->crop_right = obs_data_get_int(settings, "cut_right");
-	s->crop_bot = obs_data_get_int(settings, "cut_bot");
+	s->crop_top = (int)obs_data_get_int(settings, "cut_top");
+	s->crop_left = (int)obs_data_get_int(settings, "cut_left");
+	s->crop_right = (int)obs_data_get_int(settings, "cut_right");
+	s->crop_bot = (int)obs_data_get_int(settings, "cut_bot");
 	s->show_cursor = obs_data_get_bool(settings, "show_cursor");
 	s->include_border = obs_data_get_bool(settings, "include_border");
 	s->exclude_alpha = obs_data_get_bool(settings, "exclude_alpha");

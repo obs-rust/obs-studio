@@ -75,8 +75,8 @@ void xcb_xcursor_update(xcb_connection_t *xcb, xcb_xcursor_t *data)
 
 	data->x = xc->x - data->x_org;
 	data->y = xc->y - data->y_org;
-	data->x_render = data->x - xc->xhot;
-	data->y_render = data->y - xc->yhot;
+	data->x_render = (float)(data->x - xc->xhot);
+	data->y_render = (float)(data->y - xc->yhot);
 
 	free(xc);
 }

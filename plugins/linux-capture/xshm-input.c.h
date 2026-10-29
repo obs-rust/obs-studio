@@ -76,7 +76,8 @@ static inline void xshm_resize_texture(struct xshm_data *data)
 {
 	if (data->texture)
 		gs_texture_destroy(data->texture);
-	data->texture = gs_texture_create(data->adj_width, data->adj_height, GS_BGRA, 1, NULL, GS_DYNAMIC);
+	data->texture =
+		gs_texture_create((uint32_t)data->adj_width, (uint32_t)data->adj_height, GS_BGRA, 1, NULL, GS_DYNAMIC);
 }
 
 /**
@@ -88,7 +89,7 @@ static void xshm_resize(struct xshm_data *data)
 {
 	xshm_xcb_detach(data->xshm);
 
-	data->xshm = xshm_xcb_attach(data->xcb, data->adj_width, data->adj_height);
+	data->xshm = xshm_xcb_attach(data->xcb, (int)data->adj_width, (int)data->adj_height);
 	if (!data->xshm) {
 		blog(LOG_ERROR, "failed to attach shm after resize!");
 		if (data->texture) {
@@ -100,7 +101,7 @@ static void xshm_resize(struct xshm_data *data)
 
 	xshm_resize_texture(data);
 
-	xcb_xcursor_offset(data->cursor, data->adj_x_org, data->adj_y_org);
+	xcb_xcursor_offset(data->cursor, (int)data->adj_x_org, (int)data->adj_y_org);
 }
 
 /**
@@ -129,7 +130,7 @@ static bool xshm_check_extensions(xcb_connection_t *xcb)
  *
  * @return < 0 on error, 0 when size is unchanged, > 0 on size change
  */
-static int_fast32_t xshm_update_geometry(struct xshm_data *data)
+static int xshm_update_geometry(struct xshm_data *data)
 {
 	int_fast32_t prev_width = data->adj_width;
 	int_fast32_t prev_height = data->adj_height;
@@ -168,7 +169,7 @@ static int_fast32_t xshm_update_geometry(struct xshm_data *data)
 		if (x11_screen_geo(data->xcb, data->screen_id, &data->width, &data->height) < 0) {
 			return -1;
 		}
-		data->xcb_screen = xcb_get_screen(data->xcb, data->screen_id);
+		data->xcb_screen = xcb_get_screen(data->xcb, (int)data->screen_id);
 	}
 
 	if (!data->width || !data->height) {
@@ -203,8 +204,8 @@ static int_fast32_t xshm_update_geometry(struct xshm_data *data)
 	if (prev_width == data->adj_width && prev_height == data->adj_height)
 		return 0;
 
-	blog(LOG_INFO, "Geometry %" PRIdFAST32 "x%" PRIdFAST32 " @ %" PRIdFAST32 ",%" PRIdFAST32, data->width,
-	     data->height, data->x_org, data->y_org);
+	blog(LOG_INFO, "Geometry %dx%d @ %d,%d", (int)data->width, (int)data->height, (int)data->x_org,
+	     (int)data->y_org);
 
 	return 1;
 }
@@ -316,14 +317,14 @@ static void xshm_capture_start(struct xshm_data *data)
 		return;
 	}
 
-	data->xshm = xshm_xcb_attach(data->xcb, data->adj_width, data->adj_height);
+	data->xshm = xshm_xcb_attach(data->xcb, (int)data->adj_width, (int)data->adj_height);
 	if (!data->xshm) {
 		blog(LOG_ERROR, "failed to attach shm !");
 		goto fail;
 	}
 
 	data->cursor = xcb_xcursor_init(data->xcb);
-	xcb_xcursor_offset(data->cursor, data->adj_x_org, data->adj_y_org);
+	xcb_xcursor_offset(data->cursor, (int)data->adj_x_org, (int)data->adj_y_org);
 
 	xshm_select_events(data);
 
@@ -349,7 +350,7 @@ static void xshm_update(void *vptr, obs_data_t *settings)
 
 	/* The saved monitor name wins over its saved position, unless the
 	 * position was just changed (another monitor chosen). */
-	int_fast32_t screen = obs_data_get_int(settings, "screen");
+	int screen = (int)obs_data_get_int(settings, "screen");
 	const char *screen_name = obs_data_get_string(settings, "screen_name");
 	if (data->screen_setting_known && screen != data->screen_setting)
 		screen_name = "";
@@ -361,10 +362,10 @@ static void xshm_update(void *vptr, obs_data_t *settings)
 	data->advanced = obs_data_get_bool(settings, "advanced");
 	data->server = bstrdup(obs_data_get_string(settings, "server"));
 
-	data->cut_top = obs_data_get_int(settings, "cut_top");
-	data->cut_left = obs_data_get_int(settings, "cut_left");
-	data->cut_right = obs_data_get_int(settings, "cut_right");
-	data->cut_bot = obs_data_get_int(settings, "cut_bot");
+	data->cut_top = (int)obs_data_get_int(settings, "cut_top");
+	data->cut_left = (int)obs_data_get_int(settings, "cut_left");
+	data->cut_right = (int)obs_data_get_int(settings, "cut_right");
+	data->cut_bot = (int)obs_data_get_int(settings, "cut_bot");
 
 	xshm_capture_start(data);
 
@@ -425,7 +426,7 @@ static bool xshm_server_changed(obs_properties_t *props, obs_property_t *p, obs_
 	UNUSED_PARAMETER(p);
 
 	bool advanced = obs_data_get_bool(settings, "advanced");
-	int_fast32_t old_screen = obs_data_get_int(settings, "screen");
+	int old_screen = (int)obs_data_get_int(settings, "screen");
 	const char *server = obs_data_get_string(settings, "server");
 	obs_property_t *screens = obs_properties_get(props, "screen");
 
@@ -449,11 +450,10 @@ static bool xshm_server_changed(obs_properties_t *props, obs_property_t *p, obs_
 	dstr_init(&screen_info);
 	bool randr = randr_is_active(xcb);
 	bool xinerama = xinerama_is_active(xcb);
-	int_fast32_t count =
-		randr ? randr_screen_count(xcb)
-		      : (xinerama ? xinerama_screen_count(xcb) : xcb_setup_roots_length(xcb_get_setup(xcb)));
+	int count = randr ? randr_screen_count(xcb)
+			  : (xinerama ? xinerama_screen_count(xcb) : xcb_setup_roots_length(xcb_get_setup(xcb)));
 
-	for (int_fast32_t i = 0; i < count; ++i) {
+	for (int i = 0; i < count; ++i) {
 		char *name;
 		char name_tmp[20];
 		int_fast32_t x, y, w, h;
@@ -468,7 +468,7 @@ static bool xshm_server_changed(obs_properties_t *props, obs_property_t *p, obs_
 			x11_screen_geo(xcb, i, &w, &h);
 
 		if (name == NULL) {
-			int ret = snprintf(name_tmp, sizeof(name_tmp), "%" PRIuFAST32, i);
+			int ret = snprintf(name_tmp, sizeof(name_tmp), "%d", (int)i);
 			if (ret >= (int)sizeof(name_tmp))
 				blog(LOG_DEBUG, "linux-capture: A format truncation may have occurred."
 						" This can be ignored since it is quite improbable.");
@@ -476,8 +476,7 @@ static bool xshm_server_changed(obs_properties_t *props, obs_property_t *p, obs_
 			name = name_tmp;
 		}
 
-		dstr_printf(&screen_info, "%s (%" PRIuFAST32 "x%" PRIuFAST32 " @ %" PRIuFAST32 ",%" PRIuFAST32 ")",
-			    name, w, h, x, y);
+		dstr_printf(&screen_info, "%s (%dx%d @ %d,%d)", name, (int)w, (int)h, (int)x, (int)y);
 
 		if (name != name_tmp)
 			free(name);
@@ -488,7 +487,7 @@ static bool xshm_server_changed(obs_properties_t *props, obs_property_t *p, obs_
 
 	/* handle missing screen */
 	if (old_screen + 1 > count) {
-		dstr_printf(&screen_info, "Display %" PRIuFAST32 " (not found)", old_screen);
+		dstr_printf(&screen_info, "Display %d (not found)", (int)old_screen);
 		size_t index = obs_property_list_add_int(screens, screen_info.array, old_screen);
 		obs_property_list_item_disable(screens, index, true);
 	}
@@ -576,7 +575,7 @@ static void xshm_process_events(struct xshm_data *data)
 {
 	xcb_generic_event_t *event;
 	while ((event = xcb_poll_for_event(data->xcb))) {
-		uint8_t type = event->response_type & ~0x80; /* Strip out "sent event" flag */
+		uint8_t type = (uint8_t)(event->response_type & 0x7f); /* Strip out "sent event" flag */
 		if (type == XCB_CONFIGURE_NOTIFY) {
 			data->geo_event_pending = true;
 		} else if (data->use_randr && (type == data->randr_first_event + XCB_RANDR_SCREEN_CHANGE_NOTIFY ||
@@ -605,7 +604,7 @@ static void xshm_video_tick(void *vptr, float seconds)
 	if (data->geo_event_pending) {
 		data->geo_event_pending = false;
 
-		int_fast32_t geo_changed = xshm_update_geometry(data);
+		int geo_changed = xshm_update_geometry(data);
 		if (geo_changed < 0) {
 			blog(LOG_ERROR, "failed to update geometry in video tick!");
 			return;
@@ -617,7 +616,7 @@ static void xshm_video_tick(void *vptr, float seconds)
 			obs_leave_graphics();
 		} else if (data->cursor) {
 			/* The monitor can move without changing size (#2265). */
-			xcb_xcursor_offset(data->cursor, data->adj_x_org, data->adj_y_org);
+			xcb_xcursor_offset(data->cursor, (int)data->adj_x_org, (int)data->adj_y_org);
 		}
 	}
 
@@ -627,8 +626,9 @@ static void xshm_video_tick(void *vptr, float seconds)
 	xcb_shm_get_image_cookie_t img_c;
 	xcb_shm_get_image_reply_t *img_r;
 
-	img_c = xcb_shm_get_image_unchecked(data->xcb, data->xcb_screen->root, data->adj_x_org, data->adj_y_org,
-					    data->adj_width, data->adj_height, ~0, XCB_IMAGE_FORMAT_Z_PIXMAP,
+	img_c = xcb_shm_get_image_unchecked(data->xcb, data->xcb_screen->root, (int16_t)data->adj_x_org,
+					    (int16_t)data->adj_y_org, (uint16_t)data->adj_width,
+					    (uint16_t)data->adj_height, ~(uint32_t)0, XCB_IMAGE_FORMAT_Z_PIXMAP,
 					    data->xshm->seg, 0);
 
 	img_r = xcb_shm_get_image_reply(data->xcb, img_c, NULL);
@@ -638,7 +638,7 @@ static void xshm_video_tick(void *vptr, float seconds)
 
 	obs_enter_graphics();
 
-	gs_texture_set_image(data->texture, (void *)data->xshm->data, data->adj_width * 4, false);
+	gs_texture_set_image(data->texture, (void *)data->xshm->data, (uint32_t)data->adj_width * 4, false);
 	xcb_xcursor_update(data->xcb, data->cursor);
 
 	obs_leave_graphics();
@@ -691,7 +691,7 @@ static void xshm_video_render(void *vptr, gs_effect_t *effect)
 static uint32_t xshm_getwidth(void *vptr)
 {
 	XSHM_DATA(vptr);
-	return data->adj_width;
+	return (uint32_t)data->adj_width;
 }
 
 /**
@@ -700,7 +700,7 @@ static uint32_t xshm_getwidth(void *vptr)
 static uint32_t xshm_getheight(void *vptr)
 {
 	XSHM_DATA(vptr);
-	return data->adj_height;
+	return (uint32_t)data->adj_height;
 }
 
 struct obs_source_info xshm_input = {
