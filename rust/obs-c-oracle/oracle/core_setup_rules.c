@@ -1,5 +1,5 @@
 /* Test-only oracle: the original libobs/obs-core-setup-rules.c.h,
- * unmodified, with its fourteen entry points renamed to oracle_* so they
+ * unmodified, with its fifteen entry points renamed to oracle_* so they
  * can link next to the Rust shims. Also the constants and enum values of
  * obs-core-setup-rules.h, and the obs-defs.h, obs-source.h and audio-io.h
  * values they copy, as the C sees them. */
@@ -17,6 +17,7 @@
 #define obs_core_setup_rules_cmdline_set oracle_obs_core_setup_rules_cmdline_set
 #define obs_core_setup_rules_cmdline_len oracle_obs_core_setup_rules_cmdline_len
 #define obs_core_setup_rules_cmdline_table oracle_obs_core_setup_rules_cmdline_table
+#define obs_core_setup_rules_data_file_found oracle_obs_core_setup_rules_data_file_found
 #define obs_core_setup_rules_data_path_match oracle_obs_core_setup_rules_data_path_match
 #define obs_core_setup_rules_latest_newer oracle_obs_core_setup_rules_latest_newer
 #define obs_core_setup_rules_aoc_check oracle_obs_core_setup_rules_aoc_check
@@ -32,6 +33,7 @@
 #undef obs_core_setup_rules_aoc_check
 #undef obs_core_setup_rules_latest_newer
 #undef obs_core_setup_rules_data_path_match
+#undef obs_core_setup_rules_data_file_found
 #undef obs_core_setup_rules_cmdline_table
 #undef obs_core_setup_rules_cmdline_len
 #undef obs_core_setup_rules_cmdline_set

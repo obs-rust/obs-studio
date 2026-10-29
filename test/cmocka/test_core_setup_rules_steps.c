@@ -169,6 +169,14 @@ static void test_cmdline(void **state)
 	assert_int_equal(obs_core_setup_rules_cmdline_table(-1, 8), 0);
 }
 
+/* The data file search ends at its first hit. */
+static void test_data_file_found(void **state)
+{
+	(void)state;
+	assert_true(obs_core_setup_rules_data_file_found(true));
+	assert_false(obs_core_setup_rules_data_file_found(false));
+}
+
 static void test_data_path_match(void **state)
 {
 	(void)state;
@@ -635,9 +643,10 @@ static void test_frame_counts_without_mix(void **state)
 int main(void)
 {
 	const struct CMUnitTest steps[] = {
-		CASE(test_video_gate), CASE(test_video_gate_order), CASE(test_audio_gate),     CASE(test_buffer_ticks),
-		CASE(test_cmdline),    CASE(test_data_path_match),  CASE(test_latest),         CASE(test_aoc_check),
-		CASE(test_monitor),    CASE(test_mix_step),         CASE(test_before_startup),
+		CASE(test_video_gate),      CASE(test_video_gate_order), CASE(test_audio_gate),
+		CASE(test_buffer_ticks),    CASE(test_cmdline),          CASE(test_data_file_found),
+		CASE(test_data_path_match), CASE(test_latest),           CASE(test_aoc_check),
+		CASE(test_monitor),         CASE(test_mix_step),         CASE(test_before_startup),
 	};
 	const struct CMUnitTest callers[] = {
 		CASE(test_reset_video_gates),    CASE(test_reset_audio_ticks), CASE(test_cmdline_once),

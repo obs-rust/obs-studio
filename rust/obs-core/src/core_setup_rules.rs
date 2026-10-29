@@ -183,10 +183,8 @@ pub fn cmdline_table(argc: i32, ptr_size: usize) -> usize {
 /// Same contract as C `obs_core_setup_rules_data_file_found`:
 /// `obs_find_data_file()` stops at a hit, asked after the libobs data
 /// directory and after each added path.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn data_file_found(found: bool) -> bool {
-    let _ = found;
-    todo!()
+    found
 }
 
 /// Same contract as C `obs_core_setup_rules_data_path_match`: `dstr_cmp()`

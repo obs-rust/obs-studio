@@ -40,6 +40,9 @@
  * - obs_core_setup_rules_cmdline_len(), obs_core_setup_rules_cmdline_table():
  *   the size of the copy's strings (each with its terminator), and of its
  *   table of argc + 1 pointers, which the strings follow;
+ * - obs_core_setup_rules_data_file_found(): obs_find_data_file() stops at
+ *   a hit, asked after the libobs data directory and after each added path
+ *   in order, so the first place that has the file wins;
  * - obs_core_setup_rules_data_path_match(): a data path equal to the one
  *   removed (dstr_cmp() of 0); the first one is removed;
  * - obs_core_setup_rules_latest_newer(): a source type's version is above
@@ -57,7 +60,8 @@
  *   encoder-only mix of the main mix's view, and has a video output.
  *
  * obs.c keeps every lock, every read and call (obs_video_active(),
- * outputs_starting(), audio_output_active(), dstr_cmp(), strcmp(), strlen(),
+ * outputs_starting(), audio_output_active(), find_libobs_data_file(),
+ * check_path(), dstr_cmp(), strcmp(), strlen(),
  * obs_audio_monitoring_available(), the frame counters), the fps gate, every
  * allocation, copy, free and signal, every divide by a variable and every log
  * message. Nothing here takes a lock, calls into libobs or keeps state.
@@ -118,6 +122,7 @@ uint32_t obs_core_setup_rules_buffer_default_ticks(void);
 bool obs_core_setup_rules_cmdline_set(int stored_argc);
 size_t obs_core_setup_rules_cmdline_len(size_t len, size_t arg_len);
 size_t obs_core_setup_rules_cmdline_table(int argc, size_t ptr_size);
+bool obs_core_setup_rules_data_file_found(bool found);
 bool obs_core_setup_rules_data_path_match(int cmp);
 bool obs_core_setup_rules_latest_newer(uint32_t version, int best);
 bool obs_core_setup_rules_aoc_check(uint32_t output_flags);

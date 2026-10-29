@@ -18,7 +18,7 @@
 #include "libobs/build/libobs-ported-core-setup-rules.pch.h"
 
 /* Setup rules, moved from obs_reset_video(), obs_reset_audio2(),
- * obs_set_cmdline_args(), obs_remove_data_path(),
+ * obs_set_cmdline_args(), obs_find_data_file(), obs_remove_data_path(),
  * obs_get_latest_input_type_id(), check_all_aoc_sources(),
  * obs_set_audio_monitoring_device() and obs_get_video_frame_counts() in
  * obs.c: the reset gates, the audio buffering ticks, the command line's
@@ -91,6 +91,11 @@ size_t obs_core_setup_rules_cmdline_len(size_t len, size_t arg_len)
 size_t obs_core_setup_rules_cmdline_table(int argc, size_t ptr_size)
 {
 	return ptr_size * ((size_t)argc + 1);
+}
+
+bool obs_core_setup_rules_data_file_found(bool found)
+{
+	return found;
 }
 
 bool obs_core_setup_rules_data_path_match(int cmp)

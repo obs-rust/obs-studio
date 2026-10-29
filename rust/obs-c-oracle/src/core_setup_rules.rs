@@ -56,6 +56,7 @@ unsafe extern "C" {
     pub fn oracle_obs_core_setup_rules_cmdline_set(stored_argc: c_int) -> bool;
     pub fn oracle_obs_core_setup_rules_cmdline_len(len: usize, arg_len: usize) -> usize;
     pub fn oracle_obs_core_setup_rules_cmdline_table(argc: c_int, ptr_size: usize) -> usize;
+    pub fn oracle_obs_core_setup_rules_data_file_found(found: bool) -> bool;
     pub fn oracle_obs_core_setup_rules_data_path_match(cmp: c_int) -> bool;
     pub fn oracle_obs_core_setup_rules_latest_newer(version: u32, best: c_int) -> bool;
     pub fn oracle_obs_core_setup_rules_aoc_check(output_flags: u32) -> bool;

@@ -1,7 +1,7 @@
 //! C ABI for `libobs/obs-core-setup-rules.c.h`.
 //!
 //! `obs_reset_video()`, `obs_reset_audio2()`, `obs_set_cmdline_args()`,
-//! `obs_remove_data_path()`, `obs_get_latest_input_type_id()`,
+//! `obs_find_data_file()`, `obs_remove_data_path()`, `obs_get_latest_input_type_id()`,
 //! `check_all_aoc_sources()`, `obs_set_audio_monitoring_device()` and
 //! `obs_get_video_frame_counts()` in `obs.c` call these inside libobs. They
 //! are declared in `obs-core-setup-rules.h` without `EXPORT`, so the shims
@@ -114,6 +114,12 @@ pub extern "C" fn obs_core_setup_rules_cmdline_len(len: usize, arg_len: usize) -
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_core_setup_rules_cmdline_table(argc: c_int, ptr_size: usize) -> usize {
     core_setup_rules::cmdline_table(argc, ptr_size)
+}
+
+/// Same contract as C `obs_core_setup_rules_data_file_found`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_data_file_found(found: bool) -> bool {
+    core_setup_rules::data_file_found(found)
 }
 
 /// Same contract as C `obs_core_setup_rules_data_path_match`.
