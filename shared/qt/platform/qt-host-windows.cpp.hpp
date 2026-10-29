@@ -23,7 +23,7 @@ QFontDialog::FontDialogOptions font_dialog_options()
 
 uint32_t translate_modifiers(Qt::KeyboardModifiers mods)
 {
-	int obsModifiers = INTERACT_NONE;
+	uint32_t obsModifiers = INTERACT_NONE;
 
 	if (mods.testFlag(Qt::ShiftModifier)) {
 		obsModifiers |= INTERACT_SHIFT_KEY;
