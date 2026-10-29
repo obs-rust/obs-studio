@@ -42,33 +42,39 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 	if (orientation() == Qt::Horizontal) {
 		const int sliderWidth = groove.width() - handle.width();
 
-		float tickLength = groove.height() * 1.5;
-		tickLength = std::max((int)tickLength + groove.height(), 8 + groove.height());
+		float tickLength = static_cast<float>(groove.height()) * 1.5f;
+		tickLength = static_cast<float>(
+			std::max(static_cast<int>(tickLength) + groove.height(), 8 + groove.height()));
 
-		float yPos = groove.center().y() - (tickLength / 2) + 1;
+		float yPos = static_cast<float>(groove.center().y()) - (tickLength / 2.0f) + 1.0f;
 
 		for (int db = -10; db >= -90; db -= 10) {
-			float tickValue = fader_db_to_def(db);
+			float tickValue = fader_db_to_def(static_cast<float>(db));
 
-			float xPos = groove.left() + (tickValue * sliderWidth) + (handle.width() / 2);
-			painter.fillRect(xPos, yPos, 1, tickLength, tickMarkColor);
+			float xPos = static_cast<float>(groove.left()) +
+				     (tickValue * static_cast<float>(sliderWidth)) +
+				     (static_cast<float>(handle.width()) / 2.0f);
+			painter.fillRect(QRectF(xPos, yPos, 1.0f, tickLength), tickMarkColor);
 		}
 	}
 
 	if (orientation() == Qt::Vertical) {
 		const int sliderHeight = groove.height() - handle.height();
 
-		float tickLength = groove.width() * 1.5;
-		tickLength = std::max((int)tickLength + groove.width(), 8 + groove.width());
+		float tickLength = static_cast<float>(groove.width()) * 1.5f;
+		tickLength = static_cast<float>(
+			std::max(static_cast<int>(tickLength) + groove.width(), 8 + groove.width()));
 
-		float xPos = groove.center().x() - (tickLength / 2) + 1;
+		float xPos = static_cast<float>(groove.center().x()) - (tickLength / 2.0f) + 1.0f;
 
 		for (int db = -10; db >= -96; db -= 10) {
-			float tickValue = fader_db_to_def(db);
+			float tickValue = fader_db_to_def(static_cast<float>(db));
 
-			float yPos =
-				groove.height() + groove.top() - (tickValue * sliderHeight) - (handle.height() / 2);
-			painter.fillRect(xPos, yPos, tickLength, 1, tickMarkColor);
+			float yPos = static_cast<float>(groove.height()) +
+				     static_cast<float>(groove.top()) -
+				     (tickValue * static_cast<float>(sliderHeight)) -
+				     (static_cast<float>(handle.height()) / 2.0f);
+			painter.fillRect(QRectF(xPos, yPos, tickLength, 1.0f), tickMarkColor);
 		}
 	}
 
