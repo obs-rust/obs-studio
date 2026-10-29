@@ -104,6 +104,7 @@ pub mod monitoring;
 pub mod ptm_gate;
 pub mod render_route;
 pub mod size_route;
+pub mod source_duplicate;
 pub mod transition_clock;
 pub mod transition_load;
 pub mod transition_render;
