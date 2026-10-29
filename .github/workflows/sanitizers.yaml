@@ -4,7 +4,28 @@ run-name: Sanitizers (${{ inputs.tools || 'all' }}) 🧪
 # launch, via rust/tools/sanitize/. Run it from the Actions tab or with
 #   gh workflow run sanitizers.yaml -f tools=tsan -f launch_seconds=90
 # Runs nightly; PRs that change the harness dispatch it on their branch (#491).
+# Also callable: build-project.yaml runs the `asan` pass on a PR that changes a
+# target already in the conversion ratchet (#2923), so the sanitizer-only
+# diagnostic is paid for by the PR that causes it.
 on:
+  workflow_call:
+    inputs:
+      tools:
+        description: Which sanitizer passes to run
+        type: string
+        default: all
+      launch_seconds:
+        description: Seconds before OBS is sent SIGINT (valgrind gets 4x)
+        type: number
+        default: 45
+      rust_libobs:
+        description: Run against the production hybrid (false explicitly selects C rollback)
+        type: boolean
+        default: true
+      fail_on_findings:
+        description: Fail the job when triage finds an OBS finding
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tools:
