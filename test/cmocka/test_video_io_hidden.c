@@ -20,6 +20,7 @@
 #include <obs.h>
 #include <media-io/video-frame.h>
 #include <media-io/video-io.h>
+#include <util/platform.h>
 #include <util/threading.h>
 
 #define GATE_MAX 4
@@ -30,6 +31,7 @@ struct gate {
 	os_sem_t *hits_sem;
 	os_event_t *release;
 	int hits;
+	uint64_t ts[GATE_MAX];
 	uint8_t byte0[GATE_MAX];
 };
 
@@ -38,8 +40,10 @@ static void on_frame(void *param, struct video_data *frame)
 	struct gate *g = param;
 	int i = g->hits++;
 
-	if (i < GATE_MAX)
+	if (i < GATE_MAX) {
+		g->ts[i] = frame->timestamp;
 		g->byte0[i] = frame->data[0] ? frame->data[0][0] : 0;
+	}
 	os_sem_post(g->hits_sem);
 	os_event_wait(g->release);
 }
@@ -163,6 +167,64 @@ static void frame_rate_divisor_view(void **state)
 	finish(video, &g);
 }
 
+/* A grouped encoder starts on the group's start frame, but video-io decides
+ * which frames it delivers with a per-input counter that starts at 0 when the
+ * input connects. A frame queued before the group start consumes that first
+ * slot, so an encoder with a frame-rate divisor above 1 is one phase ahead and
+ * never receives the start frame; the group then never starts. Clearing the
+ * counter makes the next frame the input receives the start frame again. */
+static void push_frame(video_t *video, struct video_frame *frame, uint64_t ts)
+{
+	/* The frame cache is empty until the video thread starts, and
+	 * lock_frame only fails while every slot is still queued. */
+	bool locked = false;
+	for (int i = 0; i < 500 && !locked; i++) {
+		locked = video_output_lock_frame(video, frame, 1, ts);
+		if (!locked)
+			os_sleep_ms(10);
+	}
+	assert_true(locked);
+	frame->data[0][0] = 0x5a;
+	video_output_unlock_frame(video);
+}
+
+static void group_start_aligns_the_divisor_counter(void **state)
+{
+	video_t *video = NULL;
+	struct video_output_info info = rgba_info("align");
+	struct gate g;
+	struct video_frame frame;
+	uint64_t frame_time;
+	const uint64_t start = 1000;
+
+	UNUSED_PARAMETER(state);
+	assert_true(obs_up);
+	gate_init(&g);
+	assert_int_equal(video_output_open(&video, &info), VIDEO_OUTPUT_SUCCESS);
+	frame_time = video_output_get_frame_time(video);
+	assert_true(frame_time > 0);
+
+	assert_true(video_output_connect2(video, NULL, 2, on_frame, &g));
+
+	/* Delivered, and it advances the input's divisor counter to 1. */
+	push_frame(video, &frame, start);
+	assert_int_equal(os_sem_wait(g.hits_sem), 0);
+	assert_int_equal(g.hits, 1);
+	assert_int_equal(g.ts[0], start);
+
+	/* The group's start frame is the next one rendered. The encoder must
+	 * receive it, not the one after it. */
+	push_frame(video, &frame, start + frame_time);
+	push_frame(video, &frame, start + 2 * frame_time);
+
+	assert_int_equal(os_sem_wait(g.hits_sem), 0);
+	assert_int_equal(g.hits, 2);
+	assert_int_equal(g.ts[1], start + frame_time);
+
+	assert_true(video_output_disconnect2(video, on_frame, &g));
+	finish(video, &g);
+}
+
 static int group_setup(void **state)
 {
 	UNUSED_PARAMETER(state);
@@ -184,6 +246,7 @@ int main(void)
 		cmocka_unit_test(null_divisor),
 		cmocka_unit_test(texture_encoder_refs_skip_the_reset),
 		cmocka_unit_test(frame_rate_divisor_view),
+		cmocka_unit_test(group_start_aligns_the_divisor_counter),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
