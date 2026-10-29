@@ -37,6 +37,26 @@ class CiScopeTest(unittest.TestCase):
         self.check(["rust/obs-util/src/dstr.rs"], core=True)
         self.check(["Cargo.lock"], core=True)
 
+    def test_core_on_a_master_push_also_selects_both_platform_lanes(self):
+        # #2916: a `libobs/` or `rust/` only diff selects no platform lane, so a
+        # Windows-only (or macOS-only) break in core code reached master unseen
+        # (#2910). A master push runs both platform Rust lanes for that diff.
+        master_push = {"event": "push", "ref": "master"}
+        got = scope(["libobs/obs.c.h"], lambda path: path in CPP_TESTS, **master_push)
+        self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
+        got = scope(["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push)
+        self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
+        # A PR and a merge-queue run keep the path selection: the queue pays nothing.
+        for event in ("pull_request", "merge_group", "push"):
+            got = scope(["libobs/obs.c.h"], lambda path: path in CPP_TESTS, event=event, ref="fix/2910-x")
+            self.assertEqual((got.core, got.macos, got.windows), (True, False, False), (event, got))
+        # Not a platform job for a master push that changes no core code.
+        got = scope(["ci/ci_scope.py"], lambda path: path in CPP_TESTS, **master_push)
+        self.assertEqual((got.core, got.macos, got.windows), (False, False, False))
+        # And a platform file keeps its own selection.
+        got = scope(["plugins/mac-capture/mac-display-capture.m"], lambda path: path in CPP_TESTS, **master_push)
+        self.assertEqual((got.macos, got.windows), (True, False))
+
     def test_core_file_content_is_not_read(self):
         # Core files carry no platform defines (the ratchet lint enforces
         # it), so a core file is Linux-only whatever it contains (#897).
