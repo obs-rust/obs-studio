@@ -39,6 +39,5 @@ set_target_properties_obs(obs-webrtc PROPERTIES FOLDER plugins PREFIX "")
 # -Wno-float-conversion only leave the flag lists once every target is ratcheted.
 target_compile_options(
   obs-webrtc
-  PRIVATE
-    "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
 )
