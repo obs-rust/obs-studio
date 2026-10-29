@@ -134,14 +134,14 @@ void device_stage_texture(gs_device_t *device, gs_stagesurf_t *dst, gs_texture_t
 	if (!gl_success("glFrameBufferTexture2D"))
 		goto failed_unbind_all;
 
-	glReadPixels(0, 0, dst->width, dst->height, dst->gl_format, dst->gl_type, 0);
+	glReadPixels(0, 0, (GLsizei)dst->width, (GLsizei)dst->height, dst->gl_format, dst->gl_type, 0);
 	if (!gl_success("glReadPixels"))
 		goto failed_unbind_all;
 
 	success = true;
 
 failed_unbind_all:
-	gl_bind_framebuffer(GL_READ_FRAMEBUFFER, last_fbo);
+	gl_bind_framebuffer(GL_READ_FRAMEBUFFER, (GLuint)last_fbo);
 
 failed_unbind_buffer:
 	gl_bind_buffer(GL_PIXEL_PACK_BUFFER, 0);
