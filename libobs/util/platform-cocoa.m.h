@@ -103,7 +103,7 @@ char *os_get_executable_path_ptr(const char *name)
     dstr_init_copy(&path, abs_path);
     slash = strrchr(path.array, '/');
     if (slash) {
-        size_t len = slash - path.array + 1;
+        size_t len = (size_t)(slash - path.array) + 1;
         dstr_resize(&path, len);
     }
 
@@ -454,7 +454,7 @@ char *cfstr_copy_cstr(CFStringRef cfstring, CFStringEncoding cfstring_encoding)
     // Account for the null terminator
     max_size++;
 
-    char *buffer = bmalloc(max_size);
+    char *buffer = bmalloc((size_t)max_size);
 
     if (buffer == NULL) {
         return NULL;
@@ -498,13 +498,13 @@ bool cfstr_copy_dstr(CFStringRef cfstring, CFStringEncoding cfstring_encoding, s
     // Account for the null terminator
     max_size++;
 
-    dstr_ensure_capacity(str, max_size);
+    dstr_ensure_capacity(str, (size_t)max_size);
 
     // Copy CFString in requested encoding to dstr buffer
     Boolean success = CFStringGetCString(cfstring, str->array, max_size, cfstring_encoding);
 
     if (success)
-        dstr_resize(str, max_size);
+        dstr_resize(str, (size_t)max_size);
 
     return (bool) success;
 }
