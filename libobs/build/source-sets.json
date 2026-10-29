@@ -59,6 +59,7 @@
     "obs-scene-extent.h",
     "obs-scene-group-transform.h",
     "obs-scene-item-names.h",
+    "obs-scene-item-order.h",
     "obs-scene-item-transform.h",
     "obs-scene-render-plan.h",
     "obs-scene-transform-update.h",

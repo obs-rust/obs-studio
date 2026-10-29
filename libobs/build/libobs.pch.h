@@ -167,6 +167,10 @@
 
 #include "obs-scene-item-names.h"
 
+/* obs-scene-item-order.c */
+
+#include "obs-scene-item-order.h"
+
 /* obs-scene-item-transform.c */
 
 #include "obs-scene-item-transform.h"
