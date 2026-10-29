@@ -171,7 +171,7 @@ ScriptsTool::ScriptsTool() : QDialog(nullptr), ui(new Ui_ScriptsTool)
 	ui->propertiesLayout->addWidget(propertiesView);
 
 	config_t *user_config = obs_frontend_get_user_config();
-	int row = config_get_int(user_config, "scripts-tool", "prevScriptRow");
+	int row = static_cast<int>(config_get_int(user_config, "scripts-tool", "prevScriptRow"));
 	ui->scripts->setCurrentRow(row);
 }
 
@@ -201,7 +201,7 @@ void ScriptsTool::RemoveScript(const char *path)
 
 		const char *script_path = obs_script_get_path(script);
 		if (strcmp(script_path, path) == 0) {
-			scriptData->scripts.erase(scriptData->scripts.begin() + i);
+			scriptData->scripts.erase(scriptData->scripts.begin() + static_cast<std::ptrdiff_t>(i));
 			break;
 		}
 	}
