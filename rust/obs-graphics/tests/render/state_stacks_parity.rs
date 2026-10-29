@@ -17,7 +17,7 @@
 //! -NaN in C). The blend states are compared by field, not by bytes, so
 //! their padding is not read.
 //!
-//! Runs: the layouts; and 5 000 random sequences of up to 60 calls (push,
+//! Runs: the layouts; and 500 random sequences of up to 60 calls (push,
 //! pop and every operation on the matrix stack with random matrices,
 //! quaternions, axis-angles and vectors, including NaN and infinities;
 //! push and pop of the viewport and blend state stacks; the reset steps
@@ -245,8 +245,11 @@ fn m4(f: [f32; 16]) -> matrix4 {
     unsafe { core::mem::transmute::<[f32; 16], matrix4>(f) }
 }
 
+// 500 cases (5000 before #2891). The 15 mutants of the core and the shim
+// (rebuilt after #2528) each fail here within 125 cases in every run; the
+// equivalent one (no max(new_size) in the growth) survives, as before.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(5000))]
+    #![proptest_config(ProptestConfig::with_cases(500))]
 
     #[test]
     fn sequences(calls in proptest::collection::vec(call(), 0..60)) {

@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3f73de08af27ac9ed2b6beaa68042b45c5edca6f30efdfc407afda679ecde53b # shrinks to calls = [Push]
+cc 60f98c67f96a651f18a321b9939335b2ad074637b18d64f6f2c5cba62bc5d792 # shrinks to calls = [Pop]
+cc a82de34664c84f6ddb84d5ae38f2a491b9679bfe64c23e28bb43e652202fca84 # shrinks to calls = [Set([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.659308, 0.0]), Transpose]
+cc 6c10cf0783f565ba46a41776f0c4b320c23e4672814fd215c48d4ca407dc80d3 # shrinks to calls = [Reset(false, [4, 5, 1, 1, 0])]
