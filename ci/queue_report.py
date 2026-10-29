@@ -9,8 +9,9 @@ that has actions: read). Writes the run's wall time (from its creation),
 the runner time its finished jobs took, the slowest jobs, and which queue
 attempt this is for the PR: attempt 2 or later means master moved under the
 PR (a merge ahead of it failed, or a bypass merged outside the queue) and
-it was rebuilt. Informational only: the step never fails CI Gate.
-Standard library only.
+it was rebuilt. Informational only: the step never fails CI Gate, and it no
+longer needs a workflow `continue-on-error` (WF-003) -- a failing `gh` call is
+reported in the summary and exits 0. Standard library only.
 """
 
 from __future__ import annotations
@@ -95,18 +96,45 @@ def gh(*args: str) -> str:
     return subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
 
 
-def main() -> int:
-    repo = os.environ["GITHUB_REPOSITORY"]
-    run_id = os.environ["GITHUB_RUN_ID"]
-    current = json.loads(gh("api", f"repos/{repo}/actions/runs/{run_id}"))
-    runs = json.loads(gh("api", f"repos/{repo}/actions/workflows/{current['workflow_id']}/runs?event=merge_group&per_page=100"))["workflow_runs"]
-    jobs = json.loads(gh("api", f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"))["jobs"]
-    now = datetime.now(timezone.utc).isoformat()
-    md = summary(current, jobs, attempt(runs, current), now)
-    print(md)
+def _unavailable(reason: str) -> str:
+    """The summary section written when the report cannot be collected."""
+    return (
+        "### Merge queue: queue report unavailable\n"
+        "\n"
+        f"- {reason}\n"
+        "\n"
+        "The report is informational; CI Gate is not affected.\n"
+    )
+
+
+def _write_summary(md: str) -> None:
     if path := os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(path, "a", encoding="utf-8") as f:
             f.write(md)
+
+
+def main() -> int:
+    # WF-003: the workflow step carries no `continue-on-error`, so a failing
+    # `gh` call (rate limit, transient 5xx, a token without `actions: read`)
+    # must not fail CI Gate. Say why in the summary and exit 0 instead.
+    try:
+        repo = os.environ["GITHUB_REPOSITORY"]
+        run_id = os.environ["GITHUB_RUN_ID"]
+        current = json.loads(gh("api", f"repos/{repo}/actions/runs/{run_id}"))
+        runs = json.loads(gh("api", f"repos/{repo}/actions/workflows/{current['workflow_id']}/runs?event=merge_group&per_page=100"))["workflow_runs"]
+        jobs = json.loads(gh("api", f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"))["jobs"]
+        now = datetime.now(timezone.utc).isoformat()
+        md = summary(current, jobs, attempt(runs, current), now)
+    except Exception as exc:  # any failure here is informational only
+        reason = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
+        detail = getattr(exc, "stderr", "") or ""
+        detail = detail.strip().splitlines()[0] if detail.strip() else ""
+        md = _unavailable(f"queue report unavailable: {reason}" + (f" ({detail})" if detail else ""))
+        print(md, file=sys.stderr)
+        _write_summary(md)
+        return 0
+    print(md)
+    _write_summary(md)
     return 0
 
 

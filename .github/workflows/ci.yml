@@ -441,7 +441,6 @@ jobs:
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       - name: Report Queue Run 📊
         if: github.event_name == 'merge_group'
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/queue_report.py
