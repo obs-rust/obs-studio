@@ -226,13 +226,13 @@ void VolumeControl::obsSourceDestroy(void *data, calldata_t *)
 				  Qt::QueuedConnection);
 }
 
-void VolumeControl::setLayoutVertical(bool vertical)
+void VolumeControl::setLayoutVertical(bool verticalLayout)
 {
 	QBoxLayout *newLayout = new QBoxLayout(QBoxLayout::TopToBottom);
 	newLayout->setContentsMargins(0, 0, 0, 0);
 	newLayout->setSpacing(0);
 
-	if (vertical) {
+	if (verticalLayout) {
 		setMaximumWidth(110);
 		setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
 
@@ -502,17 +502,17 @@ void VolumeControl::renameSource()
 	QAction *action = reinterpret_cast<QAction *>(sender());
 	OBSSource source = action->property("source").value<OBSSource>();
 
-	std::string uuid = obs_source_get_uuid(source);
+	std::string sourceUuid = obs_source_get_uuid(source);
 
 	OBSBasic *main = OBSBasic::Get();
 
 	// Defer the rename dialog to avoid blocking the UI thread while the context menu is closing, which can cause issues on some platforms
-	QTimer::singleShot(0, main, [main, uuid]() {
+	QTimer::singleShot(0, main, [main, sourceUuid]() {
 		if (!main) {
 			return;
 		}
 
-		OBSSourceAutoRelease source = obs_get_source_by_uuid(uuid.c_str());
+		OBSSourceAutoRelease source = obs_get_source_by_uuid(sourceUuid.c_str());
 		if (!source) {
 			return;
 		}
@@ -544,19 +544,20 @@ void VolumeControl::renameSource()
 				continue;
 			}
 
-			std::string prevName(obs_source_get_name(source));
-			auto undo = [prevName](const std::string &data) {
-				OBSSourceAutoRelease source = obs_get_source_by_uuid(data.c_str());
-				obs_source_set_name(source, prevName.c_str());
+			std::string nameToRestore(obs_source_get_name(source));
+			auto undo = [nameToRestore](const std::string &undoUuid) {
+				OBSSourceAutoRelease source = obs_get_source_by_uuid(undoUuid.c_str());
+				obs_source_set_name(source, nameToRestore.c_str());
 			};
 
 			std::string editedName = name;
-			auto redo = [editedName](const std::string &data) {
-				OBSSourceAutoRelease source = obs_get_source_by_uuid(data.c_str());
+			auto redo = [editedName](const std::string &redoUuid) {
+				OBSSourceAutoRelease source = obs_get_source_by_uuid(redoUuid.c_str());
 				obs_source_set_name(source, editedName.c_str());
 			};
 
-			main->undo_s.add_action(QTStr("Undo.Rename").arg(name.c_str()), undo, redo, uuid, uuid);
+			main->undo_s.add_action(QTStr("Undo.Rename").arg(name.c_str()), undo, redo, sourceUuid,
+						sourceUuid);
 
 			obs_source_set_name(source, name.c_str());
 			break;
@@ -855,8 +856,8 @@ void VolumeControl::updateText()
 	bool muted = obs_source_muted(source);
 	const char *accTextLookup = muted ? "VolControl.SliderMuted" : "VolControl.SliderUnmuted";
 
-	QString sourceName = obs_source_get_name(source);
-	QString accText = QTStr(accTextLookup).arg(sourceName);
+	QString sourceLabel = obs_source_get_name(source);
+	QString accText = QTStr(accTextLookup).arg(sourceLabel);
 
 	slider->setAccessibleName(accText);
 }

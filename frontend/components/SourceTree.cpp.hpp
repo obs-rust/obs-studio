@@ -162,9 +162,9 @@ void SourceTree::dropEvent(QDropEvent *event)
 
 	bool dropOnCollapsed = false;
 	if (dropGroup) {
-		obs_data_t *data = obs_sceneitem_get_private_settings(dropGroup);
-		dropOnCollapsed = obs_data_get_bool(data, "collapsed");
-		obs_data_release(data);
+		obs_data_t *privateSettings = obs_sceneitem_get_private_settings(dropGroup);
+		dropOnCollapsed = obs_data_get_bool(privateSettings, "collapsed");
+		obs_data_release(privateSettings);
 	}
 
 	if (indicator == QAbstractItemView::BelowItem || indicator == QAbstractItemView::OnItem ||
@@ -378,8 +378,8 @@ void SourceTree::dropEvent(QDropEvent *event)
 
 	using updateScene_t = decltype(updateScene);
 
-	auto preUpdateScene = [](void *data, obs_scene_t *) {
-		(*static_cast<updateScene_t *>(data))();
+	auto preUpdateScene = [](void *updateFn, obs_scene_t *) {
+		(*static_cast<updateScene_t *>(updateFn))();
 	};
 
 	ignoreReorder = true;

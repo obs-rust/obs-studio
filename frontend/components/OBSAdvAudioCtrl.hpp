@@ -81,7 +81,7 @@ public slots:
 	void SetSourceName(QString newName);
 
 	void volumeChanged(double db);
-	void percentChanged(int percent);
+	void percentChanged(int newPercent);
 	void downmixMonoChanged(bool checked);
 	void balanceChanged(int val);
 	void syncOffsetChanged(int milliseconds);

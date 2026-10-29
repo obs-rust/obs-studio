@@ -29,7 +29,7 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 	}
 
 	QPainter painter(this);
-	QColor tickColor(91, 98, 115, 255);
+	QColor tickMarkColor(91, 98, 115, 255);
 
 	obs_fader_conversion_t fader_db_to_def = obs_fader_db_to_def(fad);
 
@@ -51,7 +51,7 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 			float tickValue = fader_db_to_def(db);
 
 			float xPos = groove.left() + (tickValue * sliderWidth) + (handle.width() / 2);
-			painter.fillRect(xPos, yPos, 1, tickLength, tickColor);
+			painter.fillRect(xPos, yPos, 1, tickLength, tickMarkColor);
 		}
 	}
 
@@ -68,7 +68,7 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 
 			float yPos =
 				groove.height() + groove.top() - (tickValue * sliderHeight) - (handle.height() / 2);
-			painter.fillRect(xPos, yPos, tickLength, 1, tickColor);
+			painter.fillRect(xPos, yPos, tickLength, 1, tickMarkColor);
 		}
 	}
 

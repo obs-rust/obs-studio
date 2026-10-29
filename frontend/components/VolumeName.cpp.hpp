@@ -148,11 +148,11 @@ void VolumeName::paintEvent(QPaintEvent *)
 	QRect contentRect = style()->subElementRect(QStyle::SE_PushButtonContents, &opt, this);
 	int paddingRight = opt.rect.right() - contentRect.right();
 
-	int indicatorWidth = style()->pixelMetric(QStyle::PM_MenuButtonIndicator, &opt, this);
+	int arrowWidth = style()->pixelMetric(QStyle::PM_MenuButtonIndicator, &opt, this);
 
 	QStyleOption arrowOpt = opt;
-	QRect arrowRect(opt.rect.right() - indicatorWidth - paddingRight / 2,
-			opt.rect.center().y() - indicatorWidth / 2, indicatorWidth, indicatorWidth);
+	QRect arrowRect(opt.rect.right() - arrowWidth - paddingRight / 2, opt.rect.center().y() - arrowWidth / 2,
+			arrowWidth, arrowWidth);
 	arrowOpt.rect = arrowRect;
 
 	painter.drawPrimitive(QStyle::PE_IndicatorArrowDown, arrowOpt);

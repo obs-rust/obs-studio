@@ -332,8 +332,8 @@ void SourceTreeModel::GroupSelectedItems(QModelIndexList &indices)
 
 	main->undo_s.push_disabled();
 
-	for (obs_sceneitem_t *item : item_order) {
-		obs_sceneitem_select(item, false);
+	for (obs_sceneitem_t *groupItem : item_order) {
+		obs_sceneitem_select(groupItem, false);
 	}
 
 	hasGroups = true;
