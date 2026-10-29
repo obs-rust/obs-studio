@@ -234,7 +234,8 @@ void OBSBasicProperties::previewTransitionClicked()
 	}
 
 	obs_transition_set(sourceClone, start);
-	obs_transition_start(sourceClone, OBS_TRANSITION_MODE_AUTO, main->GetTransitionDuration(), end);
+	obs_transition_start(sourceClone, OBS_TRANSITION_MODE_AUTO,
+			     static_cast<uint32_t>(main->GetTransitionDuration()), end);
 	direction = !direction;
 
 	start = nullptr;
@@ -330,7 +331,8 @@ void OBSBasicProperties::DrawPreview(void *data, uint32_t cx, uint32_t cy)
 	int newCX, newCY;
 	float scale;
 
-	GetScaleAndCenterPos(sourceCX, sourceCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(sourceCX), static_cast<int>(sourceCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	newCX = int(scale * float(sourceCX));
 	newCY = int(scale * float(sourceCY));
@@ -363,7 +365,8 @@ void OBSBasicProperties::DrawTransitionPreview(void *data, uint32_t cx, uint32_t
 	int newCX, newCY;
 	float scale;
 
-	GetScaleAndCenterPos(sourceCX, sourceCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(sourceCX), static_cast<int>(sourceCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	newCX = int(scale * float(sourceCX));
 	newCY = int(scale * float(sourceCY));

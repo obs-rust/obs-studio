@@ -223,7 +223,7 @@ QObject *CreateShortcutFilter(QObject *parent)
 				if (GetPlatformHotkeyOverride(key, hotkey.key, pressed)) {
 					break;
 				}
-				hotkey.key = obs_key_from_virtual_key(event->nativeVirtualKey());
+				hotkey.key = obs_key_from_virtual_key(static_cast<int>(event->nativeVirtualKey()));
 			}
 
 			if (event->isAutoRepeat())
@@ -1463,7 +1463,7 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 		goto skip;
 	}
 
-	windowType = window->flags() & Qt::WindowType::WindowType_Mask;
+	windowType = static_cast<int>(window->flags() & Qt::WindowType::WindowType_Mask);
 
 	if (windowType == Qt::WindowType::Dialog || windowType == Qt::WindowType::Window ||
 	    windowType == Qt::WindowType::Tool) {
@@ -1660,9 +1660,9 @@ bool GetFileSafeName(const char *name, std::string &file)
 	for (size_t i = wfile.size(); i > 0; i--) {
 		size_t im1 = i - 1;
 
-		if (iswspace(wfile[im1])) {
+		if (iswspace(static_cast<wint_t>(wfile[im1]))) {
 			wfile[im1] = '_';
-		} else if (wfile[im1] != '_' && !iswalnum(wfile[im1])) {
+		} else if (wfile[im1] != '_' && !iswalnum(static_cast<wint_t>(wfile[im1]))) {
 			wfile.erase(im1, 1);
 		}
 	}

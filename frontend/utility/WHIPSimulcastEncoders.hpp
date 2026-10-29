@@ -29,11 +29,12 @@ public:
 			return;
 		}
 
-		auto widthStep = outputWidth / whipSimulcastTotalLayers;
-		auto heightStep = outputHeight / whipSimulcastTotalLayers;
+		const uint32_t layers = static_cast<uint32_t>(whipSimulcastTotalLayers);
+		auto widthStep = outputWidth / layers;
+		auto heightStep = outputHeight / layers;
 		std::string encoder_name = "whip_simulcast_0";
 
-		for (auto i = whipSimulcastTotalLayers - 1; i > 0; i--) {
+		for (auto i = layers - 1; i > 0; i--) {
 			uint32_t width = widthStep * i;
 			width -= width % 2;
 

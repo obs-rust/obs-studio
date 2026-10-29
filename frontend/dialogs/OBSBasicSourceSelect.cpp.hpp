@@ -427,9 +427,13 @@ void OBSBasicSourceSelect::updateExistingSources(int limit)
 	size_t iterationLimit = limit > 0 ? std::min(static_cast<size_t>(limit), matchingSources.size())
 					  : matchingSources.size();
 	if (isReverseListOrder) {
-		std::for_each(matchingSources.rbegin(), matchingSources.rbegin() + iterationLimit, createSourceButton);
+		std::for_each(matchingSources.rbegin(),
+			      matchingSources.rbegin() + static_cast<std::ptrdiff_t>(iterationLimit),
+			      createSourceButton);
 	} else {
-		std::for_each(matchingSources.begin(), matchingSources.begin() + iterationLimit, createSourceButton);
+		std::for_each(matchingSources.begin(),
+			      matchingSources.begin() + static_cast<std::ptrdiff_t>(iterationLimit),
+			      createSourceButton);
 	}
 
 	setTabOrder(prevTabWidget, ui->addExistingContainer);

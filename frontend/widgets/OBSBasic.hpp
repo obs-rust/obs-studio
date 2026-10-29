@@ -1275,7 +1275,7 @@ private slots:
 	void OpenEditTransform(OBSSceneItem item = nullptr);
 
 public:
-	void ResetAudioDevice(const char *sourceId, const char *deviceId, const char *deviceDesc, int channel);
+	void ResetAudioDevice(const char *sourceId, const char *deviceId, const char *deviceDesc, uint32_t channel);
 
 	QMenu *AddDeinterlacingMenu(QMenu *menu, obs_source_t *source);
 	QMenu *AddScaleFilteringMenu(QMenu *menu, obs_sceneitem_t *item);

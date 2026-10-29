@@ -31,7 +31,8 @@ void RenderScreenshot(gs_texrender_t *texrender, obs_source_t *source, uint32_t 
 		int scaledHeight{0};
 		float scale{0.0};
 
-		GetScaleAndCenterPos(sourceWidth, sourceHeight, outputWidth, outputHeight, x, y, scale);
+		GetScaleAndCenterPos(static_cast<int>(sourceWidth), static_cast<int>(sourceHeight),
+				     static_cast<int>(outputWidth), static_cast<int>(outputHeight), x, y, scale);
 
 		scaledWidth = int(scale * float(sourceWidth));
 		scaledHeight = int(scale * float(sourceHeight));

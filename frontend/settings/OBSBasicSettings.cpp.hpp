@@ -248,11 +248,11 @@ static void PopulateAdvancedBitrates(initializer_list<QComboBox *> boxes, const 
 	}
 }
 
-static std::tuple<int, int> aspect_ratio(int cx, int cy)
+static std::tuple<uint32_t, uint32_t> aspect_ratio(uint32_t cx, uint32_t cy)
 {
-	int common = std::gcd(cx, cy);
-	int newCX = cx / common;
-	int newCY = cy / common;
+	uint32_t common = std::gcd(cx, cy);
+	uint32_t newCX = cx / common;
+	uint32_t newCY = cy / common;
 
 	if (newCX == 8 && newCY == 5) {
 		newCX = 16;
@@ -1633,7 +1633,7 @@ void OBSBasicSettings::LoadResolutionLists()
 
 	ui->baseResolution->clear();
 
-	auto addRes = [this](int cx, int cy) {
+	auto addRes = [this](uint32_t cx, uint32_t cy) {
 		QString res = ResString(cx, cy).c_str();
 		if (ui->baseResolution->findText(res) == -1) {
 			ui->baseResolution->addItem(res);
@@ -1642,8 +1642,8 @@ void OBSBasicSettings::LoadResolutionLists()
 
 	for (QScreen *screen : QGuiApplication::screens()) {
 		QSize as = screen->size();
-		uint32_t as_width = as.width();
-		uint32_t as_height = as.height();
+		uint32_t as_width = static_cast<uint32_t>(as.width());
+		uint32_t as_height = static_cast<uint32_t>(as.height());
 
 		// Calculate physical screen resolution based on the virtual screen resolution
 		// They might differ if scaling is enabled, e.g. for HiDPI screens
@@ -1668,7 +1668,7 @@ void OBSBasicSettings::LoadResolutionLists()
 		ui->outputResolution->lineEdit()->setText(outputResString.c_str());
 	}
 
-	std::tuple<int, int> aspect = aspect_ratio(cx, cy);
+	auto aspect = aspect_ratio(cx, cy);
 
 	ui->baseAspect->setText(
 		QTStr("AspectRatio").arg(QString::number(std::get<0>(aspect)), QString::number(std::get<1>(aspect))));
@@ -1687,14 +1687,14 @@ static inline void LoadFPSCommon(OBSBasic *main, Ui::OBSBasicSettings *ui)
 
 static inline void LoadFPSInteger(OBSBasic *main, Ui::OBSBasicSettings *ui)
 {
-	uint32_t val = config_get_uint(main->Config(), "Video", "FPSInt");
+	int val = static_cast<int>(config_get_uint(main->Config(), "Video", "FPSInt"));
 	ui->fpsInteger->setValue(val);
 }
 
 static inline void LoadFPSFraction(OBSBasic *main, Ui::OBSBasicSettings *ui)
 {
-	uint32_t num = config_get_uint(main->Config(), "Video", "FPSNum");
-	uint32_t den = config_get_uint(main->Config(), "Video", "FPSDen");
+	int num = static_cast<int>(config_get_uint(main->Config(), "Video", "FPSNum"));
+	int den = static_cast<int>(config_get_uint(main->Config(), "Video", "FPSDen"));
 
 	ui->fpsNumerator->setValue(num);
 	ui->fpsDenominator->setValue(den);
@@ -1706,7 +1706,7 @@ void OBSBasicSettings::LoadFPSData()
 	LoadFPSInteger(main, ui.get());
 	LoadFPSFraction(main, ui.get());
 
-	uint32_t fpsType = config_get_uint(main->Config(), "Video", "FPSType");
+	int fpsType = static_cast<int>(config_get_uint(main->Config(), "Video", "FPSType"));
 	if (fpsType > 2) {
 		fpsType = 0;
 	}
@@ -2357,7 +2357,7 @@ void OBSBasicSettings::LoadListValues(QComboBox *widget, obs_property_t *prop, i
 {
 	size_t count = obs_property_list_item_count(prop);
 
-	OBSSourceAutoRelease source = obs_get_output_source(index);
+	OBSSourceAutoRelease source = obs_get_output_source(static_cast<uint32_t>(index));
 	const char *deviceId = nullptr;
 	OBSDataAutoRelease settings = nullptr;
 
@@ -2555,7 +2555,7 @@ void OBSBasicSettings::LoadAudioSettings()
 	uint32_t sampleRate = config_get_uint(main->Config(), "Audio", "SampleRate");
 	const char *speakers = config_get_string(main->Config(), "Audio", "ChannelSetup");
 	double meterDecayRate = config_get_double(main->Config(), "Audio", "MeterDecayRate");
-	uint32_t peakMeterTypeIdx = config_get_uint(main->Config(), "Audio", "PeakMeterType");
+	int peakMeterTypeIdx = static_cast<int>(config_get_uint(main->Config(), "Audio", "PeakMeterType"));
 	bool enableLLAudioBuffering = config_get_bool(App()->GetUserConfig(), "Audio", "LowLatencyAudioBuffering");
 
 	loading = true;
@@ -2641,8 +2641,8 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	const char *videoColorFormat = config_get_string(main->Config(), "Video", "ColorFormat");
 	const char *videoColorSpace = config_get_string(main->Config(), "Video", "ColorSpace");
 	const char *videoColorRange = config_get_string(main->Config(), "Video", "ColorRange");
-	uint32_t sdrWhiteLevel = (uint32_t)config_get_uint(main->Config(), "Video", "SdrWhiteLevel");
-	uint32_t hdrNominalPeakLevel = (uint32_t)config_get_uint(main->Config(), "Video", "HdrNominalPeakLevel");
+	int sdrWhiteLevel = static_cast<int>(config_get_uint(main->Config(), "Video", "SdrWhiteLevel"));
+	int hdrNominalPeakLevel = static_cast<int>(config_get_uint(main->Config(), "Video", "HdrNominalPeakLevel"));
 
 	QString monDevName;
 	QString monDevId;
@@ -3402,7 +3402,7 @@ void OBSBasicSettings::SaveVideoSettings()
 	}
 
 	if (WidgetChanged(ui->fpsType)) {
-		config_set_uint(main->Config(), "Video", "FPSType", fpsType);
+		config_set_uint(main->Config(), "Video", "FPSType", static_cast<uint64_t>(fpsType));
 	}
 
 	SaveCombo(ui->fpsCommon, "Video", "FPSCommon");
@@ -3795,7 +3795,7 @@ void OBSBasicSettings::SaveAudioSettings()
 	}
 
 	if (WidgetChanged(ui->sampleRate)) {
-		config_set_uint(main->Config(), "Audio", "SampleRate", sampleRate);
+		config_set_uint(main->Config(), "Audio", "SampleRate", static_cast<uint64_t>(sampleRate));
 	}
 
 	if (WidgetChanged(ui->channelSetup)) {
@@ -3824,7 +3824,7 @@ void OBSBasicSettings::SaveAudioSettings()
 	}
 
 	if (WidgetChanged(ui->peakMeterType)) {
-		uint32_t peakMeterTypeIdx = ui->peakMeterType->currentIndex();
+		uint32_t peakMeterTypeIdx = static_cast<uint32_t>(ui->peakMeterType->currentIndex());
 		config_set_uint(main->Config(), "Audio", "PeakMeterType", peakMeterTypeIdx);
 
 		emit main->profileSettingChanged("Audio", "PeakMeterType");
@@ -3847,13 +3847,13 @@ void OBSBasicSettings::SaveAudioSettings()
 		auto &pttSB = get<4>(audioSource);
 
 		obs_source_enable_push_to_mute(source, ptmCB->isChecked());
-		obs_source_set_push_to_mute_delay(source, ptmSB->value());
+		obs_source_set_push_to_mute_delay(source, static_cast<uint64_t>(ptmSB->value()));
 
 		obs_source_enable_push_to_talk(source, pttCB->isChecked());
-		obs_source_set_push_to_talk_delay(source, pttSB->value());
+		obs_source_set_push_to_talk_delay(source, static_cast<uint64_t>(pttSB->value()));
 	}
 
-	auto UpdateAudioDevice = [this](bool input, QComboBox *combo, const char *name, int index) {
+	auto UpdateAudioDevice = [this](bool input, QComboBox *combo, const char *name, uint32_t index) {
 		main->ResetAudioDevice(input ? App()->InputAudioSource() : App()->OutputAudioSource(),
 				       QT_TO_UTF8(GetComboData(combo)), Str(name), index);
 	};
@@ -4348,7 +4348,7 @@ void OBSBasicSettings::RecalcOutputResPixels(const char *resText)
 		outputCX = newCX;
 		outputCY = newCY;
 
-		std::tuple<int, int> aspect = aspect_ratio(outputCX, outputCY);
+		auto aspect = aspect_ratio(outputCX, outputCY);
 
 		ui->scaledAspect->setText(
 			QTStr("AspectRatio")
@@ -4409,7 +4409,7 @@ void OBSBasicSettings::on_baseResolution_editTextChanged(const QString &text)
 
 		ConvertResText(QT_TO_UTF8(baseResolution), cx, cy);
 
-		std::tuple<int, int> aspect = aspect_ratio(cx, cy);
+		auto aspect = aspect_ratio(cx, cy);
 
 		ui->baseAspect->setText(
 			QTStr("AspectRatio")
@@ -4899,7 +4899,7 @@ void OBSBasicSettings::AdvOutRecCheckCodecs()
 void OBSBasicSettings::AdvOutRecCheckWarnings()
 {
 	auto Checked = [](QCheckBox *box) {
-		return box->isChecked() ? 1 : 0;
+		return box->isChecked() ? 1u : 0u;
 	};
 
 	QString errorMsg;
@@ -5032,7 +5032,7 @@ void OBSBasicSettings::UpdateStreamDelayEstimate()
 bool EncoderAvailable(const char *encoder)
 {
 	const char *val;
-	int i = 0;
+	size_t i = 0;
 
 	while (obs_enum_encoder_types(i++, &val)) {
 		if (strcmp(val, encoder) == 0) {
@@ -5308,7 +5308,7 @@ void OBSBasicSettings::SimpleReplayBufferChanged()
 
 	// Set maximum to 75% of installed memory
 	uint64_t memTotal = os_get_sys_total_size();
-	int64_t memMaxMB = memTotal ? memTotal * 3 / 4 / 1024 / 1024 : 8192;
+	int64_t memMaxMB = memTotal ? static_cast<int64_t>(memTotal * 3 / 4 / 1024 / 1024) : 8192;
 
 	int64_t memMB = int64_t(seconds) * int64_t(vbitrate + abitrate) * 1000 / 8 / 1024 / 1024;
 	if (memMB < 1) {
@@ -5402,7 +5402,7 @@ void OBSBasicSettings::AdvReplayBufferChanged()
 
 	// Set maximum to 75% of installed memory
 	uint64_t memTotal = os_get_sys_total_size();
-	int64_t memMaxMB = memTotal ? memTotal * 3 / 4 / 1024 / 1024 : 8192;
+	int64_t memMaxMB = memTotal ? static_cast<int64_t>(memTotal * 3 / 4 / 1024 / 1024) : 8192;
 
 	int64_t memMB = int64_t(seconds) * int64_t(vbitrate + abitrate) * 1000 / 8 / 1024 / 1024;
 	if (memMB < 1) {

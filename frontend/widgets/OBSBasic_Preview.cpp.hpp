@@ -168,8 +168,8 @@ void OBSBasic::RenderMain(void *data, uint32_t, uint32_t)
 	gs_ortho(-window->previewX, right, -window->previewY, bottom, -100.0f, 100.0f);
 	gs_reset_viewport();
 
-	uint32_t targetCX = window->previewCX;
-	uint32_t targetCY = window->previewCY;
+	int targetCX = window->previewCX;
+	int targetCY = window->previewCY;
 
 	if (window->drawSafeAreas) {
 		RenderSafeAreas(window->actionSafeMargin, targetCX, targetCY);

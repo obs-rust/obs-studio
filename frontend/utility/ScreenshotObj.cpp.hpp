@@ -73,8 +73,8 @@ void ScreenshotObj::renderScreenshot()
 	const enum gs_color_space space = ScreenshotColorSpace(source);
 	const enum gs_color_format format = gs_get_format_from_space(space);
 
-	outputWidth = options.size.isValid() ? options.size.width() : sourceWidth;
-	outputHeight = options.size.isValid() ? options.size.height() : sourceHeight;
+	outputWidth = options.size.isValid() ? static_cast<uint32_t>(options.size.width()) : sourceWidth;
+	outputHeight = options.size.isValid() ? static_cast<uint32_t>(options.size.height()) : sourceHeight;
 
 	texrender = gs_texrender_create(format, GS_ZS_NONE);
 	stagesurf = gs_stagesurface_create(outputWidth, outputHeight, format);
@@ -124,11 +124,12 @@ void ScreenshotObj::copyData()
 				half_bytes.insert(half_bytes.end(), line, line + linesize);
 			}
 		} else {
-			image = QImage(outputWidth, outputHeight, QImage::Format::Format_RGBX8888);
+			image = QImage(static_cast<int>(outputWidth), static_cast<int>(outputHeight),
+				       QImage::Format::Format_RGBX8888);
 
-			int linesize = image.bytesPerLine();
-			for (int y = 0; y < (int)outputHeight; ++y) {
-				memcpy(image.scanLine(y), videoData + (y * videoLinesize), linesize);
+			const size_t linesize = static_cast<size_t>(image.bytesPerLine());
+			for (uint32_t y = 0; y < outputHeight; ++y) {
+				memcpy(image.scanLine(static_cast<int>(y)), videoData + (y * videoLinesize), linesize);
 			}
 		}
 

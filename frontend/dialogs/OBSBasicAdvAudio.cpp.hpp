@@ -111,7 +111,7 @@ void OBSBasicAdvAudio::SourceRemoved(OBSSource source)
 	for (size_t i = 0; i < controls.size(); i++) {
 		if (controls[i]->GetSource() == source) {
 			delete controls[i];
-			controls.erase(controls.begin() + i);
+			controls.erase(controls.begin() + static_cast<std::ptrdiff_t>(i));
 			break;
 		}
 	}
@@ -167,7 +167,7 @@ void OBSBasicAdvAudio::SetShowInactive(bool show)
 			const auto source = controls[i]->GetSource();
 			if (!(obs_source_active(source) && obs_source_audio_active(source))) {
 				delete controls[i];
-				controls.erase(controls.begin() + i);
+				controls.erase(controls.begin() + static_cast<std::ptrdiff_t>(i));
 				i--;
 			}
 		}

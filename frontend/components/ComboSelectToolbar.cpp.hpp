@@ -52,7 +52,7 @@ void UpdateSourceComboToolbarProperties(QComboBox *combo, OBSSource source, obs_
 	obs_property_t *p = obs_properties_get(props, prop_name);
 	int cur_idx = FillPropertyCombo(combo, p, cur_id, is_int);
 
-	if (cur_idx == -1 || obs_property_list_item_disabled(p, cur_idx)) {
+	if (cur_idx == -1 || obs_property_list_item_disabled(p, static_cast<size_t>(cur_idx))) {
 		if (cur_idx == -1) {
 			combo->insertItem(0, QTStr("Basic.Settings.Audio.UnknownAudioDevice"));
 			cur_idx = 0;

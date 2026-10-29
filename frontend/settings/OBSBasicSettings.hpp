@@ -285,7 +285,7 @@ private:
 	void SetDefaultColors();
 	void ResetDefaultColors();
 	QColor GetColor(uint32_t colorVal, QString label);
-	uint32_t preset = 0;
+	int preset = 0;
 	uint32_t selectRed = 0x0000FF;
 	uint32_t selectGreen = 0x00FF00;
 	uint32_t selectBlue = 0xFF7F00;

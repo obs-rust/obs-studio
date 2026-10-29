@@ -298,7 +298,7 @@ OBS::ItemPasteType OBSBasic::getItemPasteType()
 		const size_t idx = i - 1;
 		OBSWeakSource &weak = clipboard[idx].weak_source;
 		if (obs_weak_source_expired(weak)) {
-			clipboard.erase(clipboard.begin() + idx);
+			clipboard.erase(clipboard.begin() + static_cast<std::ptrdiff_t>(idx));
 			continue;
 		}
 		OBSSourceAutoRelease strong = obs_weak_source_get_source(weak.Get());

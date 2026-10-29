@@ -13,8 +13,8 @@ static inline QColor a11y_color_from_int(long long val)
 
 static inline long long a11y_color_to_int(QColor color)
 {
-	auto shift = [&](unsigned val, int shift) {
-		return ((val & 0xff) << shift);
+	auto shift = [&](int val, int shift) {
+		return static_cast<long long>(static_cast<unsigned>(val & 0xff)) << shift;
 	};
 
 	return shift(color.red(), 0) | shift(color.green(), 8) | shift(color.blue(), 16) | shift(color.alpha(), 24);
@@ -42,7 +42,7 @@ void OBSBasicSettings::LoadA11ySettings(bool presetChange)
 		preset = config_get_int(config, "Accessibility", "ColorPreset");
 
 		bool block = ui->colorPreset->blockSignals(true);
-		ui->colorPreset->setCurrentIndex(std::min(preset, (uint32_t)ui->colorPreset->count() - 1));
+		ui->colorPreset->setCurrentIndex(std::min(preset, ui->colorPreset->count() - 1));
 		ui->colorPreset->blockSignals(block);
 
 		bool checked = config_get_bool(config, "Accessibility", "OverrideColors");

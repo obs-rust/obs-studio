@@ -414,7 +414,7 @@ static inline void set_mono(obs_source_t *source, bool mono)
 	if (mono) {
 		flags |= OBS_SOURCE_FLAG_FORCE_MONO;
 	} else {
-		flags &= ~OBS_SOURCE_FLAG_FORCE_MONO;
+		flags &= ~static_cast<uint32_t>(OBS_SOURCE_FLAG_FORCE_MONO);
 	}
 	obs_source_set_flags(source, flags);
 }
@@ -431,7 +431,7 @@ void OBSAdvAudioCtrl::downmixMonoChanged(bool val)
 	if (val) {
 		flags |= OBS_SOURCE_FLAG_FORCE_MONO;
 	} else {
-		flags &= ~OBS_SOURCE_FLAG_FORCE_MONO;
+		flags &= ~static_cast<uint32_t>(OBS_SOURCE_FLAG_FORCE_MONO);
 	}
 
 	obs_source_set_flags(source, flags);
@@ -532,7 +532,7 @@ static inline void setMixer(obs_source_t *source, const int mixerIdx, const bool
 	if (checked) {
 		new_mixers |= (1 << mixerIdx);
 	} else {
-		new_mixers &= ~(1 << mixerIdx);
+		new_mixers &= ~(1u << mixerIdx);
 	}
 
 	obs_source_set_audio_mixers(source, new_mixers);

@@ -546,8 +546,8 @@ void OBSBasicPreview::GetStretchHandleData(const vec2 &pos, bool ignoreGroup)
 		obs_sceneitem_get_pos(stretchItem, &startItemPos);
 
 		obs_source_t *source = obs_sceneitem_get_source(stretchItem);
-		cropSize.x = float(obs_source_get_width(source) - startCrop.left - startCrop.right);
-		cropSize.y = float(obs_source_get_height(source) - startCrop.top - startCrop.bottom);
+		cropSize.x = float(static_cast<int>(obs_source_get_width(source)) - startCrop.left - startCrop.right);
+		cropSize.y = float(static_cast<int>(obs_source_get_height(source)) - startCrop.top - startCrop.bottom);
 
 		stretchGroup = obs_sceneitem_get_group(scene, stretchItem);
 		if (stretchGroup && !ignoreGroup) {
@@ -731,7 +731,8 @@ void OBSBasicPreview::UpdateCursor(uint32_t &flags)
 
 	if (octant % 2 == 1) {
 		if (isCorner) {
-			flags &= (flags % 3 == 0) ? ~ITEM_TOP & ~ITEM_BOTTOM : ~ITEM_LEFT & ~ITEM_RIGHT;
+			flags &= (flags % 3 == 0) ? static_cast<uint32_t>(~ITEM_TOP & ~ITEM_BOTTOM)
+						  : static_cast<uint32_t>(~ITEM_LEFT & ~ITEM_RIGHT);
 		} else {
 			flags = (flags % 4 == 0) ? flags | flags >> ((flags / 2) - 1)
 						 : flags | ((flags >> 2) | (flags << 2));

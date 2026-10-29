@@ -150,7 +150,7 @@ static bool ParseVarName(CFParser &cfp, QString &value)
 		return false;
 	}
 
-	value = QString::fromUtf8(cfp->cur_token->str.array, cfp->cur_token->str.len);
+	value = QString::fromUtf8(cfp->cur_token->str.array, static_cast<qsizetype>(cfp->cur_token->str.len));
 
 	ret = cf_next_token_should_be(cfp, ")", ";", nullptr);
 	if (ret != PARSE_SUCCESS) {
@@ -202,9 +202,9 @@ static QColor ParseColor(CFParser &cfp)
 			return res;
 		}
 	} else if (cf_token_is(cfp, "bikeshed")) {
-		color |= QRandomGenerator::global()->bounded(INT8_MAX) << 16;
-		color |= QRandomGenerator::global()->bounded(INT8_MAX) << 8;
-		color |= QRandomGenerator::global()->bounded(INT8_MAX);
+		color |= static_cast<uint32_t>(QRandomGenerator::global()->bounded(INT8_MAX)) << 16;
+		color |= static_cast<uint32_t>(QRandomGenerator::global()->bounded(INT8_MAX)) << 8;
+		color |= static_cast<uint32_t>(QRandomGenerator::global()->bounded(INT8_MAX));
 	}
 
 	res = color;
@@ -260,7 +260,8 @@ static bool ParseMath(CFParser &cfp, QStringList &values, vector<OBSThemeVariabl
 
 			values << value;
 		} else {
-			values << QString::fromUtf8(cfp->cur_token->str.array, cfp->cur_token->str.len);
+			values << QString::fromUtf8(cfp->cur_token->str.array,
+						    static_cast<qsizetype>(cfp->cur_token->str.len));
 		}
 
 		if (!cf_next_token(cfp)) {
@@ -327,7 +328,8 @@ static vector<OBSThemeVariable> ParseThemeVariables(const char *themeData)
 			break;
 		}
 
-		QString key = QString::fromUtf8(cfp->cur_token->str.array, cfp->cur_token->str.len);
+		QString key =
+			QString::fromUtf8(cfp->cur_token->str.array, static_cast<qsizetype>(cfp->cur_token->str.len));
 		OBSThemeVariable var;
 		var.name = key;
 

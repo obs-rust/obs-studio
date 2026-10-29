@@ -166,10 +166,12 @@ void SimpleOutput::LoadRecordingPreset()
 			char name[23];
 			if (strcmp(audio_encoder, "opus") == 0) {
 				snprintf(name, sizeof name, "simple_opus_recording%d", i);
-				success = CreateSimpleOpusEncoder(audioTrack[i], GetAudioBitrate(), name, i);
+				success = CreateSimpleOpusEncoder(audioTrack[i], GetAudioBitrate(), name,
+								  static_cast<size_t>(i));
 			} else {
 				snprintf(name, sizeof name, "simple_aac_recording%d", i);
-				success = CreateSimpleAACEncoder(audioTrack[i], GetAudioBitrate(), name, i);
+				success = CreateSimpleAACEncoder(audioTrack[i], GetAudioBitrate(), name,
+								 static_cast<size_t>(i));
 			}
 			if (!success) {
 				throw "Failed to create multi-track audio recording encoder "
@@ -725,7 +727,8 @@ bool SimpleOutput::StartStreaming(obs_service_t *service)
 		maxRetries = 0;
 	}
 
-	obs_output_set_delay(streamOutputRef, useDelay ? delaySec : 0, preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
+	obs_output_set_delay(streamOutputRef, useDelay ? static_cast<uint32_t>(delaySec) : 0u,
+			     preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0u);
 
 	obs_output_set_reconnect_settings(streamOutputRef, maxRetries, retryDelay);
 
@@ -766,8 +769,8 @@ void SimpleOutput::UpdateRecording()
 	const char *recFormat = config_get_string(main->Config(), "SimpleOutput", "RecFormat2");
 	bool flv = strcmp(recFormat, "flv") == 0;
 	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
-	int idx = 0;
-	int idx2 = 0;
+	size_t idx = 0;
+	size_t idx2 = 0;
 	const char *quality = config_get_string(main->Config(), "SimpleOutput", "RecQuality");
 
 	if (replayBufferActive || recordingActive) {
@@ -864,7 +867,7 @@ bool SimpleOutput::ConfigureRecording(bool updateReplayBuffer)
 						      f.c_str(), ffmpegOutput, &reservedRecordingPath);
 		obs_data_set_string(settings, ffmpegOutput ? "url" : "path", strPath.c_str());
 		if (ffmpegOutput) {
-			obs_output_set_mixers(fileOutput, tracks);
+			obs_output_set_mixers(fileOutput, static_cast<uint32_t>(tracks));
 		}
 	}
 

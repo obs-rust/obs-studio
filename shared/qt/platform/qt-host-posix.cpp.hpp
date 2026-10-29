@@ -44,6 +44,6 @@ uint32_t translate_modifiers(Qt::KeyboardModifiers mods)
 		obsModifiers |= INTERACT_COMMAND_KEY;
 	}
 
-	return obsModifiers;
+	return static_cast<uint32_t>(obsModifiers);
 }
 } // namespace qt_platform

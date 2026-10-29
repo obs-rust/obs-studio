@@ -117,7 +117,8 @@ void OBSBasicInteraction::DrawPreview(void *data, uint32_t cx, uint32_t cy)
 	int newCX, newCY;
 	float scale;
 
-	GetScaleAndCenterPos(sourceCX, sourceCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(sourceCX), static_cast<int>(sourceCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	newCX = int(scale * float(sourceCX));
 	newCY = int(scale * float(sourceCY));
@@ -190,7 +191,8 @@ bool OBSBasicInteraction::GetSourceRelativeXY(int mouseX, int mouseY, int &relX,
 	int x, y;
 	float scale;
 
-	GetScaleAndCenterPos(sourceCX, sourceCY, size.width(), size.height(), x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(sourceCX), static_cast<int>(sourceCY), size.width(), size.height(), x, y,
+			     scale);
 
 	if (x > 0) {
 		relX = int(float(mouseXscaled - x) / scale);
@@ -221,7 +223,7 @@ bool OBSBasicInteraction::HandleMouseClickEvent(QMouseEvent *event)
 
 	struct obs_mouse_event mouseEvent = {};
 
-	mouseEvent.modifiers = TranslateQtMouseEventModifiers(event);
+	mouseEvent.modifiers = static_cast<uint32_t>(TranslateQtMouseEventModifiers(event));
 
 	int32_t button = 0;
 
@@ -248,7 +250,7 @@ bool OBSBasicInteraction::HandleMouseClickEvent(QMouseEvent *event)
 	bool insideSource = GetSourceRelativeXY(pos.x(), pos.y(), mouseEvent.x, mouseEvent.y);
 
 	if (mouseUp || insideSource) {
-		obs_source_send_mouse_click(source, &mouseEvent, button, mouseUp, clickCount);
+		obs_source_send_mouse_click(source, &mouseEvent, button, mouseUp, static_cast<uint32_t>(clickCount));
 	}
 
 	return true;
@@ -261,7 +263,7 @@ bool OBSBasicInteraction::HandleMouseMoveEvent(QMouseEvent *event)
 	bool mouseLeave = event->type() == QEvent::Leave;
 
 	if (!mouseLeave) {
-		mouseEvent.modifiers = TranslateQtMouseEventModifiers(event);
+		mouseEvent.modifiers = static_cast<uint32_t>(TranslateQtMouseEventModifiers(event));
 		QPoint pos = event->pos();
 		mouseLeave = !GetSourceRelativeXY(pos.x(), pos.y(), mouseEvent.x, mouseEvent.y);
 	}
@@ -275,7 +277,7 @@ bool OBSBasicInteraction::HandleMouseWheelEvent(QWheelEvent *event)
 {
 	struct obs_mouse_event mouseEvent = {};
 
-	mouseEvent.modifiers = TranslateQtKeyboardEventModifiers(event, true);
+	mouseEvent.modifiers = static_cast<uint32_t>(TranslateQtKeyboardEventModifiers(event, true));
 
 	int xDelta = 0;
 	int yDelta = 0;
@@ -320,7 +322,7 @@ bool OBSBasicInteraction::HandleKeyEvent(QKeyEvent *event)
 	struct obs_key_event keyEvent;
 
 	QByteArray text = event->text().toUtf8();
-	keyEvent.modifiers = TranslateQtKeyboardEventModifiers(event, false);
+	keyEvent.modifiers = static_cast<uint32_t>(TranslateQtKeyboardEventModifiers(event, false));
 	keyEvent.text = text.data();
 	keyEvent.native_modifiers = event->nativeModifiers();
 	keyEvent.native_scancode = event->nativeScanCode();

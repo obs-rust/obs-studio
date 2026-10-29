@@ -52,7 +52,7 @@ void OBSHotkeyEdit::keyPressEvent(QKeyEvent *event)
 	default: {
 		bool pressed;
 		if (!GetPlatformHotkeyOverride(event->key(), new_key.key, pressed)) {
-			new_key.key = obs_key_from_virtual_key(event->nativeVirtualKey());
+			new_key.key = obs_key_from_virtual_key(static_cast<int>(event->nativeVirtualKey()));
 		}
 	}
 	}

@@ -305,8 +305,8 @@ void OBSBasicFilters::RemoveFilter(OBSSource filter)
 }
 
 struct FilterOrderInfo {
-	int asyncIdx = 0;
-	int effectIdx = 0;
+	size_t asyncIdx = 0;
+	size_t effectIdx = 0;
 	OBSBasicFilters *window;
 
 	inline FilterOrderInfo(OBSBasicFilters *window_) : window(window_) {}
@@ -643,7 +643,8 @@ void OBSBasicFilters::DrawPreview(void *data, uint32_t cx, uint32_t cy)
 	int newCX, newCY;
 	float scale;
 
-	GetScaleAndCenterPos(sourceCX, sourceCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(sourceCX), static_cast<int>(sourceCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	newCX = int(scale * float(sourceCX));
 	newCY = int(scale * float(sourceCY));
@@ -1120,5 +1121,5 @@ void OBSBasicFilters::FiltersMoved(const QModelIndex &, int srcIdxStart, int, co
 	int idx = obs_source_filter_get_index(source, neighbor);
 
 	OBSSource filter = GetFilter(list->currentRow(), isAsync);
-	obs_source_filter_set_index(source, filter, idx);
+	obs_source_filter_set_index(source, filter, static_cast<size_t>(idx));
 }

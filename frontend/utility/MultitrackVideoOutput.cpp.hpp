@@ -71,7 +71,8 @@ static OBSServiceAutoRelease create_service(const GoLiveApi::Config &go_live_con
 	if (!dstr_is_empty(str)) {
 		auto found = dstr_find(str, "/{stream_key}");
 		if (found) {
-			dstr_remove(str, found - str->array, str->len - (found - str->array));
+			const size_t pos = static_cast<size_t>(found - str->array);
+			dstr_remove(str, pos, str->len - pos);
 		}
 	}
 

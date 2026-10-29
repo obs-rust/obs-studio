@@ -456,7 +456,7 @@ static void SaveProfilerData(const ProfilerSnapshot &snap)
 #define LITERAL_SIZE(x) x, (sizeof(x) - 1)
 	ostringstream dst;
 	dst.write(LITERAL_SIZE("obs-studio/profiler_data/"));
-	dst.write(currentLogFile.c_str(), pos);
+	dst.write(currentLogFile.c_str(), static_cast<std::streamsize>(pos));
 	dst.write(LITERAL_SIZE(".csv.gz"));
 #undef LITERAL_SIZE
 

@@ -2025,7 +2025,7 @@ static void show_ladder(Ui::OBSBasicSettings *ui, const GoLiveApi::Config &confi
 	const std::string fps_label = QTStr("Basic.Settings.Stream.MultitrackVideoLadder.CanvasFps").toStdString();
 
 	setup_ladder_table(table);
-	canvas_storage.reserve(canvasNames.size());
+	canvas_storage.reserve(static_cast<size_t>(canvasNames.size()));
 	for (const QString &name : canvasNames) {
 		canvas_storage.push_back(name.toStdString());
 	}

@@ -85,7 +85,7 @@ public:
 
 private:
 	void AddEdit(obs_key_combination combo, int idx = -1);
-	void RemoveEdit(size_t idx, bool signal = true);
+	void RemoveEdit(std::ptrdiff_t idx, bool signal = true);
 
 	static void BindingsChanged(void *data, calldata_t *param);
 

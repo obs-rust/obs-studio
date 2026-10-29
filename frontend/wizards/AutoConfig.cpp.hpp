@@ -67,8 +67,8 @@ AutoConfig::AutoConfig(QWidget *parent) : QWizard(parent)
 	obs_video_info ovi;
 	obs_get_video_info(&ovi);
 
-	baseResolutionCX = ovi.base_width;
-	baseResolutionCY = ovi.base_height;
+	baseResolutionCX = static_cast<int>(ovi.base_width);
+	baseResolutionCY = static_cast<int>(ovi.base_height);
 
 	/* ----------------------------------------- */
 	/* check to see if Twitch's "auto" available */

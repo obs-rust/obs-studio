@@ -366,8 +366,8 @@ static void parse_items(QDomNode &item, Json::array &items, Json::array &sources
 		struct obs_video_info ovi;
 		obs_get_video_info(&ovi);
 
-		int width = ovi.base_width;
-		int height = ovi.base_height;
+		int width = static_cast<int>(ovi.base_width);
+		int height = static_cast<int>(ovi.base_height);
 
 		double pos_left = attr.namedItem("pos_left").nodeValue().toDouble();
 		double pos_right = attr.namedItem("pos_right").nodeValue().toDouble();

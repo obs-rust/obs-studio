@@ -246,7 +246,7 @@ bool get_cpu_freq(uint32_t &cpu_freq)
 	if (getline(freq_file, line)) {
 		trim_ws(line);
 		// Convert the CPU frequency string to an integer in MHz
-		cpu_freq = atoi(line.c_str()) / 1000;
+		cpu_freq = static_cast<uint32_t>(atoi(line.c_str()) / 1000);
 	} else {
 		cpu_freq = 0;
 	}

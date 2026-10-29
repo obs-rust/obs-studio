@@ -33,7 +33,7 @@ GameCaptureToolbar::GameCaptureToolbar(QWidget *parent, OBSSource source)
 	ui->window->setCurrentIndex(cur_idx);
 	ui->window->blockSignals(false);
 
-	if (cur_idx != -1 && obs_property_list_item_disabled(p, cur_idx)) {
+	if (cur_idx != -1 && obs_property_list_item_disabled(p, static_cast<size_t>(cur_idx))) {
 		SetComboItemEnabled(ui->window, cur_idx, false);
 	}
 

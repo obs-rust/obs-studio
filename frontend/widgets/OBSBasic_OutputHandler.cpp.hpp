@@ -73,8 +73,8 @@ void OBSBasic::ResizeOutputSizeOfSource()
 
 	OBSSource source = obs_sceneitem_get_source(GetCurrentSceneItem());
 
-	int width = obs_source_get_width(source);
-	int height = obs_source_get_height(source);
+	uint32_t width = obs_source_get_width(source);
+	uint32_t height = obs_source_get_height(source);
 
 	width = ((width + 3) / 4) * 4;   // Round width up to the nearest multiple of 4
 	height = ((height + 1) / 2) * 2; // Round height up to the nearest multiple of 2

@@ -407,7 +407,7 @@ void AudioMixer::updateGlobalSources()
 	globalSources.clear();
 
 	for (int i = 1; i <= kGlobalSourceTotal; i++) {
-		OBSSourceAutoRelease source = obs_get_output_source(i);
+		OBSSourceAutoRelease source = obs_get_output_source(static_cast<uint32_t>(i));
 		if (source) {
 			auto uuidPointer = obs_source_get_uuid(source);
 			if (uuidPointer && *uuidPointer) {
