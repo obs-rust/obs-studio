@@ -963,7 +963,7 @@ bool UseNativeComboBoxPopup()
 	return false;
 }
 
-static HRESULT SaveJxrImage(LPCWSTR path, uint8_t *pixels, uint32_t cx, uint32_t cy, IWICBitmapFrameEncode *frameEncode,
+static HRESULT SaveJxrImage(uint8_t *pixels, uint32_t cx, uint32_t cy, IWICBitmapFrameEncode *frameEncode,
 			    IPropertyBag2 *options)
 {
 	wchar_t lossless[] = L"Lossless";
@@ -1053,7 +1053,7 @@ static HRESULT SaveJxr(LPCWSTR path, uint8_t *pixels, uint32_t cx, uint32_t cy)
 		return hr;
 	}
 
-	hr = SaveJxrImage(path, pixels, cx, cy, frameEncode.Get(), options.Get());
+	hr = SaveJxrImage(pixels, cx, cy, frameEncode.Get(), options.Get());
 	if (FAILED(hr)) {
 		return hr;
 	}

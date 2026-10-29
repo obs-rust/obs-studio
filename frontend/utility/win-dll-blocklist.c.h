@@ -363,7 +363,9 @@ void install_dll_blocklist_hook(void)
 
 	DetourTransactionBegin();
 
-	if (DetourAttach((PVOID *)&ntMap, NtMapViewOfSection_hook) != NO_ERROR) {
+	/* Detours stores hooks as data pointers: the cast is the documented
+	 * way to hand it a function address (MSVC C4152 on the implicit form). */
+	if (DetourAttach((PVOID *)&ntMap, (PVOID)NtMapViewOfSection_hook) != NO_ERROR) {
 		DetourTransactionAbort();
 	} else {
 		DetourTransactionCommit();
