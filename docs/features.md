@@ -193,6 +193,13 @@ not get a line.
   16 bits first. *Linux*, 2026-10-16. Issue
   [#1103](https://github.com/obs-rust/obs-studio/issues/1103), PR
   [#1104](https://github.com/obs-rust/obs-studio/pull/1104).
+- **ALSA audio comes back after a USB replug.** An Audio Capture Device
+  (ALSA) source whose USB device is unplugged and plugged in again captures
+  again within a few seconds, instead of staying silent with its capture
+  thread at full CPU. The log says once that the device went away and once
+  that it captures again. *Linux*, 2026-10-29. Issue
+  [#2924](https://github.com/obs-rust/obs-studio/issues/2924), PR
+  [#2933](https://github.com/obs-rust/obs-studio/pull/2933).
 
 ### Encoding, streaming and recording
 
