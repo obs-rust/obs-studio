@@ -11,7 +11,7 @@ static bool getparam(const char *param, char **name, const char **value)
 	if (!assign || !*assign || !*(assign + 1))
 		return false;
 
-	*name = bstrdup_n(param, assign - param);
+	*name = bstrdup_n(param, (size_t)(assign - param));
 	*value = assign + 1;
 	return true;
 }
@@ -47,9 +47,9 @@ struct obs_options obs_parse_options(const char *options_string)
 		}
 	}
 	return (struct obs_options){
-		.count = out_option - out_options,
+		.count = (size_t)(out_option - out_options),
 		.options = out_options,
-		.ignored_word_count = ignored_word - ignored_words,
+		.ignored_word_count = (size_t)(ignored_word - ignored_words),
 		.ignored_words = ignored_words,
 		.input_words = input_words,
 	};

@@ -26,8 +26,8 @@ static bool update_metrics(obs_output_t *output, const struct encoder_packet *pk
 	}
 
 	// Perform reads on all the counters as close together as possible
-	m_track->session_frames_output.curr = obs_output_get_total_frames(output);
-	m_track->session_frames_dropped.curr = obs_output_get_frames_dropped(output);
+	m_track->session_frames_output.curr = (uint32_t)obs_output_get_total_frames(output);
+	m_track->session_frames_dropped.curr = (uint32_t)obs_output_get_frames_dropped(output);
 	m_track->session_frames_rendered.curr = obs_get_total_frames();
 	m_track->session_frames_lagged.curr = obs_get_lagged_frames();
 
@@ -306,7 +306,7 @@ static size_t extract_buffer_from_sei(sei_t *sei, uint8_t **data_out)
 	 * generated should only have one message, so no need to iterate. If
 	 * we did iterate, we would need to generate multiple OBUs. */
 	sei_message_t *msg = sei_message_head(sei);
-	int payload_size = (int)sei_message_size(msg);
+	size_t payload_size = (size_t)sei_message_size(msg);
 	uint8_t *payload_data = sei_message_data(msg);
 	*data_out = bmalloc(payload_size);
 	memcpy(*data_out, payload_data, payload_size);
@@ -524,7 +524,7 @@ static void bpm_init(void)
 
 void bpm_destroy(obs_output_t *output)
 {
-	int64_t idx = -1;
+	size_t idx = bpm_metrics.num;
 
 	pthread_once(&bpm_once, bpm_init);
 	pthread_mutex_lock(&bpm_metrics_mutex);
@@ -536,7 +536,7 @@ void bpm_destroy(obs_output_t *output)
 			break;
 		}
 	}
-	if (idx >= 0) {
+	if (idx < bpm_metrics.num) {
 		struct output_metrics_link *oml = &bpm_metrics.array[idx];
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
 			if (oml->metrics_tracks[i]) {

@@ -314,7 +314,7 @@ static void *happy_connect_worker(void *arg)
 		goto failure;
 	}
 
-	if (connect(args->sockfd, args->address->ai_addr, (int)args->address->ai_addrlen) == 0) {
+	if (connect(args->sockfd, args->address->ai_addr, args->address->ai_addrlen) == 0) {
 
 		/* success, check if we're the winner. */
 		pthread_mutex_lock(&context->winner_mutex);
@@ -669,7 +669,7 @@ int happy_eyeballs_get_remote_addr(const struct happy_eyeballs_ctx *context, str
 		return STATUS_INVALID_ARGUMENT;
 	if (context->winner_addr_len > 0)
 		memcpy(addr, &context->winner_addr, context->winner_addr_len);
-	return context->winner_addr_len;
+	return (int)context->winner_addr_len;
 }
 
 int happy_eyeballs_get_error_code(const struct happy_eyeballs_ctx *context)
