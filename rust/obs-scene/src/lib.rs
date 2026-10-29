@@ -9,15 +9,18 @@
 //! coordinate keys of `scene_load_item` and `scene_save_item`),
 //! `libobs/obs-scene-audio-window.c.h` (the audio window decisions of
 //! `scene_audio_render`: the source each item is read from, the tick's
-//! earliest timestamp, and each item's frames), and
+//! earliest timestamp, and each item's frames),
 //! `libobs/obs-scene-item-transform.c.h` (the steps of
 //! `compute_item_transform`: the crop and cropped size, the bounds test,
-//! the draw and box matrices, and the box scale).
+//! the draw and box matrices, and the box scale), and
+//! `libobs/obs-scene-transform-update.c.h` (the transform update decisions of
+//! `scene_video_render` and `update_transforms_and_prune_sources`: the scene
+//! size step and whether an item is updated).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
 //! [`group_transform`], [`audio_actions`], [`audio_window`], [`extent`],
-//! [`crop`], [`render_plan`], [`item_names`], and [`item_transform`]. The C
-//! ABI shims live in [`ffi`].
+//! [`crop`], [`render_plan`], [`item_names`], [`item_transform`], and
+//! [`transform_update`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
@@ -34,6 +37,7 @@ pub mod item_names;
 pub mod item_transform;
 mod platform;
 pub mod render_plan;
+pub mod transform_update;
 
 #[allow(unsafe_code)]
 pub mod ffi;
