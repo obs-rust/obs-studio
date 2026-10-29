@@ -42,6 +42,13 @@ endif()
 
 target_compile_definitions(libobs-opengl PRIVATE $<$<PLATFORM_ID:Darwin>:GL_SILENCE_DEPRECATION>)
 
+# The conversion groups for this target only; the global -Wno-* pins stay
+# until every target is ratcheted (#2625).
+target_compile_options(
+  libobs-opengl
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(
   libobs-opengl
   PRIVATE
