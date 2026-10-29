@@ -4,7 +4,8 @@
 //! Every shim is compared with its `oracle_*` twin: every step the C enums
 //! name, and steps they do not (the C's `switch` falls through), with both
 //! values; every gate order of `obs_reset_video()` and every mix of
-//! `obs_get_video_frame_counts()`; the buffering ticks at the edges of
+//! `obs_get_video_frame_counts()`; every search of `obs_find_data_file()`
+//! over up to eight added paths; the buffering ticks at the edges of
 //! `u32` and around whole ticks; the command line sizes, the compares, the
 //! latest version and the capture device flag at the edges of their types;
 //! the constants and enum values of the header; and proptests over any
@@ -19,10 +20,10 @@ use obs_c_oracle::core_setup_rules::{
     oracle_obs_core_setup_rules_audio_refused, oracle_obs_core_setup_rules_buffer_default_ticks,
     oracle_obs_core_setup_rules_buffer_set, oracle_obs_core_setup_rules_buffer_ticks,
     oracle_obs_core_setup_rules_cmdline_len, oracle_obs_core_setup_rules_cmdline_set,
-    oracle_obs_core_setup_rules_cmdline_table, oracle_obs_core_setup_rules_data_path_match,
-    oracle_obs_core_setup_rules_latest_newer, oracle_obs_core_setup_rules_mix_step,
-    oracle_obs_core_setup_rules_monitor_missing, oracle_obs_core_setup_rules_monitor_same,
-    oracle_obs_core_setup_rules_video_gate,
+    oracle_obs_core_setup_rules_cmdline_table, oracle_obs_core_setup_rules_data_file_found,
+    oracle_obs_core_setup_rules_data_path_match, oracle_obs_core_setup_rules_latest_newer,
+    oracle_obs_core_setup_rules_mix_step, oracle_obs_core_setup_rules_monitor_missing,
+    oracle_obs_core_setup_rules_monitor_same, oracle_obs_core_setup_rules_video_gate,
 };
 use obs_core::core_setup_rules::{
     AUDIO_OUTPUT_FRAMES, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE,
@@ -33,9 +34,10 @@ use obs_core::ffi::core_setup_rules::{
     obs_core_setup_rules_buffer_default_ticks, obs_core_setup_rules_buffer_set,
     obs_core_setup_rules_buffer_ticks, obs_core_setup_rules_cmdline_len,
     obs_core_setup_rules_cmdline_set, obs_core_setup_rules_cmdline_table,
-    obs_core_setup_rules_data_path_match, obs_core_setup_rules_latest_newer,
-    obs_core_setup_rules_mix_step, obs_core_setup_rules_monitor_missing,
-    obs_core_setup_rules_monitor_same, obs_core_setup_rules_video_gate,
+    obs_core_setup_rules_data_file_found, obs_core_setup_rules_data_path_match,
+    obs_core_setup_rules_latest_newer, obs_core_setup_rules_mix_step,
+    obs_core_setup_rules_monitor_missing, obs_core_setup_rules_monitor_same,
+    obs_core_setup_rules_video_gate,
 };
 use proptest::prelude::*;
 
@@ -291,6 +293,44 @@ fn every_gate_order_and_mix_matches() {
                 mix(|s, v| obs_core_setup_rules_mix_step(s, v), values),
                 mix(c_mix, values),
                 "{m}"
+            );
+        }
+    }
+}
+
+/// `obs_find_data_file()`'s search through each side: where the walk over
+/// the libobs directory and the added paths stopped, and how many places it
+/// looked in.
+fn search(found: impl Fn(bool) -> bool, has_file: &[bool]) -> (Option<usize>, usize) {
+    for (i, &has) in has_file.iter().enumerate() {
+        if found(has) {
+            return (Some(i), i + 1);
+        }
+    }
+    (None, has_file.len())
+}
+
+#[test]
+fn every_data_file_search_matches() {
+    for value in [false, true] {
+        // SAFETY: plain value.
+        let c = unsafe { oracle_obs_core_setup_rules_data_file_found(value) };
+        assert_eq!(obs_core_setup_rules_data_file_found(value), c, "{value}");
+    }
+    // The libobs directory and up to eight added paths, each with the file
+    // or without it.
+    for places in 1usize..=9 {
+        for m in 0u32..(1 << places) {
+            let has: Vec<bool> = (0..places).map(|i| m & (1 << i) != 0).collect();
+            // SAFETY (the closure): plain value.
+            let c = search(
+                |f| unsafe { oracle_obs_core_setup_rules_data_file_found(f) },
+                &has,
+            );
+            assert_eq!(
+                search(|f| obs_core_setup_rules_data_file_found(f), &has),
+                c,
+                "{has:?}"
             );
         }
     }
