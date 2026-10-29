@@ -1604,7 +1604,7 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 
 			uint16_t captionData = ((uint8_t *)caption_buf)[1];
 			captionData = (uint16_t)(captionData << 8);
-			captionData += ((uint8_t *)caption_buf)[2];
+			captionData = (uint16_t)(captionData + ((uint8_t *)caption_buf)[2]);
 
 			// padding
 			if (captionData == 0x8080) {
