@@ -240,7 +240,7 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 			       "-------------------");
 	} else {
 		OBSSource actualProgramScene = OBSGetStrongRef(programScene);
-		OBSSource currentScene = GetCurrentSceneSource();
+		OBSSource currentSceneSource = GetCurrentSceneSource();
 		struct studio_mode_exit_ops ops = {};
 		ops.param = this;
 		ops.select_scene = [](void *param, void *scene) {
@@ -260,7 +260,7 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 		ops.scene_changed = [](void *param) {
 			static_cast<OBSBasic *>(param)->OnEvent(OBS_FRONTEND_EVENT_SCENE_CHANGED);
 		};
-		studio_mode_exit_switch(&ops, actualProgramScene.Get(), currentScene.Get());
+		studio_mode_exit_switch(&ops, actualProgramScene.Get(), currentSceneSource.Get());
 
 		delete programOptions;
 		delete program;
@@ -365,14 +365,15 @@ void OBSBasic::UpdatePreviewProgramIndicators()
 	QString preview =
 		QTStr("StudioMode.PreviewSceneName").arg(QT_UTF8(obs_source_get_name(GetCurrentSceneSource())));
 
-	QString program = QTStr("StudioMode.ProgramSceneName").arg(QT_UTF8(obs_source_get_name(GetProgramSource())));
+	QString programText =
+		QTStr("StudioMode.ProgramSceneName").arg(QT_UTF8(obs_source_get_name(GetProgramSource())));
 
 	if (ui->previewLabel->text() != preview) {
 		ui->previewLabel->setText(preview);
 	}
 
-	if (programLabel && programLabel->text() != program) {
-		programLabel->setText(program);
+	if (programLabel && programLabel->text() != programText) {
+		programLabel->setText(programText);
 	}
 }
 
@@ -384,14 +385,14 @@ OBSSource OBSBasic::GetProgramSource()
 void OBSBasic::ProgramViewContextMenuRequested()
 {
 	QMenu popup(this);
-	QPointer<QMenu> studioProgramProjector;
+	QPointer<QMenu> programProjectorMenu;
 
-	studioProgramProjector = new QMenu(QTStr("Projector.Open.Program"));
-	AddProjectorMenuMonitors(studioProgramProjector, this, &OBSBasic::OpenStudioProgramProjector);
-	studioProgramProjector->addSeparator();
-	studioProgramProjector->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenStudioProgramWindow);
+	programProjectorMenu = new QMenu(QTStr("Projector.Open.Program"));
+	AddProjectorMenuMonitors(programProjectorMenu, this, &OBSBasic::OpenStudioProgramProjector);
+	programProjectorMenu->addSeparator();
+	programProjectorMenu->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenStudioProgramWindow);
 
-	popup.addMenu(studioProgramProjector);
+	popup.addMenu(programProjectorMenu);
 
 	popup.addSeparator();
 	popup.addAction(QTStr("Screenshot.StudioProgram"), this, &OBSBasic::ScreenshotProgram);

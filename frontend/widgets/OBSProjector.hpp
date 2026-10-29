@@ -64,5 +64,5 @@ public:
 
 	bool IsAlwaysOnTop() const;
 	bool IsAlwaysOnTopOverridden() const;
-	void SetIsAlwaysOnTop(bool isAlwaysOnTop, bool isOverridden);
+	void SetIsAlwaysOnTop(bool alwaysOnTop, bool isOverridden);
 };

@@ -618,9 +618,9 @@ void OBSBasic::on_scenes_customContextMenuRequested(const QPoint &pos)
 		multiviewAction->setCheckable(true);
 		multiviewAction->setChecked(show);
 
-		auto showInMultiview = [](OBSData data) {
-			bool show = obs_data_get_bool(data, "show_in_multiview");
-			obs_data_set_bool(data, "show_in_multiview", !show);
+		auto showInMultiview = [](OBSData settingsData) {
+			bool show = obs_data_get_bool(settingsData, "show_in_multiview");
+			obs_data_set_bool(settingsData, "show_in_multiview", !show);
 			OBSProjector::UpdateMultiviewProjectors();
 		};
 
