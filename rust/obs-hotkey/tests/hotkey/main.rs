@@ -3,6 +3,7 @@
 mod bindings;
 mod bindings_parity;
 mod cocoa_keys;
+mod cocoa_keys_parity;
 mod hotkey_name_map;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;

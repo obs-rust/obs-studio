@@ -47,6 +47,7 @@ pub mod calldata;
 pub mod canvas_draw;
 pub mod canvas_rules;
 pub mod cf_tokenizer;
+pub mod cocoa_keys;
 pub mod config_file;
 pub mod context_names;
 pub mod core_setup_rules;
