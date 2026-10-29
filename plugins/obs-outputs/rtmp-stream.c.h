@@ -202,7 +202,7 @@ static void rtmp_stream_stop(void *data, uint64_t ts)
 	stream->stop_ts = ts / 1000ULL;
 
 	if (ts)
-		stream->shutdown_timeout_ts = ts + (uint64_t)stream->max_shutdown_time_sec * 1000000000ULL;
+		stream->shutdown_timeout_ts = ts + (uint64_t)stream->max_shutdown_time_sec * UINT64_C(1000000000);
 
 	if (active(stream)) {
 		os_event_signal(stream->stop_event);
@@ -365,7 +365,7 @@ static int send_packet(struct rtmp_stream *stream, struct encoder_packet *packet
 		return -1;
 	}
 
-	flv_packet_mux(packet, is_header ? 0 : stream->start_dts_offset, &data, &size, is_header);
+	flv_packet_mux(packet, is_header ? 0 : (int32_t)stream->start_dts_offset, &data, &size, is_header);
 
 #ifdef TEST_FRAMEDROPS
 	droptest_cap_data_rate(stream, size);
@@ -397,7 +397,8 @@ static int send_packet_ex(struct rtmp_stream *stream, struct encoder_packet *pac
 	} else if (is_footer) {
 		flv_packet_end(packet, stream->video_codec[idx], &data, &size, idx);
 	} else {
-		flv_packet_frames(packet, stream->video_codec[idx], stream->start_dts_offset, &data, &size, idx);
+		flv_packet_frames(packet, stream->video_codec[idx], (int32_t)stream->start_dts_offset, &data, &size,
+				  idx);
 	}
 
 #ifdef TEST_FRAMEDROPS
@@ -427,7 +428,8 @@ static int send_audio_packet_ex(struct rtmp_stream *stream, struct encoder_packe
 	if (is_header) {
 		flv_packet_audio_start(packet, stream->audio_codec[idx], &data, &size, idx);
 	} else {
-		flv_packet_audio_frames(packet, stream->audio_codec[idx], stream->start_dts_offset, &data, &size, idx);
+		flv_packet_audio_frames(packet, stream->audio_codec[idx], (int32_t)stream->start_dts_offset, &data,
+					&size, idx);
 	}
 
 	ret = RTMP_Write(&stream->rtmp, (char *)data, (int)size, 0);
@@ -778,8 +780,8 @@ static bool send_video_metadata(struct rtmp_stream *stream, size_t idx)
 		else if (trc == OBSCOL_TRC_SMPTE2084)
 			max_luminance = (int)obs_get_video_hdr_nominal_peak_level();
 
-		flv_packet_metadata(stream->video_codec[idx], &data, &size, bits_per_raw_sample, pri, trc, spc, 0,
-				    max_luminance, idx);
+		flv_packet_metadata(stream->video_codec[idx], &data, &size, bits_per_raw_sample, (uint8_t)pri, trc, spc,
+				    0, max_luminance, idx);
 
 		int ret = RTMP_Write(&stream->rtmp, (char *)data, (int)size, 0);
 		bfree(data);
@@ -887,7 +889,7 @@ static int init_send(struct rtmp_stream *stream)
 
 			obs_data_t *params = obs_encoder_get_settings(vencoder);
 			if (params) {
-				int bitrate = obs_data_get_int(params, "bitrate");
+				int bitrate = (int)obs_data_get_int(params, "bitrate");
 				if (!bitrate) {
 					warn("Video encoder didn't return a "
 					     "valid bitrate, new network "
@@ -908,7 +910,7 @@ static int init_send(struct rtmp_stream *stream)
 
 			obs_data_t *params = obs_encoder_get_settings(aencoder);
 			if (params) {
-				int bitrate = obs_data_get_int(params, "bitrate");
+				int bitrate = (int)obs_data_get_int(params, "bitrate");
 				if (!bitrate)
 					bitrate = 160;
 				total_bitrate += bitrate;
@@ -922,8 +924,8 @@ static int init_send(struct rtmp_stream *stream)
 		if (ideal_buffer_size < 131072)
 			ideal_buffer_size = 131072;
 
-		stream->write_buf_size = ideal_buffer_size;
-		stream->write_buf = bmalloc(ideal_buffer_size);
+		stream->write_buf_size = (size_t)ideal_buffer_size;
+		stream->write_buf = bmalloc((size_t)ideal_buffer_size);
 
 		if (!rtmp_host_start_socket_loop(stream))
 			return OBS_OUTPUT_ERROR;
@@ -982,7 +984,7 @@ static int try_connect(struct rtmp_stream *stream)
 
 	// Only use the IPv4 / IPv6 hint if a binding address isn't specified.
 	if (stream->rtmp.m_bindIP.addrLen == 0)
-		stream->rtmp.m_bindIP.addrLen = stream->addrlen_hint;
+		stream->rtmp.m_bindIP.addrLen = (int)stream->addrlen_hint;
 
 	RTMP_AddStream(&stream->rtmp, stream->key.array);
 
@@ -1492,14 +1494,14 @@ static void dbr_set_bitrate(struct rtmp_stream *stream)
 	if (overall_delta < 1)
 		overall_delta = 1;
 
-	double ratio = remaining_bitrate / (double)overall_delta;
+	double ratio = (double)remaining_bitrate / (double)overall_delta;
 	double delta_scale = ratio < 1.0 ? ratio : 1.0;
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; ++i) {
 		obs_encoder_t *enc = obs_output_get_video_encoder2(stream->output, i);
 		if (!enc)
 			continue;
 
-		long bitrate = dbr_base_point->bitrates[i] + (long)(deltas[i] * delta_scale);
+		long bitrate = (long)((double)dbr_base_point->bitrates[i] + (double)deltas[i] * delta_scale);
 		stream->dbr_enc_bitrates[i] = bitrate;
 
 		obs_data_t *settings = obs_encoder_get_settings(enc);

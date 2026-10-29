@@ -103,7 +103,7 @@ static inline int av1_init_get_bits8(Av1GetBitContext *s, const uint8_t *buffer,
 
 static inline unsigned int get_bit1(Av1GetBitContext *s)
 {
-	unsigned int index = s->index;
+	int index = s->index;
 	uint8_t result = s->buffer[index >> 3];
 
 	result <<= index & 7;
@@ -145,7 +145,7 @@ static inline int64_t leb128(Av1GetBitContext *gb)
 	int i;
 
 	for (i = 0; i < 8; i++) {
-		int byte = av1_get_bits(gb, 8);
+		int byte = (int)av1_get_bits(gb, 8);
 		ret |= (int64_t)(byte & 0x7f) << (i * 7);
 		if (!(byte & 0x80))
 			break;
@@ -166,7 +166,7 @@ static inline void uvlc(Av1GetBitContext *gb)
 	if (leading_zeros >= 32)
 		return;
 
-	skip_bits_long(gb, leading_zeros);
+	skip_bits_long(gb, (unsigned int)leading_zeros);
 }
 
 static inline int parse_obu_header(const uint8_t *buf, int buf_size, int64_t *obu_size, int *start_pos, int *type,
@@ -183,14 +183,14 @@ static inline int parse_obu_header(const uint8_t *buf, int buf_size, int64_t *ob
 	if (av1_get_bits(&gb, 1) != 0) // obu_forbidden_bit
 		return -1;
 
-	*type = av1_get_bits(&gb, 4);
-	extension_flag = av1_get_bits(&gb, 1);
-	has_size_flag = av1_get_bits(&gb, 1);
+	*type = (int)av1_get_bits(&gb, 4);
+	extension_flag = (int)av1_get_bits(&gb, 1);
+	has_size_flag = (int)av1_get_bits(&gb, 1);
 	skip_bits(&gb, 1); // obu_reserved_1bit
 
 	if (extension_flag) {
-		*temporal_id = av1_get_bits(&gb, 3);
-		*spatial_id = av1_get_bits(&gb, 2);
+		*temporal_id = (int)av1_get_bits(&gb, 3);
+		*spatial_id = (int)av1_get_bits(&gb, 2);
 		skip_bits(&gb, 3); // extension_header_reserved_3bits
 	} else {
 		*temporal_id = *spatial_id = 0;
@@ -238,7 +238,7 @@ static inline int get_obu_bit_length(const uint8_t *buf, int size, int type)
 
 	/* Remove the trailing_one_bit and following trailing zeros */
 	if (v)
-		size -= ctz32(v) + 1;
+		size -= (int)ctz32((uint32_t)v) + 1;
 
 	return size;
 }
@@ -246,9 +246,9 @@ static inline int get_obu_bit_length(const uint8_t *buf, int size, int type)
 static int parse_color_config(AV1SequenceParameters *seq_params, Av1GetBitContext *gb)
 {
 	int twelve_bit = 0;
-	int high_bitdepth = av1_get_bits(gb, 1);
+	int high_bitdepth = (int)av1_get_bits(gb, 1);
 	if (seq_params->profile == FF_PROFILE_AV1_PROFESSIONAL && high_bitdepth)
-		twelve_bit = av1_get_bits(gb, 1);
+		twelve_bit = (int)av1_get_bits(gb, 1);
 
 	seq_params->bitdepth = (uint8_t)(8 + (high_bitdepth * 2) + (twelve_bit * 2));
 
@@ -328,7 +328,7 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 	seq_params->profile = (uint8_t)av1_get_bits(&gb, 3);
 
 	skip_bits(&gb, 1); // still_picture
-	reduced_still_picture_header = av1_get_bits(&gb, 1);
+	reduced_still_picture_header = (int)av1_get_bits(&gb, 1);
 
 	if (reduced_still_picture_header) {
 		seq_params->level = (uint8_t)av1_get_bits(&gb, 5);
@@ -344,33 +344,33 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 			if (av1_get_bits(&gb, 1)) // equal_picture_interval
 				uvlc(&gb);        // num_ticks_per_picture_minus_1
 
-			decoder_model_info_present_flag = av1_get_bits(&gb, 1);
+			decoder_model_info_present_flag = (int)av1_get_bits(&gb, 1);
 			if (decoder_model_info_present_flag) {
-				buffer_delay_length_minus_1 = av1_get_bits(&gb, 5);
+				buffer_delay_length_minus_1 = (int)av1_get_bits(&gb, 5);
 				skip_bits_long(&gb, 32);
 				skip_bits(&gb, 10);
 			}
 		} else
 			decoder_model_info_present_flag = 0;
 
-		initial_display_delay_present_flag = av1_get_bits(&gb, 1);
+		initial_display_delay_present_flag = (int)av1_get_bits(&gb, 1);
 
-		operating_points_cnt_minus_1 = av1_get_bits(&gb, 5);
+		operating_points_cnt_minus_1 = (int)av1_get_bits(&gb, 5);
 		for (int i = 0; i <= operating_points_cnt_minus_1; i++) {
 			int seq_level_idx, seq_tier;
 
 			skip_bits(&gb, 12);
-			seq_level_idx = av1_get_bits(&gb, 5);
+			seq_level_idx = (int)av1_get_bits(&gb, 5);
 
 			if (seq_level_idx > 7)
-				seq_tier = av1_get_bits(&gb, 1);
+				seq_tier = (int)av1_get_bits(&gb, 1);
 			else
 				seq_tier = 0;
 
 			if (decoder_model_info_present_flag) {
 				if (av1_get_bits(&gb, 1)) {
-					skip_bits_long(&gb, buffer_delay_length_minus_1 + 1);
-					skip_bits_long(&gb, buffer_delay_length_minus_1 + 1);
+					skip_bits_long(&gb, (unsigned int)(buffer_delay_length_minus_1 + 1));
+					skip_bits_long(&gb, (unsigned int)(buffer_delay_length_minus_1 + 1));
 					skip_bits(&gb, 1);
 				}
 			}
@@ -387,12 +387,12 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 		}
 	}
 
-	frame_width_bits_minus_1 = av1_get_bits(&gb, 4);
-	frame_height_bits_minus_1 = av1_get_bits(&gb, 4);
+	frame_width_bits_minus_1 = (int)av1_get_bits(&gb, 4);
+	frame_height_bits_minus_1 = (int)av1_get_bits(&gb, 4);
 
-	skip_bits(&gb, frame_width_bits_minus_1 + 1); // max_frame_width_minus_1
+	skip_bits(&gb, (unsigned int)(frame_width_bits_minus_1 + 1)); // max_frame_width_minus_1
 	skip_bits(&gb,
-		  frame_height_bits_minus_1 + 1); // max_frame_height_minus_1
+		  (unsigned int)(frame_height_bits_minus_1 + 1)); // max_frame_height_minus_1
 
 	if (!reduced_still_picture_header) {
 		if (av1_get_bits(&gb, 1)) // frame_id_numbers_present_flag
@@ -407,14 +407,14 @@ static int parse_sequence_header(AV1SequenceParameters *seq_params, const uint8_
 
 		skip_bits(&gb, 4);
 
-		enable_order_hint = av1_get_bits(&gb, 1);
+		enable_order_hint = (int)av1_get_bits(&gb, 1);
 		if (enable_order_hint)
 			skip_bits(&gb, 2);
 
 		if (av1_get_bits(&gb, 1)) // seq_choose_screen_content_tools
 			seq_force_screen_content_tools = 2;
 		else
-			seq_force_screen_content_tools = av1_get_bits(&gb, 1);
+			seq_force_screen_content_tools = (int)av1_get_bits(&gb, 1);
 
 		if (seq_force_screen_content_tools) {
 			if (!av1_get_bits(&gb, 1)) // seq_choose_integer_mv
@@ -487,7 +487,7 @@ size_t obs_parse_av1_header(uint8_t **header, const uint8_t *data, size_t size)
 		default:
 			break;
 		}
-		size -= len;
+		size -= (size_t)len;
 		buf += len;
 	}
 
@@ -509,9 +509,9 @@ size_t obs_parse_av1_header(uint8_t **header, const uint8_t *data, size_t size)
 
 	s_write(&s, av1header, sizeof(av1header));
 	if (seq_size)
-		s_write(&s, seq, seq_size);
+		s_write(&s, seq, (size_t)seq_size);
 	if (meta_size)
-		s_write(&s, meta, meta_size);
+		s_write(&s, meta, (size_t)meta_size);
 
 	*header = output.bytes.array;
 	return output.bytes.num;
@@ -576,8 +576,8 @@ static void serialize_av1_data(struct serializer *s, const uint8_t *data, size_t
 			compute_av1_keyframe_priority(buf + start_pos, is_keyframe, priority);
 			/* Falls through. */
 		default:
-			s_write(s, buf, len);
-			size += len;
+			s_write(s, buf, (size_t)len);
+			size += (size_t)len;
 			break;
 		}
 		buf += len;

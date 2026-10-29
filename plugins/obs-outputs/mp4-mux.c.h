@@ -36,7 +36,7 @@
 static inline size_t write_box_size(struct serializer *s, int64_t start)
 {
 	int64_t end = serializer_get_pos(s);
-	size_t size = end - start;
+	size_t size = (size_t)(end - start);
 
 	serializer_seek(s, start, SERIALIZE_SEEK_START);
 	s_wb32(s, (uint32_t)size);
@@ -140,7 +140,7 @@ static size_t mp4_write_free(struct mp4_mux *mux)
 static size_t mp4_write_mvhd(struct mp4_mux *mux)
 {
 	struct serializer *s = mux->serializer;
-	size_t start = serializer_get_pos(s);
+	int64_t start = serializer_get_pos(s);
 
 	/* Use primary video track as the baseline for duration */
 	uint64_t duration = 0;
@@ -177,7 +177,7 @@ static size_t mp4_write_mvhd(struct mp4_mux *mux)
 
 	// Matrix
 	for (int i = 0; i < 9; i++)
-		s_wb32(s, UNITY_MATRIX[i]);
+		s_wb32(s, (uint32_t)UNITY_MATRIX[i]);
 
 	// pre_defined
 	s_wb32(s, 0);
@@ -196,7 +196,7 @@ static size_t mp4_write_mvhd(struct mp4_mux *mux)
 static size_t mp4_write_tkhd(struct mp4_mux *mux, struct mp4_track *track)
 {
 	struct serializer *s = mux->serializer;
-	size_t start = serializer_get_pos(s);
+	int64_t start = serializer_get_pos(s);
 
 	uint64_t duration = util_mul_div64(track->duration, 1000, track->timebase_den);
 	bool extended_ts = duration > UINT32_MAX || mux->creation_time > UINT32_MAX;
@@ -229,7 +229,7 @@ static size_t mp4_write_tkhd(struct mp4_mux *mux, struct mp4_track *track)
 
 	// Matrix (predefined)
 	for (int i = 0; i < 9; i++)
-		s_wb32(s, UNITY_MATRIX[i]);
+		s_wb32(s, (uint32_t)UNITY_MATRIX[i]);
 
 	if (track->type == TRACK_AUDIO) {
 		s_wb32(s, 0); // width
@@ -901,8 +901,8 @@ static inline void mp4_write_audio_sample_entry(struct mp4_mux *mux, struct mp4_
 		 * That being said those codecs are self-describing, so in most cases it shouldn't actually matter. */
 		s_wb16(s, !is_mov && alac ? 24 : 16); // samplesize
 
-		s_wb16(s, is_mov && !is_pcm ? -2 : 0); // pre_defined (compression ID in MOV)
-		s_wb16(s, 0);                          // reserved
+		s_wb16(s, (uint16_t)(is_mov && !is_pcm ? -2 : 0)); // pre_defined (compression ID in MOV)
+		s_wb16(s, 0);                                      // reserved
 
 		/* The sample rate field is limited to 16-bits. Technically version 1 supports a "srat" box which
 		 * provides 32-bits, but this is not supported by most software (including FFmpeg and Chromium).
@@ -1116,12 +1116,12 @@ static size_t mp4_write_text(struct mp4_mux *mux)
 
 static inline uint32_t rl32(const uint8_t *ptr)
 {
-	return (ptr[3] << 24) + (ptr[2] << 16) + (ptr[1] << 8) + ptr[0];
+	return ((uint32_t)ptr[3] << 24) + (ptr[2] << 16) + (ptr[1] << 8) + ptr[0];
 }
 
 static inline uint16_t rl16(const uint8_t *ptr)
 {
-	return (ptr[1] << 8) + ptr[0];
+	return (uint16_t)((ptr[1] << 8) + ptr[0]);
 }
 
 /// Encapsulation of Opus in ISO Base Media File Format 4.3.2 Opus Specific Box
@@ -1844,9 +1844,10 @@ static size_t mp4_write_elst(struct mp4_mux *mux, struct mp4_track *track)
 			dts_offset = pkt.pts - pkt.dts;
 		}
 
-		delay = util_mul_div64(dts_offset, track->timescale, track->timebase_den);
+		/* dts_offset holds a composition offset, which is non-negative here */
+		delay = util_mul_div64((uint64_t)dts_offset, track->timescale, track->timebase_den);
 	} else if (track->type == TRACK_AUDIO && track->first_pts < 0) {
-		delay = util_mul_div64(llabs(track->first_pts), track->timescale, track->timebase_den);
+		delay = util_mul_div64((uint64_t)llabs(track->first_pts), track->timescale, track->timebase_den);
 		/* Subtract priming delay from total duration */
 		duration -= util_mul_div64(delay, 1000, track->timescale);
 	}
@@ -2408,7 +2409,7 @@ static size_t mp4_write_traf(struct mp4_mux *mux, struct mp4_track *track, int64
 	write_box(s, 0, "traf");
 
 	// tfhd
-	mp4_write_tfhd(mux, track, moof_start);
+	mp4_write_tfhd(mux, track, (size_t)moof_start);
 
 	// tfdt
 	mp4_write_tfdt(mux, track);
@@ -2615,7 +2616,7 @@ static void write_packets(struct mp4_mux *mux, struct mp4_track *track)
 		return;
 
 	struct chunk *chk = da_push_back_new(track->chunks);
-	chk->offset = serializer_get_pos(s);
+	chk->offset = (uint64_t)serializer_get_pos(s);
 	chk->samples = (uint32_t)track->fragment_samples.num;
 
 	for (size_t i = 0; i < track->fragment_samples.num; i++) {
@@ -2625,7 +2626,7 @@ static void write_packets(struct mp4_mux *mux, struct mp4_track *track)
 		obs_encoder_packet_release(&pkt);
 	}
 
-	chk->size = (uint32_t)(serializer_get_pos(s) - chk->offset);
+	chk->size = (uint32_t)((uint64_t)serializer_get_pos(s) - chk->offset);
 
 	/* Fixup sample count for fixed-size codecs */
 	if (track->sample_size)
@@ -2642,7 +2643,7 @@ static void mp4_flush_fragment(struct mp4_mux *mux)
 	if (!mux->fragments_written) {
 		mp4_write_ftyp(mux, true);
 		/* Placeholder to write mdat header during soft-remux */
-		mux->placeholder_offset = serializer_get_pos(s);
+		mux->placeholder_offset = (uint64_t)serializer_get_pos(s);
 		mp4_write_free(mux);
 	}
 
@@ -2869,7 +2870,7 @@ struct mp4_mux *mp4_mux_create(obs_output_t *output, struct serializer *serializ
 	mux->flags = flags;
 	mux->flavor = flavor;
 	/* Timestamp is based on 1904 rather than 1970. */
-	mux->creation_time = time(NULL) + 0x7C25B080;
+	mux->creation_time = (uint64_t)time(NULL) + 0x7C25B080;
 
 	if (flavor == FLAVOR_MOV && mux->creation_time > UINT32_MAX) {
 		/* This will only happen in 2040 but better safe than sorry! */
@@ -3027,7 +3028,7 @@ bool mp4_mux_finalise(struct mp4_mux *mux)
 	serializer_seek(s, 0, SERIALIZE_SEEK_START);
 	mp4_write_ftyp(mux, false);
 
-	size_t data_size = data_end - mux->placeholder_offset;
+	size_t data_size = (size_t)data_end - (size_t)mux->placeholder_offset;
 	serializer_seek(s, (int64_t)mux->placeholder_offset, SERIALIZE_SEEK_START);
 
 	/* If data is more than 4 GiB the mdat header becomes 16 bytes, hence

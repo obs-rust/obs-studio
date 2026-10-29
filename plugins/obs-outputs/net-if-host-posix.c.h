@@ -43,7 +43,8 @@ static inline bool is_loopback(struct ifaddrs *ifa)
 static inline void netif_get_addrs_nix(struct netif_saddr_data *ifaddrs)
 {
 	struct ifaddrs *ifaddr, *ifa;
-	unsigned int family, s;
+	unsigned int family;
+	int s;
 	char host[NI_MAXHOST];
 
 	if (getifaddrs(&ifaddr) == -1) {

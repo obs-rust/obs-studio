@@ -76,7 +76,7 @@ typedef struct HevcGetBitContext {
 
 static inline uint32_t rb32(const uint8_t *ptr)
 {
-	return (ptr[0] << 24) + (ptr[1] << 16) + (ptr[2] << 8) + ptr[3];
+	return ((uint32_t)ptr[0] << 24) + ((uint32_t)ptr[1] << 16) + ((uint32_t)ptr[2] << 8) + ptr[3];
 }
 
 static inline void refill_32(HevcGetBitContext *s)
@@ -148,7 +148,7 @@ static inline unsigned int get_bits(HevcGetBitContext *s, unsigned int n)
 
 static inline int get_bits_count(HevcGetBitContext *s)
 {
-	return s->index - s->bits_left;
+	return s->index - (int)s->bits_left;
 }
 
 static inline int get_bits_left(HevcGetBitContext *gb)
@@ -160,7 +160,7 @@ static inline unsigned int get_bits_long(HevcGetBitContext *s, int n)
 {
 	if (!n)
 		return 0;
-	return get_bits(s, n);
+	return get_bits(s, (unsigned int)n);
 }
 
 #define skip_bits_long get_bits_long
@@ -176,11 +176,11 @@ static inline uint64_t get_bits64(HevcGetBitContext *s, int n)
 }
 static inline int ilog2(unsigned x)
 {
-	return (31 - clz32(x | 1));
+	return (int)(31 - clz32(x | 1));
 }
 static inline unsigned show_val(const HevcGetBitContext *s, unsigned n)
 {
-	return s->cache & ((UINT64_C(1) << n) - 1);
+	return (unsigned)(s->cache & ((UINT64_C(1) << n) - 1));
 }
 static inline unsigned int show_bits(HevcGetBitContext *s, unsigned int n)
 {
@@ -193,7 +193,7 @@ static inline unsigned int show_bits(HevcGetBitContext *s, unsigned int n)
 static inline unsigned int show_bits_long(HevcGetBitContext *s, int n)
 {
 	if (n <= 25) {
-		return show_bits(s, n);
+		return show_bits(s, (unsigned int)n);
 	} else {
 		HevcGetBitContext gb = *s;
 		return get_bits_long(&gb, n);
@@ -205,16 +205,16 @@ static inline unsigned get_ue_golomb_long(HevcGetBitContext *gb)
 	unsigned buf, log;
 
 	buf = show_bits_long(gb, 32);
-	log = 31 - ilog2(buf);
-	skip_bits_long(gb, log);
+	log = (unsigned)(31 - ilog2(buf));
+	skip_bits_long(gb, (int)log);
 
-	return get_bits_long(gb, log + 1) - 1;
+	return get_bits_long(gb, (int)(log + 1)) - 1U;
 }
 static inline int get_se_golomb_long(HevcGetBitContext *gb)
 {
 	unsigned int buf = get_ue_golomb_long(gb);
-	int sign = (buf & 1) - 1;
-	return ((buf >> 1) ^ sign) + 1;
+	int sign = (int)(buf & 1) - 1;
+	return (int)(((buf >> 1) ^ (unsigned)sign) + 1);
 }
 
 static inline bool has_start_code(const uint8_t *data, size_t size)
@@ -621,9 +621,9 @@ static int hvcc_parse_sps(HevcGetBitContext *gb, HEVCDecoderConfigurationRecord 
 		if (num_long_term_ref_pics_sps > 31U)
 			return -1;
 		for (i = 0; i < num_long_term_ref_pics_sps; i++) { // num_long_term_ref_pics_sps
-			int len = min_i32(log2_max_pic_order_cnt_lsb_minus4 + 4, 16);
-			get_bits(gb, len); // lt_ref_pic_poc_lsb_sps[i]
-			get_bits(gb, 1);   // used_by_curr_pic_lt_sps_flag[i]
+			int len = min_i32((int32_t)log2_max_pic_order_cnt_lsb_minus4 + 4, 16);
+			get_bits(gb, (unsigned int)len); // lt_ref_pic_poc_lsb_sps[i]
+			get_bits(gb, 1);                 // used_by_curr_pic_lt_sps_flag[i]
 		}
 	}
 
@@ -688,13 +688,13 @@ static int hvcc_add_nal_unit(uint8_t *nal_buf, uint32_t nal_size, int ps_array_c
 	uint8_t *dst;
 	dst = bmalloc(nal_size + 64);
 
-	rbsp_buf = ff_nal_unit_extract_rbsp(dst, nal_buf, nal_size, &rbsp_size, 2);
+	rbsp_buf = ff_nal_unit_extract_rbsp(dst, nal_buf, (int)nal_size, &rbsp_size, 2);
 	if (!rbsp_buf) {
 		ret = -1;
 		goto end;
 	}
 
-	ret = init_get_bits8(&gbc, rbsp_buf, rbsp_size);
+	ret = init_get_bits8(&gbc, rbsp_buf, (int)rbsp_size);
 	if (ret < 0)
 		goto end;
 
@@ -755,8 +755,8 @@ size_t obs_parse_hevc_header(uint8_t **header, const uint8_t *data, size_t size)
 
 		assert(nal_end - nal_start <= INT_MAX);
 		s_wb32(&sn, (uint32_t)(nal_end - nal_start));
-		s_write(&sn, nal_start, nal_end - nal_start);
-		size += 4 + nal_end - nal_start;
+		s_write(&sn, nal_start, (size_t)(nal_end - nal_start));
+		size += 4 + (size_t)(nal_end - nal_start);
 		nal_start = nal_end;
 	}
 	if (size == 0)

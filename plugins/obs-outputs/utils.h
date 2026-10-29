@@ -3,14 +3,14 @@
 /* Compiler builtins where GCC or Clang (clang-cl too) provide them, a portable
  * bit count otherwise (#851). */
 #if defined(__GNUC__) || defined(__clang__)
-static inline uint32_t clz32(unsigned long val)
+static inline uint32_t clz32(uint32_t val)
 {
-	return __builtin_clz(val);
+	return (uint32_t)__builtin_clz(val);
 }
 
-static inline uint32_t ctz32(unsigned long val)
+static inline uint32_t ctz32(uint32_t val)
 {
-	return __builtin_ctz(val);
+	return (uint32_t)__builtin_ctz(val);
 }
 #else
 static inline uint32_t popcnt(uint32_t x)

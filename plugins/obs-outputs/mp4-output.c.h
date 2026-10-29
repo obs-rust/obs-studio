@@ -278,7 +278,7 @@ static bool mp4_output_start(void *data)
 
 	obs_data_t *settings = obs_output_get_settings(out->output);
 	out->max_time = obs_data_get_int(settings, "max_time_sec") * 1000000LL;
-	out->max_size = obs_data_get_int(settings, "max_size_mb") * 1024 * 1024;
+	out->max_size = (size_t)obs_data_get_int(settings, "max_size_mb") * 1024 * 1024;
 	out->split_file_enabled = obs_data_get_bool(settings, "split_file");
 	out->allow_overwrite = obs_data_get_bool(settings, "allow_overwrite");
 	out->cur_size = 0;
@@ -335,7 +335,7 @@ static inline bool should_split(struct mp4_output *out, struct encoder_packet *p
 		return true;
 
 	/* reached maximum file size */
-	if (out->max_size > 0 && out->cur_size + (int64_t)packet->size >= out->max_size)
+	if (out->max_size > 0 && (int64_t)out->cur_size + (int64_t)packet->size >= (int64_t)out->max_size)
 		return true;
 
 	/* reached maximum duration */
@@ -359,7 +359,7 @@ static void find_best_filename(struct dstr *path, bool space)
 	if (!ext)
 		return;
 
-	size_t extstart = ext - path->array;
+	size_t extstart = (size_t)(ext - path->array);
 	struct dstr testpath;
 	dstr_init_copy_dstr(&testpath, path);
 	for (;;) {

@@ -293,7 +293,7 @@ static bool write_video_metadata(struct flv_output *stream, size_t idx)
 	else if (trc == OBSCOL_TRC_SMPTE2084)
 		max_luminance = (int)obs_get_video_hdr_nominal_peak_level();
 
-	flv_packet_metadata(stream->video_codec[idx], &data, &size, bits_per_raw_sample, pri, trc, spc, 0,
+	flv_packet_metadata(stream->video_codec[idx], &data, &size, bits_per_raw_sample, (uint8_t)pri, trc, spc, 0,
 			    max_luminance, idx);
 
 	fwrite(data, 1, size, stream->file);

@@ -70,7 +70,8 @@ bool netif_addr_to_str(struct sockaddr_storage *in, char *addr, int addr_len)
 	    (in->ss_family == AF_INET && addr_len < INET_ADDRSTRLEN))
 		return false;
 
-	memset(addr, 0, addr_len);
+	/* addr_len >= INET6_ADDRSTRLEN here, so it is positive */
+	memset(addr, 0, (size_t)addr_len);
 	netif_host_addr_to_string(addr, in);
 	return true;
 }
