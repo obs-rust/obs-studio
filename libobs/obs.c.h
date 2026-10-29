@@ -1120,7 +1120,7 @@ bool obs_remove_data_path(const char *path)
 	for (size_t i = 0; i < core_module_paths.num; ++i) {
 		int result = dstr_cmp(&core_module_paths.array[i], path);
 
-		if (result == 0) {
+		if (obs_core_setup_rules_data_path_match(result)) {
 			dstr_free(&core_module_paths.array[i]);
 			da_erase(core_module_paths, i);
 			return true;
@@ -1164,7 +1164,7 @@ void obs_set_cmdline_args(int argc, const char *const *argv)
 	int i;
 
 	/* Once argc is set (non-zero) we shouldn't call again */
-	if (cmdline_args.argc)
+	if (obs_core_setup_rules_cmdline_set(cmdline_args.argc))
 		return;
 
 	cmdline_args.argc = argc;
@@ -1172,10 +1172,10 @@ void obs_set_cmdline_args(int argc, const char *const *argv)
 	/* Safely copy over argv */
 	len = 0;
 	for (i = 0; i < argc; i++)
-		len += strlen(argv[i]) + 1;
+		len = obs_core_setup_rules_cmdline_len(len, strlen(argv[i]));
 
-	cmdline_args.argv = bmalloc(sizeof(char *) * ((size_t)argc + 1) + len);
-	data = (char *)cmdline_args.argv + sizeof(char *) * ((size_t)argc + 1);
+	cmdline_args.argv = bmalloc(obs_core_setup_rules_cmdline_table(argc, sizeof(char *)) + len);
+	data = (char *)cmdline_args.argv + obs_core_setup_rules_cmdline_table(argc, sizeof(char *));
 
 	for (i = 0; i < argc; i++) {
 		cmdline_args.argv[i] = data;
@@ -1503,18 +1503,36 @@ static void release_freed_videos(struct freed_video *freed, size_t num)
 
 static int obs_reset_video_internal(struct obs_video_info *ovi);
 
+_Static_assert(OBS_CORE_SETUP_RULES_VIDEO_GO == OBS_VIDEO_SUCCESS, "OBS_VIDEO_SUCCESS");
+_Static_assert(OBS_CORE_SETUP_RULES_VIDEO_FAIL == OBS_VIDEO_FAIL, "OBS_VIDEO_FAIL");
+_Static_assert(OBS_CORE_SETUP_RULES_VIDEO_INVALID_PARAM == OBS_VIDEO_INVALID_PARAM, "OBS_VIDEO_INVALID_PARAM");
+_Static_assert(OBS_CORE_SETUP_RULES_VIDEO_CURRENTLY_ACTIVE == OBS_VIDEO_CURRENTLY_ACTIVE, "OBS_VIDEO_CURRENTLY_ACTIVE");
+
 int obs_reset_video(struct obs_video_info *ovi)
 {
-	if (!obs)
-		return OBS_VIDEO_FAIL;
+	/* The gates, in order (obs_core_setup_rules_video_gate()): each step
+	 * is asked after its own read, so a call is made only when every
+	 * gate before it passed, as before. */
+	int gate = obs_core_setup_rules_video_gate(OBS_CORE_SETUP_RULES_VIDEO_CORE, obs != NULL);
+	if (gate != OBS_CORE_SETUP_RULES_VIDEO_GO)
+		return gate;
 
 	/* don't allow changing of video settings if active, or about to be. */
-	if (obs_video_active() || outputs_starting())
-		return OBS_VIDEO_CURRENTLY_ACTIVE;
+	gate = obs_core_setup_rules_video_gate(OBS_CORE_SETUP_RULES_VIDEO_ACTIVE, obs_video_active());
+	if (gate != OBS_CORE_SETUP_RULES_VIDEO_GO)
+		return gate;
+	gate = obs_core_setup_rules_video_gate(OBS_CORE_SETUP_RULES_VIDEO_STARTING, outputs_starting());
+	if (gate != OBS_CORE_SETUP_RULES_VIDEO_GO)
+		return gate;
 
-	if (!obs_video_output_size_valid(ovi->output_width, ovi->output_height) ||
-	    !obs_video_size_valid(ovi->base_width, ovi->base_height))
-		return OBS_VIDEO_INVALID_PARAM;
+	gate = obs_core_setup_rules_video_gate(OBS_CORE_SETUP_RULES_VIDEO_OUTPUT_SIZE,
+					       obs_video_output_size_valid(ovi->output_width, ovi->output_height));
+	if (gate != OBS_CORE_SETUP_RULES_VIDEO_GO)
+		return gate;
+	gate = obs_core_setup_rules_video_gate(OBS_CORE_SETUP_RULES_VIDEO_BASE_SIZE,
+					       obs_video_size_valid(ovi->base_width, ovi->base_height));
+	if (gate != OBS_CORE_SETUP_RULES_VIDEO_GO)
+		return gate;
 
 	/* the frame interval is fps_den / fps_num */
 	if (!ovi->fps_num || !ovi->fps_den)
@@ -1585,25 +1603,28 @@ static int obs_reset_video_internal(struct obs_video_info *ovi)
 #define SEC_TO_MSEC 1000
 #endif
 
+_Static_assert(OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
+
 bool obs_reset_audio2(const struct obs_audio_info2 *oai)
 {
 	struct obs_core_audio *audio = &obs->audio;
 	struct audio_output_info ai;
 
 	/* don't allow changing of audio settings if active. */
-	if (!obs || (audio->audio && audio_output_active(audio->audio)))
+	if (obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_CORE, obs != NULL) ||
+	    (audio->audio &&
+	     obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_ACTIVE, audio_output_active(audio->audio))))
 		return false;
 
 	obs_free_audio();
 	if (!oai)
 		return true;
 
-	if (oai->max_buffering_ms) {
-		uint32_t max_frames = oai->max_buffering_ms * oai->samples_per_sec / SEC_TO_MSEC;
-		max_frames += (AUDIO_OUTPUT_FRAMES - 1);
-		audio->max_buffering_ticks = (int)(max_frames / AUDIO_OUTPUT_FRAMES);
+	if (obs_core_setup_rules_buffer_set(oai->max_buffering_ms)) {
+		audio->max_buffering_ticks =
+			(int)obs_core_setup_rules_buffer_ticks(oai->max_buffering_ms, oai->samples_per_sec);
 	} else {
-		audio->max_buffering_ticks = 45;
+		audio->max_buffering_ticks = (int)obs_core_setup_rules_buffer_default_ticks();
 	}
 	audio->fixed_buffer = oai->fixed_buffering;
 
@@ -1754,14 +1775,15 @@ bool obs_enum_input_types2(size_t idx, const char **id, const char **unversioned
 const char *obs_get_latest_input_type_id(const char *unversioned_id)
 {
 	struct obs_source_info *latest = NULL;
-	int version = -1;
+	int version = OBS_CORE_SETUP_RULES_LATEST_NONE;
 
 	if (!unversioned_id)
 		return NULL;
 
 	for (size_t i = 0; i < obs->source_types.num; i++) {
 		struct obs_source_info *info = &obs->source_types.array[i];
-		if (strcmp(info->unversioned_id, unversioned_id) == 0 && (int)info->version > version) {
+		if (strcmp(info->unversioned_id, unversioned_id) == 0 &&
+		    obs_core_setup_rules_latest_newer(info->version, version)) {
 			latest = info;
 			version = (int)info->version;
 		}
@@ -3045,10 +3067,13 @@ void obs_reset_audio_monitoring(void)
 	pthread_mutex_unlock(&obs->audio.monitoring_mutex);
 }
 
+_Static_assert(OBS_CORE_SETUP_RULES_DO_NOT_SELF_MONITOR == OBS_SOURCE_DO_NOT_SELF_MONITOR,
+	       "OBS_SOURCE_DO_NOT_SELF_MONITOR");
+
 static bool check_all_aoc_sources(void *param, obs_source_t *src)
 {
 	UNUSED_PARAMETER(param);
-	if (src->info.output_flags & OBS_SOURCE_DO_NOT_SELF_MONITOR) {
+	if (obs_core_setup_rules_aoc_check(src->info.output_flags)) {
 		obs_data_t *settings = obs_source_get_settings(src);
 		const char *device_id = obs_data_get_string(settings, "device_id");
 		obs_source_audio_output_capture_device_changed(src, device_id);
@@ -3059,15 +3084,16 @@ static bool check_all_aoc_sources(void *param, obs_source_t *src)
 
 bool obs_set_audio_monitoring_device(const char *name, const char *id)
 {
-	if (!name || !id || !*name || !*id)
+	if (obs_core_setup_rules_monitor_missing(name != NULL) || obs_core_setup_rules_monitor_missing(id != NULL) ||
+	    obs_core_setup_rules_monitor_missing(*name != '\0') || obs_core_setup_rules_monitor_missing(*id != '\0'))
 		return false;
 
-	if (!obs_audio_monitoring_available())
+	if (obs_core_setup_rules_monitor_missing(obs_audio_monitoring_available()))
 		return false;
 
 	pthread_mutex_lock(&obs->audio.monitoring_mutex);
 
-	if (strcmp(id, obs->audio.monitoring_device_id) == 0) {
+	if (obs_core_setup_rules_monitor_same(strcmp(id, obs->audio.monitoring_device_id))) {
 		pthread_mutex_unlock(&obs->audio.monitoring_mutex);
 		return true;
 	}
@@ -3173,9 +3199,18 @@ void obs_get_video_frame_counts(uint32_t *total, uint32_t *skipped)
 		pthread_mutex_lock(&obs->video.mixes_mutex);
 		for (size_t i = 0; i < obs->video.mixes.num; i++) {
 			struct obs_core_video_mix *mix = obs->video.mixes.array[i];
-			bool counted = mix == main_mix || (mix->encoder_only_mix && mix->view == main_mix->view);
+			/* obs_core_setup_rules_mix_step(): each read is made
+			 * only when the rule asks for it, as before. */
+			enum obs_core_setup_rules_mix step =
+				obs_core_setup_rules_mix_step(OBS_CORE_SETUP_RULES_MIX_MAIN, mix == main_mix);
+			if (step == OBS_CORE_SETUP_RULES_MIX_ENCODER_ONLY)
+				step = obs_core_setup_rules_mix_step(step, mix->encoder_only_mix);
+			if (step == OBS_CORE_SETUP_RULES_MIX_VIEW)
+				step = obs_core_setup_rules_mix_step(step, mix->view == main_mix->view);
+			if (step == OBS_CORE_SETUP_RULES_MIX_VIDEO)
+				step = obs_core_setup_rules_mix_step(step, mix->video != NULL);
 
-			if (!counted || !mix->video)
+			if (step != OBS_CORE_SETUP_RULES_MIX_COUNT)
 				continue;
 
 			total_frames += video_output_get_total_frames(mix->video);

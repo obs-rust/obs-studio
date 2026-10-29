@@ -11,6 +11,7 @@
     "obs-canvas-rules.h",
     "obs-config.h",
     "obs-core-modules-loader.h",
+    "obs-core-setup-rules.h",
     "obs-data.h",
     "obs-defs.h",
     "obs-encoder-audio-start.h",

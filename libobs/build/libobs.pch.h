@@ -38,6 +38,8 @@
 #include "graphics/matrix4.h"
 #include "callback/calldata.h"
 
+#include "obs-core-setup-rules.h"
+
 #include "obs-host/com.h"
 #include "obs-host/graphics-thread.h"
 #include "obs-host/shared-texture.h"
