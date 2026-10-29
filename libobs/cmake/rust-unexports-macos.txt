@@ -644,6 +644,14 @@ _obs_nix_portal_sets_has
 _obs_nix_portal_sets_unchanged
 _obs_nix_portal_sets_request
 _obs_nix_portal_sets_partition
+# obs-nix-x11-keys.c: the X11 hotkey platform calls them inside libobs on
+# Linux and FreeBSD. Built on every host; not EXPORT.
+_obs_nix_x11_keys_from_base_keysym
+_obs_nix_x11_keys_row
+_obs_nix_x11_keys_pressed
+_obs_nix_x11_keys_from_keycode
+_obs_nix_x11_keys_from_virtual_key
+_obs_nix_x11_keys_to_virtual_key
 # obs-context-names.c: obs.c calls them inside libobs. Not EXPORT.
 _obs_context_name_dup
 _obs_context_name_deduplicate

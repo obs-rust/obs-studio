@@ -17,7 +17,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix-x11-keys.pch.h"
+#include "libobs/build/libobs-ported-nix-x11-keys.pch.h"
+
+/* Ported to rust/obs-hotkey (nix_x11_keys): the hybrid libobs drops this
+ * file. */
 
 /* The X11 key map lookups of obs-nix-x11.c, moved: the lookups, on plain
  * values. obs-nix-x11.c keeps every X call and the state. Declared in

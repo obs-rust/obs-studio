@@ -100,6 +100,7 @@ PORTED_ON_LINUX = (
     "obs-data.c.h.o",
     "obs-hevc.c.h.o",
     "obs-nix-system-info.c.h.o",
+    "obs-nix-x11-keys.c.h.o",
     "obs-video-plan.c.h.o",
 )
 # The unported remainder of a split file: still compiled as C.
@@ -172,6 +173,8 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-nix-x11-keys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-nix-x11-keys.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertIn("obs-win-crash-report.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertNotIn("obs-win-crash-report.c.h.o", objects)
         self.assertNotIn("obs-win-crash-report.c.h.o", PORTED.ported_objects(ROOT, "macos"))

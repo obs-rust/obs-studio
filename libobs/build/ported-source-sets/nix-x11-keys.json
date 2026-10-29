@@ -1,0 +1,5 @@
+{
+  "LIBOBS_LINUX_PORTED_SOURCES": [
+    "build/libobs.ported-nix-x11-keys+.h.c"
+  ]
+}
