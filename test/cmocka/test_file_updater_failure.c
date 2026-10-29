@@ -21,6 +21,7 @@
 #include <util/bmem.h>
 
 #include <file-updater/file-updater.h>
+#include "shared/file-updater/file-updater/curl-accept-encoding.h"
 #include "plugins/rtmp-services/service-specific/ingest-refresh-wait.h"
 
 #define TIMEOUT_MS 4000UL
@@ -210,12 +211,22 @@ static void successful_download_reaches_confirm(void **state)
 	assert_int_equal(u.confirm_calls, 1);
 	assert_non_null(u.data);
 	assert_string_equal(u.data, BODY);
-	/* What curl advertised on the wire: our outgoing calls must not ask for
-	 * brotli while the linked Brotli decoder carries CVE-2026-111497
-	 * (GHSA-c2vc-wwm8-6gx9). An empty CURLOPT_ACCEPT_ENCODING lets curl
-	 * send everything it was built with, br included. */
-	assert_non_null(strstr(accept_encoding, "gzip"));
+	/* What curl advertised on the wire. With "" the calls ask for every
+	 * coding this libcurl decodes, so br comes back where the linked Brotli
+	 * is one this repo pins (#2211). Apple keeps the stop-gap: the OS
+	 * libcurl's Brotli is not pinned here, so br must not be advertised
+	 * there, and gzip only where that libcurl has zlib (#2453). */
+	const curl_version_info_data *vi = curl_version_info(CURLVERSION_NOW);
+#if defined(__APPLE__)
+	if (vi->features & CURL_VERSION_LIBZ)
+		assert_non_null(strstr(accept_encoding, "gzip"));
 	assert_false(lists_coding(accept_encoding, "br"));
+#else
+	if (vi->features & CURL_VERSION_BROTLI)
+		assert_true(lists_coding(accept_encoding, "br"));
+	else
+		assert_false(lists_coding(accept_encoding, "br"));
+#endif
 	/* update_info_destroy joined the thread: the done callback has run. */
 	assert_int_equal(u.done_calls, 1);
 	assert_true(u.done_success);
