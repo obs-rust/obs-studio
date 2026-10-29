@@ -16,6 +16,8 @@
 //!   line is set once (while its stored `argc` is 0), and its copy's
 //!   strings (each with its terminator) follow a table of `argc + 1`
 //!   pointers;
+//! - [`data_file_found`]: the data file search ends at its first hit, in
+//!   the libobs data directory first, then in each added path in order;
 //! - [`data_path_match`]: the first data path equal to the one removed;
 //! - [`latest_newer`]: a source type's version is above the best so far,
 //!   compared as `i32` from [`LATEST_NONE`], so the first of equal versions
@@ -176,6 +178,15 @@ pub fn cmdline_table(argc: i32, ptr_size: usize) -> usize {
         .cast_unsigned()
         .wrapping_add(1)
         .wrapping_mul(ptr_size)
+}
+
+/// Same contract as C `obs_core_setup_rules_data_file_found`:
+/// `obs_find_data_file()` stops at a hit, asked after the libobs data
+/// directory and after each added path.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn data_file_found(found: bool) -> bool {
+    let _ = found;
+    todo!()
 }
 
 /// Same contract as C `obs_core_setup_rules_data_path_match`: `dstr_cmp()`

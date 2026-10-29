@@ -1,13 +1,13 @@
 //! Tier 1: the safe core of `libobs/obs-core-setup-rules.c.h`.
 //!
-//! The first seventeen tests mirror the cases of
+//! The first eighteen tests mirror the cases of
 //! `test/cmocka/test_core_setup_rules_steps.c` one to one, in the same
 //! order, with the same values and expectations. The first eleven call the
-//! rules directly, as the C test calls the moved functions. The last six
+//! rules directly, as the C test calls the moved functions. The last seven
 //! make the decisions `obs_reset_video()`, `obs_reset_audio2()`,
 //! `obs_set_cmdline_args()`, `obs_get_latest_input_type_id()`,
-//! `obs_set_audio_monitoring_device()` and `obs_get_video_frame_counts()`
-//! make for the C test's calls.
+//! `obs_set_audio_monitoring_device()`, `obs_get_video_frame_counts()` and
+//! `obs_find_data_file()` make for the C test's calls.
 //!
 //! Cases marked "characterized, not endorsed" are odd but real (#2878) and
 //! kept as the C has them. The tests after those pin the edges of each
@@ -16,8 +16,8 @@
 use obs_core::core_setup_rules::{
     AUDIO_OUTPUT_FRAMES, AudioStep, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, Mix,
     VideoGate, VideoStep, aoc_check, audio_refused, buffer_default_ticks, buffer_set, buffer_ticks,
-    cmdline_len, cmdline_set, cmdline_table, data_path_match, latest_newer, mix_step,
-    monitor_missing, monitor_same, video_gate,
+    cmdline_len, cmdline_set, cmdline_table, data_file_found, data_path_match, latest_newer,
+    mix_step, monitor_missing, monitor_same, video_gate,
 };
 use proptest::prelude::*;
 
@@ -391,7 +391,42 @@ fn test_frame_counts_without_mix() {
     assert_eq!(counted(true, false, false, false), (false, 2));
 }
 
+/// The search of `obs_find_data_file()`: the libobs data directory, then
+/// each added path in order, asking after each look whether it ends there.
+/// The index of the place the file was found in (0 is the libobs
+/// directory), and how many places were looked in.
+fn search(has_file: &[bool]) -> (Option<usize>, usize) {
+    for (i, &has) in has_file.iter().enumerate() {
+        if data_file_found(has) {
+            return (Some(i), i + 1);
+        }
+    }
+    (None, has_file.len())
+}
+
+/// `test_find_data_file_order`.
+#[test]
+fn test_find_data_file_order() {
+    // Nothing added and nothing in the libobs directory.
+    assert_eq!(search(&[false]), (None, 1));
+    // a/ and b/ both have it: a/.
+    assert_eq!(search(&[false, true, true]), (Some(1), 2));
+    // a/ without it is passed over: b/.
+    assert_eq!(search(&[false, false, true]), (Some(2), 3));
+    // a/ removed: b/; added again after b/: still b/.
+    assert_eq!(search(&[false, true]), (Some(1), 2));
+    assert_eq!(search(&[false, true, true]), (Some(1), 2));
+    // The libobs directory has it: found there, no added path looked at.
+    assert_eq!(search(&[true, true, true]), (Some(0), 1));
+}
+
 // ---------------------------------------------------------------- edges
+
+#[test]
+fn data_file_found_each_value() {
+    assert!(data_file_found(true));
+    assert!(!data_file_found(false));
+}
 
 #[test]
 fn video_gate_every_step_and_value() {
