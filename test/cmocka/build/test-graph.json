@@ -3472,6 +3472,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_order_steps": {
+      "sources": [
+        "test/cmocka/test_scene_item_order_steps.c",
+        "libobs/obs-scene-item-order.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-item-order.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_item_transform_steps": {
       "sources": [
         "test/cmocka/test_scene_item_transform_steps.c",
@@ -6473,6 +6493,12 @@
     },
     "test_scene_item_names_steps": {
       "target": "test_scene_item_names_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_order_steps": {
+      "target": "test_scene_item_order_steps",
       "command": [
         "${target}"
       ]
