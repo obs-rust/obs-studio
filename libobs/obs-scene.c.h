@@ -430,7 +430,7 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 
 	/* ----------------------- */
 
-	if (obs_scene_item_transform_bounded(item->bounds_type)) {
+	if (obs_scene_item_transform_bounded((int)item->bounds_type)) {
 		calculate_bounds_data(item, &origin, &scale, &cx, &cy);
 	} else {
 		/* Keep the scaled size signed: a flipped item's product is
@@ -457,7 +457,7 @@ static void compute_item_transform(struct obs_scene_item *item, uint32_t width, 
 
 	/* ----------------------- */
 
-	if (obs_scene_item_transform_bounded(item->bounds_type)) {
+	if (obs_scene_item_transform_bounded((int)item->bounds_type)) {
 		if (!item->absolute_coordinates)
 			size_to_absolute(&scale, &item->bounds, item);
 		else
@@ -575,9 +575,9 @@ static inline bool item_texture_enabled(const struct obs_scene_item *item)
 		.bounds_crop_top = item->bounds_crop.top,
 		.bounds_crop_right = item->bounds_crop.right,
 		.bounds_crop_bottom = item->bounds_crop.bottom,
-		.scale_filter = item->scale_filter,
-		.blend_method = item->blend_method,
-		.blend_type = item->blend_type,
+		.scale_filter = (int)item->scale_filter,
+		.blend_method = (int)item->blend_method,
+		.blend_type = (int)item->blend_type,
 		.is_scene = item->source && item->source->info.type == OBS_SOURCE_TYPE_SCENE,
 		.is_group = item->is_group,
 	};
@@ -646,7 +646,7 @@ static void render_item_texture(struct obs_scene_item *item, enum gs_color_space
 	uint32_t cy = gs_texture_get_height(tex);
 
 	struct obs_scene_render_effect_plan plan;
-	obs_scene_render_effect(item->scale_filter, item->output_scale.x, item->output_scale.y, &plan);
+	obs_scene_render_effect((int)item->scale_filter, item->output_scale.x, item->output_scale.y, &plan);
 	gs_effect_t *effect = render_effect(plan.effect);
 
 	if (plan.point_sampler) {
@@ -671,9 +671,9 @@ static void render_item_texture(struct obs_scene_item *item, enum gs_color_space
 	}
 
 	const float multiplier =
-		obs_scene_render_multiplier(current_space, source_space, obs_get_video_sdr_white_level());
+		obs_scene_render_multiplier((int)current_space, (int)source_space, obs_get_video_sdr_white_level());
 	const char *tech_name =
-		render_technique_name(obs_scene_render_technique(plan.upscale, current_space, source_space));
+		render_technique_name(obs_scene_render_technique(plan.upscale, (int)current_space, (int)source_space));
 
 	gs_eparam_t *const multiplier_param = gs_effect_get_param_by_name(effect, "multiplier");
 	if (multiplier_param)
@@ -768,7 +768,7 @@ static inline void render_item(struct obs_scene_item *item)
 
 			/* White for Darken (#1406), see
 			 * obs_scene_render_clear_white(). */
-			if (obs_scene_render_clear_white(item->blend_type))
+			if (obs_scene_render_clear_white((int)item->blend_type))
 				vec4_set(&clear_color, 1.0f, 1.0f, 1.0f, 1.0f);
 			else
 				vec4_zero(&clear_color);
@@ -805,7 +805,7 @@ static inline void render_item(struct obs_scene_item *item)
 		}
 	}
 
-	const bool linear_srgb = obs_scene_render_linear_srgb(item->item_render != NULL, item->blend_method);
+	const bool linear_srgb = obs_scene_render_linear_srgb(item->item_render != NULL, (int)item->blend_method);
 	const bool previous = gs_set_linear_srgb(linear_srgb);
 	gs_matrix_push();
 	gs_matrix_mul(&item->draw_transform);
