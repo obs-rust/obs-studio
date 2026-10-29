@@ -399,6 +399,30 @@ static uint32_t buffering_ms(uint32_t rate, uint32_t ms)
 	return got.max_buffering_ms;
 }
 
+/* A reset with no info is a success on a core whose audio was never opened,
+ * and the core stays usable afterwards. obs_free_audio() runs on that cold
+ * core, so it may only destroy mutexes obs_init_audio() created: on the
+ * Windows pthread layer the unconditional destroy was a SIGSEGV, which is
+ * why the Windows Tier 2 lane failed in this group (#2910). */
+static void test_reset_audio_cold(void **state)
+{
+	(void)state;
+	SKIP_WITHOUT_OBS();
+
+	assert_true(obs_reset_audio2(NULL));
+	assert_true(obs_reset_audio2(NULL));
+
+	struct obs_audio_info2 oai = {48000, SPEAKERS_STEREO, 0, false};
+	assert_true(obs_reset_audio2(&oai));
+	struct obs_audio_info2 got;
+	memset(&got, 0, sizeof(got));
+	assert_true(obs_get_audio_info2(&got));
+	assert_int_equal(got.samples_per_sec, 48000);
+
+	/* And the same cold-core free again on the way out. */
+	assert_true(obs_reset_audio2(NULL));
+}
+
 /* The buffering comes back in milliseconds from its ticks:
  * ticks * 1024 * 1000 / rate. */
 static void test_reset_audio_ticks(void **state)
@@ -649,9 +673,10 @@ int main(void)
 		CASE(test_monitor),         CASE(test_mix_step),         CASE(test_before_startup),
 	};
 	const struct CMUnitTest callers[] = {
-		CASE(test_reset_video_gates),    CASE(test_reset_audio_ticks), CASE(test_cmdline_once),
-		CASE(test_latest_input_type),    CASE(test_monitoring_device), CASE(test_frame_counts_without_mix),
-		CASE(test_find_data_file_order),
+		CASE(test_reset_audio_cold),         CASE(test_reset_video_gates),
+		CASE(test_reset_audio_ticks),        CASE(test_cmdline_once),
+		CASE(test_latest_input_type),        CASE(test_monitoring_device),
+		CASE(test_frame_counts_without_mix), CASE(test_find_data_file_order),
 	};
 	int failed = cmocka_run_group_tests_name("steps", steps, NULL, NULL);
 	failed += cmocka_run_group_tests_name("callers", callers, group_setup, group_teardown);
