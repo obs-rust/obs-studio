@@ -523,10 +523,20 @@ class HostNamedFilesTest(unittest.TestCase):
 
     def test_the_sanitizer_lane_ignores_what_is_not_a_compile_input(self):
         ratchet = ("frontend",)
-        # The CMakeLists itself names the flags; only sources below it compile.
-        for path in ("frontend/CMakeLists.txt", "docs/rust-port/naming.md", "plugins/obs-x264/obs-x264.c"):
+        for path in ("docs/rust-port/naming.md", "plugins/obs-x264/obs-x264.c"):
             got = scope([path], event="pull_request", ratchet_dirs=ratchet)
             self.assertFalse(got.asan, path)
+
+    def test_the_pr_that_turns_a_targets_ratchet_on_selects_the_sanitizer_lane(self):
+        # #2956: opt-in diffs are one CMakeLists with 9 added lines, so the
+        # source-file rule alone left that PR's sanitizer build to the night's
+        # schedule — the blind spot #2923 exists to remove.
+        got = scope(
+            ["plugins/decklink-captions/CMakeLists.txt"],
+            event="pull_request",
+            ratchet_dirs=("plugins/decklink-captions",),
+        )
+        self.assertTrue(got.asan)
 
     def test_a_pin_only_target_selects_no_sanitizer_lane(self):
         # Nothing in the tree is ratcheted unless its CMakeLists names a group

@@ -47,10 +47,21 @@ class ConversionRatchetTest(unittest.TestCase):
         dirs = ("frontend", "libobs")
         self.assertTrue(hit("frontend/components/OBSAdvAudioCtrl.cpp.hpp", dirs))
         self.assertTrue(hit("libobs/obs.c.h", dirs))
-        self.assertFalse(hit("frontend/CMakeLists.txt", dirs))
         self.assertFalse(hit("docs/rust-port/naming.md", dirs))
         # A target's sibling with a shared prefix is a different directory.
         self.assertFalse(hit("frontend-tools/foo.cpp", dirs))
+
+    def test_the_cmake_lists_that_turns_the_ratchet_on_hits(self) -> None:
+        # #2956: the PR that opts a target into a group changes only its
+        # CMakeLists, and the lane that reports that target's sanitizer-only
+        # diagnostics is the one the change needs. A nested CMakeLists is a
+        # different target (CMake adds a target's sources itself), and a
+        # directory outside the ratchet opts nothing in.
+        dirs = ("frontend", "plugins/decklink-captions")
+        self.assertTrue(hit("plugins/decklink-captions/CMakeLists.txt", dirs))
+        self.assertTrue(hit("frontend/CMakeLists.txt", dirs))
+        self.assertFalse(hit("frontend/build/CMakeLists.txt", dirs))
+        self.assertFalse(hit("plugins/obs-x264/CMakeLists.txt", dirs))
 
     def test_the_repository_ratchet_is_read_from_the_tree(self) -> None:
         dirs = repo_ratcheted_dirs(ROOT)
