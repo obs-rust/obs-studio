@@ -618,6 +618,32 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_setup_rules_steps": {
+      "sources": [
+        "test/cmocka/test_core_setup_rules_steps.c",
+        "libobs/obs-core-setup-rules.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-core-setup-rules.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_crash_sentinel_dir": {
       "sources": [
         "test/cmocka/test_crash_sentinel_dir.cpp",
@@ -5381,6 +5407,20 @@
     },
     "test_context_name_helpers": {
       "target": "test_context_name_helpers"
+    },
+    "test_core_setup_rules_steps": {
+      "target": "test_core_setup_rules_steps",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_crash_sentinel_dir": {
       "target": "test_crash_sentinel_dir",
