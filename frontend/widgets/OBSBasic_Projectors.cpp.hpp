@@ -71,7 +71,7 @@ void OBSBasic::LoadSavedProjectors(obs_data_array_t *array)
 		OBSDataAutoRelease projectorData = obs_data_array_item(array, i);
 		SavedProjectorInfo info = {};
 
-		info.monitor = obs_data_get_int(projectorData, "monitor");
+		info.monitor = static_cast<int>(obs_data_get_int(projectorData, "monitor"));
 		info.type = static_cast<ProjectorType>(obs_data_get_int(projectorData, "type"));
 		info.geometry = std::string(obs_data_get_string(projectorData, "geometry"));
 		info.name = std::string(obs_data_get_string(projectorData, "name"));
@@ -115,8 +115,10 @@ QList<QString> OBSBasic::GetProjectorMenuMonitorsFormatted()
 			name = QString("%1 %2").arg(QTStr("Display")).arg(QString::number(i + 1));
 		}
 
-		int screenPixelWidth = std::round((screenGeometry.width() * screenPixelRatio) * 0.5f) * 2;
-		int screenPixelHeight = std::round((screenGeometry.height() * screenPixelRatio) * 0.5f) * 2;
+		int screenPixelWidth =
+			static_cast<int>(std::round((screenGeometry.width() * screenPixelRatio) * 0.5f)) * 2;
+		int screenPixelHeight =
+			static_cast<int>(std::round((screenGeometry.height() * screenPixelRatio) * 0.5f)) * 2;
 
 		QString str = QString("%1: %2x%3 @ %4,%5")
 				      .arg(name, QString::number(screenPixelWidth), QString::number(screenPixelHeight),

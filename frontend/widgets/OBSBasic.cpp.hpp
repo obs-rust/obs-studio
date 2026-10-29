@@ -245,9 +245,9 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 		UpdateContextBarVisibility();
 		UpdatePreviewControls();
-		dpi = devicePixelRatioF();
+		dpi = static_cast<float>(devicePixelRatioF());
 	};
-	dpi = devicePixelRatioF();
+	dpi = static_cast<float>(devicePixelRatioF());
 
 	connect(windowHandle(), &QWindow::screenChanged, this, displayResize);
 	connect(ui->preview, &OBSQTDisplay::DisplayResized, this, displayResize);
@@ -456,8 +456,8 @@ bool OBSBasic::InitBasicConfigDefaults()
 	uint32_t cx = static_cast<uint32_t>(primaryScreen->size().width());
 	uint32_t cy = static_cast<uint32_t>(primaryScreen->size().height());
 
-	cx *= devicePixelRatioF();
-	cy *= devicePixelRatioF();
+	cx = static_cast<uint32_t>(cx * devicePixelRatioF());
+	cy = static_cast<uint32_t>(cy * devicePixelRatioF());
 
 	bool oldResolutionDefaults = config_get_bool(App()->GetUserConfig(), "General", "Pre19Defaults");
 
@@ -517,7 +517,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	/* ----------------------------------------------------- */
 	/* enforce minimum retry delay of 1 second prior to 27.1 */
 	if (config_has_user_value(activeConfiguration, "Output", "RetryDelay")) {
-		int retryDelay = config_get_uint(activeConfiguration, "Output", "RetryDelay");
+		int retryDelay = static_cast<int>(config_get_uint(activeConfiguration, "Output", "RetryDelay"));
 		if (retryDelay < 1) {
 			config_set_uint(activeConfiguration, "Output", "RetryDelay", 1);
 			changed = true;
@@ -1444,7 +1444,7 @@ int OBSBasic::ResetVideo()
 	ovi.output_format = GetVideoFormatFromName(colorFormat);
 	ovi.colorspace = GetVideoColorSpaceFromName(colorSpace);
 	ovi.range = astrcmpi(colorRange, "Full") == 0 ? VIDEO_RANGE_FULL : VIDEO_RANGE_PARTIAL;
-	ovi.adapter = config_get_uint(App()->GetUserConfig(), "Video", "AdapterIdx");
+	ovi.adapter = static_cast<uint32_t>(config_get_uint(App()->GetUserConfig(), "Video", "AdapterIdx"));
 	ovi.gpu_conversion = true;
 	ovi.scale_type = GetScaleType(activeConfiguration);
 
@@ -1510,7 +1510,7 @@ bool OBSBasic::ResetAudio()
 	ProfileScope("OBSBasic::ResetAudio");
 
 	struct obs_audio_info2 ai = {};
-	ai.samples_per_sec = config_get_uint(activeConfiguration, "Audio", "SampleRate");
+	ai.samples_per_sec = static_cast<uint32_t>(config_get_uint(activeConfiguration, "Audio", "SampleRate"));
 
 	const char *channelSetupStr = config_get_string(activeConfiguration, "Audio", "ChannelSetup");
 
@@ -1697,7 +1697,7 @@ void OBSBasic::GetFPSNanoseconds(uint32_t &num, uint32_t &den) const
 
 void OBSBasic::GetConfigFPS(uint32_t &num, uint32_t &den) const
 {
-	uint32_t type = config_get_uint(activeConfiguration, "Video", "FPSType");
+	uint32_t type = static_cast<uint32_t>(config_get_uint(activeConfiguration, "Video", "FPSType"));
 
 	if (type == 1) { //"Integer"
 		GetFPSInteger(num, den);
@@ -1938,7 +1938,7 @@ void OBSBasic::closeWindow()
 void OBSBasic::UpdateEditMenu()
 {
 	QModelIndexList items = GetAllSelectedSourceItems();
-	int totalCount = items.count();
+	int totalCount = static_cast<int>(items.count());
 	size_t filter_count = 0;
 
 	if (totalCount == 1) {

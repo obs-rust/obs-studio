@@ -514,7 +514,7 @@ QMenu *OBSBasic::AddBackgroundColorMenu(QMenu *menu, QWidgetAction *widgetAction
 	obs_data_release(privData);
 
 	obs_data_set_default_int(privData, "color-preset", 0);
-	int preset = obs_data_get_int(privData, "color-preset");
+	int preset = static_cast<int>(obs_data_get_int(privData, "color-preset"));
 
 	action = menu->addAction(QTStr("Clear"), this, &OBSBasic::ColorChange);
 	action->setCheckable(true);

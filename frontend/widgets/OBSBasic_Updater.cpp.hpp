@@ -157,7 +157,7 @@ void OBSBasic::TimedCheckForUpdates()
 	}
 
 	long long lastUpdate = config_get_int(App()->GetAppConfig(), "General", "LastUpdateCheck");
-	uint32_t lastVersion = config_get_int(App()->GetAppConfig(), "General", "LastVersion");
+	uint32_t lastVersion = static_cast<uint32_t>(config_get_int(App()->GetAppConfig(), "General", "LastVersion"));
 
 	if (lastVersion < LIBOBS_API_VER) {
 		lastUpdate = 0;

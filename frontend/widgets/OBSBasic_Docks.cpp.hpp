@@ -58,7 +58,7 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 	}
 
 #define RESET_DOCKLIST(dockList)                                                                               \
-	for (int i = dockList.size() - 1; i >= 0; i--) {                                                       \
+	for (int i = static_cast<int>(dockList.size()) - 1; i >= 0; i--) {                                                       \
 		dockList[i]->setVisible(true);                                                                 \
 		dockList[i]->setFloating(true);                                                                \
 		dockList[i]->move(frameGeometry().topLeft() + rect().center() - dockList[i]->rect().center()); \
@@ -116,11 +116,11 @@ void OBSBasic::on_lockDocks_toggled(bool lock)
 	controlsDock->setFeatures(mainFeatures);
 	statsDock->setFeatures(features);
 
-	for (int i = extraDocks.size() - 1; i >= 0; i--) {
+	for (int i = static_cast<int>(extraDocks.size()) - 1; i >= 0; i--) {
 		extraDocks[i]->setFeatures(features);
 	}
 
-	for (int i = extraCustomDocks.size() - 1; i >= 0; i--) {
+	for (int i = static_cast<int>(extraCustomDocks.size()) - 1; i >= 0; i--) {
 		extraCustomDocks[i]->setFeatures(features);
 	}
 
@@ -181,12 +181,12 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 void OBSBasic::RemoveDockWidget(const QString &name)
 {
 	if (extraDockNames.contains(name)) {
-		int idx = extraDockNames.indexOf(name);
+		int idx = static_cast<int>(extraDockNames.indexOf(name));
 		extraDockNames.removeAt(idx);
 		extraDocks[idx].reset();
 		extraDocks.removeAt(idx);
 	} else if (extraCustomDockNames.contains(name)) {
-		int idx = extraCustomDockNames.indexOf(name);
+		int idx = static_cast<int>(extraCustomDockNames.indexOf(name));
 		extraCustomDockNames.removeAt(idx);
 		removeDockWidget(extraCustomDocks[idx]);
 		extraCustomDocks.removeAt(idx);
@@ -244,7 +244,7 @@ void OBSBasic::setDockCornersVertical(bool vertical)
 void OBSBasic::RepairCustomExtraDockName()
 {
 	QDockWidget *dock = reinterpret_cast<QDockWidget *>(sender());
-	int idx = extraCustomDocks.indexOf(dock);
+	int idx = static_cast<int>(extraCustomDocks.indexOf(dock));
 	QSignalBlocker block(dock);
 
 	if (idx == -1) {

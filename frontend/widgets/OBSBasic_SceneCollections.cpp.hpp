@@ -1201,7 +1201,7 @@ void OBSBasic::LoadData(obs_data_t *collectionData, SceneCollection &collection)
 		}
 	}
 
-	int newDuration = obs_data_get_int(collectionData, "transition_duration");
+	int newDuration = static_cast<int>(obs_data_get_int(collectionData, "transition_duration"));
 	if (!newDuration) {
 		newDuration = 300;
 	}

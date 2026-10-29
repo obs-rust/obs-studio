@@ -171,8 +171,8 @@ void OBSBasic::LoadQuickTransitions(obs_data_array_t *array)
 		OBSDataAutoRelease itemData = obs_data_array_item(array, i);
 		OBSDataArrayAutoRelease hotkeys = obs_data_get_array(itemData, "hotkeys");
 		const char *name = obs_data_get_string(itemData, "name");
-		int duration = obs_data_get_int(itemData, "duration");
-		int id = obs_data_get_int(itemData, "id");
+		int duration = static_cast<int>(obs_data_get_int(itemData, "duration"));
+		int id = static_cast<int>(obs_data_get_int(itemData, "id"));
 		bool toBlack = obs_data_get_bool(itemData, "fade_to_black");
 
 		if (id) {
