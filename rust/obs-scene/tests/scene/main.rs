@@ -13,6 +13,7 @@ mod extent;
 mod extent_parity;
 mod item_names;
 mod item_names_parity;
+mod item_order;
 mod item_transform;
 mod item_transform_parity;
 mod render_plan;
