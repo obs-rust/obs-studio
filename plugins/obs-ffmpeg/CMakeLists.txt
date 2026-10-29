@@ -88,6 +88,14 @@ target_link_libraries(
     $<$<BOOL:${ENABLE_NEW_MPEGTS_OUTPUT}>:Libsrt::Libsrt>
 )
 
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  obs-ffmpeg
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 if(OS_WINDOWS)
   if(CMAKE_VS_PLATFORM_NAME STREQUAL x64)
     target_sources(obs-ffmpeg PRIVATE build/obs-ffmpeg.amf-windows+.hpp.cpp texture-amf-opts.hpp)
