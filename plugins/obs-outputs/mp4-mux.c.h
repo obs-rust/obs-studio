@@ -517,11 +517,11 @@ static size_t mp4_write_colr(struct mp4_mux *mux, obs_encoder_t *enc)
 	pri = trc = spc = 0;
 	get_colour_information(enc, &pri, &trc, &spc, &full_range);
 
-	s_write(s, "nclx", 4);    // colour_type
-	s_wb16(s, pri);           // colour_primaries
-	s_wb16(s, trc);           // transfer_characteristics
-	s_wb16(s, spc);           // matrix_coefficiencts
-	s_w8(s, full_range << 7); // full range flag + 7 reserved bits (0)
+	s_write(s, "nclx", 4);               // colour_type
+	s_wb16(s, pri);                      // colour_primaries
+	s_wb16(s, trc);                      // transfer_characteristics
+	s_wb16(s, spc);                      // matrix_coefficiencts
+	s_w8(s, (uint8_t)(full_range << 7)); // full range flag + 7 reserved bits (0)
 
 	return 19;
 }
@@ -1116,7 +1116,7 @@ static size_t mp4_write_text(struct mp4_mux *mux)
 
 static inline uint32_t rl32(const uint8_t *ptr)
 {
-	return ((uint32_t)ptr[3] << 24) + (ptr[2] << 16) + (ptr[1] << 8) + ptr[0];
+	return ((uint32_t)ptr[3] << 24) + ((uint32_t)ptr[2] << 16) + ((uint32_t)ptr[1] << 8) + (uint32_t)ptr[0];
 }
 
 static inline uint16_t rl16(const uint8_t *ptr)
@@ -1609,7 +1609,8 @@ static size_t mp4_write_sbgp_sbgp_opus(struct mp4_mux *mux, struct mp4_track *tr
 
 	s_wb32(s, 1); // entry_count
 	/// 10.1 AudioRollRecoveryEntry
-	s_wb16(s, -preroll_count); // roll_distance
+	/* roll_distance is signed: the entry's pre-roll length as two's complement. */
+	s_wb16(s, (uint16_t)(0u - preroll_count)); // roll_distance
 
 	size_t size_sgpd = write_box_size(s, start);
 
