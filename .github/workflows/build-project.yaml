@@ -246,7 +246,7 @@ jobs:
               # selected path in the push, not only its final commit.
               base="${{ github.event.before || 'HEAD^1' }}"
             fi
-            eval "$(uv run --no-project ci/ci_scope.py "${base}")"
+            eval "$(uv run --no-project ci/ci_scope.py "${base}" --event "${GITHUB_EVENT_NAME}" --ref "${GITHUB_REF_NAME}")"
           fi
           # Fast PR path (#992): a PR or merge-queue run that no path escalates
           # to the full builds runs only the lanes its paths select; the

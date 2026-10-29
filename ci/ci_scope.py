@@ -1,7 +1,8 @@
 #!/usr/bin/env -S uv run --script
 """Which CI jobs a change needs (obs-rust/obs-studio#436).
 
-    uv run ci/ci_scope.py <base-ref>        # writes core/macos/windows to $GITHUB_OUTPUT
+    uv run ci/ci_scope.py <base-ref> --event <name> --ref <ref>
+                                            # writes core/macos/windows to $GITHUB_OUTPUT
 
 One table (LANES) maps path globs to lanes; a lane runs only when a changed
 file matches its row, otherwise its job is skipped and passes CI Gate. No
@@ -48,8 +49,11 @@ Platform and Qt lanes:
 Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
 `rust/*/src/platform/windows/`, ...) starts that platform's jobs. Core files
-carry no platform defines (ci/platform_ifdef_ratchet.py), so a core change
-runs on Linux. `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
+carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR or a
+merge-queue run a core change is Linux only. A push to master is the
+exception: core code selects the macOS and Windows Rust lanes too, because
+the platform builds read it and a Windows-only break in it otherwise lands
+unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
 (except `os-<os>.cmake`, which starts its own OS, and the three hidden-symbol
 lists when they add or drop the same plain names, which Linux checks: #2288),
 the root CMake files, crate `build.rs`, `platform/mod.rs` and the C++ cmocka tests (with their
@@ -67,6 +71,7 @@ runs at the release gate.
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
@@ -242,7 +247,8 @@ def linked_crates(read: Callable[[str], str], root: str = "libobs-rust") -> set[
 
 # The OS lanes (#992), transposed: each lists the areas that can start it. A
 # changed file starts an OS lane only inside one of its areas, so a
-# docs/.../platform-windows.md starts nothing. Core files start Linux only.
+# docs/.../platform-windows.md starts nothing. Core files start Linux only on
+# a PR or merge-queue run; a master push adds both platform lanes (#2916).
 _ALL_AREAS = ("libobs", "rust/", "frontend/", "plugins/", "shared/", "deps/", "cmake/", "test/", "build-aux/")
 OS_LANES: dict[str, tuple[str, ...]] = {
     LINUX: _ALL_AREAS,
@@ -372,6 +378,18 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
     return ",".join(sorted(CROSS_ALIASES[os] for os in oses))
 
 
+def core_master_push_lanes(core: bool, event: str, ref: str) -> bool:
+    """Core code on a push to master also needs both platform Rust lanes (#2916).
+
+    A `libobs/` or `rust/` only diff selects no platform lane, so a Windows- or
+    macOS-only break in core code reached master having never been compiled
+    there (#2910: glibc tolerated the mutex destroy, the Windows pthread layer
+    crashed, and the failure surfaced in an unrelated `shared/` PR's lane).
+    Master pushes only: a PR and a merge-queue run keep the path selection, so
+    the queue pays nothing for it."""
+    return core and event == "push" and ref == "master"
+
+
 def scope(
     files: list[str],
     exists: Callable[[str], bool] = lambda path: False,
@@ -379,10 +397,13 @@ def scope(
     submodules: frozenset[str] = frozenset(),
     cmocka_paths: tuple[str, ...] = (),
     hidden_mirrored: bool = False,
+    event: str = "",
+    ref: str = "",
 ) -> Scope:
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing). `submodules` is accepted for callers
-    but no path escalates to a full run any more."""
+    but no path escalates to a full run any more. `event`/`ref` are the
+    workflow's, and only change core code on a master push (`core_master_push_lanes`)."""
     core = macos = windows = qt = tier2 = qt_sdk = False
     targets: set[str] = set()
     linked = tuple(f"rust/{c}/**" for c in sorted(linked_crates(read)))
@@ -415,6 +436,8 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
+    if core_master_push_lanes(core, event, ref):
+        macos = windows = True
     docs_only = bool(files) and all(is_docs(path) for path in files)
     return Scope(core, macos, windows, qt, tier2, False, ",".join(sorted(targets)), qt_sdk, docs_only, cross_targets(files, read))
 
@@ -440,11 +463,16 @@ def base_text(base: str, path: str) -> str:
 
 
 def main() -> int:
-    files = changed_files(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
+    parser.add_argument("base", help="git ref to diff against, or ALL for every tracked file")
+    parser.add_argument("--event", default="", help="the workflow's event name (GITHUB_EVENT_NAME)")
+    parser.add_argument("--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)")
+    args = parser.parse_args()
+    files = changed_files(args.base)
     mirrored = False
-    if sys.argv[1] != "ALL" and any(path in HIDDEN_LISTS for path in files):
+    if args.base != "ALL" and any(path in HIDDEN_LISTS for path in files):
         fork = subprocess.run(
-            ["git", "merge-base", sys.argv[1], "HEAD"], check=True, capture_output=True, text=True
+            ["git", "merge-base", args.base, "HEAD"], check=True, capture_output=True, text=True
         ).stdout.strip()
         mirrored = hidden_lists_mirrored(lambda path: base_text(fork, path), read_text)
     result = scope(
@@ -453,6 +481,8 @@ def main() -> int:
         read_text,
         cmocka_paths=repo_cmocka_source_paths(Path(".")),
         hidden_mirrored=mirrored,
+        event=args.event,
+        ref=args.ref,
     )
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))

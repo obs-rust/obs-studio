@@ -391,8 +391,14 @@ the paths that select them, so a change only triggers the tests it can affect.
   cmocka tests with their `tests.d` registrations (#610). Pushes and the
   merge queue are scoped the same way. A master push adds the lanes a PR
   defers (Linux Tier 2, Qt, the workspace tests) and runs macOS/Windows
-  Rust tests and Tier 2 only for paths that select them; it builds no OBS
-  app. Every platform and every app build runs on schedule,
+  Rust tests and Tier 2 for paths that select them **and for core code**
+  (`libobs/`, `rust/`, `Cargo.lock`): a core-only diff selects no platform
+  lane on a PR, so a Windows- or macOS-only break in it used to land on
+  master never compiled there (#2916, #2910). That escalation is master-push
+  only, so the PR and merge-queue paths pay nothing for it. A red master run
+  from this lane means **fix forward or revert on master**: it reports after
+  the change landed, and the run that finds it is often another change's.
+  A master push builds no OBS app. Every platform and every app build runs on schedule,
   workflow_dispatch, tags, release branches and in the release gate; no PR
   path selects the full builds.
   Packaging and submodule moves are still compiled on Linux (touched targets)
