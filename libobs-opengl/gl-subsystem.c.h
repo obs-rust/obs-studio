@@ -112,7 +112,7 @@ static void APIENTRY gl_debug_proc(GLenum source, GLenum type, GLuint id, GLenum
 	blog(LOG_DEBUG, "[%s][%s]{%s}: %.*s", source_str, type_str, severity_str, length, message);
 }
 
-static void gl_enable_debug()
+static void gl_enable_debug(void)
 {
 	if (GLAD_GL_VERSION_4_3) {
 		glDebugMessageCallback(gl_debug_proc, NULL);
