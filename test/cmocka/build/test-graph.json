@@ -1875,6 +1875,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_nix_x11_keys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_x11_keys_steps.c",
+        "libobs/obs-nix-x11-keys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-x11-keys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_no_core_getters": {
       "sources": [
         "test/cmocka/test_no_core_getters.c"
@@ -5961,6 +5981,12 @@
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_nix_x11_keys_steps": {
+      "target": "test_nix_x11_keys_steps",
       "command": [
         "${target}"
       ]
