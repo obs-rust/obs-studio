@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 82472,
-      "libobs": 84222,
-      "plugins": 145406,
+      "libobs": 84617,
+      "plugins": 145489,
       "shared": 15938
     },
-    "percent": 11.81,
-    "ported_lines": 38736,
-    "total_lines": 328038
+    "percent": 11.89,
+    "ported_lines": 39064,
+    "total_lines": 328516
   },
-  "commit": "fbfb963",
+  "commit": "5f166c9",
   "date": "2026-10-29",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 33.66,
-          "ported_lines": 18534,
-          "total_lines": 55061
+          "percent": 33.97,
+          "ported_lines": 18823,
+          "total_lines": 55417
         },
         "graphics": {
           "percent": 49.56,
@@ -39,9 +39,9 @@
           "total_lines": 12901
         },
         "media-io": {
-          "percent": 72.48,
-          "ported_lines": 2291,
-          "total_lines": 3161
+          "percent": 72.81,
+          "ported_lines": 2330,
+          "total_lines": 3200
         },
         "util": {
           "percent": 87.92,
@@ -49,19 +49,19 @@
           "total_lines": 13099
         }
       },
-      "files": 235,
-      "hybrid_lines": 45486,
-      "percent": 45.99,
-      "ported_lines": 38736,
-      "total_lines": 84222
+      "files": 238,
+      "hybrid_lines": 45553,
+      "percent": 46.17,
+      "ported_lines": 39064,
+      "total_lines": 84617
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 36.3,
-            "ported_lines": 18455,
-            "total_lines": 50834
+            "percent": 36.5,
+            "ported_lines": 18656,
+            "total_lines": 51114
           },
           "graphics": {
             "percent": 50.22,
@@ -69,9 +69,9 @@
             "total_lines": 12731
           },
           "media-io": {
-            "percent": 72.48,
-            "ported_lines": 2291,
-            "total_lines": 3161
+            "percent": 72.81,
+            "ported_lines": 2330,
+            "total_lines": 3200
           },
           "util": {
             "percent": 90.45,
@@ -79,9 +79,9 @@
             "total_lines": 9935
           }
         },
-        "files": 212,
-        "hybrid_lines": 40535,
-        "percent": 47.12,
+        "files": 214,
+        "hybrid_lines": 40614,
+        "percent": 47.24,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -162,6 +162,7 @@
           "obs-nix-portal-shortcut-sets.c.h",
           "obs-nix-system-info.c.h",
           "obs-nix-x11-keys.c.h",
+          "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
@@ -200,6 +201,7 @@
           "obs-source-deinterlace-pacing.c.h",
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-duplicate.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -256,15 +258,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 36126,
-        "total_lines": 76661
+        "ported_lines": 36366,
+        "total_lines": 76980
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 38.34,
-            "ported_lines": 17362,
-            "total_lines": 45289
+            "percent": 38.67,
+            "ported_lines": 17651,
+            "total_lines": 45645
           },
           "graphics": {
             "percent": 50.22,
@@ -272,9 +274,9 @@
             "total_lines": 12731
           },
           "media-io": {
-            "percent": 72.48,
-            "ported_lines": 2291,
-            "total_lines": 3161
+            "percent": 72.81,
+            "ported_lines": 2330,
+            "total_lines": 3200
           },
           "util": {
             "percent": 90.37,
@@ -282,9 +284,9 @@
             "total_lines": 9853
           }
         },
-        "files": 197,
-        "hybrid_lines": 36083,
-        "percent": 49.2,
+        "files": 200,
+        "hybrid_lines": 36150,
+        "percent": 49.39,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -331,6 +333,7 @@
           "obs-avc.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-rules.c.h",
+          "obs-cocoa-keys.c.h",
           "obs-context-names.c.h",
           "obs-core-setup-rules.c.h",
           "obs-data.c.h",
@@ -357,6 +360,7 @@
           "obs-module-source-rules.c.h",
           "obs-module-type-rules.c.h",
           "obs-nal.c.h",
+          "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
@@ -395,6 +399,7 @@
           "obs-source-deinterlace-pacing.c.h",
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-duplicate.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -449,15 +454,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 34951,
-        "total_lines": 71034
+        "ported_lines": 35279,
+        "total_lines": 71429
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 37.47,
-            "ported_lines": 17441,
-            "total_lines": 46548
+            "percent": 37.67,
+            "ported_lines": 17642,
+            "total_lines": 46828
           },
           "graphics": {
             "percent": 49.62,
@@ -465,9 +470,9 @@
             "total_lines": 12886
           },
           "media-io": {
-            "percent": 72.48,
-            "ported_lines": 2291,
-            "total_lines": 3161
+            "percent": 72.81,
+            "ported_lines": 2330,
+            "total_lines": 3200
           },
           "util": {
             "percent": 85.0,
@@ -475,9 +480,9 @@
             "total_lines": 10549
           }
         },
-        "files": 202,
-        "hybrid_lines": 38051,
-        "percent": 47.98,
+        "files": 204,
+        "hybrid_lines": 38130,
+        "percent": 48.1,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -550,6 +555,7 @@
           "obs-module-source-rules.c.h",
           "obs-module-type-rules.c.h",
           "obs-nal.c.h",
+          "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
@@ -588,6 +594,7 @@
           "obs-source-deinterlace-pacing.c.h",
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-duplicate.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -643,12 +650,12 @@
           "util/utf8-host-windows.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 35093,
-        "total_lines": 73144
+        "ported_lines": 35333,
+        "total_lines": 73463
       }
     }
   },
   "rust": {
-    "lines": 136245
+    "lines": 137691
   }
 }
