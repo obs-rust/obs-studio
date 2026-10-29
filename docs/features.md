@@ -2402,6 +2402,11 @@ area.
   no longer refused, or asked for texture callbacks, because of caps it
   never set. *All*, 2026-10-29. Issue
   [#2841](https://github.com/obs-rust/obs-studio/issues/2841).
+- Listing the audio monitoring devices, or matching a source's device to
+  the monitoring device, no longer crashes when memory for the device list
+  can't be allocated; the list comes back empty instead. *macOS*,
+  2026-10-29. Issue
+  [#2862](https://github.com/obs-rust/obs-studio/issues/2862).
 
 ### Security hardening
 
