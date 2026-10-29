@@ -1329,6 +1329,10 @@ gs_texture_t *gs_cubetexture_create(uint32_t size, enum gs_color_format color_fo
 				  "Disabling mipmaps for this texture.");
 		flags &= ~GS_BUILD_MIPMAPS;
 		levels = 1;
+		/* Unlike gs_texture_create(), which keeps it: the devices
+		 * read the data face by face, each face with all the levels
+		 * asked for, so with one level faces 1-5 would read the wrong
+		 * entries. A 2D texture's entry 0 stays its top level. */
 		data = NULL;
 	}
 
