@@ -107,7 +107,9 @@ obs_key_t obs_key_from_name(const char *name)
 
 	int v = 0;
 	if (obs_hotkey_name_map_lookup(obs->hotkeys.name_map, name, &v))
-		return v;
+		/* The map stores the enum's value as an int; state the
+		 * conversion back at this boundary (#2896). */
+		return (obs_key_t)v;
 
 	return OBS_KEY_NONE;
 }
