@@ -911,4 +911,12 @@
      * EXPORT. */
     obs_view_init;
     obs_view_free;
+    /* obs-cocoa-keys.c. obs-cocoa.m calls them inside libobs on macOS. Not
+     * EXPORT. */
+    obs_cocoa_keys_modifier;
+    obs_cocoa_keys_to_virtual_key;
+    obs_cocoa_keys_from_virtual_key;
+    obs_cocoa_keys_is_mouse;
+    obs_cocoa_keys_mouse_pressed;
+    obs_cocoa_keys_in_range;
 };

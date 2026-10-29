@@ -1,0 +1,5 @@
+{
+  "LIBOBS_MACOS_PORTED_SOURCES": [
+    "build/libobs.ported-cocoa-keys+.h.c"
+  ]
+}

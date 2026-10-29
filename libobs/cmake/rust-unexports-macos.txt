@@ -870,3 +870,12 @@ _obs_service_initialize
 # obs-view.c (#1933): internal view init and free.
 _obs_view_init
 _obs_view_free
+
+# obs-cocoa-keys.c: the macOS hotkey platform (obs-cocoa.m) calls them inside
+# libobs. Built on every host; not EXPORT.
+_obs_cocoa_keys_modifier
+_obs_cocoa_keys_to_virtual_key
+_obs_cocoa_keys_from_virtual_key
+_obs_cocoa_keys_is_mouse
+_obs_cocoa_keys_mouse_pressed
+_obs_cocoa_keys_in_range

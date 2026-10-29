@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-macos-cocoa-keys.pch.h"
+#include "libobs/build/libobs-ported-cocoa-keys.pch.h"
+
+/* Ported to rust/obs-hotkey (cocoa_keys): the hybrid libobs drops this
+ * file. */
 
 /* The macOS key map and pressed check of obs-cocoa.m, moved: the decisions,
  * on plain values. obs-cocoa.m keeps the tables, every macOS call and the
