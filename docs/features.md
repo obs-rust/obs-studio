@@ -1714,6 +1714,13 @@ area.
   2026-10-27. Issue
   [#2515](https://github.com/obs-rust/obs-studio/issues/2515), PR
   [#2516](https://github.com/obs-rust/obs-studio/pull/2516).
+- A plugin source that lists its child sources only as "all sources" (not
+  as active ones) is now checked for loops: setting or starting a
+  transition to it while it holds that transition, moving a scene item
+  into a scene it holds, or adding it as an active child of a source it
+  holds is refused, instead of being accepted and risking a hang. *All*,
+  2026-10-29. Issue
+  [#2942](https://github.com/obs-rust/obs-studio/issues/2942).
 
 ### Scenes and UI
 
