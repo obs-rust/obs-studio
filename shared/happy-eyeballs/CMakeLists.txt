@@ -25,3 +25,11 @@ target_include_directories(
 target_link_libraries(happy-eyeballs PUBLIC OBS::libobs)
 
 set_target_properties(happy-eyeballs PROPERTIES FOLDER deps POSITION_INDEPENDENT_CODE TRUE)
+
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+target_compile_options(
+  happy-eyeballs
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
