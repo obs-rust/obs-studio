@@ -28,14 +28,15 @@ static bool gl_init_volume(GLenum type, uint32_t num_levels, GLenum format, GLin
 	for (i = 0; i < num_levels; i++) {
 		if (compressed) {
 			uint32_t mip_size = width * height * depth * bpp / 8;
-			glCompressedTexImage3D(GL_TEXTURE_3D, i, internal_format, width, height, depth, 0, mip_size,
+			glCompressedTexImage3D(GL_TEXTURE_3D, (GLint)i, (GLenum)internal_format, (GLsizei)width,
+					       (GLsizei)height, (GLsizei)depth, 0, (GLsizei)mip_size,
 					       data ? *data : NULL);
 			if (!gl_success("glCompressedTexImage3D"))
 				success = false;
 
 		} else {
-			glTexImage3D(GL_TEXTURE_3D, i, internal_format, width, height, depth, 0, format, type,
-				     data ? *data : NULL);
+			glTexImage3D(GL_TEXTURE_3D, (GLint)i, internal_format, (GLsizei)width, (GLsizei)height,
+				     (GLsizei)depth, 0, format, type, data ? *data : NULL);
 			if (!gl_success("glTexImage3D"))
 				success = false;
 		}
@@ -68,10 +69,11 @@ static bool upload_texture_3d(struct gs_texture_3d *tex, const uint8_t *const *d
 	if (!gl_bind_texture(GL_TEXTURE_3D, tex->base.texture))
 		return false;
 
-	success = gl_init_volume(tex->base.gl_type, num_levels, tex->base.gl_format, tex->base.gl_internal_format,
-				 compressed, tex->width, tex->height, tex->depth, &data);
+	success = gl_init_volume(tex->base.gl_type, num_levels, tex->base.gl_format,
+				 (GLint)tex->base.gl_internal_format, compressed, tex->width, tex->height, tex->depth,
+				 &data);
 
-	if (!gl_tex_param_i(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, num_levels - 1))
+	if (!gl_tex_param_i(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, (GLint)(num_levels - 1)))
 		success = false;
 	if (!gl_bind_texture(GL_TEXTURE_3D, 0))
 		success = false;
@@ -146,8 +148,9 @@ gs_texture_t *device_voltexture_create(gs_device_t *device, uint32_t width, uint
 			goto fail;
 
 		bool compressed = gs_is_compressed_format(tex->base.format);
-		bool did_init = gl_init_volume(tex->base.gl_type, 1, tex->base.gl_format, tex->base.gl_internal_format,
-					       compressed, tex->width, tex->height, tex->depth, NULL);
+		bool did_init = gl_init_volume(tex->base.gl_type, 1, tex->base.gl_format,
+					       (GLint)tex->base.gl_internal_format, compressed, tex->width, tex->height,
+					       tex->depth, NULL);
 		did_init = gl_tex_param_i(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
 
 		bool did_unbind = gl_bind_texture(GL_TEXTURE_3D, 0);

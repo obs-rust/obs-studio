@@ -52,7 +52,7 @@ gs_stagesurf_t *device_stagesurface_create(gs_device_t *device, uint32_t width, 
 	surf->width = width;
 	surf->height = height;
 	surf->gl_format = convert_gs_format(color_format);
-	surf->gl_internal_format = convert_gs_internal_format(color_format);
+	surf->gl_internal_format = (GLint)convert_gs_internal_format(color_format);
 	surf->gl_type = get_gl_format_type(color_format);
 	surf->bytes_per_pixel = gs_get_format_bpp(color_format) / 8;
 

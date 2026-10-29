@@ -36,7 +36,7 @@ static inline bool upload_texture_cube(struct gs_texture_cube *tex, const uint8_
 		if (!gl_bind_texture(target, tex->base.texture))
 			success = false;
 
-		if (!gl_init_face(target, gl_type, num_levels, tex->base.gl_format, tex->base.gl_internal_format,
+		if (!gl_init_face(target, gl_type, num_levels, tex->base.gl_format, (GLint)tex->base.gl_internal_format,
 				  compressed, tex->size, tex->size, tex_size, &data))
 			success = false;
 
@@ -47,7 +47,7 @@ static inline bool upload_texture_cube(struct gs_texture_cube *tex, const uint8_
 			data++;
 	}
 
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, num_levels);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, (GLint)num_levels);
 	if (!gl_success("glTexParameteri"))
 		success = false;
 

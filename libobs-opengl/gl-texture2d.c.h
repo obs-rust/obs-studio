@@ -32,9 +32,10 @@ static bool upload_texture_2d(struct gs_texture_2d *tex, const uint8_t **data)
 		return false;
 
 	success = gl_init_face(GL_TEXTURE_2D, tex->base.gl_type, num_levels, tex->base.gl_format,
-			       tex->base.gl_internal_format, compressed, tex->width, tex->height, tex_size, &data);
+			       (GLint)tex->base.gl_internal_format, compressed, tex->width, tex->height, tex_size,
+			       &data);
 
-	if (!gl_tex_param_i(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, num_levels - 1))
+	if (!gl_tex_param_i(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)(num_levels - 1)))
 		success = false;
 	if (!gl_bind_texture(GL_TEXTURE_2D, 0))
 		success = false;
@@ -226,8 +227,8 @@ void gs_texture_unmap(gs_texture_t *tex)
 	if (!gl_bind_texture(GL_TEXTURE_2D, tex2d->base.texture))
 		goto failed;
 
-	glTexImage2D(GL_TEXTURE_2D, 0, tex->gl_internal_format, tex2d->width, tex2d->height, 0, tex->gl_format,
-		     tex->gl_type, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, (GLint)tex->gl_internal_format, (GLsizei)tex2d->width, (GLsizei)tex2d->height, 0,
+		     tex->gl_format, tex->gl_type, 0);
 	if (!gl_success("glTexImage2D"))
 		goto failed;
 

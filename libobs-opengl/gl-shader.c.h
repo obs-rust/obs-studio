@@ -39,7 +39,7 @@ static void gl_get_shader_info(GLuint shader, const char *file, char **error_str
 	if (!gl_success("glGetProgramiv") || !info_len)
 		return;
 
-	errors = bzalloc(info_len + 1);
+	errors = bzalloc((size_t)info_len + 1);
 	glGetShaderInfoLog(shader, info_len, &chars_written, errors);
 	gl_success("glGetShaderInfoLog");
 
@@ -125,7 +125,7 @@ static void get_attrib_type(const char *mapping, enum attrib_type *type, size_t 
 
 	} else if (astrcmp_n(mapping, "TEXCOORD", 8) == 0) {
 		*type = ATTRIB_TEXCOORD;
-		*index = (*(mapping + 8)) - '0';
+		*index = (size_t)((*(mapping + 8)) - '0');
 		return;
 
 	} else if (strcmp(mapping, "TARGET") == 0) {
@@ -201,7 +201,7 @@ static bool gl_shader_init(struct gs_shader *shader, struct gl_shader_parser *gl
 		GLint infoLength = 0;
 		glGetShaderiv(shader->obj, GL_INFO_LOG_LENGTH, &infoLength);
 
-		char *infoLog = malloc(sizeof(char) * infoLength);
+		char *infoLog = malloc(sizeof(char) * (size_t)infoLength);
 
 		if (infoLog) {
 			GLsizei returnedLength = 0;
@@ -512,7 +512,7 @@ static void print_link_errors(GLuint program)
 	if (!gl_success("glGetProgramiv") || !info_len)
 		return;
 
-	errors = calloc(1, info_len + 1);
+	errors = calloc(1, (size_t)info_len + 1);
 	glGetProgramInfoLog(program, info_len, &chars_written, errors);
 	gl_success("glGetShaderInfoLog");
 
@@ -724,7 +724,7 @@ void gs_shader_set_val(gs_sparam_t *param, const void *val, size_t size)
 		expected_size = 0;
 	}
 
-	expected_size *= count;
+	expected_size *= (size_t)count;
 	if (!expected_size)
 		return;
 

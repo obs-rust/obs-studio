@@ -393,11 +393,11 @@ static bool gl_x11_egl_platform_init_swapchain(struct gs_swap_chain *swap)
 	uint32_t mask = XCB_CW_BORDER_PIXEL | XCB_CW_COLORMAP;
 	uint32_t mask_values[] = {0, colormap, 0};
 
-	xcb_create_colormap(xcb_conn, XCB_COLORMAP_ALLOC_NONE, colormap, parent, visual);
+	xcb_create_colormap(xcb_conn, XCB_COLORMAP_ALLOC_NONE, colormap, parent, (xcb_visualid_t)visual);
 
 	xcb_void_cookie_t window_cookie = xcb_create_window_checked(xcb_conn, 24 /* Hardcoded? */, wid, parent, 0, 0,
-								    geometry->width, geometry->height, 0, 0, visual,
-								    mask, mask_values);
+								    geometry->width, geometry->height, 0, 0,
+								    (xcb_visualid_t)visual, mask, mask_values);
 	xcb_generic_error_t *err = xcb_request_check(xcb_conn, window_cookie);
 	if (err != NULL) {
 		char text[512];
@@ -542,7 +542,7 @@ static struct gs_texture *gl_x11_egl_device_texture_create_from_pixmap(gs_device
 {
 	struct gl_platform *plat = device->plat;
 
-	return gl_egl_create_texture_from_pixmap(plat->edisplay, width, height, color_format, target,
+	return gl_egl_create_texture_from_pixmap(plat->edisplay, width, height, color_format, (EGLint)target,
 						 (EGLClientBuffer)pixmap);
 }
 

@@ -256,7 +256,7 @@ uint64_t gpu_get_smem(void)
 		total_mem = 0;
 	}
 
-	return (uint64_t)total_mem - dmem;
+	return (uint64_t)total_mem - (uint64_t)dmem;
 }
 
 int device_create(gs_device_t **p_device, uint32_t adapter)
@@ -565,7 +565,7 @@ static void device_load_texture_internal(gs_device_t *device, gs_texture_t *tex,
 	if (cur_tex == tex)
 		return;
 
-	if (!gl_active_texture(GL_TEXTURE0 + unit))
+	if (!gl_active_texture((GLenum)(GL_TEXTURE0 + unit)))
 		goto fail;
 
 	/* the target for the previous text may not be the same as the
@@ -623,7 +623,7 @@ static bool load_sampler_on_textures(gs_device_t *device, gs_samplerstate_t *ss,
 
 		if (param->type == GS_SHADER_PARAM_TEXTURE && param->sampler_id == (uint32_t)sampler_unit &&
 		    param->texture) {
-			if (!gl_active_texture(GL_TEXTURE0 + param->texture_id))
+			if (!gl_active_texture((GLenum)(GL_TEXTURE0 + param->texture_id)))
 				return false;
 			if (!load_texture_sampler(param->texture, ss))
 				return false;
@@ -814,8 +814,8 @@ static bool attach_rendertarget(struct fbo_info *fbo, gs_texture_t *tex, int sid
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->texture, 0);
 
 	} else if (tex->type == GS_TEXTURE_CUBE) {
-		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + side,
-				       tex->texture, 0);
+		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+				       (GLenum)(GL_TEXTURE_CUBE_MAP_POSITIVE_X + side), tex->texture, 0);
 
 	} else {
 		return false;
@@ -1145,14 +1145,14 @@ void device_draw(gs_device_t *device, enum gs_draw_mode draw_mode, uint32_t star
 	if (ib) {
 		if (num_verts == 0)
 			num_verts = (uint32_t)device->cur_index_buffer->num;
-		glDrawElements(topology, num_verts, ib->gl_type, (const GLvoid *)(start_vert * ib->width));
+		glDrawElements(topology, (GLsizei)num_verts, ib->gl_type, (const GLvoid *)(start_vert * ib->width));
 		if (!gl_success("glDrawElements"))
 			goto fail;
 
 	} else {
 		if (num_verts == 0)
 			num_verts = (uint32_t)device->cur_vertex_buffer->num;
-		glDrawArrays(topology, start_vert, num_verts);
+		glDrawArrays(topology, (GLint)start_vert, (GLsizei)num_verts);
 		if (!gl_success("glDrawArrays"))
 			goto fail;
 	}
@@ -1378,7 +1378,7 @@ void device_set_viewport(gs_device_t *device, int x, int y, int width, int heigh
 
 	GLint gl_y = y;
 	if (base_height && !device->cur_fbo)
-		gl_y = base_height - y - height;
+		gl_y = (GLint)base_height - y - height;
 
 	glViewport(x, gl_y, width, height);
 	if (!gl_success("glViewport"))

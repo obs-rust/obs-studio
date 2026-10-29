@@ -22,25 +22,25 @@ static bool create_buffers(struct gs_vertex_buffer *vb)
 	GLenum usage = vb->dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW;
 	size_t i;
 
-	if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->vertex_buffer, vb->data->num * sizeof(struct vec3),
+	if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->vertex_buffer, (GLsizeiptr)(vb->data->num * sizeof(struct vec3)),
 			      vb->data->points, usage))
 		return false;
 
 	if (vb->data->normals) {
-		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->normal_buffer, vb->data->num * sizeof(struct vec3),
-				      vb->data->normals, usage))
+		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->normal_buffer,
+				      (GLsizeiptr)(vb->data->num * sizeof(struct vec3)), vb->data->normals, usage))
 			return false;
 	}
 
 	if (vb->data->tangents) {
-		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->tangent_buffer, vb->data->num * sizeof(struct vec3),
-				      vb->data->tangents, usage))
+		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->tangent_buffer,
+				      (GLsizeiptr)(vb->data->num * sizeof(struct vec3)), vb->data->tangents, usage))
 			return false;
 	}
 
 	if (vb->data->colors) {
-		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->color_buffer, vb->data->num * sizeof(uint32_t),
-				      vb->data->colors, usage))
+		if (!gl_create_buffer(GL_ARRAY_BUFFER, &vb->color_buffer,
+				      (GLsizeiptr)(vb->data->num * sizeof(uint32_t)), vb->data->colors, usage))
 			return false;
 	}
 
@@ -52,7 +52,7 @@ static bool create_buffers(struct gs_vertex_buffer *vb)
 		struct gs_tvertarray *tv = vb->data->tvarray + i;
 		size_t size = vb->data->num * sizeof(float) * tv->width;
 
-		if (!gl_create_buffer(GL_ARRAY_BUFFER, &tex_buffer, size, tv->array, usage))
+		if (!gl_create_buffer(GL_ARRAY_BUFFER, &tex_buffer, (GLsizeiptr)size, tv->array, usage))
 			return false;
 
 		da_push_back(vb->uv_buffers, &tex_buffer);
@@ -216,11 +216,11 @@ static bool load_vb_buffer(struct shader_attrib *attrib, struct gs_vertex_buffer
 	if (!gl_bind_buffer(GL_ARRAY_BUFFER, buffer))
 		return false;
 
-	glVertexAttribPointer(id, width, type, GL_TRUE, 0, 0);
+	glVertexAttribPointer((GLuint)id, width, type, GL_TRUE, 0, 0);
 	if (!gl_success("glVertexAttribPointer"))
 		success = false;
 
-	glEnableVertexAttribArray(id);
+	glEnableVertexAttribArray((GLuint)id);
 	if (!gl_success("glEnableVertexAttribArray"))
 		success = false;
 

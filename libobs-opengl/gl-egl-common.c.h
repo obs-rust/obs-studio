@@ -26,7 +26,7 @@ static bool find_gl_extension(const char *extension)
 
 	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
 	for (i = 0; i < n; i++) {
-		const char *e = (const char *)glGetStringi(GL_EXTENSIONS, i);
+		const char *e = (const char *)glGetStringi(GL_EXTENSIONS, (GLuint)i);
 		if (extension && strcmp(e, extension) == 0)
 			return true;
 	}
@@ -88,7 +88,7 @@ static EGLImageKHR create_dmabuf_egl_image(EGLDisplay egl_display, unsigned int 
 			attribs[atti++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
 			attribs[atti++] = modifiers[0] & 0xFFFFFFFF;
 			attribs[atti++] = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
-			attribs[atti++] = modifiers[0] >> 32;
+			attribs[atti++] = (EGLAttrib)(modifiers[0] >> 32);
 		}
 	}
 
@@ -103,7 +103,7 @@ static EGLImageKHR create_dmabuf_egl_image(EGLDisplay egl_display, unsigned int 
 			attribs[atti++] = EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT;
 			attribs[atti++] = modifiers[1] & 0xFFFFFFFF;
 			attribs[atti++] = EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT;
-			attribs[atti++] = modifiers[1] >> 32;
+			attribs[atti++] = (EGLAttrib)(modifiers[1] >> 32);
 		}
 	}
 
@@ -118,7 +118,7 @@ static EGLImageKHR create_dmabuf_egl_image(EGLDisplay egl_display, unsigned int 
 			attribs[atti++] = EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT;
 			attribs[atti++] = modifiers[2] & 0xFFFFFFFF;
 			attribs[atti++] = EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT;
-			attribs[atti++] = modifiers[2] >> 32;
+			attribs[atti++] = (EGLAttrib)(modifiers[2] >> 32);
 		}
 	}
 
@@ -133,7 +133,7 @@ static EGLImageKHR create_dmabuf_egl_image(EGLDisplay egl_display, unsigned int 
 			attribs[atti++] = EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT;
 			attribs[atti++] = modifiers[3] & 0xFFFFFFFF;
 			attribs[atti++] = EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT;
-			attribs[atti++] = modifiers[3] >> 32;
+			attribs[atti++] = (EGLAttrib)(modifiers[3] >> 32);
 		}
 	}
 
@@ -194,7 +194,7 @@ bool gl_egl_enum_adapters(EGLDisplay display, bool (*callback)(void *param, cons
 			// Do not enumerate additional software renderers.
 			continue;
 		}
-		if (!callback(param, node, i + 1)) {
+		if (!callback(param, node, (uint32_t)(i + 1))) {
 			return true;
 		}
 	}
@@ -205,7 +205,7 @@ uint32_t gs_get_adapter_count()
 {
 	EGLint num_devices = 0;
 	eglQueryDevicesEXT(0, NULL, &num_devices);
-	return 1 + num_devices; // Display + devices.
+	return (uint32_t)(1 + num_devices); // Display + devices.
 }
 
 struct gs_texture *gl_egl_create_dmabuf_image(EGLDisplay egl_display, unsigned int width, unsigned int height,
@@ -275,7 +275,7 @@ static inline bool query_dmabuf_formats(EGLDisplay egl_display, EGLint **formats
 	}
 
 	if (max_formats != 0) {
-		EGLint *format_list = bzalloc(max_formats * sizeof(EGLint));
+		EGLint *format_list = bzalloc((size_t)max_formats * sizeof(EGLint));
 		if (!format_list) {
 			blog(LOG_ERROR, "Unable to allocate memory");
 			return false;
@@ -327,13 +327,13 @@ static inline bool query_dmabuf_modifiers(EGLDisplay egl_display, EGLint drm_for
 	}
 
 	if (max_modifiers != 0) {
-		EGLuint64KHR *modifier_list = bzalloc(max_modifiers * sizeof(EGLuint64KHR));
+		EGLuint64KHR *modifier_list = bzalloc((size_t)max_modifiers * sizeof(EGLuint64KHR));
 		if (!modifier_list) {
 			blog(LOG_ERROR, "Unable to allocate memory");
 			return false;
 		}
 
-		EGLBoolean *external_only = bzalloc(max_modifiers * sizeof(EGLBoolean));
+		EGLBoolean *external_only = bzalloc((size_t)max_modifiers * sizeof(EGLBoolean));
 		if (!external_only) {
 			blog(LOG_ERROR, "Unable to allocate memory");
 			bfree(modifier_list);
@@ -353,7 +353,7 @@ static inline bool query_dmabuf_modifiers(EGLDisplay egl_display, EGLint drm_for
 			if (external_only[i]) {
 				max_modifiers--;
 				memmove(&modifier_list[j], &modifier_list[j + 1],
-					sizeof(EGLuint64KHR) * (max_modifiers - j));
+					sizeof(EGLuint64KHR) * (size_t)(max_modifiers - j));
 			} else {
 				j++;
 			}
@@ -374,7 +374,7 @@ bool gl_egl_query_dmabuf_modifiers_for_format(EGLDisplay egl_display, uint32_t d
 		blog(LOG_ERROR, "Unable to load eglQueryDmaBufModifiersEXT");
 		return false;
 	}
-	if (!query_dmabuf_modifiers(egl_display, drm_format, modifiers, n_modifiers)) {
+	if (!query_dmabuf_modifiers(egl_display, (EGLint)drm_format, modifiers, n_modifiers)) {
 		*n_modifiers = 0;
 		*modifiers = NULL;
 		return false;

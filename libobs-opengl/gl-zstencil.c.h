@@ -26,7 +26,7 @@ static bool gl_init_zsbuffer(struct gs_zstencil_buffer *zs, uint32_t width, uint
 	if (!gl_bind_renderbuffer(GL_RENDERBUFFER, zs->buffer))
 		return false;
 
-	glRenderbufferStorage(GL_RENDERBUFFER, zs->format, width, height);
+	glRenderbufferStorage(GL_RENDERBUFFER, zs->format, (GLsizei)width, (GLsizei)height);
 	if (!gl_success("glRenderbufferStorage"))
 		return false;
 
