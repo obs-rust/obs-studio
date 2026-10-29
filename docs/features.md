@@ -2058,6 +2058,12 @@ area.
   have gets 0 on X11, as for a key with no keysym, instead of an arbitrary
   number. *Linux*, 2026-10-29. Issue
   [#2901](https://github.com/obs-rust/obs-studio/issues/2901).
+- Duplicating a scene from a script or plugin, or in Studio Mode with
+  "Duplicate Sources", no longer gives an item the wrong source when a
+  source used by several items follows an item that could not be copied,
+  and duplicating a source that fails to initialize returns nothing
+  instead of crashing. *All*, 2026-10-29. Issue
+  [#2905](https://github.com/obs-rust/obs-studio/issues/2905).
 
 ### Stability
 

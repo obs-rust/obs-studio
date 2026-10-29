@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-duplicate.pch.h"
+
+/* Ported to rust/obs-source (source_duplicate): the hybrid libobs drops this
+ * file. */
 
 /* The duplicate decisions of obs_source_duplicate() and get_new_filter_name()
  * in obs-source.c and of obs_scene_duplicate(), dup_child() and dup_group()

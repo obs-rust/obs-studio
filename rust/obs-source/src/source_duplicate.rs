@@ -128,52 +128,71 @@ pub enum Reuse {
 /// `obs_source_duplicate_type_step()`: [`Step::AskScene`] for
 /// `OBS_SOURCE_TYPE_SCENE`, [`Step::AskFlags`] for any other type.
 pub const fn type_step(source_type: i32) -> Step {
-    let _ = source_type;
-    todo!()
+    if source_type == TYPE_SCENE {
+        Step::AskScene
+    } else {
+        Step::AskFlags
+    }
 }
 
 /// `obs_source_duplicate_scene_step()`: [`Step::Ref`] for a public
 /// duplicate of a scene, [`Step::SceneCopy`] for a private one,
 /// [`Step::AskGroup`] when no scene was found.
 pub const fn scene_step(has_scene: bool, create_private: bool) -> Step {
-    let _ = (has_scene, create_private);
-    todo!()
+    if has_scene && !create_private {
+        Step::Ref
+    } else if !has_scene {
+        Step::AskGroup
+    } else {
+        Step::SceneCopy
+    }
 }
 
 /// `obs_source_duplicate_group_step()`: [`Step::SceneCopy`] for a group,
 /// [`Step::None`] for a scene-typed source that is neither.
 pub const fn group_step(has_group: bool) -> Step {
-    let _ = has_group;
-    todo!()
+    if has_group {
+        Step::SceneCopy
+    } else {
+        Step::None
+    }
 }
 
 /// `obs_source_duplicate_scene_type()`: [`DUP_PRIVATE_COPY`] for a private
 /// copy, [`DUP_COPY`] otherwise.
 pub const fn scene_type(create_private: bool) -> i32 {
-    let _ = create_private;
-    todo!()
+    if create_private {
+        DUP_PRIVATE_COPY
+    } else {
+        DUP_COPY
+    }
 }
 
 /// `obs_source_duplicate_flags_step()`: [`Step::Ref`] when
 /// [`DO_NOT_DUPLICATE`] is set, [`Step::Create`] otherwise.
 pub const fn flags_step(output_flags: u32) -> Step {
-    let _ = output_flags;
-    todo!()
+    if output_flags & DO_NOT_DUPLICATE != 0 {
+        Step::Ref
+    } else {
+        Step::Create
+    }
 }
 
 /// `obs_source_duplicate_created_step()`: [`Step::CopyState`] when the
 /// create returned a source, [`Step::None`] when it did not (the C copied
 /// into it regardless).
 pub const fn created_step(has_source: bool) -> Step {
-    let _ = has_source;
-    todo!()
+    if has_source {
+        Step::CopyState
+    } else {
+        Step::None
+    }
 }
 
 /// `obs_source_duplicate_copies_filters()`: every source but a filter gets
 /// copies of the filters.
 pub const fn copies_filters(source_type: i32) -> bool {
-    let _ = source_type;
-    todo!()
+    source_type != TYPE_FILTER
 }
 
 /// `obs_source_duplicate_filter_number()`: after `taken` names were found
@@ -181,37 +200,42 @@ pub const fn copies_filters(source_type: i32) -> bool {
 /// `taken + 1`. It stops at `i32::MAX`, where the C's `int` would
 /// overflow; reaching it takes that many lookups.
 pub const fn filter_number(taken: i32) -> i32 {
-    let _ = taken;
-    todo!()
+    taken.saturating_add(1)
 }
 
 /// `obs_scene_duplicate_unique()`: [`DUP_COPY`] and [`DUP_PRIVATE_COPY`]
 /// copy the items' sources.
 pub const fn unique(dup_type: i32) -> bool {
-    let _ = dup_type;
-    todo!()
+    dup_type == DUP_COPY || dup_type == DUP_PRIVATE_COPY
 }
 
 /// `obs_scene_duplicate_private()`: [`DUP_PRIVATE_REFS`] and
 /// [`DUP_PRIVATE_COPY`] make the new scene and its copies private.
 pub const fn private(dup_type: i32) -> bool {
-    let _ = dup_type;
-    todo!()
+    dup_type == DUP_PRIVATE_REFS || dup_type == DUP_PRIVATE_COPY
 }
 
 /// `obs_scene_duplicate_keeps_unique()`: a group's sources are copied only
 /// for a private copy ([`DUP_PRIVATE_COPY`]); a public copy of a group
 /// keeps its sources.
 pub const fn keeps_unique(unique: bool, is_group: bool, dup_type: i32) -> bool {
-    let _ = (unique, is_group, dup_type);
-    todo!()
+    if is_group && dup_type != DUP_PRIVATE_COPY {
+        false
+    } else {
+        unique
+    }
 }
 
 /// `obs_scene_duplicate_item_route()`: a group item is copied as a group,
 /// any other item's source is copied when `unique`, else referenced.
 pub const fn item_route(is_group: bool, unique: bool) -> ItemRoute {
-    let _ = (is_group, unique);
-    todo!()
+    if is_group {
+        ItemRoute::Group
+    } else if unique {
+        ItemRoute::Child
+    } else {
+        ItemRoute::Ref
+    }
 }
 
 /// `obs_scene_duplicate_reuse()`: an earlier item with the same source
@@ -220,19 +244,20 @@ pub const fn item_route(is_group: bool, unique: bool) -> ItemRoute {
 /// the earlier items in order and stops at the first that is not
 /// [`Reuse::None`].
 pub fn reuse<S: PartialEq>(earlier: S, source: S, earlier_copied: bool) -> Reuse {
-    let _ = (earlier, source, earlier_copied);
-    todo!()
+    if earlier == source && earlier_copied {
+        Reuse::Copy
+    } else {
+        Reuse::None
+    }
 }
 
 /// `obs_scene_duplicate_keeps_name()`: a private copy keeps the old name; a
 /// public one gets a new unique name.
 pub const fn keeps_name(make_private: bool) -> bool {
-    let _ = make_private;
-    todo!()
+    make_private
 }
 
 /// `obs_scene_duplicate_resizes()`: a group is resized to its items.
 pub const fn resizes(is_group: bool) -> bool {
-    let _ = is_group;
-    todo!()
+    is_group
 }

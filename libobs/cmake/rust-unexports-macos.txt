@@ -304,6 +304,23 @@ _obs_source_draw_plan_technique
 _obs_source_draw_plan_reads_white_level
 _obs_source_draw_plan_multiplier
 _obs_source_draw_plan_convert
+# obs-source-duplicate.c: obs-source.c and obs-scene.c call them inside
+# libobs. Not EXPORT.
+_obs_scene_duplicate_item_route
+_obs_scene_duplicate_keeps_name
+_obs_scene_duplicate_keeps_unique
+_obs_scene_duplicate_private
+_obs_scene_duplicate_resizes
+_obs_scene_duplicate_reuse
+_obs_scene_duplicate_unique
+_obs_source_duplicate_copies_filters
+_obs_source_duplicate_created_step
+_obs_source_duplicate_filter_number
+_obs_source_duplicate_flags_step
+_obs_source_duplicate_group_step
+_obs_source_duplicate_scene_step
+_obs_source_duplicate_scene_type
+_obs_source_duplicate_type_step
 # obs-source-frame-copy.c: obs-source.c calls them inside libobs. Not EXPORT.
 _obs_source_frame_copy_plan
 _obs_source_frame_copy_cache_step
