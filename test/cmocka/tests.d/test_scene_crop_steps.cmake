@@ -10,6 +10,11 @@ target_include_directories(
   PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_SOURCE_DIR}/deps/libcaption"
 )
 target_link_libraries(test_scene_crop_steps PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+# The UBSan float-cast-overflow checks call ceilf/floorf, so a sanitized build
+# links this test against libm itself (as the Rust scene steps tests do).
+if(NOT MSVC)
+  target_link_libraries(test_scene_crop_steps PRIVATE m)
+endif()
 # GCC leaves float-cast-overflow out of "undefined".
 obs_test_sanitize(test_scene_crop_steps "undefined,float-cast-overflow")
 
