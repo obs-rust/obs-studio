@@ -799,19 +799,12 @@ cleanup:
  * optional callback when OBS needs it and free_type_data at shutdown.
  *
  * Every field of the four info structures is a pointer, aligned to and as
- * large as a pointer, except the 32-bit fields each type lists here. So the
- * copy ends at the size rounded down to a pointer, or at the end of a 32-bit
- * field that starts there and lies wholly within the size. A size of
- * sizeof() is a multiple of a pointer, so such a copy is whole, as before. */
+ * large as a pointer, except the 32-bit fields each type lists here, and
+ * obs_module_register_copy_whole_size() (obs-module-register-copy.c) ends the
+ * copy at the last whole one. */
 static size_t whole_fields_size(size_t size, const size_t *u32_fields, size_t count)
 {
-	size_t whole = size - size % sizeof(void *);
-
-	for (size_t i = 0; i < count; i++) {
-		if (u32_fields[i] >= whole && u32_fields[i] + sizeof(uint32_t) <= size)
-			whole = u32_fields[i] + sizeof(uint32_t);
-	}
-	return whole;
+	return obs_module_register_copy_whole_size(size, sizeof(void *), u32_fields, count);
 }
 
 /* The 32-bit fields. */
@@ -823,6 +816,10 @@ _Static_assert(sizeof(((struct obs_source_info *)NULL)->version) == sizeof(uint3
 _Static_assert(sizeof(((struct obs_output_info *)NULL)->flags) == sizeof(uint32_t), "obs_output_info.flags");
 _Static_assert(sizeof(((struct obs_encoder_info *)NULL)->type) == sizeof(uint32_t), "obs_encoder_info.type");
 _Static_assert(sizeof(((struct obs_encoder_info *)NULL)->caps) == sizeof(uint32_t), "obs_encoder_info.caps");
+
+/* The constant obs-module-register-copy.h copies. */
+_Static_assert(OBS_MODULE_REGISTER_COPY_SOURCE_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION,
+	       "OBS_SOURCE_TYPE_TRANSITION");
 
 static size_t copy_size_obs_source_info(size_t size)
 {
@@ -858,25 +855,28 @@ static size_t copy_size_obs_service_info(size_t size)
 #define REGISTER_OBS_DEF(size_var, structure, dest, info)                                               \
 	do {                                                                                            \
 		struct structure data = {0};                                                            \
-		if (!size_var) {                                                                        \
+		switch (obs_module_register_copy_gate(size_var, sizeof(data))) {                        \
+		case OBS_MODULE_REGISTER_COPY_OUTSIDE_LOAD:                                             \
 			blog(LOG_ERROR, "Tried to register " #structure " outside of obs_module_load"); \
 			return;                                                                         \
-		}                                                                                       \
-                                                                                                        \
-		if (!obs_module_source_rules_size_supported(size_var, sizeof(data))) {                  \
+		case OBS_MODULE_REGISTER_COPY_TOO_LARGE:                                                \
 			blog(LOG_ERROR,                                                                 \
 			     "Tried to register " #structure " with size %llu which is more "           \
 			     "than libobs currently supports "                                          \
 			     "(%llu)",                                                                  \
 			     (long long unsigned)size_var, (long long unsigned)sizeof(data));           \
 			goto error;                                                                     \
+		case OBS_MODULE_REGISTER_COPY_COPY:                                                     \
+		default:                                                                                \
+			break;                                                                          \
 		}                                                                                       \
                                                                                                         \
 		memcpy(&data, info, copy_size_##structure(size_var));                                   \
 		da_push_back(dest, &data);                                                              \
 	} while (false)
 
-#define HAS_VAL(type, info, val) ((offsetof(type, val) + sizeof(info->val) <= size) && info->val)
+#define HAS_VAL(type, info, val) \
+	(obs_module_register_copy_within(offsetof(type, val), sizeof(info->val), size) && info->val)
 
 #define HANDLE_ERROR(size_var, structure, info)                                         \
 	do {                                                                            \
@@ -885,8 +885,10 @@ static size_t copy_size_obs_service_info(size_t size)
 		 * HAS_VAL(): a size that ends inside a pointer would leave it  \
 		 * partly copied, and calling that jumps to a wrong address.    \
 		 */                                                             \
-		if (offsetof(struct structure, type_data) + sizeof(info->type_data) <= (size_var) &&       \
-		    offsetof(struct structure, free_type_data) + sizeof(info->free_type_data) <= (size_var) && \
+		if (obs_module_register_copy_within(offsetof(struct structure, type_data),             \
+						    sizeof(info->type_data), (size_var)) &&            \
+		    obs_module_register_copy_within(offsetof(struct structure, free_type_data),        \
+						    sizeof(info->free_type_data), (size_var)) &&       \
 		    info->type_data && info->free_type_data)                                           \
 			info->free_type_data(info->type_data);                                     \
 	} while (false)
@@ -942,7 +944,7 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 
 	memcpy(&data, info, copy_size_obs_source_info(size));
 
-	if (data.type == OBS_SOURCE_TYPE_TRANSITION) {
+	if (obs_module_register_copy_ignores_size((uint32_t)data.type)) {
 		if (data.get_width)
 			source_warn("get_width ignored registering "
 				    "transition '%s'",

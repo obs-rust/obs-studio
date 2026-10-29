@@ -38,6 +38,7 @@
     "obs-internal.h",
     "obs-missing-files.h",
     "obs-module-load-rules.h",
+    "obs-module-register-copy.h",
     "obs-module-type-rules.h",
     "obs-module.h",
     "obs-nal.h",
