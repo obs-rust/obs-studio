@@ -190,7 +190,7 @@ static void av1_on_first_packet(void *data, AVPacket *pkt, struct darray *da)
 	struct av1_encoder *enc = data;
 
 	if (enc->type == AV1_ENCODER_TYPE_SVT) {
-		da_copy_array(enc->header, enc->ffve.context->extradata, enc->ffve.context->extradata_size);
+		da_copy_array(enc->header, enc->ffve.context->extradata, (size_t)enc->ffve.context->extradata_size);
 	} else {
 		for (int i = 0; i < pkt->side_data_elems; i++) {
 			AVPacketSideData *side_data = pkt->side_data + i;
@@ -201,7 +201,7 @@ static void av1_on_first_packet(void *data, AVPacket *pkt, struct darray *da)
 		}
 	}
 
-	darray_copy_array(1, da, pkt->data, pkt->size);
+	darray_copy_array(1, da, pkt->data, (size_t)pkt->size);
 }
 
 static void *av1_create_internal(obs_data_t *settings, obs_encoder_t *encoder, const char *enc_lib,

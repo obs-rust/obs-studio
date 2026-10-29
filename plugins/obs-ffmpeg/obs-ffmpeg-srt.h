@@ -252,7 +252,8 @@ static int libsrt_listen(int eid, SRTSOCKET fd, const struct sockaddr *addr, soc
 	if (srt_setsockopt(fd, SOL_SOCKET, SRTO_REUSEADDR, &reuse, sizeof(reuse))) {
 		blog(LOG_WARNING, "[obs-ffmpeg mpegts muxer / libsrt]: setsockopt(SRTO_REUSEADDR) failed");
 	}
-	if (srt_bind(fd, addr, addrlen))
+	/* libsrt takes the address length as an int; a sockaddr length is far below INT_MAX. */
+	if (srt_bind(fd, addr, (int)addrlen))
 		return libsrt_neterrno(h);
 
 	if (srt_listen(fd, 1))
@@ -281,7 +282,7 @@ static int libsrt_listen_connect(int eid, SRTSOCKET fd, const struct sockaddr *a
 {
 	SRTContext *s = (SRTContext *)h->priv_data;
 	int ret;
-	if (srt_connect(fd, addr, addrlen) < 0)
+	if (srt_connect(fd, addr, (int)addrlen) < 0)
 		return libsrt_neterrno(h);
 
 	ret = libsrt_network_wait_fd_timeout(h, eid, 1, timeout, &h->interrupt_callback);
@@ -500,7 +501,7 @@ static int libsrt_setup(URLContext *h, const char *uri)
 		}
 		blog(LOG_DEBUG, "[obs-ffmpeg mpegts muxer / libsrt]: Adapter options %s:%s\n", s->localip,
 		     s->localport);
-		int lp = strtol(s->localport, NULL, 10);
+		int lp = (int)strtol(s->localport, NULL, 10);
 		if (lp <= 0 || lp >= 65536) {
 			blog(LOG_ERROR, "[obs-ffmpeg mpegts muxer / libsrt]: Local port missing in URL\n");
 			s->last_error.obs_output_error_number = OBS_OUTPUT_BAD_PATH;
@@ -682,7 +683,7 @@ static int libsrt_open(URLContext *h, const char *uri)
 			s->maxbw = strtoll(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "pbkeylen", p)) {
-			s->pbkeylen = strtol(buf, NULL, 10);
+			s->pbkeylen = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "passphrase", p)) {
 			av_freep(&s->passphrase);
@@ -690,35 +691,35 @@ static int libsrt_open(URLContext *h, const char *uri)
 		}
 #if SRT_VERSION_VALUE >= 0x010302
 		if (av_find_info_tag(buf, sizeof(buf), "enforced_encryption", p)) {
-			s->enforced_encryption = strtol(buf, NULL, 10);
+			s->enforced_encryption = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "kmrefreshrate", p)) {
-			s->kmrefreshrate = strtol(buf, NULL, 10);
+			s->kmrefreshrate = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "kmpreannounce", p)) {
-			s->kmpreannounce = strtol(buf, NULL, 10);
+			s->kmpreannounce = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "snddropdelay", p)) {
 			s->snddropdelay = strtoll(buf, NULL, 10);
 		}
 #endif
 		if (av_find_info_tag(buf, sizeof(buf), "mss", p)) {
-			s->mss = strtol(buf, NULL, 10);
+			s->mss = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "ffs", p)) {
-			s->ffs = strtol(buf, NULL, 10);
+			s->ffs = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "ipttl", p)) {
-			s->ipttl = strtol(buf, NULL, 10);
+			s->ipttl = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "iptos", p)) {
-			s->iptos = strtol(buf, NULL, 10);
+			s->iptos = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "inputbw", p)) {
 			s->inputbw = strtoll(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "oheadbw", p)) {
-			s->oheadbw = strtol(buf, NULL, 10);
+			s->oheadbw = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "latency", p)) {
 			s->latency = strtoll(buf, NULL, 10);
@@ -733,17 +734,17 @@ static int libsrt_open(URLContext *h, const char *uri)
 			s->peerlatency = strtoll(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "tlpktdrop", p)) {
-			s->tlpktdrop = strtol(buf, NULL, 10);
+			s->tlpktdrop = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "nakreport", p)) {
-			s->nakreport = strtol(buf, NULL, 10);
+			s->nakreport = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "connect_timeout", p)) {
 			s->connect_timeout = strtoll(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "payload_size", p) ||
 		    av_find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
-			s->payload_size = strtol(buf, NULL, 10);
+			s->payload_size = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "mode", p)) {
 			if (!strcmp(buf, "caller")) {
@@ -758,16 +759,16 @@ static int libsrt_open(URLContext *h, const char *uri)
 			}
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "sndbuf", p)) {
-			s->sndbuf = strtol(buf, NULL, 10);
+			s->sndbuf = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "rcvbuf", p)) {
-			s->rcvbuf = strtol(buf, NULL, 10);
+			s->rcvbuf = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "lossmaxttl", p)) {
-			s->lossmaxttl = strtol(buf, NULL, 10);
+			s->lossmaxttl = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "minversion", p)) {
-			s->minversion = strtol(buf, NULL, 0);
+			s->minversion = (int)strtol(buf, NULL, 0);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "streamid", p)) {
 			av_freep(&s->streamid);
@@ -786,7 +787,7 @@ static int libsrt_open(URLContext *h, const char *uri)
 			}
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "messageapi", p)) {
-			s->messageapi = strtol(buf, NULL, 10);
+			s->messageapi = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "transtype", p)) {
 			if (!strcmp(buf, "live")) {
@@ -799,7 +800,7 @@ static int libsrt_open(URLContext *h, const char *uri)
 			}
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "linger", p)) {
-			s->linger = strtol(buf, NULL, 10);
+			s->linger = (int)strtol(buf, NULL, 10);
 		}
 		if (av_find_info_tag(buf, sizeof(buf), "localip", p)) {
 			s->localip = av_strndup(buf, strlen(buf));
@@ -898,8 +899,8 @@ static int libsrt_close(URLContext *h)
 	     "\tbytes retransmitted [%.1f %%]\n"
 	     "\tbytes dropped [%.1f %%]\n",
 	     (double)perf.msTimeStamp / 1000.0, perf.mbpsSendRate, (double)perf.byteSentTotal / 1000000.0,
-	     perf.byteSentTotal ? perf.byteRetransTotal / perf.byteSentTotal * 100.0 : 0,
-	     perf.byteSentTotal ? perf.byteSndDropTotal / perf.byteSentTotal * 100.0 : 0);
+	     perf.byteSentTotal ? (double)perf.byteRetransTotal / (double)perf.byteSentTotal * 100.0 : 0,
+	     perf.byteSentTotal ? (double)perf.byteSndDropTotal / (double)perf.byteSentTotal * 100.0 : 0);
 
 	if (s->eid >= 0)
 		srt_epoll_release(s->eid);

@@ -13,7 +13,7 @@ static int get_id_from_sys(char *d_name, char *type)
 	if ((c = os_quick_read_utf8_file(file_name)) == NULL) {
 		return -1;
 	}
-	id = strtol(c, NULL, 16);
+	id = (int)strtol(c, NULL, 16);
 	bfree(c);
 
 	return id;

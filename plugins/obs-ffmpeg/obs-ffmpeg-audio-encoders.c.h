@@ -224,7 +224,7 @@ static void *enc_create(obs_data_t *settings, obs_encoder_t *encoder, const char
 	if (aoi->speakers == SPEAKERS_7POINT1 && astrcmpi(enc->type, "alac") == 0)
 		enc->context->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_7POINT1_WIDE_BACK;
 
-	enc->context->sample_rate = audio_output_get_sample_rate(audio);
+	enc->context->sample_rate = (int)audio_output_get_sample_rate(audio);
 
 	/* libopus refuses more than 256 kbps per channel, so a mono track
 	 * above 256 kbps would fail to start (obsproject/obs-studio#12753). */
@@ -378,12 +378,12 @@ static bool do_encode(struct enc_encoder *enc, struct encoder_packet *packet, bo
 		return true;
 
 	da_resize(enc->packet_buffer, 0);
-	da_push_back_array(enc->packet_buffer, avpacket.data, avpacket.size);
+	da_push_back_array(enc->packet_buffer, avpacket.data, (size_t)avpacket.size);
 
 	packet->pts = rescale_ts(avpacket.pts, enc->context, time_base);
 	packet->dts = rescale_ts(avpacket.dts, enc->context, time_base);
 	packet->data = enc->packet_buffer.array;
-	packet->size = avpacket.size;
+	packet->size = (size_t)avpacket.size;
 	packet->type = OBS_ENCODER_AUDIO;
 	packet->keyframe = true;
 	packet->timebase_num = 1;
@@ -397,7 +397,7 @@ static bool enc_encode(void *data, struct encoder_frame *frame, struct encoder_p
 	struct enc_encoder *enc = data;
 
 	for (size_t i = 0; i < enc->audio_planes; i++)
-		memcpy(enc->samples[i], frame->data[i], enc->frame_size_bytes);
+		memcpy(enc->samples[i], frame->data[i], (size_t)enc->frame_size_bytes);
 
 	return do_encode(enc, packet, received_packet);
 }
@@ -421,7 +421,7 @@ static bool enc_extra_data(void *data, uint8_t **extra_data, size_t *size)
 	struct enc_encoder *enc = data;
 
 	*extra_data = enc->context->extradata;
-	*size = enc->context->extradata_size;
+	*size = (size_t)enc->context->extradata_size;
 	return true;
 }
 
@@ -447,13 +447,13 @@ static void enc_audio_info_float(void *data, struct audio_convert_info *info)
 static size_t enc_frame_size(void *data)
 {
 	struct enc_encoder *enc = data;
-	return enc->frame_size;
+	return (size_t)enc->frame_size;
 }
 
 static uint32_t enc_initial_padding(void *data)
 {
 	struct enc_encoder *enc = data;
-	return enc->context->initial_padding;
+	return (uint32_t)enc->context->initial_padding;
 }
 
 struct obs_encoder_info aac_encoder_info = {

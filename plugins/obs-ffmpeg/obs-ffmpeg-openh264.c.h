@@ -106,9 +106,9 @@ static void openh264_on_first_packet(void *data, AVPacket *pkt, struct darray *d
 {
 	struct openh264_encoder *enc = data;
 
-	da_copy_array(enc->header, enc->ffve.context->extradata, enc->ffve.context->extradata_size);
+	da_copy_array(enc->header, enc->ffve.context->extradata, (size_t)enc->ffve.context->extradata_size);
 
-	darray_copy_array(1, da, pkt->data, pkt->size);
+	darray_copy_array(1, da, pkt->data, (size_t)pkt->size);
 }
 
 static void *h264_create_internal(obs_data_t *settings, obs_encoder_t *encoder, const char *enc_lib,

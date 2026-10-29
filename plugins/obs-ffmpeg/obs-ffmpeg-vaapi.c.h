@@ -284,10 +284,10 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	enc->context->rc_max_rate = maxrate * 1000;
 	enc->context->rc_initial_buffer_occupancy = (maxrate ? maxrate : bitrate) * 1000;
 
-	enc->context->width = obs_encoder_get_width(enc->encoder);
-	enc->context->height = obs_encoder_get_height(enc->encoder);
+	enc->context->width = (int)obs_encoder_get_width(enc->encoder);
+	enc->context->height = (int)obs_encoder_get_height(enc->encoder);
 
-	enc->context->time_base = (AVRational){voi->fps_den, voi->fps_num};
+	enc->context->time_base = (AVRational){(int)voi->fps_den, (int)voi->fps_num};
 	const enum AVPixelFormat pix_fmt = obs_to_ffmpeg_video_format(info.format);
 	enc->context->pix_fmt = pix_fmt;
 	enc->context->color_range = info.range == VIDEO_RANGE_FULL ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
@@ -328,7 +328,7 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	enc->context->chroma_sample_location = determine_chroma_location(pix_fmt, colorspace);
 
 	if (keyint_sec > 0) {
-		enc->context->gop_size = keyint_sec * voi->fps_num / voi->fps_den;
+		enc->context->gop_size = keyint_sec * (int)voi->fps_num / (int)voi->fps_den;
 	} else {
 		enc->context->gop_size = 120;
 	}
@@ -419,7 +419,8 @@ static bool vaapi_create_surface(struct vaapi_encoder *enc, struct vaapi_surface
 		goto fail;
 	}
 
-	vas = vaExportSurfaceHandle(enc->va_dpy, (uintptr_t)out->frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+	vas = vaExportSurfaceHandle(enc->va_dpy, (VASurfaceID)(uintptr_t)out->frame->data[3],
+				    VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
 				    VA_EXPORT_SURFACE_WRITE_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
 	if (vas != VA_STATUS_SUCCESS) {
 		warn("Failed to export VA surface handle: %s", vaErrorStr(vas));
@@ -435,7 +436,8 @@ static bool vaapi_create_surface(struct vaapi_encoder *enc, struct vaapi_surface
 		}
 
 		out->textures[i] = gs_texture_create_from_dmabuf(
-			width, height, desc.layers[i].drm_format, drm_to_gs_color_format(desc.layers[i].drm_format), 1,
+			width, height, desc.layers[i].drm_format,
+			drm_to_gs_color_format((int)desc.layers[i].drm_format), 1,
 			&desc.objects[desc.layers[i].object_index[0]].fd, &desc.layers[i].pitch[0],
 			&desc.layers[i].offset[0], &desc.objects[desc.layers[i].object_index[0]].drm_format_modifier);
 
@@ -624,7 +626,7 @@ static inline void vaapi_copy_data(AVFrame *pic, const struct encoder_frame *fra
 			int pos_frame = y * frame_rowsize;
 			int pos_pic = y * pic_rowsize;
 
-			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, bytes);
+			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, (size_t)bytes);
 		}
 	}
 }
@@ -665,28 +667,30 @@ static bool vaapi_encode_internal(struct vaapi_encoder *enc, AVFrame *frame, str
 			switch (enc->codec) {
 			case CODEC_HEVC:
 #ifdef ENABLE_HEVC
-				obs_extract_hevc_headers(enc->packet->data, enc->packet->size, &new_packet, &size,
-							 &enc->header, &enc->header_size, &enc->sei, &enc->sei_size);
+				obs_extract_hevc_headers(enc->packet->data, (size_t)enc->packet->size, &new_packet,
+							 &size, &enc->header, &enc->header_size, &enc->sei,
+							 &enc->sei_size);
 				break;
 #else
 				warn("vaapi_encode: HEVC codec is not supported");
 				goto fail;
 #endif
 			case CODEC_H264:
-				obs_extract_avc_headers(enc->packet->data, enc->packet->size, &new_packet, &size,
-							&enc->header, &enc->header_size, &enc->sei, &enc->sei_size);
+				obs_extract_avc_headers(enc->packet->data, (size_t)enc->packet->size, &new_packet,
+							&size, &enc->header, &enc->header_size, &enc->sei,
+							&enc->sei_size);
 				break;
 
 			case CODEC_AV1:
-				obs_extract_av1_headers(enc->packet->data, enc->packet->size, &new_packet, &size,
-							&enc->header, &enc->header_size);
+				obs_extract_av1_headers(enc->packet->data, (size_t)enc->packet->size, &new_packet,
+							&size, &enc->header, &enc->header_size);
 				break;
 			}
 
 			da_copy_array(enc->buffer, new_packet, size);
 			bfree(new_packet);
 		} else {
-			da_copy_array(enc->buffer, enc->packet->data, enc->packet->size);
+			da_copy_array(enc->buffer, enc->packet->data, (size_t)enc->packet->size);
 		}
 
 		/* A first packet with only parameter sets leaves nothing to output. */
@@ -918,7 +922,7 @@ static bool vaapi_device_modified(obs_properties_t *ppts, obs_property_t *p, obs
 	const char *device = obs_data_get_string(settings, "vaapi_device");
 	int drm_fd = -1;
 	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_device_modified");
-	int profile = obs_data_get_int(settings, "profile");
+	int profile = (int)obs_data_get_int(settings, "profile");
 	obs_property_t *rc_p = obs_properties_get(ppts, "rate_control");
 
 	obs_property_list_clear(rc_p);

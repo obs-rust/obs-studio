@@ -64,10 +64,10 @@ void ffmpeg_video_encoder_update(struct ffmpeg_video_encoder *enc, int bitrate, 
 	const enum AVPixelFormat pix_fmt = obs_to_ffmpeg_video_format(info->format);
 	enc->context->bit_rate = rate;
 	enc->context->rc_buffer_size = rate;
-	enc->context->width = obs_encoder_get_width(enc->encoder);
-	enc->context->height = obs_encoder_get_height(enc->encoder);
-	enc->context->time_base = (AVRational){voi->fps_den, voi->fps_num};
-	enc->context->framerate = (AVRational){voi->fps_num, voi->fps_den};
+	enc->context->width = (int)obs_encoder_get_width(enc->encoder);
+	enc->context->height = (int)obs_encoder_get_height(enc->encoder);
+	enc->context->time_base = (AVRational){(int)voi->fps_den, (int)voi->fps_num};
+	enc->context->framerate = (AVRational){(int)voi->fps_num, (int)voi->fps_den};
 	enc->context->pix_fmt = pix_fmt;
 	enc->context->color_range = info->range == VIDEO_RANGE_FULL ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
 
@@ -104,7 +104,7 @@ void ffmpeg_video_encoder_update(struct ffmpeg_video_encoder *enc, int bitrate, 
 	enc->context->chroma_sample_location = determine_chroma_location(pix_fmt, colorspace);
 
 	if (keyint_sec)
-		enc->context->gop_size = keyint_sec * voi->fps_num / voi->fps_den;
+		enc->context->gop_size = keyint_sec * (int)voi->fps_num / (int)voi->fps_den;
 
 	enc->height = enc->context->height;
 
@@ -193,7 +193,7 @@ static inline void video_encoders_copy_data(AVFrame *pic, const struct encoder_f
 			int pos_frame = y * frame_rowsize;
 			int pos_pic = y * pic_rowsize;
 
-			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, bytes);
+			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, (size_t)bytes);
 		}
 	}
 }
@@ -240,7 +240,7 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame 
 			enc->on_first_packet(enc->parent, &av_pkt, &enc->buffer.da);
 			enc->first_packet = false;
 		} else {
-			da_copy_array(enc->buffer, av_pkt.data, av_pkt.size);
+			da_copy_array(enc->buffer, av_pkt.data, (size_t)av_pkt.size);
 		}
 
 		packet->pts = av_pkt.pts;

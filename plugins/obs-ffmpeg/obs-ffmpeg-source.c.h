@@ -160,7 +160,7 @@ static obs_properties_t *ffmpeg_source_getproperties(void *data)
 		dstr_replace(&path, "\\", "/");
 		slash = strrchr(path.array, '/');
 		if (slash)
-			dstr_resize(&path, slash - path.array + 1);
+			dstr_resize(&path, (size_t)(slash - path.array + 1));
 	}
 
 	obs_properties_add_path(props, "local_file", obs_module_text("LocalFile"), OBS_PATH_FILE, filter.array,
@@ -341,7 +341,7 @@ static void *ffmpeg_source_reconnect(void *data)
 {
 	struct ffmpeg_source *s = data;
 
-	int ret = os_event_timedwait(s->reconnect_stop_event, s->reconnect_delay_sec * 1000);
+	int ret = os_event_timedwait(s->reconnect_stop_event, (uint32_t)(s->reconnect_delay_sec * 1000));
 	if (ret == 0 || s->media)
 		return NULL;
 

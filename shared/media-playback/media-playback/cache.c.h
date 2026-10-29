@@ -264,7 +264,7 @@ static void mp_cache_next_video(mp_cache_t *c, bool preload)
 	struct obs_source_frame *frame = &c->video_frames.array[c->next_v_idx];
 	struct obs_source_frame dup = *frame;
 
-	dup.timestamp = c->base_ts + dup.timestamp - c->start_ts + c->play_sys_ts - base_sys_ts;
+	dup.timestamp = (uint64_t)(c->base_ts + (int64_t)dup.timestamp - c->start_ts + c->play_sys_ts - base_sys_ts);
 
 	if (!preload) {
 		if (!mp_media_can_play_video(c))
@@ -301,7 +301,7 @@ static void mp_cache_next_audio(mp_cache_t *c)
 	struct obs_source_audio *audio = &c->audio_segments.array[c->next_a_idx];
 	struct obs_source_audio dup = *audio;
 
-	dup.timestamp = c->base_ts + dup.timestamp - c->start_ts + c->play_sys_ts - base_sys_ts;
+	dup.timestamp = (uint64_t)(c->base_ts + (int64_t)dup.timestamp - c->start_ts + c->play_sys_ts - base_sys_ts);
 	if (c->a_cb)
 		c->a_cb(c->opaque, &dup);
 
@@ -368,12 +368,12 @@ static bool mp_cache_reset(mp_cache_t *c)
 	if (c->has_video) {
 		size_t next_idx = c->video_frames.num > 1 ? 1 : 0;
 		c->cur_v_idx = c->next_v_idx = 0;
-		c->next_v_ts = c->video_frames.array[next_idx].timestamp;
+		c->next_v_ts = (int64_t)c->video_frames.array[next_idx].timestamp;
 	}
 	if (c->has_audio) {
 		size_t next_idx = c->audio_segments.num > 1 ? 1 : 0;
 		c->cur_a_idx = c->next_a_idx = 0;
-		c->next_a_ts = c->audio_segments.array[next_idx].timestamp;
+		c->next_a_ts = (int64_t)c->audio_segments.array[next_idx].timestamp;
 	}
 
 	if (active) {
@@ -381,7 +381,7 @@ static bool mp_cache_reset(mp_cache_t *c)
 			c->play_sys_ts = (int64_t)os_gettime_ns();
 		c->start_ts = c->next_pts_ns = mp_cache_get_next_min_pts(c);
 		if (c->next_ns)
-			c->next_ns += offset;
+			c->next_ns += (uint64_t)offset;
 	} else {
 		c->start_ts = c->next_pts_ns = mp_cache_get_next_min_pts(c);
 		c->play_sys_ts = (int64_t)os_gettime_ns();
@@ -415,7 +415,7 @@ static void mp_cache_calc_next_ns(mp_cache_t *c)
 			delta = 0;
 	}
 
-	c->next_ns += delta;
+	c->next_ns += (uint64_t)delta;
 	c->next_pts_ns = min_next_ns;
 }
 
@@ -763,7 +763,7 @@ void mp_cache_seek(mp_cache_t *c, int64_t pos)
 
 int64_t mp_cache_get_frames(mp_cache_t *c)
 {
-	return c->video_frames.num;
+	return (int64_t)c->video_frames.num;
 }
 
 int64_t mp_cache_get_duration(mp_cache_t *c)

@@ -415,12 +415,13 @@ void mp_media_next_audio(mp_media_t *m)
 	for (size_t i = 0; i < MAX_AV_PLANES; i++)
 		audio.data[i] = f->data[i];
 
-	audio.samples_per_sec = f->sample_rate * m->speed / 100;
+	audio.samples_per_sec = (uint32_t)(f->sample_rate * m->speed / 100);
 	audio.speakers = convert_speaker_layout((uint8_t)f->ch_layout.nb_channels);
 	audio.format = convert_sample_format(f->format);
-	audio.frames = f->nb_samples;
-	audio.timestamp = m->full_decode ? d->frame_pts
-					 : m->base_ts + d->frame_pts - m->start_ts + m->play_sys_ts - base_sys_ts;
+	audio.frames = (uint32_t)f->nb_samples;
+	audio.timestamp = m->full_decode
+				  ? (uint64_t)d->frame_pts
+				  : (uint64_t)(m->base_ts + d->frame_pts - m->start_ts + m->play_sys_ts - base_sys_ts);
 
 	if (audio.format == AUDIO_FORMAT_UNKNOWN)
 		return;
@@ -468,7 +469,7 @@ void mp_media_next_video(mp_media_t *m, bool preload)
 		flip = m->scale_linesizes[0] < 0 && m->scale_linesizes[1] == 0;
 		for (size_t i = 0; i < 4; i++) {
 			frame->data[i] = m->scale_pic[i];
-			frame->linesize[i] = abs(m->scale_linesizes[i]);
+			frame->linesize[i] = (uint32_t)abs(m->scale_linesizes[i]);
 		}
 
 	} else {
@@ -476,7 +477,7 @@ void mp_media_next_video(mp_media_t *m, bool preload)
 
 		for (size_t i = 0; i < MAX_AV_PLANES; i++) {
 			frame->data[i] = f->data[i];
-			frame->linesize[i] = abs(f->linesize[i]);
+			frame->linesize[i] = (uint32_t)abs(f->linesize[i]);
 		}
 	}
 
@@ -509,11 +510,12 @@ void mp_media_next_video(mp_media_t *m, bool preload)
 	if (frame->format == VIDEO_FORMAT_NONE)
 		return;
 
-	frame->timestamp = m->full_decode ? d->frame_pts
-					  : (m->base_ts + d->frame_pts - m->start_ts + m->play_sys_ts - base_sys_ts);
+	frame->timestamp = m->full_decode
+				   ? (uint64_t)d->frame_pts
+				   : (uint64_t)(m->base_ts + d->frame_pts - m->start_ts + m->play_sys_ts - base_sys_ts);
 
-	frame->width = f->width;
-	frame->height = f->height;
+	frame->width = (uint32_t)f->width;
+	frame->height = (uint32_t)f->height;
 	frame->max_luminance = d->max_luminance;
 	frame->flip = flip;
 	frame->flags = m->is_linear_alpha ? OBS_SOURCE_FRAME_LINEAR_ALPHA : 0;
@@ -572,7 +574,7 @@ static void mp_media_calc_next_ns(mp_media_t *m)
 			delta = 0;
 	}
 
-	m->next_ns += delta;
+	m->next_ns += (uint64_t)delta;
 	m->next_pts_ns = min_next_ns;
 }
 
@@ -659,7 +661,7 @@ bool mp_media_reset(mp_media_t *m)
 			m->play_sys_ts = (int64_t)os_gettime_ns();
 		m->start_ts = m->next_pts_ns = mp_media_get_next_min_pts(m);
 		if (m->next_ns)
-			m->next_ns += offset;
+			m->next_ns += (uint64_t)offset;
 	} else {
 		m->start_ts = m->next_pts_ns = mp_media_get_next_min_pts(m);
 		m->play_sys_ts = (int64_t)os_gettime_ns();
@@ -759,7 +761,7 @@ static bool mp_media_hold_last_frame(mp_media_t *m)
 	if (!hold)
 		return false;
 
-	m->next_ns += hold;
+	m->next_ns += (uint64_t)hold;
 	m->next_pts_ns += hold;
 	return true;
 }

@@ -124,7 +124,7 @@ static void add_video_encoder_params(struct ffmpeg_muxer *stream, os_process_arg
 	video_t *video = obs_get_video();
 	const struct video_output_info *info = video_output_get_info(video);
 
-	int codec_tag = (int)obs_data_get_int(settings, "codec_type");
+	uint32_t codec_tag = (uint32_t)obs_data_get_int(settings, "codec_type");
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	codec_tag = ((codec_tag >> 24) & 0x000000FF) | ((codec_tag << 8) & 0x00FF0000) |
 		    ((codec_tag >> 8) & 0x0000FF00) | ((codec_tag << 24) & 0xFF000000);
@@ -182,7 +182,7 @@ static void add_video_encoder_params(struct ffmpeg_muxer *stream, os_process_arg
 	os_process_args_add_argf(args, "%d", max_luminance);
 	os_process_args_add_argf(args, "%d", (int)info->fps_num);
 	os_process_args_add_argf(args, "%d", (int)info->fps_den);
-	os_process_args_add_argf(args, "%d", codec_tag);
+	os_process_args_add_argf(args, "%d", (int)codec_tag);
 }
 
 static void add_audio_encoder_params(os_process_args_t *args, obs_encoder_t *aencoder)
@@ -257,7 +257,7 @@ static void build_command_line(struct ffmpeg_muxer *stream, os_process_args_t **
 	int num_tracks = 0;
 
 	for (;;) {
-		obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, num_tracks);
+		obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, (size_t)num_tracks);
 		if (!aencoder)
 			break;
 
@@ -544,7 +544,7 @@ static void find_best_filename(struct dstr *path, bool space)
 	if (!ext)
 		return;
 
-	size_t extstart = ext - path->array;
+	size_t extstart = (size_t)(ext - path->array);
 	struct dstr testpath;
 	dstr_init_copy_dstr(&testpath, path);
 	for (;;) {
@@ -598,7 +598,7 @@ bool write_packet(struct ffmpeg_muxer *stream, struct encoder_packet *packet)
 	struct ffm_packet_info info = {.pts = packet->pts,
 				       .dts = packet->dts,
 				       .size = (uint32_t)packet->size,
-				       .index = (int)packet->track_idx,
+				       .index = (unsigned)packet->track_idx,
 				       .type = is_video ? FFM_PACKET_VIDEO : FFM_PACKET_AUDIO,
 				       .keyframe = packet->keyframe};
 
@@ -629,7 +629,7 @@ bool write_packet(struct ffmpeg_muxer *stream, struct encoder_packet *packet)
 	stream->total_bytes += packet->size;
 
 	if (stream->split_file)
-		stream->cur_size += packet->size;
+		stream->cur_size += (int64_t)packet->size;
 
 	return true;
 }
@@ -916,7 +916,7 @@ static void save_replay_proc(void *data, calldata_t *cd)
 			return;
 		}
 
-		stream->save_ts = os_gettime_ns() / 1000LL;
+		stream->save_ts = (int64_t)(os_gettime_ns() / 1000LL);
 	}
 }
 
@@ -1233,7 +1233,7 @@ static void replay_buffer_data(void *data, struct encoder_packet *packet)
 
 	if (!stream->packets.size)
 		stream->cur_time = pkt.dts_usec;
-	stream->cur_size += pkt.size;
+	stream->cur_size += (int64_t)pkt.size;
 
 	deque_push_back(&stream->packets, packet, sizeof(*packet));
 

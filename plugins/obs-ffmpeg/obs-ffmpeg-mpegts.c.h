@@ -74,15 +74,15 @@ static bool new_stream(struct ffmpeg_data *data, AVStream **stream, const char *
 		return false;
 	}
 
-	(*stream)->id = data->output->nb_streams - 1;
+	(*stream)->id = (int)data->output->nb_streams - 1;
 	return true;
 }
 
 static bool get_audio_headers(struct ffmpeg_output *stream, struct ffmpeg_data *data, int idx)
 {
 	AVCodecParameters *par = data->audio_infos[idx].stream->codecpar;
-	obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, idx);
-	struct encoder_packet packet = {.type = OBS_ENCODER_AUDIO, .timebase_den = 1, .track_idx = idx};
+	obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, (size_t)idx);
+	struct encoder_packet packet = {.type = OBS_ENCODER_AUDIO, .timebase_den = 1, .track_idx = (size_t)idx};
 
 	if (obs_encoder_get_extra_data(aencoder, &packet.data, &packet.size)) {
 		par->extradata = av_memdup(packet.data, packet.size);
@@ -134,7 +134,7 @@ static bool create_video_stream(struct ffmpeg_output *stream, struct ffmpeg_data
 	context->height = data->config.scale_height;
 	context->coded_width = data->config.scale_width;
 	context->coded_height = data->config.scale_height;
-	context->time_base = (AVRational){ovi.fps_den, ovi.fps_num};
+	context->time_base = (AVRational){(int)ovi.fps_den, (int)ovi.fps_num};
 	context->gop_size = data->config.gop_size;
 	context->pix_fmt = data->config.format;
 	context->color_range = data->config.color_range;
@@ -160,8 +160,8 @@ static bool create_video_stream(struct ffmpeg_output *stream, struct ffmpeg_data
 
 		size_t content_size;
 		AVContentLightMetadata *const content = av_content_light_metadata_alloc(&content_size);
-		content->MaxCLL = hdr_nominal_peak_level;
-		content->MaxFALL = hdr_nominal_peak_level;
+		content->MaxCLL = (unsigned)hdr_nominal_peak_level;
+		content->MaxFALL = (unsigned)hdr_nominal_peak_level;
 		av_packet_side_data_add(&data->video->codecpar->coded_side_data,
 					&data->video->codecpar->nb_coded_side_data, AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
 					(uint8_t *)content, content_size, 0);
@@ -214,9 +214,9 @@ static bool create_audio_stream(struct ffmpeg_output *stream, struct ffmpeg_data
 	context->codec_type = codec->type;
 	context->codec_id = codec->id;
 	context->bit_rate = (int64_t)data->config.audio_bitrates[idx] * 1000;
-	context->time_base = (AVRational){1, aoi.samples_per_sec};
-	channels = get_audio_channels(aoi.speakers);
-	context->sample_rate = aoi.samples_per_sec;
+	context->time_base = (AVRational){1, (int)aoi.samples_per_sec};
+	channels = (int)get_audio_channels(aoi.speakers);
+	context->sample_rate = (int)aoi.samples_per_sec;
 
 	av_channel_layout_default(&context->ch_layout, channels);
 	if (aoi.speakers == SPEAKERS_4POINT1)
@@ -244,7 +244,7 @@ static inline bool init_streams(struct ffmpeg_output *stream, struct ffmpeg_data
 		return false;
 
 	if (data->num_audio_streams) {
-		data->audio_infos = calloc(data->num_audio_streams, sizeof(*data->audio_infos));
+		data->audio_infos = calloc((size_t)data->num_audio_streams, sizeof(*data->audio_infos));
 		for (int i = 0; i < data->num_audio_streams; i++) {
 			if (!create_audio_stream(stream, data, i))
 				return false;
@@ -386,7 +386,7 @@ static inline int allocate_custom_aviocontext(struct ffmpeg_output *stream, bool
 	if (h->max_packet_size)
 		buffer_size = h->max_packet_size;
 
-	buffer = av_malloc(buffer_size);
+	buffer = av_malloc((size_t)buffer_size);
 
 	if (!buffer)
 		return AVERROR(ENOMEM);
@@ -773,7 +773,7 @@ static int mpegts_process_packet(struct ffmpeg_output *stream)
 			goto end;
 		}
 	}
-	stream->total_bytes += packet->size;
+	stream->total_bytes += (uint64_t)packet->size;
 	uint8_t *buf = packet->data;
 	ret = av_interleaved_write_frame(stream->ff_data.output, packet);
 	av_freep(&buf);
@@ -863,7 +863,7 @@ static bool fetch_service_info(struct ffmpeg_output *stream, struct ffmpeg_cfg *
 	p = strchr(config->url, '?');
 	if (p && (av_find_info_tag(buf, sizeof(buf), "payload_size", p) ||
 		  av_find_info_tag(buf, sizeof(buf), "pkt_size", p))) {
-		config->srt_pkt_size = strtol(buf, NULL, 10);
+		config->srt_pkt_size = (int)strtol(buf, NULL, 10);
 	}
 	return true;
 }
@@ -931,7 +931,7 @@ static bool setup_video_settings(struct ffmpeg_output *stream, struct ffmpeg_cfg
 	obs_data_t *settings = obs_encoder_get_settings(vencoder);
 	config->video_bitrate = (int)obs_data_get_int(settings, "bitrate");
 	int keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
-	config->gop_size = keyint_sec ? keyint_sec * voi->fps_num / voi->fps_den : 250;
+	config->gop_size = keyint_sec ? keyint_sec * (int)voi->fps_num / (int)voi->fps_den : 250;
 	obs_data_release(settings);
 	return true;
 }
@@ -944,7 +944,7 @@ static bool setup_audio_settings(struct ffmpeg_output *stream, struct ffmpeg_cfg
 	int num_tracks = 0;
 
 	for (;;) {
-		obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, num_tracks);
+		obs_encoder_t *aencoder = obs_output_get_audio_encoder(stream->output, (size_t)num_tracks);
 		if (!aencoder)
 			break;
 		aencoders[num_tracks] = aencoder;
@@ -1270,7 +1270,7 @@ void mpegts_write_packet(struct ffmpeg_output *stream, struct encoder_packet *en
 
 	packet = av_packet_alloc();
 
-	packet->data = av_memdup(encpacket->data, (int)encpacket->size);
+	packet->data = av_memdup(encpacket->data, encpacket->size);
 	if (packet->data == NULL) {
 		error("Couldn't allocate packet data");
 		goto fail;

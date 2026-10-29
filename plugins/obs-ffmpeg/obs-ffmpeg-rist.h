@@ -210,8 +210,8 @@ static int librist_open(URLContext *h, const char *uri)
 		peer_config->key_size = s->encryption;
 
 	if (s->buffer_size) {
-		peer_config->recovery_length_min = s->buffer_size;
-		peer_config->recovery_length_max = s->buffer_size;
+		peer_config->recovery_length_min = (uint32_t)s->buffer_size;
+		peer_config->recovery_length_max = (uint32_t)s->buffer_size;
 	}
 	if (s->username && peer_config->srp_username[0] == 0)
 		av_strlcpy(peer_config->srp_username, s->username, RIST_MAX_STRING_LONG);
@@ -247,7 +247,7 @@ static int librist_write(URLContext *h, const uint8_t *buf, int size)
 
 	data_block.ts_ntp = 0;
 	data_block.payload = buf;
-	data_block.payload_len = size;
+	data_block.payload_len = (size_t)size;
 
 	ret = rist_sender_data_write(s->ctx, &data_block);
 	if (ret < 0) {

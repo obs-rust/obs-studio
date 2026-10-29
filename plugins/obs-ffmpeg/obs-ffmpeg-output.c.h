@@ -58,7 +58,7 @@ static bool new_stream(struct ffmpeg_data *data, AVStream **stream, const AVCode
 		return false;
 	}
 
-	(*stream)->id = data->output->nb_streams - 1;
+	(*stream)->id = (int)data->output->nb_streams - 1;
 	return true;
 }
 
@@ -196,8 +196,8 @@ static AVCodecContext *create_video_context(struct ffmpeg_data *data, const stru
 	context->bit_rate = (int64_t)data->config.video_bitrate * 1000;
 	context->width = data->config.scale_width;
 	context->height = data->config.scale_height;
-	context->time_base = (AVRational){ovi->fps_den, ovi->fps_num};
-	context->framerate = (AVRational){ovi->fps_num, ovi->fps_den};
+	context->time_base = (AVRational){(int)ovi->fps_den, (int)ovi->fps_num};
+	context->framerate = (AVRational){(int)ovi->fps_num, (int)ovi->fps_den};
 	context->gop_size = data->config.gop_size;
 	context->color_range = data->config.color_range;
 	context->color_primaries = data->config.color_primaries;
@@ -253,7 +253,7 @@ static bool create_video_stream(struct ffmpeg_data *data)
 
 	const enum AVPixelFormat first_format = closest_format;
 	data->video->time_base = context->time_base;
-	data->video->avg_frame_rate = (AVRational){ovi.fps_num, ovi.fps_den};
+	data->video->avg_frame_rate = (AVRational){(int)ovi.fps_num, (int)ovi.fps_den};
 
 	data->video_ctx = context;
 
@@ -293,8 +293,8 @@ static bool create_video_stream(struct ffmpeg_data *data)
 
 		size_t content_size;
 		AVContentLightMetadata *const content = av_content_light_metadata_alloc(&content_size);
-		content->MaxCLL = hdr_nominal_peak_level;
-		content->MaxFALL = hdr_nominal_peak_level;
+		content->MaxCLL = (unsigned)hdr_nominal_peak_level;
+		content->MaxFALL = (unsigned)hdr_nominal_peak_level;
 		av_packet_side_data_add(&data->video->codecpar->coded_side_data,
 					&data->video->codecpar->nb_coded_side_data, AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
 					(uint8_t *)content, content_size, 0);
@@ -389,10 +389,10 @@ static bool create_audio_stream(struct ffmpeg_data *data, int idx)
 
 	context = avcodec_alloc_context3(data->acodec);
 	context->bit_rate = (int64_t)data->config.audio_bitrate * 1000;
-	context->time_base = (AVRational){1, aoi.samples_per_sec};
-	channels = get_audio_channels(aoi.speakers);
+	context->time_base = (AVRational){1, (int)aoi.samples_per_sec};
+	channels = (int)get_audio_channels(aoi.speakers);
 
-	context->sample_rate = aoi.samples_per_sec;
+	context->sample_rate = (int)aoi.samples_per_sec;
 	av_channel_layout_default(&context->ch_layout, channels);
 	if (aoi.speakers == SPEAKERS_4POINT1)
 		context->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_4POINT1;
@@ -430,7 +430,7 @@ static inline bool init_streams(struct ffmpeg_data *data)
 			return false;
 
 	if (format->audio_codec != AV_CODEC_ID_NONE && data->num_audio_streams) {
-		data->audio_infos = calloc(data->num_audio_streams, sizeof(*data->audio_infos));
+		data->audio_infos = calloc((size_t)data->num_audio_streams, sizeof(*data->audio_infos));
 		for (int i = 0; i < data->num_audio_streams; i++) {
 			if (!create_audio_stream(data, i))
 				return false;
@@ -706,7 +706,7 @@ static inline void copy_data(AVFrame *pic, const struct video_data *frame, int h
 			int pos_frame = y * frame_rowsize;
 			int pos_pic = y * pic_rowsize;
 
-			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, bytes);
+			memcpy(pic->data[plane] + pos_pic, frame->data[plane] + pos_frame, (size_t)bytes);
 		}
 	}
 }
@@ -805,7 +805,7 @@ static void encode_audio(struct ffmpeg_output *output, int idx, struct AVCodecCo
 	AVPacket *packet = NULL;
 	int ret, got_packet;
 	int channels = context->ch_layout.nb_channels;
-	size_t total_size = data->frame_size * block_size * channels;
+	size_t total_size = (size_t)data->frame_size * (size_t)block_size * (size_t)channels;
 
 	data->aframe[idx]->nb_samples = data->frame_size;
 	data->aframe[idx]->pts =
@@ -954,7 +954,7 @@ static int output_write_packet(struct ffmpeg_output *output, AVPacket *packet)
 		}
 	}
 
-	output->total_bytes += packet->size;
+	output->total_bytes += (uint64_t)packet->size;
 
 	ret = av_interleaved_write_frame(output->ff_data.output, packet);
 	if (ret < 0) {
