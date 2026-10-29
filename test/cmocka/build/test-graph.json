@@ -3586,6 +3586,36 @@
         "libobs/data"
       ]
     },
+    "test_scene_transform_update_steps": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_steps.c",
+        "libobs/obs-scene-transform-update.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-transform-update.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_scene_transform_update_walk": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_walk.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_serializer": {
       "sources": [
         "test/cmocka/test_serializer.c"
@@ -6482,6 +6512,27 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_transform_update_steps": {
+      "target": "test_scene_transform_update_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_transform_update_walk": {
+      "target": "test_scene_transform_update_walk",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_serializer": {
       "target": "test_serializer"
