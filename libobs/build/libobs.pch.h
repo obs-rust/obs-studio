@@ -213,6 +213,7 @@
 #include "obs-source-color-space.h"
 #include "obs-source-conversion-plan.h"
 #include "obs-source-draw-plan.h"
+#include "obs-source-duplicate.h"
 #include "obs-source-frame-copy.h"
 #include "obs-source-media-admission.h"
 #include "obs-source-monitoring.h"

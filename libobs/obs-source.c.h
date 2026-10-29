@@ -565,6 +565,14 @@ obs_source_t *obs_source_create_set_last_ver(obs_canvas_t *canvas, const char *i
 	return obs_source_create_internal(id, name, uuid, settings, hotkey_data, is_private, last_obs_ver, canvas);
 }
 
+_Static_assert(OBS_SOURCE_DUPLICATE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURCE_TYPE_FILTER");
+_Static_assert(OBS_SOURCE_DUPLICATE_TYPE_SCENE == OBS_SOURCE_TYPE_SCENE, "OBS_SOURCE_TYPE_SCENE");
+_Static_assert(OBS_SOURCE_DUPLICATE_DO_NOT_DUPLICATE == OBS_SOURCE_DO_NOT_DUPLICATE, "OBS_SOURCE_DO_NOT_DUPLICATE");
+_Static_assert(OBS_SOURCE_DUPLICATE_DUP_REFS == OBS_SCENE_DUP_REFS, "OBS_SCENE_DUP_REFS");
+_Static_assert(OBS_SOURCE_DUPLICATE_DUP_COPY == OBS_SCENE_DUP_COPY, "OBS_SCENE_DUP_COPY");
+_Static_assert(OBS_SOURCE_DUPLICATE_DUP_PRIVATE_REFS == OBS_SCENE_DUP_PRIVATE_REFS, "OBS_SCENE_DUP_PRIVATE_REFS");
+_Static_assert(OBS_SOURCE_DUPLICATE_DUP_PRIVATE_COPY == OBS_SCENE_DUP_PRIVATE_COPY, "OBS_SCENE_DUP_PRIVATE_COPY");
+
 static char *get_new_filter_name(obs_source_t *dst, const char *name)
 {
 	struct dstr new_name = {0};
@@ -579,7 +587,7 @@ static char *get_new_filter_name(obs_source_t *dst, const char *name)
 
 		obs_source_release(existing_filter);
 
-		dstr_printf(&new_name, "%s %d", name, ++inc + 1);
+		dstr_printf(&new_name, "%s %d", name, obs_source_duplicate_filter_number(++inc));
 	}
 
 	return new_name.array;
@@ -661,23 +669,27 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 	if (!obs_source_valid(source, "obs_source_duplicate"))
 		return NULL;
 
-	if (source->info.type == OBS_SOURCE_TYPE_SCENE) {
+	if (obs_source_duplicate_type_step((int)source->info.type) == OBS_SOURCE_DUPLICATE_ASK_SCENE) {
 		obs_scene_t *scene = obs_scene_from_source(source);
-		if (scene && !create_private) {
+		int step = obs_source_duplicate_scene_step(scene != NULL, create_private);
+		if (step == OBS_SOURCE_DUPLICATE_REF) {
 			return obs_source_get_ref(source);
 		}
-		if (!scene)
+		if (step == OBS_SOURCE_DUPLICATE_ASK_GROUP) {
 			scene = obs_group_from_source(source);
-		if (!scene)
+			step = obs_source_duplicate_group_step(scene != NULL);
+		}
+		if (step != OBS_SOURCE_DUPLICATE_SCENE_COPY)
 			return NULL;
 
 		obs_scene_t *new_scene = obs_scene_duplicate(
-			scene, new_name, create_private ? OBS_SCENE_DUP_PRIVATE_COPY : OBS_SCENE_DUP_COPY);
+			scene, new_name,
+			(enum obs_scene_duplicate_type)obs_source_duplicate_scene_type(create_private));
 		obs_source_t *dup_source = obs_scene_get_source(new_scene);
 		return dup_source;
 	}
 
-	if ((source->info.output_flags & OBS_SOURCE_DO_NOT_DUPLICATE) != 0) {
+	if (obs_source_duplicate_flags_step(source->info.output_flags) == OBS_SOURCE_DUPLICATE_REF) {
 		return obs_source_get_ref(source);
 	}
 
@@ -686,6 +698,11 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 
 	new_source = create_private ? obs_source_create_private(source->info.id, new_name, settings)
 				    : obs_source_create(source->info.id, new_name, settings, NULL);
+
+	if (obs_source_duplicate_created_step(new_source != NULL) != OBS_SOURCE_DUPLICATE_COPY_STATE) {
+		obs_data_release(settings);
+		return NULL;
+	}
 
 	new_source->audio_mixers = source->audio_mixers;
 	new_source->sync_offset = source->sync_offset;
@@ -697,7 +714,7 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 
 	obs_data_apply(new_source->private_settings, source->private_settings);
 
-	if (source->info.type != OBS_SOURCE_TYPE_FILTER)
+	if (obs_source_duplicate_copies_filters((int)source->info.type))
 		duplicate_filters(new_source, source, create_private);
 
 	obs_data_release(settings);

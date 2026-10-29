@@ -79,6 +79,7 @@
     "obs-source-deinterlace-select.h",
     "obs-source-draw-plan.h",
     "obs-source-draw-technique.h",
+    "obs-source-duplicate.h",
     "obs-source-frame-copy.h",
     "obs-source-load.h",
     "obs-source-media-admission.h",

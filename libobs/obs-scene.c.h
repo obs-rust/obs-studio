@@ -1577,8 +1577,8 @@ static obs_source_t *get_child_at_idx(obs_scene_t *scene, size_t idx)
 	return item ? item->source : NULL;
 }
 
-static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, size_t idx, obs_scene_t *new_scene,
-				      bool private)
+static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, obs_source_t *const *copies, size_t idx,
+				      obs_scene_t *new_scene, bool private)
 {
 	obs_source_t *source;
 
@@ -1589,13 +1589,17 @@ static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, siz
 	 * load times */
 	for (size_t i = 0; i < idx; i++) {
 		struct obs_scene_item *item = old_items->array[i];
-		if (item->source == source) {
+		int reuse = obs_scene_duplicate_reuse(item->source, source, copies[i] != NULL);
+		if (reuse == OBS_SCENE_DUPLICATE_REUSE_AT_INDEX) {
 			source = get_child_at_idx(new_scene, i);
 			return obs_source_get_ref(source);
+		} else if (reuse == OBS_SCENE_DUPLICATE_REUSE_COPY) {
+			return obs_source_get_ref(copies[i]);
 		}
 	}
 
-	return obs_source_duplicate(source, private ? obs_source_get_name(source) : NULL, private);
+	return obs_source_duplicate(
+		source, obs_scene_duplicate_keeps_name(private) ? obs_source_get_name(source) : NULL, private);
 }
 
 /* A group is copied with the duplicate type asked for, so that a private copy
@@ -1604,7 +1608,8 @@ static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, siz
 static inline obs_source_t *dup_group(obs_source_t *group, enum obs_scene_duplicate_type type, bool private)
 {
 	obs_scene_t *new_group =
-		obs_scene_duplicate(obs_group_from_source(group), private ? obs_source_get_name(group) : NULL, type);
+		obs_scene_duplicate(obs_group_from_source(group),
+				    obs_scene_duplicate_keeps_name(private) ? obs_source_get_name(group) : NULL, type);
 	return obs_scene_get_source(new_group);
 }
 
@@ -1690,14 +1695,17 @@ static inline void duplicate_item_data(struct obs_scene_item *dst, struct obs_sc
 
 obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_scene_duplicate_type type)
 {
-	bool make_unique = type == OBS_SCENE_DUP_COPY || type == OBS_SCENE_DUP_PRIVATE_COPY;
-	bool make_private = type == OBS_SCENE_DUP_PRIVATE_REFS || type == OBS_SCENE_DUP_PRIVATE_COPY;
+	bool make_unique = obs_scene_duplicate_unique((int)type);
+	bool make_private = obs_scene_duplicate_private((int)type);
 	obs_scene_item_ptr_array_t items;
+	/* the new source of each old item, NULL where none was added */
+	DARRAY(obs_source_t *) copies;
 	struct obs_scene *new_scene;
 	struct obs_scene_item *item;
 	struct obs_source *source;
 
 	da_init(items);
+	da_init(copies);
 
 	if (!obs_ptr_valid(scene, "obs_scene_duplicate"))
 		return NULL;
@@ -1737,15 +1745,17 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 	/* A group's sub-items are copied only for a private copy (Studio Mode
 	 * with "Duplicate Sources"), which must not share sources with the
 	 * scene being edited. A public copy of a group keeps its sources. */
-	if (scene->is_group && type != OBS_SCENE_DUP_PRIVATE_COPY)
-		make_unique = false;
+	make_unique = obs_scene_duplicate_keeps_unique(make_unique, scene->is_group, (int)type);
 
 	for (size_t i = 0; i < items.num; i++) {
+		obs_source_t *copy = NULL;
+
 		item = items.array[i];
-		if (item->is_group)
+		int route = obs_scene_duplicate_item_route(item->is_group, make_unique);
+		if (route == OBS_SCENE_DUPLICATE_ITEM_GROUP)
 			source = dup_group(item->source, type, make_private);
-		else if (make_unique)
-			source = dup_child(&items, i, new_scene, make_private);
+		else if (route == OBS_SCENE_DUPLICATE_ITEM_CHILD)
+			source = dup_child(&items, copies.array, i, new_scene, make_private);
 		else
 			source = new_ref(item->source);
 
@@ -1754,21 +1764,26 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 
 			if (!new_item) {
 				obs_source_release(source);
+				da_push_back(copies, &copy);
 				continue;
 			}
 
 			duplicate_item_data(new_item, item, false, false);
 
+			copy = source;
 			obs_source_release(source);
 		}
+
+		da_push_back(copies, &copy);
 	}
 
 	for (size_t i = 0; i < items.num; i++)
 		obs_sceneitem_release(items.array[i]);
 
-	if (new_scene->is_group)
+	if (obs_scene_duplicate_resizes(new_scene->is_group))
 		resize_scene(new_scene);
 
+	da_free(copies);
 	da_free(items);
 	return new_scene;
 }
