@@ -348,16 +348,20 @@ bool OBSBasicPreview::SelectedAtPos(const vec2 &pos)
 }
 
 struct HandleFindData {
-	const vec2 &pos;
-	const float radius;
+	/* parent_xform is 16-byte aligned (vec4 carries the SIMD type), so it
+	 * leads the struct: every other member then lands at its natural offset
+	 * and the size stays a multiple of the alignment, with no padding to
+	 * warn about (C4324). */
 	matrix4 parent_xform;
 
+	const vec2 &pos;
 	OBSSceneItem item;
-	ItemHandle handle = ItemHandle::None;
-	float angle = 0.0f;
 	vec2 rotatePoint;
 	vec2 offsetPoint;
 
+	const float radius;
+	ItemHandle handle = ItemHandle::None;
+	float angle = 0.0f;
 	float angleOffset = 0.0f;
 
 	HandleFindData(const HandleFindData &) = delete;
@@ -372,12 +376,12 @@ struct HandleFindData {
 
 	inline HandleFindData(const HandleFindData &hfd, obs_sceneitem_t *parent)
 		: pos(hfd.pos),
-		  radius(hfd.radius),
 		  item(hfd.item),
-		  handle(hfd.handle),
-		  angle(hfd.angle),
 		  rotatePoint(hfd.rotatePoint),
-		  offsetPoint(hfd.offsetPoint)
+		  offsetPoint(hfd.offsetPoint),
+		  radius(hfd.radius),
+		  handle(hfd.handle),
+		  angle(hfd.angle)
 	{
 		obs_sceneitem_get_draw_transform(parent, &parent_xform);
 	}
