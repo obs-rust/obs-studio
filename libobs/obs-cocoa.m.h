@@ -234,10 +234,14 @@ bool obs_host_default_monitoring_device(const char *device_id, char **def_id)
 
 // MARK: - macOS Hotkey Management
 
-typedef struct obs_key_code {
-    int code;
-    bool is_valid;
-} obs_key_code_t;
+/* obs_key_code_t and the key map and pressed check on it are in obs-cocoa-keys.h, which includes no macOS header: check
+ * what it assumes about them here. */
+_Static_assert(sizeof(CGEventFlags) == sizeof(uint64_t), "CGEventFlags is a uint64_t");
+_Static_assert(sizeof(NSUInteger) == sizeof(uint64_t), "NSUInteger is 64 bits");
+_Static_assert(OBS_COCOA_KEYS_FLAG_SHIFT == kCGEventFlagMaskShift, "kCGEventFlagMaskShift");
+_Static_assert(OBS_COCOA_KEYS_FLAG_CONTROL == kCGEventFlagMaskControl, "kCGEventFlagMaskControl");
+_Static_assert(OBS_COCOA_KEYS_FLAG_ALTERNATE == kCGEventFlagMaskAlternate, "kCGEventFlagMaskAlternate");
+_Static_assert(OBS_COCOA_KEYS_FLAG_COMMAND == kCGEventFlagMaskCommand, "kCGEventFlagMaskCommand");
 
 typedef struct macOS_glyph_desc {
     UniChar glyph;
@@ -251,7 +255,7 @@ typedef struct obs_key_desc {
     bool is_valid;
 } obs_key_desc_t;
 
-static int INVALID_KEY = 0xFF;
+static int INVALID_KEY = OBS_COCOA_KEYS_INVALID;
 
 /* clang-format off */
 static const obs_key_code_t virtual_keys[OBS_KEY_LAST_VALUE] = {
@@ -559,10 +563,10 @@ static CGEventRef KeyboardEventProc(CGEventTapProxy proxy __unused, CGEventType 
     obs_hotkeys_platform_t *platform = userInfo;
 
     const CGEventFlags flags = CGEventGetFlags(event);
-    platform->is_key_down[OBS_KEY_SHIFT] = !!(flags & kCGEventFlagMaskShift);
-    platform->is_key_down[OBS_KEY_ALT] = !!(flags & kCGEventFlagMaskAlternate);
-    platform->is_key_down[OBS_KEY_META] = !!(flags & kCGEventFlagMaskCommand);
-    platform->is_key_down[OBS_KEY_CONTROL] = !!(flags & kCGEventFlagMaskControl);
+    platform->is_key_down[OBS_KEY_SHIFT] = obs_cocoa_keys_modifier(flags, OBS_KEY_SHIFT);
+    platform->is_key_down[OBS_KEY_ALT] = obs_cocoa_keys_modifier(flags, OBS_KEY_ALT);
+    platform->is_key_down[OBS_KEY_META] = obs_cocoa_keys_modifier(flags, OBS_KEY_META);
+    platform->is_key_down[OBS_KEY_CONTROL] = obs_cocoa_keys_modifier(flags, OBS_KEY_CONTROL);
 
     switch (type) {
         case kCGEventKeyDown: {
@@ -703,43 +707,27 @@ void obs_hotkeys_platform_free(struct obs_core_hotkeys *hotkeys)
 
 int obs_key_to_virtual_key(obs_key_t key)
 {
-    if (virtual_keys[key].is_valid) {
-        return virtual_keys[key].code;
-    } else {
-        return INVALID_KEY;
-    }
+    return obs_cocoa_keys_to_virtual_key(virtual_keys, key);
 }
 
 obs_key_t obs_key_from_virtual_key(int keyCode)
 {
-    for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++) {
-        if (virtual_keys[i].is_valid && virtual_keys[i].code == keyCode) {
-            return (obs_key_t) i;
-        }
-    }
-
-    return OBS_KEY_NONE;
+    return obs_cocoa_keys_from_virtual_key(virtual_keys, keyCode);
 }
 
 bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *platform, obs_key_t key)
 {
-    if (key >= OBS_KEY_MOUSE1 && key <= OBS_KEY_MOUSE29) {
-        int button = (int) key - 1;
-
+    if (obs_cocoa_keys_is_mouse(key)) {
         NSUInteger buttons = [NSEvent pressedMouseButtons];
 
-        if ((buttons & (1 << button)) != 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return obs_cocoa_keys_mouse_pressed(key, buttons);
     }
 
     if (!platform) {
         return false;
     }
 
-    if (key >= OBS_KEY_LAST_VALUE) {
+    if (!obs_cocoa_keys_in_range(key)) {
         return false;
     }
 

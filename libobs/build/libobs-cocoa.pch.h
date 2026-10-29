@@ -9,6 +9,7 @@
 #include "util/platform.h"
 #include "obs.h"
 #include "obs-internal.h"
+#include "obs-cocoa-keys.h"
 #include "obs-host/default-monitoring-device.h"
 #include "obs-host/display-srgb-clear.h"
 #include "obs-host/graphics-thread.h"
