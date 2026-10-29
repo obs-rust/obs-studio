@@ -25,6 +25,7 @@ mod module_names_parity;
 mod module_paths;
 mod module_paths_parity;
 mod module_register_copy;
+mod module_register_copy_parity;
 mod module_source_rules;
 mod module_source_rules_parity;
 mod module_type_rules;

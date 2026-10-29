@@ -94,6 +94,7 @@ pub mod module_load_rules;
 pub mod module_locale;
 pub mod module_names;
 pub mod module_paths;
+pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_rules;
 pub mod nal;
