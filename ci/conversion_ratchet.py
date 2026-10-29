@@ -13,9 +13,10 @@ lane, never the sanitizer build. Three ratchet slices reached master that way
 
 `ratcheted_dirs` is the ratchet as `ci/ci_scope.py` reads it: the directories of
 the CMakeLists files that name a group. `hit` says whether a changed path is a
-compile input below one of them, so the PR that touches a ratcheted target
-selects the sanitizer lane and pays for its own diagnostic (#2923) instead of
-leaving it to the night's schedule.
+compile input below one of them (a source, or the CMakeLists that names the
+group), so the PR that touches a ratcheted target selects the sanitizer lane and
+pays for its own diagnostic (#2923) instead of leaving it to the night's
+schedule.
 
 The list is read from the tree the PR builds, never a hand-kept copy, so the PR
 that adds a target to the ratchet selects the lane too: the flag is already in
@@ -34,6 +35,9 @@ GROUP = re.compile(r"(?<![\w-])-W(?:no-)?[a-z-]*conversion\b")
 CALL = re.compile(r"target_compile_options\(([^)]*)\)", re.S)
 # Compile inputs keep their suffix in the unity outputs (foo.cpp.hpp, bar.c.h).
 SOURCE = re.compile(r"\.(?:c|h|cc|cpp|cxx|hpp|hxx|ipp|m|mm)$")
+# A target's own build file: the PR that opts it into a group changes this and
+# nothing else (#2956), and it is a build input of that target.
+CMAKE_LISTS = re.compile(r"^(?:(?P<dir>.+)/)?CMakeLists\.txt$")
 # Vendored upstream trees are never edited here, so they never ratchet.
 VENDORED = ("deps/",)
 
@@ -94,10 +98,21 @@ def repo_ratcheted_dirs(root: Path) -> tuple[str, ...]:
 
 
 def hit(path: str, dirs: tuple[str, ...] | frozenset[str]) -> bool:
-    """True when `path` is a compile input of a ratcheted target."""
-    if not SOURCE.search(path):
+    """True when `path` is a compile input of a ratcheted target.
+
+    A source below a ratcheted directory is one (#2923). So is that target's own
+    `CMakeLists.txt`: the PR that opts a target into a group changes only the
+    CMakeLists, and the sanitizer-only diagnostic the new flags can surface is
+    one only that PR's lane would report (#2956 left it to the night's
+    schedule). A nested CMakeLists is another target, and a directory the
+    ratchet does not name opts nothing in.
+    """
+    if SOURCE.search(path):
+        return any(path.startswith(d + "/") for d in dirs if d)
+    match = CMAKE_LISTS.match(path)
+    if match is None:
         return False
-    return any(path.startswith(d + "/") for d in dirs if d)
+    return (match.group("dir") or "") in dirs
 
 
 def main() -> int:

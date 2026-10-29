@@ -450,10 +450,11 @@ def scope(
     docs_only = bool(files) and all(is_docs(path) for path in files)
     # #2923: the ratchet's blind spot is the configuration. A PR that changes a
     # compile input of a target which already names a conversion group runs the
-    # sanitizer lane, so the diagnostic that only that build reports is paid for
-    # by the PR that causes it. Pull requests only: the merge queue keeps the
-    # path selection (#2072, #2593) and a master push or the schedule runs the
-    # full lane anyway.
+    # sanitizer lane — a source below it, or the CMakeLists that names the group
+    # (#2956) — so the diagnostic that only that build reports is paid for by
+    # the PR that causes it. Pull requests only: the merge queue keeps the path
+    # selection (#2072, #2593) and a master push or the schedule runs the full
+    # lane anyway.
     asan = event == "pull_request" and any(ratchet_hit(path, ratchet_dirs) for path in files)
     return Scope(
         core,
