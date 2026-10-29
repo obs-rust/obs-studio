@@ -61,6 +61,7 @@
     "obs-scene-item-names.h",
     "obs-scene-item-transform.h",
     "obs-scene-render-plan.h",
+    "obs-scene-transform-update.h",
     "obs-scene.h",
     "obs-service.h",
     "obs-source-async-pacing.h",

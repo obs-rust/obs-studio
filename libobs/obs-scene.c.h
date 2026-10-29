@@ -511,12 +511,22 @@ static void update_item_transform(struct obs_scene_item *item, bool update_tex)
 	os_atomic_set_bool(&item->update_transform, false);
 }
 
-static inline bool source_size_changed(struct obs_scene_item *item)
+/* Whether the item's transform is computed again on this walk
+ * (obs_scene_transform_update_item()). The source size is read only when the
+ * update_transform flag is clear, as the original || stopped at the flag. */
+static inline bool item_needs_transform_update(struct obs_scene_item *item, bool scene_size_changed)
 {
-	uint32_t width = obs_source_get_width(item->source);
-	uint32_t height = obs_source_get_height(item->source);
+	bool update_transform = os_atomic_load_bool(&item->update_transform);
+	uint32_t width = 0;
+	uint32_t height = 0;
 
-	return item->last_width != width || item->last_height != height;
+	if (!update_transform) {
+		width = obs_source_get_width(item->source);
+		height = obs_source_get_height(item->source);
+	}
+
+	return obs_scene_transform_update_item(update_transform, item->last_width, item->last_height, width, height,
+					       scene_size_changed);
 }
 
 /* obs-scene-render-plan.h mirrors these values, so it needs no core header. */
@@ -889,8 +899,7 @@ static void update_transforms_and_prune_sources(obs_scene_t *scene, obs_scene_it
 			video_unlock(group_scene);
 		}
 
-		if (os_atomic_load_bool(&item->update_transform) || source_size_changed(item) || scene_size_changed) {
-
+		if (item_needs_transform_update(item, scene_size_changed)) {
 			update_item_transform(item, true);
 			rebuild_group = true;
 		}
@@ -907,12 +916,7 @@ static inline bool scene_size_changed(obs_scene_t *scene)
 	uint32_t width = scene_getwidth(scene);
 	uint32_t height = scene_getheight(scene);
 
-	if (width == scene->last_width && height == scene->last_height)
-		return false;
-
-	scene->last_width = width;
-	scene->last_height = height;
-	return true;
+	return obs_scene_transform_update_scene_size(&scene->last_width, &scene->last_height, width, height);
 }
 
 static void scene_video_render(void *data, gs_effect_t *effect)

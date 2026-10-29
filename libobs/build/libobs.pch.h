@@ -175,6 +175,10 @@
 
 #include "obs-scene-render-plan.h"
 
+/* obs-scene-transform-update.c */
+
+#include "obs-scene-transform-update.h"
+
 /* obs-scene.c */
 #include "graphics/math-defs.h"
 #include "obs-scene-blend.h"
