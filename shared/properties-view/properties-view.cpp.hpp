@@ -1869,7 +1869,7 @@ void WidgetInfo::ListChanged(const char *setting)
 		obs_data_set_string(view->settings, setting, data.toByteArray().constData());
 		break;
 	case OBS_COMBO_FORMAT_BOOL:
-		obs_data_set_bool(view->settings, setting, data.value<double>());
+		obs_data_set_bool(view->settings, setting, data.value<double>() != 0.0);
 		break;
 	}
 }

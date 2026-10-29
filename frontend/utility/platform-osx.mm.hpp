@@ -235,8 +235,9 @@ void EnableOSXDockIcon(bool enable)
 	[appIcon drawInRect:CGRectMake(0, 0, size.width, size.height)];
 
 	/* Draw small icon on top */
-	float iconSize = 0.45;
-	CGImageRef image = _icon.pixmap(size.width, size.height).toImage().toCGImage();
+	float iconSize = 0.45f;
+	CGImageRef image =
+		_icon.pixmap(static_cast<int>(size.width), static_cast<int>(size.height)).toImage().toCGImage();
 	CGContextRef context = [[NSGraphicsContext currentContext] CGContext];
 	CGContextDrawImage(context,
 			   CGRectMake(size.width * (1 - iconSize), 0, size.width * iconSize, size.height * iconSize),
@@ -765,7 +766,7 @@ const char *GetPlatformPropertiesTextSource()
 
 float GetPlatformPropertiesLabelHeight(uint32_t height)
 {
-	return height * 0.8;
+	return static_cast<float>(height * 0.8);
 }
 
 void AdjustPlatformYouTubeDialogSize(QWidget *dialog)
