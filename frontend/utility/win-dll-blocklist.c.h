@@ -363,9 +363,17 @@ void install_dll_blocklist_hook(void)
 
 	DetourTransactionBegin();
 
-	/* Detours stores hooks as data pointers: the cast is the documented
-	 * way to hand it a function address (MSVC C4152 on the implicit form). */
-	if (DetourAttach((PVOID *)&ntMap, (PVOID)NtMapViewOfSection_hook) != NO_ERROR) {
+	/* Detours stores hooks as data pointers, and a cast from a function
+	 * pointer to a data pointer is C4152 at /W4 even when it is explicit.
+	 * Copy the address through a union instead, the way GET_DBGHELP_IMPORT
+	 * (libobs/obs-win-crash-handler.c.h) does for GetProcAddress. No code is
+	 * generated for the copy. */
+	union {
+		fn_NtMapViewOfSection fn;
+		PVOID obj;
+	} detour = {NtMapViewOfSection_hook};
+
+	if (DetourAttach((PVOID *)&ntMap, detour.obj) != NO_ERROR) {
 		DetourTransactionAbort();
 	} else {
 		DetourTransactionCommit();
