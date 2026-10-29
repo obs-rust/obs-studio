@@ -176,8 +176,8 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 	}
 
 	if (strcmp(uid, "default") != 0) {
-		CFStringRef cf_uid =
-			CFStringCreateWithBytes(NULL, (const UInt8 *)uid, strlen(uid), kCFStringEncodingUTF8, false);
+		CFStringRef cf_uid = CFStringCreateWithBytes(NULL, (const UInt8 *)uid, (CFIndex)strlen(uid),
+							     kCFStringEncodingUTF8, false);
 
 		stat = AudioQueueSetProperty(monitor->queue, kAudioQueueProperty_CurrentDevice, &cf_uid,
 					     sizeof(cf_uid));
