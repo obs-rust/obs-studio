@@ -18,12 +18,13 @@
 //! `libobs/obs-encoder-group-reconfig.c.h`, the encoder group reconfigure
 //! rules,
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
-//! decisions, and `libobs/obs-output-stop.c.h`, the output stop and
+//! decisions, `libobs/obs-output-begin.c.h`, the output begin-capture plan,
+//! and `libobs/obs-output-stop.c.h`, the output stop and
 //! end-capture decisions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -74,6 +75,9 @@
 //! whether a start or a begin asks the service, when a delayed restart's
 //! reference is dropped, which encoders an output initializes, and whether
 //! a begin resets a raw output's audio and pairs the encoders;
+//! [`output_begin`] decides each encoder's packet interval, the
+//! interleaver's maximum batch size from those intervals, and which
+//! encoders a begin pairs;
 //! [`output_stop`] decides when a stop goes through the delay, which
 //! encoders or raw connections an end of capture stops and with which
 //! callback, whether it deactivates the service and cleans up the delay,
@@ -96,6 +100,7 @@ pub mod encoder_packet_ts;
 pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
+pub mod output_begin;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
