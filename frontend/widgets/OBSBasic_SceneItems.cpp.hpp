@@ -561,8 +561,8 @@ void OBSBasic::CreateSourcePopupMenu(int idx, bool preview)
 	delete deinterlaceMenu;
 
 	OBSSceneItem sceneItem;
-	obs_source_t *source;
-	uint32_t flags;
+	obs_source_t *source = nullptr;
+	uint32_t flags = 0;
 	bool isAsyncVideo = false;
 	bool hasAudio = false;
 	bool hasVideo = false;
