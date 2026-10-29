@@ -53,9 +53,11 @@
 /// as the C computes it on each platform. Off MSVC x64 that is
 /// `(num / div) * mul + (num % div * mul) / div` in wrapping `uint64_t`,
 /// which differs from the exact result once `num % div * mul` overflows. On
-/// MSVC x64 it is exact 128-bit math (`_umul128`, `_udiv128`), which faults
-/// when the quotient does not fit in 64 bits; here that saturates. `div` is
-/// never 0: it is 1e9, or a rate checked first.
+/// an MSVC x64 target it is exact 128-bit math: `_umul128`/`_udiv128` with
+/// MSVC, which faults when the quotient does not fit in 64 bits, and an
+/// `unsigned __int128` division with clang-cl, whose `(uint64_t)` cast
+/// truncates it; here that saturates. `div` is never 0: it is 1e9, or a
+/// rate checked first.
 ///
 /// Written out here, not taken from `obs-util`, so `obs-scene` links on its
 /// own (`test_scene_bounds_place_rust` links the staticlib without

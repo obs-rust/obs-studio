@@ -99,9 +99,11 @@ pub struct Step {
 /// as the C computes it on each platform. Off MSVC x64 that is
 /// `(num / div) * mul + (num % div * mul) / div` in wrapping `uint64_t`,
 /// which differs from the exact result once `num % div * mul` overflows. On
-/// MSVC x64 it is exact 128-bit math (`_umul128`, `_udiv128`), which faults
-/// when the quotient does not fit in 64 bits; here that saturates. A `div`
-/// of 0 (a sample rate of 0, where the C divides by 0) gives 0.
+/// an MSVC x64 target it is exact 128-bit math: `_umul128`/`_udiv128` with
+/// MSVC, which faults when the quotient does not fit in 64 bits, and an
+/// `unsigned __int128` division with clang-cl, whose `(uint64_t)` cast
+/// truncates it; here that saturates. A `div` of 0 (a sample rate of 0,
+/// where the C divides by 0) gives 0.
 pub(crate) fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
     if crate::platform::MUL_DIV64_IS_UDIV128 {
         let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))

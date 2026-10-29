@@ -27,8 +27,9 @@
 //!
 //! Intentional differences, unreachable (undefined in C): an `fps_num` or
 //! `sample_rate` of 0 gives an interval of 0, an interval of 0 adds no
-//! packets to the batch (C divides by 0), and on MSVC x64 a quotient above
-//! 64 bits saturates (`_udiv128` faults).
+//! packets to the batch (C divides by 0), and on an MSVC x64 target a
+//! quotient above 64 bits saturates (MSVC's `_udiv128` faults, clang-cl
+//! truncates it).
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -46,10 +47,13 @@
 pub const NS_PER_SEC: u64 = 1_000_000_000;
 
 /// `util_mul_div64()` as the C computes it on this target: `num * mul / div`
-/// truncated. On MSVC x64 the C uses exact 128-bit math; elsewhere
-/// `(num / div) * mul + (num % div * mul) / div` in wrapping `u64`.
-/// Intentional differences (undefined in C): a `div` of 0 gives 0, and a
-/// quotient above 64 bits on MSVC x64 saturates.
+/// truncated. On an MSVC x64 target the C uses exact 128-bit math, built as
+/// `_umul128`/`_udiv128` by MSVC and as an `unsigned __int128` division by
+/// clang-cl; elsewhere `(num / div) * mul + (num % div * mul) / div` in
+/// wrapping `u64`. Intentional differences: a `div` of 0 (undefined in C)
+/// gives 0, and a quotient above 64 bits on an MSVC x64 target saturates,
+/// where MSVC's `_udiv128` faults and clang-cl's `(uint64_t)` cast
+/// truncates it.
 #[must_use]
 pub fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
     if obs_util::platform::MUL_DIV64_IS_UDIV128 {

@@ -261,10 +261,12 @@ fn ns_to_audio_frames(sample_rate: u64, ns: u64) -> u64 {
 
 /// `util_mul_div64()` (`util/util_uint64.h`). Outside MSVC x64 it is the
 /// `uint64_t` formula `(num / div) * mul + (num % div * mul) / div`, which
-/// wraps where it overflows. On MSVC x64 it is exact 128-bit math
-/// (`_umul128`, `_udiv128`), which faults when the quotient does not fit in
-/// 64 bits; here that saturates. `div` is never 0 here (1e9). For a sample
-/// rate up to 1e9 neither overflows and both are the exact quotient.
+/// wraps where it overflows. On an MSVC x64 target it is exact 128-bit math:
+/// `_umul128`/`_udiv128` with MSVC, which faults when the quotient does not
+/// fit in 64 bits, and an `unsigned __int128` division with clang-cl, whose
+/// `(uint64_t)` cast truncates it; here that saturates. `div` is never 0
+/// here (1e9). For a sample rate up to 1e9 neither overflows and both are
+/// the exact quotient.
 ///
 /// Written out here, not taken from `obs-util`, so `obs-source` still
 /// depends on no other crate (as `obs-scene`'s `audio_actions` does).

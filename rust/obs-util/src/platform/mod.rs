@@ -111,9 +111,12 @@ cfg_select! {
     }
 }
 
-/// `util_mul_div64` uses `_umul128`/`_udiv128` on MSVC x64, which compute
-/// the exact quotient (and fault when it overflows 64 bits); everywhere
-/// else it uses the overflowing split formula.
+/// `util_mul_div64` computes the exact quotient on an MSVC x64 target: with
+/// `_umul128`/`_udiv128` under MSVC (which fault when it overflows 64 bits)
+/// and with an `unsigned __int128` division under clang-cl (whose
+/// `(uint64_t)` cast truncates it). Both builds use the `msvc` target env,
+/// so this is true for both. Everywhere else it uses the overflowing split
+/// formula.
 pub const MUL_DIV64_IS_UDIV128: bool = cfg!(all(target_env = "msvc", target_arch = "x86_64"));
 
 mod stdio;
