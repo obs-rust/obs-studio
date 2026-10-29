@@ -1069,7 +1069,11 @@ static void parse_packet(struct obs_qsv *obsqsv, struct encoder_packet *packet, 
 
 		type = start[0] & 0x1F;
 		if (type == OBS_NAL_SLICE_IDR || type == OBS_NAL_SLICE) {
-			start[0] &= (uint8_t)~(3u << 5);
+			/* #2625: mask in `unsigned` first, so the cast states a value
+			 * that already fits. Casting ~(3u << 5) straight to uint8_t
+			 * truncates a constant, which MSVC reports as C4310 and the
+			 * ratchet's -Werror turn makes fatal. */
+			start[0] &= (uint8_t)(0xFFu & ~(3u << 5));
 			start[0] |= priority << 5; //0 for non-ref frames and not equal to 0 for ref frames
 		}
 
