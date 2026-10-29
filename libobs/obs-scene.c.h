@@ -3385,7 +3385,7 @@ obs_sceneitem_t *obs_scene_insert_group(obs_scene_t *scene, const char *name, ob
 	obs_scene_t *sub_scene = create_id(canvas, group_info.id, name);
 	obs_canvas_release(canvas);
 
-	obs_sceneitem_t *last_item = items ? items[count - 1] : NULL;
+	obs_sceneitem_t *last_item = items && count ? items[count - 1] : NULL;
 	obs_sceneitem_t *item = obs_scene_add_internal(scene, sub_scene->source, last_item, 0);
 
 	if (!items || !count) {
