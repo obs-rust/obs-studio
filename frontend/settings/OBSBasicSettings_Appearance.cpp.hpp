@@ -97,10 +97,10 @@ void OBSBasicSettings::LoadAppearanceSettings(bool reload)
 		App()->SetTheme(themeId);
 	}
 
-	int fontScale = config_get_int(App()->GetUserConfig(), "Appearance", "FontScale");
+	int fontScale = static_cast<int>(config_get_int(App()->GetUserConfig(), "Appearance", "FontScale"));
 	ui->appearanceFontScale->setValue(fontScale);
 
-	int densityId = config_get_int(App()->GetUserConfig(), "Appearance", "Density");
+	int densityId = static_cast<int>(config_get_int(App()->GetUserConfig(), "Appearance", "Density"));
 	QAbstractButton *densityButton = ui->appearanceDensityButtonGroup->button(densityId);
 	if (densityButton) {
 		densityButton->setChecked(true);

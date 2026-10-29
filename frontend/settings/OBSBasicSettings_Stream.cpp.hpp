@@ -130,7 +130,8 @@ void OBSBasicSettings::InitStreamPage()
 void OBSBasicSettings::LoadStream1Settings()
 {
 	bool ignoreRecommended = config_get_bool(main->Config(), "Stream1", "IgnoreRecommended");
-	int whipSimulcastTotalLayers = config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers");
+	int whipSimulcastTotalLayers =
+		static_cast<int>(config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers"));
 
 	obs_service_t *service_obj = main->GetService();
 	const char *type = obs_service_get_type(service_obj);
@@ -178,7 +179,7 @@ void OBSBasicSettings::LoadStream1Settings()
 		bool bw_test = obs_data_get_bool(settings, "bwtest");
 		ui->bandwidthTestEnable->setChecked(bw_test);
 
-		idx = config_get_int(main->Config(), "Twitch", "AddonChoice");
+		idx = static_cast<int>(config_get_int(main->Config(), "Twitch", "AddonChoice"));
 		ui->twitchAddonDropdown->setCurrentIndex(idx);
 	}
 
@@ -187,15 +188,15 @@ void OBSBasicSettings::LoadStream1Settings()
 	ui->multitrackVideoMaximumAggregateBitrateAuto->setChecked(
 		config_get_bool(main->Config(), "Stream1", "MultitrackVideoMaximumAggregateBitrateAuto"));
 	if (config_has_user_value(main->Config(), "Stream1", "MultitrackVideoMaximumAggregateBitrate")) {
-		ui->multitrackVideoMaximumAggregateBitrate->setValue(
-			config_get_int(main->Config(), "Stream1", "MultitrackVideoMaximumAggregateBitrate"));
+		ui->multitrackVideoMaximumAggregateBitrate->setValue(static_cast<int>(
+			config_get_int(main->Config(), "Stream1", "MultitrackVideoMaximumAggregateBitrate")));
 	}
 
 	ui->multitrackVideoMaximumVideoTracksAuto->setChecked(
 		config_get_bool(main->Config(), "Stream1", "MultitrackVideoMaximumVideoTracksAuto"));
 	if (config_has_user_value(main->Config(), "Stream1", "MultitrackVideoMaximumVideoTracks")) {
-		ui->multitrackVideoMaximumVideoTracks->setValue(
-			config_get_int(main->Config(), "Stream1", "MultitrackVideoMaximumVideoTracks"));
+		ui->multitrackVideoMaximumVideoTracks->setValue(static_cast<int>(
+			config_get_int(main->Config(), "Stream1", "MultitrackVideoMaximumVideoTracks")));
 	}
 
 	ui->multitrackVideoStreamDumpEnable->setChecked(
@@ -349,7 +350,7 @@ void OBSBasicSettings::SaveStream1Settings()
 
 	if (!!auth && strcmp(auth->service(), "Twitch") == 0) {
 		bool choiceExists = config_has_user_value(main->Config(), "Twitch", "AddonChoice");
-		int currentChoice = config_get_int(main->Config(), "Twitch", "AddonChoice");
+		int currentChoice = static_cast<int>(config_get_int(main->Config(), "Twitch", "AddonChoice"));
 		int newChoice = ui->twitchAddonDropdown->currentIndex();
 
 		config_set_int(main->Config(), "Twitch", "AddonChoice", newChoice);
@@ -1117,7 +1118,7 @@ void OBSBasicSettings::UpdateVodTrackSetting()
 
 	connect(vodTrackCheckbox, &QCheckBox::clicked, vodTrackContainer, &QWidget::setEnabled);
 
-	int trackIndex = config_get_int(main->Config(), "AdvOut", "VodTrackIndex");
+	int trackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "VodTrackIndex"));
 	for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
 		vodTrack[i]->setChecked((i + 1) == trackIndex);
 	}

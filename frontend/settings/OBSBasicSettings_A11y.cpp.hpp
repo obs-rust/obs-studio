@@ -39,7 +39,7 @@ void OBSBasicSettings::LoadA11ySettings(bool presetChange)
 
 	loading = true;
 	if (!presetChange) {
-		preset = config_get_int(config, "Accessibility", "ColorPreset");
+		preset = static_cast<int>(config_get_int(config, "Accessibility", "ColorPreset"));
 
 		bool block = ui->colorPreset->blockSignals(true);
 		ui->colorPreset->setCurrentIndex(std::min(preset, ui->colorPreset->count() - 1));
@@ -71,17 +71,17 @@ void OBSBasicSettings::LoadA11ySettings(bool presetChange)
 	} else if (preset == COLOR_PRESET_CUSTOM) {
 		SetDefaultColors();
 
-		selectRed = config_get_int(config, "Accessibility", "SelectRed");
-		selectGreen = config_get_int(config, "Accessibility", "SelectGreen");
-		selectBlue = config_get_int(config, "Accessibility", "SelectBlue");
+		selectRed = static_cast<uint32_t>(config_get_int(config, "Accessibility", "SelectRed"));
+		selectGreen = static_cast<uint32_t>(config_get_int(config, "Accessibility", "SelectGreen"));
+		selectBlue = static_cast<uint32_t>(config_get_int(config, "Accessibility", "SelectBlue"));
 
-		mixerGreen = config_get_int(config, "Accessibility", "MixerGreen");
-		mixerYellow = config_get_int(config, "Accessibility", "MixerYellow");
-		mixerRed = config_get_int(config, "Accessibility", "MixerRed");
+		mixerGreen = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerGreen"));
+		mixerYellow = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerYellow"));
+		mixerRed = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerRed"));
 
-		mixerGreenActive = config_get_int(config, "Accessibility", "MixerGreenActive");
-		mixerYellowActive = config_get_int(config, "Accessibility", "MixerYellowActive");
-		mixerRedActive = config_get_int(config, "Accessibility", "MixerRedActive");
+		mixerGreenActive = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerGreenActive"));
+		mixerYellowActive = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerYellowActive"));
+		mixerRedActive = static_cast<uint32_t>(config_get_int(config, "Accessibility", "MixerRedActive"));
 	}
 
 	UpdateA11yColors();
@@ -180,7 +180,7 @@ void OBSBasicSettings::on_choose1_clicked()
 		return;
 	}
 
-	selectRed = a11y_color_to_int(color);
+	selectRed = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -200,7 +200,7 @@ void OBSBasicSettings::on_choose2_clicked()
 		return;
 	}
 
-	selectGreen = a11y_color_to_int(color);
+	selectGreen = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -220,7 +220,7 @@ void OBSBasicSettings::on_choose3_clicked()
 		return;
 	}
 
-	selectBlue = a11y_color_to_int(color);
+	selectBlue = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -240,7 +240,7 @@ void OBSBasicSettings::on_choose4_clicked()
 		return;
 	}
 
-	mixerGreen = a11y_color_to_int(color);
+	mixerGreen = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -260,7 +260,7 @@ void OBSBasicSettings::on_choose5_clicked()
 		return;
 	}
 
-	mixerYellow = a11y_color_to_int(color);
+	mixerYellow = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -280,7 +280,7 @@ void OBSBasicSettings::on_choose6_clicked()
 		return;
 	}
 
-	mixerRed = a11y_color_to_int(color);
+	mixerRed = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -301,7 +301,7 @@ void OBSBasicSettings::on_choose7_clicked()
 		return;
 	}
 
-	mixerGreenActive = a11y_color_to_int(color);
+	mixerGreenActive = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -322,7 +322,7 @@ void OBSBasicSettings::on_choose8_clicked()
 		return;
 	}
 
-	mixerYellowActive = a11y_color_to_int(color);
+	mixerYellowActive = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);
@@ -342,7 +342,7 @@ void OBSBasicSettings::on_choose9_clicked()
 		return;
 	}
 
-	mixerRedActive = a11y_color_to_int(color);
+	mixerRedActive = static_cast<uint32_t>(a11y_color_to_int(color));
 
 	preset = COLOR_PRESET_CUSTOM;
 	bool block = ui->colorPreset->blockSignals(true);

@@ -129,7 +129,7 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 	};
 
 	QObject::connect(add, &QPushButton::clicked, this,
-			 [&, CurrentIndex] { AddEdit({0, OBS_KEY_NONE}, CurrentIndex() + 1); });
+			 [&, CurrentIndex] { AddEdit({0, OBS_KEY_NONE}, static_cast<int>(CurrentIndex()) + 1); });
 
 	QObject::connect(remove, &QPushButton::clicked, this, [&, CurrentIndex] { RemoveEdit(CurrentIndex()); });
 

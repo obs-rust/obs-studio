@@ -52,7 +52,7 @@ static bool ConvertResText(const char *res, uint32_t &cx, uint32_t &cy)
 		return false;
 	}
 
-	cx = std::stoul(token.text.array);
+	cx = static_cast<uint32_t>(std::stoul(token.text.array));
 
 	/* parse 'x' */
 	if (!lexer_getbasetoken(lex, &token, IGNORE_WHITESPACE)) {
@@ -70,7 +70,7 @@ static bool ConvertResText(const char *res, uint32_t &cx, uint32_t &cy)
 		return false;
 	}
 
-	cy = std::stoul(token.text.array);
+	cy = static_cast<uint32_t>(std::stoul(token.text.array));
 
 	/* shouldn't be any more tokens after this */
 	if (lexer_getbasetoken(lex, &token, IGNORE_WHITESPACE)) {
@@ -1626,10 +1626,10 @@ void OBSBasicSettings::LoadDownscaleFilters()
 
 void OBSBasicSettings::LoadResolutionLists()
 {
-	uint32_t cx = config_get_uint(main->Config(), "Video", "BaseCX");
-	uint32_t cy = config_get_uint(main->Config(), "Video", "BaseCY");
-	uint32_t out_cx = config_get_uint(main->Config(), "Video", "OutputCX");
-	uint32_t out_cy = config_get_uint(main->Config(), "Video", "OutputCY");
+	uint32_t cx = static_cast<uint32_t>(config_get_uint(main->Config(), "Video", "BaseCX"));
+	uint32_t cy = static_cast<uint32_t>(config_get_uint(main->Config(), "Video", "BaseCY"));
+	uint32_t out_cx = static_cast<uint32_t>(config_get_uint(main->Config(), "Video", "OutputCX"));
+	uint32_t out_cy = static_cast<uint32_t>(config_get_uint(main->Config(), "Video", "OutputCY"));
 
 	ui->baseResolution->clear();
 
@@ -1647,8 +1647,8 @@ void OBSBasicSettings::LoadResolutionLists()
 
 		// Calculate physical screen resolution based on the virtual screen resolution
 		// They might differ if scaling is enabled, e.g. for HiDPI screens
-		as_width = round(as_width * screen->devicePixelRatio());
-		as_height = round(as_height * screen->devicePixelRatio());
+		as_width = static_cast<uint32_t>(round(as_width * screen->devicePixelRatio()));
+		as_height = static_cast<uint32_t>(round(as_height * screen->devicePixelRatio()));
 
 		addRes(as_width, as_height);
 	}
@@ -1754,10 +1754,10 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	const char *path = config_get_string(main->Config(), "SimpleOutput", "FilePath");
 	bool noSpace = config_get_bool(main->Config(), "SimpleOutput", "FileNameWithoutSpace");
 	const char *format = config_get_string(main->Config(), "SimpleOutput", "RecFormat2");
-	int videoBitrate = config_get_uint(main->Config(), "SimpleOutput", "VBitrate");
+	int videoBitrate = static_cast<int>(config_get_uint(main->Config(), "SimpleOutput", "VBitrate"));
 	const char *streamEnc = config_get_string(main->Config(), "SimpleOutput", "StreamEncoder");
 	const char *streamAudioEnc = config_get_string(main->Config(), "SimpleOutput", "StreamAudioEncoder");
-	int audioBitrate = config_get_uint(main->Config(), "SimpleOutput", "ABitrate");
+	int audioBitrate = static_cast<int>(config_get_uint(main->Config(), "SimpleOutput", "ABitrate"));
 	bool advanced = config_get_bool(main->Config(), "SimpleOutput", "UseAdvanced");
 	const char *preset_value = config_get_string(main->Config(), "SimpleOutput", "Preset");
 	const char *qsvPreset = config_get_string(main->Config(), "SimpleOutput", "QSVPreset");
@@ -1770,9 +1770,9 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	const char *recAudioEnc = config_get_string(main->Config(), "SimpleOutput", "RecAudioEncoder");
 	const char *muxCustom = config_get_string(main->Config(), "SimpleOutput", "MuxerCustom");
 	bool replayBuf = config_get_bool(main->Config(), "SimpleOutput", "RecRB");
-	int rbTime = config_get_int(main->Config(), "SimpleOutput", "RecRBTime");
-	int rbSize = config_get_int(main->Config(), "SimpleOutput", "RecRBSize");
-	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
+	int rbTime = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecRBTime"));
+	int rbSize = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecRBSize"));
+	int tracks = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "RecTracks"));
 
 	ui->simpleOutRecTrack1->setChecked(tracks & (1 << 0));
 	ui->simpleOutRecTrack2->setChecked(tracks & (1 << 1));
@@ -1881,9 +1881,9 @@ static inline QString makeFormatToolTip()
 void OBSBasicSettings::LoadAdvOutputStreamingSettings()
 {
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "RescaleRes");
-	int rescaleFilter = config_get_int(main->Config(), "AdvOut", "RescaleFilter");
-	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
-	int audioMixes = config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes");
+	int rescaleFilter = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RescaleFilter"));
+	int trackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex"));
+	int audioMixes = static_cast<int>(config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes"));
 	ui->advOutRescale->setCurrentText(rescaleRes);
 
 	int idx = ui->advOutRescaleFilter->findData(rescaleFilter);
@@ -2040,14 +2040,14 @@ void OBSBasicSettings::LoadAdvOutputRecordingSettings()
 	const char *path = config_get_string(main->Config(), "AdvOut", "RecFilePath");
 	bool noSpace = config_get_bool(main->Config(), "AdvOut", "RecFileNameWithoutSpace");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "RecRescaleRes");
-	int rescaleFilter = config_get_int(main->Config(), "AdvOut", "RecRescaleFilter");
+	int rescaleFilter = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRescaleFilter"));
 	const char *muxCustom = config_get_string(main->Config(), "AdvOut", "RecMuxerCustom");
-	int tracks = config_get_int(main->Config(), "AdvOut", "RecTracks");
-	int flvTrack = config_get_int(main->Config(), "AdvOut", "FLVTrack");
+	int tracks = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecTracks"));
+	int flvTrack = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FLVTrack"));
 	bool splitFile = config_get_bool(main->Config(), "AdvOut", "RecSplitFile");
 	const char *splitFileType = config_get_string(main->Config(), "AdvOut", "RecSplitFileType");
-	int splitFileTime = config_get_int(main->Config(), "AdvOut", "RecSplitFileTime");
-	int splitFileSize = config_get_int(main->Config(), "AdvOut", "RecSplitFileSize");
+	int splitFileTime = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecSplitFileTime"));
+	int splitFileSize = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecSplitFileSize"));
 
 	int typeIndex = (astrcmpi(type, "FFmpeg") == 0) ? 1 : 0;
 	ui->advOutRecType->setCurrentIndex(typeIndex);
@@ -2178,18 +2178,18 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 	const char *format = config_get_string(main->Config(), "AdvOut", "FFFormat");
 	const char *mimeType = config_get_string(main->Config(), "AdvOut", "FFFormatMimeType");
 	const char *muxCustom = config_get_string(main->Config(), "AdvOut", "FFMCustom");
-	int videoBitrate = config_get_int(main->Config(), "AdvOut", "FFVBitrate");
-	int gopSize = config_get_int(main->Config(), "AdvOut", "FFVGOPSize");
+	int videoBitrate = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVBitrate"));
+	int gopSize = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVGOPSize"));
 	bool rescale = config_get_bool(main->Config(), "AdvOut", "FFRescale");
 	bool codecCompat = config_get_bool(main->Config(), "AdvOut", "FFIgnoreCompat");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "FFRescaleRes");
 	const char *vEncoder = config_get_string(main->Config(), "AdvOut", "FFVEncoder");
-	int vEncoderId = config_get_int(main->Config(), "AdvOut", "FFVEncoderId");
+	int vEncoderId = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVEncoderId"));
 	const char *vEncCustom = config_get_string(main->Config(), "AdvOut", "FFVCustom");
-	int audioBitrate = config_get_int(main->Config(), "AdvOut", "FFABitrate");
-	int audioMixes = config_get_int(main->Config(), "AdvOut", "FFAudioMixes");
+	int audioBitrate = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFABitrate"));
+	int audioMixes = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFAudioMixes"));
 	const char *aEncoder = config_get_string(main->Config(), "AdvOut", "FFAEncoder");
-	int aEncoderId = config_get_int(main->Config(), "AdvOut", "FFAEncoderId");
+	int aEncoderId = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFAEncoderId"));
 	const char *aEncCustom = config_get_string(main->Config(), "AdvOut", "FFACustom");
 
 	ui->advOutFFType->setCurrentIndex(saveFile ? 0 : 1);
@@ -2220,12 +2220,12 @@ void OBSBasicSettings::LoadAdvOutputFFmpegSettings()
 
 void OBSBasicSettings::LoadAdvOutputAudioSettings()
 {
-	int track1Bitrate = config_get_uint(main->Config(), "AdvOut", "Track1Bitrate");
-	int track2Bitrate = config_get_uint(main->Config(), "AdvOut", "Track2Bitrate");
-	int track3Bitrate = config_get_uint(main->Config(), "AdvOut", "Track3Bitrate");
-	int track4Bitrate = config_get_uint(main->Config(), "AdvOut", "Track4Bitrate");
-	int track5Bitrate = config_get_uint(main->Config(), "AdvOut", "Track5Bitrate");
-	int track6Bitrate = config_get_uint(main->Config(), "AdvOut", "Track6Bitrate");
+	int track1Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track1Bitrate"));
+	int track2Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track2Bitrate"));
+	int track3Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track3Bitrate"));
+	int track4Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track4Bitrate"));
+	int track5Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track5Bitrate"));
+	int track6Bitrate = static_cast<int>(config_get_uint(main->Config(), "AdvOut", "Track6Bitrate"));
 	const char *name1 = config_get_string(main->Config(), "AdvOut", "Track1Name");
 	const char *name2 = config_get_string(main->Config(), "AdvOut", "Track2Name");
 	const char *name3 = config_get_string(main->Config(), "AdvOut", "Track3Name");
@@ -2462,7 +2462,7 @@ void OBSBasicSettings::LoadAudioSources()
 		auto ptmSB = new SilentUpdateSpinBox();
 		ptmSB->setSuffix(NBSP "ms");
 		ptmSB->setRange(0, INT_MAX);
-		ptmSB->setValue(obs_source_get_push_to_mute_delay(source));
+		ptmSB->setValue(static_cast<int>(obs_source_get_push_to_mute_delay(source)));
 		form->addRow(ptmDelay, ptmSB);
 
 		auto pttCB = new SilentUpdateCheckBox();
@@ -2473,7 +2473,7 @@ void OBSBasicSettings::LoadAudioSources()
 		auto pttSB = new SilentUpdateSpinBox();
 		pttSB->setSuffix(NBSP "ms");
 		pttSB->setRange(0, INT_MAX);
-		pttSB->setValue(obs_source_get_push_to_talk_delay(source));
+		pttSB->setValue(static_cast<int>(obs_source_get_push_to_talk_delay(source)));
 		form->addRow(pttDelay, pttSB);
 
 		HookWidget(ptmCB, CHECK_CHANGED, AUDIO_CHANGED);
@@ -2552,7 +2552,7 @@ void OBSBasicSettings::LoadAudioSources()
 
 void OBSBasicSettings::LoadAudioSettings()
 {
-	uint32_t sampleRate = config_get_uint(main->Config(), "Audio", "SampleRate");
+	uint32_t sampleRate = static_cast<uint32_t>(config_get_uint(main->Config(), "Audio", "SampleRate"));
 	const char *speakers = config_get_string(main->Config(), "Audio", "ChannelSetup");
 	double meterDecayRate = config_get_double(main->Config(), "Audio", "MeterDecayRate");
 	int peakMeterTypeIdx = static_cast<int>(config_get_uint(main->Config(), "Audio", "PeakMeterType"));
@@ -2651,19 +2651,19 @@ void OBSBasicSettings::LoadAdvancedSettings()
 		monDevId = config_get_string(main->Config(), "Audio", "MonitoringDeviceId");
 	}
 	bool enableDelay = config_get_bool(main->Config(), "Output", "DelayEnable");
-	int delaySec = config_get_int(main->Config(), "Output", "DelaySec");
+	int delaySec = static_cast<int>(config_get_int(main->Config(), "Output", "DelaySec"));
 	bool preserveDelay = config_get_bool(main->Config(), "Output", "DelayPreserve");
 	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
-	int retryDelay = config_get_int(main->Config(), "Output", "RetryDelay");
-	int maxRetries = config_get_int(main->Config(), "Output", "MaxRetries");
+	int retryDelay = static_cast<int>(config_get_int(main->Config(), "Output", "RetryDelay"));
+	int maxRetries = static_cast<int>(config_get_int(main->Config(), "Output", "MaxRetries"));
 	const char *filename = config_get_string(main->Config(), "Output", "FilenameFormatting");
 	bool overwriteIfExists = config_get_bool(main->Config(), "Output", "OverwriteIfExists");
 	const char *bindIP = config_get_string(main->Config(), "Output", "BindIP");
 	const char *rbPrefix = config_get_string(main->Config(), "SimpleOutput", "RecRBPrefix");
 	const char *rbSuffix = config_get_string(main->Config(), "SimpleOutput", "RecRBSuffix");
 	bool replayBuf = config_get_bool(main->Config(), "AdvOut", "RecRB");
-	int rbTime = config_get_int(main->Config(), "AdvOut", "RecRBTime");
-	int rbSize = config_get_int(main->Config(), "AdvOut", "RecRBSize");
+	int rbTime = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRBTime"));
+	int rbSize = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRBSize"));
 	bool autoRemux = config_get_bool(main->Config(), "Video", "AutoRemux");
 	const char *hotkeyFocusType = config_get_string(App()->GetUserConfig(), "General", "HotkeyFocusType");
 	bool dynBitrate = config_get_bool(main->Config(), "Output", "DynamicBitrate");
@@ -4084,7 +4084,7 @@ void OBSBasicSettings::showEvent(QShowEvent *event)
 	/* Reduce the height of the widget area if too tall compared to the screen
 	 * size (e.g., 720p) with potential window decoration (e.g., titlebar). */
 	const int titleBarHeight = QApplication::style()->pixelMetric(QStyle::PM_TitleBarHeight);
-	const int maxHeight = round(screen()->availableGeometry().height() - titleBarHeight);
+	const int maxHeight = static_cast<int>(round(screen()->availableGeometry().height() - titleBarHeight));
 	if (size().height() >= maxHeight) {
 		resize(size().width(), maxHeight);
 	}
@@ -4985,7 +4985,7 @@ void OBSBasicSettings::UpdateAdvOutStreamDelayEstimate()
 	}
 
 	OBSData settings = streamEncoderProps->GetSettings();
-	int trackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
+	int trackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex"));
 	QString aBitrateText;
 
 	switch (trackIndex) {
@@ -5328,7 +5328,7 @@ void OBSBasicSettings::SimpleReplayBufferChanged()
 		}
 	} else {
 		SetReplayBufferEstimate(ui->simpleRBEstimate, QTStr(ESTIMATE_UNKNOWN_STR), false);
-		ui->simpleRBMegsMax->setMaximum(memMaxMB);
+		ui->simpleRBMegsMax->setMaximum(static_cast<int>(memMaxMB));
 	}
 
 	UpdateAutomaticReplayBufferCheckboxes();
@@ -5432,7 +5432,7 @@ void OBSBasicSettings::AdvReplayBufferChanged()
 	} else {
 		ui->advRBMegsMax->setVisible(true);
 		ui->advRBMegsMaxLabel->setVisible(true);
-		ui->advRBMegsMax->setMaximum(memMaxMB);
+		ui->advRBMegsMax->setMaximum(static_cast<int>(memMaxMB));
 		SetReplayBufferEstimate(ui->advRBEstimate, QTStr(ESTIMATE_UNKNOWN_STR), false);
 	}
 
@@ -5534,8 +5534,8 @@ void OBSBasicSettings::SimpleRecordingEncoderChanged()
 
 		obs_service_apply_encoder_settings(service, videoSettings, audioSettings);
 
-		int newVBitrate = obs_data_get_int(videoSettings, "bitrate");
-		int newABitrate = obs_data_get_int(audioSettings, "bitrate");
+		int newVBitrate = static_cast<int>(obs_data_get_int(videoSettings, "bitrate"));
+		int newABitrate = static_cast<int>(obs_data_get_int(audioSettings, "bitrate"));
 
 		if (newVBitrate < oldVBitrate) {
 			warning = SIMPLE_OUTPUT_WARNING("VideoBitrate").arg(newVBitrate);
