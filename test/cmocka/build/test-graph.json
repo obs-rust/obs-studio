@@ -644,6 +644,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_coreaudio_enum_alloc": {
+      "sources": [
+        "test/cmocka/test_coreaudio_enum_alloc.c"
+      ],
+      "includes_before": [
+        "test/cmocka/coreaudio-enum-stubs"
+      ],
+      "sanitizers": "address,undefined",
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "test/cmocka/coreaudio-enum-stubs"
+      ]
+    },
     "test_crash_sentinel_dir": {
       "sources": [
         "test/cmocka/test_crash_sentinel_dir.cpp",
@@ -5440,6 +5455,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_coreaudio_enum_alloc": {
+      "target": "test_coreaudio_enum_alloc",
+      "command": [
+        "${target}"
       ]
     },
     "test_crash_sentinel_dir": {
