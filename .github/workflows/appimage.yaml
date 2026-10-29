@@ -454,6 +454,9 @@ jobs:
     # tag push feeds the release of that tag. (The daily beta and the rolling
     # "continuous" pre-release are published by release-rust.yaml, after its
     # release gate: #624.)
+    # A reusable-workflow call (the release gate) skips `test`/`test-nixos`
+    # unless platform_tests is set, and that skips this job too: intended, a
+    # gate call must never publish (WF-004, #2953).
     if: github.event_name == 'push'
     runs-on: ubuntu-26.04
     permissions:

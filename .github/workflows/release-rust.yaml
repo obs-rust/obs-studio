@@ -111,6 +111,8 @@ jobs:
     timeout-minutes: 240
     name: Build ${{ matrix.os }} ${{ matrix.target }} 🧱
     needs: check
+    # A certify dispatch skips `check` on purpose (it promotes an existing
+    # release and builds nothing), which skips this job too (WF-004, #2953).
     if: needs.check.outputs.skip != 'true'
     strategy:
       fail-fast: false
@@ -368,6 +370,8 @@ jobs:
   appimage:
     name: AppImage 📦
     needs: check
+    # Same intended cascade as `build`: a certify dispatch has nothing to build
+    # (WF-004, #2953).
     if: needs.check.outputs.skip != 'true'
     uses: ./.github/workflows/appimage.yaml
     with:
@@ -542,6 +546,8 @@ jobs:
   gate:
     name: Release gate 🚦
     needs: check
+    # Same intended cascade as `build`: a certify dispatch runs no gate, because
+    # the release being promoted already passed one (WF-004, #2953).
     if: needs.check.outputs.skip != 'true'
     uses: ./.github/workflows/build-project.yaml
     with:

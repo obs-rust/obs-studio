@@ -236,6 +236,9 @@ jobs:
   tier2-setup-consumer:
     if: ${{ !inputs.native-cache-measurement-only }}
     name: Tier 2 Setup (${{ matrix.variant }}, trial ${{ matrix.trial }})
+    # Reads the producer's tier2-setup-metadata/-image artifacts, so the
+    # cascade from a skipped producer is required, not accidental (WF-004,
+    # #2953). Both jobs are the #1592 measurement probe.
     needs: tier2-setup-producer
     runs-on: ubuntu-26.04
     timeout-minutes: 30

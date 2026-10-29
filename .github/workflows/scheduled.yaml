@@ -73,6 +73,8 @@ jobs:
     # The fast PR path (#992) skips Rust tests, Tier 2 and the app builds, so
     # this nightly full run is what catches a break that slipped through.
     # On failure, open an issue, or comment on the open one.
+    # A skipped `needs:` (non-schedule event, fork schedule) skips this job
+    # too, which is what `event_name == 'schedule'` below wants (WF-004, #2953).
     needs: [build-project, analyze-project, codeql]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-26.04
@@ -168,6 +170,8 @@ jobs:
   steam-upload:
     timeout-minutes: 60
     name: Upload Steam Builds 🚂
+    # Upstream-only: a skipped `needs:` skips it here regardless, which matches
+    # the owner test below (WF-004, #2953).
     needs: [build-project]
     if: github.repository_owner == 'obsproject'
     runs-on: macos-26

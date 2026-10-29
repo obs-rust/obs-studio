@@ -65,6 +65,9 @@ jobs:
 
   sanitize:
     name: ${{ matrix.tool }} 🧪
+    # A fork's schedule skips `matrix`, and a skipped `needs:` skips this job
+    # too: intended (WF-004, #2953). In this repository `matrix` always runs,
+    # so the passes here only skip when the selection itself failed.
     needs: matrix
     runs-on: ubuntu-26.04
     timeout-minutes: 150

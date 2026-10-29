@@ -691,3 +691,37 @@ path = ".github/workflows/build-project.yaml"
 reason = "continue-on-error on optional upstream steps (Flatpak, analysis)."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
+
+# WF-004: a job that `needs:` a gated job skips with it. Each of these eight
+# cascades is what its workflow wants; the disposition and the workflow-side
+# comment are in #2953.
+[[exceptions]]
+rule = "WF-004"
+path = ".github/workflows/sanitizers.yaml"
+reason = "sanitize skips with the selection job `matrix`, which is gated so a fork's schedule does not run the marathon (#1258). In this repository `matrix` always runs, so the cascade cannot hide a real skip."
+issue = "https://github.com/obs-rust/obs-studio/issues/2953"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "WF-004"
+path = ".github/workflows/ci.yml"
+reason = "tier2-setup-consumer reads the producer's tier2-setup-metadata/-image artifacts, so it must skip when the producer does; the pair is the #1592 measurement probe and only runs on a master workflow_dispatch with tier2-setup-probe."
+issue = "https://github.com/obs-rust/obs-studio/issues/2953"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "WF-004"
+path = ".github/workflows/release-rust.yaml"
+reason = "build, appimage and gate skip with `check`, which a certify dispatch skips on purpose: certification promotes an existing release and builds nothing, so the cascade is the intent."
+issue = "https://github.com/obs-rust/obs-studio/issues/2953"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "WF-004"
+path = ".github/workflows/appimage.yaml"
+reason = "release skips with test/test-nixos when a reusable-workflow call leaves platform_tests unset (the release gate, which must never publish); release also requires a tag push."
+issue = "https://github.com/obs-rust/obs-studio/issues/2953"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "WF-004"
+path = ".github/workflows/scheduled.yaml"
+reason = "report-nightly-failure speaks only for a scheduled failure (its own if: requires event_name == 'schedule'), and steam-upload is upstream-only (repository_owner == 'obsproject'); both cascades match those tests."
+issue = "https://github.com/obs-rust/obs-studio/issues/2953"
+expires = "2027-04-15"
