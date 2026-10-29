@@ -119,7 +119,7 @@ static inline struct obs_video_mix_reuse_key mix_reuse_key(const struct obs_core
 {
 	struct obs_video_mix_reuse_key key = {
 		.view = (uintptr_t)mix->view,
-		.render_space = mix->render_space,
+		.render_space = (int)mix->render_space,
 		.base_width = mix->ovi.base_width,
 		.base_height = mix->ovi.base_height,
 		.rendered = mix->texture_rendered,
@@ -264,7 +264,7 @@ static inline gs_effect_t *get_scale_effect(struct obs_core_video_mix *mix, uint
 		.base_height = mix->ovi.base_height,
 		.target_width = width,
 		.target_height = height,
-		.scale_type = mix->ovi.scale_type,
+		.scale_type = (int)mix->ovi.scale_type,
 		.loaded = loaded_scale_effects(video),
 	};
 

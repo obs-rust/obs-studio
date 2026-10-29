@@ -1081,7 +1081,7 @@ void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_en
 	if (!obs_output_valid(output, "obs_output_remove_encoder_internal"))
 		return;
 
-	if (obs_output_slots_video_type_ok(encoder->info.type)) {
+	if (obs_output_slots_video_type_ok((int)encoder->info.type)) {
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
 			obs_encoder_t *video = output->video_encoders[i];
 			if (video == encoder) {
@@ -1089,7 +1089,7 @@ void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_en
 				obs_encoder_release(video);
 			}
 		}
-	} else if (obs_output_slots_audio_type_ok(encoder->info.type)) {
+	} else if (obs_output_slots_audio_type_ok((int)encoder->info.type)) {
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
 			obs_encoder_t *audio = output->audio_encoders[i];
 			if (audio == encoder) {
@@ -1128,7 +1128,7 @@ void obs_output_set_video_encoder2(obs_output_t *output, obs_encoder_t *encoder,
 		return;
 	if (!log_flag_encoded(output, __func__, false) || !log_flag_video(output, __func__))
 		return;
-	if (encoder && !obs_output_slots_video_type_ok(encoder->info.type)) {
+	if (encoder && !obs_output_slots_video_type_ok((int)encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_video_encoder: "
 				  "encoder passed is not a video encoder");
 		return;
@@ -1186,7 +1186,7 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 		return;
 	if (!log_flag_encoded(output, __func__, false) || !log_flag_audio(output, __func__))
 		return;
-	if (encoder && !obs_output_slots_audio_type_ok(encoder->info.type)) {
+	if (encoder && !obs_output_slots_audio_type_ok((int)encoder->info.type)) {
 		blog(LOG_WARNING, "obs_output_set_audio_encoder: "
 				  "encoder passed is not an audio encoder");
 		return;
@@ -1603,7 +1603,7 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 			}
 
 			uint16_t captionData = ((uint8_t *)caption_buf)[1];
-			captionData = captionData << 8;
+			captionData = (uint16_t)(captionData << 8);
 			captionData += ((uint8_t *)caption_buf)[2];
 
 			// padding
