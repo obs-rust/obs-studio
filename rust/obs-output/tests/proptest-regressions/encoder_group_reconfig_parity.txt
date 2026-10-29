@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 775f18f2bd91fff1519a5497695d0d7794b94950fe1674b52336088acd50e7a2 # shrinks to request = 1, next_pts = 0, updated = 0, reconfigured = 0, again = false, last = 0, handled = 0, num = 0, started = 0, l = 3, cur_pts = 4, timebase_num = 1, divisor = 3
+cc f04aa31207f87c6fba72f636783103ab63842e5050475bffc7367fd66e04203b # shrinks to divisors = [1, 2], timebase_num = 1, updates = []
+cc f701d8a0db5bd44ae0ef87d77da988ae9b626581deb3700af6fb2525a89268e4 # shrinks to request = 0, next_pts = 0, updated = 0, reconfigured = 0, again = false, last = 1, handled = 0, num = 0, started = 0, l = 1, cur_pts = 0, timebase_num = 5, divisor = 858993460
+cc 7a209cb6ad2bc5f3f9621b72e5a98f27d5319d0e0f40b1072a540a1436728b67 # shrinks to divisors = [1], timebase_num = 1, updates = []
+cc aaf0e39ab20fb08ed8d5939e9dde2e47258d3d43add7c7f405dd64383970b48e # shrinks to request = 1, next_pts = 0, updated = 0, reconfigured = 0, again = false, last = 0, handled = 0, num = 0, started = 0, l = 1, cur_pts = 3, timebase_num = 1, divisor = 4
