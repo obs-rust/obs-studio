@@ -34,7 +34,10 @@ obs_msvc_exempt_c4201(obs-studio)
 
 # #2625: the app target's sign conversions are stated at their call sites, so it
 # opts into that group alone. -Wconversion and -Wfloat-conversion keep the global
-# pins for now: the two remaining groups follow in their own PRs.
+# pins until every frontend file is converted: #2909 named them here with 63 files
+# still unconverted and stopped every app lane (#2938). Add a group to this one
+# block, in the PR that converts its last file — never a second block.
+# `ci/test_frontend_conversion_optins.py` holds the target to that shape.
 target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wsign-conversion>")
 
 include(cmake/sources.cmake)
@@ -194,11 +197,3 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Header Files" FILES ${ta
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "Qt Files" FILES ${target_qt_sources})
 
 set_target_properties_obs(obs-studio PROPERTIES FOLDER frontend OUTPUT_NAME "$<IF:$<PLATFORM_ID:Windows>,obs64,${OBS_UNIX_GUI_NAME}>")
-
-# #2625: this target's conversions are fixed at the call sites, so the pins that
-# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
-# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
-target_compile_options(
-  obs-studio
-  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
-)
