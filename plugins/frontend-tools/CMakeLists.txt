@@ -64,6 +64,15 @@ target_compile_options(
   PRIVATE $<$<PLATFORM_ID:Darwin>:-Wno-quoted-include-in-framework-header> $<$<PLATFORM_ID:Darwin>:-Wno-comma>
 )
 
+# #2625: this target's conversions are stated at their call sites, so the pins
+# that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  frontend-tools
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(
   frontend-tools
   PRIVATE
