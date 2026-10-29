@@ -155,9 +155,11 @@ trap 'zccache stop >/dev/null 2>&1 || true' EXIT
 # Read the same canonical source sets as CMake and obs-build, then expand the
 # selected ported groups into implementation object names. Scraping sources.cmake
 # misses groups now that it imports the JSON manifest instead of listing them.
-# The build below configures ENABLE_WAYLAND=OFF, so neither Wayland group (with
-# or without GIO) is built.
-ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux --without-wayland)
+# The build below configures ENABLE_WAYLAND=ON (as cmake/linux/defaults.cmake
+# defaults it), so the Wayland ported groups -- hotkey state, and the portal
+# shortcut ids and sets with GIO -- are built and belong in the exclusion list;
+# an opt-out here would silently skip the Wayland host TUs again (#2890).
+ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux)
 
 if [ "$(wc -w <<<"$ported_objs")" -lt 20 ]; then
   echo "FAIL: derived only $(wc -w <<<"$ported_objs") ported objects from libobs/build/source-sets.json"
@@ -196,7 +198,7 @@ else
     ${OBS_EXTRA_CMAKE_ARGS:-} \
     -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
     -DENABLE_WEBSOCKET=OFF -DENABLE_AJA=OFF -DENABLE_WEBRTC=OFF \
-    -DENABLE_NVENC=ON -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=OFF \
+    -DENABLE_NVENC=ON -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=ON \
     ${OBS_VERSION_OVERRIDE:+"-DOBS_VERSION_OVERRIDE=$OBS_VERSION_OVERRIDE"} "${build_number[@]}" \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   # -k 0: keep going after a failed target, so one run reports every compile
@@ -470,7 +472,7 @@ cmake -S "$SRC" -B "$dbg" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
   -DENABLE_UNIT_TESTS=OFF \
   -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
   -DENABLE_WEBSOCKET=OFF -DENABLE_AJA=OFF -DENABLE_WEBRTC=OFF \
-  -DENABLE_NVENC=OFF -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=OFF \
+  -DENABLE_NVENC=OFF -DENABLE_QSV11=OFF -DENABLE_VST=OFF -DENABLE_WAYLAND=ON \
   ${OBS_VERSION_OVERRIDE:+"-DOBS_VERSION_OVERRIDE=$OBS_VERSION_OVERRIDE"} "${build_number[@]}" \
   >"$dbg.configure.log" 2>&1 || { tail -40 "$dbg.configure.log"; exit 1; }
 rust_archives=$(grep -ohE '/cargo/build/[^ $]*/liblibobs_rust\.a' "$dbg/build.ninja" | sort -u)
