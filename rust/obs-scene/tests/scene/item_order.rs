@@ -2,7 +2,7 @@
 //! membership decisions of `obs-scene.c.h`.
 //!
 //! The `steps_*` cases port `test/cmocka/test_scene_item_order_steps.c` 1:1:
-//! its 15 cases under the same names, in the same order, with the same
+//! its 16 cases under the same names, in the same order, with the same
 //! inputs and expectations.
 //!
 //! The `edge_*` cases are new: the four intentional differences (#2895), and
@@ -11,8 +11,8 @@
 
 use obs_scene::item_order::{
     Anchor, Entry, OBS_ORDER_MOVE_BOTTOM, OBS_ORDER_MOVE_DOWN, OBS_ORDER_MOVE_TOP,
-    OBS_ORDER_MOVE_UP, Position, ReorderCheck, add_item_allowed, anchor, group_run_end,
-    item_attached, match_item, position, remove_item_allowed, reorder_check,
+    OBS_ORDER_MOVE_UP, Position, ReorderCheck, add_item_allowed, anchor, in_group_run, item_active,
+    item_attached, match_item, moves_scene, position, remove_item_allowed, reorder_check,
 };
 use proptest::prelude::*;
 
@@ -301,6 +301,16 @@ fn steps_reorder2_check() {
     assert_eq!(reorder_check(&current, &moved), ReorderCheck::Apply);
 }
 
+/// The caller's run: entries after `head`, one step at a time, up to the
+/// first that is not in the run.
+fn run_end(order: &[Entry<u32>], head: usize) -> usize {
+    let mut i = head + 1;
+    while in_group_run(order, head, i) {
+        i += 1;
+    }
+    i
+}
+
 #[test]
 fn steps_group_runs() {
     let order = [
@@ -313,15 +323,24 @@ fn steps_group_runs() {
         sub(G, A),
         sub(H, B),
     ];
-    assert_eq!(group_run_end(&order, 1), 4);
+    assert_eq!(run_end(&order, 1), 4);
     // characterized, not endorsed: a sub-item that does not follow its
     // group ends the run and goes to the top level
-    assert_eq!(group_run_end(&order, 5), 6);
-    assert_eq!(group_run_end(&order[..4], 1), 4);
+    assert_eq!(run_end(&order, 5), 6);
+    assert_eq!(run_end(&order[..4], 1), 4);
 
     let empty = [top(G), top(A), top(H)];
-    assert_eq!(group_run_end(&empty, 0), 1);
-    assert_eq!(group_run_end(&empty, 2), 3);
+    assert_eq!(run_end(&empty, 0), 1);
+    assert_eq!(run_end(&empty, 2), 3);
+
+    // each step on its own: past the order, the head itself, another
+    // group's sub-item, a top-level entry
+    assert!(!in_group_run(&order, 1, 8));
+    assert!(!in_group_run(&order[..4], 1, 4));
+    assert!(!in_group_run(&order, 1, 1));
+    assert!(in_group_run(&order, 1, 6));
+    assert!(!in_group_run(&order, 1, 7));
+    assert!(!in_group_run(&order, 1, 0));
 }
 
 // ---------------------------------------------------------------------------
@@ -329,16 +348,38 @@ fn steps_group_runs() {
 
 #[test]
 fn steps_add_item_gate() {
-    assert!(!add_item_allowed(false, false));
-    assert!(!add_item_allowed(false, true));
-    assert!(add_item_allowed(true, false));
+    // scenes as ids: 0 is NULL
+    let (scene, group_scene, other) = (1u32, 2u32, 3u32);
+    assert!(add_item_allowed(&scene, &scene, &group_scene));
+    assert!(!add_item_allowed(&group_scene, &scene, &group_scene));
+    assert!(!add_item_allowed(&other, &scene, &group_scene));
+    assert!(!add_item_allowed(&0, &scene, &group_scene));
     // characterized, not endorsed: never decides in libobs
-    assert!(!add_item_allowed(true, true));
+    assert!(!add_item_allowed(&scene, &scene, &scene));
 }
 
 #[test]
 fn steps_remove_item_gate() {
     assert!(remove_item_allowed(true));
+}
+
+// ---------------------------------------------------------------------------
+// move_active_child()
+
+#[test]
+fn steps_active_child_gates() {
+    assert!(moves_scene(&1u32, &2));
+    assert!(moves_scene(&1u32, &0));
+    assert!(moves_scene(&0u32, &2));
+    assert!(!moves_scene(&1u32, &1));
+    assert!(!moves_scene(&0u32, &0));
+
+    assert!(item_active(1));
+    assert!(item_active(i64::from(i32::MAX)));
+    // a count gone negative counts as inactive, as 0 does
+    assert!(!item_active(0));
+    assert!(!item_active(-1));
+    assert!(!item_active(i64::from(i32::MIN)));
 }
 
 // ---------------------------------------------------------------------------
@@ -400,12 +441,13 @@ fn edge_remove_item_not_in_group() {
     assert!(!remove_item_allowed(false));
 }
 
-/// Past the end, no read: `head + 1`.
+/// A head or an index past the end is never in a run, and nothing is read.
 #[test]
-fn edge_group_run_end_past_the_end() {
-    assert_eq!(group_run_end::<u32>(&[], 0), 1);
-    assert_eq!(group_run_end(&[top(G)], 3), 4);
-    assert_eq!(group_run_end::<u32>(&[], usize::MAX), usize::MAX);
+fn edge_in_group_run_past_the_end() {
+    assert!(!in_group_run::<u32>(&[], 0, 1));
+    assert!(!in_group_run(&[top(G)], 3, 4));
+    assert!(!in_group_run(&[top(G), sub(G, A)], 5, 1));
+    assert!(!in_group_run::<u32>(&[], usize::MAX, usize::MAX));
 }
 
 // ---------------------------------------------------------------------------
@@ -537,13 +579,19 @@ proptest! {
     }
 
     #[test]
-    fn edge_group_run_end_any(
+    fn edge_in_group_run_any(
         order in prop::collection::vec((prop::option::of(0u32..4), 0u32..4), 1..10),
         pick in any::<prop::sample::Index>(),
     ) {
         let order: Vec<Entry<u32>> = order.into_iter().map(|(group, item)| Entry { group, item }).collect();
         let head = pick.index(order.len());
-        let end = group_run_end(&order, head);
+        for index in 0..order.len() + 2 {
+            prop_assert_eq!(
+                in_group_run(&order, head, index),
+                order.get(index).is_some_and(|e| e.group == Some(order[head].item))
+            );
+        }
+        let end = run_end(&order, head);
         prop_assert!(end > head && end <= order.len());
         prop_assert!(order[head + 1..end].iter().all(|e| e.group == Some(order[head].item)));
         if end < order.len() {
@@ -552,8 +600,16 @@ proptest! {
     }
 
     #[test]
-    fn edge_gates_any(in_scene: bool, in_group: bool, has_item: bool, has_parent: bool) {
-        prop_assert_eq!(add_item_allowed(in_scene, in_group), in_scene && !in_group);
+    fn edge_gates_any(
+        parent in 0u8..4, scene in 0u8..4, group_scene in 0u8..4,
+        in_group: bool, has_item: bool, has_parent: bool, active_refs: i64,
+    ) {
+        prop_assert_eq!(
+            add_item_allowed(&parent, &scene, &group_scene),
+            parent == scene && parent != group_scene
+        );
+        prop_assert_eq!(moves_scene(&parent, &scene), parent != scene);
+        prop_assert_eq!(item_active(active_refs), active_refs > 0);
         prop_assert_eq!(remove_item_allowed(in_group), in_group);
         prop_assert_eq!(item_attached(has_item, has_parent), has_item && has_parent);
     }

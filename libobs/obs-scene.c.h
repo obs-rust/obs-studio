@@ -3192,7 +3192,10 @@ static bool move_would_recurse(obs_scene_t *to, obs_sceneitem_t *item)
 
 static void move_active_child(obs_scene_t *from, obs_scene_t *to, obs_sceneitem_t *item)
 {
-	if (from == to || os_atomic_load_long(&item->active_refs) <= 0)
+	if (!obs_scene_item_order_moves_scene(from, to))
+		return;
+
+	if (!obs_scene_item_order_item_active(os_atomic_load_long(&item->active_refs)))
 		return;
 
 	if (to)
@@ -3523,7 +3526,7 @@ void obs_sceneitem_group_add_item(obs_sceneitem_t *group, obs_sceneitem_t *item)
 	obs_scene_t *scene = group->parent;
 	obs_scene_t *groupscene = group->source->context.data;
 
-	if (!obs_scene_item_order_add_item_allowed(item->parent == scene, item->parent == groupscene))
+	if (!obs_scene_item_order_add_item_allowed(item->parent, scene, groupscene))
 		return;
 
 	if (move_would_recurse(groupscene, item)) {
@@ -3713,14 +3716,14 @@ bool obs_scene_reorder_items2(obs_scene_t *scene, struct obs_sceneitem_order_inf
 		if (info->item->is_group) {
 			obs_sceneitem_t *sub_prev = NULL;
 			obs_scene_t *sub_scene = info->item->source->context.data;
-			size_t run_end = obs_scene_item_order_group_run_end(item_order, item_order_size, i);
+			size_t head = i;
 
 			sub_scene->first_item = NULL;
 
 			obs_scene_addref(sub_scene);
 			full_lock(sub_scene);
 
-			for (i++; i < run_end; i++) {
+			for (i++; obs_scene_item_order_in_group_run(item_order, item_order_size, head, i); i++) {
 				struct obs_sceneitem_order_info *sub_info = &item_order[i];
 				obs_sceneitem_t *sub_item = sub_info->item;
 
@@ -3742,7 +3745,7 @@ bool obs_scene_reorder_items2(obs_scene_t *scene, struct obs_sceneitem_order_inf
 
 				sub_prev = sub_item;
 			}
-			i = run_end - 1;
+			i--;
 
 			resize_group(info->item, false);
 			full_unlock(sub_scene);

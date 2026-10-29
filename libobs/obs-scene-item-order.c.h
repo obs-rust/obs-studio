@@ -99,24 +99,24 @@ int obs_scene_item_order_reorder_check(const struct obs_sceneitem_order_info *cu
 	return OBS_SCENE_ITEM_ORDER_SAME;
 }
 
-/* The end of the inner loop of obs_scene_reorder_items2(). */
-size_t obs_scene_item_order_group_run_end(const struct obs_sceneitem_order_info *order, size_t size, size_t head)
+/* The two checks of the inner loop of obs_scene_reorder_items2(). */
+bool obs_scene_item_order_in_group_run(const struct obs_sceneitem_order_info *order, size_t size, size_t head,
+				       size_t index)
 {
-	size_t end = head + 1;
+	if (index >= size)
+		return false;
 
-	while (end < size && order[end].group == order[head].item)
-		end++;
-
-	return end;
+	return order[index].group == order[head].item;
 }
 
 /* The two parent checks of obs_sceneitem_group_add_item(). */
-bool obs_scene_item_order_add_item_allowed(bool in_scene, bool in_group)
+bool obs_scene_item_order_add_item_allowed(const obs_scene_t *parent, const obs_scene_t *scene,
+					   const obs_scene_t *group_scene)
 {
-	if (!in_scene)
+	if (parent != scene)
 		return false;
 
-	if (in_group)
+	if (parent == group_scene)
 		return false;
 
 	return true;
@@ -127,4 +127,16 @@ bool obs_scene_item_order_remove_item_allowed(bool in_group)
 {
 	UNUSED_PARAMETER(in_group);
 	return true;
+}
+
+/* The first check of move_active_child(). */
+bool obs_scene_item_order_moves_scene(const obs_scene_t *from, const obs_scene_t *to)
+{
+	return from != to;
+}
+
+/* The second check of move_active_child(). */
+bool obs_scene_item_order_item_active(long active_refs)
+{
+	return active_refs > 0;
 }

@@ -1,5 +1,5 @@
 /* Test-only oracle: the original libobs/obs-scene-item-order.c.h,
- * unmodified, with its eight functions renamed to oracle_* so they can link
+ * unmodified, with its ten functions renamed to oracle_* so they can link
  * next to the Rust shims. */
 #include <stddef.h>
 
@@ -8,15 +8,19 @@
 #define obs_scene_item_order_item_attached oracle_obs_scene_item_order_item_attached
 #define obs_scene_item_order_match_item oracle_obs_scene_item_order_match_item
 #define obs_scene_item_order_reorder_check oracle_obs_scene_item_order_reorder_check
-#define obs_scene_item_order_group_run_end oracle_obs_scene_item_order_group_run_end
+#define obs_scene_item_order_in_group_run oracle_obs_scene_item_order_in_group_run
 #define obs_scene_item_order_add_item_allowed oracle_obs_scene_item_order_add_item_allowed
 #define obs_scene_item_order_remove_item_allowed oracle_obs_scene_item_order_remove_item_allowed
+#define obs_scene_item_order_moves_scene oracle_obs_scene_item_order_moves_scene
+#define obs_scene_item_order_item_active oracle_obs_scene_item_order_item_active
 
 #include "obs-scene-item-order.c.h"
 
+#undef obs_scene_item_order_item_active
+#undef obs_scene_item_order_moves_scene
 #undef obs_scene_item_order_remove_item_allowed
 #undef obs_scene_item_order_add_item_allowed
-#undef obs_scene_item_order_group_run_end
+#undef obs_scene_item_order_in_group_run
 #undef obs_scene_item_order_reorder_check
 #undef obs_scene_item_order_match_item
 #undef obs_scene_item_order_item_attached

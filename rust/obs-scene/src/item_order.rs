@@ -12,10 +12,13 @@
 //! - [`item_attached`]: whether `obs_sceneitem_get_order_position()` and
 //!   `obs_sceneitem_group_ungroup2()` go on with an item;
 //! - [`match_item`]: one step of the check of `obs_scene_reorder_items()`;
-//! - [`reorder_check`] and [`group_run_end`]: the check and the group runs
+//! - [`reorder_check`] and [`in_group_run`]: the check and the group runs
 //!   of `obs_scene_reorder_items2()`;
 //! - [`add_item_allowed`] and [`remove_item_allowed`]: the gates of
-//!   `obs_sceneitem_group_add_item()` and `obs_sceneitem_group_remove_item()`.
+//!   `obs_sceneitem_group_add_item()` and `obs_sceneitem_group_remove_item()`;
+//! - [`moves_scene`] and [`item_active`]: the two steps of the gate of
+//!   `move_active_child()`, asked in turn so the active references are read
+//!   only once the scenes differ.
 //!
 //! Items are ids that are only compared (the C passes the item pointers),
 //! never followed. Nothing here keeps state, takes a lock or calls libobs.
@@ -220,37 +223,47 @@ pub fn reorder_check_pairs<P: Pair>(current: &[P], order: &[P]) -> ReorderCheck 
     ReorderCheck::Apply
 }
 
-/// The end of the group run of `obs_scene_reorder_items2()`: the index
-/// after the entries that follow `head` with `order[head].item` as their
-/// group. `head` past the end gives `head + 1` (the C would read past the
-/// order; libobs never asks).
-pub fn group_run_end<T: Ord + Copy>(order: &[Entry<T>], head: usize) -> usize {
-    group_run_end_pairs(order, head)
+/// One step of the group run of `obs_scene_reorder_items2()`, asked for
+/// each entry after the group's entry `head`, in the group's lock, after the
+/// entry before it was moved: whether entry `index` goes into the group (it
+/// is in the order and has `order[head].item` as its group). The first
+/// `false` ends the run. `head` past the end is never in a run (the C would
+/// read past the order; libobs never asks).
+pub fn in_group_run<T: Ord + Copy>(order: &[Entry<T>], head: usize, index: usize) -> bool {
+    in_group_run_pairs(order, head, index)
 }
 
-/// [`group_run_end`] over any [`Pair`], read in place.
-pub fn group_run_end_pairs<P: Pair>(order: &[P], head: usize) -> usize {
-    let start = head.saturating_add(1);
-    let Some(group) = order.get(head).map(Pair::item) else {
-        return start;
-    };
-    let run = order
-        .get(start..)
-        .unwrap_or_default()
-        .iter()
-        .take_while(|entry| entry.group() == Some(group))
-        .count();
-    start.saturating_add(run)
+/// [`in_group_run`] over any [`Pair`], read in place.
+pub fn in_group_run_pairs<P: Pair>(order: &[P], head: usize, index: usize) -> bool {
+    let _ = (order, head, index);
+    todo!()
 }
 
-/// The two parent checks of `obs_sceneitem_group_add_item()`: the item is
-/// in the group's parent scene and not already in the group's own scene.
-pub fn add_item_allowed(in_scene: bool, in_group: bool) -> bool {
-    in_scene && !in_group
+/// The two parent checks of `obs_sceneitem_group_add_item()`, on the item's
+/// parent read once: it is the group's parent `scene`, and only then is it
+/// compared with `group_scene`, the group's own scene.
+pub fn add_item_allowed<T: PartialEq>(parent: &T, scene: &T, group_scene: &T) -> bool {
+    let _ = (parent, scene, group_scene);
+    todo!()
 }
 
 /// The check of `obs_sceneitem_group_remove_item()`: the item is in the
 /// group's own scene (difference 4).
 pub fn remove_item_allowed(in_group: bool) -> bool {
     in_group
+}
+
+/// The first check of `move_active_child()`: whether the item moves between
+/// two different scenes, so the caller goes on to read its active
+/// references.
+pub fn moves_scene<T: PartialEq>(from: &T, to: &T) -> bool {
+    let _ = (from, to);
+    todo!()
+}
+
+/// The second check of `move_active_child()`: whether the item has an active
+/// reference (the count the caller loads once the scenes differ).
+pub fn item_active(active_refs: i64) -> bool {
+    let _ = active_refs;
+    todo!()
 }

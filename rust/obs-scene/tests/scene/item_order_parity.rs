@@ -12,8 +12,10 @@
 //! range, the positions -10 to 10 and the ends, every flag, every order of
 //! up to 5 entries over 4 items for the match step, every order of up to 4
 //! entries over the scene's items, an item from elsewhere and the groups
-//! for the pair check, and every order of up to 5 entries over 9 pairs for
-//! the group runs; a model of `obs_scene_reorder_items2()`'s relinking with
+//! for the pair check, every order of up to 5 entries over 9 pairs for
+//! each step of the group runs, every scene pair and triple over NULL and
+//! three addresses for the add and active-child gates and the ends of
+//! `long` for the active count; a model of `obs_scene_reorder_items2()`'s relinking with
 //! the shims on one side and the C on the other; and proptests over the
 //! full ranges.
 //!
@@ -37,12 +39,13 @@
 //! scene and group tests run the callers through the hybrid libobs, where
 //! these shims replace the C.
 
-use std::ffi::{c_int, c_void};
+use std::ffi::{c_int, c_long, c_void};
 
 use obs_c_oracle::scene_item_order::{
     OracleOrderInfo, oracle_obs_scene_item_order_add_item_allowed,
-    oracle_obs_scene_item_order_anchor, oracle_obs_scene_item_order_group_run_end,
-    oracle_obs_scene_item_order_item_attached, oracle_obs_scene_item_order_match_item,
+    oracle_obs_scene_item_order_anchor, oracle_obs_scene_item_order_in_group_run,
+    oracle_obs_scene_item_order_item_active, oracle_obs_scene_item_order_item_attached,
+    oracle_obs_scene_item_order_match_item, oracle_obs_scene_item_order_moves_scene,
     oracle_obs_scene_item_order_position, oracle_obs_scene_item_order_remove_item_allowed,
     oracle_obs_scene_item_order_reorder_check, oracle_scene_item_order_layout,
 };
@@ -52,8 +55,9 @@ use obs_scene::ffi::scene_item_order::{
     OBS_SCENE_ITEM_ORDER_ANCHOR_PREV_PREV, OBS_SCENE_ITEM_ORDER_ANCHOR_STAY,
     OBS_SCENE_ITEM_ORDER_APPLY, OBS_SCENE_ITEM_ORDER_INVALID, OBS_SCENE_ITEM_ORDER_SAME, OrderInfo,
     obs_scene_item_order_add_item_allowed, obs_scene_item_order_anchor,
-    obs_scene_item_order_group_run_end, obs_scene_item_order_item_attached,
-    obs_scene_item_order_match_item, obs_scene_item_order_position,
+    obs_scene_item_order_in_group_run, obs_scene_item_order_item_active,
+    obs_scene_item_order_item_attached, obs_scene_item_order_match_item,
+    obs_scene_item_order_moves_scene, obs_scene_item_order_position,
     obs_scene_item_order_remove_item_allowed, obs_scene_item_order_reorder_check,
 };
 use obs_scene::item_order::{
@@ -204,13 +208,41 @@ fn check_reorder(current: &[OrderInfo], order: &[OrderInfo]) {
     }
 }
 
+/// Every step of a run from `head`: each index of the order and the two past
+/// it (which neither side reads).
 fn check_run_end(order: &[OrderInfo], head: usize) {
     let oo = oracle_pairs(order);
-    // SAFETY: `order.len()` pairs, and head < len.
-    let shim = unsafe { obs_scene_item_order_group_run_end(order.as_ptr(), order.len(), head) };
-    // SAFETY: as above; the oracle keeps no state.
-    let c = unsafe { oracle_obs_scene_item_order_group_run_end(oo.as_ptr(), oo.len(), head) };
-    assert_eq!(shim, c, "run_end({order:?}, {head})");
+    for index in 0..order.len() + 2 {
+        // SAFETY: `order.len()` pairs, head < len; an index past the end is
+        // not read.
+        let shim =
+            unsafe { obs_scene_item_order_in_group_run(order.as_ptr(), order.len(), head, index) };
+        // SAFETY: as above; the oracle keeps no state.
+        let c =
+            unsafe { oracle_obs_scene_item_order_in_group_run(oo.as_ptr(), oo.len(), head, index) };
+        assert_eq!(shim, c, "in_group_run({order:?}, {head}, {index})");
+    }
+}
+
+/// The caller's run end, one step at a time, on the shim or the C side.
+fn run_end(order: &[OrderInfo], head: usize, use_c: bool) -> usize {
+    let oo = oracle_pairs(order);
+    let mut i = head + 1;
+    loop {
+        // SAFETY: `order.len()` pairs, head < len; an index past the end is
+        // not read; the oracle keeps no state.
+        let more = unsafe {
+            if use_c {
+                oracle_obs_scene_item_order_in_group_run(oo.as_ptr(), oo.len(), head, i)
+            } else {
+                obs_scene_item_order_in_group_run(order.as_ptr(), order.len(), head, i)
+            }
+        };
+        if !more {
+            return i;
+        }
+        i += 1;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -290,17 +322,46 @@ fn position_matches_c_for_every_position() {
 
 #[test]
 fn gates_match_c_for_every_flag() {
+    // the scenes: NULL and three addresses
+    let scenes = [std::ptr::null(), item(10), item(11), item(12)];
+    for &p in &scenes {
+        for &s in &scenes {
+            for &g in &scenes {
+                // SAFETY: addresses only compared; the oracle keeps no state.
+                let c = unsafe { oracle_obs_scene_item_order_add_item_allowed(p, s, g) };
+                assert_eq!(
+                    obs_scene_item_order_add_item_allowed(p, s, g),
+                    c,
+                    "add({p:?}, {s:?}, {g:?})"
+                );
+            }
+            // SAFETY: as above.
+            let c = unsafe { oracle_obs_scene_item_order_moves_scene(p, s) };
+            assert_eq!(
+                obs_scene_item_order_moves_scene(p, s),
+                c,
+                "moves({p:?}, {s:?})"
+            );
+        }
+    }
+    for refs in [
+        c_long::MIN,
+        c_long::MIN + 1,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        c_long::MAX - 1,
+        c_long::MAX,
+    ] {
+        // SAFETY: a plain value; the oracle keeps no state.
+        let c = unsafe { oracle_obs_scene_item_order_item_active(refs) };
+        assert_eq!(obs_scene_item_order_item_active(refs), c, "active({refs})");
+    }
     for a in [false, true] {
         for b in [false, true] {
             // SAFETY: plain values; the oracle keeps no state.
-            let c = unsafe { oracle_obs_scene_item_order_add_item_allowed(a, b) };
-            assert_eq!(
-                obs_scene_item_order_add_item_allowed(a, b),
-                c,
-                "add({a}, {b})"
-            );
-
-            // SAFETY: as above.
             let c = unsafe { oracle_obs_scene_item_order_item_attached(a, b) };
             let shim = obs_scene_item_order_item_attached(a, b);
             if a && b {
@@ -402,7 +463,7 @@ fn reorder_check_matches_c_for_every_short_order() {
 }
 
 #[test]
-fn group_run_end_matches_c_for_every_short_order() {
+fn in_group_run_matches_c_for_every_short_order() {
     // entries over groups none, 4 and 5 and items 4, 5 and 0
     let entry = |s: usize| info([None, Some(4), Some(5)][s % 3], [4, 5, 0][s / 3]);
     for len in 1..=5 {
@@ -419,7 +480,8 @@ fn group_run_end_matches_c_for_every_short_order() {
 // a model of obs_scene_reorder_items2()'s relinking
 
 /// The relinking of `obs_scene_reorder_items2()` over item ids, after its
-/// check: each group entry takes the run after it (`group_run_end`), every
+/// check: each group entry takes the run after it (`in_group_run`, asked
+/// one entry at a time), every
 /// other entry goes to the top level. Returns the scene as (group, item)
 /// pairs, or `None` when the check refuses the order.
 fn relink(
@@ -432,20 +494,13 @@ fn relink(
     if (if use_c { c } else { shim }) != OBS_SCENE_ITEM_ORDER_APPLY {
         return None;
     }
-    let oo = oracle_pairs(order);
     let mut out = Vec::new();
     let mut i = 0;
     while i < order.len() {
         let head = order[i].item;
         out.push((None, head.addr()));
         if is_group(head) {
-            let end = if use_c {
-                // SAFETY: `oo.len()` pairs, i < len; no state.
-                unsafe { oracle_obs_scene_item_order_group_run_end(oo.as_ptr(), oo.len(), i) }
-            } else {
-                // SAFETY: as above.
-                unsafe { obs_scene_item_order_group_run_end(order.as_ptr(), order.len(), i) }
-            };
+            let end = run_end(order, i, use_c);
             for sub in &order[i + 1..end] {
                 out.push((Some(head.addr()), sub.item.addr()));
             }
@@ -488,7 +543,7 @@ proptest! {
     }
 
     #[test]
-    fn group_run_end_matches_c_for_any_order(
+    fn in_group_run_matches_c_for_any_order(
         order in prop::collection::vec((prop::option::of(0usize..6), 0usize..6), 1..20),
         pick in any::<prop::sample::Index>(),
     ) {

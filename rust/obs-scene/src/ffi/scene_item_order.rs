@@ -19,7 +19,7 @@
 //! ([`crate::item_order`]). A null array is read as empty only with a
 //! length of 0, as the C reads nothing then.
 
-use std::ffi::{c_int, c_void};
+use std::ffi::{c_int, c_long, c_void};
 
 use crate::item_order::{self as core, Anchor, Pair, Position, ReorderCheck};
 
@@ -192,32 +192,52 @@ pub unsafe extern "C" fn obs_scene_item_order_reorder_check(
     check_value(core::reorder_check_pairs(current, order))
 }
 
-/// `size_t obs_scene_item_order_group_run_end(const struct
-/// obs_sceneitem_order_info *order, size_t size, size_t head)`.
+/// `bool obs_scene_item_order_in_group_run(const struct
+/// obs_sceneitem_order_info *order, size_t size, size_t head, size_t
+/// index)`. Reads only the pairs at `head` and `index`.
 ///
 /// # Safety
 ///
 /// With `size` above 0, `order` points to `size` readable pairs.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_scene_item_order_group_run_end(
+pub unsafe extern "C" fn obs_scene_item_order_in_group_run(
     order: *const OrderInfo,
     size: usize,
     head: usize,
-) -> usize {
+    index: usize,
+) -> bool {
     // SAFETY: the caller guarantees `size` readable pairs.
     let order = unsafe { slice(order, size) };
-    core::group_run_end_pairs(order, head)
+    core::in_group_run_pairs(order, head, index)
 }
 
-/// `bool obs_scene_item_order_add_item_allowed(bool in_scene, bool
-/// in_group)`.
+/// `bool obs_scene_item_order_add_item_allowed(const obs_scene_t *parent,
+/// const obs_scene_t *scene, const obs_scene_t *group_scene)`. The scenes
+/// are compared by address, never followed.
 #[unsafe(no_mangle)]
-pub extern "C" fn obs_scene_item_order_add_item_allowed(in_scene: bool, in_group: bool) -> bool {
-    core::add_item_allowed(in_scene, in_group)
+pub extern "C" fn obs_scene_item_order_add_item_allowed(
+    parent: *const c_void,
+    scene: *const c_void,
+    group_scene: *const c_void,
+) -> bool {
+    core::add_item_allowed(&parent.addr(), &scene.addr(), &group_scene.addr())
 }
 
 /// `bool obs_scene_item_order_remove_item_allowed(bool in_group)`.
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_scene_item_order_remove_item_allowed(in_group: bool) -> bool {
     core::remove_item_allowed(in_group)
+}
+
+/// `bool obs_scene_item_order_moves_scene(const obs_scene_t *from, const
+/// obs_scene_t *to)`. The scenes are compared by address, never followed.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_scene_item_order_moves_scene(from: *const c_void, to: *const c_void) -> bool {
+    core::moves_scene(&from.addr(), &to.addr())
+}
+
+/// `bool obs_scene_item_order_item_active(long active_refs)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_scene_item_order_item_active(active_refs: c_long) -> bool {
+    core::item_active(i64::from(active_refs))
 }

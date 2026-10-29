@@ -3,7 +3,7 @@
 //! `obs_scene_reorder_items2()`, which checks the whole order against the
 //! scene's and asks each group entry for its run; Move Up/Down/Top/Bottom
 //! asks one anchor. Each side checks a 16-entry order (two groups of four,
-//! one item moved), walks its group runs, and asks the anchor of every
+//! one item moved), walks its group runs one entry at a time, and asks the anchor of every
 //! movement for every neighbour pair, folded into a checksum both sides must
 //! match. The Rust check also validates the order (two sorted copies of its
 //! items, the fix of #2895), which the C does not: about 81 ns against 29 ns
@@ -13,11 +13,11 @@ use super::pair;
 
 use criterion::Criterion;
 use obs_c_oracle::scene_item_order::{
-    OracleOrderInfo, oracle_obs_scene_item_order_anchor, oracle_obs_scene_item_order_group_run_end,
+    OracleOrderInfo, oracle_obs_scene_item_order_anchor, oracle_obs_scene_item_order_in_group_run,
     oracle_obs_scene_item_order_reorder_check,
 };
 use obs_scene::ffi::scene_item_order::{
-    OrderInfo, obs_scene_item_order_anchor, obs_scene_item_order_group_run_end,
+    OrderInfo, obs_scene_item_order_anchor, obs_scene_item_order_in_group_run,
     obs_scene_item_order_reorder_check,
 };
 use std::ffi::c_void;
@@ -80,8 +80,12 @@ fn rust_side(current: &[OrderInfo], order: &[OrderInfo]) -> u64 {
     };
     let mut acc = u64::from(check.unsigned_abs());
     for head in [6, 11] {
-        // SAFETY: as above, head < len.
-        let end = unsafe { obs_scene_item_order_group_run_end(order.as_ptr(), order.len(), head - 1) };
+        let head = head - 1;
+        let mut end = head + 1;
+        // SAFETY: as above, head < len; an index past the end is not read.
+        while unsafe { obs_scene_item_order_in_group_run(order.as_ptr(), order.len(), head, end) } {
+            end += 1;
+        }
         acc = acc.wrapping_mul(31).wrapping_add(end as u64);
     }
     for movement in 0..4 {
@@ -106,9 +110,12 @@ fn c_side(current: &[OracleOrderInfo], order: &[OracleOrderInfo]) -> u64 {
     };
     let mut acc = u64::from(check.unsigned_abs());
     for head in [6, 11] {
-        // SAFETY: as above, head < len.
-        let end =
-            unsafe { oracle_obs_scene_item_order_group_run_end(order.as_ptr(), order.len(), head - 1) };
+        let head = head - 1;
+        let mut end = head + 1;
+        // SAFETY: as above, head < len; an index past the end is not read.
+        while unsafe { oracle_obs_scene_item_order_in_group_run(order.as_ptr(), order.len(), head, end) } {
+            end += 1;
+        }
         acc = acc.wrapping_mul(31).wrapping_add(end as u64);
     }
     for movement in 0..4 {

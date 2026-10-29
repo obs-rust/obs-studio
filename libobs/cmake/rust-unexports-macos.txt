@@ -172,14 +172,16 @@ _obs_scene_item_transform_matrix
 _obs_scene_item_transform_box_scale
 # obs-scene-item-order.c: obs-scene.c calls them inside libobs. Not
 # EXPORT.
+_obs_scene_item_order_add_item_allowed
 _obs_scene_item_order_anchor
-_obs_scene_item_order_position
+_obs_scene_item_order_in_group_run
+_obs_scene_item_order_item_active
 _obs_scene_item_order_item_attached
 _obs_scene_item_order_match_item
-_obs_scene_item_order_reorder_check
-_obs_scene_item_order_group_run_end
-_obs_scene_item_order_add_item_allowed
+_obs_scene_item_order_moves_scene
+_obs_scene_item_order_position
 _obs_scene_item_order_remove_item_allowed
+_obs_scene_item_order_reorder_check
 # obs-scene-transform-update.c: obs-scene.c calls them inside libobs. Not
 # EXPORT.
 _obs_scene_transform_update_scene_size

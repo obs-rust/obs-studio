@@ -35,11 +35,14 @@
  * - obs_scene_item_order_match_item(): one step of the check of
  *   obs_scene_reorder_items();
  * - obs_scene_item_order_reorder_check() and
- *   obs_scene_item_order_group_run_end(): the check and the group runs of
+ *   obs_scene_item_order_in_group_run(): the check and the group runs of
  *   obs_scene_reorder_items2();
  * - obs_scene_item_order_add_item_allowed() and
  *   obs_scene_item_order_remove_item_allowed(): the gates of
- *   obs_sceneitem_group_add_item() and obs_sceneitem_group_remove_item().
+ *   obs_sceneitem_group_add_item() and obs_sceneitem_group_remove_item();
+ * - obs_scene_item_order_moves_scene() and
+ *   obs_scene_item_order_item_active(): the two steps of the gate of
+ *   move_active_child().
  *
  * obs-scene.c keeps every lock, every scene reference, every list walk and
  * every prev, next, first_item and parent write (detach_sceneitem() and
@@ -126,20 +129,37 @@ int obs_scene_item_order_reorder_check(const struct obs_sceneitem_order_info *cu
 				       const struct obs_sceneitem_order_info *order, size_t size);
 
 /* order and size: the order asked for. head: the index of a group's entry
- * (head < size).
+ * (head < size). index: the entry after head that the run is at, asked once
+ * per entry, in the group's lock, after the entry before it was moved.
  *
- * Returns the index after the run of entries that follow head with the
- * group's item as their group: the entries that go into the group. */
-size_t obs_scene_item_order_group_run_end(const struct obs_sceneitem_order_info *order, size_t size, size_t head);
+ * Returns whether entry index goes into the group: it is in the order and
+ * has the group's item as its group. The first false ends the run. */
+bool obs_scene_item_order_in_group_run(const struct obs_sceneitem_order_info *order, size_t size, size_t head,
+				       size_t index);
 
-/* in_scene: the item's parent is the group's parent scene. in_group: the
- * item's parent is the group's own scene.
+/* parent: the item's parent, read once. scene: the group's parent scene.
+ * group_scene: the group's own scene.
  *
- * Returns whether obs_sceneitem_group_add_item() moves the item. */
-bool obs_scene_item_order_add_item_allowed(bool in_scene, bool in_group);
+ * Returns whether obs_sceneitem_group_add_item() moves the item: parent is
+ * scene, then (only then compared) parent is not group_scene. */
+bool obs_scene_item_order_add_item_allowed(const obs_scene_t *parent, const obs_scene_t *scene,
+					   const obs_scene_t *group_scene);
 
 /* in_group: the item's parent is the group's own scene.
  *
  * Returns whether obs_sceneitem_group_remove_item() moves the item: always
  * in the C; only an item in the group in the Rust port. */
 bool obs_scene_item_order_remove_item_allowed(bool in_group);
+
+/* from and to: the scenes an item moves between (either may be NULL).
+ *
+ * Returns whether move_active_child() goes on to read the item's active
+ * references: the scenes differ. */
+bool obs_scene_item_order_moves_scene(const obs_scene_t *from, const obs_scene_t *to);
+
+/* active_refs: the item's active references, read with
+ * os_atomic_load_long() only once the scenes differ.
+ *
+ * Returns whether the source's active child moves with the item: it has an
+ * active reference. */
+bool obs_scene_item_order_item_active(long active_refs);

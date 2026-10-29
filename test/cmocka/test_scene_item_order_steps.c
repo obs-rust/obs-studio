@@ -22,11 +22,14 @@
  * - obs_scene_item_order_match_item(): one step of the check of
  *   obs_scene_reorder_items();
  * - obs_scene_item_order_reorder_check() and
- *   obs_scene_item_order_group_run_end(): the check and the group runs of
+ *   obs_scene_item_order_in_group_run(): the check and the group runs of
  *   obs_scene_reorder_items2();
  * - obs_scene_item_order_add_item_allowed() and
  *   obs_scene_item_order_remove_item_allowed(): the gates of
- *   obs_sceneitem_group_add_item() and obs_sceneitem_group_remove_item().
+ *   obs_sceneitem_group_add_item() and obs_sceneitem_group_remove_item();
+ * - obs_scene_item_order_moves_scene() and
+ *   obs_scene_item_order_item_active(): the two steps of the gate of
+ *   move_active_child().
  *
  * The functions are hidden in libobs, so this test compiles the C source
  * into itself and calls only them. The items are addresses the functions
@@ -47,6 +50,9 @@ static char storage[16];
 #define D ITEM(4)
 #define G ITEM(5)
 #define H ITEM(6)
+
+static char scene_storage[8];
+#define SCENE(i) ((const obs_scene_t *)(const void *)&scene_storage[i])
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -397,6 +403,18 @@ static void reorder2_check(void **state)
 	assert_int_equal(obs_scene_item_order_reorder_check(current, 5, moved, 5), OBS_SCENE_ITEM_ORDER_APPLY);
 }
 
+/* The caller's run: entries after head, one step at a time, up to the first
+ * that is not in the run. */
+static size_t run_end(const struct obs_sceneitem_order_info *order, size_t size, size_t head)
+{
+	size_t i = head + 1;
+
+	while (obs_scene_item_order_in_group_run(order, size, head, i))
+		i++;
+
+	return i;
+}
+
 static void group_runs(void **state)
 {
 	(void)state;
@@ -405,21 +423,30 @@ static void group_runs(void **state)
 	};
 
 	/* G holds B and C, up to D at the top level. */
-	assert_int_equal(obs_scene_item_order_group_run_end(order, 8, 1), 4);
+	assert_int_equal(run_end(order, 8, 1), 4);
 	/* H's run stops at the entry for G: that sub-item does not follow its
 	 * group, so it goes to the top level (characterized, not endorsed), and
 	 * so does everything after it. */
-	assert_int_equal(obs_scene_item_order_group_run_end(order, 8, 5), 6);
+	assert_int_equal(run_end(order, 8, 5), 6);
 	/* A run that ends the order. */
-	assert_int_equal(obs_scene_item_order_group_run_end(order, 4, 1), 4);
+	assert_int_equal(run_end(order, 4, 1), 4);
 	/* An empty group, and a group last. */
 	static const struct obs_sceneitem_order_info empty[] = {
 		{NULL, G},
 		{NULL, A},
 		{NULL, H},
 	};
-	assert_int_equal(obs_scene_item_order_group_run_end(empty, 3, 0), 1);
-	assert_int_equal(obs_scene_item_order_group_run_end(empty, 3, 2), 3);
+	assert_int_equal(run_end(empty, 3, 0), 1);
+	assert_int_equal(run_end(empty, 3, 2), 3);
+
+	/* Each step on its own: past the order, the head itself, another
+	 * group's sub-item, a top-level entry. */
+	assert_false(obs_scene_item_order_in_group_run(order, 8, 1, 8));
+	assert_false(obs_scene_item_order_in_group_run(order, 4, 1, 4));
+	assert_false(obs_scene_item_order_in_group_run(order, 8, 1, 1));
+	assert_true(obs_scene_item_order_in_group_run(order, 8, 1, 6));
+	assert_false(obs_scene_item_order_in_group_run(order, 8, 1, 7));
+	assert_false(obs_scene_item_order_in_group_run(order, 8, 1, 0));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -428,13 +455,38 @@ static void group_runs(void **state)
 static void add_item_gate(void **state)
 {
 	(void)state;
-	assert_false(obs_scene_item_order_add_item_allowed(false, false));
-	assert_false(obs_scene_item_order_add_item_allowed(false, true));
-	assert_true(obs_scene_item_order_add_item_allowed(true, false));
+	const obs_scene_t *scene = SCENE(1);
+	const obs_scene_t *group_scene = SCENE(2);
+	const obs_scene_t *other = SCENE(3);
+
+	assert_true(obs_scene_item_order_add_item_allowed(scene, scene, group_scene));
+	assert_false(obs_scene_item_order_add_item_allowed(group_scene, scene, group_scene));
+	assert_false(obs_scene_item_order_add_item_allowed(other, scene, group_scene));
+	assert_false(obs_scene_item_order_add_item_allowed(NULL, scene, group_scene));
 	/* An item has one parent, so it is in the group's parent scene and in
 	 * the group's own scene at once only when those are the same scene. The
 	 * second check never decides in libobs: characterized, not endorsed. */
-	assert_false(obs_scene_item_order_add_item_allowed(true, true));
+	assert_false(obs_scene_item_order_add_item_allowed(scene, scene, scene));
+}
+
+/* ------------------------------------------------------------------------ */
+/* move_active_child() */
+
+static void active_child_gates(void **state)
+{
+	(void)state;
+	assert_true(obs_scene_item_order_moves_scene(SCENE(1), SCENE(2)));
+	assert_true(obs_scene_item_order_moves_scene(SCENE(1), NULL));
+	assert_true(obs_scene_item_order_moves_scene(NULL, SCENE(2)));
+	assert_false(obs_scene_item_order_moves_scene(SCENE(1), SCENE(1)));
+	assert_false(obs_scene_item_order_moves_scene(NULL, NULL));
+
+	assert_true(obs_scene_item_order_item_active(1));
+	assert_true(obs_scene_item_order_item_active(LONG_MAX));
+	/* A count gone negative counts as inactive, as 0 does. */
+	assert_false(obs_scene_item_order_item_active(0));
+	assert_false(obs_scene_item_order_item_active(-1));
+	assert_false(obs_scene_item_order_item_active(LONG_MIN));
 }
 
 static void remove_item_gate(void **state)
@@ -453,7 +505,7 @@ int main(void)
 		cmocka_unit_test(item_attached),     cmocka_unit_test(match_item_steps),
 		cmocka_unit_test(reorder_flat),      cmocka_unit_test(reorder2_check),
 		cmocka_unit_test(group_runs),        cmocka_unit_test(add_item_gate),
-		cmocka_unit_test(remove_item_gate),
+		cmocka_unit_test(remove_item_gate),  cmocka_unit_test(active_child_gates),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

@@ -3,7 +3,7 @@
 //! membership decisions of `obs-scene.c.h`, renamed. The items cross as
 //! opaque pointers, the pairs as `struct obs_sceneitem_order_info`.
 
-use std::ffi::{c_int, c_void};
+use std::ffi::{c_int, c_long, c_void};
 
 /// `struct obs_sceneitem_order_info` (`obs.h`).
 #[repr(C)]
@@ -43,13 +43,22 @@ unsafe extern "C" {
         size: usize,
     ) -> c_int;
 
-    pub fn oracle_obs_scene_item_order_group_run_end(
+    pub fn oracle_obs_scene_item_order_in_group_run(
         order: *const OracleOrderInfo,
         size: usize,
         head: usize,
-    ) -> usize;
+        index: usize,
+    ) -> bool;
 
-    pub fn oracle_obs_scene_item_order_add_item_allowed(in_scene: bool, in_group: bool) -> bool;
+    pub fn oracle_obs_scene_item_order_add_item_allowed(
+        parent: *const c_void,
+        scene: *const c_void,
+        group_scene: *const c_void,
+    ) -> bool;
+
+    pub fn oracle_obs_scene_item_order_moves_scene(from: *const c_void, to: *const c_void) -> bool;
+
+    pub fn oracle_obs_scene_item_order_item_active(active_refs: c_long) -> bool;
 
     pub fn oracle_obs_scene_item_order_remove_item_allowed(in_group: bool) -> bool;
 
