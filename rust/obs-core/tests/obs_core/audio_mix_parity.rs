@@ -12,8 +12,9 @@
 //!   queue: the `struct deque` fields (size, start, end, capacity) and every
 //!   window in it, from the same queue the call starts with.
 //!
-//! Runs: the layout; every start frame at 44.1 and 48 kHz, on the frame's
-//! time, one ns before and one ns after; 4096 random mixes (the window one
+//! Runs: the layout; the first and last 8 start frames and every 61st
+//! between them at 44.1 and 48 kHz, on the frame's time, one ns before and
+//! one ns after; 512 random mixes (the window one
 //! or two ticks long, audio before, on, inside, at the end of and after it,
 //! 0 to 8 channels, rates from 8 kHz to 384 kHz and odd ones); 20 000
 //! random fixed and added buffering steps (totals up to the maximum, waiting
@@ -207,14 +208,23 @@ fn compare_mix(seed: u64, audio_ts: u64, ts: ts_info, channels: usize, rate: usi
     }
 }
 
+/// The start frames `mix_on_sampled_start_frames` checks: the first and the
+/// last 8, and every 61st between them (61 is prime, so the frames fall on
+/// varied offsets). Every one of the 1024 took 31.8 s in Fast Gate (#2891).
+fn sampled_start_frames() -> impl Iterator<Item = u64> {
+    (0..8)
+        .chain((8..FRAMES - 8).step_by(61))
+        .chain(FRAMES - 8..FRAMES)
+}
+
 #[test]
-fn mix_on_every_start_frame() {
+fn mix_on_sampled_start_frames() {
     for rate in [44_100, 48_000] {
         let ts = ts_info {
             start: START,
             end: START + audio_frames_to_ns(rate, FRAMES),
         };
-        for frame in 0..FRAMES {
+        for frame in sampled_start_frames() {
             let at = START + audio_frames_to_ns(rate, frame);
             for audio_ts in [at - 1, at, at + 1] {
                 compare_mix(frame ^ (rate as u64) << 20, audio_ts, ts, 2, rate);
@@ -266,8 +276,12 @@ fn window_strategy() -> impl Strategy<Value = (u64, ts_info, usize, usize, u64)>
         })
 }
 
+// 512 cases (4096 before #2891). The mix mutants of #1909, rebuilt: each
+// that a random window can show fails here within 64 cases in every run;
+// frames counted from one ns late needs the start frames at one ns off,
+// which mix_on_sampled_start_frames checks.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(512))]
 
     #[test]
     fn mix_matches((audio_ts, ts, channels, rate, seed) in window_strategy()) {

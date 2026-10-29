@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9028ffe8acfa7c35bc7fcf6b831b3a16d03e44e53f5a07c1c1608ea68fa0a6b4 # shrinks to (audio_ts, ts, channels, rate, seed) = (46439909, ts_info { start: 0, end: 46439909 }, 1, 22050, 0)
+cc 38f6b70cedb1e2437e8bf6da6819f5d63bcc5681f972ccdf5480f83db6a679f5 # shrinks to (audio_ts, ts, channels, rate, seed) = (0, ts_info { start: 0, end: 128000000 }, 1, 8000, 0)
+cc afce63bc86afa56f0fc5a7561de601590c0e8c6cebf5baf1ad5f884f80fde606 # shrinks to (audio_ts, ts, channels, rate, seed) = (0, ts_info { start: 0, end: 128000000 }, 1, 8000, 0)
+cc b3b241baf214869c60af786b426d7943588972ac4115997bb377ac0dbbaec32d # shrinks to rate = 328299102, t = 17113425630106787035
