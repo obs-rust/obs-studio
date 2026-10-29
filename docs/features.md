@@ -2502,3 +2502,12 @@ area.
   only for compressions the bundled libcurl can decode (Windows' has no
   zlib), and still never brotli. *Windows; all platforms use the same rule*,
   2026-10-26. Issue [#2453](https://github.com/obs-rust/obs-studio/issues/2453).
+- Downloads and remote text requests ask servers for Brotli again, so update
+  checks, the service list and the API answers OBS fetches transfer
+  compressed: the packaged Brotli is past CVE-2026-111497 (the AppImage
+  bundles 1.2.1 and the Windows package links none). macOS keeps asking for
+  gzip and deflate only, because it uses the system libcurl whose Brotli
+  version this project does not pin. *AppImage, Windows; macOS keeps the
+  stop-gap*, 2026-10-29. Issue
+  [#2211](https://github.com/obs-rust/obs-studio/issues/2211), PR
+  [#2906](https://github.com/obs-rust/obs-studio/pull/2906).
