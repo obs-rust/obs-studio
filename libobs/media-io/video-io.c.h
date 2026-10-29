@@ -482,6 +482,25 @@ bool video_output_disconnect2(video_t *video, void (*callback)(void *param, stru
 	return idx != DARRAY_INVALID;
 }
 
+bool video_output_reset_frame_rate_divisor(video_t *video, void (*callback)(void *param, struct video_data *frame),
+					   void *param)
+{
+	if (!video || !callback)
+		return false;
+
+	video = get_root(video);
+
+	pthread_mutex_lock(&video->input_mutex);
+
+	size_t idx = video_get_input_idx(video, callback, param);
+	if (idx != DARRAY_INVALID)
+		video->inputs.array[idx].frame_rate_divisor_counter = 0;
+
+	pthread_mutex_unlock(&video->input_mutex);
+
+	return idx != DARRAY_INVALID;
+}
+
 bool video_output_active(const video_t *video)
 {
 	if (!video)

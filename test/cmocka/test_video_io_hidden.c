@@ -193,6 +193,7 @@ static void group_start_aligns_the_divisor_counter(void **state)
 	video_t *video = NULL;
 	struct video_output_info info = rgba_info("align");
 	struct gate g;
+	struct gate other;
 	struct video_frame frame;
 	uint64_t frame_time;
 	const uint64_t start = 1000;
@@ -200,6 +201,7 @@ static void group_start_aligns_the_divisor_counter(void **state)
 	UNUSED_PARAMETER(state);
 	assert_true(obs_up);
 	gate_init(&g);
+	gate_init(&other);
 	assert_int_equal(video_output_open(&video, &info), VIDEO_OUTPUT_SUCCESS);
 	frame_time = video_output_get_frame_time(video);
 	assert_true(frame_time > 0);
@@ -212,17 +214,26 @@ static void group_start_aligns_the_divisor_counter(void **state)
 	assert_int_equal(g.hits, 1);
 	assert_int_equal(g.ts[0], start);
 
-	/* The group's start frame is the next one rendered. The encoder must
-	 * receive it, not the one after it. */
+	/* The group's start frame is the next one rendered. Without the reset
+	 * the counter is 1 here, so that frame is skipped. */
+	assert_true(video_output_reset_frame_rate_divisor(video, on_frame, &g));
+	assert_false(video_output_reset_frame_rate_divisor(video, on_frame, &other));
+
 	push_frame(video, &frame, start + frame_time);
 	push_frame(video, &frame, start + 2 * frame_time);
+	push_frame(video, &frame, start + 3 * frame_time);
 
 	assert_int_equal(os_sem_wait(g.hits_sem), 0);
-	assert_int_equal(g.hits, 2);
+	assert_int_equal(os_sem_wait(g.hits_sem), 0);
+	assert_int_equal(g.hits, 3);
+	/* Starts on the group's start frame, then every second frame again. */
 	assert_int_equal(g.ts[1], start + frame_time);
+	assert_int_equal(g.ts[2], start + 3 * frame_time);
 
 	assert_true(video_output_disconnect2(video, on_frame, &g));
 	finish(video, &g);
+	os_sem_destroy(other.hits_sem);
+	os_event_destroy(other.release);
 }
 
 static int group_setup(void **state)

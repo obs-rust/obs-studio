@@ -692,11 +692,31 @@ static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, u
 
 		if (encoder->encoder_group) {
 			struct obs_encoder_group *group = encoder->encoder_group;
+			DARRAY(obs_encoder_t *) align = {0};
+
 			pthread_mutex_lock(&group->mutex);
 			if (obs_video_pacing_group_starts(group->num_encoders_started, group->encoders.num,
-							  group->start_timestamp))
+							  group->start_timestamp)) {
 				group->start_timestamp = *p_time;
+
+				/* The start frame is the next one video-io renders. Align
+				 * every member's divisor phase with it, but take the
+				 * references here and do the work below: aligning takes
+				 * video-io's input mutex, and the video thread holds that
+				 * mutex while receive_video() takes this group mutex. */
+				for (size_t j = 0; j < group->encoders.num; j++) {
+					obs_encoder_t *member = group->encoders.array[j];
+					obs_encoder_get_ref(member);
+					da_push_back(align, &member);
+				}
+			}
 			pthread_mutex_unlock(&group->mutex);
+
+			for (size_t j = 0; j < align.num; j++) {
+				obs_encoder_align_frame_rate_divisor(align.array[j]);
+				obs_encoder_release(align.array[j]);
+			}
+			da_free(align);
 		}
 		obs_encoder_release(encoder);
 	}
