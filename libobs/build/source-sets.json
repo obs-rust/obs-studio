@@ -187,6 +187,7 @@
     "build/libobs.ported-callback+.h.c",
     "build/libobs.ported-canvas-draw+.h.c",
     "build/libobs.ported-context-names+.h.c",
+    "build/libobs.ported-core-setup-rules+.h.c",
     "build/libobs.ported-data+.h.c",
     "build/libobs.ported-effect-lifecycle+.h.c",
     "build/libobs.ported-encoder-audio-start+.h.c",

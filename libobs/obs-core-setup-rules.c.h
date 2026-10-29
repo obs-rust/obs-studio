@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-core-setup-rules.pch.h"
 
 /* Setup rules, moved from obs_reset_video(), obs_reset_audio2(),
  * obs_set_cmdline_args(), obs_remove_data_path(),
@@ -26,7 +26,9 @@
  * the monitoring device checks and the frame-count rule. Pure: no libobs
  * state. obs.c keeps the reads, the calls, the locks, the copies, the frees
  * and the logging, and passes the values in, one step at a time. Declared
- * in obs-core-setup-rules.h. */
+ * in obs-core-setup-rules.h.
+ * Ported to rust/obs-core (core_setup_rules): the hybrid libobs drops this
+ * file. */
 
 int obs_core_setup_rules_video_gate(enum obs_core_setup_rules_video_step step, bool value)
 {

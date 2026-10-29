@@ -38,6 +38,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -117,50 +118,53 @@ pub enum Mix {
 
 /// Same contract as C `obs_core_setup_rules_video_gate`.
 pub fn video_gate(step: VideoStep, value: bool) -> VideoGate {
-    let _ = (step, value);
-    todo!()
+    match step {
+        VideoStep::Core if !value => VideoGate::Fail,
+        VideoStep::Active | VideoStep::Starting if value => VideoGate::CurrentlyActive,
+        VideoStep::OutputSize | VideoStep::BaseSize if !value => VideoGate::InvalidParam,
+        _ => VideoGate::Go,
+    }
 }
 
 /// Same contract as C `obs_core_setup_rules_audio_refused`: refused with no
 /// core, or with an active audio output.
 pub fn audio_refused(step: AudioStep, value: bool) -> bool {
-    let _ = (step, value);
-    todo!()
+    match step {
+        AudioStep::Core => !value,
+        AudioStep::Active => value,
+    }
 }
 
 /// Same contract as C `obs_core_setup_rules_buffer_set`: a buffering was
 /// asked for (not 0 ms).
 pub fn buffer_set(max_buffering_ms: u32) -> bool {
-    let _ = max_buffering_ms;
-    todo!()
+    max_buffering_ms != 0
 }
 
 /// Same contract as C `obs_core_setup_rules_buffer_ticks`: the frames in
 /// `max_buffering_ms` at `samples_per_sec`, rounded down, then rounded up
 /// to whole ticks. The product wraps in `u32`, as the C's.
 pub fn buffer_ticks(max_buffering_ms: u32, samples_per_sec: u32) -> u32 {
-    let _ = (max_buffering_ms, samples_per_sec);
-    todo!()
+    let frames = max_buffering_ms.wrapping_mul(samples_per_sec) / 1000;
+    frames.wrapping_add(AUDIO_OUTPUT_FRAMES - 1) / AUDIO_OUTPUT_FRAMES
 }
 
 /// Same contract as C `obs_core_setup_rules_buffer_default_ticks`.
 pub fn buffer_default_ticks() -> u32 {
-    todo!()
+    DEFAULT_TICKS
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_set`: the command line
 /// was set already, so a new one is ignored.
 pub fn cmdline_set(stored_argc: i32) -> bool {
-    let _ = stored_argc;
-    todo!()
+    stored_argc != 0
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_len`: `len` with one
 /// more string of `arg_len` bytes and its terminator. Wraps, as the C's
 /// `size_t`.
 pub fn cmdline_len(len: usize, arg_len: usize) -> usize {
-    let _ = (len, arg_len);
-    todo!()
+    len.wrapping_add(arg_len).wrapping_add(1)
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_table`: the size of a
@@ -168,48 +172,51 @@ pub fn cmdline_len(len: usize, arg_len: usize) -> usize {
 /// the C converts it to `size_t` (a negative count wraps), and the product
 /// wraps, as the C's.
 pub fn cmdline_table(argc: i32, ptr_size: usize) -> usize {
-    let _ = (argc, ptr_size);
-    todo!()
+    (argc as isize)
+        .cast_unsigned()
+        .wrapping_add(1)
+        .wrapping_mul(ptr_size)
 }
 
 /// Same contract as C `obs_core_setup_rules_data_path_match`: `dstr_cmp()`
 /// found the path equal.
 pub fn data_path_match(cmp: i32) -> bool {
-    let _ = cmp;
-    todo!()
+    cmp == 0
 }
 
 /// Same contract as C `obs_core_setup_rules_latest_newer`: `version`, as
 /// `i32`, is above `best`.
 pub fn latest_newer(version: u32, best: i32) -> bool {
-    let _ = (version, best);
-    todo!()
+    version.cast_signed() > best
 }
 
 /// Same contract as C `obs_core_setup_rules_aoc_check`.
 pub fn aoc_check(output_flags: u32) -> bool {
-    let _ = output_flags;
-    todo!()
+    output_flags & DO_NOT_SELF_MONITOR != 0
 }
 
 /// Same contract as C `obs_core_setup_rules_monitor_missing`: a name, an
 /// id, either's first character, or the monitoring backend is missing.
 pub fn monitor_missing(present: bool) -> bool {
-    let _ = present;
-    todo!()
+    !present
 }
 
 /// Same contract as C `obs_core_setup_rules_monitor_same`: `strcmp()`
 /// found the id equal to the current one.
 pub fn monitor_same(cmp: i32) -> bool {
-    let _ = cmp;
-    todo!()
+    cmp == 0
 }
 
 /// Same contract as C `obs_core_setup_rules_mix_step`: the next read after
 /// `step` answered `value`, or what to do with the mix. [`Mix::Count`] and
 /// [`Mix::Skip`] stay where they are.
 pub fn mix_step(step: Mix, value: bool) -> Mix {
-    let _ = (step, value);
-    todo!()
+    match (step, value) {
+        (Mix::Main, true) | (Mix::View, true) => Mix::Video,
+        (Mix::Main, false) => Mix::EncoderOnly,
+        (Mix::EncoderOnly, true) => Mix::View,
+        (Mix::EncoderOnly | Mix::View | Mix::Video, false) => Mix::Skip,
+        (Mix::Video, true) => Mix::Count,
+        (Mix::Count | Mix::Skip, _) => step,
+    }
 }
