@@ -4240,8 +4240,10 @@ static void enum_source_full_tree(obs_source_t *source, obs_source_enum_proc_t e
 	if (!data_valid(source, "obs_source_enum_full_tree"))
 		return;
 
+	/* Descend through either callback, as enum_source_full_tree_callback
+	 * does for a child (#2942). */
 	is_transition = source->info.type == OBS_SOURCE_TYPE_TRANSITION;
-	if (!is_transition && !source->info.enum_active_sources)
+	if (!is_transition && !source->info.enum_all_sources && !source->info.enum_active_sources)
 		return;
 
 	source = obs_source_get_ref(source);
