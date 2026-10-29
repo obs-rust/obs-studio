@@ -15,13 +15,15 @@
 //! media binding and shutdown checks, `libobs/obs-encoder-lifecycle.c.h`,
 //! the encoder callback and connection lifecycle decisions,
 //! `libobs/obs-encoder-packet-ts.c.h`, the encoder packet timestamps,
+//! `libobs/obs-encoder-group-reconfig.c.h`, the encoder group reconfigure
+//! rules,
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
 //! decisions, and `libobs/obs-output-stop.c.h`, the output stop and
 //! end-capture decisions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`output_start`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -63,7 +65,12 @@
 //! SEI goes in front of the first keyframe; [`encoder_packet_ts`]
 //! decides each packet's timebase, its DTS in microseconds, its time on
 //! the system clock from the encoder's start and first packet, its time
-//! after the pause offset, and its newest timing entry; [`output_start`] decides
+//! after the pause offset, and its newest timing entry;
+//! [`encoder_group_reconfig`] decides when new settings for an active
+//! grouped encoder start a request or wait for the current one, on which
+//! shared frame every encoder of the group applies them, the LCM of the
+//! group's frame rate divisors and the reset of an idle group;
+//! [`output_start`] decides
 //! whether a start or a begin asks the service, when a delayed restart's
 //! reference is dropped, which encoders an output initializes, and whether
 //! a begin resets a raw output's audio and pairs the encoders;
@@ -83,6 +90,7 @@ pub mod delay;
 pub mod encoder_audio_start;
 pub mod encoder_bind;
 pub mod encoder_gpu_gates;
+pub mod encoder_group_reconfig;
 pub mod encoder_lifecycle;
 pub mod encoder_packet_ts;
 pub mod encoder_roi;
