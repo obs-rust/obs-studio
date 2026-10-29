@@ -54,7 +54,7 @@ bool obs_nix_portal_shortcut_combo(const char *id, obs_key_combination_t *combo)
 	const char *plus;
 
 	while ((plus = strchr(part, '+')) != NULL) {
-		size_t len = plus - part;
+		size_t len = (size_t)(plus - part);
 		bool known = false;
 		for (size_t i = 0; i < NUM_MODIFIERS; i++) {
 			if (strlen(modifier_names[i].id) == len && strncmp(part, modifier_names[i].id, len) == 0) {
