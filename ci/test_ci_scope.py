@@ -499,6 +499,41 @@ class HostNamedFilesTest(unittest.TestCase):
         for path in ("rust/obs-build/src/libobs.rs", "rust/obs-util/src/dstr.rs"):
             self.assertFalse(scope([path]).qt_sdk, path)
 
+    def test_a_ratcheted_target_selects_the_sanitizer_lane_on_a_pr(self):
+        # #2923: the conversion ratchet is only checked by the configuration that
+        # last compiled the target, so a sanitizer-only diagnostic reached master
+        # three times. A PR that changes a ratcheted target's compile input runs
+        # asan and pays for its own diagnostic.
+        ratchet = ("frontend", "plugins/obs-ffmpeg")
+        for path in (
+            "frontend/components/OBSAdvAudioCtrl.cpp.hpp",
+            "frontend/utility/platform-osx.mm.hpp",
+            "plugins/obs-ffmpeg/obs-ffmpeg-vaapi.c.h",
+        ):
+            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
+            self.assertTrue(got.asan, path)
+
+    def test_the_sanitizer_lane_keeps_the_merge_queue_short(self):
+        # The queue reruns CI on the merge result (#692); a sanitizer build there
+        # would grow the critical path for every ratcheted change (#2072, #2593).
+        ratchet = ("frontend",)
+        for event in ("merge_group", "push", ""):
+            got = scope(["frontend/OBSApp.cpp"], event=event, ref="master", ratchet_dirs=ratchet)
+            self.assertFalse(got.asan, event)
+
+    def test_the_sanitizer_lane_ignores_what_is_not_a_compile_input(self):
+        ratchet = ("frontend",)
+        # The CMakeLists itself names the flags; only sources below it compile.
+        for path in ("frontend/CMakeLists.txt", "docs/rust-port/naming.md", "plugins/obs-x264/obs-x264.c"):
+            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
+            self.assertFalse(got.asan, path)
+
+    def test_a_pin_only_target_selects_no_sanitizer_lane(self):
+        # Nothing in the tree is ratcheted unless its CMakeLists names a group
+        # (ci/conversion_ratchet.py): an untracked directory selects nothing.
+        got = scope(["plugins/foo/foo.c"], event="pull_request", ratchet_dirs=())
+        self.assertFalse(got.asan)
+
 
 if __name__ == "__main__":
     unittest.main()
