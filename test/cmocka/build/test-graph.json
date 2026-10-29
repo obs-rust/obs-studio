@@ -1083,6 +1083,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_group_move": {
+      "sources": [
+        "test/cmocka/test_encoder_group_move.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoder_group_reconfig_steps": {
       "sources": [
         "test/cmocka/test_encoder_group_reconfig_steps.c",
@@ -5738,6 +5753,18 @@
       "target": "test_encoder_gpu_gates_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_encoder_group_move": {
+      "target": "test_encoder_group_move",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_encoder_group_reconfig_steps": {
