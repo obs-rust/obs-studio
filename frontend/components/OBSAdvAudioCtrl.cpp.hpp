@@ -146,22 +146,22 @@ OBSAdvAudioCtrl::OBSAdvAudioCtrl(QGridLayout *, obs_source_t *source_) : source(
 	monitoringCheckBox->setAccessibleName(QTStr("Basic.AdvAudio.MonitoringSource").arg(sourceName));
 
 	mixer1->setText("1");
-	mixer1->setChecked(mixers & (1 << 0));
+	mixer1->setChecked(mixers & (1u << 0));
 	mixer1->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track1"));
 	mixer2->setText("2");
-	mixer2->setChecked(mixers & (1 << 1));
+	mixer2->setChecked(mixers & (1u << 1));
 	mixer2->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track2"));
 	mixer3->setText("3");
-	mixer3->setChecked(mixers & (1 << 2));
+	mixer3->setChecked(mixers & (1u << 2));
 	mixer3->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track3"));
 	mixer4->setText("4");
-	mixer4->setChecked(mixers & (1 << 3));
+	mixer4->setChecked(mixers & (1u << 3));
 	mixer4->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track4"));
 	mixer5->setText("5");
-	mixer5->setChecked(mixers & (1 << 4));
+	mixer5->setChecked(mixers & (1u << 4));
 	mixer5->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track5"));
 	mixer6->setText("6");
-	mixer6->setChecked(mixers & (1 << 5));
+	mixer6->setChecked(mixers & (1u << 5));
 	mixer6->setAccessibleName(QTStr("Basic.Settings.Output.Adv.Audio.Track6"));
 
 	balanceContainer->layout()->addWidget(labelL);
@@ -353,12 +353,12 @@ void OBSAdvAudioCtrl::SourceMonitoringChanged(bool enabled)
 
 void OBSAdvAudioCtrl::SourceMixersChanged(uint32_t mixers)
 {
-	setCheckboxState(mixer1, mixers & (1 << 0));
-	setCheckboxState(mixer2, mixers & (1 << 1));
-	setCheckboxState(mixer3, mixers & (1 << 2));
-	setCheckboxState(mixer4, mixers & (1 << 3));
-	setCheckboxState(mixer5, mixers & (1 << 4));
-	setCheckboxState(mixer6, mixers & (1 << 5));
+	setCheckboxState(mixer1, mixers & (1u << 0));
+	setCheckboxState(mixer2, mixers & (1u << 1));
+	setCheckboxState(mixer3, mixers & (1u << 2));
+	setCheckboxState(mixer4, mixers & (1u << 3));
+	setCheckboxState(mixer5, mixers & (1u << 4));
+	setCheckboxState(mixer6, mixers & (1u << 5));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -530,7 +530,7 @@ static inline void setMixer(obs_source_t *source, const int mixerIdx, const bool
 	uint32_t new_mixers = mixers;
 
 	if (checked) {
-		new_mixers |= (1 << mixerIdx);
+		new_mixers |= (1u << mixerIdx);
 	} else {
 		new_mixers &= ~(1u << mixerIdx);
 	}
