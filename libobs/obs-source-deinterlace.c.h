@@ -234,7 +234,7 @@ _Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space 
 
 static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 {
-	switch (obs_source_deinterlace_draw_effect(mode)) {
+	switch (obs_source_deinterlace_draw_effect((int)mode)) {
 	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_NONE:
 		return NULL;
 	case OBS_SOURCE_DEINTERLACE_DRAW_EFFECT_DISCARD:
@@ -280,15 +280,16 @@ void deinterlace_render(obs_source_t *s)
 
 	const enum gs_color_space source_space = convert_video_space(s->async_format, s->async_trc);
 
-	const bool gs_linear_srgb = obs_source_deinterlace_draw_reads_linear_srgb(source_space) && gs_get_linear_srgb();
+	const bool gs_linear_srgb = obs_source_deinterlace_draw_reads_linear_srgb((int)source_space) &&
+				    gs_get_linear_srgb();
 	const bool linear_srgb =
-		obs_source_deinterlace_draw_linear_srgb(source_space, gs_linear_srgb, s->deinterlace_mode);
+		obs_source_deinterlace_draw_linear_srgb((int)source_space, gs_linear_srgb, (int)s->deinterlace_mode);
 
 	const enum gs_color_space current_space = gs_get_color_space();
-	const char *tech_name =
-		obs_source_draw_technique_name(obs_source_deinterlace_draw_technique(source_space, current_space));
-	const float multiplier = obs_source_deinterlace_draw_reads_white_level(source_space, current_space)
-					 ? obs_source_deinterlace_draw_multiplier(source_space, current_space,
+	const char *tech_name = obs_source_draw_technique_name(
+		obs_source_deinterlace_draw_technique((int)source_space, (int)current_space));
+	const float multiplier = obs_source_deinterlace_draw_reads_white_level((int)source_space, (int)current_space)
+					 ? obs_source_deinterlace_draw_multiplier((int)source_space, (int)current_space,
 										  obs_get_video_sdr_white_level())
 					 : 1.0f;
 
@@ -359,7 +360,7 @@ void obs_source_set_deinterlace_mode(obs_source_t *source, enum obs_deinterlace_
 	/* A mode outside the enum is DISABLE (#2090): the decision says
 	 * disable, or nothing when the source is disabled already. Enable and
 	 * switch come only with a mode in the enum. */
-	switch (obs_source_deinterlace_draw_mode_change(source->deinterlace_mode, mode)) {
+	switch (obs_source_deinterlace_draw_mode_change((int)source->deinterlace_mode, (int)mode)) {
 	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_SAME:
 		return;
 	case OBS_SOURCE_DEINTERLACE_DRAW_MODE_ENABLE:

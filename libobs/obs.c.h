@@ -2254,9 +2254,10 @@ static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_ble
 
 	const enum gs_color_space source_space = video->render_space;
 	const enum gs_color_space current_space = gs_get_color_space();
-	const char *tech_name = obs_source_draw_technique_name(obs_canvas_draw_technique(source_space, current_space));
+	const char *tech_name =
+		obs_source_draw_technique_name(obs_canvas_draw_technique((int)source_space, (int)current_space));
 	float multiplier = 1.f;
-	if (obs_canvas_draw_reads_white_level(current_space))
+	if (obs_canvas_draw_reads_white_level((int)current_space))
 		multiplier = obs_canvas_draw_multiplier(obs_get_video_sdr_white_level());
 
 	const bool previous = gs_framebuffer_srgb_enabled();
