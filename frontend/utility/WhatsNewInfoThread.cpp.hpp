@@ -30,7 +30,7 @@ try {
 		throw strprintf("Failed to open file '%s': %s", file, strerror(errno));
 	}
 
-	fileStream.write(data.data(), data.size());
+	fileStream.write(data.data(), static_cast<std::streamsize>(data.size()));
 	if (fileStream.fail()) {
 		throw strprintf("Failed to write file '%s': %s", file, strerror(errno));
 	}
@@ -50,11 +50,11 @@ try {
 	}
 
 	fileStream.seekg(0, fileStream.end);
-	size_t size = fileStream.tellg();
+	size_t size = static_cast<size_t>(fileStream.tellg());
 	fileStream.seekg(0);
 
 	data.resize(size);
-	fileStream.read(&data[0], size);
+	fileStream.read(&data[0], static_cast<std::streamsize>(size));
 
 	if (fileStream.fail()) {
 		throw strprintf("Failed to write file '%s': %s", file, strerror(errno));
@@ -83,7 +83,7 @@ try {
 
 	for (;;) {
 		file.read(buf, HASH_READ_BUF_SIZE);
-		size_t read = file.gcount();
+		size_t read = static_cast<size_t>(file.gcount());
 		if (blake2b_update(&blake2, &buf, read) != 0) {
 			return false;
 		}
@@ -174,7 +174,7 @@ try {
 	auto signature = QByteArray::fromHex(hexSig.data());
 
 	if (!VerifySignature((uint8_t *)obsPubKey.data(), obsPubKey.size(), (uint8_t *)data.data(), data.size(),
-			     (uint8_t *)signature.data(), signature.size())) {
+			     (uint8_t *)signature.data(), static_cast<size_t>(signature.size()))) {
 		throw strprintf("Signature check failed for %s", name);
 	}
 
