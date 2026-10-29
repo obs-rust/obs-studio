@@ -32,6 +32,11 @@ add_executable(obs-studio)
 add_executable(OBS::studio ALIAS obs-studio)
 obs_msvc_exempt_c4201(obs-studio)
 
+# #2625: the app target's sign conversions are stated at their call sites, so it
+# opts into that group alone. -Wconversion and -Wfloat-conversion keep the global
+# pins for now: the two remaining groups follow in their own PRs.
+target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wsign-conversion>")
+
 include(cmake/sources.cmake)
 
 # Select platform operations once; each is invoked at its existing setup stage.
