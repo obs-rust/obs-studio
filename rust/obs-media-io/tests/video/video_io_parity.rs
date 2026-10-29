@@ -26,7 +26,8 @@ use std::sync::{Condvar, Mutex};
 
 use obs_c_oracle::video_io::{
     OracleVideo, OracleVideoData, OracleVideoFrame, OracleVideoOutputInfo, OracleVideoScaleInfo,
-    oracle_video_output_close, oracle_video_output_connect, oracle_video_output_connect2,
+    oracle_video_output_align_frame_rate_divisor, oracle_video_output_close,
+    oracle_video_output_connect, oracle_video_output_connect2,
     oracle_video_output_create_with_frame_rate_divisor,
     oracle_video_output_free_frame_rate_divisor, oracle_video_output_get_format,
     oracle_video_output_get_frame_rate, oracle_video_output_get_frame_time,
@@ -36,8 +37,9 @@ use obs_c_oracle::video_io::{
 };
 use obs_media_io::ffi::video_frame::video_frame;
 use obs_media_io::ffi::video_io::{
-    VIDEO_OUTPUT_INVALIDPARAM, VIDEO_OUTPUT_SUCCESS, video_data, video_output_close,
-    video_output_connect, video_output_connect2, video_output_create_with_frame_rate_divisor,
+    VIDEO_OUTPUT_INVALIDPARAM, VIDEO_OUTPUT_SUCCESS, video_data,
+    video_output_align_frame_rate_divisor, video_output_close, video_output_connect,
+    video_output_connect2, video_output_create_with_frame_rate_divisor,
     video_output_free_frame_rate_divisor, video_output_get_format, video_output_get_frame_rate,
     video_output_get_frame_time, video_output_get_info, video_output_get_total_frames,
     video_output_get_width, video_output_info, video_output_lock_frame, video_output_open,
@@ -124,6 +126,36 @@ fn wait_hits(gate: &Gate, n: usize) {
     let mut hits = gate.hits.lock().unwrap();
     while hits.n < n {
         hits = gate.cv.wait(hits).unwrap();
+    }
+}
+
+/// One frame with the same byte on both sides, delivered in lockstep.
+fn push_both(pair: &Pair, stamp: u64, byte: u8) {
+    unsafe {
+        let mut rust_frame = video_frame {
+            data: [ptr::null_mut(); 8],
+            linesize: [0; 8],
+        };
+        let mut oracle_frame = OracleVideoFrame {
+            data: [ptr::null_mut(); 8],
+            linesize: [0; 8],
+        };
+        assert!(video_output_lock_frame(
+            pair.rust,
+            &mut rust_frame,
+            1,
+            stamp
+        ));
+        assert!(oracle_video_output_lock_frame(
+            pair.oracle,
+            &mut oracle_frame,
+            1,
+            stamp
+        ));
+        *rust_frame.data[0] = byte;
+        *oracle_frame.data[0] = byte;
+        video_output_unlock_frame(pair.rust);
+        oracle_video_output_unlock_frame(pair.oracle);
     }
 }
 
@@ -385,6 +417,90 @@ fn divisor_skip_matches() {
     assert_eq!(rust_hits.byte0, oracle_hits.byte0);
     assert_eq!(rust_hits.byte0[0], 1);
     assert_eq!(rust_hits.byte0[1], 3);
+}
+
+/// After one delivered frame of a divisor-3 input both sides skip the next
+/// one; aligning on a start timestamp on both sides drops the frames before it
+/// and delivers the one at it as the first of the phase, and a callback or
+/// param that is not connected stays false.
+#[test]
+fn divisor_align_matches() {
+    let pair = Pair::open(4, 4, 4, 30, 1);
+    let rust_gate = gate();
+    let oracle_gate = gate();
+    let rust_param = &rust_gate as *const Gate as *mut c_void;
+    let oracle_param = &oracle_gate as *const Gate as *mut c_void;
+    let stamps = [1000_u64, 2000, 3000, 4000];
+    unsafe {
+        assert!(video_output_connect2(
+            pair.rust,
+            ptr::null(),
+            3,
+            Some(on_rust),
+            rust_param
+        ));
+        assert!(oracle_video_output_connect2(
+            pair.oracle,
+            ptr::null(),
+            3,
+            Some(on_oracle),
+            oracle_param
+        ));
+    }
+    push_both(&pair, stamps[0], 1);
+    wait_hits(&rust_gate, 1);
+    wait_hits(&oracle_gate, 1);
+    unsafe {
+        assert!(video_output_align_frame_rate_divisor(
+            pair.rust,
+            3000,
+            Some(on_rust),
+            rust_param
+        ));
+        assert!(oracle_video_output_align_frame_rate_divisor(
+            pair.oracle,
+            3000,
+            Some(on_oracle),
+            oracle_param
+        ));
+        assert!(!video_output_align_frame_rate_divisor(
+            pair.rust,
+            3000,
+            Some(on_rust),
+            ptr::null_mut()
+        ));
+        assert!(!oracle_video_output_align_frame_rate_divisor(
+            pair.oracle,
+            3000,
+            Some(on_oracle),
+            ptr::null_mut()
+        ));
+        assert!(!video_output_align_frame_rate_divisor(
+            pair.rust, 3000, None, rust_param
+        ));
+        assert!(!oracle_video_output_align_frame_rate_divisor(
+            pair.oracle,
+            3000,
+            None,
+            oracle_param
+        ));
+    }
+    for (i, stamp) in stamps[1..].iter().enumerate() {
+        push_both(&pair, *stamp, (i + 2) as u8);
+    }
+    wait_hits(&rust_gate, 2);
+    wait_hits(&oracle_gate, 2);
+    unsafe {
+        video_output_stop(pair.rust);
+        oracle_video_output_stop(pair.oracle);
+    }
+    let rust_hits = rust_gate.hits.lock().unwrap();
+    let oracle_hits = oracle_gate.hits.lock().unwrap();
+    assert_eq!(rust_hits.n, 2);
+    assert_eq!(rust_hits.ts, oracle_hits.ts);
+    assert_eq!(rust_hits.byte0, oracle_hits.byte0);
+    assert_eq!(rust_hits.ts[0], 1000);
+    assert_eq!(rust_hits.ts[1], 3000);
 }
 
 #[test]

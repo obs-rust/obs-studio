@@ -531,6 +531,75 @@ fn frame_rate_divisor_skips_every_other() {
     }
 }
 
+/// C's video_output_align_frame_rate_divisor: after one delivered frame the
+/// counter is 1, so the next frame would be skipped. Aligning on a start
+/// timestamp drops the frames before it without moving the counter, so the
+/// first frame at or after it is delivered.
+#[test]
+fn align_divisor_restarts_the_phase() {
+    let mut info = rgba_info(c"div3align", 4, 4, 4);
+    let session = Session::open(&mut info, false);
+    let video = session.video;
+    let stamps = [1000_u64, 2000, 3000, 4000];
+    unsafe {
+        assert!(video_output_connect2(
+            video,
+            ptr::null(),
+            3,
+            Some(on_frame),
+            session.param()
+        ));
+        let push = |stamp: u64| {
+            let mut frame = video_frame {
+                data: [ptr::null_mut(); 8],
+                linesize: [0; 8],
+            };
+            assert!(video_output_lock_frame(video, &mut frame, 1, stamp));
+            video_output_unlock_frame(video);
+        };
+        push(stamps[0]);
+        session.wait_hits(1);
+        // The counter is 1 here, so without the alignment frame 2000 would be
+        // skipped; the phase starts at 3000 instead, so both 2000 (before the
+        // phase) and 4000 (after it) behave as the start frame does.
+        assert!(video_output_align_frame_rate_divisor(
+            video,
+            3000,
+            Some(on_frame),
+            session.param()
+        ));
+        assert!(!video_output_align_frame_rate_divisor(
+            video,
+            3000,
+            Some(on_frame),
+            ptr::null_mut()
+        ));
+        assert!(!video_output_align_frame_rate_divisor(
+            video,
+            3000,
+            None,
+            session.param()
+        ));
+        assert!(!video_output_align_frame_rate_divisor(
+            ptr::null_mut(),
+            3000,
+            Some(on_frame),
+            session.param()
+        ));
+        for stamp in stamps[1..].iter() {
+            push(*stamp);
+        }
+    }
+    session.wait_hits(2);
+    unsafe { video_output_stop(video) };
+    let hits = session.gate.hits.lock().unwrap();
+    assert_eq!(hits.n, 2);
+    assert!(hits.ts[0] == 1000);
+    assert!(hits.ts[1] == 3000);
+    drop(hits);
+    unsafe { assert_eq!(video_output_get_total_frames(video), 4) };
+}
+
 #[test]
 fn full_cache_counts_a_skip() {
     let mut info = rgba_info(c"full", 4, 4, 1);

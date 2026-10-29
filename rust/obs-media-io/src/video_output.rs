@@ -115,6 +115,10 @@ struct Input {
     param: usize,
     divisor: u32,
     counter: u32,
+    /// A grouped encoder's phase starts at the group's start frame: frames
+    /// rendered before this timestamp are not delivered and do not move
+    /// `counter`. 0 when the input has no pending phase.
+    start_timestamp: u64,
     scaler: Option<Box<dyn Scaler>>,
     buffers: Vec<VideoFrame>,
     /// C's `cur_frame`, which starts at 0 and is incremented before use, so
@@ -357,6 +361,7 @@ impl VideoOutput {
                 param,
                 divisor,
                 counter: 0,
+                start_timestamp: 0,
                 scaler,
                 buffers,
                 cur: 0,
@@ -396,6 +401,31 @@ impl VideoOutput {
             }
         }
         true
+    }
+
+    /// C's `video_output_align_frame_rate_divisor`: the next frame at or after
+    /// `start_timestamp` is the first of a new divisor phase.
+    pub(crate) fn align_divisor(
+        &self,
+        start_timestamp: u64,
+        callback: usize,
+        param: usize,
+    ) -> bool {
+        if callback == 0 {
+            return false;
+        }
+        let mut guard = self.shared.inputs.lock();
+        guard.with_mut(|inputs| {
+            let Some(input) = inputs
+                .iter_mut()
+                .find(|input| input.callback == callback && input.param == param)
+            else {
+                return false;
+            };
+            input.counter = 0;
+            input.start_timestamp = start_timestamp;
+            true
+        })
     }
 
     pub(crate) fn lock_frame(&self, count: i32, timestamp: u64) -> Option<FrameView> {
@@ -493,7 +523,7 @@ fn cur_frame(shared: &Shared, frame_time: u64) -> bool {
                     })
                 })?;
                 visited.push((Arc::clone(&input.identity), input.callback, input.param));
-                Some(prepare_input(input))
+                Some(prepare_input(input, source.timestamp))
             });
             let Some(prep) = prep else {
                 break;
@@ -565,7 +595,15 @@ fn cur_frame(shared: &Shared, frame_time: u64) -> bool {
     })
 }
 
-fn prepare_input(input: &mut Input) -> Prep {
+fn prepare_input(input: &mut Input, timestamp: u64) -> Prep {
+    // A grouped encoder's phase starts at the group's start frame: the frames
+    // rendered before it are dropped and leave the counter alone.
+    if input.start_timestamp != 0 {
+        if timestamp < input.start_timestamp {
+            return Prep::Next;
+        }
+        input.start_timestamp = 0;
+    }
     let skip = input.counter;
     input.counter = input.counter.wrapping_add(1);
     if input.counter == input.divisor {

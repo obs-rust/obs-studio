@@ -72,6 +72,12 @@ unsafe extern "C" {
         callback: Option<unsafe extern "C" fn(*mut c_void, *mut OracleVideoData)>,
         param: *mut c_void,
     ) -> bool;
+    pub fn oracle_video_output_align_frame_rate_divisor(
+        video: *mut OracleVideo,
+        start_timestamp: u64,
+        callback: Option<unsafe extern "C" fn(*mut c_void, *mut OracleVideoData)>,
+        param: *mut c_void,
+    ) -> bool;
     pub fn oracle_video_output_get_info(video: *const OracleVideo) -> *const OracleVideoOutputInfo;
     pub fn oracle_video_output_lock_frame(
         video: *mut OracleVideo,

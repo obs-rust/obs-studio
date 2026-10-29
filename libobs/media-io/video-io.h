@@ -330,11 +330,14 @@ extern void video_output_dec_texture_encoders(video_t *video);
 extern void video_output_inc_texture_frames(video_t *video);
 extern void video_output_inc_texture_skipped_frames(video_t *video);
 
-/* Makes the next frame this input receives the first one of a new phase:
- * frame_rate_divisor_counter is cleared so the next frame is not skipped.
- * Returns false when the input is not connected. EXPORT so the test binary
- * that compiles video-io.c can link it, like video_output_disconnect2. */
-EXPORT bool video_output_reset_frame_rate_divisor(video_t *video,
+/* Marks the next frame this input receives at or after start_timestamp as the
+ * first one of a new divisor phase: it is delivered whatever the counter was,
+ * and the frames rendered before it are dropped without moving the counter.
+ * A grouped encoder's start frame is the frame the group starts on, so this
+ * makes the start frame the first one of the phase. Returns false when the
+ * input is not connected. EXPORT so the test binary that compiles video-io.c
+ * can link it, like video_output_disconnect2. */
+EXPORT bool video_output_align_frame_rate_divisor(video_t *video, uint64_t start_timestamp,
 						  void (*callback)(void *param, struct video_data *frame), void *param);
 
 extern video_t *video_output_create_with_frame_rate_divisor(video_t *video, uint32_t divisor);

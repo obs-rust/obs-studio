@@ -214,21 +214,23 @@ static void group_start_aligns_the_divisor_counter(void **state)
 	assert_int_equal(g.hits, 1);
 	assert_int_equal(g.ts[0], start);
 
-	/* The group's start frame is the next one rendered. Without the reset
-	 * the counter is 1 here, so that frame is skipped. */
-	assert_true(video_output_reset_frame_rate_divisor(video, on_frame, &g));
-	assert_false(video_output_reset_frame_rate_divisor(video, on_frame, &other));
+	/* The group's start frame is two frames on. Without the alignment the
+	 * counter is 1 here, so that frame is skipped. */
+	assert_true(video_output_align_frame_rate_divisor(video, start + 2 * frame_time, on_frame, &g));
+	assert_false(video_output_align_frame_rate_divisor(video, start + 2 * frame_time, on_frame, &other));
 
+	/* Rendered before the phase: dropped, and the counter is not moved. */
 	push_frame(video, &frame, start + frame_time);
+	/* The phase frame itself: delivered whatever the counter was. */
 	push_frame(video, &frame, start + 2 * frame_time);
-	push_frame(video, &frame, start + 3 * frame_time);
 
 	assert_int_equal(os_sem_wait(g.hits_sem), 0);
-	assert_int_equal(os_sem_wait(g.hits_sem), 0);
-	assert_int_equal(g.hits, 3);
-	/* Starts on the group's start frame, then every second frame again. */
-	assert_int_equal(g.ts[1], start + frame_time);
-	assert_int_equal(g.ts[2], start + 3 * frame_time);
+	assert_int_equal(g.hits, 2);
+	/* The first frame at or after the phase start, not the one before it.
+	 * The cadence after it depends on when the frame the video thread is
+	 * already holding is consumed, which the real-libobs case in
+	 * test_encoder_group_reconfig_walk covers end to end. */
+	assert_int_equal(g.ts[1], start + 2 * frame_time);
 
 	assert_true(video_output_disconnect2(video, on_frame, &g));
 	finish(video, &g);

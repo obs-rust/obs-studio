@@ -1909,7 +1909,7 @@ extern void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_pack
 /* Clears the encoder's video-input divisor phase so the group's start frame is
  * the next one it receives. Called on the graphics thread by video_sleep()
  * after the group's start_timestamp is set. Not EXPORT. */
-extern void obs_encoder_align_frame_rate_divisor(obs_encoder_t *encoder);
+extern void obs_encoder_align_frame_rate_divisor(obs_encoder_t *encoder, uint64_t start_timestamp);
 
 extern void obs_encoder_add_output(struct obs_encoder *encoder, struct obs_output *output);
 extern void obs_encoder_remove_output(struct obs_encoder *encoder, struct obs_output *output);

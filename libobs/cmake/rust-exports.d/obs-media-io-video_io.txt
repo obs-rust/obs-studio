@@ -16,6 +16,7 @@ video_output_get_total_frames
 video_output_get_width
 video_output_lock_frame
 video_output_open
+video_output_align_frame_rate_divisor
 video_output_stop
 video_output_stopped
 video_output_unlock_frame

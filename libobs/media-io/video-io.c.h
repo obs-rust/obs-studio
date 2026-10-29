@@ -44,6 +44,13 @@ struct video_input {
 	uint32_t frame_rate_divisor;
 	uint32_t frame_rate_divisor_counter;
 
+	/* A grouped encoder's divisor phase starts at the group's start frame:
+	 * frames rendered before this timestamp are not delivered and do not
+	 * move the counter, and the first frame at or after it is delivered.
+	 * 0 when the input has no pending phase. See
+	 * video_output_align_frame_rate_divisor(). */
+	uint64_t start_timestamp;
+
 	void (*callback)(void *param, struct video_data *frame);
 	void *param;
 };
@@ -132,6 +139,16 @@ static inline bool video_output_cur_frame(struct video_output *video)
 	for (size_t i = 0; i < video->inputs.num; i++) {
 		struct video_input *input = video->inputs.array + i;
 		struct video_data frame = frame_info->frame;
+
+		/* A grouped encoder's phase starts at the group's start frame:
+		 * the frames rendered before it are not delivered and leave the
+		 * divisor counter where it is, so the start frame is the first
+		 * one of the phase. */
+		if (input->start_timestamp) {
+			if (frame.timestamp < input->start_timestamp)
+				continue;
+			input->start_timestamp = 0;
+		}
 
 		// an explicit counter is used instead of remainder calculation
 		// to allow multiple encoders started at the same time to start on
@@ -482,8 +499,8 @@ bool video_output_disconnect2(video_t *video, void (*callback)(void *param, stru
 	return idx != DARRAY_INVALID;
 }
 
-bool video_output_reset_frame_rate_divisor(video_t *video, void (*callback)(void *param, struct video_data *frame),
-					   void *param)
+bool video_output_align_frame_rate_divisor(video_t *video, uint64_t start_timestamp,
+					   void (*callback)(void *param, struct video_data *frame), void *param)
 {
 	if (!video || !callback)
 		return false;
@@ -493,8 +510,11 @@ bool video_output_reset_frame_rate_divisor(video_t *video, void (*callback)(void
 	pthread_mutex_lock(&video->input_mutex);
 
 	size_t idx = video_get_input_idx(video, callback, param);
-	if (idx != DARRAY_INVALID)
-		video->inputs.array[idx].frame_rate_divisor_counter = 0;
+	if (idx != DARRAY_INVALID) {
+		struct video_input *input = video->inputs.array + idx;
+		input->frame_rate_divisor_counter = 0;
+		input->start_timestamp = start_timestamp;
+	}
 
 	pthread_mutex_unlock(&video->input_mutex);
 

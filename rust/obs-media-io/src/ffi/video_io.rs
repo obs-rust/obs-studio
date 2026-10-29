@@ -503,6 +503,28 @@ pub unsafe extern "C" fn video_output_disconnect2(
     with_output(video, |output| output.disconnect(callback, param as usize))
 }
 
+/// `video_output_align_frame_rate_divisor`: the next frame this input receives
+/// at or after `start_timestamp` is the first of a new divisor phase. Returns
+/// false when the callback is not connected.
+///
+/// # Safety
+/// `video` is null or a live handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn video_output_align_frame_rate_divisor(
+    video: *mut c_void,
+    start_timestamp: u64,
+    callback: video_output_callback_t,
+    param: *mut c_void,
+) -> bool {
+    if video.is_null() {
+        return false;
+    }
+    let callback = callback_addr(callback);
+    with_output(video, |output| {
+        output.align_divisor(start_timestamp, callback, param as usize)
+    })
+}
+
 /// `video_output_active`.
 ///
 /// # Safety
