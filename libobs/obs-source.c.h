@@ -3164,7 +3164,7 @@ void obs_source_output_video(obs_source_t *source, const struct obs_source_frame
 	}
 
 	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range(frame->format, new_frame.full_range);
+	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
 
 	obs_source_output_video_internal(source, &new_frame);
 }
@@ -3189,7 +3189,7 @@ void obs_source_output_video2(obs_source_t *source, const struct obs_source_fram
 	new_frame.height = frame->height;
 	new_frame.timestamp = frame->timestamp;
 	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2(frame->format, frame->range);
+	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
 	new_frame.max_luminance = 0;
 	new_frame.flip = frame->flip;
 	new_frame.flags = frame->flags;
@@ -3260,7 +3260,7 @@ void obs_source_remove_caption_callback(obs_source_t *source, obs_source_caption
 static inline struct obs_source_frame_copy_shape frame_copy_shape(const struct obs_source_frame *frame)
 {
 	const struct obs_source_frame_copy_shape shape = {
-		.format = frame->format,
+		.format = (int)frame->format,
 		.width = frame->width,
 		.height = frame->height,
 	};
@@ -3305,7 +3305,7 @@ void obs_source_preload_video(obs_source_t *source, const struct obs_source_fram
 	}
 
 	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range(frame->format, new_frame.full_range);
+	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
 
 	obs_source_preload_video_internal(source, &new_frame);
 }
@@ -3330,7 +3330,7 @@ void obs_source_preload_video2(obs_source_t *source, const struct obs_source_fra
 	new_frame.height = frame->height;
 	new_frame.timestamp = frame->timestamp;
 	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2(frame->format, frame->range);
+	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
 	new_frame.max_luminance = 0;
 	new_frame.flip = frame->flip;
 	new_frame.flags = frame->flags;
@@ -3404,7 +3404,7 @@ void obs_source_set_video_frame(obs_source_t *source, const struct obs_source_fr
 	}
 
 	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range(frame->format, new_frame.full_range);
+	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
 
 	obs_source_set_video_frame_internal(source, &new_frame);
 }
@@ -3429,7 +3429,7 @@ void obs_source_set_video_frame2(obs_source_t *source, const struct obs_source_f
 	new_frame.height = frame->height;
 	new_frame.timestamp = frame->timestamp;
 	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2(frame->format, frame->range);
+	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
 	new_frame.max_luminance = 0;
 	new_frame.flip = frame->flip;
 	new_frame.flags = frame->flags;
