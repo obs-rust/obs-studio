@@ -63,9 +63,17 @@ void obs_nix_x11_log_info(void)
  * applies to checking key press states.
  */
 
-struct keycode_list {
-	DARRAY(xcb_keycode_t) list;
-};
+/* struct keycode_list and the lookups on it are in obs-nix-x11-keys.h, which
+ * includes no X header: check what it assumes about them here. */
+_Static_assert(sizeof(xcb_keysym_t) == sizeof(uint32_t), "xcb_keysym_t is a uint32_t");
+_Static_assert(sizeof(xcb_keycode_t) == sizeof(uint8_t), "xcb_keycode_t is a uint8_t");
+_Static_assert(OBS_NIX_X11_KEYS_SHIFT_R == XK_Shift_R, "XK_Shift_R");
+_Static_assert(OBS_NIX_X11_KEYS_CONTROL_R == XK_Control_R, "XK_Control_R");
+_Static_assert(OBS_NIX_X11_KEYS_ALT_R == XK_Alt_R, "XK_Alt_R");
+_Static_assert(OBS_NIX_X11_KEYS_SUPER_L == XK_Super_L, "XK_Super_L");
+_Static_assert(OBS_NIX_X11_KEYS_SUPER_R == XK_Super_R, "XK_Super_R");
+_Static_assert(sizeof(((xcb_query_keymap_reply_t *)0)->keys) == OBS_NIX_X11_KEYS_KEYMAP_LEN,
+	       "a QueryKeymap reply has a 32-byte key bitmap");
 
 struct obs_hotkeys_platform {
 	Display *display;
@@ -686,26 +694,6 @@ static inline void fill_base_keysyms(struct obs_core_hotkeys *hotkeys)
 		hotkeys->platform_context->base_keysyms[i] = (xcb_keysym_t)get_keysym((obs_key_t)i);
 }
 
-static obs_key_t key_from_base_keysym(obs_hotkeys_platform_t *context, xcb_keysym_t code)
-{
-	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++) {
-		if (context->base_keysyms[i] == (xcb_keysym_t)code) {
-			return (obs_key_t)i;
-		}
-	}
-
-	switch (code) {
-	case XK_Shift_R:
-		return OBS_KEY_SHIFT;
-	case XK_Control_R:
-		return OBS_KEY_CONTROL;
-	case XK_Alt_R:
-		return OBS_KEY_ALT;
-	}
-
-	return OBS_KEY_NONE;
-}
-
 static inline void add_key(obs_hotkeys_platform_t *context, obs_key_t key, int code)
 {
 	xcb_keycode_t kc = (xcb_keycode_t)code;
@@ -756,24 +744,18 @@ static inline bool fill_keycodes(struct obs_core_hotkeys *hotkeys)
 
 		sym = &keysyms[(code - mincode) * syms_per_code];
 
-		for (int i = 0; i < syms_per_code; i++) {
-			if (!sym[i])
-				break;
-
-			if (sym[i] == XK_Super_L) {
-				context->super_l_code = (xcb_keycode_t)code;
-				break;
-			} else if (sym[i] == XK_Super_R) {
-				context->super_r_code = (xcb_keycode_t)code;
-				break;
-			} else {
-				key = key_from_base_keysym(context, sym[i]);
-
-				if (key != OBS_KEY_NONE) {
-					add_key(context, key, code);
-					break;
-				}
-			}
+		switch (obs_nix_x11_keys_row(sym, syms_per_code, context->base_keysyms, &key)) {
+		case OBS_NIX_X11_KEYS_ROW_SUPER_L:
+			context->super_l_code = (xcb_keycode_t)code;
+			break;
+		case OBS_NIX_X11_KEYS_ROW_SUPER_R:
+			context->super_r_code = (xcb_keycode_t)code;
+			break;
+		case OBS_NIX_X11_KEYS_ROW_KEY:
+			add_key(context, key, code);
+			break;
+		case OBS_NIX_X11_KEYS_ROW_NONE:
+			break;
 		}
 	}
 
@@ -1035,11 +1017,6 @@ static bool mouse_button_pressed(xcb_connection_t *connection, obs_hotkeys_platf
 	return ret;
 }
 
-static inline bool keycode_pressed(xcb_query_keymap_reply_t *reply, xcb_keycode_t code)
-{
-	return obs_nix_x11_keycode_pressed(reply, code);
-}
-
 static bool key_pressed(xcb_connection_t *connection, obs_hotkeys_platform_t *context, obs_key_t key)
 {
 	struct keycode_list *codes = &context->keycodes[key];
@@ -1051,17 +1028,9 @@ static bool key_pressed(xcb_connection_t *connection, obs_hotkeys_platform_t *co
 	if (error) {
 		blog(LOG_WARNING, "xcb_query_keymap failed");
 
-	} else if (key == OBS_KEY_META) {
-		pressed = keycode_pressed(reply, context->super_l_code) ||
-			  keycode_pressed(reply, context->super_r_code);
-
 	} else {
-		for (size_t i = 0; i < codes->list.num; i++) {
-			if (keycode_pressed(reply, codes->list.array[i])) {
-				pressed = true;
-				break;
-			}
-		}
+		pressed = obs_nix_x11_keys_pressed(reply ? reply->keys : NULL, key, codes, &context->super_l_code,
+						   &context->super_r_code);
 	}
 
 	free(reply);
@@ -1241,55 +1210,22 @@ static void obs_nix_x11_key_to_str(obs_key_t key, struct dstr *dstr)
 	}
 }
 
-static obs_key_t key_from_keycode(obs_hotkeys_platform_t *context, xcb_keycode_t code)
-{
-	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++) {
-		struct keycode_list *codes = &context->keycodes[i];
-
-		for (size_t j = 0; j < codes->list.num; j++) {
-			if (codes->list.array[j] == code) {
-				return (obs_key_t)i;
-			}
-		}
-	}
-
-	return OBS_KEY_NONE;
-}
-
 static obs_key_t obs_nix_x11_key_from_virtual_key(int sym)
 {
 	obs_hotkeys_platform_t *context = obs->hotkeys.platform_context;
-	const xcb_keysym_t *keysyms = context->keysyms;
-	int syms_per_code = context->syms_per_code;
 
-	if (sym == 0 || syms_per_code <= 0)
-		return OBS_KEY_NONE;
+	return obs_nix_x11_keys_from_virtual_key(sym, context->keysyms, context->syms_per_code, &context->num_keysyms,
+						 &context->min_keycode, context->keycodes);
+}
 
-	int num_codes = context->num_keysyms / syms_per_code;
-
-	/* Search one column (group and shift level) at a time across all
-	 * keycodes, like XKeysymToKeycode(), so the key that produces the
-	 * symbol unshifted in the first group wins over a key that only has it
-	 * at another group or level (e.g. "[" on AltGr+8 in a second layout).
-	 * Symbols that only exist on a shifted level still map to their key. */
-	for (int col = 0; col < syms_per_code; col++) {
-		for (int i = 0; i < num_codes; i++) {
-			if (keysyms[i * syms_per_code + col] == (xcb_keysym_t)sym) {
-				xcb_keycode_t code = (xcb_keycode_t)(i + context->min_keycode);
-				return key_from_keycode(context, code);
-			}
-		}
-	}
-
-	return OBS_KEY_NONE;
+static const uint32_t *x11_base_keysyms(void)
+{
+	return obs->hotkeys.platform_context->base_keysyms;
 }
 
 static int obs_nix_x11_key_to_virtual_key(obs_key_t key)
 {
-	if (key == OBS_KEY_META)
-		return XK_Super_L;
-
-	return (int)obs->hotkeys.platform_context->base_keysyms[(int)key];
+	return obs_nix_x11_keys_to_virtual_key(key, x11_base_keysyms);
 }
 
 static const struct obs_nix_hotkeys_vtable x11_hotkeys_vtable = {

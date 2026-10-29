@@ -21,6 +21,7 @@
 #include "obs-internal.h"
 #include "obs-nix-x11.h"
 #include "obs-nix-x11-keymap.h"
+#include "obs-nix-x11-keys.h"
 
 #include <xcb/xcb.h>
 #if defined(XCB_XINPUT_FOUND)
