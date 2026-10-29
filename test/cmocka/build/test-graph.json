@@ -2093,6 +2093,26 @@
         "libobs/data"
       ]
     },
+    "test_output_begin_steps": {
+      "sources": [
+        "test/cmocka/test_output_begin_steps.c",
+        "libobs/obs-output-begin.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-begin.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_caption_codec": {
       "sources": [
         "test/cmocka/test_output_caption_codec.c"
@@ -6147,6 +6167,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_output_begin_steps": {
+      "target": "test_output_begin_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_output_caption_codec": {
