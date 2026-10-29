@@ -12,15 +12,18 @@
 //! earliest timestamp, and each item's frames),
 //! `libobs/obs-scene-item-transform.c.h` (the steps of
 //! `compute_item_transform`: the crop and cropped size, the bounds test,
-//! the draw and box matrices, and the box scale), and
+//! the draw and box matrices, and the box scale),
+//! `libobs/obs-scene-item-order.c.h` (the order, reorder and group
+//! membership decisions: where a moved item goes, the reorder checks and
+//! group runs, and the group add and remove gates), and
 //! `libobs/obs-scene-transform-update.c.h` (the transform update decisions of
 //! `scene_video_render` and `update_transforms_and_prune_sources`: the scene
 //! size step and whether an item is updated).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
 //! [`group_transform`], [`audio_actions`], [`audio_window`], [`extent`],
-//! [`crop`], [`render_plan`], [`item_names`], [`item_transform`], and
-//! [`transform_update`]. The C ABI shims live in [`ffi`].
+//! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
+//! [`item_transform`], and [`transform_update`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
