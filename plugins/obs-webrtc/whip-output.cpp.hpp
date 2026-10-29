@@ -293,11 +293,12 @@ bool WHIPOutput::Setup()
 			break;
 		case rtc::PeerConnection::State::Connecting:
 			do_log(LOG_INFO, "PeerConnection state is now: Connecting");
-			start_time_ns = os_gettime_ns();
+			start_time_ns = static_cast<int64_t>(os_gettime_ns());
 			break;
 		case rtc::PeerConnection::State::Connected:
 			do_log(LOG_INFO, "PeerConnection state is now: Connected");
-			connect_time_ms = (int)((os_gettime_ns() - start_time_ns) / 1000000.0);
+			connect_time_ms =
+				static_cast<int>((static_cast<int64_t>(os_gettime_ns()) - start_time_ns) / 1000000);
 			do_log(LOG_INFO, "Connect time: %dms", connect_time_ms.load());
 			break;
 		case rtc::PeerConnection::State::Disconnected:
@@ -321,9 +322,11 @@ bool WHIPOutput::Setup()
 	cname.reserve(signaling_media_id_length);
 
 	for (int i = 0; i < signaling_media_id_length; ++i) {
-		media_stream_id += signaling_media_id_valid_char[rand() % (sizeof(signaling_media_id_valid_char) - 1)];
+		const size_t valid_char_count = sizeof(signaling_media_id_valid_char) - 1;
 
-		cname += signaling_media_id_valid_char[rand() % (sizeof(signaling_media_id_valid_char) - 1)];
+		media_stream_id += signaling_media_id_valid_char[static_cast<size_t>(rand()) % valid_char_count];
+
+		cname += signaling_media_id_valid_char[static_cast<size_t>(rand()) % valid_char_count];
 	}
 
 	ConfigureAudioTrack(media_stream_id, cname);
