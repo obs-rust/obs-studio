@@ -1,5 +1,6 @@
 //! Rust ports of the units extracted from `libobs/obs-source.c`,
-//! `libobs/obs-source-deinterlace.c` and `libobs/obs-source-transition.c`,
+//! `libobs/obs-source-deinterlace.c` and `libobs/obs-source-transition.c`
+//! (one of them with decisions of `libobs/obs-scene.c`),
 //! one module per file: so far
 //! `libobs/obs-source-async-pacing.c.h`, the async video frame pacing of
 //! `get_closest_frame()`; `libobs/obs-source-async-upload.c.h`, the async
@@ -32,6 +33,12 @@
 //! `obs_source_render_async_video()` and `source_render()` (the rotation
 //! translate, the linear sRGB flag and non-linear alpha, the technique, the
 //! multiplier and the colour space conversion);
+//! `libobs/obs-source-duplicate.c.h`, the duplicate decisions of
+//! `obs_source_duplicate()` and `get_new_filter_name()`, and the scene
+//! duplicate decisions of `obs_scene_duplicate()`, `dup_child()` and
+//! `dup_group()` in `libobs/obs-scene.c` (the route of a duplicate, the
+//! filter numbers, the flags and item routes of a scene copy and the reuse
+//! of a repeated source);
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
@@ -74,7 +81,7 @@
 //! [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_start`],
 //! [`video_tick`] and
