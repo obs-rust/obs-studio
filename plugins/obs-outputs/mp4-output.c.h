@@ -313,7 +313,7 @@ static bool mp4_output_start(void *data)
 	obs_output_add_packet_callback(out->output, mp4_pkt_callback, (void *)out);
 
 	/* Initialise muxer and start capture */
-	out->muxer = mp4_mux_create(out->output, &out->serializer, out->flags, out->muxer_flavor);
+	out->muxer = mp4_mux_create(out->output, &out->serializer, (enum mp4_mux_flags)out->flags, out->muxer_flavor);
 	os_atomic_set_bool(&out->active, true);
 	obs_output_begin_data_capture(out->output, 0);
 
@@ -430,7 +430,7 @@ static bool change_file(struct mp4_output *out, struct encoder_packet *pkt)
 		return false;
 	}
 
-	out->muxer = mp4_mux_create(out->output, &out->serializer, out->flags, out->muxer_flavor);
+	out->muxer = mp4_mux_create(out->output, &out->serializer, (enum mp4_mux_flags)out->flags, out->muxer_flavor);
 
 	calldata_t cd = {0};
 	signal_handler_t *sh = obs_output_get_signal_handler(out->output);
