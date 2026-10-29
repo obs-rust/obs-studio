@@ -431,8 +431,8 @@ static bool vaapi_create_surface(struct vaapi_encoder *enc, struct vaapi_surface
 		unsigned int width = desc.width;
 		unsigned int height = desc.height;
 		if (i) {
-			width /= 1 << fmt_desc->log2_chroma_w;
-			height /= 1 << fmt_desc->log2_chroma_h;
+			width /= 1u << fmt_desc->log2_chroma_w;
+			height /= 1u << fmt_desc->log2_chroma_h;
 		}
 
 		out->textures[i] = gs_texture_create_from_dmabuf(

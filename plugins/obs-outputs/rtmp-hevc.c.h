@@ -824,7 +824,7 @@ size_t obs_parse_hevc_header(uint8_t **header, const uint8_t *data, size_t size)
 	array_output_serializer_init(&s, &output);
 	s_w8(&s, 1); // configurationVersion, always 1
 
-	s_w8(&s, hvcc.general_profile_space << 6 | hvcc.general_tier_flag << 5 | hvcc.general_profile_idc);
+	s_w8(&s, (uint8_t)(hvcc.general_profile_space << 6 | hvcc.general_tier_flag << 5 | hvcc.general_profile_idc));
 
 	s_wb32(&s, hvcc.general_profile_compatibility_flags);
 
@@ -840,8 +840,8 @@ size_t obs_parse_hevc_header(uint8_t **header, const uint8_t *data, size_t size)
 	s_w8(&s, hvcc.bitDepthChromaMinus8 | 0xf8);
 	s_wb16(&s, hvcc.avgFrameRate);
 
-	s_w8(&s, hvcc.constantFrameRate << 6 | hvcc.numTemporalLayers << 3 | hvcc.temporalIdNested << 2 |
-			 hvcc.lengthSizeMinusOne);
+	s_w8(&s, (uint8_t)(hvcc.constantFrameRate << 6 | hvcc.numTemporalLayers << 3 | hvcc.temporalIdNested << 2 |
+			   hvcc.lengthSizeMinusOne));
 
 	s_w8(&s, hvcc.numOfArrays);
 	for (unsigned i = 0; i < OBS_NB_ARRAYS; i++) {

@@ -107,7 +107,7 @@ static inline unsigned int get_bit1(Av1GetBitContext *s)
 	uint8_t result = s->buffer[index >> 3];
 
 	result <<= index & 7;
-	result >>= 8 - 1;
+	result = (uint8_t)(result >> (8 - 1));
 
 	if (s->index < s->size_in_bits_plus8)
 		index++;
@@ -496,10 +496,11 @@ size_t obs_parse_av1_header(uint8_t **header, const uint8_t *data, size_t size)
 
 	uint8_t av1header[4];
 	av1header[0] = (1 << 7) | 1; // marker and version
-	av1header[1] = (seq_params.profile << 5) | (seq_params.level);
-	av1header[2] = (seq_params.tier << 7) | (seq_params.bitdepth > 8) << 6 | (seq_params.bitdepth == 12) << 5 |
-		       (seq_params.monochrome) << 4 | (seq_params.chroma_subsampling_x) << 3 |
-		       (seq_params.chroma_subsampling_y) << 2 | (seq_params.chroma_sample_position);
+	av1header[1] = (uint8_t)((seq_params.profile << 5) | (seq_params.level));
+	av1header[2] =
+		(uint8_t)((seq_params.tier << 7) | (seq_params.bitdepth > 8) << 6 | (seq_params.bitdepth == 12) << 5 |
+			  (seq_params.monochrome) << 4 | (seq_params.chroma_subsampling_x) << 3 |
+			  (seq_params.chroma_subsampling_y) << 2 | (seq_params.chroma_sample_position));
 	av1header[3] = 0;
 
 	struct array_output_data output;
