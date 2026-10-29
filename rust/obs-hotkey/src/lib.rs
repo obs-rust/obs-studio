@@ -22,6 +22,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod bindings;
+pub mod cocoa_keys;
 pub mod name_map;
 pub mod nix_hotkey_state;
 pub mod nix_x11_keys;
