@@ -284,13 +284,13 @@ void AutoConfigTestPage::TestBandwidthThread()
 	using on_started_t = decltype(on_started);
 	using on_stopped_t = decltype(on_stopped);
 
-	auto pre_on_started = [](void *data, calldata_t *) {
-		on_started_t &on_started = *static_cast<on_started_t *>(data);
+	auto pre_on_started = [](void *handler_data, calldata_t *) {
+		on_started_t &on_started = *static_cast<on_started_t *>(handler_data);
 		on_started();
 	};
 
-	auto pre_on_stopped = [](void *data, calldata_t *) {
-		on_stopped_t &on_stopped = *static_cast<on_stopped_t *>(data);
+	auto pre_on_stopped = [](void *handler_data, calldata_t *) {
+		on_stopped_t &on_stopped = *static_cast<on_stopped_t *>(handler_data);
 		on_stopped();
 	};
 
@@ -524,8 +524,8 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 	using on_stopped_t = decltype(on_stopped);
 
-	auto pre_on_stopped = [](void *data, calldata_t *) {
-		on_stopped_t &on_stopped = *static_cast<on_stopped_t *>(data);
+	auto pre_on_stopped = [](void *handler_data, calldata_t *) {
+		on_stopped_t &on_stopped = *static_cast<on_stopped_t *>(handler_data);
 		on_stopped();
 	};
 
@@ -565,7 +565,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 	/* -----------------------------------*/
 	/* perform tests                      */
 
-	vector<Result> results;
+	vector<Result> testResults;
 	int i = 0;
 	int count = 1;
 
@@ -578,7 +578,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 		}
 
 		/* no need for more than 3 tests max */
-		if (results.size() >= 3) {
+		if (testResults.size() >= 3) {
 			return true;
 		}
 
@@ -636,7 +636,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 		int skipped = (int)video_output_get_skipped_frames(obs_get_video());
 		if (force || skipped <= 10) {
-			results.emplace_back(cx, cy, fps_num, fps_den);
+			testResults.emplace_back(cx, cy, fps_num, fps_den);
 		}
 
 		return !cancel;
@@ -716,19 +716,19 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 
 	int minArea = 960 * 540 + 1000;
 
-	if (!wiz->specificFPSNum && wiz->preferHighFPS && results.size() > 1) {
-		Result &result1 = results[0];
-		Result &result2 = results[1];
+	if (!wiz->specificFPSNum && wiz->preferHighFPS && testResults.size() > 1) {
+		Result &result1 = testResults[0];
+		Result &result2 = testResults[1];
 
 		if (result1.fps_num == 30 && result2.fps_num == 60) {
 			int nextArea = result2.cx * result2.cy;
 			if (nextArea >= minArea) {
-				results.erase(results.begin());
+				testResults.erase(testResults.begin());
 			}
 		}
 	}
 
-	Result result = results.front();
+	Result result = testResults.front();
 	wiz->idealResolutionCX = result.cx;
 	wiz->idealResolutionCY = result.cy;
 	wiz->idealFPSNum = result.fps_num;
@@ -762,7 +762,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 	int baseCY = wiz->baseResolutionCY;
 	CalcBaseRes(baseCX, baseCY);
 
-	vector<Result> results;
+	vector<Result> testResults;
 
 	int pcores = os_get_physical_cores();
 	int maxDataRate;
@@ -777,7 +777,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 			return;
 		}
 
-		if (results.size() >= 3) {
+		if (testResults.size() >= 3) {
 			return;
 		}
 
@@ -812,7 +812,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 			force = true;
 		}
 		if (force || wiz->idealBitrate >= minBitrate) {
-			results.emplace_back(cx, cy, fps_num, fps_den);
+			testResults.emplace_back(cx, cy, fps_num, fps_den);
 		}
 	};
 
@@ -843,19 +843,19 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 
 	int minArea = 960 * 540 + 1000;
 
-	if (!wiz->specificFPSNum && wiz->preferHighFPS && results.size() > 1) {
-		Result &result1 = results[0];
-		Result &result2 = results[1];
+	if (!wiz->specificFPSNum && wiz->preferHighFPS && testResults.size() > 1) {
+		Result &result1 = testResults[0];
+		Result &result2 = testResults[1];
 
 		if (result1.fps_num == 30 && result2.fps_num == 60) {
 			int nextArea = result2.cx * result2.cy;
 			if (nextArea >= minArea) {
-				results.erase(results.begin());
+				testResults.erase(testResults.begin());
 			}
 		}
 	}
 
-	Result result = results.front();
+	Result result = testResults.front();
 	wiz->idealResolutionCX = result.cx;
 	wiz->idealResolutionCY = result.cy;
 	wiz->idealFPSNum = result.fps_num;

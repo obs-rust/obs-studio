@@ -165,10 +165,11 @@ bool AutoConfigStreamPage::validatePage()
 			auto postData = constructGoLivePost(QString::fromStdString(wiz->key), std::nullopt,
 							    std::nullopt, false, canvases);
 
-			OBSDataAutoRelease service_settings = obs_service_get_settings(service);
+			OBSDataAutoRelease multitrack_service_settings = obs_service_get_settings(service);
 			auto multitrack_video_name = QTStr("Basic.Settings.Stream.MultitrackVideoLabel");
-			if (obs_data_has_user_value(service_settings, "multitrack_video_name")) {
-				multitrack_video_name = obs_data_get_string(service_settings, "multitrack_video_name");
+			if (obs_data_has_user_value(multitrack_service_settings, "multitrack_video_name")) {
+				multitrack_video_name =
+					obs_data_get_string(multitrack_service_settings, "multitrack_video_name");
 			}
 
 			try {
@@ -200,9 +201,9 @@ bool AutoConfigStreamPage::validatePage()
 						continue;
 					}
 
-					int bitrate = 0;
-					it->get_to(bitrate);
-					multitrackVideoBitrate += bitrate;
+					int endpoint_bitrate = 0;
+					it->get_to(endpoint_bitrate);
+					multitrackVideoBitrate += endpoint_bitrate;
 				}
 
 				if (multitrackVideoBitrate > 0) {

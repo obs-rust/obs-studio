@@ -144,20 +144,20 @@ static inline void LogStringChunk(fstream &logFile, char *str, int log_level)
 	timeString += ": ";
 
 	while (*nextLine) {
-		char *nextLine = strchr(str, '\n');
-		if (!nextLine) {
+		char *lineEnd = strchr(str, '\n');
+		if (!lineEnd) {
 			break;
 		}
 
-		if (nextLine != str && nextLine[-1] == '\r') {
-			nextLine[-1] = 0;
+		if (lineEnd != str && lineEnd[-1] == '\r') {
+			lineEnd[-1] = 0;
 		} else {
-			nextLine[0] = 0;
+			lineEnd[0] = 0;
 		}
 
 		LogString(logFile, timeString.c_str(), str, log_level);
-		nextLine++;
-		str = nextLine;
+		lineEnd++;
+		str = lineEnd;
 	}
 
 	LogString(logFile, timeString.c_str(), str, log_level);

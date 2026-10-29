@@ -104,7 +104,7 @@ class AutoConfig : public QWizard {
 	int specificFPSDen = 0;
 
 	void TestHardwareEncoding();
-	bool CanTestServer(const char *server);
+	bool CanTestServer(const char *serverAddress);
 
 	virtual void done(int result) override;
 

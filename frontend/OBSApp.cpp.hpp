@@ -631,9 +631,9 @@ bool OBSApp::InitGlobalConfig()
 	return userConfigResult;
 }
 
-bool OBSApp::InitUserConfig(std::filesystem::path &userConfigLocation, uint32_t lastVersion)
+bool OBSApp::InitUserConfig(std::filesystem::path &configLocation, uint32_t lastVersion)
 {
-	const std::string userConfigFile = userConfigLocation.u8string() + "/" OBS_CONFIG_DIRECTORY "/user.ini";
+	const std::string userConfigFile = configLocation.u8string() + "/" OBS_CONFIG_DIRECTORY "/user.ini";
 
 	int errorCode = userConfig.Open(userConfigFile.c_str(), CONFIG_OPEN_ALWAYS);
 
