@@ -1,6 +1,6 @@
 //! Rust ports of the units extracted from the libobs core, one module per
-//! file: so far `libobs/obs-video-plan.c.h` and `libobs/obs-context-names.c.h`
-//! (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
+//! file: so far `libobs/obs-video-plan.c.h`, `libobs/obs-context-names.c.h`
+//! and `libobs/obs-core-setup-rules.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
 //! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
 //! `libobs/obs-module-load-rules.c.h` and
@@ -28,7 +28,8 @@
 //! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
 //! the Windows crash report rules.
 //!
-//! The safe cores are [`video_plan`], [`context_names`], [`module_paths`],
+//! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
+//! [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`module_load_rules`], [`module_register_copy`],
 //! [`audio_mix`],
@@ -52,7 +53,11 @@
 //! each frame is written and when the crash handler passes on; [`module_load_rules`] decides which modules load, are
 //! disabled or skipped, and which failures count; [`module_register_copy`]
 //! decides how much of a plugin's registration structure is copied and
-//! which of its fields lie within the size it gave. The C ABI shims live in [`ffi`].
+//! which of its fields lie within the size it gave; [`core_setup_rules`]
+//! holds the video and audio reset gates, the audio buffering ticks, the
+//! command line copy, the data path and latest input type rules, the
+//! monitoring device checks and which mixes count toward the frame counts.
+//! The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
