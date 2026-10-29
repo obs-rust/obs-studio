@@ -850,7 +850,7 @@ size_t obs_parse_hevc_header(uint8_t **header, const uint8_t *data, size_t size)
 		if (!array->numNalus)
 			continue;
 
-		s_w8(&s, (array->array_completeness << 7) | (array->NAL_unit_type & 0x3f));
+		s_w8(&s, (uint8_t)((array->array_completeness << 7) | (array->NAL_unit_type & 0x3f)));
 		s_wb16(&s, array->numNalus);
 
 		s_write(&s, array->nalUnitData.bytes.array, array->nalUnitData.bytes.num);
