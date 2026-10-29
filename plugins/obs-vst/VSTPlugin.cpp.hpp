@@ -58,7 +58,7 @@ intptr_t VSTPlugin::hostCallback_static(AEffect *effect, int32_t opcode, int32_t
 	// index: width, value: height
 	case audioMasterSizeWindow:
 		if (plugin && plugin->editorWidget) {
-			plugin->editorWidget->handleResizeRequest(index, value);
+			plugin->editorWidget->handleResizeRequest(index, static_cast<int>(value));
 		}
 		return 1;
 
@@ -69,13 +69,13 @@ intptr_t VSTPlugin::hostCallback_static(AEffect *effect, int32_t opcode, int32_t
 
 VstTimeInfo *VSTPlugin::GetTimeInfo()
 {
-	mTimeInfo.nanoSeconds = os_gettime_ns() / 1000000;
+	mTimeInfo.nanoSeconds = static_cast<double>(os_gettime_ns() / 1000000);
 	return &mTimeInfo;
 }
 
 float VSTPlugin::GetSampleRate()
 {
-	return mTimeInfo.sampleRate;
+	return static_cast<float>(mTimeInfo.sampleRate);
 }
 
 VSTPlugin::VSTPlugin(obs_source_t *sourceContext)
@@ -105,8 +105,8 @@ void VSTPlugin::createChannelBuffers(size_t count)
 		outputs = (float **)bmalloc(sizeof(float *) * numChannels);
 		channelrefs = (float **)bmalloc(sizeof(float *) * numChannels);
 		for (size_t channel = 0; channel < numChannels; channel++) {
-			inputs[channel] = (float *)bmalloc(sizeof(float) * blocksize);
-			outputs[channel] = (float *)bmalloc(sizeof(float) * blocksize);
+			inputs[channel] = (float *)bmalloc(sizeof(float) * static_cast<size_t>(blocksize));
+			outputs[channel] = (float *)bmalloc(sizeof(float) * static_cast<size_t>(blocksize));
 		}
 	}
 }
@@ -176,7 +176,7 @@ void VSTPlugin::loadEffectFromPath(const std::string &path)
 			return;
 		}
 
-		createChannelBuffers(maxchans);
+		createChannelBuffers(static_cast<size_t>(maxchans));
 
 		// It is better to invoke this code after checking magic number
 		effect->dispatcher(effect, effGetEffectName, 0, 0, effectName, 0);
@@ -198,14 +198,14 @@ void VSTPlugin::loadEffectFromPath(const std::string &path)
 
 		// Initialize time info
 		memset(&mTimeInfo, 0, sizeof(mTimeInfo));
-		mTimeInfo.sampleRate = sampleRate;
-		mTimeInfo.nanoSeconds = os_gettime_ns() / 1000000;
+		mTimeInfo.sampleRate = static_cast<double>(sampleRate);
+		mTimeInfo.nanoSeconds = static_cast<double>(os_gettime_ns() / 1000000);
 		mTimeInfo.tempo = 120.0;
 		mTimeInfo.timeSigNumerator = 4;
 		mTimeInfo.timeSigDenominator = 4;
 		mTimeInfo.flags = kVstTempoValid | kVstNanosValid | kVstTransportPlaying;
 
-		effect->dispatcher(effect, effSetSampleRate, 0, 0, nullptr, sampleRate);
+		effect->dispatcher(effect, effSetSampleRate, 0, 0, nullptr, static_cast<float>(sampleRate));
 		int blocksize = BLOCK_SIZE;
 		effect->dispatcher(effect, effSetBlockSize, 0, blocksize, nullptr, 0.0f);
 
@@ -254,7 +254,7 @@ obs_audio_data *VSTPlugin::process(struct obs_audio_data *audio)
 				}
 			};
 
-			effect->processReplacing(effect, channelrefs, outputs, frames);
+			effect->processReplacing(effect, channelrefs, outputs, static_cast<int>(frames));
 
 			// only copy back the channels the plugin may have generated
 			for (size_t c = 0; c < (size_t)effect->numOutputs && c < MAX_AV_PLANES; c++) {
@@ -414,7 +414,7 @@ void VSTPlugin::setChunk(const std::string &data)
 		const char *p_chars = paramData.data();
 		const float *p_floats = reinterpret_cast<const float *>(p_chars);
 
-		const size_t size = paramData.length() / sizeof(float);
+		const size_t size = static_cast<size_t>(paramData.length()) / sizeof(float);
 
 		std::vector<float> params(p_floats, p_floats + size);
 
@@ -423,7 +423,7 @@ void VSTPlugin::setChunk(const std::string &data)
 		}
 
 		for (int i = 0; i < effect->numParams; i++) {
-			effect->setParameter(effect, i, params[i]);
+			effect->setParameter(effect, i, params[static_cast<size_t>(i)]);
 		}
 	}
 }
@@ -439,7 +439,7 @@ void VSTPlugin::setProgram(const int programNumber)
 
 int VSTPlugin::getProgram()
 {
-	return effect->dispatcher(effect, effGetProgram, 0, 0, NULL, 0.0f);
+	return static_cast<int>(effect->dispatcher(effect, effGetProgram, 0, 0, NULL, 0.0f));
 }
 
 void VSTPlugin::getSourceNames()
