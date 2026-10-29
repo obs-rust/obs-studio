@@ -106,6 +106,9 @@ target_include_directories(
 # leaves unreachable after its own error exits. These are per-source options: the
 # Visual Studio generator does honour them, which the 2026-10-28 app-lane runs
 # on this branch show (the C4245/C4456/C4706 findings stop being reported).
+# #2625: the conversion classes are exempt here for the same reason — librtmp is
+# vendored, not ported, and its 326 implicit conversions in 5 units are not ours
+# to restate. Every other source in this target is clean with the groups on.
 set_source_files_properties(
   librtmp/amf.c
   librtmp/cencode.c
@@ -116,7 +119,7 @@ set_source_files_properties(
   librtmp/rtmp.c
   PROPERTIES
     COMPILE_OPTIONS
-      "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes>;$<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244;/wd4245;/wd4456;/wd4702;/wd4706>"
+      "$<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang,GNU>:-Wno-cast-qual;-Wno-shadow;-Wno-pedantic;-Wno-missing-prototypes;-Wno-strict-prototypes;-Wno-conversion;-Wno-sign-conversion>;$<$<COMPILE_LANG_AND_ID:C,MSVC>:/wd4244;/wd4245;/wd4456;/wd4702;/wd4706>"
 )
 
 target_compile_options(
@@ -124,6 +127,11 @@ target_compile_options(
   PRIVATE
     $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-comma>
     $<$<AND:$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>,$<COMPILE_LANG_AND_ID:C,Clang>>:-Wno-error=unreachable-code>
+    # #2625: the conversions in this target's own sources are fixed at the call
+    # sites, so the pins that hide them are not needed here. The global
+    # -Wno-conversion / -Wno-sign-conversion / -Wno-float-conversion only leave
+    # the flag lists once every target is ratcheted.
+    $<$<COMPILE_LANG_AND_ID:C,CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>
 )
 
 target_link_libraries(
