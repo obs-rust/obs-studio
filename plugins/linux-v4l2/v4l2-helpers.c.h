@@ -73,19 +73,20 @@ int v4l2_query_all_buffers(int dev, struct v4l2_buffer_data *buf_data)
 {
 	struct v4l2_buffer buf;
 
-	blog(LOG_DEBUG, "attempting to read buffer data for %" PRIuFAST32 " buffers", buf_data->count);
+	blog(LOG_DEBUG, "attempting to read buffer data for %" PRIuFAST32 " buffers", (uint_fast32_t)buf_data->count);
 
 	for (uint i = 0; i < buf_data->count; i++) {
 		buf.index = i;
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		if (v4l2_ioctl(dev, VIDIOC_QUERYBUF, &buf) < 0) {
-			blog(LOG_DEBUG, "failed to read buffer data for buffer #%" PRIuFAST32, i);
+			blog(LOG_DEBUG, "failed to read buffer data for buffer #%" PRIuFAST32, (uint_fast32_t)i);
 		} else {
 			blog(LOG_DEBUG,
 			     "query buf #%" PRIuFAST32
 			     " info: ts: %06ld buf id #%d, flags 0x%08X, seq #%d, len %d, used %d",
-			     i, buf.timestamp.tv_usec, buf.index, buf.flags, buf.sequence, buf.length, buf.bytesused);
+			     (uint_fast32_t)i, buf.timestamp.tv_usec, buf.index, buf.flags, buf.sequence, buf.length,
+			     buf.bytesused);
 		}
 	}
 
