@@ -434,7 +434,7 @@ static void ffmpeg_source_update(void *data, obs_data_t *settings)
 	stop_reconnect_thread(s);
 
 	is_hw_decoding = obs_data_get_bool(settings, "hw_decode");
-	range = obs_data_get_int(settings, "color_range");
+	range = (enum video_range_type)obs_data_get_int(settings, "color_range");
 	speed_percent = (int)obs_data_get_int(settings, "speed_percent");
 	if (speed_percent < 1 || speed_percent > 200)
 		speed_percent = 100;

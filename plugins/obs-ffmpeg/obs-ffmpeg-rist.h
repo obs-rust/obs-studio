@@ -172,7 +172,9 @@ static int librist_open(URLContext *h, const char *uri)
 	     librist_api_version());
 
 	h->max_packet_size = s->packet_size;
-	ret = rist_sender_create(&s->ctx, s->profile, 0, logging_settings);
+	/* RISTContext::profile is an int field holding a RIST_PROFILE_* value; the
+	 * API takes the enum, so state the conversion at the boundary (#2869). */
+	ret = rist_sender_create(&s->ctx, (enum rist_profile)s->profile, 0, logging_settings);
 
 	if (ret < 0) {
 		blog(LOG_ERROR, "[obs-ffmpeg mpegts muxer / librist]: Failed to create a sender");
