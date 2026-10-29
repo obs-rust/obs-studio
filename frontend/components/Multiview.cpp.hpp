@@ -50,11 +50,11 @@ static OBSSource CreateLabel(const char *name, size_t h)
 	return txtSource.Get();
 }
 
-void Multiview::Update(MultiviewLayout multiviewLayout, bool drawLabel, bool drawSafeArea)
+void Multiview::Update(MultiviewLayout layout, bool showLabel, bool showSafeArea)
 {
-	this->multiviewLayout = multiviewLayout;
-	this->drawLabel = drawLabel;
-	this->drawSafeArea = drawSafeArea;
+	this->multiviewLayout = layout;
+	this->drawLabel = showLabel;
+	this->drawSafeArea = showSafeArea;
 
 	struct obs_video_info ovi;
 	obs_get_video_info(&ovi);

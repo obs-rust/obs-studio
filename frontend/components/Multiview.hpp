@@ -21,7 +21,7 @@ class Multiview {
 public:
 	Multiview();
 	~Multiview();
-	void Update(MultiviewLayout multiviewLayout, bool drawLabel, bool drawSafeArea);
+	void Update(MultiviewLayout layout, bool showLabel, bool showSafeArea);
 	void Render(uint32_t cx, uint32_t cy);
 	OBSSource GetSourceByPosition(int x, int y);
 
