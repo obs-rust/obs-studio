@@ -564,6 +564,26 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_cocoa_keys_steps": {
+      "sources": [
+        "test/cmocka/test_cocoa_keys_steps.c",
+        "libobs/obs-cocoa-keys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-cocoa-keys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_config_double_window": {
       "sources": [
         "test/cmocka/test_config_double_window.c"
@@ -5539,6 +5559,12 @@
     },
     "test_cf_preprocessor": {
       "target": "test_cf_preprocessor",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_cocoa_keys_steps": {
+      "target": "test_cocoa_keys_steps",
       "command": [
         "${target}"
       ]
