@@ -20,11 +20,18 @@
 using idian::ToggleSwitch;
 
 namespace {
+// #2625: the conversion is stated once here instead of implicitly at each
+// channel; the arithmetic and the final truncation are unchanged.
+float blendChannel(int from, int to, float ratio)
+{
+	return static_cast<float>(from) * (1.0f - ratio) + static_cast<float>(to) * ratio;
+}
+
 QColor blendColors(const QColor &color1, const QColor &color2, float ratio)
 {
-	int r = color1.red() * (1 - ratio) + color2.red() * ratio;
-	int g = color1.green() * (1 - ratio) + color2.green() * ratio;
-	int b = color1.blue() * (1 - ratio) + color2.blue() * ratio;
+	int r = static_cast<int>(blendChannel(color1.red(), color2.red(), ratio));
+	int g = static_cast<int>(blendChannel(color1.green(), color2.green(), ratio));
+	int b = static_cast<int>(blendChannel(color1.blue(), color2.blue(), ratio));
 
 	return QColor(r, g, b, 255);
 }
