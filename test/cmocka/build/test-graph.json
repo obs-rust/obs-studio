@@ -3949,6 +3949,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_duplicate_steps": {
+      "sources": [
+        "test/cmocka/test_source_duplicate_steps.c",
+        "libobs/obs-source-duplicate.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-duplicate.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_frame_copy_steps": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
@@ -6787,6 +6807,12 @@
     },
     "test_source_draw_plan_steps": {
       "target": "test_source_draw_plan_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_duplicate_steps": {
+      "target": "test_source_duplicate_steps",
       "command": [
         "${target}"
       ]
