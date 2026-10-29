@@ -14,6 +14,7 @@
 use std::ffi::{c_int, c_void};
 use std::ptr;
 use std::sync::{Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 use obs_media_io::ffi::video_frame::video_frame;
 use obs_media_io::ffi::video_io::*;
@@ -78,6 +79,24 @@ impl Session {
         let mut hits = self.gate.hits.lock().unwrap();
         while hits.n < n {
             hits = self.gate.cv.wait(hits).unwrap();
+        }
+    }
+
+    /// Waits until the video thread has finished `total` frames, so a test can
+    /// assert on the counters without racing `video_output_stop`: a frame still
+    /// queued when the stop flag is set is dropped, as in C.
+    fn settle(&self, total: u32) {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            let seen = unsafe { video_output_get_total_frames(self.video) };
+            if seen >= total {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "video output processed {seen} of {total} pushed frames"
+            );
+            std::thread::yield_now();
         }
     }
 
@@ -591,6 +610,9 @@ fn align_divisor_restarts_the_phase() {
         }
     }
     session.wait_hits(2);
+    // 4000 is pushed but skipped by the divisor; it still has to be processed
+    // before stop, which drops whatever is still queued (C does the same).
+    session.settle(4);
     unsafe { video_output_stop(video) };
     let hits = session.gate.hits.lock().unwrap();
     assert_eq!(hits.n, 2);
