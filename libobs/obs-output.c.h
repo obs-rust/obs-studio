@@ -2080,7 +2080,7 @@ static inline void pair_encoders(obs_output_t *output)
 	struct obs_encoder *video = output->video_encoders[first_venc_idx];
 
 	pthread_mutex_lock(&video->init_mutex);
-	if (video->active) {
+	if (!obs_output_begin_pair_video(video->active)) {
 		pthread_mutex_unlock(&video->init_mutex);
 		return;
 	}
@@ -2091,7 +2091,7 @@ static inline void pair_encoders(obs_output_t *output)
 			continue;
 
 		pthread_mutex_lock(&audio->init_mutex);
-		if (!audio->active && !audio->paired_encoders.num) {
+		if (obs_output_begin_pair_audio(audio->active, audio->paired_encoders.num)) {
 			obs_weak_encoder_t *weak_audio = obs_encoder_get_weak_encoder(audio);
 			obs_weak_encoder_t *weak_video = obs_encoder_get_weak_encoder(video);
 			da_push_back(video->paired_encoders, &weak_audio);
@@ -2195,18 +2195,14 @@ static void calculate_batch_size(struct obs_output *output)
 	DARRAY(uint64_t) intervals;
 	da_init(intervals);
 
-	uint64_t largest_interval = 0;
-
-	/* Step 1: Calculate the largest interval between packets of any encoder. */
+	/* Step 1: Calculate the interval between packets of each encoder. */
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
 		if (!output->video_encoders[i])
 			continue;
 
-		uint32_t den = ovi.fps_den * obs_encoder_get_frame_rate_divisor(output->video_encoders[i]);
-		uint64_t encoder_interval = util_mul_div64(1000000000ULL, den, ovi.fps_num);
+		uint64_t encoder_interval = obs_output_begin_video_interval(
+			ovi.fps_num, ovi.fps_den, obs_encoder_get_frame_rate_divisor(output->video_encoders[i]));
 		da_push_back(intervals, &encoder_interval);
-
-		largest_interval = encoder_interval > largest_interval ? encoder_interval : largest_interval;
 	}
 
 	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
@@ -2215,19 +2211,12 @@ static void calculate_batch_size(struct obs_output *output)
 
 		uint32_t sample_rate = obs_encoder_get_sample_rate(output->audio_encoders[i]);
 		size_t frame_size = obs_encoder_get_frame_size(output->audio_encoders[i]);
-		uint64_t encoder_interval = util_mul_div64(1000000000ULL, frame_size, sample_rate);
+		uint64_t encoder_interval = obs_output_begin_audio_interval(sample_rate, frame_size);
 		da_push_back(intervals, &encoder_interval);
-
-		largest_interval = encoder_interval > largest_interval ? encoder_interval : largest_interval;
 	}
 
-	/* Step 2: Calculate how many packets would fit into double that interval given each encoder's packet rate.
-	 * The doubling is done to provide some amount of wiggle room as the largest interval may not be evenly
-	 * divisible by all smaller ones. For example, 33.3... ms video (30 FPS) and 21.3... ms audio (48 kHz AAC). */
-	for (size_t i = 0; i < intervals.num; i++) {
-		uint64_t num = (largest_interval * 2) / intervals.array[i];
-		output->interleaver_max_batch_size += num;
-	}
+	/* Step 2: how many packets of each encoder fit into twice the largest interval. */
+	output->interleaver_max_batch_size = obs_output_begin_batch_size(intervals.array, intervals.num);
 
 	blog(LOG_DEBUG, "Maximum interleaver batch size for '%s' calculated to be %zu packets",
 	     obs_output_get_name(output), output->interleaver_max_batch_size);

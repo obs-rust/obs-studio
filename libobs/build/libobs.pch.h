@@ -85,6 +85,9 @@
 /* obs-encoder-size.c */
 #include "obs-encoder-size.h"
 
+/* obs-output-begin.c */
+#include "obs-output-begin.h"
+
 /* obs-output-raw-audio.c */
 #include "obs-output-raw-audio.h"
 

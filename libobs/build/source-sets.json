@@ -44,6 +44,7 @@
     "obs-module-type-rules.h",
     "obs-module.h",
     "obs-nal.h",
+    "obs-output-begin.h",
     "obs-output-raw-audio.h",
     "obs-output-slots.h",
     "obs-output-start.h",
