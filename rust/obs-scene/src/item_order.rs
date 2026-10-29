@@ -235,16 +235,21 @@ pub fn in_group_run<T: Ord + Copy>(order: &[Entry<T>], head: usize, index: usize
 
 /// [`in_group_run`] over any [`Pair`], read in place.
 pub fn in_group_run_pairs<P: Pair>(order: &[P], head: usize, index: usize) -> bool {
-    let _ = (order, head, index);
-    todo!()
+    let (Some(head), Some(entry)) = (order.get(head), order.get(index)) else {
+        return false;
+    };
+    entry.group() == Some(head.item())
 }
 
 /// The two parent checks of `obs_sceneitem_group_add_item()`, on the item's
 /// parent read once: it is the group's parent `scene`, and only then is it
 /// compared with `group_scene`, the group's own scene.
 pub fn add_item_allowed<T: PartialEq>(parent: &T, scene: &T, group_scene: &T) -> bool {
-    let _ = (parent, scene, group_scene);
-    todo!()
+    if parent != scene {
+        return false;
+    }
+
+    parent != group_scene
 }
 
 /// The check of `obs_sceneitem_group_remove_item()`: the item is in the
@@ -257,13 +262,11 @@ pub fn remove_item_allowed(in_group: bool) -> bool {
 /// two different scenes, so the caller goes on to read its active
 /// references.
 pub fn moves_scene<T: PartialEq>(from: &T, to: &T) -> bool {
-    let _ = (from, to);
-    todo!()
+    from != to
 }
 
 /// The second check of `move_active_child()`: whether the item has an active
 /// reference (the count the caller loads once the scenes differ).
 pub fn item_active(active_refs: i64) -> bool {
-    let _ = active_refs;
-    todo!()
+    active_refs > 0
 }
