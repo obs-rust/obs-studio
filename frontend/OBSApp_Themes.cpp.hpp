@@ -239,7 +239,8 @@ static bool ParseMath(CFParser &cfp, QStringList &values, vector<OBSThemeVariabl
 				varType = OBSThemeVariable::Calc;
 			} else if (cf_token_is(cfp, "max")) {
 				varType = OBSThemeVariable::Max;
-			} else if (cf_token_is(cfp, "min")) {
+			} else {
+				/* The enclosing branch only admits calc/max/min. */
 				varType = OBSThemeVariable::Min;
 			}
 
