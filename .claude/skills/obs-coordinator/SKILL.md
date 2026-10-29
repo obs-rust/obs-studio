@@ -132,6 +132,25 @@ authorizes.
 - **Fetch PR heads with a forced refspec** (`+pull/<N>/head:prN`). A
   plain refspec leaves a stale local ref after a force-push, and conflict
   dry runs on it give wrong answers.
+- **A red check on a PR head may not be the PR's.** A `workflow_dispatch`
+  of `scheduled.yaml` (the evidence a worker runs on its own branch) attaches
+  the schedule-only jobs to that branch's head SHA: the three macOS lanes and
+  `CEF Chromium Support 🌐`. `workflow.coordinator checks <repo> <N>` then
+  reports them as the PR's failed checks. Read the annotation before acting —
+  `gh api repos/obs-rust/<repo>/check-runs/<job_id>/annotations` gives the
+  `path:line` and the diagnostic while the run is still `in_progress`, when
+  the job log is not downloadable yet. The failing check run id is on
+  `gh api repos/obs-rust/<repo>/actions/jobs/<job id>`; the annotation is what
+  says whether the path is in the diff (a real failure, back to the worker) or
+  the next break in the tree (report it; do not touch the PR).
+- **The macOS conversion ratchet exposes one file per fix.** `obs-outputs`'
+  unity TUs compile one `*.c.h` at a time, so each landed slice reveals the
+  next file in the same lane (mp4-mux → rtmp-hevc → mp4-output). Report the
+  annotation's path as the next slice instead of reopening the PR that cleared
+  the previous one. A failing `CEF Chromium Support 🌐` is not a diff failure
+  either: `uv run --no-project ci/cef_support.py` prints each platform's pin
+  against Chrome's extended stable, and when only some platforms lag it is the
+  open upgrade issue, which also reds master's nightly.
 
 Push to a fork branch only when the PR allows maintainer edits, and always
 with `--force-with-lease=<branch>:<old head sha>`. These rebases are the
