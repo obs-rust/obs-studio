@@ -8,3 +8,9 @@ cc 48bd8b1b182d8a99e937942492f9a54c0bffa8f30f90fead3f8ba8625282be87 # shrinks to
 cc e211e4d3d2a93fa1070cbcc64f46ded0f6a0d41372acf5d4a8137114a5825fb5 # shrinks to update = false, last = Size { width: 0, height: 0 }, source = Size { width: 0, height: 0 }, scene = false
 cc 86e2d29bbb9d8e6f2f86ee2848c53a42a4c0dea1256312cf18406d5061f42e58 # shrinks to last = Size { width: 0, height: 0 }, now = Size { width: 0, height: 0 }
 cc 6e761b8c83ca3e33aed1319a993231388e1dda39c514cef620b7f2729fc5667a # shrinks to last = Size { width: 0, height: 0 }, now = Size { width: 0, height: 0 }
+cc 62581708f70b3b46e57c9c688ae2a77e8f9aa5005a60434d98e0af55357d27a0 # shrinks to last = Size { width: 4294967294, height: 1 }, now = Size { width: 4294967294, height: 0 }
+cc 721168b309a31d52ea870aaef66345caaaff499b3201583fabf6165508634ea1 # shrinks to last = Size { width: 1, height: 0 }, now = Size { width: 1, height: 1 }
+cc 1ecd9fd31d7d69b1af5e5cb4be9634dbfddde4f40768602f91de0199cfe21521 # shrinks to last = Size { width: 0, height: 4294967294 }, now = Size { width: 0, height: 4294967294 }
+cc 6ad001381acd39971114e34f7b55816fb82905f285d941b7de7fa5cc4903c4b2 # shrinks to update = false, last = Size { width: 0, height: 4294967295 }, source = Size { width: 0, height: 4294967295 }, scene = true
+cc 301c91971efa08d79e87f37483344bfbb390f87aa0ca4c204e6bbcb51288bc44 # shrinks to update = true, last = Size { width: 4294967295, height: 0 }, source = Size { width: 4294967295, height: 0 }, scene = false
+cc 9fcde68b64ed19388f36cac98f0152ae4b27f23874a5860e74b2024594893416 # shrinks to update = false, last = Size { width: 0, height: 4294967295 }, source = Size { width: 1, height: 4294967295 }, scene = false

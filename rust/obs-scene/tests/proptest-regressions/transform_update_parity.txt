@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 77d841a60d26066ad7e58f97d0a16f02838c269072f9a06f7aa1a84cc4ddcad0 # shrinks to items = [], renders = [(0, 1, [(false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0)])], group = None
+cc 12df08f00c3b8d68ac91643d36f4650955bd1315952b103ef872181b77128257 # shrinks to lw = 0, lh = 0, w = 0, h = 1, same = false
+cc be487c34df4528c28de3df137e9ed39f9432ce23a0f1286cb75380b9a2eb08a1 # shrinks to update = false, lw = 0, lh = 0, w = 0, h = 0, same = false, scene = true
+cc 3a1669b86ada044dbc303ffe35485c94c324b0619068c5af33ed0e510c6499b2 # shrinks to update = true, lw = 0, lh = 0, w = 0, h = 0, same = false, scene = false
+cc 460a49c96d06af1df08532ef30859d4b1db218b91f19acdd808fab567a153999 # shrinks to items = [Item { removed: false, update_transform: false, deferred: false, last: Size { width: 0, height: 0 }, source: Size { width: 0, height: 2 } }], renders = [(0, 2, [(false, 2), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0)]), (0, 2, [(false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0)])], group = None
+cc 227c856ee2d6d41759f053898294590d00b7a22fd9d6d001dc3d385f5d865e66 # shrinks to update = false, lw = 0, lh = 1, w = 0, h = 0, same = true, scene = false
+cc dd2c8d898085fb62bf1442585bbc272f2eb8567068b5497c0dddb3be7d4fd8f6 # shrinks to items = [Item { removed: false, update_transform: false, deferred: false, last: Size { width: 4294967295, height: 1 }, source: Size { width: 1, height: 4294967295 } }], renders = [(0, 0, [(false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0), (false, 0)])], group = None
