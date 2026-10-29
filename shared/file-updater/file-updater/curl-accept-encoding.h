@@ -8,18 +8,42 @@
 
 #include <curl/curl.h>
 
-/* The CURLOPT_ACCEPT_ENCODING value for the libcurl described by info:
- * gzip and deflate when it can decode them, else identity.
+/* Whether this build keeps the Brotli stop-gap (#2211): the Apple frontend
+ * links the OS libcurl, whose Brotli version this repo neither pins nor
+ * measures, so those builds keep asking for gzip and deflate only. Every
+ * other platform ships a decoder this repo knows: the AppImage bundles
+ * brotli 1.2.1 and the Windows package links no brotli at all, so "" (every
+ * coding libcurl was built with) is safe there. */
+#if defined(__APPLE__)
+#define OBS_CURL_ACCEPT_ENCODING_APPLE_LIBCURL 1
+#else
+#define OBS_CURL_ACCEPT_ENCODING_APPLE_LIBCURL 0
+#endif
+
+/* The CURLOPT_ACCEPT_ENCODING value for the libcurl described by info, given
+ * whether this is the build whose Brotli decoder is not pinned by this repo
+ * (macos_libcurl).
  *
- * Never "": that advertises every encoding libcurl was built with, br
- * included, and the linked Brotli decoder has a public out-of-bounds write
- * (CVE-2026-111497, GHSA-c2vc-wwm8-6gx9); #2211 is the restore.
+ * "" asks for every coding the linked libcurl decodes, br included. That is
+ * what the call sites want from #2211 on, where the shipped Brotli is past
+ * CVE-2026-111497 (GHSA-c2vc-wwm8-6gx9).
+ *
+ * The Apple branch keeps the stop-gap: gzip and deflate when that libcurl can
+ * decode them, else identity.
  *
  * Never gzip on a libcurl without zlib (Windows' Schannel build): it cannot
  * decode the answer and fails the transfer with CURLE_BAD_CONTENT_ENCODING
  * (#2453). identity, not NULL: with no Accept-Encoding at all a server may
  * pick any coding. */
+static inline const char *obs_curl_accept_encoding_for(const curl_version_info_data *info, int macos_libcurl)
+{
+	if (!macos_libcurl)
+		return "";
+
+	return info && (info->features & CURL_VERSION_LIBZ) ? "gzip, deflate" : "identity";
+}
+
 static inline const char *obs_curl_accept_encoding(const curl_version_info_data *info)
 {
-	return info && (info->features & CURL_VERSION_LIBZ) ? "gzip, deflate" : "identity";
+	return obs_curl_accept_encoding_for(info, OBS_CURL_ACCEPT_ENCODING_APPLE_LIBCURL);
 }
