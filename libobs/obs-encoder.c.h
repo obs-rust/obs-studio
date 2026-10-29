@@ -370,24 +370,28 @@ static void maybe_set_up_gpu_rescale(struct obs_encoder *encoder)
 	pthread_mutex_unlock(&obs->video.mixes_mutex);
 }
 
-static int gcd(int a, int b)
+/* The reconfigure fields of the group and the encoder, copied in and out
+ * around the obs-encoder-group-reconfig.h calls under the group mutex. */
+static inline struct obs_encoder_group_reconfig group_reconfig_get(const struct obs_encoder_group *group)
 {
-	if (a < b) {
-		int temp = a;
-		a = b;
-		b = temp;
-	}
+	struct obs_encoder_group_reconfig reconfig;
 
-	int remainder = a % b;
-	if (!remainder)
-		return b;
-
-	return gcd(b, remainder);
+	reconfig.reconfigure_request = group->reconfigure_request;
+	reconfig.next_pts = group->next_pts;
+	reconfig.encoders_updated_next_pts = group->encoders_updated_next_pts;
+	reconfig.encoders_reconfigured = group->encoders_reconfigured;
+	reconfig.reconfigure_again = group->reconfigure_again;
+	return reconfig;
 }
 
-static int lcm(int a, int b)
+static inline void group_reconfig_set(struct obs_encoder_group *group,
+				      const struct obs_encoder_group_reconfig *reconfig)
 {
-	return (a / gcd(a, b)) * b;
+	group->reconfigure_request = reconfig->reconfigure_request;
+	group->next_pts = reconfig->next_pts;
+	group->encoders_updated_next_pts = reconfig->encoders_updated_next_pts;
+	group->encoders_reconfigured = reconfig->encoders_reconfigured;
+	group->reconfigure_again = reconfig->reconfigure_again;
 }
 
 static void add_connection(struct obs_encoder *encoder)
@@ -420,8 +424,8 @@ static void add_connection(struct obs_encoder *encoder)
 		 * encoder runs at 60fps and another at 30fps, reconfiguration can only occur on every 2nd frame
 		 * of the 60fps encoder).
 		 */
-		encoder->encoder_group->frame_rate_divisors_lcm = (uint32_t)lcm(
-			(int)encoder->encoder_group->frame_rate_divisors_lcm, (int)encoder->frame_rate_divisor);
+		encoder->encoder_group->frame_rate_divisors_lcm = obs_encoder_group_reconfig_lcm(
+			encoder->encoder_group->frame_rate_divisors_lcm, encoder->frame_rate_divisor);
 
 		uint32_t started = obs_encoder_lifecycle_started_inc(encoder->encoder_group->num_encoders_started);
 		encoder->encoder_group->num_encoders_started = started;
@@ -456,11 +460,9 @@ static void remove_connection(struct obs_encoder *encoder, bool shutdown)
 			group->start_timestamp = 0;
 			group->frame_rate_divisors_lcm = 1;
 
-			group->reconfigure_request = 0;
-			group->next_pts = 0;
-			group->encoders_reconfigured = 0;
-			group->encoders_updated_next_pts = 0;
-			group->reconfigure_again = false;
+			struct obs_encoder_group_reconfig reconfig = group_reconfig_get(group);
+			obs_encoder_group_reconfig_reset(&reconfig);
+			group_reconfig_set(group, &reconfig);
 		}
 		pthread_mutex_unlock(&group->mutex);
 	}
@@ -631,8 +633,6 @@ obs_properties_t *obs_encoder_properties(const obs_encoder_t *encoder)
 	return NULL;
 }
 
-static void encoder_group_new_reconfigure_request(struct obs_encoder_group *group);
-
 void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_update"))
@@ -666,14 +666,9 @@ void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 	 */
 	struct obs_encoder_group *group = encoder->encoder_group;
 	pthread_mutex_lock(&group->mutex);
-	bool first_reconfigure_request = group->reconfigure_request == 0;
-	bool all_encoders_reconfigured = group->encoders_reconfigured == group->encoders.num;
-	bool current_encoder_reconfigured = encoder->last_handled_reconfigure_request == group->reconfigure_request;
-	if (first_reconfigure_request || all_encoders_reconfigured) {
-		encoder_group_new_reconfigure_request(group);
-	} else if (current_encoder_reconfigured) {
-		group->reconfigure_again = true;
-	}
+	struct obs_encoder_group_reconfig reconfig = group_reconfig_get(group);
+	obs_encoder_group_reconfig_update(&reconfig, group->encoders.num, encoder->last_handled_reconfigure_request);
+	group_reconfig_set(group, &reconfig);
 	pthread_mutex_unlock(&group->mutex);
 }
 
@@ -1755,14 +1750,6 @@ bool video_pause_check(struct pause_data *pause, uint64_t timestamp)
 	return ignore_frame;
 }
 
-static void encoder_group_new_reconfigure_request(struct obs_encoder_group *group)
-{
-	group->reconfigure_request += 1;
-	group->encoders_updated_next_pts = 0;
-	group->encoders_reconfigured = 0;
-	group->reconfigure_again = false;
-}
-
 void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder);
 void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder)
 {
@@ -1771,34 +1758,18 @@ void handle_encoder_group_reconfigure_request(obs_encoder_t *encoder)
 
 	struct obs_encoder_group *group = encoder->encoder_group;
 	pthread_mutex_lock(&group->mutex);
-	bool new_reconfigure_request = encoder->last_reconfigure_request != group->reconfigure_request;
-	if (!new_reconfigure_request && group->encoders_updated_next_pts == group->num_encoders_started &&
-	    encoder->cur_pts == group->next_pts &&
-	    encoder->last_handled_reconfigure_request != encoder->last_reconfigure_request) {
-		group->encoders_reconfigured += 1;
-
-		encoder->last_handled_reconfigure_request = encoder->last_reconfigure_request;
+	struct obs_encoder_group_reconfig reconfig = group_reconfig_get(group);
+	struct obs_encoder_reconfig encoder_reconfig = {
+		.last_reconfigure_request = encoder->last_reconfigure_request,
+		.last_handled_reconfigure_request = encoder->last_handled_reconfigure_request,
+	};
+	if (obs_encoder_group_reconfig_frame(&reconfig, group->encoders.num, group->num_encoders_started,
+					     group->frame_rate_divisors_lcm, &encoder_reconfig, encoder->cur_pts,
+					     encoder->timebase_num, encoder->frame_rate_divisor))
 		encoder->reconfigure_requested = true;
-
-		if (group->encoders_reconfigured == group->encoders.num && group->reconfigure_again)
-			encoder_group_new_reconfigure_request(group);
-
-	} else if (new_reconfigure_request || encoder->cur_pts == group->next_pts) {
-		encoder->last_reconfigure_request = group->reconfigure_request;
-
-		int64_t overall_timestep = encoder->timebase_num * group->frame_rate_divisors_lcm;
-
-		int64_t next_pts = encoder->cur_pts + encoder->timebase_num * encoder->frame_rate_divisor;
-
-		if (next_pts % overall_timestep != 0)
-			next_pts = (next_pts / overall_timestep + 1) * overall_timestep;
-
-		if (next_pts > group->next_pts)
-			group->next_pts = next_pts;
-
-		if (new_reconfigure_request)
-			group->encoders_updated_next_pts += 1;
-	}
+	encoder->last_reconfigure_request = encoder_reconfig.last_reconfigure_request;
+	encoder->last_handled_reconfigure_request = encoder_reconfig.last_handled_reconfigure_request;
+	group_reconfig_set(group, &reconfig);
 	pthread_mutex_unlock(&group->mutex);
 }
 

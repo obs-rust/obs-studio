@@ -70,6 +70,9 @@
 /* obs-encoder-gpu-gates.c */
 #include "obs-encoder-gpu-gates.h"
 
+/* obs-encoder-group-reconfig.c */
+#include "obs-encoder-group-reconfig.h"
+
 /* obs-encoder-lifecycle.c */
 #include "obs-encoder-lifecycle.h"
 
