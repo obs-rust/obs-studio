@@ -36,7 +36,7 @@ static OBSSource CreateLabel(const char *name, size_t h)
 
 	obs_data_set_string(font, "face", GetPlatformPropertiesFontFace());
 	obs_data_set_int(font, "flags", 1); // Bold text
-	obs_data_set_int(font, "size", int(h / 9.81));
+	obs_data_set_int(font, "size", static_cast<int>(static_cast<double>(h) / 9.81));
 
 	obs_data_set_obj(settings, "font", font);
 	obs_data_set_string(settings, "text", text.c_str());
@@ -196,7 +196,7 @@ static inline uint32_t labelOffset(MultiviewLayout multiviewLayout, obs_source_t
 		break;
 	}
 
-	w = uint32_t(w * ((1.0f) / n));
+	w = static_cast<uint32_t>(static_cast<float>(w) * (1.0f / static_cast<float>(n)));
 	return (cx / 2) - w;
 }
 
@@ -229,10 +229,10 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	};
 
 	auto setRegion = [&](float bx, float by, float cx, float cy) {
-		float vX = int(x + bx * scale);
-		float vY = int(y + by * scale);
-		float vCX = int(cx * scale);
-		float vCY = int(cy * scale);
+		int vX = static_cast<int>(static_cast<float>(x) + bx * scale);
+		int vY = static_cast<int>(static_cast<float>(y) + by * scale);
+		int vCX = static_cast<int>(cx * scale);
+		int vCY = static_cast<int>(cy * scale);
 
 		float oL = bx;
 		float oT = by;
@@ -245,23 +245,23 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	auto calcBaseSource = [&](size_t i) {
 		switch (multiviewLayout) {
 		case MultiviewLayout::HORIZONTAL_TOP_18_SCENES:
-			sourceX = (i % 6) * scenesCX;
-			sourceY = pvwprgCY + (i / 6) * scenesCY;
+			sourceX = static_cast<float>(i % 6) * scenesCX;
+			sourceY = pvwprgCY + static_cast<float>(i / 6) * scenesCY;
 			break;
 		case MultiviewLayout::HORIZONTAL_TOP_24_SCENES:
-			sourceX = (i % 6) * scenesCX;
-			sourceY = pvwprgCY + (i / 6) * scenesCY;
+			sourceX = static_cast<float>(i % 6) * scenesCX;
+			sourceY = pvwprgCY + static_cast<float>(i / 6) * scenesCY;
 			break;
 		case MultiviewLayout::VERTICAL_LEFT_8_SCENES:
 			sourceX = pvwprgCX;
-			sourceY = (i / 2) * scenesCY;
+			sourceY = static_cast<float>(i / 2) * scenesCY;
 			if (i % 2 != 0) {
 				sourceX += scenesCX;
 			}
 			break;
 		case MultiviewLayout::VERTICAL_RIGHT_8_SCENES:
 			sourceX = 0;
-			sourceY = (i / 2) * scenesCY;
+			sourceY = static_cast<float>(i / 2) * scenesCY;
 			if (i % 2 != 0) {
 				sourceX = scenesCX;
 			}
@@ -276,20 +276,20 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 			}
 			break;
 		case MultiviewLayout::SCENES_ONLY_4_SCENES:
-			sourceX = (i % 2) * scenesCX;
-			sourceY = (i / 2) * scenesCY;
+			sourceX = static_cast<float>(i % 2) * scenesCX;
+			sourceY = static_cast<float>(i / 2) * scenesCY;
 			break;
 		case MultiviewLayout::SCENES_ONLY_9_SCENES:
-			sourceX = (i % 3) * scenesCX;
-			sourceY = (i / 3) * scenesCY;
+			sourceX = static_cast<float>(i % 3) * scenesCX;
+			sourceY = static_cast<float>(i / 3) * scenesCY;
 			break;
 		case MultiviewLayout::SCENES_ONLY_16_SCENES:
-			sourceX = (i % 4) * scenesCX;
-			sourceY = (i / 4) * scenesCY;
+			sourceX = static_cast<float>(i % 4) * scenesCX;
+			sourceY = static_cast<float>(i / 4) * scenesCY;
 			break;
 		case MultiviewLayout::SCENES_ONLY_25_SCENES:
-			sourceX = (i % 5) * scenesCX;
-			sourceY = (i / 5) * scenesCY;
+			sourceX = static_cast<float>(i % 5) * scenesCX;
+			sourceY = static_cast<float>(i / 5) * scenesCY;
 			break;
 		default: // MultiviewLayout::HORIZONTAL_TOP_8_SCENES:
 			if (i < 4) {
@@ -373,7 +373,8 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	};
 
 	// Define the whole usable region for the multiview
-	startRegion(x, y, targetCX * scale, targetCY * scale, 0.0f, fw, 0.0f, fh);
+	startRegion(x, y, static_cast<int>(static_cast<float>(targetCX) * scale),
+		    static_cast<int>(static_cast<float>(targetCY) * scale), 0.0f, fw, 0.0f, fh);
 
 	// Change the background color to highlight all sources
 	drawBox(fw, fh, outerColor);
@@ -429,14 +430,17 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 			continue;
 		}
 
-		offset = labelOffset(multiviewLayout, label, scenesCX);
+		offset = static_cast<float>(labelOffset(multiviewLayout, label, static_cast<uint32_t>(scenesCX)));
 
 		gs_matrix_push();
 		gs_matrix_translate3f(sourceX + offset,
-				      sourceY + scenesCY - (obs_source_get_height(label) * ppiScaleY) - (thickness * 3),
+				      sourceY + scenesCY -
+					      (static_cast<float>(obs_source_get_height(label)) * ppiScaleY) -
+					      (thickness * 3),
 				      0.0f);
 		gs_matrix_scale3f(ppiScaleX, ppiScaleY, 1.0f);
-		drawBox(obs_source_get_width(label), obs_source_get_height(label) + thicknessx2, labelColor);
+		drawBox(static_cast<float>(obs_source_get_width(label)),
+			static_cast<float>(obs_source_get_height(label)) + thicknessx2, labelColor);
 		gs_matrix_translate3f(0, thickness, 0.0f);
 		obs_source_video_render(label);
 		gs_matrix_pop();
@@ -454,7 +458,7 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	/* draw preview                  */
 
 	obs_source_t *previewLabel = multiviewLabels[0];
-	offset = labelOffset(multiviewLayout, previewLabel, pvwprgCX);
+	offset = static_cast<float>(labelOffset(multiviewLayout, previewLabel, static_cast<uint32_t>(pvwprgCX)));
 	calcPreviewProgram(false);
 
 	// Paint the background
@@ -490,11 +494,13 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	// Draw the Label
 	if (drawLabel) {
 		gs_matrix_push();
-		gs_matrix_translate3f(
-			labelX, labelY - (obs_source_get_height(previewLabel) * ppiScaleY) - (thickness * 3), 0.0f);
+		gs_matrix_translate3f(labelX,
+				      labelY - (static_cast<float>(obs_source_get_height(previewLabel)) * ppiScaleY) -
+					      (thickness * 3),
+				      0.0f);
 		gs_matrix_scale3f(ppiScaleX, ppiScaleY, 1.0f);
-		drawBox(obs_source_get_width(previewLabel), obs_source_get_height(previewLabel) + thicknessx2,
-			labelColor);
+		drawBox(static_cast<float>(obs_source_get_width(previewLabel)),
+			static_cast<float>(obs_source_get_height(previewLabel)) + thicknessx2, labelColor);
 		gs_matrix_translate3f(0, thickness, 0.0f);
 		obs_source_video_render(previewLabel);
 		gs_matrix_pop();
@@ -504,7 +510,7 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	/* draw program                  */
 
 	obs_source_t *programLabel = multiviewLabels[1];
-	offset = labelOffset(multiviewLayout, programLabel, pvwprgCX);
+	offset = static_cast<float>(labelOffset(multiviewLayout, programLabel, static_cast<uint32_t>(pvwprgCX)));
 	calcPreviewProgram(true);
 
 	paintAreaWithColor(sourceX, sourceY, ppiCX, ppiCY, backgroundColor);
@@ -523,11 +529,13 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	// Draw the Label
 	if (drawLabel) {
 		gs_matrix_push();
-		gs_matrix_translate3f(
-			labelX, labelY - (obs_source_get_height(programLabel) * ppiScaleY) - (thickness * 3), 0.0f);
+		gs_matrix_translate3f(labelX,
+				      labelY - (static_cast<float>(obs_source_get_height(programLabel)) * ppiScaleY) -
+					      (thickness * 3),
+				      0.0f);
 		gs_matrix_scale3f(ppiScaleX, ppiScaleY, 1.0f);
-		drawBox(obs_source_get_width(programLabel), obs_source_get_height(programLabel) + thicknessx2,
-			labelColor);
+		drawBox(static_cast<float>(obs_source_get_width(programLabel)),
+			static_cast<float>(obs_source_get_height(programLabel)) + thicknessx2, labelColor);
 		gs_matrix_translate3f(0, thickness, 0.0f);
 		obs_source_video_render(programLabel);
 		gs_matrix_pop();
@@ -537,7 +545,7 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	if (multiviewLayout == MultiviewLayout::HORIZONTAL_TOP_24_SCENES) {
 		// Just paint the background for now
 		paintAreaWithColor(thickness, thickness, siCX, siCY * 2 + thicknessx2, backgroundColor);
-		paintAreaWithColor(thickness + 2.5 * (thicknessx2 + ppiCX), thickness, siCX, siCY * 2 + thicknessx2,
+		paintAreaWithColor(thickness + 2.5f * (thicknessx2 + ppiCX), thickness, siCX, siCY * 2 + thicknessx2,
 				   backgroundColor);
 	}
 
@@ -561,11 +569,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 	switch (multiviewLayout) {
 	case MultiviewLayout::HORIZONTAL_TOP_18_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 		}
 		minY = cy / 2;
@@ -580,12 +588,12 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::HORIZONTAL_TOP_24_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 			minY = cy / 3;
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 			minY = (cy / 2) - (validY / 6);
 		}
@@ -600,10 +608,10 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::VERTICAL_LEFT_8_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			minY = (cy / 2) - (validY / 2);
 			maxY = (cy / 2) + (validY / 2);
 		}
@@ -621,10 +629,10 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::VERTICAL_RIGHT_8_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			minY = (cy / 2) - (validY / 2);
 			maxY = (cy / 2) + (validY / 2);
 		}
@@ -642,11 +650,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::HORIZONTAL_BOTTOM_8_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			minY = (cy / 2) - (validY / 2);
 		}
 
@@ -663,11 +671,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::SCENES_ONLY_4_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 			minY = (cy / 2) - (validY / 2);
 		}
@@ -682,11 +690,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::SCENES_ONLY_9_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 			minY = (cy / 2) - (validY / 2);
 		}
@@ -701,11 +709,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::SCENES_ONLY_16_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 			minY = (cy / 2) - (validY / 2);
 		}
@@ -720,11 +728,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	case MultiviewLayout::SCENES_ONLY_25_SCENES:
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 			minY = (cy / 2) - (validY / 2);
 		}
@@ -739,11 +747,11 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		break;
 	default: // MultiviewLayout::HORIZONTAL_TOP_8_SCENES
 		if (float(cx) / float(cy) > ratio) {
-			int validX = cy * ratio;
+			int validX = static_cast<int>(static_cast<float>(cy) * ratio);
 			minX = (cx / 2) - (validX / 2);
 			maxX = (cx / 2) + (validX / 2);
 		} else {
-			int validY = cx / ratio;
+			int validY = static_cast<int>(static_cast<float>(cx) / ratio);
 			maxY = (cy / 2) + (validY / 2);
 		}
 
