@@ -386,7 +386,7 @@ static void set_triggers(GVariant *shortcuts, bool bound)
 	if (desktop_keys)
 		background->flags |= OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
 	else if (bound)
-		background->flags &= ~OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
+		background->flags &= ~(uint32_t)OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
 	background_unlock();
 }
 
@@ -662,7 +662,7 @@ static void session_closed(GDBusConnection *conn, const char *sender_name, const
 
 	struct obs_hotkeys_background *background = background_lock();
 	background->state = OBS_HOTKEYS_BACKGROUND_CLOSED;
-	background->flags &= ~OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED;
+	background->flags &= ~(uint32_t)OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED;
 	set_shortcuts_bound(background, false);
 	background_unlock();
 }
@@ -1104,7 +1104,7 @@ static void portal_appeared(GDBusConnection *conn, const char *name, const char 
 	 * to close. */
 	struct obs_hotkeys_background *background = background_lock();
 	background->state = OBS_HOTKEYS_BACKGROUND_IDLE;
-	background->flags &= ~(OBS_HOTKEYS_BACKGROUND_RESTARTING | OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
+	background->flags &= ~(uint32_t)(OBS_HOTKEYS_BACKGROUND_RESTARTING | OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED);
 	bfree(background->error);
 	background->error = NULL;
 	background_unlock();

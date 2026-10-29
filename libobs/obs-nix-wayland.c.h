@@ -62,12 +62,12 @@ static void load_keymap_data(struct xkb_keymap *keymap, xkb_keycode_t key, void 
 		return;
 
 	const xkb_keysym_t *syms;
-	for (int level = 0; level < MAX_SHIFT_LEVELS; level++) {
+	for (xkb_level_index_t level = 0; level < MAX_SHIFT_LEVELS; level++) {
 		int nsyms = xkb_keymap_key_get_syms_by_level(keymap, key, plat->current_layout, level, &syms);
 		if (nsyms < 1)
 			continue;
 
-		obs_key_t obs_key = obs_nix_wayland_key_from_virtual_key(syms[0]);
+		obs_key_t obs_key = obs_nix_wayland_key_from_virtual_key((int)syms[0]);
 		// This avoids ambiguity where multiple scancodes produce the same symbols.
 		// e.g. LSGT and Shift+AB08 produce `<` on default US layout.
 		if (!plat->obs_to_key[obs_key])
@@ -155,7 +155,7 @@ static void set_focused_key(obs_hotkeys_platform_t *plat, uint32_t key, bool pre
 
 	xkb_keysym_t sym = plat->key_to_sym[0][keycode];
 	if (sym)
-		obs_nix_hotkey_state_set_key(&plat->key_state, obs_nix_wayland_key_from_virtual_key(sym), pressed);
+		obs_nix_hotkey_state_set_key(&plat->key_state, obs_nix_wayland_key_from_virtual_key((int)sym), pressed);
 }
 
 static void platform_keyboard_key(void *data, struct wl_keyboard *keyboard, uint32_t serial, uint32_t time,

@@ -89,7 +89,7 @@ struct gl_platform {
 
 static struct gl_windowinfo *gl_wayland_egl_windowinfo_create(const struct gs_init_data *info)
 {
-	struct wl_egl_window *window = wl_egl_window_create(info->window.display, info->cx, info->cy);
+	struct wl_egl_window *window = wl_egl_window_create(info->window.display, (int)info->cx, (int)info->cy);
 	if (window == NULL) {
 		blog(LOG_ERROR, "wl_egl_window_create failed");
 		return NULL;
@@ -303,7 +303,8 @@ static void gl_wayland_egl_clear_context(gs_device_t *device)
 
 static void gl_wayland_egl_update(gs_device_t *device)
 {
-	wl_egl_window_resize(device->cur_swap->wi->window, device->cur_swap->info.cx, device->cur_swap->info.cy, 0, 0);
+	wl_egl_window_resize(device->cur_swap->wi->window, (int)device->cur_swap->info.cx,
+			     (int)device->cur_swap->info.cy, 0, 0);
 }
 
 static void gl_wayland_egl_device_load_swapchain(gs_device_t *device, gs_swapchain_t *swap)
