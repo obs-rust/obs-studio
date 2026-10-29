@@ -549,6 +549,13 @@ _obs_encoder_gpu_gates_count_next
 _obs_encoder_gpu_gates_requeue
 _obs_encoder_gpu_gates_requeue_ts
 _obs_encoder_gpu_gates_p010
+# obs-encoder-group-reconfig.c: obs-encoder.c calls them inside libobs. Not
+# EXPORT.
+_obs_encoder_group_reconfig_new_request
+_obs_encoder_group_reconfig_update
+_obs_encoder_group_reconfig_frame
+_obs_encoder_group_reconfig_lcm
+_obs_encoder_group_reconfig_reset
 # obs-encoder-lifecycle.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_lifecycle_first
 _obs_encoder_lifecycle_found

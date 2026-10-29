@@ -11,6 +11,11 @@
 # characterized, not endorsed; the inputs where C is undefined are not
 # covered. Builds the moved file on its own: no display and no libobs core, so
 # it runs on every platform. The functions are hidden in libobs, so this
-# characterizes that C source; the test calls only them.
-# test_encoder_group_reconfig_walk covers the callers through the real libobs.
+# characterizes that C source; the test calls only them. There is no _rust
+# variant against libobs_rust-static: the shims' archive member also holds the
+# rest of obs-output, which needs libobs's hidden output and service seams and
+# obs-util, so it does not link on its own, as for
+# test_encoder_lifecycle_steps. The Tier 3 parity tests in rust/obs-output
+# compare the shims with this C instead. test_encoder_group_reconfig_walk
+# covers the callers through the real libobs.
 # Target and test are declared in ../build/test-graph.json.

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-group-reconfig.pch.h"
 
 /* encoder_group_new_reconfigure_request(). */
 void obs_encoder_group_reconfig_new_request(struct obs_encoder_group_reconfig *group)

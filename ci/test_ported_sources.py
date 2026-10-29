@@ -34,6 +34,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-encoder-audio-start.c.h.o",
     "obs-encoder-bind.c.h.o",
     "obs-encoder-gpu-gates.c.h.o",
+    "obs-encoder-group-reconfig.c.h.o",
     "obs-encoder-lifecycle.c.h.o",
     "obs-encoder-packet-ts.c.h.o",
     "obs-encoder-roi.c.h.o",

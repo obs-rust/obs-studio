@@ -682,6 +682,15 @@ obs_encoder_gpu_gates_count_next
 obs_encoder_gpu_gates_requeue
 obs_encoder_gpu_gates_requeue_ts
 obs_encoder_gpu_gates_p010
+# obs-encoder-group-reconfig.c: obs_encoder_update(), add_connection(),
+# remove_connection() and handle_encoder_group_reconfigure_request() call them
+# inside libobs. Declared in obs-encoder-group-reconfig.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_encoder_group_reconfig_new_request
+obs_encoder_group_reconfig_update
+obs_encoder_group_reconfig_frame
+obs_encoder_group_reconfig_lcm
+obs_encoder_group_reconfig_reset
 # obs-encoder-lifecycle.c: the start, stop, connect, disconnect, GPU test and
 # first packet in obs-encoder.c call them inside libobs. Declared in
 # obs-encoder-lifecycle.h without EXPORT, so the shims stay hidden the same

@@ -43,6 +43,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -96,8 +97,10 @@ pub struct FrameInput {
 /// one (wrapping), and the counts of this request and
 /// [`Group::reconfigure_again`] start again.
 pub fn new_request(group: &mut Group) {
-    let _ = group;
-    todo!()
+    group.reconfigure_request = group.reconfigure_request.wrapping_add(1);
+    group.encoders_updated_next_pts = 0;
+    group.encoders_reconfigured = 0;
+    group.reconfigure_again = false;
 }
 
 /// `obs_encoder_update()` for an active encoder in a group:
@@ -107,8 +110,20 @@ pub fn new_request(group: &mut Group) {
 /// encoder that already applied the current request sets
 /// [`Group::reconfigure_again`].
 pub fn update(group: &mut Group, num_encoders: usize, last_handled_reconfigure_request: u64) {
-    let _ = (group, num_encoders, last_handled_reconfigure_request);
-    todo!()
+    let first_reconfigure_request = group.reconfigure_request == 0;
+    let all_encoders_reconfigured = count_is(group.encoders_reconfigured, num_encoders);
+    let current_encoder_reconfigured =
+        last_handled_reconfigure_request == group.reconfigure_request;
+    if first_reconfigure_request || all_encoders_reconfigured {
+        new_request(group);
+    } else if current_encoder_reconfigured {
+        group.reconfigure_again = true;
+    }
+}
+
+/// C's `uint32_t == size_t`: the count converted to `size_t`.
+fn count_is(count: u32, num: usize) -> bool {
+    usize::try_from(count).is_ok_and(|count| count == num)
 }
 
 /// `handle_encoder_group_reconfigure_request()`, for each video frame of an
@@ -116,8 +131,36 @@ pub fn update(group: &mut Group, num_encoders: usize, last_handled_reconfigure_r
 /// (the caller sets `reconfigure_requested`).
 #[must_use]
 pub fn frame(group: &mut Group, encoder: &mut Encoder, input: &FrameInput) -> bool {
-    let _ = (group, encoder, input);
-    todo!()
+    let new_reconfigure_request = encoder.last_reconfigure_request != group.reconfigure_request;
+    if !new_reconfigure_request
+        && group.encoders_updated_next_pts == input.num_encoders_started
+        && input.cur_pts == group.next_pts
+        && encoder.last_handled_reconfigure_request != encoder.last_reconfigure_request
+    {
+        group.encoders_reconfigured = group.encoders_reconfigured.wrapping_add(1);
+        encoder.last_handled_reconfigure_request = encoder.last_reconfigure_request;
+        if count_is(group.encoders_reconfigured, input.num_encoders) && group.reconfigure_again {
+            new_request(group);
+        }
+        return true;
+    }
+
+    if new_reconfigure_request || input.cur_pts == group.next_pts {
+        encoder.last_reconfigure_request = group.reconfigure_request;
+        let next_pts = next_shared_pts(
+            input.cur_pts,
+            input.timebase_num,
+            input.frame_rate_divisor,
+            input.frame_rate_divisors_lcm,
+        );
+        if next_pts > group.next_pts {
+            group.next_pts = next_pts;
+        }
+        if new_reconfigure_request {
+            group.encoders_updated_next_pts = group.encoders_updated_next_pts.wrapping_add(1);
+        }
+    }
+    false
 }
 
 /// The next shared frame `handle_encoder_group_reconfigure_request()`
@@ -132,13 +175,20 @@ pub fn next_shared_pts(
     frame_rate_divisor: u32,
     frame_rate_divisors_lcm: u32,
 ) -> i64 {
-    let _ = (
-        cur_pts,
-        timebase_num,
-        frame_rate_divisor,
-        frame_rate_divisors_lcm,
-    );
-    todo!()
+    let timestep = i64::from(timebase_num.wrapping_mul(frame_rate_divisors_lcm));
+    let next_pts = cur_pts.wrapping_add(i64::from(timebase_num.wrapping_mul(frame_rate_divisor)));
+    // None only for a timestep of 0, an intentional difference (module
+    // docs): the pts stays unrounded. The timestep is positive, so the
+    // quotient and the remainder cannot overflow.
+    match (
+        next_pts.checked_rem(timestep),
+        next_pts.checked_div(timestep),
+    ) {
+        (Some(remainder), Some(quotient)) if remainder != 0 => {
+            quotient.wrapping_add(1).wrapping_mul(timestep)
+        }
+        _ => next_pts,
+    }
 }
 
 /// `add_connection()`: the group's new `frame_rate_divisors_lcm`,
@@ -146,13 +196,25 @@ pub fn next_shared_pts(
 /// `int`, stored as `uint32_t`.
 #[must_use]
 pub fn lcm(lcm: u32, frame_rate_divisor: u32) -> u32 {
-    let _ = (lcm, frame_rate_divisor);
-    todo!()
+    // For both in 1..=INT_MAX this is C's gcd() (Euclid, the larger first)
+    // and the product's low 32 bits; a 0 gives 0 (intentional difference).
+    match lcm.checked_div(gcd(lcm, frame_rate_divisor)) {
+        Some(quotient) if frame_rate_divisor != 0 => quotient.wrapping_mul(frame_rate_divisor),
+        _ => 0,
+    }
+}
+
+/// Euclid's greatest common divisor; `gcd(a, 0)` is `a`.
+fn gcd(mut a: u32, mut b: u32) -> u32 {
+    while let Some(remainder) = a.checked_rem(b) {
+        a = b;
+        b = remainder;
+    }
+    a
 }
 
 /// `remove_connection()`, once no encoder of the group is started: every
 /// reconfigure field back to 0 (false).
 pub fn reset(group: &mut Group) {
-    let _ = group;
-    todo!()
+    *group = Group::default();
 }
