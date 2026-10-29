@@ -21,7 +21,8 @@ AutoConfigVideoPage::AutoConfigVideoPage(QWidget *parent) : QWizardPage(parent),
 
 	long double fpsVal = (long double)ovi.fps_num / (long double)ovi.fps_den;
 
-	QString fpsStr = (ovi.fps_den > 1) ? QString::number(fpsVal, 'f', 2) : QString::number(fpsVal, 'g');
+	QString fpsStr = (ovi.fps_den > 1) ? QString::number(static_cast<double>(fpsVal), 'f', 2)
+					   : QString::number(static_cast<double>(fpsVal), 'g');
 
 	ui->fps->addItem(QTStr(FPS_PREFER_HIGH_FPS), (int)AutoConfig::FPSType::PreferHighFPS);
 	ui->fps->addItem(QTStr(FPS_PREFER_HIGH_RES), (int)AutoConfig::FPSType::PreferHighRes);
@@ -50,8 +51,8 @@ AutoConfigVideoPage::AutoConfigVideoPage(QWidget *parent) : QWizardPage(parent),
 
 		// Calculate physical screen resolution based on the virtual screen resolution
 		// They might differ if scaling is enabled, e.g. for HiDPI screens
-		as_width = round(as_width * screen->devicePixelRatio());
-		as_height = round(as_height * screen->devicePixelRatio());
+		as_width = static_cast<int>(round(as_width * screen->devicePixelRatio()));
+		as_height = static_cast<int>(round(as_height * screen->devicePixelRatio()));
 
 		encRes = as_width << 16 | as_height;
 

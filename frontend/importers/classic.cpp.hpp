@@ -107,15 +107,15 @@ static Json::object translate_source(const Json &in, const Json &sources)
 		out["id"] = "text_gdiplus";
 
 		int color = in_settings["color"].int_value() + 16777216;
-		color = red_blue_swap(color) + 4278190080;
+		color = static_cast<int>(red_blue_swap(color) + 4278190080);
 		settings["color"] = color;
 
 		color = in_settings["backgroundColor"].int_value();
-		color = red_blue_swap(color + 16777216) + 4278190080;
+		color = static_cast<int>(red_blue_swap(color + 16777216) + 4278190080);
 		settings["bk_color"] = color;
 
 		color = in_settings["outlineColor"].int_value();
-		color = red_blue_swap(color + 16777216) + 4278190080;
+		color = static_cast<int>(red_blue_swap(color + 16777216) + 4278190080);
 		settings["outline_color"] = color;
 
 		translate_string("text", in_settings, "text", settings);

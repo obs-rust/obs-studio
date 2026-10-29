@@ -67,7 +67,7 @@ static void HandleSampleRate(obs_property_t *prop, const char *id)
 		return;
 	}
 
-	uint32_t sampleRate = config_get_uint(main->Config(), "Audio", "SampleRate");
+	uint32_t sampleRate = static_cast<uint32_t>(config_get_uint(main->Config(), "Audio", "SampleRate"));
 
 	obs_data_set_int(data.get(), "samplerate", sampleRate);
 

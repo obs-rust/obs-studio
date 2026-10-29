@@ -26,7 +26,7 @@ MissingFilesModel::MissingFilesModel(QObject *parent) : QAbstractTableModel(pare
 
 int MissingFilesModel::rowCount(const QModelIndex &) const
 {
-	return files.length();
+	return static_cast<int>(files.length());
 }
 
 int MissingFilesModel::columnCount(const QModelIndex &) const

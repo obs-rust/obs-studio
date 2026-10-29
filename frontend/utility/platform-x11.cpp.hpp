@@ -655,7 +655,7 @@ const char *GetPlatformPropertiesTextSource()
 
 float GetPlatformPropertiesLabelHeight(uint32_t height)
 {
-	return height * 0.8;
+	return static_cast<float>(height * 0.8);
 }
 
 void AdjustPlatformYouTubeDialogSize(QWidget *dialog)
@@ -768,7 +768,7 @@ bool FillPlatformGraphicsWindow(QWindow *window, gs_window &gswindow)
 	bool success = true;
 	switch (obs_get_nix_platform()) {
 	case OBS_NIX_PLATFORM_X11_EGL:
-		gswindow.id = window->winId();
+		gswindow.id = static_cast<uint32_t>(window->winId());
 		gswindow.display = obs_get_nix_platform_display();
 		break;
 #ifdef ENABLE_WAYLAND

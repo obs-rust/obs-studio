@@ -154,7 +154,7 @@ AutoConfig::AutoConfig(QWidget *parent) : QWizard(parent)
 
 	TestHardwareEncoding();
 
-	int bitrate = config_get_int(main->Config(), "SimpleOutput", "VBitrate");
+	int bitrate = static_cast<int>(config_get_int(main->Config(), "SimpleOutput", "VBitrate"));
 	bool multitrackVideoEnabled = config_has_user_value(main->Config(), "Stream1", "EnableMultitrackVideo")
 					      ? config_get_bool(main->Config(), "Stream1", "EnableMultitrackVideo")
 					      : true;

@@ -114,10 +114,10 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 	}
 	obs_encoder_release(videoStreaming);
 	if (whipSimulcastEncoders != nullptr) {
-		whipSimulcastEncoders->Create(streamEncoder, config_get_int(main->Config(), "AdvOut", "RescaleFilter"),
-					      config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers"),
-					      video_output_get_width(obs_get_video()),
-					      video_output_get_height(obs_get_video()));
+		whipSimulcastEncoders->Create(
+			streamEncoder, static_cast<int>(config_get_int(main->Config(), "AdvOut", "RescaleFilter")),
+			static_cast<int>(config_get_int(main->Config(), "Stream1", "WHIPSimulcastTotalLayers")),
+			video_output_get_width(obs_get_video()), video_output_get_height(obs_get_video()));
 	}
 
 	const char *rate_control =
@@ -155,7 +155,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 	}
 
 	std::string id;
-	int streamTrackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex") - 1;
+	int streamTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex")) - 1;
 	streamAudioEnc = obs_audio_encoder_create(streamAudioEncoder, "adv_stream_audio", nullptr,
 						  static_cast<size_t>(streamTrackIndex), nullptr);
 	if (!streamAudioEnc) {
@@ -165,7 +165,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 	obs_encoder_release(streamAudioEnc);
 
 	id = "";
-	int vodTrack = config_get_int(main->Config(), "AdvOut", "VodTrackIndex") - 1;
+	int vodTrack = static_cast<int>(config_get_int(main->Config(), "AdvOut", "VodTrackIndex")) - 1;
 	streamArchiveEnc = obs_audio_encoder_create(streamAudioEncoder, ADV_ARCHIVE_NAME, nullptr,
 						    static_cast<size_t>(vodTrack), nullptr);
 	if (!streamArchiveEnc) {
@@ -233,7 +233,7 @@ void AdvancedOutput::UpdateStreamSettings()
 
 	obs_encoder_update(videoStreaming, settings);
 	if (whipSimulcastEncoders != nullptr) {
-		whipSimulcastEncoders->Update(settings, obs_data_get_int(settings, "bitrate"));
+		whipSimulcastEncoders->Update(settings, static_cast<int>(obs_data_get_int(settings, "bitrate")));
 	}
 }
 
@@ -267,8 +267,9 @@ inline bool AdvancedOutput::allowsMultiTrack()
 inline void AdvancedOutput::SetupStreaming()
 {
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "RescaleRes");
-	int rescaleFilter = config_get_int(main->Config(), "AdvOut", "RescaleFilter");
-	int multiTrackAudioMixes = config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes");
+	int rescaleFilter = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RescaleFilter"));
+	int multiTrackAudioMixes =
+		static_cast<int>(config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes"));
 	unsigned int cx = 0;
 	unsigned int cy = 0;
 	int idx = 0;
@@ -308,7 +309,7 @@ inline void AdvancedOutput::SetupRecording()
 	const char *path = config_get_string(main->Config(), "AdvOut", "RecFilePath");
 	const char *mux = config_get_string(main->Config(), "AdvOut", "RecMuxerCustom");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "RecRescaleRes");
-	int rescaleFilter = config_get_int(main->Config(), "AdvOut", "RecRescaleFilter");
+	int rescaleFilter = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRescaleFilter"));
 	int tracks;
 
 	const char *recFormat = config_get_string(main->Config(), "AdvOut", "RecFormat2");
@@ -317,9 +318,9 @@ inline void AdvancedOutput::SetupRecording()
 	bool flv = strcmp(recFormat, "flv") == 0;
 
 	if (flv) {
-		tracks = config_get_int(main->Config(), "AdvOut", "FLVTrack");
+		tracks = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FLVTrack"));
 	} else {
-		tracks = config_get_int(main->Config(), "AdvOut", "RecTracks");
+		tracks = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecTracks"));
 	}
 
 	OBSDataAutoRelease settings = obs_data_create();
@@ -332,7 +333,7 @@ inline void AdvancedOutput::SetupRecording()
 	 * configurations might still have this configured and we don't want to
 	 * just break them. */
 	if (tracks == 0) {
-		tracks = config_get_int(main->Config(), "AdvOut", "TrackIndex");
+		tracks = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex"));
 	}
 
 	if (useStreamEncoder) {
@@ -403,20 +404,20 @@ inline void AdvancedOutput::SetupRecording()
 inline void AdvancedOutput::SetupFFmpeg()
 {
 	const char *url = config_get_string(main->Config(), "AdvOut", "FFURL");
-	int vBitrate = config_get_int(main->Config(), "AdvOut", "FFVBitrate");
-	int gopSize = config_get_int(main->Config(), "AdvOut", "FFVGOPSize");
+	int vBitrate = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVBitrate"));
+	int gopSize = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVGOPSize"));
 	bool rescale = config_get_bool(main->Config(), "AdvOut", "FFRescale");
 	const char *rescaleRes = config_get_string(main->Config(), "AdvOut", "FFRescaleRes");
 	const char *formatName = config_get_string(main->Config(), "AdvOut", "FFFormat");
 	const char *mimeType = config_get_string(main->Config(), "AdvOut", "FFFormatMimeType");
 	const char *muxCustom = config_get_string(main->Config(), "AdvOut", "FFMCustom");
 	const char *vEncoder = config_get_string(main->Config(), "AdvOut", "FFVEncoder");
-	int vEncoderId = config_get_int(main->Config(), "AdvOut", "FFVEncoderId");
+	int vEncoderId = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFVEncoderId"));
 	const char *vEncCustom = config_get_string(main->Config(), "AdvOut", "FFVCustom");
-	int aBitrate = config_get_int(main->Config(), "AdvOut", "FFABitrate");
-	int aMixes = config_get_int(main->Config(), "AdvOut", "FFAudioMixes");
+	int aBitrate = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFABitrate"));
+	int aMixes = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFAudioMixes"));
 	const char *aEncoder = config_get_string(main->Config(), "AdvOut", "FFAEncoder");
-	int aEncoderId = config_get_int(main->Config(), "AdvOut", "FFAEncoderId");
+	int aEncoderId = static_cast<int>(config_get_int(main->Config(), "AdvOut", "FFAEncoderId"));
 	const char *aEncCustom = config_get_string(main->Config(), "AdvOut", "FFACustom");
 
 	OBSDataArrayAutoRelease audio_names = obs_data_array_create();
@@ -475,8 +476,8 @@ inline void AdvancedOutput::UpdateAudioSettings()
 {
 	bool applyServiceSettings = config_get_bool(main->Config(), "AdvOut", "ApplyServiceSettings");
 	bool enforceBitrate = !config_get_bool(main->Config(), "Stream1", "IgnoreRecommended");
-	int streamTrackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
-	int vodTrackIndex = config_get_int(main->Config(), "AdvOut", "VodTrackIndex");
+	int streamTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex"));
+	int vodTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "VodTrackIndex"));
 	const char *audioEncoder = config_get_string(main->Config(), "AdvOut", "AudioEncoder");
 	const char *recAudioEncoder = config_get_string(main->Config(), "AdvOut", "RecAudioEncoder");
 
@@ -562,9 +563,9 @@ int AdvancedOutput::GetAudioBitrate(size_t i, const char *id) const
 
 inline std::optional<size_t> AdvancedOutput::VodTrackMixerIdx(obs_service_t *service)
 {
-	int streamTrackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex");
+	int streamTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex"));
 	bool vodTrackEnabled = config_get_bool(main->Config(), "AdvOut", "VodTrackEnabled");
-	int vodTrackIndex = config_get_int(main->Config(), "AdvOut", "VodTrackIndex");
+	int vodTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "VodTrackIndex"));
 	bool enableForCustomServer = config_get_bool(App()->GetUserConfig(), "General", "EnableCustomServerVodTrack");
 
 	const char *id = obs_service_get_id(service);
@@ -596,7 +597,8 @@ inline void AdvancedOutput::SetupVodTrack(obs_service_t *service)
 std::shared_future<void> AdvancedOutput::SetupStreaming(obs_service_t *service,
 							SetupStreamingContinuation_t continuation)
 {
-	int multiTrackAudioMixes = config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes");
+	int multiTrackAudioMixes =
+		static_cast<int>(config_get_int(main->Config(), "AdvOut", "StreamMultiTrackAudioMixes"));
 
 	bool is_multitrack_output = allowsMultiTrack();
 
@@ -624,7 +626,7 @@ std::shared_future<void> AdvancedOutput::SetupStreaming(obs_service_t *service,
 	}
 
 	const char *audio_encoder_id = config_get_string(main->Config(), "AdvOut", "AudioEncoder");
-	int streamTrackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex") - 1;
+	int streamTrackIndex = static_cast<int>(config_get_int(main->Config(), "AdvOut", "TrackIndex")) - 1;
 
 	auto handle_multitrack_video_result = [this, type = std::string{type}, is_multitrack_output,
 					       multiTrackAudioMixes](std::optional<bool> multitrackVideoResult) {
@@ -691,10 +693,10 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 	obs_output_set_service(streamOutput, service);
 
 	bool reconnect = config_get_bool(main->Config(), "Output", "Reconnect");
-	int retryDelay = config_get_int(main->Config(), "Output", "RetryDelay");
-	int maxRetries = config_get_int(main->Config(), "Output", "MaxRetries");
+	int retryDelay = static_cast<int>(config_get_int(main->Config(), "Output", "RetryDelay"));
+	int maxRetries = static_cast<int>(config_get_int(main->Config(), "Output", "MaxRetries"));
 	bool useDelay = config_get_bool(main->Config(), "Output", "DelayEnable");
-	int delaySec = config_get_int(main->Config(), "Output", "DelaySec");
+	int delaySec = static_cast<int>(config_get_int(main->Config(), "Output", "DelaySec"));
 	bool preserveDelay = config_get_bool(main->Config(), "Output", "DelayPreserve");
 	const char *bindIP = config_get_string(main->Config(), "Output", "BindIP");
 	const char *ipFamily = config_get_string(main->Config(), "Output", "IPFamily");
@@ -802,12 +804,14 @@ bool AdvancedOutput::StartRecording()
 
 		if (splitFile) {
 			splitFileType = config_get_string(main->Config(), "AdvOut", "RecSplitFileType");
-			splitFileTime = (astrcmpi(splitFileType, "Time") == 0)
-						? config_get_int(main->Config(), "AdvOut", "RecSplitFileTime")
-						: 0;
-			splitFileSize = (astrcmpi(splitFileType, "Size") == 0)
-						? config_get_int(main->Config(), "AdvOut", "RecSplitFileSize")
-						: 0;
+			splitFileTime =
+				(astrcmpi(splitFileType, "Time") == 0)
+					? static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecSplitFileTime"))
+					: 0;
+			splitFileSize =
+				(astrcmpi(splitFileType, "Size") == 0)
+					? static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecSplitFileSize"))
+					: 0;
 			string ext = GetFormatExt(recFormat);
 			obs_data_set_string(settings, "directory", path);
 			obs_data_set_string(settings, "format", f.c_str());
@@ -893,8 +897,8 @@ bool AdvancedOutput::StartReplayBuffer()
 					  ffmpegRecording ? "FFFileNameWithoutSpace" : "RecFileNameWithoutSpace");
 		rbPrefix = config_get_string(main->Config(), "SimpleOutput", "RecRBPrefix");
 		rbSuffix = config_get_string(main->Config(), "SimpleOutput", "RecRBSuffix");
-		rbTime = config_get_int(main->Config(), "AdvOut", "RecRBTime");
-		rbSize = config_get_int(main->Config(), "AdvOut", "RecRBSize");
+		rbTime = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRBTime"));
+		rbSize = static_cast<int>(config_get_int(main->Config(), "AdvOut", "RecRBSize"));
 
 		string ext = GetFormatExt(recFormat);
 

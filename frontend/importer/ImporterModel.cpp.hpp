@@ -19,7 +19,7 @@
 
 int ImporterModel::rowCount(const QModelIndex &) const
 {
-	return options.length() + 1;
+	return static_cast<int>(options.length()) + 1;
 }
 
 int ImporterModel::columnCount(const QModelIndex &) const
@@ -129,7 +129,7 @@ bool ImporterModel::setData(const QModelIndex &index, const QVariant &value, int
 
 			if (list.size() > 0) {
 				int row = index.row();
-				int lastRow = row + list.size() - 1;
+				int lastRow = row + static_cast<int>(list.size()) - 1;
 				beginInsertRows(QModelIndex(), row, lastRow);
 
 				for (QString path : list) {
@@ -159,7 +159,8 @@ bool ImporterModel::setData(const QModelIndex &index, const QVariant &value, int
 			entry.selected = role != ImporterEntryRole::AutoPath;
 			entry.empty = false;
 
-			beginInsertRows(QModelIndex(), options.length() + 1, options.length() + 1);
+			beginInsertRows(QModelIndex(), static_cast<int>(options.length()) + 1,
+					static_cast<int>(options.length()) + 1);
 			options.append(entry);
 			endInsertRows();
 

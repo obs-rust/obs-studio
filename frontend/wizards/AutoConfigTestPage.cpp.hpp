@@ -422,7 +422,7 @@ void AutoConfigTestPage::TestBandwidthThread()
  * the closest to the expected values */
 static long double EstimateBitrateVal(int cx, int cy, int fps_num, int fps_den)
 {
-	long fps = (long double)fps_num / (long double)fps_den;
+	long fps = static_cast<long>((long double)fps_num / (long double)fps_den);
 	long double areaVal = pow((long double)(cx * cy), 0.85l);
 	return areaVal * sqrt(pow(fps, 1.1l));
 }
@@ -593,7 +593,7 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 		int cx = int(((long double)baseCX / (long double)baseCY) * (long double)cy);
 
 		if (!force && wiz->type != AutoConfig::Type::Recording) {
-			int est = EstimateMinBitrate(cx, cy, fps_num, fps_den);
+			int est = static_cast<int>(EstimateMinBitrate(cx, cy, fps_num, fps_den));
 			if (est > wiz->idealBitrate) {
 				return true;
 			}
@@ -615,7 +615,8 @@ bool AutoConfigTestPage::TestSoftwareEncoding()
 		QString cxStr = QString::number(cx);
 		QString cyStr = QString::number(cy);
 
-		QString fpsStr = (fps_den > 1) ? QString::number(fps, 'f', 2) : QString::number(fps, 'g', 2);
+		QString fpsStr = (fps_den > 1) ? QString::number(static_cast<double>(fps), 'f', 2)
+					       : QString::number(static_cast<double>(fps), 'g', 2);
 
 		QMetaObject::invokeMethod(this, &AutoConfigTestPage::UpdateMessage,
 					  QTStr(TEST_RES_VAL).arg(cxStr, cyStr, fpsStr));
@@ -799,7 +800,7 @@ void AutoConfigTestPage::FindIdealHardwareResolution()
 		AutoConfig::Encoder encType = wiz->streamingEncoder;
 		bool nvenc = encType == AutoConfig::Encoder::NVENC;
 
-		int minBitrate = EstimateMinBitrate(cx, cy, fps_num, fps_den);
+		int minBitrate = static_cast<int>(EstimateMinBitrate(cx, cy, fps_num, fps_den));
 
 		/* most hardware encoders don't have a good quality to bitrate
 		 * ratio, so increase the minimum bitrate estimate for them.
@@ -1088,7 +1089,8 @@ void AutoConfigTestPage::FinalizeResults()
 
 	long double fps = (long double)wiz->idealFPSNum / (long double)wiz->idealFPSDen;
 
-	QString fpsStr = (wiz->idealFPSDen > 1) ? QString::number(fps, 'f', 2) : QString::number(fps, 'g', 2);
+	QString fpsStr = (wiz->idealFPSDen > 1) ? QString::number(static_cast<double>(fps), 'f', 2)
+						: QString::number(static_cast<double>(fps), 'g', 2);
 
 	form->addRow(newLabel("Basic.Settings.Video.BaseResolution"), new QLabel(baseRes, ui->finishPage));
 	form->addRow(newLabel("Basic.Settings.Video.ScaledResolution"), new QLabel(scaleRes, ui->finishPage));
