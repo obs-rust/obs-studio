@@ -62,3 +62,11 @@ static inline void he_platform_socket_nosigpipe(SOCKET fd)
 {
 	(void)fd;
 }
+
+/* Winsock's bind()/connect() take the address length as an int, while the
+ * resolved length is a size_t; the conversion is the one the call already
+ * made implicitly, so it is spelled out here rather than at the call sites. */
+static inline int he_platform_addr_len(size_t len)
+{
+	return (int)len;
+}

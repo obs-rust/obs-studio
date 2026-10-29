@@ -62,3 +62,10 @@ static inline void he_platform_socket_nosigpipe(SOCKET fd)
 	(void)fd;
 #endif
 }
+
+/* BSD sockets take the address length as a socklen_t; the resolved length is
+ * a size_t, so narrow it the way the call already did implicitly. */
+static inline socklen_t he_platform_addr_len(size_t len)
+{
+	return (socklen_t)len;
+}

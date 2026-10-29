@@ -309,12 +309,12 @@ static void *happy_connect_worker(void *arg)
 	}
 
 	he_platform_socket_nosigpipe(args->sockfd);
-	if (context->bind_addr.ss_family != 0 &&
-	    bind(args->sockfd, (const struct sockaddr *)&context->bind_addr, context->bind_addr_len) < 0) {
+	if (context->bind_addr.ss_family != 0 && bind(args->sockfd, (const struct sockaddr *)&context->bind_addr,
+						      he_platform_addr_len(context->bind_addr_len)) < 0) {
 		goto failure;
 	}
 
-	if (connect(args->sockfd, args->address->ai_addr, args->address->ai_addrlen) == 0) {
+	if (connect(args->sockfd, args->address->ai_addr, he_platform_addr_len(args->address->ai_addrlen)) == 0) {
 
 		/* success, check if we're the winner. */
 		pthread_mutex_lock(&context->winner_mutex);
