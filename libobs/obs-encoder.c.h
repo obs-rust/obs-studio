@@ -2374,6 +2374,19 @@ bool obs_encoder_set_group(obs_encoder_t *encoder, obs_encoder_group_t *group)
 		return false;
 	}
 
+	/* Already in this group: nothing to leave or join. */
+	if (group && group == encoder->encoder_group)
+		return true;
+
+	/* Check the new group before leaving the old one, so a refused move
+	 * leaves the encoder where it was (#2932). The join below checks
+	 * again under the new group's mutex; the two group mutexes are never
+	 * held together. */
+	if (group && obs_encoder_group_num_started(group)) {
+		blog(LOG_ERROR, "obs_encoder_set_group: specified group has started encoders");
+		return false;
+	}
+
 	if (encoder->encoder_group) {
 		struct obs_encoder_group *old_group = encoder->encoder_group;
 		pthread_mutex_lock(&old_group->mutex);
