@@ -115,6 +115,17 @@ enum Slot {
     Autoselect,
 }
 
+/// An item's default value, read off the item rather than through its name,
+/// so `Data::defaults_from` copies the object in one pass (#1453).
+enum DefaultValue {
+    Text(Text),
+    Int(i64),
+    Double(f64),
+    Bool(bool),
+    Object(Option<Data>),
+    Array(Vec<Data>),
+}
+
 #[derive(Clone)]
 enum Value {
     String(Text),
@@ -165,10 +176,12 @@ fn read_bool(value: &Value) -> bool {
 }
 
 /// A string value, stored once with a trailing NUL so the C getters read it
-/// in place instead of from a second copy (#1453).
+/// in place instead of from a second copy (#1453). It is shared by `Arc`, so
+/// a value copied from another object (the defaults copy) refcounts instead
+/// of copying the bytes (#1453).
 #[derive(Clone)]
 struct Text {
-    nul_terminated: Box<str>,
+    nul_terminated: Arc<str>,
     /// False for an empty string or one with an interior NUL: C then reads
     /// "", as it did from the old `CString` copy.
     c_readable: bool,
@@ -180,7 +193,7 @@ impl Text {
         buf.push_str(text);
         buf.push('\0');
         Self {
-            nul_terminated: buf.into_boxed_str(),
+            nul_terminated: Arc::from(buf),
             c_readable: !text.is_empty() && !text.contains('\0'),
         }
     }
@@ -217,11 +230,13 @@ fn name_hash(bytes: &[u8]) -> u64 {
 
 /// An item name: its bytes, a NUL after them, and their hash. A name with
 /// a NUL inside is stored empty, as before.
+#[derive(Clone)]
 struct Name {
     hash: u64,
     text: NameText,
 }
 
+#[derive(Clone)]
 enum NameText {
     Inline { len: u8, buf: [u8; NAME_INLINE + 1] },
     Heap(Box<CStr>),
@@ -493,6 +508,35 @@ impl ItemInner {
         match value {
             Some(Value::Array(array)) => array.clone(),
             _ => None,
+        }
+    }
+
+    /// The value `obs_data_get_defaults` stores for this item: its default
+    /// slot, numbered the way `numtype` reads the front value. A `Null` item
+    /// has none. Copying it out by item, not by name, is what lets
+    /// `Data::defaults_from` build the fresh object without a lookup per
+    /// item (#1453).
+    fn defaults_value(&self) -> Option<DefaultValue> {
+        match self.ty {
+            Type::Null => None,
+            Type::String => Some(DefaultValue::Text(match &self.default {
+                Some(Value::String(text)) => text.clone(),
+                _ => Text::new(""),
+            })),
+            Type::Number => match self.front() {
+                Some(Value::Int(_)) => Some(DefaultValue::Int(self.slot_int(Slot::Default))),
+                Some(Value::Double(_)) => {
+                    Some(DefaultValue::Double(self.slot_double(Slot::Default)))
+                }
+                _ => None,
+            },
+            Type::Boolean => Some(DefaultValue::Bool(self.slot_bool(Slot::Default))),
+            Type::Object => Some(DefaultValue::Object(self.slot_obj(Slot::Default))),
+            Type::Array => Some(DefaultValue::Array(
+                self.slot_array(Slot::Default)
+                    .map(|array| array.elements())
+                    .unwrap_or_default(),
+            )),
         }
     }
 
@@ -898,43 +942,54 @@ impl Data {
         let Some(src) = src else {
             return out;
         };
-        let plan: Vec<(String, Type)> = src
-            .inner
-            .borrow()
-            .items
-            .iter()
-            .map(|node| {
+        // One read of the source, then one pass over a fresh object: the
+        // source's names are unique and copied in order, so neither side
+        // needs a name lookup or an intermediate `String` per item (#1453).
+        // The string values are copied out under the source's lock and the
+        // nested objects are only addref'd, so no source lock is held while
+        // `defaults_from` recurses.
+        let plan: Vec<(Name, DefaultValue)> = {
+            let inner = src.inner.borrow();
+            let mut plan = Vec::with_capacity(inner.items.len());
+            for node in &inner.items {
                 let item = node.borrow();
-                (node.name.string(), item.ty)
-            })
-            .collect();
-        for (name, ty) in plan {
-            match ty {
-                Type::Null => {}
-                Type::String => out.set_string(&name, Some(&src.get_default_string(&name))),
-                Type::Number => match src.item(&name).map(|item| item.numtype()) {
-                    Some(NumType::Double) => out.set_double(&name, src.get_default_double(&name)),
-                    Some(NumType::Int) => out.set_int(&name, src.get_default_int(&name)),
-                    _ => {}
-                },
-                Type::Boolean => out.set_bool(&name, src.get_default_bool(&name)),
-                Type::Object => {
-                    let child = src.get_default_obj(&name);
-                    let defaults = Data::defaults_from(child.as_ref());
-                    out.set_obj(&name, Some(&defaults));
-                }
-                Type::Array => {
-                    let source = src.get_default_array(&name);
-                    let defaults = Array::new();
-                    if let Some(source) = source {
-                        for element in source.elements() {
-                            defaults.push(Some(&Data::defaults_from(Some(&element))));
-                        }
-                    }
-                    out.set_array(&name, Some(&defaults));
+                if let Some(value) = item.defaults_value() {
+                    plan.push((node.name.clone(), value));
                 }
             }
+            plan
+        };
+        // Build the output under its own write lock, one item at a time: the
+        // values recurse into other objects, never into `out`, so the lock is
+        // not held across anything that can take it again.
+        let mut inner = out.inner.borrow_mut();
+        inner.items.reserve(plan.len());
+        let parent = Arc::downgrade(&out.inner);
+        for (name, value) in plan {
+            let value = match value {
+                DefaultValue::Text(text) => Value::String(text),
+                DefaultValue::Int(val) => Value::Int(val),
+                DefaultValue::Double(val) => Value::Double(val),
+                DefaultValue::Bool(val) => Value::Bool(val),
+                DefaultValue::Object(child) => {
+                    let defaults = Data::defaults_from(child.as_ref());
+                    Value::Object(Some(defaults))
+                }
+                DefaultValue::Array(elements) => {
+                    let defaults = Array::new();
+                    for element in elements {
+                        defaults.push(Some(&Data::defaults_from(Some(&element))));
+                    }
+                    Value::Array(Some(defaults))
+                }
+            };
+            let item = ItemInner::create(Slot::User, value, parent.clone());
+            inner.push(Arc::new(ItemNode {
+                name,
+                lock: RwLock::new(item),
+            }));
         }
+        drop(inner);
         out
     }
 

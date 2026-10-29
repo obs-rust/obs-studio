@@ -161,6 +161,54 @@ fn test_default_and_autoselect() {
 }
 
 #[test]
+fn defaults_from_copies_every_type_in_order() {
+    let src = Data::new();
+    // A long name (the heap form) and an empty string, so the copy is not
+    // just the inline-name path.
+    src.set_default_string("a_setting_name_longer_than_thirty_one_bytes", Some("x"));
+    src.set_default_string("empty", Some(""));
+    src.set_default_int("count", 7);
+    src.set_default_double("scale", 0.5);
+    src.set_default_bool("enabled", true);
+    let nested = Data::new();
+    nested.set_default_string("child", Some("inner"));
+    nested.set_int("ignored", 1);
+    src.set_default_obj("nested", Some(&nested));
+    let element = Data::new();
+    element.set_default_int("port", 445);
+    let list = Array::new();
+    list.push(Some(&element));
+    src.set_default_array("list", Some(&list));
+
+    let defaults = Data::defaults_from(Some(&src));
+
+    assert_eq!(
+        defaults.json(),
+        concat!(
+            r#"{"a_setting_name_longer_than_thirty_one_bytes":"x","empty":"","#,
+            r#""count":7,"scale":0.5,"enabled":true,"#,
+            r#""nested":{"child":"inner","ignored":0},"list":[{"port":445}]}"#
+        ),
+        "the copy keeps every default, in the source's order"
+    );
+    assert_eq!(
+        defaults.get_string("a_setting_name_longer_than_thirty_one_bytes"),
+        "x"
+    );
+    assert_eq!(defaults.get_string("empty"), "");
+    assert_eq!(defaults.get_int("count"), 7);
+    assert_eq!(defaults.get_double("scale"), 0.5);
+    assert!(defaults.get_bool("enabled"));
+    let nested = defaults.get_obj("nested").unwrap();
+    assert_eq!(nested.get_string("child"), "inner");
+    assert_eq!(nested.get_int("ignored"), 0, "only the default is copied");
+    let list = defaults.get_array("list").unwrap();
+    let elements = list.elements();
+    assert_eq!(elements.len(), 1);
+    assert_eq!(elements[0].get_int("port"), 445);
+}
+
+#[test]
 fn test_apply_erase_clear() {
     let src = Data::new();
     src.set_string("keep", Some("a"));
