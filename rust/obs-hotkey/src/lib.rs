@@ -22,6 +22,7 @@ use obs_util as _; // base log handler
 pub mod bindings;
 pub mod name_map;
 pub mod nix_hotkey_state;
+pub mod nix_x11_keys;
 pub mod pair;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
