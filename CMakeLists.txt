@@ -31,6 +31,13 @@ option(ENABLE_FRONTEND "Enable building with UI (requires Qt)" ON)
 option(ENABLE_SCRIPTING "Enable scripting support" ON)
 option(ENABLE_HEVC "Enable HEVC encoders" ON)
 
+# The Apple frontend links the OS libcurl, whose Brotli decoder this project
+# does not pin, so the shared Accept-Encoding helper keeps asking for gzip and
+# deflate there (#2211, shared/file-updater/file-updater/curl-accept-encoding.h).
+if(OS_MACOS)
+  add_compile_definitions(OBS_CURL_ACCEPT_ENCODING_UNPINNED_BROTLI=1)
+endif()
+
 add_subdirectory(libobs)
 if(OS_WINDOWS)
   add_subdirectory(libobs-d3d11)

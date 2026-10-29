@@ -217,7 +217,7 @@ static void successful_download_reaches_confirm(void **state)
 	 * libcurl's Brotli is not pinned here, so br must not be advertised
 	 * there, and gzip only where that libcurl has zlib (#2453). */
 	const curl_version_info_data *vi = curl_version_info(CURLVERSION_NOW);
-#if OBS_CURL_ACCEPT_ENCODING_APPLE_LIBCURL
+#if OBS_CURL_ACCEPT_ENCODING_UNPINNED_BROTLI
 	if (vi->features & CURL_VERSION_LIBZ)
 		assert_non_null(strstr(accept_encoding, "gzip"));
 	assert_false(lists_coding(accept_encoding, "br"));

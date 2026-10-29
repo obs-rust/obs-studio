@@ -65,7 +65,7 @@ static void this_platform_gets_its_coding(void **state)
 	const curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
 	const char *enc = obs_curl_accept_encoding(info);
 
-#if OBS_CURL_ACCEPT_ENCODING_APPLE_LIBCURL
+#if OBS_CURL_ACCEPT_ENCODING_UNPINNED_BROTLI
 	if (info->features & CURL_VERSION_LIBZ)
 		assert_string_equal(enc, "gzip, deflate");
 	else
