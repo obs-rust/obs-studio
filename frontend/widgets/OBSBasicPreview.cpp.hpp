@@ -63,8 +63,8 @@ vec2 OBSBasicPreview::GetMouseEventPos(QMouseEvent *event)
 	float scale = pixelRatio / main->previewScale;
 	QPoint qtPos = event->pos();
 	vec2 pos;
-	vec2_set(&pos, (qtPos.x() - static_cast<float>(main->previewX) / pixelRatio) * scale,
-		 (qtPos.y() - static_cast<float>(main->previewY) / pixelRatio) * scale);
+	vec2_set(&pos, (static_cast<float>(qtPos.x()) - static_cast<float>(main->previewX) / pixelRatio) * scale,
+		 (static_cast<float>(qtPos.y()) - static_cast<float>(main->previewY) / pixelRatio) * scale);
 
 	return pos;
 }
@@ -117,7 +117,7 @@ static bool SceneItemHasVideo(obs_sceneitem_t *item)
 	return (flags & OBS_SOURCE_VIDEO) != 0;
 }
 
-static bool CloseFloat(float a, float b, float epsilon = 0.01)
+static bool CloseFloat(float a, float b, float epsilon = 0.01f)
 {
 	using std::abs;
 	return abs(a - b) <= epsilon;
@@ -2875,7 +2875,8 @@ void OBSBasicPreview::UpdateXScrollBar(float cx)
 	main->ui->previewXScrollBar->setRange(int(-cx), int(cx));
 
 	QSize targetSize = GetPixelSize(this);
-	main->ui->previewXScrollBar->setPageStep(static_cast<int>(targetSize.width() / std::min(scalingAmount, 1.0f)));
+	main->ui->previewXScrollBar->setPageStep(
+		static_cast<int>(static_cast<float>(targetSize.width()) / std::min(scalingAmount, 1.0f)));
 
 	QSignalBlocker sig(main->ui->previewXScrollBar);
 	main->ui->previewXScrollBar->setValue(int(-scrollingOffset.x));
@@ -2896,7 +2897,8 @@ void OBSBasicPreview::UpdateYScrollBar(float cy)
 	main->ui->previewYScrollBar->setRange(int(-cy), int(cy));
 
 	QSize targetSize = GetPixelSize(this);
-	main->ui->previewYScrollBar->setPageStep(static_cast<int>(targetSize.height() / std::min(scalingAmount, 1.0f)));
+	main->ui->previewYScrollBar->setPageStep(
+		static_cast<int>(static_cast<float>(targetSize.height()) / std::min(scalingAmount, 1.0f)));
 
 	QSignalBlocker sig(main->ui->previewYScrollBar);
 	main->ui->previewYScrollBar->setValue(int(-scrollingOffset.y));
