@@ -8,6 +8,7 @@ pub mod encoder_lifecycle;
 pub mod encoder_packet_ts;
 pub mod encoder_roi;
 pub mod encoder_size;
+pub mod output_begin;
 pub mod output_caption_text;
 pub mod output_delay;
 pub mod output_interleave;

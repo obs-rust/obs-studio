@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-begin.pch.h"
 
 /* calculate_batch_size(): step 1, a video encoder. */
 uint64_t obs_output_begin_video_interval(uint32_t fps_num, uint32_t fps_den, uint32_t frame_rate_divisor)

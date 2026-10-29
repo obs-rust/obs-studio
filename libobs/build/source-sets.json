@@ -222,6 +222,7 @@
     "build/libobs.ported-nsgif-frame+.h.c",
     "build/libobs.ported-nsgif-gif+.h.c",
     "build/libobs.ported-nsgif-lzw+.h.c",
+    "build/libobs.ported-output-begin+.h.c",
     "build/libobs.ported-output-caption-text+.h.c",
     "build/libobs.ported-output-delay+.h.c",
     "build/libobs.ported-output-interleave+.h.c",

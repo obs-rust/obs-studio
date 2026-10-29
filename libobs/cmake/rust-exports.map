@@ -491,6 +491,13 @@
     /* obs-output-stop-stats.c. obs-output.c calls it inside libobs. Not
      * EXPORT. */
     obs_output_stop_stats;
+    /* obs-output-begin.c. obs-output.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_output_begin_video_interval;
+    obs_output_begin_audio_interval;
+    obs_output_begin_batch_size;
+    obs_output_begin_pair_video;
+    obs_output_begin_pair_audio;
     /* obs-output-raw-audio.c. obs-output.c calls them inside libobs. Not
      * EXPORT. */
     obs_output_raw_audio_passthrough;

@@ -568,6 +568,14 @@ obs_output_congestion_clamp
 # libobs. Declared in obs-output-stop-stats.h without EXPORT, so the shim stays
 # hidden the same way.
 obs_output_stop_stats
+# obs-output-begin.c: calculate_batch_size() and pair_encoders() call them
+# inside libobs. Declared in obs-output-begin.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_output_begin_video_interval
+obs_output_begin_audio_interval
+obs_output_begin_batch_size
+obs_output_begin_pair_video
+obs_output_begin_pair_audio
 # obs-output-raw-audio.c: prepare_audio(), default_raw_audio_callback(),
 # start_raw_audio() and hook_data_capture() in obs-output.c call them inside
 # libobs. Declared in obs-output-raw-audio.h without EXPORT, so the shims stay
