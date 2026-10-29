@@ -251,7 +251,7 @@ bool init_gpu_encoding(struct obs_core_video_mix *video)
 		gs_texture_t *tex;
 		gs_texture_t *tex_uv;
 
-		if (obs_encoder_gpu_gates_p010(info->format)) {
+		if (obs_encoder_gpu_gates_p010((int)info->format)) {
 			gs_texture_create_p010(&tex, &tex_uv, info->width, info->height,
 					       GS_RENDER_TARGET | GS_SHARED_KM_TEX);
 		} else {
