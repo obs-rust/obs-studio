@@ -36,6 +36,8 @@
 #include <string.h>
 
 #include <obs.h>
+#include <obsconfig.h>
+#include <util/platform.h>
 #include <obs-core-setup-rules.h>
 
 /* obs_add_data_path() and obs_remove_data_path() are deprecated, but still
@@ -512,6 +514,102 @@ static void test_monitoring_device(void **state)
 	expect_device("Default", "default");
 }
 
+#define DATA_PROBE "core_setup_rules_probe.txt"
+#define DATA_DIR_A "core_setup_rules_dir_a/"
+#define DATA_DIR_B "core_setup_rules_dir_b/"
+
+static void write_probe(const char *dir)
+{
+	char path[256];
+	snprintf(path, sizeof(path), "%s%s", dir, DATA_PROBE);
+	os_mkdir(dir);
+	assert_true(os_quick_write_utf8_file(path, "x", 1, false));
+}
+
+static void remove_probe(const char *dir)
+{
+	char path[256];
+	snprintf(path, sizeof(path), "%s%s", dir, DATA_PROBE);
+	os_unlink(path);
+	os_rmdir(dir);
+}
+
+static void expect_found(const char *file, const char *want)
+{
+	char *found = obs_find_data_file(file);
+	if (!want) {
+		assert_null(found);
+		return;
+	}
+	assert_non_null(found);
+	assert_string_equal(found, want);
+	bfree(found);
+}
+
+/* obs_find_data_file(): the libobs data directory first, then each added
+ * path in the order it was added; the first hit wins. */
+static void test_find_data_file_order(void **state)
+{
+	(void)state;
+	SKIP_WITHOUT_OBS();
+
+	char *missing = obs_find_data_file(DATA_PROBE);
+	if (missing) {
+		/* characterized, not endorsed: on macOS find_libobs_data_file
+		 * returns the libobs framework's Resources path without checking
+		 * that the file exists, so the added paths are never searched
+		 * (as test_obs_core_info_characterization pins). */
+		bfree(missing);
+		skip();
+	}
+
+	write_probe(DATA_DIR_A);
+	write_probe(DATA_DIR_B);
+
+	/* Not found anywhere yet. */
+	expect_found(DATA_PROBE, NULL);
+
+	/* The first added path that has the file wins. */
+	obs_add_data_path(DATA_DIR_A);
+	obs_add_data_path(DATA_DIR_B);
+	expect_found(DATA_PROBE, DATA_DIR_A DATA_PROBE);
+
+	/* A path without the file is passed over. */
+	remove_probe(DATA_DIR_A);
+	expect_found(DATA_PROBE, DATA_DIR_B DATA_PROBE);
+	write_probe(DATA_DIR_A);
+
+	/* Without the first path, the second. */
+	assert_true(obs_remove_data_path(DATA_DIR_A));
+	expect_found(DATA_PROBE, DATA_DIR_B DATA_PROBE);
+
+	/* Added again, it now comes after the second. */
+	obs_add_data_path(DATA_DIR_A);
+	expect_found(DATA_PROBE, DATA_DIR_B DATA_PROBE);
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+	/* The libobs data directory comes before every added path. On Linux and
+	 * the BSDs find_libobs_data_file() looks in OBS_DATA_PATH "/libobs/"
+	 * first, relative to the working directory in a build tree: a probe put
+	 * there and in an added path is found in the libobs directory. */
+	if (OBS_DATA_PATH[0] != '/') {
+		assert_int_not_equal(os_mkdirs(OBS_DATA_PATH "/libobs"), MKDIR_ERROR);
+		write_probe(OBS_DATA_PATH "/libobs/");
+		expect_found(DATA_PROBE, OBS_DATA_PATH "/libobs/" DATA_PROBE);
+		char path[256];
+		snprintf(path, sizeof(path), "%s%s", OBS_DATA_PATH "/libobs/", DATA_PROBE);
+		os_unlink(path);
+		expect_found(DATA_PROBE, DATA_DIR_B DATA_PROBE);
+	}
+#endif
+
+	assert_true(obs_remove_data_path(DATA_DIR_B));
+	assert_true(obs_remove_data_path(DATA_DIR_A));
+	expect_found(DATA_PROBE, NULL);
+	remove_probe(DATA_DIR_A);
+	remove_probe(DATA_DIR_B);
+}
+
 /* Before any video reset there is no main mix: nothing is counted, and
  * either count may be left out. */
 static void test_frame_counts_without_mix(void **state)
@@ -542,8 +640,9 @@ int main(void)
 		CASE(test_monitor),    CASE(test_mix_step),         CASE(test_before_startup),
 	};
 	const struct CMUnitTest callers[] = {
-		CASE(test_reset_video_gates), CASE(test_reset_audio_ticks), CASE(test_cmdline_once),
-		CASE(test_latest_input_type), CASE(test_monitoring_device), CASE(test_frame_counts_without_mix),
+		CASE(test_reset_video_gates),    CASE(test_reset_audio_ticks), CASE(test_cmdline_once),
+		CASE(test_latest_input_type),    CASE(test_monitoring_device), CASE(test_frame_counts_without_mix),
+		CASE(test_find_data_file_order),
 	};
 	int failed = cmocka_run_group_tests_name("steps", steps, NULL, NULL);
 	failed += cmocka_run_group_tests_name("callers", callers, group_setup, group_teardown);
