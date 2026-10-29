@@ -375,11 +375,11 @@ fn steps_active_child_gates() {
     assert!(!moves_scene(&0u32, &0));
 
     assert!(item_active(1));
-    assert!(item_active(i64::from(i32::MAX)));
+    assert!(item_active(2_147_483_647));
     // a count gone negative counts as inactive, as 0 does
     assert!(!item_active(0));
     assert!(!item_active(-1));
-    assert!(!item_active(i64::from(i32::MIN)));
+    assert!(!item_active(-2_147_483_648));
 }
 
 // ---------------------------------------------------------------------------
@@ -602,7 +602,7 @@ proptest! {
     #[test]
     fn edge_gates_any(
         parent in 0u8..4, scene in 0u8..4, group_scene in 0u8..4,
-        in_group: bool, has_item: bool, has_parent: bool, active_refs: i64,
+        in_group: bool, has_item: bool, has_parent: bool, active_refs: std::ffi::c_long,
     ) {
         prop_assert_eq!(
             add_item_allowed(&parent, &scene, &group_scene),

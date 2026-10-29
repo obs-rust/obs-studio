@@ -51,6 +51,8 @@
     clippy::unreachable
 )]
 
+use std::ffi::c_long;
+
 /// `enum obs_order_movement` (`obs.h`).
 pub const OBS_ORDER_MOVE_UP: i32 = 0;
 /// `enum obs_order_movement` (`obs.h`).
@@ -267,6 +269,6 @@ pub fn moves_scene<T: PartialEq>(from: &T, to: &T) -> bool {
 
 /// The second check of `move_active_child()`: whether the item has an active
 /// reference (the count the caller loads once the scenes differ).
-pub fn item_active(active_refs: i64) -> bool {
+pub fn item_active(active_refs: c_long) -> bool {
     active_refs > 0
 }

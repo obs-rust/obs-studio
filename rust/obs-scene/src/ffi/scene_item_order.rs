@@ -239,5 +239,5 @@ pub extern "C" fn obs_scene_item_order_moves_scene(from: *const c_void, to: *con
 /// `bool obs_scene_item_order_item_active(long active_refs)`.
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_scene_item_order_item_active(active_refs: c_long) -> bool {
-    core::item_active(i64::from(active_refs))
+    core::item_active(active_refs)
 }
