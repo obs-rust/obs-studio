@@ -617,6 +617,10 @@ struct obs_core_audio {
 	struct deque tasks;
 
 	struct obs_source *monitoring_duplicating_source;
+
+	/* Set by obs_init_audio() once both mutexes above exist, so
+	 * obs_free_audio() never destroys a fresh, never-opened core (#2910). */
+	bool mutexes_initialised;
 };
 
 /* user sources, output channels, and displays */

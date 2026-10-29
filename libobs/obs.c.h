@@ -686,8 +686,16 @@ static bool obs_init_audio(struct audio_output_info *ai)
 
 	if (pthread_mutex_init_recursive(&audio->monitoring_mutex) != 0)
 		return false;
-	if (pthread_mutex_init(&audio->task_mutex, NULL) != 0)
+	if (pthread_mutex_init(&audio->task_mutex, NULL) != 0) {
+		pthread_mutex_destroy(&audio->monitoring_mutex);
 		return false;
+	}
+	/* Both are live now; obs_free_audio() may only destroy them from here on.
+	 * A reset with no info (obs_reset_audio2(NULL)) reaches obs_free_audio()
+	 * on a core that was never opened, and destroying an uninitialised mutex
+	 * faults on the Windows pthread layer (the Windows Tier 2 lane segfaulted
+	 * in test_core_setup_rules_steps, #2910). */
+	audio->mutexes_initialised = true;
 
 	struct obs_task_info audio_init = {.task = set_audio_thread};
 	deque_push_back(&audio->tasks, &audio_init, sizeof(audio_init));
@@ -734,8 +742,12 @@ static void obs_free_audio(void)
 	bfree(audio->monitoring_device_name);
 	bfree(audio->monitoring_device_id);
 	deque_free(&audio->tasks);
-	pthread_mutex_destroy(&audio->task_mutex);
-	pthread_mutex_destroy(&audio->monitoring_mutex);
+	/* Only the mutexes obs_init_audio() actually created; this also runs for
+	 * a core that was never opened (obs_reset_audio2(NULL), #2910). */
+	if (audio->mutexes_initialised) {
+		pthread_mutex_destroy(&audio->task_mutex);
+		pthread_mutex_destroy(&audio->monitoring_mutex);
+	}
 
 	memset(audio, 0, sizeof(struct obs_core_audio));
 }
