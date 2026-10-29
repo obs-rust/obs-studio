@@ -257,9 +257,9 @@ void updateSwapchainFramebuffer(gs_device_t *device, OBSFrameBufferUpdateData up
     [swapContext makeCurrentContext];
     [swapContext update];
 
-    gs_texture_t *framebufferTexture = device_texture_create(device, updateData.textureSize.width,
-                                                             updateData.textureSize.height, updateData.textureFormat, 1,
-                                                             NULL, GS_RENDER_TARGET);
+    gs_texture_t *framebufferTexture = device_texture_create(device, (uint32_t) updateData.textureSize.width,
+                                                             (uint32_t) updateData.textureSize.height,
+                                                             updateData.textureFormat, 1, NULL, GS_RENDER_TARGET);
 
     if (!framebufferTexture) {
         blog(LOG_ERROR, "gl_update (deferred): Unable to generate backing texture for frame buffer.");
@@ -524,8 +524,8 @@ gs_texture_t *device_texture_create_from_iosurface(gs_device_t *device, void *io
         goto fail;
 
     CGLError err = CGLTexImageIOSurface2D([[NSOpenGLContext currentContext] CGLContextObj], tex->base.gl_target,
-                                          tex->base.gl_internal_format, tex->width, tex->height, tex->base.gl_format,
-                                          tex->base.gl_type, ref, 0);
+                                          tex->base.gl_internal_format, (GLsizei) tex->width, (GLsizei) tex->height,
+                                          tex->base.gl_format, tex->base.gl_type, ref, 0);
 
     if (err != kCGLNoError) {
         blog(LOG_ERROR,
@@ -599,8 +599,8 @@ bool gs_texture_rebind_iosurface(gs_texture_t *texture, void *iosurf)
         return false;
 
     CGLError err = CGLTexImageIOSurface2D([[NSOpenGLContext currentContext] CGLContextObj], tex->base.gl_target,
-                                          tex->base.gl_internal_format, tex->width, tex->height, tex->base.gl_format,
-                                          tex->base.gl_type, ref, 0);
+                                          tex->base.gl_internal_format, (GLsizei) tex->width, (GLsizei) tex->height,
+                                          tex->base.gl_format, tex->base.gl_type, ref, 0);
 
     if (err != kCGLNoError) {
         blog(LOG_ERROR,
