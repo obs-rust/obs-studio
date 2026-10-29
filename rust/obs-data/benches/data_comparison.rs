@@ -24,6 +24,12 @@ unsafe extern "C" {
     fn oracle_obs_data_set_obj(data: *mut c_void, name: *const c_char, obj: *mut c_void);
     fn oracle_obs_data_set_default_int(data: *mut c_void, name: *const c_char, val: i64);
     fn oracle_obs_data_set_default_bool(data: *mut c_void, name: *const c_char, val: bool);
+    fn oracle_obs_data_set_default_string(
+        data: *mut c_void,
+        name: *const c_char,
+        val: *const c_char,
+    );
+    fn oracle_obs_data_get_defaults(data: *mut c_void) -> *mut c_void;
 }
 
 struct Api {
@@ -35,6 +41,8 @@ struct Api {
     get_int: unsafe extern "C" fn(*mut c_void, *const c_char) -> i64,
     set_default_int: unsafe extern "C" fn(*mut c_void, *const c_char, i64),
     set_default_bool: unsafe extern "C" fn(*mut c_void, *const c_char, bool),
+    set_default_string: unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char),
+    get_defaults: unsafe extern "C" fn(*mut c_void) -> *mut c_void,
 }
 
 const RUST: Api = Api {
@@ -46,6 +54,8 @@ const RUST: Api = Api {
     get_int: rust::obs_data_get_int,
     set_default_int: rust::obs_data_set_default_int,
     set_default_bool: rust::obs_data_set_default_bool,
+    set_default_string: rust::obs_data_set_default_string,
+    get_defaults: rust::obs_data_get_defaults,
 };
 
 const C: Api = Api {
@@ -57,6 +67,8 @@ const C: Api = Api {
     get_int: oracle_obs_data_get_int,
     set_default_int: oracle_obs_data_set_default_int,
     set_default_bool: oracle_obs_data_set_default_bool,
+    set_default_string: oracle_obs_data_set_default_string,
+    get_defaults: oracle_obs_data_get_defaults,
 };
 
 fn names(n: usize) -> Vec<CString> {
@@ -121,6 +133,42 @@ fn source_defaults(c: &mut Criterion) {
     group.finish();
 }
 
+/// Copy that object's defaults: the second half of `obs_get_source_defaults`
+/// is `obs_data_get_defaults`, which walks the item set and builds a fresh
+/// object (#1453). Nine defaults and one string, the shape of `ffmpeg_source`.
+fn defaults(c: &mut Criterion) {
+    let mut group = c.benchmark_group("get_defaults");
+    for (side, api) in [("rust", &RUST), ("c", &C)] {
+        // SAFETY: the API's own object, released at the end of the group.
+        let source = unsafe {
+            let s = (api.create)();
+            (api.set_default_bool)(s, c"is_local_file".as_ptr(), true);
+            (api.set_default_bool)(s, c"looping".as_ptr(), false);
+            (api.set_default_bool)(s, c"clear_on_media_end".as_ptr(), true);
+            (api.set_default_bool)(s, c"restart_on_activate".as_ptr(), true);
+            (api.set_default_bool)(s, c"linear_alpha".as_ptr(), false);
+            (api.set_default_int)(s, c"reconnect_delay_sec".as_ptr(), 10);
+            (api.set_default_int)(s, c"buffering_mb".as_ptr(), 2);
+            (api.set_default_int)(s, c"speed_percent".as_ptr(), 100);
+            (api.set_default_bool)(s, c"log_changes".as_ptr(), true);
+            (api.set_default_string)(s, c"hw_device".as_ptr(), c"/dev/dri/renderD128".as_ptr());
+            s
+        };
+        group.bench_function(side, |b| {
+            b.iter(|| {
+                // SAFETY: a fresh defaults object, released here.
+                unsafe {
+                    let copied = (api.get_defaults)(black_box(source));
+                    (api.release)(black_box(copied));
+                }
+            })
+        });
+        // SAFETY: created above, released once.
+        unsafe { (api.release)(source) };
+    }
+    group.finish();
+}
+
 /// About 280 KB of JSON: 2,000 child objects with a few fields each.
 fn document() -> CString {
     // SAFETY: oracle objects, released here; the JSON text is copied out.
@@ -172,5 +220,5 @@ fn json(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, set_get, source_defaults, json);
+criterion_group!(benches, set_get, source_defaults, defaults, json);
 criterion_main!(benches);
