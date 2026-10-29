@@ -55,8 +55,9 @@
 //! decides how much of a plugin's registration structure is copied and
 //! which of its fields lie within the size it gave; [`core_setup_rules`]
 //! holds the video and audio reset gates, the audio buffering ticks, the
-//! command line copy, the data path and latest input type rules, the
-//! monitoring device checks and which mixes count toward the frame counts.
+//! command line copy, the data file search, the data path and latest input
+//! type rules, the monitoring device checks and which mixes count toward
+//! the frame counts.
 //! The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
