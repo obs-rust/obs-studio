@@ -2314,8 +2314,8 @@ static void source_render(obs_source_t *source, gs_effect_t *effect)
 		}
 
 		gs_texrender_reset(source->color_space_texrender);
-		const int cx = get_base_width(source);
-		const int cy = get_base_height(source);
+		const uint32_t cx = get_base_width(source);
+		const uint32_t cy = get_base_height(source);
 		if (gs_texrender_begin_with_color_space(source->color_space_texrender, cx, cy, source_space)) {
 			gs_enable_blending(false);
 
@@ -2654,7 +2654,7 @@ static bool filter_compatible(obs_source_t *source, obs_source_t *filter)
 	uint32_t f_caps = filter->info.output_flags & OBS_SOURCE_AV;
 
 	if ((f_caps & OBS_SOURCE_AUDIO) != 0 && (f_caps & OBS_SOURCE_VIDEO) == 0)
-		f_caps &= ~OBS_SOURCE_ASYNC;
+		f_caps &= ~(uint32_t)OBS_SOURCE_ASYNC;
 
 	return (s_caps & f_caps) == f_caps;
 }
@@ -3888,8 +3888,8 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 
 	filter_flags = filter->info.output_flags;
 	parent_flags = parent->info.output_flags;
-	cx = get_base_width(target);
-	cy = get_base_height(target);
+	cx = (int)get_base_width(target);
+	cy = (int)get_base_height(target);
 
 	filter->allow_direct = allow_direct;
 
@@ -3917,7 +3917,7 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 		filter->filter_texrender = gs_texrender_create(format, GS_ZS_NONE);
 	}
 
-	if (gs_texrender_begin_with_color_space(filter->filter_texrender, cx, cy, space)) {
+	if (gs_texrender_begin_with_color_space(filter->filter_texrender, (uint32_t)cx, (uint32_t)cy, space)) {
 		gs_blend_state_push();
 		gs_blend_function_separate(GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 
@@ -4657,7 +4657,7 @@ static void source_signal_push_to_delay(obs_source_t *source, const char *signal
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
-	calldata_set_int(&data, "delay", delay);
+	calldata_set_int(&data, "delay", (long long)delay);
 
 	signal_handler_signal(source->context.signals, signal, &data);
 }
@@ -5362,7 +5362,7 @@ EXPORT void obs_enable_source_type(const char *name, bool enable)
 		return;
 
 	if (enable)
-		info->output_flags &= ~OBS_SOURCE_CAP_DISABLED;
+		info->output_flags &= ~(uint32_t)OBS_SOURCE_CAP_DISABLED;
 	else
 		info->output_flags |= OBS_SOURCE_CAP_DISABLED;
 }

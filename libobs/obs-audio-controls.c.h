@@ -397,7 +397,7 @@ static void volmeter_process_peak_last_samples(obs_volmeter_t *volmeter, int cha
 
 static void volmeter_process_peak(obs_volmeter_t *volmeter, const struct audio_data *data, int nr_channels)
 {
-	int nr_samples = data->frames;
+	int nr_samples = (int)data->frames;
 	int channel_nr = 0;
 	for (int plane_nr = 0; channel_nr < nr_channels; plane_nr++) {
 		float *samples = (float *)data->data[plane_nr];
@@ -420,16 +420,16 @@ static void volmeter_process_peak(obs_volmeter_t *volmeter, const struct audio_d
 		float peak;
 		switch (volmeter->peak_meter_type) {
 		case TRUE_PEAK_METER:
-			peak = get_true_peak(previous_samples, samples, nr_samples);
+			peak = get_true_peak(previous_samples, samples, (size_t)nr_samples);
 			break;
 
 		case SAMPLE_PEAK_METER:
 		default:
-			peak = get_sample_peak(previous_samples, samples, nr_samples);
+			peak = get_sample_peak(previous_samples, samples, (size_t)nr_samples);
 			break;
 		}
 
-		volmeter_process_peak_last_samples(volmeter, channel_nr, samples, nr_samples);
+		volmeter_process_peak_last_samples(volmeter, channel_nr, samples, (size_t)nr_samples);
 
 		volmeter->peak[channel_nr] = peak;
 
@@ -806,14 +806,14 @@ int obs_volmeter_get_nr_channels(obs_volmeter_t *volmeter)
 	int obs_nr_audio_channels;
 
 	if (volmeter->source) {
-		source_nr_audio_channels = get_audio_channels(volmeter->source->sample_info.speakers);
+		source_nr_audio_channels = (int)get_audio_channels(volmeter->source->sample_info.speakers);
 	} else {
 		source_nr_audio_channels = 0;
 	}
 
 	struct obs_audio_info audio_info;
 	if (obs_get_audio_info(&audio_info)) {
-		obs_nr_audio_channels = get_audio_channels(audio_info.speakers);
+		obs_nr_audio_channels = (int)get_audio_channels(audio_info.speakers);
 	} else {
 		obs_nr_audio_channels = 2;
 	}

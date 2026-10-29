@@ -125,7 +125,7 @@ static void profile_print_entry(profiler_snapshot_entry_t *entry, struct dstr *i
 	active |= (uint64_t)1 << indent;
 	for (size_t i = 0; i < entry->children.num; i++) {
 		if ((i + 1) == entry->children.num)
-			active &= (1 << indent) - 1;
+			active &= ((uint64_t)1 << indent) - 1;
 		profile_print_entry(&entry->children.array[i], indent_buffer, output_buffer, indent + 1, active, calls);
 	}
 }
@@ -227,7 +227,7 @@ static void profile_print_entry_expected(profiler_snapshot_entry_t *entry, struc
 	active |= (uint64_t)1 << indent;
 	for (size_t i = 0; i < entry->children.num; i++) {
 		if ((i + 1) == entry->children.num)
-			active &= (1 << indent) - 1;
+			active &= ((uint64_t)1 << indent) - 1;
 		profile_print_entry_expected(&entry->children.array[i], indent_buffer, output_buffer, indent + 1,
 					     active, 0);
 	}

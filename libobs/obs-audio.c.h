@@ -136,7 +136,7 @@ static bool ignore_audio(obs_source_t *source, size_t channels, size_t sample_ra
 		blog(LOG_WARNING,
 		     "Source %s audio is lagging (over by %.02f ms) "
 		     "at max audio buffering. Restarting source audio.",
-		     name, step.warn_lag / 1000000.);
+		     name, (double)step.warn_lag / 1000000.);
 	}
 
 	return step.rerender;

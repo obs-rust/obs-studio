@@ -52,7 +52,7 @@ static void new_request(struct portal_inhibit_info *info, char **out_token, char
 	struct dstr path;
 	uint32_t id;
 
-	id = rand();
+	id = (uint32_t)rand();
 
 	dstr_init(&token);
 	dstr_printf(&token, "obs_inhibit_portal%u", id);

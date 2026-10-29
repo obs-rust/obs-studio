@@ -256,7 +256,7 @@ static size_t get_interleaved_start_idx(struct obs_output *output)
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
 			int audio_idx = find_first_packet_type_idx(output, OBS_ENCODER_AUDIO, i);
 			if (audio_idx >= 0 && (size_t)audio_idx < idx)
-				idx = audio_idx;
+				idx = (size_t)audio_idx;
 		}
 	}
 
@@ -267,7 +267,7 @@ static int64_t get_encoder_duration(struct obs_encoder *encoder)
 {
 	struct obs_encoder_interleave_info info = obs_encoder_interleave_info(encoder);
 
-	return (info.timebase_num * 1000000LL / info.timebase_den) * info.framesize;
+	return (int64_t)(info.timebase_num * 1000000LL / info.timebase_den) * (int64_t)info.framesize;
 }
 
 static int prune_premature_packets(struct obs_output *output)

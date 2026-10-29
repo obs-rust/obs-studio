@@ -106,7 +106,12 @@ bool obs_encoder_audio_start_can_send(size_t buffered, size_t framesize_bytes)
 
 int64_t obs_encoder_audio_start_audio_pts(int64_t cur_pts, size_t framesize)
 {
-	return cur_pts + framesize;
+	/* The sum is wrapping, not signed: the test pins
+	 * `(INT64_MAX, 1) == INT64_MIN` and `(-1, SIZE_MAX) == -2`, which is what
+	 * the original `cur_pts + framesize` computed once the usual arithmetic
+	 * conversions made the addition unsigned. Stating it that way keeps the
+	 * value and keeps the arithmetic defined. */
+	return (int64_t)((uint64_t)cur_pts + (uint64_t)framesize);
 }
 
 bool obs_encoder_audio_start_not_video(int type)

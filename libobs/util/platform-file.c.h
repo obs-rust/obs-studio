@@ -112,7 +112,7 @@ size_t os_fread_utf8(FILE *file, char **pstr)
 		if (size <= (size_t)offset)
 			return 0;
 
-		size -= offset;
+		size -= (size_t)offset;
 
 		utf8str = bmalloc(size + 1);
 		fseek(file, offset, SEEK_SET);

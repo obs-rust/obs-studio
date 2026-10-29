@@ -355,7 +355,7 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 	monitor->attr.maxlength = (uint32_t)-1;
 	monitor->attr.minreq = (uint32_t)-1;
 	monitor->attr.prebuf = (uint32_t)-1;
-	monitor->attr.tlength = pa_usec_to_bytes(pulseaudio_monitor_tlength_usec(), &spec);
+	monitor->attr.tlength = (uint32_t)pa_usec_to_bytes(pulseaudio_monitor_tlength_usec(), &spec);
 
 	pa_stream_flags_t flags = pulseaudio_monitor_open_flags(monitor->fallback, id);
 

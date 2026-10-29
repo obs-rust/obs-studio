@@ -1174,8 +1174,8 @@ void obs_set_cmdline_args(int argc, const char *const *argv)
 	for (i = 0; i < argc; i++)
 		len += strlen(argv[i]) + 1;
 
-	cmdline_args.argv = bmalloc(sizeof(char *) * (argc + 1) + len);
-	data = (char *)cmdline_args.argv + sizeof(char *) * (argc + 1);
+	cmdline_args.argv = bmalloc(sizeof(char *) * ((size_t)argc + 1) + len);
+	data = (char *)cmdline_args.argv + sizeof(char *) * ((size_t)argc + 1);
 
 	for (i = 0; i < argc; i++) {
 		cmdline_args.argv[i] = data;
@@ -1601,7 +1601,7 @@ bool obs_reset_audio2(const struct obs_audio_info2 *oai)
 	if (oai->max_buffering_ms) {
 		uint32_t max_frames = oai->max_buffering_ms * oai->samples_per_sec / SEC_TO_MSEC;
 		max_frames += (AUDIO_OUTPUT_FRAMES - 1);
-		audio->max_buffering_ticks = max_frames / AUDIO_OUTPUT_FRAMES;
+		audio->max_buffering_ticks = (int)(max_frames / AUDIO_OUTPUT_FRAMES);
 	} else {
 		audio->max_buffering_ticks = 45;
 	}
@@ -1718,8 +1718,8 @@ bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
 		oai2->samples_per_sec = oai.samples_per_sec;
 		oai2->speakers = oai.speakers;
 		oai2->fixed_buffering = audio->fixed_buffer;
-		oai2->max_buffering_ms =
-			audio->max_buffering_ticks * AUDIO_OUTPUT_FRAMES * SEC_TO_MSEC / (int)oai2->samples_per_sec;
+		oai2->max_buffering_ms = (uint32_t)(audio->max_buffering_ticks * AUDIO_OUTPUT_FRAMES * SEC_TO_MSEC /
+						    (int)oai2->samples_per_sec);
 		return true;
 	}
 }
@@ -1763,7 +1763,7 @@ const char *obs_get_latest_input_type_id(const char *unversioned_id)
 		struct obs_source_info *info = &obs->source_types.array[i];
 		if (strcmp(info->unversioned_id, unversioned_id) == 0 && (int)info->version > version) {
 			latest = info;
-			version = info->version;
+			version = (int)info->version;
 		}
 	}
 
@@ -2567,9 +2567,9 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	obs_data_set_bool(source_data, "enabled", enabled);
 	obs_data_set_bool(source_data, "muted", muted);
 	obs_data_set_bool(source_data, "push-to-mute", push_to_mute);
-	obs_data_set_int(source_data, "push-to-mute-delay", ptm_delay);
+	obs_data_set_int(source_data, "push-to-mute-delay", (long long)ptm_delay);
 	obs_data_set_bool(source_data, "push-to-talk", push_to_talk);
-	obs_data_set_int(source_data, "push-to-talk-delay", ptt_delay);
+	obs_data_set_int(source_data, "push-to-talk-delay", (long long)ptt_delay);
 	obs_data_set_obj(source_data, "hotkeys", hotkey_data);
 	obs_data_set_int(source_data, "deinterlace_mode", di_mode);
 	obs_data_set_int(source_data, "deinterlace_field_order", di_order);

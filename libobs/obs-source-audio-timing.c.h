@@ -123,7 +123,7 @@ void obs_source_audio_timing_under_lock(struct obs_source_audio_timing_under *t)
 		}
 	}
 
-	timestamp += t->sync_offset;
+	timestamp += (uint64_t)t->sync_offset;
 	timestamp -= t->resample_offset;
 
 	t->next_audio_sys_ts_min = t->next_audio_ts_min + t->timing_adjust;
@@ -147,6 +147,6 @@ void obs_source_audio_timing_under_lock(struct obs_source_audio_timing_under *t)
 uint64_t obs_source_audio_timing_buffer_start(uint64_t os_time, int64_t sync_offset, uint64_t resample_offset)
 {
 	if (os_time)
-		return os_time + sync_offset - resample_offset;
+		return os_time + (uint64_t)sync_offset - resample_offset;
 	return os_time;
 }

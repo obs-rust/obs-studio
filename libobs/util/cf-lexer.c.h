@@ -170,7 +170,7 @@ static inline void insert_path(struct cf_preprocessor *pp, struct dstr *str_file
 		slash = strrchr(file, '/');
 		if (slash) {
 			struct dstr path = {0};
-			dstr_ncopy(&path, file, slash - file + 1);
+			dstr_ncopy(&path, file, (size_t)(slash - file + 1));
 			dstr_insert_dstr(str_file, 0, &path);
 			dstr_free(&path);
 		}

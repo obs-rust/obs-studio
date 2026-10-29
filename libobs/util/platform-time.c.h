@@ -45,12 +45,12 @@ struct timespec *os_nstime_to_timespec(uint64_t timestamp, struct timespec *stor
 	int64_t secs = 0;
 	if (timestamp >= timespec_offset.timestamp) {
 		uint64_t offset = timestamp - timespec_offset.timestamp;
-		nsecs = storage->tv_nsec + offset % nsecs_per_sec;
-		secs = storage->tv_sec + offset / nsecs_per_sec;
+		nsecs = (int64_t)((uint64_t)storage->tv_nsec + offset % (uint64_t)nsecs_per_sec);
+		secs = (int64_t)((uint64_t)storage->tv_sec + offset / (uint64_t)nsecs_per_sec);
 	} else {
 		uint64_t offset = timespec_offset.timestamp - timestamp;
-		int64_t nsec_offset = offset % nsecs_per_sec;
-		int64_t sec_offset = offset / nsecs_per_sec;
+		int64_t nsec_offset = (int64_t)(offset % (uint64_t)nsecs_per_sec);
+		int64_t sec_offset = (int64_t)(offset / (uint64_t)nsecs_per_sec);
 		int64_t tv_nsec = storage->tv_nsec;
 		if (nsec_offset > tv_nsec) {
 			storage->tv_sec -= 1;

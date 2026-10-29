@@ -36,7 +36,7 @@ static void *gpu_encode_thread(void *data)
 
 	os_set_thread_name("obs gpu encode thread");
 	const char *gpu_encode_thread_name = profile_store_name(
-		obs_get_profiler_name_store(), "obs_gpu_encode_thread(%g" NBSP "ms)", interval / 1000000.);
+		obs_get_profiler_name_store(), "obs_gpu_encode_thread(%g" NBSP "ms)", (double)interval / 1000000.);
 	profile_register_root(gpu_encode_thread_name, interval);
 
 	while (os_sem_wait(video->gpu_encode_semaphore) == 0) {

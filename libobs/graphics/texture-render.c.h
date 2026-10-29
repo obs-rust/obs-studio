@@ -114,7 +114,7 @@ bool gs_texrender_begin_with_color_space(gs_texrender_t *texrender, uint32_t cx,
 	texrender->prev_space = gs_get_color_space();
 	gs_set_render_target_with_color_space(texrender->target, texrender->zs, space);
 
-	gs_set_viewport(0, 0, texrender->cx, texrender->cy);
+	gs_set_viewport(0, 0, (int)texrender->cx, (int)texrender->cy);
 
 	return true;
 }

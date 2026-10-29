@@ -137,7 +137,7 @@ static inline bool cd_ensure_capacity(calldata_t *data, uint8_t **pos, size_t ne
 		return false;
 	}
 
-	offset = *pos - data->stack;
+	offset = (size_t)(*pos - data->stack);
 
 	new_capacity = data->capacity * 2;
 	if (new_capacity < new_size)
@@ -193,14 +193,14 @@ void calldata_set_data(calldata_t *data, const char *name, const void *in, size_
 
 			if (!cd_ensure_capacity(data, &pos, bytes + offset))
 				return;
-			memmove(pos + offset, pos, bytes - (pos - data->stack));
+			memmove(pos + offset, pos, bytes - (size_t)(pos - data->stack));
 			data->size += offset;
 
 		} else if (cur_size > size) {
 			size_t offset = cur_size - size;
 			size_t bytes = data->size - offset;
 
-			memmove(pos, pos + offset, bytes - (pos - data->stack));
+			memmove(pos, pos + offset, bytes - (size_t)(pos - data->stack));
 			data->size -= offset;
 		}
 

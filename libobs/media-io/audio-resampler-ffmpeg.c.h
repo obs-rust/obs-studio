@@ -150,17 +150,17 @@ audio_resampler_t *audio_resampler_create(const struct resample_info *dst, const
 	rs->context = swr_alloc_set_opts(NULL, rs->output_layout, rs->output_format, dst->samples_per_sec,
 					 rs->input_layout, rs->input_format, src->samples_per_sec, 0, NULL);
 #else
-	int nb_ch = get_audio_channels(src->speakers);
+	int nb_ch = (int)get_audio_channels(src->speakers);
 	av_channel_layout_default(&rs->input_ch_layout, nb_ch);
-	av_channel_layout_default(&rs->output_ch_layout, rs->output_ch);
+	av_channel_layout_default(&rs->output_ch_layout, (int)rs->output_ch);
 	if (src->speakers == SPEAKERS_4POINT1)
 		rs->input_ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_4POINT1;
 
 	if (dst->speakers == SPEAKERS_4POINT1)
 		rs->output_ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_4POINT1;
 
-	swr_alloc_set_opts2(&rs->context, &rs->output_ch_layout, rs->output_format, dst->samples_per_sec,
-			    &rs->input_ch_layout, rs->input_format, src->samples_per_sec, 0, NULL);
+	swr_alloc_set_opts2(&rs->context, &rs->output_ch_layout, rs->output_format, (int)dst->samples_per_sec,
+			    &rs->input_ch_layout, rs->input_format, (int)src->samples_per_sec, 0, NULL);
 #endif
 
 	if (!rs->context) {
@@ -301,12 +301,13 @@ bool audio_resampler_resample(audio_resampler_t *rs, uint8_t *output[], uint32_t
 		if (rs->output_buffer[0])
 			av_freep(&rs->output_buffer[0]);
 
-		av_samples_alloc(rs->output_buffer, NULL, rs->output_ch, estimated, rs->output_format, 0);
+		av_samples_alloc(rs->output_buffer, NULL, (int)rs->output_ch, estimated, rs->output_format, 0);
 
 		rs->output_size = estimated;
 	}
 
-	ret = swr_convert(context, rs->output_buffer, rs->output_size, (const uint8_t **)(uintptr_t)input, in_frames);
+	ret = swr_convert(context, rs->output_buffer, rs->output_size, (const uint8_t **)(uintptr_t)input,
+			  (int)in_frames);
 
 	if (ret < 0) {
 		blog(LOG_ERROR, "swr_convert failed: %d", ret);

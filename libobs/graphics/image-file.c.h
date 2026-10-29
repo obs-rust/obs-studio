@@ -34,7 +34,7 @@ struct gs_image_file_internal {
 
 static void *bi_def_bitmap_create(int width, int height)
 {
-	return bmalloc((size_t)4 * width * height);
+	return bmalloc((size_t)4 * (size_t)width * (size_t)height);
 }
 
 static void bi_def_bitmap_set_opaque(void *bitmap, bool opaque)
@@ -66,8 +66,8 @@ static void bi_def_bitmap_modified(void *bitmap)
 
 static inline int get_full_decoded_gif_size(gs_image_file_ex_t *image)
 {
-	return image->internal->gif_info->width * image->internal->gif_info->height * 4 *
-	       image->internal->gif_info->frame_count;
+	return (int)(image->internal->gif_info->width * image->internal->gif_info->height * 4 *
+		     image->internal->gif_info->frame_count);
 }
 
 static inline void *alloc_mem(gs_image_file_ex_t *image, uint64_t *mem_usage, size_t size)
@@ -151,10 +151,11 @@ static bool init_animated_gif(gs_image_file_ex_t *image, const char *path, uint6
 
 		image->internal->animation_frame_cache =
 			alloc_mem(image, mem_usage, image->internal->gif_info->frame_count * sizeof(uint8_t *));
-		image->internal->animation_frame_data = alloc_mem(image, mem_usage, get_full_decoded_gif_size(image));
+		image->internal->animation_frame_data =
+			alloc_mem(image, mem_usage, (size_t)get_full_decoded_gif_size(image));
 
 		for (unsigned int i = 0; i < image->internal->gif_info->frame_count; i++) {
-			if (nsgif_frame_decode(image->internal->gif, i, &bitmap) != NSGIF_OK)
+			if (nsgif_frame_decode(image->internal->gif, (uint32_t)i, &bitmap) != NSGIF_OK)
 				blog(LOG_WARNING, "Couldn't decode frame %u of '%s'", i, path);
 		}
 
@@ -290,7 +291,7 @@ void gs_image_file_ex_init_texture(gs_image_file_ex_t *image)
 
 static inline uint64_t get_time(gs_image_file_ex_t *image, int i)
 {
-	const nsgif_frame_info_t *gif_frame_info = nsgif_get_frame_info(image->internal->gif, i);
+	const nsgif_frame_info_t *gif_frame_info = nsgif_get_frame_info(image->internal->gif, (uint32_t)i);
 	uint64_t val = (uint64_t)gif_frame_info->delay * 10000000ULL;
 	if (!val)
 		val = 100000000;
@@ -334,15 +335,15 @@ static void decode_new_frame(gs_image_file_ex_t *image, int new_frame, enum gs_i
 
 		/* decode missed frames */
 		for (int i = last_frame; i < new_frame; i++) {
-			if (nsgif_frame_decode(image->internal->gif, i, &bitmap) != NSGIF_OK)
+			if (nsgif_frame_decode(image->internal->gif, (uint32_t)i, &bitmap) != NSGIF_OK)
 				return;
 		}
 
 		/* decode actual desired frame */
-		if (nsgif_frame_decode(image->internal->gif, new_frame, &bitmap) == NSGIF_OK) {
+		if (nsgif_frame_decode(image->internal->gif, (uint32_t)new_frame, &bitmap) == NSGIF_OK) {
 			const size_t area =
 				(size_t)image->internal->gif_info->width * image->internal->gif_info->height;
-			size_t pos = new_frame * area * 4;
+			size_t pos = (size_t)new_frame * area * 4;
 			image->internal->animation_frame_cache[new_frame] = image->internal->animation_frame_data + pos;
 
 			if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB) {

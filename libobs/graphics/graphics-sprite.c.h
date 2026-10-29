@@ -190,13 +190,13 @@ struct gs_texture_mip_plan gs_texture_mip_plan(uint32_t width, uint32_t height, 
 		plan.warning = GS_TEXTURE_MIP_NOT_POW2;
 
 		uses_mipmaps = false;
-		flags &= ~GS_SPRITE_BUILD_MIPMAPS;
+		flags &= ~(uint32_t)GS_SPRITE_BUILD_MIPMAPS;
 		levels = 1;
 	}
 
 	if (uses_mipmaps && flags & GS_SPRITE_RENDER_TARGET) {
 		plan.warning = GS_TEXTURE_MIP_RENDER_TARGET;
-		flags &= ~GS_SPRITE_BUILD_MIPMAPS;
+		flags &= ~(uint32_t)GS_SPRITE_BUILD_MIPMAPS;
 		levels = 1;
 	}
 

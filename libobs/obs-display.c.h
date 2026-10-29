@@ -210,7 +210,7 @@ static inline bool render_display_begin(struct obs_display *display, uint32_t cx
 		gs_set_cull_mode(GS_NEITHER);
 
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
-		gs_set_viewport(0, 0, cx, cy);
+		gs_set_viewport(0, 0, (int)cx, (int)cy);
 
 		if (obs_display_clear_draws_solid(use_clear_workaround)) {
 			gs_effect_t *const solid_effect = obs->video.solid_effect;

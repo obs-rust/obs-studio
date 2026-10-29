@@ -771,15 +771,15 @@ static inline void render_item(struct obs_scene_item *item)
 
 			switch (item_render_child(item)) {
 			case OBS_SCENE_RENDER_CHILD_SHOW: {
-				const int show_cx = obs_source_get_width(item->source);
-				const int show_cy = obs_source_get_height(item->source);
+				const uint32_t show_cx = obs_source_get_width(item->source);
+				const uint32_t show_cy = obs_source_get_height(item->source);
 				obs_transition_set_size(item->show_transition, show_cx, show_cy);
 				obs_source_video_render(item->show_transition);
 				break;
 			}
 			case OBS_SCENE_RENDER_CHILD_HIDE: {
-				const int hide_cx = obs_source_get_width(item->source);
-				const int hide_cy = obs_source_get_height(item->source);
+				const uint32_t hide_cx = obs_source_get_width(item->source);
+				const uint32_t hide_cy = obs_source_get_height(item->source);
 				obs_transition_set_size(item->hide_transition, hide_cx, hide_cy);
 				obs_source_video_render(item->hide_transition);
 				break;
@@ -804,15 +804,15 @@ static inline void render_item(struct obs_scene_item *item)
 	} else {
 		switch (item_render_child(item)) {
 		case OBS_SCENE_RENDER_CHILD_SHOW: {
-			const int cx = obs_source_get_width(item->source);
-			const int cy = obs_source_get_height(item->source);
+			const uint32_t cx = obs_source_get_width(item->source);
+			const uint32_t cy = obs_source_get_height(item->source);
 			obs_transition_set_size(item->show_transition, cx, cy);
 			obs_source_video_render(item->show_transition);
 			break;
 		}
 		case OBS_SCENE_RENDER_CHILD_HIDE: {
-			const int cx = obs_source_get_width(item->source);
-			const int cy = obs_source_get_height(item->source);
+			const uint32_t cx = obs_source_get_width(item->source);
+			const uint32_t cy = obs_source_get_height(item->source);
 			obs_transition_set_size(item->hide_transition, cx, cy);
 			obs_source_video_render(item->hide_transition);
 			break;
@@ -3899,10 +3899,10 @@ void obs_sceneitem_do_transition(obs_sceneitem_t *item, bool visible)
 	if (!transition)
 		return;
 
-	int duration = (int)obs_sceneitem_get_transition_duration(item, visible);
+	uint32_t duration = obs_sceneitem_get_transition_duration(item, visible);
 
-	const int cx = obs_source_get_width(item->source);
-	const int cy = obs_source_get_height(item->source);
+	const uint32_t cx = obs_source_get_width(item->source);
+	const uint32_t cy = obs_source_get_height(item->source);
 	obs_transition_set_size(transition, cx, cy);
 	obs_transition_set_alignment(transition, OBS_ALIGN_CENTER);
 	obs_transition_set_scale_type(transition, OBS_TRANSITION_SCALE_ASPECT);

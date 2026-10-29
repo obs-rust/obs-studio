@@ -420,8 +420,8 @@ static void add_connection(struct obs_encoder *encoder)
 		 * encoder runs at 60fps and another at 30fps, reconfiguration can only occur on every 2nd frame
 		 * of the 60fps encoder).
 		 */
-		encoder->encoder_group->frame_rate_divisors_lcm =
-			lcm(encoder->encoder_group->frame_rate_divisors_lcm, encoder->frame_rate_divisor);
+		encoder->encoder_group->frame_rate_divisors_lcm = (uint32_t)lcm(
+			(int)encoder->encoder_group->frame_rate_divisors_lcm, (int)encoder->frame_rate_divisor);
 
 		uint32_t started = obs_encoder_lifecycle_started_inc(encoder->encoder_group->num_encoders_started);
 		encoder->encoder_group->num_encoders_started = started;

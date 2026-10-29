@@ -56,7 +56,7 @@ struct obs_data_number {
 
 static inline size_t get_align_size(size_t size)
 {
-	const size_t alignment = base_get_alignment();
+	const size_t alignment = (size_t)base_get_alignment();
 	return (size + alignment - 1) & ~(alignment - 1);
 }
 
@@ -64,7 +64,7 @@ static inline size_t get_align_size(size_t size)
 static inline size_t get_name_align_size(const char *name)
 {
 	size_t name_size = strlen(name) + 1;
-	size_t alignment = base_get_alignment();
+	size_t alignment = (size_t)base_get_alignment();
 	size_t total_size;
 
 	total_size = sizeof(struct obs_data_item) + (name_size + alignment - 1);

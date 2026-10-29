@@ -1519,9 +1519,9 @@ static size_t extract_buffer_from_sei(sei_t *sei, uint8_t **data_out)
 	sei_message_t *msg = sei_message_head(sei);
 	int payload_size = (int)sei_message_size(msg);
 	uint8_t *payload_data = sei_message_data(msg);
-	*data_out = bmalloc(payload_size);
-	memcpy(*data_out, payload_data, payload_size);
-	return payload_size;
+	*data_out = bmalloc((size_t)payload_size);
+	memcpy(*data_out, payload_data, (size_t)payload_size);
+	return (size_t)payload_size;
 }
 
 static const uint8_t nal_start[4] = {0, 0, 0, 1};
@@ -1625,7 +1625,7 @@ static bool add_caption(struct obs_output *output, struct encoder_packet *out)
 		bfree(caption_buf);
 
 		sei_message_t *msg = sei_message_new(sei_type_user_data_registered_itu_t_t35, 0, CEA608_MAX_SIZE);
-		msg->size = cea708_render(&cea708, sei_message_data(msg), sei_message_size(msg));
+		msg->size = (size_t)cea708_render(&cea708, sei_message_data(msg), sei_message_size(msg));
 		sei_message_append(&sei, msg);
 	} else if (ctrack->caption_head) {
 		caption_frame_t cf;
@@ -1875,7 +1875,7 @@ static inline void start_raw_audio(obs_output_t *output)
 	if (output->info.raw_audio2) {
 		for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
 			if (obs_output_raw_audio_mix_on(output->mixer_mask, (size_t)idx)) {
-				audio_output_connect(output->audio, idx, get_audio_conversion(output),
+				audio_output_connect(output->audio, (size_t)idx, get_audio_conversion(output),
 						     default_raw_audio_callback, output);
 			}
 		}
@@ -2317,7 +2317,7 @@ static inline void stop_raw_audio(obs_output_t *output)
 	if (output->info.raw_audio2) {
 		for (int idx = 0; idx < MAX_AUDIO_MIXES; idx++) {
 			if (obs_output_raw_audio_mix_on(output->mixer_mask, (size_t)idx)) {
-				audio_output_disconnect(output->audio, idx, default_raw_audio_callback, output);
+				audio_output_disconnect(output->audio, (size_t)idx, default_raw_audio_callback, output);
 			}
 		}
 	} else {
@@ -2520,7 +2520,7 @@ static void output_reconnect(struct obs_output *output)
 	}
 
 	if (!reconnecting(output)) {
-		output->reconnect_retry_cur_msec = output->reconnect_retry_sec * 1000;
+		output->reconnect_retry_cur_msec = (uint32_t)(output->reconnect_retry_sec * 1000);
 		output->reconnect_retries = 0;
 	}
 
@@ -2540,7 +2540,7 @@ static void output_reconnect(struct obs_output *output)
 
 	if (output->reconnect_retries) {
 		output->reconnect_retry_cur_msec =
-			(uint32_t)(output->reconnect_retry_cur_msec * output->reconnect_retry_exp);
+			(uint32_t)((float)output->reconnect_retry_cur_msec * output->reconnect_retry_exp);
 		if (output->reconnect_retry_cur_msec > RECONNECT_RETRY_MAX_MSEC) {
 			output->reconnect_retry_cur_msec = RECONNECT_RETRY_MAX_MSEC;
 		}

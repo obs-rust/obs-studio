@@ -137,10 +137,10 @@ fail:
 static void *ffmpeg_image_copy_data_straight(struct ffmpeg_image *info, AVFrame *frame)
 {
 	const size_t linesize = (size_t)info->cx * 4;
-	const size_t totalsize = info->cy * linesize;
+	const size_t totalsize = (size_t)info->cy * linesize;
 	void *data = bmalloc(totalsize);
 
-	const size_t src_linesize = frame->linesize[0];
+	const size_t src_linesize = (size_t)frame->linesize[0];
 	if (linesize != src_linesize) {
 		const size_t min_line = linesize < src_linesize ? linesize : src_linesize;
 
@@ -255,9 +255,9 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 			data = ffmpeg_image_copy_data_straight(info, frame);
 		} else {
 			const size_t linesize = (size_t)info->cx * 4;
-			const size_t totalsize = info->cy * linesize;
+			const size_t totalsize = (size_t)info->cy * linesize;
 			data = bmalloc(totalsize);
-			const size_t src_linesize = frame->linesize[0];
+			const size_t src_linesize = (size_t)frame->linesize[0];
 			const size_t min_line = linesize < src_linesize ? linesize : src_linesize;
 			uint8_t *dst = data;
 			const uint8_t *src = frame->data[0];
@@ -278,8 +278,8 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 		}
 	} else if (info->format == AV_PIX_FMT_RGBA64BE) {
 		const size_t dst_linesize = (size_t)info->cx * 4;
-		data = bmalloc(info->cy * dst_linesize);
-		const size_t src_linesize = frame->linesize[0];
+		data = bmalloc((size_t)info->cy * dst_linesize);
+		const size_t src_linesize = (size_t)frame->linesize[0];
 		const size_t src_min_line = (dst_linesize * 2) < src_linesize ? (dst_linesize * 2) : src_linesize;
 		const size_t row_elements = src_min_line >> 3;
 		uint8_t *dst = data;
@@ -380,7 +380,7 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 		}
 
 		const size_t linesize = (size_t)info->cx * 4;
-		data = bmalloc(info->cy * linesize);
+		data = bmalloc((size_t)info->cy * linesize);
 		const uint8_t *src = pointers[0];
 		uint8_t *dst = data;
 		for (size_t y = 0; y < (size_t)info->cy; y++) {
@@ -392,9 +392,9 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 		av_freep(pointers);
 
 		if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB) {
-			gs_premultiply_xyza_srgb_loop(data, (size_t)info->cx * info->cy);
+			gs_premultiply_xyza_srgb_loop(data, (size_t)info->cx * (size_t)info->cy);
 		} else if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY) {
-			gs_premultiply_xyza_loop(data, (size_t)info->cx * info->cy);
+			gs_premultiply_xyza_loop(data, (size_t)info->cx * (size_t)info->cy);
 		}
 
 		info->format = format;

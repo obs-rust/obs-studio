@@ -1320,14 +1320,14 @@ gs_texture_t *gs_cubetexture_create(uint32_t size, enum gs_color_format color_fo
 				  "mipmaps for this texture.");
 
 		uses_mipmaps = false;
-		flags &= ~GS_BUILD_MIPMAPS;
+		flags &= ~(uint32_t)GS_BUILD_MIPMAPS;
 		levels = 1;
 	}
 
 	if (uses_mipmaps && flags & GS_RENDER_TARGET) {
 		blog(LOG_WARNING, "Cannot use mipmaps with render targets.  "
 				  "Disabling mipmaps for this texture.");
-		flags &= ~GS_BUILD_MIPMAPS;
+		flags &= ~(uint32_t)GS_BUILD_MIPMAPS;
 		levels = 1;
 		/* Unlike gs_texture_create(), which keeps it: the devices
 		 * read the data face by face, each face with all the levels

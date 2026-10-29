@@ -21,7 +21,7 @@
  * hash function to get an even distribution across buckets.
  * (Realistically this should never wrap, who has 4.29 billion hotkeys?!)  */
 #undef HASH_FUNCTION
-#define HASH_FUNCTION(s, len, hashv) (hashv) = *s % UINT_MAX
+#define HASH_FUNCTION(s, len, hashv) (hashv) = (unsigned int)(*s % UINT_MAX)
 
 /* Custom definitions to make adding/looking up size_t integers easier */
 #define HASH_ADD_HKEY(head, idfield, add) HASH_ADD(hh, head, idfield, sizeof(size_t), add)
@@ -1219,7 +1219,7 @@ void obs_hotkeys_configure_background(void)
 		return;
 
 	obs->hotkeys.background.configure = true;
-	obs->hotkeys.background.flags &= ~OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED;
+	obs->hotkeys.background.flags &= ~(uint32_t)OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED;
 	wake_background_client();
 }
 

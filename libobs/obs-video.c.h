@@ -102,7 +102,7 @@ static inline void set_render_size(uint32_t width, uint32_t height)
 	gs_set_cull_mode(GS_NEITHER);
 
 	gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
-	gs_set_viewport(0, 0, width, height);
+	gs_set_viewport(0, 0, (int)width, (int)height);
 }
 
 static inline void unmap_last_surface(struct obs_core_video_mix *video)
@@ -678,7 +678,7 @@ static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, u
 	const int count = step.count;
 	*p_time = step.frame_time;
 
-	obs_video_stats_add_frames(&video->stats, count, count - 1);
+	obs_video_stats_add_frames(&video->stats, (uint32_t)count, (uint32_t)(count - 1));
 
 	vframe_info.timestamp = cur_time;
 	vframe_info.count = count;
@@ -943,8 +943,8 @@ void *obs_graphics_thread(void *param)
 
 	os_set_thread_name("libobs: graphics thread");
 
-	const char *video_thread_name = profile_store_name(obs_get_profiler_name_store(),
-							   "obs_graphics_thread(%g" NBSP "ms)", interval / 1000000.);
+	const char *video_thread_name = profile_store_name(
+		obs_get_profiler_name_store(), "obs_graphics_thread(%g" NBSP "ms)", (double)interval / 1000000.);
 	profile_register_root(video_thread_name, interval);
 
 	srand((unsigned int)time(NULL));

@@ -683,7 +683,7 @@ static int get_keysym(obs_key_t key)
 static inline void fill_base_keysyms(struct obs_core_hotkeys *hotkeys)
 {
 	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++)
-		hotkeys->platform_context->base_keysyms[i] = get_keysym(i);
+		hotkeys->platform_context->base_keysyms[i] = (xcb_keysym_t)get_keysym((obs_key_t)i);
 }
 
 static obs_key_t key_from_base_keysym(obs_hotkeys_platform_t *context, xcb_keysym_t code)
@@ -734,7 +734,7 @@ static inline bool fill_keycodes(struct obs_core_hotkeys *hotkeys)
 
 	context->min_keycode = setup->min_keycode;
 
-	cookie = xcb_get_keyboard_mapping(connection, mincode, maxcode - mincode + 1);
+	cookie = xcb_get_keyboard_mapping(connection, (xcb_keycode_t)mincode, (uint8_t)(maxcode - mincode + 1));
 
 	reply = xcb_get_keyboard_mapping_reply(connection, cookie, &error);
 
@@ -748,7 +748,7 @@ static inline bool fill_keycodes(struct obs_core_hotkeys *hotkeys)
 
 	context->num_keysyms = (maxcode - mincode + 1) * syms_per_code;
 	context->syms_per_code = syms_per_code;
-	context->keysyms = bmemdup(keysyms, sizeof(xcb_keysym_t) * context->num_keysyms);
+	context->keysyms = bmemdup(keysyms, sizeof(xcb_keysym_t) * (size_t)context->num_keysyms);
 
 	for (code = mincode; code <= maxcode; code++) {
 		const xcb_keysym_t *sym;
@@ -761,10 +761,10 @@ static inline bool fill_keycodes(struct obs_core_hotkeys *hotkeys)
 				break;
 
 			if (sym[i] == XK_Super_L) {
-				context->super_l_code = code;
+				context->super_l_code = (xcb_keycode_t)code;
 				break;
 			} else if (sym[i] == XK_Super_R) {
-				context->super_r_code = code;
+				context->super_r_code = (xcb_keycode_t)code;
 				break;
 			} else {
 				key = key_from_base_keysym(context, sym[i]);
@@ -1097,7 +1097,7 @@ static bool get_key_translation(struct dstr *dstr, xcb_keycode_t keycode)
 	if (keycode) {
 		int len = XLookupString(&event, name, 128, NULL, NULL);
 		if (len) {
-			dstr_ncopy(dstr, name, len);
+			dstr_ncopy(dstr, name, (size_t)len);
 			dstr_to_upper(dstr);
 			return true;
 		}
