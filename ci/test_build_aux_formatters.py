@@ -7,9 +7,10 @@ them: the lint lane pins and runs `clang-format` and `gersemi` through `uvx` in
 `ci/local_gate.py`, so they were dead developer scripts and their two `GEN-005`
 exceptions in `ci.toml` were pure baseline. They are deleted, not ported.
 
-The third symlink, `build-aux/run-swift-format`, is live: the
-`run-swift-format` composite action runs it from `check-format.yaml`, so it and
-the shared dispatcher must stay.
+The third formatter, `build-aux/run-swift-format`, was the live one: the
+`run-swift-format` composite action runs it from `check-format.yaml`. It is now
+ported into `ci/run_swift_format.py` as well (#962, GEN-005), so its symlink,
+`.run-format.zsh` and the `.functions` log helpers are gone too.
 
 Usage:
     uv run python -m unittest ci/test_build_aux_formatters.py
@@ -20,8 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BUILD_AUX = ROOT / "build-aux"
-DEAD = ("run-clang-format", "run-gersemi")
-LIVE = "run-swift-format"
+DEAD = ("run-clang-format", "run-gersemi", "run-swift-format")
 
 
 class DeadFormatterScriptsTest(unittest.TestCase):
@@ -54,16 +54,11 @@ class DeadFormatterScriptsTest(unittest.TestCase):
                     f"build-aux/README.md still documents the deleted {name}",
                 )
 
-    def test_live_swift_formatter_stays(self):
-        script = BUILD_AUX / LIVE
-        self.assertTrue(script.is_symlink(), f"build-aux/{LIVE} must stay")
-        self.assertTrue((BUILD_AUX / ".run-format.zsh").exists())
-        self.assertIn(LIVE, (BUILD_AUX / "README.md").read_text())
-
-        # The call site moved into the Python port of the action (#2792): the
-        # action calls the module, and the module names the live script.
+    def test_the_action_still_runs_the_swift_check(self):
+        # The call site moved into the Python port of the action (#2792), and the
+        # formatter itself into the module (#962): the action calls the module.
         module = (ROOT / "ci" / "run_swift_format.py").read_text()
-        self.assertIn(f"'build-aux' / '{LIVE}'", module)
+        self.assertNotIn("build-aux", module)
         action = (ROOT / ".github/actions/run-swift-format/action.yaml").read_text()
         self.assertIn("ci/run_swift_format.py format", action)
         workflow = (ROOT / ".github/workflows/check-format.yaml").read_text()

@@ -141,46 +141,95 @@ class InstallDependenciesTest(unittest.TestCase):
 
 
 class FormatTest(unittest.TestCase):
-    def test_formatter_argv_and_status(self) -> None:
-        module = load_module()
+    """The formatter is the module itself: no `build-aux/run-swift-format` (#962)."""
+
+    def run_format(
+        self,
+        module,
+        condition: str,
+        files: list[str],
+        stub_body: str,
+        write: bool = False,
+    ) -> tuple[int, str, str]:
         with tempfile.TemporaryDirectory() as scratch:
             directory = Path(scratch)
             argv_log = directory / 'argv.txt'
             retry = write_stub(
-                directory / 'retry', f'echo "$@" >> "{argv_log}"\nexit 0'
+                directory / 'retry', f'echo "$@ " >> "{argv_log}"\nexit 0'
             )
-            formatter = write_stub(
-                directory / 'run-swift-format',
-                'echo "$@" > "$FORMATTER_ARGV"\nexit 7',
+            stub = write_stub(
+                directory / 'swift-format',
+                f'echo "$@ " >> "{argv_log}"\n{stub_body}',
             )
-            formatter_argv = directory / 'formatter-argv.txt'
             module.RETRY = retry
-            module.FORMATTER = formatter
+            module.SWIFT_FORMAT = stub
             previous = os.environ.get('CHANGED_FILES')
-            previous_argv = os.environ.get('FORMATTER_ARGV')
-            os.environ['CHANGED_FILES'] = "['Sources/A.swift','Sources/B.swift']"
-            os.environ['FORMATTER_ARGV'] = str(formatter_argv)
+            previous_path = os.environ.get('PATH')
+            os.environ['CHANGED_FILES'] = ','.join(files)
+            os.environ['PATH'] = f'{directory}{os.pathsep}{previous_path or ""}'
             try:
-                status = module.format_swift('error')
+                status = module.format_swift(condition, write=write)
             finally:
-                for key, value in (
-                    ('CHANGED_FILES', previous),
-                    ('FORMATTER_ARGV', previous_argv),
-                ):
+                for key, value in (('CHANGED_FILES', previous), ('PATH', previous_path)):
                     if value is None:
                         os.environ.pop(key, None)
                     else:
                         os.environ[key] = value
+            return status, argv_log.read_text(encoding='utf-8'), stub.read_text(encoding='utf-8')
 
-            self.assertEqual(status, 7)
-            self.assertEqual(
-                argv_log.read_text(encoding='utf-8').splitlines(),
-                ['brew update', 'brew install --quiet swift-format'],
+    def test_a_mismatch_fails_the_check(self) -> None:
+        module = load_module()
+        with tempfile.TemporaryDirectory() as scratch:
+            target = Path(scratch) / 'A.swift'
+            target.write_text('let a = 1\n', encoding='utf-8')
+            status, argv, _ = self.run_format(
+                module,
+                'error',
+                [str(target)],
+                f'printf "let a=1\\n"; exit 0',
             )
-            self.assertEqual(
-                formatter_argv.read_text(encoding='utf-8').split(),
-                ['--fail-error', '--check', 'Sources/A.swift', 'Sources/B.swift'],
+        self.assertEqual(status, 2)
+        self.assertIn('brew update', argv)
+        self.assertIn('brew install --quiet swift-format', argv)
+        self.assertIn(f'{module.SWIFT_FORMAT} {target}', argv)
+
+    def test_fail_never_does_not_fail_the_step(self) -> None:
+        module = load_module()
+        with tempfile.TemporaryDirectory() as scratch:
+            target = Path(scratch) / 'A.swift'
+            target.write_text('let a = 1\n', encoding='utf-8')
+            status, _, _ = self.run_format(
+                module, 'never', [str(target)], 'printf "let a=1\\n"; exit 0'
             )
+        self.assertEqual(status, 0)
+
+    def test_write_mode_formats_in_place(self) -> None:
+        module = load_module()
+        with tempfile.TemporaryDirectory() as scratch:
+            target = Path(scratch) / 'A.swift'
+            target.write_text('let a=1\n', encoding='utf-8')
+            status, argv, _ = self.run_format(
+                module,
+                'never',
+                [str(target)],
+                'case "$1" in -i) printf "let a = 1\\n" > "$2";; esac; exit 0',
+                write=True,
+            )
+            rewritten = target.read_text(encoding='utf-8')
+        self.assertEqual(status, 0)
+        self.assertEqual(rewritten, 'let a = 1\n')
+        self.assertIn(f'{module.SWIFT_FORMAT} -i {target}', argv)
+
+
+class VersionTest(unittest.TestCase):
+    def test_the_upstream_version_string_is_parsed(self) -> None:
+        module = load_module()
+        self.assertEqual(module.parse_version('main (swift-format 508.0.0)'), (508, 0, 0))
+
+    def test_an_old_formatter_fails_the_check(self) -> None:
+        module = load_module()
+        self.assertLess(module.parse_version('swift-format 507.0.0'), module.MINIMUM_VERSION)
+        self.assertGreaterEqual((508, 0, 0), module.MINIMUM_VERSION)
 
 
 class ActionYamlTest(unittest.TestCase):
@@ -228,14 +277,17 @@ class ExceptionTest(unittest.TestCase):
         ]
         self.assertEqual(remaining, [])
 
-    def test_the_formatter_script_keeps_its_own_exception(self) -> None:
+    def test_the_ported_formatter_script_is_gone(self) -> None:
         document = tomllib.loads(CI_TOML.read_text(encoding='utf-8'))
         paths = [
             exception.get('path')
             for exception in document.get('exceptions', [])
             if exception.get('rule') == 'GEN-005'
         ]
-        self.assertIn('build-aux/run-swift-format', paths)
+        self.assertNotIn('build-aux/run-swift-format', paths)
+        for name in ('run-swift-format', '.run-format.zsh'):
+            with self.subTest(name=name):
+                self.assertFalse((ROOT / 'build-aux' / name).exists())
 
 
 if __name__ == '__main__':
