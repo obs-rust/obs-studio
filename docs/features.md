@@ -1432,6 +1432,11 @@ area.
   the transport had not accepted. *Windows*, pending merge. Issue
   [#2220](https://github.com/obs-rust/obs-studio/issues/2220), PR
   [#2778](https://github.com/obs-rust/obs-studio/pull/2778).
+- With Enhanced Broadcasting (multitrack video), an encoder rung that runs at
+  a lower frame rate than the canvas (a frame rate divisor above 1) starts on
+  the group's start frame instead of sending no frames at all. *All*, pending
+  merge. Issue [#2920](https://github.com/obs-rust/obs-studio/issues/2920),
+  PR [#2926](https://github.com/obs-rust/obs-studio/pull/2926).
 
 ### Sources and filters
 
