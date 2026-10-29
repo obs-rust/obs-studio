@@ -194,7 +194,7 @@ static inline bool render_display_begin(struct obs_display *display, uint32_t cx
 		 */
 		if (!obs_display_clear_reads_space(obs_host_display_clear_color_always_srgb()))
 			vec4_from_rgba_srgb(&clear_color, display->background_color);
-		else if (obs_display_clear_linear(gs_get_color_space()))
+		else if (obs_display_clear_linear((int)gs_get_color_space()))
 			vec4_from_rgba(&clear_color, display->background_color);
 		else
 			vec4_from_rgba_srgb(&clear_color, display->background_color);
