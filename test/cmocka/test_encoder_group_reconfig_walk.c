@@ -13,13 +13,15 @@
  *     each encoder applies a second time, again all on the same pts.
  *
  * The test encoder records the pts of each frame encoded right after its
- * update callback ran. Every encoder runs at the full frame rate (frame rate
- * divisor 1): a grouped encoder starts only on the frame whose timestamp is
- * the group's start_timestamp, and an encoder with a divisor takes every
- * n-th frame from the first one video-io hands it after it connects, which
- * can miss that frame, so it would never start (seen with divisors 2 and 3
- * on macOS with the C libobs). The steps test and the Tier 3 parity tests
- * cover the rounding to the divisors' LCM.
+ * update callback ran. These cases run every encoder at the full frame rate
+ * (frame rate divisor 1): a grouped encoder starts only on the frame whose
+ * timestamp is the group's start_timestamp, and an encoder with a divisor
+ * takes every n-th frame from the first one video-io hands it after it
+ * connects, which used to miss that frame so it never started (seen with
+ * divisors 2 and 3 on macOS with the C libobs, #2920).
+ * divisor_encoders_start_on_the_group_frame covers that case: divisors 1, 2
+ * and 3 must all start on the group's start frame. The steps test and the
+ * Tier 3 parity tests cover the rounding to the divisors' LCM.
  *
  * Core video needs a graphics module and libobs needs an X display on
  * Linux, so the cases skip without one (run under xvfb-run).
@@ -51,6 +53,7 @@ struct venc {
 	obs_encoder_t *encoder;
 	volatile long frames;
 	volatile long last_pts;
+	volatile long first_pts;
 	volatile long num_applied;
 	int64_t applied[MAX_APPLIED];
 	bool pending;
@@ -119,6 +122,8 @@ static bool venc_encode(void *data, struct encoder_frame *frame, struct encoder_
 	packet->type = OBS_ENCODER_VIDEO;
 	packet->keyframe = os_atomic_load_long(&v->frames) == 0;
 	*received = true;
+	if (os_atomic_load_long(&v->frames) == 0)
+		os_atomic_set_long(&v->first_pts, (long)frame->pts);
 	os_atomic_set_long(&v->last_pts, (long)frame->pts);
 	os_atomic_inc_long(&v->frames);
 	return true;
@@ -229,7 +234,9 @@ static struct venc *venc_of(struct fixture *fx, size_t i)
 	return obs_obj_get_data(fx->encoders[i]);
 }
 
-static void start_group(struct fixture *fx, size_t num)
+/* divisors, when not NULL, is per encoder and must be set before the encoder
+ * starts (obs_encoder_set_frame_rate_divisor). */
+static void start_group_divisors(struct fixture *fx, size_t num, const uint32_t *divisors)
 {
 	fx->num = num;
 	fx->group = obs_encoder_group_create();
@@ -246,11 +253,18 @@ static void start_group(struct fixture *fx, size_t num)
 		obs_data_release(settings);
 		assert_non_null(fx->encoders[i]);
 		obs_encoder_set_video(fx->encoders[i], obs_get_video());
+		if (divisors)
+			assert_true(obs_encoder_set_frame_rate_divisor(fx->encoders[i], divisors[i]));
 		assert_true(obs_encoder_set_group(fx->encoders[i], fx->group));
 		obs_output_set_video_encoder2(fx->output, fx->encoders[i], i);
 	}
 
 	assert_true(obs_output_start(fx->output));
+}
+
+static void start_group(struct fixture *fx, size_t num)
+{
+	start_group_divisors(fx, num, NULL);
 }
 
 static void stop_group(struct fixture *fx)
@@ -431,6 +445,36 @@ static void update_from_inside_the_apply(void **state)
 	assert_int_equal(fx.results[0].bitrate, 2001);
 }
 
+/* A group whose encoders run at frame rate divisors 1, 2 and 3 starts every
+ * encoder on the group's start frame (#2920): video-io's per-input divisor
+ * counter has to be aligned with start_timestamp, not left where the frames
+ * queued before it moved it, or the divisors above 1 skip that frame and the
+ * encoder never starts. */
+static void divisor_encoders_start_on_the_group_frame(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	static const uint32_t divisors[] = {1, 2, 3};
+	struct fixture fx = {0};
+	start_group_divisors(&fx, 3, divisors);
+	bool started = wait_frames(&fx, 3);
+	long long first[MAX_ENCODERS];
+	for (size_t i = 0; i < fx.num; i++)
+		first[i] = os_atomic_load_long(&venc_of(&fx, i)->first_pts);
+	stop_group(&fx);
+
+	for (size_t i = 0; i < fx.num; i++)
+		fprintf(stderr, "encoder %zu (divisor %u): %ld frames, first pts %lld\n", i, divisors[i],
+			fx.results[i].frames, first[i]);
+	assert_true(started);
+	for (size_t i = 0; i < fx.num; i++) {
+		assert_true(fx.results[i].frames > 0);
+		assert_int_equal(first[i], first[0]);
+	}
+}
+
 static int group_setup(void **state)
 {
 	(void)state;
@@ -481,6 +525,7 @@ int main(void)
 		cmocka_unit_test(one_update_three_encoders),
 		cmocka_unit_test(second_update_while_pending),
 		cmocka_unit_test(update_from_inside_the_apply),
+		cmocka_unit_test(divisor_encoders_start_on_the_group_frame),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
