@@ -324,7 +324,8 @@ void SourceTreeModel::GroupSelectedItems(QModelIndexList &indices)
 
 	st->undoSceneData = main->BackupScene(scene);
 
-	obs_sceneitem_t *item = obs_scene_insert_group(scene, QT_TO_UTF8(name), item_order.data(), item_order.size());
+	obs_sceneitem_t *item = obs_scene_insert_group(scene, QT_TO_UTF8(name), item_order.data(),
+						       static_cast<size_t>(item_order.size()));
 	if (!item) {
 		st->undoSceneData = nullptr;
 		return;

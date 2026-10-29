@@ -131,7 +131,7 @@ void OBSBasic::DeleteProjector(OBSProjector *projector)
 	for (size_t i = 0; i < projectors.size(); i++) {
 		if (projectors[i] == projector) {
 			projectors[i]->deleteLater();
-			projectors.erase(projectors.begin() + i);
+			projectors.erase(projectors.begin() + static_cast<std::ptrdiff_t>(i));
 			break;
 		}
 	}

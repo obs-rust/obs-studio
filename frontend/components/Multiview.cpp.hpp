@@ -211,7 +211,8 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	targetCX = (uint32_t)fw;
 	targetCY = (uint32_t)fh;
 
-	GetScaleAndCenterPos(targetCX, targetCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(targetCX), static_cast<int>(targetCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	OBSSource previewSrc = main->GetCurrentSceneSource();
 	OBSSource programSrc = main->GetProgramSource();
@@ -471,12 +472,14 @@ void Multiview::Render(uint32_t cx, uint32_t cy)
 	}
 
 	if (drawSafeArea) {
-		RenderSafeAreas(actionSafeMargin, targetCX, targetCY);
-		RenderSafeAreas(graphicsSafeMargin, targetCX, targetCY);
-		RenderSafeAreas(fourByThreeSafeMargin, targetCX, targetCY);
-		RenderSafeAreas(leftLine, targetCX, targetCY);
-		RenderSafeAreas(topLine, targetCX, targetCY);
-		RenderSafeAreas(rightLine, targetCX, targetCY);
+		const int areaCX = static_cast<int>(targetCX);
+		const int areaCY = static_cast<int>(targetCY);
+		RenderSafeAreas(actionSafeMargin, areaCX, areaCY);
+		RenderSafeAreas(graphicsSafeMargin, areaCX, areaCY);
+		RenderSafeAreas(fourByThreeSafeMargin, areaCX, areaCY);
+		RenderSafeAreas(leftLine, areaCX, areaCY);
+		RenderSafeAreas(topLine, areaCX, areaCY);
+		RenderSafeAreas(rightLine, areaCX, areaCY);
 	}
 
 	endRegion();
@@ -760,5 +763,5 @@ OBSSource Multiview::GetSourceByPosition(int x, int y)
 		return nullptr;
 	}
 
-	return OBSGetStrongRef(multiviewScenes[pos]);
+	return OBSGetStrongRef(multiviewScenes[static_cast<size_t>(pos)]);
 }

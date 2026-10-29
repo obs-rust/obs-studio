@@ -9,8 +9,8 @@ static inline QColor pv_color_from_int(long long val)
 
 static inline long long pv_color_to_int(QColor color)
 {
-	auto shift = [&](unsigned val, int shift) {
-		return ((val & 0xff) << shift);
+	auto shift = [&](int val, int shift) {
+		return static_cast<long long>(static_cast<unsigned>(val & 0xff)) << shift;
 	};
 
 	return shift(color.red(), 0) | shift(color.green(), 8) | shift(color.blue(), 16) | shift(color.alpha(), 24);
@@ -1108,8 +1108,8 @@ static void UpdateRationalFPSWidgets(OBSFrameRatePropertyWidget *fpsProps, const
 		break;
 	}
 
-	fpsProps->numEdit->setValue(current_fps->numerator);
-	fpsProps->denEdit->setValue(current_fps->denominator);
+	fpsProps->numEdit->setValue(static_cast<int>(current_fps->numerator));
+	fpsProps->denEdit->setValue(static_cast<int>(current_fps->denominator));
 }
 
 static QWidget *CreateRationalFPS(OBSFrameRatePropertyWidget *fpsProps, bool &selected,
@@ -1152,8 +1152,8 @@ static QWidget *CreateRationalFPS(OBSFrameRatePropertyWidget *fpsProps, bool &se
 	den_edit->setRange(0, INT_MAX);
 
 	if (current_fps) {
-		num_edit->setValue(current_fps->numerator);
-		den_edit->setValue(current_fps->denominator);
+		num_edit->setValue(static_cast<int>(current_fps->numerator));
+		den_edit->setValue(static_cast<int>(current_fps->denominator));
 	}
 
 	layout->addRow(QObject::tr("Basic.Settings.Video.Numerator"), num_edit);
@@ -1640,7 +1640,7 @@ static bool FrameRateChangedRational(OBSFrameRatePropertyWidget *w, obs_data_ite
 	auto num = w->numEdit->value();
 	auto den = w->denEdit->value();
 
-	auto fps = make_fps(num, den);
+	auto fps = make_fps(static_cast<uint32_t>(num), static_cast<uint32_t>(den));
 	if (valid_fps && media_frames_per_second_is_valid(fps) && fps == *valid_fps) {
 		return false;
 	}
@@ -1958,10 +1958,10 @@ bool WidgetInfo::FontChanged(const char *setting)
 	obs_data_set_string(font_obj, "face", QT_TO_UTF8(font.family()));
 	obs_data_set_string(font_obj, "style", QT_TO_UTF8(font.styleName()));
 	obs_data_set_int(font_obj, "size", font.pointSize());
-	flags = font.bold() ? OBS_FONT_BOLD : 0;
-	flags |= font.italic() ? OBS_FONT_ITALIC : 0;
-	flags |= font.underline() ? OBS_FONT_UNDERLINE : 0;
-	flags |= font.strikeOut() ? OBS_FONT_STRIKEOUT : 0;
+	flags = font.bold() ? OBS_FONT_BOLD : 0u;
+	flags |= font.italic() ? OBS_FONT_ITALIC : 0u;
+	flags |= font.underline() ? OBS_FONT_UNDERLINE : 0u;
+	flags |= font.strikeOut() ? OBS_FONT_STRIKEOUT : 0u;
 	obs_data_set_int(font_obj, "flags", flags);
 
 	QLabel *label = static_cast<QLabel *>(widget);

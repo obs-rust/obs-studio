@@ -803,7 +803,7 @@ void OBSBasic::Save(SceneCollection &collection)
 	vector<OBSSource> audioSources;
 	audioSources.reserve(6);
 
-	auto SaveAudioDevice = [&](const std::string_view &key, int channel) {
+	auto SaveAudioDevice = [&](const std::string_view &key, uint32_t channel) {
 		if (OBSSourceAutoRelease source = obs_get_output_source(channel)) {
 			audioSources.emplace_back(source.Get());
 			OBSDataAutoRelease data = obs_save_source(source);
@@ -993,7 +993,7 @@ void OBSBasic::DeferSaveEnd()
 
 static void LogFilter(obs_source_t *, obs_source_t *filter, void *v_val);
 
-static void LoadAudioDevice(const char *name, int channel, obs_data_t *parent)
+static void LoadAudioDevice(const char *name, uint32_t channel, obs_data_t *parent)
 {
 	OBSDataAutoRelease data = obs_data_get_obj(parent, name);
 	if (!data) {
@@ -1555,7 +1555,7 @@ void OBSBasic::ClearSceneData()
 	ClearProjectors();
 
 	for (int i = 0; i < MAX_CHANNELS; i++) {
-		obs_set_output_source(i, nullptr);
+		obs_set_output_source(static_cast<uint32_t>(i), nullptr);
 	}
 
 	/* Reset VCam to default to clear its private scene and any references

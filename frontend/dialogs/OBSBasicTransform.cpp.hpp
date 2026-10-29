@@ -307,8 +307,8 @@ void OBSBasicTransform::onAlignChanged(int index)
 	uint32_t sourceWidth = obs_source_get_width(source);
 	uint32_t sourceHeight = obs_source_get_height(source);
 
-	uint32_t widthForFlip = sourceWidth - crop.left - crop.right;
-	uint32_t heightForFlip = sourceHeight - crop.top - crop.bottom;
+	int widthForFlip = static_cast<int>(sourceWidth) - crop.left - crop.right;
+	int heightForFlip = static_cast<int>(sourceHeight) - crop.top - crop.bottom;
 
 	if (oti.bounds_type != OBS_BOUNDS_NONE) {
 		widthForFlip = oti.bounds.x;
@@ -389,8 +389,8 @@ void OBSBasicTransform::onBoundsType(int index)
 			obs_sceneitem_crop crop;
 			obs_sceneitem_get_crop(item, &crop);
 
-			uint32_t widthForFlip = width - crop.left - crop.right;
-			uint32_t heightForFlip = height - crop.top - crop.bottom;
+			int widthForFlip = static_cast<int>(width) - crop.left - crop.right;
+			int heightForFlip = static_cast<int>(height) - crop.top - crop.bottom;
 
 			float shiftX = (currentRatio.x - flipRatio.x) * (widthForFlip * draw.x.x);
 			float shiftY = (currentRatio.y - flipRatio.y) * (heightForFlip * draw.y.y);
@@ -447,10 +447,10 @@ void OBSBasicTransform::onCropChanged()
 	}
 
 	obs_sceneitem_crop crop;
-	crop.left = uint32_t(ui->cropLeft->value());
-	crop.right = uint32_t(ui->cropRight->value());
-	crop.top = uint32_t(ui->cropTop->value());
-	crop.bottom = uint32_t(ui->cropBottom->value());
+	crop.left = ui->cropLeft->value();
+	crop.right = ui->cropRight->value();
+	crop.top = ui->cropTop->value();
+	crop.bottom = ui->cropBottom->value();
 
 	ignoreTransformSignal = true;
 	obs_sceneitem_set_crop(item, &crop);

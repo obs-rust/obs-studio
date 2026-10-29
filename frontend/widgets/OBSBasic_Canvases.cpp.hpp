@@ -25,7 +25,7 @@ void OBSBasic::CanvasRemoved(void *data, calldata_t *params)
 
 const OBS::Canvas &OBSBasic::AddCanvas(const std::string &name, obs_video_info *ovi, int flags)
 {
-	OBSCanvas canvas = obs_canvas_create(name.c_str(), ovi, flags);
+	OBSCanvas canvas = obs_canvas_create(name.c_str(), ovi, static_cast<uint32_t>(flags));
 	auto &it = canvases.emplace_back(canvas);
 	OnEvent(OBS_FRONTEND_EVENT_CANVAS_ADDED);
 	return it;

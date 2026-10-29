@@ -63,10 +63,10 @@ void TextSourceToolbar::on_selectFont_clicked()
 	obs_data_set_string(font_obj, "face", QT_TO_UTF8(font.family()));
 	obs_data_set_string(font_obj, "style", QT_TO_UTF8(font.styleName()));
 	obs_data_set_int(font_obj, "size", font.pointSize());
-	flags = font.bold() ? OBS_FONT_BOLD : 0;
-	flags |= font.italic() ? OBS_FONT_ITALIC : 0;
-	flags |= font.underline() ? OBS_FONT_UNDERLINE : 0;
-	flags |= font.strikeOut() ? OBS_FONT_STRIKEOUT : 0;
+	flags = font.bold() ? OBS_FONT_BOLD : 0u;
+	flags |= font.italic() ? OBS_FONT_ITALIC : 0u;
+	flags |= font.underline() ? OBS_FONT_UNDERLINE : 0u;
+	flags |= font.strikeOut() ? OBS_FONT_STRIKEOUT : 0u;
 	obs_data_set_int(font_obj, "flags", flags);
 
 	SaveOldProperties(source);

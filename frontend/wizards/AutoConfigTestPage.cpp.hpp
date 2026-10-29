@@ -377,7 +377,8 @@ void AutoConfigTestPage::TestBandwidthThread()
 		}
 
 		int total_bytes = (int)obs_output_get_total_bytes(output) - start_bytes;
-		uint64_t bitrate = util_mul_div64(total_bytes, 8ULL * 1000000000ULL / 1000ULL, total_time);
+		uint64_t bitrate =
+			util_mul_div64(static_cast<uint64_t>(total_bytes), 8ULL * 1000000000ULL / 1000ULL, total_time);
 		if (obs_output_get_frames_dropped(output) || (int)bitrate < (wiz->startingBitrate * 75 / 100)) {
 			server.bitrate = (int)bitrate * 70 / 100;
 		} else {

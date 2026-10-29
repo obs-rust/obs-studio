@@ -103,8 +103,8 @@ bool AutoConfigVideoPage::validatePage()
 		wiz->preferHighFPS = false;
 		break;
 	case AutoConfig::FPSType::UseCurrent:
-		wiz->specificFPSNum = ovi.fps_num;
-		wiz->specificFPSDen = ovi.fps_den;
+		wiz->specificFPSNum = static_cast<int>(ovi.fps_num);
+		wiz->specificFPSDen = static_cast<int>(ovi.fps_den);
 		wiz->preferHighFPS = false;
 		break;
 	case AutoConfig::FPSType::fps30:

@@ -39,7 +39,8 @@ void CheckIfAlreadyRunning(bool &already_running)
 	auto bindInfoStrlen = snprintf(bindInfo.sun_path + 1, sizeof(bindInfo.sun_path) - 1, "%s %d %s",
 				       OBS_INSTANCE_SOCKET_PREFIX, getpid(), App()->GetVersionString().c_str());
 
-	int bindErr = bind(uniq, (struct sockaddr *)&bindInfo, sizeof(sa_family_t) + 1 + bindInfoStrlen);
+	int bindErr = bind(uniq, (struct sockaddr *)&bindInfo,
+			   static_cast<socklen_t>(static_cast<int>(sizeof(sa_family_t)) + 1 + bindInfoStrlen));
 	already_running = bindErr == 0 ? 0 : 1;
 
 	if (already_running) {

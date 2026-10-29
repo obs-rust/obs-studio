@@ -168,7 +168,7 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 			 [this](obs_key_combination combo) { emit SearchKey(combo); });
 }
 
-void OBSHotkeyWidget::RemoveEdit(size_t idx, bool signal)
+void OBSHotkeyWidget::RemoveEdit(std::ptrdiff_t idx, bool signal)
 {
 	auto &edit = *(begin(edits) + idx);
 	if (!obs_key_combination_is_empty(edit->original) && signal) {
@@ -229,7 +229,7 @@ void OBSHotkeyWidget::HandleChangedBindings(obs_hotkey_id id_)
 		static_cast<void *>(&LoadBindings));
 
 	while (edits.size() > 0) {
-		RemoveEdit(edits.size() - 1, false);
+		RemoveEdit(static_cast<std::ptrdiff_t>(edits.size()) - 1, false);
 	}
 
 	SetKeyCombinations(bindings);

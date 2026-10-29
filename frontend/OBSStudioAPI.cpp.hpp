@@ -408,7 +408,7 @@ void OBSStudioAPI::obs_frontend_remove_event_callback(obs_frontend_event_cb call
 		return;
 	}
 
-	callbacks.erase(callbacks.begin() + idx);
+	callbacks.erase(callbacks.begin() + static_cast<std::ptrdiff_t>(idx));
 }
 
 obs_output_t *OBSStudioAPI::obs_frontend_get_streaming_output()
@@ -502,7 +502,7 @@ void OBSStudioAPI::obs_frontend_remove_save_callback(obs_frontend_save_cb callba
 		return;
 	}
 
-	saveCallbacks.erase(saveCallbacks.begin() + idx);
+	saveCallbacks.erase(saveCallbacks.begin() + static_cast<std::ptrdiff_t>(idx));
 }
 
 void OBSStudioAPI::obs_frontend_add_preload_callback(obs_frontend_save_cb callback, void *private_data)
@@ -520,7 +520,7 @@ void OBSStudioAPI::obs_frontend_remove_preload_callback(obs_frontend_save_cb cal
 		return;
 	}
 
-	preloadCallbacks.erase(preloadCallbacks.begin() + idx);
+	preloadCallbacks.erase(preloadCallbacks.begin() + static_cast<std::ptrdiff_t>(idx));
 }
 
 void OBSStudioAPI::obs_frontend_push_ui_translation(obs_frontend_translate_ui_cb translate)

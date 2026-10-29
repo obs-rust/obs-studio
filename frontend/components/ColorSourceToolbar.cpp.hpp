@@ -7,8 +7,8 @@ QColor color_from_int(long long val)
 
 long long color_to_int(QColor color)
 {
-	auto shift = [&](unsigned val, int shift) {
-		return ((val & 0xff) << shift);
+	auto shift = [&](int val, int shift) {
+		return static_cast<long long>(static_cast<unsigned>(val & 0xff)) << shift;
 	};
 
 	return shift(color.red(), 0) | shift(color.green(), 8) | shift(color.blue(), 16) | shift(color.alpha(), 24);

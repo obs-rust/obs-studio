@@ -205,7 +205,7 @@ void OBSBasic::SourceRenamed(void *data, calldata_t *params)
 	blog(LOG_INFO, "Source '%s' renamed to '%s'", prevName, newName);
 }
 
-void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId, const char *deviceDesc, int channel)
+void OBSBasic::ResetAudioDevice(const char *sourceId, const char *deviceId, const char *deviceDesc, uint32_t channel)
 {
 	bool disable = deviceId && strcmp(deviceId, "disabled") == 0;
 	OBSSourceAutoRelease source;
@@ -682,8 +682,8 @@ void OBSBasic::CreateSourcePopupMenu(int idx, bool preview)
 			QAction *resizeOutput = popup.addAction(QTStr("ResizeOutputSizeOfSource"), this,
 								&OBSBasic::ResizeOutputSizeOfSource);
 
-			int width = obs_source_get_width(source);
-			int height = obs_source_get_height(source);
+			uint32_t width = obs_source_get_width(source);
+			uint32_t height = obs_source_get_height(source);
 
 			resizeOutput->setEnabled(!obs_video_active());
 

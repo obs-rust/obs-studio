@@ -165,7 +165,8 @@ void OBSProjector::OBSRender(void *data, uint32_t cx, uint32_t cy)
 		targetCY = ovi.base_height;
 	}
 
-	GetScaleAndCenterPos(targetCX, targetCY, cx, cy, x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(targetCX), static_cast<int>(targetCY), static_cast<int>(cx),
+			     static_cast<int>(cy), x, y, scale);
 
 	newCX = int(scale * float(targetCX));
 	newCY = int(scale * float(targetCY));
@@ -433,7 +434,8 @@ void OBSProjector::ResizeToContent()
 	}
 
 	QSize size = this->size();
-	GetScaleAndCenterPos(targetCX, targetCY, size.width(), size.height(), x, y, scale);
+	GetScaleAndCenterPos(static_cast<int>(targetCX), static_cast<int>(targetCY), size.width(), size.height(), x, y,
+			     scale);
 
 	newX = size.width() - (x * 2);
 	newY = size.height() - (y * 2);

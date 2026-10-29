@@ -200,7 +200,7 @@ void PluginManager::saveModules_()
 void PluginManager::addModuleTypes_()
 {
 	const char *source_id;
-	int i = 0;
+	size_t i = 0;
 	while (obs_enum_source_types(i, &source_id)) {
 		i += 1;
 		obs_module_t *obsModule = obs_source_get_module(source_id);

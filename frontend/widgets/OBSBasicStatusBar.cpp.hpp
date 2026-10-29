@@ -431,7 +431,7 @@ void OBSBasicStatusBar::Reconnect(int timeoutSeconds)
 			return;
 		}
 
-		delaySecTotal = obs_output_get_active_delay(output);
+		delaySecTotal = static_cast<int>(obs_output_get_active_delay(output));
 		UpdateDelayMsg();
 
 		retries++;
@@ -464,7 +464,7 @@ void OBSBasicStatusBar::ReconnectSuccess()
 			return;
 		}
 
-		delaySecTotal = obs_output_get_active_delay(output);
+		delaySecTotal = static_cast<int>(obs_output_get_active_delay(output));
 		UpdateDelayMsg();
 		disconnected = false;
 		firstCongestionUpdate = true;

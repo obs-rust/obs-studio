@@ -159,7 +159,7 @@ try {
 	/* -------------------------- */
 	/* success!                   */
 
-	expire_time = (uint64_t)time(nullptr) + json["expires_in"].int_value();
+	expire_time = static_cast<uint64_t>(time(nullptr)) + static_cast<uint64_t>(json["expires_in"].int_value());
 	token = json["access_token"].string_value();
 	if (token.empty()) {
 		throw ErrorInfo("Failed to get token from remote", error);

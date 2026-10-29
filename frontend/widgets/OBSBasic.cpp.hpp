@@ -453,8 +453,8 @@ bool OBSBasic::InitBasicConfigDefaults()
 
 	QScreen *primaryScreen = QGuiApplication::primaryScreen();
 
-	uint32_t cx = primaryScreen->size().width();
-	uint32_t cy = primaryScreen->size().height();
+	uint32_t cx = static_cast<uint32_t>(primaryScreen->size().width());
+	uint32_t cy = static_cast<uint32_t>(primaryScreen->size().height());
 
 	cx *= devicePixelRatioF();
 	cy *= devicePixelRatioF();

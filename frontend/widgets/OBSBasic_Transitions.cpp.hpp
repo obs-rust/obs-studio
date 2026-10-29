@@ -185,9 +185,9 @@ void OBSBasic::LoadQuickTransitions(obs_data_array_t *array)
 				}
 
 				int idx = (int)quickTransitions.size() - 1;
-				AddQuickTransitionHotkey(&quickTransitions[idx]);
+				AddQuickTransitionHotkey(&quickTransitions[static_cast<size_t>(idx)]);
 				MigrateSavedHotkeys(hotkeys);
-				obs_hotkey_load(quickTransitions[idx].hotkey, hotkeys);
+				obs_hotkey_load(quickTransitions[static_cast<size_t>(idx)].hotkey, hotkeys);
 			}
 		}
 	}
@@ -411,7 +411,7 @@ void OBSBasic::TransitionToScene(OBSSource source, bool force, bool quickTransit
 
 		enum obs_transition_mode mode = manual ? OBS_TRANSITION_MODE_MANUAL : OBS_TRANSITION_MODE_AUTO;
 
-		bool success = obs_transition_start(transition, mode, duration, source);
+		bool success = obs_transition_start(transition, mode, static_cast<uint32_t>(duration), source);
 
 		if (!success) {
 			TransitionFullyStopped();
@@ -577,7 +577,7 @@ void OBSBasic::on_transitionRemove_clicked()
 				qt.button->deleteLater();
 			}
 			RemoveQuickTransitionHotkey(&qt);
-			quickTransitions.erase(quickTransitions.begin() + i - 1);
+			quickTransitions.erase(quickTransitions.begin() + static_cast<std::ptrdiff_t>(i) - 1);
 		}
 	}
 
@@ -687,7 +687,7 @@ QuickTransition *OBSBasic::GetQuickTransition(int id)
 int OBSBasic::GetQuickTransitionIdx(int id)
 {
 	for (int idx = 0; idx < (int)quickTransitions.size(); idx++) {
-		QuickTransition &qt = quickTransitions[idx];
+		QuickTransition &qt = quickTransitions[static_cast<size_t>(idx)];
 
 		if (qt.id == id) {
 			return idx;
@@ -1021,7 +1021,7 @@ void OBSBasic::PasteShowHideTransition(obs_sceneitem_t *item, bool show, obs_sou
 
 	OBSSourceAutoRelease dup = obs_source_duplicate(tr, obs_source_get_name(tr), true);
 	obs_sceneitem_set_transition(item, show, dup);
-	obs_sceneitem_set_transition_duration(item, show, duration);
+	obs_sceneitem_set_transition_duration(item, show, static_cast<uint32_t>(duration));
 
 	OBSDataAutoRelease transitionData = obs_sceneitem_transition_save(item, show);
 
@@ -1142,7 +1142,7 @@ QMenu *OBSBasic::CreateVisibilityTransitionMenu(bool visible)
 		OBSBasic *main = OBSBasic::Get();
 		OBSSceneItem item = main->GetCurrentSceneItem();
 		obs_source_t *tr = obs_sceneitem_get_transition(item, visible);
-		int trDur = obs_sceneitem_get_transition_duration(item, visible);
+		int trDur = static_cast<int>(obs_sceneitem_get_transition_duration(item, visible));
 		main->copySourceTransition = obs_source_get_weak_source(tr);
 		main->copySourceTransitionDuration = trDur;
 	};
@@ -1304,7 +1304,7 @@ void OBSBasic::AddQuickTransition()
 	AddQuickTransitionId(id);
 
 	int idx = (int)quickTransitions.size() - 1;
-	AddQuickTransitionHotkey(&quickTransitions[idx]);
+	AddQuickTransitionHotkey(&quickTransitions[static_cast<size_t>(idx)]);
 }
 
 void OBSBasic::ClearQuickTransitions()
@@ -1389,7 +1389,7 @@ void OBSBasic::QuickTransitionRemoveClicked()
 		return;
 	}
 
-	QuickTransition &qt = quickTransitions[idx];
+	QuickTransition &qt = quickTransitions[static_cast<size_t>(idx)];
 
 	if (qt.button) {
 		qt.button->deleteLater();

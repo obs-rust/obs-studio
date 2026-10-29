@@ -133,7 +133,7 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 		snprintf(name, sizeof(name), "adv_record_audio_%d", i);
 
 		recordTrack[i] = obs_audio_encoder_create(useStreamAudioEncoder ? streamAudioEncoder : recAudioEncoder,
-							  name, nullptr, i, nullptr);
+							  name, nullptr, static_cast<size_t>(i), nullptr);
 
 		if (!recordTrack[i]) {
 			throw "Failed to create audio encoder "
@@ -143,7 +143,8 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 		obs_encoder_release(recordTrack[i]);
 
 		snprintf(name, sizeof(name), "adv_stream_audio_%d", i);
-		streamTrack[i] = obs_audio_encoder_create(streamAudioEncoder, name, nullptr, i, nullptr);
+		streamTrack[i] =
+			obs_audio_encoder_create(streamAudioEncoder, name, nullptr, static_cast<size_t>(i), nullptr);
 
 		if (!streamTrack[i]) {
 			throw "Failed to create streaming audio encoders "
@@ -155,8 +156,8 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 
 	std::string id;
 	int streamTrackIndex = config_get_int(main->Config(), "AdvOut", "TrackIndex") - 1;
-	streamAudioEnc =
-		obs_audio_encoder_create(streamAudioEncoder, "adv_stream_audio", nullptr, streamTrackIndex, nullptr);
+	streamAudioEnc = obs_audio_encoder_create(streamAudioEncoder, "adv_stream_audio", nullptr,
+						  static_cast<size_t>(streamTrackIndex), nullptr);
 	if (!streamAudioEnc) {
 		throw "Failed to create streaming audio encoder "
 		      "(advanced output)";
@@ -165,7 +166,8 @@ AdvancedOutput::AdvancedOutput(OBSBasic *main_) : BasicOutputHandler(main_)
 
 	id = "";
 	int vodTrack = config_get_int(main->Config(), "AdvOut", "VodTrackIndex") - 1;
-	streamArchiveEnc = obs_audio_encoder_create(streamAudioEncoder, ADV_ARCHIVE_NAME, nullptr, vodTrack, nullptr);
+	streamArchiveEnc = obs_audio_encoder_create(streamAudioEncoder, ADV_ARCHIVE_NAME, nullptr,
+						    static_cast<size_t>(vodTrack), nullptr);
 	if (!streamArchiveEnc) {
 		throw "Failed to create archive audio encoder "
 		      "(advanced output)";
@@ -284,7 +286,7 @@ inline void AdvancedOutput::SetupStreaming()
 	} else {
 		for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
 			if ((multiTrackAudioMixes & (1 << i)) != 0) {
-				obs_output_set_audio_encoder(streamOutput, streamTrack[i], idx);
+				obs_output_set_audio_encoder(streamOutput, streamTrack[i], static_cast<size_t>(idx));
 				idx++;
 			}
 		}
@@ -357,18 +359,21 @@ inline void AdvancedOutput::SetupRecording()
 	if (!flv) {
 		for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
 			if ((tracks & (1 << i)) != 0) {
-				obs_output_set_audio_encoder(fileOutput, recordTrack[i], idx);
+				obs_output_set_audio_encoder(fileOutput, recordTrack[i], static_cast<size_t>(idx));
 				if (replayBuffer) {
-					obs_output_set_audio_encoder(replayBuffer, recordTrack[i], idx);
+					obs_output_set_audio_encoder(replayBuffer, recordTrack[i],
+								     static_cast<size_t>(idx));
 				}
 				idx++;
 			}
 		}
 	} else if (flv && tracks != 0) {
-		obs_output_set_audio_encoder(fileOutput, recordTrack[tracks - 1], idx);
+		obs_output_set_audio_encoder(fileOutput, recordTrack[static_cast<size_t>(tracks) - 1],
+					     static_cast<size_t>(idx));
 
 		if (replayBuffer) {
-			obs_output_set_audio_encoder(replayBuffer, recordTrack[tracks - 1], idx);
+			obs_output_set_audio_encoder(replayBuffer, recordTrack[static_cast<size_t>(tracks) - 1],
+						     static_cast<size_t>(idx));
 		}
 	}
 
@@ -456,7 +461,7 @@ inline void AdvancedOutput::SetupFFmpeg()
 		}
 	}
 
-	obs_output_set_mixers(fileOutput, aMixes);
+	obs_output_set_mixers(fileOutput, static_cast<uint32_t>(aMixes));
 	obs_output_set_media(fileOutput, obs_get_video(), obs_get_audio());
 	obs_output_update(fileOutput, settings);
 }
@@ -665,7 +670,8 @@ std::shared_future<void> AdvancedOutput::SetupStreaming(obs_service_t *service,
 			int idx = 0;
 			for (int i = 0; i < MAX_AUDIO_MIXES; i++) {
 				if ((multiTrackAudioMixes & (1 << i)) != 0) {
-					obs_output_set_audio_encoder(streamOutput, streamTrack[i], idx);
+					obs_output_set_audio_encoder(streamOutput, streamTrack[i],
+								     static_cast<size_t>(idx));
 					idx++;
 				}
 			}
@@ -717,7 +723,8 @@ bool AdvancedOutput::StartStreaming(obs_service_t *service)
 		maxRetries = 0;
 	}
 
-	obs_output_set_delay(streamOutputRef, useDelay ? delaySec : 0, preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0);
+	obs_output_set_delay(streamOutputRef, useDelay ? static_cast<uint32_t>(delaySec) : 0u,
+			     preserveDelay ? OBS_OUTPUT_DELAY_PRESERVE : 0u);
 
 	obs_output_set_reconnect_settings(streamOutputRef, maxRetries, retryDelay);
 	if (is_rtmp) {

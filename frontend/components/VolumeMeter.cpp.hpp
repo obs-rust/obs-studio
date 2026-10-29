@@ -791,7 +791,7 @@ void VolumeMeter::paintEvent(QPaintEvent *)
 	for (int channelNr = 0; channelNr < displayNrAudioChannels; channelNr++) {
 		int channelNrFixed = (displayNrAudioChannels == 1 && channels > 2) ? 2 : channelNr;
 
-		const auto &levels = channelLevels[channelNrFixed];
+		const auto &levels = channelLevels[static_cast<size_t>(channelNrFixed)];
 		float peak = levels.peak;
 		float peakHold = levels.peakHold;
 		float magnitude = levels.magnitude;

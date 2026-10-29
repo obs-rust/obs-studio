@@ -373,7 +373,7 @@ void SourceTree::dropEvent(QDropEvent *event)
 			insertLastGroup();
 		}
 
-		obs_scene_reorder_items2(scene, orderList.data(), orderList.size());
+		obs_scene_reorder_items2(scene, orderList.data(), static_cast<size_t>(orderList.size()));
 	};
 
 	using updateScene_t = decltype(updateScene);
