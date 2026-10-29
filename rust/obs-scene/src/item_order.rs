@@ -78,8 +78,15 @@ pub enum Anchor {
 /// The movement branches of `obs_sceneitem_set_order()`. `has_prev` and
 /// `has_next`: whether the item had an item below and above it.
 pub fn anchor(movement: i32, has_prev: bool, has_next: bool) -> Anchor {
-    let _ = (movement, has_prev, has_next);
-    todo!()
+    match movement {
+        OBS_ORDER_MOVE_DOWN if has_prev => Anchor::PrevPrev,
+        OBS_ORDER_MOVE_DOWN => Anchor::Bottom,
+        OBS_ORDER_MOVE_UP if has_next => Anchor::Next,
+        OBS_ORDER_MOVE_UP => Anchor::Prev,
+        OBS_ORDER_MOVE_TOP => Anchor::Last,
+        OBS_ORDER_MOVE_BOTTOM => Anchor::Bottom,
+        _ => Anchor::Stay,
+    }
 }
 
 /// Where `obs_sceneitem_set_order_position()` attaches the item.
@@ -99,16 +106,21 @@ pub enum Position {
 /// The bottom for an empty scene or position 0; otherwise `position - 1`
 /// steps for a position above 1, and none for 1 or a negative position.
 pub fn position(position: i32, has_first: bool) -> Position {
-    let _ = (position, has_first);
-    todo!()
+    if !has_first || position == 0 {
+        return Position::Bottom;
+    }
+
+    // position - 1 for a position above 1 (it fits: at most i32::MAX - 1);
+    // 1 and every negative position take no step.
+    let steps = usize::try_from(position.saturating_sub(1)).unwrap_or(0);
+    Position::After { steps }
 }
 
 /// Whether `obs_sceneitem_get_order_position()` and
 /// `obs_sceneitem_group_ungroup2()` go on with an item: it is not NULL and
 /// it is in a scene (difference 2).
 pub fn item_attached(has_item: bool, has_parent: bool) -> bool {
-    let _ = (has_item, has_parent);
-    todo!()
+    has_item && has_parent
 }
 
 /// The inner loop of `sceneitems_match()`: whether `item`, the scene's item
@@ -120,8 +132,15 @@ pub fn match_item<T: PartialEq>(
     index: usize,
     order_matches: &mut bool,
 ) -> bool {
-    let _ = (order, item, index, order_matches);
-    todo!()
+    match order.iter().position(|entry| entry == item) {
+        Some(first) => {
+            if first != index {
+                *order_matches = false;
+            }
+            true
+        }
+        None => false,
+    }
 }
 
 /// One `struct obs_sceneitem_order_info`: an item, and the group it goes
@@ -130,6 +149,30 @@ pub fn match_item<T: PartialEq>(
 pub struct Entry<T> {
     pub group: Option<T>,
     pub item: T,
+}
+
+/// A (group, item) pair the reorder checks read: an [`Entry`], or the C's
+/// `struct obs_sceneitem_order_info` read in place (the shims), so no
+/// order is copied.
+pub trait Pair {
+    /// The id the pair's group and item are compared as.
+    type Id: Ord + Copy;
+    /// The group, or `None` at the top level.
+    fn group(&self) -> Option<Self::Id>;
+    /// The item.
+    fn item(&self) -> Self::Id;
+}
+
+impl<T: Ord + Copy> Pair for Entry<T> {
+    type Id = T;
+
+    fn group(&self) -> Option<T> {
+        self.group
+    }
+
+    fn item(&self) -> T {
+        self.item
+    }
 }
 
 /// What `obs_scene_reorder_items2()` does with an order.
@@ -152,29 +195,62 @@ pub enum ReorderCheck {
 /// `current`, each once; else [`ReorderCheck::Apply`]. The groups are not
 /// checked: the caller only compares them to the items it links.
 pub fn reorder_check<T: Ord + Copy>(current: &[Entry<T>], order: &[Entry<T>]) -> ReorderCheck {
-    let _ = (current, order);
-    todo!()
+    reorder_check_pairs(current, order)
+}
+
+/// [`reorder_check`] over any [`Pair`], read in place.
+pub fn reorder_check_pairs<P: Pair>(current: &[P], order: &[P]) -> ReorderCheck {
+    let same = current.len() == order.len()
+        && current
+            .iter()
+            .zip(order)
+            .all(|(old, new)| old.group() == new.group() && old.item() == new.item());
+    if same {
+        return ReorderCheck::Same;
+    }
+
+    let mut have: Vec<P::Id> = current.iter().map(Pair::item).collect();
+    let mut want: Vec<P::Id> = order.iter().map(Pair::item).collect();
+    have.sort_unstable();
+    want.sort_unstable();
+    if have != want {
+        return ReorderCheck::Invalid;
+    }
+
+    ReorderCheck::Apply
 }
 
 /// The end of the group run of `obs_scene_reorder_items2()`: the index
 /// after the entries that follow `head` with `order[head].item` as their
 /// group. `head` past the end gives `head + 1` (the C would read past the
 /// order; libobs never asks).
-pub fn group_run_end<T: PartialEq>(order: &[Entry<T>], head: usize) -> usize {
-    let _ = (order, head);
-    todo!()
+pub fn group_run_end<T: Ord + Copy>(order: &[Entry<T>], head: usize) -> usize {
+    group_run_end_pairs(order, head)
+}
+
+/// [`group_run_end`] over any [`Pair`], read in place.
+pub fn group_run_end_pairs<P: Pair>(order: &[P], head: usize) -> usize {
+    let start = head.saturating_add(1);
+    let Some(group) = order.get(head).map(Pair::item) else {
+        return start;
+    };
+    let run = order
+        .get(start..)
+        .unwrap_or_default()
+        .iter()
+        .take_while(|entry| entry.group() == Some(group))
+        .count();
+    start.saturating_add(run)
 }
 
 /// The two parent checks of `obs_sceneitem_group_add_item()`: the item is
 /// in the group's parent scene and not already in the group's own scene.
 pub fn add_item_allowed(in_scene: bool, in_group: bool) -> bool {
-    let _ = (in_scene, in_group);
-    todo!()
+    in_scene && !in_group
 }
 
 /// The check of `obs_sceneitem_group_remove_item()`: the item is in the
 /// group's own scene (difference 4).
 pub fn remove_item_allowed(in_group: bool) -> bool {
-    let _ = in_group;
-    todo!()
+    in_group
 }

@@ -2549,6 +2549,13 @@ static inline void signal_refresh(obs_scene_t *scene)
 	signal_parent(scene, command, &params);
 }
 
+/* rust/obs-scene's item_order mirrors these values and the pair layout. */
+_Static_assert(OBS_ORDER_MOVE_UP == 0, "OBS_ORDER_MOVE_UP");
+_Static_assert(OBS_ORDER_MOVE_DOWN == 1, "OBS_ORDER_MOVE_DOWN");
+_Static_assert(OBS_ORDER_MOVE_TOP == 2, "OBS_ORDER_MOVE_TOP");
+_Static_assert(OBS_ORDER_MOVE_BOTTOM == 3, "OBS_ORDER_MOVE_BOTTOM");
+_Static_assert(sizeof(struct obs_sceneitem_order_info) == 2 * sizeof(void *), "struct obs_sceneitem_order_info");
+
 void obs_sceneitem_set_order(obs_sceneitem_t *item, enum obs_order_movement movement)
 {
 	if (!item)
@@ -2566,6 +2573,12 @@ void obs_sceneitem_set_order(obs_sceneitem_t *item, enum obs_order_movement move
 	prev = item->prev;
 
 	int anchor = obs_scene_item_order_anchor((int)movement, prev != NULL, next != NULL);
+
+	if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_STAY) {
+		full_unlock(scene);
+		obs_scene_release(scene);
+		return;
+	}
 
 	detach_sceneitem(item);
 

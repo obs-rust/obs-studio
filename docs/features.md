@@ -2047,6 +2047,13 @@ area.
   [#1416](https://github.com/obs-rust/obs-studio/issues/1416), PR
   [#1417](https://github.com/obs-rust/obs-studio/pull/1417), upstream
   [obsproject/obs-studio#3385](https://github.com/obsproject/obs-studio/issues/3385).
+- A script or plugin can no longer lose or misplace a scene item through the
+  scene order calls: an unknown order movement leaves the item where it is,
+  a reorder list that leaves items out, repeats them or names items from
+  elsewhere is refused, removing an item from a group it is not in does
+  nothing, and asking the position of, or ungrouping, an item that is in no
+  scene returns instead of crashing. *All*, 2026-10-29. Issue
+  [#2895](https://github.com/obs-rust/obs-studio/issues/2895).
 
 ### Stability
 

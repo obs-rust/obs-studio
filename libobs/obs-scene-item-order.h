@@ -64,6 +64,10 @@ enum obs_scene_item_order_anchor {
 	OBS_SCENE_ITEM_ORDER_ANCHOR_PREV = 4,
 	/* After the last item, found from next, or prev without one. */
 	OBS_SCENE_ITEM_ORDER_ANCHOR_LAST = 5,
+	/* Not detached at all: the item stays where it is. Only the Rust port
+	 * gives it, for a movement outside the enum (#2895); the C gives
+	 * OBS_SCENE_ITEM_ORDER_ANCHOR_NONE there. */
+	OBS_SCENE_ITEM_ORDER_ANCHOR_STAY = 6,
 };
 
 /* What obs_scene_reorder_items2() does with an order. */
@@ -72,6 +76,9 @@ enum obs_scene_item_order_check {
 	OBS_SCENE_ITEM_ORDER_SAME = 0,
 	/* Relink the scene in this order. */
 	OBS_SCENE_ITEM_ORDER_APPLY = 1,
+	/* The order is not the scene's items rearranged, each once: refused.
+	 * Only the Rust port gives it (#2895); the C relinks such an order. */
+	OBS_SCENE_ITEM_ORDER_INVALID = 2,
 };
 
 /* movement: the enum obs_order_movement value, as an int. has_prev and
@@ -81,7 +88,7 @@ enum obs_scene_item_order_check {
  * Returns an enum obs_scene_item_order_anchor value: down goes after
  * prev->prev, or the bottom without a prev; up after next, or after prev
  * without a next; top after the last item; bottom at the bottom; any other
- * movement nowhere. */
+ * movement nowhere (the Rust port: where it is). */
 int obs_scene_item_order_anchor(int movement, bool has_prev, bool has_next);
 
 /* position: the position asked for. has_first: whether the scene still has
@@ -96,7 +103,8 @@ bool obs_scene_item_order_position(int position, bool has_first, size_t *steps);
 /* has_item: the item is not NULL. has_parent: it is in a scene (only read
  * when has_item).
  *
- * Returns whether the caller goes on with the item. */
+ * Returns whether the caller goes on with the item: always in the C, which
+ * then reads through it; only for an item in a scene in the Rust port. */
 bool obs_scene_item_order_item_attached(bool has_item, bool has_parent);
 
 /* One step of the check of obs_scene_reorder_items(): order and size are
@@ -111,7 +119,9 @@ bool obs_scene_item_order_match_item(obs_sceneitem_t *const *order, size_t size,
  * pairs of the scene (current may be NULL when current_size is 0). order and
  * size: the order asked for.
  *
- * Returns an enum obs_scene_item_order_check value. */
+ * Returns an enum obs_scene_item_order_check value: SAME for the current
+ * pairs, else APPLY in the C; INVALID in the Rust port unless the order's
+ * items are the current ones, each once. */
 int obs_scene_item_order_reorder_check(const struct obs_sceneitem_order_info *current, size_t current_size,
 				       const struct obs_sceneitem_order_info *order, size_t size);
 
@@ -130,5 +140,6 @@ bool obs_scene_item_order_add_item_allowed(bool in_scene, bool in_group);
 
 /* in_group: the item's parent is the group's own scene.
  *
- * Returns whether obs_sceneitem_group_remove_item() moves the item. */
+ * Returns whether obs_sceneitem_group_remove_item() moves the item: always
+ * in the C; only an item in the group in the Rust port. */
 bool obs_scene_item_order_remove_item_allowed(bool in_group);

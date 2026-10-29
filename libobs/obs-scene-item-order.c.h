@@ -16,7 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-item-order.pch.h"
+
+/* Ported to rust/obs-scene (item_order): the hybrid libobs drops this
+ * file. */
 
 /* The scene item order, reorder and group membership decisions of
  * obs-scene.c, moved: the decisions, on plain values. obs-scene.c keeps the

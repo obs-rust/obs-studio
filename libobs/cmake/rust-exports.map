@@ -186,6 +186,16 @@
     obs_scene_item_transform_keys;
     obs_scene_item_bounds_keys;
     obs_scene_item_save_relative;
+    /* obs-scene-item-order.c. obs-scene.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_scene_item_order_anchor;
+    obs_scene_item_order_position;
+    obs_scene_item_order_item_attached;
+    obs_scene_item_order_match_item;
+    obs_scene_item_order_reorder_check;
+    obs_scene_item_order_group_run_end;
+    obs_scene_item_order_add_item_allowed;
+    obs_scene_item_order_remove_item_allowed;
     /* obs-scene-item-transform.c. obs-scene.c calls them inside libobs.
      * Not EXPORT. */
     obs_scene_item_transform_prepare;
