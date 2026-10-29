@@ -63,8 +63,8 @@ vec2 OBSBasicPreview::GetMouseEventPos(QMouseEvent *event)
 	float scale = pixelRatio / main->previewScale;
 	QPoint qtPos = event->pos();
 	vec2 pos;
-	vec2_set(&pos, (qtPos.x() - main->previewX / pixelRatio) * scale,
-		 (qtPos.y() - main->previewY / pixelRatio) * scale);
+	vec2_set(&pos, (qtPos.x() - static_cast<float>(main->previewX) / pixelRatio) * scale,
+		 (qtPos.y() - static_cast<float>(main->previewY) / pixelRatio) * scale);
 
 	return pos;
 }
@@ -209,8 +209,8 @@ vec3 OBSBasicPreview::GetSnapOffset(const vec3 &tl, const vec3 &br)
 	const bool screenSnap = config_get_bool(App()->GetUserConfig(), "BasicWindow", "ScreenSnapping");
 	const bool centerSnap = config_get_bool(App()->GetUserConfig(), "BasicWindow", "CenterSnapping");
 
-	const float clampDist =
-		config_get_double(App()->GetUserConfig(), "BasicWindow", "SnapDistance") / main->previewScale;
+	const float clampDist = static_cast<float>(
+		config_get_double(App()->GetUserConfig(), "BasicWindow", "SnapDistance") / main->previewScale);
 	const float centerX = br.x - (br.x - tl.x) / 2.0f;
 	const float centerY = br.y - (br.y - tl.y) / 2.0f;
 
@@ -443,7 +443,7 @@ static bool FindHandleAtPos(obs_scene_t * /* scene */, obs_sceneitem_t *item, vo
 	obs_sceneitem_get_scale(item, &scale);
 	obs_bounds_type boundsType = obs_sceneitem_get_bounds_type(item);
 	vec2 rotHandleOffset;
-	vec2_set(&rotHandleOffset, 0.0f, HANDLE_RADIUS * data.radius * 1.5 - data.radius);
+	vec2_set(&rotHandleOffset, 0.0f, static_cast<float>(HANDLE_RADIUS * data.radius * 1.5 - data.radius));
 	bool invertx = scale.x < 0.0f && boundsType == OBS_BOUNDS_NONE;
 	float angle =
 		atan2(invertx ? transform.x.y * -1.0f : transform.x.y, invertx ? transform.x.x * -1.0f : transform.x.x);
@@ -616,8 +616,8 @@ void OBSBasicPreview::mousePressEvent(QMouseEvent *event)
 
 	if (scrollMode && IsFixedScaling() && event->button() == Qt::LeftButton) {
 		setCursor(Qt::ClosedHandCursor);
-		scrollingFrom.x = pos.x();
-		scrollingFrom.y = pos.y();
+		scrollingFrom.x = static_cast<float>(pos.x());
+		scrollingFrom.y = static_cast<float>(pos.y());
 		return;
 	}
 
@@ -633,8 +633,8 @@ void OBSBasicPreview::mousePressEvent(QMouseEvent *event)
 
 	OBSBasic *main = OBSBasic::Get();
 	float pixelRatio = main->GetDevicePixelRatio();
-	float x = pos.x() - main->previewX / pixelRatio;
-	float y = pos.y() - main->previewY / pixelRatio;
+	float x = static_cast<float>(pos.x()) - static_cast<float>(main->previewX) / pixelRatio;
+	float y = static_cast<float>(pos.y()) - static_cast<float>(main->previewY) / pixelRatio;
 	Qt::KeyboardModifiers modifiers = QGuiApplication::keyboardModifiers();
 	bool altDown = (modifiers & Qt::AltModifier);
 	bool shiftDown = (modifiers & Qt::ShiftModifier);
@@ -1005,22 +1005,22 @@ static bool GetSourceSnapOffset(obs_scene_t * /* scene */, obs_sceneitem_t *item
 	vec2 itemEdge{};
 	vec2 movingEdge{};
 
-	itemEdge.x = centerDelta.x() < 0 ? itemRect.left() : itemRect.right();
-	movingEdge.x = centerDelta.x() < 0 ? moveRect.left() : moveRect.right();
+	itemEdge.x = static_cast<float>(centerDelta.x() < 0 ? itemRect.left() : itemRect.right());
+	movingEdge.x = static_cast<float>(centerDelta.x() < 0 ? moveRect.left() : moveRect.right());
 
-	itemEdge.y = centerDelta.y() < 0 ? itemRect.top() : itemRect.bottom();
-	movingEdge.y = centerDelta.y() < 0 ? moveRect.top() : moveRect.bottom();
+	itemEdge.y = static_cast<float>(centerDelta.y() < 0 ? itemRect.top() : itemRect.bottom());
+	movingEdge.y = static_cast<float>(centerDelta.y() < 0 ? moveRect.top() : moveRect.bottom());
 
 	// Horizontal snapping
 	// Check if the delta between centers is larger than the sum of half widths minus the clamp distance.
 	// Subtracting the clamp distance allows snapping from the "inner" edges when overlapping.
 	if (std::fabs(centerDelta.x()) > (moveRect.width() + itemRect.width() - (data->clampDist * 2)) / 2) {
 		// Moving item is not overlapping
-		movingEdge.x = centerDelta.x() < 0 ? moveRect.right() : moveRect.left();
+		movingEdge.x = static_cast<float>(centerDelta.x() < 0 ? moveRect.right() : moveRect.left());
 	} else if (moveRect.width() > itemRect.width()) {
 		// Moving item is overlapping but larger, invert checked edges
-		itemEdge.x = centerDelta.x() > 0 ? itemRect.left() : itemRect.right();
-		movingEdge.x = centerDelta.x() > 0 ? moveRect.left() : moveRect.right();
+		itemEdge.x = static_cast<float>(centerDelta.x() > 0 ? itemRect.left() : itemRect.right());
+		movingEdge.x = static_cast<float>(centerDelta.x() > 0 ? moveRect.left() : moveRect.right());
 	}
 
 	// Vertical snapping
@@ -1028,18 +1028,18 @@ static bool GetSourceSnapOffset(obs_scene_t * /* scene */, obs_sceneitem_t *item
 	// Subtracting the clamp distance allows snapping from the "inner" edges when overlapping.
 	if (std::fabs(centerDelta.y()) > (moveRect.height() + itemRect.height() - (data->clampDist * 2)) / 2) {
 		// Moving item is not overlapping
-		movingEdge.y = centerDelta.y() < 0 ? moveRect.bottom() : moveRect.top();
+		movingEdge.y = static_cast<float>(centerDelta.y() < 0 ? moveRect.bottom() : moveRect.top());
 	} else if (moveRect.height() > itemRect.height()) {
 		// Moving item is overlapping but larger, invert checked edges
-		itemEdge.y = centerDelta.y() > 0 ? itemRect.top() : itemRect.bottom();
-		movingEdge.y = centerDelta.y() > 0 ? moveRect.top() : moveRect.bottom();
+		itemEdge.y = static_cast<float>(centerDelta.y() > 0 ? itemRect.top() : itemRect.bottom());
+		movingEdge.y = static_cast<float>(centerDelta.y() > 0 ? moveRect.top() : moveRect.bottom());
 	}
 
 	if (tryEdgeSnapForOffset(movingEdge.x, itemEdge.x, data->clampDist, data->offset.x)) {
 		SnapGuide guide{{itemEdge.x, 0.0f}, {itemEdge.x, screen.y}};
 		main->addSnapGuide(guide);
-	} else if (tryEdgeSnapForOffset(moveRect.center().x(), itemRect.center().x(), data->clampDist,
-					data->offset.x)) {
+	} else if (tryEdgeSnapForOffset(static_cast<float>(moveRect.center().x()),
+					static_cast<float>(itemRect.center().x()), data->clampDist, data->offset.x)) {
 		float itemCenterX = static_cast<float>(itemRect.center().x());
 		SnapGuide guide{{itemCenterX, 0.0f}, {itemCenterX, screen.y}};
 		main->addSnapGuide(guide);
@@ -1048,8 +1048,8 @@ static bool GetSourceSnapOffset(obs_scene_t * /* scene */, obs_sceneitem_t *item
 	if (tryEdgeSnapForOffset(movingEdge.y, itemEdge.y, data->clampDist, data->offset.y)) {
 		SnapGuide guide{{0.0f, itemEdge.y}, {screen.x, itemEdge.y}};
 		main->addSnapGuide(guide);
-	} else if (tryEdgeSnapForOffset(moveRect.center().y(), itemRect.center().y(), data->clampDist,
-					data->offset.y)) {
+	} else if (tryEdgeSnapForOffset(static_cast<float>(moveRect.center().y()),
+					static_cast<float>(itemRect.center().y()), data->clampDist, data->offset.y)) {
 		float itemCenterY = static_cast<float>(itemRect.center().y());
 		SnapGuide guide{{0.0f, itemCenterY}, {screen.x, itemCenterY}};
 		main->addSnapGuide(guide);
@@ -1084,8 +1084,8 @@ void OBSBasicPreview::SnapItemMovement(vec2 &offset)
 		return;
 	}
 
-	const float clampDist =
-		config_get_double(App()->GetUserConfig(), "BasicWindow", "SnapDistance") / main->previewScale;
+	const float clampDist = static_cast<float>(
+		config_get_double(App()->GetUserConfig(), "BasicWindow", "SnapDistance") / main->previewScale);
 
 	OffsetData offsetData;
 	offsetData.clampDist = clampDist;
@@ -1484,7 +1484,8 @@ void OBSBasicPreview::CropItem(const vec2 &pos)
 	vec2 max_br;
 
 	vec2_set(&max_tl, float(-crop.left) * scale.x, float(-crop.top) * scale.y);
-	vec2_set(&max_br, stretchItemSize.x + crop.right * scale.x, stretchItemSize.y + crop.bottom * scale.y);
+	vec2_set(&max_br, stretchItemSize.x + static_cast<float>(crop.right) * scale.x,
+		 stretchItemSize.y + static_cast<float>(crop.bottom) * scale.y);
 
 	typedef std::function<float(float, float)> minmax_func_t;
 
@@ -1499,20 +1500,20 @@ void OBSBasicPreview::CropItem(const vec2 &pos)
 	pos3.y = max_y(pos3.y, max_tl.y);
 
 	if (stretchFlags & ITEM_LEFT) {
-		float maxX = stretchItemSize.x - (2.0 * scale.x);
+		float maxX = stretchItemSize.x - (2.0f * scale.x);
 		pos3.x = tl.x = min_x(pos3.x, maxX);
 
 	} else if (stretchFlags & ITEM_RIGHT) {
-		float minX = (2.0 * scale.x);
+		float minX = (2.0f * scale.x);
 		pos3.x = br.x = max_x(pos3.x, minX);
 	}
 
 	if (stretchFlags & ITEM_TOP) {
-		float maxY = stretchItemSize.y - (2.0 * scale.y);
+		float maxY = stretchItemSize.y - (2.0f * scale.y);
 		pos3.y = tl.y = min_y(pos3.y, maxY);
 
 	} else if (stretchFlags & ITEM_BOTTOM) {
-		float minY = (2.0 * scale.y);
+		float minY = (2.0f * scale.y);
 		pos3.y = br.y = max_y(pos3.y, minY);
 	}
 
@@ -1685,7 +1686,7 @@ void OBSBasicPreview::RotateItem(const vec2 &pos)
 
 	if (shiftDown) {
 		for (int i = 0; i <= 360 / 15; i++) {
-			ROT_SNAP(i * 15 - 90, 7.5);
+			ROT_SNAP(static_cast<float>(i * 15 - 90), 7.5);
 		}
 	} else if (!ctrlDown) {
 		ROT_SNAP(rotateAngle, 5)
@@ -1723,10 +1724,10 @@ void OBSBasicPreview::mouseMoveEvent(QMouseEvent *event)
 	float pixelRatio = main->GetDevicePixelRatio();
 
 	if (scrollMode && event->buttons() == Qt::LeftButton) {
-		scrollingOffset.x += pixelRatio * (qtPos.x() - scrollingFrom.x);
-		scrollingOffset.y += pixelRatio * (qtPos.y() - scrollingFrom.y);
-		scrollingFrom.x = qtPos.x();
-		scrollingFrom.y = qtPos.y();
+		scrollingOffset.x += static_cast<float>(pixelRatio * (qtPos.x() - scrollingFrom.x));
+		scrollingOffset.y += static_cast<float>(pixelRatio * (qtPos.y() - scrollingFrom.y));
+		scrollingFrom.x = static_cast<float>(qtPos.x());
+		scrollingFrom.y = static_cast<float>(qtPos.y());
 		emit DisplayResized();
 		return;
 	}
@@ -1804,8 +1805,8 @@ void OBSBasicPreview::mouseMoveEvent(QMouseEvent *event)
 			mousePos = pos;
 			OBSBasic *obsBasic = OBSBasic::Get();
 			float scale = obsBasic->GetDevicePixelRatio();
-			float x = qtPos.x() - obsBasic->previewX / scale;
-			float y = qtPos.y() - obsBasic->previewY / scale;
+			float x = static_cast<float>(qtPos.x()) - static_cast<float>(obsBasic->previewX) / scale;
+			float y = static_cast<float>(qtPos.y()) - static_cast<float>(obsBasic->previewY) / scale;
 			vec2_set(&startPos, x, y);
 			updateCursor = true;
 		}
@@ -1891,7 +1892,7 @@ static void DrawRotationHandle(gs_vertbuffer_t *circle, float rot, float pixelRa
 	gs_matrix_translate(&pos);
 
 	gs_matrix_rotaa4f(0.0f, 0.0f, 1.0f, RAD(rot));
-	gs_matrix_translate3f(-HANDLE_RADIUS * 1.5 * pixelRatio, -HANDLE_RADIUS * 1.5 * pixelRatio, 0.0f);
+	gs_matrix_translate3f(-HANDLE_RADIUS * 1.5f * pixelRatio, -HANDLE_RADIUS * 1.5f * pixelRatio, 0.0f);
 	gs_matrix_scale3f(HANDLE_RADIUS * 3 * pixelRatio, HANDLE_RADIUS * 3 * pixelRatio, 1.0f);
 
 	gs_matrix_push();
@@ -2235,7 +2236,7 @@ bool OBSBasicPreview::DrawSelectedItem(obs_scene_t *, obs_sceneitem_t *item, voi
 			float angle = 180;
 			for (int i = 0, l = 40; i < l; i++) {
 				gs_vertex2f(sin(RAD(angle)) / 2 + 0.5f, cos(RAD(angle)) / 2 + 0.5f);
-				angle += 360 / l;
+				angle += static_cast<float>(360 / l);
 				gs_vertex2f(sin(RAD(angle)) / 2 + 0.5f, cos(RAD(angle)) / 2 + 0.5f);
 				gs_vertex2f(0.5f, 1.0f);
 			}
@@ -2307,7 +2308,7 @@ void OBSBasicPreview::DrawSnapGuides()
 	OBSBasic *main = OBSBasic::Get();
 
 	vec2 viewport;
-	vec2_set(&viewport, main->previewCX, main->previewCY);
+	vec2_set(&viewport, static_cast<float>(main->previewCX), static_cast<float>(main->previewCY));
 
 	float pixelRatio = main->GetDevicePixelRatio();
 
@@ -2452,7 +2453,7 @@ void OBSBasicPreview::SetScalingAmount(float newScalingAmountVal)
 	emit scalingChanged(scalingAmount);
 
 	if (!fixedScaling) {
-		scalingLevel = std::round(log(scalingAmount) / log(ZOOM_SENSITIVITY));
+		scalingLevel = static_cast<int32_t>(std::round(log(scalingAmount) / log(ZOOM_SENSITIVITY)));
 	}
 }
 
@@ -2499,7 +2500,7 @@ static obs_source_t *CreateLabel(float pixelRatio, int i)
 
 	obs_data_set_string(font, "face", GetPlatformPropertiesFontFace());
 	obs_data_set_int(font, "flags", 1); // Bold text
-	obs_data_set_int(font, "size", 16 * pixelRatio);
+	obs_data_set_int(font, "size", static_cast<int64_t>(16 * pixelRatio));
 
 	obs_data_set_obj(settings, "font", font);
 	obs_data_set_bool(settings, "outline", true);
@@ -2600,9 +2601,9 @@ static void RenderSpacingHelper(int sourceIndex, vec3 &start, vec3 &end, vec3 &v
 	float px;
 
 	if (horizontal) {
-		px = length * ovi.base_width;
+		px = length * static_cast<float>(ovi.base_width);
 	} else {
-		px = length * ovi.base_height;
+		px = length * static_cast<float>(ovi.base_height);
 	}
 
 	if (px <= 0.0f) {
@@ -2612,7 +2613,8 @@ static void RenderSpacingHelper(int sourceIndex, vec3 &start, vec3 &end, vec3 &v
 	OBSBasicPreview *prev = OBSBasicPreview::Get();
 	obs_source_t *source = prev->spacerLabel[sourceIndex];
 	vec3 labelSize, labelPos;
-	vec3_set(&labelSize, obs_source_get_width(source), obs_source_get_height(source), 1.0f);
+	vec3_set(&labelSize, static_cast<float>(obs_source_get_width(source)),
+		 static_cast<float>(obs_source_get_height(source)), 1.0f);
 
 	vec3_div(&labelSize, &labelSize, &viewport);
 
@@ -2683,7 +2685,7 @@ void OBSBasicPreview::DrawSpacingHelpers()
 	obs_get_video_info(&ovi);
 
 	vec3 size;
-	vec3_set(&size, ovi.base_width, ovi.base_height, 1.0f);
+	vec3_set(&size, static_cast<float>(ovi.base_width), static_cast<float>(ovi.base_height), 1.0f);
 
 	// Init box transform side locations
 	vec3 left, right, top, bottom;
@@ -2773,7 +2775,7 @@ void OBSBasicPreview::DrawSpacingHelpers()
 
 	// Init viewport
 	vec3 viewport;
-	vec3_set(&viewport, main->previewCX, main->previewCY, 1.0f);
+	vec3_set(&viewport, static_cast<float>(main->previewCX), static_cast<float>(main->previewCY), 1.0f);
 
 	vec3_div(&left, &left, &viewport);
 	vec3_div(&right, &right, &viewport);
@@ -2873,7 +2875,7 @@ void OBSBasicPreview::UpdateXScrollBar(float cx)
 	main->ui->previewXScrollBar->setRange(int(-cx), int(cx));
 
 	QSize targetSize = GetPixelSize(this);
-	main->ui->previewXScrollBar->setPageStep(targetSize.width() / std::min(scalingAmount, 1.0f));
+	main->ui->previewXScrollBar->setPageStep(static_cast<int>(targetSize.width() / std::min(scalingAmount, 1.0f)));
 
 	QSignalBlocker sig(main->ui->previewXScrollBar);
 	main->ui->previewXScrollBar->setValue(int(-scrollingOffset.x));
@@ -2894,7 +2896,7 @@ void OBSBasicPreview::UpdateYScrollBar(float cy)
 	main->ui->previewYScrollBar->setRange(int(-cy), int(cy));
 
 	QSize targetSize = GetPixelSize(this);
-	main->ui->previewYScrollBar->setPageStep(targetSize.height() / std::min(scalingAmount, 1.0f));
+	main->ui->previewYScrollBar->setPageStep(static_cast<int>(targetSize.height() / std::min(scalingAmount, 1.0f)));
 
 	QSignalBlocker sig(main->ui->previewYScrollBar);
 	main->ui->previewYScrollBar->setValue(int(-scrollingOffset.y));

@@ -343,8 +343,8 @@ void OBSBasic::ResizeProgram(uint32_t cx, uint32_t cy)
 	GetScaleAndCenterPos(int(cx), int(cy), targetSize.width() - PREVIEW_EDGE_SIZE * 2,
 			     targetSize.height() - PREVIEW_EDGE_SIZE * 2, programX, programY, programScale);
 
-	programX += float(PREVIEW_EDGE_SIZE);
-	programY += float(PREVIEW_EDGE_SIZE);
+	programX += PREVIEW_EDGE_SIZE;
+	programY += PREVIEW_EDGE_SIZE;
 }
 
 void OBSBasic::UpdatePreviewProgramIndicators()

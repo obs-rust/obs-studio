@@ -138,10 +138,11 @@ void OBSBasic::RenderMain(void *data, uint32_t, uint32_t)
 	obs_display_t *display = window->ui->preview->GetDisplay();
 	uint32_t width, height;
 	obs_display_size(display, &width, &height);
-	float right = float(width) - window->previewX;
-	float bottom = float(height) - window->previewY;
+	float right = float(width) - static_cast<float>(window->previewX);
+	float bottom = float(height) - static_cast<float>(window->previewY);
 
-	gs_ortho(-window->previewX, right, -window->previewY, bottom, -100.0f, 100.0f);
+	gs_ortho(-static_cast<float>(window->previewX), right, -static_cast<float>(window->previewY), bottom, -100.0f,
+		 100.0f);
 
 	window->ui->preview->DrawOverflow();
 
@@ -165,7 +166,8 @@ void OBSBasic::RenderMain(void *data, uint32_t, uint32_t)
 
 	/* --------------------------------------- */
 
-	gs_ortho(-window->previewX, right, -window->previewY, bottom, -100.0f, 100.0f);
+	gs_ortho(-static_cast<float>(window->previewX), right, -static_cast<float>(window->previewY), bottom, -100.0f,
+		 100.0f);
 	gs_reset_viewport();
 
 	int targetCX = window->previewCX;
@@ -216,8 +218,8 @@ void OBSBasic::ResizePreview(uint32_t cx, uint32_t cy)
 		GetCenterPosFromFixedScale(int(cx), int(cy), targetSize.width() - PREVIEW_EDGE_SIZE * 2,
 					   targetSize.height() - PREVIEW_EDGE_SIZE * 2, previewX, previewY,
 					   previewScale);
-		previewX += ui->preview->GetScrollX();
-		previewY += ui->preview->GetScrollY();
+		previewX += static_cast<int>(ui->preview->GetScrollX());
+		previewY += static_cast<int>(ui->preview->GetScrollY());
 
 	} else {
 		GetScaleAndCenterPos(int(cx), int(cy), targetSize.width() - PREVIEW_EDGE_SIZE * 2,
@@ -226,8 +228,8 @@ void OBSBasic::ResizePreview(uint32_t cx, uint32_t cy)
 
 	ui->preview->SetScalingAmount(previewScale);
 
-	previewX += float(PREVIEW_EDGE_SIZE);
-	previewY += float(PREVIEW_EDGE_SIZE);
+	previewX += PREVIEW_EDGE_SIZE;
+	previewY += PREVIEW_EDGE_SIZE;
 }
 
 void OBSBasic::on_preview_customContextMenuRequested()
@@ -490,7 +492,7 @@ void OBSBasic::ColorChange()
 			SourceTreeItem *curTreeItem = GetItemWidgetFromSceneItem(curSceneItem);
 			OBSDataAutoRelease curPrivData = obs_sceneitem_get_private_settings(curSceneItem);
 
-			int oldPreset = obs_data_get_int(curPrivData, "color-preset");
+			int oldPreset = static_cast<int>(obs_data_get_int(curPrivData, "color-preset"));
 			const QString oldSheet = curTreeItem->styleSheet();
 
 			auto liveChangeColor = [=](const QColor &color) {
