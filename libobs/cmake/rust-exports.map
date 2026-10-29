@@ -192,6 +192,10 @@
     obs_scene_item_transform_bounded;
     obs_scene_item_transform_matrix;
     obs_scene_item_transform_box_scale;
+    /* obs-scene-transform-update.c. obs-scene.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_scene_transform_update_scene_size;
+    obs_scene_transform_update_item;
     /* obs-scene-audio-actions.c. obs-scene-item-audio-actions.c calls them
      * inside libobs. Not EXPORT. */
     obs_scene_audio_actions_apply;

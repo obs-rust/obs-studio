@@ -46,8 +46,12 @@ impl Size {
 /// `scene_size_changed()`: `false` when `now` is the stored size; otherwise
 /// stores `now` in `last` and returns `true`.
 pub fn scene_size(last: &mut Size, now: Size) -> bool {
-    let _ = (last, now);
-    todo!("scene_size")
+    if *last == now {
+        return false;
+    }
+
+    *last = now;
+    true
 }
 
 /// The test of `update_transforms_and_prune_sources()`, with
@@ -61,6 +65,5 @@ pub fn item_needs_update(
     source: Size,
     scene_size_changed: bool,
 ) -> bool {
-    let _ = (update_transform, last, source, scene_size_changed);
-    todo!("item_needs_update")
+    update_transform || source != last || scene_size_changed
 }

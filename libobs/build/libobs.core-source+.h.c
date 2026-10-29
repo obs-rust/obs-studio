@@ -5,7 +5,6 @@
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
-#include "libobs/obs-scene-transform-update.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-transition.c.h"

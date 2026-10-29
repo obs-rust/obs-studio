@@ -240,6 +240,7 @@
     "build/libobs.ported-scene-item-names+.h.c",
     "build/libobs.ported-scene-item-transform+.h.c",
     "build/libobs.ported-scene-render-plan+.h.c",
+    "build/libobs.ported-scene-transform-update+.h.c",
     "build/libobs.ported-service-getters+.h.c",
     "build/libobs.ported-source-async-pacing+.h.c",
     "build/libobs.ported-source-async-upload+.h.c",

@@ -16,7 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-transform-update.pch.h"
+
+/* Ported to rust/obs-scene (transform_update): the hybrid libobs drops this
+ * file. */
 
 /* The transform update decisions of scene_video_render() and
  * update_transforms_and_prune_sources() in obs-scene.c, moved: the

@@ -11,5 +11,6 @@ pub mod scene_group_transform;
 pub mod scene_item_names;
 pub mod scene_item_transform;
 pub mod scene_render_plan;
+pub mod scene_transform_update;
 
 pub mod scene_bounds_place;
