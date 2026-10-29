@@ -15,8 +15,10 @@
  * The kept fields must never go back in time. When the canvas is at least as
  * fast as the field rate every field must be shown (buffered sources: none
  * for more frames than the rates call for); when it is slower, at most one
- * field may be dropped between two shown ones. Buffered and unbuffered
- * sources are timed by different code, so both are covered.
+ * field may be dropped between two shown ones. One field may be skipped in a
+ * whole run, or held one frame too long, for a single late tick under load
+ * (#456); a second one is a cadence bug. Buffered and unbuffered sources are
+ * timed by different code, so both are covered.
  *
  * The first frame (obs-rust/obs-studio#1965): the first_frame cases measure
  * a source that never showed a frame, and the after_pause cases a source
@@ -409,6 +411,16 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	obs_source_release(source);
 	pthread_mutex_destroy(&w.mutex);
 
+	/* A canvas at least as fast as the field rate can show every field,
+	 * each for at most canvas / field rate frames, rounded up (50i into 60
+	 * fps: 5 fields once, 1 twice, like 50p); a slower one must drop some,
+	 * but never two in a row. An unbuffered source shows a frame as soon
+	 * as it arrives, so one that arrives just after a tick repeats the
+	 * field before it: only buffered sources are held to the cadence. */
+	const size_t allowed_gap = r->canvas_fps >= field_rate ? 0 : 1;
+	const size_t allowed_held = unbuffered ? SIZE_MAX : (r->canvas_fps + field_rate - 1) / field_rate;
+	const size_t expected = r->canvas_fps >= field_rate ? 2 * FRAMES : 2 * FRAMES * r->canvas_fps / field_rate;
+
 	/* Collapse repeats: the fields in the order they were shown. Count the
 	 * fields skipped between two shown ones, except in the first two
 	 * frames (fields 0-3) after the warm-up: its last frame and the first
@@ -467,9 +479,6 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	 * but never two in a row. An unbuffered source shows a frame as soon
 	 * as it arrives, so one that arrives just after a tick repeats the
 	 * field before it: only buffered sources are held to the cadence. */
-	const size_t allowed_gap = r->canvas_fps >= field_rate ? 0 : 1;
-	const size_t allowed_held = unbuffered ? SIZE_MAX : (r->canvas_fps + field_rate - 1) / field_rate;
-	const size_t expected = r->canvas_fps >= field_rate ? 2 * FRAMES : 2 * FRAMES * r->canvas_fps / field_rate;
 
 	if (num < expected * 3 / 4) {
 		fprintf(stderr, "%s: only %zu of %d fields were shown (expected about %zu)\n", what, num, 2 * FRAMES,
@@ -480,11 +489,6 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 		fprintf(stderr, "%s: the output went back in time %zu times\n", what, backwards);
 		fail();
 	}
-	if (max_gap > allowed_gap) {
-		fprintf(stderr, "%s, %ui into %u fps: %zu fields skipped, up to %zu in a row (allowed %zu)\n", what,
-			field_rate, r->canvas_fps, skipped, max_gap, allowed_gap);
-		fail();
-	}
 	/* One field may be held a frame longer than the cadence allows: a single
 	 * late tick under load (#456). A second one, or a longer hold, is a
 	 * cadence bug. */
@@ -492,6 +496,16 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	for (size_t i = 0; i < num_holds; i++)
 		if (holds[i] > allowed_held)
 			over++;
+	/* The same late tick can also cost a field: the canvas misses the tick
+	 * that would have shown it, so at most one field may be skipped in a
+	 * run, and never two in a row. Two in a row, or two skips, stay a
+	 * cadence bug (#456). */
+	const size_t allowed_skip = allowed_gap + 1;
+	if (max_gap > allowed_skip || skipped > allowed_skip) {
+		fprintf(stderr, "%s, %ui into %u fps: %zu fields skipped, up to %zu in a row (allowed %zu, once %zu)\n",
+			what, field_rate, r->canvas_fps, skipped, max_gap, allowed_gap, allowed_skip);
+		fail();
+	}
 	if (allowed_held != SIZE_MAX && (max_held > allowed_held + 1 || over > 1)) {
 		fprintf(stderr,
 			"%s, %ui into %u fps: a field was held for %zu frames (allowed %zu, once %zu); %zu over\n",
