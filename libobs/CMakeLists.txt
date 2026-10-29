@@ -46,6 +46,33 @@ foreach(target libobs-objects ${OBS_LIBOBS_C_TARGETS})
   target_compile_options(${target} PRIVATE $<$<C_COMPILER_ID:MSVC>:/wd4702>)
 endforeach()
 obs_libobs_add_c_sources(${LIBOBS_PORTED_SOURCES})
+
+# #2625: this target's conversions are fixed at the call sites, so the pins that
+# hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
+# -Wno-float-conversion only leave the flag lists once every target is ratcheted.
+# The shared libraries compile their own host sources, and the C reference
+# compiles the same groups, so every libobs target carries it.
+foreach(target libobs-objects ${LIBOBS_SHARED_TARGETS} ${OBS_LIBOBS_C_TARGETS})
+  target_compile_options(
+    ${target}
+    PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
+endforeach()
+
+# libnsgif is vendored C89 (the upstream NetSurf GIF decoder, kept as the
+# differential oracle for the Rust port), so it keeps the per-source exemption
+# the rest of the vendored C already has (librtmp, uthash): its conversions are
+# not call sites this port edits.
+set_property(
+  SOURCE
+    build/libobs.ported-nsgif-blocks+.h.c
+    build/libobs.ported-nsgif-frame+.h.c
+    build/libobs.ported-nsgif-gif+.h.c
+    build/libobs.ported-nsgif-lzw+.h.c
+  APPEND
+  PROPERTY COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wno-conversion;-Wno-sign-conversion>"
+)
+
 # MSVC warns about INFINITY (a standard library macro) in obs-audio-controls.c
 # (#870; was a pragma in the file).
 set_property(
