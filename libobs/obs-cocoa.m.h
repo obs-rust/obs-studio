@@ -158,7 +158,7 @@ static bool dstr_from_cfstring(struct dstr *str, CFStringRef ref)
     CFIndex max_size = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
     assert(max_size > 0);
 
-    dstr_reserve(str, max_size);
+    dstr_reserve(str, (size_t) max_size);
 
     if (!CFStringGetCString(ref, str->array, max_size, kCFStringEncodingUTF8))
         return false;
@@ -724,7 +724,7 @@ obs_key_t obs_key_from_virtual_key(int keyCode)
 bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *platform, obs_key_t key)
 {
     if (key >= OBS_KEY_MOUSE1 && key <= OBS_KEY_MOUSE29) {
-        int button = key - 1;
+        int button = (int) key - 1;
 
         NSUInteger buttons = [NSEvent pressedMouseButtons];
 
@@ -833,8 +833,9 @@ void obs_key_to_str(obs_key_t key, struct dstr *str)
     UInt32 deadKeyState = 0;
     UniCharCount length = 0;
 
-    OSStatus err = UCKeyTranslate(platform->layout, code, kUCKeyActionDown, ((alphaLock >> 8) & 0xFF), LMGetKbdType(),
-                                  kUCKeyTranslateNoDeadKeysBit, &deadKeyState, maxLength, &length, buffer);
+    OSStatus err = UCKeyTranslate(platform->layout, (UInt16) code, kUCKeyActionDown, ((alphaLock >> 8) & 0xFF),
+                                  LMGetKbdType(), kUCKeyTranslateNoDeadKeysBit, &deadKeyState, maxLength, &length,
+                                  buffer);
 
     if (err == noErr && length <= 0 && deadKeyState) {
         err = UCKeyTranslate(platform->layout, kVK_Space, kUCKeyActionDown, ((alphaLock >> 8) & 0xFF), LMGetKbdType(),
@@ -858,7 +859,7 @@ void obs_key_to_str(obs_key_t key, struct dstr *str)
         return;
     }
 
-    CFStringRef string = CFStringCreateWithCharactersNoCopy(NULL, buffer, length, kCFAllocatorNull);
+    CFStringRef string = CFStringCreateWithCharactersNoCopy(NULL, buffer, (CFIndex) length, kCFAllocatorNull);
 
     if (!string) {
         const char *keyName = obs_key_to_name(key);
