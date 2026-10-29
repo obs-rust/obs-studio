@@ -242,13 +242,19 @@ enum NameText {
     Heap(Box<CStr>),
 }
 
+/// The bytes a name is stored and looked up by: a name with a NUL inside is
+/// stored as the empty name, which is what C's `strcpy` leaves in the item
+/// (#1453). Lookup and storage share it so a new item hashes the name once.
+fn name_bytes(name: &str) -> &[u8] {
+    let bytes = name.as_bytes();
+    if bytes.contains(&0) { &[] } else { bytes }
+}
+
 impl Name {
-    fn new(name: &str) -> Self {
-        let bytes = if name.as_bytes().contains(&0) {
-            &[][..]
-        } else {
-            name.as_bytes()
-        };
+    /// A name from bytes the caller already normalized and hashed, so a set
+    /// that hashed the name for its lookup does not hash it a second time to
+    /// store it (#1453).
+    fn with_hash(bytes: &[u8], hash: u64) -> Self {
         let text = if bytes.len() <= NAME_INLINE {
             let mut buf = [0u8; NAME_INLINE + 1];
             buf[..bytes.len()].copy_from_slice(bytes);
@@ -259,10 +265,7 @@ impl Name {
         } else {
             NameText::Heap(CString::new(bytes).unwrap_or_default().into_boxed_c_str())
         };
-        Self {
-            hash: name_hash(bytes),
-            text,
-        }
+        Self { hash, text }
     }
 
     fn bytes(&self) -> &[u8] {
@@ -300,9 +303,9 @@ pub(crate) struct ItemNode {
 }
 
 impl ItemNode {
-    fn new(name: &str, inner: ItemInner) -> Self {
+    fn new_with_hash(bytes: &[u8], hash: u64, inner: ItemInner) -> Self {
         Self {
-            name: Name::new(name),
+            name: Name::with_hash(bytes, hash),
             lock: RwLock::new(inner),
         }
     }
@@ -852,13 +855,16 @@ pub(crate) struct DataInner {
 
 impl DataInner {
     fn find(&self, name: &str) -> Option<&Arc<ItemNode>> {
-        let bytes = name.as_bytes();
+        let bytes = name_bytes(name);
+        self.find_hashed(name_hash(bytes), bytes)
+    }
+
+    /// The lookup for a caller that already has the name's normalized bytes
+    /// and hash (#1453).
+    fn find_hashed(&self, hash: u64, bytes: &[u8]) -> Option<&Arc<ItemNode>> {
         match &self.index {
             Some(index) => index.get(bytes).map(|key| &key.0),
-            None => {
-                let hash = name_hash(bytes);
-                self.items.iter().find(|item| item.name.is(hash, bytes))
-            }
+            None => self.items.iter().find(|item| item.name.is(hash, bytes)),
         }
     }
 
@@ -1634,15 +1640,19 @@ impl Data {
         // The lookup and the push are one step under the write lock, so two
         // threads that set the same new name make one item (#1451). The
         // item lock comes second, in the usual order.
+        let bytes = name_bytes(name);
+        let hash = name_hash(bytes);
         let mut inner = self.inner.borrow_mut();
-        if let Some(item) = inner.find(name) {
+        if let Some(item) = inner.find_hashed(hash, bytes) {
             item.borrow_mut().write(slot, value);
             return;
         }
         // A fresh default still has to record the type. `write` on an empty
         // item does that. Autoselect and user do too.
         let item = ItemInner::create(slot, value, Arc::downgrade(&self.inner));
-        inner.push(Arc::new(ItemNode::new(name, item)));
+        // The name's bytes and hash are the ones the lookup above already
+        // computed, so a new item hashes its name once, not twice (#1453).
+        inner.push(Arc::new(ItemNode::new_with_hash(bytes, hash, item)));
     }
 
     fn set_vec(&self, name: &str, slot: Slot, pairs: &[(&str, f64)]) {
