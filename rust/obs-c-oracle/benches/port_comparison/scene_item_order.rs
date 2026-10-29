@@ -6,7 +6,7 @@
 //! one item moved), walks its group runs one entry at a time, and asks the anchor of every
 //! movement for every neighbour pair, folded into a checksum both sides must
 //! match. The Rust check also validates the order (two sorted copies of its
-//! items, the fix of #2895), which the C does not: about 81 ns against 29 ns
+//! items, the fix of #2895), which the C does not: about 95 ns against 37 ns
 //! on x86_64 Linux, once per drag. Neither side allocates through bmalloc.
 
 use super::pair;
