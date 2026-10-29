@@ -44,6 +44,15 @@ def cpus(text: str) -> set[int]:
     return result
 
 
+def cpus_argument(pairs: list[list[int]]) -> str:
+    """The runner's `--cpus` argument: each pair as a list, never a range.
+
+    `serial-runner.py` parses `-` as a range, so a non-adjacent pair written
+    as `1-3` would hand it CPU 2 — a CPU the host may not have (#2883).
+    """
+    return ",".join(",".join(str(cpu) for cpu in pair) for pair in pairs)
+
+
 def registry(commands: list[list[str]], serial: list[bool] | None = None) -> dict:
     serial = serial or [True] * len(commands)
     return {
@@ -117,7 +126,7 @@ class SerialRunTest(unittest.TestCase):
             "run",
             str(tmp / "registry.json"),
             "--cpus",
-            ",".join("-".join(str(cpu) for cpu in pair) for pair in pairs),
+            cpus_argument(pairs),
             "--log-dir",
             str(tmp / "logs"),
         )
