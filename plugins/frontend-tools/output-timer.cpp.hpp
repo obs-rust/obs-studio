@@ -256,13 +256,13 @@ static void SaveOutputTimer(obs_data_t *save_data, bool saving, void *)
 			obj = obs_data_create();
 		}
 
-		ot->ui->streamingTimerHours->setValue(obs_data_get_int(obj, "streamTimerHours"));
-		ot->ui->streamingTimerMinutes->setValue(obs_data_get_int(obj, "streamTimerMinutes"));
-		ot->ui->streamingTimerSeconds->setValue(obs_data_get_int(obj, "streamTimerSeconds"));
+		ot->ui->streamingTimerHours->setValue(static_cast<int>(obs_data_get_int(obj, "streamTimerHours")));
+		ot->ui->streamingTimerMinutes->setValue(static_cast<int>(obs_data_get_int(obj, "streamTimerMinutes")));
+		ot->ui->streamingTimerSeconds->setValue(static_cast<int>(obs_data_get_int(obj, "streamTimerSeconds")));
 
-		ot->ui->recordingTimerHours->setValue(obs_data_get_int(obj, "recordTimerHours"));
-		ot->ui->recordingTimerMinutes->setValue(obs_data_get_int(obj, "recordTimerMinutes"));
-		ot->ui->recordingTimerSeconds->setValue(obs_data_get_int(obj, "recordTimerSeconds"));
+		ot->ui->recordingTimerHours->setValue(static_cast<int>(obs_data_get_int(obj, "recordTimerHours")));
+		ot->ui->recordingTimerMinutes->setValue(static_cast<int>(obs_data_get_int(obj, "recordTimerMinutes")));
+		ot->ui->recordingTimerSeconds->setValue(static_cast<int>(obs_data_get_int(obj, "recordTimerSeconds")));
 
 		ot->ui->autoStartStreamTimer->setChecked(obs_data_get_bool(obj, "autoStartStreamTimer"));
 		ot->ui->autoStartRecordTimer->setChecked(obs_data_get_bool(obj, "autoStartRecordTimer"));

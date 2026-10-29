@@ -38,7 +38,7 @@ struct SwitcherData {
 		for (size_t i = 0; i < switches.size(); i++) {
 			SceneSwitch &s = switches[i];
 			if (!WeakSourceValid(s.scene)) {
-				switches.erase(switches.begin() + i--);
+				switches.erase(switches.begin() + static_cast<std::ptrdiff_t>(i--));
 			}
 		}
 
@@ -351,7 +351,7 @@ static void SaveSceneSwitcher(obs_data_t *save_data, bool saving, void *)
 
 		obs_data_set_default_int(obj, "interval", DEFAULT_INTERVAL);
 
-		switcher->interval = obs_data_get_int(obj, "interval");
+		switcher->interval = static_cast<int>(obs_data_get_int(obj, "interval"));
 		switcher->switchIfNotMatching = obs_data_get_bool(obj, "switch_if_not_matching");
 		string nonMatchingScene = obs_data_get_string(obj, "non_matching_scene");
 		bool active = obs_data_get_bool(obj, "active");
