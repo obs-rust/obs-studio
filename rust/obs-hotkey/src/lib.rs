@@ -3,13 +3,14 @@
 //! `libobs/obs-hotkey-press.c.h`, `libobs/obs-hotkey-pair.c.h`,
 //! `libobs/obs-nix-hotkey-state.c.h`,
 //! `libobs/obs-nix-portal-shortcut-ids.c.h`,
-//! `libobs/obs-nix-portal-shortcut-sets.c.h` and
-//! `libobs/obs-nix-x11-keys.c.h`.
+//! `libobs/obs-nix-portal-shortcut-sets.c.h`,
+//! `libobs/obs-nix-x11-keys.c.h` and
+//! `libobs/obs-cocoa-keys.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
 //! [`press`], [`pair`], [`nix_hotkey_state`], [`portal_shortcut_ids`],
-//! [`portal_shortcut_sets`] and [`nix_x11_keys`]. The C ABI shims live in
-//! [`ffi`].
+//! [`portal_shortcut_sets`], [`nix_x11_keys`] and [`cocoa_keys`]. The C ABI
+//! shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 

@@ -1998,6 +1998,11 @@ area.
   Linux. *Linux, macOS*, pending merge. Issue
   [#2637](https://github.com/obs-rust/obs-studio/issues/2637), PRs
   [#2654](https://github.com/obs-rust/obs-studio/pull/2654).
+- On macOS, a hotkey bound to a mouse button follows that button: Mouse 1
+  is the left button, Mouse 2 the right, and so on. Before, OBS tested an
+  unrelated bit of the pressed buttons, so the hotkey's state was arbitrary.
+  *macOS*, 2026-10-29. Issue
+  [#2914](https://github.com/obs-rust/obs-studio/issues/2914).
 
 ### Scripting
 
@@ -2055,9 +2060,11 @@ area.
   scene returns instead of crashing. *All*, 2026-10-29. Issue
   [#2895](https://github.com/obs-rust/obs-studio/issues/2895).
 - A plugin or script that asks obs_key_to_virtual_key for a key OBS doesn't
-  have gets 0 on X11, as for a key with no keysym, instead of an arbitrary
-  number. *Linux*, 2026-10-29. Issue
-  [#2901](https://github.com/obs-rust/obs-studio/issues/2901).
+  have gets 0 on X11, as for a key with no keysym, or 0xFF on macOS, as for
+  a key with no virtual key code, instead of an arbitrary number or a value
+  read past the key table. *Linux, macOS*, 2026-10-29. Issues
+  [#2901](https://github.com/obs-rust/obs-studio/issues/2901),
+  [#2914](https://github.com/obs-rust/obs-studio/issues/2914).
 - Duplicating a scene from a script or plugin, or in Studio Mode with
   "Duplicate Sources", no longer gives an item the wrong source when a
   source used by several items follows an item that could not be copied,
