@@ -655,7 +655,7 @@ void VolumeControl::updateDecayRate()
 void VolumeControl::updatePeakMeterType()
 {
 	OBSBasic *main = OBSBasic::Get();
-	uint32_t peakMeterTypeIdx = config_get_uint(main->Config(), "Audio", "PeakMeterType");
+	uint32_t peakMeterTypeIdx = static_cast<uint32_t>(config_get_uint(main->Config(), "Audio", "PeakMeterType"));
 
 	enum obs_peak_meter_type peakMeterType;
 	switch (peakMeterTypeIdx) {
@@ -820,7 +820,7 @@ void VolumeControl::sliderChanged(int vol)
 
 	float prev = obs_source_get_volume(source);
 
-	obs_fader_set_deflection(obs_fader, float(vol) / FADER_PRECISION);
+	obs_fader_set_deflection(obs_fader, static_cast<float>(float(vol) / FADER_PRECISION));
 	updateText();
 
 	auto undo_redo = [](const std::string &uuid, float val) {

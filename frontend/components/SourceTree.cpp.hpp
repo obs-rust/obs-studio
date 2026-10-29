@@ -135,7 +135,7 @@ void SourceTree::dropEvent(QDropEvent *event)
 			return;
 		}
 
-		row = items.size() - 1;
+		row = static_cast<int>(items.size() - 1);
 		indicator = QAbstractItemView::BelowItem;
 	}
 
@@ -237,7 +237,7 @@ void SourceTree::dropEvent(QDropEvent *event)
 
 	if (hasGroups) {
 		/* remove sub-items if selected */
-		for (int i = indices.size() - 1; i >= 0; i--) {
+		for (int i = static_cast<int>(indices.size()) - 1; i >= 0; i--) {
 			obs_sceneitem_t *item = items[indices[i].row()];
 			obs_scene_t *itemScene = obs_sceneitem_get_scene(item);
 
@@ -247,11 +247,11 @@ void SourceTree::dropEvent(QDropEvent *event)
 		}
 
 		/* add all sub-items of selected groups */
-		for (int i = indices.size() - 1; i >= 0; i--) {
+		for (int i = static_cast<int>(indices.size()) - 1; i >= 0; i--) {
 			obs_sceneitem_t *item = items[indices[i].row()];
 
 			if (obs_sceneitem_is_group(item)) {
-				for (int j = items.size() - 1; j >= 0; j--) {
+				for (int j = static_cast<int>(items.size()) - 1; j >= 0; j--) {
 					obs_sceneitem_t *subitem = items[j];
 					obs_sceneitem_t *subitemGroup = obs_sceneitem_get_group(scene, subitem);
 
@@ -648,7 +648,7 @@ void SourceTree::paintEvent(QPaintEvent *event)
 
 		x = thisSize.width() / 2.0 - textSize.width() / 2.0;
 		y += spacing + iconSize.height();
-		p.drawStaticText(x, y, textNoSources);
+		p.drawStaticText(QPoint(static_cast<int>(x), static_cast<int>(y)), textNoSources);
 	} else {
 		QListView::paintEvent(event);
 	}

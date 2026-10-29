@@ -188,7 +188,8 @@ static void CreateTransitionScene(OBSSource scene, const char *text, uint32_t co
 	obs_sceneitem_t *item = obs_scene_add(obs_scene_from_source(scene), label);
 
 	vec2 size;
-	vec2_set(&size, obs_source_get_width(scene), GetPlatformPropertiesLabelHeight(obs_source_get_height(scene)));
+	vec2_set(&size, static_cast<float>(obs_source_get_width(scene)),
+		 GetPlatformPropertiesLabelHeight(obs_source_get_height(scene)));
 
 	obs_sceneitem_set_bounds(item, &size);
 	obs_sceneitem_set_bounds_type(item, OBS_BOUNDS_SCALE_INNER);

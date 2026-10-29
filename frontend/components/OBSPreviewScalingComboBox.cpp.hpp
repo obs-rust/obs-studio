@@ -96,8 +96,8 @@ void OBSPreviewScalingComboBox::UpdateOutputText()
 void OBSPreviewScalingComboBox::UpdateScaledText()
 {
 	QString text = QTStr("Basic.MainMenu.Edit.Scale.Manual");
-	text = text.arg(QString::number(floor(canvas_width * previewScale)),
-			QString::number(floor(canvas_height * previewScale)));
+	text = text.arg(QString::number(floor(static_cast<float>(canvas_width) * previewScale)),
+			QString::number(floor(static_cast<float>(canvas_height) * previewScale)));
 	setPlaceholderText(text);
 }
 

@@ -15,7 +15,7 @@ SourceTreeItem::SourceTreeItem(SourceTree *tree_, OBSSceneItem sceneitem_) : tre
 	const char *name = obs_source_get_name(source);
 
 	OBSDataAutoRelease privData = obs_sceneitem_get_private_settings(sceneitem);
-	int preset = obs_data_get_int(privData, "color-preset");
+	int preset = static_cast<int>(obs_data_get_int(privData, "color-preset"));
 
 	if (preset == 1) {
 		const char *color = obs_data_get_string(privData, "color");

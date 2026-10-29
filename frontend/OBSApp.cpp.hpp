@@ -564,7 +564,7 @@ bool OBSApp::InitGlobalConfig()
 		return false;
 	}
 
-	uint32_t lastVersion = config_get_int(appConfig, "General", "LastVersion");
+	uint32_t lastVersion = static_cast<uint32_t>(config_get_int(appConfig, "General", "LastVersion"));
 
 	LegacySettingsState legacySettings{};
 	legacySettings.lastVersion = lastVersion;

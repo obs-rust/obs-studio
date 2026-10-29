@@ -281,7 +281,7 @@ void OBSAdvAudioCtrl::OBSSourceMixersChanged(void *param, calldata_t *calldata)
 
 void OBSAdvAudioCtrl::OBSSourceBalanceChanged(void *param, calldata_t *calldata)
 {
-	int balance = (float)calldata_float(calldata, "balance") * 100.0f;
+	int balance = static_cast<int>(calldata_float(calldata, "balance") * 100.0f);
 	QMetaObject::invokeMethod(static_cast<OBSAdvAudioCtrl *>(param), &OBSAdvAudioCtrl::SourceBalanceChanged,
 				  balance);
 }
@@ -340,7 +340,7 @@ void OBSAdvAudioCtrl::SourceBalanceChanged(int value)
 void OBSAdvAudioCtrl::SourceSyncChanged(int64_t offset)
 {
 	syncOffset->blockSignals(true);
-	syncOffset->setValue(offset / NSEC_PER_MSEC);
+	syncOffset->setValue(static_cast<int>(offset / NSEC_PER_MSEC));
 	syncOffset->blockSignals(false);
 }
 
@@ -373,7 +373,7 @@ void OBSAdvAudioCtrl::volumeChanged(double db)
 		db = -INFINITY;
 	}
 
-	float val = obs_db_to_mul(db);
+	float val = obs_db_to_mul(static_cast<float>(db));
 	obs_source_set_volume(source, val);
 
 	auto undo_redo = [](const std::string &uuid, float val) {

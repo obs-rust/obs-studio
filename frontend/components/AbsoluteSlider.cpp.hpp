@@ -148,7 +148,8 @@ void AbsoluteSlider::paintEvent(QPaintEvent *event)
 
 	for (double offset = minimum(); offset <= maximum(); offset += singleStep()) {
 		double tickPercent = (offset - minimum()) / (maximum() - minimum());
-		const int tickLineOffset = grooveStart + std::floor(sliderLength * tickPercent) + (handleSize / 2);
+		const int tickLineOffset =
+			static_cast<int>(grooveStart + std::floor(sliderLength * tickPercent) + (handleSize / 2));
 
 		const int xPos = isHorizontal ? tickLineOffset : tickLineStart;
 		const int yPos = isHorizontal ? tickLineStart : tickLineOffset;

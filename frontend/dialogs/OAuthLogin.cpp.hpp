@@ -82,7 +82,7 @@ void OAuthLogin::accept()
 void OAuthLogin::urlChanged(const QString &url)
 {
 	std::string uri = get_token ? "access_token=" : "code=";
-	int code_idx = url.indexOf(uri.c_str());
+	int code_idx = static_cast<int>(url.indexOf(uri.c_str()));
 	if (code_idx == -1) {
 		return;
 	}
@@ -93,7 +93,7 @@ void OAuthLogin::urlChanged(const QString &url)
 
 	code_idx += (int)uri.size();
 
-	int next_idx = url.indexOf("&", code_idx);
+	int next_idx = static_cast<int>(url.indexOf("&", code_idx));
 	if (next_idx != -1) {
 		code = url.mid(code_idx, next_idx - code_idx);
 	} else {

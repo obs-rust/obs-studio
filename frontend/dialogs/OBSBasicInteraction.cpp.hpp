@@ -179,9 +179,9 @@ static int TranslateQtMouseEventModifiers(QMouseEvent *event)
 
 bool OBSBasicInteraction::GetSourceRelativeXY(int mouseX, int mouseY, int &relX, int &relY)
 {
-	float pixelRatio = devicePixelRatioF();
-	int mouseXscaled = (int)roundf(mouseX * pixelRatio);
-	int mouseYscaled = (int)roundf(mouseY * pixelRatio);
+	float pixelRatio = static_cast<float>(devicePixelRatioF());
+	int mouseXscaled = static_cast<int>(roundf(static_cast<float>(mouseX) * pixelRatio));
+	int mouseYscaled = static_cast<int>(roundf(static_cast<float>(mouseY) * pixelRatio));
 
 	QSize size = GetPixelSize(ui->preview);
 
@@ -195,11 +195,11 @@ bool OBSBasicInteraction::GetSourceRelativeXY(int mouseX, int mouseY, int &relX,
 			     scale);
 
 	if (x > 0) {
-		relX = int(float(mouseXscaled - x) / scale);
-		relY = int(float(mouseYscaled / scale));
+		relX = static_cast<int>(static_cast<float>(mouseXscaled - x) / scale);
+		relY = static_cast<int>(static_cast<float>(mouseYscaled) / scale);
 	} else {
-		relX = int(float(mouseXscaled / scale));
-		relY = int(float(mouseYscaled - y) / scale);
+		relX = static_cast<int>(static_cast<float>(mouseXscaled) / scale);
+		relY = static_cast<int>(static_cast<float>(mouseYscaled - y) / scale);
 	}
 
 	// Confirm mouse is inside the source
@@ -298,8 +298,8 @@ bool OBSBasicInteraction::HandleMouseWheelEvent(QWheelEvent *event)
 	}
 
 	const QPointF position = event->position();
-	const int x = position.x();
-	const int y = position.y();
+	const int x = static_cast<int>(position.x());
+	const int y = static_cast<int>(position.y());
 
 	if (GetSourceRelativeXY(x, y, mouseEvent.x, mouseEvent.y)) {
 		obs_source_send_mouse_wheel(source, &mouseEvent, xDelta, yDelta);

@@ -272,7 +272,7 @@ void OBSRemux::reject()
 
 void OBSRemux::updateProgress(float percent)
 {
-	ui->progressBar->setValue(percent * 10);
+	ui->progressBar->setValue(static_cast<int>(percent * 10));
 }
 
 void OBSRemux::remuxFinished(bool success)

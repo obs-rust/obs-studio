@@ -238,7 +238,7 @@ SourceTreeModel::SourceTreeModel(SourceTree *st_) : QAbstractListModel(st_), st(
 
 int SourceTreeModel::rowCount(const QModelIndex &parent) const
 {
-	return parent.isValid() ? 0 : items.count();
+	return parent.isValid() ? 0 : static_cast<int>(items.count());
 }
 
 QVariant SourceTreeModel::data(const QModelIndex &index, int role) const
@@ -317,7 +317,7 @@ void SourceTreeModel::GroupSelectedItems(QModelIndexList &indices)
 
 	QVector<obs_sceneitem_t *> item_order;
 
-	for (int i = indices.count() - 1; i >= 0; i--) {
+	for (int i = static_cast<int>(indices.count()) - 1; i >= 0; i--) {
 		obs_sceneitem_t *item = items[indices[i].row()];
 		item_order << item;
 	}
@@ -361,7 +361,7 @@ void SourceTreeModel::UngroupSelectedGroups(QModelIndexList &indices)
 	OBSScene scene = main->GetCurrentScene();
 	OBSData undoData = main->BackupScene(scene);
 
-	for (int i = indices.count() - 1; i >= 0; i--) {
+	for (int i = static_cast<int>(indices.count()) - 1; i >= 0; i--) {
 		obs_sceneitem_t *item = items[indices[i].row()];
 		obs_sceneitem_group_ungroup(item);
 	}
@@ -374,7 +374,7 @@ void SourceTreeModel::UngroupSelectedGroups(QModelIndexList &indices)
 
 void SourceTreeModel::ExpandGroup(obs_sceneitem_t *item)
 {
-	int itemIdx = items.indexOf(item);
+	int itemIdx = static_cast<int>(items.indexOf(item));
 	if (itemIdx == -1) {
 		return;
 	}
@@ -390,7 +390,7 @@ void SourceTreeModel::ExpandGroup(obs_sceneitem_t *item)
 		return;
 	}
 
-	beginInsertRows(QModelIndex(), itemIdx, itemIdx + subItems.size() - 1);
+	beginInsertRows(QModelIndex(), itemIdx, static_cast<int>(itemIdx + subItems.size() - 1));
 	for (int i = 0; i < subItems.size(); i++) {
 		items.insert(i + itemIdx, subItems[i]);
 	}
