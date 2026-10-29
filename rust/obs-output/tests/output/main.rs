@@ -24,6 +24,7 @@ mod encoder_size_parity;
 mod interleave;
 mod interleave_parity;
 mod output_begin;
+mod output_begin_parity;
 mod output_slots;
 mod output_slots_parity;
 mod output_start;

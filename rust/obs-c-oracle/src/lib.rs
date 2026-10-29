@@ -107,6 +107,7 @@ pub mod nix_system_info;
 pub mod nix_x11_keys;
 pub mod obs_nvenc;
 pub mod obs_properties;
+pub mod output_begin;
 pub mod output_caption_text;
 pub mod output_delay;
 pub mod output_interleave;

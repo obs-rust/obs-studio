@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8ac7abdedfa59fff1eea61f9ad42df7eea8aef6c071271d406a2fa03ce264eb4 # shrinks to fps_num = 1, fps_den = 3, divisor = 1431655766
+cc a8026c015f91ec28aea5aa8fe7eac8eb77d5ffdbc2225e9a130062f86dee7a92 # shrinks to intervals = [18446744073709551615]
