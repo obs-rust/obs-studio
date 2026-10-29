@@ -61,6 +61,14 @@ authorizes.
 - **Failing check:** read the failed job log before acting.
   - A flake (timeout, runner died, transient network, a timing test the diff
     doesn't touch that passed in the sibling job): `gh run rerun <run> --failed`.
+    An abort after every case passed (`double free or corruption (out)` at
+    teardown) is a flake too when the diff cannot reach that test binary:
+    on 2026-10-29 `test_output_delay_restart` aborted that way in the `tests
+    OFF` job of master `afeacf4c7`, whose only code change was in
+    `plugins/obs-outputs`; the same job passed on `5298ad7e`, and the rerun
+    and the next master run both passed. Rerun before hunting a culprit, and
+    do not revert an innocent merge on one abort. Confirm against the next
+    master run before calling master red.
   - A master regression that a later merge fixed: rebase the PR
     (`gh pr update-branch <N> --rebase`).
   - A lint or formatting failure: push the fix as a mechanical fixup (below).
