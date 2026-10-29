@@ -1698,7 +1698,9 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 	bool make_unique = obs_scene_duplicate_unique((int)type);
 	bool make_private = obs_scene_duplicate_private((int)type);
 	obs_scene_item_ptr_array_t items;
-	/* the new source of each old item, NULL where none was added */
+	/* the new source of each old item, NULL where none was added; each one
+	 * is held until the end, as a handler of the new scene's signals can
+	 * remove its item before a later item reuses it */
 	DARRAY(obs_source_t *) copies;
 	struct obs_scene *new_scene;
 	struct obs_scene_item *item;
@@ -1770,7 +1772,7 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 
 			duplicate_item_data(new_item, item, false, false);
 
-			copy = source;
+			copy = obs_source_get_ref(source);
 			obs_source_release(source);
 		}
 
@@ -1782,6 +1784,9 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 
 	if (obs_scene_duplicate_resizes(new_scene->is_group))
 		resize_scene(new_scene);
+
+	for (size_t i = 0; i < copies.num; i++)
+		obs_source_release(copies.array[i]);
 
 	da_free(copies);
 	da_free(items);
