@@ -159,7 +159,11 @@ class FormatTest(unittest.TestCase):
             )
             stub = write_stub(
                 directory / 'swift-format',
-                f'echo "$@ " >> "{argv_log}"\n{stub_body}',
+                'echo "$0 $@ " >> "'
+                + str(argv_log)
+                + '"\n'
+                + 'if [ "$1" = --version ]; then printf "main (swift-format 508.0.0)\\n"; exit 0; fi\n'
+                + stub_body,
             )
             module.RETRY = retry
             module.SWIFT_FORMAT = stub

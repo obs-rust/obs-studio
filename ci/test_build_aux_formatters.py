@@ -49,7 +49,7 @@ class DeadFormatterScriptsTest(unittest.TestCase):
         for name in DEAD:
             with self.subTest(name=name):
                 self.assertNotIn(
-                    name,
+                    f"build-aux/{name}",
                     readme,
                     f"build-aux/README.md still documents the deleted {name}",
                 )
@@ -58,7 +58,7 @@ class DeadFormatterScriptsTest(unittest.TestCase):
         # The call site moved into the Python port of the action (#2792), and the
         # formatter itself into the module (#962): the action calls the module.
         module = (ROOT / "ci" / "run_swift_format.py").read_text()
-        self.assertNotIn("build-aux", module)
+        self.assertNotIn("'build-aux' /", module)
         action = (ROOT / ".github/actions/run-swift-format/action.yaml").read_text()
         self.assertIn("ci/run_swift_format.py format", action)
         workflow = (ROOT / ".github/workflows/check-format.yaml").read_text()

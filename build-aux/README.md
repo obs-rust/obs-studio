@@ -2,7 +2,6 @@
 
 This folder contains:
 - Various formatting scripts:
-  - `run-swift-format` which formats Swift files
   - `format-manifest.py` which formats Flatpak manifest JSON files
 - The Flatpak manifest used to build OBS Studio
 - Files used for Steam packaging
@@ -10,6 +9,17 @@ This folder contains:
 C/C++ and CMake formatting are not here: the local gate's lint lane runs
 `clang-format` and `gersemi` from pinned `uvx` tools
 (`uv run ci/local_gate.py --lane lint`, documented in `AGENTS.md`).
+
+Swift formatting is not here either: `ci/run_swift_format.py` runs
+`swift-format` (508.0.0 or newer) over the changed Swift files, and the
+`run-swift-format` composite action calls it. To check the whole tree by hand,
+run it from the repo root with no `CHANGED_FILES` set:
+
+```sh
+uv run --no-project --script ci/run_swift_format.py format --fail-condition never
+```
+
+Add `--write` to rewrite the files instead of reporting them.
 
 ## Packaging: version numbers
 
@@ -37,15 +47,6 @@ the OBS-Studio-Rust version passed in the wrong variable (#1087).
 
 
 ## Formatting scripts
-
-### `run-swift-format`
-
-This script allows to check the formatting and/or format of the Swift files and requires ZSH and `swift-format`.
-
-Example of use:
-```sh
-./build-aux/run-swift-format
-```
 
 ### `format-manifest.py`
 
