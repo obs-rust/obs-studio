@@ -435,6 +435,11 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	const int unheld = start == START_NEW && !unbuffered ? 2 : startup;
 	int shown[MAX_SEEN];
 	size_t num = 0, unknown = 0, backwards = 0, skipped = 0, max_gap = 0, held = 0, max_held = 0;
+	/* How many separate skips went beyond the cadence's allowance: a slower
+	 * canvas drops fields as a matter of course (50i into 30 fps drops two
+	 * in every five), so the count that matters is of the skips that exceed
+	 * the allowance, not of the fields skipped in total. */
+	size_t over_gaps = 0;
 	size_t holds[MAX_SEEN];
 	size_t num_holds = 0;
 	for (size_t i = 0; i < w.count; i++) {
@@ -459,6 +464,8 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 			int from = last < startup - 1 ? startup - 1 : last;
 			size_t gap = (size_t)(w.seen[i] - from - 1);
 			skipped += gap;
+			if (gap > allowed_gap)
+				over_gaps++;
 			if (gap > max_gap)
 				max_gap = gap;
 		}
@@ -497,13 +504,15 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 		if (holds[i] > allowed_held)
 			over++;
 	/* The same late tick can also cost a field: the canvas misses the tick
-	 * that would have shown it, so at most one field may be skipped in a
-	 * run, and never two in a row. Two in a row, or two skips, stay a
-	 * cadence bug (#456). */
-	const size_t allowed_skip = allowed_gap + 1;
-	if (max_gap > allowed_skip || skipped > allowed_skip) {
-		fprintf(stderr, "%s, %ui into %u fps: %zu fields skipped, up to %zu in a row (allowed %zu, once %zu)\n",
-			what, field_rate, r->canvas_fps, skipped, max_gap, allowed_gap, allowed_skip);
+	 * that would have shown it, so one skip may go one field past the
+	 * cadence in a whole run, and never two in a row. A second such skip,
+	 * or a longer one, is a cadence bug (#456). Fields the slower canvas
+	 * drops by design (gap == allowed_gap) do not count. */
+	if (max_gap > allowed_gap + 1 || over_gaps > 1) {
+		fprintf(stderr,
+			"%s, %ui into %u fps: %zu fields skipped, %zu skips past the cadence (at most %zu in a row), "
+			"allowed one skip of %zu\n",
+			what, field_rate, r->canvas_fps, skipped, over_gaps, max_gap, allowed_gap + 1);
 		fail();
 	}
 	if (allowed_held != SIZE_MAX && (max_held > allowed_held + 1 || over > 1)) {
