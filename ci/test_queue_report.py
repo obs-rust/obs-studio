@@ -13,8 +13,12 @@ because master moved under it: a merge ahead of it failed, or a bypass).
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -89,6 +93,43 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("cache restores do not prove compiler reuse", md)
 
 
+class FailureTest(unittest.TestCase):
+    """The report stays informational without a workflow `continue-on-error`.
+
+    WF-003 flags `continue-on-error` on the step, so the tolerance lives in
+    `main()`: a failing `gh` (rate limit, transient 5xx, a token without
+    `actions: read`) prints a warning, appends the reason to the job summary
+    and exits 0 instead of failing CI Gate.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        stubs = Path(self.tmp, "stubs")
+        stubs.mkdir()
+        gh = stubs / "gh"
+        gh.write_text(f"#!{sys.executable}\nimport sys\nsys.stderr.write('gh: HTTP 502\\n')\nraise SystemExit(1)\n", encoding="utf-8")
+        gh.chmod(0o755)
+        self.summary_path = Path(self.tmp, "summary.md")
+        self.env = {
+            "PATH": f"{stubs}{os.pathsep}{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "obs-rust/obs-studio",
+            "GITHUB_RUN_ID": "1234",
+            "GITHUB_STEP_SUMMARY": str(self.summary_path),
+        }
+
+    def test_a_failing_gh_exits_zero_and_explains_itself(self):
+        result = subprocess.run(
+            [sys.executable, "ci/queue_report.py"],
+            cwd=ROOT, capture_output=True, text=True, env=self.env, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("queue report unavailable", result.stdout + result.stderr)
+        summary = self.summary_path.read_text(encoding="utf-8")
+        self.assertIn("queue report unavailable", summary)
+        self.assertIn("HTTP 502", summary)
+
+
 class WorkflowTest(unittest.TestCase):
     def test_ci_gate_reports_on_queue_runs_without_failing(self):
         text = WORKFLOW.read_text(encoding="utf-8")
@@ -97,7 +138,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(m, "no Report Queue Run step in ci-gate")
         step = m.group(0)
         self.assertIn("github.event_name == 'merge_group'", step)
-        self.assertIn("continue-on-error: true", step)
+        # WF-003: the module tolerates its own failure, so the step needs no
+        # workflow-level `continue-on-error`.
+        self.assertNotIn("continue-on-error", step)
         self.assertIn("uv run --no-project ci/queue_report.py", step)
         self.assertIn("actions: read", gate)
 
