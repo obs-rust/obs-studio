@@ -52,9 +52,9 @@ obs_data_array_t *OBSBasic::SaveSceneListOrder()
 	obs_data_array_t *sceneOrder = obs_data_array_create();
 
 	for (int i = 0; i < ui->scenes->count(); i++) {
-		OBSDataAutoRelease data = obs_data_create();
-		obs_data_set_string(data, "name", QT_TO_UTF8(ui->scenes->item(i)->text()));
-		obs_data_array_push_back(sceneOrder, data);
+		OBSDataAutoRelease orderData = obs_data_create();
+		obs_data_set_string(orderData, "name", QT_TO_UTF8(ui->scenes->item(i)->text()));
+		obs_data_array_push_back(sceneOrder, orderData);
 	}
 
 	return sceneOrder;
@@ -80,8 +80,8 @@ void OBSBasic::LoadSceneListOrder(obs_data_array_t *array)
 	size_t num = obs_data_array_count(array);
 
 	for (size_t i = 0; i < num; i++) {
-		OBSDataAutoRelease data = obs_data_array_item(array, i);
-		const char *name = obs_data_get_string(data, "name");
+		OBSDataAutoRelease itemData = obs_data_array_item(array, i);
+		const char *name = obs_data_get_string(itemData, "name");
 
 		ReorderItemByName(ui->scenes, name, (int)i);
 	}
@@ -103,10 +103,10 @@ void OBSBasic::AddScene(OBSSource source)
 
 	obs_hotkey_register_source(
 		source, "OBSBasic.SelectScene", Str("Basic.Hotkeys.SelectScene"),
-		[](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		[](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 			OBSBasic *main = OBSBasic::Get();
 
-			auto potential_source = static_cast<obs_source_t *>(data);
+			auto potential_source = static_cast<obs_source_t *>(handler_data);
 			OBSSourceAutoRelease source = obs_source_get_ref(potential_source);
 			if (source && pressed) {
 				main->SetCurrentScene(source.Get());
@@ -146,8 +146,8 @@ void OBSBasic::AddScene(OBSSource source)
 	SaveProject();
 
 	if (!disableSaving) {
-		obs_source_t *source = obs_scene_get_source(scene);
-		blog(LOG_INFO, "User added scene '%s'", obs_source_get_name(source));
+		obs_source_t *sceneSource = obs_scene_get_source(scene);
+		blog(LOG_INFO, "User added scene '%s'", obs_source_get_name(sceneSource));
 
 		OBSProjector::UpdateMultiviewProjectors();
 	}
@@ -267,33 +267,34 @@ void OBSBasic::DuplicateSelectedScene()
 			continue;
 		}
 
-		obs_source_t *source = obs_get_source_by_name(name.c_str());
-		if (source) {
+		obs_source_t *existingSource = obs_get_source_by_name(name.c_str());
+		if (existingSource) {
 			OBSMessageBox::warning(this, QTStr("NameExists.Title"), QTStr("NameExists.Text"));
 
-			obs_source_release(source);
+			obs_source_release(existingSource);
 			continue;
 		}
 
 		OBSSceneAutoRelease scene = obs_scene_duplicate(curScene, name.c_str(), OBS_SCENE_DUP_REFS);
-		source = obs_scene_get_source(scene);
-		SetCurrentScene(source, true);
+		existingSource = obs_scene_get_source(scene);
+		SetCurrentScene(existingSource, true);
 
-		auto undo = [](const std::string &data) {
-			OBSSourceAutoRelease source = obs_get_source_by_name(data.c_str());
+		auto undo = [](const std::string &sceneName) {
+			OBSSourceAutoRelease source = obs_get_source_by_name(sceneName.c_str());
 			obs_source_remove(source);
 		};
 
-		auto redo = [this, name](const std::string &data) {
-			OBSSourceAutoRelease source = obs_get_source_by_name(data.c_str());
+		auto redo = [this, name](const std::string &sceneName) {
+			OBSSourceAutoRelease source = obs_get_source_by_name(sceneName.c_str());
 			obs_scene_t *scene = obs_scene_from_source(source);
 			scene = obs_scene_duplicate(scene, name.c_str(), OBS_SCENE_DUP_REFS);
 			source = obs_scene_get_source(scene);
 			SetCurrentScene(source.Get(), true);
 		};
 
-		undo_s.add_action(QTStr("Undo.Scene.Duplicate").arg(obs_source_get_name(source)), undo, redo,
-				  obs_source_get_name(source), obs_source_get_name(obs_scene_get_source(curScene)));
+		undo_s.add_action(QTStr("Undo.Scene.Duplicate").arg(obs_source_get_name(existingSource)), undo, redo,
+				  obs_source_get_name(existingSource),
+				  obs_source_get_name(obs_scene_get_source(curScene)));
 
 		break;
 	}
@@ -460,13 +461,13 @@ void OBSBasic::RemoveSelectedScene()
 		RemoveSceneAndReleaseNested(source);
 	};
 
-	OBSDataAutoRelease data = obs_data_create();
-	obs_data_set_array(data, "sources_in_deleted_scene", sources_in_deleted_scene);
-	obs_data_set_array(data, "scene_used_in_other_scenes", scene_used_in_other_scenes);
-	obs_data_set_int(data, "index", ui->scenes->currentRow());
+	OBSDataAutoRelease undoData = obs_data_create();
+	obs_data_set_array(undoData, "sources_in_deleted_scene", sources_in_deleted_scene);
+	obs_data_set_array(undoData, "scene_used_in_other_scenes", scene_used_in_other_scenes);
+	obs_data_set_int(undoData, "index", ui->scenes->currentRow());
 
 	const char *scene_name = obs_source_get_name(source);
-	undo_s.add_action(QTStr("Undo.Delete").arg(scene_name), undo, redo, obs_data_get_json(data), scene_name);
+	undo_s.add_action(QTStr("Undo.Delete").arg(scene_name), undo, redo, obs_data_get_json(undoData), scene_name);
 
 	/* --------------------------- */
 	/* remove                      */
@@ -609,10 +610,10 @@ void OBSBasic::on_scenes_customContextMenuRequested(const QPoint &pos)
 		QAction *multiviewAction = popup.addAction(QTStr("ShowInMultiview"));
 
 		OBSSource source = GetCurrentSceneSource();
-		OBSDataAutoRelease data = obs_source_get_private_settings(source);
+		OBSDataAutoRelease privateSettings = obs_source_get_private_settings(source);
 
-		obs_data_set_default_bool(data, "show_in_multiview", true);
-		bool show = obs_data_get_bool(data, "show_in_multiview");
+		obs_data_set_default_bool(privateSettings, "show_in_multiview", true);
+		bool show = obs_data_get_bool(privateSettings, "show_in_multiview");
 
 		multiviewAction->setCheckable(true);
 		multiviewAction->setChecked(show);
@@ -623,7 +624,8 @@ void OBSBasic::on_scenes_customContextMenuRequested(const QPoint &pos)
 			OBSProjector::UpdateMultiviewProjectors();
 		};
 
-		connect(multiviewAction, &QAction::triggered, multiviewAction, std::bind(showInMultiview, data.Get()));
+		connect(multiviewAction, &QAction::triggered, multiviewAction,
+			std::bind(showInMultiview, privateSettings.Get()));
 
 		copyFilters->setEnabled(obs_source_filter_count(source) > 0);
 	}
@@ -687,24 +689,24 @@ void OBSBasic::on_actionAddScene_triggered()
 			return;
 		}
 
-		OBSSourceAutoRelease source = obs_get_source_by_name(name.c_str());
-		if (source) {
+		OBSSourceAutoRelease existingSource = obs_get_source_by_name(name.c_str());
+		if (existingSource) {
 			OBSMessageBox::warning(this, QTStr("NameExists.Title"), QTStr("NameExists.Text"));
 
 			on_actionAddScene_triggered();
 			return;
 		}
 
-		auto undo_fn = [](const std::string &data) {
-			obs_source_t *t = obs_get_source_by_name(data.c_str());
+		auto undo_fn = [](const std::string &sceneName) {
+			obs_source_t *t = obs_get_source_by_name(sceneName.c_str());
 			if (t) {
 				obs_source_remove(t);
 				obs_source_release(t);
 			}
 		};
 
-		auto redo_fn = [this](const std::string &data) {
-			OBSSceneAutoRelease scene = obs_scene_create(data.c_str());
+		auto redo_fn = [this](const std::string &sceneName) {
+			OBSSceneAutoRelease scene = obs_scene_create(sceneName.c_str());
 			obs_source_t *source = obs_scene_get_source(scene);
 			SetCurrentScene(source, true);
 		};

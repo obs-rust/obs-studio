@@ -179,8 +179,8 @@ void OBSBasic::CreateHotkeys()
 	};
 
 #define MAKE_CALLBACK(pred, method, log_action)                            \
-	[](void *data, obs_hotkey_pair_id, obs_hotkey_t *, bool pressed) { \
-		OBSBasic &basic = *static_cast<OBSBasic *>(data);          \
+	[](void *handler_data, obs_hotkey_pair_id, obs_hotkey_t *, bool pressed) { \
+		OBSBasic &basic = *static_cast<OBSBasic *>(handler_data);          \
 		if ((pred) && pressed) {                                   \
 			blog(LOG_INFO, log_action " due to hotkey");       \
 			method();                                          \
@@ -199,8 +199,8 @@ void OBSBasic::CreateHotkeys()
 		this, this);
 	LoadHotkeyPair(streamingHotkeys, "OBSBasic.StartStreaming", "OBSBasic.StopStreaming");
 
-	auto cb = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		OBSBasic &basic = *static_cast<OBSBasic *>(data);
+	auto cb = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		OBSBasic &basic = *static_cast<OBSBasic *>(handler_data);
 		if (basic.outputHandler->StreamingActive() && pressed) {
 			basic.ForceStopStreaming();
 		}
@@ -260,8 +260,8 @@ void OBSBasic::CreateHotkeys()
 						  this, this);
 	LoadHotkeyPair(replayBufHotkeys, "OBSBasic.StartReplayBuffer", "OBSBasic.StopReplayBuffer");
 
-	auto replayBufferCallback = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		OBSBasic *basic = static_cast<OBSBasic *>(data);
+	auto replayBufferCallback = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		OBSBasic *basic = static_cast<OBSBasic *>(handler_data);
 		if (basic->outputHandler->ReplayBufferActive() && pressed) {
 			blog(LOG_INFO, "Saving replay buffer due to hotkey");
 			basic->ReplayBufferSave();
@@ -324,9 +324,9 @@ void OBSBasic::CreateHotkeys()
 	LoadHotkeyPair(contextBarHotkeys, "OBSBasic.ShowContextBar", "OBSBasic.HideContextBar");
 #undef MAKE_CALLBACK
 
-	auto transition = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+	auto transition = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::TransitionClicked,
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data), &OBSBasic::TransitionClicked,
 						  Qt::QueuedConnection);
 		}
 	};
@@ -334,9 +334,9 @@ void OBSBasic::CreateHotkeys()
 	transitionHotkey = obs_hotkey_register_frontend("OBSBasic.Transition", Str("Transition"), transition, this);
 	LoadHotkey(transitionHotkey, "OBSBasic.Transition");
 
-	auto resetStats = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+	auto resetStats = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::ResetStatsHotkey,
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data), &OBSBasic::ResetStatsHotkey,
 						  Qt::QueuedConnection);
 		}
 	};
@@ -345,9 +345,9 @@ void OBSBasic::CreateHotkeys()
 		obs_hotkey_register_frontend("OBSBasic.ResetStats", Str("Basic.Stats.ResetStats"), resetStats, this);
 	LoadHotkey(statsHotkey, "OBSBasic.ResetStats");
 
-	auto screenshot = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+	auto screenshot = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::Screenshot,
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data), &OBSBasic::Screenshot,
 						  Qt::QueuedConnection, nullptr);
 		}
 	};
@@ -355,10 +355,10 @@ void OBSBasic::CreateHotkeys()
 	screenshotHotkey = obs_hotkey_register_frontend("OBSBasic.Screenshot", Str("Screenshot"), screenshot, this);
 	LoadHotkey(screenshotHotkey, "OBSBasic.Screenshot");
 
-	auto screenshotSource = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+	auto screenshotSource = [](void *handler_data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::ScreenshotSelectedSource,
-						  Qt::QueuedConnection);
+			QMetaObject::invokeMethod(static_cast<OBSBasic *>(handler_data),
+						  &OBSBasic::ScreenshotSelectedSource, Qt::QueuedConnection);
 		}
 	};
 

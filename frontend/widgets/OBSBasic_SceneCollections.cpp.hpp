@@ -170,10 +170,10 @@ void OBSBasic::SetupDuplicateSceneCollection(const std::string &collectionName)
 
 		obs_data_array_enum(
 			sources,
-			[](obs_data_t *data, void *) -> void {
+			[](obs_data_t *sourceData, void *) -> void {
 				const char *uuid = os_generate_uuid();
 
-				obs_data_set_string(data, "uuid", uuid);
+				obs_data_set_string(sourceData, "uuid", uuid);
 
 				bfree((void *)uuid);
 			},
@@ -660,9 +660,9 @@ void OBSBasic::on_actionExportSceneCollection_triggered()
 		OBSDataVector sourceItems;
 		obs_data_array_enum(
 			sources,
-			[](obs_data_t *data, void *vector) -> void {
+			[](obs_data_t *sourceData, void *vector) -> void {
 				OBSDataVector &sourceItems{*static_cast<OBSDataVector *>(vector)};
-				sourceItems.push_back(data);
+				sourceItems.push_back(sourceData);
 			},
 			&sourceItems);
 
@@ -831,8 +831,8 @@ void OBSBasic::Save(SceneCollection &collection)
 	using FilterAudioSources_t = decltype(FilterAudioSources);
 
 	OBSDataArrayAutoRelease sourcesArray = obs_save_sources_filtered(
-		[](void *data, obs_source_t *source) {
-			auto &func = *static_cast<FilterAudioSources_t *>(data);
+		[](void *handler_data, obs_source_t *source) {
+			auto &func = *static_cast<FilterAudioSources_t *>(handler_data);
 			return func(source);
 		},
 		static_cast<void *>(&FilterAudioSources));
@@ -1121,9 +1121,9 @@ void OBSBasic::Load(SceneCollection &collection)
 	lastOutputResolution.reset();
 	collection.setMigrationResolution(0, 0);
 
-	obs_data_t *data = obs_data_create_from_json_file_safe(collection.getFilePathString().c_str(), "bak");
+	obs_data_t *collectionData = obs_data_create_from_json_file_safe(collection.getFilePathString().c_str(), "bak");
 
-	if (!data) {
+	if (!collectionData) {
 		disableSaving--;
 		const std::filesystem::path filePath = collection.getFilePath();
 
@@ -1152,10 +1152,10 @@ void OBSBasic::Load(SceneCollection &collection)
 		return;
 	}
 
-	LoadData(data, collection);
+	LoadData(collectionData, collection);
 }
 
-void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
+void OBSBasic::LoadData(obs_data_t *collectionData, SceneCollection &collection)
 {
 	ClearSceneData();
 	ClearContextBar();
@@ -1176,23 +1176,23 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 
 	QApplication::sendPostedEvents(nullptr);
 
-	OBSDataAutoRelease modulesObj = obs_data_get_obj(data, "modules");
+	OBSDataAutoRelease modulesObj = obs_data_get_obj(collectionData, "modules");
 	if (api) {
 		api->on_preload(modulesObj);
 	}
 
 	/* Keep a reference to "modules" data so plugins that are not loaded do
 	 * not have their collection specific data lost. */
-	collectionModuleData = obs_data_get_obj(data, "modules");
+	collectionModuleData = obs_data_get_obj(collectionData, "modules");
 
-	OBSDataArrayAutoRelease sceneOrder = obs_data_get_array(data, "scene_order");
-	OBSDataArrayAutoRelease sources = obs_data_get_array(data, "sources");
-	OBSDataArrayAutoRelease groups = obs_data_get_array(data, "groups");
-	OBSDataArrayAutoRelease transitionsData = obs_data_get_array(data, "transitions");
-	OBSDataArrayAutoRelease collection_canvases = obs_data_get_array(data, "canvases");
-	const char *sceneName = obs_data_get_string(data, "current_scene");
-	const char *programSceneName = obs_data_get_string(data, "current_program_scene");
-	const char *transitionName = obs_data_get_string(data, "current_transition");
+	OBSDataArrayAutoRelease sceneOrder = obs_data_get_array(collectionData, "scene_order");
+	OBSDataArrayAutoRelease sources = obs_data_get_array(collectionData, "sources");
+	OBSDataArrayAutoRelease groups = obs_data_get_array(collectionData, "groups");
+	OBSDataArrayAutoRelease transitionsData = obs_data_get_array(collectionData, "transitions");
+	OBSDataArrayAutoRelease collection_canvases = obs_data_get_array(collectionData, "canvases");
+	const char *sceneName = obs_data_get_string(collectionData, "current_scene");
+	const char *programSceneName = obs_data_get_string(collectionData, "current_program_scene");
+	const char *transitionName = obs_data_get_string(collectionData, "current_transition");
 
 	if (!opt_starting_scene.empty()) {
 		programSceneName = opt_starting_scene.c_str();
@@ -1201,7 +1201,7 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 		}
 	}
 
-	int newDuration = obs_data_get_int(data, "transition_duration");
+	int newDuration = obs_data_get_int(collectionData, "transition_duration");
 	if (!newDuration) {
 		newDuration = 300;
 	}
@@ -1212,9 +1212,9 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 
 	const char *curSceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
 
-	obs_data_set_default_string(data, "name", curSceneCollection);
+	obs_data_set_default_string(collectionData, "name", curSceneCollection);
 
-	const char *name = obs_data_get_string(data, "name");
+	const char *name = obs_data_get_string(collectionData, "name");
 	OBSSourceAutoRelease curScene;
 	OBSSourceAutoRelease curProgramScene;
 	obs_source_t *curTransition;
@@ -1223,12 +1223,12 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 		name = curSceneCollection;
 	}
 
-	LoadAudioDevice(DESKTOP_AUDIO_1.data(), 1, data);
-	LoadAudioDevice(DESKTOP_AUDIO_2.data(), 2, data);
-	LoadAudioDevice(AUX_AUDIO_1.data(), 3, data);
-	LoadAudioDevice(AUX_AUDIO_2.data(), 4, data);
-	LoadAudioDevice(AUX_AUDIO_3.data(), 5, data);
-	LoadAudioDevice(AUX_AUDIO_4.data(), 6, data);
+	LoadAudioDevice(DESKTOP_AUDIO_1.data(), 1, collectionData);
+	LoadAudioDevice(DESKTOP_AUDIO_2.data(), 2, collectionData);
+	LoadAudioDevice(AUX_AUDIO_1.data(), 3, collectionData);
+	LoadAudioDevice(AUX_AUDIO_2.data(), 4, collectionData);
+	LoadAudioDevice(AUX_AUDIO_3.data(), 5, collectionData);
+	LoadAudioDevice(AUX_AUDIO_4.data(), 6, collectionData);
 
 	if (collection_canvases) {
 		canvases = OBS::Canvas::LoadCanvases(collection_canvases);
@@ -1243,8 +1243,8 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 	bool resetVideo = false;
 	obs_video_info ovi;
 
-	int64_t version = obs_data_get_int(data, "version");
-	OBSDataAutoRelease res = obs_data_get_obj(data, "resolution");
+	int64_t version = obs_data_get_int(collectionData, "version");
+	OBSDataAutoRelease res = obs_data_get_obj(collectionData, "resolution");
 
 	OBS::Rect collectionSize{};
 
@@ -1279,8 +1279,8 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 			backupFilePath.replace_extension(".json.v1");
 
 			if (!std::filesystem::exists(backupFilePath)) {
-				bool success = obs_data_save_json_pretty_safe(data, backupFilePath.u8string().c_str(),
-									      "tmp", nullptr);
+				bool success = obs_data_save_json_pretty_safe(
+					collectionData, backupFilePath.u8string().c_str(), "tmp", nullptr);
 
 				if (!success) {
 					blog(LOG_WARNING,
@@ -1292,7 +1292,7 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 	} else if (version < 2) {
 		collection.setCoordinateMode(SceneCoordinateMode::Absolute);
 	} else {
-		OBSDataAutoRelease migrationResolution = obs_data_get_obj(data, "migration_resolution");
+		OBSDataAutoRelease migrationResolution = obs_data_get_obj(collectionData, "migration_resolution");
 
 		if (migrationResolution) {
 			collection.setMigrationResolution(obs_data_get_int(migrationResolution, "x"),
@@ -1335,7 +1335,8 @@ void OBSBasic::LoadData(obs_data_t *data, SceneCollection &collection)
 		LoadSceneListOrder(sceneOrder);
 	}
 
-	curTransition = FindSavedTransition(transitionName, obs_data_get_string(data, "current_transition_id"));
+	curTransition =
+		FindSavedTransition(transitionName, obs_data_get_string(collectionData, "current_transition_id"));
 
 	SetTransitionDuration(newDuration);
 	SetTransition(curTransition);
@@ -1347,8 +1348,8 @@ retryScene:
 	/* if the starting scene command line parameter is bad at all,
 	 * fall back to original settings */
 	if (!opt_starting_scene.empty() && (!curScene || !curProgramScene)) {
-		sceneName = obs_data_get_string(data, "current_scene");
-		programSceneName = obs_data_get_string(data, "current_program_scene");
+		sceneName = obs_data_get_string(collectionData, "current_scene");
+		programSceneName = obs_data_get_string(collectionData, "current_program_scene");
 		opt_starting_scene.clear();
 		goto retryScene;
 	}
@@ -1375,7 +1376,7 @@ retryScene:
 	bool projectorSave = config_get_bool(App()->GetUserConfig(), "BasicWindow", "SaveProjectors");
 
 	if (projectorSave) {
-		OBSDataArrayAutoRelease savedProjectors = obs_data_get_array(data, "saved_projectors");
+		OBSDataArrayAutoRelease savedProjectors = obs_data_get_array(collectionData, "saved_projectors");
 
 		if (savedProjectors) {
 			LoadSavedProjectors(savedProjectors);
@@ -1388,21 +1389,21 @@ retryScene:
 	config_set_string(App()->GetUserConfig(), "Basic", "SceneCollection", collection.getName().c_str());
 	config_set_string(App()->GetUserConfig(), "Basic", "SceneCollectionFile", collection.getFileName().c_str());
 
-	OBSDataArrayAutoRelease quickTransitionData = obs_data_get_array(data, "quick_transitions");
+	OBSDataArrayAutoRelease quickTransitionData = obs_data_get_array(collectionData, "quick_transitions");
 	LoadQuickTransitions(quickTransitionData);
 
 	RefreshQuickTransitions();
 
-	bool previewLocked = obs_data_get_bool(data, "preview_locked");
+	bool previewLocked = obs_data_get_bool(collectionData, "preview_locked");
 	ui->preview->SetLocked(previewLocked);
 	ui->actionLockPreview->setChecked(previewLocked);
 
 	/* ---------------------- */
 
-	bool fixedScaling = obs_data_get_bool(data, "scaling_enabled");
-	int scalingLevel = (int)obs_data_get_int(data, "scaling_level");
-	float scrollOffX = (float)obs_data_get_double(data, "scaling_off_x");
-	float scrollOffY = (float)obs_data_get_double(data, "scaling_off_y");
+	bool fixedScaling = obs_data_get_bool(collectionData, "scaling_enabled");
+	int scalingLevel = (int)obs_data_get_int(collectionData, "scaling_level");
+	float scrollOffX = (float)obs_data_get_double(collectionData, "scaling_off_x");
+	float scrollOffY = (float)obs_data_get_double(collectionData, "scaling_off_y");
 
 	if (fixedScaling) {
 		ui->preview->SetScalingLevel(scalingLevel);
@@ -1413,7 +1414,7 @@ retryScene:
 	emit ui->preview->DisplayResized();
 
 	if (vcamEnabled) {
-		OBSDataAutoRelease obj = obs_data_get_obj(data, "virtual-camera");
+		OBSDataAutoRelease obj = obs_data_get_obj(collectionData, "virtual-camera");
 
 		vcamConfig.type = (VCamOutputType)obs_data_get_int(obj, "type2");
 		if (vcamConfig.type == VCamOutputType::Invalid) {
@@ -1446,7 +1447,7 @@ retryScene:
 		api->on_load(modulesObj);
 	}
 
-	obs_data_release(data);
+	obs_data_release(collectionData);
 
 	if (!opt_starting_scene.empty()) {
 		opt_starting_scene.clear();
@@ -1716,8 +1717,8 @@ void OBSBasic::on_actionShowMissingFiles_triggered()
 {
 	obs_missing_files_t *files = obs_missing_files_create();
 
-	auto cb_sources = [](void *data, obs_source_t *source) {
-		missing_files_list_add_source(data, source);
+	auto cb_sources = [](void *handler_data, obs_source_t *source) {
+		missing_files_list_add_source(handler_data, source);
 		return true;
 	};
 
