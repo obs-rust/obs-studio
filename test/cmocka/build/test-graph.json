@@ -3434,6 +3434,27 @@
         }
       ]
     },
+    "test_scene_dup_copy_lifetime": {
+      "sources": [
+        "test/cmocka/test_scene_dup_copy_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_scene_dup_group_children": {
       "sources": [
         "test/cmocka/test_scene_dup_group_children.c"
@@ -6567,6 +6588,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_dup_copy_lifetime": {
+      "target": "test_scene_dup_copy_lifetime",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180
     },
     "test_scene_dup_group_children": {
       "target": "test_scene_dup_group_children",
