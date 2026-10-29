@@ -94,6 +94,7 @@ static bool _alsa_configure(struct alsa_data *);
 static void _alsa_start_reopen(struct alsa_data *);
 static void _alsa_stop_reopen(struct alsa_data *);
 static void *_alsa_listen(void *);
+static bool _alsa_listen_reopen(struct alsa_data *, int);
 static void *_alsa_reopen(void *);
 
 static enum audio_format _alsa_to_obs_audio_format(snd_pcm_format_t);
@@ -158,8 +159,9 @@ void alsa_destroy(void *vptr)
 	 * abort_event: end it before the event and data are freed. */
 	_alsa_stop_reopen(data);
 
-	if (data->handle)
-		_alsa_close(data);
+	/* Also without a handle: the capture thread may be reopening a device
+	 * that went away (#2924). */
+	_alsa_close(data);
 
 	os_event_destroy(data->abort_event);
 	bfree(data->device);
@@ -197,30 +199,28 @@ void alsa_update(void *vptr, obs_data_t *settings)
 	if (strcmp(device, "__custom__") == 0)
 		device = obs_data_get_string(settings, "custom_pcm");
 
-	if (strcmp(data->device, device) != 0) {
-		bfree(data->device);
-		data->device = bstrdup(device);
-		reset = true;
-	}
-
 	rate = (uint32_t)obs_data_get_int(settings, "rate");
-	if (data->rate != rate) {
+
+	if (strcmp(data->device, device) != 0 || data->rate != rate) {
+		/* The capture and reopen threads read the device and the rate:
+		 * stop both before either changes (#2924). */
+		_alsa_stop_reopen(data);
+		_alsa_close(data);
+
+		if (strcmp(data->device, device) != 0) {
+			bfree(data->device);
+			data->device = bstrdup(device);
+		}
 		data->rate = rate;
 		reset = true;
 	}
 
 #if SHUTDOWN_ON_DEACTIVATE
-	if (reset && data->handle)
-		_alsa_close(data);
-
 	if (data->active && !data->handle)
 		_alsa_try_open(data);
 #else
-	if (reset) {
-		if (data->handle)
-			_alsa_close(data);
+	if (reset)
 		_alsa_try_open(data);
-	}
 #endif
 }
 
@@ -562,6 +562,16 @@ void _alsa_stop_reopen(struct alsa_data *data)
 	os_event_reset(data->abort_event);
 }
 
+/* What OBS gets from the open device: its buffer, format, speakers and rate
+ * (again after the device was opened again). */
+static void _alsa_prepare_out(struct alsa_data *data, struct obs_source_audio *out)
+{
+	out->data[0] = data->buffer32 ? (uint8_t *)data->buffer32 : data->buffer;
+	out->format = _alsa_to_obs_audio_format(data->format);
+	out->speakers = _alsa_channels_to_obs_speakers(data->channels);
+	out->samples_per_sec = data->rate;
+}
+
 void *_alsa_listen(void *attr)
 {
 	struct alsa_data *data = attr;
@@ -569,10 +579,7 @@ void *_alsa_listen(void *attr)
 
 	blog(LOG_DEBUG, "Capture thread started.");
 
-	out.data[0] = data->buffer32 ? (uint8_t *)data->buffer32 : data->buffer;
-	out.format = _alsa_to_obs_audio_format(data->format);
-	out.speakers = _alsa_channels_to_obs_speakers(data->channels);
-	out.samples_per_sec = data->rate;
+	_alsa_prepare_out(data, &out);
 
 	while (os_atomic_load_bool(&data->listen)) {
 		snd_pcm_sframes_t frames = snd_pcm_readi(data->handle, data->buffer, data->period_size);
@@ -582,6 +589,14 @@ void *_alsa_listen(void *attr)
 
 		if (frames <= 0) {
 			frames = snd_pcm_recover(data->handle, (int)frames, 0);
+			if (frames < 0 && frames != -EAGAIN) {
+				/* Not recoverable in place, as a USB device that
+				 * was unplugged (-ENODEV, #2924). */
+				if (!_alsa_listen_reopen(data, (int)frames))
+					break;
+				_alsa_prepare_out(data, &out);
+				continue;
+			}
 			if (frames <= 0) {
 				snd_pcm_wait(data->handle, 100);
 				continue;
@@ -605,6 +620,71 @@ void *_alsa_listen(void *attr)
 
 	pthread_exit(NULL);
 	return NULL;
+}
+
+/* Waits up to ms on the capture thread, in 10 ms steps so that
+ * _alsa_close() (which clears listen, then joins) does not wait for it.
+ * Returns whether the source still listens. */
+static bool _alsa_listen_wait(struct alsa_data *data, unsigned long ms)
+{
+	for (unsigned long waited = 0; waited < ms; waited += 10) {
+		if (!os_atomic_load_bool(&data->listen))
+			return false;
+		os_sleep_ms(10);
+	}
+	return os_atomic_load_bool(&data->listen);
+}
+
+/* Opens, configures and starts the device again on the capture thread. The
+ * attempts while the device is away log only at debug level. */
+static bool _alsa_listen_open(struct alsa_data *data)
+{
+	int err = snd_pcm_open(&data->handle, data->device, SND_PCM_STREAM_CAPTURE, 0);
+	if (err < 0) {
+		blog(LOG_DEBUG, "Device '%s' is still away: %s", data->device, snd_strerror(err));
+		data->handle = NULL;
+		return false;
+	}
+
+	if (_alsa_configure(data) && snd_pcm_state(data->handle) == SND_PCM_STATE_PREPARED &&
+	    snd_pcm_start(data->handle) >= 0)
+		return true;
+
+	snd_pcm_close(data->handle);
+	data->handle = NULL;
+	return false;
+}
+
+/*
+ * The device failed in a way snd_pcm_recover() cannot mend, as a USB device
+ * that was unplugged (-ENODEV): its handle never works again, and the device
+ * that comes back is a new PCM (#2924). Close the handle and open the device
+ * again after a growing delay (1 s, up to 5 s, as _alsa_reopen()) until it
+ * captures or the source stops listening. Runs on the capture thread, which
+ * owns the handle and the buffers until _alsa_close() joins it.
+ *
+ * Returns true with the device open and started again, false when the source
+ * stopped listening (data->handle is then NULL).
+ */
+static bool _alsa_listen_reopen(struct alsa_data *data, int err)
+{
+	unsigned long timeout = REOPEN_TIMEOUT;
+
+	blog(LOG_WARNING, "Device '%s' failed: %s; opening it again until it works", data->device, snd_strerror(err));
+
+	snd_pcm_close(data->handle);
+	data->handle = NULL;
+
+	for (;;) {
+		if (!_alsa_listen_wait(data, timeout))
+			return false;
+		if (_alsa_listen_open(data)) {
+			blog(LOG_INFO, "Device '%s' captures again", data->device);
+			return true;
+		}
+		if (timeout < (REOPEN_TIMEOUT * 5))
+			timeout += REOPEN_TIMEOUT;
+	}
 }
 
 void *_alsa_reopen(void *attr)
