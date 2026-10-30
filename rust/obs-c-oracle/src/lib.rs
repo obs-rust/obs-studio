@@ -151,6 +151,7 @@ pub mod pulse_format;
 pub mod pulse_monitor_steps;
 pub mod pulse_stream_flags;
 pub mod scene_audio_actions;
+pub mod scene_audio_mix;
 pub mod scene_audio_window;
 pub mod scene_blend;
 pub mod scene_bounds;
