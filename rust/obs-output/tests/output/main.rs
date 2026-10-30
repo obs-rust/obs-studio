@@ -17,6 +17,7 @@ mod encoder_lifecycle;
 mod encoder_lifecycle_parity;
 mod encoder_packet_ts;
 mod encoder_packet_ts_parity;
+mod encoder_pause;
 mod encoder_roi;
 mod encoder_roi_parity;
 mod encoder_size;
