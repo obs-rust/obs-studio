@@ -1109,7 +1109,7 @@ fn member_value() -> impl Strategy<Value = Option<Vec<u8>>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2000)))]
 
     /// Any bytes: no panic, the reference expansion, no NUL.
     #[test]

@@ -771,6 +771,12 @@ fn filter_decisions_every_filter() {
                             for &cx in &sizes {
                                 for &cy in &sizes {
                                     for m in 0u32..32 {
+                                        count += 1;
+                                        // Below the `full` parity level, a
+                                        // fixed tenth of the product (#2888).
+                                        if !obs_c_oracle::parity::keep(count) {
+                                            continue;
+                                        }
                                         let f = Filter {
                                             has_target: wiring & 1 != 0,
                                             has_parent: wiring & 2 != 0,
@@ -796,7 +802,6 @@ fn filter_decisions_every_filter() {
                                             "{f:?}"
                                         );
                                         assert_eq!(trace_skip(&c, f), trace_skip(&r, f), "{f:?}");
-                                        count += 1;
                                     }
                                 }
                             }

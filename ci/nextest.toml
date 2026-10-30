@@ -4,3 +4,28 @@
 default-filter = "all()"
 retries = 0
 fail-fast = false
+# Per-test time budget (#2888): SLOW at 10 s, fails at 30 s. A new test
+# takes about 5 s or less in the CI debug build (testing-policy "Test time").
+slow-timeout = { period = "10s", terminate-after = 3 }
+
+# #2888: compiles real C, C++ and Objective-C sources with unity and PCH.
+[[profile.default.overrides]]
+filter = "test(/native_build::mixed_objective_languages_/)"
+slow-timeout = { period = "30s", terminate-after = 4 }
+
+# #2888: the 2^32 sweeps run whole at the `full` parity level (nightly, release).
+[[profile.default.overrides]]
+filter = "test(=linear::round::exhaustive_matches_libm) | test(=tests::video::video_fourcc_parity::every_u32_matches_c_oracle)"
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+# The `full` parity level (local runs, nightly, release: OBS_PARITY_CASES
+# unset or `full`) runs the full sweeps and full-size proptests, which the
+# 30 s budget is not sized for (#2888). It reports SLOW but times nothing out;
+# ci/local_gate.py picks this profile for that level.
+[profile.full]
+slow-timeout = { period = "60s" }
+
+# #2888: no timeout at the full level (see [profile.full]).
+[[profile.full.overrides]]
+filter = "all()"
+slow-timeout = { period = "60s" }

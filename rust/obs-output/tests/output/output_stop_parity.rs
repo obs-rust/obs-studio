@@ -213,12 +213,18 @@ fn callers_match_c() {
     // every caller for every low flag word with two high words, each atomic
     // and the stopping event set and clear, a restart reference or none, a
     // delay or none and each input changed alone, on the oracle's gates and
-    // on the shims
+    // on the shims; below the `full` parity level a fixed tenth of the grid,
+    // plus every all-clear and all-set state word (#2888)
+    let mut i = 0u64;
     for high in [0u32, 0xffff_fff0] {
         for low in 0..16u32 {
             let flags = high | low;
             for bits in 0..2048u32 {
                 for change in 0..9u32 {
+                    i += 1;
+                    if !(bits == 0 || bits == 2047 || obs_c_oracle::parity::keep(i)) {
+                        continue;
+                    }
                     let o = stand_for(flags, bits, change);
                     let want = run_all(&o, &CORE);
                     assert_eq!(run_all(&o, &C), want);

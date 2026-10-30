@@ -486,6 +486,31 @@ longer be built. Measure full-suite compilation and linking separately from
 test execution. A smaller target count is the structural requirement; report
 timing evidence before claiming a speed improvement.
 
+## Test time
+
+Decided on #2888. `ci/nextest.toml` gives every test a budget: nextest marks
+it SLOW at 10 s and fails it at 30 s (`slow-timeout = { period = "10s",
+terminate-after = 3 }`). The budget applies at the reduced parity level (PR,
+merge queue, master push); the `full` level (local runs, nightly, release)
+uses the `full` profile, which reports SLOW but times nothing out.
+
+- A new test takes about 5 s or less in the CI debug build. Choose proptest
+  cases so that every branch is reached and every reported mutant is killed,
+  not as many as possible. A new test is not a reason for an exception.
+- Proptest counts go through `obs_c_oracle::parity::cases(N)`; 2^32 sweeps
+  through `obs_c_oracle::parity::sweep(range)`, and large fixed grids skip
+  items with `obs_c_oracle::parity::keep(i)`. All three read
+  `OBS_PARITY_CASES`: everything at `full`, a fixed tenth at `reduced`. Keep
+  the edge values on every level, outside the sampled part.
+- A test that needs more time gets a named `[[profile.default.overrides]]`
+  entry whose comment gives the reason and cites #2888 or its own issue
+  (`ci/test_nextest_budget.py`). The native build test (real compiles) is one.
+- The budget covers nextest only. Tier 2 ctest and the `obs-c-oracle` benches
+  are not under it.
+- Memory is reported, not capped: the PR's "Test cost" line (obs-worker §4)
+  gives the longest run, the peak RSS over 20 to 50 runs and the test's own
+  threads.
+
 ## Rules that apply everywhere
 
 - Use `soldr cargo ...`, never bare `cargo`.

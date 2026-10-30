@@ -157,7 +157,10 @@ fn cmocka_cases_match_c_oracle() {
 /// Every `u32`, split across threads. It is the only test here that catches
 /// an extra code built from characters outside the table. The root
 /// `Cargo.toml` builds this crate with `opt-level = 3` in the dev profile so
-/// the sweep takes seconds in the default debug `cargo test`.
+/// the sweep takes seconds in the default debug `cargo test`. Below the
+/// `full` parity level (PR, queue, master push) it checks one value in each
+/// window of ten; the nightly and release runs sweep every `u32` (#2888).
+/// The named codes above run on every level.
 #[test]
 fn every_u32_matches_c_oracle() {
     let threads = std::thread::available_parallelism().map_or(1, |n| n.get()) as u64;
@@ -166,7 +169,7 @@ fn every_u32_matches_c_oracle() {
         for t in 0..threads {
             scope.spawn(move || {
                 let end = ((t + 1) * span).min(1 << 32);
-                for fourcc in (t * span..end).map(|f| f as u32) {
+                for fourcc in obs_c_oracle::parity::sweep(t * span..end).map(|f| f as u32) {
                     // SAFETY: the oracle takes a plain integer and touches no memory.
                     let want = unsafe { c::oracle_video_format_from_fourcc(fourcc) };
                     if rs::video_format_from_fourcc(fourcc) != want

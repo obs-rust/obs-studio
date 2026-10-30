@@ -14,9 +14,9 @@ THREADS_VARIABLE = 'OBS_GATE_TEST_THREADS'
 
 
 class RustExecutionTest(unittest.TestCase):
-    def calls(self, packages, tool=Path('/tools/cargo-nextest'), failure=None, threads=None):
+    def calls(self, packages, tool=Path('/tools/cargo-nextest'), failure=None, threads=None, level='reduced'):
         # The caller's own setting must not decide what these checks see (#2769).
-        with mock.patch.dict(gate.os.environ, {}, clear=False), \
+        with mock.patch.dict(gate.os.environ, {'OBS_PARITY_CASES': level}, clear=False), \
              mock.patch.object(gate, 'ensure_nextest', return_value=tool, create=True), \
              mock.patch.object(gate, 'soldr_cargo', side_effect=failure) as cargo, \
              mock.patch.object(gate.os, 'cpu_count', return_value=4):
@@ -33,6 +33,15 @@ class RustExecutionTest(unittest.TestCase):
             '--user-config-file', 'none', '--ignore-default-filter', '--retries', '0', '--no-tests', 'fail'])
         self.assertTrue(calls[0].args[1]['PATH'].startswith('/tools:'))
         self.assertEqual(calls[1].args[0], ['test', '--workspace', '--locked', '--doc'])
+
+    def test_full_parity_level_uses_the_unbudgeted_profile(self):
+        # #2888: the time budget is for the reduced level; full sweeps and
+        # full-size proptests (local, nightly, release) are not timed out.
+        for level in ('', 'full', '100'):
+            args = self.calls(['--workspace'], level=level)[0].args[0]
+            self.assertEqual(args[args.index('--profile') + 1], 'full', level)
+        args = self.calls(['--workspace'], level='25')[0].args[0]
+        self.assertEqual(args[args.index('--profile') + 1], 'default')
 
     def test_changed_crate_scope_applies_to_runner_and_doctests(self):
         packages = ['-p', 'obs-data', '-p', 'obs-util']

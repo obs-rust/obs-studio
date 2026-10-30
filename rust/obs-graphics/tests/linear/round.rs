@@ -30,6 +30,9 @@ fn matches(got: f32, want: f32, x: f32, quiet_nan: bool) -> bool {
 
 /// Checks every `f32` bit pattern, split across threads. The crate's dev
 /// profile is optimized (workspace `Cargo.toml`), so this takes seconds.
+/// Below the `full` parity level (PR, queue, master push) it checks one
+/// pattern in each window of ten; the nightly and release runs sweep all
+/// 2^32 (#2888). `edge_values` keeps the special values on every run.
 #[test]
 fn exhaustive_matches_libm() {
     const CHUNKS: u64 = 64;
@@ -40,7 +43,7 @@ fn exhaustive_matches_libm() {
                 s.spawn(move || {
                     let quiet_nan =
                         rounded_nan(f32::from_bits(0x7f80_0001)).to_bits() == 0x7fc0_0001;
-                    for bits in c * span..(c + 1) * span {
+                    for bits in obs_c_oracle::parity::sweep(c * span..(c + 1) * span) {
                         #[allow(clippy::cast_possible_truncation)]
                         let x = f32::from_bits(bits as u32);
                         assert!(

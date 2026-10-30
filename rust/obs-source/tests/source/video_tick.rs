@@ -467,7 +467,7 @@ fn model_steps(ty: i32, flags: u32) -> (bool, bool, bool) {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn edge_proptest_steps(ty in any::<i32>(), flags in any::<u32>()) {

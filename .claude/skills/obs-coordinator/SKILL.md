@@ -169,6 +169,8 @@ Linux suite again.
 Review each contributor PR that has no review, starting with the one
 nearest the front of the queue. Check correctness, RED → GREEN, Tier 2 and
 differential coverage, the features ledger, and the rules in AGENTS.md.
+A PR that adds or changes Rust tests and has no "Test cost" line
+(obs-worker §4) gets a comment asking for it (#2888).
 Post the findings as a PR review. Fix small, mechanical issues yourself as
 a fixup commit. Leave design changes to the author.
 

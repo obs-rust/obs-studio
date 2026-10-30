@@ -167,7 +167,9 @@ result. Use `Fixes #N` only when the PR completes the issue, `Refs #N`
 otherwise. A user-visible change (behavior, a setting, UI, log output, a
 protocol field, a platform, a fix a user can notice) adds or updates its
 line in [docs/features.md](../../../docs/features.md) in the same PR
-(coordination.md section 4). Check `git diff origin/master --stat` for an accidental
+(coordination.md section 4). A PR that adds or changes Rust tests has a
+**Test cost** line with the numbers of §5, for example "new tests: longest
+0.7 s, peak RSS 18 MB over 25 runs, no own threads" (#2888). Check `git diff origin/master --stat` for an accidental
 `plugins/obs-websocket` pointer change.
 
 ## 5. Local checks (recommended, not required)
@@ -176,6 +178,12 @@ PR CI is the merge gate. Local runs give faster feedback:
 
 - `./lint --fix`, then commit what it changed (seconds).
 - `./unittest` for Rust Tiers 1-3 and Tier 2 in Docker.
+- New or changed Rust tests (#2888, testing-policy "Test time"): run each
+  module alone in the debug build with `OBS_PARITY_CASES=reduced` and record
+  its longest run (over about 5 s: reduce it before you push); record the
+  peak RSS over 20 to 50 runs for proptests (`/usr/bin/time -v` on Linux,
+  `-l` on macOS) and cap every generated size that drives an allocation;
+  state whether the test starts its own threads, and how many.
 - To let CI skip the Linux test jobs, commit, then stamp HEAD with the
   local gate (the pinned command is in AGENTS.md), and push the stamped
   commit **unchanged**. Any amend, rebase or "Update branch" drops the

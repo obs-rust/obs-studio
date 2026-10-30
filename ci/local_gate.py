@@ -751,6 +751,14 @@ def test_threads() -> int:
     return min(4, os.cpu_count() or 1)
 
 
+def nextest_profile() -> str:
+    """`default` carries the per-test time budget for the reduced parity level
+    (PR, queue, master push); a `full` run (unset locally, nightly, release)
+    uses `full`, which keeps SLOW reports but never times a test out (#2888)."""
+    level = os.environ.get("OBS_PARITY_CASES", "").strip()
+    return "full" if level in ("", "full", "100") else "default"
+
+
 def rust_tests(packages: list[str]) -> None:
     """Schedule unchanged category binaries globally; retain Cargo doctests."""
     executable = ensure_nextest()
@@ -762,7 +770,7 @@ def rust_tests(packages: list[str]) -> None:
     try:
         soldr_cargo(["nextest", "run", *packages, "--locked", "--no-fail-fast",
                      "--test-threads", str(test_threads()),
-                     "--profile", "default", "--config-file", str(Path(__file__).with_name("nextest.toml")),
+                     "--profile", nextest_profile(), "--config-file", str(Path(__file__).with_name("nextest.toml")),
                      "--user-config-file", "none", "--ignore-default-filter", "--retries", "0",
                      "--no-tests", "pass" if "-p" in packages else "fail"], env)
     except subprocess.CalledProcessError as error:

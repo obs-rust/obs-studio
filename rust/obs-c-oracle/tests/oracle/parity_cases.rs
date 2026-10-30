@@ -61,9 +61,13 @@ mod sweeps {
 
     #[test]
     fn reduced_keeps_about_a_tenth_and_is_fixed() {
-        let kept: Vec<u64> = (0..100_000).filter(|&i| keep_at(i, Some("reduced"))).collect();
+        let kept: Vec<u64> = (0..100_000)
+            .filter(|&i| keep_at(i, Some("reduced")))
+            .collect();
         assert!((9_000..=11_000).contains(&kept.len()), "{}", kept.len());
-        let again: Vec<u64> = (0..100_000).filter(|&i| keep_at(i, Some("reduced"))).collect();
+        let again: Vec<u64> = (0..100_000)
+            .filter(|&i| keep_at(i, Some("reduced")))
+            .collect();
         assert_eq!(kept, again);
         // Spread out: some item kept in every block of 100.
         assert!((0..1000).all(|b| kept.iter().any(|&i| i / 100 == b)));
