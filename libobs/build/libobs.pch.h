@@ -79,6 +79,9 @@
 /* obs-encoder-packet-ts.c */
 #include "obs-encoder-packet-ts.h"
 
+/* obs-encoder-pause.c */
+#include "obs-encoder-pause.h"
+
 /* obs-encoder-roi.c */
 #include "obs-encoder-roi.h"
 

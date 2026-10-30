@@ -1724,15 +1724,16 @@ bool do_encode(struct obs_encoder *encoder, struct encoder_frame *frame, const u
 static inline bool video_pause_check_internal(struct pause_data *pause, uint64_t ts)
 {
 	pause->last_video_ts = ts;
-	if (!pause->ts_start) {
+	if (obs_encoder_pause_off(pause->ts_start)) {
 		return false;
 	}
 
-	if (ts == pause->ts_end) {
+	int step = obs_encoder_pause_video_step(pause->ts_start, pause->ts_end, ts);
+	if (step == OBS_ENCODER_PAUSE_VIDEO_END) {
 		pause->ts_start = 0;
 		pause->ts_end = 0;
 
-	} else if (ts >= pause->ts_start) {
+	} else if (step == OBS_ENCODER_PAUSE_VIDEO_DROP) {
 		return true;
 	}
 
@@ -1974,15 +1975,15 @@ static bool send_audio_data(struct obs_encoder *encoder)
 
 static void pause_audio(struct pause_data *pause, struct audio_data *data, size_t sample_rate)
 {
-	uint64_t cutoff_frames = pause->ts_start - data->timestamp;
+	uint64_t cutoff_frames = obs_encoder_pause_audio_cut_ns(pause->ts_start, data->timestamp);
 	cutoff_frames = ns_to_audio_frames(sample_rate, cutoff_frames);
 
-	data->frames = (uint32_t)cutoff_frames;
+	data->frames = obs_encoder_pause_audio_kept(cutoff_frames);
 }
 
 static void unpause_audio(struct pause_data *pause, struct audio_data *data, size_t sample_rate)
 {
-	uint64_t cutoff_frames = pause->ts_end - data->timestamp;
+	uint64_t cutoff_frames = obs_encoder_pause_audio_cut_ns(pause->ts_end, data->timestamp);
 	cutoff_frames = ns_to_audio_frames(sample_rate, cutoff_frames);
 
 	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
@@ -1992,7 +1993,7 @@ static void unpause_audio(struct pause_data *pause, struct audio_data *data, siz
 	}
 
 	data->timestamp = pause->ts_start;
-	data->frames = data->frames - (uint32_t)cutoff_frames;
+	data->frames = obs_encoder_pause_audio_left(data->frames, cutoff_frames);
 	pause->ts_start = 0;
 	pause->ts_end = 0;
 }
@@ -2001,22 +2002,22 @@ static inline bool audio_pause_check_internal(struct pause_data *pause, struct a
 {
 	uint64_t end_ts;
 
-	if (!pause->ts_start) {
+	if (obs_encoder_pause_off(pause->ts_start)) {
 		return false;
 	}
 
-	end_ts = data->timestamp + audio_frames_to_ns(sample_rate, data->frames);
+	end_ts = obs_encoder_pause_audio_end(data->timestamp, audio_frames_to_ns(sample_rate, data->frames));
 
-	if (pause->ts_start >= data->timestamp) {
-		if (pause->ts_start <= end_ts) {
-			pause_audio(pause, data, sample_rate);
-			return !data->frames;
-		}
+	int start = obs_encoder_pause_audio_start(pause->ts_start, data->timestamp, end_ts);
+	if (start == OBS_ENCODER_PAUSE_AUDIO_START_INSIDE) {
+		pause_audio(pause, data, sample_rate);
+		return obs_encoder_pause_audio_drop(data->frames);
 
-	} else {
-		if (pause->ts_end >= data->timestamp && pause->ts_end <= end_ts) {
+	} else if (start == OBS_ENCODER_PAUSE_AUDIO_START_BEFORE) {
+		int paused = obs_encoder_pause_audio_paused(pause->ts_end, data->timestamp, end_ts);
+		if (paused == OBS_ENCODER_PAUSE_AUDIO_PAUSED_UNPAUSE) {
 			unpause_audio(pause, data, sample_rate);
-			return !data->frames;
+			return obs_encoder_pause_audio_drop(data->frames);
 		}
 
 		return true;
