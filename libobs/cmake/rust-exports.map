@@ -783,6 +783,10 @@
     obs_nix_wayland_keys_from_keysym;
     obs_nix_wayland_keys_row;
     obs_nix_wayland_keys_to_keysym;
+    /* obs-nix-x11-hotkeys.c. obs-nix-x11.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_nix_x11_hotkeys_raw_button;
+    obs_nix_x11_hotkeys_route;
     /* obs-nix-x11-input.c. obs-nix-x11.c calls them inside libobs. Not
      * EXPORT. */
     obs_nix_x11_input_commit;

@@ -734,6 +734,10 @@ _obs_nix_wayland_keys_focused
 _obs_nix_wayland_keys_from_keysym
 _obs_nix_wayland_keys_row
 _obs_nix_wayland_keys_to_keysym
+# obs-nix-x11-hotkeys.c: the X11 hotkey platform calls them inside libobs on
+# Linux and FreeBSD. Built on every host; not EXPORT.
+_obs_nix_x11_hotkeys_raw_button
+_obs_nix_x11_hotkeys_route
 # obs-nix-x11-input.c: the X11 hotkey platform calls them inside libobs on
 # Linux and FreeBSD. Built on every host; not EXPORT.
 _obs_nix_x11_input_commit

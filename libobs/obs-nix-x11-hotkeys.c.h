@@ -17,7 +17,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix-x11-hotkeys.pch.h"
+#include "libobs/build/libobs-ported-nix-x11-hotkeys.pch.h"
+
+/* Ported to rust/obs-hotkey (nix_x11_hotkeys): the hybrid libobs drops this
+ * file. */
 
 /* The X11 key names and raw button decode of obs-nix-x11.c, moved: the
  * decisions, on plain values. obs-nix-x11.c keeps every X call, every string

@@ -111,6 +111,7 @@ PORTED_ON_LINUX = (
     "obs-data.c.h.o",
     "obs-hevc.c.h.o",
     "obs-nix-system-info.c.h.o",
+    "obs-nix-x11-hotkeys.c.h.o",
     "obs-nix-x11-input.c.h.o",
     "obs-nix-x11-keys.c.h.o",
     "obs-video-plan.c.h.o",
@@ -190,6 +191,8 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-nix-x11-hotkeys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-nix-x11-hotkeys.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertNotIn("obs-nix-x11-input.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertNotIn("obs-nix-x11-input.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertNotIn("obs-nix-x11-keys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
