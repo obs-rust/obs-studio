@@ -334,6 +334,8 @@ class PulseMonitorDeviceTest(unittest.TestCase):
         self.assertEqual(module.SOCKET_SUFFIX, "/pipewire-0-manager")
         self.assertEqual(module.START_ATTEMPTS, 200)
         self.assertEqual(module.START_SLEEP, 0.1)
+        self.assertEqual(module.SETTLE_ATTEMPTS, 20)
+        self.assertEqual(module.SETTLE_SLEEP, 0.05)
         self.assertEqual(
             module.TOOLS,
             ("pipewire", "wireplumber", "pipewire-pulse", "pactl", "dbus-run-session"),

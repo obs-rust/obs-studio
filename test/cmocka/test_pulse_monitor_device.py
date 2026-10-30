@@ -26,6 +26,12 @@ SOCKET_BUDGET = 107
 # The wait for the private sound server to answer `pactl info`: 200 * 0.1 s.
 START_ATTEMPTS = 200
 START_SLEEP = 0.1
+# How long the daemons are watched after `pactl` first answers: a helper that
+# exits a moment later leaves a half-started graph for the test binary, and its
+# exit is only visible once the process has been reaped, so a single check after
+# readiness samples too early (#2988-adjacent Format-lane flake).
+SETTLE_ATTEMPTS = 20
+SETTLE_SLEEP = 0.05
 # The wait for a daemon to exit after SIGTERM before SIGKILL: a hung sound
 # server must not hang the lane that runs the test.
 STOP_TIMEOUT = 3.0
@@ -88,6 +94,24 @@ def _dead_daemons(daemons: tuple[tuple[str, subprocess.Popen], ...]) -> list[str
     return [name for name, process in daemons if process.poll() is not None]
 
 
+def _dead_after_settling(daemons: tuple[tuple[str, subprocess.Popen], ...]) -> list[str]:
+    """Watch the group briefly for a daemon that exits just after it came up.
+
+    `pactl` answering proves the sound server listens, not that its helpers stay
+    alive: a daemon can exit a few milliseconds later, and its exit is only
+    visible once the process has been reaped. One check at readiness therefore
+    samples too early and lets the test binary run against a graph that is about
+    to be half-started (the Format lane's flake on
+    `test_a_daemon_that_exits_on_its_own_fails_the_test_with_its_log`).
+    """
+    for _ in range(SETTLE_ATTEMPTS):
+        time.sleep(SETTLE_SLEEP)
+        dead = _dead_daemons(daemons)
+        if dead:
+            return dead
+    return []
+
+
 def wait_for_server(
     pipewire: subprocess.Popen,
     wireplumber: subprocess.Popen,
@@ -109,8 +133,10 @@ def wait_for_server(
         dead = _dead_daemons(daemons)
         if subprocess.run(["pactl", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
             # `pactl` blocks until the sound server answers, so a daemon can die
-            # while it waits: check again before the test binary runs.
-            dead = _dead_daemons(daemons)
+            # while it waits: check again before the test binary runs, and keep
+            # watching for a moment, since a helper that exits just after
+            # readiness is the same half-started graph.
+            dead = _dead_daemons(daemons) or _dead_after_settling(daemons)
             if not dead:
                 return True
         if dead or attempts > START_ATTEMPTS:
