@@ -125,7 +125,7 @@ void OBSBasic::on_lockDocks_toggled(bool lock)
 	}
 
 #ifdef BROWSER_AVAILABLE
-	for (int i = extraBrowserDocks.size() - 1; i >= 0; i--) {
+	for (int i = static_cast<int>(extraBrowserDocks.size()) - 1; i >= 0; i--) {
 		extraBrowserDocks[i]->setFeatures(features);
 	}
 #endif
