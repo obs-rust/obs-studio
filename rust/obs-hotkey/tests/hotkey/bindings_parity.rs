@@ -400,7 +400,7 @@ fn to_data_matches_c_for_every_key_and_modifier_set() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2000)))]
 
     #[test]
     fn from_data_matches_c(ops in ops()) {

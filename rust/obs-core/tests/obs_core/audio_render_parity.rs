@@ -213,7 +213,7 @@ fn timestamp() -> impl Strategy<Value = u64> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(50_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(50_000)))]
 
     #[test]
     fn tree_matches(removed: bool, present: bool, kind in prop_oneof![0u32..6, any::<u32>()], flags: u32, duplicated: bool) {

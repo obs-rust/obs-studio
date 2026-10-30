@@ -251,7 +251,7 @@ fn registered_root_with_no_calls_matches_oracle() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(48))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(48)))]
 
     #[test]
     fn random_calls_match_oracle(

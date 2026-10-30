@@ -282,7 +282,7 @@ fn any_bits() -> impl Strategy<Value = f32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
     #[test]
     fn random_matrices_match_oracle(items in prop::collection::vec(rows(), 0..8)) {

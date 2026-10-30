@@ -320,7 +320,7 @@ fn percentages_exhaustive() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     /// Full-range counters and plugin values, negative and overflowing
     /// ones included.

@@ -449,7 +449,7 @@ fn parity_wraps_where_the_c_is_undefined() {
 // proptests
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(8192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(8192)))]
 
     #[test]
     fn parity_activation_full_range(raw_was: bool, gpu_was: bool, was: bool, raw: c_long, gpu: c_long) {

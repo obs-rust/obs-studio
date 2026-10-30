@@ -357,7 +357,7 @@ fn parity_stream() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(8192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(8192)))]
 
     #[test]
     fn parity_timebase_any(num in any::<u32>(), den in any::<u32>(), divisor in any::<u32>()) {

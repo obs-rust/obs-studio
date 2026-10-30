@@ -744,7 +744,7 @@ fn arb_call() -> impl Strategy<Value = Call> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn proptest_decisions(mask: u32, flags: u32, idx: usize, small in 0usize..80, t: i32, size: u32) {

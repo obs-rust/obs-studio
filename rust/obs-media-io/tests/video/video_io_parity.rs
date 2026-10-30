@@ -591,7 +591,7 @@ fn scale_linesize_matches() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(32))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(32)))]
 
     #[test]
     fn random_getters_match(

@@ -213,7 +213,7 @@ fn rand_float_matches_c_oracle() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1024))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1024)))]
 
     #[test]
     fn polar_matches_c_oracle_any_bits(v in arb_vec3(any_bits())) {

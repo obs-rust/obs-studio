@@ -226,7 +226,7 @@ fn nulls_strategy() -> impl Strategy<Value = Nulls> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(10_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(10_000)))]
 
     #[test]
     fn arbitrary_get_parameters_input_matches_c_oracle(

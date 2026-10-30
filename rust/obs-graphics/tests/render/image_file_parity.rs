@@ -275,17 +275,19 @@ fn image_file_matches_original_c() {
             compare(file, alpha, &walk);
         }
     }
-    proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(512))
-        .run(
-            &(
-                0..FILES.len(),
-                0u32..3,
-                proptest::collection::vec(op(), 0..40),
-            ),
-            |(file, alpha, ops)| {
-                compare(file, alpha, &ops);
-                Ok(())
-            },
-        )
-        .unwrap();
+    proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(
+        obs_c_oracle::parity::cases(512),
+    ))
+    .run(
+        &(
+            0..FILES.len(),
+            0u32..3,
+            proptest::collection::vec(op(), 0..40),
+        ),
+        |(file, alpha, ops)| {
+            compare(file, alpha, &ops);
+            Ok(())
+        },
+    )
+    .unwrap();
 }

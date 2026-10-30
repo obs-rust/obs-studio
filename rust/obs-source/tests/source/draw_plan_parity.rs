@@ -544,7 +544,7 @@ fn any_draw() -> impl Strategy<Value = DrawIn> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn prop_rotation(rotation in any_rotation(), w in any::<u32>(), h in any::<u32>()) {

@@ -502,10 +502,12 @@ fn texrender_matches_original_c() {
     for ops in scenarios() {
         compare(&ops);
     }
-    proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(512))
-        .run(&proptest::collection::vec(op(), 0..48), |ops| {
-            compare(&ops);
-            Ok(())
-        })
-        .unwrap();
+    proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(
+        obs_c_oracle::parity::cases(512),
+    ))
+    .run(&proptest::collection::vec(op(), 0..48), |ops| {
+        compare(&ops);
+        Ok(())
+    })
+    .unwrap();
 }

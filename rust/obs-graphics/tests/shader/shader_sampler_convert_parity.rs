@@ -184,7 +184,7 @@ fn pair() -> impl Strategy<Value = (Vec<u8>, Vec<u8>)> {
     })
 }
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
     #[test]
     fn arbitrary_states_match(states in prop::collection::vec(pair(),0..40)) { compare(&states); }
 }

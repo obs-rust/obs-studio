@@ -183,7 +183,7 @@ fn parity_too_large_exhaustive() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1024))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1024)))]
 
     #[test]
     fn parity_matrix_any(a in any::<i32>(), b in any::<i32>(), c in any::<i32>(), d in any::<i32>()) {

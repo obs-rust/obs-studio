@@ -618,7 +618,7 @@ fn world_strategy() -> impl Strategy<Value = (Vec<(bool, bool)>, Vec<Step>)> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2000)))]
 
     /// Up to 3 pairs with random latches; up to 40 steps of events (any
     /// hotkey pointer and id) whose funcs return random results and may set

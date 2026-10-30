@@ -640,7 +640,7 @@ fn case_strategy() -> impl Strategy<Value = Case> {
 // that random inputs do not reach (20 000 cases did not either), and the
 // chosen cases above find them.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1_000)))]
 
     #[test]
     fn random_cases_match(c in case_strategy()) {

@@ -817,7 +817,7 @@ mod windows_process {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(48))]
+        #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(48)))]
 
         /// Random arguments to `cmd /c echo`: echo prints the command line
         /// create2 built, so both sides must print the same bytes.

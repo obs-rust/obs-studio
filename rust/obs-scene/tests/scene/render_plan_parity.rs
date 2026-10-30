@@ -577,7 +577,7 @@ fn any_matrix() -> impl Strategy<Value = [u32; 16]> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(10_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(10_000)))]
 
     #[test]
     fn random_triggers_match_oracle(

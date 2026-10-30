@@ -352,7 +352,7 @@ fn rows() -> impl Strategy<Value = [[f32; 4]; 4]> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1024))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1024)))]
 
     #[test]
     fn mul_matches_c_oracle(a in quat_bits(), b in quat_bits()) {

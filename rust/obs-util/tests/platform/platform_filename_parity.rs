@@ -533,7 +533,7 @@ fn extension() -> impl Strategy<Value = Option<Vec<u8>>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1024))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1024)))]
 
     #[test]
     fn random_formats_match(
@@ -548,7 +548,7 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(128))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(128)))]
 
     #[test]
     fn random_formats_match_through_the_shim(

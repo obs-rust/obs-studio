@@ -275,7 +275,7 @@ fn parity_stats_frame_run() {
 // full range
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(8192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(8192)))]
 
     #[test]
     fn parity_tick_full_range(cur in any::<u64>(), last in prop_oneof![Just(0_u64), any::<u64>()], interval in any::<u64>()) {

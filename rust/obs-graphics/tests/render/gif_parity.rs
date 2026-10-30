@@ -348,7 +348,7 @@ fn c_view(gif: *mut c_void) -> View {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(3000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(3000)))]
 
     #[test]
     fn api(case in case()) {

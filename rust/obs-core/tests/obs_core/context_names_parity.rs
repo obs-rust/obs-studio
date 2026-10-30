@@ -432,7 +432,7 @@ fn case() -> impl Strategy<Value = (Option<Vec<u8>>, Script)> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
     #[test]
     fn dedup_matches_the_c_for_random_names((name, script) in case()) {

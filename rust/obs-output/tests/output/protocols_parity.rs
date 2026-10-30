@@ -353,7 +353,7 @@ fn protocol_strategy() -> impl Strategy<Value = Vec<u8>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4000)))]
 
     /// Lists built around the protocol, against the protocol itself and
     /// against protocols near it.

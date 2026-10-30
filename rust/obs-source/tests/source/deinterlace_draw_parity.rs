@@ -704,7 +704,7 @@ fn any_half() -> impl Strategy<Value = u32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn prop_frame2(

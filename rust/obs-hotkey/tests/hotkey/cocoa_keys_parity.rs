@@ -245,7 +245,7 @@ fn entry() -> impl Strategy<Value = KeyCode> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     #[test]
     fn modifier_matches_the_c(flags in any::<u64>(), key in 0..last() + 8) {

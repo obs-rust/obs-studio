@@ -270,7 +270,7 @@ fn ptr_of(data: &[u8]) -> *const u8 {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn header_and_screen((data, start) in data_and_pos(), strict in any::<bool>()) {

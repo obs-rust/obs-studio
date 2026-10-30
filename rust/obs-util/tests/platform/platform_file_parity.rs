@@ -519,7 +519,7 @@ fn stat_matches_the_c_file() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     #[test]
     fn random_reads_match(bom in any::<bool>(), body in proptest::collection::vec(any::<u8>(), 0..300)) {

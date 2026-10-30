@@ -354,7 +354,7 @@ fn any_fmt() -> impl Strategy<Value = Fmt> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20000)))]
 
     #[test]
     fn discontinuity_full_range(
@@ -602,7 +602,7 @@ fn exhaustive_sine_gains() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20000)))]
 
     #[test]
     fn laws_random(

@@ -111,7 +111,7 @@ fn sparse_codes() -> impl Strategy<Value = Vec<u8>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
     #[test]
     fn find_startcode_matches_c_on_sparse_codes(data in sparse_codes()) {

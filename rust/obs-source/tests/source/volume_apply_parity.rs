@@ -593,7 +593,7 @@ fn any_mask() -> impl Strategy<Value = u32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn snap_any_bit_pattern(bits in any::<u32>(), muted in any::<bool>()) {

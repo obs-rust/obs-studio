@@ -294,7 +294,7 @@ fn any_fields() -> impl Strategy<Value = Fields> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     /// Any node, any c_long rotation (a fifth of them a multiple of 180).
     #[test]

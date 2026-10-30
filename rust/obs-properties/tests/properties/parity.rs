@@ -893,7 +893,7 @@ fn run(ops: &[Op]) {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
 
     #[test]
     fn matches_c_oracle(ops in proptest::collection::vec(op(), 1..40)) {

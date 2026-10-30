@@ -42,7 +42,7 @@ fn check(fourcc: u32) -> Result<(), TestCaseError> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(10_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(10_000)))]
 
     #[test]
     fn arbitrary_fourcc_matches_c_oracle(fourcc in any::<u32>()) {

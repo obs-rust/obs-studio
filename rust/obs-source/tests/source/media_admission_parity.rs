@@ -338,7 +338,7 @@ fn any_type() -> impl Strategy<Value = c_int> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn proptest_admission(call in prop_oneof![0..11_i32, any::<i32>()], valid: bool,

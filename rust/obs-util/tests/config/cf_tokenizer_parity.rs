@@ -332,7 +332,7 @@ fn literal() -> impl Strategy<Value = (Vec<u8>, usize)> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
     #[test]
     fn cf_lexer_lex_matches_c(input in source(), file in prop::option::of("[a-z./]{0,8}")) {

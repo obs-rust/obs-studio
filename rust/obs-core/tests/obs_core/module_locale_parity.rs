@@ -374,7 +374,7 @@ fn opt(v: Vec<u8>, null: bool) -> Option<CString> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2048))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
 
     #[test]
     fn names_match_c_for_any_locale(l in any_locale(), null in any::<bool>()) {

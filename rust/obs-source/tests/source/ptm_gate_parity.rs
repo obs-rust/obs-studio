@@ -288,7 +288,7 @@ fn source_muted_every_flag() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn stop_time_full_range(os_time in any::<u64>(), delay in any::<u64>()) {

@@ -239,7 +239,7 @@ fn decode_both(case: &Case) -> ((i32, Vec<u32>), (i32, Vec<u32>)) {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn decode(case in case()) {

@@ -389,7 +389,7 @@ fn op_strategy() -> impl Strategy<Value = Op> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(24))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(24)))]
 
     #[test]
     fn random_ops_match_oracle(ops in prop::collection::vec(op_strategy(), 0..8)) {

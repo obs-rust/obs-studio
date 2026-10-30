@@ -758,7 +758,7 @@ fn any_mode() -> impl Strategy<Value = i32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     /// Any clock: half the time a timestamp near the start, either side,
     /// and half the time near the end.

@@ -813,7 +813,7 @@ fn filter_decisions_every_filter() {
 // Proptests
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn prop_single_calls(ty in any::<i32>(), flags in any::<u32>(), x in any::<i32>(),

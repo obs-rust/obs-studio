@@ -450,7 +450,7 @@ impl Packed {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
 
     #[test]
     fn compress_uyvx_to_i420_matches_c(p in uyvx_strategy(2)) {

@@ -655,7 +655,9 @@ fn mbs_match_oracle_in_a_utf8_locale() {
         eprintln!("no UTF-8 locale installed");
         return;
     }
-    let mut runner = proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(256));
+    let mut runner = proptest::test_runner::TestRunner::new(ProptestConfig::with_cases(
+        obs_c_oracle::parity::cases(256),
+    ));
     runner
         .run(
             &(utf8_text(), wide_text(), any::<usize>()),
@@ -669,7 +671,7 @@ fn mbs_match_oracle_in_a_utf8_locale() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
 
     #[test]
     fn utf8_to_wcs_matches_oracle(text in utf8_text(), junk in any::<usize>()) {

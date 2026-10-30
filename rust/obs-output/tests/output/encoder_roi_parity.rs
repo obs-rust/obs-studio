@@ -498,7 +498,7 @@ fn size() -> impl Strategy<Value = u32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(8192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(8192)))]
 
     #[test]
     fn random_admit_matches_oracle(caps in prop_oneof![

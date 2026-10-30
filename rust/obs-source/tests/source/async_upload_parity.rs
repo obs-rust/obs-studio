@@ -566,7 +566,7 @@ fn any_format() -> impl Strategy<Value = ShimFormat> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn prop_texture_changed(cur in any_format(), frame in any_format(), same in any::<bool>()) {

@@ -281,7 +281,7 @@ fn window_strategy() -> impl Strategy<Value = (u64, ts_info, usize, usize, u64)>
 // frames counted from one ns late needs the start frames at one ns off,
 // which mix_on_sampled_start_frames checks.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
 
     #[test]
     fn mix_matches((audio_ts, ts, channels, rate, seed) in window_strategy()) {
@@ -290,7 +290,7 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn time_to_frames_matches(
@@ -572,7 +572,7 @@ fn buffering_chosen_cases() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn buffering_matches(case in buffering_strategy()) {

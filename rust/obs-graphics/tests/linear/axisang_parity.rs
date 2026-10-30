@@ -73,7 +73,7 @@ fn near_epsilon() -> impl Strategy<Value = [f32; 4]> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4096))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
     #[test]
     fn from_quat_matches_c_oracle_any_bits(q in [any_bits(), any_bits(), any_bits(), any_bits()]) {

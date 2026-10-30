@@ -24,7 +24,7 @@ fn a_percent_scales_by_that_percent() {
 #[test]
 fn scaled_counts_keep_the_floor() {
     assert_eq!(scale(512, Some("reduced")), FLOOR);
-    assert_eq!(scale(20_000, Some("1")), FLOOR);
+    assert_eq!(scale(3_000, Some("1")), FLOOR);
     // A module written below the floor keeps its own count.
     assert_eq!(scale(16, Some("reduced")), 16);
 }

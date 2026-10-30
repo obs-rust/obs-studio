@@ -439,7 +439,7 @@ fn characterized_trigger_cases_match_c() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2048))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
 
     #[test]
     fn bindable_matches_c(modifiers in any::<u32>(), key in key_strategy()) {

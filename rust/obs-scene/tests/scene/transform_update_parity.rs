@@ -258,7 +258,7 @@ fn c_scene_size(last: &mut Size, now: Size) -> bool {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4000)))]
 
     #[test]
     fn scene_size_any(lw in any::<u32>(), lh in any::<u32>(), w in any::<u32>(), h in any::<u32>(), same in any::<bool>()) {
@@ -282,7 +282,7 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(500))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(500)))]
 
     /// Up to 16 items, 12 renders, with sizes from a few values so that
     /// "the same" happens often; between renders some sources change size

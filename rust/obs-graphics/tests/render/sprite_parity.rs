@@ -538,7 +538,7 @@ fn any_usize() -> impl Strategy<Value = usize> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20000)))]
 
     #[test]
     fn proptest_coordinates(flip in any::<u32>(), x in any_u32(), y in any_u32(), cx in any_u32(),

@@ -239,7 +239,7 @@ fn idle_wait_false_matches() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     /// Random op sequences produce identical observable logs.
     #[test]

@@ -618,7 +618,7 @@ fn file_strategy() -> impl Strategy<Value = Vec<u8>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     /// Every line rule over any line of pieces and bytes.
     #[test]

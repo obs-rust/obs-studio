@@ -655,7 +655,7 @@ fn strings_with(extra: &[Vec<u8>]) -> Strings {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(3000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(3000)))]
 
     #[test]
     fn has_matches_c(set in arb_set(), probe in arb_combo(), null: bool) {

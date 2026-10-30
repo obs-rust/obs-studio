@@ -563,7 +563,7 @@ fn any_enc() -> impl Strategy<Value = Enc> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn parity_decisions_full_range(a in any::<u64>(), b in any::<u64>(), c in any::<u32>(),

@@ -407,7 +407,7 @@ fn any_item() -> impl Strategy<Value = Item> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn frames_any(pending in any::<bool>(), source_ts in any_ts(), timestamp in any_ts(), rate in any_rate()) {

@@ -144,7 +144,7 @@ fn service_selection_and_cookie_lifecycle_match_c() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(128))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(128)))]
 
     #[test]
     fn random_state_transitions_match_c(

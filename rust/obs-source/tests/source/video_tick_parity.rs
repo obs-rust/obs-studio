@@ -506,7 +506,7 @@ fn parity_tick_every_state() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn parity_proptest_values(t in any::<c_int>(), f in any::<u32>(), n in any::<c_long>(), b in any::<(bool, bool)>()) {

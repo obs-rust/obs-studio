@@ -488,7 +488,7 @@ fn any_format() -> impl Strategy<Value = c_int> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(8192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(8192)))]
 
     #[test]
     fn plan_full_range(

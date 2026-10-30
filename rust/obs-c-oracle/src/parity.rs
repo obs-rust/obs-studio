@@ -25,6 +25,14 @@ pub fn cases(n: u32) -> u32 {
 
 /// The case count for `n` at `level` (the value of [`ENV`], `None` when unset).
 pub fn scale(n: u32, level: Option<&str>) -> u32 {
-    let _ = level;
-    n
+    let percent = match level.map(str::trim) {
+        None | Some("" | "full") => return n,
+        Some("reduced") => REDUCED_PERCENT,
+        Some(other) => match other.parse::<u32>() {
+            Ok(p @ 1..=100) => p,
+            _ => panic!("{ENV}={other:?}: expected `full`, `reduced` or a percent 1..=100"),
+        },
+    };
+    let scaled = u32::try_from(u64::from(n) * u64::from(percent) / 100).unwrap_or(n);
+    scaled.max(FLOOR.min(n))
 }

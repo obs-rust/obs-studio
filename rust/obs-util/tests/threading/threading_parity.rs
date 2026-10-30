@@ -508,7 +508,7 @@ fn parity_post_credit_probe() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     /// Random op sequences produce identical return codes, starting the
     /// semaphore at arbitrary initial values so leftover initial credit

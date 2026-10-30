@@ -492,7 +492,7 @@ fn cmocka_sequences_match_oracle() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(96))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(96)))]
 
     #[test]
     fn random_sequences_match_oracle(
@@ -505,7 +505,7 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(32))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(32)))]
 
     #[test]
     fn shim_sequences_match_oracle(

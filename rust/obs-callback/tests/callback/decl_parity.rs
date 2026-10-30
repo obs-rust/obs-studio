@@ -328,7 +328,7 @@ fn declish() -> impl Strategy<Value = Vec<u8>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(512)))]
 
     #[test]
     fn random_declarations_match_oracle(text in declish()) {

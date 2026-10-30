@@ -479,7 +479,7 @@ fn under_input() -> impl Strategy<Value = UnderIn> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn pre_lock_any_input(input in pre_input(), fill in fill()) {
@@ -845,7 +845,7 @@ fn packets(start_ts: u64, start_os: u64, events: &[Event], state_adjust: u64) ->
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(10_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(10_000)))]
 
     #[test]
     fn sequences_match_the_c(

@@ -113,7 +113,7 @@ fn wide_strategy() -> impl Strategy<Value = Vec<u16>> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2048))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
 
     #[test]
     fn utf8_to_wchar_matches_c_oracle(

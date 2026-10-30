@@ -282,7 +282,7 @@ fn any_half() -> impl Strategy<Value = u32> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn proptest_hold(frame_ts in any_time(), offset in any_time(), half in any_half(), back in any_time()) {
@@ -1023,7 +1023,7 @@ fn run_with<P: Pacing>(
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(3000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(3000)))]
 
     #[test]
     fn parity_sequences(seq in sequence()) {

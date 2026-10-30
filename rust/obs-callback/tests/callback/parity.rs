@@ -275,7 +275,7 @@ fn apply(op: &Op, c_side: &mut calldata, rust_side: &mut calldata) {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     #[test]
     fn random_sets_match_oracle(ops in prop::collection::vec(

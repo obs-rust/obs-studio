@@ -571,7 +571,7 @@ fn cfg_path(dir: &Path, name: &str) -> (PathBuf, Vec<u8>) {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(192))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(192)))]
 
     /// Arbitrary INI text through open_string: same sections, same names,
     /// same values reachable through the getters.

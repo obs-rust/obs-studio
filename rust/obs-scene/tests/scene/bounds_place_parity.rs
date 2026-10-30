@@ -97,7 +97,7 @@ fn check(
     assert_eq!((rb.x, rb.y), (cb.x, cb.y));
 }
 proptest! {
- #![proptest_config(ProptestConfig::with_cases(2048))]
+ #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
  #[test]
  fn placement_matches_c(kind in -1i32..9, bx in 1u32..4096, by in 1u32..4096, fraction in 0u32..16, cx in 0u32..4096, cy in 0u32..4096, sx in prop_oneof![Just(-2.0f32),Just(-0.5),Just(0.5),Just(1.0),Just(2.0)], sy in prop_oneof![Just(-2.0f32),Just(-0.5),Just(0.5),Just(1.0),Just(2.0)], ox in -256i32..256, oy in -256i32..256, align in 0u32..32, crop in any::<bool>()) {
   check(kind,bx as f32 + fraction as f32/16.0,by as f32,ox as f32,oy as f32,sx,sy,cx,cy,align,crop);

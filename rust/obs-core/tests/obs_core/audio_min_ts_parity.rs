@@ -145,7 +145,7 @@ fn timestamp() -> impl Strategy<Value = u64> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(50_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(50_000)))]
 
     #[test]
     fn earlier_matches(pending in any::<bool>(), audio_ts in timestamp(), min in timestamp()) {

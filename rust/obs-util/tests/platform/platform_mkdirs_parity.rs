@@ -144,7 +144,7 @@ fn rel_path() -> impl Strategy<Value = String> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     #[test]
     fn random_paths_match(rels in prop::collection::vec(rel_path(), 1..5)) {

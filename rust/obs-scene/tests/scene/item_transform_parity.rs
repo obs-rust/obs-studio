@@ -696,7 +696,7 @@ fn item_strategy() -> impl Strategy<Value = (Item, u32, u32)> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
 
     #[test]
     fn prepare_any(
@@ -731,7 +731,7 @@ proptest! {
 
 proptest! {
     // 448 compositions on each side per case
-    #![proptest_config(ProptestConfig::with_cases(2_000))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2_000)))]
 
     #[test]
     fn compose_flags_exhaustive((it, w, h) in item_strategy(), canvas in prop::sample::select(vec![(1920.0_f32, 1080.0_f32), (1280.0, 720.0), (0.0, 0.0), (3840.0, 2160.0)])) {

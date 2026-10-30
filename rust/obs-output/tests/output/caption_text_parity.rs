@@ -347,7 +347,7 @@ fn parity_long_skips_cross_windows() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(1024))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(1024)))]
 
     #[test]
     fn parity_weighted_text(input in weighted(800)) {
@@ -363,7 +363,7 @@ proptest! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(64)))]
 
     #[test]
     fn parity_long_text(input in weighted(12000)) {

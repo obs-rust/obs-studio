@@ -249,7 +249,7 @@ fn m4(f: [f32; 16]) -> matrix4 {
 // (rebuilt after #2528) each fail here within 125 cases in every run; the
 // equivalent one (no max(new_size) in the growth) survives, as before.
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(500))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(500)))]
 
     #[test]
     fn sequences(calls in proptest::collection::vec(call(), 0..60)) {

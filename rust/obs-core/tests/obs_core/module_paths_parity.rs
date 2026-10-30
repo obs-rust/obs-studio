@@ -728,7 +728,7 @@ fn climbing_above_the_root_stays_in_the_tree() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(2048))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
 
     #[test]
     fn data_dir_matches_c_for_any_path(name in path(), data in path(), rooted in any::<bool>()) {

@@ -86,6 +86,10 @@ env:
   # starts) raise UnicodeDecodeError on the UTF-8 workflow files (#2757).
   # A no-op on Linux and macOS, where UTF-8 is already the default.
   PYTHONUTF8: "1"
+  # Tier 3 parity proptest depth (#2593, rust/obs-c-oracle/src/parity.rs):
+  # PR, merge queue and master push run ~10% of each module's cases;
+  # schedule, workflow_dispatch, tags and release branches run them all.
+  OBS_PARITY_CASES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/master')) && 'reduced' || 'full' }}
 jobs:
   check-event:
     timeout-minutes: 10

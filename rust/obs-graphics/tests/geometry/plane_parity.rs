@@ -361,7 +361,7 @@ fn mat() -> impl Strategy<Value = [[f32; 4]; 4]> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(256))]
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(256)))]
 
     #[test]
     fn plane_matches_c_oracle(
