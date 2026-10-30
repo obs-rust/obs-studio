@@ -28,6 +28,7 @@
 #![deny(unsafe_code)]
 
 pub mod audio_actions;
+pub mod audio_mix;
 pub mod audio_window;
 pub mod blend;
 pub mod bounds;
