@@ -2427,10 +2427,12 @@ jobs:
           apt-get install -y --no-install-recommends git ca-certificates curl sudo zstd
 
       # fetch-depth 0: versionconfig.cmake derives the OBS version from tags.
+      # Treeless (#3022): git describe/log/rev-parse read only commits. No
+      # submodules: validate.sh initializes the two configure needs at depth 1.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          submodules: recursive
           fetch-depth: 0
+          filter: tree:0
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
