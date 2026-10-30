@@ -15,6 +15,16 @@
  * brotli 1.2.1 and the Windows package links no brotli at all, so "" (every
  * coding libcurl was built with) is safe there.
  *
+ * Measured on the system libcurl (probe on 2026-10-30, #2907): macOS 14.8.9
+ * (23J631), 15.8.2 (24H232) and 26.6.2 (25G83) all resolve
+ * /usr/lib/libcurl.4.dylib at 8.7.1 with features 0x514f039d, which does not
+ * set CURL_VERSION_BROTLI and links no libbrotlidec, and their /usr/bin/curl
+ * lists the same features without brotli. So on those releases this branch is
+ * inert: gzip and deflate are exactly what "" would ask for. It stays because
+ * 13.0 (the deployment target) is the oldest release this project ships and
+ * has not been measured: GitHub retired its macos-13 runners, so 13.0 needs a
+ * real Mac before the carve-out can go.
+ *
  * Set by the build (`OBS_CURL_ACCEPT_ENCODING_UNPINNED_BROTLI`, see the
  * top-level CMakeLists) rather than by a host conditional here: shared C has
  * to stay free of those (#847). */

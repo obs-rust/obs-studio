@@ -34,6 +34,9 @@ option(ENABLE_HEVC "Enable HEVC encoders" ON)
 # The Apple frontend links the OS libcurl, whose Brotli decoder this project
 # does not pin, so the shared Accept-Encoding helper keeps asking for gzip and
 # deflate there (#2211, shared/file-updater/file-updater/curl-accept-encoding.h).
+# Measured: macOS 14/15/26 ship libcurl 8.7.1 without CURL_VERSION_BROTLI, so
+# there the setting is inert; macOS 13.0 (the deployment target) is unmeasured
+# and the reason this stays (#2907).
 if(OS_MACOS)
   add_compile_definitions(OBS_CURL_ACCEPT_ENCODING_UNPINNED_BROTLI=1)
 endif()
