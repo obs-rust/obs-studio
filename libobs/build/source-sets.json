@@ -303,6 +303,7 @@
   "LIBOBS_WINDOWS_SOURCES": [
     "audio-monitoring/win32/wasapi-output.h",
     "obs-win-crash-report.h",
+    "obs-windows-keys.h",
     "util/threading-windows.h",
     "util/windows/CoTaskMemPtr.hpp",
     "util/windows/device-enum.h",
@@ -312,6 +313,7 @@
     "util/windows/window-helpers.h",
     "build/libobs.windows+.h.c",
     "build/libobs.windows-crash-handler+.h.c",
+    "build/libobs.windows-keys+.h.c",
     "build/libobs.graphics-ffmpeg-host-windows+.h.c"
   ],
   "LIBOBS_WINDOWS_OBFUSCATE_SOURCES": [

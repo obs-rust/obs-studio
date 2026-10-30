@@ -5509,7 +5509,8 @@
     },
     "test_win_wsc_product_refs": {
       "sources": [
-        "test/cmocka/test_win_wsc_product_refs.c"
+        "test/cmocka/test_win_wsc_product_refs.c",
+        "libobs/obs-windows-keys.c.h"
       ],
       "includes": [
         "libobs",

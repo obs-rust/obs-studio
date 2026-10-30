@@ -352,611 +352,171 @@ struct obs_hotkeys_platform {
 	int vk_codes[OBS_KEY_LAST_VALUE];
 };
 
-static int get_virtual_key(obs_key_t key)
-{
-	switch (key) {
-	case OBS_KEY_RETURN:
-		return VK_RETURN;
-	case OBS_KEY_ESCAPE:
-		return VK_ESCAPE;
-	case OBS_KEY_TAB:
-		return VK_TAB;
-	case OBS_KEY_BACKTAB:
-		return VK_OEM_BACKTAB;
-	case OBS_KEY_BACKSPACE:
-		return VK_BACK;
-	case OBS_KEY_INSERT:
-		return VK_INSERT;
-	case OBS_KEY_DELETE:
-		return VK_DELETE;
-	case OBS_KEY_PAUSE:
-		return VK_PAUSE;
-	case OBS_KEY_PRINT:
-		return VK_SNAPSHOT;
-	case OBS_KEY_CLEAR:
-		return VK_CLEAR;
-	case OBS_KEY_HOME:
-		return VK_HOME;
-	case OBS_KEY_END:
-		return VK_END;
-	case OBS_KEY_LEFT:
-		return VK_LEFT;
-	case OBS_KEY_UP:
-		return VK_UP;
-	case OBS_KEY_RIGHT:
-		return VK_RIGHT;
-	case OBS_KEY_DOWN:
-		return VK_DOWN;
-	case OBS_KEY_PAGEUP:
-		return VK_PRIOR;
-	case OBS_KEY_PAGEDOWN:
-		return VK_NEXT;
-
-	case OBS_KEY_SHIFT:
-		return VK_SHIFT;
-	case OBS_KEY_CONTROL:
-		return VK_CONTROL;
-	case OBS_KEY_ALT:
-		return VK_MENU;
-	case OBS_KEY_CAPSLOCK:
-		return VK_CAPITAL;
-	case OBS_KEY_NUMLOCK:
-		return VK_NUMLOCK;
-	case OBS_KEY_SCROLLLOCK:
-		return VK_SCROLL;
-
-	case OBS_KEY_F1:
-		return VK_F1;
-	case OBS_KEY_F2:
-		return VK_F2;
-	case OBS_KEY_F3:
-		return VK_F3;
-	case OBS_KEY_F4:
-		return VK_F4;
-	case OBS_KEY_F5:
-		return VK_F5;
-	case OBS_KEY_F6:
-		return VK_F6;
-	case OBS_KEY_F7:
-		return VK_F7;
-	case OBS_KEY_F8:
-		return VK_F8;
-	case OBS_KEY_F9:
-		return VK_F9;
-	case OBS_KEY_F10:
-		return VK_F10;
-	case OBS_KEY_F11:
-		return VK_F11;
-	case OBS_KEY_F12:
-		return VK_F12;
-	case OBS_KEY_F13:
-		return VK_F13;
-	case OBS_KEY_F14:
-		return VK_F14;
-	case OBS_KEY_F15:
-		return VK_F15;
-	case OBS_KEY_F16:
-		return VK_F16;
-	case OBS_KEY_F17:
-		return VK_F17;
-	case OBS_KEY_F18:
-		return VK_F18;
-	case OBS_KEY_F19:
-		return VK_F19;
-	case OBS_KEY_F20:
-		return VK_F20;
-	case OBS_KEY_F21:
-		return VK_F21;
-	case OBS_KEY_F22:
-		return VK_F22;
-	case OBS_KEY_F23:
-		return VK_F23;
-	case OBS_KEY_F24:
-		return VK_F24;
-
-	case OBS_KEY_SPACE:
-		return VK_SPACE;
-
-	case OBS_KEY_APOSTROPHE:
-		return VK_OEM_7;
-	case OBS_KEY_PLUS:
-		return VK_OEM_PLUS;
-	case OBS_KEY_COMMA:
-		return VK_OEM_COMMA;
-	case OBS_KEY_MINUS:
-		return VK_OEM_MINUS;
-	case OBS_KEY_PERIOD:
-		return VK_OEM_PERIOD;
-	case OBS_KEY_SLASH:
-		return VK_OEM_2;
-	case OBS_KEY_0:
-		return '0';
-	case OBS_KEY_1:
-		return '1';
-	case OBS_KEY_2:
-		return '2';
-	case OBS_KEY_3:
-		return '3';
-	case OBS_KEY_4:
-		return '4';
-	case OBS_KEY_5:
-		return '5';
-	case OBS_KEY_6:
-		return '6';
-	case OBS_KEY_7:
-		return '7';
-	case OBS_KEY_8:
-		return '8';
-	case OBS_KEY_9:
-		return '9';
-	case OBS_KEY_NUMASTERISK:
-		return VK_MULTIPLY;
-	case OBS_KEY_NUMPLUS:
-		return VK_ADD;
-	case OBS_KEY_NUMMINUS:
-		return VK_SUBTRACT;
-	case OBS_KEY_NUMPERIOD:
-		return VK_DECIMAL;
-	case OBS_KEY_NUMSLASH:
-		return VK_DIVIDE;
-	case OBS_KEY_NUM0:
-		return VK_NUMPAD0;
-	case OBS_KEY_NUM1:
-		return VK_NUMPAD1;
-	case OBS_KEY_NUM2:
-		return VK_NUMPAD2;
-	case OBS_KEY_NUM3:
-		return VK_NUMPAD3;
-	case OBS_KEY_NUM4:
-		return VK_NUMPAD4;
-	case OBS_KEY_NUM5:
-		return VK_NUMPAD5;
-	case OBS_KEY_NUM6:
-		return VK_NUMPAD6;
-	case OBS_KEY_NUM7:
-		return VK_NUMPAD7;
-	case OBS_KEY_NUM8:
-		return VK_NUMPAD8;
-	case OBS_KEY_NUM9:
-		return VK_NUMPAD9;
-	case OBS_KEY_SEMICOLON:
-		return VK_OEM_1;
-	case OBS_KEY_A:
-		return 'A';
-	case OBS_KEY_B:
-		return 'B';
-	case OBS_KEY_C:
-		return 'C';
-	case OBS_KEY_D:
-		return 'D';
-	case OBS_KEY_E:
-		return 'E';
-	case OBS_KEY_F:
-		return 'F';
-	case OBS_KEY_G:
-		return 'G';
-	case OBS_KEY_H:
-		return 'H';
-	case OBS_KEY_I:
-		return 'I';
-	case OBS_KEY_J:
-		return 'J';
-	case OBS_KEY_K:
-		return 'K';
-	case OBS_KEY_L:
-		return 'L';
-	case OBS_KEY_M:
-		return 'M';
-	case OBS_KEY_N:
-		return 'N';
-	case OBS_KEY_O:
-		return 'O';
-	case OBS_KEY_P:
-		return 'P';
-	case OBS_KEY_Q:
-		return 'Q';
-	case OBS_KEY_R:
-		return 'R';
-	case OBS_KEY_S:
-		return 'S';
-	case OBS_KEY_T:
-		return 'T';
-	case OBS_KEY_U:
-		return 'U';
-	case OBS_KEY_V:
-		return 'V';
-	case OBS_KEY_W:
-		return 'W';
-	case OBS_KEY_X:
-		return 'X';
-	case OBS_KEY_Y:
-		return 'Y';
-	case OBS_KEY_Z:
-		return 'Z';
-	case OBS_KEY_BRACKETLEFT:
-		return VK_OEM_4;
-	case OBS_KEY_BACKSLASH:
-		return VK_OEM_5;
-	case OBS_KEY_BRACKETRIGHT:
-		return VK_OEM_6;
-	case OBS_KEY_ASCIITILDE:
-		return VK_OEM_3;
-
-	case OBS_KEY_HENKAN:
-		return VK_CONVERT;
-	case OBS_KEY_MUHENKAN:
-		return VK_NONCONVERT;
-	case OBS_KEY_KANJI:
-		return VK_KANJI;
-	case OBS_KEY_TOUROKU:
-		return VK_OEM_FJ_TOUROKU;
-	case OBS_KEY_MASSYO:
-		return VK_OEM_FJ_MASSHOU;
-
-	case OBS_KEY_HANGUL:
-		return VK_HANGUL;
-
-	case OBS_KEY_BACKSLASH_RT102:
-		return VK_OEM_102;
-
-	case OBS_KEY_MOUSE1:
-		return VK_LBUTTON;
-	case OBS_KEY_MOUSE2:
-		return VK_RBUTTON;
-	case OBS_KEY_MOUSE3:
-		return VK_MBUTTON;
-	case OBS_KEY_MOUSE4:
-		return VK_XBUTTON1;
-	case OBS_KEY_MOUSE5:
-		return VK_XBUTTON2;
-
-	case OBS_KEY_VK_CANCEL:
-		return VK_CANCEL;
-	case OBS_KEY_0x07:
-		return 0x07;
-	case OBS_KEY_0x0A:
-		return 0x0A;
-	case OBS_KEY_0x0B:
-		return 0x0B;
-	case OBS_KEY_0x0E:
-		return 0x0E;
-	case OBS_KEY_0x0F:
-		return 0x0F;
-	case OBS_KEY_0x16:
-		return 0x16;
-	case OBS_KEY_VK_JUNJA:
-		return VK_JUNJA;
-	case OBS_KEY_VK_FINAL:
-		return VK_FINAL;
-	case OBS_KEY_0x1A:
-		return 0x1A;
-	case OBS_KEY_VK_ACCEPT:
-		return VK_ACCEPT;
-	case OBS_KEY_VK_MODECHANGE:
-		return VK_MODECHANGE;
-	case OBS_KEY_VK_SELECT:
-		return VK_SELECT;
-	case OBS_KEY_VK_PRINT:
-		return VK_PRINT;
-	case OBS_KEY_VK_EXECUTE:
-		return VK_EXECUTE;
-	case OBS_KEY_VK_HELP:
-		return VK_HELP;
-	case OBS_KEY_0x30:
-		return 0x30;
-	case OBS_KEY_0x31:
-		return 0x31;
-	case OBS_KEY_0x32:
-		return 0x32;
-	case OBS_KEY_0x33:
-		return 0x33;
-	case OBS_KEY_0x34:
-		return 0x34;
-	case OBS_KEY_0x35:
-		return 0x35;
-	case OBS_KEY_0x36:
-		return 0x36;
-	case OBS_KEY_0x37:
-		return 0x37;
-	case OBS_KEY_0x38:
-		return 0x38;
-	case OBS_KEY_0x39:
-		return 0x39;
-	case OBS_KEY_0x3A:
-		return 0x3A;
-	case OBS_KEY_0x3B:
-		return 0x3B;
-	case OBS_KEY_0x3C:
-		return 0x3C;
-	case OBS_KEY_0x3D:
-		return 0x3D;
-	case OBS_KEY_0x3E:
-		return 0x3E;
-	case OBS_KEY_0x3F:
-		return 0x3F;
-	case OBS_KEY_0x40:
-		return 0x40;
-	case OBS_KEY_0x41:
-		return 0x41;
-	case OBS_KEY_0x42:
-		return 0x42;
-	case OBS_KEY_0x43:
-		return 0x43;
-	case OBS_KEY_0x44:
-		return 0x44;
-	case OBS_KEY_0x45:
-		return 0x45;
-	case OBS_KEY_0x46:
-		return 0x46;
-	case OBS_KEY_0x47:
-		return 0x47;
-	case OBS_KEY_0x48:
-		return 0x48;
-	case OBS_KEY_0x49:
-		return 0x49;
-	case OBS_KEY_0x4A:
-		return 0x4A;
-	case OBS_KEY_0x4B:
-		return 0x4B;
-	case OBS_KEY_0x4C:
-		return 0x4C;
-	case OBS_KEY_0x4D:
-		return 0x4D;
-	case OBS_KEY_0x4E:
-		return 0x4E;
-	case OBS_KEY_0x4F:
-		return 0x4F;
-	case OBS_KEY_0x50:
-		return 0x50;
-	case OBS_KEY_0x51:
-		return 0x51;
-	case OBS_KEY_0x52:
-		return 0x52;
-	case OBS_KEY_0x53:
-		return 0x53;
-	case OBS_KEY_0x54:
-		return 0x54;
-	case OBS_KEY_0x55:
-		return 0x55;
-	case OBS_KEY_0x56:
-		return 0x56;
-	case OBS_KEY_0x57:
-		return 0x57;
-	case OBS_KEY_0x58:
-		return 0x58;
-	case OBS_KEY_0x59:
-		return 0x59;
-	case OBS_KEY_0x5A:
-		return 0x5A;
-	case OBS_KEY_VK_LWIN:
-		return VK_LWIN;
-	case OBS_KEY_VK_RWIN:
-		return VK_RWIN;
-	case OBS_KEY_VK_APPS:
-		return VK_APPS;
-	case OBS_KEY_0x5E:
-		return 0x5E;
-	case OBS_KEY_VK_SLEEP:
-		return VK_SLEEP;
-	case OBS_KEY_VK_SEPARATOR:
-		return VK_SEPARATOR;
-	case OBS_KEY_0x88:
-		return 0x88;
-	case OBS_KEY_0x89:
-		return 0x89;
-	case OBS_KEY_0x8A:
-		return 0x8A;
-	case OBS_KEY_0x8B:
-		return 0x8B;
-	case OBS_KEY_0x8C:
-		return 0x8C;
-	case OBS_KEY_0x8D:
-		return 0x8D;
-	case OBS_KEY_0x8E:
-		return 0x8E;
-	case OBS_KEY_0x8F:
-		return 0x8F;
-	case OBS_KEY_VK_OEM_FJ_JISHO:
-		return VK_OEM_FJ_JISHO;
-	case OBS_KEY_VK_OEM_FJ_LOYA:
-		return VK_OEM_FJ_LOYA;
-	case OBS_KEY_VK_OEM_FJ_ROYA:
-		return VK_OEM_FJ_ROYA;
-	case OBS_KEY_0x97:
-		return 0x97;
-	case OBS_KEY_0x98:
-		return 0x98;
-	case OBS_KEY_0x99:
-		return 0x99;
-	case OBS_KEY_0x9A:
-		return 0x9A;
-	case OBS_KEY_0x9B:
-		return 0x9B;
-	case OBS_KEY_0x9C:
-		return 0x9C;
-	case OBS_KEY_0x9D:
-		return 0x9D;
-	case OBS_KEY_0x9E:
-		return 0x9E;
-	case OBS_KEY_0x9F:
-		return 0x9F;
-	case OBS_KEY_VK_LSHIFT:
-		return VK_LSHIFT;
-	case OBS_KEY_VK_RSHIFT:
-		return VK_RSHIFT;
-	case OBS_KEY_VK_LCONTROL:
-		return VK_LCONTROL;
-	case OBS_KEY_VK_RCONTROL:
-		return VK_RCONTROL;
-	case OBS_KEY_VK_LMENU:
-		return VK_LMENU;
-	case OBS_KEY_VK_RMENU:
-		return VK_RMENU;
-	case OBS_KEY_VK_BROWSER_BACK:
-		return VK_BROWSER_BACK;
-	case OBS_KEY_VK_BROWSER_FORWARD:
-		return VK_BROWSER_FORWARD;
-	case OBS_KEY_VK_BROWSER_REFRESH:
-		return VK_BROWSER_REFRESH;
-	case OBS_KEY_VK_BROWSER_STOP:
-		return VK_BROWSER_STOP;
-	case OBS_KEY_VK_BROWSER_SEARCH:
-		return VK_BROWSER_SEARCH;
-	case OBS_KEY_VK_BROWSER_FAVORITES:
-		return VK_BROWSER_FAVORITES;
-	case OBS_KEY_VK_BROWSER_HOME:
-		return VK_BROWSER_HOME;
-	case OBS_KEY_VK_VOLUME_MUTE:
-		return VK_VOLUME_MUTE;
-	case OBS_KEY_VK_VOLUME_DOWN:
-		return VK_VOLUME_DOWN;
-	case OBS_KEY_VK_VOLUME_UP:
-		return VK_VOLUME_UP;
-	case OBS_KEY_VK_MEDIA_NEXT_TRACK:
-		return VK_MEDIA_NEXT_TRACK;
-	case OBS_KEY_VK_MEDIA_PREV_TRACK:
-		return VK_MEDIA_PREV_TRACK;
-	case OBS_KEY_VK_MEDIA_STOP:
-		return VK_MEDIA_STOP;
-	case OBS_KEY_VK_MEDIA_PLAY_PAUSE:
-		return VK_MEDIA_PLAY_PAUSE;
-	case OBS_KEY_VK_LAUNCH_MAIL:
-		return VK_LAUNCH_MAIL;
-	case OBS_KEY_VK_LAUNCH_MEDIA_SELECT:
-		return VK_LAUNCH_MEDIA_SELECT;
-	case OBS_KEY_VK_LAUNCH_APP1:
-		return VK_LAUNCH_APP1;
-	case OBS_KEY_VK_LAUNCH_APP2:
-		return VK_LAUNCH_APP2;
-	case OBS_KEY_0xB8:
-		return 0xB8;
-	case OBS_KEY_0xB9:
-		return 0xB9;
-	case OBS_KEY_0xC1:
-		return 0xC1;
-	case OBS_KEY_0xC2:
-		return 0xC2;
-	case OBS_KEY_0xC3:
-		return 0xC3;
-	case OBS_KEY_0xC4:
-		return 0xC4;
-	case OBS_KEY_0xC5:
-		return 0xC5;
-	case OBS_KEY_0xC6:
-		return 0xC6;
-	case OBS_KEY_0xC7:
-		return 0xC7;
-	case OBS_KEY_0xC8:
-		return 0xC8;
-	case OBS_KEY_0xC9:
-		return 0xC9;
-	case OBS_KEY_0xCA:
-		return 0xCA;
-	case OBS_KEY_0xCB:
-		return 0xCB;
-	case OBS_KEY_0xCC:
-		return 0xCC;
-	case OBS_KEY_0xCD:
-		return 0xCD;
-	case OBS_KEY_0xCE:
-		return 0xCE;
-	case OBS_KEY_0xCF:
-		return 0xCF;
-	case OBS_KEY_0xD0:
-		return 0xD0;
-	case OBS_KEY_0xD1:
-		return 0xD1;
-	case OBS_KEY_0xD2:
-		return 0xD2;
-	case OBS_KEY_0xD3:
-		return 0xD3;
-	case OBS_KEY_0xD4:
-		return 0xD4;
-	case OBS_KEY_0xD5:
-		return 0xD5;
-	case OBS_KEY_0xD6:
-		return 0xD6;
-	case OBS_KEY_0xD7:
-		return 0xD7;
-	case OBS_KEY_0xD8:
-		return 0xD8;
-	case OBS_KEY_0xD9:
-		return 0xD9;
-	case OBS_KEY_0xDA:
-		return 0xDA;
-	case OBS_KEY_VK_OEM_8:
-		return VK_OEM_8;
-	case OBS_KEY_0xE0:
-		return 0xE0;
-	case OBS_KEY_VK_OEM_AX:
-		return VK_OEM_AX;
-	case OBS_KEY_VK_ICO_HELP:
-		return VK_ICO_HELP;
-	case OBS_KEY_VK_ICO_00:
-		return VK_ICO_00;
-	case OBS_KEY_VK_PROCESSKEY:
-		return VK_PROCESSKEY;
-	case OBS_KEY_VK_ICO_CLEAR:
-		return VK_ICO_CLEAR;
-	case OBS_KEY_VK_PACKET:
-		return VK_PACKET;
-	case OBS_KEY_0xE8:
-		return 0xE8;
-	case OBS_KEY_VK_OEM_RESET:
-		return VK_OEM_RESET;
-	case OBS_KEY_VK_OEM_JUMP:
-		return VK_OEM_JUMP;
-	case OBS_KEY_VK_OEM_PA1:
-		return VK_OEM_PA1;
-	case OBS_KEY_VK_OEM_PA2:
-		return VK_OEM_PA2;
-	case OBS_KEY_VK_OEM_PA3:
-		return VK_OEM_PA3;
-	case OBS_KEY_VK_OEM_WSCTRL:
-		return VK_OEM_WSCTRL;
-	case OBS_KEY_VK_OEM_CUSEL:
-		return VK_OEM_CUSEL;
-	case OBS_KEY_VK_OEM_ATTN:
-		return VK_OEM_ATTN;
-	case OBS_KEY_VK_OEM_FINISH:
-		return VK_OEM_FINISH;
-	case OBS_KEY_VK_OEM_COPY:
-		return VK_OEM_COPY;
-	case OBS_KEY_VK_OEM_AUTO:
-		return VK_OEM_AUTO;
-	case OBS_KEY_VK_OEM_ENLW:
-		return VK_OEM_ENLW;
-	case OBS_KEY_VK_ATTN:
-		return VK_ATTN;
-	case OBS_KEY_VK_CRSEL:
-		return VK_CRSEL;
-	case OBS_KEY_VK_EXSEL:
-		return VK_EXSEL;
-	case OBS_KEY_VK_EREOF:
-		return VK_EREOF;
-	case OBS_KEY_VK_PLAY:
-		return VK_PLAY;
-	case OBS_KEY_VK_ZOOM:
-		return VK_ZOOM;
-	case OBS_KEY_VK_NONAME:
-		return VK_NONAME;
-	case OBS_KEY_VK_PA1:
-		return VK_PA1;
-	case OBS_KEY_VK_OEM_CLEAR:
-		return VK_OEM_CLEAR;
-
-	/* TODO: Implement keys for non-US keyboards */
-	default:;
-	}
-	return 0;
-}
+/* The key map, obs-windows-keys.c, has no windows.h: check what it assumes. */
+_Static_assert(sizeof(UINT) == sizeof(uint32_t), "a scan code is a UINT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ACCEPT == VK_ACCEPT, "VK_ACCEPT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ADD == VK_ADD, "VK_ADD");
+_Static_assert(OBS_WINDOWS_KEYS_VK_APPS == VK_APPS, "VK_APPS");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ATTN == VK_ATTN, "VK_ATTN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BACK == VK_BACK, "VK_BACK");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_BACK == VK_BROWSER_BACK, "VK_BROWSER_BACK");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_FAVORITES == VK_BROWSER_FAVORITES, "VK_BROWSER_FAVORITES");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_FORWARD == VK_BROWSER_FORWARD, "VK_BROWSER_FORWARD");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_HOME == VK_BROWSER_HOME, "VK_BROWSER_HOME");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_REFRESH == VK_BROWSER_REFRESH, "VK_BROWSER_REFRESH");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_SEARCH == VK_BROWSER_SEARCH, "VK_BROWSER_SEARCH");
+_Static_assert(OBS_WINDOWS_KEYS_VK_BROWSER_STOP == VK_BROWSER_STOP, "VK_BROWSER_STOP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CANCEL == VK_CANCEL, "VK_CANCEL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CAPITAL == VK_CAPITAL, "VK_CAPITAL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CLEAR == VK_CLEAR, "VK_CLEAR");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CONTROL == VK_CONTROL, "VK_CONTROL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CONVERT == VK_CONVERT, "VK_CONVERT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_CRSEL == VK_CRSEL, "VK_CRSEL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_DECIMAL == VK_DECIMAL, "VK_DECIMAL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_DELETE == VK_DELETE, "VK_DELETE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_DIVIDE == VK_DIVIDE, "VK_DIVIDE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_DOWN == VK_DOWN, "VK_DOWN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_END == VK_END, "VK_END");
+_Static_assert(OBS_WINDOWS_KEYS_VK_EREOF == VK_EREOF, "VK_EREOF");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ESCAPE == VK_ESCAPE, "VK_ESCAPE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_EXECUTE == VK_EXECUTE, "VK_EXECUTE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_EXSEL == VK_EXSEL, "VK_EXSEL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F1 == VK_F1, "VK_F1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F10 == VK_F10, "VK_F10");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F11 == VK_F11, "VK_F11");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F12 == VK_F12, "VK_F12");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F13 == VK_F13, "VK_F13");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F14 == VK_F14, "VK_F14");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F15 == VK_F15, "VK_F15");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F16 == VK_F16, "VK_F16");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F17 == VK_F17, "VK_F17");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F18 == VK_F18, "VK_F18");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F19 == VK_F19, "VK_F19");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F2 == VK_F2, "VK_F2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F20 == VK_F20, "VK_F20");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F21 == VK_F21, "VK_F21");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F22 == VK_F22, "VK_F22");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F23 == VK_F23, "VK_F23");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F24 == VK_F24, "VK_F24");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F3 == VK_F3, "VK_F3");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F4 == VK_F4, "VK_F4");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F5 == VK_F5, "VK_F5");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F6 == VK_F6, "VK_F6");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F7 == VK_F7, "VK_F7");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F8 == VK_F8, "VK_F8");
+_Static_assert(OBS_WINDOWS_KEYS_VK_F9 == VK_F9, "VK_F9");
+_Static_assert(OBS_WINDOWS_KEYS_VK_FINAL == VK_FINAL, "VK_FINAL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_HANGUL == VK_HANGUL, "VK_HANGUL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_HELP == VK_HELP, "VK_HELP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_HOME == VK_HOME, "VK_HOME");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ICO_00 == VK_ICO_00, "VK_ICO_00");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ICO_CLEAR == VK_ICO_CLEAR, "VK_ICO_CLEAR");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ICO_HELP == VK_ICO_HELP, "VK_ICO_HELP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_INSERT == VK_INSERT, "VK_INSERT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_JUNJA == VK_JUNJA, "VK_JUNJA");
+_Static_assert(OBS_WINDOWS_KEYS_VK_KANJI == VK_KANJI, "VK_KANJI");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LAUNCH_APP1 == VK_LAUNCH_APP1, "VK_LAUNCH_APP1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LAUNCH_APP2 == VK_LAUNCH_APP2, "VK_LAUNCH_APP2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LAUNCH_MAIL == VK_LAUNCH_MAIL, "VK_LAUNCH_MAIL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LAUNCH_MEDIA_SELECT == VK_LAUNCH_MEDIA_SELECT, "VK_LAUNCH_MEDIA_SELECT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LBUTTON == VK_LBUTTON, "VK_LBUTTON");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LCONTROL == VK_LCONTROL, "VK_LCONTROL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LEFT == VK_LEFT, "VK_LEFT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LMENU == VK_LMENU, "VK_LMENU");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LSHIFT == VK_LSHIFT, "VK_LSHIFT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_LWIN == VK_LWIN, "VK_LWIN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MBUTTON == VK_MBUTTON, "VK_MBUTTON");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MEDIA_NEXT_TRACK == VK_MEDIA_NEXT_TRACK, "VK_MEDIA_NEXT_TRACK");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MEDIA_PLAY_PAUSE == VK_MEDIA_PLAY_PAUSE, "VK_MEDIA_PLAY_PAUSE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MEDIA_PREV_TRACK == VK_MEDIA_PREV_TRACK, "VK_MEDIA_PREV_TRACK");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MEDIA_STOP == VK_MEDIA_STOP, "VK_MEDIA_STOP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MENU == VK_MENU, "VK_MENU");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MODECHANGE == VK_MODECHANGE, "VK_MODECHANGE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_MULTIPLY == VK_MULTIPLY, "VK_MULTIPLY");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NEXT == VK_NEXT, "VK_NEXT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NONAME == VK_NONAME, "VK_NONAME");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NONCONVERT == VK_NONCONVERT, "VK_NONCONVERT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMLOCK == VK_NUMLOCK, "VK_NUMLOCK");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD0 == VK_NUMPAD0, "VK_NUMPAD0");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD1 == VK_NUMPAD1, "VK_NUMPAD1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD2 == VK_NUMPAD2, "VK_NUMPAD2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD3 == VK_NUMPAD3, "VK_NUMPAD3");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD4 == VK_NUMPAD4, "VK_NUMPAD4");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD5 == VK_NUMPAD5, "VK_NUMPAD5");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD6 == VK_NUMPAD6, "VK_NUMPAD6");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD7 == VK_NUMPAD7, "VK_NUMPAD7");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD8 == VK_NUMPAD8, "VK_NUMPAD8");
+_Static_assert(OBS_WINDOWS_KEYS_VK_NUMPAD9 == VK_NUMPAD9, "VK_NUMPAD9");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_1 == VK_OEM_1, "VK_OEM_1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_102 == VK_OEM_102, "VK_OEM_102");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_2 == VK_OEM_2, "VK_OEM_2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_3 == VK_OEM_3, "VK_OEM_3");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_4 == VK_OEM_4, "VK_OEM_4");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_5 == VK_OEM_5, "VK_OEM_5");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_6 == VK_OEM_6, "VK_OEM_6");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_7 == VK_OEM_7, "VK_OEM_7");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_8 == VK_OEM_8, "VK_OEM_8");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_ATTN == VK_OEM_ATTN, "VK_OEM_ATTN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_AUTO == VK_OEM_AUTO, "VK_OEM_AUTO");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_AX == VK_OEM_AX, "VK_OEM_AX");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_BACKTAB == VK_OEM_BACKTAB, "VK_OEM_BACKTAB");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_CLEAR == VK_OEM_CLEAR, "VK_OEM_CLEAR");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_COMMA == VK_OEM_COMMA, "VK_OEM_COMMA");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_COPY == VK_OEM_COPY, "VK_OEM_COPY");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_CUSEL == VK_OEM_CUSEL, "VK_OEM_CUSEL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_ENLW == VK_OEM_ENLW, "VK_OEM_ENLW");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FINISH == VK_OEM_FINISH, "VK_OEM_FINISH");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FJ_JISHO == VK_OEM_FJ_JISHO, "VK_OEM_FJ_JISHO");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FJ_LOYA == VK_OEM_FJ_LOYA, "VK_OEM_FJ_LOYA");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FJ_MASSHOU == VK_OEM_FJ_MASSHOU, "VK_OEM_FJ_MASSHOU");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FJ_ROYA == VK_OEM_FJ_ROYA, "VK_OEM_FJ_ROYA");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_FJ_TOUROKU == VK_OEM_FJ_TOUROKU, "VK_OEM_FJ_TOUROKU");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_JUMP == VK_OEM_JUMP, "VK_OEM_JUMP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_MINUS == VK_OEM_MINUS, "VK_OEM_MINUS");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_PA1 == VK_OEM_PA1, "VK_OEM_PA1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_PA2 == VK_OEM_PA2, "VK_OEM_PA2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_PA3 == VK_OEM_PA3, "VK_OEM_PA3");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_PERIOD == VK_OEM_PERIOD, "VK_OEM_PERIOD");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_PLUS == VK_OEM_PLUS, "VK_OEM_PLUS");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_RESET == VK_OEM_RESET, "VK_OEM_RESET");
+_Static_assert(OBS_WINDOWS_KEYS_VK_OEM_WSCTRL == VK_OEM_WSCTRL, "VK_OEM_WSCTRL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PA1 == VK_PA1, "VK_PA1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PACKET == VK_PACKET, "VK_PACKET");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PAUSE == VK_PAUSE, "VK_PAUSE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PLAY == VK_PLAY, "VK_PLAY");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PRINT == VK_PRINT, "VK_PRINT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PRIOR == VK_PRIOR, "VK_PRIOR");
+_Static_assert(OBS_WINDOWS_KEYS_VK_PROCESSKEY == VK_PROCESSKEY, "VK_PROCESSKEY");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RBUTTON == VK_RBUTTON, "VK_RBUTTON");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RCONTROL == VK_RCONTROL, "VK_RCONTROL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RETURN == VK_RETURN, "VK_RETURN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RIGHT == VK_RIGHT, "VK_RIGHT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RMENU == VK_RMENU, "VK_RMENU");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RSHIFT == VK_RSHIFT, "VK_RSHIFT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_RWIN == VK_RWIN, "VK_RWIN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SCROLL == VK_SCROLL, "VK_SCROLL");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SELECT == VK_SELECT, "VK_SELECT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SEPARATOR == VK_SEPARATOR, "VK_SEPARATOR");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SHIFT == VK_SHIFT, "VK_SHIFT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SLEEP == VK_SLEEP, "VK_SLEEP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SNAPSHOT == VK_SNAPSHOT, "VK_SNAPSHOT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SPACE == VK_SPACE, "VK_SPACE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_SUBTRACT == VK_SUBTRACT, "VK_SUBTRACT");
+_Static_assert(OBS_WINDOWS_KEYS_VK_TAB == VK_TAB, "VK_TAB");
+_Static_assert(OBS_WINDOWS_KEYS_VK_UP == VK_UP, "VK_UP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_VOLUME_DOWN == VK_VOLUME_DOWN, "VK_VOLUME_DOWN");
+_Static_assert(OBS_WINDOWS_KEYS_VK_VOLUME_MUTE == VK_VOLUME_MUTE, "VK_VOLUME_MUTE");
+_Static_assert(OBS_WINDOWS_KEYS_VK_VOLUME_UP == VK_VOLUME_UP, "VK_VOLUME_UP");
+_Static_assert(OBS_WINDOWS_KEYS_VK_XBUTTON1 == VK_XBUTTON1, "VK_XBUTTON1");
+_Static_assert(OBS_WINDOWS_KEYS_VK_XBUTTON2 == VK_XBUTTON2, "VK_XBUTTON2");
+_Static_assert(OBS_WINDOWS_KEYS_VK_ZOOM == VK_ZOOM, "VK_ZOOM");
 
 bool obs_hotkeys_platform_init(struct obs_core_hotkeys *hotkeys)
 {
 	hotkeys->platform_context = bzalloc(sizeof(obs_hotkeys_platform_t));
 
 	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++)
-		hotkeys->platform_context->vk_codes[i] = get_virtual_key(i);
+		hotkeys->platform_context->vk_codes[i] = obs_windows_keys_virtual_key(i);
 
 	return true;
 }
@@ -977,7 +537,7 @@ static bool vk_down(DWORD vk)
 
 bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t key)
 {
-	if (key == OBS_KEY_META) {
+	if (obs_windows_keys_either_win(key)) {
 		return vk_down(VK_LWIN) || vk_down(VK_RWIN);
 	}
 
@@ -990,50 +550,38 @@ void obs_key_to_str(obs_key_t key, struct dstr *str)
 	wchar_t name[128] = L"";
 	UINT scan_code;
 	int vk;
+	int number = 0;
 
-	if (key == OBS_KEY_NONE) {
+	switch (obs_windows_keys_name(key, &number)) {
+	case OBS_WINDOWS_KEYS_NAME_NONE:
 		return;
 
-	} else if (key >= OBS_KEY_F13 && key <= OBS_KEY_F24) {
-		dstr_printf(str, "F%d", (int)(key - OBS_KEY_F13 + 13));
+	case OBS_WINDOWS_KEYS_NAME_F:
+		dstr_printf(str, "F%d", number);
 		return;
-	} else if (key >= OBS_KEY_MOUSE1 && key <= OBS_KEY_MOUSE29) {
+	case OBS_WINDOWS_KEYS_NAME_MOUSE:
 		if (obs->hotkeys.translations[key]) {
 			dstr_copy(str, obs->hotkeys.translations[key]);
 		} else {
-			dstr_printf(str, "Mouse %d", (int)(key - OBS_KEY_MOUSE1 + 1));
+			dstr_printf(str, "Mouse %d", number);
 		}
 		return;
-	}
-	if (key == OBS_KEY_PAUSE) {
+	case OBS_WINDOWS_KEYS_NAME_PAUSE:
 		dstr_copy(str, obs_get_hotkey_translation(key, "Pause"));
 		return;
 
-	} else if (key == OBS_KEY_META) {
+	case OBS_WINDOWS_KEYS_NAME_META:
 		dstr_copy(str, obs_get_hotkey_translation(key, "Windows"));
 		return;
+
+	case OBS_WINDOWS_KEYS_NAME_SYSTEM:
+		break;
 	}
 
 	vk = obs_key_to_virtual_key(key);
-	scan_code = MapVirtualKey(vk, 0) << 16;
+	scan_code = obs_windows_keys_scan_code(vk, MapVirtualKey(vk, 0));
 
-	switch (vk) {
-	case VK_HOME:
-	case VK_END:
-	case VK_LEFT:
-	case VK_UP:
-	case VK_RIGHT:
-	case VK_DOWN:
-	case VK_PRIOR:
-	case VK_NEXT:
-	case VK_INSERT:
-	case VK_DELETE:
-	case VK_NUMLOCK:
-		scan_code |= 0x01000000;
-	}
-
-	if ((key < OBS_KEY_VK_CANCEL || key > OBS_KEY_VK_OEM_CLEAR) && scan_code != 0 &&
-	    GetKeyNameTextW(scan_code, name, 128) != 0) {
+	if (obs_windows_keys_system_name(key, scan_code) && GetKeyNameTextW(scan_code, name, 128) != 0) {
 		dstr_from_wcs(str, name);
 	} else if (key != OBS_KEY_NONE) {
 		dstr_copy(str, obs_key_to_name(key));
@@ -1044,21 +592,18 @@ obs_key_t obs_key_from_virtual_key(int code)
 {
 	obs_hotkeys_platform_t *platform = obs->hotkeys.platform_context;
 
-	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++) {
-		if (platform->vk_codes[i] == code) {
-			return (obs_key_t)i;
-		}
-	}
+	return obs_windows_keys_from_virtual_key(platform->vk_codes, code);
+}
 
-	return OBS_KEY_NONE;
+/* obs_key_to_virtual_key()'s table, read only for a key other than Meta. */
+static const int *windows_vk_codes(void)
+{
+	return obs->hotkeys.platform_context->vk_codes;
 }
 
 int obs_key_to_virtual_key(obs_key_t key)
 {
-	if (key == OBS_KEY_META)
-		return VK_LWIN;
-
-	return obs->hotkeys.platform_context->vk_codes[(int)key];
+	return obs_windows_keys_to_virtual_key(key, windows_vk_codes);
 }
 
 static inline void add_combo_key(obs_key_t key, struct dstr *str)
@@ -1079,20 +624,11 @@ static inline void add_combo_key(obs_key_t key, struct dstr *str)
 
 void obs_key_combination_to_str(obs_key_combination_t combination, struct dstr *str)
 {
-	if ((combination.modifiers & INTERACT_CONTROL_KEY) != 0) {
-		add_combo_key(OBS_KEY_CONTROL, str);
-	}
-	if ((combination.modifiers & INTERACT_COMMAND_KEY) != 0) {
-		add_combo_key(OBS_KEY_META, str);
-	}
-	if ((combination.modifiers & INTERACT_ALT_KEY) != 0) {
-		add_combo_key(OBS_KEY_ALT, str);
-	}
-	if ((combination.modifiers & INTERACT_SHIFT_KEY) != 0) {
-		add_combo_key(OBS_KEY_SHIFT, str);
-	}
-	if (combination.key != OBS_KEY_NONE) {
-		add_combo_key(combination.key, str);
+	obs_key_t keys[OBS_WINDOWS_KEYS_COMBINATION_MAX];
+	size_t num = obs_windows_keys_combination(combination.modifiers, combination.key, keys);
+
+	for (size_t i = 0; i < num; i++) {
+		add_combo_key(keys[i], str);
 	}
 }
 

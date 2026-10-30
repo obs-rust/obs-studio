@@ -38,6 +38,7 @@
 #include "obs-host/graphics-thread-hooks.h"
 #include "obs-host/module-symbols.h"
 #include "obs-host/shared-texture.h"
+#include "obs-windows-keys.h"
 
 #include <windows.h>
 #include <wscapi.h>
