@@ -49,6 +49,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-module-source-rules.c.h.o",
     "obs-module-type-rules.c.h.o",
     "obs-output-begin.c.h.o",
+    "obs-output-pause.c.h.o",
     "obs-output-protocols.c.h.o",
     "obs-output-raw-audio.c.h.o",
     "obs-output-reconnect.c.h.o",

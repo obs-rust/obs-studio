@@ -623,6 +623,17 @@ obs_output_reconnect_grows
 obs_output_reconnect_next_delay
 obs_output_reconnect_active
 obs_output_reconnect_can
+# obs-output-pause.c: obs_output_pause(), obs_encoded_output_pause() and
+# obs_raw_output_pause() call them inside libobs. Declared in
+# obs-output-pause.h without EXPORT, so the shims stay hidden the same way.
+obs_output_pause_allowed
+obs_output_pause_already
+obs_output_pause_lock_set
+obs_output_pause_closest_ts
+obs_output_pause_can_start
+obs_output_pause_can_stop
+obs_output_pause_ends
+obs_output_pause_offset
 # obs-output-raw-audio.c: prepare_audio(), default_raw_audio_callback(),
 # start_raw_audio() and hook_data_capture() in obs-output.c call them inside
 # libobs. Declared in obs-output-raw-audio.h without EXPORT, so the shims stay

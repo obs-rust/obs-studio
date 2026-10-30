@@ -1458,6 +1458,10 @@ area.
   a reconnect that gives up at once. Every wait between attempts now stays
   between 0 and 15 minutes. *All*, 2026-10-30. Issue
   [#2990](https://github.com/obs-rust/obs-studio/issues/2990).
+- Pausing a recording whose one audio encoder a script or plugin set on
+  two tracks no longer hangs OBS, and pausing an output in a libobs host
+  that never set up video no longer crashes it. *All*, 2026-10-30. Issue
+  [#3020](https://github.com/obs-rust/obs-studio/issues/3020).
 
 ### Sources and filters
 

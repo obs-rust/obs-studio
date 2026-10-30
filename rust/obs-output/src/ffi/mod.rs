@@ -12,6 +12,7 @@ pub mod output_begin;
 pub mod output_caption_text;
 pub mod output_delay;
 pub mod output_interleave;
+pub mod output_pause;
 pub mod output_protocols;
 pub mod output_raw_audio;
 pub mod output_reconnect;

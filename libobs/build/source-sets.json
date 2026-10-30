@@ -230,6 +230,7 @@
     "build/libobs.ported-output-caption-text+.h.c",
     "build/libobs.ported-output-delay+.h.c",
     "build/libobs.ported-output-interleave+.h.c",
+    "build/libobs.ported-output-pause+.h.c",
     "build/libobs.ported-output-protocols+.h.c",
     "build/libobs.ported-output-raw-audio+.h.c",
     "build/libobs.ported-output-reconnect+.h.c",
