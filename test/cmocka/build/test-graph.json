@@ -2402,6 +2402,26 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_output_pause_steps": {
+      "sources": [
+        "test/cmocka/test_output_pause_steps.c",
+        "libobs/obs-output-pause.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-pause.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_protocol_list_steps": {
       "sources": [
         "test/cmocka/test_output_protocol_list_steps.c",
@@ -6465,6 +6485,12 @@
     },
     "test_output_null_id": {
       "target": "test_output_null_id",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_pause_steps": {
+      "target": "test_output_pause_steps",
       "command": [
         "${target}"
       ]
