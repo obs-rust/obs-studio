@@ -81,6 +81,20 @@ _Static_assert(OBS_NIX_X11_INPUT_BUTTON_MASK_1 == XCB_BUTTON_MASK_1, "XCB_BUTTON
 _Static_assert(OBS_NIX_X11_INPUT_BUTTON_MASK_2 == XCB_BUTTON_MASK_2, "XCB_BUTTON_MASK_2");
 _Static_assert(OBS_NIX_X11_INPUT_BUTTON_MASK_3 == XCB_BUTTON_MASK_3, "XCB_BUTTON_MASK_3");
 
+/* The key names and the raw button decode are in obs-nix-x11-hotkeys.h, which
+ * includes no X header: check the event codes and fields it uses here. */
+_Static_assert(OBS_NIX_X11_HOTKEYS_GE_GENERIC == XCB_GE_GENERIC, "XCB_GE_GENERIC");
+#if defined(XCB_XINPUT_FOUND)
+_Static_assert(OBS_NIX_X11_HOTKEYS_RAW_BUTTON_PRESS == XCB_INPUT_RAW_BUTTON_PRESS, "XCB_INPUT_RAW_BUTTON_PRESS");
+_Static_assert(OBS_NIX_X11_HOTKEYS_RAW_BUTTON_RELEASE == XCB_INPUT_RAW_BUTTON_RELEASE, "XCB_INPUT_RAW_BUTTON_RELEASE");
+_Static_assert(sizeof(((xcb_ge_event_t *)0)->event_type) == sizeof(uint16_t), "a GE event type is a uint16_t");
+_Static_assert(sizeof(((xcb_input_raw_button_press_event_t *)0)->detail) == sizeof(uint32_t),
+	       "a raw button detail is a uint32_t");
+_Static_assert(offsetof(xcb_input_raw_button_press_event_t, detail) ==
+		       offsetof(xcb_input_raw_button_release_event_t, detail),
+	       "a raw button press and release keep the detail in one place");
+#endif
+
 struct obs_hotkeys_platform {
 	Display *display;
 	xcb_keysym_t base_keysyms[OBS_KEY_LAST_VALUE];
@@ -271,31 +285,21 @@ static bool mouse_button_pressed(xcb_connection_t *connection, obs_hotkeys_platf
 
 	xcb_generic_event_t *ev;
 	while ((ev = xcb_poll_for_event(connection))) {
-		if ((ev->response_type & ~80) == XCB_GE_GENERIC) {
-			switch (((xcb_ge_event_t *)ev)->event_type) {
-			case XCB_INPUT_RAW_BUTTON_PRESS: {
-				xcb_input_raw_button_press_event_t *mot;
-				mot = (xcb_input_raw_button_press_event_t *)ev;
-				if (mot->detail < XINPUT_MOUSE_LEN) {
-					context->pressed[mot->detail - 1] = true;
-					context->update[mot->detail - 1] = true;
-				} else {
-					blog(LOG_WARNING, "Unsupported button");
-				}
-				break;
-			}
-			case XCB_INPUT_RAW_BUTTON_RELEASE: {
-				xcb_input_raw_button_release_event_t *mot;
-				mot = (xcb_input_raw_button_release_event_t *)ev;
-				if (mot->detail < XINPUT_MOUSE_LEN)
-					context->update[mot->detail - 1] = true;
-				else
-					blog(LOG_WARNING, "Unsupported button");
-				break;
-			}
-			default:
-				break;
-			}
+		uint32_t slot;
+		switch (obs_nix_x11_hotkeys_raw_button(ev->response_type, &((xcb_ge_event_t *)ev)->event_type,
+						       &((xcb_input_raw_button_press_event_t *)ev)->detail, &slot)) {
+		case OBS_NIX_X11_HOTKEYS_BUTTON_PRESS:
+			context->pressed[slot] = true;
+			context->update[slot] = true;
+			break;
+		case OBS_NIX_X11_HOTKEYS_BUTTON_RELEASE:
+			context->update[slot] = true;
+			break;
+		case OBS_NIX_X11_HOTKEYS_BUTTON_UNSUPPORTED:
+			blog(LOG_WARNING, "Unsupported button");
+			break;
+		case OBS_NIX_X11_HOTKEYS_BUTTON_IGNORE:
+			break;
 		}
 		free(ev);
 	}
@@ -384,123 +388,34 @@ static bool get_key_translation(struct dstr *dstr, xcb_keycode_t keycode)
 
 static void obs_nix_x11_key_to_str(obs_key_t key, struct dstr *dstr)
 {
-	if (key >= OBS_KEY_MOUSE1 && key <= OBS_KEY_MOUSE29) {
+	const char *name = NULL;
+	int number = 0;
+
+	switch (obs_nix_x11_hotkeys_route(key, &number, &name)) {
+	case OBS_NIX_X11_HOTKEYS_ROUTE_MOUSE:
 		if (obs->hotkeys.translations[key]) {
 			dstr_copy(dstr, obs->hotkeys.translations[key]);
 		} else {
-			dstr_printf(dstr, "Mouse %d", (int)(key - OBS_KEY_MOUSE1 + 1));
+			dstr_printf(dstr, "Mouse %d", number);
 		}
 		return;
-	}
-
-	if (key >= OBS_KEY_NUM0 && key <= OBS_KEY_NUM9) {
+	case OBS_NIX_X11_HOTKEYS_ROUTE_NUMPAD:
 		if (obs->hotkeys.translations[key]) {
 			dstr_copy(dstr, obs->hotkeys.translations[key]);
 		} else {
-			dstr_printf(dstr, "Numpad %d", (int)(key - OBS_KEY_NUM0));
+			dstr_printf(dstr, "Numpad %d", number);
 		}
 		return;
-	}
-
-#define translate_key(key, def) dstr_copy(dstr, obs_get_hotkey_translation(key, def))
-
-	switch (key) {
-	case OBS_KEY_INSERT:
-		translate_key(key, "Insert");
+	case OBS_NIX_X11_HOTKEYS_ROUTE_FIXED:
+		dstr_copy(dstr, obs_get_hotkey_translation(key, name));
 		return;
-	case OBS_KEY_DELETE:
-		translate_key(key, "Delete");
+	case OBS_NIX_X11_HOTKEYS_ROUTE_FUNCTION:
+		dstr_printf(dstr, "F%d", number);
 		return;
-	case OBS_KEY_HOME:
-		translate_key(key, "Home");
+	case OBS_NIX_X11_HOTKEYS_ROUTE_NONE:
 		return;
-	case OBS_KEY_END:
-		translate_key(key, "End");
-		return;
-	case OBS_KEY_PAGEUP:
-		translate_key(key, "Page Up");
-		return;
-	case OBS_KEY_PAGEDOWN:
-		translate_key(key, "Page Down");
-		return;
-	case OBS_KEY_NUMLOCK:
-		translate_key(key, "Num Lock");
-		return;
-	case OBS_KEY_SCROLLLOCK:
-		translate_key(key, "Scroll Lock");
-		return;
-	case OBS_KEY_CAPSLOCK:
-		translate_key(key, "Caps Lock");
-		return;
-	case OBS_KEY_BACKSPACE:
-		translate_key(key, "Backspace");
-		return;
-	case OBS_KEY_TAB:
-		translate_key(key, "Tab");
-		return;
-	case OBS_KEY_PRINT:
-		translate_key(key, "Print");
-		return;
-	case OBS_KEY_PAUSE:
-		translate_key(key, "Pause");
-		return;
-	case OBS_KEY_LEFT:
-		translate_key(key, "Left");
-		return;
-	case OBS_KEY_RIGHT:
-		translate_key(key, "Right");
-		return;
-	case OBS_KEY_UP:
-		translate_key(key, "Up");
-		return;
-	case OBS_KEY_DOWN:
-		translate_key(key, "Down");
-		return;
-	case OBS_KEY_SHIFT:
-		translate_key(key, "Shift");
-		return;
-	case OBS_KEY_ALT:
-		translate_key(key, "Alt");
-		return;
-	case OBS_KEY_CONTROL:
-		translate_key(key, "Control");
-		return;
-	case OBS_KEY_META:
-		translate_key(key, "Super");
-		return;
-	case OBS_KEY_MENU:
-		translate_key(key, "Menu");
-		return;
-	case OBS_KEY_NUMASTERISK:
-		translate_key(key, "Numpad *");
-		return;
-	case OBS_KEY_NUMPLUS:
-		translate_key(key, "Numpad +");
-		return;
-	case OBS_KEY_NUMMINUS:
-		translate_key(key, "Numpad -");
-		return;
-	case OBS_KEY_NUMCOMMA:
-		translate_key(key, "Numpad ,");
-		return;
-	case OBS_KEY_NUMPERIOD:
-		translate_key(key, "Numpad .");
-		return;
-	case OBS_KEY_NUMSLASH:
-		translate_key(key, "Numpad /");
-		return;
-	case OBS_KEY_SPACE:
-		translate_key(key, "Space");
-		return;
-	case OBS_KEY_ESCAPE:
-		translate_key(key, "Escape");
-		return;
-	default:;
-	}
-
-	if (key >= OBS_KEY_F1 && key <= OBS_KEY_F35) {
-		dstr_printf(dstr, "F%d", (int)(key - OBS_KEY_F1 + 1));
-		return;
+	case OBS_NIX_X11_HOTKEYS_ROUTE_KEYCODES:
+		break;
 	}
 
 	obs_hotkeys_platform_t *context = obs->hotkeys.platform_context;
@@ -548,6 +463,3 @@ const struct obs_nix_hotkeys_vtable *obs_nix_x11_get_hotkeys_vtable(void)
 {
 	return &x11_hotkeys_vtable;
 }
-
-/* File-local macros (BUILD.md): out of the next file in the unity group. */
-#undef translate_key
