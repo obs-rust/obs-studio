@@ -187,7 +187,7 @@ void ExtraBrowsersModel::Apply()
 		}
 	}
 
-	for (int i = deleted.size() - 1; i >= 0; i--) {
+	for (int i = (int)deleted.size() - 1; i >= 0; i--) {
 		int idx = deleted[i];
 		main->extraBrowserDockTargets.removeAt(idx);
 		main->extraBrowserDockNames.removeAt(idx);
