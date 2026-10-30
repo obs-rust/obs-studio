@@ -64,19 +64,33 @@ name = os.path.basename(sys.argv[0])
 open(os.path.join(os.environ["RECORD"], name + ".json"), "w").write(json.dumps(record))
 """
 
-# A sound-server daemon: it notes the stop signal before recording itself, so a
-# harness that stops it as soon as `pactl` answers cannot race its startup. It
+# A sound-server daemon: it notes the stop signal before recording itself. It
 # stays up until then, or dies at once to show what a failed start looks like.
+# `DAEMON_BOOT_DELAY` ("name=seconds,...") slows one daemon's startup, as the
+# lint gate's concurrency does (obs-rust/obs-studio#2972), and `DAEMON_DIE`
+# names daemons that exit on their own right after recording themselves.
 DAEMON = "import json, os, signal, sys, time\n" + """
+name = os.path.basename(sys.argv[0])
+
+
+def boot_delay(daemon):
+    for entry in os.environ.get("DAEMON_BOOT_DELAY", "").split(","):
+        key, _, seconds = entry.partition("=")
+        if key == daemon:
+            return float(seconds)
+    return 0.0
+
+
+time.sleep(boot_delay(name))
+
+
 def stop(signum, frame):
-    name = os.path.basename(sys.argv[0])
     open(os.path.join(os.environ["RECORD"], name + ".terminated"), "w").write(str(signum))
     sys.exit(0)
 signal.signal(signal.SIGTERM, stop)
 record = {"argv": sys.argv[1:], "env": dict(os.environ)}
-name = os.path.basename(sys.argv[0])
 open(os.path.join(os.environ["RECORD"], name + ".json"), "w").write(json.dumps(record))
-if os.environ.get("DAEMON_MODE") == "die":
+if os.environ.get("DAEMON_MODE") == "die" or name in os.environ.get("DAEMON_DIE", "").split(","):
     print("boom: no socket", flush=True)
     sys.exit(1)
 while True:
@@ -222,6 +236,25 @@ class PulseMonitorDeviceTest(unittest.TestCase):
         for name in ("pipewire", "wireplumber", "pipewire-pulse"):
             self.assertTrue((self.harness.record / f"{name}.terminated").exists(), name)
         self.assertEqual(self.harness.private_dirs(), [])
+
+    def test_a_daemon_still_starting_when_the_test_runs_is_stopped_cleanly(self) -> None:
+        """A slow daemon boot must not leave the stop unobservable (#2972).
+
+        Under `./lint`'s concurrency, WirePlumber can still be installing its
+        handlers when the harness stops it; a SIGTERM that lands before that is
+        handled by the default action and writes no marker."""
+        result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_BOOT_DELAY="wireplumber=3")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for name in ("pipewire", "wireplumber", "pipewire-pulse"):
+            self.assertTrue((self.harness.record / f"{name}.terminated").exists(), name)
+
+    def test_a_daemon_that_exits_on_its_own_fails_the_test_with_its_log(self) -> None:
+        """A daemon gone before the test binary runs is a failure, not a pass."""
+        result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_DIE="wireplumber", TEST_EXIT="3")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("private pipewire-pulse did not start:", result.stdout)
+        self.assertIn("boom: no socket", result.stdout)
+        self.assertFalse((self.harness.record / "test-binary.json").exists(), "the test binary must not run")
 
     def test_a_sound_server_that_does_not_start_fails_the_test(self) -> None:
         result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_MODE="die", PACTL_MODE="fail")
