@@ -437,13 +437,28 @@ static bool wait_for_found(void)
 	return false;
 }
 
-static bool wait_for_unexpected_device(void)
+static bool wait_for_excluded_audio_device(void)
 {
 	for (int i = 0; i < 250; i++) {
 		bool found;
 
 		pthread_mutex_lock(&log_mutex);
-		found = audio_found || unnamed_camera_found;
+		found = audio_found;
+		pthread_mutex_unlock(&log_mutex);
+		if (found)
+			return true;
+		iterate_main_loop(20);
+	}
+	return false;
+}
+
+static bool wait_for_unnamed_camera(void)
+{
+	for (int i = 0; i < 250; i++) {
+		bool found;
+
+		pthread_mutex_lock(&log_mutex);
+		found = unnamed_camera_found;
 		pthread_mutex_unlock(&log_mutex);
 		if (found)
 			return true;
@@ -572,8 +587,9 @@ static void camera_is_listed(void **state)
 	}
 }
 
-/* #3041: only named video-source nodes belong in the camera list. */
-static void camera_list_excludes_non_video_and_unnamed_nodes(void **state)
+/* #3041: only video-source nodes belong in the camera list; a video node
+ * without node.description stays listed under a fallback label. */
+static void camera_list_excludes_non_video_nodes(void **state)
 {
 	UNUSED_PARAMETER(state);
 
@@ -581,7 +597,11 @@ static void camera_list_excludes_non_video_and_unnamed_nodes(void **state)
 		skip();
 
 	assert_true(wait_for_found());
-	assert_false(wait_for_unexpected_device());
+	assert_false(wait_for_excluded_audio_device());
+	/* A video node with no node.description is still a camera: it keeps its
+	 * place in the list, labelled from node.nickname, device.description or
+	 * node.name (#3041). */
+	assert_true(wait_for_unnamed_camera());
 }
 
 static void registry_events_wait_for_the_connection(void **state)
@@ -632,7 +652,7 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(camera_is_listed),
-		cmocka_unit_test(camera_list_excludes_non_video_and_unnamed_nodes),
+		cmocka_unit_test(camera_list_excludes_non_video_nodes),
 		cmocka_unit_test(registry_events_wait_for_the_connection),
 		cmocka_unit_test(saved_source_streams_the_camera),
 	};
