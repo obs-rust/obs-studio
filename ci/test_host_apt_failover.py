@@ -40,7 +40,7 @@ RUNTIME_PACKAGES = """flatpak xvfb dbus-daemon pipewire wireplumber pipewire-pul
 PACKAGES = {
     "flatpak-runtime-test": RUNTIME_PACKAGES,
     "flatpak-runtime-reuse": RUNTIME_PACKAGES,
-    "rust-tests-linux": "uuid-dev libglib2.0-dev",
+    "rust-tests-linux": "uuid-dev libglib2.0-dev libxkbcommon-dev",
     "linux-qt-frontend": """build-essential cmake ninja-build pkg-config ccache git curl zstd
         libcurl4-openssl-dev libjansson-dev libx11-dev libx11-xcb-dev libxcb1-dev
         libxcb-randr0-dev libxcb-shm0-dev libxcb-xinerama0-dev libxcb-composite0-dev

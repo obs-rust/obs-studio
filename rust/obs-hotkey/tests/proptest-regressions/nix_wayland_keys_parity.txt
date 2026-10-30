@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 36082ce83705aede18a7e2369dc373e70b759b3cd6bd36aa0f276871de042322 # shrinks to layouts = [[32, 32, 97, 32, 32, 32, 32, 32]], events = [(2, true, 0)]
+cc 2ed5ca53b874421058eef2f274a9610610ca7fa778985f6db6f0700ed9d63240 # shrinks to seed = 1302996775853770764
+cc 0d6e53e724f612f9a17372e94d8345e5e9a8545fccb7f76405dac7d163630f39 # shrinks to layouts = [[32, 32, 32, 32, 32, 32, 269025042, 32]], events = [(6, true, 0)]
+cc 51e348d6228aea7f67dcee8bf85c4bcb9ccb64fb86090b5a9905d88c755d1e1a # shrinks to seed = 9720868185188757981

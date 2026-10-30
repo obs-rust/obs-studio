@@ -1789,7 +1789,7 @@ jobs:
           # take precedence over older images' late apt.conf.d overrides.
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
           sudo apt-get "${apt_options[@]}" update
-          sudo apt-get install "${apt_options[@]}" -y uuid-dev libglib2.0-dev
+          sudo apt-get install "${apt_options[@]}" -y uuid-dev libglib2.0-dev libxkbcommon-dev
 
       # Same soldr-wrapped commands as docs/rust-port/testing-policy.md.
       # setup-soldr provisions the toolchain (with the clippy/rustfmt

@@ -106,6 +106,7 @@ pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub mod nix_inhibit;
 pub mod nix_system_info;
+pub mod nix_wayland_keys;
 pub mod nix_x11_input;
 pub mod nix_x11_keys;
 pub mod obs_nvenc;
