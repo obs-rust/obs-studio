@@ -437,11 +437,14 @@ static void create_video_stream(struct ffmpeg_mux *ffm)
 	context->height = ffm->params.height;
 	context->coded_width = ffm->params.width;
 	context->coded_height = ffm->params.height;
-	context->color_primaries = ffm->params.color_primaries;
-	context->color_trc = ffm->params.color_trc;
-	context->colorspace = ffm->params.colorspace;
-	context->color_range = ffm->params.color_range;
-	context->chroma_sample_location = ffm->params.chroma_sample_location;
+	/* #2625: the five colour fields arrive as the `int` the command line
+	 * carries and are the ffmpeg enum of the same width; state the
+	 * conversion upstream has always performed. */
+	context->color_primaries = (enum AVColorPrimaries)ffm->params.color_primaries;
+	context->color_trc = (enum AVColorTransferCharacteristic)ffm->params.color_trc;
+	context->colorspace = (enum AVColorSpace)ffm->params.colorspace;
+	context->color_range = (enum AVColorRange)ffm->params.color_range;
+	context->chroma_sample_location = (enum AVChromaLocation)ffm->params.chroma_sample_location;
 	context->extradata = extradata;
 	context->extradata_size = ffm->video_header.size;
 	context->time_base = (AVRational){ffm->params.fps_den, ffm->params.fps_num};
