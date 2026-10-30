@@ -1517,6 +1517,28 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_binding_press_steps": {
+      "sources": [
+        "test/cmocka/test_hotkey_binding_press_steps.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_hotkey_bindings_codec": {
       "sources": [
         "test/cmocka/test_hotkey_bindings_codec.c"
@@ -1528,6 +1550,7 @@
     },
     "test_hotkey_getters_characterization": {
       "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_getters_characterization.c",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -1546,6 +1569,7 @@
     },
     "test_hotkey_load": {
       "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_load.c",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -1573,6 +1597,7 @@
     },
     "test_hotkey_pair_steps": {
       "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_pair_steps.c",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -1594,6 +1619,7 @@
     },
     "test_hotkey_press_steps": {
       "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_press_steps.c",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -6014,6 +6040,12 @@
     },
     "test_hevc": {
       "target": "test_hevc"
+    },
+    "test_hotkey_binding_press_steps": {
+      "target": "test_hotkey_binding_press_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_hotkey_bindings_codec": {
       "target": "test_hotkey_bindings_codec",
