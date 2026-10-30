@@ -60,7 +60,11 @@
 #define SKIP_EXIT 77
 
 #define CAMERA_NAME "obs-test-camera"
+#define AUDIO_NAME "obs-test-audio"
+#define UNNAMED_CAMERA_NAME "obs-test-unnamed-camera"
 #define FOUND_LINE "[camera-portal] Found device " CAMERA_NAME
+#define AUDIO_FOUND_LINE "[camera-portal] Found device " AUDIO_NAME
+#define UNNAMED_CAMERA_FOUND_LINE "[camera-portal] Found device " UNNAMED_CAMERA_NAME
 
 const char *obs_module_text(const char *val)
 {
@@ -296,6 +300,8 @@ static struct {
 	struct pw_context *context;
 	struct pw_core *core;
 	struct pw_stream *stream;
+	struct pw_stream *audio_stream;
+	struct pw_stream *unnamed_camera_stream;
 } camera;
 
 static bool camera_start(void)
@@ -332,7 +338,25 @@ static bool camera_plug(void)
 		pw_stream_new(camera.core, CAMERA_NAME,
 			      pw_properties_new(PW_KEY_NODE_NAME, CAMERA_NAME, PW_KEY_NODE_DESCRIPTION, "Test Camera",
 						PW_KEY_MEDIA_CLASS, "Video/Source", PW_KEY_MEDIA_ROLE, "Camera", NULL));
-	pw_stream_connect(camera.stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, params, 1);
+	if (pw_stream_connect(camera.stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, params, 1) < 0) {
+		pw_thread_loop_unlock(camera.loop);
+		return false;
+	}
+	camera.audio_stream =
+		pw_stream_new(camera.core, AUDIO_NAME,
+			      pw_properties_new(PW_KEY_NODE_NAME, AUDIO_NAME, PW_KEY_NODE_DESCRIPTION, "Test Audio",
+						PW_KEY_MEDIA_CLASS, "Audio/Source", NULL));
+	camera.unnamed_camera_stream =
+		pw_stream_new(camera.core, UNNAMED_CAMERA_NAME,
+			      pw_properties_new(PW_KEY_NODE_NAME, UNNAMED_CAMERA_NAME, PW_KEY_MEDIA_CLASS, "Video/Source",
+						NULL));
+	if (!camera.audio_stream || !camera.unnamed_camera_stream ||
+	    pw_stream_connect(camera.audio_stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, NULL, 0) < 0 ||
+	    pw_stream_connect(camera.unnamed_camera_stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, NULL,
+			      0) < 0) {
+		pw_thread_loop_unlock(camera.loop);
+		return false;
+	}
 	pw_thread_loop_unlock(camera.loop);
 
 	for (int i = 0; i < 200 && node_id == SPA_ID_INVALID; i++) {
@@ -349,6 +373,8 @@ static void camera_stop(void)
 	if (!camera.loop)
 		return;
 	pw_thread_loop_lock(camera.loop);
+	g_clear_pointer(&camera.unnamed_camera_stream, pw_stream_destroy);
+	g_clear_pointer(&camera.audio_stream, pw_stream_destroy);
 	g_clear_pointer(&camera.stream, pw_stream_destroy);
 	g_clear_pointer(&camera.core, pw_core_disconnect);
 	pw_thread_loop_unlock(camera.loop);
@@ -363,6 +389,8 @@ static void camera_stop(void)
 
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool camera_found;
+static bool audio_found;
+static bool unnamed_camera_found;
 
 static void log_handler(int level, const char *format, va_list args, void *param)
 {
@@ -375,6 +403,10 @@ static void log_handler(int level, const char *format, va_list args, void *param
 	pthread_mutex_lock(&log_mutex);
 	if (strcmp(line, FOUND_LINE) == 0)
 		camera_found = true;
+	if (strcmp(line, AUDIO_FOUND_LINE) == 0)
+		audio_found = true;
+	if (strcmp(line, UNNAMED_CAMERA_FOUND_LINE) == 0)
+		unnamed_camera_found = true;
 	pthread_mutex_unlock(&log_mutex);
 
 	if (level <= LOG_WARNING || getenv("CAMERA_REGISTRY_RACE_TEST_VERBOSE"))
@@ -399,6 +431,21 @@ static bool wait_for_found(void)
 
 		pthread_mutex_lock(&log_mutex);
 		found = camera_found;
+		pthread_mutex_unlock(&log_mutex);
+		if (found)
+			return true;
+		iterate_main_loop(20);
+	}
+	return false;
+}
+
+static bool wait_for_unexpected_device(void)
+{
+	for (int i = 0; i < 250; i++) {
+		bool found;
+
+		pthread_mutex_lock(&log_mutex);
+		found = audio_found || unnamed_camera_found;
 		pthread_mutex_unlock(&log_mutex);
 		if (found)
 			return true;
@@ -527,6 +574,18 @@ static void camera_is_listed(void **state)
 	}
 }
 
+/* #3041: only named video-source nodes belong in the camera list. */
+static void camera_list_excludes_non_video_and_unnamed_nodes(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	if (!obs_up)
+		skip();
+
+	assert_true(wait_for_found());
+	assert_false(wait_for_unexpected_device());
+}
+
 static void registry_events_wait_for_the_connection(void **state)
 {
 	int registry_reads, stream_connects;
@@ -575,6 +634,7 @@ int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(camera_is_listed),
+		cmocka_unit_test(camera_list_excludes_non_video_and_unnamed_nodes),
 		cmocka_unit_test(registry_events_wait_for_the_connection),
 		cmocka_unit_test(saved_source_streams_the_camera),
 	};
