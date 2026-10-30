@@ -5,6 +5,7 @@ if(OS_LINUX OR OS_FREEBSD)
   add_executable(
     test_wayland_hotkeys
     test_wayland_hotkeys.c
+    "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-binding-press.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
@@ -29,6 +30,7 @@ if(OS_LINUX OR OS_FREEBSD)
     add_executable(
       test_portal_shortcuts
       test_portal_shortcuts.c
+      "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-binding-press.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
