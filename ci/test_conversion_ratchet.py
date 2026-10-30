@@ -14,7 +14,14 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from conversion_ratchet import groups, hit, ratcheted_dirs, repo_ratcheted_dirs
+from conversion_ratchet import (
+    groups,
+    hit,
+    interface_darwin_violations,
+    ratcheted_dirs,
+    repo_interface_darwin_violations,
+    repo_ratcheted_dirs,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 RATCHETED = 'target_compile_options(foo PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wsign-conversion>")\n'
@@ -28,7 +35,10 @@ ALL_THREE = (
 class ConversionRatchetTest(unittest.TestCase):
     def test_a_positive_group_is_a_ratchet_entry(self) -> None:
         self.assertEqual(groups(RATCHETED), {"-Wsign-conversion"})
-        self.assertEqual(groups(ALL_THREE), {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"})
+        self.assertEqual(
+            groups(ALL_THREE),
+            {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"},
+        )
 
     def test_a_pin_is_not_a_ratchet_entry(self) -> None:
         # Every target keeps its pins until it is converted; the ratchet is the
@@ -37,7 +47,10 @@ class ConversionRatchetTest(unittest.TestCase):
         self.assertEqual(ratcheted_dirs({"plugins/foo/CMakeLists.txt": PINNED}), ())
 
     def test_the_directory_of_the_cmake_lists_is_the_target(self) -> None:
-        lists = {"frontend/CMakeLists.txt": RATCHETED, "plugins/obs-x264/CMakeLists.txt": ALL_THREE}
+        lists = {
+            "frontend/CMakeLists.txt": RATCHETED,
+            "plugins/obs-x264/CMakeLists.txt": ALL_THREE,
+        }
         self.assertEqual(ratcheted_dirs(lists), ("frontend", "plugins/obs-x264"))
 
     def test_the_root_cmake_lists_is_the_repository_root(self) -> None:
@@ -72,7 +85,69 @@ class ConversionRatchetTest(unittest.TestCase):
         self.assertIn("plugins/obs-ffmpeg", dirs)
         self.assertIn("plugins/obs-outputs", dirs)
         # Vendored upstream trees never ratchet, and no path is absolute.
-        self.assertFalse([directory for directory in dirs if directory.startswith("deps/")])
+        self.assertFalse(
+            [directory for directory in dirs if directory.startswith("deps/")]
+        )
+
+
+INTERFACE_BARE = (
+    'target_compile_options(\n  properties-view\n  INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,GNU>'
+    ':-Wconversion;-Wsign-conversion;-Wfloat-conversion>"\n)\n'
+)
+INTERFACE_GENEX = (
+    'target_compile_options(\n  properties-view\n  INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:'
+    '$<$<NOT:$<PLATFORM_ID:Darwin>>:-Wconversion;-Wsign-conversion>>"\n)\n'
+)
+INTERFACE_BRANCH = (
+    "if(OS_MACOS)\n"
+    "  target_compile_options(properties-view INTERFACE -Wno-sign-conversion)\n"
+    "else()\n" + INTERFACE_BARE + "endif()\n"
+)
+
+
+class InterfaceDarwinTest(unittest.TestCase):
+    """A linked group reaches Apple TUs after the consumer's own pin (#3096)."""
+
+    def test_a_bare_interface_group_is_a_violation(self) -> None:
+        # The shape #3102 fixed: the consumer's `-Wno-sign-conversion` is stated
+        # before the interface's positive groups, so `-Wconversion` re-enables the
+        # sign diagnostics inside Qt 6.11's headers on the macOS app lane.
+        self.assertEqual(
+            interface_darwin_violations(
+                {"shared/properties-view/CMakeLists.txt": INTERFACE_BARE}
+            ),
+            ("shared/properties-view/CMakeLists.txt: properties-view",),
+        )
+
+    def test_either_darwin_exclusion_clears_the_violation(self) -> None:
+        self.assertEqual(
+            interface_darwin_violations({"x/CMakeLists.txt": INTERFACE_GENEX}), ()
+        )
+        self.assertEqual(
+            interface_darwin_violations({"x/CMakeLists.txt": INTERFACE_BRANCH}), ()
+        )
+
+    def test_a_comment_cannot_satisfy_the_check(self) -> None:
+        commented = "# $<NOT:$<PLATFORM_ID:Darwin>>\n" + INTERFACE_BARE
+        self.assertEqual(
+            interface_darwin_violations({"x/CMakeLists.txt": commented}),
+            ("x/CMakeLists.txt: properties-view",),
+        )
+
+    def test_a_pinned_interface_call_is_not_a_group(self) -> None:
+        pinned = (
+            "target_compile_options(properties-view INTERFACE -Wno-sign-conversion)\n"
+        )
+        self.assertEqual(interface_darwin_violations({"x/CMakeLists.txt": pinned}), ())
+
+    def test_the_repository_has_no_reachable_interface_group(self) -> None:
+        self.assertEqual(
+            repo_interface_darwin_violations(ROOT),
+            (),
+            "an INTERFACE conversion group reaches every consumer's Apple TUs; "
+            "exclude Darwin in the call, or state the group in the else() branch "
+            "of an if(OS_MACOS) block (#3096)",
+        )
 
 
 if __name__ == "__main__":

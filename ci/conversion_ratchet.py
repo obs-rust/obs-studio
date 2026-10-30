@@ -122,5 +122,57 @@ def main() -> int:
     return 0
 
 
+# A library that states its group as an INTERFACE option hands it to every
+# consumer's TUs, after the consumer's own options, so a consumer-side
+# `-Wno-sign-conversion` cannot pin it (#3096). The ratchet therefore has to
+# keep Darwin out of the interface itself.
+INTERFACE_CALL = re.compile(
+    r"target_compile_options\(\s*(?P<target>[^\s)]+)\s+INTERFACE\s+(?P<body>[^)]*)\)",
+    re.S,
+)
+DARWIN_GUARD = "$<NOT:$<PLATFORM_ID:Darwin>>"
+# The else() branch of an `if(OS_MACOS)` block: the shape that keeps Apple out of
+# a positive group without relying on where a linked interface sorts.
+DARWIN_BRANCH = re.compile(
+    r"^if\(OS_MACOS\)$(?P<pin>.*?)^else\(\)$(?P<other>.*?)^endif\(\)$", re.M | re.S
+)
+
+
+def without_comments(text: str) -> str:
+    """The CMake text with comment lines dropped, so a comment cannot satisfy a check."""
+    return "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
+
+
+def interface_darwin_violations(lists: dict[str, str]) -> tuple[str, ...]:
+    """`path: target` for every INTERFACE conversion group Apple can still reach.
+
+    A positive group in an INTERFACE call reaches every consumer's Apple TUs, where
+    Qt 6.11's headers are not converted and the lane stops on them (#3096). The
+    group is exempt in two shapes: the call excludes Darwin with a
+    `$<NOT:$<PLATFORM_ID:Darwin>>` genex, or it sits in the `else()` branch of an
+    `if(OS_MACOS)` block whose `if()` branch states the Apple pin.
+    """
+    violations = []
+    for path, text in lists.items():
+        stripped = without_comments(text)
+        exempt = [
+            (m.start("other"), m.end("other")) for m in DARWIN_BRANCH.finditer(stripped)
+        ]
+        for call in INTERFACE_CALL.finditer(stripped):
+            body = call.group("body")
+            if not groups(body) or DARWIN_GUARD in body:
+                continue
+            if any(start <= call.start() < end for start, end in exempt):
+                continue
+            violations.append(f"{path}: {call.group('target')}")
+    return tuple(violations)
+
+
+def repo_interface_darwin_violations(root: Path) -> tuple[str, ...]:
+    return interface_darwin_violations(repo_cmake_lists(root))
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
