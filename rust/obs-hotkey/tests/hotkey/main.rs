@@ -25,6 +25,7 @@ mod press_parity;
 mod translations;
 mod translations_parity;
 mod windows_keys;
+mod windows_keys_parity;
 
 /// Cargo-test stand-ins for libobs's hidden `obs_hotkeys_mutex_lock` and
 /// `obs_hotkeys_mutex_unlock` (obs-hotkey.c.h), which the Wayland key state

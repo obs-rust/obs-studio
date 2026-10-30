@@ -30,8 +30,9 @@ obs-source = { path = "../obs-source" }
 obs-data = { path = "../obs-data" }
 obs-properties = { path = "../obs-properties" }
 obs-scene = { path = "../obs-scene" }
-# The X11, Wayland and macOS key map benches (port_comparison/nix_x11_keys.rs,
-# nix_wayland_keys.rs and cocoa_keys.rs) call their shims.
+# The X11, Wayland, macOS and Windows key map benches
+# (port_comparison/nix_x11_keys.rs, nix_wayland_keys.rs, cocoa_keys.rs and
+# windows_keys.rs) call their shims.
 obs-hotkey = { path = "../obs-hotkey" }
 # The volmeter peak benches (port_comparison/volmeter.rs, #3003).
 obs-audio-controls = { path = "../obs-audio-controls" }

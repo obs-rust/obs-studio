@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 108912ec0adad228450f138e81d965454e6a00b6012afc8aab16b8e90a747291 # shrinks to key = 150, scan = 0, vk = 0, modifiers = 0
+cc 5eb063fc78bacb1b691e75fc8d69df615b618d91a6359adddce4549df66115d1 # shrinks to key = 23, scan = 0, vk = 0, modifiers = 0
+cc a5bce2c5fdead9ac0c6022fce502dbe2f1772209e8ae7582922afefe62305136 # shrinks to key = 41, scan = 0, vk = 0, modifiers = 0
+cc 65c6a50924f1bdad5cef92b8b48ace1d5c01e917d6597c017140bf40e17228a4 # shrinks to key = 461, scan = 0, vk = 0, modifiers = 0
+cc 2fe2a659fd20d458565e920946c126f8e61be0f751049a5e5b03f54480b70b80 # shrinks to key = 9, scan = 0, vk = 0, modifiers = 0
+cc 701b044ec013df9c3222c7e99d089bec4d19006807c959c4b49d7e9f2482f492 # shrinks to key = 635, scan = 1, vk = 0, modifiers = 0
+cc bf38f79e834446e681e1455e3e1d02787b6c342a506327a46d5654fb7409b13b # shrinks to key = 0, scan = 0, vk = 0, modifiers = 0
