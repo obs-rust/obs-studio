@@ -245,6 +245,7 @@
 #include "obs-source-size.h"
 #include "obs-source-video-tick.h"
 #include "obs-source-volume.h"
+#include "obs-source-volume-mul.h"
 
 #include "media-io/audio-io.h"
 #include "obs-host/default-monitoring-device.h"

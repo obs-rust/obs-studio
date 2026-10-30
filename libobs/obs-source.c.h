@@ -4840,25 +4840,18 @@ static float get_source_volume(obs_source_t *source, uint64_t os_time)
 	return obs_source_volume_snap(muted, source->volume);
 }
 
+/* The multiplies go through obs-source-volume-mul.c, on plain pointers and
+ * counts. A mix's channel buffers are consecutive (allocate_audio_output_buffer()),
+ * so multiply_output_audio() multiplies them as one block from channel 0. */
 static inline void multiply_output_audio(obs_source_t *source, size_t mix, size_t channels, float vol)
 {
-	register float *out = source->audio_output_buf[mix][0];
-	register float *end = out + AUDIO_OUTPUT_FRAMES * channels;
-
-	while (out < end)
-		*(out++) *= vol;
+	obs_source_volume_mul_block(source->audio_output_buf[mix][0], AUDIO_OUTPUT_FRAMES * channels, vol);
 }
 
 static inline void multiply_vol_data(obs_source_t *source, size_t mix, size_t channels, float *vol_data)
 {
-	for (size_t ch = 0; ch < channels; ch++) {
-		register float *out = source->audio_output_buf[mix][ch];
-		register float *end = out + AUDIO_OUTPUT_FRAMES;
-		register float *vol = vol_data;
-
-		while (out < end)
-			*(out++) *= *(vol++);
-	}
+	for (size_t ch = 0; ch < channels; ch++)
+		obs_source_volume_mul_data(source->audio_output_buf[mix][ch], vol_data, AUDIO_OUTPUT_FRAMES);
 }
 
 static inline void apply_audio_action(obs_source_t *source, const struct audio_action *action)

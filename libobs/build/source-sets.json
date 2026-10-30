@@ -101,6 +101,7 @@
     "obs-source-transition-start.h",
     "obs-source-video-tick.h",
     "obs-source-volume.h",
+    "obs-source-volume-mul.h",
     "obs-source.h",
     "obs-video-copy-plan.h",
     "obs-video-frame-timing.h",
