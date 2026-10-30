@@ -190,6 +190,9 @@ _obs_scene_transform_update_item
 # libobs. Not EXPORT.
 _obs_scene_audio_actions_apply
 _obs_scene_audio_action_due
+# obs-scene-audio-mix.c: obs-scene.c calls them inside libobs. Not EXPORT.
+_obs_scene_audio_mix_with_buf
+_obs_scene_audio_mix_add
 # obs-scene-audio-window.c: obs-scene.c calls them inside libobs. Not EXPORT.
 _obs_scene_audio_window_pick
 _obs_scene_audio_window_counts

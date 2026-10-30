@@ -212,6 +212,10 @@
      * inside libobs. Not EXPORT. */
     obs_scene_audio_actions_apply;
     obs_scene_audio_action_due;
+    /* obs-scene-audio-mix.c. obs-scene.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_scene_audio_mix_with_buf;
+    obs_scene_audio_mix_add;
     /* obs-scene-audio-window.c. obs-scene.c calls them inside libobs. Not
      * EXPORT. */
     obs_scene_audio_window_pick;

@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-scene-audio-mix.pch.h"
 
 void obs_scene_audio_mix_with_buf(float *p_out, const float *p_in, const float *buf_in, size_t pos, size_t count)
 {

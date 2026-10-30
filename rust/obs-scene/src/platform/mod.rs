@@ -6,6 +6,15 @@
 pub(crate) const MUL_DIV64_IS_UDIV128: bool =
     cfg!(all(target_env = "msvc", target_arch = "x86_64"));
 
+/// Whether the two-stream audio kernels (`audio_mix::mix_add`) walk
+/// 4-sample groups instead of a plain zip loop. Each is the form LLVM turns
+/// into the faster loop on that target: on x86_64 the zip loop, unrolled to
+/// two vectors with both loads before both stores, was 18 % slower than
+/// GCC's and MSVC's vectorized C, the grouped one level with it; on aarch64
+/// the grouped loop is one vector per iteration and 46 % slower than
+/// clang's C, the zip loop (four vectors) level with it.
+pub(crate) const GROUPED_AUDIO_LOOPS: bool = cfg!(target_arch = "x86_64");
+
 // `quat_from_axisang`'s sinf() and cosf(), as `obs-graphics` calls them on
 // each host (`item_transform` writes the rotation out, so the obs-scene
 // object does not call into obs-graphics).

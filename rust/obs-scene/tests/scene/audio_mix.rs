@@ -14,7 +14,7 @@
 
 #![allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 
-use obs_scene::audio_mix::{mix_add, mix_with_buf};
+use obs_scene::audio_mix::{mix_add, mix_add_grouped, mix_add_zipped, mix_with_buf};
 use proptest::prelude::*;
 
 const FRAMES: usize = 1024;
@@ -272,6 +272,25 @@ proptest! {
             let want = if (pos..pos + count).contains(&i) { o + input[i - pos] } else { *o };
             prop_assert_eq!(nan_as_one(*g), nan_as_one(want), "sample {}", i);
         }
+    }
+
+    /// Both loop forms of `mix_add` (4-sample groups on x86_64, a zip loop
+    /// elsewhere) give the same bits on every host, the shortest slice
+    /// deciding, with any length (so every group remainder).
+    #[test]
+    fn edge_both_add_forms_agree(
+        out in prop::collection::vec(sample(), 0..40),
+        input in prop::collection::vec(sample(), 0..40),
+    ) {
+        let (mut grouped, mut zipped, mut chosen) = (out.clone(), out.clone(), out.clone());
+        mix_add_grouped(&mut grouped, &input);
+        mix_add_zipped(&mut zipped, &input);
+        mix_add(&mut chosen, &input);
+        let grouped: Vec<u32> = grouped.iter().map(|f| nan_as_one(*f)).collect();
+        let zipped: Vec<u32> = zipped.iter().map(|f| nan_as_one(*f)).collect();
+        let chosen: Vec<u32> = chosen.iter().map(|f| nan_as_one(*f)).collect();
+        prop_assert_eq!(&grouped, &zipped);
+        prop_assert_eq!(&chosen, &zipped);
     }
 
     #[test]

@@ -221,6 +221,11 @@ obs_scene_transform_update_item
 # stay hidden the same way.
 obs_scene_audio_actions_apply
 obs_scene_audio_action_due
+# obs-scene-audio-mix.c: scene_audio_render() in obs-scene.c calls them inside
+# libobs. Declared in obs-scene-audio-mix.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_scene_audio_mix_with_buf
+obs_scene_audio_mix_add
 # obs-scene-audio-window.c: scene_audio_render() in obs-scene.c calls them
 # inside libobs. Declared in obs-scene-audio-window.h without EXPORT, so the
 # shims stay hidden the same way.
