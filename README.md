@@ -48,6 +48,64 @@ Stuck? Ask in the Discord linked in the README, or in Discussions.
 ```
 
 
+# Install
+
+OBS-Studio-Rust is a **beta**. Every package is attached to a release in
+[releases](https://github.com/obs-rust/obs-studio/releases), named
+`OBS-Studio-Rust-<version>-<os>-<cpu>.<ext>`: take the newest
+`obs-studio-rust-v*` release and the file for your OS and CPU. Each release
+also ships a `SHA256SUMS` file.
+
+It installs and runs **beside** upstream OBS Studio. It has its own app
+identity and keeps its settings in an `obs-studio-rust` folder inside the
+usual per-user config directory, so neither program overwrites the other. On
+its first start it copies upstream OBS's settings, profiles, scenes and
+plug-in settings without changing the originals; later upstream changes are
+not imported again. Windows and macOS are a new app identity, so the OS may
+ask for capture permissions again.
+
+## Linux (x86_64)
+
+- **AppImage** — any distribution: `chmod +x OBS-Studio-Rust-*-linux-x86_64.AppImage`,
+  then run it. Tested on AlmaLinux 8 (the glibc 2.28 floor), Ubuntu 22.04,
+  Ubuntu 24.04, Arch Linux and NixOS (for NixOS, see the AppImage entry in
+  the Q&A below).
+- **.deb** — Ubuntu 26.04: `sudo apt install ./OBS-Studio-Rust-*-ubuntu-26.04-x86_64.deb`.
+  It installs the GUI as `obs-studio-rust-gui`; `obs-studio-rust` is the
+  obs-websocket command-line client. It keeps its settings in
+  `~/.config/obs-studio-rust`.
+- **Flatpak bundle**: `flatpak install --user ./OBS-Studio-Rust-*-linux-x86_64.flatpak`,
+  then `flatpak run io.github.obs_rust.OBSStudioRust`. It gets the Freedesktop
+  runtime from Flathub and does not update itself yet: install the next
+  release's bundle the same way. It is not on Flathub (`com.obsproject.Studio`
+  there is upstream OBS Studio), so it installs as
+  `io.github.obs_rust.OBSStudioRust`, beside upstream's rather than over it.
+  Its settings are in `~/.var/app/io.github.obs_rust.OBSStudioRust/config/obs-studio`,
+  and its plug-ins go in
+  `~/.var/app/io.github.obs_rust.OBSStudioRust/data/obs-studio/plugins/`. To
+  bring your scenes over from upstream's Flatpak, copy
+  `~/.var/app/com.obsproject.Studio/config/obs-studio` to that config folder.
+
+## macOS (arm64, x86_64)
+
+Open the `.dmg` for your CPU (`macos-arm64` on Apple silicon, `macos-x86_64`
+on Intel), copy `OBS-Studio-Rust.app` to Applications, and start it.
+Packages are signed and notarized when the project's release credentials are
+configured. For an unnotarized download, try opening the app once, then allow
+it in **System Settings → Privacy & Security → Open Anyway**; for a download
+you trust, the Terminal alternative is
+`xattr -dr com.apple.quarantine /Applications/OBS-Studio-Rust.app`, which
+removes quarantine from that app only (see
+[Apple's guidance](https://support.apple.com/102445)). Its settings are in
+`~/Library/Application Support/obs-studio-rust`.
+
+## Windows (x64, arm64)
+
+Unpack the `.zip` for your CPU, then start `bin\64bit\obs64.exe` from the
+unpacked folder. SmartScreen warns on the first start: choose **More info**,
+then **Run anyway** if you trust the download. The `-symbols.zip` files are
+only for decoding crash dumps. Its settings are in `%APPDATA%\obs-studio-rust`.
+
 # Conversion progress
 
 How much of **libobs** is Rust — the part that has to be ported. The rest of
@@ -142,21 +200,8 @@ and link it here so we can track it.
 
 **How do I install it on Linux?**
 
-Each [release](https://github.com/obs-rust/obs-studio/releases) has an
-AppImage, which runs on any distribution (`chmod +x` it and run it), and a
-.deb for Ubuntu 26.04 (`sudo apt install ./OBS-Studio-Rust-*.deb`).
-The AppImage is tested on AlmaLinux 8 (the glibc 2.28 floor), Ubuntu 22.04,
-Ubuntu 24.04, Arch Linux and NixOS. Each release also has a Flatpak
-bundle: `flatpak install --user ./OBS-Studio-Rust-*-linux-x86_64.flatpak`,
-then `flatpak run io.github.obs_rust.OBSStudioRust`. It gets the Freedesktop
-runtime from Flathub and doesn't update itself yet; install the next
-release's bundle the same way. It isn't on Flathub: `com.obsproject.Studio`
-there is upstream OBS Studio, so report its bugs there. Ours installs as
-`io.github.obs_rust.OBSStudioRust`, beside upstream's rather than over it.
-It keeps its settings in its own folder, so to bring over your scenes from
-upstream's Flatpak, copy `~/.var/app/com.obsproject.Studio/config/obs-studio`
-to `~/.var/app/io.github.obs_rust.OBSStudioRust/config/obs-studio`. Its
-plug-ins go in `~/.var/app/io.github.obs_rust.OBSStudioRust/data/obs-studio/plugins/`.
+See [Install](#install) above: the AppImage, the `.deb` and the Flatpak
+bundle, and where each one keeps its settings.
 
 **How do I run the AppImage on NixOS?**
 

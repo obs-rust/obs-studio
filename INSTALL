@@ -1,1 +1,5 @@
-For install instructions please visit https://github.com/obsproject/obs-studio/wiki/Install-Instructions
+Install instructions for OBS-Studio-Rust are in the README, in the
+Install section (https://github.com/obs-rust/obs-studio#install): the AppImage,
+the .deb and the Flatpak bundle for Linux, the .dmg for macOS, the .zip for
+Windows, and where each package keeps its settings. The upstream wiki page
+linked here before covers upstream OBS Studio, not this build.
