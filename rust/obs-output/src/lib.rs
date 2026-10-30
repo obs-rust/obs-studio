@@ -20,12 +20,13 @@
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
 //! decisions, `libobs/obs-output-begin.c.h`, the output begin-capture plan,
 //! `libobs/obs-output-stop.c.h`, the output stop and
-//! end-capture decisions, and `libobs/obs-output-reconnect.c.h`, the output
-//! reconnect policy.
+//! end-capture decisions, `libobs/obs-output-reconnect.c.h`, the output
+//! reconnect policy, and `libobs/obs-output-pause.c.h`, the output pause
+//! plan.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`] and [`output_reconnect`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`] and [`output_pause`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -87,7 +88,11 @@
 //! its thread could not be created;
 //! [`output_reconnect`] decides each reconnect attempt's wait, when the
 //! output gives up, whether reconnecting is on and whether a stop
-//! reconnects.
+//! reconnects;
+//! [`output_pause`] decides whether an output can pause or already is in
+//! the wanted state, whose pause records a pause locks and updates, the
+//! pause time on the video frame grid, whether a record can start or end a
+//! pause, and its end and offset.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
@@ -105,6 +110,7 @@ pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
 pub mod output_begin;
+pub mod output_pause;
 pub mod output_reconnect;
 pub mod output_slots;
 pub mod output_start;
