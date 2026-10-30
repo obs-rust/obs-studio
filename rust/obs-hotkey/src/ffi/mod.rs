@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 
+pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
 pub mod hotkey_name_map;

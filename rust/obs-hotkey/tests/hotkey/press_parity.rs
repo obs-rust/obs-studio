@@ -7,12 +7,15 @@
 //! compares the two directly, over far more sequences than they script.
 //!
 //! Both sides run on the same fake bindings array. This file defines the
-//! four hidden seams the C and the shims call (`obs_hotkey_binding_fields`,
-//! `obs_hotkey_key_is_pressed`, `obs_hotkey_binding_press` and
-//! `obs_hotkey_binding_release`) and logs every call, per thread: which
-//! binding's fields were taken, which key was queried, which binding was
-//! pressed or released and its latch at that moment (the callbacks run
-//! inside, so the latch must already be written), and each hotkey callback (on the first press and the
+//! hidden seams the C and the shims call (`obs_hotkey_binding_fields` and
+//! `obs_hotkey_key_is_pressed`, and the wrapper stand-ins
+//! `oracle_seam_obs_hotkey_binding_press` and
+//! `oracle_seam_obs_hotkey_binding_release`: the wrappers are the Rust port of
+//! obs-hotkey-binding-press now, #1836, so the oracle calls these instead of
+//! the real symbols) and logs every call, per thread: which binding's fields
+//! were taken, which key was queried, which binding was pressed or released
+//! and its latch at that moment (the callbacks run inside, so the latch must
+//! already be written), and each hotkey callback (on the first press and the
 //! last release of a hotkey's bindings, as libobs counts them). The key
 //! state answers from a script first, then from the held keys, so a query
 //! made at a different point, or one more or one less, changes the answers
@@ -45,6 +48,10 @@ use obs_c_oracle::hotkey_press::{
     oracle_hotkey_press_value, oracle_obs_hotkey_binding_inject, oracle_obs_hotkey_binding_query,
     oracle_obs_hotkeys_query_modifiers,
 };
+use obs_hotkey::ffi::binding_press::{
+    obs_hotkey_binding as PortBinding,
+    obs_hotkey_binding_count_fields as BindingPressFields, obs_hotkey_t,
+};
 use obs_hotkey::ffi::nix_hotkey_state::obs_key_combination;
 use obs_hotkey::ffi::press::{
     obs_hotkey_binding, obs_hotkey_binding_fields as Fields, obs_hotkey_binding_inject,
@@ -59,6 +66,8 @@ use obs_hotkey::nix_hotkey_state::{
 };
 use obs_hotkey::press::MODIFIER_KEYS;
 use proptest::prelude::*;
+
+use crate::hotkey::binding_press_hooks::{self, Hooks};
 
 const CTRL: u32 = INTERACT_CONTROL_KEY;
 const SHIFT: u32 = INTERACT_SHIFT_KEY;
@@ -197,13 +206,17 @@ pub extern "C" fn obs_hotkey_key_is_pressed(key: c_int) -> bool {
     })
 }
 
-/// `press_released_binding()`, without the routing.
+/// `press_released_binding()`, without the routing: the oracle's
+/// `oracle_seam_*` stand-in for the wrapper, which is now the Rust port
+/// (`obs-hotkey-binding-press`), so the real symbol is not shadowed here.
 ///
 /// # Safety
 ///
 /// `binding` points at a live [`FakeBinding`].
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_binding_press(binding: *mut obs_hotkey_binding) {
+pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_press(
+    binding: *mut obs_hotkey_binding,
+) {
     let b = binding.cast::<FakeBinding>();
     // SAFETY: a live FakeBinding, per the caller.
     let (index, hotkey, latch) = unsafe {
@@ -227,7 +240,9 @@ pub unsafe extern "C" fn obs_hotkey_binding_press(binding: *mut obs_hotkey_bindi
 ///
 /// `binding` points at a live [`FakeBinding`].
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_binding_release(binding: *mut obs_hotkey_binding) {
+pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_release(
+    binding: *mut obs_hotkey_binding,
+) {
     let b = binding.cast::<FakeBinding>();
     // SAFETY: a live FakeBinding, per the caller.
     let (index, hotkey, latch) = unsafe {
@@ -243,6 +258,69 @@ pub unsafe extern "C" fn obs_hotkey_binding_release(binding: *mut obs_hotkey_bin
         }
     });
 }
+
+/// The binding's count fields, for the Rust side: the ported press count
+/// (`obs-hotkey-binding-press`) calls this instead of the C wrapper, and it
+/// logs the call as the wrapper's [`Call::Press`]/[`Call::Release`] did, with
+/// the binding's latch at that moment.
+///
+/// # Safety
+///
+/// `binding` points at a live [`FakeBinding`].
+unsafe fn count_fields(binding: *mut PortBinding) -> BindingPressFields {
+    let b = binding.cast::<FakeBinding>();
+    // SAFETY: a live FakeBinding, per the caller.
+    let (index, hotkey, latch, pressed) = unsafe {
+        (
+            (*b).index,
+            (*b).hotkey,
+            (*b).modifiers_match,
+            (*b).pressed,
+        )
+    };
+    with_seams(|s| {
+        s.log.push(if pressed {
+            Call::Release(index, latch)
+        } else {
+            Call::Press(index, latch)
+        });
+    });
+    // SAFETY: `hotkey` is in range of this world's `hotkeys`, which does not
+    // grow during a call.
+    let count = with_seams(|s| unsafe { s.hotkeys.as_mut_ptr().add(hotkey) });
+    BindingPressFields {
+        // SAFETY: the binding's own flag.
+        pressed: unsafe { &raw mut (*b).pressed },
+        count,
+        hotkey: (HOTKEY_SENTINEL + hotkey) as *mut obs_hotkey_t,
+    }
+}
+
+/// The hotkey's count of a dispatch: the port writes the flag and the count
+/// before it, so the dispatch only logs the callback.
+///
+/// # Safety
+///
+/// `hotkey` is a `HOTKEY_SENTINEL + index` of this world.
+unsafe fn dispatch(hotkey: *mut obs_hotkey_t, pressed: bool) {
+    let index = hotkey as usize - HOTKEY_SENTINEL;
+    with_seams(|s| s.log.push(Call::Callback(index, pressed)));
+}
+
+/// Makes the ported count callable with this world's bindings: the shim's
+/// accesses go through `count_fields` and `dispatch`.
+fn install_hooks() {
+    binding_press_hooks::install(Hooks {
+        // SAFETY: the pointers come from this world.
+        accessor: |b| unsafe { count_fields(b) },
+        // SAFETY: as above.
+        dispatch: |h, pressed| unsafe { dispatch(h, pressed) },
+    });
+}
+
+/// A non-null hotkey pointer, so a hotkey index of 0 is not a null pointer
+/// the shims would refuse.
+const HOTKEY_SENTINEL: usize = 0x1000;
 
 // ---------------------------------------------------------------------------
 // The two sides
@@ -380,6 +458,7 @@ fn run(side: Side, specs: &[Spec], hotkeys: usize, ops: &[Op]) -> Vec<Outcome> {
             ..Seams::default()
         }
     });
+    install_hooks();
     let base = bindings.as_mut_ptr();
     let n = bindings.len();
     let mut out = Vec::with_capacity(ops.len());

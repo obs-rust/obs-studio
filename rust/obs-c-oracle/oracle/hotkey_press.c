@@ -1,17 +1,19 @@
 /* Test-only oracle: the original libobs/obs-hotkey-press.c.h, unmodified,
  * with its three entry points renamed to oracle_* so they can link next to
- * the Rust shims. The functions it calls keep their real names: the binding
- * accessor obs_hotkey_binding_fields(), the key state
- * obs_hotkey_key_is_pressed() and the press and release wrappers
- * obs_hotkey_binding_press() and obs_hotkey_binding_release(). Under cargo
- * test the test binary defines them over a fake bindings array and logs
- * every call, for this oracle and the shims alike. */
+ * the Rust shims. The functions it calls keep their real names, except the
+ * press and release wrappers: those are now Rust (obs-hotkey-binding-press),
+ * so the oracle calls oracle_seam_* stand-ins instead, which the test binary
+ * defines over a fake bindings array and logs, as it does for the binding
+ * accessor obs_hotkey_binding_fields() and the key state
+ * obs_hotkey_key_is_pressed(). */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif
 #include <stddef.h>
 #include <stdint.h>
 
+#define obs_hotkey_binding_press oracle_seam_obs_hotkey_binding_press
+#define obs_hotkey_binding_release oracle_seam_obs_hotkey_binding_release
 #define obs_hotkey_binding_query oracle_obs_hotkey_binding_query
 #define obs_hotkey_binding_inject oracle_obs_hotkey_binding_inject
 #define obs_hotkeys_query_modifiers oracle_obs_hotkeys_query_modifiers

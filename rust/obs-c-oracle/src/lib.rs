@@ -83,6 +83,7 @@ pub mod graphics_math;
 pub mod graphics_sprite;
 pub mod graphics_state_stacks;
 pub mod hevc;
+pub mod hotkey_binding_press;
 pub mod hotkey_bindings;
 pub mod hotkey_name_map;
 pub mod hotkey_pair;

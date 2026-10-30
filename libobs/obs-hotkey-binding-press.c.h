@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-binding-press.pch.h"
 
 /* The hotkey binding press count: when one binding is pressed or released.
  * A hotkey can have several bindings, and each is pressed and released on its
@@ -29,8 +29,8 @@
  * obs_hotkey_binding_count_fields() (the binding's pressed flag, the hotkey's
  * count and the hotkey) and chooses the call through obs_hotkey_dispatch(),
  * both in obs-hotkey.c. It runs with the hotkey mutex held and keeps no
- * state. Declared in obs-internal.h. Next to be ported to rust/obs-hotkey
- * (binding_press). */
+ * state. Declared in obs-internal.h. Ported to rust/obs-hotkey
+ * (binding_press): the hybrid libobs drops this file. */
 
 static inline void press_released_binding(obs_hotkey_binding_t *binding)
 {

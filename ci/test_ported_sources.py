@@ -40,6 +40,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-encoder-pause.c.h.o",
     "obs-encoder-roi.c.h.o",
     "obs-encoder-size.c.h.o",
+    "obs-hotkey-binding-press.c.h.o",
     "obs-hotkey-pair.c.h.o",
     "obs-hotkey-press.c.h.o",
     "obs-module-load-rules.c.h.o",

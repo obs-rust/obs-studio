@@ -1,5 +1,7 @@
 //! obs-hotkey integration tests: hotkey (one module per former tests/*.rs file, #968).
 
+mod binding_press;
+mod binding_press_parity;
 mod bindings;
 mod bindings_parity;
 mod cocoa_keys;
@@ -26,6 +28,66 @@ mod translations;
 mod translations_parity;
 mod windows_keys;
 mod windows_keys_parity;
+
+/// Cargo-test stand-ins for the two hidden seams of the ported binding press
+/// count (`obs-hotkey-binding-press`): `obs_hotkey_binding_count_fields()` and
+/// `obs_hotkey_dispatch()`, which more than one test module drives. Only one
+/// definition can exist in the binary, so the module that owns the fake
+/// libobs world of the running test installs its hooks here, per thread; the
+/// seams read them. `binding_press_parity` and `press_parity` both do.
+pub mod binding_press_hooks {
+    use std::cell::RefCell;
+
+    use obs_hotkey::ffi::binding_press::{
+        obs_hotkey_binding, obs_hotkey_binding_count_fields as Fields, obs_hotkey_t,
+    };
+
+    /// One fake world's accessor and dispatch, on raw pointers the world
+    /// owns.
+    #[derive(Debug, Clone, Copy)]
+    pub struct Hooks {
+        pub accessor: fn(*mut obs_hotkey_binding) -> Fields,
+        pub dispatch: fn(*mut obs_hotkey_t, bool),
+    }
+
+    thread_local! {
+        static HOOKS: RefCell<Option<Hooks>> = const { RefCell::new(None) };
+    }
+
+    pub fn install(hooks: Hooks) {
+        HOOKS.with(|h| *h.borrow_mut() = Some(hooks));
+    }
+
+    pub fn clear() {
+        HOOKS.with(|h| *h.borrow_mut() = None);
+    }
+
+    fn hooks() -> Hooks {
+        HOOKS.with(|h| h.borrow().expect("a binding press world"))
+    }
+
+    /// The binding accessor (`obs-hotkey.c.h`).
+    ///
+    /// # Safety
+    ///
+    /// `binding` points at a live fake binding of the installed world.
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn obs_hotkey_binding_count_fields(
+        binding: *mut obs_hotkey_binding,
+    ) -> Fields {
+        (hooks().accessor)(binding)
+    }
+
+    /// The dispatch (`obs-hotkey.c.h`): records it in the installed world.
+    ///
+    /// # Safety
+    ///
+    /// `hotkey` points at a live fake hotkey of the installed world.
+    #[unsafe(no_mangle)]
+    pub unsafe extern "C" fn obs_hotkey_dispatch(hotkey: *mut obs_hotkey_t, pressed: bool) {
+        (hooks().dispatch)(hotkey, pressed)
+    }
+}
 
 /// Cargo-test stand-ins for libobs's hidden `obs_hotkeys_mutex_lock` and
 /// `obs_hotkeys_mutex_unlock` (obs-hotkey.c.h), which the Wayland key state
