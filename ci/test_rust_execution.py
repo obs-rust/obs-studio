@@ -28,7 +28,7 @@ class RustExecutionTest(unittest.TestCase):
 
     def test_workspace_uses_bounded_runner_then_all_doctests(self):
         calls = self.calls(['--workspace'])
-        self.assertEqual(calls[0].args[0], ['nextest', 'run', '--workspace', '--locked', '--no-fail-fast', '--test-threads', '4',
+        self.assertEqual(calls[0].args[0], ['nextest', 'run', '--workspace', '--locked', '--no-fail-fast', '--test-threads', '8',
             '--profile', 'default', '--config-file', str(Path(gate.__file__).with_name('nextest.toml')),
             '--user-config-file', 'none', '--ignore-default-filter', '--retries', '0', '--no-tests', 'fail'])
         self.assertTrue(calls[0].args[1]['PATH'].startswith('/tools:'))
@@ -58,7 +58,7 @@ class RustExecutionTest(unittest.TestCase):
 
     def test_nextest_threads_follow_the_host_override(self):
         # A larger host can raise the bound for its own gate run; CI never sets
-        # the variable, so CI keeps the four-test bound (#2769).
+        # the variable, so CI keeps the default of 8 (#2769, #3071).
         args = self.calls(['--workspace'], threads='16')[0].args[0]
         self.assertEqual(args[args.index('--test-threads') + 1], '16')
 

@@ -8,9 +8,18 @@ fail-fast = false
 # takes about 5 s or less in the CI debug build (testing-policy "Test time").
 slow-timeout = { period = "10s", terminate-after = 3 }
 
-# #2888: compiles real C, C++ and Objective-C sources with unity and PCH.
+# #3071: the Fast Gate oversubscribes nextest (8 threads on a 4-vCPU runner),
+# because the binaries spend their slots waiting on I/O and subprocesses. The
+# native_build tests are the exception: they drive cmake and compilers, so they
+# run two at a time however many threads the run has.
+[test-groups.native-build]
+max-threads = 2
+
+# #2888: compiles real C, C++ and Objective-C sources with unity and PCH, and
+# every native_build test shares that longer budget (#2888, #3071).
 [[profile.default.overrides]]
-filter = "test(/native_build::mixed_objective_languages_/)"
+filter = "test(/native_build::/)"
+test-group = "native-build"
 slow-timeout = { period = "30s", terminate-after = 4 }
 
 # #2888: the 2^32 sweeps run whole at the `full` parity level (nightly, release).
@@ -29,3 +38,8 @@ slow-timeout = { period = "60s" }
 [[profile.full.overrides]]
 filter = "all()"
 slow-timeout = { period = "60s" }
+
+# #3071: the native_build group is a global cap, so the full level keeps it too.
+[[profile.full.overrides]]
+filter = "test(/native_build::/)"
+test-group = "native-build"

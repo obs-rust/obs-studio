@@ -736,9 +736,14 @@ def lane_cross_release(fix: bool) -> None:
     cross_lint(RELEASE_CROSS_TARGETS, link=False)
 
 
+DEFAULT_TEST_THREADS = 8
+
+
 def test_threads() -> int:
-    """nextest's --test-threads: the four-test CI bound unless this host sets
-    OBS_GATE_TEST_THREADS (a host with many cores otherwise idles; #2769)."""
+    """nextest's --test-threads: 8 on the 4-vCPU CI runner, because the test
+    binaries block on I/O and subprocesses and leave slots idle at 4 (#3071);
+    `native_build::*` is capped separately by `ci/nextest.toml`. A host that
+    wants its own bound sets OBS_GATE_TEST_THREADS (#2769)."""
     override = os.environ.get("OBS_GATE_TEST_THREADS", "").strip()
     if override:
         try:
@@ -748,7 +753,7 @@ def test_threads() -> int:
         if threads < 1:
             raise SystemExit(f"OBS_GATE_TEST_THREADS must be a positive integer, not {override!r}")
         return threads
-    return min(4, os.cpu_count() or 1)
+    return DEFAULT_TEST_THREADS
 
 
 def nextest_profile() -> str:
