@@ -494,10 +494,69 @@ static void each_format_and_size_listed_once(void **state)
 	obs_properties_destroy(props);
 }
 
+/* A source whose settings carry no valid "format" yet (a freshly added
+ * source, or one saved before the field existed) still shows a format label
+ * that names its framerate ("64x48 (4:3) - 30 FPS - YUY2"). The framerate
+ * list next to it must offer that framerate instead of staying empty and
+ * disabled (obs-rust/obs-studio#1068 part 2). */
+static void initial_settings_fill_framerate_list(void **state)
+{
+	obs_properties_t *props = NULL;
+	obs_property_t *format_list;
+	obs_property_t *framerate_prop;
+	size_t count = 0;
+	size_t framerate_count;
+	const char *first_label;
+
+	UNUSED_PARAMETER(state);
+
+	if (!obs_up)
+		skip();
+	assert_non_null(camera_source);
+	assert_true(wait_for_found());
+
+	/* The camera's params arrive after the device: wait for them. */
+	for (int i = 0; i < 100 && count < 2; i++) {
+		g_clear_pointer(&props, obs_properties_destroy);
+		iterate_main_loop(20);
+		props = obs_source_properties(camera_source);
+		count = list_formats(props);
+	}
+	iterate_main_loop(300);
+	g_clear_pointer(&props, obs_properties_destroy);
+	props = obs_source_properties(camera_source);
+	count = list_formats(props);
+	if (count < 1) {
+		fprintf(stderr, "no formats listed\n");
+		fail();
+	}
+
+	format_list = obs_properties_get(props, "format");
+	first_label = obs_property_list_item_name(format_list, 0);
+	fprintf(stderr, "first format: %s\n", first_label);
+
+	framerate_prop = obs_properties_get(props, "framerate");
+	framerate_count = obs_property_list_item_count(framerate_prop);
+	fprintf(stderr, "framerate items: %zu, enabled: %d\n", framerate_count, obs_property_enabled(framerate_prop));
+
+	/* The fake camera lists one framerate, 30 FPS, for every size. */
+	if (framerate_count != 1) {
+		fprintf(stderr, "%zu framerates listed under a format label that names one\n", framerate_count);
+		fail();
+	}
+	if (!obs_property_enabled(framerate_prop)) {
+		fprintf(stderr, "the framerate list is disabled while its format names a framerate\n");
+		fail();
+	}
+
+	obs_properties_destroy(props);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(each_format_and_size_listed_once),
+		cmocka_unit_test(initial_settings_fill_framerate_list),
 	};
 	g_autofree char *dbus_daemon = g_find_program_in_path("dbus-daemon");
 
