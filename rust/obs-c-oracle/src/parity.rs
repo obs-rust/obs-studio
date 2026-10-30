@@ -36,3 +36,37 @@ pub fn scale(n: u32, level: Option<&str>) -> u32 {
     let scaled = u32::try_from(u64::from(n) * u64::from(percent) / 100).unwrap_or(n);
     scaled.max(FLOOR.min(n))
 }
+
+/// The percent of an exhaustive sweep or fixed grid that runs at `level`
+/// (100 at `full`). Same levels as [`scale`] (#2888).
+pub fn percent_at(level: Option<&str>) -> u32 {
+    let _ = level;
+    todo!("#2888")
+}
+
+/// Whether item `i` of a large fixed grid runs at the level in [`ENV`]:
+/// every item at `full`, otherwise a fixed, spread-out [`percent_at`] share.
+pub fn keep(i: u64) -> bool {
+    keep_at(i, std::env::var(ENV).ok().as_deref())
+}
+
+/// [`keep`] at `level`.
+pub fn keep_at(i: u64, level: Option<&str>) -> bool {
+    let _ = (i, level);
+    todo!("#2888")
+}
+
+/// The values of `range` an exhaustive sweep visits at the level in [`ENV`]:
+/// all of them at `full`, otherwise one value in each window of
+/// `100 / percent` values, at a hashed offset so no bit pattern is favoured.
+pub fn sweep(range: std::ops::Range<u64>) -> impl Iterator<Item = u64> {
+    sweep_at(range, std::env::var(ENV).ok().as_deref())
+}
+
+/// [`sweep`] at `level`.
+pub fn sweep_at(range: std::ops::Range<u64>, level: Option<&str>) -> impl Iterator<Item = u64> {
+    let _ = level;
+    todo!("#2888");
+    #[allow(unreachable_code)]
+    range
+}
