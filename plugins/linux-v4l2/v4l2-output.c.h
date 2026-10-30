@@ -175,7 +175,8 @@ static void vmic_start(struct virtualcam_data *vcam)
 	dstr_printf(&args,
 		    "load-module module-pipe-source source_name=" VMIC_SOURCE_NAME
 		    " file='%s' format=float32le rate=%u channels=%d"
-		    " source_properties=device.description='\"OBS Virtual Microphone\"'",
+		    /* The whole property list is quoted, or the server keeps only "OBS". */
+		    " 'source_properties=\"device.description=\\\"OBS Virtual Microphone\\\"\"'",
 		    vcam->mic_path, rate, VMIC_CHANNELS);
 	char *reply = run_pactl(args.array);
 	dstr_free(&args);
