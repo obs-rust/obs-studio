@@ -45,6 +45,15 @@ static bool vmic_parse_module_id(const char *text, uint32_t *id)
 	return true;
 }
 
+/* #3014: stub, filled in by the next commit. */
+static bool vmic_parse_module_line(const char *line, uint32_t *id, long *pid)
+{
+	UNUSED_PARAMETER(line);
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(pid);
+	return false;
+}
+
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
  * does not fit: blocking would hold up OBS's output thread and a split packet
  * would leave the reader between two samples. */

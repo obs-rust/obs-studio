@@ -110,6 +110,41 @@ static void module_index_is_parsed_from_pactl_reply(void **state)
 	assert_false(vmic_parse_module_id("99999999999999\n", &id));
 }
 
+/* #3014: a module left by a killed OBS is found in "pactl list modules short"
+ * by its FIFO name, which carries the pid of the OBS that loaded it. */
+static void our_module_line_gives_id_and_pid(void **state)
+{
+	(void)state;
+	uint32_t id = 0;
+	long pid = 0;
+	assert_true(vmic_parse_module_line(
+		"536870916\tmodule-pipe-source\tsource_name=obs_virtual_microphone "
+		"file=/run/user/1000/obs-virtual-microphone-969296 format=float32le rate=48000 channels=2 "
+		"source_properties=\"device.description=\\\"OBS Virtual Microphone\\\"\"\t\n",
+		&id, &pid));
+	assert_int_equal(id, 536870916u);
+	assert_int_equal(pid, 969296);
+}
+
+static void other_module_lines_are_ignored(void **state)
+{
+	(void)state;
+	uint32_t id = 0;
+	long pid = 0;
+	/* Someone else's pipe source. */
+	assert_false(vmic_parse_module_line(
+		"31\tmodule-pipe-source\tsource_name=mine file=/run/user/1000/mine format=s16le\t\n", &id, &pid));
+	/* Not a pipe source, even with the name in its arguments. */
+	assert_false(vmic_parse_module_line(
+		"32\tmodule-loopback\tsource=obs_virtual_microphone file=/run/user/1000/obs-virtual-microphone-5\t\n",
+		&id, &pid));
+	/* No pid after the name. */
+	assert_false(vmic_parse_module_line(
+		"33\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-microphone- format=s16le\t\n", &id, &pid));
+	assert_false(vmic_parse_module_line("", &id, &pid));
+	assert_false(vmic_parse_module_line(NULL, &id, &pid));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -117,6 +152,8 @@ int main(void)
 		cmocka_unit_test_setup_teardown(packet_that_does_not_fit_is_dropped_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
+		cmocka_unit_test(our_module_line_gives_id_and_pid),
+		cmocka_unit_test(other_module_lines_are_ignored),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
