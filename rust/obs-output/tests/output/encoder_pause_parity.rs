@@ -19,6 +19,13 @@
 //! or after the pause began; and proptests over times near the top of the
 //! range and any input on the shim.
 //!
+//! At a reduced `OBS_PARITY_CASES` level the three-time grid and the whole
+//! audio pauses run a sampled share, and their edges always: a time at 0 or
+//! the top of the range or two times equal or one apart, and a pause that
+//! ends where it starts, starts at the first buffer or meets empty or
+//! one-frame buffers. The two-time grids, the cuts and the video pauses
+//! always run whole.
+//!
 //! Intentional differences, checked exactly where they apply:
 //! - a video frame after a set `ts_end` (not 0) ends the pause, where the C
 //!   ends it only on a frame stamped exactly `ts_end`. Over a whole pause,
@@ -217,6 +224,17 @@ fn every_video_decision_over_the_grid() {
     }
 }
 
+/// Whether a grid case is an edge, run on every level outside the sampled
+/// part: a time at 0 or at the top of the range, or two times equal or
+/// one apart, where every compare of the decisions turns.
+fn edge(times: &[u64]) -> bool {
+    times.iter().any(|&t| t == 0 || t == u64::MAX)
+        || times
+            .iter()
+            .enumerate()
+            .any(|(n, &x)| times.iter().skip(n + 1).any(|&y| x.abs_diff(y) <= 1))
+}
+
 #[test]
 fn every_audio_route_over_the_grid() {
     let times = grid();
@@ -226,7 +244,7 @@ fn every_audio_route_over_the_grid() {
             check_pair(a, b);
             for &c in &times {
                 i += 1;
-                if obs_c_oracle::parity::keep(i) {
+                if edge(&[a, b, c]) || obs_c_oracle::parity::keep(i) {
                     check_audio_start(a, b, c);
                     check_audio_paused(a, b, c);
                 }
@@ -522,7 +540,11 @@ fn whole_audio_pauses_at_every_rate() {
                     let e = T0 + stop * FRAME / 2;
                     for early in [true, false] {
                         i += 1;
-                        if obs_c_oracle::parity::keep(i) {
+                        // Edges on every level: a pause that ends where it
+                        // starts or starts at the first buffer, and the empty
+                        // and one-frame buffers.
+                        let edge = stop == start || start == 0 || frames <= 1;
+                        if edge || obs_c_oracle::parity::keep(i) {
                             let split = audio_pause(rate, frames, s, e, early);
                             *counts.entry((frames, split)).or_insert(0) += 1;
                         }
