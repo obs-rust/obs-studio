@@ -110,6 +110,54 @@ static void module_index_is_parsed_from_pactl_reply(void **state)
 	assert_false(vmic_parse_module_id("99999999999999\n", &id));
 }
 
+/* A hard kill (crash, SIGKILL) leaves the Virtual Camera's module-pipe-source
+ * loaded (#3014). `pactl list modules short` still lists it, with the FIFO of
+ * the pid that died; only those lines may be unloaded, or a second OBS running
+ * with --multi loses its microphone. */
+static void stale_module_line_is_parsed(void **state)
+{
+	(void)state;
+	uint32_t module = 0;
+	pid_t owner = 0;
+
+	assert_true(
+		vmic_stale_module_line("42\tmodule-pipe-source\tsource_name=obs_virtual_microphone "
+				       "file=/run/user/1000/obs-virtual-microphone-4242 format=float32le rate=48000 "
+				       "channels=2 "
+				       "source_properties=\"device.description=\\\"OBS Virtual Microphone\\\"\"",
+				       &module, &owner));
+	assert_int_equal(module, 42u);
+	assert_int_equal(owner, 4242);
+
+	/* Another module type, even when it names our FIFO: not ours to unload. */
+	assert_false(vmic_stale_module_line("43\tmodule-null-sink\tfile=/run/user/1000/obs-virtual-microphone-4242",
+					    &module, &owner));
+	/* A module-pipe-source that is not the microphone. */
+	assert_false(vmic_stale_module_line("44\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-camera-4242",
+					    &module, &owner));
+	/* The device description repeats the product name; it is not a FIFO. */
+	assert_false(
+		vmic_stale_module_line("45\tmodule-pipe-source\tsource_properties=\"device.description=\\\"OBS Virtual "
+				       "Microphone\\\"\"",
+				       &module, &owner));
+
+	/* A bad index, a missing or out-of-range pid, and lines that are not
+	 * module listings are ignored rather than unloaded. */
+	assert_false(vmic_stale_module_line("x\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-microphone-7",
+					    &module, &owner));
+	assert_false(vmic_stale_module_line("46\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-microphone-",
+					    &module, &owner));
+	assert_false(vmic_stale_module_line("46\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-microphone-0",
+					    &module, &owner));
+	assert_false(vmic_stale_module_line(
+		"46\tmodule-pipe-source\tfile=/run/user/1000/obs-virtual-microphone-99999999999", &module, &owner));
+	assert_false(vmic_stale_module_line("", &module, &owner));
+	assert_false(vmic_stale_module_line(NULL, &module, &owner));
+
+	/* This process's own module is never stale. */
+	assert_false(vmic_owner_is_gone(getpid()));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -117,6 +165,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(packet_that_does_not_fit_is_dropped_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
+		cmocka_unit_test(stale_module_line_is_parsed),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

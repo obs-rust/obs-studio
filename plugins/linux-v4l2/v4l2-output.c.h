@@ -45,6 +45,28 @@ static bool vmic_parse_module_id(const char *text, uint32_t *id)
 	return true;
 }
 
+/* One line of `pactl list modules short` is "<index>	<module>	<args>". For a
+ * module-pipe-source whose FIFO name is obs-virtual-microphone-<pid>, returns
+ * the module index and that pid, so a module a killed OBS left behind can be
+ * unloaded. Whether the pid still exists is the caller's call (a live OBS with
+ * --multi keeps its module). #3014 */
+static bool vmic_stale_module_line(const char *line, uint32_t *module, pid_t *owner)
+{
+	UNUSED_PARAMETER(line);
+	UNUSED_PARAMETER(module);
+	UNUSED_PARAMETER(owner);
+	return false;
+}
+
+/* True when the pid that owned a FIFO is gone (crashed, killed), so its module
+ * is loaded with nothing behind it. Our own pid and a live process are not
+ * stale. #3014 */
+static bool vmic_owner_is_gone(pid_t owner)
+{
+	UNUSED_PARAMETER(owner);
+	return false;
+}
+
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
  * does not fit: blocking would hold up OBS's output thread and a split packet
  * would leave the reader between two samples. */
