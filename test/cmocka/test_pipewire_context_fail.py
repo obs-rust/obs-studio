@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -30,6 +31,8 @@ SOCKET_BUDGET = 107
 SOCKET_SUFFIX = len("/run/pipewire-0-manager")
 START_ATTEMPTS = 200
 START_SLEEP = 0.1
+# Seconds a stopped daemon gets to exit on SIGTERM before its group is killed.
+STOP_GRACE = 5
 
 DAEMON_CONFIG = """context.properties = {
     core.daemon = true
@@ -95,7 +98,29 @@ def start_daemon(directory: Path, runtime: Path) -> subprocess.Popen:
             },
             stdout=log,
             stderr=subprocess.STDOUT,
+            # Its own process group: `pipewire` may be a wrapper (a `uv run`
+            # stub, a Nix wrapper) whose child is the real daemon, and killing
+            # only the wrapper orphans it (obs-rust/obs-studio#2984).
+            start_new_session=True,
         )
+
+
+def stop_daemon(daemon: subprocess.Popen) -> None:
+    """Stop the daemon's whole process group, not just the direct child."""
+    try:
+        os.killpg(daemon.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        daemon.wait(timeout=STOP_GRACE)
+    except subprocess.TimeoutExpired:
+        pass
+    # The wrapper may be gone while the group lives on, so always sweep it.
+    try:
+        os.killpg(daemon.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    daemon.wait()
 
 
 def wait_for_socket(directory: Path, runtime: Path, daemon: subprocess.Popen) -> bool:
@@ -145,9 +170,8 @@ def main(argv: list[str]) -> int:
 
         return subprocess.run([test_bin]).returncode
     finally:
-        if daemon is not None and daemon.poll() is None:
-            daemon.kill()
-            daemon.wait()
+        if daemon is not None:
+            stop_daemon(daemon)
         shutil.rmtree(directory, ignore_errors=True)
 
 
