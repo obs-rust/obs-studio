@@ -1,17 +1,17 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 82472,
-      "libobs": 84617,
-      "plugins": 145489,
-      "shared": 15938
+      "frontend": 82473,
+      "libobs": 84630,
+      "plugins": 145493,
+      "shared": 15945
     },
     "percent": 11.89,
     "ported_lines": 39064,
-    "total_lines": 328516
+    "total_lines": 328541
   },
-  "commit": "5f166c9",
-  "date": "2026-10-29",
+  "commit": "8211fe2",
+  "date": "2026-10-30",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 33.97,
+          "percent": 33.96,
           "ported_lines": 18823,
-          "total_lines": 55417
+          "total_lines": 55430
         },
         "graphics": {
           "percent": 49.56,
@@ -50,18 +50,18 @@
         }
       },
       "files": 238,
-      "hybrid_lines": 45553,
-      "percent": 46.17,
+      "hybrid_lines": 45566,
+      "percent": 46.16,
       "ported_lines": 39064,
-      "total_lines": 84617
+      "total_lines": 84630
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 36.5,
+            "percent": 36.49,
             "ported_lines": 18656,
-            "total_lines": 51114
+            "total_lines": 51127
           },
           "graphics": {
             "percent": 50.22,
@@ -80,8 +80,8 @@
           }
         },
         "files": 214,
-        "hybrid_lines": 40614,
-        "percent": 47.24,
+        "hybrid_lines": 40627,
+        "percent": 47.23,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -259,7 +259,7 @@
           "util/utf8.c.h"
         ],
         "ported_lines": 36366,
-        "total_lines": 76980
+        "total_lines": 76993
       },
       "macos": {
         "areas": {
@@ -656,6 +656,6 @@
     }
   },
   "rust": {
-    "lines": 137691
+    "lines": 137730
   }
 }
