@@ -271,25 +271,73 @@ fn case() -> impl Strategy<Value = Case> {
         )
 }
 
-/// The local palette of frame `f` as the views compare it: from the frame a
-/// scan stopped in on (`f >= frame_count`), whether there is one and its
-/// size only (an intentional difference, see the module docs).
-fn local_view(
-    f: u32,
-    info: &Info,
-    table: [u32; MAX_COLOURS],
-    entries: usize,
-    _in_data: usize,
-) -> (Vec<u32>, usize) {
-    if f < info.frame_count {
-        (table.to_vec(), entries)
-    } else {
-        (Vec::new(), entries)
+/// The maximum local table, in bytes.  The C oracle reads this much from its
+/// stored buffer without checking the scan length.
+const PALETTE_TAIL_LEN: usize = MAX_COLOURS * 3;
+const PALETTE_POISON: u8 = 0xA5;
+const PALETTE_PROBE: u8 = 0x5A;
+
+/// The local palette as the views compare it.  `in_data` comes from two C
+/// probes over different poison tails, and keeps only entries whose source
+/// bytes were inside the scan buffer.
+fn local_view(table: [u32; MAX_COLOURS], entries: usize, in_data: usize) -> (Vec<u32>, usize) {
+    (table[..entries.min(in_data)].to_vec(), entries)
+}
+
+/// Make the C oracle's otherwise lengthless palette read deterministic.
+fn set_palette_tail(data: &mut [u8], scan_len: usize, value: u8) {
+    if let Some(tail) = data.get_mut(scan_len..scan_len + PALETTE_TAIL_LEN) {
+        tail.fill(value);
     }
 }
 
+fn prepare_scan_data(data: &mut [u8], input: &[u8], scan_len: usize) {
+    if let Some(prefix) = data.get_mut(..input.len()) {
+        prefix.copy_from_slice(input);
+    }
+    set_palette_tail(data, scan_len, PALETTE_POISON);
+}
+
+/// Count each C local-palette prefix that did not change when its bytes past
+/// `scan_len` were switched to a distinct poison value.
+fn c_local_in_data(gif: *mut c_void, data: &mut [u8], scan_len: usize) -> Vec<usize> {
+    // The tail is owned padding passed to the scan, so the oracle can read it.
+    set_palette_tail(data, scan_len, PALETTE_POISON);
+    let info = unsafe { *c::oracle_nsgif_get_info(gif).cast::<Info>() };
+    (0..info.frame_count + 2)
+        .map(|frame| {
+            let mut first = [0u32; MAX_COLOURS];
+            let mut entries = 0usize;
+            // SAFETY: `gif` and the local output buffers are live.
+            if !unsafe {
+                c::oracle_nsgif_local_palette(gif, frame, first.as_mut_ptr(), &mut entries)
+            } {
+                return 0;
+            }
+            set_palette_tail(data, scan_len, PALETTE_PROBE);
+            let mut second = [0u32; MAX_COLOURS];
+            let mut second_entries = 0usize;
+            // SAFETY: as above; changing only the tail distinguishes past-data reads.
+            unsafe {
+                c::oracle_nsgif_local_palette(gif, frame, second.as_mut_ptr(), &mut second_entries);
+            }
+            set_palette_tail(data, scan_len, PALETTE_POISON);
+            let comparable = entries.min(second_entries);
+            match first
+                .iter()
+                .zip(second.iter())
+                .take(comparable)
+                .position(|(a, b)| a != b)
+            {
+                Some(prefix) => prefix,
+                None => comparable,
+            }
+        })
+        .collect()
+}
+
 /// The view of the Rust GIF.
-fn rust_view(gif: *mut NsgifCtx) -> View {
+fn rust_view(gif: *mut NsgifCtx, in_data: &[usize]) -> View {
     // SAFETY: a live GIF; the out-pointers are local.
     unsafe {
         let info = *nsgif_get_info(gif);
@@ -306,7 +354,7 @@ fn rust_view(gif: *mut NsgifCtx) -> View {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
                 nsgif_local_palette(gif, f, &mut t, &mut e)
-                    .then(|| local_view(f, &info, t, e, e))
+                    .then(|| local_view(t, e, in_data.get(f as usize).copied().unwrap_or_default()))
             })
             .collect();
         View {
@@ -319,7 +367,7 @@ fn rust_view(gif: *mut NsgifCtx) -> View {
 }
 
 /// The view of the C GIF.
-fn c_view(gif: *mut c_void) -> View {
+fn c_view(gif: *mut c_void, in_data: &[usize]) -> View {
     // SAFETY: a live GIF; the C returns pointers to its nsgif_info_t and
     // nsgif_frame_info_t, which have the layout of Info and FrameInfo.
     unsafe {
@@ -342,7 +390,7 @@ fn c_view(gif: *mut c_void) -> View {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
                 c::oracle_nsgif_local_palette(gif, f, t.as_mut_ptr(), &mut e)
-                    .then(|| local_view(f, &info, t, e, e))
+                    .then(|| local_view(t, e, in_data.get(f as usize).copied().unwrap_or_default()))
             })
             .collect();
         View {
@@ -359,10 +407,7 @@ fn local_view_excludes_colours_past_scanned_data() {
     let mut table = [0u32; MAX_COLOURS];
     table[..2].copy_from_slice(&[0x1122_3344, 0x5566_7788]);
 
-    assert_eq!(
-        local_view(0, &Info { frame_count: 1, ..Info::default() }, table, 2, 1),
-        (vec![0x1122_3344], 2),
-    );
+    assert_eq!(local_view(table, 2, 1), (vec![0x1122_3344], 2),);
 }
 
 proptest! {
@@ -379,18 +424,23 @@ proptest! {
             prop_assert_eq!(nsgif_create(&table, case.fmt, &mut rg) as i32,
                 c::oracle_nsgif_create((&raw const table).cast(), case.fmt, &mut cg));
 
+            let mut data = case.data.clone();
+            data.resize(data.len() + PALETTE_TAIL_LEN, PALETTE_POISON);
             let mut lens = case.cuts.clone();
             lens.push(case.data.len());
             for n in lens {
-                let r = nsgif_data_scan(rg, n, case.data.as_ptr());
-                let cr = c::oracle_nsgif_data_scan(cg, n, case.data.as_ptr());
+                prepare_scan_data(&mut data, &case.data, n);
+                let r = nsgif_data_scan(rg, n, data.as_ptr());
+                let cr = c::oracle_nsgif_data_scan(cg, n, data.as_ptr());
                 prop_assert_eq!(r as i32, cr, "scan {}", n);
-                prop_assert_eq!(rust_view(rg), c_view(cg));
+                let in_data = c_local_in_data(cg, &mut data, n);
+                prop_assert_eq!(rust_view(rg, &in_data), c_view(cg, &in_data));
             }
             if case.complete {
                 nsgif_data_complete(rg);
                 c::oracle_nsgif_data_complete(cg);
-                prop_assert_eq!(rust_view(rg), c_view(cg));
+                let in_data = c_local_in_data(cg, &mut data, case.data.len());
+                prop_assert_eq!(rust_view(rg, &in_data), c_view(cg, &in_data));
             }
 
             for op in &case.ops {
@@ -419,7 +469,8 @@ proptest! {
                         c::oracle_nsgif_set_frame_delay_behaviour(cg, min, default);
                     }
                 }
-                prop_assert_eq!(rust_view(rg), c_view(cg));
+                let in_data = c_local_in_data(cg, &mut data, case.data.len());
+                prop_assert_eq!(rust_view(rg, &in_data), c_view(cg, &in_data));
             }
             nsgif_destroy(rg);
             c::oracle_nsgif_destroy(cg);
