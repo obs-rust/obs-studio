@@ -159,6 +159,10 @@
 
 #include "obs-scene-audio-actions.h"
 
+/* obs-scene-audio-mix.c */
+
+#include "obs-scene-audio-mix.h"
+
 /* obs-scene-audio-window.c */
 
 #include "obs-scene-audio-window.h"

@@ -58,6 +58,7 @@
     "obs-output.h",
     "obs-properties.h",
     "obs-scene-audio-actions.h",
+    "obs-scene-audio-mix.h",
     "obs-scene-audio-window.h",
     "obs-scene-blend.h",
     "obs-scene-bounds.h",

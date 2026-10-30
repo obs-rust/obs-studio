@@ -1327,26 +1327,9 @@ static uint32_t scene_getheight(void *data)
 /* apply_scene_item_audio_actions(), apply_scene_item_volume() and
  * process_all_audio_actions() are in obs-scene-item-audio-actions.c. */
 
-static void mix_audio_with_buf(float *p_out, float *p_in, float *buf_in, size_t pos, size_t count)
-{
-	register float *out = p_out + pos;
-	register float *buf = buf_in;
-	register float *in = p_in;
-	register float *end = in + count;
-
-	while (in < end)
-		*(out++) += *(in++) * *(buf++);
-}
-
-static inline void scene_mix_audio(float *p_out, float *p_in, size_t pos, size_t count)
-{
-	register float *out = p_out + pos;
-	register float *in = p_in;
-	register float *end = in + count;
-
-	while (in < end)
-		*(out++) += *(in++);
-}
+/* mix_audio_with_buf() and scene_mix_audio() are
+ * obs_scene_audio_mix_with_buf() and obs_scene_audio_mix_add() in
+ * obs-scene-audio-mix.c. */
 
 /* The window decisions are obs-scene-audio-window.c.h. The scene still takes
  * audio_lock, calls apply_scene_item_volume() and
@@ -1473,9 +1456,9 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 					float *out = audio_output->output[mix].data[ch];
 					float *in = child_audio.output[mix].data[ch];
 					if (apply_buf)
-						mix_audio_with_buf(out, in, buf, window.pos, window.count);
+						obs_scene_audio_mix_with_buf(out, in, buf, window.pos, window.count);
 					else
-						scene_mix_audio(out, in, window.pos, window.count);
+						obs_scene_audio_mix_add(out, in, window.pos, window.count);
 				}
 			}
 		}
