@@ -1,0 +1,12 @@
+{
+  "measured_at": "2026-10-30",
+  "source": "PR #3077 Sanitize / asan job log (Restore zccache step)",
+  "why": "The master asan zccache archive outgrew the sanitize shape max (300MB); the janitor evicted it and every other PR asan job built cold (40-55 min against 25 min with a hit), #1801",
+  "entries": [
+    {
+      "key": "zccache-sanitize-asan-ON-39551c182b14f2a267c3676c7b6d43ce8df3d8ea",
+      "ref": "refs/heads/master",
+      "size_in_bytes": 753363578
+    }
+  ]
+}
