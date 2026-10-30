@@ -60,5 +60,158 @@ fn comparisons(criterion: &mut Criterion) {
     run_units(criterion);
 }
 
+/// libobs functions the obs-output and obs-hotkey shims and the output
+/// interleave oracle call by their libobs names (#3025). The cargo tests that
+/// link them define recording stand-ins; no bench calls them, so here they
+/// only have to exist: on Linux and macOS the linker leaves the unused callers
+/// out, but lld-link on Windows reports every name as undefined. They take no
+/// parameters and abort, so a bench that starts to call one fails at once.
+mod libobs_stand_ins {
+    fn called(name: &str) -> ! {
+        eprintln!("port_comparison: {name} is a link stand-in (#3025) and was called");
+        std::process::abort()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_encoder_get_name() -> ! {
+        called("obs_encoder_get_name")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_encoder_group_num_started() -> ! {
+        called("obs_encoder_group_num_started")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_encoder_interleave_info() -> ! {
+        called("obs_encoder_interleave_info")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_encoder_packet_create_instance() -> ! {
+        called("obs_encoder_packet_create_instance")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_encoder_packet_release() -> ! {
+        called("obs_encoder_packet_release")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkeys_mutex_lock() -> ! {
+        called("obs_hotkeys_mutex_lock")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_actual_start() -> ! {
+        called("obs_output_actual_start")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_actual_stop() -> ! {
+        called("obs_output_actual_stop")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_begin_data_capture() -> ! {
+        called("obs_output_begin_data_capture")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_can_begin_data_capture() -> ! {
+        called("obs_output_can_begin_data_capture")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_caption_track_fields() -> ! {
+        called("obs_output_caption_track_fields")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_delay_fields() -> ! {
+        called("obs_output_delay_fields")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_delay_signal() -> ! {
+        called("obs_output_delay_signal")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_get_name() -> ! {
+        called("obs_output_get_name")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_initialize_encoders() -> ! {
+        called("obs_output_initialize_encoders")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_interleave_active() -> ! {
+        called("obs_output_interleave_active")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_interleave_add_caption() -> ! {
+        called("obs_output_interleave_add_caption")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_interleave_fields() -> ! {
+        called("obs_output_interleave_fields")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_binding_fields() -> ! {
+        called("obs_hotkey_binding_fields")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_binding_press() -> ! {
+        called("obs_hotkey_binding_press")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_binding_release() -> ! {
+        called("obs_hotkey_binding_release")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_key_is_pressed() -> ! {
+        called("obs_hotkey_key_is_pressed")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_pair_call_func() -> ! {
+        called("obs_hotkey_pair_call_func")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_pair_fields() -> ! {
+        called("obs_hotkey_pair_fields")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkeys_mutex_unlock() -> ! {
+        called("obs_hotkeys_mutex_unlock")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkeys_store_key_translation() -> ! {
+        called("obs_hotkeys_store_key_translation")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_interleave_first_audio_encoder_index() -> ! {
+        called("obs_output_interleave_first_audio_encoder_index")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_output_interleave_first_video_encoder_index() -> ! {
+        called("obs_output_interleave_first_video_encoder_index")
+    }
+}
+
 criterion_group!(benches, comparisons);
 criterion_main!(benches);
