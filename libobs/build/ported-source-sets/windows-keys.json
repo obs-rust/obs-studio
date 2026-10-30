@@ -1,0 +1,5 @@
+{
+  "LIBOBS_WINDOWS_PORTED_SOURCES": [
+    "build/libobs.ported-windows-keys+.h.c"
+  ]
+}

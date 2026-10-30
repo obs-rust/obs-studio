@@ -936,3 +936,14 @@ _obs_cocoa_keys_from_virtual_key
 _obs_cocoa_keys_is_mouse
 _obs_cocoa_keys_mouse_pressed
 _obs_cocoa_keys_in_range
+
+# obs-windows-keys.c: the Windows hotkey platform (obs-windows.c) calls them
+# inside libobs. Built on every host; not EXPORT.
+_obs_windows_keys_combination
+_obs_windows_keys_either_win
+_obs_windows_keys_from_virtual_key
+_obs_windows_keys_name
+_obs_windows_keys_scan_code
+_obs_windows_keys_system_name
+_obs_windows_keys_to_virtual_key
+_obs_windows_keys_virtual_key

@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-windows-keys.pch.h"
+#include "libobs/build/libobs-ported-windows-keys.pch.h"
+
+/* Ported to rust/obs-hotkey (windows_keys): the hybrid libobs drops this
+ * file. */
 
 /* The Windows key map and key name route of obs-windows.c, moved: the
  * decisions, on plain values. obs-windows.c keeps the platform context, every

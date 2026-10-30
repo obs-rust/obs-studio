@@ -12,3 +12,4 @@ pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod press;
 pub mod translations;
+pub mod windows_keys;
