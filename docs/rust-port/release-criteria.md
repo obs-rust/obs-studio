@@ -73,6 +73,21 @@ the benchmark and implementation sources. The recorder refuses incomplete
 paired measurements and source changes during measurement. Criterion's raw
 samples remain under `target/criterion/<benchmark>/<baseline>/`.
 
+A full run needs every category in `record.py`'s `CATEGORIES`; the bench
+units of the ports add their own groups, which are recorded too. For the
+before and after numbers of one kernel (#3009), `--category` (repeatable)
+runs and requires only the named categories:
+
+```sh
+uv run rust/tools/benchmarks/record.py --cpu 7 --category format --output format.json
+```
+
+The SIMD candidates of #3009 are categories of their own: `format` (each
+format conversion on a 1080p frame, against the shipped C and against the
+same C on the plain-C SSE stand-ins), `volmeter` (sample and true peak of
+one tick) and `audio_mix` (the mix add, and one output tick with the clamp
+of 6 mixes).
+
 The suite covers all exported bmem and vec2/3/4 shims, CRC at 64/4096/65536
 bytes, dstr concatenation/safe formatting/replacement at 128/4096 bytes,
 and the AVC/HEVC/AV1 parser entry points on structured synthetic packets.

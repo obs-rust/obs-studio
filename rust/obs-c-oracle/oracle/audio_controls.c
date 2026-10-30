@@ -38,6 +38,11 @@
 size_t oracle_obs_audio_info_size(void);
 size_t oracle_obs_audio_info_align(void);
 size_t oracle_obs_audio_info_speakers_offset(void);
+/* #3003: the two static peak kernels, for the port_comparison volmeter
+ * benches. `previous` is the last four samples (4 floats), `samples` is
+ * 16-byte aligned, as the C's _mm_load_ps needs. */
+float oracle_get_sample_peak(const float *previous, const float *samples, size_t nr_samples);
+float oracle_get_true_peak(const float *previous, const float *samples, size_t nr_samples);
 
 /* libobs builds this file with -Wno-sign-conversion and without
  * -Wformat. The oracle has both. The unaligned-plane printf passes a
@@ -67,6 +72,16 @@ size_t oracle_obs_audio_info_align(void)
 size_t oracle_obs_audio_info_speakers_offset(void)
 {
 	return offsetof(struct obs_audio_info, speakers);
+}
+
+float oracle_get_sample_peak(const float *previous, const float *samples, size_t nr_samples)
+{
+	return get_sample_peak(_mm_loadu_ps(previous), samples, nr_samples);
+}
+
+float oracle_get_true_peak(const float *previous, const float *samples, size_t nr_samples)
+{
+	return get_true_peak(_mm_loadu_ps(previous), samples, nr_samples);
 }
 
 signal_handler_t *obs_source_get_signal_handler(const obs_source_t *source)

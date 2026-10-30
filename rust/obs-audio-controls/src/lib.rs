@@ -12,7 +12,9 @@ pub mod ffi;
 
 mod curves;
 mod fader;
-mod peak;
+/// The peak kernels, public for the `port_comparison` benches (#3003).
+#[doc(hidden)]
+pub mod peak;
 mod volmeter;
 
 pub use fader::{Fader, FaderCb};

@@ -20,4 +20,17 @@ unsafe extern "C" {
     pub fn oracle_obs_audio_info_size() -> usize;
     pub fn oracle_obs_audio_info_align() -> usize;
     pub fn oracle_obs_audio_info_speakers_offset() -> usize;
+    /// `get_sample_peak()` (#3003). `previous` holds 4 floats; `samples`
+    /// is 16-byte aligned and holds `nr_samples` floats.
+    pub fn oracle_get_sample_peak(
+        previous: *const f32,
+        samples: *const f32,
+        nr_samples: usize,
+    ) -> f32;
+    /// `get_true_peak()` (#3003), with the same arguments.
+    pub fn oracle_get_true_peak(
+        previous: *const f32,
+        samples: *const f32,
+        nr_samples: usize,
+    ) -> f32;
 }

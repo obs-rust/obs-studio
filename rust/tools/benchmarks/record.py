@@ -2,6 +2,11 @@
 """Run every #142 Criterion comparison repeatedly and record paired medians.
 
 Usage: uv run rust/tools/benchmarks/record.py --cpu 7 --output baseline.json
+       uv run rust/tools/benchmarks/record.py --category format --output format.json
+
+CATEGORIES must all be in a full run; the port benches add other groups,
+which are recorded too (#3003). --category runs and requires only the named
+categories, for the before/after numbers of one kernel (#3009).
 """
 
 from __future__ import annotations
@@ -20,24 +25,32 @@ ROOT = Path(__file__).resolve().parents[3]
 CATEGORIES = {
     "bmem", "dstr", "vec2", "vec3", "vec4", "crc32", "avc", "hevc", "av1",
     "decl", "calldata", "proc", "signal", "conversions",
+    # The SIMD candidates of #3009 (audio_mix: the mix add and the output tick).
+    "format", "volmeter", "audio_mix",
 }
+COMMAND = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_comparison", "--"]
 
 
 def source_hash() -> str:
     paths = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
-    for directory in [
-        "rust/obs-c-oracle", "rust/obs-util", "rust/obs-graphics", "rust/obs-codec", "rust/obs-callback",
-        "libobs", "deps/simde", "deps/libcaption",
-    ]:
+    for directory in ["rust", "libobs", "deps/simde", "deps/libcaption"]:
         paths.update(
             path for path in (ROOT / directory).rglob("*")
             if path.is_file() and path.suffix in {".rs", ".c", ".h", ".toml"}
+            and "target" not in path.relative_to(ROOT).parts
         )
     digest = hashlib.sha256()
     for path in sorted(paths):
         digest.update(str(path.relative_to(ROOT)).encode() + b"\0")
         digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+def bench_command(categories: list[str]) -> list[str]:
+    """The cargo bench command; with categories, a Criterion filter for them."""
+    if not categories:
+        return list(COMMAND)
+    return COMMAND + ["^(" + "|".join(categories) + ")/"]
 
 
 def version(command: list[str]) -> str:
@@ -48,7 +61,8 @@ def version(command: list[str]) -> str:
         return str(error)
 
 
-def read_run(directory: Path, baseline: str) -> dict:
+def read_run(directory: Path, baseline: str, required: set[str] | None = None) -> dict:
+    """Every pair of one baseline. A full run (required None) needs all CATEGORIES and 70 pairs."""
     entries = {}
     for path in directory.rglob("benchmark.json"):
         if path.parent.name != baseline:
@@ -73,8 +87,9 @@ def read_run(directory: Path, baseline: str) -> dict:
                 median["confidence_interval"]["upper_bound"],
             ],
         }
-    if len(entries) < 70 or {key.split("/")[0] for key in entries} != CATEGORIES:
-        raise ValueError(f"incomplete benchmark inventory ({len(entries)} pairs)")
+    missing = (CATEGORIES if required is None else required) - {key.split("/")[0] for key in entries}
+    if missing or (required is None and len(entries) < 70):
+        raise ValueError(f"incomplete benchmark inventory ({len(entries)} pairs, missing {sorted(missing)})")
     for key, pair in entries.items():
         if set(pair) != {"rust", "c"}:
             raise ValueError(f"missing comparison for {key}")
@@ -112,6 +127,8 @@ def main() -> None:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--cpu", type=int)
+    parser.add_argument("--category", action="append", default=[], choices=sorted(CATEGORIES),
+                        help="run and require only this category (repeatable)")
     args = parser.parse_args()
     if args.repeats < 3:
         parser.error("at least three complete runs are required for a median and range")
@@ -120,7 +137,8 @@ def main() -> None:
             parser.error("--cpu requires OS affinity support")
         os.sched_setaffinity(0, {args.cpu})
     fingerprint = source_hash()
-    command = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_comparison", "--"]
+    command = bench_command(args.category)
+    required = set(args.category) or None
     # Smoke executes fixture checks and exercises ownership without timing.
     subprocess.run(command + ["--test"], cwd=ROOT, check=True)
     target = Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "target"))
@@ -133,7 +151,7 @@ def main() -> None:
         baseline = f"ports-{timestamp}-{repeat + 1}"
         print(f"Recording {repeat + 1}/{args.repeats}: {baseline}", flush=True)
         subprocess.run(command + options + ["--save-baseline", baseline], cwd=ROOT, check=True)
-        runs.append(read_run(target / "criterion", baseline))
+        runs.append(read_run(target / "criterion", baseline, required))
         baselines.append(baseline)
         if source_hash() != fingerprint:
             raise ValueError("source changed during measurement; discard this run")
@@ -149,7 +167,7 @@ def main() -> None:
         "cc": version([os.environ.get("CC", "cl" if os.name == "nt" else "cc"), "--version"]),
         "environment": {key: os.environ.get(key) for key in ["CC", "CFLAGS", "RUSTFLAGS"]},
         "criterion": "0.8.2", "profile": "bench (release, opt-level 3)",
-        "command": command + options, "baselines": baselines,
+        "command": command + options, "categories": sorted(required or CATEGORIES), "baselines": baselines,
         "threshold_rust_over_c": 1.10, "results": summarize(runs),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

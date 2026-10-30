@@ -13,7 +13,9 @@ const P1: [f32; 4] = [-0.216_236, 0.756_827, 0.504_551, -0.189_207];
 /// `_mm_set_ps(-0.103943, 0.233872, 0.935489, -0.155915)`.
 const P3: [f32; 4] = [-0.155_915, 0.935_489, 0.233_872, -0.103_943];
 
-pub(crate) fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
+/// `get_sample_peak()`: the largest absolute sample of the previous four
+/// and of each whole group of four in `samples[..frames]`.
+pub fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut peak = prev.map(f32::abs);
     let mut i = 0;
     while i + 3 < frames {
@@ -25,7 +27,9 @@ pub(crate) fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32
     hmax(peak)
 }
 
-pub(crate) fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
+/// `get_true_peak()`: [`sample_peak`] plus the 5x oversampled points
+/// between the samples.
+pub fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut work = prev;
     let mut peak = prev.map(f32::abs);
     let mut i = 0;
