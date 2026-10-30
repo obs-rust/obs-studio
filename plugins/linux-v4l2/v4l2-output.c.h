@@ -7,6 +7,23 @@ struct virtualcam_data {
 	bool use_caps_workaround;
 };
 
+/* OBS Virtual Microphone (#3011): stubs, filled in by the next commit. */
+static bool vmic_parse_module_id(const char *text, uint32_t *id)
+{
+	UNUSED_PARAMETER(text);
+	UNUSED_PARAMETER(id);
+	return false;
+}
+
+static bool vmic_write_packet(int fd, size_t pipe_size, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(fd);
+	UNUSED_PARAMETER(pipe_size);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
+	return false;
+}
+
 static const char *virtualcam_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
