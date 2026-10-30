@@ -410,42 +410,89 @@ impl Packed {
             None => (0, 0),
         };
         let input = Buf::random(in_len, self.seed);
+        assert_parity(&[Buf::canary(out_len)], |imp, out| {
+            self.call(imp, &input, &mut out[0]);
+        });
+    }
+
+    /// Runs `imp` on `input` and `output`, which must cover the bytes the
+    /// call touches.
+    fn call(&self, imp: Impl, input: &Buf, output: &mut Buf) {
         let (ls, start_y, end_y) = (self.in_linesize, self.start_y, self.end_y);
         let (out_ls, leading) = (self.out_linesize, self.leading_lum);
-
-        assert_parity(&[Buf::canary(out_len)], |imp, out| {
-            let f = match imp {
-                Impl::C => c::oracle_decompress_422,
-                Impl::CScalar => c::oracle_scalar_decompress_422,
-                Impl::Shim => rs::decompress_422,
-                Impl::Safe => {
-                    let output = out[0].bytes_mut();
-                    safe::decompress_422(
-                        input.bytes(),
-                        ls,
-                        start_y,
-                        end_y,
-                        output,
-                        out_ls,
-                        leading,
-                    );
-                    return;
-                }
-            };
-            // SAFETY: the input and output are sized to cover the bytes
-            // this call touches.
-            unsafe {
-                f(
-                    input.ptr(),
+        let f = match imp {
+            Impl::C => c::oracle_decompress_422,
+            Impl::CScalar => c::oracle_scalar_decompress_422,
+            Impl::Shim => rs::decompress_422,
+            Impl::Safe => {
+                safe::decompress_422(
+                    input.bytes(),
                     ls,
                     start_y,
                     end_y,
-                    out[0].mut_ptr(),
+                    output.bytes_mut(),
                     out_ls,
                     leading,
-                )
-            };
-        });
+                );
+                return;
+            }
+        };
+        // SAFETY: the input and output are sized to cover the bytes this
+        // call touches.
+        unsafe {
+            f(
+                input.ptr(),
+                ls,
+                start_y,
+                end_y,
+                output.mut_ptr(),
+                out_ls,
+                leading,
+            )
+        };
+    }
+}
+
+/// One packed 4:2:2 row of 4 pixels (`in_linesize` 8) converts to one row of
+/// 4 32-bit pixels (`out_linesize` 16), without the next row, and leaves the
+/// canary after the output, in every implementation (#3031). The inputs and expected values
+/// of `test_decompress_422_one_row` in `test/cmocka/test_format_conversion.c`.
+#[test]
+fn decompress_422_one_row() {
+    // The row, then the next row's first 2 dwords, which must not be read.
+    let mut input = Buf::canary(16);
+    let dwords = [0x4433_2211u32, 0x8877_6655, 0xCCBB_AA99, 0x00FF_EEDD];
+    for (i, dw) in dwords.into_iter().enumerate() {
+        input.bytes_mut()[4 * i..4 * i + 4].copy_from_slice(&dw.to_ne_bytes());
+    }
+    for (leading_lum, dup) in [
+        (false, [0x4433_4411u32, 0x8877_8855]),
+        (true, [0x4433_2233, 0x8877_6677]),
+    ] {
+        let mut expected = Buf::canary(16);
+        for (i, dw) in [0x4433_2211u32, dup[0], 0x8877_6655, dup[1]]
+            .into_iter()
+            .enumerate()
+        {
+            expected.bytes_mut()[4 * i..4 * i + 4].copy_from_slice(&dw.to_ne_bytes());
+        }
+        let p = Packed {
+            in_linesize: 8,
+            out_linesize: 16,
+            start_y: 0,
+            end_y: 1,
+            leading_lum,
+            seed: 0,
+        };
+        for imp in IMPLS {
+            let mut output = Buf::canary(16);
+            p.call(imp, &input, &mut output);
+            assert_eq!(
+                output.bytes(),
+                expected.bytes(),
+                "{imp:?}, leading_lum {leading_lum}"
+            );
+        }
     }
 }
 

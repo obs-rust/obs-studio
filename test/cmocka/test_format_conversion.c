@@ -637,6 +637,36 @@ static void test_decompress_422_rows_spill(void **state)
 	}
 }
 
+/* One packed 4:2:2 row of 4 pixels (in_linesize 8) converts to one row of 4
+ * 32-bit pixels (out_linesize 16): it reads the row's 2 dwords, not the next
+ * row's, writes 4, and leaves the canary after the output (#3031). */
+static void test_decompress_422_one_row(void **state)
+{
+	UNUSED_PARAMETER(state);
+
+	for (int leading = 0; leading <= 1; leading++) {
+		uint8_t *input = canary_buf(16);
+		uint8_t *output = canary_buf(16);
+		uint8_t *expected = canary_buf(16);
+		put32(input, 0, 0x44332211);
+		put32(input, 4, 0x88776655);
+		put32(input, 8, 0xCCBBAA99);
+		put32(input, 12, 0x00FFEEDD);
+		put32(expected, 0, 0x44332211);
+		put32(expected, 4, leading ? 0x44332233 : 0x44334411);
+		put32(expected, 8, 0x88776655);
+		put32(expected, 12, leading ? 0x88776677 : 0x88778855);
+
+		decompress_422(input, 8, 0, 1, output, 16, leading);
+
+		assert_buf_equal(output, expected, 16);
+
+		bfree(input);
+		bfree(output);
+		bfree(expected);
+	}
+}
+
 /* start_y == end_y writes nothing. */
 static void test_empty_row_range(void **state)
 {
@@ -687,6 +717,7 @@ int main(void)
 		cmocka_unit_test(test_decompress_nv12_rows),
 		cmocka_unit_test(test_decompress_422_literals),
 		cmocka_unit_test(test_decompress_422_rows_spill),
+		cmocka_unit_test(test_decompress_422_one_row),
 		cmocka_unit_test(test_empty_row_range),
 	};
 

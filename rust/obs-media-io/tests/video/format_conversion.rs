@@ -571,6 +571,27 @@ fn test_decompress_422_rows_spill() {
 }
 
 #[test]
+fn test_decompress_422_one_row() {
+    for leading in [false, true] {
+        let mut input = canary_buf(16);
+        let mut output = canary_buf(16);
+        let mut expected = canary_buf(16);
+        put32(&mut input, 0, 0x4433_2211);
+        put32(&mut input, 4, 0x8877_6655);
+        put32(&mut input, 8, 0xCCBB_AA99);
+        put32(&mut input, 12, 0x00FF_EEDD);
+        put32(&mut expected, 0, 0x4433_2211);
+        put32(&mut expected, 4, dup_luma(0x4433_2211, leading));
+        put32(&mut expected, 8, 0x8877_6655);
+        put32(&mut expected, 12, dup_luma(0x8877_6655, leading));
+
+        decompress_422(&input[..], 8, 0, 1, &mut output[..], 16, leading);
+
+        assert_eq!(output, expected);
+    }
+}
+
+#[test]
 fn test_empty_row_range() {
     let uyvx = make_uyvx(W, H, UYVX_LINESIZE);
     let planes = [
