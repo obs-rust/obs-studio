@@ -3,8 +3,9 @@
 //! frame. `format/<case>/1080p` pairs the Rust with the C as it ships
 //! (SSE2 on x86); `format/<case>_c_scalar/1080p` pairs it with the same C
 //! built on the plain-C `__m128i` stand-ins, which is what non-x86 builds
-//! run for both. Before timing, each case checks that both sides write the
-//! same bytes.
+//! run for both. MSVC's `sse-intrin.h` always takes `<emmintrin.h>`, so on
+//! Windows both are native SSE2 (oracle/format_conversion_scalar.c). Before
+//! timing, each case checks that both sides write the same bytes.
 
 use std::hint::black_box;
 
