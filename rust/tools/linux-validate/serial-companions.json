@@ -1,0 +1,7 @@
+{
+  "shards": 2,
+  "companions": [
+    ["test_audio_clock_drift", "test_stinger_media_duration"],
+    ["test_inhibit_sleep_dbus", "test_pipewire_screencast_resume", "test_vlc_audio_pacing", "test_vlc_playlist_gap"]
+  ]
+}
