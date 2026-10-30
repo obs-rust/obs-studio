@@ -2477,6 +2477,13 @@ area.
   keep the last layout that loaded, and the log says the new one was
   skipped. *Linux*, 2026-10-29. Issue
   [#2975](https://github.com/obs-rust/obs-studio/issues/2975).
+- Unregistering a hotkey while one of its bindings is still pressed no
+  longer reads freed memory. The release now runs while the hotkey is
+  alive, so a held hotkey's release callback is delivered instead of a
+  hotkey that stays down after its source, output or plugin goes away.
+  *All*, 2026-10-30. Issue
+  [#3044](https://github.com/obs-rust/obs-studio/issues/3044), PR
+  [#3045](https://github.com/obs-rust/obs-studio/pull/3045).
 
 ### Security hardening
 
