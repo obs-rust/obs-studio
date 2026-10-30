@@ -54,11 +54,18 @@ def bench_command(categories: list[str]) -> list[str]:
 
 
 def cpu_name() -> str:
-    """The CPU model: /proc/cpuinfo on Linux, sysctl on macOS (where
-    platform.processor() is only "arm"), else platform.processor()."""
+    """The CPU model: /proc/cpuinfo on Linux, sysctl on macOS and the
+    registry on Windows (where platform.processor() is only "arm" or the
+    CPU family), else platform.processor()."""
     if platform.system() == "Darwin":
         result = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], text=True, capture_output=True, check=False)
         return result.stdout.strip() or platform.processor()
+    if platform.system() == "Windows":
+        import winreg
+
+        path = r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
+            return str(winreg.QueryValueEx(key, "ProcessorNameString")[0]).strip() or platform.processor()
     if Path("/proc/cpuinfo").exists():
         lines = Path("/proc/cpuinfo").read_text().splitlines()
         return next((line.split(":", 1)[1].strip() for line in lines if line.startswith("model name")), platform.processor())
