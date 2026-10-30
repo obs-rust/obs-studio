@@ -168,16 +168,6 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkey_binding_press() -> ! {
-        called("obs_hotkey_binding_press")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkey_binding_release() -> ! {
-        called("obs_hotkey_binding_release")
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn obs_hotkey_key_is_pressed() -> ! {
         called("obs_hotkey_key_is_pressed")
     }

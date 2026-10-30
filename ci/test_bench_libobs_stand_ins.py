@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 
 # The undefined symbols lld-link reported for the bench with /ERRORLIMIT:0 (#3025).
+# obs_hotkey_binding_press() and _release() are absent: #3075 exports the real
+# shims from obs-hotkey, so a stand-in here is a duplicate definition (#3112).
 SYMBOLS = (
     "obs_encoder_get_name",
     "obs_encoder_group_num_started",
@@ -33,8 +35,6 @@ SYMBOLS = (
     "obs_encoder_packet_create_instance",
     "obs_encoder_packet_release",
     "obs_hotkey_binding_fields",
-    "obs_hotkey_binding_press",
-    "obs_hotkey_binding_release",
     "obs_hotkey_key_is_pressed",
     "obs_hotkey_pair_call_func",
     "obs_hotkey_pair_fields",
