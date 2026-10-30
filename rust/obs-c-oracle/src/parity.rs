@@ -100,11 +100,15 @@ pub fn sweep_at(
 /// template, a 100000-repeat string). They keep the full size at `full`, and
 /// the same share [`scale`] keeps otherwise, never below one element so an
 /// input is never empty (#3109).
-pub fn scaled_size(_n: usize) -> usize {
-    todo!("scale the fixed input size by the level in OBS_PARITY_CASES")
+pub fn scaled_size(n: usize) -> usize {
+    scaled_size_at(n, std::env::var(ENV).ok().as_deref())
 }
 
 /// [`scaled_size`] at `level`.
-pub fn scaled_size_at(_n: usize, _level: Option<&str>) -> usize {
-    todo!("scale the fixed input size by `level`")
+pub fn scaled_size_at(n: usize, level: Option<&str>) -> usize {
+    let percent = percent_at(level) as usize;
+    if percent == 100 {
+        return n;
+    }
+    (n * percent / 100).max(usize::from(n > 0))
 }

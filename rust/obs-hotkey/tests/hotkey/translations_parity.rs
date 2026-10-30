@@ -314,7 +314,12 @@ fn large_templates_match_c() {
     let mut big = vec![b'a'; scaled_size(1 << 20)];
     big.extend_from_slice(b"%1");
     let many = b"%1".repeat(scaled_size(100_000));
-    let padded = [&b" ".repeat(scaled_size(1 << 16))[..], b"x", &b"\t".repeat(scaled_size(1 << 16))].concat();
+    let padded = [
+        &b" ".repeat(scaled_size(1 << 16))[..],
+        b"x",
+        &b"\t".repeat(scaled_size(1 << 16)),
+    ]
+    .concat();
     for t in [big, many, padded] {
         let mut v: Vec<Option<Vec<u8>>> = vec![None; MEMBER_COUNT];
         v[Member::NumpadNum.index()] = Some(t.clone());
