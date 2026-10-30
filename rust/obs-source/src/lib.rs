@@ -124,6 +124,7 @@ pub mod transition_render;
 pub mod transition_start;
 pub mod video_tick;
 pub mod volume_apply;
+pub mod volume_mul;
 
 mod platform;
 

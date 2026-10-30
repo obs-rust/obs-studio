@@ -52,3 +52,4 @@ mod video_tick;
 mod video_tick_parity;
 mod volume_apply;
 mod volume_apply_parity;
+mod volume_mul;
