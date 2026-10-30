@@ -36,8 +36,10 @@ import argparse
 import fnmatch
 import os
 import re
+import shutil
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -46,6 +48,11 @@ import host_platform
 from nextest_tool import ensure_nextest
 
 ROOT = Path(__file__).resolve().parent.parent
+MEMINFO = Path("/proc/meminfo")
+# A runner that dies mid-job (exit 143, "lost communication") leaves only the
+# log it already streamed, so a memory or disk exhaustion cannot be read from
+# it afterwards. Sample both into the live step log while a child runs (#2593).
+RESOURCE_SAMPLE_SECONDS = 30.0
 CLANG_FORMAT = "clang-format==22.1.3"
 GERSEMI = "gersemi==0.25.0"
 RUFF = "ruff==0.14.0"
@@ -105,6 +112,46 @@ def hints_for(text: str) -> list[str]:
     ]
 
 
+def resource_sample() -> str:
+    """One memory and disk line for the step log of a lane's child (#2593 A4).
+
+    `free -m` and `df -h` in one line, so a lost runner's last streamed log
+    shows what it was consuming. Kept short and single-line: the log is
+    interleaved with the child's output.
+    """
+    used: list[str] = ["resources:"]
+    try:
+        fields = {}
+        for line in MEMINFO.read_text(errors="replace").splitlines():
+            key, _, value = line.partition(":")
+            fields[key] = value.strip()
+        total_kb = int(fields["MemTotal"].split()[0])
+        available_kb = int(fields["MemAvailable"].split()[0]) if "MemAvailable" in fields else total_kb
+        used_kb = total_kb - available_kb
+        used.append(f"mem {used_kb // 1024} MB used of {total_kb // 1024} MB ({available_kb // 1024} MB available)")
+    except (OSError, KeyError, ValueError):
+        used.append("mem unavailable")
+    try:
+        usage = shutil.disk_usage(ROOT)
+        used.append(f"disk {usage.used // 2**30} GB used of {usage.total // 2**30} GB ({usage.free // 2**30} GB free)")
+    except OSError:
+        used.append("disk unavailable")
+    return " ".join(used)
+
+
+def sample_while(emit, interval: float | None = None) -> threading.Event:
+    """Print a resource sample every `interval` seconds until `done` is set."""
+
+    def loop(done: threading.Event) -> None:
+        while not done.wait(RESOURCE_SAMPLE_SECONDS if interval is None else interval):
+            emit(resource_sample() + "\n")
+
+    done = threading.Event()
+    if os.environ.get("OBS_GATE_RESOURCE_SAMPLES") != "0":
+        threading.Thread(target=loop, args=(done,), daemon=True).start()
+    return done
+
+
 def run(cmd: list[str], buffer: list[str] | None = None, **kw) -> None:
     """Run `cmd`, streaming its output, and print hints for known environment failures.
 
@@ -122,10 +169,17 @@ def run(cmd: list[str], buffer: list[str] | None = None, **kw) -> None:
     with subprocess.Popen(
         cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", **kw
     ) as proc:
-        for line in proc.stdout:
-            emit(line)
-            if "soldr" in line or "FFmpeg" in line or "ocker" in line:
-                seen.append(line)
+        # Samples go to the live log, not to a buffer a parallel step would
+        # only print when it finished (after the runner is already gone).
+        done = sample_while(emit) if buffer is None else threading.Event()
+        assert proc.stdout is not None
+        try:
+            for line in proc.stdout:
+                emit(line)
+                if "soldr" in line or "FFmpeg" in line or "ocker" in line:
+                    seen.append(line)
+        finally:
+            done.set()
     for hint in hints_for("".join(seen)):
         emit(hint + "\n")
     if proc.returncode:
