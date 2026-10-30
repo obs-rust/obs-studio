@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -93,6 +94,26 @@ class SourceHashTest(unittest.TestCase):
             finally:
                 record.ROOT = saved
         self.assertNotEqual(before, after)
+
+
+class CpuNameTest(unittest.TestCase):
+    def test_macos_names_the_chip(self):
+        # platform.processor() is only "arm" on Apple Silicon; the baseline
+        # names the CPU (#3003), so macOS asks sysctl.
+        calls = []
+
+        def run(command, **kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout="Apple M1 Max\n", stderr="")
+
+        saved = (record.platform.system, record.subprocess.run)
+        record.platform.system, record.subprocess.run = (lambda: "Darwin"), run
+        try:
+            name = record.cpu_name()
+        finally:
+            record.platform.system, record.subprocess.run = saved
+        self.assertEqual(name, "Apple M1 Max")
+        self.assertEqual(calls, [["sysctl", "-n", "machdep.cpu.brand_string"]])
 
 
 class CommandTest(unittest.TestCase):
