@@ -53,8 +53,10 @@
 /// dispatches the hotkey's press: `true` only when the count was 0, which the
 /// caller must do after both writes.
 pub fn press(pressed: &mut bool, count: &mut i32) -> bool {
-    let _ = (pressed, count);
-    todo!()
+    *pressed = true;
+    let before = *count;
+    *count = before.wrapping_add(1);
+    before == 0
 }
 
 /// One release of one binding: `release_pressed_binding()`, without the call.
@@ -64,6 +66,8 @@ pub fn press(pressed: &mut bool, count: &mut i32) -> bool {
 /// dispatches the hotkey's release: `true` only when the count reaches 0,
 /// after the decrement, which the caller must do after both writes.
 pub fn release(pressed: &mut bool, count: &mut i32) -> bool {
-    let _ = (pressed, count);
-    todo!()
+    *pressed = false;
+    let after = (*count).wrapping_sub(1);
+    *count = after;
+    after == 0
 }
