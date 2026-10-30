@@ -17,12 +17,14 @@ const P3: [f32; 4] = [-0.155_915, 0.935_489, 0.233_872, -0.103_943];
 /// and of each whole group of four in `samples[..frames]`.
 pub fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut peak = prev.map(f32::abs);
-    let mut i = 0;
-    while i + 3 < frames {
+    // Whole groups only, as the C's `i + 3 < nr_samples`. One slice up front
+    // lets the compiler drop the per-sample bounds checks and load a group
+    // at once (#3005).
+    let (groups, _) = samples[..frames / 4 * 4].as_chunks::<4>();
+    for group in groups {
         for lane in 0..4 {
-            peak[lane] = max_ps(peak[lane], samples[i + lane].abs());
+            peak[lane] = max_ps(peak[lane], group[lane].abs());
         }
-        i += 4;
     }
     hmax(peak)
 }
@@ -32,9 +34,9 @@ pub fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
 pub fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut work = prev;
     let mut peak = prev.map(f32::abs);
-    let mut i = 0;
-    while i + 3 < frames {
-        let mut new_work = [samples[i], samples[i + 1], samples[i + 2], samples[i + 3]];
+    let (groups, _) = samples[..frames / 4 * 4].as_chunks::<4>();
+    for group in groups {
+        let mut new_work = *group;
         for lane in 0..4 {
             peak[lane] = max_ps(peak[lane], new_work[lane].abs());
         }
@@ -45,7 +47,6 @@ pub fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
                 peak[lane] = max_ps(peak[lane], intrp[lane].abs());
             }
         }
-        i += 4;
     }
     hmax(peak)
 }
