@@ -49,8 +49,8 @@ use obs_c_oracle::hotkey_press::{
     oracle_obs_hotkeys_query_modifiers,
 };
 use obs_hotkey::ffi::binding_press::{
-    obs_hotkey_binding as PortBinding,
-    obs_hotkey_binding_count_fields as BindingPressFields, obs_hotkey_t,
+    obs_hotkey_binding as PortBinding, obs_hotkey_binding_count_fields as BindingPressFields,
+    obs_hotkey_t,
 };
 use obs_hotkey::ffi::nix_hotkey_state::obs_key_combination;
 use obs_hotkey::ffi::press::{
@@ -214,9 +214,7 @@ pub extern "C" fn obs_hotkey_key_is_pressed(key: c_int) -> bool {
 ///
 /// `binding` points at a live [`FakeBinding`].
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_press(
-    binding: *mut obs_hotkey_binding,
-) {
+pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_press(binding: *mut obs_hotkey_binding) {
     let b = binding.cast::<FakeBinding>();
     // SAFETY: a live FakeBinding, per the caller.
     let (index, hotkey, latch) = unsafe {
@@ -240,9 +238,7 @@ pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_press(
 ///
 /// `binding` points at a live [`FakeBinding`].
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_release(
-    binding: *mut obs_hotkey_binding,
-) {
+pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_release(binding: *mut obs_hotkey_binding) {
     let b = binding.cast::<FakeBinding>();
     // SAFETY: a live FakeBinding, per the caller.
     let (index, hotkey, latch) = unsafe {
@@ -270,14 +266,8 @@ pub unsafe extern "C" fn oracle_seam_obs_hotkey_binding_release(
 unsafe fn count_fields(binding: *mut PortBinding) -> BindingPressFields {
     let b = binding.cast::<FakeBinding>();
     // SAFETY: a live FakeBinding, per the caller.
-    let (index, hotkey, latch, pressed) = unsafe {
-        (
-            (*b).index,
-            (*b).hotkey,
-            (*b).modifiers_match,
-            (*b).pressed,
-        )
-    };
+    let (index, hotkey, latch, pressed) =
+        unsafe { ((*b).index, (*b).hotkey, (*b).modifiers_match, (*b).pressed) };
     with_seams(|s| {
         s.log.push(if pressed {
             Call::Release(index, latch)

@@ -30,11 +30,11 @@ use std::cell::RefCell;
 use std::ffi::c_void;
 use std::mem::{align_of, offset_of, size_of};
 
+use crate::hotkey::binding_press_hooks::{self, Hooks};
 use obs_c_oracle::hotkey_binding_press::{
     LAYOUT_NAMES, oracle_hotkey_binding_press_layout, oracle_obs_hotkey_binding_press,
     oracle_obs_hotkey_binding_release,
 };
-use crate::hotkey::binding_press_hooks::{self, Hooks};
 use obs_hotkey::ffi::binding_press::{
     obs_hotkey_binding, obs_hotkey_binding_count_fields as Fields,
     obs_hotkey_binding_press as rust_press, obs_hotkey_binding_release as rust_release,
@@ -379,8 +379,11 @@ fn two_bindings_share_the_count() {
         for b in [false, true] {
             for c in [false, true] {
                 for d in [false, true] {
-                    check(&start, &[event(0, a), event(1, b), event(0, c), event(1, d)])
-                        .unwrap();
+                    check(
+                        &start,
+                        &[event(0, a), event(1, b), event(0, c), event(1, d)],
+                    )
+                    .unwrap();
                 }
             }
         }
