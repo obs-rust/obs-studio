@@ -98,6 +98,18 @@ exit 0
 """
 
 
+# zccache gives up when its daemon dies and leaves this in build.log; CI hit it
+# on 2026-10-30 (run 41097086538, asan) and failed the pass for it.
+ZCCACHE_REFUSAL = (
+    "FAILED: [code=125] test/cmocka/CMakeFiles/test_core.dir/test_core.c.o \n"
+    "zccache[err][D]: daemon unavailable at /b/zccache/daemon.sock (cannot start daemon at "
+    "/b/zccache/daemon.sock: daemon recovery already failed on this cache root and is in its "
+    "cool-down: daemon process 8981 exists but not accepting connections after retrying); "
+    "refusing to run /usr/bin/cc uncached. Run 'zccache status'; set ZCCACHE_DISABLE=1 to "
+    "compile without the daemon.\n"
+)
+
+
 class SanitizeHarnessTest(unittest.TestCase):
     def setUp(self):
         self.module = load_module()
@@ -264,6 +276,74 @@ class SanitizeHarnessTest(unittest.TestCase):
     def test_the_shell_scripts_are_gone(self):
         for script in (SHELL_SCRIPT, DEPS_SHELL_SCRIPT):
             self.assertFalse(script.exists(), f"{script.name} still exists")
+
+    def test_zccache_daemon_refusal_is_recognised(self):
+        log = self.out / "build.log"
+        log.write_text(ZCCACHE_REFUSAL, encoding="utf-8")
+        self.assertTrue(self.module.zccache_refused_uncached(log))
+        log.write_text(
+            "FAILED: [code=1] libobs/CMakeFiles/libobs-objects.dir/foo.c.o\n"
+            "foo.c:1:1: error: conversion from 'long long int' to 'int' may change value [-Werror=conversion]\n",
+            encoding="utf-8",
+        )
+        self.assertFalse(self.module.zccache_refused_uncached(log))
+
+    def layout(self):
+        return self.module.Layout(
+            root=self.out,
+            out=self.out / "asan",
+            build=self.out / "build-asan",
+            inst=self.out / "build-asan" / "rundir" / "RelWithDebInfo",
+            bin_dir=self.out / "bin",
+        )
+
+    def drive_build(self, failure: str, recover: bool):
+        """build_obs with a stubbed run_logged: the build fails once with
+        `failure`, then succeeds only when ZCCACHE_DISABLE=1 and `recover`."""
+        layout = self.layout()
+        layout.out.mkdir(parents=True, exist_ok=True)
+        calls = []
+
+        def fake_run_logged(command, log, cwd=None):
+            calls.append((command, os.environ.get("ZCCACHE_DISABLE")))
+            if command[:2] == ["cmake", "--build"]:
+                if os.environ.get("ZCCACHE_DISABLE") == "1" and recover:
+                    (layout.inst / "bin").mkdir(parents=True, exist_ok=True)
+                    obs = layout.inst / "bin" / "obs"
+                    obs.write_text("#!/bin/sh\n", encoding="utf-8")
+                    obs.chmod(0o755)
+                    (layout.inst / "lib").mkdir(parents=True, exist_ok=True)
+                    (layout.inst / "lib" / "libobs.so.1").write_text("", encoding="utf-8")
+                    return True
+                log.write_text(failure, encoding="utf-8")
+                return False
+            return True
+
+        with patch.object(self.module, "run_logged", fake_run_logged), patch.object(
+            self.module, "git_describe", lambda: "30.0.0"
+        ):
+            libdir = self.module.build_obs("asan", "", "RelWithDebInfo", layout)
+        return libdir, calls
+
+    def test_asan_rebuilds_uncached_when_the_zccache_daemon_is_dead(self):
+        self.addCleanup(os.environ.pop, "ZCCACHE_DISABLE", None)
+        builds_before = len(os.environ)
+        libdir, calls = self.drive_build(ZCCACHE_REFUSAL, recover=True)
+        self.assertIsNotNone(libdir, "the dead-daemon build must be retried uncached")
+        builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
+        self.assertEqual(builds, [None, "1"], "one rebuild, with ZCCACHE_DISABLE=1")
+        self.assertEqual(len(os.environ), builds_before + 1, "nothing but ZCCACHE_DISABLE is exported")
+
+    def test_a_real_compile_error_is_not_retried(self):
+        self.addCleanup(os.environ.pop, "ZCCACHE_DISABLE", None)
+        libdir, calls = self.drive_build(
+            "FAILED: [code=1] libobs/CMakeFiles/libobs-objects.dir/foo.c.o\n"
+            "foo.c:1:1: error: 'x' undeclared\n",
+            recover=True,
+        )
+        self.assertIsNone(libdir)
+        builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
+        self.assertEqual(builds, [None], "a source error must not be retried")
 
 
 if __name__ == "__main__":
