@@ -15,6 +15,12 @@ the later one silently widens it.
 The expected group here moves with the ratchet: when the remaining frontend files
 are converted, add the group to `APP_TARGET_GROUPS` in the same PR that adds the
 flag, and the next group is the one still pinned globally.
+
+Apple TUs keep a pin instead of the group. It is stated in an `if(OS_MACOS)`
+branch because the Xcode generator, which the macOS lane requires, does not apply
+the Darwin half of a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
+`target_compile_options`: #2979 wrapped the group that way and the lane still
+stopped in Qt 6.11's own headers (#3096).
 """
 
 from __future__ import annotations
@@ -61,8 +67,15 @@ def darwin_branch(text: str) -> str | None:
     `target_compile_options` (#3096), so the pin has to be a branch the
     generator cannot drop.
     """
-    match = re.search(r"^if\(OS_MACOS\)$(.*?)^endif\(\)$", text, re.M | re.S)
+    match = re.search(
+        r"^if\(OS_MACOS\)$(.*?)^(?:else\(\)|endif\(\))$", without_comments(text), re.M | re.S
+    )
     return match.group(1) if match else None
+
+
+def without_comments(text: str) -> str:
+    """The CMake text with comment lines dropped, so a comment cannot satisfy a check."""
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
 
 
 class FrontendConversionOptinsTest(unittest.TestCase):
@@ -71,23 +84,33 @@ class FrontendConversionOptinsTest(unittest.TestCase):
 
     def test_one_opt_in_block_names_the_ratcheted_group(self) -> None:
         calls = target_compile_options(self.text, "obs-studio")
+        ratcheted = [
+            flags for flags in calls if any(not flag.startswith("-Wno-") for flag in flags)
+        ]
         self.assertEqual(
-            len(calls),
+            len(ratcheted),
             1,
             "one opt-in block per target: a second block silently widens the "
             "groups the target opts into (#2909, #2938)",
         )
         self.assertEqual(
-            sorted(set(calls[0])),
+            sorted(set(ratcheted[0])),
             sorted(APP_TARGET_GROUPS),
             "the app target opts into one conversion group; a second block widens it "
             "while the remaining files are still unconverted (#2938)",
+        )
+        pins = [flags for flags in calls if all(flag.startswith("-Wno-") for flag in flags)]
+        self.assertEqual(len(pins), 1, "the Apple pin is one block (#3096)")
+        self.assertIn(
+            pins[0][0],
+            darwin_branch(self.text) or "",
+            "the pin names its group on the Darwin branch (#3096)",
         )
 
     def test_darwin_pins_the_group_in_a_branch_the_xcode_generator_honours(self) -> None:
         self.assertNotIn(
             "$<NOT:$<PLATFORM_ID:Darwin>>",
-            self.text,
+            without_comments(self.text),
             "the macOS app lane was still handed the ratcheted group and stopped "
             "inside Qt 6.11's own headers (#3096): the Xcode generator does not "
             "apply the Darwin half of that genex, so state the pin in an if() branch",

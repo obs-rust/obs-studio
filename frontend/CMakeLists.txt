@@ -36,17 +36,21 @@ obs_msvc_exempt_c4201(obs-studio)
 # opts into that group alone. -Wconversion and -Wfloat-conversion keep the global
 # pins until every frontend file is converted: #2909 named them here with 63 files
 # still unconverted and stopped every app lane (#2938). Add a group to this one
-# block, in the PR that converts its last file — never a second block.
-# Apple TUs keep the global `-Wno-sign-conversion` pin (#2950): with the group on,
-# the macOS app lane stops inside Qt 6.11's own headers (qversiontagging.h,
-# qkeycombination.h, qnamespace.h), which no obs source states. Applies to the
-# target as a whole, so `sparkle`, `macos-arc-mm` and `platform-osx` lose the
-# check on Apple until the Qt prefixes are excluded from the ratchet too.
+# opt-in, in the PR that converts its last file — never a second opt-in.
+# Apple TUs keep a `-Wno-sign-conversion` pin: with the group on, the macOS app
+# lane stops inside Qt 6.11's own headers (qversiontagging.h, qkeycombination.h,
+# qnamespace.h), which no obs source states. The macOS lane builds with the Xcode
+# generator, and a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
+# `target_compile_options` does not reach its TUs: #2979 wrapped the group that
+# way and the lane still stopped in those headers (#3096). So the two platforms
+# are stated as branches, which every generator applies, and the pin is a real
+# compile option rather than a dropped expression.
 # `ci/test_frontend_conversion_optins.py` holds the target to that shape.
-target_compile_options(
-  obs-studio
-  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:$<$<NOT:$<PLATFORM_ID:Darwin>>:-Wsign-conversion>>"
-)
+if(OS_MACOS)
+  target_compile_options(obs-studio PRIVATE -Wno-sign-conversion)
+else()
+  target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wsign-conversion>")
+endif()
 
 include(cmake/sources.cmake)
 
