@@ -16,7 +16,9 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -114,6 +116,43 @@ class CpuNameTest(unittest.TestCase):
             record.platform.system, record.subprocess.run = saved
         self.assertEqual(name, "Apple M1 Max")
         self.assertEqual(calls, [["sysctl", "-n", "machdep.cpu.brand_string"]])
+
+
+class WindowsCpuNameTest(unittest.TestCase):
+    def test_windows_names_the_chip(self):
+        # platform.processor() is "AMD64 Family 25 Model 33 ..." on Windows;
+        # the baseline names the CPU (#3025), so Windows asks the registry.
+        opened = []
+
+        class Key:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        winreg = types.ModuleType("winreg")
+        winreg.HKEY_LOCAL_MACHINE = "HKLM"
+
+        def open_key(root, path):
+            opened.append((root, path))
+            return Key()
+
+        winreg.OpenKey = open_key
+        winreg.QueryValueEx = lambda key, name: ("AMD Ryzen 9 5950X 16-Core Processor  ", 1)
+        saved = (record.platform.system, sys.modules.get("winreg"))
+        record.platform.system = lambda: "Windows"
+        sys.modules["winreg"] = winreg
+        try:
+            name = record.cpu_name()
+        finally:
+            record.platform.system = saved[0]
+            if saved[1] is None:
+                del sys.modules["winreg"]
+            else:
+                sys.modules["winreg"] = saved[1]
+        self.assertEqual(name, "AMD Ryzen 9 5950X 16-Core Processor")
+        self.assertEqual(opened, [("HKLM", r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")])
 
 
 class CommandTest(unittest.TestCase):
