@@ -37,8 +37,16 @@ obs_msvc_exempt_c4201(obs-studio)
 # pins until every frontend file is converted: #2909 named them here with 63 files
 # still unconverted and stopped every app lane (#2938). Add a group to this one
 # block, in the PR that converts its last file — never a second block.
+# Apple TUs keep the global `-Wno-sign-conversion` pin (#2950): with the group on,
+# the macOS app lane stops inside Qt 6.11's own headers (qversiontagging.h,
+# qkeycombination.h, qnamespace.h), which no obs source states. Applies to the
+# target as a whole, so `sparkle`, `macos-arc-mm` and `platform-osx` lose the
+# check on Apple until the Qt prefixes are excluded from the ratchet too.
 # `ci/test_frontend_conversion_optins.py` holds the target to that shape.
-target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wsign-conversion>")
+target_compile_options(
+  obs-studio
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:$<$<NOT:$<PLATFORM_ID:Darwin>>:-Wsign-conversion>>"
+)
 
 include(cmake/sources.cmake)
 
