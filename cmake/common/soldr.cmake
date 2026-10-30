@@ -23,7 +23,7 @@ include_guard(GLOBAL)
 
 # Keep in step with `version:` of zackees/setup-soldr in .github/workflows/
 # (ci/test_soldr_pin.py checks it).
-set(OBS_SOLDR_VERSION 0.9.43)
+set(OBS_SOLDR_VERSION 0.9.45)
 # From soldr-v${OBS_SOLDR_VERSION}-SHA256SUMS.txt on the release.
 set(_obs_soldr_sha256_x86_64-unknown-linux-gnu 81863305310f2931cef1e14bde0620772a7bc98bda5eba25630f985b2a7ac4d2)
 set(_obs_soldr_sha256_aarch64-unknown-linux-gnu 70eeea05e1b047bd7264e841ef44b7eb68ba4a672154d50554dc88162c47eac0)
