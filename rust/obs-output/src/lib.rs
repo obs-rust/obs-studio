@@ -19,12 +19,13 @@
 //! rules,
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
 //! decisions, `libobs/obs-output-begin.c.h`, the output begin-capture plan,
-//! and `libobs/obs-output-stop.c.h`, the output stop and
-//! end-capture decisions.
+//! `libobs/obs-output-stop.c.h`, the output stop and
+//! end-capture decisions, and `libobs/obs-output-reconnect.c.h`, the output
+//! reconnect policy.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`] and [`output_stop`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`] and [`output_reconnect`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -83,7 +84,10 @@
 //! callback, whether it deactivates the service and cleans up the delay,
 //! when restart references keep the delay, when an output that never
 //! began shuts its encoders down, and when the end runs inline because
-//! its thread could not be created.
+//! its thread could not be created;
+//! [`output_reconnect`] decides each reconnect attempt's wait, when the
+//! output gives up, whether reconnecting is on and whether a stop
+//! reconnects.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
@@ -101,6 +105,7 @@ pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
 pub mod output_begin;
+pub mod output_reconnect;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
