@@ -39,8 +39,10 @@ class CookProfilesTest(unittest.TestCase):
             "rust-tests-windows": "--profile dev -- --tests",
             # Corrosion-only build, its own target dir: no cook (#3027).
             "rust-linux-tier2-build": None,
-            "rust-tier2-macos": "--release",
-            "rust-tier2-windows": "--release",
+            # validate.sh/.ps1 build with --target <triple> --target-dir
+            # build/cargo-native-* and Corrosion: no cook (#3034).
+            "rust-tier2-macos": None,
+            "rust-tier2-windows": None,
         }
         workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
         for name, flags in expected.items():
