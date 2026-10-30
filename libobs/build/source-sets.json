@@ -46,6 +46,7 @@
     "obs-nal.h",
     "obs-output-begin.h",
     "obs-output-raw-audio.h",
+    "obs-output-reconnect.h",
     "obs-output-slots.h",
     "obs-output-start.h",
     "obs-output-stop-stats.h",

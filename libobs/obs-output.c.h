@@ -19,7 +19,6 @@
 
 #define get_weak(output) ((obs_weak_output_t *)output->context.control)
 
-#define RECONNECT_RETRY_MAX_MSEC (15 * 60 * 1000)
 #define RECONNECT_RETRY_BASE_EXP 1.5f
 
 static inline bool active(const struct obs_output *output)
@@ -2481,6 +2480,10 @@ void obs_output_end_data_capture(obs_output_t *output)
 	obs_output_end_data_capture_internal(output, true);
 }
 
+/* The codes obs-output-reconnect.h copies. */
+_Static_assert(OBS_OUTPUT_RECONNECT_SUCCESS == OBS_OUTPUT_SUCCESS, "OBS_OUTPUT_SUCCESS");
+_Static_assert(OBS_OUTPUT_RECONNECT_DISCONNECTED == OBS_OUTPUT_DISCONNECTED, "OBS_OUTPUT_DISCONNECTED");
+
 static void *reconnect_thread(void *param)
 {
 	struct obs_output *output = param;
@@ -2509,11 +2512,11 @@ static void output_reconnect(struct obs_output *output)
 	}
 
 	if (!reconnecting(output)) {
-		output->reconnect_retry_cur_msec = (uint32_t)(output->reconnect_retry_sec * 1000);
+		output->reconnect_retry_cur_msec = obs_output_reconnect_first_delay(output->reconnect_retry_sec);
 		output->reconnect_retries = 0;
 	}
 
-	if (output->reconnect_retries >= output->reconnect_retry_max) {
+	if (obs_output_reconnect_give_up(output->reconnect_retries, output->reconnect_retry_max)) {
 		output->stop_code = OBS_OUTPUT_DISCONNECTED;
 		os_atomic_set_bool(&output->reconnecting, false);
 		if (delay_active(output))
@@ -2527,12 +2530,9 @@ static void output_reconnect(struct obs_output *output)
 		os_event_reset(output->reconnect_stop_event);
 	}
 
-	if (output->reconnect_retries) {
+	if (obs_output_reconnect_grows(output->reconnect_retries)) {
 		output->reconnect_retry_cur_msec =
-			(uint32_t)((float)output->reconnect_retry_cur_msec * output->reconnect_retry_exp);
-		if (output->reconnect_retry_cur_msec > RECONNECT_RETRY_MAX_MSEC) {
-			output->reconnect_retry_cur_msec = RECONNECT_RETRY_MAX_MSEC;
-		}
+			obs_output_reconnect_next_delay(output->reconnect_retry_cur_msec, output->reconnect_retry_exp);
 	}
 
 	output->reconnect_retries++;
@@ -2560,13 +2560,12 @@ static inline bool check_reconnect_cb(obs_output_t *output, int code)
 
 static inline bool can_reconnect(obs_output_t *output, int code)
 {
-	bool reconnect_active = output->reconnect_retry_max != 0;
+	bool reconnect_active = obs_output_reconnect_active(output->reconnect_retry_max);
 
 	if (reconnect_active && !check_reconnect_cb(output, code))
 		return false;
 
-	return (reconnecting(output) && code != OBS_OUTPUT_SUCCESS) ||
-	       (reconnect_active && code == OBS_OUTPUT_DISCONNECTED);
+	return obs_output_reconnect_can(reconnecting(output), reconnect_active, code);
 }
 
 void obs_output_signal_stop(obs_output_t *output, int code)
@@ -2899,5 +2898,4 @@ void obs_output_set_reconnect_callback(obs_output_t *output,
 #undef get_weak
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
-#undef RECONNECT_RETRY_MAX_MSEC
 #undef RECONNECT_RETRY_BASE_EXP

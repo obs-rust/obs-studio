@@ -91,6 +91,9 @@
 /* obs-output-raw-audio.c */
 #include "obs-output-raw-audio.h"
 
+/* obs-output-reconnect.c */
+#include "obs-output-reconnect.h"
+
 /* obs-output-slots.c */
 #include "obs-output-slots.h"
 
