@@ -2427,6 +2427,7 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::caption",
         "OBS::native-test-cmocka"
       ]
     },

@@ -19,7 +19,10 @@
  *
  * Only counts the settings dialog offers are used (a negative one is an
  * intentional difference of the port, in its parity test). Every signal
- * here runs on the caller's thread, so nothing waits on time.
+ * here runs on the caller's thread. The one wait is for the reconnect
+ * thread to mark itself active (reconnect_thread_active, read through
+ * obs-internal.h): a stop joins the thread only once it has, so stopping
+ * earlier would leave it running against the output.
  *
  * obs_startup() needs a display on Linux, so there the cases skip without
  * one (run under xvfb-run). No video, audio, graphics or network is
@@ -34,9 +37,12 @@
 #include <string.h>
 
 #include <obs.h>
+#include <obs-internal.h>
+#include <util/platform.h>
 
 #define OUTPUT_ID "test_output_reconnect_route_output"
 #define LONG_DELAY_SEC 60
+#define WAIT_MS 10000
 
 /* What the output and its signals saw. Every one of them runs on the test's
  * own thread (obs_output_signal_stop() and obs_output_stop() call them
@@ -203,6 +209,18 @@ static void start(int retry_count, bool with_cb, bool answer)
 	assert_int_equal(rec.start_calls, 1);
 }
 
+/* Waits until the reconnect thread runs, so that a stop joins it. */
+static void wait_reconnect_thread(void)
+{
+	for (int ms = 0; ms < WAIT_MS; ms++) {
+		if (output->reconnect_thread_active)
+			return;
+		os_sleep_ms(1);
+	}
+	fprintf(stderr, "the reconnect thread did not start in %d ms\n", WAIT_MS);
+	fail();
+}
+
 static void assert_stopped_with(int code)
 {
 	assert_false(obs_output_reconnecting(output));
@@ -284,9 +302,12 @@ static void a_stop_while_reconnecting_ends_it(void **state)
 	assert_int_equal(rec.reconnect_timeout_sec, LONG_DELAY_SEC);
 	assert_int_equal(rec.stop_signals, 0);
 
-	/* The reconnect thread still waits its 60 s: the stop wakes and joins
-	 * it, then the output's stop ends the capture as a clean stop. */
+	/* The reconnect thread waits its 60 s: once it runs, the stop wakes
+	 * and joins it, then the output's stop ends the capture as a clean
+	 * stop. */
+	wait_reconnect_thread();
 	obs_output_stop(output);
+	assert_false(output->reconnect_thread_active);
 
 	assert_false(obs_output_reconnecting(output));
 	assert_false(obs_output_active(output));
