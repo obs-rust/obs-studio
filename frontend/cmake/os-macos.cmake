@@ -20,6 +20,13 @@ macro(obs_frontend_platform_qt)
   # Pass those directories to clang by hand. A header is a system header when any
   # -isystem path finds it, even when -I lists the directory too, so CMake's own
   # -I is harmless (checked with clang on 2026-10-29).
+  #
+  # `target_compile_options` is not enough under the Xcode generator: the lane
+  # still reported the same six Qt diagnostics with it in place (#2978, run
+  # 40992591865), because Xcode has no `-isystem` and CMake folds include-shaped
+  # compile options into `HEADER_SEARCH_PATHS`, where the system-ness is lost. So
+  # the same flags also go through the raw build setting, which CMake writes
+  # verbatim.
   set(_obs_qt_system_includes "")
   foreach(
     _obs_qt_target
@@ -39,9 +46,18 @@ macro(obs_frontend_platform_qt)
 
   if(TARGET obs-studio AND _obs_qt_system_includes)
     list(REMOVE_DUPLICATES _obs_qt_system_includes)
+    set(_obs_qt_isystem_flags "")
     foreach(_obs_qt_dir IN LISTS _obs_qt_system_includes)
       target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-isystem${_obs_qt_dir}>")
+      string(APPEND _obs_qt_isystem_flags " -isystem${_obs_qt_dir}")
     endforeach()
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+      set_property(
+        TARGET obs-studio
+        APPEND_STRING
+        PROPERTY XCODE_ATTRIBUTE_OTHER_CFLAGS "$(inherited)${_obs_qt_isystem_flags}"
+      )
+    endif()
   endif()
 endmacro()
 
