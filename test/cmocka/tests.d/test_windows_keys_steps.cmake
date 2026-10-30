@@ -19,9 +19,13 @@
 # call none of them). Those members also need obs-util's system libraries,
 # which the executable links as libobs does: jansson everywhere, GIO and libuuid
 # only where libobs links them itself (the OS_LINUX and FreeBSD builds), so
-# both are optional targets here. The remaining libobs symbols the shims pull
-# in (blog, bcrash, obs_get_video_info) are public and exported on every host,
-# and the shims carry no host code, so one set of stubs serves all three.
+# both are optional targets here. The staticlib's host halves call the platform
+# directly too, so the executable carries libobs's own per-host link set: winmm
+# and Rpcrt4 on Windows (timeBeginPeriod()/timeEndPeriod(), UuidCreate()), the
+# frameworks of libobs/cmake/os-macos.cmake on macOS. The remaining libobs
+# symbols the shims pull in (blog, bcrash, obs_get_video_info) are public and
+# exported on every host, and the shims carry no host code, so one set of stubs
+# serves all three.
 if(TARGET libobs_rust-static)
   add_executable(test_windows_keys_steps_rust test_windows_keys_steps.c windows-keys-rust-stubs.c)
   target_include_directories(
@@ -47,6 +51,22 @@ if(TARGET libobs_rust-static)
       $<$<TARGET_EXISTS:gio::gio>:glib-2.0>
   )
   obs_test_sanitize(test_windows_keys_steps_rust "address,undefined")
+  # The staticlib's obs-util host halves call the platform directly: on Windows
+  # UuidCreate(), timeBeginPeriod() and timeEndPeriod(); on macOS the
+  # Objective-C runtime, CoreFoundation and IOKit. libobs links these per host
+  # in libobs/cmake/os-<os>.cmake, so the executable does the same.
+  if(WIN32)
+    target_link_libraries(test_windows_keys_steps_rust PRIVATE winmm Rpcrt4)
+  elseif(OS_MACOS)
+    target_link_libraries(
+      test_windows_keys_steps_rust
+      PRIVATE
+        "$<LINK_LIBRARY:FRAMEWORK,AppKit.framework>"
+        "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>"
+        "$<LINK_LIBRARY:FRAMEWORK,Foundation.framework>"
+        "$<LINK_LIBRARY:FRAMEWORK,IOKit.framework>"
+    )
+  endif()
   add_dependencies(cmocka-tests test_windows_keys_steps_rust)
   add_test(test_windows_keys_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_windows_keys_steps_rust)
 endif()
