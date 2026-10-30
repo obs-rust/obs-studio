@@ -53,6 +53,18 @@ def target_compile_option_bodies(text: str, target: str) -> list[str]:
     return bodies
 
 
+def darwin_branch(text: str) -> str | None:
+    """The body of the `if(OS_MACOS)` branch that states the Apple compile options.
+
+    The macOS lane builds with the Xcode generator, which does not apply the
+    Darwin half of a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
+    `target_compile_options` (#3096), so the pin has to be a branch the
+    generator cannot drop.
+    """
+    match = re.search(r"^if\(OS_MACOS\)$(.*?)^endif\(\)$", text, re.M | re.S)
+    return match.group(1) if match else None
+
+
 class FrontendConversionOptinsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.text = FRONTEND.read_text(encoding="utf-8")
@@ -72,23 +84,21 @@ class FrontendConversionOptinsTest(unittest.TestCase):
             "while the remaining files are still unconverted (#2938)",
         )
 
-    def test_darwin_keeps_the_group_globally_pinned(self) -> None:
-        bodies = target_compile_option_bodies(self.text, "obs-studio")
-        self.assertEqual(len(bodies), 1, "one opt-in block per target (#2909, #2938)")
-        body = bodies[0]
-        guarded = set()
-        for flags in re.findall(
-            r"\$<\$<NOT:\$<PLATFORM_ID:Darwin>>:([^>]*)>", body
-        ):
-            guarded.update(flags.split())
-        named = set(re.findall(r"-W(?:no-)?[a-z-]*conversion", body))
+    def test_darwin_pins_the_group_in_a_branch_the_xcode_generator_honours(self) -> None:
+        self.assertNotIn(
+            "$<NOT:$<PLATFORM_ID:Darwin>>",
+            self.text,
+            "the macOS app lane was still handed the ratcheted group and stopped "
+            "inside Qt 6.11's own headers (#3096): the Xcode generator does not "
+            "apply the Darwin half of that genex, so state the pin in an if() branch",
+        )
+        branch = darwin_branch(self.text)
+        self.assertIsNotNone(branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)")
         self.assertEqual(
-            guarded,
-            named,
-            "every conversion group the app target names must exclude Darwin: the "
-            "macOS app lane stops inside Qt 6.11's own headers (#2950), so Apple TUs "
-            "keep the global `-Wno-sign-conversion` pin until the Qt include path is "
-            "excluded from the ratchet",
+            set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
+            {"-Wno-sign-conversion"},
+            "Darwin keeps the global pin as a target option, so Apple TUs never see "
+            "the group the app target ratchets (#2950, #3096)",
         )
 
     def test_global_pins_are_still_in_place(self) -> None:
