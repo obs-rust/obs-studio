@@ -709,7 +709,10 @@ fn any_format() -> impl Strategy<Value = Format> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(4000))]
+    // Scaled by CI level (#2593): 4000 full-size cases of edge_downmix_model
+    // ran past nextest's 30 s limit in the unoptimized PR, queue and master
+    // runs (master b083524b1).
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4000)))]
 
     /// The discontinuity against the C's rule written another way: within
     /// `THRESHOLD` of the end on either side continues.
