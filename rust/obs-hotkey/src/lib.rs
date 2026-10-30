@@ -26,6 +26,7 @@ pub mod bindings;
 pub mod cocoa_keys;
 pub mod name_map;
 pub mod nix_hotkey_state;
+pub mod nix_x11_input;
 pub mod nix_x11_keys;
 pub mod pair;
 pub mod portal_shortcut_ids;

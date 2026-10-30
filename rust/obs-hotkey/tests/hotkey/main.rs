@@ -7,6 +7,7 @@ mod cocoa_keys_parity;
 mod hotkey_name_map;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
+mod nix_x11_input;
 mod nix_x11_keys;
 mod nix_x11_keys_parity;
 mod pair;
