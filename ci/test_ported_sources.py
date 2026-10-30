@@ -191,6 +191,12 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-portal-shortcut-sets.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertIn("obs-nix-portal-shortcut-status.c.h.o", objects)
+        self.assertNotIn("obs-nix-portal-shortcut-status.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", gio=False))
+        self.assertNotIn("obs-nix-portal-shortcut-status.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", wayland=False))
+        self.assertNotIn("obs-nix-portal-shortcut-status.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertNotIn("obs-nix-x11-hotkeys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertNotIn("obs-nix-x11-hotkeys.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertNotIn("obs-nix-x11-input.c.h.o", PORTED.ported_objects(ROOT, "windows"))

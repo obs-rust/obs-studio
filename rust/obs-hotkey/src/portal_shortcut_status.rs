@@ -34,10 +34,7 @@
 //! takes no lock, allocates nothing and logs nothing.
 //!
 //! No intentional difference from C.
-//!
-//! Stubs for now (RED): every function is `todo!()`.
 
-#![allow(unused_variables, reason = "todo!() stubs until the port")]
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -45,6 +42,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -69,18 +67,24 @@ pub enum Action {
 /// named. Characterized, not endorsed: 0 is [`Action::Next`]; the client
 /// counts before it asks, so it never asks for 0.
 pub fn action(count: usize) -> Action {
-    todo!()
+    if count > MAX_DESCRIBED_ACTIONS {
+        Action::Unnamed
+    } else if count == 1 {
+        Action::First
+    } else {
+        Action::Next
+    }
 }
 
 /// The N of `" and N more"` for a combination with `count` actions, 0 for
 /// none.
 pub fn more(count: usize) -> usize {
-    todo!()
+    count.saturating_sub(MAX_DESCRIBED_ACTIONS)
 }
 
 /// Whether position `i` of a description array of `num` entries has one.
 pub fn has_description(i: usize, num: usize) -> bool {
-    todo!()
+    i < num
 }
 
 /// What `bind_approved()` does after a declined request.
@@ -98,13 +102,19 @@ pub enum Rebind {
 /// `bind_approved()`'s rule for a part of `num_part` approved combinations
 /// and `num_declined` other ones: a part that is not empty is bound again.
 pub fn rebind(num_part: usize, num_declined: usize) -> Rebind {
-    todo!()
+    if num_part == 0 {
+        Rebind::None
+    } else if num_declined > 0 {
+        Rebind::KeysDeclined
+    } else {
+        Rebind::DescriptionDeclined
+    }
 }
 
 /// Whether a failed bind tries `bind_approved()`: the desktop declined a
 /// request that was not empty.
 pub fn keep_approved(request_declined: bool, nothing: bool) -> bool {
-    todo!()
+    request_declined && !nothing
 }
 
 /// How `sync_shortcuts()`'s bind went.
@@ -131,7 +141,23 @@ pub struct Outcome {
 
 /// The outcome of a bind, on the failure and the success path alike.
 pub fn after_bind(result: BindResult) -> Outcome {
-    todo!()
+    match result {
+        BindResult::Bound { partly } => Outcome {
+            mark_declined: false,
+            clear_declined: !partly,
+            partly: Some(partly),
+        },
+        BindResult::Failed { kept: true } => Outcome {
+            mark_declined: false,
+            clear_declined: false,
+            partly: None,
+        },
+        BindResult::Failed { kept: false } => Outcome {
+            mark_declined: true,
+            clear_declined: false,
+            partly: Some(false),
+        },
+    }
 }
 
 /// Whether a failed bind that kept nothing shows
@@ -140,7 +166,7 @@ pub fn after_bind(result: BindResult) -> Outcome {
 /// `OBS_HOTKEYS_BACKGROUND_FAILED`, unless the portal left the bus or the
 /// client is stopping (the client reads those two only then).
 pub fn declined(request_declined: bool, nothing: bool) -> bool {
-    todo!()
+    request_declined || nothing
 }
 
 /// A change to a flag or to a shortcut's bound state.
@@ -159,14 +185,26 @@ pub enum Change {
 /// trigger is not bound; on any other every returned shortcut is, and only
 /// a bind reply changes it.
 pub fn bound(desktop_keys: bool, bind_reply: bool, triggered: bool) -> Change {
-    todo!()
+    if !bind_reply && !desktop_keys {
+        Change::Keep
+    } else if !desktop_keys || triggered {
+        Change::Set
+    } else {
+        Change::Clear
+    }
 }
 
 /// What the shortcuts the desktop returned do to
 /// `OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS`: set when the desktop picks
 /// the keys, cleared only by a bind reply when it doesn't.
 pub fn desktop_triggers(desktop_keys: bool, bind_reply: bool) -> Change {
-    todo!()
+    if desktop_keys {
+        Change::Set
+    } else if bind_reply {
+        Change::Clear
+    } else {
+        Change::Keep
+    }
 }
 
 /// The portal version with `ConfigureShortcuts`.
@@ -177,5 +215,5 @@ pub const CONFIGURE_VERSION: u32 = 2;
 /// with it, a request without a session waits for the bind a probe is
 /// about to make.
 pub fn can_configure(version: u32) -> bool {
-    todo!()
+    version >= CONFIGURE_VERSION
 }

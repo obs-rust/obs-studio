@@ -1,0 +1,5 @@
+{
+  "LIBOBS_WAYLAND_GIO_PORTED_SOURCES": [
+    "build/libobs.ported-nix-portal-shortcut-status+.h.c"
+  ]
+}

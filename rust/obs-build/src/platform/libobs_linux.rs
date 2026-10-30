@@ -57,9 +57,6 @@ pub fn configure(
         if options.gio {
             library
                 .sources
-                .push(root.join("libobs/build/libobs.nix-portal-shortcut-status+.h.c"));
-            library
-                .sources
                 .push(root.join("libobs/build/libobs.nix-portal-shortcuts+.h.c"));
             library
                 .definitions

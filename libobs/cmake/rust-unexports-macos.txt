@@ -728,6 +728,19 @@ _obs_nix_portal_sets_has
 _obs_nix_portal_sets_unchanged
 _obs_nix_portal_sets_request
 _obs_nix_portal_sets_partition
+# obs-nix-portal-shortcut-status.c: the GlobalShortcuts portal client calls
+# them inside libobs on Linux and FreeBSD with GIO. Built on every host;
+# not EXPORT.
+_obs_nix_portal_status_action
+_obs_nix_portal_status_after_bind
+_obs_nix_portal_status_bound
+_obs_nix_portal_status_can_configure
+_obs_nix_portal_status_declined
+_obs_nix_portal_status_desktop_triggers
+_obs_nix_portal_status_has_description
+_obs_nix_portal_status_keep_approved
+_obs_nix_portal_status_more
+_obs_nix_portal_status_rebind
 # obs-nix-wayland-keys.c: the Wayland hotkey platform calls them inside
 # libobs on Linux and FreeBSD. Built on every host; not EXPORT.
 _obs_nix_wayland_keys_focused

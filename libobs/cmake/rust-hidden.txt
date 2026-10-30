@@ -898,6 +898,19 @@ obs_nix_portal_sets_has
 obs_nix_portal_sets_unchanged
 obs_nix_portal_sets_request
 obs_nix_portal_sets_partition
+# obs-nix-portal-shortcut-status.c: obs-nix-portal-shortcuts.c calls them
+# inside libobs. Declared in obs-nix-portal-shortcuts.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_nix_portal_status_action
+obs_nix_portal_status_after_bind
+obs_nix_portal_status_bound
+obs_nix_portal_status_can_configure
+obs_nix_portal_status_declined
+obs_nix_portal_status_desktop_triggers
+obs_nix_portal_status_has_description
+obs_nix_portal_status_keep_approved
+obs_nix_portal_status_more
+obs_nix_portal_status_rebind
 # obs-nix-wayland-keys.c: obs-nix-wayland.c calls them inside libobs.
 # Declared in obs-nix-wayland-keys.h without EXPORT, so the shims stay hidden
 # the same way.

@@ -13,10 +13,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-nix-portal-shortcut-status.pch.h"
+#include "libobs/build/libobs-ported-nix-portal-shortcut-status.pch.h"
 
 /* ------------------------------------------------------------------------ */
 /* Status decisions                                                          */
+
+/* Ported to rust/obs-hotkey (portal_shortcut_status): the hybrid libobs drops
+ * this file. */
 
 /* A shortcut's description names this many of its actions; the rest are
  * counted (" and 2 more"). */

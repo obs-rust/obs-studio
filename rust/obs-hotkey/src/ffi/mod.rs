@@ -12,6 +12,7 @@ pub mod nix_x11_keys;
 pub mod pair;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
+pub mod portal_shortcut_status;
 pub mod press;
 pub mod translations;
 pub mod windows_keys;
