@@ -21,12 +21,12 @@
 //! decisions, `libobs/obs-output-begin.c.h`, the output begin-capture plan,
 //! `libobs/obs-output-stop.c.h`, the output stop and
 //! end-capture decisions, `libobs/obs-output-reconnect.c.h`, the output
-//! reconnect policy, and `libobs/obs-output-pause.c.h`, the output pause
-//! plan.
+//! reconnect policy, `libobs/obs-output-pause.c.h`, the output pause plan,
+//! and `libobs/obs-encoder-pause.c.h`, the encoder pause checks.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`] and [`output_pause`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`] and [`encoder_pause`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -92,7 +92,9 @@
 //! [`output_pause`] decides whether an output can pause or already is in
 //! the wanted state, whose pause records a pause locks and updates, the
 //! pause time on the video frame grid, whether a record can start or end a
-//! pause, and its end and offset.
+//! pause, and its end and offset; [`encoder_pause`] decides, for each video
+//! frame and audio buffer of a paused encoder, whether it passes, is
+//! dropped or cut, and where the encoder's pause ends.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
