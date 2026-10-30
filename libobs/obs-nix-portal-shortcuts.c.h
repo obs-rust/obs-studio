@@ -47,9 +47,6 @@ typedef DARRAY(obs_key_combination_t) combo_array_t;
 /* Shortcut descriptions, parallel to a combo_array_t. */
 typedef DARRAY(char *) description_array_t;
 
-/* At most this many actions are named in a shortcut's description. */
-#define MAX_DESCRIBED_ACTIONS 3
-
 struct obs_nix_portal_shortcuts {
 	struct obs_nix_hotkey_state *state;
 	obs_nix_portal_key_name_func key_name;
@@ -240,13 +237,13 @@ static bool collect_binding(void *data, size_t idx, obs_hotkey_binding_t *bindin
 	}
 
 	size_t *actions = &collected->actions.array[i];
-	if (++*actions > MAX_DESCRIBED_ACTIONS)
+	if (obs_nix_portal_status_action(++*actions) == OBS_NIX_PORTAL_ACTION_UNNAMED)
 		return true;
 
 	struct dstr description = {0}, label = {0};
 	action_label(collected, obs_hotkey_binding_get_hotkey(binding), &label);
 	dstr_copy(&description, collected->descriptions.array[i]);
-	dstr_cat(&description, *actions == 1 ? " " : ", ");
+	dstr_cat(&description, obs_nix_portal_status_action(*actions) == OBS_NIX_PORTAL_ACTION_FIRST ? " " : ", ");
 	dstr_cat_dstr(&description, &label);
 	bfree(collected->descriptions.array[i]);
 	collected->descriptions.array[i] = description.array;
@@ -261,8 +258,8 @@ static void collect_bindings(struct collected *collected)
 	release_named_objects(collected);
 
 	for (size_t i = 0; i < collected->combos.num; i++) {
-		size_t more = collected->actions.array[i] > MAX_DESCRIBED_ACTIONS
-				      ? collected->actions.array[i] - MAX_DESCRIBED_ACTIONS
+		size_t more = obs_nix_portal_status_action(collected->actions.array[i]) == OBS_NIX_PORTAL_ACTION_UNNAMED
+				      ? obs_nix_portal_status_more(collected->actions.array[i])
 				      : 0;
 		if (!more)
 			continue;
@@ -378,14 +375,16 @@ static void set_triggers(GVariant *shortcuts, bool bound)
 				continue;
 			bfree(shortcut->trigger);
 			shortcut->trigger = copy ? bstrdup(copy) : NULL;
-			if (bound || desktop_keys)
-				shortcut->bound = !desktop_keys || triggered;
+			enum obs_nix_portal_change change = obs_nix_portal_status_bound(desktop_keys, bound, triggered);
+			if (change != OBS_NIX_PORTAL_CHANGE_KEEP)
+				shortcut->bound = change == OBS_NIX_PORTAL_CHANGE_SET;
 		}
 		bfree(copy);
 	}
-	if (desktop_keys)
+	enum obs_nix_portal_change change = obs_nix_portal_status_desktop_triggers(desktop_keys, bound);
+	if (change == OBS_NIX_PORTAL_CHANGE_SET)
 		background->flags |= OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
-	else if (bound)
+	else if (change == OBS_NIX_PORTAL_CHANGE_CLEAR)
 		background->flags &= ~(uint32_t)OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS;
 	background_unlock();
 }
@@ -751,7 +750,8 @@ static void take_combos(const combo_array_t *combos, const description_array_t *
 {
 	for (size_t j = 0; j < num_selected; j++) {
 		size_t i = selected[j];
-		char *description = bstrdup(i < descriptions->num ? descriptions->array[i] : "OBS");
+		char *description = bstrdup(
+			obs_nix_portal_status_has_description(i, descriptions->num) ? descriptions->array[i] : "OBS");
 		da_push_back(*out, &combos->array[i]);
 		da_push_back(*out_descriptions, &description);
 	}
@@ -762,7 +762,9 @@ static void take_combos(const combo_array_t *combos, const description_array_t *
 static const char *approved_description(const combo_array_t *approved, const description_array_t *approved_descriptions,
 					obs_key_combination_t combo)
 {
-	for (size_t i = 0; i < approved->num && i < approved_descriptions->num; i++) {
+	for (size_t i = 0; obs_nix_portal_status_has_description(i, approved->num) &&
+			   obs_nix_portal_status_has_description(i, approved_descriptions->num);
+	     i++) {
 		if (same_combo(approved->array[i], combo))
 			return approved_descriptions->array[i];
 	}
@@ -814,13 +816,13 @@ static bool bind_approved(struct obs_nix_portal_shortcuts *portal, const combo_a
 	da_init(part_descriptions);
 	take_approved_combos(current, part_selected.array, num_part, &portal->approved, &portal->approved_descriptions,
 			     &part, &part_descriptions);
-	/* num_part > 0 also covers a request the desktop approved in full:
-	 * then no key is new and only a description changed, and the approved
-	 * keys are bound again rather than taken down with the dialog. */
-	bool bound = num_part > 0;
+	/* A part that is not empty is bound again, also for a request the
+	 * desktop approved in full (obs-nix-portal-shortcut-status.c). */
+	enum obs_nix_portal_rebind rebind = obs_nix_portal_status_rebind(num_part, num_declined);
+	bool bound = rebind != OBS_NIX_PORTAL_REBIND_NONE;
 	if (bound) {
 		blog(LOG_INFO,
-		     num_declined > 0
+		     rebind == OBS_NIX_PORTAL_REBIND_KEYS_DECLINED
 			     ? "[portal] The desktop declined the new shortcuts; binding the %zu it approved before again"
 			     : "[portal] The desktop declined a new description; binding the %zu approved shortcuts again",
 		     part.num);
@@ -958,25 +960,27 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	if (!bound) {
 		close_session(portal);
 		bool nothing = request.num == 0;
-		bool kept = portal->request_declined && !nothing &&
+		bool kept = obs_nix_portal_status_keep_approved(portal->request_declined, nothing) &&
 			    bind_approved(portal, &current, &collected.descriptions, &request);
 		free_collected(&collected);
 		da_free(request);
 		free_descriptions(&request_descriptions);
-		if (kept) {
+		struct obs_nix_portal_outcome outcome = obs_nix_portal_status_after_bind(false, partly, kept);
+		if (!outcome.mark_declined) {
 			da_free(current);
 			return;
 		}
 		da_move(portal->declined, current);
-		portal->partly_declined = false;
-		set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, false);
-		if (portal->request_declined || nothing)
+		portal->partly_declined = outcome.partly;
+		set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, outcome.partly);
+		if (obs_nix_portal_status_declined(portal->request_declined, nothing))
 			set_state(OBS_HOTKEYS_BACKGROUND_DECLINED, NULL);
 		else if (!portal->portal_gone && !os_atomic_load_bool(&portal->stopping))
 			set_state(OBS_HOTKEYS_BACKGROUND_FAILED, portal->request_error);
 		return;
 	}
-	if (!partly)
+	struct obs_nix_portal_outcome outcome = obs_nix_portal_status_after_bind(true, partly, false);
+	if (outcome.clear_declined)
 		da_resize(portal->declined, 0);
 	da_copy(portal->approved, request);
 	copy_descriptions(&portal->approved_descriptions, &request_descriptions);
@@ -984,8 +988,8 @@ static void sync_shortcuts(struct obs_nix_portal_shortcuts *portal)
 	da_free(request);
 	free_descriptions(&request_descriptions);
 	da_free(current);
-	portal->partly_declined = partly;
-	set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, partly);
+	portal->partly_declined = outcome.partly;
+	set_flag(OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED, outcome.partly);
 	set_state(OBS_HOTKEYS_BACKGROUND_ACTIVE, NULL);
 }
 
@@ -996,7 +1000,7 @@ static bool take_configure(struct obs_nix_portal_shortcuts *portal)
 {
 	pthread_mutex_lock(&obs->hotkeys.mutex);
 	bool configure = obs->hotkeys.background.configure;
-	if (configure && (portal->session_path || portal->version < 2))
+	if (configure && (portal->session_path || !obs_nix_portal_status_can_configure(portal->version)))
 		obs->hotkeys.background.configure = false;
 	else
 		configure = false;
@@ -1010,7 +1014,7 @@ static void configure_shortcuts(struct obs_nix_portal_shortcuts *portal)
 {
 	if (!take_configure(portal))
 		return;
-	if (portal->version < 2) {
+	if (!obs_nix_portal_status_can_configure(portal->version)) {
 		blog(LOG_WARNING, "[portal] Cannot open the desktop's shortcut settings: portal version %u",
 		     portal->version);
 		set_flag(OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED, true);
@@ -1400,4 +1404,3 @@ void obs_nix_portal_shortcuts_stop(struct obs_nix_portal_shortcuts *portal)
 #undef APP_ID
 #undef SYNC_DELAY_MS
 #undef FLUSH_INTERVAL_MS
-#undef MAX_DESCRIBED_ACTIONS

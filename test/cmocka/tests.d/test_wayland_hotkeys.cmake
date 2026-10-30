@@ -39,6 +39,7 @@ if(OS_LINUX OR OS_FREEBSD)
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcut-ids.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcut-sets.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcut-status.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-portal-shortcuts.c.h"
     )
     target_compile_definitions(test_portal_shortcuts PRIVATE obs=hotkey_test_obs)

@@ -52,7 +52,8 @@ HOSTS = ported_sources.HOSTS
 # build/libobs.null-audio+.h.c is the pulse-off alternative, so it is left out.
 REFERENCE_SETS = {
     "linux": ["LIBOBS_SOURCES", "LIBOBS_LINUX_SOURCES", "build/libobs.pulse+.h.c",
-              "build/libobs.nix-wayland+.h.c", "build/libobs.nix-portal-shortcuts+.h.c"],
+              "build/libobs.nix-wayland+.h.c", "build/libobs.nix-portal-shortcut-status+.h.c",
+              "build/libobs.nix-portal-shortcuts+.h.c"],
     "windows": ["LIBOBS_SOURCES", "LIBOBS_WINDOWS_SOURCES", "LIBOBS_WINDOWS_OBFUSCATE_SOURCES"],
     "macos": ["LIBOBS_SOURCES", "LIBOBS_MACOS_SOURCES"],
 }

@@ -129,3 +129,91 @@ bool obs_nix_portal_sets_partition(const struct obs_nix_portal_combos *current,
 				   const struct obs_nix_portal_combos *approved,
 				   const struct obs_nix_portal_combos *request, size_t *part, size_t *num_part,
 				   size_t *declined, size_t *num_declined);
+
+/* The status decisions of the portal client
+ * (obs-nix-portal-shortcut-status.c): what a bind leaves in the status
+ * Settings shows, how many actions a shortcut's description names, which
+ * shortcuts the desktop's triggers mark bound, and when the desktop's
+ * shortcut editor opens. They take plain values the client read and return
+ * what it does next; the client keeps every D-Bus call, lock, allocation
+ * and string. */
+
+/* How a combination's description names its count-th action
+ * (collect_binding()). */
+enum obs_nix_portal_action {
+	/* After "OBS:" and " ". */
+	OBS_NIX_PORTAL_ACTION_FIRST = 0,
+	/* After ", ". */
+	OBS_NIX_PORTAL_ACTION_NEXT = 1,
+	/* Not named: counted in " and N more". */
+	OBS_NIX_PORTAL_ACTION_UNNAMED = 2,
+};
+
+enum obs_nix_portal_action obs_nix_portal_status_action(size_t count);
+
+/* The N of " and N more" for a combination with count actions, 0 for none. */
+size_t obs_nix_portal_status_more(size_t count);
+
+/* Whether position i of a description array of num entries has one (else
+ * the combination is described "OBS"). */
+bool obs_nix_portal_status_has_description(size_t i, size_t num);
+
+/* What bind_approved() does after a declined request: bind the approved
+ * part again, logging that new keys or a new description were declined,
+ * or nothing. */
+enum obs_nix_portal_rebind {
+	OBS_NIX_PORTAL_REBIND_NONE = 0,
+	OBS_NIX_PORTAL_REBIND_KEYS_DECLINED = 1,
+	OBS_NIX_PORTAL_REBIND_DESCRIPTION_DECLINED = 2,
+};
+
+enum obs_nix_portal_rebind obs_nix_portal_status_rebind(size_t num_part, size_t num_declined);
+
+/* Whether a failed bind tries bind_approved(): the desktop declined a
+ * request that was not empty. */
+bool obs_nix_portal_status_keep_approved(bool request_declined, bool nothing);
+
+/* What sync_shortcuts() does after its bind, on the failure path (bound
+ * false) and the success path alike. */
+struct obs_nix_portal_outcome {
+	/* The current combinations become the declined ones. */
+	bool mark_declined;
+	/* The declined combinations are cleared. */
+	bool clear_declined;
+	/* partly_declined and OBS_HOTKEYS_BACKGROUND_PARTLY_DECLINED are set
+	 * to partly. */
+	bool set_partly;
+	bool partly;
+};
+
+/* bound: the request was bound; partly: it was only part of the current
+ * combinations (obs_nix_portal_sets_request()); kept (failure path only):
+ * bind_approved() bound the approved part again and set the status
+ * itself. */
+struct obs_nix_portal_outcome obs_nix_portal_status_after_bind(bool bound, bool partly, bool kept);
+
+/* Whether a failed bind that kept nothing shows
+ * OBS_HOTKEYS_BACKGROUND_DECLINED: the desktop declined the request, or it
+ * was empty (nothing). Otherwise it shows OBS_HOTKEYS_BACKGROUND_FAILED,
+ * unless the portal left the bus or the client is stopping: the client
+ * reads those two only then. */
+bool obs_nix_portal_status_declined(bool request_declined, bool nothing);
+
+/* What a shortcut the desktop returned (BindShortcuts, ShortcutsChanged)
+ * does to its bound state, and to OBS_HOTKEYS_BACKGROUND_DESKTOP_TRIGGERS.
+ * desktop_keys: the desktop picks the keys (OBS_HOTKEYS_BACKGROUND_CONFIGURABLE,
+ * or any returned shortcut has a trigger); bind_reply: BindShortcuts, not
+ * ShortcutsChanged; triggered: this shortcut has a trigger. */
+enum obs_nix_portal_change {
+	OBS_NIX_PORTAL_CHANGE_KEEP = 0,
+	OBS_NIX_PORTAL_CHANGE_SET = 1,
+	OBS_NIX_PORTAL_CHANGE_CLEAR = 2,
+};
+
+enum obs_nix_portal_change obs_nix_portal_status_bound(bool desktop_keys, bool bind_reply, bool triggered);
+enum obs_nix_portal_change obs_nix_portal_status_desktop_triggers(bool desktop_keys, bool bind_reply);
+
+/* Whether the portal has ConfigureShortcuts (version 2). Without it a
+ * pending obs_hotkeys_configure_background() is taken without a session,
+ * and refused. */
+bool obs_nix_portal_status_can_configure(uint32_t version);
