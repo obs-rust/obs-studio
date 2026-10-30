@@ -57,7 +57,8 @@ class MergeQueue(unittest.TestCase):
         listed = {n.strip() for n in needs.group(1).split(",")}
         # ci-pre and the end-of-queue cache-janitor (ci/test_ci_pre.py) are
         # maintenance: a sweep never gates, and the final one runs after it.
-        self.assertEqual(listed, set(top_level_jobs(PULL)) - {"ci-gate", "ci-pre", "cache-janitor"})
+        # tier2-lane-proof publishes a proof the gate already vouched for (#3018).
+        self.assertEqual(listed, set(top_level_jobs(PULL)) - {"ci-gate", "ci-pre", "cache-janitor", "tier2-lane-proof"})
         self.assertIn("contains(needs.*.result, 'failure')", gate)
         self.assertIn("contains(needs.*.result, 'cancelled')", gate)
 

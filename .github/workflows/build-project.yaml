@@ -65,6 +65,10 @@ on:
         type: boolean
         required: false
         default: false
+    outputs:
+      tier2-linux-proof:
+        description: Tier 2 Linux lane-proof name when this run built the lane; ci.yml publishes it after CI Gate (#3018)
+        value: ${{ jobs.rust-linux-tier2-build.outputs.tier2-linux-proof }}
 # Keep all application and utility job tokens read-only. Only the guarded
 # transport publisher below overrides this default. Caller grants are ceilings.
 permissions:
@@ -2406,6 +2410,11 @@ jobs:
     # Keep proof/scope checks here; OFF/ON execution waits only for this build.
     needs: [check-event, ci-mode]
     if: ${{ needs.check-event.outputs.tier2 == 'true' && needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true' }}
+    # Empty unless this job ran (a skipped job has no outputs). CI Gate passes
+    # only when every shard below passed, so ci.yml's tier2-lane-proof job
+    # publishes the proof after the gate, not on its critical path (#3018).
+    outputs:
+      tier2-linux-proof: ${{ needs.ci-mode.outputs.tier2-linux_name }}
     defaults:
       run:
         shell: bash
@@ -2666,27 +2675,14 @@ jobs:
   rust-linux-tier2-done:
     name: Rust Tier 2 Linux 🐧
     runs-on: ubuntu-latest
-    needs: [ci-mode, rust-linux-tier2]
-    # Surface changes can disable lane proofs; PRs never save timing caches.
-    # Skip before requesting a runner when every work step would be skipped.
+    needs: [rust-linux-tier2]
+    # Master pushes only: PRs never save timing caches, and the lane proof is
+    # published after CI Gate by ci.yml's tier2-lane-proof job (#3018), so PR
+    # and queue runs no longer wait 8-54 s for this runner before the gate.
     # Matrix failures still fail the reusable workflow and required CI Gate.
-    if: ${{ needs.rust-linux-tier2.result == 'success' && ((needs.ci-mode.outputs.tier2-linux_name != '' && needs.ci-mode.outputs.tier2-linux_hit != 'true') || (github.event_name == 'push' && github.ref == 'refs/heads/master')) }}
+    if: ${{ needs.rust-linux-tier2.result == 'success' && (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     timeout-minutes: 5
     steps:
-      # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
-      # that ran here and passed; the name carries the lane's input key.
-      - name: Mark Lane Proof 🧾
-        if: success() && needs.ci-mode.outputs.tier2-linux_name != '' && needs.ci-mode.outputs.tier2-linux_hit != 'true'
-        run: touch "${{ runner.temp }}/lane-proof"
-      - name: Upload Lane Proof 🧾
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: success() && needs.ci-mode.outputs.tier2-linux_name != '' && needs.ci-mode.outputs.tier2-linux_hit != 'true'
-        with:
-          name: ${{ needs.ci-mode.outputs.tier2-linux_name }}
-          path: ${{ runner.temp }}/lane-proof
-          retention-days: 3
-          if-no-files-found: error
-
       # Cache the test run's timings per mode for the next run's ctest
       # ordering (#930). Master only, like the compiler cache.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

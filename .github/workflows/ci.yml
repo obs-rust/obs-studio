@@ -457,6 +457,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/gate_jobs.py
       - run: echo 'All required jobs passed or were skipped.'
+  # Publish the Tier 2 Linux lane proof (ci/lane_proof.py) after the gate
+  # (#3018): CI Gate passes only when every Tier 2 shard passed, and the
+  # output is set only when the build ran for an unproven lane. The gate
+  # never waits on this job; a missing proof only means the lane runs again.
+  tier2-lane-proof:
+    name: Tier 2 Lane Proof 🧾
+    needs: [build-project, ci-gate]
+    if: ${{ needs.ci-gate.result == 'success' && needs.build-project.outputs.tier2-linux-proof != '' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Mark Lane Proof 🧾
+        run: touch "${{ runner.temp }}/lane-proof"
+      - name: Upload Lane Proof 🧾
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ needs.build-project.outputs.tier2-linux-proof }}
+          path: ${{ runner.temp }}/lane-proof
+          retention-days: 3
+          if-no-files-found: error
+
   # Last job of the merge queue run (#1854, zackees/ci.yml#405 GEN-022). The
   # queue serializes master's cache writes, so this sweep has the cache to
   # itself and sees what the run saved. It evicts least recently used entries
@@ -465,7 +486,7 @@ jobs:
   cache-janitor:
     name: Cache Janitor 🧹
     if: always() && github.event_name == 'merge_group'
-    needs: [ci-pre, ci-gate]
+    needs: [ci-pre, ci-gate, tier2-lane-proof]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     # One sweep at a time, repo-wide; a running sweep is never cancelled.
