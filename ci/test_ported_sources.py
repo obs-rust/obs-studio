@@ -169,6 +169,11 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("obs-nix-hotkey-state.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
         self.assertNotIn("obs-nix-hotkey-state.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertIn("obs-nix-wayland-keys.c.h.o", objects)
+        self.assertNotIn("obs-nix-wayland-keys.c.h.o",
+                         PORTED.ported_objects(ROOT, "linux", wayland=False))
+        self.assertNotIn("obs-nix-wayland-keys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("obs-nix-wayland-keys.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertIn("obs-nix-portal-shortcut-ids.c.h.o", objects)
         self.assertNotIn("obs-nix-portal-shortcut-ids.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", gio=False))

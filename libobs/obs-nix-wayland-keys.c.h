@@ -18,7 +18,10 @@
 /* The keysym tables and the keymap and focused-key rules of the Wayland
  * hotkey platform (obs-nix-wayland-keys.h), moved out of obs-nix-wayland.c. */
 
-#include "libobs/build/libobs-nix-wayland-keys.pch.h"
+#include "libobs/build/libobs-ported-nix-wayland-keys.pch.h"
+
+/* Ported to rust/obs-hotkey (nix_wayland_keys): the hybrid libobs drops this
+ * file. */
 
 void obs_nix_wayland_keys_row(uint32_t keycode, obs_nix_wayland_keys_syms_fn level_syms, void *data,
 			      uint32_t *obs_to_key, uint32_t (*key_to_sym)[OBS_NIX_WAYLAND_KEYS_MAX_KEYCODES])

@@ -14,7 +14,9 @@
 //! check the row and focused-key rules against models written from the C
 //! and the fix.
 
+#[allow(clippy::wildcard_imports)] // the C test names every key and keysym
 use obs_hotkey::name_map::*;
+#[allow(clippy::wildcard_imports)]
 use obs_hotkey::nix_wayland_keys::keysyms::*;
 use obs_hotkey::nix_wayland_keys::{
     self as wk, MAX_KEYCODES, MAX_SHIFT_LEVELS, OBS_KEY_LAST_VALUE,
