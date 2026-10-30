@@ -677,13 +677,6 @@ reason = "PR runs do not read title tags, so a title edit need not re-trigger th
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
 expires = "2027-04-15"
 
-# WF-002: Upstream workflows without top-level concurrency; tracked in #962.
-[[exceptions]]
-rule = "WF-002"
-path = ".github/workflows/claim-bot.yaml"
-reason = "Upstream workflows without top-level concurrency; tracked in #962."
-issue = "https://github.com/obs-rust/obs-studio/issues/962"
-expires = "2027-04-15"
 # WF-003: continue-on-error on optional upstream steps (Flatpak, analysis).
 [[exceptions]]
 rule = "WF-003"
