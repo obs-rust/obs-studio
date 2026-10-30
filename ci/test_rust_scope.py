@@ -79,13 +79,22 @@ class FastGateWorkflowTest(unittest.TestCase):
         self.assertIn("-denable_decklink=off", j)  # decklink-captions requires Qt6 Widgets
         self.assertIn("-denable_frontend=off", j)
 
-    def test_costly_lanes_wait_for_the_fast_gate(self):
-        # Tier 2 compilation and the independent Qt lane overlap Fast Gate;
-        # Tier 2 execution remains gated (ci/test_tier2_compile_overlap.py).
-        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows", "rust-cross-lint"):
-            j = self.job(name)
-            self.assertIn("rust-tests-linux", j.split("steps:")[0], name)
-            self.assertIn("needs.rust-tests-linux.result != 'failure'", j, name)
+    def test_costly_lanes_overlap_the_fast_gate(self):
+        # Tier 2 compilation, the independent Qt lane and the macOS/Windows
+        # Rust lanes overlap Fast Gate; their run-level failures are still
+        # caught by CI Gate (ci/test_platform_lane_overlap.py). The cross lint
+        # lane stays serialized: it runs on the gate's own Linux pool, so
+        # starting it early saves no wall time.
+        def needs_of(name):
+            match = re.search(r"^    needs: \[([^]]+)\]", self.job(name), re.M)
+            self.assertIsNotNone(match, name)
+            assert match is not None
+            return [n.strip() for n in match[1].split(",")]
+
+        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows"):
+            self.assertNotIn("rust-tests-linux", needs_of(name), name)
+        self.assertIn("rust-tests-linux", needs_of("rust-cross-lint"))
+        self.assertIn("needs.rust-tests-linux.result != 'failure'", self.job("rust-cross-lint"))
 
     def test_fast_gate_builds_only_touched_linux_targets(self):
         j = self.job("rust-tests-linux")

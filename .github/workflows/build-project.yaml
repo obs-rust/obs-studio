@@ -2114,9 +2114,11 @@ jobs:
     timeout-minutes: 25
     name: Rust Tests 🦀 (macos-26)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-macos != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
     runs-on: macos-26
-    needs: [check-event, ci-mode, rust-tests-linux]
+    # Starts with Fast Gate (#2985): the lane consumes none of its output, and
+    # a failing gate still fails the run through CI Gate (ci/gate_jobs.py).
+    needs: [check-event, ci-mode]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -2251,9 +2253,10 @@ jobs:
     timeout-minutes: 30
     name: Rust Tests 🦀 (windows-2025-vs2026)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-windows != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
     runs-on: windows-2025-vs2026
-    needs: [check-event, ci-mode, rust-tests-linux]
+    # Starts with Fast Gate (#2985); see rust-tests-macos.
+    needs: [check-event, ci-mode]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -2902,10 +2905,11 @@ jobs:
     timeout-minutes: 25
     name: Rust Tier 2 (macos-26)
     runs-on: macos-26
-    needs: [check-event, ci-mode, rust-tests-linux]
+    # Starts with Fast Gate (#2985), like the other platform lanes.
+    needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -3047,10 +3051,11 @@ jobs:
     timeout-minutes: 25
     name: Rust Tier 2 (windows-2025-vs2026)
     runs-on: windows-2025-vs2026
-    needs: [check-event, ci-mode, rust-tests-linux]
+    # Starts with Fast Gate (#2985), like the other platform lanes.
+    needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.rust-tests-linux.result != 'failure' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
