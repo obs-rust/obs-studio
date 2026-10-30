@@ -893,6 +893,10 @@ area.
   once. *Linux*, 2026-10-17. Issue
   [#1068](https://github.com/obs-rust/obs-studio/issues/1068), PR
   [#1217](https://github.com/obs-rust/obs-studio/pull/1217).
+- The frame rate list of a PipeWire camera source is filled for the format
+  the properties show when the source's settings have no format yet, and it
+  lists each frame rate once. *Linux*, 2026-10-30. Issue
+  [#1068](https://github.com/obs-rust/obs-studio/issues/1068).
 - Window Capture has a "List OBS windows" option (off by default) that adds
   OBS's own windows, such as projectors, to the window list so OBS can capture
   itself. *Windows*, 2026-10-24. Issue

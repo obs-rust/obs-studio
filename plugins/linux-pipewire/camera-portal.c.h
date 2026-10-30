@@ -830,6 +830,26 @@ static bool device_selected(void *data, obs_properties_t *props, obs_property_t 
 	return true;
 }
 
+/* Two framerates are the same if they name the same rate (30/1 == 60/2). */
+static bool framerate_equal(const struct spa_fraction *a, const struct spa_fraction *b)
+{
+	return (uint64_t)a->num * b->denom == (uint64_t)b->num * a->denom;
+}
+
+/* One entry per framerate. A libcamera camera repeats a size's EnumFormat
+ * (its default size comes twice), so the same framerate arrives once per
+ * copy and the list would show it twice (obs-rust/obs-studio#1068). */
+static void append_framerate(GArray *framerates, const struct spa_fraction *framerate)
+{
+	for (size_t i = 0; i < framerates->len; i++) {
+		const struct spa_fraction *listed = &g_array_index(framerates, struct spa_fraction, i);
+
+		if (framerate_equal(listed, framerate))
+			return;
+	}
+	g_array_append_vals(framerates, framerate, 1);
+}
+
 static int compare_framerates(gconstpointer a, gconstpointer b)
 {
 	const struct spa_fraction *framerate_a = a;
@@ -898,7 +918,7 @@ static GArray *camera_framerates(struct camera_device *dev, uint32_t pixelformat
 
 		switch (choice) {
 		case SPA_CHOICE_None:
-			g_array_append_val(framerates, framerate_values[0]);
+			append_framerate(framerates, &framerate_values[0]);
 			break;
 		case SPA_CHOICE_Range:
 			blog(LOG_WARNING, "Ranged framerates not supported");
@@ -909,7 +929,7 @@ static GArray *camera_framerates(struct camera_device *dev, uint32_t pixelformat
 		case SPA_CHOICE_Enum:
 			/* i=0 is the default framerate, skip it */
 			for (uint32_t i = 1; i < n_framerates; i++)
-				g_array_append_val(framerates, framerate_values[i]);
+				append_framerate(framerates, &framerate_values[i]);
 			break;
 		default:
 			break;
@@ -925,7 +945,7 @@ static bool framerates_contain(const GArray *framerates, const struct spa_fracti
 	for (size_t i = 0; i < framerates->len; i++) {
 		const struct spa_fraction *f = &g_array_index(framerates, struct spa_fraction, i);
 
-		if ((uint64_t)f->num * framerate->denom == (uint64_t)framerate->num * f->denom)
+		if (framerate_equal(f, framerate))
 			return true;
 	}
 	return false;
@@ -1062,9 +1082,6 @@ static bool parse_format(struct camera_portal_source *dest, const char *json)
 
 static bool format_selected(void *data, obs_properties_t *properties, obs_property_t *property, obs_data_t *settings)
 {
-	UNUSED_PARAMETER(property);
-	UNUSED_PARAMETER(settings);
-
 	struct camera_portal_source *camera_source = data;
 	struct camera_device *device;
 	enum spa_media_subtype last_subtype = camera_source->subtype;
@@ -1073,14 +1090,41 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	bool has_framerates;
 	bool restart;
 
+	UNUSED_PARAMETER(property);
+
 	blog(LOG_INFO, "[camera-portal] Selected format for '%s'", camera_source->device_id);
 
 	device = g_hash_table_lookup(camera_connection->devices, camera_source->device_id);
 	if (device == NULL)
 		return false;
 
-	if (!parse_format(camera_source, obs_data_get_string(settings, "format")))
-		return false;
+	if (!parse_format(camera_source, obs_data_get_string(settings, "format"))) {
+		/* No valid format in the settings yet (a source just added, or one
+		 * saved before the field existed) while the format list still
+		 * labels the camera's formats, framerates included. Fill the
+		 * framerate list for the format the list shows first, instead of
+		 * leaving it empty and disagreeing with the label
+		 * (obs-rust/obs-studio#1068). The source's own format stays unset
+		 * so the stream negotiates one as before. */
+		obs_property_t *shown_list = obs_properties_get(properties, "format");
+		struct camera_portal_source shown = {0};
+
+		if (obs_property_list_item_count(shown_list) == 0 ||
+		    !parse_format(&shown, obs_property_list_item_string(shown_list, 0)))
+			return false;
+
+		property = obs_properties_get(properties, "framerate");
+		obs_property_set_modified_callback2(property, NULL, NULL);
+
+		has_framerates = framerate_list(device, shown.format.spa_format, &shown.resolution.rect, property);
+		obs_property_set_enabled(property, has_framerates);
+
+		if (has_framerates) {
+			obs_property_set_modified_callback2(property, framerate_selected, camera_source);
+			obs_property_modified(property, settings);
+		}
+		return true;
+	}
 
 	property = obs_properties_get(properties, "framerate");
 	obs_property_set_modified_callback2(property, NULL, NULL);
