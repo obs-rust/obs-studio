@@ -87,7 +87,12 @@ authorizes.
     author.
   - **Master is red:** fix master first. The same test fails on master
     alone, so the PR isn't the cause. Re-queuing only ejects the PR again
-    and holds up every PR behind it.
+    and holds up every PR behind it. Check the newest push run first: a red
+    push run at an older SHA is superseded once a later commit has its own
+    run, so re-running the old one only feeds a stale lane. On 2026-10-30,
+    `da9535c0` was red in the format job's `test_pulse_monitor_device.py`
+    (runner-side `wireplumber` flake) while `b0f2e8e3`, one commit later,
+    was the run that mattered.
   - **A real failure in the PR:** comment for the author as above.
 
   Never re-queue an ejected PR without reading why it failed. On
