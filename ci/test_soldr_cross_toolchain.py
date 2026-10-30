@@ -40,20 +40,28 @@ LAYOUT_GUESSES = (
 def function_body(name: str) -> str:
     """The text of `function(<name> ...) ... endfunction()`, without the header."""
     text = SOLDR_CMAKE.read_text()
-    start = text.index(f"function({name}")
-    end = text.index("endfunction()", start)
-    return text[start:end]
+    start = re.search(rf"function\(\s*{re.escape(name)}\b", text)
+    assert start, f"function({name} ...) not found"
+    end = text.index("endfunction()", start.start())
+    return text[start.start() : end]
 
 
 class SoldrCrossToolchainTest(unittest.TestCase):
     def test_toolchain_is_resolved_through_soldr_cc_printers(self):
         body = function_body("obs_soldr_cross_toolchain")
+        helper = " ".join(function_body("_obs_soldr_cc_print").split())
+        self.assertIn(
+            "cc --target ${triple} --print-${what}",
+            helper,
+            "the tool must come from `soldr cc --target <triple> --print-<what>`",
+        )
         for printer in PRINTERS:
             with self.subTest(printer=printer):
-                self.assertIn(
-                    f"--print-{printer}",
+                self.assertRegex(
                     body,
-                    f"`--print-{printer}` is the supported interface (soldr#2335)",
+                    rf"_obs_soldr_cc_print\(\s*{printer}\b",
+                    f"the toolchain file must ask soldr for `--print-{printer}` "
+                    "(soldr#2335)",
                 )
 
     def test_no_soldr_layout_guessing_remains(self):
