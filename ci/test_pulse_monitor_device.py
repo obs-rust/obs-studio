@@ -83,6 +83,24 @@ while True:
     time.sleep(0.05)
 """
 
+# A daemon still booting its interpreter when the run ends: it installs the
+# SIGTERM handler only after a delay, so a stop signal that arrives first kills
+# it with the default disposition and leaves no `.terminated` marker. That is
+# the race #2972 saw under the lint gate's load.
+SLOW_DAEMON = "import json, os, signal, sys, time\n" + """
+time.sleep(3)
+def stop(signum, frame):
+    name = os.path.basename(sys.argv[0])
+    open(os.path.join(os.environ["RECORD"], name + ".terminated"), "w").write(str(signum))
+    sys.exit(0)
+signal.signal(signal.SIGTERM, stop)
+record = {"argv": sys.argv[1:], "env": dict(os.environ)}
+name = os.path.basename(sys.argv[0])
+open(os.path.join(os.environ["RECORD"], name + ".json"), "w").write(json.dumps(record))
+while True:
+    time.sleep(0.05)
+"""
+
 # `pactl` answers only once pipewire-pulse has recorded itself, as the real one
 # answers only once the private sound server listens.
 PACTL = "import os, sys, time\n" + """
@@ -219,9 +237,54 @@ class PulseMonitorDeviceTest(unittest.TestCase):
         self.assertIn("monitor.bluez-midi = disabled", test["config"])
         self.assertIn("monitor.libcamera = disabled", test["config"])
         # Every daemon is stopped and the private directory removed afterwards.
-        for name in ("pipewire", "wireplumber", "pipewire-pulse"):
-            self.assertTrue((self.harness.record / f"{name}.terminated").exists(), name)
+        self.assert_daemons_stopped(result)
         self.assertEqual(self.harness.private_dirs(), [])
+
+    def assert_daemons_stopped(self, result) -> None:
+        """Each daemon either handled SIGTERM or never finished booting (#2972).
+
+        A daemon writes its `.json` record right after installing its SIGTERM
+        handler, so when the record exists the `.terminated` marker must exist
+        too. When it does not exist the stop signal arrived while the daemon's
+        interpreter was still booting: the default disposition killed it and it
+        had no handler to write a marker. That daemon is stopped all the same.
+        """
+        for name in ("pipewire", "wireplumber", "pipewire-pulse"):
+            marker = self.harness.record / f"{name}.terminated"
+            booted = self.harness.record / f"{name}.json"
+            self.assertTrue(
+                marker.exists() or not booted.exists(),
+                f"{name} finished booting but did not handle SIGTERM\n{result.stdout}{result.stderr}",
+            )
+
+    def test_a_daemon_still_booting_when_the_run_ends_counts_as_stopped(self) -> None:
+        """The marker's absence is the race, not a failure (#2972).
+
+        The lint gate runs the ci suites in parallel; a daemon whose interpreter
+        is still booting when the run ends is killed by the default SIGTERM
+        disposition, before its handler can write the marker. The run must still
+        pass and stay quiet: this is the normal shutdown of a daemon that was
+        alive when the harness asked it to stop.
+        """
+        self.harness.stub("wireplumber", SLOW_DAEMON)
+        result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", TEST_EXIT="3")
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertFalse((self.harness.record / "wireplumber.json").exists(), "the slow stub should not have booted")
+        self.assertNotIn("exited", result.stdout, "a daemon alive at stop is not an error")
+        self.assert_daemons_stopped(result)
+        self.assertEqual(self.harness.private_dirs(), [])
+
+    def test_a_daemon_that_died_on_its_own_is_reported_with_its_log(self) -> None:
+        """A failure must say why: the daemon's exit code and log (#2972).
+
+        `wireplumber` exits 1 right after recording itself, while pipewire-pulse
+        still answers `pactl`; the run's output must name the daemon, its exit
+        code and the log line it printed, instead of a bare assertion.
+        """
+        result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", TEST_EXIT="3", DAEMON_MODE="die")
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertIn("wireplumber exited 1 when the run ended", result.stdout)
+        self.assertIn("boom: no socket", result.stdout)
 
     def test_a_sound_server_that_does_not_start_fails_the_test(self) -> None:
         result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_MODE="die", PACTL_MODE="fail")
