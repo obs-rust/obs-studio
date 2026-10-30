@@ -1,0 +1,13 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a6da72a235d3651a55ee047baef3f8f2b4d6d55b90cf1267cab2c79932b02eb0 # shrinks to key = -1
+cc 264ca112c18ee6a4f08467bbc2b7468a481cd2d08b24382c45b36cf9f3432a54 # shrinks to key = 434, pressed = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], held = [false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+cc ea8b918003dfb1a30c7019a190c90b5d966e8ba1ac450370db501b5742df949b # shrinks to key = 434
+cc 8b4b341e1a0577e4ed8c4d7e59e078f2c17eae9db452a263aff9755c2f0e90c4 # shrinks to key = 461
+cc 56f29d39d5f9d7c32c874cd65feaef181650d5c156a6e7124dc32beb7199435c # shrinks to key = 436, pressed = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], held = [false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+cc 0762e937c791a3102b7157c515b76b339fa96ae2655761625b9968e2732f15bb # shrinks to key = 436
+cc bc756eacaa09c21217e650be71aa69a7c3f5f7159b41dd2882a72298547460fe # shrinks to key = 434, buttons = 35328
