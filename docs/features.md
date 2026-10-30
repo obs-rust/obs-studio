@@ -2446,6 +2446,11 @@ area.
   can't be allocated; the list comes back empty instead. *macOS*,
   2026-10-29. Issue
   [#2862](https://github.com/obs-rust/obs-studio/issues/2862).
+- A keyboard layout that OBS's keyboard library can't read no longer
+  crashes OBS on Wayland, at startup or when the layout changes. Hotkeys
+  keep the last layout that loaded, and the log says the new one was
+  skipped. *Linux*, 2026-10-29. Issue
+  [#2975](https://github.com/obs-rust/obs-studio/issues/2975).
 
 ### Security hardening
 

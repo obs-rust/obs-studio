@@ -87,8 +87,14 @@ static void platform_keyboard_keymap(void *data, struct wl_keyboard *keyboard, u
 				     uint32_t size)
 {
 	UNUSED_PARAMETER(keyboard);
-	UNUSED_PARAMETER(format);
 	obs_hotkeys_platform_t *plat = (obs_hotkeys_platform_t *)data;
+
+	/* With no_keymap the fd holds nothing to compile. Without an xkb
+	 * context (no keyboard data found) nothing can be compiled. */
+	if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1 || !plat->xkb_context) {
+		close(fd);
+		return;
+	}
 
 	char *keymap_shm = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (keymap_shm == MAP_FAILED) {
@@ -100,6 +106,13 @@ static void platform_keyboard_keymap(void *data, struct wl_keyboard *keyboard, u
 		plat->xkb_context, keymap_shm, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
 	munmap(keymap_shm, size);
 	close(fd);
+
+	/* Keep the last good keymap and state rather than dropping them for
+	 * one that doesn't compile. */
+	if (!xkb_keymap) {
+		blog(LOG_WARNING, "[wayland] could not compile the compositor's keymap, keeping the previous one");
+		return;
+	}
 
 	// cleanup old keymap and state
 	xkb_keymap_unref(plat->xkb_keymap);
