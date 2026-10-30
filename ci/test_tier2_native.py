@@ -89,9 +89,18 @@ class WorkflowTest(unittest.TestCase):
         checkout = test.split("uses: actions/checkout@", 1)[1].split("- name:", 1)[0]
         self.assertNotIn("submodules: recursive", checkout)
         self.assertNotIn("fetch-depth: 0", checkout)
+
+    def test_build_fetches_commits_and_tags_but_no_old_trees_or_submodules(self):
+        """#3022: git describe/log/rev-parse read commits only, and validate.sh
+        initializes obs-browser and obs-websocket at --depth 1 itself; the
+        full recursive fetch cost 10 s."""
+        text = WORKFLOW.read_text()
         build = re.search(r"^  rust-linux-tier2-build:\n(.*?)(?=^  [a-z0-9-]+:\n)", text, re.S | re.M)[1]
-        self.assertIn("submodules: recursive", build)
-        self.assertIn("fetch-depth: 0", build)
+        checkout = build.split("uses: actions/checkout@", 1)[1].split("- name:", 1)[0]
+        self.assertIn("fetch-depth: 0", checkout)
+        self.assertIn("filter: tree:0", checkout)
+        self.assertNotIn("submodules: recursive", checkout)
+        self.assertIn("submodule update --init --depth 1", (ROOT / "rust/tools/linux-validate/validate.sh").read_text())
 
     def test_runs_validate_on_the_runner(self):
         self.assertIn("bash rust/tools/linux-validate/validate.sh", self.job)
