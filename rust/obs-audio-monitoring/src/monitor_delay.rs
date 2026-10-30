@@ -35,6 +35,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -90,8 +91,9 @@ pub struct Front {
 /// Whether the queue is stale at `cur_time`, the packet's arrival; stores
 /// `cur_time` in `last_recv_time`.
 pub fn stale(last_recv_time: &mut u64, cur_time: u64) -> bool {
-    let _ = (last_recv_time, cur_time);
-    todo!()
+    let stale = cur_time.wrapping_sub(*last_recv_time) > STALE_NS;
+    *last_recv_time = cur_time;
+    stale
 }
 
 /// The packet at the front of the queue, with timestamp `cur_ts`, when the
@@ -99,24 +101,29 @@ pub fn stale(last_recv_time: &mut u64, cur_time: u64) -> bool {
 /// frame is at `last_frame_ts`.
 #[must_use]
 pub fn diff(cur_ts: u64, pad_ns: u64, last_frame_ts: u64) -> Front {
-    let _ = (cur_ts, pad_ns, last_frame_ts);
-    todo!()
+    let front_ts = cur_ts.wrapping_sub(pad_ns);
+    Front {
+        front_ts,
+        diff: front_ts
+            .cast_signed()
+            .wrapping_sub(last_frame_ts.cast_signed()),
+    }
 }
 
 /// The gate's first part: no video frame yet (`last_frame_ts` 0), or audio
 /// and video more than [`MAX_DIFF_NS`] apart.
 #[must_use]
 pub fn unsynced(last_frame_ts: u64, diff: i64) -> bool {
-    let _ = (last_frame_ts, diff);
-    todo!()
+    // llabs() of INT64_MIN is undefined in the C; its magnitude, 2^63, is
+    // more than 5 s here.
+    last_frame_ts == 0 || diff.unsigned_abs() > MAX_DIFF_NS.unsigned_abs()
 }
 
 /// The gate's second part: the video has stood still for more than
 /// [`VIDEO_STALL_NS`].
 #[must_use]
 pub fn stalled(time_since_prev: u64) -> bool {
-    let _ = time_since_prev;
-    todo!()
+    time_since_prev > VIDEO_STALL_NS
 }
 
 /// The front packet's verdict from the gate (`bad_diff`) and the difference:
@@ -124,6 +131,11 @@ pub fn stalled(time_since_prev: u64) -> bool {
 /// the gate is shut.
 #[must_use]
 pub fn judge(bad_diff: bool, diff: i64) -> Verdict {
-    let _ = (bad_diff, diff);
-    todo!()
+    if !bad_diff && diff > SYNC_NS {
+        Verdict::Hold
+    } else if !bad_diff && diff < SYNC_NS.wrapping_neg() {
+        Verdict::Drag
+    } else {
+        Verdict::Play
+    }
 }

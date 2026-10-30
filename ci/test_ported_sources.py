@@ -206,6 +206,9 @@ class PortedSourceTest(unittest.TestCase):
         self.assertIn("obs-windows-keys.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertNotIn("obs-windows-keys.c.h.o", objects)
         self.assertNotIn("obs-windows-keys.c.h.o", PORTED.ported_objects(ROOT, "macos"))
+        self.assertIn("audio-monitoring/monitor-delay.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertNotIn("audio-monitoring/monitor-delay.c.h.o", objects)
+        self.assertNotIn("audio-monitoring/monitor-delay.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_host_and_optional_groups_select_the_actual_members(self):

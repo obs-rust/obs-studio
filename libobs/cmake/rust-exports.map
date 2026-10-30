@@ -1007,4 +1007,11 @@
     obs_windows_keys_system_name;
     obs_windows_keys_to_virtual_key;
     obs_windows_keys_virtual_key;
+    /* monitor-delay.c. wasapi-output.c calls them inside libobs on Windows.
+     * Not EXPORT. */
+    audio_monitor_delay_diff;
+    audio_monitor_delay_judge_diff;
+    audio_monitor_delay_stale;
+    audio_monitor_delay_stalled;
+    audio_monitor_delay_unsynced;
 };

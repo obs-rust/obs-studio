@@ -315,7 +315,6 @@
     "util/windows/win-registry.h",
     "util/windows/win-version.h",
     "util/windows/window-helpers.h",
-    "build/libobs.monitor-delay+.h.c",
     "build/libobs.windows+.h.c",
     "build/libobs.windows-crash-handler+.h.c",
     "build/libobs.graphics-ffmpeg-host-windows+.h.c"

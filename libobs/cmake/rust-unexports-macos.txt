@@ -960,3 +960,11 @@ _obs_windows_keys_scan_code
 _obs_windows_keys_system_name
 _obs_windows_keys_to_virtual_key
 _obs_windows_keys_virtual_key
+
+# monitor-delay.c: the WASAPI monitor (wasapi-output.c) calls them inside
+# libobs. Built on every host; not EXPORT.
+_audio_monitor_delay_diff
+_audio_monitor_delay_judge_diff
+_audio_monitor_delay_stale
+_audio_monitor_delay_stalled
+_audio_monitor_delay_unsynced
