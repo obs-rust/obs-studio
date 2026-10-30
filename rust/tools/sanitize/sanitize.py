@@ -214,6 +214,17 @@ def error_lines(path: Path, limit: int = 40) -> str:
     return "\n".join(matches[:limit])
 
 
+def zccache_refused_uncached(path: Path) -> bool:
+    """True when the build log shows zccache's daemon dead in its recovery
+    cool-down, where it refuses to compile uncached (`code=125`).
+
+    That is a cache-daemon failure, not a failure of the tree: the pass must
+    rebuild with `ZCCACHE_DISABLE=1` instead of reporting a red sanitizer run.
+    """
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return "daemon recovery already failed" in text and "refusing to run" in text and "uncached" in text
+
+
 def run_logged(command: list[str], log: Path, cwd: Path | None = None) -> bool:
     """Run a command with its output in a log file; True when it exits 0."""
     with log.open("wb") as handle:
@@ -301,9 +312,19 @@ def build_obs(tool: str, flags: str, build_type: str, layout: Layout) -> Path | 
     # The other tools build with -k 0: their skips (SKIPPED_TESTS) are targets
     # that cannot compile under them, so a failed target is expected there.
     build_log = layout.out / "build.log"
-    if not run_logged(["cmake", "--build", str(layout.build), "--", "-k", "0"], log=build_log) and tool == "asan":
-        print(error_lines(build_log), flush=True)
-        return None
+    build_command = ["cmake", "--build", str(layout.build), "--", "-k", "0"]
+    if not run_logged(build_command, log=build_log) and tool == "asan":
+        if not zccache_refused_uncached(build_log):
+            print(error_lines(build_log), flush=True)
+            return None
+        # The zccache daemon died and sits in its recovery cool-down, refusing
+        # to compile uncached: the tree is fine, the cache is not. Build once
+        # more without the daemon rather than failing the pass (#3086).
+        print("== [asan] zccache daemon unavailable; rebuilding uncached (ZCCACHE_DISABLE=1)", flush=True)
+        os.environ["ZCCACHE_DISABLE"] = "1"
+        if not run_logged(build_command, log=build_log):
+            print(error_lines(build_log), flush=True)
+            return None
     obs = layout.inst / "bin" / "obs"
     libraries = sorted(layout.inst.rglob("libobs.so.*"))
     if not os.access(obs, os.X_OK) or not libraries:
