@@ -5523,6 +5523,26 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_WINDOWS"
+    },
+    "test_windows_keys_steps": {
+      "sources": [
+        "test/cmocka/test_windows_keys_steps.c",
+        "libobs/obs-windows-keys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-windows-keys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
     }
   },
   "tests": {
@@ -7662,6 +7682,12 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_windows_keys_steps": {
+      "target": "test_windows_keys_steps",
+      "command": [
+        "${target}"
+      ]
     }
   }
 }
