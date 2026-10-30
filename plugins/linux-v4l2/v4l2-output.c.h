@@ -21,8 +21,8 @@ static void vmic_stop(struct virtualcam_data *vcam);
  * apps get picture and sound from one output with the same timestamps. */
 #define VMIC_SOURCE_NAME "obs_virtual_microphone"
 #define VMIC_CHANNELS 2
-/* About 20 ms of float stereo at 48 kHz: small enough to stay in sync with the
- * video, large enough for one libobs audio packet (1024 frames = 8 KiB). */
+/* Two libobs audio packets (1024 float stereo frames = 8 KiB each), about
+ * 42 ms at 48 kHz: small enough to stay in sync with the video. */
 #define VMIC_PIPE_SIZE 16384
 
 /* pactl load-module prints the new module's index on its own line. */
@@ -163,9 +163,14 @@ static void vmic_stop(struct virtualcam_data *vcam)
  * Camera runs video-only, as before. */
 static void vmic_start(struct virtualcam_data *vcam)
 {
+	/* Only the user's private runtime directory: a predictable name in a
+	 * shared directory such as /tmp could be raced by another user. */
 	const char *runtime = getenv("XDG_RUNTIME_DIR");
-	if (!runtime || !*runtime)
-		runtime = "/tmp";
+	if (!runtime || !*runtime) {
+		blog(LOG_WARNING, "Virtual microphone unavailable (XDG_RUNTIME_DIR is not set); "
+				  "the Virtual Camera sends video only");
+		return;
+	}
 	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/obs-virtual-microphone-%d", runtime, (int)getpid());
 	unlink(vcam->mic_path);
 
@@ -209,6 +214,8 @@ static void vmic_start(struct virtualcam_data *vcam)
 	aci.speakers = SPEAKERS_STEREO;
 	aci.samples_per_sec = rate;
 	obs_output_set_audio_conversion(vcam->output, &aci);
+	/* Track 1, the mix the stream and the default recording use. */
+	obs_output_set_mixer(vcam->output, 0);
 
 	blog(LOG_INFO, "Virtual microphone started (module %u, %u Hz)", vcam->mic_module, rate);
 }
