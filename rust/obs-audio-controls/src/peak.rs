@@ -20,7 +20,7 @@ pub fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut i = 0;
     while i + 3 < frames {
         for lane in 0..4 {
-            peak[lane] = peak[lane].max(samples[i + lane].abs());
+            peak[lane] = max_ps(peak[lane], samples[i + lane].abs());
         }
         i += 4;
     }
@@ -36,13 +36,13 @@ pub fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     while i + 3 < frames {
         let mut new_work = [samples[i], samples[i + 1], samples[i + 2], samples[i + 3]];
         for lane in 0..4 {
-            peak[lane] = peak[lane].max(new_work[lane].abs());
+            peak[lane] = max_ps(peak[lane], new_work[lane].abs());
         }
         for _ in 0..4 {
             shift_right_2ps(&mut new_work, &mut work);
             let intrp = cross(work, M3, M1, P1, P3);
             for lane in 0..4 {
-                peak[lane] = peak[lane].max(intrp[lane].abs());
+                peak[lane] = max_ps(peak[lane], intrp[lane].abs());
             }
         }
         i += 4;
@@ -82,6 +82,16 @@ pub(crate) fn store_last(prev: &mut [f32; 4], samples: &[f32], frames: usize) {
     }
 }
 
+/// One lane of `_mm_max_ps(a, b)`: `a > b ? a : b`, so `b` when either is
+/// NaN. `f32::max` returns the other operand instead, which keeps a lane's
+/// peak where the C replaces it with the NaN (#3005). The comparison form
+/// is also the one compilers turn into `maxps`.
+#[inline]
+fn max_ps(a: f32, b: f32) -> f32 {
+    if a > b { a } else { b }
+}
+
+/// `hmax_ps`: `fmaxf` over the lanes, which skips a NaN like `f32::max`.
 fn hmax(v: [f32; 4]) -> f32 {
     v[0].max(v[1]).max(v[2]).max(v[3])
 }
