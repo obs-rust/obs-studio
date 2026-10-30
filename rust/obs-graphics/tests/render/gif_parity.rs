@@ -274,7 +274,13 @@ fn case() -> impl Strategy<Value = Case> {
 /// The local palette of frame `f` as the views compare it: from the frame a
 /// scan stopped in on (`f >= frame_count`), whether there is one and its
 /// size only (an intentional difference, see the module docs).
-fn local_view(f: u32, info: &Info, table: [u32; MAX_COLOURS], entries: usize) -> (Vec<u32>, usize) {
+fn local_view(
+    f: u32,
+    info: &Info,
+    table: [u32; MAX_COLOURS],
+    entries: usize,
+    _in_data: usize,
+) -> (Vec<u32>, usize) {
     if f < info.frame_count {
         (table.to_vec(), entries)
     } else {
@@ -299,7 +305,8 @@ fn rust_view(gif: *mut NsgifCtx) -> View {
             .map(|f| {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
-                nsgif_local_palette(gif, f, &mut t, &mut e).then(|| local_view(f, &info, t, e))
+                nsgif_local_palette(gif, f, &mut t, &mut e)
+                    .then(|| local_view(f, &info, t, e, e))
             })
             .collect();
         View {
@@ -335,7 +342,7 @@ fn c_view(gif: *mut c_void) -> View {
                 let mut t = [0u32; MAX_COLOURS];
                 let mut e = 0usize;
                 c::oracle_nsgif_local_palette(gif, f, t.as_mut_ptr(), &mut e)
-                    .then(|| local_view(f, &info, t, e))
+                    .then(|| local_view(f, &info, t, e, e))
             })
             .collect();
         View {
@@ -345,6 +352,17 @@ fn c_view(gif: *mut c_void) -> View {
             local,
         }
     }
+}
+
+#[test]
+fn local_view_excludes_colours_past_scanned_data() {
+    let mut table = [0u32; MAX_COLOURS];
+    table[..2].copy_from_slice(&[0x1122_3344, 0x5566_7788]);
+
+    assert_eq!(
+        local_view(0, &Info { frame_count: 1, ..Info::default() }, table, 2, 1),
+        (vec![0x1122_3344], 2),
+    );
 }
 
 proptest! {
