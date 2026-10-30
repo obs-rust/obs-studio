@@ -71,11 +71,14 @@ target_compile_options(properties-view INTERFACE "$<$<CXX_COMPILER_ID:MSVC>:/wd4
 # every target is ratcheted.
 #
 # Apple keeps the sign-conversion pin (#3096): these flags are INTERFACE, so
-# they reach every consumer's TUs, and with the group on the macOS app lane
-# stops inside Qt 6.11's own headers (qversiontagging.h, qnamespace.h), which
-# no obs source states. The two platforms are stated as branches because the
-# Xcode generator does not apply the Darwin half of a
-# `$<NOT:$<PLATFORM_ID:Darwin>>` genex in `target_compile_options` (#2979).
+# CMake appends them after every consumer's own options, and the positive groups
+# win over a consumer-side `-Wno-*`. With the group on, the macOS app lane stops
+# inside Qt 6.11's own headers (qversiontagging.h, qnamespace.h), which no obs
+# source states; `-Wconversion` alone also re-enables the sign group. So Apple
+# gets none of the three groups here, and the pin lands last on the consumer's
+# command line. The two platforms are branches so the flags stay visible in the
+# consumer's `OTHER_CFLAGS`; the genex form expands, but relying on where a
+# linked INTERFACE option sorts is what broke the lane.
 if(OS_MACOS)
   target_compile_options(properties-view INTERFACE -Wno-sign-conversion)
 else()

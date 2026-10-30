@@ -39,12 +39,14 @@ obs_msvc_exempt_c4201(obs-studio)
 # opt-in, in the PR that converts its last file — never a second opt-in.
 # Apple TUs keep a `-Wno-sign-conversion` pin: with the group on, the macOS app
 # lane stops inside Qt 6.11's own headers (qversiontagging.h, qkeycombination.h,
-# qnamespace.h), which no obs source states. The macOS lane builds with the Xcode
-# generator, and a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
-# `target_compile_options` does not reach its TUs: #2979 wrapped the group that
-# way and the lane still stopped in those headers (#3096). So the two platforms
-# are stated as branches, which every generator applies, and the pin is a real
-# compile option rather than a dropped expression.
+# qnamespace.h), which no obs source states. State the two platforms as branches:
+# a genex expands fine, but the branch keeps the pin visible as a compile option
+# in `OTHER_CFLAGS` and independent of the option ordering. The group itself is
+# not what reached these TUs (#3096): `OBS::properties-view` links its conversion
+# groups as INTERFACE options, which CMake appends after this target's own, and
+# `-Wconversion` re-enables `-Wsign-conversion` diagnostics ahead of any earlier
+# `-Wno-sign-conversion`. That interface block is why the lane was red; see
+# `shared/properties-view/CMakeLists.txt`.
 # `ci/test_frontend_conversion_optins.py` holds the target to that shape.
 if(OS_MACOS)
   target_compile_options(obs-studio PRIVATE -Wno-sign-conversion)

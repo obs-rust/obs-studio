@@ -16,15 +16,15 @@ The expected group here moves with the ratchet: when the remaining frontend file
 are converted, add the group to `APP_TARGET_GROUPS` in the same PR that adds the
 flag, and the next group is the one still pinned globally.
 
-Apple TUs keep a pin instead of the group. It is stated in an `if(OS_MACOS)`
-branch because the Xcode generator, which the macOS lane requires, does not apply
-the Darwin half of a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
-`target_compile_options`: #2979 wrapped the group that way and the lane still
-stopped in Qt 6.11's own headers (#3096).
-
-`shared/properties-view` needs the same branch: its groups are INTERFACE, so
-they reach every consumer's TUs, and a consumer-side pin cannot override a flag
-that the linked interface adds after the target's own options.
+Apple TUs keep a pin instead of the group, stated in an `if(OS_MACOS)` branch so
+the flags are visible platform options. The branch is not a workaround for the
+generator -- a nested `$<NOT:$<PLATFORM_ID:Darwin>>` genex expands in both the
+Ninja and Xcode generators. #2979's genex pin reached the app TUs and the lane was
+still red (#3096) because `shared/properties-view` adds its conversion groups as
+INTERFACE options, which CMake appends after the consumer's own options, and
+`-Wconversion` re-enables `-Wsign-conversion` diagnostics regardless of an earlier
+`-Wno-sign-conversion`. The fix therefore has to be on that INTERFACE block: it
+must contribute none of the three groups on Apple.
 """
 
 from __future__ import annotations
@@ -67,20 +67,25 @@ def target_compile_option_bodies(text: str, target: str) -> list[str]:
 def darwin_branch(text: str) -> str | None:
     """The body of the `if(OS_MACOS)` branch that states the Apple compile options.
 
-    The macOS lane builds with the Xcode generator, which does not apply the
-    Darwin half of a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
-    `target_compile_options` (#3096), so the pin has to be a branch the
-    generator cannot drop.
+    The macOS app lane keeps a `-Wno-sign-conversion` pin rather than the ratcheted
+    group, because the group reached its TUs through `OBS::properties-view`'s
+    INTERFACE options and stopped inside Qt 6.11's own headers (#3096). The branch
+    shape keeps that pin a real, visible compile option instead of an expression
+    whose contribution depends on where a linked interface sorts.
     """
     match = re.search(
-        r"^if\(OS_MACOS\)$(.*?)^(?:else\(\)|endif\(\))$", without_comments(text), re.M | re.S
+        r"^if\(OS_MACOS\)$(.*?)^(?:else\(\)|endif\(\))$",
+        without_comments(text),
+        re.M | re.S,
     )
     return match.group(1) if match else None
 
 
 def without_comments(text: str) -> str:
     """The CMake text with comment lines dropped, so a comment cannot satisfy a check."""
-    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+    return "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
 
 
 class FrontendConversionOptinsTest(unittest.TestCase):
@@ -90,7 +95,9 @@ class FrontendConversionOptinsTest(unittest.TestCase):
     def test_one_opt_in_block_names_the_ratcheted_group(self) -> None:
         calls = target_compile_options(self.text, "obs-studio")
         ratcheted = [
-            flags for flags in calls if any(not flag.startswith("-Wno-") for flag in flags)
+            flags
+            for flags in calls
+            if any(not flag.startswith("-Wno-") for flag in flags)
         ]
         self.assertEqual(
             len(ratcheted),
@@ -104,7 +111,9 @@ class FrontendConversionOptinsTest(unittest.TestCase):
             "the app target opts into one conversion group; a second block widens it "
             "while the remaining files are still unconverted (#2938)",
         )
-        pins = [flags for flags in calls if all(flag.startswith("-Wno-") for flag in flags)]
+        pins = [
+            flags for flags in calls if all(flag.startswith("-Wno-") for flag in flags)
+        ]
         self.assertEqual(len(pins), 1, "the Apple pin is one block (#3096)")
         self.assertIn(
             pins[0][0],
@@ -112,21 +121,24 @@ class FrontendConversionOptinsTest(unittest.TestCase):
             "the pin names its group on the Darwin branch (#3096)",
         )
 
-    def test_darwin_pins_the_group_in_a_branch_the_xcode_generator_honours(self) -> None:
+    def test_darwin_states_the_pin_in_a_branch(self) -> None:
         self.assertNotIn(
             "$<NOT:$<PLATFORM_ID:Darwin>>",
             without_comments(self.text),
-            "the macOS app lane was still handed the ratcheted group and stopped "
-            "inside Qt 6.11's own headers (#3096): the Xcode generator does not "
-            "apply the Darwin half of that genex, so state the pin in an if() branch",
+            "the Apple pin is stated as an `if(OS_MACOS)` branch, not a genex: the "
+            "genex expands in both generators, so it was never the reason the lane "
+            "stayed red -- the ratcheted group arrived from an INTERFACE library "
+            "(#3096) -- but a branch keeps the pin a visible compile option",
         )
         branch = darwin_branch(self.text)
-        self.assertIsNotNone(branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)")
+        self.assertIsNotNone(
+            branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)"
+        )
         self.assertEqual(
             set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
             {"-Wno-sign-conversion"},
             "Darwin keeps the global pin as a target option, so Apple TUs never see "
-            "the group the app target ratchets (#2950, #3096)",
+            "a positive conversion group (#2950, #3096)",
         )
 
     def test_global_pins_are_still_in_place(self) -> None:
@@ -148,7 +160,9 @@ class PropertiesViewConversionOptinsTest(unittest.TestCase):
 
     def test_apple_keeps_the_sign_conversion_pin(self) -> None:
         branch = darwin_branch(self.text)
-        self.assertIsNotNone(branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)")
+        self.assertIsNotNone(
+            branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)"
+        )
         self.assertEqual(
             set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
             {"-Wno-sign-conversion"},
@@ -158,7 +172,11 @@ class PropertiesViewConversionOptinsTest(unittest.TestCase):
 
     def test_other_platforms_keep_the_ratcheted_groups(self) -> None:
         calls = target_compile_options(self.text, "properties-view")
-        groups = [flags for flags in calls if any(not flag.startswith("-Wno-") for flag in flags)]
+        groups = [
+            flags
+            for flags in calls
+            if any(not flag.startswith("-Wno-") for flag in flags)
+        ]
         self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#3096)")
         self.assertEqual(
             set(groups[0]),
