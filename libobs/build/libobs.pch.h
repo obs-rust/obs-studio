@@ -88,6 +88,9 @@
 /* obs-output-begin.c */
 #include "obs-output-begin.h"
 
+/* obs-output-pause.c */
+#include "obs-output-pause.h"
+
 /* obs-output-raw-audio.c */
 #include "obs-output-raw-audio.h"
 

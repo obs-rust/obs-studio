@@ -751,31 +751,35 @@ bool obs_output_can_pause(const obs_output_t *output)
 	return obs_output_valid(output, "obs_output_can_pause") ? !!(output->info.flags & OBS_OUTPUT_CAN_PAUSE) : false;
 }
 
+/* The flag and limits obs-output-pause.h copies. */
+_Static_assert(OBS_OUTPUT_PAUSE_CAN_PAUSE == OBS_OUTPUT_CAN_PAUSE, "OBS_OUTPUT_CAN_PAUSE");
+_Static_assert(OBS_OUTPUT_PAUSE_MAX_VIDEO_ENCODERS == MAX_OUTPUT_VIDEO_ENCODERS, "MAX_OUTPUT_VIDEO_ENCODERS");
+_Static_assert(OBS_OUTPUT_PAUSE_MAX_AUDIO_ENCODERS == MAX_OUTPUT_AUDIO_ENCODERS, "MAX_OUTPUT_AUDIO_ENCODERS");
+
 static inline void end_pause(struct pause_data *pause, uint64_t ts)
 {
-	if (!pause->ts_end) {
+	if (obs_output_pause_ends(pause->ts_end)) {
 		pause->ts_end = ts;
-		pause->ts_offset += pause->ts_end - pause->ts_start;
+		pause->ts_offset = obs_output_pause_offset(pause->ts_offset, pause->ts_start, pause->ts_end);
 	}
 }
 
 static inline uint64_t get_closest_v_ts(struct pause_data *pause)
 {
 	uint64_t interval = obs->video.video_frame_interval_ns;
-	uint64_t i2 = interval * 2;
 	uint64_t ts = os_gettime_ns();
 
-	return pause->last_video_ts + ((ts - pause->last_video_ts + i2) / interval) * interval;
+	return obs_output_pause_closest_ts(pause->last_video_ts, interval, ts);
 }
 
 static inline bool pause_can_start(struct pause_data *pause)
 {
-	return !pause->ts_start && !pause->ts_end;
+	return obs_output_pause_can_start(pause->ts_start, pause->ts_end);
 }
 
 static inline bool pause_can_stop(struct pause_data *pause)
 {
-	return !!pause->ts_start && !pause->ts_end;
+	return obs_output_pause_can_stop(pause->ts_start, pause->ts_end);
 }
 
 /* The flags, limits and encoder types obs-output-slots.h copies. */
@@ -819,6 +823,10 @@ static bool obs_encoded_output_pause(obs_output_t *output, bool pause)
 {
 	obs_encoder_t *venc[MAX_OUTPUT_VIDEO_ENCODERS];
 	obs_encoder_t *aenc[MAX_OUTPUT_AUDIO_ENCODERS];
+	uintptr_t venc_id[MAX_OUTPUT_VIDEO_ENCODERS];
+	uintptr_t aenc_id[MAX_OUTPUT_AUDIO_ENCODERS];
+	uint32_t vlock;
+	uint32_t alock;
 	uint64_t closest_v_ts;
 	bool success = false;
 
@@ -827,13 +835,19 @@ static bool obs_encoded_output_pause(obs_output_t *output, bool pause)
 	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++)
 		aenc[i] = output->audio_encoders[i];
 
+	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++)
+		venc_id[i] = (uintptr_t)venc[i];
+	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++)
+		aenc_id[i] = (uintptr_t)aenc[i];
+	obs_output_pause_lock_set(venc_id, aenc_id, &vlock, &alock);
+
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-		if (venc[i]) {
+		if (vlock & ((uint32_t)1 << i)) {
 			pthread_mutex_lock(&venc[i]->pause.mutex);
 		}
 	}
 	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-		if (aenc[i]) {
+		if (alock & ((uint32_t)1 << i)) {
 			pthread_mutex_lock(&aenc[i]->pause.mutex);
 		}
 	}
@@ -848,48 +862,48 @@ static bool obs_encoded_output_pause(obs_output_t *output, bool pause)
 
 	if (pause) {
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-			if (venc[i] && !pause_can_start(&venc[i]->pause)) {
+			if ((vlock & ((uint32_t)1 << i)) && !pause_can_start(&venc[i]->pause)) {
 				goto fail;
 			}
 		}
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-			if (aenc[i] && !pause_can_start(&aenc[i]->pause)) {
+			if ((alock & ((uint32_t)1 << i)) && !pause_can_start(&aenc[i]->pause)) {
 				goto fail;
 			}
 		}
 
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-			if (venc[i]) {
+			if (vlock & ((uint32_t)1 << i)) {
 				os_atomic_set_bool(&venc[i]->paused, true);
 				venc[i]->pause.ts_start = closest_v_ts;
 			}
 		}
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-			if (aenc[i]) {
+			if (alock & ((uint32_t)1 << i)) {
 				os_atomic_set_bool(&aenc[i]->paused, true);
 				aenc[i]->pause.ts_start = closest_v_ts;
 			}
 		}
 	} else {
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-			if (venc[i] && !pause_can_stop(&venc[i]->pause)) {
+			if ((vlock & ((uint32_t)1 << i)) && !pause_can_stop(&venc[i]->pause)) {
 				goto fail;
 			}
 		}
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-			if (aenc[i] && !pause_can_stop(&aenc[i]->pause)) {
+			if ((alock & ((uint32_t)1 << i)) && !pause_can_stop(&aenc[i]->pause)) {
 				goto fail;
 			}
 		}
 
 		for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
-			if (venc[i]) {
+			if (vlock & ((uint32_t)1 << i)) {
 				os_atomic_set_bool(&venc[i]->paused, false);
 				end_pause(&venc[i]->pause, closest_v_ts);
 			}
 		}
 		for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
-			if (aenc[i]) {
+			if (alock & ((uint32_t)1 << i)) {
 				os_atomic_set_bool(&aenc[i]->paused, false);
 				end_pause(&aenc[i]->pause, closest_v_ts);
 			}
@@ -902,12 +916,12 @@ static bool obs_encoded_output_pause(obs_output_t *output, bool pause)
 
 fail:
 	for (size_t i = MAX_OUTPUT_AUDIO_ENCODERS; i > 0; i--) {
-		if (aenc[i - 1]) {
+		if (alock & ((uint32_t)1 << (i - 1))) {
 			pthread_mutex_unlock(&aenc[i - 1]->pause.mutex);
 		}
 	}
 	for (size_t i = MAX_OUTPUT_VIDEO_ENCODERS; i > 0; i--) {
-		if (venc[i - 1]) {
+		if (vlock & ((uint32_t)1 << (i - 1))) {
 			pthread_mutex_unlock(&venc[i - 1]->pause.mutex);
 		}
 	}
@@ -942,11 +956,11 @@ bool obs_output_pause(obs_output_t *output, bool pause)
 
 	if (!obs_output_valid(output, "obs_output_pause"))
 		return false;
-	if ((output->info.flags & OBS_OUTPUT_CAN_PAUSE) == 0)
+	if (!obs_output_pause_allowed(output->info.flags))
 		return false;
 	if (!os_atomic_load_bool(&output->active))
 		return false;
-	if (os_atomic_load_bool(&output->paused) == pause)
+	if (obs_output_pause_already(os_atomic_load_bool(&output->paused), pause))
 		return true;
 
 	success = flag_encoded(output) ? obs_encoded_output_pause(output, pause) : obs_raw_output_pause(output, pause);
