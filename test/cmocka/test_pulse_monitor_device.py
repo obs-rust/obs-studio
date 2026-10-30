@@ -26,6 +26,9 @@ SOCKET_BUDGET = 107
 # The wait for the private sound server to answer `pactl info`: 200 * 0.1 s.
 START_ATTEMPTS = 200
 START_SLEEP = 0.1
+# The wait for a daemon to exit after SIGTERM before SIGKILL: a hung sound
+# server must not hang the lane that runs the test.
+STOP_TIMEOUT = 3.0
 # The sound server and its helpers, all required to run the test.
 TOOLS = ("pipewire", "wireplumber", "pipewire-pulse", "pactl", "dbus-run-session")
 # WirePlumber with every hardware monitor disabled: no ALSA, Bluetooth, V4L2 or
@@ -69,24 +72,56 @@ def start(program: str, log: Path) -> subprocess.Popen:
 
 
 def stop(process: subprocess.Popen) -> None:
+    """Terminate, then wait with a deadline: a daemon that ignores SIGTERM (a
+    hung sound server) must not hang the whole lane."""
     if process.poll() is None:
         process.terminate()
-    process.wait()
+        try:
+            process.wait(timeout=STOP_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 
-def wait_for_server(pipewire, pipewire_pulse, logs: tuple[Path, ...]) -> bool:
+def _dead_daemons(daemons: tuple[tuple[str, subprocess.Popen], ...]) -> list[str]:
+    """The daemons that have exited, in start order."""
+    return [name for name, process in daemons if process.poll() is not None]
+
+
+def wait_for_server(
+    pipewire: subprocess.Popen,
+    wireplumber: subprocess.Popen,
+    pipewire_pulse: subprocess.Popen,
+    logs: tuple[Path, ...],
+) -> bool:
     """Poll `pactl info` until the sound server answers; False when a daemon
-    dies or it never comes up (the daemon logs are printed then)."""
+    dies or it never comes up (the daemon logs are printed then). A daemon that
+    exits on its own is a failure even when the server still answers: the test
+    binary would run against a half-started graph."""
     attempts = 0
-    while subprocess.run(["pactl", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+    daemons = (
+        ("pipewire", pipewire),
+        ("wireplumber", wireplumber),
+        ("pipewire-pulse", pipewire_pulse),
+    )
+    while attempts <= START_ATTEMPTS:
         attempts += 1
-        if pipewire.poll() is not None or pipewire_pulse.poll() is not None or attempts > START_ATTEMPTS:
+        dead = _dead_daemons(daemons)
+        if subprocess.run(["pactl", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+            # `pactl` blocks until the sound server answers, so a daemon can die
+            # while it waits: check again before the test binary runs.
+            dead = _dead_daemons(daemons)
+            if not dead:
+                return True
+        if dead or attempts > START_ATTEMPTS:
             print("private pipewire-pulse did not start:")
+            for name in dead:
+                print(f"  {name} exited on its own:")
             for log in logs:
                 print(log.read_text(errors="replace"), end="")
             return False
         time.sleep(START_SLEEP)
-    return True
+    return False
 
 
 def run(argv: list[str]) -> int:
@@ -113,14 +148,17 @@ def run(argv: list[str]) -> int:
         pipewire = start("pipewire", pipewire_log)
         processes.append(pipewire)
         time.sleep(1)
-        processes.append(start("wireplumber", wireplumber_log))
+        wireplumber = start("wireplumber", wireplumber_log)
+        processes.append(wireplumber)
         pipewire_pulse = start("pipewire-pulse", pulse_log)
         processes.append(pipewire_pulse)
 
         os.environ["PULSE_SERVER"] = f"unix:{directory / 'pulse' / 'native'}"
         # Everything is installed, so a sound server that does not come up is a
         # failure, not a reason to skip: ctest counts skipped tests as passed.
-        if not wait_for_server(pipewire, pipewire_pulse, (pipewire_log, wireplumber_log, pulse_log)):
+        if not wait_for_server(
+            pipewire, wireplumber, pipewire_pulse, (pipewire_log, wireplumber_log, pulse_log)
+        ):
             return 1
         return subprocess.run(argv).returncode
     finally:
