@@ -185,13 +185,9 @@ static void raw_audio(void *param, size_t mix_idx, struct audio_data *data)
 
 	pthread_mutex_lock(&m->mutex);
 	if (m->armed) {
-		/* The window is the mix's own clock: it opens on the first frame
-		 * mixed after the request, so a starved audio thread moves it
-		 * instead of leaving it empty. */
-		if (!m->start_ts) {
-			m->start_ts = data->timestamp;
-			m->end_ts = m->start_ts + 400000000ULL;
-		}
+		/* The mix lags real time by the audio buffering, so remember how
+		 * far it has got: the measurement waits for the mix to reach the
+		 * end of its window instead of trusting a fixed sleep. */
 		if (data->timestamp > m->last_ts)
 			m->last_ts = data->timestamp;
 		if (data->timestamp >= m->start_ts && data->timestamp < m->end_ts) {
@@ -204,27 +200,30 @@ static void raw_audio(void *param, size_t mix_idx, struct audio_data *data)
 	pthread_mutex_unlock(&m->mutex);
 }
 
-/* Average program level over 400 ms of mixed audio, as a fraction of the tone. */
+/* Average program level over the next 400 ms of the mix, as a fraction of the
+ * tone. */
 static double program_level(struct meter *m)
 {
+	const uint64_t now = os_gettime_ns();
 	pthread_mutex_lock(&m->mutex);
 	m->armed = true;
-	m->start_ts = 0;
-	m->end_ts = 0;
+	m->start_ts = now;
+	m->end_ts = now + 400000000ULL;
 	m->last_ts = 0;
 	m->sum = 0.0;
 	m->frames = 0;
 	pthread_mutex_unlock(&m->mutex);
 
-	/* The mix lags real time by the audio buffering, and a starved machine
-	 * delays it further: wait for the window to close on the mix's own
-	 * clock rather than for 1000 ms of wall time to pass. */
-	const uint64_t deadline = os_gettime_ns() + 5000000000ULL;
+	/* Wait for the mix to reach the end of the window on its own clock. A
+	 * starved machine delays the measurement instead of emptying it: the
+	 * 1000 ms sleep this replaces was already over when the audio thread
+	 * had not run, and every case failed with no audio mixed. */
+	const uint64_t deadline = now + 5000000000ULL;
 	for (;;) {
 		pthread_mutex_lock(&m->mutex);
-		bool closed = m->start_ts && m->last_ts >= m->end_ts;
+		bool reached = m->last_ts >= m->end_ts;
 		pthread_mutex_unlock(&m->mutex);
-		if (closed || os_gettime_ns() >= deadline)
+		if (reached || os_gettime_ns() >= deadline)
 			break;
 		os_sleep_ms(5);
 	}
