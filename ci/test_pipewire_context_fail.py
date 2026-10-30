@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -44,6 +45,9 @@ import os
 import socket
 import time
 
+# The interpreter's own pid, behind the `uv` wrapper: the leak check reads it.
+with open(os.environ["CAPTURE_FILE"] + ".daemon-pid", "w") as pid_file:
+    pid_file.write(str(os.getpid()))
 path = os.path.join(os.environ["PIPEWIRE_RUNTIME_DIR"], "pipewire-0")
 server = socket.socket(socket.AF_UNIX)
 server.bind(path)
@@ -85,6 +89,15 @@ def load_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def process_alive(pid: int) -> bool:
+    """True while pid runs (a zombie awaiting its new parent counts as gone)."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (FileNotFoundError, IndexError):
+        return False
+    return state != "Z"
 
 
 def write_stub(path: Path, body: str) -> None:
@@ -227,6 +240,19 @@ class PipewireContextFailTest(unittest.TestCase):
             self.assertEqual(harness.run_pass().returncode, 0)
             runtime = Path(harness.capture()["XDG_RUNTIME_DIR"])
             self.assertFalse(runtime.parent.exists(), "the runtime directory should be gone")
+
+    def test_the_daemon_behind_a_wrapper_does_not_outlive_the_run(self):
+        # The live stub runs under `uv run`, so the module's direct child is
+        # uv and the daemon is its child. Killing only uv leaked the daemon on
+        # every run (obs-rust/obs-studio#2984).
+        with tempfile.TemporaryDirectory() as work:
+            harness = Harness(Path(work), LIVE_PIPEWIRE)
+            self.assertEqual(harness.run_pass().returncode, 0)
+            pid = int(Path(str(harness.capture_file) + ".daemon-pid").read_text())
+            deadline = time.monotonic() + 5
+            while process_alive(pid) and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertFalse(process_alive(pid), f"stub pipewire {pid} outlived the run")
 
     def test_a_deep_tmpdir_falls_back_to_tmp(self):
         with tempfile.TemporaryDirectory() as work:
