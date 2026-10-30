@@ -308,7 +308,9 @@ fn write_port_comparison_units(out_dir: &Path, manifest: &Path) {
         out_dir.join("port_comparison_units.rs"),
         format!(
             "/// Runs every bench unit, one per file in `benches/port_comparison`\
-             \n/// (#1997).\nfn run_units(criterion: &mut Criterion) {{\n{calls}}}\n"
+             \n/// (#1997). It grows by one call per unit, so it is long by design.\n\
+             #[allow(clippy::too_many_lines, reason = \"one generated call per bench unit\")]\n\
+             fn run_units(criterion: &mut Criterion) {{\n{calls}}}\n"
         ),
     )
     .expect("write port_comparison_units.rs");
