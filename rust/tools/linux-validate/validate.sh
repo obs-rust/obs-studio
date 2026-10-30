@@ -283,15 +283,29 @@ else
   # stale objects on the persistent /build volume.
   # A unity group (BUILD.md) counts when <target> compiles a group whose file
   # includes <source>.
-  compiles() {
-    local target=$1 src=$2 object=$3 unity group
-    ninja -C "$build" -t inputs "$target" 2>/dev/null | grep -qF "$target.dir/$object" && return 0
-    for group in $(ninja -C "$build" -t inputs "$target" 2>/dev/null |
-      sed -n "s|.*CMakeFiles/$target\.dir/\(build/.*+\.h\.[cm]\)\.o\$|\1|p"); do
-      grep -qF "\"$src\"" "$SRC/libobs/$group" 2>/dev/null && return 0
-    done
+  # Each target's inputs, groups and Unity includes are read once into a
+  # fresh dir: loading the graph per object took 59 s for 176 objects (#3046).
+  proof_dir=$(mktemp -d)
+  target_lists() {
+    local target=$1 unity
+    [ -e "$proof_dir/$target.inputs" ] && return 0
+    ninja -C "$build" -t inputs "$target" >"$proof_dir/$target.inputs" 2>/dev/null || true
+    sed -n "s|.*CMakeFiles/$target\.dir/\(build/.*+\.h\.[cm]\)\.o\$|\1|p" \
+      "$proof_dir/$target.inputs" >"$proof_dir/$target.groups"
     unity=$(find "$build" -type d -path "*/CMakeFiles/$target.dir/Unity" | head -1)
-    [ -n "$unity" ] && sed -n 's/^#include "\(.*\)"$/\1/p' "$unity"/*.c 2>/dev/null | grep -q "/$src\$"
+    : >"$proof_dir/$target.unity"
+    if [ -n "$unity" ]; then
+      sed -n 's/^#include "\(.*\)"$/\1/p' "$unity"/*.c >"$proof_dir/$target.unity" 2>/dev/null || true
+    fi
+  }
+  compiles() {
+    local target=$1 src=$2 object=$3 group
+    target_lists "$target"
+    grep -qF "$target.dir/$object" "$proof_dir/$target.inputs" && return 0
+    while read -r group; do
+      grep -qF "\"$src\"" "$SRC/libobs/$group" 2>/dev/null && return 0
+    done <"$proof_dir/$target.groups"
+    grep -q "/$src\$" "$proof_dir/$target.unity"
   }
   for obj in $ported_objs; do
     src="libobs/${obj%.o}"
