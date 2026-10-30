@@ -67,9 +67,9 @@ ask for capture permissions again.
 ## Linux (x86_64)
 
 - **AppImage** — any distribution: `chmod +x OBS-Studio-Rust-*-linux-x86_64.AppImage`,
-  then run it. Tested on AlmaLinux 8 (the glibc 2.28 floor), Ubuntu 22.04,
-  Ubuntu 24.04, Arch Linux and NixOS (for NixOS, see the AppImage entry in
-  the Q&A below).
+  then run it. The AppImage is tested on AlmaLinux 8 (the glibc 2.28 floor),
+  Ubuntu 22.04, Ubuntu 24.04, Arch Linux and NixOS. On NixOS, see the
+  AppImage entry in the Q&A below.
 - **.deb** — Ubuntu 26.04: `sudo apt install ./OBS-Studio-Rust-*-ubuntu-26.04-x86_64.deb`.
   It installs the GUI as `obs-studio-rust-gui`; `obs-studio-rust` is the
   obs-websocket command-line client. It keeps its settings in
