@@ -209,8 +209,7 @@ static void every_step(void **state)
 			event(s->flag, s->count, s->press);
 
 			bool ok = binding_under_test->pressed == s->press &&
-				  hotkey_under_test->pressed == count_after &&
-				  num_calls == (expects_call ? 1u : 0u);
+				  hotkey_under_test->pressed == count_after && num_calls == (expects_call ? 1u : 0u);
 			if (!ok)
 				fprintf(stderr,
 					"routing %d step %zu (flag %d count %d %s): flag %d count %d, %zu calls; "
@@ -341,6 +340,52 @@ static void release_without_press(void **state)
 	assert_int_equal(num_calls, 0);
 }
 
+/* The accessor points at the binding's own flag and its hotkey's count, and at
+ * the hotkey; the dispatch makes the rerouting choice and nothing else. */
+static void fields_and_dispatch(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding_under_test);
+	assert_ptr_equal(fields.pressed, &binding_under_test->pressed);
+	assert_ptr_equal(fields.count, &hotkey_under_test->pressed);
+	assert_ptr_equal(fields.hotkey, hotkey_under_test);
+
+	/* A value written through the accessor is the one the unit writes. */
+	*fields.pressed = true;
+	*fields.count = 5;
+	assert_true(binding_under_test->pressed);
+	assert_int_equal(hotkey_under_test->pressed, 5);
+
+	/* The dispatch: the hotkey's own func when rerouting is off, the router
+	 * when it is on and set, nothing when it is on and unset. It does not
+	 * touch the flag or the count. */
+	num_calls = 0;
+	binding_under_test->pressed = false;
+	hotkey_under_test->pressed = 0;
+
+	set_routing(ROUTING_OFF);
+	obs_hotkey_dispatch(hotkey_under_test, true);
+	assert_int_equal(num_calls, 1);
+	assert_int_equal(calls[0].via, 1);
+	assert_true(calls[0].id == hotkey_id);
+	assert_ptr_equal(calls[0].hotkey, hotkey_under_test);
+	assert_int_equal(calls[0].pressed, true);
+
+	set_routing(ROUTING_ON_WITH_ROUTER);
+	obs_hotkey_dispatch(hotkey_under_test, false);
+	assert_int_equal(num_calls, 2);
+	assert_int_equal(calls[1].via, 2);
+	assert_true(calls[1].id == hotkey_id);
+	assert_int_equal(calls[1].pressed, false);
+
+	set_routing(ROUTING_ON_WITHOUT_ROUTER);
+	obs_hotkey_dispatch(hotkey_under_test, true);
+	assert_int_equal(num_calls, 2);
+
+	assert_false(binding_under_test->pressed);
+	assert_int_equal(hotkey_under_test->pressed, 0);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -348,6 +393,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(two_bindings, setup, teardown),
 		cmocka_unit_test_setup_teardown(remove_bindings_releases, setup, teardown),
 		cmocka_unit_test_setup_teardown(release_without_press, setup, teardown),
+		cmocka_unit_test_setup_teardown(fields_and_dispatch, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -25,36 +25,33 @@
  * events into hotkey events: its callback runs on the first press and the
  * last release only, so a hotkey held through two bindings fires once.
  *
- * The binding events come from the OS key state, the frontend and
- * obs-websocket, and this file runs with the hotkey mutex held. Declared in
- * obs-internal.h. Next to be ported to rust/obs-hotkey (binding_press). */
+ * The binding and its hotkey are private, so this file reaches them through
+ * obs_hotkey_binding_count_fields() (the binding's pressed flag, the hotkey's
+ * count and the hotkey) and chooses the call through obs_hotkey_dispatch(),
+ * both in obs-hotkey.c. It runs with the hotkey mutex held and keeps no
+ * state. Declared in obs-internal.h. Next to be ported to rust/obs-hotkey
+ * (binding_press). */
 
 static inline void press_released_binding(obs_hotkey_binding_t *binding)
 {
-	binding->pressed = true;
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding);
+	*fields.pressed = true;
 
-	obs_hotkey_t *hotkey = binding->hotkey;
-	if (hotkey->pressed++)
+	if ((*fields.count)++)
 		return;
 
-	if (!obs->hotkeys.reroute_hotkeys)
-		hotkey->func(hotkey->data, hotkey->id, hotkey, true);
-	else if (obs->hotkeys.router_func)
-		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, true);
+	obs_hotkey_dispatch(fields.hotkey, true);
 }
 
 static inline void release_pressed_binding(obs_hotkey_binding_t *binding)
 {
-	binding->pressed = false;
+	struct obs_hotkey_binding_count_fields fields = obs_hotkey_binding_count_fields(binding);
+	*fields.pressed = false;
 
-	obs_hotkey_t *hotkey = binding->hotkey;
-	if (--hotkey->pressed)
+	if (--(*fields.count))
 		return;
 
-	if (!obs->hotkeys.reroute_hotkeys)
-		hotkey->func(hotkey->data, hotkey->id, hotkey, false);
-	else if (obs->hotkeys.router_func)
-		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, false);
+	obs_hotkey_dispatch(fields.hotkey, false);
 }
 
 void obs_hotkey_binding_press(obs_hotkey_binding_t *binding)

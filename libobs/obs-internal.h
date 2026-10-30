@@ -365,6 +365,25 @@ bool obs_hotkey_key_is_pressed(obs_key_t key);
 void obs_hotkey_binding_press(obs_hotkey_binding_t *binding);
 void obs_hotkey_binding_release(obs_hotkey_binding_t *binding);
 
+/* The fields of one binding that the binding press count reads and writes, as
+ * pointers into the binding and its hotkey, so it needs no layout of either
+ * struct. The flag and the count are written in place. */
+struct obs_hotkey_binding_count_fields {
+	bool *pressed;
+	int *count;
+	obs_hotkey_t *hotkey;
+};
+
+/* The binding press count (obs-hotkey-binding-press.c): when one binding is
+ * pressed or released, its hotkey's callback runs on the first press and the
+ * last release only. The hotkey thread, obs_hotkey_inject_event() and
+ * remove_bindings() in obs-hotkey.c call obs_hotkey_binding_press() and
+ * obs_hotkey_binding_release(), with the hotkey mutex held. The unit reaches
+ * the binding through obs_hotkey_binding_count_fields() and chooses the call
+ * through obs_hotkey_dispatch(), which stay in obs-hotkey.c. Not exported. */
+struct obs_hotkey_binding_count_fields obs_hotkey_binding_count_fields(obs_hotkey_binding_t *binding);
+void obs_hotkey_dispatch(obs_hotkey_t *hotkey, bool pressed);
+
 struct obs_hotkey_name_map_item;
 void obs_hotkey_name_map_free(void);
 

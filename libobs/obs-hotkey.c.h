@@ -999,6 +999,30 @@ bool obs_hotkey_key_is_pressed(obs_key_t key)
 	return obs_hotkeys_platform_is_pressed(obs->hotkeys.platform_context, key);
 }
 
+/* The hotkey binding press count (obs-hotkey-binding-press.c): the binding's
+ * pressed flag, its hotkey's pressed count and the hotkey, as pointers, so the
+ * unit needs no layout of struct obs_hotkey_binding or struct obs_hotkey and
+ * writes them in place. */
+struct obs_hotkey_binding_count_fields obs_hotkey_binding_count_fields(obs_hotkey_binding_t *binding)
+{
+	return (struct obs_hotkey_binding_count_fields){
+		.pressed = &binding->pressed,
+		.count = &binding->hotkey->pressed,
+		.hotkey = binding->hotkey,
+	};
+}
+
+/* The call of a hotkey event: the hotkey's own callback, or the router when
+ * callback rerouting is on (nothing when it is on and no router is set). The
+ * callback ABI and the router (the frontend's) stay here. */
+void obs_hotkey_dispatch(obs_hotkey_t *hotkey, bool pressed)
+{
+	if (!obs->hotkeys.reroute_hotkeys)
+		hotkey->func(hotkey->data, hotkey->id, hotkey, pressed);
+	else if (obs->hotkeys.router_func)
+		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, pressed);
+}
+
 struct obs_hotkey_internal_inject {
 	obs_key_combination_t hotkey;
 	bool pressed;
