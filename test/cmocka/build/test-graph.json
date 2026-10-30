@@ -2012,6 +2012,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_nix_x11_hotkeys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_x11_hotkeys_steps.c",
+        "libobs/obs-nix-x11-hotkeys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-x11-hotkeys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_nix_x11_input_steps": {
       "sources": [
         "test/cmocka/test_nix_x11_input_steps.c",
@@ -6416,6 +6436,12 @@
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_nix_x11_hotkeys_steps": {
+      "target": "test_nix_x11_hotkeys_steps",
       "command": [
         "${target}"
       ]
