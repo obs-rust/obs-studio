@@ -3547,6 +3547,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_audio_mix_steps": {
+      "sources": [
+        "test/cmocka/test_scene_audio_mix_steps.c",
+        "libobs/obs-scene-audio-mix.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-audio-mix.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_scene_audio_window_steps": {
       "sources": [
         "test/cmocka/test_scene_audio_window_steps.c",
@@ -6883,6 +6903,12 @@
     },
     "test_scene_audio_action_steps": {
       "target": "test_scene_audio_action_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_audio_mix_steps": {
+      "target": "test_scene_audio_mix_steps",
       "command": [
         "${target}"
       ]
