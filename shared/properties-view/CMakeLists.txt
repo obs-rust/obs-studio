@@ -64,3 +64,12 @@ target_link_libraries(
 # The comparison helpers in properties-view.moc.hpp are intentionally static;
 # MSVC may not need every helper in each interface consumer.
 target_compile_options(properties-view INTERFACE "$<$<CXX_COMPILER_ID:MSVC>:/wd4505>")
+
+# #2625: this library's C++ sources state their conversions at the call sites,
+# so the pins that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  properties-view
+  INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
