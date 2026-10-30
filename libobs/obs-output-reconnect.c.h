@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-reconnect.pch.h"
 
 uint32_t obs_output_reconnect_first_delay(int retry_sec)
 {

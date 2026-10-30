@@ -230,6 +230,7 @@
     "build/libobs.ported-output-interleave+.h.c",
     "build/libobs.ported-output-protocols+.h.c",
     "build/libobs.ported-output-raw-audio+.h.c",
+    "build/libobs.ported-output-reconnect+.h.c",
     "build/libobs.ported-output-slots+.h.c",
     "build/libobs.ported-output-start+.h.c",
     "build/libobs.ported-output-stop+.h.c",

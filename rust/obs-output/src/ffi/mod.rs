@@ -14,6 +14,7 @@ pub mod output_delay;
 pub mod output_interleave;
 pub mod output_protocols;
 pub mod output_raw_audio;
+pub mod output_reconnect;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;

@@ -1444,6 +1444,13 @@ area.
   the group's start frame instead of sending no frames at all. *All*, pending
   merge. Issue [#2920](https://github.com/obs-rust/obs-studio/issues/2920),
   PR [#2926](https://github.com/obs-rust/obs-studio/pull/2926).
+- A stream whose reconnect settings come from a script, a plugin or a
+  hand-edited profile no longer waits longer than 15 minutes before its
+  first reconnect attempt, nor about 49 days for a negative delay, and a
+  negative retry count stops the stream on a disconnect instead of starting
+  a reconnect that gives up at once. Every wait between attempts now stays
+  between 0 and 15 minutes. *All*, 2026-10-30. Issue
+  [#2990](https://github.com/obs-rust/obs-studio/issues/2990).
 
 ### Sources and filters
 

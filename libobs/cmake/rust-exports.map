@@ -515,6 +515,14 @@
     obs_output_begin_batch_size;
     obs_output_begin_pair_video;
     obs_output_begin_pair_audio;
+    /* obs-output-reconnect.c. obs-output.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_output_reconnect_first_delay;
+    obs_output_reconnect_give_up;
+    obs_output_reconnect_grows;
+    obs_output_reconnect_next_delay;
+    obs_output_reconnect_active;
+    obs_output_reconnect_can;
     /* obs-output-raw-audio.c. obs-output.c calls them inside libobs. Not
      * EXPORT. */
     obs_output_raw_audio_passthrough;

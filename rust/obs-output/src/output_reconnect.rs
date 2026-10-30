@@ -45,10 +45,10 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(clippy::todo, unused_variables)]
 
 /// `OBS_OUTPUT_SUCCESS`.
 pub const OBS_OUTPUT_SUCCESS: i32 = 0;
@@ -64,7 +64,8 @@ pub const MAX_MSEC: u32 = 15 * 60 * 1000;
 /// in seconds), clamped to 0 to [`MAX_MSEC`].
 #[must_use]
 pub fn first_delay(retry_sec: i32) -> u32 {
-    todo!()
+    let msec = i64::from(retry_sec).saturating_mul(1000);
+    u32::try_from(msec.clamp(0, i64::from(MAX_MSEC))).unwrap_or(MAX_MSEC)
 }
 
 /// `output_reconnect()`: `retries` attempts were made (`reconnect_retries`,
@@ -72,7 +73,7 @@ pub fn first_delay(retry_sec: i32) -> u32 {
 /// gives up and stops as disconnected.
 #[must_use]
 pub fn give_up(retries: i32, retry_max: i32) -> bool {
-    todo!()
+    retries >= retry_max
 }
 
 /// `output_reconnect()`, for an attempt that goes ahead: `retries` attempts
@@ -80,7 +81,7 @@ pub fn give_up(retries: i32, retry_max: i32) -> bool {
 /// ([`next_delay`]); the first keeps its [`first_delay`].
 #[must_use]
 pub fn grows(retries: i32) -> bool {
-    todo!()
+    retries != 0
 }
 
 /// `output_reconnect()`: the wait before a later attempt, from the last one
@@ -89,8 +90,17 @@ pub fn grows(retries: i32) -> bool {
 /// [`MAX_MSEC`]. A product that is negative gives 0, and one that is not a
 /// number gives [`MAX_MSEC`].
 #[must_use]
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 pub fn next_delay(cur_msec: u32, exp: f32) -> u32 {
-    todo!()
+    // `(float)cur_msec * exp`, clamped before the conversion: `min` keeps
+    // the limit for a NaN, and `as` truncates toward 0 and saturates a
+    // negative to 0.
+    ((cur_msec as f32) * exp).min(MAX_MSEC as f32) as u32
 }
 
 /// `can_reconnect()`: reconnecting is on for a positive `retry_max`
@@ -98,7 +108,7 @@ pub fn next_delay(cur_msec: u32, exp: f32) -> u32 {
 /// first, and a disconnect reconnects.
 #[must_use]
 pub fn active(retry_max: i32) -> bool {
-    todo!()
+    retry_max > 0
 }
 
 /// `can_reconnect()`, once the callback, if asked, agreed: a stop with
@@ -108,5 +118,5 @@ pub fn active(retry_max: i32) -> bool {
 /// [`active`]).
 #[must_use]
 pub fn can(reconnecting: bool, active: bool, code: i32) -> bool {
-    todo!()
+    (reconnecting && code != OBS_OUTPUT_SUCCESS) || (active && code == OBS_OUTPUT_DISCONNECTED)
 }

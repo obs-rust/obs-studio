@@ -51,6 +51,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-output-begin.c.h.o",
     "obs-output-protocols.c.h.o",
     "obs-output-raw-audio.c.h.o",
+    "obs-output-reconnect.c.h.o",
     "obs-output-slots.c.h.o",
     "obs-output-start.c.h.o",
     "obs-output-stop-stats.c.h.o",
