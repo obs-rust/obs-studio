@@ -770,6 +770,11 @@ area.
   video calls and podcast recorders get picture and sound in sync from one
   output; without `pactl` it runs video-only as before. *Linux*, 2026-10-29.
   Issue [#3011](https://github.com/obs-rust/obs-studio/issues/3011).
+- The Linux Virtual Camera unloads an "OBS Virtual Microphone" that a killed
+  OBS left behind before it adds its own, so the next start no longer shows a
+  second, dead microphone to apps; a live OBS started with `--multi` keeps
+  its module. *Linux*, 2026-10-30. Issue
+  [#3014](https://github.com/obs-rust/obs-studio/issues/3014).
 - The Linux virtual camera sends a correct picture to a v4l2loopback device
   with a fixed format of a different size. *Linux*, 2026-10-11. Issue
   [#212](https://github.com/obs-rust/obs-studio/issues/212), PR

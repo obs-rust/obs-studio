@@ -20,6 +20,10 @@ static void vmic_stop(struct virtualcam_data *vcam);
  * runs, OBS's audio mix goes to a PulseAudio/PipeWire module-pipe-source, so
  * apps get picture and sound from one output with the same timestamps. */
 #define VMIC_SOURCE_NAME "obs_virtual_microphone"
+/* The pulse module and the FIFO name prefix a module of ours is recognized by;
+ * the FIFO is obs-virtual-microphone-<pid>. */
+#define VMIC_MODULE_NAME "module-pipe-source"
+#define VMIC_FIFO_PREFIX "obs-virtual-microphone-"
 #define VMIC_CHANNELS 2
 /* Two libobs audio packets (1024 float stereo frames = 8 KiB each), about
  * 42 ms at 48 kHz: small enough to stay in sync with the video. */
@@ -52,10 +56,38 @@ static bool vmic_parse_module_id(const char *text, uint32_t *id)
  * --multi keeps its module). #3014 */
 static bool vmic_stale_module_line(const char *line, uint32_t *module, pid_t *owner)
 {
-	UNUSED_PARAMETER(line);
-	UNUSED_PARAMETER(module);
-	UNUSED_PARAMETER(owner);
-	return false;
+	if (!line || !*line)
+		return false;
+
+	char *end = NULL;
+	errno = 0;
+	unsigned long long index = strtoull(line, &end, 10);
+	if (end == line || errno != 0 || index > UINT32_MAX || *end != '	')
+		return false;
+
+	const char *name = end + 1;
+	if (strncmp(name, VMIC_MODULE_NAME "	", sizeof(VMIC_MODULE_NAME)))
+		return false;
+
+	const char *fifo = strstr(name + sizeof(VMIC_MODULE_NAME), VMIC_FIFO_PREFIX);
+	if (!fifo)
+		return false;
+	const char *digits = fifo + strlen(VMIC_FIFO_PREFIX);
+	if (*digits < '0' || *digits > '9')
+		return false;
+
+	errno = 0;
+	char *pid_end = NULL;
+	unsigned long long pid = strtoull(digits, &pid_end, 10);
+	if (pid_end == digits || errno != 0 || pid == 0 || pid > INT_MAX)
+		return false;
+	/* The number is the whole pid, not the start of a longer name. */
+	if (*pid_end && !strchr(" 	\n\r\"'", *pid_end))
+		return false;
+
+	*module = (uint32_t)index;
+	*owner = (pid_t)pid;
+	return true;
 }
 
 /* True when the pid that owned a FIFO is gone (crashed, killed), so its module
@@ -63,8 +95,9 @@ static bool vmic_stale_module_line(const char *line, uint32_t *module, pid_t *ow
  * stale. #3014 */
 static bool vmic_owner_is_gone(pid_t owner)
 {
-	UNUSED_PARAMETER(owner);
-	return false;
+	if (owner <= 0 || owner == getpid())
+		return false;
+	return kill(owner, 0) < 0 && errno == ESRCH;
 }
 
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
@@ -163,6 +196,63 @@ static char *run_pactl(const char *args)
 	return out;
 }
 
+/* Runs a pactl command and returns all of its output, or NULL. Bounded, so a
+ * listing that is not what we expect cannot grow without end. */
+#define VMIC_PACTL_MAX (64 * 1024)
+static char *run_pactl_all(const char *args)
+{
+	struct dstr cmd;
+	dstr_init_copy(&cmd, is_flatpak_sandbox() ? "flatpak-spawn --host pactl " : "pactl ");
+	dstr_cat(&cmd, args);
+	dstr_cat(&cmd, " 2>/dev/null");
+
+	FILE *fp = popen(cmd.array, "r");
+	dstr_free(&cmd);
+	if (!fp)
+		return NULL;
+
+	struct dstr text;
+	dstr_init(&text);
+	char line[512];
+	while (text.len < VMIC_PACTL_MAX && fgets(line, sizeof(line), fp))
+		dstr_cat(&text, line);
+
+	char *out = NULL;
+	if (pclose(fp) == 0 && text.len > 0)
+		out = bstrdup(text.array);
+	dstr_free(&text);
+	return out;
+}
+
+/* A previous OBS killed hard (crash, SIGKILL) leaves its module-pipe-source
+ * loaded, so the next start would add a second "OBS Virtual Microphone" and
+ * apps could keep the dead one (#3014). Unload ours whose pid is gone; a live
+ * pid belongs to another OBS running with --multi and is left alone. */
+#define VMIC_MAX_STALE 32
+static void vmic_unload_stale_modules(void)
+{
+	char *listing = run_pactl_all("list modules short");
+	if (!listing)
+		return;
+
+	int unloaded = 0;
+	char *save = NULL;
+	for (char *line = strtok_r(listing, "\n", &save); line && unloaded < VMIC_MAX_STALE;
+	     line = strtok_r(NULL, "\n", &save)) {
+		uint32_t module = 0;
+		pid_t owner = 0;
+		if (!vmic_stale_module_line(line, &module, &owner) || !vmic_owner_is_gone(owner))
+			continue;
+
+		char args[64];
+		snprintf(args, sizeof(args), "unload-module %u", module);
+		bfree(run_pactl(args));
+		unloaded++;
+		blog(LOG_INFO, "Virtual microphone: unloaded module %u, left behind by pid %d", module, (int)owner);
+	}
+	bfree(listing);
+}
+
 static void vmic_stop(struct virtualcam_data *vcam)
 {
 	if (vcam->mic_fifo >= 0) {
@@ -193,8 +283,12 @@ static void vmic_start(struct virtualcam_data *vcam)
 				  "the Virtual Camera sends video only");
 		return;
 	}
-	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/obs-virtual-microphone-%d", runtime, (int)getpid());
+	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_PREFIX "%d", runtime, (int)getpid());
 	unlink(vcam->mic_path);
+
+	/* A module left loaded by a killed OBS would appear as a second
+	 * "OBS Virtual Microphone"; drop the dead ones before adding ours. */
+	vmic_unload_stale_modules();
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
 	struct dstr args;
