@@ -864,6 +864,12 @@ obs_nix_portal_sets_has
 obs_nix_portal_sets_unchanged
 obs_nix_portal_sets_request
 obs_nix_portal_sets_partition
+# obs-nix-x11-input.c: obs-nix-x11.c calls them inside libobs. Declared in
+# obs-nix-x11-input.h without EXPORT, so the shims stay hidden the same way.
+obs_nix_x11_input_commit
+obs_nix_x11_input_keysym
+obs_nix_x11_input_mask_pressed
+obs_nix_x11_input_mouse_pressed
 # obs-nix-x11-keys.c: obs-nix-x11.c calls them inside libobs. Declared in
 # obs-nix-x11-keys.h without EXPORT, so the shims stay hidden the same way.
 obs_nix_x11_keys_from_base_keysym
