@@ -183,6 +183,23 @@ class ProofTest(unittest.TestCase):
         fake = FakeNinja(self.build, self.graph())
         self.assertEqual(self.run_main(fake, ["callback/missing.c.h.o"]), 1)
 
+    def test_validate_sh_delegates_the_proof_and_keeps_no_shell_queries(self) -> None:
+        """The 59 s came from the shell loop; a leftover `compiles()` call is that bug."""
+        script = (
+            ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
+        ).read_text()
+        body = [
+            line for line in script.splitlines() if not line.lstrip().startswith("#")
+        ]
+        joined = "\n".join(body)
+        self.assertNotIn("compiles ", joined)
+        self.assertNotIn("-t inputs", joined)
+        self.assertIn(
+            'uv run --no-project "$SRC/rust/tools/linux-validate/ported_proof.py"',
+            joined,
+        )
+        self.assertIn('--objects "$BUILD/ported-objects.txt" --nvenc', joined)
+
     def test_main_fails_when_obs_nvenc_compiles_the_wrong_loader(self) -> None:
         graph = self.graph()
         graph["obs-nvenc"] = (

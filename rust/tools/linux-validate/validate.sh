@@ -288,16 +288,6 @@ else
   echo "== decklink.so imports:"
   nm -D --undefined-only "$plugin" | grep bitstream_reader
 
-  # Issue #645: obs-nvenc uses cuda-load.c, its never-installed twin
-  # obs-nvenc-c-reference cuda-load-rust.c (#592, #1065). Both must link.
-  for target in obs-nvenc obs-nvenc-c-reference; do
-    # Each loader is a unity group of its own (BUILD.md).
-    if [ "$target" = obs-nvenc ]; then want=cuda-load-rust not=cuda-load; else want=cuda-load not=cuda-load-rust; fi
-    if ! compiles "$target" - "build/obs-nvenc.$want+.h.c.o" || compiles "$target" - "build/obs-nvenc.$not+.h.c.o"; then
-      echo "FAIL: $target must compile $want and not $not"
-      exit 1
-    fi
-  done
   [ -n "$(find "$build/plugins" -name 'obs-nvenc.so' | head -1)" ] || { echo "FAIL: obs-nvenc.so was not built"; exit 1; }
   [ -f "$build/obs-nvenc-c-reference/obs-nvenc.so" ] || { echo "FAIL: obs-nvenc-c-reference was not built"; exit 1; }
   echo "== obs-nvenc.so built with cuda-load-rust.c.h, obs-nvenc-c-reference with cuda-load.c.h"
