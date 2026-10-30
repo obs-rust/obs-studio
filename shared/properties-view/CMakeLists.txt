@@ -69,7 +69,18 @@ target_compile_options(properties-view INTERFACE "$<$<CXX_COMPILER_ID:MSVC>:/wd4
 # so the pins that hide them are not needed here. The global -Wno-conversion /
 # -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
 # every target is ratcheted.
-target_compile_options(
-  properties-view
-  INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
-)
+#
+# Apple keeps the sign-conversion pin (#3096): these flags are INTERFACE, so
+# they reach every consumer's TUs, and with the group on the macOS app lane
+# stops inside Qt 6.11's own headers (qversiontagging.h, qnamespace.h), which
+# no obs source states. The two platforms are stated as branches because the
+# Xcode generator does not apply the Darwin half of a
+# `$<NOT:$<PLATFORM_ID:Darwin>>` genex in `target_compile_options` (#2979).
+if(OS_MACOS)
+  target_compile_options(properties-view INTERFACE -Wno-sign-conversion)
+else()
+  target_compile_options(
+    properties-view
+    INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
+endif()

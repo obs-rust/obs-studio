@@ -21,6 +21,10 @@ branch because the Xcode generator, which the macOS lane requires, does not appl
 the Darwin half of a `$<NOT:$<PLATFORM_ID:Darwin>>` genex in
 `target_compile_options`: #2979 wrapped the group that way and the lane still
 stopped in Qt 6.11's own headers (#3096).
+
+`shared/properties-view` needs the same branch: its groups are INTERFACE, so
+they reach every consumer's TUs, and a consumer-side pin cannot override a flag
+that the linked interface adds after the target's own options.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend" / "CMakeLists.txt"
+PROPERTIES_VIEW = ROOT / "shared" / "properties-view" / "CMakeLists.txt"
 LINUX = ROOT / "cmake" / "linux" / "compilerconfig.cmake"
 
 # The groups the app target states at its call sites today.
@@ -132,6 +137,33 @@ class FrontendConversionOptinsTest(unittest.TestCase):
             pins,
             GLOBAL_PINS,
             "the global conversion pins carry the groups the app target has not ratcheted",
+        )
+
+
+class PropertiesViewConversionOptinsTest(unittest.TestCase):
+    """The interface group must not leak into Apple consumers' TUs (#3096)."""
+
+    def setUp(self) -> None:
+        self.text = PROPERTIES_VIEW.read_text(encoding="utf-8")
+
+    def test_apple_keeps_the_sign_conversion_pin(self) -> None:
+        branch = darwin_branch(self.text)
+        self.assertIsNotNone(branch, "an `if(OS_MACOS)` branch states the Apple pin (#3096)")
+        self.assertEqual(
+            set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
+            {"-Wno-sign-conversion"},
+            "properties-view is INTERFACE: its group reaches the app target's Apple "
+            "TUs, where Qt 6.11's headers are not converted (#3096)",
+        )
+
+    def test_other_platforms_keep_the_ratcheted_groups(self) -> None:
+        calls = target_compile_options(self.text, "properties-view")
+        groups = [flags for flags in calls if any(not flag.startswith("-Wno-") for flag in flags)]
+        self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#3096)")
+        self.assertEqual(
+            set(groups[0]),
+            {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"},
+            "the non-Apple consumers keep the groups this target ratcheted (#2625)",
         )
 
 
