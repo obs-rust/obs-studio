@@ -36,6 +36,7 @@ use std::ptr;
 use obs_c_oracle::hotkey_translations::{
     oracle_hotkey_translations_layout, oracle_obs_hotkeys_set_translations_s,
 };
+use obs_c_oracle::parity::scaled_size;
 use obs_hotkey::ffi::translations::{obs_hotkeys_set_translations_s, obs_hotkeys_translations};
 use obs_hotkey::translations::{MEMBER_COUNT, Member};
 use proptest::prelude::*;
@@ -308,10 +309,12 @@ fn whole_struct_cases_match_c() {
 
 #[test]
 fn large_templates_match_c() {
-    let mut big = vec![b'a'; 1 << 20];
+    // The sizes pay for themselves on every run, so the reduced CI level
+    // builds a tenth of each and keeps the same overrun of the struct (#3109).
+    let mut big = vec![b'a'; scaled_size(1 << 20)];
     big.extend_from_slice(b"%1");
-    let many = b"%1".repeat(100_000);
-    let padded = [&b" ".repeat(1 << 16)[..], b"x", &b"\t".repeat(1 << 16)].concat();
+    let many = b"%1".repeat(scaled_size(100_000));
+    let padded = [&b" ".repeat(scaled_size(1 << 16))[..], b"x", &b"\t".repeat(scaled_size(1 << 16))].concat();
     for t in [big, many, padded] {
         let mut v: Vec<Option<Vec<u8>>> = vec![None; MEMBER_COUNT];
         v[Member::NumpadNum.index()] = Some(t.clone());

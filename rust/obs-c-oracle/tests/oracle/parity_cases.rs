@@ -99,3 +99,44 @@ mod sweeps {
         percent_at(Some("fast"));
     }
 }
+
+// Fixed input sizes, not case counts (#3109): a deterministic test that builds
+// a 1 MiB template or a 100000-repeat string pays for the size on every run.
+mod fixed_sizes {
+    use obs_c_oracle::parity::scaled_size_at;
+
+    #[test]
+    fn full_keeps_the_written_size() {
+        assert_eq!(scaled_size_at(1 << 20, None), 1 << 20);
+        assert_eq!(scaled_size_at(1 << 20, Some("full")), 1 << 20);
+        assert_eq!(scaled_size_at(100_000, Some("")), 100_000);
+    }
+
+    #[test]
+    fn reduced_keeps_a_tenth() {
+        assert_eq!(scaled_size_at(1 << 20, Some("reduced")), (1 << 20) / 10);
+        assert_eq!(scaled_size_at(100_000, Some("reduced")), 10_000);
+        assert_eq!(scaled_size_at(65_536, Some(" reduced ")), 6_553);
+    }
+
+    #[test]
+    fn a_percent_scales_by_that_percent() {
+        assert_eq!(scaled_size_at(100_000, Some("25")), 25_000);
+        assert_eq!(scaled_size_at(100_000, Some("100")), 100_000);
+    }
+
+    #[test]
+    fn a_scaled_size_is_never_empty() {
+        // A small input stays a real input at any level: the comparison needs
+        // one element, not zero bytes.
+        assert_eq!(scaled_size_at(3, Some("reduced")), 1);
+        assert_eq!(scaled_size_at(1, Some("1")), 1);
+        assert_eq!(scaled_size_at(0, Some("reduced")), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "OBS_PARITY_CASES")]
+    fn an_unknown_level_panics() {
+        scaled_size_at(1000, Some("fast"));
+    }
+}

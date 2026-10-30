@@ -93,3 +93,18 @@ pub fn sweep_at(
         if window == 1 { lo } else { lo + mix(w) % len }
     })
 }
+
+/// Bytes or repeat count a deterministic test builds at the level in [`ENV`].
+///
+/// Some tests are not proptests but still pay for a fixed input size (a 1 MiB
+/// template, a 100000-repeat string). They keep the full size at `full`, and
+/// the same share [`scale`] keeps otherwise, never below one element so an
+/// input is never empty (#3109).
+pub fn scaled_size(_n: usize) -> usize {
+    todo!("scale the fixed input size by the level in OBS_PARITY_CASES")
+}
+
+/// [`scaled_size`] at `level`.
+pub fn scaled_size_at(_n: usize, _level: Option<&str>) -> usize {
+    todo!("scale the fixed input size by `level`")
+}
