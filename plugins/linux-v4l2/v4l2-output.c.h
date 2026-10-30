@@ -5,23 +5,70 @@ struct virtualcam_data {
 	int device;
 	uint32_t frame_size;
 	bool use_caps_workaround;
+
+	/* OBS Virtual Microphone (#3011): the FIFO of a module-pipe-source. */
+	int mic_fifo;
+	size_t mic_pipe_size;
+	uint32_t mic_module;
+	bool mic_loaded;
+	char mic_path[256];
 };
 
-/* OBS Virtual Microphone (#3011): stubs, filled in by the next commit. */
+static void vmic_stop(struct virtualcam_data *vcam);
+
+/* OBS Virtual Microphone (obs-rust/obs-studio#3011): while the Virtual Camera
+ * runs, OBS's audio mix goes to a PulseAudio/PipeWire module-pipe-source, so
+ * apps get picture and sound from one output with the same timestamps. */
+#define VMIC_SOURCE_NAME "obs_virtual_microphone"
+#define VMIC_CHANNELS 2
+/* About 20 ms of float stereo at 48 kHz: small enough to stay in sync with the
+ * video, large enough for one libobs audio packet (1024 frames = 8 KiB). */
+#define VMIC_PIPE_SIZE 16384
+
+/* pactl load-module prints the new module's index on its own line. */
 static bool vmic_parse_module_id(const char *text, uint32_t *id)
 {
-	UNUSED_PARAMETER(text);
-	UNUSED_PARAMETER(id);
-	return false;
+	if (!text || !*text)
+		return false;
+
+	char *end = NULL;
+	errno = 0;
+	unsigned long long value = strtoull(text, &end, 10);
+	if (end == text || errno != 0 || value > UINT32_MAX)
+		return false;
+	while (*end == '\n' || *end == '\r' || *end == ' ')
+		end++;
+	if (*end)
+		return false;
+
+	*id = (uint32_t)value;
+	return true;
 }
 
+/* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
+ * does not fit: blocking would hold up OBS's output thread and a split packet
+ * would leave the reader between two samples. */
 static bool vmic_write_packet(int fd, size_t pipe_size, const uint8_t *data, size_t size)
 {
-	UNUSED_PARAMETER(fd);
-	UNUSED_PARAMETER(pipe_size);
-	UNUSED_PARAMETER(data);
-	UNUSED_PARAMETER(size);
-	return false;
+	if (fd < 0 || size == 0)
+		return false;
+
+	int queued = 0;
+	if (ioctl(fd, FIONREAD, &queued) < 0 || queued < 0)
+		return false;
+	if ((size_t)queued + size > pipe_size)
+		return false;
+
+	while (size > 0) {
+		ssize_t written = write(fd, data, size);
+		if (written < 0 && errno == EINTR)
+			continue;
+		if (written <= 0)
+			return false;
+		data += written;
+		size -= (size_t)written;
+	}
+	return true;
 }
 
 static const char *virtualcam_name(void *unused)
@@ -36,6 +83,7 @@ static void virtualcam_destroy(void *data)
 
 	if (vcam->device >= 0)
 		close(vcam->device);
+	vmic_stop(vcam);
 
 	bfree(data);
 }
@@ -68,6 +116,100 @@ static int run_command(const char *command)
 	result = system(str.array);
 	dstr_free(&str);
 	return result;
+}
+
+/* Runs a pactl command (on the host when sandboxed) and returns its first
+ * line of output, or NULL. */
+static char *run_pactl(const char *args)
+{
+	struct dstr cmd;
+	dstr_init_copy(&cmd, is_flatpak_sandbox() ? "flatpak-spawn --host pactl " : "pactl ");
+	dstr_cat(&cmd, args);
+	dstr_cat(&cmd, " 2>/dev/null");
+
+	FILE *fp = popen(cmd.array, "r");
+	dstr_free(&cmd);
+	if (!fp)
+		return NULL;
+
+	char line[128] = {0};
+	char *out = fgets(line, sizeof(line), fp) ? bstrdup(line) : NULL;
+	if (pclose(fp) != 0) {
+		bfree(out);
+		return NULL;
+	}
+	return out;
+}
+
+static void vmic_stop(struct virtualcam_data *vcam)
+{
+	if (vcam->mic_fifo >= 0) {
+		close(vcam->mic_fifo);
+		vcam->mic_fifo = -1;
+	}
+	if (vcam->mic_loaded) {
+		char args[64];
+		snprintf(args, sizeof(args), "unload-module %u", vcam->mic_module);
+		bfree(run_pactl(args));
+		vcam->mic_loaded = false;
+	}
+	if (vcam->mic_path[0]) {
+		unlink(vcam->mic_path);
+		vcam->mic_path[0] = 0;
+	}
+}
+
+/* Loads the module-pipe-source and opens its FIFO. On failure the Virtual
+ * Camera runs video-only, as before. */
+static void vmic_start(struct virtualcam_data *vcam)
+{
+	const char *runtime = getenv("XDG_RUNTIME_DIR");
+	if (!runtime || !*runtime)
+		runtime = "/tmp";
+	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/obs-virtual-microphone-%d", runtime, (int)getpid());
+	unlink(vcam->mic_path);
+
+	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
+	struct dstr args;
+	dstr_init(&args);
+	dstr_printf(&args,
+		    "load-module module-pipe-source source_name=" VMIC_SOURCE_NAME
+		    " file='%s' format=float32le rate=%u channels=%d"
+		    " source_properties=device.description='\"OBS Virtual Microphone\"'",
+		    vcam->mic_path, rate, VMIC_CHANNELS);
+	char *reply = run_pactl(args.array);
+	dstr_free(&args);
+
+	vcam->mic_loaded = vmic_parse_module_id(reply, &vcam->mic_module);
+	bfree(reply);
+	if (!vcam->mic_loaded) {
+		blog(LOG_WARNING, "Virtual microphone unavailable (pactl load-module module-pipe-source failed); "
+				  "the Virtual Camera sends video only");
+		vcam->mic_path[0] = 0;
+		return;
+	}
+
+	/* The module holds the FIFO open for reading, so this does not fail
+	 * with ENXIO. */
+	vcam->mic_fifo = open(vcam->mic_path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+	if (vcam->mic_fifo < 0) {
+		blog(LOG_WARNING, "Virtual microphone: cannot open '%s' (%s)", vcam->mic_path, strerror(errno));
+		vmic_stop(vcam);
+		return;
+	}
+
+	int size = fcntl(vcam->mic_fifo, F_SETPIPE_SZ, VMIC_PIPE_SIZE);
+	if (size < 0)
+		size = fcntl(vcam->mic_fifo, F_GETPIPE_SZ);
+	vcam->mic_pipe_size = size > 0 ? (size_t)size : VMIC_PIPE_SIZE;
+
+	struct audio_convert_info aci = {0};
+	aci.format = AUDIO_FORMAT_FLOAT;
+	aci.speakers = SPEAKERS_STEREO;
+	aci.samples_per_sec = rate;
+	obs_output_set_audio_conversion(vcam->output, &aci);
+
+	blog(LOG_INFO, "Virtual microphone started (module %u, %u Hz)", vcam->mic_module, rate);
 }
 
 static bool loopback_module_loaded(void)
@@ -137,6 +279,16 @@ bool loopback_module_available()
 	}
 	return false;
 }
+
+static void vmic_start(struct virtualcam_data *vcam)
+{
+	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_stop(struct virtualcam_data *vcam)
+{
+	UNUSED_PARAMETER(vcam);
+}
 #endif
 
 static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
@@ -144,6 +296,7 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	struct virtualcam_data *vcam = (struct virtualcam_data *)bzalloc(sizeof(*vcam));
 	vcam->output = output;
 	vcam->device = -1;
+	vcam->mic_fifo = -1;
 
 	UNUSED_PARAMETER(settings);
 	return vcam;
@@ -227,6 +380,8 @@ static bool try_connect(void *data, const char *device)
 		blog(LOG_ERROR, "Failed to start streaming on '%s' (%s)", device, strerror(errno));
 		goto fail_close_device;
 	}
+
+	vmic_start(vcam);
 
 	blog(LOG_INFO, "Virtual camera started");
 	obs_output_begin_data_capture(vcam->output, 0);
@@ -312,6 +467,7 @@ static void virtualcam_stop(void *data, uint64_t ts)
 
 	close(vcam->device);
 	vcam->device = -1;
+	vmic_stop(vcam);
 	blog(LOG_INFO, "Virtual camera stopped");
 
 	UNUSED_PARAMETER(ts);
@@ -333,13 +489,25 @@ static void virtual_video(void *param, struct video_data *frame)
 	}
 }
 
+static void virtual_audio(void *param, struct audio_data *frames)
+{
+	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
+	size_t size = (size_t)frames->frames * VMIC_CHANNELS * sizeof(float);
+	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, frames->data[0], size);
+}
+
 struct obs_output_info virtualcam_info = {
 	.id = "virtualcam_output",
-	.flags = OBS_OUTPUT_VIDEO,
+	.flags = OBS_OUTPUT_AV,
 	.get_name = virtualcam_name,
 	.create = virtualcam_create,
 	.destroy = virtualcam_destroy,
 	.start = virtualcam_start,
 	.stop = virtualcam_stop,
 	.raw_video = virtual_video,
+	.raw_audio = virtual_audio,
 };
+
+#undef VMIC_SOURCE_NAME
+#undef VMIC_CHANNELS
+#undef VMIC_PIPE_SIZE

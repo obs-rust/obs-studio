@@ -765,6 +765,11 @@ area.
   [#203](https://github.com/obs-rust/obs-studio/issues/203), PR
   [#204](https://github.com/obs-rust/obs-studio/pull/204), upstream
   [obsproject/obs-studio#5422](https://github.com/obsproject/obs-studio/issues/5422).
+- The Linux Virtual Camera also sends OBS's audio mix to an "OBS Virtual
+  Microphone" (a PulseAudio/PipeWire pipe source loaded with `pactl`), so
+  video calls and podcast recorders get picture and sound in sync from one
+  output; without `pactl` it runs video-only as before. *Linux*, 2026-10-29.
+  Issue [#3011](https://github.com/obs-rust/obs-studio/issues/3011).
 - The Linux virtual camera sends a correct picture to a v4l2loopback device
   with a fixed format of a different size. *Linux*, 2026-10-11. Issue
   [#212](https://github.com/obs-rust/obs-studio/issues/212), PR
