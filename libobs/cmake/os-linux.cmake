@@ -91,7 +91,14 @@ if(ENABLE_WAYLAND)
   find_package(Wayland REQUIRED Client)
   find_package(Xkbcommon REQUIRED)
 
-  target_sources(libobs-objects PRIVATE build/libobs.nix-wayland+.h.c obs-nix-hotkey-state.h)
+  target_sources(
+    libobs-objects
+    PRIVATE
+      build/libobs.nix-wayland+.h.c
+      build/libobs.nix-wayland-keys+.h.c
+      obs-nix-hotkey-state.h
+      obs-nix-wayland-keys.h
+  )
   # obs-nix-hotkey-state.c has a Rust port: C reference/rollback only (sources.cmake).
   obs_libobs_add_c_sources(${LIBOBS_WAYLAND_PORTED_SOURCES})
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)

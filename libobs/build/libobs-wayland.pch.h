@@ -9,6 +9,7 @@
 #include "obs-nix-hotkey-state.h"
 #include "obs-nix-platform.h"
 #include "obs-nix-wayland.h"
+#include "obs-nix-wayland-keys.h"
 #ifdef HAVE_GLOBAL_SHORTCUTS_PORTAL
 #include "obs-nix-portal-shortcuts.h"
 #endif

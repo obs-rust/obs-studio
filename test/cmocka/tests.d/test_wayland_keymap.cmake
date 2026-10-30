@@ -8,6 +8,7 @@ if((OS_LINUX OR OS_FREEBSD) AND ENABLE_WAYLAND)
     add_executable(
       test_wayland_keymap
       test_wayland_keymap.c
+      "${CMAKE_SOURCE_DIR}/libobs/obs-nix-wayland-keys.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
       hotkey_mutex_stub.c
     )

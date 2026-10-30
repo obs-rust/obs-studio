@@ -9,6 +9,7 @@ if((OS_LINUX OR OS_FREEBSD) AND ENABLE_WAYLAND)
       test_wayland_volume_keys
       test_wayland_volume_keys.c
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-wayland.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/obs-nix-wayland-keys.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-nix-hotkey-state.c.h"
       hotkey_mutex_stub.c
     )
