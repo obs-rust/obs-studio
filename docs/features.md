@@ -1466,6 +1466,12 @@ area.
   two tracks no longer hangs OBS, and pausing an output in a libobs host
   that never set up video no longer crashes it. *All*, 2026-10-30. Issue
   [#3020](https://github.com/obs-rust/obs-studio/issues/3020).
+- A recording paused and resumed in quick succession (a double press of the
+  pause hotkey, a script or a websocket client) keeps its audio after the
+  resume instead of losing it for the rest of the recording, and an encoder
+  with a frame rate divisor resumes its video instead of staying paused. In
+  both cases the output can be paused again. *All*, 2026-10-30. Issue
+  [#3033](https://github.com/obs-rust/obs-studio/issues/3033).
 
 ### Sources and filters
 

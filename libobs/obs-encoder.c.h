@@ -2018,6 +2018,11 @@ static inline bool audio_pause_check_internal(struct pause_data *pause, struct a
 		if (paused == OBS_ENCODER_PAUSE_AUDIO_PAUSED_UNPAUSE) {
 			unpause_audio(pause, data, sample_rate);
 			return obs_encoder_pause_audio_drop(data->frames);
+
+		} else if (paused == OBS_ENCODER_PAUSE_AUDIO_PAUSED_RESUME) {
+			pause->ts_start = 0;
+			pause->ts_end = 0;
+			return obs_encoder_pause_audio_drop(data->frames);
 		}
 
 		return true;

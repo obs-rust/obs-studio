@@ -778,6 +778,18 @@ obs_encoder_packet_ts_dts_usec
 obs_encoder_packet_ts_system
 obs_encoder_packet_ts_paused
 obs_encoder_packet_ts_find
+# obs-encoder-pause.c: video_pause_check() and audio_pause_check() call them
+# inside libobs. Declared in obs-encoder-pause.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_encoder_pause_off
+obs_encoder_pause_video_step
+obs_encoder_pause_audio_end
+obs_encoder_pause_audio_start
+obs_encoder_pause_audio_paused
+obs_encoder_pause_audio_cut_ns
+obs_encoder_pause_audio_kept
+obs_encoder_pause_audio_left
+obs_encoder_pause_audio_drop
 # obs-encoder-size.c: get_audio_info(), get_video_info(),
 # obs_encoder_set_scaled_size(), obs_encoder_scaling_enabled(),
 # obs_encoder_get_width(), obs_encoder_get_height() and

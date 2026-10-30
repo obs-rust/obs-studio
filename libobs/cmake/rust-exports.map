@@ -669,6 +669,17 @@
     obs_encoder_packet_ts_system;
     obs_encoder_packet_ts_paused;
     obs_encoder_packet_ts_find;
+    /* obs-encoder-pause.c. obs-encoder.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_encoder_pause_off;
+    obs_encoder_pause_video_step;
+    obs_encoder_pause_audio_end;
+    obs_encoder_pause_audio_start;
+    obs_encoder_pause_audio_paused;
+    obs_encoder_pause_audio_cut_ns;
+    obs_encoder_pause_audio_kept;
+    obs_encoder_pause_audio_left;
+    obs_encoder_pause_audio_drop;
     /* obs-encoder-size.c. obs-encoder.c calls them inside libobs. Not
      * EXPORT. */
     obs_encoder_size_audio_defaults;

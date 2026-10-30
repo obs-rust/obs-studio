@@ -75,6 +75,11 @@
  * either end), so the buffer is cut there and the pause ends
  * (unpause_audio()). */
 #define OBS_ENCODER_PAUSE_AUDIO_PAUSED_UNPAUSE 1
+/* obs_encoder_pause_audio_paused(): the pause ended before the buffer, so the
+ * pause ends (ts_start and ts_end are cleared) and the buffer passes as it
+ * is. Only the Rust port (rust/obs-output, encoder_pause) answers it; the C
+ * here drops such a buffer. */
+#define OBS_ENCODER_PAUSE_AUDIO_PAUSED_RESUME 2
 
 /* video_pause_check() and audio_pause_check(): no pause is on (ts_start is
  * 0), so the frame or buffer passes. */
@@ -82,7 +87,9 @@ bool obs_encoder_pause_off(uint64_t ts_start);
 
 /* video_pause_check(), for a pause that is on: what the frame stamped ts
  * does, from the pause's start and end (ts_end is 0 until the pause ends).
- * One of OBS_ENCODER_PAUSE_VIDEO_*. */
+ * One of OBS_ENCODER_PAUSE_VIDEO_*. The C here ends the pause only on a frame
+ * stamped ts_end; the Rust port also on the first frame after a set
+ * ts_end. */
 int obs_encoder_pause_video_step(uint64_t ts_start, uint64_t ts_end, uint64_t ts);
 
 /* audio_pause_check(): the buffer's end, timestamp + duration_ns

@@ -49,6 +49,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -96,8 +97,7 @@ pub enum AudioPaused {
 /// (`ts_start` is 0), so the frame or buffer passes.
 #[must_use]
 pub fn off(ts_start: u64) -> bool {
-    let _ = ts_start;
-    todo!()
+    ts_start == 0
 }
 
 /// `video_pause_check()`, for a pause that is on: what the frame stamped
@@ -107,8 +107,13 @@ pub fn off(ts_start: u64) -> bool {
 /// passes.
 #[must_use]
 pub fn video_step(ts_start: u64, ts_end: u64, ts: u64) -> VideoStep {
-    let _ = (ts_start, ts_end, ts);
-    todo!()
+    if ts == ts_end || (ts_end != 0 && ts > ts_end) {
+        VideoStep::End
+    } else if ts >= ts_start {
+        VideoStep::Drop
+    } else {
+        VideoStep::Pass
+    }
 }
 
 /// `audio_pause_check()`: the buffer's end, `timestamp + duration_ns`
@@ -116,16 +121,20 @@ pub fn video_step(ts_start: u64, ts_end: u64, ts: u64) -> VideoStep {
 /// sum.
 #[must_use]
 pub fn audio_end(timestamp: u64, duration_ns: u64) -> u64 {
-    let _ = (timestamp, duration_ns);
-    todo!()
+    timestamp.wrapping_add(duration_ns)
 }
 
 /// `audio_pause_check()`, for a pause that is on: where its start falls
 /// against the buffer from `timestamp` to `end_ts`.
 #[must_use]
 pub fn audio_start(ts_start: u64, timestamp: u64, end_ts: u64) -> AudioStart {
-    let _ = (ts_start, timestamp, end_ts);
-    todo!()
+    if ts_start < timestamp {
+        AudioStart::Before
+    } else if ts_start <= end_ts {
+        AudioStart::Inside
+    } else {
+        AudioStart::After
+    }
 }
 
 /// `audio_pause_check()`, for a buffer after the pause start: what the
@@ -133,8 +142,13 @@ pub fn audio_start(ts_start: u64, timestamp: u64, end_ts: u64) -> AudioStart {
 /// 0 until the pause ends).
 #[must_use]
 pub fn audio_paused(ts_end: u64, timestamp: u64, end_ts: u64) -> AudioPaused {
-    let _ = (ts_end, timestamp, end_ts);
-    todo!()
+    if ts_end >= timestamp && ts_end <= end_ts {
+        AudioPaused::Unpause
+    } else if ts_end != 0 && ts_end < timestamp {
+        AudioPaused::Resume
+    } else {
+        AudioPaused::Drop
+    }
 }
 
 /// `pause_audio()` and `unpause_audio()`: the nanoseconds from the buffer's
@@ -142,8 +156,7 @@ pub fn audio_paused(ts_end: u64, timestamp: u64, end_ts: u64) -> AudioPaused {
 /// wrapping as a `uint64_t` difference.
 #[must_use]
 pub fn audio_cut_ns(ts: u64, timestamp: u64) -> u64 {
-    let _ = (ts, timestamp);
-    todo!()
+    ts.wrapping_sub(timestamp)
 }
 
 /// `pause_audio()`: the frames the buffer keeps before the cut,
@@ -151,22 +164,24 @@ pub fn audio_cut_ns(ts: u64, timestamp: u64) -> u64 {
 /// `uint32_t`.
 #[must_use]
 pub fn audio_kept(cut_frames: u64) -> u32 {
-    let _ = cut_frames;
-    todo!()
+    truncate(cut_frames)
 }
 
 /// `unpause_audio()`: the frames the buffer keeps after the cut,
 /// `frames - (uint32_t)cut_frames`, wrapping as a `uint32_t` difference.
 #[must_use]
 pub fn audio_left(frames: u32, cut_frames: u64) -> u32 {
-    let _ = (frames, cut_frames);
-    todo!()
+    frames.wrapping_sub(truncate(cut_frames))
 }
 
 /// `audio_pause_check()`, after a cut: no frame is left, so the buffer is
 /// dropped.
 #[must_use]
 pub fn audio_drop(frames: u32) -> bool {
-    let _ = frames;
-    todo!()
+    frames == 0
+}
+
+/// `(uint32_t)cut_frames`: the low 32 bits.
+fn truncate(cut_frames: u64) -> u32 {
+    u32::try_from(cut_frames & u64::from(u32::MAX)).unwrap_or(u32::MAX)
 }

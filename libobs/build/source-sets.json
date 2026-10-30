@@ -204,6 +204,7 @@
     "build/libobs.ported-encoder-group-reconfig+.h.c",
     "build/libobs.ported-encoder-lifecycle+.h.c",
     "build/libobs.ported-encoder-packet-ts+.h.c",
+    "build/libobs.ported-encoder-pause+.h.c",
     "build/libobs.ported-encoder-roi+.h.c",
     "build/libobs.ported-encoder-size+.h.c",
     "build/libobs.ported-graphics+.h.c",
