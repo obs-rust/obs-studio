@@ -16,8 +16,9 @@ fn main() {
     // (obs-nix-hotkey-state.c), the portal shortcut ids
     // (obs-nix-portal-shortcut-ids.c), the binding codec
     // (obs-hotkey-bindings.c), the key-name translations
-    // (obs-hotkey-translations.c) and the X11 keysym table
-    // (obs-nix-x11-input.c) need them by name.
+    // (obs-hotkey-translations.c), the X11 keysym table
+    // (obs-nix-x11-input.c) and the Wayland keysym tables
+    // (obs-nix-wayland-keys.c) need them by name.
     let mut consts = String::new();
     let mut count = 0usize;
     for line in text.lines() {
