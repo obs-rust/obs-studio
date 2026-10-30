@@ -399,7 +399,7 @@ struct Packed {
 
 impl Packed {
     fn check(&self) {
-        let width_d2 = self.in_linesize.min(self.out_linesize) as usize / 2;
+        let width_d2 = self.in_linesize.min(self.out_linesize) as usize / 4;
         // Only the last row's offsets matter: rows are visited in order.
         let rows = last_row(self.start_y, self.end_y, 1).filter(|_| width_d2 > 0);
         let (in_len, out_len) = match rows {

@@ -2498,6 +2498,11 @@ area.
   *All*, 2026-10-30. Issue
   [#3044](https://github.com/obs-rust/obs-studio/issues/3044), PR
   [#3045](https://github.com/obs-rust/obs-studio/pull/3045).
+- `decompress_422()`, exported for plugins, now reads and writes only the
+  rows of packed 4:2:2 (UYVY or YUY2) it is given. It read and wrote
+  twice each row, so the last rows of a frame ran past the caller's
+  buffers. Nothing in OBS calls it. *All*, 2026-10-30. Issue
+  [#3031](https://github.com/obs-rust/obs-studio/issues/3031).
 
 ### Security hardening
 

@@ -739,9 +739,10 @@ fn decompress_422_row_offset_wraps_like_c() {
 
     decompress_422(&input[..], 1 << 31, 2, 3, &mut output[..], 8, true);
 
-    // out_linesize 8: row 2 writes at 16, min(2^31, 8) / 2 = 4 dwords in.
+    // out_linesize 8: row 2 writes at 16, min(2^31, 8) / 4 = 2 dwords in.
     assert!(output[..16].iter().all(|&b| b == CANARY));
-    for i in 0..4 {
+    assert!(output[32..].iter().all(|&b| b == CANARY));
+    for i in 0..2 {
         let dw = get32(&input, i * 4);
         assert_eq!(get32(&output, 16 + i * 8), dw);
         assert_eq!(get32(&output, 16 + i * 8 + 4), dup_luma(dw, true));

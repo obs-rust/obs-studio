@@ -133,12 +133,10 @@ fn decompress(
 /// Packed 4:2:2 (UYVY or, with `leading_lum`, YUY2) into UYVX, with the
 /// linesizes of a 1080p frame.
 ///
-/// The C converts `min(in_linesize, out_linesize) / 2` words of each row,
-/// which for the linesizes of a frame in bytes is twice the row: each row
-/// reads `4 * width_d2` bytes and writes `8 * width_d2` (the parity test
-/// sizes its buffers the same way). The buffers here hold what both sides
-/// touch, so the case times that work, not one frame. No caller in OBS uses
-/// this conversion (CPU YUV conversion was removed upstream, e5b004fd4).
+/// Each row converts `min(in_linesize, out_linesize) / 4` words, one row of
+/// the frame (#3031): it reads `4 * width_d2` bytes and writes
+/// `8 * width_d2`. No caller in OBS uses this conversion (CPU YUV conversion
+/// was removed upstream, e5b004fd4).
 fn decompress_422(
     criterion: &mut Criterion,
     case: &str,
@@ -146,7 +144,7 @@ fn decompress_422(
     fns: [Decompress422; 3],
 ) {
     let (in_linesize, out_linesize) = (WIDTH * 2, WIDTH * 4);
-    let width_d2 = in_linesize.min(out_linesize) / 2;
+    let width_d2 = in_linesize.min(out_linesize) / 4;
     let input = bytes((HEIGHT - 1) * in_linesize + 4 * width_d2, 5);
     let run = |f: Decompress422, out: &mut Vec<u8>| {
         // SAFETY: `input` and `out` hold every byte the conversion reads

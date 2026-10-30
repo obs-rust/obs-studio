@@ -239,7 +239,8 @@ void decompress_nv12(const uint8_t *const input[], const uint32_t in_linesize[],
 void decompress_422(const uint8_t *input, uint32_t in_linesize, uint32_t start_y, uint32_t end_y, uint8_t *output,
 		    uint32_t out_linesize, bool leading_lum)
 {
-	uint32_t width_d2 = min_uint32(in_linesize, out_linesize) / 2;
+	/* 2 bytes per pixel: one 32-bit word per 2 pixels of the row (#3031). */
+	uint32_t width_d2 = min_uint32(in_linesize, out_linesize) / 4;
 	uint32_t y;
 
 	register const uint32_t *input32;

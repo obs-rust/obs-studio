@@ -298,10 +298,10 @@ pub fn decompress_nv12<S, D>(
 /// pixel: each input `u32` is copied, then repeated with its other luma byte
 /// in place of the first (`leading_lum`, YUYV) or second (UYVY) one.
 ///
-/// Characterized, not endorsed: each row reads
-/// `min(in_linesize, out_linesize) / 2` values, twice the row, and writes
-/// twice as many, so each row spills into the next one, which then
-/// overwrites the spill.
+/// Each row reads `min(in_linesize, out_linesize) / 4` values, the row's
+/// bytes (2 per pixel), and writes twice as many, 4 bytes per pixel. Until
+/// #3031 the C and this port read and wrote twice that, so each row spilled
+/// into the next one.
 pub fn decompress_422<S, D>(
     input: &S,
     in_linesize: u32,
@@ -314,7 +314,7 @@ pub fn decompress_422<S, D>(
     S: Source + ?Sized,
     D: Sink + ?Sized,
 {
-    let width_d2 = in_linesize.min(out_linesize) / 2;
+    let width_d2 = in_linesize.min(out_linesize) / 4;
     for y in start_y..end_y {
         let input32 = y.wrapping_mul(in_linesize) as usize;
         let output32 = y.wrapping_mul(out_linesize) as usize;
