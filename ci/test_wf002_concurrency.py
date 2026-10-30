@@ -14,11 +14,13 @@ a later edit that drops it fails here the same way the linter would.
 
 from __future__ import annotations
 
+import tomllib
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
+CI_TOML = ROOT / "ci.toml"
 
 # Only the workflows already burned down. Each value is the exact top-level
 # `concurrency` group the workflow must carry; add a row with the workflow and
@@ -26,6 +28,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 EXPECTED = {
     "build-project.yaml": "build-project-${{ github.event_name }}-${{ github.ref }}",
     "check-format.yaml": "check-format-${{ github.event_name }}-${{ github.ref }}",
+    "claim-bot.yaml": "claim-bot-${{ github.event.issue.number || 'sweep' }}",
     "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
     "push.yaml": "push-${{ github.event_name }}-${{ github.ref }}",
     "sign-windows.yaml": "sign-windows-${{ github.event_name }}-${{ github.ref }}",
@@ -56,6 +59,16 @@ def concurrency_group(text: str) -> str:
     return ""
 
 
+def wf_002_exception_paths() -> set[str]:
+    """Every path ci.toml still records a WF-002 exception for."""
+    manifest = tomllib.loads(CI_TOML.read_text(encoding="utf-8"))
+    return {
+        entry["path"]
+        for entry in manifest.get("exceptions", [])
+        if entry.get("rule") == "WF-002"
+    }
+
+
 class Wf002ConcurrencyTest(unittest.TestCase):
     def test_burned_down_workflows_keep_their_group(self):
         for name, group in EXPECTED.items():
@@ -66,6 +79,24 @@ class Wf002ConcurrencyTest(unittest.TestCase):
                     concurrency_group(path.read_text(encoding="utf-8")), group
                 )
 
+    def test_burned_down_workflows_hold_no_wf_002_exception(self):
+        """A burned-down workflow's ci.toml exception goes in the same PR.
+
+        ci-lint needs the network, and a stale exception is invisible to it: it
+        only shows up as an inflated `approved exception(s)` header, which
+        nobody diffs. So a workflow that already carries its group can keep a
+        WF-002 [[exceptions]] block forever unless this half checks it.
+        """
+        stale = sorted(
+            set(EXPECTED) & {Path(path).name for path in wf_002_exception_paths()}
+        )
+        self.assertEqual(
+            stale,
+            [],
+            "these workflows carry a top-level concurrency group, so ci.toml "
+            "must not keep a WF-002 [[exceptions]] block for them (#962)",
+        )
+
     def test_a_check_format_run_cancels_the_one_it_supersedes(self):
         text = (WORKFLOWS / "check-format.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", text)
@@ -73,6 +104,16 @@ class Wf002ConcurrencyTest(unittest.TestCase):
     def test_a_build_project_run_cancels_the_one_it_supersedes(self):
         text = (WORKFLOWS / "build-project.yaml").read_text(encoding="utf-8")
         self.assertIn("cancel-in-progress: true", text)
+
+    def test_a_claim_bot_run_never_cancels_claim_processing(self):
+        """claim-bot.yaml groups per issue and never cancels (the claim precedent).
+
+        Each `issue_comment` event is a claim command the bot has to parse, so a
+        superseded run cancelled mid-flight would drop that comment's effect:
+        the group serialises one issue's events and lets both finish.
+        """
+        text = (WORKFLOWS / "claim-bot.yaml").read_text(encoding="utf-8")
+        self.assertIn("cancel-in-progress: false", text)
 
     def test_a_dispatch_never_cancels_an_in_flight_run(self):
         """dispatch.yaml is manual and multi-job, so its group keys on `inputs.job`
