@@ -28,6 +28,7 @@ mod interleave_parity;
 mod output_begin;
 mod output_begin_parity;
 mod output_caption;
+mod output_caption_parity;
 mod output_pause;
 mod output_pause_parity;
 mod output_reconnect;
