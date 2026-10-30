@@ -857,11 +857,13 @@ static inline void unregister_hotkey(obs_hotkey_id id)
 	if (hotkey->registerer_type == OBS_HOTKEY_REGISTERER_SOURCE)
 		obs_weak_source_release(hotkey->registerer);
 
+	/* Before the frees: remove_bindings() releases every pressed binding it
+	 * removes, and the release reads this hotkey's pressed count. */
+	remove_bindings(id);
+
 	bfree(hotkey->name);
 	bfree(hotkey->description);
 	bfree(hotkey);
-
-	remove_bindings(id);
 }
 
 static inline void unregister_hotkey_pair(obs_hotkey_pair_id id)
