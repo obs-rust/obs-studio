@@ -70,6 +70,7 @@ pub mod encoder_group_reconfig;
 pub mod encoder_lifecycle;
 pub mod encoder_packet;
 pub mod encoder_packet_ts;
+pub mod encoder_pause;
 pub mod encoder_roi;
 pub mod encoder_size;
 pub mod file_serializer;
