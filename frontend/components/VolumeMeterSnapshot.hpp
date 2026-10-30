@@ -29,7 +29,9 @@ template<typename Mutex, typename Reset>
 bool resetVolumeMeterIfIdle(Mutex &mutex, uint64_t &lastUpdate, uint64_t now, Reset reset)
 {
 	std::lock_guard<Mutex> locker(mutex);
-	double secondsSinceLastUpdate = (now - lastUpdate) * 0.000000001;
+	// AppleClang states uint64 -> double precision loss by default (#3096); the
+	// nanosecond delta is meant as seconds, so state the conversion here.
+	double secondsSinceLastUpdate = static_cast<double>(now - lastUpdate) * 1e-9;
 	if (secondsSinceLastUpdate > 0.5) {
 		reset();
 		return true;
