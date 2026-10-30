@@ -8,7 +8,7 @@ fail-fast = false
 # takes about 5 s or less in the CI debug build (testing-policy "Test time").
 slow-timeout = { period = "10s", terminate-after = 3 }
 
-# #3071: the Fast Gate oversubscribes nextest (8 threads on a 4-vCPU runner),
+# #3071: the Fast Gate oversubscribes nextest (6 threads on a 4-vCPU runner),
 # because the binaries spend their slots waiting on I/O and subprocesses. The
 # native_build tests are the exception: they drive cmake and compilers, so they
 # run two at a time however many threads the run has.

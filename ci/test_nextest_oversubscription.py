@@ -47,11 +47,11 @@ class FastGateOversubscriptionTest(unittest.TestCase):
             )
 
     def test_default_threads_oversubscribe_the_ci_runner(self):
-        self.assertEqual(gate.DEFAULT_TEST_THREADS, 8)
+        self.assertEqual(gate.DEFAULT_TEST_THREADS, 6)
         with mock.patch.object(gate.os, "cpu_count", return_value=4):
             with mock.patch.dict(gate.os.environ, {}, clear=False):
                 gate.os.environ.pop("OBS_GATE_TEST_THREADS", None)
-                self.assertEqual(gate.test_threads(), 8)
+                self.assertEqual(gate.test_threads(), 6)
 
     def test_host_override_still_wins(self):
         with mock.patch.dict(gate.os.environ, {"OBS_GATE_TEST_THREADS": "16"}, clear=False):
