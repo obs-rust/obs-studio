@@ -13,8 +13,13 @@ Two Linux consumers read the pin: .github/scripts/utils.zsh/setup_ubuntu
 `releases` the release tag when a rebuild of the same branch is published
 under a new one, such as 8078-r2, #2363) and the Flatpak manifest (its own
 URL). They must agree, and neither may
-fall back to 7871. macOS and Windows stay on `version` until they have a
-build host.
+fall back to 7871.
+
+The macOS targets read the same two overrides through
+`cmake/common/buildspec_common.cmake`, now that obs-rust publishes the 8078
+macOS archives on the mirror (#2418). Windows stays on `version` until it has
+a build host, so `cef_support.py` keeps failing on the Windows pins — that is
+the remaining upgrade work, not a regression here.
 """
 
 from __future__ import annotations
@@ -45,6 +50,29 @@ def ubuntu_url(spec: dict, target: str) -> str:
     base = spec["baseUrl"].rsplit("/", 1)[0] + f"/{release}"
     arch = target.removeprefix("ubuntu-")
     return f"{base}/cef_binary_{version}_linux_{arch}.tar.xz"
+
+
+# Targets obs-rust builds itself and publishes on the mirror. The rest keep
+# `version` and its baseUrl tag.
+BUILT_TARGETS = ("ubuntu-x86_64", "macos-arm64", "macos-x86_64")
+
+
+def target_version(spec: dict, target: str) -> int:
+    return int(spec.get("versions", {}).get(target, spec["version"]))
+
+
+def target_release(spec: dict, target: str) -> str:
+    version = target_version(spec, target)
+    return spec.get("releases", {}).get(target, str(version))
+
+
+def target_url(spec: dict, target: str) -> str:
+    """The mirror URL `cmake/common/buildspec_common.cmake` downloads."""
+    os_name, _, arch = target.partition("-")
+    suffix = "zip" if os_name == "windows" else "tar.xz"
+    release = target_release(spec, target)
+    base = spec["baseUrl"].rsplit("/", 1)[0] + f"/{release}"
+    return f"{base}/cef_binary_{target_version(spec, target)}_{os_name}_{arch}.{suffix}"
 
 
 def flatpak_cef() -> dict:
@@ -79,8 +107,32 @@ class CefPinTest(unittest.TestCase):
         # Only targets with an obs-rust build move; the rest keep `version`.
         spec = cef_spec()
         for target in [*spec.get("versions", {}), *spec.get("releases", {})]:
-            self.assertEqual(target, "ubuntu-x86_64")
+            self.assertIn(target, BUILT_TARGETS)
         self.assertTrue(spec["baseUrl"].endswith(f"/{spec['version']}"))
+        for target in spec["hashes"]:
+            if target not in BUILT_TARGETS:
+                self.assertEqual(target_version(spec, target), int(spec["version"]))
+
+    def test_every_built_target_is_at_the_floor(self):
+        spec = cef_spec()
+        for target in BUILT_TARGETS:
+            with self.subTest(target=target):
+                version = target_version(spec, target)
+                release = target_release(spec, target)
+                self.assertGreaterEqual(version, FLOOR)
+                self.assertTrue(release == str(version) or release.startswith(f"{version}-r"), release)
+                self.assertEqual(
+                    target_url(spec, target),
+                    f"{MIRROR}/{release}/cef_binary_{version}_{target.partition('-')[0]}"
+                    f"_{target.rpartition('-')[2]}.{'zip' if target.startswith('windows') else 'tar.xz'}",
+                )
+
+    def test_macos_reads_the_platform_override(self):
+        # macOS downloads through CMake, so the reader there has to honour the
+        # same `versions` / `releases` overrides as setup_ubuntu.
+        reader = (ROOT / "cmake/common/buildspec_common.cmake").read_text()
+        self.assertIn("versions ${platform}", reader)
+        self.assertIn("releases ${platform}", reader)
 
 
 if __name__ == "__main__":
