@@ -123,8 +123,9 @@ bool obs_nix_portal_sets_request(const struct obs_nix_portal_combos *current, bo
 /* The desktop declined request: the combinations of current that it
  * approved before and that are in request (part), and the other ones of
  * current (declined), as positions in current, in its order (each has room
- * for current->num). Returns whether part is bound again: it is neither
- * empty nor as large as request. */
+ * for current->num). Returns whether part is neither empty nor as large as
+ * request. The portal client does not use it: bind_approved() binds part
+ * again whenever it is not empty (obs_nix_portal_status_rebind()). */
 bool obs_nix_portal_sets_partition(const struct obs_nix_portal_combos *current,
 				   const struct obs_nix_portal_combos *approved,
 				   const struct obs_nix_portal_combos *request, size_t *part, size_t *num_part,
