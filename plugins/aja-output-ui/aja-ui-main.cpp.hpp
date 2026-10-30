@@ -262,7 +262,7 @@ bool on_multi_view_toggle(void *data, obs_properties_t *, obs_property_t *, obs_
 {
 	bool multiViewEnabled = obs_data_get_bool(settings, kUIPropMultiViewEnable.id) && !main_output_running &&
 				!preview_output_running;
-	const int audioInputSource = obs_data_get_int(settings, kUIPropMultiViewAudioSource.id);
+	const int audioInputSource = static_cast<int>(obs_data_get_int(settings, kUIPropMultiViewAudioSource.id));
 	const char *cardID = obs_data_get_string(settings, kUIPropDevice.id);
 	if (!cardID || !cardID[0]) {
 		return false;
