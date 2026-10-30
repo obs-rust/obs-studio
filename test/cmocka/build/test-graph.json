@@ -2421,6 +2421,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_reconnect_steps": {
+      "sources": [
+        "test/cmocka/test_output_reconnect_steps.c",
+        "libobs/obs-output-reconnect.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-reconnect.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_rescale": {
       "sources": [
         "test/cmocka/test_output_rescale.c",
@@ -6395,6 +6415,12 @@
     },
     "test_output_raw_audio_steps": {
       "target": "test_output_raw_audio_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_reconnect_steps": {
+      "target": "test_output_reconnect_steps",
       "command": [
         "${target}"
       ]
