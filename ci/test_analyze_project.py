@@ -28,24 +28,28 @@ assert spec is not None and spec.loader is not None
 analyze_project = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(analyze_project)
 
-# The `jq -s` program the ported step ran, verbatim.
+# The `jq -s` program the ported step ran, with every object value that is a
+# compound expression parenthesized (#3051). jq 1.7 accepts only a bare term as
+# an object value, so `"driver": (… ) + {…}` and `"artifacts": reduce(…) | unique`
+# are compile errors there; jq 1.8 accepts both. The parentheses do not change
+# the meaning, so the differential case below is the same test on every version.
 JQ_PROGRAM = '''
 {
   "$schema": first(.[]."$schema"),
   "version": first(.[].version),
   "runs": [{
     "tool": {
-      "driver": (first(.[].runs[].tool.driver) | del(.rules)) + {
-        "rules": reduce(.[].runs[].tool.driver.rules) as $obj ([]; . + $obj) | unique
-      }
+      "driver": ((first(.[].runs[].tool.driver) | del(.rules)) + {
+        "rules": (reduce(.[].runs[].tool.driver.rules) as $obj ([]; . + $obj) | unique)
+      })
     },
-    "artifacts": reduce(.[].runs[].artifacts) as $obj ([]; . + $obj) | unique,
-    "results": (reduce(.[].runs[].results) as $obj ([]; . + $obj))
-    | del(
-      .[].codeFlows[].threadFlows[].locations[].location.physicalLocation.region.endLine,
-      .[].codeFlows[].threadFlows[].locations[].location.physicalLocation.region.endColumn
-      | select(. == 0)
-    )
+    "artifacts": (reduce(.[].runs[].artifacts) as $obj ([]; . + $obj) | unique),
+    "results": ((reduce(.[].runs[].results) as $obj ([]; . + $obj))
+      | del(
+        .[].codeFlows[].threadFlows[].locations[].location.physicalLocation.region.endLine,
+        .[].codeFlows[].threadFlows[].locations[].location.physicalLocation.region.endColumn
+        | select(. == 0)
+      ))
   }]
 }
 '''
