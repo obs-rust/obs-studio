@@ -10,6 +10,15 @@ target_sources(
 
 target_link_libraries(obs-frontend-api PRIVATE OBS::libobs)
 
+# #2625: this library's C++ source states its conversions at the call sites,
+# so the pins that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  obs-frontend-api
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_include_directories(obs-frontend-api PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
 
 if(OS_WINDOWS)
