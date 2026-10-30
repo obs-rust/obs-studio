@@ -25,6 +25,7 @@ mod portal_shortcut_ids_parity;
 mod portal_shortcut_sets;
 mod portal_shortcut_sets_parity;
 mod portal_shortcut_status;
+mod portal_shortcut_status_parity;
 mod press;
 mod press_parity;
 mod translations;

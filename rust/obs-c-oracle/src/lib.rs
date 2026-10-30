@@ -146,6 +146,7 @@ pub mod platform_windows;
 pub mod portal_inhibit;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
+pub mod portal_shortcut_status;
 pub mod proc;
 pub mod profiler;
 pub mod profiler_io;
