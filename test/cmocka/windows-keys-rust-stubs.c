@@ -37,15 +37,16 @@ bool obs_hotkey_key_is_pressed(obs_key_t key)
 	abort();
 }
 
-void obs_hotkey_binding_press(obs_hotkey_binding_t *binding)
+struct obs_hotkey_binding_count_fields obs_hotkey_binding_count_fields(obs_hotkey_binding_t *binding)
 {
 	(void)binding;
 	abort();
 }
 
-void obs_hotkey_binding_release(obs_hotkey_binding_t *binding)
+void obs_hotkey_dispatch(obs_hotkey_t *hotkey, bool pressed)
 {
-	(void)binding;
+	(void)hotkey;
+	(void)pressed;
 	abort();
 }
 
