@@ -119,6 +119,7 @@ pub mod output_start;
 pub mod output_stop;
 pub mod output_stop_stats;
 pub mod output_video_checks;
+pub mod parity;
 pub mod path_extension;
 pub mod pipe;
 #[cfg(target_os = "macos")]
