@@ -2069,6 +2069,14 @@ area.
   unrelated bit of the pressed buttons, so the hotkey's state was arbitrary.
   *macOS*, 2026-10-29. Issue
   [#2914](https://github.com/obs-rust/obs-studio/issues/2914).
+- On X11, a mouse-button hotkey also follows a raw button event that
+  carries X's send-event mark, and no longer takes three unrelated kinds of
+  X event for a mouse button. A mouse button numbered 0
+  is logged as unsupported instead of being stored outside OBS's button
+  table, and a script or plugin asking the name of a value that isn't a key
+  gets no name instead of a read past the key table. *Linux, FreeBSD*,
+  2026-10-30. Issue
+  [#3098](https://github.com/obs-rust/obs-studio/issues/3098).
 
 ### Scripting
 
