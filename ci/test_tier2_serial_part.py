@@ -35,12 +35,16 @@ def registry(*tests: tuple[str, bool]) -> dict:
 
 
 class SerialTestsTest(unittest.TestCase):
-    def select(self, data: dict, shard: str = "") -> str:
+    def select(self, data: dict, shard: str = "", companions: dict | None = None) -> str:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "registry.json"
             path.write_text(json.dumps(data))
+            extra = []
+            if companions is not None:
+                extra = ["--companions", str(Path(tmp) / "companions.json")]
+                Path(extra[1]).write_text(json.dumps(companions))
             return subprocess.run(["uv", "run", "--no-project", str(TOOLS / "serial-tests.py"), str(path),
-                                   *([shard] if shard else [])],
+                                   *([shard] if shard else []), *extra],
                                   check=True, capture_output=True, text=True).stdout.strip()
 
     def test_regex_matches_exactly_the_run_serial_tests(self):
@@ -62,6 +66,53 @@ class SerialTestsTest(unittest.TestCase):
         # An empty selection would make the serial part pass with no tests.
         with self.assertRaises(subprocess.CalledProcessError):
             self.select(registry(("test_a", False)))
+
+
+class CompanionsTest(unittest.TestCase):
+    """The serial runners also take a fixed set of suite tests (#3021): the
+    suite ran ~1000 test-seconds at -j8 (124-128 s) while the serial shards
+    idled after 47-71 s. ctest never runs them beside a RUN_SERIAL test."""
+
+    COMPANIONS = {"shards": 2, "companions": [["test_c"], ["test_b", "test_gone"]]}
+
+    def data(self) -> dict:
+        return registry(("test_a", False), ("test_b", False), ("test_c", False),
+                        *((f"test_d_{i}", True) for i in range(3)))
+
+    def matched(self, regex: str) -> list[str]:
+        return [t["name"] for t in self.data()["tests"] if re.search(regex, t["name"])]
+
+    def test_every_test_runs_exactly_once_per_mode(self):
+        select = SerialTestsTest.select
+        suite = select(self, self.data(), companions=self.COMPANIONS)  # the suite's -E set
+        first = select(self, self.data(), "1/2", self.COMPANIONS)
+        second = select(self, self.data(), "2/2", self.COMPANIONS)
+        names = [t["name"] for t in self.data()["tests"]]
+        excluded = self.matched(suite)
+        runs = [n for n in names if n not in excluded] + self.matched(first) + self.matched(second)
+        self.assertEqual(sorted(runs), sorted(names))
+        self.assertEqual(self.matched(first), ["test_c", "test_d_0", "test_d_2"])
+        self.assertEqual(self.matched(second), ["test_b", "test_d_1"])
+
+    def test_shard_count_must_match_the_companions_file(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            SerialTestsTest.select(self, self.data(), "1/3", self.COMPANIONS)
+
+    def test_checked_in_companions_fit_the_workflow_matrix(self):
+        companions = json.loads((TOOLS / "serial-companions.json").read_text(encoding="utf-8"))
+        n = companions["shards"]
+        self.assertEqual(len(companions["companions"]), n)
+        parts = [f"serial-{i}-of-{n}" for i in range(1, n + 1)]
+        self.assertIn('part: ["suite", ' + ", ".join(f'"{p}"' for p in parts) + "]", test_job())
+        names = [name for shard in companions["companions"] for name in shard]
+        self.assertEqual(len(names), len(set(names)))
+        # Stays in the suite: it alone takes ~102 s and would run after the
+        # serial tests on a serial runner (47 + 102 s).
+        self.assertNotIn("test_slideshow_mem_cap", names)
+
+    def test_validate_passes_the_companions_to_both_parts(self):
+        text = (TOOLS / "validate.sh").read_text(encoding="utf-8")
+        self.assertIn("--companions", text[text.index("select_part()"):text.index("select_part()") + 900])
 
 
 class ValidateTest(unittest.TestCase):
