@@ -2912,6 +2912,30 @@
         ]
       }
     },
+    "test_portal_shortcut_status_steps": {
+      "sources": [
+        "test/cmocka/test_portal_shortcut_status_steps.c",
+        "libobs/obs-nix-portal-shortcut-status.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-portal-shortcuts.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "sanitizers": "address,undefined"
+    },
     "test_proc": {
       "sources": [
         "test/cmocka/test_proc.c"
@@ -6792,6 +6816,12 @@
     },
     "test_portal_shortcut_sets": {
       "target": "test_portal_shortcut_sets"
+    },
+    "test_portal_shortcut_status_steps": {
+      "target": "test_portal_shortcut_status_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_proc": {
       "target": "test_proc",
