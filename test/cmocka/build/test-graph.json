@@ -2421,6 +2421,15 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_reconnect_route": {
+      "sources": [
+        "test/cmocka/test_output_reconnect_route.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_output_reconnect_steps": {
       "sources": [
         "test/cmocka/test_output_reconnect_steps.c",
@@ -6418,6 +6427,19 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_reconnect_route": {
+      "target": "test_output_reconnect_route",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "timeout_seconds": 120
     },
     "test_output_reconnect_steps": {
       "target": "test_output_reconnect_steps",
