@@ -382,6 +382,25 @@ obs_source_duplicate_group_step
 obs_source_duplicate_scene_step
 obs_source_duplicate_scene_type
 obs_source_duplicate_type_step
+# obs-source-filter-chain.c: filter_compatible(), obs_source_filter_add(),
+# obs_source_filter_remove_refless(), move_filter_dir() and its walks,
+# reorder_filter_targets() and obs_source_restore_filters() in
+# obs-source.c call them inside libobs. Declared in
+# obs-source-filter-chain.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_source_filter_chain_add_allowed
+obs_source_filter_chain_add_target
+obs_source_filter_chain_checks_compatible
+obs_source_filter_chain_compatible
+obs_source_filter_chain_edge_move
+obs_source_filter_chain_move_route
+obs_source_filter_chain_ref_step
+obs_source_filter_chain_remove_retarget
+obs_source_filter_chain_restore_matches
+obs_source_filter_chain_restore_step
+obs_source_filter_chain_same_kind
+obs_source_filter_chain_target_of
+obs_source_filter_chain_walk_step
 # obs-source-frame-copy.c: copy_frame_data(), cache_video(), clean_cache(),
 # preload_frame_changed() and the obs_source_output_video(),
 # obs_source_preload_video() and obs_source_set_video_frame() families in

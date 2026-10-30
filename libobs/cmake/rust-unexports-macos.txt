@@ -321,6 +321,21 @@ _obs_source_duplicate_group_step
 _obs_source_duplicate_scene_step
 _obs_source_duplicate_scene_type
 _obs_source_duplicate_type_step
+# obs-source-filter-chain.c: obs-source.c calls them inside libobs. Not
+# EXPORT.
+_obs_source_filter_chain_add_allowed
+_obs_source_filter_chain_add_target
+_obs_source_filter_chain_checks_compatible
+_obs_source_filter_chain_compatible
+_obs_source_filter_chain_edge_move
+_obs_source_filter_chain_move_route
+_obs_source_filter_chain_ref_step
+_obs_source_filter_chain_remove_retarget
+_obs_source_filter_chain_restore_matches
+_obs_source_filter_chain_restore_step
+_obs_source_filter_chain_same_kind
+_obs_source_filter_chain_target_of
+_obs_source_filter_chain_walk_step
 # obs-source-frame-copy.c: obs-source.c calls them inside libobs. Not EXPORT.
 _obs_source_frame_copy_plan
 _obs_source_frame_copy_cache_step

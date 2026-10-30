@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-filter-chain.pch.h"
+
+/* Ported to rust/obs-source (source_filter_chain): the hybrid libobs drops
+ * this file. */
 
 /* The filter chain decisions of obs-source.c, moved: the decisions, on
  * plain values. obs-source.c keeps the locks, the list edits, the parent and

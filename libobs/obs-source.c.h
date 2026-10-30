@@ -2703,9 +2703,12 @@ void obs_source_filter_add(obs_source_t *source, obs_source_t *filter)
 	}
 
 	filter = obs_source_get_ref(filter);
-	if (obs_source_filter_chain_ref_step(obs_ptr_valid(filter, "obs_source_filter_add")) !=
-	    OBS_SOURCE_FILTER_CHAIN_REF_ADD)
+	int ref_step = obs_source_filter_chain_ref_step(obs_ptr_valid(filter, "obs_source_filter_add"));
+	if (ref_step != OBS_SOURCE_FILTER_CHAIN_REF_ADD) {
+		if (ref_step == OBS_SOURCE_FILTER_CHAIN_REF_UNLOCK_RETURN)
+			pthread_mutex_unlock(&source->filter_mutex);
 		return;
+	}
 
 	filter->filter_parent = source;
 	filter->filter_target = obs_source_filter_chain_add_target(source->filters.num) ==
@@ -2862,6 +2865,9 @@ static bool move_filter_dir(obs_source_t *source, obs_source_t *filter, enum obs
 		if (!obs_source_filter_chain_edge_move(route, idx, source->filters.num, &to))
 			return false;
 		da_move_item(source->filters, idx, to);
+
+	} else if (route == OBS_SOURCE_FILTER_CHAIN_ROUTE_STAY) {
+		return false;
 	}
 
 	reorder_filter_targets(source);
@@ -5728,8 +5734,11 @@ void obs_source_restore_filters(obs_source_t *source, obs_data_array_t *array)
 			}
 		}
 
-		if (obs_source_filter_chain_restore_step(filter != NULL) == OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD)
+		int restore_step = obs_source_filter_chain_restore_step(filter != NULL);
+		if (restore_step == OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD)
 			filter = obs_load_source(data);
+		else if (restore_step == OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD_PRIVATE)
+			filter = obs_load_private_source(data);
 
 		/* add filter; parents are set once every target is (#2172) */
 		if (prev)

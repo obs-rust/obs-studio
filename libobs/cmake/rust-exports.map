@@ -346,6 +346,21 @@
     obs_source_duplicate_scene_step;
     obs_source_duplicate_scene_type;
     obs_source_duplicate_type_step;
+    /* obs-source-filter-chain.c. obs-source.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_source_filter_chain_add_allowed;
+    obs_source_filter_chain_add_target;
+    obs_source_filter_chain_checks_compatible;
+    obs_source_filter_chain_compatible;
+    obs_source_filter_chain_edge_move;
+    obs_source_filter_chain_move_route;
+    obs_source_filter_chain_ref_step;
+    obs_source_filter_chain_remove_retarget;
+    obs_source_filter_chain_restore_matches;
+    obs_source_filter_chain_restore_step;
+    obs_source_filter_chain_same_kind;
+    obs_source_filter_chain_target_of;
+    obs_source_filter_chain_walk_step;
     /* obs-source-frame-copy.c. obs-source.c calls them inside libobs. Not
      * EXPORT. */
     obs_source_frame_copy_plan;

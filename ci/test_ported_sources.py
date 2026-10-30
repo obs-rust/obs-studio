@@ -79,6 +79,7 @@ PORTED_ON_EVERY_HOST = (
     "obs-source-deinterlace-select.c.h.o",
     "obs-source-draw-plan.c.h.o",
     "obs-source-duplicate.c.h.o",
+    "obs-source-filter-chain.c.h.o",
     "obs-source-frame-copy.c.h.o",
     "obs-source-load.c.h.o",
     "obs-source-media-admission.c.h.o",

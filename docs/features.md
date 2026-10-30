@@ -1726,6 +1726,14 @@ area.
   holds is refused, instead of being accepted and risking a hang. *All*,
   2026-10-29. Issue
   [#2942](https://github.com/obs-rust/obs-studio/issues/2942).
+- Undoing a filter change on a source that has a filter from a plugin that
+  isn't loaded no longer brings that filter back as a public source (one that
+  takes a place among the source names, and is renamed if a source already
+  has its name). A script or plugin can no longer put one filter on two
+  sources at once, leave a source's filters locked for good by adding a
+  filter that is being destroyed, or set off a reorder of a source's filters
+  with a movement that doesn't exist. *All*, 2026-10-30. Issue
+  [#2981](https://github.com/obs-rust/obs-studio/issues/2981).
 
 ### Scenes and UI
 

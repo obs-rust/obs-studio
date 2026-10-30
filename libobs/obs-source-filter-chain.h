@@ -66,8 +66,11 @@
 enum obs_source_filter_chain_ref {
 	/* Set the parent and target and insert the filter. */
 	OBS_SOURCE_FILTER_CHAIN_REF_ADD = 0,
-	/* Return, with filter_mutex still locked. */
+	/* Return, with filter_mutex still locked. Only the C gives it. */
 	OBS_SOURCE_FILTER_CHAIN_REF_RETURN = 1,
+	/* Unlock filter_mutex, then return. Only the Rust port gives it
+	 * (#2981). */
+	OBS_SOURCE_FILTER_CHAIN_REF_UNLOCK_RETURN = 2,
 };
 
 /* What a filter targets. */
@@ -90,16 +93,24 @@ enum obs_source_filter_chain_route {
 	OBS_SOURCE_FILTER_CHAIN_ROUTE_TOP = 2,
 	/* Move to the start of the list (the bottom), whatever the kind. */
 	OBS_SOURCE_FILTER_CHAIN_ROUTE_BOTTOM = 3,
-	/* Move nothing, but retarget every filter and report a move. */
+	/* Move nothing, but retarget every filter and report a move. Only the C
+	 * gives it, for a movement outside the enum. */
 	OBS_SOURCE_FILTER_CHAIN_ROUTE_RETARGET = 4,
+	/* Move nothing and report no move. Only the Rust port gives it, for a
+	 * movement outside the enum (#2981). */
+	OBS_SOURCE_FILTER_CHAIN_ROUTE_STAY = 5,
 };
 
 /* How obs_source_restore_filters() gets a backed-up filter. */
 enum obs_source_filter_chain_restore {
 	/* Keep the current filter it found (already referenced). */
 	OBS_SOURCE_FILTER_CHAIN_RESTORE_REUSE = 0,
-	/* Load it from its data with obs_load_source(). */
+	/* Load it from its data with obs_load_source(), public unless its type
+	 * is a registered filter. Only the C gives it. */
 	OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD = 1,
+	/* Load it from its data with obs_load_private_source(). Only the Rust
+	 * port gives it (#2981). */
+	OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD_PRIVATE = 2,
 };
 
 /* source_flags and filter_flags: the source's and the filter's
@@ -115,7 +126,7 @@ bool obs_source_filter_chain_compatible(uint32_t source_flags, uint32_t filter_f
  *
  * Returns whether obs_source_filter_add() goes on; otherwise it warns that
  * the filter is already present and returns. The C refuses only a listed
- * filter. */
+ * filter; the Rust port also one that has a parent (#2981). */
 bool obs_source_filter_chain_add_allowed(bool listed, bool has_parent);
 
 /* owns_info_id: the source's owns_info_id.
@@ -127,7 +138,7 @@ bool obs_source_filter_chain_checks_compatible(bool owns_info_id);
 /* referenced: obs_source_get_ref() of the filter gave a filter.
  *
  * Returns an enum obs_source_filter_chain_ref value: ADD when it did, else
- * RETURN. */
+ * RETURN in the C and UNLOCK_RETURN in the Rust port. */
 int obs_source_filter_chain_ref_step(bool referenced);
 
 /* count: the number of filters on the source before the new one goes in at
@@ -146,7 +157,8 @@ bool obs_source_filter_chain_remove_retarget(size_t idx, size_t *prev);
 /* movement: the enum obs_order_movement value, as an int.
  *
  * Returns an enum obs_source_filter_chain_route value: UP, DOWN, TOP or
- * BOTTOM for the four movements; RETARGET for any other. */
+ * BOTTOM for the four movements; for any other, RETARGET in the C and STAY
+ * in the Rust port. */
 int obs_source_filter_chain_move_route(int movement);
 
 /* route: ROUTE_UP or ROUTE_DOWN. cur: the index the walk is at. count: the
@@ -187,5 +199,5 @@ bool obs_source_filter_chain_restore_matches(const char *cur_name, const char *n
 /* found: a current filter matched and was referenced.
  *
  * Returns an enum obs_source_filter_chain_restore value: REUSE when one
- * was, else LOAD. */
+ * was, else LOAD in the C and LOAD_PRIVATE in the Rust port. */
 int obs_source_filter_chain_restore_step(bool found);

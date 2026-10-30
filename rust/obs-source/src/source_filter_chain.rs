@@ -125,51 +125,66 @@ pub enum Restore {
 /// `obs_source_filter_chain_compatible()`: whether a filter with
 /// `filter_flags` fits a source with `source_flags`.
 pub const fn compatible(source_flags: u32, filter_flags: u32) -> bool {
-    let _ = (source_flags, filter_flags);
-    todo!()
+    let av = VIDEO | AUDIO | ASYNC;
+    let s_caps = source_flags & av;
+    let mut f_caps = filter_flags & av;
+
+    if f_caps & AUDIO != 0 && f_caps & VIDEO == 0 {
+        f_caps &= !ASYNC;
+    }
+
+    s_caps & f_caps == f_caps
 }
 
 /// `obs_source_filter_chain_add_allowed()`: a filter goes on only when it
 /// is not `listed` on the source and has no parent (the C ignored
 /// `has_parent`).
 pub const fn add_allowed(listed: bool, has_parent: bool) -> bool {
-    let _ = (listed, has_parent);
-    todo!()
+    !listed && !has_parent
 }
 
 /// `obs_source_filter_chain_checks_compatible()`: the compatibility check
 /// is skipped for a source that owns its info id.
 pub const fn checks_compatible(owns_info_id: bool) -> bool {
-    let _ = owns_info_id;
-    todo!()
+    !owns_info_id
 }
 
 /// `obs_source_filter_chain_ref_step()`: [`RefStep::Add`] when the filter
 /// was referenced, else [`RefStep::UnlockReturn`].
 pub const fn ref_step(referenced: bool) -> RefStep {
-    let _ = referenced;
-    todo!()
+    if referenced {
+        RefStep::Add
+    } else {
+        RefStep::UnlockReturn
+    }
 }
 
 /// `obs_source_filter_chain_add_target()`: a new filter targets the source
 /// on an empty list (`count` 0), else the old first filter.
 pub const fn add_target(count: usize) -> Target {
-    let _ = count;
-    todo!()
+    if count == 0 {
+        Target::Source
+    } else {
+        Target::Filter
+    }
 }
 
 /// `obs_source_filter_chain_remove_retarget()`: the index of the filter
 /// that takes the removed filter's target (the one before `idx`), if any.
 pub const fn remove_retarget(idx: usize) -> Option<usize> {
-    let _ = idx;
-    todo!()
+    idx.checked_sub(1)
 }
 
 /// `obs_source_filter_chain_move_route()`: the route of a movement;
 /// [`Route::Stay`] for one outside the enum.
 pub const fn move_route(movement: i32) -> Route {
-    let _ = movement;
-    todo!()
+    match movement {
+        MOVE_UP => Route::Up,
+        MOVE_DOWN => Route::Down,
+        MOVE_TOP => Route::Top,
+        MOVE_BOTTOM => Route::Bottom,
+        _ => Route::Stay,
+    }
 }
 
 /// `obs_source_filter_chain_walk_step()`: from index `cur` of `count`
@@ -177,42 +192,59 @@ pub const fn move_route(movement: i32) -> Route {
 /// `cur - 1`), or `None` at the end of the list. Like the C's `size_t`, the
 /// last index of an empty list is `usize::MAX`.
 pub const fn walk_step(up: bool, cur: usize, count: usize) -> Option<usize> {
-    let _ = (up, cur, count);
-    todo!()
+    if up {
+        if cur == count.wrapping_sub(1) {
+            None
+        } else {
+            Some(cur.wrapping_add(1))
+        }
+    } else {
+        cur.checked_sub(1)
+    }
 }
 
 /// `obs_source_filter_chain_same_kind()`: whether both flag words have
 /// [`ASYNC`] or neither has.
 pub const fn same_kind(filter_flags: u32, other_flags: u32) -> bool {
-    let _ = (filter_flags, other_flags);
-    todo!()
+    (filter_flags & ASYNC != 0) == (other_flags & ASYNC != 0)
 }
 
 /// `obs_source_filter_chain_edge_move()`: where the filter at `idx` of
 /// `count` goes for the top (`top`) or the bottom, or `None` when it is
 /// already there.
 pub const fn edge_move(top: bool, idx: usize, count: usize) -> Option<usize> {
-    let _ = (top, idx, count);
-    todo!()
+    if top {
+        let last = count.wrapping_sub(1);
+        if idx == last { None } else { Some(last) }
+    } else if idx == 0 {
+        None
+    } else {
+        Some(0)
+    }
 }
 
 /// `obs_source_filter_chain_target_of()`: the last of `count` filters
 /// targets the source, any other the next filter.
 pub const fn target_of(i: usize, count: usize) -> Target {
-    let _ = (i, count);
-    todo!()
+    if i == count.wrapping_sub(1) {
+        Target::Source
+    } else {
+        Target::Filter
+    }
 }
 
 /// `obs_source_filter_chain_restore_matches()`: whether a current filter
 /// named `cur_name` (`None` for no name) is the backed-up filter `name`.
 pub fn restore_matches(cur_name: Option<&[u8]>, name: &[u8]) -> bool {
-    let _ = (cur_name, name);
-    todo!()
+    cur_name == Some(name)
 }
 
 /// `obs_source_filter_chain_restore_step()`: [`Restore::Reuse`] when a
 /// current filter was found, else [`Restore::LoadPrivate`].
 pub const fn restore_step(found: bool) -> Restore {
-    let _ = found;
-    todo!()
+    if found {
+        Restore::Reuse
+    } else {
+        Restore::LoadPrivate
+    }
 }

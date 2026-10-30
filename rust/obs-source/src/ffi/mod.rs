@@ -14,6 +14,7 @@ pub mod source_deinterlace_select;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_duplicate;
+pub mod source_filter_chain;
 pub mod source_frame_copy;
 pub mod source_media_admission;
 pub mod source_monitoring;
