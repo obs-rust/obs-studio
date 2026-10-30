@@ -53,6 +53,18 @@ def bench_command(categories: list[str]) -> list[str]:
     return COMMAND + ["^(" + "|".join(categories) + ")/"]
 
 
+def cpu_name() -> str:
+    """The CPU model: /proc/cpuinfo on Linux, sysctl on macOS (where
+    platform.processor() is only "arm"), else platform.processor()."""
+    if platform.system() == "Darwin":
+        result = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], text=True, capture_output=True, check=False)
+        return result.stdout.strip() or platform.processor()
+    if Path("/proc/cpuinfo").exists():
+        lines = Path("/proc/cpuinfo").read_text().splitlines()
+        return next((line.split(":", 1)[1].strip() for line in lines if line.startswith("model name")), platform.processor())
+    return platform.processor()
+
+
 def version(command: list[str]) -> str:
     try:
         result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
@@ -155,9 +167,7 @@ def main() -> None:
         baselines.append(baseline)
         if source_hash() != fingerprint:
             raise ValueError("source changed during measurement; discard this run")
-    cpu = platform.processor()
-    if Path("/proc/cpuinfo").exists():
-        cpu = next((line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines() if line.startswith("model name")), cpu)
+    cpu = cpu_name()
     report = {
         "schema": 1, "timestamp_utc": timestamp, "source_sha256": fingerprint,
         "base_commit": version(["git", "rev-parse", "HEAD"]),
