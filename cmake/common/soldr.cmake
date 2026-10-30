@@ -25,12 +25,12 @@ include_guard(GLOBAL)
 # (ci/test_soldr_pin.py checks it).
 set(OBS_SOLDR_VERSION 0.9.45)
 # From soldr-v${OBS_SOLDR_VERSION}-SHA256SUMS.txt on the release.
-set(_obs_soldr_sha256_x86_64-unknown-linux-gnu 81863305310f2931cef1e14bde0620772a7bc98bda5eba25630f985b2a7ac4d2)
-set(_obs_soldr_sha256_aarch64-unknown-linux-gnu 70eeea05e1b047bd7264e841ef44b7eb68ba4a672154d50554dc88162c47eac0)
-set(_obs_soldr_sha256_x86_64-apple-darwin 0f0dac57d17570f2cb5d48b34c46f4220d7193c357a2018020151f1cffc17125)
-set(_obs_soldr_sha256_aarch64-apple-darwin ac69e892b28fc844f8a6dc6f11439cdeda2c74010b73dcbb08dc5fb560fc49cf)
-set(_obs_soldr_sha256_x86_64-pc-windows-msvc 3a879bbcb174da41a808a287c913b1df1cec00723f9a2751947306778c8005f0)
-set(_obs_soldr_sha256_aarch64-pc-windows-msvc b12894be051662c3a78fa062e9dc77ea98a7276be8110ff942009b41f189b801)
+set(_obs_soldr_sha256_x86_64-unknown-linux-gnu 60ce244f514ab02b20b7e777f48ef29523aac987022b8ca4de58069899b0c4a1)
+set(_obs_soldr_sha256_aarch64-unknown-linux-gnu aeb529f797c9975c28f2ba563a39ef7e1df50d6f8147e8346d3df078415550d6)
+set(_obs_soldr_sha256_x86_64-apple-darwin b03dfee5d40d6e6ae899eca45d21e432e6576b3c4000d28dff37c2315123f620)
+set(_obs_soldr_sha256_aarch64-apple-darwin a0d9e6b6321ccefc8278f51f68d21e85bad794b01674d7d91e3d96a1d8f1cc74)
+set(_obs_soldr_sha256_x86_64-pc-windows-msvc bf61af4fcbbcb4491f47b3f15291ebbebd0a481a835104db163232911bf81897)
+set(_obs_soldr_sha256_aarch64-pc-windows-msvc f2446be23046fca8276f89811eccaceb239f0dc16fa4a8adc904d3ae640ca96c)
 
 # Cross aliases: Rust/LLVM triple, CMake system name and processor, clang target.
 set(_obs_cross_win-x64 x86_64-pc-windows-msvc Windows AMD64 x86_64-pc-windows-msvc)

@@ -418,7 +418,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           # Cook the workspace dependencies the app build compiles anyway.
           prebuild-deps-flags: --release
@@ -1472,7 +1472,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           # Cook the workspace dependencies the app build compiles anyway.
           prebuild-deps-flags: --release
@@ -1784,8 +1784,8 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
-          version: 0.9.43
+          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: ${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}
           # Host/container archive paths have different Actions-cache versions.
@@ -1988,7 +1988,7 @@ jobs:
         uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
         with:
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev
           cache-key-suffix: cross-compile-v1
@@ -2045,7 +2045,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev
           cache-key-suffix: linux-host-v1
@@ -2096,7 +2096,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev
           cache-key-suffix: linux-host-v1
@@ -2137,8 +2137,8 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
-          version: 0.9.43
+          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
@@ -2275,8 +2275,8 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.43 embeds zccache 1.15.5+ (has zackees/zccache#1937).
-          version: 0.9.43
+          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
@@ -2513,7 +2513,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           # Corrosion builds Rust in its own target dir under the CMake tree,
           # so a cooked workspace target/ is loaded (12 s) and never used
@@ -2931,9 +2931,9 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.43 embeds zccache 1.15.5+, which names MSVC staticlib
+          # soldr 0.9.45 embeds zccache 1.15.5+, which names MSVC staticlib
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           # validate.sh/.ps1 build Rust with --target <triple> into
           # build/cargo-native-* and through Corrosion, so a cooked workspace
@@ -3082,9 +3082,9 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.43 embeds zccache 1.15.5+, which names MSVC staticlib
+          # soldr 0.9.45 embeds zccache 1.15.5+, which names MSVC staticlib
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           # validate.sh/.ps1 build Rust with --target <triple> into
           # build/cargo-native-* and through Corrosion, so a cooked workspace

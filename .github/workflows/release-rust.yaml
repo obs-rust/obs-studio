@@ -226,7 +226,7 @@ jobs:
       - name: Set up soldr 🦀
         uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
         with:
-          version: 0.9.43
+          version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --release
           cache-key-suffix: ${{ matrix.os == 'linux' && 'linux-host-v1' || '' }}
