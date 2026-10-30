@@ -112,6 +112,7 @@ pub mod ptm_gate;
 pub mod render_route;
 pub mod size_route;
 pub mod source_duplicate;
+pub mod source_filter_chain;
 pub mod transition_clock;
 pub mod transition_load;
 pub mod transition_render;
