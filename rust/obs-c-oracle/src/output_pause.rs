@@ -19,11 +19,9 @@ unsafe extern "C" {
     /// with that.
     pub fn oracle_obs_output_pause_closest_ts(last_video_ts: u64, interval: u64, now: u64) -> u64;
 
-    pub fn oracle_obs_output_pause_can_start(ts_start: u64, ts_end: u64) -> bool;
+    pub fn oracle_obs_output_pause_started(ts_start: u64) -> bool;
 
-    pub fn oracle_obs_output_pause_can_stop(ts_start: u64, ts_end: u64) -> bool;
-
-    pub fn oracle_obs_output_pause_ends(ts_end: u64) -> bool;
+    pub fn oracle_obs_output_pause_ended(ts_end: u64) -> bool;
 
     pub fn oracle_obs_output_pause_offset(ts_offset: u64, ts_start: u64, ts_end: u64) -> u64;
 }

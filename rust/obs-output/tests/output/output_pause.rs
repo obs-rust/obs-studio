@@ -18,7 +18,7 @@
 
 use obs_output::output_pause::{
     LockSet, MAX_AUDIO_ENCODERS, MAX_VIDEO_ENCODERS, OBS_OUTPUT_CAN_PAUSE, allowed, already,
-    can_start, can_stop, closest_ts, ends, lock_set, offset,
+    can_start, can_stop, closest_ts, ended, lock_set, offset, started,
 };
 use proptest::prelude::*;
 
@@ -54,7 +54,7 @@ impl Rec {
 type Slots<const N: usize> = [Option<usize>; N];
 
 fn end_pause(r: &mut Rec, ts: u64) {
-    if ends(r.ts_end) {
+    if !ended(r.ts_end) {
         r.ts_end = ts;
         r.ts_offset = offset(r.ts_offset, r.ts_start, r.ts_end);
     }
@@ -307,10 +307,13 @@ fn steps_a_record_starts_and_ends_a_pause() {
     assert!(!can_start(0, 20));
     assert!(!can_stop(0, 20));
 
-    // the end is set once
-    assert!(ends(0));
-    assert!(!ends(1));
-    assert!(!ends(u64::MAX));
+    // each field on its own; the end is set once
+    assert!(!started(0));
+    assert!(started(1));
+    assert!(started(u64::MAX));
+    assert!(!ended(0));
+    assert!(ended(1));
+    assert!(ended(u64::MAX));
 
     // the offset grows by the pause's length
     assert_eq!(offset(0, 100, 350), 250);
@@ -675,7 +678,8 @@ proptest! {
         prop_assert_eq!(can_start(start, end), start == 0 && end == 0);
         prop_assert_eq!(can_stop(start, end), start != 0 && end == 0);
         prop_assert!(!(can_start(start, end) && can_stop(start, end)));
-        prop_assert_eq!(ends(end), end == 0);
+        prop_assert_eq!(started(start), start != 0);
+        prop_assert_eq!(ended(end), end != 0);
         prop_assert_eq!(offset(off, start, end), off.wrapping_add(end.wrapping_sub(start)));
     }
 

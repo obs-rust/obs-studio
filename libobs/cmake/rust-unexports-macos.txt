@@ -507,12 +507,11 @@ _obs_output_reconnect_can
 # obs-output-pause.c: obs-output.c calls them inside libobs. Not EXPORT.
 _obs_output_pause_allowed
 _obs_output_pause_already
-_obs_output_pause_lock_set
 _obs_output_pause_closest_ts
-_obs_output_pause_can_start
-_obs_output_pause_can_stop
-_obs_output_pause_ends
+_obs_output_pause_ended
+_obs_output_pause_lock_set
 _obs_output_pause_offset
+_obs_output_pause_started
 # obs-output-raw-audio.c: obs-output.c calls them inside libobs. Not EXPORT.
 _obs_output_raw_audio_passthrough
 _obs_output_raw_audio_video_unset

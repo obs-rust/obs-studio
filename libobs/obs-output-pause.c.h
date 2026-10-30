@@ -53,19 +53,14 @@ uint64_t obs_output_pause_closest_ts(uint64_t last_video_ts, uint64_t interval, 
 	return last_video_ts + ((now - last_video_ts + i2) / interval) * interval;
 }
 
-bool obs_output_pause_can_start(uint64_t ts_start, uint64_t ts_end)
+bool obs_output_pause_started(uint64_t ts_start)
 {
-	return !ts_start && !ts_end;
+	return !!ts_start;
 }
 
-bool obs_output_pause_can_stop(uint64_t ts_start, uint64_t ts_end)
+bool obs_output_pause_ended(uint64_t ts_end)
 {
-	return !!ts_start && !ts_end;
-}
-
-bool obs_output_pause_ends(uint64_t ts_end)
-{
-	return !ts_end;
+	return !!ts_end;
 }
 
 uint64_t obs_output_pause_offset(uint64_t ts_offset, uint64_t ts_start, uint64_t ts_end)

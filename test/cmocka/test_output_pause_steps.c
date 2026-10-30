@@ -20,7 +20,8 @@
  * - get_closest_v_ts(): obs_output_pause_closest_ts(), the pause time on the
  *   video frame grid;
  * - pause_can_start(), pause_can_stop() and end_pause():
- *   obs_output_pause_can_start(), _can_stop(), _ends() and _offset().
+ *   obs_output_pause_started() and _ended(), one test per field (joined
+ *   below with ! and && as obs-output.c joins them), and _offset().
  * They pin the current C behaviour; cases marked "characterized, not
  * endorsed" are odd but real.
  *
@@ -58,9 +59,21 @@ struct rec {
 	int unlocks;
 };
 
+/* pause_can_start() and pause_can_stop(): the end is tested only once the
+ * start test passed. */
+static bool can_start(uint64_t ts_start, uint64_t ts_end)
+{
+	return !obs_output_pause_started(ts_start) && !obs_output_pause_ended(ts_end);
+}
+
+static bool can_stop(uint64_t ts_start, uint64_t ts_end)
+{
+	return obs_output_pause_started(ts_start) && !obs_output_pause_ended(ts_end);
+}
+
 static void end_pause(struct rec *r, uint64_t ts)
 {
-	if (obs_output_pause_ends(r->ts_end)) {
+	if (!obs_output_pause_ended(r->ts_end)) {
 		r->ts_end = ts;
 		r->ts_offset = obs_output_pause_offset(r->ts_offset, r->ts_start, r->ts_end);
 	}
@@ -107,12 +120,12 @@ static bool encoded_pause(struct rec *venc[NUM_VIDEO], struct rec *aenc[NUM_AUDI
 	uint64_t ts = obs_output_pause_closest_ts(venc[first]->last_video_ts, FRAME, now);
 
 	for (size_t i = 0; i < NUM_VIDEO; i++)
-		if (marked(vlock, i) && !(pause ? obs_output_pause_can_start(venc[i]->ts_start, venc[i]->ts_end)
-						: obs_output_pause_can_stop(venc[i]->ts_start, venc[i]->ts_end)))
+		if (marked(vlock, i) && !(pause ? can_start(venc[i]->ts_start, venc[i]->ts_end)
+						: can_stop(venc[i]->ts_start, venc[i]->ts_end)))
 			goto fail;
 	for (size_t i = 0; i < NUM_AUDIO; i++)
-		if (marked(alock, i) && !(pause ? obs_output_pause_can_start(aenc[i]->ts_start, aenc[i]->ts_end)
-						: obs_output_pause_can_stop(aenc[i]->ts_start, aenc[i]->ts_end)))
+		if (marked(alock, i) && !(pause ? can_start(aenc[i]->ts_start, aenc[i]->ts_end)
+						: can_stop(aenc[i]->ts_start, aenc[i]->ts_end)))
 			goto fail;
 
 	for (size_t i = 0; i < NUM_VIDEO + NUM_AUDIO; i++) {
@@ -147,11 +160,11 @@ static bool raw_pause(struct rec *r, uint64_t now, bool pause)
 	bool success;
 
 	if (pause) {
-		success = obs_output_pause_can_start(r->ts_start, r->ts_end);
+		success = can_start(r->ts_start, r->ts_end);
 		if (success)
 			r->ts_start = ts;
 	} else {
-		success = obs_output_pause_can_stop(r->ts_start, r->ts_end);
+		success = can_stop(r->ts_start, r->ts_end);
 		if (success)
 			end_pause(r, ts);
 	}
@@ -275,23 +288,26 @@ static void a_record_starts_and_ends_a_pause(void **state)
 {
 	(void)state;
 	/* clear: can start, not stop */
-	assert_true(obs_output_pause_can_start(0, 0));
-	assert_false(obs_output_pause_can_stop(0, 0));
+	assert_true(can_start(0, 0));
+	assert_false(can_stop(0, 0));
 	/* started: can stop, not start */
-	assert_false(obs_output_pause_can_start(10, 0));
-	assert_true(obs_output_pause_can_stop(10, 0));
+	assert_false(can_start(10, 0));
+	assert_true(can_stop(10, 0));
 	/* ended (not cleared yet): neither */
-	assert_false(obs_output_pause_can_start(10, 20));
-	assert_false(obs_output_pause_can_stop(10, 20));
+	assert_false(can_start(10, 20));
+	assert_false(can_stop(10, 20));
 	/* an end with no start: neither (characterized, not endorsed: never
 	 * set that way) */
-	assert_false(obs_output_pause_can_start(0, 20));
-	assert_false(obs_output_pause_can_stop(0, 20));
+	assert_false(can_start(0, 20));
+	assert_false(can_stop(0, 20));
 
-	/* the end is set once */
-	assert_true(obs_output_pause_ends(0));
-	assert_false(obs_output_pause_ends(1));
-	assert_false(obs_output_pause_ends(UINT64_MAX));
+	/* each field on its own; the end is set once */
+	assert_false(obs_output_pause_started(0));
+	assert_true(obs_output_pause_started(1));
+	assert_true(obs_output_pause_started(UINT64_MAX));
+	assert_false(obs_output_pause_ended(0));
+	assert_true(obs_output_pause_ended(1));
+	assert_true(obs_output_pause_ended(UINT64_MAX));
 
 	/* the offset grows by the pause's length */
 	assert_true(obs_output_pause_offset(0, 100, 350) == 250);

@@ -19,9 +19,12 @@
 //!   locked, checked and updated);
 //! - `get_closest_v_ts()`: [`closest_ts`] (the pause time, on the video
 //!   frame grid);
-//! - `pause_can_start()` and `pause_can_stop()`: [`can_start`] and
-//!   [`can_stop`];
-//! - `end_pause()`: [`ends`] and [`offset`].
+//! - `pause_can_start()`, `pause_can_stop()` and `end_pause()`: [`started`]
+//!   and [`ended`], one test per field of the record, which the caller joins
+//!   with `!` and `&&` in the order it always read them (the end is read
+//!   only once the start test passed); [`can_start`] and [`can_stop`] are
+//!   those joins, for safe Rust callers and the tests;
+//! - `end_pause()`: [`offset`].
 //!
 //! The encoders come from the output's slots, which plugins and scripts
 //! fill through `obs_output_set_video_encoder2()` and
@@ -135,25 +138,33 @@ pub fn closest_ts(last_video_ts: u64, interval: u64, now: u64) -> u64 {
     }
 }
 
+/// `pause_can_start()` and `pause_can_stop()`: a record whose start is
+/// `ts_start` started a pause.
+#[must_use]
+pub fn started(ts_start: u64) -> bool {
+    ts_start != 0
+}
+
+/// `pause_can_start()`, `pause_can_stop()` and `end_pause()`: a record whose
+/// end is `ts_end` ended its pause (until the encoders clear it), so
+/// `end_pause()` sets the end only once.
+#[must_use]
+pub fn ended(ts_end: u64) -> bool {
+    ts_end != 0
+}
+
 /// `pause_can_start()`: a record (`ts_start`, `ts_end`) can start a pause:
-/// it has neither.
+/// it has neither ([`started`] and [`ended`] joined as the C joins them).
 #[must_use]
 pub fn can_start(ts_start: u64, ts_end: u64) -> bool {
-    ts_start == 0 && ts_end == 0
+    !started(ts_start) && !ended(ts_end)
 }
 
 /// `pause_can_stop()`: a record (`ts_start`, `ts_end`) can end its pause:
 /// it started and has not ended.
 #[must_use]
 pub fn can_stop(ts_start: u64, ts_end: u64) -> bool {
-    ts_start != 0 && ts_end == 0
-}
-
-/// `end_pause()`: a record whose end is `ts_end` ends its pause now (it has
-/// not ended yet), so the end is set once.
-#[must_use]
-pub fn ends(ts_end: u64) -> bool {
-    ts_end == 0
+    started(ts_start) && !ended(ts_end)
 }
 
 /// `end_pause()`: the record's offset once a pause from `ts_start` to

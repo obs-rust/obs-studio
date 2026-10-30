@@ -11,14 +11,14 @@ use super::pair;
 use criterion::Criterion;
 use obs_c_oracle::output_pause::{
     oracle_obs_output_pause_allowed, oracle_obs_output_pause_already,
-    oracle_obs_output_pause_can_start, oracle_obs_output_pause_can_stop,
-    oracle_obs_output_pause_closest_ts, oracle_obs_output_pause_ends,
+    oracle_obs_output_pause_closest_ts, oracle_obs_output_pause_ended,
     oracle_obs_output_pause_lock_set, oracle_obs_output_pause_offset,
+    oracle_obs_output_pause_started,
 };
 use obs_output::ffi::output_pause::{
-    obs_output_pause_allowed, obs_output_pause_already, obs_output_pause_can_start,
-    obs_output_pause_can_stop, obs_output_pause_closest_ts, obs_output_pause_ends,
-    obs_output_pause_lock_set, obs_output_pause_offset,
+    obs_output_pause_allowed, obs_output_pause_already, obs_output_pause_closest_ts,
+    obs_output_pause_ended, obs_output_pause_lock_set, obs_output_pause_offset,
+    obs_output_pause_started,
 };
 use std::hint::black_box;
 
@@ -35,9 +35,8 @@ struct Side {
     already: fn(bool, bool) -> bool,
     lock_set: fn(&[usize; 10], &[usize; 6]) -> (u32, u32),
     closest: fn(u64, u64, u64) -> u64,
-    can_start: fn(u64, u64) -> bool,
-    can_stop: fn(u64, u64) -> bool,
-    ends: fn(u64) -> bool,
+    started: fn(u64) -> bool,
+    ended: fn(u64) -> bool,
     offset: fn(u64, u64, u64) -> u64,
 }
 
@@ -78,17 +77,19 @@ fn run(side: &Side) -> u64 {
             (alock & 2 != 0).then_some(2),
         ];
         let ts = (side.closest)(recs[0].last_video_ts, FRAME, now);
-        let can = if pause { side.can_start } else { side.can_stop };
-        if order
-            .iter()
-            .flatten()
-            .all(|&r| can(recs[r].ts_start, recs[r].ts_end))
+        // pause_can_start() and pause_can_stop(): the end tested only once
+        // the start test passed.
+        let can = |r: &Rec| {
+            let started = (side.started)(r.ts_start);
+            (if pause { !started } else { started }) && !(side.ended)(r.ts_end)
+        };
+        if order.iter().flatten().all(|&r| can(&recs[r]))
         {
             for &r in order.iter().flatten() {
                 let rec = &mut recs[r];
                 if pause {
                     rec.ts_start = ts;
-                } else if (side.ends)(rec.ts_end) {
+                } else if !(side.ended)(rec.ts_end) {
                     rec.ts_end = ts;
                     rec.ts_offset = (side.offset)(rec.ts_offset, rec.ts_start, rec.ts_end);
                 }
@@ -125,9 +126,8 @@ const RUST: Side = Side {
     already: |p, q| obs_output_pause_already(p, q),
     lock_set: rust_lock_set,
     closest: |l, i, n| obs_output_pause_closest_ts(l, i, n),
-    can_start: |s, e| obs_output_pause_can_start(s, e),
-    can_stop: |s, e| obs_output_pause_can_stop(s, e),
-    ends: |e| obs_output_pause_ends(e),
+    started: |s| obs_output_pause_started(s),
+    ended: |e| obs_output_pause_ended(e),
     offset: |o, s, e| obs_output_pause_offset(o, s, e),
 };
 
@@ -137,9 +137,8 @@ const C: Side = Side {
     already: |p, q| unsafe { oracle_obs_output_pause_already(p, q) },
     lock_set: c_lock_set,
     closest: |l, i, n| unsafe { oracle_obs_output_pause_closest_ts(l, i, n) },
-    can_start: |s, e| unsafe { oracle_obs_output_pause_can_start(s, e) },
-    can_stop: |s, e| unsafe { oracle_obs_output_pause_can_stop(s, e) },
-    ends: |e| unsafe { oracle_obs_output_pause_ends(e) },
+    started: |s| unsafe { oracle_obs_output_pause_started(s) },
+    ended: |e| unsafe { oracle_obs_output_pause_ended(e) },
     offset: |o, s, e| unsafe { oracle_obs_output_pause_offset(o, s, e) },
 };
 

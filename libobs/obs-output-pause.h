@@ -30,11 +30,11 @@
  *   records are locked, checked and updated, and in which order);
  * - get_closest_v_ts(): obs_output_pause_closest_ts() (the pause time, the
  *   clock snapped to the video frame grid);
- * - pause_can_start() and pause_can_stop(): obs_output_pause_can_start()
- *   and obs_output_pause_can_stop() (whether a record can start or end a
- *   pause);
- * - end_pause(): obs_output_pause_ends() (the record's pause ends now,
- *   once) and obs_output_pause_offset() (the offset after it ends).
+ * - pause_can_start(), pause_can_stop() and end_pause():
+ *   obs_output_pause_started() and obs_output_pause_ended(), one test per
+ *   field of the record, which the caller joins with ! and && in the order
+ *   it always read them (the end is read only once the start test passed);
+ * - end_pause(): obs_output_pause_offset() (the offset after a pause ends).
  *
  * obs-output.c keeps obs_output_valid(), every atomic load and store
  * (active, paused, the encoders' paused), each loaded where it always was,
@@ -77,15 +77,13 @@ void obs_output_pause_lock_set(const uintptr_t video[OBS_OUTPUT_PAUSE_MAX_VIDEO_
  * last video timestamp (last_video_ts), two frames ahead. */
 uint64_t obs_output_pause_closest_ts(uint64_t last_video_ts, uint64_t interval, uint64_t now);
 
-/* pause_can_start(): a record (ts_start, ts_end) can start a pause. */
-bool obs_output_pause_can_start(uint64_t ts_start, uint64_t ts_end);
+/* pause_can_start() and pause_can_stop(): a record whose start is ts_start
+ * started a pause. */
+bool obs_output_pause_started(uint64_t ts_start);
 
-/* pause_can_stop(): a record (ts_start, ts_end) can end its pause. */
-bool obs_output_pause_can_stop(uint64_t ts_start, uint64_t ts_end);
-
-/* end_pause(): a record whose end is ts_end ends its pause now (it has not
- * ended yet). */
-bool obs_output_pause_ends(uint64_t ts_end);
+/* pause_can_start(), pause_can_stop() and end_pause(): a record whose end is
+ * ts_end ended its pause (until the encoders clear it). */
+bool obs_output_pause_ended(uint64_t ts_end);
 
 /* end_pause(): the record's offset once a pause from ts_start to ts_end
  * ended, from its offset before (ts_offset). */

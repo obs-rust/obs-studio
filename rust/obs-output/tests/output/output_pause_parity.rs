@@ -39,14 +39,14 @@
 
 use obs_c_oracle::output_pause::{
     oracle_obs_output_pause_allowed, oracle_obs_output_pause_already,
-    oracle_obs_output_pause_can_start, oracle_obs_output_pause_can_stop,
-    oracle_obs_output_pause_closest_ts, oracle_obs_output_pause_ends,
+    oracle_obs_output_pause_closest_ts, oracle_obs_output_pause_ended,
     oracle_obs_output_pause_lock_set, oracle_obs_output_pause_offset,
+    oracle_obs_output_pause_started,
 };
 use obs_output::ffi::output_pause::{
-    obs_output_pause_allowed, obs_output_pause_already, obs_output_pause_can_start,
-    obs_output_pause_can_stop, obs_output_pause_closest_ts, obs_output_pause_ends,
-    obs_output_pause_lock_set, obs_output_pause_offset,
+    obs_output_pause_allowed, obs_output_pause_already, obs_output_pause_closest_ts,
+    obs_output_pause_ended, obs_output_pause_lock_set, obs_output_pause_offset,
+    obs_output_pause_started,
 };
 use obs_output::output_pause::{self as core, LockSet, MAX_AUDIO_ENCODERS, MAX_VIDEO_ENCODERS};
 use proptest::prelude::*;
@@ -166,16 +166,12 @@ fn check_record(start: u64, end: u64, offset: u64) {
     // SAFETY (each call below): plain values.
     unsafe {
         assert_eq!(
-            obs_output_pause_can_start(start, end),
-            oracle_obs_output_pause_can_start(start, end)
+            obs_output_pause_started(start),
+            oracle_obs_output_pause_started(start)
         );
         assert_eq!(
-            obs_output_pause_can_stop(start, end),
-            oracle_obs_output_pause_can_stop(start, end)
-        );
-        assert_eq!(
-            obs_output_pause_ends(end),
-            oracle_obs_output_pause_ends(end)
+            obs_output_pause_ended(end),
+            oracle_obs_output_pause_ended(end)
         );
         assert_eq!(
             obs_output_pause_offset(offset, start, end),
@@ -183,15 +179,12 @@ fn check_record(start: u64, end: u64, offset: u64) {
             "{offset} {start} {end}"
         );
     }
-    assert_eq!(
-        obs_output_pause_can_start(start, end),
-        core::can_start(start, end)
-    );
-    assert_eq!(
-        obs_output_pause_can_stop(start, end),
-        core::can_stop(start, end)
-    );
-    assert_eq!(obs_output_pause_ends(end), core::ends(end));
+    assert_eq!(obs_output_pause_started(start), core::started(start));
+    assert_eq!(obs_output_pause_ended(end), core::ended(end));
+    // The core's joins are the C's: `pause_can_start()` and
+    // `pause_can_stop()` over the C's field tests.
+    assert_eq!(core::can_start(start, end), can_start(&C, start, end));
+    assert_eq!(core::can_stop(start, end), can_stop(&C, start, end));
     assert_eq!(
         obs_output_pause_offset(offset, start, end),
         core::offset(offset, start, end)
@@ -218,23 +211,18 @@ struct Rec {
 struct Plan {
     lock_set: fn(&[usize; NUM_VIDEO], &[usize; NUM_AUDIO]) -> LockSet,
     closest: fn(u64, u64, u64) -> u64,
-    can_start: fn(u64, u64) -> bool,
-    can_stop: fn(u64, u64) -> bool,
-    ends: fn(u64) -> bool,
+    started: fn(u64) -> bool,
+    ended: fn(u64) -> bool,
     offset: fn(u64, u64, u64) -> u64,
 }
 
-fn c_can_start(s: u64, e: u64) -> bool {
+fn c_started(s: u64) -> bool {
     // SAFETY: plain values.
-    unsafe { oracle_obs_output_pause_can_start(s, e) }
+    unsafe { oracle_obs_output_pause_started(s) }
 }
-fn c_can_stop(s: u64, e: u64) -> bool {
+fn c_ended(e: u64) -> bool {
     // SAFETY: plain values.
-    unsafe { oracle_obs_output_pause_can_stop(s, e) }
-}
-fn c_ends(e: u64) -> bool {
-    // SAFETY: plain values.
-    unsafe { oracle_obs_output_pause_ends(e) }
+    unsafe { oracle_obs_output_pause_ended(e) }
 }
 fn c_offset(o: u64, s: u64, e: u64) -> u64 {
     // SAFETY: plain values.
@@ -244,23 +232,31 @@ fn c_offset(o: u64, s: u64, e: u64) -> u64 {
 const C: Plan = Plan {
     lock_set: c_lock_set,
     closest: c_closest,
-    can_start: c_can_start,
-    can_stop: c_can_stop,
-    ends: c_ends,
+    started: c_started,
+    ended: c_ended,
     offset: c_offset,
 };
 
 const SHIM: Plan = Plan {
     lock_set: shim_lock_set,
     closest: |l, i, n| obs_output_pause_closest_ts(l, i, n),
-    can_start: |s, e| obs_output_pause_can_start(s, e),
-    can_stop: |s, e| obs_output_pause_can_stop(s, e),
-    ends: |e| obs_output_pause_ends(e),
+    started: |s| obs_output_pause_started(s),
+    ended: |e| obs_output_pause_ended(e),
     offset: |o, s, e| obs_output_pause_offset(o, s, e),
 };
 
+/// `pause_can_start()`, as `obs-output.c` joins the field tests.
+fn can_start(p: &Plan, start: u64, end: u64) -> bool {
+    !(p.started)(start) && !(p.ended)(end)
+}
+
+/// `pause_can_stop()`, as `obs-output.c` joins the field tests.
+fn can_stop(p: &Plan, start: u64, end: u64) -> bool {
+    (p.started)(start) && !(p.ended)(end)
+}
+
 fn end_pause(p: &Plan, r: &mut Rec, ts: u64) {
-    if (p.ends)(r.ts_end) {
+    if !(p.ended)(r.ts_end) {
         r.ts_end = ts;
         r.ts_offset = (p.offset)(r.ts_offset, r.ts_start, r.ts_end);
     }
@@ -298,8 +294,11 @@ fn encoded_pause(
             break 'plan false;
         };
         let ts = (p.closest)(recs[first - 1].last_video_ts, interval, now);
-        let can = if pause { p.can_start } else { p.can_stop };
-        if !order.iter().all(|&r| can(recs[r].ts_start, recs[r].ts_end)) {
+        let can = if pause { can_start } else { can_stop };
+        if !order
+            .iter()
+            .all(|&r| can(p, recs[r].ts_start, recs[r].ts_end))
+        {
             break 'plan false;
         }
         for &r in &order {
@@ -321,8 +320,8 @@ fn encoded_pause(
 /// `obs_raw_output_pause()` on the output's own record.
 fn raw_pause(p: &Plan, r: &mut Rec, interval: u64, now: u64, pause: bool) -> bool {
     let ts = (p.closest)(r.last_video_ts, interval, now);
-    let can = if pause { p.can_start } else { p.can_stop };
-    let success = can(r.ts_start, r.ts_end);
+    let can = if pause { can_start } else { can_stop };
+    let success = can(p, r.ts_start, r.ts_end);
     if success {
         if pause {
             r.ts_start = ts;

@@ -758,7 +758,7 @@ _Static_assert(OBS_OUTPUT_PAUSE_MAX_AUDIO_ENCODERS == MAX_OUTPUT_AUDIO_ENCODERS,
 
 static inline void end_pause(struct pause_data *pause, uint64_t ts)
 {
-	if (obs_output_pause_ends(pause->ts_end)) {
+	if (!obs_output_pause_ended(pause->ts_end)) {
 		pause->ts_end = ts;
 		pause->ts_offset = obs_output_pause_offset(pause->ts_offset, pause->ts_start, pause->ts_end);
 	}
@@ -774,12 +774,12 @@ static inline uint64_t get_closest_v_ts(struct pause_data *pause)
 
 static inline bool pause_can_start(struct pause_data *pause)
 {
-	return obs_output_pause_can_start(pause->ts_start, pause->ts_end);
+	return !obs_output_pause_started(pause->ts_start) && !obs_output_pause_ended(pause->ts_end);
 }
 
 static inline bool pause_can_stop(struct pause_data *pause)
 {
-	return obs_output_pause_can_stop(pause->ts_start, pause->ts_end);
+	return obs_output_pause_started(pause->ts_start) && !obs_output_pause_ended(pause->ts_end);
 }
 
 /* The flags, limits and encoder types obs-output-slots.h copies. */

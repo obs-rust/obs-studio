@@ -11,7 +11,7 @@
 //! never mirrored; the encoders come in as opaque ids (their addresses),
 //! never dereferenced. These shims take no lock and call nothing in libobs.
 //! The only pointers are the two slot arrays the lock set reads and the two
-//! masks it writes. All eight stay hidden (`rust-hidden.txt`).
+//! masks it writes. All seven stay hidden (`rust-hidden.txt`).
 //!
 //! Intentional differences: the core's (each distinct encoder locked and
 //! updated once, a frame interval of 0 giving the clock).
@@ -64,22 +64,16 @@ pub extern "C" fn obs_output_pause_closest_ts(last_video_ts: u64, interval: u64,
     core::closest_ts(last_video_ts, interval, now)
 }
 
-/// `bool obs_output_pause_can_start(uint64_t ts_start, uint64_t ts_end)`.
+/// `bool obs_output_pause_started(uint64_t ts_start)`.
 #[unsafe(no_mangle)]
-pub extern "C" fn obs_output_pause_can_start(ts_start: u64, ts_end: u64) -> bool {
-    core::can_start(ts_start, ts_end)
+pub extern "C" fn obs_output_pause_started(ts_start: u64) -> bool {
+    core::started(ts_start)
 }
 
-/// `bool obs_output_pause_can_stop(uint64_t ts_start, uint64_t ts_end)`.
+/// `bool obs_output_pause_ended(uint64_t ts_end)`.
 #[unsafe(no_mangle)]
-pub extern "C" fn obs_output_pause_can_stop(ts_start: u64, ts_end: u64) -> bool {
-    core::can_stop(ts_start, ts_end)
-}
-
-/// `bool obs_output_pause_ends(uint64_t ts_end)`.
-#[unsafe(no_mangle)]
-pub extern "C" fn obs_output_pause_ends(ts_end: u64) -> bool {
-    core::ends(ts_end)
+pub extern "C" fn obs_output_pause_ended(ts_end: u64) -> bool {
+    core::ended(ts_end)
 }
 
 /// `uint64_t obs_output_pause_offset(uint64_t ts_offset, uint64_t ts_start,
