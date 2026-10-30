@@ -2129,11 +2129,13 @@ area.
   [#2895](https://github.com/obs-rust/obs-studio/issues/2895),
   [#2945](https://github.com/obs-rust/obs-studio/issues/2945).
 - A plugin or script that asks obs_key_to_virtual_key for a key OBS doesn't
-  have gets 0 on X11, as for a key with no keysym, or 0xFF on macOS, as for
-  a key with no virtual key code, instead of an arbitrary number or a value
-  read past the key table. *Linux, macOS*, 2026-10-29. Issues
+  have gets 0 on X11 and Windows, as for a key with no keysym or virtual
+  key, or 0xFF on macOS, as for a key with no virtual key code, instead of
+  an arbitrary number or a value read past the key table. *Linux, macOS,
+  Windows*, 2026-10-29. Issues
   [#2901](https://github.com/obs-rust/obs-studio/issues/2901),
-  [#2914](https://github.com/obs-rust/obs-studio/issues/2914).
+  [#2914](https://github.com/obs-rust/obs-studio/issues/2914),
+  [#3076](https://github.com/obs-rust/obs-studio/issues/3076).
 - Duplicating a scene from a script or plugin, or in Studio Mode with
   "Duplicate Sources", no longer gives an item the wrong source when a
   source used by several items follows an item that could not be copied,
