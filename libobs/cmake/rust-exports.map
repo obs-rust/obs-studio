@@ -491,6 +491,10 @@
     obs_source_volume_action_due;
     obs_source_volume_step;
     obs_source_volume_mixes;
+    /* obs-source-volume-mul.c. obs-source.c calls them inside libobs. Not
+     * EXPORT. */
+    obs_source_volume_mul_block;
+    obs_source_volume_mul_data;
     /* obs-audio-discard.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_discard_ignore;
     obs_audio_discard_if_stopped;

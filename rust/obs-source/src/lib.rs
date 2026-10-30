@@ -78,9 +78,11 @@
 //! `libobs/obs-source-video-tick.c.h`, the per-frame decisions of
 //! `obs_source_video_tick()` and `async_tick()` (which steps run, the
 //! deferred update, the show and activate edges, the plugin callback and
-//! the async route); and
+//! the async route);
 //! `libobs/obs-source-volume.c.h`, the volume snap of
-//! `get_source_volume()` and the apply decisions of `apply_audio_volume()`.
+//! `get_source_volume()` and the apply decisions of `apply_audio_volume()`;
+//! and `libobs/obs-source-volume-mul.c.h`, the volume multiply kernels of
+//! `multiply_output_audio()` and `multiply_vol_data()`.
 //!
 //! The safe cores are [`async_pacing`], [`async_upload`], [`audio_input`],
 //! [`audio_place`],
@@ -89,8 +91,8 @@
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_start`],
-//! [`video_tick`] and
-//! [`volume_apply`]; [`draw_technique`] holds the
+//! [`video_tick`], [`volume_apply`] and
+//! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
 //! ABI shims live in [`ffi`].

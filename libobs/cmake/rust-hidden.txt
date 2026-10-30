@@ -565,6 +565,11 @@ obs_source_volume_snap
 obs_source_volume_action_due
 obs_source_volume_step
 obs_source_volume_mixes
+# obs-source-volume-mul.c: multiply_output_audio() and multiply_vol_data() in
+# obs-source.c call them inside libobs. Declared in obs-source-volume-mul.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_source_volume_mul_block
+obs_source_volume_mul_data
 # obs-audio-discard.c: obs-audio.c calls them inside libobs. Declared in
 # obs-audio-discard.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_discard_ignore

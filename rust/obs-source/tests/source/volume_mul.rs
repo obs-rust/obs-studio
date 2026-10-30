@@ -18,7 +18,7 @@
 
 #![allow(clippy::as_conversions, clippy::cast_precision_loss)]
 
-use obs_source::volume_mul::{mul_block, mul_data};
+use obs_source::volume_mul::{mul_block, mul_data, mul_data_grouped, mul_data_zipped};
 use proptest::prelude::*;
 
 /// `AUDIO_OUTPUT_FRAMES` and `MAX_AUDIO_CHANNELS`.
@@ -224,6 +224,26 @@ proptest! {
         mul_block(&mut out, vol);
         for (i, (&got, &x)) in out.iter().zip(&samples).enumerate() {
             prop_assert!(same(got, x * vol, x, vol), "sample {i}: {x} * {vol} gave {got}");
+        }
+    }
+
+    /// Both loop forms of `mul_data` (4-sample groups on x86_64, a zip loop
+    /// elsewhere) agree on every host, any NaN matching any NaN, the
+    /// shortest slice deciding, with any length (so every group remainder).
+    #[test]
+    fn edge_both_data_forms_agree(
+        samples in prop::collection::vec(any_f32(), 0..40),
+        vol in prop::collection::vec(any_f32(), 0..40),
+    ) {
+        let (mut grouped, mut zipped, mut chosen) = (samples.clone(), samples.clone(), samples.clone());
+        mul_data_grouped(&mut grouped, &vol);
+        mul_data_zipped(&mut zipped, &vol);
+        mul_data(&mut chosen, &vol);
+        for (i, ((&g, &z), &c)) in grouped.iter().zip(&zipped).zip(&chosen).enumerate() {
+            prop_assert!(
+                (g.is_nan() && z.is_nan() && c.is_nan()) || (g.to_bits() == z.to_bits() && c.to_bits() == z.to_bits()),
+                "sample {i}: grouped {g}, zipped {z}, chosen {c}"
+            );
         }
     }
 

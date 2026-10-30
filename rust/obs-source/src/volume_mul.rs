@@ -22,9 +22,15 @@
 //! which one depends on how the code is compiled (the multiply commutes; the
 //! C at `-O0` keeps the sample's, vectorized at `-O2` the volume's).
 //!
-//! The loops are plain iterator loops on slices, which cannot overlap, so
-//! LLVM vectorizes them on every target without `std::arch` (#3007). GCC
-//! leaves the C loops scalar, because the C's pointers might overlap.
+//! The loops run over slices, which cannot overlap, so LLVM vectorizes them
+//! on every target without `std::arch` (#3007). GCC at `-O2`, as libobs
+//! ships, leaves the C loops scalar, because the C's pointers might
+//! overlap. The loop form of [`mul_data`] depends on the target, because
+//! LLVM unrolls the two forms differently there: 4-sample groups on x86_64
+//! (the zip loop was 17 % slower than GCC's vectorized C at `-O3`, the
+//! grouped one 3 %), a plain zip loop on aarch64 (the grouped one was 49 %
+//! slower than clang's C, the zip loop level with it); the choice is
+//! `platform::GROUPED_AUDIO_LOOPS`.
 //!
 //! No intentional differences.
 
@@ -35,21 +41,57 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
 /// `obs_source_volume_mul_block()`: `out[i] *= vol` for every sample.
 pub fn mul_block(out: &mut [f32], vol: f32) {
-    let _ = (out, vol);
-    todo!()
+    for sample in out {
+        *sample *= vol;
+    }
 }
 
 /// `obs_source_volume_mul_data()`: `out[i] *= vol[i]` for every sample that
 /// has a volume. The C multiplies `count` samples and reads `count`
 /// volumes; here that count is the shorter of the two slices, and the
-/// samples after it stay as they are.
+/// samples after it stay as they are. [`mul_data_grouped`] on x86_64,
+/// [`mul_data_zipped`] elsewhere (see the module docs).
 pub fn mul_data(out: &mut [f32], vol: &[f32]) {
-    let _ = (out, vol);
-    todo!()
+    if crate::platform::GROUPED_AUDIO_LOOPS {
+        mul_data_grouped(out, vol);
+    } else {
+        mul_data_zipped(out, vol);
+    }
+}
+
+/// [`mul_data`] as 4-sample groups, then the rest. Same result as
+/// [`mul_data_zipped`] on every input; public only for the tests, which run
+/// both forms on every host.
+#[doc(hidden)]
+pub fn mul_data_grouped(out: &mut [f32], vol: &[f32]) {
+    let n = out.len().min(vol.len());
+    let (Some(out), Some(vol)) = (out.get_mut(..n), vol.get(..n)) else {
+        return;
+    };
+    let (out_groups, out_rest) = out.as_chunks_mut::<4>();
+    let (vol_groups, vol_rest) = vol.as_chunks::<4>();
+    for (samples, volumes) in out_groups.iter_mut().zip(vol_groups) {
+        for (sample, v) in samples.iter_mut().zip(volumes) {
+            *sample *= *v;
+        }
+    }
+    for (sample, v) in out_rest.iter_mut().zip(vol_rest) {
+        *sample *= *v;
+    }
+}
+
+/// [`mul_data`] as a plain zip loop. Same result as [`mul_data_grouped`] on
+/// every input; public only for the tests.
+#[doc(hidden)]
+pub fn mul_data_zipped(out: &mut [f32], vol: &[f32]) {
+    for (sample, v) in out.iter_mut().zip(vol) {
+        *sample *= *v;
+    }
 }

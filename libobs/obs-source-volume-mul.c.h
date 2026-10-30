@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-volume-mul.pch.h"
 
 void obs_source_volume_mul_block(float *out, size_t count, float vol)
 {
