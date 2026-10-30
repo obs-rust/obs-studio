@@ -30,7 +30,7 @@ The org-wide rules, commands and the definition of Ready are in
   Ready. Maintainers (and the coordinator) triage new issues with `/ready` or
   `/investigate`.
 - Comment on the issue: `Claiming: <item>` followed by a short numbered plan
-  (one unit per issue, up to three similar issues per PR; a call-site-wide warning class is one unit in any number of
+  (one unit per issue, one to three similar issues per PR, a big one alone; a call-site-wide warning class is one unit in any number of
   directories, see section 4) and when you expect to open the first PR.
 - The claim bot then **assigns you** and reacts 🚀 to your comment; you don't
   need any rights. It replies only to refuse: an issue that is not Ready, is
@@ -109,13 +109,14 @@ The org-wide rules, commands and the definition of Ready are in
   master before merge. Check the base before asking for a merge.
 - **One unit per PR.** Branch names: `port/<unit>`, `fix/<issue>-<topic>`,
   `test/<unit>`, `infra/<topic>`.
-- **Batch three similar issues into one PR.** A worker takes up to three
-  issues that share a platform or an area (crate, plugin, workflow, test
-  binary) and lands them as one PR, a RED then GREEN commit pair per issue,
-  `Refs` naming each. Each issue stays one unit for review and revert; the
-  batch only shares the PR, queue and master-push runs, so it costs a third
-  of the CI. Breakage that blocks others still goes alone. See the
-  `obs-worker-loop` skill §2.
+- **Batch one to three similar issues into one PR.** A worker takes up to
+  three issues that share a platform or an area (crate, plugin, workflow,
+  test binary) and lands them as one PR, a RED then GREEN commit pair per
+  issue, `Refs` naming each. Each issue stays one unit for review and
+  revert; the batch only shares the PR, queue and master-push runs, so it
+  costs a third of the CI. A big issue (a large port or subsystem such as
+  the CEF work, `size:L` or larger) and breakage that blocks others go
+  alone. See the `obs-worker-loop` skill §2.
 - **Mechanical warning work is one PR per warning class, in any number of
   directories.** A call-site-wide compiler warning (#516) is a single class:
   fix it in one PR, with the flag that surfaces it removed in the same change,

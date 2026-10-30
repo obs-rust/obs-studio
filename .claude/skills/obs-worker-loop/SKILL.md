@@ -79,17 +79,20 @@ Rank what is left:
 3. Bugs with a clear failing-test sketch.
 4. The next unit in the port order (testing-policy.md, the trackers on #4).
 
-**Take three at a time.** After picking the top issue, add the two most
-similar candidates that also qualify: the same platform (one macOS-only or
+**Take one to three at a time.** A big issue goes alone: a large port or
+subsystem (the CEF / obs-browser work, for example), anything sized
+`size:L` or larger, or anything you expect to need more than one session.
+Otherwise, after picking the top issue, add up to two of the most similar
+candidates that also qualify: the same platform (one macOS-only or
 Windows-only lane) or the same area (the same crate, plugin, workflow or
-test binary). Claim all three, each with its own `Claiming:` comment naming
-the other two, and land them in **one PR**: a RED then GREEN commit pair per
-issue, `Refs #a, #b, #c` in the body. Every PR costs a PR run, a merge-queue
-run and a master push, so three issues in one PR cost a third of the CI. Take
-fewer only when no similar candidate qualifies, never a dissimilar one to
-fill the batch. A rank-1 breakage goes alone, so its fix is not held up. If
-one item of a batch turns out blocked or too big, ship the other two and
-release that claim with the reason (coordination.md §4).
+test binary). Claim each, with its own `Claiming:` comment naming the
+others, and land them in **one PR**: a RED then GREEN commit pair per issue,
+`Refs #a, #b, #c` in the body. Every PR costs a PR run, a merge-queue run
+and a master push, so three issues in one PR cost a third of the CI. Never
+add a dissimilar issue to fill the batch. A rank-1 breakage goes alone, so
+its fix is not held up. If one item of a batch turns out blocked or bigger
+than expected, ship the others and release that claim with the reason
+(coordination.md §4).
 
 Close a tracker whose children are all closed while you are there.
 
