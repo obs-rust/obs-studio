@@ -162,6 +162,10 @@ not get a line.
 
 ### Video capture
 
+- The Video Capture Device (PipeWire) list shows only named video sources,
+  excluding audio devices and blank entries. *Linux*, pending merge. Issue
+  [#3041](https://github.com/obs-rust/obs-studio/issues/3041), PR
+  [#3047](https://github.com/obs-rust/obs-studio/pull/3047).
 - **reject duplicate inputs after scaler reentry.** One disconnect removes a video input even when scaler creation reenters registration. *All*, 2026-10-20. Issue [#1529](https://github.com/obs-rust/obs-studio/issues/1529), PR [#1534](https://github.com/obs-rust/obs-studio/pull/1534).
 - Virtual camera output resumes at the correct byte after a short device write. *Linux*.
 

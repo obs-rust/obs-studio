@@ -342,14 +342,12 @@ static bool camera_plug(void)
 		pw_thread_loop_unlock(camera.loop);
 		return false;
 	}
-	camera.audio_stream =
-		pw_stream_new(camera.core, AUDIO_NAME,
-			      pw_properties_new(PW_KEY_NODE_NAME, AUDIO_NAME, PW_KEY_NODE_DESCRIPTION, "Test Audio",
-						PW_KEY_MEDIA_CLASS, "Audio/Source", NULL));
-	camera.unnamed_camera_stream =
-		pw_stream_new(camera.core, UNNAMED_CAMERA_NAME,
-			      pw_properties_new(PW_KEY_NODE_NAME, UNNAMED_CAMERA_NAME, PW_KEY_MEDIA_CLASS, "Video/Source",
-						NULL));
+	camera.audio_stream = pw_stream_new(camera.core, AUDIO_NAME,
+					    pw_properties_new(PW_KEY_NODE_NAME, AUDIO_NAME, PW_KEY_NODE_DESCRIPTION,
+							      "Test Audio", PW_KEY_MEDIA_CLASS, "Audio/Source", NULL));
+	camera.unnamed_camera_stream = pw_stream_new(camera.core, UNNAMED_CAMERA_NAME,
+						     pw_properties_new(PW_KEY_NODE_NAME, UNNAMED_CAMERA_NAME,
+								       PW_KEY_MEDIA_CLASS, "Video/Source", NULL));
 	if (!camera.audio_stream || !camera.unnamed_camera_stream ||
 	    pw_stream_connect(camera.audio_stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, NULL, 0) < 0 ||
 	    pw_stream_connect(camera.unnamed_camera_stream, PW_DIRECTION_OUTPUT, PW_ID_ANY, PW_STREAM_FLAG_NONE, NULL,

@@ -1274,12 +1274,19 @@ static void on_registry_global_cb(void *user_data, uint32_t id, uint32_t permiss
 	struct camera_device *device;
 	struct pw_registry *registry;
 	const char *device_id;
+	const char *device_name;
+	const char *media_class;
 
 	if (strcmp(type, PW_TYPE_INTERFACE_Node) != 0)
 		return;
 
 	registry = obs_pipewire_get_registry(camera_connection->obs_pw);
 	device_id = spa_dict_lookup(props, SPA_KEY_NODE_NAME);
+	device_name = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
+	media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
+	if (!device_id || !*device_id || !device_name || !*device_name || !media_class ||
+	    strcmp(media_class, "Video/Source") != 0)
+		return;
 
 	blog(LOG_INFO, "[camera-portal] Found device %s", device_id);
 
