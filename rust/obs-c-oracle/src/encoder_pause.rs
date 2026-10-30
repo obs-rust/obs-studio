@@ -6,7 +6,9 @@ use std::ffi::c_int;
 unsafe extern "C" {
     pub fn oracle_obs_encoder_pause_off(ts_start: u64) -> bool;
 
-    pub fn oracle_obs_encoder_pause_video_step(ts_start: u64, ts_end: u64, ts: u64) -> c_int;
+    pub fn oracle_obs_encoder_pause_video_end(ts_end: u64, ts: u64) -> bool;
+
+    pub fn oracle_obs_encoder_pause_video_drop(ts_start: u64, ts: u64) -> bool;
 
     pub fn oracle_obs_encoder_pause_audio_end(timestamp: u64, duration_ns: u64) -> u64;
 

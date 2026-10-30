@@ -26,8 +26,8 @@
  * mutex the caller holds:
  * - video_pause_check(), after the last_video_ts store:
  *   obs_encoder_pause_off() (no pause, the frame passes), then
- *   obs_encoder_pause_video_step() (the frame passes, is dropped, or ends
- *   the pause and passes);
+ *   obs_encoder_pause_video_end() (the frame ends the pause and passes)
+ *   and, for a frame that does not, obs_encoder_pause_video_drop();
  * - audio_pause_check(): obs_encoder_pause_off(), obs_encoder_pause_audio_end()
  *   (the buffer's end), obs_encoder_pause_audio_start() (where the pause
  *   start falls against the buffer) and, for a buffer after the start,
@@ -50,14 +50,6 @@
  * libobs or keeps state.
  *
  * Hidden in libobs: not EXPORT. */
-
-/* obs_encoder_pause_video_step(): the frame passes. */
-#define OBS_ENCODER_PAUSE_VIDEO_PASS 0
-/* obs_encoder_pause_video_step(): the frame is dropped. */
-#define OBS_ENCODER_PAUSE_VIDEO_DROP 1
-/* obs_encoder_pause_video_step(): the frame ends the pause (ts_start and
- * ts_end are cleared) and passes. */
-#define OBS_ENCODER_PAUSE_VIDEO_END 2
 
 /* obs_encoder_pause_audio_start(): the pause starts after the buffer, so it
  * passes. */
@@ -85,12 +77,15 @@
  * 0), so the frame or buffer passes. */
 bool obs_encoder_pause_off(uint64_t ts_start);
 
-/* video_pause_check(), for a pause that is on: what the frame stamped ts
- * does, from the pause's start and end (ts_end is 0 until the pause ends).
- * One of OBS_ENCODER_PAUSE_VIDEO_*. The C here ends the pause only on a frame
- * stamped ts_end; the Rust port also on the first frame after a set
- * ts_end. */
-int obs_encoder_pause_video_step(uint64_t ts_start, uint64_t ts_end, uint64_t ts);
+/* video_pause_check(), for a pause that is on: the frame stamped ts ends
+ * the pause (ts_start and ts_end are cleared) and passes, from the pause end
+ * (0 until the pause ends). The C here ends the pause only on a frame stamped
+ * ts_end; the Rust port also on the first frame after a set ts_end. */
+bool obs_encoder_pause_video_end(uint64_t ts_end, uint64_t ts);
+
+/* video_pause_check(), for a frame that does not end the pause: the frame is
+ * dropped, at or after the pause start. */
+bool obs_encoder_pause_video_drop(uint64_t ts_start, uint64_t ts);
 
 /* audio_pause_check(): the buffer's end, timestamp + duration_ns
  * (audio_frames_to_ns(sample_rate, frames)), a uint64_t sum. */

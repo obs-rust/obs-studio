@@ -23,8 +23,8 @@
 )]
 
 use obs_output::encoder_pause::{
-    AudioPaused, AudioStart, VideoStep, audio_cut_ns, audio_drop, audio_end, audio_kept,
-    audio_left, audio_paused, audio_start, off, video_step,
+    AudioPaused, AudioStart, audio_cut_ns, audio_drop, audio_end, audio_kept, audio_left,
+    audio_paused, audio_start, off, video_drop, video_end,
 };
 use obs_output::output_begin::mul_div64;
 use proptest::prelude::*;
@@ -76,14 +76,12 @@ fn video(r: &mut Record, ts: u64) -> bool {
     if off(r.ts_start) {
         return false;
     }
-    match video_step(r.ts_start, r.ts_end, ts) {
-        VideoStep::End => {
-            r.ts_start = 0;
-            r.ts_end = 0;
-            false
-        }
-        VideoStep::Drop => true,
-        VideoStep::Pass => false,
+    if video_end(r.ts_end, ts) {
+        r.ts_start = 0;
+        r.ts_end = 0;
+        false
+    } else {
+        video_drop(r.ts_start, ts)
     }
 }
 
@@ -164,22 +162,26 @@ fn steps_a_pause_is_off_only_at_zero() {
 fn steps_video_steps() {
     let (s, e) = (2 * T0, 3 * T0);
 
-    // before the start: passes, with or without an end
-    assert_eq!(video_step(s, 0, s - 1), VideoStep::Pass);
-    assert_eq!(video_step(s, e, 1), VideoStep::Pass);
-    // at the start and after it, no end yet: dropped
-    assert_eq!(video_step(s, 0, s), VideoStep::Drop);
-    assert_eq!(video_step(s, 0, u64::MAX), VideoStep::Drop);
-    // between the start and the end: dropped
-    assert_eq!(video_step(s, e, s), VideoStep::Drop);
-    assert_eq!(video_step(s, e, e - 1), VideoStep::Drop);
     // exactly at the end: ends the pause
-    assert_eq!(video_step(s, e, e), VideoStep::End);
+    assert!(video_end(e, e));
     // an unpause in the same frame as the pause
-    assert_eq!(video_step(s, s, s), VideoStep::End);
+    assert!(video_end(s, s));
+    // before the end, or with no end yet: does not
+    assert!(!video_end(e, s));
+    assert!(!video_end(e, e - 1));
+    assert!(!video_end(0, s));
+    assert!(!video_end(0, u64::MAX));
     // a frame stamped 0 while the end is not set ends the pause
     // (characterized, not endorsed: frames are never stamped 0 here)
-    assert_eq!(video_step(s, 0, 0), VideoStep::End);
+    assert!(video_end(0, 0));
+
+    // before the start: passes
+    assert!(!video_drop(s, s - 1));
+    assert!(!video_drop(s, 1));
+    // at the start and after it: dropped
+    assert!(video_drop(s, s));
+    assert!(video_drop(s, e - 1));
+    assert!(video_drop(s, u64::MAX));
 }
 
 #[test]
@@ -390,15 +392,9 @@ fn steps_the_offset_is_taken_off_every_buffer() {
 // --------------------------------------------------------------------------
 // edge: new cases
 
-/// The C's `video_pause_check_internal()` decision, for a pause that is on.
-fn c_video_step(ts_start: u64, ts_end: u64, ts: u64) -> VideoStep {
-    if ts == ts_end {
-        VideoStep::End
-    } else if ts >= ts_start {
-        VideoStep::Drop
-    } else {
-        VideoStep::Pass
-    }
+/// The C's end of a video pause in `video_pause_check_internal()`.
+fn c_video_end(ts_end: u64, ts: u64) -> bool {
+    ts == ts_end
 }
 
 /// The C's paused-buffer decision of `audio_pause_check_internal()`.
@@ -432,8 +428,8 @@ fn edge_a_divided_encoder_unpauses_between_its_frames() {
     for n in (14..30).step_by(2) {
         assert!(!video(&mut r, T0 + n * frame));
     }
-    assert_eq!(video_step(T0, T0 + 1, T0 + 2), VideoStep::End);
-    assert_eq!(c_video_step(T0, T0 + 1, T0 + 2), VideoStep::Drop);
+    assert!(video_end(T0 + 1, T0 + 2));
+    assert!(!c_video_end(T0 + 1, T0 + 2));
 }
 
 #[test]
@@ -493,9 +489,9 @@ fn edge_a_paused_buffer_waits_for_a_set_end() {
     assert_eq!(audio_paused(0, T0, T0 + BUFFER_NS), AudioPaused::Drop);
     assert_eq!(audio_paused(0, 1, 1), AudioPaused::Drop);
     // A frame stamped 0 with the end unset ends the pause, as in the C.
-    assert_eq!(video_step(T0, 0, 0), VideoStep::End);
-    assert_eq!(video_step(T0, 0, 1), VideoStep::Pass);
-    assert_eq!(video_step(T0, 0, T0 + 1), VideoStep::Drop);
+    assert!(video_end(0, 0));
+    assert!(!video_end(0, 1) && !video_drop(T0, 1));
+    assert!(!video_end(0, T0 + 1) && video_drop(T0, T0 + 1));
 }
 
 /// Times that hit each other's edges: small, on a grid near `T0`, and near
@@ -517,19 +513,16 @@ proptest! {
     })]
 
     #[test]
-    fn edge_video_step_matches_c_except_after_a_set_end(
+    fn edge_video_matches_c_except_after_a_set_end(
         ts_start in time(),
         ts_end in time(),
         ts in time(),
         near in -2_i64..=2,
     ) {
         let ts = if near == 0 { ts } else { ts_end.wrapping_add_signed(near) };
-        let want = if ts_end != 0 && ts > ts_end {
-            VideoStep::End
-        } else {
-            c_video_step(ts_start, ts_end, ts)
-        };
-        prop_assert_eq!(video_step(ts_start, ts_end, ts), want);
+        let want = if ts_end != 0 && ts > ts_end { true } else { c_video_end(ts_end, ts) };
+        prop_assert_eq!(video_end(ts_end, ts), want);
+        prop_assert_eq!(video_drop(ts_start, ts), ts >= ts_start);
     }
 
     #[test]
@@ -619,7 +612,8 @@ proptest! {
         cut in any::<u64>(),
     ) {
         let _ = off(ts_start);
-        let _ = video_step(ts_start, ts_end, ts);
+        let _ = video_end(ts_end, ts);
+        let _ = video_drop(ts_start, ts);
         let end_ts = audio_end(ts, cut);
         let _ = audio_start(ts_start, ts, end_ts);
         let _ = audio_paused(ts_end, ts, end_ts);

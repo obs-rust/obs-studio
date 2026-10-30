@@ -782,7 +782,8 @@ obs_encoder_packet_ts_find
 # inside libobs. Declared in obs-encoder-pause.h without EXPORT, so the shims
 # stay hidden the same way.
 obs_encoder_pause_off
-obs_encoder_pause_video_step
+obs_encoder_pause_video_end
+obs_encoder_pause_video_drop
 obs_encoder_pause_audio_end
 obs_encoder_pause_audio_start
 obs_encoder_pause_audio_paused

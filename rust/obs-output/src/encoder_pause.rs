@@ -17,7 +17,8 @@
 //! call nothing.
 //!
 //! - `video_pause_check()`: [`off`] (no pause, the frame passes), then
-//!   [`video_step`];
+//!   [`video_end`] (the frame ends the pause) and, for a frame that does
+//!   not, [`video_drop`];
 //! - `audio_pause_check()`: [`off`], [`audio_end`] (the buffer's end),
 //!   [`audio_start`] (where the pause start falls) and, for a buffer after
 //!   the start, [`audio_paused`] (where the pause end falls); for each cut,
@@ -29,7 +30,7 @@
 //!
 //! Intentional differences:
 //! - a video pause ends on the first frame at or after a set `ts_end`
-//!   ([`VideoStep::End`]). The C ends it only on a frame stamped exactly
+//!   ([`video_end`]). The C ends it only on a frame stamped exactly
 //!   `ts_end`; the unpause time is on the frame grid of the output's first
 //!   video encoder, so an encoder with a frame rate divisor of 2 or more,
 //!   fed through video-io, may never get that frame, drops every later one,
@@ -53,18 +54,6 @@
     clippy::unimplemented,
     clippy::unreachable
 )]
-
-/// What [`video_step`] does with a frame (`OBS_ENCODER_PAUSE_VIDEO_*`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VideoStep {
-    /// The frame passes.
-    Pass,
-    /// The frame is dropped.
-    Drop,
-    /// The frame ends the pause (`ts_start` and `ts_end` are cleared) and
-    /// passes.
-    End,
-}
 
 /// Where [`audio_start`] puts the pause start against a buffer
 /// (`OBS_ENCODER_PAUSE_AUDIO_START_*`).
@@ -100,20 +89,20 @@ pub fn off(ts_start: u64) -> bool {
     ts_start == 0
 }
 
-/// `video_pause_check()`, for a pause that is on: what the frame stamped
-/// `ts` does, from the pause's start and end (`ts_end` is 0 until the pause
-/// ends). A frame exactly at `ts_end` ends the pause, as does the first one
-/// after a set `ts_end`; one at or after `ts_start` is dropped; any other
-/// passes.
+/// `video_pause_check()`, for a pause that is on: the frame stamped `ts`
+/// ends the pause (`ts_start` and `ts_end` are cleared) and passes, from the
+/// pause end (`ts_end`, 0 until the pause ends): a frame exactly at
+/// `ts_end`, or the first one after a set `ts_end`.
 #[must_use]
-pub fn video_step(ts_start: u64, ts_end: u64, ts: u64) -> VideoStep {
-    if ts == ts_end || (ts_end != 0 && ts > ts_end) {
-        VideoStep::End
-    } else if ts >= ts_start {
-        VideoStep::Drop
-    } else {
-        VideoStep::Pass
-    }
+pub fn video_end(ts_end: u64, ts: u64) -> bool {
+    ts == ts_end || (ts_end != 0 && ts > ts_end)
+}
+
+/// `video_pause_check()`, for a frame that does not end the pause: the
+/// frame is dropped, at or after the pause start.
+#[must_use]
+pub fn video_drop(ts_start: u64, ts: u64) -> bool {
+    ts >= ts_start
 }
 
 /// `audio_pause_check()`: the buffer's end, `timestamp + duration_ns`

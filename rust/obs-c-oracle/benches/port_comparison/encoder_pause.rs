@@ -16,15 +16,15 @@ use obs_c_oracle::encoder_pause::{
     oracle_obs_encoder_pause_audio_end, oracle_obs_encoder_pause_audio_kept,
     oracle_obs_encoder_pause_audio_left, oracle_obs_encoder_pause_audio_paused,
     oracle_obs_encoder_pause_audio_start, oracle_obs_encoder_pause_off,
-    oracle_obs_encoder_pause_video_step,
+    oracle_obs_encoder_pause_video_drop, oracle_obs_encoder_pause_video_end,
 };
 use obs_output::ffi::encoder_pause::{
     OBS_ENCODER_PAUSE_AUDIO_PAUSED_RESUME, OBS_ENCODER_PAUSE_AUDIO_PAUSED_UNPAUSE,
     OBS_ENCODER_PAUSE_AUDIO_START_BEFORE, OBS_ENCODER_PAUSE_AUDIO_START_INSIDE,
-    OBS_ENCODER_PAUSE_VIDEO_DROP, OBS_ENCODER_PAUSE_VIDEO_END, obs_encoder_pause_audio_cut_ns,
+    obs_encoder_pause_audio_cut_ns,
     obs_encoder_pause_audio_drop, obs_encoder_pause_audio_end, obs_encoder_pause_audio_kept,
     obs_encoder_pause_audio_left, obs_encoder_pause_audio_paused, obs_encoder_pause_audio_start,
-    obs_encoder_pause_off, obs_encoder_pause_video_step,
+    obs_encoder_pause_off, obs_encoder_pause_video_drop, obs_encoder_pause_video_end,
 };
 use obs_output::output_begin::mul_div64;
 use std::hint::black_box;
@@ -44,9 +44,9 @@ fn fold(acc: u64, value: u64) -> u64 {
 }
 
 /// The recording through `video_pause_check()` and `audio_pause_check()`,
-/// from the nine functions of one side.
+/// from the ten functions of one side.
 macro_rules! recording {
-    ($off:expr, $video_step:expr, $audio_end:expr, $audio_start:expr, $audio_paused:expr,
+    ($off:expr, $video_end:expr, $video_drop:expr, $audio_end:expr, $audio_start:expr, $audio_paused:expr,
      $cut_ns:expr, $kept:expr, $left:expr, $drop:expr) => {{
         let mut acc = 0;
         let (mut ts_start, mut ts_end, mut ts_offset) = (0_u64, 0_u64, 0_u64);
@@ -61,11 +61,10 @@ macro_rules! recording {
             }
             let mut drop = false;
             if !$off(ts_start) {
-                let step = $video_step(ts_start, ts_end, ts);
-                if step == OBS_ENCODER_PAUSE_VIDEO_END {
+                if $video_end(ts_end, ts) {
                     ts_start = 0;
                     ts_end = 0;
-                } else if step == OBS_ENCODER_PAUSE_VIDEO_DROP {
+                } else if $video_drop(ts_start, ts) {
                     drop = true;
                 }
             }
@@ -115,7 +114,8 @@ macro_rules! recording {
 fn rust_recording() -> u64 {
     recording!(
         obs_encoder_pause_off,
-        obs_encoder_pause_video_step,
+        obs_encoder_pause_video_end,
+        obs_encoder_pause_video_drop,
         obs_encoder_pause_audio_end,
         obs_encoder_pause_audio_start,
         obs_encoder_pause_audio_paused,
@@ -131,7 +131,8 @@ fn c_recording() -> u64 {
     unsafe {
         recording!(
             oracle_obs_encoder_pause_off,
-            oracle_obs_encoder_pause_video_step,
+            oracle_obs_encoder_pause_video_end,
+            oracle_obs_encoder_pause_video_drop,
             oracle_obs_encoder_pause_audio_end,
             oracle_obs_encoder_pause_audio_start,
             oracle_obs_encoder_pause_audio_paused,

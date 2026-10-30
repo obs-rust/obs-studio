@@ -13,8 +13,8 @@
  * Characterization of the pause checks of libobs/obs-encoder.c, moved to
  * libobs/obs-encoder-pause.c before their Rust port (#3033):
  * - video_pause_check(): obs_encoder_pause_off() and
- *   obs_encoder_pause_video_step(), whether a frame passes, is dropped or
- *   ends the pause;
+ *   obs_encoder_pause_video_end() and obs_encoder_pause_video_drop(),
+ *   whether a frame ends the pause, is dropped or passes;
  * - audio_pause_check(): obs_encoder_pause_off(),
  *   obs_encoder_pause_audio_end(), obs_encoder_pause_audio_start() and
  *   obs_encoder_pause_audio_paused(), where a buffer is cut, dropped or
@@ -83,11 +83,10 @@ static bool video(struct record *r, uint64_t ts)
 	if (obs_encoder_pause_off(r->ts_start))
 		return false;
 
-	int step = obs_encoder_pause_video_step(r->ts_start, r->ts_end, ts);
-	if (step == OBS_ENCODER_PAUSE_VIDEO_END) {
+	if (obs_encoder_pause_video_end(r->ts_end, ts)) {
 		r->ts_start = 0;
 		r->ts_end = 0;
-	} else if (step == OBS_ENCODER_PAUSE_VIDEO_DROP) {
+	} else if (obs_encoder_pause_video_drop(r->ts_start, ts)) {
 		return true;
 	}
 	return false;
@@ -164,22 +163,26 @@ static void video_steps(void **state)
 	(void)state;
 	const uint64_t s = 2 * T0, e = 3 * T0;
 
-	/* before the start: passes, with or without an end */
-	assert_int_equal(obs_encoder_pause_video_step(s, 0, s - 1), OBS_ENCODER_PAUSE_VIDEO_PASS);
-	assert_int_equal(obs_encoder_pause_video_step(s, e, 1), OBS_ENCODER_PAUSE_VIDEO_PASS);
-	/* at the start and after it, no end yet: dropped */
-	assert_int_equal(obs_encoder_pause_video_step(s, 0, s), OBS_ENCODER_PAUSE_VIDEO_DROP);
-	assert_int_equal(obs_encoder_pause_video_step(s, 0, UINT64_MAX), OBS_ENCODER_PAUSE_VIDEO_DROP);
-	/* between the start and the end: dropped */
-	assert_int_equal(obs_encoder_pause_video_step(s, e, s), OBS_ENCODER_PAUSE_VIDEO_DROP);
-	assert_int_equal(obs_encoder_pause_video_step(s, e, e - 1), OBS_ENCODER_PAUSE_VIDEO_DROP);
 	/* exactly at the end: ends the pause */
-	assert_int_equal(obs_encoder_pause_video_step(s, e, e), OBS_ENCODER_PAUSE_VIDEO_END);
+	assert_true(obs_encoder_pause_video_end(e, e));
 	/* an unpause in the same frame as the pause */
-	assert_int_equal(obs_encoder_pause_video_step(s, s, s), OBS_ENCODER_PAUSE_VIDEO_END);
+	assert_true(obs_encoder_pause_video_end(s, s));
+	/* before the end, or with no end yet: does not */
+	assert_false(obs_encoder_pause_video_end(e, s));
+	assert_false(obs_encoder_pause_video_end(e, e - 1));
+	assert_false(obs_encoder_pause_video_end(0, s));
+	assert_false(obs_encoder_pause_video_end(0, UINT64_MAX));
 	/* a frame stamped 0 while the end is not set ends the pause
 	 * (characterized, not endorsed: frames are never stamped 0 here) */
-	assert_int_equal(obs_encoder_pause_video_step(s, 0, 0), OBS_ENCODER_PAUSE_VIDEO_END);
+	assert_true(obs_encoder_pause_video_end(0, 0));
+
+	/* before the start: passes */
+	assert_false(obs_encoder_pause_video_drop(s, s - 1));
+	assert_false(obs_encoder_pause_video_drop(s, 1));
+	/* at the start and after it: dropped */
+	assert_true(obs_encoder_pause_video_drop(s, s));
+	assert_true(obs_encoder_pause_video_drop(s, e - 1));
+	assert_true(obs_encoder_pause_video_drop(s, UINT64_MAX));
 }
 
 static void audio_buffer_end(void **state)

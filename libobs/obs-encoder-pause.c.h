@@ -22,16 +22,14 @@ bool obs_encoder_pause_off(uint64_t ts_start)
 	return !ts_start;
 }
 
-int obs_encoder_pause_video_step(uint64_t ts_start, uint64_t ts_end, uint64_t ts)
+bool obs_encoder_pause_video_end(uint64_t ts_end, uint64_t ts)
 {
-	if (ts == ts_end) {
-		return OBS_ENCODER_PAUSE_VIDEO_END;
+	return ts == ts_end;
+}
 
-	} else if (ts >= ts_start) {
-		return OBS_ENCODER_PAUSE_VIDEO_DROP;
-	}
-
-	return OBS_ENCODER_PAUSE_VIDEO_PASS;
+bool obs_encoder_pause_video_drop(uint64_t ts_start, uint64_t ts)
+{
+	return ts >= ts_start;
 }
 
 uint64_t obs_encoder_pause_audio_end(uint64_t timestamp, uint64_t duration_ns)

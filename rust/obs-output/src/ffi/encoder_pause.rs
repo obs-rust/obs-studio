@@ -9,7 +9,7 @@
 //! `ts_offset` subtraction, `pause_reset()` and every caller, and passes
 //! plain values here. So neither `struct pause_data` nor `struct audio_data`
 //! is mirrored. These shims take no lock, call nothing in libobs and
-//! dereference no pointer. All nine stay hidden (`rust-hidden.txt`).
+//! dereference no pointer. All ten stay hidden (`rust-hidden.txt`).
 //!
 //! Intentional differences: the core's (a video pause ends on the first
 //! frame at or after a set end; a paused buffer after a set end ends the
@@ -17,14 +17,8 @@
 
 use std::ffi::c_int;
 
-use crate::encoder_pause::{self as core, AudioPaused, AudioStart, VideoStep};
+use crate::encoder_pause::{self as core, AudioPaused, AudioStart};
 
-/// `OBS_ENCODER_PAUSE_VIDEO_PASS`.
-pub const OBS_ENCODER_PAUSE_VIDEO_PASS: c_int = 0;
-/// `OBS_ENCODER_PAUSE_VIDEO_DROP`.
-pub const OBS_ENCODER_PAUSE_VIDEO_DROP: c_int = 1;
-/// `OBS_ENCODER_PAUSE_VIDEO_END`.
-pub const OBS_ENCODER_PAUSE_VIDEO_END: c_int = 2;
 /// `OBS_ENCODER_PAUSE_AUDIO_START_AFTER`.
 pub const OBS_ENCODER_PAUSE_AUDIO_START_AFTER: c_int = 0;
 /// `OBS_ENCODER_PAUSE_AUDIO_START_INSIDE`.
@@ -44,15 +38,16 @@ pub extern "C" fn obs_encoder_pause_off(ts_start: u64) -> bool {
     core::off(ts_start)
 }
 
-/// `int obs_encoder_pause_video_step(uint64_t ts_start, uint64_t ts_end,
-/// uint64_t ts)`.
+/// `bool obs_encoder_pause_video_end(uint64_t ts_end, uint64_t ts)`.
 #[unsafe(no_mangle)]
-pub extern "C" fn obs_encoder_pause_video_step(ts_start: u64, ts_end: u64, ts: u64) -> c_int {
-    match core::video_step(ts_start, ts_end, ts) {
-        VideoStep::Pass => OBS_ENCODER_PAUSE_VIDEO_PASS,
-        VideoStep::Drop => OBS_ENCODER_PAUSE_VIDEO_DROP,
-        VideoStep::End => OBS_ENCODER_PAUSE_VIDEO_END,
-    }
+pub extern "C" fn obs_encoder_pause_video_end(ts_end: u64, ts: u64) -> bool {
+    core::video_end(ts_end, ts)
+}
+
+/// `bool obs_encoder_pause_video_drop(uint64_t ts_start, uint64_t ts)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_encoder_pause_video_drop(ts_start: u64, ts: u64) -> bool {
+    core::video_drop(ts_start, ts)
 }
 
 /// `uint64_t obs_encoder_pause_audio_end(uint64_t timestamp, uint64_t

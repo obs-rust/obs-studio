@@ -1728,12 +1728,11 @@ static inline bool video_pause_check_internal(struct pause_data *pause, uint64_t
 		return false;
 	}
 
-	int step = obs_encoder_pause_video_step(pause->ts_start, pause->ts_end, ts);
-	if (step == OBS_ENCODER_PAUSE_VIDEO_END) {
+	if (obs_encoder_pause_video_end(pause->ts_end, ts)) {
 		pause->ts_start = 0;
 		pause->ts_end = 0;
 
-	} else if (step == OBS_ENCODER_PAUSE_VIDEO_DROP) {
+	} else if (obs_encoder_pause_video_drop(pause->ts_start, ts)) {
 		return true;
 	}
 

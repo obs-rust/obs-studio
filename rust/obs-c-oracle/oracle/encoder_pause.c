@@ -1,12 +1,13 @@
 /* Test-only oracle: the original libobs/obs-encoder-pause.c.h, unmodified,
- * with its nine functions renamed to oracle_* so they can link next to the
+ * with its ten functions renamed to oracle_* so they can link next to the
  * Rust shims. Every input is defined in C (the sums and differences are
  * unsigned). */
 #include <stdbool.h>
 #include <stdint.h>
 
 #define obs_encoder_pause_off oracle_obs_encoder_pause_off
-#define obs_encoder_pause_video_step oracle_obs_encoder_pause_video_step
+#define obs_encoder_pause_video_end oracle_obs_encoder_pause_video_end
+#define obs_encoder_pause_video_drop oracle_obs_encoder_pause_video_drop
 #define obs_encoder_pause_audio_end oracle_obs_encoder_pause_audio_end
 #define obs_encoder_pause_audio_start oracle_obs_encoder_pause_audio_start
 #define obs_encoder_pause_audio_paused oracle_obs_encoder_pause_audio_paused
@@ -24,5 +25,6 @@
 #undef obs_encoder_pause_audio_paused
 #undef obs_encoder_pause_audio_start
 #undef obs_encoder_pause_audio_end
-#undef obs_encoder_pause_video_step
+#undef obs_encoder_pause_video_drop
+#undef obs_encoder_pause_video_end
 #undef obs_encoder_pause_off

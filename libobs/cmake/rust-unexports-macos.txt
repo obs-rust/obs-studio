@@ -629,7 +629,8 @@ _obs_encoder_packet_ts_paused
 _obs_encoder_packet_ts_find
 # obs-encoder-pause.c: obs-encoder.c calls them inside libobs. Not EXPORT.
 _obs_encoder_pause_off
-_obs_encoder_pause_video_step
+_obs_encoder_pause_video_end
+_obs_encoder_pause_video_drop
 _obs_encoder_pause_audio_end
 _obs_encoder_pause_audio_start
 _obs_encoder_pause_audio_paused

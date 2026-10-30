@@ -46,17 +46,17 @@ use obs_c_oracle::encoder_pause::{
     oracle_obs_encoder_pause_audio_end, oracle_obs_encoder_pause_audio_kept,
     oracle_obs_encoder_pause_audio_left, oracle_obs_encoder_pause_audio_paused,
     oracle_obs_encoder_pause_audio_start, oracle_obs_encoder_pause_off,
-    oracle_obs_encoder_pause_video_step,
+    oracle_obs_encoder_pause_video_drop, oracle_obs_encoder_pause_video_end,
 };
-use obs_output::encoder_pause::{self as core, AudioPaused, AudioStart, VideoStep};
+use obs_output::encoder_pause::{self as core, AudioPaused, AudioStart};
 use obs_output::ffi::encoder_pause::{
     OBS_ENCODER_PAUSE_AUDIO_PAUSED_DROP, OBS_ENCODER_PAUSE_AUDIO_PAUSED_RESUME,
     OBS_ENCODER_PAUSE_AUDIO_PAUSED_UNPAUSE, OBS_ENCODER_PAUSE_AUDIO_START_AFTER,
     OBS_ENCODER_PAUSE_AUDIO_START_BEFORE, OBS_ENCODER_PAUSE_AUDIO_START_INSIDE,
-    OBS_ENCODER_PAUSE_VIDEO_DROP, OBS_ENCODER_PAUSE_VIDEO_END, OBS_ENCODER_PAUSE_VIDEO_PASS,
     obs_encoder_pause_audio_cut_ns, obs_encoder_pause_audio_drop, obs_encoder_pause_audio_end,
     obs_encoder_pause_audio_kept, obs_encoder_pause_audio_left, obs_encoder_pause_audio_paused,
-    obs_encoder_pause_audio_start, obs_encoder_pause_off, obs_encoder_pause_video_step,
+    obs_encoder_pause_audio_start, obs_encoder_pause_off, obs_encoder_pause_video_drop,
+    obs_encoder_pause_video_end,
 };
 use obs_output::output_begin::mul_div64;
 use proptest::prelude::*;
@@ -68,15 +68,6 @@ const FRAME: u64 = 16_666_666;
 /// `audio_frames_to_ns(48000, 1024)`.
 const BUFFER_NS: u64 = 21_333_333;
 const FLOAT: usize = std::mem::size_of::<f32>();
-
-fn video_of(step: c_int) -> VideoStep {
-    match step {
-        OBS_ENCODER_PAUSE_VIDEO_PASS => VideoStep::Pass,
-        OBS_ENCODER_PAUSE_VIDEO_DROP => VideoStep::Drop,
-        OBS_ENCODER_PAUSE_VIDEO_END => VideoStep::End,
-        other => panic!("video step {other}"),
-    }
-}
 
 fn start_of(start: c_int) -> AudioStart {
     match start {
@@ -113,18 +104,27 @@ fn grid() -> Vec<u64> {
 // --------------------------------------------------------------------------
 // one decision at a time
 
-fn check_video_step(ts_start: u64, ts_end: u64, ts: u64) {
-    let c = video_of(unsafe { oracle_obs_encoder_pause_video_step(ts_start, ts_end, ts) });
-    let shim = video_of(obs_encoder_pause_video_step(ts_start, ts_end, ts));
-    let port = core::video_step(ts_start, ts_end, ts);
-    assert_eq!(shim, port, "shim, {ts_start} {ts_end} {ts}");
+fn check_video_end(ts_end: u64, ts: u64) {
+    let c = unsafe { oracle_obs_encoder_pause_video_end(ts_end, ts) };
+    let shim = obs_encoder_pause_video_end(ts_end, ts);
+    let port = core::video_end(ts_end, ts);
+    assert_eq!(shim, port, "shim, {ts_end} {ts}");
     if ts_end != 0 && ts > ts_end {
         // Intentional difference: a frame after a set end ends the pause.
-        assert_eq!(port, VideoStep::End, "{ts_start} {ts_end} {ts}");
-        assert_ne!(c, VideoStep::End, "{ts_start} {ts_end} {ts}");
+        assert!(port && !c, "{ts_end} {ts}");
     } else {
-        assert_eq!(port, c, "{ts_start} {ts_end} {ts}");
+        assert_eq!(port, c, "{ts_end} {ts}");
     }
+}
+
+fn check_video_drop(ts_start: u64, ts: u64) {
+    let c = unsafe { oracle_obs_encoder_pause_video_drop(ts_start, ts) };
+    let shim = obs_encoder_pause_video_drop(ts_start, ts);
+    assert_eq!(
+        (shim, core::video_drop(ts_start, ts)),
+        (c, c),
+        "{ts_start} {ts}"
+    );
 }
 
 fn check_audio_start(ts_start: u64, timestamp: u64, end_ts: u64) {
@@ -206,18 +206,13 @@ fn check_off(ts_start: u64) {
 }
 
 #[test]
-fn every_video_step_over_the_grid() {
+fn every_video_decision_over_the_grid() {
     let times = grid();
-    let mut i = 0;
-    for &s in &times {
-        check_off(s);
-        for &e in &times {
-            for &t in &times {
-                i += 1;
-                if obs_c_oracle::parity::keep(i) {
-                    check_video_step(s, e, t);
-                }
-            }
+    for &a in &times {
+        check_off(a);
+        for &t in &times {
+            check_video_end(a, t);
+            check_video_drop(a, t);
         }
     }
 }
@@ -270,10 +265,11 @@ struct Buffer {
     timestamp: u64,
 }
 
-/// The nine functions, from the C or the shims.
+/// The ten functions, from the C or the shims.
 struct Side {
     off: unsafe extern "C" fn(u64) -> bool,
-    video_step: unsafe extern "C" fn(u64, u64, u64) -> c_int,
+    video_end: unsafe extern "C" fn(u64, u64) -> bool,
+    video_drop: unsafe extern "C" fn(u64, u64) -> bool,
     audio_end: unsafe extern "C" fn(u64, u64) -> u64,
     audio_start: unsafe extern "C" fn(u64, u64, u64) -> c_int,
     audio_paused: unsafe extern "C" fn(u64, u64, u64) -> c_int,
@@ -285,7 +281,8 @@ struct Side {
 
 const C: Side = Side {
     off: oracle_obs_encoder_pause_off,
-    video_step: oracle_obs_encoder_pause_video_step,
+    video_end: oracle_obs_encoder_pause_video_end,
+    video_drop: oracle_obs_encoder_pause_video_drop,
     audio_end: oracle_obs_encoder_pause_audio_end,
     audio_start: oracle_obs_encoder_pause_audio_start,
     audio_paused: oracle_obs_encoder_pause_audio_paused,
@@ -297,7 +294,8 @@ const C: Side = Side {
 
 const SHIM: Side = Side {
     off: obs_encoder_pause_off,
-    video_step: obs_encoder_pause_video_step,
+    video_end: obs_encoder_pause_video_end,
+    video_drop: obs_encoder_pause_video_drop,
     audio_end: obs_encoder_pause_audio_end,
     audio_start: obs_encoder_pause_audio_start,
     audio_paused: obs_encoder_pause_audio_paused,
@@ -314,11 +312,10 @@ impl Side {
         if unsafe { (self.off)(r.ts_start) } {
             return false;
         }
-        let step = unsafe { (self.video_step)(r.ts_start, r.ts_end, ts) };
-        if step == OBS_ENCODER_PAUSE_VIDEO_END {
+        if unsafe { (self.video_end)(r.ts_end, ts) } {
             r.ts_start = 0;
             r.ts_end = 0;
-        } else if step == OBS_ENCODER_PAUSE_VIDEO_DROP {
+        } else if unsafe { (self.video_drop)(r.ts_start, ts) } {
             return true;
         }
         false
@@ -612,7 +609,8 @@ proptest! {
     #[test]
     fn any_decision_near_the_top(a in top(), b in top(), c in top(), frames in any::<u32>()) {
         check_off(a);
-        check_video_step(a, b, c);
+        check_video_end(b, c);
+        check_video_drop(a, c);
         check_audio_start(a, b, c);
         check_audio_paused(a, b, c);
         check_pair(a, b);
@@ -647,7 +645,8 @@ proptest! {
     #[test]
     fn any_input_on_the_shim(a in any::<u64>(), b in any::<u64>(), c in any::<u64>(), frames in any::<u32>()) {
         prop_assert_eq!(obs_encoder_pause_off(a), core::off(a));
-        prop_assert_eq!(video_of(obs_encoder_pause_video_step(a, b, c)), core::video_step(a, b, c));
+        prop_assert_eq!(obs_encoder_pause_video_end(b, c), core::video_end(b, c));
+        prop_assert_eq!(obs_encoder_pause_video_drop(a, c), core::video_drop(a, c));
         prop_assert_eq!(start_of(obs_encoder_pause_audio_start(a, b, c)), core::audio_start(a, b, c));
         prop_assert_eq!(paused_of(obs_encoder_pause_audio_paused(a, b, c)), core::audio_paused(a, b, c));
         prop_assert_eq!(obs_encoder_pause_audio_end(a, b), core::audio_end(a, b));
