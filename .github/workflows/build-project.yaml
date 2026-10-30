@@ -1067,7 +1067,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-
       - name: Pack Experimental Flatpak Dependency Artifact
         if: inputs.flatpak-dependency-transfer-probe
         run: |
@@ -1928,6 +1927,35 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
+      # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
+      # on the runner; a lane that does not keep the directory loses the only copy
+      # of the case that made it red (#2993, #2988). Only new or changed entries are
+      # echoed into the job summary, so a reader of the red run gets the seed too.
+      - name: Note proptest regressions 🗂️
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          : Note proptest regressions 🗂️
+          shopt -s nullglob
+          for f in rust/*/tests/proptest-regressions/*.txt; do
+            [[ -n "$(git status --porcelain --untracked-files=all -- "$f")" ]] || continue
+            {
+              echo "### New proptest case \`$f\`"
+              echo '```'
+              cat "$f"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+      - name: Upload proptest regressions 🗂️
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: proptest-regressions-${{ runner.os }}
+          path: rust/*/tests/proptest-regressions/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Compile-only cross check (cmake/cross/, #1294) of the Windows and macOS
   # host groups a change touches, on Linux with soldr's LLVM and SDKs. PR CI
   # builds no Windows or macOS app, so without it a broken host group first
@@ -2178,6 +2206,35 @@ jobs:
           export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
           soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
 
+      # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
+      # on the runner; a lane that does not keep the directory loses the only copy
+      # of the case that made it red (#2993, #2988). Only new or changed entries are
+      # echoed into the job summary, so a reader of the red run gets the seed too.
+      - name: Note proptest regressions 🗂️
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          : Note proptest regressions 🗂️
+          shopt -s nullglob
+          for f in rust/*/tests/proptest-regressions/*.txt; do
+            [[ -n "$(git status --porcelain --untracked-files=all -- "$f")" ]] || continue
+            {
+              echo "### New proptest case \`$f\`"
+              echo '```'
+              cat "$f"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+      - name: Upload proptest regressions 🗂️
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: proptest-regressions-${{ runner.os }}
+          path: rust/*/tests/proptest-regressions/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2291,6 +2348,35 @@ jobs:
           fi
           export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
           soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
+
+      # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
+      # on the runner; a lane that does not keep the directory loses the only copy
+      # of the case that made it red (#2993, #2988). Only new or changed entries are
+      # echoed into the job summary, so a reader of the red run gets the seed too.
+      - name: Note proptest regressions 🗂️
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          : Note proptest regressions 🗂️
+          shopt -s nullglob
+          for f in rust/*/tests/proptest-regressions/*.txt; do
+            [[ -n "$(git status --porcelain --untracked-files=all -- "$f")" ]] || continue
+            {
+              echo "### New proptest case \`$f\`"
+              echo '```'
+              cat "$f"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+          done
+
+      - name: Upload proptest regressions 🗂️
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: proptest-regressions-${{ runner.os }}
+          path: rust/*/tests/proptest-regressions/
+          if-no-files-found: ignore
+          retention-days: 7
 
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
