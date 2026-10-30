@@ -2935,7 +2935,12 @@ jobs:
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
           version: 0.9.43
           build-cache: false
-          prebuild-deps-flags: --release
+          # validate.sh/.ps1 build Rust with --target <triple> into
+          # build/cargo-native-* and through Corrosion, so a cooked workspace
+          # target/release (20-22 s) is never read (#3034). Keep the crate
+          # sources for those builds.
+          prebuild-deps: none
+          cargo-registry-cache: true
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
 
@@ -3081,7 +3086,12 @@ jobs:
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
           version: 0.9.43
           build-cache: false
-          prebuild-deps-flags: --release
+          # validate.sh/.ps1 build Rust with --target <triple> into
+          # build/cargo-native-* and through Corrosion, so a cooked workspace
+          # target/release (20-22 s) is never read (#3034). Keep the crate
+          # sources for those builds.
+          prebuild-deps: none
+          cargo-registry-cache: true
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
 
