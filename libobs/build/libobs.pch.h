@@ -91,6 +91,9 @@
 /* obs-output-begin.c */
 #include "obs-output-begin.h"
 
+/* obs-output-caption.c */
+#include "obs-output-caption.h"
+
 /* obs-output-pause.c */
 #include "obs-output-pause.h"
 

@@ -46,6 +46,7 @@
     "obs-module.h",
     "obs-nal.h",
     "obs-output-begin.h",
+    "obs-output-caption.h",
     "obs-output-pause.h",
     "obs-output-raw-audio.h",
     "obs-output-reconnect.h",
