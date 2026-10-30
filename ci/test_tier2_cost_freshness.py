@@ -85,7 +85,9 @@ class WorkflowTest(unittest.TestCase):
                 expression = expression.replace("&&", " and ").replace("||", " or ")
                 self.assertRegex(expression, r"^(?:True|False|and|or|\s|\(|\))+$")
                 actual = eval(expression, {"__builtins__": {}})
-                work = (bool(name) and hit != "true") or (event == "push" and ref == "refs/heads/master")
+                # Only the master timing merge runs here; the lane proof is
+                # published after CI Gate in ci.yml (#3018).
+                work = event == "push" and ref == "refs/heads/master"
                 self.assertEqual(actual, result == "success" and work)
 
     def test_upload_includes_hidden_timings_and_rejects_missing_files(self):

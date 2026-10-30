@@ -100,10 +100,25 @@ class WorkflowTest(unittest.TestCase):
         self.assertNotIn("OBS_TIER2_SHARDS", job("rust-linux-tier2-build"))
 
     def test_lane_proof_waits_for_both_complete_suites(self):
-        d = job("rust-linux-tier2-done")
-        self.assertIn("rust-linux-tier2", d)
-        self.assertIn("Upload Lane Proof", d)
-        self.assertNotIn("Upload Lane Proof", job("rust-linux-tier2"))
+        # The proof is published after CI Gate, off the critical path (#3018):
+        # the gate passes only when every Tier 2 shard passed, and the build
+        # job sets the proof name only when it ran for an unproven lane.
+        build = job("rust-linux-tier2-build")
+        self.assertRegex(build, r"outputs:\n\s+tier2-linux-proof: \$\{\{ needs\.ci-mode\.outputs\.tier2-linux_name \}\}")
+        self.assertIn("needs.ci-mode.outputs.tier2-linux_hit != 'true'", build.split("steps:", 1)[0])
+        head = WORKFLOW.read_text(encoding="utf-8").split("\njobs:\n", 1)[0]
+        self.assertRegex(head, r"tier2-linux-proof:\n(?:\s+description: .*\n)?\s+value: \$\{\{ jobs\.rust-linux-tier2-build\.outputs\.tier2-linux-proof \}\}")
+        for name in ("rust-linux-tier2", "rust-linux-tier2-done"):
+            self.assertNotIn("Upload Lane Proof", job(name))
+        ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        m = re.search(r"^  tier2-lane-proof:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)", ci, re.S | re.M)
+        self.assertIsNotNone(m, "ci.yml has no tier2-lane-proof job")
+        proof = m.group(1)
+        self.assertIn("needs: [build-project, ci-gate]", proof)
+        self.assertIn("needs.ci-gate.result == 'success'", proof)
+        self.assertIn("needs.build-project.outputs.tier2-linux-proof != ''", proof)
+        self.assertIn("name: ${{ needs.build-project.outputs.tier2-linux-proof }}", proof)
+        self.assertIn("Upload Lane Proof", proof)
 
 
 if __name__ == "__main__":
