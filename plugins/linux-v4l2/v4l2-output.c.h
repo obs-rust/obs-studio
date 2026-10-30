@@ -45,13 +45,39 @@ static bool vmic_parse_module_id(const char *text, uint32_t *id)
 	return true;
 }
 
-/* #3014: stub, filled in by the next commit. */
+#define VMIC_FIFO_NAME "obs-virtual-microphone-"
+
+/* A line of "pactl list modules short" ("<index>\t<name>\t<arguments>\t")
+ * for a module-pipe-source this plugin loaded: its FIFO is named after the
+ * pid of the OBS that loaded it (obs-rust/obs-studio#3014). */
 static bool vmic_parse_module_line(const char *line, uint32_t *id, long *pid)
 {
-	UNUSED_PARAMETER(line);
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(pid);
-	return false;
+	if (!line)
+		return false;
+
+	const char *name = strchr(line, '\t');
+	if (!name || strncmp(name + 1, "module-pipe-source\t", 19) != 0)
+		return false;
+
+	char *end = NULL;
+	errno = 0;
+	unsigned long long index = strtoull(line, &end, 10);
+	if (end != name || errno != 0 || index > UINT32_MAX)
+		return false;
+
+	const char *fifo = strstr(name, "/" VMIC_FIFO_NAME);
+	if (!fifo)
+		return false;
+	fifo += 1 + strlen(VMIC_FIFO_NAME);
+
+	errno = 0;
+	long value = strtol(fifo, &end, 10);
+	if (end == fifo || errno != 0 || value <= 0 || (*end != ' ' && *end != '\t' && *end != '\0'))
+		return false;
+
+	*id = (uint32_t)index;
+	*pid = value;
+	return true;
 }
 
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
@@ -168,6 +194,41 @@ static void vmic_stop(struct virtualcam_data *vcam)
 	}
 }
 
+/* Unloads the virtual microphones of OBS processes that are gone: one killed
+ * while its Virtual Camera ran never unloaded its module, and apps would see
+ * two "OBS Virtual Microphone"s. Another running OBS keeps its own. */
+static void vmic_unload_stale(void)
+{
+	FILE *fp = popen(is_flatpak_sandbox() ? "flatpak-spawn --host pactl list modules short 2>/dev/null"
+					      : "pactl list modules short 2>/dev/null",
+			 "r");
+	if (!fp)
+		return;
+
+	uint32_t stale[16];
+	size_t count = 0;
+	char line[4096];
+	while (fgets(line, sizeof(line), fp)) {
+		uint32_t id;
+		long pid;
+		if (!vmic_parse_module_line(line, &id, &pid) || pid == (long)getpid())
+			continue;
+		if (kill((pid_t)pid, 0) == 0 || errno != ESRCH)
+			continue;
+		if (count < sizeof(stale) / sizeof(stale[0]))
+			stale[count++] = id;
+	}
+	pclose(fp);
+
+	for (size_t i = 0; i < count; i++) {
+		char args[64];
+		snprintf(args, sizeof(args), "unload-module %u", stale[i]);
+		bfree(run_pactl(args));
+		blog(LOG_INFO, "Virtual microphone: unloaded module %u left by an OBS that is no longer running",
+		     stale[i]);
+	}
+}
+
 /* Loads the module-pipe-source and opens its FIFO. On failure the Virtual
  * Camera runs video-only, as before. */
 static void vmic_start(struct virtualcam_data *vcam)
@@ -180,7 +241,9 @@ static void vmic_start(struct virtualcam_data *vcam)
 				  "the Virtual Camera sends video only");
 		return;
 	}
-	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/obs-virtual-microphone-%d", runtime, (int)getpid());
+	vmic_unload_stale();
+
+	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_NAME "%d", runtime, (int)getpid());
 	unlink(vcam->mic_path);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
@@ -528,3 +591,4 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_SOURCE_NAME
 #undef VMIC_CHANNELS
 #undef VMIC_PIPE_SIZE
+#undef VMIC_FIFO_NAME
