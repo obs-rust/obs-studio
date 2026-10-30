@@ -224,7 +224,7 @@ jobs:
 
       # Corrosion runs cargo inside the CMake build; same soldr as build-project.yaml.
       - name: Set up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           version: 0.9.45
           build-cache: false
@@ -234,6 +234,15 @@ jobs:
           shims: true
           # Cross matrix legs add target std libraries after setup (#507/#969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The x86_64 leg is cross-built on an arm64 runner: Corrosion builds
       # libobs-rust for x86_64-apple-darwin (libobs/cmake/rust-target.cmake),

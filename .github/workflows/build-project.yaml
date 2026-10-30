@@ -413,7 +413,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `command not found: soldr` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -426,6 +426,15 @@ jobs:
           shims: true
           # The x86_64 leg adds a target std library after setup (#507/#969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The x86_64 leg cross-builds on an arm64 runner and needs that
       # target's standard library too.
@@ -1467,7 +1476,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `The term 'soldr' is not recognized` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1480,6 +1489,15 @@ jobs:
           shims: true
           # The arm64 leg adds a target std library after setup (#507/#969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The arm64 leg cross-builds on an x64 runner and needs that target's
       # standard library too.
@@ -1779,7 +1797,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1795,6 +1813,15 @@ jobs:
           # The lanes add x86_64-pc-windows-gnu mid-job; the toolchain cache
           # would save it without its std (zackees/setup-soldr#507, #969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The lint lane pins clang-format and gersemi through uvx.
       - name: Set Up uv 🐍
@@ -1985,7 +2012,7 @@ jobs:
         run: git submodule update --init --depth 1 deps/libdshowcapture/src
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           verdict-scope: build-project
           version: 0.9.45
@@ -1995,6 +2022,15 @@ jobs:
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross toolchain adds targets mid-job (cmake/common/soldr.cmake).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The mirror step runs before every package install, and it is Python
       # now: soldr does not install uv, so without this the step fails with
@@ -2040,7 +2076,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2052,6 +2088,15 @@ jobs:
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross lane adds targets mid-job (see the Rust Tests job, #969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2091,7 +2136,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2103,6 +2148,15 @@ jobs:
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # cross-release installs target std libraries after setup (#507/#969).
           solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2132,7 +2186,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2142,6 +2196,15 @@ jobs:
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2270,7 +2333,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2280,6 +2343,15 @@ jobs:
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2508,7 +2580,7 @@ jobs:
       # Production hybrid libobs builds the Rust ports through Corrosion;
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2523,6 +2595,15 @@ jobs:
           cache-key-suffix: linux-container-v1
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # The shard plan uses the test timings the last master run's shards
       # handed back (rust-linux-tier2-done, #930); until that cache exists,
@@ -2926,7 +3007,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2943,6 +3024,15 @@ jobs:
           cargo-registry-cache: true
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # validate.sh builds through the macos-ci preset's Xcode compilation
       # cache; it started empty every run, so every build compiled cold
@@ -3077,7 +3167,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@71e6b565d05e546781eb9b0668bee02e574de7c9 # v0.9.88
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -3094,6 +3184,15 @@ jobs:
           cargo-registry-cache: true
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
       # validate.sh builds through the macos-ci preset's Xcode compilation
       # cache; it started empty every run, so every build compiled cold
