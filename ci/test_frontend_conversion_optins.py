@@ -36,14 +36,21 @@ GLOBAL_PINS = {"-Wno-conversion", "-Wno-sign-conversion", "-Wno-float-conversion
 def target_compile_options(text: str, target: str) -> list[list[str]]:
     """The conversion flags of each `target_compile_options(<target> ...)` call."""
     calls: list[list[str]] = []
-    for body in re.findall(r"target_compile_options\(([^)]*)\)", text, re.S):
-        tokens = body.split()
-        if not tokens or tokens[0] != target:
-            continue
+    for body in target_compile_option_bodies(text, target):
         flags = re.findall(r"-W(?:no-)?[a-z-]*conversion", body)
         if flags:
             calls.append(flags)
     return calls
+
+
+def target_compile_option_bodies(text: str, target: str) -> list[str]:
+    """The body of each `target_compile_options(<target> ...)` call."""
+    bodies: list[str] = []
+    for body in re.findall(r"target_compile_options\(([^)]*)\)", text, re.S):
+        tokens = body.split()
+        if tokens and tokens[0] == target:
+            bodies.append(body)
+    return bodies
 
 
 class FrontendConversionOptinsTest(unittest.TestCase):
@@ -63,6 +70,25 @@ class FrontendConversionOptinsTest(unittest.TestCase):
             sorted(APP_TARGET_GROUPS),
             "the app target opts into one conversion group; a second block widens it "
             "while the remaining files are still unconverted (#2938)",
+        )
+
+    def test_darwin_keeps_the_group_globally_pinned(self) -> None:
+        bodies = target_compile_option_bodies(self.text, "obs-studio")
+        self.assertEqual(len(bodies), 1, "one opt-in block per target (#2909, #2938)")
+        body = bodies[0]
+        guarded = set()
+        for flags in re.findall(
+            r"\$<\$<NOT:\$<PLATFORM_ID:Darwin>>:([^>]*)>", body
+        ):
+            guarded.update(flags.split())
+        named = set(re.findall(r"-W(?:no-)?[a-z-]*conversion", body))
+        self.assertEqual(
+            guarded,
+            named,
+            "every conversion group the app target names must exclude Darwin: the "
+            "macOS app lane stops inside Qt 6.11's own headers (#2950), so Apple TUs "
+            "keep the global `-Wno-sign-conversion` pin until the Qt include path is "
+            "excluded from the ratchet",
         )
 
     def test_global_pins_are_still_in_place(self) -> None:
