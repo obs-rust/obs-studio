@@ -20,6 +20,7 @@
 /* obs-nix-x11.c */
 #include "obs-internal.h"
 #include "obs-nix-x11.h"
+#include "obs-nix-x11-input.h"
 #include "obs-nix-x11-keymap.h"
 #include "obs-nix-x11-keys.h"
 
