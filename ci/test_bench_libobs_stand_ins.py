@@ -74,6 +74,29 @@ class BenchStandInsTest(unittest.TestCase):
             with self.subTest(symbol=symbol):
                 self.assertRegex(shims, rf"\bfn {symbol}\(")
 
+    def test_no_symbol_is_exported_by_a_workspace_crate(self):
+        # A stand-in is a definition of a name nothing else defines. Once a
+        # port ships the real `#[no_mangle]` shim for one of these names, the
+        # bench binary holds two definitions of it, and `rust-lld` (Linux and
+        # macOS) and `lld-link` (Windows) both refuse to link: #3075 exported
+        # obs_hotkey_binding_press()/_release() and the bench stopped building
+        # (#3112). No bench build runs in PR CI, so this test is the gate.
+        exported = set()
+        for path in sorted(ROOT.glob("rust/*/src/**/*.rs")):
+            exported.update(
+                re.findall(
+                    r"#\[unsafe\(no_mangle\)\]\s*(?:pub\s+)?(?:unsafe\s+)?extern \"C\" fn (\w+)\(",
+                    path.read_text(),
+                )
+            )
+        for symbol in SYMBOLS:
+            with self.subTest(symbol=symbol):
+                self.assertFalse(
+                    symbol in exported,
+                    f"{symbol} is exported by a workspace crate; drop its stand-in from "
+                    f"{BENCH.relative_to(ROOT)} and from SYMBOLS",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
