@@ -4578,6 +4578,32 @@
         "libobs/data"
       ]
     },
+    "test_source_volume_mul_steps": {
+      "sources": [
+        "test/cmocka/test_source_volume_mul_steps.c",
+        "libobs/obs-source-volume-mul.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-volume-mul.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_sprite_geometry_steps": {
       "sources": [
         "test/cmocka/test_sprite_geometry_steps.c",
@@ -7368,6 +7394,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_volume_mul_steps": {
+      "target": "test_source_volume_mul_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_sprite_geometry_steps": {
