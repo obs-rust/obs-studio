@@ -971,8 +971,11 @@ area.
   [obsproject/obs-studio#12835](https://github.com/obsproject/obs-studio/issues/12835),
   [obsproject/obs-studio#10808](https://github.com/obsproject/obs-studio/issues/10808).
 - On Wayland, push-to-talk and other hold hotkeys stay pressed while the key
-  is held and an OBS window has focus. *Linux*, 2026-10-11. Issue
-  [#210](https://github.com/obs-rust/obs-studio/issues/210), PR
+  is held and an OBS window has focus, and are released when it is let go,
+  also after the keyboard layout changed while it was held (it no longer
+  stays pressed until OBS loses focus). *Linux*, 2026-10-11. Issues
+  [#210](https://github.com/obs-rust/obs-studio/issues/210),
+  [#3069](https://github.com/obs-rust/obs-studio/issues/3069), PR
   [#211](https://github.com/obs-rust/obs-studio/pull/211), upstream
   [obsproject/obs-studio#10701](https://github.com/obsproject/obs-studio/issues/10701).
 - VLC Video Source plays 5.1 and 7.1 audio through the correct speakers.
