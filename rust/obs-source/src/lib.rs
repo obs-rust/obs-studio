@@ -39,6 +39,11 @@
 //! `dup_group()` in `libobs/obs-scene.c` (the route of a duplicate, the
 //! filter numbers, the flags and item routes of a scene copy and the reuse
 //! of a repeated source);
+//! `libobs/obs-source-filter-chain.c.h`, the filter chain rules of
+//! `filter_compatible()`, `obs_source_filter_add()`,
+//! `obs_source_filter_remove_refless()`, `move_filter_dir()` and
+//! `obs_source_restore_filters()` (compatibility, the add gates and
+//! targets, the moves and the restore match);
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
@@ -81,7 +86,7 @@
 //! [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_start`],
 //! [`video_tick`] and
