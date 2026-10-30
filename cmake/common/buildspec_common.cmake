@@ -40,6 +40,43 @@ function(_obs_download_dependency url destination hash)
   message(FATAL_ERROR "Unable to download ${url}, failed with error: ${error_message}")
 endfunction()
 
+# _obs_extract_dependency: Extract an archive so its payload lands directly in
+# ${dependencies_dir}/${destination}. Most archives (obs-deps, Qt6, CEF 7871)
+# are flat, but a CEF build can keep one top-level directory, such as
+# cef_binary_8078_macos_arm64/, at the archive root (#2418). Extracting that
+# into the destination left it holding a directory instead of
+# include/cef_version.h, and FindCEF then failed every macOS configure with
+# CEF_LIBRARY_RELEASE-NOTFOUND.
+function(_obs_extract_dependency input dependencies_dir destination)
+  set(destination_dir "${dependencies_dir}/${destination}")
+  set(staging_dir "${dependencies_dir}/.extract-${destination}")
+  file(REMOVE_RECURSE "${staging_dir}")
+  file(MAKE_DIRECTORY "${staging_dir}")
+  file(ARCHIVE_EXTRACT INPUT "${input}" DESTINATION "${staging_dir}")
+
+  # A lone top-level directory is the payload's wrapper; anything else is a
+  # flat archive and is used as extracted. `.[!.]*` keeps dotfiles such as
+  # .bazelversion in the count and in the move.
+  set(source_dir "${staging_dir}")
+  file(GLOB root_entries LIST_DIRECTORIES true "${staging_dir}/*" "${staging_dir}/.[!.]*")
+  list(LENGTH root_entries root_entry_count)
+  if(root_entry_count EQUAL 1)
+    list(GET root_entries 0 root_entry)
+    if(IS_DIRECTORY "${root_entry}")
+      set(source_dir "${root_entry}")
+    endif()
+  endif()
+
+  file(REMOVE_RECURSE "${destination_dir}")
+  file(MAKE_DIRECTORY "${destination_dir}")
+  file(GLOB payload LIST_DIRECTORIES true "${source_dir}/*" "${source_dir}/.[!.]*")
+  foreach(item IN LISTS payload)
+    get_filename_component(name "${item}" NAME)
+    file(RENAME "${item}" "${destination_dir}/${name}")
+  endforeach()
+  file(REMOVE_RECURSE "${staging_dir}")
+endfunction()
+
 # _check_deps_version: Checks for obs-deps VERSION file in prefix paths
 function(_check_deps_version version)
   set(found FALSE PARENT_SCOPE)
@@ -210,11 +247,19 @@ function(_check_dependencies)
     endif()
 
     if(NOT EXISTS "${dependencies_dir}/${destination}")
-      file(MAKE_DIRECTORY "${dependencies_dir}/${destination}")
-      if(dependency STREQUAL obs-studio)
-        file(ARCHIVE_EXTRACT INPUT "${dependencies_dir}/${file}" DESTINATION "${dependencies_dir}")
+      if(dependency STREQUAL cef)
+        _obs_extract_dependency(
+          "${dependencies_dir}/${file}"
+          "${dependencies_dir}"
+          "${destination}"
+        )
       else()
-        file(ARCHIVE_EXTRACT INPUT "${dependencies_dir}/${file}" DESTINATION "${dependencies_dir}/${destination}")
+        file(MAKE_DIRECTORY "${dependencies_dir}/${destination}")
+        if(dependency STREQUAL obs-studio)
+          file(ARCHIVE_EXTRACT INPUT "${dependencies_dir}/${file}" DESTINATION "${dependencies_dir}")
+        else()
+          file(ARCHIVE_EXTRACT INPUT "${dependencies_dir}/${file}" DESTINATION "${dependencies_dir}/${destination}")
+        endif()
       endif()
     endif()
 
