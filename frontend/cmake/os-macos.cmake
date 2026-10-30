@@ -23,12 +23,12 @@ macro(obs_frontend_platform_qt)
   #
   # `target_compile_options` is not enough under the Xcode generator: the lane
   # still reported the same six Qt diagnostics with it in place (#2978, runs
-  # 40992591865 and 40993841404), because Xcode has no `-isystem` and CMake folds
-  # include-shaped compile options into `HEADER_SEARCH_PATHS`, where the
-  # system-ness is lost. So the same flags also go through the raw build setting,
-  # which CMake writes verbatim, and a framework build gets `-iframework` for the
-  # directory holding the bundles. The collected set is printed at configure time
-  # so a lane can confirm what actually reached it.
+  # 40992591865 and 40993841404), because CMake folds include-shaped compile
+  # options into HEADER_SEARCH_PATHS, where the system-ness is lost, and a
+  # generator expression in the build setting reaches clang as a literal
+  # `$<1:...>` input file (run 40995262377). So the flags are built as plain
+  # strings and written to the build setting verbatim, and the collected set is
+  # printed at configure time so the lane log says what reached it.
   set(_obs_qt_system_includes "")
   set(_obs_qt_framework_dirs "")
   foreach(
@@ -44,12 +44,12 @@ macro(obs_frontend_platform_qt)
       continue()
     endif()
     foreach(_obs_qt_dir IN LISTS _obs_qt_dirs)
-      # A framework build resolves <QtCore/qnamespace.h> through -F, not -I, so
-      # the directory that has to be system is the one holding the bundle.
-      if(_obs_qt_dir MATCHES "^(.*)\\.framework/")
+      # This Qt is a framework build: <QtCore/qnamespace.h> is resolved through
+      # `-F`, not `-I`, so what has to be system is the directory holding the
+      # bundles. `-iframework` is clang's system framework search path.
+      if(_obs_qt_dir MATCHES "^(.*)/[^/]+\\.framework(/|$)")
         list(APPEND _obs_qt_framework_dirs "${CMAKE_MATCH_1}")
-      endif()
-      if(IS_DIRECTORY "${_obs_qt_dir}")
+      elseif(IS_DIRECTORY "${_obs_qt_dir}")
         list(APPEND _obs_qt_system_includes "${_obs_qt_dir}")
       endif()
     endforeach()
@@ -60,24 +60,22 @@ macro(obs_frontend_platform_qt)
   if(_obs_qt_framework_dirs)
     list(REMOVE_DUPLICATES _obs_qt_framework_dirs)
   endif()
-  message(STATUS "obs-frontend: Qt system includes '${_obs_qt_system_includes}' frameworks '${_obs_qt_framework_dirs}'")
 
-  if(TARGET obs-studio)
-    set(_obs_qt_isystem_flags "")
-    foreach(_obs_qt_dir IN LISTS _obs_qt_system_includes)
-      target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-isystem${_obs_qt_dir}>")
-      string(APPEND _obs_qt_isystem_flags " -isystem${_obs_qt_dir}")
-    endforeach()
-    foreach(_obs_qt_dir IN LISTS _obs_qt_framework_dirs)
-      target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-iframework${_obs_qt_dir}>")
-      string(APPEND _obs_qt_isystem_flags " -iframework${_obs_qt_dir}")
-    endforeach()
-    if(CMAKE_GENERATOR STREQUAL "Xcode" AND _obs_qt_isystem_flags)
-      set_property(
-        TARGET obs-studio
-        APPEND_STRING
-        PROPERTY XCODE_ATTRIBUTE_OTHER_CFLAGS "$(inherited)${_obs_qt_isystem_flags}"
-      )
+  set(_obs_qt_flags "")
+  foreach(_obs_qt_dir IN LISTS _obs_qt_system_includes)
+    string(APPEND _obs_qt_flags " -isystem${_obs_qt_dir}")
+  endforeach()
+  foreach(_obs_qt_dir IN LISTS _obs_qt_framework_dirs)
+    string(APPEND _obs_qt_flags " -iframework${_obs_qt_dir}")
+  endforeach()
+  message(STATUS "obs-frontend: Qt system flags '${_obs_qt_flags}'")
+
+  if(TARGET obs-studio AND _obs_qt_flags)
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+      set_property(TARGET obs-studio APPEND_STRING PROPERTY XCODE_ATTRIBUTE_OTHER_CFLAGS "$(inherited)${_obs_qt_flags}")
+    else()
+      separate_arguments(_obs_qt_flag_list UNIX_COMMAND "${_obs_qt_flags}")
+      target_compile_options(obs-studio PRIVATE ${_obs_qt_flag_list})
     endif()
   endif()
 endmacro()
