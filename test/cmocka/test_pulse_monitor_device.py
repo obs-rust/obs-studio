@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -68,10 +69,26 @@ def start(program: str, log: Path) -> subprocess.Popen:
         return subprocess.Popen([program], stdout=handle, stderr=subprocess.STDOUT)
 
 
-def stop(process: subprocess.Popen) -> None:
-    if process.poll() is None:
+def stop(process: subprocess.Popen, name: str, log: Path) -> None:
+    """Stop a daemon with SIGTERM and wait for it to exit.
+
+    A daemon killed while its interpreter is still booting takes the default
+    SIGTERM disposition: it dies before installing a handler and leaves no
+    `.terminated` marker, which is the #2972 flake under the lint gate's load.
+    Print the exit code and the daemon's log then, so the next failure says why.
+    """
+    alive = process.poll() is None
+    if alive:
         process.terminate()
-    process.wait()
+    code = process.wait()
+    # SIGTERM is this function's own shutdown signal, so -SIGTERM is expected
+    # from a daemon still alive when asked. Anything else -- a daemon that died
+    # on its own before the stop, or ignored SIGTERM and needed SIGKILL -- means
+    # the run ended for a reason we could not see before; print the evidence.
+    expected = {0, -signal.SIGTERM} if alive else {0}
+    if code not in expected:
+        print(f"{name} exited {code} when the run ended:")
+        print(log.read_text(errors="replace"), end="")
 
 
 def wait_for_server(pipewire, pipewire_pulse, logs: tuple[Path, ...]) -> bool:
@@ -91,7 +108,7 @@ def wait_for_server(pipewire, pipewire_pulse, logs: tuple[Path, ...]) -> bool:
 
 def run(argv: list[str]) -> int:
     directory = private_dir()
-    processes: list[subprocess.Popen] = []
+    daemons: list[tuple[str, subprocess.Popen, Path]] = []
     try:
         os.environ.update(
             XDG_RUNTIME_DIR=str(directory),
@@ -111,11 +128,11 @@ def run(argv: list[str]) -> int:
         wireplumber_log = directory / "wireplumber.log"
         pulse_log = directory / "pipewire-pulse.log"
         pipewire = start("pipewire", pipewire_log)
-        processes.append(pipewire)
+        daemons.append(("pipewire", pipewire, pipewire_log))
         time.sleep(1)
-        processes.append(start("wireplumber", wireplumber_log))
+        daemons.append(("wireplumber", start("wireplumber", wireplumber_log), wireplumber_log))
         pipewire_pulse = start("pipewire-pulse", pulse_log)
-        processes.append(pipewire_pulse)
+        daemons.append(("pipewire-pulse", pipewire_pulse, pulse_log))
 
         os.environ["PULSE_SERVER"] = f"unix:{directory / 'pulse' / 'native'}"
         # Everything is installed, so a sound server that does not come up is a
@@ -126,8 +143,8 @@ def run(argv: list[str]) -> int:
     finally:
         # The shell stops pipewire-pulse, WirePlumber then pipewire and removes
         # the private directory.
-        for process in reversed(processes):
-            stop(process)
+        for name, process, log in reversed(daemons):
+            stop(process, name, log)
         shutil.rmtree(directory, ignore_errors=True)
 
 
