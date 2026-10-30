@@ -640,7 +640,7 @@ fn slot() -> impl Strategy<Value = usize> {
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 4096,
+        cases: obs_c_oracle::parity::cases(4096),
         failure_persistence: None,
         ..ProptestConfig::default()
     })]
