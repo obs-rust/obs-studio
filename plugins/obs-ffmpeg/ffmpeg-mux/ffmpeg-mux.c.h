@@ -371,7 +371,7 @@ static bool init_params(int *argc, char ***argv, struct main_params *params, str
 		if (!get_opt_str(argc, argv, &params->acodec, "audio codec"))
 			return false;
 
-		audio = calloc(params->tracks, sizeof(*audio));
+		audio = calloc((size_t)params->tracks, sizeof(*audio));
 
 		for (int i = 0; i < params->tracks; i++) {
 			if (!get_audio_params(&audio[i], argc, argv)) {
@@ -405,7 +405,7 @@ static bool new_stream(struct ffmpeg_mux *ffm, AVStream **stream, const char *na
 		return false;
 	}
 
-	(*stream)->id = ffm->output->nb_streams - 1;
+	(*stream)->id = (int)(ffm->output->nb_streams - 1);
 	return true;
 }
 
@@ -425,13 +425,13 @@ static void create_video_stream(struct ffmpeg_mux *ffm)
 		return;
 
 	if (ffm->video_header.size) {
-		extradata = av_memdup(ffm->video_header.data, ffm->video_header.size);
+		extradata = av_memdup(ffm->video_header.data, (size_t)ffm->video_header.size);
 	}
 
 	context = avcodec_alloc_context3(NULL);
 	context->codec_type = codec->type;
 	context->codec_id = codec->id;
-	context->codec_tag = ffm->params.codec_tag;
+	context->codec_tag = (uint32_t)ffm->params.codec_tag;
 	context->bit_rate = (int64_t)ffm->params.vbitrate * 1000;
 	context->width = ffm->params.width;
 	context->height = ffm->params.height;
@@ -458,8 +458,8 @@ static void create_video_stream(struct ffmpeg_mux *ffm)
 	if (max_luminance > 0) {
 		size_t content_size;
 		AVContentLightMetadata *const content = av_content_light_metadata_alloc(&content_size);
-		content->MaxCLL = max_luminance;
-		content->MaxFALL = max_luminance;
+		content->MaxCLL = (unsigned int)max_luminance;
+		content->MaxFALL = (unsigned int)max_luminance;
 		av_packet_side_data_add(&ffm->video_stream->codecpar->coded_side_data,
 					&ffm->video_stream->codecpar->nb_coded_side_data,
 					AV_PKT_DATA_CONTENT_LIGHT_LEVEL, (uint8_t *)content, content_size, 0);
@@ -514,7 +514,7 @@ static void create_audio_stream(struct ffmpeg_mux *ffm, int idx)
 	stream->time_base = (AVRational){1, ffm->audio[idx].sample_rate};
 
 	if (ffm->audio_header[idx].size) {
-		extradata = av_memdup(ffm->audio_header[idx].data, ffm->audio_header[idx].size);
+		extradata = av_memdup(ffm->audio_header[idx].data, (size_t)ffm->audio_header[idx].size);
 	}
 
 	context = avcodec_alloc_context3(NULL);
@@ -554,7 +554,7 @@ static bool init_streams(struct ffmpeg_mux *ffm)
 		create_video_stream(ffm);
 
 	if (ffm->params.tracks) {
-		ffm->audio_infos = calloc(ffm->params.tracks, sizeof(*ffm->audio_infos));
+		ffm->audio_infos = calloc((size_t)ffm->params.tracks, sizeof(*ffm->audio_infos));
 
 		for (int i = 0; i < ffm->params.tracks; i++)
 			create_audio_stream(ffm, i);
@@ -744,7 +744,7 @@ static void *ffmpeg_mux_io_thread(void *data)
 
 			// Seek if we need to
 			if (want_seek) {
-				os_fseeki64(ffm->io.output_file, next_seek_position, SEEK_SET);
+				os_fseeki64(ffm->io.output_file, (int64_t)next_seek_position, SEEK_SET);
 
 				// Update the next virtual position, making sure to take
 				// into account the size of the chunk we're about to write.
@@ -798,7 +798,7 @@ static int64_t ffmpeg_mux_seek_av_buffer(void *opaque, int64_t offset, int whenc
 		return -1;
 	}
 	int64_t position = base + offset;
-	ffm->io.next_pos = position;
+	ffm->io.next_pos = (uint64_t)position;
 	pthread_mutex_unlock(&ffm->io.data_mutex);
 
 	return position;
@@ -817,7 +817,7 @@ static int ffmpeg_mux_write_av_buffer(void *opaque, const uint8_t *buf, int buf_
 
 		// Avoid unbounded growth of the deque, cap to 256 MB
 		if (ffm->io.data.capacity >= 256 * 1048576 &&
-		    ffm->io.data.capacity - ffm->io.data.size < buf_size + sizeof(struct io_header)) {
+		    ffm->io.data.capacity - ffm->io.data.size < (size_t)buf_size + sizeof(struct io_header)) {
 			// No space, wait for the I/O thread to make space
 			os_event_reset(ffm->io.buffer_space_available_event);
 			pthread_mutex_unlock(&ffm->io.data_mutex);
@@ -829,15 +829,15 @@ static int ffmpeg_mux_write_av_buffer(void *opaque, const uint8_t *buf, int buf_
 
 	struct io_header header;
 
-	header.data_length = buf_size;
+	header.data_length = (size_t)buf_size;
 	header.seek_offset = ffm->io.next_pos;
 
 	// Copy the data into the buffer
 	deque_push_back(&ffm->io.data, &header, sizeof(header));
-	deque_push_back(&ffm->io.data, buf, buf_size);
+	deque_push_back(&ffm->io.data, buf, (size_t)buf_size);
 
 	// Advance the next write position
-	ffm->io.next_pos += buf_size;
+	ffm->io.next_pos += (uint64_t)buf_size;
 
 	// Tell the I/O thread that there's new data to be written
 	os_event_signal(ffm->io.new_data_available_event);
@@ -1014,7 +1014,7 @@ static int ffmpeg_mux_init_internal(struct ffmpeg_mux *ffm, int argc, char *argv
 		return FFM_ERROR;
 
 	if (ffm->params.tracks) {
-		ffm->audio_header = calloc(ffm->params.tracks, sizeof(*ffm->audio_header));
+		ffm->audio_header = calloc((size_t)ffm->params.tracks, sizeof(*ffm->audio_header));
 	}
 
 	if (!ffmpeg_mux_get_extra_data(ffm))
