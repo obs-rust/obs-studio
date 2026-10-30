@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-caption.pch.h"
 
 static const uint8_t caption_nal_start[4] = {0, 0, 0, 1};
 

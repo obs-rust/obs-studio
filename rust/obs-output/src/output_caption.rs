@@ -34,6 +34,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -85,8 +86,16 @@ pub struct Begin {
 /// takes no caption.
 #[must_use]
 pub fn begin(codec: &[u8], hevc: bool, priority: i32) -> Begin {
-    let _ = (codec, hevc, priority);
-    todo!()
+    let carrier = match codec {
+        b"h264" => Carrier::Avc,
+        b"av1" => Carrier::Av1,
+        b"hevc" if hevc => Carrier::Hevc,
+        _ => Carrier::None,
+    };
+    Begin {
+        takes: priority <= 1,
+        carrier,
+    }
 }
 
 /// `obs_output_caption_hevc_sei_header()`: the 2-byte NAL unit header of
@@ -97,9 +106,18 @@ pub fn begin(codec: &[u8], hevc: bool, priority: i32) -> Begin {
 /// starts with neither start code, or ends before the 2 header bytes.
 #[must_use]
 pub fn hevc_sei_header(data: &[u8]) -> Option<[u8; 2]> {
-    let _ = data;
-    todo!()
+    let header = match data {
+        [0, 0, 1, header @ ..] | [0, 0, 0, 1, header @ ..] => header,
+        _ => return None,
+    };
+    let [first, second, ..] = *header else {
+        return None;
+    };
+    Some([(SUFFIX_SEI_NAL_TYPE << 1) | (first & 0x01), second])
 }
+
+/// `SUFFIX_SEI_NUT`, the NAL type of the caption's SEI.
+const SUFFIX_SEI_NAL_TYPE: u8 = 40;
 
 /// `obs_output_caption_cc_keep()`: the `cc_data` word (`cc_data_1 << 8 |
 /// cc_data_2`) of a CEA-608 triplet from the caption queue (`cc_valid` and
@@ -109,6 +127,21 @@ pub fn hevc_sei_header(data: &[u8]) -> Option<[u8; 2]> {
 /// byte, `cc_valid` included, are not looked at.
 #[must_use]
 pub fn cc_keep(triplet: [u8; 3]) -> Option<u16> {
-    let _ = triplet;
-    todo!()
+    let [kind, first, second] = triplet;
+    // only send cea 608
+    if kind & 0x3 != 0 {
+        return None;
+    }
+    let word = u16::from_be_bytes([first, second]);
+    // padding
+    if word == 0x8080 || word == 0 || !odd_parity(first) || !odd_parity(second) {
+        return None;
+    }
+    Some(word)
+}
+
+/// `eia608_parity_byte(b) == b` in libcaption: `b` has an odd number of bits
+/// set (bit 7 is the parity bit).
+const fn odd_parity(b: u8) -> bool {
+    b.count_ones() & 1 == 1
 }

@@ -623,6 +623,12 @@ obs_output_reconnect_grows
 obs_output_reconnect_next_delay
 obs_output_reconnect_active
 obs_output_reconnect_can
+# obs-output-caption.c: add_caption() in obs-output.c calls them inside libobs.
+# Declared in obs-output-caption.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_output_caption_begin
+obs_output_caption_cc_keep
+obs_output_caption_hevc_sei_header
 # obs-output-pause.c: obs_output_pause(), obs_encoded_output_pause() and
 # obs_raw_output_pause() call them inside libobs. Declared in
 # obs-output-pause.h without EXPORT, so the shims stay hidden the same way.

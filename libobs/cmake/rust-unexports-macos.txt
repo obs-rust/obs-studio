@@ -504,6 +504,10 @@ _obs_output_reconnect_grows
 _obs_output_reconnect_next_delay
 _obs_output_reconnect_active
 _obs_output_reconnect_can
+# obs-output-caption.c: obs-output.c calls them inside libobs. Not EXPORT.
+_obs_output_caption_begin
+_obs_output_caption_cc_keep
+_obs_output_caption_hevc_sei_header
 # obs-output-pause.c: obs-output.c calls them inside libobs. Not EXPORT.
 _obs_output_pause_allowed
 _obs_output_pause_already
