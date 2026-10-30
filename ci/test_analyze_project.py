@@ -230,11 +230,11 @@ class MergeSarif(unittest.TestCase):
         jq = shutil.which('jq')
         if jq is None:
             self.skipTest('jq is not on PATH')
-        python_root = self.root / 'python'
+        module_side = self.root / 'module'
         shell_root = self.root / 'shell'
-        write_fixtures(python_root)
+        write_fixtures(module_side)
         write_fixtures(shell_root)
-        self.assertEqual(analyze_project.merge_sarif(python_root), 0)
+        self.assertEqual(analyze_project.merge_sarif(module_side), 0)
         with (shell_root / 'merged.sarif').open('w', encoding='utf-8') as handle:
             completed = subprocess.run(
                 [jq, '-s', JQ_PROGRAM, *sorted(path.name for path in shell_root.glob('*.sarif'))],
@@ -245,7 +245,7 @@ class MergeSarif(unittest.TestCase):
                 check=False,
             )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        merged = json.loads((python_root / 'merged.sarif').read_text(encoding='utf-8'))
+        merged = json.loads((module_side / 'merged.sarif').read_text(encoding='utf-8'))
         expected = json.loads((shell_root / 'merged.sarif').read_text(encoding='utf-8'))
         self.assertEqual(merged, expected)
         self.assertEqual(len(merged['runs'][0]['results']), 2)
