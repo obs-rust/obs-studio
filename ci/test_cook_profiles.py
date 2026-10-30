@@ -37,13 +37,18 @@ class CookProfilesTest(unittest.TestCase):
             "rust-cross-lint-release": "--profile dev",
             "rust-tests-macos": "--profile dev -- --tests",
             "rust-tests-windows": "--profile dev -- --tests",
-            "rust-linux-tier2-build": "--release",
+            # Corrosion-only build, its own target dir: no cook (#3027).
+            "rust-linux-tier2-build": None,
             "rust-tier2-macos": "--release",
             "rust-tier2-windows": "--release",
         }
         workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
         for name, flags in expected.items():
             with self.subTest(job=name):
+                if flags is None:
+                    self.assertIn("prebuild-deps: none", workflow[name])
+                    self.assertNotIn("prebuild-deps-flags", workflow[name])
+                    continue
                 self.assertIn("prebuild-deps-flags: " + flags, workflow[name])
                 self.assertNotIn("prebuild-deps: none", workflow[name])
 

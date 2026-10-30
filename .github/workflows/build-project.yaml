@@ -2489,14 +2489,19 @@ jobs:
             zccache-tier2-linux-
       # zccache has no age-based eviction (ccache --evict-older-than), so a
       # master push drops a restored cache over 2 GiB and rebuilds it cold:
-      # the saved cache stays about the size of one build.
+      # the saved cache stays about the size of one build. In this container
+      # ${{ github.workspace }} in a script is the unmounted host path, so the
+      # bound never ran and the archive grew to 2.1 GB (#3026): use the
+      # container's $GITHUB_WORKSPACE, and print the size on every run.
       - name: Bound zccache 🧹
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         run: |
           : Bound zccache 🧹
-          dir="${{ github.workspace }}/.tier2-zccache"
-          if [ -d "$dir" ] && [ "$(du -sm "$dir" | cut -f1)" -gt 2048 ]; then
-            echo "zccache dir is $(du -sh "$dir" | cut -f1); starting cold"
+          dir="$GITHUB_WORKSPACE/.tier2-zccache"
+          [ -d "$dir" ] || { echo "no zccache dir restored"; exit 0; }
+          mb=$(du -sm "$dir" | cut -f1)
+          echo "zccache dir is ${mb} MiB"
+          if [ "$GITHUB_EVENT_NAME" != pull_request ] && [ "$GITHUB_REF" = refs/heads/master ] && [ "$mb" -gt 2048 ]; then
+            echo "over 2048 MiB on master; starting cold"
             rm -rf "$dir"
           fi
 
@@ -2510,7 +2515,11 @@ jobs:
           verdict-scope: build-project
           version: 0.9.43
           build-cache: false
-          prebuild-deps-flags: --release
+          # Corrosion builds Rust in its own target dir under the CMake tree,
+          # so a cooked workspace target/ is loaded (12 s) and never used
+          # (#3027). Keep the crate sources for Corrosion's cargo.
+          prebuild-deps: none
+          cargo-registry-cache: true
           cache-key-suffix: linux-container-v1
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true

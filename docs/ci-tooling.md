@@ -101,7 +101,8 @@ set `build-cache: false`: the full-run audit observed no embedded session
 across all eight expanded build lanes, despite transferring compiler-store
 archives (42.9 MB and 1.1–2.2 s in the inspected Linux host jobs). This input
 removes embedded compiler-store transport; it preserves cook, registry and
-toolchain layers. The unused `setup-soldr:build-cache` retention family is
+toolchain layers (the Tier 2 Linux build alone sets `prebuild-deps: none`:
+it compiles Rust only in Corrosion's own target dir, #3027). The unused `setup-soldr:build-cache` retention family is
 also retired, allowing the janitor to reclaim legacy archives rather than
 protecting them as a family's newest entry. The October 18 inventory held
 three such archives totaling 183,330,575 bytes. This is reclaimable storage,
