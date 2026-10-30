@@ -2664,17 +2664,17 @@ obs_source_t *obs_filter_get_target(const obs_source_t *filter)
 	return obs_ptr_valid(filter, "obs_filter_get_target") ? filter->filter_target : NULL;
 }
 
-#define OBS_SOURCE_AV (OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_AUDIO)
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_VIDEO == OBS_SOURCE_VIDEO, "OBS_SOURCE_VIDEO");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_AUDIO == OBS_SOURCE_AUDIO, "OBS_SOURCE_AUDIO");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_ASYNC == OBS_SOURCE_ASYNC, "OBS_SOURCE_ASYNC");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_UP == OBS_ORDER_MOVE_UP, "OBS_ORDER_MOVE_UP");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_DOWN == OBS_ORDER_MOVE_DOWN, "OBS_ORDER_MOVE_DOWN");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_TOP == OBS_ORDER_MOVE_TOP, "OBS_ORDER_MOVE_TOP");
+_Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_BOTTOM == OBS_ORDER_MOVE_BOTTOM, "OBS_ORDER_MOVE_BOTTOM");
 
 static bool filter_compatible(obs_source_t *source, obs_source_t *filter)
 {
-	uint32_t s_caps = source->info.output_flags & OBS_SOURCE_AV;
-	uint32_t f_caps = filter->info.output_flags & OBS_SOURCE_AV;
-
-	if ((f_caps & OBS_SOURCE_AUDIO) != 0 && (f_caps & OBS_SOURCE_VIDEO) == 0)
-		f_caps &= ~(uint32_t)OBS_SOURCE_ASYNC;
-
-	return (s_caps & f_caps) == f_caps;
+	return obs_source_filter_chain_compatible(source->info.output_flags, filter->info.output_flags);
 }
 
 void obs_source_filter_add(obs_source_t *source, obs_source_t *filter)
@@ -2689,24 +2689,29 @@ void obs_source_filter_add(obs_source_t *source, obs_source_t *filter)
 
 	pthread_mutex_lock(&source->filter_mutex);
 
-	if (da_find(source->filters, &filter, 0) != DARRAY_INVALID) {
+	if (!obs_source_filter_chain_add_allowed(da_find(source->filters, &filter, 0) != DARRAY_INVALID,
+						 filter->filter_parent != NULL)) {
 		blog(LOG_WARNING, "Tried to add a filter that was already "
 				  "present on the source");
 		pthread_mutex_unlock(&source->filter_mutex);
 		return;
 	}
 
-	if (!source->owns_info_id && !filter_compatible(source, filter)) {
+	if (obs_source_filter_chain_checks_compatible(source->owns_info_id) && !filter_compatible(source, filter)) {
 		pthread_mutex_unlock(&source->filter_mutex);
 		return;
 	}
 
 	filter = obs_source_get_ref(filter);
-	if (!obs_ptr_valid(filter, "obs_source_filter_add"))
+	if (obs_source_filter_chain_ref_step(obs_ptr_valid(filter, "obs_source_filter_add")) !=
+	    OBS_SOURCE_FILTER_CHAIN_REF_ADD)
 		return;
 
 	filter->filter_parent = source;
-	filter->filter_target = !source->filters.num ? source : source->filters.array[0];
+	filter->filter_target = obs_source_filter_chain_add_target(source->filters.num) ==
+						OBS_SOURCE_FILTER_CHAIN_TARGET_SOURCE
+					? source
+					: source->filters.array[0];
 
 	da_insert(source->filters, 0, &filter);
 
@@ -2731,6 +2736,7 @@ static bool obs_source_filter_remove_refless(obs_source_t *source, obs_source_t 
 	struct calldata cd;
 	uint8_t stack[128];
 	size_t idx;
+	size_t prev_idx;
 
 	pthread_mutex_lock(&source->filter_mutex);
 
@@ -2740,8 +2746,8 @@ static bool obs_source_filter_remove_refless(obs_source_t *source, obs_source_t 
 		return false;
 	}
 
-	if (idx > 0) {
-		obs_source_t *prev = source->filters.array[idx - 1];
+	if (obs_source_filter_chain_remove_retarget(idx, &prev_idx)) {
+		obs_source_t *prev = source->filters.array[prev_idx];
 		prev->filter_target = filter->filter_target;
 	}
 
@@ -2780,45 +2786,48 @@ void obs_source_filter_remove(obs_source_t *source, obs_source_t *filter)
 
 static size_t find_next_filter(obs_source_t *source, obs_source_t *filter, size_t cur_idx)
 {
-	bool curAsync = (filter->info.output_flags & OBS_SOURCE_ASYNC) != 0;
-	bool nextAsync;
+	uint32_t cur_flags = filter->info.output_flags;
+	size_t next_idx;
 	obs_source_t *next;
 
-	if (cur_idx == source->filters.num - 1)
+	if (!obs_source_filter_chain_walk_step(OBS_SOURCE_FILTER_CHAIN_ROUTE_UP, cur_idx, source->filters.num,
+					       &next_idx))
 		return DARRAY_INVALID;
 
-	next = source->filters.array[cur_idx + 1];
-	nextAsync = (next->info.output_flags & OBS_SOURCE_ASYNC);
+	next = source->filters.array[next_idx];
 
-	if (nextAsync == curAsync)
-		return cur_idx + 1;
+	if (obs_source_filter_chain_same_kind(cur_flags, next->info.output_flags))
+		return next_idx;
 	else
-		return find_next_filter(source, filter, cur_idx + 1);
+		return find_next_filter(source, filter, next_idx);
 }
 
 static size_t find_prev_filter(obs_source_t *source, obs_source_t *filter, size_t cur_idx)
 {
-	bool curAsync = (filter->info.output_flags & OBS_SOURCE_ASYNC) != 0;
-	bool prevAsync;
+	uint32_t cur_flags = filter->info.output_flags;
+	size_t prev_idx;
 	obs_source_t *prev;
 
-	if (cur_idx == 0)
+	if (!obs_source_filter_chain_walk_step(OBS_SOURCE_FILTER_CHAIN_ROUTE_DOWN, cur_idx, source->filters.num,
+					       &prev_idx))
 		return DARRAY_INVALID;
 
-	prev = source->filters.array[cur_idx - 1];
-	prevAsync = (prev->info.output_flags & OBS_SOURCE_ASYNC);
+	prev = source->filters.array[prev_idx];
 
-	if (prevAsync == curAsync)
-		return cur_idx - 1;
+	if (obs_source_filter_chain_same_kind(cur_flags, prev->info.output_flags))
+		return prev_idx;
 	else
-		return find_prev_filter(source, filter, cur_idx - 1);
+		return find_prev_filter(source, filter, prev_idx);
 }
 
 static void reorder_filter_targets(obs_source_t *source)
 {
 	/* reorder filter targets, not the nicest way of dealing with things */
 	for (size_t i = 0; i < source->filters.num; i++) {
-		obs_source_t *next_filter = (i == source->filters.num - 1) ? source : source->filters.array[i + 1];
+		obs_source_t *next_filter = obs_source_filter_chain_target_of(i, source->filters.num) ==
+							    OBS_SOURCE_FILTER_CHAIN_TARGET_SOURCE
+						    ? source
+						    : source->filters.array[i + 1];
 
 		source->filters.array[i]->filter_target = next_filter;
 	}
@@ -2828,32 +2837,31 @@ static void reorder_filter_targets(obs_source_t *source)
 static bool move_filter_dir(obs_source_t *source, obs_source_t *filter, enum obs_order_movement movement)
 {
 	size_t idx;
+	size_t to;
+	int route;
 
 	idx = da_find(source->filters, &filter, 0);
 	if (idx == DARRAY_INVALID)
 		return false;
 
-	if (movement == OBS_ORDER_MOVE_UP) {
+	route = obs_source_filter_chain_move_route((int)movement);
+
+	if (route == OBS_SOURCE_FILTER_CHAIN_ROUTE_UP) {
 		size_t next_id = find_next_filter(source, filter, idx);
 		if (next_id == DARRAY_INVALID)
 			return false;
 		da_move_item(source->filters, idx, next_id);
 
-	} else if (movement == OBS_ORDER_MOVE_DOWN) {
+	} else if (route == OBS_SOURCE_FILTER_CHAIN_ROUTE_DOWN) {
 		size_t prev_id = find_prev_filter(source, filter, idx);
 		if (prev_id == DARRAY_INVALID)
 			return false;
 		da_move_item(source->filters, idx, prev_id);
 
-	} else if (movement == OBS_ORDER_MOVE_TOP) {
-		if (idx == source->filters.num - 1)
+	} else if (route == OBS_SOURCE_FILTER_CHAIN_ROUTE_TOP || route == OBS_SOURCE_FILTER_CHAIN_ROUTE_BOTTOM) {
+		if (!obs_source_filter_chain_edge_move(route, idx, source->filters.num, &to))
 			return false;
-		da_move_item(source->filters, idx, source->filters.num - 1);
-
-	} else if (movement == OBS_ORDER_MOVE_BOTTOM) {
-		if (idx == 0)
-			return false;
-		da_move_item(source->filters, idx, 0);
+		da_move_item(source->filters, idx, to);
 	}
 
 	reorder_filter_targets(source);
@@ -5714,13 +5722,13 @@ void obs_source_restore_filters(obs_source_t *source, obs_data_array_t *array)
 		for (size_t j = 0; j < cur_filters.num; j++) {
 			obs_source_t *cur = cur_filters.array[j];
 			const char *cur_name = cur->context.name;
-			if (cur_name && strcmp(cur_name, name) == 0) {
+			if (obs_source_filter_chain_restore_matches(cur_name, name)) {
 				filter = obs_source_get_ref(cur);
 				break;
 			}
 		}
 
-		if (!filter)
+		if (obs_source_filter_chain_restore_step(filter != NULL) == OBS_SOURCE_FILTER_CHAIN_RESTORE_LOAD)
 			filter = obs_load_source(data);
 
 		/* add filter; parents are set once every target is (#2172) */
