@@ -275,35 +275,15 @@ else
 
   # Query the current Ninja build graph, not the filesystem: the /build volume
   # persists across runs, so a stale .o from an older checkout would linger.
-  # compiles <target> <source> <object>: <source> (a path below the source
-  # tree) is compiled into <target>, as its own <object> (the path Ninja
-  # names it by below <target>.dir) or, with ENABLE_UNITY_BUILD,
-  # inside one of the target's unity batches (<target>.dir/Unity/unity_N_c.c
-  # includes it). Queries the current Ninja graph and generated batches, not
-  # stale objects on the persistent /build volume.
-  # A unity group (BUILD.md) counts when <target> compiles a group whose file
-  # includes <source>.
-  compiles() {
-    local target=$1 src=$2 object=$3 unity group
-    ninja -C "$build" -t inputs "$target" 2>/dev/null | grep -qF "$target.dir/$object" && return 0
-    for group in $(ninja -C "$build" -t inputs "$target" 2>/dev/null |
-      sed -n "s|.*CMakeFiles/$target\.dir/\(build/.*+\.h\.[cm]\)\.o\$|\1|p"); do
-      grep -qF "\"$src\"" "$SRC/libobs/$group" 2>/dev/null && return 0
-    done
-    unity=$(find "$build" -type d -path "*/CMakeFiles/$target.dir/Unity" | head -1)
-    [ -n "$unity" ] && sed -n 's/^#include "\(.*\)"$/\1/p' "$unity"/*.c 2>/dev/null | grep -q "/$src\$"
-  }
-  for obj in $ported_objs; do
-    src="libobs/${obj%.o}"
-    if compiles libobs "$src" "$obj"; then
-      echo "FAIL: $obj was compiled into hybrid libobs"
-      exit 1
-    fi
-    if ! compiles libobs-c-reference "$src" "$obj"; then
-      echo "FAIL: $obj was not compiled into libobs-c-reference"
-      exit 1
-    fi
-  done
+  # One graph load per target (#3046): reading `ninja -t inputs` per
+  # (object, target) pair cost 59 s of the Tier 2 critical path. The proof
+  # checks the same things either way -- every ported object absent from
+  # hybrid libobs, present in libobs-c-reference, and each obs-nvenc target
+  # compiling its own cuda loader only (#645).
+  printf '%s\n' $ported_objs >"$BUILD/ported-objects.txt"
+  uv run --no-project "$SRC/rust/tools/linux-validate/ported_proof.py" \
+    --build "$build" --src "$SRC" --objects "$BUILD/ported-objects.txt" --nvenc ||
+    exit 1
   plugin=$(find "$build" -name 'decklink.so' | head -1)
   echo "== decklink.so imports:"
   nm -D --undefined-only "$plugin" | grep bitstream_reader

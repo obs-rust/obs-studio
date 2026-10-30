@@ -136,9 +136,13 @@ class ProofTest(unittest.TestCase):
         fake = FakeNinja(self.build, self.graph())
         proof = self.proof.Proof(self.build, self.src, ninja=str(fake.path))
         group = self.src / "libobs" / "build" / "libobs.rust-variadic+.h.c"
-        group.write_text('#include "/src/libobs/callback/calldata.c"\n')
-        self.assertTrue(proof.compiles("libobs", "libobs/callback/calldata.c", "calldata.c.h.o"))
-        self.assertFalse(proof.compiles("libobs", "libobs/callback/decl.c", "decl.c.h.o"))
+        group.write_text('#include "libobs/callback/calldata.c"\n')
+        self.assertTrue(
+            proof.compiles("libobs", "libobs/callback/calldata.c", "calldata.c.h.o")
+        )
+        self.assertFalse(
+            proof.compiles("libobs", "libobs/callback/decl.c", "decl.c.h.o")
+        )
 
     def test_unity_batch_include_counts_as_compiling_its_source(self) -> None:
         fake = FakeNinja(self.build, self.graph())
@@ -146,7 +150,9 @@ class ProofTest(unittest.TestCase):
         unity.mkdir(parents=True)
         (unity / "unity_0_c.c").write_text('#include "/src/libobs/callback/decl.c"\n')
         proof = self.proof.Proof(self.build, self.src, ninja=str(fake.path))
-        self.assertTrue(proof.compiles("libobs", "libobs/callback/decl.c", "decl.c.h.o"))
+        self.assertTrue(
+            proof.compiles("libobs", "libobs/callback/decl.c", "decl.c.h.o")
+        )
 
     def run_main(self, fake: FakeNinja, objects: Sequence[str]) -> int:
         listing = self.tmp / "objects.txt"
