@@ -54,9 +54,8 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 	uint32_t blocksize = monitor->channels * sizeof(float);
 
 	/* cut off audio if long-since leftover audio in delay buffer */
-	if (cur_time - monitor->last_recv_time > 1000000000)
+	if (audio_monitor_delay_stale(&monitor->last_recv_time, cur_time))
 		deque_free(&monitor->delay_buffer);
-	monitor->last_recv_time = cur_time;
 
 	ts += monitor->source->sync_offset;
 
@@ -70,15 +69,17 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 	while (monitor->delay_buffer.size != 0) {
 		size_t size;
 		bool bad_diff;
+		enum audio_monitor_delay_verdict verdict;
 
 		deque_peek_front(&monitor->delay_buffer, &cur_ts, sizeof(ts));
-		front_ts = cur_ts - util_mul_div64(pad, 1000000000ULL, monitor->sample_rate);
-		diff = (int64_t)front_ts - (int64_t)last_frame_ts;
-		bad_diff = !last_frame_ts || llabs(diff) > 5000000000 ||
-			   monitor->time_since_prev > AUDIO_MONITOR_VIDEO_STALL_NS;
+		diff = audio_monitor_delay_diff(cur_ts, util_mul_div64(pad, 1000000000ULL, monitor->sample_rate),
+						last_frame_ts, &front_ts);
+		bad_diff = audio_monitor_delay_unsynced(last_frame_ts, diff) ||
+			   audio_monitor_delay_stalled(monitor->time_since_prev);
+		verdict = audio_monitor_delay_judge_diff(bad_diff, diff);
 
 		/* delay audio if rushing */
-		if (!bad_diff && diff > 75000000) {
+		if (verdict == AUDIO_MONITOR_DELAY_HOLD) {
 #ifdef DEBUG_AUDIO
 			blog(LOG_INFO,
 			     "audio rushing, cutting audio, "
@@ -97,7 +98,7 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 		deque_pop_front(&monitor->delay_buffer, monitor->buf.array, size);
 
 		/* cut audio if dragging */
-		if (!bad_diff && diff < -75000000 && monitor->delay_buffer.size > 0) {
+		if (verdict == AUDIO_MONITOR_DELAY_DRAG && monitor->delay_buffer.size > 0) {
 #ifdef DEBUG_AUDIO
 			blog(LOG_INFO,
 			     "audio dragging, cutting audio, "
