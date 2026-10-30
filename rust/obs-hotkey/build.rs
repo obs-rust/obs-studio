@@ -12,13 +12,14 @@ fn main() {
     let mut out = String::from(
         "/// `obs-hotkeys.h` in enum order.\npub(crate) static KEY_NAMES: &[&std::ffi::CStr] = &[\n",
     );
-    // Every named key's code as a `pub const`: the Wayland key state
+    // Every key's code as a `pub const`: the Wayland key state
     // (obs-nix-hotkey-state.c), the portal shortcut ids
     // (obs-nix-portal-shortcut-ids.c), the binding codec
     // (obs-hotkey-bindings.c), the key-name translations
     // (obs-hotkey-translations.c), the X11 keysym table
-    // (obs-nix-x11-input.c) and the Wayland keysym tables
-    // (obs-nix-wayland-keys.c) need them by name.
+    // (obs-nix-x11-input.c), the Wayland keysym tables
+    // (obs-nix-wayland-keys.c) and the Windows key map (obs-windows-keys.c)
+    // need them by name.
     let mut consts = String::new();
     let mut count = 0usize;
     for line in text.lines() {
@@ -31,11 +32,12 @@ fn main() {
         if let Some(rest) = rest {
             let name = rest.strip_suffix(')').expect("OBS_HOTKEY(x) on one line");
             writeln!(out, "    c\"{name}\",").unwrap();
-            // The raw codes (OBS_KEY_0x07 ...) are not upper-case names and
-            // nothing needs them by name.
-            if !name.bytes().any(|b| b.is_ascii_lowercase()) {
-                writeln!(consts, "/// `{name}`.\npub const {name}: i32 = {count};").unwrap();
+            // The raw codes (OBS_KEY_0x07 ...) have a lowercase x; the
+            // Windows key map names them.
+            if name.bytes().any(|b| b.is_ascii_lowercase()) {
+                consts.push_str("#[allow(non_upper_case_globals)]\n");
             }
+            writeln!(consts, "/// `{name}`.\npub const {name}: i32 = {count};").unwrap();
             count += 1;
         }
     }
