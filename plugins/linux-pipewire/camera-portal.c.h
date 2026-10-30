@@ -1123,6 +1123,26 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	return true;
 }
 
+/* A camera node is not required to carry node.description: on some systems the
+ * description lives on the parent device, and the node only has node.name. The
+ * list must still offer the device with a readable label rather than a blank
+ * entry (obs-rust/obs-studio#3041). */
+static const char *camera_device_label(struct camera_device *device, const char *device_id)
+{
+	const char *label;
+
+	label = pw_properties_get(device->properties, PW_KEY_NODE_DESCRIPTION);
+	if (label && *label)
+		return label;
+	label = pw_properties_get(device->properties, PW_KEY_NODE_NICK);
+	if (label && *label)
+		return label;
+	label = pw_properties_get(device->properties, PW_KEY_DEVICE_DESCRIPTION);
+	if (label && *label)
+		return label;
+	return device_id;
+}
+
 static void populate_cameras_list(struct camera_portal_source *camera_source, obs_property_t *device_list)
 {
 	struct camera_device *device;
@@ -1140,7 +1160,7 @@ static void populate_cameras_list(struct camera_portal_source *camera_source, ob
 	while (g_hash_table_iter_next(&iter, (gpointer *)(uintptr_t)&device_id, (gpointer *)&device)) {
 		const char *device_name;
 
-		device_name = pw_properties_get(device->properties, PW_KEY_NODE_DESCRIPTION);
+		device_name = camera_device_label(device, device_id);
 
 		obs_property_list_add_string(device_list, device_name, device_id);
 
@@ -1274,7 +1294,6 @@ static void on_registry_global_cb(void *user_data, uint32_t id, uint32_t permiss
 	struct camera_device *device;
 	struct pw_registry *registry;
 	const char *device_id;
-	const char *device_name;
 	const char *media_class;
 
 	if (strcmp(type, PW_TYPE_INTERFACE_Node) != 0)
@@ -1282,10 +1301,8 @@ static void on_registry_global_cb(void *user_data, uint32_t id, uint32_t permiss
 
 	registry = obs_pipewire_get_registry(camera_connection->obs_pw);
 	device_id = spa_dict_lookup(props, SPA_KEY_NODE_NAME);
-	device_name = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
 	media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
-	if (!device_id || !*device_id || !device_name || !*device_name || !media_class ||
-	    strcmp(media_class, "Video/Source") != 0)
+	if (!device_id || !*device_id || !media_class || strcmp(media_class, "Video/Source") != 0)
 		return;
 
 	blog(LOG_INFO, "[camera-portal] Found device %s", device_id);
