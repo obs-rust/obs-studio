@@ -208,6 +208,8 @@ class OutputsTest(unittest.TestCase):
             repo = Repository(Path(raw))
             output_file = Path(raw) / 'github_output'
             environment = {
+                # Keep PATH: clear=True would hide the git executable.
+                'PATH': os.environ.get('PATH', ''),
                 'GITHUB_OUTPUT': str(output_file),
                 'GIT_REF': 'HEAD',
                 'GIT_BASE_REF': 'HEAD~1',
