@@ -328,7 +328,8 @@ static void vmic_start(struct virtualcam_data *vcam)
 	/* One directory that the host's sound server and a Flatpak sandbox both
 	 * see (the manifest shares xdg-run/obs-virtual-microphone, #3179). */
 	char dir[256];
-	snprintf(dir, sizeof(dir), "%s/" VMIC_DIR_NAME, runtime);
+	if (snprintf(dir, sizeof(dir), "%s/" VMIC_DIR_NAME, runtime) >= (int)sizeof(dir))
+		return;
 	if (mkdir(dir, 0700) != 0 && errno != EEXIST) {
 		blog(LOG_WARNING, "Virtual microphone: cannot create '%s' (%s); the Virtual Camera sends video only",
 		     dir, strerror(errno));
@@ -339,7 +340,9 @@ static void vmic_start(struct virtualcam_data *vcam)
 	 * another OBS can share, so the lock decides who owns it. */
 	long n = (long)getpid();
 	for (int tries = 0; tries < 64; tries++, n++) {
-		snprintf(vcam->mic_lock_path, sizeof(vcam->mic_lock_path), "%s/" VMIC_FIFO_NAME "%ld.lock", dir, n);
+		if (snprintf(vcam->mic_lock_path, sizeof(vcam->mic_lock_path), "%s/" VMIC_FIFO_NAME "%ld.lock", dir,
+			     n) >= (int)sizeof(vcam->mic_lock_path))
+			break;
 		int fd = open(vcam->mic_lock_path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
 		if (fd < 0)
 			break;
@@ -356,7 +359,12 @@ static void vmic_start(struct virtualcam_data *vcam)
 	}
 	vmic_unload_stale(dir);
 
-	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_NAME "%ld", dir, n);
+	if (snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_NAME "%ld", dir, n) >=
+	    (int)sizeof(vcam->mic_path)) {
+		vcam->mic_path[0] = 0;
+		vmic_stop(vcam);
+		return;
+	}
 	unlink(vcam->mic_path);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());

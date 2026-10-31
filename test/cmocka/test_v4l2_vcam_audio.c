@@ -206,7 +206,7 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 	char lock[256];
 
 	/* Number 1 names a live process here (init), but its lock is free. */
-	snprintf(lock, sizeof(lock), "%s/" VMIC_FIFO_NAME "1.lock", dir);
+	snprintf(lock, sizeof(lock), "%s/obs-virtual-microphone-1.lock", dir);
 	int fd = open(lock, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
 	assert_true(fd >= 0);
 	close(fd);
@@ -215,7 +215,7 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 
 	/* A number no process here has, but another OBS holds the lock. */
 	long gone = 999999999;
-	snprintf(lock, sizeof(lock), "%s/" VMIC_FIFO_NAME "%ld.lock", dir, gone);
+	snprintf(lock, sizeof(lock), "%s/obs-virtual-microphone-%ld.lock", dir, gone);
 	fd = open(lock, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
 	assert_true(fd >= 0);
 	assert_int_equal(flock(fd, LOCK_EX | LOCK_NB), 0);
