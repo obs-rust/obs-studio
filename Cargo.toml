@@ -65,6 +65,22 @@ opt-level = 3
 [profile.dev.package.obs-graphics]
 opt-level = 3
 
+# Every parity proptest spends 60-70 % of its time in proptest's ChaCha RNG
+# (#3172). Dependencies are built at opt-level 0 in the dev profile, so the
+# RNG's refill loop and its SSE2 kernels keep the whole suite slow; the test
+# cases and input distribution do not change with this optimization.
+[profile.dev.package.proptest]
+opt-level = 3
+
+[profile.dev.package.rand_core]
+opt-level = 3
+
+[profile.dev.package.rand_chacha]
+opt-level = 3
+
+[profile.dev.package.ppv-lite86]
+opt-level = 3
+
 # Repo Dylints (dylints/*; obs-rust/obs-studio#323). Run by the lint lane:
 # `soldr cargo dylint --all -- --workspace --lib --bins`.
 [workspace.metadata.dylint]
