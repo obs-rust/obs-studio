@@ -30,13 +30,7 @@ function(obs_rust_hidden_lists fragment_dir base out_dir hevc)
   if(NOT hevc)
     # The archive contains the HEVC shims either way; the C baseline does not
     # export them when ENABLE_HEVC is off.
-    list(
-      APPEND _lines
-      obs_hevc_keyframe
-      obs_parse_hevc_packet
-      obs_parse_hevc_packet_priority
-      obs_extract_hevc_headers
-    )
+    list(APPEND _lines obs_hevc_keyframe obs_parse_hevc_packet obs_parse_hevc_packet_priority obs_extract_hevc_headers)
   endif()
   foreach(_line IN LISTS _lines)
     string(STRIP "${_line}" _line)
