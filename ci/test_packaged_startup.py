@@ -338,7 +338,7 @@ class ProbeDependencyInstallTest(unittest.TestCase):
             for line in self.probe_lines(self.job(name)):
                 with self.subTest(job=name, line=line.strip()):
                     self.assertIn(
-                        "uv run --locked",
+                        "uv run --no-project --locked",
                         line,
                         "a probe launch is not locked, so uv resolves "
                         "dependencies from pypi.org on the runner",

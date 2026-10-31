@@ -1,5 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
+# requires-python = ">=3.13"
 # dependencies = ["websockets==15.0.1"]
 # ///
 """Launch a packaged frontend with a saved screen/camera/microphone profile.

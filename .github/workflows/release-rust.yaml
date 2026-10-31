@@ -441,8 +441,14 @@ jobs:
           Expand-Archive -LiteralPath $Zip.FullName -DestinationPath $PackageRoot
           $App = Join-Path $PackageRoot 'bin/64bit/obs64.exe'
           $Config = Join-Path $env:APPDATA 'obs-studio-rust'
+          # #3221: install the probe's dependencies once, from its uv lockfile,
+          # so a slow pypi.org is not in the path of every launch.
+          $env:UV_HTTP_RETRIES = '5'
+          $env:UV_HTTP_TIMEOUT = '120'
+          uv sync --script test/packaged-startup.py --locked
+          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
           foreach ( $Mode in @('fresh', 'migrate-default', 'migrate-custom', 'existing') ) {
-            uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET --config-mode $Mode
+            uv run --no-project --locked test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET --config-mode $Mode
             if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
           }
 
@@ -451,7 +457,7 @@ jobs:
           $CameraDll = Get-ChildItem (Join-Path $PackageRoot 'core') -Recurse -Filter 'win-dshow.dll'
           if ( @($CameraDll).Count -ne 1 ) { throw 'Expected one packaged DirectShow camera module' }
           Move-Item -LiteralPath $CameraDll.FullName -Destination "$($CameraDll.FullName).removed-for-test"
-          $Failure = uv run --no-project test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET 2>&1
+          $Failure = uv run --no-project --locked test/packaged-startup.py --app $App --config-dir $Config --platform windows --expect-arch $env:TARGET 2>&1
           $FailedExit = $LASTEXITCODE
           $Failure | Write-Output
           if ( $FailedExit -eq 0 -or "$Failure" -notmatch 'capture plugins are missing.*dshow_input' ) {
@@ -491,6 +497,10 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           VERSION: ${{ needs.check.outputs.version }}
+          # #3221: one retrying install from the probe's lockfile, below; the
+          # per-mode launches are then locked and need no network.
+          UV_HTTP_RETRIES: 5
+          UV_HTTP_TIMEOUT: 120
         run: |
           set -euo pipefail
           [ "$(uname -m)" = "$TARGET" ] || { echo '::error::runtime runner is not the package architecture'; exit 1; }
@@ -512,8 +522,11 @@ jobs:
           Build="${Stamp:0:4}.$((10#${Stamp:4:2})).$((10#${Stamp:6:2}))"
           [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$Plist")" = "$Build" ]
           [ "$(/usr/libexec/PlistBuddy -c 'Print :OBSStudioRustVersion' "$Plist")" = "$VERSION" ]
+          # #3221: the probe's dependency is installed once, from its uv
+          # lockfile; a launch then never resolves it from pypi.org.
+          uv sync --script test/packaged-startup.py --locked
           for mode in fresh migrate-default migrate-custom existing; do
-            uv run --no-project test/packaged-startup.py --app "$App" \
+            uv run --no-project --locked test/packaged-startup.py --app "$App" \
               --config-dir "$HOME/Library/Application Support/obs-studio-rust" --platform macos --config-mode "$mode"
           done
       # A crash only says "failed during shutdown: -11"; macOS writes the
