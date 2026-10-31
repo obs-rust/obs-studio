@@ -1058,4 +1058,11 @@
     ms_window_match_is_untitled_explorer;
     ms_window_match_is_uwp_class;
     ms_window_match_rating;
+    /* video-scaler-plan.c. video-scaler-ffmpeg.c calls them inside libobs.
+     * Not EXPORT. */
+    video_scaler_plane_copy;
+    video_scaler_plane_heights;
+    video_scaler_sws_colorspace;
+    video_scaler_sws_flags;
+    video_scaler_sws_range;
 };

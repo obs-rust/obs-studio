@@ -43,6 +43,7 @@
 
 /* media-io/video-scaler-ffmpeg.c */
 #include "media-io/video-scaler.h"
+#include "media-io/video-scaler-plan.h"
 
 #include <libavutil/opt.h>
 

@@ -2,7 +2,9 @@
 //!
 //! Among them, [`audio_resampler_drift`] is the libswresample resampler's
 //! clock drift loop and output frame padding
-//! (`libobs/media-io/audio-resampler-drift.c.h`).
+//! (`libobs/media-io/audio-resampler-drift.c.h`), and [`video_scaler_plan`]
+//! is the swscale scaler's flags, coefficient set, range, plane heights and
+//! plane copy (`libobs/media-io/video-scaler-plan.c.h`).
 //!
 //! Safe cores live at the crate root; the C ABI shims that replace the
 //! original `EXPORT` symbols live in [`ffi`]. See
@@ -28,6 +30,7 @@ pub mod video_frame;
 pub mod video_io;
 pub mod video_matrices;
 mod video_output;
+pub mod video_scaler_plan;
 
 #[cfg(test)]
 extern crate self as obs_media_io;

@@ -223,6 +223,7 @@ pub mod video_matrices;
 pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;
+pub mod video_scaler_plan;
 pub mod view;
 pub mod win_crash_report;
 pub mod window_match;

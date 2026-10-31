@@ -13,3 +13,4 @@ pub mod video_fourcc;
 pub mod video_frame;
 pub mod video_io;
 pub mod video_matrices;
+pub mod video_scaler_plan;
