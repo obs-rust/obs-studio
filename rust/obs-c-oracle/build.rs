@@ -113,6 +113,22 @@ fn extract_after_pch(src: &Path, pch_line: &str) -> String {
         src.display().to_string().replace('\\', "/")
     )
 }
+/// The C optimization level the shipped libobs uses: RelWithDebInfo compiles
+/// with `-O2 -g` for GCC/Clang and `/O2` for MSVC (cmake/common/compiler_common.cmake,
+/// `build-project.yaml`). `cargo bench` instead builds this crate at opt-level 3,
+/// and a C oracle at `-O3` vectorizes audio loops the shipped C leaves scalar,
+/// so the bench reported the Rust as 3-4x faster than C where users see parity
+/// (#3127). Clamp only the oracle's C; the Rust side stays at the profile's
+/// level because its shipped profile is `release` (opt-level 3).
+const SHIPPED_C_OPT_LEVEL: u32 = 2;
+
+/// [`SHIPPED_C_OPT_LEVEL`] when the Cargo profile is optimized; a debug or
+/// test profile keeps cc's default `-O0`.
+fn shipped_c_opt_level() -> Option<u32> {
+    let level = std::env::var("OPT_LEVEL").ok()?.parse::<u32>().ok()?;
+    (level >= SHIPPED_C_OPT_LEVEL).then_some(SHIPPED_C_OPT_LEVEL)
+}
+
 /// The strict GCC/Clang warnings enabled so far (obs-rust/obs-studio#516).
 /// Add a flag once every target builds clean under it.
 const STRICT_FLAGS: &[&str] = &[
@@ -358,6 +374,10 @@ fn main() {
         None
     };
     let mut oracle = cc::Build::new();
+    let c_opt_level = shipped_c_opt_level();
+    if c_opt_level.is_some() {
+        oracle.opt_level(SHIPPED_C_OPT_LEVEL);
+    }
     // Rust never fuses `a * b + c` into an FMA, but GCC/Clang may (clang's
     // default -ffp-contract=on does so on aarch64), which would make float
     // oracles such as vec2_norm (`x*x + y*y`) differ in the last bit from the
@@ -682,6 +702,11 @@ fn main() {
     let jansson_src = manifest.join("vendor/jansson/src");
     oracle.include(&jansson_src);
     owned_flags.push("-Ivendor/jansson/src".into());
+    if let Some(level) = c_opt_level {
+        // The compile flags carry the level too, so an archive built at a
+        // different level cannot be served from the input hash's cache.
+        owned_flags.push(format!("-O{level}"));
+    }
     let mut hash_flags: Vec<&str> = flags.clone();
     hash_flags.extend(owned_flags.iter().map(String::as_str));
     println!(

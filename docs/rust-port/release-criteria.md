@@ -69,9 +69,21 @@ uv run rust/tools/benchmarks/record.py --cpu 7 --output baseline.json
 `--cpu` pins the runner on Linux; omit it on systems without that affinity
 API. The report records the CPU, affinity, OS, Rust/LLVM and C compiler
 versions, relevant environment flags, command, and a SHA-256 fingerprint of
-the benchmark and implementation sources. The recorder refuses incomplete
-paired measurements and source changes during measurement. Criterion's raw
-samples remain under `target/criterion/<benchmark>/<baseline>/`.
+the benchmark and implementation sources. It also records `c_flags`, the
+optimization and floating-point flags the oracle's C was compiled with.
+The recorder refuses incomplete paired measurements and source changes during
+measurement. Criterion's raw samples remain under
+`target/criterion/<benchmark>/<baseline>/`.
+
+The bench profile is opt-level 3 for the Rust, as the shipped `release` static
+library is, but the oracle's C is clamped to the level the shipped libobs C
+gets (`-O2 -g` for GCC/Clang, `/O2` for MSVC; `rust/obs-c-oracle/build.rs`).
+A `-O3` oracle vectorized audio loops that the shipped C leaves scalar, so a
+baseline taken without the clamp made the Rust look 3–4× faster than the C
+users run (#3127). `-ffp-contract=off` stays: Tier 3 compares bits with the
+Rust, which never fuses, and a fused oracle would differ on arm64. The shipped
+macOS arm64 C does fuse `a * b + c`, so a small shipped-C advantage there is
+expected and is not a regression.
 
 A full run needs every category in `record.py`'s `CATEGORIES`; the bench
 units of the ports add their own groups, which are recorded too. For the

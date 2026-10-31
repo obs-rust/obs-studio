@@ -29,6 +29,55 @@ CATEGORIES = {
     "format", "volmeter", "audio_mix",
 }
 COMMAND = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_comparison", "--"]
+# The C flags the oracle is compiled with (#3127). build.rs clamps an optimized
+# profile's C to the shipped libobs level (-O2 -g, RelWithDebInfo) instead of the
+# bench profile's opt-level 3, because a -O3 oracle vectorizes audio loops the
+# shipped C leaves scalar. -ffp-contract=off keeps the C strict IEEE so Tier 3
+# bit comparison against the Rust stays meaningful; the shipped C fuses on macOS
+# arm64, so a small shipped-C advantage there is expected. MSVC gets the same
+# level as /O2. Recorded so a baseline names the C it measured, not the profile.
+C_FLAGS = "-O2 -ffp-contract=off -fno-strict-aliasing"
+
+
+def report_metadata(
+    *,
+    timestamp: str,
+    fingerprint: str,
+    cpu: str,
+    required: set[str] | None,
+    command: list[str],
+    options: list[str],
+    baselines: list[str],
+    base_commit: str = "",
+    rustc: str = "",
+    cc: str = "",
+    environment: dict | None = None,
+    affinity: list[int] | None = None,
+) -> dict:
+    """The report fields that describe how and where a run measured."""
+    return {
+        "schema": 1,
+        "timestamp_utc": timestamp,
+        "source_sha256": fingerprint,
+        "base_commit": base_commit,
+        "cpu": cpu,
+        "affinity": affinity,
+        "os": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+        },
+        "rustc": rustc,
+        "cc": cc,
+        "environment": environment if environment is not None else {},
+        "c_flags": C_FLAGS,
+        "criterion": "0.8.2",
+        "profile": "bench (release, opt-level 3)",
+        "command": command + options,
+        "categories": sorted(required or CATEGORIES),
+        "baselines": baselines,
+        "threshold_rust_over_c": 1.10,
+    }
 
 
 def source_hash() -> str:
@@ -174,19 +223,21 @@ def main() -> None:
         baselines.append(baseline)
         if source_hash() != fingerprint:
             raise ValueError("source changed during measurement; discard this run")
-    cpu = cpu_name()
-    report = {
-        "schema": 1, "timestamp_utc": timestamp, "source_sha256": fingerprint,
-        "base_commit": version(["git", "rev-parse", "HEAD"]),
-        "cpu": cpu, "affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
-        "os": {"system": platform.system(), "release": platform.release(), "machine": platform.machine()},
-        "rustc": version(["soldr", "rustc", "-vV"]),
-        "cc": version([os.environ.get("CC", "cl" if os.name == "nt" else "cc"), "--version"]),
-        "environment": {key: os.environ.get(key) for key in ["CC", "CFLAGS", "RUSTFLAGS"]},
-        "criterion": "0.8.2", "profile": "bench (release, opt-level 3)",
-        "command": command + options, "categories": sorted(required or CATEGORIES), "baselines": baselines,
-        "threshold_rust_over_c": 1.10, "results": summarize(runs),
-    }
+    report = report_metadata(
+        timestamp=timestamp,
+        fingerprint=fingerprint,
+        cpu=cpu_name(),
+        required=required,
+        command=command,
+        options=options,
+        baselines=baselines,
+        base_commit=version(["git", "rev-parse", "HEAD"]),
+        rustc=version(["soldr", "rustc", "-vV"]),
+        cc=version([os.environ.get("CC", "cl" if os.name == "nt" else "cc"), "--version"]),
+        environment={key: os.environ.get(key) for key in ["CC", "CFLAGS", "RUSTFLAGS"]},
+        affinity=sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
+    )
+    report["results"] = summarize(runs)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"Recorded {len(report['results'])} complete comparisons: {args.output}", flush=True)
