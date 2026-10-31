@@ -571,6 +571,22 @@ def describe_exit(returncode: int) -> str:
     return f"exit code {returncode}"
 
 
+def startup_failure(
+    error: BaseException, platform: str, since: float, config_mode: str
+) -> RuntimeError:
+    """The startup error, naming the mode, after the macOS crash evidence.
+
+    The probe runs four modes per job and the trap moves between them (#3168),
+    so a bare `-5` does not say which launch died. The crash report is printed
+    into the step output before the traceback, as `close_frontend` does for a
+    shutdown failure; a signal exit during startup writes one no other path
+    reads.
+    """
+    if platform == "macos":
+        report_crash_reports(diagnostic_report_directories(), since)
+    return RuntimeError(f"config mode {config_mode}: {error}")
+
+
 def _load(name: str, path: Path):
     """Import `path` as module `name` without editing sys.path."""
     import importlib.util
@@ -810,7 +826,12 @@ def main() -> None:  # noqa: C901
             ],
             cwd=app.parent,
         )
-        asyncio.run(inspect_running_app(proc, port, password, args.platform))
+        try:
+            asyncio.run(inspect_running_app(proc, port, password, args.platform))
+        except Exception as error:
+            raise startup_failure(
+                error, args.platform, launched, args.config_mode
+            ) from error
         close_frontend(proc, args.platform, launched)
         fixture.verify()
         logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
