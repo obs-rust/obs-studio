@@ -3,43 +3,6 @@
 /* The image loader's Windows host (obs-rust/obs-studio#872): JPEG XR files
  * FFmpeg cannot decode go through WIC, with PQ HDR converted to scRGB. */
 
-static float pq_to_linear(float u)
-{
-	const float common = powf(u, 1.f / 78.84375f);
-	return powf(fabsf(max(common - 0.8359375f, 0.f) / (18.8515625f - 18.6875f * common)), 1.f / 0.1593017578f);
-}
-
-static void convert_pq_to_cccs(const BYTE *intermediate, const UINT intermediate_size, BYTE *bytes)
-{
-	const BYTE *src_cursor = intermediate;
-	const BYTE *src_cursor_end = src_cursor + intermediate_size;
-	BYTE *dst_cursor = bytes;
-	uint32_t rgb10;
-	struct half rgba16[4];
-	rgba16[3].u = 0x3c00;
-	while (src_cursor < src_cursor_end) {
-		memcpy(&rgb10, src_cursor, sizeof(rgb10));
-		const float blue = (float)(rgb10 & 0x3ff) / 1023.f;
-		const float green = (float)((rgb10 >> 10) & 0x3ff) / 1023.f;
-		const float red = (float)((rgb10 >> 20) & 0x3ff) / 1023.f;
-		const float red2020 = pq_to_linear(red);
-		const float green2020 = pq_to_linear(green);
-		const float blue2020 = pq_to_linear(blue);
-		const float red709 = 1.6604910021084345f * red2020 - 0.58764113878854951f * green2020 -
-				     0.072849863319884883f * blue2020;
-		const float green709 = -0.12455047452159074f * red2020 + 1.1328998971259603f * green2020 -
-				       0.0083494226043694768f * blue2020;
-		const float blue709 = -0.018150763354905303f * red2020 - 0.10057889800800739f * green2020 +
-				      1.1187296613629127f * blue2020;
-		rgba16[0] = half_from_float(red709 * 125.f);
-		rgba16[1] = half_from_float(green709 * 125.f);
-		rgba16[2] = half_from_float(blue709 * 125.f);
-		memcpy(dst_cursor, &rgba16, sizeof(rgba16));
-		src_cursor += 4;
-		dst_cursor += 8;
-	}
-}
-
 static void *wic_image_init_internal(const char *file, IWICBitmapFrameDecode *pFrame, enum gs_color_format *format,
 				     uint32_t *cx_out, uint32_t *cy_out, enum gs_color_space *space)
 {
@@ -70,8 +33,8 @@ static void *wic_image_init_internal(const char *file, IWICBitmapFrameDecode *pF
 											intermediate);
 							success = SUCCEEDED(hr);
 							if (success) {
-								convert_pq_to_cccs(intermediate, intermediate_size,
-										   bytes);
+								gs_image_pq10_to_scrgb(bytes, size, intermediate,
+										       intermediate_size);
 							} else {
 								blog(LOG_WARNING,
 								     "WIC: Failed to CopyPixels intermediate for file: %s",
