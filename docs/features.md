@@ -786,6 +786,11 @@ area.
   OBS that crashed is removed at the next start. *Linux*, 2026-10-29.
   Issues [#3011](https://github.com/obs-rust/obs-studio/issues/3011),
   [#3014](https://github.com/obs-rust/obs-studio/issues/3014).
+- The OBS Virtual Microphone no longer turns into noise or swaps channels
+  after the sound server falls behind: a packet the pipe takes only part of
+  is finished before the next one. *Linux*, 2026-10-31.
+  Issues [#3180](https://github.com/obs-rust/obs-studio/issues/3180),
+  [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
 - The Linux virtual camera sends a correct picture to a v4l2loopback device
   with a fixed format of a different size. *Linux*, 2026-10-11. Issue
   [#212](https://github.com/obs-rust/obs-studio/issues/212), PR

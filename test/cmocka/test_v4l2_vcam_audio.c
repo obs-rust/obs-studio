@@ -21,6 +21,7 @@
 
 static int fds[2];
 static size_t pipe_size;
+static struct vmic_tail tail;
 
 static int setup_pipe(void **state)
 {
@@ -37,6 +38,7 @@ static int teardown_pipe(void **state)
 	(void)state;
 	close(fds[0]);
 	close(fds[1]);
+	vmic_tail_free(&tail);
 	return 0;
 }
 
@@ -47,7 +49,7 @@ static void packet_that_fits_is_written_whole(void **state)
 	for (size_t i = 0; i < sizeof(packet); i++)
 		packet[i] = (uint8_t)i;
 
-	assert_true(vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet)));
+	assert_true(vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet)));
 
 	uint8_t got[2048];
 	ssize_t n = read(fds[0], got, sizeof(got));
@@ -64,7 +66,7 @@ static void packet_that_does_not_fit_is_dropped_whole(void **state)
 	size_t written = 0;
 	size_t accepted = 0;
 	for (int i = 0; i < 16; i++) {
-		if (vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet))) {
+		if (vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet))) {
 			accepted++;
 			written += sizeof(packet);
 		}
@@ -84,14 +86,14 @@ static void packet_that_does_not_fit_is_dropped_whole(void **state)
 	uint8_t drain[8192];
 	while (read(fds[0], drain, sizeof(drain)) > 0)
 		;
-	assert_true(vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet)));
+	assert_true(vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet)));
 }
 
 static void closed_fifo_is_not_written(void **state)
 {
 	(void)state;
 	uint8_t packet[16] = {0};
-	assert_false(vmic_write_packet(-1, pipe_size, packet, sizeof(packet)));
+	assert_false(vmic_write_packet(-1, pipe_size, &tail, packet, sizeof(packet)));
 }
 
 static void module_index_is_parsed_from_pactl_reply(void **state)
@@ -145,11 +147,58 @@ static void other_module_lines_are_ignored(void **state)
 	assert_false(vmic_parse_module_line(NULL, &id, &pid));
 }
 
+/* #3180: pipe capacity counts in page-sized slots, so a packet that fits by
+ * FIONREAD can still be written short when a partly read page holds the
+ * queued bytes. The reader must never see half a packet followed by the next
+ * one: that shifts every later sample (swapped channels, or noise). */
+static void short_write_never_leaves_half_a_packet(void **state)
+{
+	(void)state;
+	int p[2];
+	assert_int_equal(pipe2(p, O_NONBLOCK | O_CLOEXEC), 0);
+	int sz = fcntl(p[1], F_GETPIPE_SZ);
+	assert_true(sz >= 8192);
+	size_t size = (size_t)sz;
+
+	/* One page slot with one byte left in it. */
+	static uint8_t filler[4000];
+	assert_int_equal(write(p[1], filler, sizeof(filler)), (ssize_t)sizeof(filler));
+	assert_int_equal(read(p[0], filler, sizeof(filler) - 1), (ssize_t)sizeof(filler) - 1);
+
+	/* Fits by FIONREAD (1 + packet <= size) but needs every slot. */
+	size_t packet_size = size - 192;
+	uint8_t *packet = malloc(packet_size);
+	for (size_t i = 0; i < packet_size; i++)
+		packet[i] = (uint8_t)(i * 7);
+
+	uint8_t *drain = malloc(size * 4);
+	size_t total = 0;
+	for (int round = 0; round < 4; round++) {
+		vmic_write_packet(p[1], size, &tail, packet, packet_size);
+		ssize_t n;
+		while ((n = read(p[0], drain + total, size * 4 - total)) > 0)
+			total += (size_t)n;
+	}
+	/* Drop the filler byte, then the stream is whole packets only. */
+	assert_true(total >= 1);
+	total -= 1;
+	assert_int_equal(total % packet_size, 0);
+	for (size_t off = 0; off < total; off += packet_size)
+		assert_memory_equal(drain + 1 + off, packet, packet_size);
+
+	free(drain);
+	free(packet);
+	vmic_tail_free(&tail);
+	close(p[0]);
+	close(p[1]);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(packet_that_fits_is_written_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test_setup_teardown(packet_that_does_not_fit_is_dropped_whole, setup_pipe, teardown_pipe),
+		cmocka_unit_test(short_write_never_leaves_half_a_packet),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),
