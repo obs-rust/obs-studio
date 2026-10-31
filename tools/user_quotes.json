@@ -1,5 +1,5 @@
 {
-  "scanned_through": "2026-10-31T18:55:24Z",
+  "scanned_through": "2026-10-31T19:00:10Z",
   "quotes": [
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/190#issuecomment-6106305033", "date": "2026-10-11", "status": "rejected", "issue": 190, "reason": "negative"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/190#issuecomment-6109047829", "date": "2026-10-11", "status": "rejected", "issue": 190, "reason": "negative"},
@@ -66,6 +66,7 @@
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/1720#issuecomment-6354004517", "date": "2026-10-22", "status": "rejected", "issue": 1720, "reason": "bug report, test report, request or question"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/1744#issuecomment-6336852352", "date": "2026-10-22", "status": "rejected", "issue": 1744, "reason": "bug report, test report, request or question"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/1744#issuecomment-6337480837", "date": "2026-10-22", "status": "rejected", "issue": 1744, "reason": "only makes sense inside its thread"},
+    {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/pull/1725#discussion_r4347437265", "date": "2026-10-22", "status": "rejected", "issue": 1725, "reason": "negative"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/pull/1725#issuecomment-6339000084", "date": "2026-10-22", "status": "rejected", "issue": 1725, "reason": "bug report, test report, request or question"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/1720#issuecomment-6354041682", "date": "2026-10-23", "status": "rejected", "issue": 1720, "reason": "bug report, test report, request or question"},
     {"text": "", "login": "", "url": "https://github.com/obs-rust/obs-studio/issues/1720#issuecomment-6354086518", "date": "2026-10-23", "status": "rejected", "issue": 1720, "reason": "bug report, test report, request or question"},
