@@ -340,6 +340,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_audio_resampler_drift_steps": {
+      "sources": [
+        "test/cmocka/test_audio_resampler_drift_steps.c",
+        "libobs/media-io/audio-resampler-drift.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/media-io/audio-resampler-drift.h"
+      ],
+      "compile_options": [
+        {
+          "name": "-ffp-contract=off",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "libraries": [
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_restart_resampler_tail": {
       "sources": [
         "test/cmocka/test_audio_restart_resampler_tail.c"
@@ -5780,6 +5810,12 @@
     },
     "test_audio_monitor_delay_steps": {
       "target": "test_audio_monitor_delay_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_audio_resampler_drift_steps": {
+      "target": "test_audio_resampler_drift_steps",
       "command": [
         "${target}"
       ]
