@@ -155,6 +155,37 @@ class WindowsCpuNameTest(unittest.TestCase):
         self.assertEqual(opened, [("HKLM", r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")])
 
 
+class CFlagsTest(unittest.TestCase):
+    """#3127: the bench C is built at the level the shipped libobs C gets."""
+
+    def test_the_oracle_c_is_clamped_to_the_shipped_level(self):
+        build_rs = (ROOT / "rust/obs-c-oracle/build.rs").read_text()
+        self.assertIn("const SHIPPED_C_OPT_LEVEL: u32 = 2;", build_rs)
+        self.assertIn("oracle.opt_level(SHIPPED_C_OPT_LEVEL)", build_rs)
+        # The bench profile is opt-level 3; the shipped C is -O2. A -O3 oracle
+        # vectorizes audio loops the shipped C leaves scalar (#3127).
+        helper = build_rs.split("fn shipped_c_opt_level", 1)[1].split("\n}", 1)[0]
+        self.assertNotIn("-O3", helper)
+
+    def test_the_recorded_flags_name_the_shipped_level(self):
+        self.assertTrue(record.C_FLAGS.startswith("-O2"))
+        self.assertIn("-ffp-contract=off", record.C_FLAGS)
+        self.assertNotIn("-O3", record.C_FLAGS)
+
+    def test_the_report_carries_the_c_flags(self):
+        report = record.report_metadata(
+            timestamp="20260101T000000Z",
+            fingerprint="0" * 64,
+            cpu="test cpu",
+            required={"format"},
+            command=["true"],
+            options=[],
+            baselines=["ports-1"],
+        )
+        self.assertEqual(report["c_flags"], record.C_FLAGS)
+        self.assertNotIn("-O3", report["c_flags"])
+
+
 class CommandTest(unittest.TestCase):
     def test_filter_selects_whole_categories(self):
         command = record.bench_command(["format", "audio_mix"])
