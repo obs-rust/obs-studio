@@ -1,5 +1,9 @@
 #include "build/libobs-windows.pch.h"
 
+_Static_assert(WINDOW_PRIORITY_CLASS == MS_WINDOW_MATCH_PRIORITY_CLASS, "window-match.h priority");
+_Static_assert(WINDOW_PRIORITY_TITLE == MS_WINDOW_MATCH_PRIORITY_TITLE, "window-match.h priority");
+_Static_assert(WINDOW_PRIORITY_EXE == MS_WINDOW_MATCH_PRIORITY_EXE, "window-match.h priority");
+
 static inline void encode_dstr(struct dstr *str)
 {
 	dstr_replace(str, "#", "#22");
@@ -181,50 +185,6 @@ void ms_get_window_class(struct dstr *class, HWND hwnd)
 		dstr_from_wcs(class, temp);
 }
 
-/* not capturable or internal windows, exact executable names */
-static const char *internal_microsoft_exes_exact[] = {
-	"startmenuexperiencehost.exe",
-	"applicationframehost.exe",
-	"peopleexperiencehost.exe",
-	"shellexperiencehost.exe",
-	"microsoft.notes.exe",
-	"systemsettings.exe",
-	"textinputhost.exe",
-	"searchapp.exe",
-	"video.ui.exe",
-	"searchui.exe",
-	"lockapp.exe",
-	"cortana.exe",
-	"gamebar.exe",
-	"tabtip.exe",
-	"time.exe",
-	NULL,
-};
-
-/* partial matches start from the beginning of the executable name */
-static const char *internal_microsoft_exes_partial[] = {
-	"windowsinternal",
-	NULL,
-};
-
-static bool is_microsoft_internal_window_exe(const char *exe)
-{
-	if (!exe)
-		return false;
-
-	for (const char **vals = internal_microsoft_exes_exact; *vals; vals++) {
-		if (astrcmpi(exe, *vals) == 0)
-			return true;
-	}
-
-	for (const char **vals = internal_microsoft_exes_partial; *vals; vals++) {
-		if (astrcmpi_n(exe, *vals, strlen(*vals)) == 0)
-			return true;
-	}
-
-	return false;
-}
-
 static void add_window(obs_property_t *p, HWND hwnd, add_window_cb callback)
 {
 	struct dstr class = {0};
@@ -235,13 +195,13 @@ static void add_window(obs_property_t *p, HWND hwnd, add_window_cb callback)
 
 	if (!ms_get_window_exe(&exe, hwnd))
 		return;
-	if (is_microsoft_internal_window_exe(exe.array)) {
+	if (ms_window_match_is_internal_exe(exe.array)) {
 		dstr_free(&exe);
 		return;
 	}
 
 	ms_get_window_title(&title, hwnd);
-	if (dstr_cmp(&exe, "explorer.exe") == 0 && dstr_is_empty(&title)) {
+	if (ms_window_match_is_untitled_explorer(exe.array, dstr_is_empty(&title))) {
 		dstr_free(&exe);
 		dstr_free(&title);
 		return;
@@ -430,60 +390,15 @@ static int window_rating(HWND window, enum window_priority priority, const char 
 
 	bool class_matches = dstr_cmpi(&cur_class, class) == 0;
 	bool exe_matches = dstr_cmpi(&cur_exe, exe) == 0;
-	int title_val = abs(dstr_cmpi(&cur_title, title));
+	int title_cmp = dstr_cmpi(&cur_title, title);
 
-	if (generic_class && (priority == WINDOW_PRIORITY_CLASS))
-		priority = WINDOW_PRIORITY_TITLE;
-
-	/* always match by name with UWP windows */
-	if (uwp_window) {
-		if (priority == WINDOW_PRIORITY_EXE && !exe_matches)
-			val = 0x7FFFFFFF;
-		else
-			val = title_val == 0 ? 0 : 0x7FFFFFFF;
-
-	} else if (priority == WINDOW_PRIORITY_CLASS) {
-		val = class_matches ? title_val : 0x7FFFFFFF;
-		if (val != 0x7FFFFFFF && !exe_matches)
-			val += 0x1000;
-
-	} else if (priority == WINDOW_PRIORITY_TITLE) {
-		val = title_val == 0 ? 0 : 0x7FFFFFFF;
-
-	} else if (priority == WINDOW_PRIORITY_EXE) {
-		val = exe_matches ? title_val : 0x7FFFFFFF;
-	}
+	val = ms_window_match_rating(priority, uwp_window, generic_class, class_matches, exe_matches, title_cmp);
 
 	dstr_free(&cur_class);
 	dstr_free(&cur_title);
 	dstr_free(&cur_exe);
 
 	return val;
-}
-
-static const char *generic_class_substrings[] = {
-	"Chrome",
-	"SDL_app",
-	NULL,
-};
-
-static bool is_generic_class(const char *current_class)
-{
-	const char **class = generic_class_substrings;
-	while (*class) {
-		if (astrstri(current_class, *class) != NULL) {
-			return true;
-		}
-		class++;
-	}
-
-	return false;
-}
-
-static bool is_uwp_class(const char *window_class)
-{
-	return strcmp(window_class, "Windows.UI.Core.CoreWindow") == 0 ||
-	       strcmp(window_class, "WinUIDesktopWin32WindowClass") == 0;
 }
 
 HWND ms_find_window(enum window_search_mode mode, enum window_priority priority, const char *class, const char *title,
@@ -499,8 +414,8 @@ HWND ms_find_window(enum window_search_mode mode, enum window_priority priority,
 	if (!class)
 		return NULL;
 
-	const bool uwp_window = is_uwp_class(class);
-	const bool generic_class = is_generic_class(class);
+	const bool uwp_window = ms_window_match_is_uwp_class(class);
+	const bool generic_class = ms_window_match_is_generic_class(class);
 
 	while (window) {
 		int rating = window_rating(window, priority, class, title, exe, uwp_window, generic_class);
@@ -561,8 +476,8 @@ HWND ms_find_window_top_level(enum window_search_mode mode, enum window_priority
 	data.class = class;
 	data.title = title;
 	data.exe = exe;
-	data.uwp_window = is_uwp_class(class);
-	data.generic_class = is_generic_class(class);
+	data.uwp_window = ms_window_match_is_uwp_class(class);
+	data.generic_class = ms_window_match_is_generic_class(class);
 	data.best_window = NULL;
 	data.best_rating = 0x7FFFFFFF;
 	EnumWindows(enum_windows_proc, (LPARAM)&data);
