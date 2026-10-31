@@ -83,5 +83,14 @@ class CrossConversionRatchet(unittest.TestCase):
         self.assertIn("obs-amf-test-cross", opted_in(source()))
 
 
+    def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
+        """The win-x64 slices burned down after #3157 stay opted in, so a later
+        edit that drops a marker cannot quietly take them back out of the
+        ratchet: `shared-windows-cross` (the shared Windows helpers) and the two
+        plugins the cross clang already compiles clean under the groups."""
+        slices = {"shared-windows-cross", "obs-x264-cross", "rtmp-services-cross"}
+        self.assertLessEqual(slices, opted_in(source()))
+
+
 if __name__ == "__main__":
     unittest.main()
