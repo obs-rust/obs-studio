@@ -199,12 +199,14 @@ fn call_check(current: &[OrderInfo], order: &[OrderInfo]) -> (c_int, c_int) {
 
 fn check_reorder(current: &[OrderInfo], order: &[OrderInfo]) {
     let (shim, c) = call_check(current, order);
-    let what = format!("check({current:?}, {order:?})");
     if c == OBS_SCENE_ITEM_ORDER_APPLY && !rearranged(current, order) {
         // difference 3
-        assert_eq!(shim, OBS_SCENE_ITEM_ORDER_INVALID, "{what}");
+        assert_eq!(
+            shim, OBS_SCENE_ITEM_ORDER_INVALID,
+            "check({current:?}, {order:?})"
+        );
     } else {
-        assert_eq!(shim, c, "{what}");
+        assert_eq!(shim, c, "check({current:?}, {order:?})");
     }
 }
 
