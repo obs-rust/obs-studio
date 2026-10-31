@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,6 +77,8 @@ class Test:
     name: str
     workdir: str
     command: tuple[str, ...]
+    # RUN_SERIAL or a RESOURCE_LOCK: run alone, after the concurrent pool.
+    serial: bool = False
 
 
 @dataclass(frozen=True)
@@ -165,7 +168,19 @@ def ctest_tests(payload: str) -> list[Test]:
             continue
         properties = entry.get("properties") or []
         workdir = next((str(p.get("value", "")) for p in properties if p.get("name") == "WORKING_DIRECTORY"), "")
-        tests.append(Test(name=str(entry.get("name", "")), workdir=workdir, command=tuple(str(a) for a in command)))
+        serial = any(
+            (p.get("name") == "RUN_SERIAL" and p.get("value") in (True, "ON", "TRUE", "1", 1))
+            or (p.get("name") == "RESOURCE_LOCK" and p.get("value"))
+            for p in properties
+        )
+        tests.append(
+            Test(
+                name=str(entry.get("name", "")),
+                workdir=workdir,
+                command=tuple(str(a) for a in command),
+                serial=serial,
+            )
+        )
     return sorted(tests, key=lambda test: test.name)
 
 
@@ -349,17 +364,50 @@ def run_unit_tests(tool: str, layout: Layout) -> None:
     (tests_dir / "ctest.tsv").write_text(
         "".join(f"{t.name}\t{t.workdir}\t{chr(31).join(t.command)}\n" for t in tests), encoding="utf-8"
     )
-    summary = []
+    summary = run_tests(tool, tests, layout)
+    (tests_dir / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
+
+
+def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: int | None = None) -> list[str]:
+    """Run the tests `jobs` at a time (default: every core), then the serial
+    ones alone; the summary lines in test order (#3251).
+
+    Each test writes its own `<name>.log` and sanitizer log prefix, so
+    concurrent tests do not collide. Each line prints as its test finishes,
+    and `durations.tsv` records every test's wall time, slowest visible first.
+    """
+    runner = runner or run_one_test
+    tests_dir = layout.out / "tests"
+    tests_dir.mkdir(parents=True, exist_ok=True)
+    lines: dict[str, str] = {}
+    durations: dict[str, float] = {}
+    runnable = []
     for test in tests:
         command = test_command(test)
         if not command:
             continue
         if is_skipped(tool, test.name):
-            summary.append(f"{test.name} skipped (built with ASan)")
+            lines[test.name] = f"{test.name} skipped (built with ASan)"
             continue
-        summary.append(f"{test.name} exit={run_one_test(tool, test, command, layout)}")
-    print("\n".join(summary), flush=True)
-    (tests_dir / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
+        runnable.append((test, command))
+
+    def one(item: tuple[Test, list[str]]) -> None:
+        test, command = item
+        start = time.monotonic()
+        code = runner(tool, test, command, layout)
+        durations[test.name] = time.monotonic() - start
+        lines[test.name] = f"{test.name} exit={code}"
+        print(f"{lines[test.name]} ({durations[test.name]:.1f}s)", flush=True)
+
+    with ThreadPoolExecutor(max_workers=jobs or os.cpu_count() or 1) as pool:
+        list(pool.map(one, [item for item in runnable if not item[0].serial]))
+    for item in runnable:
+        if item[0].serial:
+            one(item)
+    (tests_dir / "durations.tsv").write_text(
+        "".join(f"{t.name}\t{durations[t.name]:.2f}\n" for t in tests if t.name in durations), encoding="utf-8"
+    )
+    return [lines[t.name] for t in tests if t.name in lines]
 
 
 def run_one_test(tool: str, test: Test, command: list[str], layout: Layout) -> int:

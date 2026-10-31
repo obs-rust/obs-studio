@@ -358,16 +358,30 @@ class ParallelUnitTestsTest(unittest.TestCase):
 
     def layout(self, root: Path):
         out = root / "out"
-        return self.module.Layout(root=root, out=out, build=root / "build", inst=root / "inst")
+        return self.module.Layout(root=root, out=out, build=root / "build", inst=root / "inst", bin_dir=root / "bin")
+
+    def stub_tests(self, root: Path, prefix: str, count: int, serial: bool = False):
+        """`count` tests whose commands are real executables, as ctest lists them."""
+        bin_dir = root / "stubs"
+        bin_dir.mkdir(exist_ok=True)
+        return [
+            self.module.Test(
+                name=f"{prefix}{i}",
+                workdir="",
+                command=(str(write_stub(bin_dir, f"{prefix}{i}", "exit 0\n")),),
+                serial=serial,
+            )
+            for i in range(count)
+        ]
 
     def test_independent_tests_overlap_and_keep_their_order(self):
-        tests = [self.module.Test(name=f"test_{i}", workdir="", command=(f"/bin/test_{i}",)) for i in range(4)]
 
         def runner(tool, test, command, layout):
             time.sleep(0.5)
             return 0
 
         with tempfile.TemporaryDirectory() as tmp:
+            tests = self.stub_tests(Path(tmp), "test_", 4)
             start = time.monotonic()
             summary = self.module.run_tests("asan", tests, self.layout(Path(tmp)), runner=runner, jobs=4)
             elapsed = time.monotonic() - start
@@ -379,10 +393,6 @@ class ParallelUnitTestsTest(unittest.TestCase):
     def test_serial_tests_never_overlap(self):
         running, peak = [0], [0]
         lock = threading.Lock()
-        tests = [
-            self.module.Test(name=f"test_s{i}", workdir="", command=(f"/bin/test_s{i}",), serial=True)
-            for i in range(3)
-        ]
 
         def runner(tool, test, command, layout):
             with lock:
@@ -394,6 +404,7 @@ class ParallelUnitTestsTest(unittest.TestCase):
             return 0
 
         with tempfile.TemporaryDirectory() as tmp:
+            tests = self.stub_tests(Path(tmp), "test_s", 3, serial=True)
             self.module.run_tests("asan", tests, self.layout(Path(tmp)), runner=runner, jobs=4)
         self.assertEqual(peak[0], 1)
 
