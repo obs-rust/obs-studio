@@ -16,7 +16,8 @@
 //! the encoder callback and connection lifecycle decisions,
 //! `libobs/obs-encoder-packet-ts.c.h`, the encoder packet timestamps,
 //! `libobs/obs-encoder-group-reconfig.c.h`, the encoder group reconfigure
-//! rules,
+//! rules, `libobs/obs-encoder-gpu-rescale.c.h`, the encoder GPU rescale mix
+//! decisions,
 //! `libobs/obs-output-start.c.h`, the output start and begin-capture
 //! decisions, `libobs/obs-output-begin.c.h`, the output begin-capture plan,
 //! `libobs/obs-output-stop.c.h`, the output stop and
@@ -27,7 +28,7 @@
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`] and [`output_caption`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`] and [`output_caption`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -74,6 +75,9 @@
 //! grouped encoder start a request or wait for the current one, on which
 //! shared frame every encoder of the group applies them, the LCM of the
 //! group's frame rate divisors and the reset of an idle group;
+//! [`encoder_gpu_rescale`] decides whether an encoder encodes from an
+//! encoder-only mix, the output that mix must have, whether a mix serves
+//! it, and which mix a shutdown releases and when its last reference goes;
 //! [`output_start`] decides
 //! whether a start or a begin asks the service, when a delayed restart's
 //! reference is dropped, which encoders an output initializes, and whether
@@ -109,6 +113,7 @@ pub mod delay;
 pub mod encoder_audio_start;
 pub mod encoder_bind;
 pub mod encoder_gpu_gates;
+pub mod encoder_gpu_rescale;
 pub mod encoder_group_reconfig;
 pub mod encoder_lifecycle;
 pub mod encoder_packet_ts;
