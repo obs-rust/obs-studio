@@ -14,8 +14,6 @@
 //! pointers. As in the C, a `uint16_t` or `uint32_t` value is stored in
 //! native byte order.
 
-use core::ops::Range;
-
 /// An input plane, read by byte offset.
 pub trait Source {
     /// The `N` bytes at `offset`.
@@ -94,7 +92,12 @@ const BLOCK_BYTES: usize = 16;
 
 /// The four bytes of channel `c` in the four UYVX pixels at `at` in `row`.
 fn channel(row: &[u8], at: usize, c: usize) -> [u8; 4] {
-    [row[at + c], row[at + 4 + c], row[at + 8 + c], row[at + 12 + c]]
+    [
+        row[at + c],
+        row[at + 4 + c],
+        row[at + 8 + c],
+        row[at + 12 + c],
+    ]
 }
 
 /// Channel `c` averaged over pixels 0-1 and 2-3 of the two rows at `at`,
