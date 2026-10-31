@@ -9,7 +9,9 @@ of the old `jq -s` program when `jq` is on PATH.
 Run: uv run --no-project python -m unittest ci/test_analyze_project.py
 """
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -207,6 +209,93 @@ class Build(unittest.TestCase):
         status = analyze_project.build(run=recorder, environ={})
         self.assertEqual(status, 1)
         self.assertEqual(len(recorder.calls), 1)
+
+
+class BuildLog(unittest.TestCase):
+    """The analyzer's findings go to code scanning through the SARIF upload,
+    not into the job log, where they would bury the build's errors.
+    xcbeautify's github-actions renderer
+    turns each finding into a `::warning` workflow command, and `--debug`
+    prints xcodebuild's raw `warning:` lines; both stay in the build log
+    file. The job log gets the exit status, the warning count and the
+    errors."""
+
+    FINDING = "Access to field 'next' results in a dereference of a null pointer [core.NullDereference]"
+
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp())
+        self.environ = {'RUNNER_TEMP': str(self.temp)}
+
+    def tearDown(self):
+        shutil.rmtree(self.temp, ignore_errors=True)
+
+    def logged(self, lines, status=0):
+        calls = []
+
+        def run_logged(argv, cwd, log):
+            calls.append((list(argv), cwd, log))
+            Path(log).write_text(''.join(line + '\n' for line in lines), encoding='utf-8')
+            return status
+
+        return run_logged, calls
+
+    def run_build(self, lines, status=0, environ=None):
+        run_logged, calls = self.logged(lines, status)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            result = analyze_project.build(run=Recording(), environ=environ or self.environ, run_logged=run_logged)
+        return result, out.getvalue(), calls
+
+    def test_the_build_script_writes_to_a_log_file(self):
+        status, _, calls = self.run_build(['[caption] Analyzing vtt.c'])
+        self.assertEqual(status, 0)
+        self.assertEqual(len(calls), 1)
+        argv, cwd, log = calls[0]
+        self.assertEqual(argv[0], str(analyze_project.BUILD_SCRIPT))
+        self.assertEqual(argv[-1], '--analyze')
+        self.assertEqual(cwd, ROOT)
+        self.assertEqual(Path(log).parent, self.temp)
+
+    def test_findings_stay_out_of_the_job_log(self):
+        lines = [
+            '[caption] Analyzing vtt.c',
+            f'::warning file=/src/deps/libcaption/src/vtt.c,line=12,col=5::{self.FINDING}',
+            f'/src/deps/libcaption/src/vtt.c:12:5: warning: {self.FINDING}',
+            '** ANALYZE SUCCEEDED **',
+        ]
+        status, out, _ = self.run_build(lines)
+        self.assertEqual(status, 0)
+        self.assertNotIn('dereference', out)
+        self.assertNotIn('vtt.c', out)
+        self.assertNotIn('::warning', out)
+        self.assertIn('2 warning line(s)', out)
+
+    def test_errors_and_the_status_reach_the_job_log(self):
+        lines = [
+            f'::warning file=/src/a.c,line=1::{self.FINDING}',
+            '::error file=/src/b.c,line=7,col=1::use of undeclared identifier',
+            '/src/b.c:7:1: error: use of undeclared identifier',
+            '** ANALYZE FAILED **',
+        ]
+        status, out, _ = self.run_build(lines, status=65)
+        self.assertEqual(status, 65)
+        self.assertIn('::error file=/src/b.c,line=7,col=1::use of undeclared identifier', out)
+        self.assertIn('/src/b.c:7:1: error: use of undeclared identifier', out)
+        self.assertIn('exit status 65', out)
+        self.assertNotIn('dereference', out)
+
+    def test_a_failure_without_error_lines_shows_the_tail_without_warnings(self):
+        lines = [f'step {i}' for i in range(100)] + [f'/src/a.c:1:1: warning: {self.FINDING}', 'xcodebuild: killed']
+        status, out, _ = self.run_build(lines, status=137)
+        self.assertEqual(status, 137)
+        self.assertIn('xcodebuild: killed', out)
+        self.assertIn('step 99', out)
+        self.assertNotIn('step 0\n', out)
+        self.assertNotIn('dereference', out)
+
+    def test_without_runner_temp_the_log_goes_beside_the_checkout(self):
+        _, _, calls = self.run_build(['ok'], environ={})
+        self.assertEqual(Path(calls[0][2]).parent, ROOT / 'build_macos')
 
 
 class MergeSarif(unittest.TestCase):
