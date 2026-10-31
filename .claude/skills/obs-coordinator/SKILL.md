@@ -255,7 +255,9 @@ judges quotes. Once a week, when `scanned_through` in that file on
 
 1. Branch from `origin/master` as `infra/user-quotes-<YYYY-MM-DD>`.
 2. `uv run tools/user_quotes.py collect --out <scratch>/candidates.json`.
-   No candidates: stop, there is nothing to record.
+   No candidates: still record the scan (an empty `verdicts.json`, `{}`), so
+   `scanned_through` moves on and the next refresh waits another week; the
+   PR then changes only that line.
 3. Judge every candidate against the `rule` in that file, by reading it
    (no word lists), and write `<scratch>/verdicts.json`:
    `{"<comment url>": ["approved", ""] | ["rejected", "<short neutral reason>"]}`.

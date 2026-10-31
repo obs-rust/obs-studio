@@ -13,9 +13,10 @@ keyword-filtered:
     uv run tools/user_quotes.py render            # rewrite the README section
     uv run tools/user_quotes.py render --check    # fail if the README is stale
 
-`collect` takes every issue and PR comment by a GitHub `User` account that is
-not a maintainer (OWNER, MEMBER, COLLABORATOR) and not on the contributors
-leaderboard, removes code blocks, `<details>` logs, HTML comments and quoted
+`collect` takes every issue and PR comment, inline PR review comments
+included, by a GitHub `User` account that is not a maintainer (OWNER, MEMBER,
+COLLABORATOR) and not on the contributors leaderboard. It removes code blocks
+(fenced, indented and `<pre>`), `<details>` logs, HTML comments and quoted
 replies, and leaves out comments already in tools/user_quotes.json, so a
 rejected quote stays rejected. It reads only comments updated since the last
 recorded scan. The candidates file carries RULE, the judging rule.
@@ -38,7 +39,8 @@ and every entry has the same five fields, in this order:
 
     text    the quote, word for word ("" when rejected)
     login   the author's GitHub login ("" when rejected)
-    url     the comment's link, https://github.com/obs-rust/obs-studio/issues/N#issuecomment-ID
+    url     the comment's link: .../issues/N#issuecomment-ID, .../pull/N#issuecomment-ID,
+            or .../pull/N#discussion_rID for an inline review comment
     date    the day the comment was posted, YYYY-MM-DD
     status  "approved" or "rejected"
 
@@ -78,8 +80,8 @@ SHOWN = 8  # shown in full; older approved quotes fold into <details>, never dro
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 # Agent and bot accounts that are typed "User" (the leaderboard's list, tools/leaderboard/generate.py).
 BOT_RE = re.compile(r"(\[bot\]$|^(claude|copilot|dependabot|github-actions|coderabbit)|anthropic)", re.I)
-BLOCKS = re.compile(r"```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|<details>.*?(?:</details>|\Z)|<!--.*?(?:-->|\Z)",
-                    re.S | re.I)
+BLOCKS = re.compile(r"```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|<details\b[^>]*>.*?(?:</details>|\Z)"
+                    r"|<pre\b[^>]*>.*?(?:</pre>|\Z)|<!--.*?(?:-->|\Z)", re.S | re.I)
 QUOTED = re.compile(r"^[ \t]*>.*$", re.M)
 
 RULE = """\
@@ -95,9 +97,25 @@ Approve a comment only when every one of these holds; otherwise reject it, with 
 """
 
 
+def unindent_code(text: str) -> str:
+    """Drop Markdown indented code blocks: lines indented 4+ spaces or a tab after a blank line."""
+    out, in_code, blank = [], False, True
+    for line in text.splitlines():
+        if not line.strip():
+            blank = True
+            out.append(line)
+            continue
+        indented = line.startswith(("    ", "\t"))
+        in_code = indented and (in_code or blank)  # indented code cannot interrupt a paragraph
+        blank = False
+        if not in_code:
+            out.append(line)
+    return "\n".join(out)
+
+
 def clean(body: str | None) -> str:
     """The comment as written, minus code and log blocks, HTML comments and quoted replies."""
-    return " ".join(QUOTED.sub(" ", BLOCKS.sub(" ", body or "")).split())
+    return " ".join(QUOTED.sub(" ", unindent_code(BLOCKS.sub(" ", body or ""))).split())
 
 
 def is_candidate(comment: dict, excluded: set[str]) -> bool:
@@ -123,7 +141,7 @@ def candidates(comments: list[dict], excluded: set[str], known: set[str],
         if not text or (max_chars and len(text) > max_chars):
             continue
         out.append({"url": c["html_url"], "login": c["user"]["login"], "date": c["created_at"][:10],
-                    "issue": int(c["issue_url"].rsplit("/", 1)[1]), "text": text})
+                    "issue": int((c.get("issue_url") or c["pull_request_url"]).rsplit("/", 1)[1]), "text": text})
     return sorted(out, key=lambda q: (q["date"], q["url"]))
 
 
@@ -212,9 +230,17 @@ def contributors() -> set[str]:
     return {c["login"].lower() for c in json.loads(r.stdout)["contributors"]}
 
 
+def fetch_comments(since: str) -> list[dict]:
+    """Issue and PR conversation comments, then inline PR review comments (a separate API)."""
+    query = f"per_page=100&since={since}" if since else "per_page=100"
+    return (gh_lines(f"repos/{REPO}/issues/comments?{query}")
+            + gh_lines(f"repos/{REPO}/pulls/comments?{query}"))
+
+
 def live_text(url: str) -> str:
-    cid = url.rsplit("issuecomment-", 1)[1]
-    r = subprocess.run(["gh", "api", f"repos/{REPO}/issues/comments/{cid}", "--jq", ".body"],
+    kind, cid = ("pulls", url.rsplit("discussion_r", 1)[1]) if "#discussion_r" in url \
+        else ("issues", url.rsplit("issuecomment-", 1)[1])
+    r = subprocess.run(["gh", "api", f"repos/{REPO}/{kind}/comments/{cid}", "--jq", ".body"],
                        capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(f"{url}: {r.stderr.strip()}")
@@ -238,8 +264,7 @@ def main() -> int:
     data = load(DATA)
     if args.cmd == "collect":
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        since = "" if args.all or not data["scanned_through"] else f"&since={data['scanned_through']}"
-        comments = gh_lines(f"repos/{REPO}/issues/comments?per_page=100{since}")
+        comments = fetch_comments("" if args.all else data["scanned_through"])
         found = candidates(comments, contributors(), {q["url"] for q in data["quotes"]}, args.max_chars)
         args.out.write_text(json.dumps({"rule": RULE, "scanned_through": now, "candidates": found},
                                        indent=2, ensure_ascii=False) + "\n")
