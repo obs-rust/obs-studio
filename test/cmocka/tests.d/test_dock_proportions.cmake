@@ -15,6 +15,7 @@ if(OS_LINUX)
     target_link_libraries(test_dock_proportions PRIVATE Qt6::Widgets Qt6::Test ${CMOCKA_LIBRARIES})
     add_dependencies(cmocka-tests test_dock_proportions)
     add_test(test_dock_proportions ${CMAKE_CURRENT_BINARY_DIR}/test_dock_proportions)
-    set_tests_properties(test_dock_proportions PROPERTIES TIMEOUT 120)
+    # Its checks depend on wall-clock timing: the asan pool runs it alone (#3238).
+    set_tests_properties(test_dock_proportions PROPERTIES TIMEOUT 120 RESOURCE_LOCK timing)
   endif()
 endif()

@@ -21,5 +21,6 @@ if(OS_LINUX AND TARGET image-source AND TARGET obs-transitions AND TARGET OBS::l
   add_dependencies(cmocka-tests test_slideshow_mem_cap)
   # libobs finds its effect files relative to the working directory.
   add_test(NAME test_slideshow_mem_cap COMMAND test_slideshow_mem_cap WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>")
-  set_tests_properties(test_slideshow_mem_cap PROPERTIES TIMEOUT 300)
+  # Its checks depend on wall-clock timing: the asan pool runs it alone (#3238).
+  set_tests_properties(test_slideshow_mem_cap PROPERTIES TIMEOUT 300 RESOURCE_LOCK timing)
 endif()
