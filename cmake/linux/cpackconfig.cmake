@@ -4,6 +4,12 @@ include_guard(GLOBAL)
 
 include(cpackconfig_common)
 
+# The obs-rust brand ships its Linux packages under its own name (#3234 moved
+# this from cpackconfig_common).
+if(OBS_BRAND_RUST)
+  set(CPACK_PACKAGE_NAME obs-studio-rust)
+endif()
+
 # Add GPLv2 license file to CPack
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/frontend/data/license/gplv2.txt")
 set(CPACK_PACKAGE_EXECUTABLES "${OBS_UNIX_GUI_NAME}")

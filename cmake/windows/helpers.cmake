@@ -6,6 +6,52 @@ include(x86-build-serial)
 
 include(helpers_common)
 
+# target_export installs every package config into one directory (#3234).
+set(OBS_CMAKE_PACKAGE_FLAT TRUE)
+
+# obs_msvc_exempt_c4201: Disable C4201 on one C++ target (MSVC /W4, #2626)
+#
+# /W4 reports C4201 "nameless struct/union" for the unions in
+# libobs/graphics/vec{2,3,4}.h, libobs/util/profiler.h and
+# frontend/api/obs-frontend-api.h. They are legal C11 (6.7.2.1p13) and consumed
+# from C, so naming them is an API break; #2626 therefore decided on a
+# per-target exemption, only for the C++ targets that include those headers and
+# never as a blanket /wd4201 for every C++ target.
+function(obs_msvc_exempt_c4201 target)
+  # The module options (ENABLE_BROWSER, ENABLE_WEBSOCKET, ...) make a submodule's
+  # CMakeLists return before add_library, so the target exists only when that
+  # module is actually built; nothing to exempt otherwise.
+  if(NOT TARGET ${target})
+    return()
+  endif()
+  target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4201>)
+endfunction()
+
+# obs_msvc_exempt_c4505: Disable C4505 on one C++ target (MSVC /W4, #2626)
+#
+# /W4 reports C4505 "unreferenced function with internal linkage has been
+# removed" for the static SetHighDPIv2Scaling() in the obs-browser submodule's
+# obs-browser-page-main.cpp. That function is dead in obs-browser, not in this
+# tree: deleting it belongs to an obs-rust/obs-browser change, so until that
+# lands the target gets the same per-target exemption properties-view already
+# uses, and never a blanket /wd4505 for every C++ target.
+function(obs_msvc_exempt_c4505 target)
+  if(NOT TARGET ${target})
+    return()
+  endif()
+  target_compile_options(${target} PRIVATE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4505>)
+endfunction()
+
+# _obs_architecture_matches: ARCHITECTURES entries name a Visual Studio
+# platform on Windows (#3234).
+function(_obs_architecture_matches architecture result_var)
+  set(${result_var} FALSE)
+  if("${architecture}" STREQUAL CMAKE_VS_PLATFORM_NAME)
+    set(${result_var} TRUE)
+  endif()
+  return(PROPAGATE ${result_var})
+endfunction()
+
 # set_target_properties_obs: Set target properties for use in obs-studio
 function(set_target_properties_obs target)
   set(options "")

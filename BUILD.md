@@ -228,6 +228,14 @@ Keep each member in exactly one list or fragment.
   beyond the Fast Gate, and a `libobs/build/` file starts Linux Tier 2. A
   port that only adds its source's `#include` to a `ported-*` group does
   not need the manual run.
+- `cmake/common/` stays host-neutral (#3234, `ci/test_cmake_common_os_neutral.py`):
+  no `OS_<HOST>` branch, MSVC generator expression or `CMAKE_OSX_*` /
+  `CMAKE_VS_*` read outside `osconfig.cmake` and `soldr.cmake`. Host-only
+  logic goes in `cmake/windows/`, `cmake/macos/` or `cmake/linux/`, which start
+  only their own OS lane; a common helper that needs a host variant defines
+  a neutral default the OS module redefines after including it (for example
+  `_obs_architecture_matches`, `obs_msvc_exempt_c4201`,
+  `_obs_dependency_platform_hook`).
 
 ## Transition
 

@@ -157,15 +157,15 @@ function(_check_dependencies)
     if(dependency STREQUAL cef AND NOT ENABLE_BROWSER)
       continue()
     endif()
-    if(dependency STREQUAL cef AND arch STREQUAL universal)
-      if(CMAKE_OSX_ARCHITECTURES MATCHES ".+;.+")
+    # An OS buildspec module may define _obs_dependency_platform_hook to pick
+    # another arch/platform slice for one dependency, or set skip_dependency to
+    # leave it out (cmake/macos/buildspec.cmake, #3234).
+    if(COMMAND _obs_dependency_platform_hook)
+      set(skip_dependency FALSE)
+      _obs_dependency_platform_hook(${dependency})
+      if(skip_dependency)
         continue()
-      elseif(CMAKE_OSX_ARCHITECTURES MATCHES "(arm64|x86_64)")
-        set(arch ${CMAKE_OSX_ARCHITECTURES})
-      else()
-        set(arch ${CMAKE_HOST_SYSTEM_PROCESSOR})
       endif()
-      set(platform macos-${arch})
     endif()
 
     string(JSON data GET ${dependency_data} ${dependency})

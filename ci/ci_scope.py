@@ -63,7 +63,9 @@ unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cm
 (except `os-<os>.cmake`, which starts its own OS, and a port's hidden-shim
 fragment `rust-hidden.d/<crate>-<module>.txt`, plain names Linux checks: #3233),
 the root CMake files, crate `build.rs`, `platform/mod.rs` and the C++ cmocka tests (with their
-tests.d registrations) stay shared: every platform consumes them.
+tests.d registrations) stay shared: every platform consumes them, so
+`cmake/common/` carries no host branches (#3234,
+ci/test_cmake_common_os_neutral.py) and host CMake lives in `cmake/<os>/`.
 Host-named files (docs/rust-port/naming.md, #1294) start their OS lane in any
 area, Qt areas included: `foo-host-<os>.c.h` (unity group
 `foo.host-<os>+.h.c`), a `hosts/<os>/` directory, or a `foo-<os>.pch.<ext>`
