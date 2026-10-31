@@ -69,6 +69,11 @@ void OBSBasic::StartStreaming()
 		}
 	}
 
+	/* A start the user asks for tries RTMPS again; only the restart after
+	 * "Proceed anyway" keeps plain RTMP. */
+	SetPlainRtmp(rtmpsFallbackRestart);
+	rtmpsFallbackRestart = false;
+
 	emit StreamingPreparing();
 
 	if (sysTrayStream) {
@@ -91,6 +96,8 @@ void OBSBasic::StartStreaming()
 		if (sysTrayStream) {
 			sysTrayStream->setText("Basic.Main.Connecting");
 		}
+
+		streamUsesMultitrack = outputHandler->multitrackVideoActive;
 
 		if (!outputHandler->StartStreaming(service)) {
 			DisplayStreamStartError();
@@ -335,6 +342,21 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 		errorDescription = Str("Output.ConnectFail.Disconnected");
 	}
 
+	/* A service connection that rtmp-services upgraded to RTMPS can retry
+	 * over plain RTMP; multitrack video brings its own URLs. */
+	std::string rtmpsPlainUrl;
+	std::string rtmpsTlsFailure;
+	if (code == OBS_OUTPUT_CONNECT_FAILED && !streamUsesMultitrack) {
+		rtmpsTlsFailure = StreamTlsFailure();
+		RtmpsFallback::Cause cause = RtmpsFallback::ParseCause(rtmpsTlsFailure.c_str());
+		if (RtmpsFallback::Allowed(code, streamUsesMultitrack, cause)) {
+			rtmpsPlainUrl = RtmpsFallbackUrl();
+		} else if (cause == RtmpsFallback::Cause::CertUnverified && !RtmpsFallbackUrl().empty()) {
+			blog(LOG_ERROR, "RTMPS: the server's certificate did not verify; "
+					"the stream is not started and does not fall back to RTMP");
+		}
+	}
+
 	if (use_last_error && !last_error.isEmpty()) {
 		dstr_printf(errorMessage, "%s\n\n%s", errorDescription, QT_TO_UTF8(last_error));
 	} else {
@@ -368,6 +390,9 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 						   : QTStr("Output.StreamEncodeError.Msg.LastError").arg(last_error);
 		OBSMessageBox::information(this, QTStr("Output.StreamEncodeError.Title"), msg);
 
+	} else if (!rtmpsPlainUrl.empty()) {
+		OfferRtmpsFallback(rtmpsPlainUrl, rtmpsTlsFailure);
+
 	} else if (code != OBS_OUTPUT_SUCCESS && isVisible()) {
 		OBSMessageBox::information(this, QTStr("Output.ConnectFail.Title"), QT_UTF8(errorMessage));
 
@@ -382,6 +407,81 @@ void OBSBasic::StreamingStop(int code, QString last_error)
 	if (should_reconnect) {
 		QMetaObject::invokeMethod(this, &OBSBasic::StartStreaming, Qt::QueuedConnection);
 	}
+}
+
+std::string OBSBasic::RtmpsFallbackUrl()
+{
+	calldata_t cd = {0};
+	const char *plain = nullptr;
+	std::string url;
+
+	calldata_set_ptr(&cd, "service", GetService());
+	if (proc_handler_call(obs_get_proc_handler(), "rtmp_services_rtmps_fallback", &cd) &&
+	    calldata_get_string(&cd, "plain_url", &plain) && plain) {
+		url = plain;
+	}
+	calldata_free(&cd);
+	return url;
+}
+
+void OBSBasic::SetPlainRtmp(bool enabled)
+{
+	calldata_t cd = {0};
+	calldata_set_ptr(&cd, "service", GetService());
+	calldata_set_bool(&cd, "enabled", enabled);
+	proc_handler_call(obs_get_proc_handler(), "rtmp_services_set_plain_rtmp", &cd);
+	calldata_free(&cd);
+}
+
+/* Why the stream output's last connect failed its TLS handshake, as
+ * obs-outputs' rtmp output reports it: "cert_unverified", "no_root_certs",
+ * or empty for anything else (also for outputs without the proc). */
+std::string OBSBasic::StreamTlsFailure()
+{
+	obs_output_t *output = outputHandler ? outputHandler->streamOutput.Get() : nullptr;
+	if (!output) {
+		return "";
+	}
+
+	calldata_t cd = {0};
+	const char *failure = nullptr;
+	std::string result;
+	if (proc_handler_call(obs_output_get_proc_handler(output), "rtmp_tls_failure", &cd) &&
+	    calldata_get_string(&cd, "failure", &failure) && failure) {
+		result = failure;
+	}
+	calldata_free(&cd);
+	return result;
+}
+
+/* The RTMPS connection failed: the shared fallback warning counts down three
+ * seconds and then OBS restarts the stream over plain RTMP, unless the user
+ * cancels. The warning logs the fallback. Without trusted root certificates
+ * its message says so. */
+void OBSBasic::OfferRtmpsFallback(const std::string &plainUrl, const std::string &tlsFailure)
+{
+	RtmpsFallback::Cause cause = RtmpsFallback::ParseCause(tlsFailure.c_str());
+	auto restart = [this]() {
+		if (isClosing() || outputHandler->StreamingActive()) {
+			return;
+		}
+		rtmpsFallbackRestart = true;
+		QMetaObject::invokeMethod(this, &OBSBasic::StartStreaming, Qt::QueuedConnection);
+	};
+
+	RtmpsFallback::Warn(QTStr("Output.RtmpsFallback.Title"), QTStr(RtmpsFallback::MessageKey(cause)), plainUrl,
+			    cause, [this, restart](bool accepted) {
+				    if (!accepted) {
+					    blog(LOG_INFO, "RTMPS fallback cancelled; the stream was not started");
+					    return;
+				    }
+				    if (RtmpsFallback::CountdownWhenHidden && !isVisible()) {
+					    SysTrayNotify(QTStr("Output.RtmpsFallback.Tray"), QSystemTrayIcon::Warning);
+					    QTimer::singleShot(RtmpsFallback::HiddenCountdownMs, this, restart);
+					    return;
+				    }
+				    restart();
+			    });
 }
 
 void OBSBasic::StreamActionTriggered()
