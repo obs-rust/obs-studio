@@ -539,7 +539,11 @@ void OBSBasicStats::OutputLabels::Update(obs_output_t *output, bool rec)
 	status->setText(str);
 	setClasses(status, styling);
 
-	long double num = (long double)totalBytes / (1024.0l * 1024.0l);
+	/* Qt's QString::arg(double, ...) is the only floating-point overload before
+	 * 6.11, so a long double here converts in our code and trips
+	 * -Wfloat-conversion once the target opts in (#3164). A byte count is exact
+	 * in a double up to 2^53. */
+	double num = (double)totalBytes / (1024.0 * 1024.0);
 	const char *unit = "MiB";
 	if (num > 1024) {
 		num /= 1024;

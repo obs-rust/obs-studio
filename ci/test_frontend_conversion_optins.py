@@ -229,8 +229,20 @@ class FrontendConversionOptinsTest(unittest.TestCase):
         )
 
 
+def compiles_the_unity_tu_in_an_object_library(text: str) -> bool:
+    """True when a target of its own compiles the conversion ratchet's unity TU.
+
+    A group on an INTERFACE target is a usage requirement that reaches every
+    consumer's TUs after their own options (#3164); an OBJECT library compiles the
+    TU once and states the group PRIVATE, so only the converted sources see it.
+    """
+    return (
+        re.search(r"add_library\(\s*properties-view-code\s+OBJECT\b", text) is not None
+    )
+
+
 class PropertiesViewConversionOptinsTest(unittest.TestCase):
-    """The interface group must not leak into Apple consumers' TUs (#3096)."""
+    """The groups are PRIVATE on the target that compiles the TU (#3164)."""
 
     def setUp(self) -> None:
         self.text = PROPERTIES_VIEW.read_text(encoding="utf-8")
@@ -243,22 +255,36 @@ class PropertiesViewConversionOptinsTest(unittest.TestCase):
         self.assertEqual(
             set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
             {"-Wno-sign-conversion"},
-            "properties-view is INTERFACE: its group reaches the app target's Apple "
-            "TUs, where Qt 6.11's headers are not converted (#3096)",
+            "the Apple TUs of the compiled TU keep the pin: with the group on the "
+            "lane stops inside Qt 6.11's headers (#3096)",
         )
 
     def test_other_platforms_keep_the_ratcheted_groups(self) -> None:
-        calls = target_compile_options(self.text, "properties-view")
+        calls = target_compile_options(self.text, "properties-view-code")
         groups = [
             flags
             for flags in calls
             if any(not flag.startswith("-Wno-") for flag in flags)
         ]
-        self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#3096)")
+        self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#2625)")
         self.assertEqual(
             set(groups[0]),
             {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"},
-            "the non-Apple consumers keep the groups this target ratcheted (#2625)",
+            "the target that compiles the converted TU keeps its groups (#2625)",
+        )
+
+    def test_the_groups_are_private_on_the_compiling_target(self) -> None:
+        self.assertEqual(
+            target_compile_options(self.text, "properties-view"),
+            [],
+            "the interface target states no conversion group: CMake appends a "
+            "linked target's INTERFACE options after the consumer's own, so the "
+            "frontend's global pins never applied to its TUs (#3164)",
+        )
+        self.assertTrue(
+            compiles_the_unity_tu_in_an_object_library(self.text),
+            "`properties-view-code` is the OBJECT library that compiles the unity "
+            "TU, so the group is PRIVATE there rather than a usage requirement",
         )
 
 
