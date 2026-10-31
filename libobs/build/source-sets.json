@@ -148,6 +148,7 @@
     "callback/signal.h",
     "media-io/audio-io.h",
     "media-io/audio-math.h",
+    "media-io/audio-resampler-drift.h",
     "media-io/audio-resampler.h",
     "media-io/format-conversion.h",
     "media-io/frame-rate.h",
@@ -190,7 +191,8 @@
     "build/libobs.core-source+.h.c",
     "build/libobs.util-cf+.h.c",
     "build/libobs.graphics+.h.c",
-    "build/libobs.media+.h.c"
+    "build/libobs.media+.h.c",
+    "build/libobs.audio-resampler-drift+.h.c"
   ],
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-audio-min-ts+.h.c",

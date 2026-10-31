@@ -27,6 +27,7 @@
 /* media-io/audio-resampler-ffmpeg.c */
 #include "util/bmem.h"
 #include "media-io/audio-resampler.h"
+#include "media-io/audio-resampler-drift.h"
 #include "media-io/audio-io.h"
 #include <libavutil/avutil.h>
 #include <libswresample/swresample.h>
