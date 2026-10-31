@@ -22,7 +22,7 @@ use core::slice;
 use obs_util::ffi::deque::{deque, deque_push_front};
 
 use crate::audio_mix::{
-    AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
+    ALL_MIXERS, AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
     buffering_add, buffering_fixed, buffering_maxed, mix_active, mix_into, mix_start,
     time_to_frames,
 };
@@ -106,16 +106,12 @@ pub extern "C" fn obs_audio_mix_time_to_frames(sample_rate: usize, t: u64) -> us
 }
 
 /// `obs_audio_mix_add()`: adds the source's audio in `buf` to the first
-/// `channels` channels of every mix in `mixes`.
+/// `channels` channels of every mix in `mixes`: [`obs_audio_mix_add_mixers`]
+/// with [`ALL_MIXERS`].
 ///
 /// # Safety
 ///
-/// `mixes` points to `MAX_AUDIO_MIXES` `struct audio_output_data` and `buf`
-/// to the source's `audio_output_buf` (`MAX_AUDIO_MIXES` rows of
-/// `MAX_AUDIO_CHANNELS` pointers); each pointer they hold for a mixed
-/// channel is null or `AUDIO_OUTPUT_FRAMES` floats, and no mix buffer
-/// overlaps a source buffer. `ts` is a valid `struct ts_info`. Null
-/// `mixes`, `buf` or `ts` does nothing.
+/// As [`obs_audio_mix_add_mixers`].
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_audio_mix_add(
     mixes: *mut audio_output_data,
@@ -125,36 +121,9 @@ pub unsafe extern "C" fn obs_audio_mix_add(
     channels: usize,
     sample_rate: usize,
 ) {
-    if mixes.is_null() || buf.is_null() || ts.is_null() {
-        return;
-    }
-    // SAFETY: `ts` is a valid struct (the caller's contract).
-    let ts = TsInfo::from(unsafe { *ts });
-    let Some(start) = mix_start(audio_ts, ts, sample_rate) else {
-        return;
-    };
-    // SAFETY: MAX_AUDIO_MIXES mixes and source rows (the contract).
-    let (mixes, rows) = unsafe {
-        (
-            slice::from_raw_parts(mixes, MAX_AUDIO_MIXES),
-            slice::from_raw_parts(buf, MAX_AUDIO_MIXES),
-        )
-    };
-    for (mix, row) in mixes.iter().zip(rows) {
-        for (&dst, &src) in mix.data.iter().zip(row).take(channels) {
-            if dst.is_null() || src.is_null() {
-                continue;
-            }
-            // SAFETY: both are AUDIO_OUTPUT_FRAMES floats that do not
-            // overlap (the contract).
-            let (dst, src) = unsafe {
-                (
-                    slice::from_raw_parts_mut(dst, AUDIO_OUTPUT_FRAMES),
-                    slice::from_raw_parts(src, AUDIO_OUTPUT_FRAMES),
-                )
-            };
-            mix_into(dst, src, start);
-        }
+    // SAFETY: forwarded from the caller.
+    unsafe {
+        obs_audio_mix_add_mixers(mixes, buf, audio_ts, ts, channels, sample_rate, ALL_MIXERS);
     }
 }
 

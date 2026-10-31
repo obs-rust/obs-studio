@@ -194,8 +194,10 @@ pub const ALL_MIXERS: u32 = (1 << MAX_AUDIO_MIXES) - 1;
 /// `mixers`, the mask audio-io passes to `audio_callback()` (the mixes some
 /// output reads, #3189). A `mix` past the mask's 32 bits is never in it.
 pub fn mix_active(mixers: u32, mix: usize) -> bool {
-    let _ = (mixers, mix);
-    todo!("#3189")
+    u32::try_from(mix)
+        .ok()
+        .and_then(|mix| 1_u32.checked_shl(mix))
+        .is_some_and(|bit| mixers & bit != 0)
 }
 
 /// The add loop of `obs_audio_mix_add()` for one mix and channel: adds
