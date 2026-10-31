@@ -125,6 +125,18 @@ def bench_command(categories: list[str]) -> list[str]:
     return COMMAND + ["^(" + "|".join(categories) + ")/"]
 
 
+def build_command() -> list[str]:
+    """Compile the bench without running it, so the build uses every core."""
+    return COMMAND[:-1] + ["--no-run"]
+
+
+def pin(cpu: int | None):
+    """A preexec_fn pinning only the measured child to `cpu` (#3252)."""
+    if cpu is None:
+        return None
+    return lambda: os.sched_setaffinity(0, {cpu})
+
+
 def cpu_name() -> str:
     """The CPU model: /proc/cpuinfo on Linux, sysctl on macOS and the
     registry on Windows (where platform.processor() is only "arm" or the
@@ -276,12 +288,15 @@ def main() -> None:
     if args.cpu is not None:
         if not hasattr(os, "sched_setaffinity"):
             parser.error("--cpu requires OS affinity support")
-        os.sched_setaffinity(0, {args.cpu})
+    # Pinning this process would pin cargo, rustc and the C compiler too;
+    # build unpinned first, then pin only the measured runs (#3252).
+    subprocess.run(build_command(), cwd=ROOT, check=True)
+    measured = pin(args.cpu)
     fingerprint = source_hash()
     command = bench_command(args.category)
     required = set(args.category) or None
     # Smoke executes fixture checks and exercises ownership without timing.
-    subprocess.run(command + ["--test"], cwd=ROOT, check=True)
+    subprocess.run(command + ["--test"], cwd=ROOT, check=True, preexec_fn=measured)
     target = Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "target"))
     if not target.is_absolute():
         target = ROOT / target
@@ -291,7 +306,7 @@ def main() -> None:
     for repeat in range(args.repeats):
         baseline = f"ports-{timestamp}-{repeat + 1}"
         print(f"Recording {repeat + 1}/{args.repeats}: {baseline}", flush=True)
-        subprocess.run(command + options + ["--save-baseline", baseline], cwd=ROOT, check=True)
+        subprocess.run(command + options + ["--save-baseline", baseline], cwd=ROOT, check=True, preexec_fn=measured)
         runs.append(read_run(target / "criterion", baseline, required))
         baselines.append(baseline)
         if source_hash() != fingerprint:
