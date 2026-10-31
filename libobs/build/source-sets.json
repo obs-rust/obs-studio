@@ -156,6 +156,7 @@
     "media-io/media-remux.h",
     "media-io/video-frame.h",
     "media-io/video-io.h",
+    "media-io/video-scaler-plan.h",
     "media-io/video-scaler.h",
     "graphics/axisang.h",
     "graphics/bounds.h",
@@ -192,7 +193,8 @@
     "build/libobs.core-source+.h.c",
     "build/libobs.util-cf+.h.c",
     "build/libobs.graphics+.h.c",
-    "build/libobs.media+.h.c"
+    "build/libobs.media+.h.c",
+    "build/libobs.video-scaler-plan+.h.c"
   ],
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-audio-min-ts+.h.c",
