@@ -32,7 +32,7 @@ class CookProfilesTest(unittest.TestCase):
 
     def test_build_consumers_declare_the_profile_policy(self):
         expected = {
-            "rust-tests-linux": "${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}",
+            "rust-tests-linux": "--profile dev -- --tests",
             "rust-cross-lint": "--profile dev",
             "rust-cross-lint-release": "--profile dev",
             "rust-tests-macos": "--profile dev -- --tests",
@@ -53,6 +53,27 @@ class CookProfilesTest(unittest.TestCase):
                     continue
                 self.assertIn("prebuild-deps-flags: " + flags, workflow[name])
                 self.assertNotIn("prebuild-deps: none", workflow[name])
+
+    def test_fast_gate_cooks_the_profile_its_tests_compile_in(self):
+        """The Fast Gate consumer is `cargo test`: a release cook is never reused.
+
+        Measured 2026-10-31 (#2661): in 4 of 4 Fast Gate jobs whose cook used
+        `--release`, the workspace test build then rebuilt the `test` profile
+        from scratch (1m09s-1m37s, 256-442 `Compiling` lines); in 6 of 6 jobs
+        whose cook used `--profile dev -- --tests` that build finished warm
+        with no profile line at all (192 lines). The cook step itself cost the
+        same either way (11.3-15.6s). A local probe reproduces it: after
+        `soldr cook --release`, `cargo test --no-run` recompiles five crates;
+        after `soldr cook --profile dev -- --tests` it finishes in 0.03s.
+        """
+        job = jobs(ROOT / ".github/workflows/build-project.yaml")["rust-tests-linux"]
+        match = re.search(r"^\s+prebuild-deps-flags: (.+)$", job, re.M)
+        self.assertIsNotNone(match, "Fast Gate must declare its cook profile")
+        assert match is not None
+        value = match[1].strip()
+        self.assertEqual(value, "--profile dev -- --tests")
+        self.assertNotIn("core", value, "The test profile does not depend on the run's event")
+        self.assertNotIn("--release", value)
 
     def test_release_static_library_uses_release_cook(self):
         found = 0
