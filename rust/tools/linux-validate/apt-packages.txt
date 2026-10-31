@@ -75,6 +75,10 @@ xauth
 openbox
 x11-utils
 pipewire
+# OBS Virtual Microphone against a private sound server (test_v4l2_vmic_server, #3186).
+pipewire-pulse
+wireplumber
+pulseaudio-utils
 dbus-daemon
 vlc-plugin-base
 qt6-base-dev
