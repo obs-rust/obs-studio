@@ -98,14 +98,20 @@ fn lists_five_tools_with_object_schemas() {
     }
     let create = tools.iter().find(|t| t["name"] == "scene_create").unwrap();
     assert_eq!(create["inputSchema"]["required"], json!(["name"]));
-    assert_eq!(create["inputSchema"]["properties"]["name"]["type"], "string");
+    assert_eq!(
+        create["inputSchema"]["properties"]["name"]["type"],
+        "string"
+    );
 }
 
 #[test]
 fn create_list_and_current() {
     let fake = Rc::new(Fake::default());
     let mut s = server(&fake);
-    assert_eq!(call(&mut s, "scenes_list", &json!({})), (false, json!({"scenes": []})));
+    assert_eq!(
+        call(&mut s, "scenes_list", &json!({})),
+        (false, json!({"scenes": []}))
+    );
     assert_eq!(
         call(&mut s, "scene_get_current", &json!({})),
         (false, json!({"name": null}))
