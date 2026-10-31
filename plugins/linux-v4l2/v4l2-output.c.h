@@ -1,5 +1,15 @@
 #include "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
 
+/* The part of a packet a short write left unwritten. Pipe space counts in
+ * page-sized slots, so a non-blocking write that fits by FIONREAD can still
+ * stop part way; the rest goes out before anything else, or every later
+ * sample would be shifted. */
+struct vmic_tail {
+	uint8_t *data;
+	size_t len;
+	size_t cap;
+};
+
 struct virtualcam_data {
 	obs_output_t *output;
 	int device;
@@ -9,6 +19,7 @@ struct virtualcam_data {
 	/* OBS Virtual Microphone (#3011): the FIFO of a module-pipe-source. */
 	int mic_fifo;
 	size_t mic_pipe_size;
+	struct vmic_tail mic_tail;
 	uint32_t mic_module;
 	bool mic_loaded;
 	char mic_path[256];
@@ -80,13 +91,49 @@ static bool vmic_parse_module_line(const char *line, uint32_t *id, long *pid)
 	return true;
 }
 
+/* #3180 writer start */
+static void vmic_tail_free(struct vmic_tail *tail)
+{
+	bfree(tail->data);
+	memset(tail, 0, sizeof(*tail));
+}
+
+/* Writes what it can of data; returns how many bytes went out, or -1 on an
+ * error other than a full pipe. */
+static ssize_t vmic_write_some(int fd, const uint8_t *data, size_t size)
+{
+	size_t done = 0;
+	while (done < size) {
+		ssize_t written = write(fd, data + done, size - done);
+		if (written < 0 && errno == EINTR)
+			continue;
+		if (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			break;
+		if (written <= 0)
+			return done ? (ssize_t)done : -1;
+		done += (size_t)written;
+	}
+	return (ssize_t)done;
+}
+
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
- * does not fit: blocking would hold up OBS's output thread and a split packet
- * would leave the reader between two samples. */
-static bool vmic_write_packet(int fd, size_t pipe_size, const uint8_t *data, size_t size)
+ * does not fit: blocking would hold up OBS's output thread. A packet that was
+ * started is always finished first, so the reader only ever sees whole
+ * packets. */
+static bool vmic_write_packet(int fd, size_t pipe_size, struct vmic_tail *tail, const uint8_t *data, size_t size)
 {
 	if (fd < 0 || size == 0)
 		return false;
+
+	if (tail->len > 0) {
+		ssize_t done = vmic_write_some(fd, tail->data, tail->len);
+		if (done < 0)
+			return false;
+		memmove(tail->data, tail->data + done, tail->len - (size_t)done);
+		tail->len -= (size_t)done;
+		if (tail->len > 0)
+			return false;
+	}
 
 	int queued = 0;
 	if (ioctl(fd, FIONREAD, &queued) < 0 || queued < 0)
@@ -94,17 +141,21 @@ static bool vmic_write_packet(int fd, size_t pipe_size, const uint8_t *data, siz
 	if ((size_t)queued + size > pipe_size)
 		return false;
 
-	while (size > 0) {
-		ssize_t written = write(fd, data, size);
-		if (written < 0 && errno == EINTR)
-			continue;
-		if (written <= 0)
-			return false;
-		data += written;
-		size -= (size_t)written;
+	ssize_t done = vmic_write_some(fd, data, size);
+	if (done <= 0)
+		return false;
+	size_t rest = size - (size_t)done;
+	if (rest > 0) {
+		if (tail->cap < rest) {
+			tail->data = brealloc(tail->data, rest);
+			tail->cap = rest;
+		}
+		memcpy(tail->data, data + done, rest);
+		tail->len = rest;
 	}
 	return true;
 }
+/* #3180 writer end */
 
 static const char *virtualcam_name(void *unused)
 {
@@ -182,6 +233,7 @@ static void vmic_stop(struct virtualcam_data *vcam)
 		close(vcam->mic_fifo);
 		vcam->mic_fifo = -1;
 	}
+	vmic_tail_free(&vcam->mic_tail);
 	if (vcam->mic_loaded) {
 		char args[64];
 		snprintf(args, sizeof(args), "unload-module %u", vcam->mic_module);
@@ -217,6 +269,9 @@ static void vmic_unload_stale(void)
 			continue;
 		if (count < sizeof(stale) / sizeof(stale[0]))
 			stale[count++] = id;
+		else
+			blog(LOG_WARNING, "Virtual microphone: more than %zu stale modules; module %u is left loaded",
+			     sizeof(stale) / sizeof(stale[0]), id);
 	}
 	pclose(fp);
 
@@ -238,6 +293,12 @@ static void vmic_start(struct virtualcam_data *vcam)
 	const char *runtime = getenv("XDG_RUNTIME_DIR");
 	if (!runtime || !*runtime) {
 		blog(LOG_WARNING, "Virtual microphone unavailable (XDG_RUNTIME_DIR is not set); "
+				  "the Virtual Camera sends video only");
+		return;
+	}
+	/* The path goes into pactl's command line inside single quotes. */
+	if (strchr(runtime, '\'')) {
+		blog(LOG_WARNING, "Virtual microphone unavailable (XDG_RUNTIME_DIR contains a quote); "
 				  "the Virtual Camera sends video only");
 		return;
 	}
@@ -573,7 +634,7 @@ static void virtual_audio(void *param, struct audio_data *frames)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
 	size_t size = (size_t)frames->frames * VMIC_CHANNELS * sizeof(float);
-	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, frames->data[0], size);
+	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, &vcam->mic_tail, frames->data[0], size);
 }
 
 struct obs_output_info virtualcam_info = {

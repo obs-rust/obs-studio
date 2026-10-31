@@ -21,6 +21,7 @@
 
 static int fds[2];
 static size_t pipe_size;
+static struct vmic_tail tail;
 
 static int setup_pipe(void **state)
 {
@@ -37,6 +38,7 @@ static int teardown_pipe(void **state)
 	(void)state;
 	close(fds[0]);
 	close(fds[1]);
+	vmic_tail_free(&tail);
 	return 0;
 }
 
@@ -47,7 +49,7 @@ static void packet_that_fits_is_written_whole(void **state)
 	for (size_t i = 0; i < sizeof(packet); i++)
 		packet[i] = (uint8_t)i;
 
-	assert_true(vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet)));
+	assert_true(vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet)));
 
 	uint8_t got[2048];
 	ssize_t n = read(fds[0], got, sizeof(got));
@@ -64,7 +66,7 @@ static void packet_that_does_not_fit_is_dropped_whole(void **state)
 	size_t written = 0;
 	size_t accepted = 0;
 	for (int i = 0; i < 16; i++) {
-		if (vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet))) {
+		if (vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet))) {
 			accepted++;
 			written += sizeof(packet);
 		}
@@ -84,14 +86,14 @@ static void packet_that_does_not_fit_is_dropped_whole(void **state)
 	uint8_t drain[8192];
 	while (read(fds[0], drain, sizeof(drain)) > 0)
 		;
-	assert_true(vmic_write_packet(fds[1], pipe_size, packet, sizeof(packet)));
+	assert_true(vmic_write_packet(fds[1], pipe_size, &tail, packet, sizeof(packet)));
 }
 
 static void closed_fifo_is_not_written(void **state)
 {
 	(void)state;
 	uint8_t packet[16] = {0};
-	assert_false(vmic_write_packet(-1, pipe_size, packet, sizeof(packet)));
+	assert_false(vmic_write_packet(-1, pipe_size, &tail, packet, sizeof(packet)));
 }
 
 static void module_index_is_parsed_from_pactl_reply(void **state)
@@ -172,7 +174,7 @@ static void short_write_never_leaves_half_a_packet(void **state)
 	uint8_t *drain = malloc(size * 4);
 	size_t total = 0;
 	for (int round = 0; round < 4; round++) {
-		vmic_write_packet(p[1], size, packet, packet_size);
+		vmic_write_packet(p[1], size, &tail, packet, packet_size);
 		ssize_t n;
 		while ((n = read(p[0], drain + total, size * 4 - total)) > 0)
 			total += (size_t)n;
@@ -186,6 +188,7 @@ static void short_write_never_leaves_half_a_packet(void **state)
 
 	free(drain);
 	free(packet);
+	vmic_tail_free(&tail);
 	close(p[0]);
 	close(p[1]);
 }
