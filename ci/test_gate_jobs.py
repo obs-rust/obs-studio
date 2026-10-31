@@ -85,6 +85,11 @@ def done(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.Comp
 class JobListCall(unittest.TestCase):
     """The jobs API is a network call: retry it, and say why it failed (#3124)."""
 
+    def setUp(self):
+        patcher = mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_a_transient_api_failure_is_retried(self):
         outputs = [
             done(1, stderr="HTTP 502: Bad Gateway"),
