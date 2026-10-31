@@ -1,0 +1,9 @@
+{
+  "description": "C of units ported to Rust: built only for libobs-c-reference (Tier 2) and the oracle.",
+  "groups": [
+    "ported-*"
+  ],
+  "depends": [
+    "core"
+  ]
+}

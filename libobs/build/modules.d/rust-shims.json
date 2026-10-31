@@ -1,0 +1,9 @@
+{
+  "description": "C shims the Rust staticlib needs (variadic entry points).",
+  "groups": [
+    "rust-*"
+  ],
+  "depends": [
+    "core"
+  ]
+}

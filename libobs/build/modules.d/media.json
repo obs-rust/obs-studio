@@ -1,0 +1,7 @@
+{
+  "description": "libobs/media-io.",
+  "groups": [
+    "media"
+  ],
+  "depends": []
+}
