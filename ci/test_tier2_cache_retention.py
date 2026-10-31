@@ -1,7 +1,6 @@
 """Queue compiler objects must not share nightly-only LRU protection."""
 from pathlib import Path
 import json
-import ast
 import re
 import tomllib
 import unittest
@@ -49,24 +48,10 @@ class Tier2RetentionTest(unittest.TestCase):
         footprint += sum(size(self.families[name]["max"]) for name in donors)
         self.assertLessEqual(footprint, (1700 + 800 + 500 + 1024 + 500) * MIB)
 
-    def test_current_ubuntu_producer_fits_without_reserving_retired_app_mode(self):
-        snapshot = json.loads((FIXTURES / "cache-retention-ubuntu.json").read_text())
+    def test_tier2_keeps_both_libobs_modes(self):
+        # The Ubuntu app build left the Actions cache (#1801 phase A); the
+        # C-reference and hybrid coverage stays in Tier 2.
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        ubuntu = re.search(r"^  ubuntu-build:\n(.*?)(?=^  [a-z0-9-]+:\n)", workflow, re.M | re.S)[1]
-        modes = ast.literal_eval(re.search(r"rust: (\[[^\n]+\])", ubuntu)[1])
-        self.assertEqual(modes, ["ON"], "re-evaluate app allocation if production modes change")
-        owners = {self.owner(entry["key"]) for entry in snapshot["ubuntu_entries"]}
-        self.assertEqual(len(owners), 1)
-        owner = owners.pop()
-        for key in ("zccache-appimage-seed", "zccache-sanitize-seed", "zccache-tier2-linux-both-seed"):
-            self.assertNotEqual(owner, self.owner(key))
-        family = self.families[owner]
-        self.assertEqual(family["evict"], "lru")
-        self.assertTrue(all("-rustON-" in entry["key"] for entry in snapshot["ubuntu_entries"]))
-        measured = max(entry["size_in_bytes"] for entry in snapshot["ubuntu_entries"])
-        self.assertGreaterEqual(size(family["max"]), measured * 1.25, "retain at least 25% archive growth room")
-        self.assertLessEqual(size(family["max"]), size("1.1GB"), "release unused second app reservation")
-        # Production app mode is separate from mandatory C-reference/hybrid test coverage.
         tier2 = re.search(r"^  rust-linux-tier2:\n(.*?)(?=^  [a-z0-9-]+:\n)", workflow, re.M | re.S)[1]
         self.assertRegex(tier2, r'mode: \["OFF", "ON"\]')
 

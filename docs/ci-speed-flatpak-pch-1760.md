@@ -104,7 +104,11 @@ does not complete #1760's 50% whole-job target.
 
 ## Manual cold builder/compiler measurement
 
-The existing workflow accepts default-off `flatpak-cold-build=true` on an
+Retired by phase A of #1801: the Flatpak builder state left the Actions cache,
+so every Flatpak build is cold and the `flatpak-cold-build` input is gone. The
+text below records the earlier design.
+
+The workflow accepted default-off `flatpak-cold-build=true` on an
 explicit dispatch. It skips both current/legacy builder archives and the
 standalone compiler restore, and suppresses both publications. A fresh hosted
 runner therefore starts with no Flatpak builder/compiler state. The full app,

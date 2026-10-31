@@ -598,6 +598,15 @@ sweep is what keeps live usage under it. Fork PR tokens cannot delete
 repository caches, so PR pushes must skip both janitor jobs. Keep cache deletion out of untrusted PR
 events; do not switch to `pull_request_target` to obtain a write token.
 
+The app builds keep no Actions cache (phase A of #1801): the macOS Xcode
+compilation cache, the Windows ccache, the Ubuntu zccache and the Flatpak
+builder state held 5.71 GiB and served only nightly, dispatch and release
+runs, while `deps`, `zccache-tier2` and `tier2-apt` serve every PR and queue
+run. `ci/test_cache_family_budget.py` checks that the declared family maxima
+fit in `[cache].budget`. The release-asset transport (#782) can bring the
+app-build caches back outside the budget; its dispatch-only seed goes from
+the app build to the transport job as a one-day artifact.
+
 Cache cleanup is best-effort maintenance. It has no dependents in the Pull
 or Push workflow and is excluded from `CI Gate ✅` (the end-of-queue sweep
 runs after the gate, which never waits on it). Its own failures remain
@@ -988,11 +997,11 @@ gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f flatpak-measur
 `flatpak-measurement-only` defaults to false and is accepted only for
 `workflow_dispatch`. Ordinary PR, merge-group, push, schedule and release
 selection is preserved. Format/Fast Gate remain, and the entire Flatpak job
-is unchanged: setup, cache restore, compilation, debug processing, export,
-validators, pruning, required publication and cleanup all stay in its clock.
-Keep other probe inputs off for a routine warm observation. A cold observation
-also passes `-f flatpak-cold-build=true`; optional Flatpak qualification probes
-remain separate extra work when explicitly requested.
+is unchanged: setup, compilation, debug processing, export, validators,
+pruning and cleanup all stay in its clock. Every Flatpak build starts cold
+(no Actions cache since #1801 phase A). Keep other probe inputs off for a
+routine observation; optional Flatpak qualification probes remain separate
+extra work when explicitly requested.
 
 This mode saves measurement runner time and waiting on unrelated jobs. Do not
 count those omissions as a Flatpak build speedup. Record full job/source/cache

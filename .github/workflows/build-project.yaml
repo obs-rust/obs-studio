@@ -30,10 +30,6 @@ on:
         description: Transfer an experimental compiler artifact to one fresh Flatpak builder (extra storage/build cost)
         type: boolean
         default: false
-      flatpak-cold-build:
-        description: Measure a fresh Flatpak builder and compiler cache without restoring or publishing either cache
-        type: boolean
-        default: false
       flatpak-pruned-build-probe:
         description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
@@ -204,7 +200,7 @@ jobs:
         env:
           FLATPAK_MEASUREMENT_ONLY: ${{ inputs.flatpak-measurement-only }}
           NATIVE_MEASUREMENT_ONLY: ${{ inputs.native-cache-measurement-only }}
-          NATIVE_MEASUREMENT_CONFLICT: ${{ inputs.native-cache-measurement-conflict || inputs.flatpak-measurement-only || inputs.flatpak-compiler-diagnostics || inputs.flatpak-runtime-test || inputs.flatpak-cold-build || inputs.flatpak-dependency-transfer-probe || inputs.flatpak-compiler-transfer-probe || inputs.flatpak-cache-probe || inputs.flatpak-pruned-build-probe }}
+          NATIVE_MEASUREMENT_CONFLICT: ${{ inputs.native-cache-measurement-conflict || inputs.flatpak-measurement-only || inputs.flatpak-compiler-diagnostics || inputs.flatpak-runtime-test || inputs.flatpak-dependency-transfer-probe || inputs.flatpak-compiler-transfer-probe || inputs.flatpak-cache-probe || inputs.flatpak-pruned-build-probe }}
           NATIVE_TRANSPORT_PROBE: ${{ inputs.native-cache-transport-probe }}
           NATIVE_REUSE_SOURCE: ${{ inputs.native-cache-reuse-source }}
           NATIVE_BUDGET_PROBE: ${{ inputs.native-cache-probe }}
@@ -379,20 +375,8 @@ jobs:
           uv run --no-project ci/native_cache_freshness.py prepare --root "$GITHUB_WORKSPACE" --state "$RUNNER_TEMP/native-reuse-state.json" --report "$RUNNER_TEMP/native-reuse-prepare.json"
           echo "cache_path=$RUNNER_TEMP/native-reuse-cache" >> "$GITHUB_OUTPUT"
 
-      # Compiler cache policy (zackees/ci.yml): only master pushes save, keyed by
-      # commit so the cache follows master instead of freezing at its first save.
-      # Master pushes build cold so the saved Xcode CAS holds only what the
-      # current tree uses (the CAS cannot be pruned by age like ccache).
-      - uses: ./.github/actions/cache
-        id: macos-compiler-cache
-        if: ${{ inputs.native-cache-reuse-source == '' && !(github.event_name == 'push' && github.ref == 'refs/heads/master') }}
-        with:
-          mode: restore
-          path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: |
-            ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-
-            ${{ runner.os }}-xcode-${{ matrix.target }}-
+      # No Actions cache for the Xcode CAS: phase A of #1801 moved the app-build
+      # caches out of the 10 GiB budget, so every app build starts cold.
 
       - name: Set Up Code Signing 🔑
         uses: ./.github/actions/setup-macos-codesigning
@@ -513,13 +497,6 @@ jobs:
           name: obs-studio-macos-${{ matrix.target }}-${{ needs.check-event.outputs.commitHash }}-dSYMs
           path: ${{ github.workspace }}/build_macos/obs-studio-*-macos-${{ steps.setup.outputs.cpuName }}-dSYMs.tar.xz
 
-      - uses: ./.github/actions/cache
-        if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.macos-compiler-cache.outputs.cache-hit != 'true' }}
-        with:
-          mode: save
-          path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: ${{ runner.os }}-xcode-${{ matrix.target }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-
       # Identity evidence only; the separate manual publisher has its own token.
       - name: Set Up uv for Native Transport Identity
         if: inputs.native-cache-transport-probe
@@ -555,13 +532,18 @@ jobs:
           --identity '${{ runner.temp }}/native-cache-identity.json' --source "$CACHE_SOURCE"
           --report '${{ runner.temp }}/native-cache-local.json'
 
-      - name: Save Qualified Native Transport Seed
+      # The transport job of this run publishes the seed (#782). It travels as
+      # an artifact: the Actions cache has no room for it (#1801).
+      - name: Upload Qualified Native Transport Seed
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: ./.github/actions/cache
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          mode: save
+          name: native-cache-seed-macos-${{ steps.native-seed.outputs.suffix }}
           path: ${{ steps.setup.outputs.xcodeCasPath }}
-          key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Upload Local Native Cache Evidence
         if: always() && inputs.native-cache-transport-probe
@@ -624,22 +606,8 @@ jobs:
       - name: Configure Host apt Mirrors
         run: sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
 
-      # Compiler cache policy (zackees/ci.yml): only master pushes save, keyed by
-      # commit so the cache follows master instead of freezing at its first save.
-      - uses: ./.github/actions/cache
-        id: ubuntu-compiler-cache
-        with:
-          mode: restore
-          path: ${{ github.workspace }}/.zccache
-          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: |
-            zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-
-
-      # Keep modes/configurations separate: the measured ON-to-OFF fallback
-      # produced 9526 MiB and prevented OFF from saving under the 8192 MiB cap.
-      # Consume restored objects before sizing the next snapshot. A normal
-      # PCH build occupies 5-6 GiB uncompressed; purging at 2 GiB discarded
-      # useful restored archives before every build (#1286).
+      # No Actions cache for zccache here: phase A of #1801 moved the app-build
+      # caches out of the 10 GiB budget, so the build starts cold.
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
@@ -759,34 +727,6 @@ jobs:
         timeout-minutes: 15
         run: uv run --no-project --with websockets==13.1 test/websocket-tier4/run_tier4.py --obs /usr/bin/obs-studio-rust-gui
 
-      # build-obs's summary step stopped the zccache daemon, flushing its index.
-      # If accumulated objects exceed a normal build plus margin, keep the
-      # previous remote snapshot rather than deleting the cache we just used.
-      - name: Check Ubuntu Compiler Snapshot Size
-        id: cache-size
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        env:
-          CACHE_DIR: ${{ github.workspace }}/.zccache
-        run: |
-          dir="$CACHE_DIR"
-          if [ ! -d "$dir" ]; then
-            echo 'save=false' >> "$GITHUB_OUTPUT"
-          else
-            size_mib=$(du -sm "$dir" | cut -f1)
-            echo "Ubuntu compiler snapshot: ${size_mib} MiB (8192 MiB save limit)"
-            if [ "$size_mib" -gt 8192 ]; then
-              echo '::warning::Compiler snapshot exceeds save limit; retaining previous remote entry'
-              echo 'save=false' >> "$GITHUB_OUTPUT"
-            else
-              echo 'save=true' >> "$GITHUB_OUTPUT"
-            fi
-          fi
-      - uses: ./.github/actions/cache
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.cache-size.outputs.save == 'true' && steps.ubuntu-compiler-cache.outputs.cache-hit != 'true'
-        with:
-          mode: save
-          path: ${{ github.workspace }}/.zccache
-          key: zccache-ubuntu-${{ matrix.os }}-x86_64-rust${{ matrix.rust }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   flatpak-build:
     timeout-minutes: 120
@@ -873,10 +813,6 @@ jobs:
 
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
-          cache_key='flatpak-builder-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}'
-
-          echo "cacheKey=${cache_key}" >> $GITHUB_OUTPUT
-
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
@@ -900,30 +836,15 @@ jobs:
           artifact: manifest
           path: build-aux/io.github.obs_rust.OBSStudioRust.json
 
-      # New snapshots keep OSTree and compiler state together, omitting
-      # downloaded inputs and transient build directories. Refresh by source
-      # generation so compiler direct manifests do not freeze at first save.
-      - uses: ./.github/actions/cache
-        id: flatpak-state-cache
-        if: ${{ !inputs.flatpak-cold-build }}
-        with:
-          mode: restore
-          path: |
-            .flatpak-builder/cache
-            .flatpak-builder/ccache
-          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: |
-            flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-
-            flatpak-builder-state-v1-x86_64-
-
       - name: Record Start Time ⏱️
         id: start
         run: echo "epoch=$(date +%s)" >> "${GITHUB_OUTPUT}"
 
       - name: Reset Flatpak Compiler Counters
         run: |
-          # The image already supplies this manifest's SDK. Reset only after
-          # the projected archive is restored, so old stats cannot replace the reset.
+          # The image already supplies this manifest's SDK. The ccache starts
+          # empty (no Actions cache since #1801 phase A); reset it anyway, so the
+          # stats below cover only this build.
           ccache_dir="${PWD}/.flatpak-builder/ccache"
           mkdir -p "${ccache_dir}"
           sdk="org.freedesktop.Sdk//$(sed -n 's/^ *"runtime-version": *"\([^" ]*\)".*/\1/p' build-aux/io.github.obs_rust.OBSStudioRust.json)"
@@ -942,19 +863,14 @@ jobs:
           # Always on: the action passes `--ccache` to flatpak-builder only
           # when `cache` is true. It used to be off for a PR whose manifest
           # hash had no master cache, so a full PR compiled all ~700 files
-          # without ccache (~9 min instead of ~1.5 min, #651). The restore
-          # uses a projected snapshot or the explicit legacy bridge above.
-          # flatpak-builder only reuses a module whose own manifest entry and
-          # source checksums are unchanged.
+          # without ccache (~9 min instead of ~1.5 min, #651). The compiler
+          # statistics below read this ccache.
           cache: true
-          # Already restored above; avoid overwriting newer compiler manifests.
+          # No Actions cache for the builder state (#1801 phase A).
           restore-cache: false
-          # Publish the pruned projection explicitly after validators below.
           save-cache: false
-          cache-key: ${{ steps.setup.outputs.cacheKey }}
           mirror-screenshots-url: https://dl.flathub.org/media
           # Keep the module-local diagnostic log until its sanitized summary.
-          # Build directories are excluded from the projected cache publisher.
           keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}
 
       # The pinned action snapshots this state immediately after building.
@@ -1040,16 +956,6 @@ jobs:
 
       # The existing master-only ccache eviction keeps this to one useful build.
       # The existing builder-family allocation/backend remain unchanged.
-      - name: Publish Flatpak Projected State
-        uses: ./.github/actions/cache
-        if: ${{ !inputs.flatpak-cold-build && github.ref == 'refs/heads/master' && steps.ccache-stats.outcome == 'success' && steps.flatpak-state-cache.outputs.cache-hit != 'true' }}
-        with:
-          mode: save
-          path: |
-            .flatpak-builder/cache
-            .flatpak-builder/ccache
-          key: flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-
       - name: Measure Flatpak Cache Capacity
         if: inputs.flatpak-cache-probe
         timeout-minutes: 15
@@ -1211,14 +1117,6 @@ jobs:
           cmake -P cmake/common/prepare-flatpak-soldr.cmake
       - name: Vendor Flatpak Compiler Consumer Sources
         run: uv run --script build-aux/prepare_flatpak_rust.py
-      - name: Restore Dependency State Before Compiler Artifact
-        if: ${{ !inputs.flatpak-dependency-transfer-probe }}
-        uses: ./.github/actions/cache
-        with:
-          mode: restore
-          path: .flatpak-builder
-          key: flatpak-builder-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-x86_64
-          restore-keys: flatpak-builder-x86_64
       - name: Download Experimental Compiler Artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -1431,15 +1329,8 @@ jobs:
       # windows-ci presets). zccache and sccache cannot serve the Visual Studio
       # generator: neither runs as a cl.exe stand-in, and zccache 1.15.2 also
       # refuses every compile that carries /Fd, which CMake always passes.
-      # Policy (zackees/ci.yml): only master pushes save, keyed by commit.
-      - uses: ./.github/actions/cache
-        id: windows-compiler-cache
-        if: inputs.native-cache-reuse-source == ''
-        with:
-          mode: restore
-          path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-
+      # No Actions cache for it: phase A of #1801 moved the app-build caches
+      # out of the 10 GiB budget, so ccache starts empty in every build.
 
       - name: Set Up ccache 🗄️
         id: ccache
@@ -1575,13 +1466,6 @@ jobs:
           ccache --evict-older-than "${Age}s"
           ccache --show-stats
 
-      - uses: ./.github/actions/cache
-        if: ${{ inputs.native-cache-reuse-source == '' && !inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.windows-compiler-cache.outputs.cache-hit != 'true' }}
-        with:
-          mode: save
-          path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ matrix.architecture }}-${{ needs.check-event.outputs.config }}-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-
       - name: Package OBS Studio 📀
         uses: ./.github/actions/package-obs
         if: ${{ inputs.native-cache-reuse-source == '' && fromJSON(needs.check-event.outputs.package) }}
@@ -1632,13 +1516,18 @@ jobs:
           --identity '${{ runner.temp }}/native-cache-identity.json' --source "$CACHE_SOURCE"
           --report '${{ runner.temp }}/native-cache-local.json'
 
-      - name: Save Qualified Native Transport Seed
+      # The transport job of this run publishes the seed (#782). It travels as
+      # an artifact: the Actions cache has no room for it (#1801).
+      - name: Upload Qualified Native Transport Seed
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-        uses: ./.github/actions/cache
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          mode: save
+          name: native-cache-seed-windows-${{ steps.native-seed.outputs.suffix }}
           path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ steps.native-seed.outputs.suffix }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Upload Local Native Cache Evidence
         if: always() && inputs.native-cache-transport-probe
@@ -3367,27 +3256,13 @@ jobs:
           else
             echo "cache=$GITHUB_WORKSPACE/.ccache" >> "$GITHUB_OUTPUT"
           fi
-      - name: Restore Exact Completed Windows Seed
-        if: matrix.platform == 'windows'
-        id: windows-seed
-        uses: ./.github/actions/cache
+      # The seed of this run's app build, bound to its profile by the suffix.
+      # download-artifact fails when no artifact has the exact name.
+      - name: Download Exact Completed Seed
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          mode: restore
+          name: native-cache-seed-${{ matrix.platform }}-${{ steps.native-seed.outputs.suffix }}
           path: ${{ steps.path.outputs.cache }}
-          key: windows-ccache-${{ steps.native-seed.outputs.suffix }}
-          fail-on-cache-miss: true
-      - name: Restore Exact Completed macOS Seed
-        if: matrix.platform == 'macos'
-        id: macos-seed
-        uses: ./.github/actions/cache
-        with:
-          mode: restore
-          path: ${{ steps.path.outputs.cache }}
-          key: macOS-xcode-${{ steps.native-seed.outputs.suffix }}
-          fail-on-cache-miss: true
-      - name: Require Exact Seed
-        if: (matrix.platform == 'windows' && steps.windows-seed.outputs.cache-hit != 'true') || (matrix.platform == 'macos' && steps.macos-seed.outputs.cache-hit != 'true')
-        run: exit 1
       - name: Publish Bounded Cache Generation
         env:
           NATIVE_CACHE_JOB_TOKEN: ${{ github.token }}

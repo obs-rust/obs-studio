@@ -157,27 +157,11 @@ jobs:
           mkdir -p "$cas"
           echo "XCODE_CAS_PATH=$cas" >>"$GITHUB_ENV"
 
-      # Restore, read-only, the compiler caches build-project.yaml's app builds
-      # save on master (same target, RelWithDebInfo): the release compiled
-      # every C file cold, Windows x64 15m34s at 0/716 ccache hits against
-      # 3m08s in the scheduled build (#782). Never saved here, so the release's
-      # Rust-libobs objects cannot grow or skew the app builds' caches.
-      - name: Restore Xcode Cache 🗄️
-        if: matrix.os == 'macos'
-        uses: ./.github/actions/cache
-        with:
-          mode: restore
-          path: ${{ env.XCODE_CAS_PATH }}
-          key: macOS-xcode-${{ matrix.target }}-RelWithDebInfo-${{ needs.check.outputs.sha }}
-          restore-keys: macOS-xcode-${{ matrix.target }}-RelWithDebInfo-
-      - name: Restore ccache 🗄️
-        if: matrix.os == 'windows'
-        uses: ./.github/actions/cache
-        with:
-          mode: restore
-          path: ${{ github.workspace }}/.ccache
-          key: windows-ccache-${{ matrix.target }}-RelWithDebInfo-${{ needs.check.outputs.sha }}
-          restore-keys: windows-ccache-${{ matrix.target }}-RelWithDebInfo-
+      # No compiler cache restore: the app builds no longer save one to the
+      # Actions cache (#1801 phase A), so the release builds cold (Windows x64
+      # 15m34s against 3m08s warm, #782). The release-asset transport (#782)
+      # can bring it back.
+
       # The windows-ci presets enable ccache (ENABLE_CCACHE) when it is on PATH;
       # same pinned build as build-project.yaml's windows-build.
       - name: Set Up ccache 🗄️

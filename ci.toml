@@ -101,21 +101,15 @@ uv = { via = "setup-uv", max = "50MB" }
 # (ci/fixtures/queue-compiler-caches.json). Independent LRU
 # protection prevents newer nightly writes from evicting that queue seed.
 zccache-tier2 = { prefix = "zccache-tier2-linux-", max = "1.5GB", evict = "lru" }
-# Ubuntu's production app matrix is ON-only; C-reference OFF/ON coverage
-# remains in Tier 2. Observed ON archive 905,383,834 B; >30% growth room.
-# Separate first-match LRU protection from AppImage/sanitizer writes (#1269).
-zccache-ubuntu = { prefix = "zccache-ubuntu-", max = "1.1GB", evict = "lru" }
-zccache = { prefix = "zccache-", max = "500MB", evict = "lru", shapes = { appimage = { max = "400MB" }, sanitize = { max = "300MB" } } }
-# Windows compiler cache: ccache as cl.exe (build-project.yaml windows-build).
-# Independent newest-entry protection: the pooled family deleted a current
-# x64 seed while retaining ARM64 (#1269). Allowances cover observed archives.
-windows-ccache-x64 = { prefix = "windows-ccache-x64-", max = "1.3GB", evict = "lru" }
-windows-ccache-arm64 = { prefix = "windows-ccache-arm64-", max = "1.1GB", evict = "lru" }
-# macOS: Xcode's compilation cache (build-project.yaml macos-build).
-xcode-x86_64 = { prefix = "macOS-xcode-x86_64-", max = "800MB", evict = "lru" }
-xcode-arm64 = { prefix = "macOS-xcode-arm64-", max = "800MB", evict = "lru" }
-# Flatpak: the projected archive contains dependency OSTree and SDK ccache.
-flatpak-builder = { prefix = "flatpak-builder-", max = "2.5GB", evict = "lru" }
+# The PR asan job restores master's sanitize archive: 753,363,578 B on
+# 2026-10-30 (ci/fixtures/sanitize-compiler-cache.json). At 300MB the janitor
+# evicted it and PR asan jobs built cold, 40-55 min against 25 min (#1801).
+zccache = { prefix = "zccache-", max = "500MB", evict = "lru", shapes = { appimage = { max = "400MB" }, sanitize = { max = "1GB" } } }
+# Phase A of #1801 (Decided 2026-10-30): the six app-build families
+# (flatpak-builder, windows-ccache-x64/-arm64, zccache-ubuntu,
+# xcode-x86_64/-arm64) left the Actions cache. They held 5.71 GiB and hit 9 of
+# 42 restores, all on nightly, dispatch and release runs. The release-asset
+# transport (#782) can bring them back outside this budget.
 # The standalone compiler migration reader/writer is retired (#1801).
 # AppImage (appimage.yaml): cargo and the test images' packages.
 # Legacy apt-appimage- and ccache-appimage- have no consumers or live entries;

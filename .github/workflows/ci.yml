@@ -33,10 +33,6 @@ on:
         description: Transfer an experimental compiler artifact to one fresh Flatpak builder (extra storage/build cost)
         type: boolean
         default: false
-      flatpak-cold-build:
-        description: Measure a fresh Flatpak builder and compiler cache without restoring or publishing either cache
-        type: boolean
-        default: false
       flatpak-pruned-build-probe:
         description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
@@ -122,7 +118,6 @@ jobs:
       flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}
       flatpak-compiler-diagnostics: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-diagnostics }}
       flatpak-runtime-test: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-test }}
-      flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}
       flatpak-dependency-transfer-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-dependency-transfer-probe }}
       flatpak-compiler-transfer-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-transfer-probe }}
       flatpak-cache-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cache-probe }}

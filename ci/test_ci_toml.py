@@ -107,35 +107,21 @@ class UvCacheWriterTest(unittest.TestCase):
 
 
 class FlatpakCacheWriterTest(unittest.TestCase):
-    def test_projected_state_publishes_once_after_pruning_and_validators(self):
+    def test_flatpak_build_restores_and_publishes_no_actions_cache(self):
+        # Phase A of #1801: the Flatpak builder state left the Actions cache.
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("  flatpak-compiler-consumer:", 1)[0]
+        self.assertNotIn("uses: ./.github/actions/cache", job)
+        self.assertNotIn("flatpak-builder-state-", job)
         action = job.split("      - name: Build Flatpak Manifest", 1)[1].split("      - name: Report Flatpak", 1)[0]
         self.assertIn("flatpak-builder@79327416609af08178ad73b352877e51450790b3", action)
+        # `cache: true` is what passes --ccache to flatpak-builder (#651).
         self.assertRegex(action, r"(?m)^          cache: true$")
         self.assertRegex(action, r"(?m)^          restore-cache: false$")
         self.assertRegex(action, r"(?m)^          save-cache: false$")
-        publisher = job.split('      - name: Publish Flatpak Projected State', 1)[1].split('\n      - ', 1)[0]
-        for guard in ['!inputs.flatpak-cold-build', "github.ref == 'refs/heads/master'",
-                      "steps.ccache-stats.outcome == 'success'", "steps.flatpak-state-cache.outputs.cache-hit != 'true'"]:
-            self.assertIn(guard, publisher)
-        paths = publisher.split('          path: |\n', 1)[1].split('          key:', 1)[0]
-        self.assertEqual(paths.split(), ['.flatpak-builder/cache', '.flatpak-builder/ccache'])
-        for marker in ['name: Ccache Stats', 'name: Validate AppStream', 'name: Validate build directory', 'name: Validate repository']:
-            self.assertLess(job.index(marker), job.index('name: Publish Flatpak Projected State'))
-        self.assertEqual(len(re.findall(r'(?m)^\s+mode: save$', job)), 1)
-
-    def test_projected_state_has_no_legacy_overlay(self):
-        workflow = (WORKFLOWS / "build-project.yaml").read_text()
-        job = workflow.split("  flatpak-build:\n", 1)[1].split("  flatpak-compiler-consumer:", 1)[0]
-        state = job.split('id: flatpak-state-cache', 1)[1].split('\n      - ', 1)[0]
-        key = "flatpak-builder-state-v1-x86_64-${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}-${{ github.sha }}"
-        self.assertIn('key: ' + key, state)
-        self.assertIn('flatpak-builder-state-v1-x86_64-', state)
-        for marker in ['id: flatpak-builder-cache-lookup', 'name: Restore legacy Flatpak builder seed', 'id: flatpak-compiler-cache']:
-            self.assertFalse(marker in job, 'The observed projected/cold routes no longer need migration overlays')
-        publisher = job.split('name: Publish Flatpak Projected State', 1)[1].split('\n      - ', 1)[0]
-        self.assertIn('key: ' + key, publisher)
+        self.assertNotIn("cache-key:", action)
+        for validator in ("Validate AppStream", "Validate build directory", "Validate repository"):
+            self.assertIn(validator, job)
 
     def test_flatpak_compiler_statistics_cover_only_this_build(self):
         workflow = (WORKFLOWS / "build-project.yaml").read_text()
@@ -146,29 +132,8 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         self.assertIn("--zero-stats", reset)
         self.assertIn('CCACHE_DIR=', reset)
         self.assertNotIn('continue-on-error', reset)
-        self.assertLess(job.index('id: flatpak-state-cache'), job.index(marker))
         self.assertLess(job.index(marker), job.index('- name: Build Flatpak Manifest'))
         self.assertIn('Flatpak Ccache Stats (this build)', job)
-
-    def test_manual_cold_flatpak_neither_restores_nor_publishes_build_caches(self):
-        workflow = (WORKFLOWS / "build-project.yaml").read_text()
-        caller = (WORKFLOWS / "ci.yml").read_text()
-        for text in (workflow, caller):
-            self.assertRegex(text, r'flatpak-cold-build:\n        description: [^\n]+\n        type: boolean\n        default: false')
-        self.assertIn("flatpak-cold-build: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cold-build }}", caller)
-        job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
-        steps = job.split('\n      - ')
-        for marker in ('id: flatpak-state-cache',):
-            matches = [step for step in steps if marker in step]
-            self.assertTrue(matches, marker)
-            for step in matches:
-                self.assertIn('!inputs.flatpak-cold-build', step, marker)
-        self.assertIn('name: Publish Flatpak Projected State', job)
-        self.assertIn('save-cache: false', job)
-        self.assertIn('cache: true', job)
-        self.assertIn('restore-cache: false', job)
-        for validator in ('Validate AppStream', 'Validate build directory', 'Validate repository'):
-            self.assertIn(validator, job)
 
     def test_retired_standalone_compiler_cache_has_no_reader_writer_or_reservation(self):
         for workflow in WORKFLOWS.glob('*.y*ml'):
@@ -696,37 +661,6 @@ class AllowPermissionsTest(unittest.TestCase):
         stale = [entry for entry in load()["exceptions"]
                  if entry["rule"] == "SEC-002" and entry["path"] == ".github/workflows/ci.yml"]
         self.assertEqual(stale, [], "ci.yml has no SEC-002 finding left to except")
-
-
-class NativeArchitectureRetentionTest(unittest.TestCase):
-    def test_current_architecture_seeds_have_independent_honest_allowances(self):
-        # Real observed producer archives; a newer other architecture cannot
-        # substitute for any of these seeds (#1269).
-        observed = {
-            'windows-ccache-x64-RelWithDebInfo-source': 1063380057,
-            'windows-ccache-arm64-RelWithDebInfo-source': 901055569,
-            'macOS-xcode-x86_64-RelWithDebInfo-source': 675951544,
-            'macOS-xcode-arm64-RelWithDebInfo-source': 659815401,
-        }
-        families = load()['cache']['family']
-        matched = []
-        for key, archive_bytes in observed.items():
-            family_id = next(name for name, value in families.items()
-                             if key.startswith(value.get('prefix', VIA_PREFIXES.get(value.get('via'), '\0'))))
-            matched.append(family_id)
-            family = families[family_id]
-            unit = re.fullmatch(r'([0-9.]+)(MB|GB)', family['max'])
-            allowance = int(float(unit[1]) * (1024 ** (2 if unit[2] == 'MB' else 3)))
-            self.assertGreaterEqual(allowance, archive_bytes, key)
-            self.assertEqual(family['evict'], 'lru')
-            self.assertNotIn('shapes', family)
-        self.assertEqual(len(set(matched)), 4, 'architectures must not share newest-entry protection')
-
-    def test_declared_workflow_architectures_are_resolved_before_family_checks(self):
-        keys = [key for _, key in cache_keys()]
-        for prefix in ('windows-ccache-x64-', 'windows-ccache-arm64-',
-                       'macOS-xcode-x86_64-', 'macOS-xcode-arm64-'):
-            self.assertTrue(any(key.startswith(prefix) for key in keys), prefix)
 
 
 class LeaderboardPermissionsTest(unittest.TestCase):

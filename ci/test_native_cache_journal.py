@@ -20,7 +20,6 @@ class NativeCacheJournalTest(unittest.TestCase):
         block = workflow.split("  ubuntu-build:\n", 1)[1].split("\n  flatpak-build:", 1)[0]
         selector = re.search(r"(?m)^    if: (.+)$", block).group(1)
         self.assertIn("fromJSON(needs.check-event.outputs.full)", selector)
-        self.assertLess(block.index("id: ubuntu-compiler-cache"), block.index("id: native-cache-journal"))
         self.assertLess(block.index("- name: Set Up uv"), block.index("id: native-cache-journal"))
         self.assertLess(block.index("id: native-cache-journal"), block.index("- name: Build OBS Studio"))
         steps = re.split(r"(?m)^      - ", block)

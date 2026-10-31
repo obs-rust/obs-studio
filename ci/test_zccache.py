@@ -135,8 +135,8 @@ class ZccacheTest(unittest.TestCase):
         self.assertEqual(ubuntu.get("CMAKE_CXX_COMPILER_LAUNCHER"), "zccache")
 
     def test_cache_keys_name_zccache(self):
+        # ubuntu-build keeps no compiler cache since #1801 phase A.
         jobs = [
-            ("build-project.yaml", "ubuntu-build"),
             ("build-project.yaml", "rust-linux-tier2-build"),
             ("sanitizers.yaml", "sanitize"),
             ("appimage.yaml", "build"),
@@ -152,7 +152,7 @@ class ZccacheTest(unittest.TestCase):
 
     def test_only_master_pushes_save_ci_compiler_caches(self):
         # zackees/ci.yml cache policy: a PR-ref save is unreachable by other PRs.
-        for name in ("ubuntu-build", "rust-linux-tier2-build"):
+        for name in ("rust-linux-tier2-build",):
             block = job("build-project.yaml", name)
             saves = [step for step in block.split("\n      - ")
                      if "actions/cache/save@" in step

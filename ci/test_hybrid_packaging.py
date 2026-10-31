@@ -215,34 +215,14 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
             self.assertIn("fixture SDK identity unavailable", log.read_text())
             self.assertIn('"ccache", "--version"', log.read_text())
 
-    def test_flatpak_custom_key_matches_pinned_action_architecture_fallback(self):
-        workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  windows-build:", 1)[0]
-        template = re.search(r"cache_key='([^']*(?:'build-aux/io.github.obs_rust.OBSStudioRust.json')[^']*)'", job)[1]
-        expression = "${{ hashFiles('build-aux/io.github.obs_rust.OBSStudioRust.json') }}"
-        self.assertIn(expression, template, "preserve the original manifest identity")
-        # v6.8 appends the architecture to custom keys and falls back to this
-        # architecture-first prefix. Different manifests must find the same seed.
-        seed = template.replace(expression, "a" * 64) + "-x86_64"
-        changed = template.replace(expression, "b" * 64) + "-x86_64"
-        self.assertNotEqual(seed, changed)
-        self.assertTrue(seed.startswith("flatpak-builder-x86_64"), seed)
-        self.assertTrue(changed.startswith("flatpak-builder-x86_64"), changed)
-        self.assertFalse(seed.startswith("flatpak-builder-aarch64"))
-
-    def test_flatpak_restores_one_projected_build_cache_before_compiling(self):
+    def test_flatpak_restores_no_actions_cache_before_compiling(self):
+        # The Flatpak builder state left the Actions cache (#1801 phase A).
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = workflow.split("  flatpak-build:\n", 1)[1].split("\n  flatpak-compiler-consumer:", 1)[0]
         restores = [step for step in job.split('\n      - ')
                     if 'actions/cache/restore@' in step
                     or ('uses: ./.github/actions/cache' in step and re.search(r'(?m)^\s+mode: restore$', step))]
-        self.assertEqual(len(restores), 1, 'Retired migration restores must not return on a projected miss')
-        restore = restores[0]
-        self.assertIn('id: flatpak-state-cache', restore)
-        self.assertIn('!inputs.flatpak-cold-build', restore)
-        paths = restore.split('          path: |\n', 1)[1].split('          key:', 1)[0]
-        self.assertEqual(paths.split(), ['.flatpak-builder/cache', '.flatpak-builder/ccache'])
-        self.assertLess(job.index('id: flatpak-state-cache'), job.index('- name: Build Flatpak Manifest'))
+        self.assertEqual(restores, [])
 
     def flatpak_cache_inventory_script(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
@@ -811,7 +791,9 @@ class FlatpakDependencyTransferTest(unittest.TestCase):
             self.assertIn('default: false', block)
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.flatpak-dependency-transfer-probe", caller)
         consumer = workflow.split('  flatpak-compiler-consumer:', 1)[1].split('  flatpak-runtime-test:', 1)[0]
-        self.assertIn('!inputs.flatpak-dependency-transfer-probe', consumer)
+        # Without the dependency probe the consumer starts from an empty
+        # builder state: no Actions cache since #1801 phase A.
+        self.assertNotIn('uses: ./.github/actions/cache', consumer)
         self.assertLess(consumer.index('Restore Experimental Dependency Artifact'),
                         consumer.index('Verify and Restore Compiler Artifact Last'))
         self.assertIn('Verify All Dependency Modules Were Reused', consumer)

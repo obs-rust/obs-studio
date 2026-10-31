@@ -227,7 +227,7 @@ class NativeMeasurementScopeTest(unittest.TestCase):
             (re.search(r'^          NATIVE_MEASUREMENT_CONFLICT: (.*)$',
                        job('check-event'), re.MULTILINE).group(1),
              ['native-cache-measurement-conflict', 'flatpak-measurement-only',
-              'flatpak-compiler-diagnostics', 'flatpak-runtime-test', 'flatpak-cold-build',
+              'flatpak-compiler-diagnostics', 'flatpak-runtime-test',
               'flatpak-dependency-transfer-probe', 'flatpak-compiler-transfer-probe',
               'flatpak-cache-probe', 'flatpak-pruned-build-probe']),
         ]
