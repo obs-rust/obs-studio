@@ -564,3 +564,34 @@ class WindowsCloseFrontendTest(unittest.TestCase):
     def test_permanently_invisible_owned_window_times_out(self):
         with self.assertRaisesRegex(RuntimeError, "owned frontend window"):
             self.run_windows_close([False] * 10, ticks=[0, 31])
+
+
+class StartupFailureReportTest(unittest.TestCase):
+    """#3168: a trap during startup must say which mode died and carry the report."""
+
+    def test_a_macos_startup_trap_prints_the_report_and_names_the_mode(self):
+        with patch.object(smoke, "report_crash_reports") as reports, patch.object(
+            smoke, "diagnostic_report_directories", return_value=[Path("/reports")]
+        ):
+            error = smoke.startup_failure(
+                RuntimeError("packaged app exited during startup: -5"),
+                "macos",
+                12.5,
+                "migrate-default",
+            )
+        self.assertEqual(
+            str(error),
+            "config mode migrate-default: packaged app exited during startup: -5",
+        )
+        reports.assert_called_once_with([Path("/reports")], 12.5)
+
+    def test_a_windows_startup_failure_names_the_mode_without_a_crash_report(self):
+        with patch.object(smoke, "report_crash_reports") as reports:
+            error = smoke.startup_failure(
+                RuntimeError("packaged app exited during startup: 1"),
+                "windows",
+                0.0,
+                "fresh",
+            )
+        self.assertIn("config mode fresh", str(error))
+        reports.assert_not_called()
