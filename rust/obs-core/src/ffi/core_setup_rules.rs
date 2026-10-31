@@ -1,9 +1,11 @@
-//! C ABI for `libobs/obs-core-setup-rules.c.h`.
+//! C ABI for `libobs/obs-core-setup-rules.c.h` and
+//! `libobs/obs-core-setup-rules-ms.c.h`.
 //!
 //! `obs_reset_video()`, `obs_reset_audio2()`, `obs_set_cmdline_args()`,
 //! `obs_find_data_file()`, `obs_remove_data_path()`, `obs_get_latest_input_type_id()`,
-//! `check_all_aoc_sources()`, `obs_set_audio_monitoring_device()` and
-//! `obs_get_video_frame_counts()` in `obs.c` call these inside libobs. They
+//! `check_all_aoc_sources()`, `obs_set_audio_monitoring_device()`,
+//! `obs_get_video_frame_counts()` and `obs_get_audio_info2()` in `obs.c`
+//! call these inside libobs. They
 //! are declared in `obs-core-setup-rules.h` without `EXPORT`, so the shims
 //! stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
@@ -96,6 +98,12 @@ pub extern "C" fn obs_core_setup_rules_buffer_ticks(
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_core_setup_rules_buffer_default_ticks() -> u32 {
     core_setup_rules::buffer_default_ticks()
+}
+
+/// Same contract as C `obs_core_setup_rules_buffer_ms`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_buffer_ms(ticks: c_int, samples_per_sec: u32) -> c_int {
+    core_setup_rules::buffer_ms(ticks, samples_per_sec)
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_set`.

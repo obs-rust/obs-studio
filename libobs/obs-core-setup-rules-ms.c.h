@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-core-setup-rules-ms.pch.h"
+#include "libobs/build/libobs-ported-core-setup-rules.pch.h"
+
+/* Ported to rust/obs-core (core_setup_rules): the hybrid libobs drops this
+ * file. */
 
 /* The audio buffering in milliseconds, moved from obs_reset_audio2() and
  * obs_get_audio_info2() in obs.c: the ticks the reset stored, back in

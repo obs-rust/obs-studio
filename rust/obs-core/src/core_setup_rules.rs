@@ -13,7 +13,9 @@
 //!   default, any other is rounded up from `ms * rate / 1000` frames, in
 //!   `u32` (the product wraps);
 //! - [`buffer_ms`]: those ticks back in milliseconds, for the reset's log
-//!   and `obs_get_audio_info2()`, the rate cast to `i32` as the C does;
+//!   and `obs_get_audio_info2()`, the rate cast to `i32` as the C does; a
+//!   zero rate gives 0 and the result is clamped to `i32`, where the C traps
+//!   and overflows (#3272);
 //! - [`cmdline_set`], [`cmdline_len`] and [`cmdline_table`]: the command
 //!   line is set once (while its stored `argc` is 0), and its copy's
 //!   strings (each with its terminator) follow a table of `argc + 1`
@@ -33,8 +35,8 @@
 //!   mix's view, and has a video output.
 //!
 //! `obs.c` keeps every lock, every read and call, the fps gate, every
-//! allocation, copy, free and signal, every divide by a variable and every
-//! log message. Nothing here panics, indexes or overflows for any input.
+//! allocation, copy, free and signal, every divide by a variable but the
+//! buffering's milliseconds, and every log message. Nothing here panics, indexes or overflows for any input.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -164,10 +166,23 @@ pub fn buffer_default_ticks() -> u32 {
 /// Same contract as C `obs_core_setup_rules_buffer_ms`: `ticks` of
 /// [`AUDIO_OUTPUT_FRAMES`] in milliseconds at `samples_per_sec`, rounded
 /// toward zero, with the rate cast to `i32` as the C casts it to `int`.
-#[expect(clippy::todo, reason = "RED: the port comes in the next commit")]
+///
+/// Two intentional differences from the C (#3272): a zero rate gives 0,
+/// where the C's divide traps, so `obs_reset_audio2()` goes on to
+/// `obs_init_audio()`, which refuses the rate; and the product is an
+/// `i64` and the quotient is clamped to `i32`, where the C's `int` product
+/// overflows from 2098 ticks.
 pub fn buffer_ms(ticks: i32, samples_per_sec: u32) -> i32 {
-    let _ = (ticks, samples_per_sec);
-    todo!()
+    // |ticks| * 1024 * 1000 < 2^51: no i64 product wraps.
+    let product = i64::from(ticks)
+        .wrapping_mul(i64::from(AUDIO_OUTPUT_FRAMES))
+        .wrapping_mul(i64::from(SEC_TO_MSEC));
+    // The divisor is an i32 widened, never -1 with an i64::MIN product, so
+    // only a zero rate has no quotient.
+    let ms = product
+        .checked_div(i64::from(samples_per_sec.cast_signed()))
+        .unwrap_or(0);
+    i32::try_from(ms).unwrap_or(if ms < 0 { i32::MIN } else { i32::MAX })
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_set`: the command line

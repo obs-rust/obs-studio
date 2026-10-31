@@ -2564,6 +2564,13 @@ area.
   twice each row, so the last rows of a frame ran past the caller's
   buffers. Nothing in OBS calls it. *All*, 2026-10-30. Issue
   [#3031](https://github.com/obs-rust/obs-studio/issues/3031).
+- An audio sample rate of 0 (a hand-edited profile, a plugin or a
+  script) no longer crashes OBS with a divide by zero while it logs the
+  audio settings; the audio reset fails with "Invalid audio parameters
+  specified" in the log. A buffering above about 44 seconds is logged,
+  and reported by `obs_get_audio_info2()`, as its real length instead of
+  an overflowed number. *All*, 2026-10-31. Issue
+  [#3272](https://github.com/obs-rust/obs-studio/issues/3272).
 
 ### Security hardening
 
