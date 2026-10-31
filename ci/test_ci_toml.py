@@ -40,12 +40,23 @@ CONVERTED_CACHE_PATHS = (
 # Prefixes of the families a `via` names (zackees/ci.yml ci_lint/cache/families.py).
 VIA_PREFIXES = {
     "setup-soldr:cargo-registry": "setup-soldr-cargoregistry-v1-",
+    # The pinned linter (a1917ce) still resolves this via to v2; the pinned
+    # setup-soldr writes v3 (#3166), so no family declares the via any more.
     "setup-soldr:cook": "cook-base-v2-",
     "setup-soldr:build-cache": "setup-soldr-buildcache-v2-",
     "setup-soldr:solo-toolchain": "solo-toolchain-v3-",
     "setup-soldr:soldr-mini": "soldr-mini-v2-",
     "setup-uv": "setup-uv-2-",
 }
+
+# The `zackees/setup-soldr` commit build-project.yaml runs, and the cook key
+# prefix its source writes. The janitor deletes every cache that matches no
+# [cache.family], so a bump that changes COOK_BASE_KEY_PREFIX without this
+# table (and ci.toml) moves the layers from "kept" to "deleted on the next
+# merge-queue run": #3061 pinned this commit on 2026-10-30 and v2 keys stopped
+# being written, while `deps` still resolved to cook-base-v2- (#3166).
+SETUP_SOLDR_PIN = "9337570234850b50322e696037127fa3cf8ac703"  # s3 remote cache
+SETUP_SOLDR_COOK_PREFIX = "cook-base-v3-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v3"
 
 
 def load() -> dict:
@@ -400,7 +411,7 @@ class CiTomlTest(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(any(key.startswith(prefix) for prefix in prefixes),
                                  "Disabled archives must be eligible for unmatched-family cleanup")
-        for key in ("cook-base-v2-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
+        for key in ("cook-base-v3-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
                     "solo-toolchain-v3-linux-current", "zccache-tier2-linux-current",
                     "targets-ccache-linux-current", "targets-apt-current"):
             with self.subTest(key=key):
@@ -430,8 +441,29 @@ class CiTomlTest(unittest.TestCase):
         vias = {fam.get("via") for fam in load()["cache"]["family"].values()}
         # build-cache is optional and disabled at every audited callsite;
         # test_rust_cache_policy checks both that input and its retirement.
-        required = set(VIA_PREFIXES) - {"setup-soldr:build-cache"}
+        # cook is declared by prefix instead (#3166); the test below pins it.
+        required = set(VIA_PREFIXES) - {"setup-soldr:build-cache", "setup-soldr:cook"}
         self.assertLessEqual(required, vias)
+
+    def test_deps_family_matches_the_pinned_setup_soldr_cook_prefix(self):
+        """The cook layers a run leaves behind must match a family (#3166).
+
+        `zackees/setup-soldr` writes `cook-base-v3-…` keys at the pinned
+        commit, while the pinned linter (a1917ce) resolves
+        `via = "setup-soldr:cook"` to `cook-base-v2-`. The janitor deletes
+        every cache matching no family, so `deps` declares the prefix itself
+        (ci-lint's schema makes `via` and `prefix` mutually exclusive). Bumping
+        the action and changing COOK_BASE_KEY_PREFIX must move this constant
+        and ci.toml together; otherwise the layers go cold silently.
+        """
+        pins = set()
+        for path in WORKFLOWS.glob("*.y*ml"):
+            pins.update(re.findall(r"zackees/setup-soldr@([0-9a-f]{40})", path.read_text()))
+        self.assertEqual(pins, {SETUP_SOLDR_PIN},
+                         "update SETUP_SOLDR_PIN, SETUP_SOLDR_COOK_PREFIX and the deps family with the pin")
+        deps = load()["cache"]["family"]["deps"]
+        self.assertNotIn("via", deps, "ci-lint's schema makes `via` and `prefix` mutually exclusive")
+        self.assertEqual(deps["prefix"], SETUP_SOLDR_COOK_PREFIX)
 
     def test_workflows_declare_their_triggers(self):
         allowed = load()["allow"]["workflows"]

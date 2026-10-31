@@ -89,7 +89,13 @@ pr = { mode = "none", families = [], max-per-pr = "0MB", budget = "0MB", trim = 
 # zackees/setup-soldr (build-project.yaml, release-rust.yaml).
 registry = { via = "setup-soldr:cargo-registry", max = "60MB", per = "platform" }
 # Linux retains measured dev (~622 MB) and release (~637 MB) snapshots.
-deps = { via = "setup-soldr:cook", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "400MB" }, windows = { max = "650MB" } } }
+# Declared by prefix, not `via = "setup-soldr:cook"`: the pinned linter
+# (a1917ce) resolves that via to cook-base-v2-, but the pinned setup-soldr
+# (9337570) writes cook-base-v3- keys, which the janitor then deleted as an
+# undeclared family on every merge-queue run, so a cook layer survived only
+# until the next run ended (#3166; sizes measured 2026-10-31: Linux 1.29-1.51
+# GB, macOS 0.72 GB, Windows 0.80-0.84 GB).
+deps = { prefix = "cook-base-v3-", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "400MB" }, windows = { max = "650MB" } } }
 # Embedded compiler-store transport is disabled at every setup-soldr callsite.
 # No family: legacy setup-soldr-buildcache-v2-* entries may be reclaimed.
 toolchain = { via = "setup-soldr:solo-toolchain", max = "190MB", per = "platform" }
