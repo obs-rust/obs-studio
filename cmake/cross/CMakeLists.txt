@@ -614,6 +614,7 @@ if(_host STREQUAL WINDOWS)
     INCLUDES shared/opts-parser
   )
   _obs_cross_plugin(coreaudio-encoder-cross DIR plugins/coreaudio-encoder SOURCES build/coreaudio-encoder.windows+.hpp.cpp INCLUDES plugins/coreaudio-encoder/hosts/windows)
+  _obs_cross_conversion_ratchet(coreaudio-encoder-cross)
   _obs_cross_plugin(obs-ffmpeg-mux-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.mux-host-windows+.h.c)
   _obs_cross_plugin(obs-ffmpeg-mux-helper-host-cross DIR plugins/obs-ffmpeg/ffmpeg-mux SOURCES build/ffmpeg-mux.windows+.h.c)
   _obs_cross_plugin(obs-ffmpeg-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.host-windows+.h.c)
@@ -682,6 +683,7 @@ if(_host STREQUAL WINDOWS)
   )
   # obs-text's unity group (BUILD.md).
   _obs_cross_plugin(obs-text-cross DIR plugins/obs-text SOURCES build/obs-text.windows+.hpp.cpp)
+  _obs_cross_conversion_ratchet(obs-text-cross)
   # The Windows helpers' unity groups (BUILD.md): the updater, the virtual
   # camera DLL, the AMF and QSV probes and obs-ffmpeg's AMF encoders.
   _obs_cross_plugin(

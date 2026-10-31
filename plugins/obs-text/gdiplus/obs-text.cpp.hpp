@@ -127,7 +127,7 @@ static inline DWORD get_alpha_val(uint32_t opacity)
 
 static inline DWORD calc_color(uint32_t color, uint32_t opacity)
 {
-	return color & 0xFFFFFF | get_alpha_val(opacity);
+	return (color & 0xFFFFFF) | get_alpha_val(opacity);
 }
 
 static inline wstring to_wide(const char *utf8)
@@ -339,7 +339,7 @@ void TextSource::GetStringFormat(StringFormat &format)
 		flags |= StringFormatFlagsDirectionVertical | StringFormatFlagsDirectionRightToLeft;
 	}
 
-	format.SetFormatFlags(flags);
+	format.SetFormatFlags(static_cast<INT>(flags));
 	format.SetTrimming(StringTrimmingWord);
 
 	switch (align) {
@@ -476,7 +476,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format, RectF &bounding_
 	}
 
 	if (vertical) {
-		if (bounding_box.Width < face_size) {
+		if (bounding_box.Width < float(face_size)) {
 			text_size.cx = face_size;
 			bounding_box.Width = float(face_size);
 		} else {
@@ -485,7 +485,7 @@ void TextSource::CalculateTextSizes(const StringFormat &format, RectF &bounding_
 
 		text_size.cy = LONG(bounding_box.Height + EPSILON);
 	} else {
-		if (bounding_box.Height < face_size) {
+		if (bounding_box.Height < float(face_size)) {
 			text_size.cy = face_size;
 			bounding_box.Height = float(face_size);
 		} else {
@@ -496,20 +496,20 @@ void TextSource::CalculateTextSizes(const StringFormat &format, RectF &bounding_
 	}
 
 	if (use_extents) {
-		text_size.cx = extents_cx;
-		text_size.cy = extents_cy;
+		text_size.cx = static_cast<LONG>(extents_cx);
+		text_size.cy = static_cast<LONG>(extents_cy);
 
 		if (!old_extents && !wrap) {
 			if (align == Align::Center) {
-				bounding_box.X += (extents_cx - bounding_box.Width) / 2;
+				bounding_box.X += (float(extents_cx) - bounding_box.Width) / 2;
 			} else if (align == Align::Right) {
-				bounding_box.X += extents_cx - bounding_box.Width;
+				bounding_box.X += float(extents_cx) - bounding_box.Width;
 			}
 
 			if (valign == VAlign::Center) {
-				bounding_box.Y += (extents_cy - bounding_box.Height) / 2;
+				bounding_box.Y += (float(extents_cy) - bounding_box.Height) / 2;
 			} else if (valign == VAlign::Bottom) {
-				bounding_box.Y += extents_cy - bounding_box.Height;
+				bounding_box.Y += float(extents_cy) - bounding_box.Height;
 			}
 		}
 	}
@@ -565,7 +565,7 @@ void TextSource::RenderText()
 	GetStringFormat(format);
 	CalculateTextSizes(format, box, size);
 
-	unique_ptr<uint8_t[]> bits(new uint8_t[size.cx * size.cy * 4]);
+	unique_ptr<uint8_t[]> bits(new uint8_t[static_cast<size_t>(size.cx) * static_cast<size_t>(size.cy) * 4]);
 	Bitmap bitmap(size.cx, size.cy, 4 * size.cx, PixelFormat32bppARGB, bits.get());
 
 	Graphics graphics_bitmap(&bitmap);
@@ -577,7 +577,7 @@ void TextSource::RenderText()
 		full_bk_color |= get_alpha_val(bk_opacity);
 	}
 
-	if ((size.cx > box.Width || size.cy > box.Height) && !use_extents) {
+	if ((float(size.cx) > box.Width || float(size.cy) > box.Height) && !use_extents) {
 		stat = graphics_bitmap.Clear(Color(0));
 		warn_stat("graphics_bitmap.Clear");
 
@@ -619,7 +619,8 @@ void TextSource::RenderText()
 		}
 
 		const uint8_t *data = (uint8_t *)bits.get();
-		tex = gs_texture_create(size.cx, size.cy, GS_BGRA, 1, &data, GS_DYNAMIC);
+		tex = gs_texture_create(static_cast<uint32_t>(size.cx), static_cast<uint32_t>(size.cy), GS_BGRA, 1,
+					&data, GS_DYNAMIC);
 
 		obs_leave_graphics();
 
@@ -628,7 +629,7 @@ void TextSource::RenderText()
 
 	} else if (tex) {
 		obs_enter_graphics();
-		gs_texture_set_image(tex, bits.get(), size.cx * 4, false);
+		gs_texture_set_image(tex, bits.get(), static_cast<uint32_t>(size.cx * 4), false);
 		obs_leave_graphics();
 	}
 }
@@ -989,7 +990,7 @@ static obs_properties_t *get_properties(void *data)
 		replace(path.begin(), path.end(), '\\', '/');
 		slash = strrchr(path.c_str(), '/');
 		if (slash) {
-			path.resize(slash - path.c_str() + 1);
+			path.resize(static_cast<size_t>(slash - path.c_str() + 1));
 		}
 	}
 
@@ -1165,7 +1166,7 @@ bool obs_module_load(void)
 
 	obs_source_info si_v3 = si_v2;
 	si_v3.version = 3;
-	si_v3.output_flags &= ~OBS_SOURCE_CAP_OBSOLETE;
+	si_v3.output_flags &= ~static_cast<uint32_t>(OBS_SOURCE_CAP_OBSOLETE);
 	si_v3.create = [](obs_data_t *settings, obs_source_t *source) {
 		return (void *)new TextSource(source, settings, false);
 	};

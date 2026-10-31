@@ -608,7 +608,7 @@ static OSStatus complex_input_data_proc(AudioConverterRef inAudioConverter, UInt
 	}
 
 	auto start = begin(ca->input_buffer);
-	auto stop = begin(ca->input_buffer) + ca->in_bytes_required;
+	auto stop = begin(ca->input_buffer) + static_cast<ptrdiff_t>(ca->in_bytes_required);
 	ca->encode_buffer.assign(start, stop);
 	ca->input_buffer.erase(start, stop);
 
@@ -659,10 +659,10 @@ static bool aac_encode(void *data, struct encoder_frame *frame, struct encoder_p
 		return true;
 	}
 
-	packet->pts = ca->total_samples - ca->priming_samples;
-	packet->dts = ca->total_samples - ca->priming_samples;
+	packet->pts = static_cast<int64_t>(ca->total_samples - ca->priming_samples);
+	packet->dts = static_cast<int64_t>(ca->total_samples - ca->priming_samples);
 	packet->timebase_num = 1;
-	packet->timebase_den = (uint32_t)ca->samples_per_second;
+	packet->timebase_den = static_cast<int32_t>(ca->samples_per_second);
 	packet->type = OBS_ENCODER_AUDIO;
 	packet->keyframe = true;
 	packet->size = out_desc.mDataByteSize;
@@ -1111,7 +1111,7 @@ static vector<UInt32> get_bitrates(DStr &log, ca_encoder *ca, Float64 samplerate
 	int channels;
 
 	obs_get_audio_info(&aoi);
-	channels = get_audio_channels(aoi.speakers);
+	channels = static_cast<int>(get_audio_channels(aoi.speakers));
 
 	auto handle_bitrate = [&](UInt32 bitrate) {
 		if (find(begin(bitrates), end(bitrates), bitrate) == end(bitrates)) {
@@ -1139,7 +1139,10 @@ static vector<UInt32> get_bitrates(DStr &log, ca_encoder *ca, Float64 samplerate
 		log_to_dstr(log, ca, "Trying %s (0x%x) at %g" NBSP "hz\n", format_id_to_str(format_id),
 			    static_cast<uint32_t>(format_id), samplerate);
 
-		auto out = get_default_out_asbd_builder(channels).format_id(format_id).sample_rate(samplerate).asbd;
+		auto out = get_default_out_asbd_builder(static_cast<UInt32>(channels))
+				   .format_id(format_id)
+				   .sample_rate(samplerate)
+				   .asbd;
 
 		auto converter = get_converter(log, ca, out);
 
