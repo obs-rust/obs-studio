@@ -82,6 +82,12 @@ class CrossConversionRatchet(unittest.TestCase):
         its RED (before this marker) is "no group named", not a compiler error."""
         self.assertIn("obs-amf-test-cross", opted_in(source()))
 
+    def test_the_coreaudio_encoder_is_opted_in(self) -> None:
+        """The Windows unity TU is the first slice that carries diagnostics
+        (6 `-Wsign-conversion`), so it is the first target whose conversion
+        group has to stay on (#2625)."""
+        self.assertIn("coreaudio-encoder-cross", opted_in(source()))
+
 
 if __name__ == "__main__":
     unittest.main()
