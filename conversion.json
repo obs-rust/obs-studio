@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 82473,
-      "libobs": 84630,
-      "plugins": 145493,
+      "libobs": 85813,
+      "plugins": 145830,
       "shared": 15945
     },
-    "percent": 11.89,
-    "ported_lines": 39064,
-    "total_lines": 328541
+    "percent": 12.96,
+    "ported_lines": 42762,
+    "total_lines": 330061
   },
-  "commit": "8211fe2",
-  "date": "2026-10-30",
+  "commit": "88d49a9",
+  "date": "2026-10-31",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 33.96,
-          "ported_lines": 18823,
-          "total_lines": 55430
+          "percent": 39.78,
+          "ported_lines": 22520,
+          "total_lines": 56612
         },
         "graphics": {
           "percent": 49.56,
@@ -39,9 +39,9 @@
           "total_lines": 12901
         },
         "media-io": {
-          "percent": 72.81,
-          "ported_lines": 2330,
-          "total_lines": 3200
+          "percent": 72.82,
+          "ported_lines": 2331,
+          "total_lines": 3201
         },
         "util": {
           "percent": 87.92,
@@ -49,19 +49,19 @@
           "total_lines": 13099
         }
       },
-      "files": 238,
-      "hybrid_lines": 45566,
-      "percent": 46.16,
-      "ported_lines": 39064,
-      "total_lines": 84630
+      "files": 252,
+      "hybrid_lines": 43051,
+      "percent": 49.83,
+      "ported_lines": 42762,
+      "total_lines": 85813
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 36.49,
-            "ported_lines": 18656,
-            "total_lines": 51127
+            "percent": 41.48,
+            "ported_lines": 21563,
+            "total_lines": 51982
           },
           "graphics": {
             "percent": 50.22,
@@ -69,9 +69,9 @@
             "total_lines": 12731
           },
           "media-io": {
-            "percent": 72.81,
-            "ported_lines": 2330,
-            "total_lines": 3200
+            "percent": 72.82,
+            "ported_lines": 2331,
+            "total_lines": 3201
           },
           "util": {
             "percent": 90.45,
@@ -79,9 +79,9 @@
             "total_lines": 9935
           }
         },
-        "files": 214,
-        "hybrid_lines": 40627,
-        "percent": 47.23,
+        "files": 226,
+        "hybrid_lines": 38575,
+        "percent": 50.45,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -140,9 +140,11 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-lifecycle.c.h",
           "obs-encoder-packet-ts.c.h",
+          "obs-encoder-pause.c.h",
           "obs-encoder-roi.c.h",
           "obs-encoder-size.c.h",
           "obs-hevc.c.h",
+          "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-pair.c.h",
@@ -160,14 +162,21 @@
           "obs-nix-hotkey-state.c.h",
           "obs-nix-portal-shortcut-ids.c.h",
           "obs-nix-portal-shortcut-sets.c.h",
+          "obs-nix-portal-shortcut-status.c.h",
           "obs-nix-system-info.c.h",
+          "obs-nix-wayland-keys.c.h",
+          "obs-nix-x11-hotkeys.c.h",
+          "obs-nix-x11-input.c.h",
           "obs-nix-x11-keys.c.h",
           "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
+          "obs-output-caption.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
+          "obs-output-pause.c.h",
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect.c.h",
           "obs-output-slots.c.h",
           "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
@@ -175,6 +184,7 @@
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
+          "obs-scene-audio-mix.c.h",
           "obs-scene-audio-window.c.h",
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
@@ -202,6 +212,7 @@
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
+          "obs-source-filter-chain.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -214,6 +225,7 @@
           "obs-source-transition-render.c.h",
           "obs-source-transition-start.c.h",
           "obs-source-video-tick.c.h",
+          "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-video-copy-plan.c.h",
           "obs-video-frame-timing.c.h",
@@ -258,15 +270,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 36366,
-        "total_lines": 76993
+        "ported_lines": 39274,
+        "total_lines": 77849
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 38.67,
-            "ported_lines": 17651,
-            "total_lines": 45645
+            "percent": 39.49,
+            "ported_lines": 18239,
+            "total_lines": 46187
           },
           "graphics": {
             "percent": 50.22,
@@ -274,9 +286,9 @@
             "total_lines": 12731
           },
           "media-io": {
-            "percent": 72.81,
-            "ported_lines": 2330,
-            "total_lines": 3200
+            "percent": 72.82,
+            "ported_lines": 2331,
+            "total_lines": 3201
           },
           "util": {
             "percent": 90.37,
@@ -284,9 +296,9 @@
             "total_lines": 9853
           }
         },
-        "files": 200,
-        "hybrid_lines": 36150,
-        "percent": 49.39,
+        "files": 208,
+        "hybrid_lines": 36104,
+        "percent": 49.84,
         "ported_files": [
           "callback/calldata.c.h",
           "callback/decl.c.h",
@@ -343,9 +355,11 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-lifecycle.c.h",
           "obs-encoder-packet-ts.c.h",
+          "obs-encoder-pause.c.h",
           "obs-encoder-roi.c.h",
           "obs-encoder-size.c.h",
           "obs-hevc.c.h",
+          "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-pair.c.h",
@@ -362,10 +376,13 @@
           "obs-nal.c.h",
           "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
+          "obs-output-caption.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
+          "obs-output-pause.c.h",
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect.c.h",
           "obs-output-slots.c.h",
           "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
@@ -373,6 +390,7 @@
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
+          "obs-scene-audio-mix.c.h",
           "obs-scene-audio-window.c.h",
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
@@ -400,6 +418,7 @@
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
+          "obs-source-filter-chain.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -412,6 +431,7 @@
           "obs-source-transition-render.c.h",
           "obs-source-transition-start.c.h",
           "obs-source-video-tick.c.h",
+          "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-video-copy-plan.c.h",
           "obs-video-frame-timing.c.h",
@@ -454,15 +474,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 35279,
-        "total_lines": 71429
+        "ported_lines": 35868,
+        "total_lines": 71972
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 37.67,
-            "ported_lines": 17642,
-            "total_lines": 46828
+            "percent": 39.88,
+            "ported_lines": 19020,
+            "total_lines": 47697
           },
           "graphics": {
             "percent": 49.62,
@@ -470,9 +490,9 @@
             "total_lines": 12886
           },
           "media-io": {
-            "percent": 72.81,
-            "ported_lines": 2330,
-            "total_lines": 3200
+            "percent": 72.82,
+            "ported_lines": 2331,
+            "total_lines": 3201
           },
           "util": {
             "percent": 85.0,
@@ -480,10 +500,11 @@
             "total_lines": 10549
           }
         },
-        "files": 204,
-        "hybrid_lines": 38130,
-        "percent": 48.1,
+        "files": 214,
+        "hybrid_lines": 37621,
+        "percent": 49.39,
         "ported_files": [
+          "audio-monitoring/monitor-delay.c.h",
           "callback/calldata.c.h",
           "callback/decl.c.h",
           "callback/proc.c.h",
@@ -538,9 +559,11 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-lifecycle.c.h",
           "obs-encoder-packet-ts.c.h",
+          "obs-encoder-pause.c.h",
           "obs-encoder-roi.c.h",
           "obs-encoder-size.c.h",
           "obs-hevc.c.h",
+          "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-pair.c.h",
@@ -557,10 +580,13 @@
           "obs-nal.c.h",
           "obs-output-begin.c.h",
           "obs-output-caption-text.c.h",
+          "obs-output-caption.c.h",
           "obs-output-delay.c.h",
           "obs-output-interleave.c.h",
+          "obs-output-pause.c.h",
           "obs-output-protocols.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect.c.h",
           "obs-output-slots.c.h",
           "obs-output-start.c.h",
           "obs-output-stop-stats.c.h",
@@ -568,6 +594,7 @@
           "obs-output-video-checks.c.h",
           "obs-properties.c.h",
           "obs-scene-audio-actions.c.h",
+          "obs-scene-audio-mix.c.h",
           "obs-scene-audio-window.c.h",
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
@@ -595,6 +622,7 @@
           "obs-source-deinterlace-select.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
+          "obs-source-filter-chain.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
@@ -607,6 +635,7 @@
           "obs-source-transition-render.c.h",
           "obs-source-transition-start.c.h",
           "obs-source-video-tick.c.h",
+          "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-video-copy-plan.c.h",
           "obs-video-frame-timing.c.h",
@@ -615,6 +644,7 @@
           "obs-video-plan.c.h",
           "obs-view-api.c.h",
           "obs-win-crash-report.c.h",
+          "obs-windows-keys.c.h",
           "util/array-serializer.c.h",
           "util/base.c.h",
           "util/bitstream.c.h",
@@ -650,12 +680,12 @@
           "util/utf8-host-windows.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 35333,
-        "total_lines": 73463
+        "ported_lines": 36712,
+        "total_lines": 74333
       }
     }
   },
   "rust": {
-    "lines": 137730
+    "lines": 146906
   }
 }
