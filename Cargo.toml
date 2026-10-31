@@ -55,6 +55,10 @@ too_many_lines = "warn"
 [profile.release]
 # libobs links the Rust staticlib; keep panics from unwinding across the C ABI.
 panic = "abort"
+# One staticlib from ~25 crates: let small hot helpers inline across crates
+# (#3187). The bench profile inherits this, so record.py measures it.
+lto = "fat"
+codegen-units = 1
 
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
