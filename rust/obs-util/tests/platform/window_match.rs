@@ -66,9 +66,29 @@ fn steps_constants() {
     assert_eq!(PENALTY, 0x1000);
 }
 
+/// The C test's `internal_names`, written out rather than taken from the
+/// core's table.
+const INTERNAL_NAMES: [&[u8]; 15] = [
+    b"startmenuexperiencehost.exe",
+    b"applicationframehost.exe",
+    b"peopleexperiencehost.exe",
+    b"shellexperiencehost.exe",
+    b"microsoft.notes.exe",
+    b"systemsettings.exe",
+    b"textinputhost.exe",
+    b"searchapp.exe",
+    b"video.ui.exe",
+    b"searchui.exe",
+    b"lockapp.exe",
+    b"cortana.exe",
+    b"gamebar.exe",
+    b"tabtip.exe",
+    b"time.exe",
+];
+
 #[test]
 fn steps_internal_exact_names() {
-    for name in INTERNAL_EXES_EXACT {
+    for name in INTERNAL_NAMES {
         for pattern in 0..4 {
             assert!(
                 internal(&recase(name, pattern)),
