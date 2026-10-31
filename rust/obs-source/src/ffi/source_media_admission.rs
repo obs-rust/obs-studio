@@ -8,7 +8,7 @@
 //! keep the action queue and its mutex, call the callbacks and emit the
 //! signals. So `struct obs_source` is never mirrored, and these shims take
 //! plain values, touch no memory, take no lock and call nothing in libobs.
-//! All eight stay hidden (`rust-hidden.txt`).
+//! All eight stay hidden (`rust-hidden.d`).
 //!
 //! The enums cross as the C's `int` (`obs-source.c.h` checks
 //! `enum media_action_type` and `enum obs_media_state`; the header's own

@@ -1,0 +1,19 @@
+# Hidden from libobs on every linker but not owned by one Rust FFI module:
+# Rust runtime internals (wildcards, no error if absent) and C glue in libobs
+# that the Rust shims call. A shim hidden by a port goes in that module's
+# rust-hidden.d/<crate>-<ffi module>.txt instead (#3233).
+# One name or pattern per line; a trailing " elf" or " macos" limits it to
+# that linker. ld64 gets a leading underscore added to every line.
+_ZN*
+_R*
+rust_eh_personality
+# Rust state for base.c. The variadic entry points stay in
+# util/base-variadic.c and keep the public names blog/blogva/bcrash.
+base_default_log_handler
+base_log_literal
+# obs-data.c: json_decref is a static inline. The glue is not EXPORT.
+obs_data_json_decref
+# compiler-rt @available helpers (__isOSVersionAtLeast,
+# __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
+# build does not export them.
+__is*VersionAtLeast macos

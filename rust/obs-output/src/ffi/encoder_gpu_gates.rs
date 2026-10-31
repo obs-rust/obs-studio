@@ -9,7 +9,7 @@
 //! and passes plain values here. So neither `struct obs_encoder` nor
 //! `struct obs_tex_frame` is mirrored, and these shims take no lock, call
 //! nothing in libobs and dereference no pointer. They stay hidden
-//! (`rust-hidden.txt`). The group start, the paired audio wait and the pts
+//! (`rust-hidden.d`). The group start, the paired audio wait and the pts
 //! step are the `obs_encoder_audio_start_*` shims in
 //! [`super::encoder_audio_start`], which the thread calls too.
 //!

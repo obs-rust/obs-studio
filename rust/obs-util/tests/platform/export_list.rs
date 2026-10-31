@@ -122,12 +122,58 @@ fn ffi_modules() -> Vec<((String, String), Vec<String>)> {
     out
 }
 
+const HIDDEN_DIR: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../libobs/cmake/rust-hidden.d"
+);
+
+/// `rust-hidden.d/<crate>-<ffi module>.txt` fragments (obs-rust/obs-studio#3233):
+/// fragment stem -> hidden shim names.
+fn hidden_fragments() -> std::collections::BTreeMap<String, BTreeSet<String>> {
+    fs::read_dir(HIDDEN_DIR)
+        .expect("read libobs/cmake/rust-hidden.d")
+        .map(|e| e.expect("dir entry").path())
+        .filter(|p| p.extension().is_some_and(|e| e == "txt"))
+        .map(|p| {
+            let stem = p.file_stem().unwrap().to_string_lossy().into_owned();
+            let rel = format!("rust-hidden.d/{stem}.txt");
+            (stem, symbol_list(&rel))
+        })
+        .collect()
+}
+
+/// Every shim hidden from libobs's ABI. CMake and obs-build generate the ELF
+/// and macOS lists from these fragments, so each linker hides all of them.
+fn hidden_symbols() -> BTreeSet<String> {
+    hidden_fragments().into_values().flatten().collect()
+}
+
+/// A hidden-shim fragment names only shims of its own FFI module, so a port
+/// edits its own fragment and no shared list (obs-rust/obs-studio#3233).
+#[test]
+fn rust_hidden_fragments_belong_to_their_ffi_module() {
+    let modules: std::collections::BTreeMap<String, BTreeSet<String>> = ffi_modules()
+        .into_iter()
+        .map(|((krate, module), shims)| (format!("{krate}-{module}"), shims.into_iter().collect()))
+        .collect();
+    for (stem, names) in hidden_fragments() {
+        let shims = modules
+            .get(&stem)
+            .unwrap_or_else(|| panic!("rust-hidden.d/{stem}.txt: no linked FFI module {stem}"));
+        let foreign: Vec<_> = names.difference(shims).collect();
+        assert!(
+            foreign.is_empty(),
+            "rust-hidden.d/{stem}.txt lists shims of other modules: {foreign:?}"
+        );
+    }
+}
+
 /// Each FFI module with exported shims owns exactly one fragment,
 /// `rust-exports.d/<crate>-<module>.txt`, listing exactly those shims, so a
 /// new port adds a file instead of editing a list every other port edits.
 #[test]
 fn rust_exports_are_one_fragment_per_ffi_module() {
-    let hidden = symbol_list("rust-hidden.txt");
+    let hidden = hidden_symbols();
     let fragments: std::collections::BTreeMap<String, BTreeSet<String>> = export_fragments()
         .into_iter()
         .map(|(stem, lines)| {
@@ -159,7 +205,7 @@ fn rust_exports_are_one_fragment_per_ffi_module() {
 #[test]
 fn rust_exports_list_matches_no_mangle_shims() {
     let listed = exported_symbols();
-    let hidden = symbol_list("rust-hidden.txt");
+    let hidden = hidden_symbols();
     let overlap: Vec<_> = listed.intersection(&hidden).collect();
     assert!(
         overlap.is_empty(),
@@ -198,30 +244,9 @@ fn rust_exports_list_matches_no_mangle_shims() {
     let missing_from_src: Vec<_> = accounted.difference(&found).collect();
     assert!(
         missing_from_list.is_empty() && missing_from_src.is_empty(),
-        "shims missing from rust-exports.d and rust-hidden.txt: {missing_from_list:?}; \
+        "shims missing from rust-exports.d and rust-hidden.d: {missing_from_list:?}; \
          listed but no #[no_mangle] shim in rust/*/src/ffi:{missing_from_src:?}"
     );
-
-    let map = fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../libobs/cmake/rust-exports.map"
-    ))
-    .expect("read rust-exports.map");
-    let macos = fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../libobs/cmake/rust-unexports-macos.txt"
-    ))
-    .expect("read rust-unexports-macos.txt");
-    for name in &hidden {
-        assert!(
-            map.contains(&format!("{name};")),
-            "{name} is hidden but rust-exports.map does not list it as local"
-        );
-        assert!(
-            macos.lines().any(|line| line.trim() == format!("_{name}")),
-            "{name} is hidden but rust-unexports-macos.txt has no _{name}"
-        );
-    }
 }
 
 /// Names of no_mangle fns inside a `#[cfg(...)] mod name { ... }` block

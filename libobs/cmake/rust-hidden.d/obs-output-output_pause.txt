@@ -1,0 +1,10 @@
+# obs-output-pause.c: obs_output_pause(), obs_encoded_output_pause() and
+# obs_raw_output_pause() call them inside libobs. Declared in
+# obs-output-pause.h without EXPORT, so the shims stay hidden the same way.
+obs_output_pause_allowed
+obs_output_pause_already
+obs_output_pause_closest_ts
+obs_output_pause_ended
+obs_output_pause_lock_set
+obs_output_pause_offset
+obs_output_pause_started

@@ -4,7 +4,7 @@
 //! inside libobs, for every module's locale text: the default locale's file
 //! name, whether the locale is the default one, and the locale's file name.
 //! They are declared in `obs-internal.h` without `EXPORT`, so the shims stay
-//! hidden (`libobs/cmake/rust-hidden.txt`). The names they return are
+//! hidden (`libobs/cmake/rust-hidden.d`). The names they return are
 //! `bmalloc`'d, as the C's `dstr` arrays are, and the caller `bfree`s them.
 //! A NULL locale is empty, as the C's `dstr_cat` and `astrcmpi` take it.
 

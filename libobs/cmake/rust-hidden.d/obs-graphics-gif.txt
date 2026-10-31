@@ -1,0 +1,16 @@
+# graphics/libnsgif/gif.c: gs_image_file calls them inside libobs.
+# Declared in nsgif.h without EXPORT, so the shims stay hidden the same way.
+nsgif_create
+nsgif_destroy
+nsgif_set_frame_delay_behaviour
+nsgif_data_scan
+nsgif_data_complete
+nsgif_reset
+nsgif_frame_prepare
+nsgif_frame_decode
+nsgif_get_info
+nsgif_get_frame_info
+nsgif_global_palette
+nsgif_local_palette
+nsgif_strerror
+nsgif_str_disposal

@@ -1,0 +1,7 @@
+# obs-nix-portal-shortcut-sets.c: obs-nix-portal-shortcuts.c calls them
+# inside libobs. Declared in obs-nix-portal-shortcuts.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_nix_portal_sets_has
+obs_nix_portal_sets_unchanged
+obs_nix_portal_sets_request
+obs_nix_portal_sets_partition

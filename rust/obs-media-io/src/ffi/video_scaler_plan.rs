@@ -1,7 +1,7 @@
 //! C ABI for `libobs/media-io/video-scaler-plan.c.h`.
 //!
 //! `video-scaler-ffmpeg.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The five
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The five
 //! functions keep the C signatures: `enum video_scale_type`, `enum
 //! video_colorspace` and `enum video_range_type` cross as `int` (as everywhere
 //! in this crate). A null pointer, which the C dereferences, is not read or

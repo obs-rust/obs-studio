@@ -2,7 +2,7 @@
 //!
 //! `graphics.c` calls these through `graphics-state-stacks.h` on the
 //! `graphics_subsystem` darrays; they are not `EXPORT`, so the shims stay
-//! hidden in libobs (`libobs/cmake/rust-hidden.txt`). [`DarrayStack`] is the
+//! hidden in libobs (`libobs/cmake/rust-hidden.d`). [`DarrayStack`] is the
 //! core's [`Stack`] over a C darray, grown and shrunk as the inline
 //! functions of `util/darray.h` do, on libobs's allocator through the C
 //! adapters (see the note in `ffi/image_file.rs`).

@@ -11,7 +11,7 @@
 //! fields through [`obs_encoder_audio_fill`] (Tier 3 checks its layout
 //! against the C). It writes the answers back into the encoder and the
 //! infos. So `struct obs_encoder` is never mirrored, and these shims take
-//! no lock and call nothing in libobs. All stay hidden (`rust-hidden.txt`).
+//! no lock and call nothing in libobs. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences. A null pointer is not checked: libobs passes
 //! locals.

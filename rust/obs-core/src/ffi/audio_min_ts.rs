@@ -3,7 +3,7 @@
 //! `obs-audio.c` calls the three functions inside libobs, for each audio
 //! source under its `audio_buf_mutex`. They are declared in
 //! `obs-audio-min-ts.h` without `EXPORT`, so the shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The values come in plainly;
+//! (`libobs/cmake/rust-hidden.d`). The values come in plainly;
 //! `audio_pending` and the minimum come by pointer.
 //!
 //! Intentional differences, where C dereferences a null pointer and libobs

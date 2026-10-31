@@ -7,7 +7,7 @@
 //! their mutexes, runs the profiler, calls `obs_video_stats_set_timing()` and
 //! stores the context sums. The structs cross as `#[repr(C)]` mirrors whose
 //! layout Tier 3 checks against the C. No pointer comes here. Both stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The one intentional difference is the core's (a report with the frame
 //! count wrapped to 0; unreachable).

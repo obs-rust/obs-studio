@@ -1,0 +1,17 @@
+# obs-output-slots.c: the encoder setters and getters, obs_output_audio(),
+# obs_output_set_mixer(), obs_output_remove_encoder_internal() and
+# obs_output_set_preferred_size2() in obs-output.c call them inside libobs.
+# Declared in obs-output-slots.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_output_slots_first_video
+obs_output_slots_first_audio
+obs_output_slots_mixer_in_range
+obs_output_slots_mixer_mask
+obs_output_slots_video_type_ok
+obs_output_slots_audio_type_ok
+obs_output_slots_video_index_ok
+obs_output_slots_audio_index_ok
+obs_output_slots_default_index
+obs_output_slots_scaled_axis_set
+obs_output_slots_video_slot
+obs_output_slots_audio_slot

@@ -1,0 +1,11 @@
+# pulseaudio-monitor-format.c: pulseaudio-output.c and pulseaudio-wrapper.c
+# call them inside libobs. The C file has no EXPORT, so the shims stay hidden.
+pulseaudio_channels_to_obs_speakers
+pulseaudio_to_obs_audio_format
+pulseaudio_channel_map
+pulseaudio_monitor_sink_format
+pulseaudio_monitor_sink_channels
+pulseaudio_monitor_process_volume
+pulseaudio_monitor_queued_bytes
+pulseaudio_monitor_drop_split
+pulseaudio_monitor_devices_match

@@ -6,7 +6,7 @@
 //! (still C) pass a channel buffer of the source (or a mix's first channel
 //! and the whole mix's count), and `vol_data`. The shims multiply exactly
 //! the `count` samples the C multiplies, take no lock and call nothing in
-//! libobs. They stay hidden (`rust-hidden.txt`).
+//! libobs. They stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences.
 

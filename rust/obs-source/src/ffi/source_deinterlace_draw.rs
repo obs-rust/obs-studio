@@ -9,7 +9,7 @@
 //! values in and act on what comes back. So `struct obs_source` is never
 //! mirrored, and these shims take plain values, touch no memory, take no
 //! lock and call nothing in libobs. All ten stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! The three enums come back as the C's enums do: `enum
 //! obs_source_deinterlace_draw_effect` has -1, so it is an `int`; the

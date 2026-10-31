@@ -1,0 +1,7 @@
+# obs-scene-item-transform.c: compute_item_transform() in obs-scene.c calls
+# them inside libobs. Declared in obs-scene-item-transform.h without EXPORT,
+# so the shims stay hidden the same way.
+obs_scene_item_transform_prepare
+obs_scene_item_transform_bounded
+obs_scene_item_transform_matrix
+obs_scene_item_transform_box_scale

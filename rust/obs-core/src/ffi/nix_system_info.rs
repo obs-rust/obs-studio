@@ -9,7 +9,7 @@
 //! a returned position is a pointer into that same string, so the C keeps
 //! its own buffer. These shims keep no state, take no lock, write nothing
 //! but `*len` and call nothing in libobs. All eleven stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! No intentional differences from C.
 

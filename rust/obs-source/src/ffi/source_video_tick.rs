@@ -9,7 +9,7 @@
 //! `active`, the plugin callback and `async_mutex` stay there. So
 //! `struct obs_source` is never mirrored, no pointer crosses, and the shims
 //! take no lock, call nothing in libobs and touch no memory. All seven stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The counts are the C's `long` ([`c_long`], 32 bits on Windows), widened
 //! to `i64` for the core by `widen()`. The two enums come back as the C's

@@ -4,7 +4,7 @@
 //! `obs_output_get_active_delay` are `EXPORT` (`obs.h`). `process_delay`,
 //! `obs_output_delay_start`, `obs_output_delay_stop` and
 //! `obs_output_cleanup_delay` are declared in `obs-internal.h` without
-//! `EXPORT`, so they stay hidden (`rust-hidden.txt`): `obs-output.c` calls
+//! `EXPORT`, so they stay hidden (`rust-hidden.d`): `obs-output.c` calls
 //! them inside libobs, and installs `process_delay` as the encoded packet
 //! callback, which the encoder later finds again by comparing the function
 //! pointer. That works because `obs-output.c` names the symbol, which is

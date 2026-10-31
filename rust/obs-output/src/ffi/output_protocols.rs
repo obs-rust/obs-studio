@@ -1,7 +1,7 @@
 //! C ABI for `libobs/obs-output-protocols.c.h`.
 //!
 //! `obs_output_protocol_list_count` is declared in `obs-internal.h` without
-//! `EXPORT`, so it stays hidden (`rust-hidden.txt`):
+//! `EXPORT`, so it stays hidden (`rust-hidden.d`):
 //! `obs_enum_output_types_with_protocol()` in `obs-output.c` calls it once
 //! per registered service output and calls its callback that many times for
 //! the output. The shim takes the bytes of the two NUL-terminated strings

@@ -7,7 +7,7 @@
 //! these shims take plain values, take no lock and call nothing in libobs.
 //! The one pointer is `obs_canvas_set_name()`'s name: its first byte is read
 //! only when it is not NULL, as the C's `!name || !*name`. All seventeen stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The video format is `enum video_format`, which the C passes as `int`.
 //!

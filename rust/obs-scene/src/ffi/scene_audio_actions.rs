@@ -9,7 +9,7 @@
 //! peeks the first action under the lock and asks
 //! [`obs_scene_audio_action_due`]. So `struct obs_scene_item` is never
 //! mirrored, and these shims take no lock and call nothing in libobs. Both
-//! stay hidden (`rust-hidden.txt`).
+//! stay hidden (`rust-hidden.d`).
 //!
 //! The queue is the item's `DARRAY(struct item_action)`, mirrored as
 //! [`obs_scene_item_action_array_t`] (the layout of `struct darray`). The

@@ -4,7 +4,7 @@
 //! The Wayland hotkey platform (`obs-nix-wayland.c`) and the GlobalShortcuts
 //! portal client (`obs-nix-portal-shortcuts.c`) call these inside libobs on
 //! Linux and FreeBSD with `ENABLE_WAYLAND`. The C file has no `EXPORT`, so
-//! the symbols stay hidden (`rust-hidden.txt`). Elsewhere the shims are built
+//! the symbols stay hidden (`rust-hidden.d`). Elsewhere the shims are built
 //! but unused, and hidden all the same.
 //!
 //! The struct is the caller's, and the shortcut list is its `bmalloc`

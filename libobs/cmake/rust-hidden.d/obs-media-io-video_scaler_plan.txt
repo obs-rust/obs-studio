@@ -1,0 +1,8 @@
+# video-scaler-plan.c: video-scaler-ffmpeg.c calls them inside libobs.
+# Declared in video-scaler-plan.h without EXPORT, so the shims stay hidden
+# the same way.
+video_scaler_plane_copy
+video_scaler_plane_heights
+video_scaler_sws_colorspace
+video_scaler_sws_flags
+video_scaler_sws_range

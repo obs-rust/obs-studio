@@ -18,7 +18,7 @@
 //! sizes and the fit's scale to [`obs_source_transition_render_offset`]. So
 //! `struct obs_source` is never mirrored, no source pointer crosses, and
 //! these shims take no lock and call nothing in libobs. All nine stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The place writes the start frame through a `size_t *` only where the C
 //! writes it: for a late child and a mixed one, not for a timestamp of 0.

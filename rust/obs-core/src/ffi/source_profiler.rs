@@ -3,7 +3,7 @@
 //! The four `EXPORT` functions of `util/source-profiler.h` are exported.
 //! The eleven hooks `obs.c`, `obs-video.c` and `obs-source.c` call are
 //! declared in `obs-internal.h` without `EXPORT`, so their shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The C file's other non-static names
+//! (`libobs/cmake/rust-hidden.d`). The C file's other non-static names
 //! (`ucirclebuf_*`, `source_samples_create`, `hm_*`) are used by nothing
 //! else and hidden by `-fvisibility=hidden`; they have no shim.
 //!

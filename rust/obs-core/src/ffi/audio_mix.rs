@@ -2,7 +2,7 @@
 //!
 //! `obs-audio.c` calls the six functions inside libobs. They are declared
 //! in `obs-audio-mix.h` without `EXPORT`, so the shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The buffering fields of
+//! (`libobs/cmake/rust-hidden.d`). The buffering fields of
 //! `struct obs_core_audio` come by pointer in `struct obs_audio_buffering`,
 //! and the queue is the C `struct deque` of `struct ts_info`, pushed in
 //! place through `obs_util::ffi::deque` with bmem memory, so `obs.c` frees

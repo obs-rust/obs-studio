@@ -1,0 +1,10 @@
+# graphics/graphics-ffmpeg-orient.c: ffmpeg_image_orient(),
+# display_matrix_to_orientation() and ffmpeg_image_too_large() in
+# graphics-ffmpeg.c call them inside libobs. Declared in
+# graphics-ffmpeg-orient.h without EXPORT, so the shims stay hidden the same
+# way.
+gs_ffmpeg_image_matrix_orientation
+gs_ffmpeg_image_orient_copy
+gs_ffmpeg_image_orient_needed
+gs_ffmpeg_image_orient_swaps
+gs_ffmpeg_image_too_large

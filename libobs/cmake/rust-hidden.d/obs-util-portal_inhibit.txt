@@ -1,0 +1,4 @@
+# platform-nix-portal.c: same. The sleep inhibitor calls these inside libobs.
+portal_inhibit_info_create
+portal_inhibit
+portal_inhibit_info_destroy

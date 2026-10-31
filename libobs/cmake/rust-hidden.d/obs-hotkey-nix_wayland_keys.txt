@@ -1,0 +1,7 @@
+# obs-nix-wayland-keys.c: obs-nix-wayland.c calls them inside libobs.
+# Declared in obs-nix-wayland-keys.h without EXPORT, so the shims stay hidden
+# the same way.
+obs_nix_wayland_keys_focused
+obs_nix_wayland_keys_from_keysym
+obs_nix_wayland_keys_row
+obs_nix_wayland_keys_to_keysym

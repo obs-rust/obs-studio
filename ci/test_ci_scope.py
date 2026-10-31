@@ -106,7 +106,7 @@ class CiScopeTest(unittest.TestCase):
             "CMakeLists.txt",
             "cmake/common/helpers_common.cmake",
             "buildspec.json",
-            "libobs/cmake/rust-exports.map",
+            "libobs/cmake/rust-hidden-base.txt",
             "rust/obs-util/src/platform/mod.rs",
         ]:
             got = scope([path])

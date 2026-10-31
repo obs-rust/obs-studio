@@ -2,7 +2,7 @@
 //!
 //! `gif.c` (libnsgif, still C) calls these through `gif-frame.h`; they are
 //! not `EXPORT`, so the shims stay hidden in libobs
-//! (`libobs/cmake/rust-hidden.txt`). The decode takes the LZW context of
+//! (`libobs/cmake/rust-hidden.d`). The decode takes the LZW context of
 //! `lzw.h`, which in the hybrid libobs is the Rust [`LzwCtx`], and decodes
 //! on its safe decoder directly.
 //!

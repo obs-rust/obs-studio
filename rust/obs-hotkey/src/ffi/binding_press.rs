@@ -4,7 +4,7 @@
 //! The hotkey thread (a 25 ms poll), `obs_hotkey_inject_event()` (the frontend
 //! while OBS has focus, and obs-websocket's `TriggerHotkeyByKeySequence`) and
 //! `remove_bindings()` in `obs-hotkey.c.h` call these inside libobs, so the
-//! symbols stay hidden (`rust-hidden.txt`). The bindings array and its walk,
+//! symbols stay hidden (`rust-hidden.d`). The bindings array and its walk,
 //! the hotkey mutex, the callback and the router stay C.
 //!
 //! The shims run with the hotkey mutex held, on the hotkey thread or on

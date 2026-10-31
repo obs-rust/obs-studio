@@ -4,7 +4,7 @@
 //! (`libobs/cmake/rust-exports.d/obs-core-view.txt`); `obs_view_init` and
 //! `obs_view_free`, which `obs-canvas.c` calls on the view embedded in each
 //! canvas, are declared in `obs-internal.h` without `EXPORT`, so their shims
-//! stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! `struct obs_view` stays C. [`LibobsHost`] reaches it, a source's removed
 //! flag and the video mixes list only through the hidden accessors in

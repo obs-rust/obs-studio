@@ -2,7 +2,7 @@
 //!
 //! The window helpers (`window-helpers.c`) call these inside libobs on
 //! Windows. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.txt`). The five functions keep the C signatures: C
+//! (`rust-hidden.d`). The five functions keep the C signatures: C
 //! strings, `bool` and `int`. A null class, which C's `strcmp()` would
 //! dereference in `ms_window_match_is_uwp_class`, is not a UWP class here;
 //! `window-helpers.c` returns before it asks with one.

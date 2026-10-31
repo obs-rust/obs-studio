@@ -7,7 +7,7 @@
 //! `struct obs_source` is never mirrored: the decisions take plain values
 //! and `struct obs_source_audio_input_format` by value (mirrored), and the
 //! two loops take the source's `float **` planes and counts. All seven stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The loops read exactly what the C reads: nothing when there are no
 //! frames, nothing for an unknown law (not even the plane pointers), planes

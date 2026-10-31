@@ -4,7 +4,7 @@
 //! path of `obs_find_modules2()` and the one of `obs_load_plugins()`, for the
 //! data path of each core module, and for every `obs_find_module_file()`.
 //! They are declared in `obs-internal.h` without `EXPORT`, so the shims stay
-//! hidden (`libobs/cmake/rust-hidden.txt`). The paths they return are
+//! hidden (`libobs/cmake/rust-hidden.d`). The paths they return are
 //! `bmalloc`'d, as the C's `dstr` arrays are, and the caller `bfree`s them.
 //!
 //! The file system is libobs's own `os_file_exists()` and `os_glob()`

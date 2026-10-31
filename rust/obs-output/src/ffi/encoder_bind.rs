@@ -13,7 +13,7 @@
 //! the encoder. So `struct obs_encoder` is never mirrored; the timebase
 //! comes back by value as [`obs_encoder_bind_timebase`] (Tier 3 checks its
 //! layout against the C). These shims take no lock, call nothing in libobs
-//! and dereference no pointer. They stay hidden (`rust-hidden.txt`). The
+//! and dereference no pointer. They stay hidden (`rust-hidden.d`). The
 //! video type refusal is the `obs_encoder_audio_start_not_video` shim in
 //! [`super::encoder_audio_start`], which the callers ask too.
 //!

@@ -1,0 +1,4 @@
+# obs-output-stop-stats.c: log_frame_info() in obs-output.c calls it inside
+# libobs. Declared in obs-output-stop-stats.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_output_stop_stats

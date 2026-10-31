@@ -4,7 +4,7 @@
 //! The GlobalShortcuts portal client (`obs-nix-portal-shortcuts.c`) calls
 //! these inside libobs on Linux and FreeBSD with `ENABLE_WAYLAND` and GIO,
 //! on its portal thread and in the Activated handler. They are declared
-//! without `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`).
+//! without `EXPORT`, so the symbols stay hidden (`rust-hidden.d`).
 //! Elsewhere the shims are built but unused, and hidden all the same. They
 //! call nothing from GIO, so they need no feature.
 //!

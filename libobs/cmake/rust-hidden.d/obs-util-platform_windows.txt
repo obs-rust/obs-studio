@@ -1,0 +1,5 @@
+# platform-windows.c: obs-windows.c and obs-win-crash-handler.c call
+# get_win_release_id inside libobs. The C file does not export it.
+# DllMain is the DLL entry, not an EXPORT symbol.
+get_win_release_id
+DllMain

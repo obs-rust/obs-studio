@@ -14,7 +14,7 @@
 //! `active_delay_ns`, the loaded restart count and the thread result here.
 //! So `struct obs_output` is never mirrored. These shims take no lock, call
 //! nothing in libobs and dereference no pointer. They stay hidden
-//! (`rust-hidden.txt`). The interleave and mix tests ask the
+//! (`rust-hidden.d`). The interleave and mix tests ask the
 //! `obs_output_raw_audio_interleave` and `obs_output_raw_audio_mix_on` shims
 //! in [`super::output_raw_audio`], and the first mixer the
 //! `obs_output_first_mixer` shim in [`super::output_video_checks`].

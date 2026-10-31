@@ -8,7 +8,7 @@
 //! integers and, for [`obs_scene_duplicate_reuse`], two source pointers that
 //! are only compared by address. So no libobs structure is mirrored, no
 //! pointer is followed, and these shims take no lock and call nothing in
-//! libobs. All fifteen stay hidden (`rust-hidden.txt`). The enum results are
+//! libobs. All fifteen stay hidden (`rust-hidden.d`). The enum results are
 //! returned as `int`, as the header declares them.
 //!
 //! Two intentional differences from C, followed by the callers:

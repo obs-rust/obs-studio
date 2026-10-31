@@ -1,0 +1,3 @@
+# platform-nix.c: obs-module.c calls this inside libobs. The C file is not
+# exported (no EXPORT). The unix shim is hidden the same way.
+get_plugin_info

@@ -3,7 +3,7 @@
 //!
 //! `gs_image_file` (`libobs/graphics/image-file.c.h` and its Rust port)
 //! calls these; they are not `EXPORT`, so the shims stay hidden in libobs
-//! (`libobs/cmake/rust-hidden.txt`). `nsgif_t` is opaque to its callers:
+//! (`libobs/cmake/rust-hidden.d`). `nsgif_t` is opaque to its callers:
 //! here it is [`NsgifCtx`], the safe [`Gif`] plus the buffer of the last
 //! scan, which the C keeps too and the decodes read. The bitmap callbacks
 //! are [`BitmapCbVt`], `nsgif_bitmap_cb_vt` as the client passes it.

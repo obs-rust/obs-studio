@@ -10,7 +10,7 @@
 //! under the C's own `&&`), the calldata, the signals, the monitor's create
 //! and destroy and the logs stay there. So `struct obs_source` is never
 //! mirrored, no pointer crosses, and the shims take no lock, call nothing in
-//! libobs and touch no memory. All thirteen stay hidden (`rust-hidden.txt`).
+//! libobs and touch no memory. All thirteen stay hidden (`rust-hidden.d`).
 //!
 //! The monitoring type crosses as `int`, as the C passes
 //! `enum obs_monitoring_type` (int-sized, checked in `obs-source.c.h`); the

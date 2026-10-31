@@ -8,7 +8,7 @@
 //! level and the host's answer, pass the values in and act on what comes
 //! back. So no canvas, mix or display is mirrored, and these shims take plain
 //! values, touch no memory, take no lock and call nothing in libobs. All
-//! eight stay hidden (`rust-hidden.txt`).
+//! eight stay hidden (`rust-hidden.d`).
 //!
 //! The technique comes back as `enum obs_source_draw_technique`
 //! (`libobs/obs-source-draw-technique.h`), whose values run from 0 to 5, so

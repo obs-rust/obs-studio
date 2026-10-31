@@ -10,7 +10,7 @@
 //! signals and the logs, and passes plain values here. So `struct
 //! obs_output` is never mirrored. These shims take no lock, call nothing in
 //! libobs and dereference no pointer. All six stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional differences: the core's (every wait clamped to 0 to 15
 //! minutes, a retry count of 0 or less off).

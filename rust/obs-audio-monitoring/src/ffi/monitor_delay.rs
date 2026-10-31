@@ -2,7 +2,7 @@
 //!
 //! The WASAPI monitor (`win32/wasapi-output.c`) calls these inside libobs on
 //! Windows. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.txt`). The five functions keep the C signatures; `enum
+//! (`rust-hidden.d`). The five functions keep the C signatures; `enum
 //! audio_monitor_delay_verdict` (0 to 2) crosses as `unsigned int`. A null
 //! pointer, which the C dereferences, is read as 0 and not written;
 //! `wasapi-output.c` always passes its fields and locals.

@@ -5,7 +5,7 @@
 //! `check_all_aoc_sources()`, `obs_set_audio_monitoring_device()` and
 //! `obs_get_video_frame_counts()` in `obs.c` call these inside libobs. They
 //! are declared in `obs-core-setup-rules.h` without `EXPORT`, so the shims
-//! stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! The C's enums are 32-bit integers on every target libobs builds for
 //! (`unsigned int` with GCC and Clang, `int` with MSVC), taken and returned

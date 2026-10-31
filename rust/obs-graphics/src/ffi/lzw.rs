@@ -2,7 +2,7 @@
 //!
 //! `gif.c` (libnsgif, still C) calls these through `lzw.h`; they are not
 //! `EXPORT`, so the shims stay hidden in libobs
-//! (`libobs/cmake/rust-hidden.txt`). `struct lzw_ctx` is opaque to `gif.c`:
+//! (`libobs/cmake/rust-hidden.d`). `struct lzw_ctx` is opaque to `gif.c`:
 //! here it is [`LzwCtx`], the safe [`Decoder`] plus the two pointers the C
 //! context keeps, the input buffer from init and the colour table. It is a
 //! zeroed allocation, so `lzw_context_create` returns `LZW_NO_MEM` when the

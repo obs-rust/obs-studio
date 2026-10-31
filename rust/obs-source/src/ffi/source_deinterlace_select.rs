@@ -12,7 +12,7 @@
 //! the frame pointers and the textures. So `struct obs_source` is never
 //! mirrored, no frame pointer crosses, and the shims read only the
 //! timestamps, write nothing through a pointer, take no lock and call
-//! nothing in libobs. They stay hidden (`rust-hidden.txt`).
+//! nothing in libobs. They stay hidden (`rust-hidden.d`).
 //!
 //! Intentional difference from C: a null `timestamps` with a count above 0
 //! is read as an empty queue (nothing dropped or ready, `last_frame_ts`

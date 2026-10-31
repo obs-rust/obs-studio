@@ -1,0 +1,14 @@
+# util/source-profiler.c: obs.c, obs-video.c and obs-source.c call the frame
+# hooks inside libobs. Declared in obs-internal.h without EXPORT, so the
+# shims stay hidden the same way.
+source_profiler_reset_video
+source_profiler_render_begin
+source_profiler_render_end
+source_profiler_frame_begin
+source_profiler_frame_collect
+source_profiler_async_frame_received
+source_profiler_source_tick_start
+source_profiler_source_tick_end
+source_profiler_source_render_begin
+source_profiler_source_render_end
+source_profiler_remove_source

@@ -2,7 +2,7 @@
 //!
 //! `gif.c` (libnsgif, still C) calls these through `gif-blocks.h`; they
 //! are not `EXPORT`, so the shims stay hidden in libobs
-//! (`libobs/cmake/rust-hidden.txt`). The result structs are the safe
+//! (`libobs/cmake/rust-hidden.d`). The result structs are the safe
 //! core's `#[repr(C)]` types ([`Screen`], [`FrameExt`], [`Image`],
 //! [`ColourLayout`]).
 //!

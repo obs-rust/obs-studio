@@ -1,0 +1,5 @@
+# obs-scene-audio-actions.c: obs-scene-item-audio-actions.c calls them inside
+# libobs. Declared in obs-scene-audio-actions.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_scene_audio_actions_apply
+obs_scene_audio_action_due

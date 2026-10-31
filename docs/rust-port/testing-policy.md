@@ -104,10 +104,14 @@ cannot prove both, so every ported unit carries the four tiers below.
   that is now ported (e.g. `util/utf8.c`) are compiled under `oracle_*` names
   so they never clash with the Rust shims.
 - C ABI shims for symbols libobs does not export (base.c internals, utf8) are
-  listed in `libobs/cmake/rust-hidden.txt` and hidden via `local:` in
-  `rust-exports.map` and `rust-unexports-macos.txt` instead of being listed in
-  `rust-exports.d/`; `export_list.rs` checks that every shim is exported or
-  hidden.
+  listed in their FFI module's own fragment,
+  `libobs/cmake/rust-hidden.d/<crate>-<ffi module>.txt`, instead of
+  `rust-exports.d/`. `libobs/cmake/rust-hidden.cmake` (and `rust/obs-build`)
+  generates the ELF version script (`local:`) and the macOS unexports list
+  from the fragments and `rust-hidden-base.txt` at configure time; neither is
+  committed, so ports never edit a shared list (#3233), and a fragment-only
+  change runs CI on Linux only. `export_list.rs` checks that every shim is
+  exported or hidden and that each fragment names only its module's shims.
 - Windows: Rust `#[no_mangle]` symbols are not dllexport, so every C ABI shim
   symbol is listed in `libobs/cmake/rust-exports.d/<crate>-<ffi module>.txt`
   (one fragment per FFI module, so ports don't edit a shared list), which
@@ -115,7 +119,7 @@ cannot prove both, so every ported unit carries the four tiers below.
   `rust/obs-util/tests/platform/export_list.rs` fails if a fragment and the
   `#[unsafe(no_mangle)]` functions in its `rust/<crate>/src/ffi/<module>.rs`
   differ.
-- macOS: `libobs/cmake/rust-unexports-macos.txt` hides Rust internals with
+- macOS: the generated `rust-unexports-macos.txt` hides Rust internals with
   `-unexported_symbols_list`.
 - CI: `.github/workflows/build-project.yaml` runs the Rust tests on Linux,
   macOS and Windows (job `rust-tests`). It runs
@@ -348,9 +352,10 @@ Its small, commented allowlist covers only trees we do not own (`deps/`,
 Cargo.toml                    # workspace root, members = ["rust/*"]
 rust-toolchain.toml           # pinned toolchain (required by soldr)
 libobs/cmake/rust.cmake       # Corrosion import + whole-archive link into libobs
-libobs/cmake/rust-exports.map # hides Rust internals from libobs exports (ELF)
 libobs/cmake/rust-exports.d/  # C ABI shim symbols to export (Windows /EXPORT:), one file per FFI module
-libobs/cmake/rust-unexports-macos.txt # hides Rust internals (macOS)
+libobs/cmake/rust-hidden.d/   # shims hidden from libobs, one file per FFI module
+libobs/cmake/rust-hidden-base.txt # Rust internals and C glue hidden on every linker
+libobs/cmake/rust-hidden.cmake # generates the ELF version script and macOS unexports list
 rust/
   libobs-rust/                # the ONLY staticlib; re-exports every port's ffi
   tools/linux-validate/       # Docker harness for Tier 2 (not a crate)

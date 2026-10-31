@@ -3,7 +3,7 @@
 //! The shared `os_*` names also exist in `platform_nix.rs` inside
 //! `#[cfg(unix)]`. This file is the Windows copy, so `rust.cmake` emits
 //! `/EXPORT` for them. `get_plugin_info`, `get_win_release_id`, and
-//! `DllMain` are hidden (`rust-hidden.txt`).
+//! `DllMain` are hidden (`rust-hidden.d`).
 //!
 //! A null `os_glob` out-pointer returns -1 and writes nothing. C would
 //! write through it. Null directory and module handles are no-ops.

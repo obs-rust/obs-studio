@@ -11,7 +11,7 @@
 //! never mirrored; the encoders come in as opaque ids (their addresses),
 //! never dereferenced. These shims take no lock and call nothing in libobs.
 //! The only pointers are the two slot arrays the lock set reads and the two
-//! masks it writes. All seven stay hidden (`rust-hidden.txt`).
+//! masks it writes. All seven stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences: the core's (each distinct encoder locked and
 //! updated once, a frame interval of 0 giving the clock).

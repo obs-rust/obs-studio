@@ -669,7 +669,7 @@ pub use shims::*;
 
 // Not a libobs export. obs-module.c calls it inside the library.
 // Kept outside `mod shims`: a symbol in that module has to be listed in
-// rust-exports.d, and this one is hidden instead (rust-hidden.txt).
+// rust-exports.d, and this one is hidden instead (rust-hidden.d).
 /// # Safety
 /// `is_obs_plugin` is a `bool` out-pointer or null. Null returns.
 /// C would write through it.

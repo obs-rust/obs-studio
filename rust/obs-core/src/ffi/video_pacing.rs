@@ -8,7 +8,7 @@
 //! timestamp, and pushes the frame info into the mixes' deques under the mix
 //! list's mutex. The step struct crosses as a `#[repr(C)]` mirror whose
 //! layout Tier 3 checks against the C. No pointer comes here. Both stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! The one intentional difference is the core's (an interval of 0;
 //! unreachable).

@@ -17,7 +17,7 @@
 //! no pointer crosses, `struct obs_source` and `struct obs_source_frame` are
 //! never mirrored, and the shims read and write no memory of the caller,
 //! take no lock and call nothing in libobs. They stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! No intentional differences from C, except where the C is undefined:
 //! `clean_cache()`'s `++unused_count` would overflow a `long` at

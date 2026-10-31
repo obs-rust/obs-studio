@@ -6,7 +6,7 @@
 //! entries cross by value) and the sizes, allocates the turned image and
 //! passes it here with the decoded one, then updates the size, frees the
 //! decoded image and logs. The shims take no lock, call nothing in libobs
-//! and stay hidden (`rust-hidden.txt`).
+//! and stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences: the core's (an orientation outside 0 to 8 is
 //! the image as stored); and [`gs_ffmpeg_image_orient_copy`] copies nothing

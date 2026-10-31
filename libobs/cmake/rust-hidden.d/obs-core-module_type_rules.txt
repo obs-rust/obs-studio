@@ -1,0 +1,7 @@
+# obs-module-type-rules.c: obs-module.c calls them inside libobs. Declared
+# in obs-module-type-rules.h without EXPORT, so the shims stay hidden the same
+# way.
+obs_module_type_rules_output_check
+obs_module_type_rules_encoder_check
+obs_module_type_rules_service_check
+obs_module_type_rules_protocol_listed

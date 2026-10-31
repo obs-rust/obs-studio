@@ -1,0 +1,11 @@
+# obs-scene-coords.c: obs-scene.c calls them inside libobs. The C file has
+# no EXPORT, so the shims stay hidden the same way.
+obs_scene_coords_nudge
+obs_scene_coords_keep_scale
+obs_scene_nudge_abs
+obs_scene_pos_to_absolute
+obs_scene_pos_from_absolute
+obs_scene_size_to_absolute
+obs_scene_size_from_absolute
+obs_scene_item_canvas_scale
+obs_scene_item_relative_scale

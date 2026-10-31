@@ -1,7 +1,7 @@
 //! C ABI for `libobs/audio-monitoring/pulse/pulseaudio-monitor-steps.c.h`.
 //!
 //! `pulseaudio-output.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The twenty
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The twenty
 //! functions keep the C signatures: `pa_sample_format_t` (which has
 //! `PA_SAMPLE_INVALID`, -1) crosses as `int`; `pa_stream_flags_t`,
 //! `pa_subscription_event_type_t` and `pa_context_state_t` have only

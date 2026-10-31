@@ -1,0 +1,7 @@
+# obs-output-interleave.c: obs-output.c calls them inside libobs and passes
+# interleave_packets to the encoders as the encoded packet callback.
+# Declared in obs-internal.h without EXPORT, so the shims stay hidden the
+# same way.
+interleave_packets
+get_encoder_index
+free_packets

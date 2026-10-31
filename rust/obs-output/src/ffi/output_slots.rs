@@ -11,7 +11,7 @@
 //! `struct obs_output` and `struct obs_encoder` are never mirrored, and
 //! these shims take no lock and call nothing in libobs. The only pointer is
 //! the index the two `first` shims write. They stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional difference: [`obs_output_slots_mixer_mask`] with an index at
 //! or past the width of `size_t`, where the C's shift is undefined, gives 0.

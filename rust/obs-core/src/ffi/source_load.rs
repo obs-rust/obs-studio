@@ -7,7 +7,7 @@
 //! same order and the same number of calls as before; it also creates the
 //! source, looks up the canvas and loads the filters. The monitoring plan
 //! crosses as a `#[repr(C)]` struct whose layout Tier 3 checks against the
-//! C. No pointer comes here. All stay hidden (`rust-hidden.txt`).
+//! C. No pointer comes here. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences.
 

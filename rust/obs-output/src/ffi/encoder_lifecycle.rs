@@ -13,7 +13,7 @@
 //! So `struct obs_encoder` and its group are never mirrored: only counts,
 //! an index, the type, the caps and three SEI values cross, by value. These
 //! shims take no lock, call nothing in libobs and dereference no pointer.
-//! They stay hidden (`rust-hidden.txt`). The type tests are the
+//! They stay hidden (`rust-hidden.d`). The type tests are the
 //! `obs_encoder_bind_not_audio` and `obs_encoder_audio_start_not_video`
 //! shims in [`super::encoder_bind`] and [`super::encoder_audio_start`],
 //! which the callers ask too.

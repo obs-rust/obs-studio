@@ -3,7 +3,7 @@
 //! `obs-audio.c` calls the four functions inside libobs, for each source of
 //! the audio tree and each rendered source. They are declared in
 //! `obs-audio-render.h` without `EXPORT`, so the shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The values come in plainly; the fields
+//! (`libobs/cmake/rust-hidden.d`). The values come in plainly; the fields
 //! of the deduplication source come as a `struct obs_audio_monitor_dedup` by
 //! pointer. The enums go back as `int`.
 //!

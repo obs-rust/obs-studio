@@ -5,7 +5,7 @@
 //! `obs_module_get_config_path()`, for the manifest of every module, for
 //! the safe and disabled module lists of every module it loads, and for
 //! every core module. They are declared in `obs-internal.h` without
-//! `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.txt`). The
+//! `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.d`). The
 //! strings they return are `bmalloc`'d, as the C's `dstr` arrays are, and
 //! the caller `bfree`s them; `obs_module_names_file_name` returns a pointer
 //! into its argument.

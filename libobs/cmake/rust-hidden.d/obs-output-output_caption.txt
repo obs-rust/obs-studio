@@ -1,0 +1,6 @@
+# obs-output-caption.c: add_caption() in obs-output.c calls them inside libobs.
+# Declared in obs-output-caption.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_output_caption_begin
+obs_output_caption_cc_keep
+obs_output_caption_hevc_sei_header

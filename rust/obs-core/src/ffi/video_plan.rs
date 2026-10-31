@@ -2,7 +2,7 @@
 //!
 //! `obs.c` calls the five functions inside libobs. They are declared in
 //! `obs-internal.h` without `EXPORT`, so the shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The enums cross as `c_int`s; a value
+//! (`libobs/cmake/rust-hidden.d`). The enums cross as `c_int`s; a value
 //! outside its enum takes the C's `default:` branch. The technique names
 //! and the scale type names are `'static` NUL-terminated strings, which
 //! `obs-video.c` keeps and looks up by name.

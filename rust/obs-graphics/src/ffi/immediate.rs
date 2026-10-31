@@ -12,7 +12,7 @@
 //! [`gs_immediate_save_free_from`]. It keeps the arrays, every read, push
 //! and free, the vertex buffer calls and the logs. Everything crosses by
 //! value. The shims take no lock, call nothing in libobs and stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional differences from C: those of [`crate::immediate`].
 

@@ -8,7 +8,7 @@
 //! multiply and `apply_audio_actions()` stay C. So `struct obs_source` is
 //! never mirrored, no pointer crosses, and the shims take no lock, call
 //! nothing in libobs and touch no memory. They stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional difference: `obs_source_volume_mixes()` with a `mix` of 31
 //! or more, where the C's `1 << mix` on an `int` is undefined, answers for

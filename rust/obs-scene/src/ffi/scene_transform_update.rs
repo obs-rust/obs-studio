@@ -7,7 +7,7 @@
 //! made each decision and passes them by value, the scene's stored size by
 //! pointer to its two fields. So no scene or item struct is mirrored, no
 //! source pointer crosses, and these shims take no lock and call nothing in
-//! libobs. Both stay hidden (`rust-hidden.txt`).
+//! libobs. Both stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences. A null pointer is not checked: libobs passes
 //! the scene's own fields.

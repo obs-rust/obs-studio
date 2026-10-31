@@ -1,7 +1,7 @@
 //! C ABI for `libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h`.
 //!
 //! `pulseaudio-output.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The enums
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The enums
 //! `pa_stream_flags_t` and `pa_subscription_event_type_t` have only
 //! non-negative values below 2^32, so C passes them as `unsigned int`.
 //!

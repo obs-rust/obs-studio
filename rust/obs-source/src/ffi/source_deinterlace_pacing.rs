@@ -7,7 +7,7 @@
 //! `obs->video`, pass the values in and store what comes back. So `struct
 //! obs_source` is never mirrored, and these shims take plain integers,
 //! touch no memory, take no lock and call nothing in libobs. All six stay
-//! hidden (`rust-hidden.txt`).
+//! hidden (`rust-hidden.d`).
 //!
 //! No intentional differences from C: every input is a value, so there is
 //! no pointer to check.

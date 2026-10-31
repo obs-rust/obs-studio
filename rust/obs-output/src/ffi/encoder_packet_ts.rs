@@ -9,7 +9,7 @@
 //! writes every answer back. `struct encoder_packet_timebase` crosses as a
 //! `#[repr(C)]` mirror whose layout Tier 3 checks against the C; the timing
 //! entries are the caller's `encoder_packet_time` array, read only. All
-//! five stay hidden (`rust-hidden.txt`).
+//! five stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences, unreachable: the core's (in `dts_usec`, the
 //! inputs where C is undefined), and [`obs_encoder_packet_ts_find`] answers

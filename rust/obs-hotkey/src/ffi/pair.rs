@@ -5,7 +5,7 @@
 //! `obs_hotkey_pair_first_func` and `obs_hotkey_pair_second_func` as the
 //! callbacks of a pair's two hotkeys, with the pair as their data, so they
 //! keep the C signature (`obs_hotkey_func`) and stay hidden
-//! (`rust-hidden.txt`). The pair itself, its hash, the funcs and their
+//! (`rust-hidden.d`). The pair itself, its hash, the funcs and their
 //! callback ABI stay C.
 //!
 //! The callbacks run with the hotkey mutex held: on the hotkey thread, in

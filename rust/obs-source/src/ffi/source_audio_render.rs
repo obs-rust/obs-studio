@@ -10,7 +10,7 @@
 //! `audio_submix()` and `apply_audio_volume()` stay C. So `struct
 //! obs_source` is never mirrored, no pointer crosses, and the shims take no
 //! lock, call nothing in libobs and touch no memory. They stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! `obs_source_audio_render_custom_ts()` receives the callback's `ts` by
 //! value also when the callback failed and may not have written it (an

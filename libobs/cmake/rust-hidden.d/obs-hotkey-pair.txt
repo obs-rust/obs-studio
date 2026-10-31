@@ -1,0 +1,5 @@
+# obs-hotkey-pair.c: register_hotkey_pair_internal() in obs-hotkey.c registers
+# them as the callbacks of a pair's two hotkeys. Declared in obs-internal.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_hotkey_pair_first_func
+obs_hotkey_pair_second_func

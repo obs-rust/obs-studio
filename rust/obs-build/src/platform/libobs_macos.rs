@@ -129,14 +129,13 @@ pub fn configure_variant(
 ) -> Result<(), String> {
     if let Some(archive) = rust_archive {
         let archive = archive.canonicalize().map_err(|e| e.to_string())?;
-        let mut hidden =
-            std::fs::read_to_string(root.join("libobs/cmake/rust-unexports-macos.txt"))
-                .map_err(|e| e.to_string())?;
-        if !options.hevc {
-            hidden.push_str("\n_obs_hevc_keyframe\n_obs_parse_hevc_packet\n_obs_parse_hevc_packet_priority\n_obs_extract_hevc_headers\n");
-        }
         let exports = config.join("rust-unexports-macos.txt");
-        crate::frontend::write(&exports, &hidden)?;
+        crate::libobs::write_hidden_list(
+            root,
+            crate::libobs::HiddenLinker::Macos,
+            options.hevc,
+            &exports,
+        )?;
         let mut flags = vec![
             "-Xlinker".into(),
             "-force_load".into(),
