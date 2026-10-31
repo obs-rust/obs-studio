@@ -17,7 +17,8 @@ foldhash = { workspace = true, default-features = true }
 libc = { workspace = true, default-features = true }
 
 [build-dependencies]
-cc = { workspace = true, default-features = true }
+# parallel: compile build-script C concurrently via the jobserver (#3253).
+cc = { workspace = true, default-features = true, features = ["parallel"] }
 
 [dev-dependencies]
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }

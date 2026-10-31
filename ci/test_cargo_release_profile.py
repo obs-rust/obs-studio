@@ -34,6 +34,21 @@ class CargoReleaseProfileTest(unittest.TestCase):
         ]
         self.assertEqual(errors, [], "\n".join(errors))
 
+    def test_no_profile_uses_one_codegen_unit(self):
+        """codegen-units = 1 serializes codegen and, with fat LTO, slowed
+        audio_mix 1.8-2.7x (PR #3225). No profile in any workspace manifest
+        may set it."""
+        errors = []
+        for path in [ROOT / "Cargo.toml", *sorted(ROOT.glob("rust/*/Cargo.toml")), *sorted(ROOT.glob("dylints/*/Cargo.toml"))]:
+            profiles = tomllib.loads(path.read_text(encoding="utf-8")).get("profile", {})
+            stack = [(f"profile.{name}", table) for name, table in profiles.items()]
+            while stack:
+                where, table = stack.pop()
+                if table.get("codegen-units") == 1:
+                    errors.append(f"{path.relative_to(ROOT)} [{where}] codegen-units = 1")
+                stack.extend((f"{where}.package.{pkg}", sub) for pkg, sub in table.get("package", {}).items())
+        self.assertEqual(errors, [], "\n".join(errors))
+
 
 if __name__ == "__main__":
     unittest.main()
