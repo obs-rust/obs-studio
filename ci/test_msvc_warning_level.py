@@ -50,7 +50,7 @@ class MsvcWarningLevelTest(unittest.TestCase):
         self.assertNotIn("/WX", call_tokens(self.text, "add_compile_options"))
 
 
-HELPERS = ROOT / "cmake" / "common" / "helpers_common.cmake"
+HELPERS = ROOT / "cmake" / "windows" / "helpers.cmake"
 
 # Every product C++ target that compiles a translation unit including
 # libobs/graphics/vec{2,3,4}.h, libobs/util/profiler.h or

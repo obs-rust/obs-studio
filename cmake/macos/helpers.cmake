@@ -3,6 +3,16 @@
 include_guard(GLOBAL)
 
 include(helpers_common)
+
+# _obs_architecture_matches: ARCHITECTURES entries match a CMAKE_OSX_ARCHITECTURES
+# slice or the host processor on macOS (#3234).
+function(_obs_architecture_matches architecture result_var)
+  set(${result_var} FALSE)
+  if("${architecture}" IN_LIST CMAKE_OSX_ARCHITECTURES OR "${architecture}" STREQUAL "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    set(${result_var} TRUE)
+  endif()
+  return(PROPAGATE ${result_var})
+endfunction()
 include("${CMAKE_CURRENT_LIST_DIR}/bundle-version.cmake")
 
 # set_target_xcode_properties: Sets Xcode-specific target attributes

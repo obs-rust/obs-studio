@@ -4,6 +4,24 @@ include_guard(GLOBAL)
 
 include(buildspec_common)
 
+# _obs_dependency_platform_hook: CEF ships per-arch macOS slices, not a
+# universal one (#2994, #3016). Called by _check_dependencies; sets arch and
+# platform (and skip_dependency) in its scope.
+macro(_obs_dependency_platform_hook dependency)
+  if("${dependency}" STREQUAL "cef" AND arch STREQUAL universal)
+    if(CMAKE_OSX_ARCHITECTURES MATCHES ".+;.+")
+      set(skip_dependency TRUE)
+    else()
+      if(CMAKE_OSX_ARCHITECTURES MATCHES "(arm64|x86_64)")
+        set(arch ${CMAKE_OSX_ARCHITECTURES})
+      else()
+        set(arch ${CMAKE_HOST_SYSTEM_PROCESSOR})
+      endif()
+      set(platform macos-${arch})
+    endif()
+  endif()
+endmacro()
+
 # _check_dependencies_macos: Set up macOS slice for _check_dependencies
 function(_check_dependencies_macos)
   set(arch universal)
