@@ -152,10 +152,7 @@ fn record_and_stream_are_independent() {
         (false, json!({"active": false}))
     );
     assert!(call(&mut s, "record_stop", &json!({})).0);
-    assert_eq!(
-        call(&mut s, "stream_status", &json!({})).1["active"],
-        true
-    );
+    assert_eq!(call(&mut s, "stream_status", &json!({})).1["active"], true);
 }
 
 #[test]
