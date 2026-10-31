@@ -31,16 +31,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * syncing it to the video. */
 #define AUDIO_MONITOR_VIDEO_STALL_NS 100000000ULL
 
-static inline void audio_monitor_track_video_ts(uint64_t *prev_video_ts, uint64_t *time_since_prev,
-						uint64_t last_frame_ts, uint64_t packet_ns)
-{
-	if (!*prev_video_ts) {
-		*prev_video_ts = last_frame_ts;
-
-	} else if (*prev_video_ts == last_frame_ts) {
-		*time_since_prev += packet_ns;
-	} else {
-		*prev_video_ts = last_frame_ts;
-		*time_since_prev = 0;
-	}
-}
+void audio_monitor_track_video_ts(uint64_t *prev_video_ts, uint64_t *time_since_prev, uint64_t last_frame_ts,
+				  uint64_t packet_ns);

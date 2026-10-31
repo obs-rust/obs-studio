@@ -4,6 +4,7 @@
     "windows",
     "windows-*",
     "graphics-ffmpeg-host-windows",
+    "monitor-wasapi",
     "obfuscate-windows"
   ],
   "depends": [

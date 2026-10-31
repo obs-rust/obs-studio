@@ -2043,9 +2043,11 @@
     },
     "test_monitor_speaker_layout": {
       "sources": [
-        "test/cmocka/test_monitor_speaker_layout.c"
+        "test/cmocka/test_monitor_speaker_layout.c",
+        "libobs/audio-monitoring/monitor-speaker-layout.c.h"
       ],
       "includes": [
+        "libobs",
         "libobs/audio-monitoring"
       ],
       "libraries": [
@@ -2054,9 +2056,11 @@
     },
     "test_monitor_video_sync": {
       "sources": [
-        "test/cmocka/test_monitor_video_sync.c"
+        "test/cmocka/test_monitor_video_sync.c",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
       ],
       "includes": [
+        "libobs",
         "libobs/audio-monitoring"
       ],
       "libraries": [
