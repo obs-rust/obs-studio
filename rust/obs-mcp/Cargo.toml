@@ -1,0 +1,20 @@
+[package]
+autotests = false
+name = "obs-mcp"
+version = "0.1.0"
+description = "In-process Model Context Protocol server for Rust OBS (calls libobs directly, no obs-websocket)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Tests live in tests/mcp and run in the shared `obs-tests-core` binary.
+[lib]
+test = false
+
+[dependencies]
+serde = { workspace = true, default-features = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["std"] }

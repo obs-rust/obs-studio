@@ -568,6 +568,7 @@ dependencies = [
  "obs-core",
  "obs-graphics",
  "obs-hotkey",
+ "obs-mcp",
  "obs-media-io",
  "obs-missing-files",
  "obs-output",
@@ -576,6 +577,7 @@ dependencies = [
  "obs-source",
  "obs-util",
  "proptest",
+ "serde_json",
 ]
 
 [[package]]
@@ -615,6 +617,14 @@ dependencies = [
  "obs-c-oracle",
  "obs-util",
  "proptest",
+]
+
+[[package]]
+name = "obs-mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
