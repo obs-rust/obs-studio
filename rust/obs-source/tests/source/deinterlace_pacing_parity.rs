@@ -1005,15 +1005,14 @@ fn run_with<P: Pacing>(
             }
         }
         let now = rate_time(tick, seq.canvas_rate) + late;
-        let mut kept = Vec::new();
-        for (arrival, timestamp) in pending.drain(..) {
-            if arrival <= now {
+        // the arrivals due, in order; the rest stay queued
+        pending.retain(|&(arrival, timestamp)| {
+            let due = arrival <= now;
+            if due {
                 r.output_video(timestamp);
-            } else {
-                kept.push((arrival, timestamp));
             }
-        }
-        pending = kept;
+            !due
+        });
 
         r.tick(video_time, video_time, interval);
         states.push(r.s.clone());
@@ -1515,7 +1514,11 @@ struct Changed {
     flag_front: usize,
 }
 
-fn compare(changed: &mut Changed, what: &str, one: impl Fn((Walk, bool)) -> (Visible, Reached)) {
+fn compare(
+    changed: &mut Changed,
+    what: &dyn std::fmt::Display,
+    one: impl Fn((Walk, bool)) -> (Visible, Reached),
+) {
     let (fixed, reached) = one(FIXED);
     let (upstream, up_reached) = one(UPSTREAM);
     assert_eq!(reached.stale_pairs, 0, "{what}");
@@ -1629,6 +1632,15 @@ fn buffered_walk_cadences() {
     eprintln!("cadences: {changed:?}, shown differently {early}");
 }
 
+/// A sequence in an assertion's message, as `{:?}` shows it.
+struct Shown<'a>(&'a Sequence);
+
+impl std::fmt::Display for Shown<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 /// The sequences of `sequences_reach_every_branch`, through the walk
 /// before #2009 and after.
 #[test]
@@ -1640,7 +1652,8 @@ fn buffered_walk_sequences() {
             .new_tree(&mut runner)
             .expect("a sequence")
             .current();
-        let what = format!("{seq:?}");
+        // formatted only when an assertion fails
+        let what = Shown(&seq);
         compare(&mut changed, &what, |variant| {
             let (log, states, reached) = run_with(&C, &seq, variant);
             (visible(&log, &states), reached)
