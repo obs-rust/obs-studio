@@ -14,6 +14,15 @@ target_sources(linux-jack PRIVATE build/linux-jack.nix+.h.c)
 
 target_compile_options(linux-jack PRIVATE $<$<COMPILE_LANG_AND_ID:C,Clang>:-Wno-error=sign-compare>)
 
+# #2625: this target reports no conversions under the three groups, so the pins
+# that hide them are not needed here. The global -Wno-conversion /
+# -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  linux-jack
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(linux-jack PRIVATE OBS::libobs Jack::Jack)
 
 set_target_properties_obs(linux-jack PROPERTIES FOLDER plugins PREFIX "" PROJECT_LABEL "JACK Audio")
