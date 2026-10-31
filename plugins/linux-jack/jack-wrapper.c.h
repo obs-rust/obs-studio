@@ -79,7 +79,9 @@ static int jack_process_callback(jack_nframes_t nframes, void *arg)
 
 	out.frames = nframes;
 	if (!jack_get_cycle_times(data->jack_client, &current_frames, &current_usecs, &next_usecs, &period_usecs)) {
-		out.timestamp = now - (int64_t)(period_usecs * 1000);
+		/* period_usecs is a positive period, so the nanosecond delta is an
+		 * unsigned value; subtracting it as int64_t converts the sign. */
+		out.timestamp = now - (uint64_t)(period_usecs * 1000.0f);
 	} else {
 		out.timestamp = now - util_mul_div64(nframes, 1000000000ULL, out.samples_per_sec);
 		blog(LOG_WARNING, "jack_get_cycle_times error: guessing timestamp");

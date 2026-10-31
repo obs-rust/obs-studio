@@ -56,7 +56,9 @@ static void jack_update(void *vptr, obs_data_t *settings)
 	const char *new_device;
 	bool settings_changed = false;
 	bool new_jack_start_server = obs_data_get_bool(settings, "startjack");
-	int new_channel_count = obs_data_get_int(settings, "channels");
+	/* The channel-count setting is a small bounded int; obs_data_get_int
+	 * returns long long, so name the narrowing here. */
+	int new_channel_count = (int)obs_data_get_int(settings, "channels");
 
 	if (new_jack_start_server != data->start_jack_server) {
 		data->start_jack_server = new_jack_start_server;
@@ -86,7 +88,7 @@ static void jack_update(void *vptr, obs_data_t *settings)
 	if (settings_changed) {
 		deactivate_jack(data);
 
-		data->channels = new_channel_count;
+		data->channels = (uint_fast8_t)new_channel_count;
 
 		if (jack_init(data) != 0) {
 			deactivate_jack(data);
@@ -103,7 +105,9 @@ static void *jack_create(obs_data_t *settings, obs_source_t *source)
 
 	pthread_mutex_init(&data->jack_mutex, NULL);
 	data->source = source;
-	data->channels = -1;
+	/* Sentinel for "no channel count yet"; uint_fast8_t keeps it as all bits
+	 * set, the value the implicit conversion already produced. */
+	data->channels = UINT_FAST8_MAX;
 	/* The device runs on its own clock: keep its audio in pace with OBS. */
 	obs_source_set_async_compensation(source, true);
 
