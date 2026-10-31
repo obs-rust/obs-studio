@@ -17,3 +17,4 @@ mod video_matrices;
 mod video_matrices_layout;
 mod video_matrices_parity;
 mod video_scaler_plan;
+mod video_scaler_plan_parity;
