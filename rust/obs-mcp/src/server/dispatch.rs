@@ -6,7 +6,9 @@ use serde_json::{Value, json};
 
 use crate::protocol::{Request, Response, error_code, read_message, write_message};
 
-use super::ToolRegistry;
+use crate::resources::ResourceRegistry;
+
+use super::{Content, ToolRegistry};
 
 /// The MCP revision this server implements.
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -24,6 +26,7 @@ fn initialize_result() -> Value {
 #[derive(Default)]
 pub struct Server {
     tools: ToolRegistry,
+    resources: ResourceRegistry,
     initialized: bool,
 }
 
@@ -39,8 +42,15 @@ impl Server {
     pub fn with_tools(tools: ToolRegistry) -> Self {
         Self {
             tools,
-            initialized: false,
+            ..Self::default()
         }
+    }
+
+    /// Exposes `resources` through `resources/list` and `resources/read`.
+    #[must_use]
+    pub fn with_resources(mut self, resources: ResourceRegistry) -> Self {
+        self.resources = resources;
+        self
     }
 
     /// True once the client sent `notifications/initialized`.
@@ -62,6 +72,8 @@ impl Server {
             "ping" => Ok(json!({})),
             "tools/list" => Ok(self.tools.list()),
             "tools/call" => self.call_tool(&request.params),
+            "resources/list" => Ok(self.resources.list()),
+            "resources/read" => self.read_resource(&request.params),
             other => Err((
                 error_code::METHOD_NOT_FOUND,
                 format!("method not found: {other}"),
@@ -106,10 +118,27 @@ impl Server {
             .get("arguments")
             .cloned()
             .unwrap_or_else(|| json!({}));
-        let (text, is_error) = match tool.call(&arguments) {
-            Ok(text) => (text, false),
-            Err(text) => (text, true),
+        let (content, is_error) = match tool.call_content(&arguments) {
+            Ok(items) => (items, false),
+            Err(text) => (vec![Content::Text(text)], true),
         };
-        Ok(json!({ "content": [{ "type": "text", "text": text }], "isError": is_error }))
+        let content: Vec<Value> = content.iter().map(Content::to_json).collect();
+        Ok(json!({ "content": content, "isError": is_error }))
+    }
+
+    /// `resources/read`: an unknown URI is a protocol error.
+    fn read_resource(&self, params: &Value) -> Result<Value, (i64, String)> {
+        let uri = params.get("uri").and_then(Value::as_str).ok_or((
+            error_code::INVALID_PARAMS,
+            "missing resource uri".to_owned(),
+        ))?;
+        match self.resources.read(uri) {
+            Some(Ok(result)) => Ok(result),
+            Some(Err(message)) => Err((error_code::INTERNAL_ERROR, message)),
+            None => Err((
+                error_code::RESOURCE_NOT_FOUND,
+                format!("resource not found: {uri}"),
+            )),
+        }
     }
 }

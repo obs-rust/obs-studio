@@ -2,6 +2,33 @@
 
 use serde_json::{Value, json};
 
+/// One item of a tool result.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Content {
+    /// Plain text.
+    Text(String),
+    /// An image: base64 `data` of the given MIME type.
+    Image {
+        /// Base64-encoded image bytes.
+        data: String,
+        /// MIME type, such as `image/png`.
+        mime_type: String,
+    },
+}
+
+impl Content {
+    /// The MCP JSON form of this item.
+    #[must_use]
+    pub fn to_json(&self) -> Value {
+        match self {
+            Self::Text(text) => json!({ "type": "text", "text": text }),
+            Self::Image { data, mime_type } => {
+                json!({ "type": "image", "data": data, "mimeType": mime_type })
+            }
+        }
+    }
+}
+
 /// A tool the model can call. Implementations will wrap libobs operations.
 pub trait Tool {
     /// Unique tool name.
@@ -16,6 +43,15 @@ pub trait Tool {
     ///
     /// Returns a message describing why the call failed.
     fn call(&self, arguments: &Value) -> Result<String, String>;
+    /// Runs the tool and returns structured content. The default wraps
+    /// [`Tool::call`] as one text item; tools that return images override it.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message describing why the call failed.
+    fn call_content(&self, arguments: &Value) -> Result<Vec<Content>, String> {
+        self.call(arguments).map(|text| vec![Content::Text(text)])
+    }
 }
 
 /// The set of registered tools.

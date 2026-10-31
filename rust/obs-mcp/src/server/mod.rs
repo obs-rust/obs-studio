@@ -4,4 +4,4 @@ mod dispatch;
 mod tool;
 
 pub use dispatch::{PROTOCOL_VERSION, Server};
-pub use tool::{Tool, ToolRegistry};
+pub use tool::{Content, Tool, ToolRegistry};
