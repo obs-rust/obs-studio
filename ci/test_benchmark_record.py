@@ -22,6 +22,7 @@ import sys
 import tempfile
 import types
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -196,6 +197,34 @@ class CommandTest(unittest.TestCase):
 
     def test_no_filter_runs_every_pair(self):
         self.assertEqual(record.bench_command([])[-1], "--")
+
+
+class PinTest(unittest.TestCase):
+    """--cpu pins only the measurement, never the build (#3252)."""
+
+    def test_build_runs_unpinned_before_measurement(self):
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append((command, kwargs.get("preexec_fn")))
+            raise SystemExit(0)
+
+        argv = ["record.py", "--output", "x.json", "--repeats", "3", "--cpu", "3"]
+        with unittest.mock.patch.object(record.subprocess, "run", fake_run), \
+                unittest.mock.patch.object(sys, "argv", argv), \
+                unittest.mock.patch.object(record.os, "sched_setaffinity", create=True) as affinity:
+            with self.assertRaises(SystemExit):
+                record.main()
+        affinity.assert_not_called()
+        command, preexec = calls[0]
+        self.assertIn("--no-run", command)
+        self.assertIsNone(preexec)
+
+    def test_measurement_pins_the_child(self):
+        with unittest.mock.patch.object(record.os, "sched_setaffinity", create=True) as affinity:
+            record.pin(5)()
+        affinity.assert_called_once_with(0, {5})
+        self.assertIsNone(record.pin(None))
 
 
 class BoundGateTest(unittest.TestCase):
