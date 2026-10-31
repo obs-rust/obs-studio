@@ -26,8 +26,7 @@ static void check(bool passed, const char *test, float env, float threshold)
 	++checks;
 	if (!passed) {
 		if (failures < 8)
-			fprintf(stderr, "%s: env %.9g threshold %.9g differs from the formula\n", test, env,
-				threshold);
+			fprintf(stderr, "%s: env %.9g threshold %.9g differs from the formula\n", test, env, threshold);
 		++failures;
 	}
 }
