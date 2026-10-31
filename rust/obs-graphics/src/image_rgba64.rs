@@ -156,33 +156,37 @@ fn float_to_u8(f: f32) -> u8 {
     (f * 255.0 + 0.5) as u8
 }
 
-/// One texel: the C's loop body for `mode`.
-fn convert(be: [u8; SRC_TEXEL_BYTES], mode: i32) -> Option<[u8; DST_TEXEL_BYTES]> {
+/// The four channels of a big-endian texel, each divided by 65535.
+fn to_float(be: [u8; SRC_TEXEL_BYTES]) -> [f32; 4] {
     let [r0, r1, g0, g1, b0, b1, a0, a1] = be;
-    let mut f = [[r0, r1], [g0, g1], [b0, b1], [a0, a1]]
-        .map(|c| f32::from(u16::from_be_bytes(c)) / 65535.0);
-    let [r, g, b, a] = &mut f;
-    match mode {
-        alpha_mode::STRAIGHT => {}
-        alpha_mode::PREMULTIPLY_SRGB => {
-            for c in [&mut *r, &mut *g, &mut *b] {
-                *c = srgb_nonlinear_to_linear(*c);
-            }
-            for c in [&mut *r, &mut *g, &mut *b] {
-                *c *= *a;
-            }
-            for c in [&mut *r, &mut *g, &mut *b] {
-                *c = srgb_linear_to_nonlinear(*c);
-            }
-        }
-        alpha_mode::PREMULTIPLY => {
-            for c in [&mut *r, &mut *g, &mut *b] {
-                *c *= *a;
-            }
-        }
-        _ => return None,
+    [[r0, r1], [g0, g1], [b0, b1], [a0, a1]].map(|c| f32::from(u16::from_be_bytes(c)) / 65535.0)
+}
+
+/// One texel in the alpha mode `MODE`: the C's loop body. An unknown mode
+/// is never passed (the rows return before).
+fn convert<const MODE: i32>(be: [u8; SRC_TEXEL_BYTES]) -> [u8; DST_TEXEL_BYTES] {
+    let [mut r, mut g, mut b, a] = to_float(be);
+    if MODE == alpha_mode::PREMULTIPLY_SRGB {
+        r = srgb_nonlinear_to_linear(r);
+        g = srgb_nonlinear_to_linear(g);
+        b = srgb_nonlinear_to_linear(b);
     }
-    Some(f.map(float_to_u8))
+    if MODE == alpha_mode::PREMULTIPLY_SRGB || MODE == alpha_mode::PREMULTIPLY {
+        r *= a;
+        g *= a;
+        b *= a;
+    }
+    if MODE == alpha_mode::PREMULTIPLY_SRGB {
+        r = srgb_linear_to_nonlinear(r);
+        g = srgb_linear_to_nonlinear(g);
+        b = srgb_linear_to_nonlinear(b);
+    }
+    [
+        float_to_u8(r),
+        float_to_u8(g),
+        float_to_u8(b),
+        float_to_u8(a),
+    ]
 }
 
 /// One texel, as the rows convert it: the four big-endian 16-bit channels
@@ -190,7 +194,12 @@ fn convert(be: [u8; SRC_TEXEL_BYTES], mode: i32) -> Option<[u8; DST_TEXEL_BYTES]
 /// mode outside the three, which converts nothing.
 #[must_use]
 pub fn texel(be: [u8; SRC_TEXEL_BYTES], mode: i32) -> Option<[u8; DST_TEXEL_BYTES]> {
-    convert(be, mode)
+    match mode {
+        alpha_mode::STRAIGHT => Some(convert::<{ alpha_mode::STRAIGHT }>(be)),
+        alpha_mode::PREMULTIPLY_SRGB => Some(convert::<{ alpha_mode::PREMULTIPLY_SRGB }>(be)),
+        alpha_mode::PREMULTIPLY => Some(convert::<{ alpha_mode::PREMULTIPLY }>(be)),
+        _ => None,
+    }
 }
 
 /// `gs_ffmpeg_image_rgba64be_rows()`: converts the `cy` rows of the
@@ -210,12 +219,27 @@ pub fn rgba64be_rows<D: DstByte>(
     src_linesize: usize,
     mode: i32,
 ) -> usize {
-    if !matches!(
-        mode,
-        alpha_mode::STRAIGHT | alpha_mode::PREMULTIPLY_SRGB | alpha_mode::PREMULTIPLY
-    ) {
-        return 0;
+    match mode {
+        alpha_mode::STRAIGHT => rows::<D, { alpha_mode::STRAIGHT }>(dst, src, cx, cy, src_linesize),
+        alpha_mode::PREMULTIPLY_SRGB => {
+            rows::<D, { alpha_mode::PREMULTIPLY_SRGB }>(dst, src, cx, cy, src_linesize)
+        }
+        alpha_mode::PREMULTIPLY => {
+            rows::<D, { alpha_mode::PREMULTIPLY }>(dst, src, cx, cy, src_linesize)
+        }
+        // Nothing read or written.
+        _ => 0,
     }
+}
+
+/// [`rgba64be_rows`] in the alpha mode `MODE`.
+fn rows<D: DstByte, const MODE: i32>(
+    dst: &mut [D],
+    src: &[u8],
+    cx: i32,
+    cy: i32,
+    src_linesize: usize,
+) -> usize {
     let row_bytes = src_row_bytes(cx, src_linesize);
     let texels = row_bytes >> 3;
     if texels == 0 {
@@ -228,29 +252,41 @@ pub fn rgba64be_rows<D: DstByte>(
     let mut s = 0usize;
     let mut d = 0usize;
     for _ in 0..cy.max(0) {
-        for _ in 0..texels {
-            let Some(texel) = s
-                .checked_add(SRC_TEXEL_BYTES)
-                .and_then(|end| src.get(s..end))
-                .and_then(|t| <[u8; SRC_TEXEL_BYTES]>::try_from(t).ok())
-            else {
+        // The texels of this row that fit in both buffers: all of them but
+        // at the end of a buffer that is too short.
+        let fit = texels
+            .min(src.len().saturating_sub(s) / SRC_TEXEL_BYTES)
+            .min(dst.len().saturating_sub(d) / DST_TEXEL_BYTES);
+        let (Some(row_src), Some(row_dst)) = (
+            src.get(s..)
+                .and_then(|r| r.get(..fit.wrapping_mul(SRC_TEXEL_BYTES))),
+            dst.get_mut(d..)
+                .and_then(|r| r.get_mut(..fit.wrapping_mul(DST_TEXEL_BYTES))),
+        ) else {
+            return d;
+        };
+        // `chunks_exact` rather than `as_chunks`: the same texels, and about
+        // 1.4 times faster here (port_comparison, image_rgba64/straight).
+        #[expect(
+            clippy::chunks_exact_to_as_chunks,
+            reason = "as_chunks is slower in this loop"
+        )]
+        let texels_in_row = row_src
+            .chunks_exact(SRC_TEXEL_BYTES)
+            .zip(row_dst.chunks_exact_mut(DST_TEXEL_BYTES));
+        for (texel, out) in texels_in_row {
+            let Ok(texel) = <[u8; SRC_TEXEL_BYTES]>::try_from(texel) else {
                 return d;
             };
-            let Some(out) = d
-                .checked_add(DST_TEXEL_BYTES)
-                .and_then(|end| dst.get_mut(d..end))
-            else {
-                return d;
-            };
-            let Some(rgba) = convert(texel, mode) else {
-                return d;
-            };
-            for (byte, value) in out.iter_mut().zip(rgba) {
+            for (byte, value) in out.iter_mut().zip(convert::<MODE>(texel)) {
                 byte.put(value);
             }
-            // In bounds: both ends were just checked.
-            s = s.wrapping_add(SRC_TEXEL_BYTES);
-            d = d.wrapping_add(DST_TEXEL_BYTES);
+        }
+        // In bounds: `fit` texels were just taken from both buffers.
+        s = s.wrapping_add(fit.wrapping_mul(SRC_TEXEL_BYTES));
+        d = d.wrapping_add(fit.wrapping_mul(DST_TEXEL_BYTES));
+        if fit < texels {
+            return d;
         }
         let Some(next) = s.checked_add(skip) else {
             return d;
