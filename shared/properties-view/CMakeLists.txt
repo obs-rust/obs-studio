@@ -48,11 +48,7 @@ set_target_properties(properties-view-code PROPERTIES FOLDER shared)
 
 target_sources(
   properties-view
-  INTERFACE
-    double-slider.hpp
-    properties-view.hpp
-    properties-view.moc.hpp
-    spinbox-ignorewheel.hpp
+  INTERFACE double-slider.hpp properties-view.hpp properties-view.moc.hpp spinbox-ignorewheel.hpp
 )
 target_include_directories(properties-view INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -81,16 +77,16 @@ target_link_libraries(
 # linking them here would compile those TUs a second time and the consumer that
 # compiles them itself would define the same symbols: the object target takes the
 # headers and definitions they publish, not their sources.
-foreach(
-  _properties_view_dep
-  IN ITEMS
-    OBS::qt-wrappers
-    OBS::qt-plain-text-edit
-    OBS::qt-obs-spinbox
-    OBS::qt-vertical-scroll-area
-    OBS::qt-slider-ignorewheel
-    OBS::qt-icon-label
+set(
+  _properties_view_header_deps
+  OBS::qt-wrappers
+  OBS::qt-plain-text-edit
+  OBS::qt-obs-spinbox
+  OBS::qt-vertical-scroll-area
+  OBS::qt-slider-ignorewheel
+  OBS::qt-icon-label
 )
+foreach(_properties_view_dep IN LISTS _properties_view_header_deps)
   get_target_property(_properties_view_includes ${_properties_view_dep} INTERFACE_INCLUDE_DIRECTORIES)
   if(_properties_view_includes)
     target_include_directories(properties-view-code PRIVATE ${_properties_view_includes})
