@@ -24,8 +24,12 @@ recorded scan. The candidates file carries RULE, the judging rule.
 verdicts, and checks it against the live comment, so a quote is always the
 comment's own words. Every candidate needs a verdict.
 
+To strike an approved quote, mark it rejected with a reason (dropping its login
+and text) and run `render`; to look at a rejected comment again, delete its
+line and run `collect --all`.
+
 The repo's CI has no model access, so the reviewer is the coordinator agent
-(obs-coordinator skill, "User quotes") or a person. Standard library and `gh`.
+(obs-coordinator skill, section 4a) or a person. Standard library and `gh`.
 """
 
 from __future__ import annotations
