@@ -206,12 +206,12 @@ class BoundGateTest(unittest.TestCase):
 
     def test_a_pair_over_the_bound_is_reported(self):
         rows = [
-            {"benchmark": "audio_mix/buffering_add_one_tick", "rust_over_c": 1.26,
+            {"benchmark": "audio_mix/mix_whole_tick", "rust_over_c": 1.26,
              "status": "over 10% bound"},
         ]
         self.assertEqual(
             [row["benchmark"] for row in record.over_bound(rows)],
-            ["audio_mix/buffering_add_one_tick"],
+            ["audio_mix/mix_whole_tick"],
         )
 
     def test_a_pair_within_the_bound_passes(self):
@@ -223,6 +223,40 @@ class BoundGateTest(unittest.TestCase):
         rows = [{"benchmark": "dstr/printf_control/128", "rust_over_c": 12.0,
                  "status": "C control in both builds"}]
         self.assertEqual(record.over_bound(rows), [])
+
+
+class BoundExemptionTest(unittest.TestCase):
+    """#3138 decided: `audio_mix/buffering_add_one_tick` is exempt by name.
+
+    The pair is one `extern "C"` shim on a once-per-audio-tick call at ~46 ns,
+    with no hot spot left after #3141, so the ratio bound does not apply to it
+    while the 5% full-app bound of #142 still does. The exemption must be a
+    named entry that keeps the pair in the report.
+    """
+
+    PAIR = "audio_mix/buffering_add_one_tick"
+
+    def test_the_exempt_pair_is_named_with_its_cost_and_issue(self):
+        entry = record.BOUND_EXEMPTIONS[self.PAIR]
+        self.assertIn("#3138", entry)
+        self.assertIn("ns", entry)
+        self.assertIn("Ryzen 7 3700X", entry)
+
+    def test_an_exempt_pair_is_not_a_breach(self):
+        rows = [{"benchmark": self.PAIR, "rust_over_c": 1.26, "status": "over 10% bound"}]
+        self.assertEqual(record.over_bound(rows), [])
+
+    def test_an_exempt_pair_stays_in_the_report(self):
+        runs = [
+            {"format/case": {"rust": {"median_ns": 1.0}, "c": {"median_ns": 1.0}},
+             self.PAIR: {"rust": {"median_ns": 46.0}, "c": {"median_ns": 39.0}}},
+            {"format/case": {"rust": {"median_ns": 1.0}, "c": {"median_ns": 1.0}},
+             self.PAIR: {"rust": {"median_ns": 47.0}, "c": {"median_ns": 39.0}}},
+        ]
+        row = {row["benchmark"]: row for row in record.summarize(runs)}[self.PAIR]
+        self.assertAlmostEqual(row["rust_over_c"], 46.5 / 39.0)
+        self.assertIn("exempt", row["status"])
+        self.assertIn("#3138", row["status"])
 
 
 if __name__ == "__main__":
