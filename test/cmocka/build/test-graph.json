@@ -5683,7 +5683,7 @@
         "libobs"
       ],
       "watch_inputs": [
-        "libobs/build/libobs-window-match.pch.h",
+        "libobs/build/libobs-ported-window-match.pch.h",
         "libobs/util/windows/window-match.h"
       ],
       "libraries": [

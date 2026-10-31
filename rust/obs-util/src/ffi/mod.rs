@@ -48,3 +48,4 @@ pub mod utf8;
 #[cfg(windows)]
 #[path = "utf8_windows.rs"]
 pub mod utf8;
+pub mod window_match;

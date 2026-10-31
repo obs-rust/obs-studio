@@ -995,3 +995,11 @@ _audio_monitor_delay_judge_diff
 _audio_monitor_delay_stale
 _audio_monitor_delay_stalled
 _audio_monitor_delay_unsynced
+
+# window-match.c: the window helpers (window-helpers.c) call them inside
+# libobs. Built on every host; not EXPORT.
+_ms_window_match_is_generic_class
+_ms_window_match_is_internal_exe
+_ms_window_match_is_untitled_explorer
+_ms_window_match_is_uwp_class
+_ms_window_match_rating

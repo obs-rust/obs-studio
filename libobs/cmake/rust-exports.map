@@ -1040,4 +1040,11 @@
     audio_monitor_delay_stale;
     audio_monitor_delay_stalled;
     audio_monitor_delay_unsynced;
+    /* window-match.c. window-helpers.c calls them inside libobs on Windows.
+     * Not EXPORT. */
+    ms_window_match_is_generic_class;
+    ms_window_match_is_internal_exe;
+    ms_window_match_is_untitled_explorer;
+    ms_window_match_is_uwp_class;
+    ms_window_match_rating;
 };
