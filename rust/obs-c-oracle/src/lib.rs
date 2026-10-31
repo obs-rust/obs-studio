@@ -37,6 +37,7 @@ pub mod audio_math;
 pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod audio_render;
+pub mod audio_resampler_drift;
 pub mod av1;
 pub mod avc;
 pub mod base;

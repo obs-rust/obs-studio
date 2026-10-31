@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 30605538921d0838b77ca31ff613df48c4b43fa95ed00605bff84d161c283bd1 # shrinks to error = 0, enabled = false
+cc dfdbd76549f913bc326c5cdd164073d3a11302890f78f66d3c32f8b5917a7d45 # shrinks to error = -10000001, enabled = false
+cc 01f0bb05fffe9e0d1252bc5f2a1c79b029cc6bd4793abb49145b7fc2018abf77 # shrinks to rate = 8000, output_rate = 8000, packets = [((Some(0), 1, 0), 1)]
