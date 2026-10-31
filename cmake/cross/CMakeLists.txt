@@ -650,6 +650,7 @@ if(_host STREQUAL WINDOWS)
       obs-shared-memory-queue/build/shared-memory-queue.windows+.h.c
     INCLUDES shared/ipc-util shared/obs-inject-library shared/obs-shared-memory-queue shared/obs-tiny-nv12-scale libobs/util/windows
   )
+  _obs_cross_conversion_ratchet(shared-windows-cross)
   # nv-filters' unity groups (BUILD.md), with both optional effects.
   _obs_cross_plugin(
     nv-filters-cross
@@ -885,6 +886,7 @@ _obs_cross_plugin(
   SOURCES build/obs-x264.core+.h.c
   INCLUDES shared/opts-parser
 )
+_obs_cross_conversion_ratchet(obs-x264-cross)
 
 # rtmp-services' unity group (BUILD.md).
 _obs_cross_plugin(
@@ -894,6 +896,7 @@ _obs_cross_plugin(
   INCLUDES shared/file-updater
   DEFINES SERVICES_URL="cross-check" ENABLE_SERVICE_UPDATES
 )
+_obs_cross_conversion_ratchet(rtmp-services-cross)
 
 # aja's unity groups (BUILD.md) with the prebuilt LibAJANTV2 headers, as
 # cmake/finders/FindLibAJANTV2.cmake sets them up.
