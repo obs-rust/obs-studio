@@ -269,8 +269,14 @@ judges quotes. Once a week, when `scanned_through` in that file on
    and put any quote that contains an `@login` in a code span, so the PR
    pings nobody. Never push to master. The PR is queued like any other.
 
+The README shows every approved quote, newest first; never cap or drop one
+(older ones fold into a collapsed block on their own). Collect with no
+`--max-chars`, so long comments are judged too. Other tools read
+`tools/user_quotes.json` from master, so keep its format as the script's
+header documents it.
+
 To strike an approved quote, change its line to `"status": "rejected"` with
-a `"reason"` and drop its `login` and `text`, then run `render`. To look at
+a `"reason"` and empty its `text` and `login`, then run `render`. To look at
 a rejected comment again, delete its line and run `collect --all`.
 
 ## 5. Report

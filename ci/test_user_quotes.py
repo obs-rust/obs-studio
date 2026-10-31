@@ -79,8 +79,9 @@ class RecordTest(unittest.TestCase):
         approved, rejected = data["quotes"]
         self.assertEqual(approved["text"], "It works!")
         self.assertEqual(approved["login"], "someone")
-        self.assertEqual(rejected, {"url": URL.format(7, 2), "date": "2026-10-12", "issue": 7,
-                                    "status": "rejected", "reason": "works, but"})
+        self.assertEqual(rejected, {"text": "", "login": "", "url": URL.format(7, 2), "date": "2026-10-12",
+                                    "status": "rejected", "issue": 7, "reason": "works, but"})
+        self.assertEqual(list(approved)[:5], list(uq.FIELDS), "the documented fields, in order")
 
     def test_every_candidate_needs_a_verdict(self):
         with self.assertRaisesRegex(ValueError, "no verdict"):
@@ -98,32 +99,43 @@ class RecordTest(unittest.TestCase):
 
     def test_a_rejected_comment_stays_rejected(self):
         before = {"scanned_through": "2026-10-20T00:00:00Z",
-                  "quotes": [{"url": URL.format(7, 1), "date": "2026-10-12", "issue": 7,
-                              "status": "rejected", "reason": "struck by a maintainer"}]}
+                  "quotes": [{"text": "", "login": "", "url": URL.format(7, 1), "date": "2026-10-12",
+                              "status": "rejected", "issue": 7, "reason": "struck by a maintainer"}]}
         verdicts = {URL.format(7, 1): ["approved", ""], URL.format(7, 2): ["rejected", "mixed"]}
         data = uq.record(before, self.found, verdicts, {URL.format(7, 1): "It works!"})
         self.assertEqual([q["status"] for q in data["quotes"]], ["rejected", "rejected"])
-        self.assertNotIn("text", data["quotes"][0])
+        self.assertEqual(data["quotes"][0]["text"], "")
 
 
 class RenderTest(unittest.TestCase):
     def data(self):
-        q = lambda n, status, date: {"url": URL.format(n, n), "date": date, "issue": n, "status": status,
-                                     **({"login": f"u{n}", "text": f"quote {n}"} if status == "approved"
-                                        else {"reason": "no"})}
+        q = lambda n, status, date: {"text": f"quote {n}" if status == "approved" else "",
+                                     "login": f"u{n}" if status == "approved" else "",
+                                     "url": URL.format(n, n), "date": date, "status": status, "issue": n,
+                                     **({} if status == "approved" else {"reason": "no"})}
         return {"scanned_through": "", "quotes": [q(1, "approved", "2026-10-01"), q(2, "rejected", "2026-10-02"),
                                                   q(3, "approved", "2026-10-03"), q(4, "approved", "2026-10-04")]}
 
     def test_fills_only_between_the_markers_newest_first(self):
         readme = f"# Title\n\n{uq.START}\nold\n{uq.END}\n\n# Next\n"
-        out = uq.render(readme, self.data(), shown=2)
+        out = uq.render(readme, self.data())
         self.assertTrue(out.startswith("# Title\n\n" + uq.START))
         self.assertTrue(out.endswith(uq.END + "\n\n# Next\n"))
         self.assertNotIn("old", out)
         self.assertLess(out.index("quote 4"), out.index("quote 3"))
-        self.assertNotIn("quote 1", out)
+        self.assertLess(out.index("quote 3"), out.index("quote 1"))
+        self.assertNotIn("<details>", out, "nothing to fold while all fit")
         self.assertNotIn(URL.format(2, 2), out)
         self.assertIn(f"> — [u4](https://github.com/u4), [#4]({URL.format(4, 4)}), 2026-10-04", out)
+
+    def test_no_quote_is_ever_dropped_older_ones_fold(self):
+        out = uq.render(f"{uq.START}\n{uq.END}\n", self.data(), shown=2)
+        for n in (1, 3, 4):
+            self.assertIn(f"quote {n}", out)
+        folded = out[out.index("<details>"):]
+        self.assertIn("<summary>1 older quote</summary>", folded)
+        self.assertIn("quote 1", folded)
+        self.assertNotIn("quote 3", folded)
 
     def test_render_is_stable(self):
         readme = f"{uq.START}\n{uq.END}\n"
@@ -153,14 +165,15 @@ class CommittedDataTest(unittest.TestCase):
         self.assertEqual(len(urls), len(set(urls)), "one verdict per comment")
         for q in self.data["quotes"]:
             self.assertRegex(q["url"], r"^https://github\.com/obs-rust/obs-studio/(issues|pull)/\d+#issuecomment-\d+$")
+            self.assertEqual(list(q)[:5], list(uq.FIELDS), "the documented fields, in order, on every entry")
+            self.assertRegex(q["date"], r"^\d{4}-\d{2}-\d{2}$")
             self.assertIn(q["status"], ("approved", "rejected"))
             if q["status"] == "approved":
-                self.assertTrue(q["text"].strip(), q["url"])
+                self.assertTrue(q["text"].strip() and q["login"], q["url"])
                 self.assertNotIn("reason", q)
             else:
                 self.assertTrue(q["reason"].strip(), q["url"])
-                self.assertNotIn("text", q, "rejected comments keep no text")
-                self.assertNotIn("login", q, "rejected comments keep no login")
+                self.assertEqual((q["text"], q["login"]), ("", ""), "rejected comments keep no text or login")
 
 
 if __name__ == "__main__":

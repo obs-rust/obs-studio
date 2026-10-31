@@ -24,9 +24,33 @@ recorded scan. The candidates file carries RULE, the judging rule.
 verdicts, and checks it against the live comment, so a quote is always the
 comment's own words. Every candidate needs a verdict.
 
-To strike an approved quote, mark it rejected with a reason (dropping its login
-and text) and run `render`; to look at a rejected comment again, delete its
-line and run `collect --all`.
+`render` puts every approved quote in the README, newest first, with no cap:
+past the newest SHOWN, the older ones go in a collapsed <details> block, and
+none is ever dropped for space.
+
+tools/user_quotes.json is read from master by other tools (read-only), so its
+format stays stable. It is one JSON object:
+
+    {"scanned_through": "<ISO 8601 UTC time of the last collect>",
+     "quotes": [<entry>, ...]}             # oldest first, one entry per line
+
+and every entry has the same five fields, in this order:
+
+    text    the quote, word for word ("" when rejected)
+    login   the author's GitHub login ("" when rejected)
+    url     the comment's link, https://github.com/obs-rust/obs-studio/issues/N#issuecomment-ID
+    date    the day the comment was posted, YYYY-MM-DD
+    status  "approved" or "rejected"
+
+plus `issue` (the issue or PR number) and, on rejected entries, `reason`. A
+reader that wants the quotes keeps the entries whose status is "approved".
+Rejected entries keep no text or login, so the repo names nobody whose
+comment was turned down (some asked not to be mentioned); the url alone keeps
+them rejected.
+
+To strike an approved quote, set its status to "rejected", empty its text and
+login, add a reason, and run `render`; to look at a rejected comment again,
+delete its line and run `collect --all`.
 
 The repo's CI has no model access, so the reviewer is the coordinator agent
 (obs-coordinator skill, section 4a) or a person. Standard library and `gh`.
@@ -48,8 +72,8 @@ DATA = Path(__file__).resolve().parent / "user_quotes.json"
 README = ROOT / "README.md"
 START = "<!-- user-quotes:start -->"
 END = "<!-- user-quotes:end -->"
-SHOWN = 8
-MAX_CHARS = 600
+FIELDS = ("text", "login", "url", "date", "status")  # every entry, in this order (the header)
+SHOWN = 8  # shown in full; older approved quotes fold into <details>, never dropped
 
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 # Agent and bot accounts that are typed "User" (the leaderboard's list, tools/leaderboard/generate.py).
@@ -85,15 +109,18 @@ def is_candidate(comment: dict, excluded: set[str]) -> bool:
 
 
 def candidates(comments: list[dict], excluded: set[str], known: set[str],
-               max_chars: int = MAX_CHARS) -> list[dict]:
-    """Candidates from raw REST comments, oldest first; `excluded` holds lowercase logins."""
+               max_chars: int = 0) -> list[dict]:
+    """Candidates from raw REST comments, oldest first; `excluded` holds lowercase logins.
+
+    `max_chars` (0: no limit) is only for a quick look; the seed and the weekly refresh use none.
+    """
     excluded = {e.lower() for e in excluded}
     out = []
     for c in comments:
         if c["html_url"] in known or not is_candidate(c, excluded):
             continue
         text = clean(c.get("body"))
-        if not text or len(text) > max_chars:
+        if not text or (max_chars and len(text) > max_chars):
             continue
         out.append({"url": c["html_url"], "login": c["user"]["login"], "date": c["created_at"][:10],
                     "issue": int(c["issue_url"].rsplit("/", 1)[1]), "text": text})
@@ -113,15 +140,15 @@ def record(data: dict, found: dict, verdicts: dict, live: dict[str, str]) -> dic
         if url in known:
             continue  # judged before: the earlier verdict stands
         status, reason = verdicts[url]
-        entry = {"url": url, "date": c["date"], "issue": c["issue"], "status": status}
+        entry = {"text": "", "login": "", "url": url, "date": c["date"], "status": status, "issue": c["issue"]}
         if status == "approved":
             if live.get(url) != c["text"]:
                 raise ValueError(f"{url}: the comment changed since collect; collect again")
-            entry |= {"login": c["login"], "text": c["text"]}
+            entry |= {"text": c["text"], "login": c["login"]}
         elif status == "rejected":
             if not reason:
                 raise ValueError(f"{url}: a rejection needs a reason")
-            entry["reason"] = reason  # no login or text: the link alone keeps it rejected
+            entry["reason"] = reason  # no text or login: the url alone keeps it rejected
         else:
             raise ValueError(f"{url}: status must be approved or rejected, not {status!r}")
         quotes.append(entry)
@@ -133,12 +160,18 @@ def record(data: dict, found: dict, verdicts: dict, live: dict[str, str]) -> dic
 def section(data: dict, shown: int = SHOWN) -> str:
     approved = [q for q in data["quotes"] if q["status"] == "approved"]
     approved.sort(key=lambda q: (q["date"], q["url"]), reverse=True)
+    quote = lambda q: [f"> “{q['text']}”", ">",
+                       f"> — [{q['login']}](https://github.com/{q['login']}), "
+                       f"[#{q['issue']}]({q['url']}), {q['date']}", ""]
     lines = [START,
              "<!-- Generated by tools/user_quotes.py from tools/user_quotes.json; edit those, not this. -->", ""]
     for q in approved[:shown]:
-        lines += [f"> “{q['text']}”", ">",
-                  f"> — [{q['login']}](https://github.com/{q['login']}), "
-                  f"[#{q['issue']}]({q['url']}), {q['date']}", ""]
+        lines += quote(q)
+    if older := approved[shown:]:
+        lines += ["<details>", f"<summary>{len(older)} older quote{'s' * (len(older) != 1)}</summary>", ""]
+        for q in older:
+            lines += quote(q)
+        lines += ["</details>", ""]
     if not approved:
         lines += ["No quotes yet.", ""]
     lines.append(END)
@@ -193,7 +226,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("collect", help="write new candidates for review")
     c.add_argument("--out", type=Path, required=True)
-    c.add_argument("--max-chars", type=int, default=MAX_CHARS)
+    c.add_argument("--max-chars", type=int, default=0, help="skip longer comments (default: no limit)")
     c.add_argument("--all", action="store_true", help="scan every comment, not only those since the last scan")
     r = sub.add_parser("record", help="merge verdicts into tools/user_quotes.json")
     r.add_argument("candidates", type=Path)
