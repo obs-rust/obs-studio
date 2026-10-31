@@ -1805,7 +1805,10 @@ jobs:
           # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
           version: 0.9.45
           build-cache: false
-          prebuild-deps-flags: ${{ needs.check-event.outputs.core == 'true' && '--release' || '--profile dev -- --tests' }}
+          # Fast Gate's consumer is `cargo test`, so cook the `test` profile
+          # it compiles in: a `--release` cook on core runs left that build
+          # rebuilding from scratch (1m09s-1m37s, #2661).
+          prebuild-deps-flags: --profile dev -- --tests
           # Host/container archive paths have different Actions-cache versions.
           # Explicit identities stop the janitor treating them as duplicates.
           cache-key-suffix: linux-host-v1

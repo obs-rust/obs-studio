@@ -687,14 +687,18 @@ use the dev profile; cross checks still install their target standard
 libraries through the existing gate, and host cooking does not imply
 that a cross-target dependency tree is prebuilt.
 
-Fast Gate retains release cooking for core changes and uses dev cooking
-when workspace core inputs are unchanged. The local post-job benchmark
-(#1317) measured unchanged medians of 57.259 s release, 36.170 s dev and
-72.136 s without cook; core rebuild medians favored release but varied
-widely. This is a policy to validate in live CI, not a universal profile
-speed claim. The action hashes profile flags into the cook cache key, so
-the dev rollout gets a separate archive generation. Master must seed it
-before later PRs can get a warm restore.
+Fast Gate cooks the dev profile with `--tests`, on every event: its consumer
+is `cargo test`, so a release cook there is never reused. Measured on ten Fast
+Gate jobs on 2026-10-31 (#2661): the four jobs that still cooked `--release`
+(push and merge-group core runs) then rebuilt the `test` profile from scratch,
+1m09s-1m37s and 256-442 `Compiling` lines, while the six jobs cooking
+`--profile dev -- --tests` finished that build warm with no profile line at
+all (192 lines). The cook step cost the same either way, 11.3-15.6 s. The
+older policy came from the local post-job benchmark (#1317), which timed the
+cook step (57.259 s release, 36.170 s dev, 72.136 s without cook) and not the
+consumer it feeds; core rebuild medians favored release but varied widely.
+The action hashes profile flags into the cook cache key, so changing them
+starts a new archive generation that master has to seed.
 
 The action saves the cook snapshot after consumers run. Thus a release
 archive can also carry dev artifacts. Keep dependency cooking enabled
