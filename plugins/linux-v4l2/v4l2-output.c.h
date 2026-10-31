@@ -116,6 +116,14 @@ static ssize_t vmic_write_some(int fd, const uint8_t *data, size_t size)
 	return (ssize_t)done;
 }
 
+/* Whether the OBS that loaded virtual-microphone FIFO number n in dir is
+ * gone (obs-rust/obs-studio#3179). */
+static bool vmic_instance_is_stale(const char *dir, long n)
+{
+	UNUSED_PARAMETER(dir);
+	return kill((pid_t)n, 0) != 0 && errno == ESRCH;
+}
+
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
  * does not fit: blocking would hold up OBS's output thread. A packet that was
  * started is always finished first, so the reader only ever sees whole
