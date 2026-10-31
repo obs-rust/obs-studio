@@ -62,6 +62,12 @@ static inline bool gs_valid(const char *f)
 
 #define IMMEDIATE_COUNT 512
 
+_Static_assert(IMMEDIATE_COUNT == GS_IMMEDIATE_COUNT, "graphics-immediate.h counts the immediate buffer");
+_Static_assert(sizeof(((struct graphics_subsystem *)0)->texverts) /
+			       sizeof(((struct graphics_subsystem *)0)->texverts[0]) ==
+		       GS_IMMEDIATE_TEX_ARRAYS,
+	       "graphics-immediate.h counts the texture arrays");
+
 void gs_enum_adapters(bool (*callback)(void *param, const char *name, uint32_t id), void *param)
 {
 	/* ISO C forbids passing a function pointer where gs_valid_p() takes an
@@ -568,20 +574,18 @@ void gs_render_start(bool b_new)
 	}
 }
 
-static inline size_t min_size(const size_t a, const size_t b)
-{
-	return (a < b) ? a : b;
-}
-
 void gs_render_stop(enum gs_draw_mode mode)
 {
 	graphics_t *graphics = thread_graphics;
+	struct gs_immediate_draw draw;
 	size_t i, num;
 
 	if (!gs_valid("gs_render_stop"))
 		return;
 
-	num = graphics->verts.num;
+	draw = gs_immediate_draw(graphics->verts.num, graphics->norms.num, graphics->colors.num,
+				 graphics->texverts[0].num);
+	num = draw.num;
 	if (!num) {
 		if (!graphics->using_immediate) {
 			da_free(graphics->verts);
@@ -595,23 +599,17 @@ void gs_render_stop(enum gs_draw_mode mode)
 		return;
 	}
 
-	if (graphics->norms.num && (graphics->norms.num != graphics->verts.num)) {
+	if (draw.norms_mismatch)
 		blog(LOG_ERROR, "gs_render_stop: normal count does "
 				"not match vertex count");
-		num = min_size(num, graphics->norms.num);
-	}
 
-	if (graphics->colors.num && (graphics->colors.num != graphics->verts.num)) {
+	if (draw.colors_mismatch)
 		blog(LOG_ERROR, "gs_render_stop: color count does "
 				"not match vertex count");
-		num = min_size(num, graphics->colors.num);
-	}
 
-	if (graphics->texverts[0].num && (graphics->texverts[0].num != graphics->verts.num)) {
+	if (draw.tex_mismatch)
 		blog(LOG_ERROR, "gs_render_stop: texture vertex count does "
 				"not match vertex count");
-		num = min_size(num, graphics->texverts[0].num);
-	}
 
 	if (graphics->using_immediate) {
 		gs_vertexbuffer_flush(graphics->immediate_vertbuffer);
@@ -637,6 +635,8 @@ void gs_render_stop(enum gs_draw_mode mode)
 gs_vertbuffer_t *gs_render_save(void)
 {
 	graphics_t *graphics = thread_graphics;
+	struct gs_immediate_save save;
+	size_t tex[GS_IMMEDIATE_TEX_ARRAYS];
 	size_t num_tex, i;
 
 	if (!gs_valid("gs_render_save"))
@@ -644,19 +644,21 @@ gs_vertbuffer_t *gs_render_save(void)
 	if (graphics->using_immediate)
 		return NULL;
 
-	if (!graphics->verts.num) {
+	for (i = 0; i < GS_IMMEDIATE_TEX_ARRAYS; i++)
+		tex[i] = graphics->texverts[i].num;
+	save = gs_immediate_save(graphics->verts.num, graphics->norms.num, graphics->colors.num, tex);
+
+	if (!save.num) {
 		gs_vbdata_destroy(graphics->vbd);
 		return NULL;
 	}
 
-	for (num_tex = 0; num_tex < 16; num_tex++)
-		if (!graphics->texverts[num_tex].num)
-			break;
+	num_tex = save.num_tex;
 
 	graphics->vbd->points = graphics->verts.array;
 	graphics->vbd->normals = graphics->norms.array;
 	graphics->vbd->colors = graphics->colors.array;
-	graphics->vbd->num = graphics->verts.num;
+	graphics->vbd->num = save.num;
 	graphics->vbd->num_tex = num_tex;
 
 	if (graphics->vbd->num_tex) {
@@ -667,6 +669,9 @@ gs_vertbuffer_t *gs_render_save(void)
 			graphics->vbd->tvarray[i].array = graphics->texverts[i].array;
 		}
 	}
+
+	for (i = save.free_from; i < GS_IMMEDIATE_TEX_ARRAYS; i++)
+		da_free(graphics->texverts[i]);
 
 	reset_immediate_arrays(graphics);
 
@@ -696,7 +701,7 @@ void gs_normal3f(float x, float y, float z)
 
 static inline bool validvertsize(graphics_t *graphics, size_t num, const char *name)
 {
-	if (graphics->using_immediate && num == IMMEDIATE_COUNT) {
+	if (!gs_immediate_push_ok(graphics->using_immediate, num)) {
 		blog(LOG_ERROR,
 		     "%s: tried to use over %u "
 		     "for immediate rendering",
@@ -768,6 +773,8 @@ void gs_texcoord2v(const struct vec2 *v, int unit)
 	graphics_t *graphics = thread_graphics;
 
 	if (!gs_valid("gs_texcoord2v"))
+		return;
+	if (!gs_immediate_unit_ok(graphics->using_immediate, unit))
 		return;
 	if (!validvertsize(graphics, graphics->texverts[unit].num, "gs_texcoord"))
 		return;
