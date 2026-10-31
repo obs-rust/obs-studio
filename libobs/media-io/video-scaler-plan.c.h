@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-video-scaler-plan.pch.h"
+#include "libobs/build/libobs-ported-video-scaler-plan.pch.h"
+
+/* Ported to rust/obs-media-io (video_scaler_plan): the hybrid libobs drops
+ * this file. */
 
 /* The decisions of the swscale scaler (video-scaler-ffmpeg.c), moved: the
  * scale flags, the coefficient set, the range, the plane heights and the
