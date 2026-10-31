@@ -791,6 +791,11 @@ area.
   is finished before the next one. *Linux*, 2026-10-31.
   Issues [#3180](https://github.com/obs-rust/obs-studio/issues/3180),
   [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
+- The OBS Virtual Microphone works in the Flatpak build: its pipe lives in
+  a runtime folder the sandbox shares with the sound server, and an OBS that
+  is still running keeps its microphone even when another one starts.
+  *Linux*, 2026-10-31.
+  Issue [#3179](https://github.com/obs-rust/obs-studio/issues/3179).
 - The Linux virtual camera sends a correct picture to a v4l2loopback device
   with a fixed format of a different size. *Linux*, 2026-10-11. Issue
   [#212](https://github.com/obs-rust/obs-studio/issues/212), PR

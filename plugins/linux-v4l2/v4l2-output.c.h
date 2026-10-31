@@ -23,6 +23,8 @@ struct virtualcam_data {
 	uint32_t mic_module;
 	bool mic_loaded;
 	char mic_path[256];
+	char mic_lock_path[256];
+	int mic_lock;
 };
 
 static void vmic_stop(struct virtualcam_data *vcam);
@@ -57,6 +59,7 @@ static bool vmic_parse_module_id(const char *text, uint32_t *id)
 }
 
 #define VMIC_FIFO_NAME "obs-virtual-microphone-"
+#define VMIC_DIR_NAME "obs-virtual-microphone"
 
 /* A line of "pactl list modules short" ("<index>\t<name>\t<arguments>\t")
  * for a module-pipe-source this plugin loaded: its FIFO is named after the
@@ -120,8 +123,17 @@ static ssize_t vmic_write_some(int fd, const uint8_t *data, size_t size)
  * gone (obs-rust/obs-studio#3179). */
 static bool vmic_instance_is_stale(const char *dir, long n)
 {
-	UNUSED_PARAMETER(dir);
-	return kill((pid_t)n, 0) != 0 && errno == ESRCH;
+	char lock[512];
+	snprintf(lock, sizeof(lock), "%s/" VMIC_FIFO_NAME "%ld.lock", dir, n);
+	int fd = open(lock, O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		/* Loaded by a build before the lock: only the pid tells. */
+		return kill((pid_t)n, 0) != 0 && errno == ESRCH;
+	}
+	/* The running OBS holds this lock for as long as its module is loaded. */
+	bool unlocked = flock(fd, LOCK_EX | LOCK_NB) == 0;
+	close(fd);
+	return unlocked;
 }
 
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
@@ -252,12 +264,17 @@ static void vmic_stop(struct virtualcam_data *vcam)
 		unlink(vcam->mic_path);
 		vcam->mic_path[0] = 0;
 	}
+	if (vcam->mic_lock >= 0) {
+		unlink(vcam->mic_lock_path);
+		close(vcam->mic_lock);
+		vcam->mic_lock = -1;
+	}
 }
 
 /* Unloads the virtual microphones of OBS processes that are gone: one killed
  * while its Virtual Camera ran never unloaded its module, and apps would see
  * two "OBS Virtual Microphone"s. Another running OBS keeps its own. */
-static void vmic_unload_stale(void)
+static void vmic_unload_stale(const char *dir)
 {
 	FILE *fp = popen(is_flatpak_sandbox() ? "flatpak-spawn --host pactl list modules short 2>/dev/null"
 					      : "pactl list modules short 2>/dev/null",
@@ -271,9 +288,7 @@ static void vmic_unload_stale(void)
 	while (fgets(line, sizeof(line), fp)) {
 		uint32_t id;
 		long pid;
-		if (!vmic_parse_module_line(line, &id, &pid) || pid == (long)getpid())
-			continue;
-		if (kill((pid_t)pid, 0) == 0 || errno != ESRCH)
+		if (!vmic_parse_module_line(line, &id, &pid) || !vmic_instance_is_stale(dir, pid))
 			continue;
 		if (count < sizeof(stale) / sizeof(stale[0]))
 			stale[count++] = id;
@@ -310,9 +325,38 @@ static void vmic_start(struct virtualcam_data *vcam)
 				  "the Virtual Camera sends video only");
 		return;
 	}
-	vmic_unload_stale();
+	/* One directory that the host's sound server and a Flatpak sandbox both
+	 * see (the manifest shares xdg-run/obs-virtual-microphone, #3179). */
+	char dir[256];
+	snprintf(dir, sizeof(dir), "%s/" VMIC_DIR_NAME, runtime);
+	if (mkdir(dir, 0700) != 0 && errno != EEXIST) {
+		blog(LOG_WARNING, "Virtual microphone: cannot create '%s' (%s); the Virtual Camera sends video only",
+		     dir, strerror(errno));
+		return;
+	}
 
-	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_NAME "%d", runtime, (int)getpid());
+	/* The number in the FIFO name starts at our pid, which in a sandbox
+	 * another OBS can share, so the lock decides who owns it. */
+	long n = (long)getpid();
+	for (int tries = 0; tries < 64; tries++, n++) {
+		snprintf(vcam->mic_lock_path, sizeof(vcam->mic_lock_path), "%s/" VMIC_FIFO_NAME "%ld.lock", dir, n);
+		int fd = open(vcam->mic_lock_path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+		if (fd < 0)
+			break;
+		if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
+			vcam->mic_lock = fd;
+			break;
+		}
+		close(fd);
+	}
+	if (vcam->mic_lock < 0) {
+		blog(LOG_WARNING, "Virtual microphone: no free FIFO name in '%s'; the Virtual Camera sends video only",
+		     dir);
+		return;
+	}
+	vmic_unload_stale(dir);
+
+	snprintf(vcam->mic_path, sizeof(vcam->mic_path), "%s/" VMIC_FIFO_NAME "%ld", dir, n);
 	unlink(vcam->mic_path);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
@@ -446,6 +490,7 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	vcam->output = output;
 	vcam->device = -1;
 	vcam->mic_fifo = -1;
+	vcam->mic_lock = -1;
 
 	UNUSED_PARAMETER(settings);
 	return vcam;
@@ -661,3 +706,4 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_CHANNELS
 #undef VMIC_PIPE_SIZE
 #undef VMIC_FIFO_NAME
+#undef VMIC_DIR_NAME
