@@ -97,16 +97,32 @@ Approve a comment only when every one of these holds; otherwise reject it, with 
 """
 
 
+LIST_ITEM = re.compile(r"^( *)([-*+]|\d{1,9}[.)])( {1,4})(?=\S)")
+
+
 def unindent_code(text: str) -> str:
-    """Drop Markdown indented code blocks: lines indented 4+ spaces or a tab after a blank line."""
-    out, in_code, blank = [], False, True
-    for line in text.splitlines():
+    """Drop Markdown indented code blocks, as CommonMark reads them.
+
+    A line is code when it is indented 4 or more columns past the enclosing
+    list item's content (or the margin, outside a list) and starts after a
+    blank line, since indented code cannot interrupt a paragraph. A
+    paragraph indented under a list item is that item's content and stays.
+    """
+    out, in_code, blank, item = [], False, True, None  # item: content column of the open list item
+    for line in text.expandtabs(4).splitlines():
         if not line.strip():
             blank = True
             out.append(line)
             continue
-        indented = line.startswith(("    ", "\t"))
-        in_code = indented and (in_code or blank)  # indented code cannot interrupt a paragraph
+        width = len(line) - len(line.lstrip(" "))
+        if item is not None and blank and width < item:
+            item = None  # a paragraph after a blank line, left of the item's content, ends the list
+        base = item or 0
+        if width < base + 4 and (m := LIST_ITEM.match(line)):
+            item, in_code, blank = len(m.group(0)), False, False
+            out.append(line)
+            continue
+        in_code = width >= base + 4 and (in_code or blank)
         blank = False
         if not in_code:
             out.append(line)
