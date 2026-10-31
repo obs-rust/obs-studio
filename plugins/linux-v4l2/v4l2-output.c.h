@@ -40,6 +40,9 @@ static void vmic_stop(struct virtualcam_data *vcam);
 /* Two libobs audio packets (1024 float stereo frames = 8 KiB each), about
  * 42 ms at 48 kHz: small enough to stay in sync with the video. */
 #define VMIC_PIPE_SIZE 16384
+/* pactl runs on the thread that starts and stops the Virtual Camera: a sound
+ * server that never answers costs at most this long (#3181). */
+#define VMIC_PACTL_TIMEOUT "timeout -k 1 3 "
 
 /* pactl load-module prints the new module's index on its own line. */
 static bool vmic_parse_module_id(const char *text, uint32_t *id)
@@ -273,7 +276,8 @@ static int run_command(const char *command)
 static char *run_pactl(const char *args)
 {
 	struct dstr cmd;
-	dstr_init_copy(&cmd, is_flatpak_sandbox() ? "flatpak-spawn --host pactl " : "pactl ");
+	dstr_init_copy(&cmd, is_flatpak_sandbox() ? VMIC_PACTL_TIMEOUT "flatpak-spawn --host pactl "
+						  : VMIC_PACTL_TIMEOUT "pactl ");
 	dstr_cat(&cmd, args);
 	dstr_cat(&cmd, " 2>/dev/null");
 
@@ -320,8 +324,9 @@ static void vmic_stop(struct virtualcam_data *vcam)
  * two "OBS Virtual Microphone"s. Another running OBS keeps its own. */
 static void vmic_unload_stale(const char *dir)
 {
-	FILE *fp = popen(is_flatpak_sandbox() ? "flatpak-spawn --host pactl list modules short 2>/dev/null"
-					      : "pactl list modules short 2>/dev/null",
+	FILE *fp = popen(is_flatpak_sandbox() ? VMIC_PACTL_TIMEOUT
+				 "flatpak-spawn --host pactl list modules short 2>/dev/null"
+					      : VMIC_PACTL_TIMEOUT "pactl list modules short 2>/dev/null",
 			 "r");
 	if (!fp)
 		return;
@@ -814,5 +819,6 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_SOURCE_NAME
 #undef VMIC_CHANNELS
 #undef VMIC_PIPE_SIZE
+#undef VMIC_PACTL_TIMEOUT
 #undef VMIC_FIFO_NAME
 #undef VMIC_DIR_NAME
