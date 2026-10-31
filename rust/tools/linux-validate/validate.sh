@@ -165,7 +165,7 @@ trap 'zccache stop >/dev/null 2>&1 || true' EXIT
 ported_objs=$(uv run --no-project python "$SRC/rust/tools/ported_sources.py" --root "$SRC" --host linux)
 
 if [ "$(wc -w <<<"$ported_objs")" -lt 20 ]; then
-  echo "FAIL: derived only $(wc -w <<<"$ported_objs") ported objects from libobs/build/source-sets.json"
+  echo "FAIL: derived only $(wc -w <<<"$ported_objs") ported objects from libobs/build/source-sets.d/"
   exit 1
 fi
 echo "== ported C objects excluded from production libobs: $(wc -w <<<"$ported_objs")"

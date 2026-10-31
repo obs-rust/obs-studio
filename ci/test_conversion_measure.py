@@ -58,7 +58,8 @@ def fixture(root: Path) -> None:
     sets["LIBOBS_SOURCES"] = ["obs.h", "build/libobs.core+.h.c"]
     sets["LIBOBS_PORTED_SOURCES"] = ["build/libobs.ported-util+.h.c", "build/libobs.ported-media+.h.c"]
     sets["LIBOBS_LINUX_SOURCES"] = ["build/libobs.nix+.h.c"]
-    write(root, "libobs/build/source-sets.json", text=json.dumps(sets))
+    for name, members in sets.items():
+        write(root, f"libobs/build/source-sets.d/{name}.json", text=json.dumps(members))
     write(root, "libobs/build/libobs.core+.h.c", text=group("libobs.pch.h", "obs.c.h", "graphics/graphics.c.h"))
     write(root, "libobs/build/libobs.ported-util+.h.c",
           text=group("libobs-util.pch.h", "util/bmem.c.h", "util/dstr.c.h"))

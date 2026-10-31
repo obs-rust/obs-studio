@@ -1,0 +1,6 @@
+[
+  "build/libobs.ported-windows+.h.c",
+  "build/libobs.ported-windows-pipe+.h.c",
+  "build/libobs.ported-windows-platform+.h.c",
+  "build/libobs.ported-windows-utf8+.h.c"
+]

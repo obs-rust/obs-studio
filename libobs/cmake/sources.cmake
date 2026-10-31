@@ -22,20 +22,28 @@
 # <HOST> is WINDOWS, MACOS or LINUX; LINUX also covers FreeBSD and OpenBSD,
 # which build obs-nix.c the same way.
 
-# Canonical source lists are shared with obs-build and bundled obs-sys.
-set(_libobs_source_manifest "${CMAKE_CURRENT_LIST_DIR}/../build/source-sets.json")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_libobs_source_manifest}")
-file(READ "${_libobs_source_manifest}" _libobs_source_sets)
-string(JSON _set_count LENGTH "${_libobs_source_sets}")
-math(EXPR _set_last "${_set_count} - 1")
-foreach(_set_index RANGE ${_set_last})
-  string(JSON _name MEMBER "${_libobs_source_sets}" ${_set_index})
-  string(JSON _source_count LENGTH "${_libobs_source_sets}" "${_name}")
+# Canonical source lists are shared with obs-build and bundled obs-sys: one
+# JSON list per set in build/source-sets.d/<SET>.json (#3235), so a port edits
+# only the lists it touches and a host set's file name carries its OS for CI
+# scoping (ci/platform_paths.py). CONFIGURE_DEPENDS re-runs configure when a
+# set file is added or removed; each file read is a configure dependency too.
+file(GLOB _libobs_source_set_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/../build/source-sets.d/*.json")
+if(NOT _libobs_source_set_files)
+  message(FATAL_ERROR "No libobs source sets in ${CMAKE_CURRENT_LIST_DIR}/../build/source-sets.d")
+endif()
+# The set names, for the port fragment check below.
+set(_libobs_source_set_names "")
+foreach(_set_file IN LISTS _libobs_source_set_files)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_set_file}")
+  get_filename_component(_name "${_set_file}" NAME_WE)
+  list(APPEND _libobs_source_set_names "${_name}")
+  file(READ "${_set_file}" _set_members)
+  string(JSON _source_count LENGTH "${_set_members}")
   set(${_name} "")
   if(_source_count GREATER 0)
     math(EXPR _source_last "${_source_count} - 1")
     foreach(_source_index RANGE ${_source_last})
-      string(JSON _source GET "${_libobs_source_sets}" "${_name}" ${_source_index})
+      string(JSON _source GET "${_set_members}" ${_source_index})
       list(APPEND ${_name} "${_source}")
     endforeach()
   endif()
@@ -55,8 +63,7 @@ foreach(_fragment IN LISTS _libobs_port_fragments)
     if(NOT _name MATCHES "^LIBOBS_(.*_)?PORTED_SOURCES$")
       message(FATAL_ERROR "Unknown libobs ported source set ${_name} in ${_fragment}")
     endif()
-    string(JSON _known ERROR_VARIABLE _lookup_error TYPE "${_libobs_source_sets}" "${_name}")
-    if(_lookup_error)
+    if(NOT _name IN_LIST _libobs_source_set_names)
       message(FATAL_ERROR "Unknown libobs ported source set ${_name} in ${_fragment}")
     endif()
     string(JSON _source_count LENGTH "${_fragment_sets}" "${_name}")

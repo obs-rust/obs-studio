@@ -47,7 +47,7 @@ HOSTS = ported_sources.HOSTS
 # Non-ported source sets the C reference build compiles, per host.
 # LIBOBS_RUST_SOURCES is hybrid-only glue, so it is not part of the reference.
 # A "build/..." entry is a group that libobs/cmake/os-linux.cmake adds behind
-# a feature option instead of through source-sets.json (pulse, wayland, the
+# a feature option instead of through libobs/build/source-sets.d/ (pulse, wayland, the
 # GlobalShortcuts portal: all on, as ported_sources.py assumes by default).
 # build/libobs.null-audio+.h.c is the pulse-off alternative, so it is left out.
 REFERENCE_SETS = {

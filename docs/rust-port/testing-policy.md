@@ -81,7 +81,7 @@ cannot prove both, so every ported unit carries the four tiers below.
   test harness; branding does not select the implementation.
 - Each port moves its C file's `#include` into a ported unity group
   (`libobs/build/libobs.ported-*+.h.c`), selected by the canonical
-  `libobs/build/source-sets.json`. The reference keeps compiling that group;
+  `libobs/build/source-sets.d/`. The reference keeps compiling that group;
   production links the Rust replacement. Keep C reference/oracle sources during
   migration; their exclusion from production does not end parity coverage.
 - Hybrid `libobs` MUST export exactly the C reference's dynamic symbols:

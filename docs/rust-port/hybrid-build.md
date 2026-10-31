@@ -35,7 +35,7 @@ are met. Other Rust features may still require Rust tooling.
 
 ## Cargo native build (#1332)
 
-The Cargo build engine uses the same `libobs/build/source-sets.json` as CMake.
+The Cargo build engine uses the same `libobs/build/source-sets.d/` as CMake.
 Build `libobs-rust` externally in release mode, then supply its archive through
 `OBS_BUILD_RUST_ARCHIVE` to normal `obs-build`/bundled `obs-sys` builds. A nested
 Cargo build inside a build script would deadlock on Cargo's build lock.
