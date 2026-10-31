@@ -46,6 +46,15 @@ add_library(OBS::properties-view ALIAS properties-view)
 add_library(properties-view-code OBJECT build/properties-view.core+.hpp.cpp)
 set_target_properties(properties-view-code PROPERTIES FOLDER shared)
 
+# The objects reach the binaries through the interface target. CMake does not
+# forward an OBJECT library's objects through INTERFACE_LINK_LIBRARIES (a
+# two-target probe on CMake 4.1.6 links nothing), so naming only the object
+# library there left `properties-view-code`'s object out of the frontend's link
+# line and `obs` failed on undefined `OBSPropertiesView::...` references (Qt
+# Frontend lane). `$<TARGET_OBJECTS:...>` on the interface target states the
+# objects where the consumer sees them.
+target_sources(properties-view INTERFACE $<TARGET_OBJECTS:properties-view-code>)
+
 target_sources(
   properties-view
   INTERFACE double-slider.hpp properties-view.hpp properties-view.moc.hpp spinbox-ignorewheel.hpp

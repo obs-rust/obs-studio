@@ -287,6 +287,17 @@ class PropertiesViewConversionOptinsTest(unittest.TestCase):
             "TU, so the group is PRIVATE there rather than a usage requirement",
         )
 
+    def test_the_interface_target_forwards_the_object_library(self) -> None:
+        self.assertRegex(
+            self.text,
+            r"target_sources\(\s*properties-view\s+INTERFACE\s+"
+            r"\$<TARGET_OBJECTS:properties-view-code>\s*\)",
+            "CMake does not forward an OBJECT library's objects through "
+            "INTERFACE_LINK_LIBRARIES, so the interface target states the objects: "
+            "without `$<TARGET_OBJECTS:properties-view-code>` the frontend links "
+            "no OBSPropertiesView definitions (Qt Frontend lane)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
