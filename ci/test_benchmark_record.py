@@ -206,13 +206,27 @@ class BoundGateTest(unittest.TestCase):
 
     def test_a_pair_over_the_bound_is_reported(self):
         rows = [
-            {"benchmark": "audio_mix/buffering_add_one_tick", "rust_over_c": 1.26,
+            {"benchmark": "format/i420_to_uyvx/1080p", "rust_over_c": 1.26,
              "status": "over 10% bound"},
         ]
         self.assertEqual(
             [row["benchmark"] for row in record.over_bound(rows)],
-            ["audio_mix/buffering_add_one_tick"],
+            ["format/i420_to_uyvx/1080p"],
         )
+
+    def test_an_exempt_pair_is_never_a_breach(self):
+        """#3138: the maintainer exempted the boundary cost once per audio tick."""
+        rows = [
+            {"benchmark": "audio_mix/buffering_add_one_tick", "rust_over_c": 1.12,
+             "status": "exempt from the ratio bound"},
+        ]
+        self.assertEqual(record.over_bound(rows), [])
+
+    def test_the_exemption_records_the_absolute_cost_and_the_reason(self):
+        reason = record.RATIO_EXEMPTIONS["audio_mix/buffering_add_one_tick"]
+        self.assertIn("ns", reason)
+        self.assertIn("once per audio tick", reason)
+        self.assertIn("#3138", reason)
 
     def test_a_pair_within_the_bound_passes(self):
         rows = [{"benchmark": "audio_mix/mix_whole_tick", "rust_over_c": 1.09,
