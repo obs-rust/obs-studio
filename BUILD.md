@@ -223,6 +223,31 @@ Cargo-native and Tier 2 inventory readers discover these fragments, so two
 ports can add their own files without editing the same ported-source list.
 Keep each member in exactly one list or fragment.
 
+A port edits only its unit file, never `libobs/CMakeLists.txt` or
+`libobs/cmake/os-<os>.cmake` (#3236; `ci/test_port_unit_metadata.py`
+checks it). Besides its set keys, a unit file takes two optional fields,
+which `libobs/cmake/sources.cmake` applies:
+
+```json
+{
+  "LIBOBS_PORTED_SOURCES": ["build/libobs.ported-audio-resampler-drift+.h.c"],
+  "compile_options": {"gnu": ["-ffp-contract=off"], "msvc": ["/wd4996"]},
+  "headers": ["media-io/audio-resampler-drift.h"]
+}
+```
+
+- `compile_options`: flags appended to each of the unit's groups, per
+  compiler family: `gnu` (GCC, Clang, AppleClang; C and Objective-C) or
+  `msvc`.
+- `headers`: headers (relative to `libobs/`) listed on `libobs-objects`
+  wherever one of the unit's sets is built; the Linux and FreeBSD host files
+  share one `libobs_add_ported_sources(<SET>)` call per optional set, so a
+  port no longer edits both.
+
+The Cargo-native build and the Tier 2 inventory read the set keys and ignore
+these fields. Settings for a whole target (warning pins, definitions) stay in
+the CMake files.
+
 ## Verifying a change
 
 - Linux: `./unittest` and the local gate as usual; `./lint` runs

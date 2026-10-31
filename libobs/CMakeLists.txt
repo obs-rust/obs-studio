@@ -45,7 +45,7 @@ target_sources(libobs-objects PRIVATE ${LIBOBS_SOURCES})
 foreach(target libobs-objects ${OBS_LIBOBS_C_TARGETS})
   target_compile_options(${target} PRIVATE $<$<C_COMPILER_ID:MSVC>:/wd4702>)
 endforeach()
-obs_libobs_add_c_sources(${LIBOBS_PORTED_SOURCES})
+libobs_add_ported_sources(LIBOBS_PORTED_SOURCES)
 
 # #2625: this target's conversions are fixed at the call sites, so the pins that
 # hide them are not needed here. The global -Wno-conversion / -Wno-sign-conversion /
@@ -59,53 +59,12 @@ foreach(target libobs-objects ${LIBOBS_SHARED_TARGETS} ${OBS_LIBOBS_C_TARGETS})
   )
 endforeach()
 
-# libnsgif is vendored C89 (the upstream NetSurf GIF decoder, kept as the
-# differential oracle for the Rust port), so it keeps the per-source exemption
-# the rest of the vendored C already has (librtmp, uthash): its conversions are
-# not call sites this port edits.
-set_property(
-  SOURCE
-    build/libobs.ported-nsgif-blocks+.h.c
-    build/libobs.ported-nsgif-frame+.h.c
-    build/libobs.ported-nsgif-gif+.h.c
-    build/libobs.ported-nsgif-lzw+.h.c
-  APPEND
-  PROPERTY COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wno-conversion;-Wno-sign-conversion>"
-)
-
-# The resampler's drift loop compares with its Rust port bit for bit (#3139):
-# no FMA contraction, which Rust never does. MSVC does not contract under
-# /fp:precise.
-set_property(
-  SOURCE build/libobs.ported-audio-resampler-drift+.h.c
-  APPEND
-  PROPERTY COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-ffp-contract=off>"
-)
-
-# MSVC warns about INFINITY (a standard library macro) in obs-audio-controls.c
-# (#870; was a pragma in the file).
-set_property(
-  SOURCE build/libobs.ported-audio-controls+.h.c
-  APPEND
-  PROPERTY COMPILE_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/wd4056;/wd4756>"
-)
 # libobs-version and libobs-core-modules are object libraries too, and CMake
 # adds an object library's objects only to targets that link it directly, so
 # each shared library links them itself (libobs-objects gets their headers).
 foreach(target IN LISTS LIBOBS_SHARED_TARGETS)
   target_link_libraries(${target} PRIVATE libobs-objects OBS::libobs-core-modules OBS::libobs-version)
 endforeach()
-
-# Temporarily disables deprecation warnings while obs_data_autoselect_* is deprecated.
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-  set_source_files_properties(build/libobs.ported-data+.h.c PROPERTIES COMPILE_OPTIONS "/wd4996")
-elseif(
-  CMAKE_C_COMPILER_ID STREQUAL "GNU"
-  OR CMAKE_C_COMPILER_ID STREQUAL "Clang"
-  OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang"
-)
-  set_source_files_properties(build/libobs.ported-data+.h.c PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
-endif()
 
 # Usage requirements on libobs-objects are PUBLIC so they reach both shared
 # libraries' own sources and link lines; the ones plugins also need are

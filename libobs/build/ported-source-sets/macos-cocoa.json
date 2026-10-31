@@ -1,0 +1,10 @@
+{
+  "LIBOBS_MACOS_PORTED_SOURCES": [
+    "build/libobs.ported-macos-cocoa+.h.m"
+  ],
+  "compile_options": {
+    "gnu": [
+      "-fobjc-arc"
+    ]
+  }
+}

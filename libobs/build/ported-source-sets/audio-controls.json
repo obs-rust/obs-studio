@@ -1,5 +1,11 @@
 {
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-audio-controls+.h.c"
-  ]
+  ],
+  "compile_options": {
+    "msvc": [
+      "/wd4056",
+      "/wd4756"
+    ]
+  }
 }

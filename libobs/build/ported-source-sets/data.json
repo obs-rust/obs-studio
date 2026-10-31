@@ -1,0 +1,13 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-data+.h.c"
+  ],
+  "compile_options": {
+    "gnu": [
+      "-Wno-deprecated-declarations"
+    ],
+    "msvc": [
+      "/wd4996"
+    ]
+  }
+}

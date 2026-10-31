@@ -1,5 +1,4 @@
 [
-  "build/libobs.ported-macos-cocoa+.h.m",
   "build/libobs.ported-posix+.h.c",
   "build/libobs.ported-posix-threading+.h.c"
 ]

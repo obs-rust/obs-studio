@@ -96,6 +96,9 @@ struct Plan {
     sets: BTreeMap<String, Vec<String>>,
 }
 
+/// Optional fields of a `ported-source-sets/<unit>.json` beside its set keys.
+const UNIT_FIELDS: [&str; 2] = ["compile_options", "headers"];
+
 fn read_source_sets(root: &Path) -> Result<BTreeMap<String, Vec<String>>, String> {
     let build = root.join("libobs/build");
     // One JSON list per set, named after it (#3235).
@@ -122,10 +125,17 @@ fn read_source_sets(root: &Path) -> Result<BTreeMap<String, Vec<String>>, String
     if fragments.exists() {
         for path in json_files(&fragments)? {
             println!("cargo:rerun-if-changed={}", path.display());
-            let additions: BTreeMap<String, Vec<String>> =
+            let additions: BTreeMap<String, serde_json::Value> =
                 serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
                     .map_err(|e| format!("read {}: {e}", path.display()))?;
             for (name, members) in additions {
+                // Per-unit compile options and headers (#3236) are applied by
+                // cmake/sources.cmake; this build compiles no C reference.
+                if UNIT_FIELDS.contains(&name.as_str()) {
+                    continue;
+                }
+                let members: Vec<String> = serde_json::from_value(members)
+                    .map_err(|e| format!("read {}: {name}: {e}", path.display()))?;
                 if !name.ends_with("_PORTED_SOURCES") {
                     return Err(format!(
                         "unknown ported source set in {}: {name}",
@@ -505,4 +515,37 @@ pub fn build_pair(
         reference: finish(build, &reference)?,
         with_rust: finish(build, &with_rust)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Per-unit files carry compile options and headers beside their set keys
+    /// (#3236); the set members still land in their sets.
+    #[test]
+    fn unit_fields_are_skipped_and_members_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("libobs/build");
+        fs::create_dir_all(build.join("source-sets.d")).unwrap();
+        fs::create_dir_all(build.join("ported-source-sets")).unwrap();
+        fs::write(
+            build.join("source-sets.d/LIBOBS_PORTED_SOURCES.json"),
+            r#"["build/b+.h.c"]"#,
+        )
+        .unwrap();
+        fs::write(
+            build.join("ported-source-sets/a.json"),
+            r#"{"LIBOBS_PORTED_SOURCES": ["build/a+.h.c"],
+                "compile_options": {"gnu": ["-ffp-contract=off"]},
+                "headers": ["a.h"]}"#,
+        )
+        .unwrap();
+        let sets = read_source_sets(dir.path()).unwrap();
+        assert_eq!(
+            sets["LIBOBS_PORTED_SOURCES"],
+            ["build/a+.h.c", "build/b+.h.c"]
+        );
+        assert_eq!(sets.len(), 1);
+    }
 }
