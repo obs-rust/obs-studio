@@ -16,6 +16,7 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
+#include <sys/file.h>
 
 #include "plugins/linux-v4l2/v4l2-output.c.h"
 
@@ -193,12 +194,45 @@ static void short_write_never_leaves_half_a_packet(void **state)
 	close(p[1]);
 }
 
+/* #3179: in Flatpak the number in the FIFO name is a pid from the sandbox's
+ * namespace, so it says nothing about whether that OBS still runs. Each OBS
+ * holds a lock next to its FIFO instead: a free lock means the OBS is gone,
+ * whatever pid that number happens to name here. */
+static void stale_is_decided_by_the_lock_not_the_pid(void **state)
+{
+	(void)state;
+	char dir[] = "/tmp/vmic-lock-XXXXXX";
+	assert_non_null(mkdtemp(dir));
+	char lock[256];
+
+	/* Number 1 names a live process here (init), but its lock is free. */
+	snprintf(lock, sizeof(lock), "%s/obs-virtual-microphone-1.lock", dir);
+	int fd = open(lock, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+	assert_true(fd >= 0);
+	close(fd);
+	assert_true(vmic_instance_is_stale(dir, 1));
+	unlink(lock);
+
+	/* A number no process here has, but another OBS holds the lock. */
+	long gone = 999999999;
+	snprintf(lock, sizeof(lock), "%s/obs-virtual-microphone-%ld.lock", dir, gone);
+	fd = open(lock, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+	assert_true(fd >= 0);
+	assert_int_equal(flock(fd, LOCK_EX | LOCK_NB), 0);
+	assert_false(vmic_instance_is_stale(dir, gone));
+	close(fd);
+	unlink(lock);
+
+	rmdir(dir);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(packet_that_fits_is_written_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test_setup_teardown(packet_that_does_not_fit_is_dropped_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test(short_write_never_leaves_half_a_packet),
+		cmocka_unit_test(stale_is_decided_by_the_lock_not_the_pid),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),

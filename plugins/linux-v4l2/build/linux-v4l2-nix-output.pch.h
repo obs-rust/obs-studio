@@ -13,6 +13,8 @@
 #include <util/platform.h>
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
