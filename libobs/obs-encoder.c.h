@@ -183,6 +183,12 @@ _Static_assert(OBS_ENCODER_SIZE_CAP_SCALING == OBS_ENCODER_CAP_SCALING, "OBS_ENC
 _Static_assert(OBS_ENCODER_SIZE_AUDIO_FORMAT_UNKNOWN == AUDIO_FORMAT_UNKNOWN, "AUDIO_FORMAT_UNKNOWN");
 _Static_assert(OBS_ENCODER_SIZE_SPEAKERS_UNKNOWN == SPEAKERS_UNKNOWN, "SPEAKERS_UNKNOWN");
 
+/* The constants obs-encoder-gpu-rescale.h copies. */
+_Static_assert(OBS_ENCODER_GPU_RESCALE_SCALE_DISABLE == OBS_SCALE_DISABLE, "OBS_SCALE_DISABLE");
+_Static_assert(OBS_ENCODER_GPU_RESCALE_FORMAT_NONE == VIDEO_FORMAT_NONE, "VIDEO_FORMAT_NONE");
+_Static_assert(OBS_ENCODER_GPU_RESCALE_CS_DEFAULT == VIDEO_CS_DEFAULT, "VIDEO_CS_DEFAULT");
+_Static_assert(OBS_ENCODER_GPU_RESCALE_RANGE_DEFAULT == VIDEO_RANGE_DEFAULT, "VIDEO_RANGE_DEFAULT");
+
 /* The constant obs-encoder-audio-start.h copies. */
 _Static_assert(OBS_ENCODER_AUDIO_START_TYPE_VIDEO == OBS_ENCODER_VIDEO, "OBS_ENCODER_VIDEO");
 
@@ -255,32 +261,43 @@ static inline bool gpu_encode_available(const struct obs_encoder *encoder)
  * will be created if it doesn't exist already to generate encoder
  * input
  */
+/* The fields of a video output that obs-encoder-gpu-rescale.c matches on. */
+static inline struct obs_encoder_gpu_rescale_output gpu_rescale_output(const struct video_output_info *voi)
+{
+	const struct obs_encoder_gpu_rescale_output output = {
+		.width = voi->width,
+		.height = voi->height,
+		.format = (int)voi->format,
+		.colorspace = (int)voi->colorspace,
+		.range = (int)voi->range,
+	};
+	return output;
+}
+
+/* The decisions are obs-encoder-gpu-rescale.c's: the gates, the target
+ * output and the match of a mix. The searches, the locks, the mix creation
+ * and every store stay here, in their order. */
 static void maybe_set_up_gpu_rescale(struct obs_encoder *encoder)
 {
 	struct obs_core_video_mix *mix, *current_mix;
 	bool create_mix = true;
 	struct obs_video_info ovi;
 	const struct video_output_info *info;
-	uint32_t width;
-	uint32_t height;
-	enum video_format format;
-	enum video_colorspace space;
-	enum video_range_type range;
 
-	if (!encoder->media)
-		return;
-	if (encoder->gpu_scale_type == OBS_SCALE_DISABLE)
-		return;
-	if (!encoder->scaled_height && !encoder->scaled_width && encoder->preferred_format == VIDEO_FORMAT_NONE &&
-	    encoder->preferred_space == VIDEO_CS_DEFAULT && encoder->preferred_range == VIDEO_RANGE_DEFAULT)
+	const struct obs_encoder_gpu_rescale_request request = {
+		.scale_type = (int)encoder->gpu_scale_type,
+		.scaled_width = encoder->scaled_width,
+		.scaled_height = encoder->scaled_height,
+		.format = (int)encoder->preferred_format,
+		.colorspace = (int)encoder->preferred_space,
+		.range = (int)encoder->preferred_range,
+	};
+	if (!obs_encoder_gpu_rescale_wanted(encoder->media != NULL, &request))
 		return;
 
 	info = video_output_get_info(encoder->media);
-	width = encoder->scaled_width ? encoder->scaled_width : info->width;
-	height = encoder->scaled_height ? encoder->scaled_height : info->height;
-	format = encoder->preferred_format != VIDEO_FORMAT_NONE ? encoder->preferred_format : info->format;
-	space = encoder->preferred_space != VIDEO_CS_DEFAULT ? encoder->preferred_space : info->colorspace;
-	range = encoder->preferred_range != VIDEO_RANGE_DEFAULT ? encoder->preferred_range : info->range;
+	const struct obs_encoder_gpu_rescale_output video = gpu_rescale_output(info);
+	const struct obs_encoder_gpu_rescale_output target = obs_encoder_gpu_rescale_target(&request, &video);
 
 	current_mix = get_mix_for_video(encoder->media);
 	if (!current_mix)
@@ -294,16 +311,9 @@ static void maybe_set_up_gpu_rescale(struct obs_encoder *encoder)
 	for (size_t i = 0; i < obs->video.mixes.num; i++) {
 		struct obs_core_video_mix *current = obs->video.mixes.array[i];
 		const struct video_output_info *voi = video_output_get_info(current->video);
-		if (current_mix->view != current->view)
-			continue;
-
-		if (current->ovi.scale_type != encoder->gpu_scale_type)
-			continue;
-
-		if (voi->width != width || voi->height != height)
-			continue;
-
-		if (voi->format != format || voi->colorspace != space || voi->range != range)
+		const struct obs_encoder_gpu_rescale_output output = gpu_rescale_output(voi);
+		if (!obs_encoder_gpu_rescale_matches(current_mix->view == current->view, (int)current->ovi.scale_type,
+						     &output, (int)encoder->gpu_scale_type, &target))
 			continue;
 
 		current->encoder_refs += 1;
@@ -319,12 +329,12 @@ static void maybe_set_up_gpu_rescale(struct obs_encoder *encoder)
 
 	ovi = current_mix->ovi;
 
-	ovi.output_format = format;
-	ovi.colorspace = space;
-	ovi.range = range;
+	ovi.output_format = (enum video_format)target.format;
+	ovi.colorspace = (enum video_colorspace)target.colorspace;
+	ovi.range = (enum video_range_type)target.range;
 
-	ovi.output_height = height;
-	ovi.output_width = width;
+	ovi.output_height = target.height;
+	ovi.output_width = target.width;
 	ovi.scale_type = encoder->gpu_scale_type;
 
 	ovi.gpu_conversion = true;
@@ -343,16 +353,9 @@ static void maybe_set_up_gpu_rescale(struct obs_encoder *encoder)
 	for (size_t i = 0; i < obs->video.mixes.num; i++) {
 		struct obs_core_video_mix *current = obs->video.mixes.array[i];
 		const struct video_output_info *voi = video_output_get_info(current->video);
-		if (current->view != current_mix->view)
-			continue;
-
-		if (current->ovi.scale_type != encoder->gpu_scale_type)
-			continue;
-
-		if (voi->width != width || voi->height != height)
-			continue;
-
-		if (voi->format != format || voi->colorspace != space || voi->range != range)
+		const struct obs_encoder_gpu_rescale_output output = gpu_rescale_output(voi);
+		if (!obs_encoder_gpu_rescale_matches(current->view == current_mix->view, (int)current->ovi.scale_type,
+						     &output, (int)encoder->gpu_scale_type, &target))
 			continue;
 
 		obs_encoder_set_video(encoder, current->video);
@@ -817,15 +820,18 @@ static void maybe_clear_encoder_core_video_mix(obs_encoder_t *encoder)
 	pthread_mutex_lock(&obs->video.mixes_mutex);
 	for (size_t i = 0; i < obs->video.mixes.num; i++) {
 		struct obs_core_video_mix *mix = obs->video.mixes.array[i];
-		if (mix->video != encoder->media)
+		const enum obs_encoder_gpu_rescale_release step =
+			obs_encoder_gpu_rescale_release_step(mix->video == encoder->media, mix->encoder_only_mix);
+		if (step == OBS_ENCODER_GPU_RESCALE_RELEASE_SKIP)
 			continue;
 
-		if (!mix->encoder_only_mix)
+		if (step == OBS_ENCODER_GPU_RESCALE_RELEASE_STOP)
 			break;
 
+		bool last;
 		encoder_set_video(encoder, encoder->original_video);
-		mix->encoder_refs -= 1;
-		if (mix->encoder_refs == 0) {
+		mix->encoder_refs = obs_encoder_gpu_rescale_release_refs(mix->encoder_refs, &last);
+		if (last) {
 			da_erase(obs->video.mixes, i);
 			obs_free_video_mix(mix);
 		}

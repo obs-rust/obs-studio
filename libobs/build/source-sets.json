@@ -17,6 +17,7 @@
     "obs-encoder-audio-start.h",
     "obs-encoder-bind.h",
     "obs-encoder-gpu-gates.h",
+    "obs-encoder-gpu-rescale.h",
     "obs-encoder-group-reconfig.h",
     "obs-encoder-lifecycle.h",
     "obs-encoder-packet-ts.h",
