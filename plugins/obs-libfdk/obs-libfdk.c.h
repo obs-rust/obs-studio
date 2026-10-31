@@ -99,7 +99,9 @@ static void *libfdk_create(obs_data_t *settings, obs_encoder_t *encoder)
 	enc->encoder = encoder;
 
 	enc->channels = (int)audio_output_get_channels(audio);
-	enc->sample_rate = audio_output_get_sample_rate(audio);
+	/* audio_output_get_sample_rate() is a uint32_t; the encoder keeps it in
+	 * an int, so name the narrowing here. */
+	enc->sample_rate = (int)audio_output_get_sample_rate(audio);
 
 	switch (enc->channels) {
 	case 1:
@@ -130,31 +132,33 @@ static void *libfdk_create(obs_data_t *settings, obs_encoder_t *encoder)
 		goto fail;
 	}
 
-	CHECK_LIBFDK(aacEncOpen(&enc->fdkhandle, 0, enc->channels));
+	CHECK_LIBFDK(aacEncOpen(&enc->fdkhandle, 0U, (UINT)enc->channels));
 	hasFdkHandle = true;
 
 	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_AOT,
-					 2)); // MPEG-4 AAC-LC
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_SAMPLERATE, enc->sample_rate));
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_CHANNELMODE, mode));
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_CHANNELORDER, 1));
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_BITRATEMODE, 0));
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_BITRATE, bitrate));
+					 (UINT)2)); // MPEG-4 AAC-LC
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_SAMPLERATE, (UINT)enc->sample_rate));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_CHANNELMODE, (UINT)mode));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_CHANNELORDER, (UINT)1));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_BITRATEMODE, (UINT)0));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_BITRATE, (UINT)bitrate));
 
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_TRANSMUX, transmux));
-	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_AFTERBURNER, afterburner));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_TRANSMUX, (UINT)transmux));
+	CHECK_LIBFDK(aacEncoder_SetParam(enc->fdkhandle, AACENC_AFTERBURNER, (UINT)afterburner));
 
 	CHECK_LIBFDK(aacEncEncode(enc->fdkhandle, NULL, NULL, NULL, NULL));
 
 	CHECK_LIBFDK(aacEncInfo(enc->fdkhandle, &enc->info));
 
-	enc->frame_size_bytes = enc->info.frameLength * 2 * enc->channels;
+	/* frameLength is a UINT and the product is bounded by one AAC frame;
+	 * the encoder stores it in an int. */
+	enc->frame_size_bytes = (int)(enc->info.frameLength * 2U * (UINT)enc->channels);
 
 	enc->packet_buffer_size = enc->channels * 768;
 	if (enc->packet_buffer_size < 8192)
 		enc->packet_buffer_size = 8192;
 
-	enc->packet_buffer = bmalloc(enc->packet_buffer_size);
+	enc->packet_buffer = bmalloc((size_t)enc->packet_buffer_size);
 
 	blog(LOG_INFO, "libfdk_aac encoder created");
 
@@ -211,7 +215,7 @@ static bool libfdk_encode(void *data, struct encoder_frame *frame, struct encode
 	in_size = enc->frame_size_bytes;
 	in_elem_size = 2;
 
-	in_args.numInSamples = enc->info.frameLength * enc->channels;
+	in_args.numInSamples = (INT)(enc->info.frameLength * (UINT)enc->channels);
 	in_buf.numBufs = 1;
 	in_buf.bufs = &in_ptr;
 	in_buf.bufferIdentifiers = &in_identifier;
@@ -246,10 +250,12 @@ static bool libfdk_encode(void *data, struct encoder_frame *frame, struct encode
 #else
 	encoderDelay = enc->info.encoderDelay;
 #endif
-	packet->pts = enc->total_samples - encoderDelay;
-	packet->dts = enc->total_samples - encoderDelay;
+	/* The priming delay is a non-negative sample count subtracted from the
+	 * running total, so the subtraction stays in uint64_t. */
+	packet->pts = (int64_t)(enc->total_samples - (uint64_t)encoderDelay);
+	packet->dts = (int64_t)(enc->total_samples - (uint64_t)encoderDelay);
 	packet->data = enc->packet_buffer;
-	packet->size = out_args.numOutBytes;
+	packet->size = (size_t)out_args.numOutBytes;
 	packet->type = OBS_ENCODER_AUDIO;
 	packet->keyframe = true;
 	packet->timebase_num = 1;
