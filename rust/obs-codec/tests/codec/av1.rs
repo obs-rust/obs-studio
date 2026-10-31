@@ -1,9 +1,12 @@
 //! Tier 1: the safe AV1 helpers, mirroring `test/cmocka/test_av1.c`.
 
+use std::mem::MaybeUninit;
+
 use obs_c_oracle as _;
 use obs_codec::av1::{
     OBU_FRAME, OBU_FRAME_HEADER, OBU_METADATA, OBU_PADDING, OBU_SEQUENCE_HEADER,
-    OBU_TEMPORAL_DELIMITER, extract_headers, keyframe, metadata_obu, obus,
+    OBU_TEMPORAL_DELIMITER, extract_headers, keyframe, metadata_obu, metadata_obu_len, obus,
+    write_metadata_obu,
 };
 use proptest as _;
 
@@ -60,6 +63,59 @@ fn metadata_obu_layout() {
     assert_eq!(big.len(), 205);
     assert_eq!(&big[1..4], &[0xca, 0x01, 6]);
     assert_eq!(big[204], 0x80);
+}
+
+/// Payload sizes around the leb128 byte boundaries of `obu_size`
+/// (payload + 2): 1, 2 and 3 size bytes.
+/// The bytes of a buffer whose every element was initialized.
+fn bytes(out: &[MaybeUninit<u8>]) -> Vec<u8> {
+    // SAFETY: the callers fill every element before the write under test.
+    out.iter().map(|b| unsafe { b.assume_init() }).collect()
+}
+
+const METADATA_SIZES: [usize; 10] = [0, 1, 3, 125, 126, 200, 16_381, 16_382, 16_383, 300_000];
+
+#[test]
+fn metadata_obu_len_counts_the_leb128_size_bytes() {
+    let lens: Vec<_> = METADATA_SIZES
+        .iter()
+        .map(|&n| metadata_obu_len(n))
+        .collect();
+    assert_eq!(
+        lens,
+        [4, 5, 7, 129, 131, 205, 16_386, 16_388, 16_389, 300_006]
+    );
+}
+
+#[test]
+fn write_metadata_obu_writes_the_whole_obu_in_place() {
+    for n in METADATA_SIZES {
+        let payload: Vec<u8> = (0..n).map(|i| i as u8).collect();
+        for metadata_type in [4, 5, 0xff] {
+            // Initialized with 0xee, so a byte the writer skips shows.
+            let mut out = vec![MaybeUninit::new(0xee); metadata_obu_len(n)];
+            write_metadata_obu(&payload, metadata_type, &mut out);
+            assert_eq!(
+                bytes(&out),
+                metadata_obu(&payload, metadata_type),
+                "{n}-byte payload"
+            );
+        }
+    }
+}
+
+#[test]
+#[should_panic(expected = "metadata OBU")]
+fn write_metadata_obu_refuses_a_short_buffer() {
+    let mut out = [MaybeUninit::uninit(); 6];
+    write_metadata_obu(&[1, 2, 3], 4, &mut out);
+}
+
+#[test]
+#[should_panic(expected = "metadata OBU")]
+fn write_metadata_obu_refuses_a_long_buffer() {
+    let mut out = [MaybeUninit::uninit(); 8];
+    write_metadata_obu(&[1, 2, 3], 4, &mut out);
 }
 
 #[test]
