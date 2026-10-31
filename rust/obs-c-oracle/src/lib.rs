@@ -224,6 +224,7 @@ pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
 pub mod win_crash_report;
+pub mod window_match;
 pub mod windows_keys;
 
 /// Build directory of the original C archive, for symbol-isolation checks.
