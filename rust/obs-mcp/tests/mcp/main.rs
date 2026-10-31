@@ -1,6 +1,7 @@
 //! obs-mcp tests, pulled into `obs-tests-core`.
 
 mod framing;
+mod scenes;
 mod server;
 
 use obs_mcp::serve;
