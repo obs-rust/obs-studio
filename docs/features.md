@@ -1489,6 +1489,12 @@ area.
   with a frame rate divisor resumes its video instead of staying paused. In
   both cases the output can be paused again. *All*, 2026-10-30. Issue
   [#3033](https://github.com/obs-rust/obs-studio/issues/3033).
+- A stream or recording that the CPU converts to a 4:2:0 format (NV12,
+  I420, P010 and the like) at an odd output height no longer has a
+  wrong-coloured bottom row: the scaler now copies the last chroma row it
+  writes instead of leaving that row of the frame unwritten. *All*,
+  2026-10-31. Issue
+  [#3159](https://github.com/obs-rust/obs-studio/issues/3159).
 
 ### Sources and filters
 
