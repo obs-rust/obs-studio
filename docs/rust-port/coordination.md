@@ -222,6 +222,15 @@ The org-wide rules, commands and the definition of Ready are in
   `rust: Port <path>.c to <crate>`; state the phase, its position in the
   policy's port order, its dependencies and whether a characterization test
   exists.
+- **Meta, tracker and parent issues:** every work item is its own issue,
+  linked as a native GitHub sub-issue of the parent
+  (`gh api -X POST repos/obs-rust/obs-studio/issues/<parent>/sub_issues -F sub_issue_id=<child id>`,
+  where the id is `gh api repos/obs-rust/obs-studio/issues/<child> --jq .id`).
+  Don't put the work into one big body as a tier list or checklist: nobody
+  can claim, measure or close one line of it. The parent body says what
+  the group is for, the rules that apply to every child and the suggested
+  order, naming the sub-issues by number. A finding that comes later
+  becomes a new sub-issue, not a new line in the parent (#3176).
 - **Oracle differences** (a stand-in behaving unlike libobs): their own issue,
   fixed before any port relies on that oracle (#79, #84, #145).
 - **Feature ideas and questions** are not issues: post ideas in
