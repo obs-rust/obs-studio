@@ -23,6 +23,8 @@ import os
 import stat
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -346,6 +348,63 @@ class SanitizeHarnessTest(unittest.TestCase):
         self.assertIsNone(libdir)
         builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
         self.assertEqual(builds, [None], "a source error must not be retried")
+
+
+class ParallelUnitTestsTest(unittest.TestCase):
+    """Unit tests run concurrently, serial-marked ones alone (#3251)."""
+
+    def setUp(self):
+        self.module = load_module()
+
+    def layout(self, root: Path):
+        out = root / "out"
+        return self.module.Layout(root=root, out=out, build=root / "build", inst=root / "inst")
+
+    def test_independent_tests_overlap_and_keep_their_order(self):
+        tests = [self.module.Test(name=f"test_{i}", workdir="", command=(f"/bin/test_{i}",)) for i in range(4)]
+
+        def runner(tool, test, command, layout):
+            time.sleep(0.5)
+            return 0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            start = time.monotonic()
+            summary = self.module.run_tests("asan", tests, self.layout(Path(tmp)), runner=runner, jobs=4)
+            elapsed = time.monotonic() - start
+            durations = (Path(tmp) / "out" / "tests" / "durations.tsv").read_text(encoding="utf-8")
+        self.assertLess(elapsed, 1.5, "four 0.5 s tests ran one at a time")
+        self.assertEqual(summary, [f"test_{i} exit=0" for i in range(4)])
+        self.assertEqual([line.split("\t")[0] for line in durations.splitlines()], [f"test_{i}" for i in range(4)])
+
+    def test_serial_tests_never_overlap(self):
+        running, peak = [0], [0]
+        lock = threading.Lock()
+        tests = [
+            self.module.Test(name=f"test_s{i}", workdir="", command=(f"/bin/test_s{i}",), serial=True)
+            for i in range(3)
+        ]
+
+        def runner(tool, test, command, layout):
+            with lock:
+                running[0] += 1
+                peak[0] = max(peak[0], running[0])
+            time.sleep(0.05)
+            with lock:
+                running[0] -= 1
+            return 0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.module.run_tests("asan", tests, self.layout(Path(tmp)), runner=runner, jobs=4)
+        self.assertEqual(peak[0], 1)
+
+    def test_run_serial_and_resource_lock_mark_a_test_serial(self):
+        payload = json.dumps({"tests": [
+            {"name": "a", "command": ["/a"], "properties": [{"name": "RUN_SERIAL", "value": True}]},
+            {"name": "b", "command": ["/b"], "properties": [{"name": "RESOURCE_LOCK", "value": ["x"]}]},
+            {"name": "c", "command": ["/c"], "properties": []},
+        ]})
+        serial = {t.name: t.serial for t in self.module.ctest_tests(payload)}
+        self.assertEqual(serial, {"a": True, "b": True, "c": False})
 
 
 if __name__ == "__main__":
