@@ -20,11 +20,13 @@
  * They pin the current C behaviour; cases marked "characterized, not
  * endorsed" are odd but real.
  *
- * The functions are hidden in libobs, so this test compiles the C source
- * into itself and calls only them, through their header. The last three
- * cases pin the C where the Rust port differs on purpose: a unit outside
- * 0-15 or above 0 in immediate mode is refused, a save is cut to a shorter
- * array, and a save frees the texture arrays it does not take.
+ * The functions are hidden in libobs, so test_graphics_immediate_steps
+ * compiles the C source into itself and calls only them, through their
+ * header. test_graphics_immediate_steps_rust (GS_IMMEDIATE_TEST_RUST) runs
+ * the same cases against the Rust shims of the hybrid build, and adds the
+ * port's intentional differences, where the C cases below differ: a unit
+ * outside 0-15 or above 0 in immediate mode is refused, a save is cut to a
+ * shorter array, and a save frees the texture arrays it does not take.
  * stop_count() and save_count() below ask the functions as graphics.c does;
  * graphics.c keeps the arrays, every read, push and free, the vertex buffer
  * calls and the logging.
@@ -201,6 +203,43 @@ static void a_save_taking_every_array_frees_none(void **state)
 	}
 }
 
+#ifdef GS_IMMEDIATE_TEST_RUST
+
+/* ------------------------------------------------------------------------ */
+/* The Rust port's intentional differences */
+
+static void the_port_refuses_unbacked_units(void **state)
+{
+	(void)state;
+
+	assert_false(gs_immediate_unit_ok(false, -1));
+	assert_false(gs_immediate_unit_ok(false, GS_IMMEDIATE_TEX_ARRAYS));
+	assert_false(gs_immediate_unit_ok(true, -1));
+	assert_false(gs_immediate_unit_ok(true, GS_IMMEDIATE_TEX_ARRAYS));
+	for (int unit = 1; unit < GS_IMMEDIATE_TEX_ARRAYS; unit++)
+		assert_false(gs_immediate_unit_ok(true, unit));
+}
+
+static void the_port_cuts_a_save_to_a_shorter_array(void **state)
+{
+	(void)state;
+
+	assert_int_equal(gs_immediate_save_cut(4, 3), 3);
+	assert_int_equal(save_count(4, 3, 4, 0, 0), 3);
+	assert_int_equal(save_count(4, 4, 2, 0, 0), 2);
+	assert_int_equal(save_count(4, 4, 4, 2, 1), 1);
+}
+
+static void the_port_frees_the_arrays_a_save_leaves(void **state)
+{
+	(void)state;
+
+	for (size_t num_tex = 0; num_tex <= GS_IMMEDIATE_TEX_ARRAYS; num_tex++)
+		assert_int_equal(gs_immediate_save_free_from(num_tex), num_tex);
+}
+
+#else
+
 /* ------------------------------------------------------------------------ */
 /* The C, where the port differs on purpose */
 
@@ -235,6 +274,8 @@ static void the_c_frees_no_texture_array(void **state)
 	assert_int_equal(gs_immediate_save_free_from(3), GS_IMMEDIATE_TEX_ARRAYS);
 }
 
+#endif
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -246,9 +287,15 @@ int main(void)
 		cmocka_unit_test(the_backed_texture_units),
 		cmocka_unit_test(a_full_save_keeps_its_count),
 		cmocka_unit_test(a_save_taking_every_array_frees_none),
+#ifdef GS_IMMEDIATE_TEST_RUST
+		cmocka_unit_test(the_port_refuses_unbacked_units),
+		cmocka_unit_test(the_port_cuts_a_save_to_a_shorter_array),
+		cmocka_unit_test(the_port_frees_the_arrays_a_save_leaves),
+#else
 		cmocka_unit_test(the_c_takes_any_unit),
 		cmocka_unit_test(the_c_saves_every_vertex),
 		cmocka_unit_test(the_c_frees_no_texture_array),
+#endif
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
