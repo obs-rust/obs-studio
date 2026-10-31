@@ -11,6 +11,7 @@ pub mod gif_blocks;
 pub mod gif_frame;
 pub mod image_file;
 pub mod image_orient;
+pub mod immediate;
 pub mod lzw;
 pub mod math_extra;
 pub mod matrix3;

@@ -17,6 +17,7 @@ SPEC.loader.exec_module(PORTED)
 # Ported on Linux, Windows and macOS.
 PORTED_ON_EVERY_HOST = (
     "graphics/graphics-ffmpeg-orient.c.h.o",
+    "graphics/graphics-immediate.c.h.o",
     "graphics/graphics-sprite.c.h.o",
     "graphics/graphics-state-stacks.c.h.o",
     "graphics/libnsgif/gif-blocks.c.h.o",

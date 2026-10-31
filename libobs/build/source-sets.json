@@ -214,6 +214,7 @@
     "build/libobs.ported-encoder-size+.h.c",
     "build/libobs.ported-graphics+.h.c",
     "build/libobs.ported-graphics-ffmpeg-orient+.h.c",
+    "build/libobs.ported-graphics-immediate+.h.c",
     "build/libobs.ported-graphics-state-stacks+.h.c",
     "build/libobs.ported-hotkey-binding-press+.h.c",
     "build/libobs.ported-hotkey-bindings+.h.c",

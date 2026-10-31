@@ -15,10 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "build/libobs-ported-graphics-immediate.pch.h"
 
 /* The decisions of graphics.c's immediate-mode vertex builder, declared in
- * graphics-immediate.h. */
+ * graphics-immediate.h. Ported to rust/obs-graphics (immediate): the hybrid
+ * libobs drops this file. */
 
 bool gs_immediate_unit_ok(bool immediate, int unit)
 {

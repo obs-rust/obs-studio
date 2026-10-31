@@ -596,6 +596,7 @@ void gs_render_stop(enum gs_draw_mode mode)
 			gs_vbdata_destroy(graphics->vbd);
 		}
 
+		graphics->vbd = NULL;
 		return;
 	}
 
@@ -637,6 +638,7 @@ gs_vertbuffer_t *gs_render_save(void)
 	graphics_t *graphics = thread_graphics;
 	struct gs_immediate_save save;
 	size_t tex[GS_IMMEDIATE_TEX_ARRAYS];
+	struct gs_vb_data *vbd;
 	size_t num_tex, i;
 
 	if (!gs_valid("gs_render_save"))
@@ -649,7 +651,13 @@ gs_vertbuffer_t *gs_render_save(void)
 	save = gs_immediate_save(graphics->verts.num, graphics->norms.num, graphics->colors.num, tex);
 
 	if (!save.num) {
+		da_free(graphics->verts);
+		da_free(graphics->norms);
+		da_free(graphics->colors);
+		for (i = 0; i < GS_IMMEDIATE_TEX_ARRAYS; i++)
+			da_free(graphics->texverts[i]);
 		gs_vbdata_destroy(graphics->vbd);
+		graphics->vbd = NULL;
 		return NULL;
 	}
 
@@ -675,7 +683,10 @@ gs_vertbuffer_t *gs_render_save(void)
 
 	reset_immediate_arrays(graphics);
 
-	return gs_vertexbuffer_create(graphics->vbd, 0);
+	/* The buffer owns the data now. */
+	vbd = graphics->vbd;
+	graphics->vbd = NULL;
+	return gs_vertexbuffer_create(vbd, 0);
 }
 
 void gs_vertex2f(float x, float y)

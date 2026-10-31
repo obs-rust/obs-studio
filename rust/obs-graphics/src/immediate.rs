@@ -46,7 +46,8 @@
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
-    clippy::unreachable
+    clippy::unreachable,
+    clippy::todo
 )]
 
 /// `IMMEDIATE_COUNT` (`GS_IMMEDIATE_COUNT`): the vertices of the immediate
@@ -84,26 +85,73 @@ pub struct Save {
 /// `gs_immediate_unit_ok()`: texture `unit` can take a coordinate.
 #[must_use]
 pub fn unit_ok(immediate: bool, unit: i32) -> bool {
-    todo!("{immediate} {unit}")
+    match usize::try_from(unit) {
+        Ok(unit) if immediate => unit == 0,
+        Ok(unit) => unit < TEX_ARRAYS,
+        Err(_) => false,
+    }
 }
 
 /// `gs_immediate_push_ok()`: an array holding `num` vertices takes one
 /// more.
 #[must_use]
 pub fn push_ok(immediate: bool, num: usize) -> bool {
-    todo!("{immediate} {num}")
+    !(immediate && num == IMMEDIATE_COUNT)
 }
 
 /// `gs_immediate_draw()`: what `gs_render_stop` draws, from the counts of
 /// the vertex, normal, colour and texture 0 arrays.
 #[must_use]
 pub fn draw(verts: usize, norms: usize, colors: usize, tex0: usize) -> Draw {
-    todo!("{verts} {norms} {colors} {tex0}")
+    let mut draw = Draw {
+        num: verts,
+        ..Draw::default()
+    };
+    if verts == 0 {
+        return draw;
+    }
+
+    let mut cut = |count: usize| {
+        let differs = count != 0 && count != verts;
+        if differs {
+            draw.num = draw.num.min(count);
+        }
+        differs
+    };
+    let norms_mismatch = cut(norms);
+    let colors_mismatch = cut(colors);
+    let tex_mismatch = cut(tex0);
+
+    Draw {
+        norms_mismatch,
+        colors_mismatch,
+        tex_mismatch,
+        ..draw
+    }
 }
 
 /// `gs_immediate_save()`: the buffer `gs_render_save` makes, from the counts
 /// of the vertex, normal and colour arrays and of the texture arrays.
 #[must_use]
 pub fn save(verts: usize, norms: usize, colors: usize, tex: &[usize; TEX_ARRAYS]) -> Save {
-    todo!("{verts} {norms} {colors} {tex:?}")
+    if verts == 0 {
+        return Save {
+            num: 0,
+            num_tex: 0,
+            free_from: TEX_ARRAYS,
+        };
+    }
+
+    let num_tex = tex.iter().take_while(|&&count| count != 0).count();
+    let num = [norms, colors]
+        .into_iter()
+        .chain(tex.iter().copied().take(num_tex))
+        .filter(|&count| count != 0)
+        .fold(verts, usize::min);
+
+    Save {
+        num,
+        num_tex,
+        free_from: num_tex,
+    }
 }
