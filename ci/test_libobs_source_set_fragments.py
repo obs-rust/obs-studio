@@ -12,15 +12,13 @@ edit selects what libobs/ always did.
 
 import importlib.util
 import json
-import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FRAGMENTS = ROOT / "libobs/build/source-sets.d"
-sys.path.insert(0, str(ROOT / "ci"))
 
-from ci_scope import scope  # noqa: E402
+from ci_scope import scope
 
 SPEC = importlib.util.spec_from_file_location("ported_sources", ROOT / "rust/tools/ported_sources.py")
 PORTED = importlib.util.module_from_spec(SPEC)

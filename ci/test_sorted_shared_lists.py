@@ -7,7 +7,7 @@ new entry at its own place. Order is not meaning in any of these:
 
 - test/cmocka/build/test-graph.json `targets` and `tests`: obs-build reads
   them into BTreeMaps; CMake defines each target independently.
-- libobs/build/source-sets.json `*_PORTED_SOURCES`: unity groups, each its
+- libobs/build/source-sets.d/`*_PORTED_SOURCES.json`: unity groups, each its
   own translation unit, with no constructors.
 - rust/obs-c-oracle/benches/port_comparison.rs: no list is left to sort; its
   unit list is generated from the directory (see the test below).
@@ -39,11 +39,10 @@ class SortedSharedListsTest(unittest.TestCase):
         self.assert_sorted("test-graph.json tests", graph["tests"])
 
     def test_ported_source_sets(self):
-        sets = load_json("libobs/build/source-sets.json")
-        ported = {k: v for k, v in sets.items() if k.endswith("_PORTED_SOURCES")}
+        ported = {p.stem: json.loads(p.read_text()) for p in (ROOT / "libobs/build/source-sets.d").glob("*_PORTED_SOURCES.json")}
         self.assertIn("LIBOBS_PORTED_SOURCES", ported)
         for name, members in ported.items():
-            self.assert_sorted(f"source-sets.json {name}", members)
+            self.assert_sorted(f"source-sets.d/{name}.json", members)
 
     def test_port_comparison_units_are_discovered(self):
         """A new bench file edits no shared file (#1997).

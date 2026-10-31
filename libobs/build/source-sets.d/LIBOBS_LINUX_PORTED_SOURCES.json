@@ -1,0 +1,5 @@
+[
+  "build/libobs.ported-nix-inhibit+.h.c",
+  "build/libobs.ported-posix+.h.c",
+  "build/libobs.ported-posix-threading+.h.c"
+]

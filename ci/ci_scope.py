@@ -54,7 +54,8 @@ Platform and Qt lanes:
 - core:    libobs or the Rust workspace changed (informational).
 Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
-`rust/*/src/platform/windows/`, ...) starts that platform's jobs. Core files
+`rust/*/src/platform/windows/`, `libobs/build/source-sets.d/
+LIBOBS_WINDOWS_SOURCES.json` (#3235), ...) starts that platform's jobs. Core files
 carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR or a
 merge-queue run a core change is Linux only. A push to master is the
 exception: core code selects the macOS and Windows Rust lanes too, because

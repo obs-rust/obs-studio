@@ -135,6 +135,13 @@ NOT_PORTED = (
 )
 
 
+def write_sets(build, sets):
+    """One libobs/build/source-sets.d/<SET>.json list per set (#3235)."""
+    (build / "source-sets.d").mkdir(parents=True, exist_ok=True)
+    for name, members in sets.items():
+        (build / "source-sets.d" / f"{name}.json").write_text(json.dumps(members))
+
+
 class PortedSourceTest(unittest.TestCase):
     def test_per_unit_fragments_add_independent_ported_groups(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -142,7 +149,7 @@ class PortedSourceTest(unittest.TestCase):
             build = fixture / "libobs/build"
             fragments = build / "ported-source-sets"
             fragments.mkdir(parents=True)
-            (build / "source-sets.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": []}))
+            write_sets(build, {"LIBOBS_PORTED_SOURCES": []})
             (fragments / "alpha.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": ["build/alpha+.h.c"]}))
             (fragments / "beta.json").write_text(json.dumps({"LIBOBS_PORTED_SOURCES": ["build/beta+.h.c"]}))
             self.assertEqual(PORTED.source_sets(fixture)["LIBOBS_PORTED_SOURCES"], [
@@ -240,7 +247,7 @@ class PortedSourceTest(unittest.TestCase):
                 "LIBOBS_WAYLAND_PORTED_SOURCES": ["build/wayland+.h.c"],
                 "LIBOBS_WAYLAND_GIO_PORTED_SOURCES": ["build/wayland-gio+.h.c"],
             }
-            (build / "source-sets.json").write_text(json.dumps(groups))
+            write_sets(build, groups)
             for group, member in [("common", "common"), ("linux", "linux"),
                                   ("windows", "windows"), ("hevc", "hevc"), ("pulse", "pulse"),
                                   ("nix-gio", "nix-gio"),

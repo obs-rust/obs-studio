@@ -11,7 +11,8 @@ HOSTS = ("linux", "windows", "macos")
 
 def source_sets(root: Path) -> dict[str, list[str]]:
     build = root / "libobs/build"
-    sets = json.loads((build / "source-sets.json").read_text())
+    # One JSON list per set, named after it (#3235).
+    sets = {path.stem: json.loads(path.read_text()) for path in sorted((build / "source-sets.d").glob("*.json"))}
     for fragment in sorted((build / "ported-source-sets").glob("*.json")):
         additions = json.loads(fragment.read_text())
         for name, members in additions.items():

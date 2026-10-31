@@ -99,7 +99,7 @@ Components that already list explicit unity groups preserve those boundaries.
 ## macOS core graph
 
 The native engine selects macOS core sources from the same
-`libobs/build/source-sets.json` used by CMake. It builds an explicit C reference
+`libobs/build/source-sets.d/` used by CMake. It builds an explicit C reference
 and the production Rust/C hybrid, retaining the framework install name and
 macOS 13 deployment target. The generated development framework lookup layout
 does not supply release metadata, signing, or application packaging.
@@ -800,7 +800,7 @@ remain required.
 
 ## Shared source inventory and Linux Tier 2
 
-`rust/tools/ported_sources.py` reads `libobs/build/source-sets.json` and expands
+`rust/tools/ported_sources.py` reads `libobs/build/source-sets.d/` and expands
 the selected unity groups for Tier 2's native-object exclusion checks. CMake
 and Cargo share the optional HEVC group in that manifest. The reader matches
 the actual CMake inventory exactly: 46 Linux objects with HEVC and 45 without.

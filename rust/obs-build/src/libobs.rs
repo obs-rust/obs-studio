@@ -98,23 +98,29 @@ struct Plan {
 
 fn read_source_sets(root: &Path) -> Result<BTreeMap<String, Vec<String>>, String> {
     let build = root.join("libobs/build");
-    let manifest = build.join("source-sets.json");
-    println!("cargo:rerun-if-changed={}", manifest.display());
-    let mut sets: BTreeMap<String, Vec<String>> =
-        serde_json::from_slice(&fs::read(&manifest).map_err(|e| e.to_string())?)
-            .map_err(|e| format!("read {}: {e}", manifest.display()))?;
+    // One JSON list per set, named after it (#3235).
+    let set_dir = build.join("source-sets.d");
+    println!("cargo:rerun-if-changed={}", set_dir.display());
+    let mut sets: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for path in json_files(&set_dir)? {
+        println!("cargo:rerun-if-changed={}", path.display());
+        let name = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .ok_or_else(|| format!("bad source set name: {}", path.display()))?
+            .to_owned();
+        let members: Vec<String> =
+            serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
+                .map_err(|e| format!("read {}: {e}", path.display()))?;
+        sets.insert(name, members);
+    }
+    if sets.is_empty() {
+        return Err(format!("no libobs source sets in {}", set_dir.display()));
+    }
     let fragments = build.join("ported-source-sets");
     println!("cargo:rerun-if-changed={}", fragments.display());
     if fragments.exists() {
-        let mut paths = fs::read_dir(&fragments)
-            .map_err(|e| format!("read {}: {e}", fragments.display()))?
-            .map(|entry| entry.map(|entry| entry.path()).map_err(|e| e.to_string()))
-            .collect::<Result<Vec<_>, _>>()?;
-        paths.sort();
-        for path in paths
-            .into_iter()
-            .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
-        {
+        for path in json_files(&fragments)? {
             println!("cargo:rerun-if-changed={}", path.display());
             let additions: BTreeMap<String, Vec<String>> =
                 serde_json::from_slice(&fs::read(&path).map_err(|e| e.to_string())?)
@@ -150,6 +156,17 @@ fn read_source_sets(root: &Path) -> Result<BTreeMap<String, Vec<String>>, String
         }
     }
     Ok(sets)
+}
+
+/// The `*.json` files of `dir`, sorted by path.
+fn json_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut paths = fs::read_dir(dir)
+        .map_err(|e| format!("read {}: {e}", dir.display()))?
+        .map(|entry| entry.map(|entry| entry.path()).map_err(|e| e.to_string()))
+        .collect::<Result<Vec<_>, _>>()?;
+    paths.retain(|path| path.extension().is_some_and(|ext| ext == "json"));
+    paths.sort();
+    Ok(paths)
 }
 
 fn prepare(build: &NativeBuild, root: &Path, options: &Options) -> Result<Plan, String> {

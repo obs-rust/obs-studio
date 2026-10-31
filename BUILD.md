@@ -206,9 +206,19 @@ When an upstream merge adds a new `foo.c` to a converted component, rename
 it, move its includes into its group's header and add it to a group in the
 merge PR.
 
+The libobs source sets are one JSON list per set,
+`libobs/build/source-sets.d/<SET>.json` (`LIBOBS_SOURCES.json`,
+`LIBOBS_WINDOWS_PORTED_SOURCES.json`, ...; #3235). A change edits only the
+lists it touches, and a host set's file name carries its OS token
+(`WINDOWS`, `MACOS`, `LINUX`, `NIX`, `PULSE`, `WAYLAND`), so
+`ci/platform_paths.py` selects that OS's CI lanes for it while a shared set
+selects what any libobs file does. Adding a set means adding its file (CMake
+re-runs configure through the `CONFIGURE_DEPENDS` glob) and the code that
+consumes it.
+
 A newly ported libobs unity group can register itself in
 `libobs/build/ported-source-sets/<unit>.json` with the same
-`LIBOBS_*_PORTED_SOURCES` keys as `libobs/build/source-sets.json`. The CMake,
+`LIBOBS_*_PORTED_SOURCES` keys as the set files. The CMake,
 Cargo-native and Tier 2 inventory readers discover these fragments, so two
 ports can add their own files without editing the same ported-source list.
 Keep each member in exactly one list or fragment.
