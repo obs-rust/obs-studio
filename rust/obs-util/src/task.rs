@@ -51,6 +51,10 @@ struct State {
     tasks: VecDeque<Entry>,
     waiting: bool,
     tasks_processed: bool,
+    /// The worker found the queue empty and is (or is about to be) blocked
+    /// on the semaphore. Only a push that clears it posts, so a burst of
+    /// pushes costs one wakeup instead of one futex call each (#3216).
+    worker_idle: bool,
 }
 
 struct Inner {
@@ -82,6 +86,7 @@ impl TaskQueue {
                 tasks: VecDeque::new(),
                 waiting: false,
                 tasks_processed: false,
+                worker_idle: true,
             }),
         });
 
@@ -99,13 +104,7 @@ impl TaskQueue {
 
     /// `os_task_queue_queue_task`.
     pub fn queue_task(&self, task: Task) -> bool {
-        self.inner
-            .state
-            .lock()
-            .unwrap()
-            .tasks
-            .push_back(Entry::Task(task));
-        self.inner.sem.post();
+        self.inner.push(Entry::Task(task));
         true
     }
 
@@ -115,10 +114,8 @@ impl TaskQueue {
             let mut state = self.inner.state.lock().unwrap();
             state.waiting = true;
             state.tasks_processed = false;
-            state.tasks.push_back(Entry::WaitMarker);
         }
-
-        self.inner.sem.post();
+        self.inner.push(Entry::WaitMarker);
         self.inner.wait_event.wait();
 
         self.inner.state.lock().unwrap().tasks_processed
@@ -130,14 +127,44 @@ impl TaskQueue {
     }
 }
 
+impl Inner {
+    /// Queues `entry` and wakes the worker only if it went idle. The flag
+    /// is read and cleared under the same lock the worker sets it under, so
+    /// no wakeup is lost and at most one post is outstanding.
+    fn push(&self, entry: Entry) {
+        let wake = {
+            let mut state = self.state.lock().unwrap();
+            state.tasks.push_back(entry);
+            std::mem::replace(&mut state.worker_idle, false)
+        };
+        if wake {
+            self.sem.post();
+        }
+    }
+}
+
 fn worker_loop(inner: &Inner) {
     THREAD_ID.with(|id| id.set(inner.id));
 
     // `while (!exit_thread && os_sem_wait(tq->sem) == 0)`: an EINTR or a
     // destroyed semaphore ends the worker, same as the C.
+    // Each wakeup drains the queue one entry at a time (the C's per-entry
+    // order and marker rules are unchanged), then marks the worker idle.
     while !EXIT_THREAD.with(Cell::get) && inner.sem.wait() == 0 {
+        while !EXIT_THREAD.with(Cell::get) && run_next(inner) {}
+    }
+}
+
+/// Pops and runs one entry. False when the queue was empty; the worker is
+/// then idle and the next push posts.
+fn run_next(inner: &Inner) -> bool {
+    {
         let entry = {
             let mut state = inner.state.lock().unwrap();
+            if state.tasks.is_empty() {
+                state.worker_idle = true;
+                return false;
+            }
             let mut entry = state.tasks.pop_front();
             // A marker with tasks still behind it is re-queued once and the
             // next entry runs first (faithful to the C push/pop pair).
@@ -162,24 +189,18 @@ fn worker_loop(inner: &Inner) {
             Some(Entry::Task(task)) => task(),
             Some(Entry::WaitMarker) => inner.wait_event.signal(),
             Some(Entry::StopMarker) => EXIT_THREAD.with(|exit| exit.set(true)),
-            // C indexes an empty deque here; unreachable: sem count matches
-            // pushes. Treat as a lost wakeup and keep looping.
+            // Unreachable: the queue was checked non-empty under the lock.
             None => {}
         }
     }
+    true
 }
 
 impl Drop for TaskQueue {
     /// `os_task_queue_destroy`: queue the stop marker behind any pending
     /// tasks, then join the worker. Pending tasks run to completion first.
     fn drop(&mut self) {
-        self.inner
-            .state
-            .lock()
-            .unwrap()
-            .tasks
-            .push_back(Entry::StopMarker);
-        self.inner.sem.post();
+        self.inner.push(Entry::StopMarker);
         if let Some(worker) = self.worker.take() {
             // Joining self would deadlock; the C API has the same constraint
             // (pthread_join on the caller's own thread).
