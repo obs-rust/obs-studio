@@ -1,6 +1,7 @@
 //! obs-mcp tests, pulled into `obs-tests-core`.
 
 mod framing;
+mod outputs;
 mod scenes;
 mod server;
 mod sources;
