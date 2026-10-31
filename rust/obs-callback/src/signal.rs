@@ -393,7 +393,12 @@ impl SignalHandler {
             return false;
         };
         let mut remove_refs = 0;
-        {
+        // No callbacks (none live, none marked for removal): skip the pass,
+        // its reentrant lock and the pass stack (#3277). Nothing would run
+        // or be swept, and a connect racing this check is the same as one
+        // that waited for the pass to end; it would not run in this pass
+        // either. The global pass below still runs.
+        if !lock(&sig.callbacks).entries.is_empty() {
             let _pass = sig.pass.lock();
             let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
             lock(&sig.callbacks).signalling += 1;
