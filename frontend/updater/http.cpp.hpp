@@ -99,8 +99,8 @@ bool HTTPPostData(const wchar_t *url, const BYTE *data, int dataLen, const wchar
 		return false;
 	}
 
-	bool bResults =
-		!!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? -1 : 0, (void *)data, dataLen, dataLen, 0);
+	bool bResults = !!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? static_cast<DWORD>(-1) : 0,
+					     (void *)data, static_cast<DWORD>(dataLen), static_cast<DWORD>(dataLen), 0);
 
 	/* -------------------------------------- *
 	 * end request                            */
@@ -108,7 +108,7 @@ bool HTTPPostData(const wchar_t *url, const BYTE *data, int dataLen, const wchar
 	if (bResults) {
 		bResults = !!WinHttpReceiveResponse(hRequest, nullptr);
 	} else {
-		*responseCode = GetLastError();
+		*responseCode = static_cast<int>(GetLastError());
 		return false;
 	}
 
@@ -142,7 +142,7 @@ bool HTTPPostData(const wchar_t *url, const BYTE *data, int dataLen, const wchar
 	/* -------------------------------------- *
 	 * read data                              */
 
-	*responseCode = wcstoul(statusCode, nullptr, 10);
+	*responseCode = static_cast<int>(wcstoul(statusCode, nullptr, 10));
 
 	/* are we supposed to return true here? */
 	if (!bResults || *responseCode != 200) {
@@ -255,8 +255,8 @@ bool HTTPGetFile(HINTERNET hConnect, const wchar_t *url, const wchar_t *outputPa
 		return false;
 	}
 
-	bool bResults =
-		!!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? -1 : 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+	bool bResults = !!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? static_cast<DWORD>(-1) : 0,
+					     WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
 
 	/* -------------------------------------- *
 	 * end request                            */
@@ -264,7 +264,7 @@ bool HTTPGetFile(HINTERNET hConnect, const wchar_t *url, const wchar_t *outputPa
 	if (bResults) {
 		bResults = !!WinHttpReceiveResponse(hRequest, nullptr);
 	} else {
-		*responseCode = GetLastError();
+		*responseCode = static_cast<int>(GetLastError());
 		return false;
 	}
 
@@ -286,7 +286,7 @@ bool HTTPGetFile(HINTERNET hConnect, const wchar_t *url, const wchar_t *outputPa
 	/* -------------------------------------- *
 	 * read data                              */
 
-	*responseCode = wcstoul(statusCode, nullptr, 10);
+	*responseCode = static_cast<int>(wcstoul(statusCode, nullptr, 10));
 
 	/* are we supposed to return true here? */
 	if (!bResults || *responseCode != 200) {
@@ -377,8 +377,8 @@ bool HTTPGetBuffer(HINTERNET hConnect, const wchar_t *url, const wchar_t *extraH
 		return false;
 	}
 
-	bool bResults =
-		!!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? -1 : 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+	bool bResults = !!WinHttpSendRequest(hRequest, extraHeaders, extraHeaders ? static_cast<DWORD>(-1) : 0,
+					     WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
 
 	/* -------------------------------------- *
 	 * end request                            */
@@ -386,7 +386,7 @@ bool HTTPGetBuffer(HINTERNET hConnect, const wchar_t *url, const wchar_t *extraH
 	if (bResults) {
 		bResults = !!WinHttpReceiveResponse(hRequest, nullptr);
 	} else {
-		*responseCode = GetLastError();
+		*responseCode = static_cast<int>(GetLastError());
 		return false;
 	}
 
@@ -408,7 +408,7 @@ bool HTTPGetBuffer(HINTERNET hConnect, const wchar_t *url, const wchar_t *extraH
 	/* -------------------------------------- *
 	 * read data                              */
 
-	*responseCode = wcstoul(statusCode, nullptr, 10);
+	*responseCode = static_cast<int>(wcstoul(statusCode, nullptr, 10));
 
 	/* are we supposed to return true here? */
 	if (!bResults || *responseCode != 200) {

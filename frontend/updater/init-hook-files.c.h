@@ -1,6 +1,6 @@
 #include "frontend/updater/build/updater-c.pch.h"
 
-static bool add_aap_perms(const wchar_t *dir)
+static bool add_aap_perms(wchar_t *dir)
 {
 	PSECURITY_DESCRIPTOR sd = NULL;
 	SID *aap_sid = NULL;
@@ -22,7 +22,7 @@ static bool add_aap_perms(const wchar_t *dir)
 	ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
 
 	/* ALL_APP_PACKAGES */
-	ConvertStringSidToSidW(L"S-1-15-2-1", &aap_sid);
+	ConvertStringSidToSidW(L"S-1-15-2-1", (PSID *)&aap_sid);
 	ea.Trustee.ptstrName = (wchar_t *)aap_sid;
 
 	if (SetEntriesInAclW(1, &ea, dacl, &new_dacl1) != ERROR_SUCCESS) {
@@ -32,7 +32,7 @@ static bool add_aap_perms(const wchar_t *dir)
 	ea.grfAccessPermissions = GENERIC_READ | GENERIC_WRITE | GENERIC_EXECUTE;
 
 	/* BUILTIN_USERS */
-	ConvertStringSidToSidW(L"S-1-5-32-545", &bu_sid);
+	ConvertStringSidToSidW(L"S-1-5-32-545", (PSID *)&bu_sid);
 	ea.Trustee.ptstrName = (wchar_t *)bu_sid;
 
 	DWORD s = SetEntriesInAclW(1, &ea, new_dacl1, &new_dacl2);
@@ -40,8 +40,8 @@ static bool add_aap_perms(const wchar_t *dir)
 		goto fail;
 	}
 
-	if (SetNamedSecurityInfoW((wchar_t *)dir, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, new_dacl2,
-				  NULL) != ERROR_SUCCESS) {
+	if (SetNamedSecurityInfoW(dir, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, new_dacl2, NULL) !=
+	    ERROR_SUCCESS) {
 		goto fail;
 	}
 
@@ -187,6 +187,9 @@ finish:
 		RegCloseKey(key);
 	}
 }
+
+void UpdateHookFilesLegacy(void);
+void UpdateHookFiles(void);
 
 void UpdateHookFilesLegacy(void)
 {

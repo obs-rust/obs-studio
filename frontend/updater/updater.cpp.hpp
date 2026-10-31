@@ -108,10 +108,10 @@ static void Log(const wchar_t *fmt, ...)
 	}
 
 	/* Using len + 1 for null terminator, which gets chopped off below */
-	wstring str(len + 1, L'\0');
+	wstring str(static_cast<size_t>(len + 1), L'\0');
 
 	va_start(argptr, fmt);
-	len = _vsnwprintf_s(str.data(), len + 1, _TRUNCATE, fmt, argptr);
+	len = _vsnwprintf_s(str.data(), static_cast<size_t>(len + 1), _TRUNCATE, fmt, argptr);
 	va_end(argptr);
 
 	if (len <= 0) {
@@ -120,10 +120,10 @@ static void Log(const wchar_t *fmt, ...)
 
 	/* Append newline and send to main window as a PostMessage to
 	*  avoid blocking worker threads with UI messages */
-	str.resize(len);
+	str.resize(static_cast<size_t>(len));
 	str += L"\r\n";
 
-	auto msg = make_unique<wstring>(move(str));
+	auto msg = make_unique<wstring>(std::move(str));
 
 	if (PostMessage(hwndMain, WM_LOG_MESSAGE, 0, reinterpret_cast<LPARAM>(msg.get()))) {
 		msg.release();
@@ -531,7 +531,7 @@ bool DownloadWorkerThread()
 static bool RunDownloadWorkers(int num)
 try {
 	vector<future<bool>> thread_success_results;
-	thread_success_results.resize(num);
+	thread_success_results.resize(static_cast<size_t>(num));
 
 	for (future<bool> &result : thread_success_results) {
 		result = async(DownloadWorkerThread);
@@ -591,9 +591,9 @@ static inline DWORD WaitIfOBS(DWORD id, const wchar_t *expected)
 		hWait[0] = proc;
 		hWait[1] = cancelRequested;
 
-		Log(L"Waiting for OBS PID %d at %s...", id, path);
+		Log(L"Waiting for OBS PID %d at %s...", static_cast<int>(id), path);
 
-		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
+		DWORD i = WaitForMultipleObjects(2, hWait, false, INFINITE);
 		if (i == WAIT_OBJECT_0 + 1) {
 			return WAITIFOBS_CANCELLED;
 		}
@@ -694,7 +694,7 @@ try {
 	}
 
 	vector<future<void>> futures;
-	futures.resize(num);
+	futures.resize(static_cast<size_t>(num));
 
 	for (auto &result : futures) {
 		result = async(launch::async, HasherThread);
@@ -844,7 +844,7 @@ static void AddPackageRemovedFiles(const Package &package)
 		/* Technically GetFileAttributes can fail for other reasons,
 		 * so double-check by also checking the last error */
 		if (GetFileAttributesW(removedFileName) == INVALID_FILE_ATTRIBUTES) {
-			int err = GetLastError();
+			DWORD err = GetLastError();
 			if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
 				continue;
 			}
@@ -1061,7 +1061,7 @@ static bool UpdateFile(ZSTD_DCtx *ctx, update_t &file)
 		} else {
 			Log(L"Installing %s...", file.outputPath.c_str());
 			installed_ok = QuickWriteFile(file.outputPath.c_str(), patch_data.data(), patch_data.size());
-			error_code = GetLastError();
+			error_code = static_cast<int>(GetLastError());
 		}
 
 		if (!installed_ok) {
@@ -1085,7 +1085,7 @@ static bool UpdateFile(ZSTD_DCtx *ctx, update_t &file)
 				DWORD err = GetLastError();
 				Status(L"Update failed: Couldn't update %s "
 				       L"(error %d)",
-				       curFileName, err ? err : error_code);
+				       curFileName, err ? static_cast<int>(err) : error_code);
 			}
 
 			file.state = STATE_INSTALL_FAILED;
@@ -1172,7 +1172,7 @@ try {
 	}
 
 	vector<future<bool>> thread_success_results;
-	thread_success_results.resize(num);
+	thread_success_results.resize(static_cast<size_t>(num));
 
 	for (future<bool> &result : thread_success_results) {
 		result = async(launch::async, UpdateWorker);
@@ -1331,7 +1331,7 @@ static void UpdateRegistryVersion(const Manifest &manifest)
 		return;
 	}
 
-	RegSetValueExA(key, "DisplayVersion", 0, REG_SZ, (const BYTE *)version, formattedLen + 1);
+	RegSetValueExA(key, "DisplayVersion", 0, REG_SZ, (const BYTE *)version, static_cast<DWORD>(formattedLen + 1));
 	RegCloseKey(key);
 }
 
@@ -1359,7 +1359,7 @@ static bool Update(wchar_t *cmdLine)
 		hWait[0] = hObsUpdateMutex;
 		hWait[1] = cancelRequested;
 
-		int i = WaitForMultipleObjects(2, hWait, false, INFINITE);
+		DWORD i = WaitForMultipleObjects(2, hWait, false, INFINITE);
 
 		if (i == WAIT_OBJECT_0) {
 			ReleaseMutex(hObsUpdateMutex);
@@ -1583,7 +1583,7 @@ static bool Update(wchar_t *cmdLine)
 		string post_body = request.dump();
 
 		int len = (int)post_body.size();
-		size_t compressSize = ZSTD_compressBound(len);
+		size_t compressSize = ZSTD_compressBound(static_cast<size_t>(len));
 		string compressedJson;
 
 		compressedJson.resize(compressSize);
@@ -2044,7 +2044,7 @@ static int RestartAsAdmin(LPCWSTR lpCmdLine, LPCWSTR cwd)
 
 		if (GetExitCodeProcess(shExInfo.hProcess, &exitCode)) {
 			if (exitCode == 1) {
-				return exitCode;
+				return static_cast<int>(exitCode);
 			}
 		}
 		CloseHandle(shExInfo.hProcess);

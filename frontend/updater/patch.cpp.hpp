@@ -121,7 +121,7 @@ try {
 	size_t result = ZSTD_decompress_usingDict(zstdCtx, newData.data(), newData.size(), patch_data + kHeaderSize,
 						  patch_size - kHeaderSize, oldData.data(), oldData.size());
 
-	if (result != newsize || ZSTD_isError(result)) {
+	if (result != static_cast<size_t>(newsize) || ZSTD_isError(result)) {
 		throw int(-9);
 	}
 
