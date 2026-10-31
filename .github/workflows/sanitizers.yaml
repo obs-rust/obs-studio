@@ -140,6 +140,16 @@ jobs:
           LAUNCH_SECONDS: ${{ inputs.launch_seconds || 45 }}
         run: uv run --no-project rust/tools/sanitize/sanitize.py "${{ matrix.tool }}" "$LAUNCH_SECONDS"
 
+      # The conversion ratchet (#2625) is checked by the configuration that
+      # compiles the target, and every Linux one of those is gcc; gcc's
+      # -Wconversion set is narrower, so a target can pass its own gcc replay
+      # and still fail the nightly's AppleClang app build (#3118, #3084, #3090,
+      # #2921). Replay this tree's unity groups with clang: ~7 s, nothing is
+      # built or linked. Only the asan pass runs it, so the check is paid once.
+      - name: Replay the conversion ratchet with clang 🔁
+        if: matrix.tool == 'asan'
+        run: uv run --no-project ci/conversion_clang_replay.py --compdb "$SAN_OUT/build-${{ matrix.tool }}/compile_commands.json" --allow-uncovered
+
       - name: Save zccache 💾
         if: always() && github.ref == 'refs/heads/master'
         uses: ./.github/actions/cache

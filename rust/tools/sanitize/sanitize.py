@@ -132,6 +132,8 @@ def configure_command(*, src: Path, build: Path, build_type: str, flags: str, ba
         f"-DCMAKE_SHARED_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         f"-DCMAKE_MODULE_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+        # The conversion ratchet's clang replay (#3118) reads this tree's flags.
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
         "-DENABLE_BROWSER=OFF",
         "-DENABLE_WEBSOCKET=OFF",
         "-DENABLE_AJA=OFF",

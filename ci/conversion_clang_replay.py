@@ -192,6 +192,27 @@ def uncovered(ratcheted: tuple[str, ...], directories: set[str]) -> tuple[str, .
     return tuple(directory for directory in ratcheted if directory not in directories)
 
 
+def exit_status(
+    findings: list[Replay],
+    missing: tuple[str, ...],
+    unexplained_replays: list[Replay],
+    allow_uncovered: bool = False,
+) -> int:
+    """The replay's verdict: findings and parse failures are always red.
+
+    `missing` is a ratcheted directory the configuration compiled no group for.
+    A full app tree must cover every ratcheted target, but a lane tree does not
+    build them all (the sanitizer build turns vlc, vst, webrtc and the decklink
+    plugins off), so the lane passes --allow-uncovered and those directories are
+    reported without failing it. The unit test keeps the strict default.
+    """
+    if findings or unexplained_replays:
+        return 1
+    if missing and not allow_uncovered:
+        return 1
+    return 0
+
+
 def repo_compdb(compdb: Path) -> list[dict[str, str]]:
     """The compile entries of one configured tree."""
     entries: list[dict[str, str]] = json.loads(compdb.read_text())
@@ -209,6 +230,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--jobs", type=int, default=8)
     parser.add_argument("--compiler", default="clang")
+    parser.add_argument(
+        "--allow-uncovered",
+        action="store_true",
+        help="report a ratcheted directory the configuration did not build without failing",
+    )
     args = parser.parse_args(argv)
     root: Path = args.root.resolve()
 
@@ -237,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(findings)} group(s) with conversion findings, "
         f"{len(missing)} uncovered, {len(unexplained(replays))} failed to parse"
     )
-    return 1 if findings or missing or unexplained(replays) else 0
+    return exit_status(findings, missing, unexplained(replays), args.allow_uncovered)
 
 
 if __name__ == "__main__":
