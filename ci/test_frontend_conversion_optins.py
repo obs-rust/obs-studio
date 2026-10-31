@@ -30,6 +30,7 @@ must contribute none of the three groups on Apple.
 from __future__ import annotations
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -37,6 +38,13 @@ ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend" / "CMakeLists.txt"
 PROPERTIES_VIEW = ROOT / "shared" / "properties-view" / "CMakeLists.txt"
 LINUX = ROOT / "cmake" / "linux" / "compilerconfig.cmake"
+
+# A `target_compile_options(<target> INTERFACE ...)` call: the usage requirement a
+# linked target hands every consumer's TUs.
+INTERFACE_CALL = re.compile(
+    r"target_compile_options\(\s*(?P<target>[^\s)]+)\s+INTERFACE\s+(?P<body>[^)]*)\)",
+    re.S,
+)
 
 # The groups the app target states at its call sites today.
 APP_TARGET_GROUPS = {"-Wsign-conversion"}
@@ -86,6 +94,75 @@ def without_comments(text: str) -> str:
     return "\n".join(
         line for line in text.splitlines() if not line.lstrip().startswith("#")
     )
+
+
+def tracked_cmake_lists(root: Path) -> list[Path]:
+    """Every tracked `CMakeLists.txt` below `root`, vendored trees excluded.
+
+    Vendored upstream trees (`deps/`) are never edited here, so they never carry an
+    obs-rust conversion group to check.
+    """
+    listing = subprocess.run(
+        ["git", "ls-files", "-z", "*CMakeLists.txt"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    ).stdout.decode()
+    return [
+        root / path
+        for path in listing.replace("\0", "\n").splitlines()
+        if path and not path.startswith("deps/")
+    ]
+
+
+def interface_conversion_groups(text: str) -> list[tuple[str, list[str]]]:
+    """`(target, flags)` for every `target_compile_options(<t> INTERFACE ...)` group.
+
+    The pins (`-Wno-*`) are per-target exceptions, not groups: only the positive
+    spelling opts a target in.
+    """
+    groups: list[tuple[str, list[str]]] = []
+    for call in INTERFACE_CALL.finditer(without_comments(text)):
+        flags = [
+            flag
+            for flag in re.findall(r"-W(?:no-)?[a-z-]*conversion", call.group("body"))
+            if not flag.startswith("-Wno-")
+        ]
+        if flags:
+            groups.append((call.group("target"), flags))
+    return groups
+
+
+class LinkedInterfaceConversionGroupTest(unittest.TestCase):
+    """A linked INTERFACE target must not state a conversion group (#3164).
+
+    CMake appends a linked target's INTERFACE options *after* the consumer's own
+    options, so a consumer that still carries the global pins cannot pin the group
+    back off: `-Wconversion` in that position re-enables its diagnostics, and the
+    consumer's `-Wno-*` is already spent. #3096 hit the Apple half of this and
+    excluded Darwin in the call, which only moved the leak to the other platforms:
+    under Qt 6.8 the frontend stopped on a `long double` passed to `QString::arg()`
+    that the pins exist to tolerate (#3164). The group belongs to the target whose
+    sources were converted, so it is stated `PRIVATE` there, never as an INTERFACE
+    usage requirement.
+    """
+
+    def test_no_interface_target_states_a_conversion_group(self) -> None:
+        violations = [
+            f"{path.relative_to(ROOT).as_posix()}: {target}"
+            for path in tracked_cmake_lists(ROOT)
+            for target, _flags in interface_conversion_groups(
+                path.read_text(encoding="utf-8", errors="replace")
+            )
+        ]
+        self.assertEqual(
+            violations,
+            [],
+            "an INTERFACE conversion group lands after the consumer's own pins, so "
+            "a consumer still holding the global pins cannot turn it off (#3096, "
+            "#3164); state the group PRIVATE on the target that compiles the "
+            "converted sources",
+        )
 
 
 class FrontendConversionOptinsTest(unittest.TestCase):
