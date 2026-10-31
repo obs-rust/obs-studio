@@ -20,8 +20,9 @@
 
 #define MS 1000000LL
 
-/* An action and the delta beside it; the delta is DELTA_UNSET when the step
- * left it alone. */
+/* An action and the delta beside it, asked as audio_resampler_resample()
+ * asks them: the delta only when the step is not idle (after the engage log
+ * there); DELTA_UNSET otherwise. */
 #define DELTA_UNSET 123456
 
 struct step {
@@ -32,8 +33,20 @@ struct step {
 static struct step step(struct audio_resampler_comp *c, uint32_t input_freq, uint32_t in_frames)
 {
 	struct step s = {AUDIO_RESAMPLER_COMP_IDLE, DELTA_UNSET};
-	s.action = audio_resampler_comp_step(c, input_freq, in_frames, &s.delta);
+	s.action = audio_resampler_comp_step(c, input_freq, in_frames);
+	if (s.action != AUDIO_RESAMPLER_COMP_IDLE)
+		s.delta = audio_resampler_comp_delta(c, input_freq);
 	return s;
+}
+
+/* The drift report, asked as audio_resampler_destroy() asks it: the input
+ * rate only when the gate is open; *rate is left alone otherwise. */
+static bool drift_report_at(const struct audio_resampler_comp *c, uint32_t output_freq, double *rate)
+{
+	if (!audio_resampler_comp_reports_drift(c))
+		return false;
+	*rate = audio_resampler_comp_input_rate(c, output_freq);
+	return true;
 }
 
 static void same_bits(double got, double want, const char *what, int at)
@@ -394,6 +407,28 @@ static void zero_frames(void **state)
 	same_bits(c.vc2, 0.0, "vc2", 0);
 }
 
+/* The delta is lround() of the correction per 2^24 samples, negated: half
+ * away from zero. At 2^24 Hz the delta is the correction itself. */
+static void delta_rounding(void **state)
+{
+	(void)state;
+	const double cases[][2] = {
+		{2.5, -3}, {-2.5, 3}, {0.5, -1}, {-0.5, 1}, {1.5, -2}, {2.4999, -2}, {0.0, 0}, {48.0, -48},
+	};
+
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		struct audio_resampler_comp c;
+		memset(&c, 0, sizeof(c));
+		c.vc1 = cases[i][0];
+		assert_int_equal(audio_resampler_comp_delta(&c, 16777216), (int)cases[i][1]);
+	}
+	/* at 48 kHz, the 1000 ppm clamp */
+	struct audio_resampler_comp c;
+	memset(&c, 0, sizeof(c));
+	c.vc1 = 48.0;
+	assert_int_equal(audio_resampler_comp_delta(&c, 48000), -16777);
+}
+
 /* Room for the samples compensation adds, only while engaged. */
 static void output_frames(void **state)
 {
@@ -447,31 +482,31 @@ static void drift_report(void **state)
 
 	c.input_samples = 48000;
 	c.output_samples = 48000;
-	assert_false(audio_resampler_comp_drift_report(&c, 48000, &rate));
+	assert_false(drift_report_at(&c, 48000, &rate));
 	same_bits(rate, -1.0, "rate untouched", 0);
 
 	c.engaged = true;
 	c.output_samples = 0;
-	assert_false(audio_resampler_comp_drift_report(&c, 48000, &rate));
+	assert_false(drift_report_at(&c, 48000, &rate));
 	same_bits(rate, -1.0, "rate untouched", 1);
 
 	c.output_samples = 48000;
-	assert_true(audio_resampler_comp_drift_report(&c, 48000, &rate));
+	assert_true(drift_report_at(&c, 48000, &rate));
 	same_bits(rate, 48000.0, "same rate", 2);
 
 	c.input_samples = 48048;
-	assert_true(audio_resampler_comp_drift_report(&c, 48000, &rate));
+	assert_true(drift_report_at(&c, 48000, &rate));
 	same_bits(rate, (double)48048 / (double)48000 * 48000, "fast device", 3);
 	/* divided first, so a hair under 48048 */
 	same_bits(rate, 0x1.775ffffffffffp+15, "fast device", 3);
 
 	c.input_samples = 0;
-	assert_true(audio_resampler_comp_drift_report(&c, 44100, &rate));
+	assert_true(drift_report_at(&c, 44100, &rate));
 	same_bits(rate, 0.0, "no input", 4);
 
 	c.input_samples = 44101;
 	c.output_samples = 48000;
-	assert_true(audio_resampler_comp_drift_report(&c, 48000, &rate));
+	assert_true(drift_report_at(&c, 48000, &rate));
 	same_bits(rate, (double)44101 / (double)48000 * 48000, "rate change", 5);
 }
 
@@ -491,6 +526,7 @@ int main(void)
 		cmocka_unit_test(engages_late),
 		cmocka_unit_test(stays_engaged),
 		cmocka_unit_test(zero_frames),
+		cmocka_unit_test(delta_rounding),
 		cmocka_unit_test(output_frames),
 		cmocka_unit_test(counters),
 		cmocka_unit_test(drift_report),

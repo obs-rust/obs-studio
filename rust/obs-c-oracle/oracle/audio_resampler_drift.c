@@ -1,5 +1,5 @@
 /* Test-only oracle: the original libobs/media-io/audio-resampler-drift.c.h,
- * unmodified, with its seven functions renamed to oracle_* so they can link
+ * unmodified, with its nine functions renamed to oracle_* so they can link
  * next to the Rust shims, plus its constants and the layout of struct
  * audio_resampler_comp as the C sees them. It calls lround() and nothing
  * else outside the file; it is built with -ffp-contract=off, as libobs builds
@@ -13,7 +13,9 @@
 #define audio_resampler_comp_step oracle_audio_resampler_comp_step
 #define audio_resampler_output_frames oracle_audio_resampler_output_frames
 #define audio_resampler_comp_count oracle_audio_resampler_comp_count
-#define audio_resampler_comp_drift_report oracle_audio_resampler_comp_drift_report
+#define audio_resampler_comp_delta oracle_audio_resampler_comp_delta
+#define audio_resampler_comp_reports_drift oracle_audio_resampler_comp_reports_drift
+#define audio_resampler_comp_input_rate oracle_audio_resampler_comp_input_rate
 
 #include "media-io/audio-resampler-drift.c.h"
 

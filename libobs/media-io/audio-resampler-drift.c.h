@@ -96,7 +96,7 @@ static inline double clamp_drift(double drift, double max)
 }
 
 enum audio_resampler_comp_action audio_resampler_comp_step(struct audio_resampler_comp *c, uint32_t input_freq,
-							   uint32_t in_frames, int *delta)
+							   uint32_t in_frames)
 {
 	double fs = (double)input_freq;
 	double max = AUDIO_RESAMPLER_COMP_MAX_PPM * 1e-6 * fs;
@@ -118,10 +118,16 @@ enum audio_resampler_comp_action audio_resampler_comp_step(struct audio_resample
 		action = AUDIO_RESAMPLER_COMP_ENGAGE;
 	}
 
+	return action;
+}
+
+int audio_resampler_comp_delta(const struct audio_resampler_comp *c, uint32_t input_freq)
+{
+	double fs = (double)input_freq;
+
 	/* Positive drift: the device delivers too many samples, so drop
 	 * some (a negative sample_delta). */
-	*delta = -(int)lround(c->vc1 * AUDIO_RESAMPLER_COMP_DISTANCE / fs);
-	return action;
+	return -(int)lround(c->vc1 * AUDIO_RESAMPLER_COMP_DISTANCE / fs);
 }
 
 int audio_resampler_output_frames(int estimated, bool engaged)
@@ -140,11 +146,12 @@ void audio_resampler_comp_count(struct audio_resampler_comp *c, uint32_t in_fram
 	}
 }
 
-bool audio_resampler_comp_drift_report(const struct audio_resampler_comp *c, uint32_t output_freq, double *input_rate)
+bool audio_resampler_comp_reports_drift(const struct audio_resampler_comp *c)
 {
-	if (!(c->engaged && c->output_samples))
-		return false;
+	return c->engaged && c->output_samples;
+}
 
-	*input_rate = (double)c->input_samples / (double)c->output_samples * output_freq;
-	return true;
+double audio_resampler_comp_input_rate(const struct audio_resampler_comp *c, uint32_t output_freq)
+{
+	return (double)c->input_samples / (double)c->output_samples * output_freq;
 }

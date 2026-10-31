@@ -1036,7 +1036,9 @@
     /* audio-resampler-drift.c. audio-resampler-ffmpeg.c calls them inside
      * libobs. Not EXPORT. */
     audio_resampler_comp_count;
-    audio_resampler_comp_drift_report;
+    audio_resampler_comp_delta;
+    audio_resampler_comp_input_rate;
+    audio_resampler_comp_reports_drift;
     audio_resampler_comp_set_error;
     audio_resampler_comp_step;
     audio_resampler_output_frames;

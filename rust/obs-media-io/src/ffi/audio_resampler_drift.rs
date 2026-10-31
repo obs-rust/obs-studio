@@ -1,7 +1,7 @@
 //! C ABI for `libobs/media-io/audio-resampler-drift.c.h`.
 //!
 //! `audio-resampler-ffmpeg.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The seven
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The nine
 //! functions keep the C signatures: `enum audio_format` crosses as `int` (as
 //! everywhere in this crate), `enum audio_resampler_comp_action` (0 to 2) as
 //! `unsigned int`, and `struct audio_resampler_comp` as
@@ -14,7 +14,8 @@ use core::ffi::{c_int, c_uint};
 
 use crate::audio_io::MAX_AUDIO_CHANNELS;
 use crate::audio_resampler_drift::{
-    Compensation, count, drift_report, output_frames, sample_format, set_error, step, upmix_row,
+    Compensation, count, delta, input_rate, output_frames, reports_drift, sample_format, set_error,
+    step, upmix_row,
 };
 
 /// Same contract as C `audio_resampler_sample_format`.
@@ -65,13 +66,12 @@ pub unsafe extern "C" fn audio_resampler_comp_set_error(c: *mut Compensation, er
 /// # Safety
 ///
 /// `c` is null or points to a `struct audio_resampler_comp` the caller may
-/// write; `delta` is null or points to an `int` the caller may write.
+/// write.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn audio_resampler_comp_step(
     c: *mut Compensation,
     input_freq: u32,
     in_frames: u32,
-    delta: *mut c_int,
 ) -> c_uint {
     // SAFETY: null or a writable struct audio_resampler_comp, as the caller
     // promises.
@@ -79,13 +79,25 @@ pub unsafe extern "C" fn audio_resampler_comp_step(
         Some(c) => step(c, input_freq, in_frames),
         None => step(&mut Compensation::default(), input_freq, in_frames),
     };
-    if let Some(value) = action.delta() {
-        // SAFETY: null or a writable int, as the caller promises.
-        if let Some(out) = unsafe { delta.as_mut() } {
-            *out = value;
-        }
-    }
     action.to_c()
+}
+
+/// Same contract as C `audio_resampler_comp_delta`.
+///
+/// # Safety
+///
+/// `c` is null or points to a readable `struct audio_resampler_comp`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn audio_resampler_comp_delta(
+    c: *const Compensation,
+    input_freq: u32,
+) -> c_int {
+    // SAFETY: null or a readable struct audio_resampler_comp, as the caller
+    // promises.
+    match unsafe { c.as_ref() } {
+        Some(c) => delta(c, input_freq),
+        None => delta(&Compensation::default(), input_freq),
+    }
 }
 
 /// Same contract as C `audio_resampler_output_frames`.
@@ -113,29 +125,32 @@ pub unsafe extern "C" fn audio_resampler_comp_count(
     }
 }
 
-/// Same contract as C `audio_resampler_comp_drift_report`.
+/// Same contract as C `audio_resampler_comp_reports_drift`.
 ///
 /// # Safety
 ///
-/// `c` is null or points to a readable `struct audio_resampler_comp`;
-/// `input_rate` is null or points to a `double` the caller may write.
+/// `c` is null or points to a readable `struct audio_resampler_comp`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn audio_resampler_comp_drift_report(
-    c: *const Compensation,
-    output_freq: u32,
-    input_rate: *mut f64,
-) -> bool {
+pub unsafe extern "C" fn audio_resampler_comp_reports_drift(c: *const Compensation) -> bool {
     // SAFETY: null or a readable struct audio_resampler_comp, as the caller
     // promises.
-    let Some(c) = (unsafe { c.as_ref() }) else {
-        return false;
-    };
-    let Some(rate) = drift_report(c, output_freq) else {
-        return false;
-    };
-    // SAFETY: null or a writable double, as the caller promises.
-    if let Some(out) = unsafe { input_rate.as_mut() } {
-        *out = rate;
+    unsafe { c.as_ref() }.is_some_and(reports_drift)
+}
+
+/// Same contract as C `audio_resampler_comp_input_rate`.
+///
+/// # Safety
+///
+/// `c` is null or points to a readable `struct audio_resampler_comp`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn audio_resampler_comp_input_rate(
+    c: *const Compensation,
+    output_freq: u32,
+) -> f64 {
+    // SAFETY: null or a readable struct audio_resampler_comp, as the caller
+    // promises.
+    match unsafe { c.as_ref() } {
+        Some(c) => input_rate(c, output_freq),
+        None => input_rate(&Compensation::default(), output_freq),
     }
-    true
 }

@@ -91,9 +91,9 @@ enum audio_resampler_comp_action {
 	/* not engaged, and the error is 0: nothing */
 	AUDIO_RESAMPLER_COMP_IDLE = 0,
 	/* the error left the dead band for the first time: log that the drift is
-	 * compensated, then set the delta */
+	 * compensated, then set the delta (audio_resampler_comp_delta()) */
 	AUDIO_RESAMPLER_COMP_ENGAGE = 1,
-	/* set the delta */
+	/* set the delta (audio_resampler_comp_delta()) */
 	AUDIO_RESAMPLER_COMP_SET = 2,
 };
 
@@ -113,11 +113,15 @@ bool audio_resampler_upmix_row(uint32_t output_ch, double row[MAX_AUDIO_CHANNELS
 void audio_resampler_comp_set_error(struct audio_resampler_comp *c, int64_t error_ns);
 
 /* One step of the loop filter over in_frames frames at input_freq: both states
- * advance, clamped to AUDIO_RESAMPLER_COMP_MAX_PPM of input_freq. Unless it
- * returns AUDIO_RESAMPLER_COMP_IDLE, *delta is the sample_delta for
- * swr_set_compensation() over AUDIO_RESAMPLER_COMP_DISTANCE samples. */
+ * advance, clamped to AUDIO_RESAMPLER_COMP_MAX_PPM of input_freq; then whether
+ * a delta is set, and whether this step engages. */
 enum audio_resampler_comp_action audio_resampler_comp_step(struct audio_resampler_comp *c, uint32_t input_freq,
-							   uint32_t in_frames, int *delta);
+							   uint32_t in_frames);
+
+/* The sample_delta for swr_set_compensation() over
+ * AUDIO_RESAMPLER_COMP_DISTANCE samples, from the correction at input_freq.
+ * audio_resampler_resample() asks it after the engage log, as before. */
+int audio_resampler_comp_delta(const struct audio_resampler_comp *c, uint32_t input_freq);
 
 /* The output frames to make room for: estimated, padded for the samples
  * compensation adds while engaged. */
@@ -126,7 +130,11 @@ int audio_resampler_output_frames(int estimated, bool engaged);
 /* While engaged, counts in_frames input and converted output samples. */
 void audio_resampler_comp_count(struct audio_resampler_comp *c, uint32_t in_frames, int converted);
 
-/* Whether audio_resampler_destroy() reports the drift (engaged, with output
- * counted); if so, *input_rate is the input rate the counts give at
- * output_freq. */
-bool audio_resampler_comp_drift_report(const struct audio_resampler_comp *c, uint32_t output_freq, double *input_rate);
+/* Whether audio_resampler_destroy() reports the drift: engaged, with output
+ * counted. */
+bool audio_resampler_comp_reports_drift(const struct audio_resampler_comp *c);
+
+/* The input rate the counts give at output_freq, for the report.
+ * audio_resampler_destroy() reads output_freq and asks this only when
+ * audio_resampler_comp_reports_drift() is true. */
+double audio_resampler_comp_input_rate(const struct audio_resampler_comp *c, uint32_t output_freq);

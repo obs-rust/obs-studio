@@ -12,12 +12,57 @@
 
 use obs_media_io::audio_io::MAX_AUDIO_CHANNELS;
 use obs_media_io::audio_resampler_drift::{
-    Action, C1, C2, Compensation, DEAD_BAND_NS, DISTANCE, GAIN, MAX_PPM, count, drift_report, fmt,
-    output_frames, sample_format, set_error, step, upmix_row,
+    Action, C1, C2, Compensation, DEAD_BAND_NS, DISTANCE, GAIN, MAX_PPM, count,
+    delta as core_delta, fmt, input_rate, output_frames, reports_drift, sample_format, set_error,
+    step as core_step, upmix_row,
 };
 use proptest::prelude::*;
 
 const MS: i64 = 1_000_000;
+
+/// A step as `audio_resampler_resample()` asks it: the action, then (after
+/// the engage log there) the delta, unless idle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Step {
+    Idle,
+    Engage { delta: i32 },
+    Set { delta: i32 },
+}
+
+impl Step {
+    fn to_c(self) -> u32 {
+        match self {
+            Self::Idle => Action::Idle.to_c(),
+            Self::Engage { .. } => Action::Engage.to_c(),
+            Self::Set { .. } => Action::Set.to_c(),
+        }
+    }
+
+    fn delta(self) -> Option<i32> {
+        match self {
+            Self::Idle => None,
+            Self::Engage { delta } | Self::Set { delta } => Some(delta),
+        }
+    }
+}
+
+fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Step {
+    match core_step(c, input_freq, in_frames) {
+        Action::Idle => Step::Idle,
+        Action::Engage => Step::Engage {
+            delta: core_delta(c, input_freq),
+        },
+        Action::Set => Step::Set {
+            delta: core_delta(c, input_freq),
+        },
+    }
+}
+
+/// The drift report as `audio_resampler_destroy()` asks it: the rate only
+/// when the gate is open.
+fn drift_report(c: &Compensation, output_freq: u32) -> Option<f64> {
+    reports_drift(c).then(|| input_rate(c, output_freq))
+}
 
 /// The C test's FNV-1a hash of every delta, over the delta's `uint32_t`
 /// bits.
@@ -31,7 +76,7 @@ const FNV_BASIS: u64 = 1_469_598_103_934_665_603;
 const DELTA_UNSET: i32 = 123_456;
 
 /// The action's C value and the delta beside it, as the C test sees them.
-fn seen(action: Action) -> (u32, i32) {
+fn seen(action: Step) -> (u32, i32) {
     (action.to_c(), action.delta().unwrap_or(DELTA_UNSET))
 }
 
@@ -96,7 +141,7 @@ mod model {
         r as i32
     }
 
-    pub fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Action {
+    pub fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Step {
         let fs = f64::from(input_freq);
         let max = MAX_PPM * 1e-6 * fs;
         let icp = GAIN * (c.error_ns as f64) * 1e-9;
@@ -107,16 +152,16 @@ mod model {
         let mut engage = false;
         if !c.engaged {
             if c.error_ns == 0 {
-                return Action::Idle;
+                return Step::Idle;
             }
             c.engaged = true;
             engage = true;
         }
         let delta = -lround_int(c.vc1 * f64::from(DISTANCE) / fs);
         if engage {
-            Action::Engage { delta }
+            Step::Engage { delta }
         } else {
-            Action::Set { delta }
+            Step::Set { delta }
         }
     }
 
@@ -176,8 +221,8 @@ fn steps_constants() {
     same_bits(C1, 8.25, "C1");
     same_bits(C2, 107.1, "C2");
     assert_eq!(Action::Idle.to_c(), 0);
-    assert_eq!(Action::Engage { delta: 0 }.to_c(), 1);
-    assert_eq!(Action::Set { delta: 0 }.to_c(), 2);
+    assert_eq!(Action::Engage.to_c(), 1);
+    assert_eq!(Action::Set.to_c(), 2);
     assert_eq!(MAX_AUDIO_CHANNELS, 8);
 }
 
@@ -291,7 +336,7 @@ fn steps_zero_error_never_engages() {
     let mut c = Compensation::default();
     set_error(&mut c, 5 * MS);
     for i in 0..10_000 {
-        assert_eq!(step(&mut c, 48_000, 480), Action::Idle, "step {i}");
+        assert_eq!(step(&mut c, 48_000, 480), Step::Idle, "step {i}");
     }
     assert!(!c.engaged);
     same_bits(c.vc1, 0.0, "vc1");
@@ -436,10 +481,10 @@ fn steps_larger_steps() {
         let action = step(&mut c, 48_000, 1024);
         hash = fnv(hash, action.delta().unwrap_or(DELTA_UNSET));
         if i == 0 {
-            assert_eq!(action, Action::Engage { delta: -65 });
+            assert_eq!(action, Step::Engage { delta: -65 });
         }
         if i == 100 {
-            assert_eq!(action, Action::Set { delta: -5805 });
+            assert_eq!(action, Step::Set { delta: -5805 });
             same_bits(c.vc1, f64::from_bits(0x4030_9bce_35ad_5489), "vc1");
             same_bits(c.vc2, f64::from_bits(0x3fc5_f255_28e9_0579), "vc2");
         }
@@ -458,9 +503,9 @@ fn steps_tiny_error() {
     set_error(&mut c, DEAD_BAND_NS + 1);
     for i in 0..10_000 {
         let want = if i == 0 {
-            Action::Engage { delta: 0 }
+            Step::Engage { delta: 0 }
         } else {
-            Action::Set { delta: 0 }
+            Step::Set { delta: 0 }
         };
         assert_eq!(step(&mut c, 44_100, 441), want, "step {i}");
     }
@@ -480,15 +525,15 @@ fn steps_engages_late() {
         );
     }
     set_error(&mut c, 30 * MS);
-    assert_eq!(step(&mut c, 48_000, 1024), Action::Engage { delta: -33 });
+    assert_eq!(step(&mut c, 48_000, 1024), Step::Engage { delta: -33 });
     same_bits(c.vc1, f64::from_bits(0x3fb7_de91_2df4_dec7), "vc1");
-    assert_eq!(step(&mut c, 48_000, 1024), Action::Set { delta: -65 });
+    assert_eq!(step(&mut c, 48_000, 1024), Step::Set { delta: -65 });
     same_bits(c.vc2, f64::from_bits(0x3ef3_7985_dbf8_4f16), "vc2");
-    let mut last = Action::Idle;
+    let mut last = Step::Idle;
     for _ in 102..300 {
         last = step(&mut c, 48_000, 1024);
     }
-    assert_eq!(last, Action::Set { delta: -5111 });
+    assert_eq!(last, Step::Set { delta: -5111 });
     same_bits(c.vc1, f64::from_bits(0x402d_3eff_6fec_e1fb), "vc1");
     same_bits(c.vc2, f64::from_bits(0x3fd3_d7c0_afc0_d9da), "vc2");
 }
@@ -508,14 +553,14 @@ fn steps_stays_engaged() {
             assert_eq!(action.to_c(), 2, "step {i}");
         }
         match i {
-            199 => assert_eq!(action, Action::Set { delta: -5433 }),
-            200 => assert_eq!(action, Action::Set { delta: -5427 }),
+            199 => assert_eq!(action, Step::Set { delta: -5433 }),
+            200 => assert_eq!(action, Step::Set { delta: -5427 }),
             1000 => {
-                assert_eq!(action, Action::Set { delta: -2192 });
+                assert_eq!(action, Step::Set { delta: -2192 });
                 same_bits(c.vc1, f64::from_bits(0x4019_1510_ee1d_fb19), "vc1");
                 same_bits(c.vc2, f64::from_bits(0x3feb_a31e_0cfb_7284), "vc2");
             }
-            2999 => assert_eq!(action, Action::Set { delta: -566 }),
+            2999 => assert_eq!(action, Step::Set { delta: -566 }),
             _ => {}
         }
     }
@@ -528,7 +573,7 @@ fn steps_stays_engaged() {
 fn steps_zero_frames() {
     let mut c = Compensation::default();
     set_error(&mut c, 50 * MS);
-    assert_eq!(step(&mut c, 48_000, 0), Action::Engage { delta: 0 });
+    assert_eq!(step(&mut c, 48_000, 0), Step::Engage { delta: 0 });
     same_bits(c.vc1, 0.0, "vc1");
     same_bits(c.vc2, 0.0, "vc2");
 }
@@ -715,7 +760,7 @@ fn edge_delta_rounds_half_away_from_zero() {
         };
         assert_eq!(
             step(&mut c, 16_777_216, 0),
-            Action::Set { delta },
+            Step::Set { delta },
             "vc1 {vc1}"
         );
     }
@@ -728,11 +773,11 @@ fn edge_zero_input_rate() {
     let mut c = Compensation::default();
     set_error(&mut c, 50 * MS);
     let mut want = c;
-    assert_eq!(step(&mut c, 0, 480), Action::Engage { delta: 0 });
-    assert_eq!(model::step(&mut want, 0, 480), Action::Engage { delta: 0 });
+    assert_eq!(step(&mut c, 0, 480), Step::Engage { delta: 0 });
+    assert_eq!(model::step(&mut want, 0, 480), Step::Engage { delta: 0 });
     assert!(c.vc1.is_nan() && c.vc2.is_nan());
     same_state(&c, &want);
-    assert_eq!(step(&mut c, 0, 480), Action::Set { delta: 0 });
+    assert_eq!(step(&mut c, 0, 480), Step::Set { delta: 0 });
 }
 
 #[test]

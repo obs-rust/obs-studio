@@ -140,12 +140,12 @@ audio_resampler_t *audio_resampler_create(const struct resample_info *dst, const
 void audio_resampler_destroy(audio_resampler_t *rs)
 {
 	if (rs) {
-		double input_rate;
-		if (audio_resampler_comp_drift_report(&rs->comp, rs->output_freq, &input_rate))
+		if (audio_resampler_comp_reports_drift(&rs->comp))
 			blog(LOG_INFO,
 			     "audio_resampler (clock drift compensation): input %" PRIu64 " samples, output %" PRIu64
 			     " samples, estimated input rate %.3f Hz",
-			     rs->comp.input_samples, rs->comp.output_samples, input_rate);
+			     rs->comp.input_samples, rs->comp.output_samples,
+			     audio_resampler_comp_input_rate(&rs->comp, rs->output_freq));
 
 		if (rs->context)
 			swr_free(&rs->context);
@@ -166,13 +166,13 @@ void audio_resampler_set_compensation_error(audio_resampler_t *rs, int64_t error
 
 static bool update_compensation(audio_resampler_t *rs, uint32_t in_frames)
 {
-	int delta = 0;
-	enum audio_resampler_comp_action action =
-		audio_resampler_comp_step(&rs->comp, rs->input_freq, in_frames, &delta);
+	enum audio_resampler_comp_action action = audio_resampler_comp_step(&rs->comp, rs->input_freq, in_frames);
 	if (action == AUDIO_RESAMPLER_COMP_IDLE)
 		return true;
 	if (action == AUDIO_RESAMPLER_COMP_ENGAGE)
 		blog(LOG_INFO, "audio_resampler: compensating for the clock drift of an audio device");
+
+	int delta = audio_resampler_comp_delta(&rs->comp, rs->input_freq);
 
 	int ret = swr_set_compensation(rs->context, delta, AUDIO_RESAMPLER_COMP_DISTANCE);
 	if (ret < 0) {

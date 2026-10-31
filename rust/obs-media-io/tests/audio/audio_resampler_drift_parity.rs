@@ -1,7 +1,7 @@
 //! Tier 3: `libobs/media-io/audio-resampler-drift.c.h` against its port.
 //!
 //! The oracle (`rust/obs-c-oracle/oracle/audio_resampler_drift.c`) is the
-//! unchanged C file with its seven functions renamed `oracle_*`, built with
+//! unchanged C file with its nine functions renamed `oracle_*`, built with
 //! `-ffp-contract=off` as libobs builds the file. Each case runs the oracle,
 //! the C ABI shims (`ffi::audio_resampler_drift`, what the hybrid libobs
 //! links) and the safe core on the same inputs and compares everything they
@@ -103,38 +103,40 @@ impl Sides {
         self.check("set_error")
     }
 
-    /// One step on all three; returns the oracle's action and delta.
+    /// One step on all three, then (unless idle) the delta, as
+    /// `audio_resampler_resample()` asks them; returns the oracle's action
+    /// and delta.
     fn step(&mut self, input_freq: u32, in_frames: u32) -> Result<(u32, c_int), TestCaseError> {
         const UNSET: c_int = 0x5eed;
-        let (mut c_delta, mut s_delta) = (UNSET, UNSET);
-        // SAFETY: valid, writable structs and ints.
+        // SAFETY: valid, writable structs.
         let (c_action, s_action) = unsafe {
             (
-                c::oracle_audio_resampler_comp_step(
-                    &mut self.oracle,
-                    input_freq,
-                    in_frames,
-                    &mut c_delta,
-                ),
-                shim::audio_resampler_comp_step(
-                    &mut self.shim,
-                    input_freq,
-                    in_frames,
-                    &mut s_delta,
-                ),
+                c::oracle_audio_resampler_comp_step(&mut self.oracle, input_freq, in_frames),
+                shim::audio_resampler_comp_step(&mut self.shim, input_freq, in_frames),
             )
         };
         let core_action = core_::step(&mut self.core, input_freq, in_frames);
         prop_assert_eq!(
-            (s_action, s_delta),
-            (c_action, c_delta),
+            s_action,
+            c_action,
             "shim step at {} Hz, {} frames",
             input_freq,
             in_frames
         );
         prop_assert_eq!(core_action.to_c(), c_action, "core action");
-        prop_assert_eq!(core_action.delta().unwrap_or(UNSET), c_delta, "core delta");
         self.check("step")?;
+        if c_action == Action::Idle.to_c() {
+            return Ok((c_action, UNSET));
+        }
+        // SAFETY: valid structs.
+        let (c_delta, s_delta) = unsafe {
+            (
+                c::oracle_audio_resampler_comp_delta(&self.oracle, input_freq),
+                shim::audio_resampler_comp_delta(&self.shim, input_freq),
+            )
+        };
+        prop_assert_eq!(s_delta, c_delta, "shim delta at {} Hz", input_freq);
+        prop_assert_eq!(core_::delta(&self.core, input_freq), c_delta, "core delta");
         Ok((c_action, c_delta))
     }
 
@@ -148,25 +150,34 @@ impl Sides {
         self.check("count")
     }
 
+    /// The drift report as `audio_resampler_destroy()` asks it: the gate,
+    /// then the rate only when it is open.
     fn report(&self, output_freq: u32) -> Result<(), TestCaseError> {
-        let (mut c_rate, mut s_rate) = (-7.0f64, -7.0f64);
-        // SAFETY: valid structs and writable doubles.
+        // SAFETY: valid structs.
         let (c_ok, s_ok) = unsafe {
             (
-                c::oracle_audio_resampler_comp_drift_report(&self.oracle, output_freq, &mut c_rate),
-                shim::audio_resampler_comp_drift_report(&self.shim, output_freq, &mut s_rate),
+                c::oracle_audio_resampler_comp_reports_drift(&self.oracle),
+                shim::audio_resampler_comp_reports_drift(&self.shim),
             )
         };
-        prop_assert_eq!(
-            (s_ok, s_rate.to_bits()),
-            (c_ok, c_rate.to_bits()),
-            "shim report"
-        );
-        let core_rate = core_::drift_report(&self.core, output_freq);
-        prop_assert_eq!(core_rate.is_some(), c_ok, "core report gate");
-        if let Some(rate) = core_rate {
-            prop_assert_eq!(rate.to_bits(), c_rate.to_bits(), "core rate");
+        prop_assert_eq!(s_ok, c_ok, "shim report gate");
+        prop_assert_eq!(core_::reports_drift(&self.core), c_ok, "core report gate");
+        if !c_ok {
+            return Ok(());
         }
+        // SAFETY: valid structs.
+        let (c_rate, s_rate) = unsafe {
+            (
+                c::oracle_audio_resampler_comp_input_rate(&self.oracle, output_freq),
+                shim::audio_resampler_comp_input_rate(&self.shim, output_freq),
+            )
+        };
+        prop_assert_eq!(s_rate.to_bits(), c_rate.to_bits(), "shim rate");
+        prop_assert_eq!(
+            core_::input_rate(&self.core, output_freq).to_bits(),
+            c_rate.to_bits(),
+            "core rate"
+        );
         Ok(())
     }
 }
@@ -197,8 +208,8 @@ fn constants_and_layout_match_c() {
         i64::from(fmt::FLTP),
         i64::try_from(MAX_AUDIO_CHANNELS).unwrap(),
         i64::from(Action::Idle.to_c()),
-        i64::from(Action::Engage { delta: 0 }.to_c()),
-        i64::from(Action::Set { delta: 0 }.to_c()),
+        i64::from(Action::Engage.to_c()),
+        i64::from(Action::Set.to_c()),
         i64::try_from(size_of::<u32>()).unwrap(),
         i64::try_from(size_of::<Compensation>()).unwrap(),
         i64::try_from(align_of::<Compensation>()).unwrap(),
@@ -448,31 +459,16 @@ fn null_pointers_are_left_alone() {
         assert!(!shim::audio_resampler_upmix_row(0, core::ptr::null_mut()));
         shim::audio_resampler_comp_set_error(core::ptr::null_mut(), 50 * MS);
         shim::audio_resampler_comp_count(core::ptr::null_mut(), 480, 480);
-        let mut delta = 7;
         assert_eq!(
-            shim::audio_resampler_comp_step(core::ptr::null_mut(), 48_000, 480, &mut delta),
+            shim::audio_resampler_comp_step(core::ptr::null_mut(), 48_000, 480),
             0
         );
-        assert_eq!(delta, 7);
-        let mut c = Compensation::default();
-        core_::set_error(&mut c, 50 * MS);
         assert_eq!(
-            shim::audio_resampler_comp_step(&mut c, 48_000, 480, core::ptr::null_mut()),
-            1
+            shim::audio_resampler_comp_delta(core::ptr::null(), 48_000),
+            0
         );
-        let mut rate = -1.0;
-        assert!(!shim::audio_resampler_comp_drift_report(
-            core::ptr::null(),
-            48_000,
-            &mut rate
-        ));
-        c.output_samples = 1;
-        assert!(shim::audio_resampler_comp_drift_report(
-            &c,
-            48_000,
-            core::ptr::null_mut()
-        ));
-        assert_eq!(rate.to_bits(), (-1.0f64).to_bits());
+        assert!(!shim::audio_resampler_comp_reports_drift(core::ptr::null()));
+        assert!(shim::audio_resampler_comp_input_rate(core::ptr::null(), 48_000).is_nan());
     }
 }
 
@@ -497,6 +493,26 @@ proptest! {
     fn dead_band_matches_c(error in any::<i64>(), enabled in any::<bool>()) {
         let mut sides = Sides::new(Compensation { enabled, vc1: 3.0, vc2: 4.0, ..Compensation::default() });
         sides.set_error(error)?;
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(20_000)))]
+
+    /// The delta alone, over every correction the clamp allows at any rate.
+    #[test]
+    fn delta_matches_c(rate in 1u32..=u32::MAX, fraction in -1.0f64..=1.0) {
+        let vc1 = fraction * MAX_PPM * 1e-6 * f64::from(rate);
+        let sides = Sides::new(Compensation { enabled: true, engaged: true, vc1, ..Compensation::default() });
+        // SAFETY: valid structs.
+        let (c_delta, s_delta) = unsafe {
+            (
+                c::oracle_audio_resampler_comp_delta(&sides.oracle, rate),
+                shim::audio_resampler_comp_delta(&sides.shim, rate),
+            )
+        };
+        prop_assert_eq!(s_delta, c_delta);
+        prop_assert_eq!(core_::delta(&sides.core, rate), c_delta);
     }
 }
 

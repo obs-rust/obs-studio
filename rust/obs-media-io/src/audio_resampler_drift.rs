@@ -10,10 +10,12 @@
 //!   lag-lead loop filter turns the error the source reports into a slight
 //!   resampling ratio, the way a PLL locks to a reference. [`set_error`]
 //!   takes the error less the dead band ([`DEAD_BAND_NS`]); [`step`] advances
-//!   the filter by a packet and gives the `sample_delta` for
-//!   `swr_set_compensation()`; [`count`] keeps the sample counts while it is
-//!   engaged and [`drift_report`] gives the estimated input rate logged when
-//!   the resampler is destroyed.
+//!   the filter by a packet and says whether a delta is set (and whether it
+//!   engages, which the C logs first); [`delta`] then gives the
+//!   `sample_delta` for `swr_set_compensation()`; [`count`] keeps the sample
+//!   counts while it is engaged; [`reports_drift`] gates the report logged
+//!   when the resampler is destroyed and [`input_rate`] gives its estimated
+//!   input rate.
 //! - [`output_frames`]: the room the compensation needs.
 //!
 //! `audio-resampler-ffmpeg.c` keeps every libswresample and libavutil call
@@ -104,22 +106,16 @@ pub struct Compensation {
     pub output_samples: u64,
 }
 
-/// `enum audio_resampler_comp_action`, with the delta beside it.
+/// `enum audio_resampler_comp_action`: what follows a step.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     /// `AUDIO_RESAMPLER_COMP_IDLE`: not engaged, and the error is 0.
     Idle,
     /// `AUDIO_RESAMPLER_COMP_ENGAGE`: the error left the dead band for the
-    /// first time; log it, then set the delta.
-    Engage {
-        /// The `sample_delta` for `swr_set_compensation()`.
-        delta: c_int,
-    },
-    /// `AUDIO_RESAMPLER_COMP_SET`: set the delta.
-    Set {
-        /// The `sample_delta` for `swr_set_compensation()`.
-        delta: c_int,
-    },
+    /// first time; log it, then set the [`delta`].
+    Engage,
+    /// `AUDIO_RESAMPLER_COMP_SET`: set the [`delta`].
+    Set,
 }
 
 impl Action {
@@ -127,16 +123,8 @@ impl Action {
     pub fn to_c(self) -> u32 {
         match self {
             Self::Idle => 0,
-            Self::Engage { .. } => 1,
-            Self::Set { .. } => 2,
-        }
-    }
-
-    /// The delta, unless [`Action::Idle`].
-    pub fn delta(self) -> Option<c_int> {
-        match self {
-            Self::Idle => None,
-            Self::Engage { delta } | Self::Set { delta } => Some(delta),
+            Self::Engage => 1,
+            Self::Set => 2,
         }
     }
 }
@@ -219,9 +207,8 @@ fn round_to_int(value: f64) -> c_int {
 /// `audio_resampler_comp_step()`: one step of the lag-lead loop filter over
 /// `in_frames` frames at `input_freq`. Both states advance, clamped to
 /// [`MAX_PPM`] of the input rate. While not engaged and the error is 0,
-/// nothing more happens; otherwise it engages (once) and gives the delta:
-/// a positive drift (the device delivers too many samples) drops samples,
-/// a negative delta.
+/// nothing more happens; otherwise it engages (once), and the caller sets
+/// the [`delta`].
 pub fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Action {
     let fs = f64::from(input_freq);
     let max = MAX_PPM * 1e-6 * fs;
@@ -236,20 +223,23 @@ pub fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Action {
     c.vc1 = clamp_drift(c.vc1 + ic1 / C1 * f64::from(in_frames), max);
     c.vc2 = clamp_drift(c.vc2 + ic2 / C2 * f64::from(in_frames), max);
 
-    let engage = !c.engaged;
-    if engage {
-        if c.error_ns == 0 {
-            return Action::Idle;
-        }
-        c.engaged = true;
+    if c.engaged {
+        return Action::Set;
     }
+    if c.error_ns == 0 {
+        return Action::Idle;
+    }
+    c.engaged = true;
+    Action::Engage
+}
 
-    let delta = round_to_int(c.vc1 * f64::from(DISTANCE) / fs).wrapping_neg();
-    if engage {
-        Action::Engage { delta }
-    } else {
-        Action::Set { delta }
-    }
+/// `audio_resampler_comp_delta()`: the `sample_delta` for
+/// `swr_set_compensation()` over [`DISTANCE`] samples from the correction at
+/// `input_freq`. A positive drift (the device delivers too many samples)
+/// drops samples, a negative delta.
+pub fn delta(c: &Compensation, input_freq: u32) -> c_int {
+    let fs = f64::from(input_freq);
+    round_to_int(c.vc1 * f64::from(DISTANCE) / fs).wrapping_neg()
 }
 
 /// `audio_resampler_output_frames()`: `estimated`, padded by 1/512 and 2
@@ -274,13 +264,17 @@ pub fn count(c: &mut Compensation, in_frames: u32, converted: c_int) {
     }
 }
 
-/// `audio_resampler_comp_drift_report()`: when engaged with output counted,
-/// the input rate the counts give at `output_freq` (divided first, as the
-/// C).
+/// `audio_resampler_comp_reports_drift()`: whether the resampler reports
+/// the drift when it is destroyed: engaged, with output counted.
+pub fn reports_drift(c: &Compensation) -> bool {
+    c.engaged && c.output_samples != 0
+}
+
+/// `audio_resampler_comp_input_rate()`: the input rate the counts give at
+/// `output_freq` (divided first, as the C). Asked only when
+/// [`reports_drift`]; with no output counted it is the C's division by 0
+/// (infinity, or NaN with no input either).
 #[allow(clippy::as_conversions)] // (double) of the uint64_t counts
-pub fn drift_report(c: &Compensation, output_freq: u32) -> Option<f64> {
-    if !(c.engaged && c.output_samples != 0) {
-        return None;
-    }
-    Some(c.input_samples as f64 / c.output_samples as f64 * f64::from(output_freq))
+pub fn input_rate(c: &Compensation, output_freq: u32) -> f64 {
+    c.input_samples as f64 / c.output_samples as f64 * f64::from(output_freq)
 }

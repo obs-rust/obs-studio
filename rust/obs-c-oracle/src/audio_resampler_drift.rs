@@ -66,15 +66,12 @@ unsafe extern "C" {
         c: *mut Comp,
         input_freq: u32,
         in_frames: u32,
-        delta: *mut c_int,
     ) -> c_uint;
+    pub fn oracle_audio_resampler_comp_delta(c: *const Comp, input_freq: u32) -> c_int;
     pub fn oracle_audio_resampler_output_frames(estimated: c_int, engaged: bool) -> c_int;
     pub fn oracle_audio_resampler_comp_count(c: *mut Comp, in_frames: u32, converted: c_int);
-    pub fn oracle_audio_resampler_comp_drift_report(
-        c: *const Comp,
-        output_freq: u32,
-        input_rate: *mut f64,
-    ) -> bool;
+    pub fn oracle_audio_resampler_comp_reports_drift(c: *const Comp) -> bool;
+    pub fn oracle_audio_resampler_comp_input_rate(c: *const Comp, output_freq: u32) -> f64;
     /// The value at `which` in [`INT_NAMES`], or -1 past the end.
     pub fn oracle_audio_resampler_drift_int(which: usize) -> i64;
     /// The value at `which` in [`DOUBLE_NAMES`], or -1 past the end.
