@@ -205,8 +205,66 @@ impl Tool for SourceTool {
     }
 
     fn call(&self, arguments: &Value) -> Result<String, String> {
-        let _ = (arguments, &self.op, &self.backend);
-        todo!("source tools (#3286)")
+        let result = match self.op {
+            Op::List => {
+                let sources: Vec<Value> = self
+                    .backend
+                    .sources()
+                    .into_iter()
+                    .map(|s| json!({ "name": s.name, "kind": s.kind }))
+                    .collect();
+                json!({ "sources": sources })
+            }
+            Op::Create => {
+                let kind = str_arg(arguments, "kind")?;
+                let name = str_arg(arguments, "name")?;
+                let settings = object_arg(arguments, "settings")?;
+                self.backend.create(kind, name, settings)?;
+                json!({ "name": name, "kind": kind })
+            }
+            Op::SetSettings => {
+                let name = str_arg(arguments, "name")?;
+                let settings = object_arg(arguments, "settings")?;
+                self.backend.set_settings(name, settings)?;
+                json!({ "name": name })
+            }
+            Op::ItemSetVisible => {
+                let scene = str_arg(arguments, "scene")?;
+                let source = str_arg(arguments, "source")?;
+                let visible = arguments
+                    .get("visible")
+                    .and_then(Value::as_bool)
+                    .ok_or("argument `visible` must be a boolean")?;
+                self.backend.set_item_visible(scene, source, visible)?;
+                json!({ "scene": scene, "source": source, "visible": visible })
+            }
+            Op::ItemSetTransform => {
+                let scene = str_arg(arguments, "scene")?;
+                let source = str_arg(arguments, "source")?;
+                let rotation = match arguments.get("rotation") {
+                    None => None,
+                    Some(v) => Some(
+                        v.as_f64()
+                            .filter(|n| n.is_finite())
+                            .ok_or("argument `rotation` must be a number")?,
+                    ),
+                };
+                let transform = Transform {
+                    position: pair_arg(arguments, "position")?,
+                    scale: pair_arg(arguments, "scale")?,
+                    rotation,
+                };
+                if transform == Transform::default() {
+                    return Err("give at least one of `position`, `scale` or `rotation`".into());
+                }
+                self.backend.set_item_transform(scene, source, &transform)?;
+                let mut out = Map::new();
+                out.insert("scene".into(), scene.into());
+                out.insert("source".into(), source.into());
+                json!(out)
+            }
+        };
+        Ok(result.to_string())
     }
 }
 
