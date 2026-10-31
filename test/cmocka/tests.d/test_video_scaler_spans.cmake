@@ -1,0 +1,3 @@
+add_executable(test_video_scaler_spans test_video_scaler_spans.c)
+add_dependencies(cmocka-tests test_video_scaler_spans)
+add_test(test_video_scaler_spans ${CMAKE_CURRENT_BINARY_DIR}/test_video_scaler_spans)
