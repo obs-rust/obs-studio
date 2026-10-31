@@ -4,10 +4,13 @@
 //! `audio-monitoring/pulse/pulseaudio-stream-flags.c.h`, [`pulse_format`]
 //! that of `audio-monitoring/pulse/pulseaudio-monitor-format.c.h`, and
 //! [`pulse_monitor`] that of `audio-monitoring/pulse/pulseaudio-monitor-steps.c.h`
-//! (the monitor's open and write steps of `pulseaudio-output.c`), and
+//! (the monitor's open and write steps of `pulseaudio-output.c`),
 //! [`monitor_delay`] that of `audio-monitoring/monitor-delay.c.h` (the stale
 //! cut and the front packet's verdict of the WASAPI monitor's
-//! `process_audio_delay()`). Their C ABI shims live in [`ffi`].
+//! `process_audio_delay()`) and `audio-monitoring/monitor-video-sync.c.h`
+//! (its video stall tracker), and [`speaker_layout`] that of
+//! `audio-monitoring/monitor-speaker-layout.c.h` (the speaker layout the
+//! WASAPI monitor resamples to). Their C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 

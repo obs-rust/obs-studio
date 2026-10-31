@@ -1,6 +1,7 @@
-//! Safe core of `libobs/audio-monitoring/monitor-delay.c.h`: the delay
-//! decisions of the WASAPI monitor's `process_audio_delay()`
-//! (`win32/wasapi-output.c`).
+//! Safe core of `libobs/audio-monitoring/monitor-delay.c.h` and
+//! `monitor-video-sync.c.h`: the delay decisions of the WASAPI monitor's
+//! `process_audio_delay()` (`win32/wasapi-output.c`) and its video stall
+//! tracker.
 //!
 //! A monitored source with video has its audio queued, and each packet at
 //! the front of the queue is held back, cut or played to stay in step with
@@ -20,9 +21,9 @@
 //! gate, both `util_mul_div64()` calls (the padding arrives here in
 //! nanoseconds), the "more are queued" test after the pops, the logs and the
 //! loop. The video stall count it passes to [`stalled`] comes from
-//! `audio_monitor_track_video_ts()`, which stays a `static inline` in
-//! `monitor-video-sync.h`. These keep no state, take no lock and call nothing
-//! in WASAPI or libobs.
+//! [`track_video_ts`] (`monitor-video-sync.c`), which it calls for every
+//! packet with the monitor's two fields. These keep no state of their own,
+//! take no lock and call nothing in WASAPI or libobs.
 //!
 //! The subtractions wrap and the difference is the two timestamps cast to
 //! `i64`, as the C's `uint64_t` arithmetic and casts do. Nothing here can
