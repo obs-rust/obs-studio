@@ -10,3 +10,5 @@ mod pulse_format_parity;
 mod pulse_monitor;
 mod pulse_monitor_parity;
 mod pulse_parity;
+mod speaker_layout;
+mod video_sync;

@@ -126,6 +126,23 @@ pub fn stalled(time_since_prev: u64) -> bool {
     time_since_prev > VIDEO_STALL_NS
 }
 
+/// `audio_monitor_track_video_ts()` (`monitor-video-sync.c`): counts how
+/// long the source's video has stood still, for [`stalled`]. Called for
+/// every packet with the source's last video timestamp and the packet's
+/// duration. `prev_video_ts` 0 means no packet yet: the timestamp is stored
+/// and the count left as it is. The same timestamp adds the duration to
+/// `time_since_prev`, wrapping; any other stores it and resets the count.
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn track_video_ts(
+    prev_video_ts: &mut u64,
+    time_since_prev: &mut u64,
+    last_frame_ts: u64,
+    packet_ns: u64,
+) {
+    let _ = (prev_video_ts, time_since_prev, last_frame_ts, packet_ns);
+    todo!()
+}
+
 /// The front packet's verdict from the gate (`bad_diff`) and the difference:
 /// hold past [`SYNC_NS`] ahead, drag past it behind, else play; play whenever
 /// the gate is shut.
