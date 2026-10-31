@@ -5411,6 +5411,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_video_scaler_plan_steps": {
+      "sources": [
+        "test/cmocka/test_video_scaler_plan_steps.c",
+        "libobs/media-io/video-scaler-plan.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/media-io/video-scaler-plan.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_video_stats_race": {
       "sources": [
         "test/cmocka/test_video_stats_race.c"
@@ -7802,6 +7818,12 @@
     },
     "test_video_pacing_steps": {
       "target": "test_video_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_scaler_plan_steps": {
+      "target": "test_video_scaler_plan_steps",
       "command": [
         "${target}"
       ]

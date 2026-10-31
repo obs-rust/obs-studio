@@ -79,58 +79,19 @@ static inline enum AVPixelFormat get_ffmpeg_video_format(enum video_format forma
 	}
 }
 
-static inline int get_ffmpeg_scale_type(enum video_scale_type type)
-{
-	switch (type) {
-	case VIDEO_SCALE_DEFAULT:
-		return SWS_FAST_BILINEAR;
-	case VIDEO_SCALE_POINT:
-		return SWS_POINT;
-	case VIDEO_SCALE_FAST_BILINEAR:
-		return SWS_FAST_BILINEAR;
-	case VIDEO_SCALE_BILINEAR:
-		return SWS_BILINEAR | SWS_AREA;
-	case VIDEO_SCALE_BICUBIC:
-		return SWS_BICUBIC;
-	}
-
-	return SWS_POINT;
-}
+/* video-scaler-plan.c gives the swscale values as their values. */
+_Static_assert(VIDEO_SCALER_SWS_FAST_BILINEAR == SWS_FAST_BILINEAR, "SWS_FAST_BILINEAR");
+_Static_assert(VIDEO_SCALER_SWS_BILINEAR == SWS_BILINEAR, "SWS_BILINEAR");
+_Static_assert(VIDEO_SCALER_SWS_BICUBIC == SWS_BICUBIC, "SWS_BICUBIC");
+_Static_assert(VIDEO_SCALER_SWS_POINT == SWS_POINT, "SWS_POINT");
+_Static_assert(VIDEO_SCALER_SWS_AREA == SWS_AREA, "SWS_AREA");
+_Static_assert(VIDEO_SCALER_SWS_CS_ITU709 == SWS_CS_ITU709, "SWS_CS_ITU709");
+_Static_assert(VIDEO_SCALER_SWS_CS_ITU601 == SWS_CS_ITU601, "SWS_CS_ITU601");
+_Static_assert(VIDEO_SCALER_SWS_CS_BT2020 == SWS_CS_BT2020, "SWS_CS_BT2020");
 
 static inline const int *get_ffmpeg_coeffs(enum video_colorspace cs)
 {
-	int colorspace = SWS_CS_ITU709;
-
-	switch (cs) {
-	case VIDEO_CS_DEFAULT:
-	case VIDEO_CS_709:
-	case VIDEO_CS_SRGB:
-	default:
-		colorspace = SWS_CS_ITU709;
-		break;
-	case VIDEO_CS_601:
-		colorspace = SWS_CS_ITU601;
-		break;
-	case VIDEO_CS_2100_PQ:
-	case VIDEO_CS_2100_HLG:
-		colorspace = SWS_CS_BT2020;
-	}
-
-	return sws_getCoefficients(colorspace);
-}
-
-static inline int get_ffmpeg_range_type(enum video_range_type type)
-{
-	switch (type) {
-	case VIDEO_RANGE_DEFAULT:
-		return 0;
-	case VIDEO_RANGE_PARTIAL:
-		return 0;
-	case VIDEO_RANGE_FULL:
-		return 1;
-	}
-
-	return 0;
+	return sws_getCoefficients(video_scaler_sws_colorspace(cs));
 }
 
 #define FIXED_1_0 (1 << 16)
@@ -140,11 +101,11 @@ int video_scaler_create(video_scaler_t **scaler_out, const struct video_scale_in
 {
 	enum AVPixelFormat format_src = get_ffmpeg_video_format(src->format);
 	enum AVPixelFormat format_dst = get_ffmpeg_video_format(dst->format);
-	int scale_type = get_ffmpeg_scale_type(type);
+	int scale_type = video_scaler_sws_flags(type);
 	const int *coeff_src = get_ffmpeg_coeffs(src->colorspace);
 	const int *coeff_dst = get_ffmpeg_coeffs(dst->colorspace);
-	int range_src = get_ffmpeg_range_type(src->range);
-	int range_dst = get_ffmpeg_range_type(dst->range);
+	int range_src = video_scaler_sws_range(src->range);
+	int range_dst = video_scaler_sws_range(dst->range);
 	struct video_scaler *scaler;
 	int ret;
 
@@ -158,17 +119,8 @@ int video_scaler_create(video_scaler_t **scaler_out, const struct video_scale_in
 	scaler->src_height = (int)src->height;
 
 	const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(format_dst);
-	bool has_plane[4] = {0};
-	for (size_t i = 0; i < 4; i++)
-		has_plane[desc->comp[i].plane] = 1;
-
-	scaler->dst_heights[0] = (int)dst->height;
-	for (size_t i = 1; i < 4; ++i) {
-		if (has_plane[i]) {
-			const int s = (i == 1 || i == 2) ? desc->log2_chroma_h : 0;
-			scaler->dst_heights[i] = (int)(dst->height >> s);
-		}
-	}
+	const int comp_planes[4] = {desc->comp[0].plane, desc->comp[1].plane, desc->comp[2].plane, desc->comp[3].plane};
+	video_scaler_plane_heights(scaler->dst_heights, dst->height, comp_planes, &desc->log2_chroma_h);
 
 	ret = av_image_alloc(scaler->dst_pointers, scaler->dst_linesizes, (int)dst->width, (int)dst->height, format_dst,
 			     32);
@@ -247,15 +199,12 @@ bool video_scaler_scale(video_scaler_t *scaler, uint8_t *output[], const uint32_
 		uint8_t *dst = output[plane];
 		const uint8_t *src = scaler->dst_pointers[plane];
 		const size_t height = (size_t)scaler->dst_heights[plane];
-		if (scaled_linesize == plane_linesize) {
-			memcpy(dst, src, scaled_linesize * height);
+		size_t size;
+		if (video_scaler_plane_copy(scaled_linesize, plane_linesize, height, &size)) {
+			memcpy(dst, src, size);
 		} else {
-			size_t linesize = scaled_linesize;
-			if (linesize > plane_linesize)
-				linesize = plane_linesize;
-
 			for (size_t y = 0; y < height; y++) {
-				memcpy(dst, src, linesize);
+				memcpy(dst, src, size);
 				dst += plane_linesize;
 				src += scaled_linesize;
 			}
