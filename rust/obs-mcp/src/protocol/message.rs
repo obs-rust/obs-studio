@@ -64,7 +64,12 @@ impl Response {
     /// A success response.
     #[must_use]
     pub fn ok(id: Option<Id>, result: Value) -> Self {
-        Self { jsonrpc: "2.0".into(), id, result: Some(result), error: None }
+        Self {
+            jsonrpc: "2.0".into(),
+            id,
+            result: Some(result),
+            error: None,
+        }
     }
 
     /// An error response.
@@ -74,7 +79,10 @@ impl Response {
             jsonrpc: "2.0".into(),
             id,
             result: None,
-            error: Some(ErrorObject { code, message: message.into() }),
+            error: Some(ErrorObject {
+                code,
+                message: message.into(),
+            }),
         }
     }
 }

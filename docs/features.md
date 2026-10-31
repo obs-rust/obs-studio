@@ -2664,3 +2664,10 @@ area.
   stop-gap*, 2026-10-29. Issue
   [#2211](https://github.com/obs-rust/obs-studio/issues/2211), PR
   [#2906](https://github.com/obs-rust/obs-studio/pull/2906).
+- Groundwork for an MCP server inside OBS that calls libobs directly, with no
+  obs-websocket in between: the new `obs-mcp` crate answers the MCP handshake
+  (`initialize`, `ping`, an empty `tools/list`) over newline-delimited
+  JSON-RPC. It is not wired into the app yet, so nothing changes for users.
+  *All platforms*, 2026-10-31. Issue
+  [#3284](https://github.com/obs-rust/obs-studio/issues/3284), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

@@ -1,6 +1,6 @@
 //! The tool trait and registry.
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// A tool the model can call. Implementations will wrap libobs operations.
 pub trait Tool {
@@ -33,20 +33,30 @@ impl ToolRegistry {
 
     /// Registers `tool`, replacing any tool with the same name.
     pub fn register(&mut self, tool: Box<dyn Tool>) {
-        let _ = (tool, &mut self.tools);
-        todo!("register")
+        self.tools.retain(|t| t.name() != tool.name());
+        self.tools.push(tool);
     }
 
     /// The `tools/list` result.
     #[must_use]
     pub fn list(&self) -> Value {
-        todo!("list")
+        let tools: Vec<Value> = self
+            .tools
+            .iter()
+            .map(|t| {
+                json!({
+                    "name": t.name(),
+                    "description": t.description(),
+                    "inputSchema": t.input_schema(),
+                })
+            })
+            .collect();
+        json!({ "tools": tools })
     }
 
     /// Looks a tool up by name.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&dyn Tool> {
-        let _ = (name, &self.tools);
-        todo!("get")
+        self.tools.iter().find(|t| t.name() == name).map(|t| &**t)
     }
 }

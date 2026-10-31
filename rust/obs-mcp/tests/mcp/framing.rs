@@ -6,7 +6,11 @@ use serde_json::json;
 #[test]
 fn write_is_one_line_ending_in_newline() {
     let mut out = Vec::new();
-    write_message(&mut out, &Response::ok(Some(Id::Number(7)), json!({"a": 1}))).unwrap();
+    write_message(
+        &mut out,
+        &Response::ok(Some(Id::Number(7)), json!({"a": 1})),
+    )
+    .unwrap();
     let text = String::from_utf8(out).unwrap();
     assert!(text.ends_with('\n'));
     assert_eq!(text.matches('\n').count(), 1);
@@ -47,8 +51,15 @@ fn read_invalid_request_keeps_id() {
         "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":5}\n",
         "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"ping\",\"params\":4}\n",
     ] {
-        let resp = read_message(&mut line.as_bytes()).unwrap().unwrap().unwrap_err();
-        assert_eq!(resp.error.unwrap().code, error_code::INVALID_REQUEST, "{line}");
+        let resp = read_message(&mut line.as_bytes())
+            .unwrap()
+            .unwrap()
+            .unwrap_err();
+        assert_eq!(
+            resp.error.unwrap().code,
+            error_code::INVALID_REQUEST,
+            "{line}"
+        );
     }
     let resp = read_message(&mut "{\"jsonrpc\":\"2.0\",\"id\":3}\n".as_bytes())
         .unwrap()

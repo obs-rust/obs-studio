@@ -144,7 +144,10 @@ fn constants_match_the_c() {
     for (name, value) in pairs {
         assert_eq!(c_constant(name), value, "{name}");
     }
-    assert_eq!(c_constant("OBS_MODULE_LOAD_RULES_STOP"), i64::from(ROUTE_STOP));
+    assert_eq!(
+        c_constant("OBS_MODULE_LOAD_RULES_STOP"),
+        i64::from(ROUTE_STOP)
+    );
     assert_eq!(
         c_constant("OBS_MODULE_LOAD_RULES_CORE_CONTINUES"),
         i64::from(ROUTE_CORE_CONTINUES)

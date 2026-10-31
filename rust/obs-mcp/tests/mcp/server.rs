@@ -38,7 +38,10 @@ fn initialized_notification_sets_state() {
 #[test]
 fn ping_returns_empty_result() {
     let out = roundtrip("{\"jsonrpc\":\"2.0\",\"id\":\"p\",\"method\":\"ping\"}\n");
-    assert_eq!(out, vec![json!({"jsonrpc": "2.0", "id": "p", "result": {}})]);
+    assert_eq!(
+        out,
+        vec![json!({"jsonrpc": "2.0", "id": "p", "result": {}})]
+    );
 }
 
 #[test]
@@ -59,7 +62,10 @@ impl Tool for Echo {
         json!({"type": "object"})
     }
     fn call(&self, arguments: &Value) -> Result<String, String> {
-        arguments["text"].as_str().map(str::to_owned).ok_or_else(|| "missing text".into())
+        arguments["text"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| "missing text".into())
     }
 }
 
@@ -78,7 +84,10 @@ fn call(server: &mut Server, line: &str) -> Value {
 #[test]
 fn registered_tool_is_listed_and_callable() {
     let mut s = echo_server();
-    let list = call(&mut s, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}\n");
+    let list = call(
+        &mut s,
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}\n",
+    );
     assert_eq!(
         list["result"]["tools"],
         json!([{"name": "echo", "description": "Echoes text", "inputSchema": {"type": "object"}}])
@@ -88,7 +97,10 @@ fn registered_tool_is_listed_and_callable() {
         r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"echo","arguments":{"text":"hi"}}}
 "#,
     );
-    assert_eq!(ok["result"], json!({"content": [{"type": "text", "text": "hi"}], "isError": false}));
+    assert_eq!(
+        ok["result"],
+        json!({"content": [{"type": "text", "text": "hi"}], "isError": false})
+    );
     let bad = call(
         &mut s,
         r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"echo","arguments":{}}}
