@@ -112,6 +112,31 @@ ZCCACHE_REFUSAL = (
 )
 
 
+# Tests whose checks depend on wall-clock timing and fail when four ASan
+# processes share four cores (dispatch 41242258179, #3238). They hold the
+# ctest RESOURCE_LOCK "timing", so the asan pool runs them alone after the
+# others; in Tier 2, ctest only keeps them from overlapping each other.
+TIMING_TESTS_D = ("test_async_delay_audio", "test_dock_proportions", "test_slideshow_mem_cap")
+TIMING_TESTS_GRAPH = ("test_deinterlace_mode_load",)
+TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+
+
+class TimingLockTest(unittest.TestCase):
+    def test_timing_tests_hold_the_timing_lock(self):
+        for name in TIMING_TESTS_D:
+            text = (ROOT / "test" / "cmocka" / "tests.d" / f"{name}.cmake").read_text(encoding="utf-8")
+            self.assertRegex(text, rf"set_tests_properties\(\s*{name}\s[^)]*RESOURCE_LOCK\s+timing", name)
+        tests = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]
+        for name in TIMING_TESTS_GRAPH:
+            self.assertIn("timing", tests[name].get("resource_locks", []), name)
+
+    def test_a_resource_lock_runs_alone_in_the_pool(self):
+        payload = json.dumps(
+            {"tests": [{"name": "t", "command": ["/b/t"], "properties": [{"name": "RESOURCE_LOCK", "value": ["timing"]}]}]}
+        )
+        self.assertTrue(load_module().ctest_tests(payload)[0].serial)
+
+
 class SanitizeHarnessTest(unittest.TestCase):
     def setUp(self):
         self.module = load_module()
