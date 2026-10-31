@@ -82,6 +82,12 @@ class CrossConversionRatchet(unittest.TestCase):
         its RED (before this marker) is "no group named", not a compiler error."""
         self.assertIn("obs-amf-test-cross", opted_in(source()))
 
+    def test_the_measured_slices_stay_opted_in(self) -> None:
+        """The slices already burned down stay opted in, so a later edit that
+        drops the marker cannot quietly take them back out of the ratchet."""
+        slices = {"coreaudio-encoder-cross", "obs-text-cross"}
+        self.assertLessEqual(slices, opted_in(source()))
+
 
 if __name__ == "__main__":
     unittest.main()
