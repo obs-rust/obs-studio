@@ -10,6 +10,7 @@ workflow runs it daily, since the release data changes without a commit here.
 """
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -17,9 +18,28 @@ from pathlib import Path
 import cef_support
 
 FIXTURE = json.loads((Path(__file__).resolve().parent / "fixtures" / "chrome-extended-versions.json").read_text())
+WORKFLOW = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "scheduled.yaml"
+
+
+def cef_support_job(text: str) -> str:
+    """The `cef-support` job of scheduled.yaml, without its neighbours."""
+    match = re.search(r"^  cef-support:\n(.*?)(?=^  [a-z0-9-]+:\n)", text, re.S | re.M)
+    assert match, "scheduled.yaml has no cef-support job"
+    return match.group(1)
 
 
 class CefSupport(unittest.TestCase):
+    def test_the_job_does_not_fail_the_nightly_run(self):
+        """A red run marks every code scanning configuration "Workflow runs failing" (#3144)."""
+        self.assertIn("\n    continue-on-error: true\n", cef_support_job(WORKFLOW.read_text(encoding="utf-8")))
+
+    def test_the_continue_on_error_line_says_why(self):
+        """The reminder for #2380 stays visible, and the line is removed when #1864 lands."""
+        job = cef_support_job(WORKFLOW.read_text(encoding="utf-8"))
+        before = job.split("continue-on-error:", 1)[0]
+        self.assertIn("#2380", before)
+        self.assertIn("#1864", before)
+
     def test_extended_stable_branch_from_the_release_data(self):
         self.assertEqual(cef_support.extended_stable(FIXTURE), (156, 8078))
 
