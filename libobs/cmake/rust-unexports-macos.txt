@@ -95,6 +95,10 @@ _nsgif_blocks_colour_table_decode
 _nsgif_frame_pixels_decode
 _nsgif_frame_restore_bg
 _nsgif_frame_recover
+# graphics/effect-param-types.c: effect-parser.c calls them inside libobs. Not EXPORT.
+_obs_effect_param_array_shape
+_obs_effect_param_route
+_obs_effect_param_type
 # graphics/graphics-immediate.c: graphics.c calls them inside libobs. Not EXPORT.
 _gs_immediate_cut
 _gs_immediate_mismatch

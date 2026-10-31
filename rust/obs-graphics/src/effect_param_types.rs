@@ -32,12 +32,14 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-#[allow(unused_imports)]
 use core::ffi::c_char;
+
+use crate::shader_param_names::shader_param_type;
 
 /// The default-value parser of a parameter (`enum obs_effect_param_route`),
 /// in the order `ep_parse_param_assignment_val()` tests them.
@@ -78,16 +80,24 @@ pub struct Shape {
 /// `obs_effect_param_type()`: the `GS_SHADER_PARAM_*` type of `name`.
 #[must_use]
 pub fn param_type(name: &[u8]) -> i32 {
-    let _ = name;
-    todo!()
+    shader_param_type(name)
 }
 
 /// `obs_effect_param_route()`: the parser of a parameter of type `name`, a
 /// texture when `is_texture`.
 #[must_use]
 pub fn route(name: &[u8], is_texture: bool) -> Route {
-    let _ = (name, is_texture);
-    todo!()
+    match name {
+        _ if is_texture => Route::Texture,
+        b"int" => Route::Int,
+        b"float" => Route::Float,
+        // astrcmp_n(type, prefix, len): any name that starts with it.
+        n if n.starts_with(b"int") => Route::IntArray,
+        n if n.starts_with(b"float") => Route::FloatArray,
+        n if n.starts_with(b"string") => Route::String,
+        b"bool" => Route::Bool,
+        _ => Route::Invalid,
+    }
 }
 
 /// `obs_effect_param_array_shape()`: the shape of `name` after its `float`
@@ -95,6 +105,31 @@ pub fn route(name: &[u8], is_texture: bool) -> Route {
 /// terminator, `0`.
 #[must_use]
 pub fn array_shape(name: &[u8], is_float: bool) -> Shape {
-    let _ = (name, is_float);
-    todo!()
+    let dims = name.get(if is_float { 5 } else { 3 }..).unwrap_or_default();
+    let at = |i: usize| dims.get(i).copied().unwrap_or(0);
+
+    let rows = at(0);
+    let mut shape = Shape {
+        count: digit(rows),
+        bad_rows: !is_dim(rows),
+        bad_cols: false,
+    };
+    // The column digit is read only after an 'x'.
+    if at(1) == b'x' {
+        let cols = at(2);
+        shape.bad_cols = !is_dim(cols);
+        // Each digit is within -176..=207, so the product fits.
+        shape.count = shape.count.wrapping_mul(digit(cols));
+    }
+    shape
+}
+
+/// A row or column digit, `'1'` to `'4'`.
+fn is_dim(b: u8) -> bool {
+    (b'1'..=b'4').contains(&b)
+}
+
+/// `b - '0'` with `b` a C `char`: signed or not as on the target.
+fn digit(b: u8) -> i32 {
+    i32::from(b as c_char).wrapping_sub(i32::from(b'0'))
 }
