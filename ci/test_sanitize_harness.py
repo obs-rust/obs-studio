@@ -350,6 +350,91 @@ class SanitizeHarnessTest(unittest.TestCase):
         self.assertEqual(builds, [None], "a source error must not be retried")
 
 
+# A stub test: notes how many tests are running when it starts (the files in
+# running/), stays a moment, prints a line and exits 0.
+ISOLATION_STUB = """\
+r="@RUNNING@"
+touch "$r/@NAME@"
+echo "@NAME@ $(ls "$r" | wc -l | tr -d ' ')" >> "@CONC@"
+sleep 0.2
+echo "output of @NAME@"
+rm -f "$r/@NAME@"
+exit 0
+"""
+
+
+class TestIsolationTest(unittest.TestCase):
+    """What a pooled test shares (#3238, after #3251). On the one shared Xvfb
+    display, tests side by side broke test_xshm_monitor_late in its setup
+    ("cannot add RandR monitors", dispatch 41238464885): each asan test gets
+    its own X server, as Tier 2 gives each test its own through xvfb-run.
+    tsan and valgrind stay one at a time until they are measured in a pool."""
+
+    def setUp(self):
+        self.module = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "running").mkdir()
+        build = self.root / "build"
+        self.layout = self.module.Layout(
+            root=self.root, out=self.root / "asan", build=build, inst=build / "rundir", bin_dir=self.root / "bin"
+        )
+
+    def stub(self, name: str, serial: bool = False):
+        body = (
+            ISOLATION_STUB.replace("@RUNNING@", str(self.root / "running"))
+            .replace("@CONC@", str(self.root / "concurrency.log"))
+            .replace("@NAME@", name)
+        )
+        path = write_stub(self.root, name, body)
+        return self.module.Test(name=name, workdir=str(self.root), command=(str(path),), serial=serial)
+
+    def test_each_test_gets_its_own_x_server(self):
+        fake = self.root / "fake-bin"
+        fake.mkdir()
+        record = self.root / "xvfb-run.log"
+        # xvfb-run -n <number> -s <screen> <command...>
+        write_stub(fake, "xvfb-run", f'echo "$1 $2 ${{DISPLAY:-none}}" >> "{record}"\nshift 4\nexec "$@"\n')
+        tests = [self.stub(f"test_p{i}") for i in range(4)] + [self.stub("test_serial", serial=True)]
+        env = {"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}", "DISPLAY": ":99"}
+        with patch.dict(os.environ, env), redirect_stdout(io.StringIO()):
+            summary = self.module.run_tests("asan", tests, self.layout, jobs=2, private_displays=True)
+        self.assertEqual(summary, [f"test_p{i} exit=0" for i in range(4)] + ["test_serial exit=0"])
+        self.assertEqual((self.layout.out / "tests" / "test_p0.log").read_text(encoding="utf-8"), "output of test_p0\n")
+        rows = [line.split() for line in record.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(len(rows), 5, "every test, serial ones too, runs under its own xvfb-run")
+        self.assertTrue(all(flag == "-n" for flag, _, _ in rows))
+        self.assertEqual(len({number for _, number, _ in rows}), 5, "two tests got the same server number")
+        self.assertEqual({display for _, _, display in rows}, {"none"}, "a test inherited the shared DISPLAY")
+
+    def test_private_displays_and_pool_size_per_tool(self):
+        self.assertTrue(self.module.private_displays("asan"))
+        self.assertFalse(self.module.private_displays("tsan"))
+        self.assertFalse(self.module.private_displays("valgrind"))
+        with patch.dict(os.environ, {}):
+            os.environ.pop("SANITIZE_JOBS", None)
+            self.assertEqual(self.module.unit_test_jobs("asan"), os.cpu_count() or 1)
+            self.assertEqual(self.module.unit_test_jobs("tsan"), 1)
+            self.assertEqual(self.module.unit_test_jobs("valgrind"), 1)
+        with patch.dict(os.environ, {"SANITIZE_JOBS": "2"}):
+            self.assertEqual(self.module.unit_test_jobs("valgrind"), 2)
+
+    def test_run_unit_tests_uses_the_tool_settings(self):
+        seen = {}
+
+        def fake_run_tests(tool, tests, layout, runner=None, jobs=None, private_displays=False):
+            seen.update(tool=tool, jobs=jobs, private_displays=private_displays)
+            return []
+
+        with patch.object(self.module, "run_tests", fake_run_tests), patch.object(
+            self.module.subprocess, "run", return_value=self.module.subprocess.CompletedProcess([], 0, stdout='{"tests": []}')
+        ):
+            os.environ.pop("SANITIZE_JOBS", None)
+            self.module.run_unit_tests("valgrind", self.layout)
+        self.assertEqual(seen, {"tool": "valgrind", "jobs": 1, "private_displays": False})
+
+
 class ParallelUnitTestsTest(unittest.TestCase):
     """Unit tests run concurrently, serial-marked ones alone (#3251)."""
 
