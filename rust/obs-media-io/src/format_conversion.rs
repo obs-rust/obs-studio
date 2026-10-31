@@ -34,6 +34,14 @@ pub trait Source {
 pub trait Sink {
     /// Writes `bytes` at `offset`.
     fn write<const N: usize>(&mut self, offset: usize, bytes: [u8; N]);
+
+    /// The `len` bytes at `offset`, as a mutable slice.
+    ///
+    /// The compress conversions borrow each output row through this and then
+    /// index it, instead of calling [`write`](Sink::write) once per access:
+    /// the per-access cost, not the lane arithmetic, was what kept them 2-4x
+    /// over the C (#3004).
+    fn bytes_mut(&mut self, offset: usize, len: usize) -> &mut [u8];
 }
 
 impl Source for [u8] {
@@ -51,6 +59,10 @@ impl Source for [u8] {
 impl Sink for [u8] {
     fn write<const N: usize>(&mut self, offset: usize, bytes: [u8; N]) {
         self[offset..offset + N].copy_from_slice(&bytes);
+    }
+
+    fn bytes_mut(&mut self, offset: usize, len: usize) -> &mut [u8] {
+        &mut self[offset..offset + len]
     }
 }
 
@@ -77,55 +89,25 @@ fn at(base: usize, add: u32) -> usize {
     base.wrapping_add(add as usize)
 }
 
-/// The 16 bytes a UYVX block of 4 pixels covers in one row.
+/// The bytes one block of four UYVX pixels occupies, and reads, in a row.
 const BLOCK_BYTES: usize = 16;
 
-/// Channel `c` of each of the 4 UYVX pixels in `line`.
-fn channel(line: &[u8], c: usize) -> [u8; 4] {
-    [line[c], line[4 + c], line[8 + c], line[12 + c]]
+/// The four bytes of channel `c` in the four UYVX pixels at `at` in `row`.
+fn channel(row: &[u8], at: usize, c: usize) -> [u8; 4] {
+    [row[at + c], row[at + 4 + c], row[at + 8 + c], row[at + 12 + c]]
 }
 
-/// Channel `c` averaged over pixels 0-1 and 2-3 of `line1` and `line2`,
+/// Channel `c` averaged over pixels 0-1 and 2-3 of the two rows at `at`,
 /// `(a + b + c + d) >> 2`.
-fn average(line1: &[u8], line2: &[u8], c: usize) -> [u8; 2] {
+fn average(line1: &[u8], line2: &[u8], at: usize, c: usize) -> [u8; 2] {
     let avg = |p: usize| {
-        let sum = u16::from(line1[p + c])
-            + u16::from(line1[p + 4 + c])
-            + u16::from(line2[p + c])
-            + u16::from(line2[p + 4 + c]);
+        let sum = u16::from(line1[at + p + c])
+            + u16::from(line1[at + p + 4 + c])
+            + u16::from(line2[at + p + c])
+            + u16::from(line2[at + p + 4 + c]);
         (sum >> 2) as u8
     };
     [avg(0), avg(8)]
-}
-
-/// Visits UYVX `rows` two at a time and, in each, pixels `0..width` four at
-/// a time, passing the row, the pixel and the 16 bytes of those pixels in
-/// the row and the next one. `y += 2` and `x += 4` wrap, as in the C.
-///
-/// The 16 bytes of each row are borrowed from the input through
-/// [`Source::bytes`], not copied by [`Source::read`]: the two fixed-size
-/// copies per block were the same per-access cost #3111 removed from the
-/// decompress half.
-fn for_each_uyvx_block<S: Source + ?Sized>(
-    input: &S,
-    in_linesize: u32,
-    rows: Range<u32>,
-    width: u32,
-    mut f: impl FnMut(u32, u32, &[u8], &[u8]),
-) {
-    let mut y = rows.start;
-    while y < rows.end {
-        let y_pos = y.wrapping_mul(in_linesize) as usize;
-        let mut x = 0u32;
-        while x < width {
-            let img = at(y_pos, x.wrapping_mul(4));
-            let line1 = input.bytes(img, BLOCK_BYTES);
-            let line2 = input.bytes(at(img, in_linesize), BLOCK_BYTES);
-            f(y, x, line1, line2);
-            x = x.wrapping_add(4);
-        }
-        y = y.wrapping_add(2);
-    }
 }
 
 /// Packs UYVX rows `start_y..end_y`, two at a time, into planar I420:
@@ -136,6 +118,10 @@ fn for_each_uyvx_block<S: Source + ?Sized>(
 /// `min(in_linesize, out_linesize[0])` pixels, converted 4 at a time. Luma
 /// rows are `out_linesize[0]` apart and both chroma planes'
 /// `out_linesize[1]` apart: `out_linesize[2]` is not used.
+///
+/// The row pair and the chroma rows are borrowed once per `y` and written by
+/// index, instead of four [`Sink::write`] calls per block: that per-access
+/// cost, not the lane arithmetic, is what kept this 2-4x over the C (#3004).
 pub fn compress_uyvx_to_i420<S, D>(
     input: &S,
     in_linesize: u32,
@@ -150,27 +136,38 @@ pub fn compress_uyvx_to_i420<S, D>(
     let [lum, u, v] = output;
     let (lum_linesize, chroma_linesize) = (out_linesize[0], out_linesize[1]);
     let width = in_linesize.min(lum_linesize);
-    for_each_uyvx_block(
-        input,
-        in_linesize,
-        start_y..end_y,
-        width,
-        |y, x, line1, line2| {
-            let lum_pos0 = y.wrapping_mul(lum_linesize).wrapping_add(x);
-            let lum_pos1 = lum_pos0.wrapping_add(lum_linesize);
-            lum.write(lum_pos0 as usize, channel(line1, UYVX_Y));
-            lum.write(lum_pos1 as usize, channel(line2, UYVX_Y));
-
-            // The C packs U01 U23 V01 V23 into a native-endian uint32_t and
-            // stores its low and high halves as uint16_t.
-            let [u01, u23] = average(line1, line2, UYVX_U);
-            let [v01, v23] = average(line1, line2, UYVX_V);
-            let packed = u32::from_ne_bytes([u01, u23, v01, v23]);
-            let chroma_pos = ((y >> 1).wrapping_mul(chroma_linesize)).wrapping_add(x >> 1) as usize;
-            u.write(chroma_pos, (packed as u16).to_ne_bytes());
-            v.write(chroma_pos, ((packed >> 16) as u16).to_ne_bytes());
-        },
-    );
+    let blocks = width.div_ceil(4) as usize;
+    if blocks == 0 {
+        return;
+    }
+    let bytes = blocks * 4;
+    let lum_stride = lum_linesize as usize;
+    let mut y = start_y;
+    while y < end_y {
+        let in_pos = y.wrapping_mul(in_linesize) as usize;
+        let read = blocks * BLOCK_BYTES;
+        let line1 = input.bytes(in_pos, read);
+        let line2 = input.bytes(at(in_pos, in_linesize), read);
+        let lum_pos = y.wrapping_mul(lum_linesize) as usize;
+        // One slice covers the row pair, so a write past `lum_linesize` (a
+        // width that is not a multiple of 4) still lands where the C's does.
+        let luma = lum.bytes_mut(lum_pos, lum_stride + bytes);
+        let chroma_pos = (y >> 1).wrapping_mul(chroma_linesize) as usize;
+        let u_row = u.bytes_mut(chroma_pos, blocks * 2);
+        let v_row = v.bytes_mut(chroma_pos, blocks * 2);
+        for i in 0..blocks {
+            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
+            let luma_at = pixel;
+            luma[luma_at..luma_at + 4].copy_from_slice(&channel(line1, block, UYVX_Y));
+            luma[lum_stride + luma_at..lum_stride + luma_at + 4]
+                .copy_from_slice(&channel(line2, block, UYVX_Y));
+            let [u01, u23] = average(line1, line2, block, UYVX_U);
+            let [v01, v23] = average(line1, line2, block, UYVX_V);
+            u_row[i * 2..i * 2 + 2].copy_from_slice(&[u01, u23]);
+            v_row[i * 2..i * 2 + 2].copy_from_slice(&[v01, v23]);
+        }
+        y = y.wrapping_add(2);
+    }
 }
 
 /// Packs UYVX rows `start_y..end_y`, two at a time, into NV12: full-size
@@ -194,23 +191,33 @@ pub fn compress_uyvx_to_nv12<S, D>(
     let [lum, chroma] = output;
     let (lum_linesize, chroma_linesize) = (out_linesize[0], out_linesize[1]);
     let width = in_linesize.min(lum_linesize);
-    for_each_uyvx_block(
-        input,
-        in_linesize,
-        start_y..end_y,
-        width,
-        |y, x, line1, line2| {
-            let lum_pos0 = y.wrapping_mul(lum_linesize).wrapping_add(x);
-            let lum_pos1 = lum_pos0.wrapping_add(lum_linesize);
-            lum.write(lum_pos0 as usize, channel(line1, UYVX_Y));
-            lum.write(lum_pos1 as usize, channel(line2, UYVX_Y));
-
-            let [u01, u23] = average(line1, line2, UYVX_U);
-            let [v01, v23] = average(line1, line2, UYVX_V);
-            let chroma_pos = ((y >> 1).wrapping_mul(chroma_linesize)).wrapping_add(x) as usize;
-            chroma.write(chroma_pos, [u01, v01, u23, v23]);
-        },
-    );
+    let blocks = width.div_ceil(4) as usize;
+    if blocks == 0 {
+        return;
+    }
+    let bytes = blocks * 4;
+    let lum_stride = lum_linesize as usize;
+    let mut y = start_y;
+    while y < end_y {
+        let in_pos = y.wrapping_mul(in_linesize) as usize;
+        let read = blocks * BLOCK_BYTES;
+        let line1 = input.bytes(in_pos, read);
+        let line2 = input.bytes(at(in_pos, in_linesize), read);
+        let lum_pos = y.wrapping_mul(lum_linesize) as usize;
+        let luma = lum.bytes_mut(lum_pos, lum_stride + bytes);
+        let chroma_pos = (y >> 1).wrapping_mul(chroma_linesize) as usize;
+        let chroma_row = chroma.bytes_mut(chroma_pos, blocks * 4);
+        for i in 0..blocks {
+            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
+            luma[pixel..pixel + 4].copy_from_slice(&channel(line1, block, UYVX_Y));
+            luma[lum_stride + pixel..lum_stride + pixel + 4]
+                .copy_from_slice(&channel(line2, block, UYVX_Y));
+            let [u01, u23] = average(line1, line2, block, UYVX_U);
+            let [v01, v23] = average(line1, line2, block, UYVX_V);
+            chroma_row[pixel..pixel + 4].copy_from_slice(&[u01, v01, u23, v23]);
+        }
+        y = y.wrapping_add(2);
+    }
 }
 
 /// Splits UYVX rows `start_y..end_y`, two at a time, into full-size Y, U
@@ -232,20 +239,29 @@ pub fn convert_uyvx_to_i444<S, D>(
 {
     let [lum, u, v] = output;
     let width = in_linesize.min(out_linesize);
-    for_each_uyvx_block(
-        input,
-        in_linesize,
-        start_y..end_y,
-        width,
-        |y, x, line1, line2| {
-            let pos0 = y.wrapping_mul(out_linesize).wrapping_add(x);
-            let pos1 = pos0.wrapping_add(out_linesize);
-            for (plane, c) in [(&mut *lum, UYVX_Y), (&mut *u, UYVX_U), (&mut *v, UYVX_V)] {
-                plane.write(pos0 as usize, channel(line1, c));
-                plane.write(pos1 as usize, channel(line2, c));
+    let blocks = width.div_ceil(4) as usize;
+    if blocks == 0 {
+        return;
+    }
+    let bytes = blocks * 4;
+    let stride = out_linesize as usize;
+    let mut y = start_y;
+    while y < end_y {
+        let in_pos = y.wrapping_mul(in_linesize) as usize;
+        let read = blocks * BLOCK_BYTES;
+        let line1 = input.bytes(in_pos, read);
+        let line2 = input.bytes(at(in_pos, in_linesize), read);
+        let pos = y.wrapping_mul(out_linesize) as usize;
+        for (plane, c) in [(&mut *lum, UYVX_Y), (&mut *u, UYVX_U), (&mut *v, UYVX_V)] {
+            let rows = plane.bytes_mut(pos, stride + bytes);
+            for i in 0..blocks {
+                let (pixel, block) = (i * 4, i * BLOCK_BYTES);
+                rows[pixel..pixel + 4].copy_from_slice(&channel(line1, block, c));
+                rows[stride + pixel..stride + pixel + 4].copy_from_slice(&channel(line2, block, c));
             }
-        },
-    );
+        }
+        y = y.wrapping_add(2);
+    }
 }
 
 /// Expands planar I420 into one `Y << 16 | U << 8 | V` value per pixel.

@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a81484d9198642743a90f293ad8f1d0dd2cd33af22d61aeab149044cd3dae1ff # shrinks to p = Uyvx { in_linesize: 16, out_linesize: [4, 0], start_y: 0, end_y: 1, seed: 0 }
+cc 7bd461dba2f3d2f27ee1f47edb9e6b255f7bea25a41151c2724a91ec1f48033b # shrinks to p = Uyvx { in_linesize: 16, out_linesize: [4, 0], start_y: 0, end_y: 1, seed: 0 }
+cc 5fad09804df956c867daf10317aad493c2d5198d573a599ab4f4f106e0b4c337 # shrinks to p = Uyvx { in_linesize: 16, out_linesize: [4, 0], start_y: 0, end_y: 1, seed: 0 }
