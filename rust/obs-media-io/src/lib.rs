@@ -28,6 +28,7 @@ pub mod video_frame;
 pub mod video_io;
 pub mod video_matrices;
 mod video_output;
+pub mod video_scaler_plan;
 
 #[cfg(test)]
 extern crate self as obs_media_io;
