@@ -13,7 +13,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-window-match.pch.h"
+#include "libobs/build/libobs-ported-window-match.pch.h"
+
+/* Ported to rust/obs-util (window_match): the hybrid libobs drops this
+ * file. */
 
 /* The pure decisions of the window helpers (window-helpers.c), moved: the
  * list's skip tests, the two class tests and the match rating. window-helpers.c
