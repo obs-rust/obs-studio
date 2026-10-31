@@ -12,7 +12,8 @@ publish.workspace = true
 workspace = true
 
 [build-dependencies]
-cc = { workspace = true, default-features = true }
+# parallel: compile build-script C concurrently via the jobserver (#3253).
+cc = { workspace = true, default-features = true, features = ["parallel"] }
 pkg-config = { workspace = true, default-features = true }
 
 [dev-dependencies]
