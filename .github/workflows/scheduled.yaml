@@ -45,6 +45,13 @@ jobs:
     # Chrome's release data changes without a commit here, so this runs on
     # the schedule (#2380): a pinned CEF older than extended stable fails.
     if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    # Fails while a pinned CEF is older than extended stable (#2380), which is
+    # #1864's remaining work. It stays red with its annotations but no longer
+    # fails the run: a failed run marks every code scanning configuration
+    # "Workflow runs failing", which hides a real CodeQL or clang-analyze
+    # failure (#3144). Remove this line when #1864 lands, or keep it if the
+    # check should only warn from then on.
+    continue-on-error: true
     runs-on: ubuntu-26.04
     permissions:
       contents: read
