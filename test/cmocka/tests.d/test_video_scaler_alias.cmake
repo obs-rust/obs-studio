@@ -1,0 +1,5 @@
+add_executable(test_video_scaler_alias test_video_scaler_alias.c)
+target_include_directories(test_video_scaler_alias PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_video_scaler_alias PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_video_scaler_alias)
+add_test(test_video_scaler_alias ${CMAKE_CURRENT_BINARY_DIR}/test_video_scaler_alias)
