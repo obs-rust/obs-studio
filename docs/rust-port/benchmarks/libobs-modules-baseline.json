@@ -1,0 +1,580 @@
+{
+  "issue": "#3257",
+  "note": "linux: libobs built in the obs-rust-linux-validate image (ci/docker_task.py, overlay source); oracle: soldr cargo build -p obs-c-oracle (debug) on the NixOS host, which lacks the libobs C deps. Windows and macOS: not recorded yet.",
+  "linux": {
+    "issue": "#3257",
+    "revision": "",
+    "timestamp": "2026-10-31T22:01:01Z",
+    "host": {
+      "system": "Linux",
+      "machine": "x86_64",
+      "cpus": 16,
+      "load_average": [
+        17.6279296875,
+        16.150390625,
+        15.2958984375
+      ],
+      "load_average_end": [
+        31.01611328125,
+        22.1494140625,
+        17.6708984375
+      ]
+    },
+    "tools": {
+      "cmake": "cmake version 4.2.3",
+      "cc": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+      "rustc": "unknown"
+    },
+    "configure_flags": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOBS_BUILD_NUMBER=1",
+      "-DOBS_VERSION_OVERRIDE=33.0.0",
+      "-DENABLE_FRONTEND=OFF",
+      "-DENABLE_SCRIPTING=OFF",
+      "-DENABLE_BROWSER=OFF",
+      "-DENABLE_WEBSOCKET=OFF",
+      "-DENABLE_AJA=OFF",
+      "-DENABLE_WEBRTC=OFF",
+      "-DENABLE_NVENC=OFF",
+      "-DENABLE_QSV11=OFF",
+      "-DENABLE_VST=OFF",
+      "-DENABLE_WAYLAND=OFF",
+      "-DENABLE_UNIT_TESTS=OFF",
+      "-DCMAKE_C_COMPILER_LAUNCHER=zccache",
+      "-DCMAKE_CXX_COMPILER_LAUNCHER=zccache"
+    ],
+    "jobs": null,
+    "configure": {
+      "wall_seconds": 14.877,
+      "cpu_seconds": 6.846,
+      "returncode": 0
+    },
+    "initial_build": {
+      "wall_seconds": 23.273,
+      "cpu_seconds": 45.229,
+      "returncode": 0,
+      "groups": {
+        "graphics-ffmpeg-host-posix": 0.295,
+        "nix": 2.073,
+        "nix-main": 0.647,
+        "util-cf": 2.202,
+        "pulse": 0.807,
+        "media": 2.712,
+        "core-output": 3.24,
+        "core": 3.406,
+        "graphics": 3.88,
+        "core-source": 5.508,
+        "rust-variadic": 0.214
+      },
+      "compiled_groups": 11,
+      "compile_seconds": 24.984,
+      "link_seconds": 0.672,
+      "rust_seconds": 43.247,
+      "ninja_entries": 37,
+      "zccache_delta": {
+        "daemon.artifact_count": 28,
+        "daemon.cache_misses": 28,
+        "daemon.cache_size_bytes": 57522391,
+        "daemon.dep_graph_contexts": 28,
+        "daemon.dep_graph_version": 9,
+        "daemon.metadata_entries": 587,
+        "daemon.sessions_total": 28,
+        "daemon.total_compilations": 28,
+        "daemon.uptime_secs": 23,
+        "protocol_version": 26
+      }
+    },
+    "cases": {
+      "no-change": {
+        "path": null,
+        "samples": [
+          {
+            "build": {
+              "wall_seconds": 0.372,
+              "cpu_seconds": 0.154,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.562,
+              "ninja_entries": 6,
+              "zccache_delta": {
+                "daemon.uptime_secs": 1
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 0.474,
+              "cpu_seconds": 0.142,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.578,
+              "ninja_entries": 6,
+              "zccache_delta": {
+                "daemon.uptime_secs": 1
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 0.369,
+              "cpu_seconds": 0.131,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.441,
+              "ninja_entries": 6,
+              "zccache_delta": {}
+            }
+          }
+        ]
+      },
+      "c-h": {
+        "path": "libobs/obs.c.h",
+        "samples": [
+          {
+            "build": {
+              "wall_seconds": 4.314,
+              "cpu_seconds": 0.538,
+              "returncode": 0,
+              "groups": {
+                "core": 3.836
+              },
+              "compiled_groups": 1,
+              "compile_seconds": 3.836,
+              "link_seconds": 0.43,
+              "rust_seconds": 0.726,
+              "ninja_entries": 9,
+              "zccache_delta": {
+                "daemon.artifact_count": 1,
+                "daemon.cache_misses": 1,
+                "daemon.cache_size_bytes": 1151080,
+                "daemon.sessions_total": 1,
+                "daemon.total_compilations": 1,
+                "daemon.uptime_secs": 5
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 3.443,
+              "cpu_seconds": 0.577,
+              "returncode": 0,
+              "groups": {
+                "core": 2.913
+              },
+              "compiled_groups": 1,
+              "compile_seconds": 2.913,
+              "link_seconds": 0.468,
+              "rust_seconds": 0.224,
+              "ninja_entries": 9,
+              "zccache_delta": {
+                "daemon.cache_misses": 1,
+                "daemon.sessions_total": 1,
+                "daemon.total_compilations": 1,
+                "daemon.uptime_secs": 3
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 3.863,
+              "cpu_seconds": 0.58,
+              "returncode": 0,
+              "groups": {
+                "core": 3.37
+              },
+              "compiled_groups": 1,
+              "compile_seconds": 3.37,
+              "link_seconds": 0.448,
+              "rust_seconds": 0.218,
+              "ninja_entries": 9,
+              "zccache_delta": {
+                "daemon.cache_misses": 1,
+                "daemon.sessions_total": 1,
+                "daemon.total_compilations": 1,
+                "daemon.uptime_secs": 4
+              }
+            }
+          }
+        ]
+      },
+      "pch": {
+        "path": "libobs/build/libobs.pch.h",
+        "samples": [
+          {
+            "build": {
+              "wall_seconds": 7.409,
+              "cpu_seconds": 0.623,
+              "returncode": 0,
+              "groups": {
+                "core-output": 3.582,
+                "core": 3.583,
+                "graphics": 3.841,
+                "core-source": 5.606
+              },
+              "compiled_groups": 4,
+              "compile_seconds": 16.612,
+              "link_seconds": 0.457,
+              "rust_seconds": 0.718,
+              "ninja_entries": 13,
+              "zccache_delta": {
+                "daemon.artifact_count": 5,
+                "daemon.cache_misses": 5,
+                "daemon.cache_size_bytes": 32651172,
+                "daemon.dep_graph_contexts": 1,
+                "daemon.sessions_total": 5,
+                "daemon.total_compilations": 5,
+                "daemon.uptime_secs": 8
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 7.988,
+              "cpu_seconds": 0.681,
+              "returncode": 0,
+              "groups": {
+                "core-output": 3.255,
+                "graphics": 3.298,
+                "core": 3.789,
+                "core-source": 5.782
+              },
+              "compiled_groups": 4,
+              "compile_seconds": 16.124,
+              "link_seconds": 0.821,
+              "rust_seconds": 0.375,
+              "ninja_entries": 13,
+              "zccache_delta": {
+                "daemon.artifact_count": 5,
+                "daemon.cache_misses": 5,
+                "daemon.cache_size_bytes": 32651188,
+                "daemon.sessions_total": 5,
+                "daemon.total_compilations": 5,
+                "daemon.uptime_secs": 8
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 8.931,
+              "cpu_seconds": 0.783,
+              "returncode": 0,
+              "groups": {
+                "core-output": 3.527,
+                "graphics": 4.22,
+                "core": 4.391,
+                "core-source": 6.724
+              },
+              "compiled_groups": 4,
+              "compile_seconds": 18.862,
+              "link_seconds": 0.767,
+              "rust_seconds": 0.82,
+              "ninja_entries": 13,
+              "zccache_delta": {
+                "daemon.artifact_count": 5,
+                "daemon.cache_misses": 5,
+                "daemon.cache_size_bytes": 32651278,
+                "daemon.sessions_total": 5,
+                "daemon.total_compilations": 5,
+                "daemon.uptime_secs": 9
+              }
+            }
+          }
+        ]
+      },
+      "ported-json": {
+        "path": "libobs/build/ported-source-sets/audio-controls.json",
+        "samples": [
+          {
+            "build": {
+              "wall_seconds": 0.147,
+              "cpu_seconds": 0.131,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.0,
+              "ninja_entries": 0,
+              "zccache_delta": {}
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 0.253,
+              "cpu_seconds": 0.141,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.283,
+              "ninja_entries": 6,
+              "zccache_delta": {
+                "daemon.uptime_secs": 1
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 0.171,
+              "cpu_seconds": 0.125,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.0,
+              "rust_seconds": 0.283,
+              "ninja_entries": 6,
+              "zccache_delta": {
+                "daemon.uptime_secs": 1
+              }
+            }
+          }
+        ]
+      },
+      "rust-crate": {
+        "path": "rust/obs-util/src/lib.rs",
+        "samples": [
+          {
+            "build": {
+              "wall_seconds": 9.204,
+              "cpu_seconds": 31.766,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.512,
+              "rust_seconds": 17.33,
+              "ninja_entries": 8,
+              "zccache_delta": {
+                "daemon.uptime_secs": 9
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 10.429,
+              "cpu_seconds": 33.988,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.455,
+              "rust_seconds": 19.876,
+              "ninja_entries": 8,
+              "zccache_delta": {
+                "daemon.uptime_secs": 11
+              }
+            }
+          },
+          {
+            "build": {
+              "wall_seconds": 9.227,
+              "cpu_seconds": 31.997,
+              "returncode": 0,
+              "groups": {},
+              "compiled_groups": 0,
+              "compile_seconds": 0.0,
+              "link_seconds": 0.442,
+              "rust_seconds": 17.526,
+              "ninja_entries": 8,
+              "zccache_delta": {
+                "daemon.uptime_secs": 9
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "oracle_host": {
+    "issue": "#3257",
+    "revision": "41db6dd4b",
+    "timestamp": "2026-10-31T22:04:21Z",
+    "host": {
+      "system": "Linux",
+      "machine": "x86_64",
+      "cpus": 16,
+      "load_average": [
+        24.32958984375,
+        21.28564453125,
+        17.50341796875
+      ]
+    },
+    "tools": {
+      "cmake": "cmake version 4.1.6",
+      "cc": "gcc (GCC) 15.2.0",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)"
+    },
+    "configure_flags": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+      "-DOBS_BUILD_NUMBER=1",
+      "-DOBS_VERSION_OVERRIDE=33.0.0",
+      "-DENABLE_FRONTEND=OFF",
+      "-DENABLE_SCRIPTING=OFF",
+      "-DENABLE_BROWSER=OFF",
+      "-DENABLE_WEBSOCKET=OFF",
+      "-DENABLE_AJA=OFF",
+      "-DENABLE_WEBRTC=OFF",
+      "-DENABLE_NVENC=OFF",
+      "-DENABLE_QSV11=OFF",
+      "-DENABLE_VST=OFF",
+      "-DENABLE_WAYLAND=OFF",
+      "-DENABLE_UNIT_TESTS=OFF",
+      "-DCMAKE_C_COMPILER_LAUNCHER=zccache",
+      "-DCMAKE_CXX_COMPILER_LAUNCHER=zccache"
+    ],
+    "jobs": null,
+    "initial_oracle": {
+      "wall_seconds": 365.497,
+      "cpu_seconds": 10.406,
+      "returncode": 101,
+      "stderr_tail": "obs-studio3/rust/obs-c-oracle/vendor/jansson/src\" \"-Werror\" \"-Wall\" \"-Wextra\" \"-Wvla\" \"-Wshadow\" \"-Wundef\" \"-Wdouble-promotion\" \"-Wstrict-prototypes\" \"-Wformat=2\" \"-Wformat-nonliteral\" \"-Wpedantic\" \"-Wcast-qual\" \"-Wsign-conversion\" \"-Wconversion\" \"-Wmissing-prototypes\" \"-ffp-contract=off\" \"-fno-strict-aliasing\" \"-Wno-deprecated-declarations\" \"-Wno-missing-field-initializers\" \"-Dos_event_init=oracle_os_event_init\" \"-Dos_event_destroy=oracle_os_event_destroy\" \"-Dos_event_wait=oracle_os_event_wait\" \"-Dos_event_timedwait=oracle_os_event_timedwait\" \"-Dos_event_try=oracle_os_event_try\" \"-Dos_event_signal=oracle_os_event_signal\" \"-Dos_event_reset=oracle_os_event_reset\" \"-Dos_sem_init=oracle_os_sem_init\" \"-Dos_sem_destroy=oracle_os_sem_destroy\" \"-Dos_sem_post=oracle_os_sem_post\" \"-Dos_sem_wait=oracle_os_sem_wait\" \"-Dos_set_thread_name=oracle_os_set_thread_name\" \"-D_DEFAULT_SOURCE\" \"-o\" \"/home/niteris/dev/obs-rust/obs-studio3/target/debug/build/obs-c-oracle-c4676716d891a0a9/out/07ea49e8acb42263-file_serializer.o\" \"-c\" \"/home/niteris/dev/obs-rust/obs-studio3/rust/obs-c-oracle/oracle/file_serializer.c\"\n  303.74 \n  303.74 \nsoldr: pruned 253 orphan .rmeta file(s) under /home/niteris/dev/obs-rust/obs-studio3/target after failed cargo build (soldr#410)\nsoldr: cache 0 HIT, 167 MISS (0% hit rate, saved 0.0s)\nsoldr: logs for this build session:\n  build log                 /home/niteris/.soldr/logs/builds/20261031T220522Z-home-niteris-dev-obs-rust-obs-studio3.xml\n  zccache session stats     /home/niteris/.soldr/cache/zccache/logs/last-session-stats.json\n  compile journal           /home/niteris/.soldr/cache/zccache/daemon-state/embedded-v1-soldr-daemon-b448f5c4bdba692a0b06a850dbfb63cb/v1.15.5/logs/compile_journal.jsonl\n  archived session stats    /home/niteris/.soldr/cache/zccache/history/10664231976551715022/last-session-stats.json\n  archived compile journal  /home/niteris/.soldr/cache/zccache/history/10664231976551715022/compile_journal.jsonl\n  (all log locations: soldr logs paths)\n"
+    },
+    "cases": {
+      "no-change": {
+        "path": null,
+        "samples": [
+          {
+            "oracle": {
+              "wall_seconds": 10.617,
+              "cpu_seconds": 2.928,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 1.623,
+              "cpu_seconds": 0.617,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.04,
+              "cpu_seconds": 0.635,
+              "returncode": 0
+            }
+          }
+        ]
+      },
+      "c-h": {
+        "path": "libobs/obs.c.h",
+        "samples": [
+          {
+            "oracle": {
+              "wall_seconds": 4.033,
+              "cpu_seconds": 2.696,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.704,
+              "cpu_seconds": 2.757,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.637,
+              "cpu_seconds": 2.767,
+              "returncode": 0
+            }
+          }
+        ]
+      },
+      "pch": {
+        "path": "libobs/build/libobs.pch.h",
+        "samples": [
+          {
+            "oracle": {
+              "wall_seconds": 4.39,
+              "cpu_seconds": 5.27,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.272,
+              "cpu_seconds": 2.795,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.31,
+              "cpu_seconds": 2.744,
+              "returncode": 0
+            }
+          }
+        ]
+      },
+      "ported-json": {
+        "path": "libobs/build/ported-source-sets/audio-controls.json",
+        "samples": [
+          {
+            "oracle": {
+              "wall_seconds": 3.511,
+              "cpu_seconds": 2.904,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 3.496,
+              "cpu_seconds": 3.273,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 5.83,
+              "cpu_seconds": 4.778,
+              "returncode": 0
+            }
+          }
+        ]
+      },
+      "rust-crate": {
+        "path": "rust/obs-util/src/lib.rs",
+        "samples": [
+          {
+            "oracle": {
+              "wall_seconds": 1.713,
+              "cpu_seconds": 0.867,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 1.558,
+              "cpu_seconds": 0.586,
+              "returncode": 0
+            }
+          },
+          {
+            "oracle": {
+              "wall_seconds": 2.006,
+              "cpu_seconds": 0.612,
+              "returncode": 0
+            }
+          }
+        ]
+      }
+    }
+  }
+}
