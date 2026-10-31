@@ -13,7 +13,8 @@ class OBSBasicVCamConfig : public QDialog {
 
 	bool vcamActive;
 	VCamOutputType activeType;
-	bool requireRestart;
+	bool requireRestart = false;
+	bool audioChanged = false;
 
 public:
 	explicit OBSBasicVCamConfig(const VCamConfig &config, bool VCamActive, QWidget *parent = 0);
@@ -21,6 +22,7 @@ public:
 private slots:
 	void OutputTypeChanged();
 	void UpdateConfig();
+	void AudioChanged();
 
 private:
 	std::unique_ptr<Ui::OBSBasicVCamConfig> ui;

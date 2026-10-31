@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VCamAudio.hpp"
+
 constexpr const char *VIRTUAL_CAM_ID = "virtualcam_output";
 
 enum VCamOutputType {
@@ -20,4 +22,5 @@ struct VCamConfig {
 	VCamOutputType type = VCamOutputType::ProgramView;
 	std::string scene;
 	std::string source;
+	VCamAudioConfig audio;
 };

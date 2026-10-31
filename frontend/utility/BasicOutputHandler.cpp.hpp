@@ -261,6 +261,12 @@ bool BasicOutputHandler::StartVirtualCam()
 	}
 
 	obs_output_set_media(virtualCam, virtualCamVideo, obs_get_audio());
+
+	VCamAudioOutputSettings audio = VCamAudioToOutput(main->vcamConfig.audio);
+	OBSDataAutoRelease vcamSettings = obs_data_create();
+	obs_data_set_bool(vcamSettings, "audio_enabled", audio.audio_enabled);
+	obs_data_set_int(vcamSettings, "audio_track", audio.audio_track);
+	obs_output_update(virtualCam, vcamSettings);
 	if (!Active()) {
 		SetupOutputs();
 	}

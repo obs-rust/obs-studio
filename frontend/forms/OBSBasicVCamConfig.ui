@@ -35,6 +35,23 @@
     <widget class="QComboBox" name="outputSelection"/>
    </item>
    <item>
+    <widget class="QCheckBox" name="audioEnabled">
+     <property name="text">
+      <string>Basic.VCam.Audio</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="audioTrackLabel">
+     <property name="text">
+      <string>Basic.VCam.AudioTrack</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="audioTrack"/>
+   </item>
+   <item>
     <widget class="QLabel" name="warningLabel">
      <property name="visible">
       <bool>false</bool>
