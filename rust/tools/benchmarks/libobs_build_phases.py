@@ -222,7 +222,7 @@ def tool_version(command: list[str]) -> str:
         return "unknown"
 
 
-def main() -> None:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build_libobs_phases")
@@ -236,77 +236,89 @@ def main() -> None:
     args = parser.parse_args()
     if args.samples < 1:
         parser.error("--samples must be at least 1")
+    return args
 
-    if args.fresh and args.build_dir.exists():
-        shutil.rmtree(args.build_dir)
-    report: dict = {
+
+def report_header(jobs: int | None) -> dict:
+    load = list(os.getloadavg()) if hasattr(os, "getloadavg") else None
+    revision = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    return {
         "issue": "#3257",
-        "revision": subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip(),
+        "revision": revision.stdout.strip(),
         "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "host": {
-            "system": platform.system(),
-            "machine": platform.machine(),
-            "cpus": os.cpu_count(),
-            "load_average": list(os.getloadavg()) if hasattr(os, "getloadavg") else None,
-        },
+        "host": {"system": platform.system(), "machine": platform.machine(), "cpus": os.cpu_count(), "load_average": load},
         "tools": {
             "cmake": tool_version(["cmake", "--version"]),
             "cc": tool_version(["cc", "--version"]),
             "rustc": tool_version(["soldr", "rustc", "--version"]),
         },
         "configure_flags": CONFIGURE_FLAGS,
-        "jobs": args.jobs,
+        "jobs": jobs,
     }
+
+
+def quiet(command: list[str]) -> None:
+    subprocess.run(command, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def run_cases(selected: list[Case], samples: int, measure, restore) -> dict:
+    """`measure()` with each case's edit applied, `samples` times per case;
+    `restore()` rebuilds the reverted tree untimed between samples."""
+    out = {}
+    for case in selected:
+        rows = []
+        for sample in range(samples):
+            print(f"{case.label} {sample + 1}/{samples}", flush=True)
+            context = edited(ROOT / case.path, case.kind) if case.path else contextlib.nullcontext()
+            with context:
+                rows.append(measure())
+            restore()
+        out[case.label] = {"path": case.path, "samples": rows}
+    return out
+
+
+def write(report: dict, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output}", flush=True)
+
+
+def main() -> None:
+    args = parse_args()
+    if args.fresh and args.build_dir.exists():
+        shutil.rmtree(args.build_dir)
+    report = report_header(args.jobs)
+    selected = [case for case in cases(ROOT) if not args.case or case.label in args.case]
+    oracle_restore = ["soldr", "cargo", "build", "-p", "obs-c-oracle"]
     if args.oracle_only:
         report["initial_oracle"] = oracle_build()
-        report["cases"] = {}
-        for case in (c for c in cases(ROOT) if not args.case or c.label in args.case):
-            samples = []
-            for sample in range(args.samples):
-                print(f"oracle {case.label} {sample + 1}/{args.samples}", flush=True)
-                context = edited(ROOT / case.path, case.kind) if case.path else contextlib.nullcontext()
-                with context:
-                    samples.append({"oracle": oracle_build()})
-                subprocess.run(["soldr", "cargo", "build", "-p", "obs-c-oracle"], cwd=ROOT,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            report["cases"][case.label] = {"path": case.path, "samples": samples}
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        print(f"wrote {args.output}", flush=True)
+        report["cases"] = run_cases(selected, args.samples, lambda: {"oracle": oracle_build()}, lambda: quiet(oracle_restore))
+        write(report, args.output)
         return
     print("configure", flush=True)
     report["configure"] = timed(["cmake", "-S", str(ROOT), "-B", str(args.build_dir), *CONFIGURE_FLAGS])
     if report["configure"]["returncode"] != 0:
-        args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        write(report, args.output)
         raise SystemExit("configure failed; see stderr_tail in the report")
     print("initial build", flush=True)
     report["initial_build"] = build(args.build_dir, args.jobs)
     if not args.no_oracle:
         report["initial_oracle"] = oracle_build()
 
-    selected = [case for case in cases(ROOT) if not args.case or case.label in args.case]
-    report["cases"] = {}
-    for case in selected:
-        samples = []
-        for sample in range(args.samples):
-            print(f"{case.label} {sample + 1}/{args.samples}", flush=True)
-            context = edited(ROOT / case.path, case.kind) if case.path else contextlib.nullcontext()
-            with context:
-                row = {"build": build(args.build_dir, args.jobs)}
-                if not args.no_oracle:
-                    row["oracle"] = oracle_build()
-            samples.append(row)
-            # Rebuild the restored tree untimed, so the next sample starts
-            # from the same state.
-            subprocess.run(["cmake", "--build", str(args.build_dir), "--target", "libobs"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if not args.no_oracle:
-                subprocess.run(["soldr", "cargo", "build", "-p", "obs-c-oracle"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        report["cases"][case.label] = {"path": case.path, "samples": samples}
-    report["host"]["load_average_end"] = list(os.getloadavg()) if hasattr(os, "getloadavg") else None
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {args.output}", flush=True)
+    def measure() -> dict:
+        row = {"build": build(args.build_dir, args.jobs)}
+        if not args.no_oracle:
+            row["oracle"] = oracle_build()
+        return row
 
+    def restore() -> None:
+        quiet(["cmake", "--build", str(args.build_dir), "--target", "libobs"])
+        if not args.no_oracle:
+            quiet(oracle_restore)
+
+    report["cases"] = run_cases(selected, args.samples, measure, restore)
+    report["host"]["load_average_end"] = list(os.getloadavg()) if hasattr(os, "getloadavg") else None
+    write(report, args.output)
 
 if __name__ == "__main__":
     main()
