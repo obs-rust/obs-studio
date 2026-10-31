@@ -12,6 +12,7 @@ use obs_c_oracle as _; // links the test bmalloc/bfree (oracle/test_bmem.c)
 
 pub mod audio_io;
 pub mod audio_math;
+pub mod audio_resampler_drift;
 #[allow(unsafe_code)] // the C ABI shims
 pub mod ffi;
 pub mod format_conversion;
