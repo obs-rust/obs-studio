@@ -5,7 +5,8 @@
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
-//! ([`image_orient`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
+//! ([`image_orient`]), and `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
+//! image rows ([`image_rgba64`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
 //! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion
 //! ([`image_pq_scrgb`]).
 //!
