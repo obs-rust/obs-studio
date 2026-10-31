@@ -1550,7 +1550,7 @@
         "libobs"
       ],
       "watch_inputs": [
-        "libobs/build/libobs-graphics-ffmpeg-host-pq.pch.h",
+        "libobs/build/libobs-ported-image-pq-scrgb.pch.h",
         "libobs/graphics/graphics-ffmpeg-host-pq.c.h",
         "libobs/graphics/graphics-ffmpeg-host-pq.h",
         "libobs/graphics/half.h"

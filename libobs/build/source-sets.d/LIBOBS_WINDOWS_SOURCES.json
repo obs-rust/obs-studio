@@ -14,6 +14,5 @@
   "util/windows/window-match.h",
   "build/libobs.windows+.h.c",
   "build/libobs.windows-crash-handler+.h.c",
-  "build/libobs.graphics-ffmpeg-host-windows+.h.c",
-  "build/libobs.graphics-ffmpeg-host-pq+.h.c"
+  "build/libobs.graphics-ffmpeg-host-windows+.h.c"
 ]

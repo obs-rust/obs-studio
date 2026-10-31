@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics-ffmpeg-host-pq.pch.h"
+#include "libobs/build/libobs-ported-image-pq-scrgb.pch.h"
 
 _Static_assert(sizeof(struct half) == 2, "struct half is one uint16_t");
 
