@@ -411,7 +411,7 @@ class CiTomlTest(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(any(key.startswith(prefix) for prefix in prefixes),
                                  "Disabled archives must be eligible for unmatched-family cleanup")
-        for key in ("cook-base-v2-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
+        for key in ("cook-base-v3-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
                     "solo-toolchain-v3-linux-current", "zccache-tier2-linux-current",
                     "targets-ccache-linux-current", "targets-apt-current"):
             with self.subTest(key=key):
