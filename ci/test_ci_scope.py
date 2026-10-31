@@ -327,6 +327,16 @@ class LaneTableTest(unittest.TestCase):
         for path in ("libobs/cmake/os-linux.cmake", "libobs/cmake/os-freebsd.cmake"):
             got = self.sc(path)
             self.assertEqual((got.windows, got.macos, got.tier2), (False, False, True), path)
+        # Any other OS-named libobs/cmake file starts only its OS too (#3237).
+        for path in ("libobs/cmake/rust-os-windows.cmake", "libobs/cmake/windows/obs-module.rc.in"):
+            got = self.sc(path)
+            self.assertEqual((got.windows, got.macos, got.tier2), (True, False, False), path)
+        for path in ("libobs/cmake/rust-os-macos.cmake", "libobs/cmake/macos/entitlements.plist"):
+            got = self.sc(path)
+            self.assertEqual((got.windows, got.macos, got.tier2), (False, True, False), path)
+        for path in ("libobs/cmake/rust-os-nix.cmake", "libobs/cmake/linux/libobs.pc.in"):
+            got = self.sc(path)
+            self.assertEqual((got.windows, got.macos, got.tier2), (False, False, True), path)
         # Every other libobs/cmake file stays shared.
         got = self.sc("libobs/cmake/rust.cmake")
         self.assertEqual((got.windows, got.macos, got.tier2), (True, True, True))

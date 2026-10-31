@@ -1,0 +1,92 @@
+# Build files every platform consumes (ci/ci_scope.py is_shared): an edit to
+# any of them starts the macOS and Windows lanes. ci/test_shared_build_files.py
+# keeps this list exact, so the set only shrinks (#3237, tracker #3232).
+#
+# Adding a file here is a decision: first try a per-OS file (cmake/<os>/,
+# libobs/cmake/os-<os>.cmake, rust-os-<os>.cmake, a src/platform/<os>/ module)
+# or a per-unit fragment (libobs/build/ported-source-sets/, source-sets.d/,
+# rust-hidden.d/, rust-exports.d/, test/cmocka/tests.d/). If it must be
+# shared, add it in sorted order with a trailing "# reason". A new crate's
+# build.rs or src/platform/mod.rs is shared by design.
+CMakeLists.txt
+CMakePresets.json
+cmake/common/app-identity.cmake
+cmake/common/bootstrap.cmake
+cmake/common/buildnumber.cmake
+cmake/common/buildspec_common.cmake
+cmake/common/ccache.cmake
+cmake/common/compiler_common.cmake
+cmake/common/cpackconfig_common.cmake
+cmake/common/cross-targets.cmake
+cmake/common/graphics-sources.cmake
+cmake/common/groups.cmake
+cmake/common/helpers_common.cmake
+cmake/common/osconfig.cmake
+cmake/common/pch.cmake
+cmake/common/policies.cmake
+cmake/common/prepare-flatpak-soldr.cmake
+cmake/common/soldr.cmake
+cmake/common/unity.cmake
+cmake/common/versionconfig.cmake
+cmake/common/zccache.cmake
+cmake/finders/FindAMF.cmake
+cmake/finders/FindAsio.cmake
+cmake/finders/FindCEF.cmake
+cmake/finders/FindDetours.cmake
+cmake/finders/FindFFmpeg.cmake
+cmake/finders/FindFFnvcodec.cmake
+cmake/finders/FindGio.cmake
+cmake/finders/FindJack.cmake
+cmake/finders/FindLibAJANTV2.cmake
+cmake/finders/FindLibUUID.cmake
+cmake/finders/FindLibVLC.cmake
+cmake/finders/FindLibdrm.cmake
+cmake/finders/FindLibfdk.cmake
+cmake/finders/FindLibpci.cmake
+cmake/finders/FindLibrist.cmake
+cmake/finders/FindLibrnnoise.cmake
+cmake/finders/FindLibspeexdsp.cmake
+cmake/finders/FindLibsrt.cmake
+cmake/finders/FindLibudev.cmake
+cmake/finders/FindLibv4l2.cmake
+cmake/finders/FindLibva.cmake
+cmake/finders/FindLibx264.cmake
+cmake/finders/FindLuajit.cmake
+cmake/finders/FindOSS.cmake
+cmake/finders/FindPipeWire.cmake
+cmake/finders/FindPulseAudio.cmake
+cmake/finders/FindSIMDe.cmake
+cmake/finders/FindSndio.cmake
+cmake/finders/FindSysinfo.cmake
+cmake/finders/FindUthash.cmake
+cmake/finders/FindVPL.cmake
+cmake/finders/FindWebsocketpp.cmake
+cmake/finders/FindXkbcommon.cmake
+cmake/finders/Findjansson.cmake
+cmake/finders/Findqrcodegencpp.cmake
+libobs/cmake/implementation.cmake
+libobs/cmake/libobsConfig.cmake.in
+libobs/cmake/obs-core-modules.cmake
+libobs/cmake/obs-version.cmake
+libobs/cmake/rust-hidden-base.txt
+libobs/cmake/rust-hidden.cmake
+libobs/cmake/rust-target.cmake
+libobs/cmake/rust.cmake
+libobs/cmake/sources.cmake
+rust/obs-build/build.rs
+rust/obs-build/src/platform/mod.rs
+rust/obs-c-oracle/build.rs
+rust/obs-core/src/platform/mod.rs
+rust/obs-data/build.rs
+rust/obs-gpu-status/src/platform/mod.rs
+rust/obs-graphics/src/platform/mod.rs
+rust/obs-hotkey/build.rs
+rust/obs-media-io/src/platform/mod.rs
+rust/obs-nvenc/src/platform/mod.rs
+rust/obs-preflight/src/platform/mod.rs
+rust/obs-scene/src/platform/mod.rs
+rust/obs-source/src/platform/mod.rs
+rust/obs-sys/build.rs
+rust/obs-util/build.rs
+rust/obs-util/src/platform/mod.rs
+test/cmocka/CMakeLists.txt
