@@ -39,6 +39,13 @@ impl Sink for RawSink {
         // writes.
         unsafe { ptr::write_unaligned(self.0.add(offset).cast::<[u8; N]>(), bytes) }
     }
+
+    fn bytes_mut(&mut self, offset: usize, len: usize) -> &mut [u8] {
+        // SAFETY: as `write`: the caller guarantees the plane is writable at
+        // every offset the conversion writes, so `len` bytes from `offset`
+        // are in one allocation, and the slice lives only for the call.
+        unsafe { core::slice::from_raw_parts_mut(self.0.add(offset), len) }
+    }
 }
 
 /// Packs UYVX rows `start_y..end_y` into planar I420.
