@@ -43,6 +43,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -94,13 +95,23 @@ impl DstByte for MaybeUninit<u8> {
     }
 }
 
+/// `(size_t)cx * 4 * 2`: the row's bytes in the source, wrapping as the
+/// C's `size_t` does (a negative `cx` converts to a huge value first).
+fn src_row_bytes(cx: i32, src_linesize: usize) -> usize {
+    // `as` sign-extends, which is the C's int to size_t conversion.
+    let width = (cx as isize).cast_unsigned();
+    width
+        .wrapping_mul(DST_TEXEL_BYTES)
+        .wrapping_mul(2)
+        .min(src_linesize)
+}
+
 /// The texels a row converts: the smaller of `cx * 8` bytes (as the C's
 /// `size_t`, so a negative `cx` is a huge width) and `src_linesize`, in
 /// 8-byte texels.
 #[must_use]
 pub fn row_texels(cx: i32, src_linesize: usize) -> usize {
-    let _ = (cx, src_linesize);
-    todo!()
+    src_row_bytes(cx, src_linesize) >> 3
 }
 
 /// The source bytes [`rgba64be_rows`] reads for a `cy`-row frame: every
@@ -108,8 +119,70 @@ pub fn row_texels(cx: i32, src_linesize: usize) -> usize {
 /// (no rows, or no texels in a row); `None` when the size overflows.
 #[must_use]
 pub fn src_len(cx: i32, cy: i32, src_linesize: usize) -> Option<usize> {
-    let _ = (cx, cy, src_linesize);
-    todo!()
+    let texels = row_texels(cx, src_linesize);
+    let rows = usize::try_from(cy).unwrap_or(0);
+    if rows == 0 || texels == 0 {
+        return Some(0);
+    }
+    rows.checked_sub(1)?
+        .checked_mul(src_linesize)?
+        .checked_add(texels.checked_mul(SRC_TEXEL_BYTES)?)
+}
+
+/// `gs_srgb_nonlinear_to_linear()`.
+fn srgb_nonlinear_to_linear(u: f32) -> f32 {
+    if u <= 0.04045 {
+        u / 12.92
+    } else {
+        ((u + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// `gs_srgb_linear_to_nonlinear()`. `1.0 / 2.4` is the C's `1.0f / 2.4f`,
+/// an `f32` division.
+fn srgb_linear_to_nonlinear(u: f32) -> f32 {
+    if u <= 0.003_130_8 {
+        12.92 * u
+    } else {
+        (1.055 * u.powf(1.0 / 2.4)) - 0.055
+    }
+}
+
+/// `gs_float_to_u8()`: `(uint8_t)(f * 255.0f + 0.5f)`. Every value here is
+/// in 0 to 255.5, where the C's conversion is defined and `as` truncates
+/// the same way.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // the C's own conversion
+fn float_to_u8(f: f32) -> u8 {
+    (f * 255.0 + 0.5) as u8
+}
+
+/// One texel: the C's loop body for `mode`.
+fn convert(be: [u8; SRC_TEXEL_BYTES], mode: i32) -> Option<[u8; DST_TEXEL_BYTES]> {
+    let [r0, r1, g0, g1, b0, b1, a0, a1] = be;
+    let mut f = [[r0, r1], [g0, g1], [b0, b1], [a0, a1]]
+        .map(|c| f32::from(u16::from_be_bytes(c)) / 65535.0);
+    let [r, g, b, a] = &mut f;
+    match mode {
+        alpha_mode::STRAIGHT => {}
+        alpha_mode::PREMULTIPLY_SRGB => {
+            for c in [&mut *r, &mut *g, &mut *b] {
+                *c = srgb_nonlinear_to_linear(*c);
+            }
+            for c in [&mut *r, &mut *g, &mut *b] {
+                *c *= *a;
+            }
+            for c in [&mut *r, &mut *g, &mut *b] {
+                *c = srgb_linear_to_nonlinear(*c);
+            }
+        }
+        alpha_mode::PREMULTIPLY => {
+            for c in [&mut *r, &mut *g, &mut *b] {
+                *c *= *a;
+            }
+        }
+        _ => return None,
+    }
+    Some(f.map(float_to_u8))
 }
 
 /// One texel, as the rows convert it: the four big-endian 16-bit channels
@@ -117,8 +190,7 @@ pub fn src_len(cx: i32, cy: i32, src_linesize: usize) -> Option<usize> {
 /// mode outside the three, which converts nothing.
 #[must_use]
 pub fn texel(be: [u8; SRC_TEXEL_BYTES], mode: i32) -> Option<[u8; DST_TEXEL_BYTES]> {
-    let _ = (be, mode);
-    todo!()
+    convert(be, mode)
 }
 
 /// `gs_ffmpeg_image_rgba64be_rows()`: converts the `cy` rows of the
@@ -138,6 +210,52 @@ pub fn rgba64be_rows<D: DstByte>(
     src_linesize: usize,
     mode: i32,
 ) -> usize {
-    let _ = (dst, src, cx, cy, src_linesize, mode);
-    todo!()
+    if !matches!(
+        mode,
+        alpha_mode::STRAIGHT | alpha_mode::PREMULTIPLY_SRGB | alpha_mode::PREMULTIPLY
+    ) {
+        return 0;
+    }
+    let row_bytes = src_row_bytes(cx, src_linesize);
+    let texels = row_bytes >> 3;
+    if texels == 0 {
+        // Every row reads and writes nothing (and skips its whole line).
+        return 0;
+    }
+    // Never negative: `row_bytes` is at most the line size.
+    let skip = src_linesize.wrapping_sub(row_bytes);
+
+    let mut s = 0usize;
+    let mut d = 0usize;
+    for _ in 0..cy.max(0) {
+        for _ in 0..texels {
+            let Some(texel) = s
+                .checked_add(SRC_TEXEL_BYTES)
+                .and_then(|end| src.get(s..end))
+                .and_then(|t| <[u8; SRC_TEXEL_BYTES]>::try_from(t).ok())
+            else {
+                return d;
+            };
+            let Some(out) = d
+                .checked_add(DST_TEXEL_BYTES)
+                .and_then(|end| dst.get_mut(d..end))
+            else {
+                return d;
+            };
+            let Some(rgba) = convert(texel, mode) else {
+                return d;
+            };
+            for (byte, value) in out.iter_mut().zip(rgba) {
+                byte.put(value);
+            }
+            // In bounds: both ends were just checked.
+            s = s.wrapping_add(SRC_TEXEL_BYTES);
+            d = d.wrapping_add(DST_TEXEL_BYTES);
+        }
+        let Some(next) = s.checked_add(skip) else {
+            return d;
+        };
+        s = next;
+    }
+    d
 }

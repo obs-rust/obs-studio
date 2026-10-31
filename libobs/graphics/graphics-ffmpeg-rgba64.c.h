@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics-ffmpeg-rgba64.pch.h"
+#include "libobs/build/libobs-ported-graphics-ffmpeg-rgba64.pch.h"
 
 /* Portable on every compiler; GCC, Clang and MSVC turn it into one byte swap. */
 #define obs_bswap16(v) ((uint16_t)(((uint16_t)(v) << 8) | ((uint16_t)(v) >> 8)))

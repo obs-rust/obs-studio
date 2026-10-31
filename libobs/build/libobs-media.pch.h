@@ -24,7 +24,7 @@
 /* graphics/graphics-ffmpeg-orient.c (ported; graphics-ffmpeg.c calls it) */
 #include "graphics/graphics-ffmpeg-orient.h"
 
-/* graphics/graphics-ffmpeg-rgba64.c (graphics-ffmpeg.c calls it) */
+/* graphics/graphics-ffmpeg-rgba64.c (ported; graphics-ffmpeg.c calls it) */
 #include "graphics/graphics-ffmpeg-rgba64.h"
 
 /* media-io/audio-resampler-ffmpeg.c */

@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-graphics-ffmpeg-rgba64+.h.c"
+  ]
+}
