@@ -80,6 +80,7 @@ pub mod frame_rate;
 pub mod gif;
 pub mod gif_blocks;
 pub mod gif_frame;
+pub mod graphics_immediate;
 pub mod graphics_math;
 pub mod graphics_sprite;
 pub mod graphics_state_stacks;
