@@ -1,5 +1,10 @@
 {
   "LIBOBS_PORTED_SOURCES": [
     "build/libobs.ported-audio-resampler-drift+.h.c"
-  ]
+  ],
+  "compile_options": {
+    "gnu": [
+      "-ffp-contract=off"
+    ]
+  }
 }

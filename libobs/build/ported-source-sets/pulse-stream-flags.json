@@ -1,0 +1,8 @@
+{
+  "LIBOBS_PULSE_PORTED_SOURCES": [
+    "build/libobs.ported-pulse+.h.c"
+  ],
+  "headers": [
+    "audio-monitoring/pulse/pulseaudio-stream-flags.h"
+  ]
+}

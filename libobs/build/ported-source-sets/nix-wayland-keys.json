@@ -1,5 +1,8 @@
 {
   "LIBOBS_WAYLAND_PORTED_SOURCES": [
     "build/libobs.ported-nix-wayland-keys+.h.c"
+  ],
+  "headers": [
+    "obs-nix-wayland-keys.h"
   ]
 }

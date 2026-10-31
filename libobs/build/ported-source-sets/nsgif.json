@@ -1,0 +1,18 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-nsgif-blocks+.h.c",
+    "build/libobs.ported-nsgif-frame+.h.c",
+    "build/libobs.ported-nsgif-gif+.h.c",
+    "build/libobs.ported-nsgif-lzw+.h.c"
+  ],
+  "compile_options": {
+    "gnu": [
+      "-Wno-conversion",
+      "-Wno-sign-conversion"
+    ],
+    "msvc": [
+      "/wd4244",
+      "/wd4267"
+    ]
+  }
+}

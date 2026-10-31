@@ -12,105 +12,21 @@ PORTED = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PORTED)
 
 
-# One entry per line, sorted (ci/test_sorted_shared_lists.py, #1997): ports
-# add rows here instead of appending assertions at the end.
-# Ported on Linux, Windows and macOS.
-PORTED_ON_EVERY_HOST = (
-    "graphics/effect-param-types.c.h.o",
-    "graphics/graphics-ffmpeg-orient.c.h.o",
-    "graphics/graphics-immediate.c.h.o",
-    "graphics/graphics-sprite.c.h.o",
-    "graphics/graphics-state-stacks.c.h.o",
-    "graphics/libnsgif/gif-blocks.c.h.o",
-    "graphics/libnsgif/gif-frame.c.h.o",
-    "graphics/libnsgif/gif.c.h.o",
-    "graphics/libnsgif/lzw.c.h.o",
-    "media-io/audio-resampler-drift.c.h.o",
-    "media-io/video-scaler-plan.c.h.o",
-    "obs-audio-discard.c.h.o",
-    "obs-audio-min-ts.c.h.o",
-    "obs-audio-mix.c.h.o",
-    "obs-audio-render.c.h.o",
-    "obs-canvas-draw.c.h.o",
-    "obs-canvas-rules.c.h.o",
-    "obs-context-names.c.h.o",
-    "obs-core-setup-rules.c.h.o",
-    "obs-encoder-audio-start.c.h.o",
-    "obs-encoder-bind.c.h.o",
-    "obs-encoder-gpu-gates.c.h.o",
-    "obs-encoder-gpu-rescale.c.h.o",
-    "obs-encoder-group-reconfig.c.h.o",
-    "obs-encoder-lifecycle.c.h.o",
-    "obs-encoder-packet-ts.c.h.o",
-    "obs-encoder-pause.c.h.o",
-    "obs-encoder-roi.c.h.o",
-    "obs-encoder-size.c.h.o",
-    "obs-hotkey-binding-press.c.h.o",
-    "obs-hotkey-pair.c.h.o",
-    "obs-hotkey-press.c.h.o",
-    "obs-module-load-rules.c.h.o",
-    "obs-module-locale.c.h.o",
-    "obs-module-names.c.h.o",
-    "obs-module-paths.c.h.o",
-    "obs-module-register-copy.c.h.o",
-    "obs-module-source-rules.c.h.o",
-    "obs-module-type-rules.c.h.o",
-    "obs-output-begin.c.h.o",
-    "obs-output-caption.c.h.o",
-    "obs-output-pause.c.h.o",
-    "obs-output-protocols.c.h.o",
-    "obs-output-raw-audio.c.h.o",
-    "obs-output-reconnect.c.h.o",
-    "obs-output-slots.c.h.o",
-    "obs-output-start.c.h.o",
-    "obs-output-stop-stats.c.h.o",
-    "obs-output-stop.c.h.o",
-    "obs-output-video-checks.c.h.o",
-    "obs-scene-audio-actions.c.h.o",
-    "obs-scene-audio-mix.c.h.o",
-    "obs-scene-audio-window.c.h.o",
-    "obs-scene-crop.c.h.o",
-    "obs-scene-extent.c.h.o",
-    "obs-scene-item-names.c.h.o",
-    "obs-scene-item-order.c.h.o",
-    "obs-scene-item-transform.c.h.o",
-    "obs-scene-render-plan.c.h.o",
-    "obs-scene-transform-update.c.h.o",
-    "obs-service-getters.c.h.o",
-    "obs-source-async-pacing.c.h.o",
-    "obs-source-async-upload.c.h.o",
-    "obs-source-audio-input.c.h.o",
-    "obs-source-audio-place.c.h.o",
-    "obs-source-audio-render.c.h.o",
-    "obs-source-audio-timing.c.h.o",
-    "obs-source-color-space.c.h.o",
-    "obs-source-conversion-plan.c.h.o",
-    "obs-source-deinterlace-draw.c.h.o",
-    "obs-source-deinterlace-pacing.c.h.o",
-    "obs-source-deinterlace-select.c.h.o",
-    "obs-source-draw-plan.c.h.o",
-    "obs-source-duplicate.c.h.o",
-    "obs-source-filter-chain.c.h.o",
-    "obs-source-frame-copy.c.h.o",
-    "obs-source-load.c.h.o",
-    "obs-source-media-admission.c.h.o",
-    "obs-source-monitoring.c.h.o",
-    "obs-source-ptm-gate.c.h.o",
-    "obs-source-render-route.c.h.o",
-    "obs-source-size.c.h.o",
-    "obs-source-transition-clock.c.h.o",
-    "obs-source-transition-load.c.h.o",
-    "obs-source-transition-render.c.h.o",
-    "obs-source-transition-start.c.h.o",
-    "obs-source-video-tick.c.h.o",
-    "obs-source-volume-mul.c.h.o",
-    "obs-source-volume.c.h.o",
-    "obs-video-copy-plan.c.h.o",
-    "obs-video-frame-timing.c.h.o",
-    "obs-video-output-step.c.h.o",
-    "obs-video-pacing.c.h.o",
-    "obs-view-api.c.h.o",
-)
+# Ported on Linux, Windows and macOS: derived from LIBOBS_PORTED_SOURCES (its
+# set file plus the per-unit libobs/build/ported-source-sets/ files, #3236),
+# so a port adds no row here. The floor keeps a broken loader from passing.
+PORTED_ON_EVERY_HOST_FLOOR = 90
+# Production sets: every libobs binary compiles these groups.
+PRODUCTION_SETS = ("LIBOBS_SOURCES", "LIBOBS_RUST_SOURCES", "LIBOBS_LINUX_SOURCES",
+                   "LIBOBS_WINDOWS_SOURCES", "LIBOBS_MACOS_SOURCES")
+
+
+def ported_on_every_host():
+    sets = PORTED.source_sets(ROOT)
+    return sorted({member + ".o" for group in sets["LIBOBS_PORTED_SOURCES"]
+                   for member in PORTED.group_members(ROOT, group)})
+
+
 # Ported, checked on Linux.
 PORTED_ON_LINUX = (
     "obs-data.c.h.o",
@@ -161,10 +77,15 @@ class PortedSourceTest(unittest.TestCase):
         self.assertGreaterEqual(len(objects), 20)
         for name in PORTED_ON_LINUX:
             self.assertIn(name, objects)
-        for name in PORTED_ON_EVERY_HOST:
-            for host in ("linux", "windows", "macos"):
+        every_host = ported_on_every_host()
+        self.assertGreaterEqual(len(every_host), PORTED_ON_EVERY_HOST_FLOOR)
+        for name in ("media-io/audio-resampler-drift.c.h.o", "graphics/libnsgif/gif.c.h.o"):
+            self.assertIn(name, every_host)
+        for host in ("linux", "windows", "macos"):
+            host_objects = PORTED.ported_objects(ROOT, host)
+            for name in every_host:
                 with self.subTest(name=name, host=host):
-                    self.assertIn(name, PORTED.ported_objects(ROOT, host))
+                    self.assertIn(name, host_objects)
         for name in NOT_PORTED:
             self.assertNotIn(name, objects)
         self.assertIn("audio-monitoring/pulse/pulseaudio-stream-flags.c.h.o", objects)
@@ -231,6 +152,17 @@ class PortedSourceTest(unittest.TestCase):
         self.assertNotIn("util/windows/window-match.c.h.o", objects)
         self.assertNotIn("util/windows/window-match.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertEqual(len(objects), len(set(objects)))
+
+    def test_no_ported_c_links_into_production(self):
+        """A ported implementation file is in no group every binary compiles."""
+        sets = PORTED.source_sets(ROOT)
+        production = {member + ".o" for name in PRODUCTION_SETS for group in sets[name]
+                      if group.endswith((".c", ".m"))
+                      for member in PORTED.group_members(ROOT, group)}
+        self.assertTrue(production)
+        for host in ("linux", "windows", "macos"):
+            with self.subTest(host=host):
+                self.assertEqual(sorted(production & set(PORTED.ported_objects(ROOT, host))), [])
 
     def test_host_and_optional_groups_select_the_actual_members(self):
         with tempfile.TemporaryDirectory() as temporary:

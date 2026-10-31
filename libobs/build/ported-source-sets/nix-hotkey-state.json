@@ -1,0 +1,8 @@
+{
+  "LIBOBS_WAYLAND_PORTED_SOURCES": [
+    "build/libobs.ported-nix-hotkey-state+.h.c"
+  ],
+  "headers": [
+    "obs-nix-hotkey-state.h"
+  ]
+}

@@ -43,20 +43,8 @@ target_link_libraries(
 if(ENABLE_PULSEAUDIO)
   find_package(PulseAudio REQUIRED)
 
-  target_sources(
-    libobs-objects
-    PRIVATE
-      build/libobs.pulse+.h.c
-      audio-monitoring/pulse/pulseaudio-monitor-format.h
-      audio-monitoring/pulse/pulseaudio-monitor-steps.h
-      audio-monitoring/pulse/pulseaudio-stream-flags.h
-      audio-monitoring/pulse/pulseaudio-wrapper.h
-  )
-
-  # pulseaudio-stream-flags.c, pulseaudio-monitor-format.c and
-  # pulseaudio-monitor-steps.c have Rust ports: C reference/rollback only
-  # (sources.cmake).
-  obs_libobs_add_c_sources(${LIBOBS_PULSE_PORTED_SOURCES})
+  target_sources(libobs-objects PRIVATE build/libobs.pulse+.h.c audio-monitoring/pulse/pulseaudio-wrapper.h)
+  libobs_add_ported_sources(LIBOBS_PULSE_PORTED_SOURCES)
   target_link_libraries(libobs-objects PUBLIC PulseAudio::PulseAudio)
   target_enable_feature(libobs "PulseAudio audio monitoring (FreeBSD)")
 else()
@@ -65,9 +53,7 @@ else()
 endif()
 
 if(TARGET gio::gio)
-  # platform-nix-dbus.c and platform-nix-portal.c have Rust ports:
-  # C reference/rollback only (sources.cmake).
-  obs_libobs_add_c_sources(${LIBOBS_NIX_GIO_PORTED_SOURCES})
+  libobs_add_ported_sources(LIBOBS_NIX_GIO_PORTED_SOURCES)
   target_link_libraries(libobs-objects PUBLIC gio::gio)
 endif()
 
@@ -86,18 +72,13 @@ if(ENABLE_WAYLAND)
   find_package(Wayland REQUIRED Client)
   find_package(Xkbcommon REQUIRED)
 
-  target_sources(libobs-objects PRIVATE build/libobs.nix-wayland+.h.c obs-nix-hotkey-state.h obs-nix-wayland-keys.h)
-  # obs-nix-hotkey-state.c and obs-nix-wayland-keys.c have Rust ports: C reference/rollback only
-  # (sources.cmake).
-  obs_libobs_add_c_sources(${LIBOBS_WAYLAND_PORTED_SOURCES})
+  target_sources(libobs-objects PRIVATE build/libobs.nix-wayland+.h.c)
+  libobs_add_ported_sources(LIBOBS_WAYLAND_PORTED_SOURCES)
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 
   if(TARGET gio::gio)
     target_sources(libobs-objects PRIVATE build/libobs.nix-portal-shortcuts+.h.c obs-nix-portal-shortcuts.h)
-    # obs-nix-portal-shortcut-ids.c, obs-nix-portal-shortcut-sets.c and
-    # obs-nix-portal-shortcut-status.c have Rust ports: C reference/rollback only
-    # (sources.cmake).
-    obs_libobs_add_c_sources(${LIBOBS_WAYLAND_GIO_PORTED_SOURCES})
+    libobs_add_ported_sources(LIBOBS_WAYLAND_GIO_PORTED_SOURCES)
     target_compile_definitions(libobs-objects PUBLIC HAVE_GLOBAL_SHORTCUTS_PORTAL)
     target_compile_definitions(libobs-objects PRIVATE OBS_PORTAL_APP_ID="${OBS_DESKTOP_ID}")
   endif()

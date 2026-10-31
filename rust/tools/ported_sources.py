@@ -7,6 +7,9 @@ import re
 
 MEMBER = re.compile(r'^\s*#include\s+"libobs/([^"\n]+\.(?:c|m)\.h)"\s*$', re.MULTILINE)
 HOSTS = ("linux", "windows", "macos")
+# Optional per-unit fields beside the set keys (#3236); cmake/sources.cmake
+# applies them, the inventory ignores them.
+UNIT_FIELDS = {"compile_options", "headers"}
 
 
 def source_sets(root: Path) -> dict[str, list[str]]:
@@ -16,6 +19,8 @@ def source_sets(root: Path) -> dict[str, list[str]]:
     for fragment in sorted((build / "ported-source-sets").glob("*.json")):
         additions = json.loads(fragment.read_text())
         for name, members in additions.items():
+            if name in UNIT_FIELDS:
+                continue
             if name not in sets or not name.endswith("_PORTED_SOURCES"):
                 raise ValueError(f"unknown ported source set in {fragment}: {name}")
             duplicates = set(members) & set(sets[name])

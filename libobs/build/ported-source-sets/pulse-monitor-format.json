@@ -1,0 +1,8 @@
+{
+  "LIBOBS_PULSE_PORTED_SOURCES": [
+    "build/libobs.ported-pulse-format+.h.c"
+  ],
+  "headers": [
+    "audio-monitoring/pulse/pulseaudio-monitor-format.h"
+  ]
+}

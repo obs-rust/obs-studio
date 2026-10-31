@@ -50,18 +50,6 @@ set_source_files_properties(
   PROPERTIES COMPILE_DEFINITIONS OBS_VERSION="${OBS_VERSION_CANONICAL}"
 )
 
-set_source_files_properties(
-  build/libobs.ported-nsgif-blocks+.h.c
-  build/libobs.ported-nsgif-frame+.h.c
-  build/libobs.ported-nsgif-gif+.h.c
-  build/libobs.ported-nsgif-lzw+.h.c
-  graphics/libnsgif/gif-blocks.h
-  graphics/libnsgif/gif-frame.h
-  graphics/libnsgif/lzw.h
-  graphics/libnsgif/nsgif.h
-  PROPERTIES COMPILE_OPTIONS "/wd4244;/wd4267"
-)
-
 # PRIVATE: libobs and libobs-with-rust get these as link-only items, so
 # OBS::obfuscate's interface group (build/libobs.obfuscate-windows+.h.c) is compiled
 # once, into libobs-objects, not again into each DLL.
