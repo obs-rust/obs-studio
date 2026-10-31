@@ -685,6 +685,22 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_setup_rules_ms_steps": {
+      "sources": [
+        "test/cmocka/test_core_setup_rules_ms_steps.c",
+        "libobs/obs-core-setup-rules-ms.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-core-setup-rules.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_core_setup_rules_steps": {
       "sources": [
         "test/cmocka/test_core_setup_rules_steps.c",
@@ -6037,6 +6053,12 @@
     },
     "test_context_name_helpers": {
       "target": "test_context_name_helpers"
+    },
+    "test_core_setup_rules_ms_steps": {
+      "target": "test_core_setup_rules_ms_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_core_setup_rules_steps": {
       "target": "test_core_setup_rules_steps",

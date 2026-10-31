@@ -1,6 +1,6 @@
-/* Test-only oracle: the original libobs/obs-core-setup-rules.c.h,
- * unmodified, with its fifteen entry points renamed to oracle_* so they
- * can link next to the Rust shims. Also the constants and enum values of
+/* Test-only oracle: the original libobs/obs-core-setup-rules.c.h and
+ * obs-core-setup-rules-ms.c.h, unmodified, with their sixteen entry points
+ * renamed to oracle_* so they can link next to the Rust shims. Also the constants and enum values of
  * obs-core-setup-rules.h, and the obs-defs.h, obs-source.h and audio-io.h
  * values they copy, as the C sees them. */
 
@@ -14,6 +14,7 @@
 #define obs_core_setup_rules_buffer_set oracle_obs_core_setup_rules_buffer_set
 #define obs_core_setup_rules_buffer_ticks oracle_obs_core_setup_rules_buffer_ticks
 #define obs_core_setup_rules_buffer_default_ticks oracle_obs_core_setup_rules_buffer_default_ticks
+#define obs_core_setup_rules_buffer_ms oracle_obs_core_setup_rules_buffer_ms
 #define obs_core_setup_rules_cmdline_set oracle_obs_core_setup_rules_cmdline_set
 #define obs_core_setup_rules_cmdline_len oracle_obs_core_setup_rules_cmdline_len
 #define obs_core_setup_rules_cmdline_table oracle_obs_core_setup_rules_cmdline_table
@@ -26,6 +27,7 @@
 #define obs_core_setup_rules_mix_step oracle_obs_core_setup_rules_mix_step
 
 #include "obs-core-setup-rules.c.h"
+#include "obs-core-setup-rules-ms.c.h"
 
 #undef obs_core_setup_rules_mix_step
 #undef obs_core_setup_rules_monitor_same
@@ -37,6 +39,7 @@
 #undef obs_core_setup_rules_cmdline_table
 #undef obs_core_setup_rules_cmdline_len
 #undef obs_core_setup_rules_cmdline_set
+#undef obs_core_setup_rules_buffer_ms
 #undef obs_core_setup_rules_buffer_default_ticks
 #undef obs_core_setup_rules_buffer_ticks
 #undef obs_core_setup_rules_buffer_set
@@ -60,6 +63,7 @@ static const int64_t constants[] = {
 	OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES,
 	AUDIO_OUTPUT_FRAMES,
 	OBS_CORE_SETUP_RULES_DEFAULT_TICKS,
+	OBS_CORE_SETUP_RULES_SEC_TO_MSEC,
 	OBS_CORE_SETUP_RULES_LATEST_NONE,
 	OBS_CORE_SETUP_RULES_VIDEO_CORE,
 	OBS_CORE_SETUP_RULES_VIDEO_ACTIVE,

@@ -1,5 +1,5 @@
-//! `oracle_*` build of `libobs/obs-core-setup-rules.c.h`
-//! (oracle/core_setup_rules.c).
+//! `oracle_*` build of `libobs/obs-core-setup-rules.c.h` and
+//! `libobs/obs-core-setup-rules-ms.c.h` (oracle/core_setup_rules.c).
 //!
 //! The C's enums are 32-bit integers, taken and returned as `u32` as the
 //! shims do. The constants and enum values of `obs-core-setup-rules.h`, and
@@ -10,7 +10,7 @@ use core::ffi::c_int;
 
 /// Index of each entry in `oracle_core_setup_rules_constant`, in the C's
 /// order.
-pub const CONSTANT_NAMES: [&str; 31] = [
+pub const CONSTANT_NAMES: [&str; 32] = [
     "OBS_CORE_SETUP_RULES_VIDEO_GO",
     "OBS_CORE_SETUP_RULES_VIDEO_FAIL",
     "OBS_CORE_SETUP_RULES_VIDEO_INVALID_PARAM",
@@ -24,6 +24,7 @@ pub const CONSTANT_NAMES: [&str; 31] = [
     "OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES",
     "AUDIO_OUTPUT_FRAMES",
     "OBS_CORE_SETUP_RULES_DEFAULT_TICKS",
+    "OBS_CORE_SETUP_RULES_SEC_TO_MSEC",
     "OBS_CORE_SETUP_RULES_LATEST_NONE",
     "OBS_CORE_SETUP_RULES_VIDEO_CORE",
     "OBS_CORE_SETUP_RULES_VIDEO_ACTIVE",
@@ -53,6 +54,7 @@ unsafe extern "C" {
         samples_per_sec: u32,
     ) -> u32;
     pub fn oracle_obs_core_setup_rules_buffer_default_ticks() -> u32;
+    pub fn oracle_obs_core_setup_rules_buffer_ms(ticks: c_int, samples_per_sec: u32) -> c_int;
     pub fn oracle_obs_core_setup_rules_cmdline_set(stored_argc: c_int) -> bool;
     pub fn oracle_obs_core_setup_rules_cmdline_len(len: usize, arg_len: usize) -> usize;
     pub fn oracle_obs_core_setup_rules_cmdline_table(argc: c_int, ptr_size: usize) -> usize;

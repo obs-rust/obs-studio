@@ -35,6 +35,9 @@
  *   ticks of AUDIO_OUTPUT_FRAMES: a max_buffering_ms of 0 takes the
  *   default, any other is rounded up from ms * rate / 1000 frames, in
  *   uint32_t (the product wraps);
+ * - obs_core_setup_rules_buffer_ms() (obs-core-setup-rules-ms.c): those
+ *   ticks back in milliseconds, for obs_reset_audio2()'s log and
+ *   obs_get_audio_info2(), in int, the rate cast to int;
  * - obs_core_setup_rules_cmdline_set(): the command line was set already
  *   (its stored argc is not 0), so a new one is ignored;
  * - obs_core_setup_rules_cmdline_len(), obs_core_setup_rules_cmdline_table():
@@ -63,8 +66,8 @@
  * outputs_starting(), audio_output_active(), find_libobs_data_file(),
  * check_path(), dstr_cmp(), strcmp(), strlen(),
  * obs_audio_monitoring_available(), the frame counters), the fps gate, every
- * allocation, copy, free and signal, every divide by a variable and every log
- * message. Nothing here takes a lock, calls into libobs or keeps state.
+ * allocation, copy, free and signal, every divide by a variable but the
+ * buffering's milliseconds, and every log message. Nothing here takes a lock, calls into libobs or keeps state.
  *
  * The constants are copied below, so this header needs no core header;
  * obs.c checks them against obs-defs.h and obs-source.h.
@@ -83,6 +86,8 @@
  * max_buffering_ms of 0, in ticks */
 #define OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES 1024
 #define OBS_CORE_SETUP_RULES_DEFAULT_TICKS 45
+/* SEC_TO_MSEC */
+#define OBS_CORE_SETUP_RULES_SEC_TO_MSEC 1000
 /* The version obs_get_latest_input_type_id() starts from */
 #define OBS_CORE_SETUP_RULES_LATEST_NONE -1
 
@@ -119,6 +124,7 @@ bool obs_core_setup_rules_audio_refused(enum obs_core_setup_rules_audio_step ste
 bool obs_core_setup_rules_buffer_set(uint32_t max_buffering_ms);
 uint32_t obs_core_setup_rules_buffer_ticks(uint32_t max_buffering_ms, uint32_t samples_per_sec);
 uint32_t obs_core_setup_rules_buffer_default_ticks(void);
+int obs_core_setup_rules_buffer_ms(int ticks, uint32_t samples_per_sec);
 bool obs_core_setup_rules_cmdline_set(int stored_argc);
 size_t obs_core_setup_rules_cmdline_len(size_t len, size_t arg_len);
 size_t obs_core_setup_rules_cmdline_table(int argc, size_t ptr_size);

@@ -1,5 +1,6 @@
 //! Tier 3: `obs_core::core_setup_rules` against the original
-//! `libobs/obs-core-setup-rules.c.h`, compiled as an oracle.
+//! `libobs/obs-core-setup-rules.c.h` and `libobs/obs-core-setup-rules-ms.c.h`,
+//! compiled as an oracle.
 //!
 //! Every shim is compared with its `oracle_*` twin: every step the C enums
 //! name, and steps they do not (the C's `switch` falls through), with both
@@ -8,36 +9,43 @@
 //! over up to eight added paths; the buffering ticks at the edges of
 //! `u32` and around whole ticks; the command line sizes, the compares, the
 //! latest version and the capture device flag at the edges of their types;
-//! the constants and enum values of the header; and proptests over any
-//! input.
+//! the constants and enum values of the header; the buffering milliseconds
+//! over every tick from -2097 to 4195 at the usual rates and the edges of
+//! the C's `(int)` cast; and proptests over any input.
 //!
-//! No intentional difference: nothing is excluded.
+//! Intentional differences, in `buffer_ms` only (#3272), where the C is
+//! undefined: a rate that casts to an `int` of 0 (the C's divide traps)
+//! gives 0, and a product past `i32` (the C's `int` overflows, from 2098
+//! ticks) is computed in `i64` and its quotient clamped to `i32`. Exactly
+//! those inputs skip the oracle and are checked against that contract
+//! instead (`c_defined`, `fixed_ms`); every other input is compared.
 
 use core::ffi::c_int;
 
 use obs_c_oracle::core_setup_rules::{
     CONSTANT_NAMES, constant, oracle_obs_core_setup_rules_aoc_check,
     oracle_obs_core_setup_rules_audio_refused, oracle_obs_core_setup_rules_buffer_default_ticks,
-    oracle_obs_core_setup_rules_buffer_set, oracle_obs_core_setup_rules_buffer_ticks,
-    oracle_obs_core_setup_rules_cmdline_len, oracle_obs_core_setup_rules_cmdline_set,
-    oracle_obs_core_setup_rules_cmdline_table, oracle_obs_core_setup_rules_data_file_found,
-    oracle_obs_core_setup_rules_data_path_match, oracle_obs_core_setup_rules_latest_newer,
-    oracle_obs_core_setup_rules_mix_step, oracle_obs_core_setup_rules_monitor_missing,
-    oracle_obs_core_setup_rules_monitor_same, oracle_obs_core_setup_rules_video_gate,
+    oracle_obs_core_setup_rules_buffer_ms, oracle_obs_core_setup_rules_buffer_set,
+    oracle_obs_core_setup_rules_buffer_ticks, oracle_obs_core_setup_rules_cmdline_len,
+    oracle_obs_core_setup_rules_cmdline_set, oracle_obs_core_setup_rules_cmdline_table,
+    oracle_obs_core_setup_rules_data_file_found, oracle_obs_core_setup_rules_data_path_match,
+    oracle_obs_core_setup_rules_latest_newer, oracle_obs_core_setup_rules_mix_step,
+    oracle_obs_core_setup_rules_monitor_missing, oracle_obs_core_setup_rules_monitor_same,
+    oracle_obs_core_setup_rules_video_gate,
 };
 use obs_core::core_setup_rules::{
-    AUDIO_OUTPUT_FRAMES, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE,
+    AUDIO_OUTPUT_FRAMES, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, SEC_TO_MSEC,
 };
 use obs_core::ffi::core_setup_rules::{
     VIDEO_CURRENTLY_ACTIVE, VIDEO_FAIL, VIDEO_GO, VIDEO_INVALID_PARAM,
     obs_core_setup_rules_aoc_check, obs_core_setup_rules_audio_refused,
-    obs_core_setup_rules_buffer_default_ticks, obs_core_setup_rules_buffer_set,
-    obs_core_setup_rules_buffer_ticks, obs_core_setup_rules_cmdline_len,
-    obs_core_setup_rules_cmdline_set, obs_core_setup_rules_cmdline_table,
-    obs_core_setup_rules_data_file_found, obs_core_setup_rules_data_path_match,
-    obs_core_setup_rules_latest_newer, obs_core_setup_rules_mix_step,
-    obs_core_setup_rules_monitor_missing, obs_core_setup_rules_monitor_same,
-    obs_core_setup_rules_video_gate,
+    obs_core_setup_rules_buffer_default_ticks, obs_core_setup_rules_buffer_ms,
+    obs_core_setup_rules_buffer_set, obs_core_setup_rules_buffer_ticks,
+    obs_core_setup_rules_cmdline_len, obs_core_setup_rules_cmdline_set,
+    obs_core_setup_rules_cmdline_table, obs_core_setup_rules_data_file_found,
+    obs_core_setup_rules_data_path_match, obs_core_setup_rules_latest_newer,
+    obs_core_setup_rules_mix_step, obs_core_setup_rules_monitor_missing,
+    obs_core_setup_rules_monitor_same, obs_core_setup_rules_video_gate,
 };
 use proptest::prelude::*;
 
@@ -97,6 +105,53 @@ fn check_ticks(ms: u32, rate: u32) {
         "{ms} {rate}"
     );
 }
+
+/// The C's `ticks * 1024 * 1000 / (int)rate` is defined: the rate does not
+/// cast to 0 and the product fits an `int` (`INT_MIN / -1` needs a product
+/// of `INT_MIN`, which is not a multiple of 1024000).
+fn c_defined(ticks: c_int, rate: u32) -> bool {
+    rate.cast_signed() != 0 && i32::try_from(i64::from(ticks) * 1_024_000).is_ok()
+}
+
+/// The fixed contract where the C is undefined: 0 for a zero rate, else the
+/// `i64` quotient clamped to `i32`.
+fn fixed_ms(ticks: c_int, rate: u32) -> c_int {
+    let rate = i64::from(rate.cast_signed());
+    if rate == 0 {
+        return 0;
+    }
+    let ms = i64::from(ticks) * 1_024_000 / rate;
+    i32::try_from(ms).unwrap_or(if ms < 0 { i32::MIN } else { i32::MAX })
+}
+
+fn check_ms(ticks: c_int, rate: u32) {
+    let rust = obs_core_setup_rules_buffer_ms(ticks, rate);
+    if c_defined(ticks, rate) {
+        // SAFETY: plain values, and c_defined() keeps the C defined.
+        let c = unsafe { oracle_obs_core_setup_rules_buffer_ms(ticks, rate) };
+        assert_eq!(rust, c, "{ticks} {rate}");
+    } else {
+        assert_eq!(rust, fixed_ms(ticks, rate), "{ticks} {rate}");
+    }
+}
+
+/// The usual audio rates, and the edges of the C's `(int)` cast.
+const MS_RATES: [u32; 14] = [
+    0,
+    1,
+    7,
+    8000,
+    22050,
+    44100,
+    48000,
+    96000,
+    192_000,
+    0x7fff_ffff,
+    0x8000_0000,
+    0x8000_0001,
+    0xffff_fc00,
+    u32::MAX,
+];
 
 fn check_cmdline(argc: c_int, ptr: usize, len: usize, arg_len: usize) {
     // SAFETY: plain values.
@@ -191,6 +246,10 @@ fn constants_match_the_header() {
     assert_eq!(
         constant_of("OBS_CORE_SETUP_RULES_DEFAULT_TICKS"),
         i64::from(DEFAULT_TICKS)
+    );
+    assert_eq!(
+        constant_of("OBS_CORE_SETUP_RULES_SEC_TO_MSEC"),
+        i64::from(SEC_TO_MSEC)
     );
     assert_eq!(
         constant_of("OBS_CORE_SETUP_RULES_LATEST_NONE"),
@@ -336,6 +395,48 @@ fn every_data_file_search_matches() {
     }
 }
 
+/// Every tick from -2097 to 4195 (the most `buffer_ticks()` gives) at each
+/// rate: compared with the C up to 2097, against the fixed contract past
+/// it and for a zero rate.
+#[test]
+fn buffer_ms_every_tick() {
+    // The most ticks: u32::MAX frames' worth, which no product passes.
+    assert_eq!(obs_core_setup_rules_buffer_ticks(u32::MAX, 1), 4195);
+    let mut compared = 0u32;
+    for rate in MS_RATES {
+        for ticks in -2097..=4195 {
+            compared += u32::from(c_defined(ticks, rate));
+            check_ms(ticks, rate);
+        }
+    }
+    // At each of the 13 non-zero rates, every tick from -2097 to 2097 is
+    // compared with the C.
+    assert_eq!(compared, 13 * (2 * 2097 + 1));
+}
+
+#[test]
+fn buffer_ms_edges() {
+    for ticks in [
+        i32::MIN,
+        i32::MIN + 1,
+        -2099,
+        -2098,
+        2098,
+        2099,
+        i32::MAX - 1,
+        i32::MAX,
+    ] {
+        for rate in MS_RATES {
+            check_ms(ticks, rate);
+        }
+    }
+    // The fixed contract itself, where the C is undefined.
+    assert_eq!(obs_core_setup_rules_buffer_ms(45, 0), 0);
+    assert_eq!(obs_core_setup_rules_buffer_ms(2098, 48000), 44757);
+    assert_eq!(obs_core_setup_rules_buffer_ms(2098, 1), i32::MAX);
+    assert_eq!(obs_core_setup_rules_buffer_ms(2098, u32::MAX), i32::MIN);
+}
+
 #[test]
 fn buffer_ticks_edges_match() {
     let values = [
@@ -468,6 +569,24 @@ proptest! {
     #[test]
     fn buffer_ticks_audio_rates(ms in 0u32..100_000, rate in prop::sample::select(vec![8000u32, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 192_000])) {
         check_ticks(ms, rate);
+    }
+
+    #[test]
+    fn buffer_ms_defined(ticks in -2097i32..=2097, rate in 1u32..=u32::MAX) {
+        prop_assert!(c_defined(ticks, rate));
+        check_ms(ticks, rate);
+    }
+
+    #[test]
+    fn buffer_ms_any(ticks in any::<c_int>(), rate in any::<u32>()) {
+        check_ms(ticks, rate);
+    }
+
+    #[test]
+    fn buffer_ms_from_buffering(ms in any::<u32>(), rate in prop::sample::select(MS_RATES.to_vec())) {
+        // The ticks obs_reset_audio2() stores, then the milliseconds of them.
+        let ticks = obs_core_setup_rules_buffer_ticks(ms, rate).cast_signed();
+        check_ms(ticks, rate);
     }
 
     #[test]
