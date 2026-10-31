@@ -24,6 +24,7 @@ from conversion_clang_replay import (
     group_directory,
     Replay,
     repo_compdb,
+    source_exemptions,
     uncovered,
     unexplained,
     unity_group,
@@ -45,6 +46,20 @@ ENTRY = {
     ),
     "file": "/tree/libobs/build/libobs.core+.h.c",
     "output": "/tree/build/CMakeFiles/libobs.dir/build/libobs.core+.h.c.o",
+}
+
+# libobs's libnsgif unity group: the global pins, the target's group, then the
+# per-source exemption cmake appends from libobs/CMakeLists.txt (the vendored
+# NetSurf decoder is the Rust port's differential oracle, not a call site).
+EXEMPT_ENTRY = {
+    **ENTRY,
+    "command": (
+        "/usr/bin/cc -DLIBOBS -I/tree/libobs -Wno-conversion -Wno-float-conversion "
+        "-Wno-sign-conversion -Wconversion -Wsign-conversion -Wfloat-conversion "
+        "-Wno-conversion -Wno-sign-conversion "
+        "-c /tree/libobs/build/libobs.ported-nsgif-lzw+.h.c"
+    ),
+    "file": "/tree/libobs/build/libobs.ported-nsgif-lzw+.h.c",
 }
 
 
@@ -89,6 +104,24 @@ class ClangCommandTest(unittest.TestCase):
     def test_the_groups_policy_is_the_group_not_the_compiler(self) -> None:
         # The same command replayed by gcc is the control the cost proof used.
         self.assertEqual(clang_command(ENTRY, "gcc")[0], "gcc")
+
+    def test_a_source_level_exemption_is_not_a_global_pin(self) -> None:
+        # cmake appends a target's per-source COMPILE_OPTIONS after the group it
+        # states, so only a pin that follows the group in the command is the
+        # source's own exemption (libobs's vendored libnsgif groups).
+        self.assertEqual(source_exemptions(ENTRY), ())
+        self.assertEqual(
+            source_exemptions(EXEMPT_ENTRY), ("-Wno-conversion", "-Wno-sign-conversion")
+        )
+
+    def test_the_source_level_exemption_stays_effective(self) -> None:
+        # Reported after the group the replay adds, or stripping the pins would
+        # report the vendored decoder the port never edits as a ratchet failure.
+        command = clang_command(EXEMPT_ENTRY)
+        self.assertGreater(
+            command.index("-Wno-conversion"), command.index("-Wconversion")
+        )
+        self.assertEqual(command[-1], EXEMPT_ENTRY["file"])
 
 
 class GroupSelectionTest(unittest.TestCase):
