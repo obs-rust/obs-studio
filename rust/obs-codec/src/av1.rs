@@ -6,6 +6,8 @@
 //! extends past the end of the buffer, and every OBU is at least its header
 //! byte, so the walk always advances and stays in bounds.
 
+use core::mem::MaybeUninit;
+
 pub const OBU_SEQUENCE_HEADER: u8 = 1;
 pub const OBU_TEMPORAL_DELIMITER: u8 = 2;
 pub const OBU_FRAME_HEADER: u8 = 3;
@@ -209,6 +211,28 @@ pub fn metadata_obu_prefix(payload_len: usize, metadata_type: u8) -> ([u8; 12], 
     }
     out[n] = metadata_type;
     (out, n + 1)
+}
+
+/// The length of the metadata OBU [`write_metadata_obu`] writes around a
+/// payload of `payload_len` bytes: the header byte, the leb128 size field,
+/// `metadata_type`, the payload and [`METADATA_TRAILING_BITS`].
+#[must_use]
+pub fn metadata_obu_len(payload_len: usize) -> usize {
+    let _ = payload_len;
+    todo!("#3175")
+}
+
+/// Writes the metadata OBU of `metadata_type` around `payload` into `out`,
+/// which must be exactly [`metadata_obu_len`]`(payload.len())` bytes long;
+/// every byte of `out` is written. `out` may be uninitialized, as a fresh
+/// `bmalloc` buffer is.
+///
+/// # Panics
+///
+/// When `out` has any other length.
+pub fn write_metadata_obu(payload: &[u8], metadata_type: u8, out: &mut [MaybeUninit<u8>]) {
+    let _ = (payload, metadata_type, out);
+    todo!("#3175")
 }
 
 /// `metadata_obu`: a metadata OBU carrying `payload` as `metadata_type`:
