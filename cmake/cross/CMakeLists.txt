@@ -414,6 +414,24 @@ function(_obs_cross_plugin name)
   )
 endfunction()
 
+# A cross target opts into the conversion ratchet the way a native one does in
+# its own CMakeLists (#2625): by naming the three groups after the shared option
+# lists the declaration above already applied, so they follow `-Wno-conversion`
+# and `-Wno-sign-conversion` from `_obs_clang_*_options` and win. Without it, a
+# Windows- or macOS-only target is compiled by no Linux lane with the groups on
+# and can never be measured (#3150). MSVC has no such flags, so the alias stays
+# inert for it; clang-cl and AppleClang do honour them. `ci/conversion_ratchet.py`
+# reads an opt-in from a plugin's own CMakeLists, which this is not, so the set
+# of opted-in cross targets is pinned by ci/test_cross_conversion_ratchet.py.
+function(_obs_cross_conversion_ratchet target)
+  target_compile_options(
+    ${target}
+    PRIVATE
+      "$<$<COMPILE_LANG_AND_ID:C,Clang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+      "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
+endfunction()
+
 # The frontend's Windows/macOS unity groups (#2408) need Qt: the target's own
 # prebuilt Qt6 (CMakePresets.json `qt6`, the headers the real build uses) and
 # the ui_*.h headers its forms generate. uic runs on this host, from the
@@ -701,6 +719,7 @@ if(_host STREQUAL WINDOWS)
     "${CMAKE_BINARY_DIR}/virtualcam-module-cross/virtualcam-guid.h"
   )
   _obs_cross_plugin(obs-amf-test-cross DIR plugins/obs-ffmpeg/obs-amf-test SOURCES build/obs-amf-test.windows+.hpp.cpp)
+  _obs_cross_conversion_ratchet(obs-amf-test-cross)
   _obs_cross_plugin(
     obs-qsv-test-cross
     DIR plugins/obs-qsv11/obs-qsv-test
