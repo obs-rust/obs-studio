@@ -226,6 +226,58 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 	rmdir(dir);
 }
 
+/* #3182: the Virtual Camera dialog turns the microphone off and picks the
+ * track; a collection saved before has neither key. */
+static void dialog_settings_choose_audio_and_track(void **state)
+{
+	(void)state;
+	struct virtualcam_data vcam = {0};
+
+	obs_data_t *settings = obs_data_create();
+	vmic_read_settings(&vcam, settings);
+	assert_true(vcam.audio_enabled);
+	assert_int_equal(vcam.audio_mixer, 0);
+
+	obs_data_set_bool(settings, "audio_enabled", false);
+	obs_data_set_int(settings, "audio_track", 3);
+	vmic_read_settings(&vcam, settings);
+	assert_false(vcam.audio_enabled);
+	assert_int_equal(vcam.audio_mixer, 2);
+
+	obs_data_set_int(settings, "audio_track", 9);
+	vmic_read_settings(&vcam, settings);
+	assert_int_equal(vcam.audio_mixer, 0);
+	obs_data_release(settings);
+}
+
+/* #3185: a second running OBS gets its own source name instead of a second
+ * source with the same one. */
+static void a_second_obs_gets_its_own_source_name(void **state)
+{
+	(void)state;
+	char name[64];
+
+	assert_int_equal(vmic_pick_source_name("", name, sizeof(name)), 1);
+	assert_string_equal(name, "obs_virtual_microphone");
+	assert_int_equal(vmic_pick_source_name(NULL, name, sizeof(name)), 1);
+	assert_string_equal(name, "obs_virtual_microphone");
+
+	const char *one = "53\talsa_input.pci\tPipeWire\ts32le 2ch 48000Hz\tSUSPENDED\n"
+			  "54\tobs_virtual_microphone\tPipeWire\tfloat32le 2ch 48000Hz\tRUNNING\n";
+	assert_int_equal(vmic_pick_source_name(one, name, sizeof(name)), 2);
+	assert_string_equal(name, "obs_virtual_microphone_2");
+
+	/* A longer name that only starts with ours does not take it. */
+	const char *prefix = "60\tobs_virtual_microphone_2\tPipeWire\tfloat32le 2ch 48000Hz\tIDLE\n";
+	assert_int_equal(vmic_pick_source_name(prefix, name, sizeof(name)), 1);
+	assert_string_equal(name, "obs_virtual_microphone");
+
+	const char *two = "54\tobs_virtual_microphone\tPipeWire\tx\tRUNNING\n"
+			  "55\tobs_virtual_microphone_2\tPipeWire\tx\tRUNNING\n";
+	assert_int_equal(vmic_pick_source_name(two, name, sizeof(name)), 3);
+	assert_string_equal(name, "obs_virtual_microphone_3");
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -233,6 +285,8 @@ int main(void)
 		cmocka_unit_test_setup_teardown(packet_that_does_not_fit_is_dropped_whole, setup_pipe, teardown_pipe),
 		cmocka_unit_test(short_write_never_leaves_half_a_packet),
 		cmocka_unit_test(stale_is_decided_by_the_lock_not_the_pid),
+		cmocka_unit_test(dialog_settings_choose_audio_and_track),
+		cmocka_unit_test(a_second_obs_gets_its_own_source_name),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),

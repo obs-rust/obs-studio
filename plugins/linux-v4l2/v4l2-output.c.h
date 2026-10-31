@@ -22,6 +22,9 @@ struct virtualcam_data {
 	struct vmic_tail mic_tail;
 	uint32_t mic_module;
 	bool mic_loaded;
+	/* Settings from the Virtual Camera dialog (#3182). */
+	bool audio_enabled;
+	size_t audio_mixer;
 	char mic_path[256];
 	char mic_lock_path[256];
 	int mic_lock;
@@ -134,6 +137,26 @@ static bool vmic_instance_is_stale(const char *dir, long n)
 	bool unlocked = flock(fd, LOCK_EX | LOCK_NB) == 0;
 	close(fd);
 	return unlocked;
+}
+
+/* Reads the Virtual Microphone settings: audio_enabled, and audio_track
+ * 1..6 (anything else is track 1). */
+static void vmic_read_settings(struct virtualcam_data *vcam, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(vcam);
+	UNUSED_PARAMETER(settings);
+}
+
+/* Picks the source name and number for a new virtual microphone from
+ * "pactl list sources short": the plain name while it is free, so apps keep
+ * remembering it, else the first free "_<k>" (#3185). Returns k (1 for the
+ * plain name), or 0 when none of the first 9 is free. */
+static int vmic_pick_source_name(const char *sources, char *name, size_t size)
+{
+	UNUSED_PARAMETER(sources);
+	UNUSED_PARAMETER(name);
+	UNUSED_PARAMETER(size);
+	return 0;
 }
 
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
