@@ -3,7 +3,7 @@
 //! `obs_register_source_s()` in `obs-module.c` calls the five functions
 //! inside libobs, for every source type a module (or libobs itself)
 //! registers. They are declared in `obs-internal.h` without `EXPORT`, so the
-//! shims stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! shims stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! The C passes `enum obs_source_type` and returns `enum
 //! obs_module_source_rules_list` and `enum obs_module_source_rules_error`:

@@ -1,0 +1,14 @@
+# obs-nix-system-info.c: the system info parsing obs-nix.c calls inside
+# libobs. Declared in obs-nix-system-info.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_nix_system_info_dmesg_speed
+obs_nix_system_info_free_mb
+obs_nix_system_info_is_dmesg_cpu
+obs_nix_system_info_is_name
+obs_nix_system_info_is_physical_id
+obs_nix_system_info_is_speed
+obs_nix_system_info_physical_id
+obs_nix_system_info_physmem_mb
+obs_nix_system_info_prints
+obs_nix_system_info_total_mb
+obs_nix_system_info_value

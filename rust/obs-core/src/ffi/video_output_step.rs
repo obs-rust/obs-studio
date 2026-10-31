@@ -11,7 +11,7 @@
 //! values). The structs cross as `#[repr(C)]` mirrors whose layout Tier 3
 //! checks against the C; the queue action returns as the C enum's value. No
 //! texture, surface, deque or mix pointer comes here. All stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! The one intentional difference is the core's (the C's undefined `int`
 //! overflows wrap; unreachable). A null `input` is not checked: libobs

@@ -7,7 +7,7 @@
 //! plain values here: the codec name, the priority, the packet's first
 //! bytes and one triplet at a time. So `struct obs_output` and
 //! `struct encoder_packet` are never mirrored. These shims allocate nothing
-//! and call nothing in libobs. All three stay hidden (`rust-hidden.txt`).
+//! and call nothing in libobs. All three stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences: [`obs_output_caption_hevc_sei_header`] reads
 //! the bytes the C reads, also past the end of a packet that is too short

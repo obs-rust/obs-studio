@@ -37,11 +37,20 @@ target_link_libraries(${OBS_LIBOBS_RUST_TARGET} PRIVATE "$<LINK_LIBRARY:WHOLE_AR
 # - Windows: Rust no_mangle symbols in a staticlib are not dllexport, so export
 #   the listed shims explicitly (otherwise its obs.dll and import lib miss them).
 # - macOS: hide Rust internals with ld64 -unexported_symbols_list.
-set(_obs_rust_export_map "${CMAKE_CURRENT_SOURCE_DIR}/cmake/rust-exports.map")
-set(_obs_rust_unexports "${CMAKE_CURRENT_SOURCE_DIR}/cmake/rust-unexports-macos.txt")
-# Each host file applies that export set, dropping the HEVC shims when
-# ENABLE_HEVC is off: the aggregate archive contains them either way, and the
-# public surface must match that configuration's C baseline.
+# The ELF and macOS lists are generated from rust-hidden-base.txt and one
+# rust-hidden.d/ fragment per FFI module (#3233), hiding the HEVC shims too
+# when ENABLE_HEVC is off: the aggregate archive contains them either way, and
+# the public surface must match that configuration's C baseline. Each host
+# file applies its list.
+include("${CMAKE_CURRENT_LIST_DIR}/rust-hidden.cmake")
+obs_rust_hidden_lists(
+  "${CMAKE_CURRENT_LIST_DIR}/rust-hidden.d"
+  "${CMAKE_CURRENT_LIST_DIR}/rust-hidden-base.txt"
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  "${ENABLE_HEVC}"
+)
+set(_obs_rust_export_map "${CMAKE_CURRENT_BINARY_DIR}/rust-exports.map")
+set(_obs_rust_unexports "${CMAKE_CURRENT_BINARY_DIR}/rust-unexports-macos.txt")
 if(OS_LINUX OR OS_FREEBSD OR OS_OPENBSD)
   include("${CMAKE_CURRENT_LIST_DIR}/rust-os-nix.cmake")
 elseif(OS_WINDOWS)

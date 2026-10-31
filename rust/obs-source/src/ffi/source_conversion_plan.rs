@@ -11,7 +11,7 @@
 //! each, and the asserts for a frame that needs no conversion stay there. So
 //! `struct obs_source` is never mirrored, and the shim takes no lock, calls
 //! nothing in libobs and allocates nothing. It stays hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! The technique is a pointer to a `'static` C string literal of the safe
 //! core, or null: it is never allocated and never freed, as the C's string

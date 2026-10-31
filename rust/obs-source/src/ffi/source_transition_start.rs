@@ -10,7 +10,7 @@
 //! signals, the size and matrix recalculation and the logs stay there. So
 //! `struct obs_source` is never mirrored, no pointer crosses, and the shims
 //! take no lock, call nothing in libobs and touch no memory. All fourteen
-//! stay hidden (`rust-hidden.txt`).
+//! stay hidden (`rust-hidden.d`).
 //!
 //! The mode crosses as `int`, as the C passes `enum obs_transition_mode`
 //! (int-sized, checked in `obs-source-transition.c.h`), and the admission

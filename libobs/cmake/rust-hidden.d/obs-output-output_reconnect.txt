@@ -1,0 +1,9 @@
+# obs-output-reconnect.c: output_reconnect() and can_reconnect() call them
+# inside libobs. Declared in obs-output-reconnect.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_output_reconnect_first_delay
+obs_output_reconnect_give_up
+obs_output_reconnect_grows
+obs_output_reconnect_next_delay
+obs_output_reconnect_active
+obs_output_reconnect_can

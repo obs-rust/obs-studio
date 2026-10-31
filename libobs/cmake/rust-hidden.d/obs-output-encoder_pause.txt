@@ -1,0 +1,13 @@
+# obs-encoder-pause.c: video_pause_check() and audio_pause_check() call them
+# inside libobs. Declared in obs-encoder-pause.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_encoder_pause_off
+obs_encoder_pause_video_end
+obs_encoder_pause_video_drop
+obs_encoder_pause_audio_end
+obs_encoder_pause_audio_start
+obs_encoder_pause_audio_paused
+obs_encoder_pause_audio_cut_ns
+obs_encoder_pause_audio_kept
+obs_encoder_pause_audio_left
+obs_encoder_pause_audio_drop

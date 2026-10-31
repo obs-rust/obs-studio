@@ -10,7 +10,7 @@
 //! [`obs_source_color_space_pick`] for an async source, or the callback. So
 //! `struct obs_source` is never mirrored, no source pointer crosses, and
 //! these shims take no lock and call nothing in libobs. Both stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional difference from C: a null `preferred_spaces` with a count
 //! above 0 is read as an empty list, so the pick gives the frame's space

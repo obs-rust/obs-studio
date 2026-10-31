@@ -1,0 +1,11 @@
+# obs-windows-keys.c: obs-windows.c calls them inside libobs on Windows.
+# Declared in obs-windows-keys.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_windows_keys_combination
+obs_windows_keys_either_win
+obs_windows_keys_from_virtual_key
+obs_windows_keys_name
+obs_windows_keys_scan_code
+obs_windows_keys_system_name
+obs_windows_keys_to_virtual_key
+obs_windows_keys_virtual_key

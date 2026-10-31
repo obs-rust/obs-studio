@@ -1,0 +1,6 @@
+# obs-scene-transform-update.c: scene_video_render() and
+# update_transforms_and_prune_sources() in obs-scene.c call them inside libobs.
+# Declared in obs-scene-transform-update.h without EXPORT, so the shims stay
+# hidden the same way.
+obs_scene_transform_update_scene_size
+obs_scene_transform_update_item

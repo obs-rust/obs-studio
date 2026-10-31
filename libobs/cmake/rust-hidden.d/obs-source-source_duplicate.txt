@@ -1,0 +1,19 @@
+# obs-source-duplicate.c: obs_source_duplicate(), get_new_filter_name(),
+# obs_scene_duplicate(), dup_child() and dup_group() in obs-source.c and
+# obs-scene.c call them inside libobs. Declared in obs-source-duplicate.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_scene_duplicate_item_route
+obs_scene_duplicate_keeps_name
+obs_scene_duplicate_keeps_unique
+obs_scene_duplicate_private
+obs_scene_duplicate_resizes
+obs_scene_duplicate_reuse
+obs_scene_duplicate_unique
+obs_source_duplicate_copies_filters
+obs_source_duplicate_created_step
+obs_source_duplicate_filter_number
+obs_source_duplicate_flags_step
+obs_source_duplicate_group_step
+obs_source_duplicate_scene_step
+obs_source_duplicate_scene_type
+obs_source_duplicate_type_step

@@ -1,0 +1,9 @@
+# graphics/graphics-immediate.c: gs_render_stop(), gs_render_save(),
+# validvertsize() and gs_texcoord2v() in graphics.c call them inside libobs.
+# Declared in graphics-immediate.h without EXPORT, so the shims stay hidden.
+gs_immediate_cut
+gs_immediate_mismatch
+gs_immediate_push_ok
+gs_immediate_save_cut
+gs_immediate_save_free_from
+gs_immediate_unit_ok

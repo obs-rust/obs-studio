@@ -1,0 +1,8 @@
+# graphics/libnsgif/lzw.c: libnsgif's gif.c calls them inside libobs.
+# Declared in lzw.h without EXPORT, so the shims stay hidden the same way.
+lzw_context_create
+lzw_context_destroy
+lzw_decode_init
+lzw_decode
+lzw_decode_init_map
+lzw_decode_map

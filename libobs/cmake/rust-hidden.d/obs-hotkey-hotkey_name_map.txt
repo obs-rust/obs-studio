@@ -1,0 +1,2 @@
+# obs-hotkey-name-map.c: obs.c calls it on shutdown. Not EXPORT.
+obs_hotkey_name_map_free

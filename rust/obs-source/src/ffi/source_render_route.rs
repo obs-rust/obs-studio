@@ -10,7 +10,7 @@
 //! read every field in their order, pass the values in and act on what
 //! comes back. So `struct obs_source` is never mirrored, and these shims
 //! take plain values, touch no memory, take no lock and call nothing in
-//! libobs. All of them stay hidden (`rust-hidden.txt`).
+//! libobs. All of them stay hidden (`rust-hidden.d`).
 //!
 //! The three enums come back as the C's enums do: their values are 0 to 11,
 //! so they are `int` or `unsigned int` and every value fits both. A draw step

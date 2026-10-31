@@ -1,0 +1,8 @@
+# video-io.c: not EXPORT. obs.c, obs-encoder.c, and obs-video-gpu-encode.c
+# call them inside libobs. -fvisibility=hidden keeps them out of libobs.so.
+video_output_inc_texture_encoders
+video_output_dec_texture_encoders
+video_output_inc_texture_frames
+video_output_inc_texture_skipped_frames
+video_output_create_with_frame_rate_divisor
+video_output_free_frame_rate_divisor

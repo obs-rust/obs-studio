@@ -1,7 +1,7 @@
 //! C ABI for `libobs/media-io/audio-resampler-drift.c.h`.
 //!
 //! `audio-resampler-ffmpeg.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). The nine
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The nine
 //! functions keep the C signatures: `enum audio_format` crosses as `int` (as
 //! everywhere in this crate), `enum audio_resampler_comp_action` (0 to 2) as
 //! `unsigned int`, and `struct audio_resampler_comp` as

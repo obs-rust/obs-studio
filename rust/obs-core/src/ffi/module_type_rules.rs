@@ -4,7 +4,7 @@
 //! `obs_register_service_s()` in `obs-module.c` call the four functions
 //! inside libobs, for every output, encoder and service type a module
 //! registers. They are declared in `obs-module-type-rules.h` without
-//! `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! The flags, capabilities, type and callback bits are `uint32_t`. The C
 //! returns `enum obs_module_type_rules_error`: a 32-bit integer on every

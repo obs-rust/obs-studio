@@ -1,0 +1,13 @@
+# obs-scene-render-plan.c: render_item() and render_item_texture() in
+# obs-scene.c call them inside libobs. Declared in obs-scene-render-plan.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_scene_render_texture_enabled
+obs_scene_render_texrender_action
+obs_scene_render_size_empty
+obs_scene_render_clear_white
+obs_scene_render_child
+obs_scene_render_linear_srgb
+obs_scene_texcoords_centered
+obs_scene_render_effect
+obs_scene_render_multiplier
+obs_scene_render_technique

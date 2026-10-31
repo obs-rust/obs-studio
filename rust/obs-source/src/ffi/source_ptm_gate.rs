@@ -8,7 +8,7 @@
 //! through [`obs_source_ptm_gate_stop_time`] too. So `struct obs_source` is
 //! never mirrored, no pointer crosses, and the shims take no lock, call
 //! nothing in libobs and touch no memory. They stay hidden
-//! (`rust-hidden.txt`). There is no intentional difference from the C.
+//! (`rust-hidden.d`). There is no intentional difference from the C.
 
 use crate::ptm_gate as core;
 

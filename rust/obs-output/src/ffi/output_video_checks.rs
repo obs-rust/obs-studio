@@ -11,7 +11,7 @@
 //! (Tier 3 checks their layout against the C). It fills `video_conversion`
 //! from the plan. So `struct obs_output` is never mirrored, and these shims
 //! take no lock and call nothing in libobs. All stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! No intentional differences. A null pointer is not checked: libobs passes
 //! a local.

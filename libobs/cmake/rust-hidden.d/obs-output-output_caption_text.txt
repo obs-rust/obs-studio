@@ -1,0 +1,3 @@
+# obs-output-caption-text.c: obs-output.c calls it inside libobs. Declared
+# in obs-internal.h without EXPORT, so the shim stays hidden the same way.
+obs_output_caption_text_page

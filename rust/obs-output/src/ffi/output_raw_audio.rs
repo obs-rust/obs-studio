@@ -11,7 +11,7 @@
 //! conversion that divides by the sample rate (the division traps on a zero
 //! rate on MSVC x64), and passes plain values here. So `struct obs_output`
 //! is never mirrored, and these shims take no lock, call nothing in libobs
-//! and dereference no pointer. They stay hidden (`rust-hidden.txt`).
+//! and dereference no pointer. They stay hidden (`rust-hidden.d`).
 //!
 //! Intentional difference: [`obs_output_raw_audio_mix_on`] with an index
 //! past the width of `size_t`, where the C's shift is undefined, says not

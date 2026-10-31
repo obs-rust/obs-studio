@@ -1,0 +1,5 @@
+# platform-nix-dbus.c: called only by the Linux/FreeBSD sleep inhibitor;
+# the C functions have no EXPORT and stay hidden in the Rust variant.
+dbus_sleep_info_create
+dbus_inhibit_sleep
+dbus_sleep_info_destroy

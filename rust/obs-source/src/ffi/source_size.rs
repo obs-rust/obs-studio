@@ -12,7 +12,7 @@
 //! [`obs_source_size_entry`] and start at the first filter or the source.
 //! So `struct obs_source` is never mirrored, no source pointer crosses, and
 //! these shims take no lock and call nothing in libobs. Both stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! No intentional differences from C.
 

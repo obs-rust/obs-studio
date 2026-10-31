@@ -10,7 +10,7 @@
 //! scale input and the reuse keys cross as `#[repr(C)]` structs whose layout
 //! Tier 3 checks against the C. No frame, effect or mix pointer comes here:
 //! a mix's view crosses as a number and is only compared. All stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! The enums cross as `c_int`s; a format or scale type outside its enum
 //! takes the C's `default:`. The one intentional difference is the core's

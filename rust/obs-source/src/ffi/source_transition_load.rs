@@ -11,7 +11,7 @@
 //! the swap's field handover, the texrender swap, the size and matrix
 //! recalculation and the logs stay there. So `struct obs_source` is never
 //! mirrored, no pointer crosses, and the shims take no lock, call nothing in
-//! libobs and touch no memory. All six stay hidden (`rust-hidden.txt`).
+//! libobs and touch no memory. All six stay hidden (`rust-hidden.d`).
 //!
 //! The source type crosses as `int`, as the C passes `enum obs_source_type`
 //! (int-sized, checked in `obs-source-transition.c.h`); the scale type comes

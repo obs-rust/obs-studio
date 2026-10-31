@@ -10,7 +10,7 @@
 //! loaders only read the name, through `&CStr`, and hand the compare the
 //! name's own pointer. The savers return a pointer to a `&'static CStr`:
 //! nothing is allocated, and `obs_data_set_string()` copies it as it copied
-//! the C's literal. All stay hidden (`rust-hidden.txt`).
+//! the C's literal. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences: a `NULL` name is the default without a
 //! compare, as in C. A `NULL` compare is not allowed (the C would call

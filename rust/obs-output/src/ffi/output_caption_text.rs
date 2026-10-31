@@ -1,7 +1,7 @@
 //! C ABI for `libobs/obs-output-caption-text.c.h`.
 //!
 //! `obs_output_caption_text_page` is declared in `obs-internal.h` without
-//! `EXPORT`, so it stays hidden (`rust-hidden.txt`):
+//! `EXPORT`, so it stays hidden (`rust-hidden.d`):
 //! `obs_output_output_caption_text2()` in `obs-output.c` calls it once per
 //! page until the text runs out. It reads the rest of the NUL-terminated
 //! string at `*text`, writes the page and its NUL into `page` (bytes 0 to

@@ -3,7 +3,7 @@
 //!
 //! The X11 hotkey platform (`obs-nix-x11.c`) calls these inside libobs on
 //! Linux and FreeBSD. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.txt`). Elsewhere the shims are built but unused, and hidden
+//! (`rust-hidden.d`). Elsewhere the shims are built but unused, and hidden
 //! all the same.
 //!
 //! The arrays are the platform's `pressed`, `update` and `button_pressed`,

@@ -4,7 +4,7 @@
 //! `obs-scene.c.h` passes the item's crop and bounds crop fields, the
 //! source size and the rescale factor by value, and stores what comes back,
 //! so `struct obs_scene_item` and `struct obs_sceneitem_crop` are never
-//! mirrored. No pointers. The symbols stay hidden (`rust-hidden.txt`).
+//! mirrored. No pointers. The symbols stay hidden (`rust-hidden.d`).
 
 use std::ffi::c_int;
 

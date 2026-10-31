@@ -9,7 +9,7 @@
 //! `ts_offset` subtraction, `pause_reset()` and every caller, and passes
 //! plain values here. So neither `struct pause_data` nor `struct audio_data`
 //! is mirrored. These shims take no lock, call nothing in libobs and
-//! dereference no pointer. All ten stay hidden (`rust-hidden.txt`).
+//! dereference no pointer. All ten stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences: the core's (a video pause ends on the first
 //! frame at or after a set end; a paused buffer after a set end ends the

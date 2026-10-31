@@ -5,7 +5,7 @@
 //! `obs_load_core_modules()`, `find_core_module()`, `obs_is_core_module()`
 //! and `obs_is_legacy_module()` in `obs-module.c` call these inside libobs.
 //! They are declared in `obs-module-load-rules.h` without `EXPORT`, so the
-//! shims stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! shims stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! Codes are `int`, module types, states and route bits `uint32_t`, list
 //! lengths and failure counts `size_t`. The C returns

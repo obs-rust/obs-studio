@@ -13,7 +13,7 @@
 //! gs_sprite_uv`, `struct gs_texture_upload_plan` and `struct
 //! gs_texture_mip_plan` are mirrored, and the three enums cross as `int`
 //! (`graphics.c` checks their size). The shims take no lock, call nothing in
-//! libobs and stay hidden (`rust-hidden.txt`).
+//! libobs and stay hidden (`rust-hidden.d`).
 //!
 //! Intentional difference from C: [`gs_sprite_build`] writes nothing
 //! through a null `points` or `uvs` (the C writes through it); libobs always

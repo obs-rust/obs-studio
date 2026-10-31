@@ -1,0 +1,2 @@
+# effect-parser lifecycle: internal entry point, not EXPORT.
+ep_free

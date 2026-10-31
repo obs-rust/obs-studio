@@ -1,0 +1,8 @@
+# obs-module-names.c: obs-module.c calls them inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shims stay hidden the same way.
+obs_module_names_file_name
+obs_module_names_module_name
+obs_module_names_config_path
+obs_module_names_manifest_path
+obs_module_names_listed
+obs_module_names_find_core

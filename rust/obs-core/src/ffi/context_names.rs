@@ -2,7 +2,7 @@
 //!
 //! `obs.c` calls the two functions inside libobs, for every context it
 //! names. They are declared in `obs-internal.h` without `EXPORT`, so the
-//! shims stay hidden (`libobs/cmake/rust-hidden.txt`). The names they return
+//! shims stay hidden (`libobs/cmake/rust-hidden.d`). The names they return
 //! are `bmalloc`'d copies that the caller `bfree`s, as the C's `bstrdup` and
 //! `dstr_printf` strings are.
 //!

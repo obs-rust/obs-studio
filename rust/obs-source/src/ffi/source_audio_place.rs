@@ -11,7 +11,7 @@
 //! array and `multiply_vol_data()` stay there. So `struct obs_source` is
 //! never mirrored, no pointer crosses, and the shims take no lock, call
 //! nothing in libobs and touch no memory. All eleven stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! The monitoring type crosses as `int`, as the C passes `enum
 //! obs_monitoring_type` (int-sized, checked in `obs-source.c.h`).

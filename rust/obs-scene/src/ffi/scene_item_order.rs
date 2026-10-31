@@ -10,7 +10,7 @@
 //! opaque. `struct obs_sceneitem_order_info` is mirrored as
 //! [`OrderInfo`], which the core reads in place ([`Pair`]): no order is
 //! copied. These shims take no lock and call nothing in libobs. All
-//! stay hidden (`rust-hidden.txt`).
+//! stay hidden (`rust-hidden.d`).
 //!
 //! The enum values cross as `int`: [`anchor_value`] and [`check_value`]
 //! give `obs-scene-item-order.h`'s values, and `obs-scene.c.h` checks

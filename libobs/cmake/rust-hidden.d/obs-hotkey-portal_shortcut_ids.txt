@@ -1,0 +1,5 @@
+# obs-nix-portal-shortcut-ids.c: obs-nix-portal-shortcuts.c calls them
+# inside libobs. The C file has no EXPORT, so the shims stay hidden.
+obs_nix_portal_shortcut_id
+obs_nix_portal_shortcut_combo
+obs_nix_portal_shortcut_trigger

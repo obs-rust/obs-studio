@@ -2,7 +2,7 @@
 //!
 //! `interleave_packets`, `get_encoder_index` and `free_packets` are
 //! declared in `obs-internal.h` without `EXPORT`, so they stay hidden
-//! (`rust-hidden.txt`): `obs-output.c` calls them inside libobs, and passes
+//! (`rust-hidden.d`): `obs-output.c` calls them inside libobs, and passes
 //! `interleave_packets` to `obs_encoder_start()` / `obs_encoder_stop()` as
 //! the encoded packet callback (or to the delay as its `delay_callback`).
 //! The encoder finds a callback again by comparing the function pointer,

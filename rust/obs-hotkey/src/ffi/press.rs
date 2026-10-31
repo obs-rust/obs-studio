@@ -3,7 +3,7 @@
 //!
 //! `query_hotkey()`, `inject_hotkey()` and `query_hotkeys()` in
 //! `obs-hotkey.c.h` call these inside libobs, once per binding, so the
-//! symbols stay hidden (`rust-hidden.txt`). The bindings array and its
+//! symbols stay hidden (`rust-hidden.d`). The bindings array and its
 //! walk, the hotkey mutex, the pressed count and the callbacks stay C.
 //!
 //! The shims run with the hotkey mutex held, on the hotkey thread (a poll)

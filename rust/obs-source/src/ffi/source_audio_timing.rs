@@ -10,7 +10,7 @@
 //! `reset_audio_data_at_sys_time()` calls
 //! [`obs_source_audio_timing_buffer_start`]. So `struct obs_source` is never
 //! mirrored, and these shims take no lock, touch no source field and call
-//! nothing in libobs. All three stay hidden (`rust-hidden.txt`).
+//! nothing in libobs. All three stay hidden (`rust-hidden.d`).
 //!
 //! Each shim reads the struct's input fields and writes its output fields
 //! through the pointer, one field at a time, and nothing else: the input

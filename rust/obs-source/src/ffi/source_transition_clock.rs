@@ -13,7 +13,7 @@
 //! [`obs_source_transition_clock_mix_spaces`]; and the two timestamps to
 //! [`obs_source_transition_clock_min_ts`]. So `struct obs_source` is never
 //! mirrored, no source pointer crosses, and these shims take no lock and
-//! call nothing in libobs. All seven stay hidden (`rust-hidden.txt`).
+//! call nothing in libobs. All seven stay hidden (`rust-hidden.d`).
 //!
 //! The fit writes the scale through two `float *` (the caller's `scale.x`
 //! and `scale.y`), only where the C writes it: both for a scale, neither for

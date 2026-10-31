@@ -1,0 +1,5 @@
+# obs-source-size.c: get_base_width(), get_base_height(), get_recurse_width()
+# and get_recurse_height() in obs-source.c call them inside libobs. Declared in
+# obs-source-size.h without EXPORT, so the shims stay hidden the same way.
+obs_source_size_route
+obs_source_size_entry

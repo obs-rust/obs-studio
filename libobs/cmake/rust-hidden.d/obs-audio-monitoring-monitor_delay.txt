@@ -1,0 +1,8 @@
+# monitor-delay.c: wasapi-output.c calls them inside libobs on Windows.
+# Declared in monitor-delay.h without EXPORT, so the shims stay hidden the
+# same way.
+audio_monitor_delay_diff
+audio_monitor_delay_judge_diff
+audio_monitor_delay_stale
+audio_monitor_delay_stalled
+audio_monitor_delay_unsynced

@@ -3,7 +3,7 @@
 //! `obs-audio.c` calls the three functions inside libobs, holding the
 //! source's `audio_buf_mutex`. They are declared in `obs-audio-discard.h`
 //! without `EXPORT`, so the shims stay hidden
-//! (`libobs/cmake/rust-hidden.txt`). The fields of `struct obs_source` come
+//! (`libobs/cmake/rust-hidden.d`). The fields of `struct obs_source` come
 //! by pointer in `struct obs_audio_input`; the input buffers are the C
 //! `struct deque`s, popped in place through `obs_util::ffi::deque`, so the
 //! source frees them with `deque_free` as before.

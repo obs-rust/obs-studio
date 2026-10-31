@@ -1,0 +1,3 @@
+# obs-scene-bounds.c: obs-scene.c calls it inside libobs. The C file has
+# no EXPORT, so the shim stays hidden the same way.
+obs_bounds_fit_scale

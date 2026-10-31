@@ -9,7 +9,7 @@
 //! level lookup, and maps the effect and technique values to `obs->video.*`
 //! and to the technique names. So `struct obs_scene_item` is never
 //! mirrored, no source pointer crosses, and these shims take no lock and
-//! call nothing in libobs. All stay hidden (`rust-hidden.txt`).
+//! call nothing in libobs. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences. A null pointer is not checked: libobs passes
 //! a local or the item's own field.

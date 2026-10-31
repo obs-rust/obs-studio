@@ -9,7 +9,7 @@
 //! `reconfigure_requested` on a true from the frame step, and calls
 //! `info.update()`. The two structs cross as `#[repr(C)]` mirrors whose
 //! layout Tier 3 checks against the C; no encoder or group pointer crosses.
-//! All five stay hidden (`rust-hidden.txt`).
+//! All five stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences, unreachable: the core's (where C is
 //! undefined), and a NULL struct pointer, which the C dereferences, leaves

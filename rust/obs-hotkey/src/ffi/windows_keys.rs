@@ -2,7 +2,7 @@
 //! `libobs/obs-windows-keys.h`.
 //!
 //! The Windows hotkey platform (`obs-windows.c`) calls these inside libobs.
-//! The C file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`;
+//! The C file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.d`;
 //! MSVC exports only what `rust-exports.d` lists). Elsewhere the shims are
 //! built but unused, and hidden all the same.
 //!

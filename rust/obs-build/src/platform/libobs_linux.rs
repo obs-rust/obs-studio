@@ -76,20 +76,13 @@ pub fn configure_variant(
 ) -> Result<(), String> {
     if let Some(archive) = rust_archive {
         let archive = archive.canonicalize().map_err(|e| e.to_string())?;
-        let export_map = if options.hevc {
-            root.join("libobs/cmake/rust-exports.map")
-        } else {
-            // The static archive contains every port, while the C reference
-            // excludes HEVC when disabled. Match that public symbol surface.
-            let original = std::fs::read_to_string(root.join("libobs/cmake/rust-exports.map"))
-                .map_err(|e| e.to_string())?;
-            let disabled = original.replace("local:", "local:\n    obs_hevc_keyframe;\n    obs_parse_hevc_packet;\n    obs_parse_hevc_packet_priority;\n    obs_extract_hevc_headers;");
-            let output = config.join("rust-exports-no-hevc.map");
-            if std::fs::read_to_string(&output).ok().as_deref() != Some(&disabled) {
-                std::fs::write(&output, disabled).map_err(|e| e.to_string())?;
-            }
-            output
-        };
+        let export_map = config.join("rust-exports.map");
+        crate::libobs::write_hidden_list(
+            root,
+            crate::libobs::HiddenLinker::Elf,
+            options.hevc,
+            &export_map,
+        )?;
         let mut options = vec![
             "-Wl,--whole-archive".into(),
             archive.display().to_string(),

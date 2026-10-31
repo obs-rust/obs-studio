@@ -10,7 +10,7 @@
 //! fields and the video levels where they did before, pass the values in and
 //! act on what comes back. So `struct obs_source` is never mirrored, no
 //! pointer crosses, and these shims touch no memory, take no lock and call
-//! nothing in libobs. All fourteen stay hidden (`rust-hidden.txt`).
+//! nothing in libobs. All fourteen stay hidden (`rust-hidden.d`).
 //!
 //! The two structs cross by value, as `#[repr(C)]` mirrors of the C's; the
 //! enums as `int` (`c_int`), the transfer as the frame's `uint8_t`. The

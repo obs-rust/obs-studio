@@ -1,0 +1,14 @@
+# obs-video-output-step.c: update_active_state(), stage_output_texture(),
+# queue_frame(), render_video() and output_frame() in obs-video.c call them
+# inside libobs. Declared in obs-video-output-step.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_video_step_activation
+obs_video_step_stage
+obs_video_step_queue
+obs_video_step_queue_copy_uv
+obs_video_step_queue_count
+obs_video_step_render_targets
+obs_video_step_render
+obs_video_step_ring
+obs_video_step_download
+obs_video_step_output

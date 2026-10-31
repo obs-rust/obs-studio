@@ -10,7 +10,7 @@
 //! for [`obs_source_filter_chain_restore_matches`], two C strings that are
 //! only read here. So no libobs structure is mirrored, and these shims take
 //! no lock and call nothing in libobs. All thirteen stay hidden
-//! (`rust-hidden.txt`). The enum results are returned as `int`, as the
+//! (`rust-hidden.d`). The enum results are returned as `int`, as the
 //! header declares them.
 //!
 //! Four intentional differences from C, followed by the callers:

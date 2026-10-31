@@ -1,0 +1,8 @@
+# obs-output-begin.c: calculate_batch_size() and pair_encoders() call them
+# inside libobs. Declared in obs-output-begin.h without EXPORT, so the shims
+# stay hidden the same way.
+obs_output_begin_video_interval
+obs_output_begin_audio_interval
+obs_output_begin_batch_size
+obs_output_begin_pair_video
+obs_output_begin_pair_audio

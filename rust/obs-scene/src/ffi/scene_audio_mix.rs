@@ -6,7 +6,7 @@
 //! passes one channel's buffers at a time: the scene's mix channel, the
 //! item's channel, its gain buffer, the window's first frame and its length.
 //! These cut them to the window and call the safe core; they allocate
-//! nothing and call nothing in libobs. Both stay hidden (`rust-hidden.txt`).
+//! nothing and call nothing in libobs. Both stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences.
 

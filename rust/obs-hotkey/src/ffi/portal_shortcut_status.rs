@@ -3,7 +3,7 @@
 //!
 //! The GlobalShortcuts portal client (`obs-nix-portal-shortcuts.c`) calls
 //! these inside libobs on Linux and FreeBSD with Wayland and GIO. The C
-//! file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`).
+//! file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.d`).
 //! Elsewhere the shims are built but unused, and hidden all the same.
 //!
 //! Only `bool`, `size_t`, `uint32_t`, C enums (passed as `int`) and

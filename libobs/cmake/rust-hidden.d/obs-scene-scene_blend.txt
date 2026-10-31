@@ -1,0 +1,4 @@
+# obs-scene-blend.c: the blend mode table (data, not a function).
+# obs-scene.c reads it inside libobs. The C file has no EXPORT, so the Rust
+# static stays hidden the same way.
+obs_blend_mode_params

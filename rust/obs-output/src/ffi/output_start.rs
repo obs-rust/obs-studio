@@ -11,7 +11,7 @@
 //! `pair_encoders()`, `hook_data_capture()` and every signal, and passes
 //! `info.flags` and the loaded restart count here. So `struct obs_output`
 //! is never mirrored. These shims take no lock, call nothing in libobs and
-//! dereference no pointer. They stay hidden (`rust-hidden.txt`). The
+//! dereference no pointer. They stay hidden (`rust-hidden.d`). The
 //! delayed start asks the `obs_output_raw_audio_delay_on` shim in
 //! [`super::output_raw_audio`], and the conversion fill the
 //! `obs_encoder_size_audio_defaults` shim in [`super::encoder_size`].

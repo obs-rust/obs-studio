@@ -7,7 +7,7 @@
 //! first and call the callback; they pass the encoder's caps, the sizes
 //! and the ROIs to these. `struct obs_encoder_roi` is mirrored as
 //! [`obs_encoder_roi`] (Tier 3 checks the layout against the C). The
-//! symbols stay hidden (`rust-hidden.txt`).
+//! symbols stay hidden (`rust-hidden.d`).
 //!
 //! The pointers are the C's: libobs never passes NULL (`roi` is checked
 //! before the admit, and the factors and the scaled ROI are locals), and

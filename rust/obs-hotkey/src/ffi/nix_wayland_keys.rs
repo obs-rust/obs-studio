@@ -3,7 +3,7 @@
 //!
 //! The Wayland hotkey platform (`obs-nix-wayland.c`) calls these inside
 //! libobs on Linux and FreeBSD with `ENABLE_WAYLAND`. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`). Elsewhere the
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). Elsewhere the
 //! shims are built but unused, and hidden all the same.
 //!
 //! The arrays are the platform's: `obs_to_key` has `OBS_KEY_LAST_VALUE`

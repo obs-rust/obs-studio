@@ -5,7 +5,7 @@
 //! matrices) and its own locals (the scale, origins and position). Each
 //! shim reads all its inputs, then writes its outputs. A null pointer is
 //! not checked. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.txt`, `rust-exports.map`, `rust-unexports-macos.txt`).
+//! (`rust-hidden.d`, `rust-exports.map`, `rust-unexports-macos.txt`).
 //!
 //! No float becomes an integer here: the six casts stay in `obs-scene.c.h`.
 

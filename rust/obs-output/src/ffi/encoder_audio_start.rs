@@ -10,7 +10,7 @@
 //! here. The packet plan comes back as [`obs_encoder_audio_start_plan`]
 //! (Tier 3 checks its layout against the C). So `struct obs_encoder` is
 //! never mirrored, and these shims take no lock, call nothing in libobs and
-//! dereference no pointer. All stay hidden (`rust-hidden.txt`).
+//! dereference no pointer. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences.
 

@@ -1,5 +1,5 @@
 # media-io/video-io.c EXPORT symbols. The six non-EXPORT helpers are in
-# rust-hidden.txt.
+# rust-hidden.d.
 video_output_active
 video_output_close
 video_output_connect

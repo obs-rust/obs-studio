@@ -2,7 +2,7 @@
 //!
 //! `pulseaudio-output.c` and `pulseaudio-wrapper.c` call these inside
 //! libobs. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.txt`). Only Linux and FreeBSD with `ENABLE_PULSEAUDIO` call
+//! (`rust-hidden.d`). Only Linux and FreeBSD with `ENABLE_PULSEAUDIO` call
 //! them; elsewhere the shims are built but unused, and hidden all the same.
 //!
 //! The enums cross as their C type: `pa_sample_format_t` and

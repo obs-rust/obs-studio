@@ -5,7 +5,7 @@
 //! `scale`, the scene's `cx` and `cy`, and `&item->box_transform` for each
 //! item, so `struct obs_scene_item` is never mirrored. Each shim reads its
 //! inputs, then writes its outputs. A null pointer is not checked. The
-//! symbols stay hidden (`rust-hidden.txt`).
+//! symbols stay hidden (`rust-hidden.d`).
 
 use std::ptr;
 

@@ -7,7 +7,7 @@
 //! white level and the source's fields, pass the values in and act on what
 //! comes back. So `struct obs_source` is never mirrored, and these shims take
 //! plain values, touch no memory, take no lock and call nothing in libobs.
-//! All eight stay hidden (`rust-hidden.txt`).
+//! All eight stay hidden (`rust-hidden.d`).
 //!
 //! The rotation is the C's `long` ([`c_long`]: 64 bits on Linux and macOS,
 //! 32 on Windows), passed through unconverted. The technique comes back as

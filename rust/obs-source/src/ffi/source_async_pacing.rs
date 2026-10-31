@@ -10,7 +10,7 @@
 //! taken. So `struct obs_source` is never mirrored, no frame pointer
 //! crosses, and the shim reads only the timestamps, writes nothing through
 //! a pointer, takes no lock and calls nothing in libobs. It stays hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Intentional difference from C: a null `timestamps` with a count above 0
 //! is read as an empty queue (nothing dropped or taken, `last_frame_ts`

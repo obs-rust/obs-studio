@@ -4,7 +4,7 @@
 //!
 //! The functions only convert pointers to slices (including the `insize ==
 //! 0` NUL-terminated scan) and map the two pointer cases the API decides by
-//! itself. The symbols are not exported from libobs (`rust-hidden.txt`).
+//! itself. The symbols are not exported from libobs (`rust-hidden.d`).
 //! Linux and macOS use `ffi/utf8.rs`.
 
 use core::ffi::{CStr, c_char, c_int};

@@ -1,0 +1,8 @@
+# obs-cocoa-keys.c: obs-cocoa.m calls them inside libobs on macOS. Declared
+# in obs-cocoa-keys.h without EXPORT, so the shims stay hidden the same way.
+obs_cocoa_keys_modifier
+obs_cocoa_keys_to_virtual_key
+obs_cocoa_keys_from_virtual_key
+obs_cocoa_keys_is_mouse
+obs_cocoa_keys_mouse_pressed
+obs_cocoa_keys_in_range

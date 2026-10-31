@@ -9,7 +9,7 @@
 //! with its format strings, from the [`obs_output_stop_stats`] returned
 //! (Tier 3 checks its layout against the C). So `struct obs_output` is never
 //! mirrored, and this shim takes no lock, calls nothing in libobs and
-//! dereferences no pointer. It stays hidden (`rust-hidden.txt`).
+//! dereferences no pointer. It stays hidden (`rust-hidden.d`).
 //!
 //! Intentional difference: `total - dropped` wraps where the C's `int`
 //! subtraction overflows (undefined in C; every compiler OBS supports wraps).

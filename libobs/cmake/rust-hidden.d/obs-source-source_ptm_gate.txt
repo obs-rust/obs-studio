@@ -1,0 +1,7 @@
+# obs-source-ptm-gate.c: source_muted() and get_source_volume() in
+# obs-source.c call them inside libobs. Declared in obs-source-ptm-gate.h
+# without EXPORT, so the shims stay hidden the same way.
+obs_source_ptm_gate_stop_time
+obs_source_ptm_gate_held
+obs_source_ptm_gate_mutes
+obs_source_ptm_gate_talk_mutes

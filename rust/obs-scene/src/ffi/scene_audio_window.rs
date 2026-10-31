@@ -8,7 +8,7 @@
 //! read, each only where the old expressions read it. It passes plain
 //! values here, so no scene, item or source pointer crosses, and these shims
 //! take no lock and call nothing in libobs. All seven stay hidden
-//! (`rust-hidden.txt`).
+//! (`rust-hidden.d`).
 //!
 //! Values cross as the C has them: `bool`, `uint64_t` as `u64`, `size_t` as
 //! `usize`, the child as the C's `enum obs_scene_audio_window_child` value

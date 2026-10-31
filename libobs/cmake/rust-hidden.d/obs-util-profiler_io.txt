@@ -1,0 +1,3 @@
+# profiler-io.c: non-static but not EXPORT; nothing outside the file
+# calls it, and the C build hides it.
+profile_print_func

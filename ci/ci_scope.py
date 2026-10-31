@@ -60,8 +60,8 @@ merge-queue run a core change is Linux only. A push to master is the
 exception: core code selects the macOS and Windows Rust lanes too, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
-(except `os-<os>.cmake`, which starts its own OS, and the three hidden-symbol
-lists when they add or drop the same plain names, which Linux checks: #2288),
+(except `os-<os>.cmake`, which starts its own OS, and a port's hidden-shim
+fragment `rust-hidden.d/<crate>-<module>.txt`, plain names Linux checks: #3233),
 the root CMake files, crate `build.rs`, `platform/mod.rs` and the C++ cmocka tests (with their
 tests.d registrations) stay shared: every platform consumes them.
 Host-named files (docs/rust-port/naming.md, #1294) start their OS lane in any
@@ -102,47 +102,11 @@ OS_CMAKE = re.compile(r"^libobs/cmake/os-[a-z]+\.cmake$")
 SHARED_TEST = re.compile(r"^test/cmocka/(CMakeLists\.txt|[^/]+\.(cpp|hpp))$")
 # A tests.d registration is shared when it registers a C++ test.
 TESTS_D = re.compile(r"^test/cmocka/tests\.d/([^/]+)\.cmake$")
-# One hidden-symbol inventory, written once per linker (#2288).
-HIDDEN_LISTS = ("libobs/cmake/rust-hidden.txt", "libobs/cmake/rust-exports.map", "libobs/cmake/rust-unexports-macos.txt")
-
-
-HIDDEN_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-MAP_NAME = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*);[ \t]*$", re.M)
-MAP_COMMENT = re.compile(r"/\*.*?\*/", re.S)
-
-
-def _split_hidden(text: str, prefix: str) -> tuple[set[str], str]:
-    """(plain symbol names, every other line). Wildcards stay in the rest."""
-    names, rest = set(), []
-    for line in text.splitlines():
-        word = line.strip()
-        if word.startswith("#") or not word:
-            continue
-        if word.startswith(prefix) and HIDDEN_NAME.fullmatch(word[len(prefix):]):
-            names.add(word[len(prefix):])
-        else:
-            rest.append(word)
-    return names, "\n".join(rest)
-
-
-def _split_map(text: str) -> tuple[set[str], str]:
-    text = MAP_COMMENT.sub("", text)
-    names = set(MAP_NAME.findall(text))
-    return names, "\n".join(l.strip() for l in MAP_NAME.sub("", text).splitlines() if l.strip())
-
-
-def hidden_lists_mirrored(old: Callable[[str], str | None], new: Callable[[str], str | None]) -> bool:
-    """True when the three lists add or drop the same plain names and nothing
-    else: no wildcard, section or `global:` change. Every linker then hides
-    exactly what the Linux link hides, and Windows reads none of them."""
-    splits = (lambda t: _split_hidden(t, ""), _split_map, lambda t: _split_hidden(t, "_"))
-    deltas = set()
-    for path, split in zip(HIDDEN_LISTS, splits):
-        before, after = split(old(path) or ""), split(new(path) or "")
-        if before[1] != after[1]:
-            return False
-        deltas.add((frozenset(after[0] - before[0]), frozenset(before[0] - after[0])))
-    return len(deltas) == 1
+# A port's hidden-shim fragment (#3233): plain names only
+# (ci/test_hidden_symbol_fragments.py), which Windows never reads and Linux's
+# export_list test checks, so it is Linux only. rust-hidden-base.txt and the
+# generator stay shared.
+HIDDEN_FRAGMENT = re.compile(r"^libobs/cmake/rust-hidden\.d/[^/]+\.txt$")
 
 
 # Files no build or Rust lint reads (#2079). ci/test_*.py read some of them,
@@ -404,7 +368,6 @@ def scope(
     read: Callable[[str], str] = lambda path: "",
     submodules: frozenset[str] = frozenset(),
     cmocka_paths: tuple[str, ...] = (),
-    hidden_mirrored: bool = False,
     event: str = "",
     ref: str = "",
     ratchet_dirs: tuple[str, ...] = (),
@@ -431,7 +394,7 @@ def scope(
             core = True
         if is_qt_sdk(path):
             qt_sdk = macos = windows = True
-        if hidden_mirrored and path in HIDDEN_LISTS:
+        if HIDDEN_FRAGMENT.match(path):
             continue
         if is_shared(path, exists):
             macos = windows = True
@@ -498,18 +461,11 @@ def main() -> int:
     parser.add_argument("--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)")
     args = parser.parse_args()
     files = changed_files(args.base)
-    mirrored = False
-    if args.base != "ALL" and any(path in HIDDEN_LISTS for path in files):
-        fork = subprocess.run(
-            ["git", "merge-base", args.base, "HEAD"], check=True, capture_output=True, text=True
-        ).stdout.strip()
-        mirrored = hidden_lists_mirrored(lambda path: base_text(fork, path), read_text)
     result = scope(
         files,
         lambda path: Path(path).is_file(),
         read_text,
         cmocka_paths=repo_cmocka_source_paths(Path(".")),
-        hidden_mirrored=mirrored,
         event=args.event,
         ref=args.ref,
         ratchet_dirs=repo_ratcheted_dirs(Path(".")),

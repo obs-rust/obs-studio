@@ -1,0 +1,9 @@
+# obs-video-copy-plan.c: set_gpu_converted_data(), copy_rgbx_frame(),
+# get_scale_effect() and can_reuse_mix_texture() in obs-video.c call them
+# inside libobs. Declared in obs-video-copy-plan.h without EXPORT, so the
+# shims stay hidden the same way.
+obs_video_gpu_copy_plan
+obs_video_rgbx_copy_plan
+obs_video_scale_resolution_close
+obs_video_scale_effect_choice
+obs_video_mix_reuse_match

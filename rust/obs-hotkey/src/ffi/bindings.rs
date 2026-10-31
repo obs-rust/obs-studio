@@ -3,7 +3,7 @@
 //!
 //! `load_binding()`, `create_binding()` and `save_bindings_helper()` in
 //! `obs-hotkey.c.h` call these inside libobs, so the symbols stay hidden
-//! (`rust-hidden.txt`). The obs_data reads and writes are the C's calls in
+//! (`rust-hidden.d`). The obs_data reads and writes are the C's calls in
 //! the C's order: `obs_data_get_bool` for each modifier and
 //! `obs_data_get_string` for the key; `obs_data_set_bool(name, true)` for
 //! each set modifier and `obs_data_set_string` of `obs_key_to_name` for the

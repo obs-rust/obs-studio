@@ -2,7 +2,7 @@
 //! `libobs/obs-cocoa-keys.h`.
 //!
 //! The macOS hotkey platform (`obs-cocoa.m`) calls these inside libobs. The
-//! C file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.txt`).
+//! C file has no `EXPORT`, so the symbols stay hidden (`rust-hidden.d`).
 //! Elsewhere the shims are built but unused, and hidden all the same.
 //!
 //! The table is the platform's `virtual_keys`: `OBS_KEY_LAST_VALUE`

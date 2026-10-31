@@ -9,7 +9,7 @@
 //! the C), and does every store: `encoder_refs`, `original_video`, the mix
 //! creation, the mixes array under `mixes_mutex`, `obs_encoder_set_video()`.
 //! So no libobs struct is mirrored, and these shims take no lock and call
-//! nothing in libobs. All stay hidden (`rust-hidden.txt`).
+//! nothing in libobs. All stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences. A null pointer is not checked: libobs passes
 //! locals.

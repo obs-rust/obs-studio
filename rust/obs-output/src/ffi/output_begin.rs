@@ -6,7 +6,7 @@
 //! slots and keeps the array of intervals, takes the `init_mutex` locks,
 //! makes the weak references and the `paired_encoders` pushes, and stores
 //! the batch size. Plain values cross, and the intervals as the caller's
-//! `uint64_t` array, read only. All five stay hidden (`rust-hidden.txt`).
+//! `uint64_t` array, read only. All five stay hidden (`rust-hidden.d`).
 //!
 //! Intentional differences, unreachable: the core's (where C is undefined),
 //! and [`obs_output_begin_batch_size`] answers a NULL `intervals` with a

@@ -4,7 +4,7 @@
 //! `obs_register_encoder_s()` and `obs_register_service_s()` in
 //! `obs-module.c` call the four functions inside libobs, for every type a
 //! module registers. They are declared in `obs-module-register-copy.h`
-//! without `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.txt`).
+//! without `EXPORT`, so the shims stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! Sizes and offsets are `size_t`, a `usize` here. The C returns
 //! `enum obs_module_register_copy_gate`: a 32-bit integer on every target

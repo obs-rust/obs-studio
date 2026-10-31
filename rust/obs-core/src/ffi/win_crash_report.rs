@@ -7,7 +7,7 @@
 //! inside the unhandled exception filter: they take and return integers,
 //! read nothing but `*inside` (and that only without a debugger), write
 //! nothing, allocate nothing, keep no state, take no lock and call nothing
-//! in libobs, and none can panic. All nine stay hidden (`rust-hidden.txt`).
+//! in libobs, and none can panic. All nine stay hidden (`rust-hidden.d`).
 //!
 //! No intentional differences from C.
 
