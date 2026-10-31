@@ -23,4 +23,12 @@ int main()
 	VCamAudioOutputSettings off = VCamAudioToOutput({false, 4});
 	assert(!off.audio_enabled);
 	assert(off.audio_track == 4);
+
+	// The video-only notice: only when audio was wanted and did not start.
+	assert(VCamAudioFellBack(defaults, true, true, false));
+	assert(!VCamAudioFellBack(defaults, true, true, true));
+	assert(!VCamAudioFellBack({false, 1}, true, true, false));
+	// Windows/macOS outputs send no audio and have no proc.
+	assert(!VCamAudioFellBack(defaults, false, false, false));
+	assert(!VCamAudioFellBack(defaults, true, false, false));
 }

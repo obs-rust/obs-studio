@@ -71,6 +71,18 @@ void OBSBasic::OnVirtualCamStart()
 
 	OnActivate();
 
+	/* The microphone falls back to video only quietly in the output; say so
+	 * here (#3182). */
+	bool sendsAudio = (obs_output_get_flags(outputHandler->virtualCam) & OBS_OUTPUT_AUDIO) != 0;
+	calldata_t cd = {0};
+	bool answered =
+		proc_handler_call(obs_output_get_proc_handler(outputHandler->virtualCam), "virtualcam_audio", &cd);
+	bool micActive = answered && calldata_bool(&cd, "active");
+	calldata_free(&cd);
+	if (VCamAudioFellBack(vcamConfig.audio, sendsAudio, answered, micActive)) {
+		ShowStatusBarMessage(QTStr("Basic.VCam.AudioUnavailable"));
+	}
+
 	blog(LOG_INFO, VIRTUAL_CAM_START);
 }
 
