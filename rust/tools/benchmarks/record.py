@@ -10,7 +10,9 @@ categories, for the before/after numbers of one kernel (#3009).
 
 --max-ratio R turns a recorded pair above the Rust/C time bound into a failed
 run, so a known breach is reproducible as a check instead of a report row
-(#3138). The bound is the one the release criteria use.
+(#3138). The bound is the one the release criteria use. A pair the maintainer
+exempted by name (`RATIO_EXEMPTIONS`) keeps its absolute cost and the reason
+in the report and never fails the gate.
 """
 
 from __future__ import annotations
@@ -43,6 +45,17 @@ COMMAND = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_com
 C_FLAGS = "-O2 -ffp-contract=off -fno-strict-aliasing"
 # The Rust/C median time ratio the release criteria bound (#1295, #3138).
 BOUND = 1.10
+# Pairs the maintainer exempted from the ratio gate, with the absolute cost
+# and why (#3138). An exemption is a recorded decision, not a silent pass: the
+# row keeps this reason in the report, and `--max-ratio` never fails on it.
+RATIO_EXEMPTIONS = {
+    "audio_mix/buffering_add_one_tick": (
+        "~46 ns vs the C's ~41 ns per call, once per audio tick: what is left "
+        "after #3141 removed the real inefficiencies is the Rust/C boundary "
+        "itself, and the maintainer decided in #3138 that the ratio bound does "
+        "not apply to it"
+    ),
+}
 
 
 def report_metadata(
@@ -188,8 +201,12 @@ def summarize(runs: list[dict]) -> list[dict]:
         ratios = [run[key]["rust"]["median_ns"] / run[key]["c"]["median_ns"] for run in runs]
         row["rust_over_c"] = ratio
         row["paired_run_ratio_range"] = [min(ratios), max(ratios)]
+        exemption = RATIO_EXEMPTIONS.get(key)
+        if exemption:
+            row["exemption"] = exemption
         row["status"] = (
             "C control in both builds" if key.startswith("dstr/printf_control/")
+            else "exempt from the ratio bound" if exemption
             else f"over {BOUND:.0%} bound" if ratio > BOUND else f"within {BOUND:.0%} bound"
         )
         rows.append(row)
@@ -200,11 +217,15 @@ def over_bound(results: list[dict], bound: float = BOUND) -> list[dict]:
     """Rows whose median Rust/C ratio is above `bound` (#3138).
 
     `dstr/printf_control` runs C in both builds, so its ratio says nothing
-    about the port and is never a breach.
+    about the port and is never a breach. A pair named in `RATIO_EXEMPTIONS`
+    is a recorded maintainer decision (#3138), so it is not a breach either;
+    its `exemption` reason is in the report.
     """
     return [
         row for row in results
-        if row["status"] != "C control in both builds" and row["rust_over_c"] > bound
+        if row["status"] != "C control in both builds"
+        and row["benchmark"] not in RATIO_EXEMPTIONS
+        and row["rust_over_c"] > bound
     ]
 
 

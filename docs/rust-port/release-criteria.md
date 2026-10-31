@@ -123,6 +123,12 @@ Inspect confidence intervals and run-to-run variation, and reproduce on
 release hardware before making a default-flip decision. The 5% recording
 workload bound and the other release gates above still apply.
 
+One pair is exempt from that flag by maintainer decision:
+`audio_mix/buffering_add_one_tick` records ~46 ns against the C's ~41 ns per
+call, once per audio tick, and #3141 removed the real inefficiencies there, so
+what is left is the Rust/C boundary itself (#3138). The recorder records the
+exemption and its reason in the report, and `--max-ratio` never fails on it.
+
 ### Recorded baseline
 
 The [2026-10-14 baseline](benchmarks/baseline-2026-10-14.json) records five
