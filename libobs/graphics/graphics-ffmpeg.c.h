@@ -131,9 +131,6 @@ fail:
 	return false;
 }
 
-/* Portable on every compiler; GCC, Clang and MSVC turn it into one byte swap. */
-#define obs_bswap16(v) ((uint16_t)(((uint16_t)(v) << 8) | ((uint16_t)(v) >> 8)))
-
 static void *ffmpeg_image_copy_data_straight(struct ffmpeg_image *info, AVFrame *frame)
 {
 	const size_t linesize = (size_t)info->cx * 4;
@@ -240,6 +237,12 @@ static enum AVPixelFormat ffmpeg_image_sws_format(enum AVPixelFormat format, boo
 	}
 }
 
+/* graphics-ffmpeg-rgba64.c gives the alpha modes as their values. */
+_Static_assert(GS_FFMPEG_RGBA64_ALPHA_STRAIGHT == GS_IMAGE_ALPHA_STRAIGHT, "GS_IMAGE_ALPHA_STRAIGHT");
+_Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY_SRGB == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB,
+	       "GS_IMAGE_ALPHA_PREMULTIPLY_SRGB");
+_Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY == GS_IMAGE_ALPHA_PREMULTIPLY, "GS_IMAGE_ALPHA_PREMULTIPLY");
+
 static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
 {
 	struct SwsContext *sws_ctx = NULL;
@@ -279,63 +282,8 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 	} else if (info->format == AV_PIX_FMT_RGBA64BE) {
 		const size_t dst_linesize = (size_t)info->cx * 4;
 		data = bmalloc((size_t)info->cy * dst_linesize);
-		const size_t src_linesize = (size_t)frame->linesize[0];
-		const size_t src_min_line = (dst_linesize * 2) < src_linesize ? (dst_linesize * 2) : src_linesize;
-		const size_t row_elements = src_min_line >> 3;
-		uint8_t *dst = data;
-		const uint8_t *src = frame->data[0];
-		uint16_t value[4];
-		float f[4];
-		if (alpha_mode == GS_IMAGE_ALPHA_STRAIGHT) {
-			for (int y = 0; y < info->cy; y++) {
-				for (size_t x = 0; x < row_elements; ++x) {
-					memcpy(value, src, sizeof(value));
-					f[0] = (float)obs_bswap16(value[0]) / 65535.0f;
-					f[1] = (float)obs_bswap16(value[1]) / 65535.0f;
-					f[2] = (float)obs_bswap16(value[2]) / 65535.0f;
-					f[3] = (float)obs_bswap16(value[3]) / 65535.0f;
-					gs_float4_to_u8x4(dst, f);
-					dst += sizeof(*dst) * 4;
-					src += sizeof(value);
-				}
-
-				src += src_linesize - src_min_line;
-			}
-		} else if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB) {
-			for (int y = 0; y < info->cy; y++) {
-				for (size_t x = 0; x < row_elements; ++x) {
-					memcpy(value, src, sizeof(value));
-					f[0] = (float)obs_bswap16(value[0]) / 65535.0f;
-					f[1] = (float)obs_bswap16(value[1]) / 65535.0f;
-					f[2] = (float)obs_bswap16(value[2]) / 65535.0f;
-					f[3] = (float)obs_bswap16(value[3]) / 65535.0f;
-					gs_float3_srgb_nonlinear_to_linear(f);
-					gs_premultiply_float4(f);
-					gs_float3_srgb_linear_to_nonlinear(f);
-					gs_float4_to_u8x4(dst, f);
-					dst += sizeof(*dst) * 4;
-					src += sizeof(value);
-				}
-
-				src += src_linesize - src_min_line;
-			}
-		} else if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY) {
-			for (int y = 0; y < info->cy; y++) {
-				for (size_t x = 0; x < row_elements; ++x) {
-					memcpy(value, src, sizeof(value));
-					f[0] = (float)obs_bswap16(value[0]) / 65535.0f;
-					f[1] = (float)obs_bswap16(value[1]) / 65535.0f;
-					f[2] = (float)obs_bswap16(value[2]) / 65535.0f;
-					f[3] = (float)obs_bswap16(value[3]) / 65535.0f;
-					gs_premultiply_float4(f);
-					gs_float4_to_u8x4(dst, f);
-					dst += sizeof(*dst) * 4;
-					src += sizeof(value);
-				}
-
-				src += src_linesize - src_min_line;
-			}
-		}
+		gs_ffmpeg_image_rgba64be_rows(data, frame->data[0], info->cx, info->cy, (size_t)frame->linesize[0],
+					      alpha_mode);
 
 		info->format = AV_PIX_FMT_RGBA;
 	} else {
@@ -530,6 +478,3 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 
 	return data;
 }
-
-/* File-local macros (BUILD.md): out of the next file in the unity group. */
-#undef obs_bswap16
