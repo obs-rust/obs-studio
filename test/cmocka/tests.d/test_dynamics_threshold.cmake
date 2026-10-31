@@ -1,0 +1,11 @@
+# No audio device or running OBS instance: the test calls the filter gain stages directly (#3190).
+add_executable(test_dynamics_threshold test_dynamics_threshold.c)
+target_link_libraries(test_dynamics_threshold PRIVATE OBS::libobs)
+if(MSVC)
+  target_compile_options(test_dynamics_threshold PRIVATE /fp:strict)
+else()
+  target_compile_options(test_dynamics_threshold PRIVATE -fno-fast-math -ffp-contract=off)
+  target_link_libraries(test_dynamics_threshold PRIVATE m)
+endif()
+add_dependencies(cmocka-tests test_dynamics_threshold)
+add_test(NAME test_dynamics_threshold COMMAND test_dynamics_threshold)
