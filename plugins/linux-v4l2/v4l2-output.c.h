@@ -22,6 +22,9 @@ struct virtualcam_data {
 	struct vmic_tail mic_tail;
 	uint32_t mic_module;
 	bool mic_loaded;
+	/* Settings from the Virtual Camera dialog (#3182). */
+	bool audio_enabled;
+	size_t audio_mixer;
 	char mic_path[256];
 	char mic_lock_path[256];
 	int mic_lock;
@@ -134,6 +137,47 @@ static bool vmic_instance_is_stale(const char *dir, long n)
 	bool unlocked = flock(fd, LOCK_EX | LOCK_NB) == 0;
 	close(fd);
 	return unlocked;
+}
+
+/* Reads the Virtual Microphone settings: audio_enabled, and audio_track
+ * 1..6 (anything else is track 1). */
+static void vmic_read_settings(struct virtualcam_data *vcam, obs_data_t *settings)
+{
+	vcam->audio_enabled = !obs_data_has_user_value(settings, "audio_enabled") ||
+			      obs_data_get_bool(settings, "audio_enabled");
+	long long track = obs_data_get_int(settings, "audio_track");
+	vcam->audio_mixer = track >= 1 && track <= MAX_AUDIO_MIXES ? (size_t)(track - 1) : 0;
+}
+
+/* Picks the source name and number for a new virtual microphone from
+ * "pactl list sources short": the plain name while it is free, so apps keep
+ * remembering it, else the first free "_<k>" (#3185). Returns k (1 for the
+ * plain name), or 0 when none of the first 9 is free. */
+static bool vmic_source_listed(const char *sources, const char *name)
+{
+	size_t len = strlen(name);
+	for (const char *line = sources; line && *line;) {
+		const char *field = strchr(line, '\t');
+		const char *next = strchr(line, '\n');
+		if (field && (!next || field < next) && strncmp(field + 1, name, len) == 0 &&
+		    (field[1 + len] == '\t' || field[1 + len] == '\n' || field[1 + len] == '\0'))
+			return true;
+		line = next ? next + 1 : NULL;
+	}
+	return false;
+}
+
+static int vmic_pick_source_name(const char *sources, char *name, size_t size)
+{
+	for (int k = 1; k <= 9; k++) {
+		if (k == 1)
+			snprintf(name, size, "%s", VMIC_SOURCE_NAME);
+		else
+			snprintf(name, size, "%s_%d", VMIC_SOURCE_NAME, k);
+		if (!vmic_source_listed(sources, name))
+			return k;
+	}
+	return 0;
 }
 
 /* Writes one audio packet to the non-blocking FIFO, or drops it whole when it
@@ -309,8 +353,31 @@ static void vmic_unload_stale(const char *dir)
 
 /* Loads the module-pipe-source and opens its FIFO. On failure the Virtual
  * Camera runs video-only, as before. */
+/* All of "pactl list sources short", or NULL. */
+static char *vmic_list_sources(void)
+{
+	FILE *fp = popen(is_flatpak_sandbox() ? "flatpak-spawn --host pactl list sources short 2>/dev/null"
+					      : "pactl list sources short 2>/dev/null",
+			 "r");
+	if (!fp)
+		return NULL;
+
+	struct dstr out;
+	dstr_init(&out);
+	char line[1024];
+	while (fgets(line, sizeof(line), fp))
+		dstr_cat(&out, line);
+	pclose(fp);
+	return out.array;
+}
+
 static void vmic_start(struct virtualcam_data *vcam)
 {
+	if (!vcam->audio_enabled) {
+		blog(LOG_INFO, "Virtual microphone turned off in the Virtual Camera settings");
+		return;
+	}
+
 	/* Only the user's private runtime directory: a predictable name in a
 	 * shared directory such as /tmp could be raced by another user. */
 	const char *runtime = getenv("XDG_RUNTIME_DIR");
@@ -367,15 +434,31 @@ static void vmic_start(struct virtualcam_data *vcam)
 	}
 	unlink(vcam->mic_path);
 
+	/* After the stale cleanup, a listed name belongs to a running OBS. */
+	char source[64];
+	char *sources = vmic_list_sources();
+	int k = vmic_pick_source_name(sources, source, sizeof(source));
+	bfree(sources);
+	if (k == 0) {
+		blog(LOG_WARNING, "Virtual microphone: nine are already in use; the Virtual Camera sends video only");
+		vmic_stop(vcam);
+		return;
+	}
+	char description[64];
+	if (k == 1)
+		snprintf(description, sizeof(description), "OBS Virtual Microphone");
+	else
+		snprintf(description, sizeof(description), "OBS Virtual Microphone (%d)", k);
+
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
 	struct dstr args;
 	dstr_init(&args);
 	dstr_printf(&args,
-		    "load-module module-pipe-source source_name=" VMIC_SOURCE_NAME
+		    "load-module module-pipe-source source_name=%s"
 		    " file='%s' format=float32le rate=%u channels=%d"
 		    /* The whole property list is quoted, or the server keeps only "OBS". */
-		    " 'source_properties=\"device.description=\\\"OBS Virtual Microphone\\\"\"'",
-		    vcam->mic_path, rate, VMIC_CHANNELS);
+		    " 'source_properties=\"device.description=\\\"%s\\\"\"'",
+		    source, vcam->mic_path, rate, VMIC_CHANNELS, description);
 	char *reply = run_pactl(args.array);
 	dstr_free(&args);
 
@@ -407,10 +490,11 @@ static void vmic_start(struct virtualcam_data *vcam)
 	aci.speakers = SPEAKERS_STEREO;
 	aci.samples_per_sec = rate;
 	obs_output_set_audio_conversion(vcam->output, &aci);
-	/* Track 1, the mix the stream and the default recording use. */
-	obs_output_set_mixer(vcam->output, 0);
+	/* Track 1 unless the Virtual Camera dialog picked another (#3182). */
+	obs_output_set_mixer(vcam->output, vcam->audio_mixer);
 
-	blog(LOG_INFO, "Virtual microphone started (module %u, %u Hz)", vcam->mic_module, rate);
+	blog(LOG_INFO, "Virtual microphone '%s' started (module %u, %u Hz, track %zu)", source, vcam->mic_module, rate,
+	     vcam->audio_mixer + 1);
 }
 
 static bool loopback_module_loaded(void)
@@ -492,6 +576,12 @@ static void vmic_stop(struct virtualcam_data *vcam)
 }
 #endif
 
+static void virtualcam_audio_proc(void *data, calldata_t *cd)
+{
+	struct virtualcam_data *vcam = (struct virtualcam_data *)data;
+	calldata_set_bool(cd, "active", vcam->mic_fifo >= 0);
+}
+
 static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)bzalloc(sizeof(*vcam));
@@ -499,9 +589,19 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	vcam->device = -1;
 	vcam->mic_fifo = -1;
 	vcam->mic_lock = -1;
+	vmic_read_settings(vcam, settings);
 
-	UNUSED_PARAMETER(settings);
+	/* The frontend asks after start whether the microphone runs, to tell
+	 * the user when the camera fell back to video only (#3182). */
+	if (output)
+		proc_handler_add(obs_output_get_proc_handler(output), "void virtualcam_audio(out bool active)",
+				 virtualcam_audio_proc, vcam);
 	return vcam;
+}
+
+static void virtualcam_update(void *data, obs_data_t *settings)
+{
+	vmic_read_settings((struct virtualcam_data *)data, settings);
 }
 
 static bool try_connect(void *data, const char *device)
@@ -703,6 +803,7 @@ struct obs_output_info virtualcam_info = {
 	.flags = OBS_OUTPUT_AV,
 	.get_name = virtualcam_name,
 	.create = virtualcam_create,
+	.update = virtualcam_update,
 	.destroy = virtualcam_destroy,
 	.start = virtualcam_start,
 	.stop = virtualcam_stop,
