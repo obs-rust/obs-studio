@@ -34,10 +34,9 @@
 //! Characterized, not endorsed: an unknown signal returns before the global
 //! callbacks.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
-use std::thread::{self, ThreadId};
 
 use crate::decl::{Decl, DeclParse, parse_decl};
 
@@ -73,7 +72,7 @@ struct ReentrantLock {
 /// threads wait for it.
 #[derive(Default)]
 struct Owner {
-    thread: Option<ThreadId>,
+    thread: Option<usize>,
     depth: usize,
     waiting: usize,
 }
@@ -82,9 +81,23 @@ struct ReentrantGuard<'a> {
     lock: &'a ReentrantLock,
 }
 
+thread_local! {
+    /// A byte whose address names this thread while it lives. Cheaper than
+    /// `thread::current().id()` on every lock (#3212).
+    static THREAD_TAG: u8 = const { 0 };
+}
+
+/// This thread's owner id for a `ReentrantLock`. An owner id is only
+/// stored while its thread holds the lock, and a thread can't exit while
+/// holding it, so an address reused after a thread exits never matches a
+/// stale owner.
+fn thread_tag() -> usize {
+    THREAD_TAG.with(|tag| core::ptr::from_ref(tag).addr())
+}
+
 impl ReentrantLock {
     fn lock(&self) -> ReentrantGuard<'_> {
-        let me = thread::current().id();
+        let me = thread_tag();
         let mut state = lock(&self.state);
         while state.thread.is_some_and(|owner| owner != me) {
             state.waiting += 1;
@@ -160,13 +173,42 @@ struct Globals {
 }
 
 thread_local! {
-    /// `current_signal_cb`, as (signal, index).
-    static CURRENT_SIGNAL: RefCell<Option<(Arc<Signal>, usize)>> = const { RefCell::new(None) };
-    /// `current_global_cb`, as (global list, index).
-    static CURRENT_GLOBAL: RefCell<Option<(Arc<Globals>, usize)>> = const { RefCell::new(None) };
+    /// The signal passes running on this thread, outermost first. Passes
+    /// nest strictly on one thread, so each pushes on entry and pops on
+    /// exit: one `Arc` clone per pass instead of one per callback (#3212).
+    static SIGNAL_PASSES: RefCell<Vec<Arc<Signal>>> = const { RefCell::new(Vec::new()) };
+    /// The global passes running on this thread, likewise.
+    static GLOBAL_PASSES: RefCell<Vec<Arc<Globals>>> = const { RefCell::new(Vec::new()) };
+    /// `current_signal_cb`, as (slot in `SIGNAL_PASSES`, index).
+    static CURRENT_SIGNAL: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
+    /// `current_global_cb`, as (slot in `GLOBAL_PASSES`, index).
+    static CURRENT_GLOBAL: Cell<Option<(usize, usize)>> = const { Cell::new(None) };
 }
 
-type Current = (Option<(Arc<Signal>, usize)>, Option<(Arc<Globals>, usize)>);
+type Current = (Option<(usize, usize)>, Option<(usize, usize)>);
+
+/// Pushes `item` on a pass stack for the life of the returned slot guard.
+struct PassSlot<T: 'static> {
+    stack: &'static std::thread::LocalKey<RefCell<Vec<Arc<T>>>>,
+    slot: usize,
+}
+
+impl<T: 'static> PassSlot<T> {
+    fn push(stack: &'static std::thread::LocalKey<RefCell<Vec<Arc<T>>>>, item: &Arc<T>) -> Self {
+        let slot = stack.with(|s| {
+            let mut s = s.borrow_mut();
+            s.push(Arc::clone(item));
+            s.len() - 1
+        });
+        Self { stack, slot }
+    }
+}
+
+impl<T: 'static> Drop for PassSlot<T> {
+    fn drop(&mut self) {
+        self.stack.with(|s| s.borrow_mut().truncate(self.slot));
+    }
+}
 
 /// Makes `current` the running callbacks of this thread and returns the
 /// ones it replaces.
@@ -182,18 +224,22 @@ fn swap_current(current: Current) -> Current {
 /// this thread, else its running global callback. Outside a callback it
 /// does nothing.
 pub fn remove_current() {
-    let signal = CURRENT_SIGNAL.with(|c| c.borrow().clone());
-    if let Some((sig, i)) = signal {
-        if let Some(entry) = lock(&sig.callbacks).entries.get_mut(i) {
+    if let Some((slot, i)) = CURRENT_SIGNAL.with(Cell::get) {
+        let sig = SIGNAL_PASSES.with(|s| s.borrow().get(slot).cloned());
+        if let Some(sig) = sig
+            && let Some(entry) = lock(&sig.callbacks).entries.get_mut(i)
+        {
             entry.remove = true;
         }
         return;
     }
-    let global = CURRENT_GLOBAL.with(|c| c.borrow().clone());
-    if let Some((globals, i)) = global
-        && let Some(entry) = lock(&globals.callbacks).entries.get_mut(i)
-    {
-        entry.remove = true;
+    if let Some((slot, i)) = CURRENT_GLOBAL.with(Cell::get) {
+        let globals = GLOBAL_PASSES.with(|s| s.borrow().get(slot).cloned());
+        if let Some(globals) = globals
+            && let Some(entry) = lock(&globals.callbacks).entries.get_mut(i)
+        {
+            entry.remove = true;
+        }
     }
 }
 
@@ -345,6 +391,7 @@ impl SignalHandler {
         let mut remove_refs = 0;
         {
             let _pass = sig.pass.lock();
+            let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
             lock(&sig.callbacks).signalling += 1;
 
             let mut i = 0;
@@ -356,7 +403,7 @@ impl SignalHandler {
                     None => break,
                 };
                 if !entry.remove {
-                    let previous = swap_current((Some((Arc::clone(&sig), i)), None));
+                    let previous = swap_current((Some((pass_slot.slot, i)), None));
                     call(entry.key);
                     swap_current(previous);
                 }
@@ -377,9 +424,14 @@ impl SignalHandler {
             }
         }
 
-        {
+        // No global callbacks: skip the pass and its locks (#3212). Nothing
+        // would run, and a connect from another thread racing this check
+        // is the same as one that waited for the pass to end; it would not
+        // have run in this pass either.
+        if !lock(&self.globals.callbacks).entries.is_empty() {
             let globals = &self.globals;
             let _pass = globals.pass.lock();
+            let pass_slot = PassSlot::push(&GLOBAL_PASSES, globals);
             lock(&globals.callbacks).signalling += 1;
             let mut i = 0;
             loop {
@@ -389,7 +441,7 @@ impl SignalHandler {
                     None => break,
                 };
                 if let Some(key) = entry {
-                    let previous = swap_current((None, Some((Arc::clone(globals), i))));
+                    let previous = swap_current((None, Some((pass_slot.slot, i))));
                     call_global(key);
                     swap_current(previous);
                 }
