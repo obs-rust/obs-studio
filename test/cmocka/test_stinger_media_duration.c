@@ -506,6 +506,33 @@ static void raw_video(void *param, struct video_data *frame)
 	pthread_mutex_unlock(&w->mutex);
 }
 
+/* Waits for the transition to stop ticking (the clip has played to its end)
+ * instead of sleeping past the clip's whole length. */
+static bool wait_transition_stopped(obs_source_t *stinger, uint32_t timeout_ms)
+{
+	for (uint32_t waited = 0; waited <= timeout_ms; waited += 5) {
+		if (!obs_transition_is_active(stinger))
+			return true;
+		os_sleep_ms(5);
+	}
+	return false;
+}
+
+/* Waits until the program output has shown scene B after the clip, so the
+ * case still ends on a scene B frame without a fixed tail sleep. */
+static bool wait_shows_scene_b(struct watch *w, uint32_t timeout_ms)
+{
+	for (uint32_t waited = 0; waited <= timeout_ms; waited += 5) {
+		pthread_mutex_lock(&w->mutex);
+		const bool shown = w->count && w->seen[w->count - 1] == SCENE_B;
+		pthread_mutex_unlock(&w->mutex);
+		if (shown)
+			return true;
+		os_sleep_ms(5);
+	}
+	return false;
+}
+
 /* Runs the stinger with `path` from scene A to scene B and records every
  * program output frame from the start of the transition until a while after
  * it has ended. */
@@ -541,8 +568,17 @@ static void run_stinger(const char *path, bool preload, struct watch *w)
 		fail();
 	}
 
-	/* long enough for the whole clip, a slow start and the end */
-	os_sleep_ms(CLIP_MS + 2000);
+	/* the clip plays to its end, then scene B shows; both are signalled by
+	 * the transition and the output, so wait for them rather than sleeping
+	 * past the clip's whole length */
+	if (!wait_transition_stopped(stinger, CLIP_MS + 2000)) {
+		fprintf(stderr, "the stinger transition never stopped\n");
+		fail();
+	}
+	if (!wait_shows_scene_b(w, 1000)) {
+		fprintf(stderr, "scene B never showed after the clip\n");
+		fail();
+	}
 
 	obs_remove_raw_video_callback(raw_video, w);
 	obs_set_output_source(0, NULL);
