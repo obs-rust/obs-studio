@@ -692,6 +692,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/updater.windows+.hpp.cpp build/updater.windows-c+.h.c
     INCLUDES deps/blake2/src
   )
+  _obs_cross_conversion_ratchet(updater-cross)
   _obs_cross_plugin(
     virtualcam-module-cross
     DIR plugins/win-dshow/virtualcam-module
