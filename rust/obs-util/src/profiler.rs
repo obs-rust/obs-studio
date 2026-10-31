@@ -12,7 +12,7 @@
 
 use core::cell::{Cell, RefCell};
 use core::ffi::{CStr, c_char};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 /// A profile name. Equality is the pointer address, not the bytes.
@@ -333,12 +333,16 @@ impl ProfileEntry {
     }
 }
 
+/// One call in the thread's tree. Children are a first-child/next-sibling
+/// list in call order, so a frame allocates nothing (#3213).
 struct Node {
     name: ProfileName,
     start: u64,
     end: u64,
     parent: Option<usize>,
-    children: Vec<usize>,
+    first_child: Option<usize>,
+    last_child: Option<usize>,
+    next_sibling: Option<usize>,
 }
 
 struct Active {
@@ -363,6 +367,13 @@ struct Globals {
     roots: Vec<Arc<Root>>,
 }
 
+/// `Globals::enabled`, readable without the lock. Written under the lock.
+static ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// Bumped whenever recorded roots are dropped, so a thread's cached root
+/// is not reused after [`profiler_free`].
+static ROOTS_GENERATION: AtomicU64 = AtomicU64::new(0);
+
 static GLOBAL: Mutex<Globals> = Mutex::new(Globals {
     enabled: false,
     roots: Vec::new(),
@@ -372,6 +383,11 @@ thread_local! {
     static THREAD_ENABLED: Cell<bool> = const { Cell::new(true) };
     static ACTIVE: RefCell<Option<Active>> = const { RefCell::new(None) };
     static STACK: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
+    /// The node buffer of the last finished root, cleared, for the next one.
+    static SPARE: RefCell<Vec<Node>> = const { RefCell::new(Vec::new()) };
+    /// The root this thread merged into last, with the generation it was
+    /// looked up in.
+    static LAST_ROOT: RefCell<Option<(ProfileName, u64, Arc<Root>)>> = const { RefCell::new(None) };
 }
 
 pub fn thread_enabled() -> bool {
@@ -406,11 +422,15 @@ fn get_root(globals: &mut Globals, name: ProfileName) -> Arc<Root> {
 /// Enables recording. The root mutex stays for the process; see
 /// [`profiler_free`].
 pub fn profiler_start() {
-    lock_globals().enabled = true;
+    let mut globals = lock_globals();
+    globals.enabled = true;
+    ENABLED.store(true, Ordering::Release);
 }
 
 pub fn profiler_stop() {
-    lock_globals().enabled = false;
+    let mut globals = lock_globals();
+    globals.enabled = false;
+    ENABLED.store(false, Ordering::Release);
 }
 
 /// Drops recorded roots and disables the profiler.
@@ -421,7 +441,9 @@ pub fn profiler_stop() {
 pub fn profiler_free() {
     let mut globals = lock_globals();
     globals.enabled = false;
+    ENABLED.store(false, Ordering::Release);
     globals.roots.clear();
+    ROOTS_GENERATION.fetch_add(1, Ordering::AcqRel);
 }
 
 struct TestClock {
@@ -486,6 +508,7 @@ pub fn testing_reset() {
     profiler_free();
     ACTIVE.with(|slot| *slot.borrow_mut() = None);
     STACK.with(|slot| slot.borrow_mut().clear());
+    LAST_ROOT.with(|slot| *slot.borrow_mut() = None);
     set_thread_enabled(true);
 }
 
@@ -516,7 +539,9 @@ pub fn profile_start(name: ProfileName, now_ns: u64) {
     ACTIVE.with(|active_slot| {
         STACK.with(|stack_slot| {
             let mut active_ref = active_slot.borrow_mut();
-            let active = active_ref.get_or_insert_with(|| Active { nodes: Vec::new() });
+            let active = active_ref.get_or_insert_with(|| Active {
+                nodes: SPARE.with(|spare| std::mem::take(&mut *spare.borrow_mut())),
+            });
             let mut stack = stack_slot.borrow_mut();
             let parent = stack.last().copied();
             let idx = active.nodes.len();
@@ -525,10 +550,15 @@ pub fn profile_start(name: ProfileName, now_ns: u64) {
                 start: now_ns,
                 end: 0,
                 parent,
-                children: Vec::new(),
+                first_child: None,
+                last_child: None,
+                next_sibling: None,
             });
             if let Some(p) = parent {
-                active.nodes[p].children.push(idx);
+                match active.nodes[p].last_child.replace(idx) {
+                    Some(prev) => active.nodes[prev].next_sibling = Some(idx),
+                    None => active.nodes[p].first_child = Some(idx),
+                }
             }
             stack.push(idx);
         });
@@ -616,10 +646,11 @@ pub fn profile_end(
 }
 
 fn merge_call(entry: &mut ProfileEntry, active: &Active, idx: usize, prev_start: Option<u64>) {
-    for &child in &active.nodes[idx].children {
-        let child_name = active.nodes[child].name;
-        let ci = entry.child_index(child_name);
-        merge_call(&mut entry.children[ci], active, child, None);
+    let mut child = active.nodes[idx].first_child;
+    while let Some(c) = child {
+        let ci = entry.child_index(active.nodes[c].name);
+        merge_call(&mut entry.children[ci], active, c, None);
+        child = active.nodes[c].next_sibling;
     }
     if entry.expected != 0
         && let Some(prev) = prev_start
@@ -636,20 +667,45 @@ fn merge_call(entry: &mut ProfileEntry, active: &Active, idx: usize, prev_start:
     );
 }
 
-fn merge_context(active: Active) {
-    let name = active.nodes[0].name;
+fn merge_context(mut active: Active) {
+    if let Some(root) = root_for(active.nodes[0].name) {
+        let prev_start = root.prev_start.lock().unwrap().replace(active.root_start());
+        let mut entry = root.entry.lock().unwrap();
+        merge_call(&mut entry, &active, 0, prev_start);
+    } else {
+        set_thread_enabled(false);
+    }
+    // Keep the buffer for this thread's next root.
+    active.nodes.clear();
+    SPARE.with(|spare| *spare.borrow_mut() = active.nodes);
+}
+
+/// The root to merge `name` into, or `None` when the profiler is off.
+///
+/// A thread usually ends the same root every time, so it keeps that root
+/// and skips the global lock and the root scan while no
+/// [`profiler_free`] has dropped the roots since.
+fn root_for(name: ProfileName) -> Option<Arc<Root>> {
+    if !ENABLED.load(Ordering::Acquire) {
+        return None;
+    }
+    let generation = ROOTS_GENERATION.load(Ordering::Acquire);
+    let cached = LAST_ROOT.with(|slot| match &*slot.borrow() {
+        Some((n, g, root)) if *n == name && *g == generation => Some(Arc::clone(root)),
+        _ => None,
+    });
+    if cached.is_some() {
+        return cached;
+    }
     let mut globals = lock_globals();
     if !globals.enabled {
-        drop(globals);
-        set_thread_enabled(false);
-        return;
+        return None;
     }
     let root = get_root(&mut globals, name);
-    let prev_start = root.prev_start.lock().unwrap().replace(active.root_start());
-    let root = Arc::clone(&root);
+    let generation = ROOTS_GENERATION.load(Ordering::Acquire);
     drop(globals);
-    let mut entry = root.entry.lock().unwrap();
-    merge_call(&mut entry, &active, 0, prev_start);
+    LAST_ROOT.with(|slot| *slot.borrow_mut() = Some((name, generation, Arc::clone(&root))));
+    Some(root)
 }
 
 pub fn profile_snapshot_create() -> Snapshot {
