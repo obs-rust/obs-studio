@@ -1,12 +1,15 @@
 //! Tier 3: the shims against the original `libobs/obs-audio-mix.c.h`.
 //!
 //! The oracle (`rust/obs-c-oracle/oracle/audio_mix.c`) is the C file,
-//! unmodified, with its five functions renamed. Both sides get the same
+//! unmodified, with its six functions renamed. Both sides get the same
 //! inputs through their C signatures, and are compared:
 //!
 //! - `obs_audio_mix_time_to_frames`: the frame count;
 //! - `obs_audio_mix_add`: every sample of the 6 mixes and 8 channels, bit
 //!   for bit, from the same random start values and source audio;
+//! - `obs_audio_mix_add_mixers`: the same for every `mixers` mask of the 6
+//!   mixes, with and without bits above them, and the mixes outside the mask
+//!   unchanged (#3189);
 //! - `obs_audio_buffering_maxed`, `_fixed` and `_add`: the step (added,
 //!   max_reached, ticks, ms, total_ms), the three fields, `ts`, and the
 //!   queue: the `struct deque` fields (size, start, end, capacity) and every
@@ -39,14 +42,14 @@ use core::ptr;
 use obs_c_oracle::audio_mix::{
     LAYOUT_NAMES, OracleAudioBufferingStep, oracle_audio_mix_layout,
     oracle_obs_audio_buffering_add, oracle_obs_audio_buffering_fixed,
-    oracle_obs_audio_buffering_maxed, oracle_obs_audio_mix_add,
+    oracle_obs_audio_buffering_maxed, oracle_obs_audio_mix_add, oracle_obs_audio_mix_add_mixers,
     oracle_obs_audio_mix_time_to_frames,
 };
 use obs_core::audio_mix::{AUDIO_OUTPUT_FRAMES, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES};
 use obs_core::ffi::audio_mix::{
     audio_output_data, obs_audio_buffering, obs_audio_buffering_add, obs_audio_buffering_fixed,
     obs_audio_buffering_maxed, obs_audio_buffering_step, obs_audio_mix_add,
-    obs_audio_mix_time_to_frames, ts_info,
+    obs_audio_mix_add_mixers, obs_audio_mix_time_to_frames, ts_info,
 };
 use obs_media_io::audio_io::audio_frames_to_ns;
 use obs_util::ffi::deque::{deque, deque_free, deque_pop_front, deque_push_back};
@@ -147,11 +150,19 @@ fn pointers(planes: &mut Planes) -> [[*mut f32; MAX_AUDIO_CHANNELS]; MAX_AUDIO_M
     out
 }
 
-/// Runs `obs_audio_mix_add` on both sides from the same start values and
-/// source audio and compares every sample bit for bit. When the C would
-/// make an out-of-range pointer (a start frame above 1024), only the shim
-/// runs, and the mix must stay as it was.
-fn compare_mix(seed: u64, audio_ts: u64, ts: ts_info, channels: usize, rate: usize) {
+/// Runs `obs_audio_mix_add` (or, with `mixers`, `obs_audio_mix_add_mixers`)
+/// on both sides from the same start values and source audio and compares
+/// every sample bit for bit. When the C would make an out-of-range pointer
+/// (a start frame above 1024), only the shim runs, and the mix must stay as
+/// it was. With `mixers`, a mix outside the mask must also stay as it was.
+fn compare_mix(
+    seed: u64,
+    audio_ts: u64,
+    ts: ts_info,
+    channels: usize,
+    rate: usize,
+    mixers: Option<u32>,
+) {
     let mut rng = Rng(seed | 1);
     let start_values = planes(&mut rng);
     let mut source = planes(&mut rng);
@@ -162,14 +173,33 @@ fn compare_mix(seed: u64, audio_ts: u64, ts: ts_info, channels: usize, rate: usi
     let mut rust_mixes = pointers(&mut rust_out).map(|data| audio_output_data { data });
     // SAFETY: 6 mixes and 6 rows of 8 channels of 1024 floats, no overlap.
     unsafe {
-        obs_audio_mix_add(
-            rust_mixes.as_mut_ptr(),
-            source_ptrs.as_mut_ptr(),
-            audio_ts,
-            &ts,
-            channels,
-            rate,
-        );
+        match mixers {
+            None => obs_audio_mix_add(
+                rust_mixes.as_mut_ptr(),
+                source_ptrs.as_mut_ptr(),
+                audio_ts,
+                &ts,
+                channels,
+                rate,
+            ),
+            Some(mixers) => obs_audio_mix_add_mixers(
+                rust_mixes.as_mut_ptr(),
+                source_ptrs.as_mut_ptr(),
+                audio_ts,
+                &ts,
+                channels,
+                rate,
+                mixers,
+            ),
+        }
+    }
+    if let Some(mixers) = mixers {
+        for m in (0..MAX_AUDIO_MIXES).filter(|&m| mixers & (1 << m) == 0) {
+            assert_eq!(
+                rust_out[m], start_values[m],
+                "mix {m} is outside {mixers:#x}"
+            );
+        }
     }
 
     let c_ub = audio_ts > ts.start
@@ -186,14 +216,17 @@ fn compare_mix(seed: u64, audio_ts: u64, ts: ts_info, channels: usize, rate: usi
     let mut c_mixes = pointers(&mut c_out).map(|data| audio_output_data { data });
     // SAFETY: as above, through the C signature.
     unsafe {
-        oracle_obs_audio_mix_add(
+        let (mixes, rows) = (
             c_mixes.as_mut_ptr().cast::<c_void>(),
             source_ptrs.as_mut_ptr().cast::<c_void>(),
-            audio_ts,
-            ptr::from_ref(&ts).cast::<c_void>(),
-            channels,
-            rate,
         );
+        let ts = ptr::from_ref(&ts).cast::<c_void>();
+        match mixers {
+            None => oracle_obs_audio_mix_add(mixes, rows, audio_ts, ts, channels, rate),
+            Some(mixers) => {
+                oracle_obs_audio_mix_add_mixers(mixes, rows, audio_ts, ts, channels, rate, mixers);
+            }
+        }
     }
     for (m, (rm, cm)) in rust_out.iter().zip(&c_out).enumerate() {
         for (c, (rc, cc)) in rm.iter().zip(cm).enumerate() {
@@ -201,7 +234,7 @@ fn compare_mix(seed: u64, audio_ts: u64, ts: ts_info, channels: usize, rate: usi
                 assert_eq!(
                     r.to_bits(),
                     c_sample.to_bits(),
-                    "mix {m} ch {c} frame {f}: audio_ts {audio_ts} ts {ts:?} channels {channels} rate {rate}"
+                    "mix {m} ch {c} frame {f}: audio_ts {audio_ts} ts {ts:?} channels {channels} rate {rate} mixers {mixers:?}"
                 );
             }
         }
@@ -227,7 +260,7 @@ fn mix_on_sampled_start_frames() {
         for frame in sampled_start_frames() {
             let at = START + audio_frames_to_ns(rate, frame);
             for audio_ts in [at - 1, at, at + 1] {
-                compare_mix(frame ^ (rate as u64) << 20, audio_ts, ts, 2, rate);
+                compare_mix(frame ^ (rate as u64) << 20, audio_ts, ts, 2, rate, None);
             }
         }
     }
@@ -285,7 +318,36 @@ proptest! {
 
     #[test]
     fn mix_matches((audio_ts, ts, channels, rate, seed) in window_strategy()) {
-        compare_mix(seed, audio_ts, ts, channels, rate);
+        compare_mix(seed, audio_ts, ts, channels, rate, None);
+    }
+}
+
+/// Every mask of the 6 mixes, alone and with all bits above them set (the
+/// C reads only the low 6), on a whole tick and from frame 300, stereo and
+/// on all 8 channels (#3189).
+#[test]
+fn mix_mixers_every_mask() {
+    let rate = 48_000;
+    let ts = ts_info {
+        start: START,
+        end: START + audio_frames_to_ns(rate, FRAMES),
+    };
+    for mask in 0..1_u32 << MAX_AUDIO_MIXES {
+        for mixers in [mask, mask | !((1 << MAX_AUDIO_MIXES) - 1)] {
+            for (audio_ts, channels) in [
+                (START, 2),
+                (START + audio_frames_to_ns(rate, 300), MAX_AUDIO_CHANNELS),
+            ] {
+                compare_mix(
+                    u64::from(mixers) << 8 | channels as u64,
+                    audio_ts,
+                    ts,
+                    channels,
+                    rate,
+                    Some(mixers),
+                );
+            }
+        }
     }
 }
 

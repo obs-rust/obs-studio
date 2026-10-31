@@ -485,6 +485,7 @@ _obs_audio_min_ts_buffering
 # obs-audio-mix.c: obs-audio.c calls them inside libobs. Not EXPORT.
 _obs_audio_mix_time_to_frames
 _obs_audio_mix_add
+_obs_audio_mix_add_mixers
 _obs_audio_buffering_maxed
 _obs_audio_buffering_fixed
 _obs_audio_buffering_add

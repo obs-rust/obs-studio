@@ -1,6 +1,6 @@
 //! C ABI for `libobs/obs-audio-mix.c.h`.
 //!
-//! `obs-audio.c` calls the five functions inside libobs. They are declared
+//! `obs-audio.c` calls the six functions inside libobs. They are declared
 //! in `obs-audio-mix.h` without `EXPORT`, so the shims stay hidden
 //! (`libobs/cmake/rust-hidden.txt`). The buffering fields of
 //! `struct obs_core_audio` come by pointer in `struct obs_audio_buffering`,
@@ -22,8 +22,9 @@ use core::slice;
 use obs_util::ffi::deque::{deque, deque_push_front};
 
 use crate::audio_mix::{
-    AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
-    buffering_add, buffering_fixed, buffering_maxed, mix_into, mix_start, time_to_frames,
+    ALL_MIXERS, AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
+    buffering_add, buffering_fixed, buffering_maxed, mix_active, mix_into, mix_start,
+    time_to_frames,
 };
 
 /// `struct ts_info` (`obs-audio-mix.h`).
@@ -105,7 +106,30 @@ pub extern "C" fn obs_audio_mix_time_to_frames(sample_rate: usize, t: u64) -> us
 }
 
 /// `obs_audio_mix_add()`: adds the source's audio in `buf` to the first
-/// `channels` channels of every mix in `mixes`.
+/// `channels` channels of every mix in `mixes`: [`obs_audio_mix_add_mixers`]
+/// with [`ALL_MIXERS`].
+///
+/// # Safety
+///
+/// As [`obs_audio_mix_add_mixers`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_audio_mix_add(
+    mixes: *mut audio_output_data,
+    buf: *mut [*mut f32; MAX_AUDIO_CHANNELS],
+    audio_ts: u64,
+    ts: *const ts_info,
+    channels: usize,
+    sample_rate: usize,
+) {
+    // SAFETY: forwarded from the caller.
+    unsafe {
+        obs_audio_mix_add_mixers(mixes, buf, audio_ts, ts, channels, sample_rate, ALL_MIXERS);
+    }
+}
+
+/// `obs_audio_mix_add_mixers()`: adds the source's audio in `buf` to the
+/// first `channels` channels of each mix in `mixes` whose bit is set in
+/// `mixers` ([`mix_active`]); the other mixes stay as they are (#3189).
 ///
 /// # Safety
 ///
@@ -116,13 +140,14 @@ pub extern "C" fn obs_audio_mix_time_to_frames(sample_rate: usize, t: u64) -> us
 /// overlaps a source buffer. `ts` is a valid `struct ts_info`. Null
 /// `mixes`, `buf` or `ts` does nothing.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_audio_mix_add(
+pub unsafe extern "C" fn obs_audio_mix_add_mixers(
     mixes: *mut audio_output_data,
     buf: *mut [*mut f32; MAX_AUDIO_CHANNELS],
     audio_ts: u64,
     ts: *const ts_info,
     channels: usize,
     sample_rate: usize,
+    mixers: u32,
 ) {
     if mixes.is_null() || buf.is_null() || ts.is_null() {
         return;
@@ -139,7 +164,10 @@ pub unsafe extern "C" fn obs_audio_mix_add(
             slice::from_raw_parts(buf, MAX_AUDIO_MIXES),
         )
     };
-    for (mix, row) in mixes.iter().zip(rows) {
+    for (m, (mix, row)) in mixes.iter().zip(rows).enumerate() {
+        if !mix_active(mixers, m) {
+            continue;
+        }
         for (&dst, &src) in mix.data.iter().zip(row).take(channels) {
             if dst.is_null() || src.is_null() {
                 continue;

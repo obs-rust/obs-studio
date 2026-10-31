@@ -3,6 +3,11 @@
 //! source: a stereo mix of a whole tick and of a tick from frame 300 into
 //! all 6 mixes, the time-to-frames step, and one added buffering tick on a
 //! queue that is popped back after each call, so it does not grow.
+//!
+//! #3189: one tick of `sources` root sources, each a stereo whole tick, into
+//! the mixes in a `mixers` mask: 6 mixes (what `obs_audio_mix_add` did for
+//! every source) against 1 (one recording or stream track), for 4, 16 and
+//! 32 sources.
 
 use std::ffi::c_void;
 use std::hint::black_box;
@@ -13,7 +18,7 @@ use obs_c_oracle::audio_mix as c_mix;
 use obs_core::audio_mix::{AUDIO_OUTPUT_FRAMES, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES};
 use obs_core::ffi::audio_mix::{
     audio_output_data, obs_audio_buffering, obs_audio_buffering_add, obs_audio_mix_add,
-    obs_audio_mix_time_to_frames, ts_info,
+    obs_audio_mix_add_mixers, obs_audio_mix_time_to_frames, ts_info,
 };
 use obs_util::ffi::deque::{deque, deque_free, deque_pop_front};
 
@@ -80,6 +85,62 @@ fn mix(criterion: &mut Criterion, name: &str, audio_ts: u64) {
                 2,
                 RATE,
             );
+        }
+    };
+    rust();
+    original();
+    assert!(
+        rust_out
+            .iter()
+            .flatten()
+            .flatten()
+            .zip(c_out.iter().flatten().flatten())
+            .all(|(r, c)| r.to_bits() == c.to_bits()),
+        "benchmark fixture differs: {name}"
+    );
+    measure_pair(criterion, name, rust, original);
+}
+
+/// One tick of `sources` sources into the mixes in `mixers`, both sides
+/// checked bit for bit once, then timed (the values grow, the work does
+/// not). Each source is its own buffer, as each root source's
+/// `audio_output_buf` is.
+fn mix_sources(criterion: &mut Criterion, name: &str, mixers: u32, sources: usize) {
+    let ts = ts_info {
+        start: START,
+        end: START + TICK_NS,
+    };
+    let mut source_planes: Vec<Planes> = (0..sources).map(|s| planes(0.25 / (s + 1) as f32)).collect();
+    let mut source_ptrs: Vec<_> = source_planes.iter_mut().map(pointers).collect();
+    // The same source buffers through the C side's own pointer copies.
+    let mut c_rows = source_ptrs.clone();
+    let mut rust_out = planes(1.0);
+    let mut c_out = planes(1.0);
+    let mut rust_mixes = pointers(&mut rust_out).map(|data| audio_output_data { data });
+    let mut c_mixes = pointers(&mut c_out).map(|data| audio_output_data { data });
+
+    let mut rust = || {
+        for rows in &mut source_ptrs {
+            // SAFETY: 6 mixes and 6 rows of 8 channels of 1024 floats, no overlap.
+            unsafe {
+                obs_audio_mix_add_mixers(rust_mixes.as_mut_ptr(), rows.as_mut_ptr(), START, &ts, 2, RATE, mixers);
+            }
+        }
+    };
+    let mut original = || {
+        for rows in &mut c_rows {
+            // SAFETY: as above, through the C signature.
+            unsafe {
+                c_mix::oracle_obs_audio_mix_add_mixers(
+                    c_mixes.as_mut_ptr().cast::<c_void>(),
+                    rows.as_mut_ptr().cast::<c_void>(),
+                    START,
+                    ptr::from_ref(&ts).cast::<c_void>(),
+                    2,
+                    RATE,
+                    mixers,
+                );
+            }
         }
     };
     rust();
@@ -194,6 +255,11 @@ fn buffering(criterion: &mut Criterion) {
 pub fn benchmarks(criterion: &mut Criterion) {
     mix(criterion, "audio_mix/mix_whole_tick", START);
     mix(criterion, "audio_mix/mix_from_frame_300", START + 6_250_000);
+    for sources in [4, 16, 32] {
+        for (mixes, mixers) in [("6_mixes", 0b11_1111), ("1_mix", 0b1)] {
+            mix_sources(criterion, &format!("audio_mix/add_sources/{sources}/{mixes}"), mixers, sources);
+        }
+    }
     pair(
         criterion,
         "audio_mix/time_to_frames",

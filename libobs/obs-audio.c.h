@@ -90,6 +90,15 @@ static inline void mix_audio(struct audio_output_data *mixes, obs_source_t *sour
 	obs_audio_mix_add(mixes, source->audio_output_buf, source->audio_ts, ts, channels, sample_rate);
 }
 
+/* audio_callback() mixes only into the mixes in `mixers`, the ones some
+ * output reads (#3189). mix_audio() stays the all-mixes form, which
+ * test_audio_buffering_subsample calls. */
+static inline void mix_audio_mixers(struct audio_output_data *mixes, obs_source_t *source, size_t channels,
+				    size_t sample_rate, struct ts_info *ts, uint32_t mixers)
+{
+	obs_audio_mix_add_mixers(mixes, source->audio_output_buf, source->audio_ts, ts, channels, sample_rate, mixers);
+}
+
 static inline struct obs_audio_input audio_input(obs_source_t *source)
 {
 	struct obs_audio_input in = {
@@ -537,7 +546,7 @@ bool audio_callback(void *param, uint64_t start_ts_in, uint64_t end_ts_in, uint6
 			pthread_mutex_lock(&root_source->audio_buf_mutex);
 
 			if (root_source->audio_output_buf[0][0] && root_source->audio_ts)
-				mix_audio(mixes, root_source, channels, sample_rate, &ts);
+				mix_audio_mixers(mixes, root_source, channels, sample_rate, &ts, mixers);
 
 			pthread_mutex_unlock(&root_source->audio_buf_mutex);
 		}

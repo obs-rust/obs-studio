@@ -38,6 +38,9 @@
  * at audio_ts. Audio outside [ts->start, ts->end) adds nothing; otherwise it
  * goes from frame obs_audio_mix_time_to_frames(audio_ts - ts->start) on,
  * and a start on frame AUDIO_OUTPUT_FRAMES adds nothing.
+ * obs_audio_mix_add_mixers() is the same for the mixes whose bit is set in
+ * mixers, the mask audio-io passes to audio_callback() (the mixes some
+ * output reads); it leaves the other mixes as they are (#3189).
  *
  * obs_audio_buffering is the buffering state of struct obs_core_audio, by
  * pointer. obs_audio_buffering_fixed() adds the ticks up to the maximum
@@ -77,6 +80,8 @@ struct obs_audio_buffering_step {
 size_t obs_audio_mix_time_to_frames(size_t sample_rate, uint64_t t);
 void obs_audio_mix_add(struct audio_output_data *mixes, float *(*buf)[MAX_AUDIO_CHANNELS], uint64_t audio_ts,
 		       const struct ts_info *ts, size_t channels, size_t sample_rate);
+void obs_audio_mix_add_mixers(struct audio_output_data *mixes, float *(*buf)[MAX_AUDIO_CHANNELS], uint64_t audio_ts,
+			      const struct ts_info *ts, size_t channels, size_t sample_rate, uint32_t mixers);
 
 bool obs_audio_buffering_maxed(const struct obs_audio_buffering *buffering);
 struct obs_audio_buffering_step obs_audio_buffering_fixed(const struct obs_audio_buffering *buffering,

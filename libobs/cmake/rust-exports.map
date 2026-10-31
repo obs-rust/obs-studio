@@ -518,6 +518,7 @@
     /* obs-audio-mix.c. obs-audio.c calls them inside libobs. Not EXPORT. */
     obs_audio_mix_time_to_frames;
     obs_audio_mix_add;
+    obs_audio_mix_add_mixers;
     obs_audio_buffering_maxed;
     obs_audio_buffering_fixed;
     obs_audio_buffering_add;
