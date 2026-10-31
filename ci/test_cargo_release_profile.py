@@ -3,11 +3,13 @@
 
     uv run python -m unittest ci/test_cargo_release_profile.py
 
-libobs links one Rust staticlib built from ~25 workspace crates. Without fat
-LTO and a single codegen unit, small hot helpers in one crate (obs-util,
-obs-callback, obs-media-io shims) are not inlined into callers in another, so
-every per-frame and per-tick call pays a real function call. The bench profile
-inherits release, so `rust/tools/benchmarks/record.py` measures these settings.
+libobs links one Rust staticlib built from ~25 workspace crates. Without LTO,
+small hot helpers in one crate (obs-util, obs-callback, obs-media-io shims) are
+not inlined into callers in another, so every per-frame and per-tick call pays
+a real function call. Thin, not fat: fat LTO with one codegen unit slowed the
+audio_mix scene_mix_add and source_volume benches 1.8-2.7x, thin did not
+(PR #3225). The bench profile inherits release, so
+`rust/tools/benchmarks/record.py` measures these settings.
 panic = "abort" keeps panics from unwinding across the C ABI.
 """
 
@@ -18,7 +20,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPECTED = {"panic": "abort", "lto": "fat", "codegen-units": 1}
+EXPECTED = {"panic": "abort", "lto": "thin"}
 
 
 class CargoReleaseProfileTest(unittest.TestCase):
