@@ -11,8 +11,9 @@
 //! the edges of the safe API, and a proptest checks that no input panics.
 
 use obs_core::audio_mix::{
-    AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
-    buffering_add, buffering_fixed, buffering_maxed, mix_into, mix_start, time_to_frames,
+    ALL_MIXERS, AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
+    buffering_add, buffering_fixed, buffering_maxed, mix_active, mix_into, mix_start,
+    time_to_frames,
 };
 use obs_media_io::audio_io::{audio_frames_to_ns, ns_to_audio_frames};
 use proptest::prelude::*;
@@ -552,6 +553,38 @@ fn edge_total_above_max_pushes_nothing() {
     assert!(audio.queue.is_empty());
     assert_eq!(ts.start, START - audio_frames_to_ns(48_000, FRAMES));
     assert_eq!(step.ms, (-5_i32 * 1024 * 1000) as isize as usize / 48_000);
+}
+
+/// `obs_audio_mix_add_mixers()` adds into a mix exactly when its bit is set
+/// (#3189): every mask of the 6 mixes against every mix.
+#[test]
+fn mix_active_follows_the_mask() {
+    for mixers in 0..1_u32 << MAX_AUDIO_MIXES {
+        for mix in 0..MAX_AUDIO_MIXES {
+            assert_eq!(
+                mix_active(mixers, mix),
+                mixers >> mix & 1 == 1,
+                "mix {mix} of {mixers:#08b}"
+            );
+        }
+    }
+}
+
+/// `obs_audio_mix_add()` mixes into all 6 mixes, and only them.
+#[test]
+fn all_mixers_is_the_six_mixes() {
+    assert_eq!(ALL_MIXERS, 0b11_1111);
+    assert!((0..MAX_AUDIO_MIXES).all(|mix| mix_active(ALL_MIXERS, mix)));
+    assert!(!mix_active(ALL_MIXERS, MAX_AUDIO_MIXES));
+}
+
+/// A mix past the mask's 32 bits is never in it, and asking does not panic.
+#[test]
+fn edge_mix_active_past_32_bits() {
+    for mix in [32, 33, 63, 64, usize::MAX] {
+        assert!(!mix_active(u32::MAX, mix), "mix {mix}");
+    }
+    assert!(mix_active(u32::MAX, 31));
 }
 
 #[test]

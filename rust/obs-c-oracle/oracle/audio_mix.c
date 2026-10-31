@@ -1,5 +1,5 @@
 /* Test-only oracle: the original libobs/obs-audio-mix.c.h, unmodified, with
- * its five functions renamed to oracle_* so they can link next to the Rust
+ * its six functions renamed to oracle_* so they can link next to the Rust
  * shims. util_mul_div64, audio_frames_to_ns, ns_to_audio_frames and
  * deque_push_front stay the header inlines; the deque's bmem calls resolve
  * to the allocator of the test binary, which the shims use too. */
@@ -8,6 +8,7 @@
 
 #define obs_audio_mix_time_to_frames oracle_obs_audio_mix_time_to_frames
 #define obs_audio_mix_add oracle_obs_audio_mix_add
+#define obs_audio_mix_add_mixers oracle_obs_audio_mix_add_mixers
 #define obs_audio_buffering_maxed oracle_obs_audio_buffering_maxed
 #define obs_audio_buffering_fixed oracle_obs_audio_buffering_fixed
 #define obs_audio_buffering_add oracle_obs_audio_buffering_add
@@ -17,6 +18,7 @@
 #undef obs_audio_buffering_add
 #undef obs_audio_buffering_fixed
 #undef obs_audio_buffering_maxed
+#undef obs_audio_mix_add_mixers
 #undef obs_audio_mix_add
 #undef obs_audio_mix_time_to_frames
 

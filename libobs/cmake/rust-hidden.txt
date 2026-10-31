@@ -598,6 +598,7 @@ obs_audio_min_ts_buffering
 # obs-audio-mix.h without EXPORT, so the shims stay hidden the same way.
 obs_audio_mix_time_to_frames
 obs_audio_mix_add
+obs_audio_mix_add_mixers
 obs_audio_buffering_maxed
 obs_audio_buffering_fixed
 obs_audio_buffering_add

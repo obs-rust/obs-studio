@@ -62,6 +62,16 @@ unsafe extern "C" {
         channels: usize,
         sample_rate: usize,
     );
+    /// As [`oracle_obs_audio_mix_add`], for the mixes in `mixers`.
+    pub fn oracle_obs_audio_mix_add_mixers(
+        mixes: *mut c_void,
+        buf: *mut c_void,
+        audio_ts: u64,
+        ts: *const c_void,
+        channels: usize,
+        sample_rate: usize,
+        mixers: u32,
+    );
     /// `buffering`: `const struct obs_audio_buffering *`.
     pub fn oracle_obs_audio_buffering_maxed(buffering: *const c_void) -> bool;
     /// `buffering`: `const struct obs_audio_buffering *`; `ts`:

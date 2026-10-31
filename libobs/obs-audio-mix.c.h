@@ -30,6 +30,12 @@ size_t obs_audio_mix_time_to_frames(size_t sample_rate, uint64_t t)
 void obs_audio_mix_add(struct audio_output_data *mixes, float *(*buf)[MAX_AUDIO_CHANNELS], uint64_t audio_ts,
 		       const struct ts_info *ts, size_t channels, size_t sample_rate)
 {
+	obs_audio_mix_add_mixers(mixes, buf, audio_ts, ts, channels, sample_rate, (1u << MAX_AUDIO_MIXES) - 1u);
+}
+
+void obs_audio_mix_add_mixers(struct audio_output_data *mixes, float *(*buf)[MAX_AUDIO_CHANNELS], uint64_t audio_ts,
+			      const struct ts_info *ts, size_t channels, size_t sample_rate, uint32_t mixers)
+{
 	size_t total_floats = AUDIO_OUTPUT_FRAMES;
 	size_t start_point = 0;
 
@@ -45,6 +51,10 @@ void obs_audio_mix_add(struct audio_output_data *mixes, float *(*buf)[MAX_AUDIO_
 	}
 
 	for (size_t mix_idx = 0; mix_idx < MAX_AUDIO_MIXES; mix_idx++) {
+		/* No output reads a mix outside `mixers` (#3189). */
+		if (!(mixers & (1u << mix_idx)))
+			continue;
+
 		for (size_t ch = 0; ch < channels; ch++) {
 			register float *mix = mixes[mix_idx].data[ch];
 			register float *aud = buf[mix_idx][ch];

@@ -187,6 +187,17 @@ pub fn mix_start(audio_ts: u64, ts: TsInfo, sample_rate: usize) -> Option<usize>
     (start < AUDIO_OUTPUT_FRAMES).then_some(start)
 }
 
+/// Every mix: the `mixers` mask that `obs_audio_mix_add()` mixes into.
+pub const ALL_MIXERS: u32 = (1 << MAX_AUDIO_MIXES) - 1;
+
+/// Whether `obs_audio_mix_add_mixers()` adds into `mix`: its bit is set in
+/// `mixers`, the mask audio-io passes to `audio_callback()` (the mixes some
+/// output reads, #3189). A `mix` past the mask's 32 bits is never in it.
+pub fn mix_active(mixers: u32, mix: usize) -> bool {
+    let _ = (mixers, mix);
+    todo!("#3189")
+}
+
 /// The add loop of `obs_audio_mix_add()` for one mix and channel: adds
 /// `src[i]` to `dst[start + i]` for every frame of `dst` from `start` on.
 pub fn mix_into(dst: &mut [f32], src: &[f32], start: usize) {
