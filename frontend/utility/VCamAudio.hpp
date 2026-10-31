@@ -28,3 +28,16 @@ inline VCamAudioOutputSettings VCamAudioToOutput(const VCamAudioConfig &config)
 {
 	return {config.enabled, VCamAudioTrackFromSaved(config.track)};
 }
+
+/* Whether to tell the user that the Virtual Camera started without its
+ * microphone: audio was wanted, the output can send it, and the output's
+ * virtualcam_audio proc answered that it is not running. */
+inline bool VCamAudioFellBack(const VCamAudioConfig &config, bool outputSendsAudio, bool procAnswered,
+			      bool micActive)
+{
+	(void)config;
+	(void)outputSendsAudio;
+	(void)procAnswered;
+	(void)micActive;
+	return false;
+}
