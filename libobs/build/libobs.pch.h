@@ -281,6 +281,7 @@
 /* graphics/effect-parser.c */
 #include <assert.h>
 #include <limits.h>
+#include "graphics/effect-param-types.h"
 #include "graphics/effect-parser.h"
 #include "graphics/effect.h"
 

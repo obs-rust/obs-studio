@@ -21,36 +21,6 @@ typedef DARRAY(struct dstr) dstr_array_t;
 
 static inline bool ep_parse_param_assign(struct effect_parser *ep, struct ep_param *param);
 
-static enum gs_shader_param_type get_effect_param_type(const char *type)
-{
-	if (strcmp(type, "float") == 0)
-		return GS_SHADER_PARAM_FLOAT;
-	else if (strcmp(type, "float2") == 0)
-		return GS_SHADER_PARAM_VEC2;
-	else if (strcmp(type, "float3") == 0)
-		return GS_SHADER_PARAM_VEC3;
-	else if (strcmp(type, "float4") == 0)
-		return GS_SHADER_PARAM_VEC4;
-	else if (strcmp(type, "int2") == 0)
-		return GS_SHADER_PARAM_INT2;
-	else if (strcmp(type, "int3") == 0)
-		return GS_SHADER_PARAM_INT3;
-	else if (strcmp(type, "int4") == 0)
-		return GS_SHADER_PARAM_INT4;
-	else if (astrcmp_n(type, "texture", 7) == 0)
-		return GS_SHADER_PARAM_TEXTURE;
-	else if (strcmp(type, "float4x4") == 0)
-		return GS_SHADER_PARAM_MATRIX4X4;
-	else if (strcmp(type, "bool") == 0)
-		return GS_SHADER_PARAM_BOOL;
-	else if (strcmp(type, "int") == 0)
-		return GS_SHADER_PARAM_INT;
-	else if (strcmp(type, "string") == 0)
-		return GS_SHADER_PARAM_STRING;
-
-	return GS_SHADER_PARAM_UNKNOWN;
-}
-
 static inline struct ep_func *ep_getfunc(struct effect_parser *ep, const char *name)
 {
 	size_t i;
@@ -982,22 +952,16 @@ static inline int ep_parse_param_assign_bool(struct effect_parser *ep, struct ep
 */
 static inline int ep_parse_param_assign_intfloat_array(struct effect_parser *ep, struct ep_param *param, bool is_float)
 {
-	const char *intfloat_type = param->type + (is_float ? 5 : 3);
-	int intfloat_count = 0, code, i;
+	struct obs_effect_param_shape shape = obs_effect_param_array_shape(param->type, is_float);
+	int intfloat_count = shape.count, code, i;
 
 	/* -------------------------------------------- */
 
-	if (intfloat_type[0] < '1' || intfloat_type[0] > '4')
+	if (shape.bad_rows)
 		cf_adderror(&ep->cfp, "Invalid row count", LEX_ERROR, NULL, NULL, NULL);
 
-	intfloat_count = intfloat_type[0] - '0';
-
-	if (intfloat_type[1] == 'x') {
-		if (intfloat_type[2] < '1' || intfloat_type[2] > '4')
-			cf_adderror(&ep->cfp, "Invalid column count", LEX_ERROR, NULL, NULL, NULL);
-
-		intfloat_count *= intfloat_type[2] - '0';
-	}
+	if (shape.bad_cols)
+		cf_adderror(&ep->cfp, "Invalid column count", LEX_ERROR, NULL, NULL, NULL);
 
 	/* -------------------------------------------- */
 	if (!cf_next_token(&ep->cfp)) {
@@ -1036,20 +1000,24 @@ static inline int ep_parse_param_assign_intfloat_array(struct effect_parser *ep,
 
 static int ep_parse_param_assignment_val(struct effect_parser *ep, struct ep_param *param)
 {
-	if (param->is_texture)
+	switch (obs_effect_param_route(param->type, param->is_texture)) {
+	case OBS_EFFECT_PARAM_ROUTE_TEXTURE:
 		return ep_parse_param_assign_texture(ep, param);
-	else if (strcmp(param->type, "int") == 0)
+	case OBS_EFFECT_PARAM_ROUTE_INT:
 		return ep_parse_param_assign_intfloat(ep, param, false);
-	else if (strcmp(param->type, "float") == 0)
+	case OBS_EFFECT_PARAM_ROUTE_FLOAT:
 		return ep_parse_param_assign_intfloat(ep, param, true);
-	else if (astrcmp_n(param->type, "int", 3) == 0)
+	case OBS_EFFECT_PARAM_ROUTE_INT_ARRAY:
 		return ep_parse_param_assign_intfloat_array(ep, param, false);
-	else if (astrcmp_n(param->type, "float", 5) == 0)
+	case OBS_EFFECT_PARAM_ROUTE_FLOAT_ARRAY:
 		return ep_parse_param_assign_intfloat_array(ep, param, true);
-	else if (astrcmp_n(param->type, "string", 6) == 0)
+	case OBS_EFFECT_PARAM_ROUTE_STRING:
 		return ep_parse_param_assign_string(ep, param);
-	else if (strcmp(param->type, "bool") == 0)
+	case OBS_EFFECT_PARAM_ROUTE_BOOL:
 		return ep_parse_param_assign_bool(ep, param);
+	case OBS_EFFECT_PARAM_ROUTE_INVALID:
+		break;
+	}
 
 	cf_adderror(&ep->cfp, "Invalid type '$1' used for assignment", LEX_ERROR, param->type, NULL, NULL);
 
@@ -1724,7 +1692,7 @@ static void ep_compile_annotations(ep_param_array_t *ep_annotations, gs_effect_p
 		param->effect = ep->effect;
 		da_move(param->default_val, param_in->default_val);
 
-		param->type = get_effect_param_type(param_in->type);
+		param->type = obs_effect_param_type(param_in->type);
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
 		debug_param(param, param_in, i, "\t\t");
@@ -1752,7 +1720,7 @@ static void ep_compile_param(struct effect_parser *ep, size_t idx)
 	param->effect = ep->effect;
 	da_move(param->default_val, param_in->default_val);
 
-	param->type = get_effect_param_type(param_in->type);
+	param->type = obs_effect_param_type(param_in->type);
 
 	if (strcmp(param_in->name, "ViewProj") == 0)
 		ep->effect->view_proj = param;
