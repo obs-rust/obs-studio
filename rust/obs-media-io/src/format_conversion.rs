@@ -20,6 +20,14 @@ use core::ops::Range;
 pub trait Source {
     /// The `N` bytes at `offset`.
     fn read<const N: usize>(&self, offset: usize) -> [u8; N];
+
+    /// The `len` bytes at `offset`, as a slice.
+    ///
+    /// The decompress conversions read a row at a time through this and then
+    /// index it, instead of calling [`read`](Source::read) once per pixel
+    /// (three calls per output pixel, each one copying and bounds-checking a
+    /// fixed-size array, was 1.5-3.2x the C: #3111).
+    fn bytes(&self, offset: usize, len: usize) -> &[u8];
 }
 
 /// An output plane, written by byte offset.
@@ -34,6 +42,10 @@ impl Source for [u8] {
         bytes.copy_from_slice(&self[offset..offset + N]);
         bytes
     }
+
+    fn bytes(&self, offset: usize, len: usize) -> &[u8] {
+        &self[offset..offset + len]
+    }
 }
 
 impl Sink for [u8] {
@@ -46,6 +58,19 @@ impl Sink for [u8] {
 const UYVX_U: usize = 0;
 const UYVX_Y: usize = 1;
 const UYVX_V: usize = 2;
+
+/// The two 32-bit pixels `luma[at]` and `luma[at + 1]`, each with `pixel`'s
+/// value, as the two adjacent `uint32_t` stores the C makes.
+fn pair(luma: &[u8], at: usize, pixel: impl Fn(u8) -> u32) -> [u8; 8] {
+    let (first, second) = (
+        pixel(luma[at]).to_ne_bytes(),
+        pixel(luma[at + 1]).to_ne_bytes(),
+    );
+    let mut bytes = [0u8; 8];
+    bytes[..4].copy_from_slice(&first);
+    bytes[4..].copy_from_slice(&second);
+    bytes
+}
 
 /// `base + add` for a pointer advanced by a `u32` offset.
 fn at(base: usize, add: u32) -> usize {
@@ -240,18 +265,23 @@ pub fn decompress_420<S, D>(
         let lum1 = at(lum0, in_linesize[0]);
         let output0 = y.wrapping_mul(2).wrapping_mul(out_linesize) as usize;
         let output1 = at(output0, out_linesize);
+        if width_d2 == 0 {
+            continue;
+        }
 
-        for x in 0..width_d2 as usize {
-            let [cu] = u.read(chroma0 + x);
-            let [cv] = v.read(chroma1 + x);
-            let out = u32::from(cu) << 8 | u32::from(cv);
-            for (lum_row, out_row) in [(lum0, output0), (lum1, output1)] {
-                for i in 0..2 {
-                    let [l] = lum.read(lum_row + 2 * x + i);
-                    let pixel = u32::from(l) << 16 | out;
-                    output.write(out_row + 8 * x + 4 * i, pixel.to_ne_bytes());
-                }
-            }
+        // One slice per row, then a per-two-pixel write of the C's two
+        // adjacent `uint32_t` stores, in the C's order (#3111).
+        let width_d2 = width_d2 as usize;
+        let luma0 = lum.bytes(lum0, width_d2 * 2);
+        let luma1 = lum.bytes(lum1, width_d2 * 2);
+        let u_row = u.bytes(chroma0, width_d2);
+        let v_row = v.bytes(chroma1, width_d2);
+
+        for x in 0..width_d2 {
+            let out = u32::from(u_row[x]) << 8 | u32::from(v_row[x]);
+            let pixel = |l| u32::from(l) << 16 | out;
+            output.write(output0 + 8 * x, pair(luma0, 2 * x, pixel));
+            output.write(output1 + 8 * x, pair(luma1, 2 * x, pixel));
         }
     }
 }
@@ -280,16 +310,20 @@ pub fn decompress_nv12<S, D>(
         let lum1 = at(lum0, in_linesize[0]);
         let output0 = y.wrapping_mul(2).wrapping_mul(out_linesize) as usize;
         let output1 = at(output0, out_linesize);
+        if width_d2 == 0 {
+            continue;
+        }
 
-        for x in 0..width_d2 as usize {
-            let out = u32::from(u16::from_ne_bytes(uv.read(chroma + 2 * x))) << 8;
-            for (lum_row, out_row) in [(lum0, output0), (lum1, output1)] {
-                for i in 0..2 {
-                    let [l] = lum.read(lum_row + 2 * x + i);
-                    let pixel = u32::from(l) | out;
-                    output.write(out_row + 8 * x + 4 * i, pixel.to_ne_bytes());
-                }
-            }
+        let width_d2 = width_d2 as usize;
+        let luma0 = lum.bytes(lum0, width_d2 * 2);
+        let luma1 = lum.bytes(lum1, width_d2 * 2);
+        let chroma_row = uv.bytes(chroma, width_d2 * 2);
+
+        for x in 0..width_d2 {
+            let uv_pair = u16::from_ne_bytes([chroma_row[2 * x], chroma_row[2 * x + 1]]);
+            let out = u32::from(uv_pair) << 8;
+            output.write(output0 + 8 * x, pair(luma0, 2 * x, |l| u32::from(l) | out));
+            output.write(output1 + 8 * x, pair(luma1, 2 * x, |l| u32::from(l) | out));
         }
     }
 }
@@ -318,15 +352,25 @@ pub fn decompress_422<S, D>(
     for y in start_y..end_y {
         let input32 = y.wrapping_mul(in_linesize) as usize;
         let output32 = y.wrapping_mul(out_linesize) as usize;
-        for i in 0..width_d2 as usize {
-            let dw = u32::from_ne_bytes(input.read(input32 + 4 * i));
+        if width_d2 == 0 {
+            continue;
+        }
+
+        let width_d2 = width_d2 as usize;
+        let row = input.bytes(input32, width_d2 * 4);
+        for i in 0..width_d2 {
+            let at = 4 * i;
+            let dw = u32::from_ne_bytes([row[at], row[at + 1], row[at + 2], row[at + 3]]);
             let dup = if leading_lum {
                 (dw & 0xFFFF_FF00) | ((dw >> 16) & 0xFF)
             } else {
                 (dw & 0xFFFF_00FF) | ((dw >> 16) & 0xFF00)
             };
-            output.write(output32 + 8 * i, dw.to_ne_bytes());
-            output.write(output32 + 8 * i + 4, dup.to_ne_bytes());
+            let (low, high) = (dw.to_ne_bytes(), dup.to_ne_bytes());
+            let mut bytes = [0u8; 8];
+            bytes[..4].copy_from_slice(&low);
+            bytes[4..].copy_from_slice(&high);
+            output.write(output32 + 8 * i, bytes);
         }
     }
 }

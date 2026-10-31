@@ -20,6 +20,13 @@ impl Source for RawSource {
         // conversion reads.
         unsafe { ptr::read_unaligned(self.0.add(offset).cast::<[u8; N]>()) }
     }
+
+    fn bytes(&self, offset: usize, len: usize) -> &[u8] {
+        // SAFETY: as `read`: the caller guarantees the plane is readable at
+        // every offset the conversion reads, so `len` bytes from `offset`
+        // are in one allocation, and the slice lives only for the call.
+        unsafe { core::slice::from_raw_parts(self.0.add(offset), len) }
+    }
 }
 
 /// A caller's output plane.
