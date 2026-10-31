@@ -36,9 +36,10 @@
 
 use std::cell::{Cell, RefCell};
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
 
 use crate::decl::{Decl, DeclParse, parse_decl};
+use crate::name_table::NameTable;
 
 /// A callback as the C API names it: function and data addresses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -245,7 +246,7 @@ pub fn remove_current() {
 
 /// `struct signal_handler`, without its storage: the shim owns that.
 pub struct SignalHandler {
-    signals: Mutex<Vec<Arc<Signal>>>,
+    signals: RwLock<NameTable<Arc<Signal>>>,
     refs: AtomicI64,
     globals: Arc<Globals>,
 }
@@ -260,7 +261,7 @@ impl SignalHandler {
     /// `signal_handler_create`: one reference, the creator's.
     pub fn new() -> Self {
         Self {
-            signals: Mutex::new(Vec::new()),
+            signals: RwLock::new(NameTable::default()),
             refs: AtomicI64::new(1),
             globals: Arc::new(Globals::default()),
         }
@@ -278,9 +279,10 @@ impl SignalHandler {
     }
 
     fn find(&self, name: &[u8]) -> Option<Arc<Signal>> {
-        lock(&self.signals)
-            .iter()
-            .find(|s| s.decl.name == name)
+        self.signals
+            .read()
+            .unwrap_or_else(|err| err.into_inner())
+            .get(name)
             .cloned()
     }
 
@@ -290,16 +292,18 @@ impl SignalHandler {
         let Some(decl) = parsed.decl.clone() else {
             return AddResult::Invalid(parsed);
         };
-        let mut signals = lock(&self.signals);
-        if signals.iter().any(|s| s.decl.name == decl.name) {
-            return AddResult::Exists(decl.name);
-        }
-        signals.push(Arc::new(Signal {
+        let name = decl.name.clone();
+        let signal = Arc::new(Signal {
             decl,
             pass: ReentrantLock::default(),
             callbacks: Mutex::new(Callbacks::default()),
-        }));
-        AddResult::Added
+        });
+        let mut signals = self.signals.write().unwrap_or_else(|err| err.into_inner());
+        if signals.insert(name.as_ref(), signal) {
+            AddResult::Added
+        } else {
+            AddResult::Exists(name)
+        }
     }
 
     /// The declaration of a signal, as parsed.

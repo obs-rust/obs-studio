@@ -15,5 +15,7 @@ workspace = true
 test = false
 
 [dependencies]
+# The hasher of the name index past 16 entries (#3214).
+foldhash = { workspace = true, default-features = true }
 # The tokenizer and the error text of decl.c.h.
 obs-util = { path = "../obs-util" }
