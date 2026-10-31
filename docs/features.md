@@ -2691,3 +2691,10 @@ area.
   changes for users. *All platforms*, 2026-10-31. Issue
   [#3286](https://github.com/obs-rust/obs-studio/issues/3286), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- Output tools for the in-process MCP server: `record_start`, `record_stop`,
+  `record_status`, `stream_start`, `stream_stop` and `stream_status` (status
+  reports `active`, plus `duration_ms` and `bytes` where known), each with a
+  JSON Schema, behind an `OutputBackend` trait. The libobs binding is not wired
+  yet, so nothing changes for users. *All platforms*, 2026-10-31. Issue
+  [#3287](https://github.com/obs-rust/obs-studio/issues/3287), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

@@ -6,7 +6,7 @@
 
 use std::rc::Rc;
 
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 
 use crate::server::{Tool, ToolRegistry};
 
@@ -94,12 +94,37 @@ impl Tool for OutputTool {
     }
 
     fn input_schema(&self) -> Value {
-        todo!("output tool schemas (#3287)")
+        json!({
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false,
+        })
     }
 
     fn call(&self, _arguments: &Value) -> Result<String, String> {
-        let _ = (&self.backend, self.kind, self.action);
-        todo!("output tools (#3287)")
+        let result = match self.action {
+            Action::Start => {
+                self.backend.start(self.kind)?;
+                json!({ "active": true })
+            }
+            Action::Stop => {
+                self.backend.stop(self.kind)?;
+                json!({ "active": false })
+            }
+            Action::Status => {
+                let status = self.backend.status(self.kind);
+                let mut out = Map::new();
+                out.insert("active".into(), status.active.into());
+                if let Some(ms) = status.duration_ms {
+                    out.insert("duration_ms".into(), ms.into());
+                }
+                if let Some(bytes) = status.bytes {
+                    out.insert("bytes".into(), bytes.into());
+                }
+                Value::Object(out)
+            }
+        };
+        Ok(result.to_string())
     }
 }
 
