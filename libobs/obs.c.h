@@ -1618,6 +1618,7 @@ static int obs_reset_video_internal(struct obs_video_info *ovi)
 #endif
 
 _Static_assert(OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
+_Static_assert(OBS_CORE_SETUP_RULES_SEC_TO_MSEC == SEC_TO_MSEC, "SEC_TO_MSEC");
 
 bool obs_reset_audio2(const struct obs_audio_info2 *oai)
 {
@@ -1642,8 +1643,7 @@ bool obs_reset_audio2(const struct obs_audio_info2 *oai)
 	}
 	audio->fixed_buffer = oai->fixed_buffering;
 
-	int max_buffering_ms =
-		audio->max_buffering_ticks * AUDIO_OUTPUT_FRAMES * SEC_TO_MSEC / (int)oai->samples_per_sec;
+	int max_buffering_ms = obs_core_setup_rules_buffer_ms(audio->max_buffering_ticks, oai->samples_per_sec);
 
 	ai.name = "Audio";
 	ai.samples_per_sec = oai->samples_per_sec;
@@ -1753,8 +1753,8 @@ bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
 		oai2->samples_per_sec = oai.samples_per_sec;
 		oai2->speakers = oai.speakers;
 		oai2->fixed_buffering = audio->fixed_buffer;
-		oai2->max_buffering_ms = (uint32_t)(audio->max_buffering_ticks * AUDIO_OUTPUT_FRAMES * SEC_TO_MSEC /
-						    (int)oai2->samples_per_sec);
+		oai2->max_buffering_ms =
+			(uint32_t)obs_core_setup_rules_buffer_ms(audio->max_buffering_ticks, oai2->samples_per_sec);
 		return true;
 	}
 }
