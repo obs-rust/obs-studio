@@ -248,6 +248,8 @@ class SanitizeHarnessTest(unittest.TestCase):
         write_stub(stubs, "rustup", "exit 0\n")
         write_stub(stubs, "zccache", "exit 0\n")
         write_stub(stubs, "Xvfb", "exec sleep 30\n")
+        # The asan pass runs each test under its own xvfb-run (#3238).
+        write_stub(stubs, "xvfb-run", 'shift 4\nexec "$@"\n')
         write_stub(stubs, "dbus-run-session", "exit 0\n")
         # No OBS child of the session: the launch is a clean "exited".
         write_stub(stubs, "pgrep", "exit 1\n")

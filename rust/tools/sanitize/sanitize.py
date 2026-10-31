@@ -29,6 +29,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -182,6 +183,44 @@ def ctest_tests(payload: str) -> list[Test]:
             )
         )
     return sorted(tests, key=lambda test: test.name)
+
+
+def private_displays(tool: str) -> bool:
+    """Whether each unit test gets its own Xvfb server (#3238): asan runs its
+    tests side by side, and on one shared display a test that adds RandR
+    monitors breaks another (test_xshm_monitor_late). tsan and valgrind run
+    one at a time on the shared display."""
+    return tool == "asan"
+
+
+def unit_test_jobs(tool: str) -> int:
+    """How many unit tests run at once: SANITIZE_JOBS when set, else every
+    core for asan and 1 for tsan and valgrind, which are not measured in a
+    pool and need far more memory per test (#3238)."""
+    jobs = os.environ.get("SANITIZE_JOBS", "")
+    if jobs.isdigit() and int(jobs) > 0:
+        return int(jobs)
+    return (os.cpu_count() or 1) if tool == "asan" else 1
+
+
+# The shared display is :90 to :98; a private one gets the next number of a
+# per-run counter, so two tests started at once never pick the same server.
+PRIVATE_DISPLAY_FIRST = 100
+PRIVATE_SCREEN = "-screen 0 1920x1080x24"
+
+
+class DisplayNumbers:
+    """Unique Xvfb server numbers for the tests of one run."""
+
+    def __init__(self, first: int = PRIVATE_DISPLAY_FIRST):
+        self._next = first
+        self._lock = threading.Lock()
+
+    def take(self) -> int:
+        with self._lock:
+            number = self._next
+            self._next += 1
+            return number
 
 
 def test_command(test: Test) -> list[str]:
@@ -364,13 +403,16 @@ def run_unit_tests(tool: str, layout: Layout) -> None:
     (tests_dir / "ctest.tsv").write_text(
         "".join(f"{t.name}\t{t.workdir}\t{chr(31).join(t.command)}\n" for t in tests), encoding="utf-8"
     )
-    summary = run_tests(tool, tests, layout)
+    summary = run_tests(tool, tests, layout, jobs=unit_test_jobs(tool), private_displays=private_displays(tool))
     (tests_dir / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
 
 
-def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: int | None = None) -> list[str]:
+def run_tests(
+    tool: str, tests: list[Test], layout: Layout, runner=None, jobs: int | None = None, private_displays: bool = False
+) -> list[str]:
     """Run the tests `jobs` at a time (default: every core), then the serial
-    ones alone; the summary lines in test order (#3251).
+    ones alone; the summary lines in test order (#3251). With
+    `private_displays`, each test runs under its own Xvfb server (#3238).
 
     Each test writes its own `<name>.log` and sanitizer log prefix, so
     concurrent tests do not collide. Each line prints as its test finishes,
@@ -391,10 +433,15 @@ def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: i
             continue
         runnable.append((test, command))
 
+    numbers = DisplayNumbers() if private_displays else None
+
     def one(item: tuple[Test, list[str]]) -> None:
         test, command = item
         start = time.monotonic()
-        code = runner(tool, test, command, layout)
+        if numbers:
+            code = runner(tool, test, command, layout, display=numbers.take())
+        else:
+            code = runner(tool, test, command, layout)
         durations[test.name] = time.monotonic() - start
         lines[test.name] = f"{test.name} exit={code}"
         print(f"{lines[test.name]} ({durations[test.name]:.1f}s)", flush=True)
@@ -410,8 +457,12 @@ def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: i
     return [lines[t.name] for t in tests if t.name in lines]
 
 
-def run_one_test(tool: str, test: Test, command: list[str], layout: Layout) -> int:
-    """One test's exit status; 124 when it hit the timeout, as `timeout` did."""
+def run_one_test(tool: str, test: Test, command: list[str], layout: Layout, display: int | None = None) -> int:
+    """One test's exit status; 124 when it hit the timeout, as `timeout` did.
+
+    With `display`, the test runs under its own Xvfb server of that number
+    (xvfb-run), without the shared DISPLAY, so a test registered with
+    xvfb-run-or-display.sh starts its own server too (#3238)."""
     tests_dir = layout.out / "tests"
     # ctest's own WORKING_DIRECTORY, or the build's test/cmocka as the shell's
     # `${wd:-$b/test/cmocka}` fallback.
@@ -421,6 +472,9 @@ def run_one_test(tool: str, test: Test, command: list[str], layout: Layout) -> i
         command = [*VALGRIND, f"--log-file={tests_dir / f'{test.name}.vg.log'}", *command]
     else:
         env = dict(os.environ, **sanitizer_options(tests_dir, f"{test.name}."))
+    if display is not None:
+        command = ["xvfb-run", "-n", str(display), "-s", PRIVATE_SCREEN, *command]
+        env = {key: value for key, value in (env or os.environ).items() if key != "DISPLAY"}
     with (tests_dir / f"{test.name}.log").open("wb") as handle:
         try:
             done = subprocess.run(
