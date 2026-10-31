@@ -79,7 +79,9 @@ static void *sndio_thread(void *attr)
 {
 	struct sndio_thr_data *thrdata = attr;
 	size_t msgread = 0; // msg bytes read from socket
-	size_t nsiofds = sio_nfds(thrdata->hdl);
+	/* sio_nfds() returns the number of descriptors, which is what the pollfd
+	 * array is sized from; the count is non-negative. */
+	size_t nsiofds = (size_t)sio_nfds(thrdata->hdl);
 	struct pollfd *pfd = bzalloc(sizeof(struct pollfd) * (1 + nsiofds));
 	struct sio_par par;
 	uint64_t ts;
@@ -188,7 +190,7 @@ static void *sndio_thread(void *attr)
 			out.data[0] = buf;
 			out.frames = nframes;
 			out.format = sndio_to_obs_audio_format(&thrdata->par);
-			out.speakers = sndio_channels_to_obs_speakers(thrdata->par.rchan);
+			out.speakers = sndio_channels_to_obs_speakers((int)thrdata->par.rchan);
 			out.samples_per_sec = thrdata->par.rate;
 			out.timestamp = ts;
 
@@ -256,12 +258,15 @@ static void sndio_apply(struct sndio_data *data, obs_data_t *settings)
 	}
 
 	sio_initpar(&thrdata->par);
-	thrdata->par.bits = obs_data_get_int(settings, "bits");
+	/* The properties restrict these to sio_par's ranges (bits 8..32, the
+	 * rate and channels lists), so the narrowing keeps the value the sndio
+	 * setter would accept. */
+	thrdata->par.bits = (unsigned int)obs_data_get_int(settings, "bits");
 	thrdata->par.bps = SIO_BPS(thrdata->par.bits);
 	thrdata->par.sig = thrdata->par.bits > 8;
 	thrdata->par.le = 1;
-	thrdata->par.rate = obs_data_get_int(settings, "rate");
-	thrdata->par.rchan = obs_data_get_int(settings, "channels");
+	thrdata->par.rate = (unsigned int)obs_data_get_int(settings, "rate");
+	thrdata->par.rchan = (unsigned int)obs_data_get_int(settings, "channels");
 	thrdata->par.xrun = SIO_SYNC; // makes timestamping easy
 	if (!sio_setpar(thrdata->hdl, &thrdata->par)) {
 		berr(LOG_ERROR, "could not set parameters for %s sndio device", devname);
@@ -365,7 +370,7 @@ struct obs_source_info sndio_output_capture = {
 	.get_name = sndio_input_getname,
 	.create = sndio_create,
 	.destroy = sndio_destroy,
-#if SHUTDOWN_ON_DEACTIVATE
+#ifdef SHUTDOWN_ON_DEACTIVATE
 	.activate = sndio_activate,
 	.deactivate = sndio_deactivate,
 #endif
