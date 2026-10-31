@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import struct
 import tempfile
 import unittest
@@ -272,6 +273,85 @@ class PackagedStartupTest(unittest.TestCase):
             "needs.windows_arm64_smoke.result == 'success'" in workflow,
             "publication skips native startup validation",
         )
+
+
+class ProbeDependencyInstallTest(unittest.TestCase):
+    """#3221: a smoke job failed before the app started because the probe
+    resolved `websockets` from pypi.org on every launch (run 41216686881:
+    `Failed to fetch: https://pypi.org/simple/websockets/`, exit 2).
+
+    The probe's dependencies come from its uv script lockfile, are installed
+    once per job, and the per-mode launches are locked so a re-resolution is
+    never in the startup path."""
+
+    WORKFLOW = ROOT / ".github/workflows/release-rust.yaml"
+    LOCK = ROOT / "test/packaged-startup.py.lock"
+    SYNC = "uv sync --script test/packaged-startup.py --locked"
+
+    def job(self, name: str) -> str:
+        """The text of one job, from its key to the next top-level job key."""
+        text = self.WORKFLOW.read_text()
+        rest = text[text.index(f"\n  {name}:\n") + 1 :]
+        following = re.search(r"\n  [a-z_]+:\n", rest)
+        return rest if following is None else rest[: following.start()]
+
+    def probe_lines(self, job: str) -> list[str]:
+        return [
+            line
+            for line in job.splitlines()
+            if "packaged-startup.py" in line and "--app" in line
+        ]
+
+    def test_the_probe_is_locked_to_one_pinned_websockets(self):
+        self.assertTrue(
+            self.LOCK.is_file(),
+            "test/packaged-startup.py has no uv script lockfile; uv re-resolves "
+            "its dependencies from pypi.org every launch",
+        )
+        lock = self.LOCK.read_text()
+        self.assertIn(
+            'requirements = [{ name = "websockets", specifier = "==15.0.1" }]',
+            lock,
+            "the lockfile no longer pins the probe's websockets dependency",
+        )
+        self.assertIn('name = "websockets"', lock)
+        self.assertIn('hash = "sha256:', lock, "the lockfile carries no hashes")
+
+    def test_each_smoke_job_installs_the_probe_once_before_it_launches(self):
+        for name in ("windows_arm64_smoke", "macos_smoke"):
+            with self.subTest(job=name):
+                job = self.job(name)
+                self.assertIn(
+                    self.SYNC,
+                    job,
+                    f"{name} never installs the probe's dependencies from its "
+                    "lockfile, so every launch resolves them from the network",
+                )
+                self.assertLess(
+                    job.index(self.SYNC),
+                    job.index(self.probe_lines(job)[0]),
+                    f"{name} installs the probe after it already launched it",
+                )
+
+    def test_no_probe_launch_resolves_dependencies(self):
+        for name in ("windows_arm64_smoke", "macos_smoke"):
+            for line in self.probe_lines(self.job(name)):
+                with self.subTest(job=name, line=line.strip()):
+                    self.assertIn(
+                        "uv run --no-project --locked",
+                        line,
+                        "a probe launch is not locked, so uv resolves "
+                        "dependencies from pypi.org on the runner",
+                    )
+
+    def test_the_install_retries_a_slow_network(self):
+        for name in ("windows_arm64_smoke", "macos_smoke"):
+            with self.subTest(job=name):
+                self.assertIn(
+                    "UV_HTTP_RETRIES",
+                    self.job(name),
+                    f"{name} installs the probe with uv's default retry budget",
+                )
 
 
 class CrashReportEvidenceTest(unittest.TestCase):
