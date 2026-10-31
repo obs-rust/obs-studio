@@ -52,6 +52,7 @@ pub mod text_lookup;
 pub mod threading;
 pub mod utf8;
 pub mod util_uint64;
+pub mod window_match;
 
 #[cfg(test)]
 extern crate self as obs_util;
