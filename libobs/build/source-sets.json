@@ -161,6 +161,7 @@
     "graphics/axisang.h",
     "graphics/bounds.h",
     "graphics/device-exports.h",
+    "graphics/effect-param-types.h",
     "graphics/effect-parser.h",
     "graphics/effect.h",
     "graphics/graphics-ffmpeg-host.h",

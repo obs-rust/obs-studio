@@ -995,6 +995,26 @@
         "libobs/data"
       ]
     },
+    "test_effect_param_types_steps": {
+      "sources": [
+        "libobs/graphics/effect-param-types.c.h",
+        "test/cmocka/test_effect_param_types_steps.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/effect-param-types.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_effect_param_values": {
       "sources": [
         "test/cmocka/test_effect_param_values.c"
@@ -6138,6 +6158,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_effect_param_types_steps": {
+      "target": "test_effect_param_types_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_effect_param_values": {

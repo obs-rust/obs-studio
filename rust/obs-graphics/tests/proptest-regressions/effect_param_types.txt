@@ -1,0 +1,16 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5a13013d6d366f378f5b94d77308783a1bd683944bbdf01e81f435c1a3b3c738 # shrinks to n = [], is_texture = true
+cc e3e605f9902dc9dcc14c6a422872e9ee11b3e9bfa2fc009f57d756ff95102178 # shrinks to n = [105, 110, 116], is_texture = false
+cc 0686395d1718a431dba998ea07df62afefee2dd2b3104b91e612508d33e094b2 # shrinks to n = [102, 108, 111, 97, 116, 120], is_texture = false
+cc a7876fd2a0878d8e4a67cc78520112d93dbf00b9c0b1ff5a5aff7aeb51056311 # shrinks to n = [115, 116, 114, 105, 110, 103, 120], is_texture = false
+cc 0fbe8329046e623e0a51c9467f951bb938fffa835ff470828e65123e22baba9f # shrinks to n = [98, 111, 111, 108], is_texture = false
+cc 81c664868193887bf7979a983969ee81988890f2d5be42605b089b991502c36b # shrinks to n = [102, 108, 111, 97, 116, 52, 120, 52], is_float = true
+cc e65bd25452042f27a7d2ed78135ec3c85adc6f380551e343b74ef2f6ef0f8ab2 # shrinks to n = [102, 108, 111, 97, 116, 53], is_float = true
+cc 84ac9332af2d9a3d616c945d2e234c817fc069abe89037c422d22a9032a4a751 # shrinks to n = [102, 108, 111, 97, 116, 48], is_float = true
+cc 64dd457ef948a33195719bb6faf24ce56213079fcde810df063517490d996e52 # shrinks to n = [116, 101, 120, 116, 117, 114, 101, 115]
+cc a15d6943a6f840ca5330a34e086c38b422c306880b2af4130ae11f104ccb6c0b # shrinks to n = [105, 110, 116, 51, 120, 49, 120], is_float = true
