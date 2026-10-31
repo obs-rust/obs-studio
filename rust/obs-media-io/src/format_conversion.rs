@@ -77,14 +77,17 @@ fn at(base: usize, add: u32) -> usize {
     base.wrapping_add(add as usize)
 }
 
+/// The 16 bytes a UYVX block of 4 pixels covers in one row.
+const BLOCK_BYTES: usize = 16;
+
 /// Channel `c` of each of the 4 UYVX pixels in `line`.
-fn channel(line: &[u8; 16], c: usize) -> [u8; 4] {
+fn channel(line: &[u8], c: usize) -> [u8; 4] {
     [line[c], line[4 + c], line[8 + c], line[12 + c]]
 }
 
 /// Channel `c` averaged over pixels 0-1 and 2-3 of `line1` and `line2`,
 /// `(a + b + c + d) >> 2`.
-fn average(line1: &[u8; 16], line2: &[u8; 16], c: usize) -> [u8; 2] {
+fn average(line1: &[u8], line2: &[u8], c: usize) -> [u8; 2] {
     let avg = |p: usize| {
         let sum = u16::from(line1[p + c])
             + u16::from(line1[p + 4 + c])
@@ -98,12 +101,17 @@ fn average(line1: &[u8; 16], line2: &[u8; 16], c: usize) -> [u8; 2] {
 /// Visits UYVX `rows` two at a time and, in each, pixels `0..width` four at
 /// a time, passing the row, the pixel and the 16 bytes of those pixels in
 /// the row and the next one. `y += 2` and `x += 4` wrap, as in the C.
+///
+/// The 16 bytes of each row are borrowed from the input through
+/// [`Source::bytes`], not copied by [`Source::read`]: the two fixed-size
+/// copies per block were the same per-access cost #3111 removed from the
+/// decompress half.
 fn for_each_uyvx_block<S: Source + ?Sized>(
     input: &S,
     in_linesize: u32,
     rows: Range<u32>,
     width: u32,
-    mut f: impl FnMut(u32, u32, [u8; 16], [u8; 16]),
+    mut f: impl FnMut(u32, u32, &[u8], &[u8]),
 ) {
     let mut y = rows.start;
     while y < rows.end {
@@ -111,8 +119,8 @@ fn for_each_uyvx_block<S: Source + ?Sized>(
         let mut x = 0u32;
         while x < width {
             let img = at(y_pos, x.wrapping_mul(4));
-            let line1 = input.read(img);
-            let line2 = input.read(at(img, in_linesize));
+            let line1 = input.bytes(img, BLOCK_BYTES);
+            let line2 = input.bytes(at(img, in_linesize), BLOCK_BYTES);
             f(y, x, line1, line2);
             x = x.wrapping_add(4);
         }
@@ -150,13 +158,13 @@ pub fn compress_uyvx_to_i420<S, D>(
         |y, x, line1, line2| {
             let lum_pos0 = y.wrapping_mul(lum_linesize).wrapping_add(x);
             let lum_pos1 = lum_pos0.wrapping_add(lum_linesize);
-            lum.write(lum_pos0 as usize, channel(&line1, UYVX_Y));
-            lum.write(lum_pos1 as usize, channel(&line2, UYVX_Y));
+            lum.write(lum_pos0 as usize, channel(line1, UYVX_Y));
+            lum.write(lum_pos1 as usize, channel(line2, UYVX_Y));
 
             // The C packs U01 U23 V01 V23 into a native-endian uint32_t and
             // stores its low and high halves as uint16_t.
-            let [u01, u23] = average(&line1, &line2, UYVX_U);
-            let [v01, v23] = average(&line1, &line2, UYVX_V);
+            let [u01, u23] = average(line1, line2, UYVX_U);
+            let [v01, v23] = average(line1, line2, UYVX_V);
             let packed = u32::from_ne_bytes([u01, u23, v01, v23]);
             let chroma_pos = ((y >> 1).wrapping_mul(chroma_linesize)).wrapping_add(x >> 1) as usize;
             u.write(chroma_pos, (packed as u16).to_ne_bytes());
@@ -194,11 +202,11 @@ pub fn compress_uyvx_to_nv12<S, D>(
         |y, x, line1, line2| {
             let lum_pos0 = y.wrapping_mul(lum_linesize).wrapping_add(x);
             let lum_pos1 = lum_pos0.wrapping_add(lum_linesize);
-            lum.write(lum_pos0 as usize, channel(&line1, UYVX_Y));
-            lum.write(lum_pos1 as usize, channel(&line2, UYVX_Y));
+            lum.write(lum_pos0 as usize, channel(line1, UYVX_Y));
+            lum.write(lum_pos1 as usize, channel(line2, UYVX_Y));
 
-            let [u01, u23] = average(&line1, &line2, UYVX_U);
-            let [v01, v23] = average(&line1, &line2, UYVX_V);
+            let [u01, u23] = average(line1, line2, UYVX_U);
+            let [v01, v23] = average(line1, line2, UYVX_V);
             let chroma_pos = ((y >> 1).wrapping_mul(chroma_linesize)).wrapping_add(x) as usize;
             chroma.write(chroma_pos, [u01, v01, u23, v23]);
         },
@@ -233,8 +241,8 @@ pub fn convert_uyvx_to_i444<S, D>(
             let pos0 = y.wrapping_mul(out_linesize).wrapping_add(x);
             let pos1 = pos0.wrapping_add(out_linesize);
             for (plane, c) in [(&mut *lum, UYVX_Y), (&mut *u, UYVX_U), (&mut *v, UYVX_V)] {
-                plane.write(pos0 as usize, channel(&line1, c));
-                plane.write(pos1 as usize, channel(&line2, c));
+                plane.write(pos0 as usize, channel(line1, c));
+                plane.write(pos1 as usize, channel(line2, c));
             }
         },
     );
