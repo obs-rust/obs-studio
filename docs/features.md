@@ -2110,6 +2110,13 @@ area.
   pending merge. Issue
   [#2519](https://github.com/obs-rust/obs-studio/issues/2519), PR
   [#2528](https://github.com/obs-rust/obs-studio/pull/2528).
+- A plugin or script that draws with gs_render_start no longer reads or
+  writes past OBS's arrays: a texture coordinate for a unit outside 0-15,
+  or above 0 in immediate mode, is ignored; a saved vertex buffer with a
+  shorter normal, colour or texture array draws only the vertices those
+  arrays cover; and a stop or save with no vertex no longer frees the
+  vertex data twice or leaks its arrays. *All*, 2026-10-31. Issue
+  [#3132](https://github.com/obs-rust/obs-studio/issues/3132).
 - Python scripts can call obs_source_enum_filters to get a list of the
   filters on a source. *All*, 2026-10-11. Issue
   [#282](https://github.com/obs-rust/obs-studio/issues/282), PR
