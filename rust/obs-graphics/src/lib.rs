@@ -30,6 +30,7 @@ pub mod gif_blocks;
 pub mod gif_frame;
 pub mod image_file;
 pub mod image_orient;
+pub mod image_pq_scrgb;
 pub mod immediate;
 pub mod lzw;
 pub mod math_extra;
