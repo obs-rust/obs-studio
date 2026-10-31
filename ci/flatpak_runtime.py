@@ -57,6 +57,18 @@ def check_capture_log(log: str, modules: list[str]) -> list[str]:
     return unavailable_hardware
 
 
+# The OBS Virtual Microphone in the sandbox (#3179, #3267): its FIFO lives in
+# xdg-run/obs-virtual-microphone, which the manifest shares with the host, and
+# pactl runs on the host through flatpak-spawn.
+VMIC_PROBE = ('printf "marker=%s\\n" "$(cat "$XDG_RUNTIME_DIR/obs-virtual-microphone/host-marker" 2>/dev/null)"; '
+              'if flatpak-spawn --host pactl info >/dev/null 2>&1; then echo pactl=ok; else echo pactl=failed; fi')
+
+
+def check_vmic_sandbox(output: str, marker: str) -> None:
+    """Raise unless the sandbox read the host's marker and ran host pactl."""
+    raise NotImplementedError
+
+
 def select_refs(refs: list[str]) -> tuple[str, str]:
     normalized = []
     for ref in refs:

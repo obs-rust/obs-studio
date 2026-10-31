@@ -27,6 +27,19 @@ class FlatpakRuntimeTest(unittest.TestCase):
             with self.subTest(pixels=len(pixels)), self.assertRaises(ValueError):
                 module.check_browser_pixels(pixels)
 
+    def test_virtual_microphone_needs_shared_dir_and_host_pactl(self):
+        module = self.module()
+        module.check_vmic_sandbox('marker=abc123\npactl=ok\n', 'abc123')
+        # The sandbox could not see the host's FIFO directory (#3179).
+        with self.assertRaisesRegex(ValueError, 'obs-virtual-microphone'):
+            module.check_vmic_sandbox('marker=\npactl=ok\n', 'abc123')
+        with self.assertRaisesRegex(ValueError, 'obs-virtual-microphone'):
+            module.check_vmic_sandbox('marker=other\npactl=ok\n', 'abc123')
+        with self.assertRaisesRegex(ValueError, 'pactl'):
+            module.check_vmic_sandbox('marker=abc123\npactl=failed\n', 'abc123')
+        with self.assertRaisesRegex(ValueError, 'pactl'):
+            module.check_vmic_sandbox('marker=abc123\n', 'abc123')
+
     def test_capture_log_requires_every_source_and_plugin(self):
         module = self.module()
         lines = ['[pipewire] Screencast session created', 'state: "streaming"', 'state: "streaming"',
