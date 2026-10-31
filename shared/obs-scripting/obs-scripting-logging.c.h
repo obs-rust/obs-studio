@@ -24,6 +24,7 @@ void script_log_va(obs_script_t *script, int level, const char *format, va_list 
 {
 	char msg[2048];
 	const char *lang = "(Unknown)";
+	int prefix_len;
 	size_t start_len;
 
 	if (script) {
@@ -39,10 +40,13 @@ void script_log_va(obs_script_t *script, int level, const char *format, va_list 
 			break;
 		}
 
-		start_len = snprintf(msg, sizeof(msg), "[%s: %s] ", lang, script->file.array);
+		prefix_len = snprintf(msg, sizeof(msg), "[%s: %s] ", lang, script->file.array);
 	} else {
-		start_len = snprintf(msg, sizeof(msg), "[Unknown Script] ");
+		prefix_len = snprintf(msg, sizeof(msg), "[Unknown Script] ");
 	}
+
+	/* A negative snprintf result means nothing was written and no offset is valid. */
+	start_len = prefix_len > 0 ? (size_t)prefix_len : 0;
 
 	vsnprintf(msg + start_len, sizeof(msg) - start_len, format, args);
 

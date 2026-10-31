@@ -294,7 +294,7 @@ static int timer_add(lua_State *script)
 	struct lua_obs_callback *cb = add_lua_obs_callback_extra(script, 1, sizeof(struct lua_obs_timer));
 	struct lua_obs_timer *timer = lua_obs_callback_extra_data(cb);
 
-	timer->interval = (uint64_t)ms * 1000000ULL;
+	timer->interval = (uint64_t)ms * UINT64_C(1000000);
 	timer->last_ts = obs_get_video_frame_time();
 
 	defer_call_post(defer_timer_init, cb);
@@ -708,7 +708,10 @@ static int hotkey_register_frontend(lua_State *script)
 	struct lua_obs_callback *cb = add_lua_obs_callback(script, 3);
 	cb->base.on_remove = on_remove_hotkey;
 	id = obs_hotkey_register_frontend(name, desc, hotkey_callback, cb);
-	calldata_set_int(&cb->base.extra, "id", id);
+	/* calldata_set_int carries an int, so this is the same value the call
+	 * already passed; the cast only makes the narrowing visible. The frontend
+	 * reads it back as a lua_Integer from the stored int. */
+	calldata_set_int(&cb->base.extra, "id", (int)id);
 	lua_pushinteger(script, (lua_Integer)id);
 
 	if (id == OBS_INVALID_HOTKEY_ID)
@@ -1106,7 +1109,7 @@ obs_script_t *obs_lua_script_create(const char *path, obs_data_t *settings)
 	if (slash) {
 		slash++;
 		dstr_copy(&data->base.file, slash);
-		dstr_left(&data->dir, &data->base.path, slash - path);
+		dstr_left(&data->dir, &data->base.path, (size_t)(slash - path));
 	} else {
 		dstr_copy(&data->base.file, path);
 	}

@@ -635,7 +635,7 @@ static int obs_lua_register_source(lua_State *script)
 	info.id = v->id;
 	info.type = (enum obs_source_type)get_table_int(script, -1, "type");
 
-	info.output_flags = get_table_int(script, -1, "output_flags");
+	info.output_flags = (uint32_t)get_table_int(script, -1, "output_flags");
 
 	lua_pushstring(script, "get_name");
 	lua_gettable(script, -2);
