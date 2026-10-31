@@ -61,12 +61,15 @@ merge-queue run a core change is Linux only. A push to master is the
 exception: core code selects the macOS and Windows Rust lanes too, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
-(except `os-<os>.cmake`, which starts its own OS, and a port's hidden-shim
+(except `os-<os>.cmake` and every other OS-named file there, `rust-os-<os>.cmake`,
+`macos/`, `windows/`, `linux/`, which start their own OS (#3237), and a port's hidden-shim
 fragment `rust-hidden.d/<crate>-<module>.txt`, plain names Linux checks: #3233),
 the root CMake files, crate `build.rs`, `platform/mod.rs` and the C++ cmocka tests (with their
 tests.d registrations) stay shared: every platform consumes them, so
 `cmake/common/` carries no host branches (#3234,
 ci/test_cmake_common_os_neutral.py) and host CMake lives in `cmake/<os>/`.
+ci/shared-build-files.txt lists every shared build file; ci/test_shared_build_files.py
+fails a new one, so the set only shrinks (#3237).
 Host-named files (docs/rust-port/naming.md, #1294) start their OS lane in any
 area, Qt areas included: `foo-host-<os>.c.h` (unity group
 `foo.host-<os>+.h.c`), a `hosts/<os>/` directory, or a `foo-<os>.pch.<ext>`
@@ -99,6 +102,9 @@ SHARED_PREFIXES = ("cmake/common/", "cmake/finders/", "libobs/cmake/")
 SHARED_FILES = {"CMakeLists.txt", "CMakePresets.json", "buildspec.json"}
 SHARED_PATTERN = re.compile(r"^rust/[^/]+/(?:build\.rs|src/platform/mod\.rs)$")
 # libobs/cmake/os-<os>.cmake picks one OS's sources: that OS only (#1051).
+# Every other OS-named libobs/cmake file (rust-os-<os>.cmake, macos/,
+# windows/, linux/) likewise reaches only its OS (#3237): is_shared defers to
+# path_platforms for them.
 OS_CMAKE = re.compile(r"^libobs/cmake/os-[a-z]+\.cmake$")
 # Every platform's Tier 2 compiles these with its own compiler and C++
 # library; plain C tests stay Linux-only (#610).
@@ -256,6 +262,8 @@ def os_lanes(path: str) -> frozenset[str]:
 
 def is_shared(path: str, exists: Callable[[str], bool]) -> bool:
     if OS_CMAKE.match(path):
+        return False
+    if path.startswith("libobs/cmake/") and path_platforms(path) is not None:
         return False
     if path.startswith(SHARED_PREFIXES) or path in SHARED_FILES or SHARED_PATTERN.match(path) or SHARED_TEST.match(path):
         return True

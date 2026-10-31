@@ -19,14 +19,25 @@ so the set only shrinks.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import unittest
 from pathlib import Path
 
-from ci_scope import HIDDEN_FRAGMENT, is_shared
+from ci_scope import HIDDEN_FRAGMENT, is_docs, is_shared
 
 ROOT = Path(__file__).resolve().parent.parent
 LIST = ROOT / "ci" / "shared-build-files.txt"
+
+# Shared, but one file per unit by design: a port or test adds its own file
+# and edits no one else's, so a new one is not a new central list. Every
+# platform still builds them (Windows reads the export fragments; each
+# platform's Tier 2 compiles the C++ tests).
+PER_UNIT = re.compile(
+    r"^(?:libobs/cmake/rust-exports\.d/[^/]+\.txt"
+    r"|test/cmocka/[^/]+\.(?:cpp|hpp)"
+    r"|test/cmocka/tests\.d/[^/]+\.cmake)$"
+)
 
 
 def tracked_files() -> list[str]:
@@ -36,7 +47,11 @@ def tracked_files() -> list[str]:
 
 def shared_now(files: list[str]) -> set[str]:
     present = set(files)
-    return {f for f in files if not HIDDEN_FRAGMENT.match(f) and is_shared(f, present.__contains__)}
+    return {
+        f
+        for f in files
+        if not HIDDEN_FRAGMENT.match(f) and not PER_UNIT.match(f) and not is_docs(f) and is_shared(f, present.__contains__)
+    }
 
 
 def listed() -> set[str]:
