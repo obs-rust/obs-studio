@@ -20,7 +20,36 @@ OBSBasicVCamConfig::OBSBasicVCamConfig(const VCamConfig &_config, bool _vcamActi
 	OutputTypeChanged();
 	connect(ui->outputType, &QComboBox::currentIndexChanged, this, &OBSBasicVCamConfig::OutputTypeChanged);
 
+	/* Only an output that sends audio has a Virtual Microphone (#3182). */
+	bool hasAudio = (obs_get_output_flags(VIRTUAL_CAM_ID) & OBS_OUTPUT_AUDIO) != 0;
+	ui->audioEnabled->setVisible(hasAudio);
+	ui->audioTrackLabel->setVisible(hasAudio);
+	ui->audioTrack->setVisible(hasAudio);
+	for (int track = 1; track <= VCAM_AUDIO_TRACKS; track++) {
+		ui->audioTrack->addItem(QString::number(track), track);
+	}
+	ui->audioEnabled->setChecked(config.audio.enabled);
+	ui->audioTrack->setCurrentIndex(ui->audioTrack->findData(VCamAudioTrackFromSaved(config.audio.track)));
+	ui->audioTrack->setEnabled(config.audio.enabled);
+	connect(ui->audioEnabled, &QCheckBox::toggled, ui->audioTrack, &QWidget::setEnabled);
+	connect(ui->audioEnabled, &QCheckBox::toggled, this, &OBSBasicVCamConfig::AudioChanged);
+	connect(ui->audioTrack, &QComboBox::currentIndexChanged, this, &OBSBasicVCamConfig::AudioChanged);
+
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &OBSBasicVCamConfig::UpdateConfig);
+}
+
+/* The output reads its audio settings when it starts, so a running Virtual
+ * Camera restarts to apply a change. */
+void OBSBasicVCamConfig::AudioChanged()
+{
+	if (!vcamActive) {
+		return;
+	}
+
+	VCamAudioConfig chosen{ui->audioEnabled->isChecked(), ui->audioTrack->currentData().toInt()};
+	audioChanged = chosen.enabled != config.audio.enabled ||
+		       (chosen.enabled && chosen.track != VCamAudioTrackFromSaved(config.audio.track));
+	ui->warningLabel->setVisible(requireRestart || audioChanged);
 }
 
 void OBSBasicVCamConfig::OutputTypeChanged()
@@ -94,7 +123,7 @@ void OBSBasicVCamConfig::OutputTypeChanged()
 	requireRestart = (activeType == VCamOutputType::ProgramView && type != VCamOutputType::ProgramView) ||
 			 (activeType != VCamOutputType::ProgramView && type == VCamOutputType::ProgramView);
 
-	ui->warningLabel->setVisible(requireRestart);
+	ui->warningLabel->setVisible(requireRestart || audioChanged);
 }
 
 void OBSBasicVCamConfig::UpdateConfig()
@@ -116,8 +145,10 @@ void OBSBasicVCamConfig::UpdateConfig()
 	}
 
 	config.type = type;
+	config.audio.enabled = ui->audioEnabled->isChecked();
+	config.audio.track = ui->audioTrack->currentData().toInt();
 
-	if (requireRestart) {
+	if (requireRestart || audioChanged) {
 		emit AcceptedAndRestart(config);
 	} else {
 		emit Accepted(config);

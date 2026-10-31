@@ -10,8 +10,9 @@ int main()
 	assert(defaults.track == 1);
 	assert(VCamAudioTrackFromSaved(0) == 1);
 
-	for (int track = 1; track <= VCAM_AUDIO_TRACKS; track++)
+	for (int track = 1; track <= VCAM_AUDIO_TRACKS; track++) {
 		assert(VCamAudioTrackFromSaved(track) == track);
+	}
 	assert(VCamAudioTrackFromSaved(7) == 1);
 	assert(VCamAudioTrackFromSaved(-3) == 1);
 

@@ -21,12 +21,10 @@ struct VCamAudioOutputSettings {
  * track 1. */
 inline int VCamAudioTrackFromSaved(long long saved)
 {
-	(void)saved;
-	return 0;
+	return saved >= 1 && saved <= VCAM_AUDIO_TRACKS ? (int)saved : 1;
 }
 
 inline VCamAudioOutputSettings VCamAudioToOutput(const VCamAudioConfig &config)
 {
-	(void)config;
-	return {false, 0};
+	return {config.enabled, VCamAudioTrackFromSaved(config.track)};
 }
