@@ -225,6 +225,8 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 	unlink(lock);
 
 	rmdir(dir);
+}
+
 /* #3181: pactl runs on the thread that starts the Virtual Camera. A sound
  * server that never answers must not freeze OBS: run_pactl gives up. */
 static void hung_pactl_is_given_up_on(void **state)
