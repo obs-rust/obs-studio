@@ -11,6 +11,11 @@ gcc has no `-Wimplicit-int-conversion` and no
 `-Wsign-conversion` set, so a target can pass its gcc replay and still fail the
 nightly's AppleClang app build (#2921, #3090, #3084 in one week).
 
+A pin the source itself carries is not a global pin: CMake appends a target's
+per-source `COMPILE_OPTIONS` after the group, so `libobs`'s four vendored libnsgif
+unity groups stay exempt (#3121) and the replay keeps that policy in the command's
+own order.
+
 This replays one unity group per compile entry with `clang -fsyntax-only` and
 the three conversion warnings, with the global `-Wno-conversion` pins removed
 exactly as the ratchet's opt-in removes them. It reads the flags from a
@@ -85,6 +90,28 @@ def unity_group(entry: dict[str, str]) -> bool:
     return entry["file"].endswith(UNITY_SUFFIX)
 
 
+def source_exemptions(entry: dict[str, str]) -> tuple[str, ...]:
+    """The conversion groups the source itself turns off.
+
+    CMake appends a target's per-source `COMPILE_OPTIONS` after the group it
+    states at target level, so a pin that follows the group in the command is
+    the source's own exemption, not one of the global pins this replay removes:
+    `libobs/CMakeLists.txt` re-pins the four vendored libnsgif unity groups
+    because that C89 decoder is the Rust port's differential oracle and its
+    conversions are not call sites the port edits (#3121). Keeping such a pin
+    is what makes the replay agree with the compiler the lane compiles with.
+    """
+    tokens = shlex.split(entry["command"])
+    started = False
+    exemptions: list[str] = []
+    for token in tokens[1:]:
+        if token in WARNINGS:
+            started = True
+        elif token in PINS and started and token not in exemptions:
+            exemptions.append(token)
+    return tuple(exemptions)
+
+
 def group_directory(entry: dict[str, str], root: Path) -> str:
     """The target's directory, as `ratcheted_dirs()` spells it.
 
@@ -124,7 +151,9 @@ def clang_command(entry: dict[str, str], compiler: str = "clang") -> list[str]:
             continue
         started = True
         command.append(token)
-    command.extend(["-fsyntax-only", *WARNINGS, entry["file"]])
+    # The source's own exemptions go after the group the replay adds, so they
+    # stay effective (see `source_exemptions`).
+    command.extend(["-fsyntax-only", *WARNINGS, *source_exemptions(entry), entry["file"]])
     return command
 
 
@@ -249,6 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     entries = [entry for entry in repo_compdb(args.compdb) if unity_group(entry)]
     entries.sort(key=lambda entry: entry["file"])
     ratcheted = repo_ratcheted_dirs(root)
+    exempt = [entry for entry in entries if source_exemptions(entry)]
 
     started = time.monotonic()
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
@@ -267,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"replayed {len(replays)} group(s) with {args.compiler} in {wall:.1f}s: "
         f"{len(findings)} group(s) with conversion findings, "
+        f"{len(exempt)} with a source-level exemption, "
         f"{len(missing)} uncovered, {len(unexplained(replays))} failed to parse"
     )
     return exit_status(findings, missing, unexplained(replays), args.allow_uncovered)
