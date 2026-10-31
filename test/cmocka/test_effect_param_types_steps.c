@@ -16,9 +16,12 @@
  *   ep_compile_param());
  * - obs_effect_param_route(): the default-value parser a parameter gets
  *   (ep_parse_param_assignment_val());
- * - obs_effect_param_array_shape(): the value count of an int or float array
- *   type, and whether its row or column digit is outside 1-4
- *   (ep_parse_param_assign_intfloat_array()).
+ * - obs_effect_param_rows_bad(), obs_effect_param_rows(),
+ *   obs_effect_param_has_cols(), obs_effect_param_cols_bad() and
+ *   obs_effect_param_cols(): the value count of an int or float array type,
+ *   and whether its row or column digit is outside 1-4
+ *   (ep_parse_param_assign_intfloat_array()), asked in its order by
+ *   check_shape().
  * They pin the current C behaviour; cases marked "characterized, not
  * endorsed" are odd but real.
  *
@@ -32,13 +35,21 @@
  * count follows the target's char signedness.
  */
 
+/* The shape as ep_parse_param_assign_intfloat_array() asks it: the column
+ * digit only after an 'x'. */
 static void check_shape(const char *type, bool is_float, int count, bool bad_rows, bool bad_cols)
 {
-	struct obs_effect_param_shape shape = obs_effect_param_array_shape(type, is_float);
+	bool cols_bad = false;
+	int n;
 
-	assert_int_equal(shape.count, count);
-	assert_int_equal(shape.bad_rows, bad_rows);
-	assert_int_equal(shape.bad_cols, bad_cols);
+	assert_int_equal(obs_effect_param_rows_bad(type, is_float), bad_rows);
+	n = obs_effect_param_rows(type, is_float);
+	if (obs_effect_param_has_cols(type, is_float)) {
+		cols_bad = obs_effect_param_cols_bad(type, is_float);
+		n = obs_effect_param_cols(type, is_float, n);
+	}
+	assert_int_equal(cols_bad, bad_cols);
+	assert_int_equal(n, count);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -191,6 +202,24 @@ static void bad_column_digits(void **state)
 	check_shape("floatxxx", true, 72 * 72, true, true);
 }
 
+static void each_dimension_alone(void **state)
+{
+	(void)state;
+
+	/* the column scales whatever count the caller passes */
+	assert_int_equal(obs_effect_param_cols("float4x3", true, 5), 15);
+	assert_int_equal(obs_effect_param_cols("int2x4", false, -1), -4);
+	/* only the byte right after the row digit is an 'x' */
+	assert_true(obs_effect_param_has_cols("float4x4", true));
+	assert_false(obs_effect_param_has_cols("float4y4", true));
+	assert_false(obs_effect_param_has_cols("float4", true));
+	/* the prefix length follows is_float, not the name */
+	assert_int_equal(obs_effect_param_rows("float4", false), 'a' - '0');
+	assert_true(obs_effect_param_rows_bad("float4", false));
+	assert_false(obs_effect_param_cols_bad("int1x4", false));
+	assert_true(obs_effect_param_cols_bad("int1x5", false));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -203,6 +232,7 @@ int main(void)
 		cmocka_unit_test(valid_shapes),
 		cmocka_unit_test(bad_row_digits),
 		cmocka_unit_test(bad_column_digits),
+		cmocka_unit_test(each_dimension_alone),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

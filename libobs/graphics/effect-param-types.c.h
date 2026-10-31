@@ -71,22 +71,42 @@ enum obs_effect_param_route obs_effect_param_route(const char *type, bool is_tex
 	return OBS_EFFECT_PARAM_ROUTE_INVALID;
 }
 
-struct obs_effect_param_shape obs_effect_param_array_shape(const char *type, bool is_float)
+static inline const char *obs_effect_param_dims(const char *type, bool is_float)
 {
-	const char *intfloat_type = type + (is_float ? 5 : 3);
-	struct obs_effect_param_shape shape = {0};
+	return type + (is_float ? 5 : 3);
+}
 
-	if (intfloat_type[0] < '1' || intfloat_type[0] > '4')
-		shape.bad_rows = true;
+bool obs_effect_param_rows_bad(const char *type, bool is_float)
+{
+	const char *intfloat_type = obs_effect_param_dims(type, is_float);
 
-	shape.count = intfloat_type[0] - '0';
+	return intfloat_type[0] < '1' || intfloat_type[0] > '4';
+}
 
-	if (intfloat_type[1] == 'x') {
-		if (intfloat_type[2] < '1' || intfloat_type[2] > '4')
-			shape.bad_cols = true;
+int obs_effect_param_rows(const char *type, bool is_float)
+{
+	const char *intfloat_type = obs_effect_param_dims(type, is_float);
 
-		shape.count *= intfloat_type[2] - '0';
-	}
+	return intfloat_type[0] - '0';
+}
 
-	return shape;
+bool obs_effect_param_has_cols(const char *type, bool is_float)
+{
+	const char *intfloat_type = obs_effect_param_dims(type, is_float);
+
+	return intfloat_type[1] == 'x';
+}
+
+bool obs_effect_param_cols_bad(const char *type, bool is_float)
+{
+	const char *intfloat_type = obs_effect_param_dims(type, is_float);
+
+	return intfloat_type[2] < '1' || intfloat_type[2] > '4';
+}
+
+int obs_effect_param_cols(const char *type, bool is_float, int count)
+{
+	const char *intfloat_type = obs_effect_param_dims(type, is_float);
+
+	return count * (intfloat_type[2] - '0');
 }

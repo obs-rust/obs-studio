@@ -27,9 +27,12 @@
  *   the shader parameter type of a type name;
  * - ep_parse_param_assignment_val(): obs_effect_param_route(), the parser of
  *   a parameter's default value;
- * - ep_parse_param_assign_intfloat_array(): obs_effect_param_array_shape(),
- *   the number of values of an int or float array type, and whether its row
- *   or column digit is outside 1-4.
+ * - ep_parse_param_assign_intfloat_array(), on the dimensions after the
+ *   "int" or "float" prefix, in the C's order: obs_effect_param_rows_bad()
+ *   (it adds the row error), obs_effect_param_rows(), the value count so
+ *   far, obs_effect_param_has_cols(), then obs_effect_param_cols_bad() (it
+ *   adds the column error) and obs_effect_param_cols(), the count times the
+ *   column digit. Each reads its byte where the C read it.
  *
  * effect-parser.c keeps every token call, every cf_adderror(), the value
  * parsers, the brace and constructor handling, the loop over the values and
@@ -50,15 +53,6 @@ enum obs_effect_param_route {
 	OBS_EFFECT_PARAM_ROUTE_INVALID,
 };
 
-/* The values of an int or float array type: the row digit after the prefix,
- * times the column digit after an 'x'. Each digit outside 1-4 sets its flag
- * (effect-parser.c adds the error) and still counts, as a char minus '0'. */
-struct obs_effect_param_shape {
-	int count;
-	bool bad_rows;
-	bool bad_cols;
-};
-
 /* get_effect_param_type(): eleven exact names, any name starting with
  * "texture", and GS_SHADER_PARAM_UNKNOWN for anything else. */
 enum gs_shader_param_type obs_effect_param_type(const char *type);
@@ -67,8 +61,23 @@ enum gs_shader_param_type obs_effect_param_type(const char *type);
  * texture when is_texture. */
 enum obs_effect_param_route obs_effect_param_route(const char *type, bool is_texture);
 
-/* ep_parse_param_assign_intfloat_array(): the shape of type after its "float"
+/* ep_parse_param_assign_intfloat_array(), on type after its "float"
  * (is_float) or "int" prefix. type is longer than the prefix (the exact names
- * take the int and float routes); it reads the byte after the row digit, and
- * the one after that only after an 'x'. */
-struct obs_effect_param_shape obs_effect_param_array_shape(const char *type, bool is_float);
+ * take the int and float routes), so the row digit is in the string; the byte
+ * after it is read by obs_effect_param_has_cols(), and the column digit only
+ * after an 'x'. A digit outside 1-4 still counts, as a char minus '0'. */
+
+/* The row digit is outside 1-4. */
+bool obs_effect_param_rows_bad(const char *type, bool is_float);
+
+/* The row digit minus '0': the value count before any column. */
+int obs_effect_param_rows(const char *type, bool is_float);
+
+/* The row digit is followed by an 'x'. */
+bool obs_effect_param_has_cols(const char *type, bool is_float);
+
+/* The column digit after the 'x' is outside 1-4. */
+bool obs_effect_param_cols_bad(const char *type, bool is_float);
+
+/* count times the column digit minus '0'. */
+int obs_effect_param_cols(const char *type, bool is_float, int count);

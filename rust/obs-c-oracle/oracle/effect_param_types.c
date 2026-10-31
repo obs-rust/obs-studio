@@ -1,23 +1,32 @@
 /* Test-only oracle: the original libobs/graphics/effect-param-types.c.h,
- * unmodified, with its three functions renamed to oracle_* so they can link
- * next to the Rust shims. astrcmp_n is the C dstr.c, already renamed in
- * oracle/dstr.c, so the oracle stays all C. */
+ * unmodified, with its seven functions renamed to oracle_* so they can link
+ * next to the Rust shims (the route by a function-like macro, which leaves
+ * the enum tag of the same name alone). astrcmp_n is the C dstr.c, already
+ * renamed in oracle/dstr.c, so the oracle stays all C. */
 #include <stddef.h>
 
 #define obs_effect_param_type oracle_obs_effect_param_type
-#define obs_effect_param_route oracle_obs_effect_param_route
-#define obs_effect_param_array_shape oracle_obs_effect_param_array_shape
+#define obs_effect_param_route(...) oracle_obs_effect_param_route(__VA_ARGS__)
+#define obs_effect_param_rows_bad oracle_obs_effect_param_rows_bad
+#define obs_effect_param_rows oracle_obs_effect_param_rows
+#define obs_effect_param_has_cols oracle_obs_effect_param_has_cols
+#define obs_effect_param_cols_bad oracle_obs_effect_param_cols_bad
+#define obs_effect_param_cols oracle_obs_effect_param_cols
 #define astrcmp_n oracle_astrcmp_n
 
 #include "graphics/effect-param-types.c.h"
 
 #undef astrcmp_n
-#undef obs_effect_param_array_shape
+#undef obs_effect_param_cols
+#undef obs_effect_param_cols_bad
+#undef obs_effect_param_has_cols
+#undef obs_effect_param_rows
+#undef obs_effect_param_rows_bad
 #undef obs_effect_param_route
 #undef obs_effect_param_type
 
-/* The header's enums and the layout of struct obs_effect_param_shape, in the
- * order of rust/obs-c-oracle/src/effect_param_types.rs. */
+/* The header's enums and the sizes and alignments of the types that cross,
+ * in the order of rust/obs-c-oracle/src/effect_param_types.rs. */
 enum {
 	ORACLE_EFFECT_PARAM_LAYOUT_COUNT = 26,
 };
@@ -48,11 +57,11 @@ size_t oracle_effect_param_types_layout(size_t which)
 		OBS_EFFECT_PARAM_ROUTE_STRING,
 		OBS_EFFECT_PARAM_ROUTE_BOOL,
 		OBS_EFFECT_PARAM_ROUTE_INVALID,
-		sizeof(struct obs_effect_param_shape),
-		_Alignof(struct obs_effect_param_shape),
-		offsetof(struct obs_effect_param_shape, count),
-		offsetof(struct obs_effect_param_shape, bad_rows),
-		offsetof(struct obs_effect_param_shape, bad_cols),
+		sizeof(bool),
+		_Alignof(bool),
+		sizeof(int),
+		_Alignof(int),
+		sizeof(enum obs_effect_param_route),
 	};
 	return which < ORACLE_EFFECT_PARAM_LAYOUT_COUNT ? values[which] : 0;
 }

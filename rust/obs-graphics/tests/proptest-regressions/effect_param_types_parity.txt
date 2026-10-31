@@ -17,3 +17,4 @@ cc 3dddeb7677f89d7f7752abf67961a87ee81ac9489c9301b282aebc6c8aa890e5 # shrinks to
 cc f08a8cefbacb5e84c4cd171c813d2dbb9915e280690dfe2087327b64f63db334 # shrinks to k = "int2", t = [1, 48]
 cc 1e85c31e68bddd47e877f6c014252001886c508e11ddca49ade686f95b66befc # shrinks to n = [1, 1, 1, 48]
 cc d7706c9112c17ebaf1ed81d92f8fb8a22e98bcc50c789ef47f8929fefeb39f24 # shrinks to k = "int2", t = [1, 1, 120]
+cc cae8e0bac5f247b2930414bf5758fc5d6c5b7063e3ecfbd29a7640134bd493cc # shrinks to n = [1, 1, 1, 49, 1]

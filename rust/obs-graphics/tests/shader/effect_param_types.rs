@@ -8,7 +8,9 @@
 
 use core::ffi::c_char;
 
-use obs_graphics::effect_param_types::{Route, Shape, array_shape, param_type, route};
+use obs_graphics::effect_param_types::{
+    Route, cols, cols_bad, has_cols, param_type, route, rows, rows_bad,
+};
 use obs_graphics::shader_param_names::{param, shader_param_type};
 use proptest::prelude::*;
 
@@ -18,6 +20,31 @@ fn ty(name: &str) -> i32 {
 
 fn rt(name: &str, is_texture: bool) -> Route {
     route(name.as_bytes(), is_texture)
+}
+
+/// The values of an array type and its row and column errors, as
+/// `ep_parse_param_assign_intfloat_array()` asks them.
+#[derive(Debug, PartialEq, Eq)]
+struct Shape {
+    count: i32,
+    bad_rows: bool,
+    bad_cols: bool,
+}
+
+/// The cmocka `check_shape()`'s order: the column digit only after an `x`.
+fn array_shape(name: &[u8], is_float: bool) -> Shape {
+    let bad_rows = rows_bad(name, is_float);
+    let mut count = rows(name, is_float);
+    let mut bad_cols = false;
+    if has_cols(name, is_float) {
+        bad_cols = cols_bad(name, is_float);
+        count = cols(name, is_float, count);
+    }
+    Shape {
+        count,
+        bad_rows,
+        bad_cols,
+    }
 }
 
 fn check_shape(name: &str, is_float: bool, count: i32, bad_rows: bool, bad_cols: bool) {
@@ -165,6 +192,28 @@ fn steps_bad_column_digits() {
     check_shape("float5x5", true, 25, true, true);
     check_shape("floatxx", true, 72 * -48, true, true);
     check_shape("floatxxx", true, 72 * 72, true, true);
+}
+
+#[test]
+fn steps_each_dimension_alone() {
+    // The column scales whatever count the caller passes.
+    assert_eq!(cols(b"float4x3", true, 5), 15);
+    assert_eq!(cols(b"int2x4", false, -1), -4);
+    // Only the byte right after the row digit is an 'x'.
+    assert!(has_cols(b"float4x4", true));
+    assert!(!has_cols(b"float4y4", true));
+    assert!(!has_cols(b"float4", true));
+    // The prefix length follows is_float, not the name.
+    assert_eq!(rows(b"float4", false), i32::from(b'a') - 48);
+    assert!(rows_bad(b"float4", false));
+    assert!(!cols_bad(b"int1x4", false));
+    assert!(cols_bad(b"int1x5", false));
+}
+
+#[test]
+fn edge_cols_wraps_past_int() {
+    // Only a caller's own count can reach it; from rows() it never does.
+    assert_eq!(cols(b"int2x4", false, i32::MAX), i32::MAX.wrapping_mul(4));
 }
 
 #[test]

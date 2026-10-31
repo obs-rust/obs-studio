@@ -952,16 +952,21 @@ static inline int ep_parse_param_assign_bool(struct effect_parser *ep, struct ep
 */
 static inline int ep_parse_param_assign_intfloat_array(struct effect_parser *ep, struct ep_param *param, bool is_float)
 {
-	struct obs_effect_param_shape shape = obs_effect_param_array_shape(param->type, is_float);
-	int intfloat_count = shape.count, code, i;
+	int intfloat_count = 0, code, i;
 
 	/* -------------------------------------------- */
 
-	if (shape.bad_rows)
+	if (obs_effect_param_rows_bad(param->type, is_float))
 		cf_adderror(&ep->cfp, "Invalid row count", LEX_ERROR, NULL, NULL, NULL);
 
-	if (shape.bad_cols)
-		cf_adderror(&ep->cfp, "Invalid column count", LEX_ERROR, NULL, NULL, NULL);
+	intfloat_count = obs_effect_param_rows(param->type, is_float);
+
+	if (obs_effect_param_has_cols(param->type, is_float)) {
+		if (obs_effect_param_cols_bad(param->type, is_float))
+			cf_adderror(&ep->cfp, "Invalid column count", LEX_ERROR, NULL, NULL, NULL);
+
+		intfloat_count = obs_effect_param_cols(param->type, is_float, intfloat_count);
+	}
 
 	/* -------------------------------------------- */
 	if (!cf_next_token(&ep->cfp)) {

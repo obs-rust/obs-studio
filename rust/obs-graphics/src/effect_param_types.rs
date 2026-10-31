@@ -7,9 +7,11 @@
 //!   [`shader_param_type`](crate::shader_param_names::shader_param_type).
 //! - [`route`] (`ep_parse_param_assignment_val`): the default-value parser
 //!   a parameter gets.
-//! - [`array_shape`] (`ep_parse_param_assign_intfloat_array`): the value
-//!   count of an `int` or `float` array type, and whether its row or column
-//!   digit is outside 1-4 (`effect-parser.c` adds each error).
+//! - `ep_parse_param_assign_intfloat_array`, on the dimensions after the
+//!   `int` or `float` prefix, one function per read, each asked where the C
+//!   read its byte: [`rows_bad`] (`effect-parser.c` then adds the row error),
+//!   [`rows`], the value count so far, [`has_cols`], then [`cols_bad`] (it
+//!   adds the column error) and [`cols`], the count times the column digit.
 //!
 //! Names compare as bytes, case-sensitively, as `strcmp` and `astrcmp_n`
 //! do. `effect-parser.c` keeps every token call, every `cf_adderror()`, the
@@ -64,19 +66,6 @@ pub enum Route {
     Invalid = 7,
 }
 
-/// The values of an `int` or `float` array type
-/// (`struct obs_effect_param_shape`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Shape {
-    /// The row digit, times the column digit after an `x`, each a C `char`
-    /// minus `'0'`: zero, negative or large after an error.
-    pub count: i32,
-    /// The row digit is outside 1-4.
-    pub bad_rows: bool,
-    /// The column digit after an `x` is outside 1-4.
-    pub bad_cols: bool,
-}
-
 /// `obs_effect_param_type()`: the `GS_SHADER_PARAM_*` type of `name`.
 #[must_use]
 pub fn param_type(name: &[u8]) -> i32 {
@@ -100,28 +89,49 @@ pub fn route(name: &[u8], is_texture: bool) -> Route {
     }
 }
 
-/// `obs_effect_param_array_shape()`: the shape of `name` after its `float`
-/// (`is_float`) or `int` prefix. A byte past the end of `name` reads as the
-/// terminator, `0`.
-#[must_use]
-pub fn array_shape(name: &[u8], is_float: bool) -> Shape {
-    let dims = name.get(if is_float { 5 } else { 3 }..).unwrap_or_default();
-    let at = |i: usize| dims.get(i).copied().unwrap_or(0);
+/// The bytes after the `float` (`is_float`) or `int` prefix of `name`.
+fn dims(name: &[u8], is_float: bool) -> &[u8] {
+    name.get(if is_float { 5 } else { 3 }..).unwrap_or_default()
+}
 
-    let rows = at(0);
-    let mut shape = Shape {
-        count: digit(rows),
-        bad_rows: !is_dim(rows),
-        bad_cols: false,
-    };
-    // The column digit is read only after an 'x'.
-    if at(1) == b'x' {
-        let cols = at(2);
-        shape.bad_cols = !is_dim(cols);
-        // Each digit is within -176..=207, so the product fits.
-        shape.count = shape.count.wrapping_mul(digit(cols));
-    }
-    shape
+/// Byte `i` of the dimensions; past the end of `name` reads as the
+/// terminator, `0`.
+fn dim(name: &[u8], is_float: bool, i: usize) -> u8 {
+    dims(name, is_float).get(i).copied().unwrap_or(0)
+}
+
+/// `obs_effect_param_rows_bad()`: the row digit is outside 1-4.
+#[must_use]
+pub fn rows_bad(name: &[u8], is_float: bool) -> bool {
+    !is_dim(dim(name, is_float, 0))
+}
+
+/// `obs_effect_param_rows()`: the row digit minus `'0'`, the value count
+/// before any column.
+#[must_use]
+pub fn rows(name: &[u8], is_float: bool) -> i32 {
+    digit(dim(name, is_float, 0))
+}
+
+/// `obs_effect_param_has_cols()`: the row digit is followed by an `x`.
+#[must_use]
+pub fn has_cols(name: &[u8], is_float: bool) -> bool {
+    dim(name, is_float, 1) == b'x'
+}
+
+/// `obs_effect_param_cols_bad()`: the column digit after the `x` is outside
+/// 1-4.
+#[must_use]
+pub fn cols_bad(name: &[u8], is_float: bool) -> bool {
+    !is_dim(dim(name, is_float, 2))
+}
+
+/// `obs_effect_param_cols()`: `count` times the column digit minus `'0'`.
+/// It wraps where the C `int` would overflow; from [`rows`] it never does
+/// (each digit is within -176..=207).
+#[must_use]
+pub fn cols(name: &[u8], is_float: bool, count: i32) -> i32 {
+    count.wrapping_mul(digit(dim(name, is_float, 2)))
 }
 
 /// A row or column digit, `'1'` to `'4'`.

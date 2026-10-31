@@ -6,11 +6,13 @@
 //! `ep_compile_annotations()` and `ep_compile_param()` ask
 //! [`obs_effect_param_type`], `ep_parse_param_assignment_val()` switches on
 //! [`obs_effect_param_route`], and `ep_parse_param_assign_intfloat_array()`
-//! asks [`obs_effect_param_array_shape`] and adds the row and column errors
-//! it reports. It keeps every token call, every `cf_adderror()` and the
-//! value parsers. The enums cross as C `int`s and the shape by value. The
-//! shims take no lock, call nothing in libobs and stay hidden
-//! (`rust-hidden.txt`).
+//! asks [`obs_effect_param_rows_bad`] (then adds the row error),
+//! [`obs_effect_param_rows`], [`obs_effect_param_has_cols`],
+//! [`obs_effect_param_cols_bad`] (then adds the column error) and
+//! [`obs_effect_param_cols`], each where it read that byte. It keeps every
+//! token call, every `cf_adderror()` and the value parsers. Only a C string,
+//! `bool`s and `int`s cross; the route is a C `int`. The shims take no lock,
+//! call nothing in libobs and stay hidden (`rust-hidden.txt`).
 //!
 //! No intentional difference from C. A null name, which `effect-parser.c`
 //! never passes (the C would call `strcmp(NULL)`), reads as `""`.
@@ -18,16 +20,6 @@
 use core::ffi::{CStr, c_char, c_int};
 
 use crate::effect_param_types as core_types;
-
-/// `struct obs_effect_param_shape`.
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
-pub struct obs_effect_param_shape {
-    pub count: c_int,
-    pub bad_rows: bool,
-    pub bad_cols: bool,
-}
 
 /// The bytes of `type_`, without its terminator; `""` for null.
 ///
@@ -65,22 +57,61 @@ pub unsafe extern "C" fn obs_effect_param_route(type_: *const c_char, is_texture
     core_types::route(unsafe { name(type_) }, is_texture) as c_int
 }
 
-/// `struct obs_effect_param_shape obs_effect_param_array_shape(const char
-/// *type, bool is_float)`.
+/// `bool obs_effect_param_rows_bad(const char *type, bool is_float)`.
 ///
 /// # Safety
 ///
 /// `type_` must be null or a valid NUL-terminated string.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_effect_param_array_shape(
+pub unsafe extern "C" fn obs_effect_param_rows_bad(type_: *const c_char, is_float: bool) -> bool {
+    // SAFETY: forwarded from the caller.
+    core_types::rows_bad(unsafe { name(type_) }, is_float)
+}
+
+/// `int obs_effect_param_rows(const char *type, bool is_float)`.
+///
+/// # Safety
+///
+/// `type_` must be null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_rows(type_: *const c_char, is_float: bool) -> c_int {
+    // SAFETY: forwarded from the caller.
+    core_types::rows(unsafe { name(type_) }, is_float)
+}
+
+/// `bool obs_effect_param_has_cols(const char *type, bool is_float)`.
+///
+/// # Safety
+///
+/// `type_` must be null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_has_cols(type_: *const c_char, is_float: bool) -> bool {
+    // SAFETY: forwarded from the caller.
+    core_types::has_cols(unsafe { name(type_) }, is_float)
+}
+
+/// `bool obs_effect_param_cols_bad(const char *type, bool is_float)`.
+///
+/// # Safety
+///
+/// `type_` must be null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_cols_bad(type_: *const c_char, is_float: bool) -> bool {
+    // SAFETY: forwarded from the caller.
+    core_types::cols_bad(unsafe { name(type_) }, is_float)
+}
+
+/// `int obs_effect_param_cols(const char *type, bool is_float, int count)`.
+///
+/// # Safety
+///
+/// `type_` must be null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_cols(
     type_: *const c_char,
     is_float: bool,
-) -> obs_effect_param_shape {
+    count: c_int,
+) -> c_int {
     // SAFETY: forwarded from the caller.
-    let shape = core_types::array_shape(unsafe { name(type_) }, is_float);
-    obs_effect_param_shape {
-        count: shape.count,
-        bad_rows: shape.bad_rows,
-        bad_cols: shape.bad_cols,
-    }
+    core_types::cols(unsafe { name(type_) }, is_float, count)
 }

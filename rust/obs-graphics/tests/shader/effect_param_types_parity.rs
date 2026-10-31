@@ -12,9 +12,15 @@
 //! Every known name with each one-byte suffix and each one-byte cut, and
 //! proptests of any bytes, cover the rest.
 //!
+//! The five dimension functions are each compared on their own, the
+//! column ones for every name long enough to hold the byte after the row
+//! digit, with the row count and counts of 0, +-1 and +-1000.
+//!
 //! No intentional difference. Left out, as the C never meets them: the
-//! shape of a name no longer than its prefix (the C reads past the
-//! terminator; the route never gives one) and a null name (the C calls
+//! dimensions of a name no longer than its prefix, and the column of a name
+//! that ends at the row digit (the C reads past the terminator; the route
+//! never gives the first, and the parser asks the column only after an
+//! `x`), a count whose product overflows `int`, and a null name (the C calls
 //! `strcmp(NULL)`; the shim reads it as `""`, checked on the Rust side).
 //!
 //! Reminder: the mutation check (break the core, see this file fail) is done
@@ -25,8 +31,10 @@ use std::ptr;
 
 use obs_c_oracle::effect_param_types::{self as c, layout};
 use obs_c_oracle::parity;
-use obs_graphics::effect_param_types::{Route, array_shape, param_type, route};
-use obs_graphics::ffi::effect_param_types::{self as rs, obs_effect_param_shape};
+use obs_graphics::effect_param_types::{
+    Route, cols, cols_bad, has_cols, param_type, route, rows, rows_bad,
+};
+use obs_graphics::ffi::effect_param_types as rs;
 use obs_graphics::shader_param_names::param;
 use obs_util as _; // bmem for the C dstr.c
 use proptest::prelude::*;
@@ -98,26 +106,56 @@ fn check(name: &[u8]) {
         if name.len() <= prefix {
             continue; // the C reads past the terminator
         }
-        // SAFETY: as above, and `name` is longer than the prefix, so the C
-        // reads only within the string.
-        let (cv, rv) = unsafe {
-            (
-                c::oracle_obs_effect_param_array_shape(p, is_float),
-                rs::obs_effect_param_array_shape(p, is_float),
-            )
-        };
-        let rv = (rv.count, rv.bad_rows, rv.bad_cols);
-        assert_eq!(
-            rv,
-            (cv.count, cv.bad_rows, cv.bad_cols),
-            "shape of {shown:?} ({is_float})"
-        );
-        let s = array_shape(name, is_float);
-        assert_eq!(
-            (s.count, s.bad_rows, s.bad_cols),
-            rv,
-            "core shape of {shown:?}"
-        );
+        let at = |what: &str| format!("{what} of {shown:?} ({is_float})");
+        // SAFETY: as above, and `name` is longer than the prefix, so the row
+        // digit and the byte after it are within the string.
+        unsafe {
+            let c = c::oracle_obs_effect_param_rows_bad(p, is_float);
+            assert_eq!(
+                rs::obs_effect_param_rows_bad(p, is_float),
+                c,
+                "{}",
+                at("rows_bad")
+            );
+            assert_eq!(rows_bad(name, is_float), c, "{}", at("core rows_bad"));
+            let c = c::oracle_obs_effect_param_rows(p, is_float);
+            assert_eq!(rs::obs_effect_param_rows(p, is_float), c, "{}", at("rows"));
+            assert_eq!(rows(name, is_float), c, "{}", at("core rows"));
+            let c = c::oracle_obs_effect_param_has_cols(p, is_float);
+            assert_eq!(
+                rs::obs_effect_param_has_cols(p, is_float),
+                c,
+                "{}",
+                at("has_cols")
+            );
+            assert_eq!(has_cols(name, is_float), c, "{}", at("core has_cols"));
+        }
+        if name.len() <= prefix + 1 {
+            continue; // the column digit would be past the terminator
+        }
+        let row = rows(name, is_float);
+        // SAFETY: as above; the column digit is within the string or its
+        // terminator, and every count keeps the C product within int.
+        unsafe {
+            let c = c::oracle_obs_effect_param_cols_bad(p, is_float);
+            assert_eq!(
+                rs::obs_effect_param_cols_bad(p, is_float),
+                c,
+                "{}",
+                at("cols_bad")
+            );
+            assert_eq!(cols_bad(name, is_float), c, "{}", at("core cols_bad"));
+            for count in [row, 0, 1, -1, 1000, -1000] {
+                let c = c::oracle_obs_effect_param_cols(p, is_float, count);
+                assert_eq!(
+                    rs::obs_effect_param_cols(p, is_float, count),
+                    c,
+                    "{}",
+                    at("cols")
+                );
+                assert_eq!(cols(name, is_float, count), c, "{}", at("core cols"));
+            }
+        }
     }
 }
 
@@ -191,30 +229,11 @@ fn enums_and_layout() {
     }
     assert_eq!(layout::ROUTE_COUNT, 8);
 
-    assert_eq!(
-        layout_value(layout::SHAPE_SIZE),
-        size_of::<obs_effect_param_shape>()
-    );
-    assert_eq!(
-        layout_value(layout::SHAPE_ALIGN),
-        align_of::<obs_effect_param_shape>()
-    );
-    assert_eq!(
-        layout_value(layout::SHAPE_COUNT),
-        std::mem::offset_of!(obs_effect_param_shape, count)
-    );
-    assert_eq!(
-        layout_value(layout::SHAPE_BAD_ROWS),
-        std::mem::offset_of!(obs_effect_param_shape, bad_rows)
-    );
-    assert_eq!(
-        layout_value(layout::SHAPE_BAD_COLS),
-        std::mem::offset_of!(obs_effect_param_shape, bad_cols)
-    );
-    assert_eq!(
-        size_of::<c::OracleShape>(),
-        size_of::<obs_effect_param_shape>()
-    );
+    assert_eq!(layout_value(layout::BOOL_SIZE), size_of::<bool>());
+    assert_eq!(layout_value(layout::BOOL_ALIGN), align_of::<bool>());
+    assert_eq!(layout_value(layout::INT_SIZE), size_of::<c_int>());
+    assert_eq!(layout_value(layout::INT_ALIGN), align_of::<c_int>());
+    assert_eq!(layout_value(layout::ROUTE_SIZE), size_of::<c_int>());
 }
 
 #[test]
@@ -274,12 +293,26 @@ fn a_null_name_reads_as_empty() {
             rs::obs_effect_param_route(ptr::null(), true),
             Route::Texture as c_int
         );
-        let s = rs::obs_effect_param_array_shape(ptr::null(), true);
-        let e = array_shape(b"", true);
-        assert_eq!(
-            (s.count, s.bad_rows, s.bad_cols),
-            (e.count, e.bad_rows, e.bad_cols)
-        );
+        for is_float in [false, true] {
+            let n = ptr::null();
+            assert_eq!(
+                rs::obs_effect_param_rows_bad(n, is_float),
+                rows_bad(b"", is_float)
+            );
+            assert_eq!(rs::obs_effect_param_rows(n, is_float), rows(b"", is_float));
+            assert_eq!(
+                rs::obs_effect_param_has_cols(n, is_float),
+                has_cols(b"", is_float)
+            );
+            assert_eq!(
+                rs::obs_effect_param_cols_bad(n, is_float),
+                cols_bad(b"", is_float)
+            );
+            assert_eq!(
+                rs::obs_effect_param_cols(n, is_float, 3),
+                cols(b"", is_float, 3)
+            );
+        }
     }
 }
 

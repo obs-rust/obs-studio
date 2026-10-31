@@ -116,8 +116,12 @@
     nsgif_frame_recover;
     /* graphics/effect-param-types.c. effect-parser.c calls them inside
      * libobs. Not EXPORT. */
-    obs_effect_param_array_shape;
+    obs_effect_param_cols;
+    obs_effect_param_cols_bad;
+    obs_effect_param_has_cols;
     obs_effect_param_route;
+    obs_effect_param_rows;
+    obs_effect_param_rows_bad;
     obs_effect_param_type;
     /* graphics/graphics-immediate.c. graphics.c calls them inside libobs. */
     gs_immediate_cut;

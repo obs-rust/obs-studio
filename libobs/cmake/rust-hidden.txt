@@ -115,8 +115,12 @@ nsgif_frame_recover
 # ep_parse_param_assignment_val() and ep_parse_param_assign_intfloat_array()
 # in effect-parser.c call them inside libobs. Declared in effect-param-types.h
 # without EXPORT, so the shims stay hidden the same way.
-obs_effect_param_array_shape
+obs_effect_param_cols
+obs_effect_param_cols_bad
+obs_effect_param_has_cols
 obs_effect_param_route
+obs_effect_param_rows
+obs_effect_param_rows_bad
 obs_effect_param_type
 # graphics/graphics-immediate.c: gs_render_stop(), gs_render_save(),
 # validvertsize() and gs_texcoord2v() in graphics.c call them inside libobs.
