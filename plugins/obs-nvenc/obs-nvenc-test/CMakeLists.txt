@@ -7,6 +7,11 @@ find_package(Threads REQUIRED)
 add_executable(obs-nvenc-test)
 
 target_sources(obs-nvenc-test PRIVATE ${_obs_nvenc_helper})
+target_compile_options(
+  obs-nvenc-test
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(obs-nvenc-test FFnvcodec::FFnvcodec Threads::Threads ${CMAKE_DL_LIBS})
 
 if(OBS_NVENC_TEST_NAME)
