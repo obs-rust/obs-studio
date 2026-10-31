@@ -32,6 +32,14 @@ class CleanTest(unittest.TestCase):
                 "<details><summary>log</summary>\n12:00 info\n</details>\n<!-- template -->Thanks!")
         self.assertEqual(uq.clean(body), "It works now. Thanks!")
 
+    def test_removes_details_with_attributes_pre_blocks_and_indented_code(self):
+        body = ("Works great.\n<details open>\n<summary>log</summary>\nwarning: x\n</details>\n"
+                "<pre><code>info: y</code></pre>\n\n    indented log line\n\tmore log\n\nThanks!")
+        self.assertEqual(uq.clean(body), "Works great. Thanks!")
+
+    def test_indented_text_inside_a_paragraph_is_kept(self):
+        self.assertEqual(uq.clean("It works\n    on both machines."), "It works on both machines.")
+
     def test_unclosed_block_is_dropped_to_the_end(self):
         self.assertEqual(uq.clean("Works.\n```\nlog without an end"), "Works.")
 
@@ -58,6 +66,26 @@ class CandidateTest(unittest.TestCase):
                 comment(3, "x" * 50), comment(4, "short and kind")]
         got = uq.candidates(rows, set(), {URL.format(7, 1)}, max_chars=40)
         self.assertEqual([c["text"] for c in got], ["short and kind"])
+
+    def test_pr_review_comments_are_candidates(self):
+        review = {"html_url": "https://github.com/obs-rust/obs-studio/pull/12#discussion_r99", "body": "Works for me.",
+                  "created_at": "2026-10-13T10:00:00Z", "author_association": "NONE",
+                  "user": {"login": "reviewer", "type": "User"},
+                  "pull_request_url": "https://api.github.com/repos/obs-rust/obs-studio/pulls/12"}
+        got = uq.candidates([review], set(), set())
+        self.assertEqual([(c["issue"], c["text"]) for c in got], [(12, "Works for me.")])
+
+    def test_collect_reads_issue_and_review_comments(self):
+        asked = []
+        real = uq.gh_lines
+        uq.gh_lines = lambda path: asked.append(path) or []
+        try:
+            uq.fetch_comments("2026-10-01T00:00:00Z")
+        finally:
+            uq.gh_lines = real
+        self.assertEqual(sorted(a.split("?")[0] for a in asked),
+                         ["repos/obs-rust/obs-studio/issues/comments", "repos/obs-rust/obs-studio/pulls/comments"])
+        self.assertTrue(all("since=2026-10-01T00:00:00Z" in a for a in asked))
 
     def test_candidate_fields(self):
         got = uq.candidates([comment(9, "It works!", issue=251)], set(), set())
@@ -91,6 +119,11 @@ class RecordTest(unittest.TestCase):
         verdicts = {URL.format(7, 1): ["approved", ""], URL.format(7, 2): ["rejected", "mixed"]}
         with self.assertRaisesRegex(ValueError, "changed"):
             uq.record(self.empty, self.found, verdicts, {URL.format(7, 1): "It works! Edited."})
+
+    def test_an_empty_scan_still_moves_the_scan_date(self):
+        data = uq.record({"scanned_through": "2026-10-01T00:00:00Z", "quotes": []},
+                         {"scanned_through": "2026-10-31T00:00:00Z", "candidates": []}, {}, {})
+        self.assertEqual(data, {"scanned_through": "2026-10-31T00:00:00Z", "quotes": []})
 
     def test_rejection_needs_a_reason(self):
         verdicts = {URL.format(7, 1): ["approved", ""], URL.format(7, 2): ["rejected", ""]}
@@ -164,7 +197,7 @@ class CommittedDataTest(unittest.TestCase):
         urls = [q["url"] for q in self.data["quotes"]]
         self.assertEqual(len(urls), len(set(urls)), "one verdict per comment")
         for q in self.data["quotes"]:
-            self.assertRegex(q["url"], r"^https://github\.com/obs-rust/obs-studio/(issues|pull)/\d+#issuecomment-\d+$")
+            self.assertRegex(q["url"], r"^https://github\.com/obs-rust/obs-studio/(issues|pull)/\d+#(issuecomment-|discussion_r)\d+$")
             self.assertEqual(list(q)[:5], list(uq.FIELDS), "the documented fields, in order, on every entry")
             self.assertRegex(q["date"], r"^\d{4}-\d{2}-\d{2}$")
             self.assertIn(q["status"], ("approved", "rejected"))
