@@ -226,6 +226,7 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
   It runs when a change touches a Windows or macOS file in libobs or a component the cross `CMakeLists.txt` names by `DIR`, or the check itself (`cmake/cross/`, `cmake/common/soldr.cmake`); full runs build both (#1294).
   The frontend's Windows and macOS Qt groups are in it (#2408): the target's prebuilt Qt6 headers, with `ui_*.h` from the pinned Linux `uic`; moc is skipped, since nothing links.
 - **No `win-arm64`:** `util/threading-windows.h` uses MSVC-only ARM64 intrinsics that clang lacks.
+- **Cost, measured 2026-10-31:** a cold cross build *with* the link — a fresh build tree, `ZCCACHE_DISABLE=1`, including that alias's `libobs-rust` staticlib — took `win-x64` 32 s / 41 s, `mac-arm64` 117 s / 32 s and `mac-x64` 134 s / 26 s (two samples each, `-j 4` on a 16-thread host shared with other worker checkouts; the slower sample in each pair is the one that also rebuilt 14–18 workspace crates, and the rest of the spread is co-tenant load). The native `Build OBS-Studio-Rust` steps it stands in for are 12m25 (Windows x64), 8m01 (macOS arm64) and 7m50 (macOS x86_64) in release run 41007587429; signing and packaging stay native.
 
 ### setup-soldr: soldr in GitHub Actions
 
