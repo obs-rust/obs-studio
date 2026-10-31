@@ -791,6 +791,11 @@ area.
   collection and shown only where the virtual camera sends audio.
   *Linux*, 2026-10-31.
   Issue [#3182](https://github.com/obs-rust/obs-studio/issues/3182).
+- The Linux OBS Virtual Microphone follows the Virtual Camera dialog (on or
+  off, and which audio track), and a second OBS running at the same time gets
+  its own "OBS Virtual Microphone (2)" instead of a duplicate. *Linux*,
+  2026-10-31. Issues [#3182](https://github.com/obs-rust/obs-studio/issues/3182),
+  [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
 - The OBS Virtual Microphone no longer turns into noise or swaps channels
   after the sound server falls behind: a packet the pipe takes only part of
   is finished before the next one. *Linux*, 2026-10-31.
