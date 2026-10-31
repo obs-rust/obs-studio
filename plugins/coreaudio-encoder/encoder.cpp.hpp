@@ -608,7 +608,9 @@ static OSStatus complex_input_data_proc(AudioConverterRef inAudioConverter, UInt
 	}
 
 	auto start = begin(ca->input_buffer);
-	auto stop = begin(ca->input_buffer) + ca->in_bytes_required;
+	// #2625: the iterator offset is signed; in_bytes_required is size_t and the
+	// size() check above keeps it inside the buffer.
+	auto stop = begin(ca->input_buffer) + static_cast<ptrdiff_t>(ca->in_bytes_required);
 	ca->encode_buffer.assign(start, stop);
 	ca->input_buffer.erase(start, stop);
 
@@ -659,10 +661,12 @@ static bool aac_encode(void *data, struct encoder_frame *frame, struct encoder_p
 		return true;
 	}
 
-	packet->pts = ca->total_samples - ca->priming_samples;
-	packet->dts = ca->total_samples - ca->priming_samples;
+	// #2625: the arithmetic stays in uint64_t (both samples are unsigned) and the
+	// result is narrowed once, to the packet's signed timestamp.
+	packet->pts = static_cast<int64_t>(ca->total_samples - ca->priming_samples);
+	packet->dts = static_cast<int64_t>(ca->total_samples - ca->priming_samples);
 	packet->timebase_num = 1;
-	packet->timebase_den = (uint32_t)ca->samples_per_second;
+	packet->timebase_den = static_cast<int32_t>(ca->samples_per_second);
 	packet->type = OBS_ENCODER_AUDIO;
 	packet->keyframe = true;
 	packet->size = out_desc.mDataByteSize;
@@ -1108,7 +1112,9 @@ static vector<UInt32> get_bitrates(DStr &log, ca_encoder *ca, Float64 samplerate
 {
 	vector<UInt32> bitrates;
 	struct obs_audio_info aoi;
-	int channels;
+	// #2625: get_audio_channels() and the asbd builder both speak UInt32, so the
+	// channel count never needs a narrowing cast in either direction.
+	uint32_t channels;
 
 	obs_get_audio_info(&aoi);
 	channels = get_audio_channels(aoi.speakers);

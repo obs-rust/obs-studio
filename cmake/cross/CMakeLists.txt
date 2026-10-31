@@ -614,6 +614,7 @@ if(_host STREQUAL WINDOWS)
     INCLUDES shared/opts-parser
   )
   _obs_cross_plugin(coreaudio-encoder-cross DIR plugins/coreaudio-encoder SOURCES build/coreaudio-encoder.windows+.hpp.cpp INCLUDES plugins/coreaudio-encoder/hosts/windows)
+  _obs_cross_conversion_ratchet(coreaudio-encoder-cross)
   _obs_cross_plugin(obs-ffmpeg-mux-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.mux-host-windows+.h.c)
   _obs_cross_plugin(obs-ffmpeg-mux-helper-host-cross DIR plugins/obs-ffmpeg/ffmpeg-mux SOURCES build/ffmpeg-mux.windows+.h.c)
   _obs_cross_plugin(obs-ffmpeg-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.host-windows+.h.c)
