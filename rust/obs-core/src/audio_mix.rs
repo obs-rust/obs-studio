@@ -104,18 +104,28 @@ pub struct Step {
 /// `unsigned __int128` division with clang-cl, whose `(uint64_t)` cast
 /// truncates it; here that saturates. A `div` of 0 (a sample rate of 0,
 /// where the C divides by 0) gives 0.
+///
+/// The 0 check sits in front of plain divisions on purpose (#3138): the C
+/// computes the quotient and the remainder of `num / div` with one division,
+/// while `checked_rem` and `checked_div` each carry their own 0 test, so the
+/// pair never fuses and every call paid two 64-bit divides. One check and
+/// `wrapping_rem`/`wrapping_div` let LLVM fuse them again. Clippy reads a
+/// division as an arithmetic side effect even in its `wrapping_` form; the 0
+/// case is the check above.
+#[allow(clippy::arithmetic_side_effects)]
 pub(crate) fn mul_div64(num: u64, mul: u64, div: u64) -> u64 {
+    if div == 0 {
+        return 0;
+    }
     if crate::platform::MUL_DIV64_IS_UDIV128 {
-        let quotient = (u128::from(num).wrapping_mul(u128::from(mul)))
-            .checked_div(u128::from(div))
-            .unwrap_or(0);
+        let quotient =
+            (u128::from(num).wrapping_mul(u128::from(mul))).wrapping_div(u128::from(div));
         u64::try_from(quotient).unwrap_or(u64::MAX)
     } else {
-        let rem = num.checked_rem(div).unwrap_or(0);
-        num.checked_div(div)
-            .unwrap_or(0)
+        let rem = num.wrapping_rem(div);
+        num.wrapping_div(div)
             .wrapping_mul(mul)
-            .wrapping_add(rem.wrapping_mul(mul).checked_div(div).unwrap_or(0))
+            .wrapping_add(rem.wrapping_mul(mul).wrapping_div(div))
     }
 }
 
@@ -147,11 +157,13 @@ fn ns_to_frames(sample_rate: usize, ns: u64) -> u64 {
 
 /// `ticks * AUDIO_OUTPUT_FRAMES * 1000 / sample_rate`: `int` arithmetic,
 /// then the C's conversion of the `int` to `size_t` for the division.
+#[allow(clippy::arithmetic_side_effects)] // the 0 gap is the check above
 fn ticks_to_ms(ticks: i32, sample_rate: usize) -> usize {
+    if sample_rate == 0 {
+        return 0;
+    }
     let product = ticks.wrapping_mul(FRAMES_I32).wrapping_mul(1000);
-    (product as isize as usize)
-        .checked_div(sample_rate)
-        .unwrap_or(0)
+    (product as isize as usize).wrapping_div(sample_rate)
 }
 
 /// `obs_audio_mix_time_to_frames()`: `floor(t * sample_rate / 1e9)` through

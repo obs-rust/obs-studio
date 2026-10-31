@@ -73,6 +73,7 @@ impl DequeBuf for BmemBuf {
 /// `dq` must point to a valid `struct deque` whose `data` is null (with
 /// `capacity == 0`) or a bmem block of `capacity` bytes, in a state the deque
 /// functions can reach; nothing else may access it during the call.
+#[inline]
 unsafe fn with_deque<R>(dq: *mut deque, f: impl FnOnce(&mut Deque<BmemBuf>) -> R) -> R {
     struct WriteBack {
         dq: *mut deque,
@@ -115,6 +116,7 @@ unsafe fn with_deque<R>(dq: *mut deque, f: impl FnOnce(&mut Deque<BmemBuf>) -> R
 ///
 /// `src` must be valid for reads of `size` bytes (any pointer when `size`
 /// is 0) and must not overlap the deque's buffer.
+#[inline]
 unsafe fn bytes<'a>(src: *const c_void, size: usize) -> &'a [u8] {
     if size == 0 {
         &[]
@@ -218,6 +220,7 @@ pub unsafe fn deque_push_back(dq: *mut deque, data: *const c_void, size: usize) 
 /// # Safety
 ///
 /// As [`with_deque`], and `data` as in [`bytes`].
+#[inline]
 pub unsafe fn deque_push_front(dq: *mut deque, data: *const c_void, size: usize) {
     // SAFETY: forwarded caller contracts.
     unsafe {

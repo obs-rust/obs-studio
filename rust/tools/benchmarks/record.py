@@ -7,6 +7,10 @@ Usage: uv run rust/tools/benchmarks/record.py --cpu 7 --output baseline.json
 CATEGORIES must all be in a full run; the port benches add other groups,
 which are recorded too (#3003). --category runs and requires only the named
 categories, for the before/after numbers of one kernel (#3009).
+
+--max-ratio R turns a recorded pair above the Rust/C time bound into a failed
+run, so a known breach is reproducible as a check instead of a report row
+(#3138). The bound is the one the release criteria use.
 """
 
 from __future__ import annotations
@@ -37,6 +41,8 @@ COMMAND = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_com
 # arm64, so a small shipped-C advantage there is expected. MSVC gets the same
 # level as /O2. Recorded so a baseline names the C it measured, not the profile.
 C_FLAGS = "-O2 -ffp-contract=off -fno-strict-aliasing"
+# The Rust/C median time ratio the release criteria bound (#1295, #3138).
+BOUND = 1.10
 
 
 def report_metadata(
@@ -76,7 +82,7 @@ def report_metadata(
         "command": command + options,
         "categories": sorted(required or CATEGORIES),
         "baselines": baselines,
-        "threshold_rust_over_c": 1.10,
+        "threshold_rust_over_c": BOUND,
     }
 
 
@@ -184,10 +190,22 @@ def summarize(runs: list[dict]) -> list[dict]:
         row["paired_run_ratio_range"] = [min(ratios), max(ratios)]
         row["status"] = (
             "C control in both builds" if key.startswith("dstr/printf_control/")
-            else "over 10% bound" if ratio > 1.10 else "within 10% bound"
+            else f"over {BOUND:.0%} bound" if ratio > BOUND else f"within {BOUND:.0%} bound"
         )
         rows.append(row)
     return rows
+
+
+def over_bound(results: list[dict], bound: float = BOUND) -> list[dict]:
+    """Rows whose median Rust/C ratio is above `bound` (#3138).
+
+    `dstr/printf_control` runs C in both builds, so its ratio says nothing
+    about the port and is never a breach.
+    """
+    return [
+        row for row in results
+        if row["status"] != "C control in both builds" and row["rust_over_c"] > bound
+    ]
 
 
 def main() -> None:
@@ -197,6 +215,8 @@ def main() -> None:
     parser.add_argument("--cpu", type=int)
     parser.add_argument("--category", action="append", default=[], choices=sorted(CATEGORIES),
                         help="run and require only this category (repeatable)")
+    parser.add_argument("--max-ratio", type=float,
+                        help="fail the run when a pair's median Rust/C ratio is above this")
     args = parser.parse_args()
     if args.repeats < 3:
         parser.error("at least three complete runs are required for a median and range")
@@ -241,6 +261,16 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"Recorded {len(report['results'])} complete comparisons: {args.output}", flush=True)
+    if args.max_ratio is not None:
+        breaches = over_bound(report["results"], args.max_ratio)
+        for row in breaches:
+            print(
+                f"over {args.max_ratio:.2f}: {row['benchmark']} "
+                f"{row['rust_over_c']:.2f}x the C ({row['status']})",
+                flush=True,
+            )
+        if breaches:
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

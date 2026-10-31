@@ -68,6 +68,7 @@ enum Src<'a> {
 
 impl Src<'_> {
     /// Fills `dst` from the source, starting at byte `from` of it.
+    #[inline]
     fn copy_to(self, dst: &mut [u8], from: usize) {
         match self {
             Src::Bytes(b) => dst.copy_from_slice(&b[from..from + dst.len()]),
@@ -157,6 +158,7 @@ impl<B: DequeBuf> Deque<B> {
     }
 
     /// `deque_ensure_capacity`: grows for the already increased `size`.
+    #[inline]
     fn ensure_capacity(&mut self) {
         if self.st.size <= self.st.capacity {
             return;
@@ -234,6 +236,7 @@ impl<B: DequeBuf> Deque<B> {
         }
     }
 
+    #[inline]
     fn push_front_src(&mut self, src: Src<'_>, size: usize) {
         self.st.size += size;
         self.ensure_capacity();
@@ -266,6 +269,7 @@ impl<B: DequeBuf> Deque<B> {
     }
 
     /// `deque_push_front`.
+    #[inline]
     pub fn push_front(&mut self, data: &[u8]) {
         self.push_front_src(Src::Bytes(data), data.len());
     }
