@@ -361,8 +361,9 @@ static void vmic_unload_stale(const char *dir)
 /* All of "pactl list sources short", or NULL. */
 static char *vmic_list_sources(void)
 {
-	FILE *fp = popen(is_flatpak_sandbox() ? "flatpak-spawn --host pactl list sources short 2>/dev/null"
-					      : "pactl list sources short 2>/dev/null",
+	FILE *fp = popen(is_flatpak_sandbox() ? VMIC_PACTL_TIMEOUT
+				 "flatpak-spawn --host pactl list sources short 2>/dev/null"
+					      : VMIC_PACTL_TIMEOUT "pactl list sources short 2>/dev/null",
 			 "r");
 	if (!fp)
 		return NULL;
