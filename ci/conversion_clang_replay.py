@@ -106,9 +106,14 @@ def clang_command(entry: dict[str, str], compiler: str = "clang") -> list[str]:
     tokens = shlex.split(entry["command"])
     command = [compiler]
     skip_next = False
+    started = False
     for token in tokens[1:]:
         if skip_next:
             skip_next = False
+            continue
+        # A compiler launcher (the sanitizer tree configures zccache) sits in
+        # front of the compiler path, so the first non-flag token is not ours.
+        if not started and not token.startswith("-"):
             continue
         if token in OUTPUT_FLAGS:
             skip_next = True
@@ -117,6 +122,7 @@ def clang_command(entry: dict[str, str], compiler: str = "clang") -> list[str]:
         # real configuration and stays.
         if token in COMPILE_ONLY_FLAGS or token in PINS or token == "-Werror":
             continue
+        started = True
         command.append(token)
     command.extend(["-fsyntax-only", *WARNINGS, entry["file"]])
     return command

@@ -57,6 +57,16 @@ class ClangCommandTest(unittest.TestCase):
         for warning in ("-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"):
             self.assertIn(warning, command)
 
+    def test_a_compiler_launcher_is_not_the_compiler(self) -> None:
+        # The sanitizer tree configures zccache as the launcher, so the entry
+        # reads "<launcher> <compiler> ...": swapping only the launcher would
+        # hand clang the real compiler path as an input file.
+        launched = {**ENTRY, "command": ENTRY["command"].replace("/usr/bin/cc", "zccache /usr/bin/cc", 1)}
+        command = clang_command(launched)
+        self.assertEqual(command[0], "clang")
+        self.assertNotIn("/usr/bin/cc", command[:2])
+        self.assertNotIn("zccache", command)
+
     def test_werror_is_dropped_so_every_site_is_reported(self) -> None:
         self.assertNotIn("-Werror", clang_command(ENTRY))
 
