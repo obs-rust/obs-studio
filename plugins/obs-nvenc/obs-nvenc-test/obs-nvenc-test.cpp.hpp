@@ -447,9 +447,11 @@ bool nvenc_checks(codec_caps_map &caps, vector<device_info> &device_infos)
 		return false;
 	}
 
-	device_infos.resize(cuda_devices);
+	/* cuDeviceGetCount reports a signed count; the vector sizes by index, so the
+	 * conversions are stated here and the CUDA adapter index stays an int. */
+	device_infos.resize(static_cast<size_t>(cuda_devices));
 	for (int idx = 0; idx < cuda_devices; idx++) {
-		if (get_adapter_caps(idx, caps, device_infos[idx], nvml, session_limit)) {
+		if (get_adapter_caps(idx, caps, device_infos[static_cast<size_t>(idx)], nvml, session_limit)) {
 			nvenc_devices++;
 		}
 	}
