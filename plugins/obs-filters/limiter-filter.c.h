@@ -146,10 +146,17 @@ static void limiter_analyze_envelope(struct limiter_data *cd, float **samples, c
 
 static inline void limiter_process_compression(const struct limiter_data *cd, float **samples, uint32_t num_samples)
 {
+	/* Below the threshold the gain is exactly db_to_mul(0) = 1; the margin
+	 * leaves samples near it on the exact path (#3190). */
+	const float below_threshold = db_to_mul(cd->threshold) * 0.9999f;
+
 	for (size_t i = 0; i < num_samples; ++i) {
-		const float env_db = mul_to_db(cd->envelope_buf[i]);
-		float gain = cd->slope * (cd->threshold - env_db);
-		gain = db_to_mul(fminf(0, gain));
+		float gain = 1.0f;
+		if (!(cd->envelope_buf[i] < below_threshold)) {
+			const float env_db = mul_to_db(cd->envelope_buf[i]);
+			gain = cd->slope * (cd->threshold - env_db);
+			gain = db_to_mul(fminf(0, gain));
+		}
 
 		for (size_t c = 0; c < cd->num_channels; ++c) {
 			if (samples[c]) {

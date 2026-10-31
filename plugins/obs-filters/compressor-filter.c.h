@@ -347,10 +347,19 @@ static void analyze_sidechain(struct compressor_data *cd, const uint32_t num_sam
 
 static inline void process_compression(const struct compressor_data *cd, float **samples, uint32_t num_samples)
 {
+	/* Below the threshold the gain is exactly db_to_mul(0) = 1. The margin
+	 * keeps log10f rounding from deciding a sample near the threshold, so
+	 * those still take the exact path and the output stays bit-identical
+	 * (#3190). */
+	const float below_threshold = db_to_mul(cd->threshold) * 0.9999f;
+
 	for (size_t i = 0; i < num_samples; ++i) {
-		const float env_db = mul_to_db(cd->envelope_buf[i]);
-		float gain = cd->slope * (cd->threshold - env_db);
-		gain = db_to_mul(fminf(0, gain));
+		float gain = 1.0f;
+		if (!(cd->envelope_buf[i] < below_threshold)) {
+			const float env_db = mul_to_db(cd->envelope_buf[i]);
+			gain = cd->slope * (cd->threshold - env_db);
+			gain = db_to_mul(fminf(0, gain));
+		}
 
 		for (size_t c = 0; c < cd->num_channels; ++c) {
 			if (samples[c]) {

@@ -358,7 +358,8 @@ static inline void process_sample(size_t idx, float *samples, float *env_buf, fl
 	/* output                            */
 
 	if (!is_upwcomp) {
-		gain = db_to_mul(fminf(0, gain_db[idx]));
+		/* fminf(0, x) is 0 unless x < 0, and db_to_mul(0) is exactly 1. */
+		gain = gain_db[idx] < 0.0f ? db_to_mul(gain_db[idx]) : 1.0f;
 	} else {
 		gain = db_to_mul(gain_db[idx]);
 	}
