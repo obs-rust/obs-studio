@@ -203,11 +203,14 @@ publish a cache.
 - **Toolchain:** soldr's LLVM and the SDK soldr provisions for that OS (the Apple SDK, or the xwin MSVC CRT + Windows SDK).
 - **Dependencies:** the same prebuilt Windows/macOS dependencies the real build uses (pinned in `CMakePresets.json`, unpacked into `.deps/`).
 - **Sources:** the same file lists as the real build (`libobs/cmake/sources.cmake`), including both the C build's ported files and the Rust build's C halves.
-- **Output:** objects only; it compiles and links nothing.
+- **Output:** objects only by default; it compiles and links nothing. `-DOBS_CROSS_LINK=ON` adds a shared libobs (`obs.dll` / `obs.dylib`) per alias, from the same sources the shipped hybrid links (including the `libobs-rust` staticlib, `deps/libcaption` and the generated version/core-module objects), against the prebuilt `.deps` import libraries. It stays opt-in because the link needs those inputs and a working cross linker, which not every host has.
 
 ```sh
 cmake -S cmake/cross -B build_cross_win-x64 -G Ninja -DOBS_CROSS_TARGET=win-x64
 cmake --build build_cross_win-x64
+# link a real libobs (DLL/dylib) for the alias:
+cmake -S cmake/cross -B build_cross_win-x64 -DOBS_CROSS_LINK=ON
+cmake --build build_cross_win-x64 --target libobs-cross-shared
 # or from a configured OBS build:
 cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64, cross-all
 ```
@@ -218,7 +221,7 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
   - `--clean` starts the build volume over.
 - **Warnings** are reported; `-DOBS_CROSS_WERROR=ON` makes them errors.
 - **Getting soldr:** `cmake/common/soldr.cmake` uses soldr from `PATH`, or downloads the version CI pins and checks its SHA256 (`ci/test_soldr_pin.py` keeps that pin equal to the workflows').
-- **Finding the toolchain:** it runs `soldr toolchain prepare`, then finds LLVM and the SDK under soldr's root. That changes to `soldr cc --target <triple>` once soldr exposes Apple and MSVC there.
+- **Finding the toolchain:** `cmake/common/soldr.cmake` asks soldr for it (`soldr cc --target <triple> --print-cc/--print-cxx/--print-linker/--print-sysroot/--print-ar/--print-rc`), so a soldr layout change no longer breaks the check (`ci/test_soldr_cross_toolchain.py`).
 - **In PR CI:** the `Cross Compile 🧰` job in `build-project.yaml` runs it, compile-only, for the aliases `ci/ci_scope.py` selects (`cross_targets`).
   It runs when a change touches a Windows or macOS file in libobs or a component the cross `CMakeLists.txt` names by `DIR`, or the check itself (`cmake/cross/`, `cmake/common/soldr.cmake`); full runs build both (#1294).
   The frontend's Windows and macOS Qt groups are in it (#2408): the target's prebuilt Qt6 headers, with `ui_*.h` from the pinned Linux `uic`; moc is skipped, since nothing links.

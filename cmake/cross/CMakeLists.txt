@@ -198,6 +198,32 @@ function(_obs_cross_shared_libobs name)
   _obs_cross_object_library(${name}-objects ${_sources})
   add_library(${name} SHARED)
   target_link_libraries(${name} PRIVATE ${name}-objects)
+  # The production hybrid links the Rust halves from libobs-rust, so the cross
+  # link needs that staticlib too: without it the ported C halves' shims stay
+  # undefined. Build it with soldr cargo for the alias's triple.
+  if(OBS_CROSS_TARGET STREQUAL "win-x64")
+    set(_rust_triple "x86_64-pc-windows-msvc")
+    set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/libobs_rust.lib")
+  elseif(OBS_CROSS_TARGET STREQUAL "mac-arm64")
+    set(_rust_triple "aarch64-apple-darwin")
+    set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/liblibobs_rust.a")
+  elseif(OBS_CROSS_TARGET STREQUAL "mac-x64")
+    set(_rust_triple "x86_64-apple-darwin")
+    set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/liblibobs_rust.a")
+  endif()
+  add_custom_command(
+    OUTPUT "${_rust_archive}"
+    COMMAND soldr cargo build --release --target "${_rust_triple}" -p libobs-rust
+    WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
+    COMMENT "Building libobs-rust staticlib for ${_rust_triple}"
+    DEPENDS "${OBS_SOURCE_ROOT}/Cargo.toml" "${OBS_SOURCE_ROOT}/Cargo.lock"
+    USES_TERMINAL
+  )
+  add_custom_target(${name}-rust DEPENDS "${_rust_archive}")
+  add_dependencies(${name} ${name}-rust)
+  # Whole archive: libobs itself does not call every shim (plugins do), and the
+  # DLL's export set must keep them.
+  target_link_libraries(${name} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,${_rust_archive}>")
   target_link_directories(${name} PRIVATE "${OBS_CROSS_DEPS}/lib")
   set_target_properties(
     ${name}
@@ -213,9 +239,53 @@ function(_obs_cross_shared_libobs name)
   # (libobs/CMakeLists.txt:121-138, libobs/cmake/os-*.cmake). FFmpeg and
   # jansson come from the prebuilt dependencies; the OS import libraries are
   # lower case in the Linux-side xwin SDK (a Windows host finds them either way).
-  set(_common_deps avcodec avformat avutil swscale swresample jansson)
+  set(
+    _common_deps
+    avcodec
+    avformat
+    avutil
+    swscale
+    swresample
+    jansson
+  )
   if(_host STREQUAL WINDOWS)
-    target_link_libraries(${name} PRIVATE ${_common_deps} avrt dwmapi dxgi winmm rpcrt4)
+    # The Rust standard library pulls winsock and NT APIs in through its
+    # objects; the shipped libobs link gets these from the same system libs.
+    target_link_libraries(
+      ${name}
+      PRIVATE ${_common_deps} avrt dwmapi dxgi winmm rpcrt4 ws2_32 ntdll bcrypt userenv
+    )
+    # The Rust staticlib's object directives request MSVCRT.lib / OLDNAMES.lib
+    # with Windows' case, while the Linux-side xwin SDK ships msvcrt.lib /
+    # oldnames.lib in lower case. Link against upper-case aliases so the
+    # directives resolve on a case-sensitive host.
+    if(OBS_CROSS_TARGET STREQUAL "win-x64")
+      set(_crt_arch x86_64)
+    else()
+      set(_crt_arch aarch64)
+    endif()
+    set(_crt_lib "${CMAKE_FIND_ROOT_PATH}/crt/lib/${_crt_arch}")
+    set(_case_lib_dir "${CMAKE_BINARY_DIR}/cross-case-libs")
+    file(MAKE_DIRECTORY "${_case_lib_dir}")
+    foreach(_lib MSVCRT.lib OLDNAMES.lib)
+      string(TOLOWER "${_lib}" _lower)
+      execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${_crt_lib}/${_lower}" "${_case_lib_dir}/${_lib}"
+      )
+    endforeach()
+    target_link_directories(${name} PRIVATE "${_case_lib_dir}")
+    # Rust no_mangle shims in a staticlib are not dllexport, so name them, as
+    # libobs/cmake/rust-os-windows.cmake does for the native build.
+    file(GLOB _obs_rust_export_fragments "${OBS_SOURCE_ROOT}/libobs/cmake/rust-exports.d/*.txt")
+    foreach(_fragment IN LISTS _obs_rust_export_fragments)
+      file(STRINGS "${_fragment}" _obs_rust_exports REGEX "^[A-Za-z_]")
+      foreach(_sym IN LISTS _obs_rust_exports)
+        if(_sym MATCHES " unix$")
+          continue()
+        endif()
+        target_link_options(${name} PRIVATE "LINKER:/EXPORT:${_sym}")
+      endforeach()
+    endforeach()
     # w32-pthreads is its own DLL in the shipped build
     # (deps/w32-pthreads/CMakeLists.txt: add_library(w32-pthreads SHARED)), so
     # its source and its DllMain stay in a separate shared library here too.
@@ -226,7 +296,8 @@ function(_obs_cross_shared_libobs name)
     )
     target_compile_definitions(${name}-pthreads PRIVATE __CLEANUP_C PTW32_BUILD)
     set_target_properties(
-      ${name}-pthreads PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED TRUE PREFIX "" OUTPUT_NAME w32-pthreads
+      ${name}-pthreads
+      PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED TRUE PREFIX "" OUTPUT_NAME w32-pthreads
     )
     target_link_libraries(${name} PRIVATE ${name}-pthreads)
     set_target_properties(${name} PROPERTIES IMPORT_PREFIX "" IMPORT_SUFFIX ".lib")
@@ -247,7 +318,36 @@ function(_obs_cross_shared_libobs name)
 endfunction()
 
 if(OBS_CROSS_LINK)
+  # The real build's libobs also links the caption static library and two
+  # generated object libraries (version strings and the core module list), none
+  # of which the compile-only cross check needs. The link does.
+  add_subdirectory("${OBS_SOURCE_ROOT}/deps/libcaption" "${CMAKE_BINARY_DIR}/deps/libcaption")
+  set(OBS_VERSION "cross-check")
+  set(OBS_VERSION_CANONICAL "cross-check")
+  set(OBS_COMMIT "cross-check")
+  set(OBS_CORE_MODULE_COUNT 0)
+  set(OBS_CORE_MODULE_LIST "\tNULL")
+  configure_file("${OBS_SOURCE_ROOT}/libobs/obsversion.c.in" "${CMAKE_BINARY_DIR}/config/obsversion.c" @ONLY)
+  configure_file(
+    "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+    "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+    @ONLY
+  )
+  add_library(
+    libobs-cross-generated
+    OBJECT
+    "${CMAKE_BINARY_DIR}/config/obsversion.c"
+    "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+  )
+  target_include_directories(libobs-cross-generated PRIVATE "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+  if(_host STREQUAL WINDOWS)
+    target_sources(libobs-cross-generated PRIVATE "${CMAKE_CURRENT_LIST_DIR}/xwin-sse-shims.c")
+  endif()
   _obs_cross_shared_libobs(libobs-cross-shared)
+  target_link_libraries(libobs-cross-shared PRIVATE OBS::caption libobs-cross-generated)
+  if(_host STREQUAL WINDOWS)
+    target_link_libraries(libobs-cross-shared PRIVATE libobs-cross-obfuscate)
+  endif()
 endif()
 
 set_source_files_properties(

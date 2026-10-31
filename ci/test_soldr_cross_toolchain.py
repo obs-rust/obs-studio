@@ -89,5 +89,43 @@ class SoldrCrossToolchainTest(unittest.TestCase):
                 self.assertRegex(entry.group(1), r"^(x86_64|aarch64)-\S+$")
 
 
+CROSS_CMAKE = ROOT / "cmake/cross/CMakeLists.txt"
+RUST_EXPORTS = ROOT / "libobs/cmake/rust-exports.d"
+
+
+class CrossLinkTest(unittest.TestCase):
+    """The opt-in `OBS_CROSS_LINK` lane links a real libobs for each alias."""
+
+    def test_link_is_opt_in_and_defaults_off(self):
+        text = CROSS_CMAKE.read_text()
+        option = re.search(r"^option\(OBS_CROSS_LINK\b[^)]*\)$", text, re.M)
+        self.assertIsNotNone(option, "OBS_CROSS_LINK option not found")
+        assert option is not None
+        self.assertRegex(option.group(0), r"\bOFF\)$", "the link lane stays opt-in")
+        self.assertRegex(
+            text,
+            r"if\(OBS_CROSS_LINK\)\s*\n(?:.*\n)*?\s*_obs_cross_shared_libobs\(",
+            "the shared libobs is built only when OBS_CROSS_LINK is on",
+        )
+
+    def test_link_uses_the_hybrid_rust_staticlib_per_alias(self):
+        text = CROSS_CMAKE.read_text()
+        for triple in (
+            "x86_64-pc-windows-msvc",
+            "aarch64-apple-darwin",
+            "x86_64-apple-darwin",
+        ):
+            with self.subTest(triple=triple):
+                self.assertIn(triple, text, "every alias links its Rust staticlib")
+        self.assertIn("-p libobs-rust", text, "the staticlib is the production one")
+        self.assertIn("LINK_LIBRARY:WHOLE_ARCHIVE", text, "every shim must be linked")
+
+    def test_windows_link_exports_every_rust_shim(self):
+        text = CROSS_CMAKE.read_text()
+        self.assertIn("rust-exports.d", text, "the Windows link names the Rust shims")
+        self.assertTrue(RUST_EXPORTS.is_dir(), "the shim fragments moved; update the test")
+        self.assertIn("/EXPORT:", text, "Rust shims are not dllexport in a staticlib")
+
+
 if __name__ == "__main__":
     unittest.main()
