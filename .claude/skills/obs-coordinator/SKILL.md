@@ -245,6 +245,34 @@ Look for issues whose next step was agreed but never taken:
 
 Example: #1067 was closed after its follow-up became Discussion #1418.
 
+## 4a. User quotes (weekly)
+
+The README's "What users say" section comes from `tools/user_quotes.json`
+(#3239). You are its reviewer: CI has no model access, so no workflow
+judges quotes. Once a week, when `scanned_through` in that file on
+`origin/master` is more than 7 days old and no open PR from an
+`infra/user-quotes-*` branch exists:
+
+1. Branch from `origin/master` as `infra/user-quotes-<YYYY-MM-DD>`.
+2. `uv run tools/user_quotes.py collect --out <scratch>/candidates.json`.
+   No candidates: stop, there is nothing to record.
+3. Judge every candidate against the `rule` in that file, by reading it
+   (no word lists), and write `<scratch>/verdicts.json`:
+   `{"<comment url>": ["approved", ""] | ["rejected", "<short neutral reason>"]}`.
+   When unsure, reject.
+4. `uv run tools/user_quotes.py record <scratch>/candidates.json <scratch>/verdicts.json`.
+   It checks each approved text against the live comment and rewrites the
+   README section.
+5. Commit (`tools: Refresh the README user quotes`, `Refs #3239.`), push
+   the branch and open a PR to master that lists each approved quote with
+   its link, and each rejection with its reason. Write logins without `@`,
+   and put any quote that contains an `@login` in a code span, so the PR
+   pings nobody. Never push to master. The PR is queued like any other.
+
+To strike an approved quote, change its line to `"status": "rejected"` with
+a `"reason"` and drop its `login` and `text`, then run `render`. To look at
+a rejected comment again, delete its line and run `collect --all`.
+
 ## 5. Report
 
 End each tick with a short list of what you did (queued, rebased, re-ran,
