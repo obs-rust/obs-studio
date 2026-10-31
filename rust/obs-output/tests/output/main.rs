@@ -12,6 +12,7 @@ mod encoder_bind_parity;
 mod encoder_gpu_gates;
 mod encoder_gpu_gates_parity;
 mod encoder_gpu_rescale;
+mod encoder_gpu_rescale_parity;
 mod encoder_group_reconfig;
 mod encoder_group_reconfig_parity;
 mod encoder_lifecycle;

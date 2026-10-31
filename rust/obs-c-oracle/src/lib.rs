@@ -66,6 +66,7 @@ pub mod effect_passes;
 pub mod encoder_audio_start;
 pub mod encoder_bind;
 pub mod encoder_gpu_gates;
+pub mod encoder_gpu_rescale;
 pub mod encoder_group_reconfig;
 pub mod encoder_lifecycle;
 pub mod encoder_packet;
