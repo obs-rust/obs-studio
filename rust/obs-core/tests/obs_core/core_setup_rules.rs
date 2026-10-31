@@ -9,15 +9,26 @@
 //! `obs_set_audio_monitoring_device()`, `obs_get_video_frame_counts()` and
 //! `obs_find_data_file()` make for the C test's calls.
 //!
+//! The four `test_core_setup_rules_ms_*` tests mirror
+//! `test/cmocka/test_core_setup_rules_ms_steps.c` (the buffering in
+//! milliseconds, moved to `libobs/obs-core-setup-rules-ms.c.h`) the same
+//! way.
+//!
 //! Cases marked "characterized, not endorsed" are odd but real (#2878) and
 //! kept as the C has them. The tests after those pin the edges of each
 //! function, and proptests cover any input.
+//!
+//! One intentional difference, in [`buffer_ms`] (#3272): the C divides by
+//! a zero rate, which traps, and its `int` product overflows from 2098
+//! ticks. The core gives 0 for a zero rate and computes in `i64`, clamped
+//! to `i32`. The C test leaves both out; `buffer_ms_zero_rate` and
+//! `buffer_ms_past_int` pin them here.
 
 use obs_core::core_setup_rules::{
     AUDIO_OUTPUT_FRAMES, AudioStep, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, Mix,
-    VideoGate, VideoStep, aoc_check, audio_refused, buffer_default_ticks, buffer_set, buffer_ticks,
-    cmdline_len, cmdline_set, cmdline_table, data_file_found, data_path_match, latest_newer,
-    mix_step, monitor_missing, monitor_same, video_gate,
+    SEC_TO_MSEC, VideoGate, VideoStep, aoc_check, audio_refused, buffer_default_ticks, buffer_ms,
+    buffer_set, buffer_ticks, cmdline_len, cmdline_set, cmdline_table, data_file_found,
+    data_path_match, latest_newer, mix_step, monitor_missing, monitor_same, video_gate,
 };
 use proptest::prelude::*;
 
@@ -78,16 +89,20 @@ fn counted(is_main: bool, encoder_only: bool, same_view: bool, has_video: bool) 
     (step == Mix::Count, reads)
 }
 
-/// The buffering `obs_get_audio_info2()` reports from the ticks: ticks *
-/// 1024 * 1000 / rate, in `i32` as the C computes it.
+/// The buffering `obs_get_audio_info2()` reports from the ticks, which
+/// `obs_reset_audio2()` stores as an `int`.
 fn buffering_ms(rate: u32, ms: u32) -> i32 {
     let ticks = if buffer_set(ms) {
         buffer_ticks(ms, rate)
     } else {
         buffer_default_ticks()
     };
-    let ticks = i32::try_from(ticks).unwrap();
-    ticks * 1024 * 1000 / i32::try_from(rate).unwrap()
+    buffer_ms(ticks.cast_signed(), rate)
+}
+
+/// The expression `obs.c` wrote before the move, where it is defined.
+fn as_written(ticks: i32, rate: u32) -> i32 {
+    ticks * 1024 * 1000 / rate.cast_signed()
 }
 
 // ---------------------------------------------------------------- steps
@@ -422,6 +437,100 @@ fn test_find_data_file_order() {
 
 // ---------------------------------------------------------------- edges
 
+// ------------------------------------------------- buffering milliseconds
+
+/// `test_core_setup_rules_ms_steps.c`: `test_constants`.
+#[test]
+fn test_core_setup_rules_ms_constants() {
+    assert_eq!(AUDIO_OUTPUT_FRAMES, 1024);
+    assert_eq!(SEC_TO_MSEC, 1000);
+}
+
+/// `test_core_setup_rules_ms_steps.c`: `test_buffer_ms`.
+#[test]
+fn test_core_setup_rules_ms_buffer_ms() {
+    assert_eq!(buffer_ms(45, 44100), 1044);
+    assert_eq!(buffer_ms(45, 48000), 960);
+    assert_eq!(buffer_ms(45, 96000), 480);
+    assert_eq!(buffer_ms(0, 48000), 0);
+    assert_eq!(buffer_ms(1, 1), 1_024_000);
+    assert_eq!(buffer_ms(1, 48000), 21);
+    assert_eq!(buffer_ms(47, 48000), 1002);
+    assert_eq!(buffer_ms(2097, 48000), 44736);
+    assert_eq!(buffer_ms(2097, 1), 2_147_328_000);
+}
+
+/// `test_core_setup_rules_ms_steps.c`: `test_rate_past_int`.
+/// Characterized, not endorsed: the rate is cast to i32.
+#[test]
+fn test_core_setup_rules_ms_rate_past_int() {
+    assert_eq!(buffer_ms(45, u32::MAX), -46_080_000);
+    assert_eq!(buffer_ms(45, 0xffff_fc00), -45000);
+    assert_eq!(buffer_ms(45, 0x8000_0000), 0);
+}
+
+/// `test_core_setup_rules_ms_steps.c`: `test_every_tick`.
+#[test]
+fn test_core_setup_rules_ms_every_tick() {
+    let rates = [
+        1,
+        7,
+        8000,
+        22050,
+        44100,
+        48000,
+        96000,
+        192_000,
+        0x7fff_ffff,
+        0x8000_0000,
+        0x8000_0001,
+        0xffff_fc00,
+        u32::MAX,
+    ];
+    for rate in rates {
+        for ticks in -2097..=2097 {
+            assert_eq!(
+                buffer_ms(ticks, rate),
+                as_written(ticks, rate),
+                "{ticks} {rate}"
+            );
+        }
+    }
+}
+
+/// The C divides by the zero rate and traps; the core gives 0 (#3272), so
+/// `obs_reset_audio2()` goes on to `obs_init_audio()`, which refuses the
+/// rate.
+#[test]
+fn buffer_ms_zero_rate() {
+    for ticks in [0, 1, 45, 2097, 2098, 4195, i32::MAX, -1, i32::MIN] {
+        assert_eq!(buffer_ms(ticks, 0), 0, "{ticks}");
+    }
+}
+
+/// The C's `int` product overflows from 2098 ticks; the core computes in
+/// `i64` (#3272) and clamps the quotient to `i32`.
+#[test]
+fn buffer_ms_past_int() {
+    // The most ticks buffer_ticks() gives: u32::MAX frames' worth.
+    let most = buffer_ticks(u32::MAX, 1).cast_signed();
+    assert_eq!(most, 4195);
+    assert_eq!(buffer_ms(2098, 48000), 44757);
+    assert_eq!(buffer_ms(most, 48000), 89493);
+    assert_eq!(buffer_ms(most, 192_000), 22373);
+    // 60000 ms at 48 kHz: 2813 ticks.
+    assert_eq!(buffering_ms(48000, 60000), 60010);
+    // A quotient past i32 is clamped.
+    assert_eq!(buffer_ms(2098, 1), i32::MAX);
+    assert_eq!(buffer_ms(most, 1), i32::MAX);
+    assert_eq!(buffer_ms(i32::MAX, 1), i32::MAX);
+    assert_eq!(buffer_ms(2098, u32::MAX), i32::MIN);
+    assert_eq!(buffer_ms(i32::MIN, u32::MAX), i32::MAX);
+    assert_eq!(buffer_ms(i32::MIN, 1), i32::MIN);
+    // A rate cast to i32::MIN still divides by it.
+    assert_eq!(buffer_ms(most, 0x8000_0000), -2);
+}
+
 #[test]
 fn data_file_found_each_value() {
     assert!(data_file_found(true));
@@ -553,6 +662,18 @@ proptest! {
         prop_assert_eq!(ticks, frames.div_ceil(AUDIO_OUTPUT_FRAMES));
         prop_assert!(ticks <= (u32::MAX / 1000).div_ceil(AUDIO_OUTPUT_FRAMES));
         prop_assert_eq!(buffer_set(ms), ms != 0);
+    }
+
+    #[test]
+    fn buffer_ms_any(ticks in any::<i32>(), rate in any::<u32>()) {
+        let want = match i64::from(rate.cast_signed()) {
+            0 => 0,
+            rate => {
+                let ms = i64::from(ticks) * 1_024_000 / rate;
+                i32::try_from(ms).unwrap_or(if ms < 0 { i32::MIN } else { i32::MAX })
+            }
+        };
+        prop_assert_eq!(buffer_ms(ticks, rate), want);
     }
 
     #[test]

@@ -1,5 +1,5 @@
-//! Safe core of `libobs/obs-core-setup-rules.c.h`: the setup rules of
-//! `obs.c`.
+//! Safe core of `libobs/obs-core-setup-rules.c.h` and
+//! `libobs/obs-core-setup-rules-ms.c.h`: the setup rules of `obs.c`.
 //!
 //! Each rule is asked where the C decided it, from the value `obs.c` reads
 //! at that point, so nothing is read or called that was not before:
@@ -12,6 +12,8 @@
 //!   audio buffering in ticks of [`AUDIO_OUTPUT_FRAMES`]: 0 ms takes the
 //!   default, any other is rounded up from `ms * rate / 1000` frames, in
 //!   `u32` (the product wraps);
+//! - [`buffer_ms`]: those ticks back in milliseconds, for the reset's log
+//!   and `obs_get_audio_info2()`, the rate cast to `i32` as the C does;
 //! - [`cmdline_set`], [`cmdline_len`] and [`cmdline_table`]: the command
 //!   line is set once (while its stored `argc` is 0), and its copy's
 //!   strings (each with its terminator) follow a table of `argc + 1`
@@ -51,6 +53,9 @@ pub const AUDIO_OUTPUT_FRAMES: u32 = 1024;
 /// The buffering `obs_reset_audio2()` takes for a `max_buffering_ms` of 0,
 /// in ticks.
 pub const DEFAULT_TICKS: u32 = 45;
+
+/// `SEC_TO_MSEC`: the milliseconds in a second.
+pub const SEC_TO_MSEC: i32 = 1000;
 
 /// The version `obs_get_latest_input_type_id()` starts from.
 pub const LATEST_NONE: i32 = -1;
@@ -154,6 +159,15 @@ pub fn buffer_ticks(max_buffering_ms: u32, samples_per_sec: u32) -> u32 {
 /// Same contract as C `obs_core_setup_rules_buffer_default_ticks`.
 pub fn buffer_default_ticks() -> u32 {
     DEFAULT_TICKS
+}
+
+/// Same contract as C `obs_core_setup_rules_buffer_ms`: `ticks` of
+/// [`AUDIO_OUTPUT_FRAMES`] in milliseconds at `samples_per_sec`, rounded
+/// toward zero, with the rate cast to `i32` as the C casts it to `int`.
+#[expect(clippy::todo, reason = "RED: the port comes in the next commit")]
+pub fn buffer_ms(ticks: i32, samples_per_sec: u32) -> i32 {
+    let _ = (ticks, samples_per_sec);
+    todo!()
 }
 
 /// Same contract as C `obs_core_setup_rules_cmdline_set`: the command line
