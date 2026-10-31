@@ -165,7 +165,7 @@ uint32_t v4l2_busy_retry_delay_ms(uint32_t attempt)
 {
 	if (attempt >= 4)
 		return RETRY_MAX_MS;
-	uint32_t delay = RETRY_FIRST_MS << attempt;
+	uint32_t delay = (uint32_t)RETRY_FIRST_MS << attempt;
 	return delay < RETRY_MAX_MS ? delay : RETRY_MAX_MS;
 }
 

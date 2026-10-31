@@ -69,7 +69,7 @@ static void hdr_tonemap_filter_update(void *data, obs_data_t *settings)
 {
 	struct hdr_tonemap_filter_data *filter = data;
 
-	filter->transform = obs_data_get_int(settings, "transform");
+	filter->transform = (enum hdr_tonemap_transform)obs_data_get_int(settings, "transform");
 	filter->sdr_white_level_nits_i = 1.f / (float)obs_data_get_int(settings, "sdr_white_level_nits");
 	filter->hdr_input_maximum_nits = (float)obs_data_get_int(settings, "hdr_input_maximum_nits");
 	filter->hdr_output_maximum_nits = (float)obs_data_get_int(settings, "hdr_output_maximum_nits");
@@ -79,7 +79,7 @@ static void hdr_tonemap_filter_update(void *data, obs_data_t *settings)
 
 static bool transform_changed(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
 {
-	enum hdr_tonemap_transform transform = obs_data_get_int(settings, "transform");
+	enum hdr_tonemap_transform transform = (enum hdr_tonemap_transform)obs_data_get_int(settings, "transform");
 
 	const bool reinhard = transform == TRANSFORM_SDR_REINHARD;
 	const bool maxrgb_hdr = transform == TRANSFORM_HDR_MAXRGB;

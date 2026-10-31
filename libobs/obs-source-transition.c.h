@@ -833,7 +833,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 		for (size_t i = 0; i < 2; i++) {
 			if (state.s[i]) {
 				render_child(transition, state.s[i], i, source_space);
-				tex[i] = get_texture(transition, i);
+				tex[i] = get_texture(transition, (enum obs_transition_target)i);
 				if (!tex[i])
 					tex[i] = placeholder_texture;
 			} else {

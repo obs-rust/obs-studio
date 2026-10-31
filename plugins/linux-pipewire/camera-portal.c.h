@@ -1059,7 +1059,7 @@ static bool parse_format(struct camera_portal_source *dest, const char *json)
 		struct obs_pw_video_format format;
 
 		if (obs_data_get_bool(data, "encoded")) {
-			dest->subtype = obs_data_get_int(data, "video_format");
+			dest->subtype = (enum spa_media_subtype)obs_data_get_int(data, "video_format");
 			ret = true;
 		} else if (obs_pw_video_format_from_spa_format((uint32_t)obs_data_get_int(data, "video_format"),
 							       &format)) {

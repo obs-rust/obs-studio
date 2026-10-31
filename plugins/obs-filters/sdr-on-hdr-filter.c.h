@@ -64,14 +64,14 @@ static void sdr_on_hdr_filter_update(void *data, obs_data_t *settings)
 {
 	struct sdr_on_hdr_filter_data *filter = data;
 
-	filter->gamma = obs_data_get_int(settings, "gamma");
+	filter->gamma = (enum sdr_on_hdr_gamma)obs_data_get_int(settings, "gamma");
 	filter->multiplier = (float)obs_data_get_int(settings, "sdr_white_level_nits");
 	filter->power = (float)obs_data_get_double(settings, "power");
 }
 
 static bool gamma_changed(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
 {
-	enum sdr_on_hdr_gamma gamma = obs_data_get_int(settings, "gamma");
+	enum sdr_on_hdr_gamma gamma = (enum sdr_on_hdr_gamma)obs_data_get_int(settings, "gamma");
 
 	obs_property_set_visible(obs_properties_get(props, "power"), gamma == GAMMA_POWER);
 

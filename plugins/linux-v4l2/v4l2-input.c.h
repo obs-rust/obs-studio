@@ -147,8 +147,8 @@ static void v4l2_prep_obs_frame(struct v4l2_data *data, struct obs_source_frame 
 	frame->width = (uint32_t)data->width;
 	frame->height = (uint32_t)data->height;
 	frame->format = format;
-	video_format_get_parameters_for_format(VIDEO_CS_DEFAULT, data->color_range, format, frame->color_matrix,
-					       frame->color_range_min, frame->color_range_max);
+	video_format_get_parameters_for_format(VIDEO_CS_DEFAULT, (enum video_range_type)data->color_range, format,
+					       frame->color_matrix, frame->color_range_min, frame->color_range_max);
 
 	switch (data->pixfmt) {
 	case V4L2_PIX_FMT_NV12:
