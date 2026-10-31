@@ -76,7 +76,9 @@ static int start_server(void **state)
 	for (size_t i = 0; i < sizeof(tools) / sizeof(tools[0]); i++) {
 		if (!tool_exists(tools[i])) {
 			fprintf(stderr, "skipped: %s is not installed\n", tools[i]);
-			return 0;
+			/* CI installs them; a skip there would pass without testing
+			 * anything (#3186). */
+			return getenv("CI") ? -1 : 0;
 		}
 	}
 
@@ -108,7 +110,7 @@ static int start_server(void **state)
 	}
 	if (!have_server) {
 		fprintf(stderr, "skipped: the private sound server did not start (see %s)\n", log);
-		return 0;
+		return getenv("CI") ? -1 : 0;
 	}
 
 	assert_true(obs_startup("en-US", NULL, NULL));

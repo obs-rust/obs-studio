@@ -89,7 +89,9 @@ libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x234)
         m = module()
         for name in ('libgl1-mesa-dri', 'libegl-mesa0', 'vlc-plugin-base', 'pipewire',
                      'dbus-daemon', 'xvfb', 'xauth', 'cmake', m.PYTHON_RUNTIME_PACKAGE, 'ninja-build',
-                     'gcc', 'libc6-dev', 'libvlc-dev'):
+                     'gcc', 'libc6-dev', 'libvlc-dev',
+                     # test_v4l2_vmic_server runs a private pipewire-pulse (#3186).
+                     'pipewire-pulse', 'wireplumber', 'pulseaudio-utils'):
             self.assertIn(name, m.RUNTIME_TOOLS)
         self.assertNotIn('build-essential', m.RUNTIME_TOOLS)
 
