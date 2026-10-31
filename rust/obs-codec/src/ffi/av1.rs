@@ -4,6 +4,13 @@
 //! into `bmalloc` memory, which the callers `bfree`. As in `obs-av1.c`, the
 //! outputs are the only allocations: the core gives slices of the input and
 //! small stack buffers, which go straight into the `bmalloc` buffers (#1304).
+//! A metadata OBU is written by the core straight into its `bmalloc` buffer
+//! (#3175).
+
+use core::mem::MaybeUninit;
+use core::slice;
+
+use obs_util::ffi::darray::bmalloc;
 
 use super::packet::{bmalloc_concat, bmalloc_concat_iter, bytes};
 use crate::av1::{self, METADATA_TYPE_ITUT_T35};
@@ -65,12 +72,19 @@ pub unsafe extern "C" fn metadata_obu(
 ) {
     // SAFETY: the caller guarantees `source_bufsize` readable bytes.
     let payload = unsafe { bytes(source_buffer, source_bufsize) };
-    let (prefix, n) = av1::metadata_obu_prefix(payload.len(), metadata_type);
-    let parts: [&[u8]; 3] = [&prefix[..n], payload, &[av1::METADATA_TRAILING_BITS]];
-    // SAFETY: the caller guarantees both outputs are writable.
+    let len = av1::metadata_obu_len(payload.len());
+    // SAFETY: bmalloc returns `len` bytes for this call alone; the core
+    // writes all of them through `MaybeUninit`, so no byte is read before it
+    // is written. The caller guarantees both outputs are writable.
     unsafe {
-        *outbuf_size = n + payload.len() + 1;
-        *out_buffer = bmalloc_concat(&parts);
+        let out = bmalloc(len).cast::<u8>();
+        av1::write_metadata_obu(
+            payload,
+            metadata_type,
+            slice::from_raw_parts_mut(out.cast::<MaybeUninit<u8>>(), len),
+        );
+        *outbuf_size = len;
+        *out_buffer = out;
     }
 }
 

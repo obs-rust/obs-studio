@@ -186,31 +186,33 @@ pub fn extract_headers(data: &[u8]) -> Av1Headers {
 /// `metadata_obu`'s trailing bits after the payload.
 pub const METADATA_TRAILING_BITS: u8 = 0x80;
 
-/// The bytes of `metadata_obu` in front of the payload: the header byte,
-/// the leb128 size field (`encode_uleb128`, at most 10 bytes) and
-/// `metadata_type`, as a buffer and its used length. A metadata OBU is
-/// these bytes, the payload and [`METADATA_TRAILING_BITS`].
-#[must_use]
-pub fn metadata_obu_prefix(payload_len: usize, metadata_type: u8) -> ([u8; 12], usize) {
-    let mut out = [0u8; 12];
+/// The `obu_size` of a metadata OBU around a payload of `payload_len`
+/// bytes. C: `int64_t size_field = 1 + source_bufsize + 1;`
+fn metadata_size_field(payload_len: usize) -> u64 {
+    1 + payload_len as u64 + 1
+}
+
+/// Calls `put` with each byte of a metadata OBU in front of the payload: the
+/// header byte, the leb128 size field (`encode_uleb128`, at most 10 bytes)
+/// and `metadata_type`. Returns their number.
+fn metadata_prefix(payload_len: usize, metadata_type: u8, mut put: impl FnMut(usize, u8)) -> usize {
     // obu_type METADATA, obu_has_size_field set
-    out[0] = (OBU_METADATA << 3) | (1 << 1);
+    put(0, (OBU_METADATA << 3) | (1 << 1));
     let mut n = 1;
-    // C: int64_t size_field = 1 + source_bufsize + 1;
-    let mut val = 1 + payload_len as u64 + 1;
+    let mut val = metadata_size_field(payload_len);
     loop {
         let b = (val & 0x7f) as u8;
         val >>= 7;
         if val == 0 {
-            out[n] = b;
+            put(n, b);
             n += 1;
             break;
         }
-        out[n] = b | 0x80;
+        put(n, b | 0x80);
         n += 1;
     }
-    out[n] = metadata_type;
-    (out, n + 1)
+    put(n, metadata_type);
+    n + 1
 }
 
 /// The length of the metadata OBU [`write_metadata_obu`] writes around a
@@ -218,8 +220,10 @@ pub fn metadata_obu_prefix(payload_len: usize, metadata_type: u8) -> ([u8; 12], 
 /// `metadata_type`, the payload and [`METADATA_TRAILING_BITS`].
 #[must_use]
 pub fn metadata_obu_len(payload_len: usize) -> usize {
-    let _ = payload_len;
-    todo!("#3175")
+    // leb128 holds 7 bits per byte; the size field is never 0.
+    let bits = u64::BITS - metadata_size_field(payload_len).leading_zeros();
+    let size_bytes = bits.div_ceil(7) as usize;
+    1 + size_bytes + 1 + payload_len + 1
 }
 
 /// Writes the metadata OBU of `metadata_type` around `payload` into `out`,
@@ -227,18 +231,35 @@ pub fn metadata_obu_len(payload_len: usize) -> usize {
 /// every byte of `out` is written. `out` may be uninitialized, as a fresh
 /// `bmalloc` buffer is.
 ///
+/// Each byte goes straight into `out`. A prefix built in a separate array
+/// and copied in stalled store-to-load forwarding: 1.2x the C's time (#3175).
+///
 /// # Panics
 ///
 /// When `out` has any other length.
 pub fn write_metadata_obu(payload: &[u8], metadata_type: u8, out: &mut [MaybeUninit<u8>]) {
-    let _ = (payload, metadata_type, out);
-    todo!("#3175")
+    let len = metadata_obu_len(payload.len());
+    assert_eq!(
+        out.len(),
+        len,
+        "a metadata OBU around {} payload bytes is {len} bytes",
+        payload.len()
+    );
+    let at = metadata_prefix(payload.len(), metadata_type, |i, b| {
+        out[i].write(b);
+    });
+    let (body, trailer) = out[at..].split_at_mut(payload.len());
+    body.write_copy_of_slice(payload);
+    trailer[0].write(METADATA_TRAILING_BITS);
 }
 
 /// `metadata_obu`: a metadata OBU carrying `payload` as `metadata_type`:
 /// header byte, leb128 size, type, payload, and the `0x80` trailing bits.
 #[must_use]
 pub fn metadata_obu(payload: &[u8], metadata_type: u8) -> Vec<u8> {
-    let (prefix, n) = metadata_obu_prefix(payload.len(), metadata_type);
-    [&prefix[..n], payload, &[METADATA_TRAILING_BITS]].concat()
+    let mut out = Vec::with_capacity(metadata_obu_len(payload.len()));
+    metadata_prefix(payload.len(), metadata_type, |_, b| out.push(b));
+    out.extend_from_slice(payload);
+    out.push(METADATA_TRAILING_BITS);
+    out
 }
