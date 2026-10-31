@@ -95,6 +95,7 @@ pub mod hotkey_press;
 pub mod hotkey_translations;
 pub mod image_file;
 pub mod image_orient;
+pub mod image_pq_scrgb;
 pub mod lexer;
 pub mod lzw;
 pub mod media_remux;
