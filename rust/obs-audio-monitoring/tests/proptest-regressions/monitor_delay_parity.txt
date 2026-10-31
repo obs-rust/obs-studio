@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 09de81a8ca60d14be839277c00d9deec4cc045baf9302f850d97eb248ca53884 # shrinks to video = 0, diff = -1, pad = 0, stall = 0
+cc d7b02c2542a69d42cc4209d24804544993f87269ac57fecdd7441360c844a8ec # shrinks to ts = 0, pad = 0, video = 1, stall = 0
+cc 855517902ecde123d1e7c8d98fd37bdd6d4b753419512bb9a830c9cebe885081 # shrinks to a run of packets
+cc 106d932fc8a4a1a2337cf66ab465471ba4ccac6954d1e8559aac2cc14ffde1b5 # shrinks to video = 1, diff = 75000001, pad = 0, stall = 0
+cc 460bfc11c4ad380d1690fc3887532c34df9968ceb3eb764d9bc584febababf86 # shrinks to video = 0, diff = -1, pad = 1, stall = 0
+cc 8b3ba29c4ff1ecf8c5a8416155f1bc65723582ccc043008b389253657bccb0a2 # shrinks to ts = 0, pad = 1, video = 0, stall = 0

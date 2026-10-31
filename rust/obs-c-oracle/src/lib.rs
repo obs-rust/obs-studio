@@ -102,6 +102,7 @@ pub mod module_paths;
 pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_rules;
+pub mod monitor_delay;
 pub mod nal;
 pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]

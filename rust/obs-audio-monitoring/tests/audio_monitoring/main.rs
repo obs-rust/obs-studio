@@ -2,6 +2,7 @@
 //! (`obs-tests-core`).
 
 mod monitor_delay;
+mod monitor_delay_parity;
 mod pulse_backlog;
 mod pulse_flags;
 mod pulse_format;
