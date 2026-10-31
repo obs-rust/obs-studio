@@ -587,3 +587,24 @@ fn every_thread_that_waits_for_a_pass_gets_the_lock() {
     }
     signaller.join().expect("signal thread");
 }
+
+/// Past 16 signals the handler looks names up through a hash index (#3214):
+/// every declaration still resolves and a second add of a name is refused.
+#[test]
+fn many_signals_resolve_through_the_index() {
+    let handler = SignalHandler::new();
+    for i in 0..50 {
+        let decl = format!("void s{i}(ptr source)");
+        assert!(matches!(handler.add(decl.as_bytes()), AddResult::Added));
+        for j in 0..=i {
+            let name = format!("s{j}");
+            let found = handler.decl(name.as_bytes()).expect("declared signal");
+            assert_eq!(found.name.as_ref() as &[u8], name.as_bytes());
+        }
+        assert!(handler.decl(b"absent").is_none());
+    }
+    assert!(matches!(
+        handler.add(b"void s7(int n)"),
+        AddResult::Exists(_)
+    ));
+}

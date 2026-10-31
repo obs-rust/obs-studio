@@ -12,10 +12,11 @@
 //! `None` is missing even when a procedure is registered. The shim is what
 //! faults in `strcmp` for that case.
 
-use std::sync::Mutex;
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+use crate::name_table::NameTable;
 
 struct Proc {
-    name: Vec<u8>,
     func: usize,
     data: usize,
 }
@@ -40,7 +41,7 @@ pub enum PreparedCall {
 
 /// Name to callback table. The first registration of a name wins.
 pub struct ProcHandler {
-    procs: Mutex<Vec<Proc>>,
+    procs: RwLock<NameTable<Proc>>,
 }
 
 impl Default for ProcHandler {
@@ -52,7 +53,7 @@ impl Default for ProcHandler {
 impl ProcHandler {
     pub fn new() -> Self {
         Self {
-            procs: Mutex::new(Vec::new()),
+            procs: RwLock::new(NameTable::default()),
         }
     }
 
@@ -61,16 +62,10 @@ impl ProcHandler {
     /// Comparison is the raw bytes, the same result as `strcmp` for a
     /// NUL-terminated name.
     pub fn add(&self, name: &[u8], func: usize, data: usize) -> AddOutcome {
-        let mut procs = self.lock();
-        if procs.iter().any(|proc| proc.name == name) {
-            AddOutcome::Exists
-        } else {
-            procs.push(Proc {
-                name: name.to_vec(),
-                func,
-                data,
-            });
+        if self.write().insert(name, Proc { func, data }) {
             AddOutcome::Added
+        } else {
+            AddOutcome::Exists
         }
     }
 
@@ -80,8 +75,7 @@ impl ProcHandler {
         let Some(name) = name else {
             return PreparedCall::Missing;
         };
-        let procs = self.lock();
-        match procs.iter().find(|proc| proc.name == name) {
+        match self.read().get(name) {
             Some(proc) => PreparedCall::Ready {
                 func: proc.func,
                 data: proc.data,
@@ -93,10 +87,14 @@ impl ProcHandler {
     /// True when no procedure has been stored. The shim uses this so a null
     /// name on an empty handler returns false instead of reaching `strcmp`.
     pub(crate) fn is_empty(&self) -> bool {
-        self.lock().is_empty()
+        self.read().is_empty()
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, Vec<Proc>> {
-        self.procs.lock().unwrap_or_else(|err| err.into_inner())
+    fn read(&self) -> RwLockReadGuard<'_, NameTable<Proc>> {
+        self.procs.read().unwrap_or_else(|err| err.into_inner())
+    }
+
+    fn write(&self) -> RwLockWriteGuard<'_, NameTable<Proc>> {
+        self.procs.write().unwrap_or_else(|err| err.into_inner())
     }
 }

@@ -297,17 +297,18 @@ unsafe extern "C" fn rs_proc_call(
 struct Procs {
     side: ProcSide,
     handler: *mut c_void,
+    target: CString,
     counter: Box<u64>,
     stack: Stack,
 }
 
 impl Procs {
-    fn new(side: ProcSide) -> Self {
+    fn new(side: ProcSide, procs: usize) -> Self {
         let mut counter = Box::new(0_u64);
         // SAFETY: a fresh handler; the declarations are NUL-terminated and
         // the counter outlives the handler.
         let handler = unsafe { (side.create)() };
-        for i in 0..SIGNALS {
+        for i in 0..procs {
             let decl = CString::new(format!("void p{i:02}(ptr source, int n)")).unwrap();
             unsafe {
                 (side.add)(
@@ -332,6 +333,7 @@ impl Procs {
         Self {
             side,
             handler,
+            target: CString::new(format!("p{:02}", procs - 1)).unwrap(),
             counter,
             stack,
         }
@@ -340,7 +342,7 @@ impl Procs {
     fn call(&mut self) -> u64 {
         let params = self.stack.ptr();
         // SAFETY: a live handler and calldata.
-        let ok = unsafe { (self.side.call)(self.handler, c"p15".as_ptr(), params) };
+        let ok = unsafe { (self.side.call)(self.handler, self.target.as_ptr(), params) };
         assert!(ok);
         *self.counter
     }
@@ -354,20 +356,31 @@ impl Drop for Procs {
 }
 
 fn proc_benchmarks(criterion: &mut Criterion) {
-    let mut rust = Procs::new(ProcSide {
-        create: rs_proc_create,
-        destroy: rs_proc_destroy,
-        add: rs_proc_add,
-        call: rs_proc_call,
-    });
-    let mut c = Procs::new(ProcSide {
-        create: c_proc::oracle_proc_handler_create,
-        destroy: c_proc::oracle_proc_handler_destroy,
-        add: c_proc::oracle_proc_handler_add,
-        call: c_proc::oracle_proc_handler_call,
-    });
-    // The counters advance together, so each pair returns the same count.
-    pair(criterion, "proc/call/16", || rust.call(), || c.call());
+    // Each call finds the last proc added, so the name scan is the longest
+    // (#3214 measures 1, 10, 16 and 50 entries).
+    for procs in [1, 10, SIGNALS, 50] {
+        let mut rust = Procs::new(
+            ProcSide {
+                create: rs_proc_create,
+                destroy: rs_proc_destroy,
+                add: rs_proc_add,
+                call: rs_proc_call,
+            },
+            procs,
+        );
+        let mut c = Procs::new(
+            ProcSide {
+                create: c_proc::oracle_proc_handler_create,
+                destroy: c_proc::oracle_proc_handler_destroy,
+                add: c_proc::oracle_proc_handler_add,
+                call: c_proc::oracle_proc_handler_call,
+            },
+            procs,
+        );
+        // The counters advance together, so each pair returns the same count.
+        let name = format!("proc/call/{procs}");
+        pair(criterion, &name, || rust.call(), || c.call());
+    }
 }
 
 struct SignalSide {
@@ -434,24 +447,26 @@ unsafe extern "C" fn rs_sig_signal(h: *mut c_void, signal: *const c_char, params
 struct Signals {
     side: SignalSide,
     handler: *mut c_void,
+    target: CString,
     counters: Box<[u64; CALLBACKS + 1]>,
     stack: Stack,
 }
 
 impl Signals {
-    fn new(side: SignalSide, callbacks: usize, global: bool) -> Self {
+    fn new(side: SignalSide, signals: usize, callbacks: usize, global: bool) -> Self {
+        let target = CString::new(format!("s{:02}", signals - 1)).unwrap();
         let mut counters = Box::new([0_u64; CALLBACKS + 1]);
         let data: *mut u64 = counters.as_mut_ptr();
         // SAFETY: a fresh handler; the declarations are NUL-terminated and
         // the counters outlive the handler.
         let handler = unsafe { (side.create)() };
         unsafe {
-            for i in 0..SIGNALS {
+            for i in 0..signals {
                 let decl = CString::new(format!("void s{i:02}(ptr source)")).unwrap();
                 assert!((side.add)(handler, decl.as_ptr()));
             }
             for i in 0..callbacks {
-                (side.connect)(handler, c"s15".as_ptr(), Some(count), data.add(i).cast());
+                (side.connect)(handler, target.as_ptr(), Some(count), data.add(i).cast());
             }
             if global {
                 (side.connect_global)(handler, Some(count_global), data.add(CALLBACKS).cast());
@@ -471,6 +486,7 @@ impl Signals {
         Self {
             side,
             handler,
+            target,
             counters,
             stack,
         }
@@ -479,7 +495,7 @@ impl Signals {
     fn signal(&mut self) -> u64 {
         let params = self.stack.ptr();
         // SAFETY: a live handler and calldata.
-        unsafe { (self.side.signal)(self.handler, c"s15".as_ptr(), params) };
+        unsafe { (self.side.signal)(self.handler, self.target.as_ptr(), params) };
         self.counters.iter().sum()
     }
 }
@@ -514,13 +530,17 @@ fn c_signals() -> SignalSide {
 }
 
 fn signal_benchmarks(criterion: &mut Criterion) {
-    for (name, callbacks, global) in [
-        ("signal/emit/0", 0, false),
-        ("signal/emit/4", CALLBACKS, false),
-        ("signal/emit_global/4", CALLBACKS, true),
+    for (name, signals, callbacks, global) in [
+        ("signal/emit/0", SIGNALS, 0, false),
+        ("signal/emit/4", SIGNALS, CALLBACKS, false),
+        ("signal/emit_global/4", SIGNALS, CALLBACKS, true),
+        // The name lookup alone, on the last of 1, 10 and 50 signals (#3214).
+        ("signal/lookup/1", 1, 0, false),
+        ("signal/lookup/10", 10, 0, false),
+        ("signal/lookup/50", 50, 0, false),
     ] {
-        let mut rust = Signals::new(rust_signals(), callbacks, global);
-        let mut c = Signals::new(c_signals(), callbacks, global);
+        let mut rust = Signals::new(rust_signals(), signals, callbacks, global);
+        let mut c = Signals::new(c_signals(), signals, callbacks, global);
         pair(criterion, name, || rust.signal(), || c.signal());
     }
 }

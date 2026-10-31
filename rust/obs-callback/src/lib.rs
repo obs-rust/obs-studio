@@ -8,6 +8,7 @@
 
 pub mod calldata;
 pub mod decl;
+mod name_table;
 pub mod proc;
 pub mod signal;
 

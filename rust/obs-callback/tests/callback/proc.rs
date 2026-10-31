@@ -104,3 +104,27 @@ fn reenter_test() {
     assert_eq!(handler.add(b"inner", FIRST, DATA_B), AddOutcome::Exists);
     assert_eq!(ready(&handler, b"inner"), (SECOND, DATA_A));
 }
+
+/// Past 16 procs the handler looks names up through a hash index (#3214):
+/// every name still resolves, a missing one stays missing, and the first
+/// registration still wins.
+#[test]
+fn many_procs_resolve_through_the_index() {
+    let handler = ProcHandler::new();
+    for i in 0..50_usize {
+        let name = format!("p{i}");
+        assert_eq!(
+            handler.add(name.as_bytes(), FIRST + i, DATA_A),
+            AddOutcome::Added
+        );
+        for j in 0..=i {
+            assert_eq!(
+                ready(&handler, format!("p{j}").as_bytes()),
+                (FIRST + j, DATA_A)
+            );
+        }
+        assert_eq!(handler.prepare_call(Some(b"absent")), PreparedCall::Missing);
+    }
+    assert_eq!(handler.add(b"p3", SECOND, DATA_B), AddOutcome::Exists);
+    assert_eq!(ready(&handler, b"p3"), (FIRST + 3, DATA_A));
+}
