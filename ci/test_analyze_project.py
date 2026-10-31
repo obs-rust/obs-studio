@@ -189,26 +189,43 @@ class Setup(unittest.TestCase):
 
 
 class Build(unittest.TestCase):
+    def setUp(self):
+        self.temp = Path(tempfile.mkdtemp())
+        self.environ = {'RUNNER_TEMP': str(self.temp)}
+        self.script_calls = []
+
+    def tearDown(self):
+        shutil.rmtree(self.temp, ignore_errors=True)
+
+    def run_logged(self, argv, cwd, log):
+        self.script_calls.append((list(argv), cwd))
+        Path(log).write_text('', encoding='utf-8')
+        return 0
+
+    def build(self, recorder, environ):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return analyze_project.build(run=recorder, environ=environ, run_logged=self.run_logged)
+
     def test_refreshes_origin_then_runs_the_script(self):
         recorder = Recording()
-        status = analyze_project.build(run=recorder, environ={})
+        status = self.build(recorder, self.environ)
         self.assertEqual(status, 0)
-        self.assertEqual(recorder.calls[0], (['git', 'fetch', 'origin', '--no-tags', '--no-recurse-submodules', '-q'], ROOT))
-        argv, cwd = recorder.calls[1]
+        self.assertEqual(recorder.calls, [(['git', 'fetch', 'origin', '--no-tags', '--no-recurse-submodules', '-q'], ROOT)])
+        argv, cwd = self.script_calls[0]
         self.assertEqual(argv[0], str(analyze_project.BUILD_SCRIPT))
         self.assertEqual(argv[1:], ['--config', 'Debug', '--target', 'macos-arm64', '--codesign', '--analyze'])
         self.assertEqual(cwd, ROOT)
 
     def test_runner_debug_adds_the_debug_flag(self):
-        recorder = Recording()
-        analyze_project.build(run=recorder, environ={'RUNNER_DEBUG': '1'})
-        self.assertEqual(recorder.calls[1][0][-1], '--debug')
+        self.build(Recording(), {**self.environ, 'RUNNER_DEBUG': '1'})
+        self.assertEqual(self.script_calls[0][0][-1], '--debug')
 
     def test_skips_the_build_when_the_fetch_fails(self):
         recorder = Recording(status=1)
-        status = analyze_project.build(run=recorder, environ={})
+        status = self.build(recorder, self.environ)
         self.assertEqual(status, 1)
         self.assertEqual(len(recorder.calls), 1)
+        self.assertEqual(self.script_calls, [])
 
 
 class BuildLog(unittest.TestCase):
@@ -234,7 +251,9 @@ class BuildLog(unittest.TestCase):
 
         def run_logged(argv, cwd, log):
             calls.append((list(argv), cwd, log))
-            Path(log).write_text(''.join(line + '\n' for line in lines), encoding='utf-8')
+            # Only under the test's RUNNER_TEMP: the checkout stays untouched.
+            if Path(log).parent == self.temp:
+                Path(log).write_text(''.join(line + '\n' for line in lines), encoding='utf-8')
             return status
 
         return run_logged, calls
@@ -243,7 +262,9 @@ class BuildLog(unittest.TestCase):
         run_logged, calls = self.logged(lines, status)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            result = analyze_project.build(run=Recording(), environ=environ or self.environ, run_logged=run_logged)
+            result = analyze_project.build(
+                run=Recording(), environ=self.environ if environ is None else environ, run_logged=run_logged
+            )
         return result, out.getvalue(), calls
 
     def test_the_build_script_writes_to_a_log_file(self):

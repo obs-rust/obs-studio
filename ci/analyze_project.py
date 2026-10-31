@@ -52,6 +52,11 @@ CAS_RELATIVE = Path('Library/Developer/Xcode/DerivedData/CompilationCache.noinde
 MERGED = 'merged.sarif'
 
 Runner = Callable[[list[str], Path | None], int]
+LoggedRunner = Callable[[list[str], Path | None, Path], int]
+
+BUILD_LOG = 'analyze-build.log'
+# Lines of the log's end that a failure without error lines prints.
+TAIL_LINES = 40
 
 
 def run_command(argv: list[str], cwd: Path | None = None) -> int:
@@ -59,6 +64,51 @@ def run_command(argv: list[str], cwd: Path | None = None) -> int:
 
     print('+ ' + ' '.join(argv), flush=True)
     return subprocess.run(argv, cwd=cwd, check=False).returncode
+
+
+def run_command_logged(argv: list[str], cwd: Path | None, log: Path) -> int:
+    """Run a command with its stdout and stderr in `log`, not in the job log."""
+
+    print('+ ' + ' '.join(argv) + f' > {log} 2>&1', flush=True)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open('wb') as handle:
+        return subprocess.run(argv, cwd=cwd, stdout=handle, stderr=subprocess.STDOUT, check=False).returncode
+
+
+def is_warning(line: str) -> bool:
+    """A warning as xcbeautify's github-actions renderer or raw xcodebuild prints it."""
+
+    return line.startswith(('::warning', '##[warning]')) or ': warning: ' in line
+
+
+def is_error(line: str) -> bool:
+    return line.startswith(('::error', '##[error]')) or ': error: ' in line or ': fatal error: ' in line
+
+
+def summarize_build_log(log: Path, status: int) -> None:
+    """Print the build's result without the analyzer's findings.
+
+    The findings (every warning line) stay in the log file and reach code
+    scanning through the SARIF upload. The job log gets the exit status, the
+    warning count and the error lines; a failure without error lines also gets
+    the log's last lines, warnings left out."""
+
+    lines = log.read_text(encoding='utf-8', errors='replace').splitlines() if log.is_file() else []
+    warnings = sum(1 for line in lines if is_warning(line))
+    errors = [line for line in lines if is_error(line)]
+    print(
+        f'analyze build: exit status {status}, {warnings} warning line(s) (the findings are in the SARIF upload), '
+        f'{len(errors)} error line(s); full output in {log}',
+        flush=True,
+    )
+    for line in errors:
+        print(line, flush=True)
+    if status != 0 and not errors:
+        tail = [line for line in lines if not is_warning(line)][-TAIL_LINES:]
+        print(f'::group::Last {len(tail)} line(s) of the build log, warnings left out', flush=True)
+        for line in tail:
+            print(line, flush=True)
+        print('::endgroup::', flush=True)
 
 
 def write_output(output: Path | None, values: dict[str, str]) -> None:
@@ -114,14 +164,25 @@ def build_argv(environ: dict[str, str]) -> list[str]:
     return argv
 
 
-def build(run: Runner = run_command, environ: dict[str, str] | None = None) -> int:
-    """Refresh origin, then run the analysis build script with the analyzer argv."""
+def build(
+    run: Runner = run_command,
+    environ: dict[str, str] | None = None,
+    run_logged: LoggedRunner = run_command_logged,
+) -> int:
+    """Refresh origin, then run the analysis build script with the analyzer argv.
+
+    The script's output goes to a log file, not the job log: see
+    summarize_build_log()."""
 
     environment = dict(os.environ if environ is None else environ)
     status = run(['git', 'fetch', 'origin', '--no-tags', '--no-recurse-submodules', '-q'], ROOT)
     if status != 0:
         return status
-    return run([str(BUILD_SCRIPT), *build_argv(environment)], ROOT)
+    log_dir = Path(environment['RUNNER_TEMP']) if environment.get('RUNNER_TEMP') else ROOT / 'build_macos'
+    log = log_dir / BUILD_LOG
+    status = run_logged([str(BUILD_SCRIPT), *build_argv(environment)], ROOT, log)
+    summarize_build_log(log, status)
+    return status
 
 
 def flatten_plists(analytics: Path) -> list[Path]:
