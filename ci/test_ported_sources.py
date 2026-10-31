@@ -23,6 +23,7 @@ PORTED_ON_EVERY_HOST = (
     "graphics/libnsgif/gif-frame.c.h.o",
     "graphics/libnsgif/gif.c.h.o",
     "graphics/libnsgif/lzw.c.h.o",
+    "media-io/audio-resampler-drift.c.h.o",
     "obs-audio-discard.c.h.o",
     "obs-audio-min-ts.c.h.o",
     "obs-audio-mix.c.h.o",

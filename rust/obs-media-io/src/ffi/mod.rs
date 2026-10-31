@@ -1,6 +1,7 @@
 //! C ABI shims replacing the original libobs `EXPORT` symbols.
 
 pub mod audio_io;
+pub mod audio_resampler_drift;
 // The audio-io.c engine is built where `with_audio_thread_port!` expands.
 crate::platform::with_audio_thread_port! {
     pub mod audio_output;

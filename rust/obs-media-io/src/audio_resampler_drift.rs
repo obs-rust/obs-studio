@@ -34,13 +34,14 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
 use core::ffi::c_int;
 
-use crate::audio_io::MAX_AUDIO_CHANNELS;
+use crate::audio_io::{AudioFormat, MAX_AUDIO_CHANNELS, audio_format_from_c};
 
 /// `AUDIO_RESAMPLER_COMP_DEAD_BAND_NS`: errors within this are arrival
 /// jitter or a start offset, not drift, so a device on the system clock is
@@ -144,23 +145,75 @@ impl Action {
 /// `enum audio_format` value `format`; S16 for unknown and for any value
 /// outside the enum.
 pub fn sample_format(format: c_int) -> c_int {
-    let _ = (format,);
-    todo!()
+    match audio_format_from_c(format) {
+        Some(AudioFormat::U8Bit) => fmt::U8,
+        Some(AudioFormat::Bit32) => fmt::S32,
+        Some(AudioFormat::Float) => fmt::FLT,
+        Some(AudioFormat::U8BitPlanar) => fmt::U8P,
+        Some(AudioFormat::Bit16Planar) => fmt::S16P,
+        Some(AudioFormat::Bit32Planar) => fmt::S32P,
+        Some(AudioFormat::FloatPlanar) => fmt::FLTP,
+        Some(AudioFormat::Unknown | AudioFormat::Bit16) | None => fmt::S16,
+    }
 }
+
+/// The upmix rows of a mono input to 1 to 8 channels: the front pair and the
+/// centre take the signal, the LFE doesn't.
+const UPMIX: [[f64; MAX_AUDIO_CHANNELS]; MAX_AUDIO_CHANNELS] = [
+    [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    [1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0],
+    [1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0],
+    [1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0],
+];
 
 /// `audio_resampler_upmix_row()`: the matrix row for a mono input to
 /// `output_ch` channels, or `None` for 0 or more than
 /// [`MAX_AUDIO_CHANNELS`].
 pub fn upmix_row(output_ch: u32) -> Option<[f64; MAX_AUDIO_CHANNELS]> {
-    let _ = (output_ch,);
-    todo!()
+    let index = usize::try_from(output_ch).ok()?.checked_sub(1)?;
+    UPMIX.get(index).copied()
 }
 
 /// `audio_resampler_comp_set_error()`: the first call turns compensation on
 /// and clears the filter; then the error less the dead band (0 within it).
 pub fn set_error(c: &mut Compensation, error_ns: i64) {
-    let _ = (c, error_ns);
-    todo!()
+    if !c.enabled {
+        c.enabled = true;
+        c.vc1 = 0.0;
+        c.vc2 = 0.0;
+    }
+
+    c.error_ns = if error_ns > DEAD_BAND_NS {
+        error_ns.wrapping_sub(DEAD_BAND_NS)
+    } else if error_ns < -DEAD_BAND_NS {
+        error_ns.wrapping_add(DEAD_BAND_NS)
+    } else {
+        0
+    };
+}
+
+/// `clamp_drift()`: `drift` within `max`; a NaN stays NaN.
+fn clamp_drift(drift: f64, max: f64) -> f64 {
+    if drift > max {
+        max
+    } else if drift < -max {
+        -max
+    } else {
+        drift
+    }
+}
+
+/// `lround()` of a value well within `c_int`, cast to `int`: half away from
+/// zero. The correction is clamped to [`MAX_PPM`], so the value is at most
+/// about 16,777 either way; a NaN (a zero input rate, which `swr_init()`
+/// rejects first) is 0, as glibc's `lround()` truncated to `int`.
+#[allow(clippy::as_conversions)] // bounded above; NaN saturates to 0 as in C
+fn round_to_int(value: f64) -> c_int {
+    value.round() as c_int
 }
 
 /// `audio_resampler_comp_step()`: one step of the lag-lead loop filter over
@@ -170,29 +223,64 @@ pub fn set_error(c: &mut Compensation, error_ns: i64) {
 /// a positive drift (the device delivers too many samples) drops samples,
 /// a negative delta.
 pub fn step(c: &mut Compensation, input_freq: u32, in_frames: u32) -> Action {
-    let _ = (c, input_freq, in_frames);
-    todo!()
+    let fs = f64::from(input_freq);
+    let max = MAX_PPM * 1e-6 * fs;
+
+    // Lag-lead filter: a charge pump (GAIN) into C1 in parallel with a
+    // series 1 ohm and C2, advanced by in_frames samples.
+    #[allow(clippy::as_conversions)] // (double)c->error_ns
+    let icp = GAIN * (c.error_ns as f64) * 1e-9;
+    let ic2 = (c.vc1 - c.vc2) / fs;
+    let ic1 = icp - ic2;
+
+    c.vc1 = clamp_drift(c.vc1 + ic1 / C1 * f64::from(in_frames), max);
+    c.vc2 = clamp_drift(c.vc2 + ic2 / C2 * f64::from(in_frames), max);
+
+    let engage = !c.engaged;
+    if engage {
+        if c.error_ns == 0 {
+            return Action::Idle;
+        }
+        c.engaged = true;
+    }
+
+    let delta = round_to_int(c.vc1 * f64::from(DISTANCE) / fs).wrapping_neg();
+    if engage {
+        Action::Engage { delta }
+    } else {
+        Action::Set { delta }
+    }
 }
 
 /// `audio_resampler_output_frames()`: `estimated`, padded by 1/512 and 2
 /// frames while engaged for the samples compensation adds. Wraps where the
 /// C's `int` would overflow (no estimate comes near).
 pub fn output_frames(estimated: c_int, engaged: bool) -> c_int {
-    let _ = (estimated, engaged);
-    todo!()
+    if engaged {
+        estimated.wrapping_add(estimated.wrapping_div(512).wrapping_add(2))
+    } else {
+        estimated
+    }
 }
 
 /// `audio_resampler_comp_count()`: while engaged, counts `in_frames` input
 /// and `converted` output samples (`converted` cast to `uint64_t`).
 pub fn count(c: &mut Compensation, in_frames: u32, converted: c_int) {
-    let _ = (c, in_frames, converted);
-    todo!()
+    if c.engaged {
+        c.input_samples = c.input_samples.wrapping_add(u64::from(in_frames));
+        c.output_samples = c
+            .output_samples
+            .wrapping_add(i64::from(converted).cast_unsigned());
+    }
 }
 
 /// `audio_resampler_comp_drift_report()`: when engaged with output counted,
 /// the input rate the counts give at `output_freq` (divided first, as the
 /// C).
+#[allow(clippy::as_conversions)] // (double) of the uint64_t counts
 pub fn drift_report(c: &Compensation, output_freq: u32) -> Option<f64> {
-    let _ = (c, output_freq);
-    todo!()
+    if !(c.engaged && c.output_samples != 0) {
+        return None;
+    }
+    Some(c.input_samples as f64 / c.output_samples as f64 * f64::from(output_freq))
 }

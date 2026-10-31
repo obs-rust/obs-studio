@@ -73,6 +73,15 @@ set_property(
   PROPERTY COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wno-conversion;-Wno-sign-conversion>"
 )
 
+# The resampler's drift loop compares with its Rust port bit for bit (#3139):
+# no FMA contraction, which Rust never does. MSVC does not contract under
+# /fp:precise.
+set_property(
+  SOURCE build/libobs.ported-audio-resampler-drift+.h.c
+  APPEND
+  PROPERTY COMPILE_OPTIONS "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-ffp-contract=off>"
+)
+
 # MSVC warns about INFINITY (a standard library macro) in obs-audio-controls.c
 # (#870; was a pragma in the file).
 set_property(
