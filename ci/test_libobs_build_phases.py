@@ -12,6 +12,7 @@ phase, and the edit cases the baseline has to cover.
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,7 @@ spec = importlib.util.spec_from_file_location(
     "libobs_build_phases", ROOT / "rust/tools/benchmarks/libobs_build_phases.py"
 )
 phases = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = phases
 spec.loader.exec_module(phases)
 
 LOG = """# ninja log v6
