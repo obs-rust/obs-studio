@@ -12,7 +12,9 @@ required, so a baseline always has the numbers #3004 to #3006 compare with.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import shutil
 import subprocess
@@ -245,6 +247,21 @@ class BoundExemptionTest(unittest.TestCase):
     def test_an_exempt_pair_is_not_a_breach(self):
         rows = [{"benchmark": self.PAIR, "rust_over_c": 1.26, "status": "over 10% bound"}]
         self.assertEqual(record.over_bound(rows), [])
+
+    def test_the_gate_passes_an_exempt_breach_and_names_it(self):
+        rows = [{"benchmark": self.PAIR, "rust_over_c": 1.21,
+                 "status": "exempt from 10% bound (#3138)"}]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            record.enforce_bound(rows, 1.10)
+        self.assertIn(self.PAIR, output.getvalue())
+        self.assertIn("exempt", output.getvalue())
+
+    def test_the_gate_still_fails_every_other_breach(self):
+        rows = [{"benchmark": "audio_mix/mix_whole_tick", "rust_over_c": 1.21,
+                 "status": "over 10% bound"}]
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+            record.enforce_bound(rows, 1.10)
 
     def test_an_exempt_pair_stays_in_the_report(self):
         runs = [

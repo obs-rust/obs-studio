@@ -43,6 +43,22 @@ COMMAND = ["soldr", "cargo", "bench", "-p", "obs-c-oracle", "--bench", "port_com
 C_FLAGS = "-O2 -ffp-contract=off -fno-strict-aliasing"
 # The Rust/C median time ratio the release criteria bound (#1295, #3138).
 BOUND = 1.10
+# Pairs the maintainer exempted from that ratio by name (#3138), with the
+# absolute cost, the machine it was measured on and the issue that decided it.
+# An exempt pair stays in the report; only the `--max-ratio` gate skips it.
+# `docs/rust-port/release-criteria.md` scopes the bound to pairs where the Rust
+# side is not a thin shim: this one is one `extern "C"` trampoline around a
+# `deque_push_front` the C keeps header-inline, called once per audio tick, so
+# the ratio measures the boundary and not a kernel. The 5% full-app bound of
+# #142 still covers it.
+BOUND_EXEMPTIONS = {
+    "audio_mix/buffering_add_one_tick": (
+        "46 ns Rust vs 40 ns C (1.13x on a loaded box 2026-10-31, 1.15-1.21x in "
+        "#3141's paired runs) on a Ryzen 7 3700X: one FFI trampoline on a "
+        "once-per-audio-tick call, no hot spot left after #3141; exempt decided "
+        "in #3138, full-app cost still bounded by #142"
+    ),
+}
 
 
 def report_metadata(
@@ -77,12 +93,13 @@ def report_metadata(
         "cc": cc,
         "environment": environment if environment is not None else {},
         "c_flags": C_FLAGS,
+        "threshold_rust_over_c": BOUND,
+        "bound_exemptions": dict(BOUND_EXEMPTIONS),
         "criterion": "0.8.2",
         "profile": "bench (release, opt-level 3)",
         "command": command + options,
         "categories": sorted(required or CATEGORIES),
         "baselines": baselines,
-        "threshold_rust_over_c": BOUND,
     }
 
 
@@ -170,6 +187,17 @@ def read_run(directory: Path, baseline: str, required: set[str] | None = None) -
     return entries
 
 
+def pair_status(key: str, ratio: float, exempt: bool) -> str:
+    """The report's per-pair verdict, naming the bound or the exemption."""
+    if key.startswith("dstr/printf_control/"):
+        return "C control in both builds"
+    if ratio <= BOUND:
+        return f"within {BOUND:.0%} bound"
+    if exempt:
+        return f"exempt from {BOUND:.0%} bound (#3138)"
+    return f"over {BOUND:.0%} bound"
+
+
 def summarize(runs: list[dict]) -> list[dict]:
     keys = set(runs[0])
     if any(set(run) != keys for run in runs):
@@ -188,10 +216,7 @@ def summarize(runs: list[dict]) -> list[dict]:
         ratios = [run[key]["rust"]["median_ns"] / run[key]["c"]["median_ns"] for run in runs]
         row["rust_over_c"] = ratio
         row["paired_run_ratio_range"] = [min(ratios), max(ratios)]
-        row["status"] = (
-            "C control in both builds" if key.startswith("dstr/printf_control/")
-            else f"over {BOUND:.0%} bound" if ratio > BOUND else f"within {BOUND:.0%} bound"
-        )
+        row["status"] = pair_status(key, ratio, key in BOUND_EXEMPTIONS)
         rows.append(row)
     return rows
 
@@ -200,12 +225,40 @@ def over_bound(results: list[dict], bound: float = BOUND) -> list[dict]:
     """Rows whose median Rust/C ratio is above `bound` (#3138).
 
     `dstr/printf_control` runs C in both builds, so its ratio says nothing
-    about the port and is never a breach.
+    about the port and is never a breach. A pair named in `BOUND_EXEMPTIONS`
+    is skipped by name: it stays in the report with its ratio and absolute
+    numbers, but the maintainer decided the bound does not apply to it (#3138).
     """
     return [
         row for row in results
-        if row["status"] != "C control in both builds" and row["rust_over_c"] > bound
+        if row["status"] != "C control in both builds"
+        and row["benchmark"] not in BOUND_EXEMPTIONS
+        and row["rust_over_c"] > bound
     ]
+
+
+def enforce_bound(results: list[dict], bound: float) -> None:
+    """Print the exempt pairs and the breaches, then fail on any breach.
+
+    An exempt pair that is over the bound is printed with its recorded reason
+    so a reader of the log sees the pair was measured, not dropped (#3138).
+    """
+    for row in results:
+        if row["benchmark"] in BOUND_EXEMPTIONS and row["rust_over_c"] > bound:
+            print(
+                f"exempt ({row['rust_over_c']:.2f}x): {row['benchmark']} — "
+                f"{BOUND_EXEMPTIONS[row['benchmark']]}",
+                flush=True,
+            )
+    breaches = over_bound(results, bound)
+    for row in breaches:
+        print(
+            f"over {bound:.2f}: {row['benchmark']} "
+            f"{row['rust_over_c']:.2f}x the C ({row['status']})",
+            flush=True,
+        )
+    if breaches:
+        raise SystemExit(1)
 
 
 def main() -> None:
@@ -262,15 +315,7 @@ def main() -> None:
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(f"Recorded {len(report['results'])} complete comparisons: {args.output}", flush=True)
     if args.max_ratio is not None:
-        breaches = over_bound(report["results"], args.max_ratio)
-        for row in breaches:
-            print(
-                f"over {args.max_ratio:.2f}: {row['benchmark']} "
-                f"{row['rust_over_c']:.2f}x the C ({row['status']})",
-                flush=True,
-            )
-        if breaches:
-            raise SystemExit(1)
+        enforce_bound(report["results"], args.max_ratio)
 
 
 if __name__ == "__main__":

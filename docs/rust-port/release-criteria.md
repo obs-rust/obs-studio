@@ -94,6 +94,14 @@ runs and requires only the named categories:
 uv run rust/tools/benchmarks/record.py --cpu 7 --category format --output format.json
 ```
 
+`--max-ratio R` turns that report into a check: a pair whose median Rust/C
+ratio is above `R` is printed and the run exits 1, so a known breach is
+reproducible instead of a row to read (#3138). A pair the maintainer exempted
+from the ratio bound is named in `record.py`'s `BOUND_EXEMPTIONS` with its
+absolute cost, the machine it was measured on and the deciding issue; it stays
+in the report, the gate prints it as exempt, and the 5% full-app bound above
+still applies to it.
+
 The SIMD candidates of #3009 are categories of their own: `format` (each
 format conversion on a 1080p frame, against the shipped C and against the
 same C on the plain-C SSE stand-ins), `volmeter` (sample and true peak of
