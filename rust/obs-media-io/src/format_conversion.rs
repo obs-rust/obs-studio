@@ -255,10 +255,18 @@ pub fn convert_uyvx_to_i444<S, D>(
         let line1 = input.bytes(in_pos, read);
         let line2 = input.bytes(at(in_pos, in_linesize), read);
         let pos = y.wrapping_mul(out_linesize) as usize;
-        for (plane, c) in [(&mut *lum, UYVX_Y), (&mut *u, UYVX_U), (&mut *v, UYVX_V)] {
-            let rows = plane.bytes_mut(pos, stride + bytes);
-            for i in 0..blocks {
-                let (pixel, block) = (i * 4, i * BLOCK_BYTES);
+        // One row pair per plane, and one read of each input block: the C
+        // packs all three channels from the same two 16-byte loads.
+        let luma = lum.bytes_mut(pos, stride + bytes);
+        let u_row = u.bytes_mut(pos, stride + bytes);
+        let v_row = v.bytes_mut(pos, stride + bytes);
+        for i in 0..blocks {
+            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
+            for (rows, c) in [
+                (&mut *luma, UYVX_Y),
+                (&mut *u_row, UYVX_U),
+                (&mut *v_row, UYVX_V),
+            ] {
                 rows[pixel..pixel + 4].copy_from_slice(&channel(line1, block, c));
                 rows[stride + pixel..stride + pixel + 4].copy_from_slice(&channel(line2, block, c));
             }
