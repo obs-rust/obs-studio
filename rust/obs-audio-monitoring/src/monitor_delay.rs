@@ -132,15 +132,20 @@ pub fn stalled(time_since_prev: u64) -> bool {
 /// duration. `prev_video_ts` 0 means no packet yet: the timestamp is stored
 /// and the count left as it is. The same timestamp adds the duration to
 /// `time_since_prev`, wrapping; any other stores it and resets the count.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn track_video_ts(
     prev_video_ts: &mut u64,
     time_since_prev: &mut u64,
     last_frame_ts: u64,
     packet_ns: u64,
 ) {
-    let _ = (prev_video_ts, time_since_prev, last_frame_ts, packet_ns);
-    todo!()
+    if *prev_video_ts == 0 {
+        *prev_video_ts = last_frame_ts;
+    } else if *prev_video_ts == last_frame_ts {
+        *time_since_prev = time_since_prev.wrapping_add(packet_ns);
+    } else {
+        *prev_video_ts = last_frame_ts;
+        *time_since_prev = 0;
+    }
 }
 
 /// The front packet's verdict from the gate (`bad_diff`) and the difference:

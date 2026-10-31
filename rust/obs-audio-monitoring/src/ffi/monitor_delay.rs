@@ -1,8 +1,9 @@
-//! C ABI for `libobs/audio-monitoring/monitor-delay.c.h`.
+//! C ABI for `libobs/audio-monitoring/monitor-delay.c.h` and
+//! `monitor-video-sync.c.h`.
 //!
 //! The WASAPI monitor (`win32/wasapi-output.c`) calls these inside libobs on
-//! Windows. The C file has no `EXPORT`, so the symbols stay hidden
-//! (`rust-hidden.d`). The five functions keep the C signatures; `enum
+//! Windows. The C files have no `EXPORT`, so the symbols stay hidden
+//! (`rust-hidden.d`). The six functions keep the C signatures; `enum
 //! audio_monitor_delay_verdict` (0 to 2) crosses as `unsigned int`. A null
 //! pointer, which the C dereferences, is read as 0 and not written;
 //! `wasapi-output.c` always passes its fields and locals.
@@ -10,7 +11,7 @@
 //! Only Windows calls them. Elsewhere the shims are built but unused, and
 //! hidden all the same.
 
-use crate::monitor_delay::{diff, judge, stale, stalled, unsynced};
+use crate::monitor_delay::{diff, judge, stale, stalled, track_video_ts, unsynced};
 
 /// Same contract as C `audio_monitor_delay_stale`.
 ///
@@ -65,4 +66,32 @@ pub extern "C" fn audio_monitor_delay_stalled(time_since_prev: u64) -> bool {
 #[unsafe(no_mangle)]
 pub extern "C" fn audio_monitor_delay_judge_diff(bad_diff: bool, diff: i64) -> u32 {
     judge(bad_diff, diff).to_c()
+}
+
+/// Same contract as C `audio_monitor_track_video_ts`.
+///
+/// # Safety
+///
+/// `prev_video_ts` and `time_since_prev` are each null or point to a
+/// `uint64_t` the caller may write.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn audio_monitor_track_video_ts(
+    prev_video_ts: *mut u64,
+    time_since_prev: *mut u64,
+    last_frame_ts: u64,
+    packet_ns: u64,
+) {
+    // SAFETY: null or a writable uint64_t, as the caller promises.
+    let mut prev = unsafe { prev_video_ts.as_mut() }.map_or(0, |prev| *prev);
+    // SAFETY: as above.
+    let mut count = unsafe { time_since_prev.as_mut() }.map_or(0, |count| *count);
+    track_video_ts(&mut prev, &mut count, last_frame_ts, packet_ns);
+    // SAFETY: as above.
+    if let Some(out) = unsafe { prev_video_ts.as_mut() } {
+        *out = prev;
+    }
+    // SAFETY: as above.
+    if let Some(out) = unsafe { time_since_prev.as_mut() } {
+        *out = count;
+    }
 }

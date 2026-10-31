@@ -31,7 +31,9 @@
 
 use std::ffi::c_int;
 
-use obs_media_io::audio_io::SpeakerLayout;
+use obs_media_io::audio_io::{
+    SpeakerLayout, audio_channels, speaker_layout_from_c, speaker_layout_to_c,
+};
 
 /// `AUDIO_MONITOR_SPEAKER_MASK_2POINT1` (`KSAUDIO_SPEAKER_2POINT1`): FL FR
 /// LFE.
@@ -55,8 +57,22 @@ pub const UNKNOWN: c_int = 0;
 /// The `enum speaker_layout` value to resample to for a device with this
 /// channel mask and channel count, or [`UNKNOWN`].
 #[must_use]
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn speaker_layout(mask: u32, channels: u32) -> c_int {
-    let _ = (mask, channels, SpeakerLayout::Unknown);
-    todo!()
+    let layout = match mask {
+        MASK_2POINT1 => speaker_layout_to_c(SpeakerLayout::TwoPointOne),
+        MASK_SURROUND => speaker_layout_to_c(SpeakerLayout::FourPointZero),
+        MASK_4POINT1 => speaker_layout_to_c(SpeakerLayout::FourPointOne),
+        MASK_5POINT1 => speaker_layout_to_c(SpeakerLayout::FivePointOne),
+        MASK_7POINT1 => speaker_layout_to_c(SpeakerLayout::SevenPointOne),
+        // SPEAKERS_MONO to SPEAKERS_5POINT1 are 1 to 6 and SPEAKERS_7POINT1
+        // is 8; there is no layout 7.
+        _ if channels <= 8 => c_int::try_from(channels).unwrap_or(UNKNOWN),
+        _ => UNKNOWN,
+    };
+    let layout_channels = speaker_layout_from_c(layout).map_or(0, audio_channels);
+    if layout_channels == channels {
+        layout
+    } else {
+        UNKNOWN
+    }
 }

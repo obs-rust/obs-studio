@@ -11,7 +11,6 @@
   "util/windows/win-version.h",
   "util/windows/window-helpers.h",
   "util/windows/window-match.h",
-  "build/libobs.monitor-wasapi+.h.c",
   "build/libobs.windows+.h.c",
   "build/libobs.windows-crash-handler+.h.c",
   "build/libobs.graphics-ffmpeg-host-windows+.h.c"

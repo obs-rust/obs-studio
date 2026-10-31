@@ -13,7 +13,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-monitor-wasapi.pch.h"
+#include "libobs/build/libobs-ported-monitor-delay.pch.h"
+
+/* Ported to rust/obs-audio-monitoring (monitor_delay): the hybrid libobs drops
+ * this file. */
 
 /* Declared in monitor-video-sync.h without EXPORT. */
 
