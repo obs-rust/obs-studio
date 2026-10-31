@@ -192,8 +192,10 @@ static void obs_audio_reaches_an_app_recording_the_microphone(void **state)
 	snprintf(rec, sizeof(rec), "%s/rec.wav", runtime);
 	char log[96];
 	snprintf(log, sizeof(log), "%s/record.log", runtime);
-	char *argv[] = {"pw-record", "--target",   "obs_virtual_microphone", "--format", "f32", "--rate", "48000",
-			"--channels", "2",       rec, NULL};
+	char *argv[] = {"pw-record", "--target",   "obs_virtual_microphone",
+			"--format",  "f32",        "--rate",
+			"48000",     "--channels", "2",
+			rec,         NULL};
 	pid_t recorder = spawn(argv, log);
 	assert_true(recorder > 0);
 	usleep(500000);
