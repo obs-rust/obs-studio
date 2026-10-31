@@ -23,6 +23,15 @@ target_sources(
     test-sinewave.c
 )
 
+# #2625: dependency-gated target (ENABLE_TEST_INPUT, default OFF), so no PR
+# lane compiles it. Opted into the conversion ratchet; the global -Wno-conversion
+# / -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
+# every target is ratcheted.
+target_compile_options(
+  test-input
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 target_link_libraries(test-input PRIVATE OBS::libobs)
 
 set_target_properties_obs(test-input PROPERTIES FOLDER "Tests and Examples" PREFIX "")
