@@ -1,0 +1,19 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c1783d2f9cdea84e603aaab4da5c679375e3438b62831c3737f20ad3dbc73d3c # shrinks to k = "", t = []
+cc 1666ba4a61f13d89a4815f7cdd42f3cc3a7e9c72aac4a7cb2314ed1bd1dfd5fc # shrinks to n = []
+cc de62a7905df7d773ea037dc45be11f7ec381ccfcd4b26713a3036aa3cf19df67 # shrinks to k = "int", t = []
+cc 0e2d9d9cd59ea5f3f15b143396205f6b273d9e7ce800b3b5a683f174619f36d0 # shrinks to k = "string", t = [1]
+cc 918cd82c4fb2d816569e825b4aba41076358efeaeadf8376ceb9f0b368a6825d # shrinks to k = "bool", t = []
+cc fd907b421437b8b40940e56db0ae76fe73249b583b6cd4f9cb82bb23621611d1 # shrinks to k = "float4x4", t = []
+cc 5b558d3f025a23378f12a9a88fd8d140b83a111b18d6bef1e578d2402030fa1f # shrinks to n = [1, 1, 1, 1, 88]
+cc 7540db74e28e8cfed5d2d8ac2eecc34aa8a86d2f9b473b397fb7b8cd529b8747 # shrinks to n = [1, 1, 1, 1, 1, 1, 120]
+cc dbf0f6ef79b0e13adbd55a5be3950f61afb0388c0f1fd23d89d719e9880f4823 # shrinks to k = "int2", t = [1, 53]
+cc 3dddeb7677f89d7f7752abf67961a87ee81ac9489c9301b282aebc6c8aa890e5 # shrinks to n = [1, 1, 1, 53]
+cc f08a8cefbacb5e84c4cd171c813d2dbb9915e280690dfe2087327b64f63db334 # shrinks to k = "int2", t = [1, 48]
+cc 1e85c31e68bddd47e877f6c014252001886c508e11ddca49ade686f95b66befc # shrinks to n = [1, 1, 1, 48]
+cc d7706c9112c17ebaf1ed81d92f8fb8a22e98bcc50c789ef47f8929fefeb39f24 # shrinks to k = "int2", t = [1, 1, 120]
