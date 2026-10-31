@@ -48,7 +48,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | C/C++ component | Rust crate |
 |---|---|
 | `libobs/util/` | `rust/obs-util` |
-| `libobs/graphics/`, and the units extracted from `libobs/graphics/graphics.c.h` (`graphics-sprite.c.h`, `graphics-immediate.c.h`), `libobs/graphics/effect-parser.c.h` (`effect-param-types.c.h`) and `libobs/graphics/graphics-ffmpeg.c.h` (`graphics-ffmpeg-orient.c.h`) | `rust/obs-graphics` |
+| `libobs/graphics/`, and the units extracted from `libobs/graphics/graphics.c.h` (`graphics-sprite.c.h`, `graphics-immediate.c.h`), `libobs/graphics/effect-parser.c.h` (`effect-param-types.c.h`) `libobs/graphics/graphics-ffmpeg.c.h` (`graphics-ffmpeg-orient.c.h`) and `libobs/graphics/graphics-ffmpeg-host-windows.c.h` (`graphics-ffmpeg-host-pq.c.h`) | `rust/obs-graphics` |
 | `libobs/media-io/` | `rust/obs-media-io` |
 | `libobs/obs-nal.c`, `obs-avc.c`, `obs-hevc.c`, `obs-av1.c` | `rust/obs-codec` |
 | `libobs/obs-data.c` | `rust/obs-data` |

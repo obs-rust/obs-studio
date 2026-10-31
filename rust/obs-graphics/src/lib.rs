@@ -5,7 +5,9 @@
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
-//! ([`image_orient`]).
+//! ([`image_orient`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
+//! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion
+//! ([`image_pq_scrgb`]).
 //!
 //! Safe cores live at the crate root; the C ABI shims that replace the
 //! original `EXPORT` symbols live in [`ffi`]. See
