@@ -2671,3 +2671,16 @@ area.
   *All platforms*, 2026-10-31. Issue
   [#3284](https://github.com/obs-rust/obs-studio/issues/3284), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- Scene tools for the in-process MCP server: `scenes_list`, `scene_get_current`,
+  `scene_set_current`, `scene_create` and `scene_remove`, each with a JSON
+  Schema, behind a `SceneBackend` trait. The libobs binding is not wired yet,
+  so nothing changes for users. *All platforms*, 2026-10-31. Issue
+  [#3285](https://github.com/obs-rust/obs-studio/issues/3285), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- Source tools for the in-process MCP server: `sources_list`, `source_create`,
+  `source_set_settings`, `scene_item_set_visible` and `scene_item_set_transform`
+  (position, scale, rotation), each with a JSON Schema, behind a
+  `SourceBackend` trait. The libobs binding is not wired yet, so nothing
+  changes for users. *All platforms*, 2026-10-31. Issue
+  [#3286](https://github.com/obs-rust/obs-studio/issues/3286), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
