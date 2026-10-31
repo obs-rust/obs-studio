@@ -32,23 +32,42 @@ if(NOT TARGET OBS::qt-obs-spinbox)
   add_subdirectory("${CMAKE_SOURCE_DIR}/shared/qt/obs-spinbox" "${CMAKE_BINARY_DIR}/shared/qt/obs-spinbox")
 endif()
 
+# The sources are compiled once, by a target of their own, and the interface
+# target carries only what a consumer needs to include and link them. They used to
+# be INTERFACE sources with the conversion groups as INTERFACE options, which made
+# every consumer compile its own copy *and* take the groups; CMake appends a linked
+# target's INTERFACE options after the consumer's own, so a consumer still holding
+# the global pins could not pin them back off (#3096 on Apple, #3164 on Qt 6.8's
+# `QString::arg(double)` in the frontend). A group is a statement about the sources
+# that were converted, so it is PRIVATE on the target that compiles them.
 add_library(properties-view INTERFACE)
 add_library(OBS::properties-view ALIAS properties-view)
 
+add_library(properties-view-code OBJECT build/properties-view.core+.hpp.cpp)
+set_target_properties(properties-view-code PROPERTIES FOLDER shared)
+
+# The objects reach the binaries through the interface target. CMake does not
+# forward an OBJECT library's objects through INTERFACE_LINK_LIBRARIES (a
+# two-target probe on CMake 4.1.6 links nothing), so naming only the object
+# library there left `properties-view-code`'s object out of the frontend's link
+# line and `obs` failed on undefined `OBSPropertiesView::...` references (Qt
+# Frontend lane). `$<TARGET_OBJECTS:...>` on the interface target states the
+# objects where the consumer sees them.
+target_sources(properties-view INTERFACE $<TARGET_OBJECTS:properties-view-code>)
+
 target_sources(
   properties-view
-  INTERFACE
-    build/properties-view.core+.hpp.cpp
-    double-slider.hpp
-    properties-view.hpp
-    properties-view.moc.hpp
-    spinbox-ignorewheel.hpp
+  INTERFACE double-slider.hpp properties-view.hpp properties-view.moc.hpp spinbox-ignorewheel.hpp
 )
 target_include_directories(properties-view INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
 
+# The interface plain sources (headers) stay on the INTERFACE target: Qt's AUTOMOC
+# scans the consumer's listed files for Q_OBJECT, and those metas are generated
+# once per binary, not once for the interface.
 target_link_libraries(
   properties-view
   INTERFACE
+    properties-view-code
     OBS::frontend-api
     OBS::libobs
     OBS::qt-wrappers
@@ -61,29 +80,55 @@ target_link_libraries(
     Qt::Widgets
 )
 
+# The object library needs the same usage requirements to compile the TU; PRIVATE
+# so that nothing it states reaches the binaries that link the objects. The Qt
+# helper libraries are INTERFACE targets that carry their own unity sources, so
+# linking them here would compile those TUs a second time and the consumer that
+# compiles them itself would define the same symbols: the object target takes the
+# headers and definitions they publish, not their sources.
+set(
+  _properties_view_header_deps
+  OBS::qt-wrappers
+  OBS::qt-plain-text-edit
+  OBS::qt-obs-spinbox
+  OBS::qt-vertical-scroll-area
+  OBS::qt-slider-ignorewheel
+  OBS::qt-icon-label
+)
+foreach(_properties_view_dep IN LISTS _properties_view_header_deps)
+  get_target_property(_properties_view_includes ${_properties_view_dep} INTERFACE_INCLUDE_DIRECTORIES)
+  if(_properties_view_includes)
+    target_include_directories(properties-view-code PRIVATE ${_properties_view_includes})
+  endif()
+  get_target_property(_properties_view_definitions ${_properties_view_dep} INTERFACE_COMPILE_DEFINITIONS)
+  if(_properties_view_definitions)
+    target_compile_definitions(properties-view-code PRIVATE ${_properties_view_definitions})
+  endif()
+endforeach()
+
+target_link_libraries(properties-view-code PRIVATE OBS::frontend-api OBS::libobs Qt::Core Qt::Widgets)
+
 # The comparison helpers in properties-view.moc.hpp are intentionally static;
 # MSVC may not need every helper in each interface consumer.
 target_compile_options(properties-view INTERFACE "$<$<CXX_COMPILER_ID:MSVC>:/wd4505>")
+target_compile_options(properties-view-code PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/wd4505>")
 
 # #2625: this library's C++ sources state their conversions at the call sites,
 # so the pins that hide them are not needed here. The global -Wno-conversion /
 # -Wno-sign-conversion / -Wno-float-conversion only leave the flag lists once
 # every target is ratcheted.
 #
-# Apple keeps the sign-conversion pin (#3096): these flags are INTERFACE, so
-# CMake appends them after every consumer's own options, and the positive groups
-# win over a consumer-side `-Wno-*`. With the group on, the macOS app lane stops
-# inside Qt 6.11's own headers (qversiontagging.h, qnamespace.h), which no obs
-# source states; `-Wconversion` alone also re-enables the sign group. So Apple
-# gets none of the three groups here, and the pin lands last on the consumer's
-# command line. The two platforms are branches so the flags stay visible in the
-# consumer's `OTHER_CFLAGS`; the genex form expands, but relying on where a
-# linked INTERFACE option sorts is what broke the lane.
+# The groups are PRIVATE on `properties-view-code`, the target that compiles the
+# unity TU. Stating them INTERFACE handed them to every consumer's TUs as well,
+# after the consumer's own options, so the frontend's global pins never applied
+# (#3164). Apple keeps the sign-conversion pin (#3096) rather than the group:
+# with it on, the macOS app lane stops inside Qt 6.11's own headers
+# (qversiontagging.h, qnamespace.h), which no obs source states.
 if(OS_MACOS)
-  target_compile_options(properties-view INTERFACE -Wno-sign-conversion)
+  target_compile_options(properties-view-code PRIVATE -Wno-sign-conversion)
 else()
   target_compile_options(
-    properties-view
-    INTERFACE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+    properties-view-code
+    PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
   )
 endif()

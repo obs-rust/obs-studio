@@ -30,6 +30,7 @@ must contribute none of the three groups on Apple.
 from __future__ import annotations
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -37,6 +38,13 @@ ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend" / "CMakeLists.txt"
 PROPERTIES_VIEW = ROOT / "shared" / "properties-view" / "CMakeLists.txt"
 LINUX = ROOT / "cmake" / "linux" / "compilerconfig.cmake"
+
+# A `target_compile_options(<target> INTERFACE ...)` call: the usage requirement a
+# linked target hands every consumer's TUs.
+INTERFACE_CALL = re.compile(
+    r"target_compile_options\(\s*(?P<target>[^\s)]+)\s+INTERFACE\s+(?P<body>[^)]*)\)",
+    re.S,
+)
 
 # The groups the app target states at its call sites today.
 APP_TARGET_GROUPS = {"-Wsign-conversion"}
@@ -86,6 +94,75 @@ def without_comments(text: str) -> str:
     return "\n".join(
         line for line in text.splitlines() if not line.lstrip().startswith("#")
     )
+
+
+def tracked_cmake_lists(root: Path) -> list[Path]:
+    """Every tracked `CMakeLists.txt` below `root`, vendored trees excluded.
+
+    Vendored upstream trees (`deps/`) are never edited here, so they never carry an
+    obs-rust conversion group to check.
+    """
+    listing = subprocess.run(
+        ["git", "ls-files", "-z", "*CMakeLists.txt"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    ).stdout.decode()
+    return [
+        root / path
+        for path in listing.replace("\0", "\n").splitlines()
+        if path and not path.startswith("deps/")
+    ]
+
+
+def interface_conversion_groups(text: str) -> list[tuple[str, list[str]]]:
+    """`(target, flags)` for every `target_compile_options(<t> INTERFACE ...)` group.
+
+    The pins (`-Wno-*`) are per-target exceptions, not groups: only the positive
+    spelling opts a target in.
+    """
+    groups: list[tuple[str, list[str]]] = []
+    for call in INTERFACE_CALL.finditer(without_comments(text)):
+        flags = [
+            flag
+            for flag in re.findall(r"-W(?:no-)?[a-z-]*conversion", call.group("body"))
+            if not flag.startswith("-Wno-")
+        ]
+        if flags:
+            groups.append((call.group("target"), flags))
+    return groups
+
+
+class LinkedInterfaceConversionGroupTest(unittest.TestCase):
+    """A linked INTERFACE target must not state a conversion group (#3164).
+
+    CMake appends a linked target's INTERFACE options *after* the consumer's own
+    options, so a consumer that still carries the global pins cannot pin the group
+    back off: `-Wconversion` in that position re-enables its diagnostics, and the
+    consumer's `-Wno-*` is already spent. #3096 hit the Apple half of this and
+    excluded Darwin in the call, which only moved the leak to the other platforms:
+    under Qt 6.8 the frontend stopped on a `long double` passed to `QString::arg()`
+    that the pins exist to tolerate (#3164). The group belongs to the target whose
+    sources were converted, so it is stated `PRIVATE` there, never as an INTERFACE
+    usage requirement.
+    """
+
+    def test_no_interface_target_states_a_conversion_group(self) -> None:
+        violations = [
+            f"{path.relative_to(ROOT).as_posix()}: {target}"
+            for path in tracked_cmake_lists(ROOT)
+            for target, _flags in interface_conversion_groups(
+                path.read_text(encoding="utf-8", errors="replace")
+            )
+        ]
+        self.assertEqual(
+            violations,
+            [],
+            "an INTERFACE conversion group lands after the consumer's own pins, so "
+            "a consumer still holding the global pins cannot turn it off (#3096, "
+            "#3164); state the group PRIVATE on the target that compiles the "
+            "converted sources",
+        )
 
 
 class FrontendConversionOptinsTest(unittest.TestCase):
@@ -152,8 +229,20 @@ class FrontendConversionOptinsTest(unittest.TestCase):
         )
 
 
+def compiles_the_unity_tu_in_an_object_library(text: str) -> bool:
+    """True when a target of its own compiles the conversion ratchet's unity TU.
+
+    A group on an INTERFACE target is a usage requirement that reaches every
+    consumer's TUs after their own options (#3164); an OBJECT library compiles the
+    TU once and states the group PRIVATE, so only the converted sources see it.
+    """
+    return (
+        re.search(r"add_library\(\s*properties-view-code\s+OBJECT\b", text) is not None
+    )
+
+
 class PropertiesViewConversionOptinsTest(unittest.TestCase):
-    """The interface group must not leak into Apple consumers' TUs (#3096)."""
+    """The groups are PRIVATE on the target that compiles the TU (#3164)."""
 
     def setUp(self) -> None:
         self.text = PROPERTIES_VIEW.read_text(encoding="utf-8")
@@ -166,22 +255,47 @@ class PropertiesViewConversionOptinsTest(unittest.TestCase):
         self.assertEqual(
             set(re.findall(r"-W(?:no-)?[a-z-]*conversion", branch or "")),
             {"-Wno-sign-conversion"},
-            "properties-view is INTERFACE: its group reaches the app target's Apple "
-            "TUs, where Qt 6.11's headers are not converted (#3096)",
+            "the Apple TUs of the compiled TU keep the pin: with the group on the "
+            "lane stops inside Qt 6.11's headers (#3096)",
         )
 
     def test_other_platforms_keep_the_ratcheted_groups(self) -> None:
-        calls = target_compile_options(self.text, "properties-view")
+        calls = target_compile_options(self.text, "properties-view-code")
         groups = [
             flags
             for flags in calls
             if any(not flag.startswith("-Wno-") for flag in flags)
         ]
-        self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#3096)")
+        self.assertEqual(len(groups), 1, "one ratcheted opt-in block (#2625)")
         self.assertEqual(
             set(groups[0]),
             {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"},
-            "the non-Apple consumers keep the groups this target ratcheted (#2625)",
+            "the target that compiles the converted TU keeps its groups (#2625)",
+        )
+
+    def test_the_groups_are_private_on_the_compiling_target(self) -> None:
+        self.assertEqual(
+            target_compile_options(self.text, "properties-view"),
+            [],
+            "the interface target states no conversion group: CMake appends a "
+            "linked target's INTERFACE options after the consumer's own, so the "
+            "frontend's global pins never applied to its TUs (#3164)",
+        )
+        self.assertTrue(
+            compiles_the_unity_tu_in_an_object_library(self.text),
+            "`properties-view-code` is the OBJECT library that compiles the unity "
+            "TU, so the group is PRIVATE there rather than a usage requirement",
+        )
+
+    def test_the_interface_target_forwards_the_object_library(self) -> None:
+        self.assertRegex(
+            self.text,
+            r"target_sources\(\s*properties-view\s+INTERFACE\s+"
+            r"\$<TARGET_OBJECTS:properties-view-code>\s*\)",
+            "CMake does not forward an OBJECT library's objects through "
+            "INTERFACE_LINK_LIBRARIES, so the interface target states the objects: "
+            "without `$<TARGET_OBJECTS:properties-view-code>` the frontend links "
+            "no OBSPropertiesView definitions (Qt Frontend lane)",
         )
 
 
