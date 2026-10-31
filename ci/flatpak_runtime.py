@@ -66,7 +66,13 @@ VMIC_PROBE = ('printf "marker=%s\\n" "$(cat "$XDG_RUNTIME_DIR/obs-virtual-microp
 
 def check_vmic_sandbox(output: str, marker: str) -> None:
     """Raise unless the sandbox read the host's marker and ran host pactl."""
-    raise NotImplementedError
+    fields = dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
+    if fields.get('marker') != marker:
+        raise ValueError('the sandbox cannot see $XDG_RUNTIME_DIR/obs-virtual-microphone '
+                         f'(read {fields.get("marker")!r}); the manifest must share xdg-run/obs-virtual-microphone')
+    if fields.get('pactl') != 'ok':
+        raise ValueError('flatpak-spawn --host pactl info failed inside the sandbox; '
+                         'the Virtual Microphone could not load its module')
 
 
 def select_refs(refs: list[str]) -> tuple[str, str]:
@@ -377,6 +383,12 @@ def qualification(args) -> dict:  # noqa: C901
         session.start('wireplumber', ['wireplumber'])
         session.start('pulse', ['pipewire-pulse'])
         session.wait_for(lambda: (output / 'run/pulse/native').is_socket(), 'PulseAudio socket')
+        vmic_dir = output / 'run/obs-virtual-microphone'
+        vmic_dir.mkdir(mode=0o700, exist_ok=True)
+        marker = os.urandom(8).hex()
+        (vmic_dir / 'host-marker').write_text(marker)
+        check_vmic_sandbox(session.run(['flatpak', '--user', 'run', '--command=sh', app_ref, '-c', VMIC_PROBE]), marker)
+        result['virtual_microphone_sandbox'] = 'ok'
         for name, pattern, fmt, width, height in [('screen', 'smpte', 'BGRx', 320, 240), ('camera', 'ball', 'YUY2', 160, 120)]:
             session.start('producer-' + name, ['gst-launch-1.0', '-q', 'videotestsrc', f'pattern={pattern}',
                 *(['horizontal-speed=4'] if name == 'screen' else ['background-color=0xff204080']), 'is-live=true', '!',
