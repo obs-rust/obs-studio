@@ -111,13 +111,15 @@ nsgif_blocks_colour_table_decode
 nsgif_frame_pixels_decode
 nsgif_frame_restore_bg
 nsgif_frame_recover
-# graphics/graphics-immediate.c: gs_texcoord2v(), validvertsize(),
-# gs_render_stop() and gs_render_save() in graphics.c call them inside libobs.
+# graphics/graphics-immediate.c: gs_render_stop(), gs_render_save(),
+# validvertsize() and gs_texcoord2v() in graphics.c call them inside libobs.
 # Declared in graphics-immediate.h without EXPORT, so the shims stay hidden.
-gs_immediate_unit_ok
+gs_immediate_cut
+gs_immediate_mismatch
 gs_immediate_push_ok
-gs_immediate_draw
-gs_immediate_save
+gs_immediate_save_cut
+gs_immediate_save_free_from
+gs_immediate_unit_ok
 # graphics/graphics-state-stacks.c: graphics.c calls them inside libobs.
 # Declared in graphics-state-stacks.h without EXPORT, so the shims stay hidden.
 gs_matrix_stack_push

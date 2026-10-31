@@ -577,15 +577,12 @@ void gs_render_start(bool b_new)
 void gs_render_stop(enum gs_draw_mode mode)
 {
 	graphics_t *graphics = thread_graphics;
-	struct gs_immediate_draw draw;
 	size_t i, num;
 
 	if (!gs_valid("gs_render_stop"))
 		return;
 
-	draw = gs_immediate_draw(graphics->verts.num, graphics->norms.num, graphics->colors.num,
-				 graphics->texverts[0].num);
-	num = draw.num;
+	num = graphics->verts.num;
 	if (!num) {
 		if (!graphics->using_immediate) {
 			da_free(graphics->verts);
@@ -600,17 +597,23 @@ void gs_render_stop(enum gs_draw_mode mode)
 		return;
 	}
 
-	if (draw.norms_mismatch)
+	if (gs_immediate_mismatch(graphics->norms.num, graphics->verts.num)) {
 		blog(LOG_ERROR, "gs_render_stop: normal count does "
 				"not match vertex count");
+		num = gs_immediate_cut(num, graphics->norms.num);
+	}
 
-	if (draw.colors_mismatch)
+	if (gs_immediate_mismatch(graphics->colors.num, graphics->verts.num)) {
 		blog(LOG_ERROR, "gs_render_stop: color count does "
 				"not match vertex count");
+		num = gs_immediate_cut(num, graphics->colors.num);
+	}
 
-	if (draw.tex_mismatch)
+	if (gs_immediate_mismatch(graphics->texverts[0].num, graphics->verts.num)) {
 		blog(LOG_ERROR, "gs_render_stop: texture vertex count does "
 				"not match vertex count");
+		num = gs_immediate_cut(num, graphics->texverts[0].num);
+	}
 
 	if (graphics->using_immediate) {
 		gs_vertexbuffer_flush(graphics->immediate_vertbuffer);
@@ -636,21 +639,15 @@ void gs_render_stop(enum gs_draw_mode mode)
 gs_vertbuffer_t *gs_render_save(void)
 {
 	graphics_t *graphics = thread_graphics;
-	struct gs_immediate_save save;
-	size_t tex[GS_IMMEDIATE_TEX_ARRAYS];
 	struct gs_vb_data *vbd;
-	size_t num_tex, i;
+	size_t num_tex, num, i;
 
 	if (!gs_valid("gs_render_save"))
 		return NULL;
 	if (graphics->using_immediate)
 		return NULL;
 
-	for (i = 0; i < GS_IMMEDIATE_TEX_ARRAYS; i++)
-		tex[i] = graphics->texverts[i].num;
-	save = gs_immediate_save(graphics->verts.num, graphics->norms.num, graphics->colors.num, tex);
-
-	if (!save.num) {
+	if (!graphics->verts.num) {
 		da_free(graphics->verts);
 		da_free(graphics->norms);
 		da_free(graphics->colors);
@@ -661,12 +658,19 @@ gs_vertbuffer_t *gs_render_save(void)
 		return NULL;
 	}
 
-	num_tex = save.num_tex;
+	for (num_tex = 0; num_tex < 16; num_tex++)
+		if (!graphics->texverts[num_tex].num)
+			break;
 
 	graphics->vbd->points = graphics->verts.array;
 	graphics->vbd->normals = graphics->norms.array;
 	graphics->vbd->colors = graphics->colors.array;
-	graphics->vbd->num = save.num;
+	num = graphics->verts.num;
+	num = gs_immediate_save_cut(num, graphics->norms.num);
+	num = gs_immediate_save_cut(num, graphics->colors.num);
+	for (i = 0; i < num_tex; i++)
+		num = gs_immediate_save_cut(num, graphics->texverts[i].num);
+	graphics->vbd->num = num;
 	graphics->vbd->num_tex = num_tex;
 
 	if (graphics->vbd->num_tex) {
@@ -678,7 +682,7 @@ gs_vertbuffer_t *gs_render_save(void)
 		}
 	}
 
-	for (i = save.free_from; i < GS_IMMEDIATE_TEX_ARRAYS; i++)
+	for (i = gs_immediate_save_free_from(num_tex); i < GS_IMMEDIATE_TEX_ARRAYS; i++)
 		da_free(graphics->texverts[i]);
 
 	reset_immediate_arrays(graphics);

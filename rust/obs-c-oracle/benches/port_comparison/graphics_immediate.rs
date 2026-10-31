@@ -1,23 +1,25 @@
 //! obs-graphics: the immediate-mode decisions
 //! (`libobs/graphics/graphics-immediate.c.h`). Every vertex, normal, colour
 //! and texture coordinate a plugin pushes in `gs_render_start` mode asks the
-//! push gate, and each stop and save asks for its draw count or buffer.
-//! Each side runs a frame of 100 immediate-mode quads (four vertices, four
-//! colours and four texture coordinates on unit 0 each, then a stop) and 20
-//! saved buffers of 64 vertices with two texture arrays, through the
-//! decisions as `graphics.c` asks them, and folds the answers into a
+//! push gate, each stop asks whether its arrays match, and each save asks for
+//! its vertex count. Each side runs a frame of 100 immediate-mode quads (four
+//! vertices, four colours and four texture coordinates on unit 0 each, then a
+//! stop) and 20 saved buffers of 64 vertices with two texture arrays, through
+//! the decisions as `graphics.c` asks them, and folds the answers into a
 //! checksum both must match. The counts all match, where the port keeps the
-//! C's answers. Nothing is allocated in the loop.
+//! C's answers; the save's free start is left out, as the port frees the
+//! arrays the C leaked. Nothing is allocated in the loop.
 
 use super::pair;
 
 use criterion::Criterion;
 use obs_c_oracle::graphics_immediate::{
-    oracle_gs_immediate_draw, oracle_gs_immediate_push_ok, oracle_gs_immediate_save,
-    oracle_gs_immediate_unit_ok,
+    oracle_gs_immediate_cut, oracle_gs_immediate_mismatch, oracle_gs_immediate_push_ok,
+    oracle_gs_immediate_save_cut, oracle_gs_immediate_unit_ok,
 };
 use obs_graphics::ffi::immediate::{
-    gs_immediate_draw, gs_immediate_push_ok, gs_immediate_save, gs_immediate_unit_ok,
+    gs_immediate_cut, gs_immediate_mismatch, gs_immediate_push_ok, gs_immediate_save_cut,
+    gs_immediate_unit_ok,
 };
 use std::hint::black_box;
 
@@ -29,10 +31,9 @@ fn fold(acc: u64, value: usize) -> u64 {
     acc.wrapping_mul(31).wrapping_add(value as u64)
 }
 
-/// The frame, from the four functions of one side. The save's free start is
-/// left out: the port frees the arrays the C leaked.
+/// The frame, from the five functions of one side.
 macro_rules! frame {
-    ($unit_ok:expr, $push_ok:expr, $draw:expr, $save:expr) => {{
+    ($unit_ok:expr, $push_ok:expr, $mismatch:expr, $cut:expr, $save_cut:expr) => {{
         let mut acc = 0;
         for _ in 0..QUADS {
             let (mut verts, mut colors, mut tex0) = (0, 0, 0);
@@ -48,9 +49,13 @@ macro_rules! frame {
                     tex0 += 1;
                 }
             }
-            let draw = $draw(verts, 0, colors, tex0);
-            acc = fold(acc, draw.num);
-            acc = fold(acc, usize::from(draw.colors_mismatch));
+            let mut num = verts;
+            for count in [0, colors, tex0] {
+                if $mismatch(count, verts) {
+                    num = $cut(num, count);
+                }
+            }
+            acc = fold(acc, num);
         }
         for _ in 0..SAVES {
             let mut verts = 0;
@@ -59,36 +64,35 @@ macro_rules! frame {
                     verts += 1;
                 }
             }
-            let mut tex = [0_usize; 16];
-            tex[0] = verts;
-            tex[1] = verts;
-            let save = $save(verts, verts, 0, tex.as_ptr());
-            acc = fold(fold(acc, save.num), save.num_tex);
+            let mut num = $save_cut($save_cut(verts, verts), 0);
+            for _ in 0..2 {
+                num = $save_cut(num, verts);
+            }
+            acc = fold(acc, num);
         }
         acc
     }};
 }
 
 fn rust_frame() -> u64 {
-    // SAFETY: tex holds 16 counts.
-    unsafe {
-        frame!(
-            gs_immediate_unit_ok,
-            gs_immediate_push_ok,
-            gs_immediate_draw,
-            gs_immediate_save
-        )
-    }
+    frame!(
+        gs_immediate_unit_ok,
+        gs_immediate_push_ok,
+        gs_immediate_mismatch,
+        gs_immediate_cut,
+        gs_immediate_save_cut
+    )
 }
 
 fn c_frame() -> u64 {
-    // SAFETY: plain values; tex holds 16 counts.
+    // SAFETY: plain values; every input is defined in the C.
     unsafe {
         frame!(
             oracle_gs_immediate_unit_ok,
             oracle_gs_immediate_push_ok,
-            oracle_gs_immediate_draw,
-            oracle_gs_immediate_save
+            oracle_gs_immediate_mismatch,
+            oracle_gs_immediate_cut,
+            oracle_gs_immediate_save_cut
         )
     }
 }

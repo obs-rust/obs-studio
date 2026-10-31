@@ -96,10 +96,12 @@ _nsgif_frame_pixels_decode
 _nsgif_frame_restore_bg
 _nsgif_frame_recover
 # graphics/graphics-immediate.c: graphics.c calls them inside libobs. Not EXPORT.
-_gs_immediate_unit_ok
+_gs_immediate_cut
+_gs_immediate_mismatch
 _gs_immediate_push_ok
-_gs_immediate_draw
-_gs_immediate_save
+_gs_immediate_save_cut
+_gs_immediate_save_free_from
+_gs_immediate_unit_ok
 # graphics/graphics-state-stacks.c: graphics.c calls them inside libobs. Not EXPORT.
 _gs_matrix_stack_push
 _gs_matrix_stack_pop

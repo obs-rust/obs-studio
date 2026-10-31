@@ -1,7 +1,8 @@
 //! Safe core of `libobs/graphics/graphics-immediate.c.h`: the decisions of
 //! the immediate-mode vertex builder of `graphics.c` (`gs_render_start`,
 //! `gs_vertex*`, `gs_normal*`, `gs_color`, `gs_texcoord*`,
-//! `gs_render_stop` and `gs_render_save`).
+//! `gs_render_stop` and `gs_render_save`). One function per decision, each
+//! asked where the C made it, from the counts `graphics.c` reads there:
 //!
 //! - [`unit_ok`] (`gs_texcoord2v`): a texture unit can take a coordinate,
 //!   asked before `graphics.c` indexes `texverts[unit]`: one of the
@@ -9,35 +10,37 @@
 //!   immediate buffer backs.
 //! - [`push_ok`] (`validvertsize`): an array holding `num` vertices takes
 //!   one more; in immediate mode none past [`IMMEDIATE_COUNT`].
-//! - [`draw`] (`gs_render_stop`): the vertices to draw, the vertex count cut
-//!   to each non-empty normal, colour or texture 0 count that differs, and
-//!   which of them differ (each logs).
-//! - [`save`] (`gs_render_save`): the buffer's vertex count, the leading
-//!   non-empty texture arrays it takes, and the first array after them that
-//!   `graphics.c` frees.
+//! - [`mismatch`] and [`cut`] (`gs_render_stop`, for each of the normal,
+//!   colour and texture 0 arrays): a non-empty array whose count differs from
+//!   the vertices (it logs), then the draw cut to its count, read again
+//!   after the log.
+//! - [`save_cut`] (`gs_render_save`, for the normal, colour and each taken
+//!   texture array): the buffer's vertex count cut to a shorter non-empty
+//!   array.
+//! - [`save_free_from`] (`gs_render_save`): the first texture array the
+//!   buffer leaves, which `graphics.c` frees.
 //!
-//! `graphics.c` keeps every read of the arrays' counts, every `da_init`,
-//! `da_free` and `da_push_back`, `gs_vbdata_create()` and
+//! `graphics.c` keeps every read of the arrays' counts, the no-vertex tests,
+//! the loop that counts the leading non-empty texture arrays, every
+//! `da_init`, `da_free` and `da_push_back`, `gs_vbdata_create()` and
 //! `gs_vbdata_destroy()`, the immediate buffer's pointer and capacity
 //! stores, the vertex buffer calls, `gs_draw()` and every `blog()`. Nothing
 //! here keeps state or calls libobs.
 //!
 //! Characterized, not endorsed (`test_graphics_immediate_steps`), and kept:
-//! the stop looks at no other array when there is no vertex; a longer array
-//! logs its error too and cuts nothing; an empty texture array 0 before a
-//! filled one gives the buffer no texture array.
+//! a longer array logs its error too and cuts nothing.
 //!
 //! Intentional differences from the C:
 //! - [`unit_ok`] refuses a unit outside 0-15, which the C indexed
 //!   `texverts` with, reading and writing past it; and units 1-15 in
 //!   immediate mode, where the C pushed to a heap array that the immediate
 //!   buffer never draws and the next start dropped without a free.
-//! - [`save`] gives the buffer the smallest count of the vertex array and
-//!   every other array it takes (the non-empty normal and colour arrays and
-//!   its texture arrays), where the C gave it the vertex count, so the
-//!   device read past a shorter array.
-//! - [`save`] names the texture arrays after the ones the buffer takes,
-//!   which `graphics.c` frees; the C dropped them without a free.
+//! - [`save_cut`] cuts the buffer's vertex count to a shorter non-empty
+//!   normal, colour or taken texture array, where the C kept the vertex
+//!   count, so the device read past the shorter array.
+//! - [`save_free_from`] names the texture arrays from the first one the
+//!   buffer does not take, which `graphics.c` frees; the C freed none and
+//!   dropped the ones after the first empty array without a free.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -57,39 +60,18 @@ pub const IMMEDIATE_COUNT: usize = 512;
 /// `GS_IMMEDIATE_TEX_ARRAYS`: the texture arrays of the graphics context.
 pub const TEX_ARRAYS: usize = 16;
 
-/// What `gs_render_stop` draws (`struct gs_immediate_draw`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Draw {
-    /// The vertices to draw; 0 when there is no vertex.
-    pub num: usize,
-    /// The normal array is not empty and differs from the vertex count.
-    pub norms_mismatch: bool,
-    /// The colour array is not empty and differs from the vertex count.
-    pub colors_mismatch: bool,
-    /// Texture array 0 is not empty and differs from the vertex count.
-    pub tex_mismatch: bool,
-}
-
-/// The vertex buffer `gs_render_save` makes (`struct gs_immediate_save`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Save {
-    /// The buffer's vertex count; 0 when there is no vertex, and no buffer.
-    pub num: usize,
-    /// The texture arrays the buffer takes: the leading non-empty ones.
-    pub num_tex: usize,
-    /// The first texture array the buffer leaves that `graphics.c` frees,
-    /// up to the last; [`TEX_ARRAYS`] frees none.
-    pub free_from: usize,
-}
-
-/// `gs_immediate_unit_ok()`: texture `unit` can take a coordinate.
+/// `gs_immediate_cut()`: the draw of `num` vertices, cut to a differing
+/// array of `count`.
 #[must_use]
-pub fn unit_ok(immediate: bool, unit: i32) -> bool {
-    match usize::try_from(unit) {
-        Ok(unit) if immediate => unit == 0,
-        Ok(unit) => unit < TEX_ARRAYS,
-        Err(_) => false,
-    }
+pub fn cut(num: usize, count: usize) -> usize {
+    num.min(count)
+}
+
+/// `gs_immediate_mismatch()`: an array of `count` differs from the `verts`
+/// vertices; an empty one never does.
+#[must_use]
+pub fn mismatch(count: usize, verts: usize) -> bool {
+    count != 0 && count != verts
 }
 
 /// `gs_immediate_push_ok()`: an array holding `num` vertices takes one
@@ -99,59 +81,26 @@ pub fn push_ok(immediate: bool, num: usize) -> bool {
     !(immediate && num == IMMEDIATE_COUNT)
 }
 
-/// `gs_immediate_draw()`: what `gs_render_stop` draws, from the counts of
-/// the vertex, normal, colour and texture 0 arrays.
+/// `gs_immediate_save_cut()`: the buffer's vertex count of `num`, with an
+/// array of `count` that the buffer takes: cut to a shorter non-empty one.
 #[must_use]
-pub fn draw(verts: usize, norms: usize, colors: usize, tex0: usize) -> Draw {
-    let mut draw = Draw {
-        num: verts,
-        ..Draw::default()
-    };
-    if verts == 0 {
-        return draw;
-    }
-
-    let mut cut = |count: usize| {
-        let differs = count != 0 && count != verts;
-        if differs {
-            draw.num = draw.num.min(count);
-        }
-        differs
-    };
-    let norms_mismatch = cut(norms);
-    let colors_mismatch = cut(colors);
-    let tex_mismatch = cut(tex0);
-
-    Draw {
-        norms_mismatch,
-        colors_mismatch,
-        tex_mismatch,
-        ..draw
-    }
+pub fn save_cut(num: usize, count: usize) -> usize {
+    if count == 0 { num } else { num.min(count) }
 }
 
-/// `gs_immediate_save()`: the buffer `gs_render_save` makes, from the counts
-/// of the vertex, normal and colour arrays and of the texture arrays.
+/// `gs_immediate_save_free_from()`: the first texture array that a buffer
+/// of `num_tex` texture arrays leaves, freed up to the last.
 #[must_use]
-pub fn save(verts: usize, norms: usize, colors: usize, tex: &[usize; TEX_ARRAYS]) -> Save {
-    if verts == 0 {
-        return Save {
-            num: 0,
-            num_tex: 0,
-            free_from: TEX_ARRAYS,
-        };
-    }
+pub fn save_free_from(num_tex: usize) -> usize {
+    num_tex.min(TEX_ARRAYS)
+}
 
-    let num_tex = tex.iter().take_while(|&&count| count != 0).count();
-    let num = [norms, colors]
-        .into_iter()
-        .chain(tex.iter().copied().take(num_tex))
-        .filter(|&count| count != 0)
-        .fold(verts, usize::min);
-
-    Save {
-        num,
-        num_tex,
-        free_from: num_tex,
+/// `gs_immediate_unit_ok()`: texture `unit` can take a coordinate.
+#[must_use]
+pub fn unit_ok(immediate: bool, unit: i32) -> bool {
+    match usize::try_from(unit) {
+        Ok(unit) if immediate => unit == 0,
+        Ok(unit) => unit < TEX_ARRAYS,
+        Err(_) => false,
     }
 }
