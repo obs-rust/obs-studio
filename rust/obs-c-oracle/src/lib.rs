@@ -207,6 +207,7 @@ pub mod source_transition_start;
 pub mod source_video_tick;
 pub mod source_volume;
 pub mod source_volume_mul;
+pub mod speaker_layout;
 pub mod task;
 pub mod text_lookup;
 pub mod texture_render;

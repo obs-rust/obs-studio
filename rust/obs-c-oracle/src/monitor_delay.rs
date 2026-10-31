@@ -1,5 +1,5 @@
-//! `oracle_*` build of `libobs/audio-monitoring/monitor-delay.c.h`
-//! (oracle/monitor_delay.c).
+//! `oracle_*` build of `libobs/audio-monitoring/monitor-delay.c.h` and
+//! `monitor-video-sync.c.h` (oracle/monitor_delay.c).
 //!
 //! `enum audio_monitor_delay_verdict` (0 to 2) crosses as `unsigned int`.
 
@@ -28,6 +28,12 @@ unsafe extern "C" {
     pub fn oracle_audio_monitor_delay_unsynced(last_frame_ts: u64, diff: i64) -> bool;
     pub fn oracle_audio_monitor_delay_stalled(time_since_prev: u64) -> bool;
     pub fn oracle_audio_monitor_delay_judge_diff(bad_diff: bool, diff: i64) -> c_uint;
+    pub fn oracle_audio_monitor_track_video_ts(
+        prev_video_ts: *mut u64,
+        time_since_prev: *mut u64,
+        last_frame_ts: u64,
+        packet_ns: u64,
+    );
     /// The value at `which` in [`VALUE_NAMES`], or -1 past the end.
     pub fn oracle_monitor_delay_value(which: usize) -> i64;
 }

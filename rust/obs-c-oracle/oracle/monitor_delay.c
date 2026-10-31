@@ -1,7 +1,8 @@
-/* Test-only oracle: the original libobs/audio-monitoring/monitor-delay.c.h,
- * unmodified, with its five functions renamed to oracle_* so they can link
- * next to the Rust shims, plus its constants as the C sees them. It calls
- * nothing outside the file but llabs(). Nothing in it divides. */
+/* Test-only oracle: the original libobs/audio-monitoring/monitor-delay.c.h
+ * and monitor-video-sync.c.h, unmodified, with their six functions renamed
+ * to oracle_* so they can link next to the Rust shims, plus their constants
+ * as the C sees them. They call nothing outside the files but llabs().
+ * Nothing in them divides. */
 #include <stddef.h>
 #include <stdint.h>
 
@@ -10,8 +11,10 @@
 #define audio_monitor_delay_unsynced oracle_audio_monitor_delay_unsynced
 #define audio_monitor_delay_stalled oracle_audio_monitor_delay_stalled
 #define audio_monitor_delay_judge_diff oracle_audio_monitor_delay_judge_diff
+#define audio_monitor_track_video_ts oracle_audio_monitor_track_video_ts
 
 #include "audio-monitoring/monitor-delay.c.h"
+#include "audio-monitoring/monitor-video-sync.c.h"
 
 /* The values the C uses, in the order of
  * rust/obs-c-oracle/src/monitor_delay.rs. */

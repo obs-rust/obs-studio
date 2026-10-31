@@ -11,4 +11,6 @@ mod pulse_monitor;
 mod pulse_monitor_parity;
 mod pulse_parity;
 mod speaker_layout;
+mod speaker_layout_parity;
 mod video_sync;
+mod video_sync_parity;
