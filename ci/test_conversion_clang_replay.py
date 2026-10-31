@@ -19,6 +19,7 @@ from pathlib import Path
 from conversion_clang_replay import (
     clang_command,
     conversion_diagnostics,
+    exit_status,
     first_error,
     group_directory,
     Replay,
@@ -163,6 +164,45 @@ class ReplayFailureTest(unittest.TestCase):
         }
         found: Replay = {**broken, "failure": "", "diagnostics": ["libobs/a.c:1:2: x"]}
         self.assertEqual(unexplained([broken, found]), [broken])
+
+
+class ExitStatusTest(unittest.TestCase):
+    FINDING: Replay = {
+        "group": "libobs.core+.h.c",
+        "directory": "libobs",
+        "seconds": 0.1,
+        "returncode": 1,
+        "diagnostics": ["libobs/a.c.h:1:2: implicit conversion"],
+        "failure": "",
+    }
+    BROKEN: Replay = {
+        "group": "obs-filters.core+.h.c",
+        "directory": "plugins/obs-filters",
+        "seconds": 0.1,
+        "returncode": 1,
+        "diagnostics": [],
+        "failure": "clang: error: 'X11/X.h' file not found",
+    }
+
+    def test_a_clean_replay_passes(self) -> None:
+        self.assertEqual(exit_status([], (), []), 0)
+
+    def test_a_finding_is_red(self) -> None:
+        self.assertEqual(exit_status([self.FINDING], (), []), 1)
+
+    def test_a_group_that_did_not_parse_is_red(self) -> None:
+        self.assertEqual(exit_status([], (), [self.BROKEN]), 1)
+
+    def test_an_uncovered_directory_is_red_by_default(self) -> None:
+        # A full app tree must compile every ratcheted target.
+        self.assertEqual(exit_status([], ("frontend",), []), 1)
+
+    def test_a_lane_tree_may_leave_ratcheted_targets_unbuilt(self) -> None:
+        # The sanitizer tree turns vlc, vst, webrtc and decklink off, so the
+        # lane reports those as unbuilt rather than red (#3118).
+        self.assertEqual(exit_status([], ("plugins/vlc-video",), [], allow_uncovered=True), 0)
+        # It still fails on a real finding.
+        self.assertEqual(exit_status([self.FINDING], ("plugins/vlc-video",), [], allow_uncovered=True), 1)
 
 
 class CompileDatabaseTest(unittest.TestCase):

@@ -213,6 +213,8 @@ class SanitizeHarnessTest(unittest.TestCase):
             "-DOBS_VERSION_OVERRIDE=30.0.0",
             "-DENABLE_UNIT_TESTS=ON",
             "-DENABLE_BROWSER=OFF",
+            # The conversion ratchet's clang replay reads this tree (#3118).
+            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
         ):
             self.assertIn(flag, command, flag)
         without = self.module.configure_command(
