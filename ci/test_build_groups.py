@@ -18,6 +18,11 @@
   #pragma once or an include guard) included as data.
 - Every macro an implementation file #defines is #undef'd later in the same
   file (BUILD.md rule 5), so it can't leak into the next file of its group.
+- libobs's groups are partitioned into lib-modules (#3256, #3258): each
+  libobs/build/modules.d/<module>.json names its groups by fnmatch pattern
+  and the modules it depends on. Every libobs group matches exactly one
+  module, every pattern matches a group, and the dependencies name existing
+  modules without a cycle.
 - Every quoted include of a repo file in a group, a precompiled header, an
   implementation file or a forwarding file is a repo-root path
   ("plugins/obs-ffmpeg/build/obs-ffmpeg.pch.h"), never relative to the file.
@@ -25,6 +30,8 @@
 
 from __future__ import annotations
 
+import fnmatch
+import json
 import re
 import subprocess
 import unittest
@@ -232,6 +239,68 @@ class BuildGroupsTest(unittest.TestCase):
                 hosts = [host(g) for g in groups]
                 self.assertNotIn(None, hosts, f"in several groups that aren't per host: {groups}")
                 self.assertEqual(len(hosts), len(set(hosts)), f"twice for one host: {groups}")
+
+
+MODULES = ROOT / "libobs" / "build" / "modules.d"
+
+
+def libobs_groups() -> list[str]:
+    """libobs's unity group names: libobs/build/libobs.<name>+.h.c (or .m)."""
+    names = []
+    for path in sorted((ROOT / "libobs" / "build").iterdir()):
+        if kind(path.name, GROUP) and path.name.startswith("libobs."):
+            names.append(path.name[len("libobs.") :].split("+", 1)[0])
+    return names
+
+
+def load_modules() -> dict[str, dict]:
+    return {path.stem: json.loads(path.read_text(encoding="utf-8")) for path in sorted(MODULES.glob("*.json"))}
+
+
+class LibobsModulesTest(unittest.TestCase):
+    """The lib-module manifest (#3258): the unit the module cache keys on."""
+
+    def setUp(self):
+        self.modules = load_modules()
+
+    def test_manifest_exists(self):
+        self.assertTrue(self.modules, f"{MODULES.relative_to(ROOT)} has no module files")
+
+    def test_every_group_is_in_exactly_one_module(self):
+        errors = []
+        for group in libobs_groups():
+            owners = [name for name, module in self.modules.items() if any(fnmatch.fnmatchcase(group, pattern) for pattern in module["groups"])]
+            if len(owners) != 1:
+                errors.append(f"libobs.{group}: in {owners or 'no module'}")
+        self.assertEqual(errors, [], "each libobs group belongs to exactly one module")
+
+    def test_every_pattern_matches_a_group(self):
+        groups = libobs_groups()
+        stale = [
+            f"{name}: {pattern}"
+            for name, module in self.modules.items()
+            for pattern in module["groups"]
+            if not any(fnmatch.fnmatchcase(group, pattern) for group in groups)
+        ]
+        self.assertEqual(stale, [], "a module pattern that matches no group is stale")
+
+    def test_dependencies_exist_and_have_no_cycle(self):
+        for name, module in self.modules.items():
+            for dependency in module.get("depends", []):
+                self.assertIn(dependency, self.modules, f"{name} depends on unknown module {dependency}")
+        state: dict[str, str] = {}
+
+        def visit(name: str, path: list[str]) -> None:
+            if state.get(name) == "done":
+                return
+            self.assertNotEqual(state.get(name), "visiting", f"module cycle: {' -> '.join(path + [name])}")
+            state[name] = "visiting"
+            for dependency in self.modules[name].get("depends", []):
+                visit(dependency, path + [name])
+            state[name] = "done"
+
+        for name in self.modules:
+            visit(name, [])
 
 
 if __name__ == "__main__":
