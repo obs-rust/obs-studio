@@ -661,6 +661,13 @@
     obs_encoder_gpu_gates_requeue;
     obs_encoder_gpu_gates_requeue_ts;
     obs_encoder_gpu_gates_p010;
+    /* obs-encoder-gpu-rescale.c. obs-encoder.c calls them inside libobs.
+     * Not EXPORT. */
+    obs_encoder_gpu_rescale_wanted;
+    obs_encoder_gpu_rescale_target;
+    obs_encoder_gpu_rescale_matches;
+    obs_encoder_gpu_rescale_release_step;
+    obs_encoder_gpu_rescale_release_refs;
     /* obs-encoder-group-reconfig.c. obs-encoder.c calls them inside libobs.
      * Not EXPORT. */
     obs_encoder_group_reconfig_new_request;

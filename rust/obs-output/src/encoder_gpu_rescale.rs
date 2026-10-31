@@ -35,6 +35,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -101,8 +102,18 @@ pub enum Release {
 /// no preferred format, colorspace or range.
 #[must_use]
 pub fn wanted(has_media: bool, request: &Request) -> bool {
-    let _ = (has_media, request);
-    todo!()
+    if !has_media {
+        return false;
+    }
+    if request.scale_type == OBS_SCALE_DISABLE {
+        return false;
+    }
+    let nothing = request.scaled_height == 0
+        && request.scaled_width == 0
+        && request.format == VIDEO_FORMAT_NONE
+        && request.colorspace == VIDEO_CS_DEFAULT
+        && request.range == VIDEO_RANGE_DEFAULT;
+    !nothing
 }
 
 /// `obs_encoder_gpu_rescale_target()`: each field the request's when it is
@@ -110,8 +121,34 @@ pub fn wanted(has_media: bool, request: &Request) -> bool {
 /// other than the "none" or "default" value), else `video`'s.
 #[must_use]
 pub fn target(request: &Request, video: &Output) -> Output {
-    let _ = (request, video);
-    todo!()
+    let pick = |set: bool, own: i32, video: i32| if set { own } else { video };
+    Output {
+        width: if request.scaled_width != 0 {
+            request.scaled_width
+        } else {
+            video.width
+        },
+        height: if request.scaled_height != 0 {
+            request.scaled_height
+        } else {
+            video.height
+        },
+        format: pick(
+            request.format != VIDEO_FORMAT_NONE,
+            request.format,
+            video.format,
+        ),
+        colorspace: pick(
+            request.colorspace != VIDEO_CS_DEFAULT,
+            request.colorspace,
+            video.colorspace,
+        ),
+        range: pick(
+            request.range != VIDEO_RANGE_DEFAULT,
+            request.range,
+            video.range,
+        ),
+    }
 }
 
 /// `obs_encoder_gpu_rescale_matches()`: a mix serves the target when it
@@ -125,16 +162,20 @@ pub fn matches(
     scale_type: i32,
     target: &Output,
 ) -> bool {
-    let _ = (same_view, mix_scale_type, mix, scale_type, target);
-    todo!()
+    same_view && mix_scale_type == scale_type && mix == target
 }
 
 /// `obs_encoder_gpu_rescale_release_step()`: `is_media` when the mix's video
 /// is the encoder's media, `encoder_only` the mix's `encoder_only_mix`.
 #[must_use]
 pub fn release_step(is_media: bool, encoder_only: bool) -> Release {
-    let _ = (is_media, encoder_only);
-    todo!()
+    if !is_media {
+        Release::Skip
+    } else if !encoder_only {
+        Release::Stop
+    } else {
+        Release::Drop
+    }
 }
 
 /// `obs_encoder_gpu_rescale_release_refs()`: the mix's `encoder_refs` after
@@ -143,6 +184,6 @@ pub fn release_step(is_media: bool, encoder_only: bool) -> Release {
 /// `i64::MIN` wraps instead of the C's undefined overflow.
 #[must_use]
 pub fn release_refs(encoder_refs: i64) -> (i64, bool) {
-    let _ = encoder_refs;
-    todo!()
+    let after = encoder_refs.wrapping_sub(1);
+    (after, after == 0)
 }
