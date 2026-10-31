@@ -196,5 +196,34 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(record.bench_command([])[-1], "--")
 
 
+class BoundGateTest(unittest.TestCase):
+    """`--max-ratio` turns a recorded over-bound pair into a failed run (#3138).
+
+    The recording is a local check (the box is shared), so the gate belongs in
+    the recorder, not in PR CI: it lets a worker or maintainer reproduce the
+    bound breach with one command instead of reading the report by eye.
+    """
+
+    def test_a_pair_over_the_bound_is_reported(self):
+        rows = [
+            {"benchmark": "audio_mix/buffering_add_one_tick", "rust_over_c": 1.26,
+             "status": "over 10% bound"},
+        ]
+        self.assertEqual(
+            [row["benchmark"] for row in record.over_bound(rows)],
+            ["audio_mix/buffering_add_one_tick"],
+        )
+
+    def test_a_pair_within_the_bound_passes(self):
+        rows = [{"benchmark": "audio_mix/mix_whole_tick", "rust_over_c": 1.09,
+                 "status": "within 10% bound"}]
+        self.assertEqual(record.over_bound(rows), [])
+
+    def test_the_c_printf_control_is_never_a_breach(self):
+        rows = [{"benchmark": "dstr/printf_control/128", "rust_over_c": 12.0,
+                 "status": "C control in both builds"}]
+        self.assertEqual(record.over_bound(rows), [])
+
+
 if __name__ == "__main__":
     unittest.main()
