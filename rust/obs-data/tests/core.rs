@@ -10,6 +10,8 @@ mod callback;
 mod data;
 #[path = "../../obs-hotkey/tests/hotkey/main.rs"]
 mod hotkey;
+#[path = "../../obs-mcp/tests/mcp/main.rs"]
+mod mcp;
 #[path = "../../obs-missing-files/tests/missing_files/main.rs"]
 mod missing_files;
 #[path = "../../obs-core/tests/obs_core/main.rs"]
