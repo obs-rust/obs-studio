@@ -1212,3 +1212,12 @@ audio_resampler_comp_step
 audio_resampler_output_frames
 audio_resampler_sample_format
 audio_resampler_upmix_row
+
+# window-match.c: window-helpers.c calls them inside libobs on Windows.
+# Declared in window-match.h without EXPORT, so the shims stay hidden the
+# same way.
+ms_window_match_is_generic_class
+ms_window_match_is_internal_exe
+ms_window_match_is_untitled_explorer
+ms_window_match_is_uwp_class
+ms_window_match_rating

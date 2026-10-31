@@ -1007,3 +1007,11 @@ _audio_resampler_comp_step
 _audio_resampler_output_frames
 _audio_resampler_sample_format
 _audio_resampler_upmix_row
+
+# window-match.c: the window helpers (window-helpers.c) call them inside
+# libobs. Built on every host; not EXPORT.
+_ms_window_match_is_generic_class
+_ms_window_match_is_internal_exe
+_ms_window_match_is_untitled_explorer
+_ms_window_match_is_uwp_class
+_ms_window_match_rating

@@ -1,0 +1,15 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc db7a91032baf24794079e36b1464fca3209fa9211ca55ea0d5143db3c64d687e # shrinks to which = 0, bits = 1, lead = [], tail = []
+cc 5dbaee0d072a4f1125079cc943b51b8579c610ecbc31736434aad67b9a9aa66d # shrinks to which = 15, bits = 0, lead = [], tail = [1]
+cc 38387a1bfa0d91ddd2c85789d3ff612864904f0f23bd41bdcca9c2ee9c374438 # shrinks to which = 14, bits = 0, lead = [], tail = []
+cc a25354a558f8522f43a26b6caab4f38f0e9515e972f7ae1e20b62f80e7299fbf # shrinks to which = 16, bits = 1, lead = [], tail = []
+cc 67b4a5f8822907e5f610f9d3277fba12565441651869312f653dcc7a1385ef53 # shrinks to which = 17, bits = 1, lead = [], tail = []
+cc e342b37bbbdd7805c0db55b374e487ec21dde78242c2714b4248f5c7e3b76c7c # shrinks to which = 17, bits = 0, lead = [1], tail = []
+cc b1a12d5e4dfb8a3a4e511fe3b6a3785061c907b74f0d2bdd410c4216b13d19ea # shrinks to which = 19, bits = 1, lead = [], tail = []
+cc d76a4cacf0cc23bf78c22ff920b1756327f9f1399d1709a8ab219056abedb6d2 # shrinks to which = 19, bits = 0, lead = [], tail = [1]
+cc f489d625de6acd863ad80faeba973c718086cc25d8bf2831aec3db9b370be930 # shrinks to which = 16, bits = 0, lead = [], tail = []

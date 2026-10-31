@@ -52,6 +52,7 @@
 
 /* util/windows/window-helpers.c */
 #include "util/windows/window-helpers.h"
+#include "util/windows/window-match.h"
 
 #include <util/windows/obfuscate.h>
 

@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5e70b33f559b2fa19a08ad857415d07f28f92d10ef444955e3608abd41448f0b # shrinks to p = 0, uwp = false, generic = true, class_matches = true, exe_matches = false, cmp = 0
+cc 300a7ef5755a7187e1a0102ef7438abace836c4c5061c65c30dda310f8cccdbd # shrinks to p = 0, uwp = false, generic = true, class_matches = false, exe_matches = true, cmp = 1
+cc 51f0bd7353ddb960cdeda8962e5b76beb971587d7249c541283e4c4023df4dd3 # shrinks to p = 0, uwp = false, generic = false, class_matches = true, exe_matches = false, cmp = 0
+cc 809b56308edb28776b89b1cfdcb89c7855ca32abc51c0804e838f30d823fdc81 # shrinks to p = 0, uwp = false, generic = false, class_matches = false, exe_matches = false, cmp = 0
+cc c5b3bba7eed2cfb6777dfcea7430ffeefd9749cba99b70804947df2636c9e6a7 # shrinks to p = 2, uwp = false, generic = false, class_matches = false, exe_matches = false, cmp = 0
+cc d4cc38bebad74eedd99fbd69a83f6d7cf18b7e196037d2a4aaf5e326fbae9edd # shrinks to p = -1, uwp = false, generic = false, class_matches = false, exe_matches = false, cmp = 0
