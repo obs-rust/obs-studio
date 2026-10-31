@@ -433,14 +433,37 @@ async def wait_until_ready(client, proc: subprocess.Popen, deadline: float) -> d
             raise RuntimeError(f"GetInputKindList failed: {status}")
 
 
+FRONTEND_STARTUP_SUMMARY = "OBSBasic::OBSInit:"
+
+
+def newest_frontend_log(config: Path) -> Path | None:
+    """The launch's own log, not an earlier run's."""
+    logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
+    return logs[-1] if logs else None
+
+
+def frontend_finished_startup(config: Path) -> bool:
+    """Whether the newest frontend log reached the end of `OBSBasic::OBSInit` (#3241).
+
+    obs-websocket starts its server from `obs_module_load` on its own thread, so
+    it answers protocol requests while the frontend is still blocked in
+    `OBSBasic::OBSInit` (the tray/AppKit deadlock of #3241). The handshake is not
+    frontend progress; the summary line the frontend logs last is.
+    """
+    log = newest_frontend_log(config)
+    return log is not None and FRONTEND_STARTUP_SUMMARY in log.read_text(
+        encoding="utf-8-sig", errors="replace"
+    )
+
+
 def report_frontend_log(config: Path) -> None:
     """Print the newest frontend log before the fixture's cleanup removes it (#2161)."""
-    logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
-    if not logs:
+    log = newest_frontend_log(config)
+    if log is None:
         print(f"no frontend log under {config / 'logs'}")
         return
-    print(f"::group::frontend log {logs[-1].name}")
-    print(logs[-1].read_text(encoding="utf-8-sig", errors="replace"))
+    print(f"::group::frontend log {log.name}")
+    print(log.read_text(encoding="utf-8-sig", errors="replace"))
     print("::endgroup::")
 
 
@@ -586,6 +609,29 @@ def startup_failure(
     if platform == "macos":
         report_crash_reports(diagnostic_report_directories(), since)
     return RuntimeError(f"config mode {config_mode}: {error}")
+
+
+def shutdown_timeout_failure(
+    config: Path, platform: str, since: float, config_mode: str, error: BaseException
+) -> BaseException:
+    """Name a 30 s shutdown timeout as a startup hang when `OBSInit` never finished.
+
+    A blocked main thread cannot run shutdown either, so a mode whose frontend
+    never logged its summary failed in startup. Reporting that as a shutdown
+    timeout mis-triaged #3221 (#3241); the log decides which half hung.
+    """
+    if frontend_finished_startup(config):
+        return error
+    return startup_failure(
+        RuntimeError(
+            "frontend did not finish OBSInit (no "
+            f"'{FRONTEND_STARTUP_SUMMARY} N ms' summary in its log): "
+            "the launch hung in startup, not in shutdown"
+        ),
+        platform,
+        since,
+        config_mode,
+    )
 
 
 def _load(name: str, path: Path):
@@ -833,7 +879,14 @@ def main() -> None:  # noqa: C901
             raise startup_failure(
                 error, args.platform, launched, args.config_mode
             ) from error
-        close_frontend(proc, args.platform, launched)
+        try:
+            close_frontend(proc, args.platform, launched)
+        except subprocess.TimeoutExpired as error:
+            # The protocol answered, but a blocked main thread cannot shut down.
+            # The log says whether the launch ever finished startup (#3241).
+            raise shutdown_timeout_failure(
+                config, args.platform, launched, args.config_mode, error
+            ) from error
         fixture.verify()
         logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
         current_logs = [
