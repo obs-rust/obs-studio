@@ -70,6 +70,8 @@ endif()
 if(ENABLE_UNIT_TESTS)
   add_executable(test_virtual_cam_shutdown tests/test_virtual_cam_shutdown.cpp)
   add_test(NAME test_virtual_cam_shutdown COMMAND test_virtual_cam_shutdown)
+  add_executable(test_vcam_audio_config tests/test_vcam_audio_config.cpp)
+  add_test(NAME test_vcam_audio_config COMMAND test_vcam_audio_config)
   add_executable(test_config_migration tests/test_config_migration.cpp)
   target_include_directories(test_config_migration PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
   foreach(
