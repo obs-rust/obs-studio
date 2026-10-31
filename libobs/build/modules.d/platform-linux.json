@@ -1,0 +1,11 @@
+{
+  "description": "Linux/FreeBSD host code: X11, Wayland, D-Bus portal shortcuts, PulseAudio.",
+  "groups": [
+    "nix",
+    "nix-*",
+    "pulse"
+  ],
+  "depends": [
+    "core"
+  ]
+}

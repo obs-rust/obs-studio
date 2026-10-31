@@ -248,6 +248,18 @@ The Cargo-native build and the Tier 2 inventory read the set keys and ignore
 these fields. Settings for a whole target (warning pins, definitions) stay in
 the CMake files.
 
+libobs's groups are partitioned into lib-modules, the unit the module
+cache of #3256 compiles, caches and relinks:
+`libobs/build/modules.d/<module>.json` gives a module's groups as
+`fnmatch` patterns on the group name (`core`, `nix-*`, `ported-*`) and
+the modules it `depends` on. Patterns keep a new group from editing a
+central list: a new `ported-foo` group is already in `ported`. A new
+non-matching group goes into the module whose code it is.
+`ci/test_build_groups.py` checks that every libobs group is in exactly one
+module, that every pattern still matches a group, and that the
+dependencies exist and form no cycle (#3258). The build does not read the
+manifest yet; #3259 splits `libobs-objects` along it.
+
 ## Verifying a change
 
 - Linux: `./unittest` and the local gate as usual; `./lint` runs

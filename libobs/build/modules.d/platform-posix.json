@@ -1,0 +1,9 @@
+{
+  "description": "Host code shared by Linux and macOS.",
+  "groups": [
+    "graphics-ffmpeg-host-posix"
+  ],
+  "depends": [
+    "graphics"
+  ]
+}

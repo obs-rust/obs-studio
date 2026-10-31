@@ -1,0 +1,13 @@
+{
+  "description": "The libobs core: objects, outputs, sources, the null audio device.",
+  "groups": [
+    "core",
+    "core-output",
+    "core-source",
+    "null-audio"
+  ],
+  "depends": [
+    "graphics",
+    "media"
+  ]
+}

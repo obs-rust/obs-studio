@@ -1,0 +1,11 @@
+{
+  "description": "macOS host code, including CoreFoundation utilities.",
+  "groups": [
+    "macos",
+    "macos-*",
+    "util-cf"
+  ],
+  "depends": [
+    "core"
+  ]
+}

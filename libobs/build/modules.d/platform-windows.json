@@ -1,0 +1,12 @@
+{
+  "description": "Windows host code.",
+  "groups": [
+    "windows",
+    "windows-*",
+    "graphics-ffmpeg-host-windows",
+    "obfuscate-windows"
+  ],
+  "depends": [
+    "core"
+  ]
+}
