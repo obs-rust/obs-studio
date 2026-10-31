@@ -13,6 +13,7 @@ mod image_orient;
 mod image_orient_parity;
 mod image_pq_scrgb;
 mod image_pq_scrgb_parity;
+mod image_rgba64;
 mod immediate;
 mod immediate_parity;
 mod lzw;
