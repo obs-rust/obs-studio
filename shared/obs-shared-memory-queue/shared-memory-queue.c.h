@@ -33,7 +33,8 @@ struct video_queue {
 	bool is_writer;
 };
 
-#define ALIGN_SIZE(size, align) size = (((size) + (align - 1)) & (~(align - 1)))
+#define ALIGN_SIZE(size, align) \
+	size = ((((DWORD)(size)) + ((align) - 1u)) & ~(((DWORD)(align)) - 1u))
 #define FRAME_HEADER_SIZE 32
 
 video_queue_t *video_queue_create(uint32_t cx, uint32_t cy, uint64_t interval)
@@ -157,7 +158,7 @@ void video_queue_get_info(video_queue_t *vq, uint32_t *cx, uint32_t *cy, uint64_
 void video_queue_write(video_queue_t *vq, uint8_t **data, uint32_t *linesize, uint64_t timestamp)
 {
 	struct queue_header *qh = vq->header;
-	long inc = ++qh->write_idx;
+	long inc = (long)++qh->write_idx;
 
 	unsigned long idx = get_idx(inc);
 	size_t size = linesize[0] * qh->cy;
@@ -166,7 +167,7 @@ void video_queue_write(video_queue_t *vq, uint8_t **data, uint32_t *linesize, ui
 	memcpy(vq->frame[idx], data[0], size);
 	memcpy(vq->frame[idx] + size, data[1], size / 2);
 
-	qh->read_idx = inc;
+	qh->read_idx = (uint32_t)inc;
 	qh->state = SHARED_QUEUE_STATE_READY;
 }
 
@@ -192,7 +193,7 @@ enum queue_state video_queue_state(video_queue_t *vq)
 bool video_queue_read(video_queue_t *vq, nv12_scale_t *scale, void *dst, uint64_t *ts)
 {
 	struct queue_header *qh = vq->header;
-	long inc = qh->read_idx;
+	long inc = (long)qh->read_idx;
 
 	if (qh->state == SHARED_QUEUE_STATE_STOPPING) {
 		return false;

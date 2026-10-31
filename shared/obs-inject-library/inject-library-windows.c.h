@@ -113,7 +113,7 @@ int inject_library_safe_obf(DWORD thread_id, const wchar_t *dll, const char *set
 
 	hook = set_windows_hook_ex(WH_GETMESSAGE, proc, lib, thread_id);
 	if (!hook) {
-		return GetLastError();
+		return (int)GetLastError();
 	}
 
 	/* SetWindowsHookEx does not inject the library in to the target
