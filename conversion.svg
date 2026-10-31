@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="190" viewBox="0 0 640 190" role="img" aria-label="libobs 49.83% converted to Rust, whole app 12.96%">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="190" viewBox="0 0 640 190" role="img" aria-label="libobs 50.05% converted to Rust, whole app 13.03%">
 <style>
 .bg{fill:#ffffff;stroke:#d0d7de}.t{fill:#1f2328}.m{fill:#59636e}.track{fill:#d0d7de}.fill{fill:#b7410e}
 text{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif}
@@ -6,10 +6,10 @@ text{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif}
 </style>
 <rect class="bg" x="0.5" y="0.5" width="639" height="189" rx="8"/>
 <text class="t" x="40" y="34" font-size="16" font-weight="600">OBS converted to Rust</text>
-<text class="t" x="40" y="70" font-size="14">libobs</text><text class="t" x="600" y="70" font-size="20" font-weight="700" text-anchor="end">49.83%</text>
-<rect class="track" x="40" y="78" width="560" height="10" rx="5"/><rect class="fill" x="40" y="78" width="279.0" height="10" rx="5"/>
-<text class="t" x="40" y="118" font-size="14">Whole app</text><text class="t" x="600" y="118" font-size="20" font-weight="700" text-anchor="end">12.96%</text>
-<rect class="track" x="40" y="126" width="560" height="10" rx="5"/><rect class="fill" x="40" y="126" width="72.6" height="10" rx="5"/>
-<text class="m" x="40" y="160" font-size="11">libobs per host: linux 50.5%  windows 49.4%  macos 49.8%</text>
-<text class="m" x="40" y="176" font-size="11">Rust: 146,906 lines · obs-websocket kept in C++ by design (14,104 lines) · 2026-10-31 · 88d49a9</text>
+<text class="t" x="40" y="70" font-size="14">libobs</text><text class="t" x="600" y="70" font-size="20" font-weight="700" text-anchor="end">50.05%</text>
+<rect class="track" x="40" y="78" width="560" height="10" rx="5"/><rect class="fill" x="40" y="78" width="280.3" height="10" rx="5"/>
+<text class="t" x="40" y="118" font-size="14">Whole app</text><text class="t" x="600" y="118" font-size="20" font-weight="700" text-anchor="end">13.03%</text>
+<rect class="track" x="40" y="126" width="560" height="10" rx="5"/><rect class="fill" x="40" y="126" width="73.0" height="10" rx="5"/>
+<text class="m" x="40" y="160" font-size="11">libobs per host: linux 50.7%  windows 49.6%  macos 50.1%</text>
+<text class="m" x="40" y="176" font-size="11">Rust: 148,530 lines · obs-websocket kept in C++ by design (14,104 lines) · 2026-10-31 · 1b3a74f</text>
 </svg>
