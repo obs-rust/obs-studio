@@ -964,5 +964,44 @@ class PushPermissionsTest(unittest.TestCase):
                       "the exception's reason must name the id-token grant it cannot clear")
 
 
+def setup_soldr_steps(path: Path | None = None) -> list[str]:
+    """Every `- name:` step block in a workflow that calls zackees/setup-soldr.
+
+    Steps are split on the workflows' step indent (`      - `) rather than
+    parsed as YAML: the ci/ tests are stdlib-only (#1199).
+    """
+    text = (path or WORKFLOWS / "build-project.yaml").read_text(encoding="utf-8")
+    return [step for step in re.split(r"(?m)^      - ", text)[1:] if "zackees/setup-soldr@" in step]
+
+
+class AllowSecretsTest(unittest.TestCase):
+    """Repository secrets a workflow reads are recorded in ci.toml (#3115).
+
+    #3061 gave every `zackees/setup-soldr` step in build-project.yaml the S3
+    remote cache's two credentials, but did not record them in
+    [allow].secrets, so ci-lint's SEC-001 reported 22 violations instead of an
+    approved baseline. The allowlist is where this repository says which
+    repository secrets its workflows may read, and the S3 half has to be
+    all-or-nothing: a step with one key configured is a silent cache miss.
+    """
+
+    S3_SECRETS = ("SOLDR_S3_CACHE_ACCESS_KEY", "SOLDR_S3_CACHE_SECRET_KEY")
+
+    def test_s3_cache_secrets_are_allowlisted(self):
+        allowed = set(load()["allow"]["secrets"])
+        for name in self.S3_SECRETS:
+            with self.subTest(secret=name):
+                self.assertIn(name, allowed, f"{name} is read by a workflow but not in [allow].secrets")
+
+    def test_every_setup_soldr_step_configures_both_s3_credentials(self):
+        steps = setup_soldr_steps()
+        self.assertTrue(steps, "build-project.yaml calls zackees/setup-soldr")
+        for index, step in enumerate(steps):
+            configured = [name for name in self.S3_SECRETS if f"secrets.{name}" in step]
+            with self.subTest(step=index):
+                self.assertEqual(configured, list(self.S3_SECRETS),
+                                 f"setup-soldr step {index} configures only {configured}")
+
+
 if __name__ == "__main__":
     unittest.main()
