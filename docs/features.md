@@ -806,6 +806,11 @@ area.
   is still running keeps its microphone even when another one starts.
   *Linux*, 2026-10-31.
   Issue [#3179](https://github.com/obs-rust/obs-studio/issues/3179).
+- Starting or stopping the Linux Virtual Camera no longer freezes OBS when
+  the sound server stops answering: each `pactl` call for the OBS Virtual
+  Microphone gives up after 3 seconds and the camera runs video-only.
+  *Linux*, 2026-10-31.
+  Issue [#3181](https://github.com/obs-rust/obs-studio/issues/3181).
 - The Linux virtual camera sends a correct picture to a v4l2loopback device
   with a fixed format of a different size. *Linux*, 2026-10-11. Issue
   [#212](https://github.com/obs-rust/obs-studio/issues/212), PR

@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 
 #include "plugins/linux-v4l2/v4l2-output.c.h"
 
@@ -226,6 +227,42 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 	rmdir(dir);
 }
 
+/* #3181: pactl runs on the thread that starts the Virtual Camera. A sound
+ * server that never answers must not freeze OBS: run_pactl gives up. */
+static void hung_pactl_is_given_up_on(void **state)
+{
+	(void)state;
+	char dir[] = "/tmp/vmic-pactl-XXXXXX";
+	assert_non_null(mkdtemp(dir));
+	char script[256];
+	snprintf(script, sizeof(script), "%s/pactl", dir);
+	FILE *f = fopen(script, "w");
+	assert_non_null(f);
+	fputs("#!/bin/sh\nexec sleep 60\n", f);
+	fclose(f);
+	assert_int_equal(chmod(script, 0755), 0);
+
+	const char *old = getenv("PATH");
+	char *saved = old ? strdup(old) : NULL;
+	char path[1024];
+	snprintf(path, sizeof(path), "%s:%s", dir, old ? old : "/usr/bin:/bin");
+	setenv("PATH", path, 1);
+
+	uint64_t start = os_gettime_ns();
+	char *reply = run_pactl("info");
+	uint64_t elapsed = os_gettime_ns() - start;
+
+	if (saved) {
+		setenv("PATH", saved, 1);
+		free(saved);
+	}
+	unlink(script);
+	rmdir(dir);
+
+	assert_null(reply);
+	assert_true(elapsed < 10000000000ULL);
+}
+
 /* #3182: the Virtual Camera dialog turns the microphone off and picks the
  * track; a collection saved before has neither key. */
 static void dialog_settings_choose_audio_and_track(void **state)
@@ -287,6 +324,7 @@ int main(void)
 		cmocka_unit_test(stale_is_decided_by_the_lock_not_the_pid),
 		cmocka_unit_test(dialog_settings_choose_audio_and_track),
 		cmocka_unit_test(a_second_obs_gets_its_own_source_name),
+		cmocka_unit_test(hung_pactl_is_given_up_on),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),
