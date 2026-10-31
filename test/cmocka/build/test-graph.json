@@ -1120,6 +1120,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_gpu_rescale_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_gpu_rescale_steps.c",
+        "libobs/obs-encoder-gpu-rescale.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_encoder_group_move": {
       "sources": [
         "test/cmocka/test_encoder_group_move.c"
@@ -6076,6 +6099,12 @@
     },
     "test_encoder_gpu_gates_steps": {
       "target": "test_encoder_gpu_gates_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_gpu_rescale_steps": {
+      "target": "test_encoder_gpu_rescale_steps",
       "command": [
         "${target}"
       ]
