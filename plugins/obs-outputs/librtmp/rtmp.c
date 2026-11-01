@@ -4240,15 +4240,19 @@ RTMP_SendPacket(RTMP *r, RTMPPacket *packet, int queue)
 
     RTMP_Log(RTMP_LOGDEBUG2, "%s: fd=%d, size=%d", __func__, (int)r->m_sb.sb_socket,
              nSize);
-    /* send all chunks in one HTTP request */
-    if (r->Link.protocol & RTMP_FEATURE_HTTP)
+    /* send all chunks in one HTTP request, and in one socket write
+     * otherwise: a write per chunk was ~37 syscalls for a 150 KB keyframe
+     * at a 4096-byte chunk size (obs-rust/obs-studio#3207). Without the
+     * buffer a plain socket falls back to a write per chunk. */
     {
         int chunks = (nSize+nChunkSize-1) / nChunkSize;
         if (chunks > 1)
         {
-            tlen = chunks * (cSize + 1) + nSize + hSize;
+            /* a 4-byte extended timestamp follows each type-3 header */
+            int ext = t >= 0xffffff ? 4 : 0;
+            tlen = chunks * (cSize + 1 + ext) + nSize + hSize;
             tbuf = malloc(tlen);
-            if (!tbuf)
+            if (!tbuf && (r->Link.protocol & RTMP_FEATURE_HTTP))
                 return FALSE;
             toff = tbuf;
         }
