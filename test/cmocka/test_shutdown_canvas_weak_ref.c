@@ -66,16 +66,50 @@ static void test_sources_left_alive_free_their_canvas_ref(void **state)
 
 	obs_shutdown();
 
-	/* What stays is by design: obs_free_data() destroys a source the host
-	 * left alive without freeing its control block, which the host's
-	 * reference still points to. One per source, two here. */
-	assert_int_equal(bnum_allocs() - before, 2);
+	/* obs_free_data() gives back the reference the source held on its
+	 * control block, as obs_source_release() does, so with no weak
+	 * reference left the control block goes too (#3364). */
+	assert_int_equal(bnum_allocs() - before, 0);
+}
+
+/* A weak reference the host still holds keeps the control block alive
+ * through obs_shutdown(), and releasing it afterwards frees it (#3364). */
+static void test_weak_ref_held_across_shutdown_frees_on_release(void **state)
+{
+	(void)state;
+	long before = bnum_allocs();
+	if (!obs_startup("en-US", NULL, NULL)) {
+		fprintf(stderr, "skipped: obs_startup failed (no display?)\n");
+		skip();
+	}
+
+	struct obs_source_info input = {
+		.id = INPUT_ID,
+		.type = OBS_SOURCE_TYPE_INPUT,
+		.get_name = input_name,
+		.create = input_create,
+		.destroy = input_destroy,
+	};
+	obs_register_source(&input);
+
+	obs_source_t *source = obs_source_create(INPUT_ID, "left alive", NULL, NULL);
+	assert_non_null(source);
+	obs_weak_source_t *weak = obs_source_get_weak_source(source);
+	assert_non_null(weak);
+
+	obs_shutdown();
+
+	/* the control block, for the weak reference */
+	assert_int_equal(bnum_allocs() - before, 1);
+	obs_weak_source_release(weak);
+	assert_int_equal(bnum_allocs() - before, 0);
 }
 
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_sources_left_alive_free_their_canvas_ref),
+		cmocka_unit_test(test_weak_ref_held_across_shutdown_frees_on_release),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
