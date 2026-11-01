@@ -15,6 +15,9 @@ pub(crate) const INDEX_AT: usize = 16;
 
 pub(crate) struct NameTable<T> {
     items: Vec<(Box<[u8]>, T)>,
+    /// [`tag`] of each item's name, in item order: the small-table scan
+    /// reads this contiguous array instead of each name's heap copy (#3350).
+    tags: Vec<u32>,
     index: Option<HashMap<Box<[u8]>, usize, RandomState>>,
 }
 
@@ -22,6 +25,7 @@ impl<T> Default for NameTable<T> {
     fn default() -> Self {
         Self {
             items: Vec::new(),
+            tags: Vec::new(),
             index: None,
         }
     }
@@ -32,12 +36,17 @@ impl<T> NameTable<T> {
     pub(crate) fn get(&self, name: &[u8]) -> Option<&T> {
         let position = match &self.index {
             Some(index) => *index.get(name)?,
-            // Length and last byte first, inline: names in one table tend to
-            // share a prefix ("s00".."s15", "source_*"), and a libc memcmp
-            // call per entry was the largest cost of a lookup (#3350).
-            None => self.items.iter().position(|(key, _)| {
-                key.len() == name.len() && key.last() == name.last() && &**key == name
-            })?,
+            // Length and last byte first, from the contiguous tags: names in
+            // one table tend to share a prefix ("s00".."s15", "source_*"),
+            // and a libc memcmp call per entry was the largest cost of a
+            // lookup (#3350).
+            None => {
+                let want = tag(name);
+                self.tags
+                    .iter()
+                    .zip(&self.items)
+                    .position(|(&t, (key, _))| t == want && &**key == name)?
+            }
         };
         Some(&self.items[position].1)
     }
@@ -50,6 +59,7 @@ impl<T> NameTable<T> {
         }
         let position = self.items.len();
         self.items.push((name.into(), item));
+        self.tags.push(tag(name));
         match &mut self.index {
             Some(index) => {
                 index.insert(name.into(), position);
@@ -71,4 +81,9 @@ impl<T> NameTable<T> {
     pub(crate) fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
+}
+
+/// A name's length (low 24 bits) and last byte: equal names have equal tags.
+fn tag(name: &[u8]) -> u32 {
+    ((name.len() as u32) << 8) | u32::from(name.last().copied().unwrap_or(0))
 }
