@@ -403,7 +403,7 @@ class TestIsolationTest(unittest.TestCase):
     display, tests side by side broke test_xshm_monitor_late in its setup
     ("cannot add RandR monitors", dispatch 41238464885): each asan test gets
     its own X server, as Tier 2 gives each test its own through xvfb-run.
-    tsan and valgrind stay one at a time until they are measured in a pool."""
+    tsan runs in the same pool; valgrind stays one at a time (measured)."""
 
     def setUp(self):
         self.module = load_module()
@@ -452,13 +452,16 @@ class TestIsolationTest(unittest.TestCase):
         self.assertTrue(all(f.parent == self.layout.build / "xauth" for f in files), files)
 
     def test_private_displays_and_pool_size_per_tool(self):
+        # tsan measured in a pool (41275822723): unit tests 20.3 -> 8.2 min.
+        # valgrind in a pool (41275824985) was 1.6x faster but 9 tests newly
+        # failed on timing, so it stays one at a time.
         self.assertTrue(self.module.private_displays("asan"))
-        self.assertFalse(self.module.private_displays("tsan"))
+        self.assertTrue(self.module.private_displays("tsan"))
         self.assertFalse(self.module.private_displays("valgrind"))
         with patch.dict(os.environ, {}):
             os.environ.pop("SANITIZE_JOBS", None)
             self.assertEqual(self.module.unit_test_jobs("asan"), os.cpu_count() or 1)
-            self.assertEqual(self.module.unit_test_jobs("tsan"), 1)
+            self.assertEqual(self.module.unit_test_jobs("tsan"), os.cpu_count() or 1)
             self.assertEqual(self.module.unit_test_jobs("valgrind"), 1)
         with patch.dict(os.environ, {"SANITIZE_JOBS": "2"}):
             self.assertEqual(self.module.unit_test_jobs("valgrind"), 2)
