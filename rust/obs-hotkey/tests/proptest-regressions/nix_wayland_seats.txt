@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 011d5dcb1ddd26c56c3764f6bdabc350cb3fc16dfc4968468ad3f8906776b24c # shrinks to offered = 4
+cc 3c1b2ec9573dc454fad541ef192a75deb068ccc340a7d6904e66076a7cf546db # shrinks to offered = 7
+cc 49e3417d5f9abc9e61526da9c98ac37fd72d4cdad366561da7b61ff925bd6f81 # shrinks to c = [58661777]
+cc 01886dc66ec228ffda305008718be617be0ec39b92342688473bac91936e2103 # shrinks to c = 2, is_keyboard_seat = true
+cc 84bfbae81d28af93bc02b771bd5abc399345ea5c087165b2b42b0ebc0ef0e6b1 # shrinks to c = 229359588, is_keyboard_seat = false
+cc e8aad2a0ec13be66d8b865b4227d3a540aa737433ac09cc7783cf0a6b716c289 # shrinks to version = 5

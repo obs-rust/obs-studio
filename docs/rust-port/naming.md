@@ -53,7 +53,7 @@ One name per thing, so releases, crates and tags can't be confused (#320).
 | `libobs/obs-nal.c`, `obs-avc.c`, `obs-hevc.c`, `obs-av1.c` | `rust/obs-codec` |
 | `libobs/obs-data.c` | `rust/obs-data` |
 | `libobs/obs-properties.c` | `rust/obs-properties` |
-| `libobs/obs-hotkey-name-map.c`, `obs-hotkey-bindings.c.h`, `obs-hotkey-translations.c.h`, `obs-hotkey-press.c.h`, `obs-hotkey-pair.c.h`, `obs-hotkey-binding-press.c.h`, `obs-nix-hotkey-state.c.h`, `obs-nix-portal-shortcut-ids.c.h`, `obs-nix-portal-shortcut-sets.c.h`, `obs-nix-portal-shortcut-status.c.h`, `obs-nix-wayland-keys.c.h`, `obs-nix-x11-hotkeys.c.h`, `obs-nix-x11-input.c.h`, `obs-nix-x11-keys.c.h`, `obs-cocoa-keys.c.h`, `obs-windows-keys.c.h` | `rust/obs-hotkey` |
+| `libobs/obs-hotkey-name-map.c`, `obs-hotkey-bindings.c.h`, `obs-hotkey-translations.c.h`, `obs-hotkey-press.c.h`, `obs-hotkey-pair.c.h`, `obs-hotkey-binding-press.c.h`, `obs-nix-hotkey-state.c.h`, `obs-nix-portal-shortcut-ids.c.h`, `obs-nix-portal-shortcut-sets.c.h`, `obs-nix-portal-shortcut-status.c.h`, `obs-nix-wayland-keys.c.h`, `obs-nix-wayland-seats.c.h`, `obs-nix-x11-hotkeys.c.h`, `obs-nix-x11-input.c.h`, `obs-nix-x11-keys.c.h`, `obs-cocoa-keys.c.h`, `obs-windows-keys.c.h` | `rust/obs-hotkey` |
 | `libobs/callback/` | `rust/obs-callback` |
 | in-process MCP server (no C original, #3283) | `rust/obs-mcp` |
 | `libobs/obs-missing-files.c.h` | `rust/obs-missing-files` |

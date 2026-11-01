@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc af53a95f952a17bb9e185a9b2131e58cbb09ae2086b6d83540f10c666dca8441 # shrinks to events = [Global { name: 0, version: 4, seat: true }]
+cc 634316a48e8d23222a7d4483f8a6e2bebbdee03a70cbb2b45c718c2b2788667b # shrinks to v = 406459830, keyboard_seat = true
+cc 7a76ecfa071114c0cc89dbc7048e9ba390bd229c5fdcc1be906f9afc00705108 # shrinks to v = 1014656796, keyboard_seat = false
