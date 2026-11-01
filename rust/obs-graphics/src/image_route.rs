@@ -255,8 +255,9 @@ pub fn copy_src_len(cx: usize, cy: usize, src_linesize: usize) -> Option<usize> 
 /// smaller of the two line sizes from each row. Stops at the first row
 /// that does not fit in `src` or `dst`. Returns the rows copied.
 ///
-/// The C copies a tight image (`src_linesize == cx * 4`) in one `memcpy`;
-/// that is the same bytes as row by row.
+/// A tight image (`src_linesize == cx * 4`) is one copy, as the C's one
+/// `memcpy`, when it fits both buffers; otherwise row by row, the same
+/// bytes.
 pub fn copy_rows<D: DstByte>(
     dst: &mut [D],
     src: &[u8],
@@ -267,6 +268,14 @@ pub fn copy_rows<D: DstByte>(
     let (row, copied) = row_bytes(cx, src_linesize);
     if copied == 0 {
         return 0;
+    }
+    // A tight image is one run, as the C's single memcpy.
+    if row == src_linesize
+        && let Some(len) = cy.checked_mul(row)
+        && let (Some(to), Some(from)) = (dst.get_mut(..len), src.get(..len))
+    {
+        D::put_slice(to, from);
+        return cy;
     }
     let mut rows = 0;
     while rows < cy {
@@ -284,9 +293,7 @@ pub fn copy_rows<D: DstByte>(
         ) else {
             break;
         };
-        for (d, &s) in to.iter_mut().zip(from) {
-            d.put(s);
-        }
+        D::put_slice(to, from);
         rows = rows.saturating_add(1);
     }
     rows

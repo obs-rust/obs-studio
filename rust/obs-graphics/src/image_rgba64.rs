@@ -78,20 +78,31 @@ mod sealed {
 /// A byte of the output: `u8`, or `MaybeUninit<u8>` for a buffer that is
 /// not initialized (the C ABI's `bmalloc()` buffer). Only written, never
 /// read.
-pub trait DstByte: sealed::Sealed {
+pub trait DstByte: sealed::Sealed + Sized {
     /// Stores `value`.
     fn put(&mut self, value: u8);
+
+    /// Stores `src` into `dst`, which has its length.
+    fn put_slice(dst: &mut [Self], src: &[u8]);
 }
 
 impl DstByte for u8 {
     fn put(&mut self, value: u8) {
         *self = value;
     }
+
+    fn put_slice(dst: &mut [Self], src: &[u8]) {
+        dst.copy_from_slice(src);
+    }
 }
 
 impl DstByte for MaybeUninit<u8> {
     fn put(&mut self, value: u8) {
         self.write(value);
+    }
+
+    fn put_slice(dst: &mut [Self], src: &[u8]) {
+        dst.write_copy_of_slice(src);
     }
 }
 
