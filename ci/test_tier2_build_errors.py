@@ -138,6 +138,44 @@ zccache() { echo "daemon diagnostic: $*"; return "$daemon_status"; }
                 fields = output.read_text() if output.exists() else ''
                 self.assertEqual('cache-healthy=false' in fields, bool(daemon_status))
 
+    def test_recovery_clears_the_daemon_cool_down(self):
+        # zccache 1.15.5 keeps the cache root in its recovery cool-down after
+        # `zccache stop`, and the launcher then refuses even with
+        # ZCCACHE_DISABLE=1 (exit 125), so the retry failed like the first
+        # build (run 41284410100, #3391).
+        recovery = self.recovery_script()
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory, 'zccache', 'v1.15.5')
+            cache.mkdir(parents=True)
+            for name in ('daemon-v1.15.5.lock.spawn-failed', 'daemon.running-process.json'):
+                (cache / name).write_text('stale')
+            kept = cache / 'artifacts.db'
+            kept.write_text('keep')
+            prefix = '''
+cmake() {
+  if [ ! -f "$build.calls" ]; then
+    echo 1 > "$build.calls"
+    echo 'FAILED: [code=125] first.o'
+    return 1
+  fi
+  echo 2 > "$build.calls"
+  for marker in "$ZCCACHE_CACHE_DIR"/v*/daemon-*.lock.spawn-failed; do
+    if [ -e "$marker" ]; then echo 'FAILED: [code=125] cool-down'; return 1; fi
+  done
+  return 0
+}
+zccache() { echo "daemon diagnostic: $*"; return 1; }
+'''
+            result = subprocess.run(
+                ['bash', '-euo', 'pipefail', '-c', prefix + recovery],
+                env={**os.environ, 'SRC': str(ROOT), 'build': directory + '/build',
+                     'ZCCACHE_CACHE_DIR': directory + '/zccache',
+                     'GITHUB_OUTPUT': directory + '/step-output'},
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse((cache / 'daemon.running-process.json').exists())
+            self.assertEqual(kept.read_text(), 'keep')
+
     def test_real_compile_error_is_not_retried(self):
         # A compile that failed with exit 1 and no lost daemon request is a
         # real error: report it, never rebuild it.
