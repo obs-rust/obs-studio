@@ -12,6 +12,7 @@ mod nix_hotkey_state_parity;
 mod nix_wayland_keys;
 mod nix_wayland_keys_parity;
 mod nix_wayland_seats;
+mod nix_wayland_seats_parity;
 mod nix_x11_hotkeys;
 mod nix_x11_hotkeys_parity;
 mod nix_x11_input;
