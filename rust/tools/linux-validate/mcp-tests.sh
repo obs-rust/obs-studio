@@ -40,7 +40,9 @@ done
 # ffmpeg_muxer starts the obs-ffmpeg-mux helper from the executable's own
 # directory, which here is the test binary's (cargo's deps dir).
 mkdir -p "$build.mcp-tests/debug/deps"
-cp "$(find_one obs-ffmpeg-mux)" "$build.mcp-tests/debug/deps/obs-ffmpeg-mux"
+# (named OBS_FFMPEG_MUX_NAME by the build, e.g. obs-studio-rust-ffmpeg-mux)
+mux=$(find_one '*ffmpeg-mux')
+cp "$mux" "$build.mcp-tests/debug/deps/$(basename "$mux")"
 
 echo "== MCP: archive=$archive graphics=$opengl modules=$(ls "$modules" | tr '\n' ' ')"
 
