@@ -8,6 +8,7 @@
 //! - [`server`]: the MCP lifecycle, the dispatcher and the [`server::Tool`] registry.
 //! - [`tools`]: the tools the server exposes.
 //! - `backend` (feature `libobs`): [`ObsBackend`](backend::ObsBackend), every backend trait over libobs.
+//! - `host` (feature `libobs`): starts libobs and serves the backend on stdio.
 //! - [`serve`]: runs a [`server::Server`] over a reader and a writer.
 
 #![deny(unsafe_code)]
@@ -20,6 +21,8 @@ pub mod backend;
     reason = "the only module that calls the libobs C API; each call states its invariant"
 )]
 mod ffi;
+#[cfg(feature = "libobs")]
+pub mod host;
 pub mod protocol;
 pub mod resources;
 pub mod server;

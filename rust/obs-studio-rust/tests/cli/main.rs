@@ -2,6 +2,8 @@
 
 mod cli_json;
 mod ipv6;
+#[cfg(feature = "bundled-native")]
+mod mcp_stdio;
 mod protocol;
 
 #[cfg(feature = "bundled-native")]
