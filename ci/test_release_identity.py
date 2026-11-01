@@ -63,6 +63,14 @@ class ReleaseVersionCMake(unittest.TestCase):
         self.assertNotEqual(self.probe(env_value="nonsense; rm -rf").returncode, 0)
 
 
+class CrateVersion(unittest.TestCase):
+    def test_crate_is_the_1_0_release(self):
+        cargo = text("rust/libobs-rust/Cargo.toml")
+        self.assertIn('\nversion = "1.0.0"\n', cargo)
+        lock = text("Cargo.lock")
+        self.assertIn('name = "libobs-rust"\nversion = "1.0.0"\n', lock)
+
+
 class Wiring(unittest.TestCase):
     def setUp(self):
         self.release = text(".github/workflows/release-rust.yaml")

@@ -26,6 +26,21 @@ gates pass:
   release; the `certify` job then runs only its automated checks
   (`check-certifiable`) before marking the release Latest and updating the
   stable feed. Agents never dispatch certify.
+- **Stable release (1.0 and later):** the maintainer dispatches
+  `gh workflow run release-rust.yaml -f stable=true` on master. It tags
+  `obs-studio-rust-v<crate>` (the version in `rust/libobs-rust/Cargo.toml`,
+  no beta date) and runs the same gate, builds, smoke tests and AppImage as a
+  nightly, then publishes a pre-release. It refuses when the tag already
+  exists unless `repair=true`. Then certify it as above:
+  `gh workflow run release-rust.yaml -f certify=obs-studio-rust-v<crate>`
+  (the crate is 1.0.0 for the first stable release)
+  (`-f min_age_days=0` to skip the two-day wait). Nightlies keep
+  `<crate>-beta.<date>`, which sorts *before* `<crate>` in semver; that is
+  harmless because nightlies are never certified, so the updaters never
+  compare one with a stable release. Bump the crate (for example to 1.0.1)
+  in a follow-up PR so later nightlies sort after the stable release. macOS
+  `CFBundleVersion` is `YYYY.M.D` of the beta date, or of the UTC build date
+  for a stable release, so Sparkle always sees a newer build.
 - **AppImage tag push:** attaches to the tag's release after the AppImage
   build and its automated tests pass.
 

@@ -81,6 +81,12 @@ class ReleaseNotarizationTest(unittest.TestCase):
                 'if(NOT short STREQUAL "0.1.0" OR NOT build STREQUAL "2026.10.13")\n'
                 '  message(FATAL_ERROR "Invalid beta bundle versions: ${short}, ${build}")\n'
                 'endif()\n'
+                'set(OBS_RUST_RELEASE_VERSION "1.0.0")\n'
+                'obs_bundle_versions(short build)\n'
+                'string(TIMESTAMP y "%Y" UTC)\n'
+                'if(NOT short STREQUAL "1.0.0" OR NOT build MATCHES "^${y}\\\\.[1-9][0-9]?\\\\.[1-9][0-9]?$")\n'
+                '  message(FATAL_ERROR "Stable bundle version must be the UTC build date: ${short}, ${build}")\n'
+                'endif()\n'
                 'set(OBS_RUST_RELEASE_VERSION "")\n'
                 'obs_bundle_versions(short build)\n'
                 'if(NOT short STREQUAL "33.1.0" OR NOT build STREQUAL "12")\n'
@@ -95,6 +101,8 @@ class ReleaseNotarizationTest(unittest.TestCase):
         self.assertIn("obs_bundle_versions(_obs_bundle_marketing _obs_bundle_build)",
                       (ROOT / "cmake/macos/helpers.cmake").read_text())
         self.assertIn("Print :OBSStudioRustVersion", self.workflow)
+        # A stable release has no beta date: the smoke test accepts its date build number.
+        self.assertIn('if [[ "$VERSION" == *-beta.* ]]', self.workflow)
 
     def setUp(self):
         self.workflow = (ROOT / ".github/workflows/release-rust.yaml").read_text()

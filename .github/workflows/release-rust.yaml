@@ -1,10 +1,15 @@
 name: Release OBS-Studio-Rust
-run-name: Daily OBS-Studio-Rust beta 🦀
+run-name: ${{ inputs.stable && 'Stable OBS-Studio-Rust release' || 'Daily OBS-Studio-Rust beta' }} 🦀
 # Daily beta: builds the production Rust/C hybrid for Linux, macOS and Windows
 # from master, plus the Linux AppImage (appimage.yaml), and
 # publishes a GitHub pre-release (macOS signed/notarized when credentials exist) tagged
 # obs-studio-rust-v<rust/libobs-rust version>-beta.<YYYYMMDD>.
 #   gh workflow run release-rust.yaml      # today's release now
+#   gh workflow run release-rust.yaml -f stable=true
+#     the stable release obs-studio-rust-v<crate> (no beta date) from master,
+#     through the same gate and checks; certify it afterwards. Dailies keep
+#     <crate>-beta.<date>, which sorts before <crate> in semver; they are
+#     never certified, so the updaters never compare them with the stable one.
 #   gh workflow run release-rust.yaml --ref <branch> -f verify_only=true
 #     builds the same candidate packages and gate without publishing anything.
 # Release gate (obs-rust/obs-studio#436): the full CI run (Flatpak, every OBS
@@ -33,6 +38,10 @@ on:
     inputs:
       repair:
         description: Replace or complete today's release if its tag already exists (master only)
+        type: boolean
+        default: false
+      stable:
+        description: Publish the stable release obs-studio-rust-v<crate> (no beta date; master only)
         type: boolean
         default: false
       verify_only:
@@ -83,10 +92,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPAIR: ${{ inputs.repair }}
           VERIFY_ONLY: ${{ inputs.verify_only }}
+          STABLE: ${{ inputs.stable }}
         run: |
           set -euo pipefail
           crate=$(sed -n 's/^version = "\(.*\)"/\1/p' rust/libobs-rust/Cargo.toml | head -1)
-          version="$crate-beta.$(date -u +%Y%m%d)"
+          if [ "$STABLE" = true ]; then
+            version="$crate"
+            tag_date=""
+          else
+            version="$crate-beta.$(date -u +%Y%m%d)"
+            tag_date="${version##*.}"
+          fi
           tag="obs-studio-rust-v$version"
           exists=false
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
@@ -96,8 +112,8 @@ jobs:
           # Refuses non-master refs and stale dates; decides skip/repair.
           decision=$(uv run --no-project ci/release_decision.py check \
             --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --repair "$REPAIR" \
-            --tag-exists "$exists" --tag-date "${version##*.}" --today "$(date -u +%Y%m%d)" \
-            --verify-only "$VERIFY_ONLY")
+            --tag-exists "$exists" --tag-date "$tag_date" --today "$(date -u +%Y%m%d)" \
+            --verify-only "$VERIFY_ONLY" --stable "$STABLE")
           echo "$decision"
           {
             echo "crate=$crate"
@@ -518,9 +534,15 @@ jobs:
           Plist="$App/Contents/Info.plist"
           uv run --no-project ci/app_identity_check.py bundle "$App"
           [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$Plist")" = "${VERSION%%-*}" ]
-          Stamp="${VERSION##*.}"
-          Build="${Stamp:0:4}.$((10#${Stamp:4:2})).$((10#${Stamp:6:2}))"
-          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$Plist")" = "$Build" ]
+          BundleVersion="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$Plist")"
+          if [[ "$VERSION" == *-beta.* ]]; then
+            Stamp="${VERSION##*.}"
+            Build="${Stamp:0:4}.$((10#${Stamp:4:2})).$((10#${Stamp:6:2}))"
+            [ "$BundleVersion" = "$Build" ]
+          else
+            # A stable release is numbered by its UTC build date (bundle-version.cmake).
+            [[ "$BundleVersion" =~ ^20[0-9]{2}\.[1-9][0-9]?\.[1-9][0-9]?$ ]]
+          fi
           [ "$(/usr/libexec/PlistBuddy -c 'Print :OBSStudioRustVersion' "$Plist")" = "$VERSION" ]
           # #3221: the probe's dependency is installed once, from its uv
           # lockfile; a launch then never resolves it from pypi.org.
@@ -638,16 +660,23 @@ jobs:
           files=(OBS-Studio-Rust-*)
           sha256sum "${files[@]}" >SHA256SUMS
           cat SHA256SUMS
+          if [[ "$VERSION" == *-beta.* ]]; then
+            HEADLINE="Daily beta"
+            CHANNEL="**Daily beta (pre-release).**"
+          else
+            HEADLINE="Stable release"
+            CHANNEL="**Stable release, pending certification.**"
+          fi
           cat >notes.md <<EOF
-          Daily beta of OBS-Studio-Rust $VERSION. It ships the C libobs; the Rust ports of its internals are built and tested on every build but not shipped yet (#1065). Built from [\`${SHA:0:9}\`](https://github.com/$GITHUB_REPOSITORY/commit/$SHA).
+          $HEADLINE of OBS-Studio-Rust $VERSION. It ships the hybrid libobs: the completed Rust ports linked with the unported C/C++ (the packaging step fails if Rust is not in the production libobs). Built from [\`${SHA:0:9}\`](https://github.com/$GITHUB_REPOSITORY/commit/$SHA).
 
-          **Daily beta (pre-release).** The in-app updaters offer only certified releases, which a maintainer promotes from a daily beta. macOS packages are signed and notarized when the project's release credentials are configured.
+          $CHANNEL The in-app updaters offer only certified releases, which a maintainer promotes from a published pre-release. macOS packages are signed and notarized when the project's release credentials are configured.
 
           Windows: SmartScreen will warn. Linux: \`sudo apt install ./OBS-Studio-Rust-$VERSION-ubuntu-26.04-x86_64.deb\` (Ubuntu 26.04 only), or the AppImage for any distribution: \`chmod +x OBS-Studio-Rust-$VERSION-linux-x86_64.AppImage\` and run it. Flatpak: \`flatpak install --user ./OBS-Studio-Rust-$VERSION-linux-x86_64.flatpak\` (installs as \`io.github.obs_rust.OBSStudioRust\`, beside upstream's Flatpak; no automatic updates yet).
 
-          **Separate settings and app identity.** This beta uses \`obs-studio-rust\` inside your OS's usual config directory. On first launch it copies upstream OBS settings, profiles, scenes and plugin settings without changing the originals. Existing Rust settings are kept. Custom configuration, profile, scene and plugin storage locations stay selected, with a separate \`obs-studio-rust\` directory in each location. Later upstream changes are not imported automatically.
+          **Separate settings and app identity.** This build uses \`obs-studio-rust\` inside your OS's usual config directory. On first launch it copies upstream OBS settings, profiles, scenes and plugin settings without changing the originals. Existing Rust settings are kept. Custom configuration, profile, scene and plugin storage locations stay selected, with a separate \`obs-studio-rust\` directory in each location. Later upstream changes are not imported automatically.
 
-          Linux installs the GUI as \`obs-studio-rust-gui\`. macOS installs \`OBS-Studio-Rust.app\`. Windows and macOS use a separate app identity; the OS may ask for capture permissions again. Imported websocket settings retain their port, so close upstream OBS before connecting to the beta on that port.
+          Linux installs the GUI as \`obs-studio-rust-gui\`. macOS installs \`OBS-Studio-Rust.app\`. Windows and macOS use a separate app identity; the OS may ask for capture permissions again. Imported websocket settings retain their port, so close upstream OBS before connecting to OBS-Studio-Rust on that port.
 
           Checksums: \`SHA256SUMS\`.
           EOF
