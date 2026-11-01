@@ -11,8 +11,9 @@ use std::io;
 ///
 /// Returns an error when libobs fails to start or stdio fails.
 #[cfg(feature = "bundled-native")]
-pub fn run() -> io::Result<()> {
-    obs_mcp::host::serve_stdio(Some("simple_file_output"), Some("simple_stream"))
+pub fn run(record_dir: Option<&str>) -> io::Result<()> {
+    let options = obs_mcp::host::StartOptions::from_env(record_dir.map(Into::into));
+    obs_mcp::host::serve_stdio(&options)
 }
 
 /// Runs the MCP server until stdin closes.
@@ -21,7 +22,7 @@ pub fn run() -> io::Result<()> {
 ///
 /// Always: this build does not link libobs.
 #[cfg(not(feature = "bundled-native"))]
-pub fn run() -> io::Result<()> {
+pub fn run(_record_dir: Option<&str>) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
         "this build has no libobs; rebuild with --features bundled-native",

@@ -22,9 +22,11 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::ffi::{self, CpuUsage, Output, Source};
 use crate::resources::stats::{Stats, StatsBackend};
@@ -44,6 +46,12 @@ pub struct ObsBackend {
     owned: RefCell<HashMap<String, Source>>,
     record: Option<String>,
     stream: Option<String>,
+    /// Directory a fresh recording file is put in on each `record_start`.
+    record_dir: Option<PathBuf>,
+    /// Why the host could not bring video up, quoted in the errors that need it.
+    video_error: Option<String>,
+    /// Why the host could not create the outputs, quoted in the errors that need them.
+    output_error: Option<String>,
     cpu: Option<CpuUsage>,
 }
 
@@ -63,7 +71,39 @@ impl ObsBackend {
             owned: RefCell::new(HashMap::new()),
             record: None,
             stream: None,
+            record_dir: None,
+            video_error: None,
+            output_error: None,
             cpu: CpuUsage::start(),
+        }
+    }
+
+    /// Records into a new `obs-mcp-<unix seconds>.mkv` in `dir` on each
+    /// `record_start` (the directory is created when missing).
+    #[must_use]
+    pub fn with_record_dir(mut self, dir: &Path) -> Self {
+        self.record_dir = Some(dir.to_owned());
+        self
+    }
+
+    /// Reasons the host could not start video or create the outputs; the
+    /// errors of the tools that depend on them say why.
+    #[must_use]
+    pub fn with_startup_errors(
+        mut self,
+        video: Option<String>,
+        outputs: Option<String>,
+    ) -> Self {
+        self.video_error = video;
+        self.output_error = outputs;
+        self
+    }
+
+    /// `message`, followed by `reason` when there is one.
+    fn because(message: &str, reason: Option<&str>) -> String {
+        match reason {
+            Some(reason) => format!("{message}: {reason}"),
+            None => message.to_owned(),
         }
     }
 
@@ -128,7 +168,26 @@ impl ObsBackend {
         let name = name
             .as_deref()
             .ok_or_else(|| format!("the {label} output is not configured"))?;
-        Output::by_name(name).ok_or_else(|| format!("no output named '{name}'"))
+        Output::by_name(name).ok_or_else(|| {
+            Self::because(
+                &format!("no output named '{name}'"),
+                self.output_error.as_deref(),
+            )
+        })
+    }
+
+    /// Points the record output at a fresh file in the record directory.
+    fn prepare_recording(&self, output: &Output) -> Result<(), String> {
+        let Some(dir) = &self.record_dir else {
+            return Ok(());
+        };
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("cannot create the recording directory {}: {e}", dir.display()))?;
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let path = dir.join(format!("obs-mcp-{stamp}.mkv"));
+        output.update(&json!({"path": path.to_string_lossy()}))
     }
 }
 
@@ -233,6 +292,9 @@ impl OutputBackend for ObsBackend {
         if output.active() {
             return Err("the output is already running".to_owned());
         }
+        if kind == OutputKind::Record {
+            self.prepare_recording(&output)?;
+        }
         output.start()
     }
 
@@ -289,10 +351,10 @@ impl CaptureBackend for ObsBackend {
             None => ffi::program().ok_or("no program scene is set")?,
         };
         if !ffi::has_video() {
-            return Err(
-                "the video subsystem is not initialized, so there is no graphics context to render with"
-                    .to_owned(),
-            );
+            return Err(Self::because(
+                "the video subsystem is not initialized, so there is no graphics context to render with",
+                self.video_error.as_deref(),
+            ));
         }
         let native = source.size();
         if native.0 == 0 || native.1 == 0 {
