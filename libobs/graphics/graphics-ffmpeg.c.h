@@ -283,7 +283,7 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 		const size_t dst_linesize = (size_t)info->cx * 4;
 		data = bmalloc((size_t)info->cy * dst_linesize);
 		gs_ffmpeg_image_rgba64be_rows(data, frame->data[0], info->cx, info->cy, (size_t)frame->linesize[0],
-					      alpha_mode);
+					      (int)alpha_mode);
 
 		info->format = AV_PIX_FMT_RGBA;
 	} else {
