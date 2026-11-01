@@ -99,3 +99,23 @@ class ArchiveTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GraphicsPchTest(unittest.TestCase):
+    """The graphics module compiles against graphics and util headers only (#3260)."""
+
+    def test_graphics_groups_do_not_include_the_core_headers(self):
+        graphics = json.loads((MODULES / "graphics.json").read_text(encoding="utf-8"))["groups"]
+        build = ROOT / "libobs" / "build"
+        checked = 0
+        for group_file in sorted(build.glob("libobs.*+.h.c")):
+            name = re.fullmatch(r"libobs\.([^+]+)\+\.h\.c", group_file.name).group(1)
+            if not any(fnmatch.fnmatchcase(name, pattern) for pattern in graphics):
+                continue
+            pch = re.search(r'#include "(libobs/build/[^"]+\.pch\.h)"', group_file.read_text(encoding="utf-8"))
+            self.assertIsNotNone(pch, group_file.name)
+            text = (ROOT / pch.group(1)).read_text(encoding="utf-8")
+            for core in ('"obs-internal.h"', '"obs.h"', '"obs-output-stop.h"'):
+                self.assertNotIn(core, text, f"{group_file.name} reaches {core} through {pch.group(1)}")
+            checked += 1
+        self.assertGreater(checked, 0, "no graphics group found")

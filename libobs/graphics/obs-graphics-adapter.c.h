@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-graphics.pch.h"
 
 /* Private adapters for the Rust obs-graphics exports (gs_image_file_ex_*,
  * gs_texrender_*), not a new public API. obs-graphics calls the libobs

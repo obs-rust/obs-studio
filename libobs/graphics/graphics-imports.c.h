@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "libobs/build/libobs-graphics.pch.h"
 
 #define GRAPHICS_IMPORT(func)                                            \
 	do {                                                             \

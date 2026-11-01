@@ -93,6 +93,12 @@ fn extract_c(src: &Path, start: &str, end: &str) -> String {
 /// supplies the unit's own headers instead of unrelated libobs dependencies
 /// (notably zlib, which the Windows Rust test runners do not install).
 fn extract_after_libobs_pch(src: &Path) -> String {
+    // Graphics sources use the graphics module's own PCH (#3260).
+    const GRAPHICS_PCH: &str = "#include \"libobs/build/libobs-graphics.pch.h\"";
+    let text = std::fs::read_to_string(src).expect("read lifecycle implementation");
+    if text.contains(GRAPHICS_PCH) {
+        return extract_after_pch(src, GRAPHICS_PCH);
+    }
     extract_after_pch(src, "#include \"libobs/build/libobs.pch.h\"")
 }
 

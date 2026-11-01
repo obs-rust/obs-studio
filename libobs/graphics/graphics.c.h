@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs.pch.h"
+#include "libobs/build/libobs-graphics.pch.h"
 
 /* <windows.h> defines near and far (NEAR and FAR expand to them); this file
  * uses them as names. Save them and restore them at the end of the file, so

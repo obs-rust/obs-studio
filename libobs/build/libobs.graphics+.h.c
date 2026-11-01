@@ -1,6 +1,6 @@
 /* Unity group (BUILD.md): graphics/. */
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-graphics.pch.h"
 
 #include "libobs/graphics/effect-parser-lifecycle-adapter.c.h"
 #include "libobs/graphics/effect-parser.c.h"

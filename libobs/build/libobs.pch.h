@@ -1,4 +1,4 @@
-/* Precompiled header (BUILD.md) for the libobs unity groups libobs.core, libobs.core-output, libobs.core-source, libobs.util, libobs.graphics. C.
+/* Precompiled header (BUILD.md) for the libobs unity groups libobs.core, libobs.core-output, libobs.core-source, libobs.util. C.
  * Every implementation file in them includes this header and nothing else: the includes and macro setup below are
  * theirs, in group and file order. */
 
