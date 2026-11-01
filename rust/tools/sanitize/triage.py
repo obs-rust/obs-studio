@@ -44,8 +44,6 @@ KNOWN = {
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
     ("asan", "test_transition_render_steps"): ("bug", "the sanitizer build fuses the offset's multiply-add (#3362)"),
-    ("asan", "test_core_setup_rules_steps"): ("bug", "UBSan: obs_reset_audio2 takes &obs->audio with no core (#3363)"),
-    ("asan", "test_no_core_getters"): ("bug", "UBSan: obs_get_audio_info2 takes &obs->audio with no core (#3363)"),
     ("asan", "test_shutdown_canvas_weak_ref"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
     ("asan", "test_shutdown_type_lifetime"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
     ("asan", "test_media_remux"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
