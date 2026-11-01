@@ -16,13 +16,20 @@
 //! - [`is_uwp_class`]: the saved class of a UWP or WinUI 3 window
 //!   ([`UWP_CLASSES`]), which matches on its title alone;
 //! - [`rating`]: how well a window matches the saved one. 0 is exact, lower
-//!   is better, [`NO_MATCH`] is no match.
+//!   is better, [`NO_MATCH`] is no match;
+//! - [`encode`], [`encoded_len`], [`encode_into`], [`decode`] and [`split`]:
+//!   the codec of the saved window string. A capture source saves its
+//!   window as `title:class:exe`, each part with `#` escaped as `#22`, then
+//!   `:` as `#3A`; `ms_build_window_strings()` splits it at its first two
+//!   `:` and decodes `#3A`, then `#22`, in each part.
 //!
 //! `window-helpers.c` keeps every Win32 call, the reads of each window's
 //! exe, title and class where they were, the three `dstr_cmpi()` compares
-//! (their results arrive here), the window walk, the best-so-far compares
-//! and the list building. These keep no state, take no lock and call
-//! nothing in Win32.
+//! (their results arrive here), the window walk, the best-so-far compares,
+//! the list building and every allocation of the window strings. These
+//! keep no state, take no lock and call nothing in Win32. The codec works
+//! on bytes, not UTF-8 (window titles come from `dstr_from_wcs()`), and
+//! reads each string up to its first NUL, as the C does.
 //!
 //! Case folding is [`crate::dstr`]'s `astrcmpi`, `astrcmpi_n` and
 //! `astrstri`, which fold ASCII only, as C's `tolower()` does in the C
