@@ -31,10 +31,10 @@ use obs_output::interleave::{
     discard_unused_audio_packets, encoder_slot, find_first_packet_type_idx,
     find_last_packet_type_idx, find_packet_time, frame_timestamp, free_packets,
     get_encoder_duration, get_encoder_index, get_interleaved_start_idx, group_complete,
-    has_higher_opposing_ts, insert_interleaved_packet, insert_position, interleave_packets,
-    interleaved_start_idx, packet_dts_usec, premature_prune, prune_interleaved_packets,
-    prune_premature_packets, raw_caption_due, resort_interleaved_packets, send_interleaved,
-    sends_for, set_higher_ts,
+    has_higher_opposing_ts, insert_interleaved_packet, insert_position, insert_position_from_tail,
+    interleave_packets, interleaved_start_idx, packet_dts_usec, premature_prune,
+    prune_interleaved_packets, prune_premature_packets, queue_in_order, raw_caption_due,
+    resort_interleaved_packets, send_interleaved, sends_for, set_higher_ts,
 };
 
 const T: i64 = 1_000_000;
@@ -267,6 +267,8 @@ struct Out {
     highest_audio_ts: i64,
     highest_video_ts: [i64; MAX_OUTPUT_VIDEO_ENCODERS],
     queue: Vec<Pkt>,
+    /// What the core recorded about the queue's order (#3209).
+    sorted: Option<bool>,
     /// The queue's buffer (a number per allocation), `None` when freed.
     buffer: Option<usize>,
     buffers: usize,
@@ -339,6 +341,7 @@ impl Out {
             // What reset_packet_data() in obs-output.c leaves at each start.
             highest_video_ts: [i64::MIN; MAX_OUTPUT_VIDEO_ENCODERS],
             queue: Vec::new(),
+            sorted: None,
             buffer: None,
             buffers: 0,
             packet_times: Default::default(),
@@ -658,12 +661,20 @@ impl InterleaveOutput for Out {
     }
     fn detach_packets(&mut self) -> Vec<Pkt> {
         self.buffer = None;
+        self.sorted = Some(true);
         std::mem::take(&mut self.queue)
     }
     fn free_detached(&mut self, _old: Vec<Pkt>) {}
     fn free_queue(&mut self) {
         self.queue.clear();
         self.buffer = None;
+        self.sorted = None;
+    }
+    fn queue_sorted(&self) -> Option<bool> {
+        self.sorted
+    }
+    fn set_queue_sorted(&mut self, sorted: bool) {
+        self.sorted = Some(sorted);
     }
 
     fn packet_times(&self, track: usize) -> &[Time] {
@@ -2299,5 +2310,182 @@ fn late_audio_drops_the_first_keyframe_of_the_first_video_encoder() {
     assert_eq!(out.packet_times[1].len(), 0);
     assert!(!out.received_video[1]);
     assert_eq!(out.num_sent(), 0);
+    out.teardown();
+}
+
+/// A packet view that counts how often the scan reads it (#3209).
+struct Counted<'a> {
+    pkt: Pkt,
+    reads: &'a Cell<usize>,
+}
+
+impl PacketView for Counted<'_> {
+    fn kind(&self) -> Kind {
+        self.pkt.kind
+    }
+    fn track(&self) -> usize {
+        self.pkt.track
+    }
+    fn dts(&self) -> i64 {
+        self.pkt.dts
+    }
+    fn pts(&self) -> i64 {
+        self.pkt.pts
+    }
+    fn dts_usec(&self) -> i64 {
+        self.reads.set(self.reads.get() + 1);
+        self.pkt.dts_usec
+    }
+    fn keyframe(&self) -> bool {
+        self.pkt.keyframe
+    }
+    fn timebase_num(&self) -> i32 {
+        self.pkt.num
+    }
+    fn timebase_den(&self) -> i32 {
+        self.pkt.den
+    }
+    fn encoder(&self) -> usize {
+        self.pkt.encoder
+    }
+}
+
+/// The C's front scan (`insert_interleaved_packet`), the reference the
+/// tail scan must agree with on a sorted queue.
+fn front_scan(packets: &[Pkt], out: &Pkt) -> usize {
+    for (idx, cur) in packets.iter().enumerate() {
+        let same = out.dts_usec == cur.dts_usec;
+        if same && out.kind == Kind::Video && cur.kind == Kind::Video && out.track > cur.track {
+            continue;
+        }
+        if (same && out.kind == Kind::Video) || out.dts_usec < cur.dts_usec {
+            return idx;
+        }
+    }
+    packets.len()
+}
+
+#[test]
+fn insert_position_scans_from_the_tail() {
+    // A newer packet lands at the back of a long queue: the scan reads the
+    // packets after its place, not the whole queue (#3209).
+    let reads = Cell::new(0);
+    let queue: Vec<Counted<'_>> = (0..2000)
+        .map(|i| Counted {
+            pkt: audio_packet(0, i, i * 10, 1),
+            reads: &reads,
+        })
+        .collect();
+    let late = audio_packet(0, 0, 19_985, 2);
+    assert_eq!(insert_position_from_tail(&queue, &late), 1999);
+    assert!(reads.get() <= 4, "the scan read {} packets", reads.get());
+}
+
+#[test]
+fn tail_scan_matches_the_front_scan_on_queues_built_by_inserts() {
+    // Every queue the interleaver scans was built by inserts (a resort
+    // rebuilds it so), so it is sorted; on such a queue both scans agree.
+    let mut seed: u64 = 0x3209;
+    let mut next = || {
+        seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        seed >> 33
+    };
+    for _ in 0..200 {
+        let mut queue: Vec<Pkt> = Vec::new();
+        for tag in 0..60u8 {
+            let dts_usec = (next() % 12) as i64;
+            let mut p = if next() % 2 == 0 {
+                video_packet(0, 0, 0, dts_usec, false, tag)
+            } else {
+                audio_packet(0, 0, dts_usec, tag)
+            };
+            p.track = (next() % 3) as usize;
+            let want = front_scan(&queue, &p);
+            assert_eq!(
+                insert_position_from_tail(&queue, &p),
+                want,
+                "queue {queue:?}, packet {p:?}"
+            );
+            queue.insert(want, p);
+        }
+    }
+}
+
+#[test]
+fn a_backwards_dts_packet_keeps_a_sorted_queue_sorted() {
+    // #3209: on a queue in order, the tail scan puts even a packet older
+    // than the newest where the front scan would, and the queue stays in
+    // order; the flag stays set.
+    let mut out = Out::setup();
+    for (i, usec) in [100, 200, 300].into_iter().enumerate() {
+        insert_interleaved_packet(&mut out, audio_packet(0, i as i64, usec, i as u8));
+    }
+    assert_eq!(out.sorted, Some(true));
+    let old = audio_packet(0, 9, 150, 9);
+    let want = insert_position(&out.queue, &old);
+    insert_interleaved_packet(&mut out, old);
+    assert_eq!(out.queue[want].tag, 9);
+    assert_eq!(out.sorted, Some(true));
+    assert!(queue_in_order(&out.queue));
+    out.teardown();
+}
+
+#[test]
+fn an_unknown_or_unsorted_queue_takes_the_front_scan() {
+    // #3209: an out-of-order queue (as initialize_interleaved_packets'
+    // offsets can leave it) clears the flag, and every insert then takes the
+    // C's front scan, landing where the C puts it.
+    let mut out = Out::setup();
+    for (i, usec) in [300, 100, 200].into_iter().enumerate() {
+        out.insert_packet(i, audio_packet(0, i as i64, usec, i as u8));
+    }
+    out.set_queue_sorted(false);
+    let p = audio_packet(0, 9, 250, 9);
+    let want = insert_position(&out.queue, &p);
+    assert_ne!(
+        want,
+        insert_position_from_tail(&out.queue, &p),
+        "the scans differ here"
+    );
+    insert_interleaved_packet(&mut out, p);
+    assert_eq!(out.queue[want].tag, 9);
+    assert_eq!(out.sorted, Some(false));
+    // Unknown order: the front scan, and the order is measured.
+    out.sorted = None;
+    let q = audio_packet(0, 10, 400, 10);
+    insert_interleaved_packet(&mut out, q);
+    assert_eq!(out.sorted, Some(false));
+    // A rebuild by inserting brings it back.
+    resort_interleaved_packets(&mut out);
+    assert!(queue_in_order(&out.queue));
+    assert_eq!(out.sorted, Some(true));
+    out.teardown();
+}
+
+#[test]
+fn initialize_clears_the_sorted_flag() {
+    // #3209: initialize_interleaved_packets moves every packet by its
+    // track's offset in place, so the order is no longer known; the resort
+    // that follows rebuilds the queue and sets the flag again.
+    let mut out = Out::setup();
+    out.video_encoders[1] = None;
+    out.audio_encoders[1] = None;
+    out.received_audio = true;
+    out.received_video[0] = true;
+    for p in [
+        audio_packet(0, 0, 0, 1),
+        video_packet(0, 1, 1, FRAME_US, true, 2),
+        audio_packet(0, 2400, 50_000, 3),
+    ] {
+        // The raw helpers leave the track for the interleaver to set.
+        let mut p = p;
+        p.track = 0;
+        insert_interleaved_packet(&mut out, p);
+    }
+    assert_eq!(out.sorted, Some(true));
+    assert!(interleave::initialize_interleaved_packets(&mut out));
+    assert_eq!(out.sorted, Some(false));
+    resort_interleaved_packets(&mut out);
+    assert_eq!(out.sorted, Some(true));
     out.teardown();
 }
