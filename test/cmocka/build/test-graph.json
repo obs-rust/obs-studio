@@ -3972,6 +3972,66 @@
         }
       ]
     },
+    "test_rtmps_cert_no_fallback": {
+      "sources": [
+        "test/cmocka/test_rtmps_cert_no_fallback.c",
+        {
+          "path": "plugins/obs-outputs/rtmp-hevc.c.h",
+          "requires": "ENABLE_HEVC"
+        },
+        "plugins/obs-outputs/flv-mux.c.h",
+        "plugins/obs-outputs/net-if.c.h",
+        "plugins/obs-outputs/net-if-host-posix.c.h",
+        "plugins/obs-outputs/rtmp-stream-host-posix.c.h",
+        "plugins/obs-outputs/rtmp-av1.c.h",
+        "plugins/obs-outputs/librtmp/amf.c",
+        "plugins/obs-outputs/librtmp/cencode.c",
+        "plugins/obs-outputs/librtmp/hashswf.c",
+        "plugins/obs-outputs/librtmp/log.c",
+        "plugins/obs-outputs/librtmp/md5.c",
+        "plugins/obs-outputs/librtmp/parseurl.c",
+        "plugins/obs-outputs/librtmp/rtmp.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_OBS_OUTPUTS",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "includes": [
+        "plugins/obs-outputs",
+        "shared/opts-parser",
+        "shared/bpm"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "MbedTLS::mbedtls",
+        "ZLIB::ZLIB",
+        "jansson::jansson",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::native-test-foundation",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "OBS::native-test-security",
+          "requires": "OS_MACOS"
+        }
+      ],
+      "definitions": [
+        "USE_MBEDTLS",
+        "CRYPTO"
+      ],
+      "compile_options": [
+        {
+          "name": "-Wno-comma",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ]
+    },
     "test_scene_audio_action_steps": {
       "sources": [
         "test/cmocka/test_scene_audio_action_steps.c",
@@ -7541,6 +7601,13 @@
         "${target}"
       ],
       "timeout_seconds": 30
+    },
+    "test_rtmps_cert_no_fallback": {
+      "target": "test_rtmps_cert_no_fallback",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_scene_audio_action_steps": {
       "target": "test_scene_audio_action_steps",

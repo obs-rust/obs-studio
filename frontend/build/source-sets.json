@@ -403,6 +403,7 @@
     "utility/RemuxQueueModel.hpp",
     "utility/RemuxWorker.hpp",
     "utility/ResizeSignaler.hpp",
+    "utility/RtmpsFallback.hpp",
     "build/frontend.utility-3+.hpp.cpp",
     "utility/SceneRenameDelegate.hpp",
     "build/frontend.utility-screenshotobj+.hpp.cpp",

@@ -14,6 +14,14 @@ struct rtmp_common {
 	char **audio_codecs;
 
 	bool supports_additional_audio_track;
+
+	/* The RTMPS URL handed out instead of a plain one (rtmps-upgrade.h),
+	 * the plain URL it replaced (NULL when nothing was upgraded), and
+	 * whether the frontend asked for the plain URL after a failed RTMPS
+	 * connection. */
+	struct dstr rtmps_url;
+	char *rtmps_fallback;
+	bool plain_rtmp;
 };
 
 static const char *rtmp_common_getname(void *unused)
@@ -192,6 +200,8 @@ static void rtmp_common_destroy(void *data)
 	bfree(service->protocol);
 	bfree(service->server);
 	bfree(service->key);
+	dstr_free(&service->rtmps_url);
+	bfree(service->rtmps_fallback);
 	bfree(service);
 }
 
@@ -489,7 +499,8 @@ static void fill_servers(obs_property_t *servers_prop, json_t *service, const ch
 		return;
 	}
 
-	/* Assumption: Twitch should be RTMP only, so no RTMPS check */
+	/* Twitch lists its plain RTMP servers; rtmp_common_url() connects to
+	 * the ones in rtmps-upgrade.c.h over RTMPS. */
 	if (strcmp(name, "Twitch") == 0) {
 		if (fill_twitch_servers(servers_prop))
 			return;
@@ -810,7 +821,7 @@ static void rtmp_common_apply_settings(void *data, obs_data_t *video_settings, o
 	}
 }
 
-static const char *rtmp_common_url(void *data)
+static const char *rtmp_common_plain_url(void *data)
 {
 	struct rtmp_common *service = data;
 
@@ -867,6 +878,67 @@ static const char *rtmp_common_url(void *data)
 		}
 	}
 	return service->server;
+}
+
+/* Hands out the RTMPS form of a plain URL on a host known to accept it, unless
+ * the frontend asked for plain RTMP after the encrypted connection failed. */
+static const char *rtmp_common_url(void *data)
+{
+	struct rtmp_common *service = data;
+	const char *url = rtmp_common_plain_url(data);
+	struct dstr rtmps = {0};
+
+	bfree(service->rtmps_fallback);
+	service->rtmps_fallback = NULL;
+
+	if (service->plain_rtmp || !obs_is_output_protocol_registered("RTMPS") ||
+	    !rtmps_upgrade_url(service->service, url, &rtmps)) {
+		dstr_free(&rtmps);
+		return url;
+	}
+
+	/* The output may still hold the last URL; only replace it when it
+	 * changed. */
+	if (dstr_cmp(&service->rtmps_url, rtmps.array) != 0)
+		dstr_move(&service->rtmps_url, &rtmps);
+	dstr_free(&rtmps);
+
+	service->rtmps_fallback = bstrdup(url);
+	return service->rtmps_url.array;
+}
+
+static void rtmp_common_rtmps_fallback_proc(void *param, calldata_t *cd)
+{
+	UNUSED_PARAMETER(param);
+	obs_service_t *service = calldata_ptr(cd, "service");
+
+	if (!service || strcmp(obs_service_get_id(service), "rtmp_common") != 0)
+		return;
+
+	struct rtmp_common *data = obs_obj_get_data(service);
+	rtmp_common_url(data);
+	calldata_set_string(cd, "plain_url", data->rtmps_fallback ? data->rtmps_fallback : "");
+}
+
+static void rtmp_common_set_plain_rtmp_proc(void *param, calldata_t *cd)
+{
+	UNUSED_PARAMETER(param);
+	obs_service_t *service = calldata_ptr(cd, "service");
+
+	if (!service || strcmp(obs_service_get_id(service), "rtmp_common") != 0)
+		return;
+
+	struct rtmp_common *data = obs_obj_get_data(service);
+	data->plain_rtmp = calldata_bool(cd, "enabled");
+}
+
+void rtmp_common_register_procs(void)
+{
+	proc_handler_t *ph = obs_get_proc_handler();
+	proc_handler_add(ph, "void rtmp_services_rtmps_fallback(in ptr service, out string plain_url)",
+			 rtmp_common_rtmps_fallback_proc, NULL);
+	proc_handler_add(ph, "void rtmp_services_set_plain_rtmp(in ptr service, in bool enabled)",
+			 rtmp_common_set_plain_rtmp_proc, NULL);
 }
 
 static const char *rtmp_common_key(void *data)
