@@ -17,6 +17,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod coreaudio_devices;
 pub mod coreaudio_pacing;
 pub mod monitor_delay;
 pub mod pulse_format;
