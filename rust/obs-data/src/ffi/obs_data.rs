@@ -1451,14 +1451,9 @@ pub unsafe extern "C" fn obs_data_set_autoselect_array(
 }
 
 fn get_str(data: *mut c_void, name: *const c_char, slot: u8) -> *const c_char {
-    let Some(item) = named(data, name, |data, name| data.item(name)).flatten() else {
-        return empty();
-    };
-    match slot {
-        1 => item.default_string_ptr(),
-        2 => item.autoselect_string_ptr(),
-        _ => item.string_ptr(),
-    }
+    named(data, name, |data, name| data.string_ptr(name, slot))
+        .flatten()
+        .unwrap_or_else(empty)
 }
 
 fn get_i64(data: *mut c_void, name: *const c_char, slot: u8) -> i64 {
