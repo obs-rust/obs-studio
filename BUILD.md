@@ -279,6 +279,16 @@ drops the hit. Run `restore` before each build. The cache dir is
 `$OBS_LIBOBS_MODULE_CACHE_DIR`, else `modcache` beside the zccache root.
 MSVC compile commands are not keyed yet.
 
+The Rust staticlib (`libobs-rust`) is one more cached module (#3265). Its key
+covers `libobs-modcache-rust.json` (the features, triple, profile and C
+compiler that `libobs/cmake/rust.cmake` records), `Cargo.lock`,
+`rust-toolchain.toml`, `rustc -vV`, `RUSTFLAGS`, gio's pkg-config version,
+and every file of the path crates `libobs-rust` depends on, found by
+walking their `Cargo.toml` files, except `tests/` and `benches/`. It also
+covers the files outside those crates that their build scripts read. On a hit,
+libobs links the cached archive with Corrosion's link libraries and cargo
+does not run.
+
 ## Verifying a change
 
 - Linux: `./unittest` and the local gate as usual; `./lint` runs

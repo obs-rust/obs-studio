@@ -38,6 +38,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -164,6 +165,103 @@ def keys(build: Path, source: Path = ROOT) -> dict[str, str]:
     return out
 
 
+RUST_JSON = "libobs-modcache-rust.json"
+RUST_CRATE = "libobs-rust"
+# Files outside the linked crates that their build scripts read.
+RUST_EXTRA_INPUTS = ("libobs/obs-hotkeys.h", "rust/obs-c-oracle/vendor/jansson/src")
+# Crate files that never reach the staticlib.
+RUST_SKIP_DIRS = {"tests", "benches", "examples", "proptest-regressions", "target"}
+
+
+def manifest_deps(manifest: dict, workspace: dict) -> list[str]:
+    """Path dependencies (normal and build, any target) of one Cargo.toml."""
+    tables = [manifest.get("dependencies", {}), manifest.get("build-dependencies", {})]
+    for target in manifest.get("target", {}).values():
+        tables += [target.get("dependencies", {}), target.get("build-dependencies", {})]
+    paths = []
+    for table in tables:
+        for name, spec in table.items():
+            if isinstance(spec, dict) and spec.get("workspace"):
+                spec = workspace.get(spec.get("package", name), {})
+            if isinstance(spec, dict) and "path" in spec:
+                paths.append(spec["path"])
+    return paths
+
+
+def linked_crate_dirs(source: Path = ROOT) -> list[Path]:
+    """The path crates libobs-rust builds with, from the Cargo.toml files.
+
+    Registry crates are pinned by Cargo.lock, which is keyed whole. A crate
+    listed for a target or feature the build does not use only makes the
+    key stricter.
+    """
+    workspace = tomllib.loads((source / "Cargo.toml").read_text(encoding="utf-8"))
+    ws_deps = {
+        name: {**spec, "path": str(source / spec["path"])} if isinstance(spec, dict) and "path" in spec else spec
+        for name, spec in workspace.get("workspace", {}).get("dependencies", {}).items()
+    }
+    seen: set[Path] = set()
+    todo = [source / "rust" / RUST_CRATE]
+    while todo:
+        crate = todo.pop().resolve()
+        if crate in seen:
+            continue
+        seen.add(crate)
+        manifest = tomllib.loads((crate / "Cargo.toml").read_text(encoding="utf-8"))
+        todo += [crate / dep for dep in manifest_deps(manifest, ws_deps)]
+    return sorted(seen)
+
+
+def tree_files(path: Path) -> list[Path]:
+    if path.is_file():
+        return [path]
+    return sorted(
+        f for f in path.rglob("*")
+        if f.is_file() and not RUST_SKIP_DIRS.intersection(f.relative_to(path).parts)
+    )
+
+
+def tool_line(args: list[str]) -> str:
+    try:
+        done = subprocess.run(args, capture_output=True, text=True, check=False)
+    except FileNotFoundError:
+        return "<absent>"
+    return done.stdout.strip() if done.returncode == 0 else "<absent>"
+
+
+def rust_key(build: Path, source: Path = ROOT, crate_dirs: list[Path] | None = None) -> str | None:
+    """The staticlib's key, or None when the tree builds no Rust libobs."""
+    config_file = build / RUST_JSON
+    if not config_file.is_file():
+        return None
+    config = json.loads(config_file.read_text(encoding="utf-8"))
+    config.pop("location", None)
+    config["cc"] = Path(config.get("cc", "")).name
+    digest = hashlib.blake2b(digest_size=20)
+    digest.update(json.dumps(config, sort_keys=True).encode() + b"\n")
+    rustc = os.environ.get("RUSTC") or ("soldr" if shutil.which("soldr") else "rustc")
+    digest.update(tool_line([rustc, "rustc", "-vV"] if rustc == "soldr" else [rustc, "-vV"]).encode())
+    digest.update(tool_line(["pkg-config", "--modversion", "gio-2.0"]).encode())
+    for name in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "CFLAGS"):
+        digest.update(f"{name}={os.environ.get(name, '')}\n".encode())
+    inputs = [source / "Cargo.lock", source / "Cargo.toml", source / "rust-toolchain.toml"]
+    inputs += [source / extra for extra in RUST_EXTRA_INPUTS]
+    for crate in crate_dirs if crate_dirs is not None else linked_crate_dirs(source):
+        inputs.append(crate)
+    for top in inputs:
+        for file in tree_files(top) if top.exists() else []:
+            digest.update(file.relative_to(source).as_posix().encode() + b"\0")
+            digest.update(file.read_bytes())
+    return digest.hexdigest()
+
+
+def rust_location(build: Path) -> Path | None:
+    config_file = build / RUST_JSON
+    if not config_file.is_file():
+        return None
+    return Path(json.loads(config_file.read_text(encoding="utf-8"))["location"])
+
+
 def built_archive(build: Path, module: str) -> Path | None:
     for pattern in (f"liblibobs-mod-{module}.a", f"libobs-mod-{module}.lib"):
         found = sorted(build.rglob(pattern))
@@ -187,6 +285,14 @@ def restore(build: Path, cache: Path) -> tuple[list[str], list[str]]:
             hits.append(module)
         else:
             misses.append(module)
+    key = rust_key(build)
+    if key and (cache / f"{key}.rust.a").is_file():
+        local = hits_dir / "libobs-rust.a"
+        shutil.copyfile(cache / f"{key}.rust.a", local)
+        lines.append(f'set(LIBOBS_RUST_HIT "{local.as_posix()}")')
+        hits.append(RUST_CRATE)
+    elif key:
+        misses.append(RUST_CRATE)
     (hits_dir / "hits.cmake").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return hits, misses
 
@@ -205,6 +311,14 @@ def store(build: Path, cache: Path) -> list[str]:
         shutil.copyfile(archive, tmp)
         tmp.replace(target)
         stored.append(module)
+    key = rust_key(build)
+    archive = rust_location(build)
+    target = cache / f"{key}.rust.a"
+    if key and archive and archive.is_file() and not target.is_file():
+        tmp = target.with_suffix(f".tmp{os.getpid()}")
+        shutil.copyfile(archive, tmp)
+        tmp.replace(target)
+        stored.append(RUST_CRATE)
     return stored
 
 
@@ -219,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "keys":
         for module, key in keys(build).items():
             print(f"{module} {key}")
+        print(f"{RUST_CRATE} {rust_key(build)}")
     elif args.command == "restore":
         hits, misses = restore(build, cache)
         print(f"libobs modules: {len(hits)} restored ({' '.join(hits)}), {len(misses)} to build ({' '.join(misses)})")

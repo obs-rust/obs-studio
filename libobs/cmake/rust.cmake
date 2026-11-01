@@ -27,9 +27,38 @@ corrosion_import_crate(
 )
 obs_serialize_cargo_build(libobs-rust)
 
+# The module cache (#3265): ci/libobs_modules.py keys the staticlib on what
+# this file records, plus Cargo.lock, the toolchain and the linked crates.
+set(_obs_rust_features "")
+if(TARGET libobs_rust)
+  foreach(_name IN ITEMS FEATURES NO_DEFAULT_FEATURES ALL_FEATURES)
+    string(TOLOWER "${_name}" _key)
+    string(APPEND _obs_rust_features ", \"${_key}\": \"$<TARGET_PROPERTY:libobs_rust,INTERFACE_CORROSION_${_name}>\"")
+  endforeach()
+endif()
+file(
+  GENERATE OUTPUT "${CMAKE_BINARY_DIR}/libobs-modcache-rust.json"
+  CONTENT
+    "{\"location\": \"$<TARGET_FILE:libobs_rust-static>\"${_obs_rust_features}, \"target\": \"${Rust_CARGO_TARGET}\", \"profile\": \"release\", \"cc\": \"${CMAKE_C_COMPILER}\"}\n"
+)
+
+# A hit links the cached archive; cargo does not run. Corrosion still
+# configures the crate, so the archive keeps its native link libraries.
+set(_obs_rust_static libobs_rust-static)
+if(OBS_LIBOBS_MODULE_CACHE AND EXISTS "${OBS_LIBOBS_MODULE_CACHE}/hits.cmake")
+  include("${OBS_LIBOBS_MODULE_CACHE}/hits.cmake")
+endif()
+if(LIBOBS_RUST_HIT)
+  add_library(libobs_rust-cached STATIC IMPORTED GLOBAL)
+  set_property(TARGET libobs_rust-cached PROPERTY IMPORTED_LOCATION "${LIBOBS_RUST_HIT}")
+  set_property(TARGET cargo-build_libobs_rust PROPERTY EXCLUDE_FROM_ALL TRUE)
+  set(_obs_rust_static libobs_rust-cached)
+  message(STATUS "libobs-rust: restored from the module cache")
+endif()
+
 # Whole-archive so every exported C symbol ends up in ${OBS_LIBOBS_RUST_TARGET}, including ones
 # libobs itself never calls (e.g. bitstream_reader_r16, used by plugins).
-target_link_libraries(${OBS_LIBOBS_RUST_TARGET} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,libobs_rust-static>")
+target_link_libraries(${OBS_LIBOBS_RUST_TARGET} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,${_obs_rust_static}>")
 
 # Keep ${OBS_LIBOBS_RUST_TARGET} exporting the same symbol set as libobs:
 # - ELF: Rust staticlib internals have default visibility; hide them with a
@@ -57,4 +86,15 @@ elseif(OS_WINDOWS)
   include("${CMAKE_CURRENT_LIST_DIR}/rust-os-windows.cmake")
 elseif(OS_MACOS)
   include("${CMAKE_CURRENT_LIST_DIR}/rust-os-macos.cmake")
+endif()
+
+# The cached archive links like Corrosion's, including what the host files
+# above set on it.
+if(LIBOBS_RUST_HIT)
+  foreach(_property IN ITEMS INTERFACE_LINK_LIBRARIES INTERFACE_LINK_OPTIONS INTERFACE_LINK_DIRECTORIES)
+    get_target_property(_value libobs_rust-static ${_property})
+    if(_value)
+      set_property(TARGET libobs_rust-cached PROPERTY ${_property} "${_value}")
+    endif()
+  endforeach()
 endif()
