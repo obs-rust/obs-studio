@@ -42,23 +42,55 @@ static inline bool create_process(const char *cmd_line, HANDLE stdin_handle, HAN
 {
 	PROCESS_INFORMATION pi = {0};
 	wchar_t *cmd_line_w = NULL;
-	STARTUPINFOW si = {0};
+	STARTUPINFOEXW si = {0};
+	LPPROC_THREAD_ATTRIBUTE_LIST attrs = NULL;
+	HANDLE inherit[3];
+	DWORD inherit_count = 0;
+	SIZE_T attrs_size = 0;
 	bool success = false;
 
-	si.cb = sizeof(si);
-	si.dwFlags = STARTF_USESTDHANDLES | STARTF_FORCEOFFFEEDBACK;
-	si.hStdInput = stdin_handle;
-	si.hStdOutput = stdout_handle;
-	si.hStdError = stderr_handle;
+	si.StartupInfo.cb = sizeof(si);
+	si.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_FORCEOFFFEEDBACK;
+	si.StartupInfo.hStdInput = stdin_handle;
+	si.StartupInfo.hStdOutput = stdout_handle;
+	si.StartupInfo.hStdError = stderr_handle;
 
-	DWORD flags = 0;
+	/* The child inherits its standard handles and nothing else. Without
+	 * this list it got every inheritable handle of the process, sockets
+	 * included (Winsock creates them inheritable): ffmpeg-mux then kept an
+	 * SRT Media Source's listening socket open after the source had closed
+	 * it, and the source could not reconnect until the recording stopped
+	 * (obsproject/obs-studio#4596). */
+	if (stdin_handle)
+		inherit[inherit_count++] = stdin_handle;
+	if (stdout_handle)
+		inherit[inherit_count++] = stdout_handle;
+	if (stderr_handle)
+		inherit[inherit_count++] = stderr_handle;
+
+	DWORD flags = EXTENDED_STARTUPINFO_PRESENT;
 #ifndef SHOW_SUBPROCESSES
-	flags = CREATE_NO_WINDOW;
+	flags |= CREATE_NO_WINDOW;
 #endif
+
+	InitializeProcThreadAttributeList(NULL, 1, 0, &attrs_size);
+	attrs = bmalloc(attrs_size);
+	if (!InitializeProcThreadAttributeList(attrs, 1, 0, &attrs_size)) {
+		blog(LOG_ERROR, "InitializeProcThreadAttributeList failed: %lu", GetLastError());
+		bfree(attrs);
+		return false;
+	}
+	if (inherit_count && !UpdateProcThreadAttribute(attrs, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherit,
+							inherit_count * sizeof(HANDLE), NULL, NULL)) {
+		blog(LOG_ERROR, "UpdateProcThreadAttribute failed: %lu", GetLastError());
+		goto out;
+	}
+	si.lpAttributeList = attrs;
 
 	os_utf8_to_wcs_ptr(cmd_line, 0, &cmd_line_w);
 	if (cmd_line_w) {
-		success = !!CreateProcessW(NULL, cmd_line_w, NULL, NULL, true, flags, NULL, NULL, &si, &pi);
+		success = !!CreateProcessW(NULL, cmd_line_w, NULL, NULL, inherit_count > 0, flags, NULL, NULL,
+					   &si.StartupInfo, &pi);
 
 		if (success) {
 			*process = pi.hProcess;
@@ -72,6 +104,9 @@ static inline bool create_process(const char *cmd_line, HANDLE stdin_handle, HAN
 		bfree(cmd_line_w);
 	}
 
+out:
+	DeleteProcThreadAttributeList(attrs);
+	bfree(attrs);
 	return success;
 }
 

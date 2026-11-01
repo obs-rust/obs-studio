@@ -1558,6 +1558,13 @@ area.
   writes instead of leaving that row of the frame unwritten. *All*,
   2026-10-31. Issue
   [#3159](https://github.com/obs-rust/obs-studio/issues/3159).
+- An SRT Media Source in listener mode reconnects while a recording runs;
+  before, on Windows, it reconnected only after the recording stopped. The
+  helper processes OBS starts, such as the recording's muxer, no longer
+  inherit OBS's sockets and open files, so a socket a source closed is
+  really closed. *All*, 2026-11-01. Issue
+  [#3449](https://github.com/obs-rust/obs-studio/issues/3449), upstream
+  [obsproject/obs-studio#4596](https://github.com/obsproject/obs-studio/issues/4596).
 
 ### Sources and filters
 

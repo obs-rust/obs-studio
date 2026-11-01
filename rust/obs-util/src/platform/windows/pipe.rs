@@ -3,10 +3,9 @@
 //! The C is kept call for call rather than going through
 //! [`std::process::Command`], whose observable behavior differs on Windows:
 //! it resolves the program itself instead of letting `CreateProcessW` parse
-//! the command line (so the search order differs), it cannot set
-//! `STARTF_FORCEOFFFEEDBACK`, and it limits which handles the child
-//! inherits. So this module calls Win32 directly and keeps its `unsafe`
-//! to the handle calls.
+//! the command line (so the search order differs) and it cannot set
+//! `STARTF_FORCEOFFFEEDBACK`. So this module calls Win32 directly and keeps
+//! its `unsafe` to the handle calls.
 //!
 //! Intentional difference: when creating a pipe fails half-way, C leaks the
 //! handles it already made (both stderr pipe ends, or the stdio pair when
@@ -30,6 +29,8 @@ const HANDLE_FLAG_INHERIT: u32 = 0x0000_0001;
 const STARTF_FORCEOFFFEEDBACK: u32 = 0x0000_0080;
 const STARTF_USESTDHANDLES: u32 = 0x0000_0100;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const EXTENDED_STARTUPINFO_PRESENT: u32 = 0x0008_0000;
+const PROC_THREAD_ATTRIBUTE_HANDLE_LIST: usize = 0x0002_0002;
 const INFINITE: u32 = 0xffff_ffff;
 const CP_UTF8: u32 = 65001;
 
@@ -63,6 +64,12 @@ struct StartupInfoW {
 }
 
 #[repr(C)]
+struct StartupInfoExW {
+    startup_info: StartupInfoW,
+    attribute_list: *mut c_void,
+}
+
+#[repr(C)]
 struct ProcessInformation {
     process: Handle,
     thread: Handle,
@@ -75,12 +82,14 @@ struct ProcessInformation {
 const _: () = assert!(
     size_of::<SecurityAttributes>() == 24
         && size_of::<StartupInfoW>() == 104
+        && size_of::<StartupInfoExW>() == 112
         && size_of::<ProcessInformation>() == 24
 );
 #[cfg(target_pointer_width = "32")]
 const _: () = assert!(
     size_of::<SecurityAttributes>() == 12
         && size_of::<StartupInfoW>() == 68
+        && size_of::<StartupInfoExW>() == 72
         && size_of::<ProcessInformation>() == 16
 );
 
@@ -116,6 +125,22 @@ unsafe extern "system" {
         startup_info: *const StartupInfoW,
         process_information: *mut ProcessInformation,
     ) -> Bool;
+    fn InitializeProcThreadAttributeList(
+        list: *mut c_void,
+        count: u32,
+        flags: u32,
+        size: *mut usize,
+    ) -> Bool;
+    fn UpdateProcThreadAttribute(
+        list: *mut c_void,
+        flags: u32,
+        attribute: usize,
+        value: *const c_void,
+        size: usize,
+        previous_value: *mut c_void,
+        return_size: *mut usize,
+    ) -> Bool;
+    fn DeleteProcThreadAttributeList(list: *mut c_void);
     fn WaitForSingleObject(object: Handle, milliseconds: u32) -> u32;
     fn GetExitCodeProcess(process: Handle, exit_code: *mut u32) -> Bool;
     fn ReadFile(
@@ -198,9 +223,11 @@ fn utf8_to_wide(text: &[u8]) -> Vec<u16> {
 }
 
 /// `create_process`: runs `cmd_line` with the given stdio handles (null
-/// where not redirected), inheriting every inheritable handle, without a
-/// console window or the busy cursor. On failure `log` gets
-/// `GetLastError()`.
+/// where not redirected), without a console window or the busy cursor. The
+/// child inherits those stdio handles and nothing else
+/// (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`): with every inheritable handle it
+/// kept e.g. an SRT Media Source's socket open after the source closed it
+/// (obsproject/obs-studio#4596). On failure `log` gets `GetLastError()`.
 fn create_process(
     cmd_line: &[u8],
     stdin: Handle,
@@ -209,41 +236,95 @@ fn create_process(
     log: impl FnOnce(u32),
 ) -> Option<Handle> {
     let mut cmd_line = utf8_to_wide(cmd_line);
-    // SAFETY: StartupInfoW and ProcessInformation are plain C structs for
-    // which all-zero is the documented initial state.
-    let mut si: StartupInfoW = unsafe { core::mem::zeroed() };
-    let mut pi: ProcessInformation = unsafe { core::mem::zeroed() };
-    si.cb = size_of::<StartupInfoW>() as u32;
-    si.flags = STARTF_USESTDHANDLES | STARTF_FORCEOFFFEEDBACK;
-    si.std_input = stdin;
-    si.std_output = stdout;
-    si.std_error = stderr;
+    let inherit: Vec<Handle> = [stdin, stdout, stderr]
+        .into_iter()
+        .filter(|h| !h.is_null())
+        .collect();
 
-    // SAFETY: `cmd_line` is a writable NUL-terminated buffer, as
-    // CreateProcessW requires, and `si`/`pi` are valid for the call.
-    let ok = unsafe {
-        CreateProcessW(
-            ptr::null(),
-            cmd_line.as_mut_ptr(),
-            ptr::null(),
-            ptr::null(),
-            1,
-            CREATE_NO_WINDOW,
-            ptr::null(),
-            ptr::null(),
-            &si,
-            &mut pi,
-        )
-    };
-    if ok == 0 {
-        // Not logging the command line is intentional (C): it may hold
-        // stream keys.
+    // The attribute list is opaque; the first call asks for its size. It
+    // holds pointers, so back it with pointer-aligned storage.
+    let mut size = 0usize;
+    // SAFETY: a null list with a valid size pointer only reports the size.
+    unsafe {
+        InitializeProcThreadAttributeList(ptr::null_mut(), 1, 0, &mut size);
+    }
+    let mut storage = vec![0usize; size.div_ceil(size_of::<usize>()).max(1)];
+    let list = storage.as_mut_ptr().cast::<c_void>();
+    // SAFETY: `list` covers `size` bytes.
+    if unsafe { InitializeProcThreadAttributeList(list, 1, 0, &mut size) } == 0 {
         // SAFETY: reads the calling thread's last error.
         log(unsafe { GetLastError() });
         return None;
     }
-    close(pi.thread);
-    Some(pi.process)
+    let result = (|| {
+        // SAFETY: `list` is initialized; `inherit` outlives CreateProcessW,
+        // which is the last use of the list.
+        if !inherit.is_empty()
+            && unsafe {
+                UpdateProcThreadAttribute(
+                    list,
+                    0,
+                    PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                    inherit.as_ptr().cast(),
+                    inherit.len() * size_of::<Handle>(),
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
+            } == 0
+        {
+            return Err(());
+        }
+
+        // SAFETY: StartupInfoExW and ProcessInformation are plain C structs
+        // for which all-zero is the documented initial state.
+        let mut si: StartupInfoExW = unsafe { core::mem::zeroed() };
+        let mut pi: ProcessInformation = unsafe { core::mem::zeroed() };
+        si.startup_info.cb = size_of::<StartupInfoExW>() as u32;
+        si.startup_info.flags = STARTF_USESTDHANDLES | STARTF_FORCEOFFFEEDBACK;
+        si.startup_info.std_input = stdin;
+        si.startup_info.std_output = stdout;
+        si.startup_info.std_error = stderr;
+        si.attribute_list = list;
+
+        // SAFETY: `cmd_line` is a writable NUL-terminated buffer, as
+        // CreateProcessW requires, and `si`/`pi` are valid for the call.
+        let ok = unsafe {
+            CreateProcessW(
+                ptr::null(),
+                cmd_line.as_mut_ptr(),
+                ptr::null(),
+                ptr::null(),
+                Bool::from(!inherit.is_empty()),
+                CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
+                ptr::null(),
+                ptr::null(),
+                (&si as *const StartupInfoExW).cast(),
+                &mut pi,
+            )
+        };
+        if ok == 0 {
+            return Err(());
+        }
+        close(pi.thread);
+        Ok(pi.process)
+    })();
+    // Read the error before DeleteProcThreadAttributeList can change it.
+    // Not logging the command line is intentional (C): it may hold stream
+    // keys.
+    let process = match result {
+        Ok(process) => Some(process),
+        Err(()) => {
+            // SAFETY: reads the calling thread's last error.
+            log(unsafe { GetLastError() });
+            None
+        }
+    };
+    // SAFETY: `list` was initialized above and is deleted once.
+    unsafe {
+        DeleteProcThreadAttributeList(list);
+    }
+    drop(storage);
+    process
 }
 
 impl Pipe {

@@ -11,6 +11,10 @@
 #include <errno.h>
 #include <spawn.h>
 #include <fcntl.h>
+#include <dirent.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <sys/resource.h>
 
 #include "util/bmem.h"
 #include "util/pipe.h"
