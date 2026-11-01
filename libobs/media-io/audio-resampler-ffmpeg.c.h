@@ -50,32 +50,14 @@ _Static_assert(AUDIO_RESAMPLER_FMT_S16P == AV_SAMPLE_FMT_S16P, "AV_SAMPLE_FMT_S1
 _Static_assert(AUDIO_RESAMPLER_FMT_S32P == AV_SAMPLE_FMT_S32P, "AV_SAMPLE_FMT_S32P");
 _Static_assert(AUDIO_RESAMPLER_FMT_FLTP == AV_SAMPLE_FMT_FLTP, "AV_SAMPLE_FMT_FLTP");
 
-#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
-static inline uint64_t convert_speaker_layout(enum speaker_layout layout)
-{
-	switch (layout) {
-	case SPEAKERS_UNKNOWN:
-		return 0;
-	case SPEAKERS_MONO:
-		return AV_CH_LAYOUT_MONO;
-	case SPEAKERS_STEREO:
-		return AV_CH_LAYOUT_STEREO;
-	case SPEAKERS_2POINT1:
-		return AV_CH_LAYOUT_SURROUND;
-	case SPEAKERS_4POINT0:
-		return AV_CH_LAYOUT_4POINT0;
-	case SPEAKERS_4POINT1:
-		return AV_CH_LAYOUT_4POINT1;
-	case SPEAKERS_5POINT1:
-		return AV_CH_LAYOUT_5POINT1_BACK;
-	case SPEAKERS_7POINT1:
-		return AV_CH_LAYOUT_7POINT1;
-	}
-
-	/* shouldn't get here */
-	return 0;
-}
-#endif
+/* audio-resampler-plan.c gives the channel masks as their values. */
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_MONO == AV_CH_LAYOUT_MONO, "AV_CH_LAYOUT_MONO");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_STEREO == AV_CH_LAYOUT_STEREO, "AV_CH_LAYOUT_STEREO");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_SURROUND == AV_CH_LAYOUT_SURROUND, "AV_CH_LAYOUT_SURROUND");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_4POINT0 == AV_CH_LAYOUT_4POINT0, "AV_CH_LAYOUT_4POINT0");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_4POINT1 == AV_CH_LAYOUT_4POINT1, "AV_CH_LAYOUT_4POINT1");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_5POINT1_BACK == AV_CH_LAYOUT_5POINT1_BACK, "AV_CH_LAYOUT_5POINT1_BACK");
+_Static_assert(AUDIO_RESAMPLER_CH_LAYOUT_7POINT1 == AV_CH_LAYOUT_7POINT1, "AV_CH_LAYOUT_7POINT1");
 
 audio_resampler_t *audio_resampler_create(const struct resample_info *dst, const struct resample_info *src)
 {
@@ -86,24 +68,24 @@ audio_resampler_t *audio_resampler_create(const struct resample_info *dst, const
 	rs->input_freq = src->samples_per_sec;
 	rs->input_format = (enum AVSampleFormat)audio_resampler_sample_format(src->format);
 	rs->output_size = 0;
-	rs->output_ch = get_audio_channels(dst->speakers);
+	rs->output_ch = audio_resampler_output_channels(dst->speakers);
 	rs->output_freq = dst->samples_per_sec;
 	rs->output_format = (enum AVSampleFormat)audio_resampler_sample_format(dst->format);
-	rs->output_planes = is_audio_planar(dst->format) ? rs->output_ch : 1;
+	rs->output_planes = audio_resampler_planar_output(dst->format) ? rs->output_ch : 1;
 
 #if (LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100))
-	rs->input_layout = convert_speaker_layout(src->speakers);
-	rs->output_layout = convert_speaker_layout(dst->speakers);
+	rs->input_layout = audio_resampler_layout_mask(src->speakers);
+	rs->output_layout = audio_resampler_layout_mask(dst->speakers);
 	rs->context = swr_alloc_set_opts(NULL, rs->output_layout, rs->output_format, dst->samples_per_sec,
 					 rs->input_layout, rs->input_format, src->samples_per_sec, 0, NULL);
 #else
-	int nb_ch = (int)get_audio_channels(src->speakers);
+	int nb_ch = audio_resampler_input_channels(src->speakers);
 	av_channel_layout_default(&rs->input_ch_layout, nb_ch);
 	av_channel_layout_default(&rs->output_ch_layout, (int)rs->output_ch);
-	if (src->speakers == SPEAKERS_4POINT1)
+	if (audio_resampler_is_4point1(src->speakers))
 		rs->input_ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_4POINT1;
 
-	if (dst->speakers == SPEAKERS_4POINT1)
+	if (audio_resampler_is_4point1(dst->speakers))
 		rs->output_ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_4POINT1;
 
 	swr_alloc_set_opts2(&rs->context, &rs->output_ch_layout, rs->output_format, (int)dst->samples_per_sec,
@@ -117,10 +99,11 @@ audio_resampler_t *audio_resampler_create(const struct resample_info *dst, const
 	}
 
 #if (LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100))
-	if (rs->input_layout == AV_CH_LAYOUT_MONO && rs->output_ch > 1) {
+	if (rs->input_layout == AV_CH_LAYOUT_MONO && audio_resampler_upmixes_mono(rs->output_ch)) {
 #else
 	AVChannelLayout test_ch = AV_CHANNEL_LAYOUT_MONO;
-	if (av_channel_layout_compare(&rs->input_ch_layout, &test_ch) == 0 && rs->output_ch > 1) {
+	if (av_channel_layout_compare(&rs->input_ch_layout, &test_ch) == 0 &&
+	    audio_resampler_upmixes_mono(rs->output_ch)) {
 #endif
 		double row[MAX_AUDIO_CHANNELS];
 		if (audio_resampler_upmix_row(rs->output_ch, row) && swr_set_matrix(rs->context, row, 1) < 0)

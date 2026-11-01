@@ -1,6 +1,12 @@
-//! Safe core of `libobs/media-io/audio-resampler-drift.c.h`: the decisions of
-//! the libswresample resampler (`audio-resampler-ffmpeg.c`).
+//! Safe core of `libobs/media-io/audio-resampler-drift.c.h` and
+//! `libobs/media-io/audio-resampler-plan.c.h`: the decisions of the
+//! libswresample resampler (`audio-resampler-ffmpeg.c`).
 //!
+//! - the output plan of `audio_resampler_create()`, each asked where the C
+//!   read its input: [`layout_mask`] (the channel mask of a speaker layout,
+//!   [`ch_layout`]), [`output_channels`], [`planar_output`],
+//!   [`input_channels`], [`is_4point1`] and [`upmixes_mono`] (whether a mono
+//!   input is upmixed).
 //! - [`sample_format`]: the libavutil sample format for an `enum
 //!   audio_format`.
 //! - [`upmix_row`]: the matrix row for a mono input to more channels.
@@ -19,7 +25,8 @@
 //! - [`output_frames`]: the room the compensation needs.
 //!
 //! `audio-resampler-ffmpeg.c` keeps every libswresample and libavutil call
-//! (`swr_set_matrix()` and `swr_set_compensation()` among them), the output
+//! (`swr_set_matrix()`, `swr_set_compensation()` and the channel layout
+//! calls among them), the output
 //! buffer and its size, and every log. The state is the C's
 //! [`Compensation`], which stays in the resampler; nothing here keeps state of
 //! its own, takes a lock or allocates.
@@ -43,7 +50,10 @@
 
 use core::ffi::c_int;
 
-use crate::audio_io::{AudioFormat, MAX_AUDIO_CHANNELS, audio_format_from_c};
+use crate::audio_io::{
+    AudioFormat, MAX_AUDIO_CHANNELS, SpeakerLayout, audio_channels, audio_format_from_c,
+    is_audio_planar, speaker_layout_from_c, speaker_layout_to_c,
+};
 
 /// `AUDIO_RESAMPLER_COMP_DEAD_BAND_NS`: errors within this are arrival
 /// jitter or a start offset, not drift, so a device on the system clock is
@@ -82,6 +92,25 @@ pub mod fmt {
     pub const S32P: c_int = 7;
     /// `AV_SAMPLE_FMT_FLTP`.
     pub const FLTP: c_int = 8;
+}
+
+/// The libavutil channel masks (`AV_CH_LAYOUT_*`) of the speaker layouts,
+/// as `AUDIO_RESAMPLER_CH_LAYOUT_*` gives them.
+pub mod ch_layout {
+    /// `AV_CH_LAYOUT_MONO`: FC.
+    pub const MONO: u64 = 0x4;
+    /// `AV_CH_LAYOUT_STEREO`: FL, FR.
+    pub const STEREO: u64 = 0x3;
+    /// `AV_CH_LAYOUT_SURROUND`: FL, FR, FC.
+    pub const SURROUND: u64 = 0x7;
+    /// `AV_CH_LAYOUT_4POINT0`: FL, FR, FC, BC.
+    pub const FOUR_POINT_ZERO: u64 = 0x107;
+    /// `AV_CH_LAYOUT_4POINT1`: FL, FR, FC, LFE, BC.
+    pub const FOUR_POINT_ONE: u64 = 0x10f;
+    /// `AV_CH_LAYOUT_5POINT1_BACK`: FL, FR, FC, LFE, BL, BR.
+    pub const FIVE_POINT_ONE_BACK: u64 = 0x3f;
+    /// `AV_CH_LAYOUT_7POINT1`: FL, FR, FC, LFE, BL, BR, SL, SR.
+    pub const SEVEN_POINT_ONE: u64 = 0x63f;
 }
 
 /// `struct audio_resampler_comp`: the compensation state the resampler
@@ -277,4 +306,60 @@ pub fn reports_drift(c: &Compensation) -> bool {
 #[allow(clippy::as_conversions)] // (double) of the uint64_t counts
 pub fn input_rate(c: &Compensation, output_freq: u32) -> f64 {
     c.input_samples as f64 / c.output_samples as f64 * f64::from(output_freq)
+}
+
+/// `audio_resampler_layout_mask()`: the channel mask ([`ch_layout`]) of the
+/// `enum speaker_layout` value `layout`; 0 for unknown and for any value
+/// outside the enum. 2.1 (FL, FR, LFE) has the surround mask (FL, FR, FC),
+/// as in the C.
+pub fn layout_mask(layout: c_int) -> u64 {
+    match speaker_layout_from_c(layout) {
+        Some(SpeakerLayout::Mono) => ch_layout::MONO,
+        Some(SpeakerLayout::Stereo) => ch_layout::STEREO,
+        Some(SpeakerLayout::TwoPointOne) => ch_layout::SURROUND,
+        Some(SpeakerLayout::FourPointZero) => ch_layout::FOUR_POINT_ZERO,
+        Some(SpeakerLayout::FourPointOne) => ch_layout::FOUR_POINT_ONE,
+        Some(SpeakerLayout::FivePointOne) => ch_layout::FIVE_POINT_ONE_BACK,
+        Some(SpeakerLayout::SevenPointOne) => ch_layout::SEVEN_POINT_ONE,
+        Some(SpeakerLayout::Unknown) | None => 0,
+    }
+}
+
+/// `get_audio_channels()` of the `enum speaker_layout` value `layout`: 0 for
+/// unknown and for any value outside the enum.
+fn channels(layout: c_int) -> u32 {
+    speaker_layout_from_c(layout).map_or(0, audio_channels)
+}
+
+/// `audio_resampler_output_channels()`: the output channels of the `dst`
+/// `enum speaker_layout`; 0 for unknown and for any value outside the enum.
+pub fn output_channels(dst: c_int) -> u32 {
+    channels(dst)
+}
+
+/// `audio_resampler_planar_output()`: whether the output in the `dst_format`
+/// `enum audio_format` has a plane per channel (else one); false for unknown
+/// and for any value outside the enum.
+pub fn planar_output(dst_format: c_int) -> bool {
+    audio_format_from_c(dst_format).is_some_and(is_audio_planar)
+}
+
+/// `audio_resampler_input_channels()`: the input channels of the `src` `enum
+/// speaker_layout`, for its default channel layout; 0 for unknown and for any
+/// value outside the enum.
+pub fn input_channels(src: c_int) -> c_int {
+    // at most 8, so the C's (int) cast never changes it
+    c_int::try_from(channels(src)).unwrap_or(c_int::MAX)
+}
+
+/// `audio_resampler_is_4point1()`: whether the `enum speaker_layout` value
+/// `layout` takes the 4.1 channel layout instead of the default one.
+pub fn is_4point1(layout: c_int) -> bool {
+    layout == speaker_layout_to_c(SpeakerLayout::FourPointOne)
+}
+
+/// `audio_resampler_upmixes_mono()`: whether a mono input is upmixed to
+/// `output_ch` channels: more than one. Asked only once the input is mono.
+pub fn upmixes_mono(output_ch: u32) -> bool {
+    output_ch > 1
 }

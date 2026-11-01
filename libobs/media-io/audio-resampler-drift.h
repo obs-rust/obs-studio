@@ -30,7 +30,13 @@
  *   band), audio_resampler_comp_step() (one step of the loop filter),
  *   audio_resampler_comp_count() (the sample counters) and
  *   audio_resampler_comp_drift_report() (the report at destroy);
- * - audio_resampler_output_frames(): the room the compensation needs.
+ * - audio_resampler_output_frames(): the room the compensation needs;
+ * - the output plan (audio-resampler-plan.c), each asked where
+ *   audio_resampler_create() read its input before:
+ *   audio_resampler_layout_mask() (the channel mask of a speaker layout),
+ *   audio_resampler_output_channels(), audio_resampler_planar_output(),
+ *   audio_resampler_input_channels(), audio_resampler_is_4point1() and
+ *   audio_resampler_upmixes_mono() (whether a mono input is upmixed).
  *
  * audio-resampler-ffmpeg.c keeps every libswresample and libavutil call, the
  * output buffer and its size, and every log. Nothing here includes an FFmpeg
@@ -73,6 +79,15 @@
 #define AUDIO_RESAMPLER_FMT_S16P 6
 #define AUDIO_RESAMPLER_FMT_S32P 7
 #define AUDIO_RESAMPLER_FMT_FLTP 8
+
+/* The libavutil channel masks (AV_CH_LAYOUT_*) of the speaker layouts. */
+#define AUDIO_RESAMPLER_CH_LAYOUT_MONO 0x4ULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_STEREO 0x3ULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_SURROUND 0x7ULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_4POINT0 0x107ULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_4POINT1 0x10fULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_5POINT1_BACK 0x3fULL
+#define AUDIO_RESAMPLER_CH_LAYOUT_7POINT1 0x63fULL
 
 struct audio_resampler_comp {
 	bool enabled;
@@ -138,3 +153,29 @@ bool audio_resampler_comp_reports_drift(const struct audio_resampler_comp *c);
  * audio_resampler_destroy() reads output_freq and asks this only when
  * audio_resampler_comp_reports_drift() is true. */
 double audio_resampler_comp_input_rate(const struct audio_resampler_comp *c, uint32_t output_freq);
+
+/* The libavutil channel mask (an AUDIO_RESAMPLER_CH_LAYOUT_* value) for
+ * layout: 0 for SPEAKERS_UNKNOWN and for any value outside the enum. Only
+ * libswresample older than 4.5.100 asks it. */
+uint64_t audio_resampler_layout_mask(enum speaker_layout layout);
+
+/* The output channels for dst speakers: 0 for SPEAKERS_UNKNOWN and for any
+ * value outside the enum. */
+uint32_t audio_resampler_output_channels(enum speaker_layout dst);
+
+/* Whether the output in dst_format has a plane per channel (else one): false
+ * for AUDIO_FORMAT_UNKNOWN and for any value outside the enum. */
+bool audio_resampler_planar_output(enum audio_format dst_format);
+
+/* The input channels for src speakers, for the input's default channel layout
+ * (libswresample 4.5.100 and newer): 0 for SPEAKERS_UNKNOWN and for any value
+ * outside the enum. */
+int audio_resampler_input_channels(enum speaker_layout src);
+
+/* Whether layout takes the 4.1 channel layout instead of the default one for
+ * its channel count (libswresample 4.5.100 and newer). */
+bool audio_resampler_is_4point1(enum speaker_layout layout);
+
+/* Whether a mono input is upmixed to output_ch channels: more than one.
+ * audio_resampler_create() asks it only once the input layout is mono. */
+bool audio_resampler_upmixes_mono(uint32_t output_ch);

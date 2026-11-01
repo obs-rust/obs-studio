@@ -370,6 +370,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_audio_resampler_plan_steps": {
+      "sources": [
+        "test/cmocka/test_audio_resampler_plan_steps.c",
+        "libobs/media-io/audio-resampler-plan.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/media-io/audio-resampler-drift.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_restart_resampler_tail": {
       "sources": [
         "test/cmocka/test_audio_restart_resampler_tail.c"
@@ -6127,6 +6143,12 @@
     },
     "test_audio_resampler_drift_steps": {
       "target": "test_audio_resampler_drift_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_audio_resampler_plan_steps": {
+      "target": "test_audio_resampler_plan_steps",
       "command": [
         "${target}"
       ]

@@ -11,3 +11,5 @@ mod audio_math;
 mod audio_math_parity;
 mod audio_resampler_drift;
 mod audio_resampler_drift_parity;
+mod audio_resampler_plan;
+mod audio_resampler_plan_parity;
