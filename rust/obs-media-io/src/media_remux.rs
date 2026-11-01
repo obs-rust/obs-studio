@@ -411,6 +411,8 @@ impl Job {
                 if throttled {
                     let progress = pkt.pos as f32 / self.in_size as f32 * 100.0;
                     if !callback(progress) {
+                        // Never written: unref it here (#3365).
+                        host.packet_unref();
                         return ret;
                     }
                     throttle = 0;
