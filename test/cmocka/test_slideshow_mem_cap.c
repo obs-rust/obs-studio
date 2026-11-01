@@ -298,7 +298,8 @@ static int shown_slide(obs_source_t *ss, uint32_t *cx, uint32_t *cy);
 
 /* Waits for a Next/Previous to land: the index changes, the transition
  * shows that slide and finishes. A slide past the cap may still be
- * decoding when the index changes. */
+ * decoding when the index changes. A press that never lands fails: waiting
+ * out the 5 s instead hid a wait that could not end (#3238). */
 static void press(obs_source_t *ss, bool next)
 {
 	long long before = current_index(ss);
@@ -307,14 +308,17 @@ static void press(obs_source_t *ss, bool next)
 	else
 		obs_source_media_previous(ss);
 
-	for (int i = 0; i < 250; i++) {
+	bool landed = false;
+	for (int i = 0; i < 250 && !landed; i++) {
 		os_sleep_ms(20);
 		uint32_t cx, cy;
 		long long idx = current_index(ss);
 		obs_source_t *tr = get_transition(ss);
-		if (idx != before && shown_slide(ss, &cx, &cy) == idx && tr && obs_transition_get_time(tr) >= 1.0f)
-			break;
+		landed = idx != before && shown_slide(ss, &cx, &cy) == idx && tr && obs_transition_get_time(tr) >= 1.0f;
 	}
+	if (!landed)
+		fail_msg("%s from index %lld did not land in 5 s (index now %lld)", next ? "Next" : "Previous", before,
+			 current_index(ss));
 	os_sleep_ms(60);
 }
 

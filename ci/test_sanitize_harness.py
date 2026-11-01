@@ -254,6 +254,14 @@ class SanitizeHarnessTest(unittest.TestCase):
         )
         self.assertFalse([a for a in without if a.startswith("-DOBS_VERSION_OVERRIDE")], without)
 
+    def test_valgrind_builds_no_per_target_asan(self):
+        """valgrind can't run an ASan binary, so its build turns off the cmocka
+        tests' own ASan/UBSan (obs_test_sanitize, #159); asan and tsan already
+        have -fsanitize= in the build flags, which turns it off for them (#3238)."""
+        self.assertIn("-DOBS_TEST_SANITIZE_PER_TARGET=OFF", self.module.tool_cmake_args("valgrind"))
+        self.assertEqual(self.module.tool_cmake_args("asan"), [])
+        self.assertEqual(self.module.tool_cmake_args("tsan"), [])
+
     def test_valgrind_stretches_the_launch_window(self):
         self.assertEqual(self.module.launch_timing("asan", 45), (45, 60))
         self.assertEqual(self.module.launch_timing("tsan", 45), (45, 60))

@@ -119,9 +119,9 @@ class TriageTest(unittest.TestCase):
             )
             return done.returncode, done.stdout, summary.read_text()
 
-    def results(self, root: Path, summary: str) -> Path:
+    def results(self, root: Path, summary: str, tool: str = "asan") -> Path:
         """A pass directory the way sanitize.py leaves one: <out>/<tool>/tests/."""
-        out = root / "asan"
+        out = root / tool
         (out / "tests").mkdir(parents=True)
         (out / "tests" / "summary.txt").write_text(summary)
         return out
@@ -136,10 +136,10 @@ class TriageTest(unittest.TestCase):
 
     def test_report_reaches_stdout_and_the_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
-            out = self.results(Path(tmp), "test_canvas exit=1\n")
+            out = self.results(Path(tmp), "test_canvas exit=1\n", tool="tsan")
             code, stdout, summary = self.run_triage(out, False)
         self.assertEqual(code, 0)
-        self.assertIn("### asan", stdout)
+        self.assertIn("### tsan", stdout)
         self.assertIn("0/1 clean", stdout)
         self.assertEqual(summary, stdout)
 
@@ -150,6 +150,15 @@ class TriageTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("0/1 clean", stdout)
         self.assertEqual(summary, stdout)
+
+    def test_asan_fails_on_findings_without_the_input(self):
+        """asan gates on its findings (#3238); tsan and valgrind still need
+        fail_on_findings until their backlog is triaged."""
+        with tempfile.TemporaryDirectory() as tmp:
+            out = self.results(Path(tmp), "test_canvas exit=1\n")
+            code, stdout, _ = self.run_triage(out, False)
+        self.assertEqual(code, 1)
+        self.assertIn("0/1 clean", stdout)
 
     def test_clean_pass_succeeds(self):
         with tempfile.TemporaryDirectory() as tmp:
