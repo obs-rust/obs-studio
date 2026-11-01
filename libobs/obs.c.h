@@ -1622,13 +1622,17 @@ _Static_assert(OBS_CORE_SETUP_RULES_SEC_TO_MSEC == SEC_TO_MSEC, "SEC_TO_MSEC");
 
 bool obs_reset_audio2(const struct obs_audio_info2 *oai)
 {
-	struct obs_core_audio *audio = &obs->audio;
+	struct obs_core_audio *audio;
 	struct audio_output_info ai;
 
+	/* no core (before obs_startup): refused before &obs->audio (#3363) */
+	if (obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_CORE, obs != NULL))
+		return false;
+	audio = &obs->audio;
+
 	/* don't allow changing of audio settings if active. */
-	if (obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_CORE, obs != NULL) ||
-	    (audio->audio &&
-	     obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_ACTIVE, audio_output_active(audio->audio))))
+	if (audio->audio &&
+	    obs_core_setup_rules_audio_refused(OBS_CORE_SETUP_RULES_AUDIO_ACTIVE, audio_output_active(audio->audio)))
 		return false;
 
 	obs_free_audio();
@@ -1744,6 +1748,10 @@ bool obs_get_audio_info(struct obs_audio_info *oai)
 
 bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
 {
+	/* no core (before obs_startup): no audio (#3363) */
+	if (!obs)
+		return false;
+
 	struct obs_core_audio *audio = &obs->audio;
 	struct obs_audio_info oai;
 
