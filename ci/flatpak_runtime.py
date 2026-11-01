@@ -61,7 +61,9 @@ def check_capture_log(log: str, modules: list[str]) -> list[str]:
 # xdg-run/obs-virtual-microphone, which the manifest shares with the host, and
 # pactl runs on the host through flatpak-spawn.
 VMIC_PROBE = ('printf "marker=%s\\n" "$(cat "$XDG_RUNTIME_DIR/obs-virtual-microphone/host-marker" 2>/dev/null)"; '
-              'if flatpak-spawn --host pactl info >/dev/null 2>&1; then echo pactl=ok; else echo pactl=failed; fi')
+              'if flatpak-spawn --host pactl info >/dev/null 2>&1; then echo pactl=ok; else echo pactl=failed; fi; '
+              # Evidence for a failure: what the sandbox's runtime directory holds.
+              'echo "runtime=$XDG_RUNTIME_DIR"; ls -la "$XDG_RUNTIME_DIR" 2>&1 | sed "s/^/ls: /"')
 
 
 def check_vmic_sandbox(output: str, marker: str) -> None:
@@ -387,7 +389,15 @@ def qualification(args) -> dict:  # noqa: C901
         vmic_dir.mkdir(mode=0o700, exist_ok=True)
         marker = os.urandom(8).hex()
         (vmic_dir / 'host-marker').write_text(marker)
-        check_vmic_sandbox(session.run(['flatpak', '--user', 'run', '--command=sh', app_ref, '-c', VMIC_PROBE]), marker)
+        probe = session.run(['flatpak', '--user', 'run', '--command=sh', app_ref, '-c', VMIC_PROBE])
+        try:
+            check_vmic_sandbox(probe, marker)
+        except ValueError:
+            print('virtual microphone probe:\n' + probe, file=sys.stderr)
+            print('permissions:\n' + session.run(['flatpak', '--user', 'info', '--show-permissions', app_ref]),
+                  file=sys.stderr)
+            print('host runtime dir: ' + session.env['XDG_RUNTIME_DIR'], file=sys.stderr)
+            raise
         result['virtual_microphone_sandbox'] = 'ok'
         for name, pattern, fmt, width, height in [('screen', 'smpte', 'BGRx', 320, 240), ('camera', 'ball', 'YUY2', 160, 120)]:
             session.start('producer-' + name, ['gst-launch-1.0', '-q', 'videotestsrc', f'pattern={pattern}',
