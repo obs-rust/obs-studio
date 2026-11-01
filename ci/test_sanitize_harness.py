@@ -10,8 +10,9 @@ The rule lives in rust/tools/sanitize/sanitize.py since the port off the
 and build type, the argument check, the ctest-to-per-test mapping (a wrapper in
 front of the binary is dropped, an unregistered command or a non-executable
 binary is not run), the two tests only the asan pass may run, the per-test
-sanitizer log paths, the configure line's zccache launcher and libobs backend,
-and the valgrind launch window.
+sanitizer log paths, which tests keep ASan's slow allocation unwinder (#3249),
+the configure line's zccache launcher and libobs backend, and the valgrind
+launch window.
 """
 
 from __future__ import annotations
@@ -557,6 +558,121 @@ class ParallelUnitTestsTest(unittest.TestCase):
         ]})
         serial = {t.name: t.serial for t in self.module.ctest_tests(payload)}
         self.assertEqual(serial, {"a": True, "b": True, "c": False})
+
+
+class UnwindPolicyTest(unittest.TestCase):
+    """Only the tests that can reach FFmpeg keep the slow allocation
+    unwinder; the rest take the fast one (#3249). The selection comes from
+    the build's own test declarations, so this pins it against them."""
+
+    def setUp(self):
+        self.module = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.out = Path(self.tmp.name)
+
+    def layout(self, root: Path):
+        return self.module.Layout(
+            root=root, out=root / "out", build=root / "build", inst=root / "inst", bin_dir=root / "bin"
+        )
+
+    def test_ffmpeg_linked_tests_keep_the_slow_unwinder(self):
+        policy = self.module.unwind_policy()
+        # Declared with FFmpeg:: or OBS::media-playback in tests.d/*.cmake and
+        # build/test-graph.json: a leak inside FFmpeg must still name its OBS
+        # caller, which the fast unwinder cannot (#2035).
+        for name in ("test_media_alpha_network", "test_media_remux", "test_svt_av1", "test_ffmpeg_mux_helper"):
+            self.assertIn(name, policy.ffmpeg, name)
+            self.assertFalse(policy.fast_unwind("asan", name), name)
+        # The hand-kept exception: no FFmpeg library, but it dlopens every
+        # plugin module, and it was unstable under the fast unwinder.
+        self.assertIn("test_core_module_load", policy.declared)
+        self.assertNotIn("test_core_module_load", policy.ffmpeg)
+        self.assertFalse(policy.fast_unwind("asan", "test_core_module_load"))
+
+    def test_the_rest_take_the_fast_unwinder(self):
+        policy = self.module.unwind_policy()
+        # The four tests #3249 measured the gain on, plus a pure-libobs one.
+        for name in (
+            "test_context_names",
+            "test_canvas_destroy_scene_refs",
+            "test_video_output_formats",
+            "test_dock_proportions",
+            "test_bmem",
+        ):
+            self.assertIn(name, policy.declared, name)
+            self.assertNotIn(name, policy.ffmpeg, name)
+            self.assertTrue(policy.fast_unwind("asan", name), name)
+        # Most of the pass gets the fast unwinder, or the change buys nothing.
+        fast = [name for name in policy.declared if policy.fast_unwind("asan", name)]
+        self.assertGreater(len(fast), 500, len(fast))
+
+    def test_an_undeclared_test_and_the_other_tools_keep_todays_option(self):
+        policy = self.module.unwind_policy()
+        # A test the scan cannot see falls back to what the pass did before.
+        self.assertNotIn("test_declared_nowhere", policy.declared)
+        self.assertFalse(policy.fast_unwind("asan", "test_declared_nowhere"))
+        # fast_unwind_on_malloc is an ASan setting: the other passes are untouched.
+        for tool in ("tsan", "valgrind"):
+            self.assertFalse(policy.fast_unwind(tool, "test_bmem"), tool)
+
+    def test_only_the_unwinder_differs_between_the_two_option_sets(self):
+        slow = self.module.sanitizer_options(self.out, "t.")
+        fast = self.module.sanitizer_options(self.out, "t.", fast_unwind=True)
+        self.assertIn("fast_unwind_on_malloc=0", slow["ASAN_OPTIONS"])
+        self.assertIn("fast_unwind_on_malloc=1", fast["ASAN_OPTIONS"])
+        self.assertEqual(
+            slow["ASAN_OPTIONS"].replace("fast_unwind_on_malloc=0", "fast_unwind_on_malloc=1"),
+            fast["ASAN_OPTIONS"],
+        )
+        for key in ("UBSAN_OPTIONS", "TSAN_OPTIONS"):
+            self.assertEqual(slow[key], fast[key], key)
+
+    def test_a_run_puts_the_right_option_in_each_test_environment(self):
+        """The selection reaches the test process, and the run records it."""
+        root = self.out
+        bin_dir = root / "stubs"
+        bin_dir.mkdir()
+        names = ("test_bmem", "test_media_remux")
+        tests = [
+            self.module.Test(
+                name=name,
+                workdir=str(bin_dir),
+                command=(str(write_stub(bin_dir, name, 'printf "%s\\n" "$ASAN_OPTIONS"\n')),),
+            )
+            for name in names
+        ]
+        layout = self.layout(root)
+        summary = self.module.run_tests("asan", tests, layout, jobs=2)
+        tests_dir = layout.out / "tests"
+        logs = {name: (tests_dir / f"{name}.log").read_text(encoding="utf-8") for name in names}
+        self.assertEqual(summary, [f"{name} exit=0" for name in names])
+        self.assertIn("fast_unwind_on_malloc=1", logs["test_bmem"])
+        self.assertIn("fast_unwind_on_malloc=0", logs["test_media_remux"])
+        self.assertEqual(
+            (tests_dir / "unwind.tsv").read_text(encoding="utf-8"),
+            "test_bmem\tfast_unwind_on_malloc=1\ntest_media_remux\tfast_unwind_on_malloc=0\n",
+        )
+
+    def test_list_unwind_prints_the_selection_without_a_build(self):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = self.module.main(["sanitize.py", "--list-unwind"])
+        printed = out.getvalue()
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertIn("fast_unwind_on_malloc=0\ttest_media_remux", printed)
+        self.assertIn("fast_unwind_on_malloc=1\ttest_bmem", printed)
+        self.assertIn("link FFmpeg", printed)
+
+    def test_a_generator_expression_does_not_end_a_cmake_call(self):
+        bodies = self.module.cmake_call_bodies(
+            "target_link_libraries(\n  test_x\n  PRIVATE\n    FFmpeg::avutil\n    $<$<NOT:$<PLATFORM_ID:Windows>>:m>\n)\n"
+            "target_link_libraries(test_y PRIVATE OBS::libobs)\n",
+            "target_link_libraries",
+        )
+        self.assertEqual([self.module.first_word(body) for body in bodies], ["test_x", "test_y"])
+        self.assertIn("FFmpeg::avutil", bodies[0])
+        self.assertNotIn("FFmpeg", bodies[1])
 
 
 if __name__ == "__main__":
