@@ -16,7 +16,7 @@ static bool obs_enum_audio_monitoring_device(obs_enum_audio_device_cb cb, void *
 
 	/* Check if the device is capable of audio output. */
 	AudioObjectGetPropertyDataSize(id, &addr, 0, NULL, &size);
-	if (!allow_inputs && !size)
+	if (!coreaudio_device_listed(allow_inputs, size))
 		return true;
 
 	size = sizeof(CFStringRef);
@@ -61,6 +61,7 @@ static void enum_audio_devices(obs_enum_audio_device_cb cb, void *data, bool all
 					   kAudioObjectPropertyElementMain};
 
 	UInt32 size = 0;
+	UInt32 first_size;
 	UInt32 count;
 	OSStatus stat;
 	AudioDeviceID *ids;
@@ -72,10 +73,11 @@ static void enum_audio_devices(obs_enum_audio_device_cb cb, void *data, bool all
 	ids = malloc(size);
 	if (!ids)
 		return;
-	count = size / sizeof(AudioDeviceID);
+	first_size = size;
 
 	stat = AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, ids);
 	if (success(stat, "get data")) {
+		count = coreaudio_device_count(first_size, size, sizeof(AudioDeviceID));
 		for (UInt32 i = 0; i < count; i++) {
 			if (!obs_enum_audio_monitoring_device(cb, data, ids[i], allow_inputs))
 				break;
@@ -146,11 +148,11 @@ bool devices_match(const char *id1, const char *id2)
 	if (!id1 || !id2)
 		return false;
 
-	if (strcmp(id1, "default") == 0) {
+	if (coreaudio_device_is_default(id1)) {
 		get_default_id(&default_id);
 		id1 = default_id;
 	}
-	if (strcmp(id2, "default") == 0) {
+	if (coreaudio_device_is_default(id2)) {
 		get_default_id(&default_id);
 		id2 = default_id;
 	}
@@ -164,7 +166,7 @@ bool devices_match(const char *id1, const char *id2)
 	enum_audio_devices(enum_device_name, &info, true);
 	name2 = info.name;
 
-	match = name1 && name2 && strcmp(name1, name2) == 0;
+	match = coreaudio_device_names_match(name1, name2);
 	bfree(default_id);
 	bfree(name1);
 	bfree(name2);
@@ -172,20 +174,12 @@ bool devices_match(const char *id1, const char *id2)
 	return match;
 }
 
-static inline bool device_is_input(const char *device)
-{
-	return astrstri(device, "soundflower") == NULL && astrstri(device, "wavtap") == NULL &&
-	       astrstri(device, "soundsiphon") == NULL && astrstri(device, "ishowu") == NULL &&
-	       astrstri(device, "blackhole") == NULL && astrstri(device, "loopback") == NULL &&
-	       astrstri(device, "groundcontrol") == NULL && astrstri(device, "vbcable") == NULL;
-}
-
 static bool find_loopback_cb(void *param, const char *name, const char *id)
 {
 	UNUSED_PARAMETER(name);
 	char **p_id = param;
 
-	if (!device_is_input(id)) {
+	if (!coreaudio_device_is_input(id)) {
 		*p_id = bstrdup(id);
 		return false;
 	}
@@ -209,7 +203,7 @@ void get_desktop_default_id(char **p_id)
 		obs_enum_audio_monitoring_device(alloc_default_id, p_id, id, false);
 
 		/* If not a loopback, try to find a virtual (non-input) device instead */
-		if (*p_id && device_is_input(*p_id)) {
+		if (*p_id && coreaudio_device_is_input(*p_id)) {
 			bfree(*p_id);
 			*p_id = NULL;
 			enum_audio_devices(find_loopback_cb, p_id, false);

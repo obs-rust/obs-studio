@@ -1,4 +1,5 @@
 [
+  "audio-monitoring/osx/coreaudio-device-rules.h",
   "audio-monitoring/osx/coreaudio-pacing.h",
   "audio-monitoring/osx/mac-helpers.h",
   "obs-cocoa-keys.h",
@@ -6,6 +7,7 @@
   "util/threading-posix.h",
   "build/libobs.macos+.h.c",
   "build/libobs.macos-cocoa+.h.m",
+  "build/libobs.macos-coreaudio-device-rules+.h.c",
   "build/libobs.macos-loader+.h.m",
   "build/libobs.graphics-ffmpeg-host-posix+.h.c"
 ]

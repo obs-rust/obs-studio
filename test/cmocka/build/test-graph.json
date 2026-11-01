@@ -729,16 +729,22 @@
     },
     "test_coreaudio_enum_alloc": {
       "sources": [
-        "test/cmocka/test_coreaudio_enum_alloc.c"
+        "test/cmocka/test_coreaudio_enum_alloc.c",
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.c.h"
       ],
       "includes_before": [
         "test/cmocka/coreaudio-enum-stubs"
+      ],
+      "includes": [
+        "libobs"
       ],
       "sanitizers": "address,undefined",
       "libraries": [
         "OBS::native-test-cmocka"
       ],
       "watch_inputs": [
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.h",
+        "libobs/util/dstr.h",
         "test/cmocka/coreaudio-enum-stubs"
       ]
     },
