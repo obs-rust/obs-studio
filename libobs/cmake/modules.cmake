@@ -16,7 +16,8 @@
 # directly. The ported groups are not on libobs-objects (only the explicit C
 # targets compile them), so this split leaves them where they are.
 
-set(_LIBOBS_MODULE_PROPERTIES
+set(
+  _LIBOBS_MODULE_PROPERTIES
   COMPILE_DEFINITIONS
   COMPILE_OPTIONS
   COMPILE_FEATURES
@@ -91,6 +92,26 @@ function(_libobs_module_of group names out)
   message(FATAL_ERROR "libobs group ${group} is in no module of build/modules.d (ci/test_build_groups.py)")
 endfunction()
 
+# _libobs_compile_only_sourced(<links> <out>): <links> with each target that
+# has INTERFACE_SOURCES (OBS::obfuscate on Windows) as $<COMPILE_ONLY:...>.
+# libobs-objects links it to compile its group once; a module that linked it
+# too would compile that group again and the DLL would define its symbols
+# twice. The module still needs its include directories and definitions.
+function(_libobs_compile_only_sourced links out)
+  set(_result "")
+  foreach(_link IN LISTS links)
+    if(TARGET "${_link}")
+      get_target_property(_sources "${_link}" INTERFACE_SOURCES)
+      if(_sources AND NOT _sources MATCHES "-NOTFOUND$")
+        list(APPEND _result "$<COMPILE_ONLY:${_link}>")
+        continue()
+      endif()
+    endif()
+    list(APPEND _result "${_link}")
+  endforeach()
+  set(${out} "${_result}" PARENT_SCOPE)
+endfunction()
+
 # libobs_split_modules(<consumers...>): move libobs-objects' groups into
 # their module libraries and link those into each consumer.
 function(libobs_split_modules)
@@ -117,9 +138,13 @@ function(libobs_split_modules)
     add_library(${_target} OBJECT ${_LIBOBS_SOURCES_${_module}})
     foreach(_property IN LISTS _LIBOBS_MODULE_PROPERTIES)
       get_target_property(_value libobs-objects ${_property})
-      if(NOT _value MATCHES "-NOTFOUND$")
-        set_property(TARGET ${_target} PROPERTY ${_property} "${_value}")
+      if(_value MATCHES "-NOTFOUND$")
+        continue()
       endif()
+      if(_property STREQUAL "LINK_LIBRARIES")
+        _libobs_compile_only_sourced("${_value}" _value)
+      endif()
+      set_property(TARGET ${_target} PROPERTY ${_property} "${_value}")
     endforeach()
     foreach(_consumer IN LISTS ARGN)
       target_link_libraries(${_consumer} PRIVATE ${_target})
