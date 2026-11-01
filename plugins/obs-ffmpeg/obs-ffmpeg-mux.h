@@ -37,6 +37,8 @@ struct ffmpeg_muxer {
 	obs_hotkey_id hotkey;
 	volatile bool muxing;
 	mux_packets_t mux_packets;
+	/* Header and data of one packet, sent in one pipe write (#3211). */
+	DARRAY(uint8_t) packet_buf;
 
 	/* split file */
 	bool found_video;
