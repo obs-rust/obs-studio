@@ -1,10 +1,11 @@
 {
-  "description": "The libobs core: objects, outputs, sources, the null audio device.",
+  "description": "The libobs core: objects, outputs, sources, the null audio device, and the CoreFoundation-style utilities every host builds (util-cf).",
   "groups": [
     "core",
     "core-output",
     "core-source",
-    "null-audio"
+    "null-audio",
+    "util-cf"
   ],
   "depends": [
     "graphics",
