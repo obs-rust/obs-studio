@@ -180,3 +180,115 @@ unsafe extern "C" {
     pub fn gs_blend_state_pop();
     pub fn gs_blend_function(src: c_int, dest: c_int);
 }
+
+opaque!(obs_encoder_t, obs_service_t, audio_t);
+
+/// `struct obs_video_info` from `libobs/obs.h`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct obs_video_info {
+    pub graphics_module: *const c_char,
+    pub fps_num: u32,
+    pub fps_den: u32,
+    pub base_width: u32,
+    pub base_height: u32,
+    pub output_width: u32,
+    pub output_height: u32,
+    /// `enum video_format`.
+    pub output_format: c_int,
+    pub adapter: u32,
+    pub gpu_conversion: bool,
+    /// `enum video_colorspace`.
+    pub colorspace: c_int,
+    /// `enum video_range_type`.
+    pub range: c_int,
+    /// `enum obs_scale_type`.
+    pub scale_type: c_int,
+}
+
+/// `struct obs_audio_info` from `libobs/obs.h`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct obs_audio_info {
+    pub samples_per_sec: u32,
+    /// `enum speaker_layout`.
+    pub speakers: c_int,
+}
+
+/// `OBS_VIDEO_SUCCESS` from `libobs/obs-defs.h`, the success value of `obs_reset_video`.
+pub const OBS_VIDEO_SUCCESS: c_int = 0;
+/// `OBS_VIDEO_FAIL`.
+pub const OBS_VIDEO_FAIL: c_int = -1;
+/// `OBS_VIDEO_NOT_SUPPORTED`.
+pub const OBS_VIDEO_NOT_SUPPORTED: c_int = -2;
+/// `OBS_VIDEO_INVALID_PARAM`.
+pub const OBS_VIDEO_INVALID_PARAM: c_int = -3;
+/// `OBS_VIDEO_CURRENTLY_ACTIVE`.
+pub const OBS_VIDEO_CURRENTLY_ACTIVE: c_int = -4;
+/// `OBS_VIDEO_MODULE_NOT_FOUND`.
+pub const OBS_VIDEO_MODULE_NOT_FOUND: c_int = -5;
+/// `VIDEO_FORMAT_NV12` of `enum video_format`.
+pub const VIDEO_FORMAT_NV12: c_int = 2;
+/// `VIDEO_CS_709` of `enum video_colorspace`.
+pub const VIDEO_CS_709: c_int = 2;
+/// `VIDEO_RANGE_PARTIAL` of `enum video_range_type`.
+pub const VIDEO_RANGE_PARTIAL: c_int = 1;
+/// `OBS_SCALE_BICUBIC` of `enum obs_scale_type`.
+pub const OBS_SCALE_BICUBIC: c_int = 2;
+/// `SPEAKERS_STEREO` of `enum speaker_layout`.
+pub const SPEAKERS_STEREO: c_int = 2;
+
+unsafe extern "C" {
+    // libobs/obs.h: video, audio and modules.
+    pub fn obs_reset_video(ovi: *mut obs_video_info) -> c_int;
+    pub fn obs_reset_audio(oai: *const obs_audio_info) -> bool;
+    pub fn obs_get_audio() -> *mut audio_t;
+    pub fn obs_add_data_path(path: *const c_char);
+    pub fn obs_add_module_path(bin: *const c_char, data: *const c_char);
+    pub fn obs_load_all_modules();
+    pub fn obs_post_load_modules();
+
+    // libobs/obs-data.h
+    pub fn obs_data_create() -> *mut obs_data_t;
+    pub fn obs_data_set_string(data: *mut obs_data_t, name: *const c_char, val: *const c_char);
+    pub fn obs_data_set_int(data: *mut obs_data_t, name: *const c_char, val: i64);
+
+    // libobs/obs.h: encoders, services and output wiring.
+    pub fn obs_video_encoder_create(
+        id: *const c_char,
+        name: *const c_char,
+        settings: *mut obs_data_t,
+        hotkey_data: *mut obs_data_t,
+    ) -> *mut obs_encoder_t;
+    pub fn obs_audio_encoder_create(
+        id: *const c_char,
+        name: *const c_char,
+        settings: *mut obs_data_t,
+        mixer_idx: usize,
+        hotkey_data: *mut obs_data_t,
+    ) -> *mut obs_encoder_t;
+    pub fn obs_encoder_release(encoder: *mut obs_encoder_t);
+    pub fn obs_encoder_set_video(encoder: *mut obs_encoder_t, video: *mut video_t);
+    pub fn obs_encoder_set_audio(encoder: *mut obs_encoder_t, audio: *mut audio_t);
+    pub fn obs_service_create(
+        id: *const c_char,
+        name: *const c_char,
+        settings: *mut obs_data_t,
+        hotkey_data: *mut obs_data_t,
+    ) -> *mut obs_service_t;
+    pub fn obs_service_release(service: *mut obs_service_t);
+    pub fn obs_output_create(
+        id: *const c_char,
+        name: *const c_char,
+        settings: *mut obs_data_t,
+        hotkey_data: *mut obs_data_t,
+    ) -> *mut obs_output_t;
+    pub fn obs_output_update(output: *mut obs_output_t, settings: *mut obs_data_t);
+    pub fn obs_output_set_video_encoder(output: *mut obs_output_t, encoder: *mut obs_encoder_t);
+    pub fn obs_output_set_audio_encoder(
+        output: *mut obs_output_t,
+        encoder: *mut obs_encoder_t,
+        idx: usize,
+    );
+    pub fn obs_output_set_service(output: *mut obs_output_t, service: *mut obs_service_t);
+}

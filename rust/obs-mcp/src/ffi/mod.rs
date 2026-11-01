@@ -268,6 +268,35 @@ impl Output {
         NonNull::new(unsafe { sys::obs_get_output_by_name(name.as_ptr()) }).map(Self)
     }
 
+    /// Creates a public output of `kind` called `name`; libobs destroys it when
+    /// the last reference is released, so the caller keeps this one.
+    pub fn create(kind: &str, name: &str, settings: &Value) -> Result<Self, String> {
+        let kind_c = c_string(kind, "kind")?;
+        let name_c = c_string(name, "name")?;
+        let data = Data::from_json(settings)?;
+        // SAFETY: both strings are NUL-terminated and `data` is live; a null
+        // hotkey store is allowed; the result is an owned reference or null.
+        let output = unsafe {
+            sys::obs_output_create(
+                kind_c.as_ptr(),
+                name_c.as_ptr(),
+                data.0.as_ptr(),
+                std::ptr::null_mut(),
+            )
+        };
+        NonNull::new(output)
+            .map(Self)
+            .ok_or_else(|| format!("no output kind '{kind}' (is its plugin loaded?)"))
+    }
+
+    /// Merges `settings` into the output's settings.
+    pub fn update(&self, settings: &Value) -> Result<(), String> {
+        let data = Data::from_json(settings)?;
+        // SAFETY: both objects are live; libobs copies what it needs.
+        unsafe { sys::obs_output_update(self.0.as_ptr(), data.0.as_ptr()) };
+        Ok(())
+    }
+
     /// Whether the output is running.
     pub fn active(&self) -> bool {
         // SAFETY: the output is live.
@@ -457,6 +486,9 @@ pub fn render_rgba(source: &Source, from: (u32, u32), to: (u32, u32)) -> Result<
 
 mod stdio;
 pub use stdio::claim_stdout;
+
+mod setup;
+pub use setup::{Pipeline, configure};
 
 /// A started libobs; dropping it shuts libobs down.
 ///

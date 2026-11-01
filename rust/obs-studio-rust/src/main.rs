@@ -26,6 +26,7 @@ Options:
   --port <PORT>          obs-websocket port [default: 4455]
   --password <PASSWORD>  obs-websocket password [env: OBS_WEBSOCKET_PASSWORD]
   --json                Print response data as JSON
+  --record-dir <DIR>     With --mcp: where record_start writes files [default: temp dir]
   --mcp                  Start libobs and serve MCP over stdin/stdout (needs a
                          build with --features bundled-native); logs go to stderr
   -h, --help             Print help
@@ -38,6 +39,7 @@ struct Args {
     password: Option<String>,
     json: bool,
     mcp: bool,
+    record_dir: Option<String>,
     command: String,
 }
 
@@ -50,6 +52,7 @@ fn parse_args() -> Result<Option<Args>, String> {
     let mut command = None;
     let mut json = false;
     let mut mcp = false;
+    let mut record_dir = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         let mut value = |name: &str| args.next().ok_or(format!("{name} needs a value"));
@@ -70,6 +73,7 @@ fn parse_args() -> Result<Option<Args>, String> {
             "--password" => password = Some(value("--password")?),
             "--json" => json = true,
             "--mcp" => mcp = true,
+            "--record-dir" => record_dir = Some(value("--record-dir")?),
             _ if arg.starts_with('-') => return Err(format!("unknown option: {arg}")),
             _ if command.is_none() => command = Some(arg),
             _ => return Err(format!("unexpected argument: {arg}")),
@@ -89,6 +93,7 @@ fn parse_args() -> Result<Option<Args>, String> {
         password,
         json,
         mcp,
+        record_dir,
         command,
     }))
 }
@@ -137,7 +142,7 @@ fn main() -> ExitCode {
         }
     };
     let result = if args.mcp {
-        mcp::run().map_err(Box::from)
+        mcp::run(args.record_dir.as_deref()).map_err(Box::from)
     } else {
         run(&args)
     };
