@@ -106,6 +106,7 @@ unsafe extern "C" {
     fn base_test_record_ptr() -> *mut c_void;
     fn base_test_record_only_this_thread();
     fn base_test_record_any_thread();
+    fn base_log_literal(handler: *mut c_void, param: *mut c_void, level: c_int, msg: *const c_char);
     fn blog(level: c_int, format: *const c_char, ...);
 }
 
@@ -785,6 +786,57 @@ fn other_thread_log_is_ignored_test() {
     assert_eq!(rec.calls, 1);
     assert_eq!(rec.level, LOG_WARNING);
     assert_eq!(rec.text(), "from this thread");
+}
+
+/// This module's exact test selector for `process_isolated`: these tests
+/// replace the process-wide log handler.
+fn selector(test: &str) -> String {
+    let module = module_path!().split_once("::").unwrap().1;
+    format!("{module}::{test}")
+}
+
+/// Arms the recorder on `rec`, restores the old handler, and returns the
+/// handler and param a `blog` in flight on another thread would still hold.
+fn armed_then_restored(rec: &mut Rec) -> (usize, usize) {
+    let _saved = Saved::capture();
+    arm(rec);
+    let mut handler = ptr::null_mut();
+    let mut param = ptr::null_mut();
+    // SAFETY: the out-pointers are live locals.
+    unsafe { base_get_log_handler(&mut handler, &mut param) };
+    (handler as usize, param as usize)
+}
+
+/// Delivers one line the way `blog` does once it has dropped the mutex.
+fn deliver_late((handler, param): (usize, usize)) {
+    // SAFETY: `handler` is `base_test_record` and `param` is a `Rec` that
+    // outlives the calling thread.
+    unsafe {
+        base_log_literal(
+            handler as *mut c_void,
+            param as *mut c_void,
+            LOG_WARNING,
+            c"late line".as_ptr(),
+        )
+    };
+}
+
+#[test]
+fn late_line_from_another_thread_is_ignored_test() {
+    if !process_isolated(&selector("late_line_from_another_thread_is_ignored_test")) {
+        return;
+    }
+    // `blog` reads the handler and its param under the base mutex, drops
+    // the mutex, then calls the handler. A thread that read them while the
+    // recorder was armed can call it after the restore. That line must not
+    // land in the record either: by then it is usually a dead stack slot.
+    let _gate = lock();
+    let mut rec = Rec::new();
+    let stale = armed_then_restored(&mut rec);
+    std::thread::spawn(move || deliver_late(stale))
+        .join()
+        .unwrap();
+    assert_eq!(rec.calls, 0);
 }
 
 proptest! {
