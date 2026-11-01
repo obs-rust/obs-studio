@@ -21,7 +21,7 @@ cmake --build "$build" --target libobs-opengl image-source obs-ffmpeg obs-x264
 # layout change fails here by name.
 find_one() {
   local found
-  found=$(find "$build" -type f -name "$1" -not -path '*/CMakeFiles/*' | head -1)
+  found=$(find "$build" \( -type f -o -type l \) -name "$1" -not -path '*/CMakeFiles/*' | head -1)
   [ -n "$found" ] || { echo "FAIL: $1 was not built under $build" >&2; exit 1; }
   realpath "$found"
 }
