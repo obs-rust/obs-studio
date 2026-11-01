@@ -7,6 +7,5 @@
  * (#3325). The wizard stays in the Tools menu. */
 inline bool ShowFirstRunWizard(bool firstRun, bool hasLastVersion, bool outputsActive, bool startRequested)
 {
-	(void)startRequested;
-	return !firstRun && !hasLastVersion && !outputsActive;
+	return !firstRun && !hasLastVersion && !outputsActive && !startRequested;
 }
