@@ -2,6 +2,7 @@
   "audio-monitoring/monitor-delay.h",
   "audio-monitoring/win32/wasapi-output.h",
   "graphics/graphics-ffmpeg-host-pq.h",
+  "graphics/graphics-ffmpeg-host-wic-checks.h",
   "obs-win-crash-report.h",
   "obs-windows-keys.h",
   "util/threading-windows.h",
@@ -14,5 +15,6 @@
   "util/windows/window-match.h",
   "build/libobs.windows+.h.c",
   "build/libobs.windows-crash-handler+.h.c",
-  "build/libobs.graphics-ffmpeg-host-windows+.h.c"
+  "build/libobs.graphics-ffmpeg-host-windows+.h.c",
+  "build/libobs.graphics-ffmpeg-host-wic-checks+.h.c"
 ]
