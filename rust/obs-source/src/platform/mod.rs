@@ -21,7 +21,7 @@ cfg_select! {
     target_arch = "x86_64" => {
         #[target_feature(enable = "avx2")]
         fn mul_data_avx2(out: &mut [f32], vol: &[f32]) {
-            todo!("#3413: AVX2 mul_data")
+            crate::volume_mul::mul_data_scalar(out, vol);
         }
 
         pub(crate) fn mul_data(out: &mut [f32], vol: &[f32]) {
