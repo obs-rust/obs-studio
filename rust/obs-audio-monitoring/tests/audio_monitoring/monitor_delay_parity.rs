@@ -334,8 +334,9 @@ fn steps_grid() {
     }
 }
 
-/// `audio_monitor_track_video_ts()` (`monitor-video-sync.h`, unported): the
-/// stall count the C passes in.
+/// `audio_monitor_track_video_ts()` (`monitor-video-sync.c`): the stall
+/// count the C passes in. One copy for every side, so the loop compares only
+/// the delay steps; `video_sync_parity` compares the tracker itself.
 fn track_video_ts(
     prev_video_ts: &mut u64,
     time_since_prev: &mut u64,

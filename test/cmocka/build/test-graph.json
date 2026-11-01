@@ -2067,9 +2067,11 @@
     },
     "test_monitor_speaker_layout": {
       "sources": [
-        "test/cmocka/test_monitor_speaker_layout.c"
+        "test/cmocka/test_monitor_speaker_layout.c",
+        "libobs/audio-monitoring/monitor-speaker-layout.c.h"
       ],
       "includes": [
+        "libobs",
         "libobs/audio-monitoring"
       ],
       "libraries": [
@@ -2078,14 +2080,30 @@
     },
     "test_monitor_video_sync": {
       "sources": [
-        "test/cmocka/test_monitor_video_sync.c"
+        "test/cmocka/test_monitor_video_sync.c",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
       ],
       "includes": [
+        "libobs",
         "libobs/audio-monitoring"
       ],
       "libraries": [
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_monitor_wasapi_steps": {
+      "sources": [
+        "test/cmocka/test_monitor_wasapi_steps.c",
+        "libobs/audio-monitoring/monitor-speaker-layout.c.h",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
     },
     "test_mp4_mux_multichannel": {
       "sources": [
@@ -6664,6 +6682,12 @@
     },
     "test_monitor_video_sync": {
       "target": "test_monitor_video_sync",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_monitor_wasapi_steps": {
+      "target": "test_monitor_wasapi_steps",
       "command": [
         "${target}"
       ]

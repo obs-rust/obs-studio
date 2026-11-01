@@ -489,6 +489,7 @@ dependencies = [
 name = "obs-audio-monitoring"
 version = "0.1.0"
 dependencies = [
+ "obs-media-io",
  "obs-util",
 ]
 

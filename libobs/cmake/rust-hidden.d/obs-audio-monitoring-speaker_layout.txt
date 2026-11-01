@@ -1,0 +1,4 @@
+# monitor-speaker-layout.c: wasapi-output.c calls it inside libobs on Windows.
+# Declared in monitor-speaker-layout.h without EXPORT, so the shim stays
+# hidden the same way.
+audio_monitor_speaker_layout

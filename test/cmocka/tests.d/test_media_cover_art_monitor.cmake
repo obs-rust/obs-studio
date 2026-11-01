@@ -2,13 +2,15 @@
 # source restarts (upstream obsproject/obs-studio#9428, #11739): the
 # monitor's video sync decision, fed by the real ffmpeg_source. Builds
 # obs-ffmpeg-source.c directly so the obs-ffmpeg module and its hardware
-# encoder probes are not loaded. Needs core video, so it runs (under
+# encoder probes are not loaded, and monitor-video-sync.c, which libobs builds
+# only on Windows. Needs core video, so it runs (under
 # xvfb-run) on Linux and skips without a display.
 if(OS_LINUX AND TARGET OBS::libobs-opengl AND TARGET OBS::media-playback)
   add_executable(
     test_media_cover_art_monitor
     test_media_cover_art_monitor.c
     "${CMAKE_SOURCE_DIR}/plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/audio-monitoring/monitor-video-sync.c.h"
   )
   target_compile_definitions(
     test_media_cover_art_monitor

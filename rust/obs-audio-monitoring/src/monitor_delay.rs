@@ -1,6 +1,7 @@
-//! Safe core of `libobs/audio-monitoring/monitor-delay.c.h`: the delay
-//! decisions of the WASAPI monitor's `process_audio_delay()`
-//! (`win32/wasapi-output.c`).
+//! Safe core of `libobs/audio-monitoring/monitor-delay.c.h` and
+//! `monitor-video-sync.c.h`: the delay decisions of the WASAPI monitor's
+//! `process_audio_delay()` (`win32/wasapi-output.c`) and its video stall
+//! tracker.
 //!
 //! A monitored source with video has its audio queued, and each packet at
 //! the front of the queue is held back, cut or played to stay in step with
@@ -20,9 +21,10 @@
 //! gate, both `util_mul_div64()` calls (the padding arrives here in
 //! nanoseconds), the "more are queued" test after the pops, the logs and the
 //! loop. The video stall count it passes to [`stalled`] comes from
-//! `audio_monitor_track_video_ts()`, which stays a `static inline` in
-//! `monitor-video-sync.h`. These keep no state, take no lock and call nothing
-//! in WASAPI or libobs.
+//! [`track_video_ts`] (`monitor-video-sync.c`, its branch [`video_ts_step`]),
+//! which it calls for every
+//! packet with the monitor's two fields. These keep no state of their own,
+//! take no lock and call nothing in WASAPI or libobs.
 //!
 //! The subtractions wrap and the difference is the two timestamps cast to
 //! `i64`, as the C's `uint64_t` arithmetic and casts do. Nothing here can
@@ -124,6 +126,54 @@ pub fn unsynced(last_frame_ts: u64, diff: i64) -> bool {
 #[must_use]
 pub fn stalled(time_since_prev: u64) -> bool {
     time_since_prev > VIDEO_STALL_NS
+}
+
+/// The branch `audio_monitor_track_video_ts()` takes for a packet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VideoTsStep {
+    /// No video timestamp yet (`prev_video_ts` 0): store the new one, leave
+    /// the count.
+    First,
+    /// The same timestamp: add the packet's duration to the count.
+    Same,
+    /// Another timestamp: store it, then reset the count.
+    New,
+}
+
+/// The branch the tracker takes with `prev_video_ts` stored and the source's
+/// last video timestamp `last_frame_ts`. The C ABI shim performs its writes
+/// in the C's order, so pointers at one value behave as in C.
+#[must_use]
+pub fn video_ts_step(prev_video_ts: u64, last_frame_ts: u64) -> VideoTsStep {
+    if prev_video_ts == 0 {
+        VideoTsStep::First
+    } else if prev_video_ts == last_frame_ts {
+        VideoTsStep::Same
+    } else {
+        VideoTsStep::New
+    }
+}
+
+/// `audio_monitor_track_video_ts()` (`monitor-video-sync.c`): counts how
+/// long the source's video has stood still, for [`stalled`]. Called for
+/// every packet with the source's last video timestamp and the packet's
+/// duration. `prev_video_ts` 0 means no packet yet: the timestamp is stored
+/// and the count left as it is. The same timestamp adds the duration to
+/// `time_since_prev`, wrapping; any other stores it and resets the count.
+pub fn track_video_ts(
+    prev_video_ts: &mut u64,
+    time_since_prev: &mut u64,
+    last_frame_ts: u64,
+    packet_ns: u64,
+) {
+    match video_ts_step(*prev_video_ts, last_frame_ts) {
+        VideoTsStep::First => *prev_video_ts = last_frame_ts,
+        VideoTsStep::Same => *time_since_prev = time_since_prev.wrapping_add(packet_ns),
+        VideoTsStep::New => {
+            *prev_video_ts = last_frame_ts;
+            *time_since_prev = 0;
+        }
+    }
 }
 
 /// The front packet's verdict from the gate (`bad_diff`) and the difference:
