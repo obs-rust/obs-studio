@@ -46,9 +46,13 @@ void OBSSourceLabel::obsSourceDestroyed(void *data, calldata_t *)
 	auto &label = *static_cast<OBSSourceLabel *>(data);
 	emit label.destroyed();
 
-	label.destroyedSignal.Disconnect();
-	label.removedSignal.Disconnect();
-	label.renamedSignal.Disconnect();
+	/* This runs on libobs's destruction thread, where the label does not
+	 * live: the main thread may be deleting it right now (SourceTreeItem
+	 * releases its scene item, and with it maybe the last reference to the
+	 * source, before its child widgets are deleted). Leave the connections
+	 * to the label's destructor. They keep the source's signal handler
+	 * allocated until then, and the destructor's first disconnect waits for
+	 * this callback to return. */
 }
 
 void OBSSourceLabel::mousePressEvent(QMouseEvent *event)
