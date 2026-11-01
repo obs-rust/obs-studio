@@ -43,7 +43,6 @@ KNOWN = {
                                 "failure is never reported and test_pipe_create2_missing_binary gets a pipe back"),
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
-    ("asan", "test_transition_render_steps"): ("bug", "the sanitizer build fuses the offset's multiply-add (#3362)"),
     ("asan", "test_shutdown_canvas_weak_ref"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
     ("asan", "test_shutdown_type_lifetime"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
     ("asan", "test_media_remux"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),

@@ -162,15 +162,18 @@ class SanitizeHarnessTest(unittest.TestCase):
         return path
 
     def test_tool_flags_and_build_type(self):
+        # -ffp-contract=off (#3362): the runner's gcc fuses a multiply and a
+        # subtract into one FMA when nothing forbids it, the Tier 2 image's
+        # gcc does not, and Rust never does.
         self.assertEqual(
             self.module.TOOL_FLAGS["asan"],
-            ("-fsanitize=address,undefined -fno-omit-frame-pointer", "RelWithDebInfo"),
+            ("-fsanitize=address,undefined -fno-omit-frame-pointer -ffp-contract=off", "RelWithDebInfo"),
         )
         self.assertEqual(
             self.module.TOOL_FLAGS["tsan"],
-            ("-fsanitize=thread -fno-omit-frame-pointer", "RelWithDebInfo"),
+            ("-fsanitize=thread -fno-omit-frame-pointer -ffp-contract=off", "RelWithDebInfo"),
         )
-        self.assertEqual(self.module.TOOL_FLAGS["valgrind"], ("-fno-omit-frame-pointer", "Debug"))
+        self.assertEqual(self.module.TOOL_FLAGS["valgrind"], ("-fno-omit-frame-pointer -ffp-contract=off", "Debug"))
 
     def test_missing_or_unknown_tool_is_a_usage_error(self):
         for argv in ((), ("bogus",), ("ASAN",)):
