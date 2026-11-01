@@ -10,11 +10,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include <pthread.h>
 #if defined(_MSC_VER)
 /* MSVC's <stdatomic.h> errors unless C11 atomics are switched on
  * (vcruntime_c11_stdatomic.h: "C atomic support is not enabled").
- * The flag uses the same intrinsics as util/threading-windows.h. */
+ * The owner uses the same intrinsics as util/threading-windows.h. */
 #include <intrin.h>
 #else
 #include <stdatomic.h>
@@ -31,7 +30,6 @@ struct base_test_rec {
 void base_test_record(int log_level, const char *format, va_list args, void *param);
 log_handler_t base_test_record_ptr(void);
 void base_test_record_only_this_thread(void);
-void base_test_record_any_thread(void);
 void base_test_flush(void);
 void base_test_rust_blog_i(int level, const char *fmt, int v);
 void base_test_oracle_blog_i(int level, const char *fmt, int v);
@@ -45,55 +43,55 @@ void base_test_rust_blogva_si(int level, const char *fmt, const char *s, int v);
 void base_test_oracle_blogva_si(int level, const char *fmt, const char *s, int v);
 
 /* Off unless a test binds an owner. base_parity records every thread.
- * proc_parity binds the test thread: other tests in that binary blog
- * through the same handler, and their lines must not change the count. */
-static pthread_t record_owner;
+ * proc_parity, delay_parity and the effect parity tests bind the test
+ * thread: other tests in their binaries blog through the same handler,
+ * and their lines must not change the count.
+ * The owner is never cleared: blog calls the handler after it drops the
+ * base mutex, so a line can arrive after the old handler is restored.
+ * For the same reason the owner is one atomic pointer, the address of
+ * the binding thread's own tag: a late line reads it while the next test
+ * binds its thread. */
 #if defined(_MSC_VER)
-static volatile long record_owner_set;
+static __declspec(thread) char thread_tag;
+static void *volatile record_owner;
 
-static long record_flag_load(void)
+static void *record_owner_load(void)
 {
-	/* Full barrier. A 0/0 exchange is the load: the value is unchanged. */
-	return _InterlockedCompareExchange(&record_owner_set, 0, 0);
+	/* Full barrier. A NULL/NULL exchange is the load: the value is
+	 * unchanged. */
+	return _InterlockedCompareExchangePointer(&record_owner, NULL, NULL);
 }
 
-static void record_flag_store(long value)
+static void record_owner_store(void *owner)
 {
-	_InterlockedExchange(&record_owner_set, value);
+	_InterlockedExchangePointer(&record_owner, owner);
 }
 #else
-static atomic_int record_owner_set;
+static _Thread_local char thread_tag;
+static _Atomic(void *) record_owner;
 
-static int record_flag_load(void)
+static void *record_owner_load(void)
 {
-	return atomic_load_explicit(&record_owner_set, memory_order_acquire);
+	return atomic_load_explicit(&record_owner, memory_order_acquire);
 }
 
-static void record_flag_store(int value)
+static void record_owner_store(void *owner)
 {
-	atomic_store_explicit(&record_owner_set, value, memory_order_release);
+	atomic_store_explicit(&record_owner, owner, memory_order_release);
 }
 #endif
 
 void base_test_record_only_this_thread(void)
 {
-	if (record_flag_load() && pthread_equal(pthread_self(), record_owner))
-		return;
-
-	record_owner = pthread_self();
-	record_flag_store(1);
-}
-
-void base_test_record_any_thread(void)
-{
-	record_flag_store(0);
+	record_owner_store(&thread_tag);
 }
 
 void base_test_record(int log_level, const char *format, va_list args, void *param)
 {
 	struct base_test_rec *rec = param;
+	void *owner = record_owner_load();
 
-	if (record_flag_load() && !pthread_equal(pthread_self(), record_owner))
+	if (owner && owner != &thread_tag)
 		return;
 
 	rec->calls++;

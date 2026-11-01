@@ -14,8 +14,10 @@
 //! The C test does not call them either.
 //!
 //! The recorder is process-wide. It ignores lines from other threads, so
-//! the rest of this binary can blog at the same time. `bnum_allocs` is
-//! also process-wide. Tests that read it run in their own process.
+//! the rest of this binary can blog at the same time, also after a test
+//! restores the old handler (a line can still be on its way).
+//! `bnum_allocs` is also process-wide. Tests that read it run in their own
+//! process.
 //!
 //! Reminder: the mutation check (break the core, see this file fail) is done
 //! once per port, not on every change.
@@ -81,13 +83,11 @@ impl Saved {
 
 impl Drop for Saved {
     fn drop(&mut self) {
-        // SAFETY: the pointers were read from the same setter. Restore the
-        // handler before clearing the thread filter, so a late line from
-        // another thread cannot land in this record.
-        unsafe {
-            base_set_log_handler(self.handler, self.param);
-            base_test_record_any_thread();
-        }
+        // SAFETY: the pointers were read from the same setter. The thread
+        // filter stays on: a line another thread is still delivering to
+        // the recorder (`blog` calls the handler after dropping the base
+        // mutex) must not land in this record once it is gone.
+        unsafe { base_set_log_handler(self.handler, self.param) };
     }
 }
 
@@ -105,7 +105,6 @@ unsafe extern "C" {
     fn bfree(ptr: *mut c_void);
     fn base_test_record_ptr() -> *mut c_void;
     fn base_test_record_only_this_thread();
-    fn base_test_record_any_thread();
     fn base_log_literal(handler: *mut c_void, param: *mut c_void, level: c_int, msg: *const c_char);
     fn blog(level: c_int, format: *const c_char, ...);
 }
@@ -836,6 +835,35 @@ fn late_line_from_another_thread_is_ignored_test() {
     std::thread::spawn(move || deliver_late(stale))
         .join()
         .unwrap();
+    assert_eq!(rec.calls, 0);
+}
+
+#[test]
+fn late_line_while_another_thread_arms_is_ignored_test() {
+    if !process_isolated(&selector(
+        "late_line_while_another_thread_arms_is_ignored_test",
+    )) {
+        return;
+    }
+    // The next test can bind its own thread while a late line is still on
+    // its way. The owner changes under the late call, and the line still
+    // must not land (a data race on the owner shows under ThreadSanitizer).
+    let _gate = lock();
+    let mut rec = Rec::new();
+    let stale = armed_then_restored(&mut rec);
+    let late = std::thread::spawn(move || {
+        for _ in 0..2_000 {
+            deliver_late(stale);
+        }
+    });
+    for _ in 0..50 {
+        // SAFETY: binds the recorder's owner only; the handler stays the
+        // restored one.
+        std::thread::spawn(|| unsafe { base_test_record_only_this_thread() })
+            .join()
+            .unwrap();
+    }
+    late.join().unwrap();
     assert_eq!(rec.calls, 0);
 }
 

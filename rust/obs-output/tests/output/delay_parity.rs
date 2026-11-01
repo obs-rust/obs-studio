@@ -674,7 +674,6 @@ struct Rec {
 unsafe extern "C" {
     fn base_test_record_ptr() -> *mut c_void;
     fn base_test_record_only_this_thread();
-    fn base_test_record_any_thread();
     fn os_gettime_ns() -> u64;
 }
 
@@ -718,11 +717,10 @@ impl Capture {
 
 impl Drop for Capture {
     fn drop(&mut self) {
-        // SAFETY: the handler read in `arm`.
-        unsafe {
-            base_set_log_handler(self.saved.0, self.saved.1);
-            base_test_record_any_thread();
-        }
+        // SAFETY: the handler read in `arm`. The thread filter stays on, so
+        // a line another thread is still delivering (`blog` calls the
+        // handler after dropping the base mutex) skips the freed record.
+        unsafe { base_set_log_handler(self.saved.0, self.saved.1) };
     }
 }
 

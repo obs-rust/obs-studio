@@ -59,7 +59,6 @@ impl Rec {
 unsafe extern "C" {
     fn base_test_record_ptr() -> *mut c_void;
     fn base_test_record_only_this_thread();
-    fn base_test_record_any_thread();
     fn bfree(ptr: *mut c_void);
 }
 
@@ -75,8 +74,9 @@ fn recorded<T>(f: impl FnOnce() -> T) -> (T, c_int, String) {
         base_test_record_only_this_thread();
         base_set_log_handler(base_test_record_ptr(), (&mut rec as *mut Rec).cast());
         let out = f();
+        // The thread filter stays on: a late line from another thread
+        // must not reach `rec` once it is gone.
         base_set_log_handler(handler, param);
-        base_test_record_any_thread();
         out
     };
     let text = if rec.calls > 0 {
