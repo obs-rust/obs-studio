@@ -241,6 +241,59 @@ static void label_follows_rename(void **)
 	assert_int_equal(current_refs(), 1);
 }
 
+/* The source is destroyed on libobs's destruction thread while the label
+ * lives on the main thread: the label still reports it (Settings relies on
+ * OBSSourceLabel::destroyed), but leaves its connections to the main thread,
+ * which owns them. Disconnecting them on the destruction thread races with
+ * the main thread deleting the label (case 2). */
+static void destroy_leaves_connections_to_the_label(void **)
+{
+	OBSSourceLabel *label = new OBSSourceLabel(fake_source);
+	int destroyed = 0;
+	QObject::connect(
+		label, &OBSSourceLabel::destroyed, label, [&destroyed]() { destroyed++; }, Qt::DirectConnection);
+
+	destroy_source_on_another_thread();
+
+	assert_int_equal(destroyed, 1);
+	if (disconnects_off_main) {
+		print_error("the label disconnected %d of its signals on the destruction thread\n",
+			    disconnects_off_main);
+		fail();
+	}
+
+	delete label;
+	assert_int_equal(disconnects_after_free, 0);
+	/* Every reference is gone once the label is: nothing leaks. */
+	assert_int_equal(current_refs(), 0);
+}
+
+/* What crashed on quit: the main thread starts deleting the label (it has
+ * read the signal handler from the label's first OBSSignal), and the source
+ * is destroyed on the destruction thread before that disconnect runs. */
+static void destroy_source_now(void)
+{
+	destroy_source_on_another_thread();
+}
+
+static void label_deleted_while_its_source_is_destroyed(void **)
+{
+	OBSSourceLabel *label = new OBSSourceLabel(fake_source);
+
+	while_held = destroy_source_now;
+	hold_first_disconnect = true;
+	delete label;
+	hold_first_disconnect = false;
+
+	if (disconnects_after_free) {
+		print_error("the main thread disconnected %d time(s) from the source's signal handler "
+			    "after it was freed\n",
+			    disconnects_after_free);
+		fail();
+	}
+	assert_int_equal(current_refs(), 0);
+}
+
 int main(int argc, char **argv)
 {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -249,6 +302,8 @@ int main(int argc, char **argv)
 
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(label_follows_rename, setup, teardown),
+		cmocka_unit_test_setup_teardown(destroy_leaves_connections_to_the_label, setup, teardown),
+		cmocka_unit_test_setup_teardown(label_deleted_while_its_source_is_destroyed, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
