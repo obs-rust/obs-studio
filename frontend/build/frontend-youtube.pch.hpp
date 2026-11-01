@@ -9,6 +9,7 @@
 #include "frontend/dialogs/OBSYoutubeActions.hpp"
 
 #include <docks/YouTubeAppDock.hpp>
+#include <utility/youtube-broadcast-settings.h>
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
