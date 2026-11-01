@@ -102,8 +102,18 @@ struct State {
 
 struct Shared<H: Host> {
     host: H,
-    conn: H::Conn,
+    /// `info->c`. [`Portal::destroy`] takes it out, as C clears it, while
+    /// the callbacks may still hold this struct until GIO frees them (#3444).
+    /// A call clones the `Arc` and drops the lock before it reaches GIO.
+    conn: Mutex<Option<Arc<H::Conn>>>,
     state: Mutex<State>,
+}
+
+impl<H: Host> Shared<H> {
+    /// The connection, or `None` after [`Portal::destroy`].
+    fn conn(&self) -> Option<Arc<H::Conn>> {
+        self.conn.lock().expect("portal conn").clone()
+    }
 }
 
 /// `struct portal_inhibit_info`.
@@ -135,7 +145,7 @@ impl<H: Host + 'static> Portal<H> {
         Some(Self {
             shared: Arc::new(Shared {
                 host,
-                conn,
+                conn: Mutex::new(Some(Arc::new(conn))),
                 state: Mutex::new(State {
                     destroying: false,
                     active: false,
@@ -170,9 +180,15 @@ impl<H: Host + 'static> Portal<H> {
         if cancel {
             shared.host.cancel();
         }
-        if signal_id > 0 {
-            shared.host.unsubscribe(&shared.conn, signal_id);
+        let conn = shared.conn.lock().expect("portal conn").take();
+        if signal_id > 0
+            && let Some(conn) = conn.as_deref()
+        {
+            shared.host.unsubscribe(conn, signal_id);
         }
+        // `g_clear_object(&info->c)`: a pending call or the subscription
+        // may keep `shared` alive, but not the bus connection.
+        drop(conn);
     }
 
     pub fn is_active(&self) -> bool {
@@ -238,6 +254,9 @@ impl<H: Host + 'static> Portal<H> {
     }
 
     fn do_inhibit(&self, reason: &str, sender: &str) {
+        let Some(conn) = self.shared.conn() else {
+            return;
+        };
         let id = self.shared.host.request_id();
         let token = format!("obs_inhibit_portal{id}");
         let path = format!("/org/freedesktop/portal/desktop/request/{sender}/{token}");
@@ -252,7 +271,7 @@ impl<H: Host + 'static> Portal<H> {
         }
         let shared = Arc::clone(&self.shared);
         let signal_id = self.shared.host.subscribe(
-            &self.shared.conn,
+            &conn,
             PORTAL_NAME,
             REQUEST_IFACE,
             "Response",
@@ -264,14 +283,14 @@ impl<H: Host + 'static> Portal<H> {
             let mut state = self.shared.state.lock().expect("portal state");
             if state.destroying {
                 drop(state);
-                self.shared.host.unsubscribe(&self.shared.conn, signal_id);
+                self.shared.host.unsubscribe(&conn, signal_id);
                 return;
             }
             state.signal_id = signal_id;
         }
         let shared = Arc::clone(&self.shared);
         self.shared.host.inhibit(
-            &self.shared.conn,
+            &conn,
             PORTAL_NAME,
             PORTAL_PATH,
             INHIBIT_IFACE,
@@ -287,9 +306,12 @@ impl<H: Host + 'static> Portal<H> {
     }
 
     fn do_close(&self, path: &str) {
+        let Some(conn) = self.shared.conn() else {
+            return;
+        };
         let shared = Arc::clone(&self.shared);
         self.shared.host.close(
-            &self.shared.conn,
+            &conn,
             PORTAL_NAME,
             path,
             REQUEST_IFACE,
@@ -324,8 +346,10 @@ fn on_response<H: Host>(shared: &Shared<H>, code: u32) {
     if code == 1 {
         shared.host.log(LOG_WARNING, "Inhibit denied by user");
     }
-    if signal_id > 0 {
-        shared.host.unsubscribe(&shared.conn, signal_id);
+    if signal_id > 0
+        && let Some(conn) = shared.conn()
+    {
+        shared.host.unsubscribe(&conn, signal_id);
     }
 }
 
@@ -363,8 +387,10 @@ fn on_inhibited<H: Host>(shared: &Shared<H>, result: CallResult) {
             .host
             .log(LOG_ERROR, &format!("Failed to inhibit: {message}"));
     }
-    if signal_id > 0 {
-        shared.host.unsubscribe(&shared.conn, signal_id);
+    if signal_id > 0
+        && let Some(conn) = shared.conn()
+    {
+        shared.host.unsubscribe(&conn, signal_id);
     }
 }
 
