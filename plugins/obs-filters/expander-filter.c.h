@@ -150,7 +150,7 @@ static void expander_defaults(obs_data_t *s)
 		is_expander_preset = false;
 	obs_data_set_default_string(s, S_PRESETS, is_expander_preset ? "expander" : "gate");
 	obs_data_set_default_double(s, S_RATIO, is_expander_preset ? 2.0 : 10.0);
-	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -40.0f);
+	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -40.0);
 	obs_data_set_default_int(s, S_ATTACK_TIME, 10);
 	obs_data_set_default_int(s, S_RELEASE_TIME, is_expander_preset ? 50 : 125);
 	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0);
@@ -160,7 +160,7 @@ static void expander_defaults(obs_data_t *s)
 static void upward_compressor_defaults(obs_data_t *s)
 {
 	obs_data_set_default_double(s, S_RATIO, 0.5);
-	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -20.0f);
+	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -20.0);
 	obs_data_set_default_int(s, S_ATTACK_TIME, 10);
 	obs_data_set_default_int(s, S_RELEASE_TIME, 50);
 	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0);
@@ -436,18 +436,19 @@ static obs_properties_t *expander_properties(void *data)
 		obs_property_set_modified_callback(presets, presets_changed);
 	}
 
-	p = obs_properties_add_float_slider(props, S_RATIO, TEXT_RATIO, !cd->is_upwcomp ? MIN_RATIO : MIN_RATIO_UPW,
-					    !cd->is_upwcomp ? MAX_RATIO : MAX_RATIO_UPW, 0.1);
+	p = obs_properties_add_float_slider(props, S_RATIO, TEXT_RATIO,
+					    (double)(!cd->is_upwcomp ? MIN_RATIO : MIN_RATIO_UPW),
+					    (double)(!cd->is_upwcomp ? MAX_RATIO : MAX_RATIO_UPW), 0.1);
 	obs_property_float_set_suffix(p, ":1");
-	p = obs_properties_add_float_slider(props, S_FILTER_THRESHOLD, TEXT_THRESHOLD, MIN_THRESHOLD_DB,
-					    MAX_THRESHOLD_DB, 0.1);
+	p = obs_properties_add_float_slider(props, S_FILTER_THRESHOLD, TEXT_THRESHOLD, (double)MIN_THRESHOLD_DB,
+					    (double)MAX_THRESHOLD_DB, 0.1);
 	obs_property_float_set_suffix(p, " dB");
 	p = obs_properties_add_int_slider(props, S_ATTACK_TIME, TEXT_ATTACK_TIME, MIN_ATK_RLS_MS, MAX_ATK_MS, 1);
 	obs_property_int_set_suffix(p, " ms");
 	p = obs_properties_add_int_slider(props, S_RELEASE_TIME, TEXT_RELEASE_TIME, MIN_ATK_RLS_MS, MAX_RLS_MS, 1);
 	obs_property_int_set_suffix(p, " ms");
-	p = obs_properties_add_float_slider(props, S_OUTPUT_GAIN, TEXT_OUTPUT_GAIN, MIN_OUTPUT_GAIN_DB,
-					    MAX_OUTPUT_GAIN_DB, 0.1);
+	p = obs_properties_add_float_slider(props, S_OUTPUT_GAIN, TEXT_OUTPUT_GAIN, (double)MIN_OUTPUT_GAIN_DB,
+					    (double)MAX_OUTPUT_GAIN_DB, 0.1);
 	obs_property_float_set_suffix(p, " dB");
 	if (!cd->is_upwcomp) {
 		obs_property_t *detect = obs_properties_add_list(props, S_DETECTOR, TEXT_DETECTOR, OBS_COMBO_TYPE_LIST,

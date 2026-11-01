@@ -65,7 +65,7 @@ static struct obs_audio_data *gain_filter_audio(void *data, struct obs_audio_dat
 
 static void gain_defaults(obs_data_t *s)
 {
-	obs_data_set_default_double(s, S_GAIN_DB, 0.0f);
+	obs_data_set_default_double(s, S_GAIN_DB, 0.0);
 }
 
 static obs_properties_t *gain_properties(void *data)

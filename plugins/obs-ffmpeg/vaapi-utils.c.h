@@ -228,7 +228,7 @@ bool vaapi_device_h264_supported(const char *device_path)
 	return (vaapi_probe_device(device_path) & VAAPI_CODEC_H264) != 0;
 }
 
-const char *vaapi_get_h264_default_device()
+const char *vaapi_get_h264_default_device(void)
 {
 	static const char *default_h264_device = NULL;
 
@@ -269,7 +269,7 @@ bool vaapi_device_av1_supported(const char *device_path)
 	return (vaapi_probe_device(device_path) & VAAPI_CODEC_AV1) != 0;
 }
 
-const char *vaapi_get_av1_default_device()
+const char *vaapi_get_av1_default_device(void)
 {
 	static const char *default_av1_device = NULL;
 
@@ -314,7 +314,7 @@ bool vaapi_device_hevc_supported(const char *device_path)
 	return (vaapi_probe_device(device_path) & VAAPI_CODEC_HEVC) != 0;
 }
 
-const char *vaapi_get_hevc_default_device()
+const char *vaapi_get_hevc_default_device(void)
 {
 	static const char *default_hevc_device = NULL;
 

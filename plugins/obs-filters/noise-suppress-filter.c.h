@@ -286,7 +286,7 @@ static inline void process_rnnoise(struct noise_suppress_data *ng)
 		uint32_t out_frames;
 		uint64_t ts_offset;
 		audio_resampler_resample(ng->rnn_resampler, (uint8_t **)output, &out_frames, &ts_offset,
-					 (const uint8_t **)ng->copy_buffers, (uint32_t)ng->frames);
+					 (const uint8_t **)(void *)ng->copy_buffers, (uint32_t)ng->frames);
 
 		for (size_t i = 0; i < ng->channels; i++) {
 			for (ssize_t j = 0, k = (ssize_t)out_frames - RNNOISE_FRAME_SIZE; j < RNNOISE_FRAME_SIZE;
@@ -317,7 +317,7 @@ static inline void process_rnnoise(struct noise_suppress_data *ng)
 		uint32_t out_frames;
 		uint64_t ts_offset;
 		audio_resampler_resample(ng->rnn_resampler_back, (uint8_t **)output, &out_frames, &ts_offset,
-					 (const uint8_t **)ng->rnn_segment_buffers, RNNOISE_FRAME_SIZE);
+					 (const uint8_t **)(void *)ng->rnn_segment_buffers, RNNOISE_FRAME_SIZE);
 
 		for (size_t i = 0; i < ng->channels; i++) {
 			for (ssize_t j = 0, k = (ssize_t)out_frames - (ssize_t)ng->frames; j < (ssize_t)ng->frames;

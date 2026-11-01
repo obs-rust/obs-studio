@@ -44,7 +44,16 @@ static void rtmp_log_default(int level, const char *format, va_list vl)
 {
     char str[MAX_PRINT_LEN]="";
 
+    /* Clang asks for format(printf) on RTMP_LogCallback (#3406). */
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#pragma GCC diagnostic ignored "-Wmissing-format-attribute"
+#endif
     vsnprintf(str, MAX_PRINT_LEN-1, format, vl);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
     /* Filter out 'no-name' */
     if ( RTMP_debuglevel<RTMP_LOGALL && strstr(str, "no-name" ) != NULL )

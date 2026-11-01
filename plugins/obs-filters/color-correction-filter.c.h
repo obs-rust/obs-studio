@@ -175,10 +175,10 @@ static void color_correction_filter_update_v1(void *data, obs_data_t *settings)
 	float half_angle = 0.5f * (float)((double)hue_shift / (180.0 / M_PI));
 
 	/* Pseudo-Quaternion To Matrix. */
-	float rot_quad1 = root3 * (float)sin(half_angle);
+	float rot_quad1 = root3 * (float)sin((double)half_angle);
 	struct vec3 rot_quaternion;
 	vec3_set(&rot_quaternion, rot_quad1, rot_quad1, rot_quad1);
-	float rot_quaternion_w = (float)cos(half_angle);
+	float rot_quaternion_w = (float)cos((double)half_angle);
 
 	struct vec3 cross;
 	vec3_mul(&cross, &rot_quaternion, &rot_quaternion);
@@ -314,10 +314,10 @@ static void color_correction_filter_update_v2(void *data, obs_data_t *settings)
 	float half_angle = 0.5f * (float)((double)hue_shift / (180.0 / M_PI));
 
 	/* Pseudo-Quaternion To Matrix. */
-	float rot_quad1 = root3 * (float)sin(half_angle);
+	float rot_quad1 = root3 * (float)sin((double)half_angle);
 	struct vec3 rot_quaternion;
 	vec3_set(&rot_quaternion, rot_quad1, rot_quad1, rot_quad1);
-	float rot_quaternion_w = (float)cos(half_angle);
+	float rot_quaternion_w = (float)cos((double)half_angle);
 
 	struct vec3 cross;
 	vec3_mul(&cross, &rot_quaternion, &rot_quaternion);

@@ -105,7 +105,7 @@ static void init_plugin(void)
 	plugin_initialized = true;
 }
 
-bool obs_module_load()
+bool obs_module_load(void)
 {
 	char *config_dir = obs_module_config_path(NULL);
 	if (config_dir) {

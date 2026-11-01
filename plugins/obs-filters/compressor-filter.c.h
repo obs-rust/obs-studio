@@ -124,7 +124,7 @@ static void compressor_resize_env_buffer(struct compressor_data *cd, size_t len)
 
 static inline float compressor_gain_coefficient(uint32_t sample_rate, float time)
 {
-	return (float)exp(-1.0f / ((float)sample_rate * time));
+	return (float)exp((double)(-1.0f / ((float)sample_rate * time)));
 }
 
 static const char *compressor_name(void *unused)
@@ -438,11 +438,11 @@ static struct obs_audio_data *compressor_filter_audio(void *data, struct obs_aud
 
 static void compressor_defaults(obs_data_t *s)
 {
-	obs_data_set_default_double(s, S_FILTER_RATIO, 10.0f);
-	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -18.0f);
+	obs_data_set_default_double(s, S_FILTER_RATIO, 10.0);
+	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -18.0);
 	obs_data_set_default_int(s, S_ATTACK_TIME, 6);
 	obs_data_set_default_int(s, S_RELEASE_TIME, 60);
-	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0f);
+	obs_data_set_default_double(s, S_OUTPUT_GAIN, 0.0);
 	obs_data_set_default_string(s, S_SIDECHAIN_SOURCE, "none");
 }
 
@@ -479,7 +479,7 @@ static obs_properties_t *compressor_properties(void *data)
 	p = obs_properties_add_float_slider(props, S_FILTER_RATIO, TEXT_RATIO, MIN_RATIO, MAX_RATIO, 0.5);
 	obs_property_float_set_suffix(p, ":1");
 	p = obs_properties_add_float_slider(props, S_FILTER_THRESHOLD, TEXT_THRESHOLD, MIN_THRESHOLD_DB,
-					    MAX_THRESHOLD_DB, 0.1);
+					    (double)MAX_THRESHOLD_DB, 0.1);
 	obs_property_float_set_suffix(p, " dB");
 	p = obs_properties_add_int_slider(props, S_ATTACK_TIME, TEXT_ATTACK_TIME, MIN_ATK_RLS_MS, MAX_ATK_MS, 1);
 	obs_property_int_set_suffix(p, " ms");
