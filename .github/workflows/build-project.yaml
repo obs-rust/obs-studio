@@ -2369,7 +2369,7 @@ jobs:
     container:
       image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
     # A hung test held a runner for 4.5 h without a timeout (#983). The MCP cases (#3319) add a bundled libobs build.
-    timeout-minutes: 50
+    timeout-minutes: 45
     # Compilation consumes no Fast Gate output and can overlap its runner.
     # Keep proof/scope checks here; OFF/ON execution waits only for this build.
     needs: [check-event, ci-mode]
