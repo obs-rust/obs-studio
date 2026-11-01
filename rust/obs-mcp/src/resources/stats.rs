@@ -5,6 +5,8 @@
 
 use std::rc::Rc;
 
+use serde_json::json;
+
 use super::{Resource, ResourceRegistry};
 
 /// A snapshot of OBS performance counters.
@@ -47,8 +49,13 @@ impl Resource for StatsResource {
     }
 
     fn read(&self) -> Result<String, String> {
-        let _ = &self.backend;
-        todo!("RED: obs://stats (#3288)")
+        let stats = self.backend.stats();
+        Ok(json!({
+            "fps": stats.fps,
+            "cpu_usage": stats.cpu_usage,
+            "dropped_frames": stats.dropped_frames,
+        })
+        .to_string())
     }
 }
 

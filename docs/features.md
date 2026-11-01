@@ -2698,3 +2698,11 @@ area.
   yet, so nothing changes for users. *All platforms*, 2026-10-31. Issue
   [#3287](https://github.com/obs-rust/obs-studio/issues/3287), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- Screenshot tool and resources for the in-process MCP server: `screenshot`
+  returns a PNG of a named source or the program output (optional width and
+  height) as MCP image content, and `resources/list` / `resources/read` serve
+  `obs://stats` (fps, CPU, dropped frames) and `obs://scenes` (the scene graph),
+  behind `CaptureBackend` and `StatsBackend` traits. The libobs binding is not
+  wired yet, so nothing changes for users. *All platforms*, 2026-10-31. Issue
+  [#3288](https://github.com/obs-rust/obs-studio/issues/3288), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

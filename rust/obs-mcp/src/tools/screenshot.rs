@@ -4,8 +4,13 @@
 //! The tool talks to OBS through [`CaptureBackend`], so it is tested with a
 //! fake. Binding it to libobs is a follow-up (#3283).
 
+use std::io::Write as _;
 use std::rc::Rc;
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
+use flate2::write::ZlibEncoder;
+use flate2::{Compression, Crc};
 use serde_json::{Value, json};
 
 use crate::server::{Content, Tool, ToolRegistry};
@@ -44,8 +49,75 @@ pub trait CaptureBackend {
 ///
 /// Returns a message when the dimensions are zero or do not match the buffer.
 pub fn encode_png(frame: &Frame) -> Result<Vec<u8>, String> {
-    let _ = frame;
-    todo!("RED: PNG encoder (#3288)")
+    let Frame {
+        width,
+        height,
+        rgba,
+    } = frame;
+    if *width == 0 || *height == 0 {
+        return Err(format!("cannot encode a {width}x{height} image"));
+    }
+    let stride = (*width as usize)
+        .checked_mul(4)
+        .ok_or("image is too wide")?;
+    let expected = stride
+        .checked_mul(*height as usize)
+        .ok_or("image is too large")?;
+    if rgba.len() != expected {
+        return Err(format!(
+            "frame has {} bytes, expected {expected} for {width}x{height} RGBA",
+            rgba.len()
+        ));
+    }
+
+    // Every scanline is prefixed with filter type 0 (none).
+    let mut raw = Vec::with_capacity(expected + *height as usize);
+    for row in rgba.chunks_exact(stride) {
+        raw.push(0);
+        raw.extend_from_slice(row);
+    }
+    let mut zlib = ZlibEncoder::new(Vec::new(), Compression::fast());
+    zlib.write_all(&raw).map_err(|e| e.to_string())?;
+    let idat = zlib.finish().map_err(|e| e.to_string())?;
+
+    let mut ihdr = Vec::with_capacity(13);
+    ihdr.extend_from_slice(&width.to_be_bytes());
+    ihdr.extend_from_slice(&height.to_be_bytes());
+    // 8 bits per channel, colour type 6 (RGBA), deflate, adaptive filtering, no interlace.
+    ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);
+
+    let mut png = Vec::with_capacity(idat.len() + 57);
+    png.extend_from_slice(b"\x89PNG\r\n\x1a\n");
+    push_chunk(&mut png, b"IHDR", &ihdr)?;
+    push_chunk(&mut png, b"IDAT", &idat)?;
+    push_chunk(&mut png, b"IEND", &[])?;
+    Ok(png)
+}
+
+/// Appends a length-prefixed, CRC-suffixed PNG chunk.
+fn push_chunk(png: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) -> Result<(), String> {
+    let len = u32::try_from(data.len()).map_err(|_| "PNG chunk is too large".to_owned())?;
+    png.extend_from_slice(&len.to_be_bytes());
+    let start = png.len();
+    png.extend_from_slice(kind);
+    png.extend_from_slice(data);
+    let mut crc = Crc::new();
+    crc.update(&png[start..]);
+    png.extend_from_slice(&crc.sum().to_be_bytes());
+    Ok(())
+}
+
+/// An optional positive pixel dimension argument.
+fn dimension_arg(arguments: &Value, key: &str) -> Result<Option<u32>, String> {
+    match arguments.get(key) {
+        None => Ok(None),
+        Some(v) => v
+            .as_u64()
+            .and_then(|n| u32::try_from(n).ok())
+            .filter(|&n| n > 0)
+            .map(Some)
+            .ok_or_else(|| format!("argument `{key}` must be a positive integer")),
+    }
 }
 
 /// The `screenshot` tool bound to a backend.
@@ -56,8 +128,15 @@ struct ScreenshotTool {
 impl ScreenshotTool {
     /// Captures and returns the base64 PNG.
     fn base64_png(&self, arguments: &Value) -> Result<String, String> {
-        let _ = (&self.backend, arguments);
-        todo!("RED: screenshot (#3288)")
+        let source = match arguments.get("source") {
+            None => None,
+            Some(Value::String(s)) if !s.is_empty() => Some(s.as_str()),
+            Some(_) => return Err("argument `source` must be a non-empty string".into()),
+        };
+        let width = dimension_arg(arguments, "width")?;
+        let height = dimension_arg(arguments, "height")?;
+        let frame = self.backend.capture(source, width, height)?;
+        Ok(STANDARD.encode(encode_png(&frame)?))
     }
 }
 

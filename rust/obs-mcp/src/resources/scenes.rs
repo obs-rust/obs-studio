@@ -5,6 +5,8 @@
 
 use std::rc::Rc;
 
+use serde_json::json;
+
 use super::{Resource, ResourceRegistry};
 use crate::tools::scenes::SceneBackend;
 use crate::tools::sources::SourceBackend;
@@ -33,8 +35,18 @@ impl Resource for ScenesResource {
     }
 
     fn read(&self) -> Result<String, String> {
-        let _ = (&self.scenes, &self.sources);
-        todo!("RED: obs://scenes (#3288)")
+        let sources: Vec<_> = self
+            .sources
+            .sources()
+            .into_iter()
+            .map(|s| json!({ "name": s.name, "kind": s.kind }))
+            .collect();
+        Ok(json!({
+            "current": self.scenes.current(),
+            "scenes": self.scenes.scenes(),
+            "sources": sources,
+        })
+        .to_string())
     }
 }
 

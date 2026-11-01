@@ -7,7 +7,7 @@
 pub mod scenes;
 pub mod stats;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// A readable document with a stable URI.
 pub trait Resource {
@@ -49,7 +49,19 @@ impl ResourceRegistry {
     /// The `resources/list` result.
     #[must_use]
     pub fn list(&self) -> Value {
-        todo!("RED: resources/list (#3288)")
+        let resources: Vec<Value> = self
+            .resources
+            .iter()
+            .map(|r| {
+                json!({
+                    "uri": r.uri(),
+                    "name": r.name(),
+                    "description": r.description(),
+                    "mimeType": r.mime_type(),
+                })
+            })
+            .collect();
+        json!({ "resources": resources })
     }
 
     /// Looks a resource up by URI.
@@ -64,7 +76,15 @@ impl ResourceRegistry {
     ///
     /// Returns the resource's message when it cannot be read.
     pub fn read(&self, uri: &str) -> Option<Result<Value, String>> {
-        let _ = uri;
-        todo!("RED: resources/read (#3288)")
+        let resource = self.get(uri)?;
+        Some(resource.read().map(|text| {
+            json!({
+                "contents": [{
+                    "uri": resource.uri(),
+                    "mimeType": resource.mime_type(),
+                    "text": text,
+                }],
+            })
+        }))
     }
 }
