@@ -7,6 +7,9 @@ mod protocol;
 #[cfg(feature = "bundled-native")]
 #[path = "../../../obs-sys/tests/native.rs"]
 mod bundled_libobs;
+#[cfg(feature = "bundled-native")]
+#[path = "../../../obs-mcp/tests/libobs_backend.rs"]
+mod mcp_libobs_backend;
 #[path = "../../../obs-build/tests/native.rs"]
 mod native_build;
 #[cfg(feature = "libobs-integration")]
