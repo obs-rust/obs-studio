@@ -280,7 +280,7 @@ pub fn cpu_percent(sys_delta: i64, cpu_delta: i64, core_count: i32) -> f64 {
     if cpu_delta == 0 {
         return 0.0;
     }
-    (sys_delta as f64) * 100.0 / (cpu_delta as f64) / (core_count as f64)
+    crate::cpu_usage::cap((sys_delta as f64) * 100.0 / (cpu_delta as f64) / (core_count as f64))
 }
 
 /// `os_inhibit_sleep_create` checks `if (!reason)`.

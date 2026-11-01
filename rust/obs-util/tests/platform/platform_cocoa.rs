@@ -38,7 +38,8 @@ fn format_path_ptr_always_appends_a_slash() {
 fn cpu_percent_matches_the_query_formula() {
     assert_eq!(cocoa::cpu_percent(0, 0, 4), 0.0);
     assert_eq!(cocoa::cpu_percent(50, 100, 2), 25.0);
-    assert!(cocoa::cpu_percent(1, 1, 0).is_infinite());
+    // no cores read: the quotient is infinite, capped at 100 (#3367)
+    assert_eq!(cocoa::cpu_percent(1, 1, 0), 100.0);
 }
 
 #[test]

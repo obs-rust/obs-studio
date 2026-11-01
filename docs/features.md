@@ -722,6 +722,10 @@ area.
   2026-10-23. Issue
   [#1346](https://github.com/obs-rust/obs-studio/issues/1346), PR
   [#1996](https://github.com/obs-rust/obs-studio/pull/1996).
+- The CPU usage OBS reports (the Stats dock, obs-websocket GetStats) is
+  at most 100 %. Polled in quick succession it could read above 100 %,
+  because the process and wall times tick at 10 ms. *All*, 2026-11-01.
+  Issue [#3367](https://github.com/obs-rust/obs-studio/issues/3367).
 - obs-websocket RemoveInput removes the scene items of the input at once,
   also in scenes that are not on program or preview, so GetSceneItemList
   and GetInputList no longer show the removed input. *All*, 2026-10-24.
