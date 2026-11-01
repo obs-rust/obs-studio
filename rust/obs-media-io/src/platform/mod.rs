@@ -41,3 +41,32 @@ cfg_select! {
 }
 
 pub(crate) use with_audio_thread_port;
+
+cfg_select! {
+    target_arch = "x86_64" => {
+        /// [`crate::audio_clamp::clamp_samples_scalar`] compiled for AVX2.
+        #[target_feature(enable = "avx2")]
+        fn clamp_samples_avx2(buf: &mut [f32]) {
+            let _ = buf;
+            todo!("AVX2 clamp (#3414)")
+        }
+
+        /// Runs the AVX2 copy when the CPU has it, else the scalar loop.
+        pub(crate) fn clamp_samples(buf: &mut [f32]) {
+            if std::arch::is_x86_feature_detected!("avx2") {
+                // SAFETY: the CPU was just checked for AVX2.
+                #[allow(unsafe_code)]
+                unsafe {
+                    clamp_samples_avx2(buf);
+                }
+            } else {
+                crate::audio_clamp::clamp_samples_scalar(buf);
+            }
+        }
+    }
+    _ => {
+        pub(crate) fn clamp_samples(buf: &mut [f32]) {
+            crate::audio_clamp::clamp_samples_scalar(buf);
+        }
+    }
+}

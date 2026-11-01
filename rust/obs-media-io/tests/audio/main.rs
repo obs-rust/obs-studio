@@ -1,5 +1,6 @@
 //! obs-media-io integration tests: audio (one module per former tests/*.rs file, #968).
 
+mod audio_clamp;
 mod audio_io;
 mod audio_io_core;
 mod audio_io_inlines;
