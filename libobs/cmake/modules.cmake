@@ -128,6 +128,12 @@ endfunction()
 # their module libraries and link those into each consumer.
 function(libobs_split_modules)
   _libobs_read_modules(_names)
+  # The module cache (#3262): ci/libobs_modules.py restore lists the modules
+  # whose archive is unchanged in <dir>/hits.cmake.
+  if(OBS_LIBOBS_MODULE_CACHE AND EXISTS "${OBS_LIBOBS_MODULE_CACHE}/hits.cmake")
+    include("${OBS_LIBOBS_MODULE_CACHE}/hits.cmake")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${OBS_LIBOBS_MODULE_CACHE}/hits.cmake")
+  endif()
 
   get_target_property(_sources libobs-objects SOURCES)
   set(_kept "")
@@ -150,16 +156,28 @@ function(libobs_split_modules)
     # A static archive, the unit the module cache stores (#3262). Linked
     # whole: nothing references a module's registration or callback-only
     # objects by name, and a plain archive link would drop them (#3261).
-    add_library(${_target} STATIC ${_LIBOBS_SOURCES_${_module}})
+    set(_compiled ${_target})
+    if(LIBOBS_MODULE_HIT_${_module})
+      # A cached archive: imported, not compiled (#3262). An unbuilt probe
+      # keeps the module's compile commands in compile_commands.json, so
+      # ci/libobs_modules.py still sees an edit to it and drops the hit.
+      add_library(${_target} STATIC IMPORTED)
+      set_property(TARGET ${_target} PROPERTY IMPORTED_LOCATION "${LIBOBS_MODULE_HIT_${_module}}")
+      message(STATUS "libobs module ${_module}: restored from the module cache")
+      set(_compiled ${_target}-keyprobe)
+      add_library(${_compiled} OBJECT EXCLUDE_FROM_ALL ${_LIBOBS_SOURCES_${_module}})
+    else()
+      add_library(${_target} STATIC ${_LIBOBS_SOURCES_${_module}})
+    endif()
     foreach(_property IN LISTS _LIBOBS_MODULE_PROPERTIES)
       get_target_property(_value libobs-objects ${_property})
       if(_value MATCHES "-NOTFOUND$")
         continue()
       endif()
       if(_property STREQUAL "LINK_LIBRARIES")
-        _libobs_module_links(${_target} "${_value}")
+        _libobs_module_links(${_compiled} "${_value}")
       else()
-        set_property(TARGET ${_target} PROPERTY ${_property} "${_value}")
+        set_property(TARGET ${_compiled} PROPERTY ${_property} "${_value}")
       endif()
     endforeach()
     foreach(_consumer IN LISTS ARGN)
