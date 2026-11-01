@@ -1,6 +1,7 @@
-# obs-core-setup-rules.c and obs-core-setup-rules-ms.c: obs.c calls them
-# inside libobs. Declared in obs-core-setup-rules.h without EXPORT, so the
-# shims stay hidden the same way.
+# obs-core-setup-rules.c, obs-core-setup-rules-ms.c and
+# obs-core-setup-rules-task.c: obs.c calls them inside libobs. Declared in
+# obs-core-setup-rules.h without EXPORT, so the shims stay hidden the same
+# way.
 obs_core_setup_rules_aoc_check
 obs_core_setup_rules_audio_refused
 obs_core_setup_rules_buffer_default_ticks
@@ -13,7 +14,11 @@ obs_core_setup_rules_cmdline_table
 obs_core_setup_rules_data_file_found
 obs_core_setup_rules_data_path_match
 obs_core_setup_rules_latest_newer
+obs_core_setup_rules_level_ok
+obs_core_setup_rules_levels_core
 obs_core_setup_rules_mix_step
 obs_core_setup_rules_monitor_missing
 obs_core_setup_rules_monitor_same
+obs_core_setup_rules_task_step
+obs_core_setup_rules_task_thread
 obs_core_setup_rules_video_gate

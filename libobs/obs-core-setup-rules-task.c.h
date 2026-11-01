@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-core-setup-rules-task.pch.h"
+#include "libobs/build/libobs-ported-core-setup-rules.pch.h"
+
+/* Ported to rust/obs-core (core_setup_rules): the hybrid libobs drops this
+ * file. */
 
 /* The task queue's route and the video level checks, moved from
  * obs_queue_task(), obs_in_task_thread() and obs_set_video_levels() in
