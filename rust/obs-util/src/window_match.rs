@@ -193,3 +193,44 @@ fn cstr(s: &[u8]) -> &[u8] {
         .and_then(|n| s.get(..n))
         .unwrap_or(s)
 }
+
+/// `ms_window_match_encode` without its buffer: `s` (up to its first NUL)
+/// with `#` escaped as `#22` and `:` as `#3A`, the form each part of a
+/// saved `title:class:exe` string takes.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn encode(_s: &[u8]) -> Vec<u8> {
+    todo!()
+}
+
+/// The length of [`encode`] of `s`, without building it.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn encoded_len(_s: &[u8]) -> usize {
+    todo!()
+}
+
+/// `ms_window_match_encode`: [`encode`] of `s` into `out` like
+/// `snprintf()`. It returns the full escaped length and writes at most
+/// `out.len() - 1` bytes of it, then a NUL; an empty `out` is left alone.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn encode_into(_s: &[u8], _out: &mut [u8]) -> usize {
+    todo!()
+}
+
+/// `ms_window_match_decode`: `s` (up to its first NUL) decoded in place,
+/// every `#3A` (this case) to `:`, then every `#22` to `#`, each pass left
+/// to right and never into what it wrote (`#2222` is `#22`). Each pass
+/// writes a NUL after its result when that is inside `s`, and the bytes
+/// past it are left as the pass left them. Returns the new length.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn decode(_s: &mut [u8]) -> usize {
+    todo!()
+}
+
+/// `ms_window_match_split`: the first three fields of `s` (up to its
+/// first NUL) split at `:`, empty ones kept, the third ending at the next
+/// `:` or the end, later fields ignored. `None` with fewer than three
+/// fields.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn split(_s: &[u8]) -> Option<[core::ops::Range<usize>; 3]> {
+    todo!()
+}
