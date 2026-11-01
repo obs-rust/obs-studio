@@ -9,7 +9,8 @@
 //! among +-3 around the edge values, and proptest runs of up to 64 packets
 //! from any start, with timestamps that are 0, stand still, step back, jump
 //! or are anything, and durations of 0, a packet, near the stall or
-//! anything.
+//! anything. Both pointers at the same `uint64_t`, which the C allows, are
+//! compared too: the C writes only what its branch writes, in its order.
 //!
 //! No intentional difference. The count wraps, as the C's `uint64_t` does.
 //! Null pointers, which the C dereferences, are checked on the Rust side
@@ -107,6 +108,30 @@ fn every_step_among_the_edges() {
         }
     }
     assert!(branches.iter().all(|&n| n > 0), "{branches:?}");
+}
+
+/// Both pointers at one `uint64_t`: the C reads and writes it in its
+/// branch's order (the first packet stores the timestamp and leaves the
+/// count, so the timestamp stays; a new one stores it, then zeroes it).
+#[test]
+fn aliased_pointers_match_the_c() {
+    let edges = edges();
+    for &x in &edges {
+        for &ts in &edges {
+            for ns in [0, 1, PACKET_NS, u64::MAX] {
+                let mut want = x;
+                // SAFETY: one valid u64, which the C reads and writes
+                // through both pointers.
+                unsafe {
+                    oracle_audio_monitor_track_video_ts(&raw mut want, &raw mut want, ts, ns)
+                };
+                let mut got = x;
+                // SAFETY: as above.
+                unsafe { shim::audio_monitor_track_video_ts(&raw mut got, &raw mut got, ts, ns) };
+                assert_eq!(got, want, "x {x}, video {ts}, packet {ns}");
+            }
+        }
+    }
 }
 
 /// Null pointers: each reads as 0 and is not written (Rust side only).
