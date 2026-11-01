@@ -26,6 +26,29 @@ extern "C" {
 #include <cmocka.h>
 }
 
+/* Waits until every dock of every window keeps its geometry over three
+ * event-loop passes in a row, for at most 3 s. A resize lays the docks out
+ * in later events, and DockProportions puts the shares back in a queued call
+ * after that; a fixed wait ends too early in a slow build (an ASan build
+ * with full malloc stacks runs this test 4 times slower, #3366). */
+static void settle()
+{
+	QList<QRect> last;
+	int stable = 0;
+	for (int i = 0; i < 150 && stable < 3; i++) {
+		QTest::qWait(20);
+		QList<QRect> now;
+		for (QWidget *top : QApplication::topLevelWidgets()) {
+			now.append(top->geometry());
+			for (QDockWidget *dock : top->findChildren<QDockWidget *>()) {
+				now.append(dock->geometry());
+			}
+		}
+		stable = now == last ? stable + 1 : 0;
+		last = now;
+	}
+}
+
 static const int dock_min_width = 150;
 static const QList<int> hand_sized = {720, 224, 256, 200, 200};
 
@@ -54,9 +77,9 @@ static int setup(void **state)
 	}
 	f->window->resize(1600, 900);
 	f->window->show();
-	QTest::qWait(50);
+	settle();
 	f->window->resizeDocks(f->docks, hand_sized, Qt::Horizontal);
-	QTest::qWait(50);
+	settle();
 	*state = f;
 	return 0;
 }
@@ -113,7 +136,7 @@ static void narrow_then_wide_keeps_shares(void **state)
 	print_widths("before", before);
 
 	f->window->resize(700, 900);
-	QTest::qWait(50);
+	settle();
 	print_widths("narrow", widths(f));
 	/* The narrow window really clamps the docks to their minimum. */
 	for (int width : widths(f)) {
@@ -121,7 +144,7 @@ static void narrow_then_wide_keeps_shares(void **state)
 	}
 
 	f->window->resize(1600, 900);
-	QTest::qWait(50);
+	settle();
 	const QList<int> after = widths(f);
 	print_widths("after", after);
 	assert_same_shares(before, after);
@@ -141,7 +164,7 @@ static void narrow_in_steps_then_wide_keeps_shares(void **state)
 		f->window->resize(w, 900);
 		QTest::qWait(10);
 	}
-	QTest::qWait(50);
+	settle();
 	const QList<int> after = widths(f);
 	print_widths("after steps", after);
 	assert_same_shares(before, after);
@@ -153,13 +176,13 @@ static void dragged_separator_is_kept(void **state)
 	/* The user re-sizes the docks by hand after the first layout. */
 	const QList<int> dragged = {400, 400, 300, 200, 200};
 	f->window->resizeDocks(f->docks, dragged, Qt::Horizontal);
-	QTest::qWait(50);
+	settle();
 	const QList<int> before = widths(f);
 
 	f->window->resize(700, 900);
-	QTest::qWait(50);
+	settle();
 	f->window->resize(1600, 900);
-	QTest::qWait(50);
+	settle();
 	assert_same_shares(before, widths(f));
 }
 
@@ -170,9 +193,9 @@ static void unclamped_resize_is_untouched(void **state)
 
 	/* Wide enough that no dock reaches its minimum: Qt keeps the shares. */
 	f->window->resize(1400, 900);
-	QTest::qWait(50);
+	settle();
 	f->window->resize(1600, 900);
-	QTest::qWait(50);
+	settle();
 	assert_same_shares(before, widths(f));
 }
 
@@ -220,9 +243,9 @@ static int setup_column(void **state)
 	}
 	f->window->resize(1600, 900);
 	f->window->show();
-	QTest::qWait(50);
+	settle();
 	f->window->resizeDocks({f->column.first()}, {column_width}, Qt::Horizontal);
-	QTest::qWait(50);
+	settle();
 	*state = f;
 	return 0;
 }
@@ -252,13 +275,13 @@ static void side_column_comes_back_after_narrow_then_wide(void **state)
 	assert_column_width(f, column_width);
 
 	f->window->resize(700, 900);
-	QTest::qWait(50);
+	settle();
 	printf("narrow: window %d px, column %d px\n", f->window->width(), f->column.first()->width());
 	/* The narrow window really shrinks the column. */
 	assert_true(f->column.first()->width() < column_width - 30);
 
 	f->window->resize(1600, 900);
-	QTest::qWait(50);
+	settle();
 	printf("after: column %d px\n", f->column.first()->width());
 	assert_column_width(f, column_width);
 }
@@ -276,7 +299,7 @@ static void side_column_comes_back_after_steps(void **state)
 		f->window->resize(w, 900);
 		QTest::qWait(10);
 	}
-	QTest::qWait(50);
+	settle();
 	printf("after steps: column %d px\n", f->column.first()->width());
 	assert_column_width(f, column_width);
 }
@@ -286,14 +309,14 @@ static void dragged_column_width_is_kept(void **state)
 	auto *f = static_cast<ColumnFixture *>(*state);
 	/* The user drags the column's edge after the first layout. */
 	f->window->resizeDocks({f->column.first()}, {400}, Qt::Horizontal);
-	QTest::qWait(50);
+	settle();
 	const int dragged = f->column.first()->width();
 	assert_true(dragged > column_width + 50);
 
 	f->window->resize(700, 900);
-	QTest::qWait(50);
+	settle();
 	f->window->resize(1600, 900);
-	QTest::qWait(50);
+	settle();
 	assert_column_width(f, dragged);
 }
 
@@ -319,7 +342,7 @@ static QList<int> restored_widths(const QByteArray &state)
 	window.resize(1600, 900);
 	assert_true(window.restoreState(state));
 	window.show();
-	QTest::qWait(50);
+	settle();
 
 	QList<int> result;
 	for (QDockWidget *dock : docks) {
@@ -335,7 +358,7 @@ static void clamped_layout_is_not_the_saved_state(void **state)
 	print_widths("before", before);
 
 	f->window->resize(700, 900);
-	QTest::qWait(50);
+	settle();
 	print_widths("narrow", widths(f));
 	for (int width : widths(f)) {
 		assert_true(width <= dock_min_width + 10);
@@ -379,7 +402,7 @@ static void restored_layout_survives_a_narrow_first_session(void **state)
 	window.resize(700, 900);
 	assert_true(window.restoreState(saved));
 	window.show();
-	QTest::qWait(50);
+	settle();
 
 	QList<int> narrow;
 	for (QDockWidget *dock : docks) {
