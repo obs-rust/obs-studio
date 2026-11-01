@@ -73,6 +73,12 @@ impl Source {
     pub fn create(kind: &str, name: &str, settings: &Value) -> Result<Self, String> {
         let kind_c = c_string(kind, "kind")?;
         let name_c = c_string(name, "name")?;
+        // libobs keeps a source of a kind no module registered as a placeholder
+        // for the missing plugin (and logs an error) instead of returning null.
+        // SAFETY: `kind_c` is NUL-terminated; the result is borrowed or null.
+        if unsafe { sys::obs_source_get_display_name(kind_c.as_ptr()) }.is_null() {
+            return Err(format!("cannot create a source of unknown kind '{kind}'"));
+        }
         let data = Data::from_json(settings)?;
         // SAFETY: both strings are NUL-terminated and `data` is live; a null
         // hotkey store is allowed; the result is an owned reference or null.

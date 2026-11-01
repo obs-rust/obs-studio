@@ -6,7 +6,7 @@
 //! text as their error.
 
 use std::ffi::CString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 
 use obs_sys::ffi as sys;
@@ -111,8 +111,9 @@ pub fn configure(options: &StartOptions) -> Pipeline {
 /// Registers the effect-file and plugin directories.
 fn add_paths(options: &StartOptions, notes: &mut Vec<String>) {
     if let Some(path) = &options.data_path {
-        match path_c(path) {
-            // SAFETY: NUL-terminated; libobs copies the string.
+        match path_c(&with_separator(path)) {
+            // libobs appends the file name to the path as is, so end it with a
+            // separator. SAFETY: NUL-terminated; libobs copies the string.
             Ok(path) => unsafe { sys::obs_add_data_path(path.as_ptr()) },
             Err(error) => notes.push(error),
         }
@@ -124,6 +125,15 @@ fn add_paths(options: &StartOptions, notes: &mut Vec<String>) {
             (Err(error), _) | (_, Err(error)) => notes.push(error),
         }
     }
+}
+
+/// `path` ending in a separator.
+fn with_separator(path: &Path) -> PathBuf {
+    let mut text = path.as_os_str().to_owned();
+    if !path.to_string_lossy().ends_with(std::path::MAIN_SEPARATOR) {
+        text.push(std::path::MAIN_SEPARATOR_STR);
+    }
+    PathBuf::from(text)
 }
 
 fn path_c(path: &Path) -> Result<CString, String> {

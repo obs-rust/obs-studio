@@ -89,6 +89,7 @@ unsafe extern "C" {
         settings: *mut obs_data_t,
         hotkey_data: *mut obs_data_t,
     ) -> *mut obs_source_t;
+    pub fn obs_source_get_display_name(id: *const c_char) -> *const c_char;
     pub fn obs_source_get_ref(source: *mut obs_source_t) -> *mut obs_source_t;
     pub fn obs_source_release(source: *mut obs_source_t);
     pub fn obs_source_remove(source: *mut obs_source_t);
