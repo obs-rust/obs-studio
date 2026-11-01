@@ -60,6 +60,7 @@ int obs_media_remux_avio_open(AVFormatContext *output, const char *path);
 int obs_media_remux_write_header(AVFormatContext *output);
 AVPacket *obs_media_remux_packet_new(void);
 void obs_media_remux_packet_free(AVPacket *pkt);
+void obs_media_remux_packet_unref(AVPacket *pkt);
 int obs_media_remux_read_frame(AVFormatContext *input, AVPacket *pkt, struct obs_media_remux_packet *out);
 int obs_media_remux_write_frame(AVFormatContext *output, AVPacket *pkt, const struct obs_media_remux_packet *in);
 int obs_media_remux_write_trailer(AVFormatContext *output);
@@ -185,6 +186,11 @@ AVPacket *obs_media_remux_packet_new(void)
 void obs_media_remux_packet_free(AVPacket *pkt)
 {
 	bfree(pkt);
+}
+
+void obs_media_remux_packet_unref(AVPacket *pkt)
+{
+	av_packet_unref(pkt);
 }
 
 int obs_media_remux_read_frame(AVFormatContext *input, AVPacket *pkt, struct obs_media_remux_packet *out)

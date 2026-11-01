@@ -287,6 +287,9 @@ impl Host for Fake {
         self.written.push(*packet);
         self.script.packets[self.next - 1].1
     }
+    fn packet_unref(&mut self) {
+        self.log.push("packet_unref".into());
+    }
     fn write_trailer(&mut self, _: Handle) -> i32 {
         self.log.push("write_trailer".into());
         self.script.trailer_ret
@@ -674,6 +677,31 @@ fn stopping_from_the_callback_still_succeeds() {
     assert_eq!(fake.written.len(), 11);
     assert_eq!(reports, [0.0, 21.0, 100.0]);
     assert!(fake.has("write_trailer"));
+}
+
+/// The packet read when the callback stops the job is never written, so the
+/// job unrefs it before it stops reading (#3365).
+#[test]
+fn stopping_from_the_callback_unrefs_the_packet_it_read() {
+    let mut reports = Vec::new();
+    let (_, fake) = run(
+        Script {
+            packets: packets(40),
+            ..Script::default()
+        },
+        Some(&mut reports),
+        Some(2),
+    );
+    let read = fake
+        .log
+        .iter()
+        .rposition(|l| l.starts_with("read_frame"))
+        .expect("a read");
+    assert_eq!(
+        fake.log.get(read + 1).map(String::as_str),
+        Some("packet_unref")
+    );
+    assert_eq!(fake.log.iter().filter(|l| *l == "packet_unref").count(), 1);
 }
 
 #[test]

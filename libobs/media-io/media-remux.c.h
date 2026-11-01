@@ -235,8 +235,11 @@ static inline int process_packets(media_remux_job_t job, media_remux_progress_ca
 
 		if (callback != NULL && throttle++ > 10) {
 			float progress = (float)pkt.pos / (float)job->in_size * 100.f;
-			if (!callback(data, progress))
+			if (!callback(data, progress)) {
+				/* never written: unref it here (#3365) */
+				av_packet_unref(&pkt);
 				break;
+			}
 			throttle = 0;
 		}
 

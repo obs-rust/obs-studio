@@ -43,7 +43,6 @@ KNOWN = {
                                 "failure is never reported and test_pipe_create2_missing_binary gets a pipe back"),
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
-    ("asan", "test_media_remux"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
     ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
     ("asan", "test_dock_proportions"): ("flaky", "the docks come back equal after a resize on the job's Xvfb (#3366)"),
     ("asan", "test_ws_cpu_usage"): ("flaky", "GetStats reports more than 100 % CPU with 8 threads (#3367)"),
