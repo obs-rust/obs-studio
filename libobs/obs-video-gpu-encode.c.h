@@ -248,8 +248,8 @@ bool init_gpu_encoding(struct obs_core_video_mix *video)
 
 	deque_reserve(&video->gpu_encoder_avail_queue, NUM_ENCODE_TEXTURES);
 	for (size_t i = 0; i < NUM_ENCODE_TEXTURES; i++) {
-		gs_texture_t *tex;
-		gs_texture_t *tex_uv;
+		gs_texture_t *tex = NULL;
+		gs_texture_t *tex_uv = NULL;
 
 		if (obs_encoder_gpu_gates_p010((int)info->format)) {
 			gs_texture_create_p010(&tex, &tex_uv, info->width, info->height,
