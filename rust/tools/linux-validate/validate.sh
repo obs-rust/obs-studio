@@ -219,7 +219,9 @@ else
   if ! cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0 >"$build.build.log" 2>&1; then
     # Ninja colors its log (\e[31mFAILED: ...), so strip the escapes first.
     launcher_failed=$(sed 's/\x1b\[[0-9;]*m//g' "$build.build.log" | grep -c '^FAILED: \[code=125\]' || true)
-    lost_requests=$(grep -c '^zccache\[err\]\[R\]: daemon response failure' "$build.build.log" || true)
+    # A lost request ("daemon response failure") and a connection the daemon
+    # reset mid-compile ("broken connection to daemon", #3346) both exit 1.
+    lost_requests=$(grep -cE '^zccache\[err\]\[R\]: (daemon response failure|broken connection to daemon)' "$build.build.log" || true)
     if [ "$launcher_failed" -gt 0 ] || [ "$lost_requests" -gt 0 ]; then
       echo "== zccache launcher failures: $launcher_failed exit 125, $lost_requests requests the daemon lost; restarting it and rebuilding once"
       # Keep the original cause: the retry can report only a recovery cooldown.
