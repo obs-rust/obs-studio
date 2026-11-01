@@ -16,11 +16,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /* The pure decisions of the window helpers (window-helpers.c), on C strings,
- * bools and ints (window-match.c). They decide which windows the window and
- * game capture property lists show, and which window a capture source picks
- * when it looks for its saved window again:
+ * bools and ints, and the codec of the saved window string (window-match.c).
+ * They decide which windows the window and game capture property lists show,
+ * and which window a capture source picks when it looks for its saved window
+ * again:
  * - ms_window_match_is_internal_exe(): Microsoft shell and system processes
  *   the list hides (15 exact names and the prefix "windowsinternal", without
  *   regard to case). A NULL exe is not internal;
@@ -33,13 +35,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *   window, which matches on its title alone;
  * - ms_window_match_rating(): how well a window matches the saved one, from
  *   the priority, those two class flags and what window_rating() compared:
- *   0 is exact, lower is better, MS_WINDOW_MATCH_NONE is no match.
+ *   0 is exact, lower is better, MS_WINDOW_MATCH_NONE is no match;
+ * - ms_window_match_encode(), ms_window_match_decode() and
+ *   ms_window_match_split(): a capture source saves its window as
+ *   "title:class:exe", each part with '#' escaped as "#22", then ':' as
+ *   "#3A"; ms_build_window_strings() splits it at the first two ':' and
+ *   decodes "#3A", then "#22", in each part.
  *
  * window-helpers.c keeps every Win32 call, the reads of each window's exe,
  * title and class where they were, the three dstr_cmpi() compares, the
- * window walk, the best-so-far compares and the list building. Nothing here
- * includes a Windows header, so the C tests build it on every platform. Not
- * EXPORT: only libobs calls these. */
+ * window walk, the best-so-far compares, the list building and every
+ * allocation of the window strings. Nothing here includes a Windows header,
+ * so the C tests build it on every platform. Not EXPORT: only libobs calls
+ * these. */
 
 /* enum window_priority (window-helpers.h), which includes windows.h;
  * window-helpers.c checks these with _Static_assert. */
@@ -63,3 +71,20 @@ bool ms_window_match_is_uwp_class(const char *window_class);
  * absolute value is the title's distance. */
 int ms_window_match_rating(int priority, bool uwp_window, bool generic_class, bool class_matches, bool exe_matches,
 			   int title_cmp);
+
+/* s with '#' escaped as "#22" and ':' as "#3A", like snprintf(): the
+ * escaped length is returned, and when out is not NULL, at most
+ * out_size - 1 bytes of it are written, then a NUL (none when out_size is
+ * 0). A NULL s is "". */
+size_t ms_window_match_encode(const char *s, char *out, size_t out_size);
+
+/* s decoded in place: every "#3A" (this case) to ':', then every "#22" to
+ * '#', each pass left to right and never into what it wrote ("#2222" is
+ * "#22"). Returns the new length; a NULL s is left alone and is 0. */
+size_t ms_window_match_decode(char *s);
+
+/* The first three fields of str split at ':', empty ones kept: field i is
+ * the len[i] bytes at str + start[i], the third ending at the next ':' or
+ * the end, and later fields are ignored. With fewer than three fields
+ * (fewer than two ':') or a NULL str, false, and all six are 0. */
+bool ms_window_match_split(const char *str, size_t start[3], size_t len[3]);

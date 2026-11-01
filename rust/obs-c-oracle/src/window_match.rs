@@ -28,6 +28,17 @@ unsafe extern "C" {
         exe_matches: bool,
         title_cmp: c_int,
     ) -> c_int;
+    pub fn oracle_ms_window_match_encode(
+        s: *const c_char,
+        out: *mut c_char,
+        out_size: usize,
+    ) -> usize;
+    pub fn oracle_ms_window_match_decode(s: *mut c_char) -> usize;
+    pub fn oracle_ms_window_match_split(
+        str: *const c_char,
+        start: *mut usize,
+        len: *mut usize,
+    ) -> bool;
     /// The value at `which` in [`VALUE_NAMES`], or -1 past the end.
     pub fn oracle_window_match_value(which: usize) -> c_int;
 }

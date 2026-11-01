@@ -6,22 +6,27 @@ _Static_assert(WINDOW_PRIORITY_EXE == MS_WINDOW_MATCH_PRIORITY_EXE, "window-matc
 
 static inline void encode_dstr(struct dstr *str)
 {
-	dstr_replace(str, "#", "#22");
-	dstr_replace(str, ":", "#3A");
+	size_t len = ms_window_match_encode(str->array, NULL, 0);
+	if (len == str->len)
+		return;
+
+	char *encoded = bmalloc(len + 1);
+	ms_window_match_encode(str->array, encoded, len + 1);
+	dstr_move_array(str, encoded);
 }
 
-static inline char *decode_str(const char *src)
+static inline char *decode_str(const char *src, size_t len)
 {
 	struct dstr str = {0};
-	dstr_copy(&str, src);
-	dstr_replace(&str, "#3A", ":");
-	dstr_replace(&str, "#22", "#");
+	dstr_ncopy(&str, src, len);
+	str.len = ms_window_match_decode(str.array);
 	return str.array;
 }
 
 void ms_build_window_strings(const char *str, char **class, char **title, char **exe)
 {
-	char **strlist;
+	size_t start[3];
+	size_t len[3];
 
 	*class = NULL;
 	*title = NULL;
@@ -31,15 +36,11 @@ void ms_build_window_strings(const char *str, char **class, char **title, char *
 		return;
 	}
 
-	strlist = strlist_split(str, ':', true);
-
-	if (strlist && strlist[0] && strlist[1] && strlist[2]) {
-		*title = decode_str(strlist[0]);
-		*class = decode_str(strlist[1]);
-		*exe = decode_str(strlist[2]);
+	if (ms_window_match_split(str, start, len)) {
+		*title = decode_str(str + start[0], len[0]);
+		*class = decode_str(str + start[1], len[1]);
+		*exe = decode_str(str + start[2], len[2]);
 	}
-
-	strlist_free(strlist);
 }
 
 static void insert_preserved_val(obs_property_t *p, const char *val, size_t idx)

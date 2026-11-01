@@ -19,9 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * file. */
 
 /* The pure decisions of the window helpers (window-helpers.c), moved: the
- * list's skip tests, the two class tests and the match rating. window-helpers.c
- * keeps every Win32 call, every read and compare of a window's strings, the
- * walk and the list. Declared in window-match.h without EXPORT. */
+ * list's skip tests, the two class tests, the match rating and the codec of
+ * the saved window string. window-helpers.c keeps every Win32 call, every
+ * read and compare of a window's strings, the walk, the list and every
+ * allocation. Declared in window-match.h without EXPORT. */
 
 /* not capturable or internal windows, exact executable names */
 static const char *internal_microsoft_exes_exact[] = {
@@ -126,4 +127,75 @@ int ms_window_match_rating(int priority, bool uwp_window, bool generic_class, bo
 	}
 
 	return val;
+}
+
+size_t ms_window_match_encode(const char *s, char *out, size_t out_size)
+{
+	size_t len = 0;
+
+	for (; s && *s; s++) {
+		const char *escape = *s == '#' ? "#22" : *s == ':' ? "#3A" : NULL;
+		size_t n = escape ? 3 : 1;
+
+		for (size_t i = 0; i < n; i++, len++) {
+			if (out && len + 1 < out_size)
+				out[len] = escape ? escape[i] : *s;
+		}
+	}
+
+	if (out && out_size)
+		out[len < out_size ? len : out_size - 1] = 0;
+
+	return len;
+}
+
+/* One dstr_replace() of "#<a><b>" with to: the leftmost match first, and
+ * the scan goes on after it, never into what it wrote. */
+static size_t decode_pass(char *s, size_t len, char a, char b, char to)
+{
+	size_t w = 0;
+
+	for (size_t r = 0; r < len;) {
+		if (r + 2 < len && s[r] == '#' && s[r + 1] == a && s[r + 2] == b) {
+			s[w++] = to;
+			r += 3;
+		} else {
+			s[w++] = s[r++];
+		}
+	}
+
+	s[w] = 0;
+	return w;
+}
+
+size_t ms_window_match_decode(char *s)
+{
+	if (!s)
+		return 0;
+
+	size_t len = decode_pass(s, strlen(s), '3', 'A', ':');
+	return decode_pass(s, len, '2', '2', '#');
+}
+
+bool ms_window_match_split(const char *str, size_t start[3], size_t len[3])
+{
+	const char *field = str;
+	size_t i = 0;
+
+	for (; field && i < 3; i++) {
+		const char *end = strchr(field, ':');
+
+		start[i] = (size_t)(field - str);
+		len[i] = end ? (size_t)(end - field) : strlen(field);
+		field = end ? end + 1 : NULL;
+	}
+
+	if (i == 3)
+		return true;
+
+	for (i = 0; i < 3; i++) {
+		start[i] = 0;
+		len[i] = 0;
+	}
+	return false;
 }

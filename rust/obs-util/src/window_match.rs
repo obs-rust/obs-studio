@@ -16,13 +16,20 @@
 //! - [`is_uwp_class`]: the saved class of a UWP or WinUI 3 window
 //!   ([`UWP_CLASSES`]), which matches on its title alone;
 //! - [`rating`]: how well a window matches the saved one. 0 is exact, lower
-//!   is better, [`NO_MATCH`] is no match.
+//!   is better, [`NO_MATCH`] is no match;
+//! - [`encode`], [`encoded_len`], [`encode_into`], [`decode`] and [`split`]:
+//!   the codec of the saved window string. A capture source saves its
+//!   window as `title:class:exe`, each part with `#` escaped as `#22`, then
+//!   `:` as `#3A`; `ms_build_window_strings()` splits it at its first two
+//!   `:` and decodes `#3A`, then `#22`, in each part.
 //!
 //! `window-helpers.c` keeps every Win32 call, the reads of each window's
 //! exe, title and class where they were, the three `dstr_cmpi()` compares
-//! (their results arrive here), the window walk, the best-so-far compares
-//! and the list building. These keep no state, take no lock and call
-//! nothing in Win32.
+//! (their results arrive here), the window walk, the best-so-far compares,
+//! the list building and every allocation of the window strings. These
+//! keep no state, take no lock and call nothing in Win32. The codec works
+//! on bytes, not UTF-8 (window titles come from `dstr_from_wcs()`), and
+//! reads each string up to its first NUL, as the C does.
 //!
 //! Case folding is [`crate::dstr`]'s `astrcmpi`, `astrcmpi_n` and
 //! `astrstri`, which fold ASCII only, as C's `tolower()` does in the C
@@ -192,4 +199,92 @@ fn cstr(s: &[u8]) -> &[u8] {
         .position(|&c| c == 0)
         .and_then(|n| s.get(..n))
         .unwrap_or(s)
+}
+
+/// The escape of one byte of a saved window part: `#` as `#22`, `:` as
+/// `#3A`, any other byte as itself.
+fn escaped(c: &u8) -> &[u8] {
+    match c {
+        b'#' => b"#22",
+        b':' => b"#3A",
+        _ => core::slice::from_ref(c),
+    }
+}
+
+/// `ms_window_match_encode` without its buffer: `s` (up to its first NUL)
+/// with `#` escaped as `#22` and `:` as `#3A`, the form each part of a
+/// saved `title:class:exe` string takes.
+pub fn encode(s: &[u8]) -> Vec<u8> {
+    cstr(s).iter().flat_map(escaped).copied().collect()
+}
+
+/// The length of [`encode`] of `s`, without building it.
+pub fn encoded_len(s: &[u8]) -> usize {
+    cstr(s).iter().map(|c| escaped(c).len()).sum()
+}
+
+/// `ms_window_match_encode`: [`encode`] of `s` into `out` like
+/// `snprintf()`. It returns the full escaped length and writes at most
+/// `out.len() - 1` bytes of it, then a NUL; an empty `out` is left alone.
+pub fn encode_into(s: &[u8], out: &mut [u8]) -> usize {
+    if let Some(room) = out.len().checked_sub(1) {
+        let bytes = cstr(s).iter().flat_map(escaped);
+        let written = out
+            .iter_mut()
+            .take(room)
+            .zip(bytes)
+            .map(|(dst, src)| *dst = *src)
+            .count();
+        if let Some(end) = out.get_mut(written) {
+            *end = 0;
+        }
+    }
+    encoded_len(s)
+}
+
+/// `ms_window_match_decode`: `s` (up to its first NUL) decoded in place,
+/// every `#3A` (this case) to `:`, then every `#22` to `#`, each pass left
+/// to right and never into what it wrote (`#2222` is `#22`). Each pass
+/// writes a NUL after its result when that is inside `s`, and the bytes
+/// past it are left as the pass left them. Returns the new length.
+pub fn decode(s: &mut [u8]) -> usize {
+    let len = cstr(s).len();
+    let len = decode_pass(s, len, *b"3A", b':');
+    decode_pass(s, len, *b"22", b'#')
+}
+
+/// One `dstr_replace()` of `#` and `code` with `to` over the first `len`
+/// bytes of `s`: the leftmost match first, the scan going on after it.
+fn decode_pass(s: &mut [u8], len: usize, code: [u8; 2], to: u8) -> usize {
+    let mut read = 0usize;
+    let mut write = 0usize;
+    loop {
+        let (byte, step) = match s.get(read..len).unwrap_or_default() {
+            [b'#', a, b, ..] if [*a, *b] == code => (to, 3),
+            [c, ..] => (*c, 1),
+            [] => break,
+        };
+        if let Some(dst) = s.get_mut(write) {
+            *dst = byte;
+        }
+        write = write.saturating_add(1);
+        read = read.saturating_add(step);
+    }
+    if let Some(end) = s.get_mut(write) {
+        *end = 0;
+    }
+    write
+}
+
+/// `ms_window_match_split`: the first three fields of `s` (up to its
+/// first NUL) split at `:`, empty ones kept, the third ending at the next
+/// `:` or the end, later fields ignored. `None` with fewer than three
+/// fields.
+pub fn split(s: &[u8]) -> Option<[core::ops::Range<usize>; 3]> {
+    let mut fields = cstr(s).split(|&c| c == b':').scan(0usize, |start, field| {
+        let range = *start..start.saturating_add(field.len());
+        *start = range.end.saturating_add(1);
+        Some(range)
+    });
+    Some([fields.next()?, fields.next()?, fields.next()?])
 }

@@ -5,20 +5,23 @@
 //! Each side runs 32 windows (internal, Explorer, games, browsers and UWP
 //! apps, in mixed case) through the list's tests, and rates them under the
 //! three priorities against a saved generic, UWP and plain class, folded
-//! into a checksum both sides must match. Nothing is allocated with
-//! `bmalloc`.
+//! into a checksum both sides must match. The codec pair builds each
+//! window's saved `title:class:exe` string, as the list does, and splits
+//! and decodes it again, as a capture source does when it loads, in stack
+//! buffers. Nothing is allocated with `bmalloc`.
 
 use super::pair;
 
 use criterion::Criterion;
 use obs_c_oracle::window_match::{
-    oracle_ms_window_match_is_generic_class, oracle_ms_window_match_is_internal_exe,
-    oracle_ms_window_match_is_untitled_explorer, oracle_ms_window_match_is_uwp_class,
-    oracle_ms_window_match_rating,
+    oracle_ms_window_match_decode, oracle_ms_window_match_encode, oracle_ms_window_match_is_generic_class,
+    oracle_ms_window_match_is_internal_exe, oracle_ms_window_match_is_untitled_explorer,
+    oracle_ms_window_match_is_uwp_class, oracle_ms_window_match_rating, oracle_ms_window_match_split,
 };
 use obs_util::ffi::window_match::{
-    ms_window_match_is_generic_class, ms_window_match_is_internal_exe, ms_window_match_is_untitled_explorer,
-    ms_window_match_is_uwp_class, ms_window_match_rating,
+    ms_window_match_decode, ms_window_match_encode, ms_window_match_is_generic_class,
+    ms_window_match_is_internal_exe, ms_window_match_is_untitled_explorer, ms_window_match_is_uwp_class,
+    ms_window_match_rating, ms_window_match_split,
 };
 use std::ffi::{CStr, c_char};
 use std::hint::black_box;
@@ -93,6 +96,62 @@ fn c_windows() -> u32 {
     )
 }
 
+const TITLES: [&CStr; 4] = [c"OBS 31.0: Scenes # 2", c"Untitled - Notepad", c"#3A#22: x", c"game"];
+
+/// One pass over the 32 windows' saved strings with each side's codec:
+/// encode the title, class and exe into one string, split it, and decode
+/// each field in place.
+macro_rules! codec {
+    ($encode:ident, $split:ident, $decode:ident) => {{
+        let mut acc = 0_u32;
+        for i in 0..32_usize {
+            let parts = [
+                TITLES[i % TITLES.len()].as_ptr(),
+                CLASSES[i % CLASSES.len()].as_ptr(),
+                exe(i),
+            ];
+            let mut joined = [0 as c_char; 256];
+            let mut pos = 0_usize;
+            for (n, part) in parts.into_iter().enumerate() {
+                if n > 0 {
+                    joined[pos] = b':' as c_char;
+                    pos += 1;
+                }
+                // SAFETY: a NUL-terminated literal into the rest of the
+                // stack buffer.
+                #[allow(unused_unsafe)]
+                let len = unsafe {
+                    $encode(black_box(part), joined.as_mut_ptr().add(pos), joined.len() - pos)
+                };
+                pos += len;
+            }
+            let (mut start, mut len) = ([0_usize; 3], [0_usize; 3]);
+            // SAFETY: the NUL-terminated string just built, three outputs each.
+            #[allow(unused_unsafe)]
+            let ok = unsafe { $split(joined.as_ptr(), start.as_mut_ptr(), len.as_mut_ptr()) };
+            acc = mix(acc, u32::from(ok));
+            for f in 0..3 {
+                let mut field = [0 as c_char; 256];
+                field[..len[f]].copy_from_slice(&joined[start[f]..start[f] + len[f]]);
+                // SAFETY: a NUL-terminated copy of the field.
+                #[allow(unused_unsafe)]
+                let n = unsafe { $decode(field.as_mut_ptr()) };
+                acc = mix(acc, n as u32);
+            }
+        }
+        acc
+    }};
+}
+
+fn rust_codec() -> u32 {
+    codec!(ms_window_match_encode, ms_window_match_split, ms_window_match_decode)
+}
+
+fn c_codec() -> u32 {
+    codec!(oracle_ms_window_match_encode, oracle_ms_window_match_split, oracle_ms_window_match_decode)
+}
+
 pub fn benchmarks(criterion: &mut Criterion) {
     pair(criterion, "window_match/windows/32", rust_windows, c_windows);
+    pair(criterion, "window_match/codec/32", rust_codec, c_codec);
 }

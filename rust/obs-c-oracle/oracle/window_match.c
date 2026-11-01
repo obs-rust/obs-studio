@@ -1,8 +1,8 @@
 /* Test-only oracle: the original libobs/util/windows/window-match.c.h,
- * unmodified, with its five functions renamed to oracle_* so they can link
+ * unmodified, with its eight functions renamed to oracle_* so they can link
  * next to the Rust shims, plus its constants as the C sees them. Its
  * compares are the oracle's C dstr (oracle/dstr.c: astrcmpi, astrcmpi_n and
- * astrstri with C's tolower()), strcmp(), strlen() and abs(). */
+ * astrstri with C's tolower()), strcmp(), strchr(), strlen() and abs(). */
 #include <stddef.h>
 
 #define astrcmpi oracle_astrcmpi
@@ -14,6 +14,9 @@
 #define ms_window_match_is_generic_class oracle_ms_window_match_is_generic_class
 #define ms_window_match_is_uwp_class oracle_ms_window_match_is_uwp_class
 #define ms_window_match_rating oracle_ms_window_match_rating
+#define ms_window_match_encode oracle_ms_window_match_encode
+#define ms_window_match_decode oracle_ms_window_match_decode
+#define ms_window_match_split oracle_ms_window_match_split
 
 #include "util/windows/window-match.c.h"
 
