@@ -403,7 +403,7 @@ class TestIsolationTest(unittest.TestCase):
     display, tests side by side broke test_xshm_monitor_late in its setup
     ("cannot add RandR monitors", dispatch 41238464885): each asan test gets
     its own X server, as Tier 2 gives each test its own through xvfb-run.
-    tsan runs in the same pool; valgrind stays one at a time (measured)."""
+    tsan runs in the same pool; valgrind runs two at a time (measured)."""
 
     def setUp(self):
         self.module = load_module()
@@ -453,18 +453,20 @@ class TestIsolationTest(unittest.TestCase):
 
     def test_private_displays_and_pool_size_per_tool(self):
         # tsan measured in a pool (41275822723): unit tests 20.3 -> 8.2 min.
-        # valgrind in a pool (41275824985) was 1.6x faster but 9 tests newly
-        # failed on timing, so it stays one at a time.
+        # valgrind with 4 jobs (41275824985) broke 9 tests on timing; with 2
+        # jobs on 4 cores the pool part ran 1.78x faster and broke none, and
+        # serial no longer fits the job's 150 minutes with every test built
+        # without ASan (143 min and not done, 41281819710).
         self.assertTrue(self.module.private_displays("asan"))
         self.assertTrue(self.module.private_displays("tsan"))
-        self.assertFalse(self.module.private_displays("valgrind"))
+        self.assertTrue(self.module.private_displays("valgrind"))
         with patch.dict(os.environ, {}):
             os.environ.pop("SANITIZE_JOBS", None)
             self.assertEqual(self.module.unit_test_jobs("asan"), os.cpu_count() or 1)
             self.assertEqual(self.module.unit_test_jobs("tsan"), os.cpu_count() or 1)
-            self.assertEqual(self.module.unit_test_jobs("valgrind"), 1)
-        with patch.dict(os.environ, {"SANITIZE_JOBS": "2"}):
             self.assertEqual(self.module.unit_test_jobs("valgrind"), 2)
+        with patch.dict(os.environ, {"SANITIZE_JOBS": "1"}):
+            self.assertEqual(self.module.unit_test_jobs("valgrind"), 1)
 
     def test_run_unit_tests_uses_the_tool_settings(self):
         seen = {}
@@ -478,7 +480,7 @@ class TestIsolationTest(unittest.TestCase):
         ):
             os.environ.pop("SANITIZE_JOBS", None)
             self.module.run_unit_tests("valgrind", self.layout)
-        self.assertEqual(seen, {"tool": "valgrind", "jobs": 1, "private_displays": False})
+        self.assertEqual(seen, {"tool": "valgrind", "jobs": 2, "private_displays": True})
 
 
 class ParallelUnitTestsTest(unittest.TestCase):
