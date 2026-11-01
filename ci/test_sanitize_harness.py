@@ -112,6 +112,19 @@ ZCCACHE_REFUSAL = (
     "compile without the daemon.\n"
 )
 
+# zccache exits 1 when its daemon drops a compile in flight, with no compiler
+# output; CI hit both forms on PR #3454 (run 41355493181, #3463). Tier 2's
+# validate.sh already rebuilds on them (#1545, #3346).
+ZCCACHE_DROPPED = (
+    "zccache[err][R]: daemon response failure (closed-connection): lost connection to daemon "
+    "(no response). The requested tool returned no status; run 'zccache status' then retry.\n"
+    "FAILED: [code=1] frontend/api/CMakeFiles/obs-frontend-api.dir/cmake_pch.hxx.gch \n"
+)
+ZCCACHE_RESET = (
+    "zccache[err][R]: broken connection to daemon: I/O error: Connection reset by peer (os error 104)\n"
+    "FAILED: [code=1] libobs/CMakeFiles/libobs.dir/build/libobs.rust-variadic+.h.c.o \n"
+)
+
 
 # Tests whose checks depend on wall-clock timing and fail when four ASan
 # processes share four cores (dispatch 41242258179, #3238). They hold the
@@ -351,6 +364,13 @@ class SanitizeHarnessTest(unittest.TestCase):
         )
         self.assertFalse(self.module.zccache_refused_uncached(log))
 
+    def test_a_compile_the_zccache_daemon_dropped_is_recognised(self):
+        log = self.out / "build.log"
+        for failure in (ZCCACHE_DROPPED, ZCCACHE_RESET):
+            with self.subTest(failure=failure.splitlines()[0]):
+                log.write_text(failure, encoding="utf-8")
+                self.assertTrue(self.module.zccache_refused_uncached(log))
+
     def layout(self):
         return self.module.Layout(
             root=self.out,
@@ -396,6 +416,16 @@ class SanitizeHarnessTest(unittest.TestCase):
         builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
         self.assertEqual(builds, [None, "1"], "one rebuild, with ZCCACHE_DISABLE=1")
         self.assertEqual(len(os.environ), builds_before + 1, "nothing but ZCCACHE_DISABLE is exported")
+
+    def test_asan_rebuilds_uncached_when_the_zccache_daemon_drops_a_compile(self):
+        for failure in (ZCCACHE_DROPPED, ZCCACHE_RESET):
+            with self.subTest(failure=failure.splitlines()[0]):
+                self.addCleanup(os.environ.pop, "ZCCACHE_DISABLE", None)
+                os.environ.pop("ZCCACHE_DISABLE", None)
+                libdir, calls = self.drive_build(failure, recover=True)
+                self.assertIsNotNone(libdir, "the dropped compile must be retried uncached")
+                builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
+                self.assertEqual(builds, [None, "1"], "one rebuild, with ZCCACHE_DISABLE=1")
 
     def test_a_real_compile_error_is_not_retried(self):
         self.addCleanup(os.environ.pop, "ZCCACHE_DISABLE", None)
