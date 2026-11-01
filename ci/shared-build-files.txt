@@ -74,6 +74,7 @@ libobs/cmake/rust-hidden.cmake
 libobs/cmake/rust-target.cmake
 libobs/cmake/rust.cmake
 libobs/cmake/sources.cmake
+rust/obs-audio-controls/src/platform/mod.rs # new platform boundary for the AVX2 true peak (#3415)
 rust/obs-build/build.rs
 rust/obs-build/src/platform/mod.rs
 rust/obs-c-oracle/build.rs
