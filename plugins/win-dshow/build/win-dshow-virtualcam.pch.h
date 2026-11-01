@@ -10,3 +10,9 @@
 #include <util/platform.h>
 #include "util/threading.h"
 #include "plugins/win-dshow/shared-memory-queue.h"
+#define COBJMACROS
+#include <windows.h>
+#include <mmdeviceapi.h>
+#include <audioclient.h>
+#include <propsys.h>
+#include "plugins/win-dshow/vmic-route.h"

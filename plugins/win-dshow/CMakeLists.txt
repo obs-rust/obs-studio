@@ -57,7 +57,7 @@ add_subdirectory(virtualcam-module)
 
 if(TARGET OBS::virtualcam AND TARGET OBS::virtualcam-guid)
   target_sources(win-dshow PRIVATE build/win-dshow.virtualcam-windows+.h.c)
-  target_link_libraries(win-dshow PRIVATE OBS::virtualcam-guid)
+  target_link_libraries(win-dshow PRIVATE OBS::virtualcam-guid ole32)
   target_compile_definitions(win-dshow PRIVATE VIRTUALCAM_AVAILABLE)
 
   add_dependencies(win-dshow obs-virtualcam-module)
