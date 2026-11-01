@@ -90,6 +90,10 @@ class BuildErrorsTest(unittest.TestCase):
         "to daemon (no response). The requested tool returned no status; run '\\''zccache status'\\'' then retry.'\n"
         "    echo 'zccache[info][Q]: daemon under load: compiling, 2 compiles in flight'\n"
         "    printf '\\033[31mFAILED: [code=1] \\033[0mfirst.o\\n'",
+        # The daemon reset the connection mid-compile: exit 1 again, with only
+        # this line (run 41268090636, #3346).
+        "echo 'zccache[err][R]: broken connection to daemon: I/O error: Connection reset by peer (os error 104)'\n"
+        "    printf '\\033[31mFAILED: [code=1] \\033[0mfirst.o\\n'",
     )
 
     def test_recovery_preserves_first_failure_and_keeps_one_retry(self):
@@ -121,7 +125,9 @@ zccache() { echo "daemon diagnostic: $*"; return "$daemon_status"; }
                     capture_output=True, text=True)
                 self.assertEqual(result.returncode, retry_status)
                 self.assertEqual(Path(directory, 'build.calls').read_text().strip(), '2')
-                marker = 'original daemon failure' if 'code=125' in first else 'daemon response failure (closed-connection)'
+                marker = ('original daemon failure' if 'code=125' in first
+                          else 'broken connection to daemon' if 'broken connection' in first
+                          else 'daemon response failure (closed-connection)')
                 self.assertIn(marker, result.stdout)
                 self.assertIn('daemon diagnostic: status', result.stdout)
                 self.assertIn('daemon diagnostic: stop', result.stdout)
