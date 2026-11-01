@@ -241,6 +241,7 @@ fn set_settings_merges() {
 #[test]
 fn item_visibility() {
     let (fake, mut s) = with_source("bg");
+    add(&mut s, "bg");
     let args = json!({"scene": "A", "source": "bg", "visible": false});
     assert_eq!(
         call(&mut s, "scene_item_set_visible", &args),
@@ -258,6 +259,7 @@ fn item_visibility() {
 #[test]
 fn item_transform_is_partial() {
     let (fake, mut s) = with_source("bg");
+    add(&mut s, "bg");
     let args =
         json!({"scene": "A", "source": "bg", "position": {"x": 1.5, "y": -2}, "rotation": 90});
     assert!(!call(&mut s, "scene_item_set_transform", &args).0);

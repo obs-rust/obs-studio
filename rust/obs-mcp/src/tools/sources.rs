@@ -193,6 +193,19 @@ fn item_reply(scene: &str, item: &ItemRef, extra: Value) -> Value {
     Value::Object(out)
 }
 
+/// The JSON form of a listed item.
+fn item_json(item: &ItemInfo) -> Value {
+    let pair = |(x, y): (f64, f64)| json!({ "x": x, "y": y });
+    json!({
+        "item": item.id,
+        "source": item.source,
+        "visible": item.visible,
+        "position": pair(item.position),
+        "scale": pair(item.scale),
+        "rotation": item.rotation,
+    })
+}
+
 /// Schema for an `{x, y}` pair.
 fn pair_schema(description: &str) -> Value {
     json!({
@@ -334,7 +347,26 @@ impl Tool for SourceTool {
                 let kind = str_arg(arguments, "kind")?;
                 let name = str_arg(arguments, "name")?;
                 let settings = object_arg(arguments, "settings")?;
-                todo!("source_create with scene (#3338)")
+                let scene = match arguments.get("scene") {
+                    None => None,
+                    Some(_) => Some(str_arg(arguments, "scene")?),
+                };
+                let position = pair_arg(arguments, "position")?;
+                if scene.is_none() && position.is_some() {
+                    return Err("`position` needs `scene`, the scene to add the source to".into());
+                }
+                self.backend.create(kind, name, settings)?;
+                let mut out = json!({ "name": name, "kind": kind });
+                if let Some(scene) = scene {
+                    let item = self.backend.add_item(scene, name, position).map_err(|e| {
+                        format!(
+                            "created source '{name}' but could not add it to scene '{scene}': {e}"
+                        )
+                    })?;
+                    out["scene"] = scene.into();
+                    out["item"] = item.id.into();
+                }
+                out
             }
             Op::SetSettings => {
                 let name = str_arg(arguments, "name")?;
@@ -342,7 +374,20 @@ impl Tool for SourceTool {
                 self.backend.set_settings(name, settings)?;
                 json!({ "name": name })
             }
-            Op::ItemAdd | Op::ItemsList => todo!("scene_item_add, scene_items_list (#3338)"),
+            Op::ItemAdd => {
+                let scene = str_arg(arguments, "scene")?;
+                let source = str_arg(arguments, "source")?;
+                let position = pair_arg(arguments, "position")?;
+                let item = self.backend.add_item(scene, source, position)?;
+                let mut out = item_json(&item);
+                out["scene"] = scene.into();
+                out
+            }
+            Op::ItemsList => {
+                let scene = str_arg(arguments, "scene")?;
+                let items: Vec<Value> = self.backend.items(scene)?.iter().map(item_json).collect();
+                json!({ "scene": scene, "items": items })
+            }
             Op::ItemSetVisible => {
                 let scene = str_arg(arguments, "scene")?;
                 let item = item_arg(arguments)?;

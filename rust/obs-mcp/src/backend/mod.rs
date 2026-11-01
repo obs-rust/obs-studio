@@ -219,6 +219,11 @@ impl SceneBackend for ObsBackend {
     fn create(&self, name: &str) -> Result<(), String> {
         Self::ensure_free(name)?;
         let scene = Source::create_scene(name)?;
+        // A client that makes the first scene wants to see it: with no
+        // program scene the new one becomes the program scene (#3339).
+        if self.current().is_none() {
+            ffi::set_program(Some(&scene));
+        }
         self.owned.borrow_mut().insert(name.to_owned(), scene);
         Ok(())
     }
@@ -257,22 +262,26 @@ impl SourceBackend for ObsBackend {
 
     fn add_item(
         &self,
-        _scene: &str,
-        _source: &str,
-        _position: Option<(f64, f64)>,
+        scene: &str,
+        source: &str,
+        position: Option<(f64, f64)>,
     ) -> Result<ItemInfo, String> {
-        todo!("obs_scene_add (#3338)")
+        let position = position.map(|(x, y)| (narrow(x), narrow(y)));
+        Self::scene(scene)?
+            .add_item(source, position)
+            .map(item_info)
     }
 
-    fn items(&self, _scene: &str) -> Result<Vec<ItemInfo>, String> {
-        todo!("obs_scene_enum_items (#3338)")
+    fn items(&self, scene: &str) -> Result<Vec<ItemInfo>, String> {
+        Ok(Self::scene(scene)?
+            .items()?
+            .into_iter()
+            .map(item_info)
+            .collect())
     }
 
     fn set_item_visible(&self, scene: &str, item: &ItemRef, visible: bool) -> Result<(), String> {
-        let ItemRef::Source(source) = item else {
-            todo!("items by id (#3338)")
-        };
-        Self::scene(scene)?.with_item(source, |item| item.set_visible(visible))
+        Self::scene(scene)?.with_item(&item_key(item), |item| item.set_visible(visible))
     }
 
     fn set_item_transform(
@@ -281,10 +290,7 @@ impl SourceBackend for ObsBackend {
         item: &ItemRef,
         transform: &Transform,
     ) -> Result<(), String> {
-        let ItemRef::Source(source) = item else {
-            todo!("items by id (#3338)")
-        };
-        Self::scene(scene)?.with_item(source, |item| {
+        Self::scene(scene)?.with_item(&item_key(item), |item| {
             let (mut pos, mut scale, mut rot) = item.transform();
             if let Some((x, y)) = transform.position {
                 pos = (narrow(x), narrow(y));
@@ -297,6 +303,27 @@ impl SourceBackend for ObsBackend {
             }
             item.set_transform(pos, scale, rot);
         })
+    }
+}
+
+/// The libobs lookup key for `item`.
+fn item_key(item: &ItemRef) -> ffi::ItemKey<'_> {
+    match item {
+        ItemRef::Id(id) => ffi::ItemKey::Id(*id),
+        ItemRef::Source(name) => ffi::ItemKey::Source(name),
+    }
+}
+
+/// The tool-facing form of an item snapshot.
+fn item_info(item: ffi::ItemState) -> ItemInfo {
+    let pair = |(x, y): (f32, f32)| (f64::from(x), f64::from(y));
+    ItemInfo {
+        id: item.id,
+        source: item.source,
+        visible: item.visible,
+        position: pair(item.position),
+        scale: pair(item.scale),
+        rotation: f64::from(item.rotation),
     }
 }
 

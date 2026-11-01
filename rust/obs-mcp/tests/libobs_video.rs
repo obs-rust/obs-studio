@@ -263,6 +263,7 @@ fn red_scene_over_mcp_tools(
     backend: &obs_mcp::backend::ObsBackend,
     size: (u32, u32),
 ) {
+    use obs_mcp::tools::scenes::SceneBackend as _;
     let result = tool(server, "scene_create", json!({"name": "Red Scene"}));
     assert_eq!(result["isError"], false, "{result}");
     // Main is already the program scene, so the new one is not made current.

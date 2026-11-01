@@ -82,7 +82,10 @@ impl Tool for SceneTool {
             Op::List => "List the names of all scenes, in order.",
             Op::GetCurrent => "Get the name of the current program scene, or null if none.",
             Op::SetCurrent => "Make the named scene the current program scene.",
-            Op::Create => "Create a new empty scene with the given name.",
+            Op::Create => {
+                "Create a new empty scene with the given name. When there is no program scene \
+                 yet, the new scene becomes the current program scene."
+            }
             Op::Remove => "Remove the scene with the given name.",
         }
     }
