@@ -27,6 +27,9 @@
 /* graphics/graphics-ffmpeg-rgba64.c (ported; graphics-ffmpeg.c calls it) */
 #include "graphics/graphics-ffmpeg-rgba64.h"
 
+/* graphics/graphics-ffmpeg-route.c (ported; graphics-ffmpeg.c calls it) */
+#include "graphics/graphics-ffmpeg-route.h"
+
 /* media-io/audio-resampler-ffmpeg.c */
 #include "util/bmem.h"
 #include "media-io/audio-resampler.h"

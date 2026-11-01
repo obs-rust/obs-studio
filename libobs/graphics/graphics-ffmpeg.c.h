@@ -137,20 +137,7 @@ static void *ffmpeg_image_copy_data_straight(struct ffmpeg_image *info, AVFrame 
 	const size_t totalsize = (size_t)info->cy * linesize;
 	void *data = bmalloc(totalsize);
 
-	const size_t src_linesize = (size_t)frame->linesize[0];
-	if (linesize != src_linesize) {
-		const size_t min_line = linesize < src_linesize ? linesize : src_linesize;
-
-		uint8_t *dst = data;
-		const uint8_t *src = frame->data[0];
-		for (int y = 0; y < info->cy; y++) {
-			memcpy(dst, src, min_line);
-			dst += linesize;
-			src += src_linesize;
-		}
-	} else {
-		memcpy(data, frame->data[0], totalsize);
-	}
+	gs_ffmpeg_image_copy_rows(data, frame->data[0], (size_t)info->cx, (size_t)info->cy, (size_t)frame->linesize[0]);
 
 	return data;
 }
@@ -212,30 +199,30 @@ static int ffmpeg_image_get_orientation(const AVFrame *frame)
 #endif
 }
 
-/* The JPEG decoders output the deprecated full-range YUVJ formats. swscale
- * still takes them, but logs "deprecated pixel format used" for every
- * context made from one, so each decoded JPEG logged it once (#2334). Give
- * swscale the matching YUV format and say the range is full instead; the
- * pixels come out the same. Other formats are passed as they are. */
-static enum AVPixelFormat ffmpeg_image_sws_format(enum AVPixelFormat format, bool *full_range)
-{
-	*full_range = true;
-	switch (format) {
-	case AV_PIX_FMT_YUVJ420P:
-		return AV_PIX_FMT_YUV420P;
-	case AV_PIX_FMT_YUVJ422P:
-		return AV_PIX_FMT_YUV422P;
-	case AV_PIX_FMT_YUVJ444P:
-		return AV_PIX_FMT_YUV444P;
-	case AV_PIX_FMT_YUVJ440P:
-		return AV_PIX_FMT_YUV440P;
-	case AV_PIX_FMT_YUVJ411P:
-		return AV_PIX_FMT_YUV411P;
-	default:
-		*full_range = false;
-		return format;
-	}
-}
+/* graphics-ffmpeg-route.c gives the pixel formats, the texture formats and
+ * the alpha modes as their values. */
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV420P == AV_PIX_FMT_YUV420P, "AV_PIX_FMT_YUV420P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV422P == AV_PIX_FMT_YUV422P, "AV_PIX_FMT_YUV422P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV444P == AV_PIX_FMT_YUV444P, "AV_PIX_FMT_YUV444P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV411P == AV_PIX_FMT_YUV411P, "AV_PIX_FMT_YUV411P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUVJ420P == AV_PIX_FMT_YUVJ420P, "AV_PIX_FMT_YUVJ420P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUVJ422P == AV_PIX_FMT_YUVJ422P, "AV_PIX_FMT_YUVJ422P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUVJ444P == AV_PIX_FMT_YUVJ444P, "AV_PIX_FMT_YUVJ444P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_RGBA == AV_PIX_FMT_RGBA, "AV_PIX_FMT_RGBA");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_BGRA == AV_PIX_FMT_BGRA, "AV_PIX_FMT_BGRA");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV440P == AV_PIX_FMT_YUV440P, "AV_PIX_FMT_YUV440P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUVJ440P == AV_PIX_FMT_YUVJ440P, "AV_PIX_FMT_YUVJ440P");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_RGBA64BE == AV_PIX_FMT_RGBA64BE, "AV_PIX_FMT_RGBA64BE");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_BGR0 == AV_PIX_FMT_BGR0, "AV_PIX_FMT_BGR0");
+_Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUVJ411P == AV_PIX_FMT_YUVJ411P, "AV_PIX_FMT_YUVJ411P");
+_Static_assert(GS_FFMPEG_IMAGE_GS_RGBA == GS_RGBA, "GS_RGBA");
+_Static_assert(GS_FFMPEG_IMAGE_GS_BGRX == GS_BGRX, "GS_BGRX");
+_Static_assert(GS_FFMPEG_IMAGE_GS_BGRA == GS_BGRA, "GS_BGRA");
+_Static_assert(GS_FFMPEG_IMAGE_GS_RGBA16 == GS_RGBA16, "GS_RGBA16");
+_Static_assert(GS_FFMPEG_IMAGE_ALPHA_STRAIGHT == GS_IMAGE_ALPHA_STRAIGHT, "GS_IMAGE_ALPHA_STRAIGHT");
+_Static_assert(GS_FFMPEG_IMAGE_ALPHA_PREMULTIPLY_SRGB == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB,
+	       "GS_IMAGE_ALPHA_PREMULTIPLY_SRGB");
+_Static_assert(GS_FFMPEG_IMAGE_ALPHA_PREMULTIPLY == GS_IMAGE_ALPHA_PREMULTIPLY, "GS_IMAGE_ALPHA_PREMULTIPLY");
 
 /* graphics-ffmpeg-rgba64.c gives the alpha modes as their values. */
 _Static_assert(GS_FFMPEG_RGBA64_ALPHA_STRAIGHT == GS_IMAGE_ALPHA_STRAIGHT, "GS_IMAGE_ALPHA_STRAIGHT");
@@ -250,49 +237,51 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 	int ret = 0;
 
 	const int orient = ffmpeg_image_get_orientation(frame);
+	const struct gs_ffmpeg_image_plan plan = gs_ffmpeg_image_plan(info->format, (int)alpha_mode);
 
-	if (info->format == AV_PIX_FMT_BGR0) {
+	switch (plan.route) {
+	case GS_FFMPEG_IMAGE_ROUTE_COPY:
 		data = ffmpeg_image_copy_data_straight(info, frame);
-	} else if (info->format == AV_PIX_FMT_RGBA || info->format == AV_PIX_FMT_BGRA) {
-		if (alpha_mode == GS_IMAGE_ALPHA_STRAIGHT) {
-			data = ffmpeg_image_copy_data_straight(info, frame);
-		} else {
-			const size_t linesize = (size_t)info->cx * 4;
-			const size_t totalsize = (size_t)info->cy * linesize;
-			data = bmalloc(totalsize);
-			const size_t src_linesize = (size_t)frame->linesize[0];
-			const size_t min_line = linesize < src_linesize ? linesize : src_linesize;
-			uint8_t *dst = data;
-			const uint8_t *src = frame->data[0];
-			const size_t row_elements = min_line >> 2;
-			if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB) {
-				for (int y = 0; y < info->cy; y++) {
-					gs_premultiply_xyza_srgb_loop_restrict(dst, src, row_elements);
-					dst += linesize;
-					src += src_linesize;
-				}
-			} else if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY) {
-				for (int y = 0; y < info->cy; y++) {
-					gs_premultiply_xyza_loop_restrict(dst, src, row_elements);
-					dst += linesize;
-					src += src_linesize;
-				}
+		break;
+	case GS_FFMPEG_IMAGE_ROUTE_PREMULTIPLY_ROWS: {
+		const size_t linesize = (size_t)info->cx * 4;
+		const size_t totalsize = (size_t)info->cy * linesize;
+		data = bmalloc(totalsize);
+		const size_t src_linesize = (size_t)frame->linesize[0];
+		const size_t min_line = linesize < src_linesize ? linesize : src_linesize;
+		uint8_t *dst = data;
+		const uint8_t *src = frame->data[0];
+		const size_t row_elements = min_line >> 2;
+		if (plan.premultiply == GS_FFMPEG_IMAGE_PREMULTIPLY_SRGB) {
+			for (int y = 0; y < info->cy; y++) {
+				gs_premultiply_xyza_srgb_loop_restrict(dst, src, row_elements);
+				dst += linesize;
+				src += src_linesize;
+			}
+		} else if (plan.premultiply == GS_FFMPEG_IMAGE_PREMULTIPLY_LINEAR) {
+			for (int y = 0; y < info->cy; y++) {
+				gs_premultiply_xyza_loop_restrict(dst, src, row_elements);
+				dst += linesize;
+				src += src_linesize;
 			}
 		}
-	} else if (info->format == AV_PIX_FMT_RGBA64BE) {
+		break;
+	}
+	case GS_FFMPEG_IMAGE_ROUTE_RGBA64: {
 		const size_t dst_linesize = (size_t)info->cx * 4;
 		data = bmalloc((size_t)info->cy * dst_linesize);
 		gs_ffmpeg_image_rgba64be_rows(data, frame->data[0], info->cx, info->cy, (size_t)frame->linesize[0],
 					      (int)alpha_mode);
 
-		info->format = AV_PIX_FMT_RGBA;
-	} else {
+		info->format = (enum AVPixelFormat)plan.out_format;
+		break;
+	}
+	default: {
+		/* GS_FFMPEG_IMAGE_ROUTE_SWS */
 		static const enum AVPixelFormat format = AV_PIX_FMT_BGRA;
 
-		bool full_range;
-		const enum AVPixelFormat src_format = ffmpeg_image_sws_format(info->format, &full_range);
-		sws_ctx = sws_getContext(info->cx, info->cy, src_format, info->cx, info->cy, format, SWS_POINT, NULL,
-					 NULL, NULL);
+		sws_ctx = sws_getContext(info->cx, info->cy, (enum AVPixelFormat)plan.sws_format, info->cx, info->cy,
+					 format, SWS_POINT, NULL, NULL, NULL);
 		if (!sws_ctx) {
 			blog(LOG_WARNING,
 			     "Failed to create scale context "
@@ -301,7 +290,7 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 			goto fail;
 		}
 
-		if (full_range) {
+		if (plan.full_range) {
 			/* What swscale sets up for a YUVJ format itself:
 			 * full range in, its default (BT.601) matrix. */
 			const int *coeff = sws_getCoefficients(SWS_CS_DEFAULT);
@@ -339,13 +328,15 @@ static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *fra
 
 		av_freep(pointers);
 
-		if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY_SRGB) {
+		if (plan.premultiply == GS_FFMPEG_IMAGE_PREMULTIPLY_SRGB) {
 			gs_premultiply_xyza_srgb_loop(data, (size_t)info->cx * (size_t)info->cy);
-		} else if (alpha_mode == GS_IMAGE_ALPHA_PREMULTIPLY) {
+		} else if (plan.premultiply == GS_FFMPEG_IMAGE_PREMULTIPLY_LINEAR) {
 			gs_premultiply_xyza_loop(data, (size_t)info->cx * (size_t)info->cy);
 		}
 
-		info->format = format;
+		info->format = (enum AVPixelFormat)plan.out_format;
+		break;
+	}
 	}
 
 	data = ffmpeg_image_orient(info, data, orient);
@@ -412,22 +403,6 @@ void gs_init_image_deps(void) {}
 
 void gs_free_image_deps(void) {}
 
-static inline enum gs_color_format convert_format(enum AVPixelFormat format)
-{
-	switch (format) {
-	case AV_PIX_FMT_RGBA:
-		return GS_RGBA;
-	case AV_PIX_FMT_BGRA:
-		return GS_BGRA;
-	case AV_PIX_FMT_BGR0:
-		return GS_BGRX;
-	case AV_PIX_FMT_RGBA64BE:
-		return GS_RGBA16;
-	default:
-		return GS_BGRX;
-	}
-}
-
 uint8_t *gs_create_texture_file_data(const char *file, enum gs_color_format *format, uint32_t *cx_out, uint32_t *cy_out)
 {
 	struct ffmpeg_image image;
@@ -436,7 +411,7 @@ uint8_t *gs_create_texture_file_data(const char *file, enum gs_color_format *for
 	if (ffmpeg_image_init(&image, file)) {
 		data = ffmpeg_image_decode(&image, GS_IMAGE_ALPHA_STRAIGHT);
 		if (data) {
-			*format = convert_format(image.format);
+			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;
 			*cy_out = (uint32_t)image.cy;
 		}
@@ -464,7 +439,7 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 	if (ffmpeg_image_init(&image, file)) {
 		data = ffmpeg_image_decode(&image, alpha_mode);
 		if (data) {
-			*format = convert_format(image.format);
+			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;
 			*cy_out = (uint32_t)image.cy;
 			*space = GS_CS_SRGB;

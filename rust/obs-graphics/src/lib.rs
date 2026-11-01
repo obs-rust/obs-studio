@@ -5,8 +5,9 @@
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
-//! ([`image_orient`]), and `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
-//! image rows ([`image_rgba64`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
+//! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
+//! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
+//! image decoder's pixel route ([`image_route`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
 //! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion, and
 //! `graphics-ffmpeg-host-wic-checks.c.h`, the file-name check and the
 //! pixel-format pick ([`image_pq_scrgb`]).
@@ -36,6 +37,7 @@ pub mod image_file;
 pub mod image_orient;
 pub mod image_pq_scrgb;
 pub mod image_rgba64;
+pub mod image_route;
 pub mod immediate;
 pub mod lzw;
 pub mod math_extra;

@@ -166,6 +166,7 @@
   "graphics/graphics-ffmpeg-host.h",
   "graphics/graphics-ffmpeg-orient.h",
   "graphics/graphics-ffmpeg-rgba64.h",
+  "graphics/graphics-ffmpeg-route.h",
   "graphics/graphics-immediate.h",
   "graphics/graphics-internal.h",
   "graphics/graphics-state-stacks.h",

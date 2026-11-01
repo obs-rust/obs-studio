@@ -1668,6 +1668,23 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_ffmpeg_route_steps": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_route_steps.c",
+        "libobs/graphics/graphics-ffmpeg-route.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-graphics-ffmpeg-route.pch.h",
+        "libobs/graphics/graphics-ffmpeg-route.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_ffmpeg_wic_checks": {
       "sources": [
         "libobs/graphics/graphics-ffmpeg-host-wic-checks.c.h",
@@ -6702,6 +6719,12 @@
     },
     "test_graphics_ffmpeg_rgba64_steps": {
       "target": "test_graphics_ffmpeg_rgba64_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_ffmpeg_route_steps": {
+      "target": "test_graphics_ffmpeg_route_steps",
       "command": [
         "${target}"
       ]

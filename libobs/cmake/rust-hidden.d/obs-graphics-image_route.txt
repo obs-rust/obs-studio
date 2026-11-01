@@ -1,0 +1,7 @@
+# graphics/graphics-ffmpeg-route.c: ffmpeg_image_reformat_frame() and the
+# texture loaders in graphics-ffmpeg.c call them inside libobs. Declared in
+# graphics-ffmpeg-route.h without EXPORT, so the shims stay hidden the same
+# way.
+gs_ffmpeg_image_color_format
+gs_ffmpeg_image_copy_rows
+gs_ffmpeg_image_plan
