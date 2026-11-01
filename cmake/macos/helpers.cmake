@@ -177,6 +177,17 @@ function(set_target_properties_obs target)
         )
       endif()
 
+      if(TARGET obs-audio-plugin)
+        add_custom_command(
+          TARGET ${target}
+          POST_BUILD
+          COMMAND
+            "${CMAKE_COMMAND}" -E copy_directory "$<TARGET_BUNDLE_DIR:obs-audio-plugin>"
+            "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources/$<TARGET_BUNDLE_DIR_NAME:obs-audio-plugin>"
+          COMMENT "Add the OBS Virtual Microphone HAL plug-in to the application bundle"
+        )
+      endif()
+
       if(TARGET obspython)
         add_custom_command(
           TARGET ${target}
@@ -288,7 +299,7 @@ function(set_target_properties_obs target)
         PROPERTIES PRODUCT_NAME ${target}
                    PRODUCT_BUNDLE_IDENTIFIER com.obsproject.${target}
       )
-    elseif(target STREQUAL obs-dal-plugin)
+    elseif(target STREQUAL obs-dal-plugin OR target STREQUAL obs-audio-plugin)
       set_target_properties(${target} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
       set_property(GLOBAL APPEND PROPERTY _OBS_DEPENDENCIES ${target})
       return()

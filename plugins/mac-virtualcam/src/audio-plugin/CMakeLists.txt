@@ -23,6 +23,8 @@ set_target_properties_obs(
              BUNDLE TRUE BUNDLE_EXTENSION driver MACOSX_BUNDLE_INFO_PLIST
                          "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/Info.plist.in"
              LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/../../"
+             MACOSX_BUNDLE_SHORT_VERSION_STRING "${OBS_VERSION_CANONICAL}"
+             MACOSX_BUNDLE_BUNDLE_VERSION "${OBS_BUILD_NUMBER}"
 )
 
 set_property(TARGET obs-audio-plugin PROPERTY OSX_ARCHITECTURES x86_64 arm64)

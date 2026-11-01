@@ -21,9 +21,15 @@ enum vmic_driver_action {
 static inline enum vmic_driver_action vmic_driver_action(const char *installed_version, const char *installed_build,
 							 const char *bundled_version, const char *bundled_build)
 {
-	(void)installed_version;
-	(void)installed_build;
-	(void)bundled_version;
-	(void)bundled_build;
+	if (!bundled_version) {
+		return installed_version ? VMIC_DRIVER_OK : VMIC_DRIVER_UNAVAILABLE;
+	}
+	if (!installed_version) {
+		return VMIC_DRIVER_INSTALL;
+	}
+	if (strcmp(installed_version, bundled_version) != 0 || !installed_build || !bundled_build ||
+	    strcmp(installed_build, bundled_build) != 0) {
+		return VMIC_DRIVER_UPDATE;
+	}
 	return VMIC_DRIVER_OK;
 }

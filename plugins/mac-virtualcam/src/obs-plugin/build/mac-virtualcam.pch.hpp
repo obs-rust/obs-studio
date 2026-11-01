@@ -25,4 +25,5 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "vmic-install.h"
 #include "vmic-shm.h"
