@@ -39,11 +39,14 @@ HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent.parent
 # One test binary gets 10 minutes, the same bound the shell's `timeout 600` set.
 TEST_TIMEOUT = 600
-# tool -> (compile flags, CMAKE_BUILD_TYPE)
+# tool -> (compile flags, CMAKE_BUILD_TYPE). -ffp-contract=off: the runner's gcc
+# fuses a multiply and an add into one FMA when nothing forbids it, the Tier 2
+# image's gcc does not, and Rust never does, so float results would depend on
+# the host (#3362).
 TOOL_FLAGS = {
-    "asan": ("-fsanitize=address,undefined -fno-omit-frame-pointer", "RelWithDebInfo"),
-    "tsan": ("-fsanitize=thread -fno-omit-frame-pointer", "RelWithDebInfo"),
-    "valgrind": ("-fno-omit-frame-pointer", "Debug"),
+    "asan": ("-fsanitize=address,undefined -fno-omit-frame-pointer -ffp-contract=off", "RelWithDebInfo"),
+    "tsan": ("-fsanitize=thread -fno-omit-frame-pointer -ffp-contract=off", "RelWithDebInfo"),
+    "valgrind": ("-fno-omit-frame-pointer -ffp-contract=off", "Debug"),
 }
 # test_formatted_filename and test_utf8 hardcode -fsanitize=address,undefined
 # (test/cmocka/CMakeLists.txt, obs-rust/obs-studio#159), which TSan rejects and
