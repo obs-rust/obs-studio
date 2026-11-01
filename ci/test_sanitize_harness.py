@@ -116,7 +116,12 @@ ZCCACHE_REFUSAL = (
 # processes share four cores (dispatch 41242258179, #3238). They hold the
 # ctest RESOURCE_LOCK "timing", so the asan pool runs them alone after the
 # others; in Tier 2, ctest only keeps them from overlapping each other.
-TIMING_TESTS_D = ("test_async_delay_audio", "test_dock_proportions", "test_slideshow_mem_cap")
+TIMING_TESTS_D = (
+    "test_async_delay_audio",
+    "test_dock_proportions",
+    "test_media_cover_art_monitor",
+    "test_slideshow_mem_cap",
+)
 TIMING_TESTS_GRAPH = ("test_deinterlace_mode_load",)
 TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 
