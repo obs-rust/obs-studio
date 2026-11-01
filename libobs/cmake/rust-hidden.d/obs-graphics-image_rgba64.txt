@@ -1,0 +1,5 @@
+# graphics/graphics-ffmpeg-rgba64.c: ffmpeg_image_reformat_frame() in
+# graphics-ffmpeg.c calls it inside libobs. Declared in
+# graphics-ffmpeg-rgba64.h without EXPORT, so the shim stays hidden the same
+# way.
+gs_ffmpeg_image_rgba64be_rows

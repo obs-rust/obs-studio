@@ -1566,6 +1566,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_ffmpeg_rgba64_steps": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_rgba64_steps.c",
+        "libobs/graphics/graphics-ffmpeg-rgba64.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-ffmpeg-rgba64.h",
+        "libobs/graphics/srgb.h"
+      ],
+      "libraries": [
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_immediate_steps": {
       "sources": [
         "libobs/graphics/graphics-immediate.c.h",
@@ -6438,6 +6461,12 @@
     },
     "test_graphics_ffmpeg_pq_steps": {
       "target": "test_graphics_ffmpeg_pq_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_ffmpeg_rgba64_steps": {
+      "target": "test_graphics_ffmpeg_rgba64_steps",
       "command": [
         "${target}"
       ]
