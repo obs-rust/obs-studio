@@ -10,8 +10,13 @@
 //! after them, and every byte value in every position of every listed name
 //! (so the core's ASCII folding is C's `tolower()` in the C locale, over
 //! all 255 bytes); the rating over every priority from -1 to 4, the four
-//! flags and title results from -300 to 300 and at the ends of `int`; and
-//! proptests.
+//! flags and title results from -300 to 300 and at the ends of `int`; the
+//! string codec (encode, decode and split) over NULL, every string up to 5
+//! bytes over the bytes it looks at (`#`, `:`, `2`, `3`, `A`, `a` and two
+//! others), each encode at every buffer size from NULL and 0 to two past
+//! the end, the whole decoded buffer (the bytes past the new NUL included)
+//! and all six split outputs; and proptests, with the window list's
+//! `title:class:exe` round trip through the shims.
 //!
 //! No intentional difference. Excluded, because the C leaves them
 //! undefined: a title result of `INT_MIN` (`abs()`), and one whose distance
@@ -24,9 +29,10 @@ use std::ffi::{CString, c_char};
 use std::ptr;
 
 use obs_c_oracle::window_match::{
-    VALUE_NAMES, oracle_ms_window_match_is_generic_class, oracle_ms_window_match_is_internal_exe,
+    VALUE_NAMES, oracle_ms_window_match_decode, oracle_ms_window_match_encode,
+    oracle_ms_window_match_is_generic_class, oracle_ms_window_match_is_internal_exe,
     oracle_ms_window_match_is_untitled_explorer, oracle_ms_window_match_is_uwp_class,
-    oracle_ms_window_match_rating, oracle_window_match_value,
+    oracle_ms_window_match_rating, oracle_ms_window_match_split, oracle_window_match_value,
 };
 use obs_util::ffi::window_match as shim;
 use obs_util::window_match::{
@@ -320,6 +326,223 @@ fn parity_rating_grid() {
     }
 }
 
+// ---- the string codec ----
+
+type EncodeFn = unsafe extern "C" fn(*const c_char, *mut c_char, usize) -> usize;
+type DecodeFn = unsafe extern "C" fn(*mut c_char) -> usize;
+type SplitFn = unsafe extern "C" fn(*const c_char, *mut usize, *mut usize) -> bool;
+
+/// `encode` of `s` (NULL for `None`) into a NULL buffer, then into each
+/// size from 0 to two past the escaped length, the buffer full of `z`
+/// first: the returns and the whole buffers.
+fn encode_runs(encode: EncodeFn, s: Option<&CString>) -> Vec<(usize, Vec<u8>)> {
+    let sp = s.map_or(ptr::null(), |s| s.as_ptr());
+    // SAFETY: NULL or a C string; a NULL buffer is only measured.
+    let need = unsafe { encode(sp, ptr::null_mut(), 0) };
+    let mut runs = vec![(need, Vec::new())];
+    for size in 0..need + 3 {
+        let mut buf = vec![b'z'; size + 1];
+        // SAFETY: `buf` has `size` writable bytes (one more as a guard).
+        let got = unsafe { encode(sp, buf.as_mut_ptr().cast(), size) };
+        runs.push((got, buf));
+    }
+    runs
+}
+
+/// `decode` of a copy of `s` (NULL for `None`): the return and the whole
+/// buffer, its NUL included.
+fn decode_run(decode: DecodeFn, s: Option<&CString>) -> (usize, Vec<u8>) {
+    let Some(s) = s else {
+        // SAFETY: NULL is allowed.
+        return (unsafe { decode(ptr::null_mut()) }, Vec::new());
+    };
+    let mut buf = s.as_bytes_with_nul().to_vec();
+    // SAFETY: a writable NUL-terminated copy.
+    let got = unsafe { decode(buf.as_mut_ptr().cast()) };
+    (got, buf)
+}
+
+/// `split` of `s` (NULL for `None`), the outputs full of 99 first: the
+/// return and all six outputs.
+fn split_run(split: SplitFn, s: Option<&CString>) -> (bool, [usize; 3], [usize; 3]) {
+    let mut start = [99usize; 3];
+    let mut len = [99usize; 3];
+    let sp = s.map_or(ptr::null(), |s| s.as_ptr());
+    // SAFETY: NULL or a C string, and three writable `size_t`s each.
+    let got = unsafe { split(sp, start.as_mut_ptr(), len.as_mut_ptr()) };
+    (got, start, len)
+}
+
+/// Oracle, shims and core agree on the codec of `s` (NULL for `None`).
+fn check_codec(s: Option<&[u8]>) {
+    let cs = s.map(c);
+    let cs = cs.as_ref();
+    let bytes = s.unwrap_or_default();
+
+    let want = encode_runs(oracle_ms_window_match_encode, cs);
+    assert_eq!(
+        encode_runs(shim::ms_window_match_encode, cs),
+        want,
+        "encode({s:?})"
+    );
+    assert_eq!(core::encoded_len(bytes), want[0].0, "encode({s:?})");
+    assert_eq!(core::encode(bytes).len(), want[0].0, "encode({s:?})");
+    for (got, buf) in &want[1..] {
+        let mut out = vec![b'z'; buf.len()];
+        let size = buf.len() - 1;
+        assert_eq!(
+            core::encode_into(bytes, &mut out[..size]),
+            *got,
+            "encode({s:?}, {size})"
+        );
+        assert_eq!(&out, buf, "encode({s:?}, {size})");
+    }
+
+    let want = decode_run(oracle_ms_window_match_decode, cs);
+    assert_eq!(
+        decode_run(shim::ms_window_match_decode, cs),
+        want,
+        "decode({s:?})"
+    );
+    if s.is_some() {
+        let mut buf = want.1.clone();
+        let mut core_buf = cs
+            .map(|s| s.as_bytes_with_nul().to_vec())
+            .unwrap_or_default();
+        let n = core_buf.len() - 1;
+        assert_eq!(core::decode(&mut core_buf[..n]), want.0, "decode({s:?})");
+        buf.truncate(core_buf.len());
+        assert_eq!(core_buf, buf, "decode({s:?})");
+    }
+
+    let want = split_run(oracle_ms_window_match_split, cs);
+    assert_eq!(
+        split_run(shim::ms_window_match_split, cs),
+        want,
+        "split({s:?})"
+    );
+    let got = s
+        .and_then(core::split)
+        .map(|r| r.map(|r| (r.start, r.len())));
+    let want = want.0.then(|| [0, 1, 2].map(|i| (want.1[i], want.2[i])));
+    assert_eq!(got, want, "split({s:?})");
+}
+
+/// The window list's `title:class:exe` of `parts` through the shims, split
+/// and decoded back, gives each part.
+fn check_round_trip(parts: [&[u8]; 3]) {
+    let mut joined = Vec::new();
+    for (i, part) in parts.iter().enumerate() {
+        if i > 0 {
+            joined.push(b':');
+        }
+        let part = c(part);
+        // SAFETY: a C string, measured with a NULL buffer.
+        let need = unsafe { shim::ms_window_match_encode(part.as_ptr(), ptr::null_mut(), 0) };
+        let mut buf = vec![0u8; need + 1];
+        // SAFETY: `buf` has `need + 1` writable bytes.
+        let got = unsafe {
+            shim::ms_window_match_encode(part.as_ptr(), buf.as_mut_ptr().cast(), need + 1)
+        };
+        assert_eq!(got, need);
+        joined.extend_from_slice(&buf[..need]);
+    }
+    let joined = c(&joined);
+    let (ok, start, len) = split_run(shim::ms_window_match_split, Some(&joined));
+    assert!(ok, "{joined:?}");
+    for (i, want) in parts.iter().enumerate() {
+        let field = c(&joined.as_bytes()[start[i]..start[i] + len[i]]);
+        let (n, buf) = decode_run(shim::ms_window_match_decode, Some(&field));
+        assert_eq!(&buf[..n], *want, "round trip {joined:?}");
+    }
+}
+
+/// The bytes the codec looks at, and two it doesn't.
+const CODEC_BYTES: &[u8] = b"#:23Aa\xc3\x01";
+
+#[test]
+fn parity_codec_edges() {
+    check_codec(None);
+    for s in [
+        &b""[..],
+        b":",
+        b"::",
+        b":::",
+        b"a:b:c",
+        b"a:b:c:d",
+        b"a:b",
+        b"#",
+        b"#22",
+        b"#3A",
+        b"#223A",
+        b"##3A22",
+        b"x#3a",
+        b"#2222",
+        b"#3A3A",
+        b"#3#3AA",
+        b"Title: x # y:Class:app.exe",
+        b"#3A#22#3A#22:#22#3A:#",
+        b"\xe2\x80\x94:\xff:\x01",
+    ] {
+        check_codec(Some(s));
+    }
+}
+
+/// Every string up to 5 bytes over [`CODEC_BYTES`].
+#[test]
+fn parity_codec_grid() {
+    let n = CODEC_BYTES.len();
+    let mut s = Vec::new();
+    let mut item = 0u64;
+    for width in 0..=5u32 {
+        for mut k in 0..n.pow(width) {
+            item += 1;
+            if width > 3 && !obs_c_oracle::parity::keep(item) {
+                continue;
+            }
+            s.clear();
+            for _ in 0..width {
+                s.push(CODEC_BYTES[k % n]);
+                k /= n;
+            }
+            check_codec(Some(&s));
+        }
+    }
+}
+
+#[test]
+fn parity_codec_round_trip_edges() {
+    let parts: [&[u8]; 8] = [
+        b"",
+        b"#",
+        b":",
+        b"#:",
+        b"#22",
+        b"#3A",
+        b"x#3a",
+        b"\xc3\xa9#:\xff",
+    ];
+    for t in parts {
+        for cl in parts {
+            for e in parts {
+                check_round_trip([t, cl, e]);
+            }
+        }
+    }
+}
+
+/// A string rich in the bytes the codec looks at, with any other byte but
+/// NUL.
+fn codec_string() -> impl Strategy<Value = Vec<u8>> {
+    proptest::collection::vec(
+        prop_oneof![
+            4 => proptest::sample::select(b"#:23A".to_vec()),
+            1 => 1u8..=u8::MAX,
+        ],
+        0..40,
+    )
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(4096)))]
 
@@ -358,5 +581,19 @@ proptest! {
         cmp in any::<i32>().prop_filter("defined in C", |&c| defined(c)),
     ) {
         check_rating(p, uwp, generic, class_matches, exe_matches, cmp);
+    }
+
+    #[test]
+    fn parity_prop_codec(s in codec_string()) {
+        check_codec(Some(&s));
+    }
+
+    #[test]
+    fn parity_prop_codec_round_trip(
+        title in codec_string(),
+        class in codec_string(),
+        exe in codec_string(),
+    ) {
+        check_round_trip([&title, &class, &exe]);
     }
 }
