@@ -1172,7 +1172,7 @@ static void scene_save_item(obs_data_array_t *array, struct obs_scene_item *item
 	obs_data_set_string(item_data, "source_uuid", src_uuid);
 	obs_data_set_bool(item_data, "visible", item->user_visible);
 	obs_data_set_bool(item_data, "locked", item->locked);
-	obs_data_set_double(item_data, "rot", rot);
+	obs_data_set_double(item_data, "rot", (double)rot);
 	obs_data_set_vec2(item_data, "scale_ref", &item->scale_ref);
 	obs_data_set_int(item_data, "align", (int)item->align);
 	obs_data_set_int(item_data, "bounds_type", (int)item->bounds_type);
@@ -2323,7 +2323,7 @@ bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_p
 		obs_data_set_int(temp, "id", obs_sceneitem_get_id(item));
 		obs_data_set_vec2(temp, "pos", &pos);
 		obs_data_set_vec2(temp, "scale", &scale);
-		obs_data_set_double(temp, "rot", rot);
+		obs_data_set_double(temp, "rot", (double)rot);
 		obs_data_set_int(temp, "alignment", alignment);
 		obs_data_set_int(temp, "bounds_type", bounds_type);
 		obs_data_set_vec2(temp, "bounds", &bounds);

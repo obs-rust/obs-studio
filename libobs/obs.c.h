@@ -2599,8 +2599,8 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	obs_data_set_int(source_data, "mixers", mixers);
 	obs_data_set_int(source_data, "sync", sync);
 	obs_data_set_int(source_data, "flags", flags);
-	obs_data_set_double(source_data, "volume", volume);
-	obs_data_set_double(source_data, "balance", balance);
+	obs_data_set_double(source_data, "volume", (double)volume);
+	obs_data_set_double(source_data, "balance", (double)balance);
 	obs_data_set_bool(source_data, "enabled", enabled);
 	obs_data_set_bool(source_data, "muted", muted);
 	obs_data_set_bool(source_data, "push-to-mute", push_to_mute);

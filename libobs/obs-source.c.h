@@ -4108,7 +4108,7 @@ void obs_source_set_volume(obs_source_t *source, float volume)
 
 		calldata_init_fixed(&data, stack, sizeof(stack));
 		calldata_set_ptr(&data, "source", source);
-		calldata_set_float(&data, "volume", volume);
+		calldata_set_float(&data, "volume", (double)volume);
 
 		signal_handler_signal(source->context.signals, "volume", &data);
 		if (!source->context.private)
@@ -5415,7 +5415,7 @@ void obs_source_set_balance_value(obs_source_t *source, float balance)
 
 		calldata_init_fixed(&data, stack, sizeof(stack));
 		calldata_set_ptr(&data, "source", source);
-		calldata_set_float(&data, "balance", clamp_balance(balance));
+		calldata_set_float(&data, "balance", (double)clamp_balance(balance));
 
 		signal_handler_signal(source->context.signals, "audio_balance", &data);
 
