@@ -11,7 +11,8 @@ and build type, the argument check, the ctest-to-per-test mapping (a wrapper in
 front of the binary is dropped, an unregistered command or a non-executable
 binary is not run), the two tests only the asan pass may run, the per-test
 sanitizer log paths, which tests keep ASan's slow allocation unwinder (#3249),
-the configure line's zccache launcher and libobs backend, and the valgrind
+the configure line's zccache launcher and libobs backend, the asan pass's one
+uncached rebuild when zccache's daemon fails a compile, and the valgrind
 launch window.
 """
 

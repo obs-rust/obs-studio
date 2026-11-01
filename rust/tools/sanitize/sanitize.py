@@ -418,15 +418,27 @@ def error_lines(path: Path, limit: int = 40) -> str:
     return "\n".join(matches[:limit])
 
 
+# zccache's lines for a compile its daemon dropped in flight: a lost request,
+# and a connection the daemon reset mid-compile. Both exit 1 with no compiler
+# output; Tier 2's validate.sh rebuilds on the same two (#1545, #3346).
+ZCCACHE_DROPPED_COMPILE = re.compile(
+    r"^zccache\[err\]\[R\]: (daemon response failure|broken connection to daemon)", re.MULTILINE
+)
+
+
 def zccache_refused_uncached(path: Path) -> bool:
-    """True when the build log shows zccache's daemon dead in its recovery
-    cool-down, where it refuses to compile uncached (`code=125`).
+    """True when the build log shows zccache's daemon failing a compile: dead
+    in its recovery cool-down, where it refuses to compile uncached
+    (`code=125`), or dropping a compile in flight (`code=1`, #3463).
 
     That is a cache-daemon failure, not a failure of the tree: the pass must
     rebuild with `ZCCACHE_DISABLE=1` instead of reporting a red sanitizer run.
+    A real compile error in the same log still fails the uncached rebuild.
     """
     text = path.read_text(encoding="utf-8", errors="replace")
-    return "daemon recovery already failed" in text and "refusing to run" in text and "uncached" in text
+    if "daemon recovery already failed" in text and "refusing to run" in text and "uncached" in text:
+        return True
+    return ZCCACHE_DROPPED_COMPILE.search(text) is not None
 
 
 def run_logged(command: list[str], log: Path, cwd: Path | None = None) -> bool:
@@ -522,8 +534,9 @@ def build_obs(tool: str, flags: str, build_type: str, layout: Layout) -> Path | 
             print(error_lines(build_log), flush=True)
             return None
         # The zccache daemon died and sits in its recovery cool-down, refusing
-        # to compile uncached: the tree is fine, the cache is not. Build once
-        # more without the daemon rather than failing the pass (#3086).
+        # to compile uncached (#3086), or dropped compiles in flight (#3463):
+        # the tree is fine, the cache is not. Build once more without the
+        # daemon rather than failing the pass.
         print("== [asan] zccache daemon unavailable; rebuilding uncached (ZCCACHE_DISABLE=1)", flush=True)
         os.environ["ZCCACHE_DISABLE"] = "1"
         if not run_logged(build_command, log=build_log):
