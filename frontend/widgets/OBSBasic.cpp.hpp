@@ -838,6 +838,7 @@ static inline void LogEncoders()
 void OBSBasic::OBSInit()
 {
 	ProfileScope("OBSBasic::OBSInit");
+	const uint64_t startupStarted = os_gettime_ns();
 
 	if (!InitBasicConfig()) {
 		throw "Failed to load basic.ini";
@@ -1217,6 +1218,11 @@ void OBSBasic::OBSInit()
 	}
 
 	App()->handlePluginLoadState();
+
+	/* The startup probe's readiness signal (#3241): obs-websocket answers from
+	 * its own thread while OBSInit is still running, so this summary — the last
+	 * line OBSInit logs — is what proves the frontend finished starting. */
+	blog(LOG_INFO, "OBSBasic::OBSInit: %.0f ms", (double)(os_gettime_ns() - startupStarted) / 1e6);
 }
 
 void OBSBasic::OnFirstLoad()
