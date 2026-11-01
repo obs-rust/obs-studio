@@ -98,6 +98,9 @@ Approve a comment only when every one of these holds; otherwise reject it, with 
 
 
 LIST_ITEM = re.compile(r"^( *)([-*+]|\d{1,9}[.)])( {1,4})(?=\S)")
+# Blocks that end a list even with no blank line before them: a heading, a
+# thematic break or a block quote.
+ENDS_LIST = re.compile(r"#{1,6}(?:\s|$)|>|([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 
 
 def unindent_code(text: str) -> str:
@@ -115,10 +118,11 @@ def unindent_code(text: str) -> str:
             out.append(line)
             continue
         width = len(line) - len(line.lstrip(" "))
-        if item is not None and blank and width < item:
-            item = None  # a paragraph after a blank line, left of the item's content, ends the list
+        ends = ENDS_LIST.match(line, width)
+        if item is not None and width < item and (blank or ends):
+            item = None  # left of the item's content, after a blank line or as one of those blocks
         base = item or 0
-        if width < base + 4 and (m := LIST_ITEM.match(line)):
+        if width < base + 4 and not ends and (m := LIST_ITEM.match(line)):  # "- - -" is a rule
             item, in_code, blank = len(m.group(0)), False, False
             out.append(line)
             continue
