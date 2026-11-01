@@ -5,7 +5,7 @@
 //! `obs_key_to_str()`, how to name a key: a mouse button or numpad digit by
 //! number, a fixed key by its default name, a function key by number, or
 //! through the keymap's level-0 keysym. The table is the X11 platform's
-//! ([`crate::nix_x11_hotkeys::route`]).
+//! ([`crate::nix_x11_hotkeys::route`]); both map one shared core.
 //!
 //! The C keeps the translations, the keymap reads, every string and every
 //! xkbcommon call. It keeps no state, takes no lock, allocates nothing and
@@ -28,6 +28,8 @@
 
 use std::ffi::CStr;
 
+use crate::key_route::{self, Named};
+
 /// How `obs_key_to_str()` names a key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Route {
@@ -47,8 +49,12 @@ pub enum Route {
 /// How to name `key` (`obs_key_t`): the tests of
 /// `obs_nix_wayland_key_to_str()`, in its order (mouse buttons, numpad
 /// digits, fixed keys, function keys, then the keysym).
-#[expect(clippy::todo, reason = "RED: the port comes next")]
 pub fn route(key: i32) -> Route {
-    let _ = key;
-    todo!()
+    match key_route::named(key) {
+        Named::Mouse(n) => Route::Mouse(n),
+        Named::Numpad(n) => Route::Numpad(n),
+        Named::Fixed(name) => Route::Fixed(name),
+        Named::Function(n) => Route::Function(n),
+        Named::Other => Route::Keysym,
+    }
 }

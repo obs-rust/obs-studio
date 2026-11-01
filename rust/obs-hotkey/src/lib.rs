@@ -31,6 +31,7 @@ use obs_util as _; // base log handler
 pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
+mod key_route;
 pub mod name_map;
 pub mod nix_hotkey_state;
 pub mod nix_wayland_key_names;

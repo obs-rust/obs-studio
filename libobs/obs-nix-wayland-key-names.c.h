@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix-wayland-key-names.pch.h"
+#include "libobs/build/libobs-ported-nix-wayland-key-names.pch.h"
+
+/* Ported to rust/obs-hotkey (nix_wayland_key_names): the hybrid libobs drops
+ * this file. */
 
 /* The Wayland key names of obs-nix-wayland.c, moved: the decision, on plain
  * values. obs-nix-wayland.c keeps every xkbcommon call, every string and the
