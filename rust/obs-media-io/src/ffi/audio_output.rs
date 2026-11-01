@@ -297,13 +297,7 @@ impl Shared {
                 let mix = &self.mixes[mix_idx];
                 let unclamped = unsafe { &mut *mix.buffer_unclamped.get() };
                 unclamped[start..end].copy_from_slice(&unsafe { &*mix.buffer.get() }[start..end]);
-                for val in &mut unsafe { &mut *mix.buffer.get() }[start..end] {
-                    let mut v = *val;
-                    if v.is_nan() {
-                        v = 0.0;
-                    }
-                    *val = v.clamp(-1.0, 1.0);
-                }
+                crate::audio_clamp::clamp_samples(&mut unsafe { &mut *mix.buffer.get() }[start..end]);
             }
         }
     }
