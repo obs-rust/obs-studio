@@ -274,6 +274,27 @@ class OsLaneTest(unittest.TestCase):
     def test_outside_every_area_starts_no_os(self):
         self.assertEqual(self.os("docs/platform-windows.md"), set())
 
+    def test_libobs_group_files_start_their_module_os(self):
+        # #3264: a libobs group file and the precompiled header its groups
+        # include start the OS of the lib-module libobs/build/modules.d puts
+        # the group in. By name alone, libobs.windows+.h.c started only Linux,
+        # so a Windows-only group change never built on Windows in a PR.
+        cases = {
+            "libobs/build/libobs.windows+.h.c": {"windows"},
+            "libobs/build/libobs.obfuscate-windows+.h.c": {"windows"},
+            "libobs/build/libobs-obfuscate.pch.h": {"windows"},
+            "libobs/build/libobs.graphics-ffmpeg-host-windows+.h.c": {"windows"},
+            "libobs/build/libobs.macos+.h.c": {"macos"},
+            "libobs/build/libobs.graphics-ffmpeg-host-posix+.h.c": {"linux", "macos"},
+            "libobs/build/libobs.nix+.h.c": {"linux"},
+        }
+        for path, want in cases.items():
+            self.assertEqual(self.os(path), want, path)
+
+    def test_core_module_group_files_stay_linux(self):
+        for path in ("libobs/build/libobs.core+.h.c", "libobs/build/libobs.pch.h"):
+            self.assertEqual(self.os(path), {"linux"}, path)
+
 
 class LaneTableTest(unittest.TestCase):
     """One test per LANES row: adding a module is adding a row (#992)."""
