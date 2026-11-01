@@ -263,3 +263,8 @@ if(TARGET libobs-c-reference)
       ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
   )
 endif()
+
+# Last, once every source list and host file has filled libobs-objects: split
+# its groups into the lib-modules of build/modules.d (#3259).
+include(cmake/modules.cmake)
+libobs_split_modules(${LIBOBS_SHARED_TARGETS})

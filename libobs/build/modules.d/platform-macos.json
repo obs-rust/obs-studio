@@ -1,9 +1,8 @@
 {
-  "description": "macOS host code, including CoreFoundation utilities.",
+  "description": "macOS host code.",
   "groups": [
     "macos",
-    "macos-*",
-    "util-cf"
+    "macos-*"
   ],
   "depends": [
     "core"

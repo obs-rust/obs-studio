@@ -66,6 +66,7 @@ cmake/finders/Findjansson.cmake
 cmake/finders/Findqrcodegencpp.cmake
 libobs/cmake/implementation.cmake
 libobs/cmake/libobsConfig.cmake.in
+libobs/cmake/modules.cmake # the lib-module split (#3259): host-independent, runs on every libobs build
 libobs/cmake/obs-core-modules.cmake
 libobs/cmake/obs-version.cmake
 libobs/cmake/rust-hidden-base.txt
