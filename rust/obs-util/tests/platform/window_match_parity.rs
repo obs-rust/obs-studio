@@ -2,7 +2,8 @@
 //! `window-match.c.h` (oracle/window_match.c).
 //!
 //! The unchanged C test `test_window_match_steps` compiles the C into
-//! itself. This file compares all three sides (oracle, shims, core)
+//! itself, and `test_window_match_steps_rust` runs it against the shims on
+//! Linux. This file compares all three sides (oracle, shims, core)
 //! exactly: the constants; the internal-exe, untitled-Explorer and class
 //! tests over every listed name in every case pattern of its first three
 //! letters, with every one-byte suffix and every one-byte cut, the generic
