@@ -56,11 +56,60 @@ static void vmic_read_settings(struct virtualcam_data *vcam, obs_data_t *setting
 /* Creates (or reuses) the ring for the HAL plug-in. The segment is never
  * unlinked, so a plug-in that mapped it keeps reading after OBS restarts the
  * camera; it is readable by coreaudiod's own user. */
+/* The bundle versions of an installed or bundled OBSVirtualMicrophone.driver;
+ * both nil when there is none. */
+static void vmic_driver_versions(NSString *path, NSString **version, NSString **build)
+{
+	NSDictionary *info =
+		[NSDictionary dictionaryWithContentsOfURL:
+				      [NSURL fileURLWithPath:[path stringByAppendingString:@"/Contents/Info.plist"]]];
+	*version = [info valueForKey:@"CFBundleShortVersionString"];
+	*build = [info valueForKey:(NSString *)kCFBundleVersionKey];
+}
+
+/* Installs or updates the OBS Virtual Microphone from OBS.app's Resources
+ * (#3341): one admin prompt copies it into /Library/Audio/Plug-Ins/HAL and
+ * restarts coreaudiod so apps see the device. A cancelled prompt leaves the
+ * camera video-only. */
+static void vmic_ensure_driver(void)
+{
+	NSString *installed = @VMIC_DRIVER_PATH;
+	NSString *bundled =
+		[[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"OBSVirtualMicrophone.driver"];
+	NSString *installedVersion, *installedBuild, *bundledVersion, *bundledBuild;
+	vmic_driver_versions(installed, &installedVersion, &installedBuild);
+	vmic_driver_versions(bundled, &bundledVersion, &bundledBuild);
+
+	enum vmic_driver_action action = vmic_driver_action(installedVersion.UTF8String, installedBuild.UTF8String,
+							    bundledVersion.UTF8String, bundledBuild.UTF8String);
+	if (action != VMIC_DRIVER_INSTALL && action != VMIC_DRIVER_UPDATE) {
+		return;
+	}
+
+	NSString *cmd = [NSString
+		stringWithFormat:
+			@"do shell script \"mkdir -p '%@' && rm -rf '%@' && cp -R '%@' '%@' && "
+			@"launchctl kickstart -k system/com.apple.audio.coreaudiod\" with administrator privileges",
+			[installed stringByDeletingLastPathComponent], installed, bundled, installed];
+	NSDictionary *errorDict = nil;
+	[[[NSAppleScript alloc] initWithSource:cmd] executeAndReturnError:&errorDict];
+	if (errorDict) {
+		blog(LOG_WARNING, "Virtual camera audio: the OBS Virtual Microphone was not %s: %s",
+		     action == VMIC_DRIVER_INSTALL ? "installed" : "updated",
+		     [[errorDict objectForKey:NSAppleScriptErrorMessage] UTF8String]);
+	} else {
+		blog(LOG_INFO, "Virtual camera audio: %s the OBS Virtual Microphone %s (%s)",
+		     action == VMIC_DRIVER_INSTALL ? "installed" : "updated", bundledVersion.UTF8String,
+		     bundledBuild.UTF8String);
+	}
+}
+
 static void vmic_start(struct virtualcam_data *vcam)
 {
 	if (!vcam->audio_enabled) {
 		return;
 	}
+	vmic_ensure_driver();
 	if (access(VMIC_DRIVER_PATH, F_OK) != 0) {
 		blog(LOG_WARNING, "Virtual camera audio: the OBS Virtual Microphone is not installed (" VMIC_DRIVER_PATH
 				  "), video only");
