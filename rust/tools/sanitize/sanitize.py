@@ -3,6 +3,7 @@
 launches OBS headless (Xvfb) and closes it with SIGINT after a timeout.
 
     uv run --no-project rust/tools/sanitize/sanitize.py asan|tsan|valgrind [launch-seconds]
+    uv run --no-project rust/tools/sanitize/sanitize.py --list-unwind [tool]
 
 Ubuntu: install deps with rust/tools/sanitize/install_ubuntu_deps.py first.
 NixOS:  nix-shell rust/tools/sanitize/shell.nix --run "uv run --no-project rust/tools/sanitize/sanitize.py asan"
@@ -20,6 +21,7 @@ Ported off the 178-line shell script in #962; sanitizers.yaml runs it through
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import random
@@ -62,6 +64,25 @@ BUILD_TYPE_FLAGS = {
 # valgrind can't run. They are covered by the asan pass, so the other tools
 # build with -k 0 and skip them.
 SKIPPED_TESTS = re.compile(r"^(test_formatted_filename|test_utf8)$")
+# Where the build declares cmocka test targets, for the unwinder selection
+# below: the declarative graph, one CMake fragment per test (#137), and the
+# directory's own CMake files for the tests that predate the fragments.
+TEST_GRAPH = "test/cmocka/build/test-graph.json"
+TEST_FRAGMENTS = ("test/cmocka/CMakeLists.txt", "test/cmocka/*.cmake", "test/cmocka/tests.d/*.cmake")
+# A test can reach FFmpeg when its own link libraries name one of these.
+# OBS::libobs is deliberately not one of them: libobs links FFmpeg itself
+# (libobs/CMakeLists.txt:15), so counting it would put every test back on the
+# slow unwinder and save nothing. libobs only allocates inside FFmpeg on its
+# media paths, and the tests that drive those link FFmpeg themselves.
+FFMPEG_LIBRARY = re.compile(r"FFmpeg::\w+|OBS::media-playback")
+# The one hand-kept part of the selection, kept here next to SKIPPED_TESTS so
+# the file has a single place for per-test exceptions. It holds what the scan
+# above cannot derive: test_core_module_load links no FFmpeg library, it
+# dlopens every plugin module (OBS::libobs-core-modules) and reaches
+# obs-ffmpeg that way, and it was also the one test unstable under the fast
+# unwinder, 24 of 30 runs failing in XOpenDisplay during hotkey
+# initialization (#3249).
+SLOW_UNWIND_TESTS = frozenset({"test_core_module_load"})
 VALGRIND = (
     "valgrind",
     "--error-exitcode=99",
@@ -73,10 +94,18 @@ VALGRIND = (
     "--track-origins=yes",
     "--fullpath-after=",
 )
-# Full allocation stacks: distro FFmpeg has no frame pointers, and the fast
-# unwinder stops at av_malloc (#2035).
+# Full allocation stacks where they matter: the fast unwinder stops at
+# av_malloc, because distro FFmpeg has no frame pointers (#2035), so a leak
+# allocated inside FFmpeg can no longer be traced back to its OBS caller.
+# The slow unwinder pays for that on every allocation in the process, and it
+# is most of the time the allocation-heavy asan tests spend (#3249, measured:
+# test_context_names 29 s -> 2 s, test_canvas_destroy_scene_refs 18 s -> 2 s,
+# test_video_output_formats 18 s -> 4 s, test_dock_proportions 17 s -> 4 s).
+# So only the tests that can reach FFmpeg keep it; see UnwindPolicy.
+SLOW_UNWIND = "fast_unwind_on_malloc=0"
+FAST_UNWIND = "fast_unwind_on_malloc=1"
 SANITIZER_OPTIONS = {
-    "asan": "detect_leaks=1:fast_unwind_on_malloc=0:abort_on_error=0:halt_on_error=0",
+    "asan": f"detect_leaks=1:{SLOW_UNWIND}:abort_on_error=0:halt_on_error=0",
     "ubsan": "print_stacktrace=1:halt_on_error=0",
     "tsan": "halt_on_error=0:second_deadlock_stack=1",
 }
@@ -117,13 +146,103 @@ class Layout:
         )
 
 
-def sanitizer_options(directory: Path, stem: str = "") -> dict[str, str]:
+def sanitizer_options(directory: Path, stem: str = "", fast_unwind: bool = False) -> dict[str, str]:
     """The three *_OPTIONS values with log_path=<directory>/<stem><kind>.
 
     The shell exported them for the whole run (log_path=<out>/<kind>) and
     overrode the log_path per test (log_path=<out>/tests/<name>.<kind>).
+    `fast_unwind` swaps ASan's slow allocation unwinder for the fast one, for
+    a test that cannot reach FFmpeg (#3249).
     """
-    return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in SANITIZER_OPTIONS.items()}
+    options = SANITIZER_OPTIONS
+    if fast_unwind:
+        options = {kind: value.replace(SLOW_UNWIND, FAST_UNWIND) for kind, value in options.items()}
+    return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in options.items()}
+
+
+@dataclass(frozen=True)
+class UnwindPolicy:
+    """Which asan tests may use the fast allocation unwinder (#3249).
+
+    `declared` is every test target the build declares, `ffmpeg` the ones
+    whose link libraries name FFmpeg. A test the scan does not find is not in
+    `declared` and keeps the slow unwinder, so an unparsed or newly added
+    declaration falls back to what the whole pass did before this split.
+    """
+
+    declared: frozenset[str]
+    ffmpeg: frozenset[str]
+
+    def fast_unwind(self, tool: str, name: str) -> bool:
+        """True when `name` may run with fast_unwind_on_malloc=1."""
+        if tool != "asan":
+            return False
+        return name in self.declared and name not in self.ffmpeg and name not in SLOW_UNWIND_TESTS
+
+
+def cmake_call_bodies(text: str, call: str) -> list[str]:
+    """The argument text of every `call(...)` in one CMake file.
+
+    A balanced-paren scan, because the arguments hold generator expressions
+    with parentheses of their own, which a regex would stop the call on.
+    """
+    bodies = []
+    for match in re.finditer(rf"\b{call}\s*\(", text):
+        depth, index = 1, match.end()
+        while index < len(text) and depth:
+            depth += {"(": 1, ")": -1}.get(text[index], 0)
+            index += 1
+        bodies.append(text[match.end() : index - 1])
+    return bodies
+
+
+def first_word(body: str) -> str:
+    """A CMake call's first argument: the target it acts on."""
+    words = body.split()
+    return words[0] if words else ""
+
+
+def scan_unwind_policy(src: Path) -> UnwindPolicy:
+    """Read the build's own test declarations into an UnwindPolicy.
+
+    No build needed: both sources are checked in, so
+    `sanitize.py --list-unwind` shows the selection the pass will make.
+    """
+    declared: set[str] = set()
+    ffmpeg: set[str] = set()
+    graph = src / TEST_GRAPH
+    if graph.is_file():
+        targets = json.loads(graph.read_text(encoding="utf-8")).get("targets", {})
+        for name, spec in targets.items():
+            declared.add(name)
+            if FFMPEG_LIBRARY.search(json.dumps(spec.get("libraries", []))):
+                ffmpeg.add(name)
+    for fragment in sorted({path for pattern in TEST_FRAGMENTS for path in src.glob(pattern)}):
+        body_text = fragment.read_text(encoding="utf-8", errors="replace")
+        declared.update(filter(None, (first_word(b) for b in cmake_call_bodies(body_text, "add_executable"))))
+        for body in cmake_call_bodies(body_text, "target_link_libraries"):
+            if first_word(body) and FFMPEG_LIBRARY.search(body):
+                ffmpeg.add(first_word(body))
+    return UnwindPolicy(declared=frozenset(declared), ffmpeg=frozenset(ffmpeg))
+
+
+@functools.lru_cache(maxsize=None)
+def unwind_policy(src: Path = SRC) -> UnwindPolicy:
+    """The policy, scanned once per run: run_one_test asks it per test."""
+    return scan_unwind_policy(src)
+
+
+def list_unwind(tool: str) -> int:
+    """Print the unwinder option every declared test would run with."""
+    policy = unwind_policy()
+    fast = {name for name in policy.declared if policy.fast_unwind(tool, name)}
+    for name in sorted(policy.declared):
+        print(f"{FAST_UNWIND if name in fast else SLOW_UNWIND}\t{name}")
+    slow = policy.declared - fast
+    print(f"# {tool}: {len(fast)} fast, {len(slow)} slow, of {len(policy.declared)} declared tests")
+    print(f"# slow: {len(policy.ffmpeg & policy.declared)} link FFmpeg, {len(SLOW_UNWIND_TESTS & policy.declared)} in SLOW_UNWIND_TESTS")
+    print(f"# a ctest test this scan does not declare keeps {SLOW_UNWIND}, as the whole pass did")
+    return 0
 
 
 def tool_cmake_args(tool: str) -> list[str]:
@@ -483,6 +602,11 @@ def run_tests(
     (tests_dir / "durations.tsv").write_text(
         "".join(f"{t.name}\t{durations[t.name]:.2f}\n" for t in tests if t.name in durations), encoding="utf-8"
     )
+    policy = unwind_policy()
+    (tests_dir / "unwind.tsv").write_text(
+        "".join(f"{t.name}\t{FAST_UNWIND if policy.fast_unwind(tool, t.name) else SLOW_UNWIND}\n" for t, _ in runnable),
+        encoding="utf-8",
+    )
     return [lines[t.name] for t in tests if t.name in lines]
 
 
@@ -500,7 +624,8 @@ def run_one_test(tool: str, test: Test, command: list[str], layout: Layout, disp
     if tool == "valgrind":
         command = [*VALGRIND, f"--log-file={tests_dir / f'{test.name}.vg.log'}", *command]
     else:
-        env = dict(os.environ, **sanitizer_options(tests_dir, f"{test.name}."))
+        fast = unwind_policy().fast_unwind(tool, test.name)
+        env = dict(os.environ, **sanitizer_options(tests_dir, f"{test.name}.", fast_unwind=fast))
     if display is not None:
         # Its own auth file, outside xvfb-run's temporary directory: with the
         # file inside, its cleanup failed now and then and xvfb-run's exit 5
@@ -612,22 +737,28 @@ def capture_hang(layout: Layout, app: int, session: int) -> None:
     signal_pid(session, signal.SIGKILL)
 
 
+USAGE = "usage: {name} asan|tsan|valgrind [launch-seconds] | {name} --list-unwind [tool]\n"
+
+
 def parse_args(argv: list[str]) -> tuple[str, int] | None:
     """(tool, launch seconds), or None after writing the usage line."""
     tool = argv[1] if len(argv) > 1 else ""
     if tool not in TOOL_FLAGS:
-        sys.stderr.write(f"usage: {Path(argv[0]).name} asan|tsan|valgrind [launch-seconds]\n")
+        sys.stderr.write(USAGE.format(name=Path(argv[0]).name))
         return None
     if len(argv) < 3:
         return tool, 45
     try:
         return tool, int(argv[2])
     except ValueError:
-        sys.stderr.write(f"usage: {Path(argv[0]).name} asan|tsan|valgrind [launch-seconds]\n")
+        sys.stderr.write(USAGE.format(name=Path(argv[0]).name))
         return None
 
 
 def main(argv: list[str]) -> int:
+    # The selection only reads checked-in build files, so it needs no build.
+    if len(argv) > 1 and argv[1] == "--list-unwind":
+        return list_unwind(argv[2] if len(argv) > 2 else "asan")
     parsed = parse_args(argv)
     if parsed is None:
         return 2
