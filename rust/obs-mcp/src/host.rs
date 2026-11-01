@@ -54,7 +54,9 @@ impl StartOptions {
         };
         Self {
             graphics_module: var("OBS_MCP_GRAPHICS_MODULE")
-                .map_or_else(default_graphics_module, |v| v.to_string_lossy().into_owned()),
+                .map_or_else(default_graphics_module, |v| {
+                    v.to_string_lossy().into_owned()
+                }),
             size: (1280, 720),
             fps: 30,
             data_path: var("OBS_MCP_DATA_PATH").map(PathBuf::from).or_else(|| {

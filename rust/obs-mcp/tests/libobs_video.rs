@@ -36,10 +36,7 @@ fn in_child(case: &str, body: fn()) {
         body();
         return;
     }
-    let selector = format!(
-        "{}::{case}",
-        module_path!().split_once("::").unwrap().1
-    );
+    let selector = format!("{}::{case}", module_path!().split_once("::").unwrap().1);
     let output = Command::new(std::env::current_exe().unwrap())
         .args(["--exact", &selector, "--nocapture", "--test-threads=1"])
         .env(CHILD, case)
@@ -75,7 +72,10 @@ fn degraded() {
     let mut options = StartOptions::from_env(Some(scratch("degraded")));
     options.graphics_module = "libobs-module-that-does-not-exist".to_owned();
     let runtime = Runtime::start(&options).expect("libobs itself starts");
-    let reason = runtime.video_error().expect("video cannot start").to_owned();
+    let reason = runtime
+        .video_error()
+        .expect("video cannot start")
+        .to_owned();
     assert!(
         reason.contains("libobs-module-that-does-not-exist"),
         "{reason}"
@@ -136,7 +136,7 @@ const COLOR_RGBA: [u8; 4] = [0x20, 0x80, 0xE0, 0xFF];
 const TOLERANCE: u8 = 4;
 
 fn assert_solid(rgba: &[u8], what: &str) {
-    for (i, pixel) in rgba.chunks_exact(4).enumerate() {
+    for (i, pixel) in rgba.as_chunks::<4>().0.iter().enumerate() {
         for (channel, (got, want)) in pixel.iter().zip(COLOR_RGBA).enumerate() {
             assert!(
                 got.abs_diff(want) <= TOLERANCE,
@@ -192,7 +192,10 @@ fn real_video() {
         &scene.rgba[i..i + 4]
     };
     assert_solid(at(10, 10), "scene, inside the source");
-    assert_eq!(at(scene.width as usize - 1, scene.height as usize - 1)[3], 0);
+    assert_eq!(
+        at(scene.width as usize - 1, scene.height as usize - 1)[3],
+        0
+    );
 
     // Over MCP the same image arrives as a PNG of the right size.
     let mut server = obs_mcp::backend::ObsBackend::server(&backend);
@@ -217,7 +220,10 @@ fn real_video() {
     }
     assert!(!backend.status(OutputKind::Record).active);
     backend.start(OutputKind::Record).unwrap();
-    assert!(backend.start(OutputKind::Record).is_err(), "already running");
+    assert!(
+        backend.start(OutputKind::Record).is_err(),
+        "already running"
+    );
     wait_for("recorded bytes", || {
         let status = backend.status(OutputKind::Record);
         assert!(status.active, "the recording stopped by itself");

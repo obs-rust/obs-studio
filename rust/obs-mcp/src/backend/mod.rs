@@ -89,11 +89,7 @@ impl ObsBackend {
     /// Reasons the host could not start video or create the outputs; the
     /// errors of the tools that depend on them say why.
     #[must_use]
-    pub fn with_startup_errors(
-        mut self,
-        video: Option<String>,
-        outputs: Option<String>,
-    ) -> Self {
+    pub fn with_startup_errors(mut self, video: Option<String>, outputs: Option<String>) -> Self {
         self.video_error = video;
         self.output_error = outputs;
         self
@@ -181,8 +177,12 @@ impl ObsBackend {
         let Some(dir) = &self.record_dir else {
             return Ok(());
         };
-        std::fs::create_dir_all(dir)
-            .map_err(|e| format!("cannot create the recording directory {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(dir).map_err(|e| {
+            format!(
+                "cannot create the recording directory {}: {e}",
+                dir.display()
+            )
+        })?;
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_secs());

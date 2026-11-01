@@ -2724,3 +2724,14 @@ area.
   `docs/rust-port/mcp.md`. *All platforms*, 2026-10-31. Issue
   [#3289](https://github.com/obs-rust/obs-studio/issues/3289), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- `obs-studio-rust --mcp` now starts libobs like the application: it resets
+  video (graphics module `libobs-opengl`, or `OBS_MCP_GRAPHICS_MODULE`) and
+  audio, loads the plugin modules (`OBS_MCP_MODULE_BIN`, `OBS_MCP_MODULE_DATA`,
+  `OBS_MCP_DATA_PATH`, or an install next to the binary) and creates the
+  `simple_file_output` and `simple_stream` outputs, so `screenshot`,
+  `record_start` and `record_stop` work; `--record-dir <DIR>` picks where
+  recordings go. A step that fails (no display, no plugin) becomes a clear MCP
+  error instead of a crash. *All platforms*, 2026-10-31. Issues
+  [#3317](https://github.com/obs-rust/obs-studio/issues/3317),
+  [#3312](https://github.com/obs-rust/obs-studio/issues/3312), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
