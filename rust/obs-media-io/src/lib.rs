@@ -2,7 +2,8 @@
 //!
 //! Among them, [`audio_resampler_drift`] is the libswresample resampler's
 //! clock drift loop and output frame padding
-//! (`libobs/media-io/audio-resampler-drift.c.h`), and [`video_scaler_plan`]
+//! (`libobs/media-io/audio-resampler-drift.c.h`) and its output plan
+//! (`libobs/media-io/audio-resampler-plan.c.h`), and [`video_scaler_plan`]
 //! is the swscale scaler's flags, coefficient set, range, plane heights and
 //! plane copy (`libobs/media-io/video-scaler-plan.c.h`).
 //!
