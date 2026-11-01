@@ -27,6 +27,11 @@ corrosion_import_crate(
 )
 obs_serialize_cargo_build(libobs-rust)
 
+# Cross-language ThinLTO (#3217), applied by the ELF host file
+# (rust-os-nix.cmake); declared here so the module-cache key below sees it.
+option(OBS_CROSS_LTO "Cross-language ThinLTO between libobs C and the Rust staticlib (Clang, lld)" OFF)
+mark_as_advanced(OBS_CROSS_LTO)
+
 # The module cache (#3265): ci/libobs_modules.py keys the staticlib on what
 # this file records, plus Cargo.lock, the toolchain and the linked crates.
 set(_obs_rust_features "")
@@ -39,7 +44,7 @@ endif()
 file(
   GENERATE OUTPUT "${CMAKE_BINARY_DIR}/libobs-modcache-rust.json"
   CONTENT
-    "{\"location\": \"$<TARGET_FILE:libobs_rust-static>\"${_obs_rust_features}, \"target\": \"${Rust_CARGO_TARGET}\", \"profile\": \"release\", \"cc\": \"${CMAKE_C_COMPILER}\"}\n"
+    "{\"location\": \"$<TARGET_FILE:libobs_rust-static>\"${_obs_rust_features}, \"target\": \"${Rust_CARGO_TARGET}\", \"profile\": \"release\", \"cc\": \"${CMAKE_C_COMPILER}\", \"cross_lto\": \"${OBS_CROSS_LTO}\"}\n"
 )
 
 # A hit links the cached archive; cargo does not run. Corrosion still
