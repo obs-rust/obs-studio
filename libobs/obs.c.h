@@ -802,17 +802,30 @@ void obs_main_view_free(struct obs_view *view)
 	pthread_mutex_destroy(&view->channels_mutex);
 }
 
-#define FREE_OBS_HASH_TABLE(handle, table, type)                                     \
+#define FREE_OBS_HASH_TABLE_WITH(handle, table, type, destroy)                       \
 	do {                                                                         \
 		struct obs_context_data *ctx, *tmp;                                  \
 		int unfreed = 0;                                                     \
 		HASH_ITER (handle, *(struct obs_context_data **)table, ctx, tmp) {   \
-			obs_##type##_destroy((obs_##type##_t *)ctx);                 \
+			destroy((obs_##type##_t *)ctx);                              \
 			unfreed++;                                                   \
 		}                                                                    \
 		if (unfreed)                                                         \
 			blog(LOG_INFO, "\t%d " #type "(s) were remaining", unfreed); \
 	} while (false)
+
+#define FREE_OBS_HASH_TABLE(handle, table, type) FREE_OBS_HASH_TABLE_WITH(handle, table, type, obs_##type##_destroy)
+
+/* A source the host left alive: destroy it and give back the reference it
+ * held on its control block, as obs_source_release() does, so the block is
+ * freed unless the host still holds a weak reference (#3364). */
+static void obs_source_destroy_left_alive(obs_source_t *source)
+{
+	obs_weak_source_t *control = (obs_weak_source_t *)source->context.control;
+
+	obs_source_destroy(source);
+	obs_weak_source_release(control);
+}
 
 #define FREE_OBS_LINKED_LIST(type)                                                   \
 	do {                                                                         \
@@ -841,8 +854,8 @@ static void obs_free_data(void)
 	FREE_OBS_LINKED_LIST(display);
 	FREE_OBS_LINKED_LIST(service);
 
-	FREE_OBS_HASH_TABLE(hh, &data->public_sources, source);
-	FREE_OBS_HASH_TABLE(hh_uuid, &data->sources, source);
+	FREE_OBS_HASH_TABLE_WITH(hh, &data->public_sources, source, obs_source_destroy_left_alive);
+	FREE_OBS_HASH_TABLE_WITH(hh_uuid, &data->sources, source, obs_source_destroy_left_alive);
 	FREE_OBS_HASH_TABLE(hh, &data->named_canvases, canvas);
 	FREE_OBS_HASH_TABLE(hh_uuid, &data->canvases, canvas);
 
@@ -3786,6 +3799,7 @@ obs_canvas_t *obs_get_main_canvas(void)
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef FREE_OBS_HASH_TABLE
+#undef FREE_OBS_HASH_TABLE_WITH
 #undef FREE_OBS_LINKED_LIST
 #undef OBS_SIZE_MIN
 #undef OBS_SIZE_MAX
