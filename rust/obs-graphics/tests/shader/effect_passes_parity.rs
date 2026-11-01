@@ -47,7 +47,6 @@ struct Rec {
 unsafe extern "C" {
     fn base_test_record_ptr() -> *mut c_void;
     fn base_test_record_only_this_thread();
-    fn base_test_record_any_thread();
     fn bfree(ptr: *mut c_void);
 }
 
@@ -441,8 +440,9 @@ fn run(spec: &Spec, ops: &[Op], rust: bool) -> Vec<String> {
                     String::new()
                 }
             };
+            // The thread filter stays on: a late line from another thread
+            // must not reach `rec` once it is gone.
             base_set_log_handler(h, hp);
-            base_test_record_any_thread();
             ret
         };
         let log = if rec.calls > 0 {
