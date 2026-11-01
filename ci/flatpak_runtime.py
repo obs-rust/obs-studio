@@ -385,7 +385,14 @@ def qualification(args) -> dict:  # noqa: C901
         session.start('wireplumber', ['wireplumber'])
         session.start('pulse', ['pipewire-pulse'])
         session.wait_for(lambda: (output / 'run/pulse/native').is_socket(), 'PulseAudio socket')
-        vmic_dir = output / 'run/obs-virtual-microphone'
+        # Flatpak resolves xdg-run/ from the real /run/user/<uid>, not from the
+        # XDG_RUNTIME_DIR this session overrides; on a desktop the two are the
+        # same directory. A runner may have no user session, so make it.
+        real_runtime = Path(f'/run/user/{os.getuid()}')
+        if not real_runtime.is_dir():
+            session.run(['sudo', 'install', '-d', '-m', '0700', '-o', str(os.getuid()), '-g', str(os.getgid()),
+                         str(real_runtime)])
+        vmic_dir = real_runtime / 'obs-virtual-microphone'
         vmic_dir.mkdir(mode=0o700, exist_ok=True)
         marker = os.urandom(8).hex()
         (vmic_dir / 'host-marker').write_text(marker)
