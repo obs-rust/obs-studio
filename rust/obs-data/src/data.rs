@@ -1305,6 +1305,18 @@ impl Data {
         inner.find(name).map(|item| f(&item.borrow()))
     }
 
+    /// The stable C string of the named item's user (`slot` 0), default
+    /// (1) or autoselect (2) value, read under the object's read lock
+    /// without taking a handle to the item (#3215).
+    pub(crate) fn string_ptr(&self, name: &str, slot: u8) -> Option<*const std::ffi::c_char> {
+        let slot = match slot {
+            1 => Slot::Default,
+            2 => Slot::Autoselect,
+            _ => Slot::User,
+        };
+        self.read_item(name, |item| item.slot_string_ptr(slot))
+    }
+
     pub fn item(&self, name: &str) -> Option<Item> {
         self.inner
             .borrow()
