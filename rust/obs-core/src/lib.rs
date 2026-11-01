@@ -5,7 +5,8 @@
 //! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
 //! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
-//! `libobs/obs-module-load-rules.c.h` and
+//! `libobs/obs-module-load-rules.c.h` with
+//! `libobs/obs-module-load-rules-skip.c.h`, and
 //! `libobs/obs-module-register-copy.c.h` (from `obs-module.c.h`) and `libobs/obs-audio-mix.c.h` (from
 //! `obs-audio.c.h`); and
 //! `libobs/util/source-profiler.c.h`, which reads core state (sources and the
@@ -53,7 +54,8 @@
 //! startup log prints; [`win_crash_report`] decides which module holds the
 //! crash address, which threads the report traces and in what order, how
 //! each frame is written and when the crash handler passes on; [`module_load_rules`] decides which modules load, are
-//! disabled or skipped, and which failures count; [`module_register_copy`]
+//! disabled or skipped (the skip ladder `load_all_callback()` walks before it
+//! opens one), and which failures count; [`module_register_copy`]
 //! decides how much of a plugin's registration structure is copied and
 //! which of its fields lie within the size it gave; [`core_setup_rules`]
 //! holds the video and audio reset gates, the audio buffering ticks and

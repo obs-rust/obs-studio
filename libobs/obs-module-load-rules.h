@@ -56,7 +56,11 @@
  * - obs_module_load_rules_count_failure(): a failure is counted only when the
  *   caller passed somewhere to count it;
  * - obs_module_load_rules_core_loaded(): the core modules loaded when no
- *   failure was counted.
+ *   failure was counted;
+ * - obs_module_load_rules_skip_step(): the checks load_all_callback() makes
+ *   before it opens a module, one read at a time (the steps of enum
+ *   obs_module_load_rules_skip below), and the route it then takes
+ *   (obs-module-load-rules-skip.c).
  *
  * obs-module.c keeps get_plugin_info(), obs_get_module(),
  * obs_host_skip_module(), os_dlopen(), os_dlsym(), the ver() call, the module
@@ -126,3 +130,35 @@ uint32_t obs_module_load_rules_open_route(int code, uint32_t *state);
 uint32_t obs_module_load_rules_init_route(bool ok, uint32_t *state);
 bool obs_module_load_rules_count_failure(bool has_fail_info);
 bool obs_module_load_rules_core_loaded(size_t fail_count);
+
+/* load_all_callback()'s skip ladder: a step names the value the caller
+ * reads next and passes to obs_module_load_rules_skip_step(), a route what
+ * it does with the module. START asks for the first step.
+ * - PLUGIN: get_plugin_info()'s answer;
+ * - SAFE: is_safe_module();
+ * - DISABLED: is_disabled_module(), read only for a type that is not core;
+ * - CORE_NAME: is_core_module(), read only for a legacy plugin;
+ * - LOADED: obs_get_module() found a module of that name.
+ * The routes: NOT_PLUGIN, DISABLE_SAFE (a disabled module with
+ * OBS_MODULE_DISABLED_SAFE), DISABLE (with OBS_MODULE_DISABLED),
+ * LEGACY_CORE, LOADED_CORE, LOADED_LEGACY and LOADED_PLUGIN each log and
+ * return; LOAD goes on to obs_open_module(). A route comes back unchanged. */
+enum obs_module_load_rules_skip {
+	OBS_MODULE_LOAD_RULES_SKIP_START,
+	OBS_MODULE_LOAD_RULES_SKIP_PLUGIN,
+	OBS_MODULE_LOAD_RULES_SKIP_SAFE,
+	OBS_MODULE_LOAD_RULES_SKIP_DISABLED,
+	OBS_MODULE_LOAD_RULES_SKIP_CORE_NAME,
+	OBS_MODULE_LOAD_RULES_SKIP_LOADED,
+	OBS_MODULE_LOAD_RULES_SKIP_NOT_PLUGIN,
+	OBS_MODULE_LOAD_RULES_SKIP_DISABLE_SAFE,
+	OBS_MODULE_LOAD_RULES_SKIP_DISABLE,
+	OBS_MODULE_LOAD_RULES_SKIP_LEGACY_CORE,
+	OBS_MODULE_LOAD_RULES_SKIP_LOADED_CORE,
+	OBS_MODULE_LOAD_RULES_SKIP_LOADED_LEGACY,
+	OBS_MODULE_LOAD_RULES_SKIP_LOADED_PLUGIN,
+	OBS_MODULE_LOAD_RULES_SKIP_LOAD,
+};
+
+enum obs_module_load_rules_skip obs_module_load_rules_skip_step(enum obs_module_load_rules_skip step, uint32_t type,
+								bool value);

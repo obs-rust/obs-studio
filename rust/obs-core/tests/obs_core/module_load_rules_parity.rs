@@ -20,7 +20,12 @@
 //!   C's order, for all 512 settings of what it reads by every type and
 //!   code above;
 //! - proptests over any `u32` version word and libobs version, any `usize`
-//!   list length and failure count, any type and any code.
+//!   list length and failure count, any type and any code;
+//! - `load_all_callback()`'s skip ladder
+//!   (`libobs/obs-module-load-rules-skip.c.h`, #3409): its enum values,
+//!   every step value from 0 to 31 and the `u32` ends by ten types and both
+//!   values, the whole ladder for all 32 answers of its five reads, and a
+//!   proptest over any step, type and value.
 //!
 //! Intentional difference: where the C would write the state through a
 //! NULL pointer, the shims do not (`obs-module.c` always passes a local).
@@ -39,21 +44,25 @@ use obs_c_oracle::module_load_rules::{
     oracle_obs_module_load_rules_safe_list, oracle_obs_module_load_rules_version_ok,
     oracle_obs_module_load_rules_version_word,
 };
+use obs_c_oracle::module_load_rules_skip::{
+    SKIP_CONSTANT_NAMES, oracle_module_load_rules_skip_constant,
+    oracle_module_load_rules_skip_constant_count, oracle_obs_module_load_rules_skip_step,
+};
 use obs_core::ffi::module_load_rules::{
     obs_module_load_rules_allow_disable, obs_module_load_rules_arg_missing,
     obs_module_load_rules_core_loaded, obs_module_load_rules_count_failure,
     obs_module_load_rules_disabled_list, obs_module_load_rules_export_missing,
     obs_module_load_rules_init_route, obs_module_load_rules_is_core,
     obs_module_load_rules_is_legacy, obs_module_load_rules_open_route,
-    obs_module_load_rules_safe_list, obs_module_load_rules_version_ok,
-    obs_module_load_rules_version_word,
+    obs_module_load_rules_safe_list, obs_module_load_rules_skip_step,
+    obs_module_load_rules_version_ok, obs_module_load_rules_version_word,
 };
 use obs_core::module_load_rules::{
     List, MODULE_ERROR, MODULE_FAILED_TO_OPEN, MODULE_HARDCODED_SKIP, MODULE_INCOMPATIBLE_VER,
     MODULE_MISSING_EXPORTS, MODULE_SUCCESS, ROUTE_CORE_CONTINUES, ROUTE_DISABLE, ROUTE_FAIL,
     ROUTE_FREE, ROUTE_KEEP_TYPE, ROUTE_SET_TYPE, ROUTE_STOP, STATE_DISABLED, STATE_DISABLED_SAFE,
-    STATE_FAILED_TO_INITIALIZE, STATE_FAILED_TO_OPEN, STATE_INVALID, TYPE_CORE, TYPE_LEGACY_PLUGIN,
-    TYPE_PLUGIN, TYPE_UNDEFINED,
+    STATE_FAILED_TO_INITIALIZE, STATE_FAILED_TO_OPEN, STATE_INVALID, Skip, TYPE_CORE,
+    TYPE_LEGACY_PLUGIN, TYPE_PLUGIN, TYPE_UNDEFINED,
 };
 use proptest::prelude::*;
 
@@ -513,5 +522,136 @@ proptest! {
     #[test]
     fn walk_any(b in 0..512_u32, t in any::<u32>(), code in any::<i32>()) {
         prop_assert_eq!(walk(&RUST, b, t, code), walk(&C, b, t, code));
+    }
+}
+
+// ------------------------------------------------- the skip ladder (#3409)
+//
+// The oracle is `libobs/obs-module-load-rules-skip.c.h`, unmodified, with
+// its entry point renamed (`obs-c-oracle/oracle/module_load_rules_skip.c`).
+// No intentional difference: every step value, in the enum or not, every
+// type and both values give the same answer.
+
+/// The types the skip ladder is compared over: 0 to 5, the core and legacy
+/// neighbours' high-bit twins and the `u32` end.
+const SKIP_TYPES: [u32; 10] = [
+    0,
+    TYPE_CORE,
+    2,
+    TYPE_LEGACY_PLUGIN,
+    4,
+    5,
+    0x8000_0001,
+    0x8000_0003,
+    0x7FFF_FFFF,
+    u32::MAX,
+];
+
+fn skip_both(step: u32, t: u32, value: bool) -> (u32, u32) {
+    // SAFETY: plain values.
+    unsafe {
+        (
+            obs_module_load_rules_skip_step(step, t, value),
+            oracle_obs_module_load_rules_skip_step(step, t, value),
+        )
+    }
+}
+
+#[test]
+fn skip_constants_match_the_c() {
+    // SAFETY: plain values.
+    let count = unsafe { oracle_module_load_rules_skip_constant_count() };
+    assert_eq!(count, SKIP_CONSTANT_NAMES.len());
+    let rust = [
+        Skip::Start,
+        Skip::Plugin,
+        Skip::Safe,
+        Skip::Disabled,
+        Skip::CoreName,
+        Skip::Loaded,
+        Skip::NotPlugin,
+        Skip::DisableSafe,
+        Skip::Disable,
+        Skip::LegacyCore,
+        Skip::LoadedCore,
+        Skip::LoadedLegacy,
+        Skip::LoadedPlugin,
+        Skip::Load,
+    ];
+    for (i, s) in rust.iter().enumerate() {
+        // SAFETY: plain values.
+        let c = unsafe { oracle_module_load_rules_skip_constant(i) };
+        assert_eq!(c, *s as i64, "{}", SKIP_CONSTANT_NAMES[i]);
+    }
+    // SAFETY: plain values.
+    let size = unsafe { oracle_module_load_rules_skip_constant(rust.len()) };
+    assert_eq!(size, 4, "the enum crosses as a 32-bit integer");
+}
+
+/// Every step value from 0 to 31 (the enum is 0 to 13), and the `u32` ends,
+/// for every type above and both values.
+#[test]
+fn skip_every_step_matches_the_c() {
+    let steps = (0..32).chain([0x7FFF_FFFF, 0x8000_0000, u32::MAX]);
+    for step in steps {
+        for t in SKIP_TYPES {
+            for v in [false, true] {
+                let (rust, c) = skip_both(step, t, v);
+                assert_eq!(rust, c, "step {step} type {t:#x} value {v}");
+            }
+        }
+    }
+}
+
+/// The whole ladder, as `load_all_callback()` walks it, for all 32 answers
+/// of its five reads: the same reads, in the same order, and the same route.
+#[test]
+fn skip_ladder_matches_the_c() {
+    fn ladder(t: u32, m: u32, side: fn(u32, u32, bool) -> u32) -> Vec<u32> {
+        let mut seen = Vec::new();
+        let mut step = side(0, t, false);
+        // Steps are 1 to 5; each answer is bit (step - 1) of m.
+        while (1..=5).contains(&step) && seen.len() < 8 {
+            seen.push(step);
+            step = side(step, t, (m >> (step - 1)) & 1 == 1);
+        }
+        seen.push(step);
+        seen
+    }
+    let rust = |s, t, v| obs_module_load_rules_skip_step(s, t, v);
+    // SAFETY: plain values.
+    let c = |s, t, v| unsafe { oracle_obs_module_load_rules_skip_step(s, t, v) };
+    for t in SKIP_TYPES {
+        for m in 0..32 {
+            assert_eq!(
+                ladder(t, m, rust),
+                ladder(t, m, c),
+                "type {t:#x} answers {m:05b}"
+            );
+        }
+    }
+}
+
+fn any_skip_step() -> impl Strategy<Value = u32> {
+    prop_oneof![
+        3 => 0..14_u32,
+        1 => any::<u32>(),
+    ]
+}
+
+fn any_skip_type() -> impl Strategy<Value = u32> {
+    prop_oneof![
+        3 => prop::sample::select(SKIP_TYPES.to_vec()),
+        1 => any::<u32>(),
+    ]
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(2048)))]
+
+    #[test]
+    fn skip_step_any(step in any_skip_step(), t in any_skip_type(), v in any::<bool>()) {
+        let (rust, c) = skip_both(step, t, v);
+        prop_assert_eq!(rust, c);
     }
 }

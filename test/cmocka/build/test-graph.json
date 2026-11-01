@@ -2128,6 +2128,22 @@
         "test/cmocka"
       ]
     },
+    "test_module_load_rules_skip_steps": {
+      "sources": [
+        "test/cmocka/test_module_load_rules_skip_steps.c",
+        "libobs/obs-module-load-rules-skip.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-load-rules.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_module_load_steps": {
       "sources": [
         "test/cmocka/test_module_load_steps.c",
@@ -6921,6 +6937,12 @@
     },
     "test_missing_source_types": {
       "target": "test_missing_source_types",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_module_load_rules_skip_steps": {
+      "target": "test_module_load_rules_skip_steps",
       "command": [
         "${target}"
       ]
