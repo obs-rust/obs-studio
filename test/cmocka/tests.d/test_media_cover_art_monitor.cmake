@@ -42,5 +42,6 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl AND TARGET OBS::media-playback)
     COMMAND test_media_cover_art_monitor
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
-  set_tests_properties(test_media_cover_art_monitor PROPERTIES TIMEOUT 120)
+  # It plays real media in real time: the asan pool runs it alone (#3421).
+  set_tests_properties(test_media_cover_art_monitor PROPERTIES TIMEOUT 120 RESOURCE_LOCK timing)
 endif()
