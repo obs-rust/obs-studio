@@ -89,6 +89,7 @@ unsafe extern "C" {
         settings: *mut obs_data_t,
         hotkey_data: *mut obs_data_t,
     ) -> *mut obs_source_t;
+    pub fn obs_source_get_display_name(id: *const c_char) -> *const c_char;
     pub fn obs_source_get_ref(source: *mut obs_source_t) -> *mut obs_source_t;
     pub fn obs_source_release(source: *mut obs_source_t);
     pub fn obs_source_remove(source: *mut obs_source_t);
@@ -238,8 +239,42 @@ pub const OBS_SCALE_BICUBIC: c_int = 2;
 /// `SPEAKERS_STEREO` of `enum speaker_layout`.
 pub const SPEAKERS_STEREO: c_int = 2;
 
+/// `struct obs_runtime_module_path` of `libobs/obs.h`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct obs_runtime_module_path {
+    pub binary: *const c_char,
+    pub data: *const c_char,
+}
+
+/// `struct obs_runtime_module_info` of `libobs/obs.h`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct obs_runtime_module_info {
+    pub path_info: obs_runtime_module_path,
+    pub type_: c_int,
+    pub name: *const c_char,
+}
+
+/// `struct obs_module_failure_info` of `libobs/obs.h`.
+#[repr(C)]
+#[derive(Debug)]
+pub struct obs_module_failure_info {
+    pub failed_modules: *mut *mut c_char,
+    pub count: usize,
+}
+
+/// `OBS_MODULE_TYPE_PLUGIN` of `enum obs_runtime_module_type`.
+pub const OBS_MODULE_TYPE_PLUGIN: c_int = 2;
+
 unsafe extern "C" {
     // libobs/obs.h: video, audio and modules.
+    pub fn obs_load_plugins(
+        info: *mut obs_runtime_module_info,
+        error: *mut obs_module_failure_info,
+    );
+    pub fn obs_module_failure_info_free(info: *mut obs_module_failure_info);
+    pub fn obs_apply_private_data(settings: *mut obs_data_t);
     pub fn obs_reset_video(ovi: *mut obs_video_info) -> c_int;
     pub fn obs_reset_audio(oai: *const obs_audio_info) -> bool;
     pub fn obs_get_audio() -> *mut audio_t;

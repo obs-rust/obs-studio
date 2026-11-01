@@ -67,6 +67,7 @@ impl ObsBackend {
     /// libobs must already be started.
     #[must_use]
     pub fn new() -> Self {
+        crate::ffi::use_absolute_coordinates();
         Self {
             owned: RefCell::new(HashMap::new()),
             record: None,

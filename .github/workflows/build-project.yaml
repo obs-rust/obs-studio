@@ -2368,8 +2368,8 @@ jobs:
     # same libraries, compiler, flags and CPU (#982). Packages install below.
     container:
       image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
-    # A hung test held a runner for 4.5 h without a timeout (#983).
-    timeout-minutes: 30
+    # A hung test held a runner for 4.5 h without a timeout (#983). The MCP cases (#3319) add a bundled libobs build.
+    timeout-minutes: 45
     # Compilation consumes no Fast Gate output and can overlap its runner.
     # Keep proof/scope checks here; OFF/ON execution waits only for this build.
     needs: [check-event, ci-mode]
@@ -2534,6 +2534,7 @@ jobs:
           OBS_TIER2_COST_DIR: ${{ github.workspace }}/.tier2-cost
           OBS_TIER2_MODES: "OFF ON"
           OBS_TIER2_STAGE: build
+          OBS_TIER2_MCP: "1"
         run: bash rust/tools/linux-validate/validate.sh
 
       - name: Record Tier 2 Runtime Packages 📦

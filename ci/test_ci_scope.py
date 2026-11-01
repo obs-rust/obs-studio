@@ -295,6 +295,12 @@ class LaneTableTest(unittest.TestCase):
             "Cargo.lock",
             "rust/obs-data/src/lib.rs",  # linked into libobs
             "rust/libobs-rust/src/lib.rs",
+            # The in-process MCP cases of obs-tests-app run in Tier 2 (#3319).
+            "rust/obs-mcp/src/host.rs",
+            "rust/obs-mcp/tests/libobs_video.rs",
+            "rust/obs-studio-rust/src/main.rs",
+            "rust/obs-studio-rust/tests/cli/mcp_stdio.rs",
+            "rust/obs-sys/src/ffi/mod.rs",
         ):
             self.assertTrue(self.sc(f).tier2, f)
 

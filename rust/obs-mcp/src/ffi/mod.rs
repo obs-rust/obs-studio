@@ -35,6 +35,17 @@ unsafe fn text(ptr: *const c_char) -> String {
     }
 }
 
+/// Makes scenes created from now on keep item positions in canvas pixels, not
+/// as fractions of a canvas size that is zero until video starts (which reads
+/// back as NaN). Call after `obs_startup`, before creating scenes.
+pub fn use_absolute_coordinates() {
+    if let Ok(absolute) = Data::from_json(&serde_json::json!({"AbsoluteCoordinates": true})) {
+        // SAFETY: libobs is started and `absolute` is live; libobs merges the
+        // settings into its own copy.
+        unsafe { sys::obs_apply_private_data(absolute.0.as_ptr()) };
+    }
+}
+
 /// An owned `obs_data_t` built from JSON.
 struct Data(NonNull<sys::obs_data_t>);
 
@@ -73,6 +84,12 @@ impl Source {
     pub fn create(kind: &str, name: &str, settings: &Value) -> Result<Self, String> {
         let kind_c = c_string(kind, "kind")?;
         let name_c = c_string(name, "name")?;
+        // libobs keeps a source of a kind no module registered as a placeholder
+        // for the missing plugin (and logs an error) instead of returning null.
+        // SAFETY: `kind_c` is NUL-terminated; the result is borrowed or null.
+        if unsafe { sys::obs_source_get_display_name(kind_c.as_ptr()) }.is_null() {
+            return Err(format!("cannot create a source of unknown kind '{kind}'"));
+        }
         let data = Data::from_json(settings)?;
         // SAFETY: both strings are NUL-terminated and `data` is live; a null
         // hotkey store is allowed; the result is an owned reference or null.

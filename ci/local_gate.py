@@ -488,7 +488,7 @@ FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = (
 )
 _NEEDS_RUST_ARCHIVE = (
     "obs-sys/build.rs needs OBS_BUILD_RUST_ARCHIVE (a release libobs-rust staticlib); "
-    "Tier 2 checks it after its native build (rust/tools/tier2-validate/validate.sh, validate.ps1)"
+    "Tier 2 checks it after its native build (rust/tools/tier2-validate/validate.sh, validate.ps1); Linux Tier 2 runs its bundled-native tests (rust/tools/linux-validate/mcp-tests.sh, #3319)"
 )
 FEATURE_SET_EXEMPT: dict[tuple[str, str], str] = {
     ("obs-studio-rust", "bundled-native"): _NEEDS_RUST_ARCHIVE,

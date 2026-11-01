@@ -6,7 +6,7 @@
 //! text as their error.
 
 use std::ffi::CString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 
 use obs_sys::ffi as sys;
@@ -81,11 +81,9 @@ pub fn configure(options: &StartOptions) -> Pipeline {
     if let Err(error) = reset_audio() {
         notes.push(error);
     }
-    // SAFETY: libobs is started; the paths were registered above.
-    unsafe {
-        sys::obs_load_all_modules();
-        sys::obs_post_load_modules();
-    }
+    load_modules(options, &mut notes);
+    // SAFETY: libobs is started.
+    unsafe { sys::obs_post_load_modules() };
 
     if pipeline.video_error.is_some() {
         pipeline.output_error = Some("the video subsystem is not available".to_owned());
@@ -111,19 +109,54 @@ pub fn configure(options: &StartOptions) -> Pipeline {
 /// Registers the effect-file and plugin directories.
 fn add_paths(options: &StartOptions, notes: &mut Vec<String>) {
     if let Some(path) = &options.data_path {
-        match path_c(path) {
-            // SAFETY: NUL-terminated; libobs copies the string.
+        match path_c(&with_separator(path)) {
+            // libobs appends the file name to the path as is, so end it with a
+            // separator. SAFETY: NUL-terminated; libobs copies the string.
             Ok(path) => unsafe { sys::obs_add_data_path(path.as_ptr()) },
             Err(error) => notes.push(error),
         }
     }
-    if let Some((bin, data)) = &options.module_path {
-        match (path_c(bin), path_c(data)) {
-            // SAFETY: both NUL-terminated; libobs copies the strings.
-            (Ok(bin), Ok(data)) => unsafe { sys::obs_add_module_path(bin.as_ptr(), data.as_ptr()) },
-            (Err(error), _) | (_, Err(error)) => notes.push(error),
-        }
+}
+
+/// Loads the plugins in the module directory. `obs_load_all_modules` is a
+/// deprecated no-op; the plugin loader takes the paths directly.
+fn load_modules(options: &StartOptions, notes: &mut Vec<String>) {
+    let Some((bin, data)) = &options.module_path else {
+        return;
+    };
+    let (bin, data) = match (path_c(bin), path_c(data)) {
+        (Ok(bin), Ok(data)) => (bin, data),
+        (Err(error), _) | (_, Err(error)) => return notes.push(error),
+    };
+    let mut info = sys::obs_runtime_module_info {
+        path_info: sys::obs_runtime_module_path {
+            binary: bin.as_ptr(),
+            data: data.as_ptr(),
+        },
+        type_: sys::OBS_MODULE_TYPE_PLUGIN,
+        name: std::ptr::null(),
+    };
+    let mut failures = sys::obs_module_failure_info {
+        failed_modules: std::ptr::null_mut(),
+        count: 0,
+    };
+    // SAFETY: both structs are fully initialized and the strings outlive the
+    // call; libobs copies what it keeps.
+    unsafe { sys::obs_load_plugins(&raw mut info, &raw mut failures) };
+    if failures.count > 0 {
+        notes.push(format!("{} module(s) failed to load", failures.count));
     }
+    // SAFETY: filled in by `obs_load_plugins` above.
+    unsafe { sys::obs_module_failure_info_free(&raw mut failures) };
+}
+
+/// `path` ending in a separator.
+fn with_separator(path: &Path) -> PathBuf {
+    let mut text = path.as_os_str().to_owned();
+    if !path.to_string_lossy().ends_with(std::path::MAIN_SEPARATOR) {
+        text.push(std::path::MAIN_SEPARATOR_STR);
+    }
+    PathBuf::from(text)
 }
 
 fn path_c(path: &Path) -> Result<CString, String> {
