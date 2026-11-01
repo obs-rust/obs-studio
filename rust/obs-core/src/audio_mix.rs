@@ -202,10 +202,22 @@ pub fn mix_active(mixers: u32, mix: usize) -> bool {
 
 /// The add loop of `obs_audio_mix_add()` for one mix and channel: adds
 /// `src[i]` to `dst[start + i]` for every frame of `dst` from `start` on.
+///
+/// On a CPU with AVX2 the loop runs compiled with AVX2 (#3412); same
+/// result, bit for bit.
 pub fn mix_into(dst: &mut [f32], src: &[f32], start: usize) {
     let Some(dst) = dst.get_mut(start..) else {
         return;
     };
+    crate::platform::mix_add(dst, src);
+}
+
+/// [`mix_into`]'s loop for the baseline target, from frame 0: adds `src[i]`
+/// to `dst[i]` over the shorter slice. Public only for the tests, which
+/// check both paths agree.
+#[doc(hidden)]
+#[inline(always)]
+pub fn mix_add_scalar(dst: &mut [f32], src: &[f32]) {
     for (mix, aud) in dst.iter_mut().zip(src) {
         *mix += *aud;
     }
