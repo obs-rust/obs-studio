@@ -13,7 +13,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-macos-coreaudio-pacing.pch.h"
+#include "libobs/build/libobs-ported-coreaudio-pacing.pch.h"
+
+/* Ported to rust/obs-audio-monitoring (coreaudio_pacing): the hybrid libobs
+ * drops this file. */
 
 /* The queue pacing of the CoreAudio monitor (coreaudio-output.c), moved: the
  * buffer and wait sizes, the fill test, the volume gate, the end of the wait,

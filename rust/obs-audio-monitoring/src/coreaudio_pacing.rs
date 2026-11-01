@@ -24,10 +24,10 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![expect(clippy::todo, reason = "RED: the port is not written yet")]
 
 /// `COREAUDIO_MONITOR_BUFFERS`: the AudioQueue buffers a monitor has.
 pub const BUFFERS: usize = 3;
@@ -36,44 +36,44 @@ pub const BUFFERS: usize = 3;
 /// `channels * sizeof(float) * rate / 100 * 3` in `size_t`.
 #[must_use]
 pub fn buffer_size(channels: u32, rate: u32) -> usize {
-    let _ = (channels, rate);
-    todo!()
+    // Left to right in size_t, as the C: the bytes of one second, divided
+    // by 100 and truncated, then times 3. Each product wraps.
+    usize_from(channels)
+        .wrapping_mul(FLOAT_BYTES)
+        .wrapping_mul(usize_from(rate))
+        .wrapping_div(100)
+        .wrapping_mul(3)
 }
 
 /// Bytes queued before a paused queue starts again: every buffer's worth.
 #[must_use]
 pub fn wait_size(buffer_size: usize) -> usize {
-    let _ = buffer_size;
-    todo!()
+    buffer_size.wrapping_mul(BUFFERS)
 }
 
 /// Whether `queued` bytes fill a buffer.
 #[must_use]
 pub fn can_fill(queued: usize, buffer_size: usize) -> bool {
-    let _ = (queued, buffer_size);
-    todo!()
+    queued >= buffer_size
 }
 
 /// Whether the volume step runs: the volume is not 1 within `EPSILON`.
 #[must_use]
 pub fn needs_volume(vol: f32) -> bool {
-    let _ = vol;
-    todo!()
+    crate::pulse_monitor::needs_volume(vol)
 }
 
 /// Whether the wait is over once `queued` bytes are queued.
 #[must_use]
 pub fn wait_over(queued: usize, wait_size: usize) -> bool {
-    let _ = (queued, wait_size);
-    todo!()
+    queued >= wait_size
 }
 
 /// Whether every buffer is back on the free list, which holds
 /// `empty_bytes` of buffer pointers of `ptr_size` bytes.
 #[must_use]
 pub fn all_back(empty_bytes: usize, ptr_size: usize) -> bool {
-    let _ = (empty_bytes, ptr_size);
-    todo!()
+    empty_bytes == ptr_size.wrapping_mul(BUFFERS)
 }
 
 /// After `AudioQueueEnqueueBuffer()` failed and the queue was stopped:
@@ -82,5 +82,17 @@ pub fn all_back(empty_bytes: usize, ptr_size: usize) -> bool {
 /// again.
 #[must_use]
 pub fn recover_failed_enqueue() -> bool {
-    todo!()
+    // The intentional difference: the C keeps the buffer out for good, so
+    // only two buffers can come back, the queue never pauses and is never
+    // started again.
+    true
+}
+
+/// `sizeof(float)`.
+const FLOAT_BYTES: usize = 4;
+
+/// A `uint32_t` as `size_t`, as the C's conversions. `usize` is at least 32
+/// bits on every host libobs builds for.
+fn usize_from(v: u32) -> usize {
+    usize::try_from(v).unwrap_or(usize::MAX)
 }

@@ -160,6 +160,9 @@ class PortedSourceTest(unittest.TestCase):
         self.assertIn("graphics/graphics-ffmpeg-host-pq.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertNotIn("graphics/graphics-ffmpeg-host-pq.c.h.o", objects)
         self.assertNotIn("graphics/graphics-ffmpeg-host-pq.c.h.o", PORTED.ported_objects(ROOT, "macos"))
+        self.assertIn("audio-monitoring/osx/coreaudio-pacing.c.h.o", PORTED.ported_objects(ROOT, "macos"))
+        self.assertNotIn("audio-monitoring/osx/coreaudio-pacing.c.h.o", objects)
+        self.assertNotIn("audio-monitoring/osx/coreaudio-pacing.c.h.o", PORTED.ported_objects(ROOT, "windows"))
         self.assertEqual(len(objects), len(set(objects)))
 
     def test_no_ported_c_links_into_production(self):
