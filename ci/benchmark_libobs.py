@@ -14,6 +14,7 @@ import os
 import resource
 import subprocess
 import time
+import statistics
 from pathlib import Path
 
 
@@ -70,9 +71,58 @@ def measure(build: Path, output: Path, repetitions: int, jobs: int, rebuild: boo
     return result
 
 
+def flatten(sample: dict, prefix: str = "") -> dict:
+    values = {}
+    for key, value in sample.items():
+        if isinstance(value, dict):
+            values.update(flatten(value, f"{prefix}{key}."))
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            values[prefix + key] = value
+    return values
+
+
+def summarize_runtime(runs: list[dict]) -> dict:
+    """Median, min, max and relative spread ((max - min) / median) per numeric field."""
+    if not runs:
+        raise ValueError("no runtime samples")
+    flat = [flatten(run) for run in runs]
+    summary = {}
+    for key in flat[0]:
+        values = [run[key] for run in flat if key in run]
+        median = statistics.median(values)
+        summary[key] = {
+            "median": median, "min": min(values), "max": max(values),
+            "spread": round((max(values) - min(values)) / median, 4) if median else 0.0,
+        }
+    return summary
+
+
+def measure_runtime(executable: Path, output: Path, repetitions: int, seconds: float, warmup: float) -> dict:
+    """Run obs_runtime_bench (test/cmocka/obs_runtime_bench.c) and keep each JSON sample."""
+    output.mkdir(parents=True, exist_ok=True)
+    command = [str(executable), "--seconds", str(seconds), "--warmup", str(warmup)]
+    result = {"command": command, "runs": []}
+    for index in range(repetitions):
+        load = os.getloadavg()
+        process = subprocess.run(command, cwd=executable.parent, capture_output=True, text=True)
+        (output / f"runtime-{index + 1}.log").write_text(process.stdout + process.stderr)
+        if process.returncode:
+            raise RuntimeError(f"runtime benchmark exited {process.returncode}; see runtime-{index + 1}.log")
+        lines = [line for line in process.stdout.splitlines() if line.startswith("{")]
+        if not lines:
+            raise RuntimeError(f"no JSON in runtime-{index + 1}.log")
+        result["runs"].append({**json.loads(lines[-1]), "load_average": load})
+    result["summary"] = summarize_runtime([{k: v for k, v in run.items() if k != "load_average"} for run in result["runs"]])
+    (output / "runtime.json").write_text(json.dumps(result, indent=2) + "\n")
+    return result
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build", type=Path, required=True)
+    parser.add_argument("--build", type=Path)
+    parser.add_argument("--runtime", type=Path, metavar="EXE", help="Run obs_runtime_bench instead of timing a build")
+    parser.add_argument("--seconds", type=float, default=10.0)
+    parser.add_argument("--warmup", type=float, default=2.0)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--jobs", type=int, default=8)
@@ -81,4 +131,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.repetitions < 1 or args.jobs < 1:
         parser.error("repetitions and jobs must be positive")
+    if args.runtime:
+        print(json.dumps(measure_runtime(args.runtime, args.output, args.repetitions, args.seconds, args.warmup)["summary"], indent=2))
+        raise SystemExit(0)
+    if not args.build:
+        parser.error("--build or --runtime is required")
     print(json.dumps(measure(args.build, args.output, args.repetitions, args.jobs, args.rebuild, args.cache_stats), indent=2))
