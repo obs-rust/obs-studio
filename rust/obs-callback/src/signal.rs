@@ -35,7 +35,7 @@
 //! callbacks.
 
 use std::cell::{Cell, RefCell};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
 
 use crate::decl::{Decl, DeclParse, parse_decl};
@@ -152,6 +152,8 @@ struct Signal {
     decl: Decl,
     pass: ReentrantLock,
     callbacks: Mutex<Callbacks>,
+    /// Bumped on every change to `callbacks.entries` (#3350).
+    generation: AtomicU64,
 }
 
 #[derive(Clone, Copy)]
@@ -171,6 +173,17 @@ struct GlobalCallbacks {
 struct Globals {
     pass: ReentrantLock,
     callbacks: Mutex<GlobalCallbacks>,
+    /// Bumped on every change to `callbacks.entries` (#3350).
+    generation: AtomicU64,
+}
+
+/// Entries a pass copies out under one lock (#3350).
+const SNAPSHOT: usize = 8;
+
+/// Marks a change to a callback list, so a running pass on this thread
+/// reads the list again after the callback that made it.
+fn bump(generation: &AtomicU64) {
+    generation.fetch_add(1, Ordering::Relaxed);
 }
 
 thread_local! {
@@ -231,6 +244,7 @@ pub fn remove_current() {
             && let Some(entry) = lock(&sig.callbacks).entries.get_mut(i)
         {
             entry.remove = true;
+            bump(&sig.generation);
         }
         return;
     }
@@ -240,6 +254,7 @@ pub fn remove_current() {
             && let Some(entry) = lock(&globals.callbacks).entries.get_mut(i)
         {
             entry.remove = true;
+            bump(&globals.generation);
         }
     }
 }
@@ -297,6 +312,7 @@ impl SignalHandler {
             decl,
             pass: ReentrantLock::default(),
             callbacks: Mutex::new(Callbacks::default()),
+            generation: AtomicU64::new(0),
         });
         let mut signals = self.signals.write().unwrap_or_else(|err| err.into_inner());
         if signals.insert(name.as_ref(), signal) {
@@ -329,6 +345,7 @@ impl SignalHandler {
                 remove: false,
                 keep_ref,
             });
+            bump(&sig.generation);
         }
         true
     }
@@ -344,6 +361,7 @@ impl SignalHandler {
             let _pass = sig.pass.lock();
             let mut cbs = lock(&sig.callbacks);
             let signalling = cbs.signalling != 0;
+            bump(&sig.generation);
             match cbs.entries.iter().position(|e| e.key == key) {
                 Some(i) if signalling => {
                     cbs.entries[i].remove = true;
@@ -362,6 +380,7 @@ impl SignalHandler {
         let mut cbs = lock(&self.globals.callbacks);
         if global_find(&cbs.entries, key).is_none() {
             cbs.entries.push(GlobalEntry { key, remove: false });
+            bump(&self.globals.generation);
         }
     }
 
@@ -371,6 +390,7 @@ impl SignalHandler {
         let _pass = self.globals.pass.lock();
         let mut cbs = lock(&self.globals.callbacks);
         if let Some(i) = global_find(&cbs.entries, key) {
+            bump(&self.globals.generation);
             if cbs.signalling != 0 {
                 cbs.entries[i].remove = true;
             } else {
@@ -403,21 +423,42 @@ impl SignalHandler {
             let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
             lock(&sig.callbacks).signalling += 1;
 
+            // Every writer holds `pass`, so while it is held only this
+            // thread's callbacks change the list. Copy it out in chunks
+            // under one lock, and read it again only after a callback that
+            // changed it (#3350). A callback connected in this pass still
+            // runs in it: the next chunk, or the re-read, picks it up.
+            let slot = pass_slot.slot;
+            let previous = swap_current((Some((slot, 0)), None));
+            let mut snapshot = [None::<Entry>; SNAPSHOT];
             let mut i = 0;
-            loop {
-                // The count is read again each time: a callback connected
-                // in this pass runs in it.
-                let entry = match lock(&sig.callbacks).entries.get(i) {
-                    Some(entry) => *entry,
-                    None => break,
+            'pass: loop {
+                let (count, generation) = {
+                    let cbs = lock(&sig.callbacks);
+                    let rest = cbs.entries.get(i..).unwrap_or_default();
+                    let count = rest.len().min(SNAPSHOT);
+                    for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
+                        *to = Some(*from);
+                    }
+                    (count, sig.generation.load(Ordering::Relaxed))
                 };
-                if !entry.remove {
-                    let previous = swap_current((Some((pass_slot.slot, i)), None));
-                    call(entry.key);
-                    swap_current(previous);
+                if count == 0 {
+                    break;
                 }
-                i += 1;
+                for entry in snapshot[..count].iter().flatten() {
+                    let index = i;
+                    i += 1;
+                    if entry.remove {
+                        continue;
+                    }
+                    CURRENT_SIGNAL.with(|c| c.set(Some((slot, index))));
+                    call(entry.key);
+                    if sig.generation.load(Ordering::Relaxed) != generation {
+                        continue 'pass;
+                    }
+                }
             }
+            swap_current(previous);
 
             let mut cbs = lock(&sig.callbacks);
             cbs.signalling -= 1;
@@ -430,6 +471,7 @@ impl SignalHandler {
                         cbs.entries.remove(i);
                     }
                 }
+                bump(&sig.generation);
             }
         }
 
@@ -442,24 +484,43 @@ impl SignalHandler {
             let _pass = globals.pass.lock();
             let pass_slot = PassSlot::push(&GLOBAL_PASSES, globals);
             lock(&globals.callbacks).signalling += 1;
+            // As in the signal pass above (#3350).
+            let slot = pass_slot.slot;
+            let previous = swap_current((None, Some((slot, 0))));
+            let mut snapshot = [None::<GlobalEntry>; SNAPSHOT];
             let mut i = 0;
-            loop {
-                let entry = match lock(&globals.callbacks).entries.get(i) {
-                    Some(entry) if !entry.remove => Some(entry.key),
-                    Some(_) => None,
-                    None => break,
+            'pass: loop {
+                let (count, generation) = {
+                    let cbs = lock(&globals.callbacks);
+                    let rest = cbs.entries.get(i..).unwrap_or_default();
+                    let count = rest.len().min(SNAPSHOT);
+                    for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
+                        *to = Some(*from);
+                    }
+                    (count, globals.generation.load(Ordering::Relaxed))
                 };
-                if let Some(key) = entry {
-                    let previous = swap_current((None, Some((pass_slot.slot, i))));
-                    call_global(key);
-                    swap_current(previous);
+                if count == 0 {
+                    break;
                 }
-                i += 1;
+                for entry in snapshot[..count].iter().flatten() {
+                    let index = i;
+                    i += 1;
+                    if entry.remove {
+                        continue;
+                    }
+                    CURRENT_GLOBAL.with(|c| c.set(Some((slot, index))));
+                    call_global(entry.key);
+                    if globals.generation.load(Ordering::Relaxed) != generation {
+                        continue 'pass;
+                    }
+                }
             }
+            swap_current(previous);
             let mut cbs = lock(&globals.callbacks);
             cbs.signalling -= 1;
             if cbs.signalling == 0 {
                 cbs.entries.retain(|entry| !entry.remove);
+                bump(&globals.generation);
             }
         }
 
