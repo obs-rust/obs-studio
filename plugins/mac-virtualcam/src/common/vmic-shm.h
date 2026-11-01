@@ -39,37 +39,59 @@ static inline size_t vmic_shm_size(uint32_t channels, uint32_t capacity)
 
 static inline void vmic_shm_init(struct vmic_shm *shm, uint32_t rate, uint32_t channels, uint32_t capacity)
 {
-	(void)shm;
-	(void)rate;
-	(void)channels;
-	(void)capacity;
+	shm->rate = rate;
+	shm->channels = channels;
+	shm->capacity = capacity;
+	shm->reserved = 0;
+	atomic_store(&shm->write_frame, 0);
+	atomic_store(&shm->read_frame, 0);
+	atomic_store(&shm->write_host_time, 0);
+	shm->version = VMIC_SHM_VERSION;
+	atomic_thread_fence(memory_order_release);
+	shm->magic = VMIC_SHM_MAGIC;
 }
 
 /* Whether a mapping holds a ring this reader understands. */
 static inline bool vmic_shm_valid(const struct vmic_shm *shm, size_t mapped)
 {
-	(void)shm;
-	(void)mapped;
-	return false;
+	if (mapped < sizeof(struct vmic_shm)) {
+		return false;
+	}
+	return shm->magic == VMIC_SHM_MAGIC && shm->version == VMIC_SHM_VERSION && shm->channels > 0 &&
+	       shm->capacity > 0 && vmic_shm_size(shm->channels, shm->capacity) <= mapped;
 }
 
 /* Appends `frames` interleaved frames; a packet that does not fit is dropped
  * whole (returns false), so channels never shift. */
 static inline bool vmic_shm_write(struct vmic_shm *shm, const float *data, uint32_t frames, uint64_t host_time)
 {
-	(void)shm;
-	(void)data;
-	(void)frames;
-	(void)host_time;
-	return false;
+	uint64_t w = atomic_load_explicit(&shm->write_frame, memory_order_relaxed);
+	uint64_t r = atomic_load_explicit(&shm->read_frame, memory_order_acquire);
+	if (frames > shm->capacity - (w - r)) {
+		return false;
+	}
+	for (uint32_t i = 0; i < frames; i++) {
+		size_t slot = (size_t)((w + i) % shm->capacity) * shm->channels;
+		memcpy(&shm->samples[slot], &data[(size_t)i * shm->channels], shm->channels * sizeof(float));
+	}
+	atomic_store_explicit(&shm->write_host_time, host_time, memory_order_relaxed);
+	atomic_store_explicit(&shm->write_frame, w + frames, memory_order_release);
+	return true;
 }
 
 /* Fills `frames` frames, padding what the ring lacks with silence. Returns
  * the frames that came from the ring. */
 static inline uint32_t vmic_shm_read(struct vmic_shm *shm, float *out, uint32_t frames)
 {
-	(void)shm;
-	(void)out;
-	(void)frames;
-	return 0;
+	uint64_t r = atomic_load_explicit(&shm->read_frame, memory_order_relaxed);
+	uint64_t w = atomic_load_explicit(&shm->write_frame, memory_order_acquire);
+	uint64_t avail = w - r;
+	uint32_t n = avail < frames ? (uint32_t)avail : frames;
+	for (uint32_t i = 0; i < n; i++) {
+		size_t slot = (size_t)((r + i) % shm->capacity) * shm->channels;
+		memcpy(&out[(size_t)i * shm->channels], &shm->samples[slot], shm->channels * sizeof(float));
+	}
+	memset(&out[(size_t)n * shm->channels], 0, (size_t)(frames - n) * shm->channels * sizeof(float));
+	atomic_store_explicit(&shm->read_frame, r + n, memory_order_release);
+	return n;
 }
