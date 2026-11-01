@@ -265,8 +265,7 @@ fn a_text_item_reports_the_size_and_source() {
     assert_eq!(info, json!({"width": 3, "height": 2, "source": null}));
 
     let result = shoot(&mut s, &json!({"source": "Cam"}));
-    let info: Value =
-        serde_json::from_str(result["content"][1]["text"].as_str().unwrap()).unwrap();
+    let info: Value = serde_json::from_str(result["content"][1]["text"].as_str().unwrap()).unwrap();
     assert_eq!(info, json!({"width": 3, "height": 2, "source": "Cam"}));
 }
 

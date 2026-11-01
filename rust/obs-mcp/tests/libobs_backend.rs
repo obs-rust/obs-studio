@@ -191,9 +191,7 @@ fn sources_and_items(backend: &ObsBackend) {
             .contains("Nope")
     );
     assert!(
-        backend
-            .add_item("Main", "Main", None)
-            .is_err(),
+        backend.add_item("Main", "Main", None).is_err(),
         "a scene cannot contain itself"
     );
 
@@ -202,9 +200,7 @@ fn sources_and_items(backend: &ObsBackend) {
         rotation: Some(45.0),
         ..Transform::default()
     };
-    backend
-        .set_item_transform("Main", &id, &partial)
-        .unwrap();
+    backend.set_item_transform("Main", &id, &partial).unwrap();
     let (_, pos, scale, rot) = item("Main", "Inner");
     assert_eq!((pos, rot), ((10.0, 20.0), 45.0));
     assert_eq!(scale, (1.0, 1.0), "unset fields keep their value");

@@ -299,7 +299,10 @@ fn red_scene_over_mcp_tools(
     assert_eq!(screenshot["isError"], false, "{screenshot}");
     let info: Value =
         serde_json::from_str(screenshot["content"][1]["text"].as_str().unwrap()).unwrap();
-    assert_eq!(info, json!({"width": size.0, "height": size.1, "source": null}));
+    assert_eq!(
+        info,
+        json!({"width": size.0, "height": size.1, "source": null})
+    );
 
     let frame = backend.capture(None, None, None).unwrap();
     let at = |x: usize, y: usize| {

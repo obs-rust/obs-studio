@@ -407,7 +407,10 @@ fn source_create_can_add_the_source_to_a_scene() {
     let args = json!({"kind": "color_source", "name": "y", "settings": {}, "scene": "B"});
     let (err, msg) = call(&mut s, "source_create", &args);
     let msg = msg.as_str().unwrap();
-    assert!(err && msg.contains("'y'") && msg.contains("no scene named B"), "{msg}");
+    assert!(
+        err && msg.contains("'y'") && msg.contains("no scene named B"),
+        "{msg}"
+    );
 }
 
 #[test]
@@ -420,7 +423,10 @@ fn item_tools_need_exactly_one_of_item_and_source() {
         json!({"scene": "A", "item": "1", "visible": true}),
     ] {
         let (err, msg) = call(&mut s, "scene_item_set_visible", &args);
-        assert!(err && msg.as_str().unwrap().contains("item"), "{args}: {msg}");
+        assert!(
+            err && msg.as_str().unwrap().contains("item"),
+            "{args}: {msg}"
+        );
     }
 }
 
