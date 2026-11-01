@@ -1612,6 +1612,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_ffmpeg_wic_checks": {
+      "sources": [
+        "libobs/graphics/graphics-ffmpeg-host-wic-checks.c.h",
+        "test/cmocka/test_graphics_ffmpeg_wic_checks.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-graphics-ffmpeg-host-wic-checks.pch.h",
+        "libobs/graphics/graphics-ffmpeg-host-wic-checks.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_immediate_steps": {
       "sources": [
         "libobs/graphics/graphics-immediate.c.h",
@@ -6587,6 +6605,12 @@
     },
     "test_graphics_ffmpeg_rgba64_steps": {
       "target": "test_graphics_ffmpeg_rgba64_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_ffmpeg_wic_checks": {
+      "target": "test_graphics_ffmpeg_wic_checks",
       "command": [
         "${target}"
       ]
