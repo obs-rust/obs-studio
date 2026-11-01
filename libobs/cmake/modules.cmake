@@ -1,5 +1,5 @@
-# libobs lib-modules (#3256, #3259): each module of libobs/build/modules.d
-# compiles in its own OBJECT library, libobs-mod-<module>, the unit the
+# libobs lib-modules (#3256, #3259, #3261): each module of libobs/build/modules.d
+# compiles in its own static library, libobs-mod-<module>, the unit the
 # module cache (#3262) keys, stores and relinks.
 #
 # The split runs once, at the end of libobs/CMakeLists.txt, after every source
@@ -11,10 +11,10 @@
 # its headers, its resource file and its usage requirements (the ported
 # groups no target builds take their include directories from it).
 #
-# Every target that links libobs-objects links each module library too:
-# CMake adds an object library's objects only to targets that link it
-# directly. The ported groups are not on libobs-objects (only the explicit C
-# targets compile them), so this split leaves them where they are.
+# Every target that links libobs-objects links each module archive too, whole
+# ($<LINK_LIBRARY:WHOLE_ARCHIVE>: --whole-archive, -force_load,
+# /WHOLEARCHIVE). The ported groups are not on libobs-objects (only the
+# explicit C targets compile them), so this split leaves them where they are.
 
 set(
   _LIBOBS_MODULE_PROPERTIES
@@ -92,19 +92,24 @@ function(_libobs_module_of group names out)
   message(FATAL_ERROR "libobs group ${group} is in no module of build/modules.d (ci/test_build_groups.py)")
 endfunction()
 
-# _libobs_module_links(<target> <links>): link <target> to <links>, except a
-# target with INTERFACE_SOURCES (OBS::obfuscate on Windows). libobs-objects
-# links that one to compile its group once; a module that linked it too would
-# compile the group again ($<COMPILE_ONLY:...> still carries sources) and the
-# DLL would define its symbols twice. The module takes only its include
-# directories, definitions and options.
+# _libobs_module_links(<target> <links>): link <target> to <links>, except
+# two kinds of target whose code the shared libraries already get once:
+# - one with INTERFACE_SOURCES (OBS::obfuscate on Windows). libobs-objects
+#   links it to compile its group once; a module that linked it too would
+#   compile the group again ($<COMPILE_ONLY:...> still carries sources).
+# - an OBJECT library (libobs-core-modules, libobs-version). A static
+#   library that links one takes its objects in (#3261), and the shared
+#   libraries link those objects themselves.
+# Either way the DLL would define the symbols twice. The module takes only
+# their include directories, definitions and options.
 function(_libobs_module_links target links)
   set(_kept "")
   foreach(_link IN LISTS links)
     set(_sourced FALSE)
     if(TARGET "${_link}")
       get_target_property(_sources "${_link}" INTERFACE_SOURCES)
-      if(_sources AND NOT _sources MATCHES "-NOTFOUND$")
+      get_target_property(_type "${_link}" TYPE)
+      if((_sources AND NOT _sources MATCHES "-NOTFOUND$") OR _type STREQUAL "OBJECT_LIBRARY")
         set(_sourced TRUE)
       endif()
     endif()
@@ -142,7 +147,10 @@ function(libobs_split_modules)
 
   foreach(_module IN LISTS _modules)
     set(_target "libobs-mod-${_module}")
-    add_library(${_target} OBJECT ${_LIBOBS_SOURCES_${_module}})
+    # A static archive, the unit the module cache stores (#3262). Linked
+    # whole: nothing references a module's registration or callback-only
+    # objects by name, and a plain archive link would drop them (#3261).
+    add_library(${_target} STATIC ${_LIBOBS_SOURCES_${_module}})
     foreach(_property IN LISTS _LIBOBS_MODULE_PROPERTIES)
       get_target_property(_value libobs-objects ${_property})
       if(_value MATCHES "-NOTFOUND$")
@@ -155,7 +163,7 @@ function(libobs_split_modules)
       endif()
     endforeach()
     foreach(_consumer IN LISTS ARGN)
-      target_link_libraries(${_consumer} PRIVATE ${_target})
+      target_link_libraries(${_consumer} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,${_target}>")
     endforeach()
   endforeach()
   set_property(TARGET libobs-objects PROPERTY SOURCES "${_kept}")
