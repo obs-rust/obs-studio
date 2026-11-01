@@ -1073,13 +1073,15 @@ pub fn cpu_query(info: &mut CpuInfo) -> f64 {
     let sys = kernel.ticks();
     let usr = user.ticks();
     let time = now.ticks();
-    let mut percent = (sys - info.last_sys + (usr - info.last_user)) as f64;
-    percent /= (time - info.last_time) as f64;
-    percent /= f64::from(info.cores);
+    let percent = crate::cpu_usage::percent(
+        (sys - info.last_sys + (usr - info.last_user)) as f64,
+        (time - info.last_time) as f64,
+        f64::from(info.cores),
+    );
     info.last_time = time;
     info.last_sys = sys;
     info.last_user = usr;
-    percent * 100.0
+    percent
 }
 
 /// `os_request_high_performance` ignores the reason and returns null.

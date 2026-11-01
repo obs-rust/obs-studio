@@ -191,7 +191,10 @@ double os_cpu_usage_info_query(os_cpu_usage_info_t *info)
     info->last_sys_time = sys_time;
     info->last_cpu_time = cpu_time;
 
-    return (double) sys_time_delta * 100.0 / (double) cpu_time_delta / (double) info->core_count;
+    /* no process uses more than all of the machine; a short interval can
+     * read above that (#3367) */
+    double percent = (double) sys_time_delta * 100.0 / (double) cpu_time_delta / (double) info->core_count;
+    return percent > 100.0 ? 100.0 : percent;
 }
 
 void os_cpu_usage_info_destroy(os_cpu_usage_info_t *info)

@@ -45,7 +45,6 @@ KNOWN = {
                                    '("VEX temporary storage exhausted")'),
     ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
     ("asan", "test_dock_proportions"): ("flaky", "the docks come back equal after a resize on the job's Xvfb (#3366)"),
-    ("asan", "test_ws_cpu_usage"): ("flaky", "GetStats reports more than 100 % CPU with 8 threads (#3367)"),
     ("asan", "test_async_delay_audio"): ("flaky", "a real-time tone breaks under load (#3368, #838)"),
 }
 SKIP_EXIT = "77"

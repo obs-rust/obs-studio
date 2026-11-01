@@ -120,7 +120,11 @@ double os_cpu_usage_info_query(os_cpu_usage_info_t *info)
 	info->last_sys_time = time_sample.tms_stime;
 	info->last_user_time = time_sample.tms_utime;
 
-	return percent * 100.0;
+	/* times() ticks at 10 ms: over a short interval the quotient can come out
+	 * above what the cores can run; no process uses more than all of the
+	 * machine (#3367) */
+	percent *= 100.0;
+	return percent > 100.0 ? 100.0 : percent;
 }
 
 void os_cpu_usage_info_destroy(os_cpu_usage_info_t *info)

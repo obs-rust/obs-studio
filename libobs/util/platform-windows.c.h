@@ -309,7 +309,10 @@ double os_cpu_usage_info_query(os_cpu_usage_info_t *info)
 	info->last_sys_time.val = cur_sys_time.val;
 	info->last_user_time.val = cur_user_time.val;
 
-	return percent * 100.0;
+	/* no process uses more than all of the machine; a short interval can
+	 * read above that (#3367) */
+	percent *= 100.0;
+	return percent > 100.0 ? 100.0 : percent;
 }
 
 void os_cpu_usage_info_destroy(os_cpu_usage_info_t *info)

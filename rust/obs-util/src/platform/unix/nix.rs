@@ -725,14 +725,15 @@ mod host {
             {
                 return 0.0;
             }
-            let mut percent =
-                (sample.tms_stime - self.last_sys + (sample.tms_utime - self.last_user)) as f64;
-            percent /= (cpu - self.last_cpu) as f64;
-            percent /= self.cores as f64;
+            let percent = crate::cpu_usage::percent(
+                (sample.tms_stime - self.last_sys + (sample.tms_utime - self.last_user)) as f64,
+                (cpu - self.last_cpu) as f64,
+                self.cores as f64,
+            );
             self.last_cpu = cpu;
             self.last_sys = sample.tms_stime;
             self.last_user = sample.tms_utime;
-            percent * 100.0
+            percent
         }
     }
 
