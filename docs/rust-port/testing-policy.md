@@ -270,7 +270,13 @@ Tier 2 checks.
 
 - Every test that touches files uses its own temp directory, relative to the
   ctest working directory, and removes it in teardown.
-- No sleeps: synchronize on events, semaphores or joins.
+- No sleeps: synchronize on events, semaphores or joins. Before writing a test
+  that waits for frames or audio, read
+  [docs/knowledge/timing-tests.md](../knowledge/timing-tests.md): wait for the
+  result, not a frame count, and when the `timing` resource lock applies.
+- Before writing a test that touches something OBS's destroy path frees, read
+  [docs/knowledge/test-leaks.md](../knowledge/test-leaks.md): free exactly what
+  that path frees, or the asan job fails on the leak.
 - Threading tests MUST be deterministic: 100 consecutive runs without a flake.
   Check it with the Tier 2 harness, which reruns the given tests in both the
   OFF and ON builds after the normal run, stopping at the first failure
