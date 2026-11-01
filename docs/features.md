@@ -1558,6 +1558,12 @@ area.
   writes instead of leaving that row of the frame unwritten. *All*,
   2026-10-31. Issue
   [#3159](https://github.com/obs-rust/obs-studio/issues/3159).
+- With "Remember these settings" on in the YouTube broadcast dialog, the
+  "Automatically stop" checkbox comes back as it was saved, instead of as
+  whatever "Automatically start" was, so a broadcast no longer ends, or
+  stays live, against the user's choice. *All*, 2026-11-01. Issue
+  [#3448](https://github.com/obs-rust/obs-studio/issues/3448), upstream
+  obs-studio issue 13856.
 
 ### Sources and filters
 

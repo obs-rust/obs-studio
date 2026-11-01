@@ -78,13 +78,15 @@
     "oauth/TwitchAuth.hpp"
   ],
   "YOUTUBE": [
+    "build/frontend.utility-youtube-broadcast-settings+.h.c",
     "build/frontend.youtube+.hpp.cpp",
     "dialogs/OBSYoutubeActions.hpp",
     "docks/YouTubeAppDock.hpp",
     "docks/YouTubeChatDock.hpp",
     "forms/OBSYoutubeActions.ui",
     "oauth/YoutubeAuth.hpp",
-    "utility/YoutubeApiWrappers.hpp"
+    "utility/YoutubeApiWrappers.hpp",
+    "utility/youtube-broadcast-settings.h"
   ],
   "FREEBSD_PLUGIN_MANAGER": [
     "build/frontend.plugin-manager-bsd+.hpp.cpp",
