@@ -1,6 +1,7 @@
 #include "../utility/VCamAudio.hpp"
 
 #include <cassert>
+#include <string>
 
 int main()
 {
@@ -19,6 +20,13 @@ int main()
 	VCamAudioOutputSettings on = VCamAudioToOutput(defaults);
 	assert(on.audio_enabled);
 	assert(on.audio_track == 1);
+
+	// No saved device: the output picks a virtual cable itself (#3183).
+	assert(defaults.device.empty());
+	assert(on.audio_device.empty());
+	VCamAudioConfig cable;
+	cable.device = "{0.0.0.00000000}.{cable}";
+	assert(VCamAudioToOutput(cable).audio_device == cable.device);
 
 	VCamAudioOutputSettings off = VCamAudioToOutput({false, 4});
 	assert(!off.audio_enabled);
