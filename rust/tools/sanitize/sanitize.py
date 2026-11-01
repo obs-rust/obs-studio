@@ -482,7 +482,12 @@ def run_one_test(tool: str, test: Test, command: list[str], layout: Layout, disp
     else:
         env = dict(os.environ, **sanitizer_options(tests_dir, f"{test.name}."))
     if display is not None:
-        command = ["xvfb-run", "-n", str(display), "-s", PRIVATE_SCREEN, *command]
+        # Its own auth file, outside xvfb-run's temporary directory: with the
+        # file inside, its cleanup failed now and then and xvfb-run's exit 5
+        # replaced the test's.
+        auth = layout.build / "xauth" / test.name
+        auth.parent.mkdir(parents=True, exist_ok=True)
+        command = ["xvfb-run", "-n", str(display), "-f", str(auth), "-s", PRIVATE_SCREEN, *command]
         env = {key: value for key, value in (env or os.environ).items() if key != "DISPLAY"}
     with (tests_dir / f"{test.name}.log").open("wb") as handle:
         try:
