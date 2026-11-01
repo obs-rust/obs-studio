@@ -17,4 +17,5 @@ target_include_directories(obs-mach-protocol INTERFACE "${CMAKE_CURRENT_SOURCE_D
 
 add_subdirectory(src/obs-plugin)
 add_subdirectory(src/dal-plugin)
+add_subdirectory(src/audio-plugin)
 add_subdirectory(src/camera-extension)
