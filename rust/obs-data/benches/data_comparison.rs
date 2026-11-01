@@ -21,6 +21,7 @@ unsafe extern "C" {
     fn oracle_obs_data_set_int(data: *mut c_void, name: *const c_char, val: i64);
     fn oracle_obs_data_get_int(data: *mut c_void, name: *const c_char) -> i64;
     fn oracle_obs_data_set_string(data: *mut c_void, name: *const c_char, val: *const c_char);
+    fn oracle_obs_data_get_string(data: *mut c_void, name: *const c_char) -> *const c_char;
     fn oracle_obs_data_set_obj(data: *mut c_void, name: *const c_char, obj: *mut c_void);
     fn oracle_obs_data_set_default_int(data: *mut c_void, name: *const c_char, val: i64);
     fn oracle_obs_data_set_default_bool(data: *mut c_void, name: *const c_char, val: bool);
@@ -39,6 +40,8 @@ struct Api {
     get_json: unsafe extern "C" fn(*mut c_void) -> *const c_char,
     set_int: unsafe extern "C" fn(*mut c_void, *const c_char, i64),
     get_int: unsafe extern "C" fn(*mut c_void, *const c_char) -> i64,
+    set_string: unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char),
+    get_string: unsafe extern "C" fn(*mut c_void, *const c_char) -> *const c_char,
     set_default_int: unsafe extern "C" fn(*mut c_void, *const c_char, i64),
     set_default_bool: unsafe extern "C" fn(*mut c_void, *const c_char, bool),
     set_default_string: unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char),
@@ -52,6 +55,8 @@ const RUST: Api = Api {
     get_json: rust::obs_data_get_json,
     set_int: rust::obs_data_set_int,
     get_int: rust::obs_data_get_int,
+    set_string: rust::obs_data_set_string,
+    get_string: rust::obs_data_get_string,
     set_default_int: rust::obs_data_set_default_int,
     set_default_bool: rust::obs_data_set_default_bool,
     set_default_string: rust::obs_data_set_default_string,
@@ -65,6 +70,8 @@ const C: Api = Api {
     get_json: oracle_obs_data_get_json,
     set_int: oracle_obs_data_set_int,
     get_int: oracle_obs_data_get_int,
+    set_string: oracle_obs_data_set_string,
+    get_string: oracle_obs_data_get_string,
     set_default_int: oracle_obs_data_set_default_int,
     set_default_bool: oracle_obs_data_set_default_bool,
     set_default_string: oracle_obs_data_set_default_string,
@@ -284,9 +291,36 @@ fn interleave_insert(c: &mut Criterion) {
     group.finish();
 }
 
+/// One `obs_data_get_string` of the middle key, on an object with `n`
+/// string keys (#3215).
+fn get_string(c: &mut Criterion) {
+    let mut group = c.benchmark_group("get_string");
+    for n in [4usize, 64] {
+        let keys = names(n);
+        let value = c"a string value";
+        for (label, api) in [("rust", &RUST), ("c", &C)] {
+            // SAFETY: the object is created, filled and released here, and
+            // every key and value is a live NUL-terminated string.
+            unsafe {
+                let data = (api.create)();
+                for key in &keys {
+                    (api.set_string)(data, key.as_ptr(), value.as_ptr());
+                }
+                let key = keys[n / 2].as_ptr();
+                group.bench_function(BenchmarkId::new(label, n), |b| {
+                    b.iter(|| black_box((api.get_string)(black_box(data), black_box(key))));
+                });
+                (api.release)(data);
+            }
+        }
+    }
+    group.finish();
+}
+
 criterion_group!(
     benches,
     set_get,
+    get_string,
     source_defaults,
     defaults,
     json,
