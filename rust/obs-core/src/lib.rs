@@ -1,7 +1,8 @@
 //! Rust ports of the units extracted from the libobs core, one module per
 //! file: so far `libobs/obs-video-plan.c.h`, `libobs/obs-context-names.c.h`
-//! and `libobs/obs-core-setup-rules.c.h` and
-//! `libobs/obs-core-setup-rules-ms.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
+//! and `libobs/obs-core-setup-rules.c.h`,
+//! `libobs/obs-core-setup-rules-ms.c.h` and
+//! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
 //! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
 //! `libobs/obs-module-load-rules.c.h` and
@@ -57,8 +58,8 @@
 //! which of its fields lie within the size it gave; [`core_setup_rules`]
 //! holds the video and audio reset gates, the audio buffering ticks and
 //! their milliseconds, the command line copy, the data file search, the data path and latest input
-//! type rules, the monitoring device checks and which mixes count toward
-//! the frame counts.
+//! type rules, the monitoring device checks, which mixes count toward
+//! the frame counts, the task queue's route and the video level checks.
 //! The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
