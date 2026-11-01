@@ -513,6 +513,12 @@ impl Libobs {
         let started =
             unsafe { sys::obs_startup(c"en-US".as_ptr(), std::ptr::null(), std::ptr::null_mut()) };
         if started {
+            // Item positions are canvas pixels, not fractions of a canvas
+            // size that is zero until video starts.
+            let absolute = Data::from_json(&serde_json::json!({"AbsoluteCoordinates": true}))?;
+            // SAFETY: libobs is started and `absolute` is live; it merges the
+            // settings into its own copy.
+            unsafe { sys::obs_apply_private_data(absolute.0.as_ptr()) };
             Ok(Self(()))
         } else {
             Err("obs_startup failed".to_owned())
