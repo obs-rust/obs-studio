@@ -248,6 +248,14 @@ else
       fi
       echo "== zccache stop for recovery"
       zccache stop 2>&1 | head -40 || true
+      # zccache keeps the cache root in its recovery cool-down after stop and
+      # then refuses to compile, even with ZCCACHE_DISABLE=1 (#3391): clear the
+      # cool-down marker and the dead daemon's record (as ci/docker_task.py
+      # does, #3383) so the retry starts a fresh daemon.
+      for cooldown in "${ZCCACHE_CACHE_DIR:-/nonexistent}"/v*/daemon-*.lock.spawn-failed \
+        "${ZCCACHE_CACHE_DIR:-/nonexistent}"/v*/daemon.running-process.json; do
+        if [ -e "$cooldown" ]; then rm -f -- "$cooldown"; fi
+      done
       (
         if [ "$daemon_unavailable" = 1 ]; then export ZCCACHE_DISABLE=1; fi
         cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0
