@@ -421,20 +421,29 @@ impl SignalHandler {
         if !lock(&sig.callbacks).entries.is_empty() {
             let _pass = sig.pass.lock();
             let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
-            lock(&sig.callbacks).signalling += 1;
 
             // Every writer holds `pass`, so while it is held only this
             // thread's callbacks change the list. Copy it out in chunks
             // under one lock, and read it again only after a callback that
             // changed it (#3350). A callback connected in this pass still
             // runs in it: the next chunk, or the re-read, picks it up.
+            // Only CURRENT_SIGNAL changes: remove_current reads it before
+            // CURRENT_GLOBAL, so a global callback running outside this pass
+            // cannot be reached from inside it.
             let slot = pass_slot.slot;
-            let previous = swap_current((Some((slot, 0)), None));
+            let previous = CURRENT_SIGNAL.with(|c| c.replace(Some((slot, 0))));
             let mut snapshot = [None::<Entry>; SNAPSHOT];
             let mut i = 0;
+            let mut entered = false;
             'pass: loop {
                 let (count, generation) = {
-                    let cbs = lock(&sig.callbacks);
+                    let mut cbs = lock(&sig.callbacks);
+                    // `signalling` rises under the first chunk's lock: one
+                    // lock fewer per emit (#3350).
+                    if !entered {
+                        cbs.signalling += 1;
+                        entered = true;
+                    }
                     let rest = cbs.entries.get(i..).unwrap_or_default();
                     let count = rest.len().min(SNAPSHOT);
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
@@ -458,21 +467,9 @@ impl SignalHandler {
                     }
                 }
             }
-            swap_current(previous);
+            CURRENT_SIGNAL.with(|c| c.set(previous));
 
-            let mut cbs = lock(&sig.callbacks);
-            cbs.signalling -= 1;
-            if cbs.signalling == 0 {
-                for i in (0..cbs.entries.len()).rev() {
-                    if cbs.entries[i].remove {
-                        if cbs.entries[i].keep_ref {
-                            remove_refs += 1;
-                        }
-                        cbs.entries.remove(i);
-                    }
-                }
-                bump(&sig.generation);
-            }
+            remove_refs = end_signal_pass(&sig);
         }
 
         // No global callbacks: skip the pass and its locks (#3212). Nothing
@@ -526,6 +523,31 @@ impl SignalHandler {
 
         (0..remove_refs).any(|_| self.release())
     }
+}
+
+/// Ends a signal pass: the outermost one sweeps the callbacks marked for
+/// removal. Returns how many of them held a `keep_ref` reference.
+fn end_signal_pass(sig: &Signal) -> usize {
+    let mut cbs = lock(&sig.callbacks);
+    cbs.signalling -= 1;
+    if cbs.signalling != 0 {
+        return 0;
+    }
+    let before = cbs.entries.len();
+    let mut remove_refs = 0;
+    for i in (0..cbs.entries.len()).rev() {
+        if cbs.entries[i].remove {
+            if cbs.entries[i].keep_ref {
+                remove_refs += 1;
+            }
+            cbs.entries.remove(i);
+        }
+    }
+    // The list changed only if the sweep removed something (#3350).
+    if cbs.entries.len() != before {
+        bump(&sig.generation);
+    }
+    remove_refs
 }
 
 /// `signal_get_global_callback_idx`: the first entry with this callback
