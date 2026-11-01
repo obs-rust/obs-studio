@@ -50,6 +50,12 @@ class CleanTest(unittest.TestCase):
         body = "- Works.\n\n      log inside the item\n\nThanks.\n\n    log after the list"
         self.assertEqual(uq.clean(body), "- Works. Thanks.")
 
+    def test_a_heading_or_rule_ends_the_list_without_a_blank_line(self):
+        self.assertEqual(uq.clean("- Works.\n# Logs\n\n    diagnostic log"), "- Works. # Logs")
+        self.assertEqual(uq.clean("- Works.\n***\n\n    diagnostic log"), "- Works. ***")
+        self.assertEqual(uq.clean("- Works.\n- - -\n\n    diagnostic log"), "- Works. - - -")
+        self.assertEqual(uq.clean("- Works.\n> quoted\n\n    diagnostic log"), "- Works.")
+
     def test_unclosed_block_is_dropped_to_the_end(self):
         self.assertEqual(uq.clean("Works.\n```\nlog without an end"), "Works.")
 
