@@ -32,7 +32,12 @@ impl<T> NameTable<T> {
     pub(crate) fn get(&self, name: &[u8]) -> Option<&T> {
         let position = match &self.index {
             Some(index) => *index.get(name)?,
-            None => self.items.iter().position(|(key, _)| &**key == name)?,
+            // Length and last byte first, inline: names in one table tend to
+            // share a prefix ("s00".."s15", "source_*"), and a libc memcmp
+            // call per entry was the largest cost of a lookup (#3350).
+            None => self.items.iter().position(|(key, _)| {
+                key.len() == name.len() && key.last() == name.last() && &**key == name
+            })?,
         };
         Some(&self.items[position].1)
     }
