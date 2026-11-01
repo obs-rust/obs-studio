@@ -257,8 +257,27 @@ central list: a new `ported-foo` group is already in `ported`. A new
 non-matching group goes into the module whose code it is.
 `ci/test_build_groups.py` checks that every libobs group is in exactly one
 module, that every pattern still matches a group, and that the
-dependencies exist and form no cycle (#3258). The build does not read the
-manifest yet; #3259 splits `libobs-objects` along it.
+dependencies exist and form no cycle (#3258). `libobs/cmake/modules.cmake`
+compiles each module into a static archive, `libobs-mod-<module>`, linked
+whole into libobs (#3259, #3261).
+
+`ci/libobs_modules.py` caches those archives (#3262). A module's key covers
+its compile commands (build dir and compiler launcher left out), every file
+its groups read (the preprocessor's `-M -MG` list) and the compiler version.
+On a configured tree:
+
+```sh
+uv run ci/libobs_modules.py restore --build <dir>   # copy hits, write hits.cmake
+cmake -B <dir> -DOBS_LIBOBS_MODULE_CACHE=<dir>/libobs-modcache
+cmake --build <dir> --target libobs
+uv run ci/libobs_modules.py store --build <dir>     # cache the modules built
+```
+
+A hit is an IMPORTED archive, not compiled. An unbuilt `-keyprobe` target
+keeps its compile commands visible, so the next `restore` sees an edit and
+drops the hit. Run `restore` before each build. The cache dir is
+`$OBS_LIBOBS_MODULE_CACHE_DIR`, else `modcache` beside the zccache root.
+MSVC compile commands are not keyed yet.
 
 ## Verifying a change
 
