@@ -12,9 +12,10 @@
  * libobs/util/windows/window-helpers.c to libobs/util/windows/window-match.c:
  * which windows the window and game capture lists hide, the generic and UWP
  * class tests, and the rating ms_find_window() and
- * ms_find_window_top_level() pick a window by. The file includes no Windows
- * header, so this runs on every platform; the window helpers themselves only
- * run on Windows. The functions are hidden in libobs, so this characterizes
+ * ms_find_window_top_level() pick a window by, and the codec of the saved
+ * "title:class:exe" string ms_build_window_strings() splits and add_window()
+ * builds. The file includes no Windows header, so this runs on every
+ * platform; the window helpers themselves only run on Windows. The functions are hidden in libobs, so this characterizes
  * that C source; the test calls only them. */
 
 #define NONE MS_WINDOW_MATCH_NONE
@@ -355,6 +356,211 @@ static void rating_grid(void **state)
 	}
 }
 
+static void expect_str(const char *got, const char *want, const char *what, const char *arg)
+{
+	if (strcmp(got, want) != 0) {
+		fprintf(stderr, "%s(\"%s\"): \"%s\", expected \"%s\"\n", what, arg ? arg : "(null)", got, want);
+		fail();
+	}
+}
+
+static void expect_encode(const char *s, const char *want)
+{
+	char buf[64];
+
+	memset(buf, 'z', sizeof(buf));
+	size_t need = ms_window_match_encode(s, NULL, 0);
+	assert_int_equal(need, strlen(want));
+	assert_int_equal(ms_window_match_encode(s, buf, sizeof(buf)), need);
+	expect_str(buf, want, "encode", s);
+}
+
+static void encode(void **state)
+{
+	(void)state;
+	expect_encode(NULL, "");
+	expect_encode("", "");
+	expect_encode("abc", "abc");
+	expect_encode("#", "#22");
+	expect_encode(":", "#3A");
+	expect_encode("::", "#3A#3A");
+	expect_encode("#:", "#22#3A");
+	expect_encode(":#", "#3A#22");
+	expect_encode("#22", "#2222");
+	expect_encode("#3A", "#223A");
+	expect_encode("a:b:c", "a#3Ab#3Ac");
+	expect_encode("Title: x # y", "Title#3A x #22 y");
+	expect_encode("\xc3\xa9:\xff", "\xc3\xa9#3A\xff");
+}
+
+/* snprintf-style: the full length always, at most out_size - 1 bytes and a
+ * NUL written, nothing at all with out_size 0 */
+static void encode_truncates(void **state)
+{
+	(void)state;
+	char buf[8];
+
+	memset(buf, 'z', sizeof(buf));
+	assert_int_equal(ms_window_match_encode("a#b", buf, 0), 5);
+	assert_int_equal(buf[0], 'z');
+
+	assert_int_equal(ms_window_match_encode("a#b", buf, 1), 5);
+	assert_int_equal(buf[0], 0);
+	assert_int_equal(buf[1], 'z');
+
+	memset(buf, 'z', sizeof(buf));
+	assert_int_equal(ms_window_match_encode("a#b", buf, 3), 5);
+	assert_memory_equal(buf, "a#\0z", 4);
+
+	memset(buf, 'z', sizeof(buf));
+	assert_int_equal(ms_window_match_encode("a#b", buf, 5), 5);
+	assert_memory_equal(buf, "a#22\0z", 6);
+
+	memset(buf, 'z', sizeof(buf));
+	assert_int_equal(ms_window_match_encode("a#b", buf, 6), 5);
+	assert_memory_equal(buf, "a#22b\0z", 7);
+
+	memset(buf, 'z', sizeof(buf));
+	assert_int_equal(ms_window_match_encode(NULL, buf, sizeof(buf)), 0);
+	assert_int_equal(buf[0], 0);
+	assert_int_equal(buf[1], 'z');
+}
+
+static void expect_decode(const char *s, const char *want)
+{
+	char buf[64];
+
+	snprintf(buf, sizeof(buf), "%s", s);
+	assert_int_equal(ms_window_match_decode(buf), strlen(want));
+	expect_str(buf, want, "decode", s);
+}
+
+/* "#3A" first, then "#22", each pass once, left to right */
+static void decode(void **state)
+{
+	(void)state;
+	assert_int_equal(ms_window_match_decode(NULL), 0);
+	expect_decode("", "");
+	expect_decode("abc", "abc");
+	expect_decode("#", "#");
+	expect_decode("#2", "#2");
+	expect_decode("#3", "#3");
+	expect_decode("#22", "#");
+	expect_decode("#3A", ":");
+	expect_decode("#3A#3A", "::");
+	expect_decode("#3A3A", ":3A");
+	expect_decode("#2222", "#22");
+	expect_decode("##22", "##");
+	expect_decode("##3A22", "#:22");
+	expect_decode("#3#3AA", "#3:A");
+	expect_decode("a#3Ab#22c", "a:b#c");
+	expect_decode("\xc3\xa9#3A\xff", "\xc3\xa9:\xff");
+
+	/* the passes undo the encode's in reverse order: "#223A" is the
+	 * encoded "#3A", and a '#' the second pass makes is never part of a
+	 * ':' */
+	expect_decode("#223A", "#3A");
+	expect_decode("#22#3A", "#:");
+
+	/* case-sensitive */
+	expect_decode("x#3a", "x#3a");
+	expect_decode("#3a", "#3a");
+}
+
+static void expect_split(const char *s, bool ok, const char *f0, const char *f1, const char *f2)
+{
+	size_t start[3] = {99, 99, 99};
+	size_t len[3] = {99, 99, 99};
+	const char *want[3] = {f0, f1, f2};
+
+	if (ms_window_match_split(s, start, len) != ok) {
+		fprintf(stderr, "split(\"%s\"): expected %d\n", s ? s : "(null)", ok);
+		fail();
+	}
+
+	for (int i = 0; i < 3; i++) {
+		if (!ok) {
+			assert_int_equal(start[i], 0);
+			assert_int_equal(len[i], 0);
+			continue;
+		}
+		if (len[i] != strlen(want[i]) || strncmp(s + start[i], want[i], len[i]) != 0) {
+			fprintf(stderr, "split(\"%s\") field %d: \"%.*s\", expected \"%s\"\n", s, i, (int)len[i],
+				s + start[i], want[i]);
+			fail();
+		}
+	}
+}
+
+/* the first three fields at ':', empty ones kept, later ones ignored */
+static void split(void **state)
+{
+	(void)state;
+	expect_split(NULL, false, NULL, NULL, NULL);
+	expect_split("", false, NULL, NULL, NULL);
+	expect_split("a", false, NULL, NULL, NULL);
+	expect_split(":", false, NULL, NULL, NULL);
+	expect_split("a:b", false, NULL, NULL, NULL);
+	expect_split("::", true, "", "", "");
+	expect_split(":::", true, "", "", "");
+	expect_split("a:b:c", true, "a", "b", "c");
+	expect_split("a:b:c:d", true, "a", "b", "c");
+	expect_split("a::c", true, "a", "", "c");
+	expect_split("::c", true, "", "", "c");
+	expect_split("a:b:", true, "a", "b", "");
+	expect_split("Title#3A x:Class:app.exe", true, "Title#3A x", "Class", "app.exe");
+	expect_split("\xc3\xa9:\xff:\x01", true, "\xc3\xa9", "\xff", "\x01");
+}
+
+/* add_window()'s string, split and decoded as ms_build_window_strings()
+ * does, gives each part back */
+static void round_trip(void **state)
+{
+	(void)state;
+	static const char *parts[] = {
+		"",
+		"#",
+		":",
+		"#:",
+		":#",
+		"#22",
+		"#3A",
+		"#223A",
+		"##3A22",
+		"x#3a",
+		"a:b#c",
+		"Title: x # y",
+		"\xc3\xa9#:\xff",
+	};
+	const size_t n = sizeof(parts) / sizeof(parts[0]);
+
+	for (size_t t = 0; t < n; t++) {
+		for (size_t c = 0; c < n; c++) {
+			const char *in[3] = {parts[t], parts[c], parts[(t + c) % n]};
+			char joined[256];
+			size_t pos = 0;
+
+			for (int i = 0; i < 3; i++) {
+				if (i)
+					joined[pos++] = ':';
+				pos += ms_window_match_encode(in[i], joined + pos, sizeof(joined) - pos);
+			}
+
+			size_t start[3], len[3];
+			assert_true(ms_window_match_split(joined, start, len));
+			for (int i = 0; i < 3; i++) {
+				char field[64];
+				assert_true(len[i] < sizeof(field));
+				memcpy(field, joined + start[i], len[i]);
+				field[len[i]] = 0;
+				assert_null(strchr(field, ':'));
+				assert_int_equal(ms_window_match_decode(field), strlen(in[i]));
+				expect_str(field, in[i], "round trip", joined);
+			}
+		}
+	}
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -373,6 +579,11 @@ int main(void)
 		cmocka_unit_test(rating_unknown_priority),
 		cmocka_unit_test(rating_penalty_bound),
 		cmocka_unit_test(rating_grid),
+		cmocka_unit_test(encode),
+		cmocka_unit_test(encode_truncates),
+		cmocka_unit_test(decode),
+		cmocka_unit_test(split),
+		cmocka_unit_test(round_trip),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
