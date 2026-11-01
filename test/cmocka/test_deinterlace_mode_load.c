@@ -47,11 +47,12 @@
 #define TOLERANCE 8
 
 /* A check pushes frames at the canvas rate until MIN_DRAWN output frames
- * have shown the source's colour, for at most MAX_PUSH_FRAMES (3 s). A drawn
- * source gets there in a few frames, or after a fraction of a second when a
- * new mode or a loaded machine delays its first frames; a source that draws
- * nothing never does. */
-#define MAX_PUSH_FRAMES 90
+ * have shown the source's colour, for at most MAX_PUSH_FRAMES (10 s). A drawn
+ * source gets there in a few frames (Yadif 2x: at most 14 in a local ASan
+ * build under load), but on a slow CI runner under ASan it took 87 (#3390);
+ * a source that draws nothing never does, so only a failing check waits the
+ * whole time. */
+#define MAX_PUSH_FRAMES 300
 #define MIN_DRAWN 3
 
 static bool obs_up;
