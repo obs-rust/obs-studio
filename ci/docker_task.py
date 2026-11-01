@@ -101,6 +101,30 @@ for dir in $DOCKER_TASK_PRUNE; do
 done
 exit $status'''
 
+# zccache records its daemon as pid plus boot_id. Containers share the host's
+# boot_id but each starts a new PID namespace, so on a persistent cache volume
+# the next container finds the old pid taken by another process, decides the
+# daemon exists but is not listening, cools down for 60 s and fails every
+# compile with exit 125 (#3383). A daemon whose socket refuses a connection
+# serves no one: remove its socket, lock, spawn-failed marker and process
+# record. A daemon that still accepts (another container on the volume) stays.
+ZCCACHE_STALE_SCRIPT = r'''for lock in "$ZCCACHE_CACHE_DIR"/v*/daemon-*.lock; do
+  [ -f "$lock" ] || continue
+  sock="${lock%.lock}.sock"
+  # Without uv the socket cannot be tested: leave the state alone.
+  command -v uv >/dev/null 2>&1 || continue
+  if uv run --no-project --offline --quiet python -c 'import socket, sys
+s = socket.socket(socket.AF_UNIX)
+s.settimeout(1)
+s.connect(sys.argv[1])' "$sock" 2>/dev/null; then
+    continue
+  fi
+  dir="${lock%/*}"
+  rm -f "$sock" "$lock" "$lock.spawn-failed" "$dir/daemon.running-process.json"
+  echo "docker-task: cleared stale zccache daemon state in $dir" >&2
+done
+exec "$@"'''
+
 USAGE = "usage: docker_task.py run|gc --name NAME ... (see the header)"
 
 
@@ -605,6 +629,8 @@ def run(argv: Sequence[str]) -> int:
     source_args, overlay_dir, overlay = mount_source(options, repo, cname)
     prune_args, command = prune_mounts(options, tag)
     args += [*volume_args, *source_args, *prune_args]
+    if any(spec.startswith("ZCCACHE_CACHE_DIR=") for spec in options.envs):
+        command = ["sh", "-c", ZCCACHE_STALE_SCRIPT, "docker-task-zccache", *command]
 
     try:
         status = subprocess.run(["docker", "run", *args, tag, *command]).returncode
