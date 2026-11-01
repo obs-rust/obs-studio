@@ -2706,3 +2706,14 @@ area.
   wired yet, so nothing changes for users. *All platforms*, 2026-10-31. Issue
   [#3288](https://github.com/obs-rust/obs-studio/issues/3288), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- The in-process MCP server can now drive libobs: `ObsBackend` implements the
+  scene, source, output, screenshot and statistics backends by calling libobs
+  directly (program scene on output channel 0, scene items, `obs_output_*`,
+  texrender screenshots, `obs_get_active_fps`). It sits behind the `libobs`
+  feature and is not wired into the app yet, so nothing changes for users.
+  *All platforms*, 2026-10-31. Issues
+  [#3301](https://github.com/obs-rust/obs-studio/issues/3301),
+  [#3304](https://github.com/obs-rust/obs-studio/issues/3304),
+  [#3306](https://github.com/obs-rust/obs-studio/issues/3306),
+  [#3308](https://github.com/obs-rust/obs-studio/issues/3308), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

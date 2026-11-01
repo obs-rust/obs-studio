@@ -479,6 +479,9 @@ FEATURE_SETS: tuple[tuple[str, ...], ...] = (
     # The native libobs contracts of obs-tests-app. Tier 2 and the Qt SDK
     # step build them for a few tests on macOS and Windows only.
     ("-p", "obs-studio-rust", "--features", "libobs-integration"),
+    # The in-process MCP backend over libobs (obs-mcp/libobs, #3301); its
+    # test runs in obs-tests-app under bundled-native (FEATURE_SET_EXEMPT).
+    ("-p", "obs-mcp", "--features", "libobs"),
 )
 FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = (
     ("-p", "obs-util"),
