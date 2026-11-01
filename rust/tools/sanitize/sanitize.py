@@ -194,22 +194,27 @@ def ctest_tests(payload: str) -> list[Test]:
     return sorted(tests, key=lambda test: test.name)
 
 
+# The passes that run their unit tests side by side (#3238). tsan in a pool:
+# unit tests 20.3 -> 8.2 min (41275822723). valgrind in a pool was 1.6x faster
+# but 9 tests newly failed on timing (41275824985), so it stays serial.
+POOLED = {"asan", "tsan"}
+
+
 def private_displays(tool: str) -> bool:
-    """Whether each unit test gets its own Xvfb server (#3238): asan runs its
-    tests side by side, and on one shared display a test that adds RandR
-    monitors breaks another (test_xshm_monitor_late). tsan and valgrind run
+    """Whether each unit test gets its own Xvfb server (#3238): a pooled pass
+    runs its tests side by side, and on one shared display a test that adds
+    RandR monitors breaks another (test_xshm_monitor_late). valgrind runs
     one at a time on the shared display."""
-    return tool == "asan"
+    return tool in POOLED
 
 
 def unit_test_jobs(tool: str) -> int:
     """How many unit tests run at once: SANITIZE_JOBS when set, else every
-    core for asan and 1 for tsan and valgrind, which are not measured in a
-    pool and need far more memory per test (#3238)."""
+    core for a pooled pass and 1 for valgrind (#3238)."""
     jobs = os.environ.get("SANITIZE_JOBS", "")
     if jobs.isdigit() and int(jobs) > 0:
         return int(jobs)
-    return (os.cpu_count() or 1) if tool == "asan" else 1
+    return (os.cpu_count() or 1) if tool in POOLED else 1
 
 
 # The shared display is :90 to :98; a private one gets the next number of a
