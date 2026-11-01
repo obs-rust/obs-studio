@@ -16,6 +16,12 @@
 //! every AudioQueue call, the resample, the volume loop, the logs, the fill
 //! loops and the paused flag, and reads each size where it did. These keep
 //! no state, take no lock and call nothing in CoreAudio or libobs.
+//!
+//! Every product wraps, as the C's `size_t` arithmetic does, and nothing
+//! here can panic on any input. One intentional difference from the C:
+//! [`recover_failed_enqueue`] answers yes, so a buffer whose enqueue failed
+//! goes back on the free list and the queue starts again (the C keeps it out
+//! for good, and the monitor stays silent until it is reset).
 
 #![deny(
     clippy::arithmetic_side_effects,
