@@ -29,6 +29,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -113,6 +114,15 @@ def sanitizer_options(directory: Path, stem: str = "") -> dict[str, str]:
     return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in SANITIZER_OPTIONS.items()}
 
 
+def tool_cmake_args(tool: str) -> list[str]:
+    """Configure options one tool needs on top of configure_command. The
+    cmocka tests that build with their own ASan/UBSan (obs_test_sanitize,
+    #159) skip it when the build flags already have -fsanitize=, as asan's
+    and tsan's do; valgrind's don't, and valgrind can't run an ASan binary,
+    so 101 of its tests never ran (#3238)."""
+    return ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"] if tool == "valgrind" else []
+
+
 def configure_command(*, src: Path, build: Path, build_type: str, flags: str, backend: str, version: str) -> list[str]:
     """The `cmake` configure line for one tool's build."""
     command = [
@@ -182,6 +192,50 @@ def ctest_tests(payload: str) -> list[Test]:
             )
         )
     return sorted(tests, key=lambda test: test.name)
+
+
+# How many unit tests a pass runs side by side (#3238). tsan on every core:
+# unit tests 20.3 -> 8.2 min (41275822723). valgrind with 4 jobs broke 9 tests
+# on timing (41275824985); with 2 jobs on 4 cores its pool part ran 1.78x
+# faster and broke none, and serial no longer fits the job's 150 minutes.
+POOLED = {"asan", "tsan"}
+VALGRIND_JOBS = 2
+
+
+def unit_test_jobs(tool: str) -> int:
+    """How many unit tests run at once: SANITIZE_JOBS when set, else every
+    core for a pooled pass and VALGRIND_JOBS for valgrind (#3238)."""
+    jobs = os.environ.get("SANITIZE_JOBS", "")
+    if jobs.isdigit() and int(jobs) > 0:
+        return int(jobs)
+    return (os.cpu_count() or 1) if tool in POOLED else VALGRIND_JOBS
+
+
+def private_displays(tool: str) -> bool:
+    """Whether each unit test gets its own Xvfb server (#3238): whenever a
+    pass runs its tests side by side, as on one shared display a test that
+    adds RandR monitors breaks another (test_xshm_monitor_late)."""
+    return unit_test_jobs(tool) > 1
+
+
+# The shared display is :90 to :98; a private one gets the next number of a
+# per-run counter, so two tests started at once never pick the same server.
+PRIVATE_DISPLAY_FIRST = 100
+PRIVATE_SCREEN = "-screen 0 1920x1080x24"
+
+
+class DisplayNumbers:
+    """Unique Xvfb server numbers for the tests of one run."""
+
+    def __init__(self, first: int = PRIVATE_DISPLAY_FIRST):
+        self._next = first
+        self._lock = threading.Lock()
+
+    def take(self) -> int:
+        with self._lock:
+            number = self._next
+            self._next += 1
+            return number
 
 
 def test_command(test: Test) -> list[str]:
@@ -322,7 +376,7 @@ def build_obs(tool: str, flags: str, build_type: str, layout: Layout) -> Path | 
     configure_log = layout.out / "configure.log"
     configure = configure_command(
         src=SRC, build=layout.build, build_type=build_type, flags=flags, backend=backend, version=version
-    )
+    ) + tool_cmake_args(tool)
     if not run_logged(configure, log=configure_log):
         print(tail(configure_log, 40), flush=True)
         return None
@@ -364,13 +418,16 @@ def run_unit_tests(tool: str, layout: Layout) -> None:
     (tests_dir / "ctest.tsv").write_text(
         "".join(f"{t.name}\t{t.workdir}\t{chr(31).join(t.command)}\n" for t in tests), encoding="utf-8"
     )
-    summary = run_tests(tool, tests, layout)
+    summary = run_tests(tool, tests, layout, jobs=unit_test_jobs(tool), private_displays=private_displays(tool))
     (tests_dir / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
 
 
-def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: int | None = None) -> list[str]:
+def run_tests(
+    tool: str, tests: list[Test], layout: Layout, runner=None, jobs: int | None = None, private_displays: bool = False
+) -> list[str]:
     """Run the tests `jobs` at a time (default: every core), then the serial
-    ones alone; the summary lines in test order (#3251).
+    ones alone; the summary lines in test order (#3251). With
+    `private_displays`, each test runs under its own Xvfb server (#3238).
 
     Each test writes its own `<name>.log` and sanitizer log prefix, so
     concurrent tests do not collide. Each line prints as its test finishes,
@@ -391,10 +448,15 @@ def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: i
             continue
         runnable.append((test, command))
 
+    numbers = DisplayNumbers() if private_displays else None
+
     def one(item: tuple[Test, list[str]]) -> None:
         test, command = item
         start = time.monotonic()
-        code = runner(tool, test, command, layout)
+        if numbers:
+            code = runner(tool, test, command, layout, display=numbers.take())
+        else:
+            code = runner(tool, test, command, layout)
         durations[test.name] = time.monotonic() - start
         lines[test.name] = f"{test.name} exit={code}"
         print(f"{lines[test.name]} ({durations[test.name]:.1f}s)", flush=True)
@@ -410,8 +472,12 @@ def run_tests(tool: str, tests: list[Test], layout: Layout, runner=None, jobs: i
     return [lines[t.name] for t in tests if t.name in lines]
 
 
-def run_one_test(tool: str, test: Test, command: list[str], layout: Layout) -> int:
-    """One test's exit status; 124 when it hit the timeout, as `timeout` did."""
+def run_one_test(tool: str, test: Test, command: list[str], layout: Layout, display: int | None = None) -> int:
+    """One test's exit status; 124 when it hit the timeout, as `timeout` did.
+
+    With `display`, the test runs under its own Xvfb server of that number
+    (xvfb-run), without the shared DISPLAY, so a test registered with
+    xvfb-run-or-display.sh starts its own server too (#3238)."""
     tests_dir = layout.out / "tests"
     # ctest's own WORKING_DIRECTORY, or the build's test/cmocka as the shell's
     # `${wd:-$b/test/cmocka}` fallback.
@@ -421,6 +487,14 @@ def run_one_test(tool: str, test: Test, command: list[str], layout: Layout) -> i
         command = [*VALGRIND, f"--log-file={tests_dir / f'{test.name}.vg.log'}", *command]
     else:
         env = dict(os.environ, **sanitizer_options(tests_dir, f"{test.name}."))
+    if display is not None:
+        # Its own auth file, outside xvfb-run's temporary directory: with the
+        # file inside, its cleanup failed now and then and xvfb-run's exit 5
+        # replaced the test's.
+        auth = layout.build / "xauth" / test.name
+        auth.parent.mkdir(parents=True, exist_ok=True)
+        command = ["xvfb-run", "-n", str(display), "-f", str(auth), "-s", PRIVATE_SCREEN, *command]
+        env = {key: value for key, value in (env or os.environ).items() if key != "DISPLAY"}
     with (tests_dir / f"{test.name}.log").open("wb") as handle:
         try:
             done = subprocess.run(

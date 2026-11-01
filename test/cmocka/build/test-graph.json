@@ -6372,7 +6372,10 @@
       ],
       "suite": "graphics",
       "working_directory": "${runtime}",
-      "timeout_seconds": 120
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ]
     },
     "test_deinterlace_pacing_steps": {
       "target": "test_deinterlace_pacing_steps",

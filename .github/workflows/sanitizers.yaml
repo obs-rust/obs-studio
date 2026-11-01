@@ -23,7 +23,7 @@ on:
         type: boolean
         default: true
       fail_on_findings:
-        description: Fail the job when triage finds an OBS finding
+        description: Fail the job when triage finds an OBS finding (asan always does, #3238)
         type: boolean
         default: false
   workflow_dispatch:
@@ -46,7 +46,7 @@ on:
         type: boolean
         default: true
       fail_on_findings:
-        description: Fail the job when triage finds an OBS finding
+        description: Fail the job when triage finds an OBS finding (asan always does, #3238)
         type: boolean
         default: false
   # Nightly, all passes (#491): ~20 min, so never on PR or push CI

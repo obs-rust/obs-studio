@@ -8,8 +8,16 @@ before LeakSanitizer reported (every frame above OBS's own is
 `(<unknown module>)` or pthread_once; the OpenGL driver under gs_create) is
 not an OBS finding: it is listed as external, not counted. Each leak in a
 report is triaged on its own, so a real OBS leak next to it still counts.
+
+Exit 77 is ctest's skip code, not a failure. A test in KNOWN is listed, not
+counted: its exit and its sanitizer reports. The list keeps itself honest
+(#3238): every bug or flaky entry names its issue, a known bug that ran
+clean is a finding (the fix must drop its entry), a flaky entry that ran
+clean is listed, and the known list comes first in the summary.
 """
 
+import importlib.util
+import re
 import subprocess
 import tempfile
 import unittest
@@ -68,12 +76,13 @@ SUMMARY: ThreadSanitizer: data race libobs/obs-source.c.h:1409 in obs_source_vid
 """
 
 
-def triage(*leaks, tool="asan", text=None):
+def triage(*leaks, tool="asan", text=None, test="test_x", summary=None):
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / tool
         (out / "tests").mkdir(parents=True)
-        (out / "tests" / "summary.txt").write_text("test_x exit=0\n")
-        (out / "tests" / f"test_x.{tool}.1").write_text(text if text is not None else HEADER + "".join(leaks))
+        (out / "tests" / "summary.txt").write_text(summary if summary is not None else f"{test} exit=0\n")
+        if leaks or text is not None:
+            (out / "tests" / f"{test}.{tool}.1").write_text(text if text is not None else HEADER + "".join(leaks))
         run = subprocess.run(
             ["uv", "run", "--no-project", str(TRIAGE), str(out), "--fail-on-findings"],
             capture_output=True, text=True,
@@ -107,6 +116,64 @@ class RaceTriageTest(unittest.TestCase):
         code, md = triage(tool="tsan", text=GLIB_RACE + OBS_RACE)
         self.assertEqual(code, 1, md)
         self.assertIn("libobs/obs-source.c.h:1409", md)
+
+
+class SkipAndKnownTest(unittest.TestCase):
+    """test_media_remux and test_dock_proportions are KNOWN under asan."""
+
+    def test_skip_exit_is_not_a_finding(self):
+        code, md = triage(summary="test_pipewire_camera_nv12 exit=77\n")
+        self.assertEqual(code, 0, md)
+        self.assertIn("skipped: test_pipewire_camera_nv12", md)
+        self.assertIn("0/0 clean", md)
+
+    def test_known_test_failure_is_listed_not_counted(self):
+        code, md = triage(summary="test_dock_proportions exit=6\ntest_y exit=0\n")
+        self.assertEqual(code, 0, md)
+        self.assertIn("1/1 clean", md)
+        self.assertIn("**test_dock_proportions**", md)
+
+    def test_known_test_reports_are_listed_not_counted(self):
+        code, md = triage(OBS_LEAK, test="test_media_remux")
+        self.assertEqual(code, 0, md)
+        self.assertNotIn("libobs/obs-canvas.c.h:330", md)
+        self.assertIn("**test_media_remux**", md)
+
+    def test_known_test_that_ran_clean_is_listed(self):
+        code, md = triage(summary="test_dock_proportions exit=0\n")
+        self.assertEqual(code, 0, md)
+        self.assertIn("Known entries that ran clean", md)
+        self.assertIn("test_dock_proportions", md)
+
+    def test_known_bug_that_ran_clean_is_a_finding(self):
+        """test_media_remux is a known bug: clean means fixed, so the entry
+        has to go, and the job says so instead of passing."""
+        code, md = triage(summary="test_media_remux exit=0\n")
+        self.assertEqual(code, 1, md)
+        self.assertIn("ran clean: drop the entry", md)
+        self.assertIn("test_media_remux", md)
+
+    def test_known_list_comes_first(self):
+        code, md = triage(summary="test_dock_proportions exit=6\ntest_y exit=1\n")
+        self.assertEqual(code, 1, md)
+        self.assertLess(md.index("#### Known"), md.index("#### Unit tests with a non-zero exit"), md)
+
+    def test_unknown_test_failure_still_counts(self):
+        code, md = triage(summary="test_y exit=1\n")
+        self.assertEqual(code, 1, md)
+
+
+class KnownListTest(unittest.TestCase):
+    """Every entry has a kind; bug and flaky entries name an open issue."""
+
+    def test_every_entry_has_a_kind_and_an_issue(self):
+        spec = importlib.util.spec_from_file_location("triage", TRIAGE)
+        triage_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(triage_mod)
+        for (tool, test), (kind, why) in triage_mod.KNOWN.items():
+            self.assertIn(kind, {"bug", "flaky", "tool"}, (tool, test))
+            if kind != "tool":
+                self.assertRegex(why, r"#\d+", (tool, test))
 
 
 if __name__ == "__main__":

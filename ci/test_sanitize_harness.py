@@ -112,6 +112,31 @@ ZCCACHE_REFUSAL = (
 )
 
 
+# Tests whose checks depend on wall-clock timing and fail when four ASan
+# processes share four cores (dispatch 41242258179, #3238). They hold the
+# ctest RESOURCE_LOCK "timing", so the asan pool runs them alone after the
+# others; in Tier 2, ctest only keeps them from overlapping each other.
+TIMING_TESTS_D = ("test_async_delay_audio", "test_dock_proportions", "test_slideshow_mem_cap")
+TIMING_TESTS_GRAPH = ("test_deinterlace_mode_load",)
+TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+
+
+class TimingLockTest(unittest.TestCase):
+    def test_timing_tests_hold_the_timing_lock(self):
+        for name in TIMING_TESTS_D:
+            text = (ROOT / "test" / "cmocka" / "tests.d" / f"{name}.cmake").read_text(encoding="utf-8")
+            self.assertRegex(text, rf"set_tests_properties\(\s*{name}\s[^)]*RESOURCE_LOCK\s+timing", name)
+        tests = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]
+        for name in TIMING_TESTS_GRAPH:
+            self.assertIn("timing", tests[name].get("resource_locks", []), name)
+
+    def test_a_resource_lock_runs_alone_in_the_pool(self):
+        payload = json.dumps(
+            {"tests": [{"name": "t", "command": ["/b/t"], "properties": [{"name": "RESOURCE_LOCK", "value": ["timing"]}]}]}
+        )
+        self.assertTrue(load_module().ctest_tests(payload)[0].serial)
+
+
 class SanitizeHarnessTest(unittest.TestCase):
     def setUp(self):
         self.module = load_module()
@@ -229,6 +254,14 @@ class SanitizeHarnessTest(unittest.TestCase):
         )
         self.assertFalse([a for a in without if a.startswith("-DOBS_VERSION_OVERRIDE")], without)
 
+    def test_valgrind_builds_no_per_target_asan(self):
+        """valgrind can't run an ASan binary, so its build turns off the cmocka
+        tests' own ASan/UBSan (obs_test_sanitize, #159); asan and tsan already
+        have -fsanitize= in the build flags, which turns it off for them (#3238)."""
+        self.assertIn("-DOBS_TEST_SANITIZE_PER_TARGET=OFF", self.module.tool_cmake_args("valgrind"))
+        self.assertEqual(self.module.tool_cmake_args("asan"), [])
+        self.assertEqual(self.module.tool_cmake_args("tsan"), [])
+
     def test_valgrind_stretches_the_launch_window(self):
         self.assertEqual(self.module.launch_timing("asan", 45), (45, 60))
         self.assertEqual(self.module.launch_timing("tsan", 45), (45, 60))
@@ -248,6 +281,8 @@ class SanitizeHarnessTest(unittest.TestCase):
         write_stub(stubs, "rustup", "exit 0\n")
         write_stub(stubs, "zccache", "exit 0\n")
         write_stub(stubs, "Xvfb", "exec sleep 30\n")
+        # The asan pass runs each test under its own xvfb-run (#3238).
+        write_stub(stubs, "xvfb-run", 'shift 6\nexec "$@"\n')
         write_stub(stubs, "dbus-run-session", "exit 0\n")
         # No OBS child of the session: the launch is a clean "exited".
         write_stub(stubs, "pgrep", "exit 1\n")
@@ -348,6 +383,104 @@ class SanitizeHarnessTest(unittest.TestCase):
         self.assertIsNone(libdir)
         builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
         self.assertEqual(builds, [None], "a source error must not be retried")
+
+
+# A stub test: notes how many tests are running when it starts (the files in
+# running/), stays a moment, prints a line and exits 0.
+ISOLATION_STUB = """\
+r="@RUNNING@"
+touch "$r/@NAME@"
+echo "@NAME@ $(ls "$r" | wc -l | tr -d ' ')" >> "@CONC@"
+sleep 0.2
+echo "output of @NAME@"
+rm -f "$r/@NAME@"
+exit 0
+"""
+
+
+class TestIsolationTest(unittest.TestCase):
+    """What a pooled test shares (#3238, after #3251). On the one shared Xvfb
+    display, tests side by side broke test_xshm_monitor_late in its setup
+    ("cannot add RandR monitors", dispatch 41238464885): each asan test gets
+    its own X server, as Tier 2 gives each test its own through xvfb-run.
+    tsan runs in the same pool; valgrind runs two at a time (measured)."""
+
+    def setUp(self):
+        self.module = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "running").mkdir()
+        build = self.root / "build"
+        self.layout = self.module.Layout(
+            root=self.root, out=self.root / "asan", build=build, inst=build / "rundir", bin_dir=self.root / "bin"
+        )
+
+    def stub(self, name: str, serial: bool = False):
+        body = (
+            ISOLATION_STUB.replace("@RUNNING@", str(self.root / "running"))
+            .replace("@CONC@", str(self.root / "concurrency.log"))
+            .replace("@NAME@", name)
+        )
+        path = write_stub(self.root, name, body)
+        return self.module.Test(name=name, workdir=str(self.root), command=(str(path),), serial=serial)
+
+    def test_each_test_gets_its_own_x_server(self):
+        fake = self.root / "fake-bin"
+        fake.mkdir()
+        record = self.root / "xvfb-run.log"
+        # xvfb-run -n <number> -f <auth file> -s <screen> <command...>
+        write_stub(fake, "xvfb-run", f'echo "$1 $2 $3 $4 ${{DISPLAY:-none}}" >> "{record}"\nshift 6\nexec "$@"\n')
+        tests = [self.stub(f"test_p{i}") for i in range(4)] + [self.stub("test_serial", serial=True)]
+        env = {"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}", "DISPLAY": ":99"}
+        with patch.dict(os.environ, env), redirect_stdout(io.StringIO()):
+            summary = self.module.run_tests("asan", tests, self.layout, jobs=2, private_displays=True)
+        self.assertEqual(summary, [f"test_p{i} exit=0" for i in range(4)] + ["test_serial exit=0"])
+        self.assertEqual((self.layout.out / "tests" / "test_p0.log").read_text(encoding="utf-8"), "output of test_p0\n")
+        rows = [line.split() for line in record.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(len(rows), 5, "every test, serial ones too, runs under its own xvfb-run")
+        self.assertTrue(all(flag == "-n" and auth == "-f" for flag, _, auth, _, _ in rows))
+        self.assertEqual(len({number for _, number, _, _, _ in rows}), 5, "two tests got the same server number")
+        self.assertEqual({display for *_, display in rows}, {"none"}, "a test inherited the shared DISPLAY")
+        # Each server has its own auth file in the build tree, not in
+        # xvfb-run's temporary directory, so its cleanup only removes an empty
+        # directory: a file left there (xauth's lock files, most likely) made
+        # the cleanup fail, and xvfb-run's exit 5 replaced the test's (tsan
+        # pool run 41275822723: test_xshm_monitor_move, test_media_cover_art_monitor).
+        files = [Path(path) for _, _, _, path, _ in rows]
+        self.assertEqual(len(set(files)), 5, "two servers share an auth file")
+        self.assertTrue(all(f.parent == self.layout.build / "xauth" for f in files), files)
+
+    def test_private_displays_and_pool_size_per_tool(self):
+        # tsan measured in a pool (41275822723): unit tests 20.3 -> 8.2 min.
+        # valgrind with 4 jobs (41275824985) broke 9 tests on timing; with 2
+        # jobs on 4 cores the pool part ran 1.78x faster and broke none, and
+        # serial no longer fits the job's 150 minutes with every test built
+        # without ASan (143 min and not done, 41281819710).
+        self.assertTrue(self.module.private_displays("asan"))
+        self.assertTrue(self.module.private_displays("tsan"))
+        self.assertTrue(self.module.private_displays("valgrind"))
+        with patch.dict(os.environ, {}):
+            os.environ.pop("SANITIZE_JOBS", None)
+            self.assertEqual(self.module.unit_test_jobs("asan"), os.cpu_count() or 1)
+            self.assertEqual(self.module.unit_test_jobs("tsan"), os.cpu_count() or 1)
+            self.assertEqual(self.module.unit_test_jobs("valgrind"), 2)
+        with patch.dict(os.environ, {"SANITIZE_JOBS": "1"}):
+            self.assertEqual(self.module.unit_test_jobs("valgrind"), 1)
+
+    def test_run_unit_tests_uses_the_tool_settings(self):
+        seen = {}
+
+        def fake_run_tests(tool, tests, layout, runner=None, jobs=None, private_displays=False):
+            seen.update(tool=tool, jobs=jobs, private_displays=private_displays)
+            return []
+
+        with patch.object(self.module, "run_tests", fake_run_tests), patch.object(
+            self.module.subprocess, "run", return_value=self.module.subprocess.CompletedProcess([], 0, stdout='{"tests": []}')
+        ):
+            os.environ.pop("SANITIZE_JOBS", None)
+            self.module.run_unit_tests("valgrind", self.layout)
+        self.assertEqual(seen, {"tool": "valgrind", "jobs": 2, "private_displays": True})
 
 
 class ParallelUnitTestsTest(unittest.TestCase):
