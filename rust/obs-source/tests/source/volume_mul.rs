@@ -18,7 +18,9 @@
 
 #![allow(clippy::as_conversions, clippy::cast_precision_loss)]
 
-use obs_source::volume_mul::{mul_block, mul_data, mul_data_grouped, mul_data_zipped};
+use obs_source::volume_mul::{
+    mul_block, mul_data, mul_data_grouped, mul_data_scalar, mul_data_zipped,
+};
 use proptest::prelude::*;
 
 /// `AUDIO_OUTPUT_FRAMES` and `MAX_AUDIO_CHANNELS`.
@@ -225,6 +227,21 @@ proptest! {
         for (i, (&got, &x)) in out.iter().zip(&samples).enumerate() {
             prop_assert!(same(got, x * vol, x, vol), "sample {i}: {x} * {vol} gave {got}");
         }
+    }
+
+    /// The runtime-dispatched `mul_data` (AVX2 when the CPU has it, #3413)
+    /// gives exactly the bits of the baseline loop, NaN payloads included,
+    /// over lengths that cover every AVX2 and SSE remainder.
+    #[test]
+    fn edge_dispatched_data_matches_the_scalar_bits(
+        samples in prop::collection::vec(any_f32(), 0..300),
+        vol in prop::collection::vec(any_f32(), 0..300),
+    ) {
+        let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<u32>>();
+        let (mut dispatched, mut scalar) = (samples.clone(), samples);
+        mul_data(&mut dispatched, &vol);
+        mul_data_scalar(&mut scalar, &vol);
+        prop_assert_eq!(bits(&dispatched), bits(&scalar));
     }
 
     /// Both loop forms of `mul_data` (4-sample groups on x86_64, a zip loop

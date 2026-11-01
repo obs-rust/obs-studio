@@ -58,7 +58,18 @@ pub fn mul_block(out: &mut [f32], vol: f32) {
 /// volumes; here that count is the shorter of the two slices, and the
 /// samples after it stay as they are. [`mul_data_grouped`] on x86_64,
 /// [`mul_data_zipped`] elsewhere (see the module docs).
+///
+/// On a CPU with AVX2 this runs [`mul_data_scalar`] compiled with AVX2
+/// (#3413); same result, bit for bit.
 pub fn mul_data(out: &mut [f32], vol: &[f32]) {
+    crate::platform::mul_data(out, vol);
+}
+
+/// [`mul_data`] for the baseline target. Public only for the tests, which
+/// check both paths agree.
+#[doc(hidden)]
+#[inline(always)]
+pub fn mul_data_scalar(out: &mut [f32], vol: &[f32]) {
     if crate::platform::GROUPED_AUDIO_LOOPS {
         mul_data_grouped(out, vol);
     } else {
@@ -70,6 +81,7 @@ pub fn mul_data(out: &mut [f32], vol: &[f32]) {
 /// [`mul_data_zipped`] on every input; public only for the tests, which run
 /// both forms on every host.
 #[doc(hidden)]
+#[inline(always)]
 pub fn mul_data_grouped(out: &mut [f32], vol: &[f32]) {
     let n = out.len().min(vol.len());
     let (Some(out), Some(vol)) = (out.get_mut(..n), vol.get(..n)) else {
@@ -90,6 +102,7 @@ pub fn mul_data_grouped(out: &mut [f32], vol: &[f32]) {
 /// [`mul_data`] as a plain zip loop. Same result as [`mul_data_grouped`] on
 /// every input; public only for the tests.
 #[doc(hidden)]
+#[inline(always)]
 pub fn mul_data_zipped(out: &mut [f32], vol: &[f32]) {
     for (sample, v) in out.iter_mut().zip(vol) {
         *sample *= *v;
