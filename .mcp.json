@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "obs": {
+      "command": "target/debug/obs-studio-rust",
+      "args": ["--mcp"]
+    }
+  }
+}

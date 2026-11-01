@@ -627,6 +627,8 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "flate2",
+ "libc",
+ "obs-sys",
  "serde",
  "serde_json",
 ]
@@ -719,6 +721,7 @@ dependencies = [
  "dunce",
  "libloading",
  "obs-build",
+ "obs-mcp",
  "obs-sys",
  "pkg-config",
  "serde_json",

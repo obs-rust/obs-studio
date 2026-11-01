@@ -4,10 +4,13 @@
 
 use std::process::ExitCode;
 
+mod mcp;
+
 use obs_studio_rust::{Client, DEFAULT_PORT, describe_stream_status};
 
 const USAGE: &str = "\
 Usage: obs-studio-rust [OPTIONS] <COMMAND>
+       obs-studio-rust --mcp
 
 Control OBS Studio streaming over obs-websocket v5.
 
@@ -23,6 +26,8 @@ Options:
   --port <PORT>          obs-websocket port [default: 4455]
   --password <PASSWORD>  obs-websocket password [env: OBS_WEBSOCKET_PASSWORD]
   --json                Print response data as JSON
+  --mcp                  Start libobs and serve MCP over stdin/stdout (needs a
+                         build with --features bundled-native); logs go to stderr
   -h, --help             Print help
   -V, --version          Print version
 ";
@@ -32,6 +37,7 @@ struct Args {
     port: u16,
     password: Option<String>,
     json: bool,
+    mcp: bool,
     command: String,
 }
 
@@ -43,6 +49,7 @@ fn parse_args() -> Result<Option<Args>, String> {
         .filter(|p| !p.is_empty());
     let mut command = None;
     let mut json = false;
+    let mut mcp = false;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         let mut value = |name: &str| args.next().ok_or(format!("{name} needs a value"));
@@ -62,17 +69,26 @@ fn parse_args() -> Result<Option<Args>, String> {
             }
             "--password" => password = Some(value("--password")?),
             "--json" => json = true,
+            "--mcp" => mcp = true,
             _ if arg.starts_with('-') => return Err(format!("unknown option: {arg}")),
             _ if command.is_none() => command = Some(arg),
             _ => return Err(format!("unexpected argument: {arg}")),
         }
     }
-    let command = command.ok_or("missing command")?;
+    let command = match command {
+        Some(command) => command,
+        None if mcp => String::new(),
+        None => return Err("missing command".to_owned()),
+    };
+    if mcp && !command.is_empty() {
+        return Err("--mcp takes no command".to_owned());
+    }
     Ok(Some(Args {
         host,
         port,
         password,
         json,
+        mcp,
         command,
     }))
 }
@@ -120,7 +136,12 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match run(&args) {
+    let result = if args.mcp {
+        mcp::run().map_err(Box::from)
+    } else {
+        run(&args)
+    };
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");
