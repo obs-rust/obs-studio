@@ -2450,8 +2450,10 @@ area.
   peak level or the audio settings, or asks whether NV12 or P010 texture
   output is active, before OBS has started or after it has shut down no
   longer crashes; it gets 300 and 1000 nits, "no audio" and "not active",
-  as it already did with no video or audio set up. *All*, pending merge.
-  Issue [#2566](https://github.com/obs-rust/obs-studio/issues/2566).
+  as it already did with no video or audio set up. Setting the video
+  levels then is ignored with a warning in the log. *All*, pending merge.
+  Issues [#2566](https://github.com/obs-rust/obs-studio/issues/2566),
+  [#3397](https://github.com/obs-rust/obs-studio/issues/3397).
 - An SDR white level or HDR nominal peak level of 0, below 0, NaN or
   infinite (from an edited profile, a plugin or a script) no longer makes
   HDR and scRGB sources draw solid white, black or garbage: the level is
@@ -2599,6 +2601,11 @@ area.
   and reported by `obs_get_audio_info2()`, as its real length instead of
   an overflowed number. *All*, 2026-10-31. Issue
   [#3272](https://github.com/obs-rust/obs-studio/issues/3272).
+- A plugin or script that queues a task with a task type OBS does not
+  know no longer hangs when it waits for the task, or loses it without a
+  word when it does not: the call logs an error naming the type and
+  returns without running the task. *All*, 2026-11-01. Issue
+  [#3397](https://github.com/obs-rust/obs-studio/issues/3397).
 
 ### Security hardening
 

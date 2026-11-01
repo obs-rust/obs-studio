@@ -11,14 +11,31 @@
 //! latest version and the capture device flag at the edges of their types;
 //! the constants and enum values of the header; the buffering milliseconds
 //! over every tick from -2097 to 4195 at the usual rates and the edges of
-//! the C's `(int)` cast; and proptests over any input.
+//! the C's `(int)` cast; the task queue's route, every step over the type
+//! values -2 to 5 and the edges of `i32`, with both values, and every
+//! walk of `obs_queue_task()`; the task thread; the video level checks
+//! over every special `f32` (both zeros, the denormal and normal edges,
+//! both infinities, quiet and signalling NaNs of both signs); and
+//! proptests over any input.
 //!
-//! Intentional differences, in `buffer_ms` only (#3272), where the C is
+//! Intentional differences, in `buffer_ms` (#3272), where the C is
 //! undefined: a rate that casts to an `int` of 0 (the C's divide traps)
 //! gives 0, and a product past `i32` (the C's `int` overflows, from 2098
 //! ticks) is computed in `i64` and its quotient clamped to `i32`. Exactly
 //! those inputs skip the oracle and are checked against that contract
 //! instead (`c_defined`, `fixed_ms`); every other input is compared.
+//!
+//! And two in the task route and the video levels (#3397):
+//! - `task_step`'s type step with a type outside the four: the C goes on
+//!   to `IN_THREAD`, so `obs_queue_task()` asks `obs_in_task_thread()`,
+//!   which asserts, and with `wait` waits forever for a task it never
+//!   queues; the core answers `UNKNOWN`, and `obs_queue_task()` logs it and
+//!   returns. Exactly that step skips the oracle and is checked against
+//!   that contract instead (`known_type`); every later step, and the
+//!   thread rule, are compared for every type;
+//! - `levels_core(false)`: the C goes on with no core and reads
+//!   `obs->video` through NULL; the core stops. `levels_core(true)` is
+//!   compared.
 
 use core::ffi::c_int;
 
@@ -29,12 +46,15 @@ use obs_c_oracle::core_setup_rules::{
     oracle_obs_core_setup_rules_buffer_ticks, oracle_obs_core_setup_rules_cmdline_len,
     oracle_obs_core_setup_rules_cmdline_set, oracle_obs_core_setup_rules_cmdline_table,
     oracle_obs_core_setup_rules_data_file_found, oracle_obs_core_setup_rules_data_path_match,
-    oracle_obs_core_setup_rules_latest_newer, oracle_obs_core_setup_rules_mix_step,
+    oracle_obs_core_setup_rules_latest_newer, oracle_obs_core_setup_rules_level_ok,
+    oracle_obs_core_setup_rules_levels_core, oracle_obs_core_setup_rules_mix_step,
     oracle_obs_core_setup_rules_monitor_missing, oracle_obs_core_setup_rules_monitor_same,
+    oracle_obs_core_setup_rules_task_step, oracle_obs_core_setup_rules_task_thread,
     oracle_obs_core_setup_rules_video_gate,
 };
 use obs_core::core_setup_rules::{
-    AUDIO_OUTPUT_FRAMES, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, SEC_TO_MSEC,
+    AUDIO_OUTPUT_FRAMES, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, SEC_TO_MSEC, TASK_AUDIO,
+    TASK_DESTROY, TASK_GRAPHICS, TASK_UI,
 };
 use obs_core::ffi::core_setup_rules::{
     VIDEO_CURRENTLY_ACTIVE, VIDEO_FAIL, VIDEO_GO, VIDEO_INVALID_PARAM,
@@ -44,8 +64,10 @@ use obs_core::ffi::core_setup_rules::{
     obs_core_setup_rules_cmdline_len, obs_core_setup_rules_cmdline_set,
     obs_core_setup_rules_cmdline_table, obs_core_setup_rules_data_file_found,
     obs_core_setup_rules_data_path_match, obs_core_setup_rules_latest_newer,
-    obs_core_setup_rules_mix_step, obs_core_setup_rules_monitor_missing,
-    obs_core_setup_rules_monitor_same, obs_core_setup_rules_video_gate,
+    obs_core_setup_rules_level_ok, obs_core_setup_rules_levels_core, obs_core_setup_rules_mix_step,
+    obs_core_setup_rules_monitor_missing, obs_core_setup_rules_monitor_same,
+    obs_core_setup_rules_task_step, obs_core_setup_rules_task_thread,
+    obs_core_setup_rules_video_gate,
 };
 use proptest::prelude::*;
 
@@ -298,6 +320,179 @@ fn constants_match_the_header() {
         constant_of("sizeof(void *)"),
         i64::try_from(size_of::<*const u8>()).unwrap()
     );
+}
+
+#[test]
+fn task_constants_match_the_header() {
+    // The task types the header copies from obs.h.
+    for (t, value) in ["UI", "GRAPHICS", "AUDIO", "DESTROY"].into_iter().zip([
+        TASK_UI,
+        TASK_GRAPHICS,
+        TASK_AUDIO,
+        TASK_DESTROY,
+    ]) {
+        let copy = format!("OBS_CORE_SETUP_RULES_TASK_{t}");
+        assert_eq!(constant_of(&copy), i64::from(value), "{copy}");
+        let original = format!("OBS_TASK_{t}");
+        assert_eq!(constant_of(&original), i64::from(value), "{original}");
+    }
+    for (i, name) in TASK_NAMES.iter().enumerate() {
+        let name = format!("OBS_CORE_SETUP_RULES_TASK_{name}");
+        assert_eq!(constant_of(&name), i64::try_from(i).unwrap(), "{name}");
+    }
+    assert_eq!(constant_of("sizeof(enum obs_core_setup_rules_task)"), 4);
+}
+
+/// `enum obs_core_setup_rules_task`, in order from 0.
+const TASK_NAMES: [&str; 13] = [
+    "TYPE",
+    "UI_HANDLER",
+    "IN_THREAD",
+    "WAIT",
+    "UI_CALL",
+    "UI_NONE",
+    "RUN",
+    "WAIT_QUEUE",
+    "PUSH_GRAPHICS",
+    "PUSH_AUDIO",
+    "PUSH_DESTROY",
+    "DROP",
+    "UNKNOWN",
+];
+const TASK_TYPE: u32 = 0;
+const TASK_UNKNOWN: u32 = 12;
+
+/// Task types: the four, the ones around them and the edges of `i32`.
+const TASK_TYPES: [c_int; 10] = [-2, -1, 0, 1, 2, 3, 4, 5, c_int::MIN, c_int::MAX];
+
+fn known_type(task_type: c_int) -> bool {
+    (TASK_UI..=TASK_DESTROY).contains(&task_type)
+}
+
+fn check_task_step(step: u32, task_type: c_int, value: bool) {
+    let rust = obs_core_setup_rules_task_step(step, task_type, value);
+    if step == TASK_TYPE && !known_type(task_type) {
+        // #3397: the C sends it on to obs_in_task_thread().
+        assert_eq!(rust, TASK_UNKNOWN, "{task_type} {value}");
+        return;
+    }
+    // SAFETY: plain values.
+    let c = unsafe { oracle_obs_core_setup_rules_task_step(step, task_type, value) };
+    assert_eq!(rust, c, "{step} {task_type} {value}");
+}
+
+fn check_task_thread(task_type: c_int) {
+    // SAFETY: plain values.
+    let c = unsafe { oracle_obs_core_setup_rules_task_thread(task_type) };
+    assert_eq!(
+        obs_core_setup_rules_task_thread(task_type),
+        c,
+        "{task_type}"
+    );
+}
+
+fn check_level_ok(level: f32) {
+    // SAFETY: plain values.
+    let c = unsafe { oracle_obs_core_setup_rules_level_ok(level) };
+    assert_eq!(
+        obs_core_setup_rules_level_ok(level),
+        c,
+        "{level:?} {:#010x}",
+        level.to_bits()
+    );
+}
+
+/// `obs_queue_task()`'s walk, through each side: the route and the steps
+/// it asked.
+fn task_walk(
+    task_step: impl Fn(u32, c_int, bool) -> u32,
+    task_type: c_int,
+    values: [bool; 3],
+) -> (u32, Vec<u32>) {
+    let mut asked = Vec::new();
+    let mut step = task_step(TASK_TYPE, task_type, false);
+    for (at, value) in (1..=3).zip(values) {
+        if step == at {
+            asked.push(step);
+            step = task_step(step, task_type, value);
+        }
+    }
+    (step, asked)
+}
+
+#[test]
+fn every_task_step_matches() {
+    for value in [false, true] {
+        for step in (0..=14).chain(EXTRA_STEPS) {
+            for task_type in TASK_TYPES {
+                check_task_step(step, task_type, value);
+            }
+        }
+    }
+    for task_type in TASK_TYPES {
+        check_task_thread(task_type);
+    }
+}
+
+#[test]
+fn every_task_walk_matches() {
+    for m in 0u32..8 {
+        let values = [m & 1 != 0, m & 2 != 0, m & 4 != 0];
+        for task_type in TASK_TYPES {
+            let rust = task_walk(
+                |s, t, v| obs_core_setup_rules_task_step(s, t, v),
+                task_type,
+                values,
+            );
+            if known_type(task_type) {
+                // SAFETY: plain values.
+                let c = task_walk(
+                    |s, t, v| unsafe { oracle_obs_core_setup_rules_task_step(s, t, v) },
+                    task_type,
+                    values,
+                );
+                assert_eq!(rust, c, "{task_type} {m}");
+            } else {
+                // #3397: refused before any read.
+                assert_eq!(rust, (TASK_UNKNOWN, vec![]), "{task_type} {m}");
+            }
+        }
+    }
+}
+
+#[test]
+fn levels_core_matches() {
+    // SAFETY: plain values.
+    let c = unsafe { oracle_obs_core_setup_rules_levels_core(true) };
+    assert_eq!(obs_core_setup_rules_levels_core(true), c);
+    // #3397: the C goes on with no core.
+    // SAFETY: plain values.
+    assert!(unsafe { oracle_obs_core_setup_rules_levels_core(false) });
+    assert!(!obs_core_setup_rules_levels_core(false));
+}
+
+#[test]
+fn level_ok_special_floats_match() {
+    let bits: [u32; 14] = [
+        0x0000_0000, // 0
+        0x0000_0001, // the smallest denormal
+        0x007f_ffff, // the largest denormal
+        0x0080_0000, // FLT_MIN
+        0x3f80_0000, // 1
+        0x4396_0000, // 300
+        0x447a_0000, // 1000
+        0x7f7f_ffff, // FLT_MAX
+        0x7f80_0000, // infinity
+        0x7f80_0001, // the smallest signalling NaN
+        0x7fbf_ffff, // the largest signalling NaN
+        0x7fc0_0000, // the quiet NaN
+        0x7fc0_0001, // a quiet NaN with a payload
+        0x7fff_ffff, // the largest NaN
+    ];
+    for b in bits {
+        check_level_ok(f32::from_bits(b));
+        check_level_ok(f32::from_bits(b | 0x8000_0000));
+    }
 }
 
 #[test]
@@ -630,5 +825,17 @@ proptest! {
         // SAFETY: plain values.
         let c = walk(&|v, best| unsafe { oracle_obs_core_setup_rules_latest_newer(v, best) });
         prop_assert_eq!(walk(&|v, best| obs_core_setup_rules_latest_newer(v, best)), c);
+    }
+
+    #[test]
+    fn task_any(step in any::<u32>(), task_type in any::<c_int>(), value in any::<bool>()) {
+        check_task_step(step, task_type, value);
+        check_task_step(step % 16, task_type, value);
+        check_task_thread(task_type);
+    }
+
+    #[test]
+    fn level_ok_any(bits in any::<u32>()) {
+        check_level_ok(f32::from_bits(bits));
     }
 }

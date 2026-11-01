@@ -1,16 +1,18 @@
-//! `oracle_*` build of `libobs/obs-core-setup-rules.c.h` and
-//! `libobs/obs-core-setup-rules-ms.c.h` (oracle/core_setup_rules.c).
+//! `oracle_*` build of `libobs/obs-core-setup-rules.c.h`,
+//! `libobs/obs-core-setup-rules-ms.c.h` and
+//! `libobs/obs-core-setup-rules-task.c.h` (oracle/core_setup_rules.c).
 //!
 //! The C's enums are 32-bit integers, taken and returned as `u32` as the
 //! shims do. The constants and enum values of `obs-core-setup-rules.h`, and
-//! the `obs-defs.h`, `obs-source.h` and `audio-io.h` values it copies, come
+//! the `obs-defs.h`, `obs-source.h`, `audio-io.h` and `obs.h` values it
+//! copies, come
 //! from the same C file.
 
 use core::ffi::c_int;
 
 /// Index of each entry in `oracle_core_setup_rules_constant`, in the C's
 /// order.
-pub const CONSTANT_NAMES: [&str; 32] = [
+pub const CONSTANT_NAMES: [&str; 54] = [
     "OBS_CORE_SETUP_RULES_VIDEO_GO",
     "OBS_CORE_SETUP_RULES_VIDEO_FAIL",
     "OBS_CORE_SETUP_RULES_VIDEO_INVALID_PARAM",
@@ -43,6 +45,28 @@ pub const CONSTANT_NAMES: [&str; 32] = [
     "sizeof(enum obs_core_setup_rules_audio_step)",
     "sizeof(enum obs_core_setup_rules_mix)",
     "sizeof(void *)",
+    "OBS_CORE_SETUP_RULES_TASK_UI",
+    "OBS_CORE_SETUP_RULES_TASK_GRAPHICS",
+    "OBS_CORE_SETUP_RULES_TASK_AUDIO",
+    "OBS_CORE_SETUP_RULES_TASK_DESTROY",
+    "OBS_TASK_UI",
+    "OBS_TASK_GRAPHICS",
+    "OBS_TASK_AUDIO",
+    "OBS_TASK_DESTROY",
+    "OBS_CORE_SETUP_RULES_TASK_TYPE",
+    "OBS_CORE_SETUP_RULES_TASK_UI_HANDLER",
+    "OBS_CORE_SETUP_RULES_TASK_IN_THREAD",
+    "OBS_CORE_SETUP_RULES_TASK_WAIT",
+    "OBS_CORE_SETUP_RULES_TASK_UI_CALL",
+    "OBS_CORE_SETUP_RULES_TASK_UI_NONE",
+    "OBS_CORE_SETUP_RULES_TASK_RUN",
+    "OBS_CORE_SETUP_RULES_TASK_WAIT_QUEUE",
+    "OBS_CORE_SETUP_RULES_TASK_PUSH_GRAPHICS",
+    "OBS_CORE_SETUP_RULES_TASK_PUSH_AUDIO",
+    "OBS_CORE_SETUP_RULES_TASK_PUSH_DESTROY",
+    "OBS_CORE_SETUP_RULES_TASK_DROP",
+    "OBS_CORE_SETUP_RULES_TASK_UNKNOWN",
+    "sizeof(enum obs_core_setup_rules_task)",
 ];
 
 unsafe extern "C" {
@@ -65,6 +89,10 @@ unsafe extern "C" {
     pub fn oracle_obs_core_setup_rules_monitor_missing(present: bool) -> bool;
     pub fn oracle_obs_core_setup_rules_monitor_same(cmp: c_int) -> bool;
     pub fn oracle_obs_core_setup_rules_mix_step(step: u32, value: bool) -> u32;
+    pub fn oracle_obs_core_setup_rules_task_step(step: u32, task_type: c_int, value: bool) -> u32;
+    pub fn oracle_obs_core_setup_rules_task_thread(task_type: c_int) -> c_int;
+    pub fn oracle_obs_core_setup_rules_levels_core(core: bool) -> bool;
+    pub fn oracle_obs_core_setup_rules_level_ok(level: f32) -> bool;
     pub fn oracle_core_setup_rules_constant(i: usize) -> i64;
 }
 

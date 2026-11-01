@@ -1,11 +1,13 @@
-//! C ABI for `libobs/obs-core-setup-rules.c.h` and
-//! `libobs/obs-core-setup-rules-ms.c.h`.
+//! C ABI for `libobs/obs-core-setup-rules.c.h`,
+//! `libobs/obs-core-setup-rules-ms.c.h` and
+//! `libobs/obs-core-setup-rules-task.c.h`.
 //!
 //! `obs_reset_video()`, `obs_reset_audio2()`, `obs_set_cmdline_args()`,
 //! `obs_find_data_file()`, `obs_remove_data_path()`, `obs_get_latest_input_type_id()`,
 //! `check_all_aoc_sources()`, `obs_set_audio_monitoring_device()`,
-//! `obs_get_video_frame_counts()` and `obs_get_audio_info2()` in `obs.c`
-//! call these inside libobs. They
+//! `obs_get_video_frame_counts()`, `obs_get_audio_info2()`,
+//! `obs_queue_task()`, `obs_in_task_thread()` and `obs_set_video_levels()`
+//! in `obs.c` call these inside libobs. They
 //! are declared in `obs-core-setup-rules.h` without `EXPORT`, so the shims
 //! stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
@@ -13,12 +15,12 @@
 //! (`unsigned int` with GCC and Clang, `int` with MSVC), taken and returned
 //! as `u32` here. A step the C enum does not name is answered as the C's
 //! `switch` falls through: the video gate goes on, the audio gate does not
-//! refuse, and the mix step comes back unchanged. The video gate returns
+//! refuse, and the mix and task steps come back unchanged. The video gate returns
 //! the `OBS_VIDEO_*` code as an `int`.
 
 use core::ffi::c_int;
 
-use crate::core_setup_rules::{self, AudioStep, Mix, VideoGate, VideoStep};
+use crate::core_setup_rules::{self, AudioStep, Mix, Task, VideoGate, VideoStep};
 
 /// `OBS_CORE_SETUP_RULES_VIDEO_GO` (`OBS_VIDEO_SUCCESS`).
 pub const VIDEO_GO: c_int = 0;
@@ -50,6 +52,23 @@ const MIX_STEPS: [Mix; 6] = [
     Mix::Video,
     Mix::Count,
     Mix::Skip,
+];
+
+/// `enum obs_core_setup_rules_task`, in order from 0.
+const TASK_STEPS: [Task; 13] = [
+    Task::Type,
+    Task::UiHandler,
+    Task::InThread,
+    Task::Wait,
+    Task::UiCall,
+    Task::UiNone,
+    Task::Run,
+    Task::WaitQueue,
+    Task::PushGraphics,
+    Task::PushAudio,
+    Task::PushDestroy,
+    Task::Drop,
+    Task::Unknown,
 ];
 
 fn step_of<T: Copy>(steps: &[T], raw: u32) -> Option<T> {
@@ -172,4 +191,39 @@ pub extern "C" fn obs_core_setup_rules_mix_step(step: u32, value: bool) -> u32 {
         .position(|&m| m == next)
         .and_then(|i| u32::try_from(i).ok())
         .unwrap_or(step)
+}
+
+/// Same contract as C `obs_core_setup_rules_task_step`, but for a type
+/// outside the four at the type step, which goes to
+/// `OBS_CORE_SETUP_RULES_TASK_UNKNOWN` (#3397).
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_task_step(step: u32, task_type: c_int, value: bool) -> u32 {
+    let Some(task) = step_of(&TASK_STEPS, step) else {
+        return step;
+    };
+    let next = core_setup_rules::task_step(task, task_type, value);
+    TASK_STEPS
+        .iter()
+        .position(|&t| t == next)
+        .and_then(|i| u32::try_from(i).ok())
+        .unwrap_or(step)
+}
+
+/// Same contract as C `obs_core_setup_rules_task_thread`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_task_thread(task_type: c_int) -> c_int {
+    core_setup_rules::task_thread(task_type)
+}
+
+/// Same contract as C `obs_core_setup_rules_levels_core`, but false with
+/// no core (#3397).
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_levels_core(core: bool) -> bool {
+    core_setup_rules::levels_core(core)
+}
+
+/// Same contract as C `obs_core_setup_rules_level_ok`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_core_setup_rules_level_ok(level: f32) -> bool {
+    core_setup_rules::level_ok(level)
 }

@@ -1,8 +1,9 @@
-/* Test-only oracle: the original libobs/obs-core-setup-rules.c.h and
- * obs-core-setup-rules-ms.c.h, unmodified, with their sixteen entry points
- * renamed to oracle_* so they can link next to the Rust shims. Also the constants and enum values of
- * obs-core-setup-rules.h, and the obs-defs.h, obs-source.h and audio-io.h
- * values they copy, as the C sees them. */
+/* Test-only oracle: the original libobs/obs-core-setup-rules.c.h,
+ * obs-core-setup-rules-ms.c.h and obs-core-setup-rules-task.c.h,
+ * unmodified, with their twenty entry points renamed to oracle_* so they
+ * can link next to the Rust shims. Also the constants and enum values of
+ * obs-core-setup-rules.h, and the obs-defs.h, obs-source.h, audio-io.h and
+ * obs.h values they copy, as the C sees them. */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -25,10 +26,19 @@
 #define obs_core_setup_rules_monitor_missing oracle_obs_core_setup_rules_monitor_missing
 #define obs_core_setup_rules_monitor_same oracle_obs_core_setup_rules_monitor_same
 #define obs_core_setup_rules_mix_step oracle_obs_core_setup_rules_mix_step
+#define obs_core_setup_rules_task_step oracle_obs_core_setup_rules_task_step
+#define obs_core_setup_rules_task_thread oracle_obs_core_setup_rules_task_thread
+#define obs_core_setup_rules_levels_core oracle_obs_core_setup_rules_levels_core
+#define obs_core_setup_rules_level_ok oracle_obs_core_setup_rules_level_ok
 
 #include "obs-core-setup-rules.c.h"
 #include "obs-core-setup-rules-ms.c.h"
+#include "obs-core-setup-rules-task.c.h"
 
+#undef obs_core_setup_rules_level_ok
+#undef obs_core_setup_rules_levels_core
+#undef obs_core_setup_rules_task_thread
+#undef obs_core_setup_rules_task_step
 #undef obs_core_setup_rules_mix_step
 #undef obs_core_setup_rules_monitor_same
 #undef obs_core_setup_rules_monitor_missing
@@ -82,6 +92,28 @@ static const int64_t constants[] = {
 	(int64_t)sizeof(enum obs_core_setup_rules_audio_step),
 	(int64_t)sizeof(enum obs_core_setup_rules_mix),
 	(int64_t)sizeof(void *),
+	OBS_CORE_SETUP_RULES_TASK_UI,
+	OBS_CORE_SETUP_RULES_TASK_GRAPHICS,
+	OBS_CORE_SETUP_RULES_TASK_AUDIO,
+	OBS_CORE_SETUP_RULES_TASK_DESTROY,
+	OBS_TASK_UI,
+	OBS_TASK_GRAPHICS,
+	OBS_TASK_AUDIO,
+	OBS_TASK_DESTROY,
+	OBS_CORE_SETUP_RULES_TASK_TYPE,
+	OBS_CORE_SETUP_RULES_TASK_UI_HANDLER,
+	OBS_CORE_SETUP_RULES_TASK_IN_THREAD,
+	OBS_CORE_SETUP_RULES_TASK_WAIT,
+	OBS_CORE_SETUP_RULES_TASK_UI_CALL,
+	OBS_CORE_SETUP_RULES_TASK_UI_NONE,
+	OBS_CORE_SETUP_RULES_TASK_RUN,
+	OBS_CORE_SETUP_RULES_TASK_WAIT_QUEUE,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_GRAPHICS,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_AUDIO,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_DESTROY,
+	OBS_CORE_SETUP_RULES_TASK_DROP,
+	OBS_CORE_SETUP_RULES_TASK_UNKNOWN,
+	(int64_t)sizeof(enum obs_core_setup_rules_task),
 };
 
 int64_t oracle_core_setup_rules_constant(size_t i)

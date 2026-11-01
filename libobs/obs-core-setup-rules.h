@@ -60,12 +60,23 @@
  *   one (strcmp() of 0), so nothing is reset;
  * - obs_core_setup_rules_mix_step(): obs_get_video_frame_counts()'s rule,
  *   one read at a time: a mix counts when it is the main mix, or an
- *   encoder-only mix of the main mix's view, and has a video output.
+ *   encoder-only mix of the main mix's view, and has a video output;
+ * - obs_core_setup_rules_task_step() (obs-core-setup-rules-task.c):
+ *   obs_queue_task()'s route, one read at a time: a UI task goes to the UI
+ *   task handler when there is one, any other runs in place on its own
+ *   thread, waits for itself when asked to, or is queued for its thread;
+ * - obs_core_setup_rules_task_thread(): the thread obs_in_task_thread()
+ *   asks about, or -1;
+ * - obs_core_setup_rules_levels_core(), obs_core_setup_rules_level_ok():
+ *   obs_set_video_levels() goes on, and keeps a level (finite and greater
+ *   than 0, #2209).
  *
  * obs.c keeps every lock, every read and call (obs_video_active(),
  * outputs_starting(), audio_output_active(), find_libobs_data_file(),
  * check_path(), dstr_cmp(), strcmp(), strlen(),
- * obs_audio_monitoring_available(), the frame counters), the fps gate, every
+ * obs_audio_monitoring_available(), the frame counters, the task handler,
+ * the task thread flags, os_task_queue_inside(), the task, its wait and
+ * its queues), the fps gate, every
  * allocation, copy, free and signal, every divide by a variable but the
  * buffering's milliseconds, and every log message. Nothing here takes a lock, calls into libobs or keeps state.
  *
@@ -90,6 +101,11 @@
 #define OBS_CORE_SETUP_RULES_SEC_TO_MSEC 1000
 /* The version obs_get_latest_input_type_id() starts from */
 #define OBS_CORE_SETUP_RULES_LATEST_NONE -1
+/* OBS_TASK_UI, OBS_TASK_GRAPHICS, OBS_TASK_AUDIO, OBS_TASK_DESTROY */
+#define OBS_CORE_SETUP_RULES_TASK_UI 0
+#define OBS_CORE_SETUP_RULES_TASK_GRAPHICS 1
+#define OBS_CORE_SETUP_RULES_TASK_AUDIO 2
+#define OBS_CORE_SETUP_RULES_TASK_DESTROY 3
 
 /* The steps of obs_reset_video()'s gates, in order, with the value each
  * one is asked with. */
@@ -119,6 +135,25 @@ enum obs_core_setup_rules_mix {
 	OBS_CORE_SETUP_RULES_MIX_SKIP,
 };
 
+/* What obs_queue_task() reads next about a task (each value is asked with
+ * that read, the type with every step), or the route it takes. The steps
+ * only go forward, in this order; a route comes back unchanged. */
+enum obs_core_setup_rules_task {
+	OBS_CORE_SETUP_RULES_TASK_TYPE,       /* the type alone */
+	OBS_CORE_SETUP_RULES_TASK_UI_HANDLER, /* obs->ui_task_handler != NULL */
+	OBS_CORE_SETUP_RULES_TASK_IN_THREAD,  /* obs_in_task_thread(type) */
+	OBS_CORE_SETUP_RULES_TASK_WAIT,       /* wait */
+	OBS_CORE_SETUP_RULES_TASK_UI_CALL,
+	OBS_CORE_SETUP_RULES_TASK_UI_NONE,
+	OBS_CORE_SETUP_RULES_TASK_RUN,
+	OBS_CORE_SETUP_RULES_TASK_WAIT_QUEUE,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_GRAPHICS,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_AUDIO,
+	OBS_CORE_SETUP_RULES_TASK_PUSH_DESTROY,
+	OBS_CORE_SETUP_RULES_TASK_DROP,
+	OBS_CORE_SETUP_RULES_TASK_UNKNOWN,
+};
+
 int obs_core_setup_rules_video_gate(enum obs_core_setup_rules_video_step step, bool value);
 bool obs_core_setup_rules_audio_refused(enum obs_core_setup_rules_audio_step step, bool value);
 bool obs_core_setup_rules_buffer_set(uint32_t max_buffering_ms);
@@ -135,3 +170,8 @@ bool obs_core_setup_rules_aoc_check(uint32_t output_flags);
 bool obs_core_setup_rules_monitor_missing(bool present);
 bool obs_core_setup_rules_monitor_same(int cmp);
 enum obs_core_setup_rules_mix obs_core_setup_rules_mix_step(enum obs_core_setup_rules_mix step, bool value);
+enum obs_core_setup_rules_task obs_core_setup_rules_task_step(enum obs_core_setup_rules_task step, int type,
+							      bool value);
+int obs_core_setup_rules_task_thread(int type);
+bool obs_core_setup_rules_levels_core(bool core);
+bool obs_core_setup_rules_level_ok(float level);
