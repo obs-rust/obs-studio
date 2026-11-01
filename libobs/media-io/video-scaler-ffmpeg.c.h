@@ -183,6 +183,35 @@ bool video_scaler_scale(video_scaler_t *scaler, uint8_t *output[], const uint32_
 	if (!scaler)
 		return false;
 
+	/* A frame laid out like the internal buffer (32-byte aligned planes,
+	 * rows at least as long and a multiple of 32) takes the output
+	 * directly: swscale's row writes then stay inside each row, as in the
+	 * internal buffer, and the bytes are the same without the plane copy
+	 * (#3192). */
+	bool direct = true;
+	int out_linesizes[4] = {0};
+	for (size_t plane = 0; plane < 4; ++plane) {
+		if (!scaler->dst_pointers[plane])
+			continue;
+		const uint32_t linesize = out_linesize[plane];
+		if (!output[plane] || ((uintptr_t)output[plane] & 31) || (linesize & 31) ||
+		    linesize < (uint32_t)scaler->dst_linesizes[plane] || linesize > INT32_MAX) {
+			direct = false;
+			break;
+		}
+		out_linesizes[plane] = (int)linesize;
+	}
+
+	if (direct) {
+		int ret = sws_scale(scaler->swscale, input, (const int *)in_linesize, 0, scaler->src_height, output,
+				    out_linesizes);
+		if (ret <= 0) {
+			blog(LOG_ERROR, "video_scaler_scale: sws_scale failed: %d", ret);
+			return false;
+		}
+		return true;
+	}
+
 	int ret = sws_scale(scaler->swscale, input, (const int *)in_linesize, 0, scaler->src_height,
 			    scaler->dst_pointers, scaler->dst_linesizes);
 	if (ret <= 0) {
