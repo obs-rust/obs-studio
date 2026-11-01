@@ -81,6 +81,10 @@ static void run(size_t size, size_t expected_calls)
 	assert_memory_equal(written + sizeof(info), data, size);
 	assert_int_equal(stream.total_bytes, size);
 
+	/* ffmpeg_mux_destroy() frees the packet buffer; this stream never goes
+	 * through it. */
+	da_free(stream.packet_buf);
+
 	bfree(data);
 }
 
