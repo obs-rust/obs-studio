@@ -64,6 +64,7 @@ static void ffmpeg_mux_destroy(void *data)
 		obs_encoder_packet_release(&stream->mux_packets.array[i]);
 	da_free(stream->mux_packets);
 	deque_free(&stream->packets);
+	da_free(stream->packet_buf);
 
 	os_process_pipe_destroy(stream->pipe);
 	dstr_free(&stream->path);
@@ -590,6 +591,8 @@ static void generate_filename(struct ffmpeg_muxer *stream, struct dstr *dst, boo
 	obs_data_release(settings);
 }
 
+#define MUX_COALESCE_MAX ((size_t)64 * 1024)
+
 bool write_packet(struct ffmpeg_muxer *stream, struct encoder_packet *packet)
 {
 	bool is_video = packet->type == OBS_ENCODER_VIDEO;
@@ -612,18 +615,35 @@ bool write_packet(struct ffmpeg_muxer *stream, struct encoder_packet *packet)
 		}
 	}
 
-	ret = os_process_pipe_write(stream->pipe, (const uint8_t *)&info, sizeof(info));
-	if (ret != sizeof(info)) {
-		warn("os_process_pipe_write for info structure failed");
-		signal_failure(stream);
-		return false;
-	}
+	/* os_process_pipe_write() is unbuffered: each call is a write(2). Send
+	 * the header and a packet of up to 64 KiB together; a larger packet
+	 * keeps two writes, as the copy would cost more than the syscall
+	 * (#3211). */
+	if (packet->size <= MUX_COALESCE_MAX) {
+		const size_t total = sizeof(info) + packet->size;
+		da_resize(stream->packet_buf, total);
+		memcpy(stream->packet_buf.array, &info, sizeof(info));
+		memcpy(stream->packet_buf.array + sizeof(info), packet->data, packet->size);
+		ret = os_process_pipe_write(stream->pipe, stream->packet_buf.array, total);
+		if (ret != total) {
+			warn("os_process_pipe_write for packet failed");
+			signal_failure(stream);
+			return false;
+		}
+	} else {
+		ret = os_process_pipe_write(stream->pipe, (const uint8_t *)&info, sizeof(info));
+		if (ret != sizeof(info)) {
+			warn("os_process_pipe_write for info structure failed");
+			signal_failure(stream);
+			return false;
+		}
 
-	ret = os_process_pipe_write(stream->pipe, packet->data, packet->size);
-	if (ret != packet->size) {
-		warn("os_process_pipe_write for packet data failed");
-		signal_failure(stream);
-		return false;
+		ret = os_process_pipe_write(stream->pipe, packet->data, packet->size);
+		if (ret != packet->size) {
+			warn("os_process_pipe_write for packet data failed");
+			signal_failure(stream);
+			return false;
+		}
 	}
 
 	stream->total_bytes += packet->size;
@@ -1282,3 +1302,4 @@ struct obs_output_info replay_buffer = {
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef warn
 #undef info
+#undef MUX_COALESCE_MAX
