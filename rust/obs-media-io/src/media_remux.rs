@@ -139,6 +139,9 @@ pub trait Host {
     /// The packet's fields written back, `av_interleaved_write_frame`, then
     /// `av_packet_unref`; the write's result.
     fn write_frame(&mut self, output: Handle, packet: &Packet) -> i32;
+    /// `av_packet_unref` of the packet just read, when the progress callback
+    /// stops the job before the packet is written (#3365).
+    fn packet_unref(&mut self);
     /// `av_write_trailer(output)`.
     fn write_trailer(&mut self, output: Handle) -> i32;
     /// `avformat_close_input(&input)` (NULL included).

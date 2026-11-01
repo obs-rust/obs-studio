@@ -38,6 +38,7 @@ unsafe extern "C" {
     fn obs_media_remux_write_header(output: *mut c_void) -> c_int;
     fn obs_media_remux_packet_new() -> *mut c_void;
     fn obs_media_remux_packet_free(pkt: *mut c_void);
+    fn obs_media_remux_packet_unref(pkt: *mut c_void);
     fn obs_media_remux_read_frame(input: *mut c_void, pkt: *mut c_void, out: *mut Packet) -> c_int;
     fn obs_media_remux_write_frame(
         output: *mut c_void,
@@ -190,6 +191,11 @@ impl Host for Adapter {
     fn write_frame(&mut self, output: Handle, packet: &Packet) -> i32 {
         // SAFETY: an output context and the packet just read into.
         unsafe { obs_media_remux_write_frame(ctx(output), self.packet, packet) }
+    }
+
+    fn packet_unref(&mut self) {
+        // SAFETY: the packet of this process call.
+        unsafe { obs_media_remux_packet_unref(self.packet) }
     }
 
     fn write_trailer(&mut self, output: Handle) -> i32 {

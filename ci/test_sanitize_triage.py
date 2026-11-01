@@ -119,7 +119,7 @@ class RaceTriageTest(unittest.TestCase):
 
 
 class SkipAndKnownTest(unittest.TestCase):
-    """test_media_remux and test_dock_proportions are KNOWN under asan."""
+    """test_media_alpha_network and test_dock_proportions are KNOWN under asan."""
 
     def test_skip_exit_is_not_a_finding(self):
         code, md = triage(summary="test_pipewire_camera_nv12 exit=77\n")
@@ -134,10 +134,10 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("**test_dock_proportions**", md)
 
     def test_known_test_reports_are_listed_not_counted(self):
-        code, md = triage(OBS_LEAK, test="test_media_remux")
+        code, md = triage(OBS_LEAK, test="test_media_alpha_network")
         self.assertEqual(code, 0, md)
         self.assertNotIn("libobs/obs-canvas.c.h:330", md)
-        self.assertIn("**test_media_remux**", md)
+        self.assertIn("**test_media_alpha_network**", md)
 
     def test_known_test_that_ran_clean_is_listed(self):
         code, md = triage(summary="test_dock_proportions exit=0\n")
@@ -146,12 +146,12 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("test_dock_proportions", md)
 
     def test_known_bug_that_ran_clean_is_a_finding(self):
-        """test_media_remux is a known bug: clean means fixed, so the entry
+        """test_media_alpha_network is a known bug: clean means fixed, so the entry
         has to go, and the job says so instead of passing."""
-        code, md = triage(summary="test_media_remux exit=0\n")
+        code, md = triage(summary="test_media_alpha_network exit=0\n")
         self.assertEqual(code, 1, md)
         self.assertIn("ran clean: drop the entry", md)
-        self.assertIn("test_media_remux", md)
+        self.assertIn("test_media_alpha_network", md)
 
     def test_known_list_comes_first(self):
         code, md = triage(summary="test_dock_proportions exit=6\ntest_y exit=1\n")
