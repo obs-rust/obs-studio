@@ -669,11 +669,11 @@ struct obs_output_info virtualcam_output_info = {
 	.get_name = virtualcam_output_get_name,
 	.create = virtualcam_output_create,
 	.destroy = virtualcam_output_destroy,
-	.update = virtualcam_output_update,
 	.start = virtualcam_output_start,
 	.stop = virtualcam_output_stop,
 	.raw_video = virtualcam_output_raw_video,
 	.raw_audio = virtualcam_output_raw_audio,
+	.update = virtualcam_output_update,
 };
 
 bool obs_module_load(void)
