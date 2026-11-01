@@ -367,6 +367,26 @@ fn libobs_clock() -> u64 {
     unsafe { os_gettime_ns() }
 }
 
+/// Whether each output's queue is in order (#3209), beside the queue, so
+/// `struct obs_output` keeps its layout. An entry holds for the queue it
+/// was recorded on: the queue's address, and its buffer and length after
+/// the interleaver last changed it. Any other queue state reads as unknown,
+/// and the C's front scan runs, so a stale entry never picks the scan.
+struct SortedEntry {
+    queue: usize,
+    array: usize,
+    num: usize,
+    sorted: bool,
+}
+
+static SORTED: std::sync::Mutex<Vec<SortedEntry>> = std::sync::Mutex::new(Vec::new());
+
+fn sorted_table() -> std::sync::MutexGuard<'static, Vec<SortedEntry>> {
+    SORTED
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// One output, seen through its interleaver fields.
 struct COutput {
     output: *mut c_void,
@@ -377,6 +397,32 @@ struct COutput {
 }
 
 impl COutput {
+    /// The queue's address and its current buffer and length.
+    fn queue_state(&self) -> (usize, usize, usize) {
+        // SAFETY: the queue header, under `interleaved_mutex`.
+        let da = unsafe { &*self.f.interleaved_packets };
+        (
+            self.f.interleaved_packets as usize,
+            da.array as usize,
+            da.num,
+        )
+    }
+
+    /// Records `sorted` for the queue as it is now; `None` forgets it.
+    fn record_sorted(&self, sorted: Option<bool>) {
+        let (queue, array, num) = self.queue_state();
+        let mut table = sorted_table();
+        table.retain(|e| e.queue != queue);
+        if let Some(sorted) = sorted {
+            table.push(SortedEntry {
+                queue,
+                array,
+                num,
+                sorted,
+            });
+        }
+    }
+
     /// # Safety
     ///
     /// `output` is a live `obs_output_t`.
@@ -580,17 +626,23 @@ impl InterleaveOutput for COutput {
                 (&raw const packet).cast(),
             );
         }
+        // The core records the new order right after (set_queue_sorted).
     }
 
     fn erase_front(&mut self, end: usize) {
+        let known = self.queue_sorted();
         // SAFETY: the queue (the core checks `end`).
         unsafe { darray_erase_range(PACKET, self.f.interleaved_packets, 0, end) };
+        // Dropping the front keeps the order.
+        self.record_sorted(known);
     }
 
     fn detach_packets(&mut self) -> Detached {
         // SAFETY: the queue; its header is moved out and zeroed, as the C
         // copies `.da` and memsets the array.
-        unsafe { Detached(ptr::replace(self.f.interleaved_packets, ZEROED_DARRAY)) }
+        let old = unsafe { Detached(ptr::replace(self.f.interleaved_packets, ZEROED_DARRAY)) };
+        self.record_sorted(Some(true));
+        old
     }
 
     fn free_detached(&mut self, old: Detached) {
@@ -602,6 +654,20 @@ impl InterleaveOutput for COutput {
     fn free_queue(&mut self) {
         // SAFETY: the queue.
         unsafe { darray_free(self.f.interleaved_packets) };
+        self.record_sorted(None);
+    }
+
+    fn queue_sorted(&self) -> Option<bool> {
+        let (queue, array, num) = self.queue_state();
+        sorted_table()
+            .iter()
+            .find(|e| e.queue == queue)
+            .filter(|e| e.array == array && e.num == num)
+            .map(|e| e.sorted)
+    }
+
+    fn set_queue_sorted(&mut self, sorted: bool) {
+        self.record_sorted(Some(sorted));
     }
 
     fn packet_times(&self, track: usize) -> &[encoder_packet_time] {
