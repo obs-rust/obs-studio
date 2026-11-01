@@ -421,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "libobs-rust"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "obs-audio-controls",
  "obs-audio-monitoring",

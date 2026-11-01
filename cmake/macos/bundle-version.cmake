@@ -1,5 +1,8 @@
 # Apple's standard version keys contain integers. Keep the full beta identity
-# in OBSStudioRustVersion; encode the daily build date as YYYY.M.D.
+# in OBSStudioRustVersion; encode the daily build date as YYYY.M.D. A release
+# without a beta date (the stable obs-studio-rust-v1.0.0) uses its UTC build
+# date in the same form, so CFBundleVersion stays monotonic and Sparkle offers
+# it over every earlier certified beta (OBS_BUILD_NUMBER would sort below them).
 include_guard(GLOBAL)
 
 function(obs_bundle_versions short_version build_version)
@@ -11,6 +14,13 @@ function(obs_bundle_versions short_version build_version)
       set(year "${CMAKE_MATCH_1}")
       set(month "${CMAKE_MATCH_2}")
       set(day "${CMAKE_MATCH_3}")
+      string(REGEX REPLACE "^0" "" month "${month}")
+      string(REGEX REPLACE "^0" "" day "${day}")
+      set(build "${year}.${month}.${day}")
+    else()
+      string(TIMESTAMP year "%Y" UTC)
+      string(TIMESTAMP month "%m" UTC)
+      string(TIMESTAMP day "%d" UTC)
       string(REGEX REPLACE "^0" "" month "${month}")
       string(REGEX REPLACE "^0" "" day "${day}")
       set(build "${year}.${month}.${day}")

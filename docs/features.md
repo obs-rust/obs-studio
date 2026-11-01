@@ -486,6 +486,12 @@ not get a line.
   [#642](https://github.com/obs-rust/obs-studio/pull/642),
   [#664](https://github.com/obs-rust/obs-studio/pull/664),
   [#679](https://github.com/obs-rust/obs-studio/pull/679).
+- **OBS-Studio-Rust 1.0 stable release.** The crate version is 1.0.0, and a
+  maintainer dispatch of `release-rust.yaml` with `stable=true` publishes
+  the 1.0.0 tag (`obs-studio-rust-v<crate>`) from master through every gate of the daily beta
+  (builds, Tier 2, packaged-app smoke tests, AppImage), ready to certify. Its
+  macOS `CFBundleVersion` is the UTC build date, so Sparkle offers it over the
+  earlier certified beta. *All*, 2026-11-01.
 - **Flatpak bundle with each release.** Every beta has an
   `OBS-Studio-Rust-<version>-linux-x86_64.flatpak` next to the .deb and the
   AppImage. It installs as `io.github.obs_rust.OBSStudioRust` beside

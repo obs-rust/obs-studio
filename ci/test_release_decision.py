@@ -89,7 +89,7 @@ class Decision(unittest.TestCase):
                               "--tag-exists", "true", "--tag-date", "20261013", "--today", "20261013",
                               "--verify-only", "true"])
         self.assertEqual(result, 0)
-        self.assertEqual(set(output.getvalue().splitlines()), {"skip=false", "repair=false", "verify_only=true"})
+        self.assertEqual(set(output.getvalue().splitlines()), {"skip=false", "repair=false", "verify_only=true", "stable=false"})
 
     def test_stable_release_has_no_date_and_master_dispatch_only(self):
         # obs-studio-rust-v1.0.0: a stable dispatch carries no beta date.
