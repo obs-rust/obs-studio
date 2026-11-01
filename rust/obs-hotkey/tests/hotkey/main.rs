@@ -9,6 +9,8 @@ mod cocoa_keys_parity;
 mod hotkey_name_map;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
+mod nix_wayland_key_names;
+mod nix_wayland_key_names_parity;
 mod nix_wayland_keys;
 mod nix_wayland_keys_parity;
 mod nix_wayland_seats;

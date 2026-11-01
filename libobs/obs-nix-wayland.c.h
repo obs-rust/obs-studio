@@ -433,123 +433,34 @@ static bool obs_nix_wayland_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *
 
 static void obs_nix_wayland_key_to_str(obs_key_t key, struct dstr *dstr)
 {
-	if (key >= OBS_KEY_MOUSE1 && key <= OBS_KEY_MOUSE29) {
+	const char *name = NULL;
+	int number = 0;
+
+	switch (obs_nix_wayland_key_names_route(key, &number, &name)) {
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_MOUSE:
 		if (obs->hotkeys.translations[key]) {
 			dstr_copy(dstr, obs->hotkeys.translations[key]);
 		} else {
-			dstr_printf(dstr, "Mouse %d", (int)(key - OBS_KEY_MOUSE1 + 1));
+			dstr_printf(dstr, "Mouse %d", number);
 		}
 		return;
-	}
-
-	if (key >= OBS_KEY_NUM0 && key <= OBS_KEY_NUM9) {
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_NUMPAD:
 		if (obs->hotkeys.translations[key]) {
 			dstr_copy(dstr, obs->hotkeys.translations[key]);
 		} else {
-			dstr_printf(dstr, "Numpad %d", (int)(key - OBS_KEY_NUM0));
+			dstr_printf(dstr, "Numpad %d", number);
 		}
 		return;
-	}
-
-#define translate_key(key, def) dstr_copy(dstr, obs_get_hotkey_translation(key, def))
-
-	switch (key) {
-	case OBS_KEY_INSERT:
-		translate_key(key, "Insert");
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_FIXED:
+		dstr_copy(dstr, obs_get_hotkey_translation(key, name));
 		return;
-	case OBS_KEY_DELETE:
-		translate_key(key, "Delete");
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_FUNCTION:
+		dstr_printf(dstr, "F%d", number);
 		return;
-	case OBS_KEY_HOME:
-		translate_key(key, "Home");
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_NONE:
 		return;
-	case OBS_KEY_END:
-		translate_key(key, "End");
-		return;
-	case OBS_KEY_PAGEUP:
-		translate_key(key, "Page Up");
-		return;
-	case OBS_KEY_PAGEDOWN:
-		translate_key(key, "Page Down");
-		return;
-	case OBS_KEY_NUMLOCK:
-		translate_key(key, "Num Lock");
-		return;
-	case OBS_KEY_SCROLLLOCK:
-		translate_key(key, "Scroll Lock");
-		return;
-	case OBS_KEY_CAPSLOCK:
-		translate_key(key, "Caps Lock");
-		return;
-	case OBS_KEY_BACKSPACE:
-		translate_key(key, "Backspace");
-		return;
-	case OBS_KEY_TAB:
-		translate_key(key, "Tab");
-		return;
-	case OBS_KEY_PRINT:
-		translate_key(key, "Print");
-		return;
-	case OBS_KEY_PAUSE:
-		translate_key(key, "Pause");
-		return;
-	case OBS_KEY_LEFT:
-		translate_key(key, "Left");
-		return;
-	case OBS_KEY_RIGHT:
-		translate_key(key, "Right");
-		return;
-	case OBS_KEY_UP:
-		translate_key(key, "Up");
-		return;
-	case OBS_KEY_DOWN:
-		translate_key(key, "Down");
-		return;
-	case OBS_KEY_SHIFT:
-		translate_key(key, "Shift");
-		return;
-	case OBS_KEY_ALT:
-		translate_key(key, "Alt");
-		return;
-	case OBS_KEY_CONTROL:
-		translate_key(key, "Control");
-		return;
-	case OBS_KEY_META:
-		translate_key(key, "Super");
-		return;
-	case OBS_KEY_MENU:
-		translate_key(key, "Menu");
-		return;
-	case OBS_KEY_NUMASTERISK:
-		translate_key(key, "Numpad *");
-		return;
-	case OBS_KEY_NUMPLUS:
-		translate_key(key, "Numpad +");
-		return;
-	case OBS_KEY_NUMMINUS:
-		translate_key(key, "Numpad -");
-		return;
-	case OBS_KEY_NUMCOMMA:
-		translate_key(key, "Numpad ,");
-		return;
-	case OBS_KEY_NUMPERIOD:
-		translate_key(key, "Numpad .");
-		return;
-	case OBS_KEY_NUMSLASH:
-		translate_key(key, "Numpad /");
-		return;
-	case OBS_KEY_SPACE:
-		translate_key(key, "Space");
-		return;
-	case OBS_KEY_ESCAPE:
-		translate_key(key, "Escape");
-		return;
-	default:;
-	}
-
-	if (key >= OBS_KEY_F1 && key <= OBS_KEY_F35) {
-		dstr_printf(dstr, "F%d", (int)(key - OBS_KEY_F1 + 1));
-		return;
+	case OBS_NIX_WAYLAND_KEY_NAMES_ROUTE_KEYSYM:
+		break;
 	}
 
 	obs_hotkeys_platform_t *plat = obs->hotkeys.platform_context;
@@ -587,4 +498,3 @@ const struct obs_nix_hotkeys_vtable *obs_nix_wayland_get_hotkeys_vtable(void)
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef MAX_KEYCODES
 #undef MAX_SHIFT_LEVELS
-#undef translate_key

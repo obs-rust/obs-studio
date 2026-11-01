@@ -40,7 +40,8 @@
 
 use std::ffi::CStr;
 
-use crate::name_map::{self as k, OBS_KEY_LAST_VALUE};
+use crate::key_route::{self, Named};
+use crate::name_map::OBS_KEY_LAST_VALUE;
 
 /// `XINPUT_MOUSE_LEN`: the entries of each per-button array.
 pub const MOUSE_LEN: usize = 33;
@@ -86,50 +87,18 @@ pub enum RawButton {
 
 /// How to name `key` (`obs_key_t`): the tests of `obs_nix_x11_key_to_str()`,
 /// in its order (mouse buttons, numpad digits, fixed keys, function keys,
-/// then the keycodes). [`Route::None`] for a value outside the key table.
+/// then the keycodes; the table is shared with the Wayland key names).
+/// [`Route::None`] for a value outside the key table.
 pub fn route(key: i32) -> Route {
     if !usize::try_from(key).is_ok_and(|key| key < OBS_KEY_LAST_VALUE) {
         return Route::None;
     }
-    match key {
-        k::OBS_KEY_MOUSE1..=k::OBS_KEY_MOUSE29 => {
-            Route::Mouse(key.wrapping_sub(k::OBS_KEY_MOUSE1).wrapping_add(1))
-        }
-        k::OBS_KEY_NUM0..=k::OBS_KEY_NUM9 => Route::Numpad(key.wrapping_sub(k::OBS_KEY_NUM0)),
-        k::OBS_KEY_INSERT => Route::Fixed(c"Insert"),
-        k::OBS_KEY_DELETE => Route::Fixed(c"Delete"),
-        k::OBS_KEY_HOME => Route::Fixed(c"Home"),
-        k::OBS_KEY_END => Route::Fixed(c"End"),
-        k::OBS_KEY_PAGEUP => Route::Fixed(c"Page Up"),
-        k::OBS_KEY_PAGEDOWN => Route::Fixed(c"Page Down"),
-        k::OBS_KEY_NUMLOCK => Route::Fixed(c"Num Lock"),
-        k::OBS_KEY_SCROLLLOCK => Route::Fixed(c"Scroll Lock"),
-        k::OBS_KEY_CAPSLOCK => Route::Fixed(c"Caps Lock"),
-        k::OBS_KEY_BACKSPACE => Route::Fixed(c"Backspace"),
-        k::OBS_KEY_TAB => Route::Fixed(c"Tab"),
-        k::OBS_KEY_PRINT => Route::Fixed(c"Print"),
-        k::OBS_KEY_PAUSE => Route::Fixed(c"Pause"),
-        k::OBS_KEY_LEFT => Route::Fixed(c"Left"),
-        k::OBS_KEY_RIGHT => Route::Fixed(c"Right"),
-        k::OBS_KEY_UP => Route::Fixed(c"Up"),
-        k::OBS_KEY_DOWN => Route::Fixed(c"Down"),
-        k::OBS_KEY_SHIFT => Route::Fixed(c"Shift"),
-        k::OBS_KEY_ALT => Route::Fixed(c"Alt"),
-        k::OBS_KEY_CONTROL => Route::Fixed(c"Control"),
-        k::OBS_KEY_META => Route::Fixed(c"Super"),
-        k::OBS_KEY_MENU => Route::Fixed(c"Menu"),
-        k::OBS_KEY_NUMASTERISK => Route::Fixed(c"Numpad *"),
-        k::OBS_KEY_NUMPLUS => Route::Fixed(c"Numpad +"),
-        k::OBS_KEY_NUMMINUS => Route::Fixed(c"Numpad -"),
-        k::OBS_KEY_NUMCOMMA => Route::Fixed(c"Numpad ,"),
-        k::OBS_KEY_NUMPERIOD => Route::Fixed(c"Numpad ."),
-        k::OBS_KEY_NUMSLASH => Route::Fixed(c"Numpad /"),
-        k::OBS_KEY_SPACE => Route::Fixed(c"Space"),
-        k::OBS_KEY_ESCAPE => Route::Fixed(c"Escape"),
-        k::OBS_KEY_F1..=k::OBS_KEY_F35 => {
-            Route::Function(key.wrapping_sub(k::OBS_KEY_F1).wrapping_add(1))
-        }
-        _ => Route::Keycodes,
+    match key_route::named(key) {
+        Named::Mouse(n) => Route::Mouse(n),
+        Named::Numpad(n) => Route::Numpad(n),
+        Named::Fixed(name) => Route::Fixed(name),
+        Named::Function(n) => Route::Function(n),
+        Named::Other => Route::Keycodes,
     }
 }
 

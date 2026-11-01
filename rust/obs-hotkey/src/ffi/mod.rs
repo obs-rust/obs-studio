@@ -5,6 +5,7 @@ pub mod bindings;
 pub mod cocoa_keys;
 pub mod hotkey_name_map;
 pub mod nix_hotkey_state;
+pub mod nix_wayland_key_names;
 pub mod nix_wayland_keys;
 pub mod nix_wayland_seats;
 pub mod nix_x11_hotkeys;

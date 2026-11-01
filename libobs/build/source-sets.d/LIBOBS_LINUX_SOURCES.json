@@ -1,6 +1,7 @@
 [
   "obs-nix-platform.h",
   "obs-nix-system-info.h",
+  "obs-nix-wayland-key-names.h",
   "obs-nix-x11-hotkeys.h",
   "obs-nix-x11-input.h",
   "obs-nix-x11-keymap.h",

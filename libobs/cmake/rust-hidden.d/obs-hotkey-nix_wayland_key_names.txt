@@ -1,0 +1,4 @@
+# obs-nix-wayland-key-names.c: obs-nix-wayland.c calls it inside libobs.
+# Declared in obs-nix-wayland-key-names.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_nix_wayland_key_names_route
