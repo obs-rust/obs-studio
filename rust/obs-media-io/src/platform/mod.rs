@@ -47,8 +47,7 @@ cfg_select! {
         /// [`crate::audio_clamp::clamp_samples_scalar`] compiled for AVX2.
         #[target_feature(enable = "avx2")]
         fn clamp_samples_avx2(buf: &mut [f32]) {
-            let _ = buf;
-            todo!("AVX2 clamp (#3414)")
+            crate::audio_clamp::clamp_samples_scalar(buf);
         }
 
         /// Runs the AVX2 copy when the CPU has it, else the scalar loop.
