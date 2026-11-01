@@ -42,6 +42,13 @@ class ValidateTest(unittest.TestCase):
         configure = configure[: configure.index(".configure.log")]
         self.assertIn("-DOBS_LIBOBS_MODULE_CACHE=", configure)
 
+    def test_main_configure_writes_compile_commands(self):
+        # restore keys modules from compile_commands.json; the Tier 2 tree
+        # did not write it and the first CI run failed (#3336).
+        configure = self.text[self.text.index('cmake -S "$SRC" -B "$build"') :]
+        configure = configure[: configure.index(".configure.log")]
+        self.assertIn("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", configure)
+
     def test_restore_reconfigure_build_store_in_order(self):
         restore = self.text.find("libobs_modules.py\" restore")
         reconfigure = self.text.find('-DOBS_LIBOBS_MODULE_CACHE="$build/libobs-modcache"')
