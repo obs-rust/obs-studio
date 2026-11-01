@@ -21,6 +21,17 @@ if(CMAKE_C_COMPILER_ID STREQUAL GNU)
   endif()
 endif()
 
+# Calls inside libobs to its own exported functions bind locally, not through
+# the PLT (#3220): -fno-semantic-interposition lets GCC call and inline them
+# directly (Clang already does), -Bsymbolic-functions resolves the remaining
+# ones at link time. Nothing interposes a libobs function: libobs-opengl, the
+# one shipped object defining libobs names, is dlopen'ed RTLD_LOCAL. PRIVATE,
+# so libobs's consumers keep their own flags; the module libraries copy it.
+target_compile_options(libobs-objects PRIVATE $<$<C_COMPILER_ID:GNU>:-fno-semantic-interposition>)
+foreach(_target IN LISTS LIBOBS_SHARED_TARGETS)
+  target_link_options(${_target} PRIVATE LINKER:-Bsymbolic-functions)
+endforeach()
+
 set(CMAKE_M_LIBS "")
 include(CheckCSourceCompiles)
 set(LIBM_TEST_SOURCE "#include<math.h>\nfloat f; int main(){sqrt(f);return 0;}")
