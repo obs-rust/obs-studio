@@ -1,6 +1,7 @@
 {
   "description": "libobs/media-io.",
   "groups": [
+    "audio-resampler-plan",
     "media"
   ],
   "depends": []
