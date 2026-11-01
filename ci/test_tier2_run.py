@@ -48,7 +48,9 @@ class Tier2VolumeTest(unittest.TestCase):
         """A fake checkout holding a copy of the linux-validate tools."""
         repo = self.tmp / name
         dest = repo / "rust" / "tools" / "linux-validate"
-        shutil.copytree(TOOLS, dest)
+        # Skip bytecode: parallel tests write and rename __pycache__ temp files
+        # mid-copy, which made copytree fail with ENOENT (#3310).
+        shutil.copytree(TOOLS, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc*"))
         (repo / "ci").mkdir()
         # The Python task runner (ci/docker_task.py) the module execs through uv.
         shutil.copy(ROOT / "ci" / "docker_task.py", repo / "ci" / "docker_task.py")
