@@ -15,7 +15,7 @@ build=$(realpath "$1")
 src=$(realpath "$2")
 
 echo "== MCP: build the graphics module and plugins the video cases load"
-cmake --build "$build" --target libobs-opengl image-source obs-ffmpeg obs-x264
+cmake --build "$build" --target libobs-opengl image-source obs-ffmpeg obs-x264 obs-ffmpeg-mux
 
 # Everything below is located in the tree rather than assumed, so a CMake
 # layout change fails here by name.
@@ -37,6 +37,11 @@ mkdir -p "$modules"
 for plugin in image-source obs-ffmpeg obs-x264; do
   ln -s "$(find_one "$plugin.so")" "$modules/$plugin.so"
 done
+# ffmpeg_muxer starts the obs-ffmpeg-mux helper from the executable's own
+# directory, which here is the test binary's (cargo's deps dir).
+mkdir -p "$build.mcp-tests/debug/deps"
+cp "$(find_one obs-ffmpeg-mux)" "$build.mcp-tests/debug/deps/obs-ffmpeg-mux"
+
 echo "== MCP: archive=$archive graphics=$opengl modules=$(ls "$modules" | tr '\n' ' ')"
 
 echo "== MCP: obs-tests-app mcp cases under xvfb-run"

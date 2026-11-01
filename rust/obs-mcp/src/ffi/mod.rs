@@ -35,6 +35,17 @@ unsafe fn text(ptr: *const c_char) -> String {
     }
 }
 
+/// Makes scenes created from now on keep item positions in canvas pixels, not
+/// as fractions of a canvas size that is zero until video starts (which reads
+/// back as NaN). Call after `obs_startup`, before creating scenes.
+pub fn use_absolute_coordinates() {
+    if let Ok(absolute) = Data::from_json(&serde_json::json!({"AbsoluteCoordinates": true})) {
+        // SAFETY: libobs is started and `absolute` is live; libobs merges the
+        // settings into its own copy.
+        unsafe { sys::obs_apply_private_data(absolute.0.as_ptr()) };
+    }
+}
+
 /// An owned `obs_data_t` built from JSON.
 struct Data(NonNull<sys::obs_data_t>);
 
@@ -513,12 +524,6 @@ impl Libobs {
         let started =
             unsafe { sys::obs_startup(c"en-US".as_ptr(), std::ptr::null(), std::ptr::null_mut()) };
         if started {
-            // Item positions are canvas pixels, not fractions of a canvas
-            // size that is zero until video starts.
-            let absolute = Data::from_json(&serde_json::json!({"AbsoluteCoordinates": true}))?;
-            // SAFETY: libobs is started and `absolute` is live; it merges the
-            // settings into its own copy.
-            unsafe { sys::obs_apply_private_data(absolute.0.as_ptr()) };
             Ok(Self(()))
         } else {
             Err("obs_startup failed".to_owned())
