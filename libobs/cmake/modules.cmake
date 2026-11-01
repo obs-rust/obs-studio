@@ -92,24 +92,31 @@ function(_libobs_module_of group names out)
   message(FATAL_ERROR "libobs group ${group} is in no module of build/modules.d (ci/test_build_groups.py)")
 endfunction()
 
-# _libobs_compile_only_sourced(<links> <out>): <links> with each target that
-# has INTERFACE_SOURCES (OBS::obfuscate on Windows) as $<COMPILE_ONLY:...>.
-# libobs-objects links it to compile its group once; a module that linked it
-# too would compile that group again and the DLL would define its symbols
-# twice. The module still needs its include directories and definitions.
-function(_libobs_compile_only_sourced links out)
-  set(_result "")
+# _libobs_module_links(<target> <links>): link <target> to <links>, except a
+# target with INTERFACE_SOURCES (OBS::obfuscate on Windows). libobs-objects
+# links that one to compile its group once; a module that linked it too would
+# compile the group again ($<COMPILE_ONLY:...> still carries sources) and the
+# DLL would define its symbols twice. The module takes only its include
+# directories, definitions and options.
+function(_libobs_module_links target links)
+  set(_kept "")
   foreach(_link IN LISTS links)
+    set(_sourced FALSE)
     if(TARGET "${_link}")
       get_target_property(_sources "${_link}" INTERFACE_SOURCES)
       if(_sources AND NOT _sources MATCHES "-NOTFOUND$")
-        list(APPEND _result "$<COMPILE_ONLY:${_link}>")
-        continue()
+        set(_sourced TRUE)
       endif()
     endif()
-    list(APPEND _result "${_link}")
+    if(_sourced)
+      target_include_directories(${target} PRIVATE "$<TARGET_PROPERTY:${_link},INTERFACE_INCLUDE_DIRECTORIES>")
+      target_compile_definitions(${target} PRIVATE "$<TARGET_PROPERTY:${_link},INTERFACE_COMPILE_DEFINITIONS>")
+      target_compile_options(${target} PRIVATE "$<TARGET_PROPERTY:${_link},INTERFACE_COMPILE_OPTIONS>")
+    else()
+      list(APPEND _kept "${_link}")
+    endif()
   endforeach()
-  set(${out} "${_result}" PARENT_SCOPE)
+  set_property(TARGET ${target} PROPERTY LINK_LIBRARIES "${_kept}")
 endfunction()
 
 # libobs_split_modules(<consumers...>): move libobs-objects' groups into
@@ -142,9 +149,10 @@ function(libobs_split_modules)
         continue()
       endif()
       if(_property STREQUAL "LINK_LIBRARIES")
-        _libobs_compile_only_sourced("${_value}" _value)
+        _libobs_module_links(${_target} "${_value}")
+      else()
+        set_property(TARGET ${_target} PROPERTY ${_property} "${_value}")
       endif()
-      set_property(TARGET ${_target} PROPERTY ${_property} "${_value}")
     endforeach()
     foreach(_consumer IN LISTS ARGN)
       target_link_libraries(${_consumer} PRIVATE ${_target})
