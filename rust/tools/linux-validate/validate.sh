@@ -336,6 +336,12 @@ else
   [ -f "$build/obs-nvenc-c-reference/obs-nvenc.so" ] || { echo "FAIL: obs-nvenc-c-reference was not built"; exit 1; }
   echo "== obs-nvenc.so built with cuda-load-rust.c.h, obs-nvenc-c-reference with cuda-load.c.h"
 
+  # OBS_TIER2_MCP=1: also run the obs-mcp cases of obs-tests-app that need the
+  # native libobs and its plugins (#3319); CI sets it on the build job.
+  if [ -n "${OBS_TIER2_MCP:-}" ]; then
+    bash "$SRC/rust/tools/linux-validate/mcp-tests.sh" "$build" "$SRC"
+  fi
+
   # OBS_TIER2_SHARDS=<n>: plan n shards per mode by recorded test duration
   # (ctest-cost-<mode>.txt in the zccache dir, #931) into the tree (#1048).
   if [ -n "${OBS_TIER2_SHARDS:-}" ]; then

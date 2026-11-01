@@ -73,7 +73,7 @@ exclude = ["docs/**", "**/*.md", "build-aux/**", "libobs-d3d11/**", "libobs-meta
   "rust/*/tests/**", "rust/*/benches/**", "rust/*/examples/**",
   "rust/obs-c-oracle/**", "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**",
   "rust/obs-frontend/**"]
-keep = ["rust/*/Cargo.toml"]
+keep = ["rust/*/Cargo.toml", "rust/obs-mcp/tests/**", "rust/obs-studio-rust/tests/**", "rust/obs-sys/tests/**"]
 
 # The platform half of the gate (#443): a change to macOS or Windows code is
 # attested on that host or run in CI. Each lane runs the jobs it attests and
