@@ -75,7 +75,8 @@ pub const GS_BLEND_ZERO: c_int = 0;
 pub const GS_BLEND_ONE: c_int = 1;
 
 /// Callback of `obs_enum_sources` and `obs_enum_scenes`; return `true` to continue.
-pub type obs_enum_proc = unsafe extern "C" fn(param: *mut c_void, source: *mut obs_source_t) -> bool;
+pub type obs_enum_proc =
+    unsafe extern "C" fn(param: *mut c_void, source: *mut obs_source_t) -> bool;
 
 unsafe extern "C" {
     // libobs/obs.h: sources and scenes.
@@ -104,8 +105,14 @@ unsafe extern "C" {
     pub fn obs_scene_release(scene: *mut obs_scene_t);
     pub fn obs_scene_from_source(source: *const obs_source_t) -> *mut obs_scene_t;
     pub fn obs_scene_get_source(scene: *const obs_scene_t) -> *mut obs_source_t;
-    pub fn obs_scene_add(scene: *mut obs_scene_t, source: *mut obs_source_t) -> *mut obs_sceneitem_t;
-    pub fn obs_scene_find_source(scene: *mut obs_scene_t, name: *const c_char) -> *mut obs_sceneitem_t;
+    pub fn obs_scene_add(
+        scene: *mut obs_scene_t,
+        source: *mut obs_source_t,
+    ) -> *mut obs_sceneitem_t;
+    pub fn obs_scene_find_source(
+        scene: *mut obs_scene_t,
+        name: *const c_char,
+    ) -> *mut obs_sceneitem_t;
     pub fn obs_sceneitem_release(item: *mut obs_sceneitem_t);
     pub fn obs_sceneitem_visible(item: *const obs_sceneitem_t) -> bool;
     pub fn obs_sceneitem_set_visible(item: *mut obs_sceneitem_t, visible: bool) -> bool;
@@ -161,7 +168,14 @@ unsafe extern "C" {
     pub fn gs_stagesurface_unmap(stage: *mut gs_stagesurf_t);
     pub fn gs_stage_texture(dst: *mut gs_stagesurf_t, src: *mut gs_texture_t);
     pub fn gs_clear(flags: u32, color: *const vec4, depth: c_float, stencil: u8);
-    pub fn gs_ortho(left: c_float, right: c_float, top: c_float, bottom: c_float, znear: c_float, zfar: c_float);
+    pub fn gs_ortho(
+        left: c_float,
+        right: c_float,
+        top: c_float,
+        bottom: c_float,
+        znear: c_float,
+        zfar: c_float,
+    );
     pub fn gs_blend_state_push();
     pub fn gs_blend_state_pop();
     pub fn gs_blend_function(src: c_int, dest: c_int);

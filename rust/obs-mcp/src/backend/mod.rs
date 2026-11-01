@@ -140,7 +140,10 @@ fn sorted(mut list: Vec<(String, String)>) -> Vec<(String, String)> {
 
 impl SceneBackend for ObsBackend {
     fn scenes(&self) -> Vec<String> {
-        sorted(ffi::scenes()).into_iter().map(|(name, _)| name).collect()
+        sorted(ffi::scenes())
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect()
     }
 
     fn current(&self) -> Option<String> {
@@ -297,7 +300,9 @@ impl CaptureBackend for ObsBackend {
         }
         let target = target_size(native, width, height);
         if target.0 > MAX_SIDE || target.1 > MAX_SIDE {
-            return Err(format!("the screenshot is larger than {MAX_SIDE} pixels a side"));
+            return Err(format!(
+                "the screenshot is larger than {MAX_SIDE} pixels a side"
+            ));
         }
         let rgba = ffi::render_rgba(&source, native, target)?;
         Ok(Frame {

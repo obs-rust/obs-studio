@@ -29,7 +29,9 @@ unsafe fn text(ptr: *const c_char) -> String {
         String::new()
     } else {
         // SAFETY: non-null and NUL-terminated per the function contract.
-        unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned()
+        unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned()
     }
 }
 
@@ -144,11 +146,7 @@ impl Source {
     /// Runs `f` on the scene item for `child` of this scene.
     ///
     /// The item is borrowed from the scene, so it is only valid inside `f`.
-    pub fn with_item<T>(
-        &self,
-        child: &str,
-        f: impl FnOnce(&Item<'_>) -> T,
-    ) -> Result<T, String> {
+    pub fn with_item<T>(&self, child: &str, f: impl FnOnce(&Item<'_>) -> T) -> Result<T, String> {
         let child_c = c_string(child, "source name")?;
         // SAFETY: the source is live; `obs_scene_from_source` returns null for
         // a non-scene and `obs_scene_find_source` returns a borrowed item or null.

@@ -15,7 +15,10 @@
 #[cfg(feature = "libobs")]
 pub mod backend;
 #[cfg(feature = "libobs")]
-#[allow(unsafe_code, reason = "the only module that calls the libobs C API; each call states its invariant")]
+#[allow(
+    unsafe_code,
+    reason = "the only module that calls the libobs C API; each call states its invariant"
+)]
 mod ffi;
 pub mod protocol;
 pub mod resources;

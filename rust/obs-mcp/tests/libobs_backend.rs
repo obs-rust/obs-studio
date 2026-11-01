@@ -125,7 +125,11 @@ fn scenes_and_program(backend: &ObsBackend) {
     assert_eq!(backend.current(), None);
     SceneBackend::create(backend, "Main").unwrap();
     SceneBackend::create(backend, "Other").unwrap();
-    assert!(SceneBackend::create(backend, "Main").unwrap_err().contains("exists"));
+    assert!(
+        SceneBackend::create(backend, "Main")
+            .unwrap_err()
+            .contains("exists")
+    );
     assert_eq!(backend.scenes(), ["Main", "Other"]);
     assert_eq!(backend.current(), None);
 
@@ -149,15 +153,19 @@ fn sources_and_items(backend: &ObsBackend) {
     let error = SourceBackend::create(backend, "no_such_kind", "X", &json!({})).unwrap_err();
     assert!(error.contains("no_such_kind"), "{error}");
     assert!(SourceBackend::create(backend, "scene", "Main", &json!({})).is_err());
-    assert!(backend
-        .set_settings("Missing", &json!({"a": 1}))
-        .unwrap_err()
-        .contains("Missing"));
+    assert!(
+        backend
+            .set_settings("Missing", &json!({"a": 1}))
+            .unwrap_err()
+            .contains("Missing")
+    );
 
     // A nested scene stands in for an input: it is a source with scene items.
     SourceBackend::create(backend, "scene", "Inner", &json!({})).unwrap();
     add_item("Main", "Inner");
-    backend.set_settings("Inner", &json!({"note": "x"})).unwrap();
+    backend
+        .set_settings("Inner", &json!({"note": "x"}))
+        .unwrap();
 
     backend.set_item_visible("Main", "Inner", false).unwrap();
     assert!(!item("Main", "Inner").0);
@@ -169,7 +177,9 @@ fn sources_and_items(backend: &ObsBackend) {
         rotation: Some(45.0),
         ..Transform::default()
     };
-    backend.set_item_transform("Main", "Inner", &partial).unwrap();
+    backend
+        .set_item_transform("Main", "Inner", &partial)
+        .unwrap();
     let (_, pos, scale, rot) = item("Main", "Inner");
     assert_eq!((pos, rot), ((10.0, 20.0), 45.0));
     assert_eq!(scale, (1.0, 1.0), "unset fields keep their value");
@@ -177,12 +187,24 @@ fn sources_and_items(backend: &ObsBackend) {
         scale: Some((2.0, 3.0)),
         ..Transform::default()
     };
-    backend.set_item_transform("Main", "Inner", &scaled).unwrap();
+    backend
+        .set_item_transform("Main", "Inner", &scaled)
+        .unwrap();
     let (_, pos, scale, rot) = item("Main", "Inner");
     assert_eq!((pos, scale, rot), ((10.0, 20.0), (2.0, 3.0), 45.0));
 
-    assert!(backend.set_item_visible("Nope", "Inner", true).unwrap_err().contains("Nope"));
-    assert!(backend.set_item_visible("Main", "Nope", true).unwrap_err().contains("Nope"));
+    assert!(
+        backend
+            .set_item_visible("Nope", "Inner", true)
+            .unwrap_err()
+            .contains("Nope")
+    );
+    assert!(
+        backend
+            .set_item_visible("Main", "Nope", true)
+            .unwrap_err()
+            .contains("Nope")
+    );
     assert!(backend.set_item_transform("Main", "Nope", &scaled).is_err());
 }
 
@@ -234,10 +256,19 @@ fn end_to_end(backend: &Rc<ObsBackend>) {
     assert_eq!(replies[1]["result"]["isError"], false, "{}", replies[1]);
     let listed = replies[2]["result"]["content"][0]["text"].as_str().unwrap();
     assert!(listed.contains("Via MCP"), "{listed}");
-    let stats = replies[3]["result"]["contents"][0]["text"].as_str().unwrap();
+    let stats = replies[3]["result"]["contents"][0]["text"]
+        .as_str()
+        .unwrap();
     assert!(stats.contains("\"fps\""), "{stats}");
-    let graph: Value =
-        serde_json::from_str(replies[4]["result"]["contents"][0]["text"].as_str().unwrap()).unwrap();
+    let graph: Value = serde_json::from_str(
+        replies[4]["result"]["contents"][0]["text"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(graph["current"], "Via MCP");
-    assert_eq!(replies[5]["result"]["isError"], true, "screenshot needs video");
+    assert_eq!(
+        replies[5]["result"]["isError"], true,
+        "screenshot needs video"
+    );
 }
