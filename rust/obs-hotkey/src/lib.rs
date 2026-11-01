@@ -32,6 +32,7 @@ pub mod cocoa_keys;
 pub mod name_map;
 pub mod nix_hotkey_state;
 pub mod nix_wayland_keys;
+pub mod nix_wayland_seats;
 pub mod nix_x11_hotkeys;
 pub mod nix_x11_input;
 pub mod nix_x11_keys;
