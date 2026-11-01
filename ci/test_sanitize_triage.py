@@ -9,12 +9,15 @@ before LeakSanitizer reported (every frame above OBS's own is
 not an OBS finding: it is listed as external, not counted. Each leak in a
 report is triaged on its own, so a real OBS leak next to it still counts.
 
-Exit 77 is ctest's skip code, not a failure. A test in KNOWN (an open issue
-names why it fails under that tool) is listed, not counted: its exit and its
-sanitizer reports. A KNOWN test that ran clean is listed too, so the entry
-can go (#3238).
+Exit 77 is ctest's skip code, not a failure. A test in KNOWN is listed, not
+counted: its exit and its sanitizer reports. The list keeps itself honest
+(#3238): every bug or flaky entry names its issue, a known bug that ran
+clean is a finding (the fix must drop its entry), a flaky entry that ran
+clean is listed, and the known list comes first in the summary.
 """
 
+import importlib.util
+import re
 import subprocess
 import tempfile
 import unittest
@@ -142,9 +145,35 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("Known entries that ran clean", md)
         self.assertIn("test_dock_proportions", md)
 
+    def test_known_bug_that_ran_clean_is_a_finding(self):
+        """test_media_remux is a known bug: clean means fixed, so the entry
+        has to go, and the job says so instead of passing."""
+        code, md = triage(summary="test_media_remux exit=0\n")
+        self.assertEqual(code, 1, md)
+        self.assertIn("ran clean: drop the entry", md)
+        self.assertIn("test_media_remux", md)
+
+    def test_known_list_comes_first(self):
+        code, md = triage(summary="test_dock_proportions exit=6\ntest_y exit=1\n")
+        self.assertEqual(code, 1, md)
+        self.assertLess(md.index("#### Known"), md.index("#### Unit tests with a non-zero exit"), md)
+
     def test_unknown_test_failure_still_counts(self):
         code, md = triage(summary="test_y exit=1\n")
         self.assertEqual(code, 1, md)
+
+
+class KnownListTest(unittest.TestCase):
+    """Every entry has a kind; bug and flaky entries name an open issue."""
+
+    def test_every_entry_has_a_kind_and_an_issue(self):
+        spec = importlib.util.spec_from_file_location("triage", TRIAGE)
+        triage_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(triage_mod)
+        for (tool, test), (kind, why) in triage_mod.KNOWN.items():
+            self.assertIn(kind, {"bug", "flaky", "tool"}, (tool, test))
+            if kind != "tool":
+                self.assertRegex(why, r"#\d+", (tool, test))
 
 
 if __name__ == "__main__":
