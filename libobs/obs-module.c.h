@@ -454,54 +454,67 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	obs_module_t *module;
 	obs_module_t *disabled_module;
 
-	bool is_obs_plugin;
+	obs_module_t *existing_module = NULL;
+	enum obs_module_load_rules_skip step = OBS_MODULE_LOAD_RULES_SKIP_START;
+	bool value = false;
 
-	get_plugin_info(info->bin_path, &is_obs_plugin);
-
-	if (!is_obs_plugin) {
-		blog(LOG_WARNING, "Skipping module '%s', not an OBS plugin", info->bin_path);
-		return;
-	}
-
-	if (!is_safe_module(info->name)) {
-		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path, OBS_MODULE_DISABLED_SAFE);
-		blog(LOG_WARNING, "Skipping module '%s', not on safe list", info->name);
-		return;
-	}
-
-	if (!obs_module_load_rules_is_core(info->type) && is_disabled_module(info->name)) {
-		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path, OBS_MODULE_DISABLED);
-		blog(LOG_WARNING, "Skipping module '%s', is disabled", info->name);
-		return;
-	}
-
-	/* This is a necessary check until legacy plugin loading is removed in a future update.
-	 * It covers portable installs where the old core modules still live in `obs-plugins`.
-	 */
-	if (obs_module_load_rules_is_legacy(info->type) && is_core_module(info->name)) {
-		blog(LOG_WARNING, "Skipping module '%s', is a legacy core module", info->name);
-		return;
-	}
-
-	obs_module_t *existing_module = obs_get_module(info->name);
-	if (existing_module != NULL) {
-		if (obs_module_load_rules_is_core(info->type)) {
-			/* obs_load_core_modules() caches only success, so a caller that
-			 * retries after a failure walks the core module list again. A
-			 * core module that did load must not be opened, and its
-			 * obs_module_load() run, a second time. */
+	/* obs_module_load_rules_skip_step() names each read in turn; the type
+	 * decides whether the disabled and core module lists are read at all. */
+	while ((step = obs_module_load_rules_skip_step(step, info->type, value)) != OBS_MODULE_LOAD_RULES_SKIP_LOAD) {
+		switch (step) {
+		case OBS_MODULE_LOAD_RULES_SKIP_PLUGIN:
+			get_plugin_info(info->bin_path, &value);
+			break;
+		case OBS_MODULE_LOAD_RULES_SKIP_SAFE:
+			value = is_safe_module(info->name);
+			break;
+		case OBS_MODULE_LOAD_RULES_SKIP_DISABLED:
+			value = is_disabled_module(info->name);
+			break;
+		case OBS_MODULE_LOAD_RULES_SKIP_CORE_NAME:
+			value = is_core_module(info->name);
+			break;
+		case OBS_MODULE_LOAD_RULES_SKIP_LOADED:
+			existing_module = obs_get_module(info->name);
+			value = existing_module != NULL;
+			break;
+		case OBS_MODULE_LOAD_RULES_SKIP_NOT_PLUGIN:
+			blog(LOG_WARNING, "Skipping module '%s', not an OBS plugin", info->bin_path);
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_DISABLE_SAFE:
+			obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
+						   OBS_MODULE_DISABLED_SAFE);
+			blog(LOG_WARNING, "Skipping module '%s', not on safe list", info->name);
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_DISABLE:
+			obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
+						   OBS_MODULE_DISABLED);
+			blog(LOG_WARNING, "Skipping module '%s', is disabled", info->name);
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_LEGACY_CORE:
+			blog(LOG_WARNING, "Skipping module '%s', is a legacy core module", info->name);
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_LOADED_CORE:
+			/* obs_load_core_modules() caches only success, so a caller
+			 * that retries after a failure walks the core module list
+			 * again. A core module that did load must not be opened,
+			 * and its obs_module_load() run, a second time. */
 			blog(LOG_DEBUG, "Skipping core module '%s' at '%s', already loaded", info->name,
 			     info->bin_path);
 			return;
-		}
-		if (obs_module_load_rules_is_legacy(info->type)) {
+		case OBS_MODULE_LOAD_RULES_SKIP_LOADED_LEGACY:
 			blog(LOG_WARNING, "Skipping legacy plugin '%s' at '%s', already loaded from '%s'", info->name,
 			     info->bin_path, existing_module->bin_path);
-		} else {
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_LOADED_PLUGIN:
 			blog(LOG_WARNING, "Skipping plugin '%s' at '%s', already loaded from '%s'", info->name,
 			     info->bin_path, existing_module->bin_path);
+			return;
+		case OBS_MODULE_LOAD_RULES_SKIP_START:
+		case OBS_MODULE_LOAD_RULES_SKIP_LOAD:
+			/* Never returned inside the loop. */
+			return;
 		}
-		return;
 	}
 
 	int code = obs_open_module(&module, info->bin_path, info->data_path);
