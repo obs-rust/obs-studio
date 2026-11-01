@@ -26,9 +26,11 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -90,7 +92,7 @@ signal.signal(signal.SIGTERM, stop)
 if os.environ.get("DAEMON_MODE") == "die" or name in os.environ.get("DAEMON_DIE", "").split(","):
     print("boom: no socket", flush=True)
     sys.exit(1)
-record = {"argv": sys.argv[1:], "env": dict(os.environ)}
+record = {"argv": sys.argv[1:], "env": dict(os.environ), "pid": os.getpid()}
 open(os.path.join(os.environ["RECORD"], name + ".json"), "w").write(json.dumps(record))
 if os.environ.get("DAEMON_MODE") == "hang" or name in os.environ.get("DAEMON_HANG", "").split(","):
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -137,6 +139,37 @@ sys.exit(int(os.environ.get("TEST_EXIT", "0")))
 """
 
 
+def process_alive(pid: int) -> bool:
+    """True while pid runs (a zombie awaiting its new parent counts as gone)."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (FileNotFoundError, IndexError):
+        return False
+    return state != "Z"
+
+
+def kill_leftover(pid: int) -> None:
+    """Reap a daemon the harness leaked, so a failing run leaks nothing either."""
+    if process_alive(pid):
+        os.kill(pid, signal.SIGKILL)
+
+
+def outlived(pid: int) -> bool:
+    """True when pid is still running five seconds after the harness returned."""
+    deadline = time.monotonic() + 5
+    while process_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return process_alive(pid)
+
+
+# A wrapper that runs the real daemon as its child instead of exec'ing it, as
+# a `uv run --script` stub, a Nix wrapper or a script around an unpacked build
+# does: stopping only the wrapper orphans the daemon.
+WRAPPER_SCRIPT = """#!/bin/sh
+'__DAEMON__' "$@"
+"""
+
+
 def load_module():
     """Import the module by path (it is a script, not an installed module)."""
     spec = importlib.util.spec_from_file_location("test_pulse_monitor_device", MODULE)
@@ -170,6 +203,15 @@ class Harness:
         path.write_text(f"#!{sys.executable}\n{body}")
         path.chmod(0o755)
         return path
+
+    def wrap(self, name: str) -> None:
+        """Put stub `name` behind a wrapper that runs it as a child."""
+        real = self.root / "real"
+        real.mkdir(exist_ok=True)
+        (self.bin / name).rename(real / name)
+        wrapper = self.bin / name
+        wrapper.write_text(WRAPPER_SCRIPT.replace("__DAEMON__", str(real / name)))
+        wrapper.chmod(0o755)
 
     def recorded(self, name: str) -> dict:
         return json.loads((self.record / name).read_text(encoding="utf-8"))
@@ -291,6 +333,21 @@ class PulseMonitorDeviceTest(unittest.TestCase):
         result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_HANG="wireplumber", TEST_EXIT="3")
         self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
         self.assertEqual(self.harness.private_dirs(), [])
+
+    def test_the_daemons_behind_a_wrapper_do_not_outlive_the_run(self) -> None:
+        # Stopping only each daemon's direct child (the wrapper) leaked the
+        # daemons it ran (obs-rust/obs-studio#3388).
+        daemons = ("pipewire", "wireplumber", "pipewire-pulse")
+        for name in daemons:
+            self.harness.wrap(name)
+        result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pids = {name: self.harness.recorded(f"{name}.json")["pid"] for name in daemons}
+        # Every cleanup first, so a failing case reaps all three.
+        for pid in pids.values():
+            self.addCleanup(kill_leftover, pid)
+        for name, pid in pids.items():
+            self.assertFalse(outlived(pid), f"stub {name} {pid} outlived the run")
 
     def test_a_sound_server_that_does_not_start_fails_the_test(self) -> None:
         result = self.harness.run("test-pulse", PRIVATE_PIPEWIRE_STARTED="1", DAEMON_MODE="die", PACTL_MODE="fail")
