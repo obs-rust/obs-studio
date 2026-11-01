@@ -1,4 +1,5 @@
-//! Safe core of `libobs/graphics/graphics-ffmpeg-host-pq.c.h`: the JPEG XR
+//! Safe core of `libobs/graphics/graphics-ffmpeg-host-pq.c.h` and
+//! `libobs/graphics/graphics-ffmpeg-host-wic-checks.c.h`: the JPEG XR
 //! PQ-to-scRGB conversion of the image loader's Windows host
 //! (`graphics-ffmpeg-host-windows.c`), which WIC uses for the PQ (HDR10)
 //! JPEG XR images FFmpeg cannot decode, such as Windows HDR screenshots, in
@@ -13,15 +14,20 @@
 //!   `32bppBGR101010` texel (blue in bits 0-9, green in 10-19, red in
 //!   20-29, bits 30-31 unused) through the curve, the BT.2020-to-709 matrix
 //!   and a scale of 125 (10 000 nits over the 80-nit scRGB reference) into
-//!   four native-endian halves, alpha 1.0.
+//!   four native-endian halves, alpha 1.0;
+//! - [`fallback_refuses`] (`gs_image_host_fallback_refuses()`): whether
+//!   `gs_image_host_fallback_load()` refuses a name before it tries WIC;
+//! - [`wic_kind`] (`gs_image_wic_kind()`): what `wic_image_init_internal()`
+//!   does with a decoded frame's pixel format ([`WicKind`]).
 //!
-//! `graphics-ffmpeg-host-windows.c` keeps every WIC call, the pixel-format
-//! test, the sizes, both allocations and the stores afterwards. These keep
+//! `graphics-ffmpeg-host-windows.c` keeps every WIC call, the name's
+//! `strlen()`, both pixel-format GUID compares, the sizes, both
+//! allocations, the stores afterwards and every log line. These keep
 //! no state and call nothing but `f32::powf`, which calls the platform's
 //! C library `powf` as the C does.
 //!
-//! The pixels come from the image file, so nothing here can panic on any
-//! input. [`pq10_to_scrgb`] works on slices: it converts as many whole
+//! The pixels and the name come from the user's files, so nothing here can
+//! panic on any input. [`pq10_to_scrgb`] works on slices: it converts as many whole
 //! texels as both hold.
 //!
 //! Intentional difference: `half_from_float()` shifts a `uint32_t` by
@@ -31,6 +37,10 @@
 //! the float's sign there, which is what the rounding gives for every shift
 //! from 24 to 31. A texel's 709 value reaches it when it lands that close to
 //! zero without being zero.
+//!
+//! Intentional difference: for a name shorter than 4 bytes,
+//! `gs_image_host_fallback_refuses()` compares from before the start of the
+//! name. [`fallback_refuses`] refuses those names; none can end in `.jxr`.
 
 #![deny(
     clippy::arithmetic_side_effects,
