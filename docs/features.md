@@ -2717,3 +2717,10 @@ area.
   [#3306](https://github.com/obs-rust/obs-studio/issues/3306),
   [#3308](https://github.com/obs-rust/obs-studio/issues/3308), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- `obs-studio-rust --mcp` starts libobs in the process and serves the MCP
+  tools and resources over stdin/stdout (logs on stderr, clean exit when stdin
+  closes), and the repo's `.mcp.json` registers it as the `obs` server for
+  Claude Code and clud. Build with `--features bundled-native`; see
+  `docs/rust-port/mcp.md`. *All platforms*, 2026-10-31. Issue
+  [#3289](https://github.com/obs-rust/obs-studio/issues/3289), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

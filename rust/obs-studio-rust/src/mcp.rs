@@ -2,19 +2,17 @@
 
 use std::io;
 
-/// The libobs output the frontend names for local recording.
-pub const RECORD_OUTPUT: &str = "simple_file_output";
-/// The libobs output the frontend names for streaming.
-pub const STREAM_OUTPUT: &str = "simple_stream";
-
 /// Runs the MCP server until stdin closes.
+///
+/// The record and stream tools control the libobs outputs the frontend names
+/// `simple_file_output` and `simple_stream`.
 ///
 /// # Errors
 ///
 /// Returns an error when libobs fails to start or stdio fails.
 #[cfg(feature = "bundled-native")]
 pub fn run() -> io::Result<()> {
-    obs_mcp::host::serve_stdio(Some(RECORD_OUTPUT), Some(STREAM_OUTPUT))
+    obs_mcp::host::serve_stdio(Some("simple_file_output"), Some("simple_stream"))
 }
 
 /// Runs the MCP server until stdin closes.

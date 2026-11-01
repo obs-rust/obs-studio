@@ -454,3 +454,41 @@ pub fn render_rgba(source: &Source, from: (u32, u32), to: (u32, u32)) -> Result<
         result
     }
 }
+
+mod stdio;
+pub use stdio::claim_stdout;
+
+/// A started libobs; dropping it shuts libobs down.
+///
+/// Every other value from this module must be dropped first.
+pub struct Libobs(());
+
+impl Libobs {
+    /// Starts libobs with the `en-US` locale and no module search paths.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when libobs refuses to start.
+    pub fn start() -> Result<Self, String> {
+        // SAFETY: the locale is a NUL-terminated static string; null optional
+        // paths and name store are supported by `obs_startup`.
+        let started =
+            unsafe { sys::obs_startup(c"en-US".as_ptr(), std::ptr::null(), std::ptr::null_mut()) };
+        if started {
+            Ok(Self(()))
+        } else {
+            Err("obs_startup failed".to_owned())
+        }
+    }
+}
+
+impl Drop for Libobs {
+    fn drop(&mut self) {
+        // SAFETY: libobs was started by `start`, and the host dropped every
+        // handle before this value.
+        unsafe {
+            while sys::obs_wait_for_destroy_queue() {}
+            sys::obs_shutdown();
+        }
+    }
+}

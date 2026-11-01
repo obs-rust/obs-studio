@@ -88,13 +88,25 @@ fn mcp_flag_serves_obs_over_stdio_and_exits_on_eof() {
         "jsonrpc": "2.0", "id": 4, "method": "tools/call",
         "params": { "name": "scenes_list", "arguments": {} },
     }));
-    assert!(listed["content"][0]["text"].as_str().unwrap().contains("Tier4"), "{listed}");
+    assert!(
+        listed["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Tier4"),
+        "{listed}"
+    );
 
     let scenes = call(json!({
         "jsonrpc": "2.0", "id": 5, "method": "resources/read",
         "params": { "uri": "obs://scenes" },
     }));
-    assert!(scenes["contents"][0]["text"].as_str().unwrap().contains("Tier4"), "{scenes}");
+    assert!(
+        scenes["contents"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Tier4"),
+        "{scenes}"
+    );
 
     // Closing stdin is the clean shutdown signal.
     drop(call);
