@@ -23,7 +23,7 @@ static inline bool fill_buffer(struct audio_monitor *monitor)
 	AudioQueueBufferRef buf;
 	OSStatus stat;
 
-	if (monitor->new_data.size < monitor->buffer_size) {
+	if (!coreaudio_monitor_can_fill(monitor->new_data.size, monitor->buffer_size)) {
 		return false;
 	}
 
@@ -36,6 +36,12 @@ static inline bool fill_buffer(struct audio_monitor *monitor)
 	if (!success(stat, "AudioQueueEnqueueBuffer")) {
 		blog(LOG_WARNING, "%s: %s", __FUNCTION__, "Failed to enqueue buffer");
 		AudioQueueStop(monitor->queue, false);
+
+		if (coreaudio_monitor_recover_failed_enqueue()) {
+			deque_push_back(&monitor->empty_buffers, &buf, sizeof(buf));
+			monitor->paused = true;
+			monitor->wait_size = coreaudio_monitor_wait_size(monitor->buffer_size);
+		}
 	}
 	return true;
 }
@@ -78,7 +84,7 @@ static void on_audio_playback(void *param, obs_source_t *source, const struct au
 	bytes = sizeof(float) * monitor->channels * resample_frames;
 
 	/* apply volume */
-	if (!close_float(vol, 1.0f, EPSILON)) {
+	if (coreaudio_monitor_needs_volume(vol)) {
 		register float *cur = (float *)resample_data[0];
 		register float *end = cur + resample_frames * monitor->channels;
 
@@ -89,7 +95,7 @@ static void on_audio_playback(void *param, obs_source_t *source, const struct au
 	pthread_mutex_lock(&monitor->mutex);
 	deque_push_back(&monitor->new_data, resample_data[0], bytes);
 
-	if (monitor->new_data.size >= monitor->wait_size) {
+	if (coreaudio_monitor_wait_over(monitor->new_data.size, monitor->wait_size)) {
 		monitor->wait_size = 0;
 
 		while (monitor->empty_buffers.size > 0) {
@@ -118,9 +124,9 @@ static void coreaudio_buffer_audio(void *data, AudioQueueRef aq, AudioQueueBuffe
 			break;
 		}
 	}
-	if (monitor->empty_buffers.size == sizeof(buf) * 3) {
+	if (coreaudio_monitor_all_back(monitor->empty_buffers.size, sizeof(buf))) {
 		monitor->paused = true;
-		monitor->wait_size = monitor->buffer_size * 3;
+		monitor->wait_size = coreaudio_monitor_wait_size(monitor->buffer_size);
 		AudioQueuePause(monitor->queue);
 	}
 	pthread_mutex_unlock(&monitor->mutex);
@@ -148,8 +154,8 @@ static bool audio_monitor_init(struct audio_monitor *monitor, obs_source_t *sour
 	monitor->source = source;
 
 	monitor->channels = channels;
-	monitor->buffer_size = channels * sizeof(float) * info->samples_per_sec / 100 * 3;
-	monitor->wait_size = monitor->buffer_size * 3;
+	monitor->buffer_size = coreaudio_monitor_buffer_size(channels, info->samples_per_sec);
+	monitor->wait_size = coreaudio_monitor_wait_size(monitor->buffer_size);
 
 	pthread_mutex_init_value(&monitor->mutex);
 
