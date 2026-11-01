@@ -12,8 +12,8 @@
 
 use obs_core::audio_mix::{
     ALL_MIXERS, AUDIO_OUTPUT_FRAMES, Buffering, MAX_AUDIO_CHANNELS, MAX_AUDIO_MIXES, Step, TsInfo,
-    buffering_add, buffering_fixed, buffering_maxed, mix_active, mix_into, mix_start,
-    time_to_frames,
+    buffering_add, buffering_fixed, buffering_maxed, mix_active, mix_add_scalar, mix_into,
+    mix_start, time_to_frames,
 };
 use obs_media_io::audio_io::{audio_frames_to_ns, ns_to_audio_frames};
 use proptest::prelude::*;
@@ -485,6 +485,32 @@ fn edge_audio_after_frame_1024_adds_nothing() {
         None
     );
     assert_eq!(mix_start(START, ts, 48_000), Some(0));
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: obs_c_oracle::parity::cases(128),
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+
+    /// The runtime-dispatched loop (AVX2 when the CPU has it, #3412) gives
+    /// exactly the bits of the baseline loop, NaN payloads included, over
+    /// lengths that cover every AVX2 and SSE remainder.
+    #[test]
+    fn edge_mix_into_dispatch_matches_the_scalar_bits(
+        dst in prop::collection::vec(any::<f32>(), 0..300),
+        src in prop::collection::vec(any::<f32>(), 0..300),
+        start in 0_usize..8,
+    ) {
+        let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<u32>>();
+        let (mut dispatched, mut scalar) = (dst.clone(), dst);
+        mix_into(&mut dispatched, &src, start);
+        if let Some(tail) = scalar.get_mut(start..) {
+            mix_add_scalar(tail, &src);
+        }
+        prop_assert_eq!(bits(&dispatched), bits(&scalar));
+    }
 }
 
 #[test]

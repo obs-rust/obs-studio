@@ -14,7 +14,9 @@
 
 #![allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 
-use obs_scene::audio_mix::{mix_add, mix_add_grouped, mix_add_zipped, mix_with_buf};
+use obs_scene::audio_mix::{
+    mix_add, mix_add_grouped, mix_add_scalar, mix_add_zipped, mix_with_buf, mix_with_buf_scalar,
+};
 use proptest::prelude::*;
 
 const FRAMES: usize = 1024;
@@ -291,6 +293,26 @@ proptest! {
         let chosen: Vec<u32> = chosen.iter().map(|f| nan_as_one(*f)).collect();
         prop_assert_eq!(&grouped, &zipped);
         prop_assert_eq!(&chosen, &zipped);
+    }
+
+    /// The runtime-dispatched kernels (AVX2 when the CPU has it, #3412)
+    /// give exactly the bits of the baseline loops, NaN payloads included,
+    /// over lengths that cover every AVX2 and SSE remainder.
+    #[test]
+    fn edge_dispatched_kernels_match_the_scalar_bits(
+        out in prop::collection::vec(sample(), 0..300),
+        input in prop::collection::vec(sample(), 0..300),
+        gain in prop::collection::vec(sample(), 0..300),
+    ) {
+        let bits = |v: &[f32]| v.iter().map(|f| f.to_bits()).collect::<Vec<u32>>();
+        let (mut dispatched, mut scalar) = (out.clone(), out.clone());
+        mix_add(&mut dispatched, &input);
+        mix_add_scalar(&mut scalar, &input);
+        prop_assert_eq!(bits(&dispatched), bits(&scalar));
+        let (mut dispatched, mut scalar) = (out.clone(), out);
+        mix_with_buf(&mut dispatched, &input, &gain);
+        mix_with_buf_scalar(&mut scalar, &input, &gain);
+        prop_assert_eq!(bits(&dispatched), bits(&scalar));
     }
 
     #[test]

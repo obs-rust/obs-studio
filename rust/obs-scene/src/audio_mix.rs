@@ -43,7 +43,18 @@
 /// input[i] * gain[i]` for every `i` of the shortest of the three slices.
 /// The caller cuts `out` to `pos .. pos + count` and `input` and `gain` to
 /// `count`.
+///
+/// On a CPU with AVX2 this runs [`mix_with_buf_scalar`] compiled with AVX2
+/// (#3412); same result, bit for bit.
 pub fn mix_with_buf(out: &mut [f32], input: &[f32], gain: &[f32]) {
+    crate::platform::mix_with_buf(out, input, gain);
+}
+
+/// [`mix_with_buf`] for the baseline target. Public only for the tests,
+/// which check both paths agree.
+#[doc(hidden)]
+#[inline(always)]
+pub fn mix_with_buf_scalar(out: &mut [f32], input: &[f32], gain: &[f32]) {
     for ((sample, &value), &g) in out.iter_mut().zip(input).zip(gain) {
         *sample += value * g;
     }
@@ -53,7 +64,18 @@ pub fn mix_with_buf(out: &mut [f32], input: &[f32], gain: &[f32]) {
 /// for every `i` of the shorter slice. The caller cuts `out` to
 /// `pos .. pos + count` and `input` to `count`. [`mix_add_grouped`] on
 /// x86_64, [`mix_add_zipped`] elsewhere (see the module docs).
+///
+/// On a CPU with AVX2 this runs [`mix_add_scalar`] compiled with AVX2
+/// (#3412); same result, bit for bit.
 pub fn mix_add(out: &mut [f32], input: &[f32]) {
+    crate::platform::mix_add(out, input);
+}
+
+/// [`mix_add`] for the baseline target. Public only for the tests, which
+/// check both paths agree.
+#[doc(hidden)]
+#[inline(always)]
+pub fn mix_add_scalar(out: &mut [f32], input: &[f32]) {
     if crate::platform::GROUPED_AUDIO_LOOPS {
         mix_add_grouped(out, input);
     } else {
@@ -65,6 +87,7 @@ pub fn mix_add(out: &mut [f32], input: &[f32]) {
 /// [`mix_add_zipped`] on every input; public only for the tests, which run
 /// both forms on every host.
 #[doc(hidden)]
+#[inline(always)]
 pub fn mix_add_grouped(out: &mut [f32], input: &[f32]) {
     let n = out.len().min(input.len());
     let (Some(out), Some(input)) = (out.get_mut(..n), input.get(..n)) else {
@@ -85,6 +108,7 @@ pub fn mix_add_grouped(out: &mut [f32], input: &[f32]) {
 /// [`mix_add`] as a plain zip loop. Same result as [`mix_add_grouped`] on
 /// every input; public only for the tests.
 #[doc(hidden)]
+#[inline(always)]
 pub fn mix_add_zipped(out: &mut [f32], input: &[f32]) {
     for (sample, &value) in out.iter_mut().zip(input) {
         *sample += value;

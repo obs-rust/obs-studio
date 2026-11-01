@@ -29,3 +29,53 @@ cfg_select! {
         }
     }
 }
+
+// Runtime AVX2 for the mix kernels (#3218, #3412): the same scalar loops,
+// compiled again with AVX2 so LLVM widens them. Nothing is fused (Rust
+// never contracts on its own), so both paths give the same bits.
+cfg_select! {
+    target_arch = "x86_64" => {
+        #[target_feature(enable = "avx2")]
+        fn mix_add_avx2(out: &mut [f32], input: &[f32]) {
+            crate::audio_mix::mix_add_scalar(out, input);
+        }
+
+        #[target_feature(enable = "avx2")]
+        fn mix_with_buf_avx2(out: &mut [f32], input: &[f32], gain: &[f32]) {
+            crate::audio_mix::mix_with_buf_scalar(out, input, gain);
+        }
+
+        pub(crate) fn mix_add(out: &mut [f32], input: &[f32]) {
+            if std::arch::is_x86_feature_detected!("avx2") {
+                // SAFETY: the CPU has AVX2, checked on the line above.
+                #[allow(unsafe_code)]
+                unsafe {
+                    mix_add_avx2(out, input);
+                }
+            } else {
+                crate::audio_mix::mix_add_scalar(out, input);
+            }
+        }
+
+        pub(crate) fn mix_with_buf(out: &mut [f32], input: &[f32], gain: &[f32]) {
+            if std::arch::is_x86_feature_detected!("avx2") {
+                // SAFETY: the CPU has AVX2, checked on the line above.
+                #[allow(unsafe_code)]
+                unsafe {
+                    mix_with_buf_avx2(out, input, gain);
+                }
+            } else {
+                crate::audio_mix::mix_with_buf_scalar(out, input, gain);
+            }
+        }
+    }
+    _ => {
+        pub(crate) fn mix_add(out: &mut [f32], input: &[f32]) {
+            crate::audio_mix::mix_add_scalar(out, input);
+        }
+
+        pub(crate) fn mix_with_buf(out: &mut [f32], input: &[f32], gain: &[f32]) {
+            crate::audio_mix::mix_with_buf_scalar(out, input, gain);
+        }
+    }
+}
