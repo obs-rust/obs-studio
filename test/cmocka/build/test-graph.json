@@ -743,6 +743,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_core_setup_rules_task_steps": {
+      "sources": [
+        "test/cmocka/test_core_setup_rules_task_steps.c",
+        "libobs/obs-core-setup-rules-task.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-core-setup-rules.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_coreaudio_device_rules": {
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
@@ -6315,6 +6331,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_core_setup_rules_task_steps": {
+      "target": "test_core_setup_rules_task_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_coreaudio_device_rules": {
