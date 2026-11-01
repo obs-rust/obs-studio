@@ -125,6 +125,42 @@ impl List {
     }
 }
 
+/// What `load_all_callback()` reads next before it opens a module, each
+/// value asked with that read and the type with every step, or the route it
+/// takes (`enum obs_module_load_rules_skip`). The steps only go forward, in
+/// this order; a route stays where it is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Skip {
+    /// Nothing read yet.
+    Start,
+    /// `get_plugin_info()`'s answer.
+    Plugin,
+    /// `is_safe_module()`.
+    Safe,
+    /// `is_disabled_module()`, read only for a type that is not core.
+    Disabled,
+    /// `is_core_module()`, read only for a legacy plugin.
+    CoreName,
+    /// `obs_get_module()` found a module of that name.
+    Loaded,
+    /// Log that it is not an OBS plugin.
+    NotPlugin,
+    /// Make a disabled module in [`STATE_DISABLED_SAFE`] and log it.
+    DisableSafe,
+    /// Make a disabled module in [`STATE_DISABLED`] and log it.
+    Disable,
+    /// Log a legacy plugin with a core module's name.
+    LegacyCore,
+    /// Log, at debug level, a core module already loaded.
+    LoadedCore,
+    /// Log a legacy plugin already loaded, naming the loaded one's path.
+    LoadedLegacy,
+    /// Log a plugin already loaded, naming the loaded one's path.
+    LoadedPlugin,
+    /// Go on to `obs_open_module()`.
+    Load,
+}
+
 /// What `load_all_callback()` does next.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Route {
@@ -300,4 +336,12 @@ pub fn count_failure(has_fail_info: bool) -> bool {
 #[must_use]
 pub fn core_loaded(fail_count: usize) -> bool {
     fail_count == 0
+}
+
+/// Same contract as C `obs_module_load_rules_skip_step`: the next read after
+/// `step` answered `value` for a module of `module_type`, or its route.
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn skip_step(step: Skip, module_type: u32, value: bool) -> Skip {
+    let _ = (step, module_type, value);
+    todo!()
 }
