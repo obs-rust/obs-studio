@@ -96,11 +96,20 @@ static void box_render(void *data, gs_effect_t *effect)
 struct venc {
 	pthread_mutex_t mutex;
 	long frames;
+	/* frames that show the scene: nothing drawn yet reads as luma 0, below
+	 * video black (16), and a drawn frame's opaque half is never that dark */
+	long drawn;
 	double left;
 	double right;
 	uint32_t width;
 	uint32_t height;
 };
+
+/* Above video black (16): a frame that shows the scene (#3389). */
+#define DRAWN_LUMA 16.5
+/* Frames to wait for, and how long (10 s: slow builds under load). */
+#define DRAWN_FRAMES 10
+#define WAIT_STEPS 1000
 
 static uint8_t packet_byte;
 
@@ -148,6 +157,8 @@ static bool venc_encode(void *data, struct encoder_frame *frame, struct encoder_
 	v->frames++;
 	v->left = left / n;
 	v->right = right / n;
+	if (v->right > DRAWN_LUMA)
+		v->drawn++;
 	pthread_mutex_unlock(&v->mutex);
 
 	packet->data = &packet_byte;
@@ -284,16 +295,20 @@ static void run_scene(enum obs_blending_type blend, double *left, double *right)
 
 	struct venc *v = obs_obj_get_data(encoder);
 	*left = *right = -1.0;
-	for (int i = 0; i < 300; i++) {
+	/* Measure only after the scene was drawn: the first frames can reach the
+	 * encoder before the first draw, all zero (#3389). */
+	bool ready = false;
+	for (int i = 0; i < WAIT_STEPS && !ready; i++) {
 		pthread_mutex_lock(&v->mutex);
-		bool ready = v->frames >= 10;
+		ready = v->drawn >= DRAWN_FRAMES;
 		*left = v->left;
 		*right = v->right;
 		pthread_mutex_unlock(&v->mutex);
-		if (ready)
-			break;
-		os_sleep_ms(10);
+		if (!ready)
+			os_sleep_ms(10);
 	}
+	if (!ready)
+		fail_msg("fewer than %d frames showed the scene in %d ms", DRAWN_FRAMES, WAIT_STEPS * 10);
 	fprintf(stderr, "%s: mean luma left (transparent) %.1f, right (opaque) %.1f (black is 16)\n",
 		blend == OBS_BLEND_DARKEN ? "darken" : "normal", *left, *right);
 
