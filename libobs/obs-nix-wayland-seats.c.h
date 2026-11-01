@@ -18,7 +18,10 @@
 /* The seat decisions of the Wayland hotkey platform
  * (obs-nix-wayland-seats.h), moved out of obs-nix-wayland.c. */
 
-#include "libobs/build/libobs-nix-wayland-seats.pch.h"
+#include "libobs/build/libobs-ported-nix-wayland-seats.pch.h"
+
+/* Ported to rust/obs-hotkey (nix_wayland_seats): the hybrid libobs drops
+ * this file. */
 
 uint32_t obs_nix_wayland_seats_bind_version(uint32_t offered)
 {

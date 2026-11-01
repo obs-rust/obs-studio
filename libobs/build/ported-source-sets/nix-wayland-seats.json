@@ -1,0 +1,8 @@
+{
+  "LIBOBS_WAYLAND_PORTED_SOURCES": [
+    "build/libobs.ported-nix-wayland-seats+.h.c"
+  ],
+  "headers": [
+    "obs-nix-wayland-seats.h"
+  ]
+}

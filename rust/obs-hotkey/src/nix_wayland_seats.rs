@@ -47,42 +47,34 @@ pub const MAX_VERSION: u32 = 7;
 /// The version to bind a `wl_seat` offered at `offered`: `None` below
 /// [`MIN_VERSION`] (the compositor is too old), else `offered`, at most
 /// [`MAX_VERSION`].
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn bind_version(offered: u32) -> Option<u32> {
-    let _ = offered;
-    todo!("bind_version")
+    (offered >= MIN_VERSION).then(|| offered.min(MAX_VERSION))
 }
 
 /// The index of the first seat whose capabilities have
 /// [`CAPABILITY_KEYBOARD`], `None` for none: a compositor may announce
 /// several seats, and asking one without a keyboard for it is a fatal
 /// protocol error.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn pick(capabilities: impl IntoIterator<Item = u32>) -> Option<usize> {
-    let _ = capabilities;
-    todo!("pick")
+    capabilities
+        .into_iter()
+        .position(|caps| caps & CAPABILITY_KEYBOARD != 0)
 }
 
 /// Whether `capabilities` lack [`CAPABILITY_KEYBOARD`]: a seat reporting
 /// them has no keyboard. The platform releases its keyboard when this holds
 /// and only then compares the seat with the keyboard's.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn lacks_keyboard(capabilities: u32) -> bool {
-    let _ = capabilities;
-    todo!("lacks_keyboard")
+    capabilities & CAPABILITY_KEYBOARD == 0
 }
 
 /// The index of the first seat with registry name `name`, `None` for none.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn find_name(names: impl IntoIterator<Item = u32>, name: u32) -> Option<usize> {
-    let _ = (names, name);
-    todo!("find_name")
+    names.into_iter().position(|n| n == name)
 }
 
 /// Whether a `wl_seat` bound at `version` is released (`wl_seat_release`,
 /// from [`RELEASE_SINCE_VERSION`] on) rather than only destroyed.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn uses_release(version: u32) -> bool {
-    let _ = version;
-    todo!("uses_release")
+    version >= RELEASE_SINCE_VERSION
 }
