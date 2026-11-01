@@ -1200,6 +1200,10 @@ area.
   next audio instead of staying silent until the monitoring device is
   changed. *macOS*, 2026-11-01. Issue
   [#3328](https://github.com/obs-rust/obs-studio/issues/3328).
+- The macOS monitoring device list no longer reads device ids CoreAudio
+  never wrote when a device goes away while the list is being built, which
+  could list a device twice. *macOS*, 2026-11-01. Issue
+  [#3359](https://github.com/obs-rust/obs-studio/issues/3359).
 
 ### Encoding, streaming and recording
 

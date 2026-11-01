@@ -13,7 +13,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libobs/build/libobs-macos-coreaudio-device-rules.pch.h"
+#include "libobs/build/libobs-ported-coreaudio-device-rules.pch.h"
+
+/* Ported to rust/obs-audio-monitoring (coreaudio_devices): the hybrid libobs
+ * drops this file. */
 
 /* The device rules of the CoreAudio monitoring device list
  * (coreaudio-enum-devices.c), moved: whether a device is listed, the id

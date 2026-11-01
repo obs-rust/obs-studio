@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 
+pub mod coreaudio_devices;
 pub mod coreaudio_pacing;
 pub mod monitor_delay;
 pub mod pulse_format;
