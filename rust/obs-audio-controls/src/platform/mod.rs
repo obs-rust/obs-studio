@@ -7,8 +7,7 @@ cfg_select! {
         /// [`crate::peak::true_peak_scalar`] compiled for AVX2.
         #[target_feature(enable = "avx2")]
         fn true_peak_avx2(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
-            let _ = (prev, samples, frames);
-            todo!("AVX2 true peak (#3415)")
+            crate::peak::true_peak_scalar(prev, samples, frames)
         }
 
         /// Runs the AVX2 copy when the CPU has it, else the scalar loop.
