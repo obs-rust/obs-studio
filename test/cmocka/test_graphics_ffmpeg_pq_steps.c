@@ -84,10 +84,25 @@ static void expect_texel_near(uint32_t value, uint16_t red, uint16_t green, uint
 }
 
 #ifndef GS_PQ_STEPS_TEST_RUST
-static void expect_float_near(float got, float want)
+/*
+ * pq_to_linear(u) = (N / D)^(1/m1) with p = u^(1/m2), N = p - c1 and
+ * D = c2 - c3 p. A relative error e in p (one ulp of powf) moves the result
+ * by e * (p / N + c3 p / D) / m1 relatively: near black N is small, near
+ * white D is, so the same last-bit difference in powf grows by up to a few
+ * hundred there (#3348: Apple's libm landed 3.1e-6 off at u = 1/1023, where
+ * the factor is about 134). Allow one float ulp of p through that factor on
+ * top of a few ulp for the final powf.
+ */
+static void expect_pq_near(float u, float want)
 {
-	if (fabsf(got - want) > fabsf(want) * 4e-7f) {
-		fprintf(stderr, "%.9g, expected %.9g\n", (double)got, (double)want);
+	const double m1 = 0.1593017578, m2 = 78.84375, c1 = 0.8359375, c2 = 18.8515625, c3 = 18.6875;
+	const double p = pow((double)u, 1.0 / m2);
+	const double condition = (p / (p - c1) + c3 * p / (c2 - c3 * p)) / m1;
+	const double bound = fabs((double)want) * (4e-7 + 0x1p-23 * condition);
+	const float got = pq_to_linear(u);
+	if (fabs((double)got - (double)want) > bound) {
+		fprintf(stderr, "pq_to_linear(%.9g) = %.9g, expected %.9g within %.3g\n", (double)u, (double)got,
+			(double)want, bound);
 		fail();
 	}
 }
@@ -96,10 +111,10 @@ static void test_pq_to_linear(void **state)
 {
 	(void)state;
 	assert_true(pq_to_linear(0.f / 1023.f) == 0.f);
-	expect_float_near(pq_to_linear(1.f / 1023.f), 4.04224476e-09f);
-	expect_float_near(pq_to_linear(2.f / 1023.f), 1.31113742e-08f);
-	expect_float_near(pq_to_linear(512.f / 1023.f), 0.00926986337f);
-	expect_float_near(pq_to_linear(1022.f / 1023.f), 0.990744293f);
+	expect_pq_near(1.f / 1023.f, 4.04224476e-09f);
+	expect_pq_near(2.f / 1023.f, 1.31113742e-08f);
+	expect_pq_near(512.f / 1023.f, 0.00926986337f);
+	expect_pq_near(1022.f / 1023.f, 0.990744293f);
 	assert_true(pq_to_linear(1023.f / 1023.f) == 1.f);
 }
 #endif
