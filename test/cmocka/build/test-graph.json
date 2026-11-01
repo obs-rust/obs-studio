@@ -2284,6 +2284,26 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_nix_wayland_key_names_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_key_names_steps.c",
+        "libobs/obs-nix-wayland-key-names.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-wayland-key-names.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_nix_wayland_seats_steps": {
       "sources": [
         "test/cmocka/test_nix_wayland_seats_steps.c",
@@ -6935,6 +6955,12 @@
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_nix_wayland_key_names_steps": {
+      "target": "test_nix_wayland_key_names_steps",
       "command": [
         "${target}"
       ]
