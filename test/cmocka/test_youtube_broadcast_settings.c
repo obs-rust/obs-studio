@@ -93,6 +93,40 @@ static void round_trip(bool auto_start, bool auto_stop)
 	config_close(config);
 }
 
+/* Upstream obs-studio issue 13856 (reported by cloud2519): the dialog saved
+ * "Automatically stop" from the "Automatically start" checkbox, so the next
+ * broadcast restored Auto-stop as whatever Auto-start was. The combination
+ * in the report: start automatically, stop by hand. */
+static void test_auto_start_without_auto_stop(void **state)
+{
+	(void)state;
+	round_trip(true, false);
+}
+
+static void test_auto_stop_without_auto_start(void **state)
+{
+	(void)state;
+	round_trip(false, true);
+}
+
+/* Unticking only Auto-stop in a dialog restored with both on is kept. */
+static void test_auto_stop_change_is_saved(void **state)
+{
+	(void)state;
+	config_t *config = open_empty();
+	struct youtube_broadcast_settings settings = sample(true, true);
+	struct youtube_broadcast_settings loaded = {0};
+
+	youtube_broadcast_settings_save(config, &settings);
+	settings.auto_stop = false;
+	youtube_broadcast_settings_save(config, &settings);
+	youtube_broadcast_settings_load(config, &loaded);
+
+	expect_bool("AutoStart", loaded.auto_start, true);
+	expect_bool("AutoStop", loaded.auto_stop, false);
+	config_close(config);
+}
+
 static void test_auto_start_and_auto_stop(void **state)
 {
 	(void)state;
@@ -198,8 +232,11 @@ static void test_load_from_profile_text(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
+		cmocka_unit_test(test_auto_start_without_auto_stop),
+		cmocka_unit_test(test_auto_stop_without_auto_start),
 		cmocka_unit_test(test_auto_start_and_auto_stop),
 		cmocka_unit_test(test_neither_auto_start_nor_auto_stop),
+		cmocka_unit_test(test_auto_stop_change_is_saved),
 		cmocka_unit_test(test_other_flags_round_trip),
 		cmocka_unit_test(test_null_strings_saved_empty),
 		cmocka_unit_test(test_load_without_saved_settings),
