@@ -26,6 +26,8 @@ obs-core = { path = "../obs-core" }
 obs-properties = { path = "../obs-properties" }
 obs-hotkey = { path = "../obs-hotkey" }
 obs-mcp = { path = "../obs-mcp" }
+base64 = { workspace = true, features = ["std", "simd-unsafe"] }
+flate2 = { workspace = true, features = ["rust_backend"] }
 serde_json = { workspace = true, features = ["std"] }
 obs-missing-files = { path = "../obs-missing-files" }
 obs-output = { path = "../obs-output" }

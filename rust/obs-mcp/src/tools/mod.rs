@@ -2,4 +2,5 @@
 
 pub mod outputs;
 pub mod scenes;
+pub mod screenshot;
 pub mod sources;

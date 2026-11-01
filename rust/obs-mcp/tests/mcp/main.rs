@@ -2,7 +2,9 @@
 
 mod framing;
 mod outputs;
+mod resources;
 mod scenes;
+mod screenshot;
 mod server;
 mod sources;
 

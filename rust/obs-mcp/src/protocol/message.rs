@@ -13,6 +13,10 @@ pub mod error_code {
     pub const METHOD_NOT_FOUND: i64 = -32601;
     /// Invalid method parameters.
     pub const INVALID_PARAMS: i64 = -32602;
+    /// Internal error while handling the request.
+    pub const INTERNAL_ERROR: i64 = -32603;
+    /// MCP: `resources/read` named a URI that is not registered.
+    pub const RESOURCE_NOT_FOUND: i64 = -32002;
 }
 
 /// A request identifier: a number or a string.

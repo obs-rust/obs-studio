@@ -4,6 +4,7 @@
 //! libobs directly; it never goes through obs-websocket.
 //!
 //! - [`protocol`]: JSON-RPC message types and newline-delimited framing.
+//! - [`resources`]: the read-only resources the server exposes.
 //! - [`server`]: the MCP lifecycle, the dispatcher and the [`server::Tool`] registry.
 //! - [`tools`]: the tools the server exposes.
 //! - [`serve`]: runs a [`server::Server`] over a reader and a writer.
@@ -11,6 +12,7 @@
 #![deny(unsafe_code)]
 
 pub mod protocol;
+pub mod resources;
 pub mod server;
 pub mod tools;
 
