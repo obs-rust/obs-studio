@@ -201,7 +201,7 @@ bool gl_egl_enum_adapters(EGLDisplay display, bool (*callback)(void *param, cons
 	return true;
 }
 
-uint32_t gs_get_adapter_count()
+uint32_t gs_get_adapter_count(void)
 {
 	EGLint num_devices = 0;
 	eglQueryDevicesEXT(0, NULL, &num_devices);

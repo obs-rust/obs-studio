@@ -2719,7 +2719,17 @@ void gs_debug_marker_begin_format(const float color[4], const char *format, ...)
 		char markername[64];
 		va_list args;
 		va_start(args, format);
+		/* graphics.h declares this without format(printf): Clang's
+		 * -Wformat=2 then rejects the forwarded format (#3398). */
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#pragma GCC diagnostic ignored "-Wmissing-format-attribute"
+#endif
 		vsnprintf(markername, sizeof(markername), format, args);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 		va_end(args);
 		thread_graphics->exports.device_debug_marker_begin(thread_graphics->device, markername, color);
 	} else {

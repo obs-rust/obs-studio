@@ -71,6 +71,11 @@ add_compile_options(
   "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-shadow;-Winvalid-offsetof;-Wno-overloaded-virtual>"
   "$<$<COMPILE_LANG_AND_ID:C,Clang>:${_obs_clang_c_options}>"
   "$<$<COMPILE_LANG_AND_ID:CXX,Clang>:${_obs_clang_cxx_options}>"
+  # The Linux C uses two GNU extensions on purpose: `, ##__VA_ARGS__` in the
+  # blog() wrappers and statement expressions from glibc/libobs macros. GCC's
+  # -Wpedantic accepts them under gnu17; Clang's flags them, which stopped a
+  # Clang build of libobs (#3398).
+  "$<$<COMPILE_LANG_AND_ID:C,Clang>:-Wno-gnu-zero-variadic-macro-arguments;-Wno-gnu-statement-expression-from-macro-expansion>"
 )
 
 # CMake switch for warnings as errors to CMake < 3.24
