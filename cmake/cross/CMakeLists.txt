@@ -823,6 +823,13 @@ elseif(_host STREQUAL MACOS)
     DEFINES OBS_CAMERA_EXTENSION_ID="cross-check"
   )
   target_compile_options(mac-virtualcam-cross PRIVATE "$<$<COMPILE_LANGUAGE:OBJCXX>:-fcxx-modules>")
+  # The OBS Virtual Microphone HAL plug-in (obs-rust/obs-studio#3184).
+  _obs_cross_plugin(
+    obs-audio-plugin-cross
+    DIR plugins/mac-virtualcam/src/audio-plugin
+    SOURCES build/audio-plugin.macos+.h.c
+    INCLUDES plugins/mac-virtualcam/src/common
+  )
   _obs_cross_plugin(mac-videotoolbox-cross DIR plugins/mac-videotoolbox SOURCES build/mac-videotoolbox.macos+.h.c)
   # libobs-opengl's unity groups (BUILD.md): the shared renderer and CGL.
   _obs_cross_plugin(
