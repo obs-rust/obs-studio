@@ -78,6 +78,13 @@ pub const GS_BLEND_ONE: c_int = 1;
 pub type obs_enum_proc =
     unsafe extern "C" fn(param: *mut c_void, source: *mut obs_source_t) -> bool;
 
+/// Callback of `obs_scene_enum_items`; return `true` to continue.
+pub type obs_scene_enum_proc = unsafe extern "C" fn(
+    scene: *mut obs_scene_t,
+    item: *mut obs_sceneitem_t,
+    param: *mut c_void,
+) -> bool;
+
 unsafe extern "C" {
     // libobs/obs.h: sources and scenes.
     pub fn obs_enum_sources(proc_: obs_enum_proc, param: *mut c_void);
@@ -114,6 +121,15 @@ unsafe extern "C" {
         scene: *mut obs_scene_t,
         name: *const c_char,
     ) -> *mut obs_sceneitem_t;
+    pub fn obs_scene_find_sceneitem_by_id(scene: *mut obs_scene_t, id: i64)
+    -> *mut obs_sceneitem_t;
+    pub fn obs_scene_enum_items(
+        scene: *mut obs_scene_t,
+        callback: obs_scene_enum_proc,
+        param: *mut c_void,
+    );
+    pub fn obs_sceneitem_get_id(item: *const obs_sceneitem_t) -> i64;
+    pub fn obs_sceneitem_get_source(item: *const obs_sceneitem_t) -> *mut obs_source_t;
     pub fn obs_sceneitem_release(item: *mut obs_sceneitem_t);
     pub fn obs_sceneitem_visible(item: *const obs_sceneitem_t) -> bool;
     pub fn obs_sceneitem_set_visible(item: *mut obs_sceneitem_t, visible: bool) -> bool;

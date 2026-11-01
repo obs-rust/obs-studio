@@ -214,6 +214,8 @@ fn real_video() {
     assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 32);
     assert_eq!(u32::from_be_bytes(png[20..24].try_into().unwrap()), 16);
 
+    red_scene_over_mcp_tools(&mut server, &backend, options.size);
+
     // record_start -> record_status(active, bytes > 0) -> record_stop.
     if runtime_output_missing(&backend) {
         return skip("no record output (ffmpeg_muxer, obs_x264 or ffmpeg_aac missing)");
@@ -240,6 +242,91 @@ fn real_video() {
     assert_eq!(files.len(), 1, "one recording file in {record_dir:?}");
     assert!(files[0] > 0);
     drop(server);
+}
+
+/// Calls `name` and returns the tool result.
+fn tool(server: &mut obs_mcp::server::Server, name: &str, arguments: Value) -> Value {
+    let request = json!({"jsonrpc":"2.0","id":1,"method":"tools/call",
+        "params":{"name":name,"arguments":arguments}});
+    let mut out = Vec::new();
+    server
+        .serve(format!("{request}\n").as_bytes(), &mut out)
+        .unwrap();
+    let reply: Value = serde_json::from_slice(&out).unwrap();
+    reply["result"].clone()
+}
+
+/// The workflow of a real client (#3338, #3339): make a scene, put a red
+/// source in it with the tools alone, and see red in the program screenshot.
+fn red_scene_over_mcp_tools(
+    server: &mut obs_mcp::server::Server,
+    backend: &obs_mcp::backend::ObsBackend,
+    size: (u32, u32),
+) {
+    let result = tool(server, "scene_create", json!({"name": "Red Scene"}));
+    assert_eq!(result["isError"], false, "{result}");
+    // Main is already the program scene, so the new one is not made current.
+    assert_eq!(backend.current().as_deref(), Some("Main"));
+    let result = tool(server, "scene_set_current", json!({"name": "Red Scene"}));
+    assert_eq!(result["isError"], false, "{result}");
+
+    let result = tool(
+        server,
+        "source_create",
+        json!({"kind": "color_source_v3", "name": "red",
+            "settings": {"color": 0xFF00_00FF_u32, "width": 320, "height": 240},
+            "scene": "Red Scene", "position": {"x": 100, "y": 50}}),
+    );
+    assert_eq!(result["isError"], false, "{result}");
+    let created: Value =
+        serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(created["scene"], "Red Scene", "{created}");
+
+    // The listed item id drives the other item tools.
+    let result = tool(server, "scene_items_list", json!({"scene": "Red Scene"}));
+    assert_eq!(result["isError"], false, "{result}");
+    let listed: Value =
+        serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap();
+    let items = listed["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1, "{listed}");
+    assert_eq!(items[0]["source"], "red");
+    assert_eq!(items[0]["visible"], true);
+    assert_eq!(items[0]["position"], json!({"x": 100.0, "y": 50.0}));
+    assert_eq!(items[0]["item"], created["item"]);
+
+    let screenshot = tool(server, "screenshot", json!({}));
+    assert_eq!(screenshot["isError"], false, "{screenshot}");
+    let info: Value =
+        serde_json::from_str(screenshot["content"][1]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(info, json!({"width": size.0, "height": size.1, "source": null}));
+
+    let frame = backend.capture(None, None, None).unwrap();
+    let at = |x: usize, y: usize| {
+        let i = (y * frame.width as usize + x) * 4;
+        frame.rgba[i..i + 4].to_vec()
+    };
+    for (x, y) in [(105, 55), (300, 200), (415, 285)] {
+        let pixel = at(x, y);
+        assert!(
+            pixel[0] >= 0xFB && pixel[1] <= 4 && pixel[2] <= 4 && pixel[3] >= 0xFB,
+            "red expected at ({x}, {y}), got {pixel:?}"
+        );
+    }
+    for (x, y) in [(10, 10), (95, 45), (425, 295), (1270, 710)] {
+        assert_eq!(at(x, y)[3], 0, "nothing expected at ({x}, {y})");
+    }
+
+    // Hidden through its listed id, the item leaves the program output.
+    let id = created["item"].clone();
+    let result = tool(
+        server,
+        "scene_item_set_visible",
+        json!({"scene": "Red Scene", "item": id, "visible": false}),
+    );
+    assert_eq!(result["isError"], false, "{result}");
+    let frame = backend.capture(None, None, None).unwrap();
+    let i = (200 * frame.width as usize + 300) * 4;
+    assert_eq!(frame.rgba[i + 3], 0, "a hidden item draws nothing");
 }
 
 /// Whether starting the record output fails because it was never created.

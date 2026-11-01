@@ -147,7 +147,7 @@ fn returns_png_image_content() {
     let result = shoot(&mut s, &json!({}));
     assert_eq!(result["isError"], false);
     let content = result["content"].as_array().unwrap();
-    assert_eq!(content.len(), 1);
+    assert_eq!(content.len(), 2, "the image and its size");
     assert_eq!(content[0]["type"], "image");
     assert_eq!(content[0]["mimeType"], "image/png");
     let png = STANDARD
@@ -253,4 +253,28 @@ fn encoder_rejects_empty_and_mismatched_frames() {
         rgba: vec![0; 15],
     };
     assert!(encode_png(&short).is_err());
+}
+
+#[test]
+fn a_text_item_reports_the_size_and_source() {
+    let mut s = server(&Rc::default());
+    let result = shoot(&mut s, &json!({}));
+    let text = &result["content"][1];
+    assert_eq!(text["type"], "text");
+    let info: Value = serde_json::from_str(text["text"].as_str().unwrap()).unwrap();
+    assert_eq!(info, json!({"width": 3, "height": 2, "source": null}));
+
+    let result = shoot(&mut s, &json!({"source": "Cam"}));
+    let info: Value =
+        serde_json::from_str(result["content"][1]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(info, json!({"width": 3, "height": 2, "source": "Cam"}));
+}
+
+#[test]
+fn the_description_documents_the_alpha_channel() {
+    let mut s = server(&Rc::default());
+    let r = rpc(&mut s, "tools/list", &json!({}));
+    let description = r["result"]["tools"][0]["description"].as_str().unwrap();
+    assert!(description.contains("alpha"), "{description}");
+    assert!(description.contains("transparent"), "{description}");
 }

@@ -19,7 +19,7 @@ use obs_mcp::resources::stats::StatsBackend;
 use obs_mcp::tools::outputs::{OutputBackend, OutputKind};
 use obs_mcp::tools::scenes::SceneBackend;
 use obs_mcp::tools::screenshot::CaptureBackend;
-use obs_mcp::tools::sources::{SourceBackend, Transform};
+use obs_mcp::tools::sources::{ItemRef, SourceBackend, Transform};
 use serde_json::{Value, json};
 
 const CHILD: &str = "OBS_MCP_LIBOBS_BACKEND_CHILD";
@@ -77,24 +77,6 @@ fn item(scene: &str, source: &str) -> (bool, (f32, f32), (f32, f32), f32) {
     }
 }
 
-/// Puts `source` in `scene` (there is no add-item tool yet).
-fn add_item(scene: &str, source: &str) {
-    use obs_sys::ffi::*;
-    let scene = std::ffi::CString::new(scene).unwrap();
-    let source = std::ffi::CString::new(source).unwrap();
-    // SAFETY: libobs is started; names are NUL-terminated; references taken
-    // here are released before returning.
-    unsafe {
-        let scene_source = obs_get_source_by_name(scene.as_ptr());
-        let child = obs_get_source_by_name(source.as_ptr());
-        assert!(!scene_source.is_null() && !child.is_null());
-        let added = obs_scene_add(obs_scene_from_source(scene_source), child);
-        assert!(!added.is_null());
-        obs_source_release(child);
-        obs_source_release(scene_source);
-    }
-}
-
 fn child() {
     // SAFETY: the locale is a NUL-terminated static string; null optional
     // paths and name store are supported by obs_startup.
@@ -131,20 +113,28 @@ fn scenes_and_program(backend: &ObsBackend) {
             .contains("exists")
     );
     assert_eq!(backend.scenes(), ["Main", "Other"]);
-    assert_eq!(backend.current(), None);
+    // The first scene made while no program scene is set becomes the program
+    // scene; later ones leave it alone (#3339).
+    assert_eq!(backend.current().as_deref(), Some("Main"));
+
+    backend.set_current("Other").unwrap();
+    assert_eq!(backend.current().as_deref(), Some("Other"));
 
     backend.set_current("Main").unwrap();
     assert_eq!(backend.current().as_deref(), Some("Main"));
     assert!(backend.set_current("Nope").unwrap_err().contains("Nope"));
     assert_eq!(backend.current().as_deref(), Some("Main"));
 
-    // Removing the program scene clears the program output.
+    // Removing the program scene clears the program output, so the next
+    // scene made becomes the program scene again.
     backend.remove("Main").unwrap();
+    backend.set_current("Other").unwrap();
+    backend.remove("Other").unwrap();
     assert_eq!(backend.current(), None);
-    assert_eq!(backend.scenes(), ["Other"]);
+    assert_eq!(backend.scenes(), Vec::<String>::new());
     assert!(backend.remove("Main").unwrap_err().contains("Main"));
     SceneBackend::create(backend, "Main").unwrap();
-    backend.set_current("Main").unwrap();
+    assert_eq!(backend.current().as_deref(), Some("Main"));
 }
 
 fn sources_and_items(backend: &ObsBackend) {
@@ -162,15 +152,50 @@ fn sources_and_items(backend: &ObsBackend) {
 
     // A nested scene stands in for an input: it is a source with scene items.
     SourceBackend::create(backend, "scene", "Inner", &json!({})).unwrap();
-    add_item("Main", "Inner");
+    assert!(backend.items("Main").unwrap().is_empty());
+    let added = backend.add_item("Main", "Inner", Some((7.0, 9.0))).unwrap();
+    assert_eq!(added.source, "Inner");
+    assert!(added.visible);
+    assert_eq!(added.position, (7.0, 9.0));
+    assert_eq!(item("Main", "Inner").1, (7.0, 9.0));
     backend
         .set_settings("Inner", &json!({"note": "x"}))
         .unwrap();
 
-    backend.set_item_visible("Main", "Inner", false).unwrap();
+    // `scene_items_list` ids and source names name the same item.
+    let listed = backend.items("Main").unwrap();
+    assert_eq!(listed, [added.clone()]);
+    let id = ItemRef::Id(added.id);
+    backend.set_item_visible("Main", &id, false).unwrap();
     assert!(!item("Main", "Inner").0);
-    backend.set_item_visible("Main", "Inner", true).unwrap();
+    assert!(!backend.items("Main").unwrap()[0].visible);
+    let by_name = ItemRef::Source("Inner".into());
+    backend.set_item_visible("Main", &by_name, true).unwrap();
     assert!(item("Main", "Inner").0);
+    assert!(
+        backend
+            .set_item_visible("Main", &ItemRef::Id(added.id + 100), true)
+            .unwrap_err()
+            .contains("item")
+    );
+    assert!(
+        backend
+            .add_item("Main", "Nope", None)
+            .unwrap_err()
+            .contains("Nope")
+    );
+    assert!(
+        backend
+            .add_item("Nope", "Inner", None)
+            .unwrap_err()
+            .contains("Nope")
+    );
+    assert!(
+        backend
+            .add_item("Main", "Main", None)
+            .is_err(),
+        "a scene cannot contain itself"
+    );
 
     let partial = Transform {
         position: Some((10.0, 20.0)),
@@ -178,7 +203,7 @@ fn sources_and_items(backend: &ObsBackend) {
         ..Transform::default()
     };
     backend
-        .set_item_transform("Main", "Inner", &partial)
+        .set_item_transform("Main", &id, &partial)
         .unwrap();
     let (_, pos, scale, rot) = item("Main", "Inner");
     assert_eq!((pos, rot), ((10.0, 20.0), 45.0));
@@ -188,24 +213,28 @@ fn sources_and_items(backend: &ObsBackend) {
         ..Transform::default()
     };
     backend
-        .set_item_transform("Main", "Inner", &scaled)
+        .set_item_transform("Main", &by_name, &scaled)
         .unwrap();
     let (_, pos, scale, rot) = item("Main", "Inner");
     assert_eq!((pos, scale, rot), ((10.0, 20.0), (2.0, 3.0), 45.0));
 
     assert!(
         backend
-            .set_item_visible("Nope", "Inner", true)
+            .set_item_visible("Nope", &by_name, true)
             .unwrap_err()
             .contains("Nope")
     );
     assert!(
         backend
-            .set_item_visible("Main", "Nope", true)
+            .set_item_visible("Main", &ItemRef::Source("Nope".into()), true)
             .unwrap_err()
             .contains("Nope")
     );
-    assert!(backend.set_item_transform("Main", "Nope", &scaled).is_err());
+    assert!(
+        backend
+            .set_item_transform("Main", &ItemRef::Source("Nope".into()), &scaled)
+            .is_err()
+    );
 }
 
 fn stats_capture_and_outputs(backend: &ObsBackend) {

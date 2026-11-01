@@ -35,7 +35,7 @@ use crate::server::{Server, ToolRegistry};
 use crate::tools::outputs::{self, OutputBackend, OutputKind, OutputStatus};
 use crate::tools::scenes::{self, SceneBackend};
 use crate::tools::screenshot::{self, CaptureBackend, Frame};
-use crate::tools::sources::{self, SourceBackend, SourceInfo, Transform};
+use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, Transform};
 
 /// Largest screenshot side, to keep a request from allocating without bound.
 const MAX_SIDE: u32 = 16_384;
@@ -255,16 +255,35 @@ impl SourceBackend for ObsBackend {
             .update(settings)
     }
 
-    fn set_item_visible(&self, scene: &str, source: &str, visible: bool) -> Result<(), String> {
+    fn add_item(
+        &self,
+        _scene: &str,
+        _source: &str,
+        _position: Option<(f64, f64)>,
+    ) -> Result<ItemInfo, String> {
+        todo!("obs_scene_add (#3338)")
+    }
+
+    fn items(&self, _scene: &str) -> Result<Vec<ItemInfo>, String> {
+        todo!("obs_scene_enum_items (#3338)")
+    }
+
+    fn set_item_visible(&self, scene: &str, item: &ItemRef, visible: bool) -> Result<(), String> {
+        let ItemRef::Source(source) = item else {
+            todo!("items by id (#3338)")
+        };
         Self::scene(scene)?.with_item(source, |item| item.set_visible(visible))
     }
 
     fn set_item_transform(
         &self,
         scene: &str,
-        source: &str,
+        item: &ItemRef,
         transform: &Transform,
     ) -> Result<(), String> {
+        let ItemRef::Source(source) = item else {
+            todo!("items by id (#3338)")
+        };
         Self::scene(scene)?.with_item(source, |item| {
             let (mut pos, mut scale, mut rot) = item.transform();
             if let Some((x, y)) = transform.position {

@@ -161,3 +161,16 @@ fn bad_arguments_are_tool_errors() {
         }
     }
 }
+
+#[test]
+fn scene_create_documents_that_the_first_scene_becomes_current() {
+    let mut s = server(&Rc::default());
+    let r = rpc(&mut s, "tools/list", &json!({}));
+    let tools = r["result"]["tools"].as_array().unwrap();
+    let create = tools.iter().find(|t| t["name"] == "scene_create").unwrap();
+    let description = create["description"].as_str().unwrap();
+    assert!(
+        description.contains("no program scene") && description.contains("current"),
+        "{description}"
+    );
+}
