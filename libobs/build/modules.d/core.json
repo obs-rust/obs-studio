@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-output",
+    "core-setup-rules-task",
     "core-source",
     "null-audio",
     "util-cf"
