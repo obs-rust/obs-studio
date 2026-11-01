@@ -18,7 +18,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -121,7 +120,6 @@ class SerialRunTest(unittest.TestCase):
         pairs = self.pins(tmp, 2)
         commands = [self.probe(tmp) + [str(tmp / f"{i}.record")] for i in range(2)]
         (tmp / "registry.json").write_text(json.dumps(registry(commands)), encoding="utf-8")
-        started = time.monotonic()
         result = runner(
             "run",
             str(tmp / "registry.json"),
@@ -130,9 +128,15 @@ class SerialRunTest(unittest.TestCase):
             "--log-dir",
             str(tmp / "logs"),
         )
-        elapsed = time.monotonic() - started
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertLess(elapsed, 1.8, "the two tests did not overlap")
+        # Overlap from the probes' own start and end records, not the wall
+        # time of the whole call: interpreter and uv startup under load made
+        # that bound fail ./lint (#3344).
+        spans = []
+        for index in range(len(pairs)):
+            lines = (tmp / f"{index}.record").read_text(encoding="utf-8").splitlines()
+            spans.append((float(lines[0].rsplit(" ", 1)[1]), float(lines[-1].rsplit(" ", 1)[1])))
+        self.assertLess(max(s for s, _ in spans), min(e for _, e in spans), f"the two tests did not overlap: {spans}")
         for index, pair in enumerate(pairs):
             lines = (tmp / f"{index}.record").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 2)
