@@ -262,6 +262,21 @@ class SanitizeHarnessTest(unittest.TestCase):
         )
         self.assertFalse([a for a in without if a.startswith("-DOBS_VERSION_OVERRIDE")], without)
 
+    def test_configure_builds_line_tables_only(self):
+        """-g1 in place of the build type's -g (#3457): the reports only need
+        file:line frames. CMake puts CMAKE_<LANG>_FLAGS_<CONFIG> after
+        CMAKE_<LANG>_FLAGS, so the build type's flags carry it."""
+        for tool, (flags, build_type) in self.module.TOOL_FLAGS.items():
+            with self.subTest(tool=tool):
+                command = self.module.configure_command(
+                    src=Path("/src"), build=Path("/b"), build_type=build_type, flags=flags, backend="HYBRID", version=""
+                )
+                config = build_type.upper()
+                want = "-O2 -g1 -DNDEBUG" if build_type == "RelWithDebInfo" else "-g1"
+                self.assertIn(f"-DCMAKE_C_FLAGS_{config}={want}", command)
+                self.assertIn(f"-DCMAKE_CXX_FLAGS_{config}={want}", command)
+                self.assertNotIn("-g", flags.split())
+
     def test_valgrind_builds_no_per_target_asan(self):
         """valgrind can't run an ASan binary, so its build turns off the cmocka
         tests' own ASan/UBSan (obs_test_sanitize, #159); asan and tsan already

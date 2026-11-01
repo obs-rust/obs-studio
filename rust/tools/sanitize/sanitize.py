@@ -48,6 +48,15 @@ TOOL_FLAGS = {
     "tsan": ("-fsanitize=thread -fno-omit-frame-pointer -ffp-contract=off", "RelWithDebInfo"),
     "valgrind": ("-fno-omit-frame-pointer -ffp-contract=off", "Debug"),
 }
+# CMAKE_<LANG>_FLAGS_<CONFIG> for each build type: CMake's own, with -g1 in
+# place of -g. The reports only need file:line frames, and line tables are
+# enough for them; a cold asan build took 760 s against 1015 s with -g, and
+# its compiler cache 3.4 GB against 4.5 GB (#3457). CMake puts these flags
+# after CMAKE_<LANG>_FLAGS, so -g1 in TOOL_FLAGS would lose to the -g here.
+BUILD_TYPE_FLAGS = {
+    "RelWithDebInfo": "-O2 -g1 -DNDEBUG",
+    "Debug": "-g1",
+}
 # test_formatted_filename and test_utf8 hardcode -fsanitize=address,undefined
 # (test/cmocka/CMakeLists.txt, obs-rust/obs-studio#159), which TSan rejects and
 # valgrind can't run. They are covered by the asan pass, so the other tools
@@ -144,6 +153,8 @@ def configure_command(*, src: Path, build: Path, build_type: str, flags: str, ba
         "-DCMAKE_CXX_COMPILER_LAUNCHER=zccache",
         f"-DCMAKE_C_FLAGS={flags}",
         f"-DCMAKE_CXX_FLAGS={flags}",
+        f"-DCMAKE_C_FLAGS_{build_type.upper()}={BUILD_TYPE_FLAGS[build_type]}",
+        f"-DCMAKE_CXX_FLAGS_{build_type.upper()}={BUILD_TYPE_FLAGS[build_type]}",
         f"-DCMAKE_EXE_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         f"-DCMAKE_SHARED_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         f"-DCMAKE_MODULE_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
