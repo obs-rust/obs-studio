@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-graphics.pch.h"
 
 /* Private adapters for header-inline operations, not a new public API.
  * Collection indices match obs_graphics::effect_parser_lifecycle::Collection.
