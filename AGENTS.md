@@ -64,6 +64,12 @@ It defines the four required test tiers (Rust unit tests, unchanged C tests
 against the Rust implementation, differential tests against the original C,
 and black-box protocol tests) and the per-unit workflow.
 
+Before writing a test, touching CI or the sanitizers, or chasing a failure
+that only shows on one host, read
+[docs/knowledge/index.md](docs/knowledge/index.md): what earlier workers
+learned the hard way, one concept per file. Where a lesson is a check, the
+check is the rule.
+
 Before picking up or filing an issue, or opening a PR, read
 [docs/rust-port/coordination.md](docs/rust-port/coordination.md): claim
 before coding, search open PRs first, target master, RED then GREEN commits.

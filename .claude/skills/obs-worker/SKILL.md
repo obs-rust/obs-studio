@@ -145,6 +145,11 @@ pile up on top of it:
   tests against `libobs` and `libobs-c-reference`, Tier 3 differential, Tier 4 for
   protocol code.
 - Never edit an existing C test or public C header to make a port pass.
+- Before a test that waits for frames or audio, read
+  [docs/knowledge/timing-tests.md](../../../docs/knowledge/timing-tests.md);
+  before a test that touches something OBS's destroy path frees, read
+  [docs/knowledge/test-leaks.md](../../../docs/knowledge/test-leaks.md). The
+  rest of the bundle: [docs/knowledge/index.md](../../../docs/knowledge/index.md).
 - Host-specific code goes only in `src/platform/` or `src/ffi/`.
 - Rust only through `soldr cargo …` from the repo root; Python only through
   `uv run` / `uvx`.
