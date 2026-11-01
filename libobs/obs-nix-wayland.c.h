@@ -22,18 +22,12 @@
 // X11 keymaps only have 4 shift levels, im not sure xkbcommon supports a way to shift the state into a higher level anyway.
 #define MAX_SHIFT_LEVELS 4
 
-struct platform_seat {
-	struct wl_seat *seat;
-	uint32_t name;
-	uint32_t capabilities;
-};
-
 struct obs_hotkeys_platform {
 	struct wl_display *display;
 	struct wl_registry *registry;
 	/* Every seat the compositor announced, with its registry name and
 	 * last reported capabilities; all of them are released on shutdown. */
-	DARRAY(struct platform_seat) seats;
+	DARRAY(struct obs_nix_wayland_seat) seats;
 	/* The seat the keyboard below was taken from. */
 	struct wl_seat *keyboard_seat;
 	struct wl_keyboard *keyboard;
@@ -64,6 +58,19 @@ _Static_assert(sizeof(xkb_level_index_t) == sizeof(uint32_t), "xkb_level_index_t
 _Static_assert(MAX_KEYCODES == OBS_NIX_WAYLAND_KEYS_MAX_KEYCODES, "MAX_KEYCODES");
 _Static_assert(MAX_SHIFT_LEVELS == OBS_NIX_WAYLAND_KEYS_MAX_SHIFT_LEVELS, "MAX_SHIFT_LEVELS");
 _Static_assert(OBS_KEY_NONE == 0, "a cleared pressed_as entry is OBS_KEY_NONE");
+
+/* The seat decisions are in obs-nix-wayland-seats.h, which includes no
+ * Wayland header: check its two Wayland values, and that a seat is a
+ * pointer and two uint32_t, as rust/obs-hotkey mirrors it. */
+_Static_assert(OBS_NIX_WAYLAND_SEATS_CAPABILITY_KEYBOARD == WL_SEAT_CAPABILITY_KEYBOARD, "WL_SEAT_CAPABILITY_KEYBOARD");
+_Static_assert(OBS_NIX_WAYLAND_SEATS_RELEASE_SINCE_VERSION == WL_SEAT_RELEASE_SINCE_VERSION,
+	       "WL_SEAT_RELEASE_SINCE_VERSION");
+_Static_assert(offsetof(struct obs_nix_wayland_seat, seat) == 0, "seat");
+_Static_assert(offsetof(struct obs_nix_wayland_seat, name) == sizeof(struct wl_seat *), "name");
+_Static_assert(offsetof(struct obs_nix_wayland_seat, capabilities) == sizeof(struct wl_seat *) + sizeof(uint32_t),
+	       "capabilities");
+_Static_assert(sizeof(struct obs_nix_wayland_seat) == sizeof(struct wl_seat *) + 2 * sizeof(uint32_t),
+	       "struct obs_nix_wayland_seat");
 
 static obs_key_t obs_nix_wayland_key_from_virtual_key(int sym)
 {
@@ -236,7 +243,7 @@ const struct wl_keyboard_listener keyboard_listener = {
 	.repeat_info = platform_keyboard_repeat_info,
 };
 
-static struct platform_seat *find_seat(obs_hotkeys_platform_t *plat, struct wl_seat *seat)
+static struct obs_nix_wayland_seat *find_seat(obs_hotkeys_platform_t *plat, struct wl_seat *seat)
 {
 	for (size_t i = 0; i < plat->seats.num; i++) {
 		if (plat->seats.array[i].seat == seat)
@@ -255,35 +262,32 @@ static void release_keyboard(obs_hotkeys_platform_t *plat)
 	memset(plat->pressed_as, 0, sizeof(plat->pressed_as));
 }
 
-/* A compositor may announce several seats. Take the keyboard from a seat
- * that reports one: asking any other seat for it is a fatal
- * missing_capability protocol error. */
+/* Take the keyboard from a seat that reports one
+ * (obs_nix_wayland_seats_pick()). */
 static void take_keyboard(obs_hotkeys_platform_t *plat)
 {
 	if (plat->keyboard)
 		return;
-	for (size_t i = 0; i < plat->seats.num; i++) {
-		struct platform_seat *seat = &plat->seats.array[i];
-		if (seat->capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
-			plat->keyboard = wl_seat_get_keyboard(seat->seat);
-			plat->keyboard_seat = seat->seat;
-			wl_keyboard_add_listener(plat->keyboard, &keyboard_listener, plat);
-			return;
-		}
-	}
+	size_t i = obs_nix_wayland_seats_pick(plat->seats.array, plat->seats.num);
+	if (i == SIZE_MAX)
+		return;
+	struct obs_nix_wayland_seat *seat = &plat->seats.array[i];
+	plat->keyboard = wl_seat_get_keyboard(seat->seat);
+	plat->keyboard_seat = seat->seat;
+	wl_keyboard_add_listener(plat->keyboard, &keyboard_listener, plat);
 }
 
 static void platform_seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities)
 {
 	obs_hotkeys_platform_t *plat = (obs_hotkeys_platform_t *)data;
-	struct platform_seat *entry = find_seat(plat, seat);
+	struct obs_nix_wayland_seat *entry = find_seat(plat, seat);
 	if (!entry)
 		return;
 
 	entry->capabilities = capabilities;
 	/* Only the seat the keyboard came from losing its keyboard releases
 	 * it; another seat with a keyboard then takes over. */
-	if (!(capabilities & WL_SEAT_CAPABILITY_KEYBOARD) && seat == plat->keyboard_seat)
+	if (obs_nix_wayland_seats_lacks_keyboard(capabilities) && seat == plat->keyboard_seat)
 		release_keyboard(plat);
 	take_keyboard(plat);
 }
@@ -306,13 +310,13 @@ static void platform_registry_handler(void *data, struct wl_registry *registry, 
 	obs_hotkeys_platform_t *plat = (obs_hotkeys_platform_t *)data;
 
 	if (strcmp(interface, wl_seat_interface.name) == 0) {
-		if (version < 4) {
+		uint32_t bind = obs_nix_wayland_seats_bind_version(version);
+		if (!bind) {
 			blog(LOG_WARNING, "[wayland] hotkeys disabled, compositor is too old");
 			return;
 		}
-		// Only negotiate up to version 7, the current wl_seat at time of writing.
-		struct platform_seat seat = {
-			.seat = wl_registry_bind(registry, id, &wl_seat_interface, version <= 7 ? version : 7),
+		struct obs_nix_wayland_seat seat = {
+			.seat = wl_registry_bind(registry, id, &wl_seat_interface, bind),
 			.name = id,
 		};
 		da_push_back(plat->seats, &seat);
@@ -322,7 +326,7 @@ static void platform_registry_handler(void *data, struct wl_registry *registry, 
 
 static void release_seat(struct wl_seat *seat)
 {
-	if (wl_seat_get_version(seat) >= WL_SEAT_RELEASE_SINCE_VERSION)
+	if (obs_nix_wayland_seats_uses_release(wl_seat_get_version(seat)))
 		wl_seat_release(seat);
 	else
 		wl_seat_destroy(seat);
@@ -333,20 +337,18 @@ static void platform_registry_remover(void *data, struct wl_registry *registry, 
 	UNUSED_PARAMETER(registry);
 	obs_hotkeys_platform_t *plat = (obs_hotkeys_platform_t *)data;
 
-	for (size_t i = 0; i < plat->seats.num; i++) {
-		struct wl_seat *seat = plat->seats.array[i].seat;
-		if (plat->seats.array[i].name != id)
-			continue;
-
-		/* The seat is gone (a seat removed at runtime): drop it, and
-		 * its keyboard in favour of another seat's if it had ours. */
-		if (seat == plat->keyboard_seat)
-			release_keyboard(plat);
-		release_seat(seat);
-		da_erase(plat->seats, i);
-		take_keyboard(plat);
+	size_t i = obs_nix_wayland_seats_find_name(plat->seats.array, plat->seats.num, id);
+	if (i == SIZE_MAX)
 		return;
-	}
+	struct wl_seat *seat = plat->seats.array[i].seat;
+
+	/* The seat is gone (a seat removed at runtime): drop it, and its
+	 * keyboard in favour of another seat's if it had ours. */
+	if (seat == plat->keyboard_seat)
+		release_keyboard(plat);
+	release_seat(seat);
+	da_erase(plat->seats, i);
+	take_keyboard(plat);
 }
 
 const struct wl_registry_listener registry_listener = {

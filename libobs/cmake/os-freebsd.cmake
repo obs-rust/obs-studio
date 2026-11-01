@@ -72,7 +72,10 @@ if(ENABLE_WAYLAND)
   find_package(Wayland REQUIRED Client)
   find_package(Xkbcommon REQUIRED)
 
-  target_sources(libobs-objects PRIVATE build/libobs.nix-wayland+.h.c)
+  target_sources(
+    libobs-objects
+    PRIVATE build/libobs.nix-wayland+.h.c build/libobs.nix-wayland-seats+.h.c obs-nix-wayland-seats.h
+  )
   libobs_add_ported_sources(LIBOBS_WAYLAND_PORTED_SOURCES)
   target_link_libraries(libobs-objects PUBLIC Wayland::Client xkbcommon::xkbcommon)
 

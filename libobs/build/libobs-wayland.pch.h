@@ -10,6 +10,7 @@
 #include "obs-nix-platform.h"
 #include "obs-nix-wayland.h"
 #include "obs-nix-wayland-keys.h"
+#include "obs-nix-wayland-seats.h"
 #ifdef HAVE_GLOBAL_SHORTCUTS_PORTAL
 #include "obs-nix-portal-shortcuts.h"
 #endif

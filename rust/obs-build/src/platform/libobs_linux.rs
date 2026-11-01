@@ -54,6 +54,9 @@ pub fn configure(
         library
             .sources
             .push(root.join("libobs/build/libobs.nix-wayland+.h.c"));
+        library
+            .sources
+            .push(root.join("libobs/build/libobs.nix-wayland-seats+.h.c"));
         if options.gio {
             library
                 .sources
