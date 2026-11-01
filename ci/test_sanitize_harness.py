@@ -429,8 +429,8 @@ class TestIsolationTest(unittest.TestCase):
         fake = self.root / "fake-bin"
         fake.mkdir()
         record = self.root / "xvfb-run.log"
-        # xvfb-run -n <number> -s <screen> <command...>
-        write_stub(fake, "xvfb-run", f'echo "$1 $2 ${{DISPLAY:-none}}" >> "{record}"\nshift 4\nexec "$@"\n')
+        # xvfb-run -n <number> -f <auth file> -s <screen> <command...>
+        write_stub(fake, "xvfb-run", f'echo "$1 $2 $3 $4 ${{DISPLAY:-none}}" >> "{record}"\nshift 6\nexec "$@"\n')
         tests = [self.stub(f"test_p{i}") for i in range(4)] + [self.stub("test_serial", serial=True)]
         env = {"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}", "DISPLAY": ":99"}
         with patch.dict(os.environ, env), redirect_stdout(io.StringIO()):
@@ -439,9 +439,17 @@ class TestIsolationTest(unittest.TestCase):
         self.assertEqual((self.layout.out / "tests" / "test_p0.log").read_text(encoding="utf-8"), "output of test_p0\n")
         rows = [line.split() for line in record.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(len(rows), 5, "every test, serial ones too, runs under its own xvfb-run")
-        self.assertTrue(all(flag == "-n" for flag, _, _ in rows))
-        self.assertEqual(len({number for _, number, _ in rows}), 5, "two tests got the same server number")
-        self.assertEqual({display for _, _, display in rows}, {"none"}, "a test inherited the shared DISPLAY")
+        self.assertTrue(all(flag == "-n" and auth == "-f" for flag, _, auth, _, _ in rows))
+        self.assertEqual(len({number for _, number, _, _, _ in rows}), 5, "two tests got the same server number")
+        self.assertEqual({display for *_, display in rows}, {"none"}, "a test inherited the shared DISPLAY")
+        # Each server has its own auth file in the build tree, not in
+        # xvfb-run's temporary directory, so its cleanup only removes an empty
+        # directory: a file left there (xauth's lock files, most likely) made
+        # the cleanup fail, and xvfb-run's exit 5 replaced the test's (tsan
+        # pool run 41275822723: test_xshm_monitor_move, test_media_cover_art_monitor).
+        files = [Path(path) for _, _, _, path, _ in rows]
+        self.assertEqual(len(set(files)), 5, "two servers share an auth file")
+        self.assertTrue(all(f.parent == self.layout.build / "xauth" for f in files), files)
 
     def test_private_displays_and_pool_size_per_tool(self):
         self.assertTrue(self.module.private_displays("asan"))
