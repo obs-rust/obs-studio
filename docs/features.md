@@ -1565,6 +1565,12 @@ area.
   really closed. *All*, 2026-11-01. Issue
   [#3449](https://github.com/obs-rust/obs-studio/issues/3449), upstream
   [obsproject/obs-studio#4596](https://github.com/obsproject/obs-studio/issues/4596).
+- With "Remember these settings" on in the YouTube broadcast dialog, the
+  "Automatically stop" checkbox comes back as it was saved, instead of as
+  whatever "Automatically start" was, so a broadcast no longer ends, or
+  stays live, against the user's choice. *All*, 2026-11-01. Issue
+  [#3448](https://github.com/obs-rust/obs-studio/issues/3448), upstream
+  obs-studio issue 13856.
 
 ### Sources and filters
 

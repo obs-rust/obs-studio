@@ -16,7 +16,7 @@ void youtube_broadcast_settings_save(config_t *config, const struct youtube_broa
 	config_set_string(config, SECTION, "Latency", ybs_str_or_empty(settings->latency));
 	config_set_bool(config, SECTION, "MadeForKids", settings->made_for_kids);
 	config_set_bool(config, SECTION, "AutoStart", settings->auto_start);
-	config_set_bool(config, SECTION, "AutoStop", settings->auto_start);
+	config_set_bool(config, SECTION, "AutoStop", settings->auto_stop);
 	config_set_bool(config, SECTION, "DVR", settings->dvr);
 	config_set_bool(config, SECTION, "ScheduleForLater", settings->schedule_for_later);
 	config_set_string(config, SECTION, "Projection", ybs_str_or_empty(settings->projection));
