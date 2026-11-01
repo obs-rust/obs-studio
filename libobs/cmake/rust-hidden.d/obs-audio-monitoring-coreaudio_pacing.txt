@@ -1,0 +1,10 @@
+# coreaudio-pacing.c: coreaudio-output.c calls them inside libobs on macOS.
+# Declared in coreaudio-pacing.h without EXPORT, so the shims stay hidden
+# the same way.
+coreaudio_monitor_all_back
+coreaudio_monitor_buffer_size
+coreaudio_monitor_can_fill
+coreaudio_monitor_needs_volume
+coreaudio_monitor_recover_failed_enqueue
+coreaudio_monitor_wait_over
+coreaudio_monitor_wait_size

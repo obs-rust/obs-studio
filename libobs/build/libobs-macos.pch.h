@@ -18,6 +18,7 @@
 #include <AudioUnit/AudioUnit.h>
 #include <AudioToolbox/AudioQueue.h>
 
+#include "audio-monitoring/osx/coreaudio-pacing.h"
 #include "media-io/audio-resampler.h"
 #include "util/deque.h"
 #include "util/threading.h"

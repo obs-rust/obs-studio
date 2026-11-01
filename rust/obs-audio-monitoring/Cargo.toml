@@ -2,7 +2,7 @@
 autotests = false
 name = "obs-audio-monitoring"
 version = "0.1.0"
-description = "Rust port of libobs/audio-monitoring/: the PulseAudio monitor's stream flags, format, volume and open and write steps, and the WASAPI monitor's delay decisions, speaker layout and video stall tracker"
+description = "Rust port of libobs/audio-monitoring/: the PulseAudio monitor's stream flags, format, volume and open and write steps, the WASAPI monitor's delay decisions, speaker layout and video stall tracker, and the CoreAudio monitor's queue pacing"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

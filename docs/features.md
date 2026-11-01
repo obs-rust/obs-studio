@@ -1195,6 +1195,11 @@ area.
   instead of failing with only a resampler error. Devices OBS could play to
   before get the same layout. *Windows*, 2026-10-27. Issue
   [#2559](https://github.com/obs-rust/obs-studio/issues/2559).
+- Audio monitoring on macOS no longer goes silent for good when CoreAudio
+  refuses one buffer of audio: the monitor starts playing again with the
+  next audio instead of staying silent until the monitoring device is
+  changed. *macOS*, 2026-11-01. Issue
+  [#3328](https://github.com/obs-rust/obs-studio/issues/3328).
 
 ### Encoding, streaming and recording
 

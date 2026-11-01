@@ -742,6 +742,29 @@
         "test/cmocka/coreaudio-enum-stubs"
       ]
     },
+    "test_coreaudio_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_coreaudio_pacing_steps.c",
+        "libobs/audio-monitoring/osx/coreaudio-pacing.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/osx/coreaudio-pacing.h",
+        "libobs/graphics/math-defs.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_crash_sentinel_dir": {
       "sources": [
         "test/cmocka/test_crash_sentinel_dir.cpp",
@@ -6157,6 +6180,12 @@
     },
     "test_coreaudio_enum_alloc": {
       "target": "test_coreaudio_enum_alloc",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_coreaudio_pacing_steps": {
+      "target": "test_coreaudio_pacing_steps",
       "command": [
         "${target}"
       ]
