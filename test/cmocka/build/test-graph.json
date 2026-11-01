@@ -2203,6 +2203,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_nix_wayland_seats_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_seats_steps.c",
+        "libobs/obs-nix-wayland-seats.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-wayland-seats.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_nix_x11_hotkeys_steps": {
       "sources": [
         "test/cmocka/test_nix_x11_hotkeys_steps.c",
@@ -6739,6 +6755,12 @@
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_nix_wayland_seats_steps": {
+      "target": "test_nix_wayland_seats_steps",
       "command": [
         "${target}"
       ]
