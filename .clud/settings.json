@@ -1,6 +1,7 @@
 {
   "rust": {
-    "use_soldr": true
+    "use_soldr": true,
+    "porcelain": true
   },
   "gh": {
     "backend": "ghd"
