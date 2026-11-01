@@ -786,6 +786,11 @@ area.
   OBS that crashed is removed at the next start. *Linux*, 2026-10-29.
   Issues [#3011](https://github.com/obs-rust/obs-studio/issues/3011),
   [#3014](https://github.com/obs-rust/obs-studio/issues/3014).
+- The macOS Virtual Camera also sends the chosen audio track to an "OBS
+  Virtual Microphone" input device (a HAL plug-in in
+  `/Library/Audio/Plug-Ins/HAL`) that meeting apps list as a microphone;
+  without the plug-in it runs video-only and says so. *macOS*, 2026-11-01.
+  Issue [#3184](https://github.com/obs-rust/obs-studio/issues/3184).
 - The Virtual Camera settings dialog can turn the OBS Virtual Microphone off
   and pick which audio track it sends; both are saved with the scene
   collection and shown only where the virtual camera sends audio.

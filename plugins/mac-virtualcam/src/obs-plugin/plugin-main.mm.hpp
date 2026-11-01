@@ -33,7 +33,90 @@ struct virtualcam_data {
 
 	// Legacy DAL (deprecated since macOS 12.3)
 	OBSDALMachServer *machServer;
+
+	// OBS Virtual Microphone (#3184): the ring the HAL plug-in reads
+	bool audio_enabled;
+	size_t audio_mixer;
+	struct vmic_shm *mic;
+	size_t mic_size;
 };
+
+#define VMIC_DRIVER_PATH "/Library/Audio/Plug-Ins/HAL/OBSVirtualMicrophone.driver"
+#define VMIC_RATE 48000
+#define VMIC_CHANNELS 2
+
+static void vmic_read_settings(struct virtualcam_data *vcam, obs_data_t *settings)
+{
+	vcam->audio_enabled = !obs_data_has_user_value(settings, "audio_enabled") ||
+			      obs_data_get_bool(settings, "audio_enabled");
+	long long track = obs_data_get_int(settings, "audio_track");
+	vcam->audio_mixer = track >= 1 && track <= MAX_AUDIO_MIXES ? (size_t)(track - 1) : 0;
+}
+
+/* Creates (or reuses) the ring for the HAL plug-in. The segment is never
+ * unlinked, so a plug-in that mapped it keeps reading after OBS restarts the
+ * camera; it is readable by coreaudiod's own user. */
+static void vmic_start(struct virtualcam_data *vcam)
+{
+	if (!vcam->audio_enabled) {
+		return;
+	}
+	if (access(VMIC_DRIVER_PATH, F_OK) != 0) {
+		blog(LOG_WARNING, "Virtual camera audio: the OBS Virtual Microphone is not installed (" VMIC_DRIVER_PATH
+				  "), video only");
+		return;
+	}
+
+	size_t size = vmic_shm_size(VMIC_CHANNELS, VMIC_RATE);
+	int fd = shm_open(VMIC_SHM_NAME, O_RDWR | O_CREAT, 0666);
+	if (fd < 0) {
+		blog(LOG_WARNING, "Virtual camera audio: shm_open failed (%d), video only", errno);
+		return;
+	}
+	fchmod(fd, 0666);
+	/* macOS sizes a segment only once, when it is new. */
+	struct stat st;
+	if (fstat(fd, &st) == 0 && st.st_size == 0) {
+		ftruncate(fd, (off_t)size);
+	}
+	if (fstat(fd, &st) != 0 || (size_t)st.st_size < size) {
+		blog(LOG_WARNING, "Virtual camera audio: cannot size the ring (%d), video only", errno);
+		close(fd);
+		return;
+	}
+	void *map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED) {
+		blog(LOG_WARNING, "Virtual camera audio: mmap failed (%d), video only", errno);
+		return;
+	}
+	vcam->mic = (struct vmic_shm *)map;
+	vcam->mic_size = size;
+	vmic_shm_init(vcam->mic, VMIC_RATE, VMIC_CHANNELS, VMIC_RATE);
+
+	struct audio_convert_info aci = {};
+	aci.samples_per_sec = VMIC_RATE;
+	aci.format = AUDIO_FORMAT_FLOAT;
+	aci.speakers = SPEAKERS_STEREO;
+	obs_output_set_audio_conversion(vcam->output, &aci);
+	obs_output_set_mixer(vcam->output, vcam->audio_mixer);
+	blog(LOG_INFO, "Virtual camera audio: track %zu to the OBS Virtual Microphone", vcam->audio_mixer + 1);
+}
+
+static void vmic_stop(struct virtualcam_data *vcam)
+{
+	if (vcam->mic) {
+		munmap(vcam->mic, vcam->mic_size);
+	}
+	vcam->mic = NULL;
+	vcam->mic_size = 0;
+}
+
+static void virtualcam_audio_proc(void *data, calldata_t *cd)
+{
+	struct virtualcam_data *vcam = (struct virtualcam_data *)data;
+	calldata_set_bool(cd, "active", vcam->mic != NULL);
+}
 
 @interface SystemExtensionActivationDelegate : NSObject <OSSystemExtensionRequestDelegate> {
 @private
@@ -253,11 +336,17 @@ static const char *virtualcam_output_get_name(void *type_data)
 
 static void *virtualcam_output_create(obs_data_t *settings, obs_output_t *output)
 {
-	UNUSED_PARAMETER(settings);
-
 	struct virtualcam_data *vcam = (struct virtualcam_data *)bzalloc(sizeof(*vcam));
 
 	vcam->output = output;
+	vmic_read_settings(vcam, settings);
+
+	/* The frontend asks after start whether audio runs, to tell the user
+	 * when the camera fell back to video only (#3182). */
+	if (output) {
+		proc_handler_add(obs_output_get_proc_handler(output), "void virtualcam_audio(out bool active)",
+				 virtualcam_audio_proc, vcam);
+	}
 
 	if (cmio_extension_supported()) {
 		vcam->extensionDelegate = [[SystemExtensionActivationDelegate alloc] initWithVcam:vcam];
@@ -278,8 +367,14 @@ static void virtualcam_output_destroy(void *data)
 	} else {
 		vcam->machServer = nil;
 	}
+	vmic_stop(vcam);
 
 	bfree(vcam);
+}
+
+static void virtualcam_output_update(void *data, obs_data_t *settings)
+{
+	vmic_read_settings((struct virtualcam_data *)data, settings);
 }
 
 static bool virtualcam_output_start(void *data)
@@ -450,7 +545,10 @@ static bool virtualcam_output_start(void *data)
 		[vcam->machServer run];
 	}
 
+	vmic_start(vcam);
+
 	if (!obs_output_begin_data_capture(vcam->output, 0)) {
+		vmic_stop(vcam);
 		return false;
 	}
 
@@ -471,6 +569,15 @@ static void virtualcam_output_stop(void *data, uint64_t ts)
 		[vcam->machServer stop];
 	}
 	CVPixelBufferPoolRelease(vcam->pool);
+	vmic_stop(vcam);
+}
+
+static void virtualcam_output_raw_audio(void *data, struct audio_data *frames)
+{
+	struct virtualcam_data *vcam = (struct virtualcam_data *)data;
+	if (vcam->mic) {
+		vmic_shm_write(vcam->mic, (const float *)frames->data[0], frames->frames, mach_absolute_time());
+	}
 }
 
 static void virtualcam_output_raw_video(void *data, struct video_data *frame)
@@ -558,13 +665,15 @@ static void virtualcam_output_raw_video(void *data, struct video_data *frame)
 
 struct obs_output_info virtualcam_output_info = {
 	.id = "virtualcam_output",
-	.flags = OBS_OUTPUT_VIDEO,
+	.flags = OBS_OUTPUT_AV,
 	.get_name = virtualcam_output_get_name,
 	.create = virtualcam_output_create,
 	.destroy = virtualcam_output_destroy,
+	.update = virtualcam_output_update,
 	.start = virtualcam_output_start,
 	.stop = virtualcam_output_stop,
 	.raw_video = virtualcam_output_raw_video,
+	.raw_audio = virtualcam_output_raw_audio,
 };
 
 bool obs_module_load(void)

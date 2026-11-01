@@ -20,3 +20,9 @@
 #include <obs-module.h>
 #include "MachProtocol.h"
 #include "plugins/mac-virtualcam/src/obs-plugin/Defines.h"
+#include <fcntl.h>
+#include <mach/mach_time.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "vmic-shm.h"
