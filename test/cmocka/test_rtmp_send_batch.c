@@ -65,6 +65,9 @@ static size_t send_one(size_t body_size, uint32_t timestamp, unsigned char *out,
 
 	RTMPPacket_Free(&packet);
 	rtmp->m_sb.sb_socket = -1;
+	/* RTMP_Close() frees the channel packets RTMP_SendPacket() keeps; with the
+	 * socket unset it sends nothing. */
+	RTMP_Close(rtmp);
 	RTMP_Free(rtmp);
 	close(fds[0]);
 	close(fds[1]);
