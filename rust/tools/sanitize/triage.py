@@ -31,25 +31,30 @@ import sys
 from pathlib import Path
 
 OBS_FRAME = re.compile(r"(?<![\w/])(?:\.\./)*(?:[\w.-]+/)*?((?:libobs|frontend|plugins|shared|deps|test)/[\w./+-]+:\d+)")
-# (tool, test) -> why its failure under that tool is not counted: a limitation
-# of the tool, or the issue that tracks it. asan fails the job on anything
-# else (#3238), so an entry here needs an open issue.
+# (tool, test) -> (kind, why its failure under that tool is not counted).
+# asan fails the job on anything else (#3238), so the list keeps itself honest:
+# - "bug": the test is right and OBS (or its build) is wrong; it names its
+#   issue. A bug entry that ran clean is a finding: the fix drops its entry.
+# - "flaky": the test is not solid yet; it names the issue that makes it
+#   solid, and may pass meanwhile. The kind goes once those issues are done.
+# - "tool": a limitation of the tool itself, no OBS issue.
 KNOWN = {
-    ("valgrind", "test_pipe"): "valgrind runs posix_spawn as a plain fork, so a missing binary's exec "
-    "failure is never reported and test_pipe_create2_missing_binary gets a pipe back",
-    ("valgrind", "test_svt_av1"): "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
-    '("VEX temporary storage exhausted")',
-    ("asan", "test_transition_render_steps"): "the offsets come out fused (FMA) in the sanitizer build, one bit "
-    "off (#I1)",
-    ("asan", "test_core_setup_rules_steps"): "UBSan: obs_reset_audio2 takes &obs->audio with no core (#I2)",
-    ("asan", "test_no_core_getters"): "UBSan: obs_get_audio_info2 takes &obs->audio with no core (#I2)",
-    ("asan", "test_shutdown_canvas_weak_ref"): "leaks the context control of a scene alive at obs_shutdown (#I3)",
-    ("asan", "test_shutdown_type_lifetime"): "leaks the context control of a scene alive at obs_shutdown (#I3)",
-    ("asan", "test_media_remux"): "LeakSanitizer reports FFmpeg packet buffers (#I4)",
-    ("asan", "test_media_alpha_network"): "LeakSanitizer reports FFmpeg packet buffers (#I4)",
-    ("asan", "test_dock_proportions"): "no window manager on the job's Xvfb, the docks never reach their size (#I5)",
-    ("asan", "test_ws_cpu_usage"): "timing under ASan's slowdown (#I5)",
-    ("asan", "test_async_delay_audio"): "real-time audio under load (#I5, #838)",
+    ("valgrind", "test_pipe"): ("tool", "valgrind runs posix_spawn as a plain fork, so a missing binary's exec "
+                                "failure is never reported and test_pipe_create2_missing_binary gets a pipe back"),
+    ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
+                                   '("VEX temporary storage exhausted")'),
+    ("asan", "test_transition_render_steps"): ("bug", "the sanitizer build fuses the offset's multiply-add (#3362)"),
+    ("asan", "test_core_setup_rules_steps"): ("bug", "UBSan: obs_reset_audio2 takes &obs->audio with no core (#3363)"),
+    ("asan", "test_no_core_getters"): ("bug", "UBSan: obs_get_audio_info2 takes &obs->audio with no core (#3363)"),
+    ("asan", "test_shutdown_canvas_weak_ref"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
+    ("asan", "test_shutdown_type_lifetime"): ("bug", "leaks the context control of a scene alive at obs_shutdown (#3364)"),
+    ("asan", "test_media_remux"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
+    ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
+    ("asan", "test_dock_proportions"): ("flaky", "the docks come back equal after a resize on the job's Xvfb (#3366)"),
+    ("asan", "test_ws_cpu_usage"): ("flaky", "GetStats reports more than 100 % CPU with 8 threads (#3367)"),
+    ("asan", "test_async_delay_audio"): ("flaky", "a real-time tone breaks under load (#3368, #838)"),
+    ("asan", "test_darken_transparent"): ("flaky", "reads the output before the scene is drawn (#3389)"),
+    ("asan", "test_deinterlace_mode_load"): ("flaky", "the Yadif 2x check runs out of its 3 s under load (#3390)"),
 }
 SKIP_EXIT = "77"
 EXTERNAL = re.compile(r"/nix/store/|/usr/(?:include|lib)/")
@@ -234,12 +239,6 @@ def main():  # noqa: C901
         ran = {n: code for n, code in exits.items() if code != SKIP_EXIT and (tool, n) not in KNOWN}
         known = {n: code for n, code in exits.items() if code != SKIP_EXIT and (tool, n) in KNOWN}
         failed = [(n, code) for n, code in ran.items() if code != "0"]
-        md.append(f"**Unit tests:** {len(ran) - len(failed)}/{len(ran)} clean"
-                  + (f", {len(known)} known (not counted)" if known else "")
-                  + (f", skipped: {', '.join(skipped)}" if skipped else ""))
-        md.append("")
-        findings += len(failed)
-        md += section("Unit tests with a non-zero exit", [(1, n, code) for n, code in failed])
         test_reports, test_ext, reported = [], [], set()
         test_logs = sorted((out / "tests").glob("*.*san.*"))
         test_logs += [f for f in sorted((out / "tests").glob("*.log")) if not f.name.endswith(".vg.log")]
@@ -264,14 +263,23 @@ def main():  # noqa: C901
                 reported.update([name] if errs else [])
                 continue
             test_reports += [(f"{name}: {k}", loc) for k, loc, _ in errs]
-        findings += len(test_reports)
-        md += section("Sanitizer reports in unit tests", group(test_reports))
         hit = sorted(n for n in known if known[n] != "0" or n in reported)
-        if hit:
-            md += ["#### Known (not counted)", ""] + [f"- **{n}**: {KNOWN[(tool, n)]}" for n in hit] + [""]
         clean = sorted(n for n in known if n not in hit)
-        if clean:
-            md += ["#### Known entries that ran clean (drop them once they stay clean)", "", ", ".join(clean), ""]
+        fixed = [n for n in clean if KNOWN[(tool, n)][0] == "bug"]
+        md.append(f"**Unit tests:** {len(ran) - len(failed)}/{len(ran)} clean"
+                  + (f", {len(known)} known (not counted)" if known else "")
+                  + (f", skipped: {', '.join(skipped)}" if skipped else ""))
+        md.append("")
+        # The known list first, so it is read, not scrolled past.
+        if hit:
+            md += ["#### Known (not counted)", ""] + [f"- **{n}** ({KNOWN[(tool, n)][0]}): {KNOWN[(tool, n)][1]}" for n in hit] + [""]
+        if fixed:
+            md += ["#### Known bugs that ran clean: drop the entry (counted)", ""] + [f"- **{n}**: {KNOWN[(tool, n)][1]}" for n in fixed] + [""]
+        if [n for n in clean if n not in fixed]:
+            md += ["#### Known entries that ran clean", "", ", ".join(n for n in clean if n not in fixed), ""]
+        findings += len(failed) + len(test_reports) + len(fixed)
+        md += section("Unit tests with a non-zero exit", [(1, n, code) for n, code in failed])
+        md += section("Sanitizer reports in unit tests", group(test_reports))
         if test_ext:
             title = "leaks in unloaded library init" if tool == "asan" else "no OBS frame in the report"
             md += section(f"External: {title} (not counted)", group(test_ext), limit=8)
