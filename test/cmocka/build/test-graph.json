@@ -3743,6 +3743,81 @@
         }
       ]
     },
+    "test_rtmp_send_batch": {
+      "sources": [
+        "test/cmocka/test_rtmp_send_batch.c",
+        "plugins/obs-outputs/librtmp/rtmp.c",
+        "plugins/obs-outputs/librtmp/amf.c",
+        "plugins/obs-outputs/librtmp/log.c",
+        "plugins/obs-outputs/librtmp/parseurl.c",
+        "plugins/obs-outputs/librtmp/hashswf.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_OBS_OUTPUTS",
+          "OS_LINUX"
+        ]
+      },
+      "includes": [
+        "plugins/obs-outputs"
+      ],
+      "definitions": [
+        "USE_MBEDTLS",
+        "CRYPTO"
+      ],
+      "compile_options": [
+        {
+          "name": "-Wno-comma",
+          "requires": "C_COMPILER_CLANG"
+        },
+        {
+          "name": "-Wno-error=unreachable-code",
+          "requires": {
+            "all": [
+              "C_COMPILER_CLANG",
+              {
+                "any": [
+                  "OS_LINUX",
+                  "OS_FREEBSD",
+                  "OS_OPENBSD"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "MbedTLS::mbedtls",
+        "ZLIB::ZLIB",
+        "OBS::native-test-cmocka",
+        {
+          "name": "crypt32",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "iphlpapi",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "winmm",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "OBS::native-test-foundation",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "OBS::native-test-security",
+          "requires": "OS_MACOS"
+        }
+      ]
+    },
     "test_rtmp_send_thread_leak": {
       "sources": [
         "test/cmocka/test_rtmp_send_thread_leak.c",
@@ -7323,6 +7398,12 @@
     },
     "test_rtmp_error": {
       "target": "test_rtmp_error",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_rtmp_send_batch": {
+      "target": "test_rtmp_send_batch",
       "command": [
         "${target}"
       ]
