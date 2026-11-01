@@ -84,9 +84,14 @@ static void expect_texel_near(uint32_t value, uint16_t red, uint16_t green, uint
 }
 
 #ifndef GS_PQ_STEPS_TEST_RUST
+/* PQ raises (common - 0.8359375) / (...) to 1 / 0.1593 (about 6.3), so one
+ * unit in the last place of the inner powf moves the result by 2e-5 to 4e-5
+ * relative. libms that are each within an ulp still differ by that much
+ * (macOS gave 4.0422572e-09 for code 1, glibc 4.04224476e-09), so the bound
+ * allows a few ulps of the inner powf, not of the result. */
 static void expect_float_near(float got, float want)
 {
-	if (fabsf(got - want) > fabsf(want) * 4e-7f) {
+	if (fabsf(got - want) > fabsf(want) * 2e-4f) {
 		fprintf(stderr, "%.9g, expected %.9g\n", (double)got, (double)want);
 		fail();
 	}
