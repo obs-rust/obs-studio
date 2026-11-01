@@ -10,6 +10,9 @@ the CMake side:
 
 - CMake's translation of the manifest's fnmatch patterns puts every libobs
   group in the same module as Python's fnmatch (run with `cmake -P`).
+- Each module is a static archive linked whole into the shared libraries
+  (#3261), and an OBJECT library it links is compile-only, so its objects
+  are not linked twice.
 - libobs/CMakeLists.txt splits last, after the host files that add sources to
   libobs-objects, and links the modules into the shared libraries.
 """
@@ -85,6 +88,14 @@ class SplitPlacementTest(unittest.TestCase):
             self.assertLess(text.find(f"include(cmake/{host}.cmake)"), split, f"{host} adds sources after the split")
         self.assertNotIn("target_sources(libobs-objects", text[split:], "a source added after the split stays unsplit")
 
+
+
+class ArchiveTest(unittest.TestCase):
+    def test_modules_are_static_archives_linked_whole(self):
+        text = (ROOT / "libobs" / "cmake" / "modules.cmake").read_text(encoding="utf-8")
+        self.assertRegex(text, r"add_library\(\$\{_target\} STATIC ", "a module is not a static archive (#3261)")
+        self.assertIn('"$<LINK_LIBRARY:WHOLE_ARCHIVE,${_target}>"', text, "a module archive is not linked whole")
+        self.assertIn('_type STREQUAL "OBJECT_LIBRARY"', text, "a module would absorb a linked object library's objects")
 
 if __name__ == "__main__":
     unittest.main()
