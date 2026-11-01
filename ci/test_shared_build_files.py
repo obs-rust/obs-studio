@@ -19,7 +19,9 @@ so the set only shrinks.
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -41,7 +43,16 @@ PER_UNIT = re.compile(
 
 
 def tracked_files() -> list[str]:
-    out = subprocess.run(["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    """Tracked files plus new ones not yet added: `./lint` runs before the
+    commit, and a new crate's src/platform/mod.rs passed it untracked, then
+    failed in CI (#3420)."""
+    out = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
     return [line for line in out.splitlines() if line]
 
 
@@ -75,6 +86,17 @@ class SharedBuildFilesTest(unittest.TestCase):
             "These files start every platform lane (ci/ci_scope.py is_shared). Move each into a per-OS "
             "file or a per-unit fragment (#3232), or add it to ci/shared-build-files.txt with a reason.",
         )
+
+    def test_untracked_files_are_listed(self):
+        probe = ROOT / "rust" / f"obs-zz-probe-{os.getpid()}" / "src" / "platform" / "mod.rs"
+        probe.parent.mkdir(parents=True)
+        try:
+            probe.touch()
+            rel = probe.relative_to(ROOT).as_posix()
+            self.assertIn(rel, tracked_files())
+            self.assertIn(rel, shared_now(tracked_files()))
+        finally:
+            shutil.rmtree(probe.parents[2])
 
     def test_no_stale_entry(self):
         stale = sorted(listed() - shared_now(tracked_files()))
