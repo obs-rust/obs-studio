@@ -4,7 +4,6 @@
     "core",
     "core-output",
     "core-source",
-    "module-load-rules-skip",
     "null-audio",
     "util-cf"
   ],

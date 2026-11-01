@@ -340,8 +340,39 @@ pub fn core_loaded(fail_count: usize) -> bool {
 
 /// Same contract as C `obs_module_load_rules_skip_step`: the next read after
 /// `step` answered `value` for a module of `module_type`, or its route.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+///
+/// The type decides which reads happen at all: the disabled list only for a
+/// type that is not core, the core module list only for a legacy plugin.
+/// Kept as the C has it, characterized and not endorsed (#3409): the safe
+/// list does not look at the type, so a core module left out of a safe-mode
+/// list is disabled, although the disabled list never disables one.
+#[must_use]
 pub fn skip_step(step: Skip, module_type: u32, value: bool) -> Skip {
-    let _ = (step, module_type, value);
-    todo!()
+    match step {
+        Skip::Start => Skip::Plugin,
+        Skip::Plugin if value => Skip::Safe,
+        Skip::Plugin => Skip::NotPlugin,
+        Skip::Safe if !value => Skip::DisableSafe,
+        Skip::Safe if is_core(module_type) => Skip::Loaded,
+        Skip::Safe => Skip::Disabled,
+        Skip::Disabled if value => Skip::Disable,
+        // A necessary check until legacy plugin loading is removed: portable
+        // installs may still keep the old core modules in `obs-plugins`.
+        Skip::Disabled if is_legacy(module_type) => Skip::CoreName,
+        Skip::Disabled => Skip::Loaded,
+        Skip::CoreName if value => Skip::LegacyCore,
+        Skip::CoreName => Skip::Loaded,
+        Skip::Loaded if !value => Skip::Load,
+        Skip::Loaded if is_core(module_type) => Skip::LoadedCore,
+        Skip::Loaded if is_legacy(module_type) => Skip::LoadedLegacy,
+        Skip::Loaded => Skip::LoadedPlugin,
+        Skip::NotPlugin
+        | Skip::DisableSafe
+        | Skip::Disable
+        | Skip::LegacyCore
+        | Skip::LoadedCore
+        | Skip::LoadedLegacy
+        | Skip::LoadedPlugin
+        | Skip::Load => step,
+    }
 }

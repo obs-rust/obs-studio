@@ -8,14 +8,33 @@
 //! shims stay hidden (`libobs/cmake/rust-hidden.d`).
 //!
 //! Codes are `int`, module types, states and route bits `uint32_t`, list
-//! lengths and failure counts `size_t`. The C returns
-//! `enum obs_module_load_rules_list`: a 32-bit integer on every target libobs
-//! builds for (`unsigned int` with GCC and Clang, `int` with MSVC), returned
-//! as a `u32` here.
+//! lengths and failure counts `size_t`. The C takes and returns
+//! `enum obs_module_load_rules_list` and `enum obs_module_load_rules_skip`:
+//! 32-bit integers on every target libobs builds for (`unsigned int` with GCC
+//! and Clang, `int` with MSVC), passed as `u32` here.
 
 use core::ffi::c_int;
 
-use crate::module_load_rules;
+use crate::module_load_rules::{self, Skip};
+
+/// `enum obs_module_load_rules_skip`, in the C's order: each value is its
+/// index.
+const SKIP_STEPS: [Skip; 14] = [
+    Skip::Start,
+    Skip::Plugin,
+    Skip::Safe,
+    Skip::Disabled,
+    Skip::CoreName,
+    Skip::Loaded,
+    Skip::NotPlugin,
+    Skip::DisableSafe,
+    Skip::Disable,
+    Skip::LegacyCore,
+    Skip::LoadedCore,
+    Skip::LoadedLegacy,
+    Skip::LoadedPlugin,
+    Skip::Load,
+];
 
 /// Same contract as C `obs_module_load_rules_arg_missing`.
 #[unsafe(no_mangle)]
@@ -117,4 +136,25 @@ pub extern "C" fn obs_module_load_rules_count_failure(has_fail_info: bool) -> bo
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_module_load_rules_core_loaded(fail_count: usize) -> bool {
     module_load_rules::core_loaded(fail_count)
+}
+
+/// Same contract as C `obs_module_load_rules_skip_step`.
+///
+/// A value outside the enum comes back unchanged, as the C's switch, with no
+/// case for it, returns it.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_module_load_rules_skip_step(step: u32, module_type: u32, value: bool) -> u32 {
+    let Some(skip) = usize::try_from(step)
+        .ok()
+        .and_then(|i| SKIP_STEPS.get(i))
+        .copied()
+    else {
+        return step;
+    };
+    let next = module_load_rules::skip_step(skip, module_type, value);
+    SKIP_STEPS
+        .iter()
+        .position(|&s| s == next)
+        .and_then(|i| u32::try_from(i).ok())
+        .unwrap_or(step)
 }

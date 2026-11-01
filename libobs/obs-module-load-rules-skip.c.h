@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-module-load-rules-skip.pch.h"
+#include "libobs/build/libobs-ported-module-load-rules.pch.h"
 
 /* The skip ladder of load_all_callback() in obs-module.c: the checks it
  * makes before it opens a module, one read at a time. Pure: no libobs

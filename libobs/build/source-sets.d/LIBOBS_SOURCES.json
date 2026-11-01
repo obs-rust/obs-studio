@@ -194,6 +194,5 @@
   "build/libobs.core-source+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
-  "build/libobs.media+.h.c",
-  "build/libobs.module-load-rules-skip+.h.c"
+  "build/libobs.media+.h.c"
 ]
