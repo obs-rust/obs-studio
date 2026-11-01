@@ -35,6 +35,26 @@ OBSBasicVCamConfig::OBSBasicVCamConfig(const VCamConfig &_config, bool _vcamActi
 	connect(ui->audioEnabled, &QCheckBox::toggled, this, &OBSBasicVCamConfig::AudioChanged);
 	connect(ui->audioTrack, &QComboBox::currentIndexChanged, this, &OBSBasicVCamConfig::AudioChanged);
 
+	/* An output that renders to a device lists them (Windows, #3183). */
+	bool hasDevices = false;
+	if (obs_properties_t *props = obs_get_output_properties(VIRTUAL_CAM_ID)) {
+		if (obs_property_t *p = obs_properties_get(props, "audio_device")) {
+			for (size_t i = 0; i < obs_property_list_item_count(p); i++) {
+				ui->audioDevice->addItem(QT_UTF8(obs_property_list_item_name(p, i)),
+							 QT_UTF8(obs_property_list_item_string(p, i)));
+			}
+			hasDevices = true;
+		}
+		obs_properties_destroy(props);
+	}
+	int saved = ui->audioDevice->findData(QT_UTF8(config.audio.device.c_str()));
+	ui->audioDevice->setCurrentIndex(saved >= 0 ? saved : 0);
+	ui->audioDeviceLabel->setVisible(hasAudio && hasDevices);
+	ui->audioDevice->setVisible(hasAudio && hasDevices);
+	ui->audioDevice->setEnabled(config.audio.enabled);
+	connect(ui->audioEnabled, &QCheckBox::toggled, ui->audioDevice, &QWidget::setEnabled);
+	connect(ui->audioDevice, &QComboBox::currentIndexChanged, this, &OBSBasicVCamConfig::AudioChanged);
+
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &OBSBasicVCamConfig::UpdateConfig);
 }
 
@@ -46,9 +66,11 @@ void OBSBasicVCamConfig::AudioChanged()
 		return;
 	}
 
-	VCamAudioConfig chosen{ui->audioEnabled->isChecked(), ui->audioTrack->currentData().toInt()};
+	VCamAudioConfig chosen{ui->audioEnabled->isChecked(), ui->audioTrack->currentData().toInt(),
+			       ui->audioDevice->currentData().toString().toStdString()};
 	audioChanged = chosen.enabled != config.audio.enabled ||
-		       (chosen.enabled && chosen.track != VCamAudioTrackFromSaved(config.audio.track));
+		       (chosen.enabled && (chosen.track != VCamAudioTrackFromSaved(config.audio.track) ||
+					   chosen.device != config.audio.device));
 	ui->warningLabel->setVisible(requireRestart || audioChanged);
 }
 
@@ -147,6 +169,9 @@ void OBSBasicVCamConfig::UpdateConfig()
 	config.type = type;
 	config.audio.enabled = ui->audioEnabled->isChecked();
 	config.audio.track = ui->audioTrack->currentData().toInt();
+	if (ui->audioDevice->count() > 0) {
+		config.audio.device = ui->audioDevice->currentData().toString().toStdString();
+	}
 
 	if (requireRestart || audioChanged) {
 		emit AcceptedAndRestart(config);

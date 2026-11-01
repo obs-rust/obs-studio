@@ -52,6 +52,16 @@
     <widget class="QComboBox" name="audioTrack"/>
    </item>
    <item>
+    <widget class="QLabel" name="audioDeviceLabel">
+     <property name="text">
+      <string>Basic.VCam.AudioDevice</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="audioDevice"/>
+   </item>
+   <item>
     <widget class="QLabel" name="warningLabel">
      <property name="visible">
       <bool>false</bool>

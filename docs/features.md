@@ -822,7 +822,8 @@ area.
 - The Windows Virtual Camera also sends the chosen audio track to a virtual
   audio cable (VB-Audio "CABLE Input" or "VoiceMeeter Input"), so a meeting
   app that picks the cable's output as its microphone gets OBS's sound; with
-  no cable installed it runs video-only and says so. *Windows*, 2026-10-31.
+  no cable installed it runs video-only and says so. The Virtual Camera
+  dialog picks the device (Automatic chooses the cable). *Windows*, 2026-10-31.
   Issue [#3183](https://github.com/obs-rust/obs-studio/issues/3183).
 - Starting or stopping the Linux Virtual Camera no longer freezes OBS when
   the sound server stops answering: each `pactl` call for the OBS Virtual
