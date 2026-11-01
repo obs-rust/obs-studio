@@ -2745,3 +2745,13 @@ area.
   [#3317](https://github.com/obs-rust/obs-studio/issues/3317),
   [#3312](https://github.com/obs-rust/obs-studio/issues/3312), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- The MCP server can put sources on screen: `scene_item_add`,
+  `scene_items_list` (item id, source, visibility, transform) and an optional
+  `scene`/`position` on `source_create`; `scene_item_set_visible` and
+  `scene_item_set_transform` take the listed `item` id. The first scene made
+  while no program scene is set becomes the program scene, and `screenshot`
+  adds a `{width, height, source}` text item and documents its alpha channel.
+  *All platforms*, 2026-10-31. Issues
+  [#3338](https://github.com/obs-rust/obs-studio/issues/3338),
+  [#3339](https://github.com/obs-rust/obs-studio/issues/3339), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

@@ -160,27 +160,115 @@ impl Source {
         }
     }
 
-    /// Runs `f` on the scene item for `child` of this scene.
+    /// The scene behind this source, or an error for a non-scene.
+    fn scene_ptr(&self) -> Result<NonNull<sys::obs_scene_t>, String> {
+        // SAFETY: the source is live; the result is null for a non-scene.
+        NonNull::new(unsafe { sys::obs_scene_from_source(self.0.as_ptr()) })
+            .ok_or_else(|| format!("'{}' is not a scene", self.name()))
+    }
+
+    /// Runs `f` on the scene item named by `item` in this scene.
     ///
     /// The item is borrowed from the scene, so it is only valid inside `f`.
-    pub fn with_item<T>(&self, child: &str, f: impl FnOnce(&Item<'_>) -> T) -> Result<T, String> {
-        let child_c = c_string(child, "source name")?;
-        // SAFETY: the source is live; `obs_scene_from_source` returns null for
-        // a non-scene and `obs_scene_find_source` returns a borrowed item or null.
-        let item = unsafe {
-            let scene = sys::obs_scene_from_source(self.0.as_ptr());
-            if scene.is_null() {
-                return Err(format!("'{}' is not a scene", self.name()));
+    pub fn with_item<T>(
+        &self,
+        item: &ItemKey<'_>,
+        f: impl FnOnce(&Item<'_>) -> T,
+    ) -> Result<T, String> {
+        let scene = self.scene_ptr()?;
+        // SAFETY: the scene is live; both lookups return a borrowed item or null.
+        let (found, what) = unsafe {
+            match item {
+                ItemKey::Source(child) => (
+                    sys::obs_scene_find_source(
+                        scene.as_ptr(),
+                        c_string(child, "source name")?.as_ptr(),
+                    ),
+                    format!("'{child}'"),
+                ),
+                ItemKey::Id(id) => (
+                    sys::obs_scene_find_sceneitem_by_id(scene.as_ptr(), *id),
+                    format!("item {id}"),
+                ),
             }
-            sys::obs_scene_find_source(scene, child_c.as_ptr())
         };
-        let item = NonNull::new(item)
-            .ok_or_else(|| format!("'{child}' is not in scene '{}'", self.name()))?;
-        Ok(f(&Item {
-            ptr: item,
-            _scene: std::marker::PhantomData,
-        }))
+        let found = NonNull::new(found)
+            .ok_or_else(|| format!("{what} is not in scene '{}'", self.name()))?;
+        Ok(f(&Item::new(found)))
     }
+
+    /// Adds an item for `child` (a source called by name) to this scene.
+    pub fn add_item(&self, child: &str, position: Option<(f32, f32)>) -> Result<ItemState, String> {
+        let scene = self.scene_ptr()?;
+        let child = Self::by_name(child).ok_or_else(|| format!("no source named '{child}'"))?;
+        // SAFETY: the scene and the child are live; the new item is borrowed
+        // from the scene (the scene keeps its own reference to the child) or null.
+        let item = NonNull::new(unsafe { sys::obs_scene_add(scene.as_ptr(), child.0.as_ptr()) })
+            .ok_or_else(|| {
+                format!(
+                    "cannot add '{}' to scene '{}' (a scene cannot contain itself)",
+                    child.name(),
+                    self.name()
+                )
+            })?;
+        let item = Item::new(item);
+        if let Some(pos) = position {
+            let (_, scale, rot) = item.transform();
+            item.set_transform(pos, scale, rot);
+        }
+        Ok(item.state())
+    }
+
+    /// The items of this scene, bottom to top.
+    pub fn items(&self) -> Result<Vec<ItemState>, String> {
+        let scene = self.scene_ptr()?;
+        let mut list: Vec<ItemState> = Vec::new();
+        // SAFETY: `collect_item` only touches the `Vec` passed as `param`,
+        // which outlives the call; the scene is live.
+        unsafe { sys::obs_scene_enum_items(scene.as_ptr(), collect_item, (&raw mut list).cast()) };
+        Ok(list)
+    }
+}
+
+/// How `Source::with_item` finds an item.
+pub enum ItemKey<'a> {
+    /// The first item showing the source of this name.
+    Source(&'a str),
+    /// The item with this id.
+    Id(i64),
+}
+
+/// A snapshot of a scene item.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ItemState {
+    /// The item id, unique within its scene.
+    pub id: i64,
+    /// Name of the source shown.
+    pub source: String,
+    /// Whether it is visible.
+    pub visible: bool,
+    /// Position `(x, y)`.
+    pub position: (f32, f32),
+    /// Scale `(x, y)`.
+    pub scale: (f32, f32),
+    /// Rotation in degrees.
+    pub rotation: f32,
+}
+
+/// Collects a snapshot of each item `obs_scene_enum_items` visits.
+unsafe extern "C" fn collect_item(
+    _scene: *mut sys::obs_scene_t,
+    item: *mut sys::obs_sceneitem_t,
+    param: *mut c_void,
+) -> bool {
+    // SAFETY: `param` is the `Vec` passed to the enumerator and `item` is
+    // valid for the callback.
+    unsafe {
+        if let Some(item) = NonNull::new(item) {
+            (*param.cast::<Vec<ItemState>>()).push(Item::new(item).state());
+        }
+    }
+    true
 }
 
 impl Drop for Source {
@@ -196,7 +284,37 @@ pub struct Item<'a> {
     _scene: std::marker::PhantomData<&'a Source>,
 }
 
-impl Item<'_> {
+impl<'a> Item<'a> {
+    fn new(ptr: NonNull<sys::obs_sceneitem_t>) -> Self {
+        Self {
+            ptr,
+            _scene: std::marker::PhantomData,
+        }
+    }
+
+    /// The item's id, source, visibility and transform.
+    pub fn state(&self) -> ItemState {
+        let (position, scale, rotation) = self.transform();
+        // SAFETY: the item is live for the borrow; its source is borrowed.
+        let (id, visible, source) = unsafe {
+            (
+                sys::obs_sceneitem_get_id(self.ptr.as_ptr()),
+                sys::obs_sceneitem_visible(self.ptr.as_ptr()),
+                text(sys::obs_source_get_name(sys::obs_sceneitem_get_source(
+                    self.ptr.as_ptr(),
+                ))),
+            )
+        };
+        ItemState {
+            id,
+            source,
+            visible,
+            position,
+            scale,
+            rotation,
+        }
+    }
+
     /// Shows or hides the item.
     pub fn set_visible(&self, visible: bool) {
         // SAFETY: the item is live for the borrow.

@@ -126,8 +126,8 @@ struct ScreenshotTool {
 }
 
 impl ScreenshotTool {
-    /// Captures and returns the base64 PNG.
-    fn base64_png(&self, arguments: &Value) -> Result<String, String> {
+    /// Captures; returns the base64 PNG, its size and the source captured.
+    fn capture(&self, arguments: &Value) -> Result<(String, Frame, Option<String>), String> {
         let source = match arguments.get("source") {
             None => None,
             Some(Value::String(s)) if !s.is_empty() => Some(s.as_str()),
@@ -136,7 +136,8 @@ impl ScreenshotTool {
         let width = dimension_arg(arguments, "width")?;
         let height = dimension_arg(arguments, "height")?;
         let frame = self.backend.capture(source, width, height)?;
-        Ok(STANDARD.encode(encode_png(&frame)?))
+        let png = STANDARD.encode(encode_png(&frame)?);
+        Ok((png, frame, source.map(str::to_owned)))
     }
 }
 
@@ -146,7 +147,11 @@ impl Tool for ScreenshotTool {
     }
 
     fn description(&self) -> &str {
-        "Capture a PNG screenshot of a source, or of the program output when no source is named."
+        "Capture a PNG screenshot of a source, or of the program output when no source is named. \
+         Returns the image plus a text item {width, height, source} (source is null for the \
+         program output). The PNG has an alpha channel (RGBA): pixels nothing was drawn on, such as an empty scene, \
+         are fully transparent, which a viewer may show as white. A source only appears in the \
+         program output once it is an item of the program scene."
     }
 
     fn input_schema(&self) -> Value {
@@ -162,14 +167,19 @@ impl Tool for ScreenshotTool {
     }
 
     fn call(&self, arguments: &Value) -> Result<String, String> {
-        self.base64_png(arguments)
+        self.capture(arguments).map(|(png, ..)| png)
     }
 
     fn call_content(&self, arguments: &Value) -> Result<Vec<Content>, String> {
-        Ok(vec![Content::Image {
-            data: self.base64_png(arguments)?,
-            mime_type: "image/png".to_owned(),
-        }])
+        let (data, frame, source) = self.capture(arguments)?;
+        let size = json!({ "width": frame.width, "height": frame.height, "source": source });
+        Ok(vec![
+            Content::Image {
+                data,
+                mime_type: "image/png".to_owned(),
+            },
+            Content::Text(size.to_string()),
+        ])
     }
 }
 

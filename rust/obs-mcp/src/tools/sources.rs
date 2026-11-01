@@ -1,5 +1,6 @@
 //! Source tools: `sources_list`, `source_create`, `source_set_settings`,
-//! `scene_item_set_visible` and `scene_item_set_transform` (#3286).
+//! `scene_item_add`, `scene_items_list`, `scene_item_set_visible` and
+//! `scene_item_set_transform` (#3286, #3338).
 //!
 //! The tools talk to OBS through [`SourceBackend`], so they are tested with a
 //! fake. Binding it to libobs is a follow-up (#3283).
@@ -17,6 +18,33 @@ pub struct SourceInfo {
     pub name: String,
     /// The source kind id, such as `color_source`.
     pub kind: String,
+}
+
+/// A scene item as listed by [`SourceBackend::items`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct ItemInfo {
+    /// The item id, unique within its scene.
+    pub id: i64,
+    /// Name of the source the item shows.
+    pub source: String,
+    /// Whether the item is visible.
+    pub visible: bool,
+    /// Position in canvas pixels, `(x, y)`.
+    pub position: (f64, f64),
+    /// Scale factors, `(x, y)`.
+    pub scale: (f64, f64),
+    /// Rotation in degrees.
+    pub rotation: f64,
+}
+
+/// Names a scene item: by the id `scene_items_list` returns, or by the name
+/// of its source (the first item of that source).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ItemRef {
+    /// The item id.
+    Id(i64),
+    /// The name of the item's source.
+    Source(String),
 }
 
 /// A partial scene item transform: only the `Some` fields change.
@@ -49,13 +77,31 @@ pub trait SourceBackend {
     ///
     /// Returns a message when no such source exists.
     fn set_settings(&self, name: &str, settings: &Value) -> Result<(), String>;
-    /// Shows or hides the item for `source` in `scene`.
+    /// Adds an item for the existing `source` to `scene`, at `position` when
+    /// given, and returns it.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when the scene or the source does not exist.
+    fn add_item(
+        &self,
+        scene: &str,
+        source: &str,
+        position: Option<(f64, f64)>,
+    ) -> Result<ItemInfo, String>;
+    /// The items of `scene`, bottom to top.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when the scene does not exist.
+    fn items(&self, scene: &str) -> Result<Vec<ItemInfo>, String>;
+    /// Shows or hides `item` in `scene`.
     ///
     /// # Errors
     ///
     /// Returns a message when the scene or the item does not exist.
-    fn set_item_visible(&self, scene: &str, source: &str, visible: bool) -> Result<(), String>;
-    /// Applies `transform` to the item for `source` in `scene`.
+    fn set_item_visible(&self, scene: &str, item: &ItemRef, visible: bool) -> Result<(), String>;
+    /// Applies `transform` to `item` in `scene`.
     ///
     /// # Errors
     ///
@@ -63,7 +109,7 @@ pub trait SourceBackend {
     fn set_item_transform(
         &self,
         scene: &str,
-        source: &str,
+        item: &ItemRef,
         transform: &Transform,
     ) -> Result<(), String>;
 }
@@ -74,6 +120,8 @@ enum Op {
     List,
     Create,
     SetSettings,
+    ItemAdd,
+    ItemsList,
     ItemSetVisible,
     ItemSetTransform,
 }
@@ -118,6 +166,46 @@ fn pair_arg(arguments: &Value, key: &str) -> Result<Option<(f64, f64)>, String> 
     Ok(Some((num("x")?, num("y")?)))
 }
 
+/// The item a tool names: `item` (an id) or `source`, exactly one of them.
+fn item_arg(arguments: &Value) -> Result<ItemRef, String> {
+    match (arguments.get("item"), arguments.get("source")) {
+        (Some(_), Some(_)) => Err("give `item` or `source`, not both".into()),
+        (Some(id), None) => id
+            .as_i64()
+            .map(ItemRef::Id)
+            .ok_or_else(|| "argument `item` must be an integer item id".into()),
+        (None, Some(_)) => str_arg(arguments, "source").map(|s| ItemRef::Source(s.to_owned())),
+        (None, None) => Err("give `item` (an id from scene_items_list) or `source`".into()),
+    }
+}
+
+/// The reply of an item tool: the scene, the item as it was named, and `extra`.
+fn item_reply(scene: &str, item: &ItemRef, extra: Value) -> Value {
+    let mut out = Map::new();
+    out.insert("scene".into(), scene.into());
+    match item {
+        ItemRef::Id(id) => out.insert("item".into(), (*id).into()),
+        ItemRef::Source(source) => out.insert("source".into(), source.as_str().into()),
+    };
+    if let Value::Object(extra) = extra {
+        out.extend(extra);
+    }
+    Value::Object(out)
+}
+
+/// The JSON form of a listed item.
+fn item_json(item: &ItemInfo) -> Value {
+    let pair = |(x, y): (f64, f64)| json!({ "x": x, "y": y });
+    json!({
+        "item": item.id,
+        "source": item.source,
+        "visible": item.visible,
+        "position": pair(item.position),
+        "scale": pair(item.scale),
+        "rotation": item.rotation,
+    })
+}
+
 /// Schema for an `{x, y}` pair.
 fn pair_schema(description: &str) -> Value {
     json!({
@@ -135,6 +223,8 @@ impl Tool for SourceTool {
             Op::List => "sources_list",
             Op::Create => "source_create",
             Op::SetSettings => "source_set_settings",
+            Op::ItemAdd => "scene_item_add",
+            Op::ItemsList => "scene_items_list",
             Op::ItemSetVisible => "scene_item_set_visible",
             Op::ItemSetTransform => "scene_item_set_transform",
         }
@@ -143,17 +233,35 @@ impl Tool for SourceTool {
     fn description(&self) -> &str {
         match self.op {
             Op::List => "List all sources with their names and kind ids.",
-            Op::Create => "Create a source of the given kind with a name and settings.",
+            Op::Create => {
+                "Create a source of the given kind with a name and settings. Give `scene` \
+                 (and optionally `position`) to also add it to that scene as an item."
+            }
             Op::SetSettings => "Merge settings into an existing source's settings.",
-            Op::ItemSetVisible => "Show or hide a source's item in a scene.",
+            Op::ItemAdd => {
+                "Add an existing source to a scene as a scene item, optionally at a position. \
+                 A source only shows in the program output once it is an item of the program scene."
+            }
+            Op::ItemsList => {
+                "List the items of a scene (bottom to top) with their id, source name, \
+                 visibility, position, scale and rotation."
+            }
+            Op::ItemSetVisible => {
+                "Show or hide a scene item, named by `item` (id from scene_items_list) or `source`."
+            }
             Op::ItemSetTransform => {
-                "Set the position, scale and/or rotation of a source's item in a scene."
+                "Set the position, scale and/or rotation of a scene item, named by `item` \
+                 (id from scene_items_list) or `source`."
             }
         }
     }
 
     fn input_schema(&self) -> Value {
         let name = json!({ "type": "string", "minLength": 1 });
+        let item_id = json!({
+            "type": "integer",
+            "description": "Item id from scene_items_list; give this or `source`.",
+        });
         match self.op {
             Op::List => json!({
                 "type": "object",
@@ -166,6 +274,8 @@ impl Tool for SourceTool {
                     "kind": { "type": "string", "minLength": 1, "description": "Source kind id." },
                     "name": { "type": "string", "minLength": 1, "description": "Source name." },
                     "settings": { "type": "object", "description": "Kind-specific settings." },
+                    "scene": { "type": "string", "minLength": 1, "description": "Scene to add the new source to as an item." },
+                    "position": pair_schema("Item position in canvas pixels; needs `scene`."),
                 },
                 "required": ["kind", "name", "settings"],
                 "additionalProperties": false,
@@ -179,26 +289,44 @@ impl Tool for SourceTool {
                 "required": ["name", "settings"],
                 "additionalProperties": false,
             }),
-            Op::ItemSetVisible => json!({
+            Op::ItemAdd => json!({
                 "type": "object",
                 "properties": {
                     "scene": name,
                     "source": name,
+                    "position": pair_schema("Item position in canvas pixels."),
+                },
+                "required": ["scene", "source"],
+                "additionalProperties": false,
+            }),
+            Op::ItemsList => json!({
+                "type": "object",
+                "properties": { "scene": name },
+                "required": ["scene"],
+                "additionalProperties": false,
+            }),
+            Op::ItemSetVisible => json!({
+                "type": "object",
+                "properties": {
+                    "scene": name,
+                    "item": item_id,
+                    "source": name,
                     "visible": { "type": "boolean" },
                 },
-                "required": ["scene", "source", "visible"],
+                "required": ["scene", "visible"],
                 "additionalProperties": false,
             }),
             Op::ItemSetTransform => json!({
                 "type": "object",
                 "properties": {
                     "scene": name,
+                    "item": item_id,
                     "source": name,
                     "position": pair_schema("Position in canvas pixels."),
                     "scale": pair_schema("Scale factors."),
                     "rotation": { "type": "number", "description": "Rotation in degrees." },
                 },
-                "required": ["scene", "source"],
+                "required": ["scene"],
                 "additionalProperties": false,
             }),
         }
@@ -219,8 +347,26 @@ impl Tool for SourceTool {
                 let kind = str_arg(arguments, "kind")?;
                 let name = str_arg(arguments, "name")?;
                 let settings = object_arg(arguments, "settings")?;
+                let scene = match arguments.get("scene") {
+                    None => None,
+                    Some(_) => Some(str_arg(arguments, "scene")?),
+                };
+                let position = pair_arg(arguments, "position")?;
+                if scene.is_none() && position.is_some() {
+                    return Err("`position` needs `scene`, the scene to add the source to".into());
+                }
                 self.backend.create(kind, name, settings)?;
-                json!({ "name": name, "kind": kind })
+                let mut out = json!({ "name": name, "kind": kind });
+                if let Some(scene) = scene {
+                    let item = self.backend.add_item(scene, name, position).map_err(|e| {
+                        format!(
+                            "created source '{name}' but could not add it to scene '{scene}': {e}"
+                        )
+                    })?;
+                    out["scene"] = scene.into();
+                    out["item"] = item.id.into();
+                }
+                out
             }
             Op::SetSettings => {
                 let name = str_arg(arguments, "name")?;
@@ -228,19 +374,33 @@ impl Tool for SourceTool {
                 self.backend.set_settings(name, settings)?;
                 json!({ "name": name })
             }
-            Op::ItemSetVisible => {
+            Op::ItemAdd => {
                 let scene = str_arg(arguments, "scene")?;
                 let source = str_arg(arguments, "source")?;
+                let position = pair_arg(arguments, "position")?;
+                let item = self.backend.add_item(scene, source, position)?;
+                let mut out = item_json(&item);
+                out["scene"] = scene.into();
+                out
+            }
+            Op::ItemsList => {
+                let scene = str_arg(arguments, "scene")?;
+                let items: Vec<Value> = self.backend.items(scene)?.iter().map(item_json).collect();
+                json!({ "scene": scene, "items": items })
+            }
+            Op::ItemSetVisible => {
+                let scene = str_arg(arguments, "scene")?;
+                let item = item_arg(arguments)?;
                 let visible = arguments
                     .get("visible")
                     .and_then(Value::as_bool)
                     .ok_or("argument `visible` must be a boolean")?;
-                self.backend.set_item_visible(scene, source, visible)?;
-                json!({ "scene": scene, "source": source, "visible": visible })
+                self.backend.set_item_visible(scene, &item, visible)?;
+                item_reply(scene, &item, json!({ "visible": visible }))
             }
             Op::ItemSetTransform => {
                 let scene = str_arg(arguments, "scene")?;
-                let source = str_arg(arguments, "source")?;
+                let item = item_arg(arguments)?;
                 let rotation = match arguments.get("rotation") {
                     None => None,
                     Some(v) => Some(
@@ -257,23 +417,22 @@ impl Tool for SourceTool {
                 if transform == Transform::default() {
                     return Err("give at least one of `position`, `scale` or `rotation`".into());
                 }
-                self.backend.set_item_transform(scene, source, &transform)?;
-                let mut out = Map::new();
-                out.insert("scene".into(), scene.into());
-                out.insert("source".into(), source.into());
-                json!(out)
+                self.backend.set_item_transform(scene, &item, &transform)?;
+                item_reply(scene, &item, json!({}))
             }
         };
         Ok(result.to_string())
     }
 }
 
-/// Registers the five source tools on `registry`, backed by `backend`.
+/// Registers the seven source tools on `registry`, backed by `backend`.
 pub fn register(registry: &mut ToolRegistry, backend: &Rc<dyn SourceBackend>) {
     for op in [
         Op::List,
         Op::Create,
         Op::SetSettings,
+        Op::ItemAdd,
+        Op::ItemsList,
         Op::ItemSetVisible,
         Op::ItemSetTransform,
     ] {

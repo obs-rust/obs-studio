@@ -9,7 +9,7 @@ use obs_mcp::resources::stats::{Stats, StatsBackend};
 use obs_mcp::resources::{scenes as scenes_resource, stats as stats_resource};
 use obs_mcp::server::Server;
 use obs_mcp::tools::scenes::SceneBackend;
-use obs_mcp::tools::sources::{SourceBackend, SourceInfo, Transform};
+use obs_mcp::tools::sources::{ItemInfo, ItemRef, SourceBackend, SourceInfo, Transform};
 use serde_json::{Value, json};
 
 struct FakeStats {
@@ -64,10 +64,16 @@ impl SourceBackend for FakeSources {
     fn set_settings(&self, _: &str, _: &Value) -> Result<(), String> {
         Err("unused".into())
     }
-    fn set_item_visible(&self, _: &str, _: &str, _: bool) -> Result<(), String> {
+    fn add_item(&self, _: &str, _: &str, _: Option<(f64, f64)>) -> Result<ItemInfo, String> {
         Err("unused".into())
     }
-    fn set_item_transform(&self, _: &str, _: &str, _: &Transform) -> Result<(), String> {
+    fn items(&self, _: &str) -> Result<Vec<ItemInfo>, String> {
+        Err("unused".into())
+    }
+    fn set_item_visible(&self, _: &str, _: &ItemRef, _: bool) -> Result<(), String> {
+        Err("unused".into())
+    }
+    fn set_item_transform(&self, _: &str, _: &ItemRef, _: &Transform) -> Result<(), String> {
         Err("unused".into())
     }
 }
