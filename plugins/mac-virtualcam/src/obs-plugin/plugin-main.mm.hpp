@@ -682,3 +682,7 @@ bool obs_module_load(void)
 
 	return true;
 }
+
+#undef VMIC_DRIVER_PATH
+#undef VMIC_RATE
+#undef VMIC_CHANNELS
