@@ -190,6 +190,14 @@ pub trait InterleaveOutput {
     fn free_detached(&mut self, old: Self::Detached);
     /// `da_free` of the queue.
     fn free_queue(&mut self);
+    /// Whether the queue is known to be in order (#3209): `None` when it is
+    /// not known, and the C's front scan runs. An implementation keeps the
+    /// answer across its own queue changes and forgets it otherwise.
+    fn queue_sorted(&self) -> Option<bool> {
+        None
+    }
+    /// Records whether the queue is in order.
+    fn set_queue_sorted(&mut self, _sorted: bool) {}
 
     /// `encoder_packet_times[track]`.
     fn packet_times(&self, track: usize) -> &[Self::Time];
@@ -452,6 +460,54 @@ pub fn insert_position<P: PacketView>(packets: &[P], out: &impl PacketView) -> u
         }
     }
     packets.len()
+}
+
+/// [`insert_position`] found from the back, for a queue in order (#3209).
+/// On such a queue both scans return the same index, because whether `out`
+/// goes before a packet only turns from false to true along it; a new
+/// packet is usually among the newest, so this reads a few packets.
+#[must_use]
+pub fn insert_position_from_tail<P: PacketView>(packets: &[P], out: &impl PacketView) -> usize {
+    let mut idx = packets.len();
+    while idx > 0 && goes_before(out, &packets[idx - 1]) {
+        idx -= 1;
+    }
+    idx
+}
+
+/// Whether [`insert_position`] puts `out` before `cur`.
+fn goes_before(out: &impl PacketView, cur: &impl PacketView) -> bool {
+    let same = out.dts_usec() == cur.dts_usec();
+    if same && out.kind() == Kind::Video && cur.kind() == Kind::Video && out.track() > cur.track() {
+        return false;
+    }
+    (same && out.kind() == Kind::Video) || out.dts_usec() < cur.dts_usec()
+}
+
+/// The order the queue is in when [`insert_position`] keeps it so: by
+/// `dts_usec`, then video by track, then audio.
+fn order_key(packet: &impl PacketView) -> (i64, usize) {
+    let rank = match packet.kind() {
+        Kind::Video => packet.track(),
+        Kind::Audio => usize::MAX,
+    };
+    (packet.dts_usec(), rank)
+}
+
+/// Whether the queue is in order.
+#[must_use]
+pub fn queue_in_order<P: PacketView>(packets: &[P]) -> bool {
+    packets
+        .windows(2)
+        .all(|w| order_key(&w[0]) <= order_key(&w[1]))
+}
+
+/// Whether the queue stays in order with `out` at `idx`: its two
+/// neighbours, the check the #3209 decision asks for.
+fn in_order_at<P: PacketView>(packets: &[P], idx: usize, out: &impl PacketView) -> bool {
+    let key = order_key(out);
+    (idx == 0 || order_key(&packets[idx - 1]) <= key)
+        && packets.get(idx).is_none_or(|next| key <= order_key(next))
 }
 
 /// `apply_interleaved_packet_offset()` on the packet: `dts` and `pts` less
@@ -895,6 +951,9 @@ pub fn initialize_interleaved_packets<O: InterleaveOutput>(o: &mut O) -> bool {
         let offset = interleaved_packet_offset(o, &o.packets()[i]);
         apply_offset(&mut o.packets_mut()[i], offset);
     }
+    // Offsets differ per track, so the queue may be out of order now
+    // (#3209); resort_interleaved_packets rebuilds it.
+    o.set_queue_sorted(false);
 
     true
 }
@@ -902,8 +961,30 @@ pub fn initialize_interleaved_packets<O: InterleaveOutput>(o: &mut O) -> bool {
 /// `insert_interleaved_packet()`: inserts a copy of the packet at its
 /// [`insert_position`].
 pub fn insert_interleaved_packet<O: InterleaveOutput>(o: &mut O, packet: O::Packet) {
-    let idx = insert_position(o.packets(), &packet);
+    // #3209: the tail scan only on a queue known to be in order, where it
+    // returns the C's index; otherwise the C's front scan.
+    let packets = o.packets();
+    let known = if packets.is_empty() {
+        Some(true)
+    } else {
+        o.queue_sorted()
+    };
+    let (idx, sorted) = match known {
+        Some(true) => {
+            let idx = insert_position_from_tail(packets, &packet);
+            (idx, in_order_at(packets, idx, &packet))
+        }
+        Some(false) => (insert_position(packets, &packet), false),
+        None => {
+            let idx = insert_position(packets, &packet);
+            (
+                idx,
+                queue_in_order(packets) && in_order_at(packets, idx, &packet),
+            )
+        }
+    };
     o.insert_packet(idx, packet);
+    o.set_queue_sorted(sorted);
 }
 
 /// `resort_interleaved_packets()`: reinserts every packet into a new

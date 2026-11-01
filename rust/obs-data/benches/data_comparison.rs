@@ -220,5 +220,76 @@ fn json(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, set_get, source_defaults, defaults, json);
+/// One queued packet for the interleave bench (#3209).
+struct BenchPacket {
+    kind: obs_output::interleave::Kind,
+    dts_usec: i64,
+}
+
+impl obs_output::interleave::PacketView for BenchPacket {
+    fn kind(&self) -> obs_output::interleave::Kind {
+        self.kind
+    }
+    fn track(&self) -> usize {
+        0
+    }
+    fn dts(&self) -> i64 {
+        self.dts_usec
+    }
+    fn pts(&self) -> i64 {
+        self.dts_usec
+    }
+    fn dts_usec(&self) -> i64 {
+        self.dts_usec
+    }
+    fn keyframe(&self) -> bool {
+        false
+    }
+    fn timebase_num(&self) -> i32 {
+        1
+    }
+    fn timebase_den(&self) -> i32 {
+        1_000_000
+    }
+    fn encoder(&self) -> usize {
+        0
+    }
+}
+
+/// #3209: placing a new packet in a sorted 2000-packet interleave queue,
+/// the C's front scan against the tail scan the Rust uses on a queue known
+/// to be in order. The packet is a little older than the newest, as audio
+/// arriving behind video is.
+fn interleave_insert(c: &mut Criterion) {
+    use obs_output::interleave::{Kind, insert_position, insert_position_from_tail};
+    let queue: Vec<BenchPacket> = (0..2000)
+        .map(|i| BenchPacket {
+            kind: if i % 3 == 0 { Kind::Video } else { Kind::Audio },
+            dts_usec: i * 10,
+        })
+        .collect();
+    let packet = BenchPacket {
+        kind: Kind::Audio,
+        dts_usec: 19_975,
+    };
+    let mut group = c.benchmark_group("interleave_insert_2000");
+    group.bench_function("front_scan", |b| {
+        b.iter(|| insert_position(std::hint::black_box(&queue), std::hint::black_box(&packet)));
+    });
+    group.bench_function("tail_scan", |b| {
+        b.iter(|| {
+            insert_position_from_tail(std::hint::black_box(&queue), std::hint::black_box(&packet))
+        });
+    });
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    set_get,
+    source_defaults,
+    defaults,
+    json,
+    interleave_insert
+);
 criterion_main!(benches);
