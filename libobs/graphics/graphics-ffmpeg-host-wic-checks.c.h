@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics-ffmpeg-host-wic-checks.pch.h"
+#include "libobs/build/libobs-ported-image-wic-checks.pch.h"
 
 bool gs_image_host_fallback_refuses(const char *file, size_t len)
 {

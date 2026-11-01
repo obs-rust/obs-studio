@@ -1,5 +1,5 @@
 /* Precompiled header (BUILD.md) for the libobs unity group
- * libobs.graphics-ffmpeg-host-wic-checks: the file-name check and the
+ * libobs.ported-image-wic-checks: the ported file-name check and the
  * pixel-format pick of the image loader's Windows host.
  * graphics-ffmpeg-host-wic-checks.c needs their declarations
  * (graphics/graphics-ffmpeg-host-wic-checks.h, with stdbool.h and stddef.h)

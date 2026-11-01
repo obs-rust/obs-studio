@@ -180,19 +180,31 @@ pub enum WicKind {
 /// `gs_image_host_fallback_refuses()`: whether
 /// `gs_image_host_fallback_load()` refuses the file `name` (its bytes, no
 /// terminator) before it tries WIC.
+///
+/// The C tests `len <= 4 && astrcmpi(file + len - 4, ".jxr") != 0`, so only
+/// a name of exactly 4 bytes is compared with [`JXR_SUFFIX`], in any ASCII
+/// case (`astrcmpi()`'s `toupper()` in the C locale), and every longer name
+/// goes to WIC (characterized, not endorsed). A name shorter than 4 bytes,
+/// which the C compares from before its start, is refused: none can end in
+/// `.jxr` (the intentional difference).
 #[must_use]
-#[expect(clippy::todo, reason = "RED: the port's stub")]
 pub fn fallback_refuses(name: &[u8]) -> bool {
-    let _ = name;
-    todo!()
+    match name.len() {
+        0..4 => true,
+        4 => !name.eq_ignore_ascii_case(JXR_SUFFIX),
+        _ => false,
+    }
 }
 
 /// `gs_image_wic_kind()`: the kind for a frame whose pixel format is
 /// `GUID_WICPixelFormat64bppRGBAHalf` (`scrgb`) or
 /// `GUID_WICPixelFormat32bppBGR101010` (`pq10`).
+/// `pq10` wins when both are set, which two different GUIDs never are.
 #[must_use]
-#[expect(clippy::todo, reason = "RED: the port's stub")]
 pub fn wic_kind(scrgb: bool, pq10: bool) -> WicKind {
-    let _ = (scrgb, pq10);
-    todo!()
+    if scrgb || pq10 {
+        if pq10 { WicKind::Pq10 } else { WicKind::Copy }
+    } else {
+        WicKind::Unsupported
+    }
 }

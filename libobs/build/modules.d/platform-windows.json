@@ -4,7 +4,6 @@
     "windows",
     "windows-*",
     "graphics-ffmpeg-host-windows",
-    "graphics-ffmpeg-host-wic-checks",
     "obfuscate-windows"
   ],
   "depends": [
