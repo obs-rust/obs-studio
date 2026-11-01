@@ -16,6 +16,7 @@ mod image_pq_scrgb_parity;
 mod image_rgba64;
 mod image_rgba64_parity;
 mod image_route;
+mod image_route_parity;
 mod image_wic_checks;
 mod image_wic_checks_parity;
 mod immediate;
