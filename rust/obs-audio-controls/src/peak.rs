@@ -32,6 +32,14 @@ pub fn sample_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
 /// `get_true_peak()`: [`sample_peak`] plus the 5x oversampled points
 /// between the samples.
 pub fn true_peak(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
+    crate::platform::true_peak(prev, samples, frames)
+}
+
+/// The portable loop [`true_peak`] dispatches to (#3415); public for the
+/// bit-identity tests.
+#[doc(hidden)]
+#[inline(always)]
+pub fn true_peak_scalar(prev: [f32; 4], samples: &[f32], frames: usize) -> f32 {
     let mut work = prev;
     let mut peak = prev.map(f32::abs);
     let (groups, _) = samples[..frames / 4 * 4].as_chunks::<4>();

@@ -319,3 +319,17 @@ proptest! {
         check_peaks(previous, &samples);
     }
 }
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(256))]
+    /// The dispatched true peak (#3415) gives the scalar loop's bits.
+    #[test]
+    fn edge_dispatched_true_peak_matches_the_scalar_bits(
+        prev in prop::array::uniform4(any::<u32>().prop_map(f32::from_bits)),
+        samples in prop::collection::vec(prop_oneof![any::<u32>().prop_map(f32::from_bits), -4.0f32..4.0], 0..300),
+    ) {
+        let frames = samples.len();
+        prop_assert_eq!(peak::true_peak(prev, &samples, frames).to_bits(),
+                        peak::true_peak_scalar(prev, &samples, frames).to_bits());
+    }
+}
