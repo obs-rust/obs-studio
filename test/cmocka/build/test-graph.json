@@ -1661,7 +1661,7 @@
         "libobs"
       ],
       "watch_inputs": [
-        "libobs/build/libobs-graphics-ffmpeg-route.pch.h",
+        "libobs/build/libobs-ported-graphics-ffmpeg-route.pch.h",
         "libobs/graphics/graphics-ffmpeg-route.h"
       ],
       "libraries": [

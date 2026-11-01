@@ -1,8 +1,7 @@
 {
   "description": "libobs/media-io.",
   "groups": [
-    "media",
-    "graphics-ffmpeg-route"
+    "media"
   ],
   "depends": []
 }

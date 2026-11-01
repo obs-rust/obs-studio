@@ -1,5 +1,5 @@
 /* Precompiled header (BUILD.md) for the libobs unity group
- * libobs.graphics-ffmpeg-route: the pixel route of graphics-ffmpeg.c.
+ * libobs.ported-graphics-ffmpeg-route: the pixel route of graphics-ffmpeg.c.
  * graphics-ffmpeg-route.c needs its declarations
  * (graphics/graphics-ffmpeg-route.h, with stdbool.h, stddef.h and stdint.h)
  * and string.h for memcpy, not FFmpeg or the core, so the C oracle and the C

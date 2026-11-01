@@ -35,6 +35,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
@@ -172,24 +173,67 @@ pub struct Plan {
 /// format used" for a YUVJ format, #2334); any other format is itself.
 #[must_use]
 pub fn sws_format(pix_fmt: i32) -> (i32, bool) {
-    let _ = pix_fmt;
-    todo!()
+    match pix_fmt {
+        pix_fmt::YUVJ420P => (pix_fmt::YUV420P, true),
+        pix_fmt::YUVJ422P => (pix_fmt::YUV422P, true),
+        pix_fmt::YUVJ444P => (pix_fmt::YUV444P, true),
+        pix_fmt::YUVJ440P => (pix_fmt::YUV440P, true),
+        pix_fmt::YUVJ411P => (pix_fmt::YUV411P, true),
+        other => (other, false),
+    }
+}
+
+/// `ffmpeg_image_premultiply()`: what the rows and swscale run for
+/// `alpha_mode`.
+fn premultiply(alpha_mode: i32) -> Premultiply {
+    match alpha_mode {
+        alpha_mode::PREMULTIPLY_SRGB => Premultiply::Srgb,
+        alpha_mode::PREMULTIPLY => Premultiply::Linear,
+        _ => Premultiply::None,
+    }
 }
 
 /// `gs_ffmpeg_image_plan()`: the route of a frame of `pix_fmt` loaded for
 /// `alpha_mode`.
 #[must_use]
 pub fn plan(pix_fmt: i32, alpha_mode: i32) -> Plan {
-    let _ = (pix_fmt, alpha_mode);
-    todo!()
+    let (sws_format, full_range) = sws_format(pix_fmt);
+    let (route, premultiply, out_format) = match pix_fmt {
+        pix_fmt::BGR0 => (Route::Copy, Premultiply::None, pix_fmt),
+        pix_fmt::RGBA | pix_fmt::BGRA if alpha_mode == alpha_mode::STRAIGHT => {
+            (Route::Copy, Premultiply::None, pix_fmt)
+        }
+        pix_fmt::RGBA | pix_fmt::BGRA => (Route::PremultiplyRows, premultiply(alpha_mode), pix_fmt),
+        pix_fmt::RGBA64BE => (Route::Rgba64, Premultiply::None, pix_fmt::RGBA),
+        _ => (Route::Sws, premultiply(alpha_mode), pix_fmt::BGRA),
+    };
+    Plan {
+        route,
+        premultiply,
+        sws_format,
+        full_range,
+        out_format,
+    }
 }
 
 /// `gs_ffmpeg_image_color_format()` (`convert_format()`): the texture
 /// format of the output pixel format `pix_fmt`.
 #[must_use]
 pub fn color_format(pix_fmt: i32) -> i32 {
-    let _ = pix_fmt;
-    todo!()
+    match pix_fmt {
+        pix_fmt::RGBA => gs_format::RGBA,
+        pix_fmt::BGRA => gs_format::BGRA,
+        pix_fmt::RGBA64BE => gs_format::RGBA16,
+        // BGR0 is `GS_BGRX`, as is every format the C does not name.
+        _ => gs_format::BGRX,
+    }
+}
+
+/// The bytes of one output row and of each row's copy: `cx * 4` (as the C's
+/// `size_t`, wrapping) and the smaller of that and `src_linesize`.
+fn row_bytes(cx: usize, src_linesize: usize) -> (usize, usize) {
+    let row = cx.wrapping_mul(TEXEL_BYTES);
+    (row, row.min(src_linesize))
 }
 
 /// The source bytes [`copy_rows`] reads for a `cy`-row image: every line
@@ -197,14 +241,22 @@ pub fn color_format(pix_fmt: i32) -> i32 {
 /// rows, or no bytes in a row); `None` when the size overflows.
 #[must_use]
 pub fn copy_src_len(cx: usize, cy: usize, src_linesize: usize) -> Option<usize> {
-    let _ = (cx, cy, src_linesize);
-    todo!()
+    let (_, copied) = row_bytes(cx, src_linesize);
+    if cy == 0 || copied == 0 {
+        return Some(0);
+    }
+    cy.checked_sub(1)?
+        .checked_mul(src_linesize)?
+        .checked_add(copied)
 }
 
 /// `gs_ffmpeg_image_copy_rows()`: copies the `cy` rows of `src`,
 /// `src_linesize` bytes apart, into `dst`, `cx * 4` bytes apart: the
 /// smaller of the two line sizes from each row. Stops at the first row
 /// that does not fit in `src` or `dst`. Returns the rows copied.
+///
+/// The C copies a tight image (`src_linesize == cx * 4`) in one `memcpy`;
+/// that is the same bytes as row by row.
 pub fn copy_rows<D: DstByte>(
     dst: &mut [D],
     src: &[u8],
@@ -212,6 +264,30 @@ pub fn copy_rows<D: DstByte>(
     cy: usize,
     src_linesize: usize,
 ) -> usize {
-    let _ = (dst, src, cx, cy, src_linesize);
-    todo!()
+    let (row, copied) = row_bytes(cx, src_linesize);
+    if copied == 0 {
+        return 0;
+    }
+    let mut rows = 0;
+    while rows < cy {
+        let (Some(dst_at), Some(src_at)) = (rows.checked_mul(row), rows.checked_mul(src_linesize))
+        else {
+            break;
+        };
+        let (Some(to), Some(from)) = (
+            dst_at
+                .checked_add(copied)
+                .and_then(|end| dst.get_mut(dst_at..end)),
+            src_at
+                .checked_add(copied)
+                .and_then(|end| src.get(src_at..end)),
+        ) else {
+            break;
+        };
+        for (d, &s) in to.iter_mut().zip(from) {
+            d.put(s);
+        }
+        rows = rows.saturating_add(1);
+    }
+    rows
 }

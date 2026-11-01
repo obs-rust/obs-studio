@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics-ffmpeg-route.pch.h"
+#include "libobs/build/libobs-ported-graphics-ffmpeg-route.pch.h"
 
 /* The JPEG decoders output the deprecated full-range YUVJ formats. swscale
  * still takes them, but logs "deprecated pixel format used" for every
