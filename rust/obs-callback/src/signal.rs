@@ -480,15 +480,19 @@ impl SignalHandler {
             let globals = &self.globals;
             let _pass = globals.pass.lock();
             let pass_slot = PassSlot::push(&GLOBAL_PASSES, globals);
-            lock(&globals.callbacks).signalling += 1;
             // As in the signal pass above (#3350).
             let slot = pass_slot.slot;
             let previous = swap_current((None, Some((slot, 0))));
             let mut snapshot = [None::<GlobalEntry>; SNAPSHOT];
             let mut i = 0;
+            let mut entered = false;
             'pass: loop {
                 let (count, generation) = {
-                    let cbs = lock(&globals.callbacks);
+                    let mut cbs = lock(&globals.callbacks);
+                    if !entered {
+                        cbs.signalling += 1;
+                        entered = true;
+                    }
                     let rest = cbs.entries.get(i..).unwrap_or_default();
                     let count = rest.len().min(SNAPSHOT);
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
@@ -516,8 +520,12 @@ impl SignalHandler {
             let mut cbs = lock(&globals.callbacks);
             cbs.signalling -= 1;
             if cbs.signalling == 0 {
+                let before = cbs.entries.len();
                 cbs.entries.retain(|entry| !entry.remove);
-                bump(&globals.generation);
+                // The list changed only if the sweep removed something.
+                if cbs.entries.len() != before {
+                    bump(&globals.generation);
+                }
             }
         }
 
