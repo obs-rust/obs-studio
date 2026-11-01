@@ -30,6 +30,7 @@ extern std::string opt_starting_profile;
 extern std::string opt_starting_collection;
 
 extern bool safe_mode;
+extern bool opt_start_streaming;
 extern bool opt_start_recording;
 extern bool opt_start_replaybuffer;
 extern bool opt_start_virtualcam;
@@ -1131,7 +1132,9 @@ void OBSBasic::OBSInit()
 		config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
 	}
 
-	if (!first_run && !has_last_version && !Active()) {
+	bool start_requested = opt_start_streaming || opt_start_recording || opt_start_replaybuffer ||
+			       opt_start_virtualcam;
+	if (ShowFirstRunWizard(first_run, has_last_version, Active(), start_requested)) {
 		QMetaObject::invokeMethod(this, &OBSBasic::on_autoConfigure_triggered, Qt::QueuedConnection);
 	}
 

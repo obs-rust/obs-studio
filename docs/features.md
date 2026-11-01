@@ -791,6 +791,11 @@ area.
   collection and shown only where the virtual camera sends audio.
   *Linux*, 2026-10-31.
   Issue [#3182](https://github.com/obs-rust/obs-studio/issues/3182).
+- A first launch with `--startvirtualcam` (or `--startstreaming`,
+  `--startrecording`, `--startreplaybuffer`) no longer opens the
+  Auto-Configuration Wizard, which could deadlock with the output's failure
+  box (both modal, neither dismissable). The wizard stays in the Tools menu.
+  2026-11-01. Issue [#3325](https://github.com/obs-rust/obs-studio/issues/3325).
 - The Linux OBS Virtual Microphone follows the Virtual Camera dialog (on or
   off, and which audio track), and a second OBS running at the same time gets
   its own "OBS Virtual Microphone (2)" instead of a duplicate. *Linux*,
