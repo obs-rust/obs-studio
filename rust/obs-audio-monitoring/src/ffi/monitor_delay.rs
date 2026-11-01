@@ -11,7 +11,7 @@
 //! Only Windows calls them. Elsewhere the shims are built but unused, and
 //! hidden all the same.
 
-use crate::monitor_delay::{diff, judge, stale, stalled, track_video_ts, unsynced};
+use crate::monitor_delay::{VideoTsStep, diff, judge, stale, stalled, unsynced, video_ts_step};
 
 /// Same contract as C `audio_monitor_delay_stale`.
 ///
@@ -68,12 +68,14 @@ pub extern "C" fn audio_monitor_delay_judge_diff(bad_diff: bool, diff: i64) -> u
     judge(bad_diff, diff).to_c()
 }
 
-/// Same contract as C `audio_monitor_track_video_ts`.
+/// Same contract as C `audio_monitor_track_video_ts`. Reads and writes go
+/// through the pointers in the C's order and only where its branch makes
+/// them, so both pointers at one `uint64_t` behave as in C.
 ///
 /// # Safety
 ///
 /// `prev_video_ts` and `time_since_prev` are each null or point to a
-/// `uint64_t` the caller may write.
+/// `uint64_t` the caller may write; they may point to the same one.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn audio_monitor_track_video_ts(
     prev_video_ts: *mut u64,
@@ -81,17 +83,45 @@ pub unsafe extern "C" fn audio_monitor_track_video_ts(
     last_frame_ts: u64,
     packet_ns: u64,
 ) {
-    // SAFETY: null or a writable uint64_t, as the caller promises.
-    let mut prev = unsafe { prev_video_ts.as_mut() }.map_or(0, |prev| *prev);
-    // SAFETY: as above.
-    let mut count = unsafe { time_since_prev.as_mut() }.map_or(0, |count| *count);
-    track_video_ts(&mut prev, &mut count, last_frame_ts, packet_ns);
-    // SAFETY: as above.
-    if let Some(out) = unsafe { prev_video_ts.as_mut() } {
-        *out = prev;
+    // SAFETY: null or a writable uint64_t, as the caller promises. No
+    // reference outlives its call, so the two pointers may be one.
+    let prev = unsafe { read(prev_video_ts) };
+    match video_ts_step(prev, last_frame_ts) {
+        // SAFETY: as above.
+        VideoTsStep::First => unsafe { write(prev_video_ts, last_frame_ts) },
+        VideoTsStep::Same => {
+            // SAFETY: as above.
+            let count = unsafe { read(time_since_prev) };
+            // SAFETY: as above.
+            unsafe { write(time_since_prev, count.wrapping_add(packet_ns)) };
+        }
+        VideoTsStep::New => {
+            // SAFETY: as above; the C stores the timestamp first.
+            unsafe { write(prev_video_ts, last_frame_ts) };
+            // SAFETY: as above.
+            unsafe { write(time_since_prev, 0) };
+        }
     }
-    // SAFETY: as above.
-    if let Some(out) = unsafe { time_since_prev.as_mut() } {
-        *out = count;
+}
+
+/// `*p`, or 0 for null.
+///
+/// # Safety
+///
+/// `p` is null or points to a readable `uint64_t`.
+unsafe fn read(p: *const u64) -> u64 {
+    // SAFETY: null or readable, as the caller promises.
+    unsafe { p.as_ref() }.map_or(0, |v| *v)
+}
+
+/// `*p = v`, nothing for null.
+///
+/// # Safety
+///
+/// `p` is null or points to a writable `uint64_t`.
+unsafe fn write(p: *mut u64, v: u64) {
+    // SAFETY: null or writable, as the caller promises.
+    if let Some(out) = unsafe { p.as_mut() } {
+        *out = v;
     }
 }
