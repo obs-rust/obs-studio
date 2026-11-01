@@ -84,6 +84,9 @@ runs at the release gate.
 from __future__ import annotations
 
 import argparse
+import fnmatch
+import functools
+import json
 import os
 import re
 import subprocess
@@ -243,8 +246,52 @@ OS_LANES: dict[str, tuple[str, ...]] = {
 PLATFORM_RULE = re.compile(r"/platform[/-](windows|macos|linux|posix)[/.]")
 
 
+# libobs/build/modules.d puts each libobs unity group in a lib-module; the
+# platform modules build on one OS (#3264). Their group files and the
+# precompiled headers those groups include start that OS's lane: by name
+# alone libobs.windows+.h.c read as core and started only Linux.
+MODULE_PLATFORMS = {
+    "platform-linux": frozenset({LINUX}),
+    "platform-macos": frozenset({MACOS}),
+    "platform-windows": frozenset({WINDOWS}),
+    "platform-posix": frozenset({LINUX, MACOS}),
+}
+GROUP_FILE = re.compile(r"^libobs/build/libobs\.([^+/]+)\+\.h\.(?:c|m)$")
+PCH_INCLUDE = re.compile(r'^#include "(libobs/build/[^"]+\.pch\.h)"', re.MULTILINE)
+REPO = Path(__file__).resolve().parent.parent
+
+
+@functools.cache
+def module_file_platforms() -> dict[str, frozenset[str]]:
+    """libobs/build files that only platform modules' groups use, and their OSes."""
+    build = REPO / "libobs" / "build"
+    modules_dir = build / "modules.d"
+    if not modules_dir.is_dir():
+        return {}
+    patterns = {p.stem: json.loads(p.read_text(encoding="utf-8"))["groups"] for p in modules_dir.glob("*.json")}
+    users: dict[str, set[frozenset[str] | None]] = {}
+    for group_file in sorted(build.glob("libobs.*+.h.*")):
+        rel = group_file.relative_to(REPO).as_posix()
+        m = GROUP_FILE.match(rel)
+        if not m:
+            continue
+        module = next((n for n, globs in patterns.items() if any(fnmatch.fnmatchcase(m.group(1), g) for g in globs)), None)
+        oses = MODULE_PLATFORMS.get(module or "")
+        users.setdefault(rel, set()).add(oses)
+        for pch in PCH_INCLUDE.findall(group_file.read_text(encoding="utf-8")):
+            users.setdefault(pch, set()).add(oses)
+    out = {}
+    for path, oses in users.items():
+        if None in oses:
+            continue  # a core module uses it too: Linux, as before
+        out[path] = frozenset().union(*oses)
+    return out
+
+
 def path_platforms(path: str) -> frozenset[str] | None:
     """The OS lanes a platform file starts, or None for core (Linux only)."""
+    if path.startswith("libobs/build/") and path in module_file_platforms():
+        return module_file_platforms()[path]
     m = PLATFORM_RULE.search("/" + path)
     if m:
         return {"windows": frozenset({WINDOWS}), "macos": frozenset({MACOS}), "linux": frozenset({LINUX}), "posix": frozenset({LINUX, MACOS})}[m.group(1)]
