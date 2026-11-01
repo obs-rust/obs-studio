@@ -61,7 +61,9 @@ def check_capture_log(log: str, modules: list[str]) -> list[str]:
 # xdg-run/obs-virtual-microphone, which the manifest shares with the host, and
 # pactl runs on the host through flatpak-spawn.
 VMIC_PROBE = ('printf "marker=%s\\n" "$(cat "$XDG_RUNTIME_DIR/obs-virtual-microphone/host-marker" 2>/dev/null)"; '
-              'if flatpak-spawn --host pactl info >/dev/null 2>&1; then echo pactl=ok; else echo pactl=failed; fi')
+              'if flatpak-spawn --host pactl info >/dev/null 2>&1; then echo pactl=ok; else echo pactl=failed; fi; '
+              # Evidence for a failure: what the sandbox's runtime directory holds.
+              'echo "runtime=$XDG_RUNTIME_DIR"; ls -la "$XDG_RUNTIME_DIR" 2>&1 | sed "s/^/ls: /"')
 
 
 def check_vmic_sandbox(output: str, marker: str) -> None:
@@ -219,9 +221,10 @@ class Session:
         self.logs = []
         self.command_index = 0
 
-    def run(self, args: list[str], timeout: int = 180) -> str:
+    def run(self, args: list[str], timeout: int = 180, extra: dict | None = None) -> str:
         self.command_index += 1
-        result = subprocess.run(args, env=self.env, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(args, env={**self.env, **(extra or {})}, capture_output=True, text=True,
+                                timeout=timeout)
         (self.output / f'command-{self.command_index:02}.log').write_text(
             json.dumps(args) + '\n' + result.stdout + result.stderr)
         result.check_returncode()
@@ -383,11 +386,30 @@ def qualification(args) -> dict:  # noqa: C901
         session.start('wireplumber', ['wireplumber'])
         session.start('pulse', ['pipewire-pulse'])
         session.wait_for(lambda: (output / 'run/pulse/native').is_socket(), 'PulseAudio socket')
-        vmic_dir = output / 'run/obs-virtual-microphone'
+        # Flatpak resolves xdg-run/ from the real /run/user/<uid>, not from the
+        # XDG_RUNTIME_DIR this session overrides; on a desktop the two are the
+        # same directory. A runner may have no user session, so make it.
+        real_runtime = Path(f'/run/user/{os.getuid()}')
+        if not real_runtime.is_dir():
+            session.run(['sudo', 'install', '-d', '-m', '0700', '-o', str(os.getuid()), '-g', str(os.getgid()),
+                         str(real_runtime)])
+        vmic_dir = real_runtime / 'obs-virtual-microphone'
         vmic_dir.mkdir(mode=0o700, exist_ok=True)
         marker = os.urandom(8).hex()
         (vmic_dir / 'host-marker').write_text(marker)
-        check_vmic_sandbox(session.run(['flatpak', '--user', 'run', '--command=sh', app_ref, '-c', VMIC_PROBE]), marker)
+        # Flatpak 1.16 does not bind xdg-run/ paths while XDG_RUNTIME_DIR is this
+        # session's override (run 41259810890); a desktop has it at /run/user/<uid>.
+        desktop = {'XDG_RUNTIME_DIR': str(real_runtime)}
+        probe = session.run(['flatpak', '--user', 'run', '--command=sh', app_ref, '-c', VMIC_PROBE], extra=desktop)
+        try:
+            check_vmic_sandbox(probe, marker)
+        except ValueError:
+            print('virtual microphone probe:\n' + probe, file=sys.stderr)
+            print('permissions:\n' + session.run(['flatpak', '--user', 'info', '--show-permissions', app_ref]),
+                  file=sys.stderr)
+            print('host runtime dir: ' + session.env['XDG_RUNTIME_DIR'], file=sys.stderr)
+            print('flatpak: ' + session.run(['flatpak', '--version']), file=sys.stderr)
+            raise
         result['virtual_microphone_sandbox'] = 'ok'
         for name, pattern, fmt, width, height in [('screen', 'smpte', 'BGRx', 320, 240), ('camera', 'ball', 'YUY2', 160, 120)]:
             session.start('producer-' + name, ['gst-launch-1.0', '-q', 'videotestsrc', f'pattern={pattern}',
