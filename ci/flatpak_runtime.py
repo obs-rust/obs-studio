@@ -404,6 +404,16 @@ def qualification(args) -> dict:  # noqa: C901
             print('permissions:\n' + session.run(['flatpak', '--user', 'info', '--show-permissions', app_ref]),
                   file=sys.stderr)
             print('host runtime dir: ' + session.env['XDG_RUNTIME_DIR'], file=sys.stderr)
+            print('flatpak: ' + session.run(['flatpak', '--version']), file=sys.stderr)
+            for grant in ('xdg-run/obs-virtual-microphone', 'xdg-run/obs-virtual-microphone:rw',
+                          f'{vmic_dir}'):
+                try:
+                    out = session.run(['flatpak', '--user', 'run', f'--filesystem={grant}', '--command=sh', app_ref,
+                                       '-c', 'cat "$XDG_RUNTIME_DIR/obs-virtual-microphone/host-marker"; echo; '
+                                       f'cat "{vmic_dir}/host-marker"'])
+                except subprocess.CalledProcessError as error:
+                    out = f'exit {error.returncode}'
+                print(f'variant --filesystem={grant}: {out!r}', file=sys.stderr)
             raise
         result['virtual_microphone_sandbox'] = 'ok'
         for name, pattern, fmt, width, height in [('screen', 'smpte', 'BGRx', 320, 240), ('camera', 'ball', 'YUY2', 160, 120)]:
