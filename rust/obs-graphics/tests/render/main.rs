@@ -15,6 +15,7 @@ mod image_pq_scrgb;
 mod image_pq_scrgb_parity;
 mod image_rgba64;
 mod image_rgba64_parity;
+mod image_wic_checks;
 mod immediate;
 mod immediate_parity;
 mod lzw;

@@ -156,3 +156,43 @@ pub fn pq10_to_scrgb(dst: &mut [u8], src: &[u8]) {
         *out = convert_texel(u32::from_ne_bytes(*input));
     }
 }
+
+/// The name `gs_image_host_fallback_load()` sends to WIC ends in this, in
+/// any ASCII case.
+pub const JXR_SUFFIX: &[u8; 4] = b".jxr";
+
+/// `enum gs_image_wic_kind`: what `wic_image_init_internal()` does with a
+/// decoded frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(i32)]
+pub enum WicKind {
+    /// `GS_IMAGE_WIC_UNSUPPORTED`: any other pixel format, logged, and the
+    /// image fails.
+    Unsupported = 0,
+    /// `GS_IMAGE_WIC_COPY`: `GUID_WICPixelFormat64bppRGBAHalf`, copied as
+    /// it is.
+    Copy = 1,
+    /// `GS_IMAGE_WIC_PQ10`: `GUID_WICPixelFormat32bppBGR101010`, through
+    /// [`pq10_to_scrgb`].
+    Pq10 = 2,
+}
+
+/// `gs_image_host_fallback_refuses()`: whether
+/// `gs_image_host_fallback_load()` refuses the file `name` (its bytes, no
+/// terminator) before it tries WIC.
+#[must_use]
+#[expect(clippy::todo, reason = "RED: the port's stub")]
+pub fn fallback_refuses(name: &[u8]) -> bool {
+    let _ = name;
+    todo!()
+}
+
+/// `gs_image_wic_kind()`: the kind for a frame whose pixel format is
+/// `GUID_WICPixelFormat64bppRGBAHalf` (`scrgb`) or
+/// `GUID_WICPixelFormat32bppBGR101010` (`pq10`).
+#[must_use]
+#[expect(clippy::todo, reason = "RED: the port's stub")]
+pub fn wic_kind(scrgb: bool, pq10: bool) -> WicKind {
+    let _ = (scrgb, pq10);
+    todo!()
+}
