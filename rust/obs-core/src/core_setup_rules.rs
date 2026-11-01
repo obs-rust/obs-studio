@@ -65,6 +65,15 @@ pub const LATEST_NONE: i32 = -1;
 /// `OBS_SOURCE_DO_NOT_SELF_MONITOR`.
 pub const DO_NOT_SELF_MONITOR: u32 = 1 << 9;
 
+/// `OBS_TASK_UI`.
+pub const TASK_UI: i32 = 0;
+/// `OBS_TASK_GRAPHICS`.
+pub const TASK_GRAPHICS: i32 = 1;
+/// `OBS_TASK_AUDIO`.
+pub const TASK_AUDIO: i32 = 2;
+/// `OBS_TASK_DESTROY`.
+pub const TASK_DESTROY: i32 = 3;
+
 /// A step of `obs_reset_video()`'s gates, in order, with the value each one
 /// is asked with (`enum obs_core_setup_rules_video_step`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,6 +132,40 @@ pub enum Mix {
     Count,
     /// Skip the mix.
     Skip,
+}
+
+/// What `obs_queue_task()` reads next about a task, each value asked with
+/// that read and the type with every step, or the route it takes
+/// (`enum obs_core_setup_rules_task`). The steps only go forward, in this
+/// order; a route stays where it is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Task {
+    /// The type alone.
+    Type,
+    /// `obs->ui_task_handler != NULL`, asked only for [`TASK_UI`].
+    UiHandler,
+    /// `obs_in_task_thread(type)`, never asked for [`TASK_UI`].
+    InThread,
+    /// `wait`.
+    Wait,
+    /// Hand the task to the UI task handler.
+    UiCall,
+    /// Log that there is no UI task handler.
+    UiNone,
+    /// Run the task in place: the caller is on its thread.
+    Run,
+    /// Queue the task again without waiting, then wait for it.
+    WaitQueue,
+    /// Push the task to the graphics thread's queue.
+    PushGraphics,
+    /// Push the task to the audio thread's queue.
+    PushAudio,
+    /// Queue the task on the destruction task queue.
+    PushDestroy,
+    /// Queue nothing: a type with no queue, asked at the wait step.
+    Drop,
+    /// Log the unknown type and queue nothing.
+    Unknown,
 }
 
 /// Same contract as C `obs_core_setup_rules_video_gate`.
@@ -257,4 +300,36 @@ pub fn mix_step(step: Mix, value: bool) -> Mix {
         (Mix::Video, true) => Mix::Count,
         (Mix::Count | Mix::Skip, _) => step,
     }
+}
+
+/// Same contract as C `obs_core_setup_rules_task_step`: the next read after
+/// `step` answered `value` for a task of `task_type`, or its route.
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn task_step(step: Task, task_type: i32, value: bool) -> Task {
+    let _ = (step, task_type, value);
+    todo!()
+}
+
+/// Same contract as C `obs_core_setup_rules_task_thread`: the thread
+/// `obs_in_task_thread()` asks about, or -1.
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn task_thread(task_type: i32) -> i32 {
+    let _ = task_type;
+    todo!()
+}
+
+/// Same contract as C `obs_core_setup_rules_levels_core`:
+/// `obs_set_video_levels()` goes on.
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn levels_core(core: bool) -> bool {
+    let _ = core;
+    todo!()
+}
+
+/// Same contract as C `obs_core_setup_rules_level_ok`: a video level the
+/// draw paths can divide by, finite and greater than 0 (#2209).
+#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+pub fn level_ok(level: f32) -> bool {
+    let _ = level;
+    todo!()
 }

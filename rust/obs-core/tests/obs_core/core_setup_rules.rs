@@ -14,6 +14,12 @@
 //! milliseconds, moved to `libobs/obs-core-setup-rules-ms.c.h`) the same
 //! way.
 //!
+//! The six `test_core_setup_rules_task_*` tests mirror
+//! `test/cmocka/test_core_setup_rules_task_steps.c` (the task queue's route
+//! and the video level checks, moved to
+//! `libobs/obs-core-setup-rules-task.c.h`) the same way, but for its two
+//! cases marked "characterized, not endorsed", which the port fixes.
+//!
 //! Cases marked "characterized, not endorsed" are odd but real (#2878) and
 //! kept as the C has them. The tests after those pin the edges of each
 //! function, and proptests cover any input.
@@ -23,12 +29,27 @@
 //! ticks. The core gives 0 for a zero rate and computes in `i64`, clamped
 //! to `i32`. The C test leaves both out; `buffer_ms_zero_rate` and
 //! `buffer_ms_past_int` pin them here.
+//!
+//! Two more, in [`task_step`] and [`levels_core`] (#3397):
+//! - the C's type step sends an unknown task type on to
+//!   `obs_in_task_thread()`, which asserts, and then, with `wait`, waits
+//!   forever for a task it never queues. The core's type step returns
+//!   [`Task::Unknown`] for it, whatever `wait` is, and `obs_queue_task()`
+//!   logs it and returns;
+//! - the C's `obs_set_video_levels()` goes on with no core and reads
+//!   `obs->video` through NULL. [`levels_core`] is false with no core, and
+//!   it warns and returns.
+//!
+//! `test_core_setup_rules_task_each_step`, `_routes` and `_levels_core`
+//! pin the fixed contract where the C test pins the C.
 
 use obs_core::core_setup_rules::{
     AUDIO_OUTPUT_FRAMES, AudioStep, DEFAULT_TICKS, DO_NOT_SELF_MONITOR, LATEST_NONE, Mix,
-    SEC_TO_MSEC, VideoGate, VideoStep, aoc_check, audio_refused, buffer_default_ticks, buffer_ms,
-    buffer_set, buffer_ticks, cmdline_len, cmdline_set, cmdline_table, data_file_found,
-    data_path_match, latest_newer, mix_step, monitor_missing, monitor_same, video_gate,
+    SEC_TO_MSEC, TASK_AUDIO, TASK_DESTROY, TASK_GRAPHICS, TASK_UI, Task, VideoGate, VideoStep,
+    aoc_check, audio_refused, buffer_default_ticks, buffer_ms, buffer_set, buffer_ticks,
+    cmdline_len, cmdline_set, cmdline_table, data_file_found, data_path_match, latest_newer,
+    level_ok, levels_core, mix_step, monitor_missing, monitor_same, task_step, task_thread,
+    video_gate,
 };
 use proptest::prelude::*;
 
@@ -654,6 +675,191 @@ fn every_mix_combination() {
     }
 }
 
+// ------------------------------------------------------ task queue route
+
+/// The types the route knows, and three it does not.
+const KNOWN: [i32; 4] = [TASK_UI, TASK_GRAPHICS, TASK_AUDIO, TASK_DESTROY];
+const UNKNOWN: [i32; 3] = [-1, 4, i32::MAX];
+
+/// Every route, in `enum obs_core_setup_rules_task` order.
+const ROUTES: [Task; 9] = [
+    Task::UiCall,
+    Task::UiNone,
+    Task::Run,
+    Task::WaitQueue,
+    Task::PushGraphics,
+    Task::PushAudio,
+    Task::PushDestroy,
+    Task::Drop,
+    Task::Unknown,
+];
+
+/// The steps `obs_queue_task()` walks, in its order, each asked with the
+/// value it reads there, and the steps it asked.
+fn walk(task_type: i32, handler: bool, in_thread: bool, wait: bool) -> (Task, Vec<Task>) {
+    let mut asked = Vec::new();
+    let mut step = task_step(Task::Type, task_type, false);
+    if step == Task::UiHandler {
+        asked.push(step);
+        step = task_step(step, task_type, handler);
+    }
+    if step == Task::InThread {
+        asked.push(step);
+        step = task_step(step, task_type, in_thread);
+    }
+    if step == Task::Wait {
+        asked.push(step);
+        step = task_step(step, task_type, wait);
+    }
+    (step, asked)
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_constants` (the enum's
+/// order is the shim's business; the values are the C's).
+#[test]
+fn test_core_setup_rules_task_constants() {
+    assert_eq!(TASK_UI, 0);
+    assert_eq!(TASK_GRAPHICS, 1);
+    assert_eq!(TASK_AUDIO, 2);
+    assert_eq!(TASK_DESTROY, 3);
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_each_step`, but for an
+/// unknown type's first step: the C sends it on to [`Task::InThread`]
+/// (characterized, not endorsed), the core refuses it (#3397).
+#[test]
+fn test_core_setup_rules_task_each_step() {
+    for value in [false, true] {
+        assert_eq!(task_step(Task::Type, TASK_UI, value), Task::UiHandler);
+        for t in [TASK_GRAPHICS, TASK_AUDIO, TASK_DESTROY] {
+            assert_eq!(task_step(Task::Type, t, value), Task::InThread, "{t}");
+        }
+        for t in UNKNOWN {
+            assert_eq!(task_step(Task::Type, t, value), Task::Unknown, "{t}");
+        }
+    }
+
+    for t in KNOWN.into_iter().chain(UNKNOWN) {
+        assert_eq!(task_step(Task::UiHandler, t, true), Task::UiCall, "{t}");
+        assert_eq!(task_step(Task::UiHandler, t, false), Task::UiNone, "{t}");
+        assert_eq!(task_step(Task::InThread, t, true), Task::Run, "{t}");
+        assert_eq!(task_step(Task::InThread, t, false), Task::Wait, "{t}");
+        assert_eq!(task_step(Task::Wait, t, true), Task::WaitQueue, "{t}");
+    }
+    assert_eq!(
+        task_step(Task::Wait, TASK_GRAPHICS, false),
+        Task::PushGraphics
+    );
+    assert_eq!(task_step(Task::Wait, TASK_AUDIO, false), Task::PushAudio);
+    assert_eq!(
+        task_step(Task::Wait, TASK_DESTROY, false),
+        Task::PushDestroy
+    );
+    assert_eq!(task_step(Task::Wait, TASK_UI, false), Task::Drop);
+    for t in UNKNOWN {
+        assert_eq!(task_step(Task::Wait, t, false), Task::Drop, "{t}");
+    }
+
+    for route in ROUTES {
+        for t in KNOWN.into_iter().chain(UNKNOWN) {
+            for value in [false, true] {
+                assert_eq!(task_step(route, t, value), route, "{route:?} {t} {value}");
+            }
+        }
+    }
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_routes`, but for an unknown
+/// type: the C asks the thread and, with `wait`, waits for a task it never
+/// queues (characterized, not endorsed); the core asks nothing and routes
+/// it to [`Task::Unknown`], whatever the answers (#3397).
+#[test]
+fn test_core_setup_rules_task_routes() {
+    for m in 0u32..8 {
+        let (handler, in_thread, wait) = (m & 1 != 0, m & 2 != 0, m & 4 != 0);
+
+        let ui = if handler { Task::UiCall } else { Task::UiNone };
+        assert_eq!(
+            walk(TASK_UI, handler, in_thread, wait),
+            (ui, vec![Task::UiHandler])
+        );
+
+        let queues = [Task::PushGraphics, Task::PushAudio, Task::PushDestroy];
+        for (t, queue) in [TASK_GRAPHICS, TASK_AUDIO, TASK_DESTROY]
+            .into_iter()
+            .zip(queues)
+        {
+            let want = if in_thread {
+                (Task::Run, vec![Task::InThread])
+            } else if wait {
+                (Task::WaitQueue, vec![Task::InThread, Task::Wait])
+            } else {
+                (queue, vec![Task::InThread, Task::Wait])
+            };
+            assert_eq!(walk(t, handler, in_thread, wait), want, "{t} {m}");
+        }
+
+        for t in UNKNOWN {
+            assert_eq!(
+                walk(t, handler, in_thread, wait),
+                (Task::Unknown, vec![]),
+                "{t} {m}"
+            );
+        }
+    }
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_task_thread`.
+#[test]
+fn test_core_setup_rules_task_thread() {
+    for t in KNOWN {
+        assert_eq!(task_thread(t), t);
+    }
+    for t in UNKNOWN.into_iter().chain([i32::MIN, -2]) {
+        assert_eq!(task_thread(t), -1, "{t}");
+    }
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_levels_core`, but with no
+/// core: the C goes on (characterized, not endorsed), the core stops it
+/// (#3397).
+#[test]
+fn test_core_setup_rules_task_levels_core() {
+    assert!(levels_core(true));
+    assert!(!levels_core(false));
+}
+
+/// `test_core_setup_rules_task_steps.c`: `test_level_ok`.
+#[test]
+fn test_core_setup_rules_task_level_ok() {
+    assert!(!level_ok(0.0));
+    assert!(!level_ok(-0.0));
+    assert!(level_ok(f32::from_bits(1)));
+    assert!(level_ok(f32::MIN_POSITIVE));
+    assert!(level_ok(1.0));
+    assert!(level_ok(300.0));
+    assert!(level_ok(1000.0));
+    assert!(level_ok(f32::MAX));
+    assert!(!level_ok(-f32::from_bits(1)));
+    assert!(!level_ok(-300.0));
+    assert!(!level_ok(f32::MIN));
+    assert!(!level_ok(f32::INFINITY));
+    assert!(!level_ok(f32::NEG_INFINITY));
+    assert!(!level_ok(f32::NAN));
+    assert!(!level_ok(-f32::NAN));
+}
+
+/// A route reached from the type step never asks the thread for an
+/// unknown type, so `obs_in_task_thread()`'s assert is not hit through
+/// `obs_queue_task()`; the thread rule still says -1 for it.
+#[test]
+fn unknown_type_never_asks_the_thread() {
+    for t in [i32::MIN, -2, -1, 4, 5, 100, i32::MAX] {
+        assert_eq!(task_step(Task::Type, t, true), Task::Unknown, "{t}");
+        assert_eq!(task_thread(t), -1, "{t}");
+    }
+}
+
 proptest! {
     #[test]
     fn buffer_ticks_any(ms in any::<u32>(), rate in any::<u32>()) {
@@ -712,5 +918,36 @@ proptest! {
         prop_assert_eq!(data_path_match(cmp), cmp == 0);
         prop_assert_eq!(monitor_same(cmp), cmp == 0);
         prop_assert_eq!(monitor_missing(present), !present);
+    }
+
+    #[test]
+    fn task_step_any(step in 0usize..13, task_type in any::<i32>(), value in any::<bool>()) {
+        let steps = [Task::Type, Task::UiHandler, Task::InThread, Task::Wait];
+        let all: Vec<Task> = steps.into_iter().chain(ROUTES).collect();
+        let step = all[step];
+        let known = (0..=3).contains(&task_type);
+        let want = match step {
+            Task::Type if task_type == TASK_UI => Task::UiHandler,
+            Task::Type if known => Task::InThread,
+            Task::Type => Task::Unknown,
+            Task::UiHandler => if value { Task::UiCall } else { Task::UiNone },
+            Task::InThread => if value { Task::Run } else { Task::Wait },
+            Task::Wait if value => Task::WaitQueue,
+            Task::Wait => match task_type {
+                TASK_GRAPHICS => Task::PushGraphics,
+                TASK_AUDIO => Task::PushAudio,
+                TASK_DESTROY => Task::PushDestroy,
+                _ => Task::Drop,
+            },
+            route => route,
+        };
+        prop_assert_eq!(task_step(step, task_type, value), want);
+        prop_assert_eq!(task_thread(task_type), if known { task_type } else { -1 });
+    }
+
+    #[test]
+    fn level_ok_any(bits in any::<u32>()) {
+        let level = f32::from_bits(bits);
+        prop_assert_eq!(level_ok(level), level.is_finite() && level > 0.0);
     }
 }
