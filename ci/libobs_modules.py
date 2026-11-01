@@ -297,10 +297,18 @@ def restore(build: Path, cache: Path) -> tuple[list[str], list[str]]:
     return hits, misses
 
 
-def store(build: Path, cache: Path) -> list[str]:
+def store(build: Path, cache: Path, prune: bool = False) -> list[str]:
+    """Copies each built module archive to its key. With `prune`, removes
+    every other archive, so a cache saved per commit stays one set."""
     cache.mkdir(parents=True, exist_ok=True)
     stored = []
-    for module, key in keys(build).items():
+    module_keys = keys(build)
+    if prune:
+        keep = {f"{key}.a" for key in module_keys.values()}
+        for old in cache.glob("*.a"):
+            if old.name not in keep:
+                old.unlink()
+    for module, key in module_keys.items():
         target = cache / f"{key}.a"
         if target.is_file():
             continue
@@ -327,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", choices=("keys", "restore", "store"))
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--cache", type=Path, default=None)
+    parser.add_argument("--prune", action="store_true", help="store: keep only the current keys' archives")
     args = parser.parse_args(argv)
     build = args.build.resolve()
     cache = (args.cache or default_cache()).resolve()
@@ -339,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"libobs modules: {len(hits)} restored ({' '.join(hits)}), {len(misses)} to build ({' '.join(misses)})")
         print(f"reconfigure with -DOBS_LIBOBS_MODULE_CACHE={(build / HITS_DIR).as_posix()}")
     else:
-        stored = store(build, cache)
+        stored = store(build, cache, prune=args.prune)
         print(f"libobs modules: {len(stored)} stored in {cache} ({' '.join(stored)})")
     return 0
 

@@ -2497,6 +2497,15 @@ jobs:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
+      # The libobs lib-module cache (#3264): PRs restore master's modules,
+      # only master pushes save (a PR-ref cache is unreachable by other PRs).
+      - uses: ./.github/actions/cache
+        with:
+          mode: restore
+          path: ${{ github.workspace }}/.tier2-modcache
+          key: libobs-modules-tier2-linux-${{ github.sha }}
+          restore-keys: libobs-modules-tier2-linux-
+
       # The shard plan uses the test timings the last master run's shards
       # handed back (rust-linux-tier2-done, #930); until that cache exists,
       # the timings the ccache still carries from before the split (#931).
@@ -2531,6 +2540,7 @@ jobs:
           OBS_TIER2_BUILD: ${{ runner.temp }}/tier2
           OBS_TIER2_PACK: ${{ runner.temp }}/tier2-pack
           ZCCACHE_CACHE_DIR: ${{ github.workspace }}/.tier2-zccache
+          OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache
           OBS_TIER2_COST_DIR: ${{ github.workspace }}/.tier2-cost
           OBS_TIER2_MODES: "OFF ON"
           OBS_TIER2_STAGE: build
@@ -2551,6 +2561,14 @@ jobs:
           retention-days: 1
           compression-level: 0
           if-no-files-found: error
+
+      - name: Save Tier 2 Module Cache 💾
+        uses: ./.github/actions/cache
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.tier2-build.outcome == 'success'
+        with:
+          mode: save
+          path: ${{ github.workspace }}/.tier2-modcache
+          key: libobs-modules-tier2-linux-${{ github.sha }}
 
       # validate.sh stops the zccache daemon on exit, flushing its index.
       - name: Save Tier 2 zccache 💾
