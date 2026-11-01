@@ -114,6 +114,15 @@ def sanitizer_options(directory: Path, stem: str = "") -> dict[str, str]:
     return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in SANITIZER_OPTIONS.items()}
 
 
+def tool_cmake_args(tool: str) -> list[str]:
+    """Configure options one tool needs on top of configure_command. The
+    cmocka tests that build with their own ASan/UBSan (obs_test_sanitize,
+    #159) skip it when the build flags already have -fsanitize=, as asan's
+    and tsan's do; valgrind's don't, and valgrind can't run an ASan binary,
+    so 101 of its tests never ran (#3238)."""
+    return ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"] if tool == "valgrind" else []
+
+
 def configure_command(*, src: Path, build: Path, build_type: str, flags: str, backend: str, version: str) -> list[str]:
     """The `cmake` configure line for one tool's build."""
     command = [
@@ -361,7 +370,7 @@ def build_obs(tool: str, flags: str, build_type: str, layout: Layout) -> Path | 
     configure_log = layout.out / "configure.log"
     configure = configure_command(
         src=SRC, build=layout.build, build_type=build_type, flags=flags, backend=backend, version=version
-    )
+    ) + tool_cmake_args(tool)
     if not run_logged(configure, log=configure_log):
         print(tail(configure_log, 40), flush=True)
         return None

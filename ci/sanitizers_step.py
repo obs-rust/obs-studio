@@ -60,8 +60,14 @@ def select(tools: str) -> int:
     return 0
 
 
-def wants_fail_on_findings() -> bool:
-    return os.environ.get("FAIL_ON_FINDINGS", "").strip().lower() in {"1", "true", "yes"}
+# Passes that fail the job on any finding, input or not (#3238): asan's
+# known failures are in triage.py's KNOWN. tsan and valgrind report only until
+# their findings are triaged.
+GATED = {"asan"}
+
+
+def wants_fail_on_findings(tool: str) -> bool:
+    return tool in GATED or os.environ.get("FAIL_ON_FINDINGS", "").strip().lower() in {"1", "true", "yes"}
 
 
 def triage(out: Path) -> int:
@@ -70,7 +76,7 @@ def triage(out: Path) -> int:
         append(os.environ.get("GITHUB_STEP_SUMMARY", ""), NO_RESULTS + "\n")
         return 1
     argv = [sys.executable, str(TRIAGE), str(out)]
-    if wants_fail_on_findings():
+    if wants_fail_on_findings(out.name):
         argv.append("--fail-on-findings")
     done = subprocess.run(argv, capture_output=True, text=True, check=False)
     sys.stdout.write(done.stdout)
