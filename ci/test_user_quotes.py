@@ -40,6 +40,22 @@ class CleanTest(unittest.TestCase):
     def test_indented_text_inside_a_paragraph_is_kept(self):
         self.assertEqual(uq.clean("It works\n    on both machines."), "It works on both machines.")
 
+    def test_list_continuation_paragraphs_are_kept(self):
+        body = "- I ran the new build and recording works.\n\n    But it crashes whenever I stop streaming."
+        self.assertEqual(uq.clean(body), "- I ran the new build and recording works. "
+                                         "But it crashes whenever I stop streaming.")
+        self.assertEqual(uq.clean("1. Works.\n\n   Mostly.\n\nDone."), "1. Works. Mostly. Done.")
+
+    def test_code_inside_a_list_item_and_after_the_list_is_dropped(self):
+        body = "- Works.\n\n      log inside the item\n\nThanks.\n\n    log after the list"
+        self.assertEqual(uq.clean(body), "- Works. Thanks.")
+
+    def test_a_heading_or_rule_ends_the_list_without_a_blank_line(self):
+        self.assertEqual(uq.clean("- Works.\n# Logs\n\n    diagnostic log"), "- Works. # Logs")
+        self.assertEqual(uq.clean("- Works.\n***\n\n    diagnostic log"), "- Works. ***")
+        self.assertEqual(uq.clean("- Works.\n- - -\n\n    diagnostic log"), "- Works. - - -")
+        self.assertEqual(uq.clean("- Works.\n> quoted\n\n    diagnostic log"), "- Works.")
+
     def test_unclosed_block_is_dropped_to_the_end(self):
         self.assertEqual(uq.clean("Works.\n```\nlog without an end"), "Works.")
 
