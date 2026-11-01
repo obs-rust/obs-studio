@@ -17,6 +17,16 @@ use obs_util::platform::unix::portal_inhibit::{
 // `dyn Fn(u32)` desugars past clippy's type-complexity limit.
 type ResponseFn = Rc<dyn Fn(u32)>;
 
+/// The fake bus connection. It counts its drops, as `g_object_unref` on the
+/// C's `info->c` would free it.
+struct Conn(Rc<Cell<u32>>);
+
+impl Drop for Conn {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() + 1);
+    }
+}
+
 struct Pending {
     done: Box<dyn Fn(CallResult)>,
     cancel: Option<Rc<Cell<bool>>>,
@@ -35,6 +45,7 @@ struct Inner {
     token: RefCell<String>,
     sub_path: RefCell<String>,
     live: Cell<usize>,
+    conns_dropped: Rc<Cell<u32>>,
     logs: RefCell<Vec<(i32, String)>>,
     response: RefCell<Option<(u32, ResponseFn)>>,
     calls: RefCell<Vec<Pending>>,
@@ -58,6 +69,7 @@ impl Transport {
             token: RefCell::new(String::new()),
             sub_path: RefCell::new(String::new()),
             live: Cell::new(0),
+            conns_dropped: Rc::new(Cell::new(0)),
             logs: RefCell::new(Vec::new()),
             response: RefCell::new(None),
             calls: RefCell::new(Vec::new()),
@@ -92,22 +104,22 @@ impl Transport {
 
 #[allow(clippy::too_many_arguments)]
 impl Host for Transport {
-    type Conn = ();
+    type Conn = Conn;
 
-    fn bus_get(&self, bus_type: i32) -> Result<(), String> {
+    fn bus_get(&self, bus_type: i32) -> Result<Conn, String> {
         assert_eq!(bus_type, SESSION_BUS);
         if self.0.bus_missing.get() {
             Err("no session bus".into())
         } else {
-            Ok(())
+            Ok(Conn(Rc::clone(&self.0.conns_dropped)))
         }
     }
 
-    fn unique_name(&self, _: &()) -> String {
+    fn unique_name(&self, _: &Conn) -> String {
         ":1.42".into()
     }
 
-    fn properties_get(&self, _: &(), interface: &str, property: &str) -> bool {
+    fn properties_get(&self, _: &Conn, interface: &str, property: &str) -> bool {
         assert_eq!(interface, INHIBIT_IFACE);
         assert_eq!(property, "version");
         !self.0.portal_missing.get()
@@ -121,7 +133,7 @@ impl Host for Transport {
 
     fn subscribe(
         &self,
-        _: &(),
+        _: &Conn,
         sender: &str,
         interface: &str,
         member: &str,
@@ -140,7 +152,7 @@ impl Host for Transport {
         17
     }
 
-    fn unsubscribe(&self, _: &(), id: u32) {
+    fn unsubscribe(&self, _: &Conn, id: u32) {
         assert_eq!(id, 17);
         self.0.unsubscribes.set(self.0.unsubscribes.get() + 1);
         let response = self.0.response.borrow_mut().take();
@@ -150,7 +162,7 @@ impl Host for Transport {
 
     fn inhibit(
         &self,
-        _: &(),
+        _: &Conn,
         destination: &str,
         path: &str,
         interface: &str,
@@ -184,7 +196,7 @@ impl Host for Transport {
 
     fn close(
         &self,
-        _: &(),
+        _: &Conn,
         destination: &str,
         path: &str,
         interface: &str,
@@ -340,6 +352,26 @@ fn test_destroy_pending() {
     assert!(transport.0.live.get() < before);
     transport.complete(true);
     assert_eq!(transport.0.live.get(), 0);
+}
+
+/// `portal_inhibit_info_destroy` drops the bus connection
+/// (`g_clear_object(&info->c)`) even while a pending call still holds the
+/// info, so nothing keeps the session bus alive after it (#3444).
+#[test]
+fn test_destroy_pending_drops_the_connection() {
+    let transport = Transport::new();
+    let info = Portal::create(transport.clone()).expect("portal");
+    info.set_active("recording", true);
+    assert_eq!(transport.0.conns_dropped.get(), 0);
+    Portal::destroy(Some(info));
+    assert!(
+        transport.0.live.get() > 0,
+        "the Inhibit call still holds the info"
+    );
+    assert_eq!(transport.0.conns_dropped.get(), 1);
+    transport.complete(true);
+    assert_eq!(transport.0.live.get(), 0);
+    assert_eq!(transport.0.conns_dropped.get(), 1);
 }
 
 #[test]
