@@ -218,6 +218,29 @@ fn remove_current_test() {
     assert_eq!(ids(&seen), [1, 2, 2]);
 }
 
+/// A pass reads its callbacks in chunks (#3350): a change made in the first
+/// chunk to an entry in a later one, and `remove_current` from a later one,
+/// behave as for a short list.
+#[test]
+fn changes_across_pass_chunks_test() {
+    let handler = handler_with("void ev()");
+    let seen = RefCell::new(Vec::new());
+    handler.connect(b"ev", key(DISCONNECT_OTHER, 1), false);
+    for id in 2..=9 {
+        handler.connect(b"ev", key(ON_SIGNAL, id), false);
+    }
+    handler.connect(b"ev", key(REMOVE_SELF, 10), false);
+    handler.connect(b"ev", key(ON_SIGNAL, 11), false);
+    handler.connect(b"ev", key(ON_SIGNAL, 12), false);
+
+    // The first callback disconnects id 12, the last entry.
+    fire(&handler, "ev", &seen, 12);
+    assert_eq!(ids(&seen), (1..=11).collect::<Vec<_>>());
+    seen.borrow_mut().clear();
+    fire(&handler, "ev", &seen, 12);
+    assert_eq!(ids(&seen), [1, 2, 3, 4, 5, 6, 7, 8, 9, 11]);
+}
+
 /// `connect_during_signal_test`.
 #[test]
 fn connect_during_signal_test() {
