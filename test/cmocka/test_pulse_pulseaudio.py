@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -35,6 +36,8 @@ DAEMON_ARGS = (
     "--disallow-exit",
     "--log-target=stderr",
 )
+# Seconds a stopped daemon gets to exit on SIGTERM before its group is killed.
+STOP_GRACE = 5
 
 
 def missing_tool(pulseaudio: str) -> str | None:
@@ -58,8 +61,20 @@ def private_dir() -> Path:
 
 
 def stop(daemon: subprocess.Popen) -> None:
-    if daemon.poll() is None:
-        daemon.terminate()
+    """Stop the daemon's whole process group, not just the direct child."""
+    try:
+        os.killpg(daemon.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        daemon.wait(timeout=STOP_GRACE)
+    except subprocess.TimeoutExpired:
+        pass
+    # The wrapper may be gone while the group lives on, so always sweep it.
+    try:
+        os.killpg(daemon.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
     daemon.wait()
 
 
@@ -98,6 +113,10 @@ def run(argv: list[str], pulseaudio: str) -> int:
                 [pulseaudio, "-n", "-F", str(config), *DAEMON_ARGS],
                 stdout=handle,
                 stderr=subprocess.STDOUT,
+                # Its own process group: $OBS_TEST_PULSEAUDIO may be a script
+                # whose child is the real daemon, and killing only the script
+                # orphans it (obs-rust/obs-studio#3388).
+                start_new_session=True,
             )
         try:
             os.environ["PULSE_SERVER"] = f"unix:{directory / 'pulse' / 'native'}"

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -74,19 +75,34 @@ def private_dir() -> Path:
 def start(program: str, log: Path) -> subprocess.Popen:
     """Start a daemon with its output in `log`, as the shell did with `&`."""
     with log.open("w", encoding="utf-8") as handle:
-        return subprocess.Popen([program], stdout=handle, stderr=subprocess.STDOUT)
+        return subprocess.Popen(
+            [program],
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            # Its own process group: the daemon may be a wrapper (a `uv run`
+            # stub, a Nix wrapper) whose child is the real daemon, and killing
+            # only the wrapper orphans it (obs-rust/obs-studio#3388).
+            start_new_session=True,
+        )
 
 
 def stop(process: subprocess.Popen) -> None:
-    """Terminate, then wait with a deadline: a daemon that ignores SIGTERM (a
-    hung sound server) must not hang the whole lane."""
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=STOP_TIMEOUT)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
+    """Terminate the daemon's process group, then wait with a deadline: a daemon
+    that ignores SIGTERM (a hung sound server) must not hang the whole lane."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=STOP_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        pass
+    # The wrapper may be gone while the group lives on, so always sweep it.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
 
 
 def _dead_daemons(daemons: tuple[tuple[str, subprocess.Popen], ...]) -> list[str]:

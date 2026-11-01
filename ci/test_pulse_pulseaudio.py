@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -37,7 +39,7 @@ def stop(signum, frame):
     open(os.path.join(os.environ["RECORD"], "terminated"), "w").write(str(signum))
     sys.exit(0)
 signal.signal(signal.SIGTERM, stop)
-record = {"argv": sys.argv[1:], "env": dict(os.environ)}
+record = {"argv": sys.argv[1:], "env": dict(os.environ), "pid": os.getpid()}
 open(os.path.join(os.environ["RECORD"], "pulseaudio.json"), "w").write(json.dumps(record))
 if os.environ.get("DAEMON_MODE") == "die":
     print("boom: no socket", flush=True)
@@ -67,6 +69,37 @@ except OSError:
     record["config"] = None
 open(os.path.join(os.environ["RECORD"], "test-binary.json"), "w").write(json.dumps(record))
 sys.exit(int(os.environ.get("TEST_EXIT", "0")))
+"""
+
+
+def process_alive(pid: int) -> bool:
+    """True while pid runs (a zombie awaiting its new parent counts as gone)."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (FileNotFoundError, IndexError):
+        return False
+    return state != "Z"
+
+
+def kill_leftover(pid: int) -> None:
+    """Reap a daemon the harness leaked, so a failing run leaks nothing either."""
+    if process_alive(pid):
+        os.kill(pid, signal.SIGKILL)
+
+
+def outlived(pid: int) -> bool:
+    """True when pid is still running five seconds after the harness returned."""
+    deadline = time.monotonic() + 5
+    while process_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return process_alive(pid)
+
+
+# A wrapper that runs the real daemon as its child instead of exec'ing it, as
+# a `uv run --script` stub, a Nix wrapper or a script around an unpacked build
+# does: stopping only the wrapper orphans the daemon.
+WRAPPER_SCRIPT = """#!/bin/sh
+'__DAEMON__' "$@"
 """
 
 
@@ -183,6 +216,18 @@ class PulseAudioTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((self.record / "pulseaudio.json").exists(), "the daemon started up")
         self.assertTrue((self.record / "test-binary.json").exists())
+
+    def test_the_daemon_behind_a_wrapper_does_not_outlive_the_run(self) -> None:
+        # $OBS_TEST_PULSEAUDIO may be a script that runs an unpacked build;
+        # stopping only that script leaked the daemon (obs-rust/obs-studio#3388).
+        wrapper = self.root / "pulseaudio-wrapper"
+        wrapper.write_text(WRAPPER_SCRIPT.replace("__DAEMON__", str(self.bin / "pulseaudio")))
+        wrapper.chmod(0o755)
+        result = self.run_script("test-pulse", PRIVATE_PULSEAUDIO_STARTED="1", OBS_TEST_PULSEAUDIO=str(wrapper))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pid = self.recorded("pulseaudio.json")["pid"]
+        self.addCleanup(kill_leftover, pid)
+        self.assertFalse(outlived(pid), f"stub pulseaudio {pid} outlived the run")
 
     def test_a_deep_tmpdir_moves_the_private_dir_to_tmp(self) -> None:
         deep = self.root / ("d" * 80)
