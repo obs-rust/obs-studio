@@ -52,6 +52,7 @@ pub mod cocoa_keys;
 pub mod config_file;
 pub mod context_names;
 pub mod core_setup_rules;
+pub mod coreaudio_pacing;
 pub mod crc32;
 pub mod darray;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
