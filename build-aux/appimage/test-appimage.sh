@@ -1119,6 +1119,26 @@ cat >"$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json" <<'EOF'
 }
 EOF
 
+# Optional, local only (no CI runner has v4l2loopback): with VCAM_DEVICE set
+# to a v4l2loopback node passed into the container, OBS also starts the
+# Virtual Camera with its OBS Virtual Microphone on track 1 (#3182). With
+# VCAM_NO_PACTL=1 as well, pactl is hidden, so the camera must fall back to
+# video only and show the status-bar notice.
+VCAM_DEVICE="${VCAM_DEVICE:-}"
+VCAM_ARGS=()
+if [ -n "$VCAM_DEVICE" ]; then
+    [ -c "$VCAM_DEVICE" ] || fail "VCAM_DEVICE=$VCAM_DEVICE is not a character device in the container"
+    sed -i '$ d' "$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json"
+    printf '    ,"virtual-camera": {"type2": 3, "audio": true, "audio_track": 1}\n}\n' \
+        >>"$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json"
+    VCAM_ARGS=(--startvirtualcam)
+    if [ "${VCAM_NO_PACTL:-}" = 1 ]; then
+        # /bin can be a link to /usr/bin: hide each real file once.
+        for p in $(type -ap pactl | xargs -r realpath | sort -u); do mv "$p" "$p.hidden"; done
+        command -v pactl && fail "pactl is still on PATH after hiding it"
+    fi
+fi
+
 # Rust starts from an owned upstream fixture, exercising migration before
 # recording. The other two saved-profile scenarios cover independently selected
 # Locations roots and an existing Rust config that must win over upstream.
@@ -1189,7 +1209,7 @@ source_snapshot >"$OUT/upstream-before.txt"
 
 require_no_obs_running
 LD_LIBRARY_PATH="$HOSTILE_LD" "$APPDIR/AppRun" --disable-shutdown-check --verbose \
-    --profile Test --collection Test --startrecording >"$OUT/obs-profile-stdout.log" 2>&1 &
+    --profile Test --collection Test --startrecording "${VCAM_ARGS[@]}" >"$OUT/obs-profile-stdout.log" 2>&1 &
 APP_PID=$!
 OWN_PIDS+=("$APP_PID")
 RECORD_SECONDS=10
@@ -1213,6 +1233,17 @@ echo "PipeWire links and PulseAudio streams while OBS records:"
 pw-link -l 2>&1 || true
 pactl list short sources 2>&1 || true
 pactl list short source-outputs 2>&1 || true
+if [ -n "$VCAM_DEVICE" ] && [ "${VCAM_NO_PACTL:-}" != 1 ]; then
+    if pactl list short sources | grep -q obs_virtual_microphone; then
+        # The tone the test microphone plays must come out of the virtual one.
+        timeout 3 parecord --raw --format=s16le --channels=2 --rate=48000 -d obs_virtual_microphone \
+            "$OUT/vmic.raw" || true
+        [ "$(tr -d '\0' <"$OUT/vmic.raw" 2>/dev/null | head -c 1 | wc -c)" -eq 1 ] ||
+            fail "the OBS Virtual Microphone recorded only silence (see $OUT/vmic.raw)"
+    else
+        fail "the Virtual Camera started no OBS Virtual Microphone source"
+    fi
+fi
 if alive "$APP_PID"; then
     [ "$MAPS_CHECKED" -eq 1 ] || fail "OBS's process was not found while it ran"
     # Quit like a user would (SIGINT closes the main window); recording stops.
@@ -1299,6 +1330,18 @@ else
     grep -q "\[camera-portal\] Found device obs-test-camera" "$LOG" || fail "the PipeWire camera did not find the test camera"
     grep -q "Started recording from 'obs-test-mic'" "$LOG" || fail "the PulseAudio microphone did not start"
     grep -q 'Recording Start' "$LOG" || fail "the recording did not start"
+    if [ -n "$VCAM_DEVICE" ]; then
+        grep -q '==== Virtual Camera Start' "$LOG" || fail "the Virtual Camera did not start"
+        if [ "${VCAM_NO_PACTL:-}" = 1 ]; then
+            grep -q 'Virtual Camera started without its microphone' "$LOG" ||
+                fail "the Virtual Camera fell back to video only without the status-bar notice"
+        else
+            grep -q "Virtual microphone 'obs_virtual_microphone' started" "$LOG" ||
+                fail "the log does not show the OBS Virtual Microphone starting on track 1"
+            grep -q 'Virtual Camera started without its microphone' "$LOG" &&
+                fail "the status-bar notice was shown although the microphone started"
+        fi
+    fi
     # Every module the AppImage ships must load. Allowed exceptions need
     # hardware or drivers no container has.
     loaded="$(sed -n '/Loaded Modules:/,/^[0-9:.]*: *-\{10\}/p' "$LOG")"

@@ -81,6 +81,7 @@ void OBSBasic::OnVirtualCamStart()
 	calldata_free(&cd);
 	if (VCamAudioFellBack(vcamConfig.audio, sendsAudio, answered, micActive)) {
 		ShowStatusBarMessage(QTStr("Basic.VCam.AudioUnavailable"));
+		blog(LOG_WARNING, "Virtual Camera started without its microphone (status bar notice shown)");
 	}
 
 	blog(LOG_INFO, VIRTUAL_CAM_START);
