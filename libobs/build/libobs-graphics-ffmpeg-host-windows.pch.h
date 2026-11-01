@@ -8,6 +8,7 @@
 #include "graphics/graphics.h"
 #include "graphics/graphics-ffmpeg-host.h"
 #include "graphics/graphics-ffmpeg-host-pq.h"
+#include "graphics/graphics-ffmpeg-host-wic-checks.h"
 #include "graphics/srgb.h"
 #include <util/bmem.h>
 #include <util/dstr.h>

@@ -1,5 +1,9 @@
-# graphics/graphics-ffmpeg-host-pq.c: wic_image_init_internal() in
-# graphics-ffmpeg-host-windows.c calls it inside libobs on Windows. Declared
-# in graphics-ffmpeg-host-pq.h without EXPORT, so the shim stays hidden the
-# same way. Built on every host.
+# graphics/graphics-ffmpeg-host-pq.c and
+# graphics/graphics-ffmpeg-host-wic-checks.c: wic_image_init_internal() and
+# gs_image_host_fallback_load() in graphics-ffmpeg-host-windows.c call them
+# inside libobs on Windows. Declared in graphics-ffmpeg-host-pq.h and
+# graphics-ffmpeg-host-wic-checks.h without EXPORT, so the shims stay hidden
+# the same way. Built on every host.
+gs_image_host_fallback_refuses
 gs_image_pq10_to_scrgb
+gs_image_wic_kind

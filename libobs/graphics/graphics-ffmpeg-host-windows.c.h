@@ -13,7 +13,8 @@ static void *wic_image_init_internal(const char *file, IWICBitmapFrameDecode *pF
 	if (SUCCEEDED(hr)) {
 		const bool scrgb = memcmp(&pixelFormat, &GUID_WICPixelFormat64bppRGBAHalf, sizeof(pixelFormat)) == 0;
 		const bool pq10 = memcmp(&pixelFormat, &GUID_WICPixelFormat32bppBGR101010, sizeof(pixelFormat)) == 0;
-		if (scrgb || pq10) {
+		const enum gs_image_wic_kind kind = gs_image_wic_kind(scrgb, pq10);
+		if (kind != GS_IMAGE_WIC_UNSUPPORTED) {
 			UINT width, height;
 			hr = pFrame->lpVtbl->GetSize(pFrame, &width, &height);
 			if (SUCCEEDED(hr)) {
@@ -22,7 +23,7 @@ static void *wic_image_init_internal(const char *file, IWICBitmapFrameDecode *pF
 				bytes = bmalloc(size);
 				if (bytes) {
 					bool success = false;
-					if (pq10) {
+					if (kind == GS_IMAGE_WIC_PQ10) {
 						const UINT intermediate_pitch = 4 * width;
 						const UINT intermediate_size = intermediate_pitch * height;
 						BYTE *intermediate = bmalloc(intermediate_size);
@@ -85,7 +86,7 @@ uint8_t *gs_image_host_fallback_load(const char *file, enum gs_color_format *for
 				     enum gs_color_space *space)
 {
 	const size_t len = strlen(file);
-	if (len <= 4 && astrcmpi(file + len - 4, ".jxr") != 0) {
+	if (gs_image_host_fallback_refuses(file, len)) {
 		blog(LOG_WARNING, "WIC: Only handle JXR for WIC images for now");
 		return NULL;
 	}

@@ -7,8 +7,9 @@
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), and `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
-//! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion
-//! ([`image_pq_scrgb`]).
+//! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion, and
+//! `graphics-ffmpeg-host-wic-checks.c.h`, the file-name check and the
+//! pixel-format pick ([`image_pq_scrgb`]).
 //!
 //! Safe cores live at the crate root; the C ABI shims that replace the
 //! original `EXPORT` symbols live in [`ffi`]. See

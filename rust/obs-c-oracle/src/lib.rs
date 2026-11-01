@@ -99,6 +99,7 @@ pub mod image_file;
 pub mod image_orient;
 pub mod image_pq_scrgb;
 pub mod image_rgba64;
+pub mod image_wic_checks;
 pub mod lexer;
 pub mod lzw;
 pub mod media_remux;
