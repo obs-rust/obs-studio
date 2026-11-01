@@ -638,7 +638,7 @@ static void v4l2_dv_timing_list(int dev, obs_property_t *prop)
 		double h = (double)dvt.bt.height + dvt.bt.vfrontporch + dvt.bt.vsync + dvt.bt.vbackporch +
 			   dvt.bt.il_vfrontporch + dvt.bt.il_vsync + dvt.bt.il_vbackporch;
 		double w = (double)dvt.bt.width + dvt.bt.hfrontporch + dvt.bt.hsync + dvt.bt.hbackporch;
-		double i = (dvt.bt.interlaced) ? 2.0f : 1.0f;
+		double i = (dvt.bt.interlaced) ? 2.0 : 1.0;
 		double rate = (double)dvt.bt.pixelclock / (w * (h / i));
 
 		dstr_printf(&buf, "%ux%u%c %.2f", dvt.bt.width, dvt.bt.height, (dvt.bt.interlaced) ? 'i' : 'p', rate);

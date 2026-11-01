@@ -34,7 +34,16 @@ void ffmpeg_log_error(int log_level, struct ffmpeg_data *data, const char *forma
 	char out[4096];
 
 	va_start(args, format);
+	/* Clang asks for format(printf) on the declaration (#3406). */
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#pragma GCC diagnostic ignored "-Wmissing-format-attribute"
+#endif
 	vsnprintf(out, sizeof(out), format, args);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 	va_end(args);
 
 	ffmpeg_output_set_last_error(data, out);

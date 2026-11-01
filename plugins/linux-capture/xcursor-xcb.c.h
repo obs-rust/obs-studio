@@ -33,7 +33,8 @@ static void xcb_xcursor_create(xcb_xcursor_t *data, xcb_xfixes_get_cursor_image_
 		if (data->tex)
 			gs_texture_destroy(data->tex);
 
-		data->tex = gs_texture_create(xc->width, xc->height, GS_BGRA, 1, (const uint8_t **)&pixels, GS_DYNAMIC);
+		data->tex = gs_texture_create(xc->width, xc->height, GS_BGRA, 1, (const uint8_t **)(void *)&pixels,
+					      GS_DYNAMIC);
 	}
 
 	data->last_serial = xc->cursor_serial;

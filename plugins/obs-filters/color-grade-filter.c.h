@@ -158,10 +158,10 @@ static void color_grade_filter_update(void *data, obs_data_t *settings)
 			const uint32_t width = filter->cube_width;
 			if (clut_dim == CLUT_1D) {
 				filter->target = gs_texture_create(width, 1, GS_RGBA16F, 1,
-								   (const uint8_t **)&filter->cube_data, 0);
+								   (const uint8_t **)(void *)&filter->cube_data, 0);
 			} else {
 				filter->target = gs_voltexture_create(width, width, width, GS_RGBA16F, 1,
-								      (const uint8_t **)&filter->cube_data, 0);
+								      (const uint8_t **)(void *)&filter->cube_data, 0);
 			}
 
 			struct vec3 domain_scale;

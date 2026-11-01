@@ -64,7 +64,7 @@ static void limiter_resize_env_buffer(struct limiter_data *cd, size_t len)
 
 static inline float limiter_gain_coefficient(uint32_t sample_rate, float time)
 {
-	return (float)exp(-1.0f / ((float)sample_rate * time));
+	return (float)exp((double)(-1.0f / ((float)sample_rate * time)));
 }
 
 static const char *limiter_name(void *unused)
@@ -182,7 +182,7 @@ static struct obs_audio_data *limiter_filter_audio(void *data, struct obs_audio_
 
 static void limiter_defaults(obs_data_t *s)
 {
-	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -6.0f);
+	obs_data_set_default_double(s, S_FILTER_THRESHOLD, -6.0);
 	obs_data_set_default_int(s, S_RELEASE_TIME, 60);
 }
 
@@ -192,7 +192,7 @@ static obs_properties_t *limiter_properties(void *data)
 	obs_property_t *p;
 
 	p = obs_properties_add_float_slider(props, S_FILTER_THRESHOLD, TEXT_THRESHOLD, MIN_THRESHOLD_DB,
-					    MAX_THRESHOLD_DB, 0.1);
+					    (double)MAX_THRESHOLD_DB, 0.1);
 	obs_property_float_set_suffix(p, " dB");
 	p = obs_properties_add_int_slider(props, S_RELEASE_TIME, TEXT_RELEASE_TIME, MIN_ATK_RLS_MS, MAX_RLS_MS, 1);
 	obs_property_int_set_suffix(p, " ms");

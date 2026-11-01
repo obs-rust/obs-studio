@@ -150,10 +150,10 @@ static struct param *add_param(struct spa_list *params, int seq, uint32_t id, co
 			errno = EINVAL;
 			return NULL;
 		}
-		id = SPA_POD_OBJECT_ID(param);
+		id = ((const struct spa_pod_object *)param)->body.id;
 	}
 
-	p = malloc(sizeof(*p) + (param != NULL ? SPA_POD_SIZE(param) : 0));
+	p = malloc(sizeof(*p) + (param != NULL ? (sizeof(struct spa_pod) + param->size) : 0));
 	if (p == NULL)
 		return NULL;
 
@@ -161,7 +161,7 @@ static struct param *add_param(struct spa_list *params, int seq, uint32_t id, co
 	p->seq = seq;
 	if (param != NULL) {
 		p->param = SPA_PTROFF(p, sizeof(*p), struct spa_pod);
-		memcpy(p->param, param, SPA_POD_SIZE(param));
+		memcpy(p->param, param, sizeof(struct spa_pod) + param->size);
 	} else {
 		clear_params(params, id);
 		p->param = NULL;
@@ -711,12 +711,12 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 	pod = spa_pod_get_values(type, &n_vals, &choice);
 
 	bool menu = !spa_pod_is_choice(type);
-	if (menu && (labels == NULL || SPA_POD_TYPE(pod) != SPA_TYPE_Int))
+	if (menu && (labels == NULL || pod->type != SPA_TYPE_Int))
 		return;
 
-	container = container != SPA_ID_INVALID ? container : SPA_POD_TYPE(pod);
+	container = container != SPA_ID_INVALID ? container : pod->type;
 
-	switch (SPA_POD_TYPE(pod)) {
+	switch (pod->type) {
 	case SPA_TYPE_Int: {
 		int32_t *vals = SPA_POD_BODY(pod);
 		int32_t min, max, def, step;
@@ -772,8 +772,8 @@ static inline void add_control_property(obs_properties_t *props, obs_data_t *set
 		min = n_vals > 1 ? vals[1] : def;
 		max = n_vals > 2 ? vals[2] : def;
 		step = n_vals > 3 ? vals[3] : (max - min) / 256.0f;
-		prop = obs_properties_add_float_slider(props, name, name, min, max, step);
-		obs_data_set_default_double(settings, name, def);
+		prop = obs_properties_add_float_slider(props, name, name, (double)min, (double)max, (double)step);
+		obs_data_set_default_double(settings, name, (double)def);
 		obs_property_set_modified_callback2(prop, control_changed, SPA_UINT32_TO_PTR(id));
 		break;
 	}

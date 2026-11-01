@@ -57,7 +57,7 @@ static obs_properties_t *eq_properties(void *unused)
 	obs_property_t *p;
 
 #define make_db_slider(name)                                                                                   \
-	p = obs_properties_add_float_slider(props, name, obs_module_text("3BandEq." name), -20.0f, 20.0, 0.1); \
+	p = obs_properties_add_float_slider(props, name, obs_module_text("3BandEq." name), -20.0, 20.0, 0.1); \
 	obs_property_float_set_suffix(p, " dB");
 
 	make_db_slider("high");

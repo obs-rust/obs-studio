@@ -625,7 +625,7 @@ static void xcompcap_video_tick(void *data, float seconds)
 	}
 	if (s->window_changed)
 		xcomp_presence_invalidate(&s->presence);
-	if (xcomp_presence_check_due(&s->presence, seconds))
+	if (xcomp_presence_check_due(&s->presence, (double)seconds))
 		xcomp_presence_set(&s->presence, xcomp_window_exists(xcomp_conn, s->win));
 	bool window_viewable = s->presence.viewable;
 	pthread_mutex_unlock(&s->lock);
@@ -650,7 +650,7 @@ static void xcompcap_video_tick(void *data, float seconds)
 	// sets window_changed through the watcher.
 	bool window_lost = !window_viewable || !s->gltex;
 	bool forced = s->window_changed;
-	if (xcomp_search_due(&s->search, seconds, window_lost, forced)) {
+	if (xcomp_search_due(&s->search, (double)seconds, window_lost, forced)) {
 		s->window_changed = false;
 		xcb_window_t found = xcomp_find_window(xcomp_conn, disp, s->windowName);
 		bool viewable = xcomp_window_exists(xcomp_conn, found);
