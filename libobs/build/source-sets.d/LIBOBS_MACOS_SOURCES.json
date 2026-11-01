@@ -1,4 +1,5 @@
 [
+  "audio-monitoring/osx/coreaudio-device-rules.h",
   "audio-monitoring/osx/coreaudio-pacing.h",
   "audio-monitoring/osx/mac-helpers.h",
   "obs-cocoa-keys.h",

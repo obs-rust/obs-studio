@@ -1,0 +1,8 @@
+# coreaudio-device-rules.c: coreaudio-enum-devices.c calls them inside
+# libobs on macOS. Declared in coreaudio-device-rules.h without EXPORT, so
+# the shims stay hidden the same way.
+coreaudio_device_count
+coreaudio_device_is_default
+coreaudio_device_is_input
+coreaudio_device_listed
+coreaudio_device_names_match

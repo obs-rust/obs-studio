@@ -1,6 +1,8 @@
 //! Tests for `obs-audio-monitoring`, part of the core category binary
 //! (`obs-tests-core`).
 
+mod coreaudio_devices;
+mod coreaudio_devices_parity;
 mod coreaudio_pacing;
 mod coreaudio_pacing_parity;
 mod monitor_delay;

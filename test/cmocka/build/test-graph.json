@@ -727,18 +727,42 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_coreaudio_device_rules": {
+      "sources": [
+        "test/cmocka/test_coreaudio_device_rules.c",
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.h",
+        "libobs/util/dstr.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_coreaudio_enum_alloc": {
       "sources": [
-        "test/cmocka/test_coreaudio_enum_alloc.c"
+        "test/cmocka/test_coreaudio_enum_alloc.c",
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.c.h"
       ],
       "includes_before": [
         "test/cmocka/coreaudio-enum-stubs"
+      ],
+      "includes": [
+        "libobs"
       ],
       "sanitizers": "address,undefined",
       "libraries": [
         "OBS::native-test-cmocka"
       ],
       "watch_inputs": [
+        "libobs/audio-monitoring/osx/coreaudio-device-rules.h",
+        "libobs/util/dstr.h",
         "test/cmocka/coreaudio-enum-stubs"
       ]
     },
@@ -6251,6 +6275,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_coreaudio_device_rules": {
+      "target": "test_coreaudio_device_rules",
+      "command": [
+        "${target}"
       ]
     },
     "test_coreaudio_enum_alloc": {

@@ -10,13 +10,16 @@
 //! `process_audio_delay()`) and `audio-monitoring/monitor-video-sync.c.h`
 //! (its video stall tracker), [`speaker_layout`] that of
 //! `audio-monitoring/monitor-speaker-layout.c.h` (the speaker layout the
-//! WASAPI monitor resamples to), and [`coreaudio_pacing`] that of
+//! WASAPI monitor resamples to), [`coreaudio_pacing`] that of
 //! `audio-monitoring/osx/coreaudio-pacing.c.h` (the queue pacing of the
-//! CoreAudio monitor's `coreaudio-output.c`). Their C ABI shims live in
-//! [`ffi`].
+//! CoreAudio monitor's `coreaudio-output.c`), and [`coreaudio_devices`] that
+//! of `audio-monitoring/osx/coreaudio-device-rules.c.h` (the device rules of
+//! the CoreAudio monitoring device list, `coreaudio-enum-devices.c`). Their C
+//! ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
+pub mod coreaudio_devices;
 pub mod coreaudio_pacing;
 pub mod monitor_delay;
 pub mod pulse_format;
