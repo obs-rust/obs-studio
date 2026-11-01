@@ -1133,7 +1133,9 @@ if [ -n "$VCAM_DEVICE" ]; then
         >>"$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json"
     VCAM_ARGS=(--startvirtualcam)
     if [ "${VCAM_NO_PACTL:-}" = 1 ]; then
-        for p in $(command -v -a pactl); do mv "$p" "$p.hidden"; done
+        # /bin can be a link to /usr/bin: hide each real file once.
+        for p in $(type -ap pactl | xargs -r realpath | sort -u); do mv "$p" "$p.hidden"; done
+        command -v pactl && fail "pactl is still on PATH after hiding it"
     fi
 fi
 
