@@ -120,10 +120,16 @@ if(NOT DEFINED HAS_INTERPROCEDURAL_OPTIMIZATION)
   unset(_ipo_output)
 endif()
 
+# The shipped builds are RelWithDebInfo (#3193): the shipping presets and the
+# Flatpak turn this on. Off by default, so developer and Tier 2 builds keep
+# their link times.
+option(OBS_RELWITHDEBINFO_IPO "Interprocedural optimization (LTO) for RelWithDebInfo builds" OFF)
+mark_as_advanced(OBS_RELWITHDEBINFO_IPO)
+
 if(HAS_INTERPROCEDURAL_OPTIMIZATION)
   message(STATUS "Checking for interprocedural optimization support - enabled [Release, MinSizeRel]")
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ${OBS_RELWITHDEBINFO_IPO})
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
 else()
