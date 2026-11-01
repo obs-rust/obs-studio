@@ -37,12 +37,12 @@ cfg_select! {
     target_arch = "x86_64" => {
         #[target_feature(enable = "avx2")]
         fn mix_add_avx2(out: &mut [f32], input: &[f32]) {
-            todo!("#3412: AVX2 mix_add")
+            crate::audio_mix::mix_add_scalar(out, input);
         }
 
         #[target_feature(enable = "avx2")]
         fn mix_with_buf_avx2(out: &mut [f32], input: &[f32], gain: &[f32]) {
-            todo!("#3412: AVX2 mix_with_buf")
+            crate::audio_mix::mix_with_buf_scalar(out, input, gain);
         }
 
         pub(crate) fn mix_add(out: &mut [f32], input: &[f32]) {
