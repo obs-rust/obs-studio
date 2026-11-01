@@ -409,16 +409,23 @@ impl SignalHandler {
         mut call: impl FnMut(CallbackKey),
         mut call_global: impl FnMut(CallbackKey),
     ) -> bool {
-        let Some(sig) = self.find(signal) else {
-            return false;
-        };
-        let mut remove_refs = 0;
         // No callbacks (none live, none marked for removal): skip the pass,
         // its reentrant lock and the pass stack (#3277). Nothing would run
         // or be swept, and a connect racing this check is the same as one
         // that waited for the pass to end; it would not run in this pass
-        // either. The global pass below still runs.
-        if !lock(&sig.callbacks).entries.is_empty() {
+        // either. The global pass below still runs. The check runs under
+        // the table's read lock, so that case clones no `Arc` (#3350):
+        // `add` takes the write lock without any callback lock, so the
+        // nesting cannot invert.
+        let sig = {
+            let signals = self.signals.read().unwrap_or_else(|err| err.into_inner());
+            let Some(sig) = signals.get(signal) else {
+                return false;
+            };
+            (!lock(&sig.callbacks).entries.is_empty()).then(|| Arc::clone(sig))
+        };
+        let mut remove_refs = 0;
+        if let Some(sig) = sig {
             let _pass = sig.pass.lock();
             let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
 
