@@ -1,0 +1,5 @@
+# graphics/graphics-ffmpeg-host-pq.c: wic_image_init_internal() in
+# graphics-ffmpeg-host-windows.c calls it inside libobs on Windows. Declared
+# in graphics-ffmpeg-host-pq.h without EXPORT, so the shim stays hidden the
+# same way. Built on every host.
+gs_image_pq10_to_scrgb

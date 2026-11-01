@@ -7,7 +7,7 @@
 /* graphics/graphics-ffmpeg-host-windows.c */
 #include "graphics/graphics.h"
 #include "graphics/graphics-ffmpeg-host.h"
-#include "graphics/half.h"
+#include "graphics/graphics-ffmpeg-host-pq.h"
 #include "graphics/srgb.h"
 #include <util/bmem.h>
 #include <util/dstr.h>
