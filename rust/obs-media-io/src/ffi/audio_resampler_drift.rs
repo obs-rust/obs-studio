@@ -1,11 +1,12 @@
-//! C ABI for `libobs/media-io/audio-resampler-drift.c.h`.
+//! C ABI for `libobs/media-io/audio-resampler-drift.c.h` and
+//! `libobs/media-io/audio-resampler-plan.c.h`.
 //!
-//! `audio-resampler-ffmpeg.c` calls these inside libobs. The C file has no
-//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The nine
-//! functions keep the C signatures: `enum audio_format` crosses as `int` (as
-//! everywhere in this crate), `enum audio_resampler_comp_action` (0 to 2) as
-//! `unsigned int`, and `struct audio_resampler_comp` as
-//! [`Compensation`], whose layout is the C's. A null pointer, which the C
+//! `audio-resampler-ffmpeg.c` calls these inside libobs. The C files have no
+//! `EXPORT`, so the symbols stay hidden (`rust-hidden.d`). The fifteen
+//! functions keep the C signatures: `enum audio_format` and `enum
+//! speaker_layout` cross as `int` (as everywhere in this crate), `enum
+//! audio_resampler_comp_action` (0 to 2) as `unsigned int`, and `struct
+//! audio_resampler_comp` as [`Compensation`], whose layout is the C's. A null pointer, which the C
 //! dereferences, is not read or written: the state reads as zeroed and the
 //! answer is what that gives; `audio-resampler-ffmpeg.c` always passes the
 //! resampler's own state and locals.
@@ -14,8 +15,9 @@ use core::ffi::{c_int, c_uint};
 
 use crate::audio_io::MAX_AUDIO_CHANNELS;
 use crate::audio_resampler_drift::{
-    Compensation, count, delta, input_rate, output_frames, reports_drift, sample_format, set_error,
-    step, upmix_row,
+    Compensation, count, delta, input_channels, input_rate, is_4point1, layout_mask,
+    output_channels, output_frames, planar_output, reports_drift, sample_format, set_error, step,
+    upmix_row, upmixes_mono,
 };
 
 /// Same contract as C `audio_resampler_sample_format`.
@@ -153,4 +155,40 @@ pub unsafe extern "C" fn audio_resampler_comp_input_rate(
         Some(c) => input_rate(c, output_freq),
         None => input_rate(&Compensation::default(), output_freq),
     }
+}
+
+/// Same contract as C `audio_resampler_layout_mask`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_layout_mask(layout: c_int) -> u64 {
+    layout_mask(layout)
+}
+
+/// Same contract as C `audio_resampler_output_channels`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_output_channels(dst: c_int) -> u32 {
+    output_channels(dst)
+}
+
+/// Same contract as C `audio_resampler_planar_output`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_planar_output(dst_format: c_int) -> bool {
+    planar_output(dst_format)
+}
+
+/// Same contract as C `audio_resampler_input_channels`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_input_channels(src: c_int) -> c_int {
+    input_channels(src)
+}
+
+/// Same contract as C `audio_resampler_is_4point1`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_is_4point1(layout: c_int) -> bool {
+    is_4point1(layout)
+}
+
+/// Same contract as C `audio_resampler_upmixes_mono`.
+#[unsafe(no_mangle)]
+pub extern "C" fn audio_resampler_upmixes_mono(output_ch: u32) -> bool {
+    upmixes_mono(output_ch)
 }

@@ -15,7 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-audio-resampler-plan.pch.h"
+#include "libobs/build/libobs-ported-audio-resampler-drift.pch.h"
+
+/* Ported to rust/obs-media-io (audio_resampler_drift): the hybrid libobs drops
+ * this file. */
 
 /* The output plan of the libswresample resampler (audio-resampler-ffmpeg.c),
  * moved: the channel mask of each speaker layout, the output channels,
