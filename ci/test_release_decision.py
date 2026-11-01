@@ -91,6 +91,33 @@ class Decision(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(set(output.getvalue().splitlines()), {"skip=false", "repair=false", "verify_only=true"})
 
+    def test_stable_release_has_no_date_and_master_dispatch_only(self):
+        # obs-studio-rust-v1.0.0: a stable dispatch carries no beta date.
+        self.assertEqual(rd.check("workflow_dispatch", M, False, False, "", "20261101", stable=True), (False, False))
+        self.assertEqual(rd.check("workflow_dispatch", M, True, True, "", "20261101", stable=True), (False, True))
+        for event, ref, repair, exists, verify in (
+            ("schedule", M, False, False, False),
+            ("workflow_dispatch", "refs/heads/fix/x", False, False, False),
+            ("workflow_dispatch", M, False, True, False),  # never silently skip or replace
+            ("workflow_dispatch", M, False, False, True),
+        ):
+            with self.subTest(event=event, ref=ref, exists=exists, verify=verify), self.assertRaises(ValueError):
+                rd.check(event, ref, repair, exists, "", "20261101", verify_only=verify, stable=True)
+
+    def test_stable_assets(self):
+        names = rd.required_assets("1.0.0")
+        self.assertIn("OBS-Studio-Rust-1.0.0-windows-x64.zip", names)
+        self.assertIn("OBS-Studio-Rust-1.0.0-macos-arm64.dmg", names)
+        self.assertEqual(len(names), 7)
+
+    def test_stable_cli_needs_no_tag_date(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = rd.main(["check", "--event", "workflow_dispatch", "--ref", M, "--tag-exists", "false",
+                              "--today", "20261101", "--stable", "true"])
+        self.assertEqual(result, 0)
+        self.assertIn("stable=true", output.getvalue().splitlines())
+
 
 class Workflow(unittest.TestCase):
     def release_job(self) -> str:
@@ -121,6 +148,18 @@ class Workflow(unittest.TestCase):
         job = self.release_job()
         self.assertTrue("needs.check.outputs.verify_only != 'true'" in job, "verification can enter publishing")
         self.assertTrue('--verify-only "$VERIFY_ONLY"' in job, "publisher lacks the verification safety check")
+
+    def test_stable_dispatch_tags_the_crate_version(self):
+        self.assertIn("      stable:\n", WF)
+        check = WF[WF.index("\n  check:") : WF.index("\n  build:")]
+        self.assertIn('STABLE: ${{ inputs.stable }}', check)
+        self.assertIn('version="$crate"', check)
+        self.assertIn('--stable "$STABLE"', check)
+
+    def test_notes_describe_the_shipped_hybrid(self):
+        job = self.release_job()
+        self.assertNotIn("It ships the C libobs", job)
+        self.assertIn("Stable release", job)
 
 
 if __name__ == "__main__":
