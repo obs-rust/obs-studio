@@ -931,6 +931,7 @@ void OBSBasic::Save(SceneCollection &collection)
 
 		obs_data_set_bool(obj, "audio", vcamConfig.audio.enabled);
 		obs_data_set_int(obj, "audio_track", vcamConfig.audio.track);
+		obs_data_set_string(obj, "audio_device", vcamConfig.audio.device.c_str());
 
 		obs_data_set_obj(saveData, "virtual-camera", obj);
 	}
@@ -1440,6 +1441,7 @@ retryScene:
 		vcamConfig.source = obs_data_get_string(obj, "source");
 		vcamConfig.audio.enabled = !obs_data_has_user_value(obj, "audio") || obs_data_get_bool(obj, "audio");
 		vcamConfig.audio.track = VCamAudioTrackFromSaved(obs_data_get_int(obj, "audio_track"));
+		vcamConfig.audio.device = obs_data_get_string(obj, "audio_device");
 	}
 
 	if (!collectionSize.isZero()) {

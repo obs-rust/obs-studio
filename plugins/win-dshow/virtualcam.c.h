@@ -45,21 +45,38 @@ static void vmic_read_settings(struct virtualcam_data *vcam, obs_data_t *setting
 	vcam->audio_device = bstrdup(obs_data_get_string(settings, "audio_device"));
 }
 
-/* Opens the render endpoint vmic_route_pick chooses among the active ones,
- * with its friendly name in *name. NULL when there is none. */
-static IMMDevice *vmic_open_endpoint(IMMDeviceEnumerator *en, const char *saved, char **name)
+/* The friendly names and ids of the active render endpoints. */
+struct vmic_endpoints {
+	char **names;
+	char **ids;
+	size_t count;
+};
+
+static void vmic_endpoints_free(struct vmic_endpoints *list)
+{
+	for (size_t i = 0; i < list->count; i++) {
+		bfree(list->names[i]);
+		bfree(list->ids[i]);
+	}
+	bfree(list->names);
+	bfree(list->ids);
+	memset(list, 0, sizeof(*list));
+}
+
+static void vmic_endpoints_list(IMMDeviceEnumerator *en, struct vmic_endpoints *out)
 {
 	IMMDeviceCollection *list = NULL;
-	IMMDevice *found = NULL;
 	UINT count = 0;
 
+	memset(out, 0, sizeof(*out));
 	if (FAILED(IMMDeviceEnumerator_EnumAudioEndpoints(en, eRender, DEVICE_STATE_ACTIVE, &list))) {
-		return NULL;
+		return;
 	}
 	IMMDeviceCollection_GetCount(list, &count);
 
-	char **names = bzalloc(sizeof(char *) * (count + 1));
-	char **ids = bzalloc(sizeof(char *) * (count + 1));
+	out->names = bzalloc(sizeof(char *) * (count + 1));
+	out->ids = bzalloc(sizeof(char *) * (count + 1));
+	out->count = count;
 	for (UINT i = 0; i < count; i++) {
 		IMMDevice *dev = NULL;
 		IPropertyStore *props = NULL;
@@ -68,48 +85,79 @@ static IMMDevice *vmic_open_endpoint(IMMDeviceEnumerator *en, const char *saved,
 		PropVariantInit(&pv);
 		if (SUCCEEDED(IMMDeviceCollection_Item(list, i, &dev))) {
 			if (SUCCEEDED(IMMDevice_GetId(dev, &wid))) {
-				os_wcs_to_utf8_ptr(wid, 0, &ids[i]);
+				os_wcs_to_utf8_ptr(wid, 0, &out->ids[i]);
 				CoTaskMemFree(wid);
 			}
 			if (SUCCEEDED(IMMDevice_OpenPropertyStore(dev, STGM_READ, &props))) {
 				if (SUCCEEDED(IPropertyStore_GetValue(props, &vmic_pkey_friendly_name, &pv)) &&
 				    pv.vt == VT_LPWSTR) {
-					os_wcs_to_utf8_ptr(pv.pwszVal, 0, &names[i]);
+					os_wcs_to_utf8_ptr(pv.pwszVal, 0, &out->names[i]);
 				}
 				PropVariantClear(&pv);
 				IPropertyStore_Release(props);
 			}
 			IMMDevice_Release(dev);
 		}
-		if (!ids[i]) {
-			ids[i] = bstrdup("");
+		if (!out->ids[i]) {
+			out->ids[i] = bstrdup("");
 		}
-		if (!names[i]) {
-			names[i] = bstrdup("");
+		if (!out->names[i]) {
+			out->names[i] = bstrdup("");
 		}
 	}
+	IMMDeviceCollection_Release(list);
+}
 
-	const char *id = vmic_route_pick(saved, (const char *const *)names, (const char *const *)ids, count);
-	for (UINT i = 0; id && i < count; i++) {
-		if (ids[i] != id) {
+/* Opens the render endpoint vmic_route_pick chooses among the active ones,
+ * with its friendly name in *name. NULL when there is none. */
+static IMMDevice *vmic_open_endpoint(IMMDeviceEnumerator *en, const char *saved, char **name)
+{
+	struct vmic_endpoints list;
+	IMMDevice *found = NULL;
+
+	vmic_endpoints_list(en, &list);
+	const char *id =
+		vmic_route_pick(saved, (const char *const *)list.names, (const char *const *)list.ids, list.count);
+	for (size_t i = 0; id && i < list.count; i++) {
+		if (list.ids[i] != id) {
 			continue;
 		}
 		wchar_t *wid = NULL;
 		os_utf8_to_wcs_ptr(id, 0, &wid);
 		if (wid && SUCCEEDED(IMMDeviceEnumerator_GetDevice(en, wid, &found))) {
-			*name = bstrdup(names[i]);
+			*name = bstrdup(list.names[i]);
 		}
 		bfree(wid);
 	}
-
-	for (UINT i = 0; i < count; i++) {
-		bfree(names[i]);
-		bfree(ids[i]);
-	}
-	bfree(names);
-	bfree(ids);
-	IMMDeviceCollection_Release(list);
+	vmic_endpoints_free(&list);
 	return found;
+}
+
+/* The device list of the Virtual Camera dialog: "Automatic" (empty id, a
+ * virtual cable when one is installed), then every active render endpoint. */
+static obs_properties_t *virtualcam_properties(void *data)
+{
+	UNUSED_PARAMETER(data);
+	obs_properties_t *props = obs_properties_create();
+	obs_property_t *p = obs_properties_add_list(props, "audio_device", obs_module_text("VirtualCam.AudioDevice"),
+						    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_list_add_string(p, obs_module_text("VirtualCam.AudioDevice.Automatic"), "");
+
+	HRESULT com = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	IMMDeviceEnumerator *en = NULL;
+	if (SUCCEEDED(CoCreateInstance(&vmic_clsid_enumerator, NULL, CLSCTX_ALL, &vmic_iid_enumerator, (void **)&en))) {
+		struct vmic_endpoints list;
+		vmic_endpoints_list(en, &list);
+		for (size_t i = 0; i < list.count; i++) {
+			obs_property_list_add_string(p, list.names[i], list.ids[i]);
+		}
+		vmic_endpoints_free(&list);
+		IMMDeviceEnumerator_Release(en);
+	}
+	if (SUCCEEDED(com)) {
+		CoUninitialize();
+	}
+	return props;
 }
 
 /* Initializes a shared-mode client for float stereo at VMIC_RATE; Windows
@@ -412,6 +460,7 @@ struct obs_output_info virtualcam_info = {
 	.get_name = virtualcam_name,
 	.create = virtualcam_create,
 	.update = virtualcam_update,
+	.get_properties = virtualcam_properties,
 	.destroy = virtualcam_destroy,
 	.start = virtualcam_start,
 	.stop = virtualcam_stop,
