@@ -137,6 +137,9 @@ targets-ccache = { prefix = "targets-ccache-linux-", max = "300MB", evict = "lru
 targets-apt = { prefix = "targets-apt-", max = "200MB", evict = "lru" }
 # Added on master after #957 was written.
 tier2-ctest-cost = { prefix = "tier2-ctest-cost-", max = "1MB" }
+# The libobs lib-module archives (#3264): one set per master commit, pruned
+# to the modules that commit uses (ci/libobs_modules.py store --prune).
+tier2-libobs-modules = { prefix = "libobs-modules-tier2-linux-", max = "200MB", evict = "lru" }
 # October 21 snapshot: 41.4 MB Windows and 44.3 MB macOS; >3x growth room.
 windows-tier2-ccache = { prefix = "windows-tier2-ccache-", max = "400MB", evict = "lru" }
 macos-tier2-xcas = { prefix = "macos-tier2-xcas-", max = "200MB", evict = "lru" }

@@ -196,6 +196,7 @@ else
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
     -DCMAKE_C_COMPILER_LAUNCHER=zccache -DCMAKE_CXX_COMPILER_LAUNCHER=zccache \
+    -DOBS_LIBOBS_MODULE_CACHE= \
     ${OBS_EXTRA_CFLAGS:+"-DCMAKE_C_FLAGS=$OBS_EXTRA_CFLAGS" "-DCMAKE_CXX_FLAGS=$OBS_EXTRA_CFLAGS"} \
     "${runpath_flags[@]}" \
     ${OBS_EXTRA_CMAKE_ARGS:-} \
@@ -214,6 +215,15 @@ else
   # (wrap/ipc/lost_request.rs) and leaves the replay to the build tool.
   # Restart the daemon and rebuild once; ninja redoes only the failed edges,
   # and a real compile error fails the second time too.
+  # The libobs lib-module cache (#3262, #3264): restore the modules whose
+  # key is unchanged and import them instead of compiling. Opt-in; the
+  # configure above clears the variable, so a kept tree never reuses old hits.
+  if [ -n "${OBS_LIBOBS_MODULE_CACHE_DIR:-}" ]; then
+    echo "== libobs module cache: restore"
+    uv run --script "$SRC/ci/libobs_modules.py" restore --build "$build" --cache "$OBS_LIBOBS_MODULE_CACHE_DIR"
+    cmake -B "$build" -DOBS_LIBOBS_MODULE_CACHE="$build/libobs-modcache" \
+      >>"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
+  fi
   tier2_targets=(libobs libobs-c-reference cmocka-tests decklink obs-nvenc obs-nvenc-c-reference)
   uv run --script "$SRC/rust/tools/linux-validate/drop_depless_objects.py" "$build"
   if ! cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0 >"$build.build.log" 2>&1; then
@@ -247,6 +257,10 @@ else
       uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build.log"
       exit 1
     fi
+  fi
+  if [ -n "${OBS_LIBOBS_MODULE_CACHE_DIR:-}" ]; then
+    echo "== libobs module cache: store"
+    uv run --script "$SRC/ci/libobs_modules.py" store --prune --build "$build" --cache "$OBS_LIBOBS_MODULE_CACHE_DIR"
   fi
   if [ -n "${OBS_EXTRA_CFLAGS:-}" ]; then
     # Measuring extra flags: show what they report (#516).
