@@ -100,6 +100,7 @@ pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
 pub mod win_crash_report;
+pub mod win_symbol_paths;
 pub mod win_system_info;
 
 #[allow(unsafe_code)]
