@@ -321,9 +321,9 @@ def perf_guard_lint() -> None:
     run([sys.executable, "ci/perf_guard_lint.py"])
 
 
-def knowledge_lint() -> None:
+def knowledge_lint(fix: bool) -> None:
     """docs/knowledge/ keeps the OKF core and its index (#3438); see ci/knowledge_lint.py."""
-    run([sys.executable, "ci/knowledge_lint.py"])
+    run([sys.executable, "ci/knowledge_lint.py"] + (["--fix"] if fix else []))
 
 
 def tracked_files() -> list[str]:
@@ -671,7 +671,7 @@ def lane_lint(fix: bool) -> None:
     check_feature_sets()
     platform_ifdef_ratchet()
     perf_guard_lint()
-    knowledge_lint()
+    knowledge_lint(fix)
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
     # Pre-expansion Dylints (dylints/*), so host-cfg'd code is checked on
     # one Linux lane (obs-rust/obs-studio#323). They scan whole src/ files,

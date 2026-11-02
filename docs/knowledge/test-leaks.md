@@ -1,7 +1,7 @@
 ---
 type: concept
 title: Free what OBS's destroy path frees
-description: A test that skips OBS's destroy call leaks what that call frees, and the asan job fails on that since #3290.
+description: "A test that skips OBS's destroy call leaks what that call frees, and the asan job fails on that since #3290."
 sources: ["#3400", "#3401", "#3290"]
 status: active
 ---
