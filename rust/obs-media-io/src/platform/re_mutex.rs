@@ -10,6 +10,8 @@ use std::marker::PhantomData;
 use std::sync::{Condvar, Mutex};
 use std::thread::{self, ThreadId};
 
+use obs_util::ffi::tsan;
+
 struct Inner {
     owner: Option<ThreadId>,
     depth: usize,
@@ -47,6 +49,9 @@ impl<T> ReMutex<T> {
         }
         guard.owner = Some(id);
         guard.depth += 1;
+        // TSan does not see this `Mutex` and `Condvar`, so tell it what a
+        // recursive `pthread_mutex_t` would, as the C file uses (#3507).
+        tsan::acquire(&self.inner);
         Guard {
             mutex: self,
             _not_send: PhantomData,
@@ -57,6 +62,7 @@ impl<T> ReMutex<T> {
         let mut guard = self.inner.lock().unwrap_or_else(|err| err.into_inner());
         guard.depth -= 1;
         if guard.depth == 0 {
+            tsan::release(&self.inner);
             guard.owner = None;
             self.cv.notify_one();
         }
