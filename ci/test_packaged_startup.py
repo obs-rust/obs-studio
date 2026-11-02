@@ -675,3 +675,69 @@ class StartupFailureReportTest(unittest.TestCase):
             )
         self.assertIn("config mode fresh", str(error))
         reports.assert_not_called()
+
+
+class FrontendStartupProgressTest(unittest.TestCase):
+    """#3241: obs-websocket starts its server on its own thread from
+    `obs_module_load`, so it answers while the frontend is still blocked in
+    `OBSBasic::OBSInit` (a tray/AppKit scene-activation deadlock). A protocol
+    handshake alone therefore cannot tell "ready" from "still starting": the
+    frontend's own `OBSBasic::OBSInit: N ms` summary is the progress signal,
+    and a shutdown timeout without it is a startup hang."""
+
+    def config_with_log(self, root, text, name="2026-10-31 12-00-00.txt"):
+        logs = Path(root) / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / name).write_text(text, encoding="utf-8")
+        return Path(root)
+
+    def test_the_summary_line_marks_the_frontend_as_started(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = self.config_with_log(
+                root, "info: Loaded Modules:\ninfo: OBSBasic::OBSInit: 512 ms\n"
+            )
+            self.assertTrue(smoke.frontend_finished_startup(config))
+
+    def test_a_log_without_the_summary_has_not_finished_startup(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = self.config_with_log(
+                root, "info:   Loaded Modules:\ninfo:     obs-websocket.dll\n"
+            )
+            self.assertFalse(smoke.frontend_finished_startup(config))
+
+    def test_a_missing_log_is_not_started(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertFalse(smoke.frontend_finished_startup(Path(root)))
+
+    def test_an_older_launch_summary_does_not_count(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = self.config_with_log(
+                root, "info: OBSBasic::OBSInit: 512 ms\n", name="old.txt"
+            )
+            (Path(root) / "logs" / "new.txt").write_text("info:   Loaded Modules:\n")
+            os.utime(Path(root) / "logs" / "old.txt", (1, 1))
+            self.assertFalse(smoke.frontend_finished_startup(config))
+
+    def test_a_shutdown_timeout_before_the_summary_is_a_startup_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = self.config_with_log(root, "info:   Loaded Modules:\n")
+            timeout = smoke.subprocess.TimeoutExpired(["owned-app"], 30)
+            with patch.object(smoke, "report_crash_reports") as reports:
+                raised = smoke.shutdown_timeout_failure(
+                    config, "windows", 0.0, "migrate-custom", timeout
+                )
+            self.assertIsInstance(raised, RuntimeError)
+            self.assertIn("config mode migrate-custom", str(raised))
+            self.assertIn("did not finish OBSInit", str(raised))
+            reports.assert_not_called()
+
+    def test_a_shutdown_timeout_after_the_summary_stays_a_shutdown_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            config = self.config_with_log(
+                root, "info: OBSBasic::OBSInit: 512 ms\n"
+            )
+            timeout = smoke.subprocess.TimeoutExpired(["owned-app"], 30)
+            raised = smoke.shutdown_timeout_failure(
+                config, "windows", 0.0, "fresh", timeout
+            )
+            self.assertIs(raised, timeout)
