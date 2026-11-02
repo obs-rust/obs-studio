@@ -36,7 +36,8 @@ class Tier2RetentionTest(unittest.TestCase):
 
     def test_reallocation_does_not_expand_combined_allowance(self):
         owners = {self.owner(key) for key in ("zccache-tier2-linux-both-seed", "zccache-ubuntu-seed",
-                                             "zccache-appimage-seed", "zccache-sanitize-seed")}
+                                             "zccache-appimage-seed", "zccache-sanitize-seed",
+                                             "zccache-sanitize-asan-seed")}
         footprint = 0
         for owner in owners:
             family = self.families[owner]
