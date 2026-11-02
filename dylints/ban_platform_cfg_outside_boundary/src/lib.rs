@@ -102,7 +102,9 @@ fn emit(cx: &EarlyContext<'_>, span: Span, detail: String) {
 /// file (including inline unit-test modules), except the boundary itself
 /// (`src/platform/`, `src/ffi/`) and the out-of-scope crates.
 fn in_scope(filename: &str) -> bool {
-    let normalized = filename.replace('\\', "/");
+    // Resolve `..` first: a `#[path]`-included test reaches here as
+    // `rust/<crate>/src/../tests/...`, which is physically under tests/.
+    let normalized = resolve_dot_dot(&filename.replace('\\', "/"));
     if normalized.ends_with("ui/allowed_boundary.rs") {
         return false;
     }
@@ -126,6 +128,20 @@ fn in_scope(filename: &str) -> bool {
         || rest == "src/platform.rs"
         || rest.starts_with("src/ffi/")
         || rest == "src/ffi.rs")
+}
+
+fn resolve_dot_dot(path: &str) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    for part in path.split('/') {
+        match part {
+            ".." if parts.last().is_some_and(|last| !last.is_empty() && *last != "..") => {
+                parts.pop();
+            }
+            "." => {}
+            _ => parts.push(part),
+        }
+    }
+    parts.join("/")
 }
 
 fn platform_cfg_invocations(source: &str) -> Vec<String> {
@@ -332,6 +348,7 @@ fn native_platform_references_are_detected_outside_strings() {
 fn scope_covers_safe_cores_only() {
     for path in [
         "/repo/rust/obs-util/src/pipe.rs",
+        "/repo/rust/obs-util/src/sub/../pipe.rs",
         "/repo/rust/obs-media-io/src/audio_io.rs",
         "/repo/rust/obs-util/src/lib.rs",
     ] {
@@ -343,6 +360,9 @@ fn scope_covers_safe_cores_only() {
         "/repo/rust/obs-util/src/ffi/pipe.rs",
         "/repo/rust/obs-c-oracle/src/lib.rs",
         "/repo/rust/obs-util/tests/pipe.rs",
+        // A `#[path]`-included test file: physically under tests/.
+        "/repo/rust/obs-util/src/../tests/threading/threading.rs",
+        "/repo/rust/obs-util/src/../tests/../../obs-c-oracle/tests/oracle/private_symbols.rs",
         "/repo/rust/tools/sanitize/src/main.rs",
     ] {
         assert!(!in_scope(path), "{path}");
