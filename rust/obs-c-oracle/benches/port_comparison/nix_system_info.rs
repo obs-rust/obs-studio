@@ -1,14 +1,21 @@
 //! obs-core: the Linux and BSD system info parsing
 //! (`libobs/obs-nix-system-info.c.h`), which `obs-nix.c` runs over each
 //! `/proc/cpuinfo` and `dmesg.boot` line, and over the memory sizes, when it
-//! writes the startup log. Each measurement runs 1024 lines or sizes that
+//! writes the startup log, and its distribution and Flatpak log rules
+//! (`libobs/obs-nix-log-rules.c.h`), which it runs over each
+//! `/etc/os-release` line and Flatpak extension entry. Each measurement runs 1024 lines or sizes that
 //! reach every branch, and folds the results into a checksum that both sides
 //! must match:
 //! - `cpuinfo`: the three key checks of one line, its value, the physical id
 //!   of a `physical id` line and the print rule, over lines of a
 //!   two-socket x86 `/proc/cpuinfo` with odd keys and values mixed in;
 //! - `dmesg`: the `CPU: ` check and the speed of one `dmesg.boot` line;
-//! - `memory`: the total, free and OpenBSD sizes.
+//! - `memory`: the total, free and OpenBSD sizes;
+//! - `os_release`: the key of one `/etc/os-release` line, the span and quote
+//!   cut of its value, and the version fallback for the names read;
+//! - `extensions`: the name of one Flatpak extension entry. Only entries
+//!   with a name: an empty name is the port's intentional difference
+//!   (#3473), where the two sides differ.
 //!
 //! Neither side allocates while it runs, and the lines are freed with the
 //! module's fixtures, so the module leaves no allocation live.
@@ -19,11 +26,18 @@
 //! Rust, 20.2 us C; memory 8.8 us Rust, 8.6 us C. The Rust side reads each
 //! line's length up to its NUL once in the shim, where the C stops at the
 //! first byte that differs, so a cpuinfo line costs a few ns more.
+//!
+//! `os_release` and `extensions`, measured when they were added (the same
+//! host at a load average of about 9): os_release 15.8 us Rust, 19.8 us C;
+//! extensions 18.5 us Rust, 6.6 us C. The shim reads the whole entry up to
+//! its NUL, where the C's strcspn() stops at the first `=`, and an entry is
+//! about 40 bytes; the startup log reads a handful of them once.
 
 use std::ffi::{CString, c_char};
 use std::hint::black_box;
 
 use criterion::{Criterion, Throughput};
+use obs_c_oracle::nix_log_rules as lr;
 use obs_c_oracle::nix_system_info as c;
 use obs_core::ffi::nix_system_info as rs;
 
@@ -57,6 +71,27 @@ const CPUINFO: [&str; 12] = [
     "BogoMIPS\t: 48.00\n",
 ];
 
+const OS_RELEASE: [&str; 10] = [
+    "NAME=\"Arch Linux\"\n",
+    "VERSION_ID=\"26.04\"\n",
+    "BUILD_ID=rolling\n",
+    "PRETTY_NAME=\"Ubuntu 26.04 LTS\"\n",
+    "NAME='x'\r\n",
+    "ID=arch\n",
+    "NAME=\"unterminated\n",
+    "VERSION_ID=\n",
+    "HOME_URL=\"https://archlinux.org/\"\n",
+    "NAME=Unknown",
+];
+
+const EXTENSIONS: [&str; 5] = [
+    "org.freedesktop.Platform.GL.default=4c1f8b2a0d9e",
+    "org.freedesktop.Platform.openh264=b6e8a0b3",
+    "com.obsproject.Studio.Locale=0f9a7c1e",
+    "a==b",
+    "org.gtk.Gtk3theme.Adwaita-dark",
+];
+
 const DMESG: [&str; 6] = [
     "CPU: AMD Ryzen 7 5800X 8-Core Processor (3800.11-MHz K8-class CPU)\n",
     "CPU: a (1-b (2-c\n",
@@ -70,6 +105,8 @@ struct Fixtures {
     cpuinfo: Vec<CString>,
     dmesg: Vec<CString>,
     memory: Vec<(u64, u64, u64, u32, i64)>,
+    os_release: Vec<CString>,
+    extensions: Vec<CString>,
 }
 
 fn fixtures() -> Fixtures {
@@ -92,10 +129,14 @@ fn fixtures() -> Fixtures {
             )
         })
         .collect();
+    let os_release = (0..CALLS).map(|_| pick(&mut rng, &OS_RELEASE)).collect();
+    let extensions = (0..CALLS).map(|_| pick(&mut rng, &EXTENSIONS)).collect();
     Fixtures {
         cpuinfo,
         dmesg,
         memory,
+        os_release,
+        extensions,
     }
 }
 
@@ -113,6 +154,10 @@ struct Side {
     total_mb: fn(u64, u32) -> u64,
     free_mb: fn(u64, u64, u32) -> u64,
     physmem_mb: fn(i64) -> i64,
+    os_release_field: fn(Line, &mut i32) -> Line,
+    os_release_value: fn(Line, &mut usize) -> Line,
+    version_fallback: fn(bool, Line) -> Line,
+    extension_name: fn(Line, &mut usize) -> Line,
 }
 
 // SAFETY (each): every line is a live NUL-terminated string from
@@ -129,6 +174,10 @@ const RUST: Side = Side {
     total_mb: |t, u| rs::obs_nix_system_info_total_mb(t, u),
     free_mb: |f, b, u| rs::obs_nix_system_info_free_mb(f, b, u),
     physmem_mb: |m| rs::obs_nix_system_info_physmem_mb(m),
+    os_release_field: |l, key| unsafe { rs::obs_nix_system_info_os_release_field(l, key) },
+    os_release_value: |v, len| unsafe { rs::obs_nix_system_info_os_release_value(v, len) },
+    version_fallback: |b, d| unsafe { rs::obs_nix_system_info_version_fallback(b, d) },
+    extension_name: |e, len| unsafe { rs::obs_nix_system_info_extension_name(e, len) },
 };
 
 // SAFETY (each): as for RUST; the size functions take plain values.
@@ -144,6 +193,10 @@ const C: Side = Side {
     total_mb: |t, u| unsafe { c::oracle_obs_nix_system_info_total_mb(t, u) },
     free_mb: |f, b, u| unsafe { c::oracle_obs_nix_system_info_free_mb(f, b, u) },
     physmem_mb: |m| unsafe { c::oracle_obs_nix_system_info_physmem_mb(m) },
+    os_release_field: |l, key| unsafe { lr::oracle_obs_nix_system_info_os_release_field(l, key) },
+    os_release_value: |v, len| unsafe { lr::oracle_obs_nix_system_info_os_release_value(v, len) },
+    version_fallback: |b, d| unsafe { lr::oracle_obs_nix_system_info_version_fallback(b, d) },
+    extension_name: |e, len| unsafe { lr::oracle_obs_nix_system_info_extension_name(e, len) },
 };
 
 fn fold(sum: u64, value: u64) -> u64 {
@@ -209,12 +262,45 @@ fn memory(side: &Side, f: &Fixtures) -> u64 {
     sum
 }
 
+fn os_release(side: &Side, f: &Fixtures) -> u64 {
+    let mut sum = 0u64;
+    for line in &f.os_release {
+        let l = black_box(line.as_ptr());
+        let mut key = -1;
+        let start = (side.os_release_field)(l, &mut key);
+        if start.is_null() {
+            continue;
+        }
+        let mut len = usize::MAX;
+        sum = fold(sum, offset(l, (side.os_release_value)(start, &mut len)));
+        sum = fold(sum, len as u64);
+        sum = fold(sum, u64::from(key.cast_unsigned()));
+        // the fallback, with the line as the name: a static string or NULL
+        let fallback = (side.version_fallback)(len == 0, l);
+        sum = fold(sum, u64::from(fallback.is_null()));
+    }
+    sum
+}
+
+fn extensions(side: &Side, f: &Fixtures) -> u64 {
+    let mut sum = 0u64;
+    for ext in &f.extensions {
+        let e = black_box(ext.as_ptr());
+        let mut len = usize::MAX;
+        sum = fold(sum, offset(e, (side.extension_name)(e, &mut len)));
+        sum = fold(sum, len as u64);
+    }
+    sum
+}
+
 pub(crate) fn benchmarks(criterion: &mut Criterion) {
     let fixtures = fixtures();
     for (name, run) in [
         ("cpuinfo", cpuinfo as fn(&Side, &Fixtures) -> u64),
         ("dmesg", dmesg),
         ("memory", memory),
+        ("os_release", os_release),
+        ("extensions", extensions),
     ] {
         assert_eq!(
             run(&RUST, &fixtures),
