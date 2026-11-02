@@ -31,9 +31,17 @@
  * - log_memory_info(): the MB values of the sysinfo() fields, and OpenBSD's
  *   HW_PHYSMEM64.
  *
- * obs-nix.c keeps the file reads (fopen(), getline(), fclose(), free()),
- * every dstr copy and trim, sysinfo(), sysctl(), the pointer checks and
- * every log, each at its point. Each key check is its own function, so the
+ * The distribution, Flatpak and desktop log rules (obs-nix-log-rules.c):
+ * - read_distribution_info() (obs-nix-os-release.h): which key an
+ *   os-release line holds and where its value starts, the value's span with
+ *   one pair of quotes cut, and the version when none was read;
+ * - log_flatpak_extensions(): the name of an extension entry;
+ * - log_desktop_session_info(): the form of the desktop line.
+ *
+ * obs-nix.c and obs-nix-os-release.h keep the file reads (fopen(),
+ * getline(), fclose(), free()), every dstr copy and trim, the list splits,
+ * sysinfo(), sysctl(), getenv(), the pointer checks and every log, each at
+ * its point. Each key check is its own function, so the
  * three checks of a cpuinfo line stay where they were. The line and value
  * arguments are NUL-terminated, as getline() leaves them; the functions read
  * no further than that NUL, write nothing, call into no libobs and keep no
@@ -80,3 +88,52 @@ uint64_t obs_nix_system_info_free_mb(uint64_t freeram, uint64_t bufferram, uint3
 
 /* OpenBSD's physical memory in MB: mem / 1024 / 1024, in int64_t. */
 int64_t obs_nix_system_info_physmem_mb(int64_t mem);
+
+/* read_distribution_info() */
+
+/* The os-release keys read_distribution_info() reads. */
+enum obs_nix_os_release_key {
+	OBS_NIX_OS_RELEASE_NAME,
+	OBS_NIX_OS_RELEASE_VERSION_ID,
+	OBS_NIX_OS_RELEASE_BUILD_ID,
+};
+
+/* The value of an os-release line: the byte after "NAME=", "VERSION_ID=" or
+ * "BUILD_ID=" (compared by prefix, in that order), with the key in *key, or
+ * NULL (and *key untouched) when the line starts with none of them. */
+const char *obs_nix_system_info_os_release_field(const char *line, enum obs_nix_os_release_key *key);
+
+/* The text of an os-release value: its span up to the first CR or LF in
+ * *len, with one pair of matching '"' or '\'' around it cut when the span is
+ * at least two bytes long. No escapes are read. The caller copies it only
+ * when *len is not zero. */
+const char *obs_nix_system_info_os_release_value(const char *start, size_t *len);
+
+/* The version when the file gave none: NULL when a BUILD_ID was read (the
+ * caller copies it), otherwise "rolling" for a distro other than "Unknown",
+ * or "Unknown". */
+const char *obs_nix_system_info_version_fallback(bool has_build_id, const char *distro);
+
+/* log_flatpak_extensions() */
+
+/* The name of a Flatpak extension entry, "name=commit": the first non-empty
+ * piece between its '='s, with its length in *len, or the text "(null)"
+ * when every piece is empty. */
+const char *obs_nix_system_info_extension_name(const char *ext, size_t *len);
+
+/* log_desktop_session_info() */
+
+/* The forms of the desktop line. */
+enum obs_nix_desktop_form {
+	/* No line. */
+	OBS_NIX_DESKTOP_NONE,
+	/* "Desktop Environment: %s", with whichever name is set. */
+	OBS_NIX_DESKTOP_ONE,
+	/* "Desktop Environment: %s (%s)", XDG_CURRENT_DESKTOP then
+	 * XDG_SESSION_DESKTOP. */
+	OBS_NIX_DESKTOP_BOTH,
+};
+
+/* The form of the desktop line, from which of XDG_CURRENT_DESKTOP and
+ * XDG_SESSION_DESKTOP are set (an empty value counts as set). */
+enum obs_nix_desktop_form obs_nix_system_info_desktop_form(bool has_current, bool has_session);

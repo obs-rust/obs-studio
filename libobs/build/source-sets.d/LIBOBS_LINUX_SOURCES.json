@@ -8,6 +8,7 @@
   "obs-nix-x11-keys.h",
   "util/threading-posix.h",
   "build/libobs.nix+.h.c",
+  "build/libobs.nix-log-rules+.h.c",
   "build/libobs.nix-main+.h.c",
   "build/libobs.graphics-ffmpeg-host-posix+.h.c"
 ]
