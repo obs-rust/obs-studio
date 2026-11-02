@@ -21,8 +21,10 @@
 //!   shorter line), and a flipped copy from the last row, one copy of the
 //!   whole image for equal line sizes, or row by row. `usize` arithmetic
 //!   wraps, as C's `size_t` does.
-//! - [`is_pow2`] and [`texture_flags`] (`gs_texture_create`): the mipmap
-//!   rules.
+//! - [`is_pow2`] and [`texture_flags`] (`gs_texture_create`, and
+//!   `gs_cubetexture_create` for a `size` by `size` texture): the mipmap
+//!   rules. The cube creator also drops its initial data on
+//!   [`MipWarning::RenderTarget`], in C.
 //!
 //! `graphics.c` keeps the device calls, the vertex buffers, the matrix
 //! stack, `gs_texture_map()`/`gs_texture_unmap()`, every `memcpy` and the
@@ -321,7 +323,8 @@ pub const fn is_pow2(size: u32) -> bool {
     size >= 2 && size.is_power_of_two()
 }
 
-/// The warning `gs_texture_create` logs (`enum gs_texture_mip_warning`).
+/// The warning `gs_texture_create` and `gs_cubetexture_create` log (`enum
+/// gs_texture_mip_warning`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MipWarning {
     /// No warning; the flags and levels as given.
@@ -332,8 +335,8 @@ pub enum MipWarning {
     RenderTarget = 2,
 }
 
-/// `struct gs_texture_mip_plan`: what `gs_texture_create` passes to the
-/// device, and its warning.
+/// `struct gs_texture_mip_plan`: what `gs_texture_create` and
+/// `gs_cubetexture_create` pass to the device, and the warning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MipPlan {
     pub flags: u32,

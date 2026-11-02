@@ -34,7 +34,8 @@
  * - gs_draw_sprite_subregion(): the "whole texture" shortcut;
  * - gs_texture_set_image(): the copy plan (bytes per row, the flipped start
  *   row, one copy or row by row);
- * - gs_texture_create(): the power-of-two test and the mipmap rules.
+ * - gs_texture_create() and gs_cubetexture_create() (a size x size texture):
+ *   the power-of-two test and the mipmap rules.
  *
  * graphics.c keeps the device calls, the vertex buffers (it passes their
  * points and texture coordinate arrays), the matrix stack, gs_texture_map()
@@ -147,7 +148,8 @@ struct gs_texture_upload_plan gs_texture_upload_plan(uint32_t linesize, uint32_t
 /* At least 2 and a power of two. */
 bool gs_texture_is_pow2(uint32_t size);
 
-/* The warning gs_texture_create() logs when it turns mipmaps off. */
+/* The warning gs_texture_create() and gs_cubetexture_create() log when they
+ * turn mipmaps off. */
 enum gs_texture_mip_warning {
 	GS_TEXTURE_MIP_OK = 0,
 	/* "Cannot use mipmaps with a non-power-of-two texture." */
@@ -157,7 +159,8 @@ enum gs_texture_mip_warning {
 };
 
 struct gs_texture_mip_plan {
-	/* the flags and levels gs_texture_create() passes to the device */
+	/* the flags and levels gs_texture_create() and gs_cubetexture_create()
+	 * pass to the device */
 	uint32_t flags;
 	uint32_t levels;
 	enum gs_texture_mip_warning warning;

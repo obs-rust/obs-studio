@@ -1330,35 +1330,33 @@ gs_texture_t *gs_cubetexture_create(uint32_t size, enum gs_color_format color_fo
 				    const uint8_t **data, uint32_t flags)
 {
 	graphics_t *graphics = thread_graphics;
-	bool pow2tex = gs_texture_is_pow2(size);
-	bool uses_mipmaps = (flags & GS_BUILD_MIPMAPS || levels != 1);
+	/* The 2D rule of a size x size texture. */
+	struct gs_texture_mip_plan plan = gs_texture_mip_plan(size, size, flags, levels);
 
 	if (!gs_valid("gs_cubetexture_create"))
 		return NULL;
 
-	if (uses_mipmaps && !pow2tex) {
+	switch (plan.warning) {
+	case GS_TEXTURE_MIP_NOT_POW2:
 		blog(LOG_WARNING, "Cannot use mipmaps with a "
 				  "non-power-of-two texture.  Disabling "
 				  "mipmaps for this texture.");
-
-		uses_mipmaps = false;
-		flags &= ~(uint32_t)GS_BUILD_MIPMAPS;
-		levels = 1;
-	}
-
-	if (uses_mipmaps && flags & GS_RENDER_TARGET) {
+		break;
+	case GS_TEXTURE_MIP_RENDER_TARGET:
 		blog(LOG_WARNING, "Cannot use mipmaps with render targets.  "
 				  "Disabling mipmaps for this texture.");
-		flags &= ~(uint32_t)GS_BUILD_MIPMAPS;
-		levels = 1;
 		/* Unlike gs_texture_create(), which keeps it: the devices
 		 * read the data face by face, each face with all the levels
 		 * asked for, so with one level faces 1-5 would read the wrong
 		 * entries. A 2D texture's entry 0 stays its top level. */
 		data = NULL;
+		break;
+	case GS_TEXTURE_MIP_OK:
+		break;
 	}
 
-	return graphics->exports.device_cubetexture_create(graphics->device, size, color_format, levels, data, flags);
+	return graphics->exports.device_cubetexture_create(graphics->device, size, color_format, plan.levels, data,
+							   plan.flags);
 }
 
 gs_texture_t *gs_voltexture_create(uint32_t width, uint32_t height, uint32_t depth, enum gs_color_format color_format,
