@@ -1112,9 +1112,14 @@ area.
   [#405](https://github.com/obs-rust/obs-studio/pull/405), upstream
   [obsproject/obs-studio#2406](https://github.com/obsproject/obs-studio/issues/2406).
 - A Video Delay (Async) filter of more than 2 s no longer breaks up the
-  audio of the source into noise. *All*, 2026-10-13. Issue
-  [#521](https://github.com/obs-rust/obs-studio/issues/521), PR
-  [#522](https://github.com/obs-rust/obs-studio/pull/522), upstream
+  audio of the source into noise. The filter keeps its configured delay when
+  graphics ticks skip frames, dropping expired queued pictures and holding
+  the last picture across gaps instead of showing newer pictures too early.
+  *All*, 2026-10-13. Issues
+  [#521](https://github.com/obs-rust/obs-studio/issues/521),
+  [#3368](https://github.com/obs-rust/obs-studio/issues/3368), PRs
+  [#522](https://github.com/obs-rust/obs-studio/pull/522),
+  [#3515](https://github.com/obs-rust/obs-studio/pull/3515), upstream
   [obsproject/obs-studio#13830](https://github.com/obsproject/obs-studio/issues/13830).
 - Two Audio Input Capture sources on the same device both record cleanly
   when PipeWire runs at a large quantum, and the second one is no longer
