@@ -1826,6 +1826,13 @@ area.
   default on Linux and macOS, instead of 0 or false with a "Size of shader
   param does not match" error in the log. *Linux, macOS*, 2026-10-27.
   Issue [#2548](https://github.com/obs-rust/obs-studio/issues/2548).
+- **Effect int values past the int range.** An `int` default or an array
+  size in a shader effect (a plugin's shader filter or a custom `.effect`
+  file) past the `int` range now reads as the nearest `int` on every
+  platform: `3000000000` gives 2147483647 instead of -1294967296 on Linux and
+  macOS, and `-2147483648` gives -2147483648 instead of -2147483647 on
+  Windows. Values inside the range are unchanged. *All*, 2026-11-02. Issue
+  [#3464](https://github.com/obs-rust/obs-studio/issues/3464).
 - A frame read in parts, the way a Media Source scans an animated GIF, no
   longer makes the rest of the frame decode as a separate block when the read
   stops at the end of the frame's data: the next scan starts the frame again,

@@ -15,9 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs-effect-param-numbers.pch.h"
+#include "build/libobs-ported-effect-param-types.pch.h"
 
-/* The number reads of effect-parser.c, declared in effect-param-types.h. */
+/* The number reads of effect-parser.c, declared in effect-param-types.h.
+ * Ported to rust/obs-graphics (effect_param_types): the hybrid libobs drops
+ * this file. */
 
 int obs_effect_param_int_value(const char *str, bool negative)
 {

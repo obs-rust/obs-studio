@@ -41,6 +41,8 @@
 
 use core::ffi::c_char;
 
+use obs_util::lexer::valid_int_str;
+
 use crate::shader_param_names::shader_param_type;
 
 /// The default-value parser of a parameter (`enum obs_effect_param_route`),
@@ -145,22 +147,87 @@ fn digit(b: u8) -> i32 {
 }
 
 /// `obs_effect_param_int_value` (`ep_parse_param_assign_intfloat`): an `int`
-/// default value. `text` is the number token's text as a C string, read on
-/// past the token as `strtol(str, NULL, 10)` reads it, to the first byte
-/// that is not a digit; `negative` when a `-` token came before it.
-#[expect(clippy::todo, reason = "RED: the port follows")]
+/// default value. `text` is the number token's text as a C string (it ends
+/// at a NUL or at the end of the slice), read on past the token as
+/// `strtol(str, NULL, 10)` reads it, to the first byte that is not a digit;
+/// `negative` when a `-` token came before it.
+///
+/// Intentional difference (#3464): the digits are read exactly, the sign
+/// applied, and the value saturated to `i32`. The C saturates at `LONG_MAX`
+/// first and then casts to `int`, so past `INT_MAX` it gives another value
+/// on each width of `long`; inside `int` range the two agree.
 #[must_use]
 pub fn int_value(text: &[u8], negative: bool) -> i32 {
-    let _ = (text, negative);
-    todo!()
+    let value = strtol_value(text);
+    saturate(if negative {
+        value.saturating_neg()
+    } else {
+        value
+    })
 }
 
 /// `obs_effect_param_array_count` (`ep_parse_param_array`): the count of
 /// `name[count]`, or `None` when the token's first `len` bytes are not an
-/// int (`valid_int_str`). `text` is as for [`int_value`].
-#[expect(clippy::todo, reason = "RED: the port follows")]
+/// int (`valid_int_str`, which reads the whole string when `len` is 0).
+/// `text` is as for [`int_value`], and the count is its value, saturated
+/// to `i32` as there (#3464).
 #[must_use]
 pub fn array_count(text: &[u8], len: usize) -> Option<i32> {
-    let _ = (text, len);
-    todo!()
+    valid_int_str(Some(text), len).then(|| saturate(strtol_value(text)))
+}
+
+/// Whether `strtol(str, NULL, 10)`, having read `read`, reads the next
+/// byte too: `read` is C white space, then at most one sign, then digits.
+/// The shim reads the token's text one byte at a time while this holds, so
+/// it reads no further into the effect source than `strtol` does.
+#[must_use]
+pub fn strtol_reads_on(read: &[u8]) -> bool {
+    let spaces = read.iter().take_while(|&&b| is_c_space(b)).count();
+    let rest = read.get(spaces..).unwrap_or_default();
+    let digits = match rest.split_first() {
+        Some((b'+' | b'-', digits)) => digits,
+        _ => rest,
+    };
+    digits.iter().all(u8::is_ascii_digit)
+}
+
+/// What `strtol(str, NULL, 10)` reads, exactly, in `i64`: 0 without digits.
+/// Past `i32` the magnitude stops growing, since it only saturates.
+fn strtol_value(text: &[u8]) -> i64 {
+    let text = c_str(text);
+    let spaces = text.iter().take_while(|&&b| is_c_space(b)).count();
+    let rest = text.get(spaces..).unwrap_or_default();
+    let (minus, digits) = match rest.split_first() {
+        Some((b'-', digits)) => (true, digits),
+        Some((b'+', digits)) => (false, digits),
+        _ => (false, rest),
+    };
+    let cap = i64::from(i32::MAX).saturating_add(2);
+    let magnitude = digits
+        .iter()
+        .take_while(|b| b.is_ascii_digit())
+        .fold(0_i64, |n, &b| {
+            n.saturating_mul(10)
+                .saturating_add(i64::from(b.wrapping_sub(b'0')))
+                .min(cap)
+        });
+    if minus {
+        magnitude.saturating_neg()
+    } else {
+        magnitude
+    }
+}
+
+fn saturate(value: i64) -> i32 {
+    i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
+}
+
+/// The C string in `text`: up to its first NUL.
+fn c_str(text: &[u8]) -> &[u8] {
+    text.split(|&b| b == 0).next().unwrap_or_default()
+}
+
+/// `isspace` in the "C" locale.
+fn is_c_space(b: u8) -> bool {
+    matches!(b, b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
 }

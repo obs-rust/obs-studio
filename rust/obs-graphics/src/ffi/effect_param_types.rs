@@ -18,6 +18,7 @@
 //! never passes (the C would call `strcmp(NULL)`), reads as `""`.
 
 use core::ffi::{CStr, c_char, c_int};
+use core::slice;
 
 use crate::effect_param_types as core_types;
 
@@ -114,4 +115,85 @@ pub unsafe extern "C" fn obs_effect_param_cols(
 ) -> c_int {
     // SAFETY: forwarded from the caller.
     core_types::cols(unsafe { name(type_) }, is_float, count)
+}
+
+/// The bytes of `str` that `strtol(str, NULL, 10)` reads before the one that
+/// stops it, and at least the first `at_least` bytes (fewer at a NUL): one
+/// byte at a time, so the read goes no further into the effect source than
+/// the C's.
+///
+/// # Safety
+///
+/// `str` is a valid NUL-terminated string.
+unsafe fn number_text<'a>(str: *const c_char, at_least: usize) -> &'a [u8] {
+    let mut len = 0;
+    loop {
+        // SAFETY: `len` bytes before it were not NUL, so this one is in the
+        // string.
+        if unsafe { *str.add(len) } == 0 {
+            break;
+        }
+        len += 1;
+        // SAFETY: the `len` bytes just read are valid.
+        let read = unsafe { slice::from_raw_parts(str.cast::<u8>(), len) };
+        if len >= at_least && !core_types::strtol_reads_on(read) {
+            break;
+        }
+    }
+    // SAFETY: as above.
+    unsafe { slice::from_raw_parts(str.cast::<u8>(), len) }
+}
+
+/// `int obs_effect_param_int_value(const char *str, bool negative)`.
+///
+/// Intentional difference (#3464): saturated to `int` on every platform.
+///
+/// # Safety
+///
+/// `str` must be null or a valid NUL-terminated string; null reads as `""`
+/// (the C would pass it to `strtol()`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_int_value(str: *const c_char, negative: bool) -> c_int {
+    if str.is_null() {
+        return core_types::int_value(b"", negative);
+    }
+    // SAFETY: forwarded from the caller.
+    core_types::int_value(unsafe { number_text(str, 0) }, negative)
+}
+
+/// `bool obs_effect_param_array_count(const char *str, size_t len, int
+/// *count)`: `*count` is written only when it returns true.
+///
+/// Intentional difference (#3464): the count is saturated to `int` on every
+/// platform.
+///
+/// # Safety
+///
+/// `str` must be null or a valid NUL-terminated string, and `count` valid
+/// for a write when `str` passes; null `str` returns false, as
+/// `valid_int_str(NULL, len)` does.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_array_count(
+    str: *const c_char,
+    len: usize,
+    count: *mut c_int,
+) -> bool {
+    if str.is_null() {
+        return false;
+    }
+    // valid_int_str() reads to the NUL when len is 0, and otherwise at most
+    // len + 2 bytes (a sign does not count against len), as obs-util's
+    // shim bounds it.
+    let at_least = if len == 0 {
+        usize::MAX
+    } else {
+        len.saturating_add(2)
+    };
+    // SAFETY: forwarded from the caller.
+    let Some(n) = core_types::array_count(unsafe { number_text(str, at_least) }, len) else {
+        return false;
+    };
+    // SAFETY: the caller passes a valid `count` for a valid count.
+    unsafe { count.write(n) };
+    true
 }
