@@ -1844,8 +1844,13 @@ area.
   file) past the `int` range now reads as the nearest `int` on every
   platform: `3000000000` gives 2147483647 instead of -1294967296 on Linux and
   macOS, and `-2147483648` gives -2147483648 instead of -2147483647 on
-  Windows. Values inside the range are unchanged. *All*, 2026-11-02. Issue
-  [#3464](https://github.com/obs-rust/obs-studio/issues/3464).
+  Windows. The same holds for the `int` defaults of a plain shader, read by
+  the shader parser, while a plain shader's array size past the range is now
+  a parse error, as a size that is not a number is, instead of wrapping to
+  another size. Values inside the range are unchanged.
+  *All*, 2026-11-02. Issues
+  [#3464](https://github.com/obs-rust/obs-studio/issues/3464) and
+  [#3468](https://github.com/obs-rust/obs-studio/issues/3468).
 - A frame read in parts, the way a Media Source scans an animated GIF, no
   longer makes the rest of the frame decode as a separate block when the read
   stops at the end of the frame's data: the next scan starts the frame again,

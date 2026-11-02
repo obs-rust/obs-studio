@@ -1,8 +1,7 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
-    "graphics",
-    "shader-param-values"
+    "graphics"
   ],
   "depends": []
 }

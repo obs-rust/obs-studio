@@ -15,9 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "build/libobs-shader-param-values.pch.h"
+#include "build/libobs-ported-graphics.pch.h"
 
-/* The number reads of shader-parser.c, declared in shader-param-values.h. */
+/* The number reads of shader-parser.c, declared in shader-param-values.h.
+ * Ported to rust/obs-graphics (shader_param_values): the hybrid libobs drops
+ * this file. */
 
 bool shader_param_array_count(const char *str, size_t len, int *count)
 {

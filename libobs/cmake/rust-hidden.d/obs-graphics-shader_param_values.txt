@@ -1,0 +1,7 @@
+# graphics/shader-param-values.c: sp_parse_param_array() and
+# sp_parse_param_assign_intfloat() in shader-parser.c call them inside
+# libobs. Declared in shader-param-values.h without EXPORT, so the shims stay
+# hidden the same way.
+shader_param_array_count
+shader_param_float_value
+shader_param_int_value

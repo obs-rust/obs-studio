@@ -213,8 +213,9 @@ pub fn array_count_by(mut at: impl FnMut(usize) -> u8, len: usize) -> Option<i32
 /// `valid_int_str(str, n)` of util/lexer.c, reading `at` in its order:
 /// the first byte, the whole string when `n` is 0 (its `strlen`), a sign,
 /// then each digit and the byte after it until a byte is not a digit, the
-/// string ends or `n` digits were checked.
-fn valid_int_by(at: &mut impl FnMut(usize) -> u8, n: usize) -> bool {
+/// string ends or `n` digits were checked. The shader parser's count
+/// (`shader_param_values`) reads with it too.
+pub(crate) fn valid_int_by(at: &mut impl FnMut(usize) -> u8, n: usize) -> bool {
     if at(0) == 0 {
         return false;
     }
@@ -245,9 +246,10 @@ fn valid_int_by(at: &mut impl FnMut(usize) -> u8, n: usize) -> bool {
 }
 
 /// What `strtol(str, NULL, 10)` reads, exactly, in `i64`: 0 without digits.
-/// Past `i32` the magnitude stops growing, since it only saturates. One
-/// pass: each byte is asked once, the stopping byte last.
-fn strtol_by(mut at: impl FnMut(usize) -> u8) -> i64 {
+/// Past `i32` the magnitude stops growing, since the callers only saturate
+/// or refuse it (the shader parser's count). One pass: each byte is asked
+/// once, the stopping byte last.
+pub(crate) fn strtol_by(mut at: impl FnMut(usize) -> u8) -> i64 {
     let mut i = 0_usize;
     let mut b = at(i);
     while is_c_space(b) {
