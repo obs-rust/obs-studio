@@ -185,6 +185,7 @@
   "graphics/matrix4.h",
   "graphics/plane.h",
   "graphics/quat.h",
+  "graphics/shader-param-values.h",
   "graphics/shader-parser.h",
   "graphics/srgb.h",
   "graphics/vec2.h",
@@ -195,5 +196,6 @@
   "build/libobs.core-source+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
-  "build/libobs.media+.h.c"
+  "build/libobs.media+.h.c",
+  "build/libobs.shader-param-values+.h.c"
 ]

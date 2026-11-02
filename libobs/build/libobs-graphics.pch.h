@@ -38,4 +38,5 @@
 #include "graphics/image-file.h"
 
 /* graphics/shader-parser.c */
+#include "graphics/shader-param-values.h"
 #include "graphics/shader-parser.h"
