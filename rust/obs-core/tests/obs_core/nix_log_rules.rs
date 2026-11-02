@@ -14,6 +14,10 @@
 //! `abc`) or `(null)` (`=`). `steps_extension_names` and
 //! `steps_extension_lists` assert the port's result there.
 //!
+//! The `distribution_info_*` cases port `test/cmocka/test_distribution_info.c`
+//! 1:1 the same way: its 4 cases, which run `read_distribution_info()` over
+//! saved files, under the same names with the same expectations.
+//!
 //! The `edge_*` cases are new: proptests over any os-release line, value
 //! and extension entry from their alphabets, against models written from the
 //! C's expressions.
@@ -224,6 +228,52 @@ fn steps_distribution_files() {
     // a NUL inside a line ends it for every check
     check_distribution(b"NAME=a\0b\nVERSION_ID=\"1\0\"\n", "a", "\"1");
     check_distribution(b"\0NAME=a\n", "Unknown", "Unknown");
+}
+
+/// Mirrors `test_distribution_info`'s `arch_build_id`.
+#[test]
+fn distribution_info_arch_build_id() {
+    check_distribution(
+        b"NAME=\"Arch Linux\"\nBUILD_ID=rolling\n",
+        "Arch Linux",
+        "rolling",
+    );
+}
+
+/// Mirrors `test_distribution_info`'s `rolling_without_build_id`.
+#[test]
+fn distribution_info_rolling_without_build_id() {
+    check_distribution(b"NAME='Arch Linux'\n", "Arch Linux", "rolling");
+}
+
+/// Mirrors `test_distribution_info`'s `version_precedes_build_id`.
+#[test]
+fn distribution_info_version_precedes_build_id() {
+    check_distribution(
+        b"NAME=Ubuntu\nVERSION_ID=\"26.04\"\nBUILD_ID=123\n",
+        "Ubuntu",
+        "26.04",
+    );
+    check_distribution(
+        b"BUILD_ID=123\nNAME=Ubuntu\nVERSION_ID=26.04",
+        "Ubuntu",
+        "26.04",
+    );
+}
+
+/// Mirrors `test_distribution_info`'s `exact_keys_and_empty_values`.
+#[test]
+fn distribution_info_exact_keys_and_empty_values() {
+    check_distribution(
+        b"NAME_VARIANT=wrong\nNAME=Arch\nVERSION_ID=\"\"\nBUILD_ID=\"20261013\"\n",
+        "Arch",
+        "20261013",
+    );
+    check_distribution(
+        b"# NAME=wrong\nNAME=\nVERSION_ID_SUFFIX=wrong\n",
+        "Unknown",
+        "Unknown",
+    );
 }
 
 // ---------------------------------------------------------------------------
