@@ -6201,7 +6201,7 @@
         "libobs"
       ],
       "watch_inputs": [
-        "libobs/build/libobs-windows-symbol-paths.pch.h",
+        "libobs/build/libobs-ported-windows-symbol-paths.pch.h",
         "libobs/obs-windows-symbol-paths.h"
       ],
       "libraries": [

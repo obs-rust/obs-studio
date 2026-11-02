@@ -15,13 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-windows-symbol-paths.pch.h"
+#include "libobs/build/libobs-ported-windows-symbol-paths.pch.h"
 
 /* The string rules of the debug symbol search path, moved from
  * obs-windows.c's reset_win32_symbol_paths(): the directory of a module's
  * binary, the duplicate check and the join. obs-windows.c keeps the DbgHelp
  * calls, os_get_abs_path_ptr(), the list and the frees. Declared in
- * obs-windows-symbol-paths.h without EXPORT. */
+ * obs-windows-symbol-paths.h without EXPORT. Ported to rust/obs-core
+ * (win_symbol_paths): the hybrid libobs drops this file. */
 
 bool obs_windows_symbol_paths_dir(const char *bin_path, struct dstr *dir)
 {

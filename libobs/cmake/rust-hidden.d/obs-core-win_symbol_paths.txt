@@ -1,0 +1,6 @@
+# obs-windows-symbol-paths.c: the debug symbol search path rules obs-windows.c
+# calls inside libobs. Declared in obs-windows-symbol-paths.h without EXPORT,
+# so the shims stay hidden the same way.
+obs_windows_symbol_paths_dir
+obs_windows_symbol_paths_join
+obs_windows_symbol_paths_listed

@@ -7,3 +7,11 @@
 # hidden in libobs, so this characterizes that C source; the test calls only
 # them.
 # Target and test are declared in ../build/test-graph.json.
+
+# No _rust variant, as for test_windows_system_info_steps and
+# test_win_crash_report_steps: the shims' archive member (an obs_core codegen
+# unit) also holds the other obs-core ports, which pull in obs-util's platform
+# code, and would carry a second copy of libobs's Rust code beside the libobs
+# this test links. The Tier 3 parity tests
+# (rust/obs-core/tests/obs_core/win_symbol_paths_parity.rs) compare the shims
+# with this C instead.
