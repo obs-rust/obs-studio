@@ -15,6 +15,7 @@ mod effect_passes_parity;
 mod shader_param_names;
 mod shader_param_names_parity;
 mod shader_param_values;
+mod shader_param_values_parity;
 
 mod effect_parser_lifecycle_parity;
 
