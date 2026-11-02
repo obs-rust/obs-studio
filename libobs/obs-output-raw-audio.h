@@ -51,11 +51,9 @@
  * each plane, the raw_audio and raw_audio2 callbacks and the NULL test of
  * raw_audio2, get_first_mixer(), audio_output_connect(), start_raw_video(),
  * reset_packet_data() under interleaved_mutex, obs_encoder_start(), the
- * delay's fields, os_atomic_set_bool() and log, and every conversion that
- * divides by the sample rate: util_mul_div64(frames, 1000000000,
- * sample_rate), util_mul_div64(cutoff, sample_rate, 1000000000) and
- * audio_frames_to_ns() (the division traps on a zero rate on MSVC x64). It
- * passes their results here. Nothing here takes a lock, calls into libobs or
+ * delay's fields, os_atomic_set_bool() and log, and audio_frames_to_ns(),
+ * which divides by the sample rate (prepare_audio()'s two conversions are in
+ * obs-output-raw-audio-trim.h). It passes their results here. Nothing here takes a lock, calls into libobs or
  * keeps state.
  *
  * The constants are copied below, so this header needs no core header;

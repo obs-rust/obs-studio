@@ -1753,7 +1753,7 @@ static bool prepare_audio(struct obs_output *output, const struct audio_data *ol
 	*new = *old;
 
 	if (obs_output_raw_audio_before_video(old->timestamp, output->video_start_ts)) {
-		uint64_t duration = util_mul_div64(old->frames, 1000000000ULL, output->sample_rate);
+		uint64_t duration = obs_output_raw_audio_trim_duration(old->frames, output->sample_rate);
 		uint64_t cutoff;
 
 		if (obs_output_raw_audio_ends_before(old->timestamp, duration, output->video_start_ts))
@@ -1762,7 +1762,7 @@ static bool prepare_audio(struct obs_output *output, const struct audio_data *ol
 		cutoff = obs_output_raw_audio_cut_ns(output->video_start_ts, old->timestamp);
 		new->timestamp = obs_output_raw_audio_cut_ts(new->timestamp, cutoff);
 
-		cutoff = util_mul_div64(cutoff, output->sample_rate, 1000000000ULL);
+		cutoff = obs_output_raw_audio_trim_frames(cutoff, output->sample_rate);
 
 		for (size_t i = 0; i < output->planes; i++)
 			new->data[i] += obs_output_raw_audio_cut_bytes(output->audio_size, cutoff);
