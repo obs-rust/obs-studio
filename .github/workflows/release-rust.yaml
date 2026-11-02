@@ -285,6 +285,85 @@ jobs:
           codesignUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
           codesignPass: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
 
+      # Azure Artifact Signing (same action and inputs as talos-hq/hermes-slim):
+      # every PE file inside the portable ZIP (exe, dll, pyd, ...), plus any MSI
+      # installer the build produced, is listed in one catalog, signed, and packed back
+      # into the ZIP before it is collected. Linux and macOS are not signed here.
+      - name: Prepare Windows signing catalog 🔏
+        id: wincatalog
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          HAVE_AZURE: ${{ secrets.AZURE_CLIENT_ID != '' }}
+        run: |
+          $Packages = @(Get-ChildItem "build_${{ matrix.target }}/obs-studio-*-windows-${{ matrix.target }}.zip")
+          $Packages += @(Get-ChildItem "build_${{ matrix.target }}/*.msi" -ErrorAction SilentlyContinue)
+          if ( $Packages.Count -eq 0 ) { throw 'no Windows package to sign' }
+          $Work = Join-Path $env:RUNNER_TEMP "obs-sign-${{ matrix.target }}"
+          $Catalog = Join-Path $env:RUNNER_TEMP "obs-sign-${{ matrix.target }}.txt"
+          uv run --no-project ci/windows_sign.py unpack --work $Work --catalog $Catalog @($Packages.FullName)
+          if ( $LASTEXITCODE -ne 0 ) { throw 'preparing the signing catalog failed' }
+          # Sign only what is not already validly signed (the bundled VC++
+          # runtime and other vendor binaries keep their publisher's signature);
+          # the verify step still checks every file.
+          $Unsigned = Join-Path $env:RUNNER_TEMP "obs-unsigned-${{ matrix.target }}.txt"
+          Get-Content $Catalog | Where-Object { (Get-AuthenticodeSignature -FilePath $_).Status -ne 'Valid' } | Set-Content $Unsigned
+          Write-Output "to sign: $(@(Get-Content $Unsigned).Count) of $(@(Get-Content $Catalog).Count)"
+          "unsigned=$Unsigned" >> $env:GITHUB_OUTPUT
+          "work=$Work" >> $env:GITHUB_OUTPUT
+          "catalog=$Catalog" >> $env:GITHUB_OUTPUT
+          "packages=$($Packages.FullName -join ';')" >> $env:GITHUB_OUTPUT
+          $Sign = $env:HAVE_AZURE -eq 'true' -and @(Get-Content $Unsigned).Count -gt 0
+          "sign=$($Sign.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Sign Windows binaries (Azure Artifact Signing) 🔏
+        if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
+        uses: azure/artifact-signing-action@208f8af4bf26cf2af8597424e3cb5582801523ba # v2.0.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}
+          files-catalog: ${{ steps.wincatalog.outputs.unsigned }}
+          file-digest: SHA256
+          timestamp-digest: SHA256
+
+      # Strict on v* tags and stable releases: any unsigned shipped binary
+      # fails the run. Dailies and verify runs warn, so a run without the
+      # secrets (forks, before the org secrets exist) still builds.
+      - name: Verify Windows signatures 🔎
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          STRICT: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.stable == true }}
+          CATALOG: ${{ steps.wincatalog.outputs.catalog }}
+        run: |
+          $Bad = @()
+          foreach ( $File in Get-Content $env:CATALOG ) {
+            $Sig = Get-AuthenticodeSignature -FilePath $File
+            if ( $Sig.Status -ne 'Valid' ) { $Bad += "$($Sig.Status): $File" }
+          }
+          $Total = @(Get-Content $env:CATALOG).Count
+          Write-Output "signed: $($Total - $Bad.Count)/$Total"
+          if ( $Bad.Count -gt 0 ) {
+            $Bad | Select-Object -First 50 | ForEach-Object { Write-Output $_ }
+            $Msg = "$($Bad.Count) of $Total shipped Windows binaries are not validly signed"
+            if ( $env:STRICT -eq 'true' ) { throw $Msg }
+            Write-Output "::warning::$Msg"
+          }
+
+      - name: Repack signed Windows package 📦
+        if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
+        shell: pwsh
+        env:
+          WORK: ${{ steps.wincatalog.outputs.work }}
+          PACKAGES: ${{ steps.wincatalog.outputs.packages }}
+        run: |
+          uv run --no-project ci/windows_sign.py repack --work $env:WORK @($env:PACKAGES -split ';')
+          if ( $LASTEXITCODE -ne 0 ) { throw 'repacking the signed package failed' }
+
       - name: Collect and verify 🔎
         shell: bash
         env:
