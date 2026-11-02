@@ -34,8 +34,11 @@ use crate::shader_param_values as core_values;
 /// `str` is a valid NUL-terminated string, and no byte before `i` is NUL
 /// (the core asks a byte only after reading every one before it).
 unsafe fn at(str: *const c_char, i: usize) -> u8 {
-    // SAFETY: from the caller; the string runs at least to byte `i`.
-    unsafe { *str.add(i) }.cast_unsigned()
+    // SAFETY: from the caller; the string runs at least to byte `i`. Reading
+    // through `*const u8` reinterprets the same byte unsigned whatever the
+    // signedness of `c_char` (`i8` on x86_64, `u8` on aarch64), so it compiles
+    // on both, unlike `cast_unsigned` or an `as u8` cast.
+    unsafe { *str.cast::<u8>().add(i) }
 }
 
 /// `bool shader_param_array_count(const char *str, size_t len, int
