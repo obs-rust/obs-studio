@@ -64,6 +64,9 @@
 /* obs-encoder-audio-start.c */
 #include "obs-encoder-audio-start.h"
 
+/* obs-encoder-audio-start-frames.c */
+#include "obs-encoder-audio-start-frames.h"
+
 /* obs-encoder-bind.c */
 #include "obs-encoder-bind.h"
 

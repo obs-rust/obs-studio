@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-encoder-audio-start-frames+.h.c"
+  ]
+}

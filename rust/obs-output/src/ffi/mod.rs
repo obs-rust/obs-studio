@@ -1,6 +1,7 @@
 //! C ABI, one module per C file.
 
 pub mod encoder_audio_start;
+pub mod encoder_audio_start_frames;
 pub mod encoder_bind;
 pub mod encoder_gpu_gates;
 pub mod encoder_gpu_rescale;

@@ -1,0 +1,6 @@
+# obs-encoder-audio-start-frames.c: calc_offset_size() and buffer_audio() in
+# obs-encoder.c call them inside libobs. Declared in
+# obs-encoder-audio-start-frames.h without EXPORT, so the shims stay hidden
+# the same way.
+obs_encoder_audio_start_frames_duration
+obs_encoder_audio_start_frames_offset

@@ -1215,6 +1215,28 @@
         "libobs/data"
       ]
     },
+    "test_encoder_audio_start_frames_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_audio_start_frames_steps.c",
+        "libobs/obs-encoder-audio-start-frames.c.h",
+        "libobs/obs-encoder-audio-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-encoder-audio-start-frames.h",
+        "libobs/obs-encoder-audio-start.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_encoder_audio_start_steps": {
       "sources": [
         "test/cmocka/test_encoder_audio_start_steps.c",
@@ -6808,6 +6830,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_audio_start_frames_steps": {
+      "target": "test_encoder_audio_start_frames_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_audio_start_steps": {
