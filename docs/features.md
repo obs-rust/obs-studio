@@ -2850,3 +2850,11 @@ area.
   instead of printing it to stderr, and keeps running with video. Other
   startup failures still go to stderr. *All platforms*, 2026-11-02. Epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- `obs-studio-rust --mcp` still records when libobs cannot open its audio
+  mixer: the AAC encoder reads a silent audio output at 48 kHz stereo instead,
+  so `record_start` writes a file with video and a silent track rather than
+  failing. The `ffmpeg_muxer` output now takes its channel count from its audio
+  encoder instead of the global mixer, which it dereferenced while null.
+  *All platforms*, 2026-11-02. Follows
+  [#3491](https://github.com/obs-rust/obs-studio/pull/3491), epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).

@@ -20,6 +20,9 @@ use crate::startup::Note;
 /// happen before `obs_shutdown`.
 pub struct Pipeline {
     _outputs: Vec<Output>,
+    /// The silent mixer the audio encoder reads when libobs has none; declared
+    /// after the outputs so it closes after they release the encoder.
+    _null_audio: Option<NullAudio>,
     video_error: Option<String>,
     output_error: Option<String>,
     notes: Vec<Note>,
@@ -69,6 +72,7 @@ pub fn configure(options: &StartOptions) -> Pipeline {
     let mut notes = Vec::new();
     let mut pipeline = Pipeline {
         _outputs: Vec::new(),
+        _null_audio: None,
         video_error: None,
         output_error: None,
         notes: Vec::new(),
@@ -81,8 +85,9 @@ pub fn configure(options: &StartOptions) -> Pipeline {
     }
     // No audio is not a startup failure: the run continues with video and
     // the note goes to the OBS log, not stderr (see `crate::startup`).
-    let audio_warning = reset_audio()
-        .err()
+    let mut audio_error = reset_audio().err();
+    let mut audio_warning = audio_error
+        .as_ref()
         .map(|error| format!("{error}; continuing without audio"));
     load_modules(options, &mut notes);
     // SAFETY: libobs is started.
@@ -91,7 +96,20 @@ pub fn configure(options: &StartOptions) -> Pipeline {
     if pipeline.video_error.is_some() {
         pipeline.output_error = Some("the video subsystem is not available".to_owned());
     } else {
-        match create_outputs(&options.record_dir) {
+        let media = match audio_error.take() {
+            // SAFETY: libobs is started.
+            None => Ok(unsafe { sys::obs_get_audio() }),
+            // libobs's mixer is down: feed the audio encoder silence at the
+            // same rate and layout, so recording and streaming still start
+            // with video (#3491).
+            Some(error) => NullAudio::open().map(|null| {
+                audio_warning = Some(format!(
+                    "{error}; continuing with a silent audio track"
+                ));
+                pipeline._null_audio.insert(null).0.as_ptr()
+            }),
+        };
+        match media.and_then(|media| create_outputs(&options.record_dir, media)) {
             Ok((outputs, problems)) => {
                 pipeline._outputs = outputs;
                 if !problems.is_empty() {
@@ -223,7 +241,7 @@ fn reset_audio() -> Result<(), String> {
         return Err("cannot start audio at 48 kHz stereo (injected)".to_owned());
     }
     let info = sys::obs_audio_info {
-        samples_per_sec: 48_000,
+        samples_per_sec: AUDIO_RATE,
         speakers: sys::SPEAKERS_STEREO,
     };
     // SAFETY: `info` is fully initialized; libobs copies it.
@@ -256,7 +274,56 @@ fn video_encoder() -> Result<Encoder, String> {
     Ok(encoder)
 }
 
-fn audio_encoder() -> Result<Encoder, String> {
+/// Sample rate and layout of the main mix, and of the null audio path.
+const AUDIO_RATE: u32 = 48_000;
+
+/// A standalone `audio_t` that outputs silence, standing in for libobs's
+/// mixer when `obs_reset_audio` fails. It only exists on that path.
+struct NullAudio(NonNull<sys::audio_t>);
+
+impl NullAudio {
+    fn open() -> Result<Self, String> {
+        /// The mixes arrive zeroed (`input_and_output` in audio-io), so
+        /// leaving them alone is silence; the block starts at `start_ts`.
+        unsafe extern "C" fn silence(
+            _param: *mut std::ffi::c_void,
+            start_ts: u64,
+            _end_ts: u64,
+            new_ts: *mut u64,
+            _active_mixers: u32,
+            _mixes: *mut sys::audio_output_data,
+        ) -> bool {
+            // SAFETY: audio-io passes a valid out pointer.
+            unsafe { *new_ts = start_ts };
+            true
+        }
+        let mut info = sys::audio_output_info {
+            name: c"null_audio_mcp".as_ptr(),
+            samples_per_sec: AUDIO_RATE,
+            format: sys::AUDIO_FORMAT_FLOAT_PLANAR,
+            speakers: sys::SPEAKERS_STEREO,
+            input_callback: Some(silence),
+            input_param: std::ptr::null_mut(),
+        };
+        let mut audio = std::ptr::null_mut();
+        // SAFETY: `info` is fully initialized and the name is static; on
+        // success `audio` is an owned output closed by `Drop`.
+        let code = unsafe { sys::audio_output_open(&raw mut audio, &raw mut info) };
+        match NonNull::new(audio) {
+            Some(audio) if code == sys::AUDIO_OUTPUT_SUCCESS => Ok(Self(audio)),
+            _ => Err(format!("cannot open a silent audio output either ({code})")),
+        }
+    }
+}
+
+impl Drop for NullAudio {
+    fn drop(&mut self) {
+        // SAFETY: owned; the outputs and encoders that read it are released.
+        unsafe { sys::audio_output_close(self.0.as_ptr()) };
+    }
+}
+
+fn audio_encoder(media: *mut sys::audio_t) -> Result<Encoder, String> {
     let settings = Data::from_json(&json!({"bitrate": 160}))?;
     // SAFETY: as in `video_encoder`; mixer 0 is the main mix.
     let encoder = unsafe {
@@ -271,9 +338,9 @@ fn audio_encoder() -> Result<Encoder, String> {
     let encoder = NonNull::new(encoder)
         .map(Encoder)
         .ok_or("no audio encoder 'ffmpeg_aac' (is the obs-ffmpeg plugin loaded?)")?;
-    // SAFETY: the encoder is live; audio is up or the pointer is null, which
-    // libobs tolerates until the output starts.
-    unsafe { sys::obs_encoder_set_audio(encoder.0.as_ptr(), sys::obs_get_audio()) };
+    // SAFETY: the encoder is live; `media` is libobs's mixer or the live
+    // null audio output.
+    unsafe { sys::obs_encoder_set_audio(encoder.0.as_ptr(), media) };
     Ok(encoder)
 }
 
@@ -287,9 +354,12 @@ fn attach(output: &Output, video: &Encoder, audio: &Encoder) {
 
 /// Creates the record output and the stream output, sharing the encoders.
 /// Returns what was created and a message for each part that was not.
-fn create_outputs(record_dir: &Path) -> Result<(Vec<Output>, Vec<String>), String> {
+fn create_outputs(
+    record_dir: &Path,
+    audio_media: *mut sys::audio_t,
+) -> Result<(Vec<Output>, Vec<String>), String> {
     let video = video_encoder()?;
-    let audio = audio_encoder()?;
+    let audio = audio_encoder(audio_media)?;
     let mut outputs = Vec::new();
     let mut problems = Vec::new();
 
