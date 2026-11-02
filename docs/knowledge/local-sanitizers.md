@@ -56,6 +56,19 @@ time.
 Run a timing-sensitive test alone and expect it to be slower than in Tier 2 (see
 [timing-tests.md](timing-tests.md)).
 
+## In a container
+
+The harness does not know it runs in Docker. On a build machine:
+
+- tsan needs `--security-opt seccomp=unconfined` on a recent kernel (7.0). Without
+  it, tsan stops with "incompatible memory layout, unable to disable ASLR".
+- With `--cpuset-cpus`, `nproc` follows the limit, but Python's `os.cpu_count()`
+  does not, and that sets the test jobs. Set `SANITIZE_JOBS` too.
+- `capture_hang` calls `sudo -n gdb` when the app does not exit. The linux-validate image has no
+  `sudo`, so the harness stops with `FileNotFoundError: 'sudo'`. Install it, or
+  relaunch with `SKIP_TESTS=1`.
+- For a cold build, use a new `SAN_OUT` and `ZCCACHE_CACHE_DIR`.
+
 ## What valgrind costs
 
 Measured in #3290 (4-core `ubuntu-26.04` runner): valgrind's unit tests took
