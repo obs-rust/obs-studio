@@ -659,3 +659,19 @@ impl Drop for Libobs {
         }
     }
 }
+
+unsafe extern "C" {
+    /// libobs `blog` (`util/base.h`); variadic, so called with `"%s"` only.
+    fn blog(log_level: std::ffi::c_int, format: *const c_char, ...);
+}
+
+/// `LOG_WARNING` from `util/base.h`.
+const LOG_WARNING: std::ffi::c_int = 200;
+
+/// Writes `text` to the OBS log at `LOG_WARNING`.
+pub fn log_warning(text: &str) {
+    let text = CString::new(text.replace('\0', " ")).unwrap_or_default();
+    // SAFETY: both strings are NUL-terminated and live for the call; `"%s"`
+    // consumes exactly the one argument passed.
+    unsafe { blog(LOG_WARNING, c"obs-mcp: %s".as_ptr(), text.as_ptr()) };
+}

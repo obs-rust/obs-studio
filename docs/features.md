@@ -2839,3 +2839,8 @@ area.
   [#3338](https://github.com/obs-rust/obs-studio/issues/3338),
   [#3339](https://github.com/obs-rust/obs-studio/issues/3339), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+- `obs-studio-rust --mcp` logs a missing audio subsystem to the OBS log as a
+  warning (`obs-mcp: cannot start audio ...; continuing without audio`)
+  instead of printing it to stderr, and keeps running with video. Other
+  startup failures still go to stderr. *All platforms*, 2026-11-02. Epic
+  [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
