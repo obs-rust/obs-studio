@@ -1,0 +1,5 @@
+# obs-source-transition-sample-time.c: mix_child() in
+# obs-source-transition.c calls it inside libobs for every sample it mixes.
+# Declared in obs-source-transition-sample-time.h without EXPORT, so the
+# shim stays hidden the same way.
+obs_source_transition_sample_time

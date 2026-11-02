@@ -57,10 +57,10 @@
  * copy_transition_state() and the refs, obs_transition_stop(), handle_stop()
  * and the signals, obs_source_active(), obs_source_removed() and the
  * timestamp reads, the texture trylock, render_child(), the callbacks,
- * mix_child() and get_sample_time(), the mixer loop and the memcpy(), the
- * offsets' (int) casts, add_alignment() and the matrix calls, each where and
- * when it was called before; it asks these functions in between and passes
- * in what it read.
+ * mix_child() (its get_sample_time() is obs-source-transition-sample-time.c),
+ * the mixer loop and the memcpy(), the offsets' (int) casts, add_alignment()
+ * and the matrix calls, each where and when it was called before; it asks
+ * these functions in between and passes in what it read.
  *
  * None of them takes a lock, calls into libobs or keeps state.
  *

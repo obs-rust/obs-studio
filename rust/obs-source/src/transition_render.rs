@@ -27,8 +27,8 @@
 //! `copy_transition_state()` and the refs, `obs_transition_stop()`,
 //! `handle_stop()` and the signals, `obs_source_active()`, the removed and
 //! pending checks and the timestamp reads, the texture trylock, the
-//! renders and the callbacks, `mix_child()` and `get_sample_time()`, the
-//! mixer loop and the `memcpy()`, the offsets' `(int)` casts,
+//! renders and the callbacks, `mix_child()` (its `get_sample_time()` is
+//! [`crate::transition_sample_time`]), the mixer loop and the `memcpy()`, the offsets' `(int)` casts,
 //! `add_alignment()` and the matrix calls, each where and when it called
 //! them before. Nothing here keeps state, takes a lock or calls libobs.
 

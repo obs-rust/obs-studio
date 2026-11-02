@@ -24,9 +24,9 @@
  * recalculate_transition_matrix(), mix_spaces() and transition_calc_min_ts(),
  * on plain values. obs-source-transition.c keeps the locks, the field reads
  * and writes, the child reads, calc_torquef(), the offsets, add_alignment(),
- * the matrix build and get_sample_time(). Declared in
- * obs-source-transition-clock.h without EXPORT. In hybrid libobs the Rust
- * port (rust/obs-source) replaces this file. */
+ * the matrix build; get_sample_time() is obs-source-transition-sample-time.c.
+ * Declared in obs-source-transition-clock.h without EXPORT. In hybrid libobs
+ * the Rust port (rust/obs-source) replaces this file. */
 
 float obs_source_transition_clock_time(int mode, float manual_val, uint64_t start_time, uint64_t duration, uint64_t ts)
 {
