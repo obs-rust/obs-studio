@@ -136,7 +136,8 @@ pub unsafe extern "C" fn obs_effect_param_cols(
 /// (the core asks a byte only after reading every one before it).
 unsafe fn at(str: *const c_char, i: usize) -> u8 {
     // SAFETY: from the caller; the string runs at least to byte `i`.
-    unsafe { *str.add(i) }.cast_unsigned()
+    // `c_char` is i8 or u8 by target; reinterpret its byte either way.
+    u8::from_ne_bytes(unsafe { *str.add(i) }.to_ne_bytes())
 }
 
 /// `int obs_effect_param_int_value(const char *str, bool negative)`.
