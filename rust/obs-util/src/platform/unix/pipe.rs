@@ -34,9 +34,10 @@ fn spawn(program: &CString, argv0: &CString, rest: &[&CString], read_mode: bool)
     }
     // Rust sets CLOEXEC on the pipe fds it creates and closes the unused
     // ends in the child, matching the C `fcntl` + `posix_spawn` file
-    // actions. Like the C, it closes nothing else: the child inherits every
-    // other fd of the process that lacks FD_CLOEXEC, so callers must open
-    // what they hold with O_CLOEXEC (obsproject/obs-studio#14054).
+    // actions. Every other fd of the process is closed in the child too,
+    // as in C, so it inherits none that lacks FD_CLOEXEC
+    // (obsproject/obs-studio#4596).
+    keep_only_stdio(&mut cmd);
     if read_mode {
         cmd.stdout(Stdio::piped());
     } else {
@@ -57,6 +58,210 @@ fn spawn(program: &CString, argv0: &CString, rest: &[&CString], read_mode: bool)
         writer,
         err,
     })
+}
+
+/// Gives the child only its standard streams, matching C's
+/// `limit_inherited_fds`: an fd the parent opened without CLOEXEC (a socket,
+/// the log file) would otherwise stay open in the child while it runs, so a
+/// socket the parent closed stays bound. Marking every fd above stderr
+/// CLOEXEC, rather than closing it, keeps std's own exec-error pipe working.
+#[allow(unsafe_code)] // pre_exec: the hook runs between fork and exec
+fn keep_only_stdio(cmd: &mut std::process::Command) {
+    let limit = fd_limit();
+    // SAFETY: the hook only makes async-signal-safe calls (close_range,
+    // open, getdents64, fcntl, close) and allocates nothing.
+    unsafe {
+        cmd.pre_exec(move || {
+            #[cfg(target_os = "linux")]
+            if libc::syscall(
+                libc::SYS_close_range,
+                3 as libc::c_uint,
+                libc::c_uint::MAX,
+                libc::CLOSE_RANGE_CLOEXEC,
+            ) == 0
+                || cloexec_proc_fds()
+            {
+                return Ok(());
+            }
+            #[cfg(target_os = "macos")]
+            if cloexec_listed_fds() {
+                return Ok(());
+            }
+            // Linux without close_range (before 5.11) or /proc, and macOS
+            // with more fds than the listing holds.
+            for fd in 3..limit {
+                set_cloexec(fd);
+            }
+            Ok(())
+        });
+    }
+}
+
+/// One past the highest fd that can be open: the kernel refuses an fd at or
+/// above the soft `RLIMIT_NOFILE` when it hands one out, and the soft limit
+/// can only have been above the hard one before the hard one was lowered.
+/// An fd opened before the soft limit was lowered can still be above it, so
+/// the bound is the larger of the two (and, on macOS, of the kernel's
+/// per-process cap). Computed before the fork, where these calls need not be
+/// async-signal-safe.
+#[allow(unsafe_code)]
+fn fd_limit() -> c_int {
+    let mut lim = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    let finite = |v: libc::rlim_t| {
+        if v == libc::RLIM_INFINITY {
+            0
+        } else {
+            libc::c_long::try_from(v).unwrap_or(libc::c_long::MAX)
+        }
+    };
+    // SAFETY: `lim` is a valid out pointer.
+    let rlimit = if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut lim) } == 0 {
+        finite(lim.rlim_cur).max(finite(lim.rlim_max))
+    } else {
+        0
+    };
+    // SAFETY: plain sysconf query.
+    let open_max = unsafe { libc::sysconf(libc::_SC_OPEN_MAX) };
+    match rlimit.max(open_max).max(max_files_per_proc()) {
+        n if n <= 0 => 1024,
+        n => c_int::try_from(n).unwrap_or(c_int::MAX),
+    }
+}
+
+/// `kern.maxfilesperproc`: macOS hands out no fd above it, whatever the
+/// rlimit says.
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+fn max_files_per_proc() -> libc::c_long {
+    let mut value: c_int = 0;
+    let mut len = size_of::<c_int>();
+    // SAFETY: a NUL-terminated name and an out buffer of `len` bytes.
+    let ok = unsafe {
+        libc::sysctlbyname(
+            c"kern.maxfilesperproc".as_ptr(),
+            (&raw mut value).cast(),
+            &mut len,
+            core::ptr::null_mut(),
+            0,
+        )
+    } == 0;
+    if ok { libc::c_long::from(value) } else { 0 }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn max_files_per_proc() -> libc::c_long {
+    0
+}
+
+/// Marks every fd the kernel lists for this process (`PROC_PIDLISTFDS`)
+/// CLOEXEC, which covers one above any limit. `proc_pidinfo` is a bare
+/// `proc_info` system call, and the list goes into a stack buffer, so the
+/// forked child allocates nothing. `false` when the call fails or the list
+/// may not fit the buffer.
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+fn cloexec_listed_fds() -> bool {
+    const SLOTS: usize = 4096;
+    let mut fds = [libc::proc_fdinfo {
+        proc_fd: 0,
+        proc_fdtype: 0,
+    }; SLOTS];
+    let size = size_of_val(&fds);
+    // SAFETY: `fds` is writable for `size` bytes.
+    let n = unsafe {
+        libc::proc_pidinfo(
+            libc::getpid(),
+            libc::PROC_PIDLISTFDS,
+            0,
+            fds.as_mut_ptr().cast(),
+            c_int::try_from(size).unwrap_or(c_int::MAX),
+        )
+    };
+    let Ok(n) = usize::try_from(n) else {
+        return false;
+    };
+    if n == 0 || n >= size {
+        return false;
+    }
+    for info in &fds[..n / size_of::<libc::proc_fdinfo>()] {
+        if info.proc_fd > 2 {
+            set_cloexec(info.proc_fd);
+        }
+    }
+    true
+}
+
+/// Marks `fd` CLOEXEC if it is open without it. Async-signal-safe.
+#[allow(unsafe_code)]
+fn set_cloexec(fd: c_int) {
+    // SAFETY: fcntl on any fd number is defined (EBADF when not open).
+    unsafe {
+        let flags = libc::fcntl(fd, libc::F_GETFD);
+        if flags != -1 && flags & libc::FD_CLOEXEC == 0 {
+            libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
+        }
+    }
+}
+
+/// Marks every open fd above stderr CLOEXEC, listing them from
+/// `/proc/self/fd` with raw `getdents64` into a stack buffer so the forked
+/// child allocates nothing. `false` when `/proc` cannot be read.
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+fn cloexec_proc_fds() -> bool {
+    // SAFETY: a NUL-terminated path; the fd is closed below.
+    let dir = unsafe {
+        libc::open(
+            c"/proc/self/fd".as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
+        )
+    };
+    if dir < 0 {
+        return false;
+    }
+    // `struct linux_dirent64`: d_ino (8), d_off (8), d_reclen (2), d_type
+    // (1), then the NUL-terminated name.
+    let mut buf = [0u8; 1024];
+    let ok = loop {
+        // SAFETY: `buf` is writable for its length.
+        let n = unsafe { libc::syscall(libc::SYS_getdents64, dir, buf.as_mut_ptr(), buf.len()) };
+        if n == 0 {
+            break true;
+        }
+        let Ok(n) = usize::try_from(n) else {
+            break false;
+        };
+        let mut off = 0;
+        while off + 19 <= n {
+            let reclen = usize::from(u16::from_ne_bytes([buf[off + 16], buf[off + 17]]));
+            if reclen == 0 {
+                break;
+            }
+            let name = &buf[off + 19..(off + reclen).min(n)];
+            let mut fd: c_int = 0;
+            let mut digits = 0;
+            for &b in name.iter().take_while(|&&b| b != 0) {
+                if !b.is_ascii_digit() {
+                    digits = 0;
+                    break;
+                }
+                fd = fd.saturating_mul(10).saturating_add(c_int::from(b - b'0'));
+                digits += 1;
+            }
+            if digits > 0 && fd > 2 && fd != dir {
+                set_cloexec(fd);
+            }
+            off += reclen;
+        }
+    };
+    // SAFETY: `dir` was opened above and is closed once.
+    unsafe {
+        libc::close(dir);
+    }
+    ok
 }
 
 impl Pipe {

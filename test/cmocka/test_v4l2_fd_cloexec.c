@@ -327,9 +327,12 @@ static int teardown(void **state)
 	return 0;
 }
 
-/* Control: a descriptor opened without O_CLOEXEC is seen in the muxer, so the
- * checks below can see a leak. */
-static void muxer_inherits_an_inheritable_fd(void **state)
+/* Control: the camera's descriptor is counted where it is open, so the checks
+ * below can see a leak. Since util/pipe gives a child only its standard
+ * streams (obsproject/obs-studio#4596), even a descriptor opened without
+ * O_CLOEXEC no longer reaches the muxer; the checks below still pin that the
+ * plugin itself opens the camera close-on-exec. */
+static void muxer_gets_no_inheritable_fd(void **state)
 {
 	(void)state;
 	int fd = open(camera_path, O_RDWR | O_NONBLOCK);
@@ -337,11 +340,13 @@ static void muxer_inherits_an_inheritable_fd(void **state)
 
 	pid_t pid;
 	os_process_pipe_t *muxer = start_muxer(&pid);
+	int ours = camera_fds(getpid());
 	int held = camera_fds(pid);
 	os_process_pipe_destroy(muxer);
 	close(fd);
 
-	assert_int_equal(held, 1);
+	assert_int_equal(ours, 1);
+	assert_int_equal(held, 0);
 }
 
 /* Recording starts while the camera is capturing */
@@ -448,7 +453,7 @@ static void properties_open_the_camera_close_on_exec(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_setup_teardown(muxer_inherits_an_inheritable_fd, setup, teardown),
+		cmocka_unit_test_setup_teardown(muxer_gets_no_inheritable_fd, setup, teardown),
 		cmocka_unit_test_setup_teardown(muxer_does_not_hold_the_capturing_camera, setup, teardown),
 		cmocka_unit_test_setup_teardown(camera_is_released_when_restarted_while_recording, setup, teardown),
 		cmocka_unit_test_setup_teardown(properties_open_the_camera_close_on_exec, setup, teardown),

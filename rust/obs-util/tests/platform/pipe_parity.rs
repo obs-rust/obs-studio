@@ -603,12 +603,10 @@ mod process {
 /// `pipe-windows.c` against the Rust Windows half, with cmd.exe children.
 ///
 /// Notes for this half, not exclusions:
-/// - Spawning is serialized (`windows_process::serial`). Children
-///   inherit every inheritable handle (`bInheritHandles`, as in C), so
-///   concurrent tests could hand each other's pipe ends to their children
-///   and keep them open; the cmocka cases also run one at a time. Within a
-///   test the two sides spawn one after the other, which is safe: our ends
-///   are made non-inheritable before the next spawn.
+/// - Spawning is serialized (`windows_process::serial`), as the cmocka
+///   cases run one at a time. Children inherit only their standard handles
+///   (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`, as in C), so concurrent tests
+///   would not hand each other's pipe ends to their children either.
 /// - The handles C leaks when creating a pipe fails half-way are closed on
 ///   the Rust side. Only the handle count can tell, so it is not compared.
 /// - A child's output is in the console code page, the same for both

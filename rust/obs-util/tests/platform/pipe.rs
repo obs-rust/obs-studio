@@ -268,10 +268,10 @@ mod windows_process {
     use obs_util::pipe::Pipe;
     use std::sync::{Mutex, MutexGuard};
 
-    /// Children inherit every inheritable handle (`bInheritHandles`, as in
-    /// C), so two tests spawning at once can hand each other's pipe ends to
-    /// their children and keep them open. The cmocka cases run one at a
-    /// time; so do these.
+    /// The cmocka cases run one at a time; so do these. Children inherit
+    /// only their standard handles (`PROC_THREAD_ATTRIBUTE_HANDLE_LIST`, as
+    /// in C), so two tests spawning at once no longer hand each other's pipe
+    /// ends to their children.
     static SPAWN: Mutex<()> = Mutex::new(());
 
     fn serial() -> MutexGuard<'static, ()> {
