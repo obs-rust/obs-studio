@@ -12,3 +12,8 @@
  * is in the list for service. Returns false and leaves out untouched
  * otherwise. */
 bool rtmps_upgrade_url(const char *service, const char *url, struct dstr *out);
+
+/* Registers the rtmp_services_rtmps_fallback and rtmp_services_set_plain_rtmp
+ * procedures on the global proc handler. Defined in rtmp-common.c, called from
+ * obs_module_load. */
+void rtmp_common_register_procs(void);
