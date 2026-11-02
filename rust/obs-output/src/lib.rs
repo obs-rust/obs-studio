@@ -23,12 +23,14 @@
 //! `libobs/obs-output-stop.c.h`, the output stop and
 //! end-capture decisions, `libobs/obs-output-reconnect.c.h`, the output
 //! reconnect policy, `libobs/obs-output-pause.c.h`, the output pause plan,
-//! `libobs/obs-encoder-pause.c.h`, the encoder pause checks, and
-//! `libobs/obs-output-caption.c.h`, the output caption plan.
+//! `libobs/obs-encoder-pause.c.h`, the encoder pause checks,
+//! `libobs/obs-output-caption.c.h`, the output caption plan, and
+//! `libobs/obs-output-raw-audio-trim.c.h`, the raw output audio trim's
+//! sample-rate conversions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`] and [`output_caption`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`] and [`raw_audio_trim`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -102,7 +104,10 @@
 //! dropped or cut, and where the encoder's pause ends; [`output_caption`]
 //! decides which carrier a packet's codec gives its caption, whether a
 //! packet of that priority takes one, the HEVC suffix SEI's header and
-//! which CEA-608 pairs from the queue go into the caption.
+//! which CEA-608 pairs from the queue go into the caption;
+//! [`raw_audio_trim`] gives the length at the sample rate of a raw output's
+//! audio packet that starts before its video (0 at a zero rate, so the
+//! packet is dropped) and turns the cut from its front into frames.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
@@ -130,6 +135,7 @@ pub mod output_start;
 pub mod output_stop;
 pub mod protocols;
 pub mod raw_audio;
+pub mod raw_audio_trim;
 pub mod service;
 pub mod stop_stats;
 pub mod video_checks;

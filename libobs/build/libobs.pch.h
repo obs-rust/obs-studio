@@ -103,6 +103,9 @@
 /* obs-output-raw-audio.c */
 #include "obs-output-raw-audio.h"
 
+/* obs-output-raw-audio-trim.c */
+#include "obs-output-raw-audio-trim.h"
+
 /* obs-output-reconnect.c */
 #include "obs-output-reconnect.h"
 
