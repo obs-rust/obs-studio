@@ -89,6 +89,19 @@ static inline bool disconnected(struct rtmp_stream *stream)
 	return os_atomic_load_bool(&stream->disconnected);
 }
 
+/* RTMP_AddStream copies the stream key; RTMP_Close frees that copy only for
+ * a reading connection or after a server redirect (RTMP_PUB_CLEAN), and
+ * RTMP_Init forgets it. Free it before either drops it. */
+static void free_rtmp_streams(RTMP *r)
+{
+	for (int i = 0; i < r->Link.nStreams; i++) {
+		free(r->Link.streams[i].playpath.av_val);
+		r->Link.streams[i].playpath.av_val = NULL;
+	}
+	r->Link.nStreams = 0;
+	r->Link.curStreamIdx = 0;
+}
+
 static void rtmp_stream_destroy(void *data)
 {
 	struct rtmp_stream *stream = data;
@@ -110,6 +123,7 @@ static void rtmp_stream_destroy(void *data)
 		}
 	}
 
+	free_rtmp_streams(&stream->rtmp);
 	RTMP_TLS_Free(&stream->rtmp);
 	free_packets(stream);
 	dstr_free(&stream->path);
@@ -1000,7 +1014,8 @@ static int try_connect(struct rtmp_stream *stream)
 
 	info("Connecting to RTMP URL %s...", stream->path.array);
 
-	// free any existing RTMP TLS context
+	// free any existing RTMP TLS context and stream keys
+	free_rtmp_streams(&stream->rtmp);
 	RTMP_TLS_Free(&stream->rtmp);
 
 	RTMP_Init(&stream->rtmp);
