@@ -105,6 +105,8 @@ jobs:
     env:
       SAN_OUT: ${{ github.workspace }}/.sanitize
       ZCCACHE_CACHE_DIR: ${{ github.workspace }}/.sanitize-zccache
+      # zccache's default on 4 cores is 3. Only the asan pass is measured at 4 (#3485).
+      ZCCACHE_MAX_PARALLEL_COMPILES: ${{ matrix.tool == 'asan' && '4' || '3' }}
       RUST_LIBOBS: ${{ (github.event_name != 'workflow_dispatch' || inputs.rust_libobs) && 'ON' || 'OFF' }}
     steps:
       # fetch-depth 0: versionconfig.cmake derives the OBS version from tags.

@@ -295,7 +295,7 @@ class SanitizeHarnessTest(unittest.TestCase):
     def test_configure_writes_each_archive_once(self):
         """`ar qcs` writes the symbol index, with no `ranlib` step after it.
         `ranlib` rewrites the archive in place, and zccache's daemon dies with
-        SIGBUS when it hashes the mapped file at that moment."""
+        SIGBUS when it hashes the mapped file at that moment (#3485)."""
         for tool, (flags, build_type) in self.module.TOOL_FLAGS.items():
             with self.subTest(tool=tool):
                 command = self.module.configure_command(
@@ -310,6 +310,11 @@ class SanitizeHarnessTest(unittest.TestCase):
         the asan pass is measured at 4; the others keep the default."""
         text = (ROOT / ".github" / "workflows" / "sanitizers.yaml").read_text(encoding="utf-8")
         self.assertIn("ZCCACHE_MAX_PARALLEL_COMPILES: ${{ matrix.tool == 'asan' && '4' || '3' }}", text)
+
+    def test_harness_leaves_the_compile_limit_to_the_environment(self):
+        """A local machine has more cores than a runner, so the limit stays in
+        the workflow and the environment overrides it locally."""
+        self.assertNotIn("ZCCACHE_MAX_PARALLEL_COMPILES", MODULE.read_text(encoding="utf-8"))
 
     def test_valgrind_builds_no_per_target_asan(self):
         """valgrind can't run an ASan binary, so its build turns off the cmocka

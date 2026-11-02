@@ -274,6 +274,13 @@ def configure_command(*, src: Path, build: Path, build_type: str, flags: str, ba
         f"-DCMAKE_CXX_FLAGS={flags}",
         f"-DCMAKE_C_FLAGS_{build_type.upper()}={BUILD_TYPE_FLAGS[build_type]}",
         f"-DCMAKE_CXX_FLAGS_{build_type.upper()}={BUILD_TYPE_FLAGS[build_type]}",
+        # `ar qcs` writes the symbol index, so no `ranlib` runs after it.
+        # `ranlib` rewrites the archive in place: its size goes to 0, and
+        # zccache's daemon dies with SIGBUS if it is hashing the mapped file (#3485).
+        "-DCMAKE_C_ARCHIVE_CREATE=<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>",
+        "-DCMAKE_CXX_ARCHIVE_CREATE=<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>",
+        "-DCMAKE_C_ARCHIVE_FINISH=",
+        "-DCMAKE_CXX_ARCHIVE_FINISH=",
         f"-DCMAKE_EXE_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         f"-DCMAKE_SHARED_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",
         f"-DCMAKE_MODULE_LINKER_FLAGS={flags} -Wl,--enable-new-dtags",

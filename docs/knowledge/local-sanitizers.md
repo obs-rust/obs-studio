@@ -2,7 +2,7 @@
 type: concept
 title: Running sanitizers locally
 description: Asan or valgrind on a few tests through the harness on a local machine, and what valgrind costs per test.
-sources: ["#3290", "#3238", "#962"]
+sources: ["#3290", "#3238", "#962", "#3485"]
 status: active
 stale_after: 2027-05-01
 ---
@@ -24,6 +24,10 @@ It configures and builds OBS for the tool in `$SAN_OUT/build-<tool>` (default
 launches the app headless. Results go to `$SAN_OUT/<tool>`. `SANITIZE_JOBS`
 sets how many tests run at once (`1` runs serially on one shared display);
 `SKIP_TESTS=1` only relaunches the app.
+`ZCCACHE_MAX_PARALLEL_COMPILES` sets how many files zccache compiles at once.
+The harness does not set it: only `sanitizers.yaml` does, for the 4-core
+runners, so a local machine with more cores keeps zccache's default or sets its
+own value.
 
 ## A few tests
 
