@@ -25,6 +25,23 @@ in the merge queue, rebase, run `./lint --fix` and push. Quote a `title` or
 exists and links to it; it never replaces one. History that teaches nothing for
 the next change stays in its issue or PR.
 
+## When to write a concept
+
+A lesson goes in its own PR, after the code PR has merged and the result is known.
+That PR cannot eject the code from the merge queue, and it can quote what really
+happened. Text that describes what the code PR changes, such as a new setting,
+stays in the code PR.
+
+## Correcting a concept
+
+1. Each claim names what can recheck it: the code path, the check, a CI run or a
+   command.
+2. A correction changes the same file in a normal PR and adds its evidence to
+   `sources`. It replaces the wrong text, so a file never contradicts itself.
+3. A claim that is wholly wrong is removed, or the concept gets `status: retracted`
+   with one line that says why and links the evidence.
+4. A claim that was right but can change uses `stale_after` or `status`.
+
 ## Concepts
 
 <!-- concepts: generated, `./lint --fix` writes this list -->

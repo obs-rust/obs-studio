@@ -2,7 +2,7 @@
 type: concept
 title: Float results depend on the host compiler
 description: The CI runner's gcc contracts mul+add into an FMA and the Tier 2 image's gcc does not, so the same C source gives different float results.
-sources: ["#3422", "#3362"]
+sources: ["#3422", "#3362", "#3428", "#3489"]
 status: active
 stale_after: 2027-01-01
 ---
@@ -32,8 +32,9 @@ one place and failed in the other.
   between hosts, suspect FMA contraction first; check the disassembly
   (`objdump -d`) of the C function on both hosts before changing Rust.
 - Rust does not contract `a * b + c` on its own; match the C reference built
-  without contraction (the sanitizer `valgrind` build already passes
-  `-ffp-contract=off`), or compare with a tolerance where the C contract allows it.
+  without contraction (all three sanitizer builds pass `-ffp-contract=off` since
+  #3428, see `TOOL_FLAGS` in `sanitize.py`; Tier 2 and the app builds do not), or
+  compare with a tolerance where the C contract allows it.
 - Follow #3422 for the build-wide decision (pin `-ffp-contract`); this concept
   is stale once that lands or the runner or Tier 2 image changes its gcc.
 
