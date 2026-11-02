@@ -6,10 +6,17 @@
 
 from __future__ import annotations
 
+import io
 import re
 import itertools
+import subprocess
+import tarfile
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import fetch_libs_asset
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / ".github/workflows/build-project.yaml").read_text()
@@ -67,6 +74,72 @@ class QtFastPathTest(unittest.TestCase):
         self.assertIn("contains(needs.*.result, 'failure')", gate)
         self.assertIn("contains(needs.*.result, 'cancelled')", gate)
         self.assertNotIn("continue-on-error", self.job())
+
+
+def tar_zst(members: dict[str, bytes]) -> bytes:
+    """A small .tar.zst made in memory, as obs-studio-libs publishes them."""
+    from compression import zstd
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tar:
+        for name, data in members.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return zstd.compress(buf.getvalue())
+
+
+class FetchLibsAssetExtractTest(unittest.TestCase):
+    """macos-26 bsdtar ran `tar --zstd` through an external zstd child that
+    exited 1 on a valid, sha-verified Qt SDK (run 41439029430). The zstd layer
+    is decoded in Python; tar only ever sees plain tar on stdin."""
+
+    def test_extracts_tar_zst_without_a_zstd_child(self):
+        real_popen = subprocess.Popen
+        argvs = []
+
+        def popen(argv, *args, **kwargs):
+            argvs.append(list(argv))
+            return real_popen(argv, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "qt6-test.tar.zst"
+            archive.write_bytes(tar_zst({"lib/pkgconfig/Qt6Core.pc": b"prefix=/opt/obs-deps/qt6\n",
+                                         "bin/moc": b"moc"}))
+            dest = Path(tmp) / "out"
+            dest.mkdir()
+            with mock.patch.object(fetch_libs_asset.subprocess, "Popen", popen), \
+                 mock.patch.object(fetch_libs_asset.subprocess, "run", side_effect=AssertionError("tar --zstd")):
+                fetch_libs_asset.extract_tar_zst(archive, dest)
+            self.assertEqual((dest / "bin/moc").read_bytes(), b"moc")
+            self.assertEqual(fetch_libs_asset.rewrite_pkgconfig(dest), 1)
+            self.assertIn(str(dest), (dest / "lib/pkgconfig/Qt6Core.pc").read_text())
+        self.assertEqual(len(argvs), 1)
+        self.assertNotIn("--zstd", argvs[0])
+        self.assertFalse(any("zstd" in arg for arg in argvs[0]), argvs[0])
+
+    def test_corrupt_zstd_fails_loudly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "bad.tar.zst"
+            archive.write_bytes(tar_zst({"a": b"a" * 4096})[:-16])
+            dest = Path(tmp) / "out"
+            dest.mkdir()
+            with self.assertRaises(SystemExit) as cm:
+                fetch_libs_asset.extract_tar_zst(archive, dest)
+            self.assertIn("bad.tar.zst", str(cm.exception))
+            self.assertIn("zstd", str(cm.exception))
+
+    def test_tar_failure_is_not_swallowed(self):
+        from compression import zstd
+
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "notar.tar.zst"
+            archive.write_bytes(zstd.compress(b"this is not a tar archive" * 64))
+            dest = Path(tmp) / "out"
+            dest.mkdir()
+            with self.assertRaises(SystemExit) as cm:
+                fetch_libs_asset.extract_tar_zst(archive, dest)
+            self.assertIn("tar exited", str(cm.exception))
 
 
 if __name__ == "__main__":

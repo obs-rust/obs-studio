@@ -1,4 +1,7 @@
 #!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.14"
+# ///
 """Local gate for obs-rust/obs-studio (zackees/ci.yml GATE-001..010).
 
 One entry point for everything CI's lint and unit-test jobs check, split into
