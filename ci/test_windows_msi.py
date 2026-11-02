@@ -110,7 +110,13 @@ class ReleaseWiring(unittest.TestCase):
     def test_release_builds_round_trips_and_publishes_the_msi(self):
         text = RELEASE.read_text()
         self.assertIn("ci/windows_msi.py build", text)
-        self.assertIn("ci/windows_msi.py sign", text)
+        # The MSI is built before the Azure signing catalog, which picks it up.
+        self.assertLess(
+            text.index("ci/windows_msi.py build"),
+            text.index("- name: Prepare Windows signing catalog"),
+        )
+        self.assertIn('build_${{ matrix.target }}/*.msi', text)
+        self.assertNotIn("WINDOWS_SIGNING_PFX", text)
         self.assertIn("ci/windows_msi.py roundtrip", text)
         self.assertIn("windows-$env:TARGET.msi", text)
         release_needs = (

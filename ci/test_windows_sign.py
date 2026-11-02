@@ -98,7 +98,11 @@ class WindowsSign(unittest.TestCase):
         self.assertIn(cond, step)
         self.assertIn(cond, wf[sign:sign + 300])
         self.assertIn("Get-AuthenticodeSignature", wf)
-        self.assertIn("startsWith(github.ref, 'refs/tags/v')", wf)
+        # Fail closed on every run, and sign in an environment the Azure
+        # federated credential trusts (it does not trust refs/heads/master).
+        self.assertNotIn("::warning::$Msg", wf)
+        self.assertIn("\n    environment: bouf\n", build)
+        self.assertIn("exclude-azure-cli-credential: false", wf)
         self.assertLess(sign, wf.index("Repack signed Windows package"))
         self.assertLess(wf.index("Repack signed Windows package"), wf.index("- name: Collect and verify"))
 
