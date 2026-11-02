@@ -13,7 +13,10 @@ const FEATURE: &str = "fault-injection";
 
 fn rust_dir() -> PathBuf {
     // obs-tests-core is the obs-data package: rust/obs-data.
-    Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 
 /// The `[section]` each line of a TOML file is in, with the line.
@@ -75,7 +78,11 @@ fn audio_fault_injection_is_enabled_only_from_dev_dependencies() {
 #[test]
 fn no_build_script_asks_for_audio_fault_injection() {
     let root = rust_dir().parent().unwrap().to_path_buf();
-    let mut stack = vec![root.join("ci"), root.join("rust").join("tools"), root.join(".github")];
+    let mut stack = vec![
+        root.join("ci"),
+        root.join("rust").join("tools"),
+        root.join(".github"),
+    ];
     let mut offenders = Vec::new();
     while let Some(dir) = stack.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {

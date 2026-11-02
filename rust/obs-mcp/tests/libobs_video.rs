@@ -105,7 +105,10 @@ fn record_without_audio_mixer() {
     // Over MCP, as a client calls it.
     let mut server = obs_mcp::backend::ObsBackend::server(&backend);
     let result = tool(&mut server, "record_start", json!({}));
-    assert_eq!(result["isError"], false, "record_start without audio: {result}");
+    assert_eq!(
+        result["isError"], false,
+        "record_start without audio: {result}"
+    );
     wait_for("recorded bytes", || {
         let status = backend.status(OutputKind::Record);
         assert!(status.active, "the recording stopped by itself");
