@@ -69,6 +69,10 @@ The harness does not know it runs in Docker. On a build machine:
   relaunch with `SKIP_TESTS=1`.
 - For a cold build, use a new `SAN_OUT` and `ZCCACHE_CACHE_DIR`.
 
+tsan does not instrument Rust, so `-DOBS_RUST_TSAN=ON` (set by the harness) makes
+the Rust primitives call `__tsan_acquire` and `__tsan_release`. A primitive
+without them shows its hand-offs as data races in the C code (#3507).
+
 ## What valgrind costs
 
 Measured in #3290 (4-core `ubuntu-26.04` runner): valgrind's unit tests took

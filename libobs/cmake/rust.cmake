@@ -27,6 +27,14 @@ corrosion_import_crate(
 )
 obs_serialize_cargo_build(libobs-rust)
 
+# The tsan pass only (#3507): Rust is not built with TSan, so the staticlib
+# tells it about the hand-offs. The calls need libtsan at link time.
+option(OBS_RUST_TSAN "Annotate the hand-offs through Rust for ThreadSanitizer" OFF)
+mark_as_advanced(OBS_RUST_TSAN)
+if(OBS_RUST_TSAN)
+  corrosion_set_features(libobs_rust FEATURES tsan)
+endif()
+
 # Cross-language ThinLTO (#3217), applied by the ELF host file
 # (rust-os-nix.cmake); declared here so the module-cache key below sees it.
 option(OBS_CROSS_LTO "Cross-language ThinLTO between libobs C and the Rust staticlib (Clang, lld)" OFF)
