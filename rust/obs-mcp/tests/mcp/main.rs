@@ -1,5 +1,6 @@
 //! obs-mcp tests, pulled into `obs-tests-core`.
 
+mod fault_injection;
 mod framing;
 mod outputs;
 mod resources;

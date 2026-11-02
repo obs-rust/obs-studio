@@ -206,7 +206,22 @@ fn reset_video(options: &StartOptions) -> Result<(), String> {
     ))
 }
 
+/// Set by [`fail_audio_mixer`]; consumed by the next [`reset_audio`].
+#[cfg(feature = "fault-injection")]
+static FAIL_AUDIO_MIXER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Test-only fault injection: the next [`configure`] skips `obs_reset_audio`
+/// and reports it failed, as when libobs cannot open its mixer.
+#[cfg(feature = "fault-injection")]
+pub fn fail_audio_mixer() {
+    FAIL_AUDIO_MIXER.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 fn reset_audio() -> Result<(), String> {
+    #[cfg(feature = "fault-injection")]
+    if FAIL_AUDIO_MIXER.swap(false, std::sync::atomic::Ordering::SeqCst) {
+        return Err("cannot start audio at 48 kHz stereo (injected)".to_owned());
+    }
     let info = sys::obs_audio_info {
         samples_per_sec: 48_000,
         speakers: sys::SPEAKERS_STEREO,

@@ -20,6 +20,11 @@ test = false
 # it needs the libobs symbols at link time, which only the application and the
 # `bundled-native` contract tests provide.
 libobs = ["dep:obs-sys", "dep:libc"]
+# Test-only fault injection (with `libobs`): `host::fail_audio_mixer` makes the next start
+# behave as if libobs could not open its audio mixer (#3491). Enabled only by
+# obs-studio-rust's dev-dependency, so no shipped build can reach it; the
+# obs-tests-core case `fault_injection` checks that.
+fault-injection = []
 
 [dependencies]
 obs-sys = { path = "../obs-sys", optional = true }

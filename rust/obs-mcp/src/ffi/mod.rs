@@ -624,6 +624,8 @@ pub use stdio::claim_stdout;
 
 mod setup;
 pub use setup::{Pipeline, configure};
+#[cfg(feature = "fault-injection")]
+pub use setup::fail_audio_mixer;
 
 /// A started libobs; dropping it shuts libobs down.
 ///
