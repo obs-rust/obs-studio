@@ -125,6 +125,10 @@ jobs:
 
   build:
     timeout-minutes: 240
+    # Federated Azure login for Artifact Signing (no client secret exists).
+    permissions:
+      contents: read
+      id-token: write
     name: Build ${{ matrix.os }} ${{ matrix.target }} 🧱
     needs: check
     # A certify dispatch skips `check` on purpose (it promotes an existing
@@ -316,13 +320,20 @@ jobs:
           $Sign = $env:HAVE_AZURE -eq 'true' -and @(Get-Content $Unsigned).Count -gt 0
           "sign=$($Sign.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
+      - name: Azure login (federated OIDC) 🔐
+        if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
       - name: Sign Windows binaries (Azure Artifact Signing) 🔏
         if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
         uses: azure/artifact-signing-action@208f8af4bf26cf2af8597424e3cb5582801523ba # v2.0.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}

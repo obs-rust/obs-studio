@@ -73,12 +73,32 @@ class WindowsSign(unittest.TestCase):
     def test_release_workflow_signs_and_verifies_windows(self):
         wf = (ROOT / ".github/workflows/release-rust.yaml").read_text()
         self.assertIn("azure/artifact-signing-action@208f8af4bf26cf2af8597424e3cb5582801523ba", wf)
-        for name in ("AZURE_TENANT_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET",
+        for name in ("AZURE_TENANT_ID", "AZURE_CLIENT_ID",
                      "AZURE_SIGNING_ENDPOINT", "AZURE_SIGNING_ACCOUNT", "AZURE_SIGNING_PROFILE"):
             self.assertIn(f"secrets.{name}", wf)
+        # Signing authenticates by federated OIDC: no client secret exists.
+        self.assertNotIn("AZURE_CLIENT_SECRET", wf)
+        self.assertNotIn("azure-client-secret", wf)
+        # The build job that signs must be allowed to mint an OIDC token.
+        build = wf[wf.index("\n  build:\n"):]
+        build = build[:build.index("\n    steps:")]
+        self.assertRegex(build, r"\n    permissions:\n(      .*\n)*      id-token: write\n")
+        # azure/login (pinned) logs in with client and tenant ids only,
+        # before the signing step, under the same condition.
+        login = wf.index("- name: Azure login (federated OIDC)")
+        sign = wf.index("Sign Windows binaries")
+        self.assertLess(login, sign)
+        step = wf[login:sign]
+        self.assertIn("uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca", step)
+        self.assertIn("client-id: ${{ secrets.AZURE_CLIENT_ID }}", step)
+        self.assertIn("tenant-id: ${{ secrets.AZURE_TENANT_ID }}", step)
+        self.assertNotIn("client-secret", step)
+        self.assertNotIn("creds:", step)
+        cond = "if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'"
+        self.assertIn(cond, step)
+        self.assertIn(cond, wf[sign:sign + 300])
         self.assertIn("Get-AuthenticodeSignature", wf)
         self.assertIn("startsWith(github.ref, 'refs/tags/v')", wf)
-        sign = wf.index("Sign Windows binaries")
         self.assertLess(sign, wf.index("Repack signed Windows package"))
         self.assertLess(wf.index("Repack signed Windows package"), wf.index("- name: Collect and verify"))
 
