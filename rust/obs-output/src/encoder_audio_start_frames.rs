@@ -14,6 +14,13 @@
 //! reads `samplerate` once for each call here. These keep no state and call
 //! nothing in libobs.
 //!
+//! Both conversions go through [`obs_util::util_uint64::mul_div64`], which
+//! is the C's `util_mul_div64()` on each platform. With a `u32` rate and
+//! `u32` frames, [`duration`] never overflows on any platform. [`offset`]
+//! fits too for any offset at rates up to 10^9 Hz; past that, an offset of
+//! centuries keeps the platform's result, as the C does: it wraps where the
+//! C wraps and panics where MSVC x64's `_udiv128` faults.
+//!
 //! Intentional difference: at a sample rate of 0, [`duration`] is 0, where
 //! the C divides by zero (SIGFPE on x86, a trap on MSVC x64). The rate comes
 //! from the encoder plugin's audio info, unchecked. With a length of 0 the
@@ -29,19 +36,21 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(clippy::todo, unused_variables)]
 
+use crate::delay::NS_PER_SEC;
 #[cfg(doc)]
 use crate::encoder_audio_start;
+use obs_util::util_uint64::mul_div64;
 
 /// `calc_offset_size()`: the frames in `offset_ns` nanoseconds at
 /// `samplerate`, rounded down.
 #[must_use]
 pub fn offset(offset_ns: u64, samplerate: u32) -> u64 {
-    todo!()
+    mul_div64(offset_ns, u64::from(samplerate), NS_PER_SEC)
 }
 
 /// `buffer_audio()`, once the paired video has started: the packet's length
@@ -49,5 +58,8 @@ pub fn offset(offset_ns: u64, samplerate: u32) -> u64 {
 /// `samplerate` of 0 (the C divides by zero).
 #[must_use]
 pub fn duration(frames: u32, samplerate: u32) -> u64 {
-    todo!()
+    if samplerate == 0 {
+        return 0;
+    }
+    mul_div64(u64::from(frames), NS_PER_SEC, u64::from(samplerate))
 }

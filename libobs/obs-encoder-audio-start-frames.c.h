@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-audio-start-frames.pch.h"
 
 uint64_t obs_encoder_audio_start_frames_offset(uint64_t offset_ns, uint32_t samplerate)
 {
