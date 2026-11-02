@@ -1,4 +1,7 @@
 #!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.14"
+# ///
 """Fetch, verify and unpack one obs-rust/obs-studio-libs release asset (#992).
 
     uv run ci/fetch_libs_asset.py TAG ASSET SHA256 DEST
@@ -6,12 +9,18 @@
 Skips everything when DEST/.asset-sha256 already holds SHA256 (a cache hit).
 The archive is deleted once unpacked; pkg-config files that name the build-time
 prefix /opt/obs-deps/<name> are rewritten to DEST so PKG_CONFIG_PATH works.
+
+The zstd layer is decoded here with the standard library (compression.zstd,
+Python 3.14) and plain tar is piped to `tar -xf -`. `tar --zstd` made macOS
+bsdtar start an external zstd filter, which exited 1 on a valid, sha-verified
+Qt SDK ("tar: Child process exited with status 1", run 41439029430).
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -41,6 +50,30 @@ def rewrite_pkgconfig(dest: Path) -> int:
     return n
 
 
+def extract_tar_zst(archive: Path, dest: Path) -> None:
+    """Unpack ARCHIVE (.tar.zst) into DEST; no zstd program is ever started."""
+    from compression import zstd
+
+    argv = ["tar", "-xf", "-", "-C", str(dest)]
+    proc = subprocess.Popen(argv, stdin=subprocess.PIPE)
+    assert proc.stdin is not None
+    try:
+        with zstd.open(archive, "rb") as src, proc.stdin:
+            shutil.copyfileobj(src, proc.stdin, 1 << 20)
+    except (zstd.ZstdError, EOFError) as e:  # EOFError: truncated stream
+        proc.kill()
+        proc.wait()
+        raise SystemExit(f"{archive.name}: zstd decode failed: {e}") from e
+    except BrokenPipeError:
+        pass  # tar quit early; its exit status below says why
+    except BaseException:
+        proc.kill()
+        proc.wait()
+        raise
+    if rc := proc.wait():
+        raise SystemExit(f"{archive.name}: tar exited {rc} unpacking the decoded stream ({' '.join(argv)})")
+
+
 def fetch(tag: str, asset: str, sha: str, dest: Path) -> None:
     sha = sha.lower()
     if (dest / STAMP).is_file() and (dest / STAMP).read_text().strip() == sha:
@@ -53,7 +86,7 @@ def fetch(tag: str, asset: str, sha: str, dest: Path) -> None:
         if got != sha:
             raise SystemExit(f"{asset}: sha256 {got} != pinned {sha}")
         dest.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["tar", "--zstd", "-xf", str(archive), "-C", str(dest)], check=True)
+        extract_tar_zst(archive, dest)
     print(f"{asset}: rewrote {rewrite_pkgconfig(dest)} pkg-config files")
     (dest / STAMP).write_text(sha + "\n")
 
