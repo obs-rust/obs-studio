@@ -4,6 +4,7 @@ mod effect_lookups;
 mod effect_lookups_layout;
 mod effect_lookups_parity;
 mod effect_param_numbers;
+mod effect_param_numbers_parity;
 mod effect_param_types;
 mod effect_param_types_parity;
 mod effect_params;
