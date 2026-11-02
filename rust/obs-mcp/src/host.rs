@@ -8,6 +8,11 @@ use crate::backend::ObsBackend;
 use crate::ffi::{self, Libobs, Pipeline};
 
 /// Output names the frontend gives its simple-mode record and stream outputs.
+/// Test-only: the next [`Runtime::start`] behaves as if libobs could not open
+/// its audio mixer, the failure the null audio path covers (#3491).
+#[cfg(feature = "fault-injection")]
+pub use crate::ffi::fail_audio_mixer;
+
 pub const RECORD_OUTPUT: &str = "simple_file_output";
 /// See [`RECORD_OUTPUT`].
 pub const STREAM_OUTPUT: &str = "simple_stream";

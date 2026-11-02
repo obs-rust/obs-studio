@@ -16,6 +16,10 @@
 //!   `OBS_MCP_MODULE_DATA`, see `StartOptions::from_env`). Without them it
 //!   prints a `SKIP` line and passes, unless `OBS_MCP_REQUIRE_VIDEO` is set,
 //!   which turns every skip into a failure.
+//! - `mcp_record_without_audio_mixer` needs the same, and injects the failure
+//!   of libobs's audio mixer (`host::fail_audio_mixer`, test builds only):
+//!   recording must still start, on the null audio path, and write a file
+//!   with video (#3491).
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -62,6 +66,70 @@ fn mcp_video_failures_degrade_to_errors() {
 #[test]
 fn mcp_screenshot_and_record_over_real_video() {
     in_child("mcp_screenshot_and_record_over_real_video", real_video);
+}
+
+#[test]
+fn mcp_record_without_audio_mixer() {
+    in_child("mcp_record_without_audio_mixer", record_without_audio_mixer);
+}
+
+fn record_without_audio_mixer() {
+    let record_dir = scratch("no-audio");
+    let options = StartOptions::from_env(Some(record_dir.clone()));
+    obs_mcp::host::fail_audio_mixer();
+    let runtime = Runtime::start(&options).expect("libobs itself starts");
+    if let Some(reason) = runtime.video_error() {
+        return skip(&format!("no video: {reason}"));
+    }
+    // SAFETY: libobs is started.
+    assert!(
+        unsafe { obs_sys::ffi::obs_get_audio() }.is_null(),
+        "the injected failure left libobs without its audio mixer"
+    );
+    let backend = Rc::new(runtime.backend());
+    let created = SourceBackend::create(
+        &*backend,
+        "color_source_v3",
+        "Solid",
+        &json!({"color": COLOR_ABGR, "width": 64, "height": 32}),
+    );
+    if let Err(error) = created {
+        return skip(&format!("no solid colour source: {error}"));
+    }
+    backend_scene(&backend);
+    add_item("Main", "Solid");
+    if runtime_output_missing(&backend) {
+        return skip("no record output (ffmpeg_muxer, obs_x264 or ffmpeg_aac missing)");
+    }
+
+    // Over MCP, as a client calls it.
+    let mut server = obs_mcp::backend::ObsBackend::server(&backend);
+    let result = tool(&mut server, "record_start", json!({}));
+    assert_eq!(
+        result["isError"], false,
+        "record_start without audio: {result}"
+    );
+    wait_for("recorded bytes", || {
+        let status = backend.status(OutputKind::Record);
+        assert!(status.active, "the recording stopped by itself");
+        status.bytes.unwrap_or(0) > 0
+    });
+    let result = tool(&mut server, "record_stop", json!({}));
+    assert_eq!(result["isError"], false, "{result}");
+    wait_for("the recording to stop", || {
+        !backend.status(OutputKind::Record).active
+    });
+    let files: Vec<_> = std::fs::read_dir(&record_dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(files.len(), 1, "one recording file in {record_dir:?}");
+    let bytes = std::fs::read(&files[0]).unwrap();
+    // Matroska codec ids: an H.264 video track, and the silent AAC track.
+    let has = |id: &[u8]| bytes.windows(id.len()).any(|w| w == id);
+    assert!(has(b"V_MPEG4/ISO/AVC"), "no video track in {:?}", files[0]);
+    assert!(has(b"A_AAC"), "no audio track in {:?}", files[0]);
+    drop(server);
 }
 
 fn scratch(name: &str) -> PathBuf {

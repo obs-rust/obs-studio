@@ -41,3 +41,6 @@ pkg-config = { workspace = true, default-features = true }
 obs-build = { path = "../obs-build" }
 libloading = { workspace = true, default-features = true }
 tempfile = { workspace = true, default-features = true }
+# Only test builds can inject an audio mixer failure; a release build of the
+# app never builds dev-dependencies, so the seam is not in it (#3491).
+obs-mcp = { path = "../obs-mcp", features = ["fault-injection"] }

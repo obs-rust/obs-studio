@@ -190,7 +190,7 @@ static void add_audio_encoder_params(os_process_args_t *args, obs_encoder_t *aen
 {
 	obs_data_t *settings = obs_encoder_get_settings(aencoder);
 	int bitrate = (int)obs_data_get_int(settings, "bitrate");
-	audio_t *audio = obs_get_audio();
+	audio_t *audio = obs_encoder_audio(aencoder);
 
 	obs_data_release(settings);
 

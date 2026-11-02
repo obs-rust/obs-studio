@@ -343,3 +343,47 @@ unsafe extern "C" {
     );
     pub fn obs_output_set_service(output: *mut obs_output_t, service: *mut obs_service_t);
 }
+
+/// `MAX_AUDIO_CHANNELS` of `libobs/media-io/audio-io.h`.
+pub const MAX_AUDIO_CHANNELS: usize = 8;
+/// `AUDIO_FORMAT_FLOAT_PLANAR` of `enum audio_format`, the mixer's format.
+pub const AUDIO_FORMAT_FLOAT_PLANAR: c_int = 8;
+/// `AUDIO_OUTPUT_SUCCESS`, the success value of `audio_output_open`.
+pub const AUDIO_OUTPUT_SUCCESS: c_int = 0;
+
+/// `struct audio_output_data` of `libobs/media-io/audio-io.h`: one mix.
+#[repr(C)]
+#[derive(Debug)]
+pub struct audio_output_data {
+    pub data: [*mut c_float; MAX_AUDIO_CHANNELS],
+}
+
+/// `audio_input_callback_t`: fills the mixes for `[start_ts, end_ts)`.
+pub type audio_input_callback_t = unsafe extern "C" fn(
+    param: *mut c_void,
+    start_ts: u64,
+    end_ts: u64,
+    new_ts: *mut u64,
+    active_mixers: u32,
+    mixes: *mut audio_output_data,
+) -> bool;
+
+/// `struct audio_output_info` of `libobs/media-io/audio-io.h`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct audio_output_info {
+    pub name: *const c_char,
+    pub samples_per_sec: u32,
+    /// `enum audio_format`.
+    pub format: c_int,
+    /// `enum speaker_layout`.
+    pub speakers: c_int,
+    pub input_callback: Option<audio_input_callback_t>,
+    pub input_param: *mut c_void,
+}
+
+unsafe extern "C" {
+    // libobs/media-io/audio-io.h: a standalone audio output.
+    pub fn audio_output_open(audio: *mut *mut audio_t, info: *mut audio_output_info) -> c_int;
+    pub fn audio_output_close(audio: *mut audio_t);
+}
