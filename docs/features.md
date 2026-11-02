@@ -1238,6 +1238,11 @@ area.
   never wrote when a device goes away while the list is being built, which
   could list a device twice. *macOS*, 2026-11-01. Issue
   [#3359](https://github.com/obs-rust/obs-studio/issues/3359).
+- A scene transition's audio fade no longer jumps partway through a block
+  of audio, or puts the left and right channels at different points of the
+  fade, when the transition moves while that audio is being mixed (for
+  example while you drag the Studio Mode T-bar). *All*, 2026-11-02. Issue
+  [#3499](https://github.com/obs-rust/obs-studio/issues/3499).
 
 ### Encoding, streaming and recording
 
