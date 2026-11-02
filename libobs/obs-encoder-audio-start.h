@@ -37,7 +37,8 @@
  *   obs_encoder_audio_start_packet() (wait, truncate, clear, start from the
  *   buffer);
  * - calc_offset_size(): obs_encoder_audio_start_offset_ns() and
- *   obs_encoder_audio_start_offset_size(), around the conversion to frames;
+ *   obs_encoder_audio_start_offset_size(), around the conversion to frames
+ *   (obs-encoder-audio-start-frames.h);
  * - start_from_buffer(): obs_encoder_audio_start_buffer_offset();
  * - push_back_audio(): obs_encoder_audio_start_push_size();
  * - receive_audio(): obs_encoder_audio_start_can_send() (the send loop) and
@@ -55,11 +56,10 @@
  * encoders stops at the first one not ready, as before), the group mutex,
  * obs_weak_encoder_get_encoder() and obs_encoder_release(), the deques and
  * bfree(), do_encode(), the pause checks, the group reconfigure, the active
- * flag and initialized checks, the fps_override free and create, every log,
- * and both util_mul_div64() conversions between nanoseconds and frames (the
- * division by the sample rate traps on a zero rate on MSVC x64). It passes
- * their results here. Nothing here takes a lock, calls into libobs or keeps
- * state.
+ * flag and initialized checks, the fps_override free and create, and every
+ * log. The two conversions between nanoseconds and frames are in
+ * obs-encoder-audio-start-frames.h. It passes their results here. Nothing
+ * here takes a lock, calls into libobs or keeps state.
  *
  * The constant is copied below, so this header needs no core header;
  * obs-encoder.c checks it against obs-encoder.h.
@@ -115,7 +115,7 @@ bool obs_encoder_audio_start_unpaired(uint64_t start_ts, bool has_paired);
 bool obs_encoder_audio_start_no_video(uint64_t v_start_ts);
 
 /* buffer_audio() once the video has started: timestamp is the packet's,
- * duration_ns its length (util_mul_div64(frames, 1000000000, samplerate)),
+ * duration_ns its length (obs_encoder_audio_start_frames_duration()),
  * v_start_ts the video's start. The packet ends at timestamp + duration_ns. */
 struct obs_encoder_audio_start_plan obs_encoder_audio_start_packet(uint64_t timestamp, uint64_t duration_ns,
 								   uint64_t v_start_ts);
@@ -125,8 +125,7 @@ struct obs_encoder_audio_start_plan obs_encoder_audio_start_packet(uint64_t time
 uint64_t obs_encoder_audio_start_offset_ns(uint64_t v_start_ts, uint64_t a_start_ts);
 
 /* calc_offset_size(): offset_frames (the offset converted with
- * util_mul_div64(offset, samplerate, 1000000000)) as a size_t, times
- * blocksize. */
+ * obs_encoder_audio_start_frames_offset()) as a size_t, times blocksize. */
 size_t obs_encoder_audio_start_offset_size(uint64_t offset_frames, size_t blocksize);
 
 /* start_from_buffer(): the buffered audio's first raw timestamp is before

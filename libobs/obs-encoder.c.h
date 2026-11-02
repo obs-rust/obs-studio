@@ -1876,7 +1876,7 @@ static inline void push_back_audio(struct obs_encoder *encoder, struct audio_dat
 static inline size_t calc_offset_size(struct obs_encoder *encoder, uint64_t v_start_ts, uint64_t a_start_ts)
 {
 	uint64_t offset = obs_encoder_audio_start_offset_ns(v_start_ts, a_start_ts);
-	offset = util_mul_div64(offset, encoder->samplerate, 1000000000ULL);
+	offset = obs_encoder_audio_start_frames_offset(offset, encoder->samplerate);
 	return obs_encoder_audio_start_offset_size(offset, encoder->blocksize);
 }
 
@@ -1925,7 +1925,8 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 		}
 
 		plan = obs_encoder_audio_start_packet(
-			data->timestamp, util_mul_div64(data->frames, 1000000000ULL, encoder->samplerate), v_start_ts);
+			data->timestamp, obs_encoder_audio_start_frames_duration(data->frames, encoder->samplerate),
+			v_start_ts);
 		if (plan.wait) {
 			success = false;
 			goto fail;
