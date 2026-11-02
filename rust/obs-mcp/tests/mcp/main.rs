@@ -7,6 +7,7 @@ mod scenes;
 mod screenshot;
 mod server;
 mod sources;
+mod startup;
 
 use obs_mcp::serve;
 use serde_json::Value;

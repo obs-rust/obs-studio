@@ -26,6 +26,7 @@ pub mod host;
 pub mod protocol;
 pub mod resources;
 pub mod server;
+pub mod startup;
 pub mod tools;
 
 use std::io::{self, BufRead, Write};
