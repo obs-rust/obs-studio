@@ -6139,6 +6139,7 @@
       "sources": [
         "test/cmocka/test_win_wsc_product_refs.c",
         "libobs/obs-windows-keys.c.h",
+        "libobs/obs-windows-symbol-paths.c.h",
         "libobs/obs-windows-system-info.c.h"
       ],
       "includes": [

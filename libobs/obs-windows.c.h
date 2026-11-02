@@ -675,33 +675,17 @@ static void reset_win32_symbol_paths(void)
 		da_push_back(paths, &abspath);
 
 	while (module) {
-		bool found = false;
 		struct dstr path = {0};
-		char *path_end;
 
-		dstr_copy(&path, module->bin_path);
-		dstr_replace(&path, "/", "\\");
-
-		path_end = strrchr(path.array, '\\');
-		if (!path_end) {
+		if (!obs_windows_symbol_paths_dir(module->bin_path, &path)) {
 			module = module->next;
 			dstr_free(&path);
 			continue;
 		}
 
-		*path_end = 0;
-
 		abspath = os_get_abs_path_ptr(path.array);
 		if (abspath) {
-			for (size_t i = 0; i < paths.num; i++) {
-				const char *existing_path = paths.array[i];
-				if (astrcmpi(abspath, existing_path) == 0) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
+			if (!obs_windows_symbol_paths_listed(paths.array, paths.num, abspath)) {
 				da_push_back(paths, &abspath);
 			} else {
 				bfree(abspath);
@@ -713,14 +697,7 @@ static void reset_win32_symbol_paths(void)
 		module = module->next;
 	}
 
-	for (size_t i = 0; i < paths.num; i++) {
-		const char *path = paths.array[i];
-		if (path && *path) {
-			if (i != 0)
-				dstr_cat(&path_str, ";");
-			dstr_cat(&path_str, paths.array[i]);
-		}
-	}
+	obs_windows_symbol_paths_join(paths.array, paths.num, &path_str);
 
 	if (path_str.array) {
 		os_utf8_to_wcs_ptr(path_str.array, path_str.len, &path_str_w);
