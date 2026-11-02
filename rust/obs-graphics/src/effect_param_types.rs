@@ -1,5 +1,6 @@
 //! Safe core of `libobs/graphics/effect-param-types.c.h`: the parameter
-//! type decisions of the effect parser (`effect-parser.c`), on a type name.
+//! type decisions of the effect parser (`effect-parser.c`), on a type name;
+//! and of `libobs/graphics/effect-param-numbers.c.h`: its number reads.
 //!
 //! - [`param_type`] (`get_effect_param_type`, for `ep_compile_annotations`
 //!   and `ep_compile_param`): the shader parameter type of a type name. It
@@ -12,11 +13,16 @@
 //!   read its byte: [`rows_bad`] (`effect-parser.c` then adds the row error),
 //!   [`rows`], the value count so far, [`has_cols`], then [`cols_bad`] (it
 //!   adds the column error) and [`cols`], the count times the column digit.
+//! - [`int_value`] (`ep_parse_param_assign_intfloat`): an `int` value, and
+//!   [`array_count`] (`ep_parse_param_array`): the count of `name[count]`,
+//!   on the number token's text, which runs on into the effect source as
+//!   `strtol` reads it; [`strtol_reads_on`] tells the shims where it stops.
 //!
 //! Names compare as bytes, case-sensitively, as `strcmp` and `astrcmp_n`
 //! do. `effect-parser.c` keeps every token call, every `cf_adderror()`, the
-//! value parsers, the brace and constructor handling, the loop over the
-//! values and the compile. Nothing here keeps state or calls libobs.
+//! token type tests, the float values, the push of each value, the brace
+//! and constructor handling, the loop over the values and the compile.
+//! Nothing here keeps state or calls libobs.
 //!
 //! Characterized, not endorsed (`test_effect_param_types_steps`), and kept:
 //! any name starting with `texture` is a texture; `strings` takes the string
@@ -26,7 +32,17 @@
 //! [`c_char`], so a non-ASCII byte counts as the C does on each target:
 //! negative where `char` is signed (x86-64, MSVC), not on arm64 Linux.
 //!
-//! No intentional difference from the C.
+//! Characterized, not endorsed (`test_effect_param_numbers_steps`), and
+//! kept: a float or hex token reads as its leading digits (`1.5` is 1,
+//! `0x10` is 0), and a count checks only the token's length
+//! (`valid_int_str`) while `strtol` reads every digit after it.
+//!
+//! One intentional difference (#3464), in the number reads: past `INT_MAX`
+//! the C depends on the width of `long` (`3000000000` reads as -1294967296
+//! with a 64-bit `long`, `-2147483648` as -2147483647 with a 32-bit one);
+//! [`int_value`] and [`array_count`] read the digits exactly, apply the
+//! sign and saturate to `i32` on every platform. The type decisions have no
+//! intentional difference.
 
 #![deny(
     clippy::arithmetic_side_effects,

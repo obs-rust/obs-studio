@@ -1,6 +1,7 @@
 //! C ABI for `libobs/graphics/effect-param-types.c.h`, the parameter type
-//! decisions of the effect parser, declared in
-//! `libobs/graphics/effect-param-types.h` without `EXPORT`.
+//! decisions of the effect parser, and `effect-param-numbers.c.h`, its
+//! number reads, declared in `libobs/graphics/effect-param-types.h` without
+//! `EXPORT`.
 //!
 //! `effect-parser.c` (still C) calls these where it made each decision:
 //! `ep_compile_annotations()` and `ep_compile_param()` ask
@@ -9,13 +10,23 @@
 //! asks [`obs_effect_param_rows_bad`] (then adds the row error),
 //! [`obs_effect_param_rows`], [`obs_effect_param_has_cols`],
 //! [`obs_effect_param_cols_bad`] (then adds the column error) and
-//! [`obs_effect_param_cols`], each where it read that byte. It keeps every
-//! token call, every `cf_adderror()` and the value parsers. Only a C string,
-//! `bool`s and `int`s cross; the route is a C `int`. The shims take no lock,
-//! call nothing in libobs and stay hidden (`rust-hidden.txt`).
+//! [`obs_effect_param_cols`], each where it read that byte;
+//! `ep_parse_param_assign_intfloat()` asks [`obs_effect_param_int_value`]
+//! and `ep_parse_param_array()` [`obs_effect_param_array_count`]. It keeps
+//! every token call, every `cf_adderror()` and the float values. Only a C
+//! string, a length, `bool`s, `int`s and an `int` out-pointer cross; the
+//! route is a C `int`. The shims take no lock, call nothing in libobs and
+//! stay hidden (`rust-hidden.d/obs-graphics-effect_param_types.txt`).
 //!
-//! No intentional difference from C. A null name, which `effect-parser.c`
-//! never passes (the C would call `strcmp(NULL)`), reads as `""`.
+//! The number token's text runs on into the effect source: the number shims
+//! read it one byte at a time and stop where `strtol()` stops, so they read
+//! no further than the C.
+//!
+//! One intentional difference (#3464): the int value and the array count
+//! saturate to `int` past its range, where the C depends on the width of
+//! `long`. A null name, which `effect-parser.c` never passes (the C would
+//! call `strcmp(NULL)`), reads as `""`, and a null number text as `""` and
+//! false.
 
 use core::ffi::{CStr, c_char, c_int};
 use core::slice;

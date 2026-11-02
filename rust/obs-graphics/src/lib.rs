@@ -3,7 +3,8 @@
 //! and texture upload geometry ([`sprite`]), and `graphics-immediate.c.h`,
 //! the immediate-mode vertex counts and texture units ([`immediate`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
-//! parameter types and default-value shapes ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
+//! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
+//! its int values and array counts ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
