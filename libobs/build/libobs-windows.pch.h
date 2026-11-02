@@ -40,6 +40,7 @@
 #include "obs-host/module-symbols.h"
 #include "obs-host/shared-texture.h"
 #include "obs-windows-keys.h"
+#include "obs-windows-system-info.h"
 
 #include <windows.h>
 #include <wscapi.h>

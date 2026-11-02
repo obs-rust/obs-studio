@@ -93,8 +93,8 @@ static void log_available_memory(void)
 	const char *note = " (NOTE: 32bit programs cannot use more than 3gb)";
 #endif
 
-	blog(LOG_INFO, "Physical Memory: %luMB Total, %luMB Free%s", (DWORD)(ms.ullTotalPhys / 1048576),
-	     (DWORD)(ms.ullAvailPhys / 1048576), note);
+	blog(LOG_INFO, "Physical Memory: %luMB Total, %luMB Free%s", (DWORD)obs_windows_system_info_mb(ms.ullTotalPhys),
+	     (DWORD)obs_windows_system_info_mb(ms.ullAvailPhys), note);
 }
 
 static void log_lenovo_vantage(void)
@@ -163,7 +163,7 @@ static void log_admin_status(void)
 
 static void log_gaming_features(void)
 {
-	if (win_ver < 0xA00)
+	if (!obs_windows_system_info_gaming_logged(win_ver))
 		return;
 
 	struct reg_dword game_bar_enabled;
@@ -178,63 +178,28 @@ static void log_gaming_features(void)
 	get_reg_dword(HKEY_CURRENT_USER, WIN10_GAME_BAR_REG_KEY, L"HistoricalCaptureEnabled", &game_dvr_bg_recording);
 	get_reg_dword(HKEY_CURRENT_USER, WIN10_GAME_MODE_REG_KEY, L"AutoGameModeEnabled", &game_mode_enabled);
 
-	if (game_mode_enabled.status != ERROR_SUCCESS) {
+	if (obs_windows_system_info_game_mode_retry(game_mode_enabled.status)) {
 		get_reg_dword(HKEY_CURRENT_USER, WIN10_GAME_MODE_REG_KEY, L"AllowAutoGameMode", &game_mode_enabled);
 	}
 
 	blog(LOG_INFO, "Windows 10/11 Gaming Features:");
-	if (game_bar_enabled.status == ERROR_SUCCESS) {
-		blog(LOG_INFO, "\tGame Bar: %s", (bool)game_bar_enabled.return_value ? "On" : "Off");
-	}
 
-	if (game_dvr_allowed.status == ERROR_SUCCESS) {
-		blog(LOG_INFO, "\tGame DVR Allowed: %s", (bool)game_dvr_allowed.return_value ? "Yes" : "No");
-	}
+	/* In OBS_WINDOWS_SYSTEM_INFO_GAME_BAR ... _GAME_MODE order. */
+	const struct reg_dword *features[OBS_WINDOWS_SYSTEM_INFO_GAMING_FEATURES] = {
+		&game_bar_enabled, &game_dvr_allowed, &game_dvr_enabled, &game_dvr_bg_recording, &game_mode_enabled,
+	};
 
-	if (game_dvr_enabled.status == ERROR_SUCCESS) {
-		blog(LOG_INFO, "\tGame DVR: %s", (bool)game_dvr_enabled.return_value ? "On" : "Off");
-	}
+	for (int i = 0; i < OBS_WINDOWS_SYSTEM_INFO_GAMING_FEATURES; i++) {
+		const char *label;
+		const char *text;
 
-	if (game_dvr_bg_recording.status == ERROR_SUCCESS) {
-		blog(LOG_INFO, "\tGame DVR Background Recording: %s",
-		     (bool)game_dvr_bg_recording.return_value ? "On" : "Off");
-	}
-
-	if (game_mode_enabled.status == ERROR_SUCCESS) {
-		blog(LOG_INFO, "\tGame Mode: %s", (bool)game_mode_enabled.return_value ? "On" : "Off");
-	} else if (win_build >= 19042) {
-		// On by default in newer Windows 10 builds (no registry key set)
-		blog(LOG_INFO, "\tGame Mode: Probably On (no reg key set)");
-	}
-}
-
-static const char *get_str_for_state(int state)
-{
-	switch (state) {
-	case WSC_SECURITY_PRODUCT_STATE_ON:
-		return "enabled";
-	case WSC_SECURITY_PRODUCT_STATE_OFF:
-		return "disabled";
-	case WSC_SECURITY_PRODUCT_STATE_SNOOZED:
-		return "temporarily disabled";
-	case WSC_SECURITY_PRODUCT_STATE_EXPIRED:
-		return "expired";
-	default:
-		return "unknown";
-	}
-}
-
-static const char *get_str_for_type(int type)
-{
-	switch (type) {
-	case WSC_SECURITY_PROVIDER_ANTIVIRUS:
-		return "AV";
-	case WSC_SECURITY_PROVIDER_FIREWALL:
-		return "FW";
-	case WSC_SECURITY_PROVIDER_ANTISPYWARE:
-		return "ASW";
-	default:
-		return "unknown";
+		if (obs_windows_system_info_gaming_found(features[i]->status)) {
+			if (obs_windows_system_info_gaming_value_line(i, features[i]->return_value, &label, &text))
+				blog(LOG_INFO, "\t%s: %s", label, text);
+		} else if (obs_windows_system_info_gaming_fallback(i)) {
+			if (obs_windows_system_info_gaming_fallback_line(i, win_build, &label, &text))
+				blog(LOG_INFO, "\t%s: %s", label, text);
+		}
 	}
 }
 
@@ -280,7 +245,8 @@ static void log_security_products_by_type(IWSCProductList *prod_list, int type)
 		char *product_name;
 		os_wcs_to_utf8_ptr(name, 0, &product_name);
 
-		blog(LOG_INFO, "\t%s: %s (%s)", product_name, get_str_for_state(prod_state), get_str_for_type(type));
+		blog(LOG_INFO, "\t%s: %s (%s)", product_name, obs_windows_system_info_product_state(prod_state),
+		     obs_windows_system_info_product_type(type));
 
 		bfree(product_name);
 
@@ -334,7 +300,7 @@ void log_system_info(void)
 	struct win_version_info ver;
 	get_win_ver(&ver);
 
-	win_ver = (ver.major << 8) | ver.minor;
+	win_ver = obs_windows_system_info_version(ver.major, ver.minor);
 	win_build = ver.build;
 
 	log_processor_info();
@@ -351,6 +317,24 @@ void log_system_info(void)
 struct obs_hotkeys_platform {
 	int vk_codes[OBS_KEY_LAST_VALUE];
 };
+
+/* The system info log rules, obs-windows-system-info.c, have no windows.h:
+ * check what they assume. */
+_Static_assert(sizeof(LSTATUS) == sizeof(int32_t), "a registry status is an int32_t");
+_Static_assert(sizeof(DWORD) == sizeof(uint32_t), "a registry value is a uint32_t");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_ERROR_SUCCESS == ERROR_SUCCESS, "ERROR_SUCCESS");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_STATE_ON == WSC_SECURITY_PRODUCT_STATE_ON, "WSC_SECURITY_PRODUCT_STATE_ON");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_STATE_OFF == WSC_SECURITY_PRODUCT_STATE_OFF, "WSC_SECURITY_PRODUCT_STATE_OFF");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_STATE_SNOOZED == WSC_SECURITY_PRODUCT_STATE_SNOOZED,
+	       "WSC_SECURITY_PRODUCT_STATE_SNOOZED");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_STATE_EXPIRED == WSC_SECURITY_PRODUCT_STATE_EXPIRED,
+	       "WSC_SECURITY_PRODUCT_STATE_EXPIRED");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_PROVIDER_FIREWALL == WSC_SECURITY_PROVIDER_FIREWALL,
+	       "WSC_SECURITY_PROVIDER_FIREWALL");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_PROVIDER_ANTIVIRUS == WSC_SECURITY_PROVIDER_ANTIVIRUS,
+	       "WSC_SECURITY_PROVIDER_ANTIVIRUS");
+_Static_assert(OBS_WINDOWS_SYSTEM_INFO_PROVIDER_ANTISPYWARE == WSC_SECURITY_PROVIDER_ANTISPYWARE,
+	       "WSC_SECURITY_PROVIDER_ANTISPYWARE");
 
 /* The key map, obs-windows-keys.c, has no windows.h: check what it assumes. */
 _Static_assert(sizeof(UINT) == sizeof(uint32_t), "a scan code is a UINT");

@@ -6121,7 +6121,8 @@
     "test_win_wsc_product_refs": {
       "sources": [
         "test/cmocka/test_win_wsc_product_refs.c",
-        "libobs/obs-windows-keys.c.h"
+        "libobs/obs-windows-keys.c.h",
+        "libobs/obs-windows-system-info.c.h"
       ],
       "includes": [
         "libobs",
@@ -6169,6 +6170,23 @@
         "OBS::libobs",
         "OBS::caption",
         "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_windows_system_info_steps": {
+      "sources": [
+        "test/cmocka/test_windows_system_info_steps.c",
+        "libobs/obs-windows-system-info.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-windows-system-info.pch.h",
+        "libobs/obs-windows-system-info.h"
+      ],
+      "libraries": [
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
@@ -8502,6 +8520,12 @@
     },
     "test_windows_keys_steps": {
       "target": "test_windows_keys_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_windows_system_info_steps": {
+      "target": "test_windows_system_info_steps",
       "command": [
         "${target}"
       ]

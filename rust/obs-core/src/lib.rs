@@ -29,7 +29,8 @@
 //! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
 //! BSD system info parsing of the startup log; and
 //! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
-//! the Windows crash report rules.
+//! the Windows crash report rules; and `libobs/obs-windows-system-info.c.h`
+//! (from `obs-windows.c.h`), the Windows system info log rules.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
@@ -40,7 +41,7 @@
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_frame_timing`],
-//! [`nix_system_info`] and [`win_crash_report`].
+//! [`nix_system_info`], [`win_crash_report`] and [`win_system_info`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -53,7 +54,10 @@
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
 //! startup log prints; [`win_crash_report`] decides which module holds the
 //! crash address, which threads the report traces and in what order, how
-//! each frame is written and when the crash handler passes on; [`module_load_rules`] decides which modules load, are
+//! each frame is written and when the crash handler passes on;
+//! [`win_system_info`] packs the Windows version, sizes the memory lines,
+//! gates the gaming features and picks each feature's line and the security
+//! product labels of the Windows startup log; [`module_load_rules`] decides which modules load, are
 //! disabled or skipped (the skip ladder `load_all_callback()` walks before it
 //! opens one), and which failures count; [`module_register_copy`]
 //! decides how much of a plugin's registration structure is copied and
@@ -92,6 +96,7 @@ pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
 pub mod win_crash_report;
+pub mod win_system_info;
 
 #[allow(unsafe_code)]
 pub mod ffi;

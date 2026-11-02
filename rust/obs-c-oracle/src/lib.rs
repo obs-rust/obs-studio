@@ -239,6 +239,7 @@ pub mod video_plan;
 pub mod video_scaler_plan;
 pub mod view;
 pub mod win_crash_report;
+pub mod win_system_info;
 pub mod window_match;
 pub mod windows_keys;
 
