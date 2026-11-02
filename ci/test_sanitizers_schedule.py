@@ -6,7 +6,8 @@
 ASan, TSan and valgrind over the cmocka tests and a headless launch take
 about 20 minutes. Per zackees/ci.yml GATE-012 they run nightly (schedule)
 and on demand (workflow_dispatch): a PR that changes the harness dispatches
-the workflow on its own branch.
+the workflow on its own branch. A master push only calls it build-only, to
+refresh the compiler archive (#3501); that is a build, not a scan.
 """
 
 from __future__ import annotations
