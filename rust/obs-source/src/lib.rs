@@ -123,6 +123,7 @@ pub mod source_filter_chain;
 pub mod transition_clock;
 pub mod transition_load;
 pub mod transition_render;
+pub mod transition_sample_time;
 pub mod transition_start;
 pub mod video_tick;
 pub mod volume_apply;

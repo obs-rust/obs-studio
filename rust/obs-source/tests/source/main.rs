@@ -46,6 +46,7 @@ mod transition_load;
 mod transition_load_parity;
 mod transition_render;
 mod transition_render_parity;
+mod transition_sample_time;
 mod transition_start;
 mod transition_start_parity;
 mod video_tick;
