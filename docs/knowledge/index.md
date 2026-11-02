@@ -45,10 +45,13 @@ stays in the code PR.
 ## Concepts
 
 <!-- concepts: generated, `./lint --fix` writes this list -->
+- [Which asan tests keep the slow allocation unwinder](asan-allocation-unwinder.md) — Distro FFmpeg has no frame pointers, so the fast unwinder stops at av_malloc; only tests that link FFmpeg keep the slow one, and a test the scan does not find stays slow.
+- [Most asan builds start cold](asan-cold-builds.md) — Only a master run saves the asan compiler cache, and the merge queue does not run asan, so check whether a run restored a cache before you compare its build time.
 - [Float results depend on the host compiler](host-compiler-float.md) — The CI runner's gcc contracts mul+add into an FMA and the Tier 2 image's gcc does not, so the same C source gives different float results.
 - [Running sanitizers locally](local-sanitizers.md) — Asan or valgrind on a few tests through the harness on a local machine, and what valgrind costs per test.
 - [Dispatch sanitizers on a separate ref](sanitizer-dispatch.md) — A `workflow_dispatch` of `sanitizers.yaml` on a PR branch cancels the run in progress there; dispatch on a separate ref.
 - [The sanitizer known list](sanitizer-known-list.md) — The `bug`/`flaky`/`tool` kinds in `rust/tools/sanitize/triage.py`, how to add an entry, and why a `bug` entry that runs clean fails the job.
+- [A source's destroy runs later, on another thread](shutdown-deferred-destroy.md) — obs_source_destroy queues its work on the destruction task thread, so obs_shutdown can free what a queued destroy still uses; wait in a loop until the queue is empty.
 - [Free what OBS's destroy path frees](test-leaks.md) — A test that skips OBS's destroy call leaks what that call frees, and the asan job fails on that since #3290.
 - [Timing tests wait for the result](timing-tests.md) — Wait for the frame or packet you check, not a frame count or a fixed sleep; when a test needs the `timing` resource lock.
 <!-- /concepts -->
