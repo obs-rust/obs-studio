@@ -2616,6 +2616,10 @@ area.
   word when it does not: the call logs an error naming the type and
   returns without running the task. *All*, 2026-11-01. Issue
   [#3397](https://github.com/obs-rust/obs-studio/issues/3397).
+- Quitting OBS or switching scene collections no longer crashes now and
+  then while the Sources dock is torn down, when a source is destroyed
+  at the same moment as its name label. *All*, 2026-11-01. Issue
+  [#3450](https://github.com/obs-rust/obs-studio/issues/3450).
 
 ### Security hardening
 
