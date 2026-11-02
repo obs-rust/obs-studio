@@ -32,7 +32,6 @@ struct async_delay_data {
 	uint64_t last_audio_ts;
 	uint64_t interval;
 	uint64_t samplerate;
-	bool video_delay_reached;
 	bool audio_delay_reached;
 	bool reset_video;
 	bool reset_audio;
@@ -84,7 +83,6 @@ static void async_delay_filter_update(void *data, obs_data_t *settings)
 	filter->reset_audio = true;
 	filter->reset_video = true;
 	filter->interval = new_interval;
-	filter->video_delay_reached = false;
 	filter->audio_delay_reached = false;
 }
 
@@ -153,7 +151,6 @@ static struct obs_source_frame *async_delay_filter_video(void *data, struct obs_
 
 	if (filter->reset_video || is_timestamp_jump(frame->timestamp, filter->last_video_ts)) {
 		free_video_data(filter, parent);
-		filter->video_delay_reached = false;
 		filter->reset_video = false;
 	}
 
@@ -163,13 +160,23 @@ static struct obs_source_frame *async_delay_filter_video(void *data, struct obs_
 	deque_peek_front(&filter->video_frames, &output, sizeof(struct obs_source_frame *));
 
 	cur_interval = frame->timestamp - output->timestamp;
-	if (!filter->video_delay_reached && cur_interval < filter->interval)
+	if (cur_interval < filter->interval)
 		return NULL;
 
 	deque_pop_front(&filter->video_frames, NULL, sizeof(struct obs_source_frame *));
 
-	if (!filter->video_delay_reached)
-		filter->video_delay_reached = true;
+	/* Graphics ticks can skip input frames. Select by timestamp rather
+	 * than replaying one old frame per tick: an accidental change in the
+	 * delay also moves the source's audio placement. */
+	while (filter->video_frames.size) {
+		struct obs_source_frame *next;
+		deque_peek_front(&filter->video_frames, &next, sizeof(next));
+		if (frame->timestamp - next->timestamp < filter->interval)
+			break;
+
+		obs_source_release_frame(parent, output);
+		deque_pop_front(&filter->video_frames, &output, sizeof(output));
+	}
 
 	return output;
 }

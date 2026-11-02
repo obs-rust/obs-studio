@@ -76,11 +76,43 @@ static void timestamp_gap_holds_until_frame_is_due(void **state)
 	deque_free(&filter.video_frames);
 }
 
+static void zero_delay_returns_current_frame(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct async_delay_data filter = {0};
+	feed(&filter, 0, 0);
+	feed(&filter, 100, 100);
+	feed(&filter, 700, 700);
+	assert_int_equal(filter.video_frames.size, 0);
+	deque_free(&filter.video_frames);
+}
+
+static void timestamp_reset_refills_delay(void **state)
+{
+	UNUSED_PARAMETER(state);
+	struct async_delay_data filter = {.interval = 3000000000};
+	for (uint64_t ms = 0; ms < 3000; ms += 100)
+		feed(&filter, ms, -1);
+	feed(&filter, 3000, 0);
+	/* Rewinding the source must discard the old timeline. */
+	for (uint64_t ms = 100; ms < 3100; ms += 100)
+		feed(&filter, ms, -1);
+	feed(&filter, 3100, 100);
+	/* A forward timestamp jump over one second refills as well. */
+	for (uint64_t ms = 5000; ms < 8000; ms += 100)
+		feed(&filter, ms, -1);
+	feed(&filter, 8000, 5000);
+	free_video_data(&filter, NULL);
+	deque_free(&filter.video_frames);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(skipped_tick_drops_expired_frames),
 		cmocka_unit_test(timestamp_gap_holds_until_frame_is_due),
+		cmocka_unit_test(zero_delay_returns_current_frame),
+		cmocka_unit_test(timestamp_reset_refills_delay),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
