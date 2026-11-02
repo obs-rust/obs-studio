@@ -322,7 +322,20 @@ class SanitizeHarnessTest(unittest.TestCase):
         have -fsanitize= in the build flags, which turns it off for them (#3238)."""
         self.assertIn("-DOBS_TEST_SANITIZE_PER_TARGET=OFF", self.module.tool_cmake_args("valgrind"))
         self.assertEqual(self.module.tool_cmake_args("asan"), [])
-        self.assertEqual(self.module.tool_cmake_args("tsan"), [])
+        self.assertNotIn("-DOBS_TEST_SANITIZE_PER_TARGET=OFF", self.module.tool_cmake_args("tsan"))
+
+    def test_only_the_tsan_pass_annotates_the_rust_hand_offs(self):
+        """TSan does not see a Rust lock, so the hybrid build tells it about the
+        hand-offs (#3507). No other pass or build links the __tsan_* calls."""
+        self.assertIn("-DOBS_RUST_TSAN=ON", self.module.tool_cmake_args("tsan"))
+        self.assertNotIn("-DOBS_RUST_TSAN=ON", self.module.tool_cmake_args("asan"))
+        self.assertNotIn("-DOBS_RUST_TSAN=ON", self.module.tool_cmake_args("valgrind"))
+        rust_cmake = (ROOT / "libobs/cmake/rust.cmake").read_text(encoding="utf-8")
+        self.assertIn("option(OBS_RUST_TSAN", rust_cmake)
+        self.assertIn("corrosion_set_features(libobs_rust FEATURES tsan)", rust_cmake)
+        self.assertIn('tsan = ["obs-util/tsan"]', (ROOT / "rust/libobs-rust/Cargo.toml").read_text(encoding="utf-8"))
+        default = (ROOT / "rust/libobs-rust/Cargo.toml").read_text(encoding="utf-8").split("default = ")[1].split("\n")[0]
+        self.assertNotIn("tsan", default)
 
     def test_valgrind_stretches_the_launch_window(self):
         self.assertEqual(self.module.launch_timing("asan", 45), (45, 60))
