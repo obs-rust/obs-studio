@@ -253,4 +253,9 @@ running, wait and retry.
   landings, or user-facing features that still need checking on a
   device: watch those through to merge.
 
+- After the merge, ask whether this work taught something that cost hours to
+  find and that the next worker would find again. If so, open a follow-up PR
+  with a concept in `docs/knowledge/` ([when to write one](../../../docs/knowledge/index.md#when-to-write-a-concept)).
+  Most PRs need none.
+
 Then return to step 1 for the next issue.
