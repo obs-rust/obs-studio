@@ -6192,6 +6192,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_windows_symbol_paths_steps": {
+      "sources": [
+        "test/cmocka/test_windows_symbol_paths_steps.c",
+        "libobs/obs-windows-symbol-paths.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-windows-symbol-paths.pch.h",
+        "libobs/obs-windows-symbol-paths.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_windows_system_info_steps": {
       "sources": [
         "test/cmocka/test_windows_system_info_steps.c",
@@ -8544,6 +8562,12 @@
     },
     "test_windows_keys_steps": {
       "target": "test_windows_keys_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_windows_symbol_paths_steps": {
+      "target": "test_windows_symbol_paths_steps",
       "command": [
         "${target}"
       ]
