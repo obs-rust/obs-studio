@@ -32,84 +32,108 @@ import subprocess
 import sys
 import tempfile
 
-WIX_VERSION = '4.0.6'
-PRODUCT_NAME = 'OBS-Studio-Rust BETA'
-EXECUTABLE = Path('bin/64bit/obs64.exe')
-TIMESTAMP_URL = 'http://timestamp.digicert.com'
+WIX_VERSION = "4.0.6"
+PRODUCT_NAME = "OBS-Studio-Rust BETA"
+EXECUTABLE = Path("bin/64bit/obs64.exe")
+TIMESTAMP_URL = "http://timestamp.digicert.com"
 
 
 def run(command: list[str], cwd: Path | None = None) -> int:
-    print('+ ' + ' '.join(command), flush=True)
+    print("+ " + " ".join(command), flush=True)
     return subprocess.run(command, cwd=cwd, check=False).returncode
 
 
 def github_output(key: str, value: str) -> None:
-    path = os.environ.get('GITHUB_OUTPUT')
+    path = os.environ.get("GITHUB_OUTPUT")
     if path:
-        with open(path, 'a', encoding='utf-8') as output:
-            output.write(f'{key}={value}\n')
+        with open(path, "a", encoding="utf-8") as output:
+            output.write(f"{key}={value}\n")
 
 
 def find_msi(build_dir: Path) -> Path:
-    found = sorted(build_dir.glob('*.msi'))
+    found = sorted(build_dir.glob("*.msi"))
     if len(found) != 1:
-        raise SystemExit(f'expected one MSI in {build_dir}, found {[p.name for p in found]}')
+        raise SystemExit(
+            f"expected one MSI in {build_dir}, found {[p.name for p in found]}"
+        )
     return found[0]
 
 
 def build(arguments: argparse.Namespace) -> int:
     build_dir = Path(arguments.build_dir)
     for command in (
-        ['dotnet', 'tool', 'update', '--global', 'wix', '--version', WIX_VERSION],
-        ['wix', 'extension', 'add', '--global', f'WixToolset.UI.wixext/{WIX_VERSION}'],
+        ["dotnet", "tool", "update", "--global", "wix", "--version", WIX_VERSION],
+        ["wix", "extension", "add", "--global", f"WixToolset.UI.wixext/{WIX_VERSION}"],
     ):
         if run(command) != 0:
             return 1
-    for stale in build_dir.glob('*.msi'):
+    for stale in build_dir.glob("*.msi"):
         stale.unlink()
-    if run(['cpack', '-G', 'WIX', '-C', arguments.config], cwd=build_dir) != 0:
+    if run(["cpack", "-G", "WIX", "-C", arguments.config], cwd=build_dir) != 0:
         return 1
     print(find_msi(build_dir))
     return 0
 
 
 def signtool() -> str:
-    configured = os.environ.get('SIGNTOOL')
+    configured = os.environ.get("SIGNTOOL")
     if configured:
         return configured
-    kits = Path('C:/Program Files (x86)/Windows Kits/10/bin')
-    tools = sorted(kits.glob('10.*/x64/signtool.exe'))
+    kits = Path("C:/Program Files (x86)/Windows Kits/10/bin")
+    tools = sorted(kits.glob("10.*/x64/signtool.exe"))
     if not tools:
-        raise SystemExit('signtool.exe not found in the Windows SDK')
+        raise SystemExit("signtool.exe not found in the Windows SDK")
     return str(tools[-1])
 
 
 def sign(arguments: argparse.Namespace) -> int:
-    pfx = os.environ.get('WINDOWS_SIGNING_PFX_BASE64', '').strip()
+    pfx = os.environ.get("WINDOWS_SIGNING_PFX_BASE64", "").strip()
     if not pfx:
-        print('::warning::WINDOWS_SIGNING_PFX_BASE64 is not set; the MSI stays unsigned')
-        github_output('signed', 'false')
+        print(
+            "::warning::WINDOWS_SIGNING_PFX_BASE64 is not set; the MSI stays unsigned"
+        )
+        github_output("signed", "false")
         return 0
     with tempfile.TemporaryDirectory() as directory:
-        certificate = Path(directory) / 'signing.pfx'
+        certificate = Path(directory) / "signing.pfx"
         certificate.write_bytes(base64.b64decode(pfx))
-        status = run([
-            signtool(), 'sign', '/fd', 'sha256', '/tr', TIMESTAMP_URL, '/td', 'sha256',
-            '/d', PRODUCT_NAME, '/f', str(certificate),
-            '/p', os.environ.get('WINDOWS_SIGNING_PFX_PASSWORD', ''), arguments.msi,
-        ])
+        status = run(
+            [
+                signtool(),
+                "sign",
+                "/fd",
+                "sha256",
+                "/tr",
+                TIMESTAMP_URL,
+                "/td",
+                "sha256",
+                "/d",
+                PRODUCT_NAME,
+                "/f",
+                str(certificate),
+                "/p",
+                os.environ.get("WINDOWS_SIGNING_PFX_PASSWORD", ""),
+                arguments.msi,
+            ]
+        )
     if status != 0:
         return 1
-    github_output('signed', 'true')
+    github_output("signed", "true")
     return 0
 
 
 def signature_status(msi: Path) -> str:
     literal = str(msi).replace("'", "''")
     result = subprocess.run(
-        ['powershell', '-NoProfile', '-Command',
-         f"(Get-AuthenticodeSignature -LiteralPath '{literal}').Status.ToString()"],
-        capture_output=True, text=True, check=True,
+        [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            f"(Get-AuthenticodeSignature -LiteralPath '{literal}').Status.ToString()",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return result.stdout.strip()
 
@@ -117,17 +141,20 @@ def signature_status(msi: Path) -> str:
 def check_signature(status: str, required: bool) -> str | None:
     """None when acceptable, else the error. Unsigned is a warning unless required."""
 
-    if status == 'Valid':
+    if status == "Valid":
         return None
-    if status == 'NotSigned' and not required:
-        print('::warning::the MSI is not Authenticode signed')
+    if status == "NotSigned" and not required:
+        print("::warning::the MSI is not Authenticode signed")
         return None
-    return f'Get-AuthenticodeSignature returned {status}, want Valid'
+    return f"Get-AuthenticodeSignature returned {status}, want Valid"
 
 
 def start_menu_shortcut() -> Path:
-    programs = Path(os.environ.get('ProgramData', 'C:/ProgramData')) / 'Microsoft/Windows/Start Menu/Programs'
-    return programs / PRODUCT_NAME / f'{PRODUCT_NAME}.lnk'
+    programs = (
+        Path(os.environ.get("ProgramData", "C:/ProgramData"))
+        / "Microsoft/Windows/Start Menu/Programs"
+    )
+    return programs / PRODUCT_NAME / f"{PRODUCT_NAME}.lnk"
 
 
 def uninstall_entries() -> list[str]:
@@ -135,81 +162,98 @@ def uninstall_entries() -> list[str]:
 
     names = []
     for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
-        path = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ | view) as root:
+        path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ | view
+        ) as root:
             for index in range(winreg.QueryInfoKey(root)[0]):
                 with winreg.OpenKey(root, winreg.EnumKey(root, index)) as key:
                     try:
-                        names.append(str(winreg.QueryValueEx(key, 'DisplayName')[0]))
+                        names.append(str(winreg.QueryValueEx(key, "DisplayName")[0]))
                     except OSError:
                         pass
     return names
+
+
+def _install(msi: Path, root: Path, logs: Path) -> int:
+    return run(
+        [
+            "msiexec",
+            "/i",
+            str(msi),
+            "/qn",
+            "/norestart",
+            f"INSTALL_ROOT={root}",
+            "/l*v",
+            str(logs / "install.log"),
+        ]
+    )
+
+
+def _uninstall(msi: Path, logs: Path) -> int:
+    return run(
+        [
+            "msiexec",
+            "/x",
+            str(msi),
+            "/qn",
+            "/norestart",
+            "/l*v",
+            str(logs / "uninstall.log"),
+        ]
+    )
+
+
+def _install_failures(root: Path) -> list[str]:
+    failures = []
+    if not (root / EXECUTABLE).is_file():
+        failures.append(f"{root / EXECUTABLE} missing after install")
+    if not start_menu_shortcut().is_file():
+        failures.append(
+            f"Start menu shortcut {start_menu_shortcut()} missing after install"
+        )
+    if PRODUCT_NAME not in uninstall_entries():
+        failures.append(f'"{PRODUCT_NAME}" not listed in Add/Remove Programs')
+    return failures
+
+
+def _uninstall_failures(root: Path) -> list[str]:
+    failures = []
+    if (root / EXECUTABLE).exists():
+        failures.append(f"{root / EXECUTABLE} still present after uninstall")
+    if root.exists() and any(root.rglob("*")):
+        failures.append(f"{root} not empty after uninstall")
+    if start_menu_shortcut().exists():
+        failures.append("Start menu shortcut still present after uninstall")
+    if PRODUCT_NAME in uninstall_entries():
+        failures.append("Add/Remove Programs entry still present after uninstall")
+    return failures
 
 
 def roundtrip(arguments: argparse.Namespace) -> int:
     msi = Path(arguments.msi).resolve()
     error = check_signature(signature_status(msi), arguments.require_signature)
     if error:
-        print(f'::error::{error}')
+        print(f"::error::{error}")
         return 1
 
-    root = Path(tempfile.mkdtemp(prefix='obs-msi-')) / 'Chosen Dir'
+    root = Path(tempfile.mkdtemp(prefix="obs-msi-")) / "Chosen Dir"
     logs = Path(arguments.log_dir).resolve()
     logs.mkdir(parents=True, exist_ok=True)
-    install = ['msiexec', '/i', str(msi), '/qn', '/norestart', f'INSTALL_ROOT={root}',
-               '/l*v', str(logs / 'install.log')]
-    if run(install) != 0:
-        print('::error::silent MSI install failed')
-        return 1
-    failures = []
-    if not (root / EXECUTABLE).is_file():
-        failures.append(f'{root / EXECUTABLE} missing after install')
-    if not start_menu_shortcut().is_file():
-        failures.append(f'Start menu shortcut {start_menu_shortcut()} missing after install')
-    if PRODUCT_NAME not in uninstall_entries():
-        failures.append(f'"{PRODUCT_NAME}" not listed in Add/Remove Programs')
 
-    if run(['msiexec', '/x', str(msi), '/qn', '/norestart',
-            '/l*v', str(logs / 'uninstall.log')]) != 0:
-        failures.append('silent MSI uninstall failed')
-    if (root / EXECUTABLE).exists():
-        failures.append(f'{root / EXECUTABLE} still present after uninstall')
-    if root.exists() and any(root.rglob('*')):
-        failures.append(f'{root} not empty after uninstall')
-    if start_menu_shortcut().exists():
-        failures.append('Start menu shortcut still present after uninstall')
-    if PRODUCT_NAME in uninstall_entries():
-        failures.append('Add/Remove Programs entry still present after uninstall')
+    failures = []
+    if _install(msi, root, logs) != 0:
+        failures.append("silent MSI install failed")
+    else:
+        failures += _install_failures(root)
+
+    if _uninstall(msi, logs) != 0:
+        failures.append("silent MSI uninstall failed")
+    else:
+        failures += _uninstall_failures(root)
 
     for failure in failures:
-        print(f'::error::{failure}')
+        print(f"::error::{failure}")
     if not failures:
-        print(f'MSI install/uninstall round trip passed into {root}')
+        print(f"MSI install/uninstall round trip passed into {root}")
     return 1 if failures else 0
-
-
-def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    steps = result.add_subparsers(dest='step', required=True)
-    step = steps.add_parser('build')
-    step.add_argument('--build-dir', required=True)
-    step.add_argument('--config', default='RelWithDebInfo')
-    step.set_defaults(handler=build)
-    step = steps.add_parser('sign')
-    step.add_argument('--msi', required=True)
-    step.set_defaults(handler=sign)
-    step = steps.add_parser('roundtrip')
-    step.add_argument('--msi', required=True)
-    step.add_argument('--require-signature', action='store_true')
-    step.add_argument('--log-dir', default='msi-logs')
-    step.set_defaults(handler=roundtrip)
-    return result
-
-
-def main(argv: list[str] | None = None) -> int:
-    arguments = parser().parse_args(argv)
-    return arguments.handler(arguments)
-
-
-if __name__ == '__main__':
-    sys.exit(main())
