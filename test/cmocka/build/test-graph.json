@@ -2360,6 +2360,23 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_nix_log_rules_steps": {
+      "sources": [
+        "test/cmocka/test_nix_log_rules_steps.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-system-info.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_nix_system_info_steps": {
       "sources": [
         "test/cmocka/test_nix_system_info_steps.c",
@@ -7136,6 +7153,12 @@
     },
     "test_nal": {
       "target": "test_nal"
+    },
+    "test_nix_log_rules_steps": {
+      "target": "test_nix_log_rules_steps",
+      "command": [
+        "${target}"
+      ]
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
