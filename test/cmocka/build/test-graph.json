@@ -6154,7 +6154,7 @@
         "libobs"
       ],
       "watch_inputs": [
-        "libobs/build/libobs-windows-system-info.pch.h",
+        "libobs/build/libobs-ported-windows-system-info.pch.h",
         "libobs/obs-windows-system-info.h"
       ],
       "libraries": [

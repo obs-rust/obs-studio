@@ -15,13 +15,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-windows-system-info.pch.h"
+#include "libobs/build/libobs-ported-windows-system-info.pch.h"
 
 /* The system info log rules, moved from obs-windows.c: the packed version,
  * the memory sizes, the gaming feature lines and the security product
  * labels, on plain values. obs-windows.c keeps the Windows calls, the
  * registry reads, the blog() calls and the statics. Declared in
- * obs-windows-system-info.h without EXPORT. */
+ * obs-windows-system-info.h without EXPORT. Ported to rust/obs-core
+ * (win_system_info): the hybrid libobs drops this file. */
 
 /* log_system_info() */
 uint32_t obs_windows_system_info_version(uint32_t major, uint32_t minor)

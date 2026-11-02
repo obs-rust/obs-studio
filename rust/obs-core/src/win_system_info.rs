@@ -72,8 +72,20 @@ impl Feature {
 
     /// The feature with the C's number, if any.
     pub fn from_index(index: i32) -> Option<Self> {
-        let _ = index;
-        todo!()
+        Self::ALL
+            .into_iter()
+            .find(|feature| *feature as i32 == index)
+    }
+
+    /// How this feature's line reads.
+    pub fn rule(self) -> &'static FeatureRule {
+        match self {
+            Self::GameBar => &FEATURES[0],
+            Self::GameDvrAllowed => &FEATURES[1],
+            Self::GameDvr => &FEATURES[2],
+            Self::GameDvrBgRecording => &FEATURES[3],
+            Self::GameMode => &FEATURES[4],
+        }
     }
 }
 
@@ -148,65 +160,77 @@ pub const UNKNOWN: &CStr = c"unknown";
 
 /// `win_ver`: `(major << 8) | minor`, in 32 bits.
 pub fn version(major: u32, minor: u32) -> u32 {
-    let _ = (major, minor);
-    todo!()
+    major.wrapping_shl(8) | minor
 }
 
 /// A size in MB, cut to 32 bits as the `DWORD` the log prints.
 pub fn mb(bytes: u64) -> u32 {
-    let _ = bytes;
-    todo!()
+    // The C's (DWORD) cut: the low 32 bits.
+    (bytes / 1_048_576) as u32
 }
 
 /// Whether the gaming features are logged: Windows 10 and later.
 pub fn gaming_logged(win_ver: u32) -> bool {
-    let _ = win_ver;
-    todo!()
+    win_ver >= GAMING_MIN_VERSION
 }
 
 /// Whether Game Mode is read again under its older value name: the first
 /// read failed.
 pub fn game_mode_retry(status: i32) -> bool {
-    let _ = status;
-    todo!()
+    status != ERROR_SUCCESS
 }
 
 /// Whether a feature's read found its value: its status is
 /// `ERROR_SUCCESS`. Only then does the C read the value.
 pub fn gaming_found(status: i32) -> bool {
-    let _ = status;
-    todo!()
+    status == ERROR_SUCCESS
 }
 
 /// The line of a feature whose read found its value: its on text for any
 /// non-zero value (the C's `(bool)value`), its off text for zero.
 pub fn value_line(feature: Feature, value: u32) -> Line {
-    let _ = (feature, value);
-    todo!()
+    let rule = feature.rule();
+    Line {
+        label: rule.label,
+        text: if value != 0 { rule.on } else { rule.off },
+    }
 }
 
 /// Whether a feature whose value is missing may still get a line (Game
 /// Mode). Only then does the C read the Windows build.
 pub fn has_fallback(feature: Feature) -> bool {
-    let _ = feature;
-    todo!()
+    feature.rule().missing.is_some()
 }
 
 /// The line of a feature whose value is missing, from the Windows build, or
 /// `None`.
 pub fn fallback_line(feature: Feature, win_build: u32) -> Option<Line> {
-    let _ = (feature, win_build);
-    todo!()
+    let rule = feature.rule();
+    rule.missing
+        .filter(|missing| win_build >= missing.from_build)
+        .map(|missing| Line {
+            label: rule.label,
+            text: missing.text,
+        })
 }
 
 /// The label of a security product's state.
 pub fn product_state(state: i32) -> &'static CStr {
-    let _ = state;
-    todo!()
+    match state {
+        STATE_ON => c"enabled",
+        STATE_OFF => c"disabled",
+        STATE_SNOOZED => c"temporarily disabled",
+        STATE_EXPIRED => c"expired",
+        _ => UNKNOWN,
+    }
 }
 
 /// The label of a security product's type.
 pub fn product_type(kind: i32) -> &'static CStr {
-    let _ = kind;
-    todo!()
+    match kind {
+        PROVIDER_ANTIVIRUS => c"AV",
+        PROVIDER_FIREWALL => c"FW",
+        PROVIDER_ANTISPYWARE => c"ASW",
+        _ => UNKNOWN,
+    }
 }
