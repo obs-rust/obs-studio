@@ -166,3 +166,85 @@ pub fn physmem_mb(mem: i64) -> i64 {
 fn mb(bytes: u64) -> u64 {
     bytes / KB / KB
 }
+
+/// An os-release key that `read_distribution_info()` reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OsReleaseKey {
+    /// `NAME=`: the distribution's name.
+    Name,
+    /// `VERSION_ID=`: its version.
+    VersionId,
+    /// `BUILD_ID=`: its build, the version of a rolling distribution.
+    BuildId,
+}
+
+/// Which key an os-release line holds and where its value starts: the byte
+/// after `NAME=`, `VERSION_ID=` or `BUILD_ID=`, compared by prefix from the
+/// line's first byte, or `None` for any other line.
+#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+pub fn os_release_field(line: &[u8]) -> Option<(OsReleaseKey, usize)> {
+    let _ = line;
+    todo!()
+}
+
+/// The text of an os-release value: its span up to the first CR or LF (or
+/// the end), with one matching pair of `"` or `'` around it cut when the
+/// span is at least two bytes long. No escapes are read and no shell
+/// quoting is parsed.
+#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+pub fn os_release_value(start: &[u8]) -> Range<usize> {
+    let _ = start;
+    todo!()
+}
+
+/// The version `read_distribution_info()` logs when the file gave none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VersionFallback {
+    /// The `BUILD_ID` that was read.
+    BuildId,
+    /// `rolling`: a named distribution with neither.
+    Rolling,
+    /// `Unknown`: no name either.
+    Unknown,
+}
+
+/// The version when the file gave none: the `BUILD_ID` if one was read,
+/// otherwise `rolling` for a distribution other than `Unknown`, or
+/// `Unknown`. `distro` is read only when no `BUILD_ID` was.
+#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+pub fn version_fallback<'a>(
+    has_build_id: bool,
+    distro: impl FnOnce() -> &'a [u8],
+) -> VersionFallback {
+    let _ = (has_build_id, distro);
+    todo!()
+}
+
+/// The name of a Flatpak extension entry, `name=commit`: the bytes before
+/// its first `=` (or the whole entry), or `None` when that is empty, so
+/// the entry logs no line.
+#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+pub fn extension_name(ext: &[u8]) -> Option<Range<usize>> {
+    let _ = ext;
+    todo!()
+}
+
+/// The form of `log_desktop_session_info()`'s desktop line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DesktopForm {
+    /// No line.
+    None,
+    /// `Desktop Environment: %s`, with whichever name is set.
+    One,
+    /// `Desktop Environment: %s (%s)`, `XDG_CURRENT_DESKTOP` then
+    /// `XDG_SESSION_DESKTOP`.
+    Both,
+}
+
+/// The form of the desktop line, from which of `XDG_CURRENT_DESKTOP` and
+/// `XDG_SESSION_DESKTOP` are set (an empty value counts as set).
+#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+pub fn desktop_form(has_current: bool, has_session: bool) -> DesktopForm {
+    let _ = (has_current, has_session);
+    todo!()
+}
