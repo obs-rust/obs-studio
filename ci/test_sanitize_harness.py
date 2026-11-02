@@ -292,6 +292,25 @@ class SanitizeHarnessTest(unittest.TestCase):
                 self.assertIn(f"-DCMAKE_CXX_FLAGS_{config}={want}", command)
                 self.assertNotIn("-g", flags.split())
 
+    def test_configure_writes_each_archive_once(self):
+        """`ar qcs` writes the symbol index, with no `ranlib` step after it.
+        `ranlib` rewrites the archive in place, and zccache's daemon dies with
+        SIGBUS when it hashes the mapped file at that moment."""
+        for tool, (flags, build_type) in self.module.TOOL_FLAGS.items():
+            with self.subTest(tool=tool):
+                command = self.module.configure_command(
+                    src=Path("/src"), build=Path("/b"), build_type=build_type, flags=flags, backend="HYBRID", version=""
+                )
+                for lang in ("C", "CXX"):
+                    self.assertIn(f"-DCMAKE_{lang}_ARCHIVE_CREATE=<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>", command)
+                    self.assertIn(f"-DCMAKE_{lang}_ARCHIVE_FINISH=", command)
+
+    def test_workflow_compiles_four_at_once_for_asan_only(self):
+        """The runners have 4 cores and zccache's default is 3 compiles. Only
+        the asan pass is measured at 4; the others keep the default."""
+        text = (ROOT / ".github" / "workflows" / "sanitizers.yaml").read_text(encoding="utf-8")
+        self.assertIn("ZCCACHE_MAX_PARALLEL_COMPILES: ${{ matrix.tool == 'asan' && '4' || '3' }}", text)
+
     def test_valgrind_builds_no_per_target_asan(self):
         """valgrind can't run an ASan binary, so its build turns off the cmocka
         tests' own ASan/UBSan (obs_test_sanitize, #159); asan and tsan already
