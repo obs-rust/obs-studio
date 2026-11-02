@@ -799,6 +799,10 @@ def main(argv: list[str]) -> int:
         libdir = build_obs(tool, flags, build_type, layout)
         if libdir is None:
             return 1
+        if os.environ.get("SANITIZE_BUILD_ONLY"):
+            # push.yaml wants only the compiler archive (#3501).
+            print(f"== [{tool}] build only: no tests, no launch", flush=True)
+            return 0
         os.environ.update(sanitizer_options(layout.out))
         server = start_display()
         try:

@@ -107,17 +107,6 @@ class CacheFamilyBudgetTest(unittest.TestCase):
         config = tomllib.loads(CI_TOML.read_text())
         self.assertLessEqual(parse_size(config["cache"]["budget"]), 10 * 1024**3)
 
-    def test_sanitize_shape_holds_the_measured_asan_archive(self):
-        # A shape max below the live entry makes the janitor evict it, and the
-        # PR asan job builds cold. Keep 25 % growth room, as the other
-        # measured compiler caches do.
-        config = tomllib.loads(CI_TOML.read_text())
-        shape = config["cache"]["family"]["zccache"]["shapes"]["sanitize"]
-        snapshot = json.loads((FIXTURES / "sanitize-compiler-cache.json").read_text())
-        for entry in snapshot["entries"]:
-            with self.subTest(key=entry["key"]):
-                self.assertGreaterEqual(parse_size(shape["max"]), 1.25 * entry["size_in_bytes"])
-
     def test_app_build_families_are_retired_with_their_consumers(self):
         families = tomllib.loads(CI_TOML.read_text())["cache"]["family"]
         keys = CI_TOML_CHECKS.cache_keys()

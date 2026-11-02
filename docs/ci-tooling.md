@@ -607,6 +607,14 @@ fit in `[cache].budget`. The release-asset transport (#782) can bring the
 app-build caches back outside the budget; its dispatch-only seed goes from
 the app build to the transport job as a one-day artifact.
 
+The PR `asan` lane restores only the archive master saved, so that archive has
+its own family, `zccache-sanitize-asan`. `tsan` and `valgrind` keep no archive.
+Master builds fresh and never restores: a restored archive kept the old entries
+beside the new ones and outgrew the family. The nightly saves one, and a master
+push calls `sanitizers.yaml` with `build_only` when `ci/asan_cache_state.py` finds
+no archive or one older than 6 hours (#3501). A restored archive builds in about
+4 minutes under 6 hours old and about 8 at 6-15 hours, against about 24 cold.
+
 Cache cleanup is best-effort maintenance. It has no dependents in the Pull
 or Push workflow and is excluded from `CI Gate ✅` (the end-of-queue sweep
 runs after the gate, which never waits on it). Its own failures remain

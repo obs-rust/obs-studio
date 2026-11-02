@@ -6,7 +6,8 @@ run-name: Sanitizers (${{ inputs.tools || 'all' }}) 🧪
 # Runs nightly; PRs that change the harness dispatch it on their branch (#491).
 # Also callable: build-project.yaml runs the `asan` pass on a PR that changes a
 # target already in the conversion ratchet (#2923), so the sanitizer-only
-# diagnostic is paid for by the PR that causes it.
+# diagnostic is paid for by the PR that causes it. push.yaml calls it build-only
+# to refresh the archive those PRs restore (#3501).
 on:
   workflow_call:
     inputs:
@@ -24,6 +25,10 @@ on:
         default: true
       fail_on_findings:
         description: Fail the job when triage finds an OBS finding (asan always does, #3238)
+        type: boolean
+        default: false
+      build_only:
+        description: Build and save the compiler archive; run no test and no launch
         type: boolean
         default: false
   workflow_dispatch:
@@ -56,9 +61,11 @@ on:
     - cron: '41 6 * * *'
 permissions:
   contents: read
+# A push refresh runs to its save: a later push must not cancel it, and a
+# nightly on the same ref must not meet it (#3501).
 concurrency:
-  group: sanitizers-${{ github.ref }}
-  cancel-in-progress: true
+  group: sanitizers-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 jobs:
   matrix:
     timeout-minutes: 180
@@ -127,9 +134,12 @@ jobs:
       - name: Install dependencies 📦
         run: uv run --no-project rust/tools/sanitize/install_ubuntu_deps.py
 
-      # Builds with different -fsanitize flags share nothing, so each pass has
-      # its own cache. Only master saves, so PRs can restore it.
+      # Only asan keeps an archive: it is the only pass a PR runs, and the
+      # others' archives pushed it out of the budget (#3501). Only master saves,
+      # so PRs can restore it, and master builds fresh: restoring a stale archive
+      # kept the old entries beside the new ones, 962 MB became 1.79 GB.
       - name: Restore zccache ♻️
+        if: matrix.tool == 'asan' && github.ref != 'refs/heads/master'
         uses: ./.github/actions/cache
         with:
           mode: restore
@@ -140,6 +150,7 @@ jobs:
       - name: Build, test and launch under ${{ matrix.tool }} 🔬
         env:
           LAUNCH_SECONDS: ${{ inputs.launch_seconds || 45 }}
+          SANITIZE_BUILD_ONLY: ${{ inputs.build_only && '1' || '' }}
         run: uv run --no-project rust/tools/sanitize/sanitize.py "${{ matrix.tool }}" "$LAUNCH_SECONDS"
 
       # The conversion ratchet (#2625) is checked by the configuration that
@@ -149,11 +160,11 @@ jobs:
       # #2921). Replay this tree's unity groups with clang: ~7 s, nothing is
       # built or linked. Only the asan pass runs it, so the check is paid once.
       - name: Replay the conversion ratchet with clang 🔁
-        if: matrix.tool == 'asan'
+        if: matrix.tool == 'asan' && !inputs.build_only
         run: uv run --no-project ci/conversion_clang_replay.py --compdb "$SAN_OUT/build-${{ matrix.tool }}/compile_commands.json" --allow-uncovered
 
       - name: Save zccache 💾
-        if: always() && github.ref == 'refs/heads/master'
+        if: always() && github.ref == 'refs/heads/master' && matrix.tool == 'asan'
         uses: ./.github/actions/cache
         with:
           mode: save
@@ -161,13 +172,13 @@ jobs:
           key: zccache-sanitize-${{ matrix.tool }}-${{ env.RUST_LIBOBS }}-${{ github.sha }}
 
       - name: Triage 🩺
-        if: always()
+        if: always() && !inputs.build_only
         env:
           FAIL_ON_FINDINGS: ${{ inputs.fail_on_findings }}
         run: uv run --no-project ci/sanitizers_step.py triage "$SAN_OUT/${{ matrix.tool }}"
 
       - name: Upload logs 📤
-        if: always()
+        if: always() && !inputs.build_only
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sanitize-${{ matrix.tool }}

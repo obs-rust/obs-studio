@@ -374,6 +374,28 @@ class SanitizeHarnessTest(unittest.TestCase):
         for name in ("rustup.log", "configure.log", "build.log", "app.log"):
             self.assertTrue((result / name).exists(), name)
 
+    def test_build_only_runs_no_test_and_no_launch(self):
+        stubs = self.out / "stubs"
+        stubs.mkdir()
+        write_stub(stubs, "rustup", "exit 0\n")
+        write_stub(stubs, "cmake", CMAKE_STUB)
+        out = self.out / "out"
+        env = dict(
+            os.environ,
+            SAN_OUT=str(out),
+            OBS_VERSION_OVERRIDE="30.0.0",
+            SANITIZE_BUILD_ONLY="1",
+            PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}",
+        )
+        printed = io.StringIO()
+        with patch.dict(os.environ, env, clear=True), patch.object(self.module, "prepare_toolchain", return_value=True):
+            with redirect_stdout(printed):
+                code = self.module.main(["sanitize.py", "asan", "1"])
+        self.assertEqual(code, 0, printed.getvalue())
+        self.assertIn("== [asan] configure + build", printed.getvalue())
+        self.assertNotIn("unit tests", printed.getvalue())
+        self.assertNotIn("app launch", printed.getvalue())
+
     def test_the_shell_scripts_are_gone(self):
         for script in (SHELL_SCRIPT, DEPS_SHELL_SCRIPT):
             self.assertFalse(script.exists(), f"{script.name} still exists")

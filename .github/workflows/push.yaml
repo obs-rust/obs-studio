@@ -53,6 +53,44 @@ jobs:
       actions: read
       contents: write
 
+  # A PR restores the asan archive only from master. Refresh it when it is gone
+  # or stale (ci/asan_cache_state.py, #3501), outside build-project so that its
+  # build does not hold the cache-warming builds of the next pushes.
+  asan-cache-state:
+    timeout-minutes: 10
+    name: asan cache state 🔎
+    if: github.ref == 'refs/heads/master' && github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      refresh: ${{ steps.state.outputs.refresh }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: ci
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --no-project ci/asan_cache_state.py
+
+  # Skipped with asan-cache-state on other refs and in forks: intended (WF-004).
+  asan-cache-refresh:
+    name: asan cache refresh ♻️
+    needs: asan-cache-state
+    if: needs.asan-cache-state.outputs.refresh == 'true'
+    uses: ./.github/workflows/sanitizers.yaml
+    with:
+      tools: asan
+      build_only: true
+    permissions:
+      contents: read
+
   compatibility-validation:
     timeout-minutes: 15
     name: Validate Compatibility 🕵️
