@@ -28,6 +28,9 @@
 //! and frame statistics of the graphics thread loop; and
 //! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
 //! BSD system info parsing of the startup log; and
+//! `libobs/obs-nix-log-rules.c.h` (from `obs-nix.c.h` and
+//! `obs-nix-os-release.h`), its distribution, Flatpak and desktop log
+//! rules; and
 //! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
 //! the Windows crash report rules; and `libobs/obs-windows-system-info.c.h`
 //! (from `obs-windows.c.h`), the Windows system info log rules.
@@ -52,7 +55,8 @@
 //! sleep at the end of each frame; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
-//! startup log prints; [`win_crash_report`] decides which module holds the
+//! startup log prints, and reads the `/etc/os-release` keys and values, the
+//! Flatpak extension names and the desktop line form it logs; [`win_crash_report`] decides which module holds the
 //! crash address, which threads the report traces and in what order, how
 //! each frame is written and when the crash handler passes on;
 //! [`win_system_info`] packs the Windows version, sizes the memory lines,
