@@ -16,6 +16,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
+use crate::ffi::tsan;
 use crate::threading::{Event, EventType, Sem};
 
 /// Boxed task, the safe equivalent of `os_task_t` + `void *param`.
@@ -110,15 +111,14 @@ impl TaskQueue {
 
     /// `os_task_queue_wait`.
     pub fn wait(&self) -> bool {
-        {
-            let mut state = self.inner.state.lock().unwrap();
+        self.inner.with_state(|state| {
             state.waiting = true;
             state.tasks_processed = false;
-        }
+        });
         self.inner.push(Entry::WaitMarker);
         self.inner.wait_event.wait();
 
-        self.inner.state.lock().unwrap().tasks_processed
+        self.inner.with_state(|state| state.tasks_processed)
     }
 
     /// `os_task_queue_inside`.
@@ -128,15 +128,25 @@ impl TaskQueue {
 }
 
 impl Inner {
+    /// Runs `f` under the state lock. TSan does not see this `Mutex`, so tell
+    /// it what a `pthread_mutex_t` would: the order of the critical sections
+    /// (#3507). This is the same order the C queue gives to C callers.
+    fn with_state<R>(&self, f: impl FnOnce(&mut State) -> R) -> R {
+        let mut state = self.state.lock().unwrap();
+        tsan::acquire(&self.state);
+        let result = f(&mut state);
+        tsan::release(&self.state);
+        result
+    }
+
     /// Queues `entry` and wakes the worker only if it went idle. The flag
     /// is read and cleared under the same lock the worker sets it under, so
     /// no wakeup is lost and at most one post is outstanding.
     fn push(&self, entry: Entry) {
-        let wake = {
-            let mut state = self.state.lock().unwrap();
+        let wake = self.with_state(|state| {
             state.tasks.push_back(entry);
             std::mem::replace(&mut state.worker_idle, false)
-        };
+        });
         if wake {
             self.sem.post();
         }
@@ -159,11 +169,10 @@ fn worker_loop(inner: &Inner) {
 /// then idle and the next push posts.
 fn run_next(inner: &Inner) -> bool {
     {
-        let entry = {
-            let mut state = inner.state.lock().unwrap();
+        let entry = inner.with_state(|state| {
             if state.tasks.is_empty() {
                 state.worker_idle = true;
-                return false;
+                return None;
             }
             let mut entry = state.tasks.pop_front();
             // A marker with tasks still behind it is re-queued once and the
@@ -183,14 +192,13 @@ fn run_next(inner: &Inner) -> bool {
                 }
             }
             entry
-        };
+        });
 
         match entry {
             Some(Entry::Task(task)) => task(),
             Some(Entry::WaitMarker) => inner.wait_event.signal(),
             Some(Entry::StopMarker) => EXIT_THREAD.with(|exit| exit.set(true)),
-            // Unreachable: the queue was checked non-empty under the lock.
-            None => {}
+            None => return false,
         }
     }
     true

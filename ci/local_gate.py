@@ -490,6 +490,9 @@ FEATURE_SETS: tuple[tuple[str, ...], ...] = (
     # The in-process MCP backend over libobs (obs-mcp/libobs, #3301); its
     # test runs in obs-tests-app under bundled-native (FEATURE_SET_EXEMPT).
     ("-p", "obs-mcp", "--features", "libobs"),
+    # The tsan pass's annotations (#3507). It calls libtsan, so a clippy run
+    # builds it and only sanitize.py links it.
+    ("-p", "libobs-rust", "--features", "tsan"),
 )
 FEATURE_TEST_SETS: tuple[tuple[str, ...], ...] = (
     ("-p", "obs-util"),

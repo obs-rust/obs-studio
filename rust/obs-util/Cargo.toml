@@ -16,6 +16,9 @@ workspace = true
 # session D-Bus inhibitors, both Rust. Set by libobs-rust, which CMake
 # drives (#1500, #1576, #1631).
 gio = []
+# The tsan pass only (#3507): calls libtsan's __tsan_acquire and __tsan_release,
+# so a build with it links only with -fsanitize=thread.
+tsan = []
 
 [dependencies]
 # Unix errno values and pthread_setname_np in ffi/threading.rs.

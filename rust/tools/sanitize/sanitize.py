@@ -250,8 +250,9 @@ def tool_cmake_args(tool: str) -> list[str]:
     cmocka tests that build with their own ASan/UBSan (obs_test_sanitize,
     #159) skip it when the build flags already have -fsanitize=, as asan's
     and tsan's do; valgrind's don't, and valgrind can't run an ASan binary,
-    so 101 of its tests never ran (#3238)."""
-    return ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"] if tool == "valgrind" else []
+    so 101 of its tests never ran (#3238). tsan does not see a Rust lock, so
+    its build tells it about the hand-offs (#3507)."""
+    return {"valgrind": ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"], "tsan": ["-DOBS_RUST_TSAN=ON"]}.get(tool, [])
 
 
 def configure_command(*, src: Path, build: Path, build_type: str, flags: str, backend: str, version: str) -> list[str]:

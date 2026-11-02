@@ -23,6 +23,8 @@ doctest = false
 # and os-freebsd.cmake drop the default and set it from find_package(Gio).
 default = ["gio"]
 gio = ["obs-util/gio"]
+# The tsan pass only: libobs/cmake/rust.cmake sets it from OBS_RUST_TSAN (#3507).
+tsan = ["obs-util/tsan"]
 
 [dependencies]
 obs-util = { path = "../obs-util" }
