@@ -251,9 +251,10 @@ static void log_flatpak_extensions(const char *extensions)
 	char **exts_list = strlist_split(extensions, ';', false);
 	for (char **ext = exts_list; *ext != NULL; ext++) {
 		// Log the extension name without its commit hash
-		char **name = strlist_split(*ext, '=', false);
-		blog(LOG_INFO, " - %s", *name);
-		strlist_free(name);
+		size_t len;
+		const char *name = obs_nix_system_info_extension_name(*ext, &len);
+		if (name)
+			blog(LOG_INFO, " - %.*s", (int)len, name);
 	}
 	strlist_free(exts_list);
 }
@@ -305,10 +306,16 @@ static void log_desktop_session_info(void)
 	char *session_desktop = getenv("XDG_SESSION_DESKTOP");
 	char *session_type = getenv("XDG_SESSION_TYPE");
 
-	if (current_desktop && session_desktop)
+	switch (obs_nix_system_info_desktop_form(current_desktop != NULL, session_desktop != NULL)) {
+	case OBS_NIX_DESKTOP_BOTH:
 		blog(LOG_INFO, "Desktop Environment: %s (%s)", current_desktop, session_desktop);
-	else if (current_desktop || session_desktop)
+		break;
+	case OBS_NIX_DESKTOP_ONE:
 		blog(LOG_INFO, "Desktop Environment: %s", current_desktop ? current_desktop : session_desktop);
+		break;
+	case OBS_NIX_DESKTOP_NONE:
+		break;
+	}
 
 	if (session_type)
 		blog(LOG_INFO, "Session Type: %s", session_type);

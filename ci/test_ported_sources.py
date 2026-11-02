@@ -31,6 +31,7 @@ def ported_on_every_host():
 PORTED_ON_LINUX = (
     "obs-data.c.h.o",
     "obs-hevc.c.h.o",
+    "obs-nix-log-rules.c.h.o",
     "obs-nix-system-info.c.h.o",
     "obs-nix-wayland-key-names.c.h.o",
     "obs-nix-x11-hotkeys.c.h.o",

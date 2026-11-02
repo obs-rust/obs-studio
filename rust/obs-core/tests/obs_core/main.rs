@@ -33,6 +33,8 @@ mod module_source_rules;
 mod module_source_rules_parity;
 mod module_type_rules;
 mod module_type_rules_parity;
+mod nix_log_rules;
+mod nix_log_rules_parity;
 mod nix_system_info;
 mod nix_system_info_parity;
 mod source_load;

@@ -119,6 +119,7 @@ pub mod nal;
 pub mod nix_hotkey_state;
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub mod nix_inhibit;
+pub mod nix_log_rules;
 pub mod nix_system_info;
 pub mod nix_wayland_key_names;
 pub mod nix_wayland_keys;
