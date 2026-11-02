@@ -30,10 +30,17 @@
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
-    clippy::unreachable
+    clippy::unreachable,
+    clippy::todo
 )]
 
-use crate::transition_clock::Clock;
+use std::num::{NonZeroU64, NonZeroU128};
+
+use crate::platform::MUL_DIV64_IS_UDIV128;
+use crate::transition_clock::{self, Clock};
+
+/// Nanoseconds per second, `util_mul_div64()`'s `mul`.
+const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 /// The offset of sample `sample` from the start of a block of
 /// `sample_rate` Hz, in ns: `util_mul_div64(sample, 1000000000,
@@ -47,9 +54,25 @@ use crate::transition_clock::Clock;
 /// `mix_child()` passes a sample index under `AUDIO_OUTPUT_FRAMES`, whose
 /// quotient always fits.
 #[must_use]
+#[inline]
 pub fn offset(sample_rate: usize, sample: usize) -> u64 {
-    let _ = (sample_rate, sample);
-    todo!()
+    // size_t to uint64_t: lossless on every host libobs builds for
+    let num = u64::try_from(sample).unwrap_or(u64::MAX);
+    let Some(div) = NonZeroU64::new(u64::try_from(sample_rate).unwrap_or(u64::MAX)) else {
+        // intentional difference: the C divides by zero
+        return 0;
+    };
+    if MUL_DIV64_IS_UDIV128 {
+        let quotient =
+            u128::from(num).wrapping_mul(u128::from(NSEC_PER_SEC)) / NonZeroU128::from(div);
+        // clang-cl's (uint64_t) cast: the low 64 bits
+        u64::try_from(quotient & u128::from(u64::MAX)).unwrap_or(u64::MAX)
+    } else {
+        let rem = num % div;
+        (num / div)
+            .wrapping_mul(NSEC_PER_SEC)
+            .wrapping_add(rem.wrapping_mul(NSEC_PER_SEC) / div)
+    }
 }
 
 /// `obs_source_transition_sample_time()` (`get_sample_time()`): the
@@ -57,7 +80,7 @@ pub fn offset(sample_rate: usize, sample: usize) -> u64 {
 /// that starts at `ts`. `ts` plus the [`offset`] wraps, as the C's
 /// `uint64_t` sum does.
 #[must_use]
+#[inline]
 pub fn sample_time(clock: Clock, ts: u64, sample_rate: usize, sample: usize) -> f32 {
-    let _ = (clock, ts, sample_rate, sample);
-    todo!()
+    transition_clock::time(clock, ts.wrapping_add(offset(sample_rate, sample)))
 }

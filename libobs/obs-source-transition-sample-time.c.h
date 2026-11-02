@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-sample-time.pch.h"
 
 /* get_sample_time() of obs-source-transition.c, on plain values. Declared in
  * obs-source-transition-sample-time.h without EXPORT. */
