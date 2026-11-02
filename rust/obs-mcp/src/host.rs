@@ -101,9 +101,8 @@ impl Runtime {
     pub fn start(options: &StartOptions) -> io::Result<Self> {
         let libobs = Libobs::start().map_err(io::Error::other)?;
         let pipeline = ffi::configure(options);
-        for note in pipeline.notes() {
-            eprintln!("obs-mcp: {note}");
-        }
+        // A failed stderr write must not turn into a startup failure.
+        let _ = crate::startup::report(pipeline.notes(), &mut io::stderr(), &mut ffi::log_warning);
         Ok(Self {
             pipeline,
             _libobs: libobs,

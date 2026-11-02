@@ -14,6 +14,7 @@ use serde_json::json;
 
 use super::{Data, Output, c_string};
 use crate::host::{RECORD_OUTPUT, STREAM_OUTPUT, StartOptions};
+use crate::startup::Note;
 
 /// What [`configure`] set up. Dropping it releases the outputs, which must
 /// happen before `obs_shutdown`.
@@ -21,7 +22,7 @@ pub struct Pipeline {
     _outputs: Vec<Output>,
     video_error: Option<String>,
     output_error: Option<String>,
-    notes: Vec<String>,
+    notes: Vec<Note>,
 }
 
 impl Pipeline {
@@ -36,7 +37,7 @@ impl Pipeline {
     }
 
     /// Every problem found, in order, for the log.
-    pub fn notes(&self) -> &[String] {
+    pub fn notes(&self) -> &[Note] {
         &self.notes
     }
 }
@@ -78,9 +79,11 @@ pub fn configure(options: &StartOptions) -> Pipeline {
         pipeline.video_error = Some(error.clone());
         notes.push(error);
     }
-    if let Err(error) = reset_audio() {
-        notes.push(error);
-    }
+    // No audio is not a startup failure: the run continues with video and
+    // the note goes to the OBS log, not stderr (see `crate::startup`).
+    let audio_warning = reset_audio()
+        .err()
+        .map(|error| format!("{error}; continuing without audio"));
     load_modules(options, &mut notes);
     // SAFETY: libobs is started.
     unsafe { sys::obs_post_load_modules() };
@@ -102,7 +105,11 @@ pub fn configure(options: &StartOptions) -> Pipeline {
             }
         }
     }
-    pipeline.notes = notes;
+    pipeline.notes = notes
+        .into_iter()
+        .map(Note::error)
+        .chain(audio_warning.map(Note::warning))
+        .collect();
     pipeline
 }
 

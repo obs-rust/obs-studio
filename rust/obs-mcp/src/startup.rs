@@ -27,12 +27,18 @@ pub struct Note {
 impl Note {
     #[must_use]
     pub fn warning(text: impl Into<String>) -> Self {
-        Self { severity: Severity::Warning, text: text.into() }
+        Self {
+            severity: Severity::Warning,
+            text: text.into(),
+        }
     }
 
     #[must_use]
     pub fn error(text: impl Into<String>) -> Self {
-        Self { severity: Severity::Error, text: text.into() }
+        Self {
+            severity: Severity::Error,
+            text: text.into(),
+        }
     }
 }
 
@@ -43,8 +49,10 @@ impl Note {
 /// Returns an error when writing to `stderr` fails.
 pub fn report(notes: &[Note], stderr: &mut dyn Write, log: &mut dyn FnMut(&str)) -> io::Result<()> {
     for note in notes {
-        let _ = log;
-        writeln!(stderr, "obs-mcp: {}", note.text)?;
+        match note.severity {
+            Severity::Warning => log(&note.text),
+            Severity::Error => writeln!(stderr, "obs-mcp: {}", note.text)?,
+        }
     }
     Ok(())
 }
