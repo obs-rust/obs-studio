@@ -33,6 +33,7 @@ typedef SOCKET sock_t;
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <unistd.h>
 typedef int sock_t;
@@ -159,6 +160,44 @@ static void test_create2_does_not_inherit_socket(void **state)
 	check_port_released(spawn_create2);
 }
 
+#ifndef _WIN32
+/* A descriptor opened before the soft RLIMIT_NOFILE was lowered stays open
+ * above the new limit, so a scan that stops at the soft limit misses it. */
+static void test_fd_above_soft_limit_does_not_inherit(void **state)
+{
+	UNUSED_PARAMETER(state);
+	const int high = 200;
+	struct rlimit old;
+	assert_int_equal(getrlimit(RLIMIT_NOFILE, &old), 0);
+	if (old.rlim_cur == RLIM_INFINITY || old.rlim_cur <= (rlim_t)high) {
+		skip();
+		return;
+	}
+
+	sock_t s = bind_udp(0);
+	assert_true(s != INVALID_SOCKET);
+	uint16_t port = local_port(s);
+	assert_int_equal(dup2(s, high), high);
+	close_sock(s);
+
+	struct rlimit low = old;
+	low.rlim_cur = 64;
+	assert_int_equal(setrlimit(RLIMIT_NOFILE, &low), 0);
+	os_process_pipe_t *pp = spawn_create2();
+	assert_int_equal(setrlimit(RLIMIT_NOFILE, &old), 0);
+	assert_non_null(pp);
+
+	close(high);
+	sock_t again = bind_udp(port);
+	bool released = again != INVALID_SOCKET;
+	if (released)
+		close_sock(again);
+
+	assert_int_equal(os_process_pipe_destroy(pp), 0);
+	assert_true(released);
+}
+#endif
+
 /* The standard streams still reach the child: what it writes to stdout comes
  * back through the pipe, and what it writes to stderr through the error pipe. */
 static void test_stdio_still_connected(void **state)
@@ -187,6 +226,9 @@ int main(void)
 		cmocka_unit_test(test_create_write_mode_does_not_inherit_socket),
 		cmocka_unit_test(test_create_read_mode_does_not_inherit_socket),
 		cmocka_unit_test(test_create2_does_not_inherit_socket),
+#ifndef _WIN32
+		cmocka_unit_test(test_fd_above_soft_limit_does_not_inherit),
+#endif
 		cmocka_unit_test(test_stdio_still_connected),
 	};
 	return cmocka_run_group_tests(tests, setup, teardown);

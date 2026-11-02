@@ -32,16 +32,27 @@ struct os_process_pipe {
 #endif
 
 #if !defined(__APPLE__) && !defined(HAVE_SPAWN_CLOSEFROM)
-/* A close action for fd if the child would inherit it. */
+/* A close action for fd if the child would inherit it. A close action
+ * refuses a descriptor at or above the soft RLIMIT_NOFILE (EBADF), which
+ * one opened before the limit was lowered can be: that one is marked
+ * close-on-exec here instead. */
 static bool close_if_inherited(posix_spawn_file_actions_t *file_actions, int fd)
 {
 	int flags = fcntl(fd, F_GETFD);
-	return flags == -1 || (flags & FD_CLOEXEC) || posix_spawn_file_actions_addclose(file_actions, fd) == 0;
+	if (flags == -1 || (flags & FD_CLOEXEC))
+		return true;
+	int ret = posix_spawn_file_actions_addclose(file_actions, fd);
+	if (ret == EBADF)
+		return fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == 0;
+	return ret == 0;
 }
 
 /* Without a closefrom action, close each descriptor above stderr that is
  * open now and lacks close-on-exec. One closed in between makes the child's
- * close fail with EBADF, which posix_spawn ignores. */
+ * close fail with EBADF, which posix_spawn ignores. The list is made in the
+ * parent, so a descriptor another thread opens between it and the spawn
+ * still reaches the child: only the closefrom and CLOEXEC_DEFAULT paths
+ * above are atomic. */
 static bool close_inherited_fds(posix_spawn_file_actions_t *file_actions)
 {
 	DIR *dir = opendir("/proc/self/fd");
@@ -60,12 +71,18 @@ static bool close_inherited_fds(posix_spawn_file_actions_t *file_actions)
 		return ok;
 	}
 
-	/* No /proc: every open descriptor is below the soft limit, which the
-	 * kernel checks when it hands one out. */
+	/* No /proc: the kernel hands out no descriptor at or above the soft
+	 * limit, and one opened before the soft limit was lowered is still
+	 * below the hard limit, so scan up to the larger of the two. */
 	struct rlimit lim;
 	long max = sysconf(_SC_OPEN_MAX);
-	if (getrlimit(RLIMIT_NOFILE, &lim) == 0 && lim.rlim_cur != RLIM_INFINITY && (rlim_t)max < lim.rlim_cur)
-		max = lim.rlim_cur > INT_MAX ? INT_MAX : (long)lim.rlim_cur;
+	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+		rlim_t limits[2] = {lim.rlim_cur, lim.rlim_max};
+		for (size_t i = 0; i < 2; i++) {
+			if (limits[i] != RLIM_INFINITY && (max < 0 || (rlim_t)max < limits[i]))
+				max = limits[i] > INT_MAX ? INT_MAX : (long)limits[i];
+		}
+	}
 	if (max <= 0)
 		max = 1024;
 	for (int fd = STDERR_FILENO + 1; fd < max; fd++) {
