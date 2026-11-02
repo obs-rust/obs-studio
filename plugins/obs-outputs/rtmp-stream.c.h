@@ -89,6 +89,19 @@ static inline bool disconnected(struct rtmp_stream *stream)
 	return os_atomic_load_bool(&stream->disconnected);
 }
 
+/* RTMP_AddStream copies the stream key; RTMP_Close frees that copy only for
+ * a reading connection or after a server redirect (RTMP_PUB_CLEAN), and
+ * RTMP_Init forgets it. Free it before either drops it. */
+static void free_rtmp_streams(RTMP *r)
+{
+	for (int i = 0; i < r->Link.nStreams; i++) {
+		free(r->Link.streams[i].playpath.av_val);
+		r->Link.streams[i].playpath.av_val = NULL;
+	}
+	r->Link.nStreams = 0;
+	r->Link.curStreamIdx = 0;
+}
+
 static void rtmp_stream_destroy(void *data)
 {
 	struct rtmp_stream *stream = data;
@@ -110,6 +123,7 @@ static void rtmp_stream_destroy(void *data)
 		}
 	}
 
+	free_rtmp_streams(&stream->rtmp);
 	RTMP_TLS_Free(&stream->rtmp);
 	free_packets(stream);
 	dstr_free(&stream->path);
@@ -138,6 +152,52 @@ static void rtmp_stream_destroy(void *data)
 	if (stream->write_buf)
 		bfree(stream->write_buf);
 	bfree(stream);
+}
+
+/* Why the TLS handshake of a failed connect failed (obs-rust/obs-studio#2205).
+ *
+ * The server's certificate did not verify: not trusted, expired, or issued
+ * for another host name (mbedTLS reports a host-name mismatch the same way).
+ * Unlike a timeout, refusal or reset this is no network trouble, so the
+ * frontend does not retry over plain RTMP.
+ *
+ * The system has no trusted root certificates (RTMP_TLS_LoadCerts loaded
+ * none, so nothing can verify): the frontend still falls back, and its
+ * warning names the cause.
+ *
+ * Any other failure, also one before the certificate is checked, is a
+ * connection failure. */
+static enum rtmp_tls_failure rtmp_tls_failure(RTMP *r)
+{
+	int code = r->last_error_code;
+	bool verify_failed = code == -0x2700; /* MBEDTLS_ERR_X509_CERT_VERIFY_FAILED */
+	bool no_ca_chain = code == -0x7680;   /* MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED */
+	if (!verify_failed && !no_ca_chain)
+		return RTMP_TLS_FAILURE_NONE;
+
+	bool has_roots = r->RTMP_TLS_ctx && r->RTMP_TLS_ctx->cacert && r->RTMP_TLS_ctx->cacert->raw.len > 0;
+	if (!has_roots)
+		return RTMP_TLS_FAILURE_NO_ROOT_CERTS;
+	return verify_failed ? RTMP_TLS_FAILURE_CERT_UNVERIFIED : RTMP_TLS_FAILURE_NONE;
+}
+
+/* Output proc: why the last connect's TLS handshake failed, as
+ * "cert_unverified", "no_root_certs", or "" for anything else. */
+static void rtmp_stream_tls_failure_proc(void *data, calldata_t *cd)
+{
+	struct rtmp_stream *stream = data;
+	const char *failure = "";
+	switch (stream->tls_failure) {
+	case RTMP_TLS_FAILURE_CERT_UNVERIFIED:
+		failure = "cert_unverified";
+		break;
+	case RTMP_TLS_FAILURE_NO_ROOT_CERTS:
+		failure = "no_root_certs";
+		break;
+	case RTMP_TLS_FAILURE_NONE:
+		break;
+	}
+	calldata_set_string(cd, "failure", failure);
 }
 
 static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
@@ -180,6 +240,9 @@ static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 		warn("Failed to initialize socket exit event");
 		goto fail;
 	}
+
+	proc_handler_add(obs_output_get_proc_handler(output), "void rtmp_tls_failure(out string failure)",
+			 rtmp_stream_tls_failure_proc, stream);
 
 	UNUSED_PARAMETER(settings);
 	return stream;
@@ -953,7 +1016,8 @@ static int try_connect(struct rtmp_stream *stream)
 
 	info("Connecting to RTMP URL %s...", stream->path.array);
 
-	// free any existing RTMP TLS context
+	// free any existing RTMP TLS context and stream keys
+	free_rtmp_streams(&stream->rtmp);
 	RTMP_TLS_Free(&stream->rtmp);
 
 	RTMP_Init(&stream->rtmp);
@@ -994,7 +1058,13 @@ static int try_connect(struct rtmp_stream *stream)
 
 	rtmp_host_log_interface_type(stream);
 
+	stream->tls_failure = RTMP_TLS_FAILURE_NONE;
 	if (!RTMP_Connect(&stream->rtmp, NULL)) {
+		stream->tls_failure = rtmp_tls_failure(&stream->rtmp);
+		if (stream->tls_failure == RTMP_TLS_FAILURE_CERT_UNVERIFIED)
+			warn("The server's TLS certificate did not verify; the stream is not started");
+		else if (stream->tls_failure == RTMP_TLS_FAILURE_NO_ROOT_CERTS)
+			warn("No trusted root certificates were found, so the TLS connection could not be verified");
 		set_output_error(stream);
 		return OBS_OUTPUT_CONNECT_FAILED;
 	}

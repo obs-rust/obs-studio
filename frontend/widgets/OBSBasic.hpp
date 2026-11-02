@@ -1416,6 +1416,16 @@ private:
 	bool streamingStopping = false;
 	bool streamingStarting = false;
 
+	/* RTMPS fallback (utility/RtmpsFallback.hpp): whether the next start
+	 * keeps plain RTMP after "Accept anyway", and whether the stream being
+	 * started takes its URLs from multitrack video instead of the service. */
+	bool rtmpsFallbackRestart = false;
+	bool streamUsesMultitrack = false;
+	std::string RtmpsFallbackUrl();
+	std::string StreamTlsFailure();
+	void SetPlainRtmp(bool enabled);
+	void OfferRtmpsFallback(const std::string &plainUrl, const std::string &tlsFailure);
+
 public slots:
 	void DisplayStreamStartError();
 	void StartStreaming();

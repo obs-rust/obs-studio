@@ -263,6 +263,17 @@ not get a line.
   2026-10-11. Issue [#19](https://github.com/obs-rust/obs-studio/issues/19),
   PRs [#162](https://github.com/obs-rust/obs-studio/pull/162),
   [#181](https://github.com/obs-rust/obs-studio/pull/181).
+- **Encrypted streaming where the service supports it.** Twitch, Vimeo,
+  niconico, BoxCast, Bitmovin, Eventials and EventLive.pro stream over RTMPS
+  (port 443) instead of plain RTMP, on every server checked to accept it;
+  existing profiles switch too, with no setting to change. If the encrypted
+  connection cannot be made, the shared fallback warning ("Streaming
+  unencrypted (RTMP)") counts down three seconds and then streams to the same
+  server over plain RTMP, unless you cancel; the fallback is written to the
+  log and to stderr. Without trusted root certificates on the system, the
+  warning says so and suggests installing the system's CA certificates. A
+  server certificate that does not verify stops the start instead. Custom servers are unchanged. *All*, pending merge. Issue
+  [#2205](https://github.com/obs-rust/obs-studio/issues/2205).
 
 ### Sources and filters
 

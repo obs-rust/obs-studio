@@ -54,6 +54,14 @@ struct dbr_interpolation_point {
 	long bitrates[MAX_OUTPUT_VIDEO_ENCODERS];
 };
 
+/* Why an RTMPS connect failed, for the frontend's RTMP fallback
+ * (obs-rust/obs-studio#2205). */
+enum rtmp_tls_failure {
+	RTMP_TLS_FAILURE_NONE,            /* none, or a connection failure */
+	RTMP_TLS_FAILURE_CERT_UNVERIFIED, /* the server's certificate */
+	RTMP_TLS_FAILURE_NO_ROOT_CERTS,   /* no trusted root certificates */
+};
+
 struct rtmp_stream {
 	obs_output_t *output;
 
@@ -126,6 +134,9 @@ struct rtmp_stream {
 	RTMP rtmp;
 
 	bool new_socket_loop;
+
+	/* Why the last connect's TLS handshake failed (rtmp_tls_failure). */
+	enum rtmp_tls_failure tls_failure;
 	bool low_latency_mode;
 	bool disable_send_window_optimization;
 	bool socket_thread_active;

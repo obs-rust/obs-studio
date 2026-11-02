@@ -28,6 +28,7 @@ target_sources(
     service-specific/amazon-ivs.h
     service-specific/dacast.h
     service-specific/nimotv.h
+    service-specific/rtmps-upgrade.h
     service-specific/service-ingest.h
     service-specific/showroom.h
     service-specific/twitch.h

@@ -18,6 +18,7 @@
 #include "plugins/rtmp-services/service-specific/showroom.h"
 #include "plugins/rtmp-services/service-specific/dacast.h"
 #include "plugins/rtmp-services/service-specific/amazon-ivs.h"
+#include "plugins/rtmp-services/service-specific/rtmps-upgrade.h"
 
 /* rtmp-services-main.c */
 #include <util/text-lookup.h>

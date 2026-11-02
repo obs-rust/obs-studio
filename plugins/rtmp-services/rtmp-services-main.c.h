@@ -14,6 +14,7 @@ static const char *RTMP_SERVICES_URL = (const char *)SERVICES_URL;
 
 extern struct obs_service_info rtmp_common_service;
 extern struct obs_service_info rtmp_custom_service;
+extern void rtmp_common_register_procs(void);
 
 static update_info_t *update_info = NULL;
 static struct dstr module_name = {0};
@@ -94,6 +95,7 @@ bool obs_module_load(void)
 	proc_handler_t *ph = obs_get_proc_handler();
 	proc_handler_add(ph, "void twitch_ingests_refresh(int seconds)", refresh_callback, NULL);
 	proc_handler_add(ph, "void amazon_ivs_ingests_refresh(int seconds)", amazon_ivs_refresh_callback, NULL);
+	rtmp_common_register_procs();
 
 #if defined(ENABLE_SERVICE_UPDATES)
 	char *local_dir = obs_module_file("");
