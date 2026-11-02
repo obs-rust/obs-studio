@@ -143,3 +143,24 @@ fn is_dim(b: u8) -> bool {
 fn digit(b: u8) -> i32 {
     i32::from(b as c_char).wrapping_sub(i32::from(b'0'))
 }
+
+/// `obs_effect_param_int_value` (`ep_parse_param_assign_intfloat`): an `int`
+/// default value. `text` is the number token's text as a C string, read on
+/// past the token as `strtol(str, NULL, 10)` reads it, to the first byte
+/// that is not a digit; `negative` when a `-` token came before it.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+#[must_use]
+pub fn int_value(text: &[u8], negative: bool) -> i32 {
+    let _ = (text, negative);
+    todo!()
+}
+
+/// `obs_effect_param_array_count` (`ep_parse_param_array`): the count of
+/// `name[count]`, or `None` when the token's first `len` bytes are not an
+/// int (`valid_int_str`). `text` is as for [`int_value`].
+#[expect(clippy::todo, reason = "RED: the port follows")]
+#[must_use]
+pub fn array_count(text: &[u8], len: usize) -> Option<i32> {
+    let _ = (text, len);
+    todo!()
+}
