@@ -103,9 +103,7 @@ pub fn configure(options: &StartOptions) -> Pipeline {
             // same rate and layout, so recording and streaming still start
             // with video (#3491).
             Some(error) => NullAudio::open().map(|null| {
-                audio_warning = Some(format!(
-                    "{error}; continuing with a silent audio track"
-                ));
+                audio_warning = Some(format!("{error}; continuing with a silent audio track"));
                 pipeline._null_audio.insert(null).0.as_ptr()
             }),
         };
