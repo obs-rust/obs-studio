@@ -11,6 +11,7 @@
 use std::sync::{Condvar, Mutex, MutexGuard};
 use std::time::Duration;
 
+use crate::ffi::tsan;
 use crate::platform::EventType;
 
 /// Which condvar wake primitive `signal` dispatches. C signals with
@@ -157,8 +158,11 @@ impl Event {
     }
 
     /// Consume the signal, as the C does on a successful wait/try of an
-    /// auto-reset event. Caller holds the lock.
+    /// auto-reset event. Caller holds the lock. TSan does not see this
+    /// `Mutex` and `Condvar`, so tell it that this wait comes after the
+    /// signal (#3507).
     fn consume(&self, signalled: &mut MutexGuard<'_, bool>) {
+        tsan::acquire(&self.signalled);
         if !self.manual {
             **signalled = false;
         }
@@ -217,6 +221,7 @@ impl Event {
     /// destroy the event (`obs_queue_task` with `wait` does).
     pub fn signal(&self) {
         let mut signalled = self.signalled.lock().unwrap_or_else(|e| e.into_inner());
+        tsan::release(&self.signalled);
         *signalled = true;
         self.notify(Notify::One);
         drop(signalled);
