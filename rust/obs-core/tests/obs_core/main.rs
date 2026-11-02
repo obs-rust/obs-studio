@@ -56,5 +56,7 @@ mod view_parity;
 mod win_crash_report;
 mod win_crash_report_alloc;
 mod win_crash_report_parity;
+mod win_symbol_paths;
+mod win_symbol_paths_parity;
 mod win_system_info;
 mod win_system_info_parity;

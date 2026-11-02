@@ -5,6 +5,7 @@
   "graphics/graphics-ffmpeg-host-wic-checks.h",
   "obs-win-crash-report.h",
   "obs-windows-keys.h",
+  "obs-windows-symbol-paths.h",
   "obs-windows-system-info.h",
   "util/threading-windows.h",
   "util/windows/CoTaskMemPtr.hpp",

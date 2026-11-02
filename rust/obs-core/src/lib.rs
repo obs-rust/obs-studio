@@ -32,8 +32,9 @@
 //! `obs-nix-os-release.h`), its distribution, Flatpak and desktop log
 //! rules; and
 //! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
-//! the Windows crash report rules; and `libobs/obs-windows-system-info.c.h`
-//! (from `obs-windows.c.h`), the Windows system info log rules.
+//! the Windows crash report rules; and `libobs/obs-windows-symbol-paths.c.h`
+//! and `libobs/obs-windows-system-info.c.h` (from `obs-windows.c.h`), the
+//! Windows debug symbol search path and system info log rules.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
@@ -44,7 +45,8 @@
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_frame_timing`],
-//! [`nix_system_info`], [`win_crash_report`] and [`win_system_info`].
+//! [`nix_system_info`], [`win_crash_report`], [`win_symbol_paths`] and
+//! [`win_system_info`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
@@ -59,6 +61,8 @@
 //! Flatpak extension names and the desktop line form it logs; [`win_crash_report`] decides which module holds the
 //! crash address, which threads the report traces and in what order, how
 //! each frame is written and when the crash handler passes on;
+//! [`win_symbol_paths`] cuts each module's directory, checks it against the
+//! listed ones and joins the DbgHelp search path;
 //! [`win_system_info`] packs the Windows version, sizes the memory lines,
 //! gates the gaming features and picks each feature's line and the security
 //! product labels of the Windows startup log; [`module_load_rules`] decides which modules load, are
@@ -100,6 +104,7 @@ pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
 pub mod win_crash_report;
+pub mod win_symbol_paths;
 pub mod win_system_info;
 
 #[allow(unsafe_code)]
