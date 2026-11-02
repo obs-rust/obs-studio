@@ -18,6 +18,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "graphics.h"
 
@@ -33,10 +34,15 @@
  *   far, obs_effect_param_has_cols(), then obs_effect_param_cols_bad() (it
  *   adds the column error) and obs_effect_param_cols(), the count times the
  *   column digit. Each reads its byte where the C read it.
+ * - ep_parse_param_assign_intfloat(), on an int value's number token:
+ *   obs_effect_param_int_value() (effect-param-numbers.c);
+ * - ep_parse_param_array(), on the count's number token:
+ *   obs_effect_param_array_count() (effect-param-numbers.c).
  *
- * effect-parser.c keeps every token call, every cf_adderror(), the value
- * parsers, the brace and constructor handling, the loop over the values and
- * the compile. Nothing here takes the parser or keeps state.
+ * effect-parser.c keeps every token call, every cf_adderror(), the token
+ * type tests, the float values, the push of each value, the brace and
+ * constructor handling, the loop over the values and the compile. Nothing
+ * here takes the parser or keeps state.
  *
  * Hidden in libobs: not EXPORT. */
 
@@ -81,3 +87,13 @@ bool obs_effect_param_cols_bad(const char *type, bool is_float);
 
 /* count times the column digit minus '0'. */
 int obs_effect_param_cols(const char *type, bool is_float, int count);
+
+/* ep_parse_param_assign_intfloat(): an int value, str the number token's
+ * text (read on past the token by strtol(), to the first byte that is not a
+ * digit), negated when a '-' token came before it, then cast to int. */
+int obs_effect_param_int_value(const char *str, bool negative);
+
+/* ep_parse_param_array(): false when the token's first len bytes are not an
+ * int (valid_int_str()), and *count is left alone; otherwise *count is
+ * strtol() of str cast to int. */
+bool obs_effect_param_array_count(const char *str, size_t len, int *count);

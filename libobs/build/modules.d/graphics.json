@@ -1,6 +1,7 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
+    "effect-param-numbers",
     "graphics"
   ],
   "depends": []

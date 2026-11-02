@@ -833,10 +833,9 @@ static bool ep_parse_param_array(struct effect_parser *ep, struct ep_param *para
 		return false;
 
 	if (ep->cfp.cur_token->type != CFTOKEN_NUM ||
-	    !valid_int_str(ep->cfp.cur_token->str.array, ep->cfp.cur_token->str.len))
+	    !obs_effect_param_array_count(ep->cfp.cur_token->str.array, ep->cfp.cur_token->str.len,
+					  &param->array_count))
 		return false;
-
-	param->array_count = (int)strtol(ep->cfp.cur_token->str.array, NULL, 10);
 
 	if (cf_next_token_should_be(&ep->cfp, "]", ";", NULL) == PARSE_EOF)
 		return false;
@@ -916,10 +915,7 @@ static inline int ep_parse_param_assign_intfloat(struct effect_parser *ep, struc
 			f = -f;
 		da_push_back_array(param->default_val, (uint8_t *)&f, sizeof(float));
 	} else {
-		long l = strtol(ep->cfp.cur_token->str.array, NULL, 10);
-		if (is_negative)
-			l = -l;
-		int i = (int)l;
+		int i = obs_effect_param_int_value(ep->cfp.cur_token->str.array, is_negative);
 		da_push_back_array(param->default_val, (uint8_t *)&i, sizeof(int));
 	}
 
