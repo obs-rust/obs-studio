@@ -971,20 +971,16 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 	return transitioning;
 }
 
-static inline float get_sample_time(obs_source_t *transition, size_t sample_rate, size_t sample, uint64_t ts)
-{
-	uint64_t sample_ts_offset = util_mul_div64(sample, 1000000000ULL, sample_rate);
-	uint64_t i_ts = ts + sample_ts_offset;
-	return calc_time(transition, i_ts);
-}
-
 static inline void mix_child(obs_source_t *transition, float *out, float *in, size_t count, size_t sample_rate,
 			     uint64_t ts, obs_transition_audio_mix_callback_t mix)
 {
 	void *context_data = transition->context.data;
 
 	for (size_t i = 0; i < count; i++) {
-		float t = get_sample_time(transition, sample_rate, i, ts);
+		float t = obs_source_transition_sample_time((int)transition->transition_mode,
+							    transition->transition_manual_val,
+							    transition->transition_start_time,
+							    transition->transition_duration, ts, sample_rate, i);
 		out[i] += in[i] * mix(context_data, t);
 	}
 }
