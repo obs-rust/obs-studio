@@ -71,6 +71,8 @@
 //! `copy_source_state()` and the swap gate);
 //! `libobs/obs-source-transition-render.c.h`, the render
 //! and audio step decisions of the transitions;
+//! `libobs/obs-source-transition-sample-time.c.h`, the time of each audio
+//! sample a transition mixes (`get_sample_time()`);
 //! `libobs/obs-source-transition-start.c.h`, the start checks and child
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
 //! `activate_transition()`, the active source, the manual reset and the
@@ -90,7 +92,7 @@
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
-//! [`transition_start`],
+//! [`transition_sample_time`], [`transition_start`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]

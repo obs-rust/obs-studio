@@ -45,8 +45,9 @@
  *
  * obs-source-transition.c keeps the locks, the field reads and writes, the
  * child size and timestamp reads, calc_torquef(), the offsets passed to
- * add_alignment() and add_alignment() itself, the matrix build,
- * get_sample_time(), the texrenders and the swap handover.
+ * add_alignment() and add_alignment() itself, the matrix build, the
+ * texrenders and the swap handover. get_sample_time() is
+ * obs-source-transition-sample-time.c.
  *
  * None of them takes a lock, calls into libobs or keeps state.
  *

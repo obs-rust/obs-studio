@@ -22,8 +22,8 @@
 //! `obs-source-transition.c.h` keeps the locks, the field reads and writes,
 //! the child size and timestamp reads, `calc_torquef()`, the offsets passed
 //! to `add_alignment()` and their `(int)` casts, `add_alignment()`, the
-//! matrix build, `get_sample_time()`, the texrenders and the swap handover
-//! (#556). Nothing here keeps state, takes a lock or calls libobs.
+//! matrix build, the texrenders and the swap handover (#556);
+//! `get_sample_time()` is [`crate::transition_sample_time`]. Nothing here keeps state, takes a lock or calls libobs.
 //!
 //! The C divides the clock in `long double`, whose width differs by
 //! platform; [`ratio`] gives the x87 result of x86_64 for every `u64`
