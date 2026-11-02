@@ -450,7 +450,6 @@ not get a line.
   Windows release ZIP, and the MSI installer once it ships, is signed with the
   project's Azure Artifact Signing certificate; stable releases fail rather
   than publish an unsigned binary. *Windows*, pending merge.
-
 - **Windows BETA MSI installer.** Each Windows release also ships an
   `OBS-Studio-Rust BETA` MSI for x64 and arm64 with an install folder choice, a
   Start menu entry and a clean uninstall; the zip stays the portable option.
