@@ -43,6 +43,24 @@ Work in your own branch, named `port/<unit>`, `fix/<issue>-<topic>`,
 touch other people's branches, and don't delete local branches you didn't
 create.
 
+**Never leave edits uncommitted in the shared checkout.** Other sessions
+switch branches in this same checkout, so uncommitted edits get left behind.
+Nobody knows whose they are, and they get shipped twice. Before you stop,
+switch away or hand off, do one of these:
+
+- Commit and push the work (a draft PR is fine).
+- Stash it with a message that names the issue:
+  `git stash push -m "<issue>: <what>" -- <paths>`.
+- Discard it.
+
+When you find a dirty branch with no commits, no remote and no PR, someone
+left it behind. Before you package it, check whether master already has the
+fix: `git log origin/master -- <changed files>` and
+`gh pr list --state merged --search "<topic>"`. If master has it, drop the
+branch; don't open a duplicate PR. (Example: on 2026-11-02 the macos-26
+`tar --zstd` fix sat uncommitted on `fix/macos-qt-zstd-extract` while #3497
+landed the same fix from another branch.)
+
 **No new clones or worktrees of this repo.** Switch branches in the existing
 checkout (`git switch -c <branch> origin/master`; stash or commit first).
 Every build cache (zccache, the cargo target directory, CMake build trees,
