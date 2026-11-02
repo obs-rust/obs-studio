@@ -101,6 +101,7 @@ pile up on top of it:
    and reacts 🚀 (it replies only to refuse, and says why). Claim only what
    you are working on now. The claim lapses 24 hours after your last
    progress (a comment, or a commit or review on your PR).
+   Claim before coding or making the first commit, including the RED commit.
 4. **Feature issues** (new behavior, not a port or a bug): check that the
    design is agreed before you code. If the issue lists open questions,
    answer each one in the claim comment under a **Decisions:** heading
@@ -155,6 +156,17 @@ pile up on top of it:
   `uv run` / `uvx`.
 
 ## 4. Open the PR early
+
+Immediately before `gh pr create`, re-read each linked issue and its latest
+comments. Confirm it is open, `ready` (or P0), and that your claim was accepted
+(🚀 / assignment), with no later release, reassignment or conflicting claim.
+Check the claim comments as well as the assignee: multiple workers share an
+account. Use `gh issue view <N> --repo obs-rust/obs-studio` and read the
+comments too (use the issue-context tool for a large discussion).
+If the issue is closed, no longer Ready or claimed by someone else, stop
+opening the PR and comment on the replacement issue or claim thread with
+your branch and findings. Do not race the existing work. This check also
+applies to resumed work and branches created by another workflow (#3307).
 
 As soon as the RED commit exists, push and open a PR against `master`
 (a draft is fine; a red run is expected):
@@ -216,6 +228,9 @@ running, wait and retry.
 
 ## 7. Land it
 
+- Before enabling auto-merge or queueing, repeat the issue/claim check in §4.
+  If it no longer passes, leave auto-merge off (disable it if already enabled)
+  and explain the conflict on the PR and replacement issue or claim thread.
 - Mark the PR ready when CI is green, then queue it: `gh pr merge <N>`.
   The merge queue reruns CI on the merge result; `CI Gate ✅` decides.
   Rebase by hand only when GitHub reports a conflict. Never push to master.

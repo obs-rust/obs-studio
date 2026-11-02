@@ -246,9 +246,21 @@ Look for issues whose next step was agreed but never taken:
 Example: #1067 was closed after its follow-up became Discussion #1418.
 
 **Before closing an issue as a duplicate**, look for work already started on
-it: `git ls-remote origin 'refs/heads/*/<N>-*'` and
-`gh pr list --search "<N> in:body" --state open`. Comment on each branch's
-PR, or ping its author, naming the issue to build instead. On 2026-10-31
+it and read the replacement issue's claims:
+
+- `git ls-remote origin 'refs/heads/*/<N>-*'` includes `build/<N>-*`
+  branches that have a RED commit but no PR yet.
+- `gh pr list --repo obs-rust/obs-studio --search "<N> in:body" --state open`
+  finds PRs that reference it (`Fixes #N`, `Closes #N`, or `Refs #N`). Also
+  search PR heads for each matching branch, since its PR body may omit the
+  issue number.
+
+Before closing, comment on every matching PR with the replacement issue and
+its active claim, so its worker knows to stop and coordinate there. For a
+branch without a PR, identify its author from its commits and notify them on
+the issue being closed, naming the branch and replacement issue. Include
+the replacement link in the close comment. If a search fails, retry or leave
+the issue open; an unavailable result is not evidence of no work. On 2026-10-31
 #3251 was closed as a duplicate of #3238 four minutes after
 `build/3251-asan-parallel` got its RED commit; nobody told the builder, and
 #3279 merged for the closed issue over vpacher's claim on #3238 (#3307).
