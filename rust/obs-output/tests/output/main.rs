@@ -45,6 +45,7 @@ mod protocols;
 mod protocols_parity;
 mod raw_audio;
 mod raw_audio_parity;
+mod raw_audio_trim;
 mod service;
 mod service_lifecycle;
 mod service_lifecycle_parity;

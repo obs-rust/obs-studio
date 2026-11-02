@@ -130,6 +130,7 @@ pub mod output_start;
 pub mod output_stop;
 pub mod protocols;
 pub mod raw_audio;
+pub mod raw_audio_trim;
 pub mod service;
 pub mod stop_stats;
 pub mod video_checks;
