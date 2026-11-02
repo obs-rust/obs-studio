@@ -13,6 +13,7 @@ void obs_graphics_effect_loop_warning(int which, const char *name);
 void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect);
 FILE *obs_graphics_fopen_rb(const char *path);
 int64_t obs_graphics_ftelli64(FILE *file);
+double obs_graphics_os_strtod(const char *str);
 
 void *obs_graphics_bmalloc(size_t size)
 {
@@ -87,4 +88,11 @@ FILE *obs_graphics_fopen_rb(const char *path)
 int64_t obs_graphics_ftelli64(FILE *file)
 {
 	return os_ftelli64(file);
+}
+
+/* os_strtod for the shader parser's float values (shader-param-values.c),
+ * on the 64-byte copy the Rust core makes as os_strtod's strncpy() would. */
+double obs_graphics_os_strtod(const char *str)
+{
+	return os_strtod(str);
 }

@@ -15,9 +15,20 @@
 
 use obs_graphics::effect_param_types;
 use obs_graphics::shader_param_values::{
-    array_count, array_count_by, float_value, float_value_by, int_value, int_value_by,
+    self as values, array_count, array_count_by, int_value, int_value_by,
 };
+use obs_util::platform_number::strtod;
 use proptest::prelude::*;
+
+/// The core's float, converted by obs-util's `os_strtod` core, as the
+/// shim's libobs `os_strtod` does.
+fn float_value(text: &[u8], negative: bool) -> f32 {
+    values::float_value(text, negative, strtod)
+}
+
+fn float_value_by(at: impl FnMut(usize) -> u8, negative: bool) -> f32 {
+    values::float_value_by(at, negative, strtod)
+}
 
 fn check_count(text: &str, len: usize, count: Option<i32>) {
     assert_eq!(array_count(text.as_bytes(), len), count, "{text:?} {len}");

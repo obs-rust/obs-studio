@@ -84,6 +84,21 @@ pub unsafe extern "C" fn shader_param_int_value(str: *const c_char, negative: bo
     core_values::int_value_by(|i| unsafe { at(str, i) }, negative)
 }
 
+unsafe extern "C" {
+    /// libobs's `os_strtod`, through the private adapter in
+    /// `obs-graphics-adapter.c.h`: an executable that links the Rust
+    /// staticlib next to libobs (the cmocka `*_rust` tests) then never pulls
+    /// obs-util's host code, and the libraries and hidden libobs glue it
+    /// needs, out of the staticlib (#3468).
+    fn obs_graphics_os_strtod(str: *const c_char) -> f64;
+}
+
+/// `os_strtod` of the core's NUL-terminated copy.
+fn libobs_strtod(copy: &[u8]) -> f64 {
+    // SAFETY: the core passes its copy with the NUL that ends it.
+    unsafe { obs_graphics_os_strtod(copy.as_ptr().cast()) }
+}
+
 /// `float shader_param_float_value(const char *str, bool negative)`.
 ///
 /// # Safety
@@ -92,9 +107,9 @@ pub unsafe extern "C" fn shader_param_int_value(str: *const c_char, negative: bo
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn shader_param_float_value(str: *const c_char, negative: bool) -> c_float {
     if str.is_null() {
-        return core_values::float_value(b"", negative);
+        return core_values::float_value(b"", negative, libobs_strtod);
     }
     // SAFETY: forwarded from the caller; the core reads in order and stops
     // at a NUL or after 63 bytes.
-    core_values::float_value_by(|i| unsafe { at(str, i) }, negative)
+    core_values::float_value_by(|i| unsafe { at(str, i) }, negative, libobs_strtod)
 }

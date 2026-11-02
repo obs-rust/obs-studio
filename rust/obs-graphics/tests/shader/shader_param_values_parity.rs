@@ -40,6 +40,7 @@ use obs_c_oracle::parity;
 use obs_c_oracle::shader_param_values as c;
 use obs_graphics::ffi::shader_param_values as rs;
 use obs_graphics::shader_param_values::{array_count, float_value, int_value};
+use obs_util::platform_number::strtod;
 use proptest::prelude::*;
 
 /// What `strtol(str, NULL, 10)` reads, exactly (C white space, one sign,
@@ -143,7 +144,7 @@ fn check(text: &[u8]) -> Result<(), TestCaseError> {
         let got = shim_float(&s, negative);
         prop_assert_eq!(
             got,
-            float_value(bytes, negative).to_bits(),
+            float_value(bytes, negative, strtod).to_bits(),
             "core float {:?} {}",
             s,
             negative

@@ -26,8 +26,11 @@
 //! count (`1.5` is 1, `0x10` is 0); a count checks only the token's length
 //! (`valid_int_str`) while `strtol` reads every digit after it; a float
 //! past `FLT_MAX` is an infinity, and `os_strtod` reads at most 63 bytes.
-//! The float is `obs_util`'s `os_strtod`, with its own documented
-//! differences from the C library's (the decimal point is always `.`).
+//! The float's conversion is passed in: the shim's is libobs's own
+//! `os_strtod` (the Rust one in the hybrid libobs, with its documented
+//! differences from the C library's), through the C adapter
+//! `obs_graphics_os_strtod`, so obs-graphics never reaches obs-util's host
+//! code itself (#3468).
 //!
 //! Two intentional differences (#3468): past `INT_MAX` the C depends on the
 //! width of `long` (an `int` of `4294967297` reads as 1 and a count of
@@ -38,12 +41,10 @@
 //! `sp_parse_param_array` drops the parameter as it does for a count that
 //! is not a number. Inside `i32` both agree with the C.
 
-use obs_util::platform_number::strtod;
-
 use crate::effect_param_types;
 
-/// `os_strtod` copies at most `sizeof(buf) - 1` bytes before it converts.
-const OS_STRTOD_BYTES: usize = 63;
+/// `os_strtod`'s `char buf[64]`: it copies at most 63 bytes, then a NUL.
+const OS_STRTOD_BUF: usize = 64;
 
 /// `shader_param_array_count` (`sp_parse_param_array`): the count of
 /// `name[count]`, or `None` when the token's first `len` bytes are not an
@@ -92,21 +93,26 @@ pub fn int_value_by(at: impl FnMut(usize) -> u8, negative: bool) -> i32 {
 
 /// `shader_param_float_value` (`sp_parse_param_assign_intfloat`): a `float`
 /// default value, `os_strtod` of `text` (at most its first 63 bytes) cast to
-/// `float`, negated when a `-` token came before it. See
-/// [`float_value_by`].
+/// `float`, negated when a `-` token came before it. `strtod` converts the
+/// copy as `os_strtod` does. See [`float_value_by`].
 #[must_use]
-pub fn float_value(text: &[u8], negative: bool) -> f32 {
-    float_value_by(|i| text.get(i).copied().unwrap_or(0), negative)
+pub fn float_value(text: &[u8], negative: bool, strtod: impl FnOnce(&[u8]) -> f64) -> f32 {
+    float_value_by(|i| text.get(i).copied().unwrap_or(0), negative, strtod)
 }
 
 /// [`float_value`] on the bytes `at(i)` gives: `os_strtod`'s `strncpy` into
 /// its 64-byte buffer reads each byte once, in order, up to the first NUL
-/// or 63 bytes, and only those convert.
+/// or 63 bytes. `strtod` gets that copy with the NUL that ends it (at most
+/// 64 bytes), so a C conversion can read it as a string.
 #[must_use]
-pub fn float_value_by(mut at: impl FnMut(usize) -> u8, negative: bool) -> f32 {
-    let mut buf = [0_u8; OS_STRTOD_BYTES];
+pub fn float_value_by(
+    mut at: impl FnMut(usize) -> u8,
+    negative: bool,
+    strtod: impl FnOnce(&[u8]) -> f64,
+) -> f32 {
+    let mut buf = [0_u8; OS_STRTOD_BUF];
     let mut len = 0_usize;
-    for (i, slot) in buf.iter_mut().enumerate() {
+    for (i, slot) in buf.iter_mut().take(OS_STRTOD_BUF - 1).enumerate() {
         let b = at(i);
         if b == 0 {
             break;
@@ -114,7 +120,7 @@ pub fn float_value_by(mut at: impl FnMut(usize) -> u8, negative: bool) -> f32 {
         *slot = b;
         len = i.saturating_add(1);
     }
-    let value = narrow(strtod(buf.get(..len).unwrap_or_default()));
+    let value = narrow(strtod(buf.get(..=len).unwrap_or_default()));
     if negative { -value } else { value }
 }
 
