@@ -19,8 +19,9 @@
 //! stay hidden (`rust-hidden.d/obs-graphics-effect_param_types.txt`).
 //!
 //! The number token's text runs on into the effect source: the number shims
-//! read it one byte at a time and stop where `strtol()` stops, so they read
-//! no further than the C.
+//! hand the core one byte at a time, which it reads once each in the C's
+//! order (`valid_int_str()` first for a count, then `strtol()`), so they
+//! read no byte the C would not.
 //!
 //! One intentional difference (#3464): the int value and the array count
 //! saturate to `int` past its range, where the C depends on the width of
@@ -29,7 +30,6 @@
 //! false.
 
 use core::ffi::{CStr, c_char, c_int};
-use core::slice;
 
 use crate::effect_param_types as core_types;
 
@@ -128,31 +128,15 @@ pub unsafe extern "C" fn obs_effect_param_cols(
     core_types::cols(unsafe { name(type_) }, is_float, count)
 }
 
-/// The bytes of `str` that `strtol(str, NULL, 10)` reads before the one that
-/// stops it, and at least the first `at_least` bytes (fewer at a NUL): one
-/// byte at a time, so the read goes no further into the effect source than
-/// the C's.
+/// Byte `i` of `str`, for the core's one-pass reads.
 ///
 /// # Safety
 ///
-/// `str` is a valid NUL-terminated string.
-unsafe fn number_text<'a>(str: *const c_char, at_least: usize) -> &'a [u8] {
-    let mut len = 0;
-    loop {
-        // SAFETY: `len` bytes before it were not NUL, so this one is in the
-        // string.
-        if unsafe { *str.add(len) } == 0 {
-            break;
-        }
-        len += 1;
-        // SAFETY: the `len` bytes just read are valid.
-        let read = unsafe { slice::from_raw_parts(str.cast::<u8>(), len) };
-        if len >= at_least && !core_types::strtol_reads_on(read) {
-            break;
-        }
-    }
-    // SAFETY: as above.
-    unsafe { slice::from_raw_parts(str.cast::<u8>(), len) }
+/// `str` is a valid NUL-terminated string, and no byte before `i` is NUL
+/// (the core asks a byte only after reading every one before it).
+unsafe fn at(str: *const c_char, i: usize) -> u8 {
+    // SAFETY: from the caller; the string runs at least to byte `i`.
+    unsafe { *str.add(i) }.cast_unsigned()
 }
 
 /// `int obs_effect_param_int_value(const char *str, bool negative)`.
@@ -168,8 +152,9 @@ pub unsafe extern "C" fn obs_effect_param_int_value(str: *const c_char, negative
     if str.is_null() {
         return core_types::int_value(b"", negative);
     }
-    // SAFETY: forwarded from the caller.
-    core_types::int_value(unsafe { number_text(str, 0) }, negative)
+    // SAFETY: forwarded from the caller; the core reads in order and stops
+    // at a NUL.
+    core_types::int_value_by(|i| unsafe { at(str, i) }, negative)
 }
 
 /// `bool obs_effect_param_array_count(const char *str, size_t len, int
@@ -192,16 +177,9 @@ pub unsafe extern "C" fn obs_effect_param_array_count(
     if str.is_null() {
         return false;
     }
-    // valid_int_str() reads to the NUL when len is 0, and otherwise at most
-    // len + 2 bytes (a sign does not count against len), as obs-util's
-    // shim bounds it.
-    let at_least = if len == 0 {
-        usize::MAX
-    } else {
-        len.saturating_add(2)
-    };
-    // SAFETY: forwarded from the caller.
-    let Some(n) = core_types::array_count(unsafe { number_text(str, at_least) }, len) else {
+    // SAFETY: forwarded from the caller; the core reads in order and stops
+    // at a NUL.
+    let Some(n) = core_types::array_count_by(|i| unsafe { at(str, i) }, len) else {
         return false;
     };
     // SAFETY: the caller passes a valid `count` for a valid count.

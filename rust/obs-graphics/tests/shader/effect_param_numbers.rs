@@ -6,9 +6,14 @@
 //! range. Past it the C result depends on the width of `long`; `fixed_*`
 //! check the intentional difference instead (#3464): the digits are read
 //! exactly, the sign applied, and the result saturated to `i32` on every
-//! platform. `edge_*` and the proptests cover what the C test leaves out.
+//! platform. `edge_*` and the proptests cover what the C test leaves out,
+//! with `reads_*`: which bytes of the text are read, in what order, as the
+//! C's `valid_int_str()` and `strtol()` read them.
 
-use obs_graphics::effect_param_types::{array_count, int_value};
+use std::ffi::CString;
+
+use obs_graphics::effect_param_types::{array_count, array_count_by, int_value, int_value_by};
+use obs_graphics::ffi::effect_param_types as rs;
 use proptest::prelude::*;
 
 fn check_int(text: &str, positive: i32, negative: i32) {
@@ -112,6 +117,69 @@ fn edge_text_ends_at_nul() {
     assert_eq!(int_value(b"12\x0034", false), 12);
     assert_eq!(array_count(b"12\x0034", 0), Some(12));
     assert_eq!(array_count(b"12\x0034", 4), Some(12));
+}
+
+/// The indexes `at` is asked, in order, reading `text` as a C string.
+fn reads(text: &[u8], run: impl FnOnce(&mut dyn FnMut(usize) -> u8)) -> Vec<usize> {
+    let mut asked = Vec::new();
+    run(&mut |i| {
+        asked.push(i);
+        text.get(i).copied().unwrap_or(0)
+    });
+    asked
+}
+
+fn int_reads(text: &str) -> Vec<usize> {
+    reads(text.as_bytes(), |at| {
+        let _ = int_value_by(at, false);
+    })
+}
+
+fn count_reads(text: &str, len: usize) -> Vec<usize> {
+    reads(text.as_bytes(), |at| {
+        let _ = array_count_by(at, len);
+    })
+}
+
+#[test]
+fn reads_int_value_once_each_to_the_stop() {
+    // strtol(): white space, a sign, the digits and the byte that stops
+    // them, each once.
+    assert_eq!(int_reads("12;x99"), [0, 1, 2]);
+    assert_eq!(int_reads("  -5)7"), [0, 1, 2, 3, 4]);
+    assert_eq!(int_reads("7"), [0, 1]);
+    assert_eq!(int_reads("x1"), [0]);
+}
+
+#[test]
+fn reads_array_count_where_valid_int_str_stops() {
+    // valid_int_str("1.5];...", 3) stops at the '.': strtol() never runs.
+    assert_eq!(count_reads("1.5];uniform", 3), [0, 0, 0, 1, 1]);
+    // "4];..." at length 1: the check reads the digit and the byte after
+    // it, then strtol() reads the same two.
+    assert_eq!(count_reads("4];uniform", 1), [0, 0, 0, 1, 0, 1]);
+    // A zero length reads the whole string first (its strlen).
+    assert_eq!(count_reads("12", 0), [0, 1, 2, 0, 0, 1, 1, 2, 0, 1, 2]);
+    assert_eq!(count_reads("", 1), [0]);
+}
+
+#[test]
+fn edge_long_leading_zeros_read_in_one_pass() {
+    let text = format!("{}7;", "0".repeat(1_000_000));
+    assert_eq!(int_reads(&text).len(), 1_000_002);
+    assert_eq!(int_value(text.as_bytes(), true), -7);
+    let c = CString::new(text).unwrap();
+    // SAFETY: a valid C string and count.
+    unsafe {
+        assert_eq!(rs::obs_effect_param_int_value(c.as_ptr(), false), 7);
+        let mut count = 0;
+        assert!(rs::obs_effect_param_array_count(
+            c.as_ptr(),
+            1_000_001,
+            &raw mut count
+        ));
+        assert_eq!(count, 7);
+    }
 }
 
 proptest! {
