@@ -2965,6 +2965,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_raw_audio_trim_steps": {
+      "sources": [
+        "test/cmocka/test_output_raw_audio_trim_steps.c",
+        "libobs/obs-output-raw-audio-trim.c.h",
+        "libobs/obs-output-raw-audio.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-raw-audio-trim.h",
+        "libobs/obs-output-raw-audio.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_output_reconnect_route": {
       "sources": [
         "test/cmocka/test_output_reconnect_route.c"
@@ -7431,6 +7453,12 @@
     },
     "test_output_raw_audio_steps": {
       "target": "test_output_raw_audio_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_raw_audio_trim_steps": {
+      "target": "test_output_raw_audio_trim_steps",
       "command": [
         "${target}"
       ]
