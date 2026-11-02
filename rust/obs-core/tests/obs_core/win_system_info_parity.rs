@@ -87,10 +87,17 @@ fn bytes(s: *const c_char) -> Vec<u8> {
 /// as bytes, or the sentinel when that side did not write them.
 type Answer = (u8, Option<Vec<u8>>, Option<Vec<u8>>);
 
-const SENTINEL: *const c_char = c"sentinel".as_ptr();
+/// What an out-pointer holds until a side writes it. A `static`, so it has
+/// one address: a `const` C string may be a different copy at each use
+/// (MSVC does not merge them), and the check below compares addresses.
+static SENTINEL_BYTES: [u8; 9] = *b"sentinel\0";
+
+fn sentinel() -> *const c_char {
+    SENTINEL_BYTES.as_ptr().cast()
+}
 
 fn read(written: *const c_char) -> Option<Vec<u8>> {
-    (written != SENTINEL).then(|| bytes(written))
+    (written != sentinel()).then(|| bytes(written))
 }
 
 /// One side's four gaming functions, each answer as a byte and the label and
@@ -104,8 +111,8 @@ struct Gaming {
 
 /// Runs one out-pointer call with sentinels in place.
 fn answer(call: impl FnOnce(*mut *const c_char, *mut *const c_char) -> u8) -> Answer {
-    let mut label = SENTINEL;
-    let mut text = SENTINEL;
+    let mut label = sentinel();
+    let mut text = sentinel();
     let r = call(&mut label, &mut text);
     (r, read(label), read(text))
 }
@@ -353,8 +360,8 @@ fn parity_every_label() {
 
 #[test]
 fn shim_null_outputs() {
-    let mut label = SENTINEL;
-    let mut text = SENTINEL;
+    let mut label = sentinel();
+    let mut text = sentinel();
     for feature in 0..5 {
         // SAFETY: a null pointer, or one valid for a write.
         unsafe {
@@ -383,8 +390,8 @@ fn shim_null_outputs() {
                 ptr::null_mut()
             ));
         }
-        assert_eq!(label, SENTINEL);
-        assert_eq!(text, SENTINEL);
+        assert_eq!(label, sentinel());
+        assert_eq!(text, sentinel());
     }
 }
 
