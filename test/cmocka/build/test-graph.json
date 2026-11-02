@@ -4542,6 +4542,18 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_shader_number_defaults": {
+      "sources": [
+        "test/cmocka/test_shader_number_defaults.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_shader_param_names": {
       "sources": [
         "test/cmocka/test_shader_param_names.c"
@@ -4550,6 +4562,23 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_shader_param_values_steps": {
+      "sources": [
+        "libobs/graphics/shader-param-values.c.h",
+        "test/cmocka/test_shader_param_values_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/shader-param-values.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
     },
     "test_shader_sampler_convert": {
       "sources": [
@@ -7876,8 +7905,20 @@
         "${target}"
       ]
     },
+    "test_shader_number_defaults": {
+      "target": "test_shader_number_defaults",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_shader_param_names": {
       "target": "test_shader_param_names",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_shader_param_values_steps": {
+      "target": "test_shader_param_values_steps",
       "command": [
         "${target}"
       ]
