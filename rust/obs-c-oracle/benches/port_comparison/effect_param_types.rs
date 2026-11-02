@@ -5,20 +5,24 @@
 //! side runs the parameters of a typical effect file (matrices, vectors,
 //! scalars, a string, a bool and textures, with their defaults) through the
 //! decisions as `effect-parser.c` asks them, and folds the answers into
-//! a checksum both must match. Nothing is allocated in the loop.
+//! a checksum both must match. The number reads
+//! (`libobs/graphics/effect-param-numbers.c.h`) run the int values and
+//! array counts of the same file, each token's text running on into the
+//! source as the parser passes it. Nothing is allocated in the loop.
 
 use super::pair;
 
 use criterion::Criterion;
 use obs_c_oracle::effect_param_types::{
-    oracle_obs_effect_param_cols, oracle_obs_effect_param_cols_bad,
-    oracle_obs_effect_param_has_cols, oracle_obs_effect_param_route,
+    oracle_obs_effect_param_array_count, oracle_obs_effect_param_cols, oracle_obs_effect_param_cols_bad,
+    oracle_obs_effect_param_has_cols, oracle_obs_effect_param_int_value,
+    oracle_obs_effect_param_route,
     oracle_obs_effect_param_rows, oracle_obs_effect_param_rows_bad,
     oracle_obs_effect_param_type,
 };
 use obs_graphics::ffi::effect_param_types::{
-    obs_effect_param_cols, obs_effect_param_cols_bad, obs_effect_param_has_cols,
-    obs_effect_param_route, obs_effect_param_rows, obs_effect_param_rows_bad,
+    obs_effect_param_array_count, obs_effect_param_cols, obs_effect_param_cols_bad, obs_effect_param_has_cols,
+    obs_effect_param_int_value, obs_effect_param_route, obs_effect_param_rows, obs_effect_param_rows_bad,
     obs_effect_param_type,
 };
 use std::ffi::CStr;
@@ -111,6 +115,59 @@ fn c_effect() -> u64 {
     }
 }
 
+/// The int values of an effect file, each token's text running on into
+/// the source, and whether a `-` token came first.
+const INTS: &[(&CStr, bool)] = &[
+    (c"1, -3);\nuniform int4 mask = {255, 0, 0, 255};", false),
+    (c"3);\nuniform int4 mask = {255, 0, 0, 255};", true),
+    (c"255, 0, 0, 255};", false),
+    (c"0, 0, 255};", false),
+    (c"0, 255};", false),
+    (c"255};", false),
+    (c"16;\nuniform bool flip = false;", false),
+    (c"1000;\n", true),
+];
+
+/// The array counts of the same file: the token's text and length.
+const COUNTS: &[(&CStr, usize)] = &[(c"4];\nuniform int2 c", 1), (c"16];\n", 2)];
+
+macro_rules! numbers {
+    ($int:expr, $count:expr) => {{
+        let mut acc = 0;
+        for &(text, negative) in INTS {
+            acc = fold(acc, $int(black_box(text).as_ptr(), black_box(negative)));
+        }
+        for &(text, len) in COUNTS {
+            let mut count = 0;
+            let valid = $count(black_box(text).as_ptr(), black_box(len), &raw mut count);
+            acc = fold(fold(acc, valid as i32), count);
+        }
+        acc
+    }};
+}
+
+fn rust_numbers() -> u64 {
+    // SAFETY: every text is a valid NUL-terminated string, and every count
+    // a valid int.
+    unsafe { numbers!(obs_effect_param_int_value, obs_effect_param_array_count) }
+}
+
+fn c_numbers() -> u64 {
+    // SAFETY: as for rust_numbers().
+    unsafe {
+        numbers!(
+            oracle_obs_effect_param_int_value,
+            oracle_obs_effect_param_array_count
+        )
+    }
+}
+
 pub fn benchmarks(criterion: &mut Criterion) {
     pair(criterion, "effect_param_types/effect/12_params", rust_effect, c_effect);
+    pair(
+        criterion,
+        "effect_param_types/numbers/10_values",
+        rust_numbers,
+        c_numbers,
+    );
 }

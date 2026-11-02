@@ -1,6 +1,7 @@
 //! C ABI for `libobs/graphics/effect-param-types.c.h`, the parameter type
-//! decisions of the effect parser, declared in
-//! `libobs/graphics/effect-param-types.h` without `EXPORT`.
+//! decisions of the effect parser, and `effect-param-numbers.c.h`, its
+//! number reads, declared in `libobs/graphics/effect-param-types.h` without
+//! `EXPORT`.
 //!
 //! `effect-parser.c` (still C) calls these where it made each decision:
 //! `ep_compile_annotations()` and `ep_compile_param()` ask
@@ -9,13 +10,24 @@
 //! asks [`obs_effect_param_rows_bad`] (then adds the row error),
 //! [`obs_effect_param_rows`], [`obs_effect_param_has_cols`],
 //! [`obs_effect_param_cols_bad`] (then adds the column error) and
-//! [`obs_effect_param_cols`], each where it read that byte. It keeps every
-//! token call, every `cf_adderror()` and the value parsers. Only a C string,
-//! `bool`s and `int`s cross; the route is a C `int`. The shims take no lock,
-//! call nothing in libobs and stay hidden (`rust-hidden.txt`).
+//! [`obs_effect_param_cols`], each where it read that byte;
+//! `ep_parse_param_assign_intfloat()` asks [`obs_effect_param_int_value`]
+//! and `ep_parse_param_array()` [`obs_effect_param_array_count`]. It keeps
+//! every token call, every `cf_adderror()` and the float values. Only a C
+//! string, a length, `bool`s, `int`s and an `int` out-pointer cross; the
+//! route is a C `int`. The shims take no lock, call nothing in libobs and
+//! stay hidden (`rust-hidden.d/obs-graphics-effect_param_types.txt`).
 //!
-//! No intentional difference from C. A null name, which `effect-parser.c`
-//! never passes (the C would call `strcmp(NULL)`), reads as `""`.
+//! The number token's text runs on into the effect source: the number shims
+//! hand the core one byte at a time, which it reads once each in the C's
+//! order (`valid_int_str()` first for a count, then `strtol()`), so they
+//! read no byte the C would not.
+//!
+//! One intentional difference (#3464): the int value and the array count
+//! saturate to `int` past its range, where the C depends on the width of
+//! `long`. A null name, which `effect-parser.c` never passes (the C would
+//! call `strcmp(NULL)`), reads as `""`, and a null number text as `""` and
+//! false.
 
 use core::ffi::{CStr, c_char, c_int};
 
@@ -114,4 +126,63 @@ pub unsafe extern "C" fn obs_effect_param_cols(
 ) -> c_int {
     // SAFETY: forwarded from the caller.
     core_types::cols(unsafe { name(type_) }, is_float, count)
+}
+
+/// Byte `i` of `str`, for the core's one-pass reads.
+///
+/// # Safety
+///
+/// `str` is a valid NUL-terminated string, and no byte before `i` is NUL
+/// (the core asks a byte only after reading every one before it).
+unsafe fn at(str: *const c_char, i: usize) -> u8 {
+    // SAFETY: from the caller; the string runs at least to byte `i`.
+    unsafe { *str.add(i) }.cast_unsigned()
+}
+
+/// `int obs_effect_param_int_value(const char *str, bool negative)`.
+///
+/// Intentional difference (#3464): saturated to `int` on every platform.
+///
+/// # Safety
+///
+/// `str` must be null or a valid NUL-terminated string; null reads as `""`
+/// (the C would pass it to `strtol()`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_int_value(str: *const c_char, negative: bool) -> c_int {
+    if str.is_null() {
+        return core_types::int_value(b"", negative);
+    }
+    // SAFETY: forwarded from the caller; the core reads in order and stops
+    // at a NUL.
+    core_types::int_value_by(|i| unsafe { at(str, i) }, negative)
+}
+
+/// `bool obs_effect_param_array_count(const char *str, size_t len, int
+/// *count)`: `*count` is written only when it returns true.
+///
+/// Intentional difference (#3464): the count is saturated to `int` on every
+/// platform.
+///
+/// # Safety
+///
+/// `str` must be null or a valid NUL-terminated string, and `count` valid
+/// for a write when `str` passes; null `str` returns false, as
+/// `valid_int_str(NULL, len)` does.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_effect_param_array_count(
+    str: *const c_char,
+    len: usize,
+    count: *mut c_int,
+) -> bool {
+    if str.is_null() {
+        return false;
+    }
+    // SAFETY: forwarded from the caller; the core reads in order and stops
+    // at a NUL.
+    let Some(n) = core_types::array_count_by(|i| unsafe { at(str, i) }, len) else {
+        return false;
+    };
+    // SAFETY: the caller passes a valid `count` for a valid count.
+    unsafe { count.write(n) };
+    true
 }

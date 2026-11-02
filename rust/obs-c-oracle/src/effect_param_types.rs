@@ -2,7 +2,10 @@
 //! (oracle/effect_param_types.c): the parameter type decisions of the
 //! effect parser, renamed, and the header's enums with the sizes and
 //! alignments of the types that cross, through
-//! `oracle_effect_param_types_layout`.
+//! `oracle_effect_param_types_layout`; and of
+//! `libobs/graphics/effect-param-numbers.c.h`
+//! (oracle/effect_param_numbers.c): its number reads, renamed, with the C
+//! `lexer.c` and the C library's `strtol`.
 
 use std::ffi::{c_char, c_int};
 
@@ -38,4 +41,12 @@ unsafe extern "C" {
         count: c_int,
     ) -> c_int;
     pub fn oracle_effect_param_types_layout(which: usize) -> usize;
+    pub fn oracle_obs_effect_param_int_value(str: *const c_char, negative: bool) -> c_int;
+    pub fn oracle_obs_effect_param_array_count(
+        str: *const c_char,
+        len: usize,
+        count: *mut c_int,
+    ) -> bool;
+    /// `sizeof(long)` in the oracle's C.
+    pub fn oracle_effect_param_numbers_long_size() -> usize;
 }

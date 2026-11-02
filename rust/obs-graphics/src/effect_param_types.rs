@@ -1,5 +1,6 @@
 //! Safe core of `libobs/graphics/effect-param-types.c.h`: the parameter
-//! type decisions of the effect parser (`effect-parser.c`), on a type name.
+//! type decisions of the effect parser (`effect-parser.c`), on a type name;
+//! and of `libobs/graphics/effect-param-numbers.c.h`: its number reads.
 //!
 //! - [`param_type`] (`get_effect_param_type`, for `ep_compile_annotations`
 //!   and `ep_compile_param`): the shader parameter type of a type name. It
@@ -12,11 +13,18 @@
 //!   read its byte: [`rows_bad`] (`effect-parser.c` then adds the row error),
 //!   [`rows`], the value count so far, [`has_cols`], then [`cols_bad`] (it
 //!   adds the column error) and [`cols`], the count times the column digit.
+//! - [`int_value`] (`ep_parse_param_assign_intfloat`): an `int` value, and
+//!   [`array_count`] (`ep_parse_param_array`): the count of `name[count]`,
+//!   on the number token's text, which runs on into the effect source as
+//!   `strtol` reads it. [`int_value_by`] and [`array_count_by`] read it one
+//!   byte at a time, in one pass and in the C's order, so the shims read no
+//!   byte the C would not.
 //!
 //! Names compare as bytes, case-sensitively, as `strcmp` and `astrcmp_n`
 //! do. `effect-parser.c` keeps every token call, every `cf_adderror()`, the
-//! value parsers, the brace and constructor handling, the loop over the
-//! values and the compile. Nothing here keeps state or calls libobs.
+//! token type tests, the float values, the push of each value, the brace
+//! and constructor handling, the loop over the values and the compile.
+//! Nothing here keeps state or calls libobs.
 //!
 //! Characterized, not endorsed (`test_effect_param_types_steps`), and kept:
 //! any name starting with `texture` is a texture; `strings` takes the string
@@ -26,7 +34,17 @@
 //! [`c_char`], so a non-ASCII byte counts as the C does on each target:
 //! negative where `char` is signed (x86-64, MSVC), not on arm64 Linux.
 //!
-//! No intentional difference from the C.
+//! Characterized, not endorsed (`test_effect_param_numbers_steps`), and
+//! kept: a float or hex token reads as its leading digits (`1.5` is 1,
+//! `0x10` is 0), and a count checks only the token's length
+//! (`valid_int_str`) while `strtol` reads every digit after it.
+//!
+//! One intentional difference (#3464), in the number reads: past `INT_MAX`
+//! the C depends on the width of `long` (`3000000000` reads as -1294967296
+//! with a 64-bit `long`, `-2147483648` as -2147483647 with a 32-bit one);
+//! [`int_value`] and [`array_count`] read the digits exactly, apply the
+//! sign and saturate to `i32` on every platform. The type decisions have no
+//! intentional difference.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -142,4 +160,132 @@ fn is_dim(b: u8) -> bool {
 /// `b - '0'` with `b` a C `char`: signed or not as on the target.
 fn digit(b: u8) -> i32 {
     i32::from(b as c_char).wrapping_sub(i32::from(b'0'))
+}
+
+/// `obs_effect_param_int_value` (`ep_parse_param_assign_intfloat`): an `int`
+/// default value. `text` is the number token's text as a C string (it ends
+/// at a NUL or at the end of the slice), read on past the token as
+/// `strtol(str, NULL, 10)` reads it, to the first byte that is not a digit;
+/// `negative` when a `-` token came before it. See [`int_value_by`].
+#[must_use]
+pub fn int_value(text: &[u8], negative: bool) -> i32 {
+    int_value_by(|i| byte(text, i), negative)
+}
+
+/// [`int_value`] on the bytes `at(i)` gives, read once each and in order,
+/// as `strtol` reads them: C white space, one sign, the digits and the byte
+/// that stops them, nothing after it. `at(i)` is asked only once every byte
+/// before `i` was read and was not NUL, so the shim can read a C string
+/// that runs on into the effect source byte by byte.
+///
+/// Intentional difference (#3464): the digits are read exactly, the sign
+/// applied, and the value saturated to `i32`. The C saturates at `LONG_MAX`
+/// first and then casts to `int`, so past `INT_MAX` it gives another value
+/// on each width of `long`; inside `int` range the two agree.
+#[must_use]
+pub fn int_value_by(at: impl FnMut(usize) -> u8, negative: bool) -> i32 {
+    let value = strtol_by(at);
+    saturate(if negative {
+        value.saturating_neg()
+    } else {
+        value
+    })
+}
+
+/// `obs_effect_param_array_count` (`ep_parse_param_array`): the count of
+/// `name[count]`, or `None` when the token's first `len` bytes are not an
+/// int (`valid_int_str`, which reads the whole string when `len` is 0).
+/// `text` is as for [`int_value`]. See [`array_count_by`].
+#[must_use]
+pub fn array_count(text: &[u8], len: usize) -> Option<i32> {
+    array_count_by(|i| byte(text, i), len)
+}
+
+/// [`array_count`] on the bytes `at(i)` gives, as for [`int_value_by`]:
+/// `valid_int_str(str, len)` first, reading what the C loop reads and
+/// stopping where it stops, then, only when it passes, what `strtol` reads.
+/// The count is saturated to `i32` as in [`int_value_by`] (#3464).
+#[must_use]
+pub fn array_count_by(mut at: impl FnMut(usize) -> u8, len: usize) -> Option<i32> {
+    valid_int_by(&mut at, len).then(|| saturate(strtol_by(at)))
+}
+
+/// `valid_int_str(str, n)` of util/lexer.c, reading `at` in its order:
+/// the first byte, the whole string when `n` is 0 (its `strlen`), a sign,
+/// then each digit and the byte after it until a byte is not a digit, the
+/// string ends or `n` digits were checked.
+fn valid_int_by(at: &mut impl FnMut(usize) -> u8, n: usize) -> bool {
+    if at(0) == 0 {
+        return false;
+    }
+    let mut n = if n == 0 {
+        let mut len = 1_usize;
+        while at(len) != 0 {
+            len = len.saturating_add(1);
+        }
+        len
+    } else {
+        n
+    };
+    let mut i = usize::from(matches!(at(0), b'-' | b'+'));
+    loop {
+        if !at(i).is_ascii_digit() {
+            return false;
+        }
+        i = i.saturating_add(1);
+        // `*++str && --n`
+        if at(i) == 0 {
+            return true;
+        }
+        n = n.saturating_sub(1);
+        if n == 0 {
+            return true;
+        }
+    }
+}
+
+/// What `strtol(str, NULL, 10)` reads, exactly, in `i64`: 0 without digits.
+/// Past `i32` the magnitude stops growing, since it only saturates. One
+/// pass: each byte is asked once, the stopping byte last.
+fn strtol_by(mut at: impl FnMut(usize) -> u8) -> i64 {
+    let mut i = 0_usize;
+    let mut b = at(i);
+    while is_c_space(b) {
+        i = i.saturating_add(1);
+        b = at(i);
+    }
+    let minus = b == b'-';
+    if matches!(b, b'-' | b'+') {
+        i = i.saturating_add(1);
+        b = at(i);
+    }
+    let cap = i64::from(i32::MAX).saturating_add(2);
+    let mut magnitude = 0_i64;
+    while b.is_ascii_digit() {
+        magnitude = magnitude
+            .saturating_mul(10)
+            .saturating_add(i64::from(b.wrapping_sub(b'0')))
+            .min(cap);
+        i = i.saturating_add(1);
+        b = at(i);
+    }
+    if minus {
+        magnitude.saturating_neg()
+    } else {
+        magnitude
+    }
+}
+
+fn saturate(value: i64) -> i32 {
+    i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
+}
+
+/// Byte `i` of `text`, 0 past its end: a slice reads as a C string.
+fn byte(text: &[u8], i: usize) -> u8 {
+    text.get(i).copied().unwrap_or(0)
+}
+
+/// `isspace` in the "C" locale.
+fn is_c_space(b: u8) -> bool {
+    matches!(b, b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
 }

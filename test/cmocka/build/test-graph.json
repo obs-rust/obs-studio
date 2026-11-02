@@ -1090,6 +1090,50 @@
         "libobs/data"
       ]
     },
+    "test_effect_number_defaults": {
+      "sources": [
+        "test/cmocka/test_effect_number_defaults.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
+    "test_effect_param_numbers_steps": {
+      "sources": [
+        "libobs/graphics/effect-param-numbers.c.h",
+        "test/cmocka/test_effect_param_numbers_steps.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/effect-param-types.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_effect_param_types_steps": {
       "sources": [
         "libobs/graphics/effect-param-types.c.h",
@@ -6513,6 +6557,29 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_effect_number_defaults": {
+      "target": "test_effect_number_defaults",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_effect_param_numbers_steps": {
+      "target": "test_effect_param_numbers_steps",
+      "command": [
+        "${target}"
       ]
     },
     "test_effect_param_types_steps": {
