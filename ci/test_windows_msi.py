@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -104,6 +105,31 @@ class Signature(unittest.TestCase):
     def test_a_bad_signature_always_fails(self):
         for status in ("HashMismatch", "NotTrusted", "UnknownError"):
             self.assertIsNotNone(windows_msi.check_signature(status, required=False))
+
+
+class CommandLine(unittest.TestCase):
+    """The release runs `windows_msi.py build|roundtrip`; a script that never
+    dispatches them exits 0 having done nothing (release run 41509343216:
+    `expected one MSI, found 0`)."""
+
+    def invoke(self, *arguments: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, str(ROOT / "ci/windows_msi.py"), *arguments],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_no_subcommand_is_an_error(self):
+        self.assertNotEqual(self.invoke().returncode, 0)
+
+    def test_every_subcommand_parses(self):
+        for command in ("build", "sign", "roundtrip"):
+            result = self.invoke(command, "--help")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("usage", result.stdout)
+
+    def test_build_without_a_build_dir_is_an_error(self):
+        self.assertNotEqual(self.invoke("build").returncode, 0)
 
 
 class ReleaseWiring(unittest.TestCase):

@@ -257,3 +257,32 @@ def roundtrip(arguments: argparse.Namespace) -> int:
     if not failures:
         print(f"MSI install/uninstall round trip passed into {root}")
     return 1 if failures else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    build_parser = commands.add_parser("build", help="cpack -G WIX the BETA MSI")
+    build_parser.add_argument("--build-dir", required=True)
+    build_parser.add_argument("--config", default="RelWithDebInfo")
+    build_parser.set_defaults(func=build)
+
+    sign_parser = commands.add_parser("sign", help="signtool-sign the MSI")
+    sign_parser.add_argument("--msi", required=True)
+    sign_parser.set_defaults(func=sign)
+
+    roundtrip_parser = commands.add_parser(
+        "roundtrip", help="silent install, check, silent uninstall, check"
+    )
+    roundtrip_parser.add_argument("--msi", required=True)
+    roundtrip_parser.add_argument("--log-dir", default="msi-logs")
+    roundtrip_parser.add_argument("--require-signature", action="store_true")
+    roundtrip_parser.set_defaults(func=roundtrip)
+
+    arguments = parser.parse_args(argv)
+    return arguments.func(arguments)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
