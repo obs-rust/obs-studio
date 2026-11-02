@@ -131,6 +131,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    # The Azure federated credential trusts obs-rust environments (and main
+    # and tags), not refs/heads/master: the OIDC subject must carry
+    # environment:bouf, the environment upstream's sign-windows.yaml signs in.
+    environment: bouf
     name: Build ${{ matrix.os }} ${{ matrix.target }} 🧱
     needs: check
     # A certify dispatch skips `check` on purpose (it promotes an existing
@@ -291,6 +295,20 @@ jobs:
           codesignUser: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
           codesignPass: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
 
+      # The BETA MSI installer next to the portable ZIP (#3476): the same
+      # install tree through `cpack -G WIX`. It is built before the signing
+      # catalog so Azure Artifact Signing signs it with the ZIP's binaries.
+      - name: Build the BETA MSI 📦
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          uv run --no-project ci/windows_msi.py build --build-dir "build_$env:TARGET" --config RelWithDebInfo
+          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
+          $Src = @(Get-ChildItem "build_$env:TARGET/*.msi")
+          if ( $Src.Count -ne 1 ) { throw "expected one MSI, found $($Src.Count)" }
+
       # Azure Artifact Signing (same action and inputs as talos-hq/hermes-slim):
       # every PE file inside the portable ZIP (exe, dll, pyd, ...), plus any MSI
       # installer the build produced, is listed in one catalog, signed, and packed back
@@ -334,8 +352,17 @@ jobs:
         if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
         uses: azure/artifact-signing-action@208f8af4bf26cf2af8597424e3cb5582801523ba # v2.0.0
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          # Only the Azure CLI session from the OIDC login above; no client secret.
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
           endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}
@@ -343,14 +370,13 @@ jobs:
           file-digest: SHA256
           timestamp-digest: SHA256
 
-      # Strict on v* tags and stable releases: any unsigned shipped binary
-      # fails the run. Dailies and verify runs warn, so a run without the
-      # secrets (forks, before the org secrets exist) still builds.
+      # Fail closed: any shipped Windows binary (ZIP contents and the MSI)
+      # without a Valid Authenticode signature fails the run, including when
+      # the AZURE_* org secrets are missing (this workflow never runs on PRs).
       - name: Verify Windows signatures 🔎
         if: matrix.os == 'windows'
         shell: pwsh
         env:
-          STRICT: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.stable == true }}
           CATALOG: ${{ steps.wincatalog.outputs.catalog }}
         run: |
           $Bad = @()
@@ -362,9 +388,7 @@ jobs:
           Write-Output "signed: $($Total - $Bad.Count)/$Total"
           if ( $Bad.Count -gt 0 ) {
             $Bad | Select-Object -First 50 | ForEach-Object { Write-Output $_ }
-            $Msg = "$($Bad.Count) of $Total shipped Windows binaries are not validly signed"
-            if ( $env:STRICT -eq 'true' ) { throw $Msg }
-            Write-Output "::warning::$Msg"
+            throw "$($Bad.Count) of $Total shipped Windows binaries are not validly signed"
           }
 
       - name: Repack signed Windows package 📦
@@ -457,29 +481,13 @@ jobs:
               [[ "$v" == "$want"* ]] || { echo "::error::unexpected --version: $v (want $want...)"; exit 1; }
             fi
           fi
+          # The MSI was signed in place in build_<target> with the catalog.
+          if [ "$OS" = windows ]; then
+            msi=(build_${TARGET}/*.msi)
+            [ "${#msi[@]}" -eq 1 ] && [ -f "${msi[0]}" ] || { echo '::error::expected one signed MSI'; exit 1; }
+            cp "${msi[0]}" "pkg/OBS-Studio-Rust-$VERSION-windows-$TARGET.msi"
+          fi
           ls -la pkg
-
-      # The BETA MSI installer next to the portable ZIP (#3476): the same
-      # install tree through `cpack -G WIX`, signed when the signing secret
-      # exists; windows_msi below installs and uninstalls it.
-      - name: Build and sign the BETA MSI 📦
-        if: matrix.os == 'windows'
-        shell: pwsh
-        env:
-          TARGET: ${{ matrix.target }}
-          VERSION: ${{ needs.check.outputs.version }}
-          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
-          WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
-        run: |
-          uv run --no-project ci/windows_msi.py build --build-dir "build_$env:TARGET" --config RelWithDebInfo
-          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
-          $Src = @(Get-ChildItem "build_$env:TARGET/*.msi")
-          if ( $Src.Count -ne 1 ) { throw "expected one MSI, found $($Src.Count)" }
-          $Msi = "pkg/OBS-Studio-Rust-$env:VERSION-windows-$env:TARGET.msi"
-          Copy-Item -LiteralPath $Src[0].FullName -Destination $Msi
-          uv run --no-project ci/windows_msi.py sign --msi $Msi
-          if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
-          Get-ChildItem pkg
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -632,9 +640,8 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           VERSION: ${{ needs.check.outputs.version }}
-          # A Valid signature is required whenever the signing secret exists,
-          # and always for a stable release.
-          REQUIRE_SIGNATURE: ${{ inputs.stable || secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+          # The build job fails unless the MSI is validly signed (Azure).
+          REQUIRE_SIGNATURE: 'true'
         run: |
           $Msi = "windows-package/OBS-Studio-Rust-$env:VERSION-windows-$env:TARGET.msi"
           if ( -not ( Test-Path -LiteralPath $Msi ) ) { throw "$Msi is missing" }
