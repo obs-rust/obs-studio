@@ -7,6 +7,7 @@ mod delay;
 mod delay_parity;
 mod encoder_audio_start;
 mod encoder_audio_start_frames;
+mod encoder_audio_start_frames_parity;
 mod encoder_audio_start_parity;
 mod encoder_bind;
 mod encoder_bind_parity;
