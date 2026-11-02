@@ -1,0 +1,5 @@
+# obs-output-raw-audio-trim.c: prepare_audio() in obs-output.c calls them
+# inside libobs. Declared in obs-output-raw-audio-trim.h without EXPORT, so
+# the shims stay hidden the same way.
+obs_output_raw_audio_trim_duration
+obs_output_raw_audio_trim_frames

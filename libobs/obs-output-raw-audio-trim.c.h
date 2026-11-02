@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-raw-audio-trim.pch.h"
 
 uint64_t obs_output_raw_audio_trim_duration(uint32_t frames, size_t sample_rate)
 {

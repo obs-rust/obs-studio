@@ -38,13 +38,21 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
-#![allow(clippy::todo, unused_variables)]
 
+use crate::delay::NS_PER_SEC;
 #[cfg(doc)]
 use crate::raw_audio;
+use obs_util::util_uint64::mul_div64;
+
+/// `size_t` to `uint64_t`, as the C's conversion when it passes the rate to
+/// `util_mul_div64()`: lossless on every supported target.
+fn rate_u64(sample_rate: usize) -> u64 {
+    u64::try_from(sample_rate).unwrap_or(u64::MAX)
+}
 
 /// `prepare_audio()`, for a packet that starts before the video: its
 /// length in nanoseconds, `frames` at `sample_rate`, rounded down. 0 at a
@@ -52,12 +60,15 @@ use crate::raw_audio;
 /// packet.
 #[must_use]
 pub fn duration(frames: u32, sample_rate: usize) -> u64 {
-    todo!()
+    if sample_rate == 0 {
+        return 0;
+    }
+    mul_div64(u64::from(frames), NS_PER_SEC, rate_u64(sample_rate))
 }
 
 /// `prepare_audio()`, for a packet that is kept: the frames in `cut_ns`
 /// nanoseconds at `sample_rate`, rounded down.
 #[must_use]
 pub fn frames(cut_ns: u64, sample_rate: usize) -> u64 {
-    todo!()
+    mul_div64(cut_ns, rate_u64(sample_rate), NS_PER_SEC)
 }
