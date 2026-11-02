@@ -4,7 +4,10 @@
 //! the immediate-mode vertex counts and texture units ([`immediate`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
-//! its int values and array counts ([`effect_param_types`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
+//! its int values and array counts ([`effect_param_types`]), from
+//! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
+//! shader parser's array counts and int and float default values
+//! ([`shader_param_values`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
@@ -49,6 +52,7 @@ mod platform;
 pub mod quat;
 mod round;
 pub mod shader_param_names;
+pub mod shader_param_values;
 pub mod shader_sampler_convert;
 pub mod sprite;
 pub mod state_stacks;

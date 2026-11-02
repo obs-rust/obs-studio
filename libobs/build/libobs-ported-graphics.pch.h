@@ -43,6 +43,11 @@
 #include "util/platform.h"
 #include "graphics/shader-parser.h"
 
+/* graphics/shader-param-values.c */
+#include <stdlib.h>
+#include "graphics/shader-param-values.h"
+#include "util/lexer.h"
+
 /* graphics/texture-render.c */
 #include "graphics/graphics.h"
 

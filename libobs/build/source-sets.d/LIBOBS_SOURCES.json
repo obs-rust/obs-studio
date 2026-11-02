@@ -185,6 +185,7 @@
   "graphics/matrix4.h",
   "graphics/plane.h",
   "graphics/quat.h",
+  "graphics/shader-param-values.h",
   "graphics/shader-parser.h",
   "graphics/srgb.h",
   "graphics/vec2.h",
