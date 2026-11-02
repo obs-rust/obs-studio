@@ -101,8 +101,13 @@ removes quarantine from that app only (see
 
 ## Windows (x64, arm64)
 
-Unpack the `.zip` for your CPU, then start `bin\64bit\obs64.exe` from the
-unpacked folder. SmartScreen warns on the first start: choose **More info**,
+**Installer (BETA):** run `OBS-Studio-Rust-<version>-windows-x64.msi` (or
+`-arm64.msi`). It lets you pick the install folder, adds an
+**OBS-Studio-Rust BETA** Start menu entry, and is removed from **Settings >
+Apps** (Add/Remove Programs); uninstalling leaves your settings in place.
+
+**Portable:** unpack the `.zip` for your CPU, then start `bin\64bit\obs64.exe`
+from the unpacked folder. SmartScreen warns on the first start: choose **More info**,
 then **Run anyway** if you trust the download. The `-symbols.zip` files are
 only for decoding crash dumps. Its settings are in `%APPDATA%\obs-studio-rust`.
 
