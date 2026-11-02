@@ -446,6 +446,11 @@ not get a line.
 
 ### Platforms and packages
 
+- **Signed Windows releases.** Every executable, DLL and Python module in the
+  Windows release ZIP, and the MSI installer once it ships, is signed with the
+  project's Azure Artifact Signing certificate; stable releases fail rather
+  than publish an unsigned binary. *Windows*, pending merge.
+
 - **Logs and crash reports stay on your computer.** OBS-Studio-Rust no
   longer sends logs or crash reports to obsproject.com and has no log
   analyzer button. Help > Log Files > Upload and the crash prompt open the
