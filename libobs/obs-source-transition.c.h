@@ -698,6 +698,14 @@ struct transition_state {
 	obs_source_t *s[2];
 	bool transitioning_video;
 	bool transitioning_audio;
+
+	/* The clock, copied under the lock for an audio block (#3499): the mix
+	 * runs after the lock is dropped, and a write then must not split the
+	 * block between two positions. */
+	enum obs_transition_mode mode;
+	float manual_val;
+	uint64_t start_time;
+	uint64_t duration;
 };
 
 static inline void copy_transition_state(obs_source_t *transition, struct transition_state *state)
@@ -971,22 +979,21 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 	return transitioning;
 }
 
-static inline void mix_child(obs_source_t *transition, float *out, float *in, size_t count, size_t sample_rate,
-			     uint64_t ts, obs_transition_audio_mix_callback_t mix)
+static inline void mix_child(obs_source_t *transition, const struct transition_state *state, float *out, float *in,
+			     size_t count, size_t sample_rate, uint64_t ts, obs_transition_audio_mix_callback_t mix)
 {
 	void *context_data = transition->context.data;
 
 	for (size_t i = 0; i < count; i++) {
-		float t = obs_source_transition_sample_time((int)transition->transition_mode,
-							    transition->transition_manual_val,
-							    transition->transition_start_time,
-							    transition->transition_duration, ts, sample_rate, i);
+		float t = obs_source_transition_sample_time((int)state->mode, state->manual_val, state->start_time,
+							    state->duration, ts, sample_rate, i);
 		out[i] += in[i] * mix(context_data, t);
 	}
 }
 
-static void transition_process_audio(obs_source_t *transition, obs_source_t *child, struct obs_source_audio_mix *audio,
-				     uint64_t min_ts, uint32_t mixers, size_t channels, size_t sample_rate,
+static void transition_process_audio(obs_source_t *transition, const struct transition_state *state,
+				     obs_source_t *child, struct obs_source_audio_mix *audio, uint64_t min_ts,
+				     uint32_t mixers, size_t channels, size_t sample_rate,
 				     obs_transition_audio_mix_callback_t mix)
 {
 	bool valid = obs_source_transition_render_audio_valid(child != NULL, child && child->audio_pending,
@@ -1019,7 +1026,7 @@ static void transition_process_audio(obs_source_t *transition, obs_source_t *chi
 			float *out = output->data[ch];
 			float *in = input->data[ch];
 
-			mix_child(transition, out + pos, in, AUDIO_OUTPUT_FRAMES - pos, sample_rate, ts, mix);
+			mix_child(transition, state, out + pos, in, AUDIO_OUTPUT_FRAMES - pos, sample_rate, ts, mix);
 		}
 	}
 }
@@ -1088,6 +1095,10 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 			state.s[1] = obs_source_get_ref(sources[1]);
 			state.transitioning_video = transition->transitioning_video;
 			state.transitioning_audio = transition->transitioning_audio;
+			state.mode = transition->transition_mode;
+			state.manual_val = transition->transition_manual_val;
+			state.start_time = transition->transition_start_time;
+			state.duration = transition->transition_duration;
 		}
 	}
 
@@ -1097,11 +1108,11 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 		mix = obs_source_transition_render_audio_mix(state.transitioning_audio, state.s[0] != NULL,
 							     state.s[1] != NULL);
 		if (mix & OBS_SOURCE_TRANSITION_RENDER_MIX_A)
-			transition_process_audio(transition, state.s[0], audio, min_ts, mixers, channels, sample_rate,
-						 mix_a);
+			transition_process_audio(transition, &state, state.s[0], audio, min_ts, mixers, channels,
+						 sample_rate, mix_a);
 		if (mix & OBS_SOURCE_TRANSITION_RENDER_MIX_B)
-			transition_process_audio(transition, state.s[1], audio, min_ts, mixers, channels, sample_rate,
-						 mix_b);
+			transition_process_audio(transition, &state, state.s[1], audio, min_ts, mixers, channels,
+						 sample_rate, mix_b);
 		if (mix & OBS_SOURCE_TRANSITION_RENDER_COPY_A)
 			memcpy(audio->output[0].data[0], state.s[0]->audio_output_buf[0][0], TOTAL_AUDIO_SIZE);
 

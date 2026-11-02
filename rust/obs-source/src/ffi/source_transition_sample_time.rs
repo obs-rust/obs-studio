@@ -2,10 +2,11 @@
 //! each audio sample a transition mixes, declared in
 //! `libobs/obs-source-transition-sample-time.h` without `EXPORT`.
 //!
-//! `mix_child()` in `obs-source-transition.c.h` (still C) reads the
-//! transition's mode, manual value, start time and duration for every
-//! sample and passes them, with the block's timestamp, the sample rate and
-//! the sample index, as plain values to
+//! `mix_child()` in `obs-source-transition.c.h` (still C) passes the
+//! transition's mode, manual value, start time and duration, copied once
+//! per block under the transition's lock (#3499), for every sample, with
+//! the block's timestamp, the sample rate and the sample index, as plain
+//! values to
 //! [`obs_source_transition_sample_time`]. So `struct obs_source` is never
 //! mirrored, no source pointer crosses, and the shim takes no lock and
 //! calls nothing in libobs. It stays hidden (`rust-hidden.d`).

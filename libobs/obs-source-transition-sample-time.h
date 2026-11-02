@@ -29,10 +29,10 @@
  *
  * mode, manual_val, start_time and duration are the transition's
  * transition_mode, transition_manual_val, transition_start_time and
- * transition_duration, which mix_child() reads for every sample, where
- * get_sample_time() read them. obs-source-transition.c keeps those reads,
- * calc_time() for its other callers, the mix loops and the plugin's mix
- * callback.
+ * transition_duration, which obs_transition_audio_render() copies once per
+ * block under the transition's lock (#3499) and mix_child() passes for
+ * every sample. obs-source-transition.c keeps that copy, calc_time() for
+ * its other callers, the mix loops and the plugin's mix callback.
  *
  * Nothing here takes a lock, calls into libobs beyond the clock, or keeps
  * state.

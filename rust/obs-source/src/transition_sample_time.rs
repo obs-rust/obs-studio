@@ -11,10 +11,11 @@
 //!   block's timestamp plus that offset, the sum wrapping as the C's
 //!   `uint64_t` does.
 //!
-//! `obs-source-transition.c.h` keeps the four clock field reads (once per
-//! sample, inside `mix_child()`'s loop), `calc_time()` for its other
-//! callers, the mix and channel loops and the plugin's callback. Nothing
-//! here keeps state, takes a lock or calls libobs.
+//! `obs-source-transition.c.h` keeps the four clock field reads (copied
+//! once per block under the transition's lock, #3499, and passed for every
+//! sample by `mix_child()`), `calc_time()` for its other callers, the mix
+//! and channel loops and the plugin's callback. Nothing here keeps state,
+//! takes a lock or calls libobs.
 //!
 //! One intentional difference from the C: a sample rate of 0 gives every
 //! sample an offset of 0, so the whole block takes the block's own time.
