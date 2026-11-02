@@ -5,6 +5,7 @@
   "graphics/graphics-ffmpeg-host-wic-checks.h",
   "obs-win-crash-report.h",
   "obs-windows-keys.h",
+  "obs-windows-system-info.h",
   "util/threading-windows.h",
   "util/windows/CoTaskMemPtr.hpp",
   "util/windows/device-enum.h",
@@ -15,5 +16,6 @@
   "util/windows/window-match.h",
   "build/libobs.windows+.h.c",
   "build/libobs.windows-crash-handler+.h.c",
-  "build/libobs.graphics-ffmpeg-host-windows+.h.c"
+  "build/libobs.graphics-ffmpeg-host-windows+.h.c",
+  "build/libobs.windows-system-info+.h.c"
 ]
