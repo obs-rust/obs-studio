@@ -5,7 +5,8 @@
 //! `graphics.c` (still C) calls these where it made each decision, with the
 //! values it read there: `gs_draw_quadf()`, `gs_draw_sprite_subregion()`,
 //! `gs_texture_set_image()`, `gs_texture_create()`,
-//! `gs_cubetexture_create()` ([`gs_texture_is_pow2`] only) and
+//! `gs_cubetexture_create()` ([`gs_texture_mip_plan`] of a `size` by `size`
+//! texture) and
 //! `graphics_init_sprite_vbs()`. It keeps the device calls, the vertex
 //! buffers (it passes [`gs_sprite_build`] the points and texture coordinate
 //! arrays of a `gs_vb_data`), the matrix stack, the texture map, every
