@@ -6,8 +6,9 @@
 //! encoders, in its order and under its conditions, the group mutex, the
 //! weak references and releases, the deques, `do_encode()`, the pause checks,
 //! the group reconfigure, the active and initialized checks, the
-//! `fps_override` free and create, the logs and both `util_mul_div64()`
-//! conversions between nanoseconds and frames. It passes their results here.
+//! `fps_override` free and create and the logs, and calls the two
+//! conversions between nanoseconds and frames
+//! ([`crate::encoder_audio_start_frames`]). It passes their results here.
 //! These keep no state and call nothing in libobs.
 //!
 //! - `receive_video()`: [`group_ready`] (the group's start against the

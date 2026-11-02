@@ -24,13 +24,15 @@
 //! end-capture decisions, `libobs/obs-output-reconnect.c.h`, the output
 //! reconnect policy, `libobs/obs-output-pause.c.h`, the output pause plan,
 //! `libobs/obs-encoder-pause.c.h`, the encoder pause checks,
-//! `libobs/obs-output-caption.c.h`, the output caption plan, and
+//! `libobs/obs-output-caption.c.h`, the output caption plan,
 //! `libobs/obs-output-raw-audio-trim.c.h`, the raw output audio trim's
+//! sample-rate conversions, and
+//! `libobs/obs-encoder-audio-start-frames.c.h`, the encoder audio start's
 //! sample-rate conversions.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`] and [`raw_audio_trim`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`] and [`encoder_audio_start_frames`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -107,7 +109,9 @@
 //! which CEA-608 pairs from the queue go into the caption;
 //! [`raw_audio_trim`] gives the length at the sample rate of a raw output's
 //! audio packet that starts before its video (0 at a zero rate, so the
-//! packet is dropped) and turns the cut from its front into frames.
+//! packet is dropped) and turns the cut from its front into frames;
+//! [`encoder_audio_start_frames`] gives an encoder's audio packet length and
+//! its offset from the video's start in frames, at the sample rate.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 

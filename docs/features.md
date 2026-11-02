@@ -2665,6 +2665,12 @@ area.
   then while the Sources dock is torn down, when a source is destroyed
   at the same moment as its name label. *All*, 2026-11-01. Issue
   [#3450](https://github.com/obs-rust/obs-studio/issues/3450).
+- Starting a recording or stream with an audio encoder whose plugin
+  reports a sample rate of 0 no longer crashes OBS with a divide by zero
+  while its audio lines up with the video; that audio waits for the
+  video, or starts after it, without dropping any of its frames. *All*,
+  2026-11-02. Issue
+  [#3487](https://github.com/obs-rust/obs-studio/issues/3487).
 
 ### Security hardening
 
