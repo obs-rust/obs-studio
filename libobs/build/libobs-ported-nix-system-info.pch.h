@@ -6,7 +6,7 @@
 
 #pragma once
 
-/* obs-nix-system-info.c */
+/* obs-nix-system-info.c, obs-nix-log-rules.c */
 #include "libobs/obs-nix-system-info.h"
 
 #include <stdlib.h>

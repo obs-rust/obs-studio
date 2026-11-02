@@ -16,14 +16,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix-log-rules.pch.h"
+#include "libobs/build/libobs-ported-nix-system-info.pch.h"
 
 /* The distribution, Flatpak and desktop log rules, moved from
  * obs-nix-os-release.h and obs-nix.c: the os-release keys, value span,
  * quote cut and version fallback, the Flatpak extension name and the desktop
  * line form, on plain values. The callers keep the file reads, the dstr
  * copies, the list split, getenv() and the logs. Declared in
- * obs-nix-system-info.h without EXPORT. */
+ * obs-nix-system-info.h without EXPORT. Ported to rust/obs-core
+ * (nix_system_info): the hybrid libobs drops this file. */
 
 /* read_distribution_info() */
 const char *obs_nix_system_info_os_release_field(const char *line, enum obs_nix_os_release_key *key)

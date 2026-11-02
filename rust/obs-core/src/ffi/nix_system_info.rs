@@ -1,4 +1,5 @@
-//! C ABI for `libobs/obs-nix-system-info.c.h`, the system info parsing of
+//! C ABI for `libobs/obs-nix-system-info.c.h` and
+//! `libobs/obs-nix-log-rules.c.h`, the system info parsing and log rules of
 //! `obs-nix.c.h`'s startup log, declared in `libobs/obs-nix-system-info.h`
 //! without `EXPORT`.
 //!
@@ -8,10 +9,18 @@
 //! NUL as the C's `strncmp()`, `strchr()`, `strrchr()` and `strcspn()` do;
 //! a returned position is a pointer into that same string, so the C keeps
 //! its own buffer. These shims keep no state, take no lock, write nothing
-//! but `*len` and call nothing in libobs. All eleven stay hidden
+//! but `*len` and `*key` and call nothing in libobs. All sixteen stay hidden
 //! (`rust-hidden.d`).
 //!
-//! No intentional differences from C.
+//! The distribution, Flatpak and desktop log rules of
+//! `libobs/obs-nix-log-rules.c.h` are here too: `obs-nix-os-release.h` and
+//! `obs-nix.c.h` read the lines, split the extension list and read the
+//! environment, and pass the strings and flags in. The two enums cross as
+//! `c_int`, with the values `obs-nix-system-info.h` spells out.
+//!
+//! One intentional difference from C (#3473): a Flatpak extension entry
+//! with an empty name gives NULL, so it logs no line, where the C gives the
+//! commit hash or `"(null)"`.
 
 use core::ffi::{CStr, c_char, c_int};
 use core::ptr;
@@ -160,4 +169,122 @@ pub extern "C" fn obs_nix_system_info_free_mb(freeram: u64, bufferram: u64, mem_
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_nix_system_info_physmem_mb(mem: i64) -> i64 {
     info::physmem_mb(mem)
+}
+
+/// `enum obs_nix_os_release_key`'s values.
+fn os_release_key(key: info::OsReleaseKey) -> c_int {
+    match key {
+        info::OsReleaseKey::Name => 0,
+        info::OsReleaseKey::VersionId => 1,
+        info::OsReleaseKey::BuildId => 2,
+    }
+}
+
+/// `const char *obs_nix_system_info_os_release_field(const char *line, enum
+/// obs_nix_os_release_key *key)`: a pointer into `line` after its key, with
+/// the key in `*key`, or NULL with `*key` untouched.
+///
+/// # Safety
+///
+/// `line` must point to a NUL-terminated string, and `key` to a writable
+/// `enum obs_nix_os_release_key`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_nix_system_info_os_release_field(
+    line: *const c_char,
+    key: *mut c_int,
+) -> *const c_char {
+    // SAFETY: forwarded to the caller.
+    match info::os_release_field(unsafe { bytes(line) }) {
+        Some((which, start)) => {
+            // SAFETY: the caller guarantees `key` is writable.
+            unsafe { key.write(os_release_key(which)) };
+            // SAFETY: `start` is at most the string's length, so the pointer
+            // stays within it.
+            unsafe { line.add(start) }
+        }
+        None => ptr::null(),
+    }
+}
+
+/// `const char *obs_nix_system_info_os_release_value(const char *start,
+/// size_t *len)`: a pointer into `start`, one past an opening quote that is
+/// cut, with the value's length in `*len`.
+///
+/// # Safety
+///
+/// `start` must point to a NUL-terminated string, and `len` to a writable
+/// `size_t`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_nix_system_info_os_release_value(
+    start: *const c_char,
+    len: *mut usize,
+) -> *const c_char {
+    // SAFETY: forwarded to the caller.
+    let range = info::os_release_value(unsafe { bytes(start) });
+    // SAFETY: the caller guarantees `len` is writable.
+    unsafe { len.write(range.len()) };
+    // SAFETY: `range.start` is at most the string's length, so the pointer
+    // stays within it.
+    unsafe { start.add(range.start) }
+}
+
+/// `const char *obs_nix_system_info_version_fallback(bool has_build_id,
+/// const char *distro)`: NULL for the `BUILD_ID`, or a static `"rolling"` or
+/// `"Unknown"`. `distro` is read only when `has_build_id` is false.
+///
+/// # Safety
+///
+/// Without a `BUILD_ID`, `distro` must point to a NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_nix_system_info_version_fallback(
+    has_build_id: bool,
+    distro: *const c_char,
+) -> *const c_char {
+    // SAFETY: forwarded to the caller; read only without a BUILD_ID.
+    match info::version_fallback(has_build_id, || unsafe { bytes(distro) }) {
+        info::VersionFallback::BuildId => ptr::null(),
+        info::VersionFallback::Rolling => c"rolling".as_ptr(),
+        info::VersionFallback::Unknown => c"Unknown".as_ptr(),
+    }
+}
+
+/// `const char *obs_nix_system_info_extension_name(const char *ext, size_t
+/// *len)`: a pointer to the name, `ext` itself, with its length in `*len`,
+/// or NULL with `*len` untouched when the name is empty (the entry logs no
+/// line).
+///
+/// Intentional difference (#3473): the C gives the commit hash for an empty
+/// name, or `"(null)"` when every piece is empty.
+///
+/// # Safety
+///
+/// `ext` must point to a NUL-terminated string, and `len` to a writable
+/// `size_t`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_nix_system_info_extension_name(
+    ext: *const c_char,
+    len: *mut usize,
+) -> *const c_char {
+    // SAFETY: forwarded to the caller.
+    match info::extension_name(unsafe { bytes(ext) }) {
+        Some(range) => {
+            // SAFETY: the caller guarantees `len` is writable.
+            unsafe { len.write(range.len()) };
+            // SAFETY: `range.start` is at most the string's length, so the
+            // pointer stays within it.
+            unsafe { ext.add(range.start) }
+        }
+        None => ptr::null(),
+    }
+}
+
+/// `enum obs_nix_desktop_form obs_nix_system_info_desktop_form(bool
+/// has_current, bool has_session)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_nix_system_info_desktop_form(has_current: bool, has_session: bool) -> c_int {
+    match info::desktop_form(has_current, has_session) {
+        info::DesktopForm::None => 0,
+        info::DesktopForm::One => 1,
+        info::DesktopForm::Both => 2,
+    }
 }

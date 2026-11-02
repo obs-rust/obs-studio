@@ -1,5 +1,6 @@
-//! Safe core of `libobs/obs-nix-system-info.c.h`: the system info parsing
-//! of `libobs/obs-nix.c.h`'s startup log.
+//! Safe core of `libobs/obs-nix-system-info.c.h` and
+//! `libobs/obs-nix-log-rules.c.h`: the system info parsing and log rules of
+//! `libobs/obs-nix.c.h`'s startup log.
 //!
 //! - [`is_name`], [`is_physical_id`], [`is_speed`], [`value`],
 //!   [`physical_id`] and [`prints`]: `log_processor_info()`'s
@@ -7,7 +8,13 @@
 //! - [`is_dmesg_cpu`] and [`dmesg_speed`]: `log_processor_speed()`'s
 //!   `dmesg.boot` line rules (FreeBSD);
 //! - [`total_mb`], [`free_mb`] and [`physmem_mb`]: `log_memory_info()`'s
-//!   sizes, from `sysinfo()` and OpenBSD's `HW_PHYSMEM64`.
+//!   sizes, from `sysinfo()` and OpenBSD's `HW_PHYSMEM64`;
+//! - [`os_release_field`], [`os_release_value`] and [`version_fallback`]:
+//!   `read_distribution_info()`'s `/etc/os-release` key checks, value span
+//!   and quote cut, and the version when the file gave none;
+//! - [`extension_name`]: `log_flatpak_extensions()`'s name of a
+//!   `/.flatpak-info` extension entry;
+//! - [`desktop_form`]: `log_desktop_session_info()`'s desktop line form.
 //!
 //! A line or value is the bytes before its NUL, as `getline()` leaves it in
 //! C, and positions are offsets into it, so the C keeps its own buffer and
@@ -23,12 +30,19 @@
 //! Characterized, not endorsed (`test_nix_system_info_steps`), and kept:
 //! arm64 logs no CPU name or speed (its physical id stays -1, the starting
 //! "last id"); a `dmesg.boot` speed with no `-` runs to the end of the line;
-//! the memory products wrap in `u64` (only above 16 EiB).
+//! the memory products wrap in `u64` (only above 16 EiB). And
+//! (`test_nix_log_rules_steps`): an os-release value keeps a lone quote and
+//! cuts one matching pair, with no escapes or shell quoting; `NAME=Unknown`
+//! in the file reads as no name, so the version falls back to `Unknown`; an
+//! empty desktop name counts as set.
 //!
-//! No intentional differences from the C. [`physical_id`] is `atoi()` as
-//! glibc defines it (`strtol()`, saturated to `long`, then truncated to
-//! `int`); C leaves an out-of-range `atoi()` undefined, so that case has no
-//! portable C behaviour to match.
+//! One intentional difference from the C (#3473), in [`extension_name`]: a
+//! Flatpak extension entry with an empty name has no name, so it logs no
+//! line, where the C logs its commit hash or `(null)`.
+//!
+//! [`physical_id`] is `atoi()` as glibc defines it (`strtol()`, saturated
+//! to `long`, then truncated to `int`); C leaves an out-of-range `atoi()`
+//! undefined, so that case has no portable C behaviour to match.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -178,23 +192,40 @@ pub enum OsReleaseKey {
     BuildId,
 }
 
+/// The os-release keys, in the order the C compares them, each by its own
+/// length (`strncmp(line, "NAME=", 5)` and so on).
+const OS_RELEASE_KEYS: [(&[u8], OsReleaseKey); 3] = [
+    (b"NAME=", OsReleaseKey::Name),
+    (b"VERSION_ID=", OsReleaseKey::VersionId),
+    (b"BUILD_ID=", OsReleaseKey::BuildId),
+];
+
 /// Which key an os-release line holds and where its value starts: the byte
 /// after `NAME=`, `VERSION_ID=` or `BUILD_ID=`, compared by prefix from the
 /// line's first byte, or `None` for any other line.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn os_release_field(line: &[u8]) -> Option<(OsReleaseKey, usize)> {
-    let _ = line;
-    todo!()
+    OS_RELEASE_KEYS
+        .iter()
+        .find(|(key, _)| line.starts_with(key))
+        .map(|&(key, which)| (which, key.len()))
 }
 
 /// The text of an os-release value: its span up to the first CR or LF (or
 /// the end), with one matching pair of `"` or `'` around it cut when the
 /// span is at least two bytes long. No escapes are read and no shell
 /// quoting is parsed.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn os_release_value(start: &[u8]) -> Range<usize> {
-    let _ = start;
-    todo!()
+    let len = start
+        .iter()
+        .position(|&b| b == b'\r' || b == b'\n')
+        .unwrap_or(start.len());
+    let span = start.get(..len).unwrap_or_default();
+    match (span.first(), span.last()) {
+        (Some(&open @ (b'"' | b'\'')), Some(&close)) if len >= 2 && close == open => {
+            1..len.saturating_sub(1)
+        }
+        _ => 0..len,
+    }
 }
 
 /// The version `read_distribution_info()` logs when the file gave none.
@@ -211,22 +242,29 @@ pub enum VersionFallback {
 /// The version when the file gave none: the `BUILD_ID` if one was read,
 /// otherwise `rolling` for a distribution other than `Unknown`, or
 /// `Unknown`. `distro` is read only when no `BUILD_ID` was.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn version_fallback<'a>(
     has_build_id: bool,
     distro: impl FnOnce() -> &'a [u8],
 ) -> VersionFallback {
-    let _ = (has_build_id, distro);
-    todo!()
+    if has_build_id {
+        VersionFallback::BuildId
+    } else if distro() == b"Unknown" {
+        VersionFallback::Unknown
+    } else {
+        VersionFallback::Rolling
+    }
 }
 
 /// The name of a Flatpak extension entry, `name=commit`: the bytes before
 /// its first `=` (or the whole entry), or `None` when that is empty, so
 /// the entry logs no line.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+///
+/// Intentional difference (#3473): the C takes the first non-empty piece
+/// between the `=`s, so an entry with an empty name logs its commit hash
+/// (`=abc` logs `abc`), or `(null)` when every piece is empty (`=`).
 pub fn extension_name(ext: &[u8]) -> Option<Range<usize>> {
-    let _ = ext;
-    todo!()
+    let end = ext.iter().position(|&b| b == b'=').unwrap_or(ext.len());
+    (end != 0).then_some(0..end)
 }
 
 /// The form of `log_desktop_session_info()`'s desktop line.
@@ -243,8 +281,10 @@ pub enum DesktopForm {
 
 /// The form of the desktop line, from which of `XDG_CURRENT_DESKTOP` and
 /// `XDG_SESSION_DESKTOP` are set (an empty value counts as set).
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn desktop_form(has_current: bool, has_session: bool) -> DesktopForm {
-    let _ = (has_current, has_session);
-    todo!()
+    match (has_current, has_session) {
+        (true, true) => DesktopForm::Both,
+        (true, false) | (false, true) => DesktopForm::One,
+        (false, false) => DesktopForm::None,
+    }
 }

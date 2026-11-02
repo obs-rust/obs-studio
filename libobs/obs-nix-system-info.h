@@ -93,9 +93,9 @@ int64_t obs_nix_system_info_physmem_mb(int64_t mem);
 
 /* The os-release keys read_distribution_info() reads. */
 enum obs_nix_os_release_key {
-	OBS_NIX_OS_RELEASE_NAME,
-	OBS_NIX_OS_RELEASE_VERSION_ID,
-	OBS_NIX_OS_RELEASE_BUILD_ID,
+	OBS_NIX_OS_RELEASE_NAME = 0,
+	OBS_NIX_OS_RELEASE_VERSION_ID = 1,
+	OBS_NIX_OS_RELEASE_BUILD_ID = 2,
 };
 
 /* The value of an os-release line: the byte after "NAME=", "VERSION_ID=" or
@@ -116,9 +116,11 @@ const char *obs_nix_system_info_version_fallback(bool has_build_id, const char *
 
 /* log_flatpak_extensions() */
 
-/* The name of a Flatpak extension entry, "name=commit": the first non-empty
- * piece between its '='s, with its length in *len, or the text "(null)"
- * when every piece is empty. */
+/* The name of a Flatpak extension entry, "name=commit", with its length in
+ * *len, or NULL (and *len untouched) when the entry logs no line. The C
+ * gives the first non-empty piece between its '='s, or the text "(null)"
+ * when every piece is empty; the Rust port (rust/obs-core) gives the part
+ * before the first '=', and NULL when that is empty. */
 const char *obs_nix_system_info_extension_name(const char *ext, size_t *len);
 
 /* log_desktop_session_info() */
@@ -126,12 +128,12 @@ const char *obs_nix_system_info_extension_name(const char *ext, size_t *len);
 /* The forms of the desktop line. */
 enum obs_nix_desktop_form {
 	/* No line. */
-	OBS_NIX_DESKTOP_NONE,
+	OBS_NIX_DESKTOP_NONE = 0,
 	/* "Desktop Environment: %s", with whichever name is set. */
-	OBS_NIX_DESKTOP_ONE,
+	OBS_NIX_DESKTOP_ONE = 1,
 	/* "Desktop Environment: %s (%s)", XDG_CURRENT_DESKTOP then
 	 * XDG_SESSION_DESKTOP. */
-	OBS_NIX_DESKTOP_BOTH,
+	OBS_NIX_DESKTOP_BOTH = 2,
 };
 
 /* The form of the desktop line, from which of XDG_CURRENT_DESKTOP and
