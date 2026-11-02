@@ -64,11 +64,11 @@ class ReleaseVersionCMake(unittest.TestCase):
 
 
 class CrateVersion(unittest.TestCase):
-    def test_crate_is_the_1_0_release(self):
+    def test_daily_base_is_after_the_certified_1_0_0_release(self):
         cargo = text("rust/libobs-rust/Cargo.toml")
-        self.assertIn('\nversion = "1.0.0"\n', cargo)
+        self.assertIn('\nversion = "1.0.1"\n', cargo)
         lock = text("Cargo.lock")
-        self.assertIn('name = "libobs-rust"\nversion = "1.0.0"\n', lock)
+        self.assertIn('name = "libobs-rust"\nversion = "1.0.1"\n', lock)
 
 
 class Wiring(unittest.TestCase):
