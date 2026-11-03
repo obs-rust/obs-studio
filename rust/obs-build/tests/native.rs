@@ -796,23 +796,7 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     if linux && qt_test_available {
-        let dock = tests
-            .iter()
-            .find(|test| test["name"] == "test_dock_proportions")
-            .unwrap();
-        let properties = dock["properties"].as_array().unwrap();
-        assert!(
-            properties
-                .iter()
-                .any(|property| property["name"] == "TIMEOUT"
-                    && property["value"].as_f64() == Some(120.0))
-        );
-        assert!(
-            properties
-                .iter()
-                .any(|property| property["name"] == "RESOURCE_LOCK"
-                    && property["value"] == serde_json::json!(["timing"]))
-        );
+        assert_dock_proportions_properties(tests);
     }
     if linux {
         let undo = tests
@@ -839,6 +823,27 @@ fn canonical_remux_queue_runs_unchanged() {
             .iter()
             .any(|property| property["name"] == "TIMEOUT"
                 && property["value"].as_f64() == Some(60.0))
+    );
+}
+
+#[cfg(feature = "libobs-integration")]
+fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
+    let dock = tests
+        .iter()
+        .find(|test| test["name"] == "test_dock_proportions")
+        .unwrap();
+    let properties = dock["properties"].as_array().unwrap();
+    assert!(
+        properties
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(120.0))
+    );
+    assert!(
+        properties
+            .iter()
+            .any(|property| property["name"] == "RESOURCE_LOCK"
+                && property["value"] == serde_json::json!(["timing"]))
     );
 }
 
