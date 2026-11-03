@@ -5373,6 +5373,27 @@
         "libobs/data"
       ]
     },
+    "test_source_transition_size": {
+      "sources": [
+        "test/cmocka/test_source_transition_size.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_transition_slots": {
       "sources": [
         "test/cmocka/test_source_transition_slots.c"
@@ -8692,6 +8713,15 @@
     },
     "test_source_transition_settings": {
       "target": "test_source_transition_settings",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_source_transition_size": {
+      "target": "test_source_transition_size",
       "command": [
         "${target}"
       ],
