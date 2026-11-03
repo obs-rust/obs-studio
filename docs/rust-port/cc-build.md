@@ -909,6 +909,15 @@ a Qt Test development package enables the unchanged eight cases (exercised
 locally on Linux).
 This standalone compatibility check does not prove full frontend parity (#1390).
 
+The Linux-only Qt undo-stack test is also registered in the shared Qt graph.
+Its two unchanged cases compile the real undo-stack implementation with the
+existing stub headers and generated Qt metaobject. Both Cargo and CMake retain
+the original Linux/Widgets guard, stub include precedence, Qt runtime setup and
+120-second timeout. The Qt contract runs it on Linux and compares the evaluated
+CTest inventory; other hosts exclude it, preserving the original offscreen
+plugin limitation. This helper coverage does not establish full frontend parity
+(#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
