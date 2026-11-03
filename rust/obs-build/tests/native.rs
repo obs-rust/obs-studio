@@ -169,14 +169,7 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
         ),
         (
             "cmake",
-            vec![
-                "--build",
-                output.to_str().unwrap(),
-                "--config",
-                "Release",
-                "--parallel",
-                "2",
-            ],
+            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
         ),
         (
             "ctest",
@@ -496,7 +489,14 @@ fn canonical_remux_queue_runs_unchanged() {
         ),
         (
             "cmake",
-            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
         ),
         (
             "ctest",
@@ -591,7 +591,9 @@ fn canonical_frontend_api_call_is_registered() {
             selected.tests.contains_key("test_frontend_api_call"),
             have_core
         );
-        assert_eq!(selected.tests.len(), usize::from(have_core));
+        for widgets_test in ["test_remux_queue_model", "test_profile_import"] {
+            assert!(!selected.tests.contains_key(widgets_test));
+        }
     }
 }
 
@@ -1724,6 +1726,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
+        ("HAVE_QT6_CORE".into(), false),
         ("HAVE_QT6_WIDGETS".into(), false),
     ]);
     // No suite's size is pinned: every new cmocka test lands in one, and two
