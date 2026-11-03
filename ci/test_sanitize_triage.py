@@ -165,7 +165,7 @@ class SkipAndKnownTest(unittest.TestCase):
 
 # The goal is zero. Adding an entry raises this number, so the reviewer sees it;
 # see docs/knowledge/asan-pr-failure.md. Fix the test first.
-KNOWN_ENTRIES = 6
+KNOWN_ENTRIES = 5
 
 
 class KnownListTest(unittest.TestCase):

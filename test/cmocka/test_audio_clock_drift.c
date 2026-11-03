@@ -20,10 +20,9 @@
  * simulated device whose clock is off by a few hundred ppm, stamped like
  * linux-jack does, on a virtual clock so hours of audio take seconds. It
  * reads back what libobs buffered for the mixer and counts packets that were
- * not appended seamlessly, and clicks in the buffered waveform. The source
- * is kept out of the mix (and its stamps lie in the future of the real
- * clock), so the audio thread never consumes or resets its buffer behind the
- * test's back.
+ * not appended seamlessly, and clicks in the buffered waveform. The audio
+ * thread waits in a task while it runs, so it never consumes or resets the
+ * source's buffer behind the test's back.
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -186,6 +185,45 @@ static void drain(obs_source_t *source, struct result *r, size_t keep, bool exac
 	source->audio_ts += util_mul_div64(frames, SEC, RATE);
 }
 
+struct audio_thread_park {
+	os_event_t *parked;
+	os_event_t *resume;
+};
+
+static void park_audio_thread_task(void *param)
+{
+	struct audio_thread_park *park = param;
+
+	os_event_signal(park->parked);
+	os_event_wait(park->resume);
+}
+
+/* The audio thread discards from every source on its list, removed from the
+ * mix or not. The first stamp maps to the real clock, so a stall in the first
+ * packets leaves the buffer behind that clock, and a tick consumes it (#3576).
+ * Returns with the audio thread in park_audio_thread_task(). */
+static void park_audio_thread(struct audio_thread_park *park)
+{
+	assert_int_equal(os_event_init(&park->parked, OS_EVENT_TYPE_AUTO), 0);
+	assert_int_equal(os_event_init(&park->resume, OS_EVENT_TYPE_AUTO), 0);
+	obs_queue_task(OBS_TASK_AUDIO, park_audio_thread_task, park, false);
+	os_event_wait(park->parked);
+}
+
+static void audio_thread_task_done(void *param)
+{
+	UNUSED_PARAMETER(param);
+}
+
+static void resume_audio_thread(struct audio_thread_park *park)
+{
+	os_event_signal(park->resume);
+	/* Tasks run in order: this one returns after the park task has ended. */
+	obs_queue_task(OBS_TASK_AUDIO, audio_thread_task_done, NULL, true);
+	os_event_destroy(park->parked);
+	os_event_destroy(park->resume);
+}
+
 /* Feed @seconds of audio from a device @ppm off its nominal rate. */
 static struct result run_device(double ppm, uint64_t jitter_ns, unsigned seconds, bool compensate)
 {
@@ -200,6 +238,9 @@ static struct result run_device(double ppm, uint64_t jitter_ns, unsigned seconds
 	obs_source_set_async_compensation(source, compensate);
 	/* Keep the mixer away from it: the test consumes the buffer itself. */
 	obs_source_remove(source);
+
+	struct audio_thread_park park;
+	park_audio_thread(&park);
 
 	/* Stamps far from os_gettime_ns(), so libobs never mistakes them for
 	 * its own clock while the virtual clock runs ahead of the real one. */
@@ -266,6 +307,8 @@ static struct result run_device(double ppm, uint64_t jitter_ns, unsigned seconds
 	drain(source, &r, 0, ppm == 0.0);
 	r.resampled = source->resampler != NULL;
 	pthread_mutex_unlock(&source->audio_buf_mutex);
+
+	resume_audio_thread(&park);
 
 	obs_source_release(source);
 	return r;
