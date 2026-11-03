@@ -78,112 +78,6 @@ void obs_transition_free(obs_source_t *transition)
 	gs_leave_context();
 }
 
-void add_alignment(struct vec2 *v, uint32_t align, int cx, int cy);
-
-static inline uint32_t get_cx(obs_source_t *tr)
-{
-	return obs_source_transition_clock_size(tr->transition_cx, tr->transition_actual_cx);
-}
-
-static inline uint32_t get_cy(obs_source_t *tr)
-{
-	return obs_source_transition_clock_size(tr->transition_cy, tr->transition_actual_cy);
-}
-
-static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
-{
-	obs_source_t *child;
-	struct matrix4 mat;
-	struct vec2 pos;
-	struct vec2 scale = {.x = 1.0f, .y = 1.0f};
-	struct obs_source_transition_render_offset offset;
-	float tr_cx = (float)get_cx(tr);
-	float tr_cy = (float)get_cy(tr);
-	float source_cx;
-	float source_cy;
-	enum obs_transition_scale_type scale_type = tr->transition_scale_type;
-
-	lock_transition(tr);
-
-	child = tr->transition_sources[idx];
-	if (!child) {
-		unlock_transition(tr);
-		return;
-	}
-
-	source_cx = (float)obs_source_get_width(child);
-	source_cy = (float)obs_source_get_height(child);
-	unlock_transition(tr);
-
-	if (!obs_source_transition_clock_fit(tr_cx, tr_cy, source_cx, source_cy, (int)scale_type, &scale.x, &scale.y))
-		return;
-
-	offset = obs_source_transition_render_offset(tr_cx, tr_cy, source_cx, source_cy, scale.x, scale.y);
-
-	vec2_zero(&pos);
-	add_alignment(&pos, tr->transition_alignment, (int)offset.x, (int)offset.y);
-
-	matrix4_identity(&mat);
-	matrix4_scale3f(&mat, &mat, scale.x, scale.y, 1.0f);
-	matrix4_translate3f(&mat, &mat, pos.x, pos.y, 0.0f);
-	matrix4_copy(&tr->transition_matrices[idx], &mat);
-}
-
-static inline void recalculate_transition_matrices(obs_source_t *transition)
-{
-	recalculate_transition_matrix(transition, 0);
-	recalculate_transition_matrix(transition, 1);
-}
-
-static void recalculate_transition_size(obs_source_t *transition)
-{
-	uint32_t cx = 0, cy = 0;
-	obs_source_t *child;
-
-	lock_transition(transition);
-
-	for (size_t i = 0; i < 2; i++) {
-		child = transition->transition_sources[i];
-		if (child) {
-			uint32_t new_cx = obs_source_get_width(child);
-			uint32_t new_cy = obs_source_get_height(child);
-			cx = obs_source_transition_clock_fold(cx, new_cx);
-			cy = obs_source_transition_clock_fold(cy, new_cy);
-		}
-	}
-
-	unlock_transition(transition);
-
-	transition->transition_actual_cx = cx;
-	transition->transition_actual_cy = cy;
-}
-
-void obs_transition_tick(obs_source_t *transition, float t)
-{
-	recalculate_transition_size(transition);
-	recalculate_transition_matrices(transition);
-
-	switch (obs_source_transition_clock_manual((int)transition->transition_mode,
-						   transition->transition_manual_torque)) {
-	case OBS_SOURCE_TRANSITION_CLOCK_SNAP:
-		transition->transition_manual_val = transition->transition_manual_target;
-		break;
-	case OBS_SOURCE_TRANSITION_CLOCK_STEP:
-		transition->transition_manual_val =
-			calc_torquef(transition->transition_manual_val, transition->transition_manual_target,
-				     transition->transition_manual_torque, transition->transition_manual_clamp, t);
-		break;
-	case OBS_SOURCE_TRANSITION_CLOCK_HOLD:
-		break;
-	}
-
-	if (trylock_textures(transition) == 0) {
-		gs_texrender_reset(transition->transition_texrender[0]);
-		gs_texrender_reset(transition->transition_texrender[1]);
-		unlock_textures(transition);
-	}
-}
-
 /* A start's clock, decided from the state its destination admission replaces
  * (after any plugin re-entry) and written only once that admission succeeds. */
 struct transition_start_clock {
@@ -254,45 +148,12 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 
 	if (obs_source_transition_start_unsized(transition->transition_cx) ||
 	    obs_source_transition_start_unsized(transition->transition_cy)) {
-		recalculate_transition_size(transition);
-		recalculate_transition_matrices(transition);
+		transition_recalculate_size(transition);
+		transition_recalculate_matrices(transition);
 	}
 
 	obs_source_release(old_child);
 	return true;
-}
-
-obs_source_t *obs_transition_get_source(obs_source_t *transition, enum obs_transition_target target)
-{
-	size_t idx = (size_t)target;
-	obs_source_t *ret;
-
-	if (!transition_valid(transition, "obs_transition_get_source"))
-		return NULL;
-
-	lock_transition(transition);
-	ret = transition->transition_sources[idx];
-	ret = obs_source_get_ref(ret);
-	unlock_transition(transition);
-
-	return ret;
-}
-
-obs_source_t *obs_transition_get_active_source(obs_source_t *transition)
-{
-	obs_source_t *ret;
-	bool active;
-
-	if (!transition_valid(transition, "obs_transition_get_source"))
-		return NULL;
-
-	lock_transition(transition);
-	active = transition->transitioning_audio || transition->transitioning_video;
-	ret = transition->transition_sources[obs_source_transition_start_active_index(active)];
-	ret = obs_source_get_ref(ret);
-	unlock_transition(transition);
-
-	return ret;
 }
 
 static bool activate_transition(obs_source_t *transition, size_t idx, obs_source_t *child)
@@ -402,32 +263,10 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 
 	obs_source_dosignal(transition, "source_transition_start", "transition_start");
 
-	recalculate_transition_size(transition);
-	recalculate_transition_matrices(transition);
+	transition_recalculate_size(transition);
+	transition_recalculate_matrices(transition);
 
 	return true;
-}
-
-void obs_transition_set_manual_torque(obs_source_t *transition, float torque, float clamp)
-{
-	lock_transition(transition);
-	transition->transition_manual_torque = torque;
-	transition->transition_manual_clamp = clamp;
-	unlock_transition(transition);
-}
-
-void obs_transition_set_manual_time(obs_source_t *transition, float t)
-{
-	enum obs_transition_mode mode;
-
-	lock_transition(transition);
-	transition->transition_manual_target = t;
-	mode = transition->transition_mode;
-	unlock_transition(transition);
-
-	if (obs_source_transition_start_manual_reset((int)mode, t)) {
-		obs_transition_set(transition, transition->transition_sources[0]);
-	}
 }
 
 void obs_transition_set(obs_source_t *transition, obs_source_t *source)
@@ -519,66 +358,6 @@ static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_trans
 	return gs_texrender_get_texture(transition->transition_texrender[idx]);
 }
 
-void obs_transition_load(obs_source_t *tr, obs_data_t *data)
-{
-	const char *name = obs_data_get_string(data, "transition_source_a");
-	int64_t alignment = obs_data_get_int(data, "transition_alignment");
-	int64_t mode = obs_data_get_int(data, "transition_mode");
-	int64_t scale_type = obs_data_get_int(data, "transition_scale_type");
-	int64_t cx = obs_data_get_int(data, "transition_cx");
-	int64_t cy = obs_data_get_int(data, "transition_cy");
-	obs_source_t *source = NULL;
-	obs_source_t *old;
-	bool old_active;
-
-	if (obs_source_transition_load_looks_up(name != NULL)) {
-		source = obs_get_source_by_name(name);
-		/* The add only for a found source, as before. */
-		bool found = source != NULL;
-		bool add_ok = found && obs_source_add_active_child(tr, source);
-
-		switch (obs_source_transition_load_source(found, add_ok)) {
-		case OBS_SOURCE_TRANSITION_LOAD_REFUSE:
-			blog(LOG_WARNING,
-			     "Cannot set transition '%s' "
-			     "to source '%s' due to "
-			     "infinite recursion",
-			     tr->context.name, name);
-			obs_source_release(source);
-			source = NULL;
-			break;
-		case OBS_SOURCE_TRANSITION_LOAD_NOT_FOUND:
-			blog(LOG_WARNING,
-			     "Failed to find source '%s' for "
-			     "transition '%s'",
-			     name, tr->context.name);
-			break;
-		case OBS_SOURCE_TRANSITION_LOAD_KEEP:
-			break;
-		}
-	}
-
-	lock_transition(tr);
-	old = tr->transition_sources[0];
-	old_active = tr->transition_source_active[0];
-	tr->transition_sources[0] = source;
-	tr->transition_source_active[0] = true;
-	tr->transition_alignment = (uint32_t)alignment;
-	tr->transition_mode = (enum obs_transition_mode)mode;
-	tr->transition_scale_type = valid_scale_type(scale_type);
-	tr->transition_cx = (uint32_t)cx;
-	tr->transition_cy = (uint32_t)cy;
-	unlock_transition(tr);
-
-	/* Take back the source the slot held, as obs_transition_clear() does. */
-	if (obs_source_transition_start_child_active(old != NULL, old_active))
-		obs_source_remove_active_child(tr, old);
-	obs_source_release(old);
-
-	recalculate_transition_size(tr);
-	recalculate_transition_matrices(tr);
-}
-
 struct transition_state {
 	obs_source_t *s[2];
 	bool transitioning_video;
@@ -604,8 +383,8 @@ static inline void copy_transition_state(obs_source_t *transition, struct transi
 
 static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, enum gs_color_space space)
 {
-	uint32_t cx = get_cx(transition);
-	uint32_t cy = get_cy(transition);
+	uint32_t cx = transition_get_cx(transition);
+	uint32_t cy = transition_get_cy(transition);
 	struct vec4 blank;
 	if (!child)
 		return;
@@ -724,8 +503,8 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 			}
 		}
 
-		cx = get_cx(transition);
-		cy = get_cy(transition);
+		cx = transition_get_cx(transition);
+		cy = transition_get_cy(transition);
 		if (cx && cy) {
 			gs_blend_state_push();
 			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);

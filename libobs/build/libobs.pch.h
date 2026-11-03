@@ -234,6 +234,7 @@
 #include "obs-source-transition-sample-time.h"
 #include "obs-hotkey-seam.h"
 #include "obs-source-transition-seam.h"
+#include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"
 
 /* obs-source.c */
