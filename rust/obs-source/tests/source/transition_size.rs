@@ -918,3 +918,22 @@ proptest! {
         tr.assert_unlocked();
     }
 }
+
+#[test]
+fn matrix_room_past_int_saturates() {
+    // The intentional difference: a room past int is undefined in the C's
+    // (int) cast (x86-64 gives INT_MIN, arm64 saturates); here it saturates
+    // on every host.
+    let tr = Tr::with(sized(u32::MAX, 100));
+    tr.child(0, 1, 100, 100);
+    recalculate_matrix(&tr, 0);
+    assert_eq!(tr.events()[4], Ev::Align(ALIGN_CENTER, i32::MAX, 0));
+
+    let tr = Tr::with(Fields {
+        scale_type: 7,
+        ..sized(200, 100)
+    });
+    tr.child(0, 1, u32::MAX, 100);
+    recalculate_matrix(&tr, 0);
+    assert_eq!(tr.events()[4], Ev::Align(ALIGN_CENTER, i32::MIN, 0));
+}

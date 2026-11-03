@@ -34,6 +34,12 @@
 //! `transition_tex_mutex` around the render target resets of the tick. As in
 //! the C, the sizes, the scale type, the alignment, the matrices and the
 //! manual fields are read and written outside `transition_mutex`.
+//!
+//! Intentional difference from C: the two `(int)` casts of the room left
+//! for a child saturate when it is past `int`, which only a transition size
+//! of about 2^31 or more gives (a saved width of -1 is loaded as
+//! 2^32 - 1). The C is undefined there: x86-64 gives `INT_MIN`, arm64
+//! saturates, as here.
 
 #![deny(
     clippy::arithmetic_side_effects,
@@ -130,9 +136,10 @@ fn to_f32(value: u32) -> f32 {
     value as f32
 }
 
-/// The C's `(int)` of a `float`, toward zero. The C leaves a value outside
-/// `int` undefined; this saturates (NaN is 0). A child's room is within it
-/// for any size a source can have (below 2^31).
+/// The C's `(int)` of a `float`, toward zero. Outside `int` the C is
+/// undefined (x86-64 gives `INT_MIN`, arm64 saturates); this saturates on
+/// every host (NaN is 0), the module's one intentional difference. A
+/// child's room is within `int` for any transition size well below 2^31.
 #[expect(clippy::as_conversions, reason = "the C's (int) cast")]
 fn to_int(value: f32) -> i32 {
     value as i32

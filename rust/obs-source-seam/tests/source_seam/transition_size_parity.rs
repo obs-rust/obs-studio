@@ -23,10 +23,12 @@
 //! random sizes, scale types, alignments, modes, manual fields, tick times
 //! and sequences of calls with children resized between them.
 //!
-//! No intentional differences. The order of the lock calls is not visible
-//! here (the seam calls pthread itself); the Tier 1 tests pin it. Child
-//! sizes stay below 2^24, where the C's `(int)` of the room left is defined
-//! (it is undefined past `int`, where the Rust saturates).
+//! One intentional difference: the `(int)` of the room left for a child
+//! saturates past `int`, where the C is undefined (x86-64 gives `INT_MIN`,
+//! arm64 saturates); only a transition size of about 2^31 or more reaches
+//! it. Sizes here stay below 2^24, where both agree, and the Tier 1 tests
+//! pin the saturation. The order of the lock calls is not visible here (the
+//! seam calls pthread itself); the Tier 1 tests pin it.
 
 use std::ffi::{c_int, c_void};
 use std::ptr;
@@ -37,10 +39,11 @@ use obs_c_oracle::source_transition_size::{self as c, Matrix4, seam};
 use obs_source_seam::ffi::source_transition_size::{self as rs, Calls};
 use proptest::prelude::*;
 
-/// The oracle graph is process-wide.
+/// The oracle graph is process-wide; the load's parity test
+/// (`transition_restore_parity`), which uses it too, takes this lock.
 static GRAPH: Mutex<()> = Mutex::new(());
 
-fn graph_lock() -> MutexGuard<'static, ()> {
+pub(super) fn graph_lock() -> MutexGuard<'static, ()> {
     GRAPH.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
