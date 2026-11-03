@@ -1,7 +1,8 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
-    "graphics"
+    "graphics",
+    "shader-parser-blocks"
   ],
   "depends": []
 }
