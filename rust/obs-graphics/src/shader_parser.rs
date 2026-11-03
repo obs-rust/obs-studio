@@ -98,12 +98,29 @@ pub trait Tokens {
     fn pass_pair(&mut self) -> bool;
 }
 
+/// Owned bytes of one sampler state or value.
+///
+/// Keep the element type local to obs-graphics. A `Vec<Vec<u8>>` can reuse
+/// obs-util's generic allocation helpers in a release staticlib, pulling its
+/// allocator into executables that already import shared libobs's allocator
+/// (#3549). A distinct element type keeps these instantiations here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SamplerText(Vec<u8>);
+
+impl core::ops::Deref for SamplerText {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// `struct shader_sampler`: its name and its states and values, in order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Sampler {
     pub name: Vec<u8>,
-    pub states: Vec<Vec<u8>>,
-    pub values: Vec<Vec<u8>>,
+    pub states: Vec<SamplerText>,
+    pub values: Vec<SamplerText>,
 }
 
 /// A `struct shader_var` of a struct: `shader_var_init` (all zero) with its
@@ -275,8 +292,8 @@ fn parse_sampler_state_item(t: &mut impl Tokens, ss: &mut Sampler) -> i32 {
     if ret != PARSE_SUCCESS {
         return ret;
     }
-    ss.states.push(state);
-    ss.values.push(value);
+    ss.states.push(SamplerText(state));
+    ss.values.push(SamplerText(value));
     ret
 }
 
