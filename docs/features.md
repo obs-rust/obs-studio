@@ -162,6 +162,12 @@ not get a line.
 
 ### Video capture
 
+- **X11 screen capture keeps the graphics thread moving.** Screen capture
+  repeats the last completed picture while the X server prepares the next one,
+  instead of waiting for each image and cursor reply. Capture adds one graphics
+  tick of latency. *Linux*, pending merge. Issue
+  [#3204](https://github.com/obs-rust/obs-studio/issues/3204), PR
+  [#3517](https://github.com/obs-rust/obs-studio/pull/3517).
 - The Video Capture Device (PipeWire) list shows only video sources, not
   audio devices or other node kinds, and every row has a name: a camera whose
   node has no description is labelled from its nickname or node name instead of

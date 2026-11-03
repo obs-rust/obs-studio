@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 #include <xcb/shm.h>
+#include <xcb/xcbext.h>
 #include <xcb/xproto.h>
 #include <obs.h>
 
