@@ -1,8 +1,8 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
-    "graphics",
-    "effect-parser-blocks"
+    "effect-parser-blocks",
+    "graphics"
   ],
   "depends": []
 }
