@@ -7,7 +7,8 @@
 //! its int values and array counts ([`effect_param_types`]), from
 //! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
 //! shader parser's array counts and int and float default values
-//! ([`shader_param_values`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
+//! ([`shader_param_values`]), and `shader-parser-blocks.c.h`, its
+//! sampler-state and struct blocks ([`shader_parser`]), and from `libobs/graphics/graphics-ffmpeg.c.h`:
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
