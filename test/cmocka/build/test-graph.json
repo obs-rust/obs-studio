@@ -2373,6 +2373,36 @@
         "CRYPTO"
       ]
     },
+    "test_multitrack_encoder_override": {
+      "sources": [
+        "test/cmocka/test_multitrack_encoder_override.c",
+        "frontend/utility/multitrack-encoder-override.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    },
+    "test_multitrack_ladder": {
+      "sources": [
+        "test/cmocka/test_multitrack_ladder.c",
+        "frontend/utility/multitrack-ladder.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    },
     "test_nal": {
       "sources": [
         "test/cmocka/test_nal.c"
@@ -3741,6 +3771,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_record_disk_space": {
+      "sources": [
+        "test/cmocka/test_record_disk_space.c",
+        "frontend/utility/record-disk-space.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    },
     "test_register_partial_callbacks": {
       "sources": [
         "test/cmocka/test_register_partial_callbacks.c"
@@ -4184,6 +4229,21 @@
           "name": "-Wno-comma",
           "requires": "C_COMPILER_CLANG"
         }
+      ]
+    },
+    "test_saved_transition": {
+      "sources": [
+        "test/cmocka/test_saved_transition.c",
+        "frontend/utility/saved-transition.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_scene_audio_action_steps": {
@@ -5375,6 +5435,21 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_stream_service_select": {
+      "sources": [
+        "test/cmocka/test_stream_service_select.c",
+        "frontend/utility/stream-service-select.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
     },
     "test_studio_mode_exit": {
       "sources": [
@@ -7404,6 +7479,12 @@
         "${target}"
       ]
     },
+    "test_multitrack_encoder_override": {
+      "target": "test_multitrack_encoder_override"
+    },
+    "test_multitrack_ladder": {
+      "target": "test_multitrack_ladder"
+    },
     "test_nal": {
       "target": "test_nal"
     },
@@ -7906,6 +7987,9 @@
     "test_quick_write": {
       "target": "test_quick_write"
     },
+    "test_record_disk_space": {
+      "target": "test_record_disk_space"
+    },
     "test_register_partial_callbacks": {
       "target": "test_register_partial_callbacks",
       "command": [
@@ -7992,6 +8076,9 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_saved_transition": {
+      "target": "test_saved_transition"
     },
     "test_scene_audio_action_steps": {
       "target": "test_scene_audio_action_steps",
@@ -8521,6 +8608,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_stream_service_select": {
+      "target": "test_stream_service_select"
     },
     "test_studio_mode_exit": {
       "target": "test_studio_mode_exit",

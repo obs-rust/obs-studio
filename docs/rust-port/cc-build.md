@@ -856,9 +856,9 @@ build and both test modes on `ca331a93d`.
 The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
-in #1805. The graph currently contains 348 targets: 299 core, 39 graphics,
-six VLC, two Qt and two WHIP. This remains a subset of the repository's native tests;
-Cargo compilation of these tests currently runs on Linux.
+in #1805. The graph remains a subset of the repository's native tests; target and test
+selection depends on the evaluated platform and feature requirements. Cargo
+compilation of the full selected test graph currently runs on Linux.
 
 Targets may specify `"cpp_standard": "17"` or `"cpp_standard": "20"`.
 The typed native model passes the requested ISO mode to `cc::Build` only for
@@ -881,6 +881,14 @@ thread dependency. A focused contract builds and runs both original test sources
 through Cargo and the canonical CMake consumer. Their header inputs participate
 in native build invalidation. This closes two inventory gaps in #1390; it does
 not establish complete application or platform parity.
+
+The Qt-free frontend stream-service selection, saved-transition lookup, recording
+space decisions, multitrack ladder and encoder override tests also use the shared
+graph. `canonical_frontend_utility_tests_run_unchanged` compiles and runs all five
+original C tests through both the Cargo and CMake consumers and compares the
+evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
+alongside the existing remux contract; it proves these standalone helpers, not
+full frontend/application parity (#1390).
 
 ### Initial native test migration (historical)
 

@@ -215,6 +215,160 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
 }
 
 #[test]
+fn canonical_frontend_utility_tests_are_registered() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph =
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+            .unwrap();
+    for name in [
+        "test_stream_service_select",
+        "test_saved_transition",
+        "test_record_disk_space",
+        "test_multitrack_ladder",
+        "test_multitrack_encoder_override",
+    ] {
+        assert!(
+            graph.targets.contains_key(name),
+            "missing canonical target {name}"
+        );
+        assert_eq!(graph.tests[name].target, name);
+        assert_eq!(graph.targets[name].watch_inputs, ["frontend/utility"]);
+    }
+}
+
+/// #1390: run unchanged Qt-free frontend utility tests through both graph consumers.
+/// Like the unchanged remux contract, this needs the native cmocka package.
+#[test]
+#[cfg(feature = "libobs-integration")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
+fn canonical_frontend_utility_tests_run_unchanged() {
+    use obs_build::validation::graph::{Dependency, Graph};
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for name in [
+        "test_stream_service_select",
+        "test_saved_transition",
+        "test_record_disk_space",
+        "test_multitrack_ladder",
+        "test_multitrack_encoder_override",
+    ] {
+        for section in ["targets", "tests"] {
+            selected[section][name] = raw[section]
+                .get(name)
+                .unwrap_or_else(|| panic!("canonical graph omits {section}/{name}"))
+                .clone();
+        }
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("cargo-output"),
+        profile: Default::default(),
+    };
+    let interfaces = [(
+        "OBS::native-test-cmocka".into(),
+        Dependency::package(&build.target, "cmocka").unwrap(),
+    )]
+    .into();
+    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
+    assert_eq!(artifacts.len(), 5);
+    for (name, test) in &graph.tests {
+        let result = test
+            .command(&root, &build.output, &artifacts[&test.target])
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "Cargo {name}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace('\\', "/");
+    fs::write(
+        directory.path().join("CMakeLists.txt"),
+        format!(
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+        ),
+    )
+    .unwrap();
+    let output = directory.path().join("cmake-output");
+    for (program, arguments) in [
+        (
+            "cmake",
+            vec![
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+            ],
+        ),
+        (
+            "cmake",
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
+        ),
+        (
+            "ctest",
+            vec![
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
+        ),
+    ] {
+        let mut command = std::process::Command::new(program);
+        command.args(arguments);
+        let result = command.output().unwrap();
+        assert!(
+            result.status.success(),
+            "{program}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    let inventory = std::process::Command::new("ctest")
+        .args([
+            "--test-dir",
+            output.to_str().unwrap(),
+            "-C",
+            "Release",
+            "--show-only=json-v1",
+        ])
+        .output()
+        .unwrap();
+    assert!(inventory.status.success());
+    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+    let names: std::collections::BTreeSet<_> = inventory["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|test| test["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
+}
+
+#[test]
 fn native_test_graph_rejects_colliding_qt_ui_outputs() {
     let root = tempfile::tempdir().unwrap();
     let graph = serde_json::json!({"schema": 1, "targets": {
