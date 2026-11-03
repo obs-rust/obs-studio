@@ -81,8 +81,6 @@ struct capture {
 	size_t num_clicks;
 };
 
-static struct capture *current;
-
 static void *capture_thread(void *param)
 {
 	struct capture *c = param;
@@ -157,7 +155,6 @@ static void *capture_create(obs_data_t *settings, obs_source_t *source)
 	c->source = source;
 	pthread_mutex_init(&c->mutex, NULL);
 	os_event_init(&c->first_packet, OS_EVENT_TYPE_MANUAL);
-	current = c;
 
 	if (!obs_data_get_bool(settings, "deferred"))
 		start_capture(c);
@@ -170,8 +167,6 @@ static void capture_destroy(void *data)
 	stop_capture(c);
 	os_event_destroy(c->first_packet);
 	pthread_mutex_destroy(&c->mutex);
-	if (current == c)
-		current = NULL;
 	bfree(c);
 }
 
@@ -285,11 +280,12 @@ static obs_source_t *live;
 static struct capture *capture_of(obs_source_t *source)
 {
 	live = source;
-	if (!source || !current || current->source != source) {
+	struct capture *c = source ? obs_obj_get_data(source) : NULL;
+	if (!c || c->source != source) {
 		fprintf(stderr, "could not create the capture source\n");
 		fail();
 	}
-	return current;
+	return c;
 }
 
 static void put_on_program(obs_source_t *source)
@@ -307,8 +303,9 @@ static int case_teardown(void **state)
 	if (!live)
 		return 0;
 	obs_set_output_source(0, NULL);
-	if (current && current->source == live)
-		stop_capture(current);
+	struct capture *c = obs_obj_get_data(live);
+	if (c && c->source == live)
+		stop_capture(c);
 	obs_source_remove(live);
 	obs_source_release(live);
 	live = NULL;

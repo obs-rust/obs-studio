@@ -92,8 +92,6 @@ struct av {
 	size_t num_clicks;
 };
 
-static struct av *current;
-
 static void *av_thread(void *param)
 {
 	struct av *c = param;
@@ -196,7 +194,6 @@ static void *av_create(obs_data_t *settings, obs_source_t *source)
 	c->source = source;
 	c->clicks = obs_data_get_bool(settings, "clicks");
 	pthread_mutex_init(&c->mutex, NULL);
-	current = c;
 	return c;
 }
 
@@ -205,8 +202,6 @@ static void av_destroy(void *data)
 	struct av *c = data;
 	stop_av(c);
 	pthread_mutex_destroy(&c->mutex);
-	if (current == c)
-		current = NULL;
 	bfree(c);
 }
 
@@ -379,8 +374,9 @@ static int case_teardown(void **state)
 	if (!live)
 		return 0;
 	obs_set_output_source(0, NULL);
-	if (current && current->source == live)
-		stop_av(current);
+	struct av *c = obs_obj_get_data(live);
+	if (c && c->source == live)
+		stop_av(c);
 	if (live_filter) {
 		obs_source_filter_remove(live, live_filter);
 		obs_source_release(live_filter);
@@ -404,11 +400,11 @@ static struct av *start_delayed(bool clicks, int delay_ms)
 	obs_data_set_bool(settings, "clicks", clicks);
 	live = obs_source_create(SOURCE_ID, "delayed source", settings, NULL);
 	obs_data_release(settings);
-	if (!live || !current || current->source != live) {
+	struct av *c = live ? obs_obj_get_data(live) : NULL;
+	if (!c || c->source != live) {
 		fprintf(stderr, "could not create the source\n");
 		fail();
 	}
-	struct av *c = current;
 
 	if (delay_ms >= 0) {
 		obs_data_t *fs = obs_data_create();
