@@ -103,7 +103,8 @@ pub fn build_qt_tests(
 ) -> Result<Vec<Executable>, String> {
     let root = dunce::canonicalize(root).map_err(|error| error.to_string())?;
     let graph = load_suite(&root, "qt")?;
-    let facts = BTreeMap::from([
+    let mut facts = crate::platform::native_test_facts(&build.target, false, false);
+    facts.extend([
         ("HAVE_QT6_CORE".into(), interfaces.contains_key("Qt6::Core")),
         (
             "HAVE_QT6_WIDGETS".into(),

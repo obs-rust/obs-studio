@@ -5889,6 +5889,37 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_undo_stack_enable": {
+      "sources": [
+        "test/cmocka/test_undo_stack_enable.cpp",
+        "frontend/utility/undo_stack.cpp.hpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_WIDGETS"
+        ]
+      },
+      "cpp_standard": "17",
+      "qt": {
+        "moc": [
+          "frontend/utility/undo_stack.hpp"
+        ]
+      },
+      "includes_before": [
+        "test/cmocka/undo-stack-stubs"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "test/cmocka/undo-stack-stubs"
+      ]
+    },
     "test_utf8": {
       "sources": [
         "test/cmocka/test_utf8.c",
@@ -8817,6 +8848,12 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_undo_stack_enable": {
+      "target": "test_undo_stack_enable",
+      "suite": "qt",
+      "timeout_seconds": 120,
+      "qt_runtime": "Qt6::Core"
     },
     "test_utf8": {
       "target": "test_utf8"
