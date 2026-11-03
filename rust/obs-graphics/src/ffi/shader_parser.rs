@@ -93,7 +93,7 @@ unsafe extern "C" {
 }
 
 /// `sp->cfp` as the core's [`Tokens`]: `cur_token` itself.
-struct RawTokens(*mut cf_parser);
+pub(crate) struct RawTokens(pub(crate) *mut cf_parser);
 
 impl RawTokens {
     fn token(&self) -> &cf_token {
@@ -163,7 +163,7 @@ impl Tokens for RawTokens {
 }
 
 /// `bstrdup_n(str, n)`: a NUL-terminated `bmalloc` copy.
-fn dup(bytes: &[u8]) -> *mut c_char {
+pub(crate) fn dup(bytes: &[u8]) -> *mut c_char {
     // SAFETY: bmalloc never returns null (it aborts); the copy fits.
     unsafe {
         let p = bmalloc(bytes.len().saturating_add(1)).cast::<u8>();
@@ -180,7 +180,7 @@ fn dup(bytes: &[u8]) -> *mut c_char {
 /// # Safety
 ///
 /// `da` is a valid darray of `T` (or empty), allocated with `bmalloc`.
-unsafe fn push<T>(da: &mut darray, value: T) {
+pub(crate) unsafe fn push<T>(da: &mut darray, value: T) {
     let size = size_of::<T>();
     let new_size = da.num.saturating_add(1);
     if new_size > da.capacity {
@@ -212,7 +212,7 @@ unsafe fn push<T>(da: &mut darray, value: T) {
     da.num = new_size;
 }
 
-const fn empty_darray() -> darray {
+pub(crate) const fn empty_darray() -> darray {
     darray {
         array: ptr::null_mut(),
         num: 0,

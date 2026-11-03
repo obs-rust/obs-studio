@@ -34,18 +34,71 @@
 //! value on every path already (#3550, fixed in the C before this port).
 
 pub use crate::shader_parser::{BlockError, Sampler, SamplerText, Struct, StructVar, Tokens};
+use crate::shader_parser::{
+    PARSE_EOF, PARSE_SUCCESS, first_byte, next_name, next_token_should_be, next_valid_token,
+    peek_valid_token_is,
+};
 
 /// `ep_parse_struct`, from the `struct` token: the struct `ep_parse()`
 /// pushes into `ep->structs`, or `None` where the C frees it.
 pub fn parse_struct(t: &mut impl Tokens) -> Option<Struct> {
-    let _ = t;
-    todo!("ep_parse_struct")
+    crate::shader_parser::parse_struct(t)
+}
+
+/// `ep_parse_sampler_state_item`: one `state = value;`, pushed into `eps`
+/// only when it parsed with a value.
+fn parse_sampler_state_item(t: &mut impl Tokens, eps: &mut Sampler) -> i32 {
+    let state = match next_name(t, c"state name", Some(c";")) {
+        Ok(state) => state,
+        Err(code) => return code,
+    };
+    let ret = next_token_should_be(t, c"=", Some(c";"), None);
+    if ret != PARSE_SUCCESS {
+        return ret;
+    }
+
+    let mut value = Vec::new();
+    loop {
+        if !next_valid_token(t) {
+            return PARSE_EOF;
+        }
+        if first_byte(t) == b';' {
+            break;
+        }
+        // dstr_ncat: a token's text is never empty.
+        value.extend_from_slice(t.text());
+    }
+
+    if !value.is_empty() {
+        eps.states.push(SamplerText(state));
+        eps.values.push(SamplerText(value));
+    }
+    ret
 }
 
 /// `ep_parse_sampler_state`, from the `sampler_state` token: the sampler
 /// `ep_parse()` pushes into `ep->samplers`, or `None` where the C frees it
 /// (`goto error`).
 pub fn parse_sampler_state(t: &mut impl Tokens) -> Option<Sampler> {
-    let _ = t;
-    todo!("ep_parse_sampler_state")
+    let mut eps = Sampler {
+        name: next_name(t, c"name", Some(c";")).ok()?,
+        ..Sampler::default()
+    };
+    if next_token_should_be(t, c"{", Some(c";"), None) != PARSE_SUCCESS {
+        return None;
+    }
+
+    while !peek_valid_token_is(t, c"}")? {
+        if parse_sampler_state_item(t, &mut eps) == PARSE_EOF {
+            return None;
+        }
+    }
+
+    if next_token_should_be(t, c"}", Some(c";"), None) != PARSE_SUCCESS {
+        return None;
+    }
+    if next_token_should_be(t, c";", None, None) != PARSE_SUCCESS {
+        return None;
+    }
+    Some(eps)
 }
