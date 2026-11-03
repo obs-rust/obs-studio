@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition-settings.pch.h"
 
 #define lock_transition(transition) pthread_mutex_lock(&transition->transition_mutex);
 #define unlock_transition(transition) pthread_mutex_unlock(&transition->transition_mutex);

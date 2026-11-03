@@ -7,8 +7,9 @@
 //!   `transition_valid()`, which logs it for a NULL source;
 //! - [`Settings::INVALID`]: what the getters answer for a source that is not
 //!   a valid transition;
-//! - [`save`]: the six keys `obs_transition_save()` writes, in the C's order,
-//!   with their values.
+//! - [`save_each`]: the six keys `obs_transition_save()` writes, in the C's
+//!   order, each value asked of the caller ([`SaveReads`]) just before it is
+//!   written; [`save`] gives the same record for plain values.
 //!
 //! The C shims ([`crate::ffi::source_transition_settings`]) keep every read
 //! and write of the transition's fields through the transition seam
@@ -29,13 +30,31 @@
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
-    clippy::unreachable
+    clippy::unreachable,
+    clippy::todo
 )]
 
 use std::ffi::CStr;
 
 /// `OBS_TRANSITION_SCALE_MAX_ONLY` (`enum obs_transition_scale_type`).
 pub const SCALE_MAX_ONLY: i32 = 0;
+
+/// Whether the host's C makes `enum obs_transition_mode` and `enum
+/// obs_transition_scale_type` `unsigned int` (GCC and Clang, MinGW
+/// included) rather than `int` (MSVC and clang-cl): it decides how
+/// [`save_each`] widens a stored value with its top bit set.
+pub const ENUMS_ARE_UNSIGNED: bool = crate::platform::ENUMS_ARE_UNSIGNED;
+
+/// `(int64_t)` of an enum field holding `value`'s bits: zero-extended where
+/// the enum is `unsigned int`, sign-extended where it is `int`.
+#[must_use]
+pub fn enum_to_i64(value: i32) -> i64 {
+    if ENUMS_ARE_UNSIGNED {
+        i64::from(u32::from_ne_bytes(value.to_ne_bytes()))
+    } else {
+        i64::from(value)
+    }
+}
 
 /// The functions of the settings file that check their source with
 /// `transition_valid()`.
@@ -63,10 +82,18 @@ pub enum Func {
 /// NULL check logs. `GetSize` gives `"obs_transition_get_size"`, where the C
 /// passes `"obs_transition_set_size"` (intentional difference).
 #[must_use]
-#[expect(clippy::todo, reason = "RED: the port follows")]
-pub fn log_name(func: Func) -> &'static CStr {
-    let _ = func;
-    todo!()
+pub const fn log_name(func: Func) -> &'static CStr {
+    match func {
+        Func::SetScaleType => c"obs_transition_set_scale_type",
+        Func::GetScaleType => c"obs_transition_get_scale_type",
+        Func::SetAlignment => c"obs_transition_set_alignment",
+        Func::GetAlignment => c"obs_transition_get_alignment",
+        Func::SetSize => c"obs_transition_set_size",
+        // intentional difference: the C passes "obs_transition_set_size"
+        Func::GetSize => c"obs_transition_get_size",
+        Func::EnableFixed => c"obs_transition_enable_fixed",
+        Func::Fixed => c"obs_transition_fixed",
+    }
 }
 
 /// The values the getters read.
@@ -97,7 +124,37 @@ impl Settings {
     };
 }
 
-/// What `obs_transition_save()` reads under the transition's lock.
+/// The active child as `obs_transition_save()` finds it under the lock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Child<'a> {
+    /// An empty slot: saved as `""`.
+    Empty,
+    /// A child and its `context.name`.
+    Named(&'a CStr),
+    /// A child whose `context.name` is NULL: the C passes that NULL to
+    /// `obs_data_set_string()`.
+    Unnamed,
+}
+
+/// The reads of `obs_transition_save()`, each asked by [`save_each`] just
+/// before its value is written, as the C reads each field in its call.
+pub trait SaveReads<'a> {
+    /// The active child.
+    fn source_a(&mut self) -> Child<'a>;
+    /// `transition_alignment`.
+    fn alignment(&mut self) -> u32;
+    /// `transition_mode`, as its `int`.
+    fn mode(&mut self) -> i32;
+    /// `transition_scale_type`, as its `int`.
+    fn scale_type(&mut self) -> i32;
+    /// `transition_cx`.
+    fn cx(&mut self) -> u32;
+    /// `transition_cy`.
+    fn cy(&mut self) -> u32;
+}
+
+/// What `obs_transition_save()` reads under the transition's lock, as plain
+/// values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Saved<'a> {
     /// The name of the child in the active slot, `None` for an empty slot.
@@ -114,24 +171,78 @@ pub struct Saved<'a> {
     pub cy: u32,
 }
 
+impl<'a> SaveReads<'a> for Saved<'a> {
+    fn source_a(&mut self) -> Child<'a> {
+        self.source_a.map_or(Child::Empty, Child::Named)
+    }
+    fn alignment(&mut self) -> u32 {
+        self.alignment
+    }
+    fn mode(&mut self) -> i32 {
+        self.mode
+    }
+    fn scale_type(&mut self) -> i32 {
+        self.scale_type
+    }
+    fn cx(&mut self) -> u32 {
+        self.cx
+    }
+    fn cy(&mut self) -> u32 {
+        self.cy
+    }
+}
+
 /// One value `obs_transition_save()` writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Value<'a> {
     /// `obs_data_set_string()`.
     Str(&'a CStr),
+    /// `obs_data_set_string()` with a NULL value ([`Child::Unnamed`]).
+    Null,
     /// `obs_data_set_int()`.
     Int(i64),
 }
 
-/// The keys and values `obs_transition_save()` writes, in its order:
-/// `transition_source_a` (the child's name, `""` for an empty slot), then
-/// `transition_alignment`, `transition_mode`, `transition_scale_type`,
-/// `transition_cx` and `transition_cy` as integers (the `uint32_t` fields
-/// zero-extended, the enums sign-extended, as the C's conversions to
-/// `long long` do).
+/// `obs_transition_save()`'s writes, in its order, each value read from
+/// `reads` just before `write` gets it: `transition_source_a` (the child's
+/// name, `""` for an empty slot), then `transition_alignment`,
+/// `transition_mode`, `transition_scale_type`, `transition_cx` and
+/// `transition_cy` as integers (the `uint32_t` fields zero-extended, the
+/// enums by [`enum_to_i64`], as the C's `(int64_t)` casts do).
+pub fn save_each<'a>(
+    reads: &mut impl SaveReads<'a>,
+    mut write: impl FnMut(&'static CStr, Value<'a>),
+) {
+    write(
+        c"transition_source_a",
+        match reads.source_a() {
+            Child::Empty => Value::Str(c""),
+            Child::Named(name) => Value::Str(name),
+            Child::Unnamed => Value::Null,
+        },
+    );
+    write(
+        c"transition_alignment",
+        Value::Int(i64::from(reads.alignment())),
+    );
+    write(c"transition_mode", Value::Int(enum_to_i64(reads.mode())));
+    write(
+        c"transition_scale_type",
+        Value::Int(enum_to_i64(reads.scale_type())),
+    );
+    write(c"transition_cx", Value::Int(i64::from(reads.cx())));
+    write(c"transition_cy", Value::Int(i64::from(reads.cy())));
+}
+
+/// The keys and values [`save_each`] writes for `saved`, in its order.
 #[must_use]
-#[expect(clippy::todo, reason = "RED: the port follows")]
-pub fn save(saved: Saved<'_>) -> [(&'static CStr, Value<'_>); 6] {
-    let _ = saved;
-    todo!()
+pub fn save(mut saved: Saved<'_>) -> [(&'static CStr, Value<'_>); 6] {
+    let mut out = [(c"", Value::Int(0)); 6];
+    let mut slots = out.iter_mut();
+    save_each(&mut saved, |key, value| {
+        if let Some(slot) = slots.next() {
+            *slot = (key, value);
+        }
+    });
+    out
 }
