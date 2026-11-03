@@ -1,0 +1,4 @@
+# obs-source-transition-slots.c (obs-source-seam): obs_transition_enum_sources()
+# is declared in obs-internal.h without EXPORT; obs-source.c's tree walks call
+# it inside libobs.
+obs_transition_enum_sources

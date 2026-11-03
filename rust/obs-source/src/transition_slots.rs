@@ -147,19 +147,46 @@ pub trait Transition {
 /// video and audio transition; after the unlock, removes each child that
 /// was active from the active children and releases each slot's reference
 /// (an empty slot's `NULL` included, as the C does), slot A first.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn clear<T: Transition>(transition: Option<&T>) {
-    let _ = transition;
-    todo!()
+    if !T::valid(transition, CLEAR_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+    let mut s = [None; 2];
+    let mut active = [false; 2];
+
+    transition.lock();
+    for (i, (child, was_active)) in s.iter_mut().zip(active.iter_mut()).enumerate() {
+        *child = transition.source(i);
+        *was_active = transition.source_active(i);
+        transition.set_source(i, None);
+        transition.set_source_active(i, false);
+    }
+    transition.set_transitioning_video(false);
+    transition.set_transitioning_audio(false);
+    transition.unlock();
+
+    for (child, was_active) in s.into_iter().zip(active) {
+        if let (Some(c), true) = (child, was_active) {
+            transition.remove_active_child(c);
+        }
+        transition.release(child);
+    }
 }
 
 /// `obs_transition_enum_sources()`: no check of its source, as the C has
 /// none. Under the transition's lock, calls `callback` with each non-empty
 /// slot's child, slot A first.
-#[expect(clippy::todo, reason = "RED: the port follows")]
-pub fn enum_sources<T: Transition>(transition: &T, callback: impl FnMut(T::Child)) {
-    let _ = (transition, callback);
-    todo!()
+pub fn enum_sources<T: Transition>(transition: &T, mut callback: impl FnMut(T::Child)) {
+    transition.lock();
+    for i in SLOTS {
+        if let Some(child) = transition.source(i) {
+            callback(child);
+        }
+    }
+    transition.unlock();
 }
 
 /// `copy_source_state()`: hands `source`'s slot `idx` to `dest` under both
@@ -174,10 +201,33 @@ pub fn enum_sources<T: Transition>(transition: &T, callback: impl FnMut(T::Child
 /// stores an empty, inactive slot
 /// ([`crate::transition_load::copy_stores`]). The child `dest` held is
 /// removed from its active children first, when its slot was active.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn copy_source_state<T: Transition>(dest: &T, source: &T, idx: usize) -> Option<T::Child> {
-    let _ = (dest, source, idx);
-    todo!()
+    let old_child = dest.source(idx);
+    let mut new_child = dest.get_ref(source.source(idx));
+    let mut active = source.source_active(idx);
+
+    if let Some(old) = old_child
+        && dest.source_active(idx)
+    {
+        dest.remove_active_child(old);
+    }
+
+    let adds = crate::transition_start::child_active(new_child.is_some(), active);
+    let add_ok = adds && new_child.is_some_and(|c| dest.add_active_child(c));
+
+    if !crate::transition_load::copy_stores(adds, add_ok) {
+        if let Some(c) = new_child {
+            dest.warn_recursion(c);
+        }
+        dest.release(new_child);
+        new_child = None;
+        active = false;
+    }
+
+    dest.set_source(idx, new_child);
+    dest.set_source_active(idx, active);
+
+    old_child
 }
 
 /// `obs_transition_swap_begin()`: nothing when `dest` and `source` are the
@@ -188,18 +238,54 @@ pub fn copy_source_state<T: Transition>(dest: &T, source: &T, idx: usize) -> Opt
 /// duration, the mode and the manual value and target) from `source` to
 /// `dest`, releases the transition locks (`dest`'s first) and the children
 /// `dest` held. The texture locks stay held for [`swap_end`].
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn swap_begin<T: Transition>(dest: &T, source: &T) {
-    let _ = (dest, source);
-    todo!()
+    if !crate::transition_load::swaps(dest.same(source)) {
+        return;
+    }
+
+    source.lock_textures();
+    dest.lock_textures();
+
+    source.lock();
+    dest.lock();
+
+    let old_children = SLOTS.map(|i| copy_source_state(dest, source, i));
+
+    dest.set_transitioning_video(source.transitioning_video());
+    dest.set_transitioning_audio(source.transitioning_audio());
+    dest.set_start_time(source.start_time());
+    dest.set_duration(source.duration());
+    dest.set_mode(source.mode());
+    dest.set_manual_val(source.manual_val());
+    dest.set_manual_target(source.manual_target());
+
+    dest.unlock();
+    source.unlock();
+
+    for child in old_children {
+        dest.release(child);
+    }
 }
 
 /// `obs_transition_swap_end()`: nothing when `dest` and `source` are the
 /// same transition. Otherwise clears `source` ([`clear`]), swaps the two
 /// render targets of each slot between `dest` and `source`, and releases
 /// the texture locks [`swap_begin`] took (`dest`'s first).
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn swap_end<T: Transition>(dest: &T, source: &T) {
-    let _ = (dest, source);
-    todo!()
+    if !crate::transition_load::swaps(dest.same(source)) {
+        return;
+    }
+
+    clear(Some(source));
+
+    for i in SLOTS {
+        let d = dest.texrender(i);
+        let s = source.texrender(i);
+
+        dest.set_texrender(i, s);
+        source.set_texrender(i, d);
+    }
+
+    dest.unlock_textures();
+    source.unlock_textures();
 }
