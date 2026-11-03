@@ -10,6 +10,9 @@ signed in place, and packed back into the same ZIP with the same entry order.
       extract every *.zip in PKG into DIR/<n>/, and write the catalog of
       every signable file: each PE inside the ZIPs and each PKG that is
       itself signable (.msi, .exe, ...).
+  windows_sign.py azure-catalog --catalog FILE --output FILE
+      convert the absolute verification/unsigned catalog to Azure's paths
+      relative to the output catalog's directory; preserve the input catalog.
   windows_sign.py repack --work DIR PKG...
       write the (now signed) files from DIR/<n>/ back into each ZIP.
 """
@@ -83,13 +86,27 @@ def repack(work: Path, packages: list[Path]) -> None:
         print(f"repacked: {pkg}")
 
 
+def azure_catalog(catalog: Path, output: Path) -> None:
+    # Azure prepends the catalog directory even to drive-qualified entries.
+    # Keep verification's absolute paths separate from this Azure-only input.
+    files = catalog.read_text(encoding="utf-8-sig").splitlines()
+    relative = [os.path.relpath(Path(f).resolve(), output.resolve().parent) for f in files]
+    output.write_text("".join(f"{f}\n" for f in relative), encoding="utf-8")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["unpack", "repack"])
+    ap.add_argument("command", choices=["unpack", "repack", "azure-catalog"])
     ap.add_argument("packages", nargs="*", type=Path)
     ap.add_argument("--work", type=Path)
     ap.add_argument("--catalog", type=Path)
+    ap.add_argument("--output", type=Path)
     a = ap.parse_args()
+    if a.command == "azure-catalog":
+        if a.catalog is None or a.output is None:
+            ap.error("azure-catalog needs --catalog and --output")
+        azure_catalog(a.catalog, a.output)
+        return 0
     if not a.packages or a.work is None:
         ap.error("unpack/repack need --work and at least one package")
     if a.command == "unpack":
