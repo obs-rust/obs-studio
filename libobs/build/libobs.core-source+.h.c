@@ -7,6 +7,7 @@
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
+#include "libobs/obs-source-transition-restore.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-transition-size.c.h"
 #include "libobs/obs-source-transition.c.h"
