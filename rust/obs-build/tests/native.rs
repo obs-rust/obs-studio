@@ -274,6 +274,10 @@ fn canonical_hotkey_mnemonic_is_registered() {
             .as_deref(),
         Some("Qt6::Core")
     );
+    assert_eq!(
+        graph.tests["test_hotkey_capture_mnemonic"].resource_locks,
+        ["timing"]
+    );
     for linux in [false, true] {
         for widgets in [false, true] {
             for qt_test in [false, true] {
@@ -608,6 +612,12 @@ fn canonical_remux_queue_runs_unchanged() {
             .any(|test| test.name == "test_undo_stack_enable"),
         linux
     );
+    assert_eq!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_hotkey_capture_mnemonic"),
+        linux && qt_test_available
+    );
     assert!(
         tests
             .iter()
@@ -630,6 +640,7 @@ fn canonical_remux_queue_runs_unchanged() {
     "targets": {
         "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
         "test_hotkey_edit_backtab": graph["targets"]["test_hotkey_edit_backtab"],
+        "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
             .expect("canonical graph omits test_frontend_api_call")
@@ -637,6 +648,7 @@ fn canonical_remux_queue_runs_unchanged() {
     "tests": {
         "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
         "test_hotkey_edit_backtab": graph["tests"]["test_hotkey_edit_backtab"],
+        "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
     }});
@@ -716,8 +728,25 @@ fn canonical_remux_queue_runs_unchanged() {
     }
     if linux {
         expected_names.insert("test_undo_stack_enable");
+        if qt_test_available {
+            expected_names.insert("test_hotkey_capture_mnemonic");
+        }
     }
     assert_eq!(names, expected_names);
+    if linux && qt_test_available {
+        let mnemonic = tests
+            .iter()
+            .find(|test| test["name"] == "test_hotkey_capture_mnemonic")
+            .unwrap();
+        assert!(
+            mnemonic["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|property| property["name"] == "RESOURCE_LOCK"
+                    && property["value"] == serde_json::json!(["timing"]))
+        );
+    }
     if linux {
         let undo = tests
             .iter()

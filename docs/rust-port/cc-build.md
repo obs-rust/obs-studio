@@ -918,6 +918,14 @@ CTest inventory; other hosts exclude it, preserving the original offscreen
 plugin limitation. This helper coverage does not establish full frontend parity
 (#1390).
 
+The Linux-only Qt hotkey mnemonic capture test also uses the shared graph.
+Its five unchanged cases exercise Alt+C, Alt+O, Ctrl+W, normal-field mnemonics
+and Tab focus through both Cargo and CMake. Selection retains the original
+Linux/Widgets/Qt Test guard, helper-header input and Qt runtime setup. The
+wall-clock fixture takes the `timing` resource lock. Hosts without Qt Test
+exclude this target; this helper coverage does not establish full frontend
+parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
