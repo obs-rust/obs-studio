@@ -219,6 +219,7 @@ pub mod source_size;
 pub mod source_transition_clock;
 pub mod source_transition_load;
 pub mod source_transition_render;
+pub mod source_transition_restore;
 pub mod source_transition_sample_time;
 pub mod source_transition_settings;
 pub mod source_transition_size;
