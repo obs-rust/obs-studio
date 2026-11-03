@@ -27,6 +27,7 @@ GENERATOR_CONFIG = ROOT / "cmake/windows/cpack-wix-generator.cmake"
 RELEASE = ROOT / ".github/workflows/release-rust.yaml"
 
 spec = importlib.util.spec_from_file_location("windows_msi", ROOT / "ci/windows_msi.py")
+assert spec is not None and spec.loader is not None
 windows_msi = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(windows_msi)
 
@@ -100,22 +101,34 @@ class GeneratorConfig(unittest.TestCase):
 class Signature(unittest.TestCase):
     def test_probe_returns_signature_status(self):
         for status in ("Valid", "NotSigned"):
-            with self.subTest(status=status), patch.object(
-                windows_msi.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess([], 0, status + "\n", ""),
+            with (
+                self.subTest(status=status),
+                patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0, status + "\n", ""),
+                ),
             ):
-                self.assertEqual(windows_msi.signature_status(Path("probe.msi")), status)
+                self.assertEqual(
+                    windows_msi.signature_status(Path("probe.msi")), status
+                )
 
     def test_scheduled_probe_failure_reports_diagnostics_and_stops(self):
         for required in (False, True):
-            with self.subTest(required=required), patch.object(
-                windows_msi.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess(
-                    [], 1, "provider diagnostic\n", "Get-AuthenticodeSignature: Access denied\n"
+            with (
+                self.subTest(required=required),
+                patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess(
+                        [],
+                        1,
+                        "provider diagnostic\n",
+                        "Get-AuthenticodeSignature: Access denied\n",
+                    ),
                 ),
-            ), patch.object(windows_msi, "_install") as install:
+                patch.object(windows_msi, "_install") as install,
+            ):
                 output = io.StringIO()
                 arguments = ["roundtrip", "--msi", "scheduled.msi"]
                 if required:
@@ -125,7 +138,9 @@ class Signature(unittest.TestCase):
                 diagnostic = output.getvalue()
                 self.assertIn("Get-AuthenticodeSignature failed", diagnostic)
                 self.assertIn("PowerShell exit code 1", diagnostic)
-                self.assertIn("stderr: Get-AuthenticodeSignature: Access denied", diagnostic)
+                self.assertIn(
+                    "stderr: Get-AuthenticodeSignature: Access denied", diagnostic
+                )
                 self.assertIn("stdout: provider diagnostic", diagnostic)
                 self.assertIn("scheduled.msi", diagnostic)
                 self.assertNotIn("returned NotSigned", diagnostic)
@@ -148,7 +163,7 @@ class CommandLine(unittest.TestCase):
     dispatches them exits 0 having done nothing (release run 41509343216:
     `expected one MSI, found 0`)."""
 
-    def invoke(self, *arguments: str) -> subprocess.CompletedProcess:
+    def invoke(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(ROOT / "ci/windows_msi.py"), *arguments],
             capture_output=True,
@@ -177,7 +192,7 @@ class ReleaseWiring(unittest.TestCase):
             text.index("ci/windows_msi.py build"),
             text.index("- name: Prepare Windows signing catalog"),
         )
-        self.assertIn('build_${{ matrix.target }}/*.msi', text)
+        self.assertIn("build_${{ matrix.target }}/*.msi", text)
         self.assertNotIn("WINDOWS_SIGNING_PFX", text)
         self.assertIn("ci/windows_msi.py roundtrip", text)
         self.assertIn("windows-$env:TARGET.msi", text)

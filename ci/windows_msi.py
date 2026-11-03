@@ -129,12 +129,21 @@ def signature_status(msi: Path) -> str:
             "powershell",
             "-NoProfile",
             "-Command",
-            f"(Get-AuthenticodeSignature -LiteralPath '{literal}').Status.ToString()",
+            "$ErrorActionPreference = 'Stop'; "
+            f"(Get-AuthenticodeSignature -LiteralPath '{literal}' -ErrorAction Stop)"
+            ".Status.ToString()",
         ],
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
+    if result.returncode:
+        raise RuntimeError(
+            f"Get-AuthenticodeSignature failed for {msi} "
+            f"(PowerShell exit code {result.returncode}); "
+            f"stderr: {result.stderr.strip() or '<empty>'}; "
+            f"stdout: {result.stdout.strip() or '<empty>'}"
+        )
     return result.stdout.strip()
 
 
@@ -232,7 +241,12 @@ def _uninstall_failures(root: Path) -> list[str]:
 
 def roundtrip(arguments: argparse.Namespace) -> int:
     msi = Path(arguments.msi).resolve()
-    error = check_signature(signature_status(msi), arguments.require_signature)
+    try:
+        status = signature_status(msi)
+    except RuntimeError as error:
+        print(f"::error::{error}")
+        return 1
+    error = check_signature(status, arguments.require_signature)
     if error:
         print(f"::error::{error}")
         return 1
@@ -260,7 +274,7 @@ def roundtrip(arguments: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
 
     build_parser = commands.add_parser("build", help="cpack -G WIX the BETA MSI")
