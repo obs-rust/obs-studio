@@ -203,6 +203,21 @@ static int thread_count_settled(int expected)
 	return count;
 }
 
+/* A count to compare with later: a thread of the previous test can also stay
+ * listed for a moment, so wait up to 500 ms for 100 ms with no change. */
+static int thread_count_baseline(void)
+{
+	int count = thread_count();
+	int stable = 0;
+	for (int i = 0; i < 50 && stable < 10; i++) {
+		os_sleep_ms(10);
+		int now = thread_count();
+		stable = now == count ? stable + 1 : 0;
+		count = now;
+	}
+	return count;
+}
+
 static void *create_source(unsigned int rate)
 {
 	obs_data_t *settings = obs_data_create();
@@ -361,7 +376,7 @@ static void one_line_each_way(void **state)
 static void destroy_while_away(void **state)
 {
 	(void)state;
-	int before = thread_count();
+	int before = thread_count_baseline();
 	void *data = start_capturing();
 
 	device_unplug();
@@ -377,7 +392,7 @@ static void destroy_while_away(void **state)
 static void update_while_away(void **state)
 {
 	(void)state;
-	int before = thread_count();
+	int before = thread_count_baseline();
 	void *data = start_capturing();
 
 	device_unplug();
