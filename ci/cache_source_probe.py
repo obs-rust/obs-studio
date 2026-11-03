@@ -102,9 +102,7 @@ def probe(directory: Path, executable: str, expected_version: str | None, *, tim
 
     warm = result["warm"] = run("warm")
     persist()
-    if warm["returncode"]:
-        return result
-    if warm["timed_out"]:
+    if warm["returncode"] != 0:
         return result
 
     def force_cargo() -> None:
