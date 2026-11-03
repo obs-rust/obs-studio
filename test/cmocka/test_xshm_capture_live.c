@@ -103,7 +103,7 @@ static void capture_real_pixels_without_waiting_for_x(void **state)
 	obs_source_release(source);
 	/* Exercise teardown when the destruction queue is already empty (#3527). */
 	obs_wait_for_destroy_queue();
-	while (!obs_wait_for_destroy_queue()) {
+	while (obs_wait_for_destroy_queue()) {
 	}
 	obs_shutdown();
 	xcb_disconnect(xcb);
