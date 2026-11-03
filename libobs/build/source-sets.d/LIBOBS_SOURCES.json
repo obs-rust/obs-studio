@@ -26,6 +26,7 @@
   "obs-encoder-size.h",
   "obs-encoder.h",
   "obs-ffmpeg-compat.h",
+  "obs-hotkey-seam.h",
   "obs-hotkey.h",
   "obs-hotkeys.h",
   "obs-host/com.h",

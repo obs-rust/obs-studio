@@ -153,8 +153,6 @@ static void hotkey_signal(const char *signal, obs_hotkey_t *hotkey)
 	calldata_free(&data);
 }
 
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved);
-
 static inline void context_add_hotkey(struct obs_context_data *context, obs_hotkey_id id)
 {
 	da_push_back(context->hotkeys, &id);
@@ -411,8 +409,6 @@ obs_hotkey_pair_id obs_hotkey_pair_register_source(obs_source_t *source, const c
 					     name0, description0, name1, description1, func0, func1, data0, data1);
 }
 
-typedef bool (*obs_hotkey_binding_internal_enum_func)(void *data, size_t idx, obs_hotkey_binding_t *binding);
-
 static inline void enum_bindings(obs_hotkey_binding_internal_enum_func func, void *data)
 {
 	const size_t num = obs->hotkeys.bindings.num;
@@ -422,8 +418,6 @@ static inline void enum_bindings(obs_hotkey_binding_internal_enum_func func, voi
 			break;
 	}
 }
-
-typedef bool (*obs_hotkey_internal_enum_func)(void *data, obs_hotkey_t *hotkey);
 
 static inline void enum_context_hotkeys(struct obs_context_data *context, obs_hotkey_internal_enum_func func,
 					void *data)
@@ -446,13 +440,7 @@ static inline void create_binding(obs_hotkey_t *hotkey, obs_key_combination_t co
 	if (!obs_hotkey_combination_bindable(combo))
 		return;
 
-	obs_hotkey_binding_t *binding = da_push_back_new(obs->hotkeys.bindings);
-	if (!binding)
-		return;
-
-	binding->key = combo;
-	binding->hotkey_id = hotkey->id;
-	binding->hotkey = hotkey;
+	obs_hotkey_seam_add_binding(hotkey, combo);
 }
 
 /* Until #2635 the X11 and Wayland key tables gave Volume Up the name
@@ -480,7 +468,7 @@ static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data, bool sav
 		return;
 
 	if (saved && is_volume_up_down(combo.key) && !obs_data_get_bool(data, VOLUME_KEYS_FIXED) &&
-	    obs->hotkeys.saved_volume_keys_swapped)
+	    obs_hotkey_seam_saved_volume_keys_swapped())
 		combo.key = combo.key == OBS_KEY_VK_VOLUME_UP ? OBS_KEY_VK_VOLUME_DOWN : OBS_KEY_VK_VOLUME_UP;
 
 	create_binding(hotkey, combo);
@@ -490,7 +478,7 @@ static inline void load_binding(obs_hotkey_t *hotkey, obs_data_t *data, bool sav
  * first, so an empty or missing array still changed them (as in
  * obs_hotkey_load_bindings()). saved: the data is a scene collection's
  * (VOLUME_KEYS_FIXED). */
-static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved)
+void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved)
 {
 	const size_t count = obs_data_array_count(data);
 	for (size_t i = 0; i < count; i++) {
@@ -500,47 +488,43 @@ static inline void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, b
 	}
 
 	if (count || removed)
-		hotkey_signal("hotkey_bindings_changed", hotkey);
+		obs_hotkey_seam_signal("hotkey_bindings_changed", hotkey);
 }
-
-static inline bool remove_bindings(obs_hotkey_id id);
 
 void obs_hotkey_load_bindings(obs_hotkey_id id, obs_key_combination_t *combinations, size_t num)
 {
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
+	obs_hotkey_t *hotkey = obs_hotkey_seam_find(id);
 	if (hotkey) {
-		bool changed = remove_bindings(id);
+		bool changed = obs_hotkey_seam_remove_bindings(id);
 		for (size_t i = 0; i < num; i++)
 			create_binding(hotkey, combinations[i]);
 
 		if (num || changed)
-			hotkey_signal("hotkey_bindings_changed", hotkey);
+			obs_hotkey_seam_signal("hotkey_bindings_changed", hotkey);
 	}
 
-	unlock();
+	obs_hotkey_seam_unlock();
 }
 
 void obs_hotkey_load(obs_hotkey_id id, obs_data_array_t *data)
 {
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
+	obs_hotkey_t *hotkey = obs_hotkey_seam_find(id);
 	if (hotkey) {
-		bool removed = remove_bindings(id);
+		bool removed = obs_hotkey_seam_remove_bindings(id);
 		load_bindings(hotkey, data, removed, false);
 	}
-	unlock();
+	obs_hotkey_seam_unlock();
 }
 
 static inline bool enum_load_bindings(void *data, obs_hotkey_t *hotkey)
 {
-	obs_data_array_t *hotkey_data = obs_data_get_array(data, hotkey->name);
+	obs_data_array_t *hotkey_data = obs_data_get_array(data, obs_hotkey_get_name(hotkey));
 	if (!hotkey_data)
 		return true;
 
@@ -553,71 +537,69 @@ void obs_hotkeys_load_encoder(obs_encoder_t *encoder, obs_data_t *hotkeys)
 {
 	if (!encoder || !hotkeys)
 		return;
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	enum_context_hotkeys(&encoder->context, enum_load_bindings, hotkeys);
-	unlock();
+	obs_hotkey_seam_enum_context(obs_hotkey_seam_encoder_context(encoder), enum_load_bindings, hotkeys);
+	obs_hotkey_seam_unlock();
 }
 
 void obs_hotkeys_load_output(obs_output_t *output, obs_data_t *hotkeys)
 {
 	if (!output || !hotkeys)
 		return;
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	enum_context_hotkeys(&output->context, enum_load_bindings, hotkeys);
-	unlock();
+	obs_hotkey_seam_enum_context(obs_hotkey_seam_output_context(output), enum_load_bindings, hotkeys);
+	obs_hotkey_seam_unlock();
 }
 
 void obs_hotkeys_load_service(obs_service_t *service, obs_data_t *hotkeys)
 {
 	if (!service || !hotkeys)
 		return;
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	enum_context_hotkeys(&service->context, enum_load_bindings, hotkeys);
-	unlock();
+	obs_hotkey_seam_enum_context(obs_hotkey_seam_service_context(service), enum_load_bindings, hotkeys);
+	obs_hotkey_seam_unlock();
 }
 
 void obs_hotkeys_load_source(obs_source_t *source, obs_data_t *hotkeys)
 {
 	if (!source || !hotkeys)
 		return;
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return;
 
-	enum_context_hotkeys(&source->context, enum_load_bindings, hotkeys);
-	unlock();
+	obs_hotkey_seam_enum_context(obs_hotkey_seam_source_context(source), enum_load_bindings, hotkeys);
+	obs_hotkey_seam_unlock();
 }
 
 void obs_hotkey_pair_load(obs_hotkey_pair_id id, obs_data_array_t *data0, obs_data_array_t *data1)
 {
-	if ((!data0 && !data1) || !lock())
+	if ((!data0 && !data1) || !obs_hotkey_seam_lock())
 		return;
 
-	obs_hotkey_pair_t *pair;
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
+	obs_hotkey_pair_t *pair = obs_hotkey_seam_find_pair(id);
 	if (!pair)
 		goto unlock;
 
-	obs_hotkey_t *p1, *p2;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[0], p1);
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[1], p2);
+	obs_hotkey_t *p1 = obs_hotkey_seam_find(obs_hotkey_seam_pair_id(pair, 0));
+	obs_hotkey_t *p2 = obs_hotkey_seam_find(obs_hotkey_seam_pair_id(pair, 1));
 
 	if (p1) {
-		bool removed = remove_bindings(pair->id[0]);
+		bool removed = obs_hotkey_seam_remove_bindings(obs_hotkey_seam_pair_id(pair, 0));
 		load_bindings(p1, data0, removed, false);
 	}
 	if (p2) {
-		bool removed = remove_bindings(pair->id[1]);
+		bool removed = obs_hotkey_seam_remove_bindings(obs_hotkey_seam_pair_id(pair, 1));
 		load_bindings(p2, data1, removed, false);
 	}
 
 unlock:
-	unlock();
+	obs_hotkey_seam_unlock();
 }
 
 struct save_bindings_helper_t {
@@ -632,13 +614,14 @@ static inline bool save_bindings_helper(void *data, size_t idx, obs_hotkey_bindi
 	UNUSED_PARAMETER(idx);
 	struct save_bindings_helper_t *h = data;
 
-	if (h->hotkey->id != binding->hotkey_id)
+	if (obs_hotkey_get_id(h->hotkey) != obs_hotkey_binding_get_hotkey_id(binding))
 		return true;
 
 	obs_data_t *hotkey = obs_data_create();
 
-	obs_hotkey_combination_to_data(binding->key, hotkey);
-	if (h->saved && is_volume_up_down(binding->key.key))
+	obs_key_combination_t combo = obs_hotkey_binding_get_key_combination(binding);
+	obs_hotkey_combination_to_data(combo, hotkey);
+	if (h->saved && is_volume_up_down(combo.key))
 		obs_data_set_bool(hotkey, VOLUME_KEYS_FIXED, true);
 
 	obs_data_array_push_back(h->array, hotkey);
@@ -653,7 +636,7 @@ static inline obs_data_array_t *save_hotkey(obs_hotkey_t *hotkey, bool saved)
 	obs_data_array_t *data = obs_data_array_create();
 
 	struct save_bindings_helper_t arg = {data, hotkey, saved};
-	enum_bindings(save_bindings_helper, &arg);
+	obs_hotkey_seam_enum_bindings(save_bindings_helper, &arg);
 
 	return data;
 }
@@ -662,60 +645,58 @@ obs_data_array_t *obs_hotkey_save(obs_hotkey_id id)
 {
 	obs_data_array_t *result = NULL;
 
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return result;
 
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
+	obs_hotkey_t *hotkey = obs_hotkey_seam_find(id);
 	if (hotkey)
 		result = save_hotkey(hotkey, false);
 
-	unlock();
+	obs_hotkey_seam_unlock();
 
 	return result;
 }
 
 void obs_hotkey_pair_save(obs_hotkey_pair_id id, obs_data_array_t **p_data0, obs_data_array_t **p_data1)
 {
-	if ((!p_data0 && !p_data1) || !lock())
+	if ((!p_data0 && !p_data1) || !obs_hotkey_seam_lock())
 		return;
 
-	obs_hotkey_pair_t *pair;
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
+	obs_hotkey_pair_t *pair = obs_hotkey_seam_find_pair(id);
 	if (!pair)
 		goto unlock;
 
 	obs_hotkey_t *hotkey;
 	if (p_data0) {
-		HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[0], hotkey);
+		hotkey = obs_hotkey_seam_find(obs_hotkey_seam_pair_id(pair, 0));
 		if (hotkey)
 			*p_data0 = save_hotkey(hotkey, false);
 	}
 	if (p_data1) {
-		HASH_FIND_HKEY(obs->hotkeys.hotkeys, pair->id[1], hotkey);
+		hotkey = obs_hotkey_seam_find(obs_hotkey_seam_pair_id(pair, 1));
 		if (hotkey)
 			*p_data1 = save_hotkey(hotkey, false);
 	}
 
 unlock:
-	unlock();
+	obs_hotkey_seam_unlock();
 }
 
 static inline bool enum_save_hotkey(void *data, obs_hotkey_t *hotkey)
 {
 	obs_data_array_t *hotkey_data = save_hotkey(hotkey, true);
-	obs_data_set_array(data, hotkey->name, hotkey_data);
+	obs_data_set_array(data, obs_hotkey_get_name(hotkey), hotkey_data);
 	obs_data_array_release(hotkey_data);
 	return true;
 }
 
 static inline obs_data_t *save_context_hotkeys(struct obs_context_data *context)
 {
-	if (!context->hotkeys.num)
+	if (!obs_hotkey_seam_context_count(context))
 		return NULL;
 
 	obs_data_t *result = obs_data_create();
-	enum_context_hotkeys(context, enum_save_hotkey, result);
+	obs_hotkey_seam_enum_context(context, enum_save_hotkey, result);
 	return result;
 }
 
@@ -723,11 +704,11 @@ obs_data_t *obs_hotkeys_save_encoder(obs_encoder_t *encoder)
 {
 	obs_data_t *result = NULL;
 
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return result;
 
-	result = save_context_hotkeys(&encoder->context);
-	unlock();
+	result = save_context_hotkeys(obs_hotkey_seam_encoder_context(encoder));
+	obs_hotkey_seam_unlock();
 
 	return result;
 }
@@ -736,11 +717,11 @@ obs_data_t *obs_hotkeys_save_output(obs_output_t *output)
 {
 	obs_data_t *result = NULL;
 
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return result;
 
-	result = save_context_hotkeys(&output->context);
-	unlock();
+	result = save_context_hotkeys(obs_hotkey_seam_output_context(output));
+	obs_hotkey_seam_unlock();
 
 	return result;
 }
@@ -749,11 +730,11 @@ obs_data_t *obs_hotkeys_save_service(obs_service_t *service)
 {
 	obs_data_t *result = NULL;
 
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return result;
 
-	result = save_context_hotkeys(&service->context);
-	unlock();
+	result = save_context_hotkeys(obs_hotkey_seam_service_context(service));
+	obs_hotkey_seam_unlock();
 
 	return result;
 }
@@ -762,11 +743,11 @@ obs_data_t *obs_hotkeys_save_source(obs_source_t *source)
 {
 	obs_data_t *result = NULL;
 
-	if (!lock())
+	if (!obs_hotkey_seam_lock())
 		return result;
 
-	result = save_context_hotkeys(&source->context);
-	unlock();
+	result = save_context_hotkeys(obs_hotkey_seam_source_context(source));
+	obs_hotkey_seam_unlock();
 
 	return result;
 }
@@ -810,6 +791,99 @@ static inline bool remove_bindings(obs_hotkey_id id)
 	}
 
 	return removed;
+}
+
+/* The private seam of obs-hotkey-seam.h: what the hotkey save and load functions
+ * need from the hotkey registry. Each is one lookup, one field or one call. */
+
+bool obs_hotkey_seam_lock(void)
+{
+	return lock();
+}
+
+void obs_hotkey_seam_unlock(void)
+{
+	unlock();
+}
+
+obs_hotkey_t *obs_hotkey_seam_find(obs_hotkey_id id)
+{
+	obs_hotkey_t *hotkey;
+	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
+	return hotkey;
+}
+
+obs_hotkey_pair_t *obs_hotkey_seam_find_pair(obs_hotkey_pair_id id)
+{
+	obs_hotkey_pair_t *pair;
+	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
+	return pair;
+}
+
+obs_hotkey_id obs_hotkey_seam_pair_id(const obs_hotkey_pair_t *pair, size_t half)
+{
+	return pair->id[half];
+}
+
+void obs_hotkey_seam_add_binding(obs_hotkey_t *hotkey, obs_key_combination_t combo)
+{
+	obs_hotkey_binding_t *binding = da_push_back_new(obs->hotkeys.bindings);
+	if (!binding)
+		return;
+
+	binding->key = combo;
+	binding->hotkey_id = hotkey->id;
+	binding->hotkey = hotkey;
+}
+
+bool obs_hotkey_seam_remove_bindings(obs_hotkey_id id)
+{
+	return remove_bindings(id);
+}
+
+void obs_hotkey_seam_signal(const char *signal, obs_hotkey_t *hotkey)
+{
+	hotkey_signal(signal, hotkey);
+}
+
+void obs_hotkey_seam_enum_bindings(obs_hotkey_binding_internal_enum_func func, void *data)
+{
+	enum_bindings(func, data);
+}
+
+void obs_hotkey_seam_enum_context(struct obs_context_data *context, obs_hotkey_internal_enum_func func, void *data)
+{
+	enum_context_hotkeys(context, func, data);
+}
+
+size_t obs_hotkey_seam_context_count(const struct obs_context_data *context)
+{
+	return context->hotkeys.num;
+}
+
+bool obs_hotkey_seam_saved_volume_keys_swapped(void)
+{
+	return obs->hotkeys.saved_volume_keys_swapped;
+}
+
+struct obs_context_data *obs_hotkey_seam_encoder_context(obs_encoder_t *encoder)
+{
+	return &encoder->context;
+}
+
+struct obs_context_data *obs_hotkey_seam_output_context(obs_output_t *output)
+{
+	return &output->context;
+}
+
+struct obs_context_data *obs_hotkey_seam_service_context(obs_service_t *service)
+{
+	return &service->context;
+}
+
+struct obs_context_data *obs_hotkey_seam_source_context(obs_source_t *source)
+{
+	return &source->context;
 }
 
 static void release_registerer(obs_hotkey_t *hotkey)
