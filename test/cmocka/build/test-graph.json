@@ -6729,6 +6729,33 @@
         }
       ]
     },
+    "test_volume_meter_ticker": {
+      "sources": [
+        "test/cmocka/test_volume_meter_ticker.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/components"
+      ],
+      "watch_inputs": [
+        "frontend/components/VolumeMeterTicker.hpp"
+      ],
+      "libraries": [
+        "Qt6::Core",
+        "OBS::native-test-cmocka",
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_whip_host_os_name": {
       "sources": [
         "test/cmocka/test_whip_host_os_name.cpp"
@@ -9419,6 +9446,14 @@
     },
     "test_volume_meter_snapshot": {
       "target": "test_volume_meter_snapshot"
+    },
+    "test_volume_meter_ticker": {
+      "target": "test_volume_meter_ticker",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core",
+      "resource_locks": [
+        "timing"
+      ]
     },
     "test_whip_host_os_name": {
       "target": "test_whip_host_os_name",

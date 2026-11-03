@@ -239,6 +239,7 @@ fn canonical_hotkey_backtab_is_registered() {
         for qt_test in [false, true] {
             let facts = [
                 ("OS_LINUX".into(), false),
+                ("MSVC".into(), false),
                 ("HAVE_QT6_CORE".into(), false),
                 ("HAVE_QT6_WIDGETS".into(), widgets),
                 ("HAVE_QT6_TEST".into(), qt_test),
@@ -305,11 +306,16 @@ fn canonical_volume_meter_ticker_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("qt");
-    let target = graph.targets.get("test_volume_meter_ticker")
+    let target = graph
+        .targets
+        .get("test_volume_meter_ticker")
         .expect("canonical graph omits test_volume_meter_ticker");
     assert_eq!(target.sources.len(), 1);
     assert_eq!(target.includes, ["frontend/components"]);
-    assert_eq!(target.watch_inputs, ["frontend/components/VolumeMeterTicker.hpp"]);
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/components/VolumeMeterTicker.hpp"]
+    );
     let test = &graph.tests["test_volume_meter_ticker"];
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
     assert_eq!(test.resource_locks, ["timing"]);
@@ -321,9 +327,13 @@ fn canonical_volume_meter_ticker_is_registered() {
                 ("HAVE_QT6_CORE".into(), core),
                 ("HAVE_QT6_WIDGETS".into(), false),
                 ("HAVE_QT6_TEST".into(), false),
-            ].into();
+            ]
+            .into();
             let selected = graph.select(&facts).unwrap();
-            assert_eq!(selected.tests.contains_key("test_volume_meter_ticker"), linux && core);
+            assert_eq!(
+                selected.tests.contains_key("test_volume_meter_ticker"),
+                linux && core
+            );
         }
     }
 }
@@ -611,6 +621,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .select(
             &[
                 ("OS_LINUX".into(), linux),
+                ("MSVC".into(), build.target.contains("msvc")),
                 ("HAVE_QT6_CORE".into(), true),
                 ("HAVE_QT6_WIDGETS".into(), true),
                 ("HAVE_QT6_TEST".into(), qt_test_available),
@@ -653,6 +664,12 @@ fn canonical_remux_queue_runs_unchanged() {
             .iter()
             .any(|test| test.name == "test_frontend_api_call")
     );
+    assert_eq!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_volume_meter_ticker"),
+        linux
+    );
     for test in tests {
         let result = test
             .command(&root, &build.output)
@@ -672,6 +689,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_edit_backtab": graph["targets"]["test_hotkey_edit_backtab"],
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
+        "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
             .expect("canonical graph omits test_frontend_api_call")
     },
@@ -680,6 +698,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_edit_backtab": graph["tests"]["test_hotkey_edit_backtab"],
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
+        "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
     }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
@@ -688,7 +707,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .to_string_lossy()
         .replace('\\', "/");
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nset(OS_LINUX FALSE)\nif(CMAKE_SYSTEM_NAME STREQUAL \"Linux\")\nset(OS_LINUX TRUE)\nendif()\nset(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX FALSE)\nif(CMAKE_SYSTEM_NAME STREQUAL \"Linux\")\nset(OS_LINUX TRUE)\nendif()\nset(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -761,6 +780,7 @@ fn canonical_remux_queue_runs_unchanged() {
         if qt_test_available {
             expected_names.insert("test_hotkey_capture_mnemonic");
         }
+        expected_names.insert("test_volume_meter_ticker");
     }
     assert_eq!(names, expected_names);
     if linux && qt_test_available {
@@ -770,6 +790,20 @@ fn canonical_remux_queue_runs_unchanged() {
             .unwrap();
         assert!(
             mnemonic["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|property| property["name"] == "RESOURCE_LOCK"
+                    && property["value"] == serde_json::json!(["timing"]))
+        );
+    }
+    if linux {
+        let ticker = tests
+            .iter()
+            .find(|test| test["name"] == "test_volume_meter_ticker")
+            .unwrap();
+        assert!(
+            ticker["properties"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -833,6 +867,7 @@ fn canonical_frontend_api_call_is_registered() {
     for have_core in [false, true] {
         let facts = [
             ("OS_LINUX".into(), false),
+            ("MSVC".into(), false),
             ("HAVE_QT6_CORE".into(), have_core),
             ("HAVE_QT6_WIDGETS".into(), false),
             ("HAVE_QT6_TEST".into(), false),
