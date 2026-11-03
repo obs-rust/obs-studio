@@ -7,6 +7,7 @@ if(OS_LINUX OR OS_FREEBSD)
     test_wayland_hotkeys.c
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-binding-press.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-save-load.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-press.c.h"
@@ -32,6 +33,7 @@ if(OS_LINUX OR OS_FREEBSD)
       test_portal_shortcuts.c
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-binding-press.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-save-load.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-translations.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-press.c.h"
