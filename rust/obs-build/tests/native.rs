@@ -214,6 +214,29 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
 
+/// #1390: preserve the optional Qt Test dependency of the unchanged Backtab cases.
+#[test]
+fn canonical_hotkey_backtab_is_registered() {
+    use obs_build::validation::graph::Graph;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("qt");
+    let target = graph.targets.get("test_hotkey_edit_backtab")
+        .expect("canonical graph omits test_hotkey_edit_backtab");
+    assert_eq!(target.watch_inputs, ["frontend/settings/OBSHotkeyCapture.hpp"]);
+    assert_eq!(graph.tests["test_hotkey_edit_backtab"].qt_runtime.as_deref(), Some("Qt6::Core"));
+    for widgets in [false, true] {
+        for qt_test in [false, true] {
+            let facts = [
+                ("HAVE_QT6_WIDGETS".into(), widgets),
+                ("HAVE_QT6_TEST".into(), qt_test),
+            ].into();
+            let selected = graph.select(&facts).unwrap();
+            assert_eq!(selected.tests.contains_key("test_hotkey_edit_backtab"), widgets && qt_test);
+        }
+    }
+}
+
 #[test]
 fn canonical_frontend_utility_tests_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -423,6 +446,10 @@ fn canonical_remux_queue_runs_unchanged() {
             Dependency::package(&build.target, "Qt6Core").unwrap(),
         ),
         (
+            "Qt6::Test".into(),
+            Dependency::package(&build.target, "Qt6Test").unwrap(),
+        ),
+        (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
         ),
@@ -438,6 +465,8 @@ fn canonical_remux_queue_runs_unchanged() {
         .values()
         .filter(|test| test["suite"] == "qt")
         .count();
+    assert!(graph["targets"].get("test_hotkey_edit_backtab").is_some(),
+        "canonical graph omits test_hotkey_edit_backtab");
     let tests = validation::build_qt_tests(&build, &root, &interfaces).unwrap();
     assert_eq!(tests.len(), qt_tests);
     assert!(
@@ -461,11 +490,13 @@ fn canonical_remux_queue_runs_unchanged() {
     let selected = serde_json::json!({"schema": 1,
     "targets": {
         "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
+        "test_hotkey_edit_backtab": graph["targets"]["test_hotkey_edit_backtab"],
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
             .expect("canonical graph omits test_frontend_api_call")
     },
     "tests": {
         "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
+        "test_hotkey_edit_backtab": graph["tests"]["test_hotkey_edit_backtab"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
     }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
@@ -474,7 +505,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .to_string_lossy()
         .replace('\\', "/");
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets Test)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nset(HAVE_QT6_TEST TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -539,7 +570,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .collect();
     assert_eq!(
         names,
-        ["test_remux_queue_model", "test_frontend_api_call"].into()
+        ["test_remux_queue_model", "test_frontend_api_call", "test_hotkey_edit_backtab"].into()
     );
     let frontend_api = tests
         .iter()
