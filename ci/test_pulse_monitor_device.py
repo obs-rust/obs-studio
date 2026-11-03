@@ -151,7 +151,11 @@ def process_alive(pid: int) -> bool:
 def kill_leftover(pid: int) -> None:
     """Reap a daemon the harness leaked, so a failing run leaks nothing either."""
     if process_alive(pid):
-        os.kill(pid, signal.SIGKILL)
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            # It exited between the probe and the kill: gone is what we want.
+            pass
 
 
 def outlived(pid: int) -> bool:
@@ -397,6 +401,33 @@ class PulseMonitorDeviceTest(unittest.TestCase):
             module.TOOLS,
             ("pipewire", "wireplumber", "pipewire-pulse", "pactl", "dbus-run-session"),
         )
+
+
+class LivenessProbeTest(unittest.TestCase):
+    """The probe and reaper race the process they inspect; gone must pass."""
+
+    def test_a_daemon_that_exits_before_the_kill_is_not_an_error(self) -> None:
+        # Reproduce the ESRCH window deterministically: the probe still sees
+        # the process, but it has already been reaped when os.kill runs.
+        child = subprocess.Popen([sys.executable, "-c", "pass"])
+        child.wait()
+        original = globals()["process_alive"]
+        globals()["process_alive"] = lambda _pid: True
+        try:
+            kill_leftover(child.pid)
+        finally:
+            globals()["process_alive"] = original
+
+    def test_a_daemon_that_is_gone_has_not_outlived_the_run(self) -> None:
+        child = subprocess.Popen([sys.executable, "-c", "pass"])
+        child.wait()
+        self.assertFalse(outlived(child.pid))
+
+    def test_a_daemon_that_is_still_alive_has_outlived_the_run(self) -> None:
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        self.addCleanup(child.wait)
+        self.addCleanup(kill_leftover, child.pid)
+        self.assertTrue(outlived(child.pid))
 
 
 if __name__ == "__main__":
