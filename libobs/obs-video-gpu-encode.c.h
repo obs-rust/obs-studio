@@ -150,8 +150,10 @@ static void *gpu_encode_thread(void *data)
 				encoder->info.update(encoder->context.data, encoder->context.settings);
 			}
 
-			if (!encoder->start_ts)
+			if (!encoder->start_ts) {
 				encoder->start_ts = timestamp;
+				os_atomic_set_bool(&encoder->start_ts_set, true);
+			}
 
 			next_key = obs_encoder_gpu_gates_next_key(++lock_count, encoders.num, next_key);
 

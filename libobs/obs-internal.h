@@ -1590,7 +1590,7 @@ struct obs_output {
 	uint32_t starting_drawn_count;
 	uint32_t starting_lagged_count;
 
-	int total_frames;
+	volatile long total_frames;
 
 	volatile bool active;
 	/* start() was called and data capture has not begun yet (a network
@@ -1711,7 +1711,7 @@ struct obs_output_interleave_fields {
 	obs_keyframe_group_array_t *keyframe_group_tracking;
 	pthread_mutex_t *pkt_callbacks_mutex;
 	obs_packet_callback_array_t *pkt_callbacks;
-	int *total_frames;
+	volatile long *total_frames;
 	const size_t *interleaver_max_batch_size;
 	const uint64_t *active_delay_ns;
 	void (*const *encoded_packet)(void *data, struct encoder_packet *packet);
@@ -1869,6 +1869,9 @@ struct obs_encoder {
 	int64_t offset_usec;
 	uint64_t first_raw_ts;
 	uint64_t start_ts;
+	/* start_ts has its value: a paired audio encoder on another thread reads
+	 * it only after this. */
+	volatile bool start_ts_set;
 
 	/* track encoders that are part of a gop-aligned multi track group */
 	struct obs_encoder_group *encoder_group;

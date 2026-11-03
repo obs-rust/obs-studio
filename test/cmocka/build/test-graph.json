@@ -1331,6 +1331,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_gpu_paired_audio": {
+      "sources": [
+        "test/cmocka/test_encoder_gpu_paired_audio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_encoder_gpu_rescale_steps": {
       "sources": [
         "test/cmocka/test_encoder_gpu_rescale_steps.c",
@@ -7140,6 +7161,23 @@
       "target": "test_encoder_gpu_gates_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_encoder_gpu_paired_audio": {
+      "target": "test_encoder_gpu_paired_audio",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_encoder_gpu_rescale_steps": {

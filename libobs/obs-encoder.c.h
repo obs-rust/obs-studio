@@ -847,6 +847,7 @@ void obs_encoder_shutdown(obs_encoder_t *encoder)
 		encoder->context.data = NULL;
 		encoder->first_received = false;
 		encoder->offset_usec = 0;
+		os_atomic_set_bool(&encoder->start_ts_set, false);
 		encoder->start_ts = 0;
 		encoder->frame_rate_divisor_counter = 0;
 		os_atomic_set_bool(&encoder->gpu_encode_failed, false);
@@ -1825,8 +1826,10 @@ static void receive_video(void *param, struct video_data *frame)
 		enc_frame.linesize[i] = frame->linesize[i];
 	}
 
-	if (!encoder->start_ts)
+	if (!encoder->start_ts) {
 		encoder->start_ts = frame->timestamp;
+		os_atomic_set_bool(&encoder->start_ts_set, true);
+	}
 
 	enc_frame.frames = 1;
 	enc_frame.pts = encoder->cur_pts;
@@ -1916,7 +1919,7 @@ static bool buffer_audio(struct obs_encoder *encoder, struct audio_data *data)
 	}
 
 	if (obs_encoder_audio_start_paired(encoder->start_ts, paired_encoder != NULL)) {
-		uint64_t v_start_ts = paired_encoder->start_ts;
+		uint64_t v_start_ts = os_atomic_load_bool(&paired_encoder->start_ts_set) ? paired_encoder->start_ts : 0;
 		struct obs_encoder_audio_start_plan plan;
 
 		if (obs_encoder_audio_start_no_video(v_start_ts)) {
