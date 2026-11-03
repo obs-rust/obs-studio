@@ -67,8 +67,7 @@ static void free_child(obs_source_t *child)
 	bfree(child);
 }
 
-obs_source_t *oracle_transition_settings_new(int type, int child_a, const char *name_a, int child_b,
-					     const char *name_b)
+obs_source_t *oracle_transition_settings_new(int type, int child_a, const char *name_a, int child_b, const char *name_b)
 {
 	obs_source_t *tr = bzalloc(sizeof(*tr));
 
@@ -86,4 +85,3 @@ void oracle_transition_settings_free(obs_source_t *tr)
 	pthread_mutex_destroy(&tr->transition_mutex);
 	bfree(tr);
 }
-
