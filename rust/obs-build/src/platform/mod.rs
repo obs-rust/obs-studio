@@ -228,7 +228,10 @@ pub fn configure_shared_link(
 ) -> Result<(), String> {
     if target.contains("windows") {
         if msvc {
-            command.arg("/LD").args(objects);
+            command.arg("/LD").arg(msvc_response::msvc_response_file(
+                &artifact.with_extension("objects.rsp"),
+                objects,
+            )?);
             command.args(dependencies.iter().map(|p| dependency_link_name(p, true)));
             command
                 .arg("/link")
@@ -290,6 +293,7 @@ pub fn configure_shared_link(
     Ok(())
 }
 
+mod msvc_response;
 mod shared_library;
 pub use qt_sdk::{
     qt_architecture, qt_binary_architectures, qt_check_target, qt_compiler_id,
@@ -511,7 +515,14 @@ pub fn configure_executable_link(
     dependencies: &[PathBuf],
     msvc: bool,
 ) -> Result<(), String> {
-    command.args(objects);
+    if target.contains("windows") && msvc {
+        command.arg(msvc_response::msvc_response_file(
+            &artifact.with_extension("objects.rsp"),
+            objects,
+        )?);
+    } else {
+        command.args(objects);
+    }
     if target.contains("windows") {
         command.args(
             dependencies
