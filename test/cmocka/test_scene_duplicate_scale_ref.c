@@ -36,6 +36,7 @@
 #include <obs.h>
 #include <graphics/vec4.h>
 #include <util/platform.h>
+#include <util/threading.h>
 
 #define BOX_ID "scene_duplicate_scale_ref_box"
 #define CANVAS_CX 2560
@@ -60,7 +61,7 @@ struct box {
 static void box_update(void *data, obs_data_t *settings)
 {
 	struct box *box = data;
-	box->stopped = obs_data_get_bool(settings, "stopped");
+	os_atomic_set_bool(&box->stopped, obs_data_get_bool(settings, "stopped"));
 }
 
 static void *box_create(obs_data_t *settings, obs_source_t *source)
@@ -79,20 +80,20 @@ static void box_destroy(void *data)
 static uint32_t box_width(void *data)
 {
 	struct box *box = data;
-	return box->stopped ? 0 : BOX_CX;
+	return os_atomic_load_bool(&box->stopped) ? 0 : BOX_CX;
 }
 
 static uint32_t box_height(void *data)
 {
 	struct box *box = data;
-	return box->stopped ? 0 : BOX_CY;
+	return os_atomic_load_bool(&box->stopped) ? 0 : BOX_CY;
 }
 
 static void box_render(void *data, gs_effect_t *effect)
 {
 	struct box *box = data;
 	(void)effect;
-	if (box->stopped)
+	if (os_atomic_load_bool(&box->stopped))
 		return;
 	gs_effect_t *solid = obs_get_base_effect(OBS_EFFECT_SOLID);
 	struct vec4 white;

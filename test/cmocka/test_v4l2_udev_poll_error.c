@@ -25,7 +25,7 @@ struct loop_run {
 	int stop_fd;
 	os_event_t *stop;
 	unsigned long iterations;
-	volatile int done;
+	volatile bool done;
 };
 
 static void never_ready(void *ctx)
@@ -38,7 +38,7 @@ static void *run_loop(void *vrun)
 {
 	struct loop_run *run = vrun;
 	run->iterations = udev_monitor_loop(run->fd, run->stop_fd, run->stop, never_ready, NULL);
-	run->done = 1;
+	os_atomic_set_bool(&run->done, true);
 	return NULL;
 }
 
@@ -51,9 +51,9 @@ static void run_with_fd(int fd, int stop_fd)
 	assert_int_equal(pthread_create(&thread, NULL, run_loop, &run), 0);
 
 	struct timespec nap = {0, 1000000};
-	for (int i = 0; i < 500 && !run.done; i++)
+	for (int i = 0; i < 500 && !os_atomic_load_bool(&run.done); i++)
 		nanosleep(&nap, NULL);
-	int returned = run.done;
+	int returned = os_atomic_load_bool(&run.done);
 
 	/* stop a spinning loop so the test ends either way */
 	os_event_signal(run.stop);

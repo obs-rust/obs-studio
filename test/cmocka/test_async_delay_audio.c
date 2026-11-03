@@ -106,7 +106,7 @@ static void *av_thread(void *param)
 	const uint64_t t0 = os_gettime_ns();
 	uint64_t packets = 0, frames = 0;
 
-	while (!c->stop) {
+	while (!os_atomic_load_bool(&c->stop)) {
 		uint64_t next_packet = t0 + packets * packet_ns;
 		uint64_t next_frame = t0 + frames * frame_ns;
 
@@ -167,7 +167,7 @@ static void *av_thread(void *param)
 
 static void start_av(struct av *c)
 {
-	c->stop = false;
+	os_atomic_set_bool(&c->stop, false);
 	if (pthread_create(&c->thread, NULL, av_thread, c) != 0) {
 		fprintf(stderr, "could not start the source thread\n");
 		fail();
@@ -179,7 +179,7 @@ static void stop_av(struct av *c)
 {
 	if (!c->thread_started)
 		return;
-	c->stop = true;
+	os_atomic_set_bool(&c->stop, true);
 	pthread_join(c->thread, NULL);
 	c->thread_started = false;
 }

@@ -78,7 +78,7 @@ static void *capture_thread(void *param)
 	 * volume, so none of it is mixed at the default */
 	os_sleep_ms(50);
 	uint64_t t0 = os_gettime_ns();
-	for (uint64_t n = 0; !c->stop; n++) {
+	for (uint64_t n = 0; !os_atomic_load_bool(&c->stop); n++) {
 		uint64_t ts = t0 + n * PACKET_NS;
 
 		/* a period is delivered when it has been captured */
@@ -121,7 +121,7 @@ static void capture_destroy(void *data)
 {
 	struct capture *c = data;
 	if (c->thread_started) {
-		c->stop = true;
+		os_atomic_set_bool(&c->stop, true);
 		pthread_join(c->thread, NULL);
 	}
 	bfree(c);

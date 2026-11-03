@@ -157,6 +157,7 @@ static void register_encoders(void)
 /* a video-only output that notes when its first packet arrives */
 
 struct out {
+	pthread_mutex_t mutex;
 	obs_output_t *output;
 	volatile long packets;
 	volatile long first_is_keyframe;
@@ -176,12 +177,15 @@ static void *out_create(obs_data_t *settings, obs_output_t *output)
 {
 	(void)settings;
 	struct out *o = bzalloc(sizeof(*o));
+	pthread_mutex_init(&o->mutex, NULL);
 	o->output = output;
 	return o;
 }
 
 static void out_destroy(void *data)
 {
+	struct out *o = data;
+	pthread_mutex_destroy(&o->mutex);
 	bfree(data);
 }
 
@@ -208,13 +212,17 @@ static void out_packet(void *data, struct encoder_packet *packet)
 	struct out *o = data;
 	if (!packet)
 		return;
-	if (packet->pts > o->last_pts || !o->packets)
+	pthread_mutex_lock(&o->mutex);
+	if (packet->pts > o->last_pts || !os_atomic_load_long(&o->packets))
 		o->last_pts = packet->pts;
-	if (os_atomic_inc_long(&o->packets) == 1) {
+	if (!os_atomic_load_long(&o->packets)) {
 		o->first_packet_ns = (long long)os_gettime_ns();
 		o->first_pts = packet->pts;
 		os_atomic_set_long(&o->first_is_keyframe, packet->keyframe);
 	}
+	/* Publish only after all first-packet metadata is initialized. */
+	os_atomic_inc_long(&o->packets);
+	pthread_mutex_unlock(&o->mutex);
 }
 
 static void register_outputs(void)
@@ -442,7 +450,9 @@ static void join_real_encoder(const char *id, long lag_ms)
 
 	struct out *replay = obs_obj_get_data(fx.replay);
 	struct out *rec = obs_obj_get_data(fx.recording);
+	pthread_mutex_lock(&replay->mutex);
 	long long joined_after = replay->last_pts;
+	pthread_mutex_unlock(&replay->mutex);
 	long long joined_at = (uint32_t)(video_output_get_total_frames(obs_get_video()) - first_frame);
 	bool started = replay_ok && obs_output_start(fx.recording);
 	long long joined_by = (uint32_t)(video_output_get_total_frames(obs_get_video()) - first_frame);

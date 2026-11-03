@@ -92,7 +92,7 @@ static void *capture_thread(void *param)
 		click[i] = (i & 4) ? 0.8f : -0.8f;
 
 	uint64_t t0 = os_gettime_ns();
-	for (uint64_t n = 0; !c->stop; n++) {
+	for (uint64_t n = 0; !os_atomic_load_bool(&c->stop); n++) {
 		uint64_t ts = t0 + n * PACKET_NS;
 		bool is_click = n % CLICK_EVERY == CLICK_EVERY / 2;
 
@@ -125,7 +125,7 @@ static void start_capture(struct capture *c)
 {
 	if (c->thread_started)
 		return;
-	c->stop = false;
+	os_atomic_set_bool(&c->stop, false);
 	if (pthread_create(&c->thread, NULL, capture_thread, c) != 0) {
 		fprintf(stderr, "could not start the capture thread\n");
 		return;
@@ -138,7 +138,7 @@ static void stop_capture(struct capture *c)
 {
 	if (!c->thread_started)
 		return;
-	c->stop = true;
+	os_atomic_set_bool(&c->stop, true);
 	pthread_join(c->thread, NULL);
 	c->thread_started = false;
 }
