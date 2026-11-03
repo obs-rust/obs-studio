@@ -45,7 +45,7 @@ class SourceProbeTest(unittest.TestCase):
 
     def test_porcelain_and_inherited_target_cannot_hide_compiler_evidence(self):
         result, calls = self.qualify(
-            iter([(0, ""), (0, "[HIT!]"), self.diagnostic(), self.diagnostic()]),
+            iter([(0, ""), (0, "soldr[cache] obs_cache_source_probe [HIT!]"), self.diagnostic(), self.diagnostic()]),
             environment={"SOLDR_PORCELAIN": "1", "CARGO_TARGET_DIR": "/unrelated/target"},
         )
         self.assertTrue(result["safe"])
@@ -60,10 +60,15 @@ class SourceProbeTest(unittest.TestCase):
         self.assertFalse(result["unchanged"]["cache_hit_reported"])
 
     def test_stale_false_green_is_rejected_despite_uncached_diagnostic(self):
-        result, _ = self.qualify(iter([(0, ""), (0, "[HIT!]"), (0, "[HIT!]"), self.diagnostic()]))
+        result, _ = self.qualify(iter([(0, ""), (0, "soldr[cache] obs_cache_source_probe [HIT!]"), (0, "soldr[cache] obs_cache_source_probe [HIT!]"), self.diagnostic()]))
         self.assertFalse(result["safe"])
         self.assertEqual(result["cached"]["returncode"], 0)
         self.assertTrue(result["control"]["probe_diagnostic"])
+
+    def test_an_unrelated_crates_hit_does_not_qualify_the_probe(self):
+        result, calls = self.qualify(iter([(0, ""), (0, "soldr[cache] unrelated [HIT!]")]))
+        self.assertFalse(result["safe"])
+        self.assertEqual(len(calls), 3)
 
     def test_timeout_keeps_partial_log_and_result_instead_of_losing_evidence(self):
         timeout = subprocess.TimeoutExpired("soldr", 120, output=b"partial compiler output\n")
@@ -74,7 +79,7 @@ class SourceProbeTest(unittest.TestCase):
         self.assertEqual(self.logs["unchanged-replay.log"], "partial compiler output\n")
 
     def test_an_uncached_control_that_succeeds_cannot_qualify_the_fixture(self):
-        result, _ = self.qualify(iter([(0, ""), (0, "[HIT!]"), self.diagnostic(), (0, "")]))
+        result, _ = self.qualify(iter([(0, ""), (0, "soldr[cache] obs_cache_source_probe [HIT!]"), self.diagnostic(), (0, "")]))
         self.assertFalse(result["safe"])
 
     def test_failed_seed_is_persisted_and_stops_before_editing(self):
@@ -92,7 +97,7 @@ class SourceProbeTest(unittest.TestCase):
 
     def test_relative_executable_is_resolved_before_changing_directory(self):
         result, calls = self.qualify(
-            iter([(0, ""), (0, "[HIT!]"), self.diagnostic(), self.diagnostic()]),
+            iter([(0, ""), (0, "soldr[cache] obs_cache_source_probe [HIT!]"), self.diagnostic(), self.diagnostic()]),
             executable="./candidate/soldr",
         )
         selected = str(Path("candidate/soldr").resolve())

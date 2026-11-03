@@ -96,7 +96,7 @@ def probe(directory: Path, executable: str, expected_version: str | None, *, tim
             "timed_out": timed_out,
             "seconds": round(time.monotonic() - start, 3),
             "probe_diagnostic": f"error: {MARKER}" in output,
-            "cache_hit_reported": "[HIT" in output,
+            "cache_hit_reported": "soldr[cache] obs_cache_source_probe [HIT" in output,
             "log": f"{name}.log",
         }
 
