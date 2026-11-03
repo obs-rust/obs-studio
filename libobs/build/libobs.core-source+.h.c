@@ -8,6 +8,7 @@
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
+#include "libobs/obs-source-transition-settings.c.h"
 #include "libobs/obs-source-transition.c.h"
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-view.c.h"
