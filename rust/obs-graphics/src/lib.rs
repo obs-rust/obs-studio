@@ -31,6 +31,7 @@ pub mod bounds;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;
+pub mod effect_parser;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 #[allow(unsafe_code)] // the C ABI shims
