@@ -49,6 +49,11 @@ void obs_source_transition_seam_set_sources(obs_source_t *transition, size_t idx
 	transition->transition_sources[idx] = value;
 }
 
+const char *obs_source_transition_seam_get_child_name(const obs_source_t *child)
+{
+	return child->context.name;
+}
+
 bool obs_source_transition_seam_get_source_active(const obs_source_t *transition, size_t idx)
 {
 	return transition->transition_source_active[idx];
