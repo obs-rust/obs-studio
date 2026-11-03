@@ -1,0 +1,184 @@
+//! Safe core of `libobs/obs-source-transition-size.c.h`: the size and child
+//! matrices of a transition and its per-frame tick, moved out of
+//! `libobs/obs-source-transition.c.h`.
+//!
+//! - [`get_cx`] and [`get_cy`]: `transition_get_cx()` and
+//!   `transition_get_cy()`, the size set with `obs_transition_set_size()`,
+//!   or the actual size when none is set;
+//! - [`recalculate_matrix`] and [`recalculate_matrices`]: the C's file-local
+//!   `recalculate_transition_matrix()` and
+//!   `transition_recalculate_matrices()`, the matrix each slot's child is
+//!   drawn with;
+//! - [`recalculate_size`]: `transition_recalculate_size()`, the actual size,
+//!   the larger width and the larger height of the two children;
+//! - [`tick`]: `obs_transition_tick()`, which recalculates the size and the
+//!   matrices, moves the manual value and resets both render targets.
+//!
+//! Each is generic over a [`Transition`]: one method per field read or
+//! write, per lock call and per call into the rest of libobs
+//! (`obs_source_get_width()`, `obs_source_get_height()`, `add_alignment()`,
+//! the matrix built with `matrix4_identity()`, `matrix4_scale3f()` and
+//! `matrix4_translate3f()`, `calc_torquef()` and `gs_texrender_reset()`), so
+//! a function makes the C's calls in the C's order and under the C's locks.
+//! The rules are the ones ported with the transition clock and render:
+//! [`crate::transition_clock::size`], [`crate::transition_clock::fold`],
+//! [`crate::transition_clock::fit`], [`crate::transition_clock::manual`] and
+//! [`crate::transition_render::offset`].
+//!
+//! The C shims live in the `obs-source-seam` crate, which implements
+//! [`Transition`] over `libobs/obs-source-transition-seam.h` and the libobs
+//! calls; only libobs-rust links it, so this crate calls nothing in libobs.
+//!
+//! The locks are the C's, taken where it takes them: `transition_mutex`
+//! around the child reads of the size and of each matrix, and a trylock of
+//! `transition_tex_mutex` around the render target resets of the tick. As in
+//! the C, the sizes, the scale type, the alignment, the matrices and the
+//! manual fields are read and written outside `transition_mutex`.
+
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::todo
+)]
+
+/// The two slots, A (0) and B (1).
+pub const SLOTS: [usize; 2] = [0, 1];
+
+/// The fields, locks and libobs calls of a transition that its size, matrices
+/// and tick use: in libobs, the transition seam
+/// (`obs-source-transition-seam.h`) and the libobs functions the C calls,
+/// one call per method.
+pub trait Transition {
+    /// A child in a slot, as the seam hands it back.
+    type Child: Copy;
+    /// A `gs_texrender_t *` of the two render targets.
+    type Texrender: Copy;
+
+    /// `transition_sources[idx]`, `None` for an empty slot.
+    fn source(&self, idx: usize) -> Option<Self::Child>;
+    /// `transition_cx`, the size set with `obs_transition_set_size()`.
+    fn cx(&self) -> u32;
+    /// `transition_cy`.
+    fn cy(&self) -> u32;
+    /// `transition_actual_cx`, the children's size.
+    fn actual_cx(&self) -> u32;
+    /// Writes `transition_actual_cx`.
+    fn set_actual_cx(&self, value: u32);
+    /// `transition_actual_cy`.
+    fn actual_cy(&self) -> u32;
+    /// Writes `transition_actual_cy`.
+    fn set_actual_cy(&self, value: u32);
+    /// `transition_scale_type`, as its `int`.
+    fn scale_type(&self) -> i32;
+    /// `transition_alignment`.
+    fn alignment(&self) -> u32;
+    /// `transition_mode`, as its `int`.
+    fn mode(&self) -> i32;
+    /// `transition_manual_val`.
+    fn manual_val(&self) -> f32;
+    /// Writes `transition_manual_val`.
+    fn set_manual_val(&self, value: f32);
+    /// `transition_manual_target`.
+    fn manual_target(&self) -> f32;
+    /// `transition_manual_torque`.
+    fn manual_torque(&self) -> f32;
+    /// `transition_manual_clamp`.
+    fn manual_clamp(&self) -> f32;
+    /// `transition_texrender[idx]`.
+    fn texrender(&self, idx: usize) -> Self::Texrender;
+
+    /// Locks `transition_mutex`.
+    fn lock(&self);
+    /// Unlocks `transition_mutex`.
+    fn unlock(&self);
+    /// `pthread_mutex_trylock()` of `transition_tex_mutex`: 0 when it took
+    /// the lock, a pthread error code otherwise.
+    fn trylock_textures(&self) -> i32;
+    /// Unlocks `transition_tex_mutex`.
+    fn unlock_textures(&self);
+
+    /// `obs_source_get_width(child)`.
+    fn child_width(&self, child: Self::Child) -> u32;
+    /// `obs_source_get_height(child)`.
+    fn child_height(&self, child: Self::Child) -> u32;
+    /// `add_alignment(&pos, align, cx, cy)` on a zeroed `struct vec2 pos`:
+    /// the position it leaves, `(x, y)`.
+    fn alignment_position(&self, align: u32, cx: i32, cy: i32) -> (f32, f32);
+    /// Builds the matrix of slot `idx` as the C does and stores it in
+    /// `transition_matrices[idx]`: `matrix4_identity()`, then
+    /// `matrix4_scale3f(scale.0, scale.1, 1)`, then
+    /// `matrix4_translate3f(pos.0, pos.1, 0)`, then `matrix4_copy()`.
+    fn set_matrix(&self, idx: usize, scale: (f32, f32), pos: (f32, f32));
+    /// `calc_torquef(val1, val2, torque, min_adjust, t)`.
+    fn calc_torquef(&self, val1: f32, val2: f32, torque: f32, min_adjust: f32, t: f32) -> f32;
+    /// `gs_texrender_reset(texrender)`.
+    fn texrender_reset(&self, texrender: Self::Texrender);
+}
+
+/// `transition_get_cx()`: `transition_cx`, or `transition_actual_cx` when
+/// it is 0 ([`crate::transition_clock::size`]).
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn get_cx<T: Transition>(transition: &T) -> u32 {
+    let _ = transition;
+    todo!()
+}
+
+/// `transition_get_cy()`: `transition_cy`, or `transition_actual_cy` when
+/// it is 0.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn get_cy<T: Transition>(transition: &T) -> u32 {
+    let _ = transition;
+    todo!()
+}
+
+/// `recalculate_transition_matrix()`: the matrix of slot `idx`.
+///
+/// Reads the transition's size ([`get_cx`], [`get_cy`]) and scale type,
+/// then, under the lock, the slot's child and its width and height. Nothing
+/// more for an empty slot, or for a child with no width or height
+/// ([`crate::transition_clock::Fit::NoMatrix`]). Otherwise the child is
+/// scaled by the fit (1 by 1 for a scale type outside the enum), placed by
+/// the transition's alignment within the room left
+/// ([`crate::transition_render::offset`], each cast to `int` as the C casts
+/// it), and the matrix is stored.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn recalculate_matrix<T: Transition>(transition: &T, idx: usize) {
+    let _ = (transition, idx);
+    todo!()
+}
+
+/// `transition_recalculate_matrices()`: [`recalculate_matrix`] of slot A,
+/// then of slot B.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn recalculate_matrices<T: Transition>(transition: &T) {
+    let _ = transition;
+    todo!()
+}
+
+/// `transition_recalculate_size()`: under the lock, folds each non-empty
+/// slot's width and height, slot A first
+/// ([`crate::transition_clock::fold`], from 0); after the unlock, writes
+/// them as `transition_actual_cx` and `transition_actual_cy`.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn recalculate_size<T: Transition>(transition: &T) {
+    let _ = transition;
+    todo!()
+}
+
+/// `obs_transition_tick()`: [`recalculate_size`], [`recalculate_matrices`],
+/// then the manual value for the mode and torque
+/// ([`crate::transition_clock::manual`]): the target for a snap,
+/// `calc_torquef(value, target, torque, clamp, t)` for a step, left as it is
+/// otherwise. Last, when the texture trylock takes the lock, resets both
+/// render targets (slot A's first) and unlocks it.
+#[expect(clippy::todo, reason = "RED: the port follows")]
+pub fn tick<T: Transition>(transition: &T, t: f32) {
+    let _ = (transition, t);
+    todo!()
+}
