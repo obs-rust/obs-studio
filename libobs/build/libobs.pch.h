@@ -232,6 +232,7 @@
 #include "obs-source-transition-load.h"
 #include "obs-source-transition-render.h"
 #include "obs-source-transition-sample-time.h"
+#include "obs-source-transition-seam.h"
 #include "obs-source-transition-start.h"
 
 /* obs-source.c */

@@ -50,16 +50,6 @@ _Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_ASPECT == OBS_TRANSITION_SCALE_A
 _Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
 	       "OBS_TRANSITION_SCALE_STRETCH");
 
-static inline bool transition_valid(const obs_source_t *transition, const char *func)
-{
-	if (!obs_ptr_valid(transition, func))
-		return false;
-	else if (!obs_source_transition_load_is_transition((int)transition->info.type))
-		return false;
-
-	return true;
-}
-
 bool obs_transition_init(obs_source_t *transition)
 {
 	pthread_mutex_init_value(&transition->transition_mutex);
@@ -345,11 +335,6 @@ static bool activate_transition(obs_source_t *transition, size_t idx, obs_source
 	return true;
 }
 
-static inline bool transition_active(obs_source_t *transition)
-{
-	return transition->transitioning_audio || transition->transitioning_video;
-}
-
 bool obs_transition_is_active(obs_source_t *transition)
 {
 	return transition_active(transition);
@@ -563,11 +548,6 @@ static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_trans
 {
 	size_t idx = (size_t)target;
 	return gs_texrender_get_texture(transition->transition_texrender[idx]);
-}
-
-static inline enum obs_transition_scale_type valid_scale_type(int64_t type)
-{
-	return (enum obs_transition_scale_type)obs_source_transition_load_scale_type(type);
 }
 
 void obs_transition_set_scale_type(obs_source_t *transition, enum obs_transition_scale_type type)
