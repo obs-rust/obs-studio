@@ -856,9 +856,9 @@ build and both test modes on `ca331a93d`.
 The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
-in #1805. The graph currently contains 348 targets: 299 core, 39 graphics,
-six VLC, two Qt and two WHIP. This remains a subset of the repository's native tests;
-Cargo compilation of these tests currently runs on Linux.
+in #1805. The graph remains a subset of the repository's native tests; target and test
+selection depends on the evaluated platform and feature requirements. Cargo
+compilation of the full selected test graph currently runs on Linux.
 
 Targets may specify `"cpp_standard": "17"` or `"cpp_standard": "20"`.
 The typed native model passes the requested ISO mode to `cc::Build` only for
