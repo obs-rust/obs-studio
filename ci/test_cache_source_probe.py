@@ -36,6 +36,7 @@ class SourceProbeTest(unittest.TestCase):
                 result = probe.probe(directory, executable, "0.9.51")
             persisted = json.loads((directory / "result.json").read_text())
             self.assertEqual(result, persisted)
+            self.logs = {path.name: path.read_text() for path in directory.glob("*.log")}
             return result, calls
 
     @staticmethod
@@ -70,6 +71,24 @@ class SourceProbeTest(unittest.TestCase):
         self.assertFalse(result["safe"])
         self.assertTrue(result["unchanged"]["timed_out"])
         self.assertIsNone(result["unchanged"]["returncode"])
+        self.assertEqual(self.logs["unchanged-replay.log"], "partial compiler output\n")
+
+    def test_an_uncached_control_that_succeeds_cannot_qualify_the_fixture(self):
+        result, _ = self.qualify(iter([(0, ""), (0, "[HIT!]"), self.diagnostic(), (0, "")]))
+        self.assertFalse(result["safe"])
+
+    def test_failed_seed_is_persisted_and_stops_before_editing(self):
+        result, calls = self.qualify(iter([(1, "failed seed")]))
+        self.assertFalse(result["safe"])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(self.logs["warm.log"], "failed seed")
+
+    def test_invalid_timeouts_are_rejected_before_starting_compilers(self):
+        for timeout in (0, -1, float("inf"), float("nan")):
+            with self.subTest(timeout=timeout), patch.object(probe.subprocess, "run") as run:
+                with self.assertRaisesRegex(ValueError, "finite positive"):
+                    probe.probe(Path("unused"), "/selected/soldr", None, timeout=timeout)
+                run.assert_not_called()
 
     def test_relative_executable_is_resolved_before_changing_directory(self):
         result, calls = self.qualify(
