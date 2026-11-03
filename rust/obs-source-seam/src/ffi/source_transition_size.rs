@@ -35,28 +35,47 @@ use std::marker::PhantomData;
 
 use obs_source::transition_size::{self as core, Transition};
 
-/// `struct vec2`.
+/// `struct vec2` (`graphics/vec2.h`): `x` and `y`. Its size, alignment and
+/// offsets are checked against the C header in the parity tests
+/// (`transition_size_layout`).
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
-struct Vec2 {
-    x: f32,
-    y: f32,
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Vec2 {
+    /// `x`.
+    pub x: f32,
+    /// `y`.
+    pub y: f32,
 }
 
-/// `struct vec3`, an `__m128`.
+/// `struct vec3` (`graphics/vec3.h`), an `__m128`: `x`, `y`, `z` and the
+/// padding `w`.
 #[repr(C, align(16))]
-#[derive(Clone, Copy, Default)]
-struct Vec3 {
-    x: f32,
-    y: f32,
-    z: f32,
-    w: f32,
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Vec3 {
+    /// `x`.
+    pub x: f32,
+    /// `y`.
+    pub y: f32,
+    /// `z`.
+    pub z: f32,
+    /// `w`, 0 as `vec3_set()` leaves it.
+    pub w: f32,
 }
 
-/// `struct matrix4`: four `struct vec4` (`__m128`), x, y, z and t.
+/// `struct matrix4` (`graphics/matrix4.h`): four `struct vec4` (`__m128`)
+/// rows, `x`, `y`, `z` and `t`.
 #[repr(C, align(16))]
-#[derive(Clone, Copy, Default)]
-struct Matrix4([f32; 16]);
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Matrix4 {
+    /// `x`.
+    pub x: [f32; 4],
+    /// `y`.
+    pub y: [f32; 4],
+    /// `z`.
+    pub z: [f32; 4],
+    /// `t`.
+    pub t: [f32; 4],
+}
 
 unsafe extern "C" {
     fn obs_source_transition_seam_get_sources(transition: *const c_void, idx: usize)
@@ -163,15 +182,15 @@ impl<L> Seam<L> {
     }
 }
 
-/// `matrix4_identity()`: the diagonal 1, the rest 0.
+/// `matrix4_identity()`: each row zeroed, then `x.x`, `y.y`, `z.z` and
+/// `t.w` 1.
 fn identity() -> Matrix4 {
-    let mut mat = Matrix4::default();
-    for (i, m) in mat.0.iter_mut().enumerate() {
-        if i % 5 == 0 {
-            *m = 1.0;
-        }
+    Matrix4 {
+        x: [1.0, 0.0, 0.0, 0.0],
+        y: [0.0, 1.0, 0.0, 0.0],
+        z: [0.0, 0.0, 1.0, 0.0],
+        t: [0.0, 0.0, 0.0, 1.0],
     }
-    mat
 }
 
 // SAFETY (every method): `self.0` is the live source the C caller passed,

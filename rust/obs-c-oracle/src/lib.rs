@@ -221,6 +221,7 @@ pub mod source_transition_load;
 pub mod source_transition_render;
 pub mod source_transition_sample_time;
 pub mod source_transition_settings;
+pub mod source_transition_size;
 pub mod source_transition_slots;
 pub mod source_transition_start;
 pub mod source_video_tick;
