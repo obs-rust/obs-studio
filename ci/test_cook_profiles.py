@@ -33,8 +33,8 @@ class CookProfilesTest(unittest.TestCase):
     def test_build_consumers_declare_the_profile_policy(self):
         expected = {
             "rust-tests-linux": "--profile dev -- --tests",
-            "rust-cross-lint": "--profile dev",
-            "rust-cross-lint-release": "--profile dev",
+            "rust-cross-lint": "--profile dev -- --tests",
+            "rust-cross-lint-release": "--profile dev -- --tests",
             "rust-tests-macos": "--profile dev -- --tests",
             "rust-tests-windows": "--profile dev -- --tests",
             # Corrosion-only build, its own target dir: no cook (#3027).
@@ -53,6 +53,27 @@ class CookProfilesTest(unittest.TestCase):
                     continue
                 self.assertIn("prebuild-deps-flags: " + flags, workflow[name])
                 self.assertNotIn("prebuild-deps: none", workflow[name])
+
+    def test_linux_host_jobs_share_one_cook_layer(self):
+        """Fast Gate and Cross Lint resolve to one Linux layer, so one entry of `deps` (#2661).
+
+        Each profile is its own key of about 1.2 GB. With two of them `deps` went
+        over its footprint, and the janitor evicted one layer on every queue run.
+        """
+        workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
+
+        def setting(name, key):
+            return re.search(rf"^\s+{key}: (.+)$", workflow[name], re.M)[1].strip()
+
+        for name in ("rust-cross-lint", "rust-cross-lint-release"):
+            for key in ("prebuild-deps-flags", "cache-key-suffix"):
+                with self.subTest(job=name, key=key):
+                    self.assertEqual(setting(name, key), setting("rust-tests-linux", key))
+
+    def test_linux_host_key_is_not_the_stuck_one(self):
+        """`linux-host-v1` restored nothing and saved a 409 on 2026-11-03 (#2661)."""
+        host = jobs(ROOT / ".github/workflows/build-project.yaml")["rust-tests-linux"]
+        self.assertNotRegex(host, r"cache-key-suffix: linux-host-v1\b")
 
     def test_fast_gate_cooks_the_profile_its_tests_compile_in(self):
         """The Fast Gate consumer is `cargo test`: a release cook is never reused.

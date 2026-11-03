@@ -86,16 +86,22 @@ pr = { mode = "none", families = [], max-per-pr = "0MB", budget = "0MB", trim = 
 # The janitor deletes any cache matching no family. evict = "lru" families
 # keep their most recently used entries up to max x cardinality.
 [cache.family]
+# zackees/setup-soldr verdict ledger: small entries, master publishes, PRs
+# replay them (docs/ci-tooling.md). About 25 entries and 25 KB per run (#2661).
+soldr-verdict = { prefix = "soldr-verdict-", max = "1MB", evict = "lru" }
 # zackees/setup-soldr (build-project.yaml, release-rust.yaml).
 registry = { via = "setup-soldr:cargo-registry", max = "60MB", per = "platform" }
-# Linux retains measured dev (~622 MB) and release (~637 MB) snapshots.
+# Fast Gate and Cross Lint share one Linux layer. Largest layers measured on
+# 2026-11-03: Linux 1.20 GB, macOS 0.77 GB, Windows 0.95 GB. At 1.4 GB / 400 MB /
+# 650 MB the janitor evicted one layer on each queue run, and the next master
+# push saved it again (#2661).
 # Declared by prefix, not `via = "setup-soldr:cook"`: the pinned linter
 # (a1917ce) resolves that via to cook-base-v2-, but the pinned setup-soldr
 # (9337570) writes cook-base-v3- keys, which the janitor then deleted as an
 # undeclared family on every merge-queue run, so a cook layer survived only
 # until the next run ended (#3166; sizes measured 2026-10-31: Linux 1.29-1.51
 # GB, macOS 0.72 GB, Windows 0.80-0.84 GB).
-deps = { prefix = "cook-base-v3-", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "400MB" }, windows = { max = "650MB" } } }
+deps = { prefix = "cook-base-v3-", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "900MB" }, windows = { max = "1.1GB" } } }
 # Embedded compiler-store transport is disabled at every setup-soldr callsite.
 # No family: legacy setup-soldr-buildcache-v2-* entries may be reclaimed.
 toolchain = { via = "setup-soldr:solo-toolchain", max = "190MB", per = "platform" }
@@ -103,10 +109,11 @@ soldr-mini = { via = "setup-soldr:soldr-mini", max = "15MB", per = "platform" }
 # astral-sh/setup-uv's own cache.
 uv = { via = "setup-uv", max = "50MB" }
 # First-match classification: keep this specific prefix before zccache-.
-# Queue OFF/ON objects share one archive, measured ~1.17 GB on 2026-10-24
+# Queue OFF/ON objects share one archive, measured 248 MB on 2026-11-03
 # (ci/fixtures/queue-compiler-caches.json). Independent LRU
 # protection prevents newer nightly writes from evicting that queue seed.
-zccache-tier2 = { prefix = "zccache-tier2-linux-", max = "1.5GB", evict = "lru" }
+# A run restores the newest entry, so older ones hold no reuse (#2661).
+zccache-tier2 = { prefix = "zccache-tier2-linux-", max = "700MB", evict = "lru" }
 # The PR asan job restores master's sanitize archive: 753,363,578 B on
 # 2026-10-30 (ci/fixtures/sanitize-compiler-cache.json). At 300MB the janitor
 # evicted it and PR asan jobs built cold, 40-55 min against 25 min (#1801).
