@@ -156,39 +156,6 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 	return true;
 }
 
-obs_source_t *obs_transition_get_source(obs_source_t *transition, enum obs_transition_target target)
-{
-	size_t idx = (size_t)target;
-	obs_source_t *ret;
-
-	if (!transition_valid(transition, "obs_transition_get_source"))
-		return NULL;
-
-	lock_transition(transition);
-	ret = transition->transition_sources[idx];
-	ret = obs_source_get_ref(ret);
-	unlock_transition(transition);
-
-	return ret;
-}
-
-obs_source_t *obs_transition_get_active_source(obs_source_t *transition)
-{
-	obs_source_t *ret;
-	bool active;
-
-	if (!transition_valid(transition, "obs_transition_get_source"))
-		return NULL;
-
-	lock_transition(transition);
-	active = transition->transitioning_audio || transition->transitioning_video;
-	ret = transition->transition_sources[obs_source_transition_start_active_index(active)];
-	ret = obs_source_get_ref(ret);
-	unlock_transition(transition);
-
-	return ret;
-}
-
 static bool activate_transition(obs_source_t *transition, size_t idx, obs_source_t *child)
 {
 	if (obs_source_transition_start_activates(transition->transition_source_active[idx])) {
@@ -300,28 +267,6 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 	transition_recalculate_matrices(transition);
 
 	return true;
-}
-
-void obs_transition_set_manual_torque(obs_source_t *transition, float torque, float clamp)
-{
-	lock_transition(transition);
-	transition->transition_manual_torque = torque;
-	transition->transition_manual_clamp = clamp;
-	unlock_transition(transition);
-}
-
-void obs_transition_set_manual_time(obs_source_t *transition, float t)
-{
-	enum obs_transition_mode mode;
-
-	lock_transition(transition);
-	transition->transition_manual_target = t;
-	mode = transition->transition_mode;
-	unlock_transition(transition);
-
-	if (obs_source_transition_start_manual_reset((int)mode, t)) {
-		obs_transition_set(transition, transition->transition_sources[0]);
-	}
 }
 
 void obs_transition_set(obs_source_t *transition, obs_source_t *source)
