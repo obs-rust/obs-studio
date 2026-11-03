@@ -4701,6 +4701,18 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_shader_parser_blocks": {
+      "sources": [
+        "test/cmocka/test_shader_parser_blocks.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_shader_sampler_convert": {
       "sources": [
         "test/cmocka/test_shader_sampler_convert.c"
@@ -8139,6 +8151,12 @@
     },
     "test_shader_param_values_steps": {
       "target": "test_shader_param_values_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_shader_parser_blocks": {
+      "target": "test_shader_parser_blocks",
       "command": [
         "${target}"
       ]

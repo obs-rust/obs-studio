@@ -39,4 +39,5 @@
 
 /* graphics/shader-parser.c */
 #include "graphics/shader-param-values.h"
+#include "graphics/shader-parser-blocks.h"
 #include "graphics/shader-parser.h"
