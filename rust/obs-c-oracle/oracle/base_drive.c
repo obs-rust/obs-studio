@@ -9,6 +9,8 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #if defined(_MSC_VER)
 /* MSVC's <stdatomic.h> errors unless C11 atomics are switched on
@@ -48,50 +50,84 @@ void base_test_oracle_blogva_si(int level, const char *fmt, const char *s, int v
  * and their lines must not change the count.
  * The owner is never cleared: blog calls the handler after it drops the
  * base mutex, so a line can arrive after the old handler is restored.
- * For the same reason the owner is one atomic pointer, the address of
- * the binding thread's own tag: a late line reads it while the next test
- * binds its thread. */
+ * The owner is an atomic numeric token. TLS addresses can be reused after
+ * thread exit, so each thread lazily claims a process-unique token instead.
+ * Zero stays reserved for the unbound, record-all state. */
 #if defined(_MSC_VER)
-static __declspec(thread) char thread_tag;
-static void *volatile record_owner;
+static __declspec(thread) uint64_t thread_token;
+static volatile __int64 record_owner;
+static volatile __int64 next_thread_token;
 
-static void *record_owner_load(void)
+static uint64_t record_owner_load(void)
 {
-	/* Full barrier. A NULL/NULL exchange is the load: the value is
-	 * unchanged. */
-	return _InterlockedCompareExchangePointer(&record_owner, NULL, NULL);
+	return (uint64_t)_InterlockedCompareExchange64(&record_owner, 0, 0);
 }
 
-static void record_owner_store(void *owner)
+static void record_owner_store(uint64_t owner)
 {
-	_InterlockedExchangePointer(&record_owner, owner);
+	_InterlockedExchange64(&record_owner, (__int64)owner);
+}
+
+static uint64_t allocate_thread_token(void)
+{
+	__int64 previous = _InterlockedCompareExchange64(&next_thread_token, 0, 0);
+	for (;;) {
+		if ((uint64_t)previous == UINT64_MAX)
+			abort();
+		__int64 next = (__int64)((uint64_t)previous + 1);
+		__int64 observed = _InterlockedCompareExchange64(&next_thread_token, next, previous);
+		if (observed == previous)
+			return (uint64_t)next;
+		previous = observed;
+	}
 }
 #else
-static _Thread_local char thread_tag;
-static _Atomic(void *) record_owner;
+static _Thread_local uint64_t thread_token;
+static _Atomic(uint64_t) record_owner;
+static _Atomic(uint64_t) next_thread_token;
 
-static void *record_owner_load(void)
+static uint64_t record_owner_load(void)
 {
 	return atomic_load_explicit(&record_owner, memory_order_acquire);
 }
 
-static void record_owner_store(void *owner)
+static void record_owner_store(uint64_t owner)
 {
 	atomic_store_explicit(&record_owner, owner, memory_order_release);
 }
+
+static uint64_t allocate_thread_token(void)
+{
+	uint64_t previous = atomic_load_explicit(&next_thread_token, memory_order_relaxed);
+	for (;;) {
+		if (previous == UINT64_MAX)
+			abort();
+		if (atomic_compare_exchange_weak_explicit(&next_thread_token, &previous, previous + 1,
+							  memory_order_relaxed, memory_order_relaxed))
+			return previous + 1;
+	}
+}
 #endif
+
+static uint64_t recorder_thread_token(void)
+{
+	if (!thread_token) {
+		thread_token = allocate_thread_token();
+	}
+	return thread_token;
+}
 
 void base_test_record_only_this_thread(void)
 {
-	record_owner_store(&thread_tag);
+	record_owner_store(recorder_thread_token());
 }
 
 void base_test_record(int log_level, const char *format, va_list args, void *param)
 {
 	struct base_test_rec *rec = param;
-	void *owner = record_owner_load();
+	uint64_t owner = record_owner_load();
 
-	if (owner && owner != &thread_tag)
+	if (owner && owner != recorder_thread_token())
 		return;
 
 	rec->calls++;

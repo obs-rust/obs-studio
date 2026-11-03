@@ -840,7 +840,9 @@ fn late_line_from_another_thread_is_ignored_test() {
 
 #[test]
 fn late_line_after_owner_thread_exits_is_ignored_test() {
-    if !process_isolated(&selector("late_line_after_owner_thread_exits_is_ignored_test")) {
+    if !process_isolated(&selector(
+        "late_line_after_owner_thread_exits_is_ignored_test",
+    )) {
         return;
     }
     let _gate = lock();
