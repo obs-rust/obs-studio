@@ -243,6 +243,10 @@ running, wait and retry.
    passes, and don't push just to test.
 5. macOS and Windows failures: read the `cdb` or `lldb` stack in the Tier 2
    log before you push a guess.
+6. asan failures: read
+   [docs/knowledge/asan-pr-failure.md](../../../docs/knowledge/asan-pr-failure.md)
+   before you act. Fix the test or the bug. The known list is the last step,
+   and never for a test your PR adds or changes.
 
 ## 7. Land it
 

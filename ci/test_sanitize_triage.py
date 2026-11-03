@@ -163,6 +163,11 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertEqual(code, 1, md)
 
 
+# The goal is zero. Adding an entry raises this number, so the reviewer sees it;
+# see docs/knowledge/asan-pr-failure.md. Fix the test first.
+KNOWN_ENTRIES = 6
+
+
 class KnownListTest(unittest.TestCase):
     """Every entry has a kind; bug and flaky entries name an open issue."""
 
@@ -174,6 +179,17 @@ class KnownListTest(unittest.TestCase):
             self.assertIn(kind, {"bug", "flaky", "tool"}, (tool, test))
             if kind != "tool":
                 self.assertRegex(why, r"#\d+", (tool, test))
+
+    def test_the_list_does_not_grow_unseen(self):
+        spec = importlib.util.spec_from_file_location("triage", TRIAGE)
+        triage_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(triage_mod)
+        self.assertEqual(
+            len(triage_mod.KNOWN),
+            KNOWN_ENTRIES,
+            "the known list changed: lower KNOWN_ENTRIES when an entry goes; "
+            "to add one, read docs/knowledge/asan-pr-failure.md first",
+        )
 
 
 if __name__ == "__main__":

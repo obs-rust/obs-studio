@@ -47,6 +47,7 @@ stays in the code PR.
 <!-- concepts: generated, `./lint --fix` writes this list -->
 - [Which asan tests keep the slow allocation unwinder](asan-allocation-unwinder.md) — Distro FFmpeg has no frame pointers, so the fast unwinder stops at av_malloc; only tests that link FFmpeg keep the slow one, and a test the scan does not find stays slow.
 - [Most asan builds start cold](asan-cold-builds.md) — Only a master run saves the asan compiler cache, and the merge queue does not run asan, so check whether a run restored a cache before you compare its build time.
+- [An asan failure on your PR](asan-pr-failure.md) — What to do when the asan job fails a PR: fix the leak or the test, find out if the failure is yours, and why the known list is the last step and not the first.
 - [Float results depend on the host compiler](host-compiler-float.md) — The CI runner's gcc contracts mul+add into an FMA and the Tier 2 image's gcc does not, so the same C source gives different float results.
 - [Running sanitizers locally](local-sanitizers.md) — Asan or valgrind on a few tests through the harness on a local machine, and what valgrind costs per test.
 - [Dispatch sanitizers on a separate ref](sanitizer-dispatch.md) — A `workflow_dispatch` of `sanitizers.yaml` on a PR branch cancels the run in progress there; dispatch on a separate ref.
