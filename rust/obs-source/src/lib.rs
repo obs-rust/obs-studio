@@ -78,6 +78,11 @@
 //! size setters and getters, `obs_transition_save()` and the fixed duration
 //! switch, generic over the transition seam; its C shims are in the
 //! `obs-source-seam` crate, which only libobs-rust links);
+//! `libobs/obs-source-transition-slots.c.h`, the two child slots of the
+//! transitions (`obs_transition_clear()`, `obs_transition_enum_sources()`
+//! and the swap of `obs_transition_swap_begin()`, `copy_source_state()` and
+//! `obs_transition_swap_end()`, generic over the transition seam and the
+//! libobs source calls; its C shims are in `obs-source-seam` too);
 //! `libobs/obs-source-transition-start.c.h`, the start checks and child
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
 //! `activate_transition()`, the active source, the manual reset and the
@@ -97,7 +102,8 @@
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
-//! [`transition_sample_time`], [`transition_settings`], [`transition_start`],
+//! [`transition_sample_time`], [`transition_settings`], [`transition_slots`],
+//! [`transition_start`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
@@ -132,6 +138,7 @@ pub mod transition_load;
 pub mod transition_render;
 pub mod transition_sample_time;
 pub mod transition_settings;
+pub mod transition_slots;
 pub mod transition_start;
 pub mod video_tick;
 pub mod volume_apply;

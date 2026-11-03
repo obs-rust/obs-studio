@@ -7,6 +7,7 @@ private libobs adapter and exports the C functions under their original names.
 | C file | Safe core | Shims | Seam |
 |---|---|---|---|
 | `libobs/obs-source-transition-settings.c.h` | `obs_source::transition_settings` | `ffi::source_transition_settings` | `libobs/obs-source-transition-seam.h` |
+| `libobs/obs-source-transition-slots.c.h` | `obs_source::transition_slots` | `ffi::source_transition_slots` | `libobs/obs-source-transition-seam.h`, and the libobs source calls through `Calls` |
 
 ## Why a crate of its own
 

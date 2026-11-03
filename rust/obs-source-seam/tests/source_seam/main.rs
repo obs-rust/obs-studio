@@ -2,3 +2,4 @@
 //! C file.
 
 mod transition_settings_parity;
+mod transition_slots_parity;

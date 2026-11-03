@@ -3,7 +3,12 @@
 //! whose shims ([`ffi::source_transition_settings`]) implement the safe
 //! core's `obs_source::transition_settings::Transition` over the transition
 //! seam (`libobs/obs-source-transition-seam.h`, hidden C in libobs) and its
-//! `SaveData` over `obs_data_set_string()` and `obs_data_set_int()`.
+//! `SaveData` over `obs_data_set_string()` and `obs_data_set_int()`; and
+//! `libobs/obs-source-transition-slots.c.h`, the child slots of a
+//! transition, whose shims ([`ffi::source_transition_slots`]) implement
+//! `obs_source::transition_slots::Transition` over the same seam and the
+//! libobs source calls (`obs_source_get_ref()`, `obs_source_release()`, the
+//! active-child add and remove, `obs_source_get_name()` and `blog()`).
 //!
 //! These shims live apart from `obs-source` because they reference symbols
 //! only libobs has. The `*_steps_rust` C tests link libobs and the Rust

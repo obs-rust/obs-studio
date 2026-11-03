@@ -1,0 +1,6 @@
+# obs-source-transition-slots.c (obs-source-seam): the child slots of a
+# transition in obs.h (EXPORT), called by the frontend, plugins and scenes.
+# obs_transition_enum_sources is in rust-hidden.d.
+obs_transition_clear
+obs_transition_swap_begin
+obs_transition_swap_end
