@@ -140,11 +140,7 @@ endfunction()
 
 # Product name shown by the frontend (frontend/utility/product-name.c), built
 # without Qt.
-add_executable(test_product_name test_product_name.c "${CMAKE_SOURCE_DIR}/frontend/utility/product-name.c.h")
-target_include_directories(test_product_name PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/frontend/utility")
-target_link_libraries(test_product_name PRIVATE ${CMOCKA_LIBRARIES})
-add_dependencies(cmocka-tests test_product_name)
-add_test(test_product_name ${CMAKE_CURRENT_BINARY_DIR}/test_product_name)
+# test_product_name is defined in build/test-graph.json.
 
 # Exercise hotkey loading with an isolated core and no platform input thread.
 # test_hotkey_load is defined in build/test-graph.json.
@@ -280,12 +276,7 @@ endif()
 # test_video_stats_race is defined in build/test-graph.json.
 
 # Qt-free concurrency check for the frontend meter's locked snapshot (#131).
-add_executable(test_volume_meter_snapshot test_volume_meter_snapshot.cpp)
-if(NOT MSVC)
-  target_link_libraries(test_volume_meter_snapshot PRIVATE Threads::Threads)
-endif()
-add_dependencies(cmocka-tests test_volume_meter_snapshot)
-add_test(test_volume_meter_snapshot ${CMAKE_CURRENT_BINARY_DIR}/test_volume_meter_snapshot)
+# test_volume_meter_snapshot is defined in build/test-graph.json.
 
 # task test (task.c)
 # test_task is defined in build/test-graph.json.
