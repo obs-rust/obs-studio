@@ -505,6 +505,10 @@ static obs_source_t *obs_source_create_internal(const char *id, const char *name
 	if (!private)
 		obs_source_init_audio_hotkeys(source);
 
+	/* A plugin may start capture threads from its create callback. */
+	source->flags = source->default_flags;
+	source->enabled = true;
+
 	/* allow the source to be created even if creation fails so that the
 	 * user's data doesn't become lost */
 	if (info && info->create)
@@ -514,8 +518,10 @@ static obs_source_t *obs_source_create_internal(const char *id, const char *name
 
 	blog(LOG_DEBUG, "%ssource '%s' (%s) created", private ? "private " : "", name, id);
 
-	source->flags = source->default_flags;
-	source->enabled = true;
+	/* Preserve defaults set by create without racing capture threads when
+	 * the defaults have not changed. */
+	if (source->flags != source->default_flags)
+		source->flags = source->default_flags;
 
 	/* audio deduplication initialization */
 	source->audio_is_duplicated = false;

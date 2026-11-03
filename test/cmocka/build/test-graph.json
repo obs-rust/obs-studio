@@ -4869,6 +4869,15 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_create_state": {
+      "sources": [
+        "test/cmocka/test_source_create_state.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_draw_plan_steps": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
@@ -8213,6 +8222,18 @@
       "target": "test_source_color_space_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_create_state": {
+      "target": "test_source_create_state",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_draw_plan_steps": {
