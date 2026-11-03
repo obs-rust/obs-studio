@@ -132,6 +132,7 @@ pub mod transition_load;
 pub mod transition_render;
 pub mod transition_sample_time;
 pub mod transition_settings;
+pub mod transition_slots;
 pub mod transition_start;
 pub mod video_tick;
 pub mod volume_apply;
