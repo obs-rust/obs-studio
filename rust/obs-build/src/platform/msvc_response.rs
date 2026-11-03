@@ -13,10 +13,23 @@ use std::path::{Path, PathBuf};
 
 /// Writes `objects` to `rsp`, one double-quoted path per line, and returns
 /// the `@rsp` argument that stands for them on the command line.
-#[expect(clippy::todo, reason = "RED: the fix follows")]
 pub fn msvc_response_file(rsp: &Path, objects: &[PathBuf]) -> Result<OsString, String> {
-    let _ = (rsp, objects);
-    todo!()
+    let mut text = String::new();
+    for object in objects {
+        let path = object
+            .to_str()
+            .ok_or_else(|| format!("object path is not UTF-8: {}", object.display()))?;
+        if path.contains('"') {
+            return Err(format!("object path has a quote: {path}"));
+        }
+        text.push('"');
+        text.push_str(path);
+        text.push_str("\"\n");
+    }
+    std::fs::write(rsp, text).map_err(|e| format!("write {}: {e}", rsp.display()))?;
+    let mut arg = OsString::from("@");
+    arg.push(rsp);
+    Ok(arg)
 }
 
 #[cfg(test)]
