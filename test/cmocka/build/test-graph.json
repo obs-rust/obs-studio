@@ -3407,6 +3407,22 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_product_name": {
+      "sources": [
+        "test/cmocka/test_product_name.c",
+        "frontend/utility/product-name.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility",
+        "frontend/build/frontend-utility-product-name.pch.h"
+      ]
+    },
     "test_product_title": {
       "sources": [
         "test/cmocka/test_product_title.c",
@@ -6260,6 +6276,23 @@
         "libobs/data"
       ]
     },
+    "test_volume_meter_snapshot": {
+      "sources": [
+        "test/cmocka/test_volume_meter_snapshot.cpp"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "frontend/components/VolumeMeterSnapshot.hpp"
+      ],
+      "libraries": [
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_whip_host_os_name": {
       "sources": [
         "test/cmocka/test_whip_host_os_name.cpp"
@@ -7769,6 +7802,9 @@
         "${target}"
       ]
     },
+    "test_product_name": {
+      "target": "test_product_name"
+    },
     "test_product_title": {
       "target": "test_product_title",
       "command": [
@@ -8775,6 +8811,9 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120,
       "skip_return_code": 77
+    },
+    "test_volume_meter_snapshot": {
+      "target": "test_volume_meter_snapshot"
     },
     "test_whip_host_os_name": {
       "target": "test_whip_host_os_name",

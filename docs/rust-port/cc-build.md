@@ -856,8 +856,8 @@ build and both test modes on `ca331a93d`.
 The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
-in #1805. The graph currently contains 158 targets: 138 core, 12 graphics,
-six VLC and two WHIP. This remains a subset of the repository's native tests;
+in #1805. The graph currently contains 348 targets: 299 core, 39 graphics,
+six VLC, two Qt and two WHIP. This remains a subset of the repository's native tests;
 Cargo compilation of these tests currently runs on Linux.
 
 Targets may specify `"cpp_standard": "17"` or `"cpp_standard": "20"`.
@@ -873,6 +873,14 @@ directory, settings migration, output-start logging and unclean-launch tests
 now use this model with their original C++17 sources, includes and library
 links. Their indirect frontend utility headers are tracked as build inputs.
 Existing C/C++ test sources and public headers remain unchanged.
+
+The unchanged Qt-free product-name and volume-meter snapshot tests also use
+this shared inventory. The product-name target retains its frontend utility
+include path and cmocka dependency; the C++17 meter target retains its conditional
+thread dependency. A focused contract builds and runs both original test sources
+through Cargo and the canonical CMake consumer. Their header inputs participate
+in native build invalidation. This closes two inventory gaps in #1390; it does
+not establish complete application or platform parity.
 
 ### Initial native test migration (historical)
 
