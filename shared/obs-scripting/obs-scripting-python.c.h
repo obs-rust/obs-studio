@@ -244,13 +244,14 @@ static bool load_python_script(struct obs_python_script *data)
 
 	py_load = PyObject_GetAttrString(py_module, "script_load");
 	if (py_load) {
-		PyObject *py_s;
-		libobs_to_py(obs_data_t, data->base.settings, false, &py_s);
-		PyObject *args = Py_BuildValue("(O)", py_s);
-		PyObject *py_ret = PyObject_CallObject(py_load, args);
-		py_error();
-		Py_XDECREF(py_ret);
-		Py_XDECREF(args);
+		PyObject *py_s = NULL;
+		if (libobs_to_py(obs_data_t, data->base.settings, false, &py_s)) {
+			PyObject *args = Py_BuildValue("(O)", py_s);
+			PyObject *py_ret = PyObject_CallObject(py_load, args);
+			py_error();
+			Py_XDECREF(py_ret);
+			Py_XDECREF(args);
+		}
 		Py_XDECREF(py_s);
 	} else {
 		PyErr_Clear();
