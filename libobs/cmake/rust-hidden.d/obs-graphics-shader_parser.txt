@@ -1,0 +1,5 @@
+# graphics/shader-parser-blocks.c: shader_parse() in shader-parser.c calls
+# them inside libobs. Declared in shader-parser-blocks.h without EXPORT, so
+# the shims stay hidden the same way.
+sp_parse_sampler_state
+sp_parse_struct

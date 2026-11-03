@@ -14,6 +14,9 @@ void obs_graphics_set_cur_effect(graphics_t *graphics, gs_effect_t *effect);
 FILE *obs_graphics_fopen_rb(const char *path);
 int64_t obs_graphics_ftelli64(FILE *file);
 double obs_graphics_os_strtod(const char *str);
+void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level, const char *val1, const char *val2,
+			      const char *val3);
+bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out);
 
 void *obs_graphics_bmalloc(size_t size)
 {
@@ -95,4 +98,18 @@ int64_t obs_graphics_ftelli64(FILE *file)
 double obs_graphics_os_strtod(const char *str)
 {
 	return os_strtod(str);
+}
+
+/* cf_adderror and cf_pass_pair for the shader parser's sampler-state and
+ * struct blocks (shader-parser-blocks.c), called where the C called them,
+ * on the parser shader_parse() walks. */
+void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level, const char *val1, const char *val2,
+			      const char *val3)
+{
+	cf_adderror(p, error, level, val1, val2, val3);
+}
+
+bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out)
+{
+	return cf_pass_pair(p, in, out);
 }

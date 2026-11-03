@@ -122,17 +122,288 @@ pub struct Struct {
     pub vars: Vec<StructVar>,
 }
 
+/// `strref_cmp(&cur_token->str, s) == 0` for the non-empty literals the
+/// blocks compare with: the token's bytes are `s` (a token holds no NUL,
+/// since the lexer's text is a C string).
+fn token_is(t: &impl Tokens, s: &CStr) -> bool {
+    t.text() == s.to_bytes()
+}
+
+/// `*cur_token->str.array`: the terminator's (null) string reads as 0.
+fn first_byte(t: &impl Tokens) -> u8 {
+    t.text().first().copied().unwrap_or(0)
+}
+
+/// `cf_next_token`.
+fn next_token(t: &mut impl Tokens) -> bool {
+    let kind = t.kind();
+    if kind != CFTOKEN_SPACETAB && kind != CFTOKEN_NEWLINE && kind != CFTOKEN_NONE {
+        t.advance();
+    }
+    while t.kind() == CFTOKEN_SPACETAB || t.kind() == CFTOKEN_NEWLINE {
+        t.advance();
+    }
+    t.kind() != CFTOKEN_NONE
+}
+
+/// `cf_next_valid_token`.
+fn next_valid_token(t: &mut impl Tokens) -> bool {
+    if !next_token(t) {
+        t.add_error(BlockError::UnexpectedEof);
+        return false;
+    }
+    true
+}
+
+/// `cf_go_to_token`.
+fn go_to_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
+    while next_token(t) {
+        if token_is(t, str1) || str2.is_some_and(|s| token_is(t, s)) {
+            return true;
+        } else if first_byte(t) == b'{' && !t.pass_pair() {
+            break;
+        }
+    }
+    false
+}
+
+/// `cf_go_to_valid_token`.
+fn go_to_valid_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
+    if !go_to_token(t, str1, str2) {
+        t.add_error(BlockError::UnexpectedEof);
+        return false;
+    }
+    true
+}
+
+/// `cf_next_token_should_be`.
+fn next_token_should_be(
+    t: &mut impl Tokens,
+    s: &'static CStr,
+    goto1: Option<&CStr>,
+    goto2: Option<&CStr>,
+) -> i32 {
+    if !next_token(t) {
+        t.add_error(BlockError::UnexpectedEof);
+        return PARSE_EOF;
+    } else if token_is(t, s) {
+        return PARSE_SUCCESS;
+    }
+    if let Some(goto1) = goto1
+        && !go_to_token(t, goto1, goto2)
+    {
+        return PARSE_EOF;
+    }
+    t.add_error(BlockError::Expecting(s));
+    PARSE_CONTINUE
+}
+
+/// `cf_peek_valid_token`: whether there is a next token, and whether its
+/// text is `s` (the only thing the blocks read of the peeked copy). The
+/// error goes at the token the cursor was put back on, as in the C.
+fn peek_valid_token_is(t: &mut impl Tokens, s: &CStr) -> Option<bool> {
+    let saved = t.mark();
+    let success = next_token(t);
+    let is = token_is(t, s);
+    t.reset(saved);
+    if !success {
+        t.add_error(BlockError::UnexpectedEof);
+        return None;
+    }
+    Some(is)
+}
+
+/// `cf_token_is_type`.
+fn token_is_type(
+    t: &mut impl Tokens,
+    kind: i32,
+    type_expected: &'static CStr,
+    goto_token: Option<&CStr>,
+) -> i32 {
+    if t.kind() != kind {
+        t.add_error(BlockError::Expecting(type_expected));
+        if let Some(goto_token) = goto_token
+            && !go_to_valid_token(t, goto_token, None)
+        {
+            return PARSE_EOF;
+        }
+        return PARSE_CONTINUE;
+    }
+    PARSE_SUCCESS
+}
+
+/// `cf_next_name`: the name's text, or the code.
+fn next_name(
+    t: &mut impl Tokens,
+    name: &'static CStr,
+    goto_token: Option<&CStr>,
+) -> Result<Vec<u8>, i32> {
+    if !next_valid_token(t) {
+        return Err(PARSE_EOF);
+    }
+    // cf_get_name
+    match token_is_type(t, CFTOKEN_NAME, name, goto_token) {
+        PARSE_SUCCESS => Ok(t.text().to_vec()),
+        code => Err(code),
+    }
+}
+
+/// `cf_next_token_copy`.
+fn next_token_copy(t: &mut impl Tokens) -> Result<Vec<u8>, i32> {
+    if !next_valid_token(t) {
+        return Err(PARSE_EOF);
+    }
+    Ok(t.text().to_vec())
+}
+
+/// `sp_parse_sampler_state_item`: one `state = value;`, pushed into `ss`
+/// only when the whole item parsed.
+fn parse_sampler_state_item(t: &mut impl Tokens, ss: &mut Sampler) -> i32 {
+    let state = match next_name(t, c"state name", Some(c";")) {
+        Ok(state) => state,
+        Err(code) => return code,
+    };
+    let ret = next_token_should_be(t, c"=", Some(c";"), None);
+    if ret != PARSE_SUCCESS {
+        return ret;
+    }
+    let value = match next_token_copy(t) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let ret = next_token_should_be(t, c";", Some(c";"), None);
+    if ret != PARSE_SUCCESS {
+        return ret;
+    }
+    ss.states.push(state);
+    ss.values.push(value);
+    ret
+}
+
 /// `sp_parse_sampler_state`, from the `sampler_state` token: the sampler
 /// `shader_parse()` pushes into `sp->samplers`, or `None` where the C
 /// frees it (`goto error`).
 pub fn parse_sampler_state(t: &mut impl Tokens) -> Option<Sampler> {
-    let _ = t;
-    todo!("sp_parse_sampler_state")
+    let mut ss = Sampler {
+        name: next_name(t, c"name", Some(c";")).ok()?,
+        ..Sampler::default()
+    };
+    if next_token_should_be(t, c"{", Some(c";"), None) != PARSE_SUCCESS {
+        return None;
+    }
+
+    while !peek_valid_token_is(t, c"}")? {
+        if parse_sampler_state_item(t, &mut ss) == PARSE_EOF {
+            return None;
+        }
+    }
+
+    if next_token_should_be(t, c"}", Some(c";"), None) != PARSE_SUCCESS {
+        return None;
+    }
+    if next_token_should_be(t, c";", None, None) != PARSE_SUCCESS {
+        return None;
+    }
+    Some(ss)
+}
+
+/// `sp_parse_struct_var`: the code, with `var` filled as far as it got.
+fn parse_struct_var(t: &mut impl Tokens, var: &mut StructVar) -> i32 {
+    // variable type
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c";") {
+        return PARSE_CONTINUE;
+    }
+    if token_is(t, c"}") {
+        return PARSE_BREAK;
+    }
+    let code = token_is_type(t, CFTOKEN_NAME, c"type name", Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+    var.type_name = t.text().to_vec();
+
+    // variable name
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c";") {
+        return PARSE_UNEXPECTED_CONTINUE;
+    }
+    if token_is(t, c"}") {
+        return PARSE_UNEXPECTED_BREAK;
+    }
+    let code = token_is_type(t, CFTOKEN_NAME, c"variable name", Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+    var.name = t.text().to_vec();
+
+    // variable mapping if any (POSITION, TEXCOORD, etc)
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c":") {
+        if !next_valid_token(t) {
+            return PARSE_EOF;
+        }
+        if token_is(t, c";") {
+            return PARSE_UNEXPECTED_CONTINUE;
+        }
+        if token_is(t, c"}") {
+            return PARSE_UNEXPECTED_BREAK;
+        }
+        let code = token_is_type(t, CFTOKEN_NAME, c"mapping name", Some(c";"));
+        if code != PARSE_SUCCESS {
+            return code;
+        }
+        var.mapping = Some(t.text().to_vec());
+        if !next_valid_token(t) {
+            return PARSE_EOF;
+        }
+    }
+
+    if !token_is(t, c";") {
+        if !go_to_valid_token(t, c";", Some(c"}")) {
+            return PARSE_EOF;
+        }
+        return PARSE_CONTINUE;
+    }
+    PARSE_SUCCESS
 }
 
 /// `sp_parse_struct`, from the `struct` token: the struct `shader_parse()`
 /// pushes into `sp->structs`, or `None` where the C frees it.
 pub fn parse_struct(t: &mut impl Tokens) -> Option<Struct> {
-    let _ = t;
-    todo!("sp_parse_struct")
+    let mut ss = Struct {
+        name: next_name(t, c"name", Some(c";")).ok()?,
+        ..Struct::default()
+    };
+    if next_token_should_be(t, c"{", Some(c";"), None) != PARSE_SUCCESS {
+        return None;
+    }
+
+    // get structure variables
+    loop {
+        let mut var = StructVar::default();
+        match parse_struct_var(t, &mut var) {
+            PARSE_UNEXPECTED_CONTINUE => t.add_error(BlockError::SyntaxError),
+            PARSE_CONTINUE => {}
+            PARSE_UNEXPECTED_BREAK => {
+                t.add_error(BlockError::SyntaxError);
+                break;
+            }
+            PARSE_BREAK => break,
+            PARSE_EOF => return None,
+            // PARSE_SUCCESS, the only other code it returns.
+            _ => ss.vars.push(var),
+        }
+    }
+
+    if next_token_should_be(t, c";", None, None) != PARSE_SUCCESS {
+        return None;
+    }
+    Some(ss)
 }

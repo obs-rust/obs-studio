@@ -24,6 +24,7 @@ pub mod plane;
 pub mod quat;
 pub mod shader_param_names;
 pub mod shader_param_values;
+pub mod shader_parser;
 pub mod shader_sampler_convert;
 pub mod sprite;
 pub mod state_stacks;

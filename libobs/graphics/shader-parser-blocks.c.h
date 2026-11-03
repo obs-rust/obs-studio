@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-shader-parser-blocks.pch.h"
+#include "libobs/build/libobs-ported-shader-parser-blocks.pch.h"
 
 /* ------------------------------------------------------------------------- */
 
