@@ -32,6 +32,8 @@
  *   transition_tex_mutex, each a single pthread_mutex_*() call returning its
  *   result. None checks its arguments or takes a lock of its own: a caller
  *   takes the same locks around them as the code that reads the field today.
+ * - obs_source_transition_seam_get_child_name(): the context.name of a child
+ *   in a slot, read as obs_transition_save() reads it.
  *
  * Hidden in libobs: not EXPORT. */
 
@@ -41,6 +43,7 @@ enum obs_transition_scale_type valid_scale_type(int64_t type);
 
 obs_source_t *obs_source_transition_seam_get_sources(const obs_source_t *transition, size_t idx);
 void obs_source_transition_seam_set_sources(obs_source_t *transition, size_t idx, obs_source_t *value);
+const char *obs_source_transition_seam_get_child_name(const obs_source_t *child);
 bool obs_source_transition_seam_get_source_active(const obs_source_t *transition, size_t idx);
 void obs_source_transition_seam_set_source_active(obs_source_t *transition, size_t idx, bool value);
 bool obs_source_transition_seam_get_transitioning_video(const obs_source_t *transition);

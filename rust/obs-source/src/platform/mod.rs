@@ -6,6 +6,13 @@
 pub(crate) const MUL_DIV64_IS_UDIV128: bool =
     cfg!(all(target_env = "msvc", target_arch = "x86_64"));
 
+/// Whether an enum whose values are all non-negative (`enum
+/// obs_transition_mode`, `enum obs_transition_scale_type`) is `unsigned int`,
+/// as GCC and Clang make it (MinGW included), so `(int64_t)` of a stored
+/// value with its top bit set (a mode loaded as -1) zero-extends. MSVC and clang-cl make every enum
+/// `int`, which sign-extends.
+pub(crate) const ENUMS_ARE_UNSIGNED: bool = !cfg!(target_env = "msvc");
+
 /// Whether the two-stream audio kernels (`volume_mul::mul_data`) walk
 /// 4-sample groups instead of a plain zip loop. Each is the form LLVM turns
 /// into the faster loop on that target: on x86_64 the zip loop was 17 %

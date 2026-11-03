@@ -21,3 +21,4 @@ pub use obs_output::ffi as output_ffi;
 pub use obs_properties::ffi as properties_ffi;
 pub use obs_scene::ffi as scene_ffi;
 pub use obs_source::ffi as source_ffi;
+pub use obs_source_seam::ffi as source_seam_ffi;

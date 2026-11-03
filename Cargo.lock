@@ -437,6 +437,7 @@ dependencies = [
  "obs-properties",
  "obs-scene",
  "obs-source",
+ "obs-source-seam",
  "obs-util",
 ]
 
@@ -578,6 +579,7 @@ dependencies = [
  "obs-properties",
  "obs-scene",
  "obs-source",
+ "obs-source-seam",
  "obs-util",
  "proptest",
  "serde_json",
@@ -713,6 +715,13 @@ dependencies = [
 [[package]]
 name = "obs-source"
 version = "0.1.0"
+
+[[package]]
+name = "obs-source-seam"
+version = "0.1.0"
+dependencies = [
+ "obs-source",
+]
 
 [[package]]
 name = "obs-studio-rust"

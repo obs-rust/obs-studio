@@ -15,6 +15,8 @@ mod mcp_libobs_backend;
 #[cfg(feature = "bundled-native")]
 #[path = "../../../obs-mcp/tests/libobs_video.rs"]
 mod mcp_libobs_video;
+#[path = "../../../obs-build/src/platform/msvc_response.rs"]
+mod msvc_response;
 #[path = "../../../obs-build/tests/native.rs"]
 mod native_build;
 #[cfg(feature = "libobs-integration")]

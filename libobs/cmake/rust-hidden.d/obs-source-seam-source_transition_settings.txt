@@ -1,0 +1,4 @@
+# obs-source-transition-settings.c (obs-source-seam): obs_transition_save() is declared in
+# obs-internal.h without EXPORT; obs_save_source() in obs.c calls it
+# inside libobs.
+obs_transition_save

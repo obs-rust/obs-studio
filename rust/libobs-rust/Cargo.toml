@@ -39,6 +39,7 @@ obs-missing-files = { path = "../obs-missing-files" }
 obs-output = { path = "../obs-output" }
 obs-scene = { path = "../obs-scene" }
 obs-source = { path = "../obs-source" }
+obs-source-seam = { path = "../obs-source-seam" }
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }
 obs-data = { path = "../obs-data" }
 obs-properties = { path = "../obs-properties" }

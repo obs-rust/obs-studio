@@ -2302,6 +2302,10 @@ area.
   and duplicating a source that fails to initialize returns nothing
   instead of crashing. *All*, 2026-10-29. Issue
   [#2905](https://github.com/obs-rust/obs-studio/issues/2905).
+- A plugin or script that asks obs_transition_get_size about a missing
+  transition now gets a debug log line naming obs_transition_get_size,
+  instead of one naming obs_transition_set_size. *All*, 2026-11-03. Issue
+  [#3540](https://github.com/obs-rust/obs-studio/issues/3540).
 
 ### Stability
 

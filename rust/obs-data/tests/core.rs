@@ -24,3 +24,5 @@ mod properties;
 mod scene;
 #[path = "../../obs-source/tests/source/main.rs"]
 mod source;
+#[path = "../../obs-source-seam/tests/source_seam/main.rs"]
+mod source_seam;
