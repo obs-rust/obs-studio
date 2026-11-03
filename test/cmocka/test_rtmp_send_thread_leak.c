@@ -225,6 +225,10 @@ static long run_send_thread(struct conn c)
 	assert_int_equal(pthread_create(&stream->send_thread, NULL, send_thread_to_completion, stream), 0);
 	/* The thread detaches itself when the connection drops. */
 	assert_int_equal(os_event_timedwait(thread_done, 10000), 0);
+	/* The stop callback precedes final cleanup; keep the fixture alive until
+	 * the real worker has returned, even when that callback was preempted. */
+	os_event_signal(allow_thread_cleanup);
+	assert_int_equal(os_event_timedwait(thread_finished, 10000), 0);
 	assert_true(disconnected(stream));
 
 	RTMP_TLS_Free(&stream->rtmp);
@@ -239,10 +243,6 @@ static long run_send_thread(struct conn c)
 	pthread_mutex_destroy(&stream->packets_mutex);
 	bfree(stream);
 
-	/* Expose the old teardown ordering deterministically: the worker still
-	 * has final cleanup to do after the fixture has been freed. */
-	os_event_signal(allow_thread_cleanup);
-	assert_int_equal(os_event_timedwait(thread_finished, 10000), 0);
 	os_event_destroy(allow_thread_cleanup);
 	os_event_destroy(thread_finished);
 
