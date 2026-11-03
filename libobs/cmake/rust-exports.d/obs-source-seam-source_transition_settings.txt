@@ -1,4 +1,4 @@
-# obs-source-transition-settings.c: the transition settings of obs.h
+# obs-source-transition-settings.c (obs-source-seam): the transition settings of obs.h
 # (EXPORT), called by the frontend, plugins and scripts. obs_transition_save
 # is in rust-hidden.d.
 obs_transition_enable_fixed

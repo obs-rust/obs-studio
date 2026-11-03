@@ -1,4 +1,4 @@
-//! Tier 3 for `obs_source::ffi::source_transition_settings` against the
+//! Tier 3 for `obs_source_seam::ffi::source_transition_settings` against the
 //! original `libobs/obs-source-transition-settings.c.h`
 //! (`obs_c_oracle::source_transition_settings`, renamed `oracle_*`).
 //!
@@ -26,7 +26,7 @@ use std::ptr;
 use obs_c_oracle::parity::cases;
 use obs_c_oracle::source_transition_settings::{self as c, seam};
 use obs_data::ffi::obs_data::{obs_data_create, obs_data_get_json, obs_data_release};
-use obs_source::ffi::source_transition_settings as rs;
+use obs_source_seam::ffi::source_transition_settings as rs;
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
 use proptest::prelude::*;
 

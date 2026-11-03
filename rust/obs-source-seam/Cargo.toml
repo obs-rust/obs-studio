@@ -1,0 +1,18 @@
+[package]
+autotests = false
+name = "obs-source-seam"
+version = "0.1.0"
+description = "The C ABI of the obs-source ports that call back into libobs through a seam: libobs/obs-source-transition-settings.c.h (the transition settings) over libobs/obs-source-transition-seam.h"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+test = false
+
+[dependencies]
+obs-source = { path = "../obs-source" }

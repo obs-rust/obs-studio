@@ -76,7 +76,8 @@
 //! `libobs/obs-source-transition-settings.c.h`, the settings of the
 //! transitions (`obs_transition_is_active()`, the scale type, alignment and
 //! size setters and getters, `obs_transition_save()` and the fixed duration
-//! switch, over the transition seam);
+//! switch, generic over the transition seam; its C shims are in the
+//! `obs-source-seam` crate, which only libobs-rust links);
 //! `libobs/obs-source-transition-start.c.h`, the start checks and child
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
 //! `activate_transition()`, the active source, the manual reset and the
