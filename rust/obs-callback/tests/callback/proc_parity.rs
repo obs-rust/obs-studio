@@ -839,6 +839,29 @@ fn late_line_from_another_thread_is_ignored_test() {
 }
 
 #[test]
+fn late_line_after_owner_thread_exits_is_ignored_test() {
+    if !process_isolated(&selector(
+        "late_line_after_owner_thread_exits_is_ignored_test",
+    )) {
+        return;
+    }
+    let _gate = lock();
+    let mut rec = Rec::new();
+    // A new thread may reuse the exited owner's TLS allocation. That does
+    // not make it the owner of a callback captured during the old lifetime.
+    let stale = std::thread::scope(|scope| {
+        scope
+            .spawn(|| armed_then_restored(&mut rec))
+            .join()
+            .unwrap()
+    });
+    std::thread::spawn(move || deliver_late(stale))
+        .join()
+        .unwrap();
+    assert_eq!(rec.calls, 0);
+}
+
+#[test]
 fn late_line_while_another_thread_arms_is_ignored_test() {
     if !process_isolated(&selector(
         "late_line_while_another_thread_arms_is_ignored_test",
