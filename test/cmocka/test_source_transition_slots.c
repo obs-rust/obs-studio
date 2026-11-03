@@ -12,14 +12,18 @@
  * empties both slots and drops both references, enum_sources visits slot A
  * and then slot B and skips an empty one, and the swap hands both slots and
  * the running state from the old transition to the new one, drops what the
- * new one held, and leaves the old one empty once it ends. A source's last
- * reference is seen through a weak reference, which stops giving the source
- * the moment its last reference goes. Odd behaviour is characterized, not
+ * new one held, and leaves the old one empty once it ends. It also hands
+ * over the clock (the auto clock read at the same video time; the manual
+ * mode, value and target) and, at its end, the render targets: the new
+ * transition draws into the old one's textures. A source's last reference
+ * is seen through a weak reference, which stops giving the source the
+ * moment its last reference goes. Odd behaviour is characterized, not
  * endorsed.
  *
  * The swap is called as the frontend calls it: begin, then end, on the same
- * pair, from one thread. Nothing renders the transitions, so their state
- * stays where the calls leave it. Transitions take core video for their
+ * pair, from one thread. Nothing renders the transitions except the texture
+ * case's own render, so their state stays where the calls leave it; the
+ * clock cases wait for the video tick they need, not a fixed time. Transitions take core video for their
  * render targets, so the test only builds on Linux and runs under xvfb-run;
  * without a display the cases skip.
  */
@@ -33,6 +37,7 @@
 #include <string.h>
 
 #include <obs.h>
+#include <util/platform.h>
 
 #define CHILD_ID "test_tr_slots_child"
 #define TRANSITION_ID "test_tr_slots_transition"
@@ -62,10 +67,17 @@ static uint32_t child_size(void *data)
 	return 16;
 }
 
+static void child_render(void *data, gs_effect_t *effect)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(effect);
+}
+
 static struct obs_source_info child_info = {
 	.id = CHILD_ID,
 	.type = OBS_SOURCE_TYPE_INPUT,
-	.output_flags = OBS_SOURCE_VIDEO,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW,
+	.video_render = child_render,
 	.get_name = child_name,
 	.create = child_create,
 	.destroy = child_destroy,
@@ -370,6 +382,146 @@ static void swap_drops_what_the_new_one_held(void **state)
 	assert_null(slot(old_tr, OBS_TRANSITION_SOURCE_A));
 }
 
+/* The textures the last render2 callback got. */
+static gs_texture_t *drawn[2];
+static int callbacks;
+
+static void record_textures(void *data, gs_texture_t *a, gs_texture_t *b, float t, uint32_t cx, uint32_t cy)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(t);
+	UNUSED_PARAMETER(cx);
+	UNUSED_PARAMETER(cy);
+	drawn[0] = a;
+	drawn[1] = b;
+	callbacks++;
+}
+
+/* Render `tr` as a transition plugin does and return the textures its
+ * children were drawn into, one per slot. */
+static void render_textures(obs_source_t *tr, gs_texture_t *out[2])
+{
+	drawn[0] = drawn[1] = NULL;
+	callbacks = 0;
+	obs_enter_graphics();
+	obs_transition_video_render2(tr, record_textures, NULL);
+	obs_leave_graphics();
+	assert_int_equal(callbacks, 1);
+	out[0] = drawn[0];
+	out[1] = drawn[1];
+}
+
+/* The swap's end hands the old transition's render targets to the new one:
+ * a running transition goes on drawing into the textures it drew into. */
+static void swap_hands_over_the_textures(void **state)
+{
+	UNUSED_PARAMETER(state);
+	skip_without_core();
+	make_child(0, "textures A");
+	make_child(1, "textures B");
+	obs_source_t *old_tr = make_transition(0, "textures old");
+	obs_source_t *new_tr = make_transition(1, "textures new");
+	obs_transition_set_size(old_tr, 32, 32);
+	obs_transition_set_size(new_tr, 32, 32);
+	obs_transition_set(old_tr, live.child[0]);
+	assert_true(obs_transition_start(old_tr, OBS_TRANSITION_MODE_AUTO, 60000, live.child[1]));
+
+	gs_texture_t *before[2];
+	render_textures(old_tr, before);
+	assert_non_null(before[0]);
+	assert_non_null(before[1]);
+	assert_ptr_not_equal(before[0], before[1]);
+
+	obs_transition_swap_begin(new_tr, old_tr);
+	obs_transition_swap_end(new_tr, old_tr);
+
+	gs_texture_t *after[2];
+	render_textures(new_tr, after);
+	assert_ptr_equal(after[0], before[0]);
+	assert_ptr_equal(after[1], before[1]);
+}
+
+/* The auto clock is handed over: at the same video time both transitions
+ * are at the same point. The video time moves on each frame, so the check
+ * reads the old one before and after the new one and retries until no frame
+ * came in between. */
+static void swap_hands_over_the_auto_clock(void **state)
+{
+	UNUSED_PARAMETER(state);
+	skip_without_core();
+	make_child(0, "clock A");
+	make_child(1, "clock B");
+	obs_source_t *old_tr = make_running(0, "clock old");
+	obs_source_t *new_tr = make_transition(1, "clock new");
+
+	/* Until a frame comes after the start, its clock reads 0. */
+	uint64_t deadline = os_gettime_ns() + 5000000000ULL;
+	while (obs_transition_get_time(old_tr) == 0.0f && os_gettime_ns() < deadline)
+		os_sleep_ms(5);
+	assert_true(obs_transition_get_time(old_tr) > 0.0f);
+
+	obs_transition_swap_begin(new_tr, old_tr);
+
+	bool same_frame = false;
+	for (int i = 0; i < 1000 && !same_frame; i++) {
+		float before = obs_transition_get_time(old_tr);
+		float t = obs_transition_get_time(new_tr);
+		float after = obs_transition_get_time(old_tr);
+		if (before == after) {
+			same_frame = true;
+			/* Neither the start nor the end of a 60 s transition. */
+			assert_true(t > 0.0f && t < 1.0f);
+			assert_true(t == before);
+		}
+	}
+	assert_true(same_frame);
+
+	obs_transition_swap_end(new_tr, old_tr);
+	assert_true(obs_transition_is_active(new_tr));
+}
+
+/* A manual transition (a T-bar drag) is handed over with its mode, its
+ * value and its target: the new one stays where the old one was and keeps
+ * moving to the old one's target. */
+static void swap_hands_over_the_manual_state(void **state)
+{
+	UNUSED_PARAMETER(state);
+	skip_without_core();
+	make_child(0, "manual A");
+	make_child(1, "manual B");
+	obs_source_t *old_tr = make_transition(0, "manual old");
+	obs_source_t *new_tr = make_transition(1, "manual new");
+	obs_transition_set(old_tr, live.child[0]);
+	assert_true(obs_transition_start(old_tr, OBS_TRANSITION_MODE_MANUAL, 0, live.child[1]));
+	/* A torque of 0 snaps the value to the target on the next tick. */
+	obs_transition_set_manual_torque(old_tr, 0.0f, 0.0f);
+	obs_transition_set_manual_torque(new_tr, 0.0f, 0.0f);
+	obs_transition_set_manual_time(old_tr, 0.25f);
+
+	/* Wait for the tick that moves the old one to its target. */
+	uint64_t deadline = os_gettime_ns() + 5000000000ULL;
+	while (obs_transition_get_time(old_tr) != 0.25f && os_gettime_ns() < deadline)
+		os_sleep_ms(5);
+	assert_true(obs_transition_get_time(old_tr) == 0.25f);
+
+	obs_transition_swap_begin(new_tr, old_tr);
+	obs_transition_swap_end(new_tr, old_tr);
+
+	obs_data_t *saved = obs_save_source(new_tr);
+	assert_int_equal(obs_data_get_int(saved, "transition_mode"), OBS_TRANSITION_MODE_MANUAL);
+	obs_data_release(saved);
+	assert_true(obs_transition_is_active(new_tr));
+
+	/* The value, and after the ticks to come the target, both 0.25: had
+	 * the target stayed 0, the next tick would snap the value to 0. */
+	assert_true(obs_transition_get_time(new_tr) == 0.25f);
+	uint64_t settle = os_gettime_ns() + 200000000ULL;
+	while (os_gettime_ns() < settle) {
+		assert_true(obs_transition_get_time(new_tr) == 0.25f);
+		os_sleep_ms(5);
+	}
+}
+
 /* A swap of a transition with itself does nothing, and returns. */
 static void swap_with_itself_does_nothing(void **state)
 {
@@ -458,6 +610,9 @@ int main(void)
 		cmocka_unit_test_teardown(swap_drops_what_the_new_one_held, case_teardown),
 		cmocka_unit_test_teardown(swap_with_itself_does_nothing, case_teardown),
 		cmocka_unit_test_teardown(swap_does_not_store_the_new_transition, case_teardown),
+		cmocka_unit_test_teardown(swap_hands_over_the_textures, case_teardown),
+		cmocka_unit_test_teardown(swap_hands_over_the_auto_clock, case_teardown),
+		cmocka_unit_test_teardown(swap_hands_over_the_manual_state, case_teardown),
 	};
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
