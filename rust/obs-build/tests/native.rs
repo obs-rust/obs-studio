@@ -220,7 +220,13 @@ fn canonical_frontend_utility_tests_are_registered() {
     let graph =
         obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
             .unwrap();
-    for name in ["test_stream_service_select", "test_saved_transition", "test_record_disk_space", "test_multitrack_ladder", "test_multitrack_encoder_override"] {
+    for name in [
+        "test_stream_service_select",
+        "test_saved_transition",
+        "test_record_disk_space",
+        "test_multitrack_ladder",
+        "test_multitrack_encoder_override",
+    ] {
         assert!(
             graph.targets.contains_key(name),
             "missing canonical target {name}"
@@ -245,7 +251,13 @@ fn canonical_frontend_utility_tests_run_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for name in ["test_stream_service_select", "test_saved_transition", "test_record_disk_space", "test_multitrack_ladder", "test_multitrack_encoder_override"] {
+    for name in [
+        "test_stream_service_select",
+        "test_saved_transition",
+        "test_record_disk_space",
+        "test_multitrack_ladder",
+        "test_multitrack_encoder_override",
+    ] {
         for section in ["targets", "tests"] {
             selected[section][name] = raw[section]
                 .get(name)
@@ -260,7 +272,11 @@ fn canonical_frontend_utility_tests_run_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let interfaces = [("OBS::native-test-cmocka".into(), Dependency::package(&build.target, "cmocka").unwrap())].into();
+    let interfaces = [(
+        "OBS::native-test-cmocka".into(),
+        Dependency::package(&build.target, "cmocka").unwrap(),
+    )]
+    .into();
     let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), 5);
@@ -282,7 +298,7 @@ fn canonical_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-contract C CXX)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
@@ -299,7 +315,14 @@ fn canonical_frontend_utility_tests_run_unchanged() {
         ),
         (
             "cmake",
-            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
         ),
         (
             "ctest",

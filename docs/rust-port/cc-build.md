@@ -882,6 +882,14 @@ through Cargo and the canonical CMake consumer. Their header inputs participate
 in native build invalidation. This closes two inventory gaps in #1390; it does
 not establish complete application or platform parity.
 
+The Qt-free frontend stream-service selection, saved-transition lookup, recording
+space decisions, multitrack ladder and encoder override tests also use the shared
+graph. `canonical_frontend_utility_tests_run_unchanged` compiles and runs all five
+original C tests through both the Cargo and CMake consumers and compares the
+evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
+alongside the existing remux contract; it proves these standalone helpers, not
+full frontend/application parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
