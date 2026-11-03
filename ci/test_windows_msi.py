@@ -12,18 +12,22 @@ release workflow is checked to build, validate and publish the MSI.
 from __future__ import annotations
 
 import importlib.util
+import io
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 GENERATOR_CONFIG = ROOT / "cmake/windows/cpack-wix-generator.cmake"
 RELEASE = ROOT / ".github/workflows/release-rust.yaml"
 
 spec = importlib.util.spec_from_file_location("windows_msi", ROOT / "ci/windows_msi.py")
+assert spec is not None and spec.loader is not None
 windows_msi = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(windows_msi)
 
@@ -95,6 +99,53 @@ class GeneratorConfig(unittest.TestCase):
 
 
 class Signature(unittest.TestCase):
+    def test_probe_returns_signature_status(self):
+        for status in ("Valid", "NotSigned"):
+            with (
+                self.subTest(status=status),
+                patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0, status + "\n", ""),
+                ),
+            ):
+                self.assertEqual(
+                    windows_msi.signature_status(Path("probe.msi")), status
+                )
+
+    def test_scheduled_probe_failure_reports_diagnostics_and_stops(self):
+        for required in (False, True):
+            with (
+                self.subTest(required=required),
+                patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess(
+                        [],
+                        1,
+                        "provider diagnostic\n",
+                        "Get-AuthenticodeSignature: Access denied\n",
+                    ),
+                ),
+                patch.object(windows_msi, "_install") as install,
+            ):
+                output = io.StringIO()
+                arguments = ["roundtrip", "--msi", "scheduled.msi"]
+                if required:
+                    arguments.append("--require-signature")
+                with redirect_stdout(output):
+                    self.assertEqual(windows_msi.main(arguments), 1)
+                diagnostic = output.getvalue()
+                self.assertIn("Get-AuthenticodeSignature failed", diagnostic)
+                self.assertIn("PowerShell exit code 1", diagnostic)
+                self.assertIn(
+                    "stderr: Get-AuthenticodeSignature: Access denied", diagnostic
+                )
+                self.assertIn("stdout: provider diagnostic", diagnostic)
+                self.assertIn("scheduled.msi", diagnostic)
+                self.assertNotIn("returned NotSigned", diagnostic)
+                install.assert_not_called()
+
     def test_valid_always_passes(self):
         self.assertIsNone(windows_msi.check_signature("Valid", required=True))
 
@@ -112,7 +163,7 @@ class CommandLine(unittest.TestCase):
     dispatches them exits 0 having done nothing (release run 41509343216:
     `expected one MSI, found 0`)."""
 
-    def invoke(self, *arguments: str) -> subprocess.CompletedProcess:
+    def invoke(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(ROOT / "ci/windows_msi.py"), *arguments],
             capture_output=True,
@@ -141,7 +192,7 @@ class ReleaseWiring(unittest.TestCase):
             text.index("ci/windows_msi.py build"),
             text.index("- name: Prepare Windows signing catalog"),
         )
-        self.assertIn('build_${{ matrix.target }}/*.msi', text)
+        self.assertIn("build_${{ matrix.target }}/*.msi", text)
         self.assertNotIn("WINDOWS_SIGNING_PFX", text)
         self.assertIn("ci/windows_msi.py roundtrip", text)
         self.assertIn("windows-$env:TARGET.msi", text)
