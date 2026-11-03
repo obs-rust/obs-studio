@@ -451,7 +451,7 @@ fn canonical_remux_queue_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let interfaces = [
+    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
         (
             "Qt6::Widgets".into(),
             Dependency::package(&build.target, "Qt6Widgets").unwrap(),
@@ -461,31 +461,69 @@ fn canonical_remux_queue_runs_unchanged() {
             Dependency::package(&build.target, "Qt6Core").unwrap(),
         ),
         (
-            "Qt6::Test".into(),
-            Dependency::package(&build.target, "Qt6Test").unwrap(),
-        ),
-        (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
         ),
     ]
     .into();
+    // The published native SDKs may omit Qt Test, just as the original CMake
+    // target is optional. A present but broken module must still fail resolution.
+    let qt_test_available = if let Some(prefix) = obs_build::qt::Inputs::from_env().target_prefix {
+        prefix
+            .join("lib/cmake/Qt6Test/Qt6TestConfig.cmake")
+            .try_exists()
+            .unwrap()
+    } else {
+        let probe = std::process::Command::new("pkg-config")
+            .args(["--variable=pcfiledir", "Qt6Test"])
+            .output()
+            .unwrap();
+        probe.status.success() && !probe.stdout.is_empty()
+    };
+    if qt_test_available {
+        interfaces.insert(
+            "Qt6::Test".into(),
+            Dependency::package(&build.target, "Qt6Test").unwrap(),
+        );
+    } else {
+        println!(
+            "Backtab not selected: Qt Test is absent from the selected SDK; original optional guard retained"
+        );
+    }
     let graph: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
-    // Every Qt suite test in the graph builds and runs, not a pinned count.
-    let qt_tests = graph["tests"]
-        .as_object()
-        .unwrap()
-        .values()
-        .filter(|test| test["suite"] == "qt")
-        .count();
+    // Compare the evaluated inventory, including optional Qt Test selection.
+    let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
+    expected.retain_suite("qt");
+    let expected = expected
+        .select(
+            &[
+                ("HAVE_QT6_CORE".into(), true),
+                ("HAVE_QT6_WIDGETS".into(), true),
+                ("HAVE_QT6_TEST".into(), qt_test_available),
+            ]
+            .into(),
+        )
+        .unwrap();
     assert!(
         graph["targets"].get("test_hotkey_edit_backtab").is_some(),
         "canonical graph omits test_hotkey_edit_backtab"
     );
     let tests = validation::build_qt_tests(&build, &root, &interfaces).unwrap();
-    assert_eq!(tests.len(), qt_tests);
+    assert_eq!(
+        tests
+            .iter()
+            .map(|test| test.name.as_str())
+            .collect::<std::collections::BTreeSet<_>>(),
+        expected.tests.keys().copied().collect()
+    );
+    assert_eq!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_hotkey_edit_backtab"),
+        qt_test_available
+    );
     assert!(
         tests
             .iter()
@@ -522,7 +560,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .to_string_lossy()
         .replace('\\', "/");
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets Test)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nset(HAVE_QT6_TEST TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nset(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -585,15 +623,12 @@ fn canonical_remux_queue_runs_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        names,
-        [
-            "test_remux_queue_model",
-            "test_frontend_api_call",
-            "test_hotkey_edit_backtab"
-        ]
-        .into()
-    );
+    let mut expected_names: std::collections::BTreeSet<_> =
+        ["test_remux_queue_model", "test_frontend_api_call"].into();
+    if qt_test_available {
+        expected_names.insert("test_hotkey_edit_backtab");
+    }
+    assert_eq!(names, expected_names);
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")

@@ -903,6 +903,10 @@ Widgets and Qt Test requirements, frontend helper/header inputs and Qt runtime
 setup. The existing native Qt contract builds and runs all eight unchanged
 key/focus cases through Cargo and CMake and checks the evaluated CTest inventory.
 Without Qt Test, this target remains excluded even when Widgets is available.
+The published Windows and macOS SDKs omit Qt Test. In that configuration
+the native contract retains remux/API coverage and verifies Backtab exclusion;
+a Qt Test development package enables the unchanged eight cases (exercised
+locally on Linux).
 This standalone compatibility check does not prove full frontend parity (#1390).
 
 ### Initial native test migration (historical)
