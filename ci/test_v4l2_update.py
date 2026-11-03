@@ -103,10 +103,16 @@ static void v4l2_unpack_tuple(int *n, int *d, int64_t value)
 """
 
 CHECKS = r"""
-static bool stop_reader;
+static bool stop_reader, reader_started;
+static pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t reader_ready = PTHREAD_COND_INITIALIZER;
 static void *read_capture_settings(void *opaque)
 {
     struct v4l2_data *data = opaque;
+    pthread_mutex_lock(&reader_mutex);
+    reader_started = true;
+    pthread_cond_signal(&reader_ready);
+    pthread_mutex_unlock(&reader_mutex);
     do {
         assert(capture_reset(data));
         assert(os_atomic_load_long(&data->timeout_frames) == 12);
@@ -135,10 +141,15 @@ int main(int argc, char **argv)
     assert(os_atomic_load_long(&data.timeout_frames) == 12);
     if (mode == 4) {
         pthread_t reader;
+        pthread_mutex_lock(&reader_mutex);
         assert(pthread_create(&reader, NULL, read_capture_settings, &data) == 0);
+        while (!reader_started) pthread_cond_wait(&reader_ready, &reader_mutex);
+        pthread_mutex_unlock(&reader_mutex);
         for (int i = 0; i < 10000; i++) v4l2_update(&data, &settings_object);
         os_atomic_store_bool(&stop_reader, true);
         assert(pthread_join(reader, NULL) == 0);
+        pthread_cond_destroy(&reader_ready);
+        pthread_mutex_destroy(&reader_mutex);
     }
     if (!restart) {
         assert(data.resolution == 1920 && data.framerate == 30);
