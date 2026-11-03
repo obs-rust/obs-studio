@@ -103,6 +103,7 @@
   "obs-source-transition-render.h",
   "obs-source-transition-sample-time.h",
   "obs-source-transition-seam.h",
+  "obs-source-transition-size.h",
   "obs-source-transition-start.h",
   "obs-source-video-tick.h",
   "obs-source-volume.h",

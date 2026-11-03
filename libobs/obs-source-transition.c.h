@@ -80,12 +80,12 @@ void obs_transition_free(obs_source_t *transition)
 
 void add_alignment(struct vec2 *v, uint32_t align, int cx, int cy);
 
-static inline uint32_t get_cx(obs_source_t *tr)
+uint32_t transition_get_cx(obs_source_t *tr)
 {
 	return obs_source_transition_clock_size(tr->transition_cx, tr->transition_actual_cx);
 }
 
-static inline uint32_t get_cy(obs_source_t *tr)
+uint32_t transition_get_cy(obs_source_t *tr)
 {
 	return obs_source_transition_clock_size(tr->transition_cy, tr->transition_actual_cy);
 }
@@ -97,8 +97,8 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	struct vec2 pos;
 	struct vec2 scale = {.x = 1.0f, .y = 1.0f};
 	struct obs_source_transition_render_offset offset;
-	float tr_cx = (float)get_cx(tr);
-	float tr_cy = (float)get_cy(tr);
+	float tr_cx = (float)transition_get_cx(tr);
+	float tr_cy = (float)transition_get_cy(tr);
 	float source_cx;
 	float source_cy;
 	enum obs_transition_scale_type scale_type = tr->transition_scale_type;
@@ -129,13 +129,13 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	matrix4_copy(&tr->transition_matrices[idx], &mat);
 }
 
-static inline void recalculate_transition_matrices(obs_source_t *transition)
+void transition_recalculate_matrices(obs_source_t *transition)
 {
 	recalculate_transition_matrix(transition, 0);
 	recalculate_transition_matrix(transition, 1);
 }
 
-static void recalculate_transition_size(obs_source_t *transition)
+void transition_recalculate_size(obs_source_t *transition)
 {
 	uint32_t cx = 0, cy = 0;
 	obs_source_t *child;
@@ -160,8 +160,8 @@ static void recalculate_transition_size(obs_source_t *transition)
 
 void obs_transition_tick(obs_source_t *transition, float t)
 {
-	recalculate_transition_size(transition);
-	recalculate_transition_matrices(transition);
+	transition_recalculate_size(transition);
+	transition_recalculate_matrices(transition);
 
 	switch (obs_source_transition_clock_manual((int)transition->transition_mode,
 						   transition->transition_manual_torque)) {
@@ -254,8 +254,8 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 
 	if (obs_source_transition_start_unsized(transition->transition_cx) ||
 	    obs_source_transition_start_unsized(transition->transition_cy)) {
-		recalculate_transition_size(transition);
-		recalculate_transition_matrices(transition);
+		transition_recalculate_size(transition);
+		transition_recalculate_matrices(transition);
 	}
 
 	obs_source_release(old_child);
@@ -402,8 +402,8 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 
 	obs_source_dosignal(transition, "source_transition_start", "transition_start");
 
-	recalculate_transition_size(transition);
-	recalculate_transition_matrices(transition);
+	transition_recalculate_size(transition);
+	transition_recalculate_matrices(transition);
 
 	return true;
 }
@@ -575,8 +575,8 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 		obs_source_remove_active_child(tr, old);
 	obs_source_release(old);
 
-	recalculate_transition_size(tr);
-	recalculate_transition_matrices(tr);
+	transition_recalculate_size(tr);
+	transition_recalculate_matrices(tr);
 }
 
 struct transition_state {
@@ -604,8 +604,8 @@ static inline void copy_transition_state(obs_source_t *transition, struct transi
 
 static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, enum gs_color_space space)
 {
-	uint32_t cx = get_cx(transition);
-	uint32_t cy = get_cy(transition);
+	uint32_t cx = transition_get_cx(transition);
+	uint32_t cy = transition_get_cy(transition);
 	struct vec4 blank;
 	if (!child)
 		return;
@@ -724,8 +724,8 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 			}
 		}
 
-		cx = get_cx(transition);
-		cy = get_cy(transition);
+		cx = transition_get_cx(transition);
+		cy = transition_get_cy(transition);
 		if (cx && cy) {
 			gs_blend_state_push();
 			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
