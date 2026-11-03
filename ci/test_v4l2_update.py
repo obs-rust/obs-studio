@@ -8,7 +8,10 @@ is stopped. The callback and timeout statements come from production source.
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import unittest
@@ -97,6 +100,17 @@ static void v4l2_unpack_tuple(int *n, int *d, int64_t value)
 """
 
 CHECKS = r"""
+static bool stop_reader;
+static void *read_capture_settings(void *opaque)
+{
+    struct v4l2_data *data = opaque;
+    do {
+        assert(capture_reset(data));
+        assert(os_atomic_load_long(&data->timeout_frames) == 12);
+        assert(data->framerate == 30 && data->pixfmt == 2 && data->color_range == 5);
+    } while (!os_atomic_load_bool(&stop_reader));
+    return NULL;
+}
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -110,12 +124,19 @@ int main(int argc, char **argv)
         return 0;
     }
     running = mode != 2;
-    restart = mode != 0;
+    restart = mode == 1 || mode == 2;
     first_update = mode == 2;
     if (first_update) data.settings_device_id = NULL;
     v4l2_update(&data, &settings_object);
     assert(os_atomic_load_bool(&data.auto_reset));
     assert(os_atomic_load_long(&data.timeout_frames) == 12);
+    if (mode == 4) {
+        pthread_t reader;
+        assert(pthread_create(&reader, NULL, read_capture_settings, &data) == 0);
+        for (int i = 0; i < 10000; i++) v4l2_update(&data, &settings_object);
+        os_atomic_store_bool(&stop_reader, true);
+        assert(pthread_join(reader, NULL) == 0);
+    }
     if (!restart) {
         assert(data.resolution == 1920 && data.framerate == 30);
         assert(stopped == 0 && initialized == 0 && running);
@@ -132,6 +153,8 @@ int main(int argc, char **argv)
 class V4L2Update(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if sys.platform != "linux":
+            raise unittest.SkipTest("Linux V4L2 capture regression")
         compiler = shutil.which("cc")
         if not compiler:
             raise unittest.SkipTest("C compiler is unavailable")
@@ -154,14 +177,19 @@ class V4L2Update(unittest.TestCase):
             + timeout
             + "\nassert(tv.tv_usec == 400000);\n}\n"
         )
+        reset = re.search(r"if \((.*auto_reset.*)\)", capture)
+        if reset is None:
+            raise AssertionError("capture auto-reset decision not found")
+        probe += "static bool capture_reset(struct v4l2_data *data) { return " + reset[1] + "; }\n"
         cls.directory = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.directory.cleanup)
         source = Path(cls.directory.name) / "probe.c"
         cls.executable = source.with_suffix("")
         source.write_text(STUBS + update + probe + CHECKS)
+        sanitizer = ["-fsanitize=thread", "-g"] if os.environ.get("V4L2_UPDATE_TSAN") == "1" else []
         compiled = subprocess.run(
             [compiler, "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
-             str(source), "-pthread", "-o", str(cls.executable)],
+             str(source), "-pthread", *sanitizer, "-o", str(cls.executable)],
             capture_output=True, text=True, timeout=30,
         )
         if compiled.returncode:
@@ -179,6 +207,9 @@ class V4L2Update(unittest.TestCase):
 
     def test_first_update_initializes_format(self):
         self.exercise(2)
+
+    def test_capture_reads_during_repeated_live_updates(self):
+        self.exercise(4)
 
     def test_running_capture_observes_new_timeout(self):
         self.exercise(3)
