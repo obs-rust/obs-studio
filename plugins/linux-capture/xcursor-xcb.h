@@ -61,6 +61,9 @@ void xcb_xcursor_destroy(xcb_xcursor_t *data);
  */
 void xcb_xcursor_update(xcb_connection_t *xcb, xcb_xcursor_t *data);
 
+/* Apply an already completed XFixes reply; the caller retains ownership. */
+void xcb_xcursor_update_reply(xcb_xcursor_t *data, xcb_xfixes_get_cursor_image_reply_t *reply);
+
 /**
  * Draw the cursor
  *

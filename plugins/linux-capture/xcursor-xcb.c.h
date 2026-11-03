@@ -68,6 +68,12 @@ void xcb_xcursor_update(xcb_connection_t *xcb, xcb_xcursor_t *data)
 {
 	xcb_xfixes_get_cursor_image_cookie_t xc_c = xcb_xfixes_get_cursor_image_unchecked(xcb);
 	xcb_xfixes_get_cursor_image_reply_t *xc = xcb_xfixes_get_cursor_image_reply(xcb, xc_c, NULL);
+	xcb_xcursor_update_reply(data, xc);
+	free(xc);
+}
+
+void xcb_xcursor_update_reply(xcb_xcursor_t *data, xcb_xfixes_get_cursor_image_reply_t *xc)
+{
 	if (!data || !xc)
 		return;
 
@@ -78,8 +84,6 @@ void xcb_xcursor_update(xcb_connection_t *xcb, xcb_xcursor_t *data)
 	data->y = xc->y - data->y_org;
 	data->x_render = (float)(data->x - xc->xhot);
 	data->y_render = (float)(data->y - xc->yhot);
-
-	free(xc);
 }
 
 void xcb_xcursor_render(xcb_xcursor_t *data)

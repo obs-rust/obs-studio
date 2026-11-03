@@ -30,6 +30,11 @@ struct xshm_data {
 	xcb_screen_t *xcb_screen;
 	xcb_shm_t *xshm;
 	xcb_xcursor_t *cursor;
+	unsigned int image_sequence;
+	unsigned int cursor_sequence;
+	bool image_pending;
+	bool cursor_pending;
+	bool frame_ready;
 
 	char *server;
 	int_fast32_t screen_id;
@@ -74,10 +79,23 @@ struct xshm_data {
  */
 static inline void xshm_resize_texture(struct xshm_data *data)
 {
+	data->frame_ready = false;
 	if (data->texture)
 		gs_texture_destroy(data->texture);
 	data->texture =
 		gs_texture_create((uint32_t)data->adj_width, (uint32_t)data->adj_height, GS_BGRA, 1, NULL, GS_DYNAMIC);
+}
+
+/* Discard protocol replies before retiring their geometry/shared segment. The
+ * server processes its queued SHM write before the subsequent detach request. */
+static void xshm_discard_capture(struct xshm_data *data)
+{
+	if (data->image_pending)
+		xcb_discard_reply(data->xcb, data->image_sequence);
+	if (data->cursor_pending)
+		xcb_discard_reply(data->xcb, data->cursor_sequence);
+	data->image_pending = false;
+	data->cursor_pending = false;
 }
 
 /**
@@ -87,6 +105,7 @@ static inline void xshm_resize_texture(struct xshm_data *data)
  */
 static void xshm_resize(struct xshm_data *data)
 {
+	xshm_discard_capture(data);
 	xshm_xcb_detach(data->xshm);
 
 	data->xshm = xshm_xcb_attach(data->xcb, (int)data->adj_width, (int)data->adj_height);
@@ -224,6 +243,8 @@ static const char *xshm_getname(void *unused)
  */
 static void xshm_capture_stop(struct xshm_data *data)
 {
+	xshm_discard_capture(data);
+	data->frame_ready = false;
 	obs_enter_graphics();
 
 	if (data->texture) {
@@ -603,6 +624,7 @@ static void xshm_video_tick(void *vptr, float seconds)
 
 	if (data->geo_event_pending) {
 		data->geo_event_pending = false;
+		xshm_discard_capture(data);
 
 		int geo_changed = xshm_update_geometry(data);
 		if (geo_changed < 0) {
@@ -623,28 +645,45 @@ static void xshm_video_tick(void *vptr, float seconds)
 	if (!data->texture || !data->xshm || data->monitor_absent)
 		return;
 
-	xcb_shm_get_image_cookie_t img_c;
-	xcb_shm_get_image_reply_t *img_r;
+	/* Cursor replies must not introduce another synchronous round trip after
+	 * the image has completed. Both requests travel in the same flushed batch. */
+	void *reply = NULL;
+	if (data->cursor_pending && xcb_poll_for_reply(data->xcb, data->cursor_sequence, &reply, NULL)) {
+		data->cursor_pending = false;
+		if (reply && data->show_cursor) {
+			obs_enter_graphics();
+			xcb_xcursor_update_reply(data->cursor, reply);
+			obs_leave_graphics();
+		}
+		free(reply);
+	}
 
-	img_c = xcb_shm_get_image_unchecked(data->xcb, data->xcb_screen->root, (int16_t)data->adj_x_org,
-					    (int16_t)data->adj_y_org, (uint16_t)data->adj_width,
-					    (uint16_t)data->adj_height, ~(uint32_t)0, XCB_IMAGE_FORMAT_Z_PIXMAP,
-					    data->xshm->seg, 0);
-
-	img_r = xcb_shm_get_image_reply(data->xcb, img_c, NULL);
-
-	if (!img_r)
-		goto exit;
-
-	obs_enter_graphics();
-
-	gs_texture_set_image(data->texture, (void *)data->xshm->data, (uint32_t)data->adj_width * 4, false);
-	xcb_xcursor_update(data->xcb, data->cursor);
-
-	obs_leave_graphics();
-
-exit:
-	free(img_r);
+	if (data->image_pending) {
+		reply = NULL;
+		if (!xcb_poll_for_reply(data->xcb, data->image_sequence, &reply, NULL))
+			return;
+		data->image_pending = false;
+		if (reply) {
+			obs_enter_graphics();
+			gs_texture_set_image(data->texture, data->xshm->data, (uint32_t)data->adj_width * 4, false);
+			obs_leave_graphics();
+			data->frame_ready = true;
+		}
+		free(reply);
+	}
+	/* One writer at a time: the completed frame has been uploaded before the
+	 * server can overwrite this shared buffer. Slow replies repeat the texture. */
+	data->image_sequence = xcb_shm_get_image_unchecked(data->xcb, data->xcb_screen->root, (int16_t)data->adj_x_org,
+							   (int16_t)data->adj_y_org, (uint16_t)data->adj_width,
+							   (uint16_t)data->adj_height, ~(uint32_t)0,
+							   XCB_IMAGE_FORMAT_Z_PIXMAP, data->xshm->seg, 0)
+				       .sequence;
+	data->image_pending = true;
+	if (data->show_cursor && !data->cursor_pending) {
+		data->cursor_sequence = xcb_xfixes_get_cursor_image_unchecked(data->xcb).sequence;
+		data->cursor_pending = true;
+	}
+	xcb_flush(data->xcb);
 }
 
 /**
@@ -656,7 +695,7 @@ static void xshm_video_render(void *vptr, gs_effect_t *effect)
 
 	effect = obs_get_base_effect(OBS_EFFECT_OPAQUE);
 
-	if (!data->texture)
+	if (!data->texture || !data->frame_ready)
 		return;
 
 	const bool linear_srgb = gs_get_linear_srgb();
