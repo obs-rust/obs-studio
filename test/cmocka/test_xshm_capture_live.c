@@ -101,7 +101,8 @@ static void capture_real_pixels_without_waiting_for_x(void **state)
 	pthread_mutex_unlock(&live_lock);
 	obs_source_dec_showing(source);
 	obs_source_release(source);
-	while (!obs_wait_for_destroy_queue()) {}
+	while (!obs_wait_for_destroy_queue()) {
+	}
 	obs_shutdown();
 	xcb_disconnect(xcb);
 	assert_int_equal(error, 0);
