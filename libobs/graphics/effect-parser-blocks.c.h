@@ -165,8 +165,10 @@ static int ep_parse_sampler_state_item(struct effect_parser *ep, struct ep_sampl
 	for (;;) {
 		const char *cur_str;
 
-		if (!cf_next_valid_token(&ep->cfp))
-			return PARSE_EOF;
+		if (!cf_next_valid_token(&ep->cfp)) {
+			ret = PARSE_EOF;
+			goto fail;
+		}
 
 		cur_str = ep->cfp.cur_token->str.array;
 		if (*cur_str == ';')
@@ -178,6 +180,9 @@ static int ep_parse_sampler_state_item(struct effect_parser *ep, struct ep_sampl
 	if (value.len) {
 		da_push_back(eps->states, &state);
 		da_push_back(eps->values, &value.array);
+	} else {
+		bfree(state);
+		dstr_free(&value);
 	}
 
 	return ret;
