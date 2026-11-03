@@ -214,6 +214,44 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
 
+/// #1390: preserve the optional Qt Test dependency of the unchanged Backtab cases.
+#[test]
+fn canonical_hotkey_backtab_is_registered() {
+    use obs_build::validation::graph::Graph;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("qt");
+    let target = graph
+        .targets
+        .get("test_hotkey_edit_backtab")
+        .expect("canonical graph omits test_hotkey_edit_backtab");
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/settings/OBSHotkeyCapture.hpp"]
+    );
+    assert_eq!(
+        graph.tests["test_hotkey_edit_backtab"]
+            .qt_runtime
+            .as_deref(),
+        Some("Qt6::Core")
+    );
+    for widgets in [false, true] {
+        for qt_test in [false, true] {
+            let facts = [
+                ("HAVE_QT6_CORE".into(), false),
+                ("HAVE_QT6_WIDGETS".into(), widgets),
+                ("HAVE_QT6_TEST".into(), qt_test),
+            ]
+            .into();
+            let selected = graph.select(&facts).unwrap();
+            assert_eq!(
+                selected.tests.contains_key("test_hotkey_edit_backtab"),
+                widgets && qt_test
+            );
+        }
+    }
+}
+
 #[test]
 fn canonical_frontend_utility_tests_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -413,7 +451,7 @@ fn canonical_remux_queue_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let interfaces = [
+    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
         (
             "Qt6::Widgets".into(),
             Dependency::package(&build.target, "Qt6Widgets").unwrap(),
@@ -428,18 +466,64 @@ fn canonical_remux_queue_runs_unchanged() {
         ),
     ]
     .into();
+    // The published native SDKs may omit Qt Test, just as the original CMake
+    // target is optional. A present but broken module must still fail resolution.
+    let qt_test_available = if let Some(prefix) = obs_build::qt::Inputs::from_env().target_prefix {
+        prefix
+            .join("lib/cmake/Qt6Test/Qt6TestConfig.cmake")
+            .try_exists()
+            .unwrap()
+    } else {
+        let probe = std::process::Command::new("pkg-config")
+            .args(["--variable=pcfiledir", "Qt6Test"])
+            .output()
+            .unwrap();
+        probe.status.success() && !probe.stdout.is_empty()
+    };
+    if qt_test_available {
+        interfaces.insert(
+            "Qt6::Test".into(),
+            Dependency::package(&build.target, "Qt6Test").unwrap(),
+        );
+    } else {
+        println!(
+            "Backtab not selected: Qt Test is absent from the selected SDK; original optional guard retained"
+        );
+    }
     let graph: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
-    // Every Qt suite test in the graph builds and runs, not a pinned count.
-    let qt_tests = graph["tests"]
-        .as_object()
-        .unwrap()
-        .values()
-        .filter(|test| test["suite"] == "qt")
-        .count();
+    // Compare the evaluated inventory, including optional Qt Test selection.
+    let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
+    expected.retain_suite("qt");
+    let expected = expected
+        .select(
+            &[
+                ("HAVE_QT6_CORE".into(), true),
+                ("HAVE_QT6_WIDGETS".into(), true),
+                ("HAVE_QT6_TEST".into(), qt_test_available),
+            ]
+            .into(),
+        )
+        .unwrap();
+    assert!(
+        graph["targets"].get("test_hotkey_edit_backtab").is_some(),
+        "canonical graph omits test_hotkey_edit_backtab"
+    );
     let tests = validation::build_qt_tests(&build, &root, &interfaces).unwrap();
-    assert_eq!(tests.len(), qt_tests);
+    assert_eq!(
+        tests
+            .iter()
+            .map(|test| test.name.as_str())
+            .collect::<std::collections::BTreeSet<_>>(),
+        expected.tests.keys().copied().collect()
+    );
+    assert_eq!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_hotkey_edit_backtab"),
+        qt_test_available
+    );
     assert!(
         tests
             .iter()
@@ -461,11 +545,13 @@ fn canonical_remux_queue_runs_unchanged() {
     let selected = serde_json::json!({"schema": 1,
     "targets": {
         "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
+        "test_hotkey_edit_backtab": graph["targets"]["test_hotkey_edit_backtab"],
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
             .expect("canonical graph omits test_frontend_api_call")
     },
     "tests": {
         "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
+        "test_hotkey_edit_backtab": graph["tests"]["test_hotkey_edit_backtab"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
     }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
@@ -474,7 +560,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .to_string_lossy()
         .replace('\\', "/");
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nset(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -537,10 +623,12 @@ fn canonical_remux_queue_runs_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        names,
-        ["test_remux_queue_model", "test_frontend_api_call"].into()
-    );
+    let mut expected_names: std::collections::BTreeSet<_> =
+        ["test_remux_queue_model", "test_frontend_api_call"].into();
+    if qt_test_available {
+        expected_names.insert("test_hotkey_edit_backtab");
+    }
+    assert_eq!(names, expected_names);
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")
@@ -584,6 +672,7 @@ fn canonical_frontend_api_call_is_registered() {
         let facts = [
             ("HAVE_QT6_CORE".into(), have_core),
             ("HAVE_QT6_WIDGETS".into(), false),
+            ("HAVE_QT6_TEST".into(), false),
         ]
         .into();
         let selected = qt.select(&facts).unwrap();
@@ -1728,6 +1817,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_QT6_CORE".into(), false),
         ("HAVE_QT6_WIDGETS".into(), false),
+        ("HAVE_QT6_TEST".into(), false),
     ]);
     // No suite's size is pinned: every new cmocka test lands in one, and two
     // open PRs that each add one would both bump the same number (#1908,

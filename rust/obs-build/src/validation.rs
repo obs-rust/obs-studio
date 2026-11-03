@@ -109,6 +109,7 @@ pub fn build_qt_tests(
             "HAVE_QT6_WIDGETS".into(),
             interfaces.contains_key("Qt6::Widgets"),
         ),
+        ("HAVE_QT6_TEST".into(), interfaces.contains_key("Qt6::Test")),
     ]);
     compile_suite(build, &root, &graph, &facts, interfaces)
 }
