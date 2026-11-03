@@ -450,15 +450,22 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     let selected = serde_json::json!({"schema": 1,
-        "targets": {"test_remux_queue_model": graph["targets"]["test_remux_queue_model"]},
-        "tests": {"test_remux_queue_model": graph["tests"]["test_remux_queue_model"]}});
+        "targets": {
+            "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
+            "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
+                .expect("canonical graph omits test_frontend_api_call")
+        },
+        "tests": {
+            "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
+            "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
+        }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
     let root = dunce::canonicalize(root)
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/");
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -496,6 +503,35 @@ fn canonical_remux_queue_runs_unchanged() {
             String::from_utf8_lossy(&result.stdout),
             String::from_utf8_lossy(&result.stderr)
         );
+    }
+}
+
+/// #1390: the QtCore-only frontend API helper must remain available without Widgets.
+#[test]
+fn canonical_frontend_api_call_is_registered() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph = obs_build::validation::graph::Graph::load(
+        &root.join("test/cmocka/build/test-graph.json"),
+    ).unwrap();
+    let target = graph.targets.get("test_frontend_api_call")
+        .expect("canonical graph omits test_frontend_api_call");
+    assert_eq!(target.sources.len(), 1);
+    assert_eq!(target.watch_inputs, ["frontend/utility/frontend-api-call.hpp"]);
+    let test = &graph.tests["test_frontend_api_call"];
+    assert_eq!(test.target, "test_frontend_api_call");
+    assert_eq!(test.suite, "qt");
+    assert_eq!(test.timeout_seconds, Some(60));
+    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
+    let mut qt = obs_build::validation::graph::Graph::load(
+        &root.join("test/cmocka/build/test-graph.json"),
+    ).unwrap();
+    qt.retain_suite("qt");
+    for have_core in [false, true] {
+        let facts = [("HAVE_QT6_CORE".into(), have_core),
+            ("HAVE_QT6_WIDGETS".into(), false)].into();
+        let selected = qt.select(&facts).unwrap();
+        assert_eq!(selected.tests.contains_key("test_frontend_api_call"), have_core);
+        assert_eq!(selected.tests.len(), usize::from(have_core));
     }
 }
 
