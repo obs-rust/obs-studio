@@ -68,7 +68,10 @@
 //! the transitions; `libobs/obs-source-transition-load.c.h`, the type
 //! check, the scale type rule, the load's source steps and the swap checks
 //! of the transitions (`transition_valid()`, `obs_transition_load()`,
-//! `copy_source_state()` and the swap gate);
+//! `copy_source_state()` and the swap gate), with
+//! `libobs/obs-source-transition-restore.c.h`, `obs_transition_load()`
+//! itself (generic over the transition seam, the `obs_data` reads and the
+//! libobs source calls; its C shim is in `obs-source-seam`);
 //! `libobs/obs-source-transition-render.c.h`, the render
 //! and audio step decisions of the transitions;
 //! `libobs/obs-source-transition-sample-time.c.h`, the time of each audio
@@ -78,6 +81,11 @@
 //! size setters and getters, `obs_transition_save()` and the fixed duration
 //! switch, generic over the transition seam; its C shims are in the
 //! `obs-source-seam` crate, which only libobs-rust links);
+//! `libobs/obs-source-transition-size.c.h`, the size, child matrices and
+//! tick of the transitions (`transition_get_cx()`, `transition_get_cy()`,
+//! `transition_recalculate_matrices()`, `transition_recalculate_size()` and
+//! `obs_transition_tick()`, generic over the transition seam and the libobs
+//! calls; its C shims are in `obs-source-seam` too);
 //! `libobs/obs-source-transition-slots.c.h`, the two child slots of the
 //! transitions (`obs_transition_clear()`, `obs_transition_enum_sources()`
 //! and the swap of `obs_transition_swap_begin()`, `copy_source_state()` and
@@ -102,7 +110,8 @@
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_clock`], [`transition_load`], [`transition_render`],
-//! [`transition_sample_time`], [`transition_settings`], [`transition_slots`],
+//! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
+//! [`transition_slots`],
 //! [`transition_start`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the

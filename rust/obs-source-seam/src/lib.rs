@@ -3,7 +3,18 @@
 //! whose shims ([`ffi::source_transition_settings`]) implement the safe
 //! core's `obs_source::transition_settings::Transition` over the transition
 //! seam (`libobs/obs-source-transition-seam.h`, hidden C in libobs) and its
-//! `SaveData` over `obs_data_set_string()` and `obs_data_set_int()`; and
+//! `SaveData` over `obs_data_set_string()` and `obs_data_set_int()`;
+//! `libobs/obs-source-transition-size.c.h`, the size, child matrices and tick
+//! of a transition, whose shims ([`ffi::source_transition_size`]) implement
+//! `obs_source::transition_size::Transition` over the same seam and the
+//! libobs calls (`obs_source_get_width()`, `obs_source_get_height()`,
+//! `gs_texrender_reset()`, `add_alignment()`, `calc_torquef()` and the
+//! matrix calls); `libobs/obs-source-transition-restore.c.h`, the load of a
+//! saved transition, whose shim ([`ffi::source_transition_restore`])
+//! implements `obs_source::transition_load::Transition` on the sizing's
+//! `Seam`, over the same seam, `obs_data_get_string()`, `obs_data_get_int()`
+//! and the libobs source calls (`obs_get_source_by_name()`, the active-child
+//! add and remove, `obs_source_release()` and `blog()`); and
 //! `libobs/obs-source-transition-slots.c.h`, the child slots of a
 //! transition, whose shims ([`ffi::source_transition_slots`]) implement
 //! `obs_source::transition_slots::Transition` over the same seam and the
