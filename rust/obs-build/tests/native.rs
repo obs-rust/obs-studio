@@ -152,7 +152,7 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-contract C CXX)\nenable_testing()\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-contract C CXX)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
