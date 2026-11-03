@@ -47,6 +47,9 @@
     clippy::todo
 )]
 
+use crate::transition_clock::{Fit, Step, fit, fold, manual};
+use crate::transition_render::offset;
+
 /// The two slots, A (0) and B (1).
 pub const SLOTS: [usize; 2] = [0, 1];
 
@@ -121,20 +124,30 @@ pub trait Transition {
     fn texrender_reset(&self, texrender: Self::Texrender);
 }
 
+/// The C's `(float)` of a `uint32_t`: rounded to the nearest `f32`.
+#[expect(clippy::as_conversions, reason = "the C's (float) cast")]
+fn to_f32(value: u32) -> f32 {
+    value as f32
+}
+
+/// The C's `(int)` of a `float`, toward zero. The C leaves a value outside
+/// `int` undefined; this saturates (NaN is 0). A child's room is within it
+/// for any size a source can have (below 2^31).
+#[expect(clippy::as_conversions, reason = "the C's (int) cast")]
+fn to_int(value: f32) -> i32 {
+    value as i32
+}
+
 /// `transition_get_cx()`: `transition_cx`, or `transition_actual_cx` when
 /// it is 0 ([`crate::transition_clock::size`]).
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn get_cx<T: Transition>(transition: &T) -> u32 {
-    let _ = transition;
-    todo!()
+    crate::transition_clock::size(transition.cx(), transition.actual_cx())
 }
 
 /// `transition_get_cy()`: `transition_cy`, or `transition_actual_cy` when
 /// it is 0.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn get_cy<T: Transition>(transition: &T) -> u32 {
-    let _ = transition;
-    todo!()
+    crate::transition_clock::size(transition.cy(), transition.actual_cy())
 }
 
 /// `recalculate_transition_matrix()`: the matrix of slot `idx`.
@@ -147,28 +160,62 @@ pub fn get_cy<T: Transition>(transition: &T) -> u32 {
 /// the transition's alignment within the room left
 /// ([`crate::transition_render::offset`], each cast to `int` as the C casts
 /// it), and the matrix is stored.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn recalculate_matrix<T: Transition>(transition: &T, idx: usize) {
-    let _ = (transition, idx);
-    todo!()
+    let tr_cx = to_f32(get_cx(transition));
+    let tr_cy = to_f32(get_cy(transition));
+    let scale_type = transition.scale_type();
+
+    transition.lock();
+    let Some(child) = transition.source(idx) else {
+        transition.unlock();
+        return;
+    };
+    let source_cx = to_f32(transition.child_width(child));
+    let source_cy = to_f32(transition.child_height(child));
+    transition.unlock();
+
+    let scale = match fit(tr_cx, tr_cy, source_cx, source_cy, scale_type) {
+        Fit::NoMatrix => return,
+        Fit::Scale { x, y } => (x, y),
+        // the C's scale stays at its initial 1 by 1
+        Fit::Unset => (1.0, 1.0),
+    };
+
+    let room = offset(tr_cx, tr_cy, source_cx, source_cy, scale.0, scale.1);
+    let pos = transition.alignment_position(transition.alignment(), to_int(room.x), to_int(room.y));
+
+    transition.set_matrix(idx, scale, pos);
 }
 
 /// `transition_recalculate_matrices()`: [`recalculate_matrix`] of slot A,
 /// then of slot B.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn recalculate_matrices<T: Transition>(transition: &T) {
-    let _ = transition;
-    todo!()
+    for idx in SLOTS {
+        recalculate_matrix(transition, idx);
+    }
 }
 
 /// `transition_recalculate_size()`: under the lock, folds each non-empty
 /// slot's width and height, slot A first
 /// ([`crate::transition_clock::fold`], from 0); after the unlock, writes
 /// them as `transition_actual_cx` and `transition_actual_cy`.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn recalculate_size<T: Transition>(transition: &T) {
-    let _ = transition;
-    todo!()
+    let mut cx = 0;
+    let mut cy = 0;
+
+    transition.lock();
+    for idx in SLOTS {
+        if let Some(child) = transition.source(idx) {
+            let new_cx = transition.child_width(child);
+            let new_cy = transition.child_height(child);
+            cx = fold(cx, new_cx);
+            cy = fold(cy, new_cy);
+        }
+    }
+    transition.unlock();
+
+    transition.set_actual_cx(cx);
+    transition.set_actual_cy(cy);
 }
 
 /// `obs_transition_tick()`: [`recalculate_size`], [`recalculate_matrices`],
@@ -177,8 +224,29 @@ pub fn recalculate_size<T: Transition>(transition: &T) {
 /// `calc_torquef(value, target, torque, clamp, t)` for a step, left as it is
 /// otherwise. Last, when the texture trylock takes the lock, resets both
 /// render targets (slot A's first) and unlocks it.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn tick<T: Transition>(transition: &T, t: f32) {
-    let _ = (transition, t);
-    todo!()
+    recalculate_size(transition);
+    recalculate_matrices(transition);
+
+    match manual(transition.mode(), transition.manual_torque()) {
+        Step::Snap => transition.set_manual_val(transition.manual_target()),
+        Step::Step => {
+            let value = transition.calc_torquef(
+                transition.manual_val(),
+                transition.manual_target(),
+                transition.manual_torque(),
+                transition.manual_clamp(),
+                t,
+            );
+            transition.set_manual_val(value);
+        }
+        Step::Hold => {}
+    }
+
+    if transition.trylock_textures() == 0 {
+        for idx in SLOTS {
+            transition.texrender_reset(transition.texrender(idx));
+        }
+        transition.unlock_textures();
+    }
 }
