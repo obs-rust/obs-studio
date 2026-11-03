@@ -69,8 +69,30 @@ fn cargo_native_profile_uses_effective_optimization_and_symbols() {
     );
 }
 
-/// #1390: run the original Qt-free frontend tests through both graph consumers.
+/// #1390: missing canonical registrations must fail the routine, Qt-free gate.
 #[test]
+fn canonical_frontend_product_and_meter_tests_are_registered() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph =
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+            .unwrap();
+    for name in ["test_product_name", "test_volume_meter_snapshot"] {
+        assert!(
+            graph.targets.contains_key(name),
+            "missing canonical target {name}"
+        );
+        assert_eq!(graph.tests[name].target, name);
+    }
+}
+
+/// #1390: run the original Qt-free frontend tests through both graph consumers.
+/// Like the unchanged remux contract, this needs the native cmocka package.
+#[test]
+#[cfg(feature = "libobs-integration")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
 fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
@@ -171,6 +193,25 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
             String::from_utf8_lossy(&result.stderr)
         );
     }
+    let inventory = std::process::Command::new("ctest")
+        .args([
+            "--test-dir",
+            output.to_str().unwrap(),
+            "-C",
+            "Release",
+            "--show-only=json-v1",
+        ])
+        .output()
+        .unwrap();
+    assert!(inventory.status.success());
+    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+    let names: std::collections::BTreeSet<_> = inventory["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|test| test["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
 
 #[test]

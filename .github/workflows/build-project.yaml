@@ -2169,7 +2169,7 @@ jobs:
             "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
           fi
           export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
-          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
+          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged native_build::canonical_frontend_product_and_meter_tests_run_unchanged --show-output
 
       # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
       # on the runner; a lane that does not keep the directory loses the only copy
@@ -2322,7 +2322,7 @@ jobs:
             "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
           fi
           export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
-          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged --show-output
+          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged native_build::canonical_frontend_product_and_meter_tests_run_unchanged --show-output
 
       # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
       # on the runner; a lane that does not keep the directory loses the only copy
