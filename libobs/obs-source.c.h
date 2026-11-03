@@ -2151,7 +2151,7 @@ static void obs_source_update_async_video(obs_source_t *source)
 			if (source->async_update_texture) {
 				update_async_textures(source, frame, source->async_textures, source->async_texrender);
 				source->async_update_texture = false;
-				source->async_textures_stale = false;
+				os_atomic_set_bool(&source->async_textures_stale, false);
 			}
 
 			source->async_last_rendered_ts = frame->timestamp;
@@ -2171,7 +2171,8 @@ static void rotate_async_video(obs_source_t *source, long rotation)
 
 static inline void obs_source_render_async_video(obs_source_t *source)
 {
-	if (source->async_textures[0] && source->async_active && !source->async_textures_stale) {
+	if (source->async_textures[0] && os_atomic_load_bool(&source->async_active) &&
+	    !os_atomic_load_bool(&source->async_textures_stale)) {
 		gs_timer_t *timer = NULL;
 		const uint64_t start = source_profiler_source_render_begin(&timer);
 
@@ -2257,7 +2258,7 @@ static inline struct obs_source_size_node size_node(const obs_source_t *source, 
 		.has_callback = has_callback,
 		.has_filter_parent = source->filter_parent != NULL,
 		.enabled = source->enabled,
-		.async_active = source->async_active,
+		.async_active = os_atomic_load_bool(&source->async_active),
 		.async_rotation = source->async_rotation,
 	};
 	return node;
@@ -3162,11 +3163,11 @@ static void obs_source_output_video_internal(obs_source_t *source, const struct 
 
 	if (!frame) {
 		pthread_mutex_lock(&source->async_mutex);
-		source->async_active = false;
+		os_atomic_set_bool(&source->async_active, false);
 		/* A new frame makes the source active again as soon as it is
 		 * queued, but it only reaches the textures when it is rendered.
 		 * Until then, do not draw what was there before. */
-		source->async_textures_stale = true;
+		os_atomic_set_bool(&source->async_textures_stale, true);
 		source->last_frame_ts = 0;
 		free_async_cache(source);
 		pthread_mutex_unlock(&source->async_mutex);
@@ -3185,7 +3186,7 @@ static void obs_source_output_video_internal(obs_source_t *source, const struct 
 			output = NULL;
 		} else {
 			da_push_back(source->async_frames, &output);
-			source->async_active = true;
+			os_atomic_set_bool(&source->async_active, true);
 		}
 	}
 	pthread_mutex_unlock(&source->async_mutex);
@@ -3329,7 +3330,9 @@ static void obs_source_preload_video_internal(obs_source_t *source, const struct
 
 	copy_frame_data(source->async_preload_frame, frame);
 
+	pthread_mutex_lock(&source->async_mutex);
 	source->last_frame_ts = frame->timestamp;
+	pthread_mutex_unlock(&source->async_mutex);
 }
 
 void obs_source_preload_video(obs_source_t *source, const struct obs_source_frame *frame)
@@ -3382,6 +3385,7 @@ void obs_source_preload_video2(obs_source_t *source, const struct obs_source_fra
 
 void obs_source_show_preloaded_video(obs_source_t *source)
 {
+	uint64_t last_frame_ts;
 	uint64_t sys_ts;
 
 	if (!obs_source_valid(source, "obs_source_show_preloaded_video"))
@@ -3395,14 +3399,18 @@ void obs_source_show_preloaded_video(obs_source_t *source)
 
 	set_async_texture_size(source, source->async_preload_frame);
 	update_async_textures(source, source->async_preload_frame, source->async_textures, source->async_texrender);
-	source->async_textures_stale = false;
-	source->async_active = true;
+	os_atomic_set_bool(&source->async_textures_stale, false);
+	os_atomic_set_bool(&source->async_active, true);
 
 	obs_leave_graphics();
 
+	pthread_mutex_lock(&source->async_mutex);
+	last_frame_ts = source->last_frame_ts;
+	pthread_mutex_unlock(&source->async_mutex);
+
 	pthread_mutex_lock(&source->audio_buf_mutex);
 	sys_ts = (source->monitoring_type != OBS_MONITORING_TYPE_MONITOR_ONLY) ? os_gettime_ns() : 0;
-	reset_audio_timing(source, source->last_frame_ts, sys_ts);
+	reset_audio_timing(source, last_frame_ts, sys_ts);
 	reset_audio_data_at_sys_time(source, sys_ts);
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 }
@@ -3424,9 +3432,11 @@ static void obs_source_set_video_frame_internal(obs_source_t *source, const stru
 	copy_frame_data(source->async_preload_frame, frame);
 	set_async_texture_size(source, source->async_preload_frame);
 	update_async_textures(source, source->async_preload_frame, source->async_textures, source->async_texrender);
-	source->async_textures_stale = false;
+	os_atomic_set_bool(&source->async_textures_stale, false);
 
+	pthread_mutex_lock(&source->async_mutex);
 	source->last_frame_ts = frame->timestamp;
+	pthread_mutex_unlock(&source->async_mutex);
 
 	obs_leave_graphics();
 }
