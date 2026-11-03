@@ -119,6 +119,16 @@ older Soldr cannot match the new base key or delta restore prefixes. The pinned
 setup-soldr v0.9.88 defaults to Soldr 0.9.42; the workflows still name the
 version explicitly. See the [probe and limits](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-20-soldr-source-mtime.md).
 
+For opt-in Rust compiler-cache qualification, run
+`uv run ci/cache_source_probe.py --directory build_ci_audit/source-probe --soldr /absolute/path/to/soldr --expected-version X.Y.Z --timeout 120`.
+Use a new directory for each run. The probe records the selected executable,
+requires an unchanged cache hit, then checks that a same-size/same-mtime
+`compile_error!` fails through both the cache and an independent uncached
+control. It disables porcelain output so diagnostics remain visible and keeps
+partial logs and `safe: false` results on timeouts. A passing Rust probe alone
+does not qualify the native GCC rapid-edit case required by #3437; keep the
+compiler-cache bypass until every required freshness check passes.
+
 Soldr 0.9.41+ keeps a **verdict ledger** (soldr#3894): a `clippy`,
 `fmt --check`, `dylint` or doctest run whose exact inputs (git blob ids, or
 content hashes for uncommitted files, plus toolchain, argv and environment)
