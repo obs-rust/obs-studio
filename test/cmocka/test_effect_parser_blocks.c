@@ -305,11 +305,10 @@ static const struct block_case sampler_error_cases[] = {
 	 * (characterized, not endorsed). */
 	{"sampler_state s { Filter = Linear AddressU = Wrap; };",
 	 "sampler s { Filter = LinearAddressU=Wrap; }\n" GUARD "leaked 0\n"},
-	/* An empty value drops the item with no error, and its state name is
-	 * never freed: one allocation stays (characterized, not endorsed;
-	 * #3550). */
-	{"sampler_state s { Filter = ; AddressU = Wrap; };", "sampler s { AddressU = Wrap; }\n" GUARD "leaked 1\n"},
-	{"sampler_state s { Filter = ; };", "sampler s { }\n" GUARD "leaked 1\n"},
+	/* An empty value drops the item with no error (characterized, not
+	 * endorsed). Its state name is freed with it (#3550). */
+	{"sampler_state s { Filter = ; AddressU = Wrap; };", "sampler s { AddressU = Wrap; }\n" GUARD "leaked 0\n"},
+	{"sampler_state s { Filter = ; };", "sampler s { }\n" GUARD "leaked 0\n"},
 	{"sampler_state s { 1 = Linear; AddressU = Wrap; };",
 	 "sampler s { AddressU = Wrap; }\n" GUARD "error 2:19 0 Expected 'state name'\n"
 	 "leaked 0\n"},
@@ -362,14 +361,14 @@ static const struct block_case sampler_eof_cases[] = {
 				    "leaked 0\n"},
 	{"sampler_state s { Filter", GUARD "error 2:25 0 Unexpected EOF\n"
 					   "leaked 0\n"},
-	/* End of text inside an item: its state name is never freed, nor the
-	 * value read so far (characterized, not endorsed; #3550). */
+	/* End of text inside an item frees its state name and the value read
+	 * so far (#3550). */
 	{"sampler_state s { Filter =", GUARD "error 2:27 0 Unexpected EOF\n"
-					     "leaked 1\n"},
+					     "leaked 0\n"},
 	{"sampler_state s { Filter = Linear", GUARD "error 2:34 0 Unexpected EOF\n"
-						    "leaked 2\n"},
+						    "leaked 0\n"},
 	{"sampler_state s { Filter = Linear Point", GUARD "error 2:40 0 Unexpected EOF\n"
-							  "leaked 2\n"},
+							  "leaked 0\n"},
 	{"sampler_state s { Filter = Linear;", GUARD "error 2:34 0 Unexpected EOF\n"
 						     "leaked 0\n"},
 	{"sampler_state s { Filter = Linear; }", GUARD "error 2:37 0 Unexpected EOF\n"
@@ -393,7 +392,7 @@ static const struct block_case mixed_cases[] = {
 	{"sampler_state s { Filter = ; };\nstruct S { float a; };\nsampler_state t { AddressU = Wrap; };",
 	 "struct S { float a; }\n"
 	 "sampler s { }\n"
-	 "sampler t { AddressU = Wrap; }\n" GUARD "leaked 1\n"},
+	 "sampler t { AddressU = Wrap; }\n" GUARD "leaked 0\n"},
 };
 
 static void mixed(void **state)
