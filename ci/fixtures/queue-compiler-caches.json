@@ -1,7 +1,7 @@
 {
   "retired_from": "docs/ci-evidence/2026-10-24-queue-compiler-caches.json",
   "historical_commit": "c2af3f9c3e7945566b88440dffb14c255aeebd96",
-  "measured_at": "2026-10-24",
+  "measured_at": "2026-10-24; zccache-tier2 entry 2026-11-03",
   "source": "gh api repos/obs-rust/obs-studio/actions/caches",
   "why": "Merge-queue compiler caches outgrew their declared max; ci-lint cache audit (CACHE-004) reported each one as exceeding max",
   "entries": [
@@ -18,10 +18,10 @@
       "created_at": "2026-10-25T00:42:41.639684Z"
     },
     {
-      "key": "zccache-tier2-linux-both-a7f12c382f253309a71d574c295a02f7a9e1f93b",
+      "key": "zccache-tier2-linux-both-03ed7cc79b5fa7911f7a12523e664cb7e4606180-",
       "ref": "refs/heads/master",
-      "size_in_bytes": 1171438427,
-      "created_at": "2026-10-25T00:49:35.036352Z"
+      "size_in_bytes": 260444470,
+      "created_at": "2026-11-03T09:26:43.969699Z"
     }
   ]
 }
