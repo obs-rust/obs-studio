@@ -221,18 +221,33 @@ fn canonical_hotkey_backtab_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("qt");
-    let target = graph.targets.get("test_hotkey_edit_backtab")
+    let target = graph
+        .targets
+        .get("test_hotkey_edit_backtab")
         .expect("canonical graph omits test_hotkey_edit_backtab");
-    assert_eq!(target.watch_inputs, ["frontend/settings/OBSHotkeyCapture.hpp"]);
-    assert_eq!(graph.tests["test_hotkey_edit_backtab"].qt_runtime.as_deref(), Some("Qt6::Core"));
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/settings/OBSHotkeyCapture.hpp"]
+    );
+    assert_eq!(
+        graph.tests["test_hotkey_edit_backtab"]
+            .qt_runtime
+            .as_deref(),
+        Some("Qt6::Core")
+    );
     for widgets in [false, true] {
         for qt_test in [false, true] {
             let facts = [
+                ("HAVE_QT6_CORE".into(), false),
                 ("HAVE_QT6_WIDGETS".into(), widgets),
                 ("HAVE_QT6_TEST".into(), qt_test),
-            ].into();
+            ]
+            .into();
             let selected = graph.select(&facts).unwrap();
-            assert_eq!(selected.tests.contains_key("test_hotkey_edit_backtab"), widgets && qt_test);
+            assert_eq!(
+                selected.tests.contains_key("test_hotkey_edit_backtab"),
+                widgets && qt_test
+            );
         }
     }
 }
@@ -465,8 +480,10 @@ fn canonical_remux_queue_runs_unchanged() {
         .values()
         .filter(|test| test["suite"] == "qt")
         .count();
-    assert!(graph["targets"].get("test_hotkey_edit_backtab").is_some(),
-        "canonical graph omits test_hotkey_edit_backtab");
+    assert!(
+        graph["targets"].get("test_hotkey_edit_backtab").is_some(),
+        "canonical graph omits test_hotkey_edit_backtab"
+    );
     let tests = validation::build_qt_tests(&build, &root, &interfaces).unwrap();
     assert_eq!(tests.len(), qt_tests);
     assert!(
@@ -615,6 +632,7 @@ fn canonical_frontend_api_call_is_registered() {
         let facts = [
             ("HAVE_QT6_CORE".into(), have_core),
             ("HAVE_QT6_WIDGETS".into(), false),
+            ("HAVE_QT6_TEST".into(), false),
         ]
         .into();
         let selected = qt.select(&facts).unwrap();
@@ -1759,6 +1777,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_QT6_CORE".into(), false),
         ("HAVE_QT6_WIDGETS".into(), false),
+        ("HAVE_QT6_TEST".into(), false),
     ]);
     // No suite's size is pinned: every new cmocka test lands in one, and two
     // open PRs that each add one would both bump the same number (#1908,

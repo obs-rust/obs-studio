@@ -1948,6 +1948,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_edit_backtab": {
+      "sources": [
+        "test/cmocka/test_hotkey_edit_backtab.cpp",
+        "frontend/settings/OBSHotkeyCapture.cpp.hpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_QT6_WIDGETS",
+          "HAVE_QT6_TEST"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/settings/OBSHotkeyCapture.hpp"
+      ]
+    },
     "test_hotkey_getters_characterization": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -7316,6 +7339,11 @@
           "-a"
         ]
       ]
+    },
+    "test_hotkey_edit_backtab": {
+      "target": "test_hotkey_edit_backtab",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core"
     },
     "test_hotkey_getters_characterization": {
       "target": "test_hotkey_getters_characterization",

@@ -898,6 +898,13 @@ input. Core-only selection does not require Widgets. The native Qt contract
 runs it through Cargo and CMake and compares the evaluated CTest inventory;
 this helper coverage does not establish full frontend or protocol parity (#1390).
 
+The Qt hotkey Backtab test also uses this graph, preserving its original Qt
+Widgets and Qt Test requirements, frontend helper/header inputs and Qt runtime
+setup. The existing native Qt contract builds and runs all eight unchanged
+key/focus cases through Cargo and CMake and checks the evaluated CTest inventory.
+Without Qt Test, this target remains excluded even when Widgets is available.
+This standalone compatibility check does not prove full frontend parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
