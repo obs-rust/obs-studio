@@ -1170,6 +1170,7 @@
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
         "libobs/graphics/effect-param-types.c.h",
+        "libobs/graphics/effect-parser-blocks.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_blocks.c"
