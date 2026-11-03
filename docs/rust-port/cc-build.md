@@ -890,6 +890,14 @@ evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
 alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
 
+The QtCore-only frontend API dispatch test is also in the shared Qt suite.
+Its unchanged four cases exercise worker-thread profile creation/removal,
+immediate UI-thread calls and nonblocking libobs-thread calls. The graph keeps
+its 60-second CTest timeout, QtCore runtime setup and indirect helper-header
+input. Core-only selection does not require Widgets. The native Qt contract
+runs it through Cargo and CMake and compares the evaluated CTest inventory;
+this helper coverage does not establish full frontend or protocol parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
