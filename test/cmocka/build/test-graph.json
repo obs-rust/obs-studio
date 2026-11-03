@@ -1657,6 +1657,23 @@
         "not": "MSVC"
       }
     },
+    "test_frontend_api_call": {
+      "sources": [
+        "test/cmocka/test_frontend_api_call.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT6_CORE",
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility/frontend-api-call.hpp"
+      ],
+      "libraries": [
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_graphics_alias_ordinary": {
       "sources": [
         "test/cmocka/test_graphics_alias_ordinary.c"
@@ -7173,6 +7190,12 @@
     },
     "test_formatted_filename": {
       "target": "test_formatted_filename"
+    },
+    "test_frontend_api_call": {
+      "target": "test_frontend_api_call",
+      "suite": "qt",
+      "timeout_seconds": 60,
+      "qt_runtime": "Qt6::Core"
     },
     "test_graphics_alias_ordinary": {
       "target": "test_graphics_alias_ordinary",

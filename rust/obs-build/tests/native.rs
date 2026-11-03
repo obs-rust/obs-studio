@@ -169,7 +169,14 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
         ),
         (
             "cmake",
-            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
         ),
         (
             "ctest",
@@ -399,6 +406,10 @@ fn native_test_graph_rejects_colliding_qt_ui_outputs() {
 
 #[test]
 #[cfg(feature = "libobs-integration")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer with evaluated inventory"
+)]
 fn canonical_remux_queue_runs_unchanged() {
     use obs_build::validation::{self, graph::Dependency};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -436,6 +447,11 @@ fn canonical_remux_queue_runs_unchanged() {
         .count();
     let tests = validation::build_qt_tests(&build, &root, &interfaces).unwrap();
     assert_eq!(tests.len(), qt_tests);
+    assert!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_frontend_api_call")
+    );
     for test in tests {
         let result = test
             .command(&root, &build.output)
@@ -450,15 +466,15 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     let selected = serde_json::json!({"schema": 1,
-        "targets": {
-            "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
-            "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
-                .expect("canonical graph omits test_frontend_api_call")
-        },
-        "tests": {
-            "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
-            "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
-        }});
+    "targets": {
+        "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
+        "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
+            .expect("canonical graph omits test_frontend_api_call")
+    },
+    "tests": {
+        "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
+        "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
+    }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
     let root = dunce::canonicalize(root)
         .unwrap()
@@ -504,33 +520,77 @@ fn canonical_remux_queue_runs_unchanged() {
             String::from_utf8_lossy(&result.stderr)
         );
     }
+    let inventory = std::process::Command::new("ctest")
+        .args([
+            "--test-dir",
+            output.to_str().unwrap(),
+            "-C",
+            "Release",
+            "--show-only=json-v1",
+        ])
+        .output()
+        .unwrap();
+    assert!(inventory.status.success());
+    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+    let tests = inventory["tests"].as_array().unwrap();
+    let names: std::collections::BTreeSet<_> = tests
+        .iter()
+        .map(|test| test["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        ["test_remux_queue_model", "test_frontend_api_call"].into()
+    );
+    let frontend_api = tests
+        .iter()
+        .find(|test| test["name"] == "test_frontend_api_call")
+        .unwrap();
+    assert!(
+        frontend_api["properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(60.0))
+    );
 }
 
 /// #1390: the QtCore-only frontend API helper must remain available without Widgets.
 #[test]
 fn canonical_frontend_api_call_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = obs_build::validation::graph::Graph::load(
-        &root.join("test/cmocka/build/test-graph.json"),
-    ).unwrap();
-    let target = graph.targets.get("test_frontend_api_call")
+    let graph =
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+            .unwrap();
+    let target = graph
+        .targets
+        .get("test_frontend_api_call")
         .expect("canonical graph omits test_frontend_api_call");
     assert_eq!(target.sources.len(), 1);
-    assert_eq!(target.watch_inputs, ["frontend/utility/frontend-api-call.hpp"]);
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/utility/frontend-api-call.hpp"]
+    );
     let test = &graph.tests["test_frontend_api_call"];
     assert_eq!(test.target, "test_frontend_api_call");
     assert_eq!(test.suite, "qt");
     assert_eq!(test.timeout_seconds, Some(60));
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    let mut qt = obs_build::validation::graph::Graph::load(
-        &root.join("test/cmocka/build/test-graph.json"),
-    ).unwrap();
+    let mut qt =
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+            .unwrap();
     qt.retain_suite("qt");
     for have_core in [false, true] {
-        let facts = [("HAVE_QT6_CORE".into(), have_core),
-            ("HAVE_QT6_WIDGETS".into(), false)].into();
+        let facts = [
+            ("HAVE_QT6_CORE".into(), have_core),
+            ("HAVE_QT6_WIDGETS".into(), false),
+        ]
+        .into();
         let selected = qt.select(&facts).unwrap();
-        assert_eq!(selected.tests.contains_key("test_frontend_api_call"), have_core);
+        assert_eq!(
+            selected.tests.contains_key("test_frontend_api_call"),
+            have_core
+        );
         assert_eq!(selected.tests.len(), usize::from(have_core));
     }
 }
