@@ -81,8 +81,6 @@ struct capture {
 	size_t num_clicks;
 };
 
-static struct capture *current;
-
 static void *capture_thread(void *param)
 {
 	struct capture *c = param;
@@ -92,7 +90,7 @@ static void *capture_thread(void *param)
 		click[i] = (i & 4) ? 0.8f : -0.8f;
 
 	uint64_t t0 = os_gettime_ns();
-	for (uint64_t n = 0; !c->stop; n++) {
+	for (uint64_t n = 0; !os_atomic_load_bool(&c->stop); n++) {
 		uint64_t ts = t0 + n * PACKET_NS;
 		bool is_click = n % CLICK_EVERY == CLICK_EVERY / 2;
 
@@ -125,7 +123,7 @@ static void start_capture(struct capture *c)
 {
 	if (c->thread_started)
 		return;
-	c->stop = false;
+	os_atomic_set_bool(&c->stop, false);
 	if (pthread_create(&c->thread, NULL, capture_thread, c) != 0) {
 		fprintf(stderr, "could not start the capture thread\n");
 		return;
@@ -138,7 +136,7 @@ static void stop_capture(struct capture *c)
 {
 	if (!c->thread_started)
 		return;
-	c->stop = true;
+	os_atomic_set_bool(&c->stop, true);
 	pthread_join(c->thread, NULL);
 	c->thread_started = false;
 }
@@ -157,7 +155,6 @@ static void *capture_create(obs_data_t *settings, obs_source_t *source)
 	c->source = source;
 	pthread_mutex_init(&c->mutex, NULL);
 	os_event_init(&c->first_packet, OS_EVENT_TYPE_MANUAL);
-	current = c;
 
 	if (!obs_data_get_bool(settings, "deferred"))
 		start_capture(c);
@@ -170,8 +167,6 @@ static void capture_destroy(void *data)
 	stop_capture(c);
 	os_event_destroy(c->first_packet);
 	pthread_mutex_destroy(&c->mutex);
-	if (current == c)
-		current = NULL;
 	bfree(c);
 }
 
@@ -285,11 +280,12 @@ static obs_source_t *live;
 static struct capture *capture_of(obs_source_t *source)
 {
 	live = source;
-	if (!source || !current || current->source != source) {
+	struct capture *c = source ? obs_obj_get_data(source) : NULL;
+	if (!c || c->source != source) {
 		fprintf(stderr, "could not create the capture source\n");
 		fail();
 	}
-	return current;
+	return c;
 }
 
 static void put_on_program(obs_source_t *source)
@@ -307,8 +303,9 @@ static int case_teardown(void **state)
 	if (!live)
 		return 0;
 	obs_set_output_source(0, NULL);
-	if (current && current->source == live)
-		stop_capture(current);
+	struct capture *c = obs_obj_get_data(live);
+	if (c && c->source == live)
+		stop_capture(c);
 	obs_source_remove(live);
 	obs_source_release(live);
 	live = NULL;

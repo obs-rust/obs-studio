@@ -140,7 +140,7 @@ static void *capture_thread(void *param)
 
 	os_sleep_ms(50);
 	uint64_t t0 = os_gettime_ns();
-	for (uint64_t n = 0; !c->stop; n++) {
+	for (uint64_t n = 0; !os_atomic_load_bool(&c->stop); n++) {
 		uint64_t ts = t0 + n * PACKET_NS;
 		os_sleepto_ns(ts + PACKET_NS);
 
@@ -178,7 +178,7 @@ static void capture_destroy(void *data)
 {
 	auto c = static_cast<capture *>(data);
 	if (c->thread_started) {
-		c->stop = true;
+		os_atomic_set_bool(&c->stop, true);
 		pthread_join(c->thread, nullptr);
 	}
 	bfree(c);

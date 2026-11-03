@@ -23,6 +23,7 @@
 
 #include <util/c99defs.h>
 #include <util/platform.h>
+#include <util/threading.h>
 
 #define PORTAL_NAME "org.freedesktop.portal.Desktop"
 #define PORTAL_PATH "/org/freedesktop/portal/desktop"
@@ -70,8 +71,9 @@ static struct fake_desktop {
 	guint screensaver_registration;
 	guint request_registration;
 
-	GMutex lock;
-	GCond ready_cond;
+	/* GLib uses uninstrumented futex locks; pthreads expose these handoffs to TSan. */
+	pthread_mutex_t lock;
+	pthread_cond_t ready_cond;
 	bool ready;
 
 	/* org.freedesktop.portal.Inhibit */
@@ -102,11 +104,11 @@ static void request_method_call(GDBusConnection *conn, const char *sender, const
 	UNUSED_PARAMETER(data);
 
 	if (strcmp(method, "Close") == 0) {
-		g_mutex_lock(&fake.lock);
+		pthread_mutex_lock(&fake.lock);
 		fake.request_closes++;
 		g_free(fake.closed_path);
 		fake.closed_path = g_strdup(path);
-		g_mutex_unlock(&fake.lock);
+		pthread_mutex_unlock(&fake.lock);
 	}
 	g_dbus_method_invocation_return_value(invocation, NULL);
 }
@@ -148,14 +150,14 @@ static void portal_method_call(GDBusConnection *conn, const char *sender, const 
 		conn, request_path, g_dbus_node_info_lookup_interface(fake.info, REQUEST_IFACE), &request_vtable, NULL,
 		NULL, NULL);
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	fake.portal_inhibits++;
 	fake.portal_flags = flags;
 	g_free(fake.portal_reason);
 	fake.portal_reason = g_strdup(reason ? reason : "");
 	g_free(fake.request_path);
 	fake.request_path = g_strdup(request_path);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	g_dbus_method_invocation_return_value(invocation, g_variant_new("(o)", request_path));
 }
@@ -195,13 +197,13 @@ static void screensaver_method_call(GDBusConnection *conn, const char *sender, c
 		const char *reason = NULL;
 		g_variant_get(params, "(&s&s)", &app, &reason);
 
-		g_mutex_lock(&fake.lock);
+		pthread_mutex_lock(&fake.lock);
 		fake.screensaver_inhibits++;
 		g_free(fake.screensaver_app);
 		fake.screensaver_app = g_strdup(app);
 		g_free(fake.screensaver_reason);
 		fake.screensaver_reason = g_strdup(reason);
-		g_mutex_unlock(&fake.lock);
+		pthread_mutex_unlock(&fake.lock);
 
 		g_dbus_method_invocation_return_value(invocation, g_variant_new("(u)", SCREENSAVER_COOKIE));
 		return;
@@ -211,10 +213,10 @@ static void screensaver_method_call(GDBusConnection *conn, const char *sender, c
 		uint32_t cookie = 0;
 		g_variant_get(params, "(u)", &cookie);
 
-		g_mutex_lock(&fake.lock);
+		pthread_mutex_lock(&fake.lock);
 		fake.screensaver_uninhibits++;
 		fake.uninhibit_cookie = cookie;
-		g_mutex_unlock(&fake.lock);
+		pthread_mutex_unlock(&fake.lock);
 
 		g_dbus_method_invocation_return_value(invocation, NULL);
 		return;
@@ -248,10 +250,10 @@ static gpointer fake_thread(gpointer data)
 		fprintf(stderr, "fake desktop: %s\n", error ? error->message : "no connection");
 	}
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	fake.ready = true;
-	g_cond_signal(&fake.ready_cond);
-	g_mutex_unlock(&fake.lock);
+	pthread_cond_signal(&fake.ready_cond);
+	pthread_mutex_unlock(&fake.lock);
 
 	g_main_loop_run(fake.loop);
 
@@ -306,9 +308,9 @@ static bool wait_for_count(const int *counter, int want, int ms)
 {
 	int64_t end = g_get_monotonic_time() + (int64_t)ms * 1000;
 	for (;;) {
-		g_mutex_lock(&fake.lock);
+		pthread_mutex_lock(&fake.lock);
 		bool done = *counter >= want;
-		g_mutex_unlock(&fake.lock);
+		pthread_mutex_unlock(&fake.lock);
 		if (done)
 			return true;
 		if (g_get_monotonic_time() >= end)
@@ -337,8 +339,8 @@ static int group_setup(void **state)
 		return 0;
 
 	memset(&fake, 0, sizeof(fake));
-	g_mutex_init(&fake.lock);
-	g_cond_init(&fake.ready_cond);
+	pthread_mutex_init(&fake.lock, NULL);
+	pthread_cond_init(&fake.ready_cond, NULL);
 
 	/* Sets DBUS_SESSION_BUS_ADDRESS, so libobs's g_bus_get_sync()
 	 * connects to this bus. */
@@ -353,10 +355,10 @@ static int group_setup(void **state)
 	fake.loop = g_main_loop_new(fake.context, FALSE);
 	fake.thread = g_thread_new("fake-desktop", fake_thread, NULL);
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	while (!fake.ready)
-		g_cond_wait(&fake.ready_cond, &fake.lock);
-	g_mutex_unlock(&fake.lock);
+		pthread_cond_wait(&fake.ready_cond, &fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	assert_non_null(fake.conn);
 	assert_true(fake.portal_registration > 0);
@@ -387,8 +389,8 @@ static int group_teardown(void **state)
 	g_free(fake.closed_path);
 	g_free(fake.screensaver_app);
 	g_free(fake.screensaver_reason);
-	g_cond_clear(&fake.ready_cond);
-	g_mutex_clear(&fake.lock);
+	pthread_cond_destroy(&fake.ready_cond);
+	pthread_mutex_destroy(&fake.lock);
 	have_bus = false;
 	return 0;
 }
@@ -422,13 +424,13 @@ static void test_portal_inhibit_and_release(void **state)
 		fail();
 	}
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.portal_inhibits, 1);
 	assert_string_equal(fake.portal_reason, REASON);
 	/* suspend | idle */
 	assert_int_equal(fake.portal_flags, 0xC);
 	g_autofree char *request_path = g_strdup(fake.request_path);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	/* Let the client see the Inhibit reply, as the app's main loop does,
 	 * so deactivating closes the request rather than cancelling a call
@@ -443,18 +445,18 @@ static void test_portal_inhibit_and_release(void **state)
 		fail();
 	}
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.request_closes, 1);
 	assert_string_equal(fake.closed_path, request_path);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	os_inhibit_sleep_destroy(inhibit);
 	pump_for(50);
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.portal_inhibits, 1);
 	assert_int_equal(fake.screensaver_inhibits, 0);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	fake_own_name(PORTAL_NAME, false);
 }
@@ -496,11 +498,11 @@ static void test_screensaver_inhibit_and_release(void **state)
 		fail();
 	}
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.screensaver_inhibits, 1);
 	assert_string_equal(fake.screensaver_app, "libobs");
 	assert_string_equal(fake.screensaver_reason, REASON);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	assert_true(os_inhibit_sleep_set_active(inhibit, false));
 	if (!wait_for_count(&fake.screensaver_uninhibits, 1, 3000)) {
@@ -510,17 +512,17 @@ static void test_screensaver_inhibit_and_release(void **state)
 		fail();
 	}
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.screensaver_uninhibits, 1);
 	assert_int_equal(fake.uninhibit_cookie, SCREENSAVER_COOKIE);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	os_inhibit_sleep_destroy(inhibit);
 
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.screensaver_inhibits, 1);
 	assert_int_equal(fake.screensaver_uninhibits, 1);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	fake_own_name(SCREENSAVER_NAME, false);
 }
@@ -528,12 +530,12 @@ static void test_screensaver_inhibit_and_release(void **state)
 static void snapshot_counts(int *portal_inhibits, int *request_closes, int *screensaver_inhibits,
 			    int *screensaver_uninhibits)
 {
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	*portal_inhibits = fake.portal_inhibits;
 	*request_closes = fake.request_closes;
 	*screensaver_inhibits = fake.screensaver_inhibits;
 	*screensaver_uninhibits = fake.screensaver_uninhibits;
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 }
 
 /* The cases below pin the rest of platform-nix-inhibit.c before its Rust
@@ -670,9 +672,9 @@ static void test_screensaver_repeated_set_active(void **state)
 	assert_int_equal(s, s0 + 5);
 	assert_int_equal(u, u0 + 5);
 	assert_int_equal(p, p0);
-	g_mutex_lock(&fake.lock);
+	pthread_mutex_lock(&fake.lock);
 	assert_int_equal(fake.uninhibit_cookie, SCREENSAVER_COOKIE);
-	g_mutex_unlock(&fake.lock);
+	pthread_mutex_unlock(&fake.lock);
 
 	fake_own_name(SCREENSAVER_NAME, false);
 }
@@ -734,9 +736,9 @@ static void test_screensaver_reason_is_copied(void **state)
 
 		assert_true(os_inhibit_sleep_set_active(inhibit, true));
 		assert_true(wait_for_count(&fake.screensaver_inhibits, s0 + 1, 3000));
-		g_mutex_lock(&fake.lock);
+		pthread_mutex_lock(&fake.lock);
 		assert_string_equal(fake.screensaver_reason, reasons[i]);
-		g_mutex_unlock(&fake.lock);
+		pthread_mutex_unlock(&fake.lock);
 
 		os_inhibit_sleep_destroy(inhibit);
 		assert_true(wait_for_count(&fake.screensaver_uninhibits, u0 + 1, 3000));

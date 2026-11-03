@@ -174,7 +174,7 @@ static void *silent_camera_thread(void *data)
 	struct pollfd listen_poll = {.fd = camera->listen_fd, .events = POLLIN};
 	int client_fd = -1;
 
-	while (!camera->quit && client_fd < 0) {
+	while (!os_atomic_load_bool(&camera->quit) && client_fd < 0) {
 		if (poll(&listen_poll, 1, 100) > 0)
 			client_fd = accept(camera->listen_fd, NULL, NULL);
 	}
@@ -183,7 +183,7 @@ static void *silent_camera_thread(void *data)
 	size_t used = 0;
 	bool playing = false;
 
-	while (!camera->quit && client_fd >= 0) {
+	while (!os_atomic_load_bool(&camera->quit) && client_fd >= 0) {
 		struct pollfd client_poll = {.fd = client_fd, .events = POLLIN};
 		if (poll(&client_poll, 1, 100) <= 0)
 			continue;
@@ -224,7 +224,7 @@ static void silent_camera_start(struct silent_camera *camera)
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	addr.sin_port = 0;
 
-	camera->quit = false;
+	os_atomic_set_bool(&camera->quit, false);
 	camera->listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	assert_true(camera->listen_fd >= 0);
 	assert_int_equal(bind(camera->listen_fd, (struct sockaddr *)&addr, sizeof(addr)), 0);
@@ -236,7 +236,7 @@ static void silent_camera_start(struct silent_camera *camera)
 
 static void silent_camera_stop(struct silent_camera *camera)
 {
-	camera->quit = true;
+	os_atomic_set_bool(&camera->quit, true);
 	pthread_join(camera->thread, NULL);
 	close(camera->listen_fd);
 }
