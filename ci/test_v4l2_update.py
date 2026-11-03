@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 """Run the V4L2 settings callback and capture timeout code natively (#3506).
 
-Run with: uv run python -m unittest ci/test_v4l2_update.py
+Run with: uv run ci/test_v4l2_update.py
 The device/library stubs check that format settings are only read while capture
 is stopped. The callback and timeout statements come from production source.
 """
@@ -11,16 +11,14 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import sys
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "ci"))
 import host_platform as host
 
+ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "plugins/linux-v4l2/v4l2-input.c.h"
 
 STUBS = r"""
