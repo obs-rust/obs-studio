@@ -103,6 +103,24 @@ class CacheFamilyBudgetTest(unittest.TestCase):
             f"ci.toml cache families need {worst} B, budget is {budget} B; largest: {largest}",
         )
 
+    def test_cook_shapes_hold_the_measured_layers(self):
+        # A footprint below the live layers makes the janitor evict one layer on
+        # each queue run, and the next master push saves it again (#2661).
+        # Largest layers measured on 2026-11-03, with 10% growth room.
+        measured = {"linux": 1_198_393_428, "macos": 774_110_518, "windows": 948_412_075}
+        shapes = tomllib.loads(CI_TOML.read_text())["cache"]["family"]["deps"]["shapes"]
+        for shape, size in measured.items():
+            with self.subTest(shape=shape):
+                self.assertGreaterEqual(parse_size(shapes[shape]["max"]), 1.1 * size)
+
+    def test_verdicts_have_a_family(self):
+        # Without a family the janitor deletes them as undeclared (CACHE-001) on
+        # each queue run, and a PR finds nothing to replay (docs/ci-tooling.md).
+        families = tomllib.loads(CI_TOML.read_text())["cache"]["family"]
+        for key in ("soldr-verdict-v1-clippy-ws-abc", "soldr-verdict-manifest-v1-abc-1-1"):
+            with self.subTest(key=key):
+                self.assertTrue(any(f.get("prefix") and key.startswith(f["prefix"]) for f in families.values()))
+
     def test_budget_is_the_repository_cap(self):
         config = tomllib.loads(CI_TOML.read_text())
         self.assertLessEqual(parse_size(config["cache"]["budget"]), 10 * 1024**3)
