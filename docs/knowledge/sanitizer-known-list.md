@@ -31,6 +31,9 @@ is only listed.
 
 ## How to add an entry
 
+Read [asan-pr-failure.md](asan-pr-failure.md) first: fix the test if you can. The
+goal for this list is zero entries.
+
 1. Open (or find) the issue that tracks the failure; never add an entry without one,
    except `tool`.
 2. Pick the kind honestly: a timing failure is `flaky` (see
