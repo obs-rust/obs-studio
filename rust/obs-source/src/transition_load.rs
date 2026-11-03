@@ -214,8 +214,67 @@ pub trait Transition: crate::transition_size::Transition {
 /// and releases it (`NULL` included, as the C does), then recalculates the
 /// size and the matrices ([`crate::transition_size::recalculate_size`],
 /// [`crate::transition_size::recalculate_matrices`]).
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn load<T: Transition>(transition: &T, data: &T::Data) {
-    let _ = (transition, data);
-    todo!()
+    let name = transition.get_string(data, KEY_SOURCE_A);
+    let alignment = transition.get_int(data, KEY_ALIGNMENT);
+    let mode = transition.get_int(data, KEY_MODE);
+    let saved_scale_type = transition.get_int(data, KEY_SCALE_TYPE);
+    let cx = transition.get_int(data, KEY_CX);
+    let cy = transition.get_int(data, KEY_CY);
+    let mut new_source = None;
+
+    if looks_up(name.is_some())
+        && let Some(name) = name
+    {
+        new_source = transition.source_by_name(name);
+        // the add only for a found source, as the C does
+        let found = new_source.is_some();
+        let add_ok = new_source.is_some_and(|s| transition.add_active_child(s));
+
+        match source(found, add_ok) {
+            Source::Refuse => {
+                transition.warn_recursion(name);
+                transition.release(new_source);
+                new_source = None;
+            }
+            Source::NotFound => transition.warn_not_found(name),
+            Source::Keep => {}
+        }
+    }
+
+    transition.lock();
+    let old = transition.source(0);
+    let old_active = transition.source_active(0);
+    transition.set_source(0, new_source);
+    transition.set_source_active(0, true);
+    transition.set_alignment(low_u32(alignment));
+    transition.set_mode(low_i32(mode));
+    transition.set_scale_type(scale_type(saved_scale_type));
+    transition.set_cx(low_u32(cx));
+    transition.set_cy(low_u32(cy));
+    transition.unlock();
+
+    // take back the source the slot held, as obs_transition_clear() does
+    if crate::transition_start::child_active(old.is_some(), old_active)
+        && let Some(o) = old
+    {
+        transition.remove_active_child(o);
+    }
+    transition.release(old);
+
+    crate::transition_size::recalculate_size(transition);
+    crate::transition_size::recalculate_matrices(transition);
+}
+
+/// The C's `(uint32_t)` of an `int64_t`: its low 32 bits.
+#[expect(clippy::as_conversions, reason = "the C's (uint32_t) cast")]
+const fn low_u32(value: i64) -> u32 {
+    value as u32
+}
+
+/// The C's `(enum obs_transition_mode)` of an `int64_t`: its low 32 bits,
+/// as the `int` the enum is.
+#[expect(clippy::as_conversions, reason = "the C's enum cast")]
+const fn low_i32(value: i64) -> i32 {
+    value as i32
 }
