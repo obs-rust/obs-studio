@@ -232,6 +232,7 @@ fn canonical_frontend_utility_tests_are_registered() {
             "missing canonical target {name}"
         );
         assert_eq!(graph.tests[name].target, name);
+        assert_eq!(graph.targets[name].watch_inputs, ["frontend/utility"]);
     }
 }
 

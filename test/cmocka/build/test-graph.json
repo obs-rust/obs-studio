@@ -2383,6 +2383,9 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_multitrack_ladder": {
@@ -2395,6 +2398,9 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_nal": {
@@ -3775,6 +3781,9 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_register_partial_callbacks": {
@@ -4232,6 +4241,9 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_scene_audio_action_steps": {
@@ -5434,6 +5446,9 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
       ]
     },
     "test_studio_mode_exit": {
