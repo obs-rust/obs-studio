@@ -167,6 +167,7 @@
   "graphics/bounds.h",
   "graphics/device-exports.h",
   "graphics/effect-param-types.h",
+  "graphics/effect-parser-blocks.h",
   "graphics/effect-parser.h",
   "graphics/effect.h",
   "graphics/graphics-ffmpeg-host.h",
@@ -201,6 +202,7 @@
   "build/libobs.core+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-source+.h.c",
+  "build/libobs.effect-parser-blocks+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
   "build/libobs.media+.h.c"
