@@ -59,6 +59,8 @@ static int fake_audio_encoder; /* only its address is used */
 static int fake_video;         /* only its address is used */
 static bool with_audio;
 static os_event_t *thread_done;
+static os_event_t *allow_thread_cleanup;
+static os_event_t *thread_finished;
 
 #define FAKE_OUTPUT ((obs_output_t *)&fake_output)
 #define FAKE_ENCODER ((obs_encoder_t *)&fake_encoder)
@@ -99,12 +101,16 @@ void fake_output_signal_stop(obs_output_t *output, int code)
 	(void)output;
 	(void)code;
 	os_event_signal(thread_done);
+	/* Model preemption immediately after the stop notification (#3522). */
+	os_event_wait(allow_thread_cleanup);
 }
 
 void fake_output_end_data_capture(obs_output_t *output)
 {
 	(void)output;
 	os_event_signal(thread_done);
+	/* Model preemption immediately after the stop notification (#3522). */
+	os_event_wait(allow_thread_cleanup);
 }
 
 bool fake_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_data, size_t *size)
@@ -157,6 +163,8 @@ static struct conn start_stream(enum server server, bool headers_sent)
 	assert_int_equal(os_event_init(&stream->stop_event, OS_EVENT_TYPE_MANUAL), 0);
 	assert_int_equal(os_sem_init(&stream->send_sem, 0), 0);
 	assert_int_equal(os_event_init(&thread_done, OS_EVENT_TYPE_MANUAL), 0);
+	assert_int_equal(os_event_init(&allow_thread_cleanup, OS_EVENT_TYPE_MANUAL), 0);
+	assert_int_equal(os_event_init(&thread_finished, OS_EVENT_TYPE_MANUAL), 0);
 
 	RTMP_Init(&stream->rtmp);
 	int sv[2];
@@ -198,6 +206,15 @@ static void queue_video_packet(struct rtmp_stream *stream)
 	os_sem_post(stream->send_sem);
 }
 
+/* A stop notification is sent before send_thread's final cleanup. Only the
+ * wrapper's event means the real worker has stopped touching the stream. */
+static void *send_thread_to_completion(void *data)
+{
+	send_thread(data);
+	os_event_signal(thread_finished);
+	return NULL;
+}
+
 /* Runs the send thread until it gives up on the connection, then frees the
  * stream the way rtmp_stream_destroy() does. Returns the number of
  * allocations left over. */
@@ -205,7 +222,7 @@ static long run_send_thread(struct conn c)
 {
 	struct rtmp_stream *stream = c.stream;
 
-	assert_int_equal(pthread_create(&stream->send_thread, NULL, send_thread, stream), 0);
+	assert_int_equal(pthread_create(&stream->send_thread, NULL, send_thread_to_completion, stream), 0);
 	/* The thread detaches itself when the connection drops. */
 	assert_int_equal(os_event_timedwait(thread_done, 10000), 0);
 	assert_true(disconnected(stream));
@@ -221,6 +238,13 @@ static long run_send_thread(struct conn c)
 	pthread_mutex_destroy(&stream->dbr_mutex);
 	pthread_mutex_destroy(&stream->packets_mutex);
 	bfree(stream);
+
+	/* Expose the old teardown ordering deterministically: the worker still
+	 * has final cleanup to do after the fixture has been freed. */
+	os_event_signal(allow_thread_cleanup);
+	assert_int_equal(os_event_timedwait(thread_finished, 10000), 0);
+	os_event_destroy(allow_thread_cleanup);
+	os_event_destroy(thread_finished);
 
 	return bnum_allocs() - c.allocs_before;
 }
