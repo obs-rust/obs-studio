@@ -530,7 +530,7 @@ static void log_frame_info(struct obs_output *output)
 	uint32_t starting_lagged = output->starting_lagged_count;
 
 	int dropped = obs_output_get_frames_dropped(output);
-	int total = output->total_frames;
+	int total = (int)os_atomic_load_long(&output->total_frames);
 
 	struct obs_output_stop_stats stats =
 		obs_output_stop_stats(total_frames, lagged_frames, starting_drawn, starting_lagged, dropped, total);
@@ -1312,7 +1312,8 @@ int obs_output_get_frames_dropped(const obs_output_t *output)
 
 int obs_output_get_total_frames(const obs_output_t *output)
 {
-	return obs_output_valid(output, "obs_output_get_total_frames") ? output->total_frames : 0;
+	return obs_output_valid(output, "obs_output_get_total_frames") ? (int)os_atomic_load_long(&output->total_frames)
+								       : 0;
 }
 
 void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32_t height, size_t idx)
@@ -1709,7 +1710,7 @@ static void default_encoded_callback(void *param, struct encoder_packet *packet,
 		output->info.encoded_packet(output->context.data, packet);
 
 		if (packet->type == OBS_ENCODER_VIDEO)
-			output->total_frames++;
+			os_atomic_inc_long(&output->total_frames);
 	}
 
 	if (output->active_delay_ns)
@@ -1725,7 +1726,7 @@ static void default_raw_video_callback(void *param, struct video_data *frame)
 
 	if (data_active(output))
 		output->info.raw_video(output->context.data, frame);
-	output->total_frames++;
+	os_atomic_inc_long(&output->total_frames);
 }
 
 /* The constants obs-output-raw-audio.h copies. */
@@ -2201,7 +2202,7 @@ static bool obs_output_begin_data_capture_internal(obs_output_t *output)
 	if (active(output))
 		return false;
 
-	output->total_frames = 0;
+	os_atomic_set_long(&output->total_frames, 0);
 
 	if (obs_output_start_reset_raw(output->info.flags))
 		reset_raw_output(output);

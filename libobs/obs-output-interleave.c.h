@@ -121,7 +121,7 @@ static inline void send_interleaved(struct obs_output *output)
 	da_erase(*f.interleaved_packets, 0);
 
 	if (out.type == OBS_ENCODER_VIDEO) {
-		(*f.total_frames)++;
+		os_atomic_inc_long(f.total_frames);
 
 		struct obs_output_caption_track_fields ctrack = obs_output_caption_track_fields(output, out.track_idx);
 
