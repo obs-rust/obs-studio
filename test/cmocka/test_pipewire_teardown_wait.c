@@ -57,11 +57,20 @@ static void teardown_waits_only_under_the_lock(void **state)
 	pw_init(NULL, NULL);
 
 	obs_pipewire *obs_pw = bzalloc(sizeof(*obs_pw));
-	obs_pw->thread_loop = pw_thread_loop_new("PipeWire teardown test", NULL);
+	/* A stop before the loop thread has entered the loop can hang: invoke then
+	 * runs do_stop on this thread, with nothing to wake the loop thread if it is
+	 * already on its way into epoll_wait (#3577). Teardown is what this test
+	 * checks, so wait for the signal the loop thread sends once it has entered. */
+	struct pw_properties *props = pw_properties_new("thread-loop.start-signal", "true", NULL);
+	obs_pw->thread_loop = pw_thread_loop_new("PipeWire teardown test", &props->dict);
+	pw_properties_free(props);
 	assert_non_null(obs_pw->thread_loop);
 	obs_pw->context = pw_context_new(pw_thread_loop_get_loop(obs_pw->thread_loop), NULL, 0);
 	assert_non_null(obs_pw->context);
+	pw_thread_loop_lock(obs_pw->thread_loop);
 	assert_int_equal(pw_thread_loop_start(obs_pw->thread_loop), 0);
+	pw_thread_loop_wait(obs_pw->thread_loop);
+	pw_thread_loop_unlock(obs_pw->thread_loop);
 	obs_pw->streams = g_ptr_array_new();
 
 	obs_pipewire_destroy(obs_pw);
