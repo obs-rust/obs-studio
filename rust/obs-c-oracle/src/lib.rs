@@ -190,6 +190,7 @@ pub mod scene_transform_update;
 pub mod service_getters;
 pub mod shader_param_names;
 pub mod shader_param_values;
+pub mod shader_parser_blocks;
 pub mod shader_sampler_convert;
 pub mod signal;
 pub mod source_async_pacing;
