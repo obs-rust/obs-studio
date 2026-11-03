@@ -1166,6 +1166,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_blocks": {
+      "sources": [
+        "libobs/graphics/effect-param-numbers.c.h",
+        "libobs/graphics/effect-param-types.c.h",
+        "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser.c.h",
+        "test/cmocka/test_effect_parser_blocks.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_effect_pass_loop": {
       "sources": [
         "test/cmocka/test_effect_pass_loop.c"
@@ -7030,6 +7049,12 @@
     },
     "test_effect_param_values": {
       "target": "test_effect_param_values",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_effect_parser_blocks": {
+      "target": "test_effect_parser_blocks",
       "command": [
         "${target}"
       ]
