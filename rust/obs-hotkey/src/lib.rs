@@ -1,6 +1,7 @@
 //! Rust ports of `libobs/obs-hotkey-name-map.c`,
 //! `libobs/obs-hotkey-bindings.c.h`, `libobs/obs-hotkey-translations.c.h`,
 //! `libobs/obs-hotkey-press.c.h`, `libobs/obs-hotkey-pair.c.h`,
+//! `libobs/obs-hotkey-save-load.c.h`,
 //! `libobs/obs-hotkey-binding-press.c.h`, `libobs/obs-nix-hotkey-state.c.h`,
 //! `libobs/obs-nix-portal-shortcut-ids.c.h`,
 //! `libobs/obs-nix-portal-shortcut-sets.c.h`,
@@ -12,7 +13,7 @@
 //! `libobs/obs-windows-keys.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
-//! [`press`], [`pair`], [`binding_press`], [`nix_hotkey_state`],
+//! [`press`], [`pair`], [`save_load`], [`binding_press`], [`nix_hotkey_state`],
 //! [`portal_shortcut_ids`], [`portal_shortcut_sets`],
 //! [`portal_shortcut_status`], [`nix_wayland_key_names`],
 //! [`nix_wayland_keys`], [`nix_wayland_seats`],
@@ -48,6 +49,7 @@ pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod portal_shortcut_status;
 pub mod press;
+pub mod save_load;
 pub mod translations;
 pub mod windows_keys;
 

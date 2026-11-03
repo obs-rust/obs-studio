@@ -1,0 +1,4 @@
+# obs-hotkey-save-load.c: obs_hotkey_register_internal() in obs-hotkey.c calls it
+# for the bindings a new hotkey has stored. Declared in obs-hotkey-seam.h without
+# EXPORT, so the shim stays hidden the same way.
+load_bindings
