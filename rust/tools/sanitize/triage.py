@@ -45,6 +45,8 @@ KNOWN = {
                                    '("VEX temporary storage exhausted")'),
     ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
     ("asan", "test_async_delay_audio"): ("flaky", "a real-time tone breaks under load (#3368, #838)"),
+    ("asan", "test_audio_clock_drift"): ("flaky", "one dropout early in a run, cause not known (#3576)"),
+    ("asan", "test_pipewire_teardown_wait"): ("flaky", "hung until the 10-minute limit once (#3577)"),
 }
 SKIP_EXIT = "77"
 EXTERNAL = re.compile(r"/nix/store/|/usr/(?:include|lib)/")
