@@ -66,6 +66,7 @@ pub mod dstr_libc;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;
+pub mod effect_parser_blocks;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 pub mod encoder_audio_start;
