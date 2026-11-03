@@ -28,7 +28,7 @@ CI_TOML = ROOT / "ci.toml"
 EXPECTED = {
     "build-project.yaml": "build-project-${{ github.event_name }}-${{ github.ref }}",
     "check-format.yaml": "check-format-${{ github.event_name }}-${{ github.ref }}",
-    "claim-bot.yaml": "claim-bot-${{ github.event.issue.number || 'sweep' }}",
+    "claim-bot.yaml": "claim-bot-${{ github.event.issue.number || github.event.pull_request.number || 'sweep' }}",
     "dispatch.yaml": "dispatch-${{ inputs.job }}-${{ github.event_name }}-${{ github.ref }}",
     "push.yaml": "push-${{ github.event_name }}-${{ github.ref }}",
     "sign-windows.yaml": "sign-windows-${{ github.event_name }}-${{ github.ref }}",
