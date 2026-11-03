@@ -890,3 +890,648 @@ proptest! {
         }
     }
 }
+
+/// Tier 1 for `obs_source::transition_load::load`, `obs_transition_load()`
+/// of `libobs/obs-source-transition-restore.c.h`.
+///
+/// The load runs on a fake transition over a fake source graph: saved data
+/// (the string the name key reads, and the ints of the other keys, 0 when
+/// missing, as `obs_data_get_int()` gives them), sources found by name with
+/// a reference count, the children that refuse the active-child add, and
+/// slot A with its active flag. The fake records every `obs_data` read,
+/// lookup, active-child call, release, warning, lock and field write in
+/// order, and panics on a field written or slot A read without
+/// `transition_mutex`. The size and matrix recalculation after the unlock
+/// are the sizing port's, and show as their lock and child-size calls.
+///
+/// The `c_*` cases follow `test_source_transition_restore.c`; the others
+/// pin the casts, each source outcome, the old slot A's hand-back and the
+/// order of every call, with a proptest against a copy of the C.
+mod load {
+    use std::cell::{Cell, RefCell};
+    use std::collections::BTreeMap;
+    use std::ffi::CStr;
+
+    use obs_c_oracle::parity::cases;
+    use obs_source::transition_load::{
+        self as core, KEY_ALIGNMENT, KEY_CX, KEY_CY, KEY_MODE, KEY_SCALE_TYPE, KEY_SOURCE_A,
+        Transition, load,
+    };
+    use obs_source::transition_size;
+    use proptest::prelude::*;
+
+    type Id = u32;
+    type Name = &'static str;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Ev {
+        GetString(&'static CStr),
+        GetInt(&'static CStr),
+        ByName(Name),
+        Add(Id, bool),
+        Remove(Id),
+        Release(Option<Id>),
+        WarnRecursion(Name),
+        WarnNotFound(Name),
+        Lock,
+        Unlock,
+        SourceActive,
+        SetSource(Option<Id>),
+        SetSourceActive(bool),
+        SetAlignment(u32),
+        SetMode(i32),
+        SetScaleType(i32),
+        SetCx(u32),
+        SetCy(u32),
+        Width(Id),
+        Height(Id),
+        SetActual(u32, u32),
+        Matrix(usize),
+    }
+
+    /// What the saved data reads give.
+    #[derive(Debug, Clone, Default)]
+    struct Data {
+        name: Option<Name>,
+        ints: BTreeMap<&'static CStr, i64>,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    struct Fields {
+        source: Option<Id>,
+        active: bool,
+        alignment: u32,
+        mode: i32,
+        scale_type: i32,
+        cx: u32,
+        cy: u32,
+        actual: (u32, u32),
+    }
+
+    #[derive(Default)]
+    struct Tr {
+        f: RefCell<Fields>,
+        /// Sources by name, each 100x50 times its id.
+        names: BTreeMap<Name, Id>,
+        refs: RefCell<BTreeMap<Id, i64>>,
+        links: RefCell<BTreeMap<Id, i64>>,
+        refuses: Vec<Id>,
+        locked: Cell<bool>,
+        events: RefCell<Vec<Ev>>,
+    }
+
+    impl Tr {
+        fn new(names: &[(Name, Id)]) -> Self {
+            let mut tr = Self::default();
+            for &(n, id) in names {
+                tr.names.insert(n, id);
+                tr.refs.borrow_mut().insert(id, 1);
+            }
+            tr
+        }
+        /// Slot A holds `id` with the transition's reference and, when
+        /// `active`, its active-child link.
+        fn hold(&self, id: Id, active: bool) {
+            *self.refs.borrow_mut().entry(id).or_insert(0) += 1;
+            if active {
+                *self.links.borrow_mut().entry(id).or_insert(0) += 1;
+            }
+            let mut f = self.f.borrow_mut();
+            f.source = Some(id);
+            f.active = active;
+        }
+        fn ev(&self, e: Ev) {
+            self.events.borrow_mut().push(e);
+        }
+        fn need_lock(&self, what: &str) {
+            assert!(self.locked.get(), "{what} without transition_mutex");
+        }
+        fn events(&self) -> Vec<Ev> {
+            std::mem::take(&mut self.events.borrow_mut())
+        }
+        fn fields(&self) -> Fields {
+            *self.f.borrow()
+        }
+        fn refs(&self, id: Id) -> i64 {
+            self.refs.borrow().get(&id).copied().unwrap_or(0)
+        }
+        fn link(&self, id: Id) -> i64 {
+            self.links.borrow().get(&id).copied().unwrap_or(0)
+        }
+    }
+
+    impl transition_size::Transition for Tr {
+        type Child = Id;
+        type Texrender = ();
+
+        fn source(&self, idx: usize) -> Option<Id> {
+            self.need_lock("transition_sources");
+            if idx == 0 {
+                self.f.borrow().source
+            } else {
+                None
+            }
+        }
+        fn cx(&self) -> u32 {
+            self.f.borrow().cx
+        }
+        fn cy(&self) -> u32 {
+            self.f.borrow().cy
+        }
+        fn actual_cx(&self) -> u32 {
+            self.f.borrow().actual.0
+        }
+        fn set_actual_cx(&self, value: u32) {
+            self.f.borrow_mut().actual.0 = value;
+        }
+        fn actual_cy(&self) -> u32 {
+            self.f.borrow().actual.1
+        }
+        fn set_actual_cy(&self, value: u32) {
+            self.f.borrow_mut().actual.1 = value;
+            let a = self.f.borrow().actual;
+            self.ev(Ev::SetActual(a.0, a.1));
+        }
+        fn scale_type(&self) -> i32 {
+            self.f.borrow().scale_type
+        }
+        fn alignment(&self) -> u32 {
+            self.f.borrow().alignment
+        }
+        fn mode(&self) -> i32 {
+            self.f.borrow().mode
+        }
+        fn manual_val(&self) -> f32 {
+            panic!("the load reads no manual value")
+        }
+        fn set_manual_val(&self, _: f32) {
+            panic!("the load writes no manual value")
+        }
+        fn manual_target(&self) -> f32 {
+            panic!("the load reads no manual target")
+        }
+        fn manual_torque(&self) -> f32 {
+            panic!("the load reads no manual torque")
+        }
+        fn manual_clamp(&self) -> f32 {
+            panic!("the load reads no manual clamp")
+        }
+        fn texrender(&self, _: usize) {
+            panic!("the load touches no render target")
+        }
+        fn lock(&self) {
+            assert!(!self.locked.get(), "transition_mutex taken twice");
+            self.locked.set(true);
+            self.ev(Ev::Lock);
+        }
+        fn unlock(&self) {
+            assert!(self.locked.get(), "transition_mutex unlocked unheld");
+            self.locked.set(false);
+            self.ev(Ev::Unlock);
+        }
+        fn trylock_textures(&self) -> i32 {
+            panic!("the load takes no texture lock")
+        }
+        fn unlock_textures(&self) {
+            panic!("the load takes no texture lock")
+        }
+        fn child_width(&self, child: Id) -> u32 {
+            self.ev(Ev::Width(child));
+            100 * child
+        }
+        fn child_height(&self, child: Id) -> u32 {
+            self.ev(Ev::Height(child));
+            50 * child
+        }
+        fn alignment_position(&self, _: u32, cx: i32, cy: i32) -> (f32, f32) {
+            (cx as f32, cy as f32)
+        }
+        fn set_matrix(&self, idx: usize, _: (f32, f32), _: (f32, f32)) {
+            self.ev(Ev::Matrix(idx));
+        }
+        fn calc_torquef(&self, _: f32, _: f32, _: f32, _: f32, _: f32) -> f32 {
+            panic!("the load calls no calc_torquef()")
+        }
+        fn texrender_reset(&self, _: ()) {
+            panic!("the load resets no render target")
+        }
+    }
+
+    impl Transition for Tr {
+        type Data = Data;
+        type Name = Name;
+
+        fn get_string(&self, data: &Data, key: &'static CStr) -> Option<Name> {
+            self.ev(Ev::GetString(key));
+            assert_eq!(key, KEY_SOURCE_A);
+            data.name
+        }
+        fn get_int(&self, data: &Data, key: &'static CStr) -> i64 {
+            self.ev(Ev::GetInt(key));
+            data.ints.get(key).copied().unwrap_or(0)
+        }
+        fn source_by_name(&self, name: Name) -> Option<Id> {
+            assert!(!self.locked.get(), "lookup under transition_mutex");
+            self.ev(Ev::ByName(name));
+            let id = self.names.get(name).copied()?;
+            *self.refs.borrow_mut().entry(id).or_insert(0) += 1;
+            Some(id)
+        }
+        fn add_active_child(&self, child: Id) -> bool {
+            assert!(!self.locked.get(), "add under transition_mutex");
+            let ok = !self.refuses.contains(&child);
+            if ok {
+                *self.links.borrow_mut().entry(child).or_insert(0) += 1;
+            }
+            self.ev(Ev::Add(child, ok));
+            ok
+        }
+        fn remove_active_child(&self, child: Id) {
+            assert!(!self.locked.get(), "remove under transition_mutex");
+            *self.links.borrow_mut().entry(child).or_insert(0) -= 1;
+            self.ev(Ev::Remove(child));
+        }
+        fn release(&self, child: Option<Id>) {
+            assert!(!self.locked.get(), "release under transition_mutex");
+            if let Some(c) = child {
+                *self.refs.borrow_mut().entry(c).or_insert(0) -= 1;
+            }
+            self.ev(Ev::Release(child));
+        }
+        fn warn_recursion(&self, name: Name) {
+            self.ev(Ev::WarnRecursion(name));
+        }
+        fn warn_not_found(&self, name: Name) {
+            self.ev(Ev::WarnNotFound(name));
+        }
+        fn set_source(&self, idx: usize, value: Option<Id>) {
+            self.need_lock("set transition_sources");
+            assert_eq!(idx, 0);
+            self.ev(Ev::SetSource(value));
+            self.f.borrow_mut().source = value;
+        }
+        fn source_active(&self, idx: usize) -> bool {
+            self.need_lock("transition_source_active");
+            assert_eq!(idx, 0);
+            self.ev(Ev::SourceActive);
+            self.f.borrow().active
+        }
+        fn set_source_active(&self, idx: usize, value: bool) {
+            self.need_lock("set transition_source_active");
+            assert_eq!(idx, 0);
+            self.ev(Ev::SetSourceActive(value));
+            self.f.borrow_mut().active = value;
+        }
+        fn set_alignment(&self, value: u32) {
+            self.need_lock("set transition_alignment");
+            self.ev(Ev::SetAlignment(value));
+            self.f.borrow_mut().alignment = value;
+        }
+        fn set_mode(&self, value: i32) {
+            self.need_lock("set transition_mode");
+            self.ev(Ev::SetMode(value));
+            self.f.borrow_mut().mode = value;
+        }
+        fn set_scale_type(&self, value: i32) {
+            self.need_lock("set transition_scale_type");
+            self.ev(Ev::SetScaleType(value));
+            self.f.borrow_mut().scale_type = value;
+        }
+        fn set_cx(&self, value: u32) {
+            self.need_lock("set transition_cx");
+            self.ev(Ev::SetCx(value));
+            self.f.borrow_mut().cx = value;
+        }
+        fn set_cy(&self, value: u32) {
+            self.need_lock("set transition_cy");
+            self.ev(Ev::SetCy(value));
+            self.f.borrow_mut().cy = value;
+        }
+    }
+
+    fn data(name: Option<Name>, ints: &[(&'static CStr, i64)]) -> Data {
+        Data {
+            name,
+            ints: ints.iter().copied().collect(),
+        }
+    }
+
+    const READS: [Ev; 6] = [
+        Ev::GetString(KEY_SOURCE_A),
+        Ev::GetInt(KEY_ALIGNMENT),
+        Ev::GetInt(KEY_MODE),
+        Ev::GetInt(KEY_SCALE_TYPE),
+        Ev::GetInt(KEY_CX),
+        Ev::GetInt(KEY_CY),
+    ];
+
+    #[test]
+    fn constants() {
+        assert_eq!(KEY_SOURCE_A, c"transition_source_a");
+        assert_eq!(KEY_ALIGNMENT, c"transition_alignment");
+        assert_eq!(KEY_MODE, c"transition_mode");
+        assert_eq!(KEY_SCALE_TYPE, c"transition_scale_type");
+        assert_eq!(KEY_CX, c"transition_cx");
+        assert_eq!(KEY_CY, c"transition_cy");
+        assert_eq!(
+            core::RECURSION_WARNING,
+            c"Cannot set transition '%s' to source '%s' due to infinite recursion"
+        );
+        assert_eq!(
+            core::NOT_FOUND_WARNING,
+            c"Failed to find source '%s' for transition '%s'"
+        );
+    }
+
+    #[test]
+    fn c_fields() {
+        let tr = Tr::new(&[("child", 2)]);
+        let d = data(
+            Some("child"),
+            &[
+                (KEY_ALIGNMENT, 5),
+                (KEY_MODE, 1),
+                (KEY_SCALE_TYPE, 2),
+                (KEY_CX, 1920),
+                (KEY_CY, 1080),
+            ],
+        );
+        load(&tr, &d);
+        let mut want = READS.to_vec();
+        want.extend([
+            Ev::ByName("child"),
+            Ev::Add(2, true),
+            Ev::Lock,
+            Ev::SourceActive,
+            Ev::SetSource(Some(2)),
+            Ev::SetSourceActive(true),
+            Ev::SetAlignment(5),
+            Ev::SetMode(1),
+            Ev::SetScaleType(2),
+            Ev::SetCx(1920),
+            Ev::SetCy(1080),
+            Ev::Unlock,
+            Ev::Release(None),
+            // the size, then each slot's matrix
+            Ev::Lock,
+            Ev::Width(2),
+            Ev::Height(2),
+            Ev::Unlock,
+            Ev::SetActual(200, 100),
+            Ev::Lock,
+            Ev::Width(2),
+            Ev::Height(2),
+            Ev::Unlock,
+            Ev::Matrix(0),
+            Ev::Lock,
+            Ev::Unlock,
+        ]);
+        assert_eq!(tr.events(), want);
+        assert_eq!(
+            tr.fields(),
+            Fields {
+                source: Some(2),
+                active: true,
+                alignment: 5,
+                mode: 1,
+                scale_type: 2,
+                cx: 1920,
+                cy: 1080,
+                actual: (200, 100),
+            }
+        );
+        // the lookup's reference is the slot's, and the link is held
+        assert_eq!((tr.refs(2), tr.link(2)), (2, 1));
+        assert!(!tr.locked.get());
+    }
+
+    #[test]
+    fn c_missing_keys() {
+        // obs_data gives "" and 0s: "" is looked up and not found, and the
+        // alignment becomes 0 (OBS_ALIGN_CENTER)
+        let tr = Tr::new(&[]);
+        load(&tr, &data(Some(""), &[]));
+        let ev = tr.events();
+        assert_eq!(ev[..6], READS);
+        assert_eq!(ev[6..8], [Ev::ByName(""), Ev::WarnNotFound("")]);
+        assert_eq!(
+            tr.fields(),
+            Fields {
+                active: true,
+                ..Fields::default()
+            }
+        );
+    }
+
+    #[test]
+    fn no_name_no_lookup() {
+        let tr = Tr::new(&[("x", 1)]);
+        load(&tr, &data(None, &[]));
+        let ev = tr.events();
+        assert_eq!(ev[6..9], [Ev::Lock, Ev::SourceActive, Ev::SetSource(None)]);
+        assert!(
+            !ev.iter()
+                .any(|e| matches!(e, Ev::ByName(_) | Ev::WarnNotFound(_)))
+        );
+        // the slot is active with nothing in it
+        assert_eq!((tr.fields().source, tr.fields().active), (None, true));
+    }
+
+    #[test]
+    fn c_source_outcomes() {
+        // found, refused: warned, released, none stored
+        let mut tr = Tr::new(&[("loop", 3)]);
+        tr.refuses.push(3);
+        load(&tr, &data(Some("loop"), &[]));
+        let ev = tr.events();
+        assert_eq!(
+            ev[6..11],
+            [
+                Ev::ByName("loop"),
+                Ev::Add(3, false),
+                Ev::WarnRecursion("loop"),
+                Ev::Release(Some(3)),
+                Ev::Lock
+            ]
+        );
+        assert!(ev.contains(&Ev::SetSource(None)));
+        assert_eq!((tr.refs(3), tr.link(3)), (1, 0));
+        assert_eq!((tr.fields().source, tr.fields().active), (None, true));
+
+        // not found: warned, no add
+        let tr = Tr::new(&[("other", 4)]);
+        load(&tr, &data(Some("gone"), &[]));
+        let ev = tr.events();
+        assert_eq!(
+            ev[6..9],
+            [Ev::ByName("gone"), Ev::WarnNotFound("gone"), Ev::Lock]
+        );
+        assert_eq!(tr.refs(4), 1);
+    }
+
+    #[test]
+    fn c_old_slot_a() {
+        // an active old child: its link and reference handed back after
+        // the unlock
+        let tr = Tr::new(&[("new", 2)]);
+        tr.hold(1, true);
+        load(&tr, &data(Some("new"), &[]));
+        let ev = tr.events();
+        let at = ev.iter().position(|e| *e == Ev::Unlock).unwrap();
+        assert_eq!(ev[at + 1..at + 3], [Ev::Remove(1), Ev::Release(Some(1))]);
+        assert_eq!((tr.refs(1), tr.link(1)), (0, 0));
+
+        // an inactive one: only its reference
+        let tr = Tr::new(&[]);
+        tr.hold(1, false);
+        load(&tr, &data(None, &[]));
+        let ev = tr.events();
+        let at = ev.iter().position(|e| *e == Ev::Unlock).unwrap();
+        assert_eq!(ev[at + 1], Ev::Release(Some(1)));
+        assert_eq!(tr.refs(1), 0);
+
+        // the same source loaded again: added a second time, then the old
+        // link and reference go
+        let tr = Tr::new(&[("same", 5)]);
+        tr.hold(5, true);
+        load(&tr, &data(Some("same"), &[]));
+        assert_eq!((tr.refs(5), tr.link(5)), (2, 1));
+        assert_eq!(tr.fields().source, Some(5));
+    }
+
+    #[test]
+    fn c_casts() {
+        let cases: [(i64, u32); 6] = [
+            (0, 0),
+            (7, 7),
+            (-1, u32::MAX),
+            ((1 << 32) | 7, 7),
+            (i64::MIN, 0),
+            (i64::MAX, u32::MAX),
+        ];
+        for (v, low) in cases {
+            let tr = Tr::new(&[]);
+            load(
+                &tr,
+                &data(
+                    None,
+                    &[(KEY_ALIGNMENT, v), (KEY_MODE, v), (KEY_CX, v), (KEY_CY, v)],
+                ),
+            );
+            let f = tr.fields();
+            assert_eq!((f.alignment, f.cx, f.cy), (low, low, low), "{v}");
+            assert_eq!(f.mode, low as i32, "{v}");
+        }
+        // the scale type by its rule, over the whole i64
+        for (v, want) in [(0, 0), (1, 1), (2, 2), (3, 0), (-1, 0), ((1 << 32) | 1, 0)] {
+            let tr = Tr::new(&[]);
+            load(&tr, &data(None, &[(KEY_SCALE_TYPE, v)]));
+            assert_eq!(tr.fields().scale_type, want, "{v}");
+        }
+    }
+
+    /// A copy of the C: what `obs_transition_load()` calls, up to the
+    /// release of the old slot A.
+    fn model(tr: &Tr, d: &Data, old: Option<Id>, old_active: bool) -> Vec<Ev> {
+        let mut ev = READS.to_vec();
+        let i = |k: &'static CStr| d.ints.get(k).copied().unwrap_or(0);
+        let mut source = None;
+        if let Some(name) = d.name {
+            ev.push(Ev::ByName(name));
+            source = tr.names.get(name).copied();
+            if let Some(s) = source {
+                let ok = !tr.refuses.contains(&s);
+                ev.push(Ev::Add(s, ok));
+                if !ok {
+                    ev.push(Ev::WarnRecursion(name));
+                    ev.push(Ev::Release(Some(s)));
+                    source = None;
+                }
+            } else {
+                ev.push(Ev::WarnNotFound(name));
+            }
+        }
+        ev.extend([
+            Ev::Lock,
+            Ev::SourceActive,
+            Ev::SetSource(source),
+            Ev::SetSourceActive(true),
+            Ev::SetAlignment(i(KEY_ALIGNMENT) as u32),
+            Ev::SetMode(i(KEY_MODE) as i32),
+            Ev::SetScaleType(match i(KEY_SCALE_TYPE) {
+                1 => 1,
+                2 => 2,
+                _ => 0,
+            }),
+            Ev::SetCx(i(KEY_CX) as u32),
+            Ev::SetCy(i(KEY_CY) as u32),
+            Ev::Unlock,
+        ]);
+        if let (Some(o), true) = (old, old_active) {
+            ev.push(Ev::Remove(o));
+        }
+        ev.push(Ev::Release(old));
+        ev
+    }
+
+    fn any_int() -> impl Strategy<Value = Option<i64>> {
+        prop_oneof![
+            Just(None),
+            (-3i64..=3).prop_map(Some),
+            any::<i64>().prop_map(Some),
+        ]
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(cases(512)))]
+
+        #[test]
+        fn load_matches_the_c(
+            name in prop_oneof![Just(None), Just(Some("a")), Just(Some("b")), Just(Some("")), Just(Some("gone"))],
+            ints in prop::array::uniform5(any_int()),
+            refuse_a in any::<bool>(),
+            old in prop_oneof![Just(None), Just(Some(1u32)), Just(Some(2u32)), Just(Some(9u32))],
+            old_active in any::<bool>(),
+        ) {
+            let mut tr = Tr::new(&[("a", 1), ("b", 2)]);
+            if refuse_a {
+                tr.refuses.push(1);
+            }
+            if let Some(o) = old {
+                tr.hold(o, old_active);
+            }
+            let keys = [KEY_ALIGNMENT, KEY_MODE, KEY_SCALE_TYPE, KEY_CX, KEY_CY];
+            let d = Data {
+                name,
+                ints: keys
+                    .into_iter()
+                    .zip(ints)
+                    .filter_map(|(k, v)| v.map(|v| (k, v)))
+                    .collect(),
+            };
+            let want = model(&tr, &d, old, old_active && old.is_some());
+            let refs_before: Vec<i64> = [1, 2, 9].iter().map(|&id| tr.refs(id)).collect();
+            load(&tr, &d);
+            let ev = tr.events();
+            prop_assert_eq!(&ev[..want.len()], &want[..]);
+            // then the size and matrix recalculation, and nothing else
+            prop_assert!(ev[want.len()..].iter().all(|e| matches!(
+                e,
+                Ev::Lock | Ev::Unlock | Ev::Width(_) | Ev::Height(_) | Ev::SetActual(..) | Ev::Matrix(_)
+            )));
+            prop_assert!(!tr.locked.get());
+            // the slot's reference is the lookup's, the old one handed back
+            let stored = tr.fields().source;
+            for (k, &id) in [1u32, 2, 9].iter().enumerate() {
+                let mut want_refs = refs_before[k];
+                if stored == Some(id) {
+                    want_refs += 1;
+                }
+                if old == Some(id) {
+                    want_refs -= 1;
+                }
+                prop_assert_eq!(tr.refs(id), want_refs, "source {}", id);
+            }
+        }
+    }
+}
