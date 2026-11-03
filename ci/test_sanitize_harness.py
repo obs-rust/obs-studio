@@ -544,26 +544,43 @@ class TestIsolationTest(unittest.TestCase):
         fake.mkdir()
         record = self.root / "xvfb-run.log"
         # xvfb-run -n <number> -f <auth file> -s <screen> <command...>
-        write_stub(fake, "xvfb-run", f'echo "$1 $2 $3 $4 ${{DISPLAY:-none}}" >> "{record}"\nshift 6\nexec "$@"\n')
+        write_stub(fake, "xvfb-run", f'echo "$1|$2|$3|$4|${{DISPLAY:-none}}|$5|$6" >> "{record}"\nshift 6\nexec "$@"\n')
         tests = [self.stub(f"test_p{i}") for i in range(4)] + [self.stub("test_serial", serial=True)]
         env = {"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}", "DISPLAY": ":99"}
         with patch.dict(os.environ, env), redirect_stdout(io.StringIO()):
             summary = self.module.run_tests("asan", tests, self.layout, jobs=2, private_displays=True)
         self.assertEqual(summary, [f"test_p{i} exit=0" for i in range(4)] + ["test_serial exit=0"])
         self.assertEqual((self.layout.out / "tests" / "test_p0.log").read_text(encoding="utf-8"), "output of test_p0\n")
-        rows = [line.split() for line in record.read_text(encoding="utf-8").splitlines()]
+        rows = [line.split("|") for line in record.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(len(rows), 5, "every test, serial ones too, runs under its own xvfb-run")
-        self.assertTrue(all(flag == "-n" and auth == "-f" for flag, _, auth, _, _ in rows))
-        self.assertEqual(len({number for _, number, _, _, _ in rows}), 5, "two tests got the same server number")
-        self.assertEqual({display for *_, display in rows}, {"none"}, "a test inherited the shared DISPLAY")
+        self.assertTrue(all(row[0] == "-n" and row[2] == "-f" and row[5] == "-s" for row in rows))
+        self.assertEqual(len({row[1] for row in rows}), 5, "two tests got the same server number")
+        self.assertEqual({row[4] for row in rows}, {"none"}, "a test inherited the shared DISPLAY")
+        # Each case can disconnect the last X client at obs_shutdown; the next
+        # obs_startup must not race an Xvfb reset (#3520, as in #1684).
+        for row in rows:
+            self.assertIn("-noreset", row[6].split())
+            self.assertIn("1920x1080x24", row[6].split())
         # Each server has its own auth file in the build tree, not in
         # xvfb-run's temporary directory, so its cleanup only removes an empty
         # directory: a file left there (xauth's lock files, most likely) made
         # the cleanup fail, and xvfb-run's exit 5 replaced the test's (tsan
         # pool run 41275822723: test_xshm_monitor_move, test_media_cover_art_monitor).
-        files = [Path(path) for _, _, _, path, _ in rows]
+        files = [Path(row[3]) for row in rows]
         self.assertEqual(len(set(files)), 5, "two servers share an auth file")
         self.assertTrue(all(f.parent == self.layout.build / "xauth" for f in files), files)
+
+    def test_shared_display_does_not_reset_between_clients(self):
+        # Serial runs and the app launch use this server rather than xvfb-run.
+        with patch.dict(os.environ), patch.object(self.module.subprocess, "Popen") as popen, patch.object(
+            self.module.time, "sleep"
+        ):
+            server = self.module.start_display()
+        self.assertIs(server, popen.return_value)
+        command = popen.call_args.args[0]
+        self.assertEqual(command[0], "Xvfb")
+        self.assertIn("-noreset", command)
+        self.assertIn("1920x1080x24", command)
 
     def test_private_displays_and_pool_size_per_tool(self):
         # tsan measured in a pool (41275822723): unit tests 20.3 -> 8.2 min.
