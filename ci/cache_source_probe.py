@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MARKER = "CACHE_SOURCE_PROBE"
 
 
-def probe(directory: Path, executable: str, expected_version: str | None, *, timeout: float = 120) -> dict:
+def select_soldr(executable: str, expected_version: str | None, timeout: float) -> tuple[str, str]:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("Timeout must be a finite positive number")
     # Resolve before changing cwd: uv can put a different soldr on PATH, and
@@ -41,6 +41,11 @@ def probe(directory: Path, executable: str, expected_version: str | None, *, tim
                              check=True, timeout=timeout).stdout.strip()
     if expected_version and version != f"soldr {expected_version}":
         raise ValueError(f"Expected soldr {expected_version}, got {version}")
+    return executable, version
+
+
+def probe(directory: Path, executable: str, expected_version: str | None, *, timeout: float = 120) -> dict:
+    executable, version = select_soldr(executable, expected_version, timeout)
     directory = directory.resolve()
     if directory.exists():
         raise ValueError(f"Use a new directory to preserve previous evidence: {directory}")
