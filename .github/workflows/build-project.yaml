@@ -2221,6 +2221,11 @@ jobs:
     # Starts with Fast Gate (#2985); see rust-tests-macos.
     needs: [check-event, ci-mode]
     steps:
+      # GitHub's Windows runners default to CRLF, and soldr warns that it can cost
+      # recompiles and cache misses (ci/test_windows_lf_checkout.py).
+      - name: Check Out With LF 📝
+        run: git config --global core.autocrlf input
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # Same soldr-wrapped commands as docs/rust-port/testing-policy.md.
@@ -3074,6 +3079,11 @@ jobs:
     # (rust-linux-tier2).
     if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
     steps:
+      # GitHub's Windows runners default to CRLF, and soldr warns that it can cost
+      # recompiles and cache misses (ci/test_windows_lf_checkout.py).
+      - name: Check Out With LF 📝
+        run: git config --global core.autocrlf input
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
