@@ -18,6 +18,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "ci"))
+import host_platform as host
+
 SOURCE = ROOT / "plugins/linux-v4l2/v4l2-input.c.h"
 
 STUBS = r"""
@@ -153,7 +156,7 @@ int main(int argc, char **argv)
 class V4L2Update(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if sys.platform != "linux":
+        if not host.is_linux():
             raise unittest.SkipTest("Linux V4L2 capture regression")
         compiler = shutil.which("cc")
         if not compiler:
