@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-save-load.pch.h"
 
 static inline void create_binding(obs_hotkey_t *hotkey, obs_key_combination_t combo)
 {

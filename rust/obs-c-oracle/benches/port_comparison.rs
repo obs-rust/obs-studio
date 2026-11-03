@@ -183,6 +183,106 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_binding_get_hotkey_id() -> ! {
+        called("obs_hotkey_binding_get_hotkey_id")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_binding_get_key_combination() -> ! {
+        called("obs_hotkey_binding_get_key_combination")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_get_id() -> ! {
+        called("obs_hotkey_get_id")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_get_name() -> ! {
+        called("obs_hotkey_get_name")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_add_binding() -> ! {
+        called("obs_hotkey_seam_add_binding")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_context_count() -> ! {
+        called("obs_hotkey_seam_context_count")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_encoder_context() -> ! {
+        called("obs_hotkey_seam_encoder_context")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_enum_bindings() -> ! {
+        called("obs_hotkey_seam_enum_bindings")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_enum_context() -> ! {
+        called("obs_hotkey_seam_enum_context")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_find() -> ! {
+        called("obs_hotkey_seam_find")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_find_pair() -> ! {
+        called("obs_hotkey_seam_find_pair")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_lock() -> ! {
+        called("obs_hotkey_seam_lock")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_output_context() -> ! {
+        called("obs_hotkey_seam_output_context")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_pair_id() -> ! {
+        called("obs_hotkey_seam_pair_id")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_remove_bindings() -> ! {
+        called("obs_hotkey_seam_remove_bindings")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_saved_volume_keys_swapped() -> ! {
+        called("obs_hotkey_seam_saved_volume_keys_swapped")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_service_context() -> ! {
+        called("obs_hotkey_seam_service_context")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_signal() -> ! {
+        called("obs_hotkey_seam_signal")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_source_context() -> ! {
+        called("obs_hotkey_seam_source_context")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn obs_hotkey_seam_unlock() -> ! {
+        called("obs_hotkey_seam_unlock")
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn obs_hotkeys_mutex_unlock() -> ! {
         called("obs_hotkeys_mutex_unlock")
     }

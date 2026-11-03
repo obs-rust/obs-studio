@@ -96,6 +96,7 @@ pub mod hotkey_bindings;
 pub mod hotkey_name_map;
 pub mod hotkey_pair;
 pub mod hotkey_press;
+pub mod hotkey_save_load;
 pub mod hotkey_translations;
 pub mod image_file;
 pub mod image_orient;

@@ -105,6 +105,9 @@ class PortedSourceTest(unittest.TestCase):
                          PORTED.ported_objects(ROOT, "linux", pulse=False))
         self.assertNotIn("audio-monitoring/pulse/pulseaudio-monitor-steps.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", pulse=False))
+        self.assertIn("obs-hotkey-save-load.c.h.o", objects)
+        self.assertIn("obs-hotkey-save-load.c.h.o", PORTED.ported_objects(ROOT, "windows"))
+        self.assertIn("obs-hotkey-save-load.c.h.o", PORTED.ported_objects(ROOT, "macos"))
         self.assertIn("obs-nix-hotkey-state.c.h.o", objects)
         self.assertNotIn("obs-nix-hotkey-state.c.h.o",
                          PORTED.ported_objects(ROOT, "linux", wayland=False))
