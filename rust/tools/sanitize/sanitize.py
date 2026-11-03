@@ -362,7 +362,8 @@ def private_displays(tool: str) -> bool:
 # The shared display is :90 to :98; a private one gets the next number of a
 # per-run counter, so two tests started at once never pick the same server.
 PRIVATE_DISPLAY_FIRST = 100
-PRIVATE_SCREEN = "-screen 0 1920x1080x24"
+# Keep the server alive across each case's last-client disconnect at shutdown.
+PRIVATE_SCREEN = "-screen 0 1920x1080x24 -noreset"
 
 
 class DisplayNumbers:
@@ -494,7 +495,7 @@ def start_display() -> subprocess.Popen[bytes]:
     one on Linux) and the app launch."""
     display = f":{90 + random.randrange(9)}"
     server = subprocess.Popen(
-        ["Xvfb", display, "-screen", "0", "1920x1080x24"],
+        ["Xvfb", display, *PRIVATE_SCREEN.split()],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
