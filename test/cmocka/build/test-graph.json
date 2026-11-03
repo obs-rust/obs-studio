@@ -1938,6 +1938,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_context_data": {
+      "sources": [
+        "test/cmocka/test_hotkey_context_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_hotkey_getters_characterization": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -7281,6 +7290,18 @@
     },
     "test_hotkey_bindings_codec": {
       "target": "test_hotkey_bindings_codec",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_hotkey_context_data": {
+      "target": "test_hotkey_context_data",
       "command": [
         "${target}"
       ],
