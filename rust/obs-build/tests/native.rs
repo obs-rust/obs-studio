@@ -214,7 +214,6 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
 
-/// #1390: preserve the optional Qt Test dependency of the unchanged Backtab cases.
 /// #1390: the original nine dock cases need Linux, Widgets and Qt Test.
 #[test]
 fn canonical_dock_proportions_is_registered() {
@@ -254,6 +253,7 @@ fn canonical_dock_proportions_is_registered() {
     }
 }
 
+/// #1390: preserve the optional Qt Test dependency of the unchanged Backtab cases.
 #[test]
 fn canonical_hotkey_backtab_is_registered() {
     use obs_build::validation::graph::Graph;
@@ -657,6 +657,12 @@ fn canonical_remux_queue_runs_unchanged() {
             .any(|test| test.name == "test_hotkey_capture_mnemonic"),
         linux && qt_test_available
     );
+    assert_eq!(
+        tests
+            .iter()
+            .any(|test| test.name == "test_dock_proportions"),
+        linux && qt_test_available
+    );
     assert!(
         tests
             .iter()
@@ -678,6 +684,7 @@ fn canonical_remux_queue_runs_unchanged() {
     let selected = serde_json::json!({"schema": 1,
     "targets": {
         "test_remux_queue_model": graph["targets"]["test_remux_queue_model"],
+        "test_dock_proportions": graph["targets"].get("test_dock_proportions").expect("canonical graph omits test_dock_proportions"),
         "test_hotkey_edit_backtab": graph["targets"]["test_hotkey_edit_backtab"],
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
@@ -686,6 +693,7 @@ fn canonical_remux_queue_runs_unchanged() {
     },
     "tests": {
         "test_remux_queue_model": graph["tests"]["test_remux_queue_model"],
+        "test_dock_proportions": graph["tests"]["test_dock_proportions"],
         "test_hotkey_edit_backtab": graph["tests"]["test_hotkey_edit_backtab"],
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
@@ -769,6 +777,7 @@ fn canonical_remux_queue_runs_unchanged() {
         expected_names.insert("test_undo_stack_enable");
         if qt_test_available {
             expected_names.insert("test_hotkey_capture_mnemonic");
+            expected_names.insert("test_dock_proportions");
         }
     }
     assert_eq!(names, expected_names);
@@ -781,6 +790,25 @@ fn canonical_remux_queue_runs_unchanged() {
             mnemonic["properties"]
                 .as_array()
                 .unwrap()
+                .iter()
+                .any(|property| property["name"] == "RESOURCE_LOCK"
+                    && property["value"] == serde_json::json!(["timing"]))
+        );
+    }
+    if linux && qt_test_available {
+        let dock = tests
+            .iter()
+            .find(|test| test["name"] == "test_dock_proportions")
+            .unwrap();
+        let properties = dock["properties"].as_array().unwrap();
+        assert!(
+            properties
+                .iter()
+                .any(|property| property["name"] == "TIMEOUT"
+                    && property["value"].as_f64() == Some(120.0))
+        );
+        assert!(
+            properties
                 .iter()
                 .any(|property| property["name"] == "RESOURCE_LOCK"
                     && property["value"] == serde_json::json!(["timing"]))

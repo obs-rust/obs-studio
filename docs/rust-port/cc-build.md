@@ -926,6 +926,13 @@ wall-clock fixture takes the `timing` resource lock. Hosts without Qt Test
 exclude this target; this helper coverage does not establish full frontend
 parity (#1390).
 
+The Linux-only Qt dock-proportions test also uses the shared graph. Its nine
+unchanged cases exercise dock and side-column geometry through Cargo and CMake,
+including restored layouts. Both consumers retain the original Linux/Widgets/Qt
+Test guard, helper-header input, 120-second CTest timeout and `timing` resource
+lock. The evaluated inventory excludes it on other hosts or without Qt Test.
+This helper coverage does not establish full frontend parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
