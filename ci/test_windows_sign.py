@@ -43,6 +43,24 @@ class WindowsSign(unittest.TestCase):
             ["OBS.msi", "_obspython.PYD", "obs.dll", "obs64.exe", "win-capture.dll"],
         )
 
+    def test_azure_catalog_is_relative_to_its_own_directory(self):
+        work, cat = self.tmp / "work", self.tmp / "all.txt"
+        self.assertEqual(run("unpack", "--work", work, "--catalog", cat,
+                             self.zip, self.msi).returncode, 0)
+        original = cat.read_bytes()
+        # The unsigned catalog and Azure catalog may live in different folders.
+        azure = self.tmp / "azure" / "unsigned.txt"
+        azure.parent.mkdir()
+        r = run("azure-catalog", "--catalog", cat, "--output", azure)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        entries = azure.read_text().splitlines()
+        self.assertEqual(len(entries), 5)
+        for entry, absolute in zip(entries, cat.read_text().splitlines()):
+            self.assertFalse(Path(entry).is_absolute())
+            self.assertEqual((azure.parent / entry).resolve(), Path(absolute))
+            self.assertTrue((azure.parent / entry).is_file())
+        self.assertEqual(cat.read_bytes(), original)
+
     def test_repack_writes_signed_files_in_original_order(self):
         work, cat = self.tmp / "w", self.tmp / "c.txt"
         self.assertEqual(run("unpack", "--work", work, "--catalog", cat, self.zip).returncode, 0)
@@ -98,6 +116,8 @@ class WindowsSign(unittest.TestCase):
         self.assertIn(cond, step)
         self.assertIn(cond, wf[sign:sign + 300])
         self.assertIn("Get-AuthenticodeSignature", wf)
+        self.assertIn('run: uv run --no-project ci/windows_sign.py azure-catalog', wf)
+        self.assertIn('files-catalog: ${{ runner.temp }}/obs-azure-${{ matrix.target }}.txt', wf)
         # Fail closed on every run, and sign in an environment the Azure
         # federated credential trusts (it does not trust refs/heads/master).
         self.assertNotIn("::warning::$Msg", wf)

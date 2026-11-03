@@ -340,6 +340,16 @@ jobs:
           $Sign = $env:HAVE_AZURE -eq 'true' -and @(Get-Content $Unsigned).Count -gt 0
           "sign=$($Sign.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
+      # Azure requires entries relative to the catalog directory. Keep the
+      # absolute catalog above for Authenticode filtering and verification.
+      - name: Prepare Azure relative signing catalog 🔏
+        if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
+        shell: pwsh
+        env:
+          UNSIGNED: ${{ steps.wincatalog.outputs.unsigned }}
+          AZURE_CATALOG: ${{ runner.temp }}/obs-azure-${{ matrix.target }}.txt
+        run: uv run --no-project ci/windows_sign.py azure-catalog --catalog "$env:UNSIGNED" --output "$env:AZURE_CATALOG"
+
       - name: Azure login (federated OIDC) 🔐
         if: matrix.os == 'windows' && steps.wincatalog.outputs.sign == 'true'
         uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
@@ -366,7 +376,7 @@ jobs:
           endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           certificate-profile-name: ${{ secrets.AZURE_SIGNING_PROFILE }}
-          files-catalog: ${{ steps.wincatalog.outputs.unsigned }}
+          files-catalog: ${{ runner.temp }}/obs-azure-${{ matrix.target }}.txt
           file-digest: SHA256
           timestamp-digest: SHA256
 
