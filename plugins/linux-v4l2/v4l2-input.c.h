@@ -69,7 +69,7 @@ struct v4l2_data {
 	struct v4l2_buffer_data buffers;
 
 	bool auto_reset;
-	int timeout_frames;
+	long timeout_frames;
 
 	/* the settings of the last update, for the saved camera controls */
 	obs_data_t *controls;
@@ -203,10 +203,11 @@ static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 	v4l2_unpack_tuple(&fps_num, &fps_denom, data->framerate);
 	ffps = (float)fps_denom / (float)fps_num;
 	blog(LOG_DEBUG, "%s: framerate: %.2f fps", data->device_id, (double)ffps);
-	/* Timeout set to 5 frame periods. */
-	timeout_usec = (uint64_t)((double)(1000000 * data->timeout_frames) / (double)ffps);
-	blog(LOG_INFO, "%s: select timeout set to %" PRIu64 " (%dx frame periods)", data->device_id, timeout_usec,
-	     data->timeout_frames);
+	/* The timeout and auto-reset option can change without a restart. */
+	long timeout_frames = os_atomic_load_long(&data->timeout_frames);
+	timeout_usec = (uint64_t)((double)(1000000 * timeout_frames) / (double)ffps);
+	blog(LOG_INFO, "%s: select timeout set to %" PRIu64 " (%ldx frame periods)", data->device_id, timeout_usec,
+	     timeout_frames);
 
 	if (v4l2_start_capture(data->dev, &data->buffers) < 0)
 		goto exit;
@@ -226,6 +227,8 @@ static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 		FD_SET(data->dev, &fds);
 
 		/* Set timeout timevalue. */
+		timeout_frames = os_atomic_load_long(&data->timeout_frames);
+		timeout_usec = (uint64_t)((double)(1000000 * timeout_frames) / (double)ffps);
 		tv.tv_sec = 0;
 		tv.tv_usec = (suseconds_t)timeout_usec;
 
@@ -246,7 +249,7 @@ static bool v4l2_capture(struct v4l2_data *data, uint32_t *attempt)
 				blog(LOG_ERROR, "%s: failed to log status", data->device_id);
 			}
 
-			if (data->auto_reset) {
+			if (os_atomic_load_bool(&data->auto_reset)) {
 				if (v4l2_reset_capture(data->dev, &data->buffers) == 0)
 					blog(LOG_INFO, "%s: stream reset successful", data->device_id);
 				else
@@ -1800,8 +1803,8 @@ static void v4l2_update_device(struct v4l2_data *data, obs_data_t *settings)
  * Update the settings for the v4l2 source
  *
  * There are a few settings that can be changed without restarting the stream
- * Whenever this is called the currently active stream (if exists) is stopped,
- * the settings are updated and finally the new stream is started.
+ * Stop capture before changing its format; live timeout and reset settings
+ * are exchanged atomically without restarting the stream.
  */
 static void v4l2_update(void *vptr, obs_data_t *settings)
 {
@@ -1815,17 +1818,18 @@ static void v4l2_update(void *vptr, obs_data_t *settings)
 
 	/* The capture thread logs it: replace it only while stopped. Without a
 	 * restart, v4l2_settings_changed found it unchanged (#2103). */
-	if (needs_restart || !data->settings_device_id)
+	if (needs_restart || !data->settings_device_id) {
 		v4l2_update_device(data, settings);
-	data->input = (int)obs_data_get_int(settings, "input");
-	data->pixfmt = (int)obs_data_get_int(settings, "pixelformat");
-	data->standard = (int)obs_data_get_int(settings, "standard");
-	data->dv_timing = (int)obs_data_get_int(settings, "dv_timing");
-	data->resolution = obs_data_get_int(settings, "resolution");
-	data->framerate = obs_data_get_int(settings, "framerate");
-	data->color_range = (int)obs_data_get_int(settings, "color_range");
-	data->auto_reset = obs_data_get_bool(settings, "auto_reset");
-	data->timeout_frames = (int)obs_data_get_int(settings, "timeout_frames");
+		data->input = (int)obs_data_get_int(settings, "input");
+		data->pixfmt = (int)obs_data_get_int(settings, "pixelformat");
+		data->standard = (int)obs_data_get_int(settings, "standard");
+		data->dv_timing = (int)obs_data_get_int(settings, "dv_timing");
+		data->resolution = obs_data_get_int(settings, "resolution");
+		data->framerate = obs_data_get_int(settings, "framerate");
+		data->color_range = (int)obs_data_get_int(settings, "color_range");
+	}
+	os_atomic_store_bool(&data->auto_reset, obs_data_get_bool(settings, "auto_reset"));
+	os_atomic_store_long(&data->timeout_frames, (long)obs_data_get_int(settings, "timeout_frames"));
 
 	/* Ticking the option writes nothing: it takes effect the next time
 	 * the device opens or the settings change. */

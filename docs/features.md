@@ -162,6 +162,12 @@ not get a line.
 
 ### Video capture
 
+- **V4L2 settings updates preserve the running camera format.** Changing a live
+  option keeps the negotiated resolution and framerate, including when their
+  setting is Unchanged. Timeout and automatic reset changes apply while capture
+  continues. *Linux*, pending merge. Issue
+  [#3506](https://github.com/obs-rust/obs-studio/issues/3506), PR
+  [#3525](https://github.com/obs-rust/obs-studio/pull/3525).
 - **X11 screen capture keeps the graphics thread moving.** Screen capture
   repeats the last completed picture while the X server prepares the next one,
   instead of waiting for each image and cursor reply. Capture adds one graphics
