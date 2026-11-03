@@ -587,7 +587,12 @@ fn canonical_remux_queue_runs_unchanged() {
         .collect();
     assert_eq!(
         names,
-        ["test_remux_queue_model", "test_frontend_api_call", "test_hotkey_edit_backtab"].into()
+        [
+            "test_remux_queue_model",
+            "test_frontend_api_call",
+            "test_hotkey_edit_backtab"
+        ]
+        .into()
     );
     let frontend_api = tests
         .iter()
