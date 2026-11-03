@@ -408,6 +408,8 @@ not get a line.
 
 ### Stability
 
+- **Capture sources start enabled.** Audio capture started by a source's create callback sees its initialized enabled state and flags; source creation no longer rewrites unchanged flags while capture is running. *All*, pending merge. Issue [#3505](https://github.com/obs-rust/obs-studio/issues/3505).
+
 - **A frozen macOS Screen Capture says so in the log.** When the source
   stops receiving frames, one warning every 30 s names the gap in seconds
   and whether frames stopped arriving or are arriving but cannot be
