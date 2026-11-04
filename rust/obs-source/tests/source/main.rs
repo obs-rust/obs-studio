@@ -49,6 +49,7 @@ mod transition_render_parity;
 mod transition_sample_time;
 mod transition_sample_time_parity;
 mod transition_settings;
+mod transition_size;
 mod transition_slots;
 mod transition_start;
 mod transition_start_parity;

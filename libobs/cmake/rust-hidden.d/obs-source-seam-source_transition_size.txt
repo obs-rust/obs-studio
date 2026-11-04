@@ -1,0 +1,9 @@
+# obs-source-transition-size.c (obs-source-seam): obs_transition_tick() is
+# declared in obs-internal.h without EXPORT (obs-source.c's video tick calls
+# it), and the four helpers in the private obs-source-transition-size.h
+# (obs-source-transition.c calls them).
+obs_transition_tick
+transition_get_cx
+transition_get_cy
+transition_recalculate_matrices
+transition_recalculate_size
