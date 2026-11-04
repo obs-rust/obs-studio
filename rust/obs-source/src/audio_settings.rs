@@ -32,10 +32,12 @@
     clippy::panic,
     clippy::unimplemented,
     clippy::unreachable,
+    clippy::todo
 )]
 
 use std::ffi::CStr;
 
+use crate::monitoring::{self, Monitor, Route, TYPE_NONE};
 
 /// What the getter answers for a NULL source.
 pub const VOLUME_INVALID: f32 = 0.0;
@@ -133,10 +135,17 @@ pub trait Source {
 /// of 0 or more are kept, above 20 too (#2108).
 #[must_use]
 pub fn clamp_volume(volume: f32) -> f32 {
-    todo!()
+    if volume.is_nan() {
+        1.0
+    } else if volume < 0.0 {
+        0.0
+    } else if volume.is_infinite() {
+        20.0
+    } else {
+        volume
+    }
 }
 
-#[allow(dead_code)]
 /// `(float)` of the calldata's double, as the C casts it.
 #[allow(clippy::cast_possible_truncation, clippy::as_conversions)]
 fn to_f32(value: f64) -> f32 {
@@ -145,46 +154,140 @@ fn to_f32(value: f64) -> f32 {
 
 /// `obs_source_set_volume()`.
 pub fn set_volume<S: Source>(source: Option<&S>, volume: f32) {
-    todo!()
+    if !S::valid(source, c"obs_source_set_volume") {
+        return;
+    }
+    let Some(source) = source else { return };
+
+    let volume = clamp_volume(volume);
+    let timestamp = S::now();
+    let also_core = !source.is_private();
+
+    // A handler may change it.
+    let stored = clamp_volume(to_f32(source.signal_volume(f64::from(volume), also_core)));
+
+    source.lock_actions();
+    source.push_volume_action(timestamp, volume);
+    source.unlock_actions();
+
+    source.lock_audio_buf();
+    source.set_user_volume(stored);
+    source.unlock_audio_buf();
 }
 
 /// `obs_source_get_volume()`.
 #[must_use]
 pub fn get_volume<S: Source>(source: Option<&S>) -> f32 {
-    todo!()
+    if !S::valid(source, c"obs_source_get_volume") {
+        return VOLUME_INVALID;
+    }
+    let Some(source) = source else {
+        return VOLUME_INVALID;
+    };
+    source.lock_audio_buf();
+    let volume = source.user_volume();
+    source.unlock_audio_buf();
+    volume
 }
 
 /// `obs_source_set_sync_offset()`.
 pub fn set_sync_offset<S: Source>(source: Option<&S>, offset: i64) {
-    todo!()
+    if !S::valid(source, c"obs_source_set_sync_offset") {
+        return;
+    }
+    let Some(source) = source else { return };
+
+    let changed = source.signal_sync_offset(offset);
+
+    source.lock_audio_buf();
+    source.set_sync_offset(changed);
+    source.unlock_audio_buf();
 }
 
 /// `obs_source_get_sync_offset()`.
 #[must_use]
 pub fn get_sync_offset<S: Source>(source: Option<&S>) -> i64 {
-    todo!()
+    if !S::valid(source, c"obs_source_get_sync_offset") {
+        return 0;
+    }
+    let Some(source) = source else { return 0 };
+    source.lock_audio_buf();
+    let offset = source.sync_offset();
+    source.unlock_audio_buf();
+    offset
 }
 
 /// `obs_source_muted()`.
 #[must_use]
 pub fn muted<S: Source>(source: Option<&S>) -> bool {
-    todo!()
+    if !S::valid(source, c"obs_source_muted") {
+        return false;
+    }
+    source.is_some_and(Source::user_muted)
 }
 
 /// `obs_source_set_muted()`.
 pub fn set_muted<S: Source>(source: Option<&S>, muted: bool) {
-    todo!()
+    let timestamp = S::now();
+
+    if !S::valid(source, c"obs_source_set_muted") {
+        return;
+    }
+    let Some(source) = source else { return };
+
+    source.set_user_muted(muted);
+    // A mute set by anything else is not Monitor Only's to undo (#2447).
+    source.set_monitor_only_muted(false);
+
+    source.signal_muted(muted);
+
+    source.lock_actions();
+    source.push_mute_action(timestamp, muted);
+    source.unlock_actions();
 }
 
 /// `obs_source_set_monitoring_enabled()`.
 pub fn set_monitoring_enabled<S: Source>(source: Option<&S>, enabled: bool) {
-    todo!()
+    if !S::valid(source, c"obs_source_set_monitoring_enabled") {
+        return;
+    }
+    let Some(source) = source else { return };
+
+    if source.monitoring_enabled() == enabled {
+        return;
+    }
+
+    // The deprecated type: a monitored source that is muted is monitor-only
+    // (#2447); the stored type stays monitor and output.
+    let compat_type = if enabled {
+        monitoring::on_type(source.user_muted())
+    } else {
+        TYPE_NONE
+    };
+
+    source.signal_monitor(enabled);
+    source.signal_audio_monitoring(compat_type);
+
+    let was_on = source.monitoring_enabled();
+    source.set_monitoring_enabled(enabled);
+    source.lock_audio_buf();
+    source.set_monitoring_type(monitoring::stored_type(enabled));
+    source.unlock_audio_buf();
+
+    match monitoring::monitor(was_on, enabled) {
+        Monitor::Create => source.monitor_create(),
+        Monitor::Destroy => source.monitor_destroy(),
+        Monitor::Keep => {}
+    }
 }
 
 /// `obs_source_get_monitoring_enabled()`.
 #[must_use]
 pub fn get_monitoring_enabled<S: Source>(source: Option<&S>) -> bool {
-    todo!()
+    if !S::valid(source, c"obs_source_get_monitoring_enabled") {
+        return false;
+    }
+    source.is_some_and(Source::monitoring_enabled)
 }
 
 /// `obs_source_set_monitoring_type()`.
@@ -196,22 +299,87 @@ pub fn get_monitoring_enabled<S: Source>(source: Option<&S>) -> bool {
 /// for none undoes the mute monitor-only set, as long as nothing has set the
 /// mute since; any other mute stays.
 pub fn set_monitoring_type<S: Source>(source: Option<&S>, monitoring_type: i32) {
-    todo!()
+    if !S::valid(source, c"obs_source_set_monitoring_type") {
+        return;
+    }
+    let Some(inner) = source else { return };
+
+    S::warn(SET_TYPE_DEPRECATED);
+
+    let mut muted_for_monitor_only = inner.monitor_only_muted();
+
+    match monitoring::route(monitoring_type) {
+        Route::Off => {
+            set_monitoring_enabled(source, false);
+            if monitoring::off_reads_mute(muted_for_monitor_only)
+                && monitoring::off_unmutes(muted(source))
+            {
+                set_muted(source, false);
+            }
+            inner.set_monitor_only_muted(false);
+        }
+        Route::MonitorOnly => {
+            if monitoring::only_mutes(muted(source)) {
+                set_muted(source, true);
+                muted_for_monitor_only = true;
+            }
+            set_monitoring_enabled(source, true);
+            inner.set_monitor_only_muted(muted_for_monitor_only);
+        }
+        Route::MonitorAndOutput => {
+            set_muted(source, false);
+            set_monitoring_enabled(source, true);
+        }
+        Route::On => set_monitoring_enabled(source, true),
+    }
 }
 
 /// `obs_source_get_monitoring_type()`.
 #[must_use]
 pub fn get_monitoring_type<S: Source>(source: Option<&S>) -> i32 {
-    todo!()
+    S::warn(GET_TYPE_DEPRECATED);
+
+    if !S::valid(source, c"obs_source_get_monitoring_type") {
+        return TYPE_NONE;
+    }
+    let Some(source) = source else {
+        return TYPE_NONE;
+    };
+    if !source.monitoring_enabled() {
+        return TYPE_NONE;
+    }
+
+    // Monitoring on and muted is monitor-only (#2447).
+    monitoring::on_type(source.user_muted())
 }
 
 /// `obs_source_set_balance_value()`.
 pub fn set_balance_value<S: Source>(source: Option<&S>, balance: f32) {
-    todo!()
+    if !S::valid(source, c"obs_source_set_balance_value") {
+        return;
+    }
+    let Some(source) = source else { return };
+
+    // A handler may change it.
+    let changed = source.signal_balance(f64::from(monitoring::balance(balance)));
+    let stored = monitoring::balance(to_f32(changed));
+
+    source.lock_audio_buf();
+    source.set_balance(stored);
+    source.unlock_audio_buf();
 }
 
 /// `obs_source_get_balance_value()`.
 #[must_use]
 pub fn get_balance_value<S: Source>(source: Option<&S>) -> f32 {
-    todo!()
+    if !S::valid(source, c"obs_source_get_balance_value") {
+        return BALANCE_INVALID;
+    }
+    let Some(source) = source else {
+        return BALANCE_INVALID;
+    };
+    source.lock_audio_buf();
+    let balance = source.balance();
+    source.unlock_audio_buf();
+    balance
 }
