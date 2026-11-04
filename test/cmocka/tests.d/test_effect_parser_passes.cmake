@@ -11,11 +11,11 @@
 # The same cases against the Rust shims, built and run only with the hybrid
 # backend (OBS_LIBOBS_BACKEND=C has no Rust target). The port has no
 # intentional difference, so the test file is the same. ep_parse() and the
-# parameter values it calls (effect-parser-params.c) stay C and are compiled
-# in as above; effect-parser-passes.c and effect-parser-blocks.c are not, so
-# the techniques, the two blocks, ep_free() and the parameter type decisions,
-# all hidden in the shared library, come from the exact production staticlib
-# at executable link time.
+# parameter declarations it calls (effect-parser-params.c) stay C and are
+# compiled in as above; effect-parser-passes.c and
+# effect-parser-blocks.c are not, so the techniques, the two blocks,
+# ep_free() and the parameter type decisions, all hidden in the shared
+# library, come from the exact production staticlib at executable link time.
 # The staticlib's obs-graphics calls the private obs-graphics and effect
 # parser adapters, which libobs links but does not export, so this executable
 # compiles its own copies, as test_effect_parser_blocks_rust does.

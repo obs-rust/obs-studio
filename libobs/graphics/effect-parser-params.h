@@ -19,19 +19,26 @@
 
 #include "graphics/effect-parser.h"
 
-/* The parameter value assignments of the effect parser (effect-parser.c).
- * After a parameter's type and name, its declaration calls
- * ep_parse_param_array() on the "[" token, which reads the count into
- * param->array_count, and ep_parse_param_assign() on the "=" token, which
- * reads the value (by obs_effect_param_route(): a texture path or a string,
- * an int, a float, a bool, or the "{ ... }" and "type( ... )" forms of the
- * vector and matrix types) into param->default_val and steps to the next
- * valid token. An annotation entry calls ep_parse_param_assign() the same
- * way.
+/* The parameter declarations of the effect parser (effect-parser.c). After a
+ * declaration's specifiers, type and name, ep_parse_other() calls
+ * ep_parse_param() on the next token, with the type and name it allocated
+ * (ep_parse_param() owns them from then on). It reads "[count]" with
+ * ep_parse_param_array(), "< type name [= value]; ... >" into the param's
+ * annotations, and "= value" with ep_parse_param_assign(), then wants the
+ * ';', and pushes the param into ep->params or frees it.
+ *
+ * ep_parse_param_array() reads the count into param->array_count.
+ * ep_parse_param_assign(), on the "=" token, reads the value (by
+ * obs_effect_param_route(): a texture path or a string, an int, a float, a
+ * bool, or the "{ ... }" and "type( ... )" forms of the vector and matrix
+ * types) into param->default_val and steps to the next valid token; an
+ * annotation entry calls it the same way. They stay declared here so the
+ * value parser can be ported before the declaration that calls it.
  *
  * Each walks ep->cfp's tokens from the one it is called on and adds its
  * errors to ep->cfp's error list; the caller goes on from the token where it
- * stopped. Each returns false where the declaration is then dropped.
+ * stopped. The two helpers return false where the declaration is then
+ * dropped.
  *
  * Private adapter, not a new public API: hidden in libobs, not EXPORT. */
 
@@ -39,6 +46,7 @@
 extern "C" {
 #endif
 
+void ep_parse_param(struct effect_parser *ep, char *type, char *name, bool is_property, bool is_const, bool is_uniform);
 bool ep_parse_param_array(struct effect_parser *ep, struct ep_param *param);
 bool ep_parse_param_assign(struct effect_parser *ep, struct ep_param *param);
 
