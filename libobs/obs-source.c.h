@@ -712,7 +712,7 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 
 	new_source->audio_mixers = source->audio_mixers;
 	new_source->sync_offset = obs_source_get_sync_offset(source);
-	new_source->user_volume = source->user_volume;
+	new_source->user_volume = obs_source_get_volume(source);
 	os_atomic_set_bool(&new_source->user_muted, os_atomic_load_bool(&source->user_muted));
 	new_source->volume = source->volume;
 	new_source->muted = source->muted;
@@ -4160,13 +4160,22 @@ void obs_source_set_volume(obs_source_t *source, float volume)
 		da_push_back(source->audio_actions, &action);
 		pthread_mutex_unlock(&source->audio_actions_mutex);
 
+		pthread_mutex_lock(&source->audio_buf_mutex);
 		source->user_volume = volume;
+		pthread_mutex_unlock(&source->audio_buf_mutex);
 	}
 }
 
 float obs_source_get_volume(const obs_source_t *source)
 {
-	return obs_source_valid(source, "obs_source_get_volume") ? source->user_volume : 0.0f;
+	if (!obs_source_valid(source, "obs_source_get_volume"))
+		return 0.0f;
+	/* Locking synchronizes the read without changing the logical source. */
+	pthread_mutex_t *mutex = (pthread_mutex_t *)(uintptr_t)&source->audio_buf_mutex;
+	pthread_mutex_lock(mutex);
+	float volume = source->user_volume;
+	pthread_mutex_unlock(mutex);
+	return volume;
 }
 
 void obs_source_set_sync_offset(obs_source_t *source, int64_t offset)

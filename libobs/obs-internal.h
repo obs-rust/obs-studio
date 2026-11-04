@@ -1199,6 +1199,7 @@ struct obs_source {
 	struct obs_audio_data audio_data;
 	size_t audio_storage_size;
 	uint32_t audio_mixers;
+	/* written and read under audio_buf_mutex once the source runs */
 	float user_volume;
 	float volume;
 	/* written and read under audio_buf_mutex once the source runs */
