@@ -113,6 +113,44 @@ class Signature(unittest.TestCase):
                     windows_msi.signature_status(Path("probe.msi")), status
                 )
 
+    # A pwsh (PowerShell 7) step shell exports its own PSModulePath; a
+    # Windows PowerShell 5.1 child that inherits it cannot autoload
+    # Microsoft.PowerShell.Security (CouldNotAutoloadMatchingModule).
+    PS7_ENVIRON = {
+        "SystemRoot": r"C:\Windows",
+        "ProgramFiles": r"C:\Program Files",
+        "USERPROFILE": r"C:\Users\runneradmin",
+        "PSModulePath": ";".join(
+            [
+                r"C:\Users\runneradmin\Documents\PowerShell\Modules",
+                r"C:\Program Files\PowerShell\Modules",
+                r"c:\program files\powershell\7\Modules",
+                r"C:\Modules\az_12.1.0",
+            ]
+        ),
+    }
+
+    def test_probe_uses_a_windows_powershell_module_path_under_pwsh(self):
+        with (
+            patch.object(
+                windows_msi.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, "Valid\n", ""),
+            ) as run,
+            patch.dict(windows_msi.os.environ, self.PS7_ENVIRON, clear=True),
+        ):
+            windows_msi.signature_status(Path("probe.msi"))
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command[0], r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        )
+        self.assertIn("Import-Module Microsoft.PowerShell.Security", command[-1])
+        paths = run.call_args.kwargs["env"]["PSModulePath"].split(";")
+        self.assertIn(r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules", paths)
+        self.assertIn(r"C:\Program Files\WindowsPowerShell\Modules", paths)
+        self.assertIn(r"C:\Modules\az_12.1.0", paths)
+        self.assertFalse([p for p in paths if "\\powershell\\" in p.lower()], paths)
+
     def test_scheduled_probe_failure_reports_diagnostics_and_stops(self):
         for required in (False, True):
             with (
