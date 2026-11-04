@@ -5028,6 +5028,17 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_output": {
+      "sources": [
+        "test/cmocka/test_source_audio_output.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_audio_place_steps": {
       "sources": [
         "test/cmocka/test_source_audio_place_steps.c",
@@ -8727,6 +8738,19 @@
       "target": "test_source_audio_input_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_audio_output": {
+      "target": "test_source_audio_output",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_audio_place_steps": {

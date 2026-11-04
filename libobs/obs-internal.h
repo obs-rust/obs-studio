@@ -26,6 +26,7 @@
 #include "util/profiler.h"
 #include "util/task.h"
 #include "util/uthash.h"
+#include "util/util_uint64.h"
 #include "util/array-serializer.h"
 #include "callback/signal.h"
 #include "callback/proc.h"
@@ -1393,6 +1394,26 @@ static inline void obs_source_dosignal_canvas(struct obs_source *source, struct 
 
 /* maximum timestamp variance in nanoseconds */
 #define MAX_TS_VAR 2000000000ULL
+
+/* unless the value is 3+ hours worth of frames, this won't overflow */
+static inline uint64_t conv_frames_to_time(const size_t sample_rate, const size_t frames)
+{
+	if (!sample_rate)
+		return 0;
+
+	return util_mul_div64(frames, 1000000000ULL, sample_rate);
+}
+
+/* obs-source-audio-output.c: audio_buf_mutex is held around the reset
+ * functions */
+extern void reset_audio_timing(obs_source_t *source, uint64_t timestamp, uint64_t os_time);
+extern void reset_audio_data(obs_source_t *source, uint64_t os_time);
+extern void reset_audio_data_at_sys_time(obs_source_t *source, uint64_t os_time);
+extern void source_output_audio_data(obs_source_t *source, const struct audio_data *data);
+
+/* obs-source.c, for source_output_audio_data() */
+extern void source_signal_audio_data(obs_source_t *source, const struct audio_data *in, bool muted);
+extern bool source_muted(obs_source_t *source, uint64_t os_time);
 
 static inline bool frame_out_of_bounds(const obs_source_t *source, uint64_t ts)
 {

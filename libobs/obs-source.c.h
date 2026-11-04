@@ -1516,15 +1516,6 @@ void obs_source_video_tick(obs_source_t *source, float seconds)
 	source->deinterlace_rendered = false;
 }
 
-/* unless the value is 3+ hours worth of frames, this won't overflow */
-static inline uint64_t conv_frames_to_time(const size_t sample_rate, const size_t frames)
-{
-	if (!sample_rate)
-		return 0;
-
-	return util_mul_div64(frames, 1000000000ULL, sample_rate);
-}
-
 /* maximum buffer size */
 #define MAX_BUF_SIZE (1000 * AUDIO_OUTPUT_FRAMES * sizeof(float))
 
@@ -1536,48 +1527,7 @@ static inline uint64_t conv_frames_to_time(const size_t sample_rate, const size_
 _Static_assert(OBS_SOURCE_AUDIO_TS_SMOOTHING_THRESHOLD == TS_SMOOTHING_THRESHOLD, "TS_SMOOTHING_THRESHOLD");
 _Static_assert(OBS_SOURCE_AUDIO_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
 
-static inline void reset_audio_timing(obs_source_t *source, uint64_t timestamp, uint64_t os_time)
-{
-	source->timing_set = true;
-	source->timing_adjust = os_time - timestamp;
-}
-
-static void reset_audio_data(obs_source_t *source, uint64_t os_time)
-{
-	for (size_t i = 0; i < MAX_AUDIO_CHANNELS; i++) {
-		if (source->audio_input_buf[i].size)
-			deque_pop_front(&source->audio_input_buf[i], NULL, source->audio_input_buf[i].size);
-	}
-
-	source->last_audio_input_buf_size = 0;
-	source->audio_ts = os_time;
-	source->next_audio_sys_ts_min = os_time;
-}
-
-/* Empties the buffer for packets that continue at system time os_time.
- * source_output_audio_data() appends such packets to the buffer, which must
- * then start where they belong: at that time shifted by the sync offset, as
- * a packet placed on its own would be. */
-static void reset_audio_data_at_sys_time(obs_source_t *source, uint64_t os_time)
-{
-	reset_audio_data(source, os_time);
-	source->audio_ts = obs_source_audio_timing_buffer_start(os_time, source->sync_offset, source->resample_offset);
-}
-
-static void handle_ts_jump(obs_source_t *source, uint64_t expected, uint64_t ts, uint64_t diff, uint64_t os_time)
-{
-	blog(LOG_DEBUG,
-	     "Timestamp for source '%s' jumped by '%" PRIu64 "', "
-	     "expected value %" PRIu64 ", input value %" PRIu64,
-	     source->context.name, diff, expected, ts);
-
-	pthread_mutex_lock(&source->audio_buf_mutex);
-	reset_audio_timing(source, ts, os_time);
-	reset_audio_data_at_sys_time(source, os_time);
-	pthread_mutex_unlock(&source->audio_buf_mutex);
-}
-
-static void source_signal_audio_data(obs_source_t *source, const struct audio_data *in, bool muted)
+void source_signal_audio_data(obs_source_t *source, const struct audio_data *in, bool muted)
 {
 	pthread_mutex_lock(&source->audio_cb_mutex);
 
@@ -1599,67 +1549,11 @@ _Static_assert(OBS_SOURCE_AUDIO_PLACE_MAX_BUF_SIZE == MAX_BUF_SIZE, "MAX_BUF_SIZ
 _Static_assert(OBS_SOURCE_AUDIO_PLACE_MONITOR_ONLY == OBS_MONITORING_TYPE_MONITOR_ONLY, "MONITOR_ONLY");
 _Static_assert(sizeof(enum obs_monitoring_type) == sizeof(int), "enum obs_monitoring_type is passed as int");
 
-static inline size_t get_buf_placement(audio_t *audio, uint64_t timestamp, uint64_t audio_ts)
-{
-	uint32_t sample_rate = audio_output_get_sample_rate(audio);
-	return obs_source_audio_place_offset(timestamp, audio_ts, sample_rate);
-}
-
-static void source_output_audio_place(obs_source_t *source, const struct audio_data *in)
-{
-	audio_t *audio = obs->audio.audio;
-	size_t buf_placement;
-	size_t channels = audio_output_get_channels(audio);
-	size_t size = obs_source_audio_place_size(in->frames);
-
-	if (!obs_source_audio_place_started(source->audio_ts) ||
-	    obs_source_audio_place_older(in->timestamp, source->audio_ts))
-		reset_audio_data(source, in->timestamp);
-
-	buf_placement = get_buf_placement(audio, in->timestamp, source->audio_ts);
-
-#if defined(DEBUG_AUDIO) && DEBUG_AUDIO == 1
-	blog(LOG_DEBUG, "frames: %lu, size: %lu, placement: %lu, base_ts: %llu, ts: %llu", (unsigned long)in->frames,
-	     (unsigned long)source->audio_input_buf[0].size, (unsigned long)buf_placement, source->audio_ts,
-	     in->timestamp);
-#endif
-
-	/* do not allow the circular buffers to become too big */
-	if (!obs_source_audio_place_fits(buf_placement, size))
-		return;
-
-	for (size_t i = 0; i < channels; i++) {
-		deque_place(&source->audio_input_buf[i], buf_placement, in->data[i], size);
-		deque_pop_back(&source->audio_input_buf[i], NULL,
-			       obs_source_audio_place_pop_back(source->audio_input_buf[i].size, buf_placement, size));
-	}
-
-	source->last_audio_input_buf_size = 0;
-}
-
-static inline void source_output_audio_push_back(obs_source_t *source, const struct audio_data *in)
-{
-	audio_t *audio = obs->audio.audio;
-	size_t channels = audio_output_get_channels(audio);
-	size_t size = obs_source_audio_place_size(in->frames);
-
-	/* do not allow the circular buffers to become too big */
-	if (!obs_source_audio_place_fits(source->audio_input_buf[0].size, size))
-		return;
-
-	for (size_t i = 0; i < channels; i++)
-		deque_push_back(&source->audio_input_buf[i], in->data[i], size);
-
-	/* reset audio input buffer size to ensure that audio doesn't get
-	 * perpetually cut */
-	source->last_audio_input_buf_size = 0;
-}
-
 /* The gate's decisions are in obs-source-ptm-gate.c, on values. Each field
  * is read and written here as before, in the same order: the pressed flags
  * are written by the hotkey thread without atomics, and get_source_volume()
  * on the audio mix thread writes the stop times too. */
-static inline bool source_muted(obs_source_t *source, uint64_t os_time)
+bool source_muted(obs_source_t *source, uint64_t os_time)
 {
 	if (source->push_to_mute_enabled && source->user_push_to_mute_pressed)
 		source->push_to_mute_stop_time = obs_source_ptm_gate_stop_time(os_time, source->push_to_mute_delay);
@@ -1675,111 +1569,6 @@ static inline bool source_muted(obs_source_t *source, uint64_t os_time)
 	return !source->enabled || os_atomic_load_bool(&source->user_muted) ||
 	       obs_source_ptm_gate_mutes(source->push_to_mute_enabled, push_to_mute_active) ||
 	       obs_source_ptm_gate_talk_mutes(source->push_to_talk_enabled, push_to_talk_active);
-}
-
-static void source_output_audio_data(obs_source_t *source, const struct audio_data *data)
-{
-	size_t sample_rate = audio_output_get_sample_rate(obs->audio.audio);
-	struct audio_data in = *data;
-	uint64_t os_time = os_gettime_ns();
-	uint64_t timing_adjust;
-	bool push_back;
-
-	/* The timestamp placement is obs-source-audio-timing.c's: each step
-	 * gets the fields it reads and returns what to store, and the stores
-	 * happen here, in their order. The graphics thread also sets timing_set
-	 * and timing_adjust, so they go under audio_buf_mutex. */
-	pthread_mutex_lock(&source->audio_buf_mutex);
-
-	struct obs_source_audio_timing_pre pre = {
-		.timestamp = in.timestamp,
-		.os_time = os_time,
-		.duration = conv_frames_to_time(sample_rate, in.frames),
-		.next_audio_ts_min = source->next_audio_ts_min,
-		.timing_set = source->timing_set,
-		.async_unbuffered = source->async_unbuffered,
-		.async_decoupled = source->async_decoupled,
-	};
-	obs_source_audio_timing_pre_lock(&pre);
-
-	if (pre.direct) {
-		source->timing_adjust = 0;
-		source->timing_set = true;
-	}
-
-	if (pre.action == OBS_SOURCE_AUDIO_TS_RESET) {
-		/* reset_audio_timing(source, in.timestamp, os_time) */
-		source->timing_set = true;
-		source->timing_adjust = pre.timing_adjust;
-	} else if (pre.action == OBS_SOURCE_AUDIO_TS_SMOOTH && pre.reanchor) {
-		source->timing_adjust = pre.timing_adjust;
-	}
-
-	pthread_mutex_unlock(&source->audio_buf_mutex);
-
-	switch (pre.action) {
-	case OBS_SOURCE_AUDIO_TS_KEEP:
-	case OBS_SOURCE_AUDIO_TS_RESET:
-	case OBS_SOURCE_AUDIO_TS_SMOOTH:
-		break;
-	case OBS_SOURCE_AUDIO_TS_JUMP:
-		handle_ts_jump(source, source->next_audio_ts_min, in.timestamp, pre.diff, os_time);
-		break;
-	case OBS_SOURCE_AUDIO_TS_EXCEEDED:
-		blog(LOG_DEBUG,
-		     "Audio timestamp for '%s' exceeded TS_SMOOTHING_THRESHOLD, diff=%" PRIu64 " ns, expected %" PRIu64
-		     ", input %" PRIu64,
-		     source->context.name, pre.diff, source->next_audio_ts_min, in.timestamp);
-		break;
-	}
-
-	/* Feed the error to the resampler so that the samples keep pace with
-	 * the timestamps instead of drifting until the threshold above is
-	 * exceeded. After a resync the error is unknown, so hold. */
-	if (source->resampler && source->last_async_compensation)
-		audio_resampler_set_compensation_error(source->resampler, pre.drift_error);
-
-	source->next_audio_ts_min = pre.next_audio_ts_min;
-
-	pthread_mutex_lock(&source->audio_buf_mutex);
-
-	timing_adjust = source->timing_adjust;
-
-	struct obs_source_audio_timing_under under = {
-		.timestamp = pre.timestamp,
-		.packet_timing_adjust = timing_adjust,
-		.data_timestamp = data->timestamp,
-		.os_time = os_time,
-		.next_audio_ts_min = source->next_audio_ts_min,
-		.resample_offset = source->resample_offset,
-		.sync_offset = source->sync_offset,
-		.timing_adjust = source->timing_adjust,
-		.next_audio_sys_ts_min = source->next_audio_sys_ts_min,
-		.last_sync_offset = source->last_sync_offset,
-		.continuous = pre.continuous,
-	};
-	obs_source_audio_timing_under_lock(&under);
-
-	if (under.reset_timing) {
-		/* reset_audio_timing(source, data->timestamp, os_time) */
-		source->timing_set = true;
-		source->timing_adjust = under.timing_adjust;
-	}
-	source->next_audio_sys_ts_min = under.next_audio_sys_ts_min;
-	source->last_sync_offset = under.last_sync_offset;
-	in.timestamp = under.timestamp;
-	push_back = under.push_back;
-
-	if (obs_source_audio_place_outputs((int)source->monitoring_type)) {
-		if (push_back && obs_source_audio_place_started(source->audio_ts))
-			source_output_audio_push_back(source, &in);
-		else
-			source_output_audio_place(source, &in);
-	}
-
-	pthread_mutex_unlock(&source->audio_buf_mutex);
-
-	source_signal_audio_data(source, data, source_muted(source, os_time));
 }
 
 /* The conversion plan is obs-source-conversion-plan.c's: it gets the frame's
