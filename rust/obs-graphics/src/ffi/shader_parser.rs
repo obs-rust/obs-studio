@@ -35,9 +35,6 @@ use obs_util::ffi::darray::darray;
 use crate::ffi::shader_sampler_convert::shader_sampler;
 use crate::shader_parser::{self as core_blocks, BlockError, Sampler, Struct, Tokens};
 
-/// `LEX_ERROR` (`util/lexer.h`).
-const LEX_ERROR: c_int = 0;
-
 /// `struct shader_var` (`graphics/shader-parser.h`).
 #[repr(C)]
 #[allow(non_camel_case_types)]
@@ -139,12 +136,12 @@ impl Tokens for RawTokens {
     fn add_error(&mut self, error: BlockError) {
         let (message, val1) = error.message();
         // SAFETY: a valid parser at a valid token; the strings are static C
-        // strings, as the C passes them.
+        // strings, as the C passes them, at the C's level.
         unsafe {
             cf_adderror(
                 self.0,
                 message.as_ptr(),
-                LEX_ERROR,
+                error.level(),
                 val1.map_or(ptr::null(), CStr::as_ptr),
                 ptr::null(),
                 ptr::null(),

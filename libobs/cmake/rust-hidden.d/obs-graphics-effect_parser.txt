@@ -1,5 +1,7 @@
-# graphics/effect-parser-blocks.c: ep_parse() in effect-parser.c calls them
-# inside libobs. Declared in effect-parser-blocks.h without EXPORT, so the
+# graphics/effect-parser-blocks.c and graphics/effect-parser-passes.c:
+# ep_parse() in effect-parser.c calls them inside libobs. Declared in
+# effect-parser-blocks.h and effect-parser-passes.h without EXPORT, so the
 # shims stay hidden the same way.
 ep_parse_sampler_state
 ep_parse_struct
+ep_parse_technique

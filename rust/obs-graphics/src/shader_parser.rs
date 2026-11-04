@@ -44,6 +44,11 @@ pub const PARSE_UNEXPECTED_BREAK: i32 = -4;
 /// `PARSE_EOF`.
 pub const PARSE_EOF: i32 = -5;
 
+/// `LEX_ERROR` (`util/lexer.h`).
+pub const LEX_ERROR: i32 = 0;
+/// `LEX_WARNING`.
+pub const LEX_WARNING: i32 = 1;
+
 /// `CFTOKEN_NONE`, the terminator (`util/cf-lexer.h`).
 pub const CFTOKEN_NONE: i32 = 0;
 /// `CFTOKEN_NAME`.
@@ -53,8 +58,8 @@ pub const CFTOKEN_SPACETAB: i32 = 3;
 /// `CFTOKEN_NEWLINE`.
 pub const CFTOKEN_NEWLINE: i32 = 4;
 
-/// The errors the blocks add, each a `cf_adderror(p, ..., LEX_ERROR, ...)`
-/// of `util/cf-parser.h`.
+/// The errors the blocks add, each a `cf_adderror(p, ...)` of
+/// `util/cf-parser.h`, or of the block itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlockError {
     /// `cf_adderror_expecting`: `"Expected '$1'"` with the expected text.
@@ -63,6 +68,9 @@ pub enum BlockError {
     UnexpectedEof,
     /// `cf_adderror_syntax_error`: `"Syntax error"`.
     SyntaxError,
+    /// The effect parser's pass command: `"compile keyword not
+    /// necessary"`, a warning.
+    CompileNotNecessary,
 }
 
 impl BlockError {
@@ -73,6 +81,17 @@ impl BlockError {
             Self::Expecting(expected) => (c"Expected '$1'", Some(expected)),
             Self::UnexpectedEof => (c"Unexpected EOF", None),
             Self::SyntaxError => (c"Syntax error", None),
+            Self::CompileNotNecessary => (c"compile keyword not necessary", None),
+        }
+    }
+
+    /// The `level` the C passes `cf_adderror`: `LEX_ERROR` (0), or
+    /// `LEX_WARNING` (1) for [`Self::CompileNotNecessary`].
+    #[must_use]
+    pub fn level(self) -> i32 {
+        match self {
+            Self::CompileNotNecessary => LEX_WARNING,
+            Self::Expecting(_) | Self::UnexpectedEof | Self::SyntaxError => LEX_ERROR,
         }
     }
 }
@@ -92,7 +111,8 @@ pub trait Tokens {
     fn mark(&self) -> Self::Mark;
     /// `cur_token = mark`.
     fn reset(&mut self, mark: Self::Mark);
-    /// `cf_adderror()` at `cur_token`, level `LEX_ERROR`.
+    /// `cf_adderror()` at `cur_token`, at the error's
+    /// [`level`](BlockError::level).
     fn add_error(&mut self, error: BlockError);
     /// `cf_pass_pair(p, '{', '}')`.
     fn pass_pair(&mut self) -> bool;
@@ -142,7 +162,7 @@ pub struct Struct {
 /// `strref_cmp(&cur_token->str, s) == 0` for the non-empty literals the
 /// blocks compare with: the token's bytes are `s` (a token holds no NUL,
 /// since the lexer's text is a C string).
-fn token_is(t: &impl Tokens, s: &CStr) -> bool {
+pub(crate) fn token_is(t: &impl Tokens, s: &CStr) -> bool {
     t.text() == s.to_bytes()
 }
 
@@ -173,7 +193,7 @@ pub(crate) fn next_valid_token(t: &mut impl Tokens) -> bool {
 }
 
 /// `cf_go_to_token`.
-fn go_to_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
+pub(crate) fn go_to_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
     while next_token(t) {
         if token_is(t, str1) || str2.is_some_and(|s| token_is(t, s)) {
             return true;
@@ -185,7 +205,7 @@ fn go_to_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
 }
 
 /// `cf_go_to_valid_token`.
-fn go_to_valid_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
+pub(crate) fn go_to_valid_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> bool {
     if !go_to_token(t, str1, str2) {
         t.add_error(BlockError::UnexpectedEof);
         return false;

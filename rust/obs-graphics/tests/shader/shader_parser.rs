@@ -39,8 +39,15 @@ impl LexTokens {
         }
     }
 
+    /// The text of the token at `mark`.
+    pub(crate) fn text_at(&self, mark: usize) -> String {
+        let t = &self.lexed.tokens[mark];
+        String::from_utf8_lossy(&self.lexed.reformatted[t.str_start..t.str_start + t.str_len])
+            .into_owned()
+    }
+
     /// Where the block stopped: the token's text, or `EOF` at the end.
-    fn at(&self) -> String {
+    pub(crate) fn at(&self) -> String {
         if self.kind() == CfTokenType::None as i32 {
             "EOF".into()
         } else {
@@ -99,7 +106,8 @@ impl Tokens for LexTokens {
             [val1.map(CStr::to_bytes), None, None],
         );
         self.errors.push(format!(
-            "error {row}:{column} 0 {}",
+            "error {row}:{column} {} {}",
+            error.level(),
             String::from_utf8_lossy(&text)
         ));
     }
