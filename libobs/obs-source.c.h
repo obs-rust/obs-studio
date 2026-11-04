@@ -1687,7 +1687,10 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 
 	/* The timestamp placement is obs-source-audio-timing.c's: each step
 	 * gets the fields it reads and returns what to store, and the stores
-	 * happen here, in their order. */
+	 * happen here, in their order. The graphics thread also sets timing_set
+	 * and timing_adjust, so they go under audio_buf_mutex. */
+	pthread_mutex_lock(&source->audio_buf_mutex);
+
 	struct obs_source_audio_timing_pre pre = {
 		.timestamp = in.timestamp,
 		.os_time = os_time,
@@ -1704,20 +1707,23 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 		source->timing_set = true;
 	}
 
-	switch (pre.action) {
-	case OBS_SOURCE_AUDIO_TS_KEEP:
-		break;
-	case OBS_SOURCE_AUDIO_TS_RESET:
+	if (pre.action == OBS_SOURCE_AUDIO_TS_RESET) {
 		/* reset_audio_timing(source, in.timestamp, os_time) */
 		source->timing_set = true;
 		source->timing_adjust = pre.timing_adjust;
+	} else if (pre.action == OBS_SOURCE_AUDIO_TS_SMOOTH && pre.reanchor) {
+		source->timing_adjust = pre.timing_adjust;
+	}
+
+	pthread_mutex_unlock(&source->audio_buf_mutex);
+
+	switch (pre.action) {
+	case OBS_SOURCE_AUDIO_TS_KEEP:
+	case OBS_SOURCE_AUDIO_TS_RESET:
+	case OBS_SOURCE_AUDIO_TS_SMOOTH:
 		break;
 	case OBS_SOURCE_AUDIO_TS_JUMP:
 		handle_ts_jump(source, source->next_audio_ts_min, in.timestamp, pre.diff, os_time);
-		break;
-	case OBS_SOURCE_AUDIO_TS_SMOOTH:
-		if (pre.reanchor)
-			source->timing_adjust = pre.timing_adjust;
 		break;
 	case OBS_SOURCE_AUDIO_TS_EXCEEDED:
 		blog(LOG_DEBUG,
@@ -1735,9 +1741,9 @@ static void source_output_audio_data(obs_source_t *source, const struct audio_da
 
 	source->next_audio_ts_min = pre.next_audio_ts_min;
 
-	timing_adjust = source->timing_adjust;
-
 	pthread_mutex_lock(&source->audio_buf_mutex);
+
+	timing_adjust = source->timing_adjust;
 
 	struct obs_source_audio_timing_under under = {
 		.timestamp = pre.timestamp,
@@ -2144,8 +2150,10 @@ static void obs_source_update_async_video(obs_source_t *source)
 			const bool unbuffered = obs_source_async_upload_reanchor_reads_unbuffered(decoupled) &&
 						source->async_unbuffered;
 			if (obs_source_async_upload_reanchor(decoupled, unbuffered)) {
+				pthread_mutex_lock(&source->audio_buf_mutex);
 				source->timing_adjust = obs->video.video_time - frame->timestamp;
 				source->timing_set = true;
+				pthread_mutex_unlock(&source->audio_buf_mutex);
 			}
 
 			if (source->async_update_texture) {
@@ -3547,7 +3555,9 @@ static inline void reset_resampler(obs_source_t *source, const struct obs_source
 
 	audio_resampler_destroy(source->resampler);
 	source->resampler = NULL;
+	pthread_mutex_lock(&source->audio_buf_mutex);
 	source->resample_offset = 0;
+	pthread_mutex_unlock(&source->audio_buf_mutex);
 
 	if (!obs_source_audio_input_resampler_needed(audio_input_format(&source->sample_info),
 						     audio_input_format(&output_info),
@@ -3620,8 +3630,18 @@ static void process_audio(obs_source_t *source, const struct obs_source_audio *a
 
 		memset(output, 0, sizeof(output));
 
-		audio_resampler_resample(source->resampler, output, &frames, &source->resample_offset, audio->data,
+		/* The audio path reads the offset under audio_buf_mutex. The resampler
+		 * works on a copy, so it does not run with the mutex held. */
+		pthread_mutex_lock(&source->audio_buf_mutex);
+		uint64_t resample_offset = source->resample_offset;
+		pthread_mutex_unlock(&source->audio_buf_mutex);
+
+		audio_resampler_resample(source->resampler, output, &frames, &resample_offset, audio->data,
 					 audio->frames);
+
+		pthread_mutex_lock(&source->audio_buf_mutex);
+		source->resample_offset = resample_offset;
+		pthread_mutex_unlock(&source->audio_buf_mutex);
 
 		copy_audio_data(source, (const uint8_t *const *)output, frames, audio->timestamp);
 	} else {
