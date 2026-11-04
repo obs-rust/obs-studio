@@ -326,12 +326,12 @@ static const struct pass_case technique_error_cases[] = {
 	 "uniform float c;",
 	 GUARD "error 3:16 0 Expected '{'\n"
 	       "leaked 0\n"},
-	/* With no ';' after it the technique is dropped and its name is left
-	 * allocated (characterized, not endorsed). */
+	/* With no ';' after it the technique is dropped, its name freed with it
+	 * (#3598). */
 	{"technique T pass { vertex_shader = VS(v); } }\n"
 	 "uniform float c",
 	 GUARD "error 3:16 0 Expected ';'\n"
-	       "leaked 1\n"},
+	       "leaked 0\n"},
 	/* A missing or bad name skips to the next ';' past the braces, so the
 	 * param goes too (characterized, not endorsed). */
 	{"technique { pass { vertex_shader = VS(v); } }\n"
@@ -366,14 +366,13 @@ static void technique_errors(void **state)
 static const struct pass_case eof_cases[] = {
 	{"technique", GUARD "error 2:10 0 Unexpected EOF\n"
 			    "leaked 0\n"},
-	/* End of text after the name leaves the name allocated (characterized,
-	 * not endorsed). */
+	/* End of text after the name frees the name (#3598). */
 	{"technique T", GUARD "error 2:12 0 Unexpected EOF\n"
-			      "leaked 1\n"},
+			      "leaked 0\n"},
 	/* As does a technique without '{' that runs to the end of the text
-	 * (characterized, not endorsed). */
+	 * (#3598). */
 	{"technique T pass", GUARD "error 2:17 0 Expected ';'\n"
-				   "leaked 1\n"},
+				   "leaked 0\n"},
 	{"technique T {", GUARD "error 2:14 0 Unexpected EOF\n"
 				"leaked 0\n"},
 	{"technique T { pass", GUARD "error 2:19 0 Unexpected EOF\n"
@@ -437,12 +436,12 @@ static const struct pass_case mixed_cases[] = {
 	 GUARD "error 2:44 0 Expected ';'\n"
 	       "leaked 0\n"},
 	/* A technique without '{' skips past the next technique's braces to the
-	 * end of the text: both go, and the first one's name is left allocated
-	 * (characterized, not endorsed). */
+	 * end of the text: both go (characterized, not endorsed). The first
+	 * one's name is freed (#3598). */
 	{"technique T\n"
 	 "technique U { pass { pixel_shader = PS(v); } }",
 	 GUARD "error 3:47 0 Expected ';'\n"
-	       "leaked 1\n"},
+	       "leaked 0\n"},
 };
 
 static void mixed(void **state)
