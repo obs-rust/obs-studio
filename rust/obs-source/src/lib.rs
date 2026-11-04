@@ -9,6 +9,8 @@
 //! `check_to_swap_bgrx_bgra()` and `obs_source_update_async_video()`;
 //! `libobs/obs-source-audio-input.c.h`, the audio
 //! input steps of `process_audio()` and `reset_resampler()`;
+//! `libobs/obs-source-audio-output.c.h`, the path that puts one audio packet
+//! of a source in its buffer, `source_output_audio_data()`;
 //! `libobs/obs-source-audio-place.c.h`, the audio placement and action
 //! timeline of `source_output_audio_place()`,
 //! `source_output_audio_push_back()`, `source_output_audio_data()` and
@@ -108,7 +110,7 @@
 //! `multiply_output_audio()` and `multiply_vol_data()`.
 //!
 //! The safe cores are [`async_pacing`], [`async_upload`], [`audio_input`],
-//! [`audio_place`],
+//! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
@@ -127,6 +129,7 @@
 pub mod async_pacing;
 pub mod async_upload;
 pub mod audio_input;
+pub mod audio_output;
 pub mod audio_place;
 pub mod audio_render_plan;
 pub mod audio_settings;

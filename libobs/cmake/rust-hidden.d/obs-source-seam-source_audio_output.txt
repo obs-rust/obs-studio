@@ -1,0 +1,6 @@
+# obs-source-audio-output.c (obs-source-seam): obs-source.c calls these inside
+# libobs. Declared in obs-internal.h without EXPORT, so the shims stay hidden.
+reset_audio_data
+reset_audio_data_at_sys_time
+reset_audio_timing
+source_output_audio_data

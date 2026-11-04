@@ -18,8 +18,8 @@
 #include "libobs/build/libobs-ported-source-audio-timing.pch.h"
 
 /* The audio timestamp placement of source_output_audio_data(), moved from
- * obs-source.c: the decisions, on plain values. obs-source.c reads the
- * source's fields into the structs, calls the steps and writes the results
+ * obs-source.c: the decisions, on plain values. obs-source-audio-output.c reads
+ * the source's fields into the structs, calls the steps and writes the results
  * back; it keeps the lock, handle_ts_jump(), the resampler's compensation,
  * the deque, the signal and the log lines. Declared in
  * obs-source-audio-timing.h without EXPORT. In hybrid libobs the Rust port
