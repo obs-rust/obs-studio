@@ -19,6 +19,7 @@
 #include "util/cf-parser.h"
 #include "graphics/effect-param-types.h"
 #include "graphics/effect-parser-blocks.h"
+#include "graphics/effect-parser-passes.h"
 #include "graphics/effect-parser.h"
 #include "graphics/effect.h"
 
