@@ -28,10 +28,9 @@
 
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::ptr;
-use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use obs_c_oracle::parity::cases;
-use obs_c_oracle::source_transition_slots::{self as c, seam};
+use obs_c_oracle::source_transition_slots::{self as c, graph_lock, seam};
 use obs_source_seam::ffi::source_transition_slots::{self as rs, Calls};
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
 use proptest::prelude::*;
@@ -61,13 +60,6 @@ const NAMES: [&CStr; SOURCES] = [
     c"child c",
     c"a scene",
 ];
-
-/// The oracle graph is process-wide.
-static GRAPH: Mutex<()> = Mutex::new(());
-
-fn graph_lock() -> MutexGuard<'static, ()> {
-    GRAPH.lock().unwrap_or_else(PoisonError::into_inner)
-}
 
 /// The oracle's stand-ins, as the Rust shims' libobs calls.
 enum Oracle {}

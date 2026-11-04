@@ -2,6 +2,7 @@
 //! C file.
 
 mod audio_settings_parity;
+mod transition_access_parity;
 mod transition_restore_parity;
 mod transition_settings_parity;
 mod transition_size_layout;
