@@ -1172,6 +1172,7 @@
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_blocks.c"
@@ -1193,6 +1194,7 @@
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_params.c"
@@ -1214,6 +1216,7 @@
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_passes.c"
