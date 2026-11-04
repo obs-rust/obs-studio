@@ -76,6 +76,24 @@ class SwiftChangesTest(unittest.TestCase):
         self.assertIn("swift=false", self.output_value())
         self.assertIn("Swift files changed: false", result.stdout)
 
+    def test_a_new_ref_push_has_no_base_and_checks(self) -> None:
+        # github.event.before is all zeros on a push that creates the ref.
+        result = self.run_script("0" * 40)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output_value(), "swift=true")
+
+    def test_a_force_pushed_away_base_checks_rather_than_fails(self) -> None:
+        # github.event.before may be unreachable after a force push.
+        result = self.run_script("1" * 40)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output_value(), "swift=true")
+
+    def test_a_master_push_without_swift_takes_no_macos_runner(self) -> None:
+        # The workflow hands a push its previous head, so an unrelated push
+        # cannot end cancelled waiting for a macos-26 runner.
+        step = WORKFLOW.read_text().split("- name: Check for Swift Changes 🔎", 1)[1].split("- name:", 1)[0]
+        self.assertIn("github.event.before", step)
+
     def test_the_workflow_runs_the_script_in_one_line(self) -> None:
         text = WORKFLOW.read_text()
         self.assertIn("run: uv run --no-project ci/swift_changes.py", text)
