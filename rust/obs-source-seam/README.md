@@ -6,6 +6,7 @@ private libobs adapter and exports the C functions under their original names.
 
 | C file | Safe core | Shims | Seam |
 |---|---|---|---|
+| `libobs/obs-source-audio-output.c.h` | `obs_source::audio_output` | `ffi::source_audio_output` | `libobs/obs-source-audio-output-seam.h` |
 | `libobs/obs-source-audio-settings.c.h` | `obs_source::audio_settings` | `ffi::source_audio_settings` | `libobs/obs-source-audio-settings-seam.h` |
 | `libobs/obs-source-transition-restore.c.h` | `obs_source::transition_load` (`load`) | `ffi::source_transition_restore` | `libobs/obs-source-transition-seam.h`, the `obs_data` reads, and the libobs source calls through `Calls` |
 | `libobs/obs-source-transition-settings.c.h` | `obs_source::transition_settings` | `ffi::source_transition_settings` | `libobs/obs-source-transition-seam.h` |

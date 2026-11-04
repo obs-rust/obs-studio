@@ -22,7 +22,8 @@
 
 /* The audio timestamp placement of source_output_audio_data() in
  * obs-source.c, on plain values (obs-source-audio-timing.c). It decides
- * where a source's audio packet goes; obs-source.c keeps everything else.
+ * where a source's audio packet goes; obs-source-audio-output.c keeps
+ * everything else.
  *
  * source_output_audio_data() reads the source's fields into a struct, calls
  * a step and writes the results back itself, so the stores of the volatile
@@ -30,10 +31,11 @@
  * too) stay where they were and in the same order:
  * - obs_source_audio_timing_pre_lock(), before audio_buf_mutex: the direct
  *   timestamp check, then the choice between resetting the timing, a
- *   timestamp jump (handle_ts_jump() stays in obs-source.c: it takes the
- *   lock and empties the buffers), smoothing onto the expected timestamp
+ *   timestamp jump (handle_ts_jump() stays in obs-source-audio-output.c: it
+ *   takes the lock and empties the buffers), smoothing onto the expected timestamp
  *   and logging; the drift error for the resampler's compensation
- *   (audio_resampler_set_compensation_error() stays in obs-source.c) and
+ *   (audio_resampler_set_compensation_error() stays in
+ *   obs-source-audio-output.c) and
  *   next_audio_ts_min. The caller computes the packet's duration
  *   (conv_frames_to_time()), so no division by the sample rate is here.
  * - obs_source_audio_timing_under_lock(), under audio_buf_mutex: whether
@@ -41,7 +43,7 @@
  *   reset when its system time jumped (unless the audio was continuous),
  *   the sync and resampler offsets, next_audio_sys_ts_min, and the "sync
  *   offset changed, so place" rule. The deque place and push-back stay in
- *   obs-source.c.
+ *   obs-source-audio-output.c.
  * - obs_source_audio_timing_buffer_start(): where
  *   reset_audio_data_at_sys_time() starts an emptied buffer.
  *

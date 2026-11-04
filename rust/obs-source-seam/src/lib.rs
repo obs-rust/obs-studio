@@ -25,6 +25,10 @@
 //! their shims in [`ffi::source_audio_settings`], over
 //! `libobs/obs-source-audio-settings-seam.h`.
 //!
+//! `libobs/obs-source-audio-output.c.h`, the path that puts one audio packet in
+//! a source's buffer, has its shims in [`ffi::source_audio_output`], over
+//! `libobs/obs-source-audio-output-seam.h`.
+//!
 //! These shims live apart from `obs-source` because they reference symbols
 //! only libobs has. The `*_steps_rust` C tests link libobs and the Rust
 //! staticlib alone and pull in the `obs-source` objects they test; a shim
