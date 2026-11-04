@@ -11,8 +11,9 @@
 # The same cases against the Rust shims, built and run only with the hybrid
 # backend (OBS_LIBOBS_BACKEND=C has no Rust target). The port has no
 # intentional difference, so the test file is the same. ep_parse() and the
-# parameter declarations it calls (effect-parser-params.c) stay C and are
-# compiled in as above; effect-parser-passes.c and
+# parameter declarations and function parser it calls
+# (effect-parser-params.c, effect-parser-funcs.c) stay C and are compiled in
+# as above; effect-parser-passes.c and
 # effect-parser-blocks.c are not, so the techniques, the two blocks,
 # ep_free() and the parameter type decisions, all hidden in the shared
 # library, come from the exact production staticlib at executable link time.
@@ -24,6 +25,7 @@ if(TARGET libobs_rust-static)
     test_effect_parser_passes_rust
     test_effect_parser_passes.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-funcs.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-params.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
