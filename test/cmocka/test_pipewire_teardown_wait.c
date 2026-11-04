@@ -54,13 +54,43 @@ void __wrap_pw_thread_loop_wait(struct pw_thread_loop *loop)
  * entered the loop. A stop before that can hang: invoke then runs do_stop on
  * this thread, with nothing to wake the loop thread if it is already on its
  * way into epoll_wait (#3577). The wait is bounded, so a loop thread that
- * never says it has entered fails the test instead of hanging it. */
+ * never says it has entered fails the test instead of hanging it.
+ *
+ * An event source's callback runs only on the loop thread, from inside the
+ * loop, on every PipeWire version this test builds for, so that is what the
+ * wait is for; thread-loop.start-signal is ignored before 0.3.77 (#3596).
+ * The lock is held from before the start, so the callback cannot run before
+ * the wait. */
+struct loop_entered {
+	struct pw_thread_loop *thread_loop;
+	bool entered;
+};
+
+/* Runs on the loop thread, under the loop lock, from inside the loop. */
+static void on_loop_entered(void *data, uint64_t count)
+{
+	struct loop_entered *le = data;
+
+	(void)count;
+	le->entered = true;
+	pw_thread_loop_signal(le->thread_loop, false);
+}
+
 static bool start_and_wait_until_entered(struct pw_thread_loop *thread_loop)
 {
+	struct pw_loop *loop = pw_thread_loop_get_loop(thread_loop);
+	struct loop_entered le = {.thread_loop = thread_loop};
+	struct spa_source *event = pw_loop_add_event(loop, on_loop_entered, &le);
+
+	if (!event)
+		return false;
 	pw_thread_loop_lock(thread_loop);
-	bool entered = pw_thread_loop_start(thread_loop) == 0 && pw_thread_loop_timed_wait(thread_loop, 5) == 0;
+	bool ok = pw_thread_loop_start(thread_loop) == 0 && pw_loop_signal_event(loop, event) == 0;
+	while (ok && !le.entered)
+		ok = pw_thread_loop_timed_wait(thread_loop, 5) == 0;
+	pw_loop_destroy_source(loop, event);
 	pw_thread_loop_unlock(thread_loop);
-	return entered;
+	return le.entered;
 }
 
 static void check_teardown(bool start_signal)
