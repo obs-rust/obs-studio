@@ -51,6 +51,9 @@
 //! decisions of the `obs_source_media_*()` functions and
 //! `process_media_actions()` (whether a call is accepted, the getters'
 //! fallbacks, and each queued action's callback and signal);
+//! `libobs/obs-source-audio-settings.c.h`, the volume, sync offset, balance,
+//! mute and monitoring setters and getters (generic over a seam, shims in
+//! `obs-source-seam`);
 //! `libobs/obs-source-monitoring.c.h`, the monitoring, monitor-only mute,
 //! balance, mixer, flag, push-to and audio active rules of
 //! `obs_source_set_monitoring_type()`, `obs_source_set_monitoring_enabled()`,
@@ -126,6 +129,7 @@ pub mod async_upload;
 pub mod audio_input;
 pub mod audio_place;
 pub mod audio_render_plan;
+pub mod audio_settings;
 pub mod audio_timing;
 pub mod color_space;
 pub mod conversion_plan;

@@ -15,9 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-settings.pch.h"
 
-/* The source audio settings: moved out of obs-source.c as they are (#3619). */
+/* The source audio settings: moved out of obs-source.c as they are (#3619).
+ * Hybrid libobs has them in Rust (obs_source::audio_settings, shims in
+ * obs-source-seam). This file stays for the C reference and the oracle. */
 
 /* The volume multiplies every sample, so it is 0 or more. NaN is the
  * default, 1, and +inf is 20 (+26 dB), the most the Advanced Audio

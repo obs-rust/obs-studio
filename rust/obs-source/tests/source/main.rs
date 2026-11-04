@@ -10,6 +10,7 @@ mod audio_place;
 mod audio_place_parity;
 mod audio_render_plan;
 mod audio_render_plan_parity;
+mod audio_settings;
 mod audio_timing;
 mod audio_timing_parity;
 mod color_space;
