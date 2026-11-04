@@ -409,14 +409,21 @@ the paths that select them, so a change only triggers the tests it can affect.
   Rust tests and Tier 2 for paths that select them **and for core code**
   (`libobs/`, `rust/`, `Cargo.lock`): a core-only diff selects no platform
   lane on a PR, so a Windows- or macOS-only break in it used to land on
-  master never compiled there (#2916, #2910). Core merge groups now select
-  both native lanes too (#3606): up to five PRs share two Windows jobs
-  (Rust tests and Tier 2), two macOS jobs, and one Linux cross-lint job.
-  PR path selection stays unchanged; batches without core changes retain
-  their existing scope. CI Gate requires both native Tier 2 jobs to succeed
-  for a core batch, rejecting skipped or missing jobs. A red master run
-  from this lane means **fix forward or revert on master**: it reports after
-  the change landed, and the run that finds it is often another change's.
+  master never compiled there (#2916, #2910). Merge groups run only Linux
+  execution, including for platform-specific diffs. Native Rust tests and
+  Tier 2 remain selected on master pushes, and full native application builds
+  remain on nightly/manual/release events. This supersedes #3606's native
+  queue policy: hosted native runner capacity can prevent queue admission
+  without executing validation. A red native master run requires fixing
+  forward or reverting; Linux cross-lint does not prove native runtime behavior.
+  CI Gate resolves the queue's core scope directly from the merge-group
+  event's base/head git diff, independently of reusable-workflow outputs.
+  Missing event fields, unavailable commits and failed scope selection fail
+  closed with named diagnostics. Cancelled jobs with no assigned runner and
+  no steps are reported as runner-capacity conditions and still fail the gate;
+  there is no automatic retry or conversion to success.
+  Evidence and the tradeoff are recorded in
+  [the queue decision](ci-merge-group-scope.md).
   A master push builds no OBS app. Every platform and every app build runs on schedule,
   workflow_dispatch, tags, release branches and in the release gate; no PR
   path selects the full builds.

@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# pyright: basic, reportImplicitRelativeImport=false
 """Which CI jobs a change needs (#436): Linux always; core code adds the
 Rust-libobs OBS build; macOS or Windows code adds that platform's jobs.
 Platform is decided by path alone (#897): platform code lives in
@@ -23,7 +24,9 @@ CPP_TESTS = {"test/cmocka/test_source_select_list.cpp"}
 class CiScopeTest(unittest.TestCase):
     def check(self, files, *, core=False, macos=False, windows=False):
         got = scope(files, lambda path: path in CPP_TESTS)
-        self.assertEqual((got.core, got.macos, got.windows), (core, macos, windows), files)
+        self.assertEqual(
+            (got.core, got.macos, got.windows), (core, macos, windows), files
+        )
 
     def test_docs_and_linux_only_need_linux(self):
         self.check(["docs/rust-port/naming.md"])
@@ -41,35 +44,51 @@ class CiScopeTest(unittest.TestCase):
         # #2916: a `libobs/` or `rust/` only diff selects no platform lane, so a
         # Windows-only (or macOS-only) break in core code reached master unseen
         # (#2910). A master push runs both platform Rust lanes for that diff.
-        master_push = {"event": "push", "ref": "master"}
+        master_push: dict = {"event": "push", "ref": "master"}
         got = scope(["libobs/obs.c.h"], lambda path: path in CPP_TESTS, **master_push)
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
-        got = scope(["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push)
+        got = scope(
+            ["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push
+        )
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
         # PRs and non-master pushes retain path selection.
         for event in ("pull_request", "push"):
-            got = scope(["libobs/obs.c.h"], lambda path: path in CPP_TESTS, event=event, ref="fix/2910-x")
-            self.assertEqual((got.core, got.macos, got.windows), (True, False, False), (event, got))
-        # Not a platform job for a master push that changes no core code.
+            got = scope(
+                ["libobs/obs.c.h"],
+                lambda path: path in CPP_TESTS,
+                event=event,
+                ref="fix/2910-x",
+            )
+            self.assertEqual(
+                (got.core, got.macos, got.windows), (True, False, False), (event, got)
+            )
+        # Scope-policy changes validate their native push routing on real runners.
         got = scope(["ci/ci_scope.py"], lambda path: path in CPP_TESTS, **master_push)
-        self.assertEqual((got.core, got.macos, got.windows), (False, False, False))
+        self.assertEqual((got.core, got.macos, got.windows), (False, True, True))
         # And a platform file keeps its own selection.
-        got = scope(["plugins/mac-capture/mac-display-capture.m"], lambda path: path in CPP_TESTS, **master_push)
+        got = scope(
+            ["plugins/mac-capture/mac-display-capture.m"],
+            lambda path: path in CPP_TESTS,
+            **master_push,
+        )
         self.assertEqual((got.macos, got.windows), (True, False))
 
-    def test_core_merge_group_runs_native_tier2_before_merge(self):
+    def test_merge_group_is_linux_only_and_push_keeps_native_coverage(self):
         # #3606: the effect parser batch passed with MSVC linking skipped.
         for files in (
             ["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"],
             ["rust/obs-util/src/dstr.rs"],
             ["libobs/obs.c.h"],
             ["Cargo.lock"],
+            ["libobs/util/platform-cocoa.m.h", "libobs/util/platform-windows.c.h"],
         ):
             with self.subTest(files=files):
                 got = scope(files, event="merge_group")
                 self.assertTrue(got.core)
-                self.assertTrue(got.windows)
-                self.assertTrue(got.macos)
+                self.assertFalse(got.windows)
+                self.assertFalse(got.macos)
+                pushed = scope(files, event="push", ref="master")
+                self.assertTrue(pushed.windows and pushed.macos)
                 self.assertFalse(got.full)
         got = scope(["ci/ci_scope.py"], event="merge_group")
         self.assertFalse(got.windows or got.macos)
@@ -83,13 +102,17 @@ class CiScopeTest(unittest.TestCase):
 
     def test_macos_code(self):
         self.check(["plugins/mac-capture/mac-display-capture.m"], macos=True)
-        self.check(["frontend/utility/CrashHandler_MacOS.mm"])  # Qt area: follow-up, no OS Rust/Tier 2
+        self.check(
+            ["frontend/utility/CrashHandler_MacOS.mm"]
+        )  # Qt area: follow-up, no OS Rust/Tier 2
         self.check(["libobs/util/platform-cocoa.m.h"], core=True, macos=True)
         self.check(["libobs/util/apple/cfstring-utils.h"], core=True, macos=True)
         self.check(["cmake/macos/compilerconfig.cmake"], macos=True)
         # coreaudio-encoder builds on Windows too (PLATFORMS WINDOWS MACOS, #1051).
         self.check(["plugins/coreaudio-encoder/encoder.cpp"], macos=True, windows=True)
-        self.check(["libobs/audio-monitoring/osx/coreaudio-output.c.h"], core=True, macos=True)
+        self.check(
+            ["libobs/audio-monitoring/osx/coreaudio-output.c.h"], core=True, macos=True
+        )
 
     def test_posix_code_reaches_macos(self):
         # macOS builds the POSIX sources and util/platform-nix.c too
@@ -104,13 +127,17 @@ class CiScopeTest(unittest.TestCase):
         self.check(["libobs/util/platform-nix-dbus.c.h"], core=True)
 
     def test_windows_code(self):
-        self.check(["plugins/win-capture/graphics-hook/d3d11-capture.cpp"], windows=True)
+        self.check(
+            ["plugins/win-capture/graphics-hook/d3d11-capture.cpp"], windows=True
+        )
         self.check(["frontend/utility/CrashHandler_Windows.cpp"])  # Qt area: follow-up
         self.check(["libobs/util/threading-windows.h"], core=True, windows=True)
         self.check(["libobs/obs-win-crash-handler.c.h"], core=True, windows=True)
         self.check(["deps/w32-pthreads/pthread.c"], windows=True)
         self.check(["cmake/windows/compilerconfig.cmake"], windows=True)
-        self.check(["rust/obs-util/src/platform/windows/pipe.rs"], core=True, windows=True)
+        self.check(
+            ["rust/obs-util/src/platform/windows/pipe.rs"], core=True, windows=True
+        )
 
     def test_rust_platform_directories_map_exactly(self):
         self.check(["rust/obs-nvenc/src/platform/macos.rs"], core=True, macos=True)
@@ -180,7 +207,9 @@ class QtScopeTest(unittest.TestCase):
     }
 
     def qt(self, *files):
-        return scope(list(files), lambda p: False, lambda p: self.FRAGMENTS.get(p, "")).qt
+        return scope(
+            list(files), lambda p: False, lambda p: self.FRAGMENTS.get(p, "")
+        ).qt
 
     def test_frontend_and_qt_tests_run_the_job(self):
         self.assertTrue(self.qt("frontend/OBSApp.cpp"))
@@ -188,7 +217,9 @@ class QtScopeTest(unittest.TestCase):
         self.assertTrue(self.qt("test/cmocka/test_source_select_list.cpp"))
         self.assertTrue(self.qt("test/cmocka/tests.d/test_source_select_list.cmake"))
         self.assertTrue(self.qt("test/cmocka/CMakeLists.txt"))
-        self.assertFalse(self.qt(".github/workflows/build-project.yaml"))  # only the Qt job's own files
+        self.assertFalse(
+            self.qt(".github/workflows/build-project.yaml")
+        )  # only the Qt job's own files
         self.assertTrue(self.qt("ci/linux_qt_frontend.py"))
 
     def test_qt_cache_contract_changes_run_the_job(self):
@@ -220,19 +251,33 @@ class PlatformPathsTest(unittest.TestCase):
         import re
         from pathlib import Path
 
-        names = {"WINDOWS": WINDOWS, "MACOS": MACOS, "LINUX": LINUX, "FREEBSD": LINUX, "OPENBSD": LINUX}
+        names = {
+            "WINDOWS": WINDOWS,
+            "MACOS": MACOS,
+            "LINUX": LINUX,
+            "FREEBSD": LINUX,
+            "OPENBSD": LINUX,
+        }
         every = {LINUX, MACOS, WINDOWS}
-        text = (Path(__file__).resolve().parent.parent / "plugins" / "CMakeLists.txt").read_text()
+        text = (
+            Path(__file__).resolve().parent.parent / "plugins" / "CMakeLists.txt"
+        ).read_text()
         rows = re.findall(r"add_\w+\((\S+)\s+PLATFORMS\s+([A-Z ]+)", text)
         self.assertGreater(len(rows), 10)
         for module, declared in rows:
             with self.subTest(module=module):
                 got = platforms(f"plugins/{module}/x.c") or every
-                self.assertEqual(set(got), {names[d] for d in declared.split() if d in names})
+                self.assertEqual(
+                    set(got), {names[d] for d in declared.split() if d in names}
+                )
 
     def test_file_name_inside_a_module_still_narrows(self):
-        self.assertEqual(platforms("plugins/coreaudio-encoder/encoder.cpp"), {MACOS, WINDOWS})
-        self.assertEqual(platforms("plugins/coreaudio-encoder/windows-imports.h"), {WINDOWS})
+        self.assertEqual(
+            platforms("plugins/coreaudio-encoder/encoder.cpp"), {MACOS, WINDOWS}
+        )
+        self.assertEqual(
+            platforms("plugins/coreaudio-encoder/windows-imports.h"), {WINDOWS}
+        )
         self.assertEqual(platforms("plugins/obs-text/gdiplus/obs-text.cpp"), {WINDOWS})
 
     def test_windows_only_directories(self):
@@ -261,7 +306,9 @@ CARGO = {
     "rust/obs-data/Cargo.toml": '[dependencies]\nobs-util = { path = "../obs-util" }\n',
     "rust/obs-util/Cargo.toml": "[dependencies]\n",
 }
-SUBS = frozenset({"plugins/obs-websocket", "plugins/obs-browser", "deps/libdshowcapture/src"})
+SUBS = frozenset(
+    {"plugins/obs-websocket", "plugins/obs-browser", "deps/libdshowcapture/src"}
+)
 
 
 class OsLaneTest(unittest.TestCase):
@@ -273,15 +320,28 @@ class OsLaneTest(unittest.TestCase):
         return set(os_lanes(path))
 
     def test_platform_rule_per_os(self):
-        self.assertEqual(self.os("rust/obs-util/src/platform/windows/mod.rs"), {"windows"})
+        self.assertEqual(
+            self.os("rust/obs-util/src/platform/windows/mod.rs"), {"windows"}
+        )
         self.assertEqual(self.os("rust/obs-util/src/platform/macos/mod.rs"), {"macos"})
         self.assertEqual(self.os("rust/obs-util/src/platform/linux/mod.rs"), {"linux"})
-        self.assertEqual(self.os("rust/obs-util/src/platform/posix/mod.rs"), {"linux", "macos"})
-        self.assertEqual(self.os("plugins/text-freetype2/text-freetype2-host-windows.c"), {"windows"})
-        self.assertEqual(self.os("shared/ipc-util/platform/posix/pipe.c"), {"linux", "macos"})
+        self.assertEqual(
+            self.os("rust/obs-util/src/platform/posix/mod.rs"), {"linux", "macos"}
+        )
+        self.assertEqual(
+            self.os("plugins/text-freetype2/text-freetype2-host-windows.c"), {"windows"}
+        )
+        self.assertEqual(
+            self.os("shared/ipc-util/platform/posix/pipe.c"), {"linux", "macos"}
+        )
 
     def test_core_is_linux_only(self):
-        for f in ("libobs/obs-source.c.h", "rust/obs-util/src/dstr.rs", "frontend/OBSApp.cpp", "shared/x/platform.c"):
+        for f in (
+            "libobs/obs-source.c.h",
+            "rust/obs-util/src/dstr.rs",
+            "frontend/OBSApp.cpp",
+            "shared/x/platform.c",
+        ):
             self.assertEqual(self.os(f), {"linux"}, f)
 
     def test_legacy_names_still_fall_back(self):
@@ -322,7 +382,10 @@ class LaneTableTest(unittest.TestCase):
     def test_linked_crates_follow_non_dev_dependencies(self):
         from ci_scope import linked_crates
 
-        self.assertEqual(linked_crates(lambda p: CARGO.get(p, "")), {"libobs-rust", "obs-util", "obs-data"})
+        self.assertEqual(
+            linked_crates(lambda p: CARGO.get(p, "")),
+            {"libobs-rust", "obs-util", "obs-data"},
+        )
 
     def test_tier2_rows(self):
         for f in (
@@ -355,7 +418,13 @@ class LaneTableTest(unittest.TestCase):
             self.assertFalse(self.sc(f).tier2, f)
 
     def test_no_pr_path_escalates_to_full(self):
-        for f in ("build-aux/appimage/build.sh", ".gitmodules", "plugins/obs-websocket", "plugins/obs-browser/x.cpp", ".github/workflows/build-project.yaml"):
+        for f in (
+            "build-aux/appimage/build.sh",
+            ".gitmodules",
+            "plugins/obs-websocket",
+            "plugins/obs-browser/x.cpp",
+            ".github/workflows/build-project.yaml",
+        ):
             self.assertFalse(self.sc(f).full, f)
 
     def test_workflow_edits_start_no_platform_job(self):
@@ -370,17 +439,34 @@ class LaneTableTest(unittest.TestCase):
         self.assertEqual((mac.windows, mac.macos, mac.tier2), (False, True, False))
         for path in ("libobs/cmake/os-linux.cmake", "libobs/cmake/os-freebsd.cmake"):
             got = self.sc(path)
-            self.assertEqual((got.windows, got.macos, got.tier2), (False, False, True), path)
+            self.assertEqual(
+                (got.windows, got.macos, got.tier2), (False, False, True), path
+            )
         # Any other OS-named libobs/cmake file starts only its OS too (#3237).
-        for path in ("libobs/cmake/rust-os-windows.cmake", "libobs/cmake/windows/obs-module.rc.in"):
+        for path in (
+            "libobs/cmake/rust-os-windows.cmake",
+            "libobs/cmake/windows/obs-module.rc.in",
+        ):
             got = self.sc(path)
-            self.assertEqual((got.windows, got.macos, got.tier2), (True, False, False), path)
-        for path in ("libobs/cmake/rust-os-macos.cmake", "libobs/cmake/macos/entitlements.plist"):
+            self.assertEqual(
+                (got.windows, got.macos, got.tier2), (True, False, False), path
+            )
+        for path in (
+            "libobs/cmake/rust-os-macos.cmake",
+            "libobs/cmake/macos/entitlements.plist",
+        ):
             got = self.sc(path)
-            self.assertEqual((got.windows, got.macos, got.tier2), (False, True, False), path)
-        for path in ("libobs/cmake/rust-os-nix.cmake", "libobs/cmake/linux/libobs.pc.in"):
+            self.assertEqual(
+                (got.windows, got.macos, got.tier2), (False, True, False), path
+            )
+        for path in (
+            "libobs/cmake/rust-os-nix.cmake",
+            "libobs/cmake/linux/libobs.pc.in",
+        ):
             got = self.sc(path)
-            self.assertEqual((got.windows, got.macos, got.tier2), (False, False, True), path)
+            self.assertEqual(
+                (got.windows, got.macos, got.tier2), (False, False, True), path
+            )
         # Every other libobs/cmake file stays shared.
         got = self.sc("libobs/cmake/rust.cmake")
         self.assertEqual((got.windows, got.macos, got.tier2), (True, True, True))
@@ -408,7 +494,11 @@ class LaneTableTest(unittest.TestCase):
             "plugins/linux-v4l2/v4l2-input.c",
         ):
             self.assertTrue(sc(f).tier2, f)
-        for f in ("frontend/utility/Bar.cpp", "plugins/obs-websocket-extra/x.cpp", "plugins/obs-filters/x.c"):
+        for f in (
+            "frontend/utility/Bar.cpp",
+            "plugins/obs-websocket-extra/x.cpp",
+            "plugins/obs-filters/x.c",
+        ):
             self.assertFalse(sc(f).tier2, f)
 
     def test_tier2_reads_the_real_cmocka_tests(self):
@@ -428,14 +518,29 @@ class LaneTableTest(unittest.TestCase):
             self.assertEqual(self.sc(f"plugins/{module}").linux_targets, module)
 
     def test_linux_targets_are_the_touched_modules(self):
-        self.assertEqual(self.sc("plugins/obs-filters/expander-filter.c").linux_targets, "obs-filters")
         self.assertEqual(
-            self.sc("plugins/obs-filters/a.c", "shared/happy-eyeballs/b.c", "plugins/obs-filters/c.c").linux_targets,
+            self.sc("plugins/obs-filters/expander-filter.c").linux_targets,
+            "obs-filters",
+        )
+        self.assertEqual(
+            self.sc(
+                "plugins/obs-filters/a.c",
+                "shared/happy-eyeballs/b.c",
+                "plugins/obs-filters/c.c",
+            ).linux_targets,
             "happy-eyeballs,obs-filters",
         )
 
     def test_linux_targets_skip_other_os_qt_and_non_modules(self):
-        for f in ("plugins/win-capture/a.c", "plugins/mac-capture/a.m", "plugins/frontend-tools/a.cpp", "shared/qt/a.cpp", "plugins/CMakeLists.txt", "libobs/a.c", "docs/a.md"):
+        for f in (
+            "plugins/win-capture/a.c",
+            "plugins/mac-capture/a.m",
+            "plugins/frontend-tools/a.cpp",
+            "shared/qt/a.cpp",
+            "plugins/CMakeLists.txt",
+            "libobs/a.c",
+            "docs/a.md",
+        ):
             self.assertEqual(self.sc(f).linux_targets, "", f)
 
     def test_qt_row_is_frontend_only(self):
@@ -464,15 +569,27 @@ class DocsOnlyTest(unittest.TestCase):
 
     def test_markdown_anywhere_is_docs_only(self):
         self.assertTrue(self.docs_only("docs/rust-port/coordination.md"))
-        self.assertTrue(self.docs_only("AGENTS.md", ".claude/skills/obs-worker/SKILL.md", "rust/README.md"))
+        self.assertTrue(
+            self.docs_only(
+                "AGENTS.md", ".claude/skills/obs-worker/SKILL.md", "rust/README.md"
+            )
+        )
         self.assertTrue(self.docs_only("build-aux/appimage/README.md"))
 
     def test_ci_evidence_license_and_gitignore_are_docs_only(self):
-        self.assertTrue(self.docs_only("docs/ci-evidence/2026-10-22-runtime-package-experiment.json"))
-        self.assertTrue(self.docs_only("LICENSE", "COPYING", ".gitignore", "docs/features.md"))
+        self.assertTrue(
+            self.docs_only(
+                "docs/ci-evidence/2026-10-22-runtime-package-experiment.json"
+            )
+        )
+        self.assertTrue(
+            self.docs_only("LICENSE", "COPYING", ".gitignore", "docs/features.md")
+        )
 
     def test_any_other_file_keeps_the_lint(self):
-        self.assertFalse(self.docs_only("docs/rust-port/coordination.md", "ci/test_claim_bot.py"))
+        self.assertFalse(
+            self.docs_only("docs/rust-port/coordination.md", "ci/test_claim_bot.py")
+        )
         self.assertFalse(self.docs_only("AGENTS.md", "rust/obs-util/src/lib.rs"))
         self.assertFalse(self.docs_only(".github/ISSUE_TEMPLATE/bug.yml"))
         self.assertFalse(self.docs_only("docs/rust-port/diagram.svg"))
@@ -485,13 +602,51 @@ class DocsOnlyTest(unittest.TestCase):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
         self.assertIn("docs_only: ${{ steps.native.outputs.docs_only }}", text)
         # A master push, the release gate and full runs never skip it.
-        self.assertIn('if [[ "${deferred}" != true ]]; then\n            qt=true tier2=true docs_only=false', text)
+        self.assertIn(
+            'if [[ "${deferred}" != true ]]; then\n            qt=true tier2=true docs_only=false',
+            text,
+        )
         self.assertIn('echo "docs_only=${docs_only:-false}"', text)
         job = text.split("  rust-tests-linux:\n", 1)[1].split("    steps:", 1)[0]
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", job)
 
 
-PR_1292_FILES = ["ci/platform-ifdef-baseline.json","cmake/cross/CMakeLists.txt","plugins/frontend-tools/CMakeLists.txt","plugins/frontend-tools/auto-scene-switcher-nix.cpp.hpp","plugins/frontend-tools/auto-scene-switcher-osx.mm.hpp","plugins/frontend-tools/auto-scene-switcher-win.cpp.hpp","plugins/frontend-tools/auto-scene-switcher.cpp.hpp","plugins/frontend-tools/build/frontend-tools-c.pch.h","plugins/frontend-tools/build/frontend-tools-captions-windows.pch.hpp","plugins/frontend-tools/build/frontend-tools-host-macos.pch.h","plugins/frontend-tools/build/frontend-tools-host-posix.pch.h","plugins/frontend-tools/build/frontend-tools-host-windows.pch.h","plugins/frontend-tools/build/frontend-tools-linux.pch.hpp","plugins/frontend-tools/build/frontend-tools-macos.pch.hpp","plugins/frontend-tools/build/frontend-tools-scripts.pch.hpp","plugins/frontend-tools/build/frontend-tools-windows.pch.hpp","plugins/frontend-tools/build/frontend-tools.captions-windows+.hpp.cpp","plugins/frontend-tools/build/frontend-tools.host-macos+.h.c","plugins/frontend-tools/build/frontend-tools.host-posix+.h.c","plugins/frontend-tools/build/frontend-tools.host-windows+.h.c","plugins/frontend-tools/build/frontend-tools.pch.hpp","plugins/frontend-tools/captions-host-windows.hpp","plugins/frontend-tools/captions-mssapi-stream.hpp","plugins/frontend-tools/captions-mssapi.hpp","plugins/frontend-tools/captions.cpp.hpp","plugins/frontend-tools/frontend-tools-host-macos.c.h","plugins/frontend-tools/frontend-tools-host-posix.c.h","plugins/frontend-tools/frontend-tools-host-windows.c.h","plugins/frontend-tools/frontend-tools-host.h","plugins/frontend-tools/frontend-tools.c.h","plugins/frontend-tools/scripts.cpp.hpp","test/cmocka/test_frontend_tools_host.c","test/cmocka/test_frontend_tools_host_macos.c","test/cmocka/tests.d/test_frontend_tools_host.cmake"]
+PR_1292_FILES = [
+    "ci/platform-ifdef-baseline.json",
+    "cmake/cross/CMakeLists.txt",
+    "plugins/frontend-tools/CMakeLists.txt",
+    "plugins/frontend-tools/auto-scene-switcher-nix.cpp.hpp",
+    "plugins/frontend-tools/auto-scene-switcher-osx.mm.hpp",
+    "plugins/frontend-tools/auto-scene-switcher-win.cpp.hpp",
+    "plugins/frontend-tools/auto-scene-switcher.cpp.hpp",
+    "plugins/frontend-tools/build/frontend-tools-c.pch.h",
+    "plugins/frontend-tools/build/frontend-tools-captions-windows.pch.hpp",
+    "plugins/frontend-tools/build/frontend-tools-host-macos.pch.h",
+    "plugins/frontend-tools/build/frontend-tools-host-posix.pch.h",
+    "plugins/frontend-tools/build/frontend-tools-host-windows.pch.h",
+    "plugins/frontend-tools/build/frontend-tools-linux.pch.hpp",
+    "plugins/frontend-tools/build/frontend-tools-macos.pch.hpp",
+    "plugins/frontend-tools/build/frontend-tools-scripts.pch.hpp",
+    "plugins/frontend-tools/build/frontend-tools-windows.pch.hpp",
+    "plugins/frontend-tools/build/frontend-tools.captions-windows+.hpp.cpp",
+    "plugins/frontend-tools/build/frontend-tools.host-macos+.h.c",
+    "plugins/frontend-tools/build/frontend-tools.host-posix+.h.c",
+    "plugins/frontend-tools/build/frontend-tools.host-windows+.h.c",
+    "plugins/frontend-tools/build/frontend-tools.pch.hpp",
+    "plugins/frontend-tools/captions-host-windows.hpp",
+    "plugins/frontend-tools/captions-mssapi-stream.hpp",
+    "plugins/frontend-tools/captions-mssapi.hpp",
+    "plugins/frontend-tools/captions.cpp.hpp",
+    "plugins/frontend-tools/frontend-tools-host-macos.c.h",
+    "plugins/frontend-tools/frontend-tools-host-posix.c.h",
+    "plugins/frontend-tools/frontend-tools-host-windows.c.h",
+    "plugins/frontend-tools/frontend-tools-host.h",
+    "plugins/frontend-tools/frontend-tools.c.h",
+    "plugins/frontend-tools/scripts.cpp.hpp",
+    "test/cmocka/test_frontend_tools_host.c",
+    "test/cmocka/test_frontend_tools_host_macos.c",
+    "test/cmocka/tests.d/test_frontend_tools_host.cmake",
+]
 
 
 class HostNamedFilesTest(unittest.TestCase):
@@ -516,15 +671,27 @@ class HostNamedFilesTest(unittest.TestCase):
             ("plugins/frontend-tools/frontend-tools-host-windows.c.h", True, False),
             ("plugins/frontend-tools/frontend-tools-host-macos.c.h", False, True),
             ("plugins/frontend-tools/frontend-tools-host-posix.c.h", False, True),
-            ("plugins/frontend-tools/build/frontend-tools-windows.pch.hpp", True, False),
-            ("plugins/frontend-tools/build/frontend-tools.host-windows+.h.c", True, False),
+            (
+                "plugins/frontend-tools/build/frontend-tools-windows.pch.hpp",
+                True,
+                False,
+            ),
+            (
+                "plugins/frontend-tools/build/frontend-tools.host-windows+.h.c",
+                True,
+                False,
+            ),
             ("plugins/frontend-tools/captions-host-windows.hpp", True, False),
         ):
             got = scope([path])
             self.assertEqual((got.windows, got.macos), (win, mac), path)
 
     def test_plain_qt_file_still_selects_no_os(self):
-        for path in ("plugins/frontend-tools/frontend-tools.c.h", "plugins/frontend-tools/scripts.cpp.hpp", "frontend/OBSApp.cpp"):
+        for path in (
+            "plugins/frontend-tools/frontend-tools.c.h",
+            "plugins/frontend-tools/scripts.cpp.hpp",
+            "frontend/OBSApp.cpp",
+        ):
             got = scope([path])
             self.assertEqual((got.windows, got.macos), (False, False), path)
         # Upstream platform tokens in a Qt area keep their old behaviour.
@@ -532,7 +699,11 @@ class HostNamedFilesTest(unittest.TestCase):
         self.assertEqual((got.windows, got.macos), (False, False))
 
     def test_host_linux_selects_neither(self):
-        for path in ("plugins/frontend-tools/frontend-tools-host-linux.c.h", "frontend/hosts/linux/x.cpp", "plugins/frontend-tools/build/x-linux.pch.hpp"):
+        for path in (
+            "plugins/frontend-tools/frontend-tools-host-linux.c.h",
+            "frontend/hosts/linux/x.cpp",
+            "plugins/frontend-tools/build/x-linux.pch.hpp",
+        ):
             got = scope([path])
             self.assertEqual((got.windows, got.macos), (False, False), path)
 
@@ -549,7 +720,9 @@ class HostNamedFilesTest(unittest.TestCase):
             "rust/obs-build/src/platform/shared_library.rs",
         ):
             got = scope([path])
-            self.assertEqual((got.qt_sdk, got.macos, got.windows), (True, True, True), path)
+            self.assertEqual(
+                (got.qt_sdk, got.macos, got.windows), (True, True, True), path
+            )
         for path in ("rust/obs-build/src/libobs.rs", "rust/obs-util/src/dstr.rs"):
             self.assertFalse(scope([path]).qt_sdk, path)
 
@@ -572,7 +745,9 @@ class HostNamedFilesTest(unittest.TestCase):
         # would grow the critical path for every ratcheted change (#2072, #2593).
         ratchet = ("frontend",)
         for event in ("merge_group", "push", ""):
-            got = scope(["frontend/OBSApp.cpp"], event=event, ref="master", ratchet_dirs=ratchet)
+            got = scope(
+                ["frontend/OBSApp.cpp"], event=event, ref="master", ratchet_dirs=ratchet
+            )
             self.assertFalse(got.asan, event)
 
     def test_the_sanitizer_lane_ignores_what_is_not_a_compile_input(self):
