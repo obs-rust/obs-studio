@@ -57,7 +57,7 @@ static bool process_audio_delay(struct audio_monitor *monitor, float **data, uin
 	if (audio_monitor_delay_stale(&monitor->last_recv_time, cur_time))
 		deque_free(&monitor->delay_buffer);
 
-	ts += monitor->source->sync_offset;
+	ts += obs_source_get_sync_offset(monitor->source);
 
 	deque_push_back(&monitor->delay_buffer, &ts, sizeof(ts));
 	deque_push_back(&monitor->delay_buffer, frames, sizeof(*frames));
