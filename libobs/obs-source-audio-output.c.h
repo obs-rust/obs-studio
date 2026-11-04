@@ -14,11 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-output.pch.h"
 
 /* The path that puts one audio packet of a source in its buffer: moved out of
  * obs-source.c as it is (#3628). source_muted() and
- * source_signal_audio_data() stay in obs-source.c. */
+ * source_signal_audio_data() stay in obs-source.c.
+ * Hybrid libobs has it in Rust (obs_source::audio_output, shims in
+ * obs-source-seam). This file stays for the C reference and the oracle. */
 
 void reset_audio_timing(obs_source_t *source, uint64_t timestamp, uint64_t os_time)
 {

@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# pyright: basic, reportImplicitRelativeImport=false
 """Which CI jobs a change needs (obs-rust/obs-studio#436).
 
     uv run ci/ci_scope.py <base-ref> --event <name> --ref <ref>
@@ -57,7 +58,7 @@ file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
 `rust/*/src/platform/windows/`, `libobs/build/source-sets.d/
 LIBOBS_WINDOWS_SOURCES.json` (#3235), ...) starts that platform's jobs. Core files
 carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR a
-core change is Linux only. Merge groups and pushes to master are the
+core change is Linux only. Pushes to master are the
 exception: core code selects the macOS and Windows Rust lanes too, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
@@ -96,7 +97,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from conversion_ratchet import hit as ratchet_hit, repo_ratcheted_dirs
-from platform_paths import LINUX, MACOS, WINDOWS, host_platforms, platforms as name_platforms
+from platform_paths import (
+    LINUX,
+    MACOS,
+    WINDOWS,
+    host_platforms,
+    platforms as name_platforms,
+)
 
 CORE_PREFIXES = ("libobs/", "rust/")
 CORE_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml"}
@@ -200,14 +207,21 @@ def cmocka_source_paths(texts: list[str]) -> tuple[str, ...]:
     return tuple(sorted(p for p in found if "/" in p))
 
 
-def repo_cmocka_source_paths(root: Path = Path(__file__).resolve().parent.parent) -> tuple[str, ...]:
-    files = [root / CMOCKA_BUILD_FILES[0], *sorted((root / CMOCKA_BUILD_FILES[1]).glob("*.cmake"))]
+def repo_cmocka_source_paths(
+    root: Path = Path(__file__).resolve().parent.parent,
+) -> tuple[str, ...]:
+    files = [
+        root / CMOCKA_BUILD_FILES[0],
+        *sorted((root / CMOCKA_BUILD_FILES[1]).glob("*.cmake")),
+    ]
     return cmocka_source_paths([read_text(str(f)) for f in files])
 
 
 def cmocka_compiles(path: str, refs: tuple[str, ...]) -> bool:
     # path under a referenced source, or a gitlink (submodule root) above one.
-    return any(path == r or path.startswith(r + "/") or r.startswith(path + "/") for r in refs)
+    return any(
+        path == r or path.startswith(r + "/") or r.startswith(path + "/") for r in refs
+    )
 
 
 def linked_crates(read: Callable[[str], str], root: str = "libobs-rust") -> set[str]:
@@ -236,7 +250,17 @@ def linked_crates(read: Callable[[str], str], root: str = "libobs-rust") -> set[
 # changed file starts an OS lane only inside one of its areas, so a
 # docs/.../platform-windows.md starts nothing. Core files start Linux only on
 # a PR or merge-queue run; a master push adds both platform lanes (#2916).
-_ALL_AREAS = ("libobs", "rust/", "frontend/", "plugins/", "shared/", "deps/", "cmake/", "test/", "build-aux/")
+_ALL_AREAS = (
+    "libobs",
+    "rust/",
+    "frontend/",
+    "plugins/",
+    "shared/",
+    "deps/",
+    "cmake/",
+    "test/",
+    "build-aux/",
+)
 OS_LANES: dict[str, tuple[str, ...]] = {
     LINUX: _ALL_AREAS,
     WINDOWS: _ALL_AREAS,
@@ -271,14 +295,24 @@ def module_file_platforms() -> dict[str, frozenset[str]]:
     modules_dir = build / "modules.d"
     if not modules_dir.is_dir():
         return {}
-    patterns = {p.stem: json.loads(p.read_text(encoding="utf-8"))["groups"] for p in modules_dir.glob("*.json")}
+    patterns = {
+        p.stem: json.loads(p.read_text(encoding="utf-8"))["groups"]
+        for p in modules_dir.glob("*.json")
+    }
     users: dict[str, set[frozenset[str] | None]] = {}
     for group_file in sorted(build.glob("libobs.*+.h.*")):
         rel = group_file.relative_to(REPO).as_posix()
         m = GROUP_FILE.match(rel)
         if not m:
             continue
-        module = next((n for n, globs in patterns.items() if any(fnmatch.fnmatchcase(m.group(1), g) for g in globs)), None)
+        module = next(
+            (
+                n
+                for n, globs in patterns.items()
+                if any(fnmatch.fnmatchcase(m.group(1), g) for g in globs)
+            ),
+            None,
+        )
         oses = MODULE_PLATFORMS.get(module or "")
         users.setdefault(rel, set()).add(oses)
         for pch in PCH_INCLUDE.findall(group_file.read_text(encoding="utf-8")):
@@ -287,7 +321,7 @@ def module_file_platforms() -> dict[str, frozenset[str]]:
     for path, oses in users.items():
         if None in oses:
             continue  # a core module uses it too: Linux, as before
-        out[path] = frozenset().union(*oses)
+        out[path] = frozenset().union(*(os for os in oses if os is not None))
     return out
 
 
@@ -297,7 +331,12 @@ def path_platforms(path: str) -> frozenset[str] | None:
         return module_file_platforms()[path]
     m = PLATFORM_RULE.search("/" + path)
     if m:
-        return {"windows": frozenset({WINDOWS}), "macos": frozenset({MACOS}), "linux": frozenset({LINUX}), "posix": frozenset({LINUX, MACOS})}[m.group(1)]
+        return {
+            "windows": frozenset({WINDOWS}),
+            "macos": frozenset({MACOS}),
+            "linux": frozenset({LINUX}),
+            "posix": frozenset({LINUX, MACOS}),
+        }[m.group(1)]
     # Upstream names (win-capture/, mac-*, obs-nix.c, platform-cocoa.m, ...)
     # keep their paths, so this token classifier is permanent: an ambiguous
     # path gets an entry in ci/platform_paths.py, never a rename (#1051).
@@ -315,16 +354,29 @@ def is_shared(path: str, exists: Callable[[str], bool]) -> bool:
         return False
     if path.startswith("libobs/cmake/") and path_platforms(path) is not None:
         return False
-    if path.startswith(SHARED_PREFIXES) or path in SHARED_FILES or SHARED_PATTERN.match(path) or SHARED_TEST.match(path):
+    if (
+        path.startswith(SHARED_PREFIXES)
+        or path in SHARED_FILES
+        or SHARED_PATTERN.match(path)
+        or SHARED_TEST.match(path)
+    ):
         return True
     m = TESTS_D.match(path)
-    return bool(m) and any(exists(f"test/cmocka/{m.group(1)}.{ext}") for ext in ("cpp", "hpp"))
+    return bool(m) and any(
+        exists(f"test/cmocka/{m.group(1)}.{ext}") for ext in ("cpp", "hpp")
+    )
 
 
 # The Linux Qt frontend job (#992) runs only when the change can break the Qt
 # frontend build or a Qt-linked unit test; master pushes, schedule and release runs always
 # run it (build-project.yaml).
-QT_PREFIXES = ("frontend/", "shared/qt/", "shared/properties-view/", "plugins/frontend-tools/", "ci/linux_qt_frontend")
+QT_PREFIXES = (
+    "frontend/",
+    "shared/qt/",
+    "shared/properties-view/",
+    "plugins/frontend-tools/",
+    "ci/linux_qt_frontend",
+)
 QT_FILES = {
     "ci/fetch_libs_asset.py",
     "ci/test_qt_fastpath.py",
@@ -366,7 +418,12 @@ def is_qt(path: str, read: Callable[[str], str]) -> bool:
 
 # Areas whose files are Qt/frontend: a platform file there starts no OS Rust
 # or Tier 2 job (Windows/macOS Qt lanes are a follow-up).
-QT_AREAS = ("frontend/", "shared/qt/", "shared/properties-view/", "plugins/frontend-tools/")
+QT_AREAS = (
+    "frontend/",
+    "shared/qt/",
+    "shared/properties-view/",
+    "plugins/frontend-tools/",
+)
 # Linux CMake targets, one row per module root (#992): the module directory
 # is the target name; CI filters to targets that exist and are Linux-built.
 LINUX_TARGET_ROOTS = ("plugins/", "shared/")
@@ -407,20 +464,20 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
         if path.startswith(CROSS_SELF):
             oses |= set(CROSS_ALIASES)
         elif any(path.startswith(d + "/") for d in dirs):
-            oses |= set(host_platforms(path) or path_platforms(path) or ()) & set(CROSS_ALIASES)
+            oses |= set(host_platforms(path) or path_platforms(path) or ()) & set(
+                CROSS_ALIASES
+            )
     return ",".join(sorted(CROSS_ALIASES[os] for os in oses))
 
 
 def core_native_lanes(core: bool, event: str, ref: str) -> bool:
-    """Core queue batches and master pushes need both native lanes (#3606).
+    """Native core validation runs on master pushes; queue execution is Linux-only.
 
-    A `libobs/` or `rust/` only diff selects no platform lane, so a Windows- or
-    macOS-only break in core code reached master having never been compiled
-    there (#2910: glibc tolerated the mutex destroy, the Windows pthread layer
-    crashed, and the failure surfaced in an unrelated `shared/` PR's lane).
-    PRs retain path selection; the queue amortises native validation across
-    up to five PRs, catching native compiler/linker failures before merge."""
-    return core and (event == "merge_group" or (event == "push" and ref == "master"))
+    Native compiler/runtime regressions are caught after merge and on nightly/
+    release runs. Hosted native runner starvation must not stall queue admission.
+    PRs keep platform path selection.
+    """
+    return core and event == "push" and ref == "master"
 
 
 def scope(
@@ -445,9 +502,9 @@ def scope(
         plat = path_platforms(path)
         # A platform-only file (libobs/**/platform-windows.c) never starts the
         # Linux Tier 2.
-        if (lane_hit("tier2", path, linked) or cmocka_compiles(path, cmocka_paths)) and (
-            plat is None or LINUX in plat
-        ):
+        if (
+            lane_hit("tier2", path, linked) or cmocka_compiles(path, cmocka_paths)
+        ) and (plat is None or LINUX in plat):
             tier2 = True
         if target := linux_target(path):
             targets.add(target)
@@ -469,7 +526,7 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    if core_native_lanes(core, event, ref):
+    if core_native_lanes(core or "ci/ci_scope.py" in files, event, ref):
         macos = windows = True
     docs_only = bool(files) and all(is_docs(path) for path in files)
     # #2923: the ratchet's blind spot is the configuration. A PR that changes a
@@ -479,11 +536,13 @@ def scope(
     # the PR that causes it. Pull requests only: the merge queue keeps the path
     # selection (#2072, #2593) and a master push or the schedule runs the full
     # lane anyway.
-    asan = event == "pull_request" and any(ratchet_hit(path, ratchet_dirs) for path in files)
+    asan = event == "pull_request" and any(
+        ratchet_hit(path, ratchet_dirs) for path in files
+    )
     return Scope(
         core,
-        macos,
-        windows,
+        macos and event != "merge_group",
+        windows and event != "merge_group",
         qt,
         tier2,
         False,
@@ -497,8 +556,14 @@ def scope(
 
 def changed_files(base: str) -> list[str]:
     out = subprocess.run(
-        (["git", "ls-files"] if base == "ALL" else ["git", "diff", "--name-only", f"{base}...HEAD"]),
-        check=True, capture_output=True, text=True
+        (
+            ["git", "ls-files"]
+            if base == "ALL"
+            else ["git", "diff", "--name-only", f"{base}...HEAD"]
+        ),
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
     return [line for line in out.splitlines() if line]
 
@@ -511,15 +576,25 @@ def read_text(path: str) -> str:
 
 
 def base_text(base: str, path: str) -> str:
-    out = subprocess.run(["git", "show", f"{base}:{path}"], capture_output=True, text=True)
+    out = subprocess.run(
+        ["git", "show", f"{base}:{path}"], capture_output=True, text=True
+    )
     return out.stdout if out.returncode == 0 else ""
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
-    parser.add_argument("base", help="git ref to diff against, or ALL for every tracked file")
-    parser.add_argument("--event", default="", help="the workflow's event name (GITHUB_EVENT_NAME)")
-    parser.add_argument("--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)")
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0] if __doc__ else None
+    )
+    parser.add_argument(
+        "base", help="git ref to diff against, or ALL for every tracked file"
+    )
+    parser.add_argument(
+        "--event", default="", help="the workflow's event name (GITHUB_EVENT_NAME)"
+    )
+    parser.add_argument(
+        "--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)"
+    )
     args = parser.parse_args()
     files = changed_files(args.base)
     result = scope(

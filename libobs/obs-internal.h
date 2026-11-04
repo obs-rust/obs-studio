@@ -1411,6 +1411,14 @@ extern void reset_audio_data(obs_source_t *source, uint64_t os_time);
 extern void reset_audio_data_at_sys_time(obs_source_t *source, uint64_t os_time);
 extern void source_output_audio_data(obs_source_t *source, const struct audio_data *data);
 
+static inline bool destroying(const struct obs_source *source)
+{
+	return os_atomic_load_long(&source->destroying);
+}
+
+/* obs-source.c, for obs_source_output_audio() */
+extern struct obs_audio_data *filter_async_audio(obs_source_t *source, struct obs_audio_data *in);
+
 /* obs-source.c, for source_output_audio_data() */
 extern void source_signal_audio_data(obs_source_t *source, const struct audio_data *in, bool muted);
 extern bool source_muted(obs_source_t *source, uint64_t os_time);

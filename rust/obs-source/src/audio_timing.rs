@@ -24,7 +24,7 @@
 //! [`buffer_start`] is where `reset_audio_data_at_sys_time()` starts an
 //! emptied buffer (#286).
 //!
-//! `obs-source.c.h` keeps everything else: it reads the source's fields,
+//! [`audio_output`](crate::audio_output) keeps everything else: it reads the source's fields,
 //! calls a step and stores what it returns, in the order the C always
 //! stored it (`timing_set` and `timing_adjust` are volatile: the async
 //! video thread reads and writes them); it runs `handle_ts_jump()` (the

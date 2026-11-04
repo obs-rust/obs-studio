@@ -265,7 +265,7 @@ impl Transition for Tr {
         add_alignment(align, cx, cy)
     }
     fn set_matrix(&self, idx: usize, scale: (f32, f32), pos: (f32, f32)) {
-        assert!(!self.locked.get(), "matrix under transition_mutex");
+        assert!(self.locked.get(), "matrix without transition_mutex");
         self.ev(Ev::Matrix(idx, scale, pos));
         self.f.borrow_mut().matrices[idx] = Some((scale, pos));
     }
@@ -412,7 +412,9 @@ fn c_matrix_scale_types() {
             Ev::Height(5),
             Ev::Unlock,
             Ev::Align(ALIGN_CENTER, 100, 0),
-            Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0)),
+            Ev::Unlock,
         ]
     );
     assert_eq!(f.matrices, [Some(((1.0, 1.0), (50.0, 0.0))), None]);
@@ -423,7 +425,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 0, 50),
-            Ev::Matrix(0, (0.5, 0.5), (0.0, 25.0))
+            Ev::Lock,
+            Ev::Matrix(0, (0.5, 0.5), (0.0, 25.0)),
+            Ev::Unlock,
         ]
     );
 
@@ -433,7 +437,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 100, 0),
-            Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0)),
+            Ev::Unlock,
         ]
     );
     let (ev, _) = matrix_of(SCALE_ASPECT, ALIGN_CENTER, 50, 50);
@@ -441,7 +447,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 100, 0),
-            Ev::Matrix(0, (2.0, 2.0), (50.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (2.0, 2.0), (50.0, 0.0)),
+            Ev::Unlock,
         ]
     );
     let (ev, _) = matrix_of(SCALE_ASPECT, ALIGN_CENTER, 400, 100);
@@ -449,7 +457,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 0, 50),
-            Ev::Matrix(0, (0.5, 0.5), (0.0, 25.0))
+            Ev::Lock,
+            Ev::Matrix(0, (0.5, 0.5), (0.0, 25.0)),
+            Ev::Unlock,
         ]
     );
 
@@ -459,7 +469,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 0, 0),
-            Ev::Matrix(0, (2.0, 2.0), (0.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (2.0, 2.0), (0.0, 0.0)),
+            Ev::Unlock,
         ]
     );
     let (ev, _) = matrix_of(SCALE_STRETCH, ALIGN_CENTER, 400, 25);
@@ -467,7 +479,9 @@ fn c_matrix_scale_types() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, 0, 0),
-            Ev::Matrix(0, (0.5, 4.0), (0.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (0.5, 4.0), (0.0, 0.0)),
+            Ev::Unlock,
         ]
     );
 }
@@ -509,7 +523,9 @@ fn c_matrix_alignments() {
         ev[4..],
         [
             Ev::Align(ALIGN_RIGHT | ALIGN_BOTTOM, 0, 33),
-            Ev::Matrix(0, (s, s), (0.0, 33.0))
+            Ev::Lock,
+            Ev::Matrix(0, (s, s), (0.0, 33.0)),
+            Ev::Unlock,
         ]
     );
 
@@ -522,7 +538,9 @@ fn c_matrix_alignments() {
         ev[4..],
         [
             Ev::Align(ALIGN_CENTER, room.0, room.1),
-            Ev::Matrix(0, (s, s), ((room.0 / 2) as f32, (room.1 / 2) as f32))
+            Ev::Lock,
+            Ev::Matrix(0, (s, s), ((room.0 / 2) as f32, (room.1 / 2) as f32)),
+            Ev::Unlock,
         ]
     );
 }
@@ -541,13 +559,17 @@ fn matrix_each_slot() {
             Ev::Height(1),
             Ev::Unlock,
             Ev::Align(ALIGN_CENTER, 100, 0),
+            Ev::Lock,
             Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0)),
+            Ev::Unlock,
             Ev::Lock,
             Ev::Width(2),
             Ev::Height(2),
             Ev::Unlock,
             Ev::Align(ALIGN_CENTER, 0, 50),
+            Ev::Lock,
             Ev::Matrix(1, (1.0, 1.0), (0.0, 25.0)),
+            Ev::Unlock,
         ]
     );
     tr.assert_unlocked();
@@ -587,7 +609,9 @@ fn matrix_scale_type_outside_enum() {
             ev[4..],
             [
                 Ev::Align(ALIGN_CENTER, -200, 50),
-                Ev::Matrix(0, (1.0, 1.0), (-100.0, 25.0))
+                Ev::Lock,
+                Ev::Matrix(0, (1.0, 1.0), (-100.0, 25.0)),
+                Ev::Unlock,
             ],
             "scale type {scale_type}"
         );
@@ -606,7 +630,9 @@ fn matrix_unsized_transition() {
         tr.events()[4..],
         [
             Ev::Align(ALIGN_CENTER, 0, 0),
-            Ev::Matrix(0, (0.0, 0.0), (0.0, 0.0))
+            Ev::Lock,
+            Ev::Matrix(0, (0.0, 0.0), (0.0, 0.0)),
+            Ev::Unlock,
         ]
     );
 
@@ -739,14 +765,18 @@ fn tick_order() {
             Ev::Height(1),
             Ev::Unlock,
             Ev::Align(ALIGN_CENTER, 100, 0),
+            Ev::Lock,
             Ev::Matrix(0, (1.0, 1.0), (50.0, 0.0)),
+            Ev::Unlock,
             // slot B's
             Ev::Lock,
             Ev::Width(2),
             Ev::Height(2),
             Ev::Unlock,
             Ev::Align(ALIGN_CENTER, 0, 75),
+            Ev::Lock,
             Ev::Matrix(1, (0.5, 0.5), (0.0, 37.0)),
+            Ev::Unlock,
             // the snap
             Ev::SetManualVal(1.0),
             // the render targets
@@ -828,11 +858,13 @@ fn model_tick(f: &Fields, sizes: &BTreeMap<Id, (u32, u32)>, t: f32, busy: i32) -
         let ox = tr_cx - source_cx * scale.0;
         let oy = tr_cy - source_cy * scale.1;
         ev.push(Ev::Align(f.alignment, ox as i32, oy as i32));
+        ev.push(Ev::Lock);
         ev.push(Ev::Matrix(
             i,
             scale,
             add_alignment(f.alignment, ox as i32, oy as i32),
         ));
+        ev.push(Ev::Unlock);
     }
 
     if f.mode == MODE_MANUAL {

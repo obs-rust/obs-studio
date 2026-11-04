@@ -74,6 +74,23 @@ static int thread_count_settled(int expected)
 	return count;
 }
 
+static void *no_work(void *arg)
+{
+	return arg;
+}
+
+/* ThreadSanitizer starts a thread of its own when the process creates its
+ * first thread. Create one first, so the counts of the cases hold only the
+ * threads under test (#3638). */
+static void start_helper_threads(void)
+{
+	pthread_t thread;
+
+	if (pthread_create(&thread, NULL, no_work, NULL) == 0)
+		pthread_join(thread, NULL);
+	os_sleep_ms(100);
+}
+
 static void *create_on_missing_device(void)
 {
 	obs_data_t *settings = obs_data_create();
@@ -172,5 +189,6 @@ int main(void)
 		cmocka_unit_test(destroy_ends_reopen_thread),
 		cmocka_unit_test(destroy_right_after_create),
 	};
+	start_helper_threads();
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

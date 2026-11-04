@@ -233,6 +233,8 @@
 #include "obs-source-transition-render.h"
 #include "obs-source-transition-sample-time.h"
 #include "obs-hotkey-seam.h"
+#include "obs-source-audio-input-path-seam.h"
+#include "obs-source-audio-output-seam.h"
 #include "obs-source-audio-settings-seam.h"
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"

@@ -1171,6 +1171,7 @@
         "libobs/graphics/effect-param-numbers.c.h",
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
@@ -1188,11 +1189,35 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_funcs": {
+      "sources": [
+        "libobs/graphics/effect-param-numbers.c.h",
+        "libobs/graphics/effect-param-types.c.h",
+        "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
+        "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser.c.h",
+        "test/cmocka/test_effect_parser_funcs.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_effect_parser_params": {
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
@@ -1215,6 +1240,7 @@
         "libobs/graphics/effect-param-numbers.c.h",
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
@@ -5031,6 +5057,17 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_audio_input": {
+      "sources": [
+        "test/cmocka/test_source_audio_input.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_audio_input_steps": {
       "sources": [
         "test/cmocka/test_source_audio_input_steps.c",
@@ -7309,6 +7346,12 @@
         "${target}"
       ]
     },
+    "test_effect_parser_funcs": {
+      "target": "test_effect_parser_funcs",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_effect_parser_params": {
       "target": "test_effect_parser_params",
       "command": [
@@ -8764,6 +8807,19 @@
       "target": "test_source_audio_balance_mono",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_audio_input": {
+      "target": "test_source_audio_input",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_audio_input_steps": {

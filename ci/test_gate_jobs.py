@@ -1,16 +1,19 @@
 #!/usr/bin/env -S uv run --script
+# pyright: basic, reportImplicitRelativeImport=false
 """CI Gate fails on a cancelled job nested in a reusable workflow (#1793).
 
-    uv run python -m unittest ci/test_gate_jobs.py
+uv run python -m unittest ci/test_gate_jobs.py
 """
 
 from __future__ import annotations
 
 import contextlib
 import io
+import json
 import os
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -46,75 +49,202 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
-    def test_core_batch_cannot_pass_with_native_tier2_skipped(self):
-        from ci_scope import scope
-
-        core = scope(["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"], event="merge_group").core
-        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
-        for conclusion in ("skipped", "failure", "cancelled", None):
-            with self.subTest(conclusion=conclusion):
-                self.assertEqual(blocking([job(n, conclusion) for n in names], require_native=core), names)
-        self.assertEqual(blocking([], require_native=core), names)
-        self.assertEqual(blocking([job(n, "success") for n in names], require_native=core), [])
-        self.assertEqual(blocking([job(n, "skipped") for n in names]), [])
-
-    def test_gate_receives_core_scope_from_reusable_workflow(self):
-        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.assertTrue("value: ${{ jobs.check-event.outputs.core }}" in build)
-        gate = PULL.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:", 1)[0]
-        self.assertIn("CORE_SCOPE: ${{ needs.build-project.outputs.core }}", gate)
-
-    def test_main_requires_native_success_only_for_core_merge_groups(self):
-        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
-        for event, core, conclusion, expected in (
-            ("merge_group", "true", "skipped", 1),
-            ("merge_group", "true", "success", 0),
-            ("merge_group", "false", "skipped", 0),
-            ("pull_request", "true", "skipped", 0),
-            ("merge_group", "", "success", 1),
+    def test_runnerless_cancellation_is_diagnosed_even_without_scope(self):
+        jobs = [
+            dict(
+                job("Build / macOS", "cancelled"), runner_name="", runner_id=0, steps=[]
+            )
+        ]
+        out = io.StringIO()
+        with (
+            mock.patch.dict(
+                os.environ, {"GITHUB_EVENT_NAME": "merge_group", "CORE_SCOPE": ""}
+            ),
+            mock.patch.object(gate_jobs, "run_jobs", return_value=jobs),
+            contextlib.redirect_stdout(out),
         ):
+            self.assertEqual(gate_jobs.main(), 1)
+        self.assertIn("runner capacity", out.getvalue())
+        self.assertIn("Build / macOS", out.getvalue())
+
+    def test_queue_scope_is_independent_of_reusable_output(self):
+        with (
+            mock.patch.dict(
+                os.environ, {"GITHUB_EVENT_NAME": "merge_group", "CORE_SCOPE": ""}
+            ),
+            mock.patch.object(
+                gate_jobs, "queue_core_scope", return_value=True, create=True
+            ),
+            mock.patch.object(
+                gate_jobs,
+                "run_jobs",
+                return_value=[job(gate_jobs.SCOPE_JOB, "success")],
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(gate_jobs.main(), 0)
+
+    def test_queue_scope_reads_exact_event_diff(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "event.json"
+            group = {"base_sha": "a" * 40, "head_sha": "b" * 40}
+            path.write_text(json.dumps({"merge_group": group}))
             with (
-                self.subTest(event=event, core=core, conclusion=conclusion),
-                mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": event, "CORE_SCOPE": core}),
-                mock.patch.object(gate_jobs, "run_jobs", return_value=[job(n, conclusion) for n in names]),
-                contextlib.redirect_stdout(io.StringIO()),
+                mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(path)}),
+                mock.patch.object(
+                    gate_jobs.subprocess,
+                    "run",
+                    return_value=done(0, "libobs/obs.c.h\n"),
+                ) as run,
             ):
-                self.assertEqual(gate_jobs.main(), expected)
+                self.assertTrue(gate_jobs.queue_core_scope())
+                self.assertEqual(
+                    run.call_args.args[0],
+                    [
+                        "git",
+                        "diff",
+                        "--name-only",
+                        group["base_sha"],
+                        group["head_sha"],
+                        "--",
+                    ],
+                )
+                group.pop("base_sha")
+                path.write_text(json.dumps({"merge_group": group}))
+                with self.assertRaisesRegex(ValueError, "merge_group.base_sha"):
+                    gate_jobs.queue_core_scope()
+
+    def test_invalid_event_shapes_name_the_missing_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "event.json"
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(path)}):
+                for event, message in (
+                    (None, "JSON must be an object"),
+                    ([], "JSON must be an object"),
+                    ({}, "merge_group must be an object"),
+                    ({"merge_group": None}, "merge_group must be an object"),
+                ):
+                    path.write_text(json.dumps(event))
+                    with self.assertRaisesRegex(ValueError, message):
+                        gate_jobs.queue_core_scope()
+
+    def test_scope_error_does_not_hide_executed_job_failures(self):
+        for conclusion in (
+            "failure",
+            "timed_out",
+            "startup_failure",
+            "action_required",
+            "cancelled",
+        ):
+            out = io.StringIO()
+            with (
+                mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": "merge_group"}),
+                mock.patch.object(
+                    gate_jobs,
+                    "queue_core_scope",
+                    side_effect=ValueError("merge_group.head_sha missing"),
+                ),
+                mock.patch.object(
+                    gate_jobs,
+                    "run_jobs",
+                    return_value=[
+                        dict(
+                            job("native", conclusion), runner_name="runner", runner_id=1
+                        )
+                    ],
+                ),
+                contextlib.redirect_stdout(out),
+            ):
+                self.assertEqual(gate_jobs.main(), 1)
+            self.assertIn(f"conclusion={conclusion}", out.getvalue())
+            self.assertIn("merge_group.head_sha missing", out.getvalue())
+            self.assertNotIn("runner capacity", out.getvalue())
+
+    def test_queue_requires_successful_scope_selection(self):
+        names = [gate_jobs.SCOPE_JOB]
+        for conclusion in ("skipped", "failure", "cancelled", None):
+            self.assertEqual(
+                blocking([job(n, conclusion) for n in names], require_scope=True), names
+            )
+        self.assertEqual(blocking([], require_scope=True), names)
+        self.assertEqual(
+            blocking([job(n, "success") for n in names], require_scope=True), []
+        )
+
+    def test_gate_resolves_scope_without_reusable_outputs(self):
+        gate = PULL.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:", 1)[0]
+        self.assertNotIn("CORE_SCOPE:", gate)
+        self.assertIn("fetch-depth: 0", gate)
 
     def test_historical_cancelled_macos_jobs_block(self):
-        self.assertEqual(blocking(RUN_39677084695), [
-            "Build 🧱 / Rust Tests 🦀 (macos-26)",
-            "Build 🧱 / Rust Tier 2 macos-26",
-        ])
+        self.assertEqual(
+            blocking(RUN_39677084695),
+            [
+                "Build 🧱 / Rust Tests 🦀 (macos-26)",
+                "Build 🧱 / Rust Tier 2 macos-26",
+            ],
+        )
 
     def test_scope_skips_and_successes_pass(self):
-        self.assertEqual(blocking([j for j in RUN_39677084695 if j["conclusion"] != "cancelled"]), [])
+        self.assertEqual(
+            blocking([j for j in RUN_39677084695 if j["conclusion"] != "cancelled"]), []
+        )
 
     def test_every_unsuccessful_conclusion_blocks(self):
-        for conclusion in ("failure", "cancelled", "timed_out", "startup_failure", "action_required"):
-            self.assertEqual(blocking([job("Build 🧱 / x", conclusion)]), ["Build 🧱 / x"], conclusion)
+        for conclusion in (
+            "failure",
+            "cancelled",
+            "timed_out",
+            "startup_failure",
+            "action_required",
+        ):
+            self.assertEqual(
+                blocking([job("Build 🧱 / x", conclusion)]),
+                ["Build 🧱 / x"],
+                conclusion,
+            )
 
     def test_maintenance_jobs_never_block(self):
         # ci-pre's sweep and the end-of-queue janitor sit outside the gate.
-        self.assertEqual(blocking([
-            job("CI Pre 🧹 / Cache Janitor", "failure"),
-            job("Cache Janitor 🧹", "cancelled"),
-            job("CI Gate ✅", "failure"),
-        ]), [])
+        self.assertEqual(
+            blocking(
+                [
+                    job("CI Pre 🧹 / Cache Janitor", "failure"),
+                    job("Cache Janitor 🧹", "cancelled"),
+                    job("CI Gate ✅", "failure"),
+                ]
+            ),
+            [],
+        )
 
     def test_unfinished_jobs_are_ignored(self):
-        self.assertEqual(blocking([job("Cache Janitor 🧹", None, "queued"), job("Build 🧱 / y", None, "in_progress")]), [])
+        self.assertEqual(
+            blocking(
+                [
+                    job("Cache Janitor 🧹", None, "queued"),
+                    job("Build 🧱 / y", None, "in_progress"),
+                ]
+            ),
+            [],
+        )
 
     def test_gate_runs_the_check_on_every_event(self):
-        gate = re.search(r"^  ci-gate:\n((?:    .*\n|\s*\n)*)", PULL, re.M).group(1)
+        match = re.search(r"^  ci-gate:\n((?:    .*\n|\s*\n)*)", PULL, re.M)
+        assert match is not None
+        gate = match.group(1)
         step = re.search(r"- name: Check Run Jobs ✅\n((?:        .*\n)*)", gate)
+        assert step is not None
         self.assertIsNotNone(step, "CI Gate must list the run's jobs (ci/gate_jobs.py)")
         self.assertIn("uv run --no-project ci/gate_jobs.py", step.group(1))
-        self.assertNotIn("if:", step.group(1))
+        self.assertIn("if: always()", step.group(1))
 
 
-def done(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess:
-    return subprocess.CompletedProcess(args=["gh"], returncode=returncode, stdout=stdout, stderr=stderr)
+def done(
+    returncode: int, stdout: str = "", stderr: str = ""
+) -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(
+        args=["gh"], returncode=returncode, stdout=stdout, stderr=stderr
+    )
 
 
 class JobListCall(unittest.TestCase):
@@ -122,10 +252,14 @@ class JobListCall(unittest.TestCase):
 
     def setUp(self):
         # This fixture tests API errors, independently of the host workflow's event.
-        patcher = mock.patch.dict(os.environ, {
-            "GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1",
-            "GITHUB_EVENT_NAME": "pull_request",
-        })
+        patcher = mock.patch.dict(
+            os.environ,
+            {
+                "GITHUB_REPOSITORY": "obs-rust/obs-studio",
+                "GITHUB_RUN_ID": "1",
+                "GITHUB_EVENT_NAME": "pull_request",
+            },
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
 
