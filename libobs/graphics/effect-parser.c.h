@@ -650,11 +650,10 @@ static void ep_makeshaderstring(struct effect_parser *ep, struct dstr *shader, c
 	}
 
 	func = ep_getfunc_strref(ep, &func_name->str);
-	if (!func)
-		return;
-
-	ep_write_func(ep, shader, func, used_params);
-	ep_write_main(ep, shader, func, &call_str);
+	if (func) {
+		ep_write_func(ep, shader, func, used_params);
+		ep_write_main(ep, shader, func, &call_str);
+	}
 
 	dstr_free(&call_str);
 
