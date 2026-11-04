@@ -126,6 +126,7 @@ pub mod async_upload;
 pub mod audio_input;
 pub mod audio_place;
 pub mod audio_render_plan;
+pub mod audio_settings;
 pub mod audio_timing;
 pub mod color_space;
 pub mod conversion_plan;
