@@ -197,6 +197,67 @@ class Signature(unittest.TestCase):
 
 
 class MsiExecution(unittest.TestCase):
+    def test_timeout_classifies_log_state_and_preserves_evidence(self):
+        for data, state, expected in (
+            (None, "ABSENT", 121),
+            (b"", "EMPTY", 122),
+            ("Action start: blocked".encode("utf-16"), "WRITTEN", 124),
+        ):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                log = Path(directory) / "install.log"
+                if data is not None:
+                    log.write_bytes(data)
+                with patch.object(windows_msi.subprocess, "run", side_effect=subprocess.TimeoutExpired("msiexec", 300)):
+                    output = io.StringIO()
+                    with redirect_stdout(output):
+                        code = windows_msi.run_msi(["msiexec"], log)
+                self.assertEqual(code, expected)
+                self.assertIn(f"TIMEOUT_LOG_{state}", output.getvalue())
+                self.assertIn(f"TIMEOUT_LOG_{state}", log.with_suffix(".diagnostic.txt").read_text(encoding="utf-8"))
+
+    def test_bom_logs_are_safe_on_a_strict_windows_console(self):
+        for encoding in ("utf-16", "utf-16-be", "utf-8-sig"):
+            with self.subTest(encoding=encoding), tempfile.TemporaryDirectory() as directory:
+                log = Path(directory) / "uninstall.log"
+                data = "Installer detail: camera \u6444\u50cf\u5934".encode(encoding)
+                if encoding == "utf-16-be":
+                    data = b"\xfe\xff" + data
+                log.write_bytes(data)
+                raw = io.BytesIO()
+                console = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+                with redirect_stdout(console):
+                    windows_msi.msi_log_tail(log)
+                console.flush()
+                text = raw.getvalue().decode("cp1252")
+                self.assertIn("Installer detail: camera", text)
+                self.assertNotIn("\ufeff", text)
+                self.assertNotIn("\x00", text)
+
+    def test_broken_console_does_not_mask_installer_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "install.log"
+            log.write_text("failure", encoding="utf-16")
+            with patch.object(windows_msi.sys.stdout, "write", side_effect=OSError("closed pipe")):
+                windows_msi.msi_log_tail(log)
+
+    def test_install_quotes_the_property_value_for_the_msi_parser(self):
+        with patch.object(windows_msi, "run_msi", return_value=0) as run:
+            windows_msi._install(Path("signed package.msi"), Path("Chosen Dir"), Path("logs"))
+        command = run.call_args.args[0]
+        self.assertIsInstance(command, str)
+        self.assertIn('INSTALL_ROOT="Chosen Dir"', command)
+        self.assertNotIn('"INSTALL_ROOT=', command)
+
+    def test_roundtrip_preserves_install_failure_classification(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(windows_msi, "signature_status", return_value="Valid"),
+            patch.object(windows_msi, "_install", return_value=121),
+            patch.object(windows_msi, "_uninstall", return_value=1605),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(windows_msi.main(["roundtrip", "--msi", "signed.msi", "--log-dir", directory]), 121)
+
     def test_exit_codes_are_classified(self):
         for code, expected in ((0, 0), (3010, 0), (1603, 1603)):
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
