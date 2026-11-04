@@ -12,6 +12,7 @@ mod effect_params_parity;
 mod effect_parser;
 mod effect_parser_lifecycle;
 mod effect_parser_params;
+mod effect_parser_params_parity;
 mod effect_parser_parity;
 mod effect_parser_passes;
 mod effect_parser_passes_parity;
