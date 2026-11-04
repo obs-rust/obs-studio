@@ -67,6 +67,11 @@
 //! default effect and the linear sRGB flags);
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
+//! `libobs/obs-source-transition-access.c.h`, the getters and manual
+//! controls of the transitions (`obs_transition_get_source()`,
+//! `obs_transition_get_active_source()`, `obs_transition_set_manual_torque()`
+//! and `obs_transition_set_manual_time()`, generic over the transition seam
+//! and the libobs calls; its C shims are in `obs-source-seam`);
 //! `libobs/obs-source-transition-clock.c.h`, the clock and fit decisions of
 //! the transitions; `libobs/obs-source-transition-load.c.h`, the type
 //! check, the scale type rule, the load's source steps and the swap checks
@@ -112,7 +117,7 @@
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
-//! [`transition_clock`], [`transition_load`], [`transition_render`],
+//! [`transition_access`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
 //! [`transition_start`],
