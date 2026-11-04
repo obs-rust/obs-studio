@@ -22,7 +22,7 @@ use obs_util::cf_tokenizer::{CfLexed, CfTokenType, cf_lex};
 use proptest::prelude::*;
 
 /// The lexed text as the C `cf_parser`, at its first token.
-struct LexTokens {
+pub(crate) struct LexTokens {
     input: Vec<u8>,
     lexed: CfLexed,
     cur: usize,
@@ -30,7 +30,7 @@ struct LexTokens {
 }
 
 impl LexTokens {
-    fn new(text: &str) -> Self {
+    pub(crate) fn new(text: &str) -> Self {
         Self {
             input: text.as_bytes().to_vec(),
             lexed: cf_lex(text.as_bytes()),
@@ -113,7 +113,7 @@ fn s(b: &[u8]) -> String {
     String::from_utf8_lossy(b).into_owned()
 }
 
-fn sampler_line(ss: &Sampler) -> String {
+pub(crate) fn sampler_line(ss: &Sampler) -> String {
     let mut line = format!("sampler {} {{", s(&ss.name));
     for (state, value) in ss.states.iter().zip(&ss.values) {
         line += &format!(" {} = {};", s(state), s(value));
@@ -121,7 +121,7 @@ fn sampler_line(ss: &Sampler) -> String {
     line + " }"
 }
 
-fn struct_line(st: &Struct) -> String {
+pub(crate) fn struct_line(st: &Struct) -> String {
     let mut line = format!("struct {} {{", s(&st.name));
     for var in &st.vars {
         line += &format!(" {} {}", s(&var.type_name), s(&var.name));
@@ -134,7 +134,7 @@ fn struct_line(st: &Struct) -> String {
 }
 
 /// The block's result, its errors and where it stopped, one per line.
-fn dump(t: &LexTokens, kept: Option<String>) -> String {
+pub(crate) fn dump(t: &LexTokens, kept: Option<String>) -> String {
     let mut out = kept.unwrap_or_else(|| "dropped".into()) + "\n";
     for error in &t.errors {
         out += error;
@@ -161,7 +161,7 @@ fn run_struct(text: &str) -> String {
     dump(&t, kept.as_ref().map(struct_line))
 }
 
-fn check(run: fn(&str) -> String, cases: &[(&str, &str)]) {
+pub(crate) fn check(run: fn(&str) -> String, cases: &[(&str, &str)]) {
     let mut failed = 0;
     for (i, (text, expected)) in cases.iter().enumerate() {
         let got = run(text);

@@ -105,7 +105,7 @@ pub trait Tokens {
 /// allocator into executables that already import shared libobs's allocator
 /// (#3549). A distinct element type keeps these instantiations here.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SamplerText(Vec<u8>);
+pub struct SamplerText(pub(crate) Vec<u8>);
 
 impl core::ops::Deref for SamplerText {
     type Target = [u8];
@@ -147,12 +147,12 @@ fn token_is(t: &impl Tokens, s: &CStr) -> bool {
 }
 
 /// `*cur_token->str.array`: the terminator's (null) string reads as 0.
-fn first_byte(t: &impl Tokens) -> u8 {
+pub(crate) fn first_byte(t: &impl Tokens) -> u8 {
     t.text().first().copied().unwrap_or(0)
 }
 
 /// `cf_next_token`.
-fn next_token(t: &mut impl Tokens) -> bool {
+pub(crate) fn next_token(t: &mut impl Tokens) -> bool {
     let kind = t.kind();
     if kind != CFTOKEN_SPACETAB && kind != CFTOKEN_NEWLINE && kind != CFTOKEN_NONE {
         t.advance();
@@ -164,7 +164,7 @@ fn next_token(t: &mut impl Tokens) -> bool {
 }
 
 /// `cf_next_valid_token`.
-fn next_valid_token(t: &mut impl Tokens) -> bool {
+pub(crate) fn next_valid_token(t: &mut impl Tokens) -> bool {
     if !next_token(t) {
         t.add_error(BlockError::UnexpectedEof);
         return false;
@@ -194,7 +194,7 @@ fn go_to_valid_token(t: &mut impl Tokens, str1: &CStr, str2: Option<&CStr>) -> b
 }
 
 /// `cf_next_token_should_be`.
-fn next_token_should_be(
+pub(crate) fn next_token_should_be(
     t: &mut impl Tokens,
     s: &'static CStr,
     goto1: Option<&CStr>,
@@ -218,7 +218,7 @@ fn next_token_should_be(
 /// `cf_peek_valid_token`: whether there is a next token, and whether its
 /// text is `s` (the only thing the blocks read of the peeked copy). The
 /// error goes at the token the cursor was put back on, as in the C.
-fn peek_valid_token_is(t: &mut impl Tokens, s: &CStr) -> Option<bool> {
+pub(crate) fn peek_valid_token_is(t: &mut impl Tokens, s: &CStr) -> Option<bool> {
     let saved = t.mark();
     let success = next_token(t);
     let is = token_is(t, s);
@@ -250,7 +250,7 @@ fn token_is_type(
 }
 
 /// `cf_next_name`: the name's text, or the code.
-fn next_name(
+pub(crate) fn next_name(
     t: &mut impl Tokens,
     name: &'static CStr,
     goto_token: Option<&CStr>,

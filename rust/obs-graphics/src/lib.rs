@@ -4,7 +4,9 @@
 //! the immediate-mode vertex counts and texture units ([`immediate`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
-//! its int values and array counts ([`effect_param_types`]), from
+//! its int values and array counts ([`effect_param_types`]), and
+//! `effect-parser-blocks.c.h`, its struct and sampler-state blocks
+//! ([`effect_parser`]), from
 //! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
 //! shader parser's array counts and int and float default values
 //! ([`shader_param_values`]), and `shader-parser-blocks.c.h`, its
@@ -31,6 +33,7 @@ pub mod bounds;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;
+pub mod effect_parser;
 pub mod effect_parser_lifecycle;
 pub mod effect_passes;
 #[allow(unsafe_code)] // the C ABI shims
