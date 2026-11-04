@@ -51,6 +51,8 @@
 
 use std::ffi::CStr;
 
+use crate::transition_start::{active_index, manual_reset};
+
 /// The name `obs_transition_get_source()` hands `transition_valid()`,
 /// which logs it for a NULL source.
 pub const GET_SOURCE_LOG_NAME: &CStr = c"obs_transition_get_source";
@@ -114,36 +116,73 @@ pub trait Transition {
 /// on what slot `idx` holds, read and referenced under its lock; `None` for
 /// an empty slot, a child going away, no transition and a source that is
 /// not a transition.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn get_source<T: Transition>(transition: Option<&T>, idx: usize) -> Option<T::Child> {
-    let _ = (transition, idx);
-    todo!()
+    if !T::valid(transition, GET_SOURCE_LOG_NAME) {
+        return None;
+    }
+    let transition = transition?;
+
+    transition.lock();
+    let ret = transition.source(idx);
+    let ret = transition.get_ref(ret);
+    transition.unlock();
+
+    ret
 }
 
 /// `obs_transition_get_active_source()`: for a valid transition, a new
 /// reference on its active child, slot B while it runs (audio or video,
 /// `transitioning_audio` read first) and slot A otherwise, read and
 /// referenced under its lock.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn get_active_source<T: Transition>(transition: Option<&T>) -> Option<T::Child> {
-    let _ = transition;
-    todo!()
+    if !T::valid(transition, GET_ACTIVE_SOURCE_LOG_NAME) {
+        return None;
+    }
+    let transition = transition?;
+
+    transition.lock();
+    let active = transition.transitioning_audio() || transition.transitioning_video();
+    let ret = transition.source(active_index(active));
+    let ret = transition.get_ref(ret);
+    transition.unlock();
+
+    ret
 }
 
 /// `obs_transition_set_manual_torque()`: for a valid transition, writes the
 /// torque, then the clamp, under its lock.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn set_manual_torque<T: Transition>(transition: Option<&T>, torque: f32, clamp: f32) {
-    let _ = (transition, torque, clamp);
-    todo!()
+    if !T::valid(transition, SET_MANUAL_TORQUE_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+
+    transition.lock();
+    transition.set_manual_torque(torque);
+    transition.set_manual_clamp(clamp);
+    transition.unlock();
 }
 
 /// `obs_transition_set_manual_time()`: for a valid transition, writes the
 /// manual target and reads the mode under its lock; after the unlock, in
 /// manual mode with `t == 0.0`, reads slot A (without the lock, as the C
 /// does) and hands it to `obs_transition_set()`.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn set_manual_time<T: Transition>(transition: Option<&T>, t: f32) {
-    let _ = (transition, t);
-    todo!()
+    if !T::valid(transition, SET_MANUAL_TIME_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+
+    transition.lock();
+    transition.set_manual_target(t);
+    let mode = transition.mode();
+    transition.unlock();
+
+    if manual_reset(mode, t) {
+        transition.set(transition.source(RESET_SLOT));
+    }
 }

@@ -1,0 +1,7 @@
+# obs-source-transition-access.c (obs-source-seam): the getters and manual
+# controls of a transition in obs.h (EXPORT), called by the frontend, plugins
+# and scripts.
+obs_transition_get_active_source
+obs_transition_get_source
+obs_transition_set_manual_time
+obs_transition_set_manual_torque
