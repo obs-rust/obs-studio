@@ -620,3 +620,35 @@ pub fn parse_param_assign(t: &mut impl ParamTokens, param: &mut Param) -> bool {
     }
     next_valid_token(t)
 }
+
+/// `ep_parse_param_annotation_var`: one `type name [= value];` of an
+/// annotation list, from the token before it, into `var`. Returns the C's
+/// code: `PARSE_SUCCESS` (keep `var`), `PARSE_CONTINUE`, `PARSE_BREAK` at
+/// the `>`, `PARSE_UNEXPECTED_CONTINUE`, `PARSE_UNEXPECTED_BREAK` or
+/// `PARSE_EOF`.
+pub fn parse_param_annotation_var(_t: &mut impl ParamTokens, _var: &mut Param) -> i32 {
+    todo!()
+}
+
+/// `ep_parse_annotations`, from the `<` token: the entries pushed into
+/// `annotations` in order, then past the `>`. `false` where the C's
+/// `goto error` drops the parameter (the entries pushed so far stay in
+/// `annotations`, which the parameter owns and frees).
+pub fn parse_annotations(_t: &mut impl ParamTokens, _annotations: &mut Vec<Param>) -> bool {
+    todo!()
+}
+
+/// `ep_parse_param`, from the token after the declaration's name:
+/// `[[count]] [<annotations>] [= value];`. The parameter `ep_parse_other()`
+/// pushes into `ep->params` (it keeps the type and name it was given), or
+/// `None` where the C frees it.
+pub fn parse_param(
+    _t: &mut impl ParamTokens,
+    _type_name: Vec<u8>,
+    _name: Vec<u8>,
+    _is_property: bool,
+    _is_const: bool,
+    _is_uniform: bool,
+) -> Option<Param> {
+    todo!()
+}
